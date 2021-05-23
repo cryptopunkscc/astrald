@@ -1,7 +1,7 @@
 package hub
 
 import (
-	"github.com/cryptopunkscc/astrald/node/auth"
+	"github.com/cryptopunkscc/astrald/node/auth/id"
 	"io"
 	"log"
 	"sync"
@@ -41,7 +41,7 @@ func (hub *Hub) Register(name string) (Port, error) {
 }
 
 // Connect requests to connect to a port as the provided auth.Identity
-func (hub *Hub) Connect(name string, caller auth.Identity) (io.ReadWriteCloser, error) {
+func (hub *Hub) Connect(name string, caller id.Identity) (io.ReadWriteCloser, error) {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 

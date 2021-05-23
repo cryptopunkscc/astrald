@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/node/auth"
+	"github.com/cryptopunkscc/astrald/node/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/net"
 )
@@ -12,10 +13,10 @@ import (
 type Router struct {
 	Table         *Table
 	LinkCache     *LinkCache
-	localIdentity *auth.ECIdentity
+	localIdentity *id.ECIdentity
 }
 
-func NewRouter(localID *auth.ECIdentity) *Router {
+func NewRouter(localID *id.ECIdentity) *Router {
 	return &Router{
 		Table:         NewTable(),
 		LinkCache:     NewLinkCache(),
@@ -23,7 +24,7 @@ func NewRouter(localID *auth.ECIdentity) *Router {
 	}
 }
 
-func (router *Router) Connect(ctx context.Context, remoteID *auth.ECIdentity) (*link.Link, error) {
+func (router *Router) Connect(ctx context.Context, remoteID *id.ECIdentity) (*link.Link, error) {
 	// Check if we already have a link first
 	if l := router.LinkCache.Fetch(remoteID); l != nil {
 		return l, nil
@@ -54,7 +55,7 @@ func (router *Router) Connect(ctx context.Context, remoteID *auth.ECIdentity) (*
 	return l, nil
 }
 
-func (router *Router) tryEndpoints(ctx context.Context, endpoints []net.Endpoint) (net.Conn, error) {
+func (router *Router) tryEndpoints(ctx context.Context, endpoints []net.Addr) (net.Conn, error) {
 	for _, endpoint := range endpoints {
 		// Establish a connection
 		netConn, err := net.Dial(ctx, endpoint)

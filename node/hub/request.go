@@ -1,20 +1,20 @@
 package hub
 
 import (
-	"github.com/cryptopunkscc/astrald/node/auth"
+	"github.com/cryptopunkscc/astrald/node/auth/id"
 	"io"
 )
 
 // Request is a request handler sent to the port handler
 type Request struct {
-	caller     auth.Identity
+	caller     id.Identity
 	response   chan bool
 	connection chan Conn
 	query      string
 }
 
 // Caller returns the auth.Identity of the requesting party
-func (req *Request) Caller() auth.Identity {
+func (req *Request) Caller() id.Identity {
 	return req.caller
 }
 

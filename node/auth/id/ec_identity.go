@@ -1,4 +1,4 @@
-package auth
+package id
 
 import (
 	"encoding/hex"
@@ -12,7 +12,7 @@ type ECIdentity struct {
 	publicKey  *btcec.PublicKey
 }
 
-func NewECIdentity() (*ECIdentity, error) {
+func GenerateECIdentity() (*ECIdentity, error) {
 	var err error
 	id := &ECIdentity{}
 
@@ -22,6 +22,10 @@ func NewECIdentity() (*ECIdentity, error) {
 	}
 
 	return id, nil
+}
+
+func ECIdentityFromPublicKey(key *btcec.PublicKey) *ECIdentity {
+	return &ECIdentity{publicKey: key}
 }
 
 func ECIdentityFromBytes(data []byte) (*ECIdentity, error) {

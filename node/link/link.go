@@ -3,6 +3,7 @@ package link
 import (
 	"encoding/binary"
 	"github.com/cryptopunkscc/astrald/node/auth"
+	"github.com/cryptopunkscc/astrald/node/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link/proto"
 	"github.com/cryptopunkscc/astrald/node/mux"
 	"io"
@@ -65,7 +66,7 @@ func (link *Link) Open(port string) (io.ReadWriteCloser, error) {
 }
 
 // RemoteIdentity returns the auth.Identity of the remote party
-func (link *Link) RemoteIdentity() auth.Identity {
+func (link *Link) RemoteIdentity() id.Identity {
 	return link.conn.RemoteIdentity()
 }
 

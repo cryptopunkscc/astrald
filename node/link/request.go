@@ -1,13 +1,13 @@
 package link
 
 import (
-	"github.com/cryptopunkscc/astrald/node/auth"
+	"github.com/cryptopunkscc/astrald/node/auth/id"
 	"github.com/cryptopunkscc/astrald/node/mux"
 	"io"
 )
 
 type Request struct {
-	caller         auth.Identity
+	caller         id.Identity
 	port           string
 	localStream    mux.Stream
 	remoteStreamID mux.StreamID
@@ -32,7 +32,7 @@ func (req Request) Reject() error {
 }
 
 // Caller returns the auth.Identity of the caller
-func (req Request) Caller() auth.Identity {
+func (req Request) Caller() id.Identity {
 	return req.caller
 }
 

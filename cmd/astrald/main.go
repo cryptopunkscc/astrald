@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/auth"
+	"github.com/cryptopunkscc/astrald/node/auth/id"
 	_ "github.com/cryptopunkscc/astrald/services/appsupport"
 	"github.com/go-yaml/yaml"
 	"io/ioutil"
@@ -52,13 +52,13 @@ func astralDir() string {
 	return dir
 }
 
-func loadID() *auth.ECIdentity {
+func loadID() *id.ECIdentity {
 	idPath := filepath.Join(astralDir(), defaultIdentityFilename)
 
 	// Try to load an existing identity
 	idBytes, err := ioutil.ReadFile(idPath)
 	if err == nil {
-		id, err := auth.ECIdentityFromBytes(idBytes)
+		id, err := id.ECIdentityFromBytes(idBytes)
 		if err != nil {
 			panic(err)
 		}
@@ -72,7 +72,7 @@ func loadID() *auth.ECIdentity {
 
 	// Generate a new identity
 	log.Println("generating new node identity...")
-	id, err := auth.NewECIdentity()
+	id, err := id.GenerateECIdentity()
 	if err != nil {
 		panic(err)
 	}

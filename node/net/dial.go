@@ -2,43 +2,40 @@ package net
 
 import (
 	"context"
+	"log"
 	"sync"
 )
 
-// DialFunc describes a function that establishes a Conn to the provided Endpoint
-type DialFunc func(context.Context, Endpoint) (Conn, error)
-
-var dials = make(map[string]DialFunc)
+var drivers = make(map[string]Driver)
 var mu sync.Mutex
 
-// Dial tries to establish a Conn to provided Endpoint
-func Dial(ctx context.Context, ep Endpoint) (Conn, error) {
-	dial := getDial(ep.Net)
+// Dial tries to establish a Conn to provided address
+func Dial(ctx context.Context, addr Addr) (Conn, error) {
+	log.Println("dial", addr.Network(), addr.String())
+	driver := drivers[addr.Network()]
 
-	if dial == nil {
+	if driver == nil {
 		return nil, ErrUnsupportedNetwork
 	}
 
-	return dial(ctx, ep)
+	return driver.Dial(ctx, addr)
 }
 
-// Register sets a DialFunc for a network
-func Register(network string, fun DialFunc) error {
+// Register sets a driver for a network
+func Register(driver Driver) error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if _, found := dials[network]; found {
+	network := driver.Network()
+	if len(network) == 0 {
+		return ErrInvalidNetworkName
+	}
+
+	if _, found := drivers[network]; found {
 		return ErrAlreadyRegistered
 	}
 
-	dials[network] = fun
+	drivers[network] = driver
 
 	return nil
-}
-
-func getDial(network string) DialFunc {
-	mu.Lock()
-	defer mu.Unlock()
-
-	return dials[network]
 }

@@ -3,26 +3,27 @@ package node
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/node/auth"
+	"github.com/cryptopunkscc/astrald/node/auth/id"
 	"github.com/cryptopunkscc/astrald/node/hub"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/net"
-	"github.com/cryptopunkscc/astrald/node/net/inet4"
+	"github.com/cryptopunkscc/astrald/node/net/inet"
+	"github.com/cryptopunkscc/astrald/node/net/lan"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"io"
 	"log"
-	"time"
 )
 
 type Node struct {
 	*API
-	Identity *auth.ECIdentity
+	Identity *id.ECIdentity
 	TCPPort  int
 
 	Hub    *hub.Hub
 	Router *router.Router
 }
 
-func (node *Node) Connect(ctx context.Context, identity *auth.ECIdentity, port string) (io.ReadWriteCloser, error) {
+func (node *Node) Connect(ctx context.Context, identity *id.ECIdentity, port string) (io.ReadWriteCloser, error) {
 	// Establish a link with the identity
 	l, err := node.Router.Connect(ctx, identity)
 	if err != nil {
@@ -34,7 +35,7 @@ func (node *Node) Connect(ctx context.Context, identity *auth.ECIdentity, port s
 }
 
 // New returns a new instance of a node
-func New(identity *auth.ECIdentity, port int) *Node {
+func New(identity *id.ECIdentity, port int) *Node {
 	node := &Node{
 		Identity: identity,
 		TCPPort:  port,
@@ -93,40 +94,24 @@ func (node *Node) Run(ctx context.Context) error {
 
 // startListeners starts listening to incoming connections
 func (node *Node) startListeners(ctx context.Context, output chan<- net.Conn) error {
-	conns, err := inet4.Listen(ctx, node.TCPPort)
-	if err != nil {
-		return err
-	}
+	net.Register(inet.NewDriver())
+	net.Register(lan.NewDriver(node.Identity, uint16(node.TCPPort)))
 
-	ad, err := inet4.NewBroadcast(node.Identity, uint16(node.TCPPort))
-	if err != nil {
-		return err
-	}
+	conns := net.Listen(ctx)
 
 	// Start advertising
-	go func() {
-		var err error
-		for {
-			err = ad.Advertise()
-			if err != nil {
-				log.Println("error advertising:", err)
-			}
-			time.Sleep(time.Second)
-		}
-	}()
+	net.Advertise(ctx)
 
 	// Start scanning
 	go func() {
-		for {
-			d, err := ad.Scan()
-			if err != nil {
-				log.Println("error scanning:", err)
-				return
-			}
+		ads, err := net.Scan(ctx)
+		if err != nil {
+			log.Println("scan failed:", err)
+			return
+		}
 
-			log.Println("scanned", d.Identity, d.Endpoint)
-
-			node.Router.Table.Add(d.Identity.String(), d.Endpoint)
+		for ad := range ads {
+			node.Router.Table.Add(ad.Identity.String(), ad.Addr)
 		}
 	}()
 
@@ -147,7 +132,7 @@ func (node *Node) processIncomingConns(input <-chan net.Conn, output chan<- *lin
 			continue
 		}
 
-		log.Println(conn.RemoteEndpoint(), "connected.")
+		log.Println(conn.RemoteAddr(), "connected.")
 		authConn, err := auth.HandshakeInbound(context.Background(), conn, node.Identity)
 		if err != nil {
 			log.Println("handshake error:", err)

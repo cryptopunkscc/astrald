@@ -2,13 +2,14 @@ package auth
 
 import (
 	"github.com/cryptopunkscc/astrald/node/auth/brontide"
+	"github.com/cryptopunkscc/astrald/node/auth/id"
 	"github.com/cryptopunkscc/astrald/node/net"
 )
 
 type brontideConn struct {
 	netConn        net.Conn
 	bConn          *brontide.Conn
-	remoteIdentity Identity
+	remoteIdentity id.Identity
 }
 
 func (conn *brontideConn) Read(p []byte) (n int, err error) {
@@ -24,15 +25,13 @@ func (conn *brontideConn) Close() error {
 }
 
 func (conn *brontideConn) Outbound() bool {
-	return false
+	return conn.netConn.Outbound()
 }
 
-func (conn *brontideConn) RemoteEndpoint() net.Endpoint {
-	return net.Endpoint{}
+func (conn *brontideConn) RemoteAddr() net.Addr {
+	return conn.netConn.RemoteAddr()
 }
 
-func (conn *brontideConn) RemoteIdentity() Identity {
-	return &ECIdentity{
-		publicKey: conn.bConn.RemotePub(),
-	}
+func (conn *brontideConn) RemoteIdentity() id.Identity {
+	return id.ECIdentityFromPublicKey(conn.bConn.RemotePub())
 }

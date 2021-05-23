@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
-	"github.com/cryptopunkscc/astrald/node/auth"
+	id2 "github.com/cryptopunkscc/astrald/node/auth/id"
 	"github.com/cryptopunkscc/astrald/node/hub"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/net"
@@ -18,7 +18,7 @@ func (api API) Network() api.Network {
 	return api.network
 }
 
-func NewAPI(localIdentity auth.Identity, router *router.Router, hub *hub.Hub) *API {
+func NewAPI(localIdentity id2.Identity, router *router.Router, hub *hub.Hub) *API {
 	return &API{
 		network: &networkAPI{
 			localIdentity: localIdentity,
@@ -29,7 +29,7 @@ func NewAPI(localIdentity auth.Identity, router *router.Router, hub *hub.Hub) *A
 }
 
 type networkAPI struct {
-	localIdentity auth.Identity
+	localIdentity id2.Identity
 	*router.Router
 	*hub.Hub
 }
@@ -62,7 +62,7 @@ func (_api *networkAPI) Connect(identity api.Identity, port string) (api.Stream,
 		return stream, nil
 	}
 
-	id, err := auth.ParsePublicKeyHex(string(identity))
+	id, err := id2.ParsePublicKeyHex(string(identity))
 	if err != nil {
 		return nil, err
 	}

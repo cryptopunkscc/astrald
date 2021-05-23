@@ -6,7 +6,7 @@ import "io"
 // and gaurantees data integrity. No authentication or encryption is guaranteed. Identity of the other party is
 // unknown.
 type Conn interface {
-	io.ReadWriteCloser        // Basic IO operations
-	Outbound() bool           // Returns true if we are the active party, false otherwise
-	RemoteEndpoint() Endpoint // Returns the other party's network endpoint if knwon, nil otherwise
+	io.ReadWriteCloser // Basic IO operations
+	Outbound() bool    // Returns true if we are the active party, false otherwise
+	RemoteAddr() Addr  // Returns the other party's network address if knwon, nil otherwise
 }
