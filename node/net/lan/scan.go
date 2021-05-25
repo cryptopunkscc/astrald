@@ -106,7 +106,7 @@ func scanInterface(ctx context.Context, iface goNet.Interface, output chan<- *ne
 		return err
 	}
 	if len(addrs) < 1 {
-		return errors.New("interface has no addresses")
+		return errors.New("network interface has no addresses")
 	}
 
 	for _, addr := range addrs {

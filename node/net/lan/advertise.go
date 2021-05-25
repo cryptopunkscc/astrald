@@ -40,7 +40,7 @@ func (drv *driver) advertiseOnIface(ctx context.Context, iface goNet.Interface) 
 		return err
 	}
 	if len(addrs) < 1 {
-		return errors.New("interface has no addresses")
+		return errors.New("network interface has no addresses")
 	}
 
 	for _, addr := range addrs {
