@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/hub"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/net"
+	"github.com/cryptopunkscc/astrald/node/net/etor"
 	"github.com/cryptopunkscc/astrald/node/net/inet"
 	"github.com/cryptopunkscc/astrald/node/net/lan"
 	"github.com/cryptopunkscc/astrald/node/router"
@@ -94,8 +95,9 @@ func (node *Node) Run(ctx context.Context) error {
 
 // startListeners starts listening to incoming connections
 func (node *Node) startListeners(ctx context.Context, output chan<- net.Conn) error {
-	net.Register(inet.NewDriver())
 	net.Register(lan.NewDriver(node.Identity, uint16(node.TCPPort)))
+	net.Register(inet.NewDriver())
+	net.Register(etor.NewDriver())
 
 	conns := net.Listen(ctx)
 

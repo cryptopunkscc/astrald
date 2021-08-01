@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/auth/id"
+	"github.com/cryptopunkscc/astrald/node/net"
 	_ "github.com/cryptopunkscc/astrald/services/appsupport"
 	"github.com/go-yaml/yaml"
 	"io/ioutil"
@@ -32,6 +33,10 @@ const defaultPort = 1791
 
 type configType struct {
 	Port int
+	Map  map[string]struct {
+		Network string
+		Address string
+	}
 }
 
 var config configType
@@ -115,6 +120,11 @@ func main() {
 		loadID(),
 		config.Port,
 	)
+
+	// Load static addresses
+	for key, addr := range config.Map {
+		node.Router.Table.Add(key, net.MakeAddr(addr.Network, addr.Address))
+	}
 
 	// Trap ctrl+c
 	sigCh := make(chan os.Signal)
