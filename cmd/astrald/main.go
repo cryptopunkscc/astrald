@@ -2,14 +2,9 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/auth/id"
-	"github.com/cryptopunkscc/astrald/node/net"
 	_ "github.com/cryptopunkscc/astrald/services/appsupport"
-	"github.com/go-yaml/yaml"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -27,23 +22,6 @@ const (
 	ExitConfigError             // An invalid or non-existent config file provided
 )
 
-const defaultConfigFilename = "astrald.conf"
-const defaultIdentityFilename = "id"
-const defaultPort = 1791
-
-type configType struct {
-	Port int
-	Map  map[string]struct {
-		Network string
-		Address string
-	}
-}
-
-var config configType
-var defaultConfig = configType{
-	Port: defaultPort,
-}
-
 func astralDir() string {
 	cfgDir, err := os.UserConfigDir()
 	if err != nil {
@@ -57,74 +35,19 @@ func astralDir() string {
 	return dir
 }
 
-func loadID() *id.ECIdentity {
-	idPath := filepath.Join(astralDir(), defaultIdentityFilename)
-
-	// Try to load an existing identity
-	idBytes, err := ioutil.ReadFile(idPath)
-	if err == nil {
-		id, err := id.ECIdentityFromBytes(idBytes)
-		if err != nil {
-			panic(err)
-		}
-		return id
-	}
-
-	// The only acceptable error is ErrNotExist
-	if !errors.Is(err, os.ErrNotExist) {
-		panic(err)
-	}
-
-	// Generate a new identity
-	log.Println("generating new node identity...")
-	id, err := id.GenerateECIdentity()
-	if err != nil {
-		panic(err)
-	}
-
-	// Save the new identity
-	_ = ioutil.WriteFile(idPath, id.PrivateKey().Serialize(), 0600)
-
-	return id
-}
-
 func main() {
-	// Figure out the config path
-	var configPath string
-	if len(os.Args) > 1 {
-		configPath = os.Args[1]
-	} else {
-		configPath = filepath.Join(astralDir(), defaultConfigFilename)
-	}
+	astralRoot := astralDir()
 
-	// Load the config file
-	configBytes, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		config = defaultConfig
-		configBytes, _ = yaml.Marshal(&config)
-		_ = ioutil.WriteFile(configPath, configBytes, 0600)
-	} else {
-		// Parse config file
-		err = yaml.Unmarshal(configBytes, &config)
-		if err != nil {
-			fmt.Println("error parsing config file:", err)
-			os.Exit(ExitConfigError)
-		}
+	// Figure out the config path
+	if len(os.Args) > 1 {
+		astralRoot = os.Args[1]
 	}
 
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())
 
 	// Instantiate the node
-	node := node.New(
-		loadID(),
-		config.Port,
-	)
-
-	// Load static addresses
-	for key, addr := range config.Map {
-		node.Router.Table.Add(key, net.MakeAddr(addr.Network, addr.Address))
-	}
+	node := node.New(astralRoot)
 
 	// Trap ctrl+c
 	sigCh := make(chan os.Signal)
@@ -142,7 +65,7 @@ func main() {
 	}()
 
 	// Run the node
-	err = node.Run(ctx)
+	err := node.Run(ctx)
 
 	time.Sleep(50 * time.Millisecond)
 

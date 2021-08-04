@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/node/auth"
 	"github.com/cryptopunkscc/astrald/node/auth/id"
+	_fs "github.com/cryptopunkscc/astrald/node/fs"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/net"
 )
@@ -16,9 +17,9 @@ type Router struct {
 	localIdentity *id.ECIdentity
 }
 
-func NewRouter(localID *id.ECIdentity) *Router {
+func NewRouter(fs *_fs.Filesystem, localID *id.ECIdentity) *Router {
 	return &Router{
-		Table:         NewTable(),
+		Table:         NewTable(fs),
 		LinkCache:     NewLinkCache(),
 		localIdentity: localID,
 	}

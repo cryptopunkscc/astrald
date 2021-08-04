@@ -4,10 +4,10 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/node/auth"
 	"github.com/cryptopunkscc/astrald/node/auth/id"
+	_fs "github.com/cryptopunkscc/astrald/node/fs"
 	"github.com/cryptopunkscc/astrald/node/hub"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/net"
-	"github.com/cryptopunkscc/astrald/node/net/etor"
 	"github.com/cryptopunkscc/astrald/node/net/inet"
 	"github.com/cryptopunkscc/astrald/node/net/lan"
 	"github.com/cryptopunkscc/astrald/node/router"
@@ -18,10 +18,33 @@ import (
 type Node struct {
 	*API
 	Identity *id.ECIdentity
-	TCPPort  int
 
 	Hub    *hub.Hub
 	Router *router.Router
+	FS     *_fs.Filesystem
+	Config *Config
+}
+
+// New returns a new instance of a node
+func New(astralDir string) *Node {
+	fs := _fs.New(astralDir)
+	identity := setupIdentity(fs)
+
+	node := &Node{
+		FS:       fs,
+		Identity: identity,
+		Config:   loadConfig(fs),
+		Hub:      new(hub.Hub),
+		Router:   router.NewRouter(fs, identity),
+	}
+
+	node.API = NewAPI(
+		node.Identity,
+		node.Router,
+		node.Hub,
+	)
+
+	return node
 }
 
 func (node *Node) Connect(ctx context.Context, identity *id.ECIdentity, port string) (io.ReadWriteCloser, error) {
@@ -33,24 +56,6 @@ func (node *Node) Connect(ctx context.Context, identity *id.ECIdentity, port str
 
 	// Connect to identity's port
 	return l.Open(port)
-}
-
-// New returns a new instance of a node
-func New(identity *id.ECIdentity, port int) *Node {
-	node := &Node{
-		Identity: identity,
-		TCPPort:  port,
-		Hub:      new(hub.Hub),
-		Router:   router.NewRouter(identity),
-	}
-
-	node.API = NewAPI(
-		node.Identity,
-		node.Router,
-		node.Hub,
-	)
-
-	return node
 }
 
 // Run starts the node, waits for it to finish and returns an error if any
@@ -95,9 +100,9 @@ func (node *Node) Run(ctx context.Context) error {
 
 // startListeners starts listening to incoming connections
 func (node *Node) startListeners(ctx context.Context, output chan<- net.Conn) error {
-	net.Register(lan.NewDriver(node.Identity, uint16(node.TCPPort)))
+	net.Register(lan.NewDriver(node.Identity, uint16(node.Config.Port)))
 	net.Register(inet.NewDriver())
-	net.Register(etor.NewDriver())
+	//net.Register(etor.NewDriver())
 
 	conns := net.Listen(ctx)
 
