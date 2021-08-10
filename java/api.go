@@ -1,4 +1,4 @@
-package astralandroid
+package astraljava
 
 type Service interface {
 	Run(core Network) error

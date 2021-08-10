@@ -3,10 +3,11 @@ package astralandroid
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
+	"github.com/cryptopunkscc/astrald/java"
 )
 
 type serviceAdapter struct {
-	delegate Service
+	delegate astraljava.Service
 }
 
 func (s serviceAdapter) Run(
@@ -25,7 +26,7 @@ type networkAdapter struct{ delegate api.Network }
 func (n networkAdapter) Connect(
 	identity string,
 	port string,
-) (Stream, error) {
+) (astraljava.Stream, error) {
 	return n.delegate.Connect(api.Identity(identity), port)
 }
 
@@ -33,7 +34,7 @@ func (n networkAdapter) Identity() string {
 	return string(n.delegate.Identity())
 }
 
-func (n networkAdapter) Register(name string) (PortHandler, error) {
+func (n networkAdapter) Register(name string) (astraljava.PortHandler, error) {
 	h, err := n.delegate.Register(name)
 	if err != nil {
 		return nil, err
@@ -45,7 +46,7 @@ func (n networkAdapter) Register(name string) (PortHandler, error) {
 
 type portHandlerAdapter struct{ delegate api.PortHandler }
 
-func (p portHandlerAdapter) Next() ConnectionRequest {
+func (p portHandlerAdapter) Next() astraljava.ConnectionRequest {
 	return connectionRequestAdapter{delegate: <-p.delegate.Requests()}
 }
 
@@ -63,11 +64,10 @@ func (c connectionRequestAdapter) Query() string {
 	return c.delegate.Query()
 }
 
-func (c connectionRequestAdapter) Accept() Stream {
+func (c connectionRequestAdapter) Accept() astraljava.Stream {
 	return c.delegate.Accept()
 }
 
 func (c connectionRequestAdapter) Reject() {
 	c.delegate.Reject()
 }
-

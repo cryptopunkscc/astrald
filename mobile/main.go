@@ -3,8 +3,10 @@ package astralandroid
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/java"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/auth/id"
+	_ "github.com/cryptopunkscc/astrald/services/appsupport/tcp"
 	"github.com/go-yaml/yaml"
 	"io/ioutil"
 	"log"
@@ -126,7 +128,7 @@ func Stop() {
 
 func Register(
 	name string,
-	srv Service,
+	srv astraljava.Service,
 ) error {
 	return node.RegisterService(
 		name,

@@ -1,4 +1,4 @@
-package tcpappsupport
+package tcp
 
 import (
 	"context"
@@ -18,14 +18,13 @@ func init() {
 	_ = node.RegisterService("tcp", &Runner{})
 }
 
-
-type Runner struct {}
+type Runner struct{}
 
 func (runner *Runner) Run(ctx context.Context, core api.Core) error {
 	network := core.Network()
 
 	go func() {
-		p, _ := network.Register("appstcp")
+		p, _ := network.Register("apps-tcp")
 
 		for r := range p.Requests() {
 			c := r.Accept()
@@ -103,13 +102,13 @@ func handlePort(port api.PortHandler, path string) error {
 	for request := range port.Requests() {
 		log.Println(request.Caller(), "calling", request.Query())
 
-		unix, err := net.Dial("unix", path)
+		socket, err := net.Dial("tcp", path)
 		if err != nil {
 			request.Reject()
 			return err
 		}
 
-		outConn := proto.NewSocket(unix)
+		outConn := proto.NewJsonSocket(socket)
 		res, err := outConn.Connect(string(request.Caller()), request.Query())
 		if err != nil {
 			request.Reject()
@@ -141,7 +140,7 @@ func accept(l net.Listener) <-chan *proto.Socket {
 				return
 			}
 
-			output <- proto.NewSocket(conn)
+			output <- proto.NewJsonSocket(conn)
 		}
 	}()
 
@@ -161,12 +160,6 @@ func join(a, b io.ReadWriteCloser) {
 
 // makeSocket creates a new unix socket and returns its listener. If no name is provided a random one is used.
 func makeSocket(address string) (net.Listener, error) {
-	//if name == "" {
-	//	name = uuid.New().String()
-	//}
-	//
-	//fullPath := socketPath(name)
-
 	listen, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, err
@@ -174,24 +167,3 @@ func makeSocket(address string) (net.Listener, error) {
 
 	return listen, nil
 }
-//
-//func socketPath(name string) string {
-//	return filepath.Join(astralDir(), name)
-//}
-//
-//// TODO: This should be injected by the node
-//func astralDir() string {
-//	cfgDir, err := os.UserConfigDir()
-//	if err != nil {
-//		return defaultAstralDir
-//	}
-//
-//	dir := filepath.Join(cfgDir, "astrald")
-//	err = os.MkdirAll(dir, 0700)
-//	if err != nil {
-//		fmt.Println("astrald dir erreror:", err)
-//		return defaultAstralDir
-//	}
-//
-//	return dir
-//}
