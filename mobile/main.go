@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/auth/id"
 	_ "github.com/cryptopunkscc/astrald/services/appsupport/tcp"
+	"github.com/cryptopunkscc/astrald/services/fs"
 	"github.com/go-yaml/yaml"
 	"io/ioutil"
 	"log"
@@ -70,15 +71,16 @@ func loadID(astralDir string) *id.ECIdentity {
 	return id
 }
 
-func Start(astralDir string) {
+func Start(astralHome string) {
 	// Figure out the config path
 	log.Println("log Staring astrald")
+	fs.AstralHome = astralHome
 
 	var configPath string
 	if len(os.Args) > 1 {
 		configPath = os.Args[1]
 	} else {
-		configPath = filepath.Join(astralDir, defaultConfigFilename)
+		configPath = filepath.Join(astralHome, defaultConfigFilename)
 	}
 
 	// Load the config file
@@ -103,7 +105,7 @@ func Start(astralDir string) {
 
 	// Instantiate the node
 	node := node.New(
-		loadID(astralDir),
+		loadID(astralHome),
 		config.Port,
 	)
 
