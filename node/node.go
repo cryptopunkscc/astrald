@@ -10,7 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/net"
 	"github.com/cryptopunkscc/astrald/node/net/inet"
 	"github.com/cryptopunkscc/astrald/node/net/lan"
-	"github.com/cryptopunkscc/astrald/node/peer"
+	_peer "github.com/cryptopunkscc/astrald/node/peer"
 	"io"
 	"log"
 	"time"
@@ -21,7 +21,7 @@ type Node struct {
 	Identity *_id.ECIdentity
 
 	Hub      *hub.Hub
-	Peers    *peer.Peers
+	Peers    *_peer.Peers
 	Linker   *Linker
 	PeerInfo *PeerInfo
 	FS       *_fs.Filesystem
@@ -32,7 +32,7 @@ type Node struct {
 func New(astralDir string) *Node {
 	fs := _fs.New(astralDir)
 	identity := setupIdentity(fs)
-	peers := peer.NewManager()
+	peers := _peer.NewManager()
 	peerInfo := NewPeerInfo(fs)
 
 	node := &Node{
@@ -91,7 +91,7 @@ func (node *Node) Run(ctx context.Context) error {
 	go node.handleRequests()
 
 	// Keep alive LAN peers
-	go node.lanKeeper()
+	go node.linkKeeper()
 
 	// Wait for shutdown
 	<-ctx.Done()
@@ -188,24 +188,21 @@ func (node *Node) handleRequests() {
 	}
 }
 
-func (node *Node) lanKeeper() {
+// linkKeeper tries to keep us connected to all peers in our local database
+func (node *Node) linkKeeper() {
 	for {
-		for nodeID, addrs := range node.PeerInfo.entries {
-			ecid, _ := _id.ParsePublicKeyHex(nodeID)
-			peer, _ := node.Peers.Peer(ecid)
+		for key := range node.PeerInfo.entries {
+			nodeID, _ := _id.ParsePublicKeyHex(key)
+			peer, _ := node.Peers.Peer(nodeID)
 
 			if peer.Connected() {
 				continue
 			}
 
-			for _, addr := range addrs {
-				if addr.Network() == "lan" {
-					link, err := node.Linker.Link(ecid)
-					if err == nil {
-						node.Peers.AddLink(link)
-						break
-					}
-				}
+			link, err := node.Linker.Link(nodeID)
+			if err == nil {
+				node.Peers.AddLink(link)
+				break
 			}
 		}
 

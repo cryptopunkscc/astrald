@@ -29,9 +29,9 @@ func (peer *Peer) AddLink(link *_link.Link) error {
 	defer peer.mu.Unlock()
 
 	log.Printf(
-		"new %slink %s net %s addr %s\n",
-		logfmt.Dir(link.Outbound()),
+		"linked %s %s via %s %s\n",
 		logfmt.ID(link.RemoteIdentity().String()),
+		logfmt.Dir(link.Outbound()),
 		link.RemoteAddr().Network(),
 		link.RemoteAddr().String(),
 	)
@@ -51,7 +51,7 @@ func (peer *Peer) AddLink(link *_link.Link) error {
 	peer.links = append(peer.links, link)
 
 	if len(peer.links) == 1 {
-		log.Println("Peer", logfmt.ID(peer.peerID.String()), "online.")
+		log.Println("peer", logfmt.ID(peer.peerID.String()), "linked")
 	}
 
 	go func() {
@@ -98,14 +98,15 @@ func (peer *Peer) removeLink(link *_link.Link) error {
 			peer.links = append(peer.links[:i], peer.links[i+1:]...)
 
 			log.Printf(
-				"lost %slink %s %s\n",
-				logfmt.Dir(link.Outbound()),
+				"unlinked %s %s via %s %s\n",
 				logfmt.ID(link.RemoteIdentity().String()),
-				link.RemoteAddr(),
+				logfmt.Dir(link.Outbound()),
+				link.RemoteAddr().Network(),
+				link.RemoteAddr().String(),
 			)
 
 			if len(peer.links) == 0 {
-				log.Println("Peer", logfmt.ID(peer.peerID.String()), "offline.")
+				log.Println("peer", logfmt.ID(peer.peerID.String()), "unlinked")
 			}
 			return nil
 		}
