@@ -123,7 +123,7 @@ func (info *PeerInfo) save() error {
 			}
 		}
 	}
-	bytes, _ := json.Marshal(&c)
+	bytes, _ := json.MarshalIndent(&c, "", "  ")
 
 	return info.fs.Write(peerInfoFilename, bytes)
 }
