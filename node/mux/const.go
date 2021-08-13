@@ -1,14 +1,23 @@
 package mux
 
-// MaxPayloadSize maximum amount of data that can be transferred in a single mux frame.
-// TODO: Maybe this should be adjusted so that our frame fits as a single brontide payload?
-const MaxPayloadSize = 65535
+import (
+	"errors"
+	"math"
+)
 
-// ControlStreamID is the stream ID that will be used for control frames.
-const ControlStreamID = StreamID(0)
+// MaxPayload maximum payload size a single mux frame can carry. Frames are 64kb with 4-byte headers.
+const MaxPayload = math.MaxUint16 - 4
 
-// MinStreamID is the lowest allowed stream ID.
-const MinStreamID = StreamID(1)
+// MaxStreams number of streams in the multiplexer
+const MaxStreams = 65536
 
-// MaxStreamID is the highest allowed stream ID.
-const MaxStreamID = StreamID(65535)
+// ErrBufferTooBig - buffer size exceeds frame size
+var ErrBufferTooBig = errors.New("payload too big")
+
+// ErrBufferTooSmall - buffer too small to read frame
+var ErrBufferTooSmall = errors.New("buffer too small")
+
+var ErrInvalidStreamID = errors.New("invalid stream id")
+
+// ErrStreamClosed - stream is closed and cannot be written to or read from
+var ErrStreamClosed = errors.New("stream closed")

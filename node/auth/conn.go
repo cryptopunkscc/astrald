@@ -9,4 +9,5 @@ import (
 type Conn interface {
 	net.Conn                     // auth.Conn is an extension to the net.Conn interface
 	RemoteIdentity() id.Identity // Returns the remote identity
+	LocalIdentity() id.Identity  // Returns the local identity
 }

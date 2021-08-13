@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/api"
+	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/services/appsupport/proto"
 	"github.com/google/uuid"
 	"io"
@@ -102,7 +103,7 @@ func (apps *AppSupport) handlePort(port api.PortHandler, path string) error {
 	defer port.Close()
 
 	for request := range port.Requests() {
-		log.Println(request.Caller(), "calling", request.Query())
+		log.Println(logfmt.ID(string(request.Caller())), "calling", request.Query())
 
 		unix, err := net.Dial("unix", path)
 		if err != nil {

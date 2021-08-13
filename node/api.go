@@ -1,13 +1,11 @@
 package node
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/api"
-	id2 "github.com/cryptopunkscc/astrald/node/auth/id"
+	_id "github.com/cryptopunkscc/astrald/node/auth/id"
 	"github.com/cryptopunkscc/astrald/node/hub"
-	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/net"
-	"github.com/cryptopunkscc/astrald/node/router"
+	_link "github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/peer"
 )
 
 type API struct {
@@ -18,19 +16,21 @@ func (api API) Network() api.Network {
 	return api.network
 }
 
-func NewAPI(localIdentity id2.Identity, router *router.Router, hub *hub.Hub) *API {
+func NewAPI(localIdentity _id.Identity, peers *peer.Peers, hub *hub.Hub, linker *Linker) *API {
 	return &API{
 		network: &networkAPI{
 			localIdentity: localIdentity,
-			Router:        router,
+			Linker:        linker,
+			Peers:         peers,
 			Hub:           hub,
 		},
 	}
 }
 
 type networkAPI struct {
-	localIdentity id2.Identity
-	*router.Router
+	localIdentity _id.Identity
+	*peer.Peers
+	*Linker
 	*hub.Hub
 }
 
@@ -47,34 +47,36 @@ func (_api *networkAPI) Register(name string) (api.PortHandler, error) {
 	return portAdapter{&port}, nil
 }
 
-func (_api *networkAPI) Connect(identity api.Identity, port string) (api.Stream, error) {
-	var l *link.Link
-	var err error
-	ctx := context.Background()
+func (_api *networkAPI) link(remoteID *_id.ECIdentity) (*_link.Link, error) {
+	peer, _ := _api.Peers.Peer(remoteID)
 
-	// No identity means connect to the local hub
-	if (identity == "") || (string(identity) == _api.localIdentity.String()) {
-		stream, err := _api.Hub.Connect(port, _api.localIdentity)
-		if err != nil {
-			return nil, err
-		}
-
-		return stream, nil
+	if peer.Connected() {
+		return peer.DefaultLink(), nil
 	}
 
-	id, err := id2.ParsePublicKeyHex(string(identity))
+	link, err := _api.Linker.Link(remoteID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Establish a link with the identity
-	l, err = _api.Router.Connect(ctx, id)
+	_api.Peers.AddLink(link)
+
+	return link, nil
+}
+
+func (_api *networkAPI) Connect(nodeID api.Identity, query string) (api.Stream, error) {
+	remoteID, err := _id.ParsePublicKeyHex(string(nodeID))
 	if err != nil {
-		return nil, net.ErrHostUnreachable
+		return nil, err
+	}
+
+	link, err := _api.link(remoteID)
+	if err != nil {
+		return nil, err
 	}
 
 	// Connect to identity's port
-	return l.Open(port)
+	return link.Query(query)
 }
 
 type requestAdapter struct {

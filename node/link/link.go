@@ -2,11 +2,12 @@ package link
 
 import (
 	"encoding/binary"
+	"errors"
 	"github.com/cryptopunkscc/astrald/node/auth"
 	"github.com/cryptopunkscc/astrald/node/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link/proto"
 	"github.com/cryptopunkscc/astrald/node/mux"
-	"io"
+	"github.com/cryptopunkscc/astrald/node/net"
 	"log"
 )
 
@@ -16,17 +17,57 @@ type Link struct {
 	requests chan Request
 	conn     auth.Conn
 	mux      *mux.Mux
+	demux    *mux.Demux
+	closeCh  chan struct{}
 }
+
+const controlStreamID = 0
 
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
+	m := mux.New(conn)
 	link := &Link{
 		conn:     conn,
-		mux:      mux.New(conn),
+		mux:      m,
 		requests: make(chan Request),
+		closeCh:  make(chan struct{}),
+		demux:    mux.NewDemux(m),
 	}
-	go link.process()
+	go func() {
+		_ = link.handleControl()
+		close(link.requests)
+		close(link.closeCh)
+	}()
 	return link
+}
+
+// Query requests a connection to the remote party's port
+func (link *Link) Query(query string) (*Conn, error) {
+	// Reserve a local mux stream
+	inputStream, err := link.demux.Stream()
+	if err != nil {
+		return nil, err
+	}
+
+	// Send a request
+	err = link.sendQuery(query, inputStream.StreamID())
+	if err != nil {
+		inputStream.Close()
+		return nil, err
+	}
+
+	remoteBytes := make([]byte, 2)
+
+	_, err = inputStream.Read(remoteBytes)
+	if err != nil {
+		inputStream.Close()
+		return nil, ErrRejected
+	}
+
+	// Parse the accept message
+	remoteStreamID := binary.BigEndian.Uint16(remoteBytes[0:2])
+
+	return newConn(inputStream, mux.NewOutputStream(link.mux, int(remoteStreamID))), nil
 }
 
 // Requests returns a channel to which incoming requests will be sent
@@ -34,40 +75,19 @@ func (link *Link) Requests() <-chan Request {
 	return link.requests
 }
 
-// Open requests a connection to the remote party's port
-func (link *Link) Open(port string) (io.ReadWriteCloser, error) {
-	// Reserve a local mux stream
-	localStream, err := link.mux.Stream()
-	if err != nil {
-		return nil, err
-	}
-
-	// Send a request
-	err = link.sendRequest(port, localStream)
-	if err != nil {
-		_ = localStream.Close()
-		return nil, err
-	}
-
-	// Wait for response (the first frame received in the local channel)
-	// TODO: handle some kind of timeout?
-	response := <-localStream.Frames()
-
-	// An accept message is always 2 bytes long, everything else is a reject
-	if len(response.Data) != 2 {
-		_ = localStream.Close()
-		return nil, ErrRejected
-	}
-
-	// Parse the accept message
-	remoteStreamID := mux.StreamID(binary.BigEndian.Uint16(response.Data[0:2]))
-
-	return newConn(link, localStream, remoteStreamID), nil
-}
-
 // RemoteIdentity returns the auth.Identity of the remote party
 func (link *Link) RemoteIdentity() id.Identity {
 	return link.conn.RemoteIdentity()
+}
+
+// LocalIdentity returns the auth.Identity of the remote party
+func (link *Link) LocalIdentity() id.Identity {
+	return link.conn.LocalIdentity()
+}
+
+// RemoteAddr returns the network address of the remote party
+func (link *Link) RemoteAddr() net.Addr {
+	return link.conn.RemoteAddr()
 }
 
 // Outbound returns true if we are the active party, false otherwise
@@ -75,64 +95,48 @@ func (link *Link) Outbound() bool {
 	return link.conn.Outbound()
 }
 
-// sendRequest writes a frame containing the request to the control stream
-func (link *Link) sendRequest(port string, localStream mux.Stream) error {
-	return link.mux.Write(mux.Frame{
-		StreamID: mux.ControlStreamID,
-		Data: proto.Request{
-			StreamID: uint16(localStream.ID()),
-			Port:     port,
-		}.Bytes(),
-	})
+// WaitClose returns a channel which will be closed when the link is closed
+func (link *Link) WaitClose() <-chan struct{} {
+	return link.closeCh
 }
 
-// process incoming control frames
-func (link *Link) process() {
-	log.Println("link established:", link.RemoteIdentity())
-	for ctlFrame := range link.mux.Control() {
-		// Parse the request frame
-		rawRequest, err := proto.ParseRequest(ctlFrame.Data)
+// sendQuery writes a frame containing the request to the control stream
+func (link *Link) sendQuery(query string, streamID int) error {
+	return link.mux.Write(controlStreamID, proto.MakeQuery(streamID, query))
+}
+
+func (link *Link) handleControl() error {
+	buf := make([]byte, mux.MaxPayload)
+	ctlStream := link.demux.DefaultStream()
+
+	for {
+		n, err := ctlStream.Read(buf)
 		if err != nil {
-			// TODO: a port in closing state should ignore all frame until a RST (0-len payload) frame is received
-			log.Println("error parsing control frame:", err)
-			continue // skip to the next control frame
+			return errors.New("control stream error")
 		}
 
+		// Parse control message
+		remoteStreamID, query, err := proto.ParseQuery(buf[:n])
+		if err != nil {
+			return errors.New("control frame parse error")
+		}
+
+		// Prepare request object
+		outputStream := mux.NewOutputStream(link.mux, remoteStreamID)
 		request := Request{
-			caller:         link.RemoteIdentity(),
-			remoteStreamID: mux.StreamID(rawRequest.StreamID),
-			port:           rawRequest.Port,
-			link:           link,
+			caller:       link.RemoteIdentity(),
+			outputStream: outputStream,
+			query:        query,
 		}
 
 		// Reserve local channel
-		request.localStream, err = link.mux.Stream()
+		request.inputStream, err = link.demux.Stream()
 		if err != nil {
-			_ = link.sendReject(mux.StreamID(rawRequest.StreamID))
+			log.Println("error allocating new input stream:", err)
+			outputStream.Close()
 			continue
 		}
 
 		link.requests <- request
 	}
-
-	//TODO: proper logging
-	log.Println("link lost:", link.RemoteIdentity())
-}
-
-// sendAccept sends an accept frame to the remote stream
-func (link *Link) sendAccept(remoteStreamID mux.StreamID, localStreamID mux.StreamID) error {
-	data := make([]byte, 2)
-	binary.BigEndian.PutUint16(data[:], uint16(localStreamID))
-	return link.mux.Write(mux.Frame{
-		StreamID: remoteStreamID,
-		Data:     data,
-	})
-}
-
-// sendReject sends a reject frame (0-length) to the remote stream
-func (link *Link) sendReject(remoteStreamID mux.StreamID) error {
-	return link.mux.Write(mux.Frame{
-		StreamID: remoteStreamID,
-		Data:     nil,
-	})
 }

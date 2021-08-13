@@ -32,6 +32,10 @@ func (conn *brontideConn) RemoteAddr() net.Addr {
 	return conn.netConn.RemoteAddr()
 }
 
+func (conn *brontideConn) LocalIdentity() id.Identity {
+	return id.ECIdentityFromPublicKey(conn.bConn.LocalPub())
+}
+
 func (conn *brontideConn) RemoteIdentity() id.Identity {
 	return id.ECIdentityFromPublicKey(conn.bConn.RemotePub())
 }

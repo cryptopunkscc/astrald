@@ -3,59 +3,56 @@ package node
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/node/auth"
-	"github.com/cryptopunkscc/astrald/node/auth/id"
+	_id "github.com/cryptopunkscc/astrald/node/auth/id"
 	_fs "github.com/cryptopunkscc/astrald/node/fs"
 	"github.com/cryptopunkscc/astrald/node/hub"
-	"github.com/cryptopunkscc/astrald/node/link"
+	_link "github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/net"
 	"github.com/cryptopunkscc/astrald/node/net/inet"
 	"github.com/cryptopunkscc/astrald/node/net/lan"
-	"github.com/cryptopunkscc/astrald/node/router"
+	"github.com/cryptopunkscc/astrald/node/peer"
 	"io"
 	"log"
+	"time"
 )
 
 type Node struct {
 	*API
-	Identity *id.ECIdentity
+	Identity *_id.ECIdentity
 
-	Hub    *hub.Hub
-	Router *router.Router
-	FS     *_fs.Filesystem
-	Config *Config
+	Hub      *hub.Hub
+	Peers    *peer.Peers
+	Linker   *Linker
+	PeerInfo *PeerInfo
+	FS       *_fs.Filesystem
+	Config   *Config
 }
 
 // New returns a new instance of a node
 func New(astralDir string) *Node {
 	fs := _fs.New(astralDir)
 	identity := setupIdentity(fs)
+	peers := peer.NewManager()
+	peerInfo := NewPeerInfo(fs)
 
 	node := &Node{
 		FS:       fs,
 		Identity: identity,
 		Config:   loadConfig(fs),
 		Hub:      new(hub.Hub),
-		Router:   router.NewRouter(fs, identity),
+		Peers:    peers,
+		PeerInfo: peerInfo,
+		Linker:   NewLinker(peerInfo, identity),
 	}
 
 	node.API = NewAPI(
 		node.Identity,
-		node.Router,
+		node.Peers,
 		node.Hub,
+		node.Linker,
 	)
 
 	return node
-}
-
-func (node *Node) Connect(ctx context.Context, identity *id.ECIdentity, port string) (io.ReadWriteCloser, error) {
-	// Establish a link with the identity
-	l, err := node.Router.Connect(ctx, identity)
-	if err != nil {
-		return nil, net.ErrHostUnreachable
-	}
-
-	// Connect to identity's port
-	return l.Open(port)
 }
 
 // Run starts the node, waits for it to finish and returns an error if any
@@ -63,7 +60,7 @@ func (node *Node) Run(ctx context.Context) error {
 	log.Printf("astral node '%s' starting...", node.Identity)
 
 	newConnPipe := make(chan net.Conn)
-	newLinkPipe := make(chan *link.Link)
+	newLinkPipe := make(chan *_link.Link)
 
 	// Start listeners
 	err := node.startListeners(ctx, newConnPipe)
@@ -89,6 +86,12 @@ func (node *Node) Run(ctx context.Context) error {
 
 	// Process incoming links
 	go node.processNewLinks(newLinkPipe)
+
+	// Handle incoming network requests
+	go node.handleRequests()
+
+	// Keep alive LAN peers
+	go node.lanKeeper()
 
 	// Wait for shutdown
 	<-ctx.Done()
@@ -118,7 +121,7 @@ func (node *Node) startListeners(ctx context.Context, output chan<- net.Conn) er
 		}
 
 		for ad := range ads {
-			node.Router.Table.Add(ad.Identity.String(), ad.Addr)
+			node.PeerInfo.Add(ad.Identity.String(), ad.Addr)
 		}
 	}()
 
@@ -133,13 +136,13 @@ func (node *Node) startListeners(ctx context.Context, output chan<- net.Conn) er
 }
 
 // processIncomingConns processes incoming connections from the input, upgrades them to a link and sends it to the output
-func (node *Node) processIncomingConns(input <-chan net.Conn, output chan<- *link.Link) {
+func (node *Node) processIncomingConns(input <-chan net.Conn, output chan<- *_link.Link) {
 	for conn := range input {
 		if conn.Outbound() {
 			continue
 		}
 
-		log.Println(conn.RemoteAddr(), "connected.")
+		log.Println("new connection from", conn.RemoteAddr())
 		authConn, err := auth.HandshakeInbound(context.Background(), conn, node.Identity)
 		if err != nil {
 			log.Println("handshake error:", err)
@@ -147,22 +150,20 @@ func (node *Node) processIncomingConns(input <-chan net.Conn, output chan<- *lin
 			continue
 		}
 
-		output <- link.New(authConn)
+		output <- _link.New(authConn)
 	}
 }
 
-func (node *Node) processNewLinks(input <-chan *link.Link) {
+func (node *Node) processNewLinks(input <-chan *_link.Link) {
 	for link := range input {
-		go node.handleLink(link)
+		node.Peers.AddLink(link)
 	}
 }
 
-func (node *Node) handleLink(link *link.Link) {
-	log.Println(link.RemoteIdentity(), "linked")
-	node.Router.LinkCache.Add(link)
-	for req := range link.Requests() {
-		//Open a session with the service
-		localStream, err := node.Hub.Connect(req.Port(), req.Caller())
+func (node *Node) handleRequests() {
+	for req := range node.Peers.Requests() {
+		//Query a session with the service
+		localStream, err := node.Hub.Connect(req.Query(), req.Caller())
 		if err != nil {
 			req.Reject()
 			continue
@@ -185,6 +186,29 @@ func (node *Node) handleLink(link *link.Link) {
 			_ = remoteStream.Close()
 		}()
 	}
-	node.Router.LinkCache.Remove(link.RemoteIdentity())
-	log.Println(link.RemoteIdentity(), "unlinked")
+}
+
+func (node *Node) lanKeeper() {
+	for {
+		for nodeID, addrs := range node.PeerInfo.entries {
+			ecid, _ := _id.ParsePublicKeyHex(nodeID)
+			peer, _ := node.Peers.Peer(ecid)
+
+			if peer.Connected() {
+				continue
+			}
+
+			for _, addr := range addrs {
+				if addr.Network() == "lan" {
+					link, err := node.Linker.Link(ecid)
+					if err == nil {
+						node.Peers.AddLink(link)
+						break
+					}
+				}
+			}
+		}
+
+		time.Sleep(5 * time.Second)
+	}
 }

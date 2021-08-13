@@ -32,7 +32,7 @@ func (drv *driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 			continue
 		}
 
-		log.Println("started listening on", hostPort)
+		log.Println("listening on", hostPort)
 
 		// Accept connections from the network
 		go func() {

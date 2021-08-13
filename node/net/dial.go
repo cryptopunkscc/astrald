@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"log"
 	"sync"
 )
 
@@ -11,7 +10,6 @@ var mu sync.Mutex
 
 // Dial tries to establish a Conn to provided address
 func Dial(ctx context.Context, addr Addr) (Conn, error) {
-	log.Println("dial", addr.Network(), addr.String())
 	driver := drivers[addr.Network()]
 
 	if driver == nil {
