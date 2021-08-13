@@ -110,7 +110,7 @@ func (node *Node) startListeners(ctx context.Context, output chan<- net.Conn) er
 	conns := net.Listen(ctx)
 
 	// Start advertising
-	// net.Advertise(ctx)
+	net.Advertise(ctx)
 
 	// Start scanning
 	go func() {
