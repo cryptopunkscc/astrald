@@ -70,13 +70,13 @@ func (node *Node) Run(ctx context.Context) error {
 
 	// Start services
 	for name, srv := range services {
-		go func(name string, srv Service) {
-			log.Printf("starting: %s...\n", name)
-			err := srv.Run(ctx, node.API)
+		go func(name string, srv ServiceRunner) {
+			log.Printf("starting %s...\n", name)
+			err := srv(ctx, node.API)
 			if err != nil {
-				log.Printf("error: %s: %v\n", name, err)
+				log.Printf("%s failed: %v\n", name, err)
 			} else {
-				log.Printf("done: %s\n", name)
+				log.Printf("%s done.\n", name)
 			}
 		}(name, srv)
 	}
@@ -110,7 +110,7 @@ func (node *Node) startListeners(ctx context.Context, output chan<- net.Conn) er
 	conns := net.Listen(ctx)
 
 	// Start advertising
-	net.Advertise(ctx)
+	// net.Advertise(ctx)
 
 	// Start scanning
 	go func() {

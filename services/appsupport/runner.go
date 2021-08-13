@@ -6,17 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 )
 
-type Runner struct {
-}
-
-func (runner *Runner) Run(ctx context.Context, core api.Core) error {
-	unix := &AppSupport{
-		network: core.Network(),
-	}
-
-	return unix.Run(ctx)
-}
-
 func init() {
-	_ = node.RegisterService("unix", &Runner{})
+	_ = node.RegisterService("apps", func(ctx context.Context, core api.Core) error {
+		return (&AppSupport{
+			network: core.Network(),
+		}).Run(ctx)
+	})
 }

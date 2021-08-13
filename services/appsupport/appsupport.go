@@ -25,24 +25,13 @@ type AppSupport struct {
 }
 
 func (apps *AppSupport) Run(ctx context.Context) error {
-
-	go func() {
-		p, _ := apps.network.Register("apps")
-
-		for r := range p.Requests() {
-			c := r.Accept()
-			var buf [4096]byte
-			c.Read(buf[:])
-		}
-	}()
-
 	// Prepare the control socket
 	ctl, err := makeSocket(ctlSocket)
 	if err != nil {
 		return fmt.Errorf("error creating ctl socket: %v", err)
 	}
 
-	log.Println("appsupport socket:", ctl.Addr().String())
+	log.Println("apps socket:", ctl.Addr().String())
 
 	defer func() {
 		ctl.Close()
