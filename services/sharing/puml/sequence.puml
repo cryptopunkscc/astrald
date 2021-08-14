@@ -1,0 +1,72 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+'autonumber
+
+'box local
+participant MyService
+participant MyFs
+'end box
+
+'box remote
+participant OtherService
+participant OtherFS
+'end box
+
+== Enqueuing file sharing ==
+
+?-> MyService: enqueue shared files ids
+activate MyService
+MyService -> MyFs: add (enqueued shares)
+activate MyFs
+MyService <-- MyFs: FileId
+deactivate MyFs
+MyService -> MyService: trigger sync
+deactivate MyService
+
+...
+== Sharing files to other ==
+...
+
+MyService -> MyService: trigger sync
+activate MyService
+MyService -> OtherService: send (queued shared files ids)
+activate OtherService
+OtherService -> OtherFS: put (shared files ids)
+activate OtherFS
+OtherService <-- OtherFS: ok
+deactivate OtherFS
+MyService <-- OtherService: ok
+OtherService -> OtherService: trigger sync
+deactivate OtherService
+MyService -> MyFs: remove (queued shared files ids)
+MyService <-- MyFs: ok
+deactivate MyService
+
+...
+== Obtaining shared files ==
+...
+
+OtherService -> OtherService : trigger sync
+activate OtherService
+MyFs <- OtherService : get (shared files ids)
+activate MyFs
+MyFs --> OtherService : send (files stream)
+deactivate MyFs
+OtherService -> OtherFS : put (files stream)
+OtherService <-- OtherFS : ok
+deactivate OtherService
+
+...
+== Alternative sync trigger ==
+...
+
+MyService <-> OtherService: Connected
+activate MyService
+activate OtherService
+MyService -> MyService: trigger sync
+deactivate MyService
+OtherService -> OtherService: trigger sync
+deactivate OtherService
+
+@enduml

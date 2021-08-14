@@ -1,0 +1,63 @@
+@startuml
+'https//plantuml.com/class-diagram
+
+package message {
+
+entity Message {
+author Id
+timestamp Long
+text String
+attachments Set<FileId>
+}
+
+package internal {
+abstract class MessageEvent {
+messageId FileId
+}
+
+class MessageQueued extends MessageEvent {
+messageId FileId
+recipient Id
+}
+class MessageSent extends MessageEvent {
+messageId FileId
+recipient Id
+}
+class MessageRead extends MessageEvent {
+messageId FileId
+recipient Id
+}
+class MessageReceived extends MessageEvent {
+messageId FileId
+sender Id
+}
+}
+}
+
+@enduml
+@startuml
+
+abstract class AbstractList
+abstract AbstractCollection
+interface List
+interface Collection
+
+List <|-- AbstractList
+Collection <|-- AbstractCollection
+
+Collection <|- List
+AbstractCollection <|- AbstractList
+AbstractList <|-- ArrayList
+
+class ArrayList {
+Object[] elementData
+size()
+}
+
+enum TimeUnit {
+DAYS
+HOURS
+MINUTES
+}
+
+@enduml

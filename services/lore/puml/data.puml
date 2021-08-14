@@ -1,0 +1,20 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+entity Story {
+Header
+Data?
+}
+
+entity Header {
+version Int
+type String
+rel Set<String>
+}
+
+entity Data {
+}
+
+
+
+@enduml

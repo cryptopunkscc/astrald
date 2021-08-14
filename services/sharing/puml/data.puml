@@ -1,0 +1,22 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+package share {
+entity Shared {
+id Id
+fileId FileId
+}
+entity Queued {
+id Id
+action Action
+fileId FileId
+}
+
+enum Action {
+DOWNLOAD
+UPLOAD
+}
+}
+
+
+@enduml

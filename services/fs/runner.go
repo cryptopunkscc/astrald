@@ -17,6 +17,7 @@ func init() {
 const (
 	RequestRead  = 1
 	RequestWrite = 2
+	RequestObserve = 3
 )
 
 var AstralHome string
@@ -76,6 +77,8 @@ func (runner *Runner) Run(_ context.Context, core api.Core) error {
 				log.Println("file finalized")
 				packed := id.Pack()
 				_, err = stream.Write(packed[:])
+			case RequestObserve:
+
 			}
 		}()
 	}

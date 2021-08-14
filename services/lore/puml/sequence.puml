@@ -1,0 +1,34 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+== Register file listener ==
+
+Fs <- Lore: register listener
+
+== Register story listener ==
+
+Lore <- Listeners: register listener
+
+== Notify about new file ==
+
+-> Fs: add file
+activate Fs
+Fs -> Lore: id (New available file)
+deactivate Fs
+activate Lore
+Fs <- Lore: get (obtained file id)
+activate Fs
+Fs -> Lore: file stream
+group try parse header
+loop For each listener
+Lore -> Listeners: new story available
+end
+else on failure
+end
+Fs <-- Lore: close
+deactivate Lore
+deactivate Fs
+
+@enduml
