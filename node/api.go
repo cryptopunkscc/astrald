@@ -65,7 +65,7 @@ func (_api *networkAPI) link(remoteID *_id.ECIdentity) (*_link.Link, error) {
 }
 
 func (_api *networkAPI) Connect(nodeID api.Identity, query string) (api.Stream, error) {
-	if nodeID == "" {
+	if nodeID == "" || nodeID ==_api.Identity() {
 		key, _ := _id.ParsePublicKeyHex(string(_api.Identity()))
 		return _api.Hub.Connect(query, key)
 	}
