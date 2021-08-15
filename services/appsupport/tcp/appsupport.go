@@ -15,12 +15,10 @@ import (
 const tcpAppSupportAddress = "127.0.0.1:8625"
 
 func init() {
-	_ = node.RegisterService("tcp", &Runner{})
+	_ = node.RegisterService("apps-tcp", run)
 }
 
-type Runner struct{}
-
-func (runner *Runner) Run(ctx context.Context, core api.Core) error {
+func run(ctx context.Context, core api.Core) error {
 	network := core.Network()
 
 	go func() {

@@ -3,22 +3,14 @@ package astralandroid
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
-	"github.com/cryptopunkscc/astrald/java"
+	"github.com/cryptopunkscc/astrald/bind/api"
+	"github.com/cryptopunkscc/astrald/node"
 )
 
-type serviceAdapter struct {
-	delegate astraljava.Service
-}
-
-func (s serviceAdapter) Run(
-	ctx context.Context,
-	core api.Core,
-) error {
-	//done := func() { <-ctx.Done() }
-	return s.delegate.Run(
-		//done,
-		networkAdapter{delegate: core.Network()},
-	)
+func serviceRunner(service astralApi.Service) node.ServiceRunner {
+	return func(ctx context.Context, core api.Core) error {
+		return service.Run(networkAdapter{delegate: core.Network()})
+	}
 }
 
 type networkAdapter struct{ delegate api.Network }
@@ -26,7 +18,7 @@ type networkAdapter struct{ delegate api.Network }
 func (n networkAdapter) Connect(
 	identity string,
 	port string,
-) (astraljava.Stream, error) {
+) (astralApi.Stream, error) {
 	return n.delegate.Connect(api.Identity(identity), port)
 }
 
@@ -34,7 +26,7 @@ func (n networkAdapter) Identity() string {
 	return string(n.delegate.Identity())
 }
 
-func (n networkAdapter) Register(name string) (astraljava.PortHandler, error) {
+func (n networkAdapter) Register(name string) (astralApi.PortHandler, error) {
 	h, err := n.delegate.Register(name)
 	if err != nil {
 		return nil, err
@@ -46,7 +38,7 @@ func (n networkAdapter) Register(name string) (astraljava.PortHandler, error) {
 
 type portHandlerAdapter struct{ delegate api.PortHandler }
 
-func (p portHandlerAdapter) Next() astraljava.ConnectionRequest {
+func (p portHandlerAdapter) Next() astralApi.ConnectionRequest {
 	return connectionRequestAdapter{delegate: <-p.delegate.Requests()}
 }
 
@@ -64,7 +56,7 @@ func (c connectionRequestAdapter) Query() string {
 	return c.delegate.Query()
 }
 
-func (c connectionRequestAdapter) Accept() astraljava.Stream {
+func (c connectionRequestAdapter) Accept() astralApi.Stream {
 	return c.delegate.Accept()
 }
 

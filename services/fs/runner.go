@@ -11,7 +11,7 @@ import (
 type Runner struct{}
 
 func init() {
-	_ = node.RegisterService("fs", &Runner{})
+	_ = node.RegisterService("fs", run)
 }
 
 const (
@@ -22,7 +22,7 @@ const (
 
 var AstralHome string
 
-func (runner *Runner) Run(_ context.Context, core api.Core) error {
+func run(_ context.Context, core api.Core) error {
 	fs := StorageAdapter(FileStorage(AstralHome))
 	handler, err := core.Network().Register("fs")
 	if err != nil {

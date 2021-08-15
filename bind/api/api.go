@@ -1,4 +1,4 @@
-package astraljava
+package astralApi
 
 type Service interface {
 	Run(core Network) error
