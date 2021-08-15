@@ -16,6 +16,14 @@ type fileReader struct {
 	*os.File
 }
 
+func (f fileReader) Size() (int64, error) {
+	stat, err := f.Stat()
+	if err != nil {
+		return -1, err
+	}
+	return stat.Size(), nil
+}
+
 type fileWriter struct {
 	*os.File
 	dir string

@@ -9,6 +9,7 @@ type Repository interface {
 
 type Reader interface {
 	io.ReadCloser
+	Size() (int64, error)
 }
 
 type Writer interface {

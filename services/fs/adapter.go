@@ -27,6 +27,10 @@ func (f adapter) Reader(id ID) (Reader, error) {
 	return &reader{delegate: r}, nil
 }
 
+func (r reader) Size() (int64, error) {
+	return r.delegate.Size()
+}
+
 func (f adapter) Writer() (Writer, error) {
 	w, err := f.storage.Writer()
 	if err != nil {

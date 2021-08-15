@@ -17,4 +17,5 @@ type FileWriter interface {
 type FileReader interface {
 	io.ReadSeekCloser
 	Name() string
+	Size() (int64, error)
 }

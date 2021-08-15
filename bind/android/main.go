@@ -6,6 +6,7 @@ import (
 	_node "github.com/cryptopunkscc/astrald/node"
 	_ "github.com/cryptopunkscc/astrald/services/appsupport/tcp"
 	"github.com/cryptopunkscc/astrald/services/fs"
+	_ "github.com/cryptopunkscc/astrald/services/lore"
 	"log"
 	"os"
 	"time"
