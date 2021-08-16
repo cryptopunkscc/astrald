@@ -100,6 +100,11 @@ func (link *Link) WaitClose() <-chan struct{} {
 	return link.closeCh
 }
 
+// Close closes the link
+func (link *Link) Close() error {
+	return link.conn.Close()
+}
+
 // sendQuery writes a frame containing the request to the control stream
 func (link *Link) sendQuery(query string, streamID int) error {
 	return link.mux.Write(controlStreamID, proto.MakeQuery(streamID, query))

@@ -1,4 +1,4 @@
-package lan
+package udp
 
 import (
 	"context"
@@ -7,21 +7,22 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node/auth/id"
 	"github.com/cryptopunkscc/astrald/node/net"
+	"github.com/cryptopunkscc/astrald/node/net/ip"
 	"log"
-	goNet "net"
+	go_net "net"
 	"strconv"
 )
 
 func (drv *driver) Scan(ctx context.Context) (<-chan *net.Ad, error) {
-	udpAddr, err := goNet.ResolveUDPAddr("udp", ":"+strconv.Itoa(adPort))
+	udpAddr, err := go_net.ResolveUDPAddr("udp", ":"+strconv.Itoa(adPort))
 	if err != nil {
 		log.Println("cannot resolve udp address:", err)
 		return nil, err
 	}
 
-	l, err := goNet.ListenUDP("udp", udpAddr)
+	l, err := go_net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		log.Println("cannot scan:", err)
+		log.Println("scan error:", err)
 		return nil, err
 	}
 	log.Println("started scanning on lan")
@@ -44,7 +45,7 @@ func (drv *driver) Scan(ctx context.Context) (<-chan *net.Ad, error) {
 
 			port := binary.BigEndian.Uint16(buf[0:2])
 			pkData := buf[2:]
-			srcIP, _, err := goNet.SplitHostPort(srcAddr.String())
+			srcIP, _, err := go_net.SplitHostPort(srcAddr.String())
 			if err != nil {
 				continue
 			}
@@ -52,11 +53,6 @@ func (drv *driver) Scan(ctx context.Context) (<-chan *net.Ad, error) {
 			finalAddr := fmt.Sprintf("%s:%d", srcIP, port)
 
 			id, err := id.ParsePublicKey(pkData)
-
-			// Ignore our own ads
-			if id.String() == drv.localIdentity.String() {
-				continue
-			}
 
 			ad := &net.Ad{
 				Identity: id,
@@ -79,7 +75,7 @@ func (drv *driver) Scan(ctx context.Context) (<-chan *net.Ad, error) {
 // network interfaces to scan on.
 // TODO: it fails to read broadcast data this way, not sure why
 func (drv *driver) ScanSeparately(ctx context.Context) (<-chan *net.Ad, error) {
-	ifaces, err := goNet.Interfaces()
+	ifaces, err := go_net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +83,7 @@ func (drv *driver) ScanSeparately(ctx context.Context) (<-chan *net.Ad, error) {
 	output := make(chan *net.Ad)
 
 	for _, iface := range ifaces {
-		if iface.Flags&goNet.FlagBroadcast != 0 {
+		if iface.Flags&go_net.FlagBroadcast != 0 {
 			_ = scanInterface(ctx, iface, output)
 		}
 	}
@@ -100,7 +96,7 @@ func (drv *driver) ScanSeparately(ctx context.Context) (<-chan *net.Ad, error) {
 	return output, nil
 }
 
-func scanInterface(ctx context.Context, iface goNet.Interface, output chan<- *net.Ad) error {
+func scanInterface(ctx context.Context, iface go_net.Interface, output chan<- *net.Ad) error {
 	addrs, err := iface.Addrs()
 	if err != nil {
 		return err
@@ -117,16 +113,16 @@ func scanInterface(ctx context.Context, iface goNet.Interface, output chan<- *ne
 }
 
 func scanAddr(ctx context.Context, addr net.Addr, output chan<- *net.Ad) error {
-	ip, _ := net.SplitIPMask(addr.String())
-	hostPort := goNet.JoinHostPort(ip, strconv.Itoa(adPort))
+	ip, _ := ip.SplitIPMask(addr.String())
+	hostPort := go_net.JoinHostPort(ip, strconv.Itoa(adPort))
 
-	udpAddr, err := goNet.ResolveUDPAddr("udp", hostPort)
+	udpAddr, err := go_net.ResolveUDPAddr("udp", hostPort)
 	if err != nil {
 		log.Println("udp address error:", err)
 		return err
 	}
 
-	l, err := goNet.ListenUDP("udp", udpAddr)
+	l, err := go_net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		log.Println("cannot listen on", hostPort, ":", err)
 		return err
@@ -151,7 +147,7 @@ func scanAddr(ctx context.Context, addr net.Addr, output chan<- *net.Ad) error {
 
 			port := binary.BigEndian.Uint16(buf[0:2])
 			pkData := buf[2:]
-			srcIP, _, err := goNet.SplitHostPort(srcAddr.String())
+			srcIP, _, err := go_net.SplitHostPort(srcAddr.String())
 			if err != nil {
 				continue
 			}

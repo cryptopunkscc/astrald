@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/net"
 	"log"
 	"os"
+	"sync"
 )
 
 const peerInfoFilename = "peers"
@@ -17,6 +18,7 @@ type PeerEntry []net.Addr
 type PeerInfo struct {
 	entries map[string]PeerEntry
 	fs      *_fs.Filesystem
+	mu      sync.Mutex
 }
 
 type cacheAddr struct {
@@ -46,6 +48,9 @@ func NewPeerInfo(fs *_fs.Filesystem) *PeerInfo {
 
 // Add adds an endpoint to an identity, ignoring duplicates.
 func (info *PeerInfo) Add(nodeID string, endpoint net.Addr) {
+	info.mu.Lock()
+	defer info.mu.Unlock()
+
 	// Make sure the map is initialized
 	if info.entries == nil {
 		info.entries = make(map[string]PeerEntry)
@@ -73,6 +78,9 @@ func (info *PeerInfo) Add(nodeID string, endpoint net.Addr) {
 
 // Find fetches a list of known endpoints for the provided Identity
 func (info *PeerInfo) Find(nodeID string) PeerEntry {
+	info.mu.Lock()
+	defer info.mu.Unlock()
+
 	if info.entries == nil {
 		return nil
 	}
@@ -80,13 +88,14 @@ func (info *PeerInfo) Find(nodeID string) PeerEntry {
 }
 
 func (info *PeerInfo) Each() <-chan *PeerEntry {
-	ch := make(chan *PeerEntry)
+	info.mu.Lock()
+	defer info.mu.Unlock()
 
-	go func() {
-		for _, e := range info.entries {
-			ch <- &e
-		}
-	}()
+	ch := make(chan *PeerEntry, len(info.entries))
+
+	for _, e := range info.entries {
+		ch <- &e
+	}
 
 	return ch
 }

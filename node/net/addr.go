@@ -12,14 +12,14 @@ type address struct {
 	address string
 }
 
+var _ Addr = address{}
+
 func MakeAddr(net, addr string) Addr {
 	return &address{
 		network: net,
 		address: addr,
 	}
 }
-
-var _ Addr = address{}
 
 func (a address) Network() string {
 	return a.network

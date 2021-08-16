@@ -16,11 +16,11 @@ func (api API) Network() api.Network {
 	return api.network
 }
 
-func NewAPI(localIdentity _id.Identity, peers *peer.Peers, hub *hub.Hub, linker *Linker) *API {
+func NewAPI(localIdentity _id.Identity, peers *peer.Peers, hub *hub.Hub, network *Network) *API {
 	return &API{
 		network: &networkAPI{
 			localIdentity: localIdentity,
-			Linker:        linker,
+			Network:       network,
 			Peers:         peers,
 			Hub:           hub,
 		},
@@ -30,7 +30,7 @@ func NewAPI(localIdentity _id.Identity, peers *peer.Peers, hub *hub.Hub, linker 
 type networkAPI struct {
 	localIdentity _id.Identity
 	*peer.Peers
-	*Linker
+	*Network
 	*hub.Hub
 }
 
@@ -54,7 +54,7 @@ func (_api *networkAPI) link(remoteID *_id.ECIdentity) (*_link.Link, error) {
 		return peer.DefaultLink(), nil
 	}
 
-	link, err := _api.Linker.Link(remoteID)
+	link, err := _api.Network.Link(remoteID)
 	if err != nil {
 		return nil, err
 	}

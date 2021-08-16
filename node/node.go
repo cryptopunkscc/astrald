@@ -2,14 +2,12 @@ package node
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/node/auth"
 	_id "github.com/cryptopunkscc/astrald/node/auth/id"
 	_fs "github.com/cryptopunkscc/astrald/node/fs"
 	"github.com/cryptopunkscc/astrald/node/hub"
-	_link "github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/net"
-	"github.com/cryptopunkscc/astrald/node/net/inet"
-	"github.com/cryptopunkscc/astrald/node/net/lan"
+	_ "github.com/cryptopunkscc/astrald/node/net/tcp"
+	_ "github.com/cryptopunkscc/astrald/node/net/udp"
+
 	_peer "github.com/cryptopunkscc/astrald/node/peer"
 	"io"
 	"log"
@@ -22,16 +20,19 @@ type Node struct {
 
 	Hub      *hub.Hub
 	Peers    *_peer.Peers
-	Linker   *Linker
 	PeerInfo *PeerInfo
 	FS       *_fs.Filesystem
 	Config   *Config
+	Network  *Network
 }
 
 // New returns a new instance of a node
 func New(astralDir string) *Node {
 	fs := _fs.New(astralDir)
 	identity := setupIdentity(fs)
+
+	log.Printf("astral node %s statrting...", identity)
+
 	peers := _peer.NewManager()
 	peerInfo := NewPeerInfo(fs)
 
@@ -42,14 +43,14 @@ func New(astralDir string) *Node {
 		Hub:      new(hub.Hub),
 		Peers:    peers,
 		PeerInfo: peerInfo,
-		Linker:   NewLinker(peerInfo, identity),
+		Network:  NewNetwork(identity, peerInfo),
 	}
 
 	node.API = NewAPI(
 		node.Identity,
 		node.Peers,
 		node.Hub,
-		node.Linker,
+		node.Network,
 	)
 
 	return node
@@ -57,17 +58,6 @@ func New(astralDir string) *Node {
 
 // Run starts the node, waits for it to finish and returns an error if any
 func (node *Node) Run(ctx context.Context) error {
-	log.Printf("astral node '%s' starting...", node.Identity)
-
-	newConnPipe := make(chan net.Conn)
-	newLinkPipe := make(chan *_link.Link)
-
-	// Start listeners
-	err := node.startListeners(ctx, newConnPipe)
-	if err != nil {
-		return err
-	}
-
 	// Start services
 	for name, srv := range services {
 		go func(name string, srv ServiceRunner) {
@@ -81,11 +71,34 @@ func (node *Node) Run(ctx context.Context) error {
 		}(name, srv)
 	}
 
-	// Process incoming connections
-	go node.processIncomingConns(newConnPipe, newLinkPipe)
+	// Start network
+	go func() {
+		linkCh, _ := node.Network.Listen(ctx, node.Identity)
 
-	// Process incoming links
-	go node.processNewLinks(newLinkPipe)
+		for link := range linkCh {
+			if err := node.Peers.AddLink(link); err != nil {
+				log.Println("failed to add link:", err)
+				link.Close()
+			}
+		}
+	}()
+
+	go node.Network.Advertise(ctx, node.Identity)
+
+	go func() {
+		adCh, err := node.Network.Scan(ctx)
+		if err != nil {
+			log.Println("scan error:", err)
+			return
+		}
+
+		for ad := range adCh {
+			if ad.Identity.String() == node.Identity.String() {
+				continue
+			}
+			node.PeerInfo.Add(ad.Identity.String(), ad.Addr)
+		}
+	}()
 
 	// Handle incoming network requests
 	go node.handleRequests()
@@ -95,69 +108,8 @@ func (node *Node) Run(ctx context.Context) error {
 
 	// Wait for shutdown
 	<-ctx.Done()
-	close(newConnPipe)
-	close(newLinkPipe)
 
 	return nil
-}
-
-// startListeners starts listening to incoming connections
-func (node *Node) startListeners(ctx context.Context, output chan<- net.Conn) error {
-	net.Register(lan.NewDriver(node.Identity, uint16(node.Config.Port)))
-	net.Register(inet.NewDriver())
-	//net.Register(etor.NewDriver())
-
-	conns := net.Listen(ctx)
-
-	// Start advertising
-	net.Advertise(ctx)
-
-	// Start scanning
-	go func() {
-		ads, err := net.Scan(ctx)
-		if err != nil {
-			log.Println("scan failed:", err)
-			return
-		}
-
-		for ad := range ads {
-			node.PeerInfo.Add(ad.Identity.String(), ad.Addr)
-		}
-	}()
-
-	// Start processing connections
-	go func() {
-		for conn := range conns {
-			output <- conn
-		}
-	}()
-
-	return nil
-}
-
-// processIncomingConns processes incoming connections from the input, upgrades them to a link and sends it to the output
-func (node *Node) processIncomingConns(input <-chan net.Conn, output chan<- *_link.Link) {
-	for conn := range input {
-		if conn.Outbound() {
-			continue
-		}
-
-		log.Println("new connection from", conn.RemoteAddr())
-		authConn, err := auth.HandshakeInbound(context.Background(), conn, node.Identity)
-		if err != nil {
-			log.Println("handshake error:", err)
-			_ = conn.Close()
-			continue
-		}
-
-		output <- _link.New(authConn)
-	}
-}
-
-func (node *Node) processNewLinks(input <-chan *_link.Link) {
-	for link := range input {
-		node.Peers.AddLink(link)
-	}
 }
 
 func (node *Node) handleRequests() {
@@ -199,7 +151,7 @@ func (node *Node) linkKeeper() {
 				continue
 			}
 
-			link, err := node.Linker.Link(nodeID)
+			link, err := node.Network.Link(nodeID)
 			if err == nil {
 				node.Peers.AddLink(link)
 				break

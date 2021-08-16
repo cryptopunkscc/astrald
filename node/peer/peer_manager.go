@@ -30,7 +30,7 @@ func (peers *Peers) Peer(id _id.Identity) (*Peer, error) {
 	peers.mu.Lock()
 	defer peers.mu.Unlock()
 
-	if peer, ok := peers.peers[id.String()]; ok {
+	if peer, found := peers.peers[id.String()]; found {
 		return peer, nil
 	}
 

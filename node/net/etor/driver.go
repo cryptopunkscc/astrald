@@ -24,7 +24,7 @@ func NewDriver() *driver {
 	return &driver{tor: _tor}
 }
 
-var _ net.Driver = &driver{}
+var _ net.UnicastNetwork = &driver{}
 
 func (drv driver) Network() string {
 	return networkName
@@ -72,12 +72,4 @@ func (drv *driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 	}()
 
 	return output, nil
-}
-
-func (drv *driver) Advertise(ctx context.Context) error {
-	return net.ErrUnsupported
-}
-
-func (drv *driver) Scan(ctx context.Context) (<-chan *net.Ad, error) {
-	return nil, net.ErrUnsupported
 }
