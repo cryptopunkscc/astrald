@@ -4,31 +4,17 @@ package etor
 
 import (
 	"context"
-	"github.com/cretz/bine/tor"
+	"fmt"
+	_tor "github.com/cretz/bine/tor"
 	"github.com/cryptopunkscc/astrald/node/net"
 	"log"
 )
 
-const networkName = "tor"
-
 type driver struct {
-	tor *tor.Tor
-}
-
-func NewDriver() *driver {
-	_tor, err := tor.Start(nil, &tor.StartConf{DebugWriter: nil})
-	if err != nil {
-		panic(err)
-	}
-
-	return &driver{tor: _tor}
+	tor *_tor.Tor
 }
 
 var _ net.UnicastNetwork = &driver{}
-
-func (drv driver) Network() string {
-	return networkName
-}
 
 func (drv *driver) Dial(ctx context.Context, addr net.Addr) (net.Conn, error) {
 	dialer, err := drv.tor.Dialer(ctx, nil)
@@ -47,29 +33,49 @@ func (drv *driver) Dial(ctx context.Context, addr net.Addr) (net.Conn, error) {
 }
 
 func (drv *driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
-	onion, _ := drv.tor.Listen(nil, &tor.ListenConf{Version3: true, RemotePorts: []int{1791}})
-
 	output := make(chan net.Conn)
-
-	log.Println("started listening on", onion.ID+".onion:1791")
 
 	// Accept connections from the network
 	go func() {
+		if drv.tor == nil {
+			log.Println("initializing embedded tor...")
+			tor, err := _tor.Start(nil, &_tor.StartConf{DebugWriter: nil})
+			if err != nil {
+				fmt.Println("tor error:", err)
+				return
+			}
+			drv.tor = tor
+		}
+
+		onion, err := drv.tor.Listen(nil, &_tor.ListenConf{Version3: true, RemotePorts: []int{1791}})
+		if err != nil {
+			fmt.Println("tor error:", err)
+			return
+		}
+
+		torURL := onion.ID + ".onion:1791"
+		log.Println("listen tor", torURL)
+
 		for {
 			conn, err := onion.Accept()
 			if err != nil {
-				onion.Close()
-				log.Println("stopped listening on", onion.ID+".onion")
+				log.Println("closed tor", torURL)
 				break
 			}
 			output <- net.WrapConn(conn, false)
 		}
-	}()
 
-	go func() {
-		<-ctx.Done()
-		onion.Close()
+		go func() {
+			<-ctx.Done()
+			onion.Close()
+		}()
 	}()
 
 	return output, nil
+}
+
+func init() {
+	if err := net.AddUnicastNetwork("tor", &driver{}); err != nil {
+		panic(err)
+	}
 }
