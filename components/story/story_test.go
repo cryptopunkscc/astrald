@@ -12,8 +12,8 @@ func TestPackUnpack(t *testing.T) {
 		typ:       []byte{2},
 		author:    []byte{3},
 		refs: []fid2.ID{
-			fid2.Resolve([]byte{4}),
-			fid2.Resolve([]byte{5}),
+			fid2.ResolveBytes([]byte{4}),
+			fid2.ResolveBytes([]byte{5}),
 		},
 		data: []byte{6},
 	}

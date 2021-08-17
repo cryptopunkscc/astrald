@@ -5,6 +5,7 @@ import "io"
 type Storage interface {
 	Reader(name string) (FileReader, error)
 	Writer() (FileWriter, error)
+	List() ([]string, error)
 }
 
 type FileWriter interface {

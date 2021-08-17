@@ -23,11 +23,20 @@ func ResolveAll(reader io.Reader) ID {
 	return r.Resolve()
 }
 
-func Resolve(data []byte) ID {
+func ResolveBytes(data []byte) ID {
 	r := NewResolver()
 	b := bytes.NewReader(data)
 	_, _ = io.Copy(r, b)
 	return r.Resolve()
+}
+
+func Resolve(reader io.Reader) (ID, error) {
+	r := NewResolver()
+	_, err := io.CopyN(r, reader, Size)
+	if err != nil {
+		return ID{}, err
+	}
+	return r.Resolve(), nil
 }
 
 func NewResolver() Resolver {

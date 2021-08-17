@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node"
 	_ "github.com/cryptopunkscc/astrald/services/apphost"
+	_ "github.com/cryptopunkscc/astrald/services/files"
 	_ "github.com/cryptopunkscc/astrald/services/identifier"
 	_ "github.com/cryptopunkscc/astrald/services/lore"
 	_ "github.com/cryptopunkscc/astrald/services/lore/test"

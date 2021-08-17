@@ -3,7 +3,9 @@ package repo
 import (
 	"github.com/cryptopunkscc/astrald/components/fid"
 	"github.com/cryptopunkscc/astrald/components/repo"
+	"github.com/cryptopunkscc/astrald/components/serialize"
 	"github.com/cryptopunkscc/astrald/components/storage"
+	"io"
 	"log"
 )
 
@@ -22,7 +24,7 @@ type writer struct {
 	storage.FileWriter
 }
 
-func NewAdapter(storage storage.Storage) repo.Repository {
+func NewAdapter(storage storage.Storage) repo.ReadWriteRepository {
 	return adapter{Storage: storage}
 }
 
@@ -34,13 +36,43 @@ func (f adapter) Reader(id fid.ID) (repo.Reader, error) {
 	return &reader{FileReader: r}, nil
 }
 
+func (f adapter) List() (reader io.ReadCloser, err error) {
+	names, err := f.Storage.List()
+	if err != nil {
+		return
+	}
+	reader, pw := io.Pipe()
+	go func() {
+		_, err := serialize.NewFormatter(pw).WriteSize(len(names))
+		if err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		for _, name := range names {
+			parse, err := fid.Parse(name)
+			if err != nil {
+				_ = pw.CloseWithError(err)
+				return
+			}
+			pack := parse.Pack()
+			_, err = pw.Write(pack[:])
+			if err != nil {
+				_ = pw.CloseWithError(err)
+				return
+			}
+		}
+		_ = pw.Close()
+	}()
+	return
+}
+
 func (f adapter) Writer() (repo.Writer, error) {
 	w, err := f.Storage.Writer()
 	if err != nil {
 		return nil, err
 	}
 	return &writer{
-		Resolver: fid.NewResolver(),
+		Resolver:   fid.NewResolver(),
 		FileWriter: w,
 	}, nil
 }

@@ -17,14 +17,6 @@ type fileReader struct {
 	*os.File
 }
 
-func (f fileReader) Size() (int64, error) {
-	stat, err := f.Stat()
-	if err != nil {
-		return -1, err
-	}
-	return stat.Size(), nil
-}
-
 type fileWriter struct {
 	*os.File
 	dir string
@@ -56,6 +48,26 @@ func (fs fileStorage) Writer() (storage.FileWriter, error) {
 		File: file,
 		dir:  fs.dir,
 	}, nil
+}
+
+func (fs fileStorage) List() (names []string, err error) {
+	files, err := ioutil.ReadDir(fs.dir)
+	if err != nil {
+		return
+	}
+	names = make([]string, len(files))
+	for i, file := range files {
+		names[i] = file.Name()
+	}
+	return
+}
+
+func (f fileReader) Size() (int64, error) {
+	stat, err := f.Stat()
+	if err != nil {
+		return -1, err
+	}
+	return stat.Size(), nil
 }
 
 func (f fileWriter) Rename(name string) error {

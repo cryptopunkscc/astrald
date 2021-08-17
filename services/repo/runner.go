@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"github.com/cryptopunkscc/astrald/api"
 	_id "github.com/cryptopunkscc/astrald/components/fid"
+	"github.com/cryptopunkscc/astrald/components/serialize"
 	"github.com/cryptopunkscc/astrald/components/storage/file"
 	"github.com/cryptopunkscc/astrald/components/storage/repo"
 	"github.com/cryptopunkscc/astrald/node"
@@ -22,6 +23,7 @@ const (
 	RequestRead    = 1
 	RequestWrite   = 2
 	RequestObserve = 3
+	RequestList    = 4
 )
 
 var AstralHome string
@@ -43,7 +45,7 @@ func run(ctx context.Context, core api.Core) error {
 			log.Println(Port, "rejected remote connection")
 			continue
 		}
-		stream := conn.Accept()
+		stream := serialize.NewSerializer(conn.Accept())
 		log.Println(Port, "accepted connection")
 		go func() {
 			defer stream.Close()
@@ -74,8 +76,8 @@ func run(ctx context.Context, core api.Core) error {
 				var sizeBuff [8]byte
 				for {
 					// Read next file size
-					read, err := stream.Read(sizeBuff[:])
-					if err != nil || read != 8 {
+					_, err := stream.Read(sizeBuff[:])
+					if err != nil {
 						log.Println(Port, "closing stream for write request", err)
 						return
 					}
@@ -126,6 +128,17 @@ func run(ctx context.Context, core api.Core) error {
 						delete(observers, stream)
 						return
 					}
+				}
+			case RequestList:
+				reader, err := fs.List()
+				if err != nil {
+					log.Println(Port, "cannot list files", err)
+					return
+				}
+				_, err = io.Copy(stream, reader)
+				if err != nil {
+					log.Println(Port, "cannot send file ids")
+					return
 				}
 			}
 		}()
