@@ -7,8 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/components/serialize"
 	_story "github.com/cryptopunkscc/astrald/components/story"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/services/fs"
 	"github.com/cryptopunkscc/astrald/services/lore"
+	"github.com/cryptopunkscc/astrald/services/repo"
 	"log"
 	"time"
 )
@@ -42,12 +42,6 @@ func run(ctx context.Context, core api.Core) (err error) {
 		}
 
 		for {
-			//storyBuff, err := s.ReadWithSize()
-			//if err != nil {
-			//	log.Println(port, "cannot read story size", err)
-			//	return
-			//}
-
 			story, err := _story.Unpack(stream)
 			if err != nil {
 				log.Println(port, "cannot read story", err)
@@ -61,11 +55,11 @@ func run(ctx context.Context, core api.Core) (err error) {
 		for {
 			time.Sleep(2 * time.Second)
 
-			stream, err := core.Network().Connect("", fs.Port)
+			stream, err := core.Network().Connect("", repo.Port)
 			if err != nil {
 				return
 			}
-			log.Println(port, "connected to", fs.Port)
+			log.Println(port, "connected to", repo.Port)
 
 			s := serialize.NewSerializer(stream)
 
@@ -78,7 +72,7 @@ func run(ctx context.Context, core api.Core) (err error) {
 			)
 			storyBuff := story.PackBytes()
 			log.Println(port, "sending story with size", len(storyBuff), storyBuff)
-			err = s.WriteByte(fs.RequestWrite)
+			err = s.WriteByte(repo.RequestWrite)
 			if err != nil {
 				log.Println(err)
 				return

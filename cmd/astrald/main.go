@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node"
 	_ "github.com/cryptopunkscc/astrald/services/apphost"
-	"github.com/cryptopunkscc/astrald/services/fs"
 	_ "github.com/cryptopunkscc/astrald/services/identifier"
 	_ "github.com/cryptopunkscc/astrald/services/lore"
 	_ "github.com/cryptopunkscc/astrald/services/lore/test"
+	"github.com/cryptopunkscc/astrald/services/repo"
 	"log"
 	"os"
 	"os/signal"
@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// init AstralHome for file system service
-	fs.AstralHome = astralRoot
+	repo.AstralHome = astralRoot
 
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())

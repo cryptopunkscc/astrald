@@ -1,4 +1,4 @@
-package fs
+package repo
 
 import (
 	"context"
@@ -16,7 +16,7 @@ func init() {
 	_ = node.RegisterService(Port, run)
 }
 
-const Port = "fs"
+const Port = "repo"
 
 const (
 	RequestRead    = 1
@@ -38,8 +38,12 @@ func run(ctx context.Context, core api.Core) error {
 		_ = handler.Close()
 	}()
 	for conn := range handler.Requests() {
+		if conn.Caller() != core.Network().Identity() {
+			conn.Reject()
+			log.Println(Port, "rejected remote connection")
+			continue
+		}
 		stream := conn.Accept()
-		caller := conn.Caller()
 		log.Println(Port, "accepted connection")
 		go func() {
 			defer stream.Close()
@@ -67,9 +71,6 @@ func run(ctx context.Context, core api.Core) error {
 				// Send requested file
 				_, err = io.Copy(stream, reader)
 			case RequestWrite:
-				if caller != core.Network().Identity() {
-					return
-				}
 				var sizeBuff [8]byte
 				for {
 					// Read next file size
@@ -115,9 +116,6 @@ func run(ctx context.Context, core api.Core) error {
 					}
 				}
 			case RequestObserve:
-				if caller != core.Network().Identity() {
-					return
-				}
 				observers[stream] = struct{}{}
 				log.Println(Port, "added new files observer")
 				var buffer [1]byte

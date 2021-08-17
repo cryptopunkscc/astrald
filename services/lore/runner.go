@@ -7,8 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/components/serialize"
 	lore "github.com/cryptopunkscc/astrald/components/story"
 	"github.com/cryptopunkscc/astrald/node"
-	_fs "github.com/cryptopunkscc/astrald/services/fs"
 	"github.com/cryptopunkscc/astrald/services/identifier"
+	_fs "github.com/cryptopunkscc/astrald/services/repo"
 	"log"
 	"time"
 )
@@ -63,7 +63,7 @@ func run(ctx context.Context, core api.Core) error {
 			log.Println(Port, "new file fid", id.String())
 
 			go func() {
-				// Connecting to fs
+				// Connecting to repo
 				fs, err := network.Connect("", _fs.Port)
 				if err != nil {
 					log.Println(Port, "cannot connect to", _fs.Port, err)

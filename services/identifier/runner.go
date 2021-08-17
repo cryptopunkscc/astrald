@@ -6,8 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/components/fid"
 	"github.com/cryptopunkscc/astrald/components/serialize"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/services/fs"
 	"github.com/cryptopunkscc/astrald/services/identifier/internal"
+	"github.com/cryptopunkscc/astrald/services/repo"
 	"log"
 	"time"
 )
@@ -29,14 +29,14 @@ func run(ctx context.Context, core api.Core) error {
 	observers := map[api.Stream]string{}
 	network := core.Network()
 
-	// Observe fs changes
+	// Observe repo changes
 	go func() {
 		time.Sleep(1 * time.Second)
 
 		// Connect
-		conn, err := network.Connect("", fs.Port)
+		conn, err := network.Connect("", repo.Port)
 		if err != nil {
-			log.Println("cannot connect to fs", err)
+			log.Println(Port, "cannot connect to ", repo.Port, err)
 			return
 		}
 		s := serialize.NewSerializer(conn)
@@ -46,9 +46,9 @@ func run(ctx context.Context, core api.Core) error {
 		}()
 
 		// Request observe
-		err = s.WriteByte(fs.RequestObserve)
+		err = s.WriteByte(repo.RequestObserve)
 		if err != nil {
-			log.Println("cannot request fs observe", err)
+			log.Println(Port, "cannot observe", repo.Port, err)
 			return
 		}
 
@@ -57,7 +57,7 @@ func run(ctx context.Context, core api.Core) error {
 			var idBuff [fid.Size]byte
 			_, err := s.Read(idBuff[:])
 			if err != nil {
-				log.Println(Port, "cannot read new fid from fs", err)
+				log.Println(Port, "cannot read new fid from repo", err)
 				return
 			}
 			id := fid.Unpack(idBuff)
@@ -67,16 +67,16 @@ func run(ctx context.Context, core api.Core) error {
 
 				// obtain file prefix
 				log.Println(Port, "new file fid", id.String())
-				stream, err := network.Connect("", fs.Port)
+				stream, err := network.Connect("", repo.Port)
 				if err != nil {
-					log.Println(Port, "cannot connect to", fs.Port, err)
+					log.Println(Port, "cannot connect to", repo.Port, err)
 					return
 				}
 				defer stream.Close()
 
 				// Request file read
 				s := serialize.NewSerializer(stream)
-				err = s.WriteByte(fs.RequestRead)
+				err = s.WriteByte(repo.RequestRead)
 				if err != nil {
 					log.Println(Port, "cannot read", err)
 					return
@@ -89,11 +89,10 @@ func run(ctx context.Context, core api.Core) error {
 					return
 				}
 
-
-				log.Println(Port, "reading", id.Size, "bytes from", fs.Port)
+				log.Println(Port, "reading", id.Size, "bytes from", repo.Port)
 				prefixBuff, err := s.ReadN(4096)
 				if err != nil {
-					log.Println(Port, "cannot read from", fs.Port, err)
+					log.Println(Port, "cannot read from", repo.Port, err)
 					return
 				}
 				log.Println(Port, "resolved file prefix")
