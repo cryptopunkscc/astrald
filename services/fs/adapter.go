@@ -1,9 +1,14 @@
 package fs
 
-import "log"
+import (
+	"github.com/cryptopunkscc/astrald/components/fid"
+	"log"
+)
+
+const tag = "file-storage"
 
 type adapter struct {
-	storage Storage
+	delegate Storage
 }
 
 type reader struct {
@@ -11,16 +16,16 @@ type reader struct {
 }
 
 type writer struct {
-	resolver Resolver
+	resolver fid.Resolver
 	delegate FileWriter
 }
 
-func StorageAdapter(storage Storage) Repository {
-	return adapter{storage: storage}
+func NewAdapter(storage Storage) Repository {
+	return adapter{delegate: storage}
 }
 
-func (f adapter) Reader(id ID) (Reader, error) {
-	r, err := f.storage.Reader(id.String())
+func (f adapter) Reader(id fid.ID) (Reader, error) {
+	r, err := f.delegate.Reader(id.String())
 	if err != nil {
 		return nil, err
 	}
@@ -32,12 +37,12 @@ func (r reader) Size() (int64, error) {
 }
 
 func (f adapter) Writer() (Writer, error) {
-	w, err := f.storage.Writer()
+	w, err := f.delegate.Writer()
 	if err != nil {
 		return nil, err
 	}
 	return &writer{
-		resolver: NewResolver(),
+		resolver: fid.NewResolver(),
 		delegate: w,
 	}, nil
 }
@@ -55,22 +60,21 @@ func (w writer) Write(p []byte) (int, error) {
 	return w.delegate.Write(p)
 }
 
-func (w writer) Finalize() (*ID, error) {
+func (w writer) Finalize() (*fid.ID, error) {
 	err := w.delegate.Sync()
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 	id := w.resolver.Resolve()
-	log.Println("Resolved file id", id.String())
 	err = w.delegate.Rename(id.String())
 	if err != nil {
-		log.Println("Cannot rename file", err)
+		log.Println(tag, "Cannot rename file", err)
 		return nil, err
 	}
 	err = w.delegate.Close()
 	if err != nil {
-		log.Println("Cannot close file", err)
+		log.Println(tag, "Cannot close file", err)
 		return nil, err
 	}
 	return &id, nil

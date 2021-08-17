@@ -1,9 +1,12 @@
 package fs
 
-import "io"
+import (
+	"github.com/cryptopunkscc/astrald/components/fid"
+	"io"
+)
 
 type Repository interface {
-	Reader(id ID) (Reader, error)
+	Reader(id fid.ID) (Reader, error)
 	Writer() (Writer, error)
 }
 
@@ -14,5 +17,5 @@ type Reader interface {
 
 type Writer interface {
 	io.Writer
-	Finalize() (*ID, error)
+	Finalize() (*fid.ID, error)
 }

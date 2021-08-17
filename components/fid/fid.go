@@ -1,10 +1,16 @@
-package fs
+package fid
 
 import (
 	"encoding/base32"
 	"encoding/binary"
 	"errors"
 	"strings"
+)
+
+const (
+	SizeLen = 8
+	HashLen = 32
+	Size = 40
 )
 
 const idPrefix = "id1"
@@ -17,16 +23,16 @@ type ID struct {
 	Hash [32]byte
 }
 
-func (id ID) Pack() [40]byte {
-	var b [40]byte
+func (id ID) Pack() [Size]byte {
+	var b [Size]byte
 	binary.BigEndian.PutUint64(b[0:8], id.Size)
 	copy(b[8:], id.Hash[0:32])
 	return b
 }
 
-func Unpack(data [40]byte) (id ID) {
+func Unpack(data [Size]byte) (id ID) {
 	id.Size = binary.BigEndian.Uint64(data[0:8])
-	copy(id.Hash[:], data[8:40])
+	copy(id.Hash[:], data[8:Size])
 	return
 }
 
@@ -48,12 +54,12 @@ func Parse(s string) (id ID, err error) {
 	z := 64 - len(s)
 	padded := strings.Repeat(zBase32CharSet[0:1], z) + s
 
-	var data [40]byte
+	var data [Size]byte
 	n, err := zBase32Encoding.Decode(data[:], []byte(padded))
 	if err != nil {
 		return ID{}, err
 	}
-	if n != 40 {
+	if n != Size {
 		return ID{}, errors.New("invalid data length")
 	}
 

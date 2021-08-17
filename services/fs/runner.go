@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/binary"
 	"github.com/cryptopunkscc/astrald/api"
+	_id "github.com/cryptopunkscc/astrald/components/fid"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
 	"log"
 )
 
-type Runner struct{}
-
 func init() {
-	_ = node.RegisterService("fs", run)
+	_ = node.RegisterService(Port, run)
 }
+
+const Port = "fs"
 
 const (
 	RequestRead    = 1
@@ -23,35 +24,39 @@ const (
 
 var AstralHome string
 
-func run(_ context.Context, core api.Core) error {
-	observers := map[api.Stream]api.Stream{}
-	fs := StorageAdapter(FileStorage(AstralHome))
-	handler, err := core.Network().Register("fs")
+func run(ctx context.Context, core api.Core) error {
+	observers := map[api.Stream]struct{}{}
+	fs := NewAdapter(FileStorage(AstralHome))
+	handler, err := core.Network().Register(Port)
 	if err != nil {
 		return err
 	}
+	go func() {
+		<-ctx.Done()
+		_ = handler.Close()
+	}()
 	for conn := range handler.Requests() {
 		stream := conn.Accept()
 		caller := conn.Caller()
-		log.Println("fs accepted connection")
+		log.Println(Port, "accepted connection")
 		go func() {
 			defer stream.Close()
 			var requestType [1]byte
 			l, err := stream.Read(requestType[:])
 			if err != nil || l != 1 {
-				log.Println("fs error reading type", err)
+				log.Println(Port, "error reading type", err)
 				return
 			}
-			log.Println("fs request type", requestType[0])
+			log.Println(Port, "request type", requestType[0])
 			switch requestType[0] {
 			case RequestRead:
-				// Read fileid requested file id
+				// Read file id requested file fid
 				var idBuff [40]byte
 				read, err := stream.Read(idBuff[:])
 				if err != nil || read != 40 {
 					return
 				}
-				id := Unpack(idBuff)
+				id := _id.Unpack(idBuff)
 				// Obtain file reader
 				reader, err := fs.Reader(id)
 				if err != nil {
@@ -68,42 +73,42 @@ func run(_ context.Context, core api.Core) error {
 					// Read next file size
 					read, err := stream.Read(sizeBuff[:])
 					if err != nil || read != 8 {
-						log.Println("closing stream for write request", err)
+						log.Println(Port, "closing stream for write request", err)
 						return
 					}
-					log.Println("received bytes size:", sizeBuff)
+					log.Println(Port, "received bytes size:", sizeBuff)
 					size := int64(binary.BigEndian.Uint64(sizeBuff[:]))
-					log.Println("parsed size:", size)
+					log.Println(Port, "parsed size:", size)
 					// Obtain file writer
 					writer, err := fs.Writer()
 					if err != nil {
-						log.Println("error while obtaining writer", err)
+						log.Println(Port, "error while obtaining writer", err)
 						return
 					}
-					log.Println("obtained writer")
+					log.Println(Port, "obtained writer")
 					_, err = io.CopyN(writer, stream, size)
 					if err != nil {
-						log.Println("cannot write to file")
+						log.Println(Port, "cannot write to file")
 						return
 					}
-					log.Println("successful write")
+					log.Println(Port, "successful write")
 					id, err := writer.Finalize()
 					if err != nil {
-						log.Println("cannot finalize", err)
+						log.Println(Port, "cannot finalize", err)
 						return
 					}
 					packed := id.Pack()
-					log.Println("notifying observers")
-					for _, observer := range observers {
+					log.Println(Port, "notifying observers", len(observers))
+					for observer := range observers {
 						_, err := observer.Write(packed[:])
 						if err != nil {
-							log.Println("cannot notify observer:", err)
+							log.Println(Port, "cannot notify observer:", err)
 						}
 					}
-					log.Println("sending ")
+					log.Println(Port, "sending")
 					_, err = stream.Write(packed[:])
 					if err != nil {
-						log.Println("cannot write file id", err)
+						log.Println(Port, "cannot write file fid", err)
 						return
 					}
 				}
@@ -111,13 +116,13 @@ func run(_ context.Context, core api.Core) error {
 				if caller != core.Network().Identity() {
 					return
 				}
-				observers[stream] = stream
-				log.Println("added new files observer")
+				observers[stream] = struct{}{}
+				log.Println(Port, "added new files observer")
 				var buffer [1]byte
 				for {
-					read, err := stream.Read(buffer[:])
-					if err != nil || read < 0 {
-						log.Println("removing file observer")
+					_, err := stream.Read(buffer[:])
+					if err != nil {
+						log.Println(Port, "removing file observer", err)
 						delete(observers, stream)
 						return
 					}

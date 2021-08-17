@@ -15,6 +15,4 @@ rel Set<String>
 entity Data {
 }
 
-
-
 @enduml
