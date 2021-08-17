@@ -1,7 +1,8 @@
-package fs
+package file
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/components/storage"
 	"io/ioutil"
 	"log"
 	"os"
@@ -29,14 +30,14 @@ type fileWriter struct {
 	dir string
 }
 
-func FileStorage(astralHome string) Storage {
+func NewStorage(astralHome string) storage.Storage {
 	storageDir := filepath.Join(astralHome, "storage")
 	err := os.Mkdir(storageDir, 0700)
 	log.Println(err)
 	return fileStorage{dir: storageDir}
 }
 
-func (fs fileStorage) Reader(name string) (FileReader, error) {
+func (fs fileStorage) Reader(name string) (storage.FileReader, error) {
 	path := filepath.Join(fs.dir, name)
 	file, err := os.Open(path)
 	if err != nil {
@@ -45,7 +46,7 @@ func (fs fileStorage) Reader(name string) (FileReader, error) {
 	return fileReader{File: file}, nil
 }
 
-func (fs fileStorage) Writer() (FileWriter, error) {
+func (fs fileStorage) Writer() (storage.FileWriter, error) {
 	file, err := ioutil.TempFile(fs.dir, "tmp-")
 	if err != nil {
 		log.Println("Cannot create tmp file", err)

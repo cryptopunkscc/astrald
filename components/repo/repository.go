@@ -1,4 +1,4 @@
-package fs
+package repo
 
 import (
 	"github.com/cryptopunkscc/astrald/components/fid"

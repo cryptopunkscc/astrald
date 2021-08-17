@@ -1,30 +1,32 @@
-package fs
+package repo
 
 import (
 	"github.com/cryptopunkscc/astrald/components/fid"
+	"github.com/cryptopunkscc/astrald/components/repo"
+	"github.com/cryptopunkscc/astrald/components/storage"
 	"log"
 )
 
 const tag = "file-storage"
 
 type adapter struct {
-	delegate Storage
+	delegate storage.Storage
 }
 
 type reader struct {
-	delegate FileReader
+	delegate storage.FileReader
 }
 
 type writer struct {
 	resolver fid.Resolver
-	delegate FileWriter
+	delegate storage.FileWriter
 }
 
-func NewAdapter(storage Storage) Repository {
+func NewAdapter(storage storage.Storage) repo.Repository {
 	return adapter{delegate: storage}
 }
 
-func (f adapter) Reader(id fid.ID) (Reader, error) {
+func (f adapter) Reader(id fid.ID) (repo.Reader, error) {
 	r, err := f.delegate.Reader(id.String())
 	if err != nil {
 		return nil, err
@@ -36,7 +38,7 @@ func (r reader) Size() (int64, error) {
 	return r.delegate.Size()
 }
 
-func (f adapter) Writer() (Writer, error) {
+func (f adapter) Writer() (repo.Writer, error) {
 	w, err := f.delegate.Writer()
 	if err != nil {
 		return nil, err

@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"github.com/cryptopunkscc/astrald/api"
 	_id "github.com/cryptopunkscc/astrald/components/fid"
+	"github.com/cryptopunkscc/astrald/components/storage/file"
+	"github.com/cryptopunkscc/astrald/components/storage/repo"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
 	"log"
@@ -26,7 +28,7 @@ var AstralHome string
 
 func run(ctx context.Context, core api.Core) error {
 	observers := map[api.Stream]struct{}{}
-	fs := NewAdapter(FileStorage(AstralHome))
+	fs := repo.NewAdapter(file.NewStorage(AstralHome))
 	handler, err := core.Network().Register(Port)
 	if err != nil {
 		return err
