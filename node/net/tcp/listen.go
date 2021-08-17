@@ -3,9 +3,11 @@ package tcp
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/node/net"
+	"github.com/cryptopunkscc/astrald/node/net/ip"
+	"github.com/cryptopunkscc/astrald/node/net/mon"
 	"log"
 	go_net "net"
-	"time"
+	"strconv"
 )
 
 const tcpPort = 1791
@@ -16,73 +18,70 @@ func (drv *driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 	go func() {
 		defer close(output)
 
-		ifaces := make(map[string]*listenerGroup)
-
-		for {
-			updated, err := getInterfaces()
-			if err != nil {
-				panic(err)
-			}
-
-			// Check which interfaces went down
-			for name, iface := range ifaces {
-				if _, found := updated[name]; found {
-					continue
+		for name := range mon.Interfaces(ctx) {
+			go func(name string) {
+				for conn := range listenInterface(ctx, name) {
+					output <- conn
 				}
-
-				iface.close()
-				log.Println("down", name)
-				delete(ifaces, name)
-			}
-
-			// Check which interfaces went up
-			for name, _ := range updated {
-				if _, found := ifaces[name]; found {
-					continue
-				}
-
-				log.Println("up", name)
-
-				ifaces[name] = newListenerGroup()
-				go func(name string) {
-					for conn := range ifaces[name].Conns() {
-						output <- conn
-					}
-				}(name)
-			}
-
-			// Check all current addresses
-			for ifaceName, iface := range updated {
-				addrs, err := iface.Addrs()
-				if err != nil {
-					continue
-				}
-
-				for _, addr := range addrs {
-					ifaces[ifaceName].add(addr)
-				}
-			}
-
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(time.Second):
-			}
+			}(name)
 		}
 	}()
 
 	return output, nil
 }
 
-func getInterfaces() (map[string]go_net.Interface, error) {
-	ifaces, err := go_net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
+func listenInterface(ctx context.Context, ifaceName string) <-chan net.Conn {
+	output := make(chan net.Conn)
 
-	m := make(map[string]go_net.Interface)
-	for _, iface := range ifaces {
-		m[iface.Name] = iface
-	}
-	return m, err
+	go func() {
+		defer close(output)
+
+		ifaceCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		for addr := range mon.Addrs(ifaceCtx, ifaceName) {
+			go func(addr string) {
+				for conn := range listenAddr(ifaceCtx, addr) {
+					output <- conn
+				}
+			}(addr)
+		}
+	}()
+
+	return output
+}
+
+func listenAddr(ctx context.Context, addr string) <-chan net.Conn {
+	output := make(chan net.Conn)
+
+	go func() {
+		defer close(output)
+
+		ip, _ := ip.SplitIPMask(addr)
+		hostPort := go_net.JoinHostPort(ip, strconv.Itoa(tcpPort))
+
+		listener, err := go_net.Listen("tcp", hostPort)
+		if err != nil {
+			return
+		}
+
+		log.Println("listen tcp", hostPort)
+
+		go func() {
+			<-ctx.Done()
+			listener.Close()
+		}()
+
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				break
+			}
+			output <- net.WrapConn(conn, false)
+		}
+
+		log.Println("closed tcp", hostPort)
+	}()
+
+	return output
 }

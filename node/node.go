@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/hub"
 	_ "github.com/cryptopunkscc/astrald/node/net/tcp"
 	_ "github.com/cryptopunkscc/astrald/node/net/udp"
-
 	_peer "github.com/cryptopunkscc/astrald/node/peer"
 	"io"
 	"log"
