@@ -2,6 +2,7 @@ package net
 
 import (
 	"context"
+	"log"
 	"sync"
 )
 
@@ -20,9 +21,10 @@ func Listen(ctx context.Context) <-chan Conn {
 
 	wg := sync.WaitGroup{}
 
-	for _, drv := range unicastNets {
+	for drvName, drv := range unicastNets {
 		ch, err := drv.Listen(ctx)
 		if err != nil {
+			log.Printf("listen error: %s: %v\n", drvName, err)
 			continue
 		}
 

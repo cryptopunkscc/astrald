@@ -6,6 +6,7 @@ import (
 	_fs "github.com/cryptopunkscc/astrald/node/fs"
 	"github.com/cryptopunkscc/astrald/node/hub"
 	_ "github.com/cryptopunkscc/astrald/node/net/tcp"
+	_ "github.com/cryptopunkscc/astrald/node/net/tor"
 	_ "github.com/cryptopunkscc/astrald/node/net/udp"
 	_peer "github.com/cryptopunkscc/astrald/node/peer"
 	"io"
