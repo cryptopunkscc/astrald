@@ -25,7 +25,7 @@ func (srv *Context) Run(ctx context.Context, core api.Core) error {
 		}
 
 		request := &Request{*srv}
-		request.Serializer = accept.Request(ctx, r)
+		request.ReadWriteCloser = accept.Request(ctx, r)
 		log.Println(srv.Port, "accepted connection")
 
 		go func() {

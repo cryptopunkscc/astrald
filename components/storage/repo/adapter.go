@@ -3,7 +3,7 @@ package repo
 import (
 	"github.com/cryptopunkscc/astrald/components/fid"
 	"github.com/cryptopunkscc/astrald/components/repo"
-	"github.com/cryptopunkscc/astrald/components/serialize"
+	"github.com/cryptopunkscc/astrald/components/serializer"
 	"github.com/cryptopunkscc/astrald/components/storage"
 	"io"
 	"log"
@@ -43,7 +43,7 @@ func (f adapter) List() (reader io.ReadCloser, err error) {
 	}
 	reader, pw := io.Pipe()
 	go func() {
-		_, err := serialize.NewFormatter(pw).WriteSize(len(names))
+		_, err := serializer.NewWriter(pw).WriteSize(len(names))
 		if err != nil {
 			pw.CloseWithError(err)
 			return

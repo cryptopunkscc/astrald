@@ -20,9 +20,9 @@ func (srv *Context) Run(ctx context.Context, core api.Core) (err error) {
 
 	for conn := range handler.Requests() {
 		r := &Request{
-			Context:    *srv,
-			Serializer: accept.Request(ctx, conn),
-			Caller:     conn.Caller(),
+			Context:         *srv,
+			ReadWriteCloser: accept.Request(ctx, conn),
+			Caller:          conn.Caller(),
 		}
 		log.Println(srv.Port, "accepted connection")
 		go func() {

@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
-	"github.com/cryptopunkscc/astrald/components/serialize"
+	"github.com/cryptopunkscc/astrald/components/serializer"
 	"github.com/cryptopunkscc/astrald/services/util/request"
 )
 
@@ -16,7 +16,7 @@ type Context struct {
 
 type Request struct {
 	Context
-	serialize.Serializer
+	*serializer.ReadWriteCloser
 	Caller api.Identity
 }
 

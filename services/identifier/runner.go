@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
-	"github.com/cryptopunkscc/astrald/components/serialize"
+	"github.com/cryptopunkscc/astrald/components/serializer"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/services/identifier/internal"
 	"github.com/cryptopunkscc/astrald/services/repo"
@@ -70,7 +70,7 @@ func run(ctx context.Context, core api.Core) error {
 
 				// obtain file prefix
 				log.Println(Port, "reading", id.Size, "bytes from", repo.Port)
-				if prefixBuff, err = serialize.NewParser(reader).ReadN(4096); err != nil {
+				if prefixBuff, err = serializer.NewReader(reader).ReadN(4096); err != nil {
 					log.Println(Port, "cannot read from", repo.Port, err)
 					return
 				} else {

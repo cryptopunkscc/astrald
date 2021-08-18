@@ -3,7 +3,7 @@ package connect
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
-	"github.com/cryptopunkscc/astrald/components/serialize"
+	"github.com/cryptopunkscc/astrald/components/serializer"
 )
 
 func Local(
@@ -11,7 +11,7 @@ func Local(
 	core api.Core,
 	port string,
 	request byte,
-) (*serialize.Serializer, error) {
+) (*serializer.ReadWriteCloser, error) {
 	return Remote(ctx, core, "", port, request)
 }
 
@@ -21,7 +21,7 @@ func Remote(
 	identity api.Identity,
 	port string,
 	request byte,
-) (*serialize.Serializer, error) {
+) (*serializer.ReadWriteCloser, error) {
 	stream, err := core.Network().Connect(identity, port)
 	if err != nil {
 		return nil, err
@@ -30,10 +30,10 @@ func Remote(
 		<-ctx.Done()
 		_ = stream.Close()
 	}()
-	s := serialize.NewSerializer(stream)
+	s := serializer.New(stream)
 	err = s.WriteByte(request)
 	if err != nil {
 		return nil, err
 	}
-	return &s, nil
+	return s, nil
 }

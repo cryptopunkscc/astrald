@@ -1,19 +1,15 @@
-package serialize
+package serializer
 
 import (
 	"encoding/binary"
 	"io"
 )
 
-type Parser struct {
+type Reader struct {
 	io.Reader
 }
 
-func NewParser(reader io.Reader) *Parser {
-	return &Parser{Reader: reader}
-}
-
-func (p *Parser) ReadWithSize() (buff []byte, err error) {
+func (p *Reader) ReadWithSize() (buff []byte, err error) {
 	size, err := p.ReadSize()
 	if err != nil {
 		return
@@ -25,7 +21,7 @@ func (p *Parser) ReadWithSize() (buff []byte, err error) {
 	return
 }
 
-func (p *Parser) ReadStringWithSize() (string, error) {
+func (p *Reader) ReadStringWithSize() (string, error) {
 	buff, err := p.ReadWithSize()
 	if err != nil {
 		return "", err
@@ -33,7 +29,7 @@ func (p *Parser) ReadStringWithSize() (string, error) {
 	return string(buff), err
 }
 
-func (p *Parser) ReadN(n int) ([]byte, error) {
+func (p *Reader) ReadN(n int) ([]byte, error) {
 	buff := make([]byte, n)
 	read, err := p.Read(buff)
 	if err != nil {
@@ -43,7 +39,7 @@ func (p *Parser) ReadN(n int) ([]byte, error) {
 	return buff[:read], nil
 }
 
-func (p *Parser) ReadByte() (byte, error) {
+func (p *Reader) ReadByte() (byte, error) {
 	buff, err := p.ReadN(1)
 	if err != nil {
 		return 0, err
@@ -51,7 +47,7 @@ func (p *Parser) ReadByte() (byte, error) {
 	return buff[0], nil
 }
 
-func (p *Parser) ReadUint16() (uint16, error) {
+func (p *Reader) ReadUint16() (uint16, error) {
 	buff, err := p.ReadN(2)
 	if err != nil {
 		return 0, err
@@ -59,16 +55,16 @@ func (p *Parser) ReadUint16() (uint16, error) {
 	return binary.BigEndian.Uint16(buff[:]), nil
 }
 
-func (p *Parser) ReadSize() (int, error) {
+func (p *Reader) ReadSize() (int, error) {
 	return p.ReadInt()
 }
 
-func (p *Parser) ReadInt() (int, error) {
+func (p *Reader) ReadInt() (int, error) {
 	i, err := p.ReadUint32()
 	return int(i), err
 }
 
-func (p *Parser) ReadUint32() (uint32, error) {
+func (p *Reader) ReadUint32() (uint32, error) {
 	buff, err := p.ReadN(4)
 	if err != nil {
 		return 0, err
@@ -76,7 +72,7 @@ func (p *Parser) ReadUint32() (uint32, error) {
 	return binary.BigEndian.Uint32(buff[:]), nil
 }
 
-func (p *Parser) ReadUint64() (uint64, error) {
+func (p *Reader) ReadUint64() (uint64, error) {
 	buff, err := p.ReadN(8)
 	if err != nil {
 		return 0, err
@@ -84,7 +80,7 @@ func (p *Parser) ReadUint64() (uint64, error) {
 	return binary.BigEndian.Uint64(buff[:]), nil
 }
 
-func (p *Parser) ReadString(n int) (string, error) {
+func (p *Reader) ReadString(n int) (string, error) {
 	buff, err := p.ReadN(n)
 	if err != nil {
 		return "", err
