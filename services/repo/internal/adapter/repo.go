@@ -18,7 +18,7 @@ type repository struct {
 	core     api.Core
 }
 
-func (repo repository) connect(request uint16) (*serializer.ReadWriteCloser, error) {
+func (repo repository) connect(request uint16) (serializer.ReadWriteCloser, error) {
 	return connect.Local(repo.ctx, repo.core, repo.port, request)
 }
 

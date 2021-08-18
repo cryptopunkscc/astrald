@@ -2,8 +2,8 @@ package serializer
 
 import "io"
 
-type ReadWriteCloser struct {
+type readWriteCloser struct {
 	io.Closer
-	*Reader
-	*Writer
+	Reader
+	Writer
 }

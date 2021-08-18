@@ -2,18 +2,18 @@ package serializer
 
 import "io"
 
-func New(rw io.ReadWriteCloser) *ReadWriteCloser {
-	return &ReadWriteCloser{
+func New(rw io.ReadWriteCloser) ReadWriteCloser {
+	return &readWriteCloser{
 		Closer: rw,
 		Reader: NewReader(rw),
 		Writer: NewWriter(rw),
 	}
 }
 
-func NewReader(reader io.Reader) *Reader {
-	return &Reader{reader}
+func NewReader(r io.Reader) Reader {
+	return &reader{r}
 }
 
-func NewWriter(writer io.Writer) *Writer {
-	return &Writer{writer}
+func NewWriter(w io.Writer) Writer {
+	return &writer{w}
 }

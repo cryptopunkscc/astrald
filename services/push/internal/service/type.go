@@ -16,7 +16,7 @@ type Context struct {
 
 type Request struct {
 	Context
-	*serializer.ReadWriteCloser
+	serializer.ReadWriteCloser
 	Caller api.Identity
 }
 

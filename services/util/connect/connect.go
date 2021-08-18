@@ -11,7 +11,7 @@ func Local(
 	core api.Core,
 	port string,
 	request uint16,
-) (*serializer.ReadWriteCloser, error) {
+) (serializer.ReadWriteCloser, error) {
 	return Remote(ctx, core, "", port, request)
 }
 
@@ -21,7 +21,7 @@ func Remote(
 	identity api.Identity,
 	port string,
 	request uint16,
-) (*serializer.ReadWriteCloser, error) {
+) (serializer.ReadWriteCloser, error) {
 	stream, err := core.Network().Connect(identity, port)
 	if err != nil {
 		return nil, err

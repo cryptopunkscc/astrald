@@ -7,6 +7,6 @@ import (
 
 type Context struct {
 	Port string
-	*serializer.ReadWriteCloser
+	serializer.ReadWriteCloser
 	Observers map[api.Stream]struct{}
 }

@@ -5,44 +5,44 @@ import (
 	"io"
 )
 
-type Reader struct {
+type reader struct {
 	io.Reader
 }
 
-func (p *Reader) ReadByte() (byte, error) {
-	buff, err := p.ReadN(1)
+func (r *reader) ReadByte() (byte, error) {
+	buff, err := r.ReadN(1)
 	if err != nil {
 		return 0, err
 	}
 	return buff[0], nil
 }
 
-func (p *Reader) ReadUint8() (uint16, error) {
-	buff, err := p.ReadN(1)
+func (r *reader) ReadUint8() (uint16, error) {
+	buff, err := r.ReadN(1)
 	if err != nil {
 		return 0, err
 	}
 	return binary.BigEndian.Uint16(buff[:]), nil
 }
 
-func (p *Reader) ReadUint16() (uint16, error) {
-	buff, err := p.ReadN(2)
+func (r *reader) ReadUint16() (uint16, error) {
+	buff, err := r.ReadN(2)
 	if err != nil {
 		return 0, err
 	}
 	return binary.BigEndian.Uint16(buff[:]), nil
 }
 
-func (p *Reader) ReadUint32() (uint32, error) {
-	buff, err := p.ReadN(4)
+func (r *reader) ReadUint32() (uint32, error) {
+	buff, err := r.ReadN(4)
 	if err != nil {
 		return 0, err
 	}
 	return binary.BigEndian.Uint32(buff[:]), nil
 }
 
-func (p *Reader) ReadUint64() (uint64, error) {
-	buff, err := p.ReadN(8)
+func (r *reader) ReadUint64() (uint64, error) {
+	buff, err := r.ReadN(8)
 	if err != nil {
 		return 0, err
 	}
@@ -50,78 +50,78 @@ func (p *Reader) ReadUint64() (uint64, error) {
 }
 
 
-func (p *Reader) ReadN(n int) ([]byte, error) {
+func (r *reader) ReadN(n int) ([]byte, error) {
 	buff := make([]byte, n)
-	read, err := p.Read(buff)
+	read, err := r.Read(buff)
 	if err != nil {
 		return nil, err
 	}
 	return buff[:read], nil
 }
 
-func (p *Reader) ReadWithSize8() (buff []byte, err error) {
-	size, err := p.ReadUint8()
+func (r *reader) ReadWithSize8() (buff []byte, err error) {
+	size, err := r.ReadUint8()
 	if err != nil {
 		return
 	}
-	buff, err = p.ReadN(int(size))
-	if err != nil {
-		return
-	}
-	return
-}
-
-func (p *Reader) ReadWithSize16() (buff []byte, err error) {
-	size, err := p.ReadUint16()
-	if err != nil {
-		return
-	}
-	buff, err = p.ReadN(int(size))
+	buff, err = r.ReadN(int(size))
 	if err != nil {
 		return
 	}
 	return
 }
 
-
-func (p *Reader) ReadWithSize32() (buff []byte, err error) {
-	size, err := p.ReadUint32()
+func (r *reader) ReadWithSize16() (buff []byte, err error) {
+	size, err := r.ReadUint16()
 	if err != nil {
 		return
 	}
-	buff, err = p.ReadN(int(size))
+	buff, err = r.ReadN(int(size))
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (p *Reader) ReadString(n int) (string, error) {
-	buff, err := p.ReadN(n)
+
+func (r *reader) ReadWithSize32() (buff []byte, err error) {
+	size, err := r.ReadUint32()
+	if err != nil {
+		return
+	}
+	buff, err = r.ReadN(int(size))
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (r *reader) ReadString(n int) (string, error) {
+	buff, err := r.ReadN(n)
 	if err != nil {
 		return "", err
 	}
 	return string(buff[:]), nil
 }
 
-func (p *Reader) ReadStringWithSize8() (string, error) {
-	buff, err := p.ReadWithSize8()
+func (r *reader) ReadStringWithSize8() (string, error) {
+	buff, err := r.ReadWithSize8()
 	if err != nil {
 		return "", err
 	}
 	return string(buff), err
 }
 
-func (p *Reader) ReadStringWithSize16() (string, error) {
-	buff, err := p.ReadWithSize16()
+func (r *reader) ReadStringWithSize16() (string, error) {
+	buff, err := r.ReadWithSize16()
 	if err != nil {
 		return "", err
 	}
 	return string(buff), err
 }
 
-func (p *Reader) ReadStringWithSize32() (string, error) {
-	buff, err := p.ReadWithSize32()
+func (r *reader) ReadStringWithSize32() (string, error) {
+	buff, err := r.ReadWithSize32()
 	if err != nil {
 		return "", err
 	}
