@@ -89,7 +89,7 @@ func run(ctx context.Context, core api.Core) error {
 						if err = story.Write(observer); err != nil {
 							log.Println(Port, "cannot send story for", storyType, err)
 						}
-						log.Println(Port, "send story for", storyType)
+						log.Println(Port, "sent story of type", storyType)
 					}
 				}
 			}()

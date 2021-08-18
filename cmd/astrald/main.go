@@ -9,6 +9,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/services/identifier"
 	_ "github.com/cryptopunkscc/astrald/services/lore"
 	_ "github.com/cryptopunkscc/astrald/services/lore/test"
+	_ "github.com/cryptopunkscc/astrald/services/push"
 	"log"
 	"os"
 	"os/signal"

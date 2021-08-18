@@ -6,7 +6,7 @@ import (
 )
 
 type Context struct {
-	serialize.Serializer
 	Port string
+	serialize.Serializer
 	Observers map[api.Stream]struct{}
 }
