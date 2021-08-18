@@ -43,7 +43,7 @@ func (f adapter) List() (reader io.ReadCloser, err error) {
 	}
 	reader, pw := io.Pipe()
 	go func() {
-		_, err := serializer.NewWriter(pw).WriteSize(len(names))
+		_, err := serializer.NewWriter(pw).WriteUInt16(uint16(len(names)))
 		if err != nil {
 			pw.CloseWithError(err)
 			return

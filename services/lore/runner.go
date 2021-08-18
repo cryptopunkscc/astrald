@@ -38,7 +38,7 @@ func run(ctx context.Context, core api.Core) error {
 		var stream api.Stream
 
 		// Connect to identifier
-		mimeTypeSize := byte(len(storyMimeTypeBytes))
+		mimeTypeSize := uint16(len(storyMimeTypeBytes))
 		if stream, err = connect.Local(ctx, core, identifier.Port, mimeTypeSize); err != nil {
 			log.Println(Port, "cannot connect", identifier.Port, err)
 			return
@@ -109,7 +109,7 @@ func run(ctx context.Context, core api.Core) error {
 			defer stream.Close()
 
 			// Read type
-			typ, err := stream.ReadStringWithSize()
+			typ, err := stream.ReadStringWithSize16()
 			if err != nil {
 				return
 			}

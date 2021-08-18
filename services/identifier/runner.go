@@ -35,6 +35,7 @@ func run(ctx context.Context, core api.Core) error {
 	// Observe repo changes
 	go func() {
 		time.Sleep(1 * time.Second)
+
 		var err error
 		var stream io.Reader
 		var id fid.ID
@@ -42,10 +43,11 @@ func run(ctx context.Context, core api.Core) error {
 
 		// Request observe
 		if stream, err = repository.Observer(); err != nil {
-			log.Println(Port, "cannot connect to ", repo.Port, err)
+			log.Println(Port, "cannot connect to", repo.Port, err)
 			return
 		}
 
+		log.Println(Port, "observing", repo.Port, err)
 		for {
 			// Read id
 			if id, idBuff, err = fid.Read(stream); err != nil {
@@ -121,14 +123,10 @@ func run(ctx context.Context, core api.Core) error {
 			if err := func() (err error) {
 				defer stream.Close()
 
-				var size byte
 				var query string
 
 				// Read query
-				if size, err = stream.ReadByte(); err != nil {
-					return
-				}
-				if query, err = stream.ReadString(int(size)); err != nil {
+				if query, err = stream.ReadStringWithSize16(); err != nil {
 					return
 				}
 

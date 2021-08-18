@@ -37,7 +37,7 @@ func run(ctx context.Context, core api.Core) (err error) {
 
 		s := serializer.New(stream)
 
-		_, err = s.WriteStringWithSize(testStoryType)
+		_, err = s.WriteStringWithSize16(testStoryType)
 		if err != nil {
 			return
 		}
@@ -73,7 +73,7 @@ func run(ctx context.Context, core api.Core) (err error) {
 			)
 			storyBuff := story.Pack()
 			log.Println(port, "sending story with size", len(storyBuff), storyBuff)
-			err = s.WriteByte(request.Write)
+			_, err = s.WriteUInt16(request.Write)
 			if err != nil {
 				log.Println(err)
 				return
