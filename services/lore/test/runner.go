@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/services/lore"
 	"github.com/cryptopunkscc/astrald/services/repo"
+	"github.com/cryptopunkscc/astrald/services/repo/request"
 	"log"
 	"time"
 )
@@ -70,9 +71,9 @@ func run(ctx context.Context, core api.Core) (err error) {
 				[]fid.ID{},
 				[]byte{},
 			)
-			storyBuff := story.PackBytes()
+			storyBuff := story.Pack()
 			log.Println(port, "sending story with size", len(storyBuff), storyBuff)
-			err = s.WriteByte(repo.RequestWrite)
+			err = s.WriteByte(request.Write)
 			if err != nil {
 				log.Println(err)
 				return

@@ -4,6 +4,7 @@ import (
 	"encoding/base32"
 	"encoding/binary"
 	"errors"
+	"io"
 	"strings"
 )
 
@@ -33,6 +34,15 @@ func (id ID) Pack() [Size]byte {
 func Unpack(data [Size]byte) (id ID) {
 	id.Size = binary.BigEndian.Uint64(data[0:8])
 	copy(id.Hash[:], data[8:Size])
+	return
+}
+
+func Read(reader io.Reader) (id ID, data [Size]byte, err error) {
+	_, err = reader.Read(data[:])
+	if err != nil {
+		return
+	}
+	id = Unpack(data)
 	return
 }
 

@@ -5,8 +5,13 @@ import (
 	"io"
 )
 
-type Repository interface {
+type LocalRepository interface {
 	ReadWriteRepository
+	ObserveRepository
+}
+
+type RemoteRepository interface {
+	ReadRepository
 	ObserveRepository
 }
 

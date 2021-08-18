@@ -6,14 +6,14 @@ import (
 	"io"
 )
 
-func (s *Story) PackBytes() []byte {
+func (s *Story) Pack() []byte {
 	buffer := bytes.NewBuffer([]byte{})
-	_ = s.Pack(buffer)
+	_ = s.Write(buffer)
 	return buffer.Bytes()
 }
 
 
-func (s *Story) Pack(writer io.Writer) (err error) {
+func (s *Story) Write(writer io.Writer) (err error) {
 	f := serialize.NewFormatter(writer)
 
 	// write magic bytes

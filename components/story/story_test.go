@@ -19,7 +19,7 @@ func TestPackUnpack(t *testing.T) {
 	}
 
 	// when
-	packed := given.PackBytes()
+	packed := given.Pack()
 	unpacked, err := UnpackBytes(packed)
 	if err != nil {
 		t.Error(err)

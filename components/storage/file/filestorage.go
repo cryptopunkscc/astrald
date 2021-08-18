@@ -24,8 +24,21 @@ type fileWriter struct {
 
 func NewStorage(astralHome string) storage.Storage {
 	storageDir := filepath.Join(astralHome, "storage")
-	err := os.Mkdir(storageDir, 0700)
-	log.Println(err)
+	stat, err := os.Stat(storageDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err := os.MkdirAll(storageDir, 0700)
+			if err != nil {
+				panic("cannot create storage: " + err.Error())
+			}
+			log.Println("created storage dir in", storageDir)
+		} else if stat.Mode().Perm() != 0700 {
+			err := os.Chmod(storageDir, 0700)
+			if err != nil {
+				panic("cannot change storage mode: " + err.Error())
+			}
+		}
+	}
 	return fileStorage{dir: storageDir}
 }
 

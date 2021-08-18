@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/bind/api"
 	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/services"
 	_ "github.com/cryptopunkscc/astrald/services/appsupport/tcp"
 	_ "github.com/cryptopunkscc/astrald/services/lore"
-	"github.com/cryptopunkscc/astrald/services/repo"
 	"log"
 	"os"
 	"time"
@@ -25,7 +25,7 @@ func Start(astralHome string) {
 	log.Println("log Staring astrald")
 
 	// init AstralHome for file system service
-	repo.AstralHome = astralHome
+	services.AstralHome = astralHome
 
 	// Instantiate the node
 	node := _node.New(astralHome)

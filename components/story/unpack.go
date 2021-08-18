@@ -22,7 +22,7 @@ func Unpack(reader io.Reader) (story *Story, err error) {
 		return
 	}
 	if !bytes.Equal(magic, MagicBytes[:]) {
-		err = errors.New("cannot unpack story: invalid magic number: " + string(magic) + ", len: " +string( len(magic)))
+		err = errors.New("cannot unpack story: invalid magic number: " + string(magic) + ", len: " + string(len(magic)))
 		return
 	}
 
@@ -68,7 +68,7 @@ func Unpack(reader io.Reader) (story *Story, err error) {
 	}
 
 	if dataSize == 0 {
-		pac := story.PackBytes()
+		pac := story.Pack()
 		log.Println("unpacked story size:", len(pac))
 		return
 	}

@@ -1,0 +1,69 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+'autonumber
+
+'box local
+participant MyPush
+participant MyRepo
+'end box
+
+'box remote
+participant OtherPush
+participant OtherRepo
+'end box
+
+== Enqueuing file sharing ==
+
+?-> MyPush: enqueue ids for push
+activate MyPush
+MyPush -> MyPush: add (enqueued shares)
+MyPush -> MyPush: trigger sync
+deactivate MyPush
+
+...
+== Sharing files to other ==
+...
+
+MyPush -> MyPush: trigger sync
+activate MyPush
+MyPush -> OtherPush: send (queued shared files ids)
+activate OtherPush
+OtherPush -> OtherRepo: put (shared files ids)
+activate OtherRepo
+OtherPush <-- OtherRepo: ok
+deactivate OtherRepo
+MyPush <-- OtherPush: ok
+OtherPush -> OtherPush: trigger sync
+deactivate OtherPush
+MyPush -> MyRepo: remove (queued shared files ids)
+MyPush <-- MyRepo: ok
+deactivate MyPush
+
+...
+== Obtaining shared files ==
+...
+
+OtherPush -> OtherPush : trigger sync
+activate OtherPush
+MyRepo <- OtherPush : get (shared files ids)
+activate MyRepo
+MyRepo --> OtherPush : send (files stream)
+deactivate MyRepo
+OtherPush -> OtherRepo : put (files stream)
+OtherPush <-- OtherRepo : ok
+deactivate OtherPush
+
+...
+== Alternative sync trigger ==
+...
+
+MyPush <-> OtherPush: Connected
+activate MyPush
+activate OtherPush
+MyPush -> MyPush: trigger sync
+deactivate MyPush
+OtherPush -> OtherPush: trigger sync
+deactivate OtherPush
+
+@enduml
