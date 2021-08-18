@@ -12,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/services/util/accept"
 	"github.com/cryptopunkscc/astrald/services/util/connect"
 	"github.com/cryptopunkscc/astrald/services/util/register"
+	"io"
 	"log"
 	"time"
 )
@@ -33,57 +34,60 @@ func run(ctx context.Context, core api.Core) error {
 	go func() {
 		time.Sleep(1 * time.Second)
 
+		var err error
+		var stream api.Stream
+
 		// Connect to identifier
 		mimeTypeSize := byte(len(storyMimeTypeBytes))
-		stream, err := connect.Local(ctx, core, identifier.Port, mimeTypeSize)
-		if err != nil {
+		if stream, err = connect.Local(ctx, core, identifier.Port, mimeTypeSize); err != nil {
 			log.Println(Port, "cannot connect", identifier.Port, err)
 			return
+		} else {
+			log.Println(Port, "connected to", identifier.Port, err)
 		}
-		log.Println(Port, "connected to", identifier.Port, err)
 
 		// Send observed type
-		_, err = stream.Write(storyMimeTypeBytes)
-		if err != nil {
+		if _, err = stream.Write(storyMimeTypeBytes); err != nil {
 			log.Println(Port, "cannot request observe", identifier.Port, err)
 			return
 		}
-		log.Println(Port, "observing", identifier.Port, err)
 
+		log.Println(Port, "observing", identifier.Port, err)
 		for {
 			// Resolve id
-			id, _, err := fid.Read(stream)
-			if err != nil {
+			var id fid.ID
+			if id, _, err = fid.Read(stream); err != nil {
 				log.Println(Port, "read new fid from", identifier.Port, err)
 				return
+			} else {
+				log.Println(Port, "new file fid", id.String())
 			}
-			log.Println(Port, "new file fid", id.String())
 
 			go func() {
+				var reader io.ReadCloser
+				var story *lore.Story
+				var storyType string
 
 				// Connecting to repo
-				stream, err := repository.Reader(id)
-				if err != nil {
+				if reader, err = repository.Reader(id); err != nil {
 					log.Println(Port, "cannot read from", repo.Port, err)
 					return
 				}
 
 				// Read story
-				story, err := lore.Unpack(stream)
-				if err != nil {
+				defer reader.Close()
+				if story, err = lore.Unpack(reader); err != nil {
 					log.Println(Port, "cannot unpack story", err)
 					return
 				}
-				storyType := story.Type()
-				log.Println(Port, "resolved story type", storyType, "from", repo.Port)
 
 				// Notify observers
+				storyType = story.Type()
+				log.Println(Port, "resolved story type", storyType, "from", repo.Port)
 				for observer, observerTyp := range observers {
 					if storyType == observerTyp {
-						err = story.Write(observer)
-						if err != nil {
+						if err = story.Write(observer); err != nil {
 							log.Println(Port, "cannot send story for", storyType, err)
-							return
 						}
 						log.Println(Port, "send story for", storyType)
 					}
