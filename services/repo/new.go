@@ -26,7 +26,7 @@ func NewFilesClient(
 	return adapter.New(FilesPort, identity, ctx, core)
 }
 
-func NewRepoService() *service.Service {
+func NewRepoService() *service.Context {
 	return service.New(Port,
 		auth.AcceptLocal,
 		service.Handlers{
@@ -38,7 +38,7 @@ func NewRepoService() *service.Service {
 	)
 }
 
-func NewFilesService() *service.Service {
+func NewFilesService() *service.Context {
 	return service.New(FilesPort,
 		auth.AcceptAll,
 		service.Handlers{

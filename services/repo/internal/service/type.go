@@ -6,15 +6,18 @@ import (
 	"github.com/cryptopunkscc/astrald/services/util/request"
 )
 
-type Service struct {
-	port      string
+type Context struct {
+	request.Context
+	repo.ReadWriteRepository
 	handlers  map[byte]Handle
-	observers map[api.Stream]struct{}
 	authorize Authorize
-	repo      repo.ReadWriteRepository
 }
 
-type Handle func(c *request.Context)
+type Request struct {
+	Context
+}
+
+type Handle func(c *Request)
 
 type Handlers map[byte]Handle
 

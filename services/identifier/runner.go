@@ -138,7 +138,7 @@ func run(ctx context.Context, core api.Core) error {
 
 				// Close blocking
 				for {
-					if _, err := stream.ReadByte(); err != nil {
+					if _, err = stream.ReadByte(); err != nil {
 						log.Println(Port, "removing file observer")
 						delete(observers, stream)
 						return

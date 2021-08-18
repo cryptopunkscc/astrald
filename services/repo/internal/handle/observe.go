@@ -1,11 +1,11 @@
 package handle
 
 import (
-	"github.com/cryptopunkscc/astrald/services/util/request"
+	"github.com/cryptopunkscc/astrald/services/repo/internal/service"
 	"log"
 )
 
-func Observe(c *request.Context) {
+func Observe(c *service.Request) {
 	c.Observers[c] = struct{}{}
 	log.Println(c.Port, "added new files observer")
 	var buffer [1]byte

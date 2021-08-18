@@ -2,11 +2,11 @@ package handle
 
 import (
 	"github.com/cryptopunkscc/astrald/components/fid"
-	"github.com/cryptopunkscc/astrald/services/util/request"
+	"github.com/cryptopunkscc/astrald/services/repo/internal/service"
 	"io"
 )
 
-func Read(c *request.Context) {
+func Read(c *service.Request) {
 
 	// Read file id requested file fid
 	var idBuff [40]byte

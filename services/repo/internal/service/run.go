@@ -7,51 +7,46 @@ import (
 	"github.com/cryptopunkscc/astrald/components/storage/repo"
 	"github.com/cryptopunkscc/astrald/services"
 	"github.com/cryptopunkscc/astrald/services/util/accept"
-	"github.com/cryptopunkscc/astrald/services/util/request"
+	"github.com/cryptopunkscc/astrald/services/util/register"
 	"log"
 )
 
-func (srv *Service) Run(ctx context.Context, core api.Core) error {
-	srv.repo = repo.NewAdapter(file.NewStorage(services.AstralHome))
-	handler, err := core.Network().Register(srv.port)
+func (srv *Context) Run(ctx context.Context, core api.Core) error {
+	srv.ReadWriteRepository = repo.NewAdapter(file.NewStorage(services.AstralHome))
+	handler, err := register.Port(ctx, core, srv.Port)
 	if err != nil {
 		return err
 	}
-	go func() {
-		<-ctx.Done()
-		_ = handler.Close()
-	}()
+
 	for r := range handler.Requests() {
 		if !srv.authorize(core, r) {
-			log.Println(srv.port, "rejected remote connection")
+			log.Println(srv.Port, "rejected remote connection")
 			continue
 		}
 
-		stream := accept.Request(ctx, r)
-		log.Println(srv.port, "accepted connection")
+		request := &Request{*srv}
+		request.Serializer = accept.Request(ctx, r)
+		log.Println(srv.Port, "accepted connection")
 
 		go func() {
-			defer stream.Close()
+			defer func() { _ = request.Close() }()
 
-			requestType, err := stream.ReadByte()
-			if err != nil {
-				log.Println(srv.port, "error reading type", err)
+			var err error
+			var requestType byte
+			var handle Handle
+
+			if requestType, err = request.ReadByte(); err != nil {
+				log.Println(request.Port, "error reading type", err)
 				return
 			}
 
-			handle := srv.handlers[requestType]
-			if handle == nil {
-				log.Println(srv.port, "unknown request type", requestType)
+			if handle = request.handlers[requestType]; handle == nil {
+				log.Println(request.Port, "unknown request type", requestType)
 				return
 			}
-			log.Println(srv.port, "request type", requestType)
 
-			handle(&request.Context{
-				Serializer:          stream,
-				Port:                srv.port,
-				ReadWriteRepository: srv.repo,
-				Observers:           srv.observers,
-			})
+			log.Println(request.Port, "handle request type", requestType)
+			handle(request)
 		}()
 	}
 	return nil
