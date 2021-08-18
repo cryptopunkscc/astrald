@@ -95,11 +95,11 @@ func run(ctx context.Context, core api.Core) error {
 				log.Println(Port, "notifying observers", len(observers))
 				for observer, observedType := range observers {
 					if observedType == fileType {
-						go func() {
-							if _, err := observer.Write(idBuff[:]); err != nil {
+						go func(s api.Stream) {
+							if _, err := s.Write(idBuff[:]); err != nil {
 								log.Println(Port, "cannot write file id for", observedType, err)
 							}
-						}()
+						}(observer)
 					}
 				}
 			}()
