@@ -34,6 +34,7 @@ func NewRepoService() *service.Context {
 			request.Read:    handle.Read,
 			request.Write:   handle.Write,
 			request.Observe: handle.Observe,
+			request.Map:     handle.Map,
 		},
 	)
 }

@@ -8,7 +8,7 @@ import (
 
 type Context struct {
 	request.Context
-	repo.ReadWriteRepository
+	repo.ReadWriteMapRepository
 	handlers  map[byte]Handle
 	authorize Authorize
 }

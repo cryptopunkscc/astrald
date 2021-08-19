@@ -12,7 +12,7 @@ import (
 )
 
 func (srv *Context) Run(ctx context.Context, core api.Core) error {
-	srv.ReadWriteRepository = repo.NewAdapter(file.NewStorage(services.AstralHome))
+	srv.ReadWriteMapRepository = repo.NewAdapter(file.NewStorage(services.AstralHome))
 	handler, err := register.Port(ctx, core, srv.Port)
 	if err != nil {
 		return err

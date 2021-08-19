@@ -37,16 +37,10 @@ func Write(c *service.Request) {
 			log.Println(c.Port, "cannot finalize", err)
 			return
 		}
-		packed := id.Pack()
-		log.Println(c.Port, "notifying observers", len(c.Observers))
-		for observer := range c.Observers {
-			_, err := observer.Write(packed[:])
-			if err != nil {
-				log.Println(c.Port, "cannot notify observer:", err)
-			}
-		}
+		idPack := id.Pack()
+		notifyObservers(c, idPack)
 		log.Println(c.Port, "sending")
-		_, err = c.Write(packed[:])
+		_, err = c.Write(idPack[:])
 		if err != nil {
 			log.Println(c.Port, "cannot write file fid", err)
 			return
