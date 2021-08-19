@@ -1,35 +1,35 @@
 package proto
 
 import (
-	"encoding/gob"
+	"encoding/json"
 	"io"
 )
 
-type Socket struct {
+type Conn struct {
 	io.ReadWriteCloser
-	enc *gob.Encoder
-	dec *gob.Decoder
+	enc *json.Encoder
+	dec *json.Decoder
 }
 
-func NewSocket(rwc io.ReadWriteCloser) *Socket {
-	return &Socket{
+func NewConn(rwc io.ReadWriteCloser) *Conn {
+	return &Conn{
 		ReadWriteCloser: rwc,
-		enc:             gob.NewEncoder(rwc),
-		dec:             gob.NewDecoder(rwc),
+		enc:             json.NewEncoder(rwc),
+		dec:             json.NewDecoder(rwc),
 	}
 }
 
-func (socket *Socket) ReadRequest() (req Request, err error) {
+func (socket *Conn) ReadRequest() (req Request, err error) {
 	err = socket.dec.Decode(&req)
 	return
 }
 
-func (socket *Socket) ReadResponse() (res Response, err error) {
+func (socket *Conn) ReadResponse() (res Response, err error) {
 	err = socket.dec.Decode(&res)
 	return
 }
 
-func (socket *Socket) Connect(identity string, port string) (res Response, err error) {
+func (socket *Conn) Connect(identity string, port string) (res Response, err error) {
 	err = socket.enc.Encode(&Request{
 		Type:     RequestConnect,
 		Identity: identity,
@@ -42,7 +42,7 @@ func (socket *Socket) Connect(identity string, port string) (res Response, err e
 	return socket.ReadResponse()
 }
 
-func (socket *Socket) Register(port string, path string) (res Response, err error) {
+func (socket *Conn) Register(port string, path string) (res Response, err error) {
 	err = socket.enc.Encode(&Request{
 		Type: RequestRegister,
 		Port: port,
@@ -55,7 +55,7 @@ func (socket *Socket) Register(port string, path string) (res Response, err erro
 	return socket.ReadResponse()
 }
 
-func (socket *Socket) Error(err string) error {
+func (socket *Conn) Error(err string) error {
 	socket.enc.Encode(&Response{
 		Status: StatusError,
 		Error:  err,
@@ -63,7 +63,7 @@ func (socket *Socket) Error(err string) error {
 	return socket.Close()
 }
 
-func (socket *Socket) OK() error {
+func (socket *Conn) OK() error {
 	return socket.enc.Encode(&Response{
 		Status: StatusOK,
 	})

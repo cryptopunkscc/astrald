@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node"
-	_ "github.com/cryptopunkscc/astrald/services/appsupport"
+	_ "github.com/cryptopunkscc/astrald/services/apphost"
 	"log"
 	"os"
 	"os/signal"
