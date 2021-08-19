@@ -44,7 +44,8 @@ func run(ctx context.Context, core api.Core) error {
 		log.Println(Port, "observing", repo.Port, err)
 		for {
 			// Read id
-			id, idBuff, err := fid.Read(stream); if err != nil {
+			id, idBuff, err := fid.Read(stream)
+			if err != nil {
 				log.Println(Port, "cannot read new fid from repo", err)
 				return
 			}

@@ -50,10 +50,10 @@ func NewStory(
 ) *Story {
 	return &Story{
 		timestamp: uint64(timestamp),
-		typ: bytes.NewBufferString(typ).Bytes(),
-		author: bytes.NewBufferString(author).Bytes(),
-		refs: refs,
-		data: data,
+		typ:       bytes.NewBufferString(typ).Bytes(),
+		author:    bytes.NewBufferString(author).Bytes(),
+		refs:      refs,
+		data:      data,
 	}
 }
 

@@ -48,4 +48,3 @@ func (srv *Context) Run(ctx context.Context, core api.Core) (err error) {
 	}
 	return
 }
-

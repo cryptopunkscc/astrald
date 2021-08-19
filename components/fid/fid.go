@@ -11,7 +11,7 @@ import (
 const (
 	SizeLen = 8
 	HashLen = 32
-	Size = 40
+	Size    = 40
 )
 
 const idPrefix = "id1"

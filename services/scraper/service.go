@@ -19,4 +19,3 @@ func run(ctx context.Context, core api.Core) error {
 
 	return nil
 }
-

@@ -5,5 +5,5 @@ const (
 	Read    = 1
 	Write   = 2
 	Observe = 3
-	Map = 4
+	Map     = 4
 )

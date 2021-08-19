@@ -12,7 +12,6 @@ func (s *Story) Pack() []byte {
 	return buffer.Bytes()
 }
 
-
 func (s *Story) Write(writer io.Writer) (err error) {
 	f := sio.NewWriter(writer)
 

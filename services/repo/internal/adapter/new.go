@@ -13,7 +13,7 @@ func New(
 	core api.Core,
 ) repo.LocalRepository {
 	return repository{
-		port: port,
+		port:     port,
 		identity: identity,
 		ctx:      ctx,
 		core:     core,

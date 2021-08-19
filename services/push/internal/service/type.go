@@ -10,7 +10,7 @@ import (
 type Context struct {
 	request.Context
 	api.Core
-	Ctx context.Context
+	Ctx      context.Context
 	Handlers map[byte]Handle
 }
 
