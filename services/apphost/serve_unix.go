@@ -20,7 +20,7 @@ func serveUnix(ctx context.Context) (<-chan net.Conn, error) {
 		return nil, err
 	}
 
-	go func() {
+	go func(listener net.Listener) {
 		defer close(outCh)
 
 		go func() {
@@ -41,7 +41,7 @@ func serveUnix(ctx context.Context) (<-chan net.Conn, error) {
 		}
 
 		log.Println("apps: closed unix", addr)
-	}()
+	}(listener)
 
 	return outCh, nil
 }
@@ -54,7 +54,9 @@ func makeControlSocket() (net.Listener, error) {
 		if !fi.Mode().IsRegular() {
 			log.Println("apps: stale unix socket found, removing...")
 			err := os.Remove(fullPath)
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
