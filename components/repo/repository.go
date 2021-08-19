@@ -16,6 +16,11 @@ type RemoteRepository interface {
 	ObserveRepository
 }
 
+type ReadWriteMapRepository interface {
+	ReadWriteRepository
+	MapperRepository
+}
+
 type ReadWriteRepository interface {
 	ReadRepository
 	WriteRepository
@@ -32,6 +37,10 @@ type WriteRepository interface {
 
 type ObserveRepository interface {
 	Observer() (Observer, error)
+}
+
+type MapperRepository interface {
+	Map(path string) (*fid.ID, error)
 }
 
 type Reader interface {

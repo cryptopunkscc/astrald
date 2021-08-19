@@ -5,20 +5,45 @@ import (
 )
 
 type Storage interface {
+	ReadWriteStorage
+	ReadMapStorage
+}
+
+type ReadWriteStorage interface {
+	ReadStorage
+	WriteStorage
+}
+
+type ReadMapStorage interface {
+	ReadStorage
+	MapStorage
+}
+
+type ReadStorage interface {
 	Reader(name string) (FileReader, error)
-	Writer() (FileWriter, error)
 	List() ([]string, error)
+}
+
+type WriteStorage interface {
+	Writer() (FileWriter, error)
+}
+
+type MapStorage interface {
+	Mapper() (FileMapper, error)
 }
 
 type FileWriter interface {
 	io.WriteCloser
-	Name() string
 	Rename(name string) error
 	Sync() error
 }
 
 type FileReader interface {
 	io.ReadSeekCloser
-	Name() string
 	Size() (int64, error)
+}
+
+type FileMapper interface {
+	Map(path string) error
+	Rename(name string) error
 }

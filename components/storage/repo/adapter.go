@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/components/storage"
 	"io"
 	"log"
+	"os"
 )
 
 const tag = "file-storage"
@@ -26,11 +27,11 @@ type writer struct {
 	sio.Serializer
 }
 
-func NewAdapter(storage storage.Storage) repo.ReadWriteRepository {
-	return adapter{Storage: storage}
+func NewAdapter(storage storage.Storage) repo.ReadWriteMapRepository {
+	return &adapter{Storage: storage}
 }
 
-func (f adapter) Reader(id fid.ID) (repo.Reader, error) {
+func (f *adapter) Reader(id fid.ID) (repo.Reader, error) {
 	r, err := f.Storage.Reader(id.String())
 	if err != nil {
 		return nil, err
@@ -42,7 +43,7 @@ func (f adapter) Reader(id fid.ID) (repo.Reader, error) {
 	}, nil
 }
 
-func (f adapter) List() (reader io.ReadCloser, err error) {
+func (f *adapter) List() (reader io.ReadCloser, err error) {
 	names, err := f.Storage.List()
 	if err != nil {
 		return
@@ -72,7 +73,7 @@ func (f adapter) List() (reader io.ReadCloser, err error) {
 	return
 }
 
-func (f adapter) Writer() (repo.Writer, error) {
+func (f *adapter) Writer() (repo.Writer, error) {
 	w, err := f.Storage.Writer()
 	if err != nil {
 		return nil, err
@@ -84,12 +85,36 @@ func (f adapter) Writer() (repo.Writer, error) {
 	}, nil
 }
 
-func (w writer) Write(p []byte) (int, error) {
+func (f *adapter) Map(path string) (*fid.ID, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	id, err := fid.Resolve(file)
+	if err != nil {
+		return nil, err
+	}
+	mapper, err := f.Mapper()
+	if err != nil {
+		return nil, err
+	}
+	err = mapper.Map(path)
+	if err != nil {
+		return nil, err
+	}
+	err = mapper.Rename(id.String())
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+func (w *writer) Write(p []byte) (int, error) {
 	_, _ = w.Resolver.Write(p)
 	return w.FileWriter.Write(p)
 }
 
-func (w writer) Finalize() (*fid.ID, error) {
+func (w *writer) Finalize() (*fid.ID, error) {
 	err := w.Sync()
 	if err != nil {
 		log.Println(err)
