@@ -39,7 +39,7 @@ func run(ctx context.Context, core api.Core) error {
 
 		// Connect to identifier
 		mimeTypeSize := uint16(len(storyMimeTypeBytes))
-		if stream, err = connect.Local(ctx, core, identifier.Port, mimeTypeSize); err != nil {
+		if stream, err = connect.LocalRequest(ctx, core, identifier.Port, mimeTypeSize); err != nil {
 			log.Println(Port, "cannot connect", identifier.Port, err)
 			return
 		} else {

@@ -62,10 +62,24 @@ func (f *writer) WriteWithSize16(b []byte) (l int, err error) {
 	return
 }
 
+func (f *writer) WriteWithSize32(b []byte) (l int, err error) {
+	_, err = f.WriteUInt32(uint32(len(b)))
+	if err != nil {
+		return
+	}
+	l2, err := f.Write(b)
+	l = l + l2
+	return
+}
+
 func (f *writer) WriteStringWithSize8(s string) (int, error) {
 	return f.WriteWithSize8(bytes.NewBufferString(s).Bytes())
 }
 
 func (f *writer) WriteStringWithSize16(s string) (int, error) {
 	return f.WriteWithSize16(bytes.NewBufferString(s).Bytes())
+}
+
+func (f *writer) WriteStringWithSize32(s string) (int, error) {
+	return f.WriteWithSize32(bytes.NewBufferString(s).Bytes())
 }

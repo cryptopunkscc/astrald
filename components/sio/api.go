@@ -36,9 +36,11 @@ type Deserializer interface {
 	ReadUint64() (uint64, error)
 	ReadWithSize8() (buff []byte, err error)
 	ReadWithSize16() (buff []byte, err error)
+	ReadWithSize32() (buff []byte, err error)
 	ReadN(n int) ([]byte, error)
 	ReadStringWithSize8() (string, error)
 	ReadStringWithSize16() (string, error)
+	ReadStringWithSize32() (string, error)
 	ReadString(n int) (string, error)
 }
 
@@ -51,6 +53,8 @@ type Serializer interface {
 	WriteString(s string) (int, error)
 	WriteWithSize8(b []byte) (l int, err error)
 	WriteWithSize16(b []byte) (l int, err error)
+	WriteWithSize32(b []byte) (l int, err error)
 	WriteStringWithSize8(s string) (int, error)
 	WriteStringWithSize16(s string) (int, error)
+	WriteStringWithSize32(s string) (int, error)
 }

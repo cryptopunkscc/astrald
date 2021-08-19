@@ -8,7 +8,7 @@ import (
 )
 
 func Write(c *service.Request) {
-	var sizeBuff [8]byte
+	var sizeBuff [4]byte
 	for {
 		// Read next file size
 		_, err := c.Read(sizeBuff[:])
@@ -17,7 +17,7 @@ func Write(c *service.Request) {
 			return
 		}
 		log.Println(c.Port, "received bytes size:", sizeBuff)
-		size := int64(binary.BigEndian.Uint64(sizeBuff[:]))
+		size := int64(binary.BigEndian.Uint32(sizeBuff[:]))
 		log.Println(c.Port, "parsed size:", size)
 		// Obtain file writer
 		writer, err := c.Writer()

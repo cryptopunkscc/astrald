@@ -19,7 +19,7 @@ type repository struct {
 }
 
 func (repo repository) connect(request uint16) (sio.ReadWriteCloser, error) {
-	return connect.Local(repo.ctx, repo.core, repo.port, request)
+	return connect.LocalRequest(repo.ctx, repo.core, repo.port, request)
 }
 
 func (repo repository) Reader(id fid.ID) (repo.Reader, error) {
