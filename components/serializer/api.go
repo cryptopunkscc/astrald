@@ -8,8 +8,27 @@ type ReadWriteCloser interface {
 	Writer
 }
 
+type ReadCloser interface {
+	io.ReadCloser
+	Reader
+}
+
 type Reader interface {
 	io.Reader
+	Parser
+}
+
+type WriteCloser interface {
+	io.Closer
+	Writer
+}
+
+type Writer interface {
+	io.Writer
+	Formatter
+}
+
+type Parser interface {
 	ReadByte() (byte, error)
 	ReadUint8() (uint16, error)
 	ReadUint16() (uint16, error)
@@ -23,8 +42,7 @@ type Reader interface {
 	ReadString(n int) (string, error)
 }
 
-type Writer interface {
-	io.Writer
+type Formatter interface {
 	WriteByte(b byte) (err error)
 	WriteUInt8(i uint8) error
 	WriteUInt16(i uint16) (int, error)

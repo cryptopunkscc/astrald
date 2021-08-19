@@ -11,9 +11,17 @@ func New(rw io.ReadWriteCloser) ReadWriteCloser {
 }
 
 func NewReader(r io.Reader) Reader {
-	return &reader{r}
+	return &reader{Reader: r}
+}
+
+func NewReadCloser(r io.ReadCloser) ReadCloser {
+	return &reader{r, r}
 }
 
 func NewWriter(w io.Writer) Writer {
-	return &writer{w}
+	return &writer{Writer: w}
+}
+
+func NewWritCloser(w io.WriteCloser) WriteCloser {
+	return &writer{w, w}
 }

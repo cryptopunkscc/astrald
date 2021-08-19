@@ -2,6 +2,7 @@ package repo
 
 import (
 	"github.com/cryptopunkscc/astrald/components/fid"
+	"github.com/cryptopunkscc/astrald/components/serializer"
 	"io"
 )
 
@@ -34,15 +35,15 @@ type ObserveRepository interface {
 }
 
 type Reader interface {
-	io.ReadCloser
+	serializer.ReadCloser
 	Size() (int64, error)
 }
 
 type Writer interface {
-	io.Writer
+	serializer.Writer
 	Finalize() (*fid.ID, error)
 }
 
 type Observer interface {
-	io.ReadCloser
+	serializer.ReadCloser
 }

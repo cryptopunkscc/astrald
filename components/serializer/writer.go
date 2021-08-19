@@ -8,6 +8,7 @@ import (
 
 type writer struct {
 	io.Writer
+	io.Closer
 }
 
 func (f *writer) WriteByte(b byte) (err error) {

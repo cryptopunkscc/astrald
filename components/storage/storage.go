@@ -1,6 +1,8 @@
 package storage
 
-import "io"
+import (
+	"io"
+)
 
 type Storage interface {
 	Reader(name string) (FileReader, error)

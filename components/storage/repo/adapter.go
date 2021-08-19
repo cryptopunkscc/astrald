@@ -17,11 +17,13 @@ type adapter struct {
 
 type reader struct {
 	storage.FileReader
+	serializer.Parser
 }
 
 type writer struct {
 	fid.Resolver
 	storage.FileWriter
+	serializer.Formatter
 }
 
 func NewAdapter(storage storage.Storage) repo.ReadWriteRepository {
@@ -33,7 +35,11 @@ func (f adapter) Reader(id fid.ID) (repo.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &reader{FileReader: r}, nil
+
+	return reader{
+		FileReader: r,
+		Parser:     serializer.NewReader(r),
+	}, nil
 }
 
 func (f adapter) List() (reader io.ReadCloser, err error) {
@@ -74,6 +80,7 @@ func (f adapter) Writer() (repo.Writer, error) {
 	return &writer{
 		Resolver:   fid.NewResolver(),
 		FileWriter: w,
+		Formatter:  serializer.NewWriter(w),
 	}, nil
 }
 

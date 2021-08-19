@@ -1,4 +1,4 @@
-package lore
+package test
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 
 const port = "lore-test"
 const testStoryType = "test_type"
-const TestStoryAuthor = "test_author"
+const testStoryAuthor = "test_author"
 
 func init() {
 	_ = node.RegisterService(port, run)
@@ -67,7 +67,7 @@ func run(ctx context.Context, core api.Core) (err error) {
 			story := _story.NewStory(
 				time.Now().Unix(),
 				testStoryType,
-				TestStoryAuthor,
+				testStoryAuthor,
 				[]fid.ID{},
 				[]byte{},
 			)

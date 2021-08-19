@@ -7,6 +7,7 @@ import (
 
 type reader struct {
 	io.Reader
+	io.Closer
 }
 
 func (r *reader) ReadByte() (byte, error) {
@@ -49,7 +50,6 @@ func (r *reader) ReadUint64() (uint64, error) {
 	return binary.BigEndian.Uint64(buff[:]), nil
 }
 
-
 func (r *reader) ReadN(n int) ([]byte, error) {
 	buff := make([]byte, n)
 	read, err := r.Read(buff)
@@ -82,7 +82,6 @@ func (r *reader) ReadWithSize16() (buff []byte, err error) {
 	}
 	return
 }
-
 
 func (r *reader) ReadWithSize32() (buff []byte, err error) {
 	size, err := r.ReadUint32()
