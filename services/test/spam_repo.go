@@ -11,9 +11,10 @@ import (
 )
 
 func spamRepo(ctx context.Context, core api.Core) {
+	time.Sleep(2 * time.Second)
+	i := 0
 	for {
-		time.Sleep(2 * time.Second)
-
+		i++
 		repository := repo.NewRepoClient(ctx, core)
 
 		log.Println(port, "getting repo writer")
@@ -22,10 +23,9 @@ func spamRepo(ctx context.Context, core api.Core) {
 			log.Println(port, "cannot write repo")
 			return
 		}
-
 		log.Println(port, "sending story")
 		s := story.NewStory(
-			time.Now().Unix(),
+			int64(i) + time.Now().Unix(),
 			testStoryType,
 			testStoryAuthor,
 			[]fid.ID{},
