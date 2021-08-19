@@ -1,4 +1,4 @@
-package serializer
+package sio
 
 import "io"
 
@@ -15,7 +15,7 @@ type ReadCloser interface {
 
 type Reader interface {
 	io.Reader
-	Parser
+	Deserializer
 }
 
 type WriteCloser interface {
@@ -25,10 +25,10 @@ type WriteCloser interface {
 
 type Writer interface {
 	io.Writer
-	Formatter
+	Serializer
 }
 
-type Parser interface {
+type Deserializer interface {
 	ReadByte() (byte, error)
 	ReadUint8() (uint16, error)
 	ReadUint16() (uint16, error)
@@ -42,7 +42,7 @@ type Parser interface {
 	ReadString(n int) (string, error)
 }
 
-type Formatter interface {
+type Serializer interface {
 	WriteByte(b byte) (err error)
 	WriteUInt8(i uint8) error
 	WriteUInt16(i uint16) (int, error)

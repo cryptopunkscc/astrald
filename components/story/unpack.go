@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/cryptopunkscc/astrald/components/fid"
-	"github.com/cryptopunkscc/astrald/components/serializer"
+	"github.com/cryptopunkscc/astrald/components/sio"
 	"io"
 	"log"
 )
@@ -14,7 +14,7 @@ func UnpackBytes(story []byte) (*Story, error) {
 }
 
 func Unpack(reader io.Reader) (story *Story, err error) {
-	p := serializer.NewReader(reader)
+	p := sio.NewReader(reader)
 
 	// validate magic bytes
 	magic, err := p.ReadN(LenMagicBytes)

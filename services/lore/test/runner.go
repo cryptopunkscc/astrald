@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
-	"github.com/cryptopunkscc/astrald/components/serializer"
+	"github.com/cryptopunkscc/astrald/components/sio"
 	_story "github.com/cryptopunkscc/astrald/components/story"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/services/lore"
@@ -35,7 +35,7 @@ func run(ctx context.Context, core api.Core) (err error) {
 			_ = stream.Close()
 		}()
 
-		s := serializer.New(stream)
+		s := sio.New(stream)
 
 		_, err = s.WriteStringWithSize16(testStoryType)
 		if err != nil {
@@ -62,7 +62,7 @@ func run(ctx context.Context, core api.Core) (err error) {
 			}
 			log.Println(port, "connected to", repo.Port)
 
-			s := serializer.New(stream)
+			s := sio.New(stream)
 
 			story := _story.NewStory(
 				time.Now().Unix(),

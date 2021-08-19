@@ -2,11 +2,11 @@ package request
 
 import (
 	"github.com/cryptopunkscc/astrald/api"
-	"github.com/cryptopunkscc/astrald/components/serializer"
+	"github.com/cryptopunkscc/astrald/components/sio"
 )
 
 type Context struct {
 	Port string
-	serializer.ReadWriteCloser
+	sio.ReadWriteCloser
 	Observers map[api.Stream]struct{}
 }

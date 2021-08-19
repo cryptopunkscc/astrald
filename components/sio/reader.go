@@ -1,4 +1,4 @@
-package serializer
+package sio
 
 import (
 	"encoding/binary"

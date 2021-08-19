@@ -2,7 +2,7 @@ package story
 
 import (
 	"bytes"
-	"github.com/cryptopunkscc/astrald/components/serializer"
+	"github.com/cryptopunkscc/astrald/components/sio"
 	"io"
 )
 
@@ -14,7 +14,7 @@ func (s *Story) Pack() []byte {
 
 
 func (s *Story) Write(writer io.Writer) (err error) {
-	f := serializer.NewWriter(writer)
+	f := sio.NewWriter(writer)
 
 	// write magic bytes
 	_, err = f.Write(MagicBytes[:])

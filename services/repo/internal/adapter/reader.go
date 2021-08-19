@@ -1,11 +1,11 @@
 package adapter
 
 import (
-	"github.com/cryptopunkscc/astrald/components/serializer"
+	"github.com/cryptopunkscc/astrald/components/sio"
 )
 
 type reader struct {
-	serializer.ReadCloser
+	sio.ReadCloser
 	size int64
 }
 

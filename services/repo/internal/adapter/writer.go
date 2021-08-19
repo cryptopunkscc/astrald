@@ -2,11 +2,11 @@ package adapter
 
 import (
 	"github.com/cryptopunkscc/astrald/components/fid"
-	"github.com/cryptopunkscc/astrald/components/serializer"
+	"github.com/cryptopunkscc/astrald/components/sio"
 )
 
 type writer struct {
-	serializer.ReadWriteCloser
+	sio.ReadWriteCloser
 }
 
 func (w writer) Finalize() (*fid.ID, error) {

@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
 	"github.com/cryptopunkscc/astrald/components/repo"
-	"github.com/cryptopunkscc/astrald/components/serializer"
+	"github.com/cryptopunkscc/astrald/components/sio"
 	"github.com/cryptopunkscc/astrald/services/repo/request"
 	"github.com/cryptopunkscc/astrald/services/util/connect"
 	"io"
@@ -18,7 +18,7 @@ type repository struct {
 	core     api.Core
 }
 
-func (repo repository) connect(request uint16) (serializer.ReadWriteCloser, error) {
+func (repo repository) connect(request uint16) (sio.ReadWriteCloser, error) {
 	return connect.Local(repo.ctx, repo.core, repo.port, request)
 }
 

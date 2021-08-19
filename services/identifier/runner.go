@@ -4,13 +4,11 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
-	repo2 "github.com/cryptopunkscc/astrald/components/repo"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/services/identifier/internal"
 	"github.com/cryptopunkscc/astrald/services/repo"
 	"github.com/cryptopunkscc/astrald/services/util/accept"
 	"github.com/cryptopunkscc/astrald/services/util/register"
-	"io"
 	"log"
 	"time"
 )
@@ -36,13 +34,9 @@ func run(ctx context.Context, core api.Core) error {
 	go func() {
 		time.Sleep(1 * time.Second)
 
-		var err error
-		var stream io.Reader
-		var id fid.ID
-		var idBuff [fid.Size]byte
-
 		// Request observe
-		if stream, err = repository.Observer(); err != nil {
+		stream, err := repository.Observer()
+		if err != nil {
 			log.Println(Port, "cannot connect to", repo.Port, err)
 			return
 		}
@@ -50,36 +44,33 @@ func run(ctx context.Context, core api.Core) error {
 		log.Println(Port, "observing", repo.Port, err)
 		for {
 			// Read id
-			if id, idBuff, err = fid.Read(stream); err != nil {
+			id, idBuff, err := fid.Read(stream); if err != nil {
 				log.Println(Port, "cannot read new fid from repo", err)
 				return
 			}
 			log.Println(Port, "new file fid", id.String())
 			// handle received id
 			go func() {
-				var err error
-				var reader repo2.Reader
-				var prefixBuff []byte
-				var fileType string
 
 				// obtain file reader for id
-				if reader, err = repository.Reader(id); err != nil {
+				reader, err := repository.Reader(id)
+				if err != nil {
 					log.Println(Port, "cannot read", err)
 					return
-				} else {
-					defer reader.Close()
 				}
+				defer reader.Close()
 
 				// obtain file prefix
 				log.Println(Port, "reading", id.Size, "bytes from", repo.Port)
-				if prefixBuff, err = reader.ReadN(4096); err != nil {
+				prefixBuff, err := reader.ReadN(4096)
+				if err != nil {
 					log.Println(Port, "cannot read from", repo.Port, err)
 					return
-				} else {
-					log.Println(Port, "resolved file prefix")
 				}
 
 				// resolve file type
+				var fileType string
+				log.Println(Port, "resolving file prefix")
 				for _, resolve := range resolvers {
 					fileType, err = resolve(prefixBuff[:])
 					if err == nil {
@@ -89,12 +80,10 @@ func run(ctx context.Context, core api.Core) error {
 				if err != nil || fileType == "" {
 					log.Println(Port, "cannot resolve fileType")
 					return
-				} else {
-					log.Println(Port, "resolved file type", fileType)
 				}
 
 				// notify observers
-				log.Println(Port, "notifying observers", len(observers))
+				log.Println(Port, "notifying observers", len(observers), "about", fileType)
 				for observer, observedType := range observers {
 					if observedType == fileType {
 						go func(s api.Stream) {

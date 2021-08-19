@@ -3,7 +3,7 @@ package repo
 import (
 	"github.com/cryptopunkscc/astrald/components/fid"
 	"github.com/cryptopunkscc/astrald/components/repo"
-	"github.com/cryptopunkscc/astrald/components/serializer"
+	"github.com/cryptopunkscc/astrald/components/sio"
 	"github.com/cryptopunkscc/astrald/components/storage"
 	"io"
 	"log"
@@ -17,13 +17,13 @@ type adapter struct {
 
 type reader struct {
 	storage.FileReader
-	serializer.Parser
+	sio.Deserializer
 }
 
 type writer struct {
 	fid.Resolver
 	storage.FileWriter
-	serializer.Formatter
+	sio.Serializer
 }
 
 func NewAdapter(storage storage.Storage) repo.ReadWriteRepository {
@@ -37,8 +37,8 @@ func (f adapter) Reader(id fid.ID) (repo.Reader, error) {
 	}
 
 	return reader{
-		FileReader: r,
-		Parser:     serializer.NewReader(r),
+		FileReader:   r,
+		Deserializer: sio.NewReader(r),
 	}, nil
 }
 
@@ -49,7 +49,7 @@ func (f adapter) List() (reader io.ReadCloser, err error) {
 	}
 	reader, pw := io.Pipe()
 	go func() {
-		_, err := serializer.NewWriter(pw).WriteUInt16(uint16(len(names)))
+		_, err := sio.NewWriter(pw).WriteUInt16(uint16(len(names)))
 		if err != nil {
 			pw.CloseWithError(err)
 			return
@@ -80,7 +80,7 @@ func (f adapter) Writer() (repo.Writer, error) {
 	return &writer{
 		Resolver:   fid.NewResolver(),
 		FileWriter: w,
-		Formatter:  serializer.NewWriter(w),
+		Serializer: sio.NewWriter(w),
 	}, nil
 }
 

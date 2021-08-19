@@ -2,7 +2,7 @@ package file
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/components/serializer"
+	"github.com/cryptopunkscc/astrald/components/sio"
 	"github.com/cryptopunkscc/astrald/components/storage"
 	"io/ioutil"
 	"log"
@@ -15,13 +15,13 @@ type fileStorage struct {
 }
 
 type fileReader struct {
-	serializer.Parser
+	sio.Deserializer
 	*os.File
 }
 
 type fileWriter struct {
+	sio.Serializer
 	*os.File
-	serializer.Formatter
 	dir string
 }
 
