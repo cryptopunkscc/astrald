@@ -5,10 +5,10 @@ import (
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/repo"
 	"github.com/cryptopunkscc/astrald/services/repo/internal/adapter"
-	"github.com/cryptopunkscc/astrald/services/repo/internal/auth"
 	"github.com/cryptopunkscc/astrald/services/repo/internal/handle"
 	"github.com/cryptopunkscc/astrald/services/repo/internal/service"
 	"github.com/cryptopunkscc/astrald/services/repo/request"
+	"github.com/cryptopunkscc/astrald/services/util/auth"
 )
 
 func NewRepoClient(
@@ -28,7 +28,7 @@ func NewFilesClient(
 
 func NewRepoService() *service.Context {
 	return service.New(Port,
-		auth.AcceptLocal,
+		auth.Local,
 		service.Handlers{
 			request.List:    handle.List,
 			request.Read:    handle.Read,
@@ -41,7 +41,7 @@ func NewRepoService() *service.Context {
 
 func NewFilesService() *service.Context {
 	return service.New(FilesPort,
-		auth.AcceptAll,
+		auth.All,
 		service.Handlers{
 			request.List: handle.List,
 			request.Read: handle.Read,

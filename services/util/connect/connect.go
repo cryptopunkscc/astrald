@@ -49,6 +49,9 @@ func RemoteRequest(
 	request uint16,
 ) (sio.ReadWriteCloser, error) {
 	s, err := Remote(ctx, core, identity, port)
+	if err != nil {
+		return nil, err
+	}
 	_, err = s.WriteUInt16(request)
 	if err != nil {
 		return nil, err

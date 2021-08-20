@@ -19,9 +19,16 @@ func Map(c *service.Request) {
 			id, err := c.Map(path)
 			if err != nil {
 				log.Println(c.Port, "cannot map path", path, err)
+				c.Close()
 				return
 			}
+			idPack := id.Pack()
 			notifyObservers(c, id.Pack())
+			_, err = c.Write(idPack[:])
+			if err != nil {
+				log.Println(c.Port, "cannot notify caller")
+				return
+			}
 		}()
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type fileMapperStorage struct {
@@ -36,7 +37,7 @@ func (f *fileMapperStorage) Reader(name string) (storage.FileReader, error) {
 	if err != nil {
 		return nil, err
 	}
-	path = string(buff)
+	path = strings.TrimSpace(string(buff))
 	file, err = os.Open(path)
 	return &fileMapperReader{File: file}, nil
 }
@@ -57,7 +58,7 @@ func (f *fileMapper) Map(path string) error {
 	}
 	defer dst.Close()
 	f.name = dst.Name()
-	_, err = sio.NewWriter(dst).WriteString(path)
+	_, err = sio.NewWriter(dst).WriteString(path + "\n")
 	if err != nil {
 		return err
 	}

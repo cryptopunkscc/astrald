@@ -13,7 +13,7 @@ func notifyObservers(c *service.Request, idPack [fid.Size]byte) {
 		go func(w io.Writer) {
 			_, err := w.Write(idPack[:])
 			if err != nil {
-				log.Println(c.Port, "cannot notify observer:", err)
+				log.Println(c.Port, "cannot notify observer", err)
 			}
 		}(observer)
 	}

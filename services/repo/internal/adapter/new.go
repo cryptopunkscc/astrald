@@ -12,7 +12,7 @@ func New(
 	ctx context.Context,
 	core api.Core,
 ) repo.LocalRepository {
-	return repository{
+	return &repository{
 		port:     port,
 		identity: identity,
 		ctx:      ctx,

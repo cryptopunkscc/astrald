@@ -7,7 +7,7 @@ import (
 )
 
 type LocalRepository interface {
-	ReadWriteRepository
+	ReadWriteMapRepository
 	ObserveRepository
 }
 
