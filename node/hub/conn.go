@@ -9,25 +9,24 @@ type Conn struct {
 	io.WriteCloser
 }
 
-// pipe creates a pair of conns that talk to each other
-func pipe() (a Conn, b Conn) {
-	// Set up a bidirectional stream using two pipes
-	a.ReadCloser, b.WriteCloser = io.Pipe()
-	b.ReadCloser, a.WriteCloser = io.Pipe()
+func (conn Conn) Read(p []byte) (n int, err error) {
+	n, err = conn.ReadCloser.Read(p)
+	if err != nil {
+		_ = conn.WriteCloser.Close()
+	}
 
 	return
 }
 
 func (conn Conn) Close() error {
-	_ = conn.ReadCloser.Close()
-	_ = conn.WriteCloser.Close()
-	return nil
+	return conn.WriteCloser.Close()
 }
 
-func (conn Conn) Read(p []byte) (n int, err error) {
-	n, err = conn.ReadCloser.Read(p)
-	if err != nil {
-		_ = conn.Close()
-	}
+// pipe creates a pair of conns that talk to each other
+func pipe() (left Conn, right Conn) {
+	// Set up a bidirectional stream using two pipes
+	left.ReadCloser, right.WriteCloser = io.Pipe()
+	right.ReadCloser, left.WriteCloser = io.Pipe()
+
 	return
 }

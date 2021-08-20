@@ -44,7 +44,7 @@ func (_api *networkAPI) Register(name string) (api.PortHandler, error) {
 		return nil, err
 	}
 
-	return portAdapter{&port}, nil
+	return portAdapter{port}, nil
 }
 
 func (_api *networkAPI) link(remoteID *_id.ECIdentity) (*_link.Link, error) {

@@ -7,6 +7,14 @@ type Port struct {
 	hub      *Hub
 }
 
+func NewPort(hub *Hub, name string) *Port {
+	return &Port{
+		name:     name,
+		hub:      hub,
+		requests: make(chan *Request),
+	}
+}
+
 // Requests returns a channel for reading incoming connection requests
 func (port *Port) Requests() <-chan *Request {
 	return port.requests

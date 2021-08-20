@@ -13,6 +13,15 @@ type Request struct {
 	query      string
 }
 
+func NewRequest(caller id.Identity, query string) *Request {
+	return &Request{
+		caller:     caller,
+		query:      query,
+		response:   make(chan bool, 1),
+		connection: make(chan Conn, 1),
+	}
+}
+
 // Caller returns the auth.Identity of the requesting party
 func (req *Request) Caller() id.Identity {
 	return req.caller

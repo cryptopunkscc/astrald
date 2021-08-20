@@ -40,7 +40,7 @@ func New(astralDir string) *Node {
 		FS:       fs,
 		Identity: identity,
 		Config:   loadConfig(fs),
-		Hub:      new(hub.Hub),
+		Hub:      hub.NewHub(),
 		Peers:    peers,
 		PeerInfo: peerInfo,
 		Network:  NewNetwork(identity, peerInfo),

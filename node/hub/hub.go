@@ -9,55 +9,47 @@ import (
 
 // Hub facilitates registration of ports and making connections to them.
 type Hub struct {
-	ports map[string]Port
+	ports map[string]*Port
 	mu    sync.Mutex
 }
 
+func NewHub() *Hub {
+	return &Hub{
+		ports: make(map[string]*Port),
+	}
+}
+
 // Register reserves a port with the requested name and returns its handler.
-func (hub *Hub) Register(name string) (Port, error) {
+func (hub *Hub) Register(name string) (*Port, error) {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 
-	// Initiate port map if necessary
-	if hub.ports == nil {
-		hub.ports = make(map[string]Port)
-	}
-
 	// Check if the requested port is free
 	if _, found := hub.ports[name]; found {
-		return Port{}, ErrAlreadyRegistered
+		return nil, ErrAlreadyRegistered
 	}
 
 	// Register the port
-	hub.ports[name] = Port{
-		name:     name,
-		requests: make(chan *Request),
-		hub:      hub,
-	}
+	hub.ports[name] = NewPort(hub, name)
 
-	log.Println("port registered:", name)
+	log.Println("port open:", name)
 
 	return hub.ports[name], nil
 }
 
 // Connect requests to connect to a port as the provided auth.Identity
-func (hub *Hub) Connect(name string, caller id.Identity) (io.ReadWriteCloser, error) {
+func (hub *Hub) Connect(query string, caller id.Identity) (io.ReadWriteCloser, error) {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 
 	// Fetch the port
-	port, found := hub.ports[name]
+	port, found := hub.ports[query]
 	if !found {
 		return nil, ErrPortNotFound
 	}
 
 	// Send the request
-	request := &Request{
-		caller:     caller,
-		response:   make(chan bool, 1),
-		connection: make(chan Conn, 1),
-		query:      name,
-	}
+	request := NewRequest(caller, query)
 	port.requests <- request
 
 	// Wait for the response
@@ -67,14 +59,14 @@ func (hub *Hub) Connect(name string, caller id.Identity) (io.ReadWriteCloser, er
 	}
 
 	// Create a pipe for the caller and the responder
-	reqConn, resConn := pipe()
+	clientConn, appConn := pipe()
 
 	// Send one side to the responder
-	request.connection <- resConn
+	request.connection <- appConn
 	close(request.connection)
 
 	// Return the other side to the caller
-	return reqConn, nil
+	return clientConn, nil
 }
 
 // close closes a port in the hub
