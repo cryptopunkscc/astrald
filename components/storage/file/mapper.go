@@ -22,12 +22,12 @@ type fileMapperReader struct {
 	*os.File
 }
 
-func (fs *fileMapperStorage) Mapper() (storage.FileMapper, error) {
-	return &fileMapper{dir: fs.dir}, nil
+func (f *fileMapperStorage) Mapper() (storage.FileMapper, error) {
+	return &fileMapper{dir: f.dir}, nil
 }
 
-func (fs *fileMapperStorage) Reader(name string) (storage.FileReader, error) {
-	path := filepath.Join(fs.dir, name)
+func (f *fileMapperStorage) Reader(name string) (storage.FileReader, error) {
+	path := filepath.Join(f.dir, name)
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -41,26 +41,36 @@ func (fs *fileMapperStorage) Reader(name string) (storage.FileReader, error) {
 	return &fileMapperReader{File: file}, nil
 }
 
-func (fs *fileMapperStorage) List() (names []string, err error) {
-	return listNames(fs.dir)
+func (f *fileMapperStorage) List() (names []string, err error) {
+	return listNames(f.dir)
 }
 
-func (fs *fileMapper) Map(path string) error {
+func (f *fileMapper) Map(path string) error {
 	src, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	_ = src.Close()
-	dst, err := ioutil.TempFile(fs.dir, "tmp-")
+	dst, err := ioutil.TempFile(f.dir, "tmp-")
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+	f.name = dst.Name()
 	_, err = sio.NewWriter(dst).WriteString(path)
+	if err != nil {
+		return err
+	}
+	err = dst.Sync()
 	if err != nil {
 		return err
 	}
 	return err
 }
 
-func (fs *fileMapper) Rename(name string) error {
-	return rename(fs.name, name)
+func (f *fileMapper) Rename(name string) error {
+	dstPath := filepath.Join(f.dir, name)
+	return rename(f.name, dstPath)
 }
 
 func (f *fileMapperReader) Size() (int64, error) {

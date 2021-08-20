@@ -17,6 +17,7 @@ func init() {
 func run(ctx context.Context, core api.Core) (err error) {
 	go func() { observeLore(ctx, core) }()
 	go func() { spamRepo(ctx, core) }()
+	//go func() { mapFile(ctx, core) }()
 
 	<-ctx.Done()
 	return nil

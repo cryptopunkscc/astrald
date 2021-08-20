@@ -11,10 +11,10 @@ import (
 )
 
 func spamRepo(ctx context.Context, core api.Core) {
-	time.Sleep(2 * time.Second)
 	i := 0
 	for {
 		i++
+		time.Sleep(2 * time.Second)
 		repository := repo.NewRepoClient(ctx, core)
 
 		log.Println(port, "getting repo writer")

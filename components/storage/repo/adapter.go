@@ -90,7 +90,7 @@ func (f *adapter) Map(path string) (*fid.ID, error) {
 	if err != nil {
 		return nil, err
 	}
-	id, err := fid.Resolve(file)
+	id, err := fid.ResolveAll(file)
 	if err != nil {
 		return nil, err
 	}

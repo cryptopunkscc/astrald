@@ -56,7 +56,7 @@ func rename(oldPath, newPath string) error {
 	}
 	err = os.Rename(oldPath, newPath)
 	if err != nil {
-		log.Println("cannot rename file", err)
+		log.Println("cannot rename file", oldPath, newPath, err)
 		return err
 	}
 	return nil

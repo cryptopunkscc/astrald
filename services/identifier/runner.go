@@ -41,7 +41,7 @@ func run(ctx context.Context, core api.Core) error {
 			return
 		}
 
-		log.Println(Port, "observing", repo.Port, err)
+		log.Println(Port, "observing", repo.Port)
 		for {
 			// Read id
 			id, idBuff, err := fid.Read(stream)

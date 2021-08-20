@@ -17,10 +17,13 @@ type sha256Resolver struct {
 	size uint64
 }
 
-func ResolveAll(reader io.Reader) ID {
+func ResolveAll(reader io.Reader) (ID, error) {
 	r := NewResolver()
-	_, _ = io.Copy(r, reader)
-	return r.Resolve()
+	_, err := io.Copy(r, reader)
+	if err != nil {
+		return ID{}, err
+	}
+	return r.Resolve(), nil
 }
 
 func ResolveBytes(data []byte) ID {
