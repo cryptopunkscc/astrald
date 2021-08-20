@@ -1,10 +1,10 @@
 package lore
 
 import (
-	"bytes"
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
+	"github.com/cryptopunkscc/astrald/components/sio"
 	lore "github.com/cryptopunkscc/astrald/components/story"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/services/identifier"
@@ -25,34 +25,30 @@ const Port = "lore"
 
 const storyMimeType = "application/lore"
 
-var storyMimeTypeBytes = bytes.NewBufferString(storyMimeType).Bytes()
-
 func run(ctx context.Context, core api.Core) error {
-	observers := map[api.Stream]string{}
+	observers := map[sio.ReadWriteCloser]string{}
 	repository := repo.NewRepoClient(ctx, core)
 
 	go func() {
 		time.Sleep(1 * time.Second)
 
 		var err error
-		var stream api.Stream
+		var stream sio.ReadWriteCloser
 
 		// Connect to identifier
-		mimeTypeSize := uint16(len(storyMimeTypeBytes))
-		if stream, err = connect.LocalRequest(ctx, core, identifier.Port, mimeTypeSize); err != nil {
+		if stream, err = connect.Local(ctx, core, identifier.Port); err != nil {
 			log.Println(Port, "cannot connect", identifier.Port, err)
 			return
-		} else {
-			log.Println(Port, "connected to", identifier.Port, err)
 		}
 
 		// Send observed type
-		if _, err = stream.Write(storyMimeTypeBytes); err != nil {
+		log.Println(Port, "requesting observe", storyMimeType, identifier.Port, err)
+		if _, err = stream.WriteStringWithSize8(storyMimeType); err != nil {
 			log.Println(Port, "cannot request observe", identifier.Port, err)
 			return
 		}
 
-		log.Println(Port, "observing", identifier.Port, err)
+		log.Println(Port, "observing", identifier.Port)
 		for {
 			// Resolve id
 			var id fid.ID
@@ -109,14 +105,14 @@ func run(ctx context.Context, core api.Core) error {
 			defer stream.Close()
 
 			// Read type
-			typ, err := stream.ReadStringWithSize16()
+			typ, err := stream.ReadStringWithSize8()
 			if err != nil {
 				return
 			}
 
 			// Register observer
 			observers[stream] = typ
-			log.Println(Port, "added new files observer for", typ)
+			log.Println(Port, "added new observer for", typ)
 
 			// Close blocking
 			for {

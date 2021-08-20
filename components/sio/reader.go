@@ -18,12 +18,12 @@ func (r *reader) ReadByte() (byte, error) {
 	return buff[0], nil
 }
 
-func (r *reader) ReadUint8() (uint16, error) {
-	buff, err := r.ReadN(1)
+func (r *reader) ReadUint8() (uint8, error) {
+	b, err := r.ReadByte()
 	if err != nil {
 		return 0, err
 	}
-	return binary.BigEndian.Uint16(buff[:]), nil
+	return b, nil
 }
 
 func (r *reader) ReadUint16() (uint16, error) {

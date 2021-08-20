@@ -46,6 +46,12 @@ func Read(reader io.Reader) (id ID, data [Size]byte, err error) {
 	return
 }
 
+func (id ID) Write(writer io.Writer) (err error) {
+	pack := id.Pack()
+	_, err = writer.Write(pack[:])
+	return
+}
+
 func (id ID) String() string {
 	packed := id.Pack()
 	enc := zBase32Encoding.EncodeToString(packed[:])

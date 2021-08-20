@@ -17,11 +17,12 @@ func observeLore(ctx context.Context, core api.Core) {
 		return
 	}
 
-	_, err = c.WriteStringWithSize16(testStoryType)
+	_, err = c.WriteStringWithSize8(testStoryType)
 	if err != nil {
 		return
 	}
 
+	log.Println(port, "reading stories")
 	for {
 		s, err := story.Unpack(c)
 		if err != nil {

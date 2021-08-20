@@ -116,13 +116,13 @@ func run(ctx context.Context, core api.Core) error {
 				var query string
 
 				// Read query
-				if query, err = stream.ReadStringWithSize16(); err != nil {
+				if query, err = stream.ReadStringWithSize8(); err != nil {
 					return
 				}
 
 				// Register observer
 				observers[stream] = query
-				log.Println(Port, "added new files observer for", query)
+				log.Println(Port, "added new observer for", query)
 
 				// Close blocking
 				for {

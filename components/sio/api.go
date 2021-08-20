@@ -4,6 +4,10 @@ import "io"
 
 type ReadWriteCloser interface {
 	io.Closer
+	ReadWrite
+}
+
+type ReadWrite interface {
 	Reader
 	Writer
 }
@@ -30,7 +34,7 @@ type Writer interface {
 
 type Deserializer interface {
 	ReadByte() (byte, error)
-	ReadUint8() (uint16, error)
+	ReadUint8() (uint8, error)
 	ReadUint16() (uint16, error)
 	ReadUint32() (uint32, error)
 	ReadUint64() (uint64, error)

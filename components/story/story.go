@@ -2,6 +2,7 @@ package story
 
 import (
 	"bytes"
+	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
 )
 
@@ -44,14 +45,14 @@ type Story struct {
 func NewStory(
 	timestamp int64,
 	typ string,
-	author string,
+	author api.Identity,
 	refs []fid.ID,
 	data []byte,
 ) *Story {
 	return &Story{
 		timestamp: uint64(timestamp),
 		typ:       bytes.NewBufferString(typ).Bytes(),
-		author:    bytes.NewBufferString(author).Bytes(),
+		author:    bytes.NewBufferString(string(author)).Bytes(),
 		refs:      refs,
 		data:      data,
 	}

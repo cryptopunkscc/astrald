@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
+	"github.com/cryptopunkscc/astrald/components/sio"
 	"github.com/cryptopunkscc/astrald/services/util/accept"
 	"github.com/cryptopunkscc/astrald/services/util/register"
 	"log"
@@ -16,7 +17,7 @@ func (srv *Context) Run(ctx context.Context, core api.Core) (err error) {
 
 	srv.Ctx = ctx
 	srv.Core = core
-	srv.Observers = map[api.Stream]struct{}{}
+	srv.Observers = map[sio.ReadWriteCloser]struct{}{}
 
 	for conn := range handler.Requests() {
 		r := &Request{
