@@ -1,4 +1,4 @@
-package adapter
+package client
 
 import (
 	"context"
@@ -11,19 +11,19 @@ import (
 	"io"
 )
 
-type repository struct {
+type client struct {
 	port     string
 	identity api.Identity
 	ctx      context.Context
 	core     api.Core
 }
 
-func (repo *repository) connect(request uint16) (sio.ReadWriteCloser, error) {
-	return connect.LocalRequest(repo.ctx, repo.core, repo.port, request)
+func (c *client) connect(request uint16) (sio.ReadWriteCloser, error) {
+	return connect.LocalRequest(c.ctx, c.core, c.port, request)
 }
 
-func (repo *repository) Reader(id fid.ID) (repo.Reader, error) {
-	s, err := repo.connect(request.Read)
+func (c *client) Reader(id fid.ID) (repo.Reader, error) {
+	s, err := c.connect(request.Read)
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +37,8 @@ func (repo *repository) Reader(id fid.ID) (repo.Reader, error) {
 	return reader{s, int64(id.Size)}, nil
 }
 
-func (repo *repository) Writer() (w repo.Writer, err error) {
-	s, err := repo.connect(request.Write)
+func (c *client) Writer() (w repo.Writer, err error) {
+	s, err := c.connect(request.Write)
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +46,8 @@ func (repo *repository) Writer() (w repo.Writer, err error) {
 	return writer{s}, nil
 }
 
-func (repo *repository) Observer() (repo.Observer, error) {
-	s, err := repo.connect(request.Observe)
+func (c *client) Observer() (repo.Observer, error) {
+	s, err := c.connect(request.Observe)
 	if err != nil {
 		return nil, err
 	}
@@ -55,8 +55,8 @@ func (repo *repository) Observer() (repo.Observer, error) {
 	return reader{s, -1}, nil
 }
 
-func (repo *repository) Map(path string) (*fid.ID, error) {
-	conn, err := repo.connect(request.Map)
+func (c *client) Map(path string) (*fid.ID, error) {
+	conn, err := c.connect(request.Map)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +72,6 @@ func (repo *repository) Map(path string) (*fid.ID, error) {
 	return &id, nil
 }
 
-func (repo *repository) List() (reader io.ReadCloser, err error) {
-	return repo.connect(request.List)
+func (c *client) List() (reader io.ReadCloser, err error) {
+	return c.connect(request.List)
 }

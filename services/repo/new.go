@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/repo"
-	"github.com/cryptopunkscc/astrald/services/repo/internal/adapter"
+	"github.com/cryptopunkscc/astrald/services/repo/internal/client"
 	"github.com/cryptopunkscc/astrald/services/repo/internal/handle"
 	"github.com/cryptopunkscc/astrald/services/repo/internal/service"
 	"github.com/cryptopunkscc/astrald/services/repo/request"
@@ -15,7 +15,7 @@ func NewRepoClient(
 	ctx context.Context,
 	core api.Core,
 ) repo.LocalRepository {
-	return adapter.New(Port, "", ctx, core)
+	return client.New(Port, "", ctx, core)
 }
 
 func NewFilesClient(
@@ -23,7 +23,7 @@ func NewFilesClient(
 	core api.Core,
 	identity api.Identity,
 ) repo.RemoteRepository {
-	return adapter.New(FilesPort, identity, ctx, core)
+	return client.New(FilesPort, identity, ctx, core)
 }
 
 func NewRepoService() *service.Context {

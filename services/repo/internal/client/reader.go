@@ -1,4 +1,4 @@
-package adapter
+package client
 
 import (
 	"github.com/cryptopunkscc/astrald/components/sio"

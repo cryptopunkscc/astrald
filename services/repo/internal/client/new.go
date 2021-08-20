@@ -1,4 +1,4 @@
-package adapter
+package client
 
 import (
 	"context"
@@ -12,7 +12,7 @@ func New(
 	ctx context.Context,
 	core api.Core,
 ) repo.LocalRepository {
-	return &repository{
+	return &client{
 		port:     port,
 		identity: identity,
 		ctx:      ctx,
