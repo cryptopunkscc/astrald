@@ -18,7 +18,6 @@ type Request struct {
 func (req *Request) Accept() (io.ReadWriteCloser, error) {
 	err := binary.Write(req.outputStream, binary.BigEndian, uint16(req.inputStream.StreamID()))
 	if err != nil {
-		_ = req.inputStream.Close()
 		return nil, err
 	}
 
@@ -27,7 +26,6 @@ func (req *Request) Accept() (io.ReadWriteCloser, error) {
 
 // Reject the request
 func (req Request) Reject() error {
-	defer req.inputStream.Close()
 	return req.outputStream.Close()
 }
 

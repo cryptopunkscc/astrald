@@ -11,9 +11,9 @@ type OutputStream struct {
 	closeCh chan struct{}
 }
 
-func NewOutputStream(mux *Mux, remoteStreamID int) *OutputStream {
+func NewOutputStream(mux *Mux, streamID int) *OutputStream {
 	return &OutputStream{
-		id:      remoteStreamID,
+		id:      streamID,
 		mux:     mux,
 		closeCh: make(chan struct{}),
 	}

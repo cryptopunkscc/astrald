@@ -17,7 +17,7 @@ type Link struct {
 	requests chan Request
 	conn     auth.Conn
 	mux      *mux.Mux
-	demux    *mux.Demux
+	demux    *mux.StreamDemux
 	closeCh  chan struct{}
 }
 
@@ -25,13 +25,13 @@ const controlStreamID = 0
 
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
-	m := mux.New(conn)
+	m := mux.NewMux(conn)
 	link := &Link{
 		conn:     conn,
 		mux:      m,
+		demux:    mux.NewStreamDemux(conn),
 		requests: make(chan Request),
 		closeCh:  make(chan struct{}),
-		demux:    mux.NewDemux(m),
 	}
 	go func() {
 		_ = link.handleControl()
@@ -52,7 +52,6 @@ func (link *Link) Query(query string) (*Conn, error) {
 	// Send a request
 	err = link.sendQuery(query, inputStream.StreamID())
 	if err != nil {
-		inputStream.Close()
 		return nil, err
 	}
 
@@ -60,7 +59,6 @@ func (link *Link) Query(query string) (*Conn, error) {
 
 	_, err = inputStream.Read(remoteBytes)
 	if err != nil {
-		inputStream.Close()
 		return nil, ErrRejected
 	}
 
@@ -127,7 +125,7 @@ func (link *Link) handleControl() error {
 		}
 
 		// Prepare request object
-		outputStream := mux.NewOutputStream(link.mux, remoteStreamID)
+		outputStream := link.mux.Stream(remoteStreamID)
 		request := Request{
 			caller:       link.RemoteIdentity(),
 			outputStream: outputStream,
