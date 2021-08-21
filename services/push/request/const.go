@@ -1,6 +1,6 @@
 package request
 
 const (
-	Push    = 0
-	Observe = 1
+	Push    = 1
+	Observe = 2
 )

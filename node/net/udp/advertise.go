@@ -17,7 +17,7 @@ import (
 
 const adPort = 8829
 const adLen = 35
-const adInterval = time.Second
+const adInterval = time.Second * 5
 
 //TODO: rename to Announce?
 func (drv *driver) Advertise(ctx context.Context, id string) error {
@@ -77,7 +77,7 @@ func (drv *driver) advertiseOnAddr(ctx context.Context, addr net.Addr, id string
 				return
 			}
 
-			// log.Println("ad sent!")
+			//log.Println("ad sent!", addr, broadAddr)
 
 			select {
 			case <-time.After(adInterval):

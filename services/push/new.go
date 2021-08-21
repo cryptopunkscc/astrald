@@ -2,8 +2,8 @@ package push
 
 import (
 	"github.com/cryptopunkscc/astrald/services/push/internal/handle"
-	"github.com/cryptopunkscc/astrald/services/push/internal/request"
 	"github.com/cryptopunkscc/astrald/services/push/internal/service"
+	"github.com/cryptopunkscc/astrald/services/push/request"
 )
 
 func NewService() *service.Context {

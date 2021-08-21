@@ -12,4 +12,7 @@ func init() {
 	if err := net.AddUnicastNetwork("tcp", &driver{}); err != nil {
 		panic(err)
 	}
+	if err := net.AddUnicastNetwork("lan", &driver{}); err != nil {
+		panic(err)
+	}
 }

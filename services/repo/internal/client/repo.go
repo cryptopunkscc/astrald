@@ -19,7 +19,7 @@ type client struct {
 }
 
 func (c *client) connect(request uint16) (sio.ReadWriteCloser, error) {
-	return connect.LocalRequest(c.ctx, c.core, c.port, request)
+	return connect.RemoteRequest(c.ctx, c.core, c.identity, c.port, request)
 }
 
 func (c *client) Reader(id fid.ID) (repo.Reader, error) {

@@ -1,8 +1,7 @@
-package message
+package msg
 
 import (
 	"bytes"
-	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/sio"
 	"io"
 )
@@ -19,10 +18,6 @@ func (m *Message) Sender() string {
 	return string(m.sender)
 }
 
-func (m *Message) SetSender(sender api.Identity) {
-	m.sender = bytes.NewBufferString(string(sender)).Bytes()
-}
-
 func (m *Message) Recipient() string {
 	return string(m.recipient)
 }
@@ -35,26 +30,26 @@ func NewMessage(
 	sender string,
 	recipient string,
 	text string,
-) Message {
-	return Message{
+) *Message {
+	return &Message{
 		sender: bytes.NewBufferString(sender).Bytes(),
 		recipient: bytes.NewBufferString(recipient).Bytes(),
 		text: bytes.NewBufferString(text).Bytes(),
 	}
 }
 
-func Unpack(b []byte) (m Message, err error) {
+func Unpack(b []byte) (m *Message, err error) {
 	r := bytes.NewReader(b)
-	return Read(r)
+	return read(r)
 }
 
-func (m Message) Pack() (r []byte) {
+func (m *Message) Pack() (r []byte) {
 	b := bytes.NewBuffer(r)
-	_ = m.Write(b)
+	_ = m.write(b)
 	return b.Bytes()
 }
 
-func Read(r io.Reader) (m Message, err error) {
+func read(r io.Reader) (m *Message, err error) {
 	s := sio.NewReader(r)
 	sender, err := s.ReadUint8()
 	if err != nil {
@@ -68,7 +63,7 @@ func Read(r io.Reader) (m Message, err error) {
 	if err != nil {
 		return
 	}
-	m = Message{}
+	m = &Message{}
 
 	if m.sender, err = s.ReadN(int(sender)); err != nil {
 		return
@@ -83,7 +78,7 @@ func Read(r io.Reader) (m Message, err error) {
 	return
 }
 
-func (m Message) Write(w io.Writer) (err error) {
+func (m Message) write(w io.Writer) (err error) {
 	s := sio.NewWriter(w)
 	err = s.WriteUInt8(uint8(len(m.sender)))
 	if err != nil {
