@@ -2,7 +2,9 @@ package handle
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/api"
+	"github.com/cryptopunkscc/astrald/components/sio"
 	"github.com/cryptopunkscc/astrald/services/util/accept"
 	"github.com/cryptopunkscc/astrald/services/util/auth"
 	"github.com/cryptopunkscc/astrald/services/util/register"
@@ -16,21 +18,25 @@ func Requests(
 	port string,
 	authorize auth.Authorize,
 	handle request.Handler,
-) error {
+) {
+	// Register port
 	handler, err := register.Port(ctx, core, port)
 	if err != nil {
-		return err
+		log.Println(port, "cannot register port")
+		return
 	}
 	for conn := range handler.Requests() {
+		// Authorize connection
 		if !authorize(core, conn) {
 			log.Println(port, "cannot authorize", conn.Caller())
 			conn.Reject()
 			continue
 		}
+
+		// Handle query
 		caller := conn.Caller()
 		query := conn.Query()
 		stream := accept.Request(ctx, conn)
-
 		go func() {
 			defer func() { _ = stream.Close() }()
 			err := handle(caller, query, stream)
@@ -39,5 +45,24 @@ func Requests(
 			}
 		}()
 	}
-	return nil
+}
+
+func Using(
+	handlers request.Handlers,
+) request.Handler {
+	return func(
+		caller api.Identity,
+		query string,
+		stream sio.ReadWriteCloser,
+	) error {
+		requestType, err := stream.ReadByte()
+		if err != nil {
+			return err
+		}
+		handle, contains := handlers[requestType]
+		if !contains {
+			return errors.New(query + "no handler for request type" + string(requestType))
+		}
+		return handle(caller, query, stream)
+	}
 }

@@ -17,7 +17,7 @@ func Run(ctx context.Context, core api.Core) error {
 	r := repoService.NewRepoClient(ctx, core)
 	observers := map[sio.ReadWriteCloser]struct{}{}
 	go job.ObserveLore(ctx, core, Port, observers)
-	return handle2.Requests(ctx, core, Port, auth.All, func(
+	handle2.Requests(ctx, core, Port, auth.All, func(
 		caller api.Identity,
 		query string,
 		stream sio.ReadWriteCloser,
@@ -42,4 +42,5 @@ func Run(ctx context.Context, core api.Core) error {
 		}
 		return nil
 	})
+	return nil
 }

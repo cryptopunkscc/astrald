@@ -10,3 +10,5 @@ type Handler func(
 	query string,
 	stream sio.ReadWriteCloser,
 ) error
+
+type Handlers map[byte]Handler
