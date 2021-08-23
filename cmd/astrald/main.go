@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/services"
 	_ "github.com/cryptopunkscc/astrald/services/apphost"
 	_ "github.com/cryptopunkscc/astrald/services/identifier"
+	_ "github.com/cryptopunkscc/astrald/services/identity"
 	_ "github.com/cryptopunkscc/astrald/services/lore"
 	_ "github.com/cryptopunkscc/astrald/services/messenger"
 	_ "github.com/cryptopunkscc/astrald/services/push"

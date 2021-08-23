@@ -13,7 +13,7 @@ func NewStorage(root string) storage.Storage {
 }
 
 func NewReadWriteStorage(root string) storage.ReadWriteStorage {
-	dir, err := resolveStorage(root, "storage")
+	dir, err := ResolveDir(root, "storage")
 	if err != nil {
 		panic(err)
 	}
@@ -21,7 +21,7 @@ func NewReadWriteStorage(root string) storage.ReadWriteStorage {
 }
 
 func NewReadMapStorage(root string) storage.ReadMapStorage {
-	storageDir, err := resolveStorage(root, "mappings")
+	storageDir, err := ResolveDir(root, "mappings")
 	if err != nil {
 		panic(err)
 	}

@@ -43,7 +43,7 @@ func (fs fileStorage) Writer() (storage.FileWriter, error) {
 }
 
 func (fs fileStorage) List() (names []string, err error) {
-	return listNames(fs.dir)
+	return ListNames(fs.dir)
 }
 
 func (f fileReader) Size() (int64, error) {

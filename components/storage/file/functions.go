@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-func resolveStorage(root string, name string) (string, error) {
+func ResolveDir(root string, name string) (string, error) {
 	storageDir := filepath.Join(root, name)
 	stat, err := os.Stat(storageDir)
 	if err != nil {
@@ -28,7 +28,7 @@ func resolveStorage(root string, name string) (string, error) {
 	return storageDir, nil
 }
 
-func listNames(dir string) (names []string, err error) {
+func ListNames(dir string) (names []string, err error) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return

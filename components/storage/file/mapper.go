@@ -43,7 +43,7 @@ func (f *fileMapperStorage) Reader(name string) (storage.FileReader, error) {
 }
 
 func (f *fileMapperStorage) List() (names []string, err error) {
-	return listNames(f.dir)
+	return ListNames(f.dir)
 }
 
 func (f *fileMapper) Map(path string) error {
