@@ -1,7 +1,13 @@
 package share
 
-import "github.com/cryptopunkscc/astrald/node"
+import (
+	"github.com/cryptopunkscc/astrald/components/shares/mem"
+	"github.com/cryptopunkscc/astrald/node"
+)
 
 func init() {
-	_ = node.RegisterService(Port, runService)
+	shared := mem.NewSharedFiles()
+	sc := serviceContext{shared}
+	_ = node.RegisterService(Port, sc.runLocal)
+	_ = node.RegisterService(RemotePort, sc.runRemote)
 }

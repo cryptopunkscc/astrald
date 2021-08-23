@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/services/repo"
 	"io"
 	"log"
-	"time"
 )
 
 func Push(r *service.Request) error {
@@ -59,8 +58,6 @@ func downloadFile(
 		log.Println(r.Port, "cannot write file size", id.Size, id.String())
 		return err
 	}
-
-	time.Sleep(1000 * time.Millisecond)
 
 	// Copy file into local file system
 	defer func() { _ = reader.Close() }()

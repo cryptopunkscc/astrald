@@ -29,15 +29,15 @@ func (srv *Context) Run(ctx context.Context, core api.Core) (err error) {
 		go func() {
 			defer func() { _ = r.Close() }()
 			var err error
-			var requestType uint16
+			var requestType byte
 
-			if requestType, err = r.ReadUint16(); err != nil {
+			if requestType, err = r.ReadByte(); err != nil {
 				log.Println(srv.Port, "cannot read request type", err)
 				return
 			}
 
 			log.Println(srv.Port, "getting handler for request type", requestType)
-			handle := srv.Handlers[byte(requestType)]
+			handle := srv.Handlers[requestType]
 			if handle == nil {
 				log.Println(srv.Port, "cannot obtain handler for request type", requestType, "len", len(srv.Handlers), srv.Handlers, err)
 				return

@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/uid"
 	"github.com/cryptopunkscc/astrald/services/util/connect"
+	"log"
 )
 
 type client struct {
@@ -30,18 +31,21 @@ func (c *client) Update(card uid.Card) error {
 }
 
 func (c *client) List() ([]uid.Card, error) {
-	s, err := connect.LocalRequest(c.ctx, c.core, Port, Update)
+	s, err := connect.LocalRequest(c.ctx, c.core, Port, List)
 	if err != nil {
+		log.Println("cannot request list", err)
 		return nil, err
 	}
 	l, err := s.ReadUint16()
 	if err != nil {
+		log.Println("cannot read list size", err)
 		return nil, err
 	}
 	cards := make([]uid.Card, l)
 	for i := uint16(0); i < l; i++ {
 		card, err := uid.ReadCard(s)
 		if err != nil {
+			log.Println("cannot read card", err)
 			return nil, err
 		}
 		cards = append(cards, card)

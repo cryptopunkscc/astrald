@@ -23,7 +23,7 @@ func Run(ctx context.Context, core api.Core) error {
 		stream sio.ReadWriteCloser,
 	) error {
 		log.Println(Port, "reading request type")
-		requestType, err := stream.ReadUint16()
+		requestType, err := stream.ReadByte()
 		if err != nil {
 			log.Println(Port, "cannot reading request type", err)
 			return err

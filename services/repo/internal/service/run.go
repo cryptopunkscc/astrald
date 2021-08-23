@@ -32,16 +32,16 @@ func (srv *Context) Run(ctx context.Context, core api.Core) error {
 			defer func() { _ = request.Close() }()
 
 			var err error
-			var requestType uint16
+			var requestType byte
 			var handle Handle
 
-			if requestType, err = request.ReadUint16(); err != nil {
+			if requestType, err = request.ReadByte(); err != nil {
 				log.Println(request.Port, "error reading type", err)
 				return
 			}
 			log.Println(request.Port, "received request type", requestType)
 
-			if handle = request.handlers[byte(requestType)]; handle == nil {
+			if handle = request.handlers[requestType]; handle == nil {
 				log.Println(request.Port, "unknown request type", requestType)
 				return
 			}

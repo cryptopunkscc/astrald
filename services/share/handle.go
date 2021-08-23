@@ -3,20 +3,11 @@ package share
 import (
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
-	"github.com/cryptopunkscc/astrald/components/shares"
 	"github.com/cryptopunkscc/astrald/components/sio"
 	"log"
 )
 
-type Context struct {
-	shares shares.Shares
-}
-
-func NewContext(shares shares.Shares) *Context {
-	return &Context{shares: shares}
-}
-
-func (r *Context) Add(
+func (r *requestContext) Add(
 	_ api.Identity,
 	query string,
 	stream sio.ReadWriteCloser,
@@ -56,7 +47,7 @@ func (r *Context) Add(
 	return nil
 }
 
-func (r *Context) Remove(
+func (r *requestContext) Remove(
 	_ api.Identity,
 	query string,
 	stream sio.ReadWriteCloser,
@@ -82,7 +73,7 @@ func (r *Context) Remove(
 	return nil
 }
 
-func (r *Context) List(
+func (r *requestContext) ListLocal(
 	_ api.Identity,
 	query string,
 	stream sio.ReadWriteCloser,
@@ -92,14 +83,22 @@ func (r *Context) List(
 		log.Println(query, "cannot read id", err)
 		return err
 	}
-	s, err := r.shares.List(api.Identity(id))
+	return r.List(api.Identity(id), query, stream)
+}
+
+func (r *requestContext) List(
+	caller api.Identity,
+	query string,
+	stream sio.ReadWriteCloser,
+) error {
+	s, err := r.shares.List(caller)
 	if err != nil {
-		log.Println(query, "cannot list shares for", id, err)
+		log.Println(query, "cannot list shares for", caller, err)
 		return err
 	}
 	_, err = stream.WriteUInt32(uint32(len(s)))
 	if err != nil {
-		log.Println(query, "cannot send shares count", id, err)
+		log.Println(query, "cannot send shares count", caller, err)
 		return err
 	}
 	for _, share := range s {
@@ -112,39 +111,46 @@ func (r *Context) List(
 	return nil
 }
 
-func (r *Context) Contains(
+func (r *requestContext) ContainsLocal(
 	_ api.Identity,
 	query string,
 	stream sio.ReadWriteCloser,
 ) error {
-	log.Println(query, "reading identity")
-	nodeId, err := stream.ReadStringWithSize8()
+	id, err := stream.ReadStringWithSize8()
 	if err != nil {
-		log.Println(query, "cannot read identity", err)
+		log.Println(query, "cannot read id", err)
 		return err
 	}
+	return r.List(api.Identity(id), query, stream)
+}
+
+func (r *requestContext) Contains(
+	caller api.Identity,
+	query string,
+	stream sio.ReadWriteCloser,
+) error {
 	log.Println(query, "reading file id")
 	fileId, _, err := fid.Read(stream)
 	if err != nil {
 		log.Println(query, "cannot read file id", err)
 		return err
 	}
-	log.Println(query, "checking if contains", nodeId, fileId)
-	contains, err := r.shares.Contains(api.Identity(nodeId), fileId)
+	log.Println(query, "checking if contains", caller, fileId)
+	contains, err := r.shares.Contains(api.Identity(caller), fileId)
 	if err != nil {
-		log.Println(query, "cannot check contains share", nodeId, fileId)
+		log.Println(query, "cannot check contains share", caller, fileId)
 		return err
 	}
 	response := byte(0)
 	if contains {
 		response = 1
 	}
-	log.Println(query, "sending response", response, nodeId, fileId)
+	log.Println(query, "sending response", response, caller, fileId)
 	err = stream.WriteByte(response)
 	if err != nil {
-		log.Println(query, "cannot send response", response, nodeId, fileId)
+		log.Println(query, "cannot send response", response, caller, fileId)
 		return err
 	}
-	log.Println(query, "done contains", response, nodeId, fileId)
+	log.Println(query, "done contains", response, caller, fileId)
 	return nil
 }

@@ -18,7 +18,7 @@ type client struct {
 	core     api.Core
 }
 
-func (c *client) connect(request uint16) (sio.ReadWriteCloser, error) {
+func (c *client) connect(request byte) (sio.ReadWriteCloser, error) {
 	return connect.RemoteRequest(c.ctx, c.core, c.identity, c.port, request)
 }
 

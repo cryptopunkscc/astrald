@@ -36,7 +36,7 @@ func LocalRequest(
 	ctx context.Context,
 	core api.Core,
 	port string,
-	request uint16,
+	request byte,
 ) (sio.ReadWriteCloser, error) {
 	return RemoteRequest(ctx, core, "", port, request)
 }
@@ -46,13 +46,13 @@ func RemoteRequest(
 	core api.Core,
 	identity api.Identity,
 	port string,
-	request uint16,
+	request byte,
 ) (sio.ReadWriteCloser, error) {
 	s, err := Remote(ctx, core, identity, port)
 	if err != nil {
 		return nil, err
 	}
-	_, err = s.WriteUInt16(request)
+	err = s.WriteByte(request)
 	if err != nil {
 		return nil, err
 	}

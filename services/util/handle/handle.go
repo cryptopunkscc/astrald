@@ -2,7 +2,7 @@ package handle
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/sio"
 	"github.com/cryptopunkscc/astrald/services/util/accept"
@@ -61,7 +61,7 @@ func Using(
 		}
 		handle, contains := handlers[requestType]
 		if !contains {
-			return errors.New(query + "no handler for request type" + string(requestType))
+			return fmt.Errorf("%s no handler for request type %d", query, requestType)
 		}
 		return handle(caller, query, stream)
 	}

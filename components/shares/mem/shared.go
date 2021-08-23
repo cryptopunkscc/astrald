@@ -1,15 +1,16 @@
-package shares
+package mem
 
 import (
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
+	"github.com/cryptopunkscc/astrald/components/shares"
 )
 
 type memShares struct {
 	shares map[api.Identity]map[fid.ID]struct{}
 }
 
-func NewMemShares() Shares {
+func NewSharedFiles() shares.Shared {
 	return &memShares{
 		shares: map[api.Identity]map[fid.ID]struct{}{},
 	}
