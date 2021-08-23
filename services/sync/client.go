@@ -13,6 +13,9 @@ type Client struct {
 	core api.Core
 }
 
+func NewClient(ctx context.Context, core api.Core) *Client {
+	return &Client{ctx: ctx, core: core}
+}
 
 func (c *Client) Download(nodeId api.Identity, fileId fid.ID) error  {
 	stream, err := connect.LocalRequest(c.ctx, c.core, Port, Download)
