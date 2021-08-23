@@ -1,36 +1,31 @@
 package proto
 
 import (
-	"encoding/json"
 	"io"
 )
 
 type Conn struct {
 	io.ReadWriteCloser
-	enc *json.Encoder
-	dec *json.Decoder
 }
 
 func NewConn(rwc io.ReadWriteCloser) *Conn {
 	return &Conn{
 		ReadWriteCloser: rwc,
-		enc:             json.NewEncoder(rwc),
-		dec:             json.NewDecoder(rwc),
 	}
 }
 
-func (socket *Conn) ReadRequest() (req Request, err error) {
-	err = socket.dec.Decode(&req)
+func (conn *Conn) ReadRequest() (req Request, err error) {
+	err = readJSON(conn, &req)
 	return
 }
 
-func (socket *Conn) ReadResponse() (res Response, err error) {
-	err = socket.dec.Decode(&res)
+func (conn *Conn) ReadResponse() (res Response, err error) {
+	err = readJSON(conn, &res)
 	return
 }
 
-func (socket *Conn) Connect(identity string, port string) (res Response, err error) {
-	err = socket.enc.Encode(&Request{
+func (conn *Conn) Connect(identity string, port string) (res Response, err error) {
+	err = writeJSON(conn, &Request{
 		Type:     RequestConnect,
 		Identity: identity,
 		Port:     port,
@@ -39,11 +34,11 @@ func (socket *Conn) Connect(identity string, port string) (res Response, err err
 		return
 	}
 
-	return socket.ReadResponse()
+	return conn.ReadResponse()
 }
 
-func (socket *Conn) Register(port string, path string) (res Response, err error) {
-	err = socket.enc.Encode(&Request{
+func (conn *Conn) Register(port string, path string) (res Response, err error) {
+	err = writeJSON(conn, &Request{
 		Type: RequestRegister,
 		Port: port,
 		Path: path,
@@ -52,19 +47,22 @@ func (socket *Conn) Register(port string, path string) (res Response, err error)
 		return
 	}
 
-	return socket.ReadResponse()
+	return conn.ReadResponse()
 }
 
-func (socket *Conn) Error(err string) error {
-	socket.enc.Encode(&Response{
+func (conn *Conn) Error(errMsg string) error {
+	err := writeJSON(conn, &Response{
 		Status: StatusError,
-		Error:  err,
+		Error:  errMsg,
 	})
-	return socket.Close()
+	if err != nil {
+		return err
+	}
+	return conn.Close()
 }
 
-func (socket *Conn) OK() error {
-	return socket.enc.Encode(&Response{
+func (conn *Conn) OK() error {
+	return writeJSON(conn, &Response{
 		Status: StatusOK,
 	})
 }
