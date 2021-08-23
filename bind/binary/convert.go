@@ -4,6 +4,10 @@ import (
 	"encoding/binary"
 )
 
+func Int8UBytes(i int8) []byte {
+	return []byte{uint8(i)}
+}
+
 func Int16UBytes(i int16) []byte {
 	var bytes [2]byte
 	binary.BigEndian.PutUint16(bytes[:], uint16(i))
@@ -20,6 +24,10 @@ func Int64UBytes(i int64) []byte {
 	var bytes [8]byte
 	binary.BigEndian.PutUint64(bytes[:], uint64(i))
 	return bytes[:]
+}
+
+func UBytesInt8(bytes []byte) (i int8) {
+	return int8(bytes[0])
 }
 
 func UBytesInt16(bytes []byte) (i int16) {
