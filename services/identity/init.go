@@ -5,6 +5,6 @@ import (
 )
 
 func init() {
-	c := Context{}
-	_ = node.RegisterService(Port, c.runService)
+	srv := service{}
+	_ = node.RegisterService(Port, srv.runService)
 }

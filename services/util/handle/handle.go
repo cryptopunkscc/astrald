@@ -25,6 +25,7 @@ func Requests(
 		log.Println(port, "cannot register port")
 		return
 	}
+	observers := map[sio.ReadWriteCloser]struct{}{}
 	for conn := range handler.Requests() {
 		// Authorize connection
 		if !authorize(core, conn) {
@@ -34,12 +35,15 @@ func Requests(
 		}
 
 		// Handle query
-		caller := conn.Caller()
-		query := conn.Query()
-		stream := accept.Request(ctx, conn)
+		rc := request.Context{
+			ReadWriteCloser: accept.Request(ctx, conn),
+			Caller:          conn.Caller(),
+			Port:            conn.Query(),
+			Observers:       observers,
+		}
 		go func() {
-			defer func() { _ = stream.Close() }()
-			err := handle(caller, query, stream)
+			defer func() { _ = rc.Close() }()
+			err := handle(rc)
 			if err != nil {
 				log.Println(port, "cannot handle", err)
 			}
@@ -51,18 +55,16 @@ func Using(
 	handlers request.Handlers,
 ) request.Handler {
 	return func(
-		caller api.Identity,
-		query string,
-		stream sio.ReadWriteCloser,
+		rc request.Context,
 	) error {
-		requestType, err := stream.ReadByte()
+		requestType, err := rc.ReadByte()
 		if err != nil {
 			return err
 		}
 		handle, contains := handlers[requestType]
 		if !contains {
-			return fmt.Errorf("%s no handler for request type %d", query, requestType)
+			return fmt.Errorf("%s no handler for request type %d", rc.Port, requestType)
 		}
-		return handle(caller, query, stream)
+		return handle(rc)
 	}
 }

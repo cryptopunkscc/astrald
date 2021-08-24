@@ -3,154 +3,132 @@ package share
 import (
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
-	"github.com/cryptopunkscc/astrald/components/sio"
+	"github.com/cryptopunkscc/astrald/services/util/request"
 	"log"
 )
 
-func (r *requestContext) Add(
-	_ api.Identity,
-	query string,
-	stream sio.ReadWriteCloser,
-) error {
+func (srv *service) Add(rc request.Context) error {
 	// Read identity
-	log.Println(query, "reading identity")
-	nodeId, err := stream.ReadWithSize8()
+	log.Println(rc.Port, "reading identity")
+	nodeId, err := rc.ReadWithSize8()
 	if err != nil {
-		log.Println(query, "cannot read identity", err)
+		log.Println(rc.Port, "cannot read identity", err)
 		return err
 	}
 
 	// Read file id
-	log.Println(query, "reading file id")
-	fileId, _, err := fid.Read(stream)
+	log.Println(rc.Port, "reading file id")
+	fileId, _, err := fid.Read(rc)
 	if err != nil {
-		log.Println(query, "cannot read file id", err)
+		log.Println(rc.Port, "cannot read file id", err)
 		return err
 	}
 
 	// Add share
-	log.Println(query, "adding share", nodeId, fileId)
-	err = r.shares.Add(api.Identity(nodeId), fileId)
+	log.Println(rc.Port, "adding share", nodeId, fileId)
+	err = srv.shared.Add(api.Identity(nodeId), fileId)
 	if err != nil {
-		log.Println(query, "cannot add share", nodeId, fileId)
+		log.Println(rc.Port, "cannot add share", nodeId, fileId)
 		return err
 	}
 
 	// Send ok
-	log.Println(query, "sending ok")
-	err = stream.WriteByte(0)
+	log.Println(rc.Port, "sending ok")
+	err = rc.WriteByte(0)
 	if err != nil {
-		log.Println(query, "cannot send ok", err)
+		log.Println(rc.Port, "cannot send ok", err)
 		return err
 	}
-	log.Println(query, "finish adding share")
+	log.Println(rc.Port, "finish adding share")
 	return nil
 }
 
-func (r *requestContext) Remove(
-	_ api.Identity,
-	query string,
-	stream sio.ReadWriteCloser,
-) error {
-	log.Println(query, "reading identity")
-	nodeId, err := stream.ReadWithSize8()
+func (srv *service) Remove(rc request.Context) error {
+	log.Println(rc.Port, "reading identity")
+	nodeId, err := rc.ReadWithSize8()
 	if err != nil {
-		log.Println(query, "cannot read identity", err)
+		log.Println(rc.Port, "cannot read identity", err)
 		return err
 	}
-	log.Println(query, "reading file id")
-	fileId, _, err := fid.Read(stream)
+	log.Println(rc.Port, "reading file id")
+	fileId, _, err := fid.Read(rc)
 	if err != nil {
-		log.Println(query, "cannot read file id", err)
+		log.Println(rc.Port, "cannot read file id", err)
 		return err
 	}
-	log.Println(query, "removing share", nodeId, fileId)
-	err = r.shares.Remove(api.Identity(nodeId), fileId)
+	log.Println(rc.Port, "removing share", nodeId, fileId)
+	err = srv.shared.Remove(api.Identity(nodeId), fileId)
 	if err != nil {
-		log.Println(query, "cannot remove share", nodeId, fileId)
+		log.Println(rc.Port, "cannot remove share", nodeId, fileId)
 		return err
 	}
 	return nil
 }
 
-func (r *requestContext) ListLocal(
-	_ api.Identity,
-	query string,
-	stream sio.ReadWriteCloser,
-) error {
-	id, err := stream.ReadStringWithSize8()
+func (srv *service) ListLocal(rc request.Context) error {
+	id, err := rc.ReadStringWithSize8()
 	if err != nil {
-		log.Println(query, "cannot read id", err)
+		log.Println(rc.Port, "cannot read id", err)
 		return err
 	}
-	return r.List(api.Identity(id), query, stream)
+	rc.Caller = api.Identity(id)
+	return srv.List(rc)
 }
 
-func (r *requestContext) List(
-	caller api.Identity,
-	query string,
-	stream sio.ReadWriteCloser,
-) error {
-	s, err := r.shares.List(caller)
+func (srv *service) List(rc request.Context) error {
+	list, err := srv.shared.List(rc.Caller)
 	if err != nil {
-		log.Println(query, "cannot list shares for", caller, err)
+		log.Println(rc.Port, "cannot list shares for", rc.Caller, err)
 		return err
 	}
-	_, err = stream.WriteUInt32(uint32(len(s)))
+	_, err = rc.WriteUInt32(uint32(len(list)))
 	if err != nil {
-		log.Println(query, "cannot send shares count", caller, err)
+		log.Println(rc.Port, "cannot send shares count", rc.Caller, err)
 		return err
 	}
-	for _, share := range s {
-		err = share.Write(stream)
+	for _, share := range list {
+		err = share.Write(rc)
 		if err != nil {
-			log.Println(query, "cannot send id", err)
+			log.Println(rc.Port, "cannot send id", err)
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *requestContext) ContainsLocal(
-	_ api.Identity,
-	query string,
-	stream sio.ReadWriteCloser,
-) error {
-	id, err := stream.ReadStringWithSize8()
+func (srv *service) ContainsLocal(rc request.Context) error {
+	id, err := rc.ReadStringWithSize8()
 	if err != nil {
-		log.Println(query, "cannot read id", err)
+		log.Println(rc.Port, "cannot read id", err)
 		return err
 	}
-	return r.List(api.Identity(id), query, stream)
+	rc.Caller = api.Identity(id)
+	return srv.List(rc)
 }
 
-func (r *requestContext) Contains(
-	caller api.Identity,
-	query string,
-	stream sio.ReadWriteCloser,
-) error {
-	log.Println(query, "reading file id")
-	fileId, _, err := fid.Read(stream)
+func (srv *service) Contains(rc request.Context) error {
+	log.Println(rc.Port, "reading file id")
+	fileId, _, err := fid.Read(rc)
 	if err != nil {
-		log.Println(query, "cannot read file id", err)
+		log.Println(rc.Port, "cannot read file id", err)
 		return err
 	}
-	log.Println(query, "checking if contains", caller, fileId)
-	contains, err := r.shares.Contains(api.Identity(caller), fileId)
+	log.Println(rc.Port, "checking if contains", rc.Caller, fileId)
+	contains, err := srv.shared.Contains(rc.Caller, fileId)
 	if err != nil {
-		log.Println(query, "cannot check contains share", caller, fileId)
+		log.Println(rc.Port, "cannot check contains share", rc.Caller, fileId)
 		return err
 	}
 	response := byte(0)
 	if contains {
 		response = 1
 	}
-	log.Println(query, "sending response", response, caller, fileId)
-	err = stream.WriteByte(response)
+	log.Println(rc.Port, "sending response", response, rc.Caller, fileId)
+	err = rc.WriteByte(response)
 	if err != nil {
-		log.Println(query, "cannot send response", response, caller, fileId)
+		log.Println(rc.Port, "cannot send response", response, rc.Caller, fileId)
 		return err
 	}
-	log.Println(query, "done contains", response, caller, fileId)
+	log.Println(rc.Port, "done contains", response, rc.Caller, fileId)
 	return nil
 }

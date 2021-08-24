@@ -3,27 +3,35 @@ package messenger
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
+	"github.com/cryptopunkscc/astrald/components/repo"
 	"github.com/cryptopunkscc/astrald/components/sio"
-	"github.com/cryptopunkscc/astrald/services/messenger/handle"
-	"github.com/cryptopunkscc/astrald/services/messenger/job"
 	repoService "github.com/cryptopunkscc/astrald/services/repo"
 	"github.com/cryptopunkscc/astrald/services/util/auth"
-	handle2 "github.com/cryptopunkscc/astrald/services/util/handle"
+	"github.com/cryptopunkscc/astrald/services/util/handle"
 	"github.com/cryptopunkscc/astrald/services/util/request"
 	"log"
 )
 
+const Port = "messenger"
+
+type service struct {
+	context.Context
+	api.Core
+	repo.LocalRepository
+}
+
 func Run(ctx context.Context, core api.Core) error {
-	r := repoService.NewRepoClient(ctx, core)
 	observers := map[sio.ReadWriteCloser]struct{}{}
-	go job.ObserveLore(ctx, core, Port, observers)
-	handle2.Requests(ctx, core, Port, auth.All, func(
-		caller api.Identity,
-		query string,
-		stream sio.ReadWriteCloser,
-	) error {
+	srv := service{
+		Context:         ctx,
+		Core:            core,
+		LocalRepository: repoService.NewRepoClient(ctx, core),
+	}
+	go ObserveLore(ctx, core, Port, observers)
+	handle.Requests(ctx, core, Port, auth.All, func(rc request.Context) error {
+		rc.Observers = observers
 		log.Println(Port, "reading request type")
-		requestType, err := stream.ReadByte()
+		requestType, err := rc.ReadByte()
 		if err != nil {
 			log.Println(Port, "cannot reading request type", err)
 			return err
@@ -31,14 +39,9 @@ func Run(ctx context.Context, core api.Core) error {
 		log.Println(Port, "handling request type", requestType)
 		switch requestType {
 		case Send:
-			handle.Send(ctx, core, r, stream, Port)
+			srv.Send(rc)
 		case Observe:
-			req := &request.Context{
-				Port:            Port,
-				ReadWriteCloser: stream,
-				Observers:       observers,
-			}
-			_ = handle2.Observe(req)
+			_ = handle.Observe(&rc)
 		}
 		return nil
 	})

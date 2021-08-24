@@ -8,18 +8,18 @@ import (
 	"time"
 )
 
-func (rc *requestContext) syncLoop() {
-	for rc.Err() == nil {
+func (srv *service) syncLoop() {
+	for srv.Err() == nil {
 		time.Sleep(10 * time.Second)
-		rc.sync()
+		srv.sync()
 	}
 }
 
-func (rc *requestContext) sync() {
+func (srv *service) sync() {
 
 	// Getting contacts for sync
 	log.Println(Port, "listing contacts")
-	cards, err := identity.NewClient(rc, rc).List()
+	cards, err := identity.NewClient(srv, srv).List()
 	if err != nil {
 		log.Println(Port, "cannot list contacts", err)
 		return
@@ -30,14 +30,14 @@ func (rc *requestContext) sync() {
 		remoteId := card.Id
 		go func() {
 			// get list of shared files
-			files, err := share.NewSharesClient(rc, rc, remoteId).List()
+			files, err := share.NewSharesClient(srv, srv, remoteId).List()
 			if err != nil {
 				return
 			}
 			// handle each shared file id
-			filesClient := repo.NewFilesClient(rc, rc, remoteId)
+			filesClient := repo.NewFilesClient(srv, srv, remoteId)
 			for _, fileId := range files {
-				err := download(rc, filesClient, fileId)
+				err := download(srv, filesClient, fileId)
 				if err != nil {
 					log.Println(Port, "cannot sync", fileId, err)
 				}

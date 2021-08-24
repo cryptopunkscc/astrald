@@ -7,7 +7,7 @@ import (
 
 func init() {
 	shared := mem.NewSharedFiles()
-	sc := serviceContext{shared}
-	_ = node.RegisterService(Port, sc.runLocal)
-	_ = node.RegisterService(RemotePort, sc.runRemote)
+	service := service{shared}
+	_ = node.RegisterService(Port, service.runLocal)
+	_ = node.RegisterService(RemotePort, service.runRemote)
 }

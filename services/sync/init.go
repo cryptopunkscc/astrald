@@ -5,5 +5,5 @@ import (
 )
 
 func init() {
-	_ = node.RegisterService(Port, runService)
+	_ = node.RegisterService(Port, run)
 }

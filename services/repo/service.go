@@ -57,10 +57,7 @@ func NewService(
 	handlers Handlers,
 ) *Context {
 	return &Context{
-		Context: request.Context{
-			Port:      port,
-			Observers: map[sio.ReadWriteCloser]struct{}{},
-		},
+		Port: port,
 		Authorize: authorize,
 		Handlers:  handlers,
 	}
@@ -69,7 +66,7 @@ func NewService(
 // =================== Context ====================
 
 type Context struct {
-	request.Context
+	Port string
 	auth.Authorize
 	Handlers
 }
@@ -83,6 +80,7 @@ type Handlers map[byte]Handle
 func (srv *Context) Run(ctx context.Context, core api.Core) error {
 	repository := repo.NewAdapter(file.NewStorage(services.AstralHome))
 	handler, err := register.Port(ctx, core, srv.Port)
+	observers := map[sio.ReadWriteCloser]struct{}{}
 	if err != nil {
 		return err
 	}
@@ -94,10 +92,14 @@ func (srv *Context) Run(ctx context.Context, core api.Core) error {
 		}
 
 		req := &handle.Request{
-			Context:                srv.Context,
+			Context: request.Context{
+				ReadWriteCloser: accept.Request(ctx, r),
+				Caller:          r.Caller(),
+				Port:            r.Query(),
+				Observers:       observers,
+			},
 			ReadWriteMapRepository: repository,
 		}
-		req.ReadWriteCloser = accept.Request(ctx, r)
 		log.Println(srv.Port, "accepted connection")
 
 		go func() {

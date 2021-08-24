@@ -3,6 +3,7 @@ package share
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
+	"github.com/cryptopunkscc/astrald/components/shares"
 	"github.com/cryptopunkscc/astrald/services/util/auth"
 	"github.com/cryptopunkscc/astrald/services/util/handle"
 	"github.com/cryptopunkscc/astrald/services/util/request"
@@ -20,23 +21,25 @@ const (
 	Contains = 4
 )
 
-func (sc serviceContext) runLocal(ctx context.Context, core api.Core) error {
-	rc := requestContext{sc}
+type service struct {
+	shared shares.Shared
+}
+
+func (srv *service) runLocal(ctx context.Context, core api.Core) error {
 	handlers := request.Handlers{
-		Add:      rc.Add,
-		Remove:   rc.Remove,
-		List:     rc.ListLocal,
-		Contains: rc.ContainsLocal,
+		Add:      srv.Add,
+		Remove:   srv.Remove,
+		List:     srv.ListLocal,
+		Contains: srv.ContainsLocal,
 	}
 	handle.Requests(ctx, core, Port, auth.Local, handle.Using(handlers))
 	return nil
 }
 
-func (sc serviceContext) runRemote(ctx context.Context, core api.Core) error {
-	rc := requestContext{sc}
+func (srv *service) runRemote(ctx context.Context, core api.Core) error {
 	handlers := request.Handlers{
-		List:     rc.List,
-		Contains: rc.Contains,
+		List:     srv.List,
+		Contains: srv.Contains,
 	}
 	handle.Requests(ctx, core, RemotePort, auth.All, handle.Using(handlers))
 	return nil

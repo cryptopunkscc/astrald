@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
+	"github.com/cryptopunkscc/astrald/components/uid"
 	"github.com/cryptopunkscc/astrald/components/uid/file"
 	"github.com/cryptopunkscc/astrald/services"
 	"github.com/cryptopunkscc/astrald/services/util/auth"
@@ -18,13 +19,16 @@ const (
 
 const Port = "id"
 
-func (c *Context) runService(ctx context.Context, core api.Core) error {
-	c.ids = file.NewIdentities(services.AstralHome)
-	rc := Request{c}
+type service struct {
+	ids uid.Identities
+}
+
+func (srv *service) runService(ctx context.Context, core api.Core) error {
+	srv.ids = file.NewIdentities(services.AstralHome)
 	handlers := request.Handlers{
-		Update: rc.Update,
-		List:   rc.List,
-		Get: rc.Get,
+		Update: srv.Update,
+		List:   srv.List,
+		Get: srv.Get,
 	}
 	handle.Requests(ctx, core, Port, auth.Local, handle.Using(handlers))
 	return nil
