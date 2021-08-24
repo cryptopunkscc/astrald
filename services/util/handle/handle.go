@@ -54,9 +54,7 @@ func Requests(
 func Using(
 	handlers request.Handlers,
 ) request.Handler {
-	return func(
-		rc request.Context,
-	) error {
+	return func(rc request.Context) error {
 		requestType, err := rc.ReadByte()
 		if err != nil {
 			return err

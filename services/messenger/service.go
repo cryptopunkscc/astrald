@@ -9,10 +9,14 @@ import (
 	"github.com/cryptopunkscc/astrald/services/util/auth"
 	"github.com/cryptopunkscc/astrald/services/util/handle"
 	"github.com/cryptopunkscc/astrald/services/util/request"
-	"log"
 )
 
-const Port = "messenger"
+const Port = "msg"
+
+const (
+	Send    = 1
+	Observe = 2
+)
 
 type service struct {
 	context.Context
@@ -20,30 +24,23 @@ type service struct {
 	repo.LocalRepository
 }
 
-func Run(ctx context.Context, core api.Core) error {
+func run(ctx context.Context, core api.Core) error {
 	observers := map[sio.ReadWriteCloser]struct{}{}
 	srv := service{
 		Context:         ctx,
 		Core:            core,
 		LocalRepository: repoService.NewRepoClient(ctx, core),
 	}
+	handlers := request.Handlers{
+		Send: srv.Send,
+		Observe: handle.Observe,
+	}
+	handler := handle.Using(handlers)
+
 	go ObserveLore(ctx, core, Port, observers)
 	handle.Requests(ctx, core, Port, auth.All, func(rc request.Context) error {
 		rc.Observers = observers
-		log.Println(Port, "reading request type")
-		requestType, err := rc.ReadByte()
-		if err != nil {
-			log.Println(Port, "cannot reading request type", err)
-			return err
-		}
-		log.Println(Port, "handling request type", requestType)
-		switch requestType {
-		case Send:
-			srv.Send(rc)
-		case Observe:
-			_ = handle.Observe(&rc)
-		}
-		return nil
+		return handler(rc)
 	})
 	return nil
 }

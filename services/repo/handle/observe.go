@@ -5,5 +5,5 @@ import (
 )
 
 func Observe(c *Request) {
-	_ = handle.Observe(&c.Context)
+	_ = handle.Observe(c.Context)
 }

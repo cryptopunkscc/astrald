@@ -12,9 +12,7 @@ import (
 	"time"
 )
 
-func (srv service) Send(
-	rc request.Context,
-) {
+func (srv service) Send(rc request.Context) (err error) {
 	// Reading a message for send
 	log.Println(rc.Port, "reading message for send")
 	m, err := message.Read(rc)
@@ -87,4 +85,5 @@ func (srv service) Send(
 		log.Println(Port, "error while waiting for ok", m.Recipient())
 	}
 	log.Println("sending message done")
+	return
 }
