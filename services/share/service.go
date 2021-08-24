@@ -22,7 +22,7 @@ const (
 
 func (sc serviceContext) runLocal(ctx context.Context, core api.Core) error {
 	rc := requestContext{sc}
-	handlers := map[byte]request.Handler{
+	handlers := request.Handlers{
 		Add:      rc.Add,
 		Remove:   rc.Remove,
 		List:     rc.ListLocal,
@@ -34,7 +34,7 @@ func (sc serviceContext) runLocal(ctx context.Context, core api.Core) error {
 
 func (sc serviceContext) runRemote(ctx context.Context, core api.Core) error {
 	rc := requestContext{sc}
-	handlers := map[byte]request.Handler{
+	handlers := request.Handlers{
 		List:     rc.List,
 		Contains: rc.Contains,
 	}

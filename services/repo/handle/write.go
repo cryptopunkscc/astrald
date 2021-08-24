@@ -2,12 +2,11 @@ package handle
 
 import (
 	"encoding/binary"
-	"github.com/cryptopunkscc/astrald/services/repo/internal/service"
 	"io"
 	"log"
 )
 
-func Write(c *service.Request) {
+func Write(c *Request) {
 	var sizeBuff [4]byte
 	for {
 		// Read next file size

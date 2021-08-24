@@ -1,12 +1,11 @@
 package handle
 
 import (
-	"github.com/cryptopunkscc/astrald/services/repo/internal/service"
 	"io"
 	"log"
 )
 
-func List(c *service.Request) {
+func List(c *Request) {
 	reader, err := c.List()
 	if err != nil {
 		log.Println(c.Port, "cannot list files", err)

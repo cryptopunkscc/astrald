@@ -1,11 +1,10 @@
 package handle
 
 import (
-	"github.com/cryptopunkscc/astrald/services/repo/internal/service"
 	"log"
 )
 
-func Map(c *service.Request) {
+func Map(c *Request) {
 	for {
 		log.Println(c.Port, "reading path to map")
 		path, err := c.ReadStringWithSize16()
