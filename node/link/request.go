@@ -26,6 +26,8 @@ func (req *Request) Accept() (io.ReadWriteCloser, error) {
 
 // Reject the request
 func (req Request) Reject() error {
+	req.inputStream.Close()
+
 	return req.outputStream.Close()
 }
 

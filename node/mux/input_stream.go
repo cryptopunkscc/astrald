@@ -35,7 +35,7 @@ func (stream *InputStream) write(p []byte) (n int, err error) {
 	return stream.w.Write(p)
 }
 
-func (stream *InputStream) close() error {
+func (stream *InputStream) Close() error {
 	defer close(stream.closeCh)
 
 	return stream.w.Close()

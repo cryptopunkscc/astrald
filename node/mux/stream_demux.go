@@ -35,7 +35,7 @@ func NewStreamDemux(reader io.Reader) *StreamDemux {
 
 		demux.streamsMu.Lock()
 		for _, stream := range demux.streams {
-			_ = stream.close()
+			_ = stream.Close()
 		}
 		demux.streams = nil
 		demux.streamsMu.Unlock()
@@ -103,7 +103,7 @@ func (demux *StreamDemux) processFrames() error {
 		}
 
 		if payloadLen == 0 {
-			stream.close()
+			stream.Close()
 		} else {
 			stream.write(buf[:payloadLen])
 		}
