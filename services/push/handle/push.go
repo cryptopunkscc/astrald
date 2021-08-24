@@ -3,12 +3,10 @@ package handle
 import (
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/fid"
-	"github.com/cryptopunkscc/astrald/services/push/internal/service"
-	"github.com/cryptopunkscc/astrald/services/sync"
 	"log"
 )
 
-func Push(r *service.Request) error {
+func Push(r *Request) error {
 	ok := []byte{0}
 	log.Println(r.Port, "reading file id")
 	id, idBuff, err := fid.Read(r)
@@ -20,7 +18,7 @@ func Push(r *service.Request) error {
 	_, err = r.Write(ok)
 	go func() {
 		log.Println(r.Port, "downloading file with id", id.String())
-		err := sync.NewClient(r.Ctx, r.Core).Download(r.Caller, id)
+		err := r.Sync.Download(r.Caller, id)
 		if err != nil {
 			log.Println(r.Port, "cannot download file with id", id.String())
 		}
@@ -31,7 +29,7 @@ func Push(r *service.Request) error {
 }
 
 func notifyObservers(
-	r *service.Request,
+	r *Request,
 	idBuff [fid.Size]byte,
 ) {
 	for observer := range r.Observers {

@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/components/story"
 	"github.com/cryptopunkscc/astrald/services/messenger/message"
 	"github.com/cryptopunkscc/astrald/services/push"
-	"github.com/cryptopunkscc/astrald/services/push/request"
 	"github.com/cryptopunkscc/astrald/services/util/connect"
 	"log"
 	"time"
@@ -72,7 +71,7 @@ func Send(
 
 	// Connecting to remote push service
 	log.Println(Port, "connecting to push service", m.Recipient())
-	remote, err := connect.RemoteRequest(ctx, core, api.Identity(m.Recipient()), push.Port, request.Push)
+	remote, err := connect.RemoteRequest(ctx, core, api.Identity(m.Recipient()), push.Port, push.Push)
 	if err != nil {
 		log.Println(Port, "cannot connect to", m.Recipient(), err)
 		return

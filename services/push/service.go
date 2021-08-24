@@ -1,13 +1,48 @@
-package service
+package push
 
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/api"
 	"github.com/cryptopunkscc/astrald/components/sio"
+	"github.com/cryptopunkscc/astrald/services/push/handle"
+	"github.com/cryptopunkscc/astrald/services/sync"
 	"github.com/cryptopunkscc/astrald/services/util/accept"
 	"github.com/cryptopunkscc/astrald/services/util/register"
+	"github.com/cryptopunkscc/astrald/services/util/request"
 	"log"
 )
+
+const Port = "push"
+
+const (
+	Push    = 1
+	Observe = 2
+)
+
+// =================== Constructors ====================
+
+func NewService() *Context {
+	return &Context{
+		Port: Port,
+		Handlers: Handlers{
+			Push:    handle.Push,
+			Observe: handle.Observe,
+		},
+	}
+}
+
+// =================== Context ====================
+
+type Context struct {
+	Port string
+	Handlers Handlers
+}
+
+type Handle func(r *handle.Request) error
+
+type Handlers map[byte]Handle
+
+// =================== Runner ====================
 
 func (srv *Context) Run(ctx context.Context, core api.Core) (err error) {
 	var handler api.PortHandler
@@ -15,15 +50,18 @@ func (srv *Context) Run(ctx context.Context, core api.Core) (err error) {
 		return
 	}
 
-	srv.Ctx = ctx
-	srv.Core = core
-	srv.Observers = map[sio.ReadWriteCloser]struct{}{}
+	observers := map[sio.ReadWriteCloser]struct{}{}
+	syncClient := sync.NewClient(ctx, core)
 
 	for conn := range handler.Requests() {
-		r := &Request{
-			Context:         *srv,
-			ReadWriteCloser: accept.Request(ctx, conn),
-			Caller:          conn.Caller(),
+		r := &handle.Request{
+			Context:   request.Context{
+				Port: srv.Port,
+				ReadWriteCloser: accept.Request(ctx, conn),
+				Observers: observers,
+			},
+			Caller:    conn.Caller(),
+			Sync:      syncClient,
 		}
 		log.Println(srv.Port, "accepted connection")
 		go func() {
@@ -37,13 +75,13 @@ func (srv *Context) Run(ctx context.Context, core api.Core) (err error) {
 			}
 
 			log.Println(srv.Port, "getting handler for request type", requestType)
-			handle := srv.Handlers[requestType]
-			if handle == nil {
+			h := srv.Handlers[requestType]
+			if h == nil {
 				log.Println(srv.Port, "cannot obtain handler for request type", requestType, "len", len(srv.Handlers), srv.Handlers, err)
 				return
 			}
 			log.Println(srv.Port, "handling request type", requestType)
-			err = handle(r)
+			err = h(r)
 			if err != nil {
 				log.Println(srv.Port, "cannot handle request type", requestType, err)
 			}

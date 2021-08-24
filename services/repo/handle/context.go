@@ -9,7 +9,3 @@ type Request struct {
 	request.Context
 	repo2.ReadWriteMapRepository
 }
-
-type Handle func(c *Request)
-
-type Handlers map[byte]Handle

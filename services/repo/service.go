@@ -31,7 +31,7 @@ const (
 func NewRepoService() *Context {
 	return NewService(Port,
 		auth.Local,
-		handle.Handlers{
+		Handlers{
 			List:    handle.List,
 			Read:    handle.Read,
 			Write:   handle.Write,
@@ -44,7 +44,7 @@ func NewRepoService() *Context {
 func NewFilesService() *Context {
 	return NewService(FilesPort,
 		auth.All,
-		handle.Handlers{
+		Handlers{
 			List: handle.List,
 			Read: handle.Read,
 		},
@@ -54,7 +54,7 @@ func NewFilesService() *Context {
 func NewService(
 	port string,
 	authorize auth.Authorize,
-	handlers handle.Handlers,
+	handlers Handlers,
 ) *Context {
 	return &Context{
 		Context: request.Context{
@@ -71,8 +71,12 @@ func NewService(
 type Context struct {
 	request.Context
 	auth.Authorize
-	handle.Handlers
+	Handlers
 }
+
+type Handle func(c *handle.Request)
+
+type Handlers map[byte]Handle
 
 // =================== Runner ====================
 
@@ -101,7 +105,7 @@ func (srv *Context) Run(ctx context.Context, core api.Core) error {
 
 			var err error
 			var requestType byte
-			var _handle handle.Handle
+			var _handle Handle
 
 			if requestType, err = req.ReadByte(); err != nil {
 				log.Println(req.Port, "error reading type", err)
