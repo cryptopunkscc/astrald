@@ -13,7 +13,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/services/push"
 	_ "github.com/cryptopunkscc/astrald/services/repo"
 	_ "github.com/cryptopunkscc/astrald/services/share"
-	_ "github.com/cryptopunkscc/astrald/services/sync"
+	//_ "github.com/cryptopunkscc/astrald/services/sync"
 	//_ "github.com/cryptopunkscc/astrald/services/test"
 	"log"
 	"os"

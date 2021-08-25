@@ -22,7 +22,7 @@ type service struct {
 	repo2.LocalRepository
 }
 
-func run(ctx context.Context, core api.Core) error {
+func Run(ctx context.Context, core api.Core) error {
 	srv := service{
 		Context:         ctx,
 		Core:            core,
@@ -32,6 +32,6 @@ func run(ctx context.Context, core api.Core) error {
 		Download: srv.Download,
 	}
 	go srv.syncLoop()
-	handle.Requests(ctx, core, Port, auth.All, handle.Using(handlers))
+	handle.Requests(ctx, core, Port, auth.Local, handle.Using(handlers))
 	return nil
 }
