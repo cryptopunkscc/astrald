@@ -24,7 +24,7 @@ type service struct {
 	repo.LocalRepository
 }
 
-func run(ctx context.Context, core api.Core) error {
+func Run(ctx context.Context, core api.Core) error {
 	observers := map[sio.ReadWriteCloser]struct{}{}
 	srv := service{
 		Context:         ctx,

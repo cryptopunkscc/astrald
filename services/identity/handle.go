@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-func (srv *service) Update(rc request.Context) error {
+func (srv *Service) Update(rc request.Context) error {
 	log.Println(rc.Port, "reading card")
 	card, err := uid.ReadCard(rc)
 	if err != nil {
@@ -28,7 +28,7 @@ func (srv *service) Update(rc request.Context) error {
 	return nil
 }
 
-func (srv *service) List(rc request.Context) error {
+func (srv *Service) List(rc request.Context) error {
 	log.Println(rc.Port, "getting cards")
 	list, err := srv.ids.List()
 	if err != nil {
@@ -52,7 +52,7 @@ func (srv *service) List(rc request.Context) error {
 	return nil
 }
 
-func (srv *service) Get(rc request.Context) error {
+func (srv *Service) Get(rc request.Context) error {
 	log.Println(rc.Port, "reading id")
 	id, err := rc.ReadStringWithSize8()
 	if err != nil {

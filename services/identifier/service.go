@@ -21,7 +21,7 @@ type service struct {
 
 type resolve func(prefix []byte) (string, error)
 
-func run(ctx context.Context, core api.Core) error {
+func Run(ctx context.Context, core api.Core) error {
 	srv := service{
 		repository: repo.NewRepoClient(ctx, core),
 		observers:  map[sio.ReadWriteCloser]string{},

@@ -19,11 +19,11 @@ const (
 
 const Port = "id"
 
-type service struct {
+type Service struct {
 	ids uid.Identities
 }
 
-func (srv *service) runService(ctx context.Context, core api.Core) error {
+func (srv *Service) Run(ctx context.Context, core api.Core) error {
 	srv.ids = file.NewIdentities(services.AstralHome)
 	handlers := request.Handlers{
 		Update: srv.Update,

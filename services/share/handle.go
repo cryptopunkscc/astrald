@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-func (srv *service) Add(rc request.Context) error {
+func (srv *Service) Add(rc request.Context) error {
 	// Read identity
 	log.Println(rc.Port, "reading identity")
 	nodeId, err := rc.ReadWithSize8()
@@ -43,7 +43,7 @@ func (srv *service) Add(rc request.Context) error {
 	return nil
 }
 
-func (srv *service) Remove(rc request.Context) error {
+func (srv *Service) Remove(rc request.Context) error {
 	log.Println(rc.Port, "reading identity")
 	nodeId, err := rc.ReadWithSize8()
 	if err != nil {
@@ -65,7 +65,7 @@ func (srv *service) Remove(rc request.Context) error {
 	return nil
 }
 
-func (srv *service) ListLocal(rc request.Context) error {
+func (srv *Service) ListLocal(rc request.Context) error {
 	id, err := rc.ReadStringWithSize8()
 	if err != nil {
 		log.Println(rc.Port, "cannot read id", err)
@@ -75,7 +75,7 @@ func (srv *service) ListLocal(rc request.Context) error {
 	return srv.List(rc)
 }
 
-func (srv *service) List(rc request.Context) error {
+func (srv *Service) List(rc request.Context) error {
 	list, err := srv.shared.List(rc.Caller)
 	if err != nil {
 		log.Println(rc.Port, "cannot list shares for", rc.Caller, err)
@@ -96,7 +96,7 @@ func (srv *service) List(rc request.Context) error {
 	return nil
 }
 
-func (srv *service) ContainsLocal(rc request.Context) error {
+func (srv *Service) ContainsLocal(rc request.Context) error {
 	id, err := rc.ReadStringWithSize8()
 	if err != nil {
 		log.Println(rc.Port, "cannot read id", err)
@@ -106,7 +106,7 @@ func (srv *service) ContainsLocal(rc request.Context) error {
 	return srv.List(rc)
 }
 
-func (srv *service) Contains(rc request.Context) error {
+func (srv *Service) Contains(rc request.Context) error {
 	log.Println(rc.Port, "reading file id")
 	fileId, _, err := fid.Read(rc)
 	if err != nil {

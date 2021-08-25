@@ -21,11 +21,15 @@ const (
 	Contains = 4
 )
 
-type service struct {
+type Service struct {
 	shared shares.Shared
 }
 
-func (srv *service) runLocal(ctx context.Context, core api.Core) error {
+func NewService(shared shares.Shared) *Service {
+	return &Service{shared: shared}
+}
+
+func (srv *Service) RunLocal(ctx context.Context, core api.Core) error {
 	handlers := request.Handlers{
 		Add:      srv.Add,
 		Remove:   srv.Remove,
@@ -36,7 +40,7 @@ func (srv *service) runLocal(ctx context.Context, core api.Core) error {
 	return nil
 }
 
-func (srv *service) runRemote(ctx context.Context, core api.Core) error {
+func (srv *Service) RunRemote(ctx context.Context, core api.Core) error {
 	handlers := request.Handlers{
 		List:     srv.List,
 		Contains: srv.Contains,
