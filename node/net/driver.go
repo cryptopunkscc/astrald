@@ -56,3 +56,11 @@ func AddBroadcastNetwork(name string, driver BroadcastNetwork) error {
 
 	return nil
 }
+
+func UnicastNetworks() []string {
+	list := make([]string, 0, len(unicastNets))
+	for name := range unicastNets {
+		list = append(list, name)
+	}
+	return list
+}
