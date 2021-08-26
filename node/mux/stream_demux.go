@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"sync"
 )
@@ -29,7 +30,7 @@ func NewStreamDemux(reader io.Reader) *StreamDemux {
 		err := demux.processFrames()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				panic(err)
+				log.Println("demux error:", err)
 			}
 		}
 

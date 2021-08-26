@@ -36,7 +36,7 @@ func (stream *InputStream) write(p []byte) (n int, err error) {
 }
 
 func (stream *InputStream) Close() error {
-	defer close(stream.closeCh)
+	defer close(stream.closeCh) //FIXME: panic: close of closed channel
 
 	return stream.w.Close()
 }
