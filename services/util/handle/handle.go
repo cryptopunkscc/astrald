@@ -42,7 +42,10 @@ func Requests(
 			Observers:       observers,
 		}
 		go func() {
-			defer func() { _ = rc.Close() }()
+			defer func() {
+				log.Println(port, "closing connection")
+				_ = rc.Close()
+			}()
 			err := handle(rc)
 			if err != nil {
 				log.Println(port, "cannot handle", err)

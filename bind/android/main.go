@@ -13,9 +13,8 @@ import (
 	_ "github.com/cryptopunkscc/astrald/services/push/init"
 	_ "github.com/cryptopunkscc/astrald/services/repo/init"
 	_ "github.com/cryptopunkscc/astrald/services/share/init"
-	//_ "github.com/cryptopunkscc/astrald/services/sync/init"
+	_ "github.com/cryptopunkscc/astrald/services/warpdrive/init"
 	"log"
-	"os"
 	"time"
 )
 
@@ -50,10 +49,6 @@ func Start(astralHome string) {
 	// Check results
 	if err != nil {
 		log.Printf("error: %s\n", err)
-		os.Exit(ExitNodeError)
-	} else {
-		log.Printf("success.\n")
-		os.Exit(ExitSuccess)
 	}
 }
 
