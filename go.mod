@@ -3,13 +3,13 @@ module github.com/cryptopunkscc/astrald
 go 1.16
 
 require (
-	github.com/btcsuite/btcd v0.21.0-beta
-	github.com/cretz/bine v0.1.0
-	github.com/google/uuid v1.2.0
-	github.com/stretchr/testify v1.3.0 // indirect
-	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
-	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
-	golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+	bazil.org/fuse v0.0.0-20200524192727-fb710f7dfd05
+	github.com/btcsuite/btcd v0.22.0-beta
+	github.com/cretz/bine v0.2.0
+	github.com/hanwen/go-fuse/v2 v2.1.0
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	golang.org/x/mobile v0.0.0-20210716004757-34ab1303b554 // indirect
+	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 )
