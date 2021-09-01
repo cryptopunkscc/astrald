@@ -56,7 +56,7 @@ func (drv *driver) Scan(ctx context.Context) (<-chan *net.Ad, error) {
 
 			ad := &net.Ad{
 				Identity: id,
-				Addr:     net.MakeAddr("lan", finalAddr),
+				Addr:     net.MakeAddr("tcp", finalAddr),
 			}
 
 			output <- ad
@@ -158,7 +158,7 @@ func scanAddr(ctx context.Context, addr net.Addr, output chan<- *net.Ad) error {
 
 			ad := &net.Ad{
 				Identity: id,
-				Addr:     net.MakeAddr("lan", finalAddr),
+				Addr:     net.MakeAddr("tcp", finalAddr),
 			}
 
 			output <- ad
