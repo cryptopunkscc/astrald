@@ -32,7 +32,7 @@ func Get() ([]string, error) {
 
 	// Getting ids
 	i := 0
-	p := make([]string, 0, len(c))
+	p := make([]string, len(c))
 	for id := range c {
 		p[i] = id
 		i++
