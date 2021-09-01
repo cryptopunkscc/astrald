@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/services"
 	_ "github.com/cryptopunkscc/astrald/services/apphost"
+	_ "github.com/cryptopunkscc/astrald/services/warpdrive/init"
 	"log"
 	"os"
 	"os/signal"
@@ -42,6 +44,9 @@ func main() {
 	if len(os.Args) > 1 {
 		astralRoot = os.Args[1]
 	}
+
+	// init AstralHome for service
+	services.AstralHome = astralRoot
 
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())
