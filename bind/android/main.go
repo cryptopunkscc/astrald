@@ -2,18 +2,16 @@ package astralandroid
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/bind/api"
 	_node "github.com/cryptopunkscc/astrald/node"
 	_ "github.com/cryptopunkscc/astrald/services/apphost"
 	"log"
-	"time"
 )
 
+var identity string
 var stop context.CancelFunc
 
-func Start(astralHome string) {
-	// Figure out the config path
-	log.Println("log Staring astrald")
+func Start(astralHome string) error {
+	log.Println("Staring astrald")
 
 	// Instantiate the node
 	node := _node.New(astralHome)
@@ -22,26 +20,14 @@ func Start(astralHome string) {
 	ctx, shutdown := context.WithCancel(context.Background())
 
 	stop = shutdown
+	identity = node.Identity.String()
 
 	// Run the node
-	err := node.Run(ctx)
-
-	time.Sleep(50 * time.Millisecond)
-
-	// Check results
-	if err != nil {
-		log.Printf("error: %s\n", err)
-	}
+	return node.Run(ctx)
 }
 
-func Register(
-	name string,
-	service astralApi.Service,
-) error {
-	return _node.RegisterService(
-		name,
-		serviceRunner(service),
-	)
+func Identity() string {
+	return identity
 }
 
 func Stop() {
