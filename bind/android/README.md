@@ -7,7 +7,7 @@ Basic compatibility layer for Android
 Run the following command from the project root to generate aar and sources lib:
 
 ```shell
-gomobile bind -v -o $OUTPUT_DIR -target=android ./bind/android/ ./bind/api/
+gomobile bind -v -o $OUTPUT_DIR -target=android ./bind/android/
 ```
 
 ## References
