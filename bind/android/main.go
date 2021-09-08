@@ -3,7 +3,9 @@ package astralandroid
 import (
 	"context"
 	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/services"
 	_ "github.com/cryptopunkscc/astrald/services/apphost"
+	_ "github.com/cryptopunkscc/astrald/services/warpdrive/init"
 	"log"
 )
 
@@ -15,6 +17,9 @@ func Start(astralHome string) error {
 
 	// Instantiate the node
 	node := _node.New(astralHome)
+
+	// init AstralHome for service
+	services.AstralHome = astralHome
 
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())
