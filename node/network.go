@@ -3,24 +3,45 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/node/auth"
-	"github.com/cryptopunkscc/astrald/node/auth/id"
+	"github.com/cryptopunkscc/astrald/auth"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/net"
 	_link "github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/net"
 )
 
 type Network struct {
-	identity *id.ECIdentity
+	identity *id.Identity
 	peerInfo *PeerInfo
 }
 
-func NewNetwork(identity *id.ECIdentity, peerInfo *PeerInfo) *Network {
-	return &Network{identity: identity, peerInfo: peerInfo}
+func (n *Network) Identity() *id.Identity {
+	return n.identity
 }
 
-func (n *Network) Link(remoteID *id.ECIdentity) (*_link.Link, error) {
+func NewNetwork(identity *id.Identity, peerInfo *PeerInfo) *Network {
+	return &Network{
+		identity: identity,
+		peerInfo: peerInfo,
+	}
+}
+
+func (n *Network) LinkAt(remoteID *id.Identity, addr net.Addr) (*_link.Link, error) {
+	netConn, err := net.Dial(context.Background(), addr)
+	if err != nil {
+		return nil, err
+	}
+
+	authConn, err := auth.HandshakeOutbound(context.Background(), netConn, remoteID, n.identity)
+	if err != nil {
+		return nil, err
+	}
+
+	return _link.New(authConn), nil
+}
+
+func (n *Network) Link(remoteID *id.Identity) (*_link.Link, error) {
 	// Get node endpoints
-	endpoints := n.peerInfo.Find(remoteID.String())
+	endpoints := n.peerInfo.NodeAddr(remoteID.String())
 	if len(endpoints) == 0 {
 		return nil, errors.New("no endpoints found for the host")
 	}
@@ -42,7 +63,7 @@ func (n *Network) Link(remoteID *id.ECIdentity) (*_link.Link, error) {
 	return link, nil
 }
 
-func (n *Network) Listen(ctx context.Context, identity *id.ECIdentity) (<-chan *_link.Link, <-chan error) {
+func (n *Network) Listen(ctx context.Context, identity *id.Identity) (<-chan *_link.Link, <-chan error) {
 	linkCh := make(chan *_link.Link)
 	errCh := make(chan error)
 
@@ -65,7 +86,7 @@ func (n *Network) Listen(ctx context.Context, identity *id.ECIdentity) (<-chan *
 	return linkCh, errCh
 }
 
-func (n *Network) Advertise(ctx context.Context, identity *id.ECIdentity) error {
+func (n *Network) Advertise(ctx context.Context, identity *id.Identity) error {
 	return net.Advertise(ctx, identity.String())
 }
 

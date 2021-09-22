@@ -2,13 +2,13 @@ package link
 
 import (
 	"encoding/binary"
-	"github.com/cryptopunkscc/astrald/node/auth/id"
-	"github.com/cryptopunkscc/astrald/node/mux"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/mux"
 	"io"
 )
 
 type Request struct {
-	caller       id.Identity
+	caller       *id.Identity
 	query        string
 	inputStream  *mux.InputStream
 	outputStream *mux.OutputStream
@@ -32,7 +32,7 @@ func (req Request) Reject() error {
 }
 
 // Caller returns the auth.Identity of the caller
-func (req Request) Caller() id.Identity {
+func (req Request) Caller() *id.Identity {
 	return req.caller
 }
 

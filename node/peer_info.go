@@ -3,8 +3,8 @@ package node
 import (
 	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/net"
 	_fs "github.com/cryptopunkscc/astrald/node/fs"
-	"github.com/cryptopunkscc/astrald/node/net"
 	"log"
 	"os"
 	"sync"
@@ -12,11 +12,11 @@ import (
 
 const peerInfoFilename = "peers"
 
-type PeerEntry []net.Addr
+type AddrList []net.Addr
 
 // PeerInfo maps identities to their addresses in various networks
 type PeerInfo struct {
-	entries map[string]PeerEntry
+	entries map[string]AddrList
 	fs      *_fs.Filesystem
 	mu      sync.Mutex
 }
@@ -32,7 +32,7 @@ type cache map[string][]cacheAddr
 func NewPeerInfo(fs *_fs.Filesystem) *PeerInfo {
 	t := &PeerInfo{
 		fs:      fs,
-		entries: make(map[string]PeerEntry),
+		entries: make(map[string]AddrList),
 	}
 	err := t.load()
 	if err != nil {
@@ -53,10 +53,10 @@ func (info *PeerInfo) Add(nodeID string, endpoint net.Addr) {
 
 	// Make sure the map is initialized
 	if info.entries == nil {
-		info.entries = make(map[string]PeerEntry)
+		info.entries = make(map[string]AddrList)
 	}
 	if _, found := info.entries[nodeID]; !found {
-		info.entries[nodeID] = make(PeerEntry, 0)
+		info.entries[nodeID] = make(AddrList, 0)
 	}
 
 	// Search for duplicates
@@ -76,22 +76,22 @@ func (info *PeerInfo) Add(nodeID string, endpoint net.Addr) {
 	}
 }
 
-// Find fetches a list of known endpoints for the provided Identity
-func (info *PeerInfo) Find(nodeID string) PeerEntry {
+// NodeAddr fetches a list of known endpoints for the provided Identity
+func (info *PeerInfo) NodeAddr(nodeID string) AddrList {
 	info.mu.Lock()
 	defer info.mu.Unlock()
 
 	if info.entries == nil {
-		return nil
+		return AddrList{}
 	}
 	return info.entries[nodeID]
 }
 
-func (info *PeerInfo) Each() <-chan *PeerEntry {
+func (info *PeerInfo) Each() <-chan *AddrList {
 	info.mu.Lock()
 	defer info.mu.Unlock()
 
-	ch := make(chan *PeerEntry, len(info.entries))
+	ch := make(chan *AddrList, len(info.entries))
 
 	for _, e := range info.entries {
 		ch <- &e
@@ -135,4 +135,14 @@ func (info *PeerInfo) save() error {
 	bytes, _ := json.MarshalIndent(&c, "", "  ")
 
 	return info.fs.Write(peerInfoFilename, bytes)
+}
+
+func (list AddrList) OnlyNet(netName string) AddrList {
+	res := make(AddrList, 0)
+	for _, addr := range list {
+		if addr.Network() == netName {
+			res = append(res, addr)
+		}
+	}
+	return res
 }

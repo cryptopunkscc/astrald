@@ -2,21 +2,21 @@ package peer
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/logfmt"
-	"github.com/cryptopunkscc/astrald/node/auth/id"
 	_link "github.com/cryptopunkscc/astrald/node/link"
 	"log"
 	"sync"
 )
 
 type Peer struct {
-	peerID   id.Identity
+	peerID   *id.Identity
 	links    []*_link.Link
 	mu       sync.Mutex
 	requests chan _link.Request
 }
 
-func New(peerID id.Identity) *Peer {
+func New(peerID *id.Identity) *Peer {
 	return &Peer{
 		peerID:   peerID,
 		links:    make([]*_link.Link, 0),

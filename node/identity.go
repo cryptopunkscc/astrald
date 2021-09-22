@@ -2,7 +2,7 @@ package node
 
 import (
 	"errors"
-	_id "github.com/cryptopunkscc/astrald/node/auth/id"
+	_id "github.com/cryptopunkscc/astrald/auth/id"
 	_fs "github.com/cryptopunkscc/astrald/node/fs"
 	"log"
 	"os"
@@ -10,11 +10,11 @@ import (
 
 const defaultIdentityFilename = "id"
 
-func setupIdentity(fs *_fs.Filesystem) *_id.ECIdentity {
+func setupIdentity(fs *_fs.Filesystem) *_id.Identity {
 	// Try to load an existing identity
 	idBytes, err := fs.Read(defaultIdentityFilename)
 	if err == nil {
-		id, err := _id.ECIdentityFromBytes(idBytes)
+		id, err := _id.ParsePrivateKey(idBytes)
 		if err != nil {
 			panic(err)
 		}
@@ -28,7 +28,7 @@ func setupIdentity(fs *_fs.Filesystem) *_id.ECIdentity {
 
 	// Generate a new identity
 	log.Println("generating new node identity...")
-	id, err := _id.GenerateECIdentity()
+	id, err := _id.GenerateIdentity()
 	if err != nil {
 		panic(err)
 	}

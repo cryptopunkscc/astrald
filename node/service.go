@@ -2,10 +2,9 @@ package node
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/api"
 )
 
-type ServiceRunner func(ctx context.Context, core api.Core) error
+type ServiceRunner func(ctx context.Context, node *Node) error
 
 var services = make(map[string]ServiceRunner, 0)
 

@@ -1,7 +1,7 @@
 package link
 
 import (
-	"github.com/cryptopunkscc/astrald/node/mux"
+	mux "github.com/cryptopunkscc/astrald/mux"
 	"sync"
 )
 

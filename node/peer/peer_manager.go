@@ -1,7 +1,7 @@
 package peer
 
 import (
-	_id "github.com/cryptopunkscc/astrald/node/auth/id"
+	_id "github.com/cryptopunkscc/astrald/auth/id"
 	_link "github.com/cryptopunkscc/astrald/node/link"
 	"sync"
 )
@@ -26,7 +26,7 @@ func (peers *Peers) Requests() <-chan _link.Request {
 	return peers.requests
 }
 
-func (peers *Peers) Peer(id _id.Identity) (*Peer, error) {
+func (peers *Peers) Peer(id *_id.Identity) (*Peer, error) {
 	peers.mu.Lock()
 	defer peers.mu.Unlock()
 
@@ -44,6 +44,16 @@ func (peers *Peers) Peer(id _id.Identity) (*Peer, error) {
 	}()
 
 	return peer, nil
+}
+
+func (peers *Peers) AllLinks() []*_link.Link {
+	list := make([]*_link.Link, 0)
+
+	for _, peer := range peers.peers {
+		list = append(list, peer.links...)
+	}
+
+	return list
 }
 
 func (peers *Peers) AddLink(link *_link.Link) error {

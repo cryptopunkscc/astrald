@@ -3,11 +3,11 @@ package link
 import (
 	"encoding/binary"
 	"errors"
-	"github.com/cryptopunkscc/astrald/node/auth"
-	"github.com/cryptopunkscc/astrald/node/auth/id"
+	"github.com/cryptopunkscc/astrald/auth"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/mux"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/link/proto"
-	"github.com/cryptopunkscc/astrald/node/mux"
-	"github.com/cryptopunkscc/astrald/node/net"
 	"log"
 )
 
@@ -25,10 +25,9 @@ const controlStreamID = 0
 
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
-	m := mux.NewMux(conn)
 	link := &Link{
 		conn:     conn,
-		mux:      m,
+		mux:      mux.NewMux(conn),
 		demux:    mux.NewStreamDemux(conn),
 		requests: make(chan Request),
 		closeCh:  make(chan struct{}),
@@ -74,12 +73,12 @@ func (link *Link) Requests() <-chan Request {
 }
 
 // RemoteIdentity returns the auth.Identity of the remote party
-func (link *Link) RemoteIdentity() id.Identity {
+func (link *Link) RemoteIdentity() *id.Identity {
 	return link.conn.RemoteIdentity()
 }
 
 // LocalIdentity returns the auth.Identity of the remote party
-func (link *Link) LocalIdentity() id.Identity {
+func (link *Link) LocalIdentity() *id.Identity {
 	return link.conn.LocalIdentity()
 }
 

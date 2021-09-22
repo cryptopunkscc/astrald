@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	_ "github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/node"
-	_ "github.com/cryptopunkscc/astrald/services/apphost"
 	"log"
 	"os"
 	"os/signal"

@@ -2,28 +2,27 @@ package node
 
 import (
 	"context"
-	_id "github.com/cryptopunkscc/astrald/node/auth/id"
+	_id "github.com/cryptopunkscc/astrald/auth/id"
+	_hub "github.com/cryptopunkscc/astrald/hub"
+	_ "github.com/cryptopunkscc/astrald/net/tcp"
+	_ "github.com/cryptopunkscc/astrald/net/tor"
+	_ "github.com/cryptopunkscc/astrald/net/udp"
 	_fs "github.com/cryptopunkscc/astrald/node/fs"
-	"github.com/cryptopunkscc/astrald/node/hub"
-	_ "github.com/cryptopunkscc/astrald/node/net/tcp"
-	_ "github.com/cryptopunkscc/astrald/node/net/tor"
-	_ "github.com/cryptopunkscc/astrald/node/net/udp"
 	_peer "github.com/cryptopunkscc/astrald/node/peer"
 	"io"
 	"log"
-	"time"
 )
 
 type Node struct {
-	*API
-	Identity *_id.ECIdentity
+	Identity *_id.Identity
 
-	Hub      *hub.Hub
-	Peers    *_peer.Peers
-	PeerInfo *PeerInfo
-	FS       *_fs.Filesystem
-	Config   *Config
-	Network  *Network
+	Hub       *_hub.Hub
+	Peers     *_peer.Peers
+	PeerInfo  *PeerInfo
+	FS        *_fs.Filesystem
+	Config    *Config
+	Network   *Network
+	LinkCache *LinkCache
 }
 
 // New returns a new instance of a node
@@ -35,23 +34,18 @@ func New(astralDir string) *Node {
 
 	peers := _peer.NewManager()
 	peerInfo := NewPeerInfo(fs)
+	hub := _hub.NewHub()
 
 	node := &Node{
-		FS:       fs,
-		Identity: identity,
-		Config:   loadConfig(fs),
-		Hub:      hub.NewHub(),
-		Peers:    peers,
-		PeerInfo: peerInfo,
-		Network:  NewNetwork(identity, peerInfo),
+		FS:        fs,
+		Identity:  identity,
+		Config:    loadConfig(fs),
+		Hub:       hub,
+		Peers:     peers,
+		PeerInfo:  peerInfo,
+		Network:   NewNetwork(identity, peerInfo),
+		LinkCache: NewLinkCache(),
 	}
-
-	node.API = NewAPI(
-		node.Identity,
-		node.Peers,
-		node.Hub,
-		node.Network,
-	)
 
 	return node
 }
@@ -62,7 +56,7 @@ func (node *Node) Run(ctx context.Context) error {
 	for name, srv := range services {
 		go func(name string, srv ServiceRunner) {
 			log.Printf("starting %s...\n", name)
-			err := srv(ctx, node.API)
+			err := srv(ctx, node)
 			if err != nil {
 				log.Printf("%s failed: %v\n", name, err)
 			} else {
@@ -80,6 +74,7 @@ func (node *Node) Run(ctx context.Context) error {
 				log.Println("failed to add link:", err)
 				link.Close()
 			}
+			node.LinkCache.AddLink(link)
 		}
 	}()
 
@@ -112,6 +107,26 @@ func (node *Node) Run(ctx context.Context) error {
 	return nil
 }
 
+func (node *Node) Connect(nodeID *_id.Identity, query string) (io.ReadWriteCloser, error) {
+	if (nodeID == nil) || (nodeID.String() == node.Identity.String()) {
+		return node.Hub.Connect(query, node.Identity)
+	}
+
+	peer, _ := node.Peers.Peer(nodeID)
+
+	if !peer.Connected() {
+		link, err := node.Network.Link(nodeID)
+		if err != nil {
+			return nil, err
+		}
+
+		node.Peers.AddLink(link)
+		node.LinkCache.AddLink(link)
+	}
+
+	return peer.DefaultLink().Query(query)
+}
+
 func (node *Node) handleRequests() {
 	for req := range node.Peers.Requests() {
 		//Query a session with the service
@@ -142,22 +157,20 @@ func (node *Node) handleRequests() {
 
 // linkKeeper tries to keep us connected to all peers in our local database
 func (node *Node) linkKeeper() {
-	for {
-		for key := range node.PeerInfo.entries {
-			nodeID, _ := _id.ParsePublicKeyHex(key)
-			peer, _ := node.Peers.Peer(nodeID)
+	for keyHex := range node.PeerInfo.entries {
+		nodeID, _ := _id.ParsePublicKeyHex(keyHex)
 
-			if peer.Connected() {
-				continue
+		go func() {
+			for lnk := range PeerLink(nodeID, node.PeerInfo, node.Network) {
+				err := node.Peers.AddLink(lnk)
+				if err != nil {
+					log.Println("add link error:", err)
+				}
+				err = node.LinkCache.AddLink(lnk)
+				if err != nil {
+					log.Println("add link error:", err)
+				}
 			}
-
-			link, err := node.Network.Link(nodeID)
-			if err == nil {
-				node.Peers.AddLink(link)
-				break
-			}
-		}
-
-		time.Sleep(5 * time.Second)
+		}()
 	}
 }
