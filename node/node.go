@@ -190,19 +190,19 @@ func (node *Node) Link(remoteID id.Identity) (*link.Link, error) {
 
 func (node *Node) LinkWithTimeout(remoteID id.Identity, timeout time.Duration) (*link.Link, error) {
 	links, cancel := node.Links.Watch(true)
-	peer := links.Peer(remoteID)
+	peerLinks := link.Filter(links).Peer(remoteID)
 	defer cancel()
 
 	select {
-	case l := <-peer:
-		return l, nil
+	case lnk := <-peerLinks:
+		return lnk, nil
 	case <-time.After(1 * time.Millisecond):
 		node.RequestLink(remoteID)
 	}
 
 	select {
-	case l := <-peer:
-		return l, nil
+	case lnk := <-peerLinks:
+		return lnk, nil
 	case <-time.After(timeout):
 		return nil, errors.New("link timeout")
 	}
@@ -232,7 +232,7 @@ func (node *Node) addLink(lnk *link.Link) error {
 
 	addr, nodeID := lnk.RemoteAddr(), lnk.RemoteIdentity()
 
-	if node.Links.All().Peer(nodeID).Count() == 1 {
+	if link.Filter(node.Links.All()).Peer(nodeID).Count() == 1 {
 		log.Println("linked", logfmt.ID(lnk.RemoteIdentity()))
 	}
 
@@ -244,7 +244,7 @@ func (node *Node) addLink(lnk *link.Link) error {
 		}
 		log.Println("link down", logfmt.ID(nodeID), "via", addr.Network(), addr.String())
 
-		if node.Links.All().Peer(nodeID).Count() == 0 {
+		if link.Filter(node.Links.All()).Peer(nodeID).Count() == 0 {
 			log.Println("unlinked", logfmt.ID(lnk.RemoteIdentity()))
 		}
 	}()

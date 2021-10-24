@@ -22,7 +22,7 @@ func NewSet() *Set {
 
 type CancelFunc func()
 
-func (set *Set) All() Stream {
+func (set *Set) All() <-chan *Link {
 	set.listMu.Lock()
 	defer set.listMu.Unlock()
 
@@ -57,7 +57,7 @@ func (set *Set) Add(link *Link) error {
 	return nil
 }
 
-func (set *Set) Watch(includeAll bool) (Stream, CancelFunc) {
+func (set *Set) Watch(includeAll bool) (<-chan *Link, CancelFunc) {
 	set.watchesMu.Lock()
 	defer set.watchesMu.Unlock()
 
