@@ -12,7 +12,8 @@ const defaultPort = 1791
 const defaultConfigFilename = "astrald.conf"
 
 type Config struct {
-	Port int
+	Port         int
+	ExternalAddr string `yaml:"external_addr"`
 }
 
 var defaultConfig = Config{

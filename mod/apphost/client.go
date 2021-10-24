@@ -45,7 +45,7 @@ func (c *Client) handle(ctx context.Context) error {
 
 func (c *Client) handleConnect(ctx context.Context, request proto.Request) error {
 	var err error
-	var remoteID *id.Identity
+	var remoteID id.Identity
 
 	if request.Identity != "" {
 		remoteID, err = id.ParsePublicKeyHex(request.Identity)
@@ -54,7 +54,7 @@ func (c *Client) handleConnect(ctx context.Context, request proto.Request) error
 		}
 	}
 
-	conn, err := c.node.Connect(remoteID, request.Port)
+	conn, err := c.node.Query(remoteID, request.Port)
 	if err != nil {
 		return c.socket.Error(err.Error())
 	}
@@ -66,7 +66,7 @@ func (c *Client) handleConnect(ctx context.Context, request proto.Request) error
 
 func (c *Client) handleRegister(ctx context.Context, request proto.Request) error {
 	// Register the requested port
-	port, err := c.node.Hub.Register(request.Port)
+	port, err := c.node.Ports.Register(request.Port)
 	if err != nil {
 		return c.socket.Error(err.Error())
 	}
@@ -95,7 +95,7 @@ func (c *Client) handlePort(ctx context.Context, port *hub.Port, dest string) er
 	}()
 
 	for request := range port.Requests() {
-		log.Println("apphost:", logfmt.ID(request.Caller().String()), "queried", request.Query())
+		log.Println("apphost:", logfmt.ID(request.Caller()), "queried", request.Query())
 
 		var rawConn net.Conn
 		var err error

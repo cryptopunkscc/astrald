@@ -52,14 +52,14 @@ func serve(stream io.ReadWriteCloser, node *_node.Node) {
 }
 
 func listen(ctx context.Context, node *_node.Node) error {
-	port, err := node.Hub.Register("admin")
+	port, err := node.Ports.Register("admin")
 	if err != nil {
 		return err
 	}
 
 	for req := range port.Requests() {
 		// Only accept local requests
-		if req.Caller() != node.Network.Identity() {
+		if !req.Caller().IsEqual(node.Identity) {
 			req.Reject()
 			continue
 		}
@@ -73,8 +73,13 @@ func listen(ctx context.Context, node *_node.Node) error {
 
 func init() {
 	commands = cmdMap{
-		"help":  help,
-		"links": links,
+		"help":   help,
+		"links":  links,
+		"link":   link,
+		"routes": routes,
+		"info":   info,
+		"parse":  parse,
+		"add":    add,
 	}
 	_ = _node.RegisterService("admin", listen)
 }

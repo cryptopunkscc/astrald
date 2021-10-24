@@ -4,11 +4,11 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/brontide"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/infra"
 )
 
 // HandshakeInbound performs a handshake as the passive party.
-func HandshakeInbound(ctx context.Context, conn net.Conn, localID *id.Identity) (Conn, error) {
+func HandshakeInbound(ctx context.Context, conn infra.Conn, localID id.Identity) (Conn, error) {
 	bConn, err := brontide.PassiveHandshake(conn, localID.PrivateKey())
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func HandshakeInbound(ctx context.Context, conn net.Conn, localID *id.Identity) 
 }
 
 // HandshakeOutbound performs a handshake as the active party.
-func HandshakeOutbound(ctx context.Context, conn net.Conn, expectedRemoteID *id.Identity, localID *id.Identity) (Conn, error) {
+func HandshakeOutbound(ctx context.Context, conn infra.Conn, expectedRemoteID id.Identity, localID id.Identity) (Conn, error) {
 	c, err := brontide.ActiveHandshake(conn, localID.PrivateKey(), expectedRemoteID.PublicKey())
 	if err != nil {
 		return nil, err

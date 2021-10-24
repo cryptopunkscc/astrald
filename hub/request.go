@@ -7,13 +7,13 @@ import (
 
 // Request is a request handler sent to the port handler
 type Request struct {
-	caller     *id.Identity
+	caller     id.Identity
 	response   chan bool
 	connection chan Conn
 	query      string
 }
 
-func NewRequest(caller *id.Identity, query string) *Request {
+func NewRequest(caller id.Identity, query string) *Request {
 	return &Request{
 		caller:     caller,
 		query:      query,
@@ -23,7 +23,7 @@ func NewRequest(caller *id.Identity, query string) *Request {
 }
 
 // Caller returns the auth.Identity of the requesting party
-func (req *Request) Caller() *id.Identity {
+func (req *Request) Caller() id.Identity {
 	return req.caller
 }
 

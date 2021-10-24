@@ -3,11 +3,11 @@ package auth
 import (
 	"github.com/cryptopunkscc/astrald/auth/brontide"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/infra"
 )
 
 type brontideConn struct {
-	netConn        net.Conn
+	netConn        infra.Conn
 	bConn          *brontide.Conn
 	remoteIdentity *id.Identity
 }
@@ -28,14 +28,14 @@ func (conn *brontideConn) Outbound() bool {
 	return conn.netConn.Outbound()
 }
 
-func (conn *brontideConn) RemoteAddr() net.Addr {
+func (conn *brontideConn) RemoteAddr() infra.Addr {
 	return conn.netConn.RemoteAddr()
 }
 
-func (conn *brontideConn) LocalIdentity() *id.Identity {
+func (conn *brontideConn) LocalIdentity() id.Identity {
 	return id.PublicKey(conn.bConn.LocalPub())
 }
 
-func (conn *brontideConn) RemoteIdentity() *id.Identity {
+func (conn *brontideConn) RemoteIdentity() id.Identity {
 	return id.PublicKey(conn.bConn.RemotePub())
 }

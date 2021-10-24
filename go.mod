@@ -4,8 +4,7 @@ go 1.16
 
 require (
 	github.com/btcsuite/btcd v0.21.0-beta
-	github.com/cretz/bine v0.1.0
-	github.com/stretchr/testify v1.3.0 // indirect
+	github.com/jxskiss/base62 v1.0.0
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea // indirect

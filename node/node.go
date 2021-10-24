@@ -1,51 +1,77 @@
 package node
 
 import (
+	"bytes"
 	"context"
-	_id "github.com/cryptopunkscc/astrald/auth/id"
-	_hub "github.com/cryptopunkscc/astrald/hub"
-	_ "github.com/cryptopunkscc/astrald/net/tcp"
-	_ "github.com/cryptopunkscc/astrald/net/tor"
-	_ "github.com/cryptopunkscc/astrald/net/udp"
-	_fs "github.com/cryptopunkscc/astrald/node/fs"
-	_peer "github.com/cryptopunkscc/astrald/node/peer"
+	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/link"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/hub"
+	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/logfmt"
+	"github.com/cryptopunkscc/astrald/node/fs"
+	"github.com/cryptopunkscc/astrald/node/route"
 	"io"
 	"log"
+	"time"
 )
 
-type Node struct {
-	Identity *_id.Identity
+const defaultLinkTimeout = 30 * time.Second
 
-	Hub       *_hub.Hub
-	Peers     *_peer.Peers
-	PeerInfo  *PeerInfo
-	FS        *_fs.Filesystem
-	Config    *Config
-	Network   *Network
-	LinkCache *LinkCache
+type Node struct {
+	Identity id.Identity
+	Ports    *hub.Hub
+	Links    *link.Set
+	Routes   map[string]*route.Route
+
+	Config       *Config
+	FS           *fs.Filesystem
+	LinkerStatus map[string]struct{}
+	requests     chan link.Request
 }
 
 // New returns a new instance of a node
 func New(astralDir string) *Node {
-	fs := _fs.New(astralDir)
+	_inet := inet.New()
+	err := astral.AddNetwork(_inet)
+	if err != nil {
+		log.Println("error adding inet:", err)
+	}
+
+	err = astral.AddNetwork(tor.New())
+	if err != nil {
+		log.Println("error adding tor:", err)
+	}
+
+	fs := fs.New(astralDir)
 	identity := setupIdentity(fs)
 
 	log.Printf("astral node %s statrting...", identity)
 
-	peers := _peer.NewManager()
-	peerInfo := NewPeerInfo(fs)
-	hub := _hub.NewHub()
+	hub := hub.New()
 
 	node := &Node{
-		FS:        fs,
-		Identity:  identity,
-		Config:    loadConfig(fs),
-		Hub:       hub,
-		Peers:     peers,
-		PeerInfo:  peerInfo,
-		Network:   NewNetwork(identity, peerInfo),
-		LinkCache: NewLinkCache(),
+		FS:           fs,
+		Identity:     identity,
+		Config:       loadConfig(fs),
+		Ports:        hub,
+		Links:        link.NewSet(),
+		LinkerStatus: make(map[string]struct{}),
+		requests:     make(chan link.Request),
+		Routes:       make(map[string]*route.Route),
 	}
+
+	if node.Config.ExternalAddr != "" {
+		err := _inet.AddExternalAddr(node.Config.ExternalAddr)
+		if err != nil {
+			log.Println("external ip error:", err)
+		}
+	}
+
+	node.loadRoutes()
 
 	return node
 }
@@ -65,112 +91,209 @@ func (node *Node) Run(ctx context.Context) error {
 		}(name, srv)
 	}
 
-	// Start network
-	go func() {
-		linkCh, _ := node.Network.Listen(ctx, node.Identity)
+	links, _ := astral.Listen(ctx, node.Identity)
 
-		for link := range linkCh {
-			if err := node.Peers.AddLink(link); err != nil {
-				log.Println("failed to add link:", err)
+	defer node.saveRoutes()
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		log.Println("public route", node.Route(true))
+	}()
+
+	for {
+		select {
+		case link := <-links:
+			if err := node.addLink(link); err != nil {
+				log.Println("error adding link:", err)
 				link.Close()
 			}
-			node.LinkCache.AddLink(link)
+		case request := <-node.requests:
+			if err := node.handleRequest(request); err != nil {
+				log.Println("error handling request:", err)
+			}
+		case <-ctx.Done():
+			return nil
 		}
-	}()
+	}
+}
 
-	go node.Network.Advertise(ctx, node.Identity)
+func (node *Node) saveRoutes() {
+	buf := &bytes.Buffer{}
+	for _, r := range node.Routes {
+		_ = route.Write(buf, r)
+	}
+	err := node.FS.Write("routes", buf.Bytes())
+	if err != nil {
+		log.Println("save routes error:", err)
+	}
+}
 
-	go func() {
-		adCh, err := node.Network.Scan(ctx)
+func (node *Node) loadRoutes() {
+	data, err := node.FS.Read("routes")
+	if err != nil {
+		log.Println("load routes error:", err)
+		return
+	}
+
+	buf := bytes.NewReader(data)
+	for {
+		r, err := route.Read(buf)
 		if err != nil {
-			log.Println("scan error:", err)
+			if !errors.Is(err, io.EOF) {
+				log.Println("load routes error:", err)
+			} else {
+				log.Println("loaded", len(node.Routes), "routes")
+			}
 			return
 		}
+		node.AddRoute(r)
+	}
+}
 
-		for ad := range adCh {
-			if ad.Identity.String() == node.Identity.String() {
-				continue
+func (node *Node) Query(remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
+	if remoteID.IsEmpty() || remoteID.IsEqual(node.Identity) {
+		return node.Ports.Query(query, node.Identity)
+	}
+
+	link, err := node.Link(remoteID)
+	if err != nil {
+		return nil, err
+	}
+
+	return link.Query(query)
+}
+
+func (node *Node) RequestLink(remoteID id.Identity) {
+	pkh := remoteID.PublicKeyHex()
+
+	if _, found := node.LinkerStatus[pkh]; found {
+		return
+	}
+
+	node.LinkerStatus[pkh] = struct{}{}
+
+	go func() {
+		linker := NewLinker(node.Identity, remoteID, node.Routes)
+		for lnk := range linker.Run(context.Background()) {
+			err := node.addLink(lnk)
+			if err != nil {
+				log.Println("add link error:", err)
 			}
-			node.PeerInfo.Add(ad.Identity.String(), ad.Addr)
+		}
+		delete(node.LinkerStatus, pkh)
+	}()
+}
+
+func (node *Node) Link(remoteID id.Identity) (*link.Link, error) {
+	return node.LinkWithTimeout(remoteID, defaultLinkTimeout)
+}
+
+func (node *Node) LinkWithTimeout(remoteID id.Identity, timeout time.Duration) (*link.Link, error) {
+	links, cancel := node.Links.Watch(true)
+	peer := links.Peer(remoteID)
+	defer cancel()
+
+	select {
+	case l := <-peer:
+		return l, nil
+	case <-time.After(1 * time.Millisecond):
+		node.RequestLink(remoteID)
+	}
+
+	select {
+	case l := <-peer:
+		return l, nil
+	case <-time.After(timeout):
+		return nil, errors.New("link timeout")
+	}
+}
+
+func (node *Node) Route(onlyPublic bool) *route.Route {
+	addrs := make([]infra.Addr, 0)
+
+	for _, a := range astral.Addresses() {
+		if onlyPublic && !a.Public {
+			continue
+		}
+		addrs = append(addrs, a.Addr)
+	}
+
+	return &route.Route{
+		Identity:  node.Identity,
+		Addresses: addrs,
+	}
+}
+
+func (node *Node) addLink(lnk *link.Link) error {
+	err := node.Links.Add(lnk)
+	if err != nil {
+		return err
+	}
+
+	addr, nodeID := lnk.RemoteAddr(), lnk.RemoteIdentity()
+
+	if node.Links.All().Peer(nodeID).Count() == 1 {
+		log.Println("linked", logfmt.ID(lnk.RemoteIdentity()))
+	}
+
+	log.Println("link up", logfmt.ID(nodeID), "via", addr.Network(), addr.String())
+
+	go func() {
+		for req := range lnk.Requests() {
+			node.requests <- req
+		}
+		log.Println("link down", logfmt.ID(nodeID), "via", addr.Network(), addr.String())
+
+		if node.Links.All().Peer(nodeID).Count() == 0 {
+			log.Println("unlinked", logfmt.ID(lnk.RemoteIdentity()))
 		}
 	}()
-
-	// Handle incoming network requests
-	go node.handleRequests()
-
-	// Keep alive LAN peers
-	go node.linkKeeper()
-
-	// Wait for shutdown
-	<-ctx.Done()
 
 	return nil
 }
 
-func (node *Node) Connect(nodeID *_id.Identity, query string) (io.ReadWriteCloser, error) {
-	if (nodeID == nil) || (nodeID.String() == node.Identity.String()) {
-		return node.Hub.Connect(query, node.Identity)
+func (node *Node) AddRoute(r *route.Route) {
+	hex := r.Identity.PublicKeyHex()
+
+	if _, found := node.Routes[hex]; !found {
+		node.Routes[hex] = route.New(r.Identity)
 	}
 
-	peer, _ := node.Peers.Peer(nodeID)
-
-	if !peer.Connected() {
-		link, err := node.Network.Link(nodeID)
-		if err != nil {
-			return nil, err
-		}
-
-		node.Peers.AddLink(link)
-		node.LinkCache.AddLink(link)
-	}
-
-	return peer.DefaultLink().Query(query)
-}
-
-func (node *Node) handleRequests() {
-	for req := range node.Peers.Requests() {
-		//Query a session with the service
-		localStream, err := node.Hub.Connect(req.Query(), req.Caller())
-		if err != nil {
-			req.Reject()
-			continue
-		}
-
-		// Accept remote party's request
-		remoteStream, err := req.Accept()
-		if err != nil {
-			localStream.Close()
-			continue
-		}
-
-		// Connect local and remote streams
-		go func() {
-			_, _ = io.Copy(localStream, remoteStream)
-			_ = localStream.Close()
-		}()
-		go func() {
-			_, _ = io.Copy(remoteStream, localStream)
-			_ = remoteStream.Close()
-		}()
+	_route := node.Routes[hex]
+	for _, a := range r.Addresses {
+		_route.Add(a)
 	}
 }
 
-// linkKeeper tries to keep us connected to all peers in our local database
-func (node *Node) linkKeeper() {
-	for keyHex := range node.PeerInfo.entries {
-		nodeID, _ := _id.ParsePublicKeyHex(keyHex)
-
-		go func() {
-			for lnk := range PeerLink(nodeID, node.PeerInfo, node.Network) {
-				err := node.Peers.AddLink(lnk)
-				if err != nil {
-					log.Println("add link error:", err)
-				}
-				err = node.LinkCache.AddLink(lnk)
-				if err != nil {
-					log.Println("add link error:", err)
-				}
-			}
-		}()
+func (node *Node) handleRequest(request link.Request) error {
+	if request.Query() == ".ping" {
+		log.Println("ping from", logfmt.ID(request.Caller()))
+		return request.Reject()
 	}
+
+	//Query a session with the service
+	localStream, err := node.Ports.Query(request.Query(), request.Caller())
+	if err != nil {
+		request.Reject()
+		return err
+	}
+
+	// Accept remote party's request
+	remoteStream, err := request.Accept()
+	if err != nil {
+		localStream.Close()
+		return err
+	}
+
+	// Connect local and remote streams
+	go func() {
+		_, _ = io.Copy(localStream, remoteStream)
+		_ = localStream.Close()
+	}()
+	go func() {
+		_, _ = io.Copy(remoteStream, localStream)
+		_ = remoteStream.Close()
+	}()
+
+	return nil
 }

@@ -13,7 +13,7 @@ type Hub struct {
 	mu    sync.Mutex
 }
 
-func NewHub() *Hub {
+func New() *Hub {
 	return &Hub{
 		ports: make(map[string]*Port),
 	}
@@ -37,8 +37,8 @@ func (hub *Hub) Register(name string) (*Port, error) {
 	return hub.ports[name], nil
 }
 
-// Connect requests to connect to a port as the provided auth.Identity
-func (hub *Hub) Connect(query string, caller *id.Identity) (io.ReadWriteCloser, error) {
+// Query requests to connect to a port as the provided auth.Identity
+func (hub *Hub) Query(query string, caller id.Identity) (io.ReadWriteCloser, error) {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 

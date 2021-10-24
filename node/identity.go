@@ -10,7 +10,7 @@ import (
 
 const defaultIdentityFilename = "id"
 
-func setupIdentity(fs *_fs.Filesystem) *_id.Identity {
+func setupIdentity(fs *_fs.Filesystem) _id.Identity {
 	// Try to load an existing identity
 	idBytes, err := fs.Read(defaultIdentityFilename)
 	if err == nil {
