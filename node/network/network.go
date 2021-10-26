@@ -1,4 +1,4 @@
-package node
+package network
 
 import (
 	"context"
@@ -13,12 +13,12 @@ import (
 type Network struct {
 	*View
 	requests chan link.Request
-	config   *Config
+	config   Config
 	inet     *inet.Inet
 	tor      *tor.Tor
 }
 
-func NewNetwork(config *Config) *Network {
+func NewNetwork(config Config) *Network {
 	var err error
 	n := &Network{
 		config:   config,

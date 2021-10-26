@@ -1,4 +1,4 @@
-package node
+package network
 
 import (
 	"github.com/cryptopunkscc/astrald/astral/link"

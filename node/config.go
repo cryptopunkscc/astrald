@@ -3,6 +3,7 @@ package node
 import (
 	"errors"
 	_fs "github.com/cryptopunkscc/astrald/node/fs"
+	"github.com/cryptopunkscc/astrald/node/network"
 	"gopkg.in/yaml.v2"
 	"log"
 	"os"
@@ -12,13 +13,10 @@ const defaultPort = 1791
 const defaultConfigFilename = "astrald.conf"
 
 type Config struct {
-	Port         int
-	ExternalAddr string `yaml:"external_addr"`
+	Network network.Config
 }
 
-var defaultConfig = Config{
-	Port: defaultPort,
-}
+var defaultConfig = Config{}
 
 func loadConfig(fs *_fs.Filesystem) *Config {
 	var cfg = defaultConfig

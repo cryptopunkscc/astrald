@@ -1,7 +1,6 @@
 package node
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
@@ -11,6 +10,8 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/fs"
+	"github.com/cryptopunkscc/astrald/node/linker"
+	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/route"
 	"io"
 	"log"
@@ -22,12 +23,11 @@ const defaultLinkTimeout = 30 * time.Second
 type Node struct {
 	Identity id.Identity
 	Ports    *hub.Hub
-	Network  *Network
-	Routes   map[string]*route.Route
-
-	Config       *Config
-	FS           *fs.Filesystem
-	LinkerStatus map[string]struct{}
+	Network  *network.Network
+	Linker   *linker.Linker
+	Router   *BasicRouter
+	Config   *Config
+	FS       *fs.Filesystem
 }
 
 // New returns a new instance of a node
@@ -41,14 +41,15 @@ func New(astralDir string) *Node {
 	hub := hub.New()
 	config := loadConfig(fs)
 
+	router := NewBasicRouter()
 	node := &Node{
-		FS:           fs,
-		Identity:     identity,
-		Config:       config,
-		Ports:        hub,
-		LinkerStatus: make(map[string]struct{}),
-		Routes:       make(map[string]*route.Route),
-		Network:      NewNetwork(config),
+		FS:       fs,
+		Identity: identity,
+		Config:   config,
+		Ports:    hub,
+		Router:   router,
+		Network:  network.NewNetwork(config.Network),
+		Linker:   linker.NewLinker(identity, router),
 	}
 
 	node.loadRoutes()
@@ -74,6 +75,8 @@ func (node *Node) Run(ctx context.Context) error {
 	// Run the network
 	requests, requestsErr := node.Network.Run(ctx, node.Identity)
 
+	node.Linker.Run(ctx)
+
 	go func() {
 		time.Sleep(2 * time.Second)
 		log.Println("public route", node.Route(true))
@@ -87,6 +90,9 @@ func (node *Node) Run(ctx context.Context) error {
 			if err := node.handleRequest(request); err != nil {
 				log.Println("error handling request:", err)
 			}
+
+		case link := <-node.Linker.Links():
+			node.Network.AddLink(link)
 
 		case err := <-requestsErr:
 			log.Println("fatal error:", err)
@@ -111,31 +117,10 @@ func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string)
 	return link.Query(query)
 }
 
-func (node *Node) RequestLink(remoteID id.Identity) {
-	hex := remoteID.PublicKeyHex()
-
-	if _, found := node.LinkerStatus[hex]; found {
-		return
-	}
-
-	node.LinkerStatus[hex] = struct{}{}
-
-	go func() {
-		linker := NewLinker(node.Identity, remoteID, node.Routes)
-		for lnk := range linker.Run(context.Background()) {
-			err := node.Network.AddLink(lnk)
-			if err != nil {
-				log.Println("add link error:", err)
-			}
-		}
-		delete(node.LinkerStatus, hex)
-	}()
-}
-
 func (node *Node) Link(ctx context.Context, remoteID id.Identity) (*link.Link, error) {
 	peer := node.Network.View.Peer(remoteID)
 
-	node.RequestLink(remoteID)
+	node.Linker.Wake(remoteID)
 
 	select {
 	case <-peer.WaitLinked():
@@ -160,19 +145,6 @@ func (node *Node) Route(onlyPublic bool) *route.Route {
 	return &route.Route{
 		Identity:  node.Identity,
 		Addresses: addrs,
-	}
-}
-
-func (node *Node) AddRoute(r *route.Route) {
-	hex := r.Identity.PublicKeyHex()
-
-	if _, found := node.Routes[hex]; !found {
-		node.Routes[hex] = route.New(r.Identity)
-	}
-
-	_route := node.Routes[hex]
-	for _, a := range r.Addresses {
-		_route.Add(a)
 	}
 }
 
@@ -209,34 +181,17 @@ func (node *Node) handleRequest(request link.Request) error {
 	return nil
 }
 
-func (node *Node) loadRoutes() {
+func (node *Node) loadRoutes() error {
 	data, err := node.FS.Read("routes")
 	if err != nil {
-		log.Println("load routes error:", err)
-		return
+		return err
 	}
 
-	buf := bytes.NewReader(data)
-	for {
-		r, err := route.Read(buf)
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				log.Println("load routes error:", err)
-			} else {
-				log.Println("loaded", len(node.Routes), "routes")
-			}
-			return
-		}
-		node.AddRoute(r)
-	}
+	return node.Router.AddPacked(data)
 }
 
 func (node *Node) saveRoutes() {
-	buf := &bytes.Buffer{}
-	for _, r := range node.Routes {
-		_ = route.Write(buf, r)
-	}
-	err := node.FS.Write("routes", buf.Bytes())
+	err := node.FS.Write("routes", node.Router.Pack())
 	if err != nil {
 		log.Println("save routes error:", err)
 	}

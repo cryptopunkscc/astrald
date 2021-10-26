@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/logfmt"
+	_f "github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/route"
 	"io"
@@ -14,29 +14,29 @@ import (
 
 func peers(stream io.ReadWriter, node *node.Node, _ []string) error {
 	for peer := range node.Network.Peers() {
-		fmt.Fprintf(stream, "peer %s (bytes in/out: %d/%d, %s idle)\n",
-			logfmt.ID(peer.ID()),
-			peer.BytesRead(),
-			peer.BytesWritten(),
+		fmt.Fprintf(stream, "peer %s (%s in, %s out, %s idle)\n",
+			_f.ID(peer.ID()),
+			_f.DataSize(peer.BytesRead()),
+			_f.DataSize(peer.BytesWritten()),
 			peer.Idle().Round(time.Second),
 		)
 		for link := range peer.Links() {
 			fmt.Fprintf(stream,
-				"  %3s %s %s (bytes in/out: %d/%d, %s idle)\n",
-				logfmt.Dir(link.Outbound()),
+				"  %3s %s %s (%s in, %s out, %s idle)\n",
+				_f.Dir(link.Outbound()),
 				link.RemoteAddr().Network(),
 				link.RemoteAddr().String(),
-				link.BytesRead(),
-				link.BytesWritten(),
+				_f.DataSize(link.BytesRead()),
+				_f.DataSize(link.BytesWritten()),
 				link.Idle().Round(time.Second),
 			)
 			for c := range link.Connections() {
 				fmt.Fprintf(stream,
-					"    %s: %s (bytes in/out:, %d/%d, %s idle)\n",
-					logfmt.Dir(c.Outbound()),
+					"    %s: %s (%s in, %s out, %s idle)\n",
+					_f.Dir(c.Outbound()),
 					c.Query(),
-					c.BytesRead(),
-					c.BytesWritten(),
+					_f.DataSize(c.BytesRead()),
+					_f.DataSize(c.BytesWritten()),
 					c.Idle().Round(time.Second),
 				)
 			}
@@ -67,7 +67,7 @@ func link(stream io.ReadWriter, node *node.Node, args []string) error {
 }
 
 func routes(stream io.ReadWriter, node *node.Node, _ []string) error {
-	for _, r := range node.Routes {
+	for r := range node.Router.Routes() {
 		writeRoute(stream, r)
 		fmt.Fprintln(stream, "---")
 	}
@@ -109,7 +109,7 @@ func add(_ io.ReadWriter, node *node.Node, args []string) error {
 		return err
 	}
 
-	node.AddRoute(r)
+	node.Router.AddRoute(r)
 
 	return nil
 }
