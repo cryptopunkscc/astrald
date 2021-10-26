@@ -7,30 +7,51 @@ import (
 
 // Conn represents an open connection to the remote party's port. Shouldn't be instantiated directly.
 type Conn struct {
+	link         *Link
 	inputStream  *mux.InputStream
 	outputStream *mux.OutputStream
-	mu           sync.Mutex
+	query        string
+	outbound     bool
+	bytesRead    int
+	bytesWritten int
+	closeCh      chan struct{}
 	closed       bool
+	mu           sync.Mutex
 }
 
 // newConn instantiates a new Conn and starts the necessary routines
-func newConn(inputStream *mux.InputStream, outputStream *mux.OutputStream) *Conn {
-	return &Conn{
+func newConn(link *Link, query string, inputStream *mux.InputStream, outputStream *mux.OutputStream, outbound bool) *Conn {
+	c := &Conn{
+		link:         link,
+		query:        query,
+		closeCh:      make(chan struct{}),
 		inputStream:  inputStream,
 		outputStream: outputStream,
+		outbound:     outbound,
 	}
+
+	if c.link != nil {
+		c.link.addConn(c)
+	}
+
+	return c
 }
 
 func (conn *Conn) Read(p []byte) (n int, err error) {
-	read, err := conn.inputStream.Read(p)
+	n, err = conn.inputStream.Read(p)
 	if err != nil {
 		conn.Close()
 	}
-	return read, err
+	conn.bytesRead += n
+	return n, err
 }
 
 func (conn *Conn) Write(p []byte) (n int, err error) {
-	return conn.outputStream.Write(p)
+	n, err = conn.outputStream.Write(p)
+	if err == nil {
+		conn.bytesWritten += n
+	}
+	return n, err
 }
 
 // Close closes the connection
@@ -42,6 +63,8 @@ func (conn *Conn) Close() error {
 		return ErrStreamClosed
 	}
 
+	defer close(conn.closeCh)
+
 	err := conn.outputStream.Close()
 	if err != nil {
 		return err
@@ -49,4 +72,24 @@ func (conn *Conn) Close() error {
 
 	conn.closed = true
 	return nil
+}
+
+func (conn *Conn) WaitClose() <-chan struct{} {
+	return conn.closeCh
+}
+
+func (conn *Conn) Query() string {
+	return conn.query
+}
+
+func (conn *Conn) BytesRead() int {
+	return conn.bytesRead
+}
+
+func (conn *Conn) BytesWritten() int {
+	return conn.bytesWritten
+}
+
+func (conn *Conn) Outbound() bool {
+	return conn.outbound
 }

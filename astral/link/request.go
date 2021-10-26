@@ -12,6 +12,7 @@ type Request struct {
 	query        string
 	inputStream  *mux.InputStream
 	outputStream *mux.OutputStream
+	link         *Link
 }
 
 // Accept the request
@@ -21,7 +22,7 @@ func (req *Request) Accept() (io.ReadWriteCloser, error) {
 		return nil, err
 	}
 
-	return newConn(req.inputStream, req.outputStream), nil
+	return newConn(req.link, req.query, req.inputStream, req.outputStream, false), nil
 }
 
 // Reject the request

@@ -54,7 +54,7 @@ func (c *Client) handleConnect(ctx context.Context, request proto.Request) error
 		}
 	}
 
-	conn, err := c.node.Query(remoteID, request.Port)
+	conn, err := c.node.Query(ctx, remoteID, request.Port)
 	if err != nil {
 		return c.socket.Error(err.Error())
 	}

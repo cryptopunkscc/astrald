@@ -9,16 +9,19 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/mux"
 	"log"
+	"sync"
 )
 
 // A Link is a multiplexed, authenticated connection between two parties allowing them to establish multiple data
 // streams over a single secure channel.
 type Link struct {
-	requests chan Request
-	conn     auth.Conn
-	mux      *mux.Mux
-	demux    *mux.StreamDemux
-	closeCh  chan struct{}
+	requests  chan Request
+	conns     []*Conn
+	connsMu   sync.Mutex
+	transport auth.Conn
+	mux       *mux.Mux
+	demux     *mux.StreamDemux
+	closeCh   chan struct{}
 }
 
 const controlStreamID = 0
@@ -26,11 +29,12 @@ const controlStreamID = 0
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
 	link := &Link{
-		conn:     conn,
-		mux:      mux.NewMux(conn),
-		demux:    mux.NewStreamDemux(conn),
-		requests: make(chan Request),
-		closeCh:  make(chan struct{}),
+		requests:  make(chan Request),
+		conns:     make([]*Conn, 0),
+		transport: conn,
+		mux:       mux.NewMux(conn),
+		demux:     mux.NewStreamDemux(conn),
+		closeCh:   make(chan struct{}),
 	}
 	go func() {
 		_ = link.handleControl()
@@ -64,7 +68,7 @@ func (link *Link) Query(query string) (*Conn, error) {
 	// Parse the accept message
 	remoteStreamID := binary.BigEndian.Uint16(remoteBytes[0:2])
 
-	return newConn(inputStream, mux.NewOutputStream(link.mux, int(remoteStreamID))), nil
+	return newConn(link, query, inputStream, mux.NewOutputStream(link.mux, int(remoteStreamID)), true), nil
 }
 
 // Requests returns a channel to which incoming requests will be sent
@@ -74,22 +78,22 @@ func (link *Link) Requests() <-chan Request {
 
 // RemoteIdentity returns the auth.Identity of the remote party
 func (link *Link) RemoteIdentity() id.Identity {
-	return link.conn.RemoteIdentity()
+	return link.transport.RemoteIdentity()
 }
 
 // LocalIdentity returns the auth.Identity of the remote party
 func (link *Link) LocalIdentity() id.Identity {
-	return link.conn.LocalIdentity()
+	return link.transport.LocalIdentity()
 }
 
 // RemoteAddr returns the network address of the remote party
 func (link *Link) RemoteAddr() infra.Addr {
-	return link.conn.RemoteAddr()
+	return link.transport.RemoteAddr()
 }
 
 // Outbound returns true if we are the active party, false otherwise
 func (link *Link) Outbound() bool {
-	return link.conn.Outbound()
+	return link.transport.Outbound()
 }
 
 // WaitClose returns a channel which will be closed when the link is closed
@@ -99,7 +103,19 @@ func (link *Link) WaitClose() <-chan struct{} {
 
 // Close closes the link
 func (link *Link) Close() error {
-	return link.conn.Close()
+	return link.transport.Close()
+}
+
+func (link *Link) Connections() <-chan *Conn {
+	link.connsMu.Lock()
+	defer link.connsMu.Unlock()
+
+	ch := make(chan *Conn, len(link.conns))
+	for _, c := range link.conns {
+		ch <- c
+	}
+	close(ch)
+	return ch
 }
 
 // sendQuery writes a frame containing the request to the control stream
@@ -140,5 +156,28 @@ func (link *Link) handleControl() error {
 		}
 
 		link.requests <- request
+	}
+}
+
+func (link *Link) addConn(conn *Conn) {
+	link.connsMu.Lock()
+	defer link.connsMu.Unlock()
+
+	link.conns = append(link.conns, conn)
+
+	go func() {
+		<-conn.WaitClose()
+		link.removeConn(conn)
+	}()
+}
+
+func (link *Link) removeConn(conn *Conn) {
+	link.connsMu.Lock()
+	defer link.connsMu.Unlock()
+
+	for i, c := range link.conns {
+		if c == conn {
+			link.conns = append(link.conns[:i], link.conns[i+1:]...)
+		}
 	}
 }

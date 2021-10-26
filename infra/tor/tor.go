@@ -92,11 +92,11 @@ func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 	return Dial(ctx, a)
 }
 
-func (tor Tor) Advertise(ctx context.Context, payload []byte) <-chan error {
+func (tor Tor) Broadcast(ctx context.Context, payload []byte) <-chan error {
 	return errChan(infra.ErrUnsupportedOperation)
 }
 
-func (tor Tor) Scan(ctx context.Context) (<-chan infra.Ad, <-chan error) {
+func (tor Tor) Scan(ctx context.Context) (<-chan infra.Broadcast, <-chan error) {
 	return nil, errChan(infra.ErrUnsupportedOperation)
 }
 
@@ -112,7 +112,7 @@ func (tor Tor) Addresses() []infra.AddrDesc {
 	}
 }
 
-func New() infra.Network {
+func New() *Tor {
 	return &Tor{}
 }
 

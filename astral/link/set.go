@@ -6,111 +6,81 @@ import (
 )
 
 type Set struct {
-	list   []*Link
-	listMu sync.Mutex
-
-	watches   []chan *Link
-	watchesMu sync.Mutex
+	links []*Link
+	mu    sync.Mutex
 }
 
 func NewSet() *Set {
 	return &Set{
-		list:    make([]*Link, 0),
-		watches: make([]chan *Link, 0),
+		links: make([]*Link, 0),
 	}
-}
-
-type CancelFunc func()
-
-func (set *Set) All() <-chan *Link {
-	set.listMu.Lock()
-	defer set.listMu.Unlock()
-
-	ch := make(chan *Link, len(set.list))
-	for _, item := range set.list {
-		ch <- item
-	}
-	close(ch)
-
-	return ch
 }
 
 func (set *Set) Add(link *Link) error {
-	set.listMu.Lock()
-	defer set.listMu.Unlock()
+	set.mu.Lock()
+	defer set.mu.Unlock()
 
-	for _, l := range set.list {
-		if l == link {
-			return errors.New("duplicate link")
-		}
+	if set.index(link) != -1 {
+		return errors.New("duplicate item")
 	}
 
-	set.list = append(set.list, link)
-
-	go func() {
-		<-link.WaitClose()
-		set.remove(link)
-	}()
-
-	go set.notify(link)
+	set.links = append(set.links, link)
 
 	return nil
 }
 
-func (set *Set) Watch(includeAll bool) (<-chan *Link, CancelFunc) {
-	set.watchesMu.Lock()
-	defer set.watchesMu.Unlock()
+func (set *Set) Index(link *Link) int {
+	set.mu.Lock()
+	defer set.mu.Unlock()
 
-	var ch chan *Link
-
-	if includeAll {
-		set.listMu.Lock()
-		ch = make(chan *Link, len(set.list)+1)
-		for _, item := range set.list {
-			ch <- item
-		}
-		set.listMu.Unlock()
-	} else {
-		ch = make(chan *Link, 1)
-	}
-
-	set.watches = append(set.watches, ch)
-
-	return ch, func() {
-		set.cancelWatch(ch)
-	}
+	return set.index(link)
 }
 
-func (set *Set) cancelWatch(ch chan *Link) {
-	set.watchesMu.Lock()
-	defer set.watchesMu.Unlock()
-
-	for idx, w := range set.watches {
-		if w == ch {
-			set.watches = append(set.watches[:idx], set.watches[idx+1:]...)
-			close(ch)
-			return
-		}
-	}
-}
-
-func (set *Set) notify(lnk *Link) {
-	set.watchesMu.Lock()
-	defer set.watchesMu.Unlock()
-
-	for _, ch := range set.watches {
-		ch <- lnk
-	}
-}
-
-func (set *Set) remove(link *Link) {
-	set.listMu.Lock()
-	defer set.listMu.Unlock()
-
-	for i, l := range set.list {
+func (set *Set) index(link *Link) int {
+	for i, l := range set.links {
 		if l == link {
-			set.list = append(set.list[:i], set.list[i+1:]...)
-			return
+			return i
 		}
 	}
+	return -1
+}
+
+func (set *Set) Contains(link *Link) bool {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
+	return set.index(link) >= 0
+}
+
+func (set *Set) Remove(link *Link) error {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
+	i := set.index(link)
+	if i == -1 {
+		return errors.New("not found")
+	}
+
+	set.links = append(set.links[:i], set.links[i+1:]...)
+
+	return nil
+}
+
+func (set *Set) Count() int {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
+	return len(set.links)
+}
+
+func (set *Set) Each() <-chan *Link {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
+	ch := make(chan *Link, len(set.links))
+	for _, link := range set.links {
+		ch <- link
+	}
+	close(ch)
+	return ch
 }

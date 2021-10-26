@@ -158,11 +158,11 @@ func (inet Inet) listenSeparately(ctx context.Context) (<-chan infra.Conn, <-cha
 	return output, nil
 }
 
-func (inet Inet) Advertise(ctx context.Context, payload []byte) <-chan error {
+func (inet Inet) Broadcast(ctx context.Context, payload []byte) <-chan error {
 	return errChan(infra.ErrUnsupportedOperation)
 }
 
-func (inet Inet) Scan(ctx context.Context) (<-chan infra.Ad, <-chan error) {
+func (inet Inet) Scan(ctx context.Context) (<-chan infra.Broadcast, <-chan error) {
 	return nil, errChan(infra.ErrUnsupportedOperation)
 }
 
