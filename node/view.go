@@ -5,11 +5,13 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"log"
+	"sync"
 )
 
 type View struct {
-	peers map[string]*Peer
-	links *link.Set
+	peers  map[string]*Peer
+	peerMu sync.Mutex
+	links  *link.Set
 }
 
 func NewView() *View {
@@ -20,6 +22,9 @@ func NewView() *View {
 }
 
 func (view *View) Peer(peerID id.Identity) *Peer {
+	view.peerMu.Lock()
+	defer view.peerMu.Unlock()
+
 	hex := peerID.PublicKeyHex()
 	if peer, found := view.peers[hex]; found {
 		return peer
@@ -44,4 +49,16 @@ func (view *View) AddLink(link *link.Link) error {
 
 func (view *View) Links() <-chan *link.Link {
 	return view.links.Each()
+}
+
+func (view *View) Peers() <-chan *Peer {
+	view.peerMu.Lock()
+	defer view.peerMu.Unlock()
+
+	ch := make(chan *Peer, len(view.peers))
+	for _, p := range view.peers {
+		ch <- p
+	}
+	close(ch)
+	return ch
 }

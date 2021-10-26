@@ -3,6 +3,7 @@ package link
 import (
 	mux "github.com/cryptopunkscc/astrald/mux"
 	"sync"
+	"time"
 )
 
 // Conn represents an open connection to the remote party's port. Shouldn't be instantiated directly.
@@ -14,6 +15,7 @@ type Conn struct {
 	outbound     bool
 	bytesRead    int
 	bytesWritten int
+	lastActive   time.Time
 	closeCh      chan struct{}
 	closed       bool
 	mu           sync.Mutex
@@ -28,6 +30,7 @@ func newConn(link *Link, query string, inputStream *mux.InputStream, outputStrea
 		inputStream:  inputStream,
 		outputStream: outputStream,
 		outbound:     outbound,
+		lastActive:   time.Now(),
 	}
 
 	if c.link != nil {
@@ -42,14 +45,14 @@ func (conn *Conn) Read(p []byte) (n int, err error) {
 	if err != nil {
 		conn.Close()
 	}
-	conn.bytesRead += n
+	conn.addBytesRead(n)
 	return n, err
 }
 
 func (conn *Conn) Write(p []byte) (n int, err error) {
 	n, err = conn.outputStream.Write(p)
 	if err == nil {
-		conn.bytesWritten += n
+		conn.addBytesWritten(n)
 	}
 	return n, err
 }
@@ -92,4 +95,28 @@ func (conn *Conn) BytesWritten() int {
 
 func (conn *Conn) Outbound() bool {
 	return conn.outbound
+}
+
+func (conn *Conn) Idle() time.Duration {
+	return time.Now().Sub(conn.lastActive)
+}
+
+func (conn *Conn) addBytesRead(n int) {
+	conn.bytesRead += n
+	conn.lastActive = time.Now()
+	if conn.link != nil {
+		conn.link.addBytesRead(n)
+	}
+}
+
+func (conn *Conn) addBytesWritten(n int) {
+	conn.bytesWritten += n
+	conn.touch()
+	if conn.link != nil {
+		conn.link.addBytesWritten(n)
+	}
+}
+
+func (conn *Conn) touch() {
+	conn.lastActive = time.Now()
 }

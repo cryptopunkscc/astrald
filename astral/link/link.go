@@ -10,18 +10,22 @@ import (
 	"github.com/cryptopunkscc/astrald/mux"
 	"log"
 	"sync"
+	"time"
 )
 
 // A Link is a multiplexed, authenticated connection between two parties allowing them to establish multiple data
 // streams over a single secure channel.
 type Link struct {
-	requests  chan Request
-	conns     []*Conn
-	connsMu   sync.Mutex
-	transport auth.Conn
-	mux       *mux.Mux
-	demux     *mux.StreamDemux
-	closeCh   chan struct{}
+	requests     chan Request
+	conns        []*Conn
+	connsMu      sync.Mutex
+	transport    auth.Conn
+	mux          *mux.Mux
+	demux        *mux.StreamDemux
+	closeCh      chan struct{}
+	bytesRead    int
+	bytesWritten int
+	lastActive   time.Time
 }
 
 const controlStreamID = 0
@@ -29,12 +33,13 @@ const controlStreamID = 0
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
 	link := &Link{
-		requests:  make(chan Request),
-		conns:     make([]*Conn, 0),
-		transport: conn,
-		mux:       mux.NewMux(conn),
-		demux:     mux.NewStreamDemux(conn),
-		closeCh:   make(chan struct{}),
+		requests:   make(chan Request),
+		conns:      make([]*Conn, 0),
+		transport:  conn,
+		mux:        mux.NewMux(conn),
+		demux:      mux.NewStreamDemux(conn),
+		closeCh:    make(chan struct{}),
+		lastActive: time.Now(),
 	}
 	go func() {
 		_ = link.handleControl()
@@ -46,6 +51,8 @@ func New(conn auth.Conn) *Link {
 
 // Query requests a connection to the remote party's port
 func (link *Link) Query(query string) (*Conn, error) {
+	defer link.touch()
+
 	// Reserve a local mux stream
 	inputStream, err := link.demux.Stream()
 	if err != nil {
@@ -118,6 +125,18 @@ func (link *Link) Connections() <-chan *Conn {
 	return ch
 }
 
+func (link *Link) BytesRead() int {
+	return link.bytesRead
+}
+
+func (link *Link) BytesWritten() int {
+	return link.bytesWritten
+}
+
+func (link *Link) Idle() time.Duration {
+	return time.Now().Sub(link.lastActive)
+}
+
 // sendQuery writes a frame containing the request to the control stream
 func (link *Link) sendQuery(query string, streamID int) error {
 	return link.mux.Write(controlStreamID, proto.MakeQuery(streamID, query))
@@ -156,6 +175,8 @@ func (link *Link) handleControl() error {
 		}
 
 		link.requests <- request
+
+		link.touch()
 	}
 }
 
@@ -164,6 +185,7 @@ func (link *Link) addConn(conn *Conn) {
 	defer link.connsMu.Unlock()
 
 	link.conns = append(link.conns, conn)
+	link.touch()
 
 	go func() {
 		<-conn.WaitClose()
@@ -178,6 +200,22 @@ func (link *Link) removeConn(conn *Conn) {
 	for i, c := range link.conns {
 		if c == conn {
 			link.conns = append(link.conns[:i], link.conns[i+1:]...)
+			link.touch()
+			return
 		}
 	}
+}
+
+func (link *Link) addBytesRead(n int) {
+	link.bytesRead += n
+	link.touch()
+}
+
+func (link *Link) addBytesWritten(n int) {
+	link.bytesWritten += n
+	link.touch()
+}
+
+func (link *Link) touch() {
+	link.lastActive = time.Now()
 }

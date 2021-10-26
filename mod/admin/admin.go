@@ -74,7 +74,7 @@ func listen(ctx context.Context, node *_node.Node) error {
 func init() {
 	commands = cmdMap{
 		"help":   help,
-		"links":  links,
+		"peers":  peers,
 		"link":   link,
 		"routes": routes,
 		"info":   info,

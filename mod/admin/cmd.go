@@ -9,28 +9,40 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/route"
 	"io"
+	"time"
 )
 
-func links(stream io.ReadWriter, node *node.Node, _ []string) error {
-	fmt.Fprintf(stream, "active links:\n")
-
-	for link := range node.Network.View.Links() {
-		fmt.Fprintf(stream,
-			"%s %s via %s %s\n",
-			link.RemoteIdentity().String(),
-			logfmt.Dir(link.Outbound()),
-			link.RemoteAddr().Network(),
-			link.RemoteAddr().String(),
+func peers(stream io.ReadWriter, node *node.Node, _ []string) error {
+	for peer := range node.Network.Peers() {
+		fmt.Fprintf(stream, "peer %s (bytes in/out: %d/%d, %s idle)\n",
+			logfmt.ID(peer.ID()),
+			peer.BytesRead(),
+			peer.BytesWritten(),
+			peer.Idle().Round(time.Second),
 		)
-		for c := range link.Connections() {
+		for link := range peer.Links() {
 			fmt.Fprintf(stream,
-				"  %s (%s, %d bytes in, %d bytes out)\n",
-				c.Query(),
-				logfmt.Dir(c.Outbound()),
-				c.BytesRead(),
-				c.BytesWritten())
+				"  %3s %s %s (bytes in/out: %d/%d, %s idle)\n",
+				logfmt.Dir(link.Outbound()),
+				link.RemoteAddr().Network(),
+				link.RemoteAddr().String(),
+				link.BytesRead(),
+				link.BytesWritten(),
+				link.Idle().Round(time.Second),
+			)
+			for c := range link.Connections() {
+				fmt.Fprintf(stream,
+					"    %s: %s (bytes in/out:, %d/%d, %s idle)\n",
+					logfmt.Dir(c.Outbound()),
+					c.Query(),
+					c.BytesRead(),
+					c.BytesWritten(),
+					c.Idle().Round(time.Second),
+				)
+			}
 		}
 	}
+
 	return nil
 }
 
