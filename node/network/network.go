@@ -66,7 +66,8 @@ func (n *Network) Run(ctx context.Context, localID id.Identity) (<-chan link.Req
 					log.Println("error adding link:", err)
 					_ = link.Close()
 				}
-			case errCh <- <-listenErrCh:
+			case err := <-listenErrCh:
+				errCh <- err
 				return
 			case <-ctx.Done():
 				errCh <- ctx.Err()

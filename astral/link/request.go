@@ -8,7 +8,6 @@ import (
 )
 
 type Request struct {
-	caller       id.Identity
 	query        string
 	inputStream  *mux.InputStream
 	outputStream *mux.OutputStream
@@ -34,7 +33,7 @@ func (req Request) Reject() error {
 
 // Caller returns the auth.Identity of the caller
 func (req Request) Caller() id.Identity {
-	return req.caller
+	return req.link.RemoteIdentity()
 }
 
 // Query returns the requested port

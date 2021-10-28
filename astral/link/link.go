@@ -73,13 +73,18 @@ func (link *Link) Query(query string) (*Conn, error) {
 
 	_, err = inputStream.Read(remoteBytes)
 	if err != nil {
-		return nil, ErrRejected
+		if errors.Is(err, io.EOF) {
+			return nil, ErrRejected
+		}
+		return nil, fmt.Errorf("error reading response: %w", err)
 	}
 
 	// Parse accept message
 	remoteStreamID := binary.BigEndian.Uint16(remoteBytes[0:2])
 
-	return link.addConn(inputStream, mux.NewOutputStream(link.mux, int(remoteStreamID)), true, query), nil
+	outputStream := mux.NewOutputStream(link.mux, int(remoteStreamID))
+
+	return link.addConn(inputStream, outputStream, true, query), nil
 }
 
 // Requests returns a channel to which incoming requests will be sent
@@ -167,7 +172,7 @@ func (link *Link) processQueryData(buf []byte) error {
 	// Prepare request object
 	outputStream := link.mux.Stream(remoteStreamID)
 	request := Request{
-		caller:       link.RemoteIdentity(),
+		link:         link,
 		outputStream: outputStream,
 		query:        query,
 	}
