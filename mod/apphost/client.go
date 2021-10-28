@@ -31,7 +31,7 @@ func (c *Client) handle(ctx context.Context) error {
 	}
 
 	switch request.Type {
-	case proto.RequestConnect:
+	case proto.RequestQuery:
 		return c.handleConnect(ctx, request)
 
 	case proto.RequestRegister:
@@ -113,7 +113,7 @@ func (c *Client) handlePort(ctx context.Context, port *hub.Port, dest string) er
 		conn := proto.NewConn(rawConn)
 
 		// Pass the request to the app
-		response, err := conn.Connect(request.Caller().String(), request.Query())
+		response, err := conn.Query(request.Caller().String(), request.Query())
 		if err != nil {
 			request.Reject()
 			return err

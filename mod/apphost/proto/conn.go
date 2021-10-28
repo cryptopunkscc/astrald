@@ -24,11 +24,11 @@ func (conn *Conn) ReadResponse() (res Response, err error) {
 	return
 }
 
-func (conn *Conn) Connect(identity string, port string) (res Response, err error) {
+func (conn *Conn) Query(nodeID string, query string) (res Response, err error) {
 	err = writeJSON(conn, &Request{
-		Type:     RequestConnect,
-		Identity: identity,
-		Port:     port,
+		Type:     RequestQuery,
+		Identity: nodeID,
+		Port:     query,
 	})
 	if err != nil {
 		return
@@ -37,11 +37,11 @@ func (conn *Conn) Connect(identity string, port string) (res Response, err error
 	return conn.ReadResponse()
 }
 
-func (conn *Conn) Register(port string, path string) (res Response, err error) {
+func (conn *Conn) Register(name string, target string) (res Response, err error) {
 	err = writeJSON(conn, &Request{
 		Type: RequestRegister,
-		Port: port,
-		Path: path,
+		Port: name,
+		Path: target,
 	})
 	if err != nil {
 		return

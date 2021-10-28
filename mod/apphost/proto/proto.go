@@ -6,7 +6,7 @@ const (
 )
 
 const (
-	RequestConnect  = "connect"
+	RequestQuery    = "connect"
 	RequestRegister = "register"
 )
 
