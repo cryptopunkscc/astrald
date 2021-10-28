@@ -22,7 +22,7 @@ func (req *Request) Accept() (io.ReadWriteCloser, error) {
 		return nil, err
 	}
 
-	return newConn(req.link, req.query, req.inputStream, req.outputStream, false), nil
+	return req.link.addConn(req.inputStream, req.outputStream, false, req.query), nil
 }
 
 // Reject the request

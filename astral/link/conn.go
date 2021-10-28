@@ -1,16 +1,15 @@
 package link
 
 import (
-	mux "github.com/cryptopunkscc/astrald/mux"
+	"io"
 	"sync"
 	"time"
 )
 
 // Conn represents an open connection to the remote party's port. Shouldn't be instantiated directly.
 type Conn struct {
-	link         *Link
-	inputStream  *mux.InputStream
-	outputStream *mux.OutputStream
+	inputStream  io.Reader
+	outputStream io.WriteCloser
 	query        string
 	outbound     bool
 	bytesRead    int
@@ -19,12 +18,13 @@ type Conn struct {
 	closeCh      chan struct{}
 	closed       bool
 	mu           sync.Mutex
+	container    Toucher
 }
 
 // newConn instantiates a new Conn and starts the necessary routines
-func newConn(link *Link, query string, inputStream *mux.InputStream, outputStream *mux.OutputStream, outbound bool) *Conn {
+func newConn(outer Toucher, inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
 	c := &Conn{
-		link:         link,
+		container:    outer,
 		query:        query,
 		closeCh:      make(chan struct{}),
 		inputStream:  inputStream,
@@ -33,27 +33,23 @@ func newConn(link *Link, query string, inputStream *mux.InputStream, outputStrea
 		lastActive:   time.Now(),
 	}
 
-	if c.link != nil {
-		c.link.addConn(c)
-	}
-
 	return c
 }
 
 func (conn *Conn) Read(p []byte) (n int, err error) {
 	n, err = conn.inputStream.Read(p)
-	if err != nil {
-		conn.Close()
-	}
 	conn.addBytesRead(n)
+	if err != nil {
+		_ = conn.Close()
+	}
+	conn.Touch()
 	return n, err
 }
 
 func (conn *Conn) Write(p []byte) (n int, err error) {
 	n, err = conn.outputStream.Write(p)
-	if err == nil {
-		conn.addBytesWritten(n)
-	}
+	conn.addBytesWritten(n)
+	conn.Touch()
 	return n, err
 }
 
@@ -65,6 +61,7 @@ func (conn *Conn) Close() error {
 	if conn.closed {
 		return ErrStreamClosed
 	}
+	conn.closed = true
 
 	defer close(conn.closeCh)
 
@@ -73,7 +70,6 @@ func (conn *Conn) Close() error {
 		return err
 	}
 
-	conn.closed = true
 	return nil
 }
 
@@ -103,20 +99,15 @@ func (conn *Conn) Idle() time.Duration {
 
 func (conn *Conn) addBytesRead(n int) {
 	conn.bytesRead += n
-	conn.lastActive = time.Now()
-	if conn.link != nil {
-		conn.link.addBytesRead(n)
-	}
 }
 
 func (conn *Conn) addBytesWritten(n int) {
 	conn.bytesWritten += n
-	conn.touch()
-	if conn.link != nil {
-		conn.link.addBytesWritten(n)
-	}
 }
 
-func (conn *Conn) touch() {
+func (conn *Conn) Touch() {
 	conn.lastActive = time.Now()
+	if conn.container != nil {
+		conn.container.Touch()
+	}
 }

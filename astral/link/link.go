@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/mux"
+	"io"
 	"log"
 	"sync"
 	"time"
@@ -51,7 +52,7 @@ func New(conn auth.Conn) *Link {
 
 // Query requests a connection to the remote party's port
 func (link *Link) Query(query string) (*Conn, error) {
-	defer link.touch()
+	defer link.Touch()
 
 	// Reserve a local mux stream
 	inputStream, err := link.demux.Stream()
@@ -75,7 +76,7 @@ func (link *Link) Query(query string) (*Conn, error) {
 	// Parse the accept message
 	remoteStreamID := binary.BigEndian.Uint16(remoteBytes[0:2])
 
-	return newConn(link, query, inputStream, mux.NewOutputStream(link.mux, int(remoteStreamID)), true), nil
+	return link.addConn(inputStream, mux.NewOutputStream(link.mux, int(remoteStreamID)), true, query), nil
 }
 
 // Requests returns a channel to which incoming requests will be sent
@@ -126,15 +127,27 @@ func (link *Link) Connections() <-chan *Conn {
 }
 
 func (link *Link) BytesRead() int {
-	return link.bytesRead
+	n := link.bytesRead
+	for c := range link.Connections() {
+		n += c.BytesRead()
+	}
+	return n
 }
 
 func (link *Link) BytesWritten() int {
-	return link.bytesWritten
+	n := link.bytesWritten
+	for c := range link.Connections() {
+		n += c.BytesWritten()
+	}
+	return n
 }
 
 func (link *Link) Idle() time.Duration {
 	return time.Now().Sub(link.lastActive)
+}
+
+func (link *Link) Touch() {
+	link.lastActive = time.Now()
 }
 
 // sendQuery writes a frame containing the request to the control stream
@@ -176,21 +189,24 @@ func (link *Link) handleControl() error {
 
 		link.requests <- request
 
-		link.touch()
+		link.Touch()
 	}
 }
 
-func (link *Link) addConn(conn *Conn) {
+func (link *Link) addConn(inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
 	link.connsMu.Lock()
 	defer link.connsMu.Unlock()
 
+	conn := newConn(link, inputStream, outputStream, outbound, query)
 	link.conns = append(link.conns, conn)
-	link.touch()
+	link.Touch()
 
 	go func() {
 		<-conn.WaitClose()
 		link.removeConn(conn)
 	}()
+
+	return conn
 }
 
 func (link *Link) removeConn(conn *Conn) {
@@ -200,7 +216,9 @@ func (link *Link) removeConn(conn *Conn) {
 	for i, c := range link.conns {
 		if c == conn {
 			link.conns = append(link.conns[:i], link.conns[i+1:]...)
-			link.touch()
+			link.addBytesRead(conn.BytesRead())
+			link.addBytesWritten(conn.bytesWritten)
+			link.Touch()
 			return
 		}
 	}
@@ -208,14 +226,8 @@ func (link *Link) removeConn(conn *Conn) {
 
 func (link *Link) addBytesRead(n int) {
 	link.bytesRead += n
-	link.touch()
 }
 
 func (link *Link) addBytesWritten(n int) {
 	link.bytesWritten += n
-	link.touch()
-}
-
-func (link *Link) touch() {
-	link.lastActive = time.Now()
 }
