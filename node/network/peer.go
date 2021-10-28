@@ -3,6 +3,8 @@ package network
 import (
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"log"
 	"sync"
@@ -55,11 +57,22 @@ func (peer *Peer) AddLink(link *link.Link) error {
 }
 
 func (peer *Peer) PreferredLink() *link.Link {
-	if peer.links.Count() == 0 {
-		return nil
+	var best *link.Link
+
+	for link := range peer.links.Each() {
+		if best == nil {
+			best = link
+			continue
+		}
+
+		if best.RemoteAddr().Network() == tor.NetworkName {
+			if link.RemoteAddr().Network() == inet.NetworkName {
+				best = link
+			}
+		}
 	}
 
-	return <-peer.links.Each()
+	return best
 }
 
 func (peer *Peer) WaitLinked() <-chan struct{} {
