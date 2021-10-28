@@ -36,10 +36,11 @@ func (view *View) Peer(peerID id.Identity) *Peer {
 func (view *View) AddLink(link *link.Link) error {
 	if err := view.links.Add(link); err == nil {
 		log.Println("link up", logfmt.ID(link.RemoteIdentity()), logfmt.Dir(link.Outbound()), "via", link.RemoteAddr().Network(), link.RemoteAddr().String())
+
 		go func() {
 			<-link.WaitClose()
-			view.links.Remove(link)
 			log.Println("link down", logfmt.ID(link.RemoteIdentity()), logfmt.Dir(link.Outbound()), "via", link.RemoteAddr().Network(), link.RemoteAddr().String())
+			view.links.Remove(link)
 		}()
 	}
 	_ = view.Peer(link.RemoteIdentity()).AddLink(link)

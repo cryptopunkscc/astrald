@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-var ErrParseError = errors.New("parse error")
+var ErrDataTooSmall = errors.New("data too small")
 
 func MakeQuery(stream int, query string) []byte {
 	msgLen := len(query) + 2
@@ -19,7 +19,7 @@ func MakeQuery(stream int, query string) []byte {
 
 func ParseQuery(data []byte) (stream int, query string, err error) {
 	if len(data) < 2 {
-		return 0, "", ErrParseError
+		return 0, "", ErrDataTooSmall
 	}
 
 	stream = int(binary.BigEndian.Uint16(data[0:2]))

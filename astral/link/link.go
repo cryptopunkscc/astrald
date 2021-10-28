@@ -3,6 +3,7 @@ package link
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral/link/proto"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
@@ -11,12 +12,12 @@ import (
 	"io"
 	"log"
 	"sync"
-	"time"
 )
 
 // A Link is a multiplexed, authenticated connection between two parties allowing them to establish multiple data
 // streams over a single secure channel.
 type Link struct {
+	*Activity
 	requests     chan Request
 	conns        []*Conn
 	connsMu      sync.Mutex
@@ -26,8 +27,6 @@ type Link struct {
 	closeCh      chan struct{}
 	bytesRead    int
 	bytesWritten int
-	lastActive   time.Time
-	activityHost Toucher
 }
 
 const controlStreamID = 0
@@ -35,18 +34,23 @@ const controlStreamID = 0
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
 	link := &Link{
-		requests:   make(chan Request),
-		conns:      make([]*Conn, 0),
-		transport:  conn,
-		mux:        mux.NewMux(conn),
-		demux:      mux.NewStreamDemux(conn),
-		closeCh:    make(chan struct{}),
-		lastActive: time.Now(),
+		Activity:  NewActivity(nil),
+		requests:  make(chan Request),
+		conns:     make([]*Conn, 0),
+		transport: conn,
+		mux:       mux.NewMux(conn),
+		demux:     mux.NewStreamDemux(conn),
+		closeCh:   make(chan struct{}),
 	}
 	go func() {
-		_ = link.handleControl()
+		defer close(link.closeCh)
+		err := link.processQueries()
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				log.Println("closing link:", err)
+			}
+		}
 		close(link.requests)
-		close(link.closeCh)
 	}()
 	return link
 }
@@ -74,7 +78,7 @@ func (link *Link) Query(query string) (*Conn, error) {
 		return nil, ErrRejected
 	}
 
-	// Parse the accept message
+	// Parse accept message
 	remoteStreamID := binary.BigEndian.Uint16(remoteBytes[0:2])
 
 	return link.addConn(inputStream, mux.NewOutputStream(link.mux, int(remoteStreamID)), true, query), nil
@@ -110,10 +114,6 @@ func (link *Link) WaitClose() <-chan struct{} {
 	return link.closeCh
 }
 
-func (link *Link) SetActivityHost(activityHost Toucher) {
-	link.activityHost = activityHost
-}
-
 // Close closes the link
 func (link *Link) Close() error {
 	return link.transport.Close()
@@ -131,74 +131,54 @@ func (link *Link) Connections() <-chan *Conn {
 	return ch
 }
 
-func (link *Link) BytesRead() int {
-	n := link.bytesRead
-	for c := range link.Connections() {
-		n += c.BytesRead()
-	}
-	return n
-}
-
-func (link *Link) BytesWritten() int {
-	n := link.bytesWritten
-	for c := range link.Connections() {
-		n += c.BytesWritten()
-	}
-	return n
-}
-
-func (link *Link) Idle() time.Duration {
-	return time.Now().Sub(link.lastActive)
-}
-
-func (link *Link) Touch() {
-	link.lastActive = time.Now()
-	if link.activityHost != nil {
-		link.activityHost.Touch()
-	}
-}
-
 // sendQuery writes a frame containing the request to the control stream
 func (link *Link) sendQuery(query string, streamID int) error {
 	return link.mux.Write(controlStreamID, proto.MakeQuery(streamID, query))
 }
 
-func (link *Link) handleControl() error {
+func (link *Link) processQueries() error {
 	buf := make([]byte, mux.MaxPayload)
 	ctlStream := link.demux.DefaultStream()
 
 	for {
 		n, err := ctlStream.Read(buf)
 		if err != nil {
-			return errors.New("control stream error")
+			return fmt.Errorf("control stream error: %w", err)
 		}
 
-		// Parse control message
-		remoteStreamID, query, err := proto.ParseQuery(buf[:n])
+		err = link.processQueryData(buf[:n])
 		if err != nil {
-			return errors.New("control frame parse error")
+			log.Println("error processing query:", err)
 		}
-
-		// Prepare request object
-		outputStream := link.mux.Stream(remoteStreamID)
-		request := Request{
-			caller:       link.RemoteIdentity(),
-			outputStream: outputStream,
-			query:        query,
-		}
-
-		// Reserve local channel
-		request.inputStream, err = link.demux.Stream()
-		if err != nil {
-			log.Println("error allocating new input stream:", err)
-			outputStream.Close()
-			continue
-		}
-
-		link.requests <- request
-
-		link.Touch()
 	}
+}
+
+func (link *Link) processQueryData(buf []byte) error {
+	defer link.Touch()
+
+	// Parse control message
+	remoteStreamID, query, err := proto.ParseQuery(buf)
+	if err != nil {
+		return fmt.Errorf("parse query: %w", err)
+	}
+
+	// Prepare request object
+	outputStream := link.mux.Stream(remoteStreamID)
+	request := Request{
+		caller:       link.RemoteIdentity(),
+		outputStream: outputStream,
+		query:        query,
+	}
+
+	// Reserve local channel
+	request.inputStream, err = link.demux.Stream()
+	if err != nil {
+		_ = outputStream.Close()
+		return fmt.Errorf("cannot allocate input stream: %w", err)
+	}
+
+	link.requests <- request
+	return nil
 }
 
 func (link *Link) addConn(inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
@@ -224,18 +204,8 @@ func (link *Link) removeConn(conn *Conn) {
 	for i, c := range link.conns {
 		if c == conn {
 			link.conns = append(link.conns[:i], link.conns[i+1:]...)
-			link.addBytesRead(conn.BytesRead())
-			link.addBytesWritten(conn.bytesWritten)
 			link.Touch()
 			return
 		}
 	}
-}
-
-func (link *Link) addBytesRead(n int) {
-	link.bytesRead += n
-}
-
-func (link *Link) addBytesWritten(n int) {
-	link.bytesWritten += n
 }

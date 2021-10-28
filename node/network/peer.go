@@ -6,17 +6,14 @@ import (
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"log"
 	"sync"
-	"time"
 )
 
 type Peer struct {
-	id           id.Identity
-	links        *link.Set
-	linksMu      sync.Mutex
-	linkedCh     chan struct{}
-	bytesRead    int
-	bytesWritten int
-	lastActive   time.Time
+	*link.Activity
+	id       id.Identity
+	links    *link.Set
+	linksMu  sync.Mutex
+	linkedCh chan struct{}
 }
 
 func NewPeer(id id.Identity) *Peer {
@@ -24,27 +21,8 @@ func NewPeer(id id.Identity) *Peer {
 		id:       id,
 		links:    link.NewSet(),
 		linkedCh: make(chan struct{}),
+		Activity: link.NewActivity(nil),
 	}
-}
-
-func (peer *Peer) Touch() {
-	peer.lastActive = time.Now()
-}
-
-func (peer *Peer) BytesRead() int {
-	n := peer.bytesRead
-	for link := range peer.Links() {
-		n += link.BytesRead()
-	}
-	return n
-}
-
-func (peer *Peer) BytesWritten() int {
-	n := peer.bytesWritten
-	for link := range peer.Links() {
-		n += link.BytesWritten()
-	}
-	return n
 }
 
 func (peer *Peer) ID() id.Identity {
@@ -84,10 +62,6 @@ func (peer *Peer) PreferredLink() *link.Link {
 	return <-peer.links.Each()
 }
 
-func (peer *Peer) Idle() time.Duration {
-	return time.Now().Sub(peer.lastActive)
-}
-
 func (peer *Peer) WaitLinked() <-chan struct{} {
 	peer.linksMu.Lock()
 	defer peer.linksMu.Unlock()
@@ -107,8 +81,8 @@ func (peer *Peer) removeLink(link *link.Link) error {
 		return err
 	}
 
-	peer.bytesRead += link.BytesRead()
-	peer.bytesWritten += link.BytesWritten()
+	peer.AddBytesRead(link.BytesRead())
+	peer.AddBytesWritten(link.BytesWritten())
 
 	if peer.links.Count() == 0 {
 		log.Println(logfmt.ID(peer.id), "unlinked")
