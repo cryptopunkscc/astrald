@@ -9,16 +9,18 @@ import (
 )
 
 type Linker struct {
-	ctx      context.Context
-	localID  id.Identity
-	router   route.Router
+	ctx     context.Context
+	localID id.Identity
+	router  route.Router
+
+	links    chan *link.Link
 	active   map[string]Strategy
 	activeMu sync.Mutex
-	links    chan *link.Link
 }
 
-func NewLinker(localID id.Identity, router route.Router) *Linker {
+func NewLinker(ctx context.Context, localID id.Identity, router route.Router) *Linker {
 	return &Linker{
+		ctx:     ctx,
 		localID: localID,
 		router:  router,
 		links:   make(chan *link.Link),
@@ -26,44 +28,25 @@ func NewLinker(localID id.Identity, router route.Router) *Linker {
 	}
 }
 
-func (linker *Linker) Run(ctx context.Context) {
-	linker.ctx = ctx
-}
-
 func (linker *Linker) Wake(remoteId id.Identity) {
 	linker.activeMu.Lock()
 	defer linker.activeMu.Unlock()
 
 	hex := remoteId.PublicKeyHex()
-	s, found := linker.active[hex]
-	if found {
-		return
+
+	if _, found := linker.active[hex]; !found {
+		linker.active[hex] = RunDefaultStrategy(linker.ctx, linker.localID, remoteId, linker.router)
+
+		go func() {
+			for link := range linker.active[hex].Links() {
+				linker.links <- link
+			}
+		}()
 	}
 
-	s = NewDefaultStrategy(linker.localID, remoteId, linker.router)
-	linker.active[hex] = s
-
-	go func() {
-		for l := range s.Run(linker.ctx) {
-			linker.links <- l
-		}
-	}()
+	linker.active[hex].Wake()
 }
 
 func (linker *Linker) Links() <-chan *link.Link {
 	return linker.links
-}
-
-func (linker *Linker) getStrategy(remoteId id.Identity) Strategy {
-	linker.activeMu.Lock()
-	defer linker.activeMu.Unlock()
-
-	hex := remoteId.PublicKeyHex()
-	s, found := linker.active[hex]
-	if found {
-		return s
-	}
-	s = NewDefaultStrategy(linker.localID, remoteId, linker.router)
-	linker.active[hex] = s
-	return s
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	_ "github.com/cryptopunkscc/astrald/mod/admin"
 	_ "github.com/cryptopunkscc/astrald/mod/apphost"
@@ -65,17 +66,19 @@ func main() {
 		}
 	}()
 
-	// Run the node
+	// start the node
 	err := node.Run(ctx)
 
 	time.Sleep(50 * time.Millisecond)
 
 	// Check results
 	if err != nil {
-		fmt.Printf("error: %s\n", err)
-		os.Exit(ExitNodeError)
-	} else {
-		fmt.Printf("success.\n")
-		os.Exit(ExitSuccess)
+		if !errors.Is(err, context.Canceled) {
+			fmt.Printf("error: %s\n", err)
+			os.Exit(ExitNodeError)
+		}
 	}
+
+	fmt.Printf("success.\n")
+	os.Exit(ExitSuccess)
 }

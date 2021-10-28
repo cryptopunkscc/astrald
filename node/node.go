@@ -49,7 +49,6 @@ func New(astralDir string) *Node {
 		Ports:    hub,
 		Router:   router,
 		Network:  network.NewNetwork(config.Network),
-		Linker:   linker.NewLinker(identity, router),
 	}
 
 	node.loadRoutes()
@@ -72,10 +71,10 @@ func (node *Node) Run(ctx context.Context) error {
 		}(name, srv)
 	}
 
-	// Run the network
+	// start the network
 	requests, requestsErr := node.Network.Run(ctx, node.Identity)
 
-	node.Linker.Run(ctx)
+	node.Linker = linker.NewLinker(ctx, node.Identity, node.Router)
 
 	go func() {
 		time.Sleep(2 * time.Second)

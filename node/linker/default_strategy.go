@@ -7,76 +7,96 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/route"
 	"sync"
-	"time"
 )
 
 type DefaultStrategy struct {
+	context  context.Context
 	localID  id.Identity
 	remoteID id.Identity
 	router   route.Router
+	wakeCh   chan struct{}
+	wakeMu   sync.Mutex
+	links    chan *link.Link
 }
 
-func NewDefaultStrategy(localID id.Identity, remoteID id.Identity, router route.Router) *DefaultStrategy {
-	return &DefaultStrategy{localID: localID, remoteID: remoteID, router: router}
+func RunDefaultStrategy(ctx context.Context, localID id.Identity, remoteID id.Identity, router route.Router) *DefaultStrategy {
+	linker := &DefaultStrategy{
+		context:  ctx,
+		localID:  localID,
+		remoteID: remoteID,
+		router:   router,
+		wakeCh:   make(chan struct{}),
+		links:    make(chan *link.Link),
+	}
+	go linker.run(ctx)
+	return linker
 }
 
-func (s *DefaultStrategy) runNetwork(ctx context.Context, netName string) <-chan *link.Link {
-	outCh := make(chan *link.Link)
+func (str *DefaultStrategy) Wake() {
+	str.wakeMu.Lock()
+	defer str.wakeMu.Unlock()
 
-	go func() {
-		defer close(outCh)
+	close(str.wakeCh)
+	str.wakeCh = make(chan struct{})
+}
 
-		for {
-			r := s.router.Route(s.remoteID)
-			if r == nil {
-				time.Sleep(5 * time.Second)
+func (str *DefaultStrategy) Links() <-chan *link.Link {
+	return str.links
+}
+
+func (str *DefaultStrategy) run(ctx context.Context) error {
+	defer close(str.links)
+
+	var wg sync.WaitGroup
+
+	for _, networkName := range astral.NetworkNames() {
+		wg.Add(1)
+		go func(networkName string) {
+			_ = str.runNetwork(ctx, networkName)
+			wg.Done()
+		}(networkName)
+	}
+
+	wg.Wait()
+
+	return nil
+}
+
+func (str *DefaultStrategy) runNetwork(ctx context.Context, networkName string) error {
+	for {
+		// Get current route for the node
+		route := str.router.Route(str.remoteID)
+		if route == nil {
+			continue
+		}
+
+		for _, addr := range route.Addresses {
+			if addr.Network() != networkName {
 				continue
 			}
 
-			for _, addr := range r.Addresses {
-				if addr.Network() != netName {
-					continue
-				}
-
-				lnk, err := astral.Link(s.localID, s.remoteID, addr)
-				if err != nil {
-					// can be very spammy
-					// log.Println(err)
-					continue
-				}
-				outCh <- lnk
-				<-lnk.WaitClose()
-				break
+			link, err := astral.Link(str.localID, str.remoteID, addr)
+			if err != nil {
+				continue
 			}
 
-			time.Sleep(5 * time.Second)
+			str.links <- link
+			<-link.WaitClose()
+			break
 		}
-	}()
 
-	return outCh
+		// Wait to be woken up or canceled
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-str.waitWake():
+		}
+	}
 }
 
-func (s *DefaultStrategy) Run(ctx context.Context) <-chan *link.Link {
-	outCh := make(chan *link.Link)
+func (str *DefaultStrategy) waitWake() <-chan struct{} {
+	str.wakeMu.Lock()
+	defer str.wakeMu.Unlock()
 
-	go func() {
-		defer close(outCh)
-
-		var wg sync.WaitGroup
-
-		for _, netName := range astral.NetworkNames() {
-			wg.Add(1)
-			go func(netName string) {
-				defer wg.Done()
-				links := s.runNetwork(ctx, netName)
-				for lnk := range links {
-					outCh <- lnk
-				}
-			}(netName)
-		}
-
-		wg.Wait()
-	}()
-
-	return outCh
+	return str.wakeCh
 }
