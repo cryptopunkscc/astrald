@@ -1,9 +1,11 @@
 package tor
 
 import (
+	bytes2 "bytes"
 	"encoding/base32"
 	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
+	"io"
 	"strings"
 )
 
@@ -25,8 +27,9 @@ func (addr Addr) String() string {
 }
 
 func (addr Addr) Pack() []byte {
-	packed := make([]byte, len(addr.bytes))
-	copy(packed[:], addr.bytes[:])
+	packed := make([]byte, len(addr.bytes)+1)
+	packed[0] = byte(addr.Version())
+	copy(packed[1:], addr.bytes[:])
 	return packed
 }
 
@@ -34,28 +37,57 @@ func (addr Addr) IsZero() bool {
 	return (addr.bytes == nil) || (len(addr.bytes) == 0)
 }
 
+func (addr Addr) Version() int {
+	switch len(addr.bytes) {
+	case 10:
+		return 2
+	case 35:
+		return 3
+	}
+	return 0
+}
+
 func Parse(s string) (Addr, error) {
 	b32data := strings.TrimSuffix(strings.ToUpper(s), ".ONION")
-
-	if len(b32data) != 56 {
-		return Addr{}, errors.New("not a valid tor v3 address")
-	}
 
 	bytes, err := base32.StdEncoding.DecodeString(b32data)
 	if err != nil {
 		return Addr{}, err
 	}
 
-	return Addr{bytes: bytes}, nil
+	addr := Addr{bytes: bytes}
+	if addr.Version() == 0 {
+		return Addr{}, errors.New("not a supported tor address")
+	}
+
+	return addr, nil
 }
 
-func Unpack(addr []byte) (Addr, error) {
-	if len(addr) != 35 {
-		return Addr{}, errors.New("invalid data size")
+func Unpack(data []byte) (Addr, error) {
+	r := bytes2.NewReader(data)
+
+	version, err := r.ReadByte()
+	if err != nil {
+		return Addr{}, err
 	}
-	bytes := make([]byte, 35)
-	copy(bytes[:], addr[:])
+
+	var keyBytes []byte
+
+	switch version {
+	case 2:
+		keyBytes = make([]byte, 10)
+	case 3:
+		keyBytes = make([]byte, 35)
+	default:
+		return Addr{}, errors.New("invalid version")
+	}
+
+	_, err = io.ReadFull(r, keyBytes)
+	if err != nil {
+		return Addr{}, err
+	}
+
 	return Addr{
-		bytes: bytes,
+		bytes: keyBytes,
 	}, nil
 }
