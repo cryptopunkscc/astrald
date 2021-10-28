@@ -18,15 +18,13 @@ import (
 // streams over a single secure channel.
 type Link struct {
 	*Activity
-	requests     chan Request
-	conns        []*Conn
-	connsMu      sync.Mutex
-	transport    auth.Conn
-	mux          *mux.Mux
-	demux        *mux.StreamDemux
-	closeCh      chan struct{}
-	bytesRead    int
-	bytesWritten int
+	requests  chan Request
+	conns     []*Conn
+	connsMu   sync.Mutex
+	transport auth.Conn
+	mux       *mux.Mux
+	demux     *mux.StreamDemux
+	closeCh   chan struct{}
 }
 
 const controlStreamID = 0
