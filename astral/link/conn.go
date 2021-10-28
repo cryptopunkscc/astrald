@@ -18,13 +18,13 @@ type Conn struct {
 	closeCh      chan struct{}
 	closed       bool
 	mu           sync.Mutex
-	container    Toucher
+	activityHost Toucher
 }
 
 // newConn instantiates a new Conn and starts the necessary routines
-func newConn(outer Toucher, inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
+func newConn(activityHost Toucher, inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
 	c := &Conn{
-		container:    outer,
+		activityHost: activityHost,
 		query:        query,
 		closeCh:      make(chan struct{}),
 		inputStream:  inputStream,
@@ -107,7 +107,7 @@ func (conn *Conn) addBytesWritten(n int) {
 
 func (conn *Conn) Touch() {
 	conn.lastActive = time.Now()
-	if conn.container != nil {
-		conn.container.Touch()
+	if conn.activityHost != nil {
+		conn.activityHost.Touch()
 	}
 }

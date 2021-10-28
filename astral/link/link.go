@@ -27,6 +27,7 @@ type Link struct {
 	bytesRead    int
 	bytesWritten int
 	lastActive   time.Time
+	activityHost Toucher
 }
 
 const controlStreamID = 0
@@ -109,6 +110,10 @@ func (link *Link) WaitClose() <-chan struct{} {
 	return link.closeCh
 }
 
+func (link *Link) SetActivityHost(activityHost Toucher) {
+	link.activityHost = activityHost
+}
+
 // Close closes the link
 func (link *Link) Close() error {
 	return link.transport.Close()
@@ -148,6 +153,9 @@ func (link *Link) Idle() time.Duration {
 
 func (link *Link) Touch() {
 	link.lastActive = time.Now()
+	if link.activityHost != nil {
+		link.activityHost.Touch()
+	}
 }
 
 // sendQuery writes a frame containing the request to the control stream

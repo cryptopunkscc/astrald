@@ -16,6 +16,19 @@ type Peer struct {
 	linkedCh     chan struct{}
 	bytesRead    int
 	bytesWritten int
+	lastActive   time.Time
+}
+
+func NewPeer(id id.Identity) *Peer {
+	return &Peer{
+		id:       id,
+		links:    link.NewSet(),
+		linkedCh: make(chan struct{}),
+	}
+}
+
+func (peer *Peer) Touch() {
+	peer.lastActive = time.Now()
 }
 
 func (peer *Peer) BytesRead() int {
@@ -38,14 +51,6 @@ func (peer *Peer) ID() id.Identity {
 	return peer.id
 }
 
-func NewPeer(id id.Identity) *Peer {
-	return &Peer{
-		id:       id,
-		links:    link.NewSet(),
-		linkedCh: make(chan struct{}),
-	}
-}
-
 func (peer *Peer) AddLink(link *link.Link) error {
 	peer.linksMu.Lock()
 	defer peer.linksMu.Unlock()
@@ -54,6 +59,9 @@ func (peer *Peer) AddLink(link *link.Link) error {
 	if err != nil {
 		return err
 	}
+
+	link.SetActivityHost(peer)
+	peer.Touch()
 
 	if peer.links.Count() == 1 {
 		log.Println(logfmt.ID(peer.id), "linked")
@@ -77,20 +85,7 @@ func (peer *Peer) PreferredLink() *link.Link {
 }
 
 func (peer *Peer) Idle() time.Duration {
-	if peer.links.Count() == 0 {
-		return -1
-	}
-
-	links := peer.links.Each()
-	best := (<-links).Idle()
-	for link := range links {
-		idle := link.Idle()
-		if idle < best {
-			best = idle
-		}
-	}
-
-	return best
+	return time.Now().Sub(peer.lastActive)
 }
 
 func (peer *Peer) WaitLinked() <-chan struct{} {
