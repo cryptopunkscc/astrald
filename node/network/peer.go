@@ -65,8 +65,8 @@ func (peer *Peer) PreferredLink() *link.Link {
 			continue
 		}
 
-		if best.RemoteAddr().Network() == tor.NetworkName {
-			if link.RemoteAddr().Network() == inet.NetworkName {
+		if best.Network() == tor.NetworkName {
+			if link.Network() == inet.NetworkName {
 				best = link
 			}
 		}

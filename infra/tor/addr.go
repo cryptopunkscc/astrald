@@ -18,6 +18,9 @@ func (addr Addr) Network() string {
 }
 
 func (addr Addr) String() string {
+	if len(addr.bytes) == 0 {
+		return ""
+	}
 	return strings.ToLower(base32.StdEncoding.EncodeToString(addr.bytes)) + ".onion"
 }
 

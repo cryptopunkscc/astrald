@@ -21,6 +21,11 @@ func newConn(conn net.Conn, outbound bool) Conn {
 	}
 }
 
+func (conn Conn) LocalAddr() infra.Addr {
+	addr, _ := Parse(conn.Conn.LocalAddr().String())
+	return addr
+}
+
 func (conn Conn) RemoteAddr() infra.Addr {
 	addr, _ := Parse(conn.Conn.RemoteAddr().String())
 	return addr

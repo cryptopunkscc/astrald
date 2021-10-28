@@ -102,9 +102,23 @@ func (link *Link) LocalIdentity() id.Identity {
 	return link.transport.LocalIdentity()
 }
 
+func (link *Link) LocalAddr() infra.Addr {
+	return link.transport.LocalAddr()
+}
+
 // RemoteAddr returns the network address of the remote party
 func (link *Link) RemoteAddr() infra.Addr {
 	return link.transport.RemoteAddr()
+}
+
+func (link *Link) Network() string {
+	if a := link.LocalAddr(); a != nil {
+		return a.Network()
+	}
+	if a := link.RemoteAddr(); a != nil {
+		return a.Network()
+	}
+	return "unknown"
 }
 
 // Outbound returns true if we are the active party, false otherwise

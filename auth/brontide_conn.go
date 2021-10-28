@@ -28,6 +28,10 @@ func (conn *brontideConn) Outbound() bool {
 	return conn.netConn.Outbound()
 }
 
+func (conn *brontideConn) LocalAddr() infra.Addr {
+	return conn.netConn.LocalAddr()
+}
+
 func (conn *brontideConn) RemoteAddr() infra.Addr {
 	return conn.netConn.RemoteAddr()
 }

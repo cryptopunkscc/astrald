@@ -11,6 +11,10 @@ type Conn struct {
 	outbound bool
 }
 
+func (conn Conn) LocalAddr() infra.Addr {
+	return Addr{}
+}
+
 var _ infra.Conn = Conn{}
 
 // newConn wraps a standard net.Conn into a astral's net.Conn with the addition of boundness
