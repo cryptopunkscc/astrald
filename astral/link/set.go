@@ -6,13 +6,13 @@ import (
 )
 
 type Set struct {
-	links []*Link
+	links map[*Link]struct{}
 	mu    sync.Mutex
 }
 
 func NewSet() *Set {
 	return &Set{
-		links: make([]*Link, 0),
+		links: make(map[*Link]struct{}, 0),
 	}
 }
 
@@ -20,48 +20,32 @@ func (set *Set) Add(link *Link) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
-	if set.index(link) != -1 {
+	if _, found := set.links[link]; found {
 		return errors.New("duplicate item")
 	}
 
-	set.links = append(set.links, link)
+	set.links[link] = struct{}{}
 
 	return nil
-}
-
-func (set *Set) Index(link *Link) int {
-	set.mu.Lock()
-	defer set.mu.Unlock()
-
-	return set.index(link)
-}
-
-func (set *Set) index(link *Link) int {
-	for i, l := range set.links {
-		if l == link {
-			return i
-		}
-	}
-	return -1
 }
 
 func (set *Set) Contains(link *Link) bool {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
-	return set.index(link) >= 0
+	_, found := set.links[link]
+	return found
 }
 
 func (set *Set) Remove(link *Link) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
-	i := set.index(link)
-	if i == -1 {
+	if _, found := set.links[link]; !found {
 		return errors.New("not found")
 	}
 
-	set.links = append(set.links[:i], set.links[i+1:]...)
+	delete(set.links, link)
 
 	return nil
 }
@@ -78,7 +62,7 @@ func (set *Set) Each() <-chan *Link {
 	defer set.mu.Unlock()
 
 	ch := make(chan *Link, len(set.links))
-	for _, link := range set.links {
+	for link, _ := range set.links {
 		ch <- link
 	}
 	close(ch)
