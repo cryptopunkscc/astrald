@@ -93,6 +93,19 @@ func (node *Node) Run(ctx context.Context) error {
 		case link := <-node.Linker.Links():
 			node.Network.AddLink(link)
 
+			go func() {
+				for {
+					if err := link.WaitIdle(ctx, defaultLinkTimeout); err != nil {
+						return
+					}
+					if link.ConnCount() > 0 {
+						continue
+					}
+					link.Close()
+					return
+				}
+			}()
+
 		case err := <-requestsErr:
 			log.Println("fatal error:", err)
 			return err

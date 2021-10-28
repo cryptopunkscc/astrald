@@ -30,7 +30,7 @@ func peers(stream io.ReadWriter, node *node.Node, _ []string) error {
 				_f.DataSize(link.BytesWritten()),
 				link.Idle().Round(time.Second),
 			)
-			for c := range link.Connections() {
+			for c := range link.Conns() {
 				fmt.Fprintf(stream,
 					"    %s: %s (%s in, %s out, %s idle)\n",
 					_f.Dir(c.Outbound()),

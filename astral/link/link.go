@@ -117,7 +117,7 @@ func (link *Link) Close() error {
 	return link.transport.Close()
 }
 
-func (link *Link) Connections() <-chan *Conn {
+func (link *Link) Conns() <-chan *Conn {
 	link.connsMu.Lock()
 	defer link.connsMu.Unlock()
 
@@ -127,6 +127,10 @@ func (link *Link) Connections() <-chan *Conn {
 	}
 	close(ch)
 	return ch
+}
+
+func (link *Link) ConnCount() int {
+	return len(link.conns)
 }
 
 // sendQuery writes a frame containing the request to the control stream

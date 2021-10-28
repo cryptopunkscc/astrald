@@ -1,6 +1,9 @@
 package link
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type ActivityTracker interface {
 	Touch()
@@ -57,4 +60,17 @@ func (a *Activity) BytesWritten() int {
 
 func (a *Activity) SetActivityHost(activityHost ActivityTracker) {
 	a.activityHost = activityHost
+}
+
+func (a *Activity) WaitIdle(ctx context.Context, timeout time.Duration) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(timeout - a.Idle()):
+			if a.Idle() >= timeout {
+				return nil
+			}
+		}
+	}
 }

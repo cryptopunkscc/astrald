@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"strings"
 	"sync"
 )
 
@@ -29,7 +30,10 @@ func NewStreamDemux(reader io.Reader) *StreamDemux {
 	go func() {
 		err := demux.processFrames()
 		if err != nil {
-			if !errors.Is(err, io.EOF) {
+			errClosed := strings.Contains(err.Error(), "use of closed network connection")
+			errEOF := errors.Is(err, io.EOF)
+
+			if !(errEOF || errClosed) {
 				log.Println("demux error:", err)
 			}
 		}
