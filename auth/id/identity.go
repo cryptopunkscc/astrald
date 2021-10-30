@@ -12,6 +12,8 @@ type Identity struct {
 	publicKey  *btcec.PublicKey
 }
 
+var ErrInvalidKeyLength = errors.New("invalid key length")
+
 // GenerateIdentity returns a new Identity
 func GenerateIdentity() (Identity, error) {
 	var err error
@@ -51,6 +53,10 @@ func ParsePublicKey(pkData []byte) (Identity, error) {
 }
 
 func ParsePublicKeyHex(hexKey string) (Identity, error) {
+	if len(hexKey) != 66 {
+		return Identity{}, ErrInvalidKeyLength
+	}
+
 	pkData, err := hex.DecodeString(hexKey)
 	if err != nil {
 		return Identity{}, err

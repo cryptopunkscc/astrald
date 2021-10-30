@@ -15,6 +15,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/route"
 	"io"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -142,6 +143,27 @@ func (node *Node) Link(ctx context.Context, remoteID id.Identity) (*link.Link, e
 	case <-time.After(defaultLinkTimeout):
 		return nil, errors.New("timeout")
 	}
+}
+
+func (node *Node) ResolveIdentity(str string) (id.Identity, error) {
+	if id, err := id.ParsePublicKeyHex(str); err == nil {
+		return id, nil
+	}
+
+	if strings.HasPrefix(str, "@") && len(str) > 1 {
+		alias := str[1:]
+		target, found := node.Config.Alias[alias]
+		if !found {
+			return id.Identity{}, errors.New("unknown alias")
+		}
+		if alias == target {
+			return id.Identity{}, errors.New("circular alias")
+		}
+		return node.ResolveIdentity(target)
+
+	}
+
+	return id.Identity{}, errors.New("invalid identity")
 }
 
 func (node *Node) Route(onlyPublic bool) *route.Route {

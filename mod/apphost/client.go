@@ -32,7 +32,7 @@ func (c *Client) handle(ctx context.Context) error {
 
 	switch request.Type {
 	case proto.RequestQuery:
-		return c.handleConnect(ctx, request)
+		return c.handleQuery(ctx, request)
 
 	case proto.RequestRegister:
 		return c.handleRegister(ctx, request)
@@ -43,15 +43,17 @@ func (c *Client) handle(ctx context.Context) error {
 	}
 }
 
-func (c *Client) handleConnect(ctx context.Context, request proto.Request) error {
+func (c *Client) handleQuery(ctx context.Context, request proto.Request) error {
 	var err error
 	var remoteID id.Identity
 
-	if request.Identity != "" {
-		remoteID, err = id.ParsePublicKeyHex(request.Identity)
-		if err != nil {
-			return err
-		}
+	if request.Identity == "" {
+		return c.socket.Error("node id is empty")
+	}
+
+	remoteID, err = c.node.ResolveIdentity(request.Identity)
+	if err != nil {
+		return c.socket.Error(err.Error())
 	}
 
 	conn, err := c.node.Query(ctx, remoteID, request.Port)

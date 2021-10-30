@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	_f "github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/route"
@@ -51,7 +50,7 @@ func link(stream io.ReadWriter, node *node.Node, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	remoteID, err := id.ParsePublicKeyHex(args[0])
+	remoteID, err := node.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}

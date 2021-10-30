@@ -14,6 +14,7 @@ const defaultConfigFilename = "astrald.conf"
 
 type Config struct {
 	Network network.Config
+	Alias   map[string]string
 }
 
 var defaultConfig = Config{}
@@ -36,4 +37,8 @@ func loadConfig(fs *_fs.Filesystem) *Config {
 	}
 
 	return &cfg
+}
+
+func (config Config) getAlias(alias string) string {
+	return config.Alias[alias]
 }
