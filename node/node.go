@@ -15,11 +15,10 @@ import (
 	"github.com/cryptopunkscc/astrald/node/route"
 	"io"
 	"log"
-	"strings"
 	"time"
 )
 
-const defaultLinkTimeout = 30 * time.Second
+const defaultLinkTimeout = 5 * time.Minute
 
 type Node struct {
 	Identity id.Identity
@@ -167,20 +166,15 @@ func (node *Node) ResolveIdentity(str string) (id.Identity, error) {
 		return id, nil
 	}
 
-	if strings.HasPrefix(str, "@") && len(str) > 1 {
-		alias := str[1:]
-		target, found := node.Config.Alias[alias]
-		if !found {
-			return id.Identity{}, errors.New("unknown alias")
-		}
-		if alias == target {
-			return id.Identity{}, errors.New("circular alias")
-		}
-		return node.ResolveIdentity(target)
+	target, found := node.Config.Alias[str]
 
+	if !found {
+		return id.Identity{}, errors.New("unknown identity")
 	}
-
-	return id.Identity{}, errors.New("invalid identity")
+	if str == target {
+		return id.Identity{}, errors.New("circular alias")
+	}
+	return node.ResolveIdentity(target)
 }
 
 func (node *Node) Route(onlyPublic bool) *route.Route {
