@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-const controlAddr = "127.0.0.1:9051"
 const OK = 250
 
 type Control struct {
@@ -19,8 +18,8 @@ type Control struct {
 	ver  map[string]string
 }
 
-func Open() (*Control, error) {
-	conn, err := textproto.Dial("tcp", controlAddr)
+func Open(addr string) (*Control, error) {
+	conn, err := textproto.Dial("tcp", addr)
 	if err != nil {
 		log.Println("tor error:", err)
 		return nil, err

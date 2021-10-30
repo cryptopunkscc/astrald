@@ -2,22 +2,52 @@ package tor
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
-	"golang.org/x/net/proxy"
+	"net"
+	"strconv"
+	"time"
 )
 
-const torProxyAddress = "127.0.0.1:9050"
-
-func Dial(ctx context.Context, addr Addr) (infra.Conn, error) {
-	torDialer, err := proxy.SOCKS5("tcp", torProxyAddress, nil, nil)
-	if err != nil {
-		return nil, err
+// Dial tries to establish a Tor connection to the provided address
+func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
+	// Convert to Tor address
+	torAddr, ok := addr.(Addr)
+	if !ok {
+		return nil, infra.ErrUnsupportedAddress
 	}
 
-	conn, err := torDialer.Dial("tcp", addr.String()+":1791")
-	if err != nil {
-		return nil, err
-	}
+	var connCh = make(chan net.Conn)
+	var errCh = make(chan error)
 
-	return newConn(conn, addr, true), nil
+	// Attempt a connection in the background
+	go func() {
+		defer close(connCh)
+		defer close(errCh)
+
+		conn, err := tor.proxy.Dial("tcp", addr.String()+":"+strconv.Itoa(defaultListenPort))
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		// Rerturn the connection if we're still waiting for it, close it otherwise
+		select {
+		case connCh <- conn:
+		default:
+			conn.Close()
+		}
+	}()
+
+	// Wait for the first result
+	select {
+	case conn := <-connCh:
+		return newConn(conn, torAddr, true), nil
+	case err := <-errCh:
+		return nil, err
+	case <-time.After(tor.config.getDialTimeout()):
+		return nil, errors.New("timeout")
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

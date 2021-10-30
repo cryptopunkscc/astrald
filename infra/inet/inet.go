@@ -13,31 +13,39 @@ import (
 var _ infra.Network = &Inet{}
 
 type Inet struct {
+	config         Config
 	listenPort     uint16
-	extAddrs       []Addr
+	customAddrs    []infra.AddrDesc
 	separateListen bool
 }
 
-func New() *Inet {
-	return &Inet{
-		listenPort: defaultPort,
-		extAddrs:   make([]Addr, 0),
+func New(config Config) *Inet {
+	inet := &Inet{
+		config:      config,
+		listenPort:  defaultPort,
+		customAddrs: make([]infra.AddrDesc, 0),
 	}
+
+	// Add external addresses
+	for _, addrStr := range config.PublicAddr {
+		addr, err := Parse(addrStr)
+		if err != nil {
+			log.Println("inet: parse error:", err)
+			continue
+		}
+
+		inet.customAddrs = append(inet.customAddrs, infra.AddrDesc{
+			Addr:   addr,
+			Public: true,
+		})
+		log.Println("inet: added", addr)
+	}
+
+	return inet
 }
 
 func (inet Inet) Name() string {
 	return NetworkName
-}
-
-func (inet *Inet) AddExternalAddr(s string) error {
-	addr, err := Parse(s)
-	if err != nil {
-		return err
-	}
-
-	inet.extAddrs = append(inet.extAddrs, addr)
-
-	return nil
 }
 
 func (inet Inet) Addresses() []infra.AddrDesc {
@@ -71,13 +79,8 @@ func (inet Inet) Addresses() []infra.AddrDesc {
 		})
 	}
 
-	// Add external addresses
-	for _, a := range inet.extAddrs {
-		list = append(list, infra.AddrDesc{
-			Addr:   a,
-			Public: true,
-		})
-	}
+	// Add custom addresses
+	list = append(list, inet.customAddrs...)
 
 	return list
 }

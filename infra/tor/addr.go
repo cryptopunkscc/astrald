@@ -1,7 +1,7 @@
 package tor
 
 import (
-	bytes2 "bytes"
+	"bytes"
 	"encoding/base32"
 	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
@@ -9,16 +9,20 @@ import (
 	"strings"
 )
 
+// Type check
 var _ infra.Addr = Addr{}
 
+// Addr holds information about a Tor address
 type Addr struct {
 	bytes []byte
 }
 
+// Network returns the name of the network the address belongs to
 func (addr Addr) Network() string {
 	return NetworkName
 }
 
+// String returns a human-readable representation of the address
 func (addr Addr) String() string {
 	if len(addr.bytes) == 0 {
 		return ""
@@ -26,6 +30,7 @@ func (addr Addr) String() string {
 	return strings.ToLower(base32.StdEncoding.EncodeToString(addr.bytes)) + ".onion"
 }
 
+// Pack returns binary representation of the address
 func (addr Addr) Pack() []byte {
 	packed := make([]byte, len(addr.bytes)+1)
 	packed[0] = byte(addr.Version())
@@ -33,10 +38,12 @@ func (addr Addr) Pack() []byte {
 	return packed
 }
 
+// IsZero returns true if the address has zero-value
 func (addr Addr) IsZero() bool {
 	return (addr.bytes == nil) || (len(addr.bytes) == 0)
 }
 
+// Version returns the version of Tor address (2 or 3) or 0 if the address data is errorous
 func (addr Addr) Version() int {
 	switch len(addr.bytes) {
 	case 10:
@@ -47,6 +54,7 @@ func (addr Addr) Version() int {
 	return 0
 }
 
+// Parse parses a string representation of a Tor address (both v2 and v3 are supported)
 func Parse(s string) (Addr, error) {
 	b32data := strings.TrimSuffix(strings.ToUpper(s), ".ONION")
 
@@ -63,8 +71,9 @@ func Parse(s string) (Addr, error) {
 	return addr, nil
 }
 
+// Unpack converts a binary representation of the address to a struct
 func Unpack(data []byte) (Addr, error) {
-	r := bytes2.NewReader(data)
+	r := bytes.NewReader(data)
 
 	version, err := r.ReadByte()
 	if err != nil {

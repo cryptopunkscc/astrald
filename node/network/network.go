@@ -27,20 +27,15 @@ func NewNetwork(config Config) *Network {
 	}
 
 	// Configure internet
-	n.inet = inet.New()
-	if config.ExternalAddr != "" {
-		err := n.inet.AddExternalAddr(config.ExternalAddr)
-		if err != nil {
-			log.Println("config error: external ip:", err)
-		}
-	}
+	n.inet = inet.New(config.Inet)
+
 	err = astral.AddNetwork(n.inet)
 	if err != nil {
 		panic(err)
 	}
 
 	// Configure tor
-	n.tor = tor.New()
+	n.tor = tor.New(config.Tor)
 	err = astral.AddNetwork(n.tor)
 	if err != nil {
 		panic(err)
