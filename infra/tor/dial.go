@@ -2,7 +2,6 @@ package tor
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
 	"net"
 	"strconv"
@@ -31,7 +30,7 @@ func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 			return
 		}
 
-		// Rerturn the connection if we're still waiting for it, close it otherwise
+		// Return the connection if we're still waiting for it, close it otherwise
 		select {
 		case connCh <- conn:
 		default:
@@ -46,7 +45,7 @@ func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 	case err := <-errCh:
 		return nil, err
 	case <-time.After(tor.config.getDialTimeout()):
-		return nil, errors.New("timeout")
+		return nil, infra.ErrDialTimeout
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
