@@ -36,3 +36,11 @@ func Addresses() []infra.AddrDesc {
 func Network(name string) infra.Network {
 	return instance.Network(name)
 }
+
+func Announce(ctx context.Context, id id.Identity) error {
+	return instance.Announce(ctx, id)
+}
+
+func Discover(ctx context.Context) (<-chan infra.Presence, error) {
+	return instance.Discover(ctx)
+}

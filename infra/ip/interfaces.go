@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const pollInterval = 250 * time.Millisecond
+const pollInterval = time.Second
 
 // Interfaces monitors the system for new interfaces
 func Interfaces(ctx context.Context) <-chan string {

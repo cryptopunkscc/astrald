@@ -2,6 +2,7 @@ package tor
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"golang.org/x/net/proxy"
 	"log"
@@ -41,12 +42,20 @@ func (tor Tor) Unpack(bytes []byte) (infra.Addr, error) {
 	return Unpack(bytes)
 }
 
-func (tor Tor) Broadcast(ctx context.Context, payload []byte) <-chan error {
-	return singleErrCh(infra.ErrUnsupportedOperation)
+func (tor Tor) Broadcast([]byte) error {
+	return infra.ErrUnsupportedOperation
 }
 
-func (tor Tor) Scan(ctx context.Context) (<-chan infra.Broadcast, <-chan error) {
+func (tor Tor) Scan(context.Context) (<-chan infra.Broadcast, <-chan error) {
 	return nil, singleErrCh(infra.ErrUnsupportedOperation)
+}
+
+func (tor Tor) Announce(context.Context, id.Identity) error {
+	return infra.ErrUnsupportedOperation
+}
+
+func (tor Tor) Discover(context.Context) (<-chan infra.Presence, error) {
+	return nil, infra.ErrUnsupportedOperation
 }
 
 func (tor Tor) Addresses() []infra.AddrDesc {

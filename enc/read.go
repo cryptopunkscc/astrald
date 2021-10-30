@@ -13,6 +13,11 @@ func ReadUint8(r io.Reader) (i uint8, err error) {
 	return
 }
 
+func ReadUint16(r io.Reader) (i uint16, err error) {
+	err = binary.Read(r, binary.BigEndian, &i)
+	return
+}
+
 func ReadL8String(r io.Reader) (string, error) {
 	bytes, err := ReadL8Bytes(r)
 	return string(bytes), err

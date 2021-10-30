@@ -75,6 +75,23 @@ func (node *Node) Run(ctx context.Context) error {
 	// start the network
 	requests, requestsErr := node.Network.Run(ctx, node.Identity)
 
+	err := astral.Announce(ctx, node.Identity)
+	if err != nil {
+		log.Println("cannot announce node:", err)
+	}
+
+	go func() {
+		presCh, err := astral.Discover(ctx)
+		if err != nil {
+			log.Println("discover error:", err)
+			return
+		}
+
+		for pres := range presCh {
+			node.Router.AddAddr(pres.Identity, pres.Addr)
+		}
+	}()
+
 	node.Linker = linker.NewLinker(ctx, node.Identity, node.Router)
 
 	go func() {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/node/route"
 	"io"
 	"sync"
@@ -22,39 +23,27 @@ func NewBasicRouter() *BasicRouter {
 	}
 }
 
-func (router BasicRouter) Route(nodeID id.Identity) *route.Route {
+func (router *BasicRouter) Route(nodeID id.Identity) *route.Route {
+	router.mu.Lock()
+	defer router.mu.Unlock()
+
 	return router.routes[nodeID.PublicKeyHex()]
 }
 
-func (router *BasicRouter) AddRoute(r *route.Route) {
+func (router *BasicRouter) AddAddr(nodeID id.Identity, addr infra.Addr) {
 	router.mu.Lock()
 	defer router.mu.Unlock()
 
-	hex := r.Identity.PublicKeyHex()
-
-	if _, found := router.routes[hex]; !found {
-		router.routes[hex] = route.New(r.Identity)
-	}
-
-	_route := router.routes[hex]
-	for _, a := range r.Addresses {
-		_route.Add(a)
-	}
+	router.addAddr(nodeID, addr)
 }
 
-func (router *BasicRouter) RouteCount() int {
-	return len(router.routes)
-}
-
-func (router *BasicRouter) Pack() []byte {
+func (router *BasicRouter) AddRoute(route *route.Route) {
 	router.mu.Lock()
 	defer router.mu.Unlock()
 
-	buf := &bytes.Buffer{}
-	for _, r := range router.routes {
-		_ = route.Write(buf, r)
+	for _, addr := range route.Addresses {
+		router.addAddr(route.Identity, addr)
 	}
-	return buf.Bytes()
 }
 
 func (router *BasicRouter) AddPacked(packed []byte) error {
@@ -81,4 +70,29 @@ func (router *BasicRouter) Routes() <-chan *route.Route {
 	}
 	close(ch)
 	return ch
+}
+
+func (router *BasicRouter) RouteCount() int {
+	return len(router.routes)
+}
+
+func (router *BasicRouter) Pack() []byte {
+	router.mu.Lock()
+	defer router.mu.Unlock()
+
+	buf := &bytes.Buffer{}
+	for _, r := range router.routes {
+		_ = route.Write(buf, r)
+	}
+	return buf.Bytes()
+}
+
+func (router *BasicRouter) addAddr(nodeID id.Identity, addr infra.Addr) {
+	hex := nodeID.PublicKeyHex()
+
+	if _, found := router.routes[hex]; !found {
+		router.routes[hex] = route.New(nodeID)
+	}
+
+	router.routes[hex].Add(addr)
 }

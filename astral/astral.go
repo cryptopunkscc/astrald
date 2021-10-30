@@ -7,8 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
-	"log"
-	"sync"
 )
 
 type Astral struct {
@@ -27,6 +25,15 @@ func (astral *Astral) AddNetwork(network infra.Network) error {
 	}
 	astral.networks[network.Name()] = network
 	return nil
+}
+
+func (astral *Astral) Networks() <-chan infra.Network {
+	ch := make(chan infra.Network, len(astral.networks))
+	for _, network := range astral.networks {
+		ch <- network
+	}
+	close(ch)
+	return ch
 }
 
 func (astral *Astral) NetworkNames() []string {
@@ -52,6 +59,11 @@ func (astral *Astral) Network(name string) infra.Network {
 }
 
 func (astral *Astral) Link(localID id.Identity, remoteID id.Identity, addr infra.Addr) (*link.Link, error) {
+	// sanity check
+	if localID.IsEqual(remoteID) {
+		return nil, errors.New("cannot link with self")
+	}
+
 	conn, err := astral.dial(addr)
 	if err != nil {
 		return nil, err
@@ -65,45 +77,6 @@ func (astral *Astral) Link(localID id.Identity, remoteID id.Identity, addr infra
 	link := link.New(authConn)
 
 	return link, nil
-}
-
-func (astral *Astral) Listen(ctx context.Context, localID id.Identity) (<-chan *link.Link, <-chan error) {
-	if astral.networks == nil {
-		return nil, nil
-	}
-
-	output, errCh := make(chan *link.Link), make(chan error, 1)
-	wg := sync.WaitGroup{}
-
-	for _, network := range astral.networks {
-		wg.Add(1)
-		go func(network infra.Network) {
-			defer wg.Done()
-			accept, netErrCh := network.Listen(ctx)
-			for conn := range accept {
-				authConn, err := auth.HandshakeInbound(ctx, conn, localID)
-				if err != nil {
-					conn.Close()
-					continue
-				}
-
-				output <- link.New(authConn)
-			}
-
-			err := <-netErrCh
-			if err != nil {
-				log.Println(network.Name(), "listen error:", err)
-			}
-		}(network)
-	}
-
-	go func() {
-		wg.Wait()
-		close(output)
-		close(errCh)
-	}()
-
-	return output, errCh
 }
 
 func (astral *Astral) Unpack(networkName string, addr []byte) (infra.Addr, error) {

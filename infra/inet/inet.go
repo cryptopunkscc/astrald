@@ -48,6 +48,34 @@ func (inet Inet) Name() string {
 	return NetworkName
 }
 
+func (inet Inet) Unpack(bytes []byte) (infra.Addr, error) {
+	return Unpack(bytes)
+}
+
+func (inet Inet) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
+	a, ok := addr.(Addr)
+	if !ok {
+		return nil, infra.ErrUnsupportedAddress
+	}
+
+	return Dial(ctx, a)
+}
+
+func (inet Inet) Listen(ctx context.Context) (<-chan infra.Conn, <-chan error) {
+	if inet.separateListen {
+		return inet.listenSeparately(ctx)
+	}
+	return inet.listenCombined(ctx)
+}
+
+func (inet Inet) Broadcast(payload []byte) error {
+	return infra.ErrUnsupportedOperation
+}
+
+func (inet Inet) Scan(ctx context.Context) (<-chan infra.Broadcast, <-chan error) {
+	return nil, singleErrChan(infra.ErrUnsupportedOperation)
+}
+
 func (inet Inet) Addresses() []infra.AddrDesc {
 	list := make([]infra.AddrDesc, 0)
 
@@ -83,26 +111,6 @@ func (inet Inet) Addresses() []infra.AddrDesc {
 	list = append(list, inet.customAddrs...)
 
 	return list
-}
-
-func (inet Inet) Unpack(bytes []byte) (infra.Addr, error) {
-	return Unpack(bytes)
-}
-
-func (inet Inet) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
-	a, ok := addr.(Addr)
-	if !ok {
-		return nil, infra.ErrUnsupportedAddress
-	}
-
-	return Dial(ctx, a)
-}
-
-func (inet Inet) Listen(ctx context.Context) (<-chan infra.Conn, <-chan error) {
-	if inet.separateListen {
-		return inet.listenSeparately(ctx)
-	}
-	return inet.listenCombined(ctx)
 }
 
 func (inet Inet) listenCombined(ctx context.Context) (<-chan infra.Conn, <-chan error) {
@@ -161,15 +169,7 @@ func (inet Inet) listenSeparately(ctx context.Context) (<-chan infra.Conn, <-cha
 	return output, nil
 }
 
-func (inet Inet) Broadcast(ctx context.Context, payload []byte) <-chan error {
-	return errChan(infra.ErrUnsupportedOperation)
-}
-
-func (inet Inet) Scan(ctx context.Context) (<-chan infra.Broadcast, <-chan error) {
-	return nil, errChan(infra.ErrUnsupportedOperation)
-}
-
-func errChan(err error) <-chan error {
+func singleErrChan(err error) <-chan error {
 	ch := make(chan error, 1)
 	defer close(ch)
 	ch <- err

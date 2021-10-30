@@ -48,12 +48,12 @@ func (c *Client) handleQuery(ctx context.Context, request proto.Request) error {
 	var remoteID id.Identity
 
 	if request.Identity == "" {
-		return c.socket.Error("node id is empty")
-	}
-
-	remoteID, err = c.node.ResolveIdentity(request.Identity)
-	if err != nil {
-		return c.socket.Error(err.Error())
+		remoteID = c.node.Identity
+	} else {
+		remoteID, err = c.node.ResolveIdentity(request.Identity)
+		if err != nil {
+			return c.socket.Error(err.Error())
+		}
 	}
 
 	conn, err := c.node.Query(ctx, remoteID, request.Port)
