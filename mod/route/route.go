@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node/network/peer"
 	"io"
 )
 
@@ -49,7 +50,7 @@ func route(ctx context.Context, node *node.Node) error {
 	return nil
 }
 
-func queryRoute(node *node.Node, peer *network.Peer) {
+func queryRoute(node *node.Node, peer *peer.Peer) {
 	// update peer's routes
 	conn, err := peer.Query("route")
 	if err != nil {

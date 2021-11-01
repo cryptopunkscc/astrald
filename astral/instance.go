@@ -13,8 +13,12 @@ func AddNetwork(network infra.Network) error {
 	return instance.AddNetwork(network)
 }
 
-func Link(localID id.Identity, remoteID id.Identity, addr infra.Addr) (*link.Link, error) {
-	return instance.Link(localID, remoteID, addr)
+func LinkAt(localID id.Identity, remoteID id.Identity, addr infra.Addr) (*link.Link, error) {
+	return instance.LinkAt(localID, remoteID, addr)
+}
+
+func Link(localID id.Identity, remoteID id.Identity, conn infra.Conn) (*link.Link, error) {
+	return instance.Link(localID, remoteID, conn)
 }
 
 func Listen(ctx context.Context, localID id.Identity) (<-chan *link.Link, <-chan error) {
@@ -43,4 +47,8 @@ func Announce(ctx context.Context, id id.Identity) error {
 
 func Discover(ctx context.Context) (<-chan infra.Presence, error) {
 	return instance.Discover(ctx)
+}
+
+func Dial(addr infra.Addr) (infra.Conn, error) {
+	return instance.Dial(addr)
 }

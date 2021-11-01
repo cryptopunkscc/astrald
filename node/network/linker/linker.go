@@ -4,25 +4,28 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/node/network/peer"
 	"github.com/cryptopunkscc/astrald/node/network/route"
 	"sync"
 )
 
 type Linker struct {
-	wake    chan id.Identity
+	wakeCh  chan id.Identity
 	localID id.Identity
 	router  route.Router
+	peers   *peer.Pool
 
-	active   map[string]Strategy
+	active   map[string]context.CancelFunc
 	activeMu sync.Mutex
 }
 
-func NewLinker(localID id.Identity, router route.Router) *Linker {
+func NewLinker(localID id.Identity, peer *peer.Pool, router route.Router) *Linker {
 	return &Linker{
 		localID: localID,
+		peers:   peer,
 		router:  router,
-		active:  make(map[string]Strategy),
-		wake:    make(chan id.Identity, 1),
+		active:  make(map[string]context.CancelFunc),
+		wakeCh:  make(chan id.Identity, 1),
 	}
 }
 
@@ -33,7 +36,7 @@ func (linker *Linker) Run(ctx context.Context) <-chan *link.Link {
 		defer close(outCh)
 		for {
 			select {
-			case nodeID := <-linker.wake:
+			case nodeID := <-linker.wakeCh:
 				go linker.realWake(ctx, nodeID, outCh)
 			case <-ctx.Done():
 				return
@@ -45,7 +48,19 @@ func (linker *Linker) Run(ctx context.Context) <-chan *link.Link {
 }
 
 func (linker *Linker) Wake(remoteId id.Identity) {
-	linker.wake <- remoteId
+	linker.wakeCh <- remoteId
+}
+
+func (linker *Linker) Sleep(remoteId id.Identity) {
+	linker.activeMu.Lock()
+	defer linker.activeMu.Unlock()
+
+	hex := remoteId.PublicKeyHex()
+
+	cancel, found := linker.active[hex]
+	if found {
+		cancel()
+	}
 }
 
 func (linker *Linker) realWake(ctx context.Context, remoteId id.Identity, links chan<- *link.Link) {
@@ -53,16 +68,25 @@ func (linker *Linker) realWake(ctx context.Context, remoteId id.Identity, links 
 	defer linker.activeMu.Unlock()
 
 	hex := remoteId.PublicKeyHex()
-
-	if _, found := linker.active[hex]; !found {
-		linker.active[hex] = RunDefaultStrategy(ctx, linker.localID, remoteId, linker.router)
-
-		go func() {
-			for link := range linker.active[hex].Links() {
-				links <- link
-			}
-		}()
+	if _, found := linker.active[hex]; found {
+		return
 	}
 
-	linker.active[hex].Wake()
+	peer := linker.peers.Peer(remoteId)
+	linkerCtx, cancel := context.WithTimeout(ctx, activeLinkPeriod)
+
+	linker.active[hex] = cancel
+
+	go func() {
+		for link := range KeepLinked(linkerCtx, linker.localID, peer, linker.router) {
+			links <- link
+		}
+	}()
+
+	go func() {
+		<-linkerCtx.Done()
+		linker.activeMu.Lock()
+		defer linker.activeMu.Unlock()
+		delete(linker.active, hex)
+	}()
 }

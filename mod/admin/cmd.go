@@ -11,7 +11,7 @@ import (
 )
 
 func peers(ui io.ReadWriter, node *node.Node, _ []string) error {
-	for peer := range node.Network.Peers() {
+	for peer := range node.Network.All() {
 		fmt.Fprintf(ui, "peer %s (%s in, %s out, last seen %s ago)\n",
 			_f.ID(peer.Identity()),
 			_f.DataSize(peer.BytesRead()),

@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/node/network/linker"
+	"github.com/cryptopunkscc/astrald/node/network/peer"
 	"github.com/cryptopunkscc/astrald/node/network/route"
 	"github.com/cryptopunkscc/astrald/node/storage"
 	"io"
@@ -21,7 +22,7 @@ const defaultLinkIdleTimeout = 10 * time.Minute
 const defaultLinkTimeout = 60 * time.Second
 
 type Network struct {
-	*View
+	*peer.Pool
 	Linker *linker.Linker
 	Router *route.BasicRouter
 
@@ -35,10 +36,11 @@ type Network struct {
 func NewNetwork(config Config, identity id.Identity, store storage.Store) *Network {
 	var err error
 	router := route.NewBasicRouter()
+	pool := peer.NewPool()
 	n := &Network{
-		View:     NewView(),
+		Pool:     pool,
 		Router:   router,
-		Linker:   linker.NewLinker(identity, router),
+		Linker:   linker.NewLinker(identity, pool, router),
 		config:   config,
 		identity: identity,
 		store:    store,
@@ -65,7 +67,7 @@ func NewNetwork(config Config, identity id.Identity, store storage.Store) *Netwo
 func (network *Network) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
 	network.Linker.Wake(remoteID)
 
-	peer := network.View.Peer(remoteID)
+	peer := network.Pool.Peer(remoteID)
 
 	select {
 	case <-peer.WaitLinked():
@@ -94,7 +96,7 @@ func (network *Network) Route(onlyPublic bool) *route.Route {
 }
 
 func (network *Network) onLink(ctx context.Context, link *link.Link, reqCh chan<- link.Request, evCh chan<- Event) error {
-	err := network.View.addLink(link)
+	err := network.Pool.AddLink(link)
 	if err != nil {
 		return err
 	}

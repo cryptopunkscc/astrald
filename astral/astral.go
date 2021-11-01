@@ -58,15 +58,10 @@ func (astral *Astral) Network(name string) infra.Network {
 	return astral.networks[name]
 }
 
-func (astral *Astral) Link(localID id.Identity, remoteID id.Identity, addr infra.Addr) (*link.Link, error) {
+func (astral *Astral) Link(localID id.Identity, remoteID id.Identity, conn infra.Conn) (*link.Link, error) {
 	// sanity check
 	if localID.IsEqual(remoteID) {
 		return nil, errors.New("cannot link with self")
-	}
-
-	conn, err := astral.dial(addr)
-	if err != nil {
-		return nil, err
 	}
 
 	authConn, err := auth.HandshakeOutbound(context.Background(), conn, remoteID, localID)
@@ -77,6 +72,20 @@ func (astral *Astral) Link(localID id.Identity, remoteID id.Identity, addr infra
 	link := link.New(authConn)
 
 	return link, nil
+}
+
+func (astral *Astral) LinkAt(localID id.Identity, remoteID id.Identity, addr infra.Addr) (*link.Link, error) {
+	// sanity check
+	if localID.IsEqual(remoteID) {
+		return nil, errors.New("cannot link with self")
+	}
+
+	conn, err := astral.Dial(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return astral.Link(localID, remoteID, conn)
 }
 
 func (astral *Astral) Unpack(networkName string, addr []byte) (infra.Addr, error) {
@@ -92,7 +101,7 @@ func (astral *Astral) Unpack(networkName string, addr []byte) (infra.Addr, error
 	return network.Unpack(addr)
 }
 
-func (astral *Astral) dial(addr infra.Addr) (infra.Conn, error) {
+func (astral *Astral) Dial(addr infra.Addr) (infra.Conn, error) {
 	network, found := astral.networks[addr.Network()]
 	if !found {
 		return nil, infra.ErrUnsupportedNetwork
