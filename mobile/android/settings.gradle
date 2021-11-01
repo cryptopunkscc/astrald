@@ -1,0 +1,6 @@
+rootProject.name = "astral-android"
+
+include ':wrapper'
+include ':service'
+include ':app'
+

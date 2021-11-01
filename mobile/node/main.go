@@ -1,9 +1,10 @@
-package astralandroid
+package astralmobile
 
 import (
 	"context"
 	_node "github.com/cryptopunkscc/astrald/node"
-	_ "github.com/cryptopunkscc/astrald/services/apphost"
+	_ "github.com/cryptopunkscc/astrald/mod/admin"
+	_ "github.com/cryptopunkscc/astrald/mod/apphost"
 	"log"
 )
 
