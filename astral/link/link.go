@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral/link/activity"
 	"github.com/cryptopunkscc/astrald/astral/link/proto"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
@@ -17,7 +18,7 @@ import (
 // A Link is a multiplexed, authenticated connection between two parties allowing them to establish multiple data
 // streams over a single secure channel.
 type Link struct {
-	*Activity
+	*activity.Activity
 	requests  chan Request
 	conns     []*Conn
 	connsMu   sync.Mutex
@@ -32,7 +33,7 @@ const controlStreamID = 0
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
 	link := &Link{
-		Activity:  NewActivity(nil),
+		Activity:  activity.New(nil),
 		requests:  make(chan Request),
 		conns:     make([]*Conn, 0),
 		transport: conn,
@@ -208,7 +209,7 @@ func (link *Link) addConn(inputStream io.Reader, outputStream io.WriteCloser, ou
 
 	conn := newConn(link, inputStream, outputStream, outbound, query)
 	link.conns = append(link.conns, conn)
-	link.Touch()
+	link.SetSticky(true)
 
 	go func() {
 		<-conn.WaitClose()
@@ -225,7 +226,9 @@ func (link *Link) removeConn(conn *Conn) {
 	for i, c := range link.conns {
 		if c == conn {
 			link.conns = append(link.conns[:i], link.conns[i+1:]...)
-			link.Touch()
+			if link.ConnCount() == 0 {
+				link.SetSticky(false)
+			}
 			return
 		}
 	}

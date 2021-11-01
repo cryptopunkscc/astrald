@@ -3,8 +3,6 @@ package network
 import (
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/logfmt"
-	"log"
 	"sync"
 )
 
@@ -33,21 +31,6 @@ func (view *View) Peer(peerID id.Identity) *Peer {
 	return view.peers[hex]
 }
 
-func (view *View) AddLink(link *link.Link) error {
-	if err := view.links.Add(link); err == nil {
-		log.Println("link up", logfmt.ID(link.RemoteIdentity()), logfmt.Dir(link.Outbound()), "via", link.RemoteAddr().Network(), link.RemoteAddr().String())
-
-		go func() {
-			<-link.WaitClose()
-			log.Println("link down", logfmt.ID(link.RemoteIdentity()), logfmt.Dir(link.Outbound()), "via", link.RemoteAddr().Network(), link.RemoteAddr().String())
-			view.links.Remove(link)
-		}()
-	}
-	_ = view.Peer(link.RemoteIdentity()).AddLink(link)
-
-	return nil
-}
-
 func (view *View) Links() <-chan *link.Link {
 	return view.links.Each()
 }
@@ -62,4 +45,16 @@ func (view *View) Peers() <-chan *Peer {
 	}
 	close(ch)
 	return ch
+}
+
+func (view *View) addLink(link *link.Link) error {
+	if err := view.links.Add(link); err == nil {
+		go func() {
+			<-link.WaitClose()
+			view.links.Remove(link)
+		}()
+	}
+	_ = view.Peer(link.RemoteIdentity()).AddLink(link)
+
+	return nil
 }

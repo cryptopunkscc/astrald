@@ -2,16 +2,16 @@ package network
 
 import (
 	"github.com/cryptopunkscc/astrald/astral/link"
+	"github.com/cryptopunkscc/astrald/astral/link/activity"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
-	"github.com/cryptopunkscc/astrald/logfmt"
-	"log"
+	"io"
 	"sync"
 )
 
 type Peer struct {
-	*link.Activity
+	*activity.Activity
 	id       id.Identity
 	links    *link.Set
 	linksMu  sync.Mutex
@@ -23,11 +23,11 @@ func NewPeer(id id.Identity) *Peer {
 		id:       id,
 		links:    link.NewSet(),
 		linkedCh: make(chan struct{}),
-		Activity: link.NewActivity(nil),
+		Activity: activity.New(nil),
 	}
 }
 
-func (peer *Peer) ID() id.Identity {
+func (peer *Peer) Identity() id.Identity {
 	return peer.id
 }
 
@@ -40,11 +40,11 @@ func (peer *Peer) AddLink(link *link.Link) error {
 		return err
 	}
 
-	link.SetActivityHost(peer)
+	link.SetParent(peer)
 	peer.Touch()
 
 	if peer.links.Count() == 1 {
-		log.Println(logfmt.ID(peer.id), "linked")
+		peer.Activity.SetSticky(true)
 		peer.triggerLinked()
 	}
 
@@ -75,6 +75,10 @@ func (peer *Peer) PreferredLink() *link.Link {
 	return best
 }
 
+func (peer *Peer) Query(query string) (io.ReadWriteCloser, error) {
+	return peer.PreferredLink().Query(query)
+}
+
 func (peer *Peer) WaitLinked() <-chan struct{} {
 	peer.linksMu.Lock()
 	defer peer.linksMu.Unlock()
@@ -84,6 +88,10 @@ func (peer *Peer) WaitLinked() <-chan struct{} {
 
 func (peer *Peer) Links() <-chan *link.Link {
 	return peer.links.Each()
+}
+
+func (peer *Peer) LinkCount() int {
+	return peer.links.Count()
 }
 
 func (peer *Peer) removeLink(link *link.Link) error {
@@ -98,8 +106,8 @@ func (peer *Peer) removeLink(link *link.Link) error {
 	peer.AddBytesWritten(link.BytesWritten())
 
 	if peer.links.Count() == 0 {
-		log.Println(logfmt.ID(peer.id), "unlinked")
 		peer.resetLinked()
+		peer.SetSticky(false)
 	}
 	return nil
 }

@@ -25,7 +25,7 @@ func (addr Addr) Network() string {
 // String returns a human-readable representation of the address
 func (addr Addr) String() string {
 	if len(addr.bytes) == 0 {
-		return ""
+		return "unknown"
 	}
 	return strings.ToLower(base32.StdEncoding.EncodeToString(addr.bytes)) + ".onion"
 }

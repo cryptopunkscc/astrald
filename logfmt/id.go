@@ -1,6 +1,8 @@
 package logfmt
 
-import "github.com/cryptopunkscc/astrald/auth/id"
+import (
+	"github.com/cryptopunkscc/astrald/auth/id"
+)
 
 func ID(i id.Identity) string {
 	s := i.PublicKeyHex()
@@ -12,4 +14,11 @@ func Dir(out bool) string {
 		return "out"
 	}
 	return "in"
+}
+
+func Bool(b bool, true string, false string) string {
+	if b {
+		return true
+	}
+	return false
 }

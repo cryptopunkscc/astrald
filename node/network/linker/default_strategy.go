@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/node/route"
+	"github.com/cryptopunkscc/astrald/node/network/route"
 	"sync"
 )
 

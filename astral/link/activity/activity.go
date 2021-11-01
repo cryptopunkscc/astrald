@@ -1,52 +1,56 @@
-package link
+package activity
 
 import (
 	"context"
 	"time"
 )
 
-type ActivityTracker interface {
+type Tracker interface {
 	Touch()
 	AddBytesRead(int)
 	AddBytesWritten(int)
 }
 
 type Activity struct {
-	activityHost ActivityTracker
+	parent       Tracker
 	bytesRead    int
 	bytesWritten int
 	lastActivity time.Time
+	sticky       bool
 }
 
-func NewActivity(activityHost ActivityTracker) *Activity {
+func New(parent Tracker) *Activity {
 	return &Activity{
-		activityHost: activityHost,
+		parent:       parent,
 		lastActivity: time.Now(),
 	}
 }
 
 func (a *Activity) Touch() {
 	a.lastActivity = time.Now()
-	if a.activityHost != nil {
-		a.activityHost.Touch()
+	if a.parent != nil {
+		a.parent.Touch()
 	}
 }
 
 func (a *Activity) Idle() time.Duration {
+	if a.sticky {
+		return 0
+	}
 	return time.Now().Sub(a.lastActivity)
 }
 
 func (a *Activity) AddBytesRead(n int) {
 	a.bytesRead += n
-	if a.activityHost != nil {
-		a.activityHost.AddBytesRead(n)
+	if a.parent != nil {
+		a.parent.AddBytesRead(n)
 	}
 }
 
 func (a *Activity) AddBytesWritten(n int) {
 	a.bytesWritten += n
-	if a.activityHost != nil {
-		a.activityHost.AddBytesWritten(n)
+	if a.parent != nil {
+		a.parent.AddBytesWritten(n)
 	}
 }
 
@@ -58,8 +62,8 @@ func (a *Activity) BytesWritten() int {
 	return a.bytesWritten
 }
 
-func (a *Activity) SetActivityHost(activityHost ActivityTracker) {
-	a.activityHost = activityHost
+func (a *Activity) SetParent(parent Tracker) {
+	a.parent = parent
 }
 
 func (a *Activity) WaitIdle(ctx context.Context, timeout time.Duration) error {
@@ -72,5 +76,12 @@ func (a *Activity) WaitIdle(ctx context.Context, timeout time.Duration) error {
 				return nil
 			}
 		}
+	}
+}
+
+func (a *Activity) SetSticky(sticky bool) {
+	a.sticky = sticky
+	if sticky == false {
+		a.Touch()
 	}
 }

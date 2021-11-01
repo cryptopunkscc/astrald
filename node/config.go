@@ -2,14 +2,13 @@ package node
 
 import (
 	"errors"
-	_fs "github.com/cryptopunkscc/astrald/node/fs"
 	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node/storage"
 	"gopkg.in/yaml.v2"
 	"log"
 	"os"
 )
 
-const defaultPort = 1791
 const defaultConfigFilename = "astrald.conf"
 
 type Config struct {
@@ -19,20 +18,20 @@ type Config struct {
 
 var defaultConfig = Config{}
 
-func loadConfig(fs *_fs.Filesystem) *Config {
+func loadConfig(store storage.Store) *Config {
 	var cfg = defaultConfig
 
 	// Load the config file
-	configBytes, err := fs.Read(defaultConfigFilename)
+	configBytes, err := store.LoadBytes(defaultConfigFilename)
 	if err == nil {
 		// Parse config file
 		err = yaml.Unmarshal(configBytes, &cfg)
 		if err != nil {
-			log.Println("error parsing config file:", err)
+			log.Println("error parsing config:", err)
 		}
 	} else {
 		if !errors.Is(err, os.ErrNotExist) {
-			log.Println("error reading config file:", err)
+			log.Println("error reading config:", err)
 		}
 	}
 

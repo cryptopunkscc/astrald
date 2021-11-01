@@ -1,13 +1,14 @@
 package link
 
 import (
+	"github.com/cryptopunkscc/astrald/astral/link/activity"
 	"io"
 	"sync"
 )
 
 // Conn represents an open connection to the remote party's port. Shouldn't be instantiated directly.
 type Conn struct {
-	*Activity
+	*activity.Activity
 	inputStream  io.Reader
 	outputStream io.WriteCloser
 	query        string
@@ -18,9 +19,9 @@ type Conn struct {
 }
 
 // newConn instantiates a new Conn and starts the necessary routines
-func newConn(activityHost ActivityTracker, inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
+func newConn(parent activity.Tracker, inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
 	c := &Conn{
-		Activity:     NewActivity(activityHost),
+		Activity:     activity.New(parent),
 		query:        query,
 		closeCh:      make(chan struct{}),
 		inputStream:  inputStream,
