@@ -62,6 +62,15 @@ func KeepLinkedViaNetwork(ctx context.Context, localID id.Identity, peer *peer.P
 			// get current route
 			route := router.Route(peer.Identity())
 
+			if route == nil {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(linkCooldown):
+				}
+				continue
+			}
+
 			addrCh := make(chan infra.Addr)
 			connCh := make(chan infra.Conn)
 
