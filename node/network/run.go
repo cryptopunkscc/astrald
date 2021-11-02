@@ -12,7 +12,6 @@ func (network *Network) Run(ctx context.Context, localID id.Identity) (<-chan li
 	ctx, cancel := context.WithCancel(ctx)
 
 	network.loadState()
-	defer network.storeState()
 
 	reqCh, evCh, errCh := make(chan link.Request, 1), make(chan Event, 1), make(chan error, 1)
 
@@ -21,6 +20,8 @@ func (network *Network) Run(ctx context.Context, localID id.Identity) (<-chan li
 		defer close(reqCh)
 		defer close(evCh)
 		defer close(errCh)
+
+		defer network.storeState()
 
 		err := astral.Announce(ctx, network.identity)
 		if err != nil {
