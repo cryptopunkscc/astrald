@@ -1,13 +1,17 @@
 package link
 
 import (
+	async "github.com/cryptopunkscc/astrald/sync"
 	"io"
 	"sync"
+	"time"
 )
+
+var _ async.Idler = &Conn{}
 
 // Conn represents an open connection to the remote party's port. Shouldn't be instantiated directly.
 type Conn struct {
-	*Activity
+	activity     async.Activity
 	inputStream  io.Reader
 	outputStream io.WriteCloser
 	query        string
@@ -18,9 +22,8 @@ type Conn struct {
 }
 
 // newConn instantiates a new Conn and starts the necessary routines
-func newConn(activityHost ActivityTracker, inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
+func newConn(inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
 	c := &Conn{
-		Activity:     NewActivity(activityHost),
 		query:        query,
 		closeCh:      make(chan struct{}),
 		inputStream:  inputStream,
@@ -28,23 +31,27 @@ func newConn(activityHost ActivityTracker, inputStream io.Reader, outputStream i
 		outbound:     outbound,
 	}
 
+	c.activity.Touch()
+
 	return c
 }
 
 func (conn *Conn) Read(p []byte) (n int, err error) {
+	defer conn.activity.Touch()
+
 	n, err = conn.inputStream.Read(p)
-	conn.AddBytesRead(n)
+	//conn.AddBytesRead(n)
 	if err != nil {
 		_ = conn.Close()
 	}
-	conn.Touch()
 	return n, err
 }
 
 func (conn *Conn) Write(p []byte) (n int, err error) {
+	defer conn.activity.Touch()
+
 	n, err = conn.outputStream.Write(p)
-	conn.AddBytesWritten(n)
-	conn.Touch()
+	//conn.AddBytesWritten(n)
 	return n, err
 }
 
@@ -68,8 +75,12 @@ func (conn *Conn) Close() error {
 	return nil
 }
 
-func (conn *Conn) WaitClose() <-chan struct{} {
+func (conn *Conn) Wait() <-chan struct{} {
 	return conn.closeCh
+}
+
+func (conn *Conn) Idle() time.Duration {
+	return conn.activity.Idle()
 }
 
 func (conn *Conn) Query() string {

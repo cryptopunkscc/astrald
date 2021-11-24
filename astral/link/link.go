@@ -9,22 +9,26 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/mux"
+	async "github.com/cryptopunkscc/astrald/sync"
 	"io"
 	"log"
 	"sync"
+	"time"
 )
+
+var _ async.Idler = &Link{}
 
 // A Link is a multiplexed, authenticated connection between two parties allowing them to establish multiple data
 // streams over a single secure channel.
 type Link struct {
-	*Activity
+	activity  async.Activity
 	requests  chan Request
 	conns     []*Conn
 	connsMu   sync.Mutex
 	transport auth.Conn
 	mux       *mux.Mux
 	demux     *mux.StreamDemux
-	closeCh   chan struct{}
+	closeGate async.Gate
 }
 
 const controlStreamID = 0
@@ -32,16 +36,15 @@ const controlStreamID = 0
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
 	link := &Link{
-		Activity:  NewActivity(nil),
 		requests:  make(chan Request),
 		conns:     make([]*Conn, 0),
 		transport: conn,
 		mux:       mux.NewMux(conn),
 		demux:     mux.NewStreamDemux(conn),
-		closeCh:   make(chan struct{}),
 	}
+	link.activity.Touch()
 	go func() {
-		defer close(link.closeCh)
+		defer link.closeGate.Open()
 		err := link.processQueries()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
@@ -55,7 +58,8 @@ func New(conn auth.Conn) *Link {
 
 // Query requests a connection to the remote party's port
 func (link *Link) Query(query string) (*Conn, error) {
-	defer link.Touch()
+	link.activity.Add(1)
+	defer link.activity.Done()
 
 	// Reserve a local mux stream
 	inputStream, err := link.demux.Stream()
@@ -126,9 +130,13 @@ func (link *Link) Outbound() bool {
 	return link.transport.Outbound()
 }
 
-// WaitClose returns a channel which will be closed when the link is closed
-func (link *Link) WaitClose() <-chan struct{} {
-	return link.closeCh
+// Wait returns a channel which will be closed when the link is closed
+func (link *Link) Wait() <-chan struct{} {
+	return link.closeGate.Wait()
+}
+
+func (link *Link) Idle() time.Duration {
+	return link.activity.Idle()
 }
 
 // Close closes the link
@@ -146,10 +154,6 @@ func (link *Link) Conns() <-chan *Conn {
 	}
 	close(ch)
 	return ch
-}
-
-func (link *Link) ConnCount() int {
-	return len(link.conns)
 }
 
 // sendQuery writes a frame containing the request to the control stream
@@ -175,7 +179,8 @@ func (link *Link) processQueries() error {
 }
 
 func (link *Link) processQueryData(buf []byte) error {
-	defer link.Touch()
+	link.activity.Add(1)
+	defer link.activity.Done()
 
 	// Parse control message
 	remoteStreamID, query, err := proto.ParseQuery(buf)
@@ -206,12 +211,12 @@ func (link *Link) addConn(inputStream io.Reader, outputStream io.WriteCloser, ou
 	link.connsMu.Lock()
 	defer link.connsMu.Unlock()
 
-	conn := newConn(link, inputStream, outputStream, outbound, query)
+	conn := newConn(inputStream, outputStream, outbound, query)
 	link.conns = append(link.conns, conn)
-	link.Touch()
+	link.activity.Add(1)
 
 	go func() {
-		<-conn.WaitClose()
+		<-conn.Wait()
 		link.removeConn(conn)
 	}()
 
@@ -225,7 +230,7 @@ func (link *Link) removeConn(conn *Conn) {
 	for i, c := range link.conns {
 		if c == conn {
 			link.conns = append(link.conns[:i], link.conns[i+1:]...)
-			link.Touch()
+			link.activity.Done()
 			return
 		}
 	}

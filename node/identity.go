@@ -2,23 +2,23 @@ package node
 
 import (
 	"errors"
-	_id "github.com/cryptopunkscc/astrald/auth/id"
-	_fs "github.com/cryptopunkscc/astrald/node/fs"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/node/storage"
 	"log"
 	"os"
 )
 
-const defaultIdentityFilename = "id"
+const defaultIdentityKey = "id"
 
-func setupIdentity(fs *_fs.Filesystem) _id.Identity {
+func setupIdentity(storage *storage.FilesystemStorage) id.Identity {
 	// Try to load an existing identity
-	idBytes, err := fs.Read(defaultIdentityFilename)
+	bytes, err := storage.LoadBytes(defaultIdentityKey)
 	if err == nil {
-		id, err := _id.ParsePrivateKey(idBytes)
+		identity, err := id.ParsePrivateKey(bytes)
 		if err != nil {
 			panic(err)
 		}
-		return id
+		return identity
 	}
 
 	// The only acceptable error is ErrNotExist
@@ -28,16 +28,16 @@ func setupIdentity(fs *_fs.Filesystem) _id.Identity {
 
 	// Generate a new identity
 	log.Println("generating new node identity...")
-	id, err := _id.GenerateIdentity()
+	identity, err := id.GenerateIdentity()
 	if err != nil {
 		panic(err)
 	}
 
 	// Save the new identity
-	err = fs.Write(defaultIdentityFilename, id.PrivateKey().Serialize())
+	err = storage.StoreBytes(defaultIdentityKey, identity.PrivateKey().Serialize())
 	if err != nil {
 		log.Println("error saving identity:", err)
 	}
 
-	return id
+	return identity
 }

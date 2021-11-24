@@ -1,29 +1,28 @@
-package node
+package route
 
 import (
 	"bytes"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/node/route"
 	"io"
 	"sync"
 )
 
-var _ route.Router = &BasicRouter{}
+var _ Router = &BasicRouter{}
 
 type BasicRouter struct {
 	mu     sync.Mutex
-	routes map[string]*route.Route
+	routes map[string]*Route
 }
 
 func NewBasicRouter() *BasicRouter {
 	return &BasicRouter{
-		routes: make(map[string]*route.Route),
+		routes: make(map[string]*Route),
 	}
 }
 
-func (router *BasicRouter) Route(nodeID id.Identity) *route.Route {
+func (router *BasicRouter) Route(nodeID id.Identity) *Route {
 	router.mu.Lock()
 	defer router.mu.Unlock()
 
@@ -37,7 +36,7 @@ func (router *BasicRouter) AddAddr(nodeID id.Identity, addr infra.Addr) {
 	router.addAddr(nodeID, addr)
 }
 
-func (router *BasicRouter) AddRoute(route *route.Route) {
+func (router *BasicRouter) AddRoute(route *Route) {
 	router.mu.Lock()
 	defer router.mu.Unlock()
 
@@ -49,7 +48,7 @@ func (router *BasicRouter) AddRoute(route *route.Route) {
 func (router *BasicRouter) AddPacked(packed []byte) error {
 	buf := bytes.NewReader(packed)
 	for {
-		r, err := route.Read(buf)
+		r, err := Read(buf)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
@@ -60,11 +59,11 @@ func (router *BasicRouter) AddPacked(packed []byte) error {
 	}
 }
 
-func (router *BasicRouter) Routes() <-chan *route.Route {
+func (router *BasicRouter) Routes() <-chan *Route {
 	router.mu.Lock()
 	defer router.mu.Unlock()
 
-	ch := make(chan *route.Route, len(router.routes))
+	ch := make(chan *Route, len(router.routes))
 	for _, r := range router.routes {
 		ch <- r
 	}
@@ -82,7 +81,7 @@ func (router *BasicRouter) Pack() []byte {
 
 	buf := &bytes.Buffer{}
 	for _, r := range router.routes {
-		_ = route.Write(buf, r)
+		_ = Write(buf, r)
 	}
 	return buf.Bytes()
 }
@@ -91,7 +90,7 @@ func (router *BasicRouter) addAddr(nodeID id.Identity, addr infra.Addr) {
 	hex := nodeID.PublicKeyHex()
 
 	if _, found := router.routes[hex]; !found {
-		router.routes[hex] = route.New(nodeID)
+		router.routes[hex] = New(nodeID)
 	}
 
 	router.routes[hex].Add(addr)

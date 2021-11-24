@@ -2,10 +2,12 @@ package link
 
 import (
 	"errors"
+	async "github.com/cryptopunkscc/astrald/sync"
 	"sync"
 )
 
 type Set struct {
+	async.Signal
 	links map[*Link]struct{}
 	mu    sync.Mutex
 }
@@ -23,6 +25,8 @@ func (set *Set) Add(link *Link) error {
 	if _, found := set.links[link]; found {
 		return errors.New("duplicate item")
 	}
+
+	defer set.Notify()
 
 	set.links[link] = struct{}{}
 
@@ -45,19 +49,14 @@ func (set *Set) Remove(link *Link) error {
 		return errors.New("not found")
 	}
 
+	defer set.Notify()
+
 	delete(set.links, link)
 
 	return nil
 }
 
-func (set *Set) Count() int {
-	set.mu.Lock()
-	defer set.mu.Unlock()
-
-	return len(set.links)
-}
-
-func (set *Set) Each() <-chan *Link {
+func (set *Set) Links() <-chan *Link {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 

@@ -43,6 +43,17 @@ func (route Route) String() string {
 	return routePrefix + base62.EncodeToString(route.Pack())
 }
 
+func (route Route) Each() <-chan infra.Addr {
+	ch := make(chan infra.Addr, len(route.Addresses))
+	defer close(ch)
+
+	for _, addr := range route.Addresses {
+		ch <- addr
+	}
+
+	return ch
+}
+
 func Parse(s string) (*Route, error) {
 	str := strings.TrimPrefix(s, routePrefix)
 

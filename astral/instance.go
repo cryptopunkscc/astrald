@@ -13,10 +13,6 @@ func AddNetwork(network infra.Network) error {
 	return instance.AddNetwork(network)
 }
 
-func Link(localID id.Identity, remoteID id.Identity, addr infra.Addr) (*link.Link, error) {
-	return instance.Link(localID, remoteID, addr)
-}
-
 func Listen(ctx context.Context, localID id.Identity) (<-chan *link.Link, <-chan error) {
 	return instance.Listen(ctx, localID)
 }
@@ -43,4 +39,16 @@ func Announce(ctx context.Context, id id.Identity) error {
 
 func Discover(ctx context.Context) (<-chan infra.Presence, error) {
 	return instance.Discover(ctx)
+}
+
+// Dial connects to the address
+func Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
+	return instance.Dial(ctx, addr)
+}
+
+// DialMany dials every address from addrCh and returns all successful connections via the output channel.
+// Concurrency specifies how many concurrent dialers should be running and has to be at least 1, otherwise no attempt
+// will be made and the output channel will close instantly.
+func DialMany(ctx context.Context, addrCh <-chan infra.Addr, concurrency int) <-chan infra.Conn {
+	return instance.DialMany(ctx, addrCh, concurrency)
 }
