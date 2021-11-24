@@ -1,4 +1,4 @@
-package route
+package info
 
 import (
 	"context"
@@ -8,8 +8,10 @@ import (
 	"io"
 )
 
-func route(ctx context.Context, node *node.Node) error {
-	port, err := node.Ports.Register("route")
+const serviceHandle = "info"
+
+func info(ctx context.Context, node *node.Node) error {
+	port, err := node.Ports.Register(serviceHandle)
 	if err != nil {
 		return err
 	}
@@ -22,7 +24,7 @@ func route(ctx context.Context, node *node.Node) error {
 	go func() {
 		for req := range port.Requests() {
 			conn := req.Accept()
-			conn.Write(node.Network.Route(false).Pack())
+			conn.Write(node.Network.Info(false).Pack())
 			conn.Close()
 		}
 	}()
@@ -35,7 +37,7 @@ func route(ctx context.Context, node *node.Node) error {
 				e := future.Event()
 				if e.Event() == network.EventPeerLinked {
 					event := e.(network.Event)
-					queryRoute(node, event.Peer)
+					queryInfo(node, event.Peer)
 				}
 				future = future.Next()
 			case <-ctx.Done():
@@ -50,18 +52,18 @@ func route(ctx context.Context, node *node.Node) error {
 	return nil
 }
 
-func queryRoute(node *node.Node, peer *peer.Peer) {
-	// update peer's routes
-	conn, err := peer.Query("route")
+func queryInfo(node *node.Node, peer *peer.Peer) {
+	// update peer info
+	conn, err := peer.Query(serviceHandle)
 	if err != nil {
 		return
 	}
-	packedRoute, err := io.ReadAll(conn)
+	packed, err := io.ReadAll(conn)
 	if err == nil {
-		node.Network.Router.AddPacked(packedRoute)
+		node.Network.Graph.AddPacked(packed)
 	}
 }
 
 func init() {
-	_ = node.RegisterService("route", route)
+	_ = node.RegisterService(serviceHandle, info)
 }

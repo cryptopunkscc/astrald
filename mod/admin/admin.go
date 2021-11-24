@@ -73,13 +73,13 @@ func listen(ctx context.Context, node *_node.Node) error {
 
 func init() {
 	commands = cmdMap{
-		"help":   help,
-		"peers":  peers,
-		"link":   link,
-		"routes": routes,
-		"info":   info,
-		"parse":  parse,
-		"add":    add,
+		"help":  help,
+		"peers": peers,
+		"link":  link,
+		"graph": graph,
+		"info":  info,
+		"parse": parse,
+		"add":   add,
 	}
 	_ = _node.RegisterService("admin", listen)
 }

@@ -1,4 +1,4 @@
-package route
+package graph
 
 import (
 	"bytes"
@@ -10,52 +10,41 @@ import (
 	"strings"
 )
 
-type Route struct {
+const infoPrefix = "node1"
+
+type Info struct {
 	Identity  id.Identity
 	Addresses []infra.Addr
 }
 
-func New(identity id.Identity) *Route {
-	return &Route{
+func NewInfo(identity id.Identity) *Info {
+	return &Info{
 		Identity:  identity,
 		Addresses: make([]infra.Addr, 0),
 	}
 }
 
-const routePrefix = "node1"
-
-func (route *Route) Add(addr infra.Addr) {
-	for _, a := range route.Addresses {
+func (info *Info) Add(addr infra.Addr) {
+	for _, a := range info.Addresses {
 		if infra.AddrEqual(a, addr) {
 			return
 		}
 	}
-	route.Addresses = append(route.Addresses, addr)
+	info.Addresses = append(info.Addresses, addr)
 }
 
-func (route Route) Pack() []byte {
+func (info Info) Pack() []byte {
 	buf := &bytes.Buffer{}
-	_ = Write(buf, &route)
+	_ = Write(buf, &info)
 	return buf.Bytes()
 }
 
-func (route Route) String() string {
-	return routePrefix + base62.EncodeToString(route.Pack())
+func (info Info) String() string {
+	return infoPrefix + base62.EncodeToString(info.Pack())
 }
 
-func (route Route) Each() <-chan infra.Addr {
-	ch := make(chan infra.Addr, len(route.Addresses))
-	defer close(ch)
-
-	for _, addr := range route.Addresses {
-		ch <- addr
-	}
-
-	return ch
-}
-
-func Parse(s string) (*Route, error) {
-	str := strings.TrimPrefix(s, routePrefix)
+func Parse(s string) (*Info, error) {
+	str := strings.TrimPrefix(s, infoPrefix)
 
 	data, err := base62.DecodeString(str)
 	if err != nil {
@@ -65,17 +54,17 @@ func Parse(s string) (*Route, error) {
 	return Unpack(data)
 }
 
-func Unpack(data []byte) (*Route, error) {
+func Unpack(data []byte) (*Info, error) {
 	return Read(bytes.NewReader(data))
 }
 
-func Write(w io.Writer, route *Route) error {
-	err := enc.WriteIdentity(w, route.Identity)
+func Write(w io.Writer, info *Info) error {
+	err := enc.WriteIdentity(w, info.Identity)
 	if err != nil {
 		return err
 	}
 
-	addrs := route.Addresses[:]
+	addrs := info.Addresses[:]
 	if len(addrs) > 255 {
 		addrs = addrs[:255]
 	}
@@ -94,7 +83,7 @@ func Write(w io.Writer, route *Route) error {
 	return nil
 }
 
-func Read(r io.Reader) (*Route, error) {
+func Read(r io.Reader) (*Info, error) {
 	_id, err := enc.ReadIdentity(r)
 	if err != nil {
 		return nil, err
@@ -114,7 +103,7 @@ func Read(r io.Reader) (*Route, error) {
 		addrs = append(addrs, addr)
 	}
 
-	return &Route{
+	return &Info{
 		Identity:  _id,
 		Addresses: addrs,
 	}, nil

@@ -66,7 +66,7 @@ func (node *Node) Run(ctx context.Context) error {
 
 	go func() {
 		time.Sleep(2 * time.Second)
-		log.Println("public route", node.Network.Route(true))
+		log.Println("public info", node.Network.Info(true))
 	}()
 
 	for {

@@ -9,9 +9,9 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/node/network/graph"
 	"github.com/cryptopunkscc/astrald/node/network/linker"
 	_peer "github.com/cryptopunkscc/astrald/node/network/peer"
-	"github.com/cryptopunkscc/astrald/node/network/route"
 	"github.com/cryptopunkscc/astrald/node/storage"
 	sync2 "github.com/cryptopunkscc/astrald/sync"
 	"io"
@@ -25,7 +25,7 @@ const defaultLinkTimeout = time.Minute
 type Network struct {
 	*_peer.Set
 	Linker *linker.LinkManager
-	Router *route.BasicRouter
+	Graph  *graph.Graph
 
 	config  Config
 	localID id.Identity
@@ -36,12 +36,12 @@ type Network struct {
 
 func NewNetwork(config Config, identity id.Identity, store storage.Store) *Network {
 	var err error
-	router := route.NewBasicRouter()
+	graph := graph.New()
 	pool := _peer.NewSet()
 	n := &Network{
 		Set:     pool,
-		Router:  router,
-		Linker:  linker.NewManager(identity, pool, router),
+		Graph:   graph,
+		Linker:  linker.NewManager(identity, pool, graph),
 		config:  config,
 		localID: identity,
 		store:   store,
@@ -83,7 +83,7 @@ func (network *Network) Query(ctx context.Context, remoteID id.Identity, query s
 	return l.Query(query)
 }
 
-func (network *Network) Route(onlyPublic bool) *route.Route {
+func (network *Network) Info(onlyPublic bool) *graph.Info {
 	addrs := make([]infra.Addr, 0)
 
 	for _, a := range astral.Addresses() {
@@ -93,7 +93,7 @@ func (network *Network) Route(onlyPublic bool) *route.Route {
 		addrs = append(addrs, a.Addr)
 	}
 
-	return &route.Route{
+	return &graph.Info{
 		Identity:  network.localID,
 		Addresses: addrs,
 	}
@@ -144,11 +144,11 @@ func (network *Network) loadState() error {
 		return err
 	}
 
-	return network.Router.AddPacked(data)
+	return network.Graph.AddPacked(data)
 }
 
 func (network *Network) storeState() error {
-	return network.store.StoreBytes("routes", network.Router.Pack())
+	return network.store.StoreBytes("routes", network.Graph.Pack())
 }
 
 func mergeLinkChans(chans ...<-chan *link.Link) <-chan *link.Link {

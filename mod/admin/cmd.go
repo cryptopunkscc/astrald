@@ -3,9 +3,10 @@ package admin
 import (
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/infra"
 	_f "github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/network/route"
+	_graph "github.com/cryptopunkscc/astrald/node/network/graph"
 	"io"
 	"time"
 )
@@ -56,18 +57,24 @@ func link(_ io.ReadWriter, node *node.Node, args []string) error {
 	return nil
 }
 
-func routes(ui io.ReadWriter, node *node.Node, _ []string) error {
-	for r := range node.Network.Router.Routes() {
-		printRoute(ui, r)
-		fmt.Fprintln(ui, "")
+func graph(w io.ReadWriter, node *node.Node, _ []string) error {
+	for nodeID := range node.Network.Graph.Nodes() {
+		fmt.Fprintln(w, "node", nodeID.PublicKeyHex())
+		for addr := range node.Network.Graph.Resolve(nodeID) {
+			printAddr(w, addr)
+		}
+		fmt.Fprintln(w)
 	}
 	return nil
 }
 
-func info(ui io.ReadWriter, node *node.Node, _ []string) error {
-	printRoute(ui, node.Network.Route(false))
-	fmt.Fprintln(ui, "pubroute ", node.Network.Route(true))
-	fmt.Fprintln(ui, "route    ", node.Network.Route(false))
+func info(w io.ReadWriter, node *node.Node, _ []string) error {
+	fmt.Fprintln(w, "nodeID   ", node.Identity)
+	fmt.Fprintln(w, "pubinfo  ", node.Network.Info(true))
+	fmt.Fprintln(w, "info     ", node.Network.Info(false))
+	for _, addr := range node.Network.Info(false).Addresses {
+		printAddr(w, addr)
+	}
 	return nil
 }
 
@@ -76,7 +83,7 @@ func parse(ui io.ReadWriter, _ *node.Node, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	r, err := route.Parse(args[0])
+	r, err := _graph.Parse(args[0])
 	if err != nil {
 		return err
 	}
@@ -94,21 +101,16 @@ func add(_ io.ReadWriter, node *node.Node, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	r, err := route.Parse(args[0])
+	r, err := _graph.Parse(args[0])
 	if err != nil {
 		return err
 	}
 
-	node.Network.Router.AddRoute(r)
+	node.Network.Graph.AddInfo(r)
 
 	return nil
 }
 
-func printRoute(w io.Writer, r *route.Route) {
-
-	fmt.Fprintf(w, "%s\n", r.String())
-	fmt.Fprintf(w, "%-10s%s\n", "node", r.Identity.String())
-	for _, addr := range r.Addresses {
-		fmt.Fprintf(w, "%-10s%s\n", addr.Network(), addr.String())
-	}
+func printAddr(w io.Writer, addr infra.Addr) (int, error) {
+	return fmt.Fprintf(w, "  %-10s%s\n", addr.Network(), addr.String())
 }

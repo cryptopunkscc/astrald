@@ -5,16 +5,16 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/node/network/route"
+	"github.com/cryptopunkscc/astrald/node/network/graph"
 )
 
 const defaultConcurrency = 8
 
-// ConcurrentLinker tries to establish a link on any address from the router using several concurrent dialers.
+// ConcurrentLinker tries to establish a link on any address from the resolver using several concurrent dialers.
 type ConcurrentLinker struct {
 	localID     id.Identity
 	remoteID    id.Identity
-	router      route.Router
+	resolver    graph.Resolver
 	concurrency int
 }
 
@@ -26,18 +26,15 @@ func (l *ConcurrentLinker) Concurrency() int {
 }
 
 func (l *ConcurrentLinker) Link(ctx context.Context) *link.Link {
-	// get current route for the node
-	r := l.router.Route(l.remoteID)
-	if r == nil {
-		return nil
-	}
+	// get current addresses for the node
+	addrs := l.resolver.Resolve(l.remoteID)
 
 	// try to link
 	return astral.LinkFirst(ctx,
 		l.localID,
 		l.remoteID,
 		astral.DialMany(ctx,
-			r.Each(),
+			addrs,
 			l.Concurrency(),
 		),
 	)

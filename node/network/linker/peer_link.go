@@ -5,8 +5,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/node/network/graph"
 	_peer "github.com/cryptopunkscc/astrald/node/network/peer"
-	"github.com/cryptopunkscc/astrald/node/network/route"
 	"github.com/cryptopunkscc/astrald/sync"
 	"time"
 )
@@ -15,7 +15,7 @@ import (
 const retryDelay = 5 * time.Second
 
 // SustainPeerLink ensures there's a link over every network with the peer until context is done.
-func SustainPeerLink(ctx context.Context, localID id.Identity, peer *_peer.Peer, router route.Router) <-chan *link.Link {
+func SustainPeerLink(ctx context.Context, localID id.Identity, peer *_peer.Peer, resolver graph.Resolver) <-chan *link.Link {
 	var outCh = make(chan *link.Link)
 
 	for _, network := range astral.NetworkNames() {
@@ -23,7 +23,7 @@ func SustainPeerLink(ctx context.Context, localID id.Identity, peer *_peer.Peer,
 			linker := &ConcurrentLinker{
 				localID:  localID,
 				remoteID: peer.Identity(),
-				router:   route.FilterNetwork(router, network),
+				resolver: graph.FilterNetwork(resolver, network),
 			}
 
 			sync.Whenever(ctx, _peer.NetworkUnlinkedGate(ctx, peer, network), func() {

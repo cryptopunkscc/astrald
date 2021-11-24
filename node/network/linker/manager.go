@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/node/network/graph"
 	"github.com/cryptopunkscc/astrald/node/network/peer"
-	"github.com/cryptopunkscc/astrald/node/network/route"
 	"sync"
 	"time"
 )
@@ -13,22 +13,22 @@ import (
 const activeLinkPeriod = time.Minute
 
 type LinkManager struct {
-	wakeCh  chan id.Identity
-	localID id.Identity
-	router  route.Router
-	peers   *peer.Set
+	wakeCh   chan id.Identity
+	localID  id.Identity
+	resolver graph.Resolver
+	peers    *peer.Set
 
 	active   map[string]context.CancelFunc
 	activeMu sync.Mutex
 }
 
-func NewManager(localID id.Identity, peer *peer.Set, router route.Router) *LinkManager {
+func NewManager(localID id.Identity, peer *peer.Set, resolver graph.Resolver) *LinkManager {
 	return &LinkManager{
-		localID: localID,
-		peers:   peer,
-		router:  router,
-		active:  make(map[string]context.CancelFunc),
-		wakeCh:  make(chan id.Identity, 1),
+		localID:  localID,
+		peers:    peer,
+		resolver: resolver,
+		active:   make(map[string]context.CancelFunc),
+		wakeCh:   make(chan id.Identity, 1),
 	}
 }
 
@@ -81,7 +81,7 @@ func (m *LinkManager) wake(ctx context.Context, remoteId id.Identity, links chan
 	m.active[hex] = cancel
 
 	go func() {
-		for link := range SustainPeerLink(linkerCtx, m.localID, peer, m.router) {
+		for link := range SustainPeerLink(linkerCtx, m.localID, peer, m.resolver) {
 			links <- link
 		}
 	}()
