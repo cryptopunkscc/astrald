@@ -162,7 +162,7 @@ func (node *Node) handleEvent(event Eventer) {
 func (node *Node) handleNetworkEvent(event network.Event) {
 	switch event.Event() {
 	case network.EventPeerLinked:
-		log.Println(logfmt.ID(event.Peer.Identity()), "linked", logfmt.Dir(event.Peer.PreferredLink().Outbound()))
+		log.Println(logfmt.ID(event.Peer.Identity()), "linked")
 	case network.EventPeerUnlinked:
 		log.Println(logfmt.ID(event.Peer.Identity()), "unlinked")
 	}

@@ -10,40 +10,41 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/node/network/linker"
-	"github.com/cryptopunkscc/astrald/node/network/peer"
+	_peer "github.com/cryptopunkscc/astrald/node/network/peer"
 	"github.com/cryptopunkscc/astrald/node/network/route"
 	"github.com/cryptopunkscc/astrald/node/storage"
+	sync2 "github.com/cryptopunkscc/astrald/sync"
 	"io"
 	"sync"
 	"time"
 )
 
-const defaultLinkIdleTimeout = 10 * time.Minute
-const defaultLinkTimeout = 60 * time.Second
+const defaultIdleTimeout = 15 * time.Minute
+const defaultLinkTimeout = time.Minute
 
 type Network struct {
-	*peer.Pool
-	Linker *linker.Linker
+	*_peer.Set
+	Linker *linker.LinkManager
 	Router *route.BasicRouter
 
-	config   Config
-	identity id.Identity
-	store    storage.Store
-	inet     *inet.Inet
-	tor      *tor.Tor
+	config  Config
+	localID id.Identity
+	store   storage.Store
+	inet    *inet.Inet
+	tor     *tor.Tor
 }
 
 func NewNetwork(config Config, identity id.Identity, store storage.Store) *Network {
 	var err error
 	router := route.NewBasicRouter()
-	pool := peer.NewPool()
+	pool := _peer.NewSet()
 	n := &Network{
-		Pool:     pool,
-		Router:   router,
-		Linker:   linker.NewLinker(identity, pool, router),
-		config:   config,
-		identity: identity,
-		store:    store,
+		Set:     pool,
+		Router:  router,
+		Linker:  linker.NewManager(identity, pool, router),
+		config:  config,
+		localID: identity,
+		store:   store,
 	}
 
 	// Configure internet
@@ -67,16 +68,19 @@ func NewNetwork(config Config, identity id.Identity, store storage.Store) *Netwo
 func (network *Network) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
 	network.Linker.Wake(remoteID)
 
-	peer := network.Pool.Peer(remoteID)
+	remotePeer := network.Set.Peer(remoteID)
 
-	select {
-	case <-peer.WaitLinked():
-		return peer.Query(query)
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-time.After(defaultLinkTimeout):
-		return nil, errors.New("timeout")
+	// Wait for peer to be linked
+	waitCtx, _ := context.WithTimeout(ctx, defaultLinkTimeout)
+
+	<-_peer.LinkedGate(waitCtx, remotePeer).Wait()
+
+	l := link.Select(remotePeer.Links.Links(), link.Fastest)
+	if l == nil {
+		return nil, errors.New("no link available")
 	}
+
+	return l.Query(query)
 }
 
 func (network *Network) Route(onlyPublic bool) *route.Route {
@@ -90,16 +94,18 @@ func (network *Network) Route(onlyPublic bool) *route.Route {
 	}
 
 	return &route.Route{
-		Identity:  network.identity,
+		Identity:  network.localID,
 		Addresses: addrs,
 	}
 }
 
 func (network *Network) onLink(ctx context.Context, link *link.Link, reqCh chan<- link.Request, evCh chan<- Event) error {
-	err := network.Pool.AddLink(link)
+	err := network.Set.AddLink(link)
 	if err != nil {
 		return err
 	}
+
+	peer := network.Peer(link.RemoteIdentity())
 
 	// forward link's requests
 	go func() {
@@ -107,27 +113,26 @@ func (network *Network) onLink(ctx context.Context, link *link.Link, reqCh chan<
 			reqCh <- req
 		}
 		evCh <- Event{Type: EventLinkDown, Link: link}
-	}()
 
-	// set an idle timeout for the link // TODO: unlinking strategy should not be link-based
-	go func() {
-		for {
-			if err := link.WaitIdle(ctx, defaultLinkIdleTimeout); err != nil {
-				return
-			}
-			link.Close()
+		if len(peer.Links.Links()) == 0 {
+			evCh <- Event{Type: EventPeerUnlinked, Peer: peer}
 		}
 	}()
 
 	evCh <- Event{Type: EventLinkUp, Link: link}
 
-	peer := network.Peer(link.RemoteIdentity())
-	if peer.LinkCount() == 1 {
+	if len(peer.Links.Links()) == 1 {
 		// if it's a new inbound peer, try to link back to improve link quality
 		if link.Outbound() == false {
 			network.Linker.Wake(peer.Identity())
 		}
 		evCh <- Event{Type: EventPeerLinked, Peer: peer}
+
+		sync2.On(ctx, sync2.Timeout(ctx, peer, defaultIdleTimeout), func() {
+			for l := range peer.Links.Links() {
+				l.Close()
+			}
+		})
 	}
 
 	return nil

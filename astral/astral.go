@@ -3,10 +3,8 @@ package astral
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral/link"
-	"github.com/cryptopunkscc/astrald/auth"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
+	"sync"
 )
 
 type Astral struct {
@@ -58,36 +56,6 @@ func (astral *Astral) Network(name string) infra.Network {
 	return astral.networks[name]
 }
 
-func (astral *Astral) Link(localID id.Identity, remoteID id.Identity, conn infra.Conn) (*link.Link, error) {
-	// sanity check
-	if localID.IsEqual(remoteID) {
-		return nil, errors.New("cannot link with self")
-	}
-
-	authConn, err := auth.HandshakeOutbound(context.Background(), conn, remoteID, localID)
-	if err != nil {
-		return nil, err
-	}
-
-	link := link.New(authConn)
-
-	return link, nil
-}
-
-func (astral *Astral) LinkAt(localID id.Identity, remoteID id.Identity, addr infra.Addr) (*link.Link, error) {
-	// sanity check
-	if localID.IsEqual(remoteID) {
-		return nil, errors.New("cannot link with self")
-	}
-
-	conn, err := astral.Dial(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	return astral.Link(localID, remoteID, conn)
-}
-
 func (astral *Astral) Unpack(networkName string, addr []byte) (infra.Addr, error) {
 	if astral.networks == nil {
 		return nil, infra.ErrUnsupportedNetwork
@@ -101,10 +69,47 @@ func (astral *Astral) Unpack(networkName string, addr []byte) (infra.Addr, error
 	return network.Unpack(addr)
 }
 
-func (astral *Astral) Dial(addr infra.Addr) (infra.Conn, error) {
+func (astral *Astral) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 	network, found := astral.networks[addr.Network()]
 	if !found {
 		return nil, infra.ErrUnsupportedNetwork
 	}
-	return network.Dial(context.Background(), addr)
+
+	return network.Dial(ctx, addr)
+}
+
+func (astral *Astral) DialMany(ctx context.Context, addrCh <-chan infra.Addr, concurrency int) <-chan infra.Conn {
+	outCh := make(chan infra.Conn)
+
+	// start dialers
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			for addr := range addrCh {
+				conn, err := astral.Dial(ctx, addr)
+				if err != nil {
+					continue
+				}
+
+				outCh <- conn
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+			}
+		}()
+	}
+
+	// close connection channel once all dialers are done
+	go func() {
+		wg.Wait()
+		close(outCh)
+	}()
+
+	return outCh
 }

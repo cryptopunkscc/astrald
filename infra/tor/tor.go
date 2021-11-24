@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"golang.org/x/net/proxy"
 	"log"
+	"net"
 )
 
 const NetworkName = "tor"
@@ -23,7 +24,8 @@ func New(config Config) *Tor {
 	var err error
 	var tor = &Tor{config: config}
 
-	tor.proxy, err = proxy.SOCKS5("tcp", config.getProxyAddress(), nil, nil)
+	dialTimeout := &net.Dialer{Timeout: config.getDialTimeout()}
+	tor.proxy, err = proxy.SOCKS5("tcp", config.getProxyAddress(), nil, dialTimeout)
 	if err != nil {
 		log.Println("tor: config error:", err)
 		return nil

@@ -23,7 +23,7 @@ func (network *Network) Run(ctx context.Context, localID id.Identity) (<-chan li
 
 		defer network.storeState()
 
-		err := astral.Announce(ctx, network.identity)
+		err := astral.Announce(ctx, network.localID)
 		if err != nil {
 			log.Println("announce error:", err)
 		}
@@ -43,6 +43,7 @@ func (network *Network) Run(ctx context.Context, localID id.Identity) (<-chan li
 			select {
 			case link := <-linksCh:
 				if err := network.onLink(ctx, link, reqCh, evCh); err != nil {
+					log.Println("link rejected:", err)
 					link.Close()
 				}
 

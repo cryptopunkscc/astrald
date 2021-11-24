@@ -11,30 +11,24 @@ import (
 )
 
 func peers(ui io.ReadWriter, node *node.Node, _ []string) error {
-	for peer := range node.Network.All() {
-		fmt.Fprintf(ui, "peer %s (%s in, %s out, last seen %s ago)\n",
+	for peer := range node.Network.Each() {
+		fmt.Fprintf(ui, "peer %s (idle %s)\n",
 			_f.ID(peer.Identity()),
-			_f.DataSize(peer.BytesRead()),
-			_f.DataSize(peer.BytesWritten()),
 			peer.Idle().Round(time.Second),
 		)
-		for link := range peer.Links() {
+		for link := range peer.Links.Links() {
 			fmt.Fprintf(ui,
-				"  %s %s %s (%s in, %s out, %s idle)\n",
+				"  %s %s %s (idle %s)\n",
 				_f.Bool(link.Outbound(), "=>", "<="),
 				link.RemoteAddr().Network(),
 				link.RemoteAddr().String(),
-				_f.DataSize(link.BytesRead()),
-				_f.DataSize(link.BytesWritten()),
 				link.Idle().Round(time.Second),
 			)
 			for c := range link.Conns() {
 				fmt.Fprintf(ui,
-					"    %s %s (%s in, %s out, %s idle)\n",
+					"    %s %s (idle %s)\n",
 					_f.Bool(c.Outbound(), "->", "<-"),
 					c.Query(),
-					_f.DataSize(c.BytesRead()),
-					_f.DataSize(c.BytesWritten()),
 					c.Idle().Round(time.Second),
 				)
 			}
