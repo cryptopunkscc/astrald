@@ -7,7 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/network/graph"
 	_peer "github.com/cryptopunkscc/astrald/node/network/peer"
-	"github.com/cryptopunkscc/astrald/sync"
+	async "github.com/cryptopunkscc/astrald/sync"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,8 @@ const retryDelay = 5 * time.Second
 func SustainPeerLink(ctx context.Context, localID id.Identity, peer *_peer.Peer, resolver graph.Resolver) <-chan *link.Link {
 	var outCh = make(chan *link.Link)
 
+	var wg sync.WaitGroup
+
 	for _, network := range astral.NetworkNames() {
 		go func(network string) {
 			linker := &ConcurrentLinker{
@@ -26,7 +29,10 @@ func SustainPeerLink(ctx context.Context, localID id.Identity, peer *_peer.Peer,
 				resolver: graph.FilterNetwork(resolver, network),
 			}
 
-			sync.Whenever(ctx, _peer.NetworkUnlinkedGate(ctx, peer, network), func() {
+			async.Whenever(ctx, _peer.NetworkUnlinkedGate(ctx, peer, network), func() {
+				wg.Add(1)
+				defer wg.Done()
+
 				if l := linker.Link(ctx); l != nil {
 					outCh <- l
 				}
@@ -42,6 +48,7 @@ func SustainPeerLink(ctx context.Context, localID id.Identity, peer *_peer.Peer,
 	// close the output after all linkers quit
 	go func() {
 		<-ctx.Done()
+		wg.Wait()
 		close(outCh)
 	}()
 
