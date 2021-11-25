@@ -44,7 +44,9 @@ func (network *Network) Run(ctx context.Context, localID id.Identity) (<-chan li
 				}
 
 			case presence := <-discoverCh:
-				network.Graph.AddAddr(presence.Identity, presence.Addr)
+				if err := network.handlePresence(presence); err != nil {
+					log.Println("error handling presence:", err)
+				}
 
 			case err := <-listenErrCh:
 				errCh <- err

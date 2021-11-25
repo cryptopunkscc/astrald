@@ -2,11 +2,14 @@ package info
 
 import (
 	"context"
+	"errors"
+	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/network/graph"
 	"github.com/cryptopunkscc/astrald/node/network/peer"
 	"io"
+	"log"
 )
 
 const serviceHandle = "info"
@@ -38,7 +41,11 @@ func info(ctx context.Context, node *node.Node) error {
 				e := future.Event()
 				if e.Event() == network.EventPeerLinked {
 					event := e.(network.Event)
-					queryInfo(node, event.Peer)
+					if err := queryInfo(node, event.Peer); err != nil {
+						if !errors.Is(err, link.ErrRejected) {
+							log.Println("[info] error fetching info:", err)
+						}
+					}
 				}
 				future = future.Next()
 			case <-ctx.Done():
@@ -53,19 +60,25 @@ func info(ctx context.Context, node *node.Node) error {
 	return nil
 }
 
-func queryInfo(node *node.Node, peer *peer.Peer) {
+func queryInfo(node *node.Node, peer *peer.Peer) error {
 	// update peer info
 	conn, err := peer.Query(serviceHandle)
 	if err != nil {
-		return
+		return err
 	}
 	packed, err := io.ReadAll(conn)
-	if err == nil {
-		info, err := graph.Unpack(packed)
-		if err == nil {
-			node.Network.Graph.AddInfo(info)
-		}
+	if err != nil {
+		return err
 	}
+
+	info, err := graph.Unpack(packed)
+	if err != nil {
+		return err
+	}
+
+	node.Network.Graph.AddInfo(info)
+
+	return nil
 }
 
 func init() {

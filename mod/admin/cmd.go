@@ -11,14 +11,19 @@ import (
 	"time"
 )
 
-func peers(ui io.ReadWriter, node *node.Node, _ []string) error {
+func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 	for peer := range node.Network.Each() {
-		fmt.Fprintf(ui, "peer %s (idle %s)\n",
-			_f.ID(peer.Identity()),
+		peerID := _f.ID(peer.Identity())
+		if a := node.Network.Graph.GetAlias(peer.Identity()); a != "" {
+			peerID = a
+		}
+
+		fmt.Fprintf(w, "peer %s (idle %s)\n",
+			peerID,
 			peer.Idle().Round(time.Second),
 		)
 		for link := range peer.Links.Links() {
-			fmt.Fprintf(ui,
+			fmt.Fprintf(w,
 				"  %s %s %s (idle %s)\n",
 				_f.Bool(link.Outbound(), "=>", "<="),
 				link.RemoteAddr().Network(),
@@ -26,7 +31,7 @@ func peers(ui io.ReadWriter, node *node.Node, _ []string) error {
 				link.Idle().Round(time.Second),
 			)
 			for c := range link.Conns() {
-				fmt.Fprintf(ui,
+				fmt.Fprintf(w,
 					"    %s %s (idle %s)\n",
 					_f.Bool(c.Outbound(), "->", "<-"),
 					c.Query(),
@@ -60,6 +65,8 @@ func link(_ io.ReadWriter, node *node.Node, args []string) error {
 func graph(w io.ReadWriter, node *node.Node, _ []string) error {
 	for nodeID := range node.Network.Graph.Nodes() {
 		fmt.Fprintln(w, "node", nodeID.PublicKeyHex())
+		fmt.Fprintln(w, "alias", node.Network.Graph.GetAlias(nodeID))
+
 		for addr := range node.Network.Graph.Resolve(nodeID) {
 			printAddr(w, addr)
 		}

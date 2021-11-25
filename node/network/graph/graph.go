@@ -58,12 +58,19 @@ func (graph *Graph) Resolve(nodeID id.Identity) <-chan infra.Addr {
 	return ch
 }
 
-func (graph *Graph) Alias(alias string) (string, bool) {
+func (graph *Graph) ResolveAlias(alias string) (string, bool) {
 	graph.mu.Lock()
 	defer graph.mu.Unlock()
 
 	s, ok := graph.aliases[alias]
 	return s, ok
+}
+
+func (graph *Graph) GetAlias(identity id.Identity) string {
+	if info, ok := graph.info[identity.PublicKeyHex()]; ok {
+		return info.Alias
+	}
+	return ""
 }
 
 // Nodes returns a closed channel populated with all known node IDs
@@ -102,6 +109,8 @@ func (graph *Graph) addInfo(info *Info) {
 	}
 
 	if info.Alias != "" {
+		hex := info.Identity.PublicKeyHex()
+		graph.info[hex].Alias = info.Alias
 		graph.aliases[info.Alias] = info.Identity.PublicKeyHex()
 	}
 }
