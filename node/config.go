@@ -9,11 +9,10 @@ import (
 	"os"
 )
 
-const defaultConfigFilename = "astrald.conf"
+const configKey = "astrald.conf"
 
 type Config struct {
-	Network network.Config
-	Alias   map[string]string
+	Network network.Config `yaml:"network"`
 }
 
 var defaultConfig = Config{}
@@ -22,7 +21,7 @@ func loadConfig(store storage.Store) *Config {
 	var cfg = defaultConfig
 
 	// Load the config file
-	configBytes, err := store.LoadBytes(defaultConfigFilename)
+	configBytes, err := store.LoadBytes(configKey)
 	if err == nil {
 		// Parse config file
 		err = yaml.Unmarshal(configBytes, &cfg)
@@ -36,8 +35,4 @@ func loadConfig(store storage.Store) *Config {
 	}
 
 	return &cfg
-}
-
-func (config Config) getAlias(alias string) string {
-	return config.Alias[alias]
 }

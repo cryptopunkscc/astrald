@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const promptString = "> "
+
 type cmdFunc func(io.ReadWriter, *_node.Node, []string) error
 type cmdMap map[string]cmdFunc
 
@@ -25,7 +27,10 @@ func help(stream io.ReadWriter, _ *_node.Node, _ []string) error {
 }
 
 func serve(stream io.ReadWriteCloser, node *_node.Node) {
+	defer stream.Close()
+
 	scanner := bufio.NewScanner(stream)
+	stream.Write([]byte(promptString))
 
 	for scanner.Scan() {
 		words := strings.Split(scanner.Text(), " ")
@@ -46,9 +51,8 @@ func serve(stream io.ReadWriteCloser, node *_node.Node) {
 		} else {
 			fmt.Fprintf(stream, "no such command\n")
 		}
-
+		stream.Write([]byte(promptString))
 	}
-	stream.Close()
 }
 
 func listen(ctx context.Context, node *_node.Node) error {

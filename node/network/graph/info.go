@@ -14,6 +14,7 @@ const infoPrefix = "node1"
 
 type Info struct {
 	Identity  id.Identity
+	Alias     string
 	Addresses []infra.Addr
 }
 
@@ -35,7 +36,7 @@ func (info *Info) Add(addr infra.Addr) {
 
 func (info Info) Pack() []byte {
 	buf := &bytes.Buffer{}
-	_ = Write(buf, &info)
+	_ = writeInfo(buf, &info)
 	return buf.Bytes()
 }
 
@@ -55,11 +56,16 @@ func Parse(s string) (*Info, error) {
 }
 
 func Unpack(data []byte) (*Info, error) {
-	return Read(bytes.NewReader(data))
+	return readInfo(bytes.NewReader(data))
 }
 
-func Write(w io.Writer, info *Info) error {
+func writeInfo(w io.Writer, info *Info) error {
 	err := enc.WriteIdentity(w, info.Identity)
+	if err != nil {
+		return err
+	}
+
+	err = enc.WriteL8String(w, info.Alias)
 	if err != nil {
 		return err
 	}
@@ -83,8 +89,13 @@ func Write(w io.Writer, info *Info) error {
 	return nil
 }
 
-func Read(r io.Reader) (*Info, error) {
+func readInfo(r io.Reader) (*Info, error) {
 	_id, err := enc.ReadIdentity(r)
+	if err != nil {
+		return nil, err
+	}
+
+	alias, err := enc.ReadL8String(r)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +116,7 @@ func Read(r io.Reader) (*Info, error) {
 
 	return &Info{
 		Identity:  _id,
+		Alias:     alias,
 		Addresses: addrs,
 	}, nil
 }

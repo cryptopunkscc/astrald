@@ -36,12 +36,9 @@ type Network struct {
 
 func NewNetwork(config Config, identity id.Identity, store storage.Store) *Network {
 	var err error
-	graph := graph.New()
-	pool := _peer.NewSet()
+
 	n := &Network{
-		Set:     pool,
-		Graph:   graph,
-		Linker:  linker.NewManager(identity, pool, graph),
+		Set:     _peer.NewSet(),
 		config:  config,
 		localID: identity,
 		store:   store,
@@ -61,6 +58,10 @@ func NewNetwork(config Config, identity id.Identity, store storage.Store) *Netwo
 	if err != nil {
 		panic(err)
 	}
+
+	// graph needs to be set up after networks so that all address parsers are loaded
+	n.Graph = graph.New(store)
+	n.Linker = linker.NewManager(identity, n.Set, n.Graph)
 
 	return n
 }
@@ -83,6 +84,10 @@ func (network *Network) Query(ctx context.Context, remoteID id.Identity, query s
 	return l.Query(query)
 }
 
+func (network *Network) Alias() string {
+	return network.config.Alias
+}
+
 func (network *Network) Info(onlyPublic bool) *graph.Info {
 	addrs := make([]infra.Addr, 0)
 
@@ -93,10 +98,16 @@ func (network *Network) Info(onlyPublic bool) *graph.Info {
 		addrs = append(addrs, a.Addr)
 	}
 
-	return &graph.Info{
+	info := &graph.Info{
 		Identity:  network.localID,
 		Addresses: addrs,
 	}
+
+	if !onlyPublic {
+		info.Alias = network.Alias()
+	}
+
+	return info
 }
 
 func (network *Network) onLink(ctx context.Context, link *link.Link, reqCh chan<- link.Request, evCh chan<- Event) error {
@@ -136,19 +147,6 @@ func (network *Network) onLink(ctx context.Context, link *link.Link, reqCh chan<
 	}
 
 	return nil
-}
-
-func (network *Network) loadState() error {
-	data, err := network.store.LoadBytes("routes")
-	if err != nil {
-		return err
-	}
-
-	return network.Graph.AddPacked(data)
-}
-
-func (network *Network) storeState() error {
-	return network.store.StoreBytes("routes", network.Graph.Pack())
 }
 
 func mergeLinkChans(chans ...<-chan *link.Link) <-chan *link.Link {

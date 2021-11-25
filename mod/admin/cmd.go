@@ -70,6 +70,7 @@ func graph(w io.ReadWriter, node *node.Node, _ []string) error {
 
 func info(w io.ReadWriter, node *node.Node, _ []string) error {
 	fmt.Fprintln(w, "nodeID   ", node.Identity)
+	fmt.Fprintln(w, "alias    ", node.Network.Alias())
 	fmt.Fprintln(w, "pubinfo  ", node.Network.Info(true))
 	fmt.Fprintln(w, "info     ", node.Network.Info(false))
 	for _, addr := range node.Network.Info(false).Addresses {
@@ -78,19 +79,22 @@ func info(w io.ReadWriter, node *node.Node, _ []string) error {
 	return nil
 }
 
-func parse(ui io.ReadWriter, _ *node.Node, args []string) error {
+func parse(w io.ReadWriter, _ *node.Node, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
 	}
 
-	r, err := _graph.Parse(args[0])
+	info, err := _graph.Parse(args[0])
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(ui, "%-10s%s\n", "node", r.Identity.String())
-	for _, addr := range r.Addresses {
-		fmt.Fprintf(ui, "%-10s%s\n", addr.Network(), addr.String())
+	fmt.Fprintln(w, "node", info.Identity.String())
+	if info.Alias != "" {
+		fmt.Fprintln(w, "alias", info.Alias)
+	}
+	for _, addr := range info.Addresses {
+		printAddr(w, addr)
 	}
 
 	return nil

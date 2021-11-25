@@ -24,7 +24,7 @@ func WriteL8Bytes(w io.Writer, bytes []byte) error {
 		return errors.New("data too long")
 	}
 
-	_, err = w.Write([]byte{byte(l)})
+	err = Write(w, uint8(l))
 	if err != nil {
 		return err
 	}

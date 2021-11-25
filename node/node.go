@@ -100,7 +100,7 @@ func (node *Node) ResolveIdentity(str string) (id.Identity, error) {
 		return id, nil
 	}
 
-	target, found := node.Config.Alias[str]
+	target, found := node.Network.Graph.Alias(str)
 
 	if !found {
 		return id.Identity{}, errors.New("unknown identity")

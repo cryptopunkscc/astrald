@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node/network/graph"
 	"github.com/cryptopunkscc/astrald/node/network/peer"
 	"io"
 )
@@ -60,7 +61,10 @@ func queryInfo(node *node.Node, peer *peer.Peer) {
 	}
 	packed, err := io.ReadAll(conn)
 	if err == nil {
-		node.Network.Graph.AddPacked(packed)
+		info, err := graph.Unpack(packed)
+		if err == nil {
+			node.Network.Graph.AddInfo(info)
+		}
 	}
 }
 

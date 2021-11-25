@@ -6,6 +6,7 @@ import (
 )
 
 type Config struct {
-	Inet inet.Config `yaml:"inet"`
-	Tor  tor.Config  `yaml:"tor"`
+	Alias string      `yaml:"alias"`
+	Inet  inet.Config `yaml:"inet"`
+	Tor   tor.Config  `yaml:"tor"`
 }
