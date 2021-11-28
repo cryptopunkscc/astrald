@@ -5,18 +5,18 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	sync2 "github.com/cryptopunkscc/astrald/sync"
+	"github.com/cryptopunkscc/astrald/sig"
 	"io"
-	_sync "sync"
+	"sync"
 	"time"
 )
 
-var _ sync2.Idler = &Peer{}
+var _ sig.Idler = &Peer{}
 
 type Peer struct {
 	Links *link.Set
 	id    id.Identity
-	mu    _sync.Mutex
+	mu    sync.Mutex
 }
 
 func New(id id.Identity) *Peer {
@@ -39,7 +39,7 @@ func (peer *Peer) Add(link *link.Link) error {
 		return err
 	}
 
-	sync2.On(context.Background(), link, func() {
+	sig.On(context.Background(), link, func() {
 		_ = peer.removeLink(link)
 	})
 

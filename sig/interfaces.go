@@ -1,4 +1,4 @@
-package sync
+package sig
 
 import "time"
 
@@ -8,12 +8,4 @@ type Waiter interface {
 
 type Idler interface {
 	Idle() time.Duration
-}
-
-type Notifier interface {
-	Notify()
-}
-
-type Flagger interface {
-	State() bool
 }

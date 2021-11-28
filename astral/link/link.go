@@ -9,26 +9,26 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/mux"
-	async "github.com/cryptopunkscc/astrald/sync"
+	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"log"
 	"sync"
 	"time"
 )
 
-var _ async.Idler = &Link{}
+var _ sig.Idler = &Link{}
 
 // A Link is a multiplexed, authenticated connection between two parties allowing them to establish multiple data
 // streams over a single secure channel.
 type Link struct {
-	activity  async.Activity
+	activity  sig.Activity
 	requests  chan Request
 	conns     []*Conn
 	connsMu   sync.Mutex
 	transport auth.Conn
 	mux       *mux.Mux
 	demux     *mux.StreamDemux
-	closeGate async.Gate
+	closed    chan struct{}
 }
 
 const controlStreamID = 0
@@ -41,17 +41,18 @@ func New(conn auth.Conn) *Link {
 		transport: conn,
 		mux:       mux.NewMux(conn),
 		demux:     mux.NewStreamDemux(conn),
+		closed:    make(chan struct{}),
 	}
 	link.activity.Touch()
 	go func() {
-		defer link.closeGate.Open()
+		defer close(link.closed)
+
 		err := link.processQueries()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				log.Println("closing link:", err)
 			}
 		}
-		close(link.requests)
 	}()
 	return link
 }
@@ -132,7 +133,7 @@ func (link *Link) Outbound() bool {
 
 // Wait returns a channel which will be closed when the link is closed
 func (link *Link) Wait() <-chan struct{} {
-	return link.closeGate.Wait()
+	return link.closed
 }
 
 func (link *Link) Idle() time.Duration {
@@ -165,6 +166,7 @@ func (link *Link) processQueries() error {
 	buf := make([]byte, mux.MaxPayload)
 	ctlStream := link.demux.DefaultStream()
 
+	defer close(link.requests)
 	for {
 		n, err := ctlStream.Read(buf)
 		if err != nil {

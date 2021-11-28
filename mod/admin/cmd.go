@@ -12,7 +12,7 @@ import (
 )
 
 func peers(w io.ReadWriter, node *node.Node, _ []string) error {
-	for peer := range node.Network.Each() {
+	for peer := range node.Network.Peers.Each() {
 		peerID := _f.ID(peer.Identity())
 		if a := node.Network.Graph.GetAlias(peer.Identity()); a != "" {
 			peerID = a

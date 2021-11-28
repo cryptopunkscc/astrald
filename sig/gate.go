@@ -1,4 +1,4 @@
-package sync
+package sig
 
 import (
 	"sync"
@@ -6,9 +6,10 @@ import (
 
 // Gate can be closed or open. Wait doesn't block when the gate is open and blocks otherwise.
 type Gate struct {
-	ch   chan struct{}
-	mu   sync.Mutex
-	open bool
+	ch      chan struct{}
+	mu      sync.Mutex
+	open    bool
+	flipped bool
 }
 
 // Wait returns a channel that's closed when the gate is open.
@@ -17,7 +18,7 @@ func (gate *Gate) Wait() <-chan struct{} {
 	defer gate.mu.Unlock()
 
 	if gate.ch == nil {
-		gate.close()
+		gate.setClosed()
 	}
 
 	return gate.ch
@@ -28,6 +29,41 @@ func (gate *Gate) Open() {
 	gate.mu.Lock()
 	defer gate.mu.Unlock()
 
+	if gate.flipped {
+		gate.setClosed()
+	} else {
+		gate.setOpen()
+	}
+}
+
+// Close sets gate state to closed and makes a new channel for Wait
+func (gate *Gate) Close() {
+	gate.mu.Lock()
+	defer gate.mu.Unlock()
+
+	if gate.flipped {
+		gate.setOpen()
+	} else {
+		gate.setClosed()
+	}
+}
+
+func (gate *Gate) Flip() *Gate {
+	gate.mu.Lock()
+	defer gate.mu.Unlock()
+
+	gate.flipped = !gate.flipped
+
+	if gate.open {
+		gate.setClosed()
+	} else {
+		gate.setOpen()
+	}
+
+	return gate
+}
+
+func (gate *Gate) setOpen() {
 	if gate.ch == nil {
 		gate.ch = make(chan struct{})
 	}
@@ -38,15 +74,7 @@ func (gate *Gate) Open() {
 	}
 }
 
-// Close sets gate state to closed and makes a new channel for Wait
-func (gate *Gate) Close() {
-	gate.mu.Lock()
-	defer gate.mu.Unlock()
-
-	gate.close()
-}
-
-func (gate *Gate) close() {
+func (gate *Gate) setClosed() {
 	if gate.ch == nil {
 		gate.ch = make(chan struct{})
 	}

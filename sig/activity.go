@@ -1,4 +1,4 @@
-package sync
+package sig
 
 import (
 	"sync"
@@ -34,20 +34,12 @@ func (a *Activity) Add(ongoing int) {
 	defer a.mu.Unlock()
 
 	a.ongoing += ongoing
-	if ongoing <= 0 {
-		a.touch()
-	}
+	a.touch()
 }
 
 // Done decrements the ongoing counter by 1.
 func (a *Activity) Done() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	a.ongoing -= 1
-	if a.ongoing <= 0 {
-		a.touch()
-	}
+	a.Add(-1)
 }
 
 // Touch resets idle time

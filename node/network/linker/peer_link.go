@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/network/graph"
 	_peer "github.com/cryptopunkscc/astrald/node/network/peer"
-	async "github.com/cryptopunkscc/astrald/sync"
+	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
 	"time"
 )
@@ -29,7 +29,7 @@ func SustainPeerLink(ctx context.Context, localID id.Identity, peer *_peer.Peer,
 				resolver: graph.FilterNetwork(resolver, network),
 			}
 
-			async.Whenever(ctx, _peer.NetworkUnlinkedGate(ctx, peer, network), func() {
+			sig.Whenever(ctx, _peer.NetworkUnlinkedGate(ctx, peer, network), func() {
 				wg.Add(1)
 				defer wg.Done()
 

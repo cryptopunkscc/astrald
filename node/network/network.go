@@ -13,7 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/network/linker"
 	_peer "github.com/cryptopunkscc/astrald/node/network/peer"
 	"github.com/cryptopunkscc/astrald/node/storage"
-	sync2 "github.com/cryptopunkscc/astrald/sync"
+	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"sync"
 	"time"
@@ -23,7 +23,7 @@ const defaultIdleTimeout = 15 * time.Minute
 const defaultLinkTimeout = time.Minute
 
 type Network struct {
-	*_peer.Set
+	Peers  *_peer.Set
 	Linker *linker.LinkManager
 	Graph  *graph.Graph
 
@@ -38,7 +38,7 @@ func NewNetwork(config Config, identity id.Identity, store storage.Store) *Netwo
 	var err error
 
 	n := &Network{
-		Set:     _peer.NewSet(),
+		Peers:   _peer.NewSet(),
 		config:  config,
 		localID: identity,
 		store:   store,
@@ -61,7 +61,7 @@ func NewNetwork(config Config, identity id.Identity, store storage.Store) *Netwo
 
 	// graph needs to be set up after networks so that all address parsers are loaded
 	n.Graph = graph.New(store)
-	n.Linker = linker.NewManager(identity, n.Set, n.Graph)
+	n.Linker = linker.NewManager(identity, n.Peers, n.Graph)
 
 	return n
 }
@@ -69,7 +69,7 @@ func NewNetwork(config Config, identity id.Identity, store storage.Store) *Netwo
 func (network *Network) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
 	network.Linker.Wake(remoteID)
 
-	remotePeer := network.Set.Peer(remoteID)
+	remotePeer := network.Peers.Peer(remoteID)
 
 	// Wait for peer to be linked
 	waitCtx, _ := context.WithTimeout(ctx, defaultLinkTimeout)
@@ -111,12 +111,12 @@ func (network *Network) Info(onlyPublic bool) *graph.Info {
 }
 
 func (network *Network) onLink(ctx context.Context, link *link.Link, reqCh chan<- link.Request, evCh chan<- Event) error {
-	err := network.Set.AddLink(link)
+	err := network.Peers.AddLink(link)
 	if err != nil {
 		return err
 	}
 
-	peer := network.Peer(link.RemoteIdentity())
+	peer := network.Peers.Peer(link.RemoteIdentity())
 
 	// forward link's requests
 	go func() {
@@ -139,7 +139,7 @@ func (network *Network) onLink(ctx context.Context, link *link.Link, reqCh chan<
 		}
 		evCh <- Event{Type: EventPeerLinked, Peer: peer}
 
-		sync2.On(ctx, sync2.Timeout(ctx, peer, defaultIdleTimeout), func() {
+		sig.On(ctx, sig.Idle(ctx, peer, defaultIdleTimeout), func() {
 			for l := range peer.Links.Links() {
 				l.Close()
 			}

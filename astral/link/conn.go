@@ -1,17 +1,17 @@
 package link
 
 import (
-	async "github.com/cryptopunkscc/astrald/sync"
+	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"sync"
 	"time"
 )
 
-var _ async.Idler = &Conn{}
+var _ sig.Idler = &Conn{}
 
 // Conn represents an open connection to the remote party's port. Shouldn't be instantiated directly.
 type Conn struct {
-	activity     async.Activity
+	activity     sig.Activity
 	inputStream  io.Reader
 	outputStream io.WriteCloser
 	query        string
