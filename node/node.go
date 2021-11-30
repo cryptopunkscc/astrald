@@ -3,10 +3,10 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/logfmt"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/storage"
 	"io"
@@ -62,7 +62,7 @@ func (node *Node) Run(ctx context.Context) error {
 	}
 
 	// start the network
-	reqCh, eventCh, reqErrCh := node.Network.Run(ctx, node.Identity)
+	queryCh, eventCh, queryErrCh := node.Network.Run(ctx, node.Identity)
 
 	go func() {
 		time.Sleep(2 * time.Second)
@@ -71,13 +71,13 @@ func (node *Node) Run(ctx context.Context) error {
 
 	for {
 		select {
-		case request := <-reqCh:
-			node.handleRequest(request)
+		case query := <-queryCh:
+			go node.serveQuery(query)
 
 		case event := <-eventCh:
 			node.handleEvent(event)
 
-		case err := <-reqErrCh:
+		case err := <-queryErrCh:
 			log.Println("fatal error:", err)
 			return err
 
@@ -100,7 +100,7 @@ func (node *Node) ResolveIdentity(str string) (id.Identity, error) {
 		return id, nil
 	}
 
-	target, found := node.Network.Graph.ResolveAlias(str)
+	target, found := node.Network.Contacts.ResolveAlias(str)
 
 	if !found {
 		return id.Identity{}, errors.New("unknown identity")
@@ -115,29 +115,31 @@ func (node *Node) FutureEvent() *FutureEvent {
 	return node.futureEvent
 }
 
-func (node *Node) handleRequest(request link.Request) {
-	if request.Query() == ".ping" {
-		log.Println("ping from", logfmt.ID(request.Caller()))
-		request.Reject()
+func (node *Node) serveQuery(query *link.Query) {
+	if query.String() == ".ping" {
+		log.Println("ping from", logfmt.ID(query.Caller()))
+		query.Reject()
 		return
 	}
+
+	log.Printf("<- [%s]:%s (%s)\n", logfmt.ID(query.Caller()), query, query.Link().Network())
 
 	// Query a session with the service
-	localStream, err := node.Ports.Query(request.Query(), request.Caller())
+	localStream, err := node.Ports.Query(query.String(), query.Caller())
 	if err != nil {
-		request.Reject()
-		log.Printf("%s rejected %s\n", logfmt.ID(request.Caller()), request.Query())
+		query.Reject()
+		log.Printf("%s rejected %s\n", logfmt.ID(query.Caller()), query.String())
 		return
 	}
 
-	// Accept remote party's request
-	remoteStream, err := request.Accept()
+	// Accept remote party's query
+	remoteStream, err := query.Accept()
 	if err != nil {
 		localStream.Close()
 		return
 	}
 
-	log.Printf("%s accepted %s\n", logfmt.ID(request.Caller()), request.Query())
+	log.Printf("%s accepted %s\n", logfmt.ID(query.Caller()), query.String())
 
 	// Connect local and remote streams
 	go func() {

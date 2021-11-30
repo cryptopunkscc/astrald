@@ -79,7 +79,7 @@ func (astral *Astral) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, er
 }
 
 func (astral *Astral) DialMany(ctx context.Context, addrCh <-chan infra.Addr, concurrency int) <-chan infra.Conn {
-	outCh := make(chan infra.Conn)
+	outCh := make(chan infra.Conn, concurrency)
 
 	// start dialers
 	var wg sync.WaitGroup

@@ -3,8 +3,8 @@ package peer
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"sync"
@@ -14,15 +14,17 @@ import (
 var _ sig.Idler = &Peer{}
 
 type Peer struct {
-	Links *link.Set
+	links map[*link.Link]struct{}
 	id    id.Identity
 	mu    sync.Mutex
+	queue *sig.Queue
 }
 
 func New(id id.Identity) *Peer {
 	return &Peer{
 		id:    id,
-		Links: link.NewSet(),
+		links: make(map[*link.Link]struct{}),
+		queue: &sig.Queue{},
 	}
 }
 
@@ -34,28 +36,52 @@ func (peer *Peer) Add(link *link.Link) error {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
 
-	// add link to the set
-	if err := peer.Links.Add(link); err != nil {
-		return err
+	if _, found := peer.links[link]; found {
+		return errors.New("duplicate link")
 	}
 
-	sig.On(context.Background(), link, func() {
-		_ = peer.removeLink(link)
-	})
+	peer.links[link] = struct{}{}
+
+	peer.queue.Push(nil)
+
+	go func() {
+		<-link.Wait()
+		peer.remove(link)
+	}()
 
 	return nil
 }
 
+func (peer *Peer) Links() <-chan *link.Link {
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
+	ch := make(chan *link.Link, len(peer.links))
+	for link, _ := range peer.links {
+		ch <- link
+	}
+	close(ch)
+	return ch
+}
+
 func (peer *Peer) Idle() time.Duration {
-	if l := link.Select(peer.Links.Links(), link.MostRecent); l != nil {
-		return l.Idle()
+	if len(peer.links) == 0 {
+		return -1
 	}
 
-	return 0
+	return link.Select(peer.Links(), link.MostRecent).Idle()
+}
+
+func (peer *Peer) StateQueue() *sig.Queue {
+	return peer.queue
+}
+
+func (peer *Peer) Follow(ctx context.Context) <-chan interface{} {
+	return peer.queue.Follow(ctx)
 }
 
 func (peer *Peer) Query(query string) (io.ReadWriteCloser, error) {
-	queryLink := link.Select(peer.Links.Links(), link.Fastest)
+	queryLink := link.Select(peer.Links(), link.Fastest)
 
 	if queryLink == nil {
 		return nil, errors.New("no suitable link found")
@@ -64,14 +90,17 @@ func (peer *Peer) Query(query string) (io.ReadWriteCloser, error) {
 	return queryLink.Query(query)
 }
 
-func (peer *Peer) removeLink(link *link.Link) error {
+func (peer *Peer) remove(link *link.Link) error {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
 
-	// remove link from the set
-	if err := peer.Links.Remove(link); err != nil {
-		return err
+	if _, found := peer.links[link]; !found {
+		return errors.New("not found")
 	}
+
+	delete(peer.links, link)
+
+	peer.queue.Push(nil)
 
 	return nil
 }

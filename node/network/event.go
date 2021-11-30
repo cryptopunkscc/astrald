@@ -1,7 +1,7 @@
 package network
 
 import (
-	"github.com/cryptopunkscc/astrald/astral/link"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network/peer"
 )
 

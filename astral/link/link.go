@@ -9,20 +9,15 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/mux"
-	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"log"
 	"sync"
-	"time"
 )
 
-var _ sig.Idler = &Link{}
-
-// A Link is a multiplexed, authenticated connection between two parties allowing them to establish multiple data
-// streams over a single secure channel.
+// A Link is a multiplexed, authenticated connection between two parties allowing them to establish multiple
+// connections over any transport.
 type Link struct {
-	activity  sig.Activity
-	requests  chan Request
+	queries   chan *Query
 	conns     []*Conn
 	connsMu   sync.Mutex
 	transport auth.Conn
@@ -36,14 +31,13 @@ const controlStreamID = 0
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
 	link := &Link{
-		requests:  make(chan Request),
+		queries:   make(chan *Query),
 		conns:     make([]*Conn, 0),
 		transport: conn,
 		mux:       mux.NewMux(conn),
 		demux:     mux.NewStreamDemux(conn),
 		closed:    make(chan struct{}),
 	}
-	link.activity.Touch()
 	go func() {
 		defer close(link.closed)
 
@@ -59,9 +53,6 @@ func New(conn auth.Conn) *Link {
 
 // Query requests a connection to the remote party's port
 func (link *Link) Query(query string) (*Conn, error) {
-	link.activity.Add(1)
-	defer link.activity.Done()
-
 	// Reserve a local mux stream
 	inputStream, err := link.demux.Stream()
 	if err != nil {
@@ -77,6 +68,7 @@ func (link *Link) Query(query string) (*Conn, error) {
 	remoteBytes := make([]byte, 2)
 
 	_, err = inputStream.Read(remoteBytes)
+
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return nil, ErrRejected
@@ -92,9 +84,9 @@ func (link *Link) Query(query string) (*Conn, error) {
 	return link.addConn(inputStream, outputStream, true, query), nil
 }
 
-// Requests returns a channel to which incoming requests will be sent
-func (link *Link) Requests() <-chan Request {
-	return link.requests
+// Queries returns a channel to which incoming queries will be sent
+func (link *Link) Queries() <-chan *Query {
+	return link.queries
 }
 
 // RemoteIdentity returns the auth.Identity of the remote party
@@ -136,10 +128,6 @@ func (link *Link) Wait() <-chan struct{} {
 	return link.closed
 }
 
-func (link *Link) Idle() time.Duration {
-	return link.activity.Idle()
-}
-
 // Close closes the link
 func (link *Link) Close() error {
 	return link.transport.Close()
@@ -166,7 +154,7 @@ func (link *Link) processQueries() error {
 	buf := make([]byte, mux.MaxPayload)
 	ctlStream := link.demux.DefaultStream()
 
-	defer close(link.requests)
+	defer close(link.queries)
 	for {
 		n, err := ctlStream.Read(buf)
 		if err != nil {
@@ -181,31 +169,28 @@ func (link *Link) processQueries() error {
 }
 
 func (link *Link) processQueryData(buf []byte) error {
-	link.activity.Add(1)
-	defer link.activity.Done()
-
 	// Parse control message
-	remoteStreamID, query, err := proto.ParseQuery(buf)
+	remoteStreamID, queryString, err := proto.ParseQuery(buf)
 	if err != nil {
 		return fmt.Errorf("parse query: %w", err)
 	}
 
 	// Prepare request object
 	outputStream := link.mux.Stream(remoteStreamID)
-	request := Request{
+	query := &Query{
 		link:         link,
 		outputStream: outputStream,
-		query:        query,
+		query:        queryString,
 	}
 
 	// Reserve local channel
-	request.inputStream, err = link.demux.Stream()
+	query.inputStream, err = link.demux.Stream()
 	if err != nil {
 		_ = outputStream.Close()
 		return fmt.Errorf("cannot allocate input stream: %w", err)
 	}
 
-	link.requests <- request
+	link.queries <- query
 	return nil
 }
 
@@ -215,7 +200,6 @@ func (link *Link) addConn(inputStream io.Reader, outputStream io.WriteCloser, ou
 
 	conn := newConn(inputStream, outputStream, outbound, query)
 	link.conns = append(link.conns, conn)
-	link.activity.Add(1)
 
 	go func() {
 		<-conn.Wait()
@@ -232,7 +216,6 @@ func (link *Link) removeConn(conn *Conn) {
 	for i, c := range link.conns {
 		if c == conn {
 			link.conns = append(link.conns[:i], link.conns[i+1:]...)
-			link.activity.Done()
 			return
 		}
 	}

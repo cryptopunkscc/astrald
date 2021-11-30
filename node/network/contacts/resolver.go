@@ -1,4 +1,4 @@
-package graph
+package contacts
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"

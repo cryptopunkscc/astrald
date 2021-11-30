@@ -4,44 +4,51 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
-	"github.com/cryptopunkscc/astrald/node/network/graph"
+	"github.com/cryptopunkscc/astrald/logfmt"
+	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/network/contacts"
 	"github.com/cryptopunkscc/astrald/node/network/linker"
-	_peer "github.com/cryptopunkscc/astrald/node/network/peer"
+	"github.com/cryptopunkscc/astrald/node/network/peer"
 	"github.com/cryptopunkscc/astrald/node/storage"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
+	"log"
 	"sync"
 	"time"
 )
 
-const defaultIdleTimeout = 15 * time.Minute
-const defaultLinkTimeout = time.Minute
+const defaultPeerIdleTimeout = 15 * time.Minute
+const defaultQueryTimeout = time.Minute
 
 type Network struct {
-	Peers  *_peer.Set
-	Linker *linker.LinkManager
-	Graph  *graph.Graph
+	Contacts *contacts.Contacts
 
-	config  Config
-	localID id.Identity
-	store   storage.Store
-	inet    *inet.Inet
-	tor     *tor.Tor
+	peers    map[string]*peer.Peer
+	peersMu  sync.Mutex
+	config   Config
+	localID  id.Identity
+	store    storage.Store
+	inet     *inet.Inet
+	tor      *tor.Tor
+	newLinks chan *link.Link
+
+	linkerMu map[*peer.Peer]*sync.Mutex
 }
 
 func NewNetwork(config Config, identity id.Identity, store storage.Store) *Network {
 	var err error
 
 	n := &Network{
-		Peers:   _peer.NewSet(),
-		config:  config,
-		localID: identity,
-		store:   store,
+		peers:    make(map[string]*peer.Peer),
+		config:   config,
+		localID:  identity,
+		store:    store,
+		linkerMu: make(map[*peer.Peer]*sync.Mutex),
+		newLinks: make(chan *link.Link, 1),
 	}
 
 	// Configure internet
@@ -59,36 +66,60 @@ func NewNetwork(config Config, identity id.Identity, store storage.Store) *Netwo
 		panic(err)
 	}
 
-	// graph needs to be set up after networks so that all address parsers are loaded
-	n.Graph = graph.New(store)
-	n.Linker = linker.NewManager(identity, n.Peers, n.Graph)
+	// contacts need to be set up after networks so that all address parsers are loaded
+	n.Contacts = contacts.New(store)
 
 	return n
 }
 
-func (network *Network) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
-	network.Linker.Wake(remoteID)
+func (n *Network) Peers() <-chan *peer.Peer {
+	n.peersMu.Lock()
+	defer n.peersMu.Unlock()
 
-	remotePeer := network.Peers.Peer(remoteID)
-
-	// Wait for peer to be linked
-	waitCtx, _ := context.WithTimeout(ctx, defaultLinkTimeout)
-
-	<-_peer.LinkedGate(waitCtx, remotePeer).Wait()
-
-	l := link.Select(remotePeer.Links.Links(), link.Fastest)
-	if l == nil {
-		return nil, errors.New("no link available")
+	ch := make(chan *peer.Peer, len(n.peers))
+	for _, p := range n.peers {
+		ch <- p
 	}
+	close(ch)
+	return ch
+}
+
+func (n *Network) Peer(id id.Identity) *peer.Peer {
+	n.peersMu.Lock()
+	defer n.peersMu.Unlock()
+
+	str := id.String()
+
+	if p, ok := n.peers[str]; ok {
+		return p
+	}
+
+	p := peer.New(id)
+	n.peers[str] = p
+	return p
+}
+
+func (n *Network) Query(parent context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
+	p := n.Peer(remoteID)
+
+	// set up a query context
+	ctx, _ := context.WithTimeout(parent, defaultQueryTimeout)
+
+	l, err := n.Connect(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("-> [%s]:%s (%s)\n", logfmt.ID(remoteID), query, l.Network())
 
 	return l.Query(query)
 }
 
-func (network *Network) Alias() string {
-	return network.config.Alias
+func (n *Network) Alias() string {
+	return n.config.Alias
 }
 
-func (network *Network) Info(onlyPublic bool) *graph.Info {
+func (n *Network) Info(onlyPublic bool) *contacts.Info {
 	addrs := make([]infra.Addr, 0)
 
 	for _, a := range astral.Addresses() {
@@ -98,77 +129,128 @@ func (network *Network) Info(onlyPublic bool) *graph.Info {
 		addrs = append(addrs, a.Addr)
 	}
 
-	info := &graph.Info{
-		Identity:  network.localID,
+	info := &contacts.Info{
+		Identity:  n.localID,
 		Addresses: addrs,
 	}
 
 	if !onlyPublic {
-		info.Alias = network.Alias()
+		info.Alias = n.Alias()
 	}
 
 	return info
 }
 
-func (network *Network) onLink(ctx context.Context, link *link.Link, reqCh chan<- link.Request, evCh chan<- Event) error {
-	err := network.Peers.AddLink(link)
-	if err != nil {
+func (n *Network) onLink(ctx context.Context, link *link.Link, queryCh chan<- *link.Query, evCh chan<- Event) error {
+	peer := n.Peer(link.RemoteIdentity())
+
+	if err := peer.Add(link); err != nil {
 		return err
 	}
 
-	peer := network.Peers.Peer(link.RemoteIdentity())
-
 	// forward link's requests
 	go func() {
-		for req := range link.Requests() {
-			reqCh <- req
+		for query := range link.Queries() {
+			queryCh <- query
 		}
 		evCh <- Event{Type: EventLinkDown, Link: link}
 
-		if len(peer.Links.Links()) == 0 {
+		if len(peer.Links()) == 0 {
 			evCh <- Event{Type: EventPeerUnlinked, Peer: peer}
 		}
 	}()
 
 	evCh <- Event{Type: EventLinkUp, Link: link}
 
-	if len(peer.Links.Links()) == 1 {
-		// if it's a new inbound peer, try to link back to improve link quality
-		if link.Outbound() == false {
-			network.Linker.Wake(peer.Identity())
-		}
+	links := peer.Links()
+	if len(links) == 1 {
 		evCh <- Event{Type: EventPeerLinked, Peer: peer}
 
-		sig.On(ctx, sig.Idle(ctx, peer, defaultIdleTimeout), func() {
-			for l := range peer.Links.Links() {
+		// set a timeout
+		sig.On(ctx, sig.Idle(ctx, peer, defaultPeerIdleTimeout), func() {
+			for l := range peer.Links() {
 				l.Close()
 			}
 		})
+
+		// if we only have an incoming link over tor, try to link back via other networks
+		l := <-links
+		if (l.Outbound() == false) && (l.Network() == tor.NetworkName) {
+			go n.Connect(ctx, peer)
+		}
 	}
 
 	return nil
 }
 
-func mergeLinkChans(chans ...<-chan *link.Link) <-chan *link.Link {
-	outCh := make(chan *link.Link)
+func (n *Network) linkerMutex(p *peer.Peer) *sync.Mutex {
+	n.peersMu.Lock()
+	defer n.peersMu.Unlock()
 
-	var wg sync.WaitGroup
+	if mu, ok := n.linkerMu[p]; ok {
+		return mu
+	}
+	n.linkerMu[p] = &sync.Mutex{}
+	return n.linkerMu[p]
+}
 
-	for _, ch := range chans {
-		ch := ch
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := range ch {
-				outCh <- i
-			}
-		}()
+func (n *Network) connect(ctx context.Context, p *peer.Peer) {
+	mu := n.linkerMutex(p)
+	mu.Lock()
+	defer mu.Unlock()
+
+	// prepare the contacts resolver without already linked networks
+	var resolver contacts.Resolver = n.Contacts
+	for _, name := range link.Networks(p.Links()) {
+		resolver = contacts.Filter(resolver, contacts.SkipNetwork(name))
 	}
 
+	linker := linker.ConcurrentLinker{
+		LocalID:  n.localID,
+		RemoteID: p.Identity(),
+		Resolver: resolver,
+	}
+
+	l := linker.Link(ctx)
+	if l != nil {
+		n.newLinks <- l
+	}
+}
+
+func (n *Network) Connect(parent context.Context, p *peer.Peer) (*link.Link, error) {
+	ctx, cancel := context.WithCancel(parent)
+	defer cancel()
+
+	// see if we have a link already
+	if l := link.Select(p.Links(), link.Fastest); l != nil {
+		return l, nil
+	}
+
+	ch := make(chan *link.Link, 1)
+
+	// try to produce a link using the default linker
+	go n.connect(ctx, p)
+
+	// wait for a link with the peer
 	go func() {
-		wg.Wait()
-		close(outCh)
+		defer close(ch)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-p.StateQueue().Wait():
+				if l := link.Select(p.Links(), link.Fastest); l != nil {
+					ch <- l
+					return
+				}
+			}
+		}
 	}()
 
-	return outCh
+	l, ok := <-ch
+	if !ok {
+		return nil, errors.New("peer unreachable")
+	}
+
+	return l, nil
 }

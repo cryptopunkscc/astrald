@@ -29,20 +29,24 @@ func Link(ctx context.Context, localID id.Identity, remoteID id.Identity, conn i
 func LinkFirst(ctx context.Context, localID id.Identity, remoteID id.Identity, connCh <-chan infra.Conn) *link.Link {
 	// at the end, close all remaining connections
 	defer func() {
-		for conn := range connCh {
-			conn.Close()
-		}
+		// do this in a new routine, otherwise return will hang until connCh is closed
+		go func() {
+			for conn := range connCh {
+				conn.Close()
+			}
+		}()
 	}()
 
 	// go through conns until link is established
 	for conn := range connCh {
 		if link, err := Link(ctx, localID, remoteID, conn); err == nil {
 			return link
+		} else {
 		}
 
 		select {
 		case <-ctx.Done():
-			return nil
+			break
 		default:
 		}
 	}

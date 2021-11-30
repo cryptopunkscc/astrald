@@ -3,39 +3,45 @@ package linker
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/node/network/graph"
+	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/network/contacts"
 )
 
 const defaultConcurrency = 8
 
 // ConcurrentLinker tries to establish a link on any address from the resolver using several concurrent dialers.
 type ConcurrentLinker struct {
-	localID     id.Identity
-	remoteID    id.Identity
-	resolver    graph.Resolver
-	concurrency int
+	LocalID     id.Identity
+	RemoteID    id.Identity
+	Resolver    contacts.Resolver
+	Concurrency int
 }
 
-func (l *ConcurrentLinker) Concurrency() int {
-	if l.concurrency == 0 {
+func (l *ConcurrentLinker) getConcurrency() int {
+	if l.Concurrency == 0 {
 		return defaultConcurrency
 	}
-	return l.concurrency
+	return l.Concurrency
 }
 
 func (l *ConcurrentLinker) Link(ctx context.Context) *link.Link {
 	// get current addresses for the node
-	addrs := l.resolver.Resolve(l.remoteID)
+	addrs := l.Resolver.Resolve(l.RemoteID)
 
 	// try to link
-	return astral.LinkFirst(ctx,
-		l.localID,
-		l.remoteID,
+	rawLink := astral.LinkFirst(ctx,
+		l.LocalID,
+		l.RemoteID,
 		astral.DialMany(ctx,
 			addrs,
-			l.Concurrency(),
+			l.getConcurrency(),
 		),
 	)
+
+	if rawLink == nil {
+		return nil
+	}
+
+	return link.Wrap(rawLink)
 }

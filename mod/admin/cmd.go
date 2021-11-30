@@ -1,20 +1,21 @@
 package admin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/infra"
 	_f "github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node"
-	_graph "github.com/cryptopunkscc/astrald/node/network/graph"
+	"github.com/cryptopunkscc/astrald/node/network/contacts"
 	"io"
 	"time"
 )
 
 func peers(w io.ReadWriter, node *node.Node, _ []string) error {
-	for peer := range node.Network.Peers.Each() {
+	for peer := range node.Network.Peers() {
 		peerID := _f.ID(peer.Identity())
-		if a := node.Network.Graph.GetAlias(peer.Identity()); a != "" {
+		if a := node.Network.Contacts.GetAlias(peer.Identity()); a != "" {
 			peerID = a
 		}
 
@@ -22,7 +23,7 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 			peerID,
 			peer.Idle().Round(time.Second),
 		)
-		for link := range peer.Links.Links() {
+		for link := range peer.Links() {
 			fmt.Fprintf(w,
 				"  %s %s %s (idle %s)\n",
 				_f.Bool(link.Outbound(), "=>", "<="),
@@ -54,7 +55,7 @@ func link(_ io.ReadWriter, node *node.Node, args []string) error {
 		return err
 	}
 
-	node.Network.Linker.Wake(remoteID)
+	node.Network.Connect(context.Background(), node.Network.Peer(remoteID))
 	if err != nil {
 		return err
 	}
@@ -63,11 +64,11 @@ func link(_ io.ReadWriter, node *node.Node, args []string) error {
 }
 
 func graph(w io.ReadWriter, node *node.Node, _ []string) error {
-	for nodeID := range node.Network.Graph.Nodes() {
+	for nodeID := range node.Network.Contacts.Identities() {
 		fmt.Fprintln(w, "node", nodeID.PublicKeyHex())
-		fmt.Fprintln(w, "alias", node.Network.Graph.GetAlias(nodeID))
+		fmt.Fprintln(w, "alias", node.Network.Contacts.GetAlias(nodeID))
 
-		for addr := range node.Network.Graph.Resolve(nodeID) {
+		for addr := range node.Network.Contacts.Resolve(nodeID) {
 			printAddr(w, addr)
 		}
 		fmt.Fprintln(w)
@@ -91,7 +92,7 @@ func parse(w io.ReadWriter, _ *node.Node, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	info, err := _graph.Parse(args[0])
+	info, err := contacts.ParseInfo(args[0])
 	if err != nil {
 		return err
 	}
@@ -112,12 +113,12 @@ func add(_ io.ReadWriter, node *node.Node, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	r, err := _graph.Parse(args[0])
+	r, err := contacts.ParseInfo(args[0])
 	if err != nil {
 		return err
 	}
 
-	node.Network.Graph.AddInfo(r)
+	node.Network.Contacts.AddInfo(r)
 
 	return nil
 }

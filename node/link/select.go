@@ -1,9 +1,11 @@
 package link
 
+import "github.com/cryptopunkscc/astrald/infra/inet"
+
 type SelectFunc func(current *Link, next *Link) *Link
 
-func Select(stream Stream, selectFunc SelectFunc) (selected *Link) {
-	for next := range stream {
+func Select(ch <-chan *Link, selectFunc SelectFunc) (selected *Link) {
+	for next := range ch {
 		selected = selectFunc(selected, next)
 	}
 	return
@@ -14,7 +16,7 @@ func Fastest(current *Link, next *Link) *Link {
 		return next
 	}
 	// prefer inet
-	if next.Network() == "inet" {
+	if next.Network() == inet.NetworkName {
 		return next
 	}
 

@@ -1,4 +1,4 @@
-package graph
+package contacts
 
 import (
 	"bytes"
@@ -44,7 +44,7 @@ func (info Info) String() string {
 	return infoPrefix + base62.EncodeToString(info.Pack())
 }
 
-func Parse(s string) (*Info, error) {
+func ParseInfo(s string) (*Info, error) {
 	str := strings.TrimPrefix(s, infoPrefix)
 
 	data, err := base62.DecodeString(str)

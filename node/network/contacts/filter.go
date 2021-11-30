@@ -1,4 +1,4 @@
-package graph
+package contacts
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
@@ -32,8 +32,8 @@ func Filter(parent Resolver, filter FilterFunc) *FilteredResolver {
 	return &FilteredResolver{parent: parent, filter: filter}
 }
 
-func FilterNetwork(parent Resolver, network string) Resolver {
-	return Filter(parent, func(addr infra.Addr) bool {
-		return addr.Network() == network
-	})
+func SkipNetwork(network string) FilterFunc {
+	return func(addr infra.Addr) bool {
+		return addr.Network() != network
+	}
 }

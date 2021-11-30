@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/network"
-	"github.com/cryptopunkscc/astrald/node/network/graph"
+	"github.com/cryptopunkscc/astrald/node/network/contacts"
 	"github.com/cryptopunkscc/astrald/node/network/peer"
 	"io"
 	"log"
@@ -71,12 +71,12 @@ func queryInfo(node *node.Node, peer *peer.Peer) error {
 		return err
 	}
 
-	info, err := graph.Unpack(packed)
+	info, err := contacts.Unpack(packed)
 	if err != nil {
 		return err
 	}
 
-	node.Network.Graph.AddInfo(info)
+	node.Network.Contacts.AddInfo(info)
 
 	return nil
 }
