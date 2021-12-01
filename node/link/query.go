@@ -8,17 +8,15 @@ type Query struct {
 }
 
 func (query *Query) Accept() (*Conn, error) {
-	conn, err := query.Query.Accept()
-
-	if conn != nil {
-		go func() {
-			query.link.Activity.Add(1)
-			defer query.link.Activity.Done()
-			<-conn.Wait()
-		}()
+	rawConn, err := query.Query.Accept()
+	if err != nil {
+		return nil, err
 	}
 
-	return wrapConn(conn), err
+	conn := wrapConn(rawConn)
+	query.link.add(conn)
+
+	return conn, err
 }
 
 func (query *Query) Link() *Link {

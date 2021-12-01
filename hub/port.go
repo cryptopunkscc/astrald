@@ -2,22 +2,22 @@ package hub
 
 // Port represents an open port in the hub
 type Port struct {
-	name     string
-	requests chan *Request
-	hub      *Hub
+	name    string
+	queries chan *Query
+	hub     *Hub
 }
 
 func NewPort(hub *Hub, name string) *Port {
 	return &Port{
-		name:     name,
-		hub:      hub,
-		requests: make(chan *Request),
+		name:    name,
+		hub:     hub,
+		queries: make(chan *Query),
 	}
 }
 
-// Requests returns a channel for reading incoming connection requests
-func (port *Port) Requests() <-chan *Request {
-	return port.requests
+// Queries returns a channel for reading incoming queries
+func (port *Port) Queries() <-chan *Query {
+	return port.queries
 }
 
 // Close closees the port

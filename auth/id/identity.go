@@ -65,6 +65,12 @@ func ParsePublicKeyHex(hexKey string) (Identity, error) {
 	return ParsePublicKey(pkData)
 }
 
+func (id Identity) Public() Identity {
+	return Identity{
+		publicKey: id.PublicKey(),
+	}
+}
+
 // PublicKey returns identity's public key
 func (id Identity) PublicKey() *btcec.PublicKey {
 	if id.privateKey != nil {
@@ -88,7 +94,7 @@ func (id Identity) IsEqual(other Identity) bool {
 	return id.PublicKey().IsEqual(other.PublicKey())
 }
 
-func (id Identity) IsEmpty() bool {
+func (id Identity) IsZero() bool {
 	return (id.privateKey == nil) && (id.publicKey == nil)
 }
 

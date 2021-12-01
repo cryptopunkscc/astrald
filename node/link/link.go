@@ -1,6 +1,7 @@
 package link
 
 import (
+	"errors"
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -18,10 +19,6 @@ type Link struct {
 	mu      sync.Mutex
 }
 
-type Streamer interface {
-	Links() <-chan *Link
-}
-
 func New(conn auth.Conn) *Link {
 	return Wrap(link.New(conn))
 }
@@ -37,18 +34,6 @@ func Wrap(link *link.Link) *Link {
 	return l
 }
 
-func (link *Link) handleQueries() {
-	defer close(link.queries)
-	for r := range link.Link.Queries() {
-		link.Activity.Add(1)
-		link.queries <- &Query{
-			link:  link,
-			Query: r,
-		}
-		link.Activity.Done()
-	}
-}
-
 func (link *Link) Query(query string) (*Conn, error) {
 	link.Activity.Add(1)
 	defer link.Activity.Done()
@@ -58,18 +43,8 @@ func (link *Link) Query(query string) (*Conn, error) {
 		return nil, err
 	}
 
-	link.mu.Lock()
-	defer link.mu.Unlock()
-
 	conn := wrapConn(linkConn)
-	link.conns[conn] = struct{}{}
-
-	go func() {
-		link.Activity.Add(1)
-		<-conn.Wait()
-		link.Activity.Done()
-		link.remove(conn)
-	}()
+	link.add(conn)
 
 	return conn, err
 }
@@ -90,9 +65,46 @@ func (link *Link) Conns() <-chan *Conn {
 	return ch
 }
 
-func (link *Link) remove(conn *Conn) {
+func (link *Link) add(conn *Conn) {
 	link.mu.Lock()
 	defer link.mu.Unlock()
 
+	// skip duplicates
+	if _, found := link.conns[conn]; found {
+		return
+	}
+	link.conns[conn] = struct{}{}
+
+	go func() {
+		link.Activity.Add(1)
+		defer link.Activity.Done()
+
+		// remove the connection after it closes
+		<-conn.Wait()
+		link.remove(conn)
+	}()
+}
+
+func (link *Link) remove(conn *Conn) error {
+	link.mu.Lock()
+	defer link.mu.Unlock()
+
+	if _, found := link.conns[conn]; !found {
+		return errors.New("not found")
+	}
 	delete(link.conns, conn)
+
+	return nil
+}
+
+func (link *Link) handleQueries() {
+	defer close(link.queries)
+	for r := range link.Link.Queries() {
+		link.Activity.Add(1)
+		link.queries <- &Query{
+			link:  link,
+			Query: r,
+		}
+		link.Activity.Done()
+	}
 }

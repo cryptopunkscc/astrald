@@ -6,6 +6,8 @@ import (
 	"fmt"
 	_ "github.com/cryptopunkscc/astrald/mod/admin"
 	_ "github.com/cryptopunkscc/astrald/mod/apphost"
+	_ "github.com/cryptopunkscc/astrald/mod/connect"
+	_ "github.com/cryptopunkscc/astrald/mod/gateway"
 	_ "github.com/cryptopunkscc/astrald/mod/info"
 	"github.com/cryptopunkscc/astrald/node"
 	"log"

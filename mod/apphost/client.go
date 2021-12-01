@@ -96,7 +96,7 @@ func (c *Client) handlePort(ctx context.Context, port *hub.Port, dest string) er
 		port.Close()
 	}()
 
-	for request := range port.Requests() {
+	for request := range port.Queries() {
 		log.Println("apphost:", logfmt.ID(request.Caller()), "queried", request.Query())
 
 		var rawConn net.Conn

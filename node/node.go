@@ -88,7 +88,7 @@ func (node *Node) Run(ctx context.Context) error {
 }
 
 func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
-	if remoteID.IsEmpty() || remoteID.IsEqual(node.Identity) {
+	if remoteID.IsZero() || remoteID.IsEqual(node.Identity) {
 		return node.Ports.Query(query, node.Identity)
 	}
 

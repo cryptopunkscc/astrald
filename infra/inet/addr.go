@@ -21,7 +21,7 @@ var _ infra.Addr = Addr{}
 func Parse(s string) (addr Addr, err error) {
 	ipport := strings.Split(s, ":")
 	if len(ipport) > 2 {
-		return addr, errors.New("invalid address")
+		return addr, infra.ErrInvalidAddress
 	}
 
 	addr.ip = net.ParseIP(ipport[0])

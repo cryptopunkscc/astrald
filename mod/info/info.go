@@ -26,8 +26,8 @@ func info(ctx context.Context, node *node.Node) error {
 	}()
 
 	go func() {
-		for req := range port.Requests() {
-			conn := req.Accept()
+		for query := range port.Queries() {
+			conn := query.Accept()
 			conn.Write(node.Network.Info(false).Pack())
 			conn.Close()
 		}

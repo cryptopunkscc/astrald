@@ -15,7 +15,7 @@ var _ infra.Network = &Inet{}
 type Inet struct {
 	config         Config
 	listenPort     uint16
-	customAddrs    []infra.AddrDesc
+	publicAddrs    []infra.AddrDesc
 	separateListen bool
 }
 
@@ -23,10 +23,10 @@ func New(config Config) *Inet {
 	inet := &Inet{
 		config:      config,
 		listenPort:  defaultPort,
-		customAddrs: make([]infra.AddrDesc, 0),
+		publicAddrs: make([]infra.AddrDesc, 0),
 	}
 
-	// Add external addresses
+	// Add public addresses
 	for _, addrStr := range config.PublicAddr {
 		addr, err := Parse(addrStr)
 		if err != nil {
@@ -34,7 +34,7 @@ func New(config Config) *Inet {
 			continue
 		}
 
-		inet.customAddrs = append(inet.customAddrs, infra.AddrDesc{
+		inet.publicAddrs = append(inet.publicAddrs, infra.AddrDesc{
 			Addr:   addr,
 			Public: true,
 		})
@@ -99,16 +99,16 @@ func (inet Inet) Addresses() []infra.AddrDesc {
 			continue
 		}
 
-		addr := Addr{ip: ipv4, port: inet.listenPort}
-
-		list = append(list, infra.AddrDesc{
-			Addr:   addr,
-			Public: !ipv4.IsPrivate(),
-		})
+		if ipv4.IsGlobalUnicast() || ipv4.IsPrivate() {
+			list = append(list, infra.AddrDesc{
+				Addr:   Addr{ip: ipv4, port: inet.listenPort},
+				Public: ipv4.IsGlobalUnicast(),
+			})
+		}
 	}
 
 	// Add custom addresses
-	list = append(list, inet.customAddrs...)
+	list = append(list, inet.publicAddrs...)
 
 	return list
 }

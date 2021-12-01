@@ -61,7 +61,7 @@ func listen(ctx context.Context, node *_node.Node) error {
 		return err
 	}
 
-	for req := range port.Requests() {
+	for req := range port.Queries() {
 		// Only accept local requests
 		if !req.Caller().IsEqual(node.Identity) {
 			req.Reject()

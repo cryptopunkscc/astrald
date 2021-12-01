@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"io"
 	"log"
@@ -32,28 +33,40 @@ func (hub *Hub) Register(name string) (*Port, error) {
 	// Register the port
 	hub.ports[name] = NewPort(hub, name)
 
-	log.Println("port open:", name)
-
 	return hub.ports[name], nil
 }
 
+func (hub *Hub) RegisterContext(ctx context.Context, name string) (*Port, error) {
+	port, err := hub.Register(name)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		<-ctx.Done()
+		port.Close()
+	}()
+
+	return port, nil
+}
+
 // Query requests to connect to a port as the provided auth.Identity
-func (hub *Hub) Query(query string, caller id.Identity) (io.ReadWriteCloser, error) {
+func (hub *Hub) Query(queryString string, caller id.Identity) (io.ReadWriteCloser, error) {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 
 	// Fetch the port
-	port, found := hub.ports[query]
+	port, found := hub.ports[queryString]
 	if !found {
 		return nil, ErrPortNotFound
 	}
 
 	// Send the request
-	request := NewRequest(caller, query)
-	port.requests <- request
+	query := NewQuery(caller, queryString)
+	port.queries <- query
 
 	// Wait for the response
-	accepted := <-request.response
+	accepted := <-query.response
 	if !accepted {
 		return nil, ErrRejected
 	}
@@ -62,8 +75,8 @@ func (hub *Hub) Query(query string, caller id.Identity) (io.ReadWriteCloser, err
 	clientConn, appConn := pipe()
 
 	// Send one side to the responder
-	request.connection <- appConn
-	close(request.connection)
+	query.connection <- appConn
+	close(query.connection)
 
 	// Return the other side to the caller
 	return clientConn, nil
@@ -79,7 +92,7 @@ func (hub *Hub) close(name string) error {
 		return ErrPortNotFound
 	}
 
-	close(port.requests)
+	close(port.queries)
 	delete(hub.ports, name)
 
 	log.Println("port released:", name)

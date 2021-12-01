@@ -56,6 +56,10 @@ func (peer *Peer) Links() <-chan *link.Link {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
 
+	return peer.getLinks()
+}
+
+func (peer *Peer) getLinks() <-chan *link.Link {
 	ch := make(chan *link.Link, len(peer.links))
 	for link, _ := range peer.links {
 		ch <- link
@@ -65,11 +69,14 @@ func (peer *Peer) Links() <-chan *link.Link {
 }
 
 func (peer *Peer) Idle() time.Duration {
-	if len(peer.links) == 0 {
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
+	l := link.Select(peer.getLinks(), link.MostRecent)
+	if l == nil {
 		return -1
 	}
-
-	return link.Select(peer.Links(), link.MostRecent).Idle()
+	return l.Idle()
 }
 
 func (peer *Peer) StateQueue() *sig.Queue {

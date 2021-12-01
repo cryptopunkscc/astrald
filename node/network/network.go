@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
+	iastral "github.com/cryptopunkscc/astrald/infra/astral"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/logfmt"
@@ -15,7 +16,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/network/peer"
 	"github.com/cryptopunkscc/astrald/node/storage"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
 	"log"
 	"sync"
 	"time"
@@ -27,16 +27,23 @@ const defaultQueryTimeout = time.Minute
 type Network struct {
 	Contacts *contacts.Contacts
 
-	peers    map[string]*peer.Peer
-	peersMu  sync.Mutex
-	config   Config
-	localID  id.Identity
-	store    storage.Store
-	inet     *inet.Inet
-	tor      *tor.Tor
+	peers   map[string]*peer.Peer
+	peersMu sync.Mutex
+	config  Config
+	localID id.Identity
+	store   storage.Store
+	inet    *inet.Inet
+	tor     *tor.Tor
+	astral  *iastral.Astral
+
 	newLinks chan *link.Link
+	Conns    chan infra.Conn
 
 	linkerMu map[*peer.Peer]*sync.Mutex
+}
+
+func (n *Network) Identity() id.Identity {
+	return n.localID
 }
 
 func NewNetwork(config Config, identity id.Identity, store storage.Store) *Network {
@@ -49,6 +56,7 @@ func NewNetwork(config Config, identity id.Identity, store storage.Store) *Netwo
 		store:    store,
 		linkerMu: make(map[*peer.Peer]*sync.Mutex),
 		newLinks: make(chan *link.Link, 1),
+		Conns:    make(chan infra.Conn, 1),
 	}
 
 	// Configure internet
@@ -66,6 +74,12 @@ func NewNetwork(config Config, identity id.Identity, store storage.Store) *Netwo
 		panic(err)
 	}
 
+	// Configure astral for mesh links
+	n.astral = iastral.NewAstral(NewAdapter(n), n.config.Astral)
+	err = astral.AddNetwork(n.astral)
+	if err != nil {
+		panic(err)
+	}
 	// contacts need to be set up after networks so that all address parsers are loaded
 	n.Contacts = contacts.New(store)
 
@@ -99,7 +113,7 @@ func (n *Network) Peer(id id.Identity) *peer.Peer {
 	return p
 }
 
-func (n *Network) Query(parent context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
+func (n *Network) Query(parent context.Context, remoteID id.Identity, query string) (*link.Conn, error) {
 	p := n.Peer(remoteID)
 
 	// set up a query context

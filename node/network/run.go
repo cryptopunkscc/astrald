@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"log"
@@ -47,6 +48,15 @@ func (n *Network) Run(ctx context.Context, localID id.Identity) (<-chan *link.Qu
 				if err := n.handlePresence(ctx, presence); err != nil {
 					log.Println("error handling presence:", err)
 				}
+
+			case conn := <-n.Conns:
+				auth, err := auth.HandshakeInbound(ctx, conn, n.localID)
+				if err != nil {
+					conn.Close()
+					continue
+				}
+
+				n.newLinks <- link.New(auth)
 
 			case err := <-listenErrCh:
 				errCh <- err
