@@ -176,7 +176,7 @@ func (n *Network) onLink(ctx context.Context, link *link.Link, queryCh chan<- *l
 		// if we only have an incoming link over tor, try to link back via other networks
 		l := <-links
 		if (l.Outbound() == false) && (l.Network() == tor.NetworkName) {
-			go n.Connect(ctx, peer)
+			go n.connect(ctx, peer)
 		}
 	}
 
@@ -218,7 +218,7 @@ func (n *Network) connect(ctx context.Context, p *peer.Peer) {
 }
 
 func (n *Network) Connect(parent context.Context, p *peer.Peer) (*link.Link, error) {
-	ctx, cancel := context.WithCancel(parent)
+	ctx, cancel := context.WithTimeout(parent, time.Minute)
 	defer cancel()
 
 	// see if we have a link already
@@ -227,9 +227,6 @@ func (n *Network) Connect(parent context.Context, p *peer.Peer) (*link.Link, err
 	}
 
 	ch := make(chan *link.Link, 1)
-
-	// try to produce a link using the default linker
-	go n.connect(ctx, p)
 
 	// wait for a link with the peer
 	go func() {
@@ -246,6 +243,9 @@ func (n *Network) Connect(parent context.Context, p *peer.Peer) (*link.Link, err
 			}
 		}
 	}()
+
+	// try to produce a link using the default linker
+	go n.connect(ctx, p)
 
 	l, ok := <-ch
 	if !ok {

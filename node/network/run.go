@@ -44,7 +44,7 @@ func (n *Network) Run(ctx context.Context, localID id.Identity) (<-chan *link.Qu
 				}
 
 			case presence := <-discoverCh:
-				if err := n.handlePresence(presence); err != nil {
+				if err := n.handlePresence(ctx, presence); err != nil {
 					log.Println("error handling presence:", err)
 				}
 

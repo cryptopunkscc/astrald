@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 )
 
-func (n *Network) handlePresence(presence infra.Presence) error {
+func (n *Network) handlePresence(ctx context.Context, presence infra.Presence) error {
 	if presence.Identity.IsEqual(n.localID) {
 		return nil
 	}
@@ -13,6 +13,7 @@ func (n *Network) handlePresence(presence infra.Presence) error {
 	n.Contacts.AddAddr(presence.Identity, presence.Addr)
 
 	// maintain links with present devices
-	n.Connect(context.Background(), n.Peer(presence.Identity))
+	go n.Connect(ctx, n.Peer(presence.Identity))
+
 	return nil
 }
