@@ -25,11 +25,12 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 		)
 		for link := range peer.Links() {
 			fmt.Fprintf(w,
-				"  %s %s %s (idle %s)\n",
+				"  %s %s %s (idle %s, lat %.1fms)\n",
 				_f.Bool(link.Outbound(), "=>", "<="),
 				link.RemoteAddr().Network(),
 				link.RemoteAddr().String(),
 				link.Idle().Round(time.Second),
+				float64(link.Latency().Microseconds())/1000,
 			)
 			for c := range link.Conns() {
 				fmt.Fprintf(w,

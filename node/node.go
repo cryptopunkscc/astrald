@@ -139,8 +139,6 @@ func (node *Node) serveQuery(query *link.Query) {
 		return
 	}
 
-	log.Printf("%s accepted %s\n", logfmt.ID(query.Caller()), query.String())
-
 	// Connect local and remote streams
 	go func() {
 		_, _ = io.Copy(localStream, remoteStream)

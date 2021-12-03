@@ -1,11 +1,5 @@
 package link
 
-import (
-	iastral "github.com/cryptopunkscc/astrald/infra/astral"
-	"github.com/cryptopunkscc/astrald/infra/inet"
-	"github.com/cryptopunkscc/astrald/infra/tor"
-)
-
 type SelectFunc func(current *Link, next *Link) *Link
 
 func Select(ch <-chan *Link, selectFunc SelectFunc) (selected *Link) {
@@ -20,14 +14,8 @@ func Fastest(current *Link, next *Link) *Link {
 		return next
 	}
 
-	if current.Network() == tor.NetworkName {
+	if next.Latency() < current.Latency() {
 		return next
-	}
-
-	if current.Network() == iastral.NetworkName {
-		if next.Network() == inet.NetworkName {
-			return next
-		}
 	}
 
 	return current
