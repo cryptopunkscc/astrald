@@ -89,8 +89,14 @@ func (q *Queue) Follow(ctx context.Context) <-chan interface{} {
 				if f.Next() == nil {
 					return
 				}
-				ch <- f.data
-				f = f.Next()
+
+				select {
+				case ch <- f.data:
+					f = f.Next()
+				case <-ctx.Done():
+					return
+				}
+
 			}
 		}
 	}()

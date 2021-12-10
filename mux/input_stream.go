@@ -1,7 +1,9 @@
 package mux
 
 import (
+	"errors"
 	"io"
+	"sync"
 )
 
 type InputStream struct {
@@ -9,6 +11,8 @@ type InputStream struct {
 	r       io.Reader
 	w       io.WriteCloser
 	closeCh chan struct{}
+	mu      sync.Mutex
+	closed  bool
 }
 
 var _ io.Reader = &InputStream{}
@@ -36,8 +40,15 @@ func (stream *InputStream) write(p []byte) (n int, err error) {
 }
 
 func (stream *InputStream) Close() error {
-	defer close(stream.closeCh)
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
 
+	if stream.closed {
+		return errors.New("already closed")
+	}
+
+	defer close(stream.closeCh)
+	stream.closed = true
 	return stream.w.Close()
 }
 

@@ -2,30 +2,59 @@ package node
 
 import (
 	"context"
-	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
+	"github.com/cryptopunkscc/astrald/infra"
+	iastral "github.com/cryptopunkscc/astrald/infra/astral"
+	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/logfmt"
+	"github.com/cryptopunkscc/astrald/node/contacts"
+	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node/linker"
+	"github.com/cryptopunkscc/astrald/node/peer"
+	"github.com/cryptopunkscc/astrald/node/presence"
+	"github.com/cryptopunkscc/astrald/node/server"
 	"github.com/cryptopunkscc/astrald/node/storage"
+	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"log"
+	"sync"
 	"time"
 )
 
-type Node struct {
-	Config   *Config
-	Identity id.Identity
-	Ports    *hub.Hub
-	Network  *network.Network
-	Store    storage.Store
+const defaultQueryTimeout = time.Minute
+const defaultPeerIdleTimeout = 5 * time.Minute
 
-	futureEvent *FutureEvent
+type Node struct {
+	Config *Config
+
+	Contacts *contacts.Manager
+	identity id.Identity
+	Ports    *hub.Hub
+	Server   *server.Server
+	Linker   *linker.Manager
+	Store    storage.Store
+	Presence *presence.Presence
+
+	// peers
+	peers   map[string]*peer.Peer
+	peersMu sync.Mutex
+	queries chan *link.Query
+	events  *event.Queue
+
+	// networks
+	inet   *inet.Inet
+	tor    *tor.Tor
+	astral *iastral.Astral
 }
 
-// New returns a new instance of a node
-func New(astralDir string) *Node {
+// Run starts the node, waits for it to finish and returns an error if any
+func Run(ctx context.Context, astralDir string) (*Node, error) {
+	var err error
+
 	fs := storage.NewFilesystemStorage(astralDir)
 
 	identity := setupIdentity(fs)
@@ -35,19 +64,27 @@ func New(astralDir string) *Node {
 	config := loadConfig(fs)
 
 	node := &Node{
-		Store:       fs,
-		Identity:    identity,
-		Config:      config,
-		Ports:       hub.New(),
-		Network:     network.NewNetwork(config.Network, identity, fs),
-		futureEvent: NewFutureEvent(),
+		Store:    fs,
+		identity: identity,
+		Config:   config,
+		Ports:    hub.New(),
+		peers:    make(map[string]*peer.Peer),
+		queries:  make(chan *link.Query),
+		events:   event.NewQueue(),
 	}
 
-	return node
-}
+	node.addNetworks()
 
-// Run starts the node, waits for it to finish and returns an error if any
-func (node *Node) Run(ctx context.Context) error {
+	node.Contacts = contacts.New(fs)
+
+	// start the network
+	node.Linker = linker.New(node.identity, node.Contacts)
+
+	node.Server, err = server.Run(ctx, node.identity)
+	if err != nil {
+		panic(err)
+	}
+
 	// Start services
 	for name, srv := range services {
 		go func(name string, srv ServiceRunner) {
@@ -61,58 +98,117 @@ func (node *Node) Run(ctx context.Context) error {
 		}(name, srv)
 	}
 
-	// start the network
-	queryCh, eventCh, queryErrCh := node.Network.Run(ctx, node.Identity)
+	node.Presence = presence.Run(ctx)
 
+	err = node.Presence.Announce(ctx, node.identity)
+	if err != nil {
+		log.Println("announce error:", err)
+	}
+
+	go node.process(ctx)
+
+	return node, nil
+}
+
+func (node *Node) Identity() id.Identity {
+	return node.identity
+}
+
+func (node *Node) Alias() string {
+	return node.Config.Alias
+}
+
+func (node *Node) Follow(ctx context.Context) <-chan event.Eventer {
+	return node.events.Follow(ctx)
+}
+
+func (node *Node) AddLink(ctx context.Context, link *link.Link) error {
+	if link == nil {
+		panic("link is nil")
+	}
+
+	peer := node.makePeer(link.RemoteIdentity())
+
+	if err := peer.Add(link); err != nil {
+		return err
+	}
+
+	// forward link's requests
 	go func() {
-		time.Sleep(2 * time.Second)
-		log.Println("public info", node.Network.Info(true))
+		for query := range link.Queries() {
+			node.queries <- query
+		}
+		node.pushEvent(Event{Type: EventLinkDown, Link: link})
+
+		if len(peer.Links()) == 0 {
+			node.pushEvent(Event{Type: EventPeerUnlinked, Peer: peer})
+		}
 	}()
 
-	for {
-		select {
-		case query := <-queryCh:
-			go node.serveQuery(query)
+	node.pushEvent(Event{Type: EventLinkUp, Link: link})
 
-		case event := <-eventCh:
-			node.handleEvent(event)
+	links := peer.Links()
+	if len(links) == 1 {
+		node.pushEvent(Event{Type: EventPeerLinked, Peer: peer})
 
-		case err := <-queryErrCh:
-			log.Println("fatal error:", err)
-			return err
+		// set a timeout
+		sig.On(ctx, sig.Idle(ctx, peer, defaultPeerIdleTimeout), func() {
+			for l := range peer.Links() {
+				l.Close()
+			}
+		})
 
-		case <-ctx.Done():
-			return ctx.Err()
+		// if we only have an incoming link over tor, try to link back via other networks
+		l := <-links
+		if (l.Outbound() == false) && (l.Network() == tor.NetworkName) {
+			go node.Linker.NewLink(ctx, peer)
 		}
 	}
+
+	return nil
 }
 
-func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
-	if remoteID.IsZero() || remoteID.IsEqual(node.Identity) {
-		return node.Ports.Query(query, node.Identity)
+func (node *Node) Info(onlyPublic bool) *contacts.Contact {
+	addrs := make([]infra.Addr, 0)
+
+	for _, a := range astral.Addresses() {
+		if onlyPublic && !a.Public {
+			continue
+		}
+		addrs = append(addrs, a.Addr)
 	}
 
-	return node.Network.Query(ctx, remoteID, query)
+	info := &contacts.Contact{
+		Identity:  node.identity,
+		Addresses: addrs,
+	}
+
+	if !onlyPublic {
+		info.Alias = node.Alias()
+	}
+
+	return info
 }
 
-func (node *Node) ResolveIdentity(str string) (id.Identity, error) {
-	if id, err := id.ParsePublicKeyHex(str); err == nil {
-		return id, nil
-	}
+func (node *Node) process(ctx context.Context) {
+	for {
+		select {
+		case e := <-node.Presence.Events():
+			node.pushEvent(e)
 
-	target, found := node.Network.Contacts.ResolveAlias(str)
+		case l := <-node.Server.Links():
+			node.AddLink(ctx, l)
 
-	if !found {
-		return id.Identity{}, errors.New("unknown identity")
-	}
-	if str == target {
-		return id.Identity{}, errors.New("circular alias")
-	}
-	return node.ResolveIdentity(target)
-}
+		case l := <-node.Linker.Links():
+			node.AddLink(ctx, l)
 
-func (node *Node) FutureEvent() *FutureEvent {
-	return node.futureEvent
+		case query := <-node.queries:
+			go node.serveQuery(query)
+
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (node *Node) serveQuery(query *link.Query) {
@@ -150,20 +246,36 @@ func (node *Node) serveQuery(query *link.Query) {
 	}()
 }
 
-func (node *Node) handleEvent(event Eventer) {
+func (node *Node) pushEvent(event event.Eventer) {
 	switch event := event.(type) {
-	case network.Event:
+	case Event:
 		node.handleNetworkEvent(event)
+
+	case presence.Event:
+		node.handlePresenceEvent(event)
 	}
 
-	node.futureEvent = node.futureEvent.done(event)
+	node.events = node.events.Push(event)
 }
 
-func (node *Node) handleNetworkEvent(event network.Event) {
+func (node *Node) handleNetworkEvent(event Event) {
 	switch event.Event() {
-	case network.EventPeerLinked:
+	case EventPeerLinked:
 		log.Println(logfmt.ID(event.Peer.Identity()), "linked")
-	case network.EventPeerUnlinked:
+
+	case EventPeerUnlinked:
 		log.Println(logfmt.ID(event.Peer.Identity()), "unlinked")
+	}
+}
+
+func (node *Node) handlePresenceEvent(event presence.Event) {
+	switch event.Event() {
+	case presence.EventIdentityPresent:
+		log.Printf("%s present (%s)", logfmt.ID(event.Identity()), event.Addr().Network())
+
+		node.Contacts.AddAddr(event.Identity(), event.Addr())
+
+	case presence.EventIdentityGone:
+		log.Println(logfmt.ID(event.Identity()), "gone")
 	}
 }

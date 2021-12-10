@@ -33,7 +33,15 @@ func (inet *Inet) Announce(ctx context.Context, id id.Identity) error {
 	return nil
 }
 
-func (inet *Inet) announceOnInterface(ctx context.Context, id id.Identity, iface *ip.Interface) error {
+func (inet *Inet) announceOnInterface(ctx context.Context, id id.Identity, iface *ip.Interface) {
+	if inet.config.AnnounceOnlyIface != "" {
+		if inet.config.AnnounceOnlyIface != iface.Name() {
+			return
+		}
+	}
+
+	log.Println("announcing on", iface.Name())
+
 	for addr := range iface.WatchAddrs(ctx) {
 		// Skip non-private addresses
 		if !addr.IsPrivate() {
@@ -41,7 +49,7 @@ func (inet *Inet) announceOnInterface(ctx context.Context, id id.Identity, iface
 		}
 
 		go func(addr *ip.Addr) {
-			err := inet.announceOnAddress(ctx, id, addr)
+			err := inet.announceOnAddress(ctx, id, addr, iface.Name())
 			if err != nil {
 				// this error only means we lost the IP address, so it should be ignored
 				netUnreachable := strings.Contains(err.Error(), "network is unreachable")
@@ -53,10 +61,9 @@ func (inet *Inet) announceOnInterface(ctx context.Context, id id.Identity, iface
 			}
 		}(addr)
 	}
-	return nil
 }
 
-func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *ip.Addr) error {
+func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *ip.Addr, prefix string) error {
 	broadAddr, err := ip.BroadcastAddr(addr)
 	if err != nil {
 		return err
@@ -70,8 +77,8 @@ func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *i
 	}
 	defer broadConn.Close()
 
-	log.Println("start announce to", broadStr)
-	defer log.Println("stop announce to", broadStr)
+	log.Printf("[%s] announce to %s\n", prefix, broadStr)
+	defer log.Printf("[%s] stop announce to %s\n", prefix, broadStr)
 
 	announcement := makePresence(id, inet.listenPort, 0)
 

@@ -2,6 +2,7 @@ package astral
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/enc"
 	"github.com/cryptopunkscc/astrald/infra"
@@ -92,32 +93,27 @@ func (astral Astral) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, err
 		return nil, infra.ErrUnsupportedAddress
 	}
 
-	log.Println("connecting to", a.gate.PublicKeyHex())
+	if a.gate.IsEqual(astral.Node.Identity()) {
+		return nil, errors.New("cannot connect to self")
+	}
 
 	rwc, err := astral.Query(ctx, a.gate, ".gateway")
 	if err != nil {
-		log.Println("connect error:", err)
 		return nil, err
 	}
-
-	log.Println("sending identity", a.target.PublicKeyHex())
 
 	enc.WriteIdentity(rwc, a.target)
 
 	res, err := enc.ReadUint8(rwc)
 	if err != nil {
-		log.Println("rejected", err)
 		rwc.Close()
 		return nil, infra.ErrConnectionRefused
 	}
 
 	if res != 1 {
-		log.Println("rejected", res)
 		rwc.Close()
 		return nil, infra.ErrConnectionRefused
 	}
-
-	log.Println("connected", res)
 
 	return newConn(rwc, a, true), nil
 }

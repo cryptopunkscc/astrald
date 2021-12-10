@@ -16,6 +16,20 @@ type cmdMap map[string]cmdFunc
 
 var commands cmdMap
 
+func init() {
+	commands = cmdMap{
+		"help":     help,
+		"peers":    peers,
+		"link":     link,
+		"contacts": cmdContacts,
+		"info":     info,
+		"parse":    parse,
+		"add":      add,
+		"present":  present,
+	}
+	_ = _node.RegisterService("admin", listen)
+}
+
 func help(stream io.ReadWriter, _ *_node.Node, _ []string) error {
 	fmt.Fprintf(stream, "commands:")
 	for k := range commands {
@@ -29,8 +43,10 @@ func help(stream io.ReadWriter, _ *_node.Node, _ []string) error {
 func serve(stream io.ReadWriteCloser, node *_node.Node) {
 	defer stream.Close()
 
+	prompt := node.Alias() + promptString
+
 	scanner := bufio.NewScanner(stream)
-	stream.Write([]byte(promptString))
+	stream.Write([]byte(prompt))
 
 	for scanner.Scan() {
 		words := strings.Split(scanner.Text(), " ")
@@ -51,19 +67,19 @@ func serve(stream io.ReadWriteCloser, node *_node.Node) {
 		} else {
 			fmt.Fprintf(stream, "no such command\n")
 		}
-		stream.Write([]byte(promptString))
+		stream.Write([]byte(prompt))
 	}
 }
 
 func listen(ctx context.Context, node *_node.Node) error {
-	port, err := node.Ports.Register("admin")
+	port, err := node.Ports.RegisterContext(ctx, "admin")
 	if err != nil {
 		return err
 	}
 
 	for req := range port.Queries() {
 		// Only accept local requests
-		if !req.Caller().IsEqual(node.Identity) {
+		if !req.Caller().IsEqual(node.Identity()) {
 			req.Reject()
 			continue
 		}
@@ -73,17 +89,4 @@ func listen(ctx context.Context, node *_node.Node) error {
 	}
 
 	return nil
-}
-
-func init() {
-	commands = cmdMap{
-		"help":  help,
-		"peers": peers,
-		"link":  link,
-		"graph": graph,
-		"info":  info,
-		"parse": parse,
-		"add":   add,
-	}
-	_ = _node.RegisterService("admin", listen)
 }

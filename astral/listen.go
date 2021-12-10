@@ -2,20 +2,17 @@ package astral
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/astral/link"
-	"github.com/cryptopunkscc/astrald/auth"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"log"
 	"sync"
 )
 
-func (astral *Astral) Listen(ctx context.Context, localID id.Identity) (<-chan *link.Link, <-chan error) {
+func (astral *Astral) Listen(ctx context.Context) (<-chan infra.Conn, <-chan error) {
 	if astral.networks == nil {
 		return nil, nil
 	}
 
-	output, errCh := make(chan *link.Link), make(chan error, 1)
+	output, errCh := make(chan infra.Conn), make(chan error, 1)
 	wg := sync.WaitGroup{}
 
 	for _, network := range astral.networks {
@@ -24,13 +21,7 @@ func (astral *Astral) Listen(ctx context.Context, localID id.Identity) (<-chan *
 			defer wg.Done()
 			accept, netErrCh := network.Listen(ctx)
 			for conn := range accept {
-				authConn, err := auth.HandshakeInbound(ctx, conn, localID)
-				if err != nil {
-					conn.Close()
-					continue
-				}
-
-				output <- link.New(authConn)
+				output <- conn
 			}
 
 			err := <-netErrCh

@@ -12,39 +12,39 @@ import (
 
 const infoPrefix = "node1"
 
-type Info struct {
+type Contact struct {
 	Identity  id.Identity
 	Alias     string
 	Addresses []infra.Addr
 }
 
-func NewInfo(identity id.Identity) *Info {
-	return &Info{
+func NewContact(identity id.Identity) *Contact {
+	return &Contact{
 		Identity:  identity,
 		Addresses: make([]infra.Addr, 0),
 	}
 }
 
-func (info *Info) Add(addr infra.Addr) {
-	for _, a := range info.Addresses {
+func (contact *Contact) Add(addr infra.Addr) {
+	for _, a := range contact.Addresses {
 		if infra.AddrEqual(a, addr) {
 			return
 		}
 	}
-	info.Addresses = append(info.Addresses, addr)
+	contact.Addresses = append(contact.Addresses, addr)
 }
 
-func (info Info) Pack() []byte {
+func (contact Contact) Pack() []byte {
 	buf := &bytes.Buffer{}
-	_ = writeInfo(buf, &info)
+	_ = writeInfo(buf, &contact)
 	return buf.Bytes()
 }
 
-func (info Info) String() string {
-	return infoPrefix + base62.EncodeToString(info.Pack())
+func (contact Contact) String() string {
+	return infoPrefix + base62.EncodeToString(contact.Pack())
 }
 
-func ParseInfo(s string) (*Info, error) {
+func ParseInfo(s string) (*Contact, error) {
 	str := strings.TrimPrefix(s, infoPrefix)
 
 	data, err := base62.DecodeString(str)
@@ -55,22 +55,22 @@ func ParseInfo(s string) (*Info, error) {
 	return Unpack(data)
 }
 
-func Unpack(data []byte) (*Info, error) {
+func Unpack(data []byte) (*Contact, error) {
 	return readInfo(bytes.NewReader(data))
 }
 
-func writeInfo(w io.Writer, info *Info) error {
-	err := enc.WriteIdentity(w, info.Identity)
+func writeInfo(w io.Writer, c *Contact) error {
+	err := enc.WriteIdentity(w, c.Identity)
 	if err != nil {
 		return err
 	}
 
-	err = enc.WriteL8String(w, info.Alias)
+	err = enc.WriteL8String(w, c.Alias)
 	if err != nil {
 		return err
 	}
 
-	addrs := info.Addresses[:]
+	addrs := c.Addresses[:]
 	if len(addrs) > 255 {
 		addrs = addrs[:255]
 	}
@@ -89,7 +89,7 @@ func writeInfo(w io.Writer, info *Info) error {
 	return nil
 }
 
-func readInfo(r io.Reader) (*Info, error) {
+func readInfo(r io.Reader) (*Contact, error) {
 	_id, err := enc.ReadIdentity(r)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func readInfo(r io.Reader) (*Info, error) {
 		addrs = append(addrs, addr)
 	}
 
-	return &Info{
+	return &Contact{
 		Identity:  _id,
 		Alias:     alias,
 		Addresses: addrs,

@@ -14,10 +14,10 @@ import (
 var _ sig.Idler = &Peer{}
 
 type Peer struct {
-	links map[*link.Link]struct{}
 	id    id.Identity
-	mu    sync.Mutex
+	links map[*link.Link]struct{}
 	queue *sig.Queue
+	mu    sync.Mutex
 }
 
 func New(id id.Identity) *Peer {
@@ -42,7 +42,7 @@ func (peer *Peer) Add(link *link.Link) error {
 
 	peer.links[link] = struct{}{}
 
-	peer.queue.Push(nil)
+	peer.queue = peer.queue.Push(link)
 
 	go func() {
 		<-link.Wait()
@@ -59,15 +59,6 @@ func (peer *Peer) Links() <-chan *link.Link {
 	return peer.getLinks()
 }
 
-func (peer *Peer) getLinks() <-chan *link.Link {
-	ch := make(chan *link.Link, len(peer.links))
-	for link, _ := range peer.links {
-		ch <- link
-	}
-	close(ch)
-	return ch
-}
-
 func (peer *Peer) Idle() time.Duration {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
@@ -79,12 +70,28 @@ func (peer *Peer) Idle() time.Duration {
 	return l.Idle()
 }
 
-func (peer *Peer) StateQueue() *sig.Queue {
-	return peer.queue
-}
+func (peer *Peer) FollowLinks(ctx context.Context, onlyNew bool) <-chan *link.Link {
+	var ch chan *link.Link
 
-func (peer *Peer) Follow(ctx context.Context) <-chan interface{} {
-	return peer.queue.Follow(ctx)
+	if onlyNew {
+		ch = make(chan *link.Link)
+	} else {
+		peer.mu.Lock()
+		ch = make(chan *link.Link, len(peer.links))
+		for l := range peer.links {
+			ch <- l
+		}
+		peer.mu.Unlock()
+	}
+
+	go func() {
+		defer close(ch)
+		for i := range peer.queue.Follow(ctx) {
+			ch <- i.(*link.Link)
+		}
+	}()
+
+	return ch
 }
 
 func (peer *Peer) Query(query string) (io.ReadWriteCloser, error) {
@@ -107,7 +114,14 @@ func (peer *Peer) remove(link *link.Link) error {
 
 	delete(peer.links, link)
 
-	peer.queue.Push(nil)
-
 	return nil
+}
+
+func (peer *Peer) getLinks() <-chan *link.Link {
+	ch := make(chan *link.Link, len(peer.links))
+	for link, _ := range peer.links {
+		ch <- link
+	}
+	close(ch)
+	return ch
 }

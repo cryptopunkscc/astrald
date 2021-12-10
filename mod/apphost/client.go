@@ -48,9 +48,9 @@ func (c *Client) handleQuery(ctx context.Context, request proto.Request) error {
 	var remoteID id.Identity
 
 	if request.Identity == "" {
-		remoteID = c.node.Identity
+		remoteID = c.node.Identity()
 	} else {
-		remoteID, err = c.node.ResolveIdentity(request.Identity)
+		remoteID, err = c.node.Contacts.ResolveIdentity(request.Identity)
 		if err != nil {
 			return c.socket.Error(err.Error())
 		}

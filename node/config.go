@@ -2,7 +2,9 @@ package node
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/node/network"
+	iastral "github.com/cryptopunkscc/astrald/infra/astral"
+	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/node/storage"
 	"gopkg.in/yaml.v2"
 	"log"
@@ -12,7 +14,13 @@ import (
 const configKey = "astrald.conf"
 
 type Config struct {
-	Network network.Config `yaml:"network"`
+	Alias string `yaml:"alias"`
+
+	Net struct {
+		Inet   inet.Config    `yaml:"inet"`
+		Tor    tor.Config     `yaml:"tor"`
+		Astral iastral.Config `yaml:"astral"`
+	} `yaml:"net"`
 }
 
 var defaultConfig = Config{}

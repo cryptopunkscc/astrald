@@ -27,6 +27,10 @@ func Link(ctx context.Context, localID id.Identity, remoteID id.Identity, conn i
 // LinkFirst iterates over connCh and attempts to establish a link over each connection. It returns the first
 // successfully establlished link and closes all subsequest connections from connCh.
 func LinkFirst(ctx context.Context, localID id.Identity, remoteID id.Identity, connCh <-chan infra.Conn) *link.Link {
+	if localID.IsEqual(remoteID) {
+		return nil
+	}
+
 	// at the end, close all remaining connections
 	defer func() {
 		// do this in a new routine, otherwise return will hang until connCh is closed
@@ -42,6 +46,9 @@ func LinkFirst(ctx context.Context, localID id.Identity, remoteID id.Identity, c
 		if link, err := Link(ctx, localID, remoteID, conn); err == nil {
 			return link
 		} else {
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
 		}
 
 		select {

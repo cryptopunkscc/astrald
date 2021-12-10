@@ -2,7 +2,6 @@ package astral
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 )
@@ -13,8 +12,8 @@ func AddNetwork(network infra.Network) error {
 	return instance.AddNetwork(network)
 }
 
-func Listen(ctx context.Context, localID id.Identity) (<-chan *link.Link, <-chan error) {
-	return instance.Listen(ctx, localID)
+func Listen(ctx context.Context) (<-chan infra.Conn, <-chan error) {
+	return instance.Listen(ctx)
 }
 
 func Unpack(networkName string, addr []byte) (infra.Addr, error) {

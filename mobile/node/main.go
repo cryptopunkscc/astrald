@@ -2,9 +2,9 @@ package astralmobile
 
 import (
 	"context"
-	_node "github.com/cryptopunkscc/astrald/node"
 	_ "github.com/cryptopunkscc/astrald/mod/admin"
 	_ "github.com/cryptopunkscc/astrald/mod/apphost"
+	_node "github.com/cryptopunkscc/astrald/node"
 	"log"
 )
 
@@ -14,17 +14,21 @@ var stop context.CancelFunc
 func Start(astralHome string) error {
 	log.Println("Staring astrald")
 
-	// Instantiate the node
-	node := _node.New(astralHome)
-
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())
 
 	stop = shutdown
-	identity = node.Identity.String()
+	node, err := _node.Run(ctx, astralHome)
+	if err != nil {
+		panic(err)
+	}
+
+	identity = node.Identity().String()
+
+	<-ctx.Done()
 
 	// Run the node
-	return node.Run(ctx)
+	return nil
 }
 
 func Identity() string {

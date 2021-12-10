@@ -4,83 +4,96 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral/link"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/network"
-	"github.com/cryptopunkscc/astrald/node/network/contacts"
-	"github.com/cryptopunkscc/astrald/node/network/peer"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/logfmt"
+	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/contacts"
+	"github.com/cryptopunkscc/astrald/node/presence"
 	"io"
 	"log"
 )
 
 const serviceHandle = "info"
 
-func info(ctx context.Context, node *node.Node) error {
+var seen map[string]struct{}
+
+func info(ctx context.Context, node *_node.Node) error {
+	seen = map[string]struct{}{}
+
 	port, err := node.Ports.Register(serviceHandle)
 	if err != nil {
 		return err
 	}
-
-	go func() {
-		<-ctx.Done()
-		port.Close()
-	}()
+	defer port.Close()
 
 	go func() {
 		for query := range port.Queries() {
 			conn := query.Accept()
-			conn.Write(node.Network.Info(false).Pack())
+			conn.Write(node.Info(false).Pack())
 			conn.Close()
 		}
 	}()
 
 	go func() {
-		future := node.FutureEvent()
-		for {
-			select {
-			case <-future.Wait():
-				e := future.Event()
-				if e.Event() == network.EventPeerLinked {
-					event := e.(network.Event)
-					if err := queryInfo(node, event.Peer); err != nil {
-						if !errors.Is(err, link.ErrRejected) {
-							log.Println("[info] error fetching info:", err)
-						}
-					}
+		for e := range node.Follow(ctx) {
+			switch event := e.(type) {
+			case _node.Event:
+				if event.Event() == _node.EventPeerLinked {
+					refreshContact(ctx, node, event.Peer.Identity())
 				}
-				future = future.Next()
-			case <-ctx.Done():
-				return
+
+			case presence.Event:
+				if event.Event() == presence.EventIdentityPresent {
+					refreshContact(ctx, node, event.Identity())
+				}
 			}
 		}
 	}()
 
 	<-ctx.Done()
-	port.Close()
-
 	return nil
 }
 
-func queryInfo(node *node.Node, peer *peer.Peer) error {
-	// update peer info
-	conn, err := peer.Query(serviceHandle)
+func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity) {
+	if _, found := seen[identity.PublicKeyHex()]; found {
+		return
+	}
+
+	info, err := queryContact(ctx, node, identity)
+
 	if err != nil {
-		return err
+		if !errors.Is(err, link.ErrRejected) {
+			log.Printf("[%s] error fetching contact: %v\n", logfmt.ID(identity), err)
+			return
+		}
+	}
+
+	seen[identity.PublicKeyHex()] = struct{}{}
+	node.Contacts.AddInfo(info)
+
+	log.Printf("[%s] contact refreshed\n", logfmt.ID(identity))
+}
+
+func queryContact(ctx context.Context, node *_node.Node, identity id.Identity) (*contacts.Contact, error) {
+	// update peer info
+	conn, err := node.Query(ctx, identity, serviceHandle)
+
+	if err != nil {
+		return nil, err
 	}
 	packed, err := io.ReadAll(conn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	info, err := contacts.Unpack(packed)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	node.Network.Contacts.AddInfo(info)
-
-	return nil
+	return info, nil
 }
 
 func init() {
-	_ = node.RegisterService(serviceHandle, info)
+	_ = _node.RegisterService(serviceHandle, info)
 }

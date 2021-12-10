@@ -51,9 +51,6 @@ func main() {
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())
 
-	// Instantiate the node
-	node := node.New(astralRoot)
-
 	// Trap ctrl+c
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, syscall.SIGINT)
@@ -70,7 +67,12 @@ func main() {
 	}()
 
 	// start the node
-	err := node.Run(ctx)
+	_, err := node.Run(ctx, astralRoot)
+	if err != nil {
+		panic(err)
+	}
+
+	<-ctx.Done()
 
 	time.Sleep(50 * time.Millisecond)
 
