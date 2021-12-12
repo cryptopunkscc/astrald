@@ -40,8 +40,6 @@ func (inet *Inet) announceOnInterface(ctx context.Context, id id.Identity, iface
 		}
 	}
 
-	log.Println("announcing on", iface.Name())
-
 	for addr := range iface.WatchAddrs(ctx) {
 		// Skip non-private addresses
 		if !addr.IsPrivate() {
@@ -63,7 +61,7 @@ func (inet *Inet) announceOnInterface(ctx context.Context, id id.Identity, iface
 	}
 }
 
-func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *ip.Addr, prefix string) error {
+func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *ip.Addr, ifaceName string) error {
 	broadAddr, err := ip.BroadcastAddr(addr)
 	if err != nil {
 		return err
@@ -77,8 +75,8 @@ func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *i
 	}
 	defer broadConn.Close()
 
-	log.Printf("[%s] announce to %s\n", prefix, broadStr)
-	defer log.Printf("[%s] stop announce to %s\n", prefix, broadStr)
+	log.Printf("announce: %s (%s)\n", broadStr, ifaceName)
+	defer log.Printf("stop announce: %s (%s)\n", broadStr, ifaceName)
 
 	announcement := makePresence(id, inet.listenPort, 0)
 

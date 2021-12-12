@@ -2,9 +2,12 @@ package astralmobile
 
 import (
 	"context"
-	_ "github.com/cryptopunkscc/astrald/mod/admin"
-	_ "github.com/cryptopunkscc/astrald/mod/apphost"
-	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/connect"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
+	"github.com/cryptopunkscc/astrald/mod/info"
+	"github.com/cryptopunkscc/astrald/node"
 	"log"
 )
 
@@ -18,12 +21,20 @@ func Start(astralHome string) error {
 	ctx, shutdown := context.WithCancel(context.Background())
 
 	stop = shutdown
-	node, err := _node.Run(ctx, astralHome)
+	n, err := node.Run(
+		ctx,
+		astralHome,
+		admin.Admin{},
+		apphost.AppHost{},
+		connect.Connect{},
+		gateway.Gateway{},
+		info.Info{},
+	)
 	if err != nil {
 		panic(err)
 	}
 
-	identity = node.Identity().String()
+	identity = n.Identity().String()
 
 	<-ctx.Done()
 

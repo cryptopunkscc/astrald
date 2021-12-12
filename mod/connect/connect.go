@@ -6,8 +6,11 @@ import (
 )
 
 const serviceHandle = ".connect"
+const ModuleName = "connect"
 
-func connect(ctx context.Context, node *node.Node) error {
+type Connect struct{}
+
+func (Connect) Run(ctx context.Context, node *node.Node) error {
 	port, err := node.Ports.RegisterContext(ctx, serviceHandle)
 	if err != nil {
 		return err
@@ -27,6 +30,6 @@ func connect(ctx context.Context, node *node.Node) error {
 	return nil
 }
 
-func init() {
-	_ = node.RegisterService(serviceHandle, connect)
+func (Connect) String() string {
+	return ModuleName
 }

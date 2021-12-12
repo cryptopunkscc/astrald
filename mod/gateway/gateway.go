@@ -9,8 +9,11 @@ import (
 )
 
 const serviceHandle = ".gateway"
+const ModuleName = "gateway"
 
-func gateway(ctx context.Context, node *node.Node) error {
+type Gateway struct{}
+
+func (Gateway) Run(ctx context.Context, node *node.Node) error {
 	port, err := node.Ports.RegisterContext(ctx, serviceHandle)
 	if err != nil {
 		return err
@@ -42,8 +45,8 @@ func gateway(ctx context.Context, node *node.Node) error {
 	return nil
 }
 
-func init() {
-	_ = node.RegisterService(serviceHandle, gateway)
+func (Gateway) String() string {
+	return ModuleName
 }
 
 func join(ctx context.Context, left, right io.ReadWriteCloser) error {

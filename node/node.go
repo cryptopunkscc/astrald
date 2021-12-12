@@ -52,7 +52,7 @@ type Node struct {
 }
 
 // Run starts the node, waits for it to finish and returns an error if any
-func Run(ctx context.Context, astralDir string) (*Node, error) {
+func Run(ctx context.Context, astralDir string, modules ...ModuleRunner) (*Node, error) {
 	var err error
 
 	fs := storage.NewFilesystemStorage(astralDir)
@@ -85,18 +85,7 @@ func Run(ctx context.Context, astralDir string) (*Node, error) {
 		panic(err)
 	}
 
-	// Start services
-	for name, srv := range services {
-		go func(name string, srv ServiceRunner) {
-			log.Printf("starting %s...\n", name)
-			err := srv(ctx, node)
-			if err != nil {
-				log.Printf("%s failed: %v\n", name, err)
-			} else {
-				log.Printf("%s done.\n", name)
-			}
-		}(name, srv)
-	}
+	node.runModules(ctx, modules)
 
 	node.Presence = presence.Run(ctx)
 

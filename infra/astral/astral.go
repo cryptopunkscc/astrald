@@ -48,7 +48,6 @@ func NewAstral(node Node, config Config) *Astral {
 			},
 			Public: false,
 		})
-		log.Println("astral: added", gate)
 	}
 
 	return a

@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	_ "github.com/cryptopunkscc/astrald/mod/admin"
-	_ "github.com/cryptopunkscc/astrald/mod/apphost"
-	_ "github.com/cryptopunkscc/astrald/mod/connect"
-	_ "github.com/cryptopunkscc/astrald/mod/gateway"
-	_ "github.com/cryptopunkscc/astrald/mod/info"
+	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/connect"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
+	"github.com/cryptopunkscc/astrald/mod/info"
 	"github.com/cryptopunkscc/astrald/node"
 	"log"
 	"os"
@@ -67,7 +67,15 @@ func main() {
 	}()
 
 	// start the node
-	_, err := node.Run(ctx, astralRoot)
+	_, err := node.Run(
+		ctx,
+		astralRoot,
+		admin.Admin{},
+		apphost.AppHost{},
+		connect.Connect{},
+		gateway.Gateway{},
+		info.Info{},
+	)
 	if err != nil {
 		panic(err)
 	}

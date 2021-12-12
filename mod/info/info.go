@@ -14,10 +14,13 @@ import (
 )
 
 const serviceHandle = "info"
+const ModuleName = "info"
+
+type Info struct{}
 
 var seen map[string]struct{}
 
-func info(ctx context.Context, node *_node.Node) error {
+func (Info) Run(ctx context.Context, node *_node.Node) error {
 	seen = map[string]struct{}{}
 
 	port, err := node.Ports.Register(serviceHandle)
@@ -54,6 +57,10 @@ func info(ctx context.Context, node *_node.Node) error {
 	return nil
 }
 
+func (Info) String() string {
+	return ModuleName
+}
+
 func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity) {
 	if _, found := seen[identity.PublicKeyHex()]; found {
 		return
@@ -64,8 +71,8 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 	if err != nil {
 		if !errors.Is(err, link.ErrRejected) {
 			log.Printf("[%s] error fetching contact: %v\n", logfmt.ID(identity), err)
-			return
 		}
+		return
 	}
 
 	seen[identity.PublicKeyHex()] = struct{}{}
@@ -92,8 +99,4 @@ func queryContact(ctx context.Context, node *_node.Node, identity id.Identity) (
 	}
 
 	return info, nil
-}
-
-func init() {
-	_ = _node.RegisterService(serviceHandle, info)
 }

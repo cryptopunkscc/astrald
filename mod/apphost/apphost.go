@@ -7,7 +7,11 @@ import (
 	"net"
 )
 
-func main(ctx context.Context, node *_node.Node) error {
+type AppHost struct{}
+
+const ModuleName = "apphost"
+
+func (AppHost) Run(ctx context.Context, node *_node.Node) error {
 	for conn := range Serve(ctx) {
 		go func(conn net.Conn) {
 			client := NewClient(conn, node)
@@ -21,6 +25,6 @@ func main(ctx context.Context, node *_node.Node) error {
 	return nil
 }
 
-func init() {
-	_ = _node.RegisterService("apphost", main)
+func (AppHost) String() string {
+	return ModuleName
 }

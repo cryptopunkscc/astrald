@@ -10,24 +10,36 @@ import (
 )
 
 const promptString = "> "
+const ModuleName = "admin"
 
+type Admin struct{}
 type cmdFunc func(io.ReadWriter, *_node.Node, []string) error
 type cmdMap map[string]cmdFunc
 
 var commands cmdMap
 
-func init() {
-	commands = cmdMap{
-		"help":     help,
-		"peers":    peers,
-		"link":     link,
-		"contacts": cmdContacts,
-		"info":     info,
-		"parse":    parse,
-		"add":      add,
-		"present":  present,
+func (Admin) Run(ctx context.Context, node *_node.Node) error {
+	port, err := node.Ports.RegisterContext(ctx, "admin")
+	if err != nil {
+		return err
 	}
-	_ = _node.RegisterService("admin", listen)
+
+	for req := range port.Queries() {
+		// Only accept local requests
+		if !req.Caller().IsEqual(node.Identity()) {
+			req.Reject()
+			continue
+		}
+		conn := req.Accept()
+
+		go serve(conn, node)
+	}
+
+	return nil
+}
+
+func (Admin) String() string {
+	return ModuleName
 }
 
 func help(stream io.ReadWriter, _ *_node.Node, _ []string) error {
@@ -71,22 +83,15 @@ func serve(stream io.ReadWriteCloser, node *_node.Node) {
 	}
 }
 
-func listen(ctx context.Context, node *_node.Node) error {
-	port, err := node.Ports.RegisterContext(ctx, "admin")
-	if err != nil {
-		return err
+func init() {
+	commands = cmdMap{
+		"help":     help,
+		"peers":    peers,
+		"link":     link,
+		"contacts": cmdContacts,
+		"info":     info,
+		"parse":    parse,
+		"add":      add,
+		"present":  present,
 	}
-
-	for req := range port.Queries() {
-		// Only accept local requests
-		if !req.Caller().IsEqual(node.Identity()) {
-			req.Reject()
-			continue
-		}
-		conn := req.Accept()
-
-		go serve(conn, node)
-	}
-
-	return nil
 }
