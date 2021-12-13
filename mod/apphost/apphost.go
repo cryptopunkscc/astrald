@@ -18,7 +18,7 @@ func (AppHost) Run(ctx context.Context, node *_node.Node) error {
 
 			err := client.handle(ctx)
 			if err != nil {
-				log.Println("apphost: client error:", err)
+				log.Println("(apphost) client error:", err)
 			}
 		}(conn)
 	}

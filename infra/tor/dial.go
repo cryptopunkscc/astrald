@@ -5,26 +5,28 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"net"
 	"strconv"
-	"time"
 )
 
 // Dial tries to establish a Tor connection to the provided address
-func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
+func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err error) {
+	ctx, cancel := context.WithTimeout(ctx, tor.config.getDialTimeout())
+	defer cancel()
+
 	// Convert to Tor address
 	torAddr, ok := addr.(Addr)
 	if !ok {
 		return nil, infra.ErrUnsupportedAddress
 	}
 
-	var connCh = make(chan net.Conn)
-	var errCh = make(chan error)
+	var connCh = make(chan net.Conn, 1)
+	var errCh = make(chan error, 1)
 
 	// Attempt a connection in the background
 	go func() {
 		defer close(connCh)
 		defer close(errCh)
 
-		conn, err := tor.proxy.Dial("tcp", addr.String()+":"+strconv.Itoa(defaultListenPort))
+		c, err := tor.proxy.Dial("tcp", addr.String()+":"+strconv.Itoa(defaultListenPort))
 		if err != nil {
 			errCh <- err
 			return
@@ -32,21 +34,20 @@ func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 
 		// Return the connection if we're still waiting for it, close it otherwise
 		select {
-		case connCh <- conn:
+		case connCh <- c:
 		default:
-			conn.Close()
+			c.Close()
 		}
 	}()
 
 	// Wait for the first result
 	select {
-	case conn := <-connCh:
-		return newConn(conn, torAddr, true), nil
-	case err := <-errCh:
+	case c := <-connCh:
+		return newConn(c, torAddr, true), nil
+	case err = <-errCh:
 		return nil, err
-	case <-time.After(tor.config.getDialTimeout()):
-		return nil, infra.ErrDialTimeout
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		err = ctx.Err()
+		return nil, err
 	}
 }

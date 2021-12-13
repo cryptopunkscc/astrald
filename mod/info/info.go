@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/logfmt"
 	_node "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/presence"
@@ -70,7 +69,7 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 
 	if err != nil {
 		if !errors.Is(err, link.ErrRejected) {
-			log.Printf("[%s] error fetching contact: %v\n", logfmt.ID(identity), err)
+			log.Printf("[%s] error updating info: %v\n", node.Contacts.DisplayName(identity), err)
 		}
 		return
 	}
@@ -78,7 +77,7 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 	seen[identity.PublicKeyHex()] = struct{}{}
 	node.Contacts.AddInfo(info)
 
-	log.Printf("[%s] contact refreshed\n", logfmt.ID(identity))
+	log.Printf("[%s] updated info\n", node.Contacts.DisplayName(identity))
 }
 
 func queryContact(ctx context.Context, node *_node.Node, identity id.Identity) (*contacts.Contact, error) {

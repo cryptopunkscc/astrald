@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
-	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	_node "github.com/cryptopunkscc/astrald/node"
 	"log"
@@ -56,6 +55,8 @@ func (c *Client) handleQuery(ctx context.Context, request proto.Request) error {
 		}
 	}
 
+	log.Printf("(apphost) [%s] -> %s\n", c.node.Contacts.DisplayName(remoteID), request.Port)
+
 	conn, err := c.node.Query(ctx, remoteID, request.Port)
 	if err != nil {
 		return c.socket.Error(err.Error())
@@ -97,7 +98,7 @@ func (c *Client) handlePort(ctx context.Context, port *hub.Port, dest string) er
 	}()
 
 	for request := range port.Queries() {
-		log.Println("apphost:", logfmt.ID(request.Caller()), "queried", request.Query())
+		log.Printf("(apphost) [%s] <- %s\n", c.node.Contacts.DisplayName(request.Caller()), request.Query())
 
 		var rawConn net.Conn
 		var err error

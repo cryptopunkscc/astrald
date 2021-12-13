@@ -9,8 +9,8 @@ import (
 
 func cmdContacts(w io.ReadWriter, node *node.Node, _ []string) error {
 	for nodeID := range node.Contacts.Identities() {
-		fmt.Fprintln(w, "node", nodeID.PublicKeyHex())
-		fmt.Fprintln(w, "alias", node.Contacts.GetAlias(nodeID))
+		fmt.Fprintln(w, "node", node.Contacts.DisplayName(nodeID))
+		fmt.Fprintln(w, "pubkey", nodeID.PublicKeyHex())
 
 		for addr := range node.Contacts.Resolve(nodeID) {
 			printAddr(w, addr)

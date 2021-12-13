@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/logfmt"
 	"io"
 	"log"
 )
@@ -24,7 +23,7 @@ func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string)
 		return nil, err
 	}
 
-	log.Printf("-> [%s]:%s (%s)\n", logfmt.ID(remoteID), query, l.Network())
+	log.Printf("[%s] -> %s (%s)\n", node.Contacts.DisplayName(remoteID), query, l.Network())
 
 	return l.Query(query)
 }

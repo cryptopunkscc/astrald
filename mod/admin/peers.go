@@ -10,13 +10,10 @@ import (
 
 func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 	for peer := range node.Peers() {
-		peerID := logfmt.ID(peer.Identity())
-		if a := node.Contacts.GetAlias(peer.Identity()); a != "" {
-			peerID = a
-		}
+		peerName := node.Contacts.DisplayName(peer.Identity())
 
 		fmt.Fprintf(w, "peer %s (idle %s)\n",
-			peerID,
+			peerName,
 			peer.Idle().Round(time.Second),
 		)
 		for link := range peer.Links() {

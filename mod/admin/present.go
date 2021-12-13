@@ -6,9 +6,9 @@ import (
 	"io"
 )
 
-func present(w io.ReadWriter, node *node.Node, args []string) error {
+func present(w io.ReadWriter, node *node.Node, _ []string) error {
 	for i := range node.Presence.Identities() {
-		fmt.Fprintln(w, i.String())
+		fmt.Fprintln(w, node.Contacts.DisplayName(i))
 	}
 	return nil
 }

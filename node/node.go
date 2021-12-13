@@ -9,7 +9,6 @@ import (
 	iastral "github.com/cryptopunkscc/astrald/infra/astral"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
-	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -202,18 +201,17 @@ func (node *Node) process(ctx context.Context) {
 
 func (node *Node) serveQuery(query *link.Query) {
 	if query.String() == ".ping" {
-		log.Println("ping from", logfmt.ID(query.Caller()))
+		log.Printf("[%s] ping\n", node.Contacts.DisplayName(query.Caller()))
 		query.Reject()
 		return
 	}
 
-	log.Printf("<- [%s]:%s (%s)\n", logfmt.ID(query.Caller()), query, query.Link().Network())
+	log.Printf("[%s] <- %s (%s)\n", node.Contacts.DisplayName(query.Caller()), query, query.Link().Network())
 
 	// Query a session with the service
 	localStream, err := node.Ports.Query(query.String(), query.Caller())
 	if err != nil {
 		query.Reject()
-		log.Printf("%s rejected %s\n", logfmt.ID(query.Caller()), query.String())
 		return
 	}
 
@@ -250,21 +248,18 @@ func (node *Node) pushEvent(event event.Eventer) {
 func (node *Node) handleNetworkEvent(event Event) {
 	switch event.Event() {
 	case EventPeerLinked:
-		log.Println(logfmt.ID(event.Peer.Identity()), "linked")
-
+		log.Printf("[%s] linked\n", node.Contacts.DisplayName(event.Peer.Identity()))
 	case EventPeerUnlinked:
-		log.Println(logfmt.ID(event.Peer.Identity()), "unlinked")
+		log.Printf("[%s] unlinked\n", node.Contacts.DisplayName(event.Peer.Identity()))
 	}
 }
 
 func (node *Node) handlePresenceEvent(event presence.Event) {
 	switch event.Event() {
 	case presence.EventIdentityPresent:
-		log.Printf("%s present (%s)", logfmt.ID(event.Identity()), event.Addr().Network())
-
+		log.Printf("[%s] present (%s)\n", node.Contacts.DisplayName(event.Identity()), event.Addr().Network())
 		node.Contacts.AddAddr(event.Identity(), event.Addr())
-
 	case presence.EventIdentityGone:
-		log.Println(logfmt.ID(event.Identity()), "gone")
+		log.Printf("[%s] gone\n", node.Contacts.DisplayName(event.Identity()))
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/storage"
 	"gopkg.in/yaml.v2"
 	"io"
@@ -82,11 +83,18 @@ func (c *Manager) ResolveIdentity(str string) (id.Identity, error) {
 	return c.ResolveIdentity(target)
 }
 
-func (c *Manager) GetAlias(identity id.Identity) string {
-	if info, ok := c.info[identity.PublicKeyHex()]; ok {
-		return info.Alias
+func (c *Manager) DisplayName(identity id.Identity) string {
+	if identity.IsZero() {
+		return "unknown"
 	}
-	return ""
+
+	if info, ok := c.info[identity.PublicKeyHex()]; ok {
+		if info.Alias != "" {
+			return info.Alias
+		}
+	}
+
+	return logfmt.ID(identity)
 }
 
 // Identities returns a closed channel populated with all known node IDs
