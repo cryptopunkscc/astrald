@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/infra"
 	"net"
-	"strconv"
 )
 
 // Dial tries to establish a Tor connection to the provided address
@@ -26,7 +25,7 @@ func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err 
 		defer close(connCh)
 		defer close(errCh)
 
-		c, err := tor.proxy.Dial("tcp", addr.String()+":"+strconv.Itoa(defaultListenPort))
+		c, err := tor.proxy.Dial("tcp", addr.String())
 		if err != nil {
 			errCh <- err
 			return

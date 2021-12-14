@@ -19,6 +19,10 @@ func (node *Node) addNetworks() error {
 	}
 
 	// Configure tor
+	if node.Config.Net.Tor.DataDir == "" {
+		node.Config.Net.Tor.DataDir = node.dataDir
+	}
+
 	node.tor = tor.New(node.Config.Net.Tor)
 	err = astral.AddNetwork(node.tor)
 	if err != nil {

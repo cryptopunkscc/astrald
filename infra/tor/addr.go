@@ -4,17 +4,24 @@ import (
 	"bytes"
 	"encoding/base32"
 	"errors"
+	"fmt"
+	"github.com/cryptopunkscc/astrald/enc"
 	"github.com/cryptopunkscc/astrald/infra"
 	"io"
+	"strconv"
 	"strings"
 )
+
+const v2KeyLength = 10
+const v3KeyLength = 35
 
 // Type check
 var _ infra.Addr = Addr{}
 
 // Addr holds information about a Tor address
 type Addr struct {
-	bytes []byte
+	digest []byte
+	port   uint16
 }
 
 // Network returns the name of the network the address belongs to
@@ -24,31 +31,33 @@ func (addr Addr) Network() string {
 
 // String returns a human-readable representation of the address
 func (addr Addr) String() string {
-	if len(addr.bytes) == 0 {
-		return "unknown"
+	if addr.IsZero() {
+		return "none"
 	}
-	return strings.ToLower(base32.StdEncoding.EncodeToString(addr.bytes)) + ".onion"
+
+	return fmt.Sprintf("%s.onion:%d", strings.ToLower(base32.StdEncoding.EncodeToString(addr.digest)), addr.port)
 }
 
 // Pack returns binary representation of the address
 func (addr Addr) Pack() []byte {
-	packed := make([]byte, len(addr.bytes)+1)
-	packed[0] = byte(addr.Version())
-	copy(packed[1:], addr.bytes[:])
-	return packed
+	b := &bytes.Buffer{}
+	enc.Write(b, byte(addr.Version()))
+	enc.Write(b, addr.digest)
+	enc.Write(b, addr.port)
+	return b.Bytes()
 }
 
 // IsZero returns true if the address has zero-value
 func (addr Addr) IsZero() bool {
-	return (addr.bytes == nil) || (len(addr.bytes) == 0)
+	return (addr.digest == nil) || (len(addr.digest) == 0)
 }
 
 // Version returns the version of Tor address (2 or 3) or 0 if the address data is errorous
 func (addr Addr) Version() int {
-	switch len(addr.bytes) {
-	case 10:
+	switch len(addr.digest) {
+	case v2KeyLength:
 		return 2
-	case 35:
+	case v3KeyLength:
 		return 3
 	}
 	return 0
@@ -56,16 +65,31 @@ func (addr Addr) Version() int {
 
 // Parse parses a string representation of a Tor address (both v2 and v3 are supported)
 func Parse(s string) (Addr, error) {
-	b32data := strings.TrimSuffix(strings.ToUpper(s), ".ONION")
+	var err error
+	var port = defaultListenPort
+	var hostPort = strings.SplitN(s, ":", 2)
+
+	if len(hostPort) > 1 {
+		port, err = strconv.Atoi(hostPort[1])
+		if err != nil {
+			return Addr{}, fmt.Errorf("invalid address: %w", err)
+		}
+	}
+
+	b32data := strings.TrimSuffix(strings.ToUpper(hostPort[0]), ".ONION")
 
 	bytes, err := base32.StdEncoding.DecodeString(b32data)
 	if err != nil {
-		return Addr{}, err
+		return Addr{}, fmt.Errorf("invalid address: %w", err)
 	}
 
-	addr := Addr{bytes: bytes}
+	addr := Addr{
+		digest: bytes,
+		port:   uint16(port),
+	}
+
 	if addr.Version() == 0 {
-		return Addr{}, errors.New("not a supported tor address")
+		return Addr{}, errors.New("invalid address")
 	}
 
 	return addr, nil
@@ -84,9 +108,9 @@ func Unpack(data []byte) (Addr, error) {
 
 	switch version {
 	case 2:
-		keyBytes = make([]byte, 10)
+		keyBytes = make([]byte, v2KeyLength)
 	case 3:
-		keyBytes = make([]byte, 35)
+		keyBytes = make([]byte, v3KeyLength)
 	default:
 		return Addr{}, errors.New("invalid version")
 	}
@@ -96,7 +120,13 @@ func Unpack(data []byte) (Addr, error) {
 		return Addr{}, err
 	}
 
+	port, err := enc.ReadUint16(r)
+	if err != nil {
+		return Addr{}, errors.New("invalid port")
+	}
+
 	return Addr{
-		bytes: keyBytes,
+		digest: keyBytes,
+		port:   port,
 	}, nil
 }

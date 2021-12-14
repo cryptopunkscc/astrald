@@ -11,6 +11,7 @@ type Config struct {
 	TorProxy    string `yaml:"tor_proxy"`
 	ControlAddr string `yaml:"control_addr"`
 	DialTimeout string `yaml:"dial_timeout"`
+	DataDir     string `yaml:"data_dir"`
 	ListenPort  int
 	cont        string
 }

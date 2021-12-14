@@ -2,79 +2,98 @@ package tor
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
-	"io/ioutil"
+	"github.com/cryptopunkscc/astrald/infra/tor/tc"
 	"log"
 	"net"
-	"os"
-	"path"
+	"time"
 )
+
+const retryInterval = 15 * time.Second
+const pingInterval = time.Minute
 
 func (tor *Tor) Listen(ctx context.Context) (<-chan infra.Conn, <-chan error) {
 	output, errCh := make(chan infra.Conn), make(chan error)
 
-	ctl, err := Open(tor.config.getContolAddr())
+	// Set up the listener for incoming tor connections
+	tcpListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, singleErrCh(err)
 	}
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, singleErrCh(err)
-	}
+	// close the listener when context is done
+	go func() {
+		<-ctx.Done()
+		tcpListener.Close()
+	}()
 
-	key := ""
-	newKey := true
-
-	bytes, err := ioutil.ReadFile(keyPath())
-	if err == nil {
-		key = string(bytes)
-		newKey = false
-	}
-
-	srv, err := ctl.StartService(
-		key,
-		map[int]string{
-			tor.config.getListenPort(): listener.Addr().String(),
-		},
-	)
-	if err != nil {
-		return nil, singleErrCh(err)
-	}
-
-	tor.serviceAddr, _ = Parse(srv.serviceID)
-
-	log.Printf("listen tor %s.onion:%d\n", srv.serviceID, defaultListenPort)
-	if newKey {
-		ioutil.WriteFile(keyPath(), []byte(srv.PrivateKey()), 0600)
-	}
-
+	// process incoming connections
 	go func() {
 		defer close(output)
-
-		go func() {
-			<-ctx.Done()
-			listener.Close()
-		}()
-
 		for {
-			conn, err := listener.Accept()
+			conn, err := tcpListener.Accept()
 			if err != nil {
-				break
+				return
 			}
 			output <- newConn(conn, Addr{}, false)
 		}
+	}()
 
-		log.Printf("closed tor %s.onion:%d\n", srv.serviceID, defaultListenPort)
+	// keep the onion up
+	go func() {
+		key, err := tor.getPrivateKey()
+		if err != nil {
+			return
+		}
 
-		srv.Close()
+		for {
+			err := tor.runOnion(ctx, key, tor.config.getListenPort(), tcpListener.Addr().String())
+			if err != nil {
+				log.Println("(tor) listen error:", err)
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(retryInterval):
+			}
+		}
 	}()
 
 	return output, errCh
 }
 
-// TODO: figure out how to do driver cache nicely
-func keyPath() string {
-	home, _ := os.UserHomeDir()
-	return path.Join(home, ".config", "astrald", "tor.key")
+func (tor *Tor) runOnion(ctx context.Context, key string, port int, target string) error {
+	ctl, err := tor.connect()
+	if err != nil {
+		return err
+	}
+	defer ctl.Close()
+
+	onion, err := ctl.AddOnion(key, tc.Port(port, target))
+	if err != nil {
+		return err
+	}
+
+	defer ctl.DelOnion(onion.ServiceID)
+
+	tor.serviceAddr, _ = Parse(onion.ServiceID)
+
+	log.Printf("(tor) listen %s\n", tor.serviceAddr.String())
+
+	for {
+		select {
+		case <-time.After(pingInterval):
+			ctl.GetConf("ControlPort") // ping the daemon
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ctl.WaitClose():
+			return errors.New("connection lost")
+		}
+	}
+}
+
+func (tor *Tor) connect() (*tc.Control, error) {
+	return tc.Open(tc.Config{ControlAddr: tor.config.ControlAddr})
 }

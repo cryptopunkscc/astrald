@@ -31,12 +31,14 @@ type Node struct {
 	Config *Config
 
 	Contacts *contacts.Manager
-	identity id.Identity
 	Ports    *hub.Hub
 	Server   *server.Server
 	Linker   *linker.Manager
 	Store    storage.Store
 	Presence *presence.Presence
+
+	identity id.Identity
+	dataDir  string
 
 	// peers
 	peers   map[string]*peer.Peer
@@ -51,10 +53,10 @@ type Node struct {
 }
 
 // Run starts the node, waits for it to finish and returns an error if any
-func Run(ctx context.Context, astralDir string, modules ...ModuleRunner) (*Node, error) {
+func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, error) {
 	var err error
 
-	fs := storage.NewFilesystemStorage(astralDir)
+	fs := storage.NewFilesystemStorage(dataDir)
 
 	identity := setupIdentity(fs)
 
@@ -63,8 +65,9 @@ func Run(ctx context.Context, astralDir string, modules ...ModuleRunner) (*Node,
 	config := loadConfig(fs)
 
 	node := &Node{
-		Store:    fs,
 		identity: identity,
+		dataDir:  dataDir,
+		Store:    fs,
 		Config:   config,
 		Ports:    hub.New(),
 		peers:    make(map[string]*peer.Peer),
