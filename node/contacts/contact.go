@@ -1,13 +1,9 @@
 package contacts
 
 import (
-	"bytes"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/enc"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/logfmt"
-	"github.com/cryptopunkscc/astrald/nodeinfo"
-	"io"
 	"sync"
 	"time"
 )
@@ -70,76 +66,4 @@ func (c *Contact) Remove(addr infra.Addr) {
 			return
 		}
 	}
-}
-
-func (c Contact) Pack() []byte {
-	buf := &bytes.Buffer{}
-	_ = writeInfo(buf, &c)
-	return buf.Bytes()
-}
-
-func Unpack(data []byte) (*Contact, error) {
-	return readInfo(bytes.NewReader(data))
-}
-
-func writeInfo(w io.Writer, c *Contact) error {
-	err := enc.WriteIdentity(w, c.Identity())
-	if err != nil {
-		return err
-	}
-
-	err = enc.WriteL8String(w, c.Alias())
-	if err != nil {
-		return err
-	}
-
-	addrs := c.Addresses[:]
-	if len(addrs) > 255 {
-		addrs = addrs[:255]
-	}
-
-	err = enc.Write(w, uint8(len(addrs)))
-	if err != nil {
-		return err
-	}
-
-	for _, addr := range addrs {
-		if err := nodeinfo.WriteAddr(w, addr); err != nil {
-			return nil
-		}
-	}
-
-	return nil
-}
-
-func readInfo(r io.Reader) (*Contact, error) {
-	identity, err := enc.ReadIdentity(r)
-	if err != nil {
-		return nil, err
-	}
-
-	alias, err := enc.ReadL8String(r)
-	if err != nil {
-		return nil, err
-	}
-
-	count, err := enc.ReadUint8(r)
-	if err != nil {
-		return nil, err
-	}
-
-	addrs := make([]Addr, 0, count)
-	for i := 0; i < int(count); i++ {
-		addr, err := nodeinfo.ReadAddr(r)
-		if err != nil {
-			return nil, err
-		}
-		addrs = append(addrs, Addr{Addr: addr, ExpiresAt: time.Now().Add(defaultAddressValidity)})
-	}
-
-	return &Contact{
-		identity:  identity,
-		alias:     alias,
-		Addresses: addrs,
-	}, nil
 }

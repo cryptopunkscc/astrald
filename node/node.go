@@ -173,26 +173,20 @@ func (node *Node) NodeInfo() *nodeinfo.NodeInfo {
 	return i
 }
 
-func (node *Node) Info(onlyPublic bool) *contacts.Contact {
-	addrs := make([]infra.Addr, 0)
+func (node *Node) Addresses() []infra.AddrSpec {
+	return astral.Addresses()
+}
 
-	for _, a := range astral.Addresses() {
-		if onlyPublic && !a.Global {
-			continue
-		}
-		addrs = append(addrs, a.Addr)
+func (node *Node) UnpackAddr(network string, data []byte) (infra.Addr, error) {
+	switch network {
+	case tor.NetworkName:
+		return tor.Unpack(data)
+	case inet.NetworkName:
+		return inet.Unpack(data)
+	case iastral.NetworkName:
+		return iastral.Unpack(data)
 	}
-
-	c := contacts.NewContact(node.identity)
-	for _, a := range addrs {
-		c.Add(a)
-	}
-
-	if !onlyPublic {
-		c.SetAlias(node.Alias())
-	}
-
-	return c
+	return NewUnsupportedAddr(network, data), nil
 }
 
 func (node *Node) process(ctx context.Context) {

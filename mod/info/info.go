@@ -2,11 +2,12 @@ package info
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	_node "github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"io"
 	"log"
@@ -18,6 +19,17 @@ const ModuleName = "info"
 type Info struct{}
 
 var seen map[string]struct{}
+
+type Addr struct {
+	Network string
+	Data    string
+	Public  bool
+}
+
+type Node struct {
+	Alias     string
+	Addresses []Addr
+}
 
 func (Info) Run(ctx context.Context, node *_node.Node) error {
 	seen = map[string]struct{}{}
@@ -31,7 +43,11 @@ func (Info) Run(ctx context.Context, node *_node.Node) error {
 	go func() {
 		for query := range port.Queries() {
 			conn := query.Accept()
-			conn.Write(node.Info(false).Pack())
+
+			info := getInfo(node)
+			bytes, _ := json.Marshal(info)
+
+			conn.Write(bytes)
 			conn.Close()
 		}
 	}()
@@ -60,12 +76,30 @@ func (Info) String() string {
 	return ModuleName
 }
 
+func getInfo(node *_node.Node) *Node {
+	info := &Node{
+		Addresses: make([]Addr, 0),
+	}
+
+	info.Alias = node.Alias()
+
+	for _, a := range node.Addresses() {
+		info.Addresses = append(info.Addresses, Addr{
+			Network: a.Network(),
+			Data:    hex.EncodeToString(a.Pack()),
+			Public:  false,
+		})
+	}
+
+	return info
+}
+
 func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity) {
 	if _, found := seen[identity.PublicKeyHex()]; found {
 		return
 	}
 
-	updated, err := queryContact(ctx, node, identity)
+	info, err := queryContact(ctx, node, identity)
 
 	if err != nil {
 		if !errors.Is(err, link.ErrRejected) {
@@ -78,11 +112,21 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 
 	c := node.Contacts.Find(identity, true)
 	if c.Alias() == "" {
-		c.SetAlias(updated.Alias())
+		c.SetAlias(info.Alias)
 	}
 
-	for _, a := range updated.Addresses {
-		c.Add(a)
+	for _, a := range info.Addresses {
+		data, err := hex.DecodeString(a.Data)
+		if err != nil {
+			continue
+		}
+
+		addr, err := node.UnpackAddr(a.Network, data)
+		if err != nil {
+			continue
+		}
+
+		c.Add(addr)
 	}
 
 	node.Contacts.Save()
@@ -90,20 +134,20 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 	log.Printf("(info) [%s] updated\n", node.Contacts.DisplayName(identity))
 }
 
-func queryContact(ctx context.Context, node *_node.Node, identity id.Identity) (*contacts.Contact, error) {
+func queryContact(ctx context.Context, node *_node.Node, identity id.Identity) (*Node, error) {
 	// update peer info
 	conn, err := node.Query(ctx, identity, serviceHandle)
 
 	if err != nil {
 		return nil, err
 	}
-	packed, err := io.ReadAll(conn)
+	data, err := io.ReadAll(conn)
 	if err != nil {
 		return nil, err
 	}
 
-	info, err := contacts.Unpack(packed)
-	if err != nil {
+	var info = &Node{}
+	if err := json.Unmarshal(data, &info); err != nil {
 		return nil, err
 	}
 
