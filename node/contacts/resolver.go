@@ -6,5 +6,5 @@ import (
 )
 
 type Resolver interface {
-	Resolve(nodeID id.Identity) <-chan infra.Addr
+	Lookup(nodeID id.Identity) <-chan infra.Addr
 }

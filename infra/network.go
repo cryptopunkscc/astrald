@@ -31,7 +31,7 @@ type Network interface {
 	Discover(ctx context.Context) (<-chan Presence, error)
 
 	// Addresses returns a list of our addresses on this network
-	Addresses() []AddrDesc
+	Addresses() []AddrSpec
 }
 
 // Presence holds information about an identity present on the network

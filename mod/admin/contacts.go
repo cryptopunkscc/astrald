@@ -8,15 +8,16 @@ import (
 )
 
 func cmdContacts(w io.ReadWriter, node *node.Node, _ []string) error {
-	for nodeID := range node.Contacts.Identities() {
-		fmt.Fprintln(w, "node", node.Contacts.DisplayName(nodeID))
-		fmt.Fprintln(w, "pubkey", nodeID.PublicKeyHex())
+	for c := range node.Contacts.All() {
+		fmt.Fprintln(w, "node", c.DisplayName())
+		fmt.Fprintln(w, "pubkey", c.Identity().PublicKeyHex())
 
-		for addr := range node.Contacts.Resolve(nodeID) {
+		for _, addr := range c.Addresses {
 			printAddr(w, addr)
 		}
 		fmt.Fprintln(w)
 	}
+
 	return nil
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"io"
 	"log"
-	"strings"
 )
 
 const NetworkName = "astral"
@@ -22,15 +21,15 @@ type Node interface {
 
 type Astral struct {
 	Node
-	config      Config
-	publicAddrs []infra.AddrDesc
+	config   Config
+	gateways []infra.AddrSpec
 }
 
 func NewAstral(node Node, config Config) *Astral {
 	a := &Astral{
-		Node:        node,
-		config:      config,
-		publicAddrs: make([]infra.AddrDesc, 0),
+		Node:     node,
+		config:   config,
+		gateways: make([]infra.AddrSpec, 0),
 	}
 
 	// Add public addresses
@@ -41,12 +40,12 @@ func NewAstral(node Node, config Config) *Astral {
 			continue
 		}
 
-		a.publicAddrs = append(a.publicAddrs, infra.AddrDesc{
+		a.gateways = append(a.gateways, infra.AddrSpec{
 			Addr: Addr{
 				gate:   gate,
 				target: node.Identity().Public(),
 			},
-			Public: false,
+			Global: true,
 		})
 	}
 
@@ -54,27 +53,13 @@ func NewAstral(node Node, config Config) *Astral {
 }
 
 func Parse(str string) (Addr, error) {
-	parts := strings.Split(str, ":")
-	if len(parts) != 2 {
-		return Addr{}, infra.ErrInvalidAddress
-	}
-
-	targetKey := parts[1]
-	gateKey := parts[0]
-
-	gate, err := id.ParsePublicKeyHex(gateKey)
+	gate, err := id.ParsePublicKeyHex(str)
 	if err != nil {
-		return Addr{}, infra.ErrInvalidAddress
-	}
-
-	target, err := id.ParsePublicKeyHex(targetKey)
-	if err != nil {
-		return Addr{}, infra.ErrInvalidAddress
+		return Addr{}, err
 	}
 
 	return Addr{
-		gate:   gate,
-		target: target,
+		gate: gate,
 	}, nil
 }
 
@@ -117,8 +102,8 @@ func (astral Astral) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, err
 	return newConn(rwc, a, true), nil
 }
 
-func (astral Astral) Addresses() []infra.AddrDesc {
-	return astral.publicAddrs
+func (astral Astral) Addresses() []infra.AddrSpec {
+	return astral.gateways
 }
 
 func (astral Astral) Listen(context.Context) (<-chan infra.Conn, <-chan error) {

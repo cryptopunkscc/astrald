@@ -4,12 +4,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
 	"io"
 )
 
+var encoding = binary.BigEndian
+
 func Write(w io.Writer, i interface{}) error {
-	return binary.Write(w, binary.BigEndian, i)
+	return binary.Write(w, encoding, i)
 }
 
 func WriteL8String(w io.Writer, str string) error {
@@ -34,30 +35,12 @@ func WriteL8Bytes(w io.Writer, bytes []byte) error {
 }
 
 func WriteIdentity(w io.Writer, id id.Identity) error {
-	_, err := w.Write(id.PublicKey().SerializeCompressed())
-	return err
-}
-
-func WriteAddr(w io.Writer, addr infra.Addr) error {
-	switch addr.Network() {
-	case "inet":
-		if err := Write(w, uint8(0)); err != nil {
-			return err
-		}
-	case "tor":
-		if err := Write(w, uint8(1)); err != nil {
-			return err
-		}
-	default:
-		if err := Write(w, uint8(255)); err != nil {
-			return err
-		}
-		if err := WriteL8String(w, addr.Network()); err != nil {
-			return err
-		}
-	}
-	if err := WriteL8Bytes(w, addr.Pack()); err != nil {
+	// Zero identity is encoded as 33 zero bytes
+	if id.IsZero() {
+		var empty [33]byte
+		_, err := w.Write(empty[:])
 		return err
 	}
-	return nil
+	_, err := w.Write(id.PublicKey().SerializeCompressed())
+	return err
 }

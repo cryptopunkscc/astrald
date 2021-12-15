@@ -24,7 +24,7 @@ func NetworkNames() []string {
 	return instance.NetworkNames()
 }
 
-func Addresses() []infra.AddrDesc {
+func Addresses() []infra.AddrSpec {
 	return instance.Addresses()
 }
 

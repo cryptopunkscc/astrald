@@ -42,8 +42,8 @@ func (astral *Astral) NetworkNames() []string {
 	return names
 }
 
-func (astral *Astral) Addresses() []infra.AddrDesc {
-	list := make([]infra.AddrDesc, 0)
+func (astral *Astral) Addresses() []infra.AddrSpec {
+	list := make([]infra.AddrSpec, 0)
 
 	for _, network := range astral.networks {
 		list = append(list, network.Addresses()...)

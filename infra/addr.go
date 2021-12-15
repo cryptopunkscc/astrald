@@ -8,9 +8,9 @@ type Addr interface {
 	Pack() []byte    // serialized binary address data
 }
 
-type AddrDesc struct {
+type AddrSpec struct {
 	Addr
-	Public bool
+	Global bool
 }
 
 func AddrEqual(a, b Addr) bool {

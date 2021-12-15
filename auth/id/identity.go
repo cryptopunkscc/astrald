@@ -42,6 +42,11 @@ func ParsePrivateKey(data []byte) (Identity, error) {
 }
 
 func ParsePublicKey(pkData []byte) (Identity, error) {
+	// All zeroes are valid zero identity
+	if isAllNull(pkData) {
+		return Identity{}, nil
+	}
+
 	key, err := btcec.ParsePubKey(pkData, btcec.S256())
 	if err != nil {
 		return Identity{}, err
@@ -50,6 +55,15 @@ func ParsePublicKey(pkData []byte) (Identity, error) {
 	return Identity{
 		publicKey: key,
 	}, nil
+}
+
+func isAllNull(data []byte) bool {
+	for _, b := range data {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func ParsePublicKeyHex(hexKey string) (Identity, error) {

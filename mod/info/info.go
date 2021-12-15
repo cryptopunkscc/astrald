@@ -65,19 +65,29 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 		return
 	}
 
-	info, err := queryContact(ctx, node, identity)
+	updated, err := queryContact(ctx, node, identity)
 
 	if err != nil {
 		if !errors.Is(err, link.ErrRejected) {
-			log.Printf("[%s] error updating info: %v\n", node.Contacts.DisplayName(identity), err)
+			log.Printf("(info) [%s] update error: %v\n", node.Contacts.DisplayName(identity), err)
 		}
 		return
 	}
 
 	seen[identity.PublicKeyHex()] = struct{}{}
-	node.Contacts.AddInfo(info)
 
-	log.Printf("[%s] updated info\n", node.Contacts.DisplayName(identity))
+	c := node.Contacts.Find(identity, true)
+	if c.Alias() == "" {
+		c.SetAlias(updated.Alias())
+	}
+
+	for _, a := range updated.Addresses {
+		c.Add(a)
+	}
+
+	node.Contacts.Save()
+
+	log.Printf("(info) [%s] updated\n", node.Contacts.DisplayName(identity))
 }
 
 func queryContact(ctx context.Context, node *_node.Node, identity id.Identity) (*contacts.Contact, error) {

@@ -27,7 +27,7 @@ func (l *ConcurrentLinker) getConcurrency() int {
 
 func (l *ConcurrentLinker) Link(ctx context.Context) *link.Link {
 	// get current addresses for the node
-	addrs := l.Resolver.Resolve(l.RemoteID)
+	addrs := l.Resolver.Lookup(l.RemoteID)
 
 	// try to link
 	rawLink := astral.LinkFirst(ctx,

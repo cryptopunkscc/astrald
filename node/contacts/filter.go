@@ -14,8 +14,8 @@ type FilteredResolver struct {
 	filter FilterFunc
 }
 
-func (f *FilteredResolver) Resolve(nodeID id.Identity) <-chan infra.Addr {
-	var addrs = f.parent.Resolve(nodeID)
+func (f *FilteredResolver) Lookup(nodeID id.Identity) <-chan infra.Addr {
+	var addrs = f.parent.Lookup(nodeID)
 
 	var ch = make(chan infra.Addr, len(addrs))
 	for addr := range addrs {

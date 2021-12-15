@@ -1,214 +1,168 @@
 package contacts
 
 import (
-	"bytes"
+	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/storage"
-	"gopkg.in/yaml.v2"
-	"io"
+	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"log"
 	"sync"
 )
 
-const graphKey = "graph"
-const aliasesKey = "aliases"
+const contactsKey = "contacts.json"
 
 var _ Resolver = &Manager{}
 
 type Manager struct {
-	store   storage.Store
-	mu      sync.Mutex
-	info    map[string]*Contact
-	aliases map[string]string
+	contacts map[string]*Contact
+	store    storage.Store
+	mu       sync.Mutex
 }
 
 func New(store storage.Store) *Manager {
 	c := &Manager{
-		store:   store,
-		info:    make(map[string]*Contact),
-		aliases: make(map[string]string),
+		store:    store,
+		contacts: make(map[string]*Contact),
 	}
 
-	c.load()
+	if err := c.load(); err != nil {
+		log.Println("load contacts error:", err)
+	}
 
 	return c
 }
 
-// Resolve returns all known addresses of a node via channel
-func (c *Manager) Resolve(nodeID id.Identity) <-chan infra.Addr {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (m *Manager) DisplayName(identity id.Identity) string {
+	if identity.IsZero() {
+		return "unknown"
+	}
 
-	info := c.info[nodeID.PublicKeyHex()]
-	if info == nil {
+	if c := m.Find(identity, false); c != nil {
+		return c.DisplayName()
+	}
+
+	return logfmt.ID(identity)
+}
+
+func (m *Manager) Find(identity id.Identity, create bool) *Contact {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	hex := identity.PublicKeyHex()
+
+	if c, found := m.contacts[hex]; found {
+		return c
+	}
+
+	if create {
+		m.contacts[hex] = NewContact(identity)
+		return m.contacts[hex]
+	}
+
+	return nil
+}
+
+func (m *Manager) FindByAlias(alias string) (*Contact, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, c := range m.contacts {
+		if c.Alias() == alias {
+			return c, true
+		}
+	}
+
+	return nil, false
+}
+
+func (m *Manager) ResolveIdentity(str string) (id.Identity, error) {
+	if id, err := id.ParsePublicKeyHex(str); err == nil {
+		return id, nil
+	}
+
+	if c, found := m.FindByAlias(str); found {
+		return c.Identity(), nil
+	}
+
+	return id.Identity{}, errors.New("unknown identity")
+}
+
+func (m *Manager) AddNodeInfo(s string) error {
+	info, err := nodeinfo.Parse(s)
+	if err != nil {
+		return err
+	}
+
+	c := m.Find(info.Identity, true)
+	if c.Alias() == "" {
+		c.SetAlias(info.Alias)
+	}
+
+	for _, a := range info.Addresses {
+		c.Add(a)
+	}
+
+	m.Save()
+
+	return nil
+}
+
+// Lookup returns all known addresses of a node via channel
+func (m *Manager) Lookup(nodeID id.Identity) <-chan infra.Addr {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	c := m.contacts[nodeID.PublicKeyHex()]
+	if c == nil {
 		ch := make(chan infra.Addr)
 		close(ch)
 		return ch
 	}
 
 	// convert to channel
-	ch := make(chan infra.Addr, len(info.Addresses))
-	for _, addr := range info.Addresses {
-		ch <- addr
+	ch := make(chan infra.Addr, len(c.Addresses))
+	for _, addr := range c.Addresses {
+		ch <- addr.Addr
 	}
 	close(ch)
 
 	return ch
 }
 
-func (c *Manager) ResolveAlias(alias string) (string, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+// All returns a closed channel populated with all contacts
+func (m *Manager) All() <-chan *Contact {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	s, ok := c.aliases[alias]
-	return s, ok
-}
-
-func (c *Manager) ResolveIdentity(str string) (id.Identity, error) {
-	if id, err := id.ParsePublicKeyHex(str); err == nil {
-		return id, nil
-	}
-
-	target, found := c.ResolveAlias(str)
-
-	if !found {
-		return id.Identity{}, errors.New("unknown identity")
-	}
-	if str == target {
-		return id.Identity{}, errors.New("circular alias")
-	}
-	return c.ResolveIdentity(target)
-}
-
-func (c *Manager) DisplayName(identity id.Identity) string {
-	if identity.IsZero() {
-		return "unknown"
-	}
-
-	if info, ok := c.info[identity.PublicKeyHex()]; ok {
-		if info.Alias != "" {
-			return info.Alias
-		}
-	}
-
-	return logfmt.ID(identity)
-}
-
-// Identities returns a closed channel populated with all known node IDs
-func (c *Manager) Identities() <-chan id.Identity {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	ch := make(chan id.Identity, len(c.info))
-	for _, info := range c.info {
-		ch <- info.Identity
+	ch := make(chan *Contact, len(m.contacts))
+	for _, c := range m.contacts {
+		ch <- c
 	}
 	close(ch)
 
 	return ch
 }
 
-func (c *Manager) AddInfo(info *Contact) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.addInfo(info)
-	c.save()
-}
-
-func (c *Manager) AddAddr(nodeID id.Identity, addr infra.Addr) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.addAddr(nodeID, addr)
-	c.save()
-}
-
-func (c *Manager) addInfo(info *Contact) {
-	for _, addr := range info.Addresses {
-		c.addAddr(info.Identity, addr)
-	}
-
-	if info.Alias != "" {
-		hex := info.Identity.PublicKeyHex()
-		c.info[hex].Alias = info.Alias
-		c.aliases[info.Alias] = info.Identity.PublicKeyHex()
-	}
-}
-
-func (c *Manager) addAddr(nodeID id.Identity, addr infra.Addr) {
-	hex := nodeID.PublicKeyHex()
-
-	if _, found := c.info[hex]; !found {
-		c.info[hex] = NewContact(nodeID)
-	}
-
-	c.info[hex].Add(addr)
-}
-
-func (c *Manager) load() error {
-	if err := c.loadGraph(); err != nil {
-		log.Println("error loading graph:", err)
-	}
-	c.loadAliases()
-	return nil
-}
-
-func (c *Manager) loadGraph() error {
-	packed, err := c.store.LoadBytes(graphKey)
-	if err != nil {
-		return err
-	}
-	buf := bytes.NewReader(packed)
-	for {
-		info, err := readInfo(buf)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
-		}
-		c.addInfo(info)
-	}
-}
-
-func (c *Manager) loadAliases() error {
-	bytes, err := c.store.LoadBytes(aliasesKey)
+func (m *Manager) Save() error {
+	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return yaml.Unmarshal(bytes, &c.aliases)
+	return m.store.StoreBytes(contactsKey, data)
 }
 
-func (c *Manager) pack() []byte {
-	buf := &bytes.Buffer{}
-	for _, r := range c.info {
-		_ = writeInfo(buf, r)
-	}
-	return buf.Bytes()
-}
+func (m *Manager) load() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-func (c *Manager) save() error {
-	if err := c.saveGraph(); err != nil {
-		log.Println("error saving graph:", err)
-	}
-	c.saveAliases()
-	return nil
-}
-
-func (c *Manager) saveGraph() error {
-	return c.store.StoreBytes(graphKey, c.pack())
-}
-
-func (c *Manager) saveAliases() {
-	bytes, err := yaml.Marshal(c.aliases)
+	bytes, err := m.store.LoadBytes(contactsKey)
 	if err != nil {
-		return
+		return err
 	}
 
-	c.store.StoreBytes(aliasesKey, bytes)
+	return json.Unmarshal(bytes, m)
 }

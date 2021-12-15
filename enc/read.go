@@ -2,9 +2,7 @@ package enc
 
 import (
 	"encoding/binary"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
 	"io"
 )
 
@@ -45,32 +43,4 @@ func ReadIdentity(r io.Reader) (id.Identity, error) {
 		return id.Identity{}, err
 	}
 	return id.ParsePublicKey(buf)
-}
-
-func ReadAddr(r io.Reader) (infra.Addr, error) {
-	net, err := ReadUint8(r)
-	if err != nil {
-		return nil, err
-	}
-
-	var netName string
-
-	switch net {
-	case 0:
-		netName = "inet"
-	case 1:
-		netName = "tor"
-	case 255:
-		netName, err = ReadL8String(r)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	data, err := ReadL8Bytes(r)
-	if err != nil {
-		return nil, err
-	}
-
-	return astral.Unpack(netName, data)
 }

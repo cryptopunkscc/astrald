@@ -17,6 +17,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"github.com/cryptopunkscc/astrald/node/server"
 	"github.com/cryptopunkscc/astrald/node/storage"
+	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"log"
@@ -159,26 +160,39 @@ func (node *Node) AddLink(ctx context.Context, link *link.Link) error {
 	return nil
 }
 
+func (node *Node) NodeInfo() *nodeinfo.NodeInfo {
+	i := nodeinfo.New(node.identity)
+	i.Alias = node.Alias()
+
+	for _, a := range astral.Addresses() {
+		if a.Global {
+			i.Addresses = append(i.Addresses, a.Addr)
+		}
+	}
+
+	return i
+}
+
 func (node *Node) Info(onlyPublic bool) *contacts.Contact {
 	addrs := make([]infra.Addr, 0)
 
 	for _, a := range astral.Addresses() {
-		if onlyPublic && !a.Public {
+		if onlyPublic && !a.Global {
 			continue
 		}
 		addrs = append(addrs, a.Addr)
 	}
 
-	info := &contacts.Contact{
-		Identity:  node.identity,
-		Addresses: addrs,
+	c := contacts.NewContact(node.identity)
+	for _, a := range addrs {
+		c.Add(a)
 	}
 
 	if !onlyPublic {
-		info.Alias = node.Alias()
+		c.SetAlias(node.Alias())
 	}
 
-	return info
+	return c
 }
 
 func (node *Node) process(ctx context.Context) {
@@ -261,7 +275,9 @@ func (node *Node) handlePresenceEvent(event presence.Event) {
 	switch event.Event() {
 	case presence.EventIdentityPresent:
 		log.Printf("[%s] present (%s)\n", node.Contacts.DisplayName(event.Identity()), event.Addr().Network())
-		node.Contacts.AddAddr(event.Identity(), event.Addr())
+		node.Contacts.Find(event.Identity(), true).Add(event.Addr())
+		node.Contacts.Save()
+
 	case presence.EventIdentityGone:
 		log.Printf("[%s] gone\n", node.Contacts.DisplayName(event.Identity()))
 	}

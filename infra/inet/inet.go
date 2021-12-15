@@ -15,7 +15,7 @@ var _ infra.Network = &Inet{}
 type Inet struct {
 	config         Config
 	listenPort     uint16
-	publicAddrs    []infra.AddrDesc
+	publicAddrs    []infra.AddrSpec
 	separateListen bool
 }
 
@@ -23,7 +23,7 @@ func New(config Config) *Inet {
 	inet := &Inet{
 		config:      config,
 		listenPort:  defaultPort,
-		publicAddrs: make([]infra.AddrDesc, 0),
+		publicAddrs: make([]infra.AddrSpec, 0),
 	}
 
 	// Add public addresses
@@ -34,9 +34,9 @@ func New(config Config) *Inet {
 			continue
 		}
 
-		inet.publicAddrs = append(inet.publicAddrs, infra.AddrDesc{
+		inet.publicAddrs = append(inet.publicAddrs, infra.AddrSpec{
 			Addr:   addr,
-			Public: true,
+			Global: true,
 		})
 		log.Println("inet: added", addr)
 	}
@@ -76,8 +76,8 @@ func (inet Inet) Scan(ctx context.Context) (<-chan infra.Broadcast, <-chan error
 	return nil, singleErrChan(infra.ErrUnsupportedOperation)
 }
 
-func (inet Inet) Addresses() []infra.AddrDesc {
-	list := make([]infra.AddrDesc, 0)
+func (inet Inet) Addresses() []infra.AddrSpec {
+	list := make([]infra.AddrSpec, 0)
 
 	ifaceAddrs, err := net.InterfaceAddrs()
 	if err != nil {
@@ -100,9 +100,9 @@ func (inet Inet) Addresses() []infra.AddrDesc {
 		}
 
 		if ipv4.IsGlobalUnicast() || ipv4.IsPrivate() {
-			list = append(list, infra.AddrDesc{
+			list = append(list, infra.AddrSpec{
 				Addr:   Addr{ip: ipv4, port: inet.listenPort},
-				Public: ipv4.IsGlobalUnicast(),
+				Global: ipv4.IsGlobalUnicast() && (!ipv4.IsPrivate()),
 			})
 		}
 	}

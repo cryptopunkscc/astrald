@@ -60,14 +60,14 @@ func (tor Tor) Discover(context.Context) (<-chan infra.Presence, error) {
 	return nil, infra.ErrUnsupportedOperation
 }
 
-func (tor Tor) Addresses() []infra.AddrDesc {
+func (tor Tor) Addresses() []infra.AddrSpec {
 	if tor.serviceAddr.IsZero() {
 		return nil
 	}
-	return []infra.AddrDesc{
+	return []infra.AddrSpec{
 		{
 			Addr:   tor.serviceAddr,
-			Public: true,
+			Global: true,
 		},
 	}
 }

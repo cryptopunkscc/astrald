@@ -5,54 +5,77 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/enc"
 	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/jxskiss/base62"
+	"github.com/cryptopunkscc/astrald/logfmt"
+	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"io"
-	"strings"
+	"sync"
+	"time"
 )
 
-const infoPrefix = "node1"
+const defaultAddressValidity = time.Hour * 24 * 30
 
 type Contact struct {
-	Identity  id.Identity
-	Alias     string
-	Addresses []infra.Addr
+	identity  id.Identity
+	alias     string
+	mu        sync.Mutex
+	Addresses []Addr
 }
 
 func NewContact(identity id.Identity) *Contact {
 	return &Contact{
-		Identity:  identity,
-		Addresses: make([]infra.Addr, 0),
+		identity:  identity,
+		Addresses: make([]Addr, 0),
 	}
 }
 
-func (contact *Contact) Add(addr infra.Addr) {
-	for _, a := range contact.Addresses {
+func (c *Contact) Identity() id.Identity {
+	return c.identity
+}
+
+func (c *Contact) Alias() string {
+	return c.alias
+}
+
+func (c *Contact) SetAlias(alias string) {
+	c.alias = alias
+}
+
+func (c *Contact) DisplayName() string {
+	if c.alias != "" {
+		return c.alias
+	}
+
+	return logfmt.ID(c.identity)
+}
+
+func (c *Contact) Add(addr infra.Addr) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, a := range c.Addresses {
 		if infra.AddrEqual(a, addr) {
 			return
 		}
 	}
-	contact.Addresses = append(contact.Addresses, addr)
+	c.Addresses = append(c.Addresses, Addr{Addr: addr, ExpiresAt: time.Now().Add(defaultAddressValidity)})
 }
 
-func (contact Contact) Pack() []byte {
-	buf := &bytes.Buffer{}
-	_ = writeInfo(buf, &contact)
-	return buf.Bytes()
-}
+func (c *Contact) Remove(addr infra.Addr) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-func (contact Contact) String() string {
-	return infoPrefix + base62.EncodeToString(contact.Pack())
-}
-
-func ParseInfo(s string) (*Contact, error) {
-	str := strings.TrimPrefix(s, infoPrefix)
-
-	data, err := base62.DecodeString(str)
-	if err != nil {
-		return nil, err
+	for i, a := range c.Addresses {
+		if infra.AddrEqual(a, addr) {
+			c.Addresses = append(c.Addresses[:i], c.Addresses[i+1:]...)
+			return
+		}
 	}
+}
 
-	return Unpack(data)
+func (c Contact) Pack() []byte {
+	buf := &bytes.Buffer{}
+	_ = writeInfo(buf, &c)
+	return buf.Bytes()
 }
 
 func Unpack(data []byte) (*Contact, error) {
@@ -60,12 +83,12 @@ func Unpack(data []byte) (*Contact, error) {
 }
 
 func writeInfo(w io.Writer, c *Contact) error {
-	err := enc.WriteIdentity(w, c.Identity)
+	err := enc.WriteIdentity(w, c.Identity())
 	if err != nil {
 		return err
 	}
 
-	err = enc.WriteL8String(w, c.Alias)
+	err = enc.WriteL8String(w, c.Alias())
 	if err != nil {
 		return err
 	}
@@ -81,7 +104,7 @@ func writeInfo(w io.Writer, c *Contact) error {
 	}
 
 	for _, addr := range addrs {
-		if err := enc.WriteAddr(w, addr); err != nil {
+		if err := nodeinfo.WriteAddr(w, addr); err != nil {
 			return nil
 		}
 	}
@@ -90,7 +113,7 @@ func writeInfo(w io.Writer, c *Contact) error {
 }
 
 func readInfo(r io.Reader) (*Contact, error) {
-	_id, err := enc.ReadIdentity(r)
+	identity, err := enc.ReadIdentity(r)
 	if err != nil {
 		return nil, err
 	}
@@ -105,18 +128,18 @@ func readInfo(r io.Reader) (*Contact, error) {
 		return nil, err
 	}
 
-	addrs := make([]infra.Addr, 0, count)
+	addrs := make([]Addr, 0, count)
 	for i := 0; i < int(count); i++ {
-		addr, err := enc.ReadAddr(r)
+		addr, err := nodeinfo.ReadAddr(r)
 		if err != nil {
 			return nil, err
 		}
-		addrs = append(addrs, addr)
+		addrs = append(addrs, Addr{Addr: addr, ExpiresAt: time.Now().Add(defaultAddressValidity)})
 	}
 
 	return &Contact{
-		Identity:  _id,
-		Alias:     alias,
+		identity:  identity,
+		alias:     alias,
 		Addresses: addrs,
 	}, nil
 }
