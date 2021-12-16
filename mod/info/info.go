@@ -83,7 +83,7 @@ func getInfo(node *_node.Node) *Node {
 
 	info.Alias = node.Alias()
 
-	for _, a := range node.Addresses() {
+	for _, a := range node.Infra.Addresses() {
 		info.Addresses = append(info.Addresses, Addr{
 			Network: a.Network(),
 			Data:    hex.EncodeToString(a.Pack()),
@@ -121,7 +121,7 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 			continue
 		}
 
-		addr, err := node.UnpackAddr(a.Network, data)
+		addr, err := node.Infra.UnpackAddr(a.Network, data)
 		if err != nil {
 			continue
 		}

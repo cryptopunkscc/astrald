@@ -5,10 +5,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
-	"github.com/cryptopunkscc/astrald/infra"
-	iastral "github.com/cryptopunkscc/astrald/infra/astral"
-	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -29,16 +27,17 @@ const defaultQueryTimeout = time.Minute
 const defaultPeerIdleTimeout = 5 * time.Minute
 
 type Node struct {
-	Config *Config
+	Config   config.Config
+	identity id.Identity
 
+	Infra    *Infra
 	Contacts *contacts.Manager
 	Ports    *hub.Hub
 	Server   *server.Server
 	Linker   *linker.Manager
 	Store    storage.Store
-	Presence *presence.Presence
 
-	identity id.Identity
+	Presence *presence.Presence
 	dataDir  string
 
 	// peers
@@ -46,11 +45,6 @@ type Node struct {
 	peersMu sync.Mutex
 	queries chan *link.Query
 	events  *event.Queue
-
-	// networks
-	inet   *inet.Inet
-	tor    *tor.Tor
-	astral *iastral.Astral
 }
 
 // Run starts the node, waits for it to finish and returns an error if any
@@ -63,20 +57,27 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 
 	log.Printf("astral node %s statrting...", identity)
 
-	config := loadConfig(fs)
+	cfg, err := config.Load(fs)
+	if err != nil {
+		log.Println("config error:", err)
+	}
 
 	node := &Node{
+		Infra:    &Infra{},
 		identity: identity,
 		dataDir:  dataDir,
 		Store:    fs,
-		Config:   config,
+		Config:   cfg,
 		Ports:    hub.New(),
 		peers:    make(map[string]*peer.Peer),
 		queries:  make(chan *link.Query),
 		events:   event.NewQueue(),
 	}
 
-	node.addNetworks()
+	if err := node.Infra.configure(node); err != nil {
+		log.Println("error configuring infrastructure:", err)
+		return nil, err
+	}
 
 	node.Contacts = contacts.New(fs)
 
@@ -100,18 +101,6 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 	go node.process(ctx)
 
 	return node, nil
-}
-
-func (node *Node) Identity() id.Identity {
-	return node.identity
-}
-
-func (node *Node) Alias() string {
-	return node.Config.Alias
-}
-
-func (node *Node) Follow(ctx context.Context) <-chan event.Eventer {
-	return node.events.Follow(ctx)
 }
 
 func (node *Node) AddLink(ctx context.Context, link *link.Link) error {
@@ -160,6 +149,18 @@ func (node *Node) AddLink(ctx context.Context, link *link.Link) error {
 	return nil
 }
 
+func (node *Node) Identity() id.Identity {
+	return node.identity
+}
+
+func (node *Node) Alias() string {
+	return node.Config.GetAlias()
+}
+
+func (node *Node) Follow(ctx context.Context) <-chan event.Eventer {
+	return node.events.Follow(ctx)
+}
+
 func (node *Node) NodeInfo() *nodeinfo.NodeInfo {
 	i := nodeinfo.New(node.identity)
 	i.Alias = node.Alias()
@@ -171,22 +172,6 @@ func (node *Node) NodeInfo() *nodeinfo.NodeInfo {
 	}
 
 	return i
-}
-
-func (node *Node) Addresses() []infra.AddrSpec {
-	return astral.Addresses()
-}
-
-func (node *Node) UnpackAddr(network string, data []byte) (infra.Addr, error) {
-	switch network {
-	case tor.NetworkName:
-		return tor.Unpack(data)
-	case inet.NetworkName:
-		return inet.Unpack(data)
-	case iastral.NetworkName:
-		return iastral.Unpack(data)
-	}
-	return NewUnsupportedAddr(network, data), nil
 }
 
 func (node *Node) process(ctx context.Context) {
