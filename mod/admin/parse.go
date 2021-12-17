@@ -8,12 +8,12 @@ import (
 	"io"
 )
 
-func parse(w io.ReadWriter, _ *node.Node, args []string) error {
+func parse(w io.ReadWriter, node *node.Node, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
 	}
 
-	info, err := nodeinfo.Parse(args[0])
+	info, err := nodeinfo.Parse(args[0], node.Infra)
 	if err != nil {
 		return err
 	}

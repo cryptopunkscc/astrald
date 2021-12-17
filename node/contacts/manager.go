@@ -6,8 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/logfmt"
-	"github.com/cryptopunkscc/astrald/node/storage"
 	"github.com/cryptopunkscc/astrald/nodeinfo"
+	"github.com/cryptopunkscc/astrald/storage"
 	"log"
 	"sync"
 )
@@ -90,7 +90,7 @@ func (m *Manager) Forget(identity id.Identity) error {
 
 	delete(m.contacts, hex)
 
-	return nil
+	return m.Save()
 }
 
 func (m *Manager) ResolveIdentity(str string) (id.Identity, error) {
@@ -105,12 +105,7 @@ func (m *Manager) ResolveIdentity(str string) (id.Identity, error) {
 	return id.Identity{}, errors.New("unknown identity")
 }
 
-func (m *Manager) AddNodeInfo(s string) error {
-	info, err := nodeinfo.Parse(s)
-	if err != nil {
-		return err
-	}
-
+func (m *Manager) AddNodeInfo(info *nodeinfo.NodeInfo) error {
 	c := m.Find(info.Identity, true)
 	if c.Alias() == "" {
 		c.SetAlias(info.Alias)

@@ -2,7 +2,6 @@ package nodeinfo
 
 import (
 	"bytes"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/enc"
 	"github.com/cryptopunkscc/astrald/infra"
@@ -19,6 +18,10 @@ const infoPrefix = "node1"
 const netCodeInet = 0
 const netCodeTor = 1
 const netCodeGateway = 2
+
+type Unpacker interface {
+	Unpack(networkName string, addr []byte) (infra.Addr, error)
+}
 
 type NodeInfo struct {
 	Alias     string
@@ -39,7 +42,7 @@ func (info *NodeInfo) String() string {
 	return infoPrefix + base62.EncodeToString(buf.Bytes())
 }
 
-func Parse(s string) (*NodeInfo, error) {
+func Parse(s string, unpacker Unpacker) (*NodeInfo, error) {
 	str := strings.TrimPrefix(s, infoPrefix)
 
 	data, err := base62.DecodeString(str)
@@ -47,7 +50,7 @@ func Parse(s string) (*NodeInfo, error) {
 		return nil, err
 	}
 
-	return read(bytes.NewReader(data))
+	return read(bytes.NewReader(data), unpacker)
 }
 
 func write(w io.Writer, c *NodeInfo) error {
@@ -77,7 +80,7 @@ func write(w io.Writer, c *NodeInfo) error {
 	return nil
 }
 
-func read(r io.Reader) (*NodeInfo, error) {
+func read(r io.Reader, unpacker Unpacker) (*NodeInfo, error) {
 	alias, err := enc.ReadL8String(r)
 	if err != nil {
 		return nil, err
@@ -95,7 +98,7 @@ func read(r io.Reader) (*NodeInfo, error) {
 
 	addrs := make([]infra.Addr, 0, count)
 	for i := 0; i < int(count); i++ {
-		addr, err := readAddr(r)
+		addr, err := readAddr(r, unpacker)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +147,7 @@ func writeAddr(w io.Writer, addr infra.Addr) error {
 	return nil
 }
 
-func readAddr(r io.Reader) (infra.Addr, error) {
+func readAddr(r io.Reader, unpacker Unpacker) (infra.Addr, error) {
 	net, err := enc.ReadUint8(r)
 	if err != nil {
 		return nil, err
@@ -172,7 +175,7 @@ func readAddr(r io.Reader) (infra.Addr, error) {
 		return nil, err
 	}
 
-	addr, err := astral.Unpack(netName, data)
+	addr, err := unpacker.Unpack(netName, data)
 
 	return addr, err
 }

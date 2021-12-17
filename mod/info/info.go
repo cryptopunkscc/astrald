@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/link"
 	_node "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"io"
@@ -121,7 +121,7 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 			continue
 		}
 
-		addr, err := node.Infra.UnpackAddr(a.Network, data)
+		addr, err := node.Infra.Unpack(a.Network, data)
 		if err != nil {
 			continue
 		}

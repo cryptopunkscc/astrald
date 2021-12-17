@@ -1,7 +1,7 @@
 package link
 
 import (
-	"github.com/cryptopunkscc/astrald/astral/link"
+	"github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/sig"
 	"time"
 )

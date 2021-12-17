@@ -2,8 +2,8 @@ package link
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral/link"
 	"github.com/cryptopunkscc/astrald/auth"
+	"github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/sig"
 	"log"
 	"sync"

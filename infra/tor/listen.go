@@ -13,13 +13,13 @@ import (
 const retryInterval = 15 * time.Second
 const pingInterval = time.Minute
 
-func (tor *Tor) Listen(ctx context.Context) (<-chan infra.Conn, <-chan error) {
-	output, errCh := make(chan infra.Conn), make(chan error)
+func (tor *Tor) Listen(ctx context.Context) (<-chan infra.Conn, error) {
+	output := make(chan infra.Conn)
 
 	// Set up the listener for incoming tor connections
 	tcpListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return nil, singleErrCh(err)
+		return nil, err
 	}
 
 	// close the listener when context is done
@@ -61,7 +61,7 @@ func (tor *Tor) Listen(ctx context.Context) (<-chan infra.Conn, <-chan error) {
 		}
 	}()
 
-	return output, errCh
+	return output, nil
 }
 
 func (tor *Tor) runOnion(ctx context.Context, key string, port int, target string) error {

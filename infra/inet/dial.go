@@ -6,10 +6,14 @@ import (
 	"net"
 )
 
-func Dial(ctx context.Context, addr Addr) (infra.Conn, error) {
-	var d net.Dialer
+func (inet Inet) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
+	if _, ok := addr.(Addr); !ok {
+		return nil, infra.ErrUnsupportedAddress
+	}
 
-	tcpConn, err := d.DialContext(ctx, "tcp", addr.String())
+	var dialer net.Dialer
+
+	tcpConn, err := dialer.DialContext(ctx, "tcp", addr.String())
 	if err != nil {
 		return nil, err
 	}

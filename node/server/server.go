@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
@@ -10,16 +9,19 @@ import (
 )
 
 type Server struct {
-	links chan *link.Link
 	Conns chan infra.Conn
+	links chan *link.Link
 }
 
-func Run(ctx context.Context, localID id.Identity) (*Server, error) {
-	listenCh, _ := astral.Listen(ctx)
+func Run(ctx context.Context, localID id.Identity, listener infra.Listener) (*Server, error) {
+	listenCh, err := listener.Listen(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	srv := &Server{
-		links: make(chan *link.Link),
 		Conns: make(chan infra.Conn),
+		links: make(chan *link.Link),
 	}
 
 	go srv.process(ctx, localID)

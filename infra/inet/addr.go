@@ -11,12 +11,25 @@ import (
 
 const NetworkName = "inet"
 
+var _ infra.Addr = Addr{}
+
 type Addr struct {
 	ip   net.IP
 	port uint16
 }
 
-var _ infra.Addr = Addr{}
+func Unpack(addr []byte) (Addr, error) {
+	if len(addr) != 6 {
+		return Addr{}, errors.New("invalid data length")
+	}
+	ip := make([]byte, 4)
+	copy(ip, addr[0:4])
+	port := binary.BigEndian.Uint16(addr[4:6])
+	return Addr{
+		ip:   ip,
+		port: port,
+	}, nil
+}
 
 func Parse(s string) (addr Addr, err error) {
 	ipport := strings.Split(s, ":")
@@ -42,21 +55,12 @@ func Parse(s string) (addr Addr, err error) {
 	return
 }
 
-func Unpack(addr []byte) (Addr, error) {
-	if len(addr) != 6 {
-		return Addr{}, errors.New("invalid data length")
-	}
-	ip := make([]byte, 4)
-	copy(ip, addr[0:4])
-	port := binary.BigEndian.Uint16(addr[4:6])
-	return Addr{
-		ip:   ip,
-		port: port,
-	}, nil
-}
+func (addr Addr) Pack() []byte {
+	bytes := make([]byte, 6)
+	copy(bytes[0:4], addr.ip[len(addr.ip)-4:])
+	binary.BigEndian.PutUint16(bytes[4:6], addr.port)
 
-func (addr Addr) Network() string {
-	return NetworkName
+	return bytes
 }
 
 func (addr Addr) String() string {
@@ -67,10 +71,6 @@ func (addr Addr) String() string {
 	return str
 }
 
-func (addr Addr) Pack() []byte {
-	bytes := make([]byte, 6)
-	copy(bytes[0:4], addr.ip[len(addr.ip)-4:])
-	binary.BigEndian.PutUint16(bytes[4:6], addr.port)
-
-	return bytes
+func (addr Addr) Network() string {
+	return NetworkName
 }

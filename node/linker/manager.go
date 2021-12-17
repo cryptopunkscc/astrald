@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/peer"
@@ -13,6 +14,7 @@ import (
 type Manager struct {
 	localID  id.Identity
 	resolver contacts.Resolver
+	dialer   infra.Dialer
 
 	mu sync.Mutex
 
@@ -21,10 +23,11 @@ type Manager struct {
 	linkerMu map[*peer.Peer]*sync.Mutex
 }
 
-func New(identity id.Identity, resolver contacts.Resolver) *Manager {
+func New(identity id.Identity, resolver contacts.Resolver, dialer infra.Dialer) *Manager {
 	return &Manager{
 		localID:  identity,
 		resolver: resolver,
+		dialer:   dialer,
 		linkerMu: make(map[*peer.Peer]*sync.Mutex),
 		links:    make(chan *link.Link, 1),
 	}
@@ -49,6 +52,7 @@ func (m *Manager) NewLink(ctx context.Context, p *peer.Peer) {
 		LocalID:  m.localID,
 		RemoteID: p.Identity(),
 		Resolver: r,
+		Dialer:   m.dialer,
 	}
 
 	link := linker.Link(ctx)

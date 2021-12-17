@@ -8,7 +8,8 @@ import (
 
 // Infra holds configs for individual infrastructural networks
 type Infra struct {
-	Inet inet.Config `yaml:"inet"`
-	Tor  tor.Config  `yaml:"tor"`
-	Gw   gw.Config   `yaml:"gw"`
+	Gateways []string    `yaml:"gateways"`
+	Inet     inet.Config `yaml:"inet"`
+	Tor      tor.Config  `yaml:"tor"`
+	Gw       gw.Config   `yaml:"gw"`
 }

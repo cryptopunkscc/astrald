@@ -2,9 +2,6 @@ package tor
 
 import (
 	"github.com/cryptopunkscc/astrald/infra/tor/tc"
-	"io/ioutil"
-	"os"
-	"path"
 )
 
 const privateKeyFileName = "tor.key"
@@ -25,7 +22,7 @@ func (tor *Tor) getPrivateKey() (string, error) {
 }
 
 func (tor *Tor) loadPrivateKey() (string, error) {
-	bytes, err := ioutil.ReadFile(tor.privateKeyPath())
+	bytes, err := tor.store.LoadBytes(privateKeyFileName)
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +30,7 @@ func (tor *Tor) loadPrivateKey() (string, error) {
 }
 
 func (tor *Tor) savePrivateKey(key string) error {
-	return ioutil.WriteFile(tor.privateKeyPath(), []byte(key), 0600)
+	return tor.store.StoreBytes(privateKeyFileName, []byte(key))
 }
 
 func (tor *Tor) generatePrivateKey() (string, error) {
@@ -49,15 +46,4 @@ func (tor *Tor) generatePrivateKey() (string, error) {
 	}
 
 	return onion.PrivateKey, err
-}
-
-func (tor *Tor) privateKeyPath() string {
-	if tor.config.DataDir != "" {
-		return path.Join(tor.config.DataDir, privateKeyFileName)
-	}
-	home, err := os.UserHomeDir()
-	if err == nil {
-		return path.Join(home, privateKeyFileName)
-	}
-	return privateKeyFileName
 }

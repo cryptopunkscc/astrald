@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/node/storage"
+	"github.com/cryptopunkscc/astrald/storage"
 	"gopkg.in/yaml.v2"
 	"os"
 )

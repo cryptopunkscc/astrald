@@ -2,7 +2,6 @@ package presence
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -15,13 +14,15 @@ type Presence struct {
 	mu      sync.Mutex
 	events  chan Event
 	skip    map[string]struct{}
+	net     infra.PresenceNet
 }
 
-func Run(ctx context.Context) *Presence {
+func Run(ctx context.Context, net infra.PresenceNet) *Presence {
 	p := &Presence{
 		entries: make(map[string]*entry),
 		events:  make(chan Event),
 		skip:    make(map[string]struct{}),
+		net:     net,
 	}
 	go p.process(ctx)
 	return p
@@ -51,7 +52,7 @@ func (p *Presence) Events() <-chan Event {
 func (p *Presence) Announce(ctx context.Context, identity id.Identity) error {
 	p.ignore(identity)
 
-	err := astral.Announce(ctx, identity)
+	err := p.net.Announce(ctx, identity)
 	if err != nil {
 		p.unignore(identity)
 		return err
@@ -66,7 +67,7 @@ func (p *Presence) Announce(ctx context.Context, identity id.Identity) error {
 }
 
 func (p *Presence) process(ctx context.Context) {
-	discover, err := astral.Discover(ctx)
+	discover, err := p.net.Discover(ctx)
 	if err != nil {
 		log.Println("discover error:", err)
 		return

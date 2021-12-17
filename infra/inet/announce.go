@@ -14,10 +14,6 @@ import (
 	"time"
 )
 
-const presencePort = 8829
-const presencePayloadLen = 36
-const presenceInterval = time.Minute
-
 func (inet *Inet) Announce(ctx context.Context, id id.Identity) error {
 	go func() {
 		ifaceCh := ip.WatchInterfaces(ctx)
@@ -67,7 +63,7 @@ func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *i
 		return err
 	}
 
-	broadStr := net.JoinHostPort(broadAddr.String(), strconv.Itoa(presencePort))
+	broadStr := net.JoinHostPort(broadAddr.String(), strconv.Itoa(defaultPresencePort))
 
 	broadConn, err := net.Dial("udp", broadStr)
 	if err != nil {

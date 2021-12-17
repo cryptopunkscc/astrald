@@ -2,21 +2,22 @@ package node
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/astral"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/linker"
 	"github.com/cryptopunkscc/astrald/node/peer"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"github.com/cryptopunkscc/astrald/node/server"
-	"github.com/cryptopunkscc/astrald/node/storage"
 	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/cryptopunkscc/astrald/storage"
 	"io"
 	"log"
 	"sync"
@@ -30,15 +31,13 @@ type Node struct {
 	Config   config.Config
 	identity id.Identity
 
-	Infra    *Infra
+	Infra    *infra.Infra
 	Contacts *contacts.Manager
 	Ports    *hub.Hub
 	Server   *server.Server
 	Linker   *linker.Manager
 	Store    storage.Store
-
 	Presence *presence.Presence
-	dataDir  string
 
 	// peers
 	peers   map[string]*peer.Peer
@@ -51,53 +50,71 @@ type Node struct {
 func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, error) {
 	var err error
 
-	fs := storage.NewFilesystemStorage(dataDir)
+	// Storage
+	store := storage.NewFilesystemStorage(dataDir)
 
-	identity := setupIdentity(fs)
-
-	log.Printf("astral node %s statrting...", identity)
-
-	cfg, err := config.Load(fs)
+	// Config
+	cfg, err := config.Load(store)
 	if err != nil {
-		log.Println("config error:", err)
+		return nil, fmt.Errorf("config error: %w", err)
 	}
 
 	node := &Node{
-		Infra:    &Infra{},
-		identity: identity,
-		dataDir:  dataDir,
-		Store:    fs,
-		Config:   cfg,
-		Ports:    hub.New(),
-		peers:    make(map[string]*peer.Peer),
-		queries:  make(chan *link.Query),
-		events:   event.NewQueue(),
+		Config:  cfg,
+		Store:   store,
+		Ports:   hub.New(),
+		peers:   make(map[string]*peer.Peer),
+		queries: make(chan *link.Query),
+		events:  event.NewQueue(),
 	}
 
-	if err := node.Infra.configure(node); err != nil {
-		log.Println("error configuring infrastructure:", err)
+	// Set up identity
+	if err := node.setupIdentity(); err != nil {
+		return nil, fmt.Errorf("identity setup error: %w", err)
+	}
+
+	// Say hello
+	nodeKey := node.identity.PublicKeyHex()
+	if node.Alias() != "" {
+		nodeKey = fmt.Sprintf("%s (%s)", node.Alias(), nodeKey)
+	}
+	log.Printf("astral node %s statrting...", nodeKey)
+
+	// Set up the infrastructure
+	node.Infra, err = infra.New(
+		node.Config.Infra,
+		infra.FilteredQuerier{Querier: node, FilteredID: node.identity},
+		node.Store,
+	)
+	if err != nil {
+		log.Println("infra error:", err)
 		return nil, err
 	}
 
-	node.Contacts = contacts.New(fs)
+	// Contacts
+	node.Contacts = contacts.New(store)
 
-	// start the network
-	node.Linker = linker.New(node.identity, node.Contacts)
+	// Linker
+	node.Linker = linker.New(node.identity, node.Contacts, node.Infra)
 
-	node.Server, err = server.Run(ctx, node.identity)
+	// Server
+	node.Server, err = server.Run(ctx, node.identity, node.Infra)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
+	// Modules
 	node.runModules(ctx, modules)
 
-	node.Presence = presence.Run(ctx)
+	// Presence
+	node.Presence = presence.Run(ctx, node.Infra)
 
 	err = node.Presence.Announce(ctx, node.identity)
 	if err != nil {
-		log.Println("announce error:", err)
+		log.Println("announce error:", err) // non-critical
 	}
 
+	// Run it
 	go node.process(ctx)
 
 	return node, nil
@@ -165,7 +182,7 @@ func (node *Node) NodeInfo() *nodeinfo.NodeInfo {
 	i := nodeinfo.New(node.identity)
 	i.Alias = node.Alias()
 
-	for _, a := range astral.Addresses() {
+	for _, a := range node.Infra.Addresses() {
 		if a.Global {
 			i.Addresses = append(i.Addresses, a.Addr)
 		}

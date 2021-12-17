@@ -2,8 +2,8 @@ package linker
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/link"
 )
@@ -15,6 +15,7 @@ type ConcurrentLinker struct {
 	LocalID     id.Identity
 	RemoteID    id.Identity
 	Resolver    contacts.Resolver
+	Dialer      infra.Dialer
 	Concurrency int
 }
 
@@ -30,10 +31,11 @@ func (l *ConcurrentLinker) Link(ctx context.Context) *link.Link {
 	addrs := l.Resolver.Lookup(l.RemoteID)
 
 	// try to link
-	rawLink := astral.LinkFirst(ctx,
+	rawLink := LinkFirst(ctx,
 		l.LocalID,
 		l.RemoteID,
-		astral.DialMany(ctx,
+		DialMany(ctx,
+			l.Dialer,
 			addrs,
 			l.getConcurrency(),
 		),

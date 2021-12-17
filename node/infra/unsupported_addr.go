@@ -1,4 +1,4 @@
-package node
+package infra
 
 import (
 	"encoding/hex"

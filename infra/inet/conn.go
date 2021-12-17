@@ -5,13 +5,13 @@ import (
 	"net"
 )
 
+var _ infra.Conn = Conn{}
+
 type Conn struct {
 	net.Conn
 	outbound   bool
 	remoteAddr Addr
 }
-
-var _ infra.Conn = Conn{}
 
 // newConn wraps a standard net.Conn into a astral's net.Conn with the addition of boundness
 func newConn(conn net.Conn, outbound bool) Conn {

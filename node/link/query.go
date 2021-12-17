@@ -1,6 +1,8 @@
 package link
 
-import "github.com/cryptopunkscc/astrald/astral/link"
+import (
+	"github.com/cryptopunkscc/astrald/link"
+)
 
 type Query struct {
 	link *Link

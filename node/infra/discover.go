@@ -1,4 +1,4 @@
-package astral
+package infra
 
 import (
 	"context"
@@ -6,13 +6,20 @@ import (
 	"sync"
 )
 
-func (astral *Astral) Discover(ctx context.Context) (<-chan infra.Presence, error) {
+var _ infra.Discoverer = &Infra{}
+
+func (i *Infra) Discover(ctx context.Context) (<-chan infra.Presence, error) {
 	outCh := make(chan infra.Presence)
 
 	var wg sync.WaitGroup
 
-	for network := range astral.Networks() {
-		presenceCh, err := network.Discover(ctx)
+	for network := range i.Networks() {
+		discoverer, ok := network.(infra.Discoverer)
+		if !ok {
+			continue
+		}
+
+		presenceCh, err := discoverer.Discover(ctx)
 		if err != nil {
 			continue
 		}

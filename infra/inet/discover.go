@@ -10,7 +10,7 @@ import (
 func (inet Inet) Discover(ctx context.Context) (<-chan infra.Presence, error) {
 	outCh := make(chan infra.Presence)
 
-	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(presencePort))
+	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(defaultPresencePort))
 	if err != nil {
 		return nil, err
 	}
