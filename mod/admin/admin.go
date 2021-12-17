@@ -92,6 +92,7 @@ func init() {
 		"info":     info,
 		"parse":    parse,
 		"add":      add,
+		"forget":   forget,
 		"present":  present,
 	}
 }

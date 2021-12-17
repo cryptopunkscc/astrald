@@ -78,6 +78,21 @@ func (m *Manager) FindByAlias(alias string) (*Contact, bool) {
 	return nil, false
 }
 
+func (m *Manager) Forget(identity id.Identity) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	hex := identity.PublicKeyHex()
+
+	if _, found := m.contacts[hex]; !found {
+		return errors.New("not found")
+	}
+
+	delete(m.contacts, hex)
+
+	return nil
+}
+
 func (m *Manager) ResolveIdentity(str string) (id.Identity, error) {
 	if id, err := id.ParsePublicKeyHex(str); err == nil {
 		return id, nil
