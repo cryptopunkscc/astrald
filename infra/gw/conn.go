@@ -1,4 +1,4 @@
-package astral
+package gw
 
 import (
 	"github.com/cryptopunkscc/astrald/infra"

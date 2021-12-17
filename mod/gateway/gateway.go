@@ -2,19 +2,21 @@ package gateway
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/enc"
+	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
 	"sync"
 )
 
-const serviceHandle = ".gateway"
 const ModuleName = "gateway"
+const queryConnect = "connect"
 
 type Gateway struct{}
 
 func (Gateway) Run(ctx context.Context, node *node.Node) error {
-	port, err := node.Ports.RegisterContext(ctx, serviceHandle)
+	port, err := node.Ports.RegisterContext(ctx, gw.PortName)
 	if err != nil {
 		return err
 	}
@@ -23,13 +25,19 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 		conn := req.Accept()
 
 		go func() {
-			nodeID, err := enc.ReadIdentity(conn)
+			cookie, err := enc.ReadL8String(conn)
 			if err != nil {
 				conn.Close()
 				return
 			}
 
-			out, err := node.Query(ctx, nodeID, ".connect")
+			nodeID, err := id.ParsePublicKeyHex(cookie)
+			if err != nil {
+				conn.Close()
+				return
+			}
+
+			out, err := node.Query(ctx, nodeID, queryConnect)
 			if err != nil {
 				enc.Write(conn, uint8(0))
 				conn.Close()

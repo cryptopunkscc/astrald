@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 )
 
-const serviceHandle = ".connect"
+const serviceHandle = "connect"
 const ModuleName = "connect"
 
 type Connect struct{}

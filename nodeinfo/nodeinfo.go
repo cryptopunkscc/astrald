@@ -6,12 +6,19 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/enc"
 	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/infra/gw"
+	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/jxskiss/base62"
 	"io"
 	"strings"
 )
 
 const infoPrefix = "node1"
+
+const netCodeInet = 0
+const netCodeTor = 1
+const netCodeGateway = 2
 
 type NodeInfo struct {
 	Alias     string
@@ -62,7 +69,7 @@ func write(w io.Writer, c *NodeInfo) error {
 	}
 
 	for _, addr := range addrs {
-		if err := WriteAddr(w, addr); err != nil {
+		if err := writeAddr(w, addr); err != nil {
 			return nil
 		}
 	}
@@ -88,10 +95,15 @@ func read(r io.Reader) (*NodeInfo, error) {
 
 	addrs := make([]infra.Addr, 0, count)
 	for i := 0; i < int(count); i++ {
-		addr, err := ReadAddr(r)
+		addr, err := readAddr(r)
 		if err != nil {
 			return nil, err
 		}
+
+		if gwAddr, ok := addr.(gw.Addr); ok {
+			addr = gw.NewAddr(gwAddr.Gate(), identity.PublicKeyHex())
+		}
+
 		addrs = append(addrs, addr)
 	}
 
@@ -102,16 +114,22 @@ func read(r io.Reader) (*NodeInfo, error) {
 	}, nil
 }
 
-func WriteAddr(w io.Writer, addr infra.Addr) error {
+func writeAddr(w io.Writer, addr infra.Addr) error {
 	switch addr.Network() {
-	case "inet":
-		if err := enc.Write(w, uint8(0)); err != nil {
+	case inet.NetworkName:
+		if err := enc.Write(w, uint8(netCodeInet)); err != nil {
 			return err
 		}
-	case "tor":
-		if err := enc.Write(w, uint8(1)); err != nil {
+	case tor.NetworkName:
+		if err := enc.Write(w, uint8(netCodeTor)); err != nil {
 			return err
 		}
+	case gw.NetworkName:
+		if err := enc.Write(w, uint8(netCodeGateway)); err != nil {
+			return err
+		}
+		gwAddr, _ := addr.(gw.Addr)
+		addr = gw.NewAddr(gwAddr.Gate(), "")
 	default:
 		if err := enc.Write(w, uint8(255)); err != nil {
 			return err
@@ -126,7 +144,7 @@ func WriteAddr(w io.Writer, addr infra.Addr) error {
 	return nil
 }
 
-func ReadAddr(r io.Reader) (infra.Addr, error) {
+func readAddr(r io.Reader) (infra.Addr, error) {
 	net, err := enc.ReadUint8(r)
 	if err != nil {
 		return nil, err
@@ -135,10 +153,13 @@ func ReadAddr(r io.Reader) (infra.Addr, error) {
 	var netName string
 
 	switch net {
-	case 0:
-		netName = "inet"
-	case 1:
-		netName = "tor"
+	case netCodeInet:
+		netName = inet.NetworkName
+	case netCodeTor:
+		netName = tor.NetworkName
+	case netCodeGateway:
+		netName = gw.NetworkName
+
 	case 255:
 		netName, err = enc.ReadL8String(r)
 		if err != nil {
@@ -151,5 +172,7 @@ func ReadAddr(r io.Reader) (infra.Addr, error) {
 		return nil, err
 	}
 
-	return astral.Unpack(netName, data)
+	addr, err := astral.Unpack(netName, data)
+
+	return addr, err
 }

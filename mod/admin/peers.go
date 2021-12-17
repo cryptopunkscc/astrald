@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
@@ -17,11 +18,17 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 			peer.Idle().Round(time.Second),
 		)
 		for link := range peer.Links() {
+			remoteAddr := link.RemoteAddr().String()
+
+			if gwAddr, ok := link.RemoteAddr().(gw.Addr); ok {
+				remoteAddr = "via " + node.Contacts.DisplayName(gwAddr.Gate())
+			}
+
 			fmt.Fprintf(w,
 				"  %s %s %s (idle %s, lat %.1fms)\n",
 				logfmt.Bool(link.Outbound(), "=>", "<="),
 				link.RemoteAddr().Network(),
-				link.RemoteAddr().String(),
+				remoteAddr,
 				link.Idle().Round(time.Second),
 				float64(link.Latency().Microseconds())/1000,
 			)

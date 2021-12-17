@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra/astral"
+	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	"time"
@@ -98,8 +98,8 @@ func (a *Addr) UnmarshalJSON(data []byte) error {
 		if a.Addr, err = inet.Parse(ja.Address); err != nil {
 			return err
 		}
-	case astral.NetworkName:
-		if a.Addr, err = astral.Parse(ja.Address); err != nil {
+	case gw.NetworkName:
+		if a.Addr, err = gw.Parse(ja.Address); err != nil {
 			return err
 		}
 	default:

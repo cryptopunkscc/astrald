@@ -3,7 +3,7 @@ package connect
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/infra/astral"
+	"github.com/cryptopunkscc/astrald/infra/gw"
 	"io"
 )
 
@@ -21,9 +21,9 @@ func (w wrapper) Outbound() bool {
 }
 
 func (w wrapper) LocalAddr() infra.Addr {
-	return astral.NewAddr(w.local, id.Identity{})
+	return gw.NewAddr(w.local, "")
 }
 
 func (w wrapper) RemoteAddr() infra.Addr {
-	return astral.NewAddr(w.remote, id.Identity{})
+	return gw.NewAddr(w.remote, "")
 }
