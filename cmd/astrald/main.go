@@ -8,7 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/connect"
+	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
+	"github.com/cryptopunkscc/astrald/mod/id"
 	"github.com/cryptopunkscc/astrald/mod/info"
 	"github.com/cryptopunkscc/astrald/mod/linkback"
 	"github.com/cryptopunkscc/astrald/mod/roam"
@@ -80,6 +82,8 @@ func main() {
 		info.Info{},
 		linkback.LinkBack{},
 		&roam.Roam{},
+		id.Id{},
+		contacts.Contacts{},
 	)
 	if err != nil {
 		panic(err)
