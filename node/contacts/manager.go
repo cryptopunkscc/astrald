@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"github.com/cryptopunkscc/astrald/storage"
@@ -121,21 +120,21 @@ func (m *Manager) AddNodeInfo(info *nodeinfo.NodeInfo) error {
 }
 
 // Lookup returns all known addresses of a node via channel
-func (m *Manager) Lookup(nodeID id.Identity) <-chan infra.Addr {
+func (m *Manager) Lookup(nodeID id.Identity) <-chan *Addr {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	c := m.contacts[nodeID.PublicKeyHex()]
 	if c == nil {
-		ch := make(chan infra.Addr)
+		ch := make(chan *Addr)
 		close(ch)
 		return ch
 	}
 
 	// convert to channel
-	ch := make(chan infra.Addr, len(c.Addresses))
+	ch := make(chan *Addr, len(c.Addresses))
 	for _, addr := range c.Addresses {
-		ch <- addr.Addr
+		ch <- addr
 	}
 	close(ch)
 

@@ -2,24 +2,23 @@ package contacts
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
 )
 
 var _ Resolver = &FilteredResolver{}
 
-type FilterFunc func(addr infra.Addr) bool
+type FilterFunc func(nodeID id.Identity, addr *Addr) bool
 
 type FilteredResolver struct {
 	parent Resolver
 	filter FilterFunc
 }
 
-func (f *FilteredResolver) Lookup(nodeID id.Identity) <-chan infra.Addr {
+func (f *FilteredResolver) Lookup(nodeID id.Identity) <-chan *Addr {
 	var addrs = f.parent.Lookup(nodeID)
 
-	var ch = make(chan infra.Addr, len(addrs))
+	var ch = make(chan *Addr, len(addrs))
 	for addr := range addrs {
-		if f.filter(addr) {
+		if f.filter(nodeID, addr) {
 			ch <- addr
 		}
 	}
@@ -30,10 +29,4 @@ func (f *FilteredResolver) Lookup(nodeID id.Identity) <-chan infra.Addr {
 
 func Filter(parent Resolver, filter FilterFunc) *FilteredResolver {
 	return &FilteredResolver{parent: parent, filter: filter}
-}
-
-func SkipNetwork(network string) FilterFunc {
-	return func(addr infra.Addr) bool {
-		return addr.Network() != network
-	}
 }

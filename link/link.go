@@ -1,6 +1,7 @@
 package link
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -52,7 +53,7 @@ func New(conn auth.Conn) *Link {
 }
 
 // Query requests a connection to the remote party's port
-func (link *Link) Query(query string) (*Conn, error) {
+func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 	// Reserve a local mux stream
 	inputStream, err := link.demux.Stream()
 	if err != nil {

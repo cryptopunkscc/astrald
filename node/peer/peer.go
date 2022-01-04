@@ -94,14 +94,14 @@ func (peer *Peer) FollowLinks(ctx context.Context, onlyNew bool) <-chan *link.Li
 	return ch
 }
 
-func (peer *Peer) Query(query string) (io.ReadWriteCloser, error) {
+func (peer *Peer) Query(ctx context.Context, query string) (io.ReadWriteCloser, error) {
 	queryLink := link.Select(peer.Links(), link.Fastest)
 
 	if queryLink == nil {
-		return nil, errors.New("no suitable link found")
+		return nil, errors.New("no link found")
 	}
 
-	return queryLink.Query(query)
+	return queryLink.Query(ctx, query)
 }
 
 func (peer *Peer) remove(link *link.Link) error {
@@ -124,4 +124,19 @@ func (peer *Peer) getLinks() <-chan *link.Link {
 	}
 	close(ch)
 	return ch
+}
+
+func (peer *Peer) WaitLinked(ctx context.Context) (*link.Link, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	select {
+	case l, ok := <-peer.FollowLinks(ctx, false):
+		if !ok {
+			return nil, context.Canceled
+		}
+		return l, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

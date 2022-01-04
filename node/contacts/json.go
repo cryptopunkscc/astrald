@@ -13,7 +13,7 @@ import (
 type jsonContact struct {
 	Identity  string
 	Alias     string
-	Addresses []Addr
+	Addresses []*Addr
 }
 
 type jsonAddr struct {

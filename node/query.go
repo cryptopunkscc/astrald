@@ -8,22 +8,16 @@ import (
 )
 
 func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
+	defer cancel()
+
+	log.Printf("[%s] -> %s\n", node.Contacts.DisplayName(remoteID), query)
+
 	if remoteID.IsZero() || remoteID.IsEqual(node.identity) {
 		return node.Ports.Query(query, node.identity)
 	}
 
-	p := node.makePeer(remoteID)
+	go node.Linker.Link(ctx, remoteID)
 
-	// set up a query context
-	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
-	defer cancel()
-
-	l, err := node.Linker.Connect(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("[%s] -> %s (%s)\n", node.Contacts.DisplayName(remoteID), query, l.Network())
-
-	return l.Query(query)
+	return node.Peers.Query(ctx, remoteID, query)
 }

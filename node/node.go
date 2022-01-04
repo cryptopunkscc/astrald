@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
+	"github.com/cryptopunkscc/astrald/infra/gw"
+	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/contacts"
@@ -38,6 +40,7 @@ type Node struct {
 	Linker   *linker.Manager
 	Store    storage.Store
 	Presence *presence.Presence
+	Peers    *peer.Manager
 
 	// peers
 	peers   map[string]*peer.Peer
@@ -63,6 +66,7 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 		Config:  cfg,
 		Store:   store,
 		Ports:   hub.New(),
+		Peers:   peer.NewManager(),
 		peers:   make(map[string]*peer.Peer),
 		queries: make(chan *link.Query),
 		events:  event.NewQueue(),
@@ -95,7 +99,7 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 	node.Contacts = contacts.New(store)
 
 	// Linker
-	node.Linker = linker.New(node.identity, node.Contacts, node.Infra)
+	node.Linker = linker.New(node.identity, contacts.Filter(node.Contacts, node.filterNetworks), node.Infra)
 
 	// Server
 	node.Server, err = server.Run(ctx, node.identity, node.Infra)
@@ -125,7 +129,7 @@ func (node *Node) AddLink(ctx context.Context, link *link.Link) error {
 		panic("link is nil")
 	}
 
-	peer := node.makePeer(link.RemoteIdentity())
+	peer := node.Peers.Find(link.RemoteIdentity(), true)
 
 	if err := peer.Add(link); err != nil {
 		return err
@@ -156,10 +160,10 @@ func (node *Node) AddLink(ctx context.Context, link *link.Link) error {
 			}
 		})
 
-		// if we only have an incoming link over tor, try to link back via other networks
+		// if we only have one incoming link, try to link back for a better link
 		l := <-links
-		if (l.Outbound() == false) && (l.Network() == tor.NetworkName) {
-			go node.Linker.NewLink(ctx, peer)
+		if l.Outbound() == false {
+			go node.Linker.Link(ctx, link.RemoteIdentity())
 		}
 	}
 
@@ -277,4 +281,36 @@ func (node *Node) handlePresenceEvent(event presence.Event) {
 	case presence.EventIdentityGone:
 		log.Printf("[%s] gone\n", node.Contacts.DisplayName(event.Identity()))
 	}
+}
+
+func (node *Node) filterNetworks(nodeID id.Identity, addr *contacts.Addr) bool {
+	peer := node.Peers.Find(nodeID, false)
+	if peer == nil {
+		return true
+	}
+
+	filter := make(map[string]struct{}) // networks to be filtered out
+
+	// filter all connected networks
+	for link := range peer.Links() {
+		filter[link.Network()] = struct{}{}
+	}
+
+	// if inet is online, we don't need gw
+	if _, ok := filter[inet.NetworkName]; ok {
+		filter[gw.NetworkName] = struct{}{}
+	}
+
+	// if gw is not needed, then tor also isn't
+	if _, ok := filter[gw.NetworkName]; ok {
+		filter[tor.NetworkName] = struct{}{}
+	}
+
+	for net := range filter {
+		if addr.Network() == net {
+			return false
+		}
+	}
+
+	return true
 }

@@ -9,3 +9,10 @@ type Addr struct {
 	infra.Addr
 	ExpiresAt time.Time
 }
+
+func wrapAddr(addr infra.Addr) *Addr {
+	return &Addr{
+		Addr:      addr,
+		ExpiresAt: time.Now().Add(defaultAddressValidity),
+	}
+}

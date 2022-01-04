@@ -14,13 +14,13 @@ type Contact struct {
 	identity  id.Identity
 	alias     string
 	mu        sync.Mutex
-	Addresses []Addr
+	Addresses []*Addr
 }
 
 func NewContact(identity id.Identity) *Contact {
 	return &Contact{
 		identity:  identity,
-		Addresses: make([]Addr, 0),
+		Addresses: make([]*Addr, 0),
 	}
 }
 
@@ -53,7 +53,8 @@ func (c *Contact) Add(addr infra.Addr) {
 			return
 		}
 	}
-	c.Addresses = append(c.Addresses, Addr{Addr: addr, ExpiresAt: time.Now().Add(defaultAddressValidity)})
+
+	c.Addresses = append(c.Addresses, wrapAddr(addr))
 }
 
 func (c *Contact) Remove(addr infra.Addr) {

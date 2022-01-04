@@ -8,36 +8,35 @@ import (
 	"github.com/cryptopunkscc/astrald/node/link"
 )
 
-const defaultConcurrency = 8
+const DefaultConcurrency = 8
 
 // ConcurrentLinker tries to establish a link on any address from the resolver using several concurrent dialers.
 type ConcurrentLinker struct {
 	LocalID     id.Identity
-	RemoteID    id.Identity
 	Resolver    contacts.Resolver
 	Dialer      infra.Dialer
 	Concurrency int
 }
 
-func (l *ConcurrentLinker) getConcurrency() int {
-	if l.Concurrency == 0 {
-		return defaultConcurrency
+func (linker *ConcurrentLinker) getConcurrency() int {
+	if linker.Concurrency == 0 {
+		return DefaultConcurrency
 	}
-	return l.Concurrency
+	return linker.Concurrency
 }
 
-func (l *ConcurrentLinker) Link(ctx context.Context) *link.Link {
+func (linker *ConcurrentLinker) Link(ctx context.Context, remoteID id.Identity) *link.Link {
 	// get current addresses for the node
-	addrs := l.Resolver.Lookup(l.RemoteID)
+	contactAddr := linker.Resolver.Lookup(remoteID)
 
 	// try to link
 	rawLink := LinkFirst(ctx,
-		l.LocalID,
-		l.RemoteID,
+		linker.LocalID,
+		remoteID,
 		DialMany(ctx,
-			l.Dialer,
-			addrs,
-			l.getConcurrency(),
+			linker.Dialer,
+			extractInfraAddr(contactAddr),
+			linker.getConcurrency(),
 		),
 	)
 
@@ -46,4 +45,15 @@ func (l *ConcurrentLinker) Link(ctx context.Context) *link.Link {
 	}
 
 	return link.Wrap(rawLink)
+}
+
+func extractInfraAddr(in <-chan *contacts.Addr) <-chan infra.Addr {
+	out := make(chan infra.Addr)
+	go func() {
+		defer close(out)
+		for i := range in {
+			out <- i.Addr
+		}
+	}()
+	return out
 }

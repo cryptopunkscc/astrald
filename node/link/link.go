@@ -1,6 +1,7 @@
 package link
 
 import (
+	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/link"
@@ -53,7 +54,7 @@ func (link *Link) Ping() error {
 
 	go func() {
 		t0 := time.Now()
-		conn, err := link.Query(".ping")
+		conn, err := link.Query(context.Background(), ".ping")
 		lat <- time.Now().Sub(t0)
 
 		if err == nil {
@@ -87,14 +88,14 @@ func (link *Link) monitorLatency() {
 	}
 }
 
-func (link *Link) Query(query string) (*Conn, error) {
+func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 	// ping should not influence idle time
 	if query != ".ping" {
 		link.Activity.Add(1)
 		defer link.Activity.Done()
 	}
 
-	linkConn, err := link.Link.Query(query)
+	linkConn, err := link.Link.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}

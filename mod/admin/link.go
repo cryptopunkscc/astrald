@@ -19,7 +19,8 @@ func link(_ io.ReadWriter, node *node.Node, args []string) error {
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Minute)
-	_, err = node.Linker.Connect(ctx, node.Peer(remoteID))
+	node.Linker.Link(ctx, remoteID)
+
 	if err != nil {
 		return err
 	}
