@@ -1,4 +1,4 @@
-# Wrap Drive CLI
+# Warp Drive CLI
 
 Command line service for warpdrive, combined with anc can be considered as referential UI client. Translates text
 commands into warpdrive UI API calls, and formats responses into console output.

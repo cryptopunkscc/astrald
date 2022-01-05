@@ -23,6 +23,8 @@ from peers, this feature can be solved using OS notification system.
 4. The notification can navigate to the directory with list of incoming file requests.
     * Each request is represented as a single file.
 
+## `recipient`
+
 ### `accept`
 
 1. Open directory that contains incoming file requests.
@@ -32,8 +34,6 @@ from peers, this feature can be solved using OS notification system.
 
 1. Open directory that contains incoming file requests.
 2. Move request file into `rejected` directory
-
-## `recipient`
 
 ### `update`
 

@@ -1,0 +1,45 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+'autonumber
+
+box localhost #White
+participant service
+participant sender
+end box
+
+== recipients ==
+
+sender -> service: query
+activate sender
+activate service
+sender <-- service: recipients
+sender --> service: ok
+deactivate sender
+deactivate service
+
+== sent ==
+
+sender -> service: query
+activate sender
+activate service
+sender <-- service: requests
+sender --> service: ok
+deactivate sender
+deactivate service
+
+== events ==
+
+service <- sender : query
+activate sender
+activate service
+service --> service : add listener
+activate service
+service o-> sender : events channel
+service <--> sender : ok
+deactivate sender
+service --> service : remove listener
+deactivate service
+deactivate service
+
+@enduml
