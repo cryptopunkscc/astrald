@@ -76,3 +76,15 @@ func (s *storage) Info(path string) (files []FileInfo, err error) {
 	}
 	return
 }
+
+func ShrinkPaths(in []FileInfo) (out []FileInfo) {
+	dir, _ := filepath.Split(in[0].Path)
+	if dir == "" {
+		return
+	}
+	for _, info := range in {
+		info.Path = strings.TrimPrefix(info.Path, dir)
+		out = append(out, info)
+	}
+	return
+}

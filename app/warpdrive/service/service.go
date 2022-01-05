@@ -9,11 +9,13 @@ import (
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/id"
+	"github.com/mitchellh/ioprogress"
 	uuid "github.com/nu7hatch/gouuid"
 	"io"
 	"log"
 	"os"
 	"sync"
+	"time"
 )
 
 const PORT = "warpdrive"
@@ -120,12 +122,13 @@ func (srv *service) sendFile(peer string, path string) (id string, err error) {
 		return
 	}
 	// Send file request
+	shrunken := ShrinkPaths(files)
 	req := &FilesRequest{
 		RequestStatus: RequestStatus{
 			Id:     newFileRequestId(),
 			Status: "sent",
 		},
-		Files: files,
+		Files: shrunken,
 	}
 	err = json.NewEncoder(conn).Encode(req)
 	if err != nil {
@@ -138,6 +141,7 @@ func (srv *service) sendFile(peer string, path string) (id string, err error) {
 		log.Println("<", SEND, "Rejected", peer, err)
 		return
 	}
+	req.Files = files
 	// Cache outgoing files request
 	srv.outgoing[req.Id] = &OutgoingFiles{
 		FilesRequest: *req,
@@ -217,7 +221,7 @@ func (srv *service) acceptIncomingFiles(id RequestId) (err error) {
 	// Get cached incoming files by request id
 	files := srv.incoming[id]
 	if files == nil {
-		err = errors.New(fmt.Sprint("No incoming file with id", id))
+		err = errors.New(fmt.Sprint("No incoming file with id ", id))
 		log.Println("<", ACCEPT, "Cannot find incoming file", err)
 		return err
 	}
@@ -260,50 +264,63 @@ func (srv *service) acceptIncomingFiles(id RequestId) (err error) {
 	if err != nil {
 		return err
 	}
-	// Copy files to storage
-	defer filesConn.Close()
-	for _, file := range files.Files {
-		err = func() error {
-			// Obtain writer
-			if file.IsDir {
-				err := srv.received.MkDir(file.Path, file.Perm)
-				if err != nil && !os.IsExist(err) {
-					log.Println("<", ACCEPT, "Cannot make dir", file.Path, err)
-					return err
+	// Try to download files in background
+	go func() {
+		// Copy files to storage
+		defer filesConn.Close()
+		for _, file := range files.Files {
+			err = func() error {
+				// Obtain writer
+				if file.IsDir {
+					err := srv.received.MkDir(file.Path, file.Perm)
+					if err != nil && !os.IsExist(err) {
+						log.Println("<", ACCEPT, "Cannot make dir", file.Path, err)
+						return err
+					}
+				} else {
+					writer, err := srv.received.Writer(file.Path, file.Perm)
+					if err != nil {
+						log.Println("<", ACCEPT, "Cannot get writer for", file.Path, err)
+						return err
+					}
+					defer writer.Close()
+					// Copy bytes
+					progress := &ioprogress.Reader{
+						Reader:       filesConn,
+						Size:         file.Size,
+						DrawInterval: 200 * time.Millisecond,
+						DrawFunc: func(progress int64, size int64) error {
+							files.Status = fmt.Sprintf("download: %s %d/%dB", file.Path, progress, size)
+							go notifyListeners("<", ACCEPT, files.RequestStatus, srv.incomingStatus)
+							return nil
+						},
+					}
+					_, err = io.CopyN(writer, progress, file.Size)
+					if err != nil {
+						log.Println("<", ACCEPT, "Cannot copy", file.Path, err)
+						return err
+					}
+					err = writer.Close()
+					if err != nil {
+						log.Println("<", ACCEPT, "Cannot close file", file.Path, err)
+						return err
+					}
 				}
-			} else {
-				writer, err := srv.received.Writer(file.Path, file.Perm)
-				if err != nil {
-					log.Println("<", ACCEPT, "Cannot get writer for", file.Path, err)
-					return err
-				}
-				defer writer.Close()
-				// Copy bytes
-				_, err = io.CopyN(writer, filesConn, file.Size)
-				if err != nil {
-					log.Println("<", ACCEPT, "Cannot copy", file.Path, err)
-					return err
-				}
-				err = writer.Close()
-				if err != nil {
-					log.Println("<", ACCEPT, "Cannot close file", file.Path, err)
-					return err
-				}
+				return err
+			}()
+			if err != nil {
+				return
 			}
-			return err
-		}()
+		}
+		files.Status = "downloaded"
+		go notifyListeners("<", ACCEPT, files.RequestStatus, srv.incomingStatus)
+		// Send OK
+		err = enc.Write(filesConn, uint8(0))
 		if err != nil {
+			log.Println("<", ACCEPT, "Cannot send ok", err)
 			return
 		}
-	}
-	files.Status = "downloaded"
-	go notifyListeners("<", ACCEPT, files.RequestStatus, srv.incomingStatus)
-	// Send OK
-	err = enc.Write(filesConn, uint8(0))
-	if err != nil {
-		log.Println("<", ACCEPT, "Cannot send ok", err)
-		return
-	}
+	}()
 	return
 }
 
@@ -374,7 +391,17 @@ func (srv *service) handleServiceAccept() {
 					if err != nil {
 						return
 					}
-					_, err = io.CopyN(filesConn, reader, file.Size)
+					progress := &ioprogress.Reader{
+						Reader:       reader,
+						Size:         file.Size,
+						DrawInterval: 200 * time.Millisecond,
+						DrawFunc: func(progress int64, size int64) error {
+							files.Status = fmt.Sprintf("upload %s %d/%dB", file.Path, progress, size)
+							go notifyListeners(">", ACCEPT, files.RequestStatus, srv.outgoingStatus)
+							return nil
+						},
+					}
+					_, err = io.CopyN(filesConn, progress, file.Size)
 					if err != nil {
 						return
 					}

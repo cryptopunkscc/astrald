@@ -144,7 +144,7 @@ Local protocol for communicating sender client with warpdrive service.
 ### `send`
 
 1. <- Query sender send
-2. <- Send recipient id and file path
+2. <- Recipient id and file path
     * Invalid id!
     * path!
 3. -> OK
