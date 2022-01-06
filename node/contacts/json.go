@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/sig"
 	"time"
 )
 
@@ -42,6 +44,7 @@ func (c *Contact) UnmarshalJSON(data []byte) error {
 		c.identity = i
 	}
 
+	c.queue = &sig.Queue{}
 	c.alias = v.Alias
 	c.Addresses = v.Addresses
 
@@ -100,6 +103,10 @@ func (a *Addr) UnmarshalJSON(data []byte) error {
 		}
 	case gw.NetworkName:
 		if a.Addr, err = gw.Parse(ja.Address); err != nil {
+			return err
+		}
+	case bt.NetworkName:
+		if a.Addr, err = bt.Parse(ja.Address); err != nil {
 			return err
 		}
 	default:

@@ -13,8 +13,11 @@ type FilteredResolver struct {
 	filter FilterFunc
 }
 
-func (f *FilteredResolver) Lookup(nodeID id.Identity) <-chan *Addr {
-	var addrs = f.parent.Lookup(nodeID)
+func (f *FilteredResolver) Lookup(nodeID id.Identity) (<-chan *Addr, error) {
+	addrs, err := f.parent.Lookup(nodeID)
+	if err != nil {
+		return nil, err
+	}
 
 	var ch = make(chan *Addr, len(addrs))
 	for addr := range addrs {
@@ -24,7 +27,7 @@ func (f *FilteredResolver) Lookup(nodeID id.Identity) <-chan *Addr {
 	}
 	close(ch)
 
-	return ch
+	return ch, nil
 }
 
 func Filter(parent Resolver, filter FilterFunc) *FilteredResolver {

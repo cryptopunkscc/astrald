@@ -4,13 +4,14 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/storage"
 	"io"
-	"log"
 )
 
 type Querier interface {
@@ -24,10 +25,12 @@ type Infra struct {
 	Store    storage.Store
 	networks map[string]infra.Network
 
-	gateways []infra.AddrSpec
-	inet     *inet.Inet
-	tor      *tor.Tor
-	gateway  *gw.Gateway
+	gateways  []infra.AddrSpec
+	inet      *inet.Inet
+	tor       *tor.Tor
+	gateway   *gw.Gateway
+	bluetooth *bt.Bluetooth
+	logLevel  int
 }
 
 func New(cfg config.Infra, querier Querier, store storage.Store) (*Infra, error) {
@@ -35,6 +38,7 @@ func New(cfg config.Infra, querier Querier, store storage.Store) (*Infra, error)
 		Querier:  querier,
 		Store:    store,
 		gateways: make([]infra.AddrSpec, 0),
+		logLevel: cfg.LogLevel,
 	}
 	var err error
 
@@ -71,6 +75,12 @@ func New(cfg config.Infra, querier Querier, store storage.Store) (*Infra, error)
 		return nil, err
 	}
 
+	i.bluetooth = bt.New()
+	err = i.addNetwork(i.bluetooth)
+	if err != nil {
+		return nil, err
+	}
+
 	return i, nil
 }
 
@@ -90,11 +100,29 @@ func (i *Infra) Gateways() []infra.AddrSpec {
 func (i *Infra) Addresses() []infra.AddrSpec {
 	list := make([]infra.AddrSpec, 0)
 
-	list = append(list, i.inet.Addresses()...)
-	list = append(list, i.tor.Addresses()...)
+	type addrLister interface {
+		Addresses() []infra.AddrSpec
+	}
+
+	// collect addresses from all networks that support it
+	for _, net := range i.networks {
+		if lister, ok := net.(addrLister); ok {
+			list = append(list, lister.Addresses()...)
+		}
+	}
+
+	// append gateways
 	list = append(list, i.Gateways()...)
 
 	return list
+}
+
+func (i *Infra) Logf(level int, fmt string, args ...interface{}) {
+	if level > i.logLevel {
+		return
+	}
+
+	log.Printf("[infra] "+fmt, args...)
 }
 
 func (i *Infra) addNetwork(n infra.Network) error {

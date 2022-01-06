@@ -5,5 +5,5 @@ import (
 )
 
 type Resolver interface {
-	Lookup(nodeID id.Identity) <-chan *Addr
+	Lookup(nodeID id.Identity) (<-chan *Addr, error)
 }

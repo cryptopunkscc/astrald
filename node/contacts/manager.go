@@ -120,15 +120,13 @@ func (m *Manager) AddNodeInfo(info *nodeinfo.NodeInfo) error {
 }
 
 // Lookup returns all known addresses of a node via channel
-func (m *Manager) Lookup(nodeID id.Identity) <-chan *Addr {
+func (m *Manager) Lookup(nodeID id.Identity) (<-chan *Addr, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	c := m.contacts[nodeID.PublicKeyHex()]
-	if c == nil {
-		ch := make(chan *Addr)
-		close(ch)
-		return ch
+	c, ok := m.contacts[nodeID.PublicKeyHex()]
+	if !ok {
+		return nil, errors.New("unknown identity")
 	}
 
 	// convert to channel
@@ -138,7 +136,7 @@ func (m *Manager) Lookup(nodeID id.Identity) <-chan *Addr {
 	}
 	close(ch)
 
-	return ch
+	return ch, nil
 }
 
 // All returns a closed channel populated with all contacts

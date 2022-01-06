@@ -27,7 +27,10 @@ func (linker *ConcurrentLinker) getConcurrency() int {
 
 func (linker *ConcurrentLinker) Link(ctx context.Context, remoteID id.Identity) *link.Link {
 	// get current addresses for the node
-	contactAddr := linker.Resolver.Lookup(remoteID)
+	contactAddr, err := linker.Resolver.Lookup(remoteID)
+	if err != nil {
+		return nil
+	}
 
 	// try to link
 	rawLink := LinkFirst(ctx,
