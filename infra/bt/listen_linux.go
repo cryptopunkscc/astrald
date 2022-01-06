@@ -27,13 +27,13 @@ func (bt Bluetooth) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 
 		err = b.RegisterProfile(bluez.UUID_SPP)
 		if err != nil {
-			log.Printf("(%s) RegisterProfile error: %s\n", NetworkName, err.Error())
+			debugf("(%s) RegisterProfile error: %s\n", NetworkName, err.Error())
 			return
 		}
 
 		btSocket, err := unix.Socket(syscall.AF_BLUETOOTH, syscall.SOCK_STREAM, unix.BTPROTO_RFCOMM)
 		if err != nil {
-			log.Printf("(%s) unix.Socket error: %s\n", NetworkName, err.Error())
+			debugf("(%s) unix.Socket error: %s\n", NetworkName, err.Error())
 			return
 		}
 
@@ -44,36 +44,39 @@ func (bt Bluetooth) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 
 		err = unix.Bind(btSocket, addr)
 		if err != nil {
-			log.Printf("(%s) unix.Bind error: %s\n", NetworkName, err.Error())
+			debugf("(%s) unix.Bind error: %s\n", NetworkName, err.Error())
 			return
 		}
 
 		err = unix.Listen(btSocket, 1)
 		if err != nil {
-			log.Printf("(%s) unix.Listen error: %s\n", NetworkName, err.Error())
+			debugf("(%s) unix.Listen error: %s\n", NetworkName, err.Error())
 			return
 		}
 
-		defer unix.Close(btSocket)
-
 		var addrs []string
-
 		for _, as := range bt.Addresses() {
 			addrs = append(addrs, as.String())
 		}
-
 		log.Printf("(%s) listen %s\n", NetworkName, addrs)
+
+		go func() {
+			<-ctx.Done()
+			unix.Close(btSocket)
+		}()
+
+		defer unix.Close(btSocket)
 
 		for {
 			nfd, sa, err := unix.Accept(btSocket)
 			if err != nil {
-				log.Printf("(%s) unix.Bind error: %s\n", NetworkName, err.Error())
+				debugf("(%s) unix.Accept error: %s\n", NetworkName, err.Error())
 				return
 			}
 
 			remoteAddr, _ := Unpack(sa.(*unix.SockaddrRFCOMM).Addr[:])
 
-			log.Printf("(%s) accept: %s\n",
+			log.Printf("(%s) accepted %s\n",
 				NetworkName,
 				remoteAddr.String())
 

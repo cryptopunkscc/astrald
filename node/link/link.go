@@ -54,7 +54,13 @@ func (link *Link) Ping() error {
 
 	go func() {
 		t0 := time.Now()
-		conn, err := link.Query(context.Background(), ".ping")
+		ctx, _ := context.WithTimeout(context.Background(), pingTimeout)
+		conn, err := link.Query(ctx, ".ping")
+
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+
 		lat <- time.Now().Sub(t0)
 
 		if err == nil {

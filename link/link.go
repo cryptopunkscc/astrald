@@ -54,13 +54,13 @@ func New(conn auth.Conn) *Link {
 
 // Query requests a connection to the remote party's port
 func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
-	// Reserve a local mux stream
+	// Reserve a local mux stream for the response
 	inputStream, err := link.demux.Stream()
 	if err != nil {
 		return nil, err
 	}
 
-	// Send a request
+	// Send a query
 	err = link.sendQuery(query, inputStream.StreamID())
 	if err != nil {
 		return nil, err

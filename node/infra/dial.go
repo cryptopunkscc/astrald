@@ -2,16 +2,19 @@ package infra
 
 import (
 	"context"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/log"
 )
 
 func (i *Infra) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
-	i.Logf(log.Debug, "dial %s", addr.String())
+	addrStr := fmt.Sprintf("%s:%s", addr.Network(), addr.String())
+
+	i.Logf(log.Debug, "dial %s", addrStr)
 
 	network, found := i.networks[addr.Network()]
 	if !found {
-		i.Logf(log.Debug, "dial error: network unsupported")
+		i.Logf(log.Debug, "dial %s error: network unsupported", addrStr)
 		return nil, infra.ErrUnsupportedNetwork
 	}
 
@@ -19,13 +22,13 @@ func (i *Infra) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 		dial, err := dialer.Dial(ctx, addr)
 
 		if err != nil {
-			i.Logf(log.Debug, "dial error: %v", err)
+			i.Logf(log.Debug, "dial %s error: %v", addrStr, err)
 		}
 
 		return dial, err
 	}
 
-	i.Logf(log.Debug, "dial error: network %s does not support dialing", network.Name())
+	i.Logf(log.Debug, "dial %s error: dial unsupported", addrStr)
 
 	return nil, infra.ErrUnsupportedOperation
 }
