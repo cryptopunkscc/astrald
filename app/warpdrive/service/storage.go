@@ -48,7 +48,7 @@ func (s *storage) Reader(path string) (io.ReadCloser, error) {
 	return os.Open(s.normalizePath(path))
 }
 
-func (s *storage) Writer(path string, mode os.FileMode) (*os.File, error) {
+func (s *storage) Writer(path string, mode os.FileMode) (io.WriteCloser, error) {
 	return os.OpenFile(s.normalizePath(path), os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode)
 }
 
@@ -73,18 +73,6 @@ func (s *storage) Info(path string) (files []Info, err error) {
 		err = filepath.Walk(fullPath, fn)
 	} else {
 		err = fn(path, info, nil)
-	}
-	return
-}
-
-func ShrinkPaths(in []Info) (out []Info) {
-	dir, _ := filepath.Split(in[0].Path)
-	if dir == "" {
-		return in
-	}
-	for _, info := range in {
-		info.Path = strings.TrimPrefix(info.Path, dir)
-		out = append(out, info)
 	}
 	return
 }

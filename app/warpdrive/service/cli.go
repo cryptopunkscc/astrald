@@ -120,7 +120,7 @@ func cmdSent(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
 		return err
 	}
 	for _, offer := range sent {
-		err = printFilesRequest(writer, offer)
+		err = printFilesRequest(writer, *offer)
 		if err != nil {
 			return
 		}
@@ -134,7 +134,7 @@ func cmdReceived(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
 		return err
 	}
 	for _, offer := range received {
-		err = printFilesRequest(writer, offer)
+		err = printFilesRequest(writer, *offer)
 		if err != nil {
 			return
 		}
