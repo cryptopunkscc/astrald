@@ -62,7 +62,7 @@ func init() {
 		"status":   cmdStatus,
 		"sent":     cmdSent,
 		"received": cmdReceived,
-		"incoming": cmdIncoming,
+		"offers":   cmdOffers,
 		"accept":   cmdAccept,
 		"reject":   cmdReject,
 		"update":   cmdUpdate,
@@ -73,18 +73,18 @@ func init() {
 var commands cmdMap
 
 type cmdMap map[string]cmdFunc
-type cmdFunc func(io.ReadWriter, UIApi, []string) error
+type cmdFunc func(io.ReadWriter, ClientApi, []string) error
 
 // =========================== Commands ===============================
 
-func cmdPeers(writer io.ReadWriter, api UIApi, _ []string) (err error) {
+func cmdPeers(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
 	peers, err := api.Peers()
 	if err != nil {
 		return
 	}
 	log.Println("peers:", peers)
 	for _, peer := range peers {
-		_, err = fmt.Fprintln(writer, peer.Id, peer.Hostname, peer.Alias, peer.Mod)
+		_, err = fmt.Fprintln(writer, peer.Id, peer.Alias, peer.Mod)
 		if err != nil {
 			return
 		}
@@ -92,12 +92,12 @@ func cmdPeers(writer io.ReadWriter, api UIApi, _ []string) (err error) {
 	return
 }
 
-func cmdSend(writer io.ReadWriter, api UIApi, args []string) (err error) {
+func cmdSend(writer io.ReadWriter, api ClientApi, args []string) (err error) {
 	peer := ""
 	if len(args) > 1 {
 		peer = args[1]
 	}
-	id, err := api.SendFile(peer, args[0])
+	id, err := api.Send(PeerId(peer), args[0])
 	if err != nil {
 		return err
 	}
@@ -105,8 +105,8 @@ func cmdSend(writer io.ReadWriter, api UIApi, args []string) (err error) {
 	return
 }
 
-func cmdStatus(writer io.ReadWriter, api UIApi, args []string) (err error) {
-	status, err := api.SendingStatus(RequestId(args[0]))
+func cmdStatus(writer io.ReadWriter, api ClientApi, args []string) (err error) {
+	status, err := api.Status(OfferId(args[0]))
 	if err != nil {
 		return err
 	}
@@ -114,13 +114,13 @@ func cmdStatus(writer io.ReadWriter, api UIApi, args []string) (err error) {
 	return
 }
 
-func cmdSent(writer io.ReadWriter, api UIApi, _ []string) (err error) {
-	sent, err := api.SentRequests()
+func cmdSent(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
+	sent, err := api.Sent()
 	if err != nil {
 		return err
 	}
-	for _, req := range sent {
-		err = printFilesRequest(writer, req.Recipient, req.FilesRequest)
+	for _, offer := range sent {
+		err = printFilesRequest(writer, offer)
 		if err != nil {
 			return
 		}
@@ -128,13 +128,13 @@ func cmdSent(writer io.ReadWriter, api UIApi, _ []string) (err error) {
 	return
 }
 
-func cmdReceived(writer io.ReadWriter, api UIApi, _ []string) (err error) {
-	received, err := api.ReceivedRequests("")
+func cmdReceived(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
+	received, err := api.Received("")
 	if err != nil {
 		return err
 	}
-	for _, req := range received {
-		err = printFilesRequest(writer, req.Sender, req.FilesRequest)
+	for _, offer := range received {
+		err = printFilesRequest(writer, offer)
 		if err != nil {
 			return
 		}
@@ -142,12 +142,12 @@ func cmdReceived(writer io.ReadWriter, api UIApi, _ []string) (err error) {
 	return
 }
 
-func printFilesRequest(writer io.Writer, peer PeerId, req FilesRequest) (err error) {
-	_, err = fmt.Fprintln(writer, req.Id, peer, req.Status)
+func printFilesRequest(writer io.Writer, offer Offer) (err error) {
+	_, err = fmt.Fprintln(writer, offer.Id, offer.Peer, offer.Status.Status)
 	if err != nil {
 		return
 	}
-	for _, file := range req.Files {
+	for _, file := range offer.Files {
 		_, err = fmt.Fprintln(writer, "  - ", file.Path)
 		if err != nil {
 			return
@@ -156,19 +156,19 @@ func printFilesRequest(writer io.Writer, peer PeerId, req FilesRequest) (err err
 	return
 }
 
-func cmdIncoming(writer io.ReadWriter, api UIApi, _ []string) (err error) {
-	files, err := api.IncomingFiles()
+func cmdOffers(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
+	offers, err := api.Offers()
 	if err != nil {
 		return err
 	}
-	for req := range files {
-		_ = printFilesRequest(writer, req.Sender, req.FilesRequest)
+	for offer := range offers {
+		_ = printFilesRequest(writer, offer)
 	}
 	return
 }
 
-func cmdAccept(writer io.ReadWriter, api UIApi, args []string) (err error) {
-	err = api.AcceptRequest(RequestId(args[0]))
+func cmdAccept(writer io.ReadWriter, api ClientApi, args []string) (err error) {
+	err = api.Accept(OfferId(args[0]))
 	if err != nil {
 		return
 	}
@@ -176,8 +176,8 @@ func cmdAccept(writer io.ReadWriter, api UIApi, args []string) (err error) {
 	return
 }
 
-func cmdReject(writer io.ReadWriter, api UIApi, args []string) (err error) {
-	err = api.RejectRequest(RequestId(args[0]))
+func cmdReject(writer io.ReadWriter, api ClientApi, args []string) (err error) {
+	err = api.Reject(OfferId(args[0]))
 	if err != nil {
 		return
 	}
@@ -185,8 +185,8 @@ func cmdReject(writer io.ReadWriter, api UIApi, args []string) (err error) {
 	return
 }
 
-func cmdUpdate(writer io.ReadWriter, api UIApi, args []string) (err error) {
-	err = api.UpdatePeer(PeerId(args[0]), args[1], args[2])
+func cmdUpdate(writer io.ReadWriter, api ClientApi, args []string) (err error) {
+	err = api.Update(PeerId(args[0]), args[1], args[2])
 	if err != nil {
 		return
 	}
@@ -194,12 +194,12 @@ func cmdUpdate(writer io.ReadWriter, api UIApi, args []string) (err error) {
 	return
 }
 
-func cmdEvents(writer io.ReadWriter, api UIApi, args []string) (err error) {
+func cmdEvents(writer io.ReadWriter, api ClientApi, args []string) (err error) {
 	filter := "all"
 	if len(args) > 0 {
 		filter = args[0]
 	}
-	var events <-chan RequestStatus
+	var events <-chan Status
 	switch filter {
 	case "all":
 		events, err = api.Events()

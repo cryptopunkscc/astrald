@@ -53,8 +53,8 @@ func newService(ctx context.Context) *service {
 		received: receivedFiles(),
 		peers:    map[string]*Peer{},
 		requests: requests{
-			incoming: map[RequestId]*IncomingFiles{},
-			outgoing: map[RequestId]*OutgoingFiles{},
+			incoming: map[OfferId]*Offer{},
+			outgoing: map[OfferId]*Offer{},
 		},
 	}
 	service.setupIdentity()
@@ -73,8 +73,8 @@ type service struct {
 }
 
 type requests struct {
-	incoming map[RequestId]*IncomingFiles
-	outgoing map[RequestId]*OutgoingFiles
+	incoming map[OfferId]*Offer
+	outgoing map[OfferId]*Offer
 }
 
 type notify struct {
@@ -99,8 +99,8 @@ func (srv *service) setupPeers() {
 	}
 	for _, contact := range contactList {
 		srv.peers[contact.Id] = &Peer{
-			Id:       PeerId(contact.Id),
-			Hostname: contact.Name,
+			Id:    PeerId(contact.Id),
+			Alias: contact.Name,
 		}
 	}
 }
@@ -122,17 +122,16 @@ func (srv *service) sendFile(peer string, path string) (id string, err error) {
 		return
 	}
 	// Send file request
-	shrunken := ShrinkPaths(files)
-	req := &FilesRequest{
-		RequestStatus: RequestStatus{
-			Id:     newFileRequestId(),
-			Status: "sent",
-		},
-		Files: shrunken,
-	}
-	err = json.NewEncoder(conn).Encode(req)
+	id = newOfferId()
+	err = enc.WriteL8String(conn, id)
 	if err != nil {
-		log.Println("<", SEND, "Cannot send file request", peer, err)
+		log.Println("<", SEND, "Cannot send offer id", peer, err)
+		return "", err
+	}
+	shrunken := ShrinkPaths(files)
+	err = json.NewEncoder(conn).Encode(shrunken)
+	if err != nil {
+		log.Println("<", SEND, "Cannot send offer info", peer, id, err)
 		return
 	}
 	// Wait for close
@@ -141,24 +140,26 @@ func (srv *service) sendFile(peer string, path string) (id string, err error) {
 		log.Println("<", SEND, "Rejected", peer, err)
 		return
 	}
-	req.Files = files
 	// Cache outgoing files request
-	srv.outgoing[req.Id] = &OutgoingFiles{
-		FilesRequest: *req,
-		Recipient:    PeerId(peer),
+	status := Status{
+		Id:     OfferId(id),
+		Status: "sent",
 	}
-	id = string(req.Id)
+	srv.outgoing[status.Id] = &Offer{
+		Status: status,
+		Files:  files,
+	}
 	// Notify status listeners
-	go notifyListeners("<", SEND, req.RequestStatus, srv.outgoingStatus)
+	go notifyListeners("<", SEND, status, srv.outgoingStatus)
 	return
 }
 
-func newFileRequestId() RequestId {
+func newOfferId() string {
 	v4, err := uuid.NewV4()
 	if err != nil {
 		log.Panic(err)
 	}
-	return RequestId(v4.String())
+	return v4.String()
 }
 
 // ================================ Handler ================================
@@ -180,35 +181,42 @@ func (srv *service) handleServiceSend() {
 			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", SEND, "Cannot accept request from from", caller, err)
+				log.Println(">", SEND, "Cannot accept request from", caller, err)
 				return
 			}
 			defer conn.Close()
+			offerId, err := enc.ReadL8String(conn)
+			if err != nil {
+				log.Println(">", SEND, "Cannot read offer id", err)
+			}
 			// Read files request
 			dec := json.NewDecoder(conn)
-			req := &FilesRequest{}
-			err = dec.Decode(req)
+			var files []Info
+			err = dec.Decode(&files)
 			if err != nil {
-				log.Println(">", SEND, "Cannot read file request", err)
+				log.Println(">", SEND, "Cannot read files for offer", offerId, err)
 				return
 			}
-			// Save incoming files
-			files := &IncomingFiles{
-				FilesRequest: *req,
-				Sender:       PeerId(caller),
+			// Save incoming offer
+			offer := &Offer{
+				Files: files,
+				Peer:  PeerId(caller),
+				Status: Status{
+					Id:     OfferId(offerId),
+					Status: "received",
+				},
 			}
-			files.Status = "received"
-			srv.incoming[files.Id] = files
+			srv.incoming[offer.Id] = offer
 			// Send OK
 			_ = enc.Write(conn, uint8(0))
 			// Notify status listeners
-			go notifyListeners(">", SEND, files.RequestStatus, srv.incomingStatus)
-			// Auto accept incoming files if peer is trusted
+			go notifyListeners(">", SEND, offer.Status, srv.incomingStatus)
+			// Auto accept incoming offer if peer is trusted
 			switch peerMode {
 			case PEER_MOD_TRUST:
-				_ = srv.acceptIncomingFiles(files.Id)
+				_ = srv.acceptIncomingFiles(offer.Id)
 			case PEER_MOD_ASK:
-				go notifyListeners(">", SEND, files, srv.filesRequest)
+				go notifyListeners(">", SEND, offer, srv.filesRequest)
 			}
 		}(request)
 	}
@@ -217,7 +225,7 @@ func (srv *service) handleServiceSend() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (srv *service) acceptIncomingFiles(id RequestId) (err error) {
+func (srv *service) acceptIncomingFiles(id OfferId) (err error) {
 	// Get cached incoming files by request id
 	files := srv.incoming[id]
 	if files == nil {
@@ -228,7 +236,7 @@ func (srv *service) acceptIncomingFiles(id RequestId) (err error) {
 	// Obtain files reader connection
 	filesConn, err := func() (filesConn io.ReadWriteCloser, err error) {
 		// Connect to service
-		conn, err := astral.Query(string(files.Sender), ACCEPT)
+		conn, err := astral.Query(string(files.Peer), ACCEPT)
 		if err != nil {
 			log.Println("<", ACCEPT, "Cannot connect", err)
 			return
@@ -246,15 +254,15 @@ func (srv *service) acceptIncomingFiles(id RequestId) (err error) {
 			log.Println("<", ACCEPT, "Cannot read files port", err)
 			return
 		}
-		files.Status = "accepted"
-		go notifyListeners("<", ACCEPT, files.RequestStatus, srv.incomingStatus)
+		files.Status.Status = "accepted"
+		go notifyListeners("<", ACCEPT, files.Status, srv.incomingStatus)
 		err = enc.Write(conn, uint8(0))
 		if err != nil {
 			log.Println("<", ACCEPT, "Cannot send ok", err)
 			return
 		}
 		// Open connection for downloading files
-		filesConn, err = astral.Query(string(files.Sender), filesQuery)
+		filesConn, err = astral.Query(string(files.Peer), filesQuery)
 		if err != nil {
 			log.Println("<", ACCEPT, "Cannot query files port", err)
 			return
@@ -290,8 +298,8 @@ func (srv *service) acceptIncomingFiles(id RequestId) (err error) {
 						Size:         file.Size,
 						DrawInterval: 200 * time.Millisecond,
 						DrawFunc: func(progress int64, size int64) error {
-							files.Status = fmt.Sprintf("download: %s %d/%dB", file.Path, progress, size)
-							go notifyListeners("<", ACCEPT, files.RequestStatus, srv.incomingStatus)
+							files.Status.Status = fmt.Sprintf("download: %s %d/%dB", file.Path, progress, size)
+							go notifyListeners("<", ACCEPT, files.Status, srv.incomingStatus)
 							return nil
 						},
 					}
@@ -312,8 +320,8 @@ func (srv *service) acceptIncomingFiles(id RequestId) (err error) {
 				return
 			}
 		}
-		files.Status = "downloaded"
-		go notifyListeners("<", ACCEPT, files.RequestStatus, srv.incomingStatus)
+		files.Status.Status = "downloaded"
+		go notifyListeners("<", ACCEPT, files.Status, srv.incomingStatus)
 		// Send OK
 		err = enc.Write(filesConn, uint8(0))
 		if err != nil {
@@ -345,13 +353,13 @@ func (srv *service) handleServiceAccept() {
 				return
 			}
 			// Obtain file by request id
-			files := srv.outgoing[RequestId(id)]
+			files := srv.outgoing[OfferId(id)]
 			if files == nil {
 				log.Println(">", ACCEPT, "Cannot read file request id", err)
 				conn.Close()
 			}
-			files.Status = "accepted"
-			go notifyListeners(">", ACCEPT, files.RequestStatus, srv.outgoingStatus)
+			files.Status.Status = "accepted"
+			go notifyListeners(">", ACCEPT, files.Status, srv.outgoingStatus)
 			// Register port for reading files
 			filesQuery := PORT + "/" + string(files.Id)
 			filesPort, err := astral.Reqister(filesQuery)
@@ -396,8 +404,8 @@ func (srv *service) handleServiceAccept() {
 						Size:         file.Size,
 						DrawInterval: 200 * time.Millisecond,
 						DrawFunc: func(progress int64, size int64) error {
-							files.Status = fmt.Sprintf("upload %s %d/%dB", file.Path, progress, size)
-							go notifyListeners(">", ACCEPT, files.RequestStatus, srv.outgoingStatus)
+							files.Status.Status = fmt.Sprintf("upload %s %d/%dB", file.Path, progress, size)
+							go notifyListeners(">", ACCEPT, files.Status, srv.outgoingStatus)
 							return nil
 						},
 					}
@@ -412,8 +420,8 @@ func (srv *service) handleServiceAccept() {
 			if err != nil {
 				return
 			}
-			files.Status = "uploaded"
-			go notifyListeners(">", ACCEPT, files.RequestStatus, srv.outgoingStatus)
+			files.Status.Status = "uploaded"
+			go notifyListeners(">", ACCEPT, files.Status, srv.outgoingStatus)
 		}(request)
 	}
 }
@@ -421,7 +429,7 @@ func (srv *service) handleServiceAccept() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (srv *service) rejectIncomingFiles(id RequestId) (err error) {
+func (srv *service) rejectIncomingFiles(id OfferId) (err error) {
 	// Get cached incoming files by id
 	files := srv.incoming[id]
 	if files == nil {
@@ -430,7 +438,7 @@ func (srv *service) rejectIncomingFiles(id RequestId) (err error) {
 		return
 	}
 	// Connect to service
-	conn, err := astral.Query(string(files.Sender), REJECT)
+	conn, err := astral.Query(string(files.Peer), REJECT)
 	if err != nil {
 		log.Println("<", REJECT, "Cannot connect", err)
 		return
@@ -448,8 +456,8 @@ func (srv *service) rejectIncomingFiles(id RequestId) (err error) {
 		log.Println("<", REJECT, "Rejected request id", id, err)
 		return
 	}
-	files.Status = "rejected"
-	go notifyListeners("<", REJECT, files.RequestStatus, srv.incomingStatus)
+	files.Status.Status = "rejected"
+	go notifyListeners("<", REJECT, files.Status, srv.incomingStatus)
 	return
 }
 
@@ -474,10 +482,10 @@ func (srv *service) handleServiceReject() {
 				return
 			}
 			// Reject outgoing files
-			req := srv.outgoing[RequestId(requestId)]
+			req := srv.outgoing[OfferId(requestId)]
 			if req != nil {
-				req.Status = "rejected"
-				go notifyListeners(">", REJECT, req.RequestStatus, srv.outgoingStatus)
+				req.Status.Status = "rejected"
+				go notifyListeners(">", REJECT, req.Status, srv.outgoingStatus)
 			}
 			// Send OK
 			err = enc.Write(conn, uint8(0))
@@ -508,10 +516,9 @@ func (srv *service) peerMod(caller string) string {
 	peer := srv.peers[caller]
 	if peer == nil {
 		peer = &Peer{
-			Id:       PeerId(caller),
-			Hostname: "",
-			Alias:    "",
-			Mod:      "",
+			Id:    PeerId(caller),
+			Alias: "",
+			Mod:   "",
 		}
 		srv.peers[caller] = peer
 	}

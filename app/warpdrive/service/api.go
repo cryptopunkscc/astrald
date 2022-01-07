@@ -2,7 +2,7 @@ package warpdrive
 
 import "os"
 
-type UIApi interface {
+type ClientApi interface {
 	SenderApi
 	RecipientApi
 	Sender() SenderApi
@@ -11,72 +11,61 @@ type UIApi interface {
 
 type SenderApi interface {
 	StatusApi
-	// Peers lists available recipients.
+	// Peers available for receiving an offer.
 	Peers() ([]Peer, error)
-	// SendFile sends files request to the recipient.
-	SendFile(peerId string, path string) (RequestId, error)
-	// SentRequests returns collection of sent files requests.
-	SentRequests() (map[RequestId]OutgoingFiles, error)
-	SendingStatus(id RequestId) (string, error)
+	// Send files offer for the recipient.
+	Send(peerId PeerId, path string) (OfferId, error)
+	// Sent offers.
+	Sent() (map[OfferId]Offer, error)
+	Status(id OfferId) (string, error)
 }
 
 type RecipientApi interface {
 	StatusApi
-	// IncomingFiles subscribes a callback for receiving incoming files requests.
-	IncomingFiles() (<-chan IncomingFiles, error)
-	// ReceivedRequests returns collection of received files requests
-	ReceivedRequests(filterStatus string) (map[RequestId]IncomingFiles, error)
-	// AcceptRequest accepts incoming files and starts downloading.
-	AcceptRequest(id RequestId) error
-	// RejectRequest rejects incoming files requests.
-	RejectRequest(id RequestId) error
-	// UpdatePeer updates peer attribute [alias, mod].
-	UpdatePeer(id PeerId, attr string, value string) error
+	// Offers subscription for receiving incoming requests.
+	Offers() (<-chan Offer, error)
+	// Received offers.
+	Received(filterStatus string) (map[OfferId]Offer, error)
+	// Accept offer and starts in background downloading.
+	Accept(id OfferId) error
+	// Reject offer.
+	Reject(id OfferId) error
+	// Update peer attribute [alias, mod].
+	Update(id PeerId, attr string, value string) error
 }
 
 type StatusApi interface {
-	Events() (<-chan RequestStatus, error)
+	// Events subscribes a callback for receiving request status updates.
+	Events() (<-chan Status, error)
 }
 
-type Id string
-
-type RequestId Id
-
-type OutgoingFiles struct {
-	FilesRequest
-	Recipient PeerId
+type Offer struct {
+	Status
+	Peer  PeerId
+	Files []Info
 }
 
-type IncomingFiles struct {
-	FilesRequest
-	Sender PeerId
-}
-
-type FilesRequest struct {
-	RequestStatus
-	Files []FileInfo
-}
-
-type RequestStatus struct {
-	Id     RequestId
+type Status struct {
+	Id     OfferId
 	Status string
 }
 
-type FileInfo struct {
+type OfferId string
+
+type Peer struct {
+	Id    PeerId
+	Alias string
+	Mod   string
+}
+
+type PeerId string
+
+type Info struct {
 	Path  string
 	Size  int64
 	IsDir bool
 	Perm  os.FileMode
 	Mime  string
-}
-
-type PeerId string
-
-type Peer struct {
-	Id       PeerId
-	Hostname string
-	Alias    string
-	Mod      string
 }
 
 const (
