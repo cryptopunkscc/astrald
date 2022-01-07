@@ -92,8 +92,9 @@ func (srv *service) handleSenderPeers() {
 			// Collect peers
 			peers := make([]*Peer, len(srv.peers))
 			i := 0
-			for _, peer := range srv.peers {
-				peers[i] = peer
+			peersMap := srv.peers
+			for key := range peersMap {
+				peers[i] = srv.peers[key]
 				i++
 			}
 			// Send peers
@@ -253,7 +254,7 @@ func (srv *service) handleSenderSendingStatus() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) Sent() (files map[OfferId]Offer, err error) {
+func (s *sender) Sent() (offers Offers, err error) {
 	// Connect to service
 	conn, err := astral.Query("", SEN_SENT)
 	if err != nil {
@@ -261,10 +262,10 @@ func (s *sender) Sent() (files map[OfferId]Offer, err error) {
 		return
 	}
 	defer conn.Close()
-	// Receive outgoing files
-	err = json.NewDecoder(conn).Decode(&files)
+	// Receive outgoing offers
+	err = json.NewDecoder(conn).Decode(&offers)
 	if err != nil {
-		log.Println(SEN_SENT, "Cannot read outgoing files", err)
+		log.Println(SEN_SENT, "Cannot read outgoing offers", err)
 		return
 	}
 	// Send OK
@@ -296,7 +297,7 @@ func (srv *service) handleSenderSentRequests() {
 			// Send outgoing files
 			err = json.NewEncoder(conn).Encode(srv.outgoing)
 			if err != nil {
-				log.Println(">", SEN_SENT, "Cannot send outgoing requests", err)
+				log.Println(">", SEN_SENT, "Cannot send outgoing offers", err)
 				return
 			}
 			// Wait for OK
@@ -304,7 +305,7 @@ func (srv *service) handleSenderSentRequests() {
 			if err != nil {
 				return
 			}
-			log.Println(">", SEN_SENT, "Send outgoing requests")
+			log.Println(">", SEN_SENT, "Send outgoing offers")
 		}(request)
 	}
 }
@@ -328,7 +329,7 @@ func (s *sender) Events() (incoming <-chan Status, err error) {
 		for true {
 			err := dec.Decode(files)
 			if err != nil {
-				log.Println(SEN_EVENTS, "Finish listening requests status", err)
+				log.Println(SEN_EVENTS, "Finish listening offers status", err)
 				return
 			}
 			inc <- *files
@@ -418,7 +419,7 @@ func (srv *service) handleRecipientIncomingFiles() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) Received(filterStatus string) (files map[OfferId]Offer, err error) {
+func (r *recipient) Received(filterStatus string) (offers Offers, err error) {
 	// Connect to service
 	conn, err := astral.Query("", REC_RECEIVED)
 	if err != nil {
@@ -426,10 +427,10 @@ func (r *recipient) Received(filterStatus string) (files map[OfferId]Offer, err 
 		return
 	}
 	defer conn.Close()
-	// Receive outgoing files
-	err = json.NewDecoder(conn).Decode(&files)
+	// Receive outgoing offers
+	err = json.NewDecoder(conn).Decode(&offers)
 	if err != nil {
-		log.Println(REC_RECEIVED, "Cannot read outgoing files", err)
+		log.Println(REC_RECEIVED, "Cannot read outgoing offers", err)
 		return
 	}
 	// Send OK
@@ -461,7 +462,7 @@ func (srv *service) handleRecipientReceivedRequests() {
 			// Send outgoing files
 			err = json.NewEncoder(conn).Encode(srv.incoming)
 			if err != nil {
-				log.Println(">", REC_RECEIVED, "Cannot send incoming requests", err)
+				log.Println(">", REC_RECEIVED, "Cannot send incoming offers", err)
 				return
 			}
 			// Wait for OK
@@ -469,7 +470,7 @@ func (srv *service) handleRecipientReceivedRequests() {
 			if err != nil {
 				return
 			}
-			log.Println(">", REC_RECEIVED, "Send incoming requests")
+			log.Println(">", REC_RECEIVED, "Send incoming offers")
 		}(request)
 	}
 }
@@ -656,7 +657,7 @@ func (srv *service) handleRecipientUpdatePeer() {
 			peerId := req[0]
 			attr := req[1]
 			value := req[2]
-			peer := srv.peers[peerId]
+			peer := srv.peers[PeerId(peerId)]
 			if peer == nil {
 				log.Println(">", REC_UPDATE, "Cannot find peer with id", peerId)
 				return
@@ -670,7 +671,11 @@ func (srv *service) handleRecipientUpdatePeer() {
 				log.Println(">", REC_UPDATE, "Invalid peer attribute", attr)
 				return
 			}
-
+			var peers []Peer
+			for _, p := range srv.peers {
+				peers = append(peers, *p)
+			}
+			srv.repo.savePeers(peers)
 			// Send OK
 			err = enc.Write(conn, uint8(0))
 			if err != nil {
@@ -700,7 +705,7 @@ func (r *recipient) Events() (incoming <-chan Status, err error) {
 		for true {
 			err := dec.Decode(files)
 			if err != nil {
-				log.Println(REC_EVENTS, "Finish listening requests status", err)
+				log.Println(REC_EVENTS, "Finish listening offers status", err)
 				return
 			}
 			inc <- *files

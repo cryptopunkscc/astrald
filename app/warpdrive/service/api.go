@@ -16,16 +16,16 @@ type SenderApi interface {
 	// Send files offer for the recipient.
 	Send(peerId PeerId, path string) (OfferId, error)
 	// Sent offers.
-	Sent() (map[OfferId]Offer, error)
+	Sent() (Offers, error)
 	Status(id OfferId) (string, error)
 }
 
 type RecipientApi interface {
 	StatusApi
-	// Offers subscription for receiving incoming requests.
+	// Offers subscription.
 	Offers() (<-chan Offer, error)
 	// Received offers.
-	Received(filterStatus string) (map[OfferId]Offer, error)
+	Received(filterStatus string) (Offers, error)
 	// Accept offer and starts in background downloading.
 	Accept(id OfferId) error
 	// Reject offer.
@@ -39,6 +39,22 @@ type StatusApi interface {
 	Events() (<-chan Status, error)
 }
 
+// =================== Peer ===================
+
+type Peers map[PeerId]*Peer
+type PeerId string
+
+type Peer struct {
+	Id    PeerId
+	Alias string
+	Mod   string
+}
+
+// =================== Offer ===================
+
+type Offers map[OfferId]*Offer
+type OfferId string
+
 type Offer struct {
 	Status
 	Peer  PeerId
@@ -49,16 +65,6 @@ type Status struct {
 	Id     OfferId
 	Status string
 }
-
-type OfferId string
-
-type Peer struct {
-	Id    PeerId
-	Alias string
-	Mod   string
-}
-
-type PeerId string
 
 type Info struct {
 	Path  string
