@@ -28,7 +28,7 @@ const (
 	REC_EVENTS   = PORT + "/recipient/events"
 )
 
-func NewUIClient() UIApi {
+func NewUIClient() ClientApi {
 	return &client{sender{}, recipient{}}
 }
 
@@ -115,7 +115,7 @@ func (srv *service) handleSenderPeers() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) SendFile(peerId string, filePath string) (id RequestId, err error) {
+func (s *sender) Send(peerId PeerId, filePath string) (id OfferId, err error) {
 	// Connect to local service
 	conn, err := astral.Query("", SEN_SEND)
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *sender) SendFile(peerId string, filePath string) (id RequestId, err err
 	}
 	defer conn.Close()
 	// Send recipient id
-	err = enc.WriteL8String(conn, peerId)
+	err = enc.WriteL8String(conn, string(peerId))
 	if err != nil {
 		log.Println(SEN_SEND, "Cannot send recipient id", err)
 		return
@@ -140,7 +140,7 @@ func (s *sender) SendFile(peerId string, filePath string) (id RequestId, err err
 	if err != nil {
 		log.Println(SEN_SEND, "Cannot read response id", err)
 	}
-	id = RequestId(strId)
+	id = OfferId(strId)
 	return
 }
 
@@ -192,7 +192,7 @@ func (srv *service) handleSenderSendFile() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) SendingStatus(id RequestId) (status string, err error) {
+func (s *sender) Status(id OfferId) (status string, err error) {
 	// Connect to service
 	conn, err := astral.Query("", SEN_STATUS)
 	if err != nil {
@@ -235,12 +235,12 @@ func (srv *service) handleSenderSendingStatus() {
 				log.Println(">", SEN_STATUS, "Cannot read request id", err)
 				return
 			}
-			files := srv.outgoing[RequestId(id)]
+			files := srv.outgoing[OfferId(id)]
 			if files == nil {
 				log.Println(">", SEN_STATUS, "Cannot find outgoing files with id", id)
 				return
 			}
-			err = enc.WriteL8String(conn, files.Status)
+			err = enc.WriteL8String(conn, files.Status.Status)
 			if err != nil {
 				log.Println(">", SEN_STATUS, "Cannot send file status", files.Status, err)
 				return
@@ -253,7 +253,7 @@ func (srv *service) handleSenderSendingStatus() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) SentRequests() (files map[RequestId]OutgoingFiles, err error) {
+func (s *sender) Sent() (files map[OfferId]Offer, err error) {
 	// Connect to service
 	conn, err := astral.Query("", SEN_SENT)
 	if err != nil {
@@ -312,19 +312,19 @@ func (srv *service) handleSenderSentRequests() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) Events() (incoming <-chan RequestStatus, err error) {
+func (s *sender) Events() (incoming <-chan Status, err error) {
 	// Connect to local service
 	conn, err := astral.Query("", SEN_EVENTS)
 	if err != nil {
 		log.Println(SEN_EVENTS, "Cannot connect to service", err)
 		return
 	}
-	inc := make(chan RequestStatus)
+	inc := make(chan Status)
 	incoming = inc
-	go func(conn io.ReadWriteCloser, inc chan RequestStatus) {
+	go func(conn io.ReadWriteCloser, inc chan Status) {
 		defer close(inc)
 		dec := json.NewDecoder(conn)
-		files := &RequestStatus{}
+		files := &Status{}
 		for true {
 			err := dec.Decode(files)
 			if err != nil {
@@ -365,19 +365,19 @@ func (srv *service) handleSenderEventsSubscribe() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) IncomingFiles() (incomingFiles <-chan IncomingFiles, err error) {
+func (r *recipient) Offers() (incomingFiles <-chan Offer, err error) {
 	// Connect to local service
 	conn, err := astral.Query("", REC_INCOMING)
 	if err != nil {
 		log.Println(REC_INCOMING, "Cannot connect to service", err)
 		return
 	}
-	inc := make(chan IncomingFiles)
+	inc := make(chan Offer)
 	incomingFiles = inc
-	go func(conn io.ReadWriteCloser, inc chan IncomingFiles) {
+	go func(conn io.ReadWriteCloser, inc chan Offer) {
 		defer close(inc)
 		dec := json.NewDecoder(conn)
-		files := &IncomingFiles{}
+		files := &Offer{}
 		for true {
 			err := dec.Decode(files)
 			if err != nil {
@@ -418,7 +418,7 @@ func (srv *service) handleRecipientIncomingFiles() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) ReceivedRequests(filterStatus string) (files map[RequestId]IncomingFiles, err error) {
+func (r *recipient) Received(filterStatus string) (files map[OfferId]Offer, err error) {
 	// Connect to service
 	conn, err := astral.Query("", REC_RECEIVED)
 	if err != nil {
@@ -477,7 +477,7 @@ func (srv *service) handleRecipientReceivedRequests() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) AcceptRequest(id RequestId) (err error) {
+func (r *recipient) Accept(id OfferId) (err error) {
 	// Connect to local service
 	conn, err := astral.Query("", REC_ACCEPT)
 	if err != nil {
@@ -521,7 +521,7 @@ func (srv *service) handleRecipientAcceptRequest() {
 				log.Println(">", REC_ACCEPT, "Cannot read request id", err)
 				return
 			}
-			err = srv.acceptIncomingFiles(RequestId(id))
+			err = srv.acceptIncomingFiles(OfferId(id))
 			if err != nil {
 				log.Println(">", REC_ACCEPT, "Cannot accept incoming files", id, err)
 				return
@@ -539,7 +539,7 @@ func (srv *service) handleRecipientAcceptRequest() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) RejectRequest(id RequestId) (err error) {
+func (r *recipient) Reject(id OfferId) (err error) {
 	// Connect to local service
 	conn, err := astral.Query("", REC_REJECT)
 	if err != nil {
@@ -583,7 +583,7 @@ func (srv *service) handleRecipientRejectRequest() {
 				log.Println(">", REC_REJECT, "Cannot read request id", err)
 				return
 			}
-			err = srv.rejectIncomingFiles(RequestId(id))
+			err = srv.rejectIncomingFiles(OfferId(id))
 			if err != nil {
 				log.Println(">", REC_REJECT, "Cannot reject incoming files", id, err)
 				return
@@ -601,7 +601,7 @@ func (srv *service) handleRecipientRejectRequest() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) UpdatePeer(
+func (r *recipient) Update(
 	peerId PeerId,
 	attr string,
 	value string,
@@ -684,19 +684,19 @@ func (srv *service) handleRecipientUpdatePeer() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) Events() (incoming <-chan RequestStatus, err error) {
+func (r *recipient) Events() (incoming <-chan Status, err error) {
 	// Connect to local service
 	conn, err := astral.Query("", REC_EVENTS)
 	if err != nil {
 		log.Println(REC_EVENTS, "Cannot connect to service", err)
 		return
 	}
-	inc := make(chan RequestStatus)
+	inc := make(chan Status)
 	incoming = inc
-	go func(conn io.ReadWriteCloser, inc chan RequestStatus) {
+	go func(conn io.ReadWriteCloser, inc chan Status) {
 		defer close(inc)
 		dec := json.NewDecoder(conn)
-		files := &RequestStatus{}
+		files := &Status{}
 		for true {
 			err := dec.Decode(files)
 			if err != nil {
@@ -737,7 +737,7 @@ func (srv *service) handleRecipientEventsSubscribe() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *client) Events() (events <-chan RequestStatus, err error) {
+func (s *client) Events() (events <-chan Status, err error) {
 	senderEvents, err := s.sender.Events()
 	if err != nil {
 		return
@@ -751,12 +751,12 @@ func (s *client) Events() (events <-chan RequestStatus, err error) {
 }
 
 //
-func merge(cs ...<-chan RequestStatus) <-chan RequestStatus {
-	out := make(chan RequestStatus)
+func merge(cs ...<-chan Status) <-chan Status {
+	out := make(chan Status)
 	var wg sync.WaitGroup
 	wg.Add(len(cs))
 	for _, c := range cs {
-		go func(c <-chan RequestStatus) {
+		go func(c <-chan Status) {
 			for v := range c {
 				out <- v
 			}

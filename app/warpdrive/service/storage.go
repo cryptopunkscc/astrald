@@ -52,12 +52,12 @@ func (s *storage) Writer(path string, mode os.FileMode) (*os.File, error) {
 	return os.OpenFile(s.normalizePath(path), os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode)
 }
 
-func (s *storage) Info(path string) (files []FileInfo, err error) {
+func (s *storage) Info(path string) (files []Info, err error) {
 	fullPath := s.normalizePath(path)
 	fn := func(path string, info fs.FileInfo, err error) error {
 		path = strings.Replace(path, s.root, "", 1)
 		path = strings.Replace(path, "/", "", 1)
-		files = append(files, FileInfo{
+		files = append(files, Info{
 			Path:  path,
 			Size:  info.Size(),
 			IsDir: info.IsDir(),
@@ -77,10 +77,10 @@ func (s *storage) Info(path string) (files []FileInfo, err error) {
 	return
 }
 
-func ShrinkPaths(in []FileInfo) (out []FileInfo) {
+func ShrinkPaths(in []Info) (out []Info) {
 	dir, _ := filepath.Split(in[0].Path)
 	if dir == "" {
-		return
+		return in
 	}
 	for _, info := range in {
 		info.Path = strings.TrimPrefix(info.Path, dir)
