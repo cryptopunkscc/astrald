@@ -23,7 +23,7 @@ package "sender handlers" {
     [handle sender send]
     [handle sender sent]
     [handle recipients]
-    [handle sender subscribe]
+    [handle sender events]
 }
 package "recipient handlers" {
     [handle recipient accept]
@@ -53,7 +53,7 @@ package "core handlers" {
 
 
 [recipients] -> [handle recipients]
-[sender events] -> [handle sender subscribe]
+[sender events] -> [handle sender events]
 [sent] -> [handle sender sent]
 [send] --> [handle sender send]
 
@@ -64,6 +64,7 @@ package "core handlers" {
 
 [handle sender send] --> [server send]
 [server send] --> [handle send]
+[server accept] <.. [handle send]
 
 [handle recipient accept] --> [server accept]
 [server accept] -> [handle accept]

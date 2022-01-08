@@ -25,7 +25,7 @@ type RecipientApi interface {
 	// Offers subscription.
 	Offers() (<-chan Offer, error)
 	// Received offers.
-	Received(filterStatus string) (Offers, error)
+	Received() (Offers, error)
 	// Accept offer and starts in background downloading.
 	Accept(id OfferId) error
 	// Reject offer.
@@ -35,7 +35,7 @@ type RecipientApi interface {
 }
 
 type StatusApi interface {
-	// Events subscribes a callback for receiving request status updates.
+	// Events subscribes a callback for receiving offers status updates.
 	Events() (<-chan Status, error)
 }
 

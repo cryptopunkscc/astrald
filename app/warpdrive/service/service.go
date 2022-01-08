@@ -34,18 +34,17 @@ func RunService(ctx context.Context) {
 	go service.handleServiceAccept()
 	go service.handleServiceReject()
 	go service.handleSenderPeers()
-	go service.handleSenderSendFile()
-	go service.handleSenderSendingStatus()
-	go service.handleSenderSentRequests()
-	go service.handleSenderEventsSubscribe()
-	go service.handleRecipientAcceptRequest()
-	go service.handleRecipientRejectRequest()
-	go service.handleRecipientIncomingFiles()
-	go service.handleRecipientReceivedRequests()
-	go service.handleRecipientUpdatePeer()
-	go service.handleRecipientEventsSubscribe()
+	go service.handleSenderSend()
+	go service.handleSenderStatus()
+	go service.handleSenderSent()
+	go service.handleSenderEvents()
+	go service.handleRecipientAccept()
+	go service.handleRecipientReject()
+	go service.handleRecipientOffers()
+	go service.handleRecipientReceived()
+	go service.handleRecipientUpdate()
+	go service.handleRecipientEvents()
 	go service.handleCommandLine()
-	<-ctx.Done()
 }
 
 func newService(ctx context.Context) *service {
@@ -79,8 +78,8 @@ type service struct {
 }
 
 type offers struct {
-	incoming map[OfferId]*Offer
-	outgoing map[OfferId]*Offer
+	incoming Offers
+	outgoing Offers
 }
 
 type notify struct {
@@ -125,11 +124,11 @@ func (srv *service) setupOffers() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (srv *service) sendFile(peer string, path string) (id string, err error) {
+func (srv *service) callServiceSend(peer string, path string) (id string, err error) {
 	// Get files info
 	files, err := srv.home.Info(path)
 	if err != nil {
-		log.Println("<", SEND, "Cannot get files info", peer, err)
+		log.Println("<", SEND, "Cannot get files info", err)
 		return
 	}
 	// Connect to service
@@ -138,6 +137,7 @@ func (srv *service) sendFile(peer string, path string) (id string, err error) {
 		log.Println("<", SEND, "Cannot connect", peer, err)
 		return
 	}
+	defer conn.Close()
 	// Send file request
 	id = newOfferId()
 	err = enc.WriteL8String(conn, id)
@@ -148,13 +148,13 @@ func (srv *service) sendFile(peer string, path string) (id string, err error) {
 	shrunken := shrinkPaths(files)
 	err = json.NewEncoder(conn).Encode(shrunken)
 	if err != nil {
-		log.Println("<", SEND, "Cannot send offer info", peer, id, err)
+		log.Println("<", SEND, "Cannot send offer info", id, peer, err)
 		return
 	}
 	// Wait for close
 	_, err = enc.ReadUint8(conn)
 	if err != nil {
-		log.Println("<", SEND, "Rejected", peer, err)
+		log.Println("<", SEND, "Cannot read ok", peer, err)
 		return
 	}
 	// Cache outgoing files request
@@ -199,7 +199,7 @@ func (srv *service) handleServiceSend() {
 	port := srv.register(SEND)
 	for request := range port.Next() {
 		// Handle received request
-		go func(request *astral.Request) {
+		go func(request astral.Request) {
 			peerId := PeerId(request.Caller())
 			peerMode := srv.peerMod(peerId)
 			// Check if peer is blocked
@@ -245,18 +245,18 @@ func (srv *service) handleServiceSend() {
 			// Auto accept incoming offer if peer is trusted
 			switch peerMode {
 			case PEER_MOD_TRUST:
-				_ = srv.acceptIncomingFiles(offer.Id)
+				_ = srv.callServiceAccept(offer.Id)
 			case PEER_MOD_ASK:
 				go notifyListeners(">", SEND, offer, srv.filesRequest)
 			}
-		}(request)
+		}(*request)
 	}
 }
 
 // =========================================================================
 // ================================ Caller =================================
 
-func (srv *service) acceptIncomingFiles(id OfferId) (err error) {
+func (srv *service) callServiceAccept(id OfferId) (err error) {
 	// Get cached incoming files by request id
 	offer := srv.incoming[id]
 	if offer == nil {
@@ -371,7 +371,7 @@ func (srv *service) handleServiceAccept() {
 	// Register port
 	port := srv.register(ACCEPT)
 	for request := range port.Next() {
-		go func(request *astral.Request) {
+		go func(request astral.Request) {
 			// Accept incoming connection
 			conn, err := request.Accept()
 			if err != nil {
@@ -380,15 +380,15 @@ func (srv *service) handleServiceAccept() {
 			}
 			defer conn.Close()
 			// Read request id
-			id, err := enc.ReadL8String(conn)
+			offerId, err := enc.ReadL8String(conn)
 			if err != nil {
-				log.Println(">", ACCEPT, "Cannot read file request id", err)
+				log.Println(">", ACCEPT, "Cannot read offer id", err)
 				return
 			}
 			// Obtain file by request id
-			offer := srv.outgoing[OfferId(id)]
+			offer := srv.outgoing[OfferId(offerId)]
 			if offer == nil {
-				log.Println(">", ACCEPT, "Cannot read file request id", err)
+				log.Println(">", ACCEPT, "Cannot read offer id", err)
 				conn.Close()
 			}
 			offer.Status.Status = "accepted"
@@ -398,7 +398,7 @@ func (srv *service) handleServiceAccept() {
 			filesQuery := PORT + "/" + string(offer.Id)
 			filesPort, err := astral.Reqister(filesQuery)
 			if err != nil {
-				log.Println(">", ACCEPT, "Cannot register port for", filesPort, err)
+				log.Println(">", ACCEPT, "Cannot register files port", filesPort, err)
 				return
 			}
 			defer filesPort.Close()
@@ -411,7 +411,7 @@ func (srv *service) handleServiceAccept() {
 			// Read OK
 			_, err = enc.ReadUint8(conn)
 			if err != nil {
-				log.Println(">", ACCEPT, "Rejected by peer", filesQuery, err)
+				log.Println(">", ACCEPT, "Cannot read ok", filesQuery, err)
 				return
 			}
 			// Wait for connection on files port
@@ -426,11 +426,13 @@ func (srv *service) handleServiceAccept() {
 				log.Println(">", ACCEPT, "Cannot accept files connection", filesQuery, err)
 				return
 			}
+			defer filesConn.Close()
 			// Send files
 			for _, file := range offer.Files {
 				if !file.IsDir {
 					reader, err := srv.home.Reader(file.Path)
 					if err != nil {
+						log.Println(">", ACCEPT, "Cannot get reader", file.Path, offerId, err)
 						return
 					}
 					progress := &ioprogress.Reader{
@@ -445,6 +447,7 @@ func (srv *service) handleServiceAccept() {
 					}
 					_, err = io.CopyN(filesConn, progress, file.Size)
 					if err != nil {
+						log.Println(">", ACCEPT, "Cannot send", file.Path, "to", filesRequest.Caller(), err)
 						return
 					}
 				}
@@ -452,23 +455,24 @@ func (srv *service) handleServiceAccept() {
 			// Wait OK
 			_, err = enc.ReadUint8(filesConn)
 			if err != nil {
+				log.Println(">", ACCEPT, "Cannot read ok", filesQuery, err)
 				return
 			}
 			offer.Status.Status = "uploaded"
 			srv.repo.saveOutgoing(offer)
 			go notifyListeners(">", ACCEPT, offer.Status, srv.outgoingStatus)
-		}(request)
+		}(*request)
 	}
 }
 
 // =========================================================================
 // ================================ Caller =================================
 
-func (srv *service) rejectIncomingFiles(id OfferId) (err error) {
+func (srv *service) callServiceReject(id OfferId) (err error) {
 	// Get cached incoming files by id
 	offer := srv.incoming[id]
 	if offer == nil {
-		err = errors.New(fmt.Sprint("No incoming file with id", id))
+		err = errors.New(fmt.Sprint("No incoming file with id ", id))
 		log.Println("<", REJECT, "Cannot find incoming file", err)
 		return
 	}
@@ -482,13 +486,13 @@ func (srv *service) rejectIncomingFiles(id OfferId) (err error) {
 	// Send rejected offer id
 	err = enc.WriteL8String(conn, string(id))
 	if err != nil {
-		log.Println("<", REJECT, "Write rejected request id", id, err)
+		log.Println("<", REJECT, "Cannot send rejected offer id", id, err)
 		return
 	}
 	// Wait for OK
 	_, err = enc.ReadUint8(conn)
 	if err != nil {
-		log.Println("<", REJECT, "Rejected request id", id, err)
+		log.Println("<", REJECT, "Cannot read ok", id, err)
 		return
 	}
 	offer.Status.Status = "rejected"
@@ -503,7 +507,7 @@ func (srv *service) handleServiceReject() {
 	// Register port
 	port := srv.register(REJECT)
 	for request := range port.Next() {
-		go func(request *astral.Request) {
+		go func(request astral.Request) {
 			// Accept incoming connection
 			conn, err := request.Accept()
 			if err != nil {
@@ -512,13 +516,13 @@ func (srv *service) handleServiceReject() {
 			}
 			defer conn.Close()
 			// Read id of rejected outgoing files
-			id, err := enc.ReadL8String(conn)
+			offerId, err := enc.ReadL8String(conn)
 			if err != nil {
 				log.Println(">", REJECT, "Cannot read request id", request.Caller(), err)
 				return
 			}
 			// Reject outgoing files
-			offer := srv.outgoing[OfferId(id)]
+			offer := srv.outgoing[OfferId(offerId)]
 			if offer != nil {
 				offer.Status.Status = "rejected"
 				srv.repo.saveOutgoing(offer)
@@ -530,7 +534,7 @@ func (srv *service) handleServiceReject() {
 				log.Println(">", REJECT, "Cannot send ok", request.Caller(), err)
 				return
 			}
-		}(request)
+		}(*request)
 	}
 }
 
@@ -540,7 +544,7 @@ func (srv *service) handleServiceReject() {
 func (srv *service) register(query string) (port *astral.Port) {
 	port, err := astral.Reqister(query)
 	if err != nil {
-		log.Panic(err)
+		log.Panicln("Cannot register port", query, err)
 	}
 	go func() {
 		<-srv.ctx.Done()

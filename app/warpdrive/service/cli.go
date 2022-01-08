@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-const prompt = "warp> "
 const cliPort = "wd"
+const prompt = "warp> "
 
 func (srv *service) handleCommandLine() {
 	port := srv.register(cliPort)
@@ -82,7 +82,6 @@ func cmdPeers(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
 	if err != nil {
 		return
 	}
-	log.Println("peers:", peers)
 	for _, peer := range peers {
 		_, err = fmt.Fprintln(writer, peer.Id, peer.Alias, peer.Mod)
 		if err != nil {
@@ -93,6 +92,10 @@ func cmdPeers(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
 }
 
 func cmdSend(writer io.ReadWriter, api ClientApi, args []string) (err error) {
+	if len(args) < 1 {
+		_, err = fmt.Fprintln(writer, "<peerId> <filePath>?")
+		return
+	}
 	peer := ""
 	if len(args) > 1 {
 		peer = args[1]
@@ -106,6 +109,10 @@ func cmdSend(writer io.ReadWriter, api ClientApi, args []string) (err error) {
 }
 
 func cmdStatus(writer io.ReadWriter, api ClientApi, args []string) (err error) {
+	if len(args) < 1 {
+		_, err = fmt.Fprintln(writer, "<offerId>")
+		return
+	}
 	status, err := api.Status(OfferId(args[0]))
 	if err != nil {
 		return err
@@ -129,7 +136,7 @@ func cmdSent(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
 }
 
 func cmdReceived(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
-	received, err := api.Received("")
+	received, err := api.Received()
 	if err != nil {
 		return err
 	}
@@ -168,29 +175,41 @@ func cmdOffers(writer io.ReadWriter, api ClientApi, _ []string) (err error) {
 }
 
 func cmdAccept(writer io.ReadWriter, api ClientApi, args []string) (err error) {
+	if len(args) < 1 {
+		_, err = fmt.Fprintln(writer, "<offerId>")
+		return
+	}
 	err = api.Accept(OfferId(args[0]))
 	if err != nil {
 		return
 	}
-	_, err = fmt.Fprintln(writer, "accepted", args[0])
+	_, err = fmt.Fprintln(writer, "accepted")
 	return
 }
 
 func cmdReject(writer io.ReadWriter, api ClientApi, args []string) (err error) {
+	if len(args) < 1 {
+		_, err = fmt.Fprintln(writer, "<offerId>")
+		return
+	}
 	err = api.Reject(OfferId(args[0]))
 	if err != nil {
 		return
 	}
-	_, err = fmt.Fprintln(writer, "rejected", args[0])
+	_, err = fmt.Fprintln(writer, "rejected")
 	return
 }
 
 func cmdUpdate(writer io.ReadWriter, api ClientApi, args []string) (err error) {
+	if len(args) < 3 {
+		_, err = fmt.Fprintln(writer, "<peerId> <attr> <value>")
+		return
+	}
 	err = api.Update(PeerId(args[0]), args[1], args[2])
 	if err != nil {
 		return
 	}
-	_, err = fmt.Fprintln(writer, "updated", args)
+	_, err = fmt.Fprintln(writer, "updated")
 	return
 }
 
