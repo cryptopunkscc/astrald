@@ -31,6 +31,8 @@ func main() {
 
 	warpdrive.RunService(ctx)
 
+	<-ctx.Done()
+
 	time.Sleep(50 * time.Millisecond)
 
 	os.Exit(0)
