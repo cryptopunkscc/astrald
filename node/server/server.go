@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/link"
 )
 
 type Server struct {

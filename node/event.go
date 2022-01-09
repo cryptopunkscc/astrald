@@ -3,21 +3,47 @@ package node
 import (
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/peer"
+	"github.com/cryptopunkscc/astrald/node/presence"
+	"log"
 )
 
-const (
-	EventLinkUp       = "network.link_up"
-	EventLinkDown     = "network.link_down"
-	EventPeerLinked   = "network.peer_linked"
-	EventPeerUnlinked = "network.peer_unlinked"
-)
+type Event interface{}
 
-type Event struct {
-	Type string
+type EventLinkUp struct {
 	Link *link.Link
+}
+
+type EventLinkDown struct {
+	Link *link.Link
+}
+
+type EventPeerLinked struct {
+	Peer *peer.Peer
+	Link *link.Link
+}
+
+type EventPeerUnlinked struct {
 	Peer *peer.Peer
 }
 
-func (e Event) Event() string {
-	return e.Type
+func (node *Node) emitEvent(event Event) {
+	node.logEvent(event)
+	node.events = node.events.Push(event)
+}
+
+func (node *Node) logEvent(event Event) {
+	switch event := event.(type) {
+	case EventPeerLinked:
+		log.Printf("[%s] linked\n", node.Contacts.DisplayName(event.Peer.Identity()))
+
+	case EventPeerUnlinked:
+		log.Printf("[%s] unlinked\n", node.Contacts.DisplayName(event.Peer.Identity()))
+
+	case presence.EventIdentityPresent:
+		log.Printf("[%s] present (%s)\n", node.Contacts.DisplayName(event.Identity), event.Addr.Network())
+
+	case presence.EventIdentityGone:
+		log.Printf("[%s] gone\n", node.Contacts.DisplayName(event.Identity))
+
+	}
 }

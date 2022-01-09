@@ -3,10 +3,10 @@ package link
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/sig"
 	"log"
+	"strings"
 	"sync"
 	"time"
 )
@@ -29,10 +29,6 @@ type Link struct {
 
 func (link *Link) Latency() time.Duration {
 	return link.latency
-}
-
-func New(conn auth.Conn) *Link {
-	return Wrap(link.New(conn))
 }
 
 func Wrap(link *link.Link) *Link {
@@ -95,8 +91,12 @@ func (link *Link) monitorLatency() {
 }
 
 func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
-	// ping should not influence idle time
-	if query != ".ping" {
+	if len(query) == 0 {
+		return nil, errors.New("empty query")
+	}
+
+	// silent queries do not affect activity
+	if !(query[0] == '.') {
 		link.Activity.Add(1)
 		defer link.Activity.Done()
 	}
@@ -163,16 +163,21 @@ func (link *Link) remove(conn *Conn) error {
 func (link *Link) handleQueries() {
 	defer close(link.queries)
 	for query := range link.Link.Queries() {
-		if query.String() == ".ping" {
-			query.Reject()
-			continue
+		if !isSilent(query) {
+			link.Activity.Add(1)
 		}
 
-		link.Activity.Add(1)
 		link.queries <- &Query{
 			link:  link,
 			Query: query,
 		}
-		link.Activity.Done()
+
+		if !isSilent(query) {
+			link.Activity.Done()
+		}
 	}
+}
+
+func isSilent(q *link.Query) bool {
+	return strings.HasPrefix(q.String(), ".")
 }

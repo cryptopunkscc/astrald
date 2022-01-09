@@ -9,6 +9,8 @@ import (
 	"sync"
 )
 
+type Event interface{}
+
 type Presence struct {
 	entries map[string]*entry
 	mu      sync.Mutex
@@ -97,18 +99,18 @@ func (p *Presence) unignore(identity id.Identity) {
 	delete(p.skip, identity.PublicKeyHex())
 }
 
-func (p *Presence) handle(ctx context.Context, presence infra.Presence) {
+func (p *Presence) handle(ctx context.Context, ip infra.Presence) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	hex := presence.Identity.PublicKeyHex()
+	hex := ip.Identity.PublicKeyHex()
 
 	if e, found := p.entries[hex]; found {
 		e.Touch()
 		return
 	}
 
-	e := trackPresence(ctx, presence)
+	e := trackPresence(ctx, ip)
 	p.entries[hex] = e
 
 	// remove presence entry when it times out
@@ -116,11 +118,7 @@ func (p *Presence) handle(ctx context.Context, presence infra.Presence) {
 		p.remove(hex)
 	})
 
-	p.events <- Event{
-		identity: presence.Identity,
-		event:    EventIdentityPresent,
-		addr:     presence.Addr,
-	}
+	p.events <- EventIdentityPresent{ip.Identity, ip.Addr}
 }
 
 func (p *Presence) remove(hex string) {
@@ -130,9 +128,6 @@ func (p *Presence) remove(hex string) {
 	if e, found := p.entries[hex]; found {
 		delete(p.entries, hex)
 
-		p.events <- Event{
-			identity: e.id,
-			event:    EventIdentityGone,
-		}
+		p.events <- EventIdentityGone{e.id}
 	}
 }

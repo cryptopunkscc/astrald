@@ -2,12 +2,12 @@ package contacts
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/sig"
 	"time"
 )
@@ -110,7 +110,9 @@ func (a *Addr) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	default:
-		return errors.New("unsupported network")
+		if a.Addr, err = infra.ParseUnsupportedAddr(ja.Network, ja.Address); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -87,12 +87,12 @@ func init() {
 	commands = cmdMap{
 		"help":     help,
 		"peers":    peers,
-		"link":     link,
 		"contacts": cmdContacts,
 		"info":     info,
 		"parse":    parse,
 		"add":      add,
 		"forget":   forget,
 		"present":  present,
+		"optimize": optimize,
 	}
 }

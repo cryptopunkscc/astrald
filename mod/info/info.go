@@ -55,15 +55,14 @@ func (Info) Run(ctx context.Context, node *_node.Node) error {
 	go func() {
 		for e := range node.Follow(ctx) {
 			switch event := e.(type) {
-			case _node.Event:
-				if event.Event() == _node.EventPeerLinked {
-					refreshContact(ctx, node, event.Peer.Identity())
-				}
+			case _node.EventPeerLinked:
+				refreshContact(ctx, node, event.Peer.Identity())
 
-			case presence.Event:
-				if event.Event() == presence.EventIdentityPresent {
-					refreshContact(ctx, node, event.Identity())
-				}
+			case presence.EventIdentityPresent:
+				node.Contacts.Find(event.Identity, true).Add(event.Addr)
+				node.Contacts.Save()
+
+				refreshContact(ctx, node, event.Identity)
 			}
 		}
 	}()
