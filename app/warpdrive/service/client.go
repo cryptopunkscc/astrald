@@ -175,8 +175,14 @@ func (srv *service) handleSenderSend() {
 				log.Println(">", SEN_SEND, "Cannot read file path", err)
 				return
 			}
+			// Get files info
+			files, err := srv.home.Info(filePath)
+			if err != nil {
+				log.Println("<", SEND, "Cannot get files info", err)
+				return
+			}
 			// Send file to recipient service
-			id, err := srv.callServiceSend(peerId, filePath)
+			id, err := srv.callServiceSend(peerId, files)
 			if err != nil {
 				log.Println(">", SEN_SEND, "Cannot send file", err)
 				return

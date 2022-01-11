@@ -19,10 +19,10 @@ Warp drive comes as two separated applications:
     * Serves API for warp drive UI client.
 * UI client
     * Can differ depending on OS.
-    * Allows the user: 
-      * sending files to other warp drive users. 
-      * receiving notifications. 
-      * downloading files.
+    * Allows the user:
+        * sending files to other warp drive users.
+        * receiving notifications.
+        * downloading files.
 
 ## Architecture
 
@@ -78,7 +78,7 @@ type SenderApi interface {
 	// Peers available for receiving an offer.
 	Peers() ([]Peer, error)
 	// Send files offer for the recipient.
-	Send(peerId PeerId, path string) (OfferId, error)
+	Send(peerId PeerId, files []Info) (OfferId, error)
 	// Sent offers.
 	Sent() (Offers, error)
 	Status(id OfferId) (string, error)
@@ -154,7 +154,7 @@ const (
 | Offer      | ofr   | struct           | Offer                    | Detailed collection of offers associated by ids.                                                                            |
 | Offers     | ofs   | struct           | map[OfferId]Offer        | Detailed collection of offers associated by ids.                                                                            |
 | Status     | stat  | struct           | Status                   | Offer status.                                                                                                               |
-| Args       | arg   | 2x l8string      | [string, string]         | Offer arguments, contains peer id and path to file.                                                                         |
+| Args       | arg   | l8string, struct | PeerId, []Info           | Offer arguments, contains peer id and path to file.                                                                         |
 | Port       | port  | l8string         | string                   | Name of the port registered by sender, where the recipient can connect for downloading the requested files.                 |
 | Id         | id    | l8string         | OfferId                  | Offer unique identifier.                                                                                                    |
 | Attr       | attr  | 3x l8string      | [string, string, string] | Peer attribute for update.                                                                                                  |
