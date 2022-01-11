@@ -7,19 +7,23 @@ import (
 )
 
 type Conn struct {
-	activity sig.Activity
-
 	*link.Conn
+
+	link     *Link
+	activity sig.Activity
 }
 
-func wrapConn(linkConn *link.Conn) *Conn {
-	c := &Conn{Conn: linkConn}
+func wrapConn(lconn *link.Conn) *Conn {
+	c := &Conn{Conn: lconn}
 	c.activity.Touch()
+	go func() {
+		<-c.Wait()
+		if c.link != nil {
+			c.link.events <- EventConnClosed{c}
+		}
+		c.Attach(nil)
+	}()
 	return c
-}
-
-func (conn *Conn) Idle() time.Duration {
-	return conn.activity.Idle()
 }
 
 func (conn *Conn) Read(p []byte) (n int, err error) {
@@ -32,4 +36,27 @@ func (conn *Conn) Write(p []byte) (n int, err error) {
 	defer conn.activity.Touch()
 
 	return conn.Conn.Write(p)
+}
+
+func (conn *Conn) Link() *Link {
+	return conn.link
+}
+
+func (conn *Conn) Idle() time.Duration {
+	return conn.activity.Idle()
+}
+
+func (conn *Conn) Wait() <-chan struct{} {
+	return conn.Conn.Wait()
+}
+
+func (conn *Conn) Attach(link *Link) {
+	if conn.link != nil {
+		conn.link.remove(conn)
+		conn.link = nil
+	}
+	if link != nil {
+		conn.link = link
+		conn.link.add(conn)
+	}
 }

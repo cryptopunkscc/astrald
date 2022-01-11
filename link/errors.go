@@ -5,5 +5,5 @@ import "errors"
 // ErrRejected - the other party rejected the request
 var ErrRejected = errors.New("rejected")
 
-// ErrStreamClosed - link is closed and cannot be written to
-var ErrStreamClosed = errors.New("link closed")
+// ErrAlreadyClosed - the connection or link is already closed
+var ErrAlreadyClosed = errors.New("already closed")

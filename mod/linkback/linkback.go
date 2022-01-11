@@ -6,8 +6,11 @@ import (
 	"time"
 )
 
-const serviceHandle = ".linkback"
-const ModuleName = "linkback"
+const (
+	serviceHandle    = ".linkback"
+	ModuleName       = "linkback"
+	linkbackDuration = 30 * time.Second
+)
 
 type LinkBack struct{}
 
@@ -19,8 +22,15 @@ func (LinkBack) Run(ctx context.Context, n *node.Node) error {
 
 	go func() {
 		for query := range port.Queries() {
+			// reject local queries
+			if query.IsLocal() {
+				query.Reject()
+				continue
+			}
+
 			query.Accept().Close()
-			n.Linking.Optimize(query.Caller(), 30*time.Second)
+
+			n.Linking.Optimize(query.Link().RemoteIdentity(), linkbackDuration)
 		}
 	}()
 

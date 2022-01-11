@@ -1,12 +1,27 @@
 package hub
 
 import (
+	"github.com/cryptopunkscc/astrald/node/link"
 	"io"
 )
 
 type Conn struct {
+	query string
+	link  *link.Link
 	io.ReadCloser
 	io.WriteCloser
+}
+
+func (conn Conn) Query() string {
+	return conn.query
+}
+
+func (conn Conn) Link() *link.Link {
+	return conn.link
+}
+
+func (conn Conn) IsLocal() bool {
+	return conn.link == nil
 }
 
 func (conn Conn) Read(p []byte) (n int, err error) {
@@ -22,11 +37,14 @@ func (conn Conn) Close() error {
 	return conn.WriteCloser.Close()
 }
 
-// pipe creates a pair of conns that talk to each other
-func pipe() (left Conn, right Conn) {
+// connPipe creates a pair of conns that talk to each other
+func connPipe(query string, link *link.Link) (l Conn, r Conn) {
 	// Set up a bidirectional stream using two pipes
-	left.ReadCloser, right.WriteCloser = io.Pipe()
-	right.ReadCloser, left.WriteCloser = io.Pipe()
+	l.ReadCloser, r.WriteCloser = io.Pipe()
+	r.ReadCloser, l.WriteCloser = io.Pipe()
+
+	l.query, l.link = query, link
+	r.query, r.link = query, link
 
 	return
 }

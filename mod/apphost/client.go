@@ -97,8 +97,13 @@ func (c *Client) handlePort(ctx context.Context, port *hub.Port, dest string) er
 		port.Close()
 	}()
 
-	for request := range port.Queries() {
-		log.Printf("(apphost) [%s] <- %s\n", c.node.Contacts.DisplayName(request.Caller()), request.Query())
+	for query := range port.Queries() {
+		remoteID := c.node.Identity()
+		if !query.IsLocal() {
+			remoteID = query.Link().RemoteIdentity()
+		}
+
+		log.Printf("(apphost) [%s] <- %s\n", c.node.Contacts.DisplayName(remoteID), query.Query())
 
 		var rawConn net.Conn
 		var err error
@@ -110,25 +115,25 @@ func (c *Client) handlePort(ctx context.Context, port *hub.Port, dest string) er
 			rawConn, err = net.Dial("tcp", dest)
 		}
 		if err != nil {
-			request.Reject()
+			query.Reject()
 			return err
 		}
 		conn := proto.NewConn(rawConn)
 
 		// Pass the request to the app
-		response, err := conn.Query(request.Caller().String(), request.Query())
+		response, err := conn.Query(remoteID.String(), query.Query())
 		if err != nil {
-			request.Reject()
+			query.Reject()
 			return err
 		}
 
 		// If connection was not accepted move on to the next request
 		if response.Status != proto.StatusOK {
-			request.Reject()
+			query.Reject()
 			continue
 		}
 
-		go join(ctx, request.Accept(), conn)
+		go join(ctx, query.Accept(), conn)
 	}
 
 	return nil

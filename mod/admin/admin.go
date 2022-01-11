@@ -24,13 +24,14 @@ func (Admin) Run(ctx context.Context, node *_node.Node) error {
 		return err
 	}
 
-	for req := range port.Queries() {
-		// Only accept local requests
-		if !req.Caller().IsEqual(node.Identity()) {
-			req.Reject()
+	for query := range port.Queries() {
+		// Only accept local queries
+		if !query.IsLocal() {
+			query.Reject()
 			continue
 		}
-		conn := req.Accept()
+
+		conn := query.Accept()
 
 		go serve(conn, node)
 	}

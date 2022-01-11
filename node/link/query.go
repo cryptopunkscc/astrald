@@ -17,7 +17,9 @@ func (query *Query) Accept() (*Conn, error) {
 	}
 
 	conn := wrapConn(rawConn)
-	query.link.add(conn)
+	conn.Attach(query.link)
+
+	query.link.events <- EventConnEstablished{conn}
 
 	return conn, err
 }

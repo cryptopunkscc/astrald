@@ -25,18 +25,20 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 			}
 
 			fmt.Fprintf(w,
-				"  %s %s %s (idle %s, lat %.1fms)\n",
+				"  %s %s %s (idle %s, ping %.1fms)\n",
 				logfmt.Bool(link.Outbound(), "=>", "<="),
 				link.RemoteAddr().Network(),
 				remoteAddr,
 				link.Idle().Round(time.Second),
-				float64(link.Latency().Microseconds())/1000,
+				float64(link.RoundTrip().Microseconds())/1000,
 			)
 			for c := range link.Conns() {
 				fmt.Fprintf(w,
-					"    %s %s (idle %s)\n",
+					"    %s %s [%d:%d] (idle %s)\n",
 					logfmt.Bool(c.Outbound(), "->", "<-"),
 					c.Query(),
+					c.InputStream().ID(),
+					c.OutputStream().ID(),
 					c.Idle().Round(time.Second),
 				)
 			}

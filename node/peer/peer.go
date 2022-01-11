@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
 	"sync"
 	"time"
 )
@@ -94,8 +93,8 @@ func (peer *Peer) FollowLinks(ctx context.Context, onlyNew bool) <-chan *link.Li
 	return ch
 }
 
-func (peer *Peer) Query(ctx context.Context, query string) (io.ReadWriteCloser, error) {
-	queryLink := link.Select(peer.Links(), link.Fastest)
+func (peer *Peer) Query(ctx context.Context, query string) (*link.Conn, error) {
+	queryLink := link.Select(peer.Links(), link.LowestRoundTrip)
 
 	if queryLink == nil {
 		return nil, errors.New("no link found")

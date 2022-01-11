@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"io"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
 )
 
@@ -47,7 +47,7 @@ func (m *Manager) All() <-chan *Peer {
 	return ch
 }
 
-func (m *Manager) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
+func (m *Manager) Query(ctx context.Context, remoteID id.Identity, query string) (*link.Conn, error) {
 	peer := m.Find(remoteID, true)
 	if peer == nil {
 		return nil, errors.New("peer not linked")

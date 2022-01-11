@@ -71,7 +71,7 @@ func (demux *StreamDemux) Stream() (*InputStream, error) {
 
 			demux.streams[i] = stream
 			go func() {
-				<-stream.WaitClose()
+				<-stream.Wait()
 				demux.removeInputStream(i)
 			}()
 

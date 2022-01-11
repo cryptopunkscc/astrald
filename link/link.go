@@ -19,7 +19,7 @@ import (
 // connections over any transport.
 type Link struct {
 	queries   chan *Query
-	conns     []*Conn
+	conns     map[*Conn]struct{}
 	connsMu   sync.Mutex
 	transport auth.Conn
 	mux       *mux.Mux
@@ -33,7 +33,7 @@ const controlStreamID = 0
 func New(conn auth.Conn) *Link {
 	link := &Link{
 		queries:   make(chan *Query),
-		conns:     make([]*Conn, 0),
+		conns:     make(map[*Conn]struct{}),
 		transport: conn,
 		mux:       mux.NewMux(conn),
 		demux:     mux.NewStreamDemux(conn),
@@ -55,14 +55,15 @@ func New(conn auth.Conn) *Link {
 // Query requests a connection to the remote party's port
 func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 	// Reserve a local mux stream for the response
-	inputStream, err := link.demux.Stream()
+	inputStream, err := link.AllocInputStream()
 	if err != nil {
 		return nil, err
 	}
 
 	// Send a query
-	err = link.sendQuery(query, inputStream.StreamID())
+	err = link.sendQuery(query, inputStream.ID())
 	if err != nil {
+		inputStream.Close()
 		return nil, err
 	}
 
@@ -80,9 +81,22 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 	// Parse accept message
 	remoteStreamID := binary.BigEndian.Uint16(remoteBytes[0:2])
 
-	outputStream := mux.NewOutputStream(link.mux, int(remoteStreamID))
+	outputStream := link.mux.Stream(int(remoteStreamID))
 
-	return link.addConn(inputStream, outputStream, true, query), nil
+	conn := NewConn(inputStream, outputStream, true, query)
+	conn.Attach(link)
+
+	return conn, nil
+}
+
+// AllocInputStream allocates and returns a new input stream on the multiplexer
+func (link *Link) AllocInputStream() (*mux.InputStream, error) {
+	return link.demux.Stream()
+}
+
+// OutputStream returns an output stream representing the provided stream id on the multiplexer
+func (link *Link) OutputStream(id int) *mux.OutputStream {
+	return link.mux.Stream(id)
 }
 
 // Queries returns a channel to which incoming queries will be sent
@@ -139,11 +153,36 @@ func (link *Link) Conns() <-chan *Conn {
 	defer link.connsMu.Unlock()
 
 	ch := make(chan *Conn, len(link.conns))
-	for _, c := range link.conns {
+	for c := range link.conns {
 		ch <- c
 	}
 	close(ch)
 	return ch
+}
+
+func (link *Link) remove(conn *Conn) error {
+	link.connsMu.Lock()
+	defer link.connsMu.Unlock()
+
+	if _, found := link.conns[conn]; !found {
+		return errors.New("conn not found")
+	}
+
+	delete(link.conns, conn)
+	return nil
+}
+
+func (link *Link) add(conn *Conn) error {
+	link.connsMu.Lock()
+	defer link.connsMu.Unlock()
+
+	if _, found := link.conns[conn]; found {
+		return errors.New("already added")
+	}
+
+	link.conns[conn] = struct{}{}
+
+	return nil
 }
 
 // sendQuery writes a frame containing the request to the control stream
@@ -193,31 +232,4 @@ func (link *Link) processQueryData(buf []byte) error {
 
 	link.queries <- query
 	return nil
-}
-
-func (link *Link) addConn(inputStream io.Reader, outputStream io.WriteCloser, outbound bool, query string) *Conn {
-	link.connsMu.Lock()
-	defer link.connsMu.Unlock()
-
-	conn := newConn(inputStream, outputStream, outbound, query)
-	link.conns = append(link.conns, conn)
-
-	go func() {
-		<-conn.Wait()
-		link.removeConn(conn)
-	}()
-
-	return conn
-}
-
-func (link *Link) removeConn(conn *Conn) {
-	link.connsMu.Lock()
-	defer link.connsMu.Unlock()
-
-	for i, c := range link.conns {
-		if c == conn {
-			link.conns = append(link.conns[:i], link.conns[i+1:]...)
-			return
-		}
-	}
 }

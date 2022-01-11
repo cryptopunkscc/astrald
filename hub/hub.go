@@ -2,8 +2,7 @@ package hub
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
-	"io"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"log"
 	"sync"
 )
@@ -51,39 +50,39 @@ func (hub *Hub) RegisterContext(ctx context.Context, name string) (*Port, error)
 }
 
 // Query requests to connect to a port as the provided auth.Identity
-func (hub *Hub) Query(queryString string, caller id.Identity) (io.ReadWriteCloser, error) {
+func (hub *Hub) Query(query string, link *link.Link) (*Conn, error) {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 
 	// Fetch the port
-	port, found := hub.ports[queryString]
+	port, found := hub.ports[query]
 	if !found {
 		return nil, ErrPortNotFound
 	}
 
-	// Send the request
-	query := NewQuery(caller, queryString)
-	port.queries <- query
+	// pass the query to the port
+	q := NewQuery(query, link)
+	port.queries <- q
 
 	// Wait for the response
-	accepted := <-query.response
+	accepted := <-q.response
 	if !accepted {
 		return nil, ErrRejected
 	}
 
 	// Create a pipe for the caller and the responder
-	clientConn, appConn := pipe()
+	clientConn, appConn := connPipe(query, link)
 
 	// Send one side to the responder
-	query.connection <- appConn
-	close(query.connection)
+	q.connection <- &appConn
+	close(q.connection)
 
 	// Return the other side to the caller
-	return clientConn, nil
+	return &clientConn, nil
 }
 
-// close closes a port in the hub
-func (hub *Hub) close(name string) error {
+// release closes a port in the hub
+func (hub *Hub) release(name string) error {
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 

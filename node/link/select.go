@@ -9,12 +9,12 @@ func Select(ch <-chan *Link, selectFunc SelectFunc) (selected *Link) {
 	return
 }
 
-func Fastest(current *Link, next *Link) *Link {
+func LowestRoundTrip(current *Link, next *Link) *Link {
 	if current == nil {
 		return next
 	}
 
-	if next.Latency() < current.Latency() {
+	if next.RoundTrip() < current.RoundTrip() {
 		return next
 	}
 

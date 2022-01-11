@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -52,6 +53,10 @@ func (stream *OutputStream) Close() (err error) {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
 
+	if stream.mux == nil {
+		return errors.New("already closed")
+	}
+
 	err = stream.mux.Write(stream.id, nil)
 	stream.mux = nil
 
@@ -59,10 +64,10 @@ func (stream *OutputStream) Close() (err error) {
 	return
 }
 
-func (stream OutputStream) StreamID() int {
+func (stream OutputStream) ID() int {
 	return stream.id
 }
 
-func (stream *OutputStream) WaitClose() <-chan struct{} {
+func (stream *OutputStream) Wait() <-chan struct{} {
 	return stream.closeCh
 }

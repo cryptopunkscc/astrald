@@ -17,11 +17,17 @@ func (Connect) Run(ctx context.Context, node *node.Node) error {
 	}
 
 	for query := range port.Queries() {
+		// skip local queries
+		if query.IsLocal() {
+			query.Reject()
+			continue
+		}
+
 		conn := query.Accept()
 
 		node.Server.Conns <- &wrapper{
 			local:           node.Identity().Public(),
-			remote:          query.Caller(),
+			remote:          query.Link().RemoteIdentity(),
 			ReadWriteCloser: conn,
 			outbound:        false,
 		}

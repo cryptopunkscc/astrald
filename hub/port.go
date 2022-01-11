@@ -22,5 +22,5 @@ func (port *Port) Queries() <-chan *Query {
 
 // Close closees the port
 func (port *Port) Close() error {
-	return port.hub.close(port.name)
+	return port.hub.release(port.name)
 }

@@ -103,8 +103,14 @@ func (id Identity) PrivateKey() *btcec.PrivateKey {
 	return id.privateKey
 }
 
-// IsEqual compares this Identity to another one by checking if their public keys are equal
+// IsEqual checks if the public key is the same as the other identity's or if both are zero
 func (id Identity) IsEqual(other Identity) bool {
+	if id.IsZero() {
+		return other.IsZero()
+	}
+	if other.IsZero() {
+		return false
+	}
 	return id.PublicKey().IsEqual(other.PublicKey())
 }
 

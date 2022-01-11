@@ -15,12 +15,15 @@ type Query struct {
 
 // Accept the query
 func (query *Query) Accept() (*Conn, error) {
-	err := binary.Write(query.outputStream, binary.BigEndian, uint16(query.inputStream.StreamID()))
+	err := binary.Write(query.outputStream, binary.BigEndian, uint16(query.inputStream.ID()))
 	if err != nil {
 		return nil, err
 	}
 
-	return query.link.addConn(query.inputStream, query.outputStream, false, query.query), nil
+	conn := NewConn(query.inputStream, query.outputStream, false, query.query)
+	conn.Attach(query.link)
+
+	return conn, nil
 }
 
 // Reject the query

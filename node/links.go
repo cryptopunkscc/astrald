@@ -36,24 +36,12 @@ func (node *Node) addLink(ctx context.Context, link *nlink.Link) error {
 		return err
 	}
 
-	// forward link's requests
-	go func() {
-		for query := range link.Queries() {
-			node.queries <- query
-		}
-		node.emitEvent(EventLinkDown{link})
-
-		if len(peer.Links()) == 0 {
-			node.emitEvent(EventPeerUnlinked{peer})
-		}
-	}()
+	node.handleLink(ctx, link)
 
 	node.emitEvent(EventLinkUp{link})
-
 	if len(peer.Links()) == 1 {
 		node.emitEvent(EventPeerLinked{peer, link})
 
-		// set a timeout
 		sig.On(ctx, sig.Idle(ctx, peer, defaultPeerIdleTimeout), func() {
 			for l := range peer.Links() {
 				l.Close()
@@ -61,5 +49,28 @@ func (node *Node) addLink(ctx context.Context, link *nlink.Link) error {
 		})
 	}
 
+	go func() {
+		<-link.Wait()
+		node.emitEvent(EventLinkDown{link})
+		if len(peer.Links()) == 0 {
+			node.emitEvent(EventPeerUnlinked{peer})
+		}
+	}()
+
 	return nil
+}
+
+func (node *Node) handleLink(ctx context.Context, link *nlink.Link) {
+	// forward queries coming from the link
+	go func() {
+		for query := range link.Queries() {
+			node.queries <- query
+		}
+	}()
+
+	go func() {
+		for event := range link.Events() {
+			node.emitEvent(event)
+		}
+	}()
 }

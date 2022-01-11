@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/info"
 	"github.com/cryptopunkscc/astrald/mod/linkback"
+	"github.com/cryptopunkscc/astrald/mod/roam"
 	"github.com/cryptopunkscc/astrald/node"
 	"log"
 	"os"
@@ -77,6 +78,7 @@ func main() {
 		gateway.Gateway{},
 		info.Info{},
 		linkback.LinkBack{},
+		&roam.Roam{},
 	)
 	if err != nil {
 		panic(err)

@@ -21,7 +21,7 @@ func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string)
 	}
 
 	if remoteID.IsZero() || remoteID.IsEqual(node.identity) {
-		return node.Ports.Query(query, node.identity)
+		return node.Ports.Query(query, nil)
 	}
 
 	node.Linking.Optimize(remoteID, 30*time.Second)
@@ -47,27 +47,27 @@ func (node *Node) handleQuery(query *link.Query) error {
 	}
 
 	// Query a session with the service
-	localStream, err := node.Ports.Query(query.String(), query.Caller())
+	localConn, err := node.Ports.Query(query.String(), query.Link())
 	if err != nil {
 		query.Reject()
 		return err
 	}
 
 	// Accept remote party's query
-	remoteStream, err := query.Accept()
+	remoteConn, err := query.Accept()
 	if err != nil {
-		localStream.Close()
+		localConn.Close()
 		return err
 	}
 
 	// Connect local and remote streams
 	go func() {
-		_, _ = io.Copy(localStream, remoteStream)
-		_ = localStream.Close()
+		_, _ = io.Copy(localConn, remoteConn)
+		_ = localConn.Close()
 	}()
 	go func() {
-		_, _ = io.Copy(remoteStream, localStream)
-		_ = remoteStream.Close()
+		_, _ = io.Copy(remoteConn, localConn)
+		_ = remoteConn.Close()
 	}()
 
 	return nil

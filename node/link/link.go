@@ -11,7 +11,8 @@ import (
 	"time"
 )
 
-const pingInterval = 30 * time.Second
+const idlePingInterval = 15 * time.Second
+const activePingInterval = 1 * time.Second
 const pingTimeout = 15 * time.Second
 
 var _ sig.Idler = &Link{}
@@ -21,73 +22,26 @@ type Link struct {
 	sig.Activity
 	*link.Link
 	queries       chan *Query
+	events        chan Event
 	conns         map[*Conn]struct{}
 	mu            sync.Mutex
 	establishedAt time.Time
-	latency       time.Duration
-}
-
-func (link *Link) Latency() time.Duration {
-	return link.latency
+	roundtrip     time.Duration
 }
 
 func Wrap(link *link.Link) *Link {
 	l := &Link{
 		Link:          link,
 		queries:       make(chan *Query),
+		events:        make(chan Event),
 		conns:         make(map[*Conn]struct{}, 0),
 		establishedAt: time.Now(),
-		latency:       999 * time.Second, // assume super slow before first ping
+		roundtrip:     999 * time.Second, // assume super slow before first ping
 	}
 	l.Touch()
 	go l.handleQueries()
-	go l.monitorLatency()
+	go l.monitorPing()
 	return l
-}
-
-func (link *Link) Ping() error {
-	lat := make(chan time.Duration, 1)
-
-	go func() {
-		t0 := time.Now()
-		ctx, _ := context.WithTimeout(context.Background(), pingTimeout)
-		conn, err := link.Query(ctx, ".ping")
-
-		if errors.Is(err, context.Canceled) {
-			return
-		}
-
-		lat <- time.Now().Sub(t0)
-
-		if err == nil {
-			conn.Close()
-		}
-	}()
-
-	select {
-	case l := <-lat:
-		link.latency = l
-	case <-time.After(pingTimeout):
-		link.Close()
-		return errors.New("ping timeout")
-	}
-
-	return nil
-}
-
-func (link *Link) monitorLatency() {
-	for {
-		if err := link.Ping(); err != nil {
-			log.Println("ping error:", err)
-			link.Close()
-		}
-
-		select {
-		case <-time.After(pingInterval):
-		case <-link.Wait():
-			return
-		}
-	}
 }
 
 func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
@@ -107,13 +61,24 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 	}
 
 	conn := wrapConn(linkConn)
-	link.add(conn)
+	conn.Attach(link)
+
+	link.events <- EventConnEstablished{conn}
 
 	return conn, nil
 }
 
+// RoundTrip returns link's round trip time
+func (link *Link) RoundTrip() time.Duration {
+	return link.roundtrip
+}
+
 func (link *Link) Queries() <-chan *Query {
 	return link.queries
+}
+
+func (link *Link) Events() <-chan Event {
+	return link.events
 }
 
 func (link *Link) Conns() <-chan *Conn {
@@ -136,16 +101,30 @@ func (link *Link) add(conn *Conn) {
 	if _, found := link.conns[conn]; found {
 		return
 	}
+
 	link.conns[conn] = struct{}{}
+	link.Activity.Add(1)
+}
 
-	go func() {
-		link.Activity.Add(1)
-		defer link.Activity.Done()
+func (link *Link) monitorPing() {
+	for {
+		if err := link.ping(); err != nil {
+			log.Println("ping error:", err)
+			link.Close()
+		}
 
-		// remove the connection after it closes
-		<-conn.Wait()
-		link.remove(conn)
-	}()
+		// if the connection is active, we want to monitor ping more often
+		i := idlePingInterval
+		if link.Activity.Idle() == 0 {
+			i = activePingInterval
+		}
+
+		select {
+		case <-time.After(i):
+		case <-link.Wait():
+			return
+		}
+	}
 }
 
 func (link *Link) remove(conn *Conn) error {
@@ -156,6 +135,7 @@ func (link *Link) remove(conn *Conn) error {
 		return errors.New("not found")
 	}
 	delete(link.conns, conn)
+	link.Activity.Done()
 
 	return nil
 }
@@ -176,6 +156,36 @@ func (link *Link) handleQueries() {
 			link.Activity.Done()
 		}
 	}
+}
+
+func (link *Link) ping() error {
+	pingCh := make(chan time.Duration, 1)
+
+	go func() {
+		t0 := time.Now()
+		ctx, _ := context.WithTimeout(context.Background(), pingTimeout)
+		conn, err := link.Query(ctx, ".ping")
+
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+
+		pingCh <- time.Now().Sub(t0)
+
+		if err == nil {
+			conn.Close()
+		}
+	}()
+
+	select {
+	case d := <-pingCh:
+		link.roundtrip = d
+	case <-time.After(pingTimeout):
+		link.Close()
+		return errors.New("ping timeout")
+	}
+
+	return nil
 }
 
 func isSilent(q *link.Query) bool {

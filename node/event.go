@@ -44,6 +44,5 @@ func (node *Node) logEvent(event Event) {
 
 	case presence.EventIdentityGone:
 		log.Printf("[%s] gone\n", node.Contacts.DisplayName(event.Identity))
-
 	}
 }
