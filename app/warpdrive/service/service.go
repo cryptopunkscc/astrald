@@ -124,13 +124,7 @@ func (srv *service) setupOffers() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (srv *service) callServiceSend(peer string, path string) (id string, err error) {
-	// Get files info
-	files, err := srv.home.Info(path)
-	if err != nil {
-		log.Println("<", SEND, "Cannot get files info", err)
-		return
-	}
+func (srv *service) callServiceSend(peer string, files []Info) (id string, err error) {
 	// Connect to service
 	conn, err := astral.Query(peer, SEND)
 	if err != nil {
