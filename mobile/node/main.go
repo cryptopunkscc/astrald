@@ -2,6 +2,7 @@ package astralmobile
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/connect"
@@ -14,7 +15,11 @@ import (
 var identity string
 var stop context.CancelFunc
 
-func Start(astralHome string) error {
+func Start(astralHome string, btAdapter BTAdapter) error {
+	if btAdapter != nil {
+		bt.Default = newBTWrapper(btAdapter)
+	}
+
 	log.Println("Staring astrald")
 
 	// Set up app execution context

@@ -7,9 +7,12 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/infra"
 	"golang.org/x/sys/unix"
+	"log"
 )
 
 func (bt Bluetooth) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
+	log.Println("BT Connecting to", addr.String()) // TODO: for debugging testing purpose, remove later
+
 	_addr, ok := addr.(Addr)
 	if !ok {
 		return nil, infra.ErrUnsupportedAddress
@@ -17,6 +20,7 @@ func (bt Bluetooth) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, erro
 
 	fd, err := unix.Socket(unix.AF_BLUETOOTH, unix.SOCK_STREAM, unix.BTPROTO_RFCOMM)
 	if err != nil {
+		log.Println("Unix socket error", err) // TODO: for debugging testing purpose, remove later
 		return nil, err
 	}
 
@@ -29,6 +33,7 @@ func (bt Bluetooth) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, erro
 	})
 
 	if err != nil {
+		log.Println("Unix socket connect error", err) // TODO: for debugging testing purpose, remove later
 		return nil, err
 	}
 

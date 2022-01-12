@@ -48,7 +48,8 @@ fun Context.startAstral(): Unit =
             val multicastLock = acquireMulticastWakeLock()
             try {
                 status.value = AstralStatus.Starting
-                Astralmobile.start(dir)
+//                Astralmobile.start(dir, null)
+                Astralmobile.start(dir, BTWrapper())
             } catch (e: Throwable) {
                 e.printStackTrace()
             } finally {

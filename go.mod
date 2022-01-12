@@ -7,6 +7,7 @@ require (
 	github.com/godbus/dbus/v5 v5.0.6
 	github.com/jxskiss/base62 v1.0.0
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
+	golang.org/x/mobile v0.0.0-20220112015953-858099ff7816 // indirect
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
 	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect

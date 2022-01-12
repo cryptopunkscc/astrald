@@ -6,7 +6,9 @@ import (
 )
 
 const dest = "org.bluez"
-const UUID_SPP = "00001101-0000-1000-8000-00805f9b34fb"
+const UUID_SPP = "8ce255c0-200a-11e0-ac64-0800200c9a66"
+
+//const UUID_SPP = "00001101-0000-1000-8000-00805f9b34fb"
 
 type Bluez struct {
 	bus *dbus.Conn

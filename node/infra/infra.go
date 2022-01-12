@@ -29,7 +29,7 @@ type Infra struct {
 	inet      *inet.Inet
 	tor       *tor.Tor
 	gateway   *gw.Gateway
-	bluetooth *bt.Bluetooth
+	bluetooth bt.BluetoothAdapter
 	logLevel  int
 }
 
@@ -75,7 +75,7 @@ func New(cfg config.Infra, querier Querier, store storage.Store) (*Infra, error)
 		return nil, err
 	}
 
-	i.bluetooth = bt.New()
+	i.bluetooth = bt.Default
 	err = i.addNetwork(i.bluetooth)
 	if err != nil {
 		return nil, err
@@ -100,13 +100,9 @@ func (i *Infra) Gateways() []infra.AddrSpec {
 func (i *Infra) Addresses() []infra.AddrSpec {
 	list := make([]infra.AddrSpec, 0)
 
-	type addrLister interface {
-		Addresses() []infra.AddrSpec
-	}
-
 	// collect addresses from all networks that support it
 	for _, net := range i.networks {
-		if lister, ok := net.(addrLister); ok {
+		if lister, ok := net.(infra.AddrLister); ok {
 			list = append(list, lister.Addresses()...)
 		}
 	}

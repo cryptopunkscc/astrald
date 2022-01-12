@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/link"
+	"log"
 )
 
 // LinkFirst iterates over connCh and attempts to establish a link over each connection. It returns the first
@@ -30,6 +31,7 @@ func LinkFirst(ctx context.Context, localID id.Identity, remoteID id.Identity, c
 		if link, err := Link(ctx, localID, remoteID, conn); err == nil {
 			return link
 		} else {
+			log.Println("Link error:", err)
 			if errors.Is(err, context.Canceled) {
 				return nil
 			}
