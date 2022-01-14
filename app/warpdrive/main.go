@@ -29,7 +29,7 @@ func main() {
 		}
 	}()
 
-	warpdrive.RunService(ctx)
+	warpdrive.Config{Context: ctx}.RunService()
 
 	<-ctx.Done()
 

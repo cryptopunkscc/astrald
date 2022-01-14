@@ -176,7 +176,7 @@ func (srv *service) handleSenderSend() {
 				return
 			}
 			// Get files info
-			files, err := srv.home.Info(filePath)
+			files, err := srv.resolver.Info(filePath)
 			if err != nil {
 				log.Println("<", SEND, "Cannot get files info", err)
 				return
