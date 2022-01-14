@@ -1,6 +1,12 @@
 package warpdrive
 
-import "os"
+import (
+	"context"
+	"io"
+	"os"
+)
+
+// =================== API ===================
 
 type ClientApi interface {
 	SenderApi
@@ -39,7 +45,7 @@ type StatusApi interface {
 	Events() (<-chan Status, error)
 }
 
-// =================== Peer ===================
+// ------------------- Peer -------------------
 
 type Peers map[PeerId]*Peer
 type PeerId string
@@ -50,7 +56,7 @@ type Peer struct {
 	Mod   string
 }
 
-// =================== Offer ===================
+// ------------------- Offer -------------------
 
 type Offers map[OfferId]*Offer
 type OfferId string
@@ -79,3 +85,16 @@ const (
 	PEER_MOD_TRUST = "trust"
 	PEER_MOD_BLOCK = "block"
 )
+
+// =================== Dependency ===================
+
+type Resolver interface {
+	Reader(uri string) (io.ReadCloser, error)
+	Info(uri string) (files []Info, err error)
+}
+
+type Config struct {
+	context.Context
+	RepositoryDir  string
+	RemoteResolver bool
+}

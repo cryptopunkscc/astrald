@@ -1,7 +1,6 @@
 package warpdrive
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 	"io"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -28,8 +26,13 @@ const (
 	REJECT = PORT + "/reject"
 )
 
-func RunService(ctx context.Context) {
-	service := newService(ctx)
+func (c Config) RunService() {
+	service := c.newService()
+	service.setupRepository()
+	service.setupResolver()
+	service.setupIdentity()
+	service.setupPeers()
+	service.setupOffers()
 	go service.handleServiceSend()
 	go service.handleServiceAccept()
 	go service.handleServiceReject()
@@ -47,34 +50,24 @@ func RunService(ctx context.Context) {
 	go service.handleCommandLine()
 }
 
-func newService(ctx context.Context) *service {
+func (c Config) newService() *service {
 	service := &service{
-		ctx:      ctx,
+		Config:   c,
 		peers:    Peers{},
-		home:     userFiles(),
-		received: receivedFiles(),
-		repo:     newRepository(),
-		offers: offers{
-			incoming: Offers{},
-			outgoing: Offers{},
-		},
+		received: receivedFilesStorage(),
 	}
-	service.repo.init()
-	service.setupIdentity()
-	service.setupPeers()
-	service.setupOffers()
 	return service
 }
 
 type service struct {
-	ctx      context.Context
-	identity string
-	home     storage
-	received storage
-	peers    Peers
-	repo     repository
+	Config
 	offers
 	notify
+	identity string
+	peers    Peers
+	repo     repository
+	resolver Resolver
+	received storage
 }
 
 type offers struct {
@@ -87,6 +80,24 @@ type notify struct {
 	filesRequest   []io.WriteCloser
 	incomingStatus []io.WriteCloser
 	outgoingStatus []io.WriteCloser
+}
+
+// ================================ Setup =================================
+
+func (srv *service) setupResolver() {
+	if srv.RemoteResolver {
+		srv.resolver = newRemoteResolver()
+	} else {
+		srv.resolver = newDefaultResolver()
+	}
+}
+
+func (srv *service) setupRepository() {
+	if srv.RepositoryDir != "" {
+		srv.repo = newRepository(newStorage(srv.RepositoryDir))
+	} else {
+		srv.repo = newRepository(filesStorage())
+	}
 }
 
 func (srv *service) setupIdentity() {
@@ -307,7 +318,7 @@ func (srv *service) callServiceAccept(id OfferId) (err error) {
 				// Obtain writer
 				if file.IsDir {
 					err := srv.received.MkDir(file.Path, file.Perm)
-					if err != nil && !os.IsExist(err) {
+					if err != nil && !srv.received.IsExist(err) {
 						log.Println("<", ACCEPT, "Cannot make dir", file.Path, err)
 						return err
 					}
@@ -424,7 +435,7 @@ func (srv *service) handleServiceAccept() {
 			// Send files
 			for _, file := range offer.Files {
 				if !file.IsDir {
-					reader, err := srv.home.Reader(file.Path)
+					reader, err := srv.resolver.Reader(file.Path)
 					if err != nil {
 						log.Println(">", ACCEPT, "Cannot get reader", file.Path, offerId, err)
 						return
@@ -541,7 +552,7 @@ func (srv *service) register(query string) (port *astral.Port) {
 		log.Panicln("Cannot register port", query, err)
 	}
 	go func() {
-		<-srv.ctx.Done()
+		<-srv.Done()
 		_ = port.Close()
 	}()
 	return
