@@ -28,6 +28,7 @@ const (
 
 func (c Config) RunService() {
 	service := c.newService()
+	service.setupApi()
 	service.setupRepository()
 	service.setupResolver()
 	service.setupIdentity()
@@ -84,6 +85,12 @@ type notify struct {
 
 // ================================ Setup =================================
 
+func (srv *service) setupApi() {
+	if srv.Api == nil {
+		srv.Api = astral.Instance()
+	}
+}
+
 func (srv *service) setupResolver() {
 	if srv.RemoteResolver {
 		srv.resolver = newRemoteResolver()
@@ -137,7 +144,7 @@ func (srv *service) setupOffers() {
 
 func (srv *service) callServiceSend(peer string, files []Info) (id string, err error) {
 	// Connect to service
-	conn, err := astral.Query(peer, SEND)
+	conn, err := srv.Query(peer, SEND)
 	if err != nil {
 		log.Println("<", SEND, "Cannot connect", peer, err)
 		return
@@ -254,7 +261,7 @@ func (srv *service) handleServiceSend() {
 			case PEER_MOD_ASK:
 				go notifyListeners(">", SEND, offer, srv.filesRequest)
 			}
-		}(*request)
+		}(request)
 	}
 }
 
@@ -272,7 +279,7 @@ func (srv *service) callServiceAccept(id OfferId) (err error) {
 	// Obtain offer reader connection
 	filesConn, err := func() (filesConn io.ReadWriteCloser, err error) {
 		// Connect to service
-		conn, err := astral.Query(string(offer.Peer), ACCEPT)
+		conn, err := srv.Query(string(offer.Peer), ACCEPT)
 		if err != nil {
 			log.Println("<", ACCEPT, "Cannot connect", err)
 			return
@@ -299,7 +306,7 @@ func (srv *service) callServiceAccept(id OfferId) (err error) {
 			return
 		}
 		// Open connection for downloading files
-		filesConn, err = astral.Query(string(offer.Peer), filesQuery)
+		filesConn, err = srv.Query(string(offer.Peer), filesQuery)
 		if err != nil {
 			log.Println("<", ACCEPT, "Cannot query files port", err)
 			return
@@ -401,7 +408,7 @@ func (srv *service) handleServiceAccept() {
 			go notifyListeners(">", ACCEPT, offer.Status, srv.outgoingStatus)
 			// Register port for reading files
 			filesQuery := PORT + "/" + string(offer.Id)
-			filesPort, err := astral.Reqister(filesQuery)
+			filesPort, err := srv.Register(filesQuery)
 			if err != nil {
 				log.Println(">", ACCEPT, "Cannot register files port", filesPort, err)
 				return
@@ -466,7 +473,7 @@ func (srv *service) handleServiceAccept() {
 			offer.Status.Status = "uploaded"
 			srv.repo.saveOutgoing(offer)
 			go notifyListeners(">", ACCEPT, offer.Status, srv.outgoingStatus)
-		}(*request)
+		}(request)
 	}
 }
 
@@ -482,7 +489,7 @@ func (srv *service) callServiceReject(id OfferId) (err error) {
 		return
 	}
 	// Connect to service
-	conn, err := astral.Query(string(offer.Peer), REJECT)
+	conn, err := srv.Query(string(offer.Peer), REJECT)
 	if err != nil {
 		log.Println("<", REJECT, "Cannot connect", err)
 		return
@@ -539,15 +546,15 @@ func (srv *service) handleServiceReject() {
 				log.Println(">", REJECT, "Cannot send ok", request.Caller(), err)
 				return
 			}
-		}(*request)
+		}(request)
 	}
 }
 
 // =========================================================================
 // ================================ Utils ================================
 
-func (srv *service) register(query string) (port *astral.Port) {
-	port, err := astral.Reqister(query)
+func (srv *service) register(query string) (port astral.Port) {
+	port, err := srv.Register(query)
 	if err != nil {
 		log.Panicln("Cannot register port", query, err)
 	}

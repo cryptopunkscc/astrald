@@ -5,6 +5,7 @@ import (
 	warpdrive "github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"github.com/cryptopunkscc/astrald/mod/connect"
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
@@ -20,6 +21,7 @@ var stop context.CancelFunc
 
 func Start(astralHome string) error {
 	log.Println("Staring astrald")
+	astral.Instance().UseTCP = true
 
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())
@@ -42,6 +44,7 @@ func Start(astralHome string) error {
 
 	warpdrive.Config{
 		Context:        ctx,
+		Api:            newApiAdapter(ctx, n),
 		RepositoryDir:  filepath.Join(astralHome, "warpdrive"),
 		RemoteResolver: true,
 	}.RunService()
