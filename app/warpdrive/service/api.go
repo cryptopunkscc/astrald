@@ -2,6 +2,7 @@ package warpdrive
 
 import (
 	"context"
+	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"io"
 	"os"
 )
@@ -95,6 +96,7 @@ type Resolver interface {
 
 type Config struct {
 	context.Context
+	astral.Api
 	RepositoryDir  string
 	RemoteResolver bool
 }

@@ -28,7 +28,7 @@ func (s *storage) IsNotExist(err error) bool {
 }
 
 func (s *storage) MkDir(path string, perm os.FileMode) error {
-	return os.Mkdir(s.normalizePath(path), perm)
+	return os.MkdirAll(s.normalizePath(path), perm)
 }
 
 func (s *storage) Reader(path string) (io.ReadCloser, error) {

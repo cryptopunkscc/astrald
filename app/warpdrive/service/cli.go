@@ -15,7 +15,7 @@ const prompt = "warp> "
 func (srv *service) handleCommandLine() {
 	port := srv.register(cliPort)
 	for request := range port.Next() {
-		go func(request *astral.Request) {
+		go func(request astral.Request) {
 			if srv.isRejected(request) {
 				return
 			}

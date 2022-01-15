@@ -81,7 +81,7 @@ func (srv *service) handleSenderPeers() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			conn, err := request.Accept()
@@ -110,7 +110,7 @@ func (srv *service) handleSenderPeers() {
 				log.Println(">", SEN_PEERS, "Cannot read ok", err)
 				return
 			}
-		}(*request)
+		}(request)
 	}
 }
 
@@ -154,7 +154,7 @@ func (srv *service) handleSenderSend() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			conn, err := request.Accept()
@@ -194,7 +194,7 @@ func (srv *service) handleSenderSend() {
 				return
 			}
 			log.Println(">", SEN_SEND, filePath, "offer sent to", peerId)
-		}(*request)
+		}(request)
 	}
 }
 
@@ -231,7 +231,7 @@ func (srv *service) handleSenderStatus() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			conn, err := request.Accept()
@@ -255,7 +255,7 @@ func (srv *service) handleSenderStatus() {
 				return
 			}
 			log.Println(">", SEN_STATUS, "Send file status", files.Status, err)
-		}(*request)
+		}(request)
 	}
 }
 
@@ -293,7 +293,7 @@ func (srv *service) handleSenderSent() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			// Accept connection
@@ -316,7 +316,7 @@ func (srv *service) handleSenderSent() {
 				return
 			}
 			log.Println(">", SEN_SENT, "Send outgoing offers")
-		}(*request)
+		}(request)
 	}
 }
 
@@ -358,7 +358,7 @@ func (srv *service) handleSenderEvents() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			conn, err := request.Accept()
@@ -372,7 +372,7 @@ func (srv *service) handleSenderEvents() {
 			srv.notify.mu.Unlock()
 			_, _ = enc.ReadUint8(conn)
 			// TODO remove listener
-		}(*request)
+		}(request)
 	}
 }
 
@@ -414,7 +414,7 @@ func (srv *service) handleRecipientOffers() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			conn, err := request.Accept()
@@ -428,7 +428,7 @@ func (srv *service) handleRecipientOffers() {
 			srv.mu.Unlock()
 			_, _ = enc.ReadUint8(conn)
 			// TODO remove listener
-		}(*request)
+		}(request)
 	}
 }
 
@@ -466,7 +466,7 @@ func (srv *service) handleRecipientReceived() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			// Accept connection
@@ -489,7 +489,7 @@ func (srv *service) handleRecipientReceived() {
 				return
 			}
 			log.Println(">", REC_RECEIVED, "Send incoming offers")
-		}(*request)
+		}(request)
 	}
 }
 
@@ -527,7 +527,7 @@ func (srv *service) handleRecipientAccept() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			conn, err := request.Accept()
@@ -552,7 +552,7 @@ func (srv *service) handleRecipientAccept() {
 				return
 			}
 			log.Println(">", REC_ACCEPT, "Accepted incoming files", id)
-		}(*request)
+		}(request)
 	}
 }
 
@@ -590,7 +590,7 @@ func (srv *service) handleRecipientReject() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			conn, err := request.Accept()
@@ -615,7 +615,7 @@ func (srv *service) handleRecipientReject() {
 				return
 			}
 			log.Println(">", REC_REJECT, "Rejected incoming files", id, err)
-		}(*request)
+		}(request)
 	}
 }
 
@@ -658,7 +658,7 @@ func (srv *service) handleRecipientUpdate() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			// Accept connection
@@ -703,7 +703,7 @@ func (srv *service) handleRecipientUpdate() {
 				log.Println(">", REC_UPDATE, "Cannot send ok", err)
 				return
 			}
-		}(*request)
+		}(request)
 	}
 }
 
@@ -744,7 +744,7 @@ func (srv *service) handleRecipientEvents() {
 	for request := range port.Next() {
 		// Handle received request
 		go func(request astral.Request) {
-			if srv.isRejected(&request) {
+			if srv.isRejected(request) {
 				return
 			}
 			conn, err := request.Accept()
@@ -758,7 +758,7 @@ func (srv *service) handleRecipientEvents() {
 			srv.notify.mu.Unlock()
 			_, _ = enc.ReadUint8(conn)
 			// TODO remove listener
-		}(*request)
+		}(request)
 	}
 }
 
@@ -800,7 +800,7 @@ func merge(cs ...<-chan Status) <-chan Status {
 // =========================================================================
 // ================================ Utils ==================================
 
-func (srv *service) isRejected(request *astral.Request) bool {
+func (srv *service) isRejected(request astral.Request) bool {
 	caller := request.Caller()
 	isRemote := caller != "" && caller != srv.identity
 	if isRemote {
