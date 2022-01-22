@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// The warpdrive launcher for desktop.
 func main() {
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())

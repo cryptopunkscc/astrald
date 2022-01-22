@@ -1,8 +1,10 @@
-# Warp Drive Android v1.0.0
+# Warp Drive Android v1.0.0-draft
+
+Few taps to share data with your mates anywhere you are.
 
 # Features
 
-The draft of warpdrive features available on Android OS.
+The warpdrive features available on Android OS.
 
 ## `sender`
 

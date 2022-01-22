@@ -1,8 +1,8 @@
 # Virtual FS UI
 
-Virtual FS UI serves warp drive user interface through virtual file system. Any third party app that allows to interact
-with file system can be used to communicate with warp drive. Additionally, the client will notify user about requests
-from peers, this feature can be solved using OS notification system.
+Is a warpdrive client that serves user interface through virtual file system. Perhaps any file manager can be used to
+communicate with warpdrive service through virtual file storage interface. Additionally, the user have to notified about
+requests from peers, this feature requires platform specific adapter for notification management, and tray indicator.
 
 ## Features
 
@@ -10,14 +10,14 @@ from peers, this feature can be solved using OS notification system.
 
 ### `send`
 
-1. Open directory with mounted warp drive peers;
+1. Open directory with mounted warpdrive peers;
 2. Localize proper directory related to receiver;
 3. Copy-paste a file into the directory;
-4. The feedback about progress or failure is provided by third-party tool used for interacting with fs, e.g. nautilus.
+4. The feedback about progress or failure will be displayed as notification.
 
 ### `incoming`
 
-1. The warp service client have to be run and connected to warp drive service;
+1. The warp service client have to be run and connected to warpdrive service;
 2. Client receives incoming file request through the service;
 3. Client displays the system notification about incoming file;
 4. The notification can navigate to the directory with list of incoming file requests.
