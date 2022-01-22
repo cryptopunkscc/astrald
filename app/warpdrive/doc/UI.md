@@ -1,6 +1,8 @@
-# UI abstract overview
+# UI
 
-## Sender
+Abstract point of view on how the interaction with warpdrive app could look. 
+
+## `sender`
 
 ### `send`
 
