@@ -9,24 +9,19 @@ import (
 	"strings"
 )
 
-const cliPort = "wd"
+const QUERY_CLI = "wd"
 const prompt = "warp> "
 
-func (srv service) handleCommandLine() {
-	port := srv.register(cliPort)
-	for request := range port.Next() {
-		go func(request astral.Request) {
-			if srv.isRejected(request) {
-				return
-			}
-			conn, err := request.Accept()
-			if err != nil {
-				log.Println(">", ACCEPT, "Cannot accept", err)
-				return
-			}
-			go serve(conn)
-		}(request)
+func handleCommandLine(srv service, request astral.Request) {
+	if srv.isRejected(request) {
+		return
 	}
+	conn, err := request.Accept()
+	if err != nil {
+		log.Println(">", ACCEPT, "Cannot accept", err)
+		return
+	}
+	go serve(conn)
 }
 
 func serve(stream io.ReadWriteCloser) {

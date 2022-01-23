@@ -11,7 +11,6 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 	"io"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -34,21 +33,23 @@ func (c Config) RunService() {
 	service.setupIdentity()
 	service.setupPeers()
 	service.setupOffers()
-	go service.handleServiceSend()
-	go service.handleServiceAccept()
-	go service.handleServiceReject()
-	go service.handleSenderPeers()
-	go service.handleSenderSend()
-	go service.handleSenderStatus()
-	go service.handleSenderSent()
-	go service.handleSenderEvents()
-	go service.handleRecipientAccept()
-	go service.handleRecipientReject()
-	go service.handleRecipientOffers()
-	go service.handleRecipientReceived()
-	go service.handleRecipientUpdate()
-	go service.handleRecipientEvents()
-	go service.handleCommandLine()
+	service.serve(handlers{
+		SEND:         handleServiceSend,
+		ACCEPT:       handleServiceAccept,
+		REJECT:       handleServiceReject,
+		SEN_PEERS:    handleSenderPeers,
+		SEN_SEND:     handleSenderSend,
+		SEN_STATUS:   handleSenderStatus,
+		SEN_SENT:     handleSenderSent,
+		SEN_EVENTS:   handleSenderEvents,
+		REC_INCOMING: handleRecipientOffers,
+		REC_RECEIVED: handleRecipientReceived,
+		REC_ACCEPT:   handleRecipientAccept,
+		REC_REJECT:   handleRecipientReject,
+		REC_UPDATE:   handleRecipientUpdate,
+		REC_EVENTS:   handleRecipientEvents,
+		QUERY_CLI:    handleCommandLine,
+	})
 }
 
 func (c Config) newService() *service {
@@ -99,7 +100,7 @@ func (srv *service) setupPeers() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (srv service) callServiceSend(peer string, files []Info) (id string, err error) {
+func (srv service) callSend(peer string, files []Info) (id string, err error) {
 	srv.Logger = newLogger("<", SEND)
 	// Connect to service
 	conn, err := srv.Query(peer, SEND)
@@ -153,55 +154,48 @@ func shrinkPaths(in []Info) (out []Info) {
 
 // ================================ Handler ================================
 
-func (srv service) handleServiceSend() {
-	// Register port
-	port := srv.register(SEND)
-	for request := range port.Next() {
-		// Handle received request
-		go func(request astral.Request) {
-			peerId := PeerId(request.Caller())
-			peer := srv.getPeer(peerId)
-			// Check if peer is blocked
-			if peer.Mod == PEER_MOD_BLOCK {
-				request.Reject()
-				srv.Println("Blocked request from", peerId)
-				return
-			}
-			// Accept connection
-			conn, err := request.Accept()
-			if err != nil {
-				srv.Println("Cannot accept request from", peerId, err)
-				return
-			}
-			defer conn.Close()
-			offerId, err := enc.ReadL8String(conn)
-			if err != nil {
-				srv.Println("Cannot read offer id", err)
-			}
-			// Read files request
-			dec := json.NewDecoder(conn)
-			var files []Info
-			err = dec.Decode(&files)
-			if err != nil {
-				srv.Println("Cannot read files for offer", offerId, err)
-				return
-			}
-			// Store incoming offer
-			srv.addIncomingOffer(peer, offerId, files)
-			// Send OK
-			_ = enc.Write(conn, uint8(0))
-			// Auto accept offer if peer is trusted
-			if peer.Mod == PEER_MOD_TRUST {
-				_ = srv.callServiceAccept(OfferId(offerId))
-			}
-		}(request)
+func handleServiceSend(srv service, request astral.Request) {
+	peerId := PeerId(request.Caller())
+	peer := srv.getPeer(peerId)
+	// Check if peer is blocked
+	if peer.Mod == PEER_MOD_BLOCK {
+		request.Reject()
+		srv.Println("Blocked request from", peerId)
+		return
+	}
+	// Accept connection
+	conn, err := request.Accept()
+	if err != nil {
+		srv.Println("Cannot accept request from", peerId, err)
+		return
+	}
+	defer conn.Close()
+	offerId, err := enc.ReadL8String(conn)
+	if err != nil {
+		srv.Println("Cannot read offer id", err)
+	}
+	// Read files request
+	dec := json.NewDecoder(conn)
+	var files []Info
+	err = dec.Decode(&files)
+	if err != nil {
+		srv.Println("Cannot read files for offer", offerId, err)
+		return
+	}
+	// Store incoming offer
+	srv.addIncomingOffer(peer, offerId, files)
+	// Send OK
+	_ = enc.Write(conn, uint8(0))
+	// Auto accept offer if peer is trusted
+	if peer.Mod == PEER_MOD_TRUST {
+		_ = srv.callAccept(OfferId(offerId))
 	}
 }
 
 // =========================================================================
 // ================================ Caller =================================
 
-func (srv service) callServiceAccept(id OfferId) (err error) {
+func (srv service) callAccept(id OfferId) (err error) {
 	srv.Logger = newLogger("<", ACCEPT)
 	// Get cached incoming files by request id
 	offer := srv.getIncomingOffer(id)
@@ -271,85 +265,79 @@ func (srv service) callServiceAccept(id OfferId) (err error) {
 
 // ================================ Handler ================================
 
-func (srv service) handleServiceAccept() {
-	// Register port
-	port := srv.register(ACCEPT)
-	for request := range port.Next() {
-		go func(request astral.Request) {
-			// Accept incoming connection
-			conn, err := request.Accept()
-			if err != nil {
-				srv.Println("Cannot accept connection from", request.Caller(), err)
-				return
-			}
-			defer conn.Close()
-			// Read request id
-			offerId, err := enc.ReadL8String(conn)
-			if err != nil {
-				srv.Println("Cannot read offer id", err)
-				return
-			}
-			// Obtain file by request id
-			offer := srv.getOutgoingOffer(OfferId(offerId))
-			if offer == nil {
-				srv.Println("Cannot find offer with id", offerId, err)
-				conn.Close()
-			}
-			// Update status
-			srv.updateOutgoingOfferStatus(offer, "accepted", true)
-			// Register port for reading files
-			filesQuery := PORT + "/" + string(offer.Id)
-			filesPort, err := srv.Register(filesQuery)
-			if err != nil {
-				srv.Println("Cannot register files port", filesPort, err)
-				return
-			}
-			defer filesPort.Close()
-			// Send query port to recipient
-			err = enc.WriteL8String(conn, filesQuery)
-			if err != nil {
-				srv.Println("Cannot send files port", filesQuery, err)
-				return
-			}
-			// Read OK
-			_, err = enc.ReadUint8(conn)
-			if err != nil {
-				srv.Println("Cannot read ok", filesQuery, err)
-				return
-			}
-			// Wait for connection on files port
-			filesRequest := <-filesPort.Next()
-			if filesRequest.Caller() != request.Caller() {
-				filesRequest.Reject()
-				srv.Println("Invalid caller", filesQuery, err)
-				return
-			}
-			filesConn, err := filesRequest.Accept()
-			if err != nil {
-				srv.Println("Cannot accept files connection", filesQuery, err)
-				return
-			}
-			defer filesConn.Close()
-			// Send files
-			err = srv.copyFilesTo(filesConn, offer)
-			if err != nil {
-				return
-			}
-			// Wait OK
-			_, err = enc.ReadUint8(filesConn)
-			if err != nil {
-				srv.Println("Cannot read ok", filesQuery, err)
-				return
-			}
-			srv.updateOutgoingOfferStatus(offer, "uploaded", true)
-		}(request)
+func handleServiceAccept(srv service, request astral.Request) {
+	// Accept incoming connection
+	conn, err := request.Accept()
+	if err != nil {
+		srv.Println("Cannot accept connection from", request.Caller(), err)
+		return
 	}
+	defer conn.Close()
+	// Read request id
+	offerId, err := enc.ReadL8String(conn)
+	if err != nil {
+		srv.Println("Cannot read offer id", err)
+		return
+	}
+	// Obtain file by request id
+	offer := srv.getOutgoingOffer(OfferId(offerId))
+	if offer == nil {
+		srv.Println("Cannot find offer with id", offerId, err)
+		conn.Close()
+	}
+	// Update status
+	srv.updateOutgoingOfferStatus(offer, "accepted", true)
+	// Register port for reading files
+	filesQuery := PORT + "/" + string(offer.Id)
+	filesPort, err := srv.Register(filesQuery)
+	if err != nil {
+		srv.Println("Cannot register files port", filesPort, err)
+		return
+	}
+	defer filesPort.Close()
+	// Send query port to recipient
+	err = enc.WriteL8String(conn, filesQuery)
+	if err != nil {
+		srv.Println("Cannot send files port", filesQuery, err)
+		return
+	}
+	// Read OK
+	_, err = enc.ReadUint8(conn)
+	if err != nil {
+		srv.Println("Cannot read ok", filesQuery, err)
+		return
+	}
+	// Wait for connection on files port
+	filesRequest := <-filesPort.Next()
+	if filesRequest.Caller() != request.Caller() {
+		filesRequest.Reject()
+		srv.Println("Invalid caller", filesQuery, err)
+		return
+	}
+	filesConn, err := filesRequest.Accept()
+	if err != nil {
+		srv.Println("Cannot accept files connection", filesQuery, err)
+		return
+	}
+	defer filesConn.Close()
+	// Send files
+	err = srv.copyFilesTo(filesConn, offer)
+	if err != nil {
+		return
+	}
+	// Wait OK
+	_, err = enc.ReadUint8(filesConn)
+	if err != nil {
+		srv.Println("Cannot read ok", filesQuery, err)
+		return
+	}
+	srv.updateOutgoingOfferStatus(offer, "uploaded", true)
 }
 
 // =========================================================================
 // ================================ Caller =================================
 
-func (srv service) callServiceReject(id OfferId) (err error) {
+func (srv service) callReject(id OfferId) (err error) {
 	srv.Logger = newLogger("<", REJECT)
 	// Get cached incoming files by id
 	offer := srv.getIncomingOffer(id)
@@ -383,44 +371,55 @@ func (srv service) callServiceReject(id OfferId) (err error) {
 
 // ================================ Handler ================================
 
-func (srv service) handleServiceReject() {
-	// Register port
-	port := srv.register(REJECT)
-	for request := range port.Next() {
-		go func(request astral.Request) {
-			// Accept incoming connection
-			conn, err := request.Accept()
-			if err != nil {
-				srv.Println("Cannot accept connection from", request.Caller(), err)
-				return
-			}
-			defer conn.Close()
-			// Read id of rejected outgoing files
-			offerId, err := enc.ReadL8String(conn)
-			if err != nil {
-				srv.Println("Cannot read request id", request.Caller(), err)
-				return
-			}
-			// Reject outgoing files
-			offer := srv.getOutgoingOffer(OfferId(offerId))
-			if offer != nil {
-				srv.updateOutgoingOfferStatus(offer, "rejected", true)
-			}
-			// Send OK
-			err = enc.Write(conn, uint8(0))
-			if err != nil {
-				srv.Println("Cannot send ok", request.Caller(), err)
-				return
-			}
-		}(request)
+func handleServiceReject(srv service, request astral.Request) {
+	// Accept incoming connection
+	conn, err := request.Accept()
+	if err != nil {
+		srv.Println("Cannot accept connection from", request.Caller(), err)
+		return
+	}
+	defer conn.Close()
+	// Read id of rejected outgoing files
+	offerId, err := enc.ReadL8String(conn)
+	if err != nil {
+		srv.Println("Cannot read request id", request.Caller(), err)
+		return
+	}
+	// Reject outgoing files
+	offer := srv.getOutgoingOffer(OfferId(offerId))
+	if offer != nil {
+		srv.updateOutgoingOfferStatus(offer, "rejected", true)
+	}
+	// Send OK
+	err = enc.Write(conn, uint8(0))
+	if err != nil {
+		srv.Println("Cannot send ok", request.Caller(), err)
+		return
 	}
 }
 
 // =========================================================================
 // ================================ Utils ================================
 
+type handlers map[string]handler
+type handler func(srv service, request astral.Request)
+
+func (srv service) serve(h handlers) {
+	for query, handle := range h {
+		// start handler for query
+		go func(srv service, query string, handle handler) {
+			// register port for handler
+			srv.Logger = newLogger(">", query)
+			port := srv.register(query)
+			for request := range port.Next() {
+				// handle request
+				go handle(srv, request)
+			}
+		}(srv, query, handle)
+	}
+}
+
 func (srv *service) register(query string) (port astral.Port) {
-	srv.Logger = newLogger(">", query)
 	port, err := srv.Register(query)
 	if err != nil {
 		srv.Panicln("Cannot register port", query, err)
@@ -430,16 +429,4 @@ func (srv *service) register(query string) (port astral.Port) {
 		_ = port.Close()
 	}()
 	return
-}
-
-func newLogger(prefix ...string) *log.Logger {
-	var chunks []interface{}
-	suffix := " "
-	for i, chunk := range prefix {
-		if i == len(prefix)-1 {
-			suffix = ": "
-		}
-		chunks = append(chunks, chunk+suffix)
-	}
-	return log.New(os.Stderr, fmt.Sprint(chunks...), log.LstdFlags|log.Lmsgprefix)
 }
