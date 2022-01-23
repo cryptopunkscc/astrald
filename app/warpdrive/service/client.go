@@ -28,46 +28,58 @@ const (
 	REC_EVENTS   = PORT + "/recipient/events"
 )
 
-func NewUIClient() ClientApi {
-	return &client{sender{}, recipient{}}
+func NewClient() ClientApi {
+	c := client{log.Default()}
+	return &clientApi{
+		sender{c},
+		recipient{c},
+	}
 }
 
-type sender struct{}
-type recipient struct{}
-type client struct {
+type clientApi struct {
 	sender
 	recipient
 }
+type sender struct {
+	client
+}
 
-func (s *client) Sender() SenderApi {
+type recipient struct {
+	client
+}
+
+type client struct {
+	*log.Logger
+}
+
+func (s *clientApi) Sender() SenderApi {
 	return &s.sender
 }
 
-func (s *client) Recipient() RecipientApi {
+func (s *clientApi) Recipient() RecipientApi {
 	return &s.recipient
 }
 
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) Peers() (peers []Peer, err error) {
+func (s sender) Peers() (peers []Peer, err error) {
 	// Connect to local service
-	conn, err := astral.Query("", SEN_PEERS)
+	conn, err := s.query(SEN_PEERS)
 	if err != nil {
-		log.Println("<", SEN_PEERS, "Cannot connect to service", err)
 		return
 	}
 	defer conn.Close()
 	// Read peers
 	err = json.NewDecoder(conn).Decode(&peers)
 	if err != nil {
-		log.Println("<", SEN_PEERS, "Cannot read peers", err)
+		s.Println("Cannot read peers", err)
 		return
 	}
 	// Send OK
 	err = enc.Write(conn, uint8(0))
 	if err != nil {
-		log.Println("<", SEN_PEERS, "Cannot send ok", err)
+		s.Println("Cannot send ok", err)
 		return
 	}
 	return
@@ -75,7 +87,7 @@ func (s *sender) Peers() (peers []Peer, err error) {
 
 // ================================ Handler ================================
 
-func (srv *service) handleSenderPeers() {
+func (srv service) handleSenderPeers() {
 	// Register port
 	port := srv.register(SEN_PEERS)
 	for request := range port.Next() {
@@ -84,30 +96,25 @@ func (srv *service) handleSenderPeers() {
 			if srv.isRejected(request) {
 				return
 			}
+			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", SEN_PEERS, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
-			// Collect peers
-			peers := make([]*Peer, len(srv.peers))
-			i := 0
-			peersMap := srv.peers
-			for key := range peersMap {
-				peers[i] = srv.peers[key]
-				i++
-			}
+			// Get peers
+			peers := srv.listPeers()
 			// Send peers
 			err = json.NewEncoder(conn).Encode(peers)
 			if err != nil {
-				log.Println(">", SEN_PEERS, "Cannot send peers", err)
+				srv.Println("Cannot send peers", err)
 				return
 			}
 			// Read OK
 			_, err = enc.ReadUint8(conn)
 			if err != nil {
-				log.Println(">", SEN_PEERS, "Cannot read ok", err)
+				srv.Println("Cannot read ok", err)
 				return
 			}
 		}(request)
@@ -117,30 +124,29 @@ func (srv *service) handleSenderPeers() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) Send(peerId PeerId, filePath string) (id OfferId, err error) {
+func (s sender) Send(peerId PeerId, filePath string) (id OfferId, err error) {
 	// Connect to local service
-	conn, err := astral.Query("", SEN_SEND)
+	conn, err := s.query(SEN_SEND)
 	if err != nil {
-		log.Println("<", SEN_SEND, "Cannot connect to service", err)
 		return
 	}
 	defer conn.Close()
 	// Send recipient id
 	err = enc.WriteL8String(conn, string(peerId))
 	if err != nil {
-		log.Println("<", SEN_SEND, "Cannot send recipient id", err)
+		s.Println("Cannot send recipient id", err)
 		return
 	}
 	// Send file path
 	err = enc.WriteL8String(conn, filePath)
 	if err != nil {
-		log.Println("<", SEN_SEND, "Cannot send file path", err)
+		s.Println("Cannot send file path", err)
 		return
 	}
 	// Read response
 	strId, err := enc.ReadL8String(conn)
 	if err != nil {
-		log.Println("<", SEN_SEND, "Cannot read response id", err)
+		s.Println("Cannot read response id", err)
 	}
 	id = OfferId(strId)
 	return
@@ -148,7 +154,7 @@ func (s *sender) Send(peerId PeerId, filePath string) (id OfferId, err error) {
 
 // ================================ Handler ================================
 
-func (srv *service) handleSenderSend() {
+func (srv service) handleSenderSend() {
 	// Register port
 	port := srv.register(SEN_SEND)
 	for request := range port.Next() {
@@ -157,43 +163,44 @@ func (srv *service) handleSenderSend() {
 			if srv.isRejected(request) {
 				return
 			}
+			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", SEN_SEND, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
 			// Read peer id
 			peerId, err := enc.ReadL8String(conn)
 			if err != nil {
-				log.Println(">", SEN_SEND, "Cannot read peer id", err)
+				srv.Println("Cannot read peer id", err)
 				return
 			}
 			// Read file path
 			filePath, err := enc.ReadL8String(conn)
 			if err != nil {
-				log.Println(">", SEN_SEND, "Cannot read file path", err)
+				srv.Println("Cannot read file path", err)
 				return
 			}
 			// Get files info
 			files, err := srv.resolver.Info(filePath)
 			if err != nil {
-				log.Println("<", SEND, "Cannot get files info", err)
+				srv.Println("Cannot get files info", err)
 				return
 			}
 			// Send file to recipient service
 			id, err := srv.callServiceSend(peerId, files)
 			if err != nil {
-				log.Println(">", SEN_SEND, "Cannot send file", err)
+				srv.Println("Cannot send file", err)
 				return
 			}
 			// Write response to sender
 			err = enc.WriteL8String(conn, id)
 			if err != nil {
-				log.Println(">", SEN_SEND, "Cannot send id", id, err)
+				srv.Println("Cannot send id", id, err)
 				return
 			}
-			log.Println(">", SEN_SEND, filePath, "offer sent to", peerId)
+			srv.Println(filePath, "offer sent to", peerId)
 		}(request)
 	}
 }
@@ -201,31 +208,30 @@ func (srv *service) handleSenderSend() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) Status(id OfferId) (status string, err error) {
+func (s sender) Status(id OfferId) (status string, err error) {
 	// Connect to service
-	conn, err := astral.Query("", SEN_STATUS)
+	conn, err := s.query(SEN_STATUS)
 	if err != nil {
-		log.Println("<", SEN_STATUS, "Cannot connect to service", err)
 		return
 	}
 	defer conn.Close()
 	// Send request id
 	err = enc.WriteL8String(conn, string(id))
 	if err != nil {
-		log.Println("<", SEN_STATUS, "Cannot send request id", err)
+		s.Println("Cannot send request id", err)
 		return
 	}
 	// Receive status
 	status, err = enc.ReadL8String(conn)
 	if err != nil {
-		log.Println("<", SEN_STATUS, "Cannot read request status", err)
+		s.Println("Cannot read request status", err)
 	}
 	return
 }
 
 // ================================ Handler ================================
 
-func (srv *service) handleSenderStatus() {
+func (srv service) handleSenderStatus() {
 	// Register port
 	port := srv.register(SEN_STATUS)
 	for request := range port.Next() {
@@ -234,27 +240,29 @@ func (srv *service) handleSenderStatus() {
 			if srv.isRejected(request) {
 				return
 			}
+			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", SEN_STATUS, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
+			defer conn.Close()
 			id, err := enc.ReadL8String(conn)
 			if err != nil {
-				log.Println(">", SEN_STATUS, "Cannot read request id", err)
+				srv.Println("Cannot read request id", err)
 				return
 			}
-			files := srv.outgoing[OfferId(id)]
+			files := srv.getOutgoingOffer(OfferId(id))
 			if files == nil {
-				log.Println(">", SEN_STATUS, "Cannot find outgoing files with id", id)
+				srv.Println("Cannot find outgoing files with id", id)
 				return
 			}
 			err = enc.WriteL8String(conn, files.Status.Status)
 			if err != nil {
-				log.Println(">", SEN_STATUS, "Cannot send file status", files.Status, err)
+				srv.Println("Cannot send file status", files.Status, err)
 				return
 			}
-			log.Println(">", SEN_STATUS, "Send file status", files.Status, err)
+			srv.Println("Send file status", files.Status, err)
 		}(request)
 	}
 }
@@ -262,24 +270,23 @@ func (srv *service) handleSenderStatus() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) Sent() (offers Offers, err error) {
+func (s sender) Sent() (offers Offers, err error) {
 	// Connect to service
-	conn, err := astral.Query("", SEN_SENT)
+	conn, err := s.query(SEN_SENT)
 	if err != nil {
-		log.Println("<", SEN_SENT, "Cannot connect to service", err)
 		return
 	}
 	defer conn.Close()
 	// Receive outgoing offers
 	err = json.NewDecoder(conn).Decode(&offers)
 	if err != nil {
-		log.Println("<", SEN_SENT, "Cannot read outgoing offers", err)
+		s.Println("Cannot read outgoing offers", err)
 		return
 	}
 	// Send OK
 	err = enc.Write(conn, uint8(0))
 	if err != nil {
-		log.Println("<", SEN_SENT, "Cannot send ok", err)
+		s.Println("Cannot send ok", err)
 		return
 	}
 	return
@@ -287,7 +294,7 @@ func (s *sender) Sent() (offers Offers, err error) {
 
 // ================================ Handler ================================
 
-func (srv *service) handleSenderSent() {
+func (srv service) handleSenderSent() {
 	// Register port
 	port := srv.register(SEN_SENT)
 	for request := range port.Next() {
@@ -299,23 +306,23 @@ func (srv *service) handleSenderSent() {
 			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", SEN_SENT, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
 			// Send outgoing files
 			err = json.NewEncoder(conn).Encode(srv.outgoing)
 			if err != nil {
-				log.Println(">", SEN_SENT, "Cannot send outgoing offers", err)
+				srv.Println("Cannot send outgoing offers", err)
 				return
 			}
 			// Wait for OK
 			_, err = enc.ReadUint8(conn)
 			if err != nil {
-				log.Println(">", SEN_SENT, "Cannot read ok", err)
+				srv.Println("Cannot read ok", err)
 				return
 			}
-			log.Println(">", SEN_SENT, "Send outgoing offers")
+			srv.Println("Send outgoing offers")
 		}(request)
 	}
 }
@@ -323,11 +330,10 @@ func (srv *service) handleSenderSent() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *sender) Events() (outgoing <-chan Status, err error) {
+func (s sender) Events() (outgoing <-chan Status, err error) {
 	// Connect to local service
-	conn, err := astral.Query("", SEN_EVENTS)
+	conn, err := s.query(SEN_EVENTS)
 	if err != nil {
-		log.Println("<", SEN_EVENTS, "Cannot connect to service", err)
 		return
 	}
 	out := make(chan Status)
@@ -337,11 +343,11 @@ func (s *sender) Events() (outgoing <-chan Status, err error) {
 		defer conn.Close()
 		dec := json.NewDecoder(conn)
 		files := &Status{}
-		log.Println("<", SEN_EVENTS, "Start listening status")
+		s.Println("Start listening status")
 		for true {
 			err := dec.Decode(files)
 			if err != nil {
-				log.Println("<", SEN_EVENTS, "Finish listening offers status", err)
+				s.Println("Finish listening offers status", err)
 				return
 			}
 			inc <- *files
@@ -352,7 +358,7 @@ func (s *sender) Events() (outgoing <-chan Status, err error) {
 
 // ================================ Handler ================================
 
-func (srv *service) handleSenderEvents() {
+func (srv service) handleSenderEvents() {
 	// Register port
 	port := srv.register(SEN_EVENTS)
 	for request := range port.Next() {
@@ -361,17 +367,16 @@ func (srv *service) handleSenderEvents() {
 			if srv.isRejected(request) {
 				return
 			}
+			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", SEN_EVENTS, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
-			srv.notify.mu.Lock()
-			srv.outgoingStatus = append(srv.outgoingStatus, conn)
-			srv.notify.mu.Unlock()
+			remove := srv.outgoingStatus.subscribe(conn)
+			defer remove()
 			_, _ = enc.ReadUint8(conn)
-			// TODO remove listener
 		}(request)
 	}
 }
@@ -379,11 +384,10 @@ func (srv *service) handleSenderEvents() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) Offers() (offers <-chan Offer, err error) {
+func (r recipient) Offers() (offers <-chan Offer, err error) {
 	// Connect to local service
-	conn, err := astral.Query("", REC_INCOMING)
+	conn, err := r.query(REC_INCOMING)
 	if err != nil {
-		log.Println("<", REC_INCOMING, "Cannot connect to service", err)
 		return
 	}
 	ofs := make(chan Offer)
@@ -393,11 +397,11 @@ func (r *recipient) Offers() (offers <-chan Offer, err error) {
 		defer conn.Close()
 		dec := json.NewDecoder(conn)
 		files := &Offer{}
-		log.Println("<", REC_INCOMING, "Start listening offers")
+		r.Println("Start listening offers")
 		for true {
 			err := dec.Decode(files)
 			if err != nil {
-				log.Println("<", REC_INCOMING, "Finish listening offers", err)
+				r.Println("Finish listening offers", err)
 				return
 			}
 			offers <- *files
@@ -408,7 +412,7 @@ func (r *recipient) Offers() (offers <-chan Offer, err error) {
 
 // ================================ Handler ================================
 
-func (srv *service) handleRecipientOffers() {
+func (srv service) handleRecipientOffers() {
 	// Register port
 	port := srv.register(REC_INCOMING)
 	for request := range port.Next() {
@@ -417,17 +421,16 @@ func (srv *service) handleRecipientOffers() {
 			if srv.isRejected(request) {
 				return
 			}
+			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", REC_INCOMING, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
-			srv.mu.Lock()
-			srv.filesRequest = append(srv.filesRequest, conn)
-			srv.mu.Unlock()
+			remove := srv.filesOffers.subscribe(conn)
+			defer remove()
 			_, _ = enc.ReadUint8(conn)
-			// TODO remove listener
 		}(request)
 	}
 }
@@ -435,24 +438,23 @@ func (srv *service) handleRecipientOffers() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) Received() (offers Offers, err error) {
+func (r recipient) Received() (offers Offers, err error) {
 	// Connect to service
-	conn, err := astral.Query("", REC_RECEIVED)
+	conn, err := r.query(REC_RECEIVED)
 	if err != nil {
-		log.Println("<", REC_RECEIVED, "Cannot connect to service", err)
 		return
 	}
 	defer conn.Close()
 	// Receive outgoing offers
 	err = json.NewDecoder(conn).Decode(&offers)
 	if err != nil {
-		log.Println("<", REC_RECEIVED, "Cannot read outgoing offers", err)
+		r.Println("Cannot read outgoing offers", err)
 		return
 	}
 	// Send OK
 	err = enc.Write(conn, uint8(0))
 	if err != nil {
-		log.Println("<", REC_RECEIVED, "Cannot send ok", err)
+		r.Println("Cannot send ok", err)
 		return
 	}
 	return
@@ -460,7 +462,7 @@ func (r *recipient) Received() (offers Offers, err error) {
 
 // ================================ Handler ================================
 
-func (srv *service) handleRecipientReceived() {
+func (srv service) handleRecipientReceived() {
 	// Register port
 	port := srv.register(REC_RECEIVED)
 	for request := range port.Next() {
@@ -472,23 +474,23 @@ func (srv *service) handleRecipientReceived() {
 			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", REC_RECEIVED, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
 			// Send outgoing files
 			err = json.NewEncoder(conn).Encode(srv.incoming)
 			if err != nil {
-				log.Println(">", REC_RECEIVED, "Cannot send incoming offers", err)
+				srv.Println("Cannot send incoming offers", err)
 				return
 			}
 			// Wait for OK
 			_, err = enc.ReadUint8(conn)
 			if err != nil {
-				log.Println(">", REC_RECEIVED, "Cannot read ok", err)
+				srv.Println("Cannot read ok", err)
 				return
 			}
-			log.Println(">", REC_RECEIVED, "Send incoming offers")
+			srv.Println("Send incoming offers")
 		}(request)
 	}
 }
@@ -496,24 +498,23 @@ func (srv *service) handleRecipientReceived() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) Accept(id OfferId) (err error) {
+func (r recipient) Accept(id OfferId) (err error) {
 	// Connect to local service
-	conn, err := astral.Query("", REC_ACCEPT)
+	conn, err := r.query(REC_ACCEPT)
 	if err != nil {
-		log.Println("<", REC_ACCEPT, "Cannot connect to service", err)
 		return
 	}
 	defer conn.Close()
 	// Send accepted request id to service
 	err = enc.WriteL8String(conn, string(id))
 	if err != nil {
-		log.Println("<", REC_ACCEPT, "Cannot send accepted request id", err)
+		r.Println("Cannot send accepted request id", err)
 		return
 	}
 	// Read OK
 	_, err = enc.ReadUint8(conn)
 	if err != nil {
-		log.Println("<", REC_ACCEPT, "Cannot read ok", err)
+		r.Println("Cannot read ok", err)
 		return
 	}
 	return
@@ -521,7 +522,7 @@ func (r *recipient) Accept(id OfferId) (err error) {
 
 // ================================ Handler ================================
 
-func (srv *service) handleRecipientAccept() {
+func (srv service) handleRecipientAccept() {
 	// Register port
 	port := srv.register(REC_ACCEPT)
 	for request := range port.Next() {
@@ -530,28 +531,29 @@ func (srv *service) handleRecipientAccept() {
 			if srv.isRejected(request) {
 				return
 			}
+			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", REC_ACCEPT, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
 			id, err := enc.ReadL8String(conn)
 			if err != nil {
-				log.Println(">", REC_ACCEPT, "Cannot read request id", err)
+				srv.Println("Cannot read request id", err)
 				return
 			}
 			err = srv.callServiceAccept(OfferId(id))
 			if err != nil {
-				log.Println(">", REC_ACCEPT, "Cannot accept incoming files", id, err)
+				srv.Println("Cannot accept incoming files", id, err)
 				return
 			}
 			err = enc.Write(conn, uint8(0))
 			if err != nil {
-				log.Println(">", REC_ACCEPT, "Cannot send ok", err)
+				srv.Println("Cannot send ok", err)
 				return
 			}
-			log.Println(">", REC_ACCEPT, "Accepted incoming files", id)
+			srv.Println("Accepted incoming files", id)
 		}(request)
 	}
 }
@@ -559,24 +561,23 @@ func (srv *service) handleRecipientAccept() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) Reject(id OfferId) (err error) {
+func (r recipient) Reject(id OfferId) (err error) {
 	// Connect to local service
-	conn, err := astral.Query("", REC_REJECT)
+	conn, err := r.query(REC_REJECT)
 	if err != nil {
-		log.Println("<", REC_REJECT, "Cannot connect to service", err)
 		return
 	}
 	// Send accepted request id to service
 	defer conn.Close()
 	err = enc.WriteL8String(conn, string(id))
 	if err != nil {
-		log.Println("<", REC_REJECT, "Cannot send rejected request id", err)
+		r.Println("Cannot send rejected request id", err)
 		return
 	}
 	// Read OK
 	_, err = enc.ReadUint8(conn)
 	if err != nil {
-		log.Println("<", REC_REJECT, "Cannot read ok", err)
+		r.Println("Cannot read ok", err)
 		return
 	}
 	return
@@ -584,7 +585,7 @@ func (r *recipient) Reject(id OfferId) (err error) {
 
 // ================================ Handler ================================
 
-func (srv *service) handleRecipientReject() {
+func (srv service) handleRecipientReject() {
 	// Register port
 	port := srv.register(REC_REJECT)
 	for request := range port.Next() {
@@ -593,28 +594,29 @@ func (srv *service) handleRecipientReject() {
 			if srv.isRejected(request) {
 				return
 			}
+			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", REC_REJECT, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
 			id, err := enc.ReadL8String(conn)
 			if err != nil {
-				log.Println(">", REC_REJECT, "Cannot read request id", err)
+				srv.Println("Cannot read request id", err)
 				return
 			}
 			err = srv.callServiceReject(OfferId(id))
 			if err != nil {
-				log.Println(">", REC_REJECT, "Cannot reject incoming files", id, err)
+				srv.Println("Cannot reject incoming files", id, err)
 				return
 			}
 			err = enc.Write(conn, uint8(0))
 			if err != nil {
-				log.Println(">", REC_ACCEPT, "Cannot send ok", err)
+				srv.Println("Cannot send ok", err)
 				return
 			}
-			log.Println(">", REC_REJECT, "Rejected incoming files", id, err)
+			srv.Println("Rejected incoming files", id, err)
 		}(request)
 	}
 }
@@ -622,15 +624,14 @@ func (srv *service) handleRecipientReject() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) Update(
+func (r recipient) Update(
 	peerId PeerId,
 	attr string,
 	value string,
 ) (err error) {
 	// Connect to local service
-	conn, err := astral.Query("", REC_UPDATE)
+	conn, err := r.query(REC_UPDATE)
 	if err != nil {
-		log.Println("<", REC_UPDATE, "Cannot connect to service", err)
 		return
 	}
 	defer conn.Close()
@@ -638,13 +639,13 @@ func (r *recipient) Update(
 	req := []string{string(peerId), attr, value}
 	err = json.NewEncoder(conn).Encode(req)
 	if err != nil {
-		log.Println("<", REC_UPDATE, "Cannot send peer update", err)
+		r.Println("Cannot send peer update", err)
 		return
 	}
 	// Wait for OK
 	_, err = enc.ReadUint8(conn)
 	if err != nil {
-		log.Println("<", REC_UPDATE, "Cannot read ok", err)
+		r.Println("Cannot read ok", err)
 		return
 	}
 	return
@@ -652,7 +653,7 @@ func (r *recipient) Update(
 
 // ================================ Handler ================================
 
-func (srv *service) handleRecipientUpdate() {
+func (srv service) handleRecipientUpdate() {
 	// Register port
 	port := srv.register(REC_UPDATE)
 	for request := range port.Next() {
@@ -664,7 +665,7 @@ func (srv *service) handleRecipientUpdate() {
 			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", REC_UPDATE, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
@@ -672,35 +673,18 @@ func (srv *service) handleRecipientUpdate() {
 			var req []string
 			err = json.NewDecoder(conn).Decode(&req)
 			if err != nil {
-				log.Println(">", REC_UPDATE, "Cannot read peer update", err)
+				srv.Println("Cannot read peer update", err)
 				return
 			}
 			peerId := req[0]
 			attr := req[1]
 			value := req[2]
-			peer := srv.peers[PeerId(peerId)]
-			if peer == nil {
-				log.Println(">", REC_UPDATE, "Cannot find peer with id", peerId)
-				return
-			}
-			switch attr {
-			case "mod":
-				peer.Mod = value
-			case "alias":
-				peer.Alias = value
-			default:
-				log.Println(">", REC_UPDATE, "Invalid peer attribute", attr)
-				return
-			}
-			var peers []Peer
-			for _, p := range srv.peers {
-				peers = append(peers, *p)
-			}
-			srv.repo.savePeers(peers)
+			// Update peer
+			srv.updatePeer(peerId, attr, value)
 			// Send OK
 			err = enc.Write(conn, uint8(0))
 			if err != nil {
-				log.Println(">", REC_UPDATE, "Cannot send ok", err)
+				srv.Println("Cannot send ok", err)
 				return
 			}
 		}(request)
@@ -710,11 +694,10 @@ func (srv *service) handleRecipientUpdate() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (r *recipient) Events() (incoming <-chan Status, err error) {
+func (r recipient) Events() (incoming <-chan Status, err error) {
 	// Connect to local service
-	conn, err := astral.Query("", REC_EVENTS)
+	conn, err := r.query(REC_EVENTS)
 	if err != nil {
-		log.Println(REC_EVENTS, "Cannot connect to service", err)
 		return
 	}
 	inc := make(chan Status)
@@ -724,10 +707,11 @@ func (r *recipient) Events() (incoming <-chan Status, err error) {
 		defer conn.Close()
 		dec := json.NewDecoder(conn)
 		files := &Status{}
+		r.Println("Start listening status")
 		for true {
 			err := dec.Decode(files)
 			if err != nil {
-				log.Println(REC_EVENTS, "Cannot decode status", err)
+				r.Println("Cannot decode status", err)
 				return
 			}
 			inc <- *files
@@ -738,7 +722,7 @@ func (r *recipient) Events() (incoming <-chan Status, err error) {
 
 // ================================ Handler ================================
 
-func (srv *service) handleRecipientEvents() {
+func (srv service) handleRecipientEvents() {
 	// Register port
 	port := srv.register(REC_EVENTS)
 	for request := range port.Next() {
@@ -747,17 +731,16 @@ func (srv *service) handleRecipientEvents() {
 			if srv.isRejected(request) {
 				return
 			}
+			// Accept connection
 			conn, err := request.Accept()
 			if err != nil {
-				log.Println(">", REC_EVENTS, "Cannot accept request", err)
+				srv.Println("Cannot accept request", err)
 				return
 			}
 			defer conn.Close()
-			srv.notify.mu.Lock()
-			srv.incomingStatus = append(srv.incomingStatus, conn)
-			srv.notify.mu.Unlock()
+			remove := srv.incomingStatus.subscribe(conn)
+			defer remove()
 			_, _ = enc.ReadUint8(conn)
-			// TODO remove listener
 		}(request)
 	}
 }
@@ -765,7 +748,7 @@ func (srv *service) handleRecipientEvents() {
 // =========================================================================
 // ================================ Caller =================================
 
-func (s *client) Events() (events <-chan Status, err error) {
+func (s *clientApi) Events() (events <-chan Status, err error) {
 	senderEvents, err := s.sender.Events()
 	if err != nil {
 		return
@@ -800,12 +783,22 @@ func merge(cs ...<-chan Status) <-chan Status {
 // =========================================================================
 // ================================ Utils ==================================
 
+func (client *client) query(port string) (conn io.ReadWriteCloser, err error) {
+	client.Logger = newLogger("<", port)
+	// Connect to local service
+	conn, err = astral.Query("", port)
+	if err != nil {
+		client.Println("Cannot connect to service", err)
+	}
+	return
+}
+
 func (srv *service) isRejected(request astral.Request) bool {
 	caller := request.Caller()
 	isRemote := caller != "" && caller != srv.identity
 	if isRemote {
 		request.Reject()
-		log.Println(">", request.Query(), "Accept only local request, by caller was remote", caller)
+		srv.Println("Accept only local request, but caller was remote", caller)
 	}
 	return isRemote
 }

@@ -12,7 +12,7 @@ import (
 const cliPort = "wd"
 const prompt = "warp> "
 
-func (srv *service) handleCommandLine() {
+func (srv service) handleCommandLine() {
 	port := srv.register(cliPort)
 	for request := range port.Next() {
 		go func(request astral.Request) {
@@ -33,7 +33,7 @@ func serve(stream io.ReadWriteCloser) {
 	defer stream.Close()
 	scanner := bufio.NewScanner(stream)
 	stream.Write([]byte(prompt))
-	api := NewUIClient()
+	api := NewClient()
 	for scanner.Scan() {
 		words := strings.Split(scanner.Text(), " ")
 		if len(words) == 0 {
