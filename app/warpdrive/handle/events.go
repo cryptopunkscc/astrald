@@ -47,7 +47,7 @@ func RecipientEvents(srv service.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	remove := srv.IncomingStatus().Subscribe(conn)
+	remove := srv.Incoming().Status().Subscribe(conn)
 	defer remove()
 	// Wait for close
 	_, _ = enc.ReadUint8(conn)
@@ -90,7 +90,7 @@ func SenderEvents(srv service.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	remove := srv.OutgoingStatus().Subscribe(conn)
+	remove := srv.Outgoing().Status().Subscribe(conn)
 	defer remove()
 	// Wait for close
 	_, _ = enc.ReadUint8(conn)

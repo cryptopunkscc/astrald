@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-// Context provides dependencies required by Handlers.
+// Context contains dependencies required by Handlers.
 type Context struct {
 	Config
 	context.Context

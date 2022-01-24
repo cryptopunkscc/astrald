@@ -64,7 +64,7 @@ func RecipientAccept(srv service.Context, request astral.Request) {
 func accept(srv service.Context, id api.OfferId) (err error) {
 	srv.LogPrefix("<", api.Accept)
 	// Get cached incoming files by request id
-	offer := srv.GetIncomingOffer(id)
+	offer := srv.Incoming().Get(id)
 	if offer == nil {
 		err = errors.New(fmt.Sprint("No incoming file with id ", id))
 		srv.Println("Cannot find incoming file", err)
@@ -92,7 +92,7 @@ func accept(srv service.Context, id api.OfferId) (err error) {
 			return
 		}
 		// Update status
-		srv.UpdateIncomingOfferStatus(offer, "accepted", true)
+		srv.Incoming().Update(offer, "accepted", true)
 		// Send ok
 		err = enc.Write(conn, uint8(0))
 		if err != nil {
@@ -114,11 +114,11 @@ func accept(srv service.Context, id api.OfferId) (err error) {
 	go func() {
 		defer filesConn.Close()
 		// Copy files to storage
-		err = srv.CopyFilesFrom(filesConn, offer)
+		err = srv.File().CopyFrom(filesConn, offer)
 		if err != nil {
 			return
 		}
-		srv.UpdateIncomingOfferStatus(offer, "downloaded", true)
+		srv.Incoming().Update(offer, "downloaded", true)
 		// Send OK
 		err = enc.Write(filesConn, uint8(0))
 		if err != nil {
@@ -144,13 +144,13 @@ func ServiceAccept(srv service.Context, request astral.Request) {
 		return
 	}
 	// Obtain file by request id
-	offer := srv.GetOutgoingOffer(api.OfferId(offerId))
+	offer := srv.Outgoing().Get(api.OfferId(offerId))
 	if offer == nil {
 		srv.Println("Cannot find offer with id", offerId, err)
 		conn.Close()
 	}
 	// Update status
-	srv.UpdateOutgoingOfferStatus(offer, "accepted", true)
+	srv.Outgoing().Update(offer, "accepted", true)
 	// Register port for reading files
 	filesQuery := api.Port + "/" + string(offer.Id)
 	filesPort, err := srv.Register(filesQuery)
@@ -185,7 +185,7 @@ func ServiceAccept(srv service.Context, request astral.Request) {
 	}
 	defer filesConn.Close()
 	// Send files
-	err = srv.CopyFilesTo(filesConn, offer)
+	err = srv.File().CopyTo(filesConn, offer)
 	if err != nil {
 		return
 	}
@@ -195,5 +195,5 @@ func ServiceAccept(srv service.Context, request astral.Request) {
 		srv.Println("Cannot read ok", filesQuery, err)
 		return
 	}
-	srv.UpdateOutgoingOfferStatus(offer, "uploaded", true)
+	srv.Outgoing().Update(offer, "uploaded", true)
 }

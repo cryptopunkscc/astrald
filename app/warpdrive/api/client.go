@@ -1,6 +1,6 @@
 package api
 
-// Client combines service API functions for UI applications.
+// Client API for warpdrive UI.
 type Client interface {
 	Sender
 	Recipient
@@ -9,7 +9,7 @@ type Client interface {
 }
 
 type Sender interface {
-	StatusApi
+	StatusEvents
 	// Peers available for receiving an offer.
 	Peers() ([]Peer, error)
 	// Send files offer for the recipient.
@@ -20,7 +20,7 @@ type Sender interface {
 }
 
 type Recipient interface {
-	StatusApi
+	StatusEvents
 	// Offers subscription.
 	Offers() (<-chan Offer, error)
 	// Received offers.
@@ -33,7 +33,7 @@ type Recipient interface {
 	Update(id PeerId, attr string, value string) error
 }
 
-type StatusApi interface {
+type StatusEvents interface {
 	// Events subscribes a callback for receiving offers status updates.
 	Events() (<-chan Status, error)
 }

@@ -44,7 +44,7 @@ func SenderStatus(srv service.Context, request astral.Request) {
 		srv.Println("Cannot read request id", err)
 		return
 	}
-	files := srv.GetOutgoingOffer(api.OfferId(id))
+	files := srv.Outgoing().Get(api.OfferId(id))
 	if files == nil {
 		srv.Println("Cannot find outgoing files with id", id)
 		return

@@ -42,7 +42,7 @@ func SenderPeers(srv service.Context, request astral.Request) {
 	}
 	defer conn.Close()
 	// Get peers
-	peers := srv.ListPeers()
+	peers := srv.Peer().List()
 	// Send peers
 	err = json.NewEncoder(conn).Encode(peers)
 	if err != nil {

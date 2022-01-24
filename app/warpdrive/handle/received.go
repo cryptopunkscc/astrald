@@ -42,7 +42,7 @@ func RecipientReceived(srv service.Context, request astral.Request) {
 	}
 	defer conn.Close()
 	// Send outgoing files
-	err = json.NewEncoder(conn).Encode(srv.GetIncomingOffers())
+	err = json.NewEncoder(conn).Encode(srv.Incoming().List())
 	if err != nil {
 		srv.Println("Cannot send incoming offers", err)
 		return

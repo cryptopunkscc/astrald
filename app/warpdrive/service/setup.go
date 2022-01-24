@@ -37,6 +37,6 @@ func (srv *Context) setupPeers() {
 		return
 	}
 	for _, contact := range contactList {
-		srv.UpdatePeer(contact.Id, "", "")
+		srv.Peer().Update(contact.Id, "", "")
 	}
 }
