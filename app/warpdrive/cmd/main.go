@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	warpdrive "github.com/cryptopunkscc/astrald/app/warpdrive/service"
+	"github.com/cryptopunkscc/astrald/app/warpdrive"
 	"log"
 	"os"
 	"os/signal"
@@ -30,7 +30,7 @@ func main() {
 		}
 	}()
 
-	warpdrive.Config{Context: ctx}.RunService()
+	warpdrive.Service{Context: ctx}.Run()
 
 	<-ctx.Done()
 

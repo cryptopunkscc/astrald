@@ -1,12 +1,13 @@
-package warpdrive
+package core
 
 import (
 	"fmt"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"os"
 	"path/filepath"
 )
 
-func newDefaultResolver() Resolver {
+func newDefaultResolver() api.Resolver {
 	return newFsResolver(userFilesStorage())
 }
 

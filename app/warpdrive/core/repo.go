@@ -1,7 +1,8 @@
-package warpdrive
+package core
 
 import (
 	"encoding/gob"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"io/fs"
 	"log"
 	"path/filepath"
@@ -30,17 +31,17 @@ func (r *repository) init() {
 	_ = r.MkDir(r.outgoingDir, 0700)
 }
 
-func (r *repository) saveIncoming(offer *Offer) {
+func (r *repository) saveIncoming(offer *api.Offer) {
 	path := filepath.Join(r.incomingDir, string(offer.Id))
 	r.saveOffer(path, offer)
 }
 
-func (r *repository) saveOutgoing(offer *Offer) {
+func (r *repository) saveOutgoing(offer *api.Offer) {
 	path := filepath.Join(r.outgoingDir, string(offer.Id))
 	r.saveOffer(path, offer)
 }
 
-func (r *repository) saveOffer(path string, offer *Offer) {
+func (r *repository) saveOffer(path string, offer *api.Offer) {
 	file, err := r.Writer(path, 0700)
 	if err != nil {
 		log.Panicln("cannot create file for incoming offer", err)
@@ -55,7 +56,7 @@ func (r *repository) saveOffer(path string, offer *Offer) {
 	}
 }
 
-func (r *repository) savePeers(peers []Peer) {
+func (r *repository) savePeers(peers []api.Peer) {
 	file, err := r.Writer(r.peersFile, 0700)
 	if err != nil {
 		log.Panicln("cannot open peers file", err)
@@ -66,17 +67,17 @@ func (r *repository) savePeers(peers []Peer) {
 	}
 }
 
-func (r *repository) listIncoming() Offers {
+func (r *repository) listIncoming() api.Offers {
 	return r.listOffers(r.incomingDir)
 }
 
-func (r *repository) listOutgoing() Offers {
+func (r *repository) listOutgoing() api.Offers {
 	return r.listOffers(r.outgoingDir)
 }
 
-func (r *repository) listOffers(dir string) (offers Offers) {
+func (r *repository) listOffers(dir string) (offers api.Offers) {
 	dir = r.storage.Absolute(dir)
-	offers = make(Offers)
+	offers = make(api.Offers)
 	err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
@@ -85,8 +86,8 @@ func (r *repository) listOffers(dir string) (offers Offers) {
 		if err != nil {
 			return err
 		}
-		id := OfferId(info.Name())
-		offer := &Offer{}
+		id := api.OfferId(info.Name())
+		offer := &api.Offer{}
 		err = gob.NewDecoder(file).Decode(offer)
 		if err != nil {
 			return err
@@ -101,7 +102,7 @@ func (r *repository) listOffers(dir string) (offers Offers) {
 	return
 }
 
-func (r *repository) listPeers() (peers []Peer) {
+func (r *repository) listPeers() (peers []api.Peer) {
 	file, err := r.Reader(r.peersFile)
 	if err != nil {
 		if r.IsNotExist(err) {

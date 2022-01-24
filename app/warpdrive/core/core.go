@@ -1,16 +1,23 @@
-package warpdrive
+package core
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/mitchellh/ioprogress"
 	"io"
 	"log"
 	"time"
 )
 
+func New(config service.Config) api.Core {
+	c := &core{Config: config}
+	return c
+}
+
 type core struct {
-	Config
+	service.Config
 	*log.Logger
 	*persistence
 	*cache
@@ -19,24 +26,24 @@ type core struct {
 
 type cache struct {
 	offers
-	peers Peers
+	peers api.Peers
 }
 
 type offers struct {
-	incoming Offers
-	outgoing Offers
+	incoming api.Offers
+	outgoing api.Offers
 }
 
 type persistence struct {
-	repo     repository
-	resolver Resolver
+	repo repository
+	api.Resolver
 	received storage
 }
 
 type observers struct {
-	filesOffers    *subscriptions
-	incomingStatus *subscriptions
-	outgoingStatus *subscriptions
+	filesOffers    *api.Subscriptions
+	incomingStatus *api.Subscriptions
+	outgoingStatus *api.Subscriptions
 }
 
 // ================================ Setup =================================
@@ -44,17 +51,18 @@ type observers struct {
 func (c *core) setupCore() {
 	c.persistence = &persistence{}
 	c.cache = &cache{}
+	c.peers = api.Peers{}
 	c.observers = &observers{}
-	c.filesOffers = newSubscriptions()
-	c.incomingStatus = newSubscriptions()
-	c.outgoingStatus = newSubscriptions()
+	c.filesOffers = api.NewSubscriptions()
+	c.incomingStatus = api.NewSubscriptions()
+	c.outgoingStatus = api.NewSubscriptions()
 }
 
 func (c *core) setupResolver() {
 	if c.RemoteResolver {
-		c.resolver = newRemoteResolver()
+		c.Resolver = newRemoteResolver()
 	} else {
-		c.resolver = newDefaultResolver()
+		c.Resolver = newDefaultResolver()
 	}
 }
 
@@ -70,7 +78,7 @@ func (c *core) setupRepository() {
 	}
 }
 
-func (c *core) setPeers(peers Peers) {
+func (c *core) setPeers(peers api.Peers) {
 	c.peers = peers
 }
 
@@ -89,14 +97,27 @@ func (c *core) setupOffers() {
 
 // ================================ API =================================
 
-func (c *core) addOutgoingOffer(offerId string, files []Info) {
+func (c *core) Setup() {
+	c.setupCore()
+	c.setupStorage()
+	c.setupResolver()
+	c.setupRepository()
+	c.setupOffers()
+	c.setupPeers()
+}
+
+func (c *core) SetLogger(logger *log.Logger) {
+	c.Logger = logger
+}
+
+func (c *core) AddOutgoingOffer(offerId string, files []api.Info) {
 	// Cache outgoing files request
-	offer := &Offer{
-		Status: Status{
-			Id:     OfferId(offerId),
+	offer := &api.Offer{
+		Files: files,
+		Status: api.Status{
+			Id:     api.OfferId(offerId),
 			Status: "sent",
 		},
-		Files: files,
 	}
 	c.outgoing[offer.Id] = offer
 	c.repo.saveOutgoing(offer)
@@ -104,10 +125,10 @@ func (c *core) addOutgoingOffer(offerId string, files []Info) {
 	go c.notifyListeners(offer.Status, c.outgoingStatus)
 }
 
-func (c *core) getPeer(id PeerId) Peer {
+func (c *core) GetPeer(id api.PeerId) api.Peer {
 	peer := c.peers[id]
 	if peer == nil {
-		peer = &Peer{
+		peer = &api.Peer{
 			Id:    id,
 			Alias: "",
 			Mod:   "",
@@ -117,12 +138,12 @@ func (c *core) getPeer(id PeerId) Peer {
 	return *peer
 }
 
-func (c *core) addIncomingOffer(peer Peer, offerId string, files []Info) {
-	offer := &Offer{
+func (c *core) AddIncomingOffer(peer api.Peer, offerId string, files []api.Info) {
+	offer := &api.Offer{
 		Files: files,
 		Peer:  peer.Id,
-		Status: Status{
-			Id:     OfferId(offerId),
+		Status: api.Status{
+			Id:     api.OfferId(offerId),
 			Status: "received",
 		},
 	}
@@ -131,20 +152,20 @@ func (c *core) addIncomingOffer(peer Peer, offerId string, files []Info) {
 	c.repo.saveIncoming(offer)
 
 	go c.notifyListeners(offer.Status, c.incomingStatus)
-	if peer.Mod == PEER_MOD_ASK {
+	if peer.Mod == api.PeerModAsk {
 		go c.notifyListeners(offer, c.filesOffers)
 	}
 }
 
-func (c *core) getIncomingOffer(id OfferId) *Offer {
+func (c *core) GetIncomingOffer(id api.OfferId) *api.Offer {
 	return c.incoming[id]
 }
 
-func (c *core) getOutgoingOffer(id OfferId) *Offer {
+func (c *core) GetOutgoingOffer(id api.OfferId) *api.Offer {
 	return c.outgoing[id]
 }
 
-func (c *core) updateIncomingOfferStatus(offer *Offer, status string, persist bool) {
+func (c *core) UpdateIncomingOfferStatus(offer *api.Offer, status string, persist bool) {
 	offer.Status.Status = status
 	if persist {
 		c.repo.saveIncoming(offer)
@@ -152,7 +173,7 @@ func (c *core) updateIncomingOfferStatus(offer *Offer, status string, persist bo
 	go c.notifyListeners(offer.Status, c.incomingStatus)
 }
 
-func (c *core) updateOutgoingOfferStatus(offer *Offer, status string, persist bool) {
+func (c *core) UpdateOutgoingOfferStatus(offer *api.Offer, status string, persist bool) {
 	offer.Status.Status = status
 	if persist {
 		c.repo.saveOutgoing(offer)
@@ -160,11 +181,13 @@ func (c *core) updateOutgoingOfferStatus(offer *Offer, status string, persist bo
 	go c.notifyListeners(offer.Status, c.outgoingStatus)
 }
 
-func (c *core) updatePeer(peerId string, attr string, value string) {
-	peer := c.peers[PeerId(peerId)]
-	if peer == nil {
-		c.Println("Cannot find peer with id", peerId)
-		return
+func (c *core) UpdatePeer(peerId string, attr string, value string) {
+	id := api.PeerId(peerId)
+	peer := c.peers[id]
+	cached := peer != nil
+	if !cached {
+		peer = &api.Peer{Id: id}
+		c.peers[id] = peer
 	}
 	switch attr {
 	case "mod":
@@ -172,18 +195,19 @@ func (c *core) updatePeer(peerId string, attr string, value string) {
 	case "alias":
 		peer.Alias = value
 	default:
-		c.Println("Invalid peer attribute", attr)
-		return
+		if cached {
+			return
+		}
 	}
-	var peers []Peer
+	var peers []api.Peer
 	for _, p := range c.peers {
 		peers = append(peers, *p)
 	}
 	c.repo.savePeers(peers)
 }
 
-func (c *core) listPeers() (peers []*Peer) {
-	peers = make([]*Peer, len(c.peers))
+func (c *core) ListPeers() (peers []*api.Peer) {
+	peers = make([]*api.Peer, len(c.peers))
 	i := 0
 	peersMap := c.peers
 	for key := range peersMap {
@@ -193,16 +217,16 @@ func (c *core) listPeers() (peers []*Peer) {
 	return
 }
 
-func (c *core) copyFilesFrom(reader io.Reader, offer *Offer) (err error) {
+func (c *core) CopyFilesFrom(reader io.Reader, offer *api.Offer) (err error) {
 	for _, file := range offer.Files {
-		if err = c.copyFileFrom(reader, offer, file); err != nil {
+		if err = c.CopyFileFrom(reader, offer, file); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (c *core) copyFileFrom(reader io.Reader, offer *Offer, file Info) (err error) {
+func (c *core) CopyFileFrom(reader io.Reader, offer *api.Offer, file api.Info) (err error) {
 	// Obtain writer
 	if file.IsDir {
 		err := c.received.MkDir(file.Path, file.Perm)
@@ -224,7 +248,7 @@ func (c *core) copyFileFrom(reader io.Reader, offer *Offer, file Info) (err erro
 			DrawInterval: 200 * time.Millisecond,
 			DrawFunc: func(progress int64, size int64) error {
 				status := fmt.Sprintf("download: %s %d/%dB", file.Path, progress, size)
-				c.updateIncomingOfferStatus(offer, status, false)
+				c.UpdateIncomingOfferStatus(offer, status, false)
 				return nil
 			},
 		}
@@ -242,20 +266,20 @@ func (c *core) copyFileFrom(reader io.Reader, offer *Offer, file Info) (err erro
 	return err
 }
 
-func (c *core) copyFilesTo(writer io.Writer, offer *Offer) (err error) {
+func (c *core) CopyFilesTo(writer io.Writer, offer *api.Offer) (err error) {
 	for _, file := range offer.Files {
 		if file.IsDir {
 			continue
 		}
-		if err = c.copyFileTo(writer, offer, file); err != nil {
+		if err = c.CopyFileTo(writer, offer, file); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (c *core) copyFileTo(writer io.Writer, offer *Offer, file Info) (err error) {
-	reader, err := c.resolver.Reader(file.Path)
+func (c *core) CopyFileTo(writer io.Writer, offer *api.Offer, file api.Info) (err error) {
+	reader, err := c.Reader(file.Path)
 	if err != nil {
 		c.Println("Cannot get reader", file.Path, offer.Id, err)
 		return
@@ -266,7 +290,7 @@ func (c *core) copyFileTo(writer io.Writer, offer *Offer, file Info) (err error)
 		DrawInterval: 200 * time.Millisecond,
 		DrawFunc: func(progress int64, size int64) error {
 			status := fmt.Sprintf("upload %s %d/%dB", file.Path, progress, size)
-			c.updateOutgoingOfferStatus(offer, status, false)
+			c.UpdateOutgoingOfferStatus(offer, status, false)
 			return nil
 		},
 	}
@@ -278,15 +302,37 @@ func (c *core) copyFileTo(writer io.Writer, offer *Offer, file Info) (err error)
 	return
 }
 
+func (c *core) GetOutgoingOffers() api.Offers {
+	return c.outgoing
+}
+
+func (c *core) GetIncomingOffers() api.Offers {
+	return c.incoming
+}
+
+func (c *core) OutgoingStatus() *api.Subscriptions {
+	return c.outgoingStatus
+}
+
+func (c *core) IncomingStatus() *api.Subscriptions {
+	return c.incomingStatus
+}
+
+func (c *core) FilesOffers() *api.Subscriptions {
+	return c.filesOffers
+}
+
 // ================================ Utils ================================
 
-func (c *core) notifyListeners(data interface{}, listeners *subscriptions) {
+func (c *core) notifyListeners(data interface{}, listeners *api.Subscriptions) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		c.Println("Cannot create json from data", data, err)
 		return
 	}
-	for listener := range listeners.set {
+	listeners.Lock()
+	defer listeners.Unlock()
+	for listener := range listeners.Set {
 		_, err := listener.Write(jsonData)
 		if err != nil {
 			c.Println("Error while sending files to listener", err)
