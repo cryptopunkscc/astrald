@@ -1,33 +1,34 @@
 # Warp Drive
 
-Decentralized application for private file sharing secured by strong end-to-end encryption.
+Decentralized application for private and secured file sharing.
 
 ## Vision
 
 We believe:
 
-1. Today the digital data sharing is one of the most crucial parts of the internet communication.
-2. All humans have equal rights to protect their privacy and free speech.
-3. The product that aspire to be trusted and secure must also be transparent and verifiable for anyone interested.
+1. Digital data sharing is one of the most crucial parts of the internet communication.
+2. Humans have equal rights to protect their privacy and free speech.
+3. Trusted and secure product must also be transparent and verifiable for anyone interested.
 4. Physical limitations cannot be applied to virtual world where digital data can be copied infinity amount of times.
-5. Decentralisation is the way for protecting our human rights in virtual environment, because centralized attacks are
-   ineffective in a decentralized environment.
+5. Decentralisation is the way to protect ourselves in virtual environment. Centralized attacks are ineffective in a
+   decentralized environment.
 6. Reinventing the wheel is a waste of time. End-user products should be focused only on solving end-user problems
    delegating non-business issues like connectivity to other instances designed for solving specialized technical
    problems.
 
 ## Mission
 
-Provide free and simple way for secure and private data sharing and communication across the popular platforms.
+Provide free and simple solution for secure and private data sharing across the popular platforms.
 
 ## Target
 
 Anyone who:
 
-* Needs to share the data in trusted, secure and simple way.
+* Needs to share the data
+* Expects simplicity, security and privacy.
 * Can use communication oriented electronic devices, like smartphones, personal computers or any other devices capable
   to run desired software.
-* Don't want to rely on closed sources solutions impossible to verify from privacy and security perspective.
+* Don't want to rely on closed source or paid solutions.
 
 ## Goals
 
