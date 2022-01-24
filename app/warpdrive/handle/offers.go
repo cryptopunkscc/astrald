@@ -46,7 +46,7 @@ func RecipientOffers(srv service.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	remove := srv.FilesOffers().Subscribe(conn)
+	remove := srv.Peer().Offers().Subscribe(conn)
 	defer remove()
 	// Wait for close
 	_, _ = enc.ReadUint8(conn)

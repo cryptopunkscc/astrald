@@ -63,7 +63,7 @@ func SenderSend(srv service.Context, request astral.Request) {
 		return
 	}
 	// Get files info
-	files, err := srv.Info(filePath)
+	files, err := srv.File().Info(filePath)
 	if err != nil {
 		srv.Println("Cannot get files info", err)
 		return
@@ -111,7 +111,7 @@ func send(srv service.Context, peer string, files []api.Info) (id string, err er
 		srv.Println("Cannot read ok", peer, err)
 		return
 	}
-	srv.AddOutgoingOffer(id, files)
+	srv.Outgoing().Add(id, files, nil)
 	return
 }
 
@@ -137,7 +137,7 @@ func shrinkPaths(in []api.Info) (out []api.Info) {
 
 func ServiceSend(srv service.Context, request astral.Request) {
 	peerId := api.PeerId(request.Caller())
-	peer := srv.GetPeer(peerId)
+	peer := srv.Peer().Get(peerId)
 	// Check if peer is blocked
 	if peer.Mod == api.PeerModBlock {
 		request.Reject()
@@ -164,7 +164,7 @@ func ServiceSend(srv service.Context, request astral.Request) {
 		return
 	}
 	// Store incoming offer
-	srv.AddIncomingOffer(peer, offerId, files)
+	srv.Incoming().Add(offerId, files, &peer)
 	// Send OK
 	_ = enc.Write(conn, uint8(0))
 	// Auto accept offer if peer is trusted

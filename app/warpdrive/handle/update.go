@@ -57,7 +57,7 @@ func RecipientUpdate(srv service.Context, request astral.Request) {
 	attr := req[1]
 	value := req[2]
 	// Update peer
-	srv.UpdatePeer(peerId, attr, value)
+	srv.Peer().Update(peerId, attr, value)
 	// Send OK
 	err = enc.Write(conn, uint8(0))
 	if err != nil {

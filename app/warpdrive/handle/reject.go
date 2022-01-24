@@ -63,7 +63,7 @@ func RecipientReject(srv service.Context, request astral.Request) {
 func reject(srv service.Context, id api.OfferId) (err error) {
 	srv.LogPrefix("<", api.Reject)
 	// Get cached incoming files by id
-	offer := srv.GetIncomingOffer(id)
+	offer := srv.Incoming().Get(id)
 	if offer == nil {
 		err = errors.New(fmt.Sprint("No incoming file with id ", id))
 		srv.Println("Cannot find incoming file", err)
@@ -88,7 +88,7 @@ func reject(srv service.Context, id api.OfferId) (err error) {
 		srv.Println("Cannot read ok", id, err)
 		return
 	}
-	srv.UpdateIncomingOfferStatus(offer, "rejected", true)
+	srv.Incoming().Update(offer, "rejected", true)
 	return
 }
 
@@ -107,9 +107,9 @@ func ServiceReject(srv service.Context, request astral.Request) {
 		return
 	}
 	// Reject outgoing files
-	offer := srv.GetOutgoingOffer(api.OfferId(offerId))
+	offer := srv.Outgoing().Get(api.OfferId(offerId))
 	if offer != nil {
-		srv.UpdateOutgoingOfferStatus(offer, "rejected", true)
+		srv.Outgoing().Update(offer, "rejected", true)
 	}
 	// Send OK
 	err = enc.Write(conn, uint8(0))

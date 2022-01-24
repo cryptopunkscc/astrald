@@ -50,22 +50,18 @@ func serve(api astral.Api, stream io.ReadWriteCloser) {
 	}
 }
 
-func init() {
-	commands = cmdMap{
-		"peers":    cmdPeers,
-		"send":     cmdSend,
-		"status":   cmdStatus,
-		"sent":     cmdSent,
-		"received": cmdReceived,
-		"offers":   cmdOffers,
-		"accept":   cmdAccept,
-		"reject":   cmdReject,
-		"update":   cmdUpdate,
-		"events":   cmdEvents,
-	}
+var commands = cmdMap{
+	"peers":    cmdPeers,
+	"send":     cmdSend,
+	"status":   cmdStatus,
+	"sent":     cmdSent,
+	"received": cmdReceived,
+	"offers":   cmdOffers,
+	"accept":   cmdAccept,
+	"reject":   cmdReject,
+	"update":   cmdUpdate,
+	"events":   cmdEvents,
 }
-
-var commands cmdMap
 
 type cmdMap map[string]cmdFunc
 type cmdFunc func(io.ReadWriter, api.Client, []string) error
