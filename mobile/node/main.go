@@ -2,7 +2,8 @@ package astralmobile
 
 import (
 	"context"
-	warpdrive "github.com/cryptopunkscc/astrald/app/warpdrive/service"
+	"github.com/cryptopunkscc/astrald/app/warpdrive"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
@@ -42,12 +43,14 @@ func Start(astralHome string) error {
 		panic(err)
 	}
 
-	warpdrive.Config{
-		Context:        ctx,
-		Api:            newApiAdapter(ctx, n),
-		RepositoryDir:  filepath.Join(astralHome, "warpdrive"),
-		RemoteResolver: true,
-	}.RunService()
+	warpdrive.Service{
+		Context: ctx,
+		Api:     newApiAdapter(ctx, n),
+		Config: service.Config{
+			RepositoryDir:  filepath.Join(astralHome, "warpdrive"),
+			RemoteResolver: true,
+		},
+	}.Run()
 
 	identity = n.Identity().String()
 

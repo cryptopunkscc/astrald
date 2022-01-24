@@ -32,7 +32,7 @@ package "recipient handlers" {
     [handle incoming subscribe]
     [handle update]
 }
-package "core api" {
+package "service api" {
     [server send]
     [server accept]
     [server reject]
@@ -42,7 +42,7 @@ package "core api" {
 
 cloud "Remote" {
 node "node" as remote_node {
-package "core handlers" {
+package "service handlers" {
     [handle send]
     [handle accept]
     [handle reject]

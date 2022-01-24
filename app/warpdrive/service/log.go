@@ -1,4 +1,4 @@
-package warpdrive
+package service
 
 import (
 	"fmt"
@@ -6,7 +6,13 @@ import (
 	"os"
 )
 
-func newLogger(prefix ...string) *log.Logger {
+func (srv *Context) LogPrefix(prefix ...string) {
+	logger := NewLogger(prefix...)
+	srv.Logger = logger
+	srv.SetLogger(logger)
+}
+
+func NewLogger(prefix ...string) *log.Logger {
 	var chunks []interface{}
 	suffix := " "
 	for i, chunk := range prefix {

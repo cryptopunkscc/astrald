@@ -1,4 +1,4 @@
-package warpdrive
+package core
 
 import (
 	"io"

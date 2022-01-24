@@ -48,10 +48,10 @@ go run ./cmd/astrald/main.go
 
 #### 3. Execute the warpdrive service.
 
-* From source [./app/warpdrive/main.go](../main.go)
+* From source [./app/warpdrive/cmd/main.go](../cmd/main.go)
 
 ```shell
-go run ./app/warpdrive/main.go
+go run ./app/warpdrive/cmd/main.go
 ```
 
 #### 4. Both services now should be running.
