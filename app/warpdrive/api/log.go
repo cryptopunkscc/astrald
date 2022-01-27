@@ -1,4 +1,4 @@
-package service
+package api
 
 import (
 	"fmt"
@@ -6,10 +6,9 @@ import (
 	"os"
 )
 
-func (srv *Context) LogPrefix(prefix ...string) {
+func (ctx *Core) LogPrefix(prefix ...string) {
 	logger := NewLogger(prefix...)
-	srv.Logger = logger
-	srv.SetLogger(logger)
+	ctx.Logger = logger
 }
 
 func NewLogger(prefix ...string) *log.Logger {

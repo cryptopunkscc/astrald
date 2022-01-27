@@ -2,47 +2,34 @@ package handle
 
 import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
-	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"io"
 	"log"
 )
 
-func NewClient(astralApi astral.Api) api.Client {
-	c := client{log.Default(), astralApi}
-	return &apiClient{
-		sender{c},
-		recipient{c},
-	}
+var _ api.Sender = &Client{}
+var _ api.Recipient = &Client{}
+
+type Client struct {
+	Sender
+	Recipient
 }
 
-type apiClient struct {
-	sender
-	recipient
-}
-type sender struct {
-	client
+type Sender struct{ *astralApi }
+type Recipient struct{ *astralApi }
+
+func NewClient(api astral.Api) Client {
+	core := &astralApi{log.Default(), api}
+	return Client{Sender{core}, Recipient{core}}
 }
 
-type recipient struct {
-	client
-}
-
-type client struct {
+type astralApi struct {
 	*log.Logger
 	astral.Api
 }
 
-func (s *apiClient) Sender() api.Sender {
-	return &s.sender
-}
-
-func (s *apiClient) Recipient() api.Recipient {
-	return &s.recipient
-}
-
-func (client *client) query(port string) (conn io.ReadWriteCloser, err error) {
-	client.Logger = service.NewLogger("<", port)
+func (client *astralApi) query(port string) (conn io.ReadWriteCloser, err error) {
+	client.Logger = api.NewLogger("<", port)
 	// Connect to local service
 	conn, err = client.Query("", port)
 	if err != nil {

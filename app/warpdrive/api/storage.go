@@ -5,31 +5,26 @@ import (
 	"os"
 )
 
-type Repository interface {
-	Incoming() OffersRepo
-	Outgoing() OffersRepo
-	Peers() PeersRepo
-}
-
-type OffersRepo interface {
+type OfferStorage interface {
 	Save(offer *Offer)
-	List() Offers
+	Get() Offers
 }
 
-type PeersRepo interface {
+type PeerStorage interface {
 	Save(peers []Peer)
+	Get() Peers
 	List() []Peer
 }
 
-type Storage interface {
+type FileStorage interface {
 	IsExist(err error) bool
 	MkDir(path string, perm os.FileMode) error
 	FileWriter(path string, perm os.FileMode) (io.WriteCloser, error)
 }
 
-// Resolver provides file reader for uri.
+// FileResolver provides file reader for uri.
 // Required for platforms where direct access to the file system is restricted.
-type Resolver interface {
-	File(uri string) (io.ReadCloser, error)
+type FileResolver interface {
+	Reader(uri string) (io.ReadCloser, error)
 	Info(uri string) (files []Info, err error)
 }

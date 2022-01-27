@@ -1,4 +1,4 @@
-package local
+package file
 
 import (
 	"encoding/gob"
@@ -10,12 +10,27 @@ import (
 	"strings"
 )
 
-type offersRepo struct {
+var _ api.OfferStorage = Offers{}
+
+type Offers struct {
+	api.Core
 	dir string
 }
 
-func (r *offersRepo) Save(offer *api.Offer) {
-	path := filepath.Join(r.dir, string(offer.Id))
+func Incoming(core api.Core) Offers {
+	return Offers{core, "incoming"}
+}
+
+func Outgoing(core api.Core) Offers {
+	return Offers{core, "outgoing"}
+}
+
+func (r Offers) Init() {
+	_ = os.MkdirAll(r.normalizePath(""), 0700)
+}
+
+func (r Offers) Save(offer *api.Offer) {
+	path := r.normalizePath(string(offer.Id))
 
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
@@ -31,9 +46,10 @@ func (r *offersRepo) Save(offer *api.Offer) {
 	}
 }
 
-func (r *offersRepo) List() api.Offers {
+func (r Offers) Get() api.Offers {
 	offers := make(api.Offers)
-	err := filepath.Walk(r.dir, func(path string, info fs.FileInfo, err error) error {
+	dir := r.normalizePath("")
+	err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
@@ -57,9 +73,9 @@ func (r *offersRepo) List() api.Offers {
 	return offers
 }
 
-func (r *offersRepo) normalizePath(path string) string {
+func (r Offers) normalizePath(path string) string {
 	if strings.HasPrefix(path, "/") {
 		return path
 	}
-	return filepath.Join(r.dir, path)
+	return filepath.Join(r.RepositoryDir, r.dir, path)
 }

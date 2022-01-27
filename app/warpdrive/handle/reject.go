@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
-func (r recipient) Reject(id api.OfferId) (err error) {
+func (r Recipient) Reject(id api.OfferId) (err error) {
 	// Connect to local service
 	conn, err := r.query(api.RecReject)
 	if err != nil {
@@ -31,7 +32,7 @@ func (r recipient) Reject(id api.OfferId) (err error) {
 	return
 }
 
-func RecipientReject(srv service.Context, request astral.Request) {
+func RecipientReject(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -57,13 +58,13 @@ func RecipientReject(srv service.Context, request astral.Request) {
 		srv.Println("Cannot send ok", err)
 		return
 	}
-	srv.Println("Rejected incoming files", id, err)
+	srv.Println("Rejected incoming files", id)
 }
 
-func reject(srv service.Context, id api.OfferId) (err error) {
+func reject(srv handler.Context, id api.OfferId) (err error) {
 	srv.LogPrefix("<", api.Reject)
 	// Get cached incoming files by id
-	offer := srv.Incoming().Get(id)
+	offer := service.Incoming(srv.Core).Get()[id]
 	if offer == nil {
 		err = errors.New(fmt.Sprint("No incoming file with id ", id))
 		srv.Println("Cannot find incoming file", err)
@@ -88,11 +89,11 @@ func reject(srv service.Context, id api.OfferId) (err error) {
 		srv.Println("Cannot read ok", id, err)
 		return
 	}
-	srv.Incoming().Update(offer, "rejected", true)
+	service.Incoming(srv.Core).Update(offer, "rejected", true)
 	return
 }
 
-func ServiceReject(srv service.Context, request astral.Request) {
+func ServiceReject(srv handler.Context, request astral.Request) {
 	// Accept incoming connection
 	conn, err := request.Accept()
 	if err != nil {
@@ -107,9 +108,9 @@ func ServiceReject(srv service.Context, request astral.Request) {
 		return
 	}
 	// Reject outgoing files
-	offer := srv.Outgoing().Get(api.OfferId(offerId))
+	offer := service.Outgoing(srv.Core).Get()[api.OfferId(offerId)]
 	if offer != nil {
-		srv.Outgoing().Update(offer, "rejected", true)
+		service.Outgoing(srv.Core).Update(offer, "rejected", true)
 	}
 	// Send OK
 	err = enc.Write(conn, uint8(0))

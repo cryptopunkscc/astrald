@@ -1,4 +1,4 @@
-package local
+package file
 
 import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
@@ -8,17 +8,15 @@ import (
 	"path/filepath"
 )
 
-func NewResolver() api.Resolver {
-	return fsResolver{}
-}
+var _ api.FileResolver = Resolver{}
 
-type fsResolver struct{}
+type Resolver struct{}
 
-func (s fsResolver) File(path string) (io.ReadCloser, error) {
+func (s Resolver) Reader(path string) (io.ReadCloser, error) {
 	return os.Open(path)
 }
 
-func (s fsResolver) Info(path string) (files []api.Info, err error) {
+func (s Resolver) Info(path string) (files []api.Info, err error) {
 	fn := func(path string, info fs.FileInfo, err error) error {
 		files = append(files, api.Info{
 			Path:  path,

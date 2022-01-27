@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
-	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"io"
 	"strings"
@@ -12,7 +12,7 @@ import (
 
 const prompt = "warp> "
 
-func CommandLine(srv service.Context, request astral.Request) {
+func CommandLine(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -21,14 +21,17 @@ func CommandLine(srv service.Context, request astral.Request) {
 		srv.Println("Cannot accept", err)
 		return
 	}
-	go serve(srv.Api, conn)
+	go serve(srv, conn)
 }
 
-func serve(api astral.Api, stream io.ReadWriteCloser) {
+func serve(srv handler.Context, stream io.ReadWriteCloser) {
 	defer stream.Close()
 	scanner := bufio.NewScanner(stream)
-	stream.Write([]byte(prompt))
-	c := NewClient(api)
+	_, err := stream.Write([]byte(prompt))
+	if err != nil {
+		srv.Panicln("Cannot write prompt", err)
+	}
+	c := NewClient(srv.Api)
 	for scanner.Scan() {
 		words := strings.Split(scanner.Text(), " ")
 		if len(words) == 0 {
@@ -39,14 +42,12 @@ func serve(api astral.Api, stream io.ReadWriteCloser) {
 		if ok {
 			err := fn(stream, c, args)
 			if err != nil {
-				fmt.Fprintf(stream, "error: %v\n", err)
-			} else {
-				fmt.Fprintf(stream, "ok\n")
+				srv.Println("command error", err)
 			}
 		} else {
-			fmt.Fprintf(stream, "no such command\n")
+			srv.Println("no such command", cmd)
 		}
-		stream.Write([]byte(prompt))
+		_, _ = stream.Write([]byte(prompt))
 	}
 }
 
@@ -64,11 +65,11 @@ var commands = cmdMap{
 }
 
 type cmdMap map[string]cmdFunc
-type cmdFunc func(io.ReadWriter, api.Client, []string) error
+type cmdFunc func(io.ReadWriter, Client, []string) error
 
 // =========================== Commands ===============================
 
-func cmdPeers(writer io.ReadWriter, api api.Client, _ []string) (err error) {
+func cmdPeers(writer io.ReadWriter, api Client, _ []string) (err error) {
 	peers, err := api.Peers()
 	if err != nil {
 		return
@@ -82,7 +83,7 @@ func cmdPeers(writer io.ReadWriter, api api.Client, _ []string) (err error) {
 	return
 }
 
-func cmdSend(writer io.ReadWriter, client api.Client, args []string) (err error) {
+func cmdSend(writer io.ReadWriter, client Client, args []string) (err error) {
 	if len(args) < 1 {
 		_, err = fmt.Fprintln(writer, "<peerId> <filePath>?")
 		return
@@ -99,7 +100,7 @@ func cmdSend(writer io.ReadWriter, client api.Client, args []string) (err error)
 	return
 }
 
-func cmdStatus(writer io.ReadWriter, client api.Client, args []string) (err error) {
+func cmdStatus(writer io.ReadWriter, client Client, args []string) (err error) {
 	if len(args) < 1 {
 		_, err = fmt.Fprintln(writer, "<offerId>")
 		return
@@ -112,7 +113,7 @@ func cmdStatus(writer io.ReadWriter, client api.Client, args []string) (err erro
 	return
 }
 
-func cmdSent(writer io.ReadWriter, api api.Client, _ []string) (err error) {
+func cmdSent(writer io.ReadWriter, api Client, _ []string) (err error) {
 	sent, err := api.Sent()
 	if err != nil {
 		return err
@@ -126,7 +127,7 @@ func cmdSent(writer io.ReadWriter, api api.Client, _ []string) (err error) {
 	return
 }
 
-func cmdReceived(writer io.ReadWriter, api api.Client, _ []string) (err error) {
+func cmdReceived(writer io.ReadWriter, api Client, _ []string) (err error) {
 	received, err := api.Received()
 	if err != nil {
 		return err
@@ -154,7 +155,7 @@ func printFilesRequest(writer io.Writer, offer api.Offer) (err error) {
 	return
 }
 
-func cmdOffers(writer io.ReadWriter, api api.Client, _ []string) (err error) {
+func cmdOffers(writer io.ReadWriter, api Client, _ []string) (err error) {
 	offers, err := api.Offers()
 	if err != nil {
 		return err
@@ -165,7 +166,7 @@ func cmdOffers(writer io.ReadWriter, api api.Client, _ []string) (err error) {
 	return
 }
 
-func cmdAccept(writer io.ReadWriter, client api.Client, args []string) (err error) {
+func cmdAccept(writer io.ReadWriter, client Client, args []string) (err error) {
 	if len(args) < 1 {
 		_, err = fmt.Fprintln(writer, "<offerId>")
 		return
@@ -178,7 +179,7 @@ func cmdAccept(writer io.ReadWriter, client api.Client, args []string) (err erro
 	return
 }
 
-func cmdReject(writer io.ReadWriter, client api.Client, args []string) (err error) {
+func cmdReject(writer io.ReadWriter, client Client, args []string) (err error) {
 	if len(args) < 1 {
 		_, err = fmt.Fprintln(writer, "<offerId>")
 		return
@@ -191,7 +192,7 @@ func cmdReject(writer io.ReadWriter, client api.Client, args []string) (err erro
 	return
 }
 
-func cmdUpdate(writer io.ReadWriter, client api.Client, args []string) (err error) {
+func cmdUpdate(writer io.ReadWriter, client Client, args []string) (err error) {
 	if len(args) < 3 {
 		_, err = fmt.Fprintln(writer, "<peerId> <attr> <value>")
 		return
@@ -204,7 +205,7 @@ func cmdUpdate(writer io.ReadWriter, client api.Client, args []string) (err erro
 	return
 }
 
-func cmdEvents(writer io.ReadWriter, client api.Client, args []string) (err error) {
+func cmdEvents(writer io.ReadWriter, client Client, args []string) (err error) {
 	filter := "all"
 	if len(args) > 0 {
 		filter = args[0]
@@ -214,9 +215,9 @@ func cmdEvents(writer io.ReadWriter, client api.Client, args []string) (err erro
 	case "all":
 		events, err = client.Events()
 	case "sent":
-		events, err = client.Sender().Events()
+		events, err = client.Sender.Events()
 	case "received":
-		events, err = client.Recipient().Events()
+		events, err = client.Recipient.Events()
 	}
 	for event := range events {
 		_, _ = fmt.Fprintln(writer, event.Id, event.Status)

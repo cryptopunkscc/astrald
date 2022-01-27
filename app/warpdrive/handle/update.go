@@ -3,12 +3,13 @@ package handle
 import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
-func (r recipient) Update(
+func (r Recipient) Update(
 	peerId api.PeerId,
 	attr string,
 	value string,
@@ -35,7 +36,7 @@ func (r recipient) Update(
 	return
 }
 
-func RecipientUpdate(srv service.Context, request astral.Request) {
+func RecipientUpdate(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -57,7 +58,7 @@ func RecipientUpdate(srv service.Context, request astral.Request) {
 	attr := req[1]
 	value := req[2]
 	// Update peer
-	srv.Peer().Update(peerId, attr, value)
+	service.Peer(srv.Core).Update(peerId, attr, value)
 	// Send OK
 	err = enc.Write(conn, uint8(0))
 	if err != nil {

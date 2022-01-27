@@ -4,13 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"io"
 )
 
-func (r recipient) Accept(id api.OfferId) (err error) {
+func (r Recipient) Accept(id api.OfferId) (err error) {
 	// Connect to local service
 	conn, err := r.query(api.RecAccept)
 	if err != nil {
@@ -32,7 +33,7 @@ func (r recipient) Accept(id api.OfferId) (err error) {
 	return
 }
 
-func RecipientAccept(srv service.Context, request astral.Request) {
+func RecipientAccept(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -61,10 +62,10 @@ func RecipientAccept(srv service.Context, request astral.Request) {
 	srv.Println("Accepted incoming files", id)
 }
 
-func accept(srv service.Context, id api.OfferId) (err error) {
+func accept(srv handler.Context, id api.OfferId) (err error) {
 	srv.LogPrefix("<", api.Accept)
 	// Get cached incoming files by request id
-	offer := srv.Incoming().Get(id)
+	offer := service.Incoming(srv.Core).Get()[id]
 	if offer == nil {
 		err = errors.New(fmt.Sprint("No incoming file with id ", id))
 		srv.Println("Cannot find incoming file", err)
@@ -92,7 +93,7 @@ func accept(srv service.Context, id api.OfferId) (err error) {
 			return
 		}
 		// Update status
-		srv.Incoming().Update(offer, "accepted", true)
+		service.Incoming(srv.Core).Update(offer, "accepted", true)
 		// Send ok
 		err = enc.Write(conn, uint8(0))
 		if err != nil {
@@ -114,11 +115,11 @@ func accept(srv service.Context, id api.OfferId) (err error) {
 	go func() {
 		defer filesConn.Close()
 		// Copy files to storage
-		err = srv.File().CopyFrom(filesConn, offer)
+		err = service.File(srv.Core).CopyFrom(filesConn, offer)
 		if err != nil {
 			return
 		}
-		srv.Incoming().Update(offer, "downloaded", true)
+		service.Incoming(srv.Core).Update(offer, "downloaded", true)
 		// Send OK
 		err = enc.Write(filesConn, uint8(0))
 		if err != nil {
@@ -129,7 +130,7 @@ func accept(srv service.Context, id api.OfferId) (err error) {
 	return
 }
 
-func ServiceAccept(srv service.Context, request astral.Request) {
+func ServiceAccept(srv handler.Context, request astral.Request) {
 	// Accept incoming connection
 	conn, err := request.Accept()
 	if err != nil {
@@ -144,13 +145,13 @@ func ServiceAccept(srv service.Context, request astral.Request) {
 		return
 	}
 	// Obtain file by request id
-	offer := srv.Outgoing().Get(api.OfferId(offerId))
+	offer := service.Outgoing(srv.Core).Get()[api.OfferId(offerId)]
 	if offer == nil {
 		srv.Println("Cannot find offer with id", offerId, err)
-		conn.Close()
+		return
 	}
 	// Update status
-	srv.Outgoing().Update(offer, "accepted", true)
+	service.Outgoing(srv.Core).Update(offer, "accepted", true)
 	// Register port for reading files
 	filesQuery := api.Port + "/" + string(offer.Id)
 	filesPort, err := srv.Register(filesQuery)
@@ -185,7 +186,7 @@ func ServiceAccept(srv service.Context, request astral.Request) {
 	}
 	defer filesConn.Close()
 	// Send files
-	err = srv.File().CopyTo(filesConn, offer)
+	err = service.File(srv.Core).CopyTo(filesConn, offer)
 	if err != nil {
 		return
 	}
@@ -195,5 +196,5 @@ func ServiceAccept(srv service.Context, request astral.Request) {
 		srv.Println("Cannot read ok", filesQuery, err)
 		return
 	}
-	srv.Outgoing().Update(offer, "uploaded", true)
+	service.Outgoing(srv.Core).Update(offer, "uploaded", true)
 }

@@ -1,13 +1,6 @@
 package api
 
-// Client API for warpdrive UI.
-type Client interface {
-	Sender
-	Recipient
-	Sender() Sender
-	Recipient() Recipient
-}
-
+// Sender API for warpdrive UI.
 type Sender interface {
 	StatusEvents
 	// Peers available for receiving an offer.
@@ -19,6 +12,7 @@ type Sender interface {
 	Status(id OfferId) (string, error)
 }
 
+// Recipient API for warpdrive UI.
 type Recipient interface {
 	StatusEvents
 	// Offers subscription.

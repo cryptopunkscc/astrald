@@ -3,12 +3,13 @@ package handle
 import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
-func (s sender) Sent() (offers api.Offers, err error) {
+func (s Sender) Sent() (offers api.Offers, err error) {
 	// Connect to service
 	conn, err := s.query(api.SenSent)
 	if err != nil {
@@ -30,7 +31,7 @@ func (s sender) Sent() (offers api.Offers, err error) {
 	return
 }
 
-func SenderSent(srv service.Context, request astral.Request) {
+func SenderSent(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -42,7 +43,7 @@ func SenderSent(srv service.Context, request astral.Request) {
 	}
 	defer conn.Close()
 	// Send outgoing files
-	err = json.NewEncoder(conn).Encode(srv.Outgoing().List())
+	err = json.NewEncoder(conn).Encode(service.Outgoing(srv.Core).Get())
 	if err != nil {
 		srv.Println("Cannot send outgoing offers", err)
 		return
