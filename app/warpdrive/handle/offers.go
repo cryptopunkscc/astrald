@@ -3,13 +3,14 @@ package handle
 import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"io"
 )
 
-func (r recipient) Offers() (offers <-chan api.Offer, err error) {
+func (r Recipient) Offers() (offers <-chan api.Offer, err error) {
 	// Connect to local service
 	conn, err := r.query(api.RecIncoming)
 	if err != nil {
@@ -35,7 +36,7 @@ func (r recipient) Offers() (offers <-chan api.Offer, err error) {
 	return
 }
 
-func RecipientOffers(srv service.Context, request astral.Request) {
+func RecipientOffers(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -46,7 +47,7 @@ func RecipientOffers(srv service.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	remove := srv.Peer().Offers().Subscribe(conn)
+	remove := service.Peer(srv.Core).Offers().Subscribe(conn)
 	defer remove()
 	// Wait for close
 	_, _ = enc.ReadUint8(conn)

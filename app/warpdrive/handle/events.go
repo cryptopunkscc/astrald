@@ -3,6 +3,7 @@ package handle
 import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
@@ -10,7 +11,7 @@ import (
 	"sync"
 )
 
-func (r recipient) Events() (incoming <-chan api.Status, err error) {
+func (r Recipient) Events() (incoming <-chan api.Status, err error) {
 	// Connect to local service
 	conn, err := r.query(api.RecEvents)
 	if err != nil {
@@ -36,7 +37,7 @@ func (r recipient) Events() (incoming <-chan api.Status, err error) {
 	return
 }
 
-func RecipientEvents(srv service.Context, request astral.Request) {
+func RecipientEvents(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -47,13 +48,13 @@ func RecipientEvents(srv service.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	remove := srv.Incoming().Status().Subscribe(conn)
+	remove := service.Incoming(srv.Core).Status().Subscribe(conn)
 	defer remove()
 	// Wait for close
 	_, _ = enc.ReadUint8(conn)
 }
 
-func (s sender) Events() (outgoing <-chan api.Status, err error) {
+func (s Sender) Events() (outgoing <-chan api.Status, err error) {
 	// Connect to local service
 	conn, err := s.query(api.SenEvents)
 	if err != nil {
@@ -79,7 +80,7 @@ func (s sender) Events() (outgoing <-chan api.Status, err error) {
 	return
 }
 
-func SenderEvents(srv service.Context, request astral.Request) {
+func SenderEvents(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -90,18 +91,18 @@ func SenderEvents(srv service.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	remove := srv.Outgoing().Status().Subscribe(conn)
+	remove := service.Outgoing(srv.Core).Status().Subscribe(conn)
 	defer remove()
 	// Wait for close
 	_, _ = enc.ReadUint8(conn)
 }
 
-func (s *apiClient) Events() (events <-chan api.Status, err error) {
-	senderEvents, err := s.sender.Events()
+func (s *Client) Events() (events <-chan api.Status, err error) {
+	senderEvents, err := s.Sender.Events()
 	if err != nil {
 		return
 	}
-	recipientEvents, err := s.recipient.Events()
+	recipientEvents, err := s.Recipient.Events()
 	if err != nil {
 		return
 	}

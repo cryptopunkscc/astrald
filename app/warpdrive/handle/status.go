@@ -2,12 +2,13 @@ package handle
 
 import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
-func (s sender) Status(id api.OfferId) (status string, err error) {
+func (s Sender) Status(id api.OfferId) (status string, err error) {
 	// Connect to service
 	conn, err := s.query(api.SenStatus)
 	if err != nil {
@@ -28,7 +29,7 @@ func (s sender) Status(id api.OfferId) (status string, err error) {
 	return
 }
 
-func SenderStatus(srv service.Context, request astral.Request) {
+func SenderStatus(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -44,7 +45,7 @@ func SenderStatus(srv service.Context, request astral.Request) {
 		srv.Println("Cannot read request id", err)
 		return
 	}
-	files := srv.Outgoing().Get(api.OfferId(id))
+	files := service.Outgoing(srv.Core).Get()[api.OfferId(id)]
 	if files == nil {
 		srv.Println("Cannot find outgoing files with id", id)
 		return

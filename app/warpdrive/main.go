@@ -2,22 +2,17 @@ package warpdrive
 
 import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
-	"github.com/cryptopunkscc/astrald/app/warpdrive/core"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handle"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
+	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
-// Run warpdrive service with default core and handlers.
-func (s Service) Run() {
-	srv := service.Context(s)
-	srv.Core = core.New(s.Config)
-	srv.Setup()
-	srv.Serve(handlers)
-}
+type Client handle.Client
 
-type Service service.Context
+type Service handler.Context
 
-var handlers = service.Handlers{
+var handlers = handler.Handlers{
 	api.Send:        handle.ServiceSend,
 	api.Accept:      handle.ServiceAccept,
 	api.Reject:      handle.ServiceReject,
@@ -33,4 +28,17 @@ var handlers = service.Handlers{
 	api.RecUpdate:   handle.RecipientUpdate,
 	api.RecEvents:   handle.RecipientEvents,
 	api.CliQuery:    handle.CommandLine,
+}
+
+// Run warpdrive service with default core and handlers.
+func (srv Service) Run() {
+	srv.Core = service.Core(srv.Config)
+	ctx := handler.Context(srv)
+	ctx.Init()
+	ctx.Serve(handlers)
+}
+
+// NewClient returns default warpdrive client.
+func NewClient() Client {
+	return Client(handle.NewClient(astral.Instance()))
 }

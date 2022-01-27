@@ -3,6 +3,7 @@ package handle
 import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
@@ -11,7 +12,7 @@ import (
 	"strings"
 )
 
-func (s sender) Send(peerId api.PeerId, filePath string) (id api.OfferId, err error) {
+func (s Sender) Send(peerId api.PeerId, filePath string) (id api.OfferId, err error) {
 	// Connect to local service
 	conn, err := s.query(api.SenSend)
 	if err != nil {
@@ -39,7 +40,7 @@ func (s sender) Send(peerId api.PeerId, filePath string) (id api.OfferId, err er
 	return
 }
 
-func SenderSend(srv service.Context, request astral.Request) {
+func SenderSend(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -63,7 +64,7 @@ func SenderSend(srv service.Context, request astral.Request) {
 		return
 	}
 	// Get files info
-	files, err := srv.File().Info(filePath)
+	files, err := service.File(srv.Core).Info(filePath)
 	if err != nil {
 		srv.Println("Cannot get files info", err)
 		return
@@ -83,7 +84,7 @@ func SenderSend(srv service.Context, request astral.Request) {
 	srv.Println(filePath, "offer sent to", peerId)
 }
 
-func send(srv service.Context, peer string, files []api.Info) (id string, err error) {
+func send(srv handler.Context, peer string, files []api.Info) (id string, err error) {
 	srv.LogPrefix("<", api.Send)
 	// Connect to service
 	conn, err := srv.Query(peer, api.Send)
@@ -111,7 +112,7 @@ func send(srv service.Context, peer string, files []api.Info) (id string, err er
 		srv.Println("Cannot read ok", peer, err)
 		return
 	}
-	srv.Outgoing().Add(id, files, nil)
+	service.Outgoing(srv.Core).Add(id, files, nil)
 	return
 }
 
@@ -135,9 +136,9 @@ func shrinkPaths(in []api.Info) (out []api.Info) {
 	return
 }
 
-func ServiceSend(srv service.Context, request astral.Request) {
+func ServiceSend(srv handler.Context, request astral.Request) {
 	peerId := api.PeerId(request.Caller())
-	peer := srv.Peer().Get(peerId)
+	peer := service.Peer(srv.Core).Get(peerId)
 	// Check if peer is blocked
 	if peer.Mod == api.PeerModBlock {
 		request.Reject()
@@ -164,7 +165,7 @@ func ServiceSend(srv service.Context, request astral.Request) {
 		return
 	}
 	// Store incoming offer
-	srv.Incoming().Add(offerId, files, &peer)
+	service.Incoming(srv.Core).Add(offerId, files, &peer)
 	// Send OK
 	_ = enc.Write(conn, uint8(0))
 	// Auto accept offer if peer is trusted

@@ -1,38 +1,38 @@
 package api
 
 import (
-	"io"
 	"log"
+	"sync"
 )
 
-// Core internal API for cache, storage, and subscription management.
-type Core interface {
-	Setup()
-	SetLogger(logger *log.Logger)
-
-	Peer() PeerManager
-	Outgoing() OfferManager
-	Incoming() OfferManager
-	File() FileManager
+type Core struct {
+	Config
+	*log.Logger
+	*Cache
+	*Observers
 }
 
-type PeerManager interface {
-	Update(peerId string, attr string, value string)
-	Get(id PeerId) Peer
-	List() (peers []*Peer)
-	Offers() *Subscriptions
+type Config struct {
+	RepositoryDir  string
+	StorageDir     string
+	RemoteResolver bool
 }
 
-type OfferManager interface {
-	Add(offerId string, files []Info, peer *Peer)
-	Update(offer *Offer, status string, persist bool)
-	Get(id OfferId) *Offer
-	List() Offers
-	Status() *Subscriptions
+type Cache struct {
+	*Mutex
+	Incoming Offers
+	Outgoing Offers
+	Peers    Peers
 }
 
-type FileManager interface {
-	Info(uri string) (files []Info, err error)
-	CopyFrom(reader io.Reader, offer *Offer) (err error)
-	CopyTo(writer io.Writer, offer *Offer) (err error)
+type Mutex struct {
+	Incoming sync.Mutex
+	Outgoing sync.Mutex
+	Peers    sync.Mutex
+}
+
+type Observers struct {
+	FilesOffers    *Subscriptions
+	IncomingStatus *Subscriptions
+	OutgoingStatus *Subscriptions
 }

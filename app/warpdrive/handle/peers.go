@@ -3,12 +3,13 @@ package handle
 import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
-func (s sender) Peers() (peers []api.Peer, err error) {
+func (s Sender) Peers() (peers []api.Peer, err error) {
 	// Connect to local service
 	conn, err := s.query(api.SenPeers)
 	if err != nil {
@@ -30,7 +31,7 @@ func (s sender) Peers() (peers []api.Peer, err error) {
 	return
 }
 
-func SenderPeers(srv service.Context, request astral.Request) {
+func SenderPeers(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -42,7 +43,7 @@ func SenderPeers(srv service.Context, request astral.Request) {
 	}
 	defer conn.Close()
 	// Get peers
-	peers := srv.Peer().List()
+	peers := service.Peer(srv.Core).List()
 	// Send peers
 	err = json.NewEncoder(conn).Encode(peers)
 	if err != nil {
