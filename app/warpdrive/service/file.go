@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/storage/file"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/storage/remote"
@@ -19,16 +18,16 @@ func (c File) Info(uri string) (files []api.Info, err error) {
 }
 
 func (c File) CopyFrom(reader io.Reader, offer *api.Offer) (err error) {
-	for _, info := range offer.Files {
-		if err = c.copyFileFrom(reader, offer, info); err != nil {
+	for index := range offer.Files {
+		if err = c.copyFileFrom(reader, offer, index); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, info api.Info) (err error) {
-	// Obtain writer
+func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, index int) (err error) {
+	info := offer.Files[index]
 	storage := file.Storage(c)
 	if info.IsDir {
 		err := storage.MkDir(info.Path, info.Perm)
@@ -44,15 +43,19 @@ func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, info api.Info) (e
 		}
 		defer writer.Close()
 		// Copy bytes
+		offer.Status.Status = api.StatusProgress
+		incoming := Incoming(api.Core(c))
+		update := func(progress int64, size int64) error {
+			info.Progress = progress
+			offer.Files[index] = info
+			incoming.Update(offer, index)
+			return nil
+		}
 		progress := &ioprogress.Reader{
 			Reader:       reader,
 			Size:         info.Size,
 			DrawInterval: 200 * time.Millisecond,
-			DrawFunc: func(progress int64, size int64) error {
-				status := fmt.Sprintf("download: %s %d/%dB", info.Path, progress, size)
-				Incoming(api.Core(c)).Update(offer, status, false)
-				return nil
-			},
+			DrawFunc:     update,
 		}
 		_, err = io.CopyN(writer, progress, info.Size)
 		if err != nil {
@@ -69,32 +72,37 @@ func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, info api.Info) (e
 }
 
 func (c File) CopyTo(writer io.Writer, offer *api.Offer) (err error) {
-	for _, info := range offer.Files {
+	for index, info := range offer.Files {
 		if info.IsDir {
 			continue
 		}
-		if err = c.copyFileTo(writer, offer, info); err != nil {
+		if err = c.copyFileTo(writer, offer, index); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (c File) copyFileTo(writer io.Writer, offer *api.Offer, info api.Info) (err error) {
+func (c File) copyFileTo(writer io.Writer, offer *api.Offer, index int) (err error) {
+	info := offer.Files[index]
 	reader, err := c.resolve().Reader(info.Path)
 	if err != nil {
 		c.Println("Cannot get reader", info.Path, offer.Id, err)
 		return
 	}
+	offer.Status.Status = api.StatusProgress
+	outgoing := Outgoing(api.Core(c))
+	update := func(progress int64, size int64) error {
+		info.Progress = progress
+		offer.Files[index] = info
+		outgoing.Update(offer, index)
+		return nil
+	}
 	progress := &ioprogress.Reader{
 		Reader:       reader,
 		Size:         info.Size,
 		DrawInterval: 200 * time.Millisecond,
-		DrawFunc: func(progress int64, size int64) error {
-			status := fmt.Sprintf("upload %s %d/%dB", info.Path, progress, size)
-			Outgoing(api.Core(c)).Update(offer, status, false)
-			return nil
-		},
+		DrawFunc:     update,
 	}
 	_, err = io.CopyN(writer, progress, info.Size)
 	if err != nil {

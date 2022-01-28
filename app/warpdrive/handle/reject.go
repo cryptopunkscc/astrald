@@ -89,7 +89,8 @@ func reject(srv handler.Context, id api.OfferId) (err error) {
 		srv.Println("Cannot read ok", id, err)
 		return
 	}
-	service.Incoming(srv.Core).Update(offer, "rejected", true)
+	offer.Status.Status = api.StatusRejected
+	service.Incoming(srv.Core).Update(offer, -1)
 	return
 }
 
@@ -110,7 +111,8 @@ func ServiceReject(srv handler.Context, request astral.Request) {
 	// Reject outgoing files
 	offer := service.Outgoing(srv.Core).Get()[api.OfferId(offerId)]
 	if offer != nil {
-		service.Outgoing(srv.Core).Update(offer, "rejected", true)
+		offer.Status.Status = api.StatusRejected
+		service.Outgoing(srv.Core).Update(offer, -1)
 	}
 	// Send OK
 	err = enc.Write(conn, uint8(0))

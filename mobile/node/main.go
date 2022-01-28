@@ -19,13 +19,19 @@ import (
 
 var identity string
 var stop context.CancelFunc
+var ctx context.Context
+var astralNode *node.Node
+var astralHomeDir string
 
 func Start(astralHome string) error {
+	astralHomeDir = astralHome
+
 	log.Println("Staring astrald")
 	astral.Instance().UseTCP = true
 
 	// Set up app execution context
-	ctx, shutdown := context.WithCancel(context.Background())
+	c, shutdown := context.WithCancel(context.Background())
+	ctx = c
 
 	stop = shutdown
 	n, err := node.Run(
@@ -42,17 +48,7 @@ func Start(astralHome string) error {
 	if err != nil {
 		panic(err)
 	}
-
-	warpdrive.Service{
-		Context: ctx,
-		Api:     newApiAdapter(ctx, n),
-		Core: api.Core{
-			Config: api.Config{
-				RepositoryDir:  filepath.Join(astralHome, "warpdrive"),
-				RemoteResolver: true,
-			},
-		},
-	}.Run()
+	astralNode = n
 
 	identity = n.Identity().String()
 
@@ -68,4 +64,18 @@ func Identity() string {
 
 func Stop() {
 	stop()
+}
+
+func StartWarpdrive() {
+	warpdrive.Service{
+		Context: ctx,
+		Api:     newApiAdapter(ctx, astralNode),
+		Core: api.Core{
+			Config: api.Config{
+				Platform:       api.PlatformAndroid,
+				RepositoryDir:  filepath.Join(astralHomeDir, "warpdrive"),
+				RemoteResolver: true,
+			},
+		},
+	}.Run()
 }
