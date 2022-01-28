@@ -3,4 +3,6 @@ rootProject.name = "astral-android"
 include ':node:wrapper'
 include ':node:service'
 include ':node:app'
+include ':client'
+include ':service:notification'
 
