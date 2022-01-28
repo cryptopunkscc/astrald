@@ -72,4 +72,8 @@ fun stopAstral() = runBlocking {
     astralJob.join()
 }
 
+fun startWarpdrive() {
+    Astralmobile.startWarpdrive()
+}
+
 suspend fun astralIdentity() = identity.await()

@@ -8,11 +8,13 @@ import cc.cryptopunks.astral.service.ui.cacheLogcat
 import cc.cryptopunks.astral.service.ui.clearLogcatCache
 import cc.cryptopunks.astral.wrapper.ASTRAL
 import cc.cryptopunks.astral.wrapper.startAstral
+import cc.cryptopunks.astral.wrapper.startWarpdrive
 import cc.cryptopunks.astral.wrapper.stopAstral
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class AstralService : Service(), CoroutineScope by MainScope() {
@@ -24,6 +26,11 @@ class AstralService : Service(), CoroutineScope by MainScope() {
         startForegroundNotification(R.mipmap.ic_launcher)
         launch(Dispatchers.IO) { cacheLogcat() }
         startAstral()
+        launch(Dispatchers.IO) {
+            println("Starting notification warpdrive")
+            delay(4000)
+            startWarpdrive()
+        }
     }
 
     override fun onDestroy() {
