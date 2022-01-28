@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import cc.cryptopunks.astral.service.notification.startNotificationService
 import cc.cryptopunks.astral.service.ui.cacheLogcat
 import cc.cryptopunks.astral.service.ui.clearLogcatCache
 import cc.cryptopunks.astral.wrapper.ASTRAL
@@ -26,6 +27,11 @@ class AstralService : Service(), CoroutineScope by MainScope() {
         startForegroundNotification(R.mipmap.ic_launcher)
         launch(Dispatchers.IO) { cacheLogcat() }
         startAstral()
+        launch(Dispatchers.IO) {
+            println("Starting notification service")
+            delay(2000)
+            startNotificationService()
+        }
         launch(Dispatchers.IO) {
             println("Starting notification warpdrive")
             delay(4000)
