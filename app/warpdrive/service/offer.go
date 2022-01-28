@@ -12,10 +12,11 @@ var _ api.OfferService = Offer{}
 
 type Offer struct {
 	api.Core
-	mu   *sync.Mutex
-	subs *api.Subscriptions
-	file api.OfferStorage
-	mem  api.OfferStorage
+	mu       *sync.Mutex
+	subs     *api.Subscriptions
+	file     api.OfferStorage
+	mem      api.OfferStorage
+	incoming bool
 }
 
 func Outgoing(c api.Core) Offer {
@@ -30,11 +31,12 @@ func Outgoing(c api.Core) Offer {
 
 func Incoming(c api.Core) Offer {
 	return Offer{
-		Core: c,
-		mu:   &c.Mutex.Incoming,
-		mem:  memory.Incoming(c),
-		file: file.Incoming(c),
-		subs: c.Observers.IncomingStatus,
+		Core:     c,
+		mu:       &c.Mutex.Incoming,
+		mem:      memory.Incoming(c),
+		file:     file.Incoming(c),
+		subs:     c.Observers.IncomingStatus,
+		incoming: true,
 	}
 }
 
@@ -45,10 +47,7 @@ func (c Offer) Add(offerId string, files []api.Info, peer *api.Peer) {
 			Id: api.OfferId(offerId),
 		},
 	}
-	if peer == nil {
-		offer.Status.Status = "sent"
-	} else {
-		offer.Status.Status = "received"
+	if peer != nil {
 		offer.Peer = peer.Id
 	}
 
@@ -57,6 +56,11 @@ func (c Offer) Add(offerId string, files []api.Info, peer *api.Peer) {
 	c.mem.Save(offer)
 	c.file.Save(offer)
 
+	c.Notify <- api.Notification{
+		Offer:    *offer,
+		Incoming: c.incoming,
+	}
+
 	go c.notify(offer.Status, c.subs)
 
 	if peer != nil && peer.Mod == api.PeerModAsk {
@@ -64,12 +68,18 @@ func (c Offer) Add(offerId string, files []api.Info, peer *api.Peer) {
 	}
 }
 
-func (c Offer) Update(offer *api.Offer, status string, persist bool) {
-	c.mu.Lock()
+func (c Offer) Update(offer *api.Offer, index int) {
+	n := api.Notification{
+		Offer:    *offer,
+		Incoming: c.incoming,
+	}
+	if index > -1 {
+		n.Info = &offer.Files[index]
+	}
+	c.Notify <- n
 	defer c.mu.Unlock()
-	offer.Status.Status = status
 	c.mem.Save(offer)
-	if persist {
+	if index == -1 {
 		c.file.Save(offer)
 	}
 	go c.notify(offer.Status, c.subs)

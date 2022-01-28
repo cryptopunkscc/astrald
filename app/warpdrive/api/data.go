@@ -23,12 +23,23 @@ type Peer struct {
 }
 
 type Info struct {
-	Path  string
-	Size  int64
-	IsDir bool
-	Perm  os.FileMode
-	Mime  string
+	Path     string
+	Size     int64
+	IsDir    bool
+	Perm     os.FileMode
+	Mime     string
+	Progress int64
 }
+
+const (
+	StatusAdded     = ""
+	StatusAccepted  = "accepted"
+	StatusRejected  = "rejected"
+	StatusProgress  = "progress"
+	StatusFailed    = "failed"
+	StatusCompleted = "completed"
+	StatusAborted   = "aborted"
+)
 
 const (
 	PeerModAsk   = ""

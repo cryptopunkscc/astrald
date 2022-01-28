@@ -93,7 +93,8 @@ func accept(srv handler.Context, id api.OfferId) (err error) {
 			return
 		}
 		// Update status
-		service.Incoming(srv.Core).Update(offer, "accepted", true)
+		offer.Status.Status = api.StatusAccepted
+		service.Incoming(srv.Core).Update(offer, -1)
 		// Send ok
 		err = enc.Write(conn, uint8(0))
 		if err != nil {
@@ -119,7 +120,8 @@ func accept(srv handler.Context, id api.OfferId) (err error) {
 		if err != nil {
 			return
 		}
-		service.Incoming(srv.Core).Update(offer, "downloaded", true)
+		offer.Status.Status = api.StatusCompleted
+		service.Incoming(srv.Core).Update(offer, -1)
 		// Send OK
 		err = enc.Write(filesConn, uint8(0))
 		if err != nil {
@@ -151,7 +153,8 @@ func ServiceAccept(srv handler.Context, request astral.Request) {
 		return
 	}
 	// Update status
-	service.Outgoing(srv.Core).Update(offer, "accepted", true)
+	offer.Status.Status = api.StatusAccepted
+	service.Outgoing(srv.Core).Update(offer, -1)
 	// Register port for reading files
 	filesQuery := api.Port + "/" + string(offer.Id)
 	filesPort, err := srv.Register(filesQuery)
@@ -196,5 +199,6 @@ func ServiceAccept(srv handler.Context, request astral.Request) {
 		srv.Println("Cannot read ok", filesQuery, err)
 		return
 	}
-	service.Outgoing(srv.Core).Update(offer, "uploaded", true)
+	offer.Status.Status = api.StatusCompleted
+	service.Outgoing(srv.Core).Update(offer, -1)
 }

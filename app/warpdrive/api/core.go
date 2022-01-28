@@ -10,12 +10,14 @@ type Core struct {
 	*log.Logger
 	*Cache
 	*Observers
+	*Notifications
 }
 
 type Config struct {
 	RepositoryDir  string
 	StorageDir     string
 	RemoteResolver bool
+	Platform       string
 }
 
 type Cache struct {
@@ -36,3 +38,9 @@ type Observers struct {
 	IncomingStatus *Subscriptions
 	OutgoingStatus *Subscriptions
 }
+
+const (
+	PlatformDesktop = "desktop"
+	PlatformAndroid = "android"
+	PlatformDefault = PlatformDesktop
+)

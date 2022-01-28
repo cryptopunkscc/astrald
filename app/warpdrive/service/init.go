@@ -13,10 +13,12 @@ func Core(config api.Config) api.Core {
 	init := initializer{}
 	init.Config = config
 	init.core()
+	init.platform()
 	init.storage()
 	init.repository()
 	init.offers()
 	init.peers()
+	init.notifier()
 	return api.Core(init)
 }
 
@@ -24,6 +26,7 @@ type initializer api.Core
 
 func (core *initializer) core() {
 	core.Logger = log.Default()
+	core.Notifications = &api.Notifications{}
 	core.Cache = &api.Cache{
 		Mutex:    &api.Mutex{},
 		Incoming: api.Offers{},
@@ -34,6 +37,12 @@ func (core *initializer) core() {
 		FilesOffers:    api.NewSubscriptions(),
 		IncomingStatus: api.NewSubscriptions(),
 		OutgoingStatus: api.NewSubscriptions(),
+	}
+}
+
+func (core *initializer) platform() {
+	if core.Platform == "" {
+		core.Platform = api.PlatformDefault
 	}
 }
 
@@ -58,6 +67,13 @@ func (core *initializer) offers() {
 	c := api.Core(*core)
 	core.Cache.Incoming = file.Incoming(c).Get()
 	core.Cache.Outgoing = file.Outgoing(c).Get()
+}
+
+func (core *initializer) notifier() {
+	notifier := Notify{}
+	notifier.Core = (*api.Core)(core)
+	notifier.Init()
+	go notifier.Start()
 }
 
 func storageDir() string {
