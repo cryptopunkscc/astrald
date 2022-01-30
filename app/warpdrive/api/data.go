@@ -6,8 +6,9 @@ type Offers map[OfferId]*Offer
 type OfferId string
 type Offer struct {
 	Status
-	Peer  PeerId
-	Files []Info
+	Peer       PeerId
+	Files      []Info
+	CreateTime int64
 }
 type Status struct {
 	Id     OfferId
@@ -23,12 +24,13 @@ type Peer struct {
 }
 
 type Info struct {
-	Path     string
-	Size     int64
-	IsDir    bool
-	Perm     os.FileMode
-	Mime     string
-	Progress int64
+	Uri        string
+	Size       int64
+	IsDir      bool
+	Perm       os.FileMode
+	Mime       string
+	Progress   int64
+	UpdateTime int64
 }
 
 const (

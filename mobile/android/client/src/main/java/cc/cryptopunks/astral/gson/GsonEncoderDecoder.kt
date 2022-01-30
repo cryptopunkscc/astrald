@@ -17,4 +17,10 @@ class GsonCoder(
     override fun <T> decode(string: String, type: Class<T>): T = gson.fromJson(string, type)
     override fun <T> decodeArray(string: String, type: Class<T>): Array<T> =
         gson.fromJson(string, TypeToken.getArray(TypeToken.get(type).type).type)
+
+    override fun <K, V> decodeMap(string: String, key: Class<K>, value: Class<V>): Map<K, V> =
+        gson.fromJson(string, TypeToken.getParameterized(
+            TypeToken.get(Map::class.java).type, key, value
+        ).type)
+
 }

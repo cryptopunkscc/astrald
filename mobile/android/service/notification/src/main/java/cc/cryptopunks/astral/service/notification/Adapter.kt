@@ -8,7 +8,7 @@ import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
-internal class NotificationsAdapter(
+internal class Adapter(
     private val context: Context
 ) : Notification.Adapter {
 

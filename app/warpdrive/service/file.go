@@ -30,15 +30,15 @@ func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, index int) (err e
 	info := offer.Files[index]
 	storage := file.Storage(c)
 	if info.IsDir {
-		err := storage.MkDir(info.Path, info.Perm)
+		err := storage.MkDir(info.Uri, info.Perm)
 		if err != nil && !storage.IsExist(err) {
-			c.Println("Cannot make dir", info.Path, err)
+			c.Println("Cannot make dir", info.Uri, err)
 			return err
 		}
 	} else {
-		writer, err := storage.FileWriter(info.Path, info.Perm)
+		writer, err := storage.FileWriter(info.Uri, info.Perm)
 		if err != nil {
-			c.Println("Cannot get writer for", info.Path, err)
+			c.Println("Cannot get writer for", info.Uri, err)
 			return err
 		}
 		defer writer.Close()
@@ -59,12 +59,12 @@ func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, index int) (err e
 		}
 		_, err = io.CopyN(writer, progress, info.Size)
 		if err != nil {
-			c.Println("Cannot copy", info.Path, err)
+			c.Println("Cannot copy", info.Uri, err)
 			return err
 		}
 		err = writer.Close()
 		if err != nil {
-			c.Println("Cannot close info", info.Path, err)
+			c.Println("Cannot close info", info.Uri, err)
 			return err
 		}
 	}
@@ -85,9 +85,9 @@ func (c File) CopyTo(writer io.Writer, offer *api.Offer) (err error) {
 
 func (c File) copyFileTo(writer io.Writer, offer *api.Offer, index int) (err error) {
 	info := offer.Files[index]
-	reader, err := c.resolve().Reader(info.Path)
+	reader, err := c.resolve().Reader(info.Uri)
 	if err != nil {
-		c.Println("Cannot get reader", info.Path, offer.Id, err)
+		c.Println("Cannot get reader", info.Uri, offer.Id, err)
 		return
 	}
 	offer.Status.Status = api.StatusProgress
@@ -106,7 +106,7 @@ func (c File) copyFileTo(writer io.Writer, offer *api.Offer, index int) (err err
 	}
 	_, err = io.CopyN(writer, progress, info.Size)
 	if err != nil {
-		c.Println("Cannot copy", info.Path, err)
+		c.Println("Cannot copy", info.Uri, err)
 		return
 	}
 	return

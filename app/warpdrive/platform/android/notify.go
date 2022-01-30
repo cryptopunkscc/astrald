@@ -3,7 +3,7 @@ package android
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
-	"github.com/cryptopunkscc/astrald/mobile/api/notify"
+	"github.com/cryptopunkscc/astrald/mobile/android/service/notification/api"
 	"log"
 )
 
@@ -58,11 +58,11 @@ func (m *Notifier) New(an api.Notification) {
 		OnlyAlertOnce: true,
 		AutoCancel:    true,
 		Priority:      notify.PriorityMax,
-		ContentText:   an.Files[0].Path,
+		ContentText:   an.Files[0].Uri,
 		SubText:       ByteCountSI(size),
 		Number:        len(an.Files),
 		ContentIntent: &notify.Intent{
-			Uri: "https://duckduckgo.com",
+			Uri: "warpdrive://" + string(an.Id),
 		},
 	}
 	m.notifications[an.Id] = n
