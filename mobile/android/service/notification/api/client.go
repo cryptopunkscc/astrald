@@ -14,9 +14,7 @@ const (
 
 var _ Api = Client{}
 
-type Client struct {
-	Identity string
-}
+type Client struct{ Identity string }
 
 func (c Client) Create(channel Channel) (err error) {
 	log.Println("Creating channel", channel)

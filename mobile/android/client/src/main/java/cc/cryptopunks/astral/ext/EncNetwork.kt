@@ -31,16 +31,16 @@ suspend fun EncNetwork.register(
     }
 }
 
-suspend fun EncNetwork.connect(
-    identity: String,
+suspend fun <T> EncNetwork.query(
     port: String,
-    handle: suspend EncStream.() -> Unit,
-) = withContext(Dispatchers.IO) {
-    val stream = connect(identity, port)
+    identity: String = "",
+    handle: suspend EncStream.() -> T,
+): T = withContext(Dispatchers.IO) {
+    val stream = query(identity, port)
     try {
         stream.handle()
     } catch (e: Throwable) {
-        e.printStackTrace()
+        throw e
     } finally {
         stream.close()
     }

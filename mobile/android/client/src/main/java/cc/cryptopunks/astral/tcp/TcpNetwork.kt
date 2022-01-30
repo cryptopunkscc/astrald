@@ -44,7 +44,7 @@ private class TcpNetwork(
     // TODO
     override fun identity(): String = ""
 
-    override fun connect(identity: String, port: String) =
+    override fun query(identity: String, port: String) =
         TcpStream(astralSocket()).let { stream ->
             val request = Request(
                 type = Request.Type.connect,

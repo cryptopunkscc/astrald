@@ -19,11 +19,11 @@ type apiAdapter struct {
 }
 
 type portAdapter struct {
-	port *hub.Port
+	port hub.Port
 }
 
 type requestAdapter struct {
-	query *hub.Query
+	query hub.Query
 }
 
 func (a *apiAdapter) Register(name string) (p astral.Port, err error) {
@@ -31,7 +31,7 @@ func (a *apiAdapter) Register(name string) (p astral.Port, err error) {
 	if err != nil {
 		return
 	}
-	p = &portAdapter{hp}
+	p = &portAdapter{*hp}
 	return
 }
 
@@ -48,7 +48,7 @@ func (p *portAdapter) Next() <-chan astral.Request {
 	go func() {
 		defer close(c)
 		for query := range p.port.Queries() {
-			c <- &requestAdapter{query}
+			c <- &requestAdapter{*query}
 		}
 	}()
 	return c
@@ -59,6 +59,9 @@ func (p *portAdapter) Close() error {
 }
 
 func (r *requestAdapter) Caller() string {
+	if r.query.IsLocal() {
+		return ""
+	}
 	return r.query.Link().RemoteIdentity().String()
 }
 

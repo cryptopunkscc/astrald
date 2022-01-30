@@ -4,7 +4,7 @@ package cc.cryptopunks.astral.net
  * Network provides access to core network APIs
  */
 interface Network {
-    fun connect(identity: String, port: String): Stream
+    fun query(identity: String, port: String): Stream
     fun register(port: String): Port
     fun identity(): String
 }

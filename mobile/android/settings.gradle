@@ -5,4 +5,5 @@ include ':node:service'
 include ':node:app'
 include ':client'
 include ':service:notification'
+include ':service:content'
 

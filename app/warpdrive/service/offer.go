@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/storage/file"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/storage/memory"
 	"sync"
+	"time"
 )
 
 var _ api.OfferService = Offer{}
@@ -42,7 +43,8 @@ func Incoming(c api.Core) Offer {
 
 func (c Offer) Add(offerId string, files []api.Info, peer *api.Peer) {
 	offer := &api.Offer{
-		Files: files,
+		Files:      files,
+		CreateTime: time.Now().UnixMilli(),
 		Status: api.Status{
 			Id: api.OfferId(offerId),
 		},
@@ -75,8 +77,10 @@ func (c Offer) Update(offer *api.Offer, index int) {
 	}
 	if index > -1 {
 		n.Info = &offer.Files[index]
+		n.Info.UpdateTime = time.Now().UnixMilli()
 	}
 	c.Notify <- n
+	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.mem.Save(offer)
 	if index == -1 {

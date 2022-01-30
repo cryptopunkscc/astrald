@@ -21,7 +21,7 @@ private val astral = astralTcpNetwork(GsonCoder())
 
 suspend fun Context.startNotificationService() {
     try {
-        NotificationsAdapter(this).run {
+        Adapter(this).run {
             withContext(Dispatchers.IO) {
                 launch { handleCreate() }
                 launch { handleNotify() }

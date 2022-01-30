@@ -22,6 +22,28 @@ fun Stream.read(
 ): ByteArray =
     read(size().toInt())
 
+
+fun Stream.readMessage(): String? {
+    val result = StringBuilder()
+    val buffer = ByteArray(4096)
+    var len: Int
+    do {
+        len = read(buffer)
+        if (len > 0) result.append(String(buffer.copyOf(len)))
+    } while (len == buffer.size)
+    return when {
+        len == -1 && result.isEmpty() -> null
+        else -> result.toString()
+    }
+}
+
+fun Stream.readMessage(handle: (String) -> Unit): Boolean =
+    readMessage()?.let(handle) != null
+
+
+fun Stream.readL64Bytes(): ByteArray =
+    read(long.toInt())
+
 // =========================== Write ===========================
 
 fun Stream.write(

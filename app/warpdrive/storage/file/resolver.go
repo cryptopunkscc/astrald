@@ -19,7 +19,7 @@ func (s Resolver) Reader(path string) (io.ReadCloser, error) {
 func (s Resolver) Info(path string) (files []api.Info, err error) {
 	fn := func(path string, info fs.FileInfo, err error) error {
 		files = append(files, api.Info{
-			Path:  path,
+			Uri:   path,
 			Size:  info.Size(),
 			IsDir: info.IsDir(),
 			Perm:  info.Mode().Perm(),

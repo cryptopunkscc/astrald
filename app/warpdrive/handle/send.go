@@ -89,7 +89,7 @@ func send(srv handler.Context, peer string, files []api.Info) (id string, err er
 	// Connect to service
 	conn, err := srv.Query(peer, api.Send)
 	if err != nil {
-		srv.Println("Cannot connect", peer, err)
+		srv.Println("Cannot connect", peer, len(peer), err)
 		return
 	}
 	defer conn.Close()
@@ -125,12 +125,12 @@ func newOfferId() string {
 }
 
 func shrinkPaths(in []api.Info) (out []api.Info) {
-	dir, _ := filepath.Split(in[0].Path)
+	dir, _ := filepath.Split(in[0].Uri)
 	if dir == "" {
 		return in
 	}
 	for _, info := range in {
-		info.Path = strings.TrimPrefix(info.Path, dir)
+		info.Uri = strings.TrimPrefix(info.Uri, dir)
 		out = append(out, info)
 	}
 	return

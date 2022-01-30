@@ -147,7 +147,7 @@ func printFilesRequest(writer io.Writer, offer api.Offer) (err error) {
 		return
 	}
 	for _, file := range offer.Files {
-		_, err = fmt.Fprintln(writer, "  - ", file.Path)
+		_, err = fmt.Fprintln(writer, "  - ", file.Uri)
 		if err != nil {
 			return
 		}
