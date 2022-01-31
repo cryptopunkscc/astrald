@@ -6,7 +6,7 @@ type Sender interface {
 	// Peers available for receiving an offer.
 	Peers() ([]Peer, error)
 	// Send files offer for the recipient.
-	Send(peerId PeerId, path string) (OfferId, error)
+	Send(peerId PeerId, path string) (OfferId, ResponseCode, error)
 	// Sent offers.
 	Sent() (Offers, error)
 	Status(id OfferId) (string, error)

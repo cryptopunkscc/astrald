@@ -149,7 +149,7 @@ func ServiceAccept(srv handler.Context, request astral.Request) {
 	// Obtain file by request id
 	offer := service.Outgoing(srv.Core).Get()[api.OfferId(offerId)]
 	if offer == nil {
-		srv.Println("Cannot find offer with id", offerId, err)
+		srv.Println("Cannot find offer with id", offerId)
 		return
 	}
 	// Update status

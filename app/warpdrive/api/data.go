@@ -10,6 +10,13 @@ type Offer struct {
 	Files      []Info
 	CreateTime int64
 }
+type ResponseCode uint8
+
+const (
+	OfferAwaiting = ResponseCode(iota)
+	OfferAccepted
+)
+
 type Status struct {
 	Id     OfferId
 	Status string
