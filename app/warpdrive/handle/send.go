@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func (s Sender) Send(peerId api.PeerId, filePath string) (id api.OfferId, err error) {
+func (s Sender) Send(peerId api.PeerId, filePath string) (id api.OfferId, code api.ResponseCode, err error) {
 	// Connect to local service
 	conn, err := s.query(api.SenSend)
 	if err != nil {
@@ -31,12 +31,19 @@ func (s Sender) Send(peerId api.PeerId, filePath string) (id api.OfferId, err er
 		s.Println("Cannot send file path", err)
 		return
 	}
-	// Read response
+	// Read offer id
 	strId, err := enc.ReadL8String(conn)
 	if err != nil {
-		s.Println("Cannot read response id", err)
+		s.Println("Cannot read offer id", err)
+		return
 	}
 	id = api.OfferId(strId)
+	// Read result code
+	c, err := enc.ReadUint8(conn)
+	if err != nil {
+		s.Println("Cannot read offer result code", err)
+	}
+	code = api.ResponseCode(c)
 	return
 }
 
@@ -70,21 +77,27 @@ func SenderSend(srv handler.Context, request astral.Request) {
 		return
 	}
 	// Send file to recipient service
-	id, err := send(srv, peerId, files)
+	id, code, err := send(srv, peerId, files)
 	if err != nil {
 		srv.Println("Cannot send file", err)
 		return
 	}
-	// Write response to sender
+	// Write id to sender
 	err = enc.WriteL8String(conn, id)
 	if err != nil {
 		srv.Println("Cannot send id", id, err)
 		return
 	}
+	// Write code to sender
+	err = enc.Write(conn, code)
+	if err != nil {
+		srv.Println("Cannot code", id, err)
+		return
+	}
 	srv.Println(filePath, "offer sent to", peerId)
 }
 
-func send(srv handler.Context, peer string, files []api.Info) (id string, err error) {
+func send(srv handler.Context, peer string, files []api.Info) (id string, code uint8, err error) {
 	srv.LogPrefix("<", api.Send)
 	// Connect to service
 	conn, err := srv.Query(peer, api.Send)
@@ -98,7 +111,7 @@ func send(srv handler.Context, peer string, files []api.Info) (id string, err er
 	err = enc.WriteL8String(conn, id)
 	if err != nil {
 		srv.Println("Cannot send offer id", peer, err)
-		return "", err
+		return
 	}
 	shrunken := shrinkPaths(files)
 	err = json.NewEncoder(conn).Encode(shrunken)
@@ -106,13 +119,13 @@ func send(srv handler.Context, peer string, files []api.Info) (id string, err er
 		srv.Println("Cannot send offer info", id, peer, err)
 		return
 	}
-	// Wait for close
-	_, err = enc.ReadUint8(conn)
+	service.Outgoing(srv.Core).Add(id, files, nil)
+	// Read result code
+	code, err = enc.ReadUint8(conn)
 	if err != nil {
-		srv.Println("Cannot read ok", peer, err)
+		srv.Println("Cannot read result code", peer, err)
 		return
 	}
-	service.Outgoing(srv.Core).Add(id, files, nil)
 	return
 }
 
@@ -166,10 +179,16 @@ func ServiceSend(srv handler.Context, request astral.Request) {
 	}
 	// Store incoming offer
 	service.Incoming(srv.Core).Add(offerId, files, &peer)
-	// Send OK
-	_ = enc.Write(conn, uint8(0))
 	// Auto accept offer if peer is trusted
+	code := api.OfferAwaiting
 	if peer.Mod == api.PeerModTrust {
-		_ = accept(srv, api.OfferId(offerId))
+		err = accept(srv, api.OfferId(offerId))
+		if err != nil {
+			srv.Println("Cannot auto accept files offer", offerId, err)
+		} else {
+			code = api.OfferAccepted
+		}
 	}
+	// Send received
+	_ = enc.Write(conn, uint8(code))
 }

@@ -36,6 +36,6 @@ func (ctx *Context) initPeers() {
 	}
 	peerService := service.Peer(ctx.Core)
 	for _, contact := range contactList {
-		peerService.Update(contact.Id, "", "")
+		peerService.Update(contact.Id, "alias", contact.Name)
 	}
 }

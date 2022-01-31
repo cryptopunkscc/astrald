@@ -92,11 +92,15 @@ func cmdSend(writer io.ReadWriter, client Client, args []string) (err error) {
 	if len(args) > 1 {
 		peer = args[1]
 	}
-	id, err := client.Send(api.PeerId(peer), args[0])
+	id, code, err := client.Send(api.PeerId(peer), args[0])
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(writer, id)
+	status := "delivered"
+	if code == 1 {
+		status = "accepted"
+	}
+	_, err = fmt.Fprintln(writer, id, status)
 	return
 }
 

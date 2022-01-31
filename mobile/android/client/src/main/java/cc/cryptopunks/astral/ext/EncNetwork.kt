@@ -2,10 +2,14 @@ package cc.cryptopunks.astral.ext
 
 import cc.cryptopunks.astral.enc.EncNetwork
 import cc.cryptopunks.astral.enc.EncStream
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
 
 suspend fun EncNetwork.register(
     port: String,
@@ -35,7 +39,7 @@ suspend fun <T> EncNetwork.query(
     port: String,
     identity: String = "",
     handle: suspend EncStream.() -> T,
-): T = withContext(Dispatchers.IO) {
+): T = scope.async {
     val stream = query(identity, port)
     try {
         stream.handle()
@@ -44,4 +48,8 @@ suspend fun <T> EncNetwork.query(
     } finally {
         stream.close()
     }
-}
+}.await()
+
+private val scope = CoroutineScope(
+    SupervisorJob() + Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+)

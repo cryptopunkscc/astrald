@@ -6,6 +6,7 @@ import cc.cryptopunks.astral.binary.int
 import cc.cryptopunks.astral.binary.long
 import cc.cryptopunks.astral.binary.short
 import cc.cryptopunks.astral.net.Stream
+import java.io.EOFException
 
 // =========================== Read ===========================
 
@@ -14,6 +15,7 @@ fun Stream.read(
 ) = ByteArray(size)
     .also { buff ->
         val len = read(buff)
+        if (len == -1) throw EOFException("EOF")
         check(len == size) { "Expected $size bytes but was $len" }
     }
 

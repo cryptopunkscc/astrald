@@ -14,15 +14,24 @@ Few taps to share data with your mates anywhere you are.
 5. Application sends file offer.
 6. Application displays a snackbar with feedback about, success or failure.
 
-#### SendActivity
+#### ShareActivity
 
 Receives share-files intent and allows sending file offer to recipient.
 
 1. register intent filter for `android.intent.action.SEND` and `android.intent.action.SEND_MULTIPLE`;
 2. get files uris from intent;
 3. fetch contacts from service;
-4. display list of fetched contacts;
+    * display error snackbar if failed.
+    * pull down to refresh contacts.
+4. display list of fetched contacts, for each item show:
+    * Contact alias
+    * 8 last characters of node id
 5. on contact click send offer request to service;
+    1. display progress bar.
+    2. on finish display the snack bar with info:
+        * Share delivered and waiting for approval.
+        * Share accepted, the files are sending in background.
+        * Sharing error - with error message.
 
 ---
 
