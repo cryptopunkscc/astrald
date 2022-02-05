@@ -5,10 +5,9 @@ import cc.cryptopunks.astral.ext.byte
 import cc.cryptopunks.astral.ext.register
 import cc.cryptopunks.astral.ext.stringL8
 import cc.cryptopunks.astral.gson.GsonCoder
-import cc.cryptopunks.astral.io.outputStream
 import cc.cryptopunks.astral.tcp.astralTcpNetwork
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 private object Port {
     const val READ = "sys/content"
@@ -18,29 +17,49 @@ private object Port {
 private val astral = astralTcpNetwork(GsonCoder())
 
 suspend fun Context.startContentResolverService() {
-    coroutineScope {
+    supervisorScope {
         Adapter(contentResolver).run {
-            launch { handleRead() }
-            launch { handleInfo() }
+            launch {
+                handleRead()
+                println("Finishing read")
+            }
+            launch {
+                handleInfo()
+                println("Finishing info")
+            }
         }
     }
 }
 
-private suspend fun Content.Resolver.handleRead() {
-    astral.register(Port.READ) {
-        val uri = stringL8
-        byte = 0
-        val output = outputStream()
-        reader(uri).copyTo(output)
-        output.flush()
+private suspend fun Content.Resolver.handleRead() = supervisorScope {
+    try {
+        astral.register(Port.READ) {
+            println("New read files request")
+            val uri = stringL8
+            byte = 0
+            println()
+            println("Start coping files")
+            reader(uri).copyTo(output)
+            println("Flushing files")
+            output.flush()
+            println("Flushed successfully")
+        }
+    } catch (e: Throwable) {
+        println("Finish handling read")
+        e.printStackTrace()
     }
 }
 
 private suspend fun Content.Resolver.handleInfo() {
-    astral.register(Port.INFO) {
-        val uri = stringL8
-        val info = info(uri)
-        val data = encoder.encode(arrayOf(info))
-        write(data.toByteArray())
+    try {
+        astral.register(Port.INFO) {
+            val uri = stringL8
+            val info = info(uri)
+            val data = encoder.encode(arrayOf(info))
+            write(data.toByteArray())
+        }
+    } catch (e: Throwable) {
+        println("Finish handling info")
+        e.printStackTrace()
     }
 }

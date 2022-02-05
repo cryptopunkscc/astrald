@@ -34,8 +34,9 @@ type Mutex struct {
 }
 
 type Observers struct {
-	FilesOffers    *Subscriptions
+	IncomingOffers *Subscriptions
 	IncomingStatus *Subscriptions
+	OutgoingOffers *Subscriptions
 	OutgoingStatus *Subscriptions
 }
 

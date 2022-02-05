@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,15 +33,15 @@ func (r Offers) Save(offer *api.Offer) {
 
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
-		log.Panicln("cannot create file for incoming offer", err)
+		r.Panicln("cannot create file for incoming offer", err)
 	}
 	err = gob.NewEncoder(file).Encode(offer)
 	if err != nil {
-		log.Panicln("cannot write offer to file", err)
+		r.Panicln("cannot write offer to file", err)
 	}
 	err = file.Close()
 	if err != nil {
-		log.Println("cannot close offer file", path, err)
+		r.Println("cannot close offer file", path, err)
 	}
 }
 
@@ -53,22 +52,24 @@ func (r Offers) Get() api.Offers {
 		if info.IsDir() {
 			return nil
 		}
-		file, err := os.Open(r.normalizePath(path))
+		normalizedPath := r.normalizePath(path)
+		file, err := os.Open(normalizedPath)
 		if err != nil {
-			return err
+			r.Println("cannot open", err)
+			return nil
 		}
 		id := api.OfferId(info.Name())
 		offer := &api.Offer{}
 		err = gob.NewDecoder(file).Decode(offer)
 		if err != nil {
-			return err
+			r.Println("cannot decode", err)
+			return nil
 		}
 		offers[id] = offer
 		return nil
 	})
 	if err != nil {
-		log.Println("Cannot list incoming offers", err)
-		return nil
+		r.Println("Cannot list incoming offers", err)
 	}
 	return offers
 }

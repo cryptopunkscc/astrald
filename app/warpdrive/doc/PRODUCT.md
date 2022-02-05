@@ -57,6 +57,5 @@ offers or download the files.
 
 > I want the app will automatically download the files offered by trusted mate.
 
-# Epic 3
-
 > I can block the mate, to prevent me from receiving files from him.
+

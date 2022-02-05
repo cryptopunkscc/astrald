@@ -1,28 +1,58 @@
 package api
 
 import (
+	"encoding/json"
 	"io"
+	"log"
 	"sync"
 )
 
+type Unsubscribe func()
+
 type Subscriptions struct {
 	sync.Mutex
-	Set map[io.WriteCloser]struct{}
+	Set map[chan<- interface{}]Unsubscribe
 }
 
 func NewSubscriptions() *Subscriptions {
-	return &Subscriptions{Set: map[io.WriteCloser]struct{}{}}
+	return &Subscriptions{Set: map[chan<- interface{}]Unsubscribe{}}
 }
 
-func (s *Subscriptions) Subscribe(w io.WriteCloser) Unsubscribe {
-	s.Lock()
-	s.Set[w] = struct{}{}
-	s.Unlock()
-	return func() {
+func (s *Subscriptions) SubscribeChan(c chan<- interface{}) (unsub Unsubscribe) {
+	unsub = func() {
 		s.Lock()
-		delete(s.Set, w)
+		delete(s.Set, c)
 		s.Unlock()
 	}
+	s.Lock()
+	s.Set[c] = unsub
+	s.Unlock()
+	return
 }
 
-type Unsubscribe func()
+func (s *Subscriptions) Subscribe(w io.WriteCloser) (unsub Unsubscribe) {
+	c := WriteChannel(w)
+	return s.SubscribeChan(c)
+}
+func WriteChannel(w io.WriteCloser) (writeChannel chan<- interface{}) {
+	c := make(chan interface{}, 1024)
+	writeChannel = c
+	e := json.NewEncoder(w)
+	go func() {
+		for i := range c {
+			var err error
+			switch v := i.(type) {
+			case []byte:
+				v = append(v, '\n')
+				_, err = w.Write(v)
+			default:
+				err = e.Encode(i)
+			}
+			if err != nil {
+				log.Println("Cannot write", err)
+				return
+			}
+		}
+	}()
+	return
+}

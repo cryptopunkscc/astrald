@@ -12,9 +12,9 @@ import (
 	"strings"
 )
 
-func (s Sender) Send(peerId api.PeerId, filePath string) (id api.OfferId, code api.ResponseCode, err error) {
+func (c Client) Send(peerId api.PeerId, filePath string) (id api.OfferId, accepted bool, err error) {
 	// Connect to local service
-	conn, err := s.query(api.SenSend)
+	conn, err := c.query(api.QuerySend)
 	if err != nil {
 		return
 	}
@@ -22,32 +22,32 @@ func (s Sender) Send(peerId api.PeerId, filePath string) (id api.OfferId, code a
 	// Send recipient id
 	err = enc.WriteL8String(conn, string(peerId))
 	if err != nil {
-		s.Println("Cannot send recipient id", err)
+		c.Println("Cannot send recipient id", err)
 		return
 	}
 	// Send file path
 	err = enc.WriteL8String(conn, filePath)
 	if err != nil {
-		s.Println("Cannot send file path", err)
+		c.Println("Cannot send file path", err)
 		return
 	}
 	// Read offer id
 	strId, err := enc.ReadL8String(conn)
 	if err != nil {
-		s.Println("Cannot read offer id", err)
+		c.Println("Cannot read offer id", err)
 		return
 	}
 	id = api.OfferId(strId)
 	// Read result code
-	c, err := enc.ReadUint8(conn)
+	code, err := enc.ReadUint8(conn)
 	if err != nil {
-		s.Println("Cannot read offer result code", err)
+		c.Println("Cannot read offer result code", err)
 	}
-	code = api.ResponseCode(c)
+	accepted = code == 1
 	return
 }
 
-func SenderSend(srv handler.Context, request astral.Request) {
+func Send(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -98,9 +98,9 @@ func SenderSend(srv handler.Context, request astral.Request) {
 }
 
 func send(srv handler.Context, peer string, files []api.Info) (id string, code uint8, err error) {
-	srv.LogPrefix("<", api.Send)
+	srv.LogPrefix("<", api.QueryOffer)
 	// Connect to service
-	conn, err := srv.Query(peer, api.Send)
+	conn, err := srv.Query(peer, api.QueryOffer)
 	if err != nil {
 		srv.Println("Cannot connect", peer, len(peer), err)
 		return
@@ -119,7 +119,7 @@ func send(srv handler.Context, peer string, files []api.Info) (id string, code u
 		srv.Println("Cannot send offer info", id, peer, err)
 		return
 	}
-	service.Outgoing(srv.Core).Add(id, files, nil)
+	service.Outgoing(srv.Core).Add(id, files, api.PeerId(peer))
 	// Read result code
 	code, err = enc.ReadUint8(conn)
 	if err != nil {
@@ -149,7 +149,7 @@ func shrinkPaths(in []api.Info) (out []api.Info) {
 	return
 }
 
-func ServiceSend(srv handler.Context, request astral.Request) {
+func Receive(srv handler.Context, request astral.Request) {
 	peerId := api.PeerId(request.Caller())
 	peer := service.Peer(srv.Core).Get(peerId)
 	// Check if peer is blocked
@@ -178,11 +178,11 @@ func ServiceSend(srv handler.Context, request astral.Request) {
 		return
 	}
 	// Store incoming offer
-	service.Incoming(srv.Core).Add(offerId, files, &peer)
+	service.Incoming(srv.Core).Add(offerId, files, peerId)
 	// Auto accept offer if peer is trusted
 	code := api.OfferAwaiting
 	if peer.Mod == api.PeerModTrust {
-		err = accept(srv, api.OfferId(offerId))
+		err = download(srv, api.OfferId(offerId))
 		if err != nil {
 			srv.Println("Cannot auto accept files offer", offerId, err)
 		} else {
@@ -190,5 +190,5 @@ func ServiceSend(srv handler.Context, request astral.Request) {
 		}
 	}
 	// Send received
-	_ = enc.Write(conn, uint8(code))
+	_ = enc.Write(conn, code)
 }

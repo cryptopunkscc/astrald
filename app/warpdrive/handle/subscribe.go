@@ -10,9 +10,9 @@ import (
 	"io"
 )
 
-func (c Client) Status(filter api.Filter) (status <-chan api.Status, err error) {
+func (c Client) Subscribe(filter api.Filter) (offers <-chan api.Offer, err error) {
 	// Connect to local service
-	conn, err := c.query(api.QueryStatus)
+	conn, err := c.query(api.QuerySubscribe)
 	if err != nil {
 		return
 	}
@@ -22,27 +22,27 @@ func (c Client) Status(filter api.Filter) (status <-chan api.Status, err error) 
 		conn.Close()
 		return
 	}
-	statChan := make(chan api.Status)
-	status = statChan
-	go func(conn io.ReadWriteCloser, status chan api.Status) {
-		defer close(status)
+	ofs := make(chan api.Offer)
+	offers = ofs
+	go func(conn io.ReadWriteCloser, offers chan api.Offer) {
+		defer close(offers)
 		defer conn.Close()
 		dec := json.NewDecoder(conn)
-		files := &api.Status{}
-		c.Println("Start listening status")
+		files := &api.Offer{}
+		c.Println("Start listening offers")
 		for {
 			err := dec.Decode(files)
 			if err != nil {
-				c.Println("Cannot decode status", err)
+				c.Println("Finish listening offers", err)
 				return
 			}
-			status <- *files
+			offers <- *files
 		}
-	}(conn, statChan)
+	}(conn, ofs)
 	return
 }
 
-func Status(srv handler.Context, request astral.Request) {
+func Subscribe(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -62,16 +62,16 @@ func Status(srv handler.Context, request astral.Request) {
 	defer close(c)
 	switch api.Filter(f) {
 	case api.FilterIn:
-		unsub := service.Incoming(srv.Core).Status().SubscribeChan(c)
-		defer unsub()
+		unsubIn := service.Incoming(srv.Core).Offers().SubscribeChan(c)
+		defer unsubIn()
 	case api.FilterOut:
-		unsub := service.Outgoing(srv.Core).Status().SubscribeChan(c)
-		defer unsub()
+		unsubOut := service.Outgoing(srv.Core).Offers().SubscribeChan(c)
+		defer unsubOut()
 	default:
-		unsub1 := service.Incoming(srv.Core).Status().SubscribeChan(c)
-		defer unsub1()
-		unsub2 := service.Outgoing(srv.Core).Status().SubscribeChan(c)
-		defer unsub2()
+		unsubIn := service.Incoming(srv.Core).Offers().SubscribeChan(c)
+		defer unsubIn()
+		unsubOut := service.Outgoing(srv.Core).Offers().SubscribeChan(c)
+		defer unsubOut()
 	}
 	// Wait for close
 	_, _ = enc.ReadUint8(conn)

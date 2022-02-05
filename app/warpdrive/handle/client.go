@@ -7,33 +7,23 @@ import (
 	"log"
 )
 
-var _ api.Sender = &Client{}
-var _ api.Recipient = &Client{}
+var _ api.Client = Client{}
 
 type Client struct {
-	Sender
-	Recipient
-}
-
-type Sender struct{ *astralApi }
-type Recipient struct{ *astralApi }
-
-func NewClient(api astral.Api) Client {
-	core := &astralApi{log.Default(), api}
-	return Client{Sender{core}, Recipient{core}}
-}
-
-type astralApi struct {
 	*log.Logger
 	astral.Api
 }
 
-func (client *astralApi) query(port string) (conn io.ReadWriteCloser, err error) {
-	client.Logger = api.NewLogger("<", port)
+func NewClient(api astral.Api) Client {
+	return Client{log.Default(), api}
+}
+
+func (c *Client) query(port string) (conn io.ReadWriteCloser, err error) {
+	c.Logger = api.NewLogger("<", port)
 	// Connect to local service
-	conn, err = client.Query("", port)
+	conn, err = c.Query("", port)
 	if err != nil {
-		client.Println("Cannot connect to service", err)
+		c.Println("Cannot connect to service", err)
 	}
 	return
 }

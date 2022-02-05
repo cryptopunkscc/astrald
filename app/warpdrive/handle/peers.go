@@ -9,9 +9,9 @@ import (
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
-func (s Sender) Peers() (peers []api.Peer, err error) {
+func (c Client) Peers() (peers []api.Peer, err error) {
 	// Connect to local service
-	conn, err := s.query(api.SenPeers)
+	conn, err := c.query(api.QueryPeers)
 	if err != nil {
 		return
 	}
@@ -19,19 +19,19 @@ func (s Sender) Peers() (peers []api.Peer, err error) {
 	// Read peers
 	err = json.NewDecoder(conn).Decode(&peers)
 	if err != nil {
-		s.Println("Cannot read peers", err)
+		c.Println("Cannot read peers", err)
 		return
 	}
 	// Send OK
 	err = enc.Write(conn, uint8(0))
 	if err != nil {
-		s.Println("Cannot send ok", err)
+		c.Println("Cannot send ok", err)
 		return
 	}
 	return
 }
 
-func SenderPeers(srv handler.Context, request astral.Request) {
+func Peers(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}

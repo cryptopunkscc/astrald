@@ -18,12 +18,11 @@ func (c Resolver) Info(uri string) (files []api.Info, err error) {
 	}
 	for _, i := range info {
 		files = append(files, api.Info{
-			Uri:      i.Uri,
-			Size:     i.Size,
-			IsDir:    false,
-			Perm:     0755,
-			Mime:     i.Mime,
-			Progress: 0,
+			Uri:   i.Uri,
+			Size:  i.Size,
+			IsDir: false,
+			Perm:  0755,
+			Mime:  i.Mime,
 		})
 	}
 	return

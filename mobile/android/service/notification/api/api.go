@@ -22,7 +22,7 @@ type Notification struct {
 	GroupSummary  bool
 	Priority      int
 	ContentIntent *Intent
-	*Progress
+	Progress      *Progress
 }
 
 type Progress struct {

@@ -6,48 +6,57 @@ type Offers map[OfferId]*Offer
 type OfferId string
 type Offer struct {
 	Status
-	Peer       PeerId
-	Files      []Info
-	CreateTime int64
+	// Create time
+	Create int64
+	// Peer unique identifier
+	Peer PeerId
+	// Files info
+	Files []Info
 }
-type ResponseCode uint8
 
 const (
-	OfferAwaiting = ResponseCode(iota)
-	OfferAccepted
+	OfferAwaiting = false
+	OfferAccepted = true
 )
 
 type Status struct {
-	Id     OfferId
+	// Id the unique offer identifier.
+	Id OfferId
+	// In marks if offer is incoming or outgoing.
+	In bool
+	// Status of the offer
 	Status string
+	// Index of transferred files. If transfer is not started the index is equal -1.
+	Index int
+	// Progress of specific file transfer
+	Progress int64
+	// Update timestamp in milliseconds
+	Update int64
 }
 
 type Peers map[PeerId]*Peer
+
 type PeerId string
 type Peer struct {
 	Id    PeerId
 	Alias string
 	Mod   string
 }
-
 type Info struct {
-	Uri        string
-	Size       int64
-	IsDir      bool
-	Perm       os.FileMode
-	Mime       string
-	Progress   int64
-	UpdateTime int64
+	Uri   string
+	Size  int64
+	IsDir bool
+	Perm  os.FileMode
+	Mime  string
 }
 
 const (
-	StatusAdded     = ""
+	StatusAwaiting  = "awaiting"
 	StatusAccepted  = "accepted"
 	StatusRejected  = "rejected"
-	StatusProgress  = "progress"
-	StatusFailed    = "failed"
+	StatusUpdated   = "updated"
 	StatusCompleted = "completed"
-	StatusAborted   = "aborted"
+	StatusFailed    = "failed"
 )
 
 const (

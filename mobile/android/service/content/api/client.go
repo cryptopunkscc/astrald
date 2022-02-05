@@ -18,6 +18,9 @@ type Client struct{ Identity string }
 
 func (c Client) Reader(uri string) (reader io.ReadCloser, err error) {
 	conn, err := astral.Query(c.Identity, read)
+	if err != nil {
+		return
+	}
 	err = enc.WriteL8String(conn, uri)
 	if err != nil {
 		return
@@ -32,6 +35,9 @@ func (c Client) Reader(uri string) (reader io.ReadCloser, err error) {
 
 func (c Client) Info(uri string) (files []Info, err error) {
 	conn, err := astral.Query(c.Identity, info)
+	if err != nil {
+		return
+	}
 	err = enc.WriteL8String(conn, uri)
 	if err != nil {
 		return

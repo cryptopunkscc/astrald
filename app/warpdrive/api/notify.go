@@ -5,6 +5,7 @@ type Notifications struct {
 }
 
 type Notification struct {
+	Peer
 	Offer
 	*Info
 	Incoming bool

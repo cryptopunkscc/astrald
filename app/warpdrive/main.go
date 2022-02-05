@@ -12,23 +12,20 @@ type Client handle.Client
 
 type Service handler.Context
 
-var handlers = handler.Handlers{
-	api.Send:        handle.ServiceSend,
-	api.Accept:      handle.ServiceAccept,
-	api.Reject:      handle.ServiceReject,
-	api.SenPeers:    handle.SenderPeers,
-	api.SenSend:     handle.SenderSend,
-	api.SenStatus:   handle.SenderStatus,
-	api.SenSent:     handle.SenderSent,
-	api.SenEvents:   handle.SenderEvents,
-	api.RecIncoming: handle.RecipientOffers,
-	api.RecReceived: handle.RecipientReceived,
-	api.RecAccept:   handle.RecipientAccept,
-	api.RecReject:   handle.RecipientReject,
-	api.RecUpdate:   handle.RecipientUpdate,
-	api.RecEvents:   handle.RecipientEvents,
-	api.CliQuery:    handle.CommandLine,
-}
+var handlers = handler.Handlers{{
+	api.QueryPeers:     handle.Peers,
+	api.QuerySend:      handle.Send,
+	api.QueryAccept:    handle.Download,
+	api.QueryUpdate:    handle.Update,
+	api.QuerySubscribe: handle.Subscribe,
+	api.QueryStatus:    handle.Status,
+	api.QueryOffers:    handle.Offers,
+	api.QueryOffer:     handle.Receive,
+	api.QueryFiles:     handle.Upload,
+	api.QueryCli:       handle.Cli,
+}, {
+	api.Port: handle.Ping,
+}}
 
 // Run warpdrive service with default core and handlers.
 func (srv Service) Run() {

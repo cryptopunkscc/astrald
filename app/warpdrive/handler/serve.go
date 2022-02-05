@@ -1,10 +1,16 @@
 package handler
 
-import astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+import (
+	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"time"
+)
 
 func (ctx Context) Serve(handlers Handlers) {
-	for query, handle := range handlers {
-		go ctx.serve(query, handle)
+	for _, group := range handlers {
+		for query, handle := range group {
+			go ctx.serve(query, handle)
+			time.Sleep(500 * time.Millisecond)
+		}
 	}
 }
 

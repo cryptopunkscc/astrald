@@ -11,9 +11,9 @@ import (
 	"io"
 )
 
-func (r Recipient) Accept(id api.OfferId) (err error) {
+func (c Client) Download(id api.OfferId) (err error) {
 	// Connect to local service
-	conn, err := r.query(api.RecAccept)
+	conn, err := c.query(api.QueryAccept)
 	if err != nil {
 		return
 	}
@@ -21,19 +21,19 @@ func (r Recipient) Accept(id api.OfferId) (err error) {
 	// Send accepted request id to service
 	err = enc.WriteL8String(conn, string(id))
 	if err != nil {
-		r.Println("Cannot send accepted request id", err)
+		c.Println("Cannot send accepted request id", err)
 		return
 	}
 	// Read OK
 	_, err = enc.ReadUint8(conn)
 	if err != nil {
-		r.Println("Cannot read ok", err)
+		c.Println("Cannot read ok", err)
 		return
 	}
 	return
 }
 
-func RecipientAccept(srv handler.Context, request astral.Request) {
+func Download(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -49,9 +49,9 @@ func RecipientAccept(srv handler.Context, request astral.Request) {
 		srv.Println("Cannot read request id", err)
 		return
 	}
-	err = accept(srv, api.OfferId(id))
+	err = download(srv, api.OfferId(id))
 	if err != nil {
-		srv.Println("Cannot accept incoming files", id, err)
+		srv.Println("Cannot download incoming files", id, err)
 		return
 	}
 	err = enc.Write(conn, uint8(0))
@@ -62,8 +62,8 @@ func RecipientAccept(srv handler.Context, request astral.Request) {
 	srv.Println("Accepted incoming files", id)
 }
 
-func accept(srv handler.Context, id api.OfferId) (err error) {
-	srv.LogPrefix("<", api.Accept)
+func download(srv handler.Context, id api.OfferId) (err error) {
+	srv.LogPrefix("<", api.QueryFiles)
 	// Get cached incoming files by request id
 	offer := service.Incoming(srv.Core).Get()[id]
 	if offer == nil {
@@ -74,7 +74,7 @@ func accept(srv handler.Context, id api.OfferId) (err error) {
 	// Obtain offer reader connection
 	filesConn, err := func() (filesConn io.ReadWriteCloser, err error) {
 		// Connect to service
-		conn, err := srv.Query(string(offer.Peer), api.Accept)
+		conn, err := srv.Query(string(offer.Peer), api.QueryFiles)
 		if err != nil {
 			srv.Println("Cannot connect", err)
 			return
@@ -115,13 +115,22 @@ func accept(srv handler.Context, id api.OfferId) (err error) {
 	// Try to download files in background
 	go func() {
 		defer filesConn.Close()
+		// Ensure the status will be updated
+		defer func() {
+			sent := len(offer.Files)
+			if err == nil {
+				offer.Status.Status = api.StatusCompleted
+			} else {
+				sent = offer.Index
+				offer.Status.Status = api.StatusFailed
+			}
+			service.Incoming(srv.Core).Update(offer, sent)
+		}()
 		// Copy files to storage
 		err = service.File(srv.Core).CopyFrom(filesConn, offer)
 		if err != nil {
 			return
 		}
-		offer.Status.Status = api.StatusCompleted
-		service.Incoming(srv.Core).Update(offer, -1)
 		// Send OK
 		err = enc.Write(filesConn, uint8(0))
 		if err != nil {
@@ -132,7 +141,7 @@ func accept(srv handler.Context, id api.OfferId) (err error) {
 	return
 }
 
-func ServiceAccept(srv handler.Context, request astral.Request) {
+func Upload(srv handler.Context, request astral.Request) {
 	// Accept incoming connection
 	conn, err := request.Accept()
 	if err != nil {
@@ -188,6 +197,16 @@ func ServiceAccept(srv handler.Context, request astral.Request) {
 		return
 	}
 	defer filesConn.Close()
+	defer func() {
+		sent := len(offer.Files)
+		if err == nil {
+			offer.Status.Status = api.StatusCompleted
+		} else {
+			sent = offer.Index
+			offer.Status.Status = api.StatusFailed
+		}
+		service.Outgoing(srv.Core).Update(offer, sent)
+	}()
 	// Send files
 	err = service.File(srv.Core).CopyTo(filesConn, offer)
 	if err != nil {
@@ -199,6 +218,5 @@ func ServiceAccept(srv handler.Context, request astral.Request) {
 		srv.Println("Cannot read ok", filesQuery, err)
 		return
 	}
-	offer.Status.Status = api.StatusCompleted
-	service.Outgoing(srv.Core).Update(offer, -1)
+
 }
