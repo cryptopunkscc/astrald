@@ -60,16 +60,17 @@ Displays short details about files offer and navigates the user into offer detai
 
 1. User taps on the notification to see the details.
 2. Application displays offer details screen.
-3. User sees notification details.
 
 #### OfferActivity
 
-Displays offer details.
+Loads and displays offer details.
 
 1. get offer id from intent;
 2. fetch offer from service;
 3. displays offer details:
     * sender name
+    * offer id
+    * status
     * timestamp
     * list of files
         * file name
@@ -101,7 +102,7 @@ Displays download button. Starts downloading on click.
 > The user is tracking file transferring status.
 
 1. Application starts downloading files in background.
-2. User tracks transfer progress status, seeing:
+2. Application displays progress status, in:
     * silent notification updates in status bar.
     * live updates in offer details screen.
 
@@ -113,11 +114,10 @@ Live updates about files transfer status.
 * is silent, no sound, no buzz and no lights.
 * on click navigates to OfferActivity.
 * display info about files offer.
-    * {Sender name} wants to share file(s) with you.
-    * Name of the file if is only one.
-    * Name of root directory of files if is only one.
-    * Number of files if more than one.
+    * {Sender name} is sending file.
+    * Name of current file.
     * Summary size.
+    * Progress
 
 #### OfferActivity
 
@@ -182,18 +182,7 @@ android client app.
 
 #### API
 
-```go
-package warpdrive
-
-import "io"
-
-type Resolver interface {
-	Reader(uri string) (io.ReadCloser, error)
-	Info(uri string) (files []Info, err error)
-}
-
-type Info struct{ /*...*/ }
-```
+Check the source file [api.go](/mobile/android/service/content/api/api.go)
 
 #### Protocol
 
@@ -213,39 +202,7 @@ type Info struct{ /*...*/ }
 
 #### API
 
-```go
-package notify
-
-type Api interface {
-	Create(channel Channel) error
-	Notify(notifications ...Notification) error
-}
-
-type Notification struct {
-	Id            int
-	ChannelId     string
-	ContentTitle  string
-	SubText       string
-	SmallIcon     string
-	Ongoing       bool
-	OnlyAlertOnce bool
-	Group         string
-	GroupSummary  bool
-	*Progress
-}
-
-type Progress struct {
-	Max           int
-	Current       int
-	Indeterminate bool
-}
-
-type Channel struct {
-	Id         string
-	Name       string
-	Importance int
-}
-```
+Check the source file [api.go](/mobile/android/service/notification/api/api.go).
 
 ### Frames
 

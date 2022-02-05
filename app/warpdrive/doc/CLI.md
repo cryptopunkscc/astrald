@@ -25,123 +25,15 @@ $ go run ./cmd/anc/main.go query wd
 connected.
 ```
 
-# Features
+## Commands
 
-Complete list of warpdrive CLI features represented as console output.
-
-## `sender`
-
-### `peers` aka `recipients`
-
-```shell
-warp> peers
-<peer_id> <peer_alias>
-...
-ok
-```
-
-example:
-
-```shell
-warp> peers
-02f978d6bd70d0005f5148ce5h311609c994219164126488f11573440b2c6a40eb localhost  
-024d47047667312be7cd0a140f3323b716030f5fc9d37ae774eb96527a76fa55f9 remote
-ok
-```
-
-### `send`
-
-```shell
-warp> send <file_uri> <peer_id>
-<offer_id>
-ok
-```
-
-example:
-
-```shell
-warp> send ./myfiles/archive1.zip 02f978d6bd70d0005f5148ce5h311609c994219164126488f11573440b2c6a40eb
-3a076839-1b17-41a9-50b9-72beee2d08db
-ok
-```
-
-### `sent`
-
-```shell
-warp> sent
-<offer_id> <status>
-  -  <file_uri>
-  -  ...
-...
-ok
-```
-
-### `events`
-
-```shell
-warp> events sent
-<offer_id> <sent|rejected|accepted|uploaded>
-...
-```
-
-example:
-
-```shell
-warp> events sent
-3a076839-1b17-41a9-50b9-72beee2d08db sent
-3a076839-1b17-41a9-50b9-72beee2d08db rejected
-...
-```
-
-## `recipient`
-
-### `received`
-
-```shell
-warp> received
-<offer_id> <received|rejected|accepted|downloaded>
-  -  <file_uri>
-  -  ...
-...
-ok
-```
-
-### `accept`
-
-```shell
-warp> accept <offer_id>
-accepted <offer_id>
-ok
-```
-
-example:
-
-```shell
-warp> accept <offer_id>
-accepted
-ok
-```
-
-### `reject`
-
-```shell
-warp> reject <offer_id>
-rejected
-ok
-```
-
-### `update`
-
-```shell
-warp> update <peer_id> mod <trust|block|"">
-updated
-ok
-```
-
-### `events`
-
-```shell
-warp> events received
-<offer_id> <received|rejected|accepted|downloaded>
-...
-```
+* peers - Print list of peers  
+* send <file_path> <peer_id>? - Send a file or directory.  
+* out - Print list of outgoing files.
+* in - Print list of incoming files.
+* sub <all|in|out>? - Subscribe for receiving new file offers.
+* get <offer_id> - Download the files from specific offer in background. 
+* stat <all|in|out>? - Subscribe for offers status updates. 
+* update - Update specific attribute of peer. 
+  * alias <peer_alias> - Change peer alias
+  * mod <trust|block>? - Auto download or reject files from peer. Leave empty string for default.

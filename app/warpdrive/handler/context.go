@@ -16,4 +16,4 @@ type Context struct {
 
 type Handler func(srv Context, request astral.Request)
 
-type Handlers map[string]Handler
+type Handlers []map[string]Handler

@@ -15,8 +15,11 @@ class GsonCoder(
 ) : Encoder {
     override fun encode(any: Any): String = gson.toJson(any)
     override fun <T> decode(string: String, type: Class<T>): T = gson.fromJson(string, type)
-    override fun <T> decodeArray(string: String, type: Class<T>): Array<T> =
-        gson.fromJson(string, TypeToken.getArray(TypeToken.get(type).type).type)
+    override fun <T> decodeList(string: String, type: Class<T>): List<T> = when {
+        string.isBlank() -> emptyList()
+        else -> gson.fromJson<Array<T>>(string,
+            TypeToken.getArray(TypeToken.get(type).type).type).toList()
+    }
 
     override fun <K, V> decodeMap(string: String, key: Class<K>, value: Class<V>): Map<K, V> =
         gson.fromJson(string, TypeToken.getParameterized(

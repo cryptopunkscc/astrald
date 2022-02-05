@@ -7,36 +7,36 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
-	"io"
 )
 
-func (r Recipient) Offers() (offers <-chan api.Offer, err error) {
-	// Connect to local service
-	conn, err := r.query(api.RecIncoming)
+func (c Client) Offers(filter api.Filter) (offers []api.Offer, err error) {
+	// Connect to service
+	conn, err := c.query(api.QueryOffers)
 	if err != nil {
 		return
 	}
-	ofs := make(chan api.Offer)
-	offers = ofs
-	go func(conn io.ReadWriteCloser, offers chan api.Offer) {
-		defer close(offers)
-		defer conn.Close()
-		dec := json.NewDecoder(conn)
-		files := &api.Offer{}
-		r.Println("Start listening offers")
-		for {
-			err := dec.Decode(files)
-			if err != nil {
-				r.Println("Finish listening offers", err)
-				return
-			}
-			offers <- *files
-		}
-	}(conn, ofs)
+	defer conn.Close()
+	err = enc.WriteL8String(conn, string(filter))
+	if err != nil {
+		c.Println("Cannot send filter", err)
+		return
+	}
+	// Receive outgoing offers
+	err = json.NewDecoder(conn).Decode(&offers)
+	if err != nil {
+		c.Println("Cannot read outgoing offers", err)
+		return
+	}
+	// Send OK
+	err = enc.Write(conn, uint8(0))
+	if err != nil {
+		c.Println("Cannot send ok", err)
+		return
+	}
 	return
 }
 
-func RecipientOffers(srv handler.Context, request astral.Request) {
+func Offers(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
@@ -47,8 +47,32 @@ func RecipientOffers(srv handler.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	remove := service.Peer(srv.Core).Offers().Subscribe(conn)
-	defer remove()
-	// Wait for close
-	_, _ = enc.ReadUint8(conn)
+	f, err := enc.ReadL8String(conn)
+	if err != nil {
+		srv.Println("Cannot read filter", err)
+		return
+	}
+	var offers []api.Offer
+	switch api.Filter(f) {
+	case api.FilterIn:
+		offers = append(offers, service.Incoming(srv.Core).List()...)
+	case api.FilterOut:
+		offers = append(offers, service.Outgoing(srv.Core).List()...)
+	case api.FilterAll:
+		offers = append(offers, service.Incoming(srv.Core).List()...)
+		offers = append(offers, service.Outgoing(srv.Core).List()...)
+	}
+	// Send outgoing files
+	err = json.NewEncoder(conn).Encode(offers)
+	if err != nil {
+		srv.Println("Cannot send incoming offers", err)
+		return
+	}
+	// Wait for OK
+	_, err = enc.ReadUint8(conn)
+	if err != nil {
+		srv.Println("Cannot read ok", err)
+		return
+	}
+	srv.Println("Send incoming offers")
 }

@@ -34,8 +34,9 @@ func (core *initializer) core() {
 		Peers:    api.Peers{},
 	}
 	core.Observers = &api.Observers{
-		FilesOffers:    api.NewSubscriptions(),
+		IncomingOffers: api.NewSubscriptions(),
 		IncomingStatus: api.NewSubscriptions(),
+		OutgoingOffers: api.NewSubscriptions(),
 		OutgoingStatus: api.NewSubscriptions(),
 	}
 }

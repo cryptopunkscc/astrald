@@ -12,9 +12,10 @@ type PeerService interface {
 }
 
 type OfferService interface {
-	Add(offerId string, files []Info, peer *Peer)
+	Add(offerId string, files []Info, peerId PeerId)
 	Update(offer *Offer, index int)
 	Get() Offers
+	List() []Offer
 	Status() *Subscriptions
 }
 

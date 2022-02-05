@@ -5,11 +5,10 @@ import cc.cryptopunks.astral.enc.EncStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import java.util.concurrent.Executors
+import kotlinx.coroutines.withTimeout
 
 suspend fun EncNetwork.register(
     port: String,
@@ -38,18 +37,37 @@ suspend fun EncNetwork.register(
 suspend fun <T> EncNetwork.query(
     port: String,
     identity: String = "",
+    timeout: Long = 5000,
     handle: suspend EncStream.() -> T,
-): T = scope.async {
-    val stream = query(identity, port)
-    try {
-        stream.handle()
-    } catch (e: Throwable) {
-        throw e
-    } finally {
-        stream.close()
-    }
-}.await()
+): T =
+    @Suppress("RedundantAsync")
+    scope.async {
+        val stream = query(port, identity)
+        try {
+            stream.handle()
+        } catch (e: Throwable) {
+            throw e
+        } finally {
+            stream.close()
+        }
+    }.await()
 
-private val scope = CoroutineScope(
-    SupervisorJob() + Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-)
+suspend fun <T : Any> EncNetwork.queryResult(
+    port: String,
+    identity: String = "",
+    timeout: Long = 5000,
+    handle: suspend StreamResult<T>.() -> Unit,
+): T =
+    query(port, identity, timeout) {
+        StreamResult<T>(this).apply {
+            handle()
+        }.result
+    }
+
+class StreamResult<T : Any>(
+    stream: EncStream,
+) : EncStream by stream {
+    lateinit var result: T
+}
+
+private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

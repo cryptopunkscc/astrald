@@ -3,13 +3,12 @@ package cc.cryptopunks.astral.service.notification
 import android.content.Context
 import cc.cryptopunks.astral.ext.byte
 import cc.cryptopunks.astral.ext.decodeL16
-import cc.cryptopunks.astral.ext.decodeL16Array
+import cc.cryptopunks.astral.ext.decodeL16List
 import cc.cryptopunks.astral.ext.register
 import cc.cryptopunks.astral.gson.GsonCoder
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import cc.cryptopunks.astral.tcp.astralTcpNetwork
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 private object Port {
     const val NOTIFY = "sys/notify"
@@ -22,7 +21,7 @@ private val astral = astralTcpNetwork(GsonCoder())
 suspend fun Context.startNotificationService() {
     try {
         Adapter(this).run {
-            withContext(Dispatchers.IO) {
+            supervisorScope {
                 launch { handleCreate() }
                 launch { handleNotify() }
             }
@@ -52,14 +51,18 @@ private suspend fun Notification.Adapter.handleCreate() {
 
 private suspend fun Notification.Adapter.handleNotify() {
     println("Starting notification service handle notify")
-    astral.register(Port.NOTIFY) {
-        val notifications = decodeL16Array<Notification>().toList()
-        byte = try {
-            notify(notifications)
-            0
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            1
+    try {
+        astral.register(Port.NOTIFY) {
+            val notifications = decodeL16List<Notification>()
+            byte = try {
+                notify(notifications)
+                0
+            } catch (e: Throwable) {
+                e.printStackTrace()
+                1
+            }
         }
+    } catch (e: Throwable) {
+        e.printStackTrace()
     }
 }

@@ -28,15 +28,15 @@ data class Notification(
         val indeterminate: Boolean,
     )
 
+    data class Intent(
+        val action: String,
+        val uri: String,
+    )
+
     data class Channel(
         val id: String,
         val importance: Int,
         val name: String,
-    )
-
-    data class Intent(
-        val action: String,
-        val uri: String,
     )
 
     interface Adapter {

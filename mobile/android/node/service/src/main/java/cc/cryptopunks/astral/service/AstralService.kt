@@ -14,34 +14,39 @@ import cc.cryptopunks.astral.wrapper.startWarpdrive
 import cc.cryptopunks.astral.wrapper.stopAstral
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class AstralService : Service(), CoroutineScope by MainScope() {
+class AstralService : Service(), CoroutineScope {
+
+    override val coroutineContext = SupervisorJob() + Dispatchers.IO
 
     private val tag = ASTRAL + "Service"
 
     override fun onCreate() {
         Log.d(tag, "Starting astral service")
         startForegroundNotification(R.mipmap.ic_launcher)
-        launch(Dispatchers.IO) { cacheLogcat() }
+        launch { cacheLogcat() }
         startAstral()
-        launch(Dispatchers.IO) {
+        launch {
             println("Starting notification service")
             delay(2000)
             startNotificationService()
+            println("Finish notification service")
         }
-        launch(Dispatchers.IO) {
-            println("Starting notification service")
+        launch {
+            println("Starting content service")
             delay(2000)
             startContentResolverService()
+            println("Finish content service")
         }
-        launch(Dispatchers.IO) {
-            println("Starting notification warpdrive")
+        launch {
+            println("Starting warpdrive service")
             delay(4000)
             startWarpdrive()
+            println("Finish warpdrive service")
         }
     }
 

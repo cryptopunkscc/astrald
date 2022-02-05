@@ -3,22 +3,16 @@ package api
 const (
 	Port = "warpdrive"
 
-	Send   = Port + "/send"
-	Accept = Port + "/accept"
-	Reject = Port + "/reject"
+	QueryPeers     = Port + "/peers"
+	QuerySend      = Port + "/send"
+	QueryAccept    = Port + "/accept"
+	QueryUpdate    = Port + "/update"
+	QuerySubscribe = Port + "/subscribe"
+	QueryStatus    = Port + "/status"
+	QueryOffers    = Port + "/offers"
 
-	SenPeers  = Port + "/sender/peers"
-	SenSend   = Port + "/sender/send"
-	SenStatus = Port + "/sender/status"
-	SenSent   = Port + "/sender/sent"
-	SenEvents = Port + "/sender/events"
+	QueryOffer = Port + "/remote/offer"
+	QueryFiles = Port + "/remote/files"
 
-	RecIncoming = Port + "/recipient/incoming"
-	RecReceived = Port + "/recipient/received"
-	RecAccept   = Port + "/recipient/accept"
-	RecReject   = Port + "/recipient/reject"
-	RecUpdate   = Port + "/recipient/update"
-	RecEvents   = Port + "/recipient/events"
-
-	CliQuery = "wd"
+	QueryCli = "wd"
 )

@@ -24,7 +24,6 @@ fun Stream.read(
 ): ByteArray =
     read(size().toInt())
 
-
 fun Stream.readMessage(): String? {
     val result = StringBuilder()
     val buffer = ByteArray(4096)
@@ -35,6 +34,7 @@ fun Stream.readMessage(): String? {
     } while (len == buffer.size)
     return when {
         len == -1 && result.isEmpty() -> null
+        result.contains("null") -> null
         else -> result.toString()
     }
 }

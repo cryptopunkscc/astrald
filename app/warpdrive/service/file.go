@@ -29,53 +29,56 @@ func (c File) CopyFrom(reader io.Reader, offer *api.Offer) (err error) {
 func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, index int) (err error) {
 	info := offer.Files[index]
 	storage := file.Storage(c)
+	incoming := Incoming(api.Core(c))
 	if info.IsDir {
 		err := storage.MkDir(info.Uri, info.Perm)
 		if err != nil && !storage.IsExist(err) {
 			c.Println("Cannot make dir", info.Uri, err)
 			return err
 		}
-	} else {
-		writer, err := storage.FileWriter(info.Uri, info.Perm)
-		if err != nil {
-			c.Println("Cannot get writer for", info.Uri, err)
-			return err
-		}
-		defer writer.Close()
-		// Copy bytes
-		offer.Status.Status = api.StatusProgress
-		incoming := Incoming(api.Core(c))
-		update := func(progress int64, size int64) error {
-			info.Progress = progress
-			offer.Files[index] = info
-			incoming.Update(offer, index)
-			return nil
-		}
-		progress := &ioprogress.Reader{
-			Reader:       reader,
-			Size:         info.Size,
-			DrawInterval: 200 * time.Millisecond,
-			DrawFunc:     update,
-		}
-		_, err = io.CopyN(writer, progress, info.Size)
-		if err != nil {
-			c.Println("Cannot copy", info.Uri, err)
-			return err
-		}
-		err = writer.Close()
-		if err != nil {
-			c.Println("Cannot close info", info.Uri, err)
-			return err
-		}
+		offer.Progress = offer.Files[index].Size
+		go incoming.Update(offer, index)
+		return nil
 	}
-	return err
+	writer, err := storage.FileWriter(info.Uri, info.Perm)
+	if err != nil {
+		c.Println("Cannot get writer for", info.Uri, err)
+		return
+	}
+	defer writer.Close()
+	// Copy bytes
+	offer.Status.Status = api.StatusUpdated
+	update := func(progress int64, size int64) error {
+		offer.Progress = progress
+		go incoming.Update(offer, index)
+		return nil
+	}
+	progress := &ioprogress.Reader{
+		Reader:       reader,
+		Size:         info.Size,
+		DrawInterval: 1000 * time.Millisecond,
+		DrawFunc:     update,
+	}
+	_, err = io.CopyN(writer, progress, info.Size)
+	if err != nil {
+		c.Println("Cannot copy", info.Uri, err)
+		return
+	}
+	size := offer.Files[index].Size
+	if offer.Progress != size {
+		offer.Progress = size
+		go incoming.Update(offer, index)
+	}
+	err = writer.Close()
+	if err != nil {
+		c.Println("Cannot close info", info.Uri, err)
+		return
+	}
+	return
 }
 
 func (c File) CopyTo(writer io.Writer, offer *api.Offer) (err error) {
-	for index, info := range offer.Files {
-		if info.IsDir {
-			continue
-		}
+	for index := range offer.Files {
 		if err = c.copyFileTo(writer, offer, index); err != nil {
 			return
 		}
@@ -84,30 +87,40 @@ func (c File) CopyTo(writer io.Writer, offer *api.Offer) (err error) {
 }
 
 func (c File) copyFileTo(writer io.Writer, offer *api.Offer, index int) (err error) {
+	offer.Index = index
 	info := offer.Files[index]
+	outgoing := Outgoing(api.Core(c))
+	if info.IsDir {
+		offer.Progress = offer.Files[index].Size
+		go outgoing.Update(offer, index)
+		return
+	}
 	reader, err := c.resolve().Reader(info.Uri)
 	if err != nil {
 		c.Println("Cannot get reader", info.Uri, offer.Id, err)
 		return
 	}
-	offer.Status.Status = api.StatusProgress
-	outgoing := Outgoing(api.Core(c))
+	offer.Status.Status = api.StatusUpdated
 	update := func(progress int64, size int64) error {
-		info.Progress = progress
-		offer.Files[index] = info
-		outgoing.Update(offer, index)
+		offer.Progress = progress
+		go outgoing.Update(offer, index)
 		return nil
 	}
 	progress := &ioprogress.Reader{
 		Reader:       reader,
 		Size:         info.Size,
-		DrawInterval: 200 * time.Millisecond,
+		DrawInterval: 1000 * time.Millisecond,
 		DrawFunc:     update,
 	}
 	_, err = io.CopyN(writer, progress, info.Size)
 	if err != nil {
 		c.Println("Cannot copy", info.Uri, err)
 		return
+	}
+	size := offer.Files[index].Size
+	if offer.Progress != size {
+		offer.Progress = size
+		go outgoing.Update(offer, index)
 	}
 	return
 }

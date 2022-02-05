@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/android"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/desktop"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/stub"
-	"github.com/cryptopunkscc/astrald/app/warpdrive/storage/memory"
 )
 
 type Notify struct {
@@ -39,12 +38,11 @@ func (srv *Notify) Start() {
 
 func (srv *Notify) dispatch(n api.Notification) {
 	switch n.Status.Status {
-	case api.StatusAdded:
-		p := memory.Peers(*srv.Core).Get()[n.Peer]
-		if n.Incoming && p.Mod == api.PeerModAsk {
+	case api.StatusAwaiting:
+		if n.Incoming && n.Peer.Mod == api.PeerModAsk {
 			srv.notify.New(n)
 		}
-	case api.StatusProgress:
+	case api.StatusUpdated:
 		srv.notify.Progress(n)
 	case
 		api.StatusFailed,

@@ -9,13 +9,13 @@ import (
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
-func (r Recipient) Update(
+func (c Client) Update(
 	peerId api.PeerId,
 	attr string,
 	value string,
 ) (err error) {
 	// Connect to local service
-	conn, err := r.query(api.RecUpdate)
+	conn, err := c.query(api.QueryUpdate)
 	if err != nil {
 		return
 	}
@@ -24,19 +24,19 @@ func (r Recipient) Update(
 	req := []string{string(peerId), attr, value}
 	err = json.NewEncoder(conn).Encode(req)
 	if err != nil {
-		r.Println("Cannot send peer update", err)
+		c.Println("Cannot send peer update", err)
 		return
 	}
 	// Wait for OK
 	_, err = enc.ReadUint8(conn)
 	if err != nil {
-		r.Println("Cannot read ok", err)
+		c.Println("Cannot read ok", err)
 		return
 	}
 	return
 }
 
-func RecipientUpdate(srv handler.Context, request astral.Request) {
+func Update(srv handler.Context, request astral.Request) {
 	if srv.IsRejected(request) {
 		return
 	}
