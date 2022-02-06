@@ -77,24 +77,24 @@ func (c Offer) Add(offerId string, files []api.Info, peerId api.PeerId) {
 }
 
 func (c Offer) Update(offer *api.Offer, index int) {
-	offer.Index = index
 	n := api.Notification{
-		Offer:    *offer,
 		Incoming: c.incoming,
 		Peer:     Peer(c.Core).Get(offer.Peer),
 	}
+	offer.Index = index
 	if index > -1 && index < len(offer.Files) {
 		n.Info = &offer.Files[index]
 		offer.Update = time.Now().UnixMilli()
 	}
 	if index == len(offer.Files) {
-		offer.Progress = 0
+		offer.Status.Progress = 0
 	}
+	n.Offer = *offer
 	c.Notify <- n
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.mem.Save(offer)
-	if -1 < index && index < len(offer.Files) {
+	if index == -1 || index == len(offer.Files) {
 		c.file.Save(offer)
 	}
 	go c.notify(offer.Status, c.statusSubs)

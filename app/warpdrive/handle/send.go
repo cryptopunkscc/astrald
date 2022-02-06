@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	uuid "github.com/nu7hatch/gouuid"
+	"log"
+	"net/url"
 	"path/filepath"
 	"strings"
 )
@@ -137,14 +139,33 @@ func newOfferId() string {
 	return v4.String()
 }
 
+// TODO make it bulletproof
 func shrinkPaths(in []api.Info) (out []api.Info) {
 	dir, _ := filepath.Split(in[0].Uri)
 	if dir == "" {
 		return in
 	}
-	for _, info := range in {
-		info.Uri = strings.TrimPrefix(info.Uri, dir)
-		out = append(out, info)
+	uri, err := url.Parse(dir)
+	if err != nil {
+		log.Println("Cannot parse uri", err)
+		return in
+	}
+	if uri.Scheme != "" {
+		for _, info := range in {
+			uri, err = url.Parse(info.Uri)
+			if err != nil {
+				log.Println("Cannot parse uri", err)
+				return in
+			}
+			_, file := filepath.Split(uri.Path)
+			info.Uri = file
+			out = append(out, info)
+		}
+	} else {
+		for _, info := range in {
+			info.Uri = strings.TrimPrefix(info.Uri, dir)
+			out = append(out, info)
+		}
 	}
 	return
 }

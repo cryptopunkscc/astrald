@@ -54,12 +54,19 @@ private suspend fun Notification.Adapter.handleNotify() {
     try {
         astral.register(Port.NOTIFY) {
             val notifications = decodeL16List<Notification>()
-            byte = try {
+            val result: Byte = try {
                 notify(notifications)
                 0
             } catch (e: Throwable) {
+                println("Cannot display notification")
                 e.printStackTrace()
                 1
+            }
+            try {
+                byte = result
+            } catch (e: Throwable) {
+                println("Cannot send notification result")
+                e.printStackTrace()
             }
         }
     } catch (e: Throwable) {

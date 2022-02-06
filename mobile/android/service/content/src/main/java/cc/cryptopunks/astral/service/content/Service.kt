@@ -39,10 +39,16 @@ private suspend fun Content.Resolver.handleRead() = supervisorScope {
             byte = 0
             println()
             println("Start coping files")
-            reader(uri).copyTo(output)
-            println("Flushing files")
-            output.flush()
-            println("Flushed successfully")
+            try {
+                val file = reader(uri)
+                file.copyTo(output)
+                println("Flushing files")
+                output.flush()
+                println("Flushed successfully")
+            } catch (e: Throwable) {
+                println("Cannot copy file ${e.localizedMessage}")
+                e.printStackTrace()
+            }
         }
     } catch (e: Throwable) {
         println("Finish handling read")
@@ -54,9 +60,14 @@ private suspend fun Content.Resolver.handleInfo() {
     try {
         astral.register(Port.INFO) {
             val uri = stringL8
-            val info = info(uri)
-            val data = encoder.encode(arrayOf(info))
-            write(data.toByteArray())
+            try {
+                val info = info(uri)
+                val data = encoder.encode(arrayOf(info))
+                write(data.toByteArray())
+            } catch (e: Throwable) {
+                println("Cannot send info ${e.localizedMessage}")
+                e.printStackTrace()
+            }
         }
     } catch (e: Throwable) {
         println("Finish handling info")

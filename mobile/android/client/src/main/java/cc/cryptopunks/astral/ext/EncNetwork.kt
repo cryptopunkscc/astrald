@@ -8,7 +8,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 
 suspend fun EncNetwork.register(
     port: String,
@@ -18,17 +17,14 @@ suspend fun EncNetwork.register(
     println("registered: $port")
     while (true) {
         val connection = handler.next()
-        println("next connection")
         launch(Dispatchers.IO) {
             val stream = connection.accept()
-            println("accepted")
             try {
                 stream.handle()
             } catch (e: Throwable) {
                 e.printStackTrace()
             } finally {
                 stream.close()
-                println("closed")
             }
         }
     }
