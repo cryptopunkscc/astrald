@@ -90,11 +90,12 @@ func (c Offer) Update(offer *api.Offer, index int) {
 		offer.Status.Progress = 0
 	}
 	n.Offer = *offer
-	c.Notify <- n
+	//c.Notify <- n TODO temporary disabled for transfer
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.mem.Save(offer)
 	if index == -1 || index == len(offer.Files) {
+		c.Notify <- n // TODO temporary disabled for transfer
 		c.file.Save(offer)
 	}
 	go c.notify(offer.Status, c.statusSubs)

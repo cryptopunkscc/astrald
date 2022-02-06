@@ -33,7 +33,7 @@ class AstralService : Service(), CoroutineScope {
         launch {
             println("Starting notification service")
             delay(2000)
-//            startNotificationService()
+            startNotificationService()
             println("Finish notification service")
         }
         launch {
