@@ -13,6 +13,8 @@ import cc.cryptopunks.astral.proto.Request
 import cc.cryptopunks.astral.proto.Response
 import java.io.Closeable
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.ServerSocket
 import java.net.Socket
 
@@ -55,7 +57,6 @@ private class TcpNetwork(
             )
             encodeL16(request)
             val response = decodeL16<Response>()
-            println("connect response: $response")
             if (response.status != "ok")
                 throw AstralError(response.error)
         }
@@ -98,8 +99,8 @@ private class TcpStream(
     val socket: Socket,
     encoder: Encoder,
 ) : EncStream, Closeable, Encoder by encoder {
-    override val input by lazy { socket.getInputStream().buffered(4096) }
-    override val output by lazy { socket.getOutputStream().buffered(4096) }
+    override val input: InputStream by lazy { socket.getInputStream() }
+    override val output: OutputStream by lazy { socket.getOutputStream() }
     override fun close() = try {
         socket.close()
     } catch (e: Throwable) {

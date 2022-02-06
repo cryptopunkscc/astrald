@@ -19,19 +19,28 @@ func (srv *Notify) Init() {
 	srv.notify = srv.newNotify()
 }
 
-func (srv *Notify) newNotify() api.Notify {
+func (srv *Notify) newNotify() (notify api.Notify) {
 	switch srv.Core.Platform {
 	case api.PlatformDesktop:
-		return desktop.Notifier{}
+		notify = &desktop.Notifier{}
 	case api.PlatformAndroid:
-		return android.Notifier{}.Init()
+		notifier := &android.Notifier{}
+		notifier = notifier.Init()
+		if notifier != nil {
+			notify = notifier
+		}
 	default:
-		return stub.Notifier{}
+		notify = &stub.Notifier{}
 	}
+	return
 }
 
 func (srv *Notify) Start() {
 	for n := range srv.notifications {
+		canNotify := srv.notify != nil
+		if !canNotify {
+			continue
+		}
 		srv.dispatch(n)
 	}
 }

@@ -19,7 +19,7 @@ type Notifier struct {
 	notifications map[api.OfferId]*notify.Notification
 }
 
-func (m Notifier) Init() *Notifier {
+func (m *Notifier) Init() *Notifier {
 	if m.Api == nil {
 		m.Api = notify.Client{}
 	}
@@ -36,13 +36,15 @@ func (m Notifier) Init() *Notifier {
 	m.notifications = map[api.OfferId]*notify.Notification{}
 	err := m.Create(m.inChannel)
 	if err != nil {
-		panic(err)
+		log.Println("Cannot create incoming notification channel", err)
+		return nil
 	}
 	err = m.Create(m.outChannel)
 	if err != nil {
-		panic(err)
+		log.Println("Cannot create outgoing notification channel", err)
+		return nil
 	}
-	return &m
+	return m
 }
 
 func (m *Notifier) create(an api.Notification) (n *notify.Notification) {
