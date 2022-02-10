@@ -62,7 +62,7 @@ func (r Offers) Get() api.Offers {
 		offer := &api.Offer{}
 		err = gob.NewDecoder(file).Decode(offer)
 		if err != nil {
-			r.Println("cannot decode", err)
+			r.Println("cannot decode", path, err)
 			return nil
 		}
 		offers[id] = offer

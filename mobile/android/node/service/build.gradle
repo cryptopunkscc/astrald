@@ -7,7 +7,7 @@ android {
     compileSdk 28
 
     defaultConfig {
-        minSdk 21
+        minSdk 24
         targetSdk 28
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -31,8 +31,6 @@ android {
 
 dependencies {
     implementation project(':node:wrapper')
-    implementation project(':service:notification')
-    implementation project(':service:content')
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.1'
     implementation 'androidx.core:core-ktx:1.6.0'

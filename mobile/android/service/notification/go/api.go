@@ -1,5 +1,10 @@
 package notify
 
+const (
+	createChannel = "sys/notify/channel"
+	notify        = "sys/notify"
+)
+
 type Api interface {
 	Create(channel Channel) error
 	Notify(notifications ...Notification) error

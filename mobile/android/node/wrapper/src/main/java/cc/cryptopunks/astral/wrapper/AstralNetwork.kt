@@ -3,6 +3,10 @@ package cc.cryptopunks.astral.wrapper
 import android.content.Context
 import android.util.Log
 import astralmobile.Astralmobile
+import cc.cryptopunks.astral.service.content.ContentService
+import cc.cryptopunks.astral.service.notification.NotificationService
+import cc.cryptopunks.astral.wrapper.adapter.ContentResolverAdapter
+import cc.cryptopunks.astral.wrapper.adapter.NotifyAdapter
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -43,12 +47,13 @@ fun Context.startAstral(): Unit =
             .resolve(ASTRAL_DIR)
             .apply { mkdir() }
             .absolutePath
-
+        val notifyAdapter = NotifyAdapter(NotificationService(this))
+        val contentAdapter = ContentResolverAdapter(ContentService(contentResolver))
         astralJob = astralScope.launch {
             val multicastLock = acquireMulticastWakeLock()
             try {
                 status.value = AstralStatus.Starting
-                Astralmobile.start(dir)
+                Astralmobile.start(dir, notifyAdapter, contentAdapter)
             } catch (e: Throwable) {
                 e.printStackTrace()
             } finally {

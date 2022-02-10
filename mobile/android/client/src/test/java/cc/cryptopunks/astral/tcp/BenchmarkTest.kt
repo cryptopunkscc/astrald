@@ -22,7 +22,7 @@ class BenchmarkTest {
             launch {
                 val port = astralTcpNetwork(GsonCoder()).register("tcp-test")
                 val conn = port.next()
-                val stream = conn.accept()
+                val stream = conn().accept()
                 repeat(times) {
                     stream.readMessage()
                     received++

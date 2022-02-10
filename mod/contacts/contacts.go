@@ -30,7 +30,6 @@ func (p Contacts) Run(ctx context.Context, node *_node.Node) error {
 			go func(conn io.ReadWriteCloser) {
 				defer conn.Close()
 				var contacts []Contact
-				node.Presence.Events()
 				for contact := range node.Contacts.All() {
 					contacts = append(contacts, Contact{
 						Id:   contact.Identity().String(),

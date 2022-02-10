@@ -21,7 +21,7 @@ class SimpleTest {
             launch {
                 val port = astralTcpNetwork(GsonCoder()).register("tcp-test")
                 val conn = port.next()
-                val stream = conn.accept()
+                val stream = conn().accept()
                 val message = stream.readMessage()
                 received = message
                 stream.close()

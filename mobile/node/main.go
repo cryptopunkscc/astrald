@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/app/warpdrive"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	content "github.com/cryptopunkscc/astrald/mobile/android/service/content/go"
+	notify "github.com/cryptopunkscc/astrald/mobile/android/service/notification/go"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
@@ -23,8 +25,14 @@ var ctx context.Context
 var astralNode *node.Node
 var astralHomeDir string
 
-func Start(astralHome string) error {
+func Start(
+	astralHome string,
+	nativeNotifier NativeAndroidNotify,
+	nativeContentResolver NativeAndroidContentResolver,
+) error {
 	astralHomeDir = astralHome
+	notifier := &AndroidNotify{nativeNotifier}
+	contentResolver := &AndroidContentResolver{nativeContentResolver}
 
 	log.Println("Staring astrald")
 	astral.Instance().UseTCP = true
@@ -44,9 +52,13 @@ func Start(astralHome string) error {
 		info.Info{},
 		id.Id{},
 		contacts.Contacts{},
+		notify.CreateChannel{Api: notifier},
+		notify.DispatchNotification{Api: notifier},
+		content.GetInfo{Api: contentResolver},
+		content.Read{Api: contentResolver},
 	)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	astralNode = n
 
@@ -54,7 +66,6 @@ func Start(astralHome string) error {
 
 	<-ctx.Done()
 
-	// Run the node
 	return nil
 }
 
