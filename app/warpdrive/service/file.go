@@ -59,9 +59,9 @@ func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, index int) (err e
 		DrawInterval: 1000 * time.Millisecond,
 		DrawFunc:     update,
 	}
-	_, err = io.CopyN(writer, progress, info.Size)
+	l, err := io.CopyN(writer, progress, info.Size)
 	if err != nil {
-		c.Println("Cannot copy", info.Uri, err)
+		c.Println("Cannot copy", info.Uri, err, "expected size", info.Size, "but was", l)
 		return
 	}
 	size := offer.Files[index].Size

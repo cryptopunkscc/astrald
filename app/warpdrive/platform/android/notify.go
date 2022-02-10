@@ -3,7 +3,7 @@ package android
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
-	"github.com/cryptopunkscc/astrald/mobile/android/service/notification/api"
+	"github.com/cryptopunkscc/astrald/mobile/android/service/notification/go"
 	"log"
 	"strconv"
 	"strings"

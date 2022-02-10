@@ -31,6 +31,9 @@ repositories {
 }
 dependencies {
     implementation(name: 'astral', ext: 'aar')
+    api project(':client')
+    api project(':service:notification')
+    api project(':service:content')
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.1'
     implementation 'androidx.core:core-ktx:1.6.0'
     testImplementation 'junit:junit:4.13.2'

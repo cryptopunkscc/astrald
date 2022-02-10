@@ -18,7 +18,7 @@ suspend fun EncNetwork.register(
     while (true) {
         val connection = handler.next()
         launch(Dispatchers.IO) {
-            val stream = connection.accept()
+            val stream = connection().accept()
             try {
                 stream.handle()
             } catch (e: Throwable) {

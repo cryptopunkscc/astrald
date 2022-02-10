@@ -11,7 +11,7 @@ interface EncNetwork : Network {
 }
 
 interface EncPort : Port {
-    override fun next(): EncConnection
+    override fun next(): () -> EncConnection
 }
 
 interface EncConnection : Connection {
