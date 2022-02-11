@@ -36,30 +36,29 @@ internal fun Service.startForegroundNotification(@DrawableRes icon: Int) {
 }
 
 
-private fun Context.createNotificationChannel(): String = when {
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ->
-        NotificationChannel(
-            "astral",
-            "Astral Service",
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            lightColor = Color.BLUE
-//            importance = NotificationManager.IMPORTANCE_NONE
-            lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+private fun Context.createNotificationChannel(): String {
+    val id = "astral"
+    val channelName = "Astral Service"
+    val importance = NotificationManager.IMPORTANCE_LOW
+    val color = Color.BLUE
+    val visibility = Notification.VISIBILITY_PRIVATE
+    return when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        -> NotificationChannel(id, channelName, importance).apply {
+            lightColor = color
+            lockscreenVisibility = visibility
         }.also { channel ->
-            requireNotNull(getSystemService<NotificationManager>())
-                .createNotificationChannel(channel)
+            getSystemService<NotificationManager>()
+                ?.createNotificationChannel(channel)
+                ?: throw Exception("Cannot obtain NotificationManager")
         }.id
-
-    else ->
-        NotificationChannelCompat.Builder(
-            "astral",
-            NotificationManagerCompat.IMPORTANCE_HIGH
-        ).apply {
-            setLightColor(Color.BLUE)
-//            setImportance(NotificationManagerCompat.IMPORTANCE_NONE)
+        else
+        -> NotificationChannelCompat.Builder(id, importance).apply {
+            setLightColor(color)
         }.build().also { channel ->
-            requireNotNull(getSystemService<NotificationManagerCompat>())
-                .createNotificationChannel(channel)
+            getSystemService<NotificationManagerCompat>()
+                ?.createNotificationChannel(channel)
+                ?: throw Exception("Cannot obtain NotificationManagerCompat")
         }.id
+    }
 }
