@@ -21,6 +21,8 @@ data class Notification(
     val autoCancel: Boolean = false,
     val ongoing: Boolean = false,
     val onlyAlertOnce: Boolean = false,
+    val defaults: Int = 0,
+    val silent: Boolean = false,
     val priority: Int = NotificationCompat.PRIORITY_DEFAULT,
     val group: String? = null,
     val groupSummary: Boolean = false,
@@ -85,6 +87,8 @@ private fun Notification.compat(context: Context) = NotificationCompat
     .setSmallIcon(resolveIconId(smallIcon))
     .setOngoing(ongoing)
     .setOnlyAlertOnce(onlyAlertOnce)
+    .setDefaults(defaults)
+    .setSilent(silent)
     .setGroup(group)
     .setGroupSummary(groupSummary)
     .setPriority(priority)

@@ -15,6 +15,8 @@ type Notifier struct {
 	notify.Api
 	inChannel     notify.Channel
 	outChannel    notify.Channel
+	inGroup       notify.Notification
+	outGroup      notify.Notification
 	lastId        int
 	notifications map[api.OfferId]*notify.Notification
 }
@@ -33,7 +35,25 @@ func (m *Notifier) Init() *Notifier {
 		Name:       "Warp Drive outgoing",
 		Importance: notify.ImportanceDefault,
 	}
+	groupCommon := notify.Notification{
+		SubText:       "Warp Drive",
+		OnlyAlertOnce: true,
+		AutoCancel:    true,
+		Silent:        true,
+		GroupSummary:  true,
+	}
+	m.inGroup = groupCommon
+	m.inGroup.Id = m.nextId()
+	m.inGroup.ChannelId = m.inChannel.Id
+	m.inGroup.Group = "in"
+
+	m.outGroup = groupCommon
+	m.outGroup.Id = m.nextId()
+	m.outGroup.ChannelId = m.outChannel.Id
+	m.outGroup.Group = "out"
+
 	m.notifications = map[api.OfferId]*notify.Notification{}
+
 	err := m.Create(m.inChannel)
 	if err != nil {
 		log.Println("Cannot create incoming notification channel", err)
@@ -61,6 +81,11 @@ func (m *Notifier) create(an api.Notification) (n *notify.Notification) {
 		ContentIntent: &notify.Intent{
 			Uri: "warpdrive://" + string(an.Offer.Id),
 		},
+	}
+	if an.In {
+		n.Group = "in"
+	} else {
+		n.Group = "out"
 	}
 	m.notifications[an.Offer.Id] = n
 	if an.Incoming {
@@ -101,10 +126,7 @@ func (m *Notifier) create(an api.Notification) (n *notify.Notification) {
 
 func (m *Notifier) New(an api.Notification) {
 	if n := m.create(an); an.In {
-		err := m.Notify(*n)
-		if err != nil {
-			log.Println("Cannot display notification", err)
-		}
+		m.notify(n)
 	}
 }
 
@@ -145,10 +167,7 @@ func (m *Notifier) Progress(an api.Notification) {
 		Max:     int(an.Size),
 		Current: int(an.Progress),
 	}
-	err := m.Notify(*n)
-	if err != nil {
-		log.Println("Cannot display notification", err)
-	}
+	m.notify(n)
 }
 
 func (m *Notifier) Finish(an api.Notification) {
@@ -167,7 +186,17 @@ func (m *Notifier) Finish(an api.Notification) {
 		formatTransferredSize(an),
 	)
 	n.Progress = nil
-	err := m.Notify(*n)
+	m.notify(n)
+}
+
+func (m *Notifier) notify(n *notify.Notification) {
+	var group notify.Notification
+	if n.Group == m.inGroup.Group {
+		group = m.inGroup
+	} else {
+		group = m.outGroup
+	}
+	err := m.Notify(*n, group)
 	if err != nil {
 		log.Println("Cannot display notification", err)
 	}

@@ -21,6 +21,8 @@ type Notification struct {
 	SmallIcon     string
 	Number        int
 	Ongoing       bool
+	Silent        bool
+	Defaults      int
 	OnlyAlertOnce bool
 	AutoCancel    bool
 	Group         string
