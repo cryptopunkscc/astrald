@@ -16,6 +16,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/info"
 	"github.com/cryptopunkscc/astrald/node"
 	"log"
+	"os"
 	"path/filepath"
 )
 
@@ -23,14 +24,20 @@ var identity string
 var stop context.CancelFunc
 var ctx context.Context
 var astralNode *node.Node
-var astralHomeDir string
+var dataDir string
 
 func Start(
-	astralHome string,
+	dir string,
 	nativeNotifier NativeAndroidNotify,
 	nativeContentResolver NativeAndroidContentResolver,
 ) error {
-	astralHomeDir = astralHome
+	dataDir = dir
+	nodeDir := filepath.Join(dataDir, "node")
+	err := os.MkdirAll(nodeDir, 0700)
+	if err != nil {
+		return err
+	}
+
 	notifier := &AndroidNotify{nativeNotifier}
 	contentResolver := &AndroidContentResolver{nativeContentResolver}
 
@@ -43,8 +50,7 @@ func Start(
 
 	stop = shutdown
 	n, err := node.Run(
-		ctx,
-		astralHome,
+		ctx, nodeDir,
 		admin.Admin{},
 		&apphost.Module{},
 		connect.Connect{},
@@ -84,7 +90,7 @@ func StartWarpdrive() {
 		Core: api.Core{
 			Config: api.Config{
 				Platform:       api.PlatformAndroid,
-				RepositoryDir:  filepath.Join(astralHomeDir, "warpdrive"),
+				RepositoryDir:  filepath.Join(dataDir, "warpdrive"),
 				RemoteResolver: true,
 			},
 		},
