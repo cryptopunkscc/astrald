@@ -11,6 +11,7 @@
         <service
             android:name=".AstralService"
             android:exported="true" />
+
         <activity
             android:name=".ui.MainActivity"
             android:label="@string/astral_node_app_name"
@@ -23,6 +24,21 @@
             <intent-filter>
                 <data
                     android:host="main"
+                    android:scheme="astral" />
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ui.PermissionActivity"
+            android:label="Permission required"
+            android:launchMode="singleInstance">
+            <intent-filter>
+                <data
+                    android:host="permissions"
+                    android:path="/write/storage"
                     android:scheme="astral" />
                 <action android:name="android.intent.action.VIEW" />
 
