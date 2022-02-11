@@ -24,7 +24,6 @@ import java.io.File
 import java.util.concurrent.Executors
 
 const val ASTRAL = "Astral"
-private const val ASTRAL_DIR = "astrald"
 
 private val astralScope = CoroutineScope(
     SupervisorJob() + Executors.newSingleThreadExecutor().asCoroutineDispatcher()
@@ -43,10 +42,7 @@ enum class AstralStatus { Starting, Started, Stopped }
 fun Context.startAstral(): Unit =
     if (status.value == AstralStatus.Started) Unit
     else {
-        val dir = File(applicationInfo.dataDir)
-            .resolve(ASTRAL_DIR)
-            .apply { mkdir() }
-            .absolutePath
+        val dir = File(applicationInfo.dataDir).absolutePath
         val notifyAdapter = NotifyAdapter(NotificationService(this))
         val contentAdapter = ContentResolverAdapter(ContentService(contentResolver))
         astralJob = astralScope.launch {

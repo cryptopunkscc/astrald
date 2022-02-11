@@ -7,7 +7,7 @@ android {
     compileSdk 28
 
     defaultConfig {
-        applicationId "cc.cryptopunks.astral.node"
+        applicationId "cc.cryptopunks.astral"
         minSdk 24
         targetSdk 28
         versionCode 1
