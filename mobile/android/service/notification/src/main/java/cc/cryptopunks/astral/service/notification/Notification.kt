@@ -28,6 +28,7 @@ data class Notification(
     val groupSummary: Boolean = false,
     val progress: Progress? = null,
     val contentIntent: Intent? = null,
+    val action: Action? = null,
 ) {
 
     data class Progress(
@@ -37,6 +38,7 @@ data class Notification(
     )
 
     data class Intent(
+        val type: String,
         val action: String,
         val uri: String,
     )
@@ -45,6 +47,12 @@ data class Notification(
         val id: String,
         val importance: Int,
         val name: String,
+    )
+
+    data class Action(
+        val icon: String,
+        val title: String? = null,
+        val intent: Intent? = null,
     )
 
     interface Service {
@@ -93,6 +101,7 @@ private fun Notification.compat(context: Context) = NotificationCompat
     .setGroupSummary(groupSummary)
     .setPriority(priority)
     .setContentIntent(contentIntent?.android(context))
+    .addAction(action?.android(context))
     .setProgress(progress)
     .build()
 
@@ -101,7 +110,14 @@ private fun Notification.Intent.android(context: Context): PendingIntent {
     val intent = Intent(action, Uri.parse(uri)).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK
     }
-    return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+    return when (type) {
+        "service" -> PendingIntent.getService(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+        else -> PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+}
+
+private fun Notification.Action.android(context: Context): NotificationCompat.Action {
+    return NotificationCompat.Action(resolveIconId(icon), title, intent?.android(context))
 }
 
 private fun NotificationCompat.Builder.setProgress(progress: Notification.Progress?) = apply {

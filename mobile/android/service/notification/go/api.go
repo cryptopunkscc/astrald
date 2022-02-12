@@ -30,6 +30,7 @@ type Notification struct {
 	Priority      int
 	ContentIntent *Intent
 	Progress      *Progress
+	Action        *Action
 }
 
 type Progress struct {
@@ -39,6 +40,7 @@ type Progress struct {
 }
 
 type Intent struct {
+	Type   string
 	Action string
 	Uri    string
 }
@@ -47,6 +49,12 @@ type Channel struct {
 	Id         string
 	Name       string
 	Importance int
+}
+
+type Action struct {
+	Icon   string
+	Title  string
+	Intent *Intent
 }
 
 const (

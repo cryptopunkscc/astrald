@@ -16,7 +16,7 @@ import java.util.*
 
 suspend fun cacheLogcat() = logcatFlow().formatAstralLogs().collect(logcatCache::emit)
 
-fun clearLogcatCache() = logcatCache.resetReplayCache()
+fun clearLogcatMemory() = logcatCache.resetReplayCache()
 
 fun logcatCacheFlow(): Flow<String> = logcatCache
 
@@ -48,6 +48,15 @@ private fun logcatFlow(): Flow<String> = callbackFlow {
         process?.apply {
             destroy()
         }
+    }
+}
+
+fun clearLogcatProcess() {
+    try {
+        Runtime.getRuntime().exec(arrayOf("logcat", "-c"))
+    } catch (e: Throwable) {
+        println("Cannot clear logcat")
+        e.printStackTrace()
     }
 }
 
