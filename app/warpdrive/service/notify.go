@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/android"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/desktop"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/stub"
+	"time"
 )
 
 type Notify struct {
@@ -36,12 +37,19 @@ func (srv *Notify) newNotify() (notify api.Notify) {
 }
 
 func (srv *Notify) Start() {
+	debounce := int64(500)
+	lastUpdate := int64(0)
 	for n := range srv.notifications {
 		canNotify := srv.notify != nil
 		if !canNotify {
 			continue
 		}
+		if n.Status.Status == api.StatusUpdated &&
+			time.Now().UnixMilli() < lastUpdate+debounce {
+			continue
+		}
 		srv.dispatch(n)
+		lastUpdate = time.Now().UnixMilli()
 	}
 }
 
