@@ -207,11 +207,14 @@ func Upload(srv handler.Context, request astral.Request) {
 		}
 		service.Outgoing(srv.Core).Update(offer, sent)
 	}()
-	// Send files
-	err = service.File(srv.Core).CopyTo(filesConn, offer)
-	if err != nil {
-		return
-	}
+	go func() {
+		// Send files
+		err = service.File(srv.Core).CopyTo(filesConn, offer)
+		if err != nil {
+			srv.Println("Cannot copy files", filesQuery, err)
+			return
+		}
+	}()
 	// Wait OK
 	_, err = enc.ReadUint8(filesConn)
 	if err != nil {
