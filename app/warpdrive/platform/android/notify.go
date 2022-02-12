@@ -153,7 +153,6 @@ func (m *Notifier) Progress(an api.Notification) {
 	n := m.notifications[an.Offer.Id]
 	if n == nil {
 		n = m.create(an)
-		return
 	}
 	if an.Info == nil {
 		log.Println("Cannot update progress for nil Info")
@@ -174,7 +173,6 @@ func (m *Notifier) Finish(an api.Notification) {
 	n := m.notifications[an.Offer.Id]
 	if n == nil {
 		n = m.create(an)
-		return
 	}
 	n.Ongoing = false
 	n.AutoCancel = true
@@ -187,6 +185,7 @@ func (m *Notifier) Finish(an api.Notification) {
 	)
 	n.Progress = nil
 	m.notify(n)
+	delete(m.notifications, an.Offer.Id)
 }
 
 func (m *Notifier) notify(n *notify.Notification) {
