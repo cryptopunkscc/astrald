@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private val logView: RecyclerView by lazy { findViewById(R.id.list) }
     private val startButton: TextView by lazy { findViewById(R.id.startServiceButton) }
     private val killButton: TextView by lazy { findViewById(R.id.killServiceButton) }
+    private val fixLogButton: TextView by lazy { findViewById(R.id.fixLogButton) }
     private val serviceIntent by lazy { AstralService.intent(this) }
     private val linearLayoutManager by lazy { LinearLayoutManager(this) }
     private val logAdapter = LogAdapter()
@@ -53,6 +54,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         nodeIdTextView.setOnLongClickListener { copyNodeId(); true }
         killButton.setOnClickListener { stopAstralService() }
         startButton.setOnClickListener { startAstralService() }
+        fixLogButton.setOnClickListener { clearLogcatProcess() }
 
     }
 

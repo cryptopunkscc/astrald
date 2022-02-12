@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import cc.cryptopunks.astral.service.ui.cacheLogcat
-import cc.cryptopunks.astral.service.ui.clearLogcatCache
+import cc.cryptopunks.astral.service.ui.clearLogcatMemory
 import cc.cryptopunks.astral.wrapper.ASTRAL
 import cc.cryptopunks.astral.wrapper.startAstral
 import cc.cryptopunks.astral.wrapper.startWarpdrive
@@ -52,7 +52,7 @@ class AstralService : Service(), CoroutineScope {
         stopAstral()
         Log.d(tag, "Destroying astral service")
         cancel()
-        clearLogcatCache()
+        clearLogcatMemory()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY

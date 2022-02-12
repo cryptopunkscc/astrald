@@ -45,6 +45,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Kill Node"/>
+        <Button
+            android:id="@+id/fixLogButton"
+            android:contentDescription="call logcat -c to clear log cache"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Fix log" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -79,11 +79,17 @@ func (m *Notifier) create(an api.Notification) (n *notify.Notification) {
 		SubText:       "Warp Drive",
 		Number:        len(an.Files),
 		ContentIntent: &notify.Intent{
-			Uri: "warpdrive://" + string(an.Offer.Id),
+			Uri: "warpdrive://offer/" + string(an.Offer.Id),
 		},
 	}
 	if an.In {
 		n.Group = "in"
+		n.Action = &notify.Action{
+			Title: "download",
+			Intent: &notify.Intent{
+				Uri: "warpdrive://download/" + string(an.Offer.Id),
+			},
+		}
 	} else {
 		n.Group = "out"
 	}
@@ -166,6 +172,7 @@ func (m *Notifier) Progress(an api.Notification) {
 		Max:     int(an.Size),
 		Current: int(an.Progress),
 	}
+	n.Action = nil
 	m.notify(n)
 }
 
