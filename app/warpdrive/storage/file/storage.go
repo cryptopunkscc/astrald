@@ -21,6 +21,10 @@ func (s Storage) MkDir(path string, perm os.FileMode) error {
 }
 
 func (s Storage) FileWriter(path string, perm os.FileMode) (io.WriteCloser, error) {
+	// Try to create storage dir on demand.
+	if err := s.MkDir("", 0755); err != nil {
+		return nil, err
+	}
 	return os.OpenFile(s.normalizePath(path), os.O_RDWR|os.O_CREATE|os.O_TRUNC, perm)
 }
 

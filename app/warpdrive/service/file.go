@@ -64,10 +64,9 @@ func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, index int) (err e
 		c.Println("Cannot copy", info.Uri, err, "expected size", info.Size, "but was", l)
 		return
 	}
-	size := offer.Files[index].Size
-	if offer.Progress != size {
-		offer.Progress = size
-		go incoming.Update(offer, index)
+	if offer.Progress != info.Size {
+		offer.Progress = info.Size
+		incoming.Update(offer, index)
 	}
 	err = writer.Close()
 	if err != nil {
@@ -117,10 +116,9 @@ func (c File) copyFileTo(writer io.Writer, offer *api.Offer, index int) (err err
 		c.Println("Cannot copy", info.Uri, err)
 		return
 	}
-	size := offer.Files[index].Size
-	if offer.Progress != size {
-		offer.Progress = size
-		go outgoing.Update(offer, index)
+	if offer.Progress != info.Size {
+		offer.Progress = info.Size
+		outgoing.Update(offer, index)
 	}
 	return
 }

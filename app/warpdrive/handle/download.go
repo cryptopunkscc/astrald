@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/enc"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"io"
+	"time"
 )
 
 func (c Client) Download(id api.OfferId) (err error) {
@@ -124,6 +125,7 @@ func download(srv handler.Context, id api.OfferId) (err error) {
 				sent = offer.Index
 				offer.Status.Status = api.StatusFailed
 			}
+			time.Sleep(200 * time.Millisecond)
 			service.Incoming(srv.Core).Update(offer, sent)
 		}()
 		// Copy files to storage
@@ -205,6 +207,7 @@ func Upload(srv handler.Context, request astral.Request) {
 			sent = offer.Index
 			offer.Status.Status = api.StatusFailed
 		}
+		time.Sleep(200 * time.Millisecond)
 		service.Outgoing(srv.Core).Update(offer, sent)
 	}()
 	go func() {
