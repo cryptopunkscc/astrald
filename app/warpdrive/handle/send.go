@@ -157,7 +157,8 @@ func shrinkPaths(in []api.Info) (out []api.Info) {
 				log.Println("Cannot parse uri", err)
 				return in
 			}
-			_, file := filepath.Split(uri.Path)
+			path := strings.Replace(uri.Path, ":", "/", -1)
+			_, file := filepath.Split(path)
 			info.Uri = file
 			out = append(out, info)
 		}

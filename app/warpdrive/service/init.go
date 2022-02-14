@@ -83,10 +83,6 @@ func storageDir() string {
 		panic(err)
 	}
 	dir := filepath.Join(home, "warpdrive", "received")
-	err = os.MkdirAll(dir, 0755)
-	if err != nil && !os.IsExist(err) {
-		panic(err)
-	}
 	return dir
 }
 
