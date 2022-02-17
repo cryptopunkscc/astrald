@@ -15,6 +15,10 @@ type Unpacker interface {
 	Unpack(network string, data []byte) (Addr, error)
 }
 
+type AddrLister interface {
+	Addresses() []AddrSpec
+}
+
 // AddrSpec holds additional information about an Addr.
 type AddrSpec struct {
 	Addr

@@ -4,8 +4,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 )
 
-const NetworkName = "bt"
-
 var _ infra.Network = &Bluetooth{}
 
 type Bluetooth struct {
