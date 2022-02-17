@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/app/warpdrive"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/infra/bt"
 	content "github.com/cryptopunkscc/astrald/mobile/android/service/content/go"
 	notify "github.com/cryptopunkscc/astrald/mobile/android/service/notification/go"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -28,6 +29,7 @@ var dataDir string
 
 func Start(
 	dir string,
+	btNetwork BTClient,
 	nativeNotifier NativeAndroidNotify,
 	nativeContentResolver NativeAndroidContentResolver,
 ) error {
@@ -36,6 +38,10 @@ func Start(
 	err := os.MkdirAll(nodeDir, 0700)
 	if err != nil {
 		return err
+	}
+
+	if btNetwork != nil {
+		bt.Instance = newBTAdapter(btNetwork)
 	}
 
 	notifier := &AndroidNotify{nativeNotifier}

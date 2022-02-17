@@ -5,6 +5,7 @@ import android.util.Log
 import astralmobile.Astralmobile
 import cc.cryptopunks.astral.service.content.ContentService
 import cc.cryptopunks.astral.service.notification.NotificationService
+import cc.cryptopunks.astral.wrapper.adapter.BTWrapper
 import cc.cryptopunks.astral.wrapper.adapter.ContentResolverAdapter
 import cc.cryptopunks.astral.wrapper.adapter.NotifyAdapter
 import kotlinx.coroutines.CompletableDeferred
@@ -43,13 +44,14 @@ fun Context.startAstral(): Unit =
     if (status.value == AstralStatus.Started) Unit
     else {
         val dir = File(applicationInfo.dataDir).absolutePath
+        val bluetooth = BTWrapper()
         val notifyAdapter = NotifyAdapter(NotificationService(this))
         val contentAdapter = ContentResolverAdapter(ContentService(contentResolver))
         astralJob = astralScope.launch {
             val multicastLock = acquireMulticastWakeLock()
             try {
                 status.value = AstralStatus.Starting
-                Astralmobile.start(dir, notifyAdapter, contentAdapter)
+                Astralmobile.start(dir, bluetooth, notifyAdapter, contentAdapter)
             } catch (e: Throwable) {
                 e.printStackTrace()
             } finally {
