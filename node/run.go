@@ -13,7 +13,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/peer"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"github.com/cryptopunkscc/astrald/node/server"
-	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/storage"
 	"log"
 )
@@ -35,12 +34,13 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 		Config:  cfg,
 		Store:   store,
 		Ports:   hub.New(),
-		Peers:   peer.NewManager(),
 		peers:   make(map[string]*peer.Peer),
 		queries: make(chan *nlink.Query),
-		events:  &sig.Queue{},
 		links:   make(chan *alink.Link, 1),
 	}
+
+	// Set up peer manager
+	node.Peers = peer.NewManager(&node.events)
 
 	// Set up identity
 	if err := node.setupIdentity(); err != nil {
@@ -78,7 +78,7 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 	node.runModules(ctx, modules)
 
 	// Presence
-	node.Presence = presence.Run(ctx, node.Infra)
+	node.Presence = presence.Run(ctx, node.Infra, &node.events)
 
 	node.Linking = linking.Run(ctx, node.identity, node.Contacts, node.Peers, node.Infra)
 

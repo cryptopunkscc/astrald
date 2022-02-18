@@ -19,9 +19,9 @@ func wrapConn(lconn *link.Conn) *Conn {
 	go func() {
 		<-c.Wait()
 		if c.link != nil {
-			c.link.events <- EventConnClosed{c}
+			c.link.events.Emit(EventConnClosed{c})
+			c.link.remove(c)
 		}
-		c.Attach(nil)
 	}()
 	return c
 }

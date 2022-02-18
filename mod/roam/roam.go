@@ -52,7 +52,7 @@ func (roam *Roam) Run(ctx context.Context, node *_node.Node) error {
 }
 
 func (roam *Roam) monitorConnections(ctx context.Context) {
-	for event := range roam.node.Follow(ctx) {
+	for event := range roam.node.Subscribe(ctx.Done()) {
 		// skip other events
 		e, ok := event.(link.EventConnEstablished)
 		if !ok {
@@ -149,8 +149,11 @@ func (roam *Roam) serveDrop(ctx context.Context) {
 }
 
 func (roam *Roam) optimizeConn(conn *link.Conn) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var remoteID = conn.Link().RemoteIdentity()
-	var peer = roam.node.Peers.Find(remoteID, false)
+	var peer = roam.node.Peers.Hold(ctx, remoteID)
 
 	for {
 		select {

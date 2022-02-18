@@ -27,7 +27,7 @@ func trackPresence(ctx context.Context, presence infra.Presence) *entry {
 		closeCh:  make(chan struct{}),
 	}
 
-	sig.On(ctx, sig.Idle(ctx, e, presenceTimeout), func() {
+	sig.OnCtx(ctx, sig.Idle(ctx, e, presenceTimeout), func() {
 		close(e.closeCh)
 	})
 

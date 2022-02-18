@@ -87,7 +87,7 @@ func (o *NetworkOptimizer) establishNewLink(ctx context.Context) *link.Link {
 			return // contact does not exist
 		}
 
-		for addr := range contact.FollowAddr(ctx, false) {
+		for addr := range contact.SubscribeAddr(ctx.Done(), true) {
 			if addr.Network() == o.network {
 				addrCh <- addr
 			}
@@ -133,7 +133,7 @@ func (o *NetworkOptimizer) optimize(ctx context.Context) error {
 		var wg sync.WaitGroup
 
 		// if peer is already connected, wait until all links on the network go down
-		if peer := o.peers.Find(o.remoteID, false); peer != nil {
+		if peer := o.peers.Find(o.remoteID); peer != nil {
 			for link := range peer.Links() {
 				if link.Network() != o.network {
 					continue

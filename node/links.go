@@ -5,7 +5,7 @@ import (
 	"errors"
 	alink "github.com/cryptopunkscc/astrald/link"
 	nlink "github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/sig"
+	"log"
 )
 
 func (node *Node) AddLink(link *alink.Link) error {
@@ -22,7 +22,9 @@ func (node *Node) processLinks(ctx context.Context) {
 	for {
 		select {
 		case link := <-node.links:
-			node.addLink(ctx, nlink.Wrap(link))
+			if err := node.addLink(ctx, nlink.Wrap(link, &node.events)); err != nil {
+				log.Println("[node] link processing error:", err)
+			}
 		case <-ctx.Done():
 			return
 		}
@@ -30,37 +32,10 @@ func (node *Node) processLinks(ctx context.Context) {
 }
 
 func (node *Node) addLink(ctx context.Context, link *nlink.Link) error {
-	peer := node.Peers.Find(link.RemoteIdentity(), true)
-
-	if err := peer.Add(link); err != nil {
+	if err := node.Peers.Add(link); err != nil {
 		return err
 	}
 
-	node.handleLink(ctx, link)
-
-	node.emitEvent(EventLinkUp{link})
-	if len(peer.Links()) == 1 {
-		node.emitEvent(EventPeerLinked{peer, link})
-
-		sig.On(ctx, sig.Idle(ctx, peer, defaultPeerIdleTimeout), func() {
-			for l := range peer.Links() {
-				l.Close()
-			}
-		})
-	}
-
-	go func() {
-		<-link.Wait()
-		node.emitEvent(EventLinkDown{link})
-		if len(peer.Links()) == 0 {
-			node.emitEvent(EventPeerUnlinked{peer})
-		}
-	}()
-
-	return nil
-}
-
-func (node *Node) handleLink(ctx context.Context, link *nlink.Link) {
 	// forward queries coming from the link
 	go func() {
 		for query := range link.Queries() {
@@ -68,9 +43,5 @@ func (node *Node) handleLink(ctx context.Context, link *nlink.Link) {
 		}
 	}()
 
-	go func() {
-		for event := range link.Events() {
-			node.emitEvent(event)
-		}
-	}()
+	return nil
 }

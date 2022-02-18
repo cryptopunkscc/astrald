@@ -1,7 +1,6 @@
 package contacts
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/logfmt"
@@ -48,21 +47,21 @@ func (c *Contact) DisplayName() string {
 	return logfmt.ID(c.identity)
 }
 
-func (c *Contact) FollowAddr(ctx context.Context, onlyNew bool) <-chan *Addr {
+func (c *Contact) SubscribeAddr(cancel sig.Signal, fetchAll bool) <-chan *Addr {
 	var ch chan *Addr
 
-	if onlyNew {
-		ch = make(chan *Addr)
-	} else {
+	if fetchAll {
 		ch = make(chan *Addr, len(c.Addresses))
 		for _, a := range c.Addresses {
 			ch <- a
 		}
+	} else {
+		ch = make(chan *Addr)
 	}
 
 	go func() {
 		defer close(ch)
-		for i := range c.queue.Follow(ctx) {
+		for i := range c.queue.Subscribe(cancel) {
 			ch <- i.(*Addr)
 		}
 	}()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/link"
+	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/sig"
 	"log"
 	"strings"
@@ -22,22 +23,22 @@ type Link struct {
 	sig.Activity
 	*link.Link
 	queries       chan *Query
-	events        chan Event
+	events        event.Queue
 	conns         map[*Conn]struct{}
 	mu            sync.Mutex
 	establishedAt time.Time
 	roundtrip     time.Duration
 }
 
-func Wrap(link *link.Link) *Link {
+func Wrap(link *link.Link, eventParent *event.Queue) *Link {
 	l := &Link{
 		Link:          link,
 		queries:       make(chan *Query),
-		events:        make(chan Event),
 		conns:         make(map[*Conn]struct{}, 0),
 		establishedAt: time.Now(),
 		roundtrip:     999 * time.Second, // assume super slow before first ping
 	}
+	l.events.SetParent(eventParent)
 	l.Touch()
 	go l.handleQueries()
 	go l.monitorPing()
@@ -63,7 +64,7 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 	conn := wrapConn(linkConn)
 	conn.Attach(link)
 
-	link.events <- EventConnEstablished{conn}
+	link.events.Emit(EventConnEstablished{conn})
 
 	return conn, nil
 }
@@ -77,8 +78,8 @@ func (link *Link) Queries() <-chan *Query {
 	return link.queries
 }
 
-func (link *Link) Events() <-chan Event {
-	return link.events
+func (link *Link) Subscribe(cancel sig.Signal) <-chan event.Event {
+	return link.events.Subscribe(cancel)
 }
 
 func (link *Link) Conns() <-chan *Conn {
@@ -86,11 +87,15 @@ func (link *Link) Conns() <-chan *Conn {
 	defer link.mu.Unlock()
 
 	ch := make(chan *Conn, len(link.conns))
-	for link, _ := range link.conns {
-		ch <- link
+	for l := range link.conns {
+		ch <- l
 	}
 	close(ch)
 	return ch
+}
+
+func (link *Link) SetEventParent(parent *event.Queue) {
+	link.events.SetParent(parent)
 }
 
 func (link *Link) add(conn *Conn) {

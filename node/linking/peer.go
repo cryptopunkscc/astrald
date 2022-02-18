@@ -71,7 +71,7 @@ func (o *PeerOptimizer) Stop() {
 }
 
 func (o *PeerOptimizer) optimize(ctx context.Context) {
-	var peer = o.peers.Find(o.remoteID, true)
+	var peer = o.peers.Hold(ctx, o.remoteID)
 
 	best := len(netPriorities)
 	for link := range peer.Links() {
@@ -85,7 +85,7 @@ func (o *PeerOptimizer) optimize(ctx context.Context) {
 		o.optimizers[netPriorities[i]].Start()
 	}
 
-	links := peer.FollowLinks(ctx, false)
+	links := peer.SubscribeLinks(ctx.Done(), true)
 
 F:
 	for {

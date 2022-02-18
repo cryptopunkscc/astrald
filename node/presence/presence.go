@@ -4,28 +4,27 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/sig"
 	"log"
 	"sync"
 )
 
-type Event interface{}
-
 type Presence struct {
 	entries map[string]*entry
 	mu      sync.Mutex
-	events  chan Event
+	events  event.Queue
 	skip    map[string]struct{}
 	net     infra.PresenceNet
 }
 
-func Run(ctx context.Context, net infra.PresenceNet) *Presence {
+func Run(ctx context.Context, net infra.PresenceNet, eventParent *event.Queue) *Presence {
 	p := &Presence{
 		entries: make(map[string]*entry),
-		events:  make(chan Event),
 		skip:    make(map[string]struct{}),
 		net:     net,
 	}
+	p.events.SetParent(eventParent)
 	go p.process(ctx)
 	return p
 }
@@ -47,8 +46,8 @@ func (p *Presence) Identities() <-chan id.Identity {
 	return ch
 }
 
-func (p *Presence) Events() <-chan Event {
-	return p.events
+func (p *Presence) Subscribe(cancel sig.Signal) <-chan event.Event {
+	return p.events.Subscribe(cancel)
 }
 
 func (p *Presence) Announce(ctx context.Context, identity id.Identity) error {
@@ -114,11 +113,11 @@ func (p *Presence) handle(ctx context.Context, ip infra.Presence) {
 	p.entries[hex] = e
 
 	// remove presence entry when it times out
-	sig.On(ctx, e, func() {
+	sig.OnCtx(ctx, e, func() {
 		p.remove(hex)
 	})
 
-	p.events <- EventIdentityPresent{ip.Identity, ip.Addr}
+	p.events.Emit(EventIdentityPresent{ip.Identity, ip.Addr})
 }
 
 func (p *Presence) remove(hex string) {
@@ -128,6 +127,6 @@ func (p *Presence) remove(hex string) {
 	if e, found := p.entries[hex]; found {
 		delete(p.entries, hex)
 
-		p.events <- EventIdentityGone{e.id}
+		p.events.Emit(EventIdentityGone{e.id})
 	}
 }

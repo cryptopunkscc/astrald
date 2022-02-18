@@ -3,6 +3,7 @@ package linkback
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/peer"
 	"time"
 )
 
@@ -34,8 +35,8 @@ func (LinkBack) Run(ctx context.Context, n *node.Node) error {
 		}
 	}()
 
-	for event := range n.Follow(ctx) {
-		if event, ok := event.(node.EventPeerLinked); ok {
+	for event := range n.Subscribe(ctx.Done()) {
+		if event, ok := event.(peer.EventLinked); ok {
 			if event.Link.Outbound() {
 				if c, err := event.Peer.Query(ctx, serviceHandle); err == nil {
 					c.Close()

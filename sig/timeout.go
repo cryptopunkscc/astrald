@@ -1,7 +1,6 @@
 package sig
 
 import (
-	"context"
 	"time"
 )
 
@@ -12,7 +11,7 @@ type Timeout struct {
 	t   time.Time
 }
 
-func SetTimeout(ctx context.Context, d time.Duration) *Timeout {
+func SetTimeout(cancel Signal, d time.Duration) *Timeout {
 	a := &Timeout{
 		sig: New(),
 		t:   time.Now().Add(d),
@@ -21,7 +20,7 @@ func SetTimeout(ctx context.Context, d time.Duration) *Timeout {
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-cancel:
 				return
 			case <-time.After(time.Until(a.t)):
 				if a.check() {

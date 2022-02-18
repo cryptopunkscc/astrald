@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/link"
 	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/peer"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"io"
 	"log"
@@ -53,9 +54,9 @@ func (Info) Run(ctx context.Context, node *_node.Node) error {
 	}()
 
 	go func() {
-		for e := range node.Follow(ctx) {
+		for e := range node.Subscribe(ctx.Done()) {
 			switch event := e.(type) {
-			case _node.EventPeerLinked:
+			case peer.EventLinked:
 				refreshContact(ctx, node, event.Peer.Identity())
 
 			case presence.EventIdentityPresent:

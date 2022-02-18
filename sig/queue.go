@@ -1,7 +1,6 @@
 package sig
 
 import (
-	"context"
 	"sync"
 )
 
@@ -75,7 +74,7 @@ func (q *Queue) Data() interface{} {
 	return q.data
 }
 
-func (q *Queue) Follow(ctx context.Context) <-chan interface{} {
+func (q *Queue) Subscribe(cancel Signal) <-chan interface{} {
 	ch := make(chan interface{})
 
 	go func() {
@@ -83,7 +82,7 @@ func (q *Queue) Follow(ctx context.Context) <-chan interface{} {
 		defer close(ch)
 		for {
 			select {
-			case <-ctx.Done():
+			case <-cancel:
 				return
 			case <-f.Wait():
 				if f.Next() == nil {
@@ -93,7 +92,7 @@ func (q *Queue) Follow(ctx context.Context) <-chan interface{} {
 				select {
 				case ch <- f.data:
 					f = f.Next()
-				case <-ctx.Done():
+				case <-cancel:
 					return
 				}
 

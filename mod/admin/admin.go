@@ -95,5 +95,6 @@ func init() {
 		"forget":   forget,
 		"present":  present,
 		"optimize": optimize,
+		"unlink":   unlink,
 	}
 }
