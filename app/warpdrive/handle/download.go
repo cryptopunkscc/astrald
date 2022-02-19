@@ -66,7 +66,7 @@ func Download(srv handler.Context, request astral.Request) {
 func download(srv handler.Context, id api.OfferId) (err error) {
 	srv.LogPrefix("<", api.QueryFiles)
 	// Get cached incoming files by request id
-	offer := service.Incoming(srv.Core).Get()[id]
+	offer := service.Incoming(srv.Core).Get(id)
 	if offer == nil {
 		err = errors.New(fmt.Sprint("No incoming file with id ", id))
 		srv.Println("Cannot find incoming file", err)
@@ -157,15 +157,16 @@ func Upload(srv handler.Context, request astral.Request) {
 		srv.Println("Cannot read offer id", err)
 		return
 	}
+	outgoing := service.Outgoing(srv.Core)
 	// Obtain file by request id
-	offer := service.Outgoing(srv.Core).Get()[api.OfferId(offerId)]
+	offer := outgoing.Get(api.OfferId(offerId))
 	if offer == nil {
 		srv.Println("Cannot find offer with id", offerId)
 		return
 	}
 	// Update status
 	offer.Status.Status = api.StatusAccepted
-	service.Outgoing(srv.Core).Update(offer, -1)
+	outgoing.Update(offer, -1)
 	// Register port for reading files
 	filesQuery := api.Port + "/" + string(offer.Id)
 	filesPort, err := srv.Register(filesQuery)
@@ -208,7 +209,7 @@ func Upload(srv handler.Context, request astral.Request) {
 			offer.Status.Status = api.StatusFailed
 		}
 		time.Sleep(200 * time.Millisecond)
-		service.Outgoing(srv.Core).Update(offer, sent)
+		outgoing.Update(offer, sent)
 	}()
 	go func() {
 		// Send files
@@ -224,5 +225,4 @@ func Upload(srv handler.Context, request astral.Request) {
 		srv.Println("Cannot read ok", filesQuery, err)
 		return
 	}
-
 }

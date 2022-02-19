@@ -63,25 +63,23 @@ func (c Peer) update(peerId string, attr string, value string) {
 }
 
 func (c Peer) Get(id api.PeerId) api.Peer {
-	c.Mutex.Peers.Lock()
-	defer c.Mutex.Peers.Unlock()
-	mem := memory.Peers(c).Get()
-	peer := mem[id]
+	c.Mutex.Peers.RLock()
+	defer c.Mutex.Peers.RUnlock()
+	peer := memory.Peers(c).Get()[id]
 	if peer == nil {
 		peer = &api.Peer{
 			Id:    id,
 			Alias: "",
 			Mod:   "",
 		}
-		mem[id] = peer
 	}
 	return *peer
 }
 
 func (c Peer) List() (peers []api.Peer) {
 	c.Fetch()
-	c.Mutex.Peers.Lock()
-	defer c.Mutex.Peers.Unlock()
+	c.Mutex.Peers.RLock()
+	defer c.Mutex.Peers.RUnlock()
 	return memory.Peers(c).List()
 }
 

@@ -28,9 +28,9 @@ type Cache struct {
 }
 
 type Mutex struct {
-	Incoming sync.Mutex
-	Outgoing sync.Mutex
-	Peers    sync.Mutex
+	Incoming sync.RWMutex
+	Outgoing sync.RWMutex
+	Peers    sync.RWMutex
 }
 
 type Observers struct {
