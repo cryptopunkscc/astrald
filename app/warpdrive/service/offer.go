@@ -10,8 +10,6 @@ import (
 	"time"
 )
 
-var _ api.OfferService = Offer{}
-
 type Offer struct {
 	api.Core
 	mu         *sync.RWMutex

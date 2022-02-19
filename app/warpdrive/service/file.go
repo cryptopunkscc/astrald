@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-var _ api.FileService = File{}
-
 type File api.Core
 
 func (c File) Info(uri string) (files []api.Info, err error) {
