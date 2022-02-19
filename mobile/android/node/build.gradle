@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+}
+android {
+    compileSdk 28
+    defaultConfig {
+        minSdk 21
+        targetSdk 28
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+repositories {
+    flatDir {
+        dirs '../build'
+    }
+}
+dependencies {
+    implementation(name: 'astral', ext: 'aar')
+    api project(':astral:client')
+    api project(':astral:android')
+    api project(':astral:android:notify')
+    api project(':astral:android:content')
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.1'
+    implementation 'androidx.core:core-ktx:1.6.0'
+    testImplementation 'junit:junit:4.13.2'
+}

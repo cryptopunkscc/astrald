@@ -1,9 +1,14 @@
 rootProject.name = "astral-android"
 
-include ':node:wrapper'
-include ':node:service'
-include ':node:app'
-include ':client'
-include ':service:notification'
-include ':service:content'
+def include(String mod, String path) {
+    include(mod)
+    project(mod).projectDir = new File(settingsDir, path)
+}
 
+include(':astral:client', "client")
+include(':astral:app', "app")
+include(':astral:service', "service")
+include(':astral:node', "node")
+include(':astral:android', "node/android")
+include(':astral:android:notify', "node/notify")
+include(':astral:android:content', "node/content")

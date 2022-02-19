@@ -2,7 +2,7 @@ package remote
 
 import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
-	content "github.com/cryptopunkscc/astrald/mobile/android/service/content/go"
+	"github.com/cryptopunkscc/astrald/mobile/android/node/content"
 )
 
 var _ api.FileResolver = Resolver{}
