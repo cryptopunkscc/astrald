@@ -7,8 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 )
 
-var _ api.PeerService = Peer{}
-
 type Peer api.Core
 
 func (c Peer) Fetch() {
