@@ -182,7 +182,7 @@ android client app.
 
 #### API
 
-Check the source file [api.go](/mobile/android/service/content/api/api.go)
+Check the source file [api.go](/mobile/android/node/content/api.go)
 
 #### Protocol
 
@@ -202,7 +202,7 @@ Check the source file [api.go](/mobile/android/service/content/api/api.go)
 
 #### API
 
-Check the source file [api.go](/mobile/android/service/notification/api/api.go).
+Check the source file [api.go](/mobile/android/node/notify/api.go).
 
 ### Frames
 

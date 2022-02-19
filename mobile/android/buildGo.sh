@@ -1,7 +1,7 @@
 #!/bin/bash
 
-mkdir -p ./libs/
+mkdir -p ./build/
 
 go get golang.org/x/mobile/bind
 
-gomobile bind -v -o ./libs/astral.aar -target=android ../node/
+gomobile bind -v -o ./build/astral.aar -target=android ./node/

@@ -10,8 +10,12 @@ val defaultGson by lazy {
         .create()
 }
 
+val coder by lazy {
+    GsonCoder(defaultGson)
+}
+
 class GsonCoder(
-    private val gson: Gson = defaultGson,
+    val gson: Gson = defaultGson,
 ) : Encoder {
     override fun encode(any: Any): String = gson.toJson(any)
     override fun <T> decode(string: String, type: Class<T>): T = gson.fromJson(string, type)
