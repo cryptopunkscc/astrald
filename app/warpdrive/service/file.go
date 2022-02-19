@@ -37,7 +37,7 @@ func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, index int) (err e
 			return err
 		}
 		offer.Progress = offer.Files[index].Size
-		go incoming.Update(offer, index)
+		incoming.Update(offer, index)
 		return nil
 	}
 	writer, err := storage.FileWriter(info.Uri, info.Perm)
@@ -91,7 +91,7 @@ func (c File) copyFileTo(writer io.Writer, offer *api.Offer, index int) (err err
 	outgoing := Outgoing(api.Core(c))
 	if info.IsDir {
 		offer.Progress = offer.Files[index].Size
-		go outgoing.Update(offer, index)
+		outgoing.Update(offer, index)
 		return
 	}
 	reader, err := c.resolve().Reader(info.Uri)
