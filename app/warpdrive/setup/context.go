@@ -1,32 +1,25 @@
-package handler
+package setup
 
 import (
+	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"github.com/cryptopunkscc/astrald/mod/id"
 )
 
-func (ctx *Context) Init() *Context {
-	ctx.initAstralApi()
-	ctx.initIdentity()
-	ctx.initPeers()
-	return ctx
-}
-
-func (ctx *Context) initAstralApi() {
+func Context(ctx *handler.Context) {
+	// API
 	if ctx.Api == nil {
 		ctx.Api = astral.Instance()
 	}
-}
 
-func (ctx *Context) initIdentity() {
+	// Identity
 	identity, err := id.Query()
 	if err != nil {
 		ctx.Panic("Cannot obtain node identity", err)
 	}
 	ctx.Identity = identity.String()
-}
 
-func (ctx *Context) initPeers() {
+	// Peers
 	service.Peer(ctx.Core).Fetch()
 }

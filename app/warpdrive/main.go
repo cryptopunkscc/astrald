@@ -4,7 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handle"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
-	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/setup"
 	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
@@ -29,9 +29,9 @@ var handlers = handler.Handlers{{
 
 // Run warpdrive service with default core and handlers.
 func (srv Service) Run() {
-	srv.Core = service.Core(srv.Config)
 	ctx := handler.Context(srv)
-	ctx.Init()
+	setup.Core(&ctx.Core)
+	setup.Context(&ctx)
 	ctx.Serve(handlers)
 }
 
