@@ -12,7 +12,7 @@ type Client interface {
 	// Subscribe for new offers.
 	Subscribe(filter Filter) (<-chan Offer, error)
 	// Status channel for receiving offer updates
-	Status(filter Filter) (<-chan Status, error)
+	Status(filter Filter) (<-chan OfferStatus, error)
 	// Offers list
 	Offers(filter Filter) ([]Offer, error)
 }

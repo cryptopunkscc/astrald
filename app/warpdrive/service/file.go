@@ -10,45 +10,50 @@ import (
 )
 
 type File api.Core
-
-func (c File) Info(uri string) (files []api.Info, err error) {
-	return c.resolve().Info(uri)
+type CopyOffer struct {
+	File
+	*Offer
 }
 
-func (c File) CopyFrom(reader io.Reader, offer *api.Offer) (err error) {
-	for index := range offer.Files {
-		if err = c.copyFileFrom(reader, offer, index); err != nil {
+func (f File) Info(uri string) (files []api.Info, err error) {
+	return f.resolve().Info(uri)
+}
+
+func (f File) Copy(offer *Offer) CopyOffer {
+	return CopyOffer{File: f, Offer: offer}
+}
+
+func (offer CopyOffer) From(reader io.Reader) (err error) {
+	for offer.Index = range offer.Files {
+		if err = offer.fileFrom(reader); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, index int) (err error) {
-	info := offer.Files[index]
-	storage := file.Storage(c)
-	incoming := Incoming(api.Core(c))
+func (offer CopyOffer) fileFrom(reader io.Reader) (err error) {
+	storage := file.Storage(offer.File)
+	info := offer.Files[offer.Index]
 	if info.IsDir {
 		err := storage.MkDir(info.Uri, info.Perm)
 		if err != nil && !storage.IsExist(err) {
-			c.Println("Cannot make dir", info.Uri, err)
+			offer.Println("Cannot make dir", info.Uri, err)
 			return err
 		}
-		offer.Progress = offer.Files[index].Size
-		incoming.Update(offer, index)
+		offer.Update(info.Size)
 		return nil
 	}
 	writer, err := storage.FileWriter(info.Uri, info.Perm)
 	if err != nil {
-		c.Println("Cannot get writer for", info.Uri, err)
+		offer.Println("Cannot get writer for", info.Uri, err)
 		return
 	}
 	defer writer.Close()
 	// Copy bytes
-	offer.Status.Status = api.StatusUpdated
+	offer.Status = api.StatusUpdated
 	update := func(progress int64, size int64) error {
-		offer.Progress = progress
-		go incoming.Update(offer, index)
+		go offer.Update(progress)
 		return nil
 	}
 	progress := &ioprogress.Reader{
@@ -59,48 +64,43 @@ func (c File) copyFileFrom(reader io.Reader, offer *api.Offer, index int) (err e
 	}
 	l, err := io.CopyN(writer, progress, info.Size)
 	if err != nil {
-		c.Println("Cannot copy", info.Uri, err, "expected size", info.Size, "but was", l)
+		offer.Println("Cannot copy", info.Uri, err, "expected size", info.Size, "but was", l)
 		return
 	}
 	if offer.Progress != info.Size {
-		offer.Progress = info.Size
-		incoming.Update(offer, index)
+		offer.Update(info.Size)
 	}
 	err = writer.Close()
 	if err != nil {
-		c.Println("Cannot close info", info.Uri, err)
+		offer.Println("Cannot close info", info.Uri, err)
 		return
 	}
 	return
 }
 
-func (c File) CopyTo(writer io.Writer, offer *api.Offer) (err error) {
-	for index := range offer.Files {
-		if err = c.copyFileTo(writer, offer, index); err != nil {
+func (offer CopyOffer) To(writer io.Writer) (err error) {
+	for offer.Index = range offer.Files {
+		if err = offer.fileTo(writer); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (c File) copyFileTo(writer io.Writer, offer *api.Offer, index int) (err error) {
-	offer.Index = index
-	info := offer.Files[index]
-	outgoing := Outgoing(api.Core(c))
+func (offer CopyOffer) fileTo(writer io.Writer) (err error) {
+	info := offer.Files[offer.Index]
 	if info.IsDir {
-		offer.Progress = offer.Files[index].Size
-		outgoing.Update(offer, index)
+		offer.Update(info.Size)
 		return
 	}
-	reader, err := c.resolve().Reader(info.Uri)
+	reader, err := offer.resolve().Reader(info.Uri)
 	if err != nil {
-		c.Println("Cannot get reader", info.Uri, offer.Id, err)
+		offer.Println("Cannot get reader", info.Uri, offer.Id, err)
 		return
 	}
-	offer.Status.Status = api.StatusUpdated
+	offer.Status = api.StatusUpdated
 	update := func(progress int64, size int64) error {
-		offer.Progress = progress
-		go outgoing.Update(offer, index)
+		go offer.Update(progress)
 		return nil
 	}
 	progress := &ioprogress.Reader{
@@ -111,18 +111,17 @@ func (c File) copyFileTo(writer io.Writer, offer *api.Offer, index int) (err err
 	}
 	_, err = io.CopyN(writer, progress, info.Size)
 	if err != nil {
-		c.Println("Cannot copy", info.Uri, err)
+		offer.Println("Cannot copy", info.Uri, err)
 		return
 	}
 	if offer.Progress != info.Size {
-		offer.Progress = info.Size
-		outgoing.Update(offer, index)
+		offer.Update(info.Size)
 	}
 	return
 }
 
-func (c File) resolve() api.FileResolver {
-	if c.RemoteResolver {
+func (f File) resolve() api.FileResolver {
+	if f.RemoteResolver {
 		return remote.Resolver{}
 	} else {
 		return file.Resolver{}

@@ -9,7 +9,6 @@ import androidx.core.app.NotificationManagerCompat
 
 internal fun Context.notify(manager: NotificationManagerCompat, notifications: List<Notification>) {
     notifications.forEach { notification ->
-        NotificationManagerCompat.IMPORTANCE_DEFAULT
         manager.notify(notification.id + 100, notification.compat(this))
     }
 }

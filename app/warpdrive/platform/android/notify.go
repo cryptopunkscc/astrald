@@ -183,7 +183,7 @@ func (m *Notifier) Finish(an api.Notification) {
 	}
 	n.Ongoing = false
 	n.AutoCancel = true
-	n.ContentTitle = titlePrefix(an) + " " + formatPeerName(an) + " " + an.Status.Status
+	n.ContentTitle = titlePrefix(an) + " " + formatPeerName(an) + " " + an.OfferStatus.Status
 	n.ContentText = fmt.Sprintf(
 		"transferred %d/%d files with size %s",
 		an.Index,

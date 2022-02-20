@@ -10,7 +10,7 @@ import (
 	"io"
 )
 
-func (c Client) Status(filter api.Filter) (status <-chan api.Status, err error) {
+func (c Client) Status(filter api.Filter) (status <-chan api.OfferStatus, err error) {
 	// Connect to local service
 	conn, err := c.query(api.QueryStatus)
 	if err != nil {
@@ -22,13 +22,13 @@ func (c Client) Status(filter api.Filter) (status <-chan api.Status, err error) 
 		conn.Close()
 		return
 	}
-	statChan := make(chan api.Status)
+	statChan := make(chan api.OfferStatus)
 	status = statChan
-	go func(conn io.ReadWriteCloser, status chan api.Status) {
+	go func(conn io.ReadWriteCloser, status chan api.OfferStatus) {
 		defer close(status)
 		defer conn.Close()
 		dec := json.NewDecoder(conn)
-		files := &api.Status{}
+		files := &api.OfferStatus{}
 		c.Println("Start listening status")
 		for {
 			err := dec.Decode(files)
@@ -62,15 +62,15 @@ func Status(srv handler.Context, request astral.Request) {
 	defer close(c)
 	switch api.Filter(f) {
 	case api.FilterIn:
-		unsub := service.Incoming(srv.Core).Status().SubscribeChan(c)
+		unsub := service.Incoming(srv.Core).StatusSubs.SubscribeChan(c)
 		defer unsub()
 	case api.FilterOut:
-		unsub := service.Outgoing(srv.Core).Status().SubscribeChan(c)
+		unsub := service.Outgoing(srv.Core).StatusSubs.SubscribeChan(c)
 		defer unsub()
 	default:
-		unsub1 := service.Incoming(srv.Core).Status().SubscribeChan(c)
+		unsub1 := service.Incoming(srv.Core).StatusSubs.SubscribeChan(c)
 		defer unsub1()
-		unsub2 := service.Outgoing(srv.Core).Status().SubscribeChan(c)
+		unsub2 := service.Outgoing(srv.Core).StatusSubs.SubscribeChan(c)
 		defer unsub2()
 	}
 	// Wait for close
