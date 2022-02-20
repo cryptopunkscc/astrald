@@ -1,30 +1,20 @@
-package service
+package setup
 
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/android"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/desktop"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/stub"
+	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/storage/file"
 	"log"
 	"os"
 	"path/filepath"
 )
 
-func Core(config api.Config) api.Core {
-	init := initializer{}
-	init.Config = config
-	init.core()
-	init.platform()
-	init.storage()
-	init.repository()
-	init.offers()
-	init.peers()
-	init.notifier()
-	return api.Core(init)
-}
-
-type initializer api.Core
-
-func (core *initializer) core() {
+func Core(core *api.Core) {
+	// Defaults
 	core.Logger = log.Default()
 	core.Notifications = &api.Notifications{}
 	core.Cache = &api.Cache{
@@ -39,40 +29,34 @@ func (core *initializer) core() {
 		OutgoingOffers: api.NewSubscriptions(),
 		OutgoingStatus: api.NewSubscriptions(),
 	}
-}
 
-func (core *initializer) platform() {
+	// Platform
 	if core.Platform == "" {
 		core.Platform = api.PlatformDefault
 	}
-}
 
-func (core *initializer) storage() {
+	// Storage
 	core.StorageDir = storageDir()
-}
 
-func (core *initializer) repository() {
+	// Repository
 	if core.RepositoryDir == "" {
 		core.RepositoryDir = repositoryDir()
 	}
-	c := api.Core(*core)
-	file.Outgoing(c).Init()
-	file.Incoming(c).Init()
-}
+	file.Outgoing(*core).Init()
+	file.Incoming(*core).Init()
 
-func (core *initializer) peers() {
+	// Peers
 	core.Cache.Peers = file.Peers(*core).Get()
-}
 
-func (core *initializer) offers() {
-	c := api.Core(*core)
-	core.Cache.Incoming = file.Incoming(c).Get()
-	core.Cache.Outgoing = file.Outgoing(c).Get()
-}
+	// Offers
+	core.Cache.Incoming = file.Incoming(*core).Get()
+	core.Cache.Outgoing = file.Outgoing(*core).Get()
 
-func (core *initializer) notifier() {
-	notifier := Notify{}
-	notifier.Core = (*api.Core)(core)
+	// Notifier
+	notifier := service.Notify{
+		Core:   *core,
+		Notify: newNotify(*core),
+	}
 	notifier.Init()
 	go notifier.Start()
 }
@@ -95,4 +79,20 @@ func repositoryDir() string {
 	dir := filepath.Join(cfgDir, "warpdrive")
 	os.MkdirAll(dir, 0700)
 	return dir
+}
+
+func newNotify(core api.Core) (notify api.Notify) {
+	switch core.Platform {
+	case api.PlatformDesktop:
+		notify = &desktop.Notifier{}
+	case api.PlatformAndroid:
+		notifier := &android.Notifier{}
+		notifier = notifier.Init()
+		if notifier != nil {
+			notify = notifier
+		}
+	default:
+		notify = &stub.Notifier{}
+	}
+	return
 }
