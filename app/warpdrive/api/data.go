@@ -5,7 +5,7 @@ import "os"
 type Offers map[OfferId]*Offer
 type OfferId string
 type Offer struct {
-	Status
+	OfferStatus
 	// Create time
 	Create int64
 	// Peer unique identifier
@@ -19,7 +19,7 @@ const (
 	OfferAccepted = true
 )
 
-type Status struct {
+type OfferStatus struct {
 	// Id the unique offer identifier.
 	Id OfferId
 	// In marks if offer is incoming or outgoing.

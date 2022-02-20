@@ -62,15 +62,15 @@ func Subscribe(srv handler.Context, request astral.Request) {
 	defer close(c)
 	switch api.Filter(f) {
 	case api.FilterIn:
-		unsubIn := service.Incoming(srv.Core).Offers().SubscribeChan(c)
+		unsubIn := service.Incoming(srv.Core).OfferSubs.SubscribeChan(c)
 		defer unsubIn()
 	case api.FilterOut:
-		unsubOut := service.Outgoing(srv.Core).Offers().SubscribeChan(c)
+		unsubOut := service.Outgoing(srv.Core).OfferSubs.SubscribeChan(c)
 		defer unsubOut()
 	default:
-		unsubIn := service.Incoming(srv.Core).Offers().SubscribeChan(c)
+		unsubIn := service.Incoming(srv.Core).OfferSubs.SubscribeChan(c)
 		defer unsubIn()
-		unsubOut := service.Outgoing(srv.Core).Offers().SubscribeChan(c)
+		unsubOut := service.Outgoing(srv.Core).OfferSubs.SubscribeChan(c)
 		defer unsubOut()
 	}
 	// Wait for close

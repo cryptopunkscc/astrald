@@ -24,7 +24,7 @@ func (srv *Notify) Start() {
 		if !canNotify {
 			continue
 		}
-		if n.Status.Status == api.StatusUpdated &&
+		if n.Status == api.StatusUpdated &&
 			time.Now().UnixMilli() < lastUpdate+debounce {
 			continue
 		}
@@ -34,7 +34,7 @@ func (srv *Notify) Start() {
 }
 
 func (srv *Notify) dispatch(n api.Notification) {
-	switch n.Status.Status {
+	switch n.Status {
 	case api.StatusAwaiting:
 		if n.Incoming && n.Peer.Mod == api.PeerModAsk {
 			srv.Notify.New(n)

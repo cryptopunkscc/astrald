@@ -8,6 +8,7 @@ const (
 type Api interface {
 	Create(channel Channel) error
 	Notify(notifications ...Notification) error
+	Notifier() chan<- Notification
 }
 
 type Notification struct {

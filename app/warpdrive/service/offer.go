@@ -12,134 +12,131 @@ import (
 
 type Offer struct {
 	api.Core
-	mu         *sync.RWMutex
-	offerSubs  *api.Subscriptions
-	statusSubs *api.Subscriptions
+	*api.Offer
+	*sync.RWMutex
+	OfferSubs  *api.Subscriptions
+	StatusSubs *api.Subscriptions
 	file       api.OfferStorage
 	mem        api.OfferStorage
 	incoming   bool
 }
 
-func Outgoing(c api.Core) Offer {
-	return Offer{
+func Outgoing(c api.Core) *Offer {
+	return &Offer{
 		Core:       c,
-		mu:         &c.Mutex.Outgoing,
+		RWMutex:    &c.Mutex.Outgoing,
 		mem:        memory.Outgoing(c),
 		file:       file.Outgoing(c),
-		offerSubs:  c.Observers.OutgoingOffers,
-		statusSubs: c.Observers.OutgoingStatus,
+		OfferSubs:  c.Observers.OutgoingOffers,
+		StatusSubs: c.Observers.OutgoingStatus,
 	}
 }
 
-func Incoming(c api.Core) Offer {
-	return Offer{
+func Incoming(c api.Core) *Offer {
+	return &Offer{
 		Core:       c,
-		mu:         &c.Mutex.Incoming,
+		RWMutex:    &c.Mutex.Incoming,
 		mem:        memory.Incoming(c),
 		file:       file.Incoming(c),
-		offerSubs:  c.Observers.IncomingOffers,
-		statusSubs: c.Observers.IncomingStatus,
+		OfferSubs:  c.Observers.IncomingOffers,
+		StatusSubs: c.Observers.IncomingStatus,
 		incoming:   true,
 	}
 }
 
-func (c Offer) Add(offerId string, files []api.Info, peerId api.PeerId) {
-	createdAt := time.Now().UnixMilli()
-	offer := &api.Offer{
-		Files:  files,
-		Peer:   peerId,
-		Create: createdAt,
-		Status: api.Status{
-			Status: api.StatusAwaiting,
-			Update: createdAt,
-			In:     c.incoming,
-			Id:     api.OfferId(offerId),
-			Index:  -1,
-		},
-	}
-
-	func() {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		c.mem.Save(offer)
-		c.file.Save(offer)
-	}()
-
-	func() {
-		c.Notify <- api.Notification{
-			Offer:    *offer,
-			Peer:     Peer(c.Core).Get(peerId),
-			Incoming: c.incoming,
-		}
-		go c.notify(offer.Status, c.statusSubs)
-		go c.notify(offer, c.offerSubs)
-	}()
-}
-
-func (c Offer) Update(offer *api.Offer, index int) {
-	offer.Index = index
-	if index == len(offer.Files) {
-		offer.Status.Progress = 0
-	}
-	ongoing := index > -1 && index < len(offer.Files)
-	if ongoing {
-		offer.Update = time.Now().UnixMilli()
-	}
-
-	func() {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		c.mem.Save(offer)
-		if !ongoing {
-			c.file.Save(offer)
-		}
-	}()
-
-	func() {
-		var info *api.Info
-		if ongoing {
-			info = &offer.Files[index]
-		}
-		c.Notify <- api.Notification{
-			Incoming: c.incoming,
-			Peer:     Peer(c.Core).Get(offer.Peer),
-			Offer:    *offer,
-			Info:     info,
-		}
-		go c.notify(offer.Status, c.statusSubs)
-	}()
-}
-
-func (c Offer) Get(id api.OfferId) (offer *api.Offer) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	offer = c.mem.Get()[id]
-	return
-}
-
-func (c Offer) List() (offers []api.Offer) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	m := c.mem.Get()
-	for _, offer := range m {
-		offers = append(offers, *offer)
+func (offer *Offer) List() (offers []api.Offer) {
+	offer.RLock()
+	defer offer.RUnlock()
+	m := offer.mem.Get()
+	for _, o := range m {
+		offers = append(offers, *o)
 	}
 	sort.Sort(api.ByTimestamp(offers))
 	return
 }
 
-func (c Offer) Status() *api.Subscriptions {
-	return c.statusSubs
+func (offer *Offer) Set(id api.OfferId) *Offer {
+	offer.RLock()
+	defer offer.RUnlock()
+	offer.Offer = offer.mem.Get()[id]
+	return offer
 }
 
-func (c Offer) Offers() *api.Subscriptions {
-	return c.offerSubs
+func (offer *Offer) Add(offerId string, files []api.Info, peerId api.PeerId) {
+	offer.Offer = &api.Offer{
+		Files:  files,
+		Peer:   peerId,
+		Create: time.Now().UnixMilli(),
+		OfferStatus: api.OfferStatus{
+			Status: api.StatusAwaiting,
+			In:     offer.incoming,
+			Id:     api.OfferId(offerId),
+			Index:  -1,
+		},
+	}
+	offer.commit()
 }
 
-func (c Offer) notify(data interface{}, subscribers *api.Subscriptions) {
+func (offer *Offer) Accept() {
+	offer.Status = api.StatusAccepted
+	offer.Index = -1
+	offer.commit()
+}
+
+func (offer *Offer) Update(progress int64) {
+	offer.Progress = progress
+	offer.commit()
+}
+
+func (offer *Offer) Finish(err error) {
+	if err == nil {
+		offer.Index = len(offer.Files)
+		offer.Progress = 0
+		offer.Status = api.StatusCompleted
+	} else {
+		offer.Status = api.StatusFailed
+	}
+	offer.commit()
+}
+
+func (offer *Offer) commit() {
+	offer.Offer.Update = time.Now().UnixMilli()
+
+	ongoing := offer.Index > -1 && offer.Index < len(offer.Files)
+
+	// save
+	func() {
+		offer.Lock()
+		defer offer.Unlock()
+		offer.mem.Save(offer.Offer)
+		if ongoing {
+			offer.file.Save(offer.Offer)
+		}
+	}()
+
+	// notify
+	func() {
+		var info *api.Info
+		if ongoing {
+			info = &offer.Files[offer.Index]
+		}
+		offer.Notify <- api.Notification{
+			Incoming: offer.incoming,
+			Peer:     Peer(offer.Core).Get(offer.Peer),
+			Offer:    *offer.Offer,
+			Info:     info,
+		}
+		go offer.notify(offer.OfferStatus, offer.StatusSubs)
+		if offer.Status == api.StatusAwaiting {
+			go offer.notify(offer.Offer, offer.OfferSubs)
+		}
+	}()
+}
+
+func (offer *Offer) notify(data interface{}, subscribers *api.Subscriptions) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		c.Println("Cannot create json from data", data, err)
+		offer.Println("Cannot create json from data", data, err)
 		return
 	}
 	subscribers.Lock()

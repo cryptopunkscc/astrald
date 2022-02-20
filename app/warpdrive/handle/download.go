@@ -34,78 +34,78 @@ func (c Client) Download(id api.OfferId) (err error) {
 	return
 }
 
-func Download(srv handler.Context, request astral.Request) {
-	if srv.IsRejected(request) {
+func Download(ctx handler.Context, request astral.Request) {
+	if ctx.IsRejected(request) {
 		return
 	}
 	// Accept connection
 	conn, err := request.Accept()
 	if err != nil {
-		srv.Println("Cannot accept request", err)
+		ctx.Println("Cannot accept request", err)
 		return
 	}
 	defer conn.Close()
 	id, err := enc.ReadL8String(conn)
 	if err != nil {
-		srv.Println("Cannot read request id", err)
+		ctx.Println("Cannot read request id", err)
 		return
 	}
-	err = download(srv, api.OfferId(id))
+	err = download(ctx, api.OfferId(id))
 	if err != nil {
-		srv.Println("Cannot download incoming files", id, err)
+		ctx.Println("Cannot download incoming files", id, err)
 		return
 	}
 	err = enc.Write(conn, uint8(0))
 	if err != nil {
-		srv.Println("Cannot send ok", err)
+		ctx.Println("Cannot send ok", err)
 		return
 	}
-	srv.Println("Accepted incoming files", id)
+	ctx.Println("Accepted incoming files", id)
 }
 
-func download(srv handler.Context, id api.OfferId) (err error) {
-	srv.LogPrefix("<", api.QueryFiles)
-	// Get cached incoming files by request id
-	offer := service.Incoming(srv.Core).Get(id)
-	if offer == nil {
+func download(ctx handler.Context, id api.OfferId) (err error) {
+	ctx.LogPrefix("<", api.QueryFiles)
+	// Get incoming offer service for offer id
+	offer := service.Incoming(ctx.Core).Set(id)
+	if offer.Offer == nil {
 		err = errors.New(fmt.Sprint("No incoming file with id ", id))
-		srv.Println("Cannot find incoming file", err)
+		ctx.Println("Cannot find incoming file", err)
 		return err
 	}
+	// Update status
+	offer.Accept()
 	// Obtain offer reader connection
 	filesConn, err := func() (filesConn io.ReadWriteCloser, err error) {
+		peerId := string(offer.Peer)
 		// Connect to service
-		conn, err := srv.Query(string(offer.Peer), api.QueryFiles)
+		conn, err := ctx.Query(peerId, api.QueryFiles)
 		if err != nil {
-			srv.Println("Cannot connect", err)
+			ctx.Println("Cannot connect", err)
 			return
 		}
 		defer conn.Close()
 		// Send file request id
 		err = enc.WriteL8String(conn, string(offer.Id))
 		if err != nil {
-			srv.Println("Cannot send request id", err)
+			ctx.Println("Cannot send request id", err)
 			return
 		}
 		// Read name of port for downloading files
 		filesQuery, err := enc.ReadL8String(conn)
 		if err != nil {
-			srv.Println("Cannot read files port", err)
+			ctx.Println("Cannot read files port", err)
 			return
 		}
-		// Update status
-		offer.Status.Status = api.StatusAccepted
-		service.Incoming(srv.Core).Update(offer, -1)
 		// Send ok
 		err = enc.Write(conn, uint8(0))
 		if err != nil {
-			srv.Println("Cannot send ok", err)
+			ctx.Println("Cannot send ok", err)
 			return
 		}
 		// Open connection for downloading files
-		filesConn, err = srv.Query(string(offer.Peer), filesQuery)
+		filesConn, err = ctx.Query(peerId, filesQuery)
 		if err != nil {
-			srv.Println("Cannot query files port", err)
+			ctx.Println("Cannot query files port", err)
 			return
 		}
 		return
@@ -115,114 +115,99 @@ func download(srv handler.Context, id api.OfferId) (err error) {
 	}
 	// Try to download files in background
 	go func() {
-		defer filesConn.Close()
-		// Ensure the status will be updated
 		defer func() {
-			sent := len(offer.Files)
-			if err == nil {
-				offer.Status.Status = api.StatusCompleted
-			} else {
-				sent = offer.Index
-				offer.Status.Status = api.StatusFailed
-			}
+			_ = filesConn.Close()
+			// Ensure the status will be updated
 			time.Sleep(200 * time.Millisecond)
-			service.Incoming(srv.Core).Update(offer, sent)
+			offer.Finish(err)
 		}()
 		// Copy files to storage
-		err = service.File(srv.Core).CopyFrom(filesConn, offer)
+		err = service.File(ctx.Core).Copy(offer).From(filesConn)
 		if err != nil {
 			return
 		}
 		// Send OK
 		err = enc.Write(filesConn, uint8(0))
 		if err != nil {
-			srv.Println("Cannot send ok", err)
+			ctx.Println("Cannot send ok", err)
 			return
 		}
 	}()
 	return
 }
 
-func Upload(srv handler.Context, request astral.Request) {
+func Upload(ctx handler.Context, request astral.Request) {
 	// Accept incoming connection
 	conn, err := request.Accept()
 	if err != nil {
-		srv.Println("Cannot accept connection from", request.Caller(), err)
+		ctx.Println("Cannot accept connection from", request.Caller(), err)
 		return
 	}
 	defer conn.Close()
 	// Read request id
-	offerId, err := enc.ReadL8String(conn)
+	id, err := enc.ReadL8String(conn)
 	if err != nil {
-		srv.Println("Cannot read offer id", err)
+		ctx.Println("Cannot read offer id", err)
 		return
 	}
-	outgoing := service.Outgoing(srv.Core)
+
+	offer := service.Outgoing(ctx.Core).Set(api.OfferId(id))
 	// Obtain file by request id
-	offer := outgoing.Get(api.OfferId(offerId))
-	if offer == nil {
-		srv.Println("Cannot find offer with id", offerId)
+	if offer.Offer == nil {
+		ctx.Println("Cannot find offer with id", id)
 		return
 	}
 	// Update status
-	offer.Status.Status = api.StatusAccepted
-	outgoing.Update(offer, -1)
+	offer.Accept()
 	// Register port for reading files
 	filesQuery := api.Port + "/" + string(offer.Id)
-	filesPort, err := srv.Register(filesQuery)
+	filesPort, err := ctx.Register(filesQuery)
 	if err != nil {
-		srv.Println("Cannot register files port", filesPort, err)
+		ctx.Println("Cannot register files port", filesPort, err)
 		return
 	}
 	defer filesPort.Close()
 	// Send query port to recipient
 	err = enc.WriteL8String(conn, filesQuery)
 	if err != nil {
-		srv.Println("Cannot send files port", filesQuery, err)
+		ctx.Println("Cannot send files port", filesQuery, err)
 		return
 	}
 	// Read OK
 	_, err = enc.ReadUint8(conn)
 	if err != nil {
-		srv.Println("Cannot read ok", filesQuery, err)
+		ctx.Println("Cannot read ok", filesQuery, err)
 		return
 	}
 	// Wait for connection on files port
 	filesRequest := <-filesPort.Next()
 	if filesRequest.Caller() != request.Caller() {
 		filesRequest.Reject()
-		srv.Println("Invalid caller", filesQuery, err)
+		ctx.Println("Invalid caller", filesQuery, err)
 		return
 	}
 	filesConn, err := filesRequest.Accept()
 	if err != nil {
-		srv.Println("Cannot accept files connection", filesQuery, err)
+		ctx.Println("Cannot accept files connection", filesQuery, err)
 		return
 	}
-	defer filesConn.Close()
 	defer func() {
-		sent := len(offer.Files)
-		if err == nil {
-			offer.Status.Status = api.StatusCompleted
-		} else {
-			sent = offer.Index
-			offer.Status.Status = api.StatusFailed
-		}
+		_ = filesConn.Close()
 		time.Sleep(200 * time.Millisecond)
-		outgoing.Update(offer, sent)
+		offer.Finish(err)
 	}()
 	go func() {
 		// Send files
-		err = service.File(srv.Core).CopyTo(filesConn, offer)
+		err = service.File(ctx.Core).Copy(offer).To(filesConn)
 		if err != nil {
-			srv.Println("Cannot copy files", filesQuery, err)
+			ctx.Println("Cannot copy files", filesQuery, err)
 			return
 		}
 	}()
 	// Wait OK
 	_, err = enc.ReadUint8(filesConn)
 	if err != nil {
-		srv.Println("Cannot read ok", filesQuery, err)
+		ctx.Println("Cannot read ok", filesQuery, err)
 		return
 	}
 }

@@ -183,7 +183,7 @@ func cmdStatus(writer io.ReadWriter, client Client, args []string) (err error) {
 	if len(args) > 0 {
 		filter = args[0]
 	}
-	var events <-chan api.Status
+	var events <-chan api.OfferStatus
 	switch filter {
 	case "all", "out", "in":
 		events, err = client.Status(api.Filter(filter))
@@ -202,7 +202,7 @@ func printFilesRequest(writer io.Writer, offer api.Offer) (err error) {
 	_, err = fmt.Fprintln(writer, "peer:", offer.Peer)
 	_, err = fmt.Fprintln(writer, "offer id:", offer.Id)
 	_, err = fmt.Fprintln(writer, "created at:", offer.Create)
-	_, err = fmt.Fprintln(writer, "status:", offer.Status.Status)
+	_, err = fmt.Fprintln(writer, "status:", offer.Status)
 	if offer.Index > -1 {
 		_, err = fmt.Fprintln(writer, "  file index:", offer.Index)
 		_, err = fmt.Fprintln(writer, "  progress:", offer.Progress)

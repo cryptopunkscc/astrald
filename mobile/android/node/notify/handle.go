@@ -57,18 +57,21 @@ func (and DispatchNotification) Run(ctx context.Context, node *_node.Node) error
 			conn := query.Accept()
 			go func(conn io.ReadWriteCloser) {
 				defer conn.Close()
+				decoder := gob.NewDecoder(conn)
 				var notifications []Notification
-				err := gob.NewDecoder(conn).Decode(&notifications)
-				if err != nil {
-					log.Println("Cannot decode notifications", err)
-					return
+				for {
+					err := decoder.Decode(&notifications)
+					if err != nil {
+						log.Println("Cannot decode notifications", err)
+						return
+					}
+					err = and.Call(notify, notifications)
+					if err != nil {
+						log.Println("Cannot dispatch notifications", err)
+						//return
+					}
+					_ = enc.Write(conn, uint8(0))
 				}
-				err = and.Call(notify, notifications)
-				if err != nil {
-					log.Println("Cannot dispatch notifications", err)
-					return
-				}
-				_ = enc.Write(conn, uint8(0))
 			}(conn)
 		}
 	}()
