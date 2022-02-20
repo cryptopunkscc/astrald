@@ -31,7 +31,7 @@ var dataDir string
 func Start(
 	dir string,
 	bluetooth Bluetooth,
-	native AndroidApi,
+	api AndroidApi,
 ) error {
 	dataDir = dir
 	nodeDir := filepath.Join(dataDir, "node")
@@ -50,7 +50,7 @@ func Start(
 	// Set up app execution context
 	ctx, stop = context.WithCancel(context.Background())
 
-	and := androidApi{native}
+	adapter := androidApi{api: api}
 	n, err := node.Run(
 		ctx, nodeDir,
 		admin.Admin{},
@@ -60,10 +60,10 @@ func Start(
 		info.Info{},
 		id.Id{},
 		contacts.Contacts{},
-		notify.CreateChannel{Api: and},
-		notify.DispatchNotification{Api: and},
-		content.GetInfo{Api: and},
-		content.Read{Api: and},
+		notify.CreateChannel{Api: adapter},
+		notify.DispatchNotification{Api: adapter},
+		content.GetInfo{Api: adapter},
+		content.Read{Api: adapter},
 	)
 	if err != nil {
 		return err
