@@ -7,9 +7,9 @@ import (
 
 func (ctx Context) Serve(handlers Handlers) {
 	for _, group := range handlers {
+		time.Sleep(500 * time.Millisecond)
 		for query, handle := range group {
 			go ctx.serve(query, handle)
-			time.Sleep(500 * time.Millisecond)
 		}
 	}
 }
