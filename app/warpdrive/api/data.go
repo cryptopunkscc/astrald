@@ -34,6 +34,10 @@ type OfferStatus struct {
 	Update int64
 }
 
+func (offer Offer) IsOngoing() bool {
+	return offer.Index > -1 && offer.Index < len(offer.Files)
+}
+
 type Peers map[PeerId]*Peer
 
 type PeerId string

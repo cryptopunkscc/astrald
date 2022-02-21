@@ -1,18 +1,9 @@
 package api
 
-type Notifications struct {
-	Notify chan<- Notification
-}
+type Notify func([]Notification)
 
 type Notification struct {
 	Peer
 	Offer
 	*Info
-	Incoming bool
-}
-
-type Notify interface {
-	New(Notification)
-	Progress(Notification)
-	Finish(Notification)
 }

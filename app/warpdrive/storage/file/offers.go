@@ -28,7 +28,7 @@ func (r Offers) Init() {
 	_ = os.MkdirAll(r.normalizePath(""), 0700)
 }
 
-func (r Offers) Save(offer *api.Offer) {
+func (r Offers) Save(offer api.Offer) {
 	path := r.normalizePath(string(offer.Id))
 
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)

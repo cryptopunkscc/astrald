@@ -37,20 +37,18 @@ func (c Client) Notify(notifications ...Notification) (err error) {
 	return
 }
 
-func (c Client) Notifier() (dispatch chan<- Notification) {
+func (c Client) Notifier() (dispatch Notify) {
 	conn, err := astral.Query(c.Identity, notify)
 	if err != nil {
 		return
 	}
-	nc := make(chan Notification, 128)
+	nc := make(chan []Notification, 128)
 	dispatch = nc
 	go func() {
 		defer conn.Close()
 		encoder := gob.NewEncoder(conn)
-		notifications := make([]Notification, 1)
-		for notification := range nc {
+		for notifications := range nc {
 			if err == nil {
-				notifications[0] = notification
 				err = encoder.Encode(notifications)
 				if err != nil {
 					log.Println("cannot encode notification", err)
