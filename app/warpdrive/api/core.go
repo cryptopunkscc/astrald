@@ -8,9 +8,10 @@ import (
 type Core struct {
 	Config
 	*log.Logger
+	*Sys
 	*Cache
 	*Observers
-	*Notifications
+	Channel *Channel
 }
 
 type Config struct {
@@ -18,6 +19,10 @@ type Config struct {
 	StorageDir     string
 	RemoteResolver bool
 	Platform       string
+}
+
+type Sys struct {
+	Notify Notify
 }
 
 type Cache struct {
@@ -38,6 +43,23 @@ type Observers struct {
 	IncomingStatus *Subscriptions
 	OutgoingOffers *Subscriptions
 	OutgoingStatus *Subscriptions
+}
+
+type Channel struct {
+	Offers chan<- OfferUpdate
+}
+
+type OfferUpdate interface {
+	//Cache updated offer in memory
+	Cache()
+	//Save  updated offer in persistent storage
+	Save()
+	//Forward update to listeners
+	Forward()
+	//A Stat returns related OfferStatus
+	Stat() OfferStatus
+	//Notification related to this update
+	Notification() Notification
 }
 
 const (

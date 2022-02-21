@@ -24,6 +24,7 @@ func (f File) Copy(offer *Offer) CopyOffer {
 }
 
 func (offer CopyOffer) From(reader io.Reader) (err error) {
+	offer.Status = api.StatusUpdated
 	for offer.Index = range offer.Files {
 		if err = offer.fileFrom(reader); err != nil {
 			return
@@ -51,9 +52,8 @@ func (offer CopyOffer) fileFrom(reader io.Reader) (err error) {
 	}
 	defer writer.Close()
 	// Copy bytes
-	offer.Status = api.StatusUpdated
 	update := func(progress int64, size int64) error {
-		go offer.Update(progress)
+		offer.Update(progress)
 		return nil
 	}
 	progress := &ioprogress.Reader{
@@ -79,6 +79,7 @@ func (offer CopyOffer) fileFrom(reader io.Reader) (err error) {
 }
 
 func (offer CopyOffer) To(writer io.Writer) (err error) {
+	offer.Status = api.StatusUpdated
 	for offer.Index = range offer.Files {
 		if err = offer.fileTo(writer); err != nil {
 			return
@@ -98,9 +99,8 @@ func (offer CopyOffer) fileTo(writer io.Writer) (err error) {
 		offer.Println("Cannot get reader", info.Uri, offer.Id, err)
 		return
 	}
-	offer.Status = api.StatusUpdated
 	update := func(progress int64, size int64) error {
-		go offer.Update(progress)
+		offer.Update(progress)
 		return nil
 	}
 	progress := &ioprogress.Reader{

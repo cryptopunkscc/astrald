@@ -8,8 +8,10 @@ const (
 type Api interface {
 	Create(channel Channel) error
 	Notify(notifications ...Notification) error
-	Notifier() chan<- Notification
+	Notifier() Notify
 }
+
+type Notify chan<- []Notification
 
 type Notification struct {
 	Id            int

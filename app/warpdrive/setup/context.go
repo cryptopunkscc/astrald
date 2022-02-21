@@ -22,4 +22,11 @@ func Context(ctx *handler.Context) {
 
 	// Peers
 	service.Peer(ctx.Core).Fetch()
+
+	// Offer updates
+	stop := service.OfferUpdates(ctx.Core).Start()
+	go func() {
+		<-ctx.Done()
+		stop()
+	}()
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/android"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/desktop"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/platform/stub"
-	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/storage/file"
 	"log"
 	"os"
@@ -16,7 +15,8 @@ import (
 func Core(core *api.Core) {
 	// Defaults
 	core.Logger = log.Default()
-	core.Notifications = &api.Notifications{}
+	core.Sys = &api.Sys{}
+	core.Channel = &api.Channel{}
 	core.Cache = &api.Cache{
 		Mutex:    &api.Mutex{},
 		Incoming: api.Offers{},
@@ -52,13 +52,8 @@ func Core(core *api.Core) {
 	core.Cache.Incoming = file.Incoming(*core).Get()
 	core.Cache.Outgoing = file.Outgoing(*core).Get()
 
-	// Notifier
-	notifier := service.Notify{
-		Core:   *core,
-		Notify: newNotify(*core),
-	}
-	notifier.Init()
-	go notifier.Start()
+	// Notify
+	core.Sys.Notify = newNotify(*core)
 }
 
 func storageDir() string {
@@ -84,15 +79,15 @@ func repositoryDir() string {
 func newNotify(core api.Core) (notify api.Notify) {
 	switch core.Platform {
 	case api.PlatformDesktop:
-		notify = &desktop.Notifier{}
+		notify = desktop.Notify
 	case api.PlatformAndroid:
 		notifier := &android.Notifier{}
 		notifier = notifier.Init()
 		if notifier != nil {
-			notify = notifier
+			notify = notifier.Notify
 		}
 	default:
-		notify = &stub.Notifier{}
+		notify = stub.Notify
 	}
 	return
 }

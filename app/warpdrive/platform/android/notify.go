@@ -9,10 +9,11 @@ import (
 	"strings"
 )
 
-var _ api.Notify = &Notifier{}
+var _ api.Notify = (&Notifier{}).Notify
 
 type Notifier struct {
 	notify.Api
+	notify        notify.Notify
 	inChannel     notify.Channel
 	outChannel    notify.Channel
 	inGroup       notify.Notification
@@ -64,7 +65,40 @@ func (m *Notifier) Init() *Notifier {
 		log.Println("Cannot create outgoing notification channel", err)
 		return nil
 	}
+	m.notify = m.Api.Notifier()
 	return m
+}
+
+func (m *Notifier) Notify(notifications []api.Notification) {
+	for _, n := range notifications {
+		switch n.Status {
+		case api.StatusAwaiting:
+			if n.In && n.Peer.Mod == api.PeerModAsk {
+				m.create(n)
+			}
+		case api.StatusUpdated:
+			m.progress(n)
+		case
+			api.StatusFailed,
+			api.StatusRejected,
+			api.StatusCompleted:
+			m.finish(n)
+		}
+	}
+	groups := []notify.Notification{m.inGroup, m.outGroup}
+	var last *notify.Notification
+	var arr []notify.Notification
+	for _, group := range groups {
+		for _, last = range m.notifications {
+			if last.ChannelId == group.ChannelId {
+				arr = append(arr, *last)
+			}
+		}
+		if last != nil && last.ChannelId == group.ChannelId {
+			arr = append(arr, group)
+		}
+	}
+	m.notify <- arr
 }
 
 func (m *Notifier) create(an api.Notification) (n *notify.Notification) {
@@ -93,8 +127,7 @@ func (m *Notifier) create(an api.Notification) (n *notify.Notification) {
 	} else {
 		n.Group = "out"
 	}
-	m.notifications[an.Offer.Id] = n
-	if an.Incoming {
+	if an.In {
 		n.ChannelId = m.inChannel.Id
 		peerName := an.Peer.Alias
 		if peerName == "" {
@@ -127,35 +160,11 @@ func (m *Notifier) create(an api.Notification) (n *notify.Notification) {
 		n.ContentTitle = title
 		n.ContentText = text
 	}
+	m.notifications[an.Offer.Id] = n
 	return
 }
 
-func (m *Notifier) New(an api.Notification) {
-	if n := m.create(an); an.In {
-		m.notify(n)
-	}
-}
-
-func formatPeerName(an api.Notification) (name string) {
-	name = an.Peer.Alias
-	if name == "" && len(an.Peer.Id) == 66 {
-		shortId := string(an.Peer.Id)[58:66]
-		name = shortId[0:4] + "-" + shortId[4:8]
-	}
-	if name == "" {
-		name = "this device"
-	}
-	return
-}
-
-func titlePrefix(an api.Notification) string {
-	if an.In {
-		return "Downloading from"
-	}
-	return "Uploading to"
-}
-
-func (m *Notifier) Progress(an api.Notification) {
+func (m *Notifier) progress(an api.Notification) {
 	n := m.notifications[an.Offer.Id]
 	if n == nil {
 		n = m.create(an)
@@ -173,10 +182,10 @@ func (m *Notifier) Progress(an api.Notification) {
 		Current: int(an.Progress),
 	}
 	n.Action = nil
-	m.notify(n)
+	m.notifications[an.Offer.Id] = n
 }
 
-func (m *Notifier) Finish(an api.Notification) {
+func (m *Notifier) finish(an api.Notification) {
 	n := m.notifications[an.Offer.Id]
 	if n == nil {
 		n = m.create(an)
@@ -191,21 +200,26 @@ func (m *Notifier) Finish(an api.Notification) {
 		formatTransferredSize(an),
 	)
 	n.Progress = nil
-	m.notify(n)
-	delete(m.notifications, an.Offer.Id)
+	m.notifications[an.Offer.Id] = n
 }
 
-func (m *Notifier) notify(n *notify.Notification) {
-	var group notify.Notification
-	if n.Group == m.inGroup.Group {
-		group = m.inGroup
-	} else {
-		group = m.outGroup
+func titlePrefix(an api.Notification) string {
+	if an.In {
+		return "Downloading from"
 	}
-	err := m.Notify(*n, group)
-	if err != nil {
-		log.Println("Cannot display notification", err)
+	return "Uploading to"
+}
+
+func formatPeerName(an api.Notification) (name string) {
+	name = an.Peer.Alias
+	if name == "" && len(an.Peer.Id) == 66 {
+		shortId := string(an.Peer.Id)[58:66]
+		name = shortId[0:4] + "-" + shortId[4:8]
 	}
+	if name == "" {
+		name = "this device"
+	}
+	return
 }
 
 func formatTransferredSize(an api.Notification) (str string) {

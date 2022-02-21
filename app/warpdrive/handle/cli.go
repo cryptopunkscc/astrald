@@ -192,7 +192,7 @@ func cmdStatus(writer io.ReadWriter, client Client, args []string) (err error) {
 		return
 	}
 	for event := range events {
-		_, _ = fmt.Fprintln(writer, event.Id, event.Status)
+		_, _ = fmt.Fprintln(writer, event.Id, event.Update, event.In, event.Status, event.Index, event.Progress)
 	}
 	return
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type OfferStorage interface {
-	Save(offer *Offer)
+	Save(offer Offer)
 	Get() Offers
 }
 

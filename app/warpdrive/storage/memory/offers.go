@@ -18,8 +18,8 @@ func Outgoing(core api.Core) OffersRepo {
 	return OffersRepo{core.Cache.Outgoing}
 }
 
-func (r OffersRepo) Save(offer *api.Offer) {
-	r.offers[offer.Id] = offer
+func (r OffersRepo) Save(offer api.Offer) {
+	r.offers[offer.Id] = &offer
 }
 
 func (r OffersRepo) Get() api.Offers {
