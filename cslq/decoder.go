@@ -92,7 +92,12 @@ func (r *Decoder) decodeVar(op interface{}, v interface{}) error {
 	if err := binary.Read(r.r, byteOrder, buf.Interface()); err != nil {
 		return err
 	}
-	rv.Set(buf.Elem().Convert(rv.Type()))
+
+	if rv.Kind() == reflect.Bool {
+		rv.SetBool(!buf.Elem().IsZero())
+	} else {
+		rv.Set(buf.Elem().Convert(rv.Type()))
+	}
 
 	return nil
 }

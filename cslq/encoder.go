@@ -78,6 +78,14 @@ func (w *Encoder) encodeVar(op interface{}, v interface{}) error {
 		rv = rv.Elem()
 	}
 
+	if rv.Kind() == reflect.Bool {
+		if rv.Bool() {
+			rv = reflect.ValueOf(uint8(1))
+		} else {
+			rv = reflect.ValueOf(uint8(0))
+		}
+	}
+
 	if !rv.CanConvert(targetType) {
 		return ErrCannotConvert{
 			rv.Type().String(),
