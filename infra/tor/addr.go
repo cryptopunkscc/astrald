@@ -41,9 +41,9 @@ func (addr Addr) String() string {
 // Pack returns binary representation of the address
 func (addr Addr) Pack() []byte {
 	b := &bytes.Buffer{}
-	cslq.Write(b, byte(addr.Version()))
-	cslq.Write(b, addr.digest)
-	cslq.Write(b, addr.port)
+
+	cslq.Encode(b, "c [35]c s", addr.Version(), addr.digest, addr.port)
+
 	return b.Bytes()
 }
 
@@ -120,7 +120,8 @@ func Unpack(data []byte) (Addr, error) {
 		return Addr{}, err
 	}
 
-	port, err := cslq.ReadUint16(r)
+	var port uint16
+	err = cslq.Decode(r, "s", &port)
 	if err != nil {
 		return Addr{}, errors.New("invalid port")
 	}

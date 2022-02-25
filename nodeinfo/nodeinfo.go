@@ -23,6 +23,11 @@ type Unpacker interface {
 	Unpack(networkName string, addr []byte) (infra.Addr, error)
 }
 
+type Addr struct {
+	Network string
+	Data    []byte
+}
+
 type NodeInfo struct {
 	Alias     string
 	Identity  id.Identity
@@ -54,20 +59,13 @@ func Parse(s string, unpacker Unpacker) (*NodeInfo, error) {
 }
 
 func write(w io.Writer, c *NodeInfo) error {
-	if err := cslq.WriteL8String(w, c.Alias); err != nil {
-		return err
-	}
-
-	if err := cslq.WriteIdentity(w, c.Identity); err != nil {
-		return err
-	}
-
 	addrs := c.Addresses[:]
 	if len(addrs) > 255 {
 		addrs = addrs[:255]
 	}
 
-	if err := cslq.Write(w, uint8(len(addrs))); err != nil {
+	err := cslq.Encode(w, "[c]c v c", c.Alias, c.Identity, len(addrs))
+	if err != nil {
 		return err
 	}
 
@@ -81,17 +79,13 @@ func write(w io.Writer, c *NodeInfo) error {
 }
 
 func read(r io.Reader, unpacker Unpacker) (*NodeInfo, error) {
-	alias, err := cslq.ReadL8String(r)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		alias    string
+		identity id.Identity
+		count    int
+	)
 
-	identity, err := cslq.ReadIdentity(r)
-	if err != nil {
-		return nil, err
-	}
-
-	count, err := cslq.ReadUint8(r)
+	err := cslq.Decode(r, "[c]c v c", &alias, &identity, &count)
 	if err != nil {
 		return nil, err
 	}
@@ -120,35 +114,35 @@ func read(r io.Reader, unpacker Unpacker) (*NodeInfo, error) {
 func writeAddr(w io.Writer, addr infra.Addr) error {
 	switch addr.Network() {
 	case inet.NetworkName:
-		if err := cslq.Write(w, uint8(netCodeInet)); err != nil {
+		if err := cslq.Encode(w, "c", netCodeInet); err != nil {
 			return err
 		}
 	case tor.NetworkName:
-		if err := cslq.Write(w, uint8(netCodeTor)); err != nil {
+		if err := cslq.Encode(w, "c", netCodeTor); err != nil {
 			return err
 		}
 	case gw.NetworkName:
-		if err := cslq.Write(w, uint8(netCodeGateway)); err != nil {
+		if err := cslq.Encode(w, "c", netCodeGateway); err != nil {
 			return err
 		}
 		gwAddr, _ := addr.(gw.Addr)
 		addr = gw.NewAddr(gwAddr.Gate(), "")
 	default:
-		if err := cslq.Write(w, uint8(255)); err != nil {
-			return err
-		}
-		if err := cslq.WriteL8String(w, addr.Network()); err != nil {
+		err := cslq.Encode(w, "c[c]c", 255, addr.Network())
+		if err != nil {
 			return err
 		}
 	}
-	if err := cslq.WriteL8Bytes(w, addr.Pack()); err != nil {
+	if err := cslq.Encode(w, "[c]c", addr.Pack()); err != nil {
 		return err
 	}
 	return nil
 }
 
 func readAddr(r io.Reader, unpacker Unpacker) (infra.Addr, error) {
-	net, err := cslq.ReadUint8(r)
+	var net int
+
+	err := cslq.Decode(r, "c", &net)
 	if err != nil {
 		return nil, err
 	}
@@ -164,13 +158,15 @@ func readAddr(r io.Reader, unpacker Unpacker) (infra.Addr, error) {
 		netName = gw.NetworkName
 
 	case 255:
-		netName, err = cslq.ReadL8String(r)
+		err = cslq.Decode(r, "[c]c", &netName)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	data, err := cslq.ReadL8Bytes(r)
+	var data []byte
+
+	err = cslq.Decode(r, "[c]c", &data)
 	if err != nil {
 		return nil, err
 	}

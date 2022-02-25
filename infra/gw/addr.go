@@ -21,8 +21,7 @@ func NewAddr(gate id.Identity, cookie string) Addr {
 func (a Addr) Pack() []byte {
 	buf := &bytes.Buffer{}
 
-	cslq.WriteIdentity(buf, a.gate)
-	cslq.WriteL8String(buf, a.cookie)
+	cslq.Encode(buf, "v [c]c", a.gate, a.cookie)
 
 	return buf.Bytes()
 }
@@ -54,12 +53,12 @@ func (a Addr) Network() string {
 func Unpack(data []byte) (Addr, error) {
 	r := bytes.NewReader(data)
 
-	nodeID, err := cslq.ReadIdentity(r)
-	if err != nil {
-		return Addr{}, err
-	}
+	var (
+		nodeID id.Identity
+		cookie string
+	)
 
-	cookie, err := cslq.ReadL8String(r)
+	err := cslq.Decode(r, "v [c]c", &nodeID, &cookie)
 	if err != nil {
 		return Addr{}, err
 	}

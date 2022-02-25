@@ -23,11 +23,13 @@ func (g Gateway) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) 
 		return nil, fmt.Errorf("gateway query error: %w", err)
 	}
 
-	if err := cslq.WriteL8String(rwc, a.cookie); err != nil {
+	if err := cslq.Encode(rwc, "[c]c", a.cookie); err != nil {
 		return nil, fmt.Errorf("gateway query error: %w", err)
 	}
 
-	res, err := cslq.ReadUint8(rwc)
+	var res int
+
+	err = cslq.Decode(rwc, "c", &res)
 	if err != nil {
 		rwc.Close()
 		return nil, infra.ErrConnectionRefused

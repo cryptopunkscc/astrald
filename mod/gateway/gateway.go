@@ -25,7 +25,9 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 		conn := req.Accept()
 
 		go func() {
-			cookie, err := cslq.ReadL8String(conn)
+			var cookie string
+
+			err = cslq.Decode(conn, "[c]c", &cookie)
 			if err != nil {
 				conn.Close()
 				return
@@ -39,12 +41,12 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 
 			out, err := node.Query(ctx, nodeID, queryConnect)
 			if err != nil {
-				cslq.Write(conn, uint8(0))
+				cslq.Encode(conn, "c", false)
 				conn.Close()
 				return
 			}
 
-			cslq.Write(conn, uint8(1))
+			cslq.Encode(conn, "c", true)
 
 			join(ctx, conn, out)
 		}()

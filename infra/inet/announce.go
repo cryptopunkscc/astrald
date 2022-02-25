@@ -93,19 +93,18 @@ func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *i
 
 func makePresence(id id.Identity, port uint16, flags uint8) []byte {
 	buf := &bytes.Buffer{}
-	cslq.WriteIdentity(buf, id)
-	cslq.Write(buf, port)
-	cslq.Write(buf, flags)
+
+	cslq.Encode(buf, "vsc", id, port, flags)
+
 	return buf.Bytes()
 }
 
-func parsePresence(data []byte) (_id id.Identity, port uint16, flags uint8, err error) {
+func parsePresence(data []byte) (identity id.Identity, port uint16, flags uint8, err error) {
 	if len(data) != presencePayloadLen {
-		return _id, port, flags, errors.New("invalid data")
+		return identity, port, flags, errors.New("invalid data")
 	}
-	r := bytes.NewReader(data)
-	_id, _ = cslq.ReadIdentity(r)
-	port, _ = cslq.ReadUint16(r)
-	flags, _ = cslq.ReadUint8(r)
+
+	err = cslq.Decode(bytes.NewReader(data), "vsc", &identity, &port, &flags)
+
 	return
 }
