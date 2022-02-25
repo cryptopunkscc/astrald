@@ -1,4 +1,4 @@
-package enc
+package cslq
 
 import (
 	"encoding/binary"

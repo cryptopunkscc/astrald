@@ -3,7 +3,7 @@ package roam
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	_node "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"log"
@@ -90,7 +90,7 @@ func (roam *Roam) servePick(ctx context.Context) error {
 		query := query.Accept()
 
 		// read remote stream id of the connection to pick
-		remoteStreamID, _ := enc.ReadUint16(query)
+		remoteStreamID, _ := cslq.ReadUint16(query)
 
 		// find the connection
 		for c := range query.Link().Conns() {
@@ -98,7 +98,7 @@ func (roam *Roam) servePick(ctx context.Context) error {
 				// allocate a new move for the connection
 				moveID := roam.allocMove(c)
 				if moveID != -1 {
-					enc.Write(query, uint8(moveID))
+					cslq.Write(query, uint8(moveID))
 				}
 				break
 			}
@@ -125,8 +125,8 @@ func (roam *Roam) serveDrop(ctx context.Context) {
 		query := query.Accept()
 
 		// read moveID and remote output ID
-		moveID, _ := enc.ReadUint8(query)
-		newOutputID, _ := enc.ReadUint16(query)
+		moveID, _ := cslq.ReadUint8(query)
+		newOutputID, _ := cslq.ReadUint16(query)
 
 		conn, found := roam.moves[int(moveID)]
 		if !found {
@@ -137,7 +137,7 @@ func (roam *Roam) serveDrop(ctx context.Context) {
 		// allocate a new input stream and write its id
 		newInputStream, _ := query.Link().AllocInputStream()
 		conn.SetFallbackInputStream(newInputStream)
-		enc.Write(query, uint16(newInputStream.ID()))
+		cslq.Write(query, uint16(newInputStream.ID()))
 
 		// replace the output stream and finalize the move
 		newOutputStream := query.Link().OutputStream(int(newOutputID))
@@ -192,10 +192,10 @@ func (roam *Roam) init(conn *link.Conn) (int, error) {
 	defer init.Close()
 
 	// write input stream id of the connection to be migrated
-	enc.Write(init, uint16(conn.InputStream().ID()))
+	cslq.Write(init, uint16(conn.InputStream().ID()))
 
 	// read transfer id
-	tid, err := enc.ReadUint8(init)
+	tid, err := cslq.ReadUint8(init)
 	if err != nil {
 		return -1, err
 	}
@@ -222,11 +222,11 @@ func (roam *Roam) drop(dest *link.Link, conn *link.Conn, moveID int) error {
 	defer query.Close()
 
 	// write move id and new input stream id
-	enc.Write(query, uint8(moveID))
-	enc.Write(query, uint16(newInputStream.ID()))
+	cslq.Write(query, uint8(moveID))
+	cslq.Write(query, uint16(newInputStream.ID()))
 
 	// preapre the new output stream
-	newOutputStreamID, _ := enc.ReadUint16(query)
+	newOutputStreamID, _ := cslq.ReadUint16(query)
 	if newOutputStreamID == 0 {
 		newInputStream.Close()
 		return errors.New("received invalid id")

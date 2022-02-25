@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra/ip"
 	"log"
 	"net"
@@ -93,9 +93,9 @@ func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *i
 
 func makePresence(id id.Identity, port uint16, flags uint8) []byte {
 	buf := &bytes.Buffer{}
-	enc.WriteIdentity(buf, id)
-	enc.Write(buf, port)
-	enc.Write(buf, flags)
+	cslq.WriteIdentity(buf, id)
+	cslq.Write(buf, port)
+	cslq.Write(buf, flags)
 	return buf.Bytes()
 }
 
@@ -104,8 +104,8 @@ func parsePresence(data []byte) (_id id.Identity, port uint16, flags uint8, err 
 		return _id, port, flags, errors.New("invalid data")
 	}
 	r := bytes.NewReader(data)
-	_id, _ = enc.ReadIdentity(r)
-	port, _ = enc.ReadUint16(r)
-	flags, _ = enc.ReadUint8(r)
+	_id, _ = cslq.ReadIdentity(r)
+	port, _ = cslq.ReadUint16(r)
+	flags, _ = cslq.ReadUint8(r)
 	return
 }

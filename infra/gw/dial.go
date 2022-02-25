@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
 )
 
@@ -23,11 +23,11 @@ func (g Gateway) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) 
 		return nil, fmt.Errorf("gateway query error: %w", err)
 	}
 
-	if err := enc.WriteL8String(rwc, a.cookie); err != nil {
+	if err := cslq.WriteL8String(rwc, a.cookie); err != nil {
 		return nil, fmt.Errorf("gateway query error: %w", err)
 	}
 
-	res, err := enc.ReadUint8(rwc)
+	res, err := cslq.ReadUint8(rwc)
 	if err != nil {
 		rwc.Close()
 		return nil, infra.ErrConnectionRefused

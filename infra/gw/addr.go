@@ -3,7 +3,7 @@ package gw
 import (
 	"bytes"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
 )
 
@@ -21,8 +21,8 @@ func NewAddr(gate id.Identity, cookie string) Addr {
 func (a Addr) Pack() []byte {
 	buf := &bytes.Buffer{}
 
-	enc.WriteIdentity(buf, a.gate)
-	enc.WriteL8String(buf, a.cookie)
+	cslq.WriteIdentity(buf, a.gate)
+	cslq.WriteL8String(buf, a.cookie)
 
 	return buf.Bytes()
 }
@@ -54,12 +54,12 @@ func (a Addr) Network() string {
 func Unpack(data []byte) (Addr, error) {
 	r := bytes.NewReader(data)
 
-	nodeID, err := enc.ReadIdentity(r)
+	nodeID, err := cslq.ReadIdentity(r)
 	if err != nil {
 		return Addr{}, err
 	}
 
-	cookie, err := enc.ReadL8String(r)
+	cookie, err := cslq.ReadL8String(r)
 	if err != nil {
 		return Addr{}, err
 	}

@@ -1,4 +1,4 @@
-package enc
+package cslq
 
 import (
 	"encoding/binary"
@@ -7,10 +7,10 @@ import (
 	"io"
 )
 
-var encoding = binary.BigEndian
+var byteOrder = binary.BigEndian
 
 func Write(w io.Writer, i interface{}) error {
-	return binary.Write(w, encoding, i)
+	return binary.Write(w, byteOrder, i)
 }
 
 func WriteL8String(w io.Writer, str string) error {

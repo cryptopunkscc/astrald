@@ -5,7 +5,7 @@ import (
 	"encoding/base32"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
 	"io"
 	"strconv"
@@ -41,9 +41,9 @@ func (addr Addr) String() string {
 // Pack returns binary representation of the address
 func (addr Addr) Pack() []byte {
 	b := &bytes.Buffer{}
-	enc.Write(b, byte(addr.Version()))
-	enc.Write(b, addr.digest)
-	enc.Write(b, addr.port)
+	cslq.Write(b, byte(addr.Version()))
+	cslq.Write(b, addr.digest)
+	cslq.Write(b, addr.port)
 	return b.Bytes()
 }
 
@@ -120,7 +120,7 @@ func Unpack(data []byte) (Addr, error) {
 		return Addr{}, err
 	}
 
-	port, err := enc.ReadUint16(r)
+	port, err := cslq.ReadUint16(r)
 	if err != nil {
 		return Addr{}, errors.New("invalid port")
 	}

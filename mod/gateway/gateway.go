@@ -3,7 +3,7 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
@@ -25,7 +25,7 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 		conn := req.Accept()
 
 		go func() {
-			cookie, err := enc.ReadL8String(conn)
+			cookie, err := cslq.ReadL8String(conn)
 			if err != nil {
 				conn.Close()
 				return
@@ -39,12 +39,12 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 
 			out, err := node.Query(ctx, nodeID, queryConnect)
 			if err != nil {
-				enc.Write(conn, uint8(0))
+				cslq.Write(conn, uint8(0))
 				conn.Close()
 				return
 			}
 
-			enc.Write(conn, uint8(1))
+			cslq.Write(conn, uint8(1))
 
 			join(ctx, conn, out)
 		}()
