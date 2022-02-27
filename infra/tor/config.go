@@ -2,10 +2,12 @@ package tor
 
 import "time"
 
-const defaultTorProxy = "127.0.0.1:9050"
-const defaultControlAddr = "127.0.0.1:9051"
-const defaultDialTimeout = time.Minute
-const defaultListenPort = 1791
+const (
+	defaultTorProxy    = "127.0.0.1:9050"
+	defaultControlAddr = "127.0.0.1:9051"
+	defaultDialTimeout = time.Minute
+	defaultListenPort  = 1791
+)
 
 type Config struct {
 	TorProxy    string `yaml:"tor_proxy"`

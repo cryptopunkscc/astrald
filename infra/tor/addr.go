@@ -7,13 +7,9 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
-	"io"
 	"strconv"
 	"strings"
 )
-
-const v2KeyLength = 10
-const v3KeyLength = 35
 
 // Type check
 var _ infra.Addr = Addr{}
@@ -23,6 +19,13 @@ type Addr struct {
 	digest []byte
 	port   uint16
 }
+
+const (
+	addrVersion = 3
+	addrLen     = 35
+	onionSuffix = ".ONION"
+	packPattern = "c [35]c s"
+)
 
 // Network returns the name of the network the address belongs to
 func (addr Addr) Network() string {
@@ -40,9 +43,12 @@ func (addr Addr) String() string {
 
 // Pack returns binary representation of the address
 func (addr Addr) Pack() []byte {
-	b := &bytes.Buffer{}
+	var b = &bytes.Buffer{}
 
-	cslq.Encode(b, "c [35]c s", addr.Version(), addr.digest, addr.port)
+	err := cslq.Encode(b, packPattern, addrVersion, addr.digest, addr.port)
+	if err != nil {
+		return nil
+	}
 
 	return b.Bytes()
 }
@@ -52,22 +58,13 @@ func (addr Addr) IsZero() bool {
 	return (addr.digest == nil) || (len(addr.digest) == 0)
 }
 
-// Version returns the version of Tor address (2 or 3) or 0 if the address data is errorous
-func (addr Addr) Version() int {
-	switch len(addr.digest) {
-	case v2KeyLength:
-		return 2
-	case v3KeyLength:
-		return 3
-	}
-	return 0
-}
-
 // Parse parses a string representation of a Tor address (both v2 and v3 are supported)
 func Parse(s string) (Addr, error) {
-	var err error
-	var port = defaultListenPort
-	var hostPort = strings.SplitN(s, ":", 2)
+	var (
+		err      error
+		port     = defaultListenPort
+		hostPort = strings.SplitN(s, ":", 2)
+	)
 
 	if len(hostPort) > 1 {
 		port, err = strconv.Atoi(hostPort[1])
@@ -76,11 +73,15 @@ func Parse(s string) (Addr, error) {
 		}
 	}
 
-	b32data := strings.TrimSuffix(strings.ToUpper(hostPort[0]), ".ONION")
+	var b32data = strings.TrimSuffix(strings.ToUpper(hostPort[0]), onionSuffix)
 
 	bytes, err := base32.StdEncoding.DecodeString(b32data)
 	if err != nil {
 		return Addr{}, fmt.Errorf("invalid address: %w", err)
+	}
+
+	if len(bytes) != addrLen {
+		return Addr{}, errors.New("invalid length")
 	}
 
 	addr := Addr{
@@ -88,42 +89,26 @@ func Parse(s string) (Addr, error) {
 		port:   uint16(port),
 	}
 
-	if addr.Version() == 0 {
-		return Addr{}, errors.New("invalid address")
-	}
-
 	return addr, nil
 }
 
 // Unpack converts a binary representation of the address to a struct
 func Unpack(data []byte) (Addr, error) {
-	r := bytes.NewReader(data)
+	var (
+		err      error
+		version  int
+		keyBytes []byte
+		port     uint16
+		dec      = cslq.NewDecoder(bytes.NewReader(data))
+	)
 
-	version, err := r.ReadByte()
+	err = dec.Decode(packPattern, &version, &keyBytes, &port)
 	if err != nil {
 		return Addr{}, err
 	}
 
-	var keyBytes []byte
-
-	switch version {
-	case 2:
-		keyBytes = make([]byte, v2KeyLength)
-	case 3:
-		keyBytes = make([]byte, v3KeyLength)
-	default:
+	if version != addrVersion {
 		return Addr{}, errors.New("invalid version")
-	}
-
-	_, err = io.ReadFull(r, keyBytes)
-	if err != nil {
-		return Addr{}, err
-	}
-
-	var port uint16
-	err = cslq.Decode(r, "s", &port)
-	if err != nil {
-		return Addr{}, errors.New("invalid port")
 	}
 
 	return Addr{
