@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/bt"
@@ -33,55 +34,39 @@ type Infra struct {
 	logLevel  int
 }
 
-func New(cfg config.Infra, querier Querier, store storage.Store) (*Infra, error) {
-	i := &Infra{
+func Run(ctx context.Context, cfg config.Infra, querier Querier, store storage.Store) (*Infra, error) {
+	var i = &Infra{
 		Querier:  querier,
 		Store:    store,
 		gateways: make([]infra.AddrSpec, 0),
 		logLevel: cfg.LogLevel,
 	}
-	var err error
 
+	// static gateways
+	if err := i.setupStaticGateways(cfg); err != nil {
+		i.Logf(log.Normal, "setupStaticGateways: %s", err)
+	}
+
+	// setup networks
+	if err := i.setupNetworks(ctx, cfg); err != nil {
+		i.Logf(log.Normal, "setupNetworks: %s", err)
+	}
+
+	return i, nil
+}
+
+func (i *Infra) setupStaticGateways(cfg config.Infra) error {
 	for _, gate := range cfg.Gateways {
 		addr, err := gw.Parse(gate)
 		if err != nil {
-			log.Println("error parsing gateway:", err)
-			continue
+			return fmt.Errorf("gateway parse error: %w", err)
 		}
 		i.gateways = append(i.gateways, infra.AddrSpec{
 			Addr:   addr,
 			Global: true,
 		})
 	}
-
-	// Configure internet
-	i.inet = inet.New(cfg.Inet)
-
-	err = i.addNetwork(i.inet)
-	if err != nil {
-		return nil, err
-	}
-
-	i.tor = tor.New(cfg.Tor, i.Store)
-	err = i.addNetwork(i.tor)
-	if err != nil {
-		return nil, err
-	}
-
-	// Configure astral gateways for mesh links
-	i.gateway = gw.New(cfg.Gw, i.Querier)
-	err = i.addNetwork(i.gateway)
-	if err != nil {
-		return nil, err
-	}
-
-	i.bluetooth = bt.New()
-	err = i.addNetwork(i.bluetooth)
-	if err != nil {
-		return nil, err
-	}
-
-	return i, nil
+	return nil
 }
 
 func (i *Infra) Networks() <-chan infra.Network {
@@ -123,12 +108,4 @@ func (i *Infra) Logf(level int, fmt string, args ...interface{}) {
 	}
 
 	log.Printf("[infra] "+fmt, args...)
-}
-
-func (i *Infra) addNetwork(n infra.Network) error {
-	if i.networks == nil {
-		i.networks = make(map[string]infra.Network)
-	}
-	i.networks[n.Name()] = n
-	return nil
 }

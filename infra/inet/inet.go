@@ -15,7 +15,7 @@ type Inet struct {
 	separateListen bool
 }
 
-func New(config Config) *Inet {
+func New(config Config) (*Inet, error) {
 	inet := &Inet{
 		config:      config,
 		listenPort:  defaultListenPort,
@@ -37,7 +37,7 @@ func New(config Config) *Inet {
 		log.Println("inet: added", addr)
 	}
 
-	return inet
+	return inet, nil
 }
 
 func (inet Inet) Name() string {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	_ "github.com/cryptopunkscc/astrald/infra/tor/system"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/connect"

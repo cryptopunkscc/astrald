@@ -62,6 +62,15 @@ func Connect(cfg Config) (*Control, error) {
 	}, nil
 }
 
+func New(rwc io.ReadWriteCloser) *Control {
+	c, ch := watchClosed(rwc)
+
+	return &Control{
+		proto:   textproto.NewConn(c),
+		closeCh: ch,
+	}
+}
+
 // Open connects to the daemon and authenticates
 func Open(cfg Config) (*Control, error) {
 	ctl, err := Connect(cfg)

@@ -23,13 +23,11 @@ type Gateway struct {
 	config Config
 }
 
-func New(config Config, querier Querier) *Gateway {
-	gw := &Gateway{
+func New(config Config, querier Querier) (*Gateway, error) {
+	return &Gateway{
 		Querier: querier,
 		config:  config,
-	}
-
-	return gw
+	}, nil
 }
 
 func Parse(str string) (Addr, error) {

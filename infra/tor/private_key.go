@@ -1,19 +1,19 @@
 package tor
 
 import (
-	"github.com/cryptopunkscc/astrald/infra/tor/tc"
+	"context"
 )
 
 const privateKeyFileName = "tor.key"
 
-func (tor *Tor) getPrivateKey() (string, error) {
+func (tor *Tor) getPrivateKey() (Key, error) {
 	if key, err := tor.loadPrivateKey(); err == nil {
 		return key, err
 	}
 
 	key, err := tor.generatePrivateKey()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	err = tor.savePrivateKey(key)
@@ -21,29 +21,21 @@ func (tor *Tor) getPrivateKey() (string, error) {
 	return key, err
 }
 
-func (tor *Tor) loadPrivateKey() (string, error) {
-	bytes, err := tor.store.LoadBytes(privateKeyFileName)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
+func (tor *Tor) loadPrivateKey() (Key, error) {
+	return tor.store.LoadBytes(privateKeyFileName)
 }
 
-func (tor *Tor) savePrivateKey(key string) error {
-	return tor.store.StoreBytes(privateKeyFileName, []byte(key))
+func (tor *Tor) savePrivateKey(key Key) error {
+	return tor.store.StoreBytes(privateKeyFileName, key)
 }
 
-func (tor *Tor) generatePrivateKey() (string, error) {
-	ctl, err := tor.connect()
+func (tor *Tor) generatePrivateKey() (Key, error) {
+	service, err := tor.backend.Listen(context.Background(), nil)
 	if err != nil {
-		return "", err
-	}
-	defer ctl.Close()
-
-	onion, err := ctl.AddOnion(tc.KeyNewBest, tc.Port(1024, "localhost:1024"))
-	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return onion.PrivateKey, err
+	defer service.Close()
+
+	return service.PrivateKey(), err
 }

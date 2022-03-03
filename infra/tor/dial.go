@@ -8,7 +8,7 @@ import (
 
 // Dial tries to establish a Tor connection to the provided address
 func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err error) {
-	ctx, cancel := context.WithTimeout(ctx, tor.config.getDialTimeout())
+	ctx, cancel := context.WithTimeout(ctx, tor.config.GetDialTimeout())
 	defer cancel()
 
 	// Convert to Tor address
@@ -25,7 +25,7 @@ func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err 
 		defer close(connCh)
 		defer close(errCh)
 
-		c, err := tor.proxy.Dial("tcp", addr.String())
+		c, err := tor.backend.Dial(ctx, "tcp", addr.String())
 		if err != nil {
 			errCh <- err
 			return

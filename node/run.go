@@ -55,7 +55,8 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 	log.Printf("astral node %s statrting...", nodeKey)
 
 	// Set up the infrastructure
-	node.Infra, err = infra.New(
+	node.Infra, err = infra.Run(
+		ctx,
 		node.Config.Infra,
 		infra.FilteredQuerier{Querier: node, FilteredID: node.identity},
 		node.Store,

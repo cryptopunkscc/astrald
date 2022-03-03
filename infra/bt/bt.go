@@ -11,8 +11,8 @@ var _ infra.Network = &Bluetooth{}
 type Bluetooth struct {
 }
 
-func New() *Bluetooth {
-	return &Bluetooth{}
+func New() (*Bluetooth, error) {
+	return &Bluetooth{}, nil
 }
 
 func (Bluetooth) Name() string {

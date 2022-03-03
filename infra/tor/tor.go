@@ -1,11 +1,11 @@
 package tor
 
 import (
+	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/storage"
 	"golang.org/x/net/proxy"
-	"log"
-	"net"
 )
 
 const NetworkName = "tor"
@@ -16,22 +16,25 @@ type Tor struct {
 	config Config
 	store  storage.Store
 
+	backend Backend
+
 	proxy       proxy.Dialer
 	serviceAddr Addr
 }
 
-func New(config Config, store storage.Store) *Tor {
-	var err error
-	var tor = &Tor{config: config, store: store}
+func Run(ctx context.Context, config Config, store storage.Store) (*Tor, error) {
+	var backendName = config.GetBackend()
+	var backend, found = backends[backendName]
 
-	dialTimeout := &net.Dialer{Timeout: config.getDialTimeout()}
-	tor.proxy, err = proxy.SOCKS5("tcp", config.getProxyAddress(), nil, dialTimeout)
-	if err != nil {
-		log.Println("tor: config error:", err)
-		return nil
+	if !found {
+		return nil, errors.New("backend unavailable")
 	}
 
-	return tor
+	if err := backend.Run(ctx, config); err != nil {
+		return nil, err
+	}
+
+	return &Tor{config: config, store: store, backend: backend}, nil
 }
 
 // Name returns the network name
