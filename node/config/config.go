@@ -5,9 +5,8 @@ import "os"
 const configKey = "astrald.conf"
 
 type Config struct {
-	RootDir string
-	Alias   string `yaml:"alias"`
-	Infra   Infra  `yaml:"infra"`
+	Alias string `yaml:"alias"`
+	Infra Infra  `yaml:"infra"`
 }
 
 func (c Config) GetAlias() string {

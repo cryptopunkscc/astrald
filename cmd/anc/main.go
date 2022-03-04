@@ -6,8 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"io"
+	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 )
 
@@ -25,7 +27,7 @@ func cmdRegister(args []string) {
 
 	portName := args[0]
 
-	port, err := astral.Reqister(portName)
+	l, err := astral.Reqister(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)
@@ -33,18 +35,16 @@ func cmdRegister(args []string) {
 
 	fmt.Fprintf(os.Stderr, "listening on %s\n", portName)
 
-	req := <-port.Next()
-	if req == nil {
+	l = l.Auth(func(identity id.Identity, query string) bool {
+		return true
+	})
+
+	conn, err := l.Accept()
+	if err != nil {
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "%s connected.\n", req.Caller())
-
-	conn, err := req.Accept()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
-		os.Exit(exitError)
-	}
+	fmt.Fprintf(os.Stderr, "%s connected.\n", addrName(conn.RemoteAddr()))
 
 	go func() {
 		io.Copy(conn, os.Stdin)
@@ -77,11 +77,8 @@ func cmdShare(args []string) {
 
 	fmt.Fprintf(os.Stderr, "listening on %s\n", portName)
 
-	for req := range port.Next() {
-		caller, _ := id.ParsePublicKeyHex(req.Caller())
-
-		fmt.Fprintln(os.Stderr, logfmt.ID(caller), "connected.")
-		conn, _ := req.Accept()
+	for conn := range port.AcceptAll() {
+		fmt.Fprintln(os.Stderr, addrName(conn.RemoteAddr()), "connected.")
 
 		file, err := os.Open(filename)
 		if err != nil {
@@ -89,15 +86,16 @@ func cmdShare(args []string) {
 			os.Exit(exitError)
 		}
 
-		go func(caller id.Identity) {
+		conn := conn
+		go func() {
 			defer conn.Close()
 			n, err := io.Copy(conn, file)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, logfmt.ID(caller), "error sending file:", err)
+				fmt.Fprintln(os.Stderr, conn.RemoteAddr(), "error sending file:", err)
 				return
 			}
-			fmt.Fprintln(os.Stderr, logfmt.ID(caller), "downloaded", logfmt.DataSize(n).HumanReadable())
-		}(caller)
+			fmt.Fprintln(os.Stderr, addrName(conn.RemoteAddr()), "downloaded", logfmt.DataSize(n).HumanReadable())
+		}()
 	}
 }
 
@@ -110,7 +108,7 @@ func cmdExec(args []string) {
 	portName := args[0]
 	execPath := args[1]
 
-	port, err := astral.Reqister(portName)
+	l, err := astral.Reqister(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: register: %s\n", err.Error())
 		os.Exit(exitError)
@@ -118,16 +116,12 @@ func cmdExec(args []string) {
 
 	fmt.Fprintf(os.Stderr, "listening on %s\n", portName)
 
-	for req := range port.Next() {
-		conn, err := req.Accept()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
-			os.Exit(exitError)
-		}
+	for conn := range l.AcceptAll() {
+		conn := conn
 
-		fmt.Fprintf(os.Stderr, "%s connected.\n", req.Caller())
+		fmt.Fprintf(os.Stderr, "%s connected.\n", addrName(conn.RemoteAddr()))
 
-		go func(req *astral.Request) {
+		go func() {
 			proc := exec.Command(execPath)
 			stdin, _ := proc.StdinPipe()
 			stdout, _ := proc.StdoutPipe()
@@ -165,9 +159,10 @@ func cmdExec(args []string) {
 			wg.Wait()
 			proc.Wait()
 
-			fmt.Fprintln(os.Stderr, req.Caller(), "disconnected.")
-		}(req)
+			fmt.Fprintln(os.Stderr, conn.RemoteAddr(), "disconnected.")
+		}()
 	}
+
 	os.Exit(exitSuccess)
 }
 
@@ -259,6 +254,16 @@ func main() {
 		help()
 	}
 
+	// Check if ANC_PROTO is set in the environment
+	for _, env := range os.Environ() {
+		env = strings.ToLower(env)
+		parts := strings.SplitN(env, "=", 2)
+		if parts[0] == "anc_proto" {
+			astral.ListenProtocol = parts[1]
+			break
+		}
+	}
+
 	cmd := os.Args[1]
 	switch cmd[0] {
 	case 'q':
@@ -276,4 +281,24 @@ func main() {
 	default:
 		help()
 	}
+}
+
+func displayName(identity id.Identity) string {
+	if name, err := astral.GetNodeName(identity); err == nil {
+		return name
+	}
+	return identity.String()
+}
+
+func addrName(addr net.Addr) string {
+	if addr.Network() != "astral" {
+		return addr.String()
+	}
+
+	identity, err := id.ParsePublicKeyHex(addr.String())
+	if err != nil {
+		return addr.String()
+	}
+
+	return displayName(identity)
 }

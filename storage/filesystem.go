@@ -15,6 +15,10 @@ func NewFilesystemStorage(path string) *FilesystemStorage {
 	return &FilesystemStorage{root: path}
 }
 
+func (fs *FilesystemStorage) Root() string {
+	return fs.root
+}
+
 func (fs *FilesystemStorage) LoadBytes(file string) ([]byte, error) {
 	return ioutil.ReadFile(filepath.Join(fs.root, file))
 }

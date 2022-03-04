@@ -74,7 +74,7 @@ func main() {
 		ctx,
 		astralRoot,
 		admin.Admin{},
-		apphost.AppHost{},
+		&apphost.AppHost{},
 		connect.Connect{},
 		gateway.Gateway{},
 		info.Info{},
