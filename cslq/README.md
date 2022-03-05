@@ -16,6 +16,7 @@ Pattern syntax uses the following characters:
 | v     | custom Marshaler/Unmarshaler             |
 | [x]y  | array of length x and elements of type y |
 | {...} | structure                                |
+| <...> | expect                                   |
 
 Whitespace characters (space, tab, newline) are ignored and can be used for visual formatting.
 
@@ -63,7 +64,27 @@ type Coords struct {
 }
 ````
 
-## How to use
+### Expect
+
+You can verify the input contains certain expected values during the decoding process:
+
+````go
+func main() {
+	var buf = &bytes.Buffer{}
+	var a, b int
+
+	cslq.Encode(buf, "<[6]s>ss", "HEADER", 2, 3)
+
+	r := bytes.NewReader(buf.Bytes())
+
+	cslq.Decode(r, "<[6]s>ss", "HEADER", &a, &b)
+}
+````
+
+The decoder will read the bytes matching the pattern between `<` and `>` and make sure it matches the respective
+value.
+
+## Examples
 
 ### Encode basic integers
 

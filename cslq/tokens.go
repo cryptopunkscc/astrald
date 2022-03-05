@@ -12,3 +12,5 @@ type NumberLiteralToken uint64
 type StructStartToken struct{}
 type StructEndToken struct{}
 type InterfaceToken struct{}
+type ExpectStartToken struct{}
+type ExpectEndToken struct{}

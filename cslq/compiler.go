@@ -9,28 +9,35 @@ import (
 )
 
 type Compiler struct {
+	cache map[string]Format
 }
 
-var defaultCompiler = &Compiler{}
+var defaultCompiler = NewCompiler()
 
-func (c *Compiler) Compile(reader io.Reader) (OpStruct, error) {
-	return c.compile(NewTokenReader(reader))
+func NewCompiler() *Compiler {
+	return &Compiler{cache: make(map[string]Format, 0)}
 }
 
-func Compile(r io.Reader) (OpStruct, error) {
-	return defaultCompiler.Compile(r)
+func Compile(s string) (Format, error) {
+	return defaultCompiler.Compile(s)
 }
 
-func (c *Compiler) CompileString(s string) (OpStruct, error) {
-	return c.Compile(strings.NewReader(s))
+func (c *Compiler) Compile(f string) (Format, error) {
+	if cached, found := c.cache[f]; found {
+		return cached, nil
+	}
+
+	format, err := c.compile(NewTokenReader(strings.NewReader(f)))
+	if err != nil {
+		return nil, err
+	}
+	c.cache[f] = format
+
+	return format, err
 }
 
-func CompileString(s string) (OpStruct, error) {
-	return defaultCompiler.CompileString(s)
-}
-
-func (c *Compiler) compile(tokens *TokenReader) (OpStruct, error) {
-	var s = make(OpStruct, 0)
+func (c *Compiler) compile(tokens *TokenReader) (Format, error) {
+	var s = make(Format, 0)
 
 	for {
 		nextOp, err := c.compileOp(tokens)
@@ -44,13 +51,15 @@ func (c *Compiler) compile(tokens *TokenReader) (OpStruct, error) {
 	}
 }
 
-func (c *Compiler) compileOp(tokens *TokenReader) (interface{}, error) {
+func (c *Compiler) compileOp(tokens *TokenReader) (Op, error) {
 	token, err := tokens.Read()
 	if err != nil {
 		return nil, err
 	}
 
 	switch token.(type) {
+	case ExpectStartToken:
+		return c.compileExpect(tokens)
 	case StructStartToken:
 		return c.compileStruct(tokens)
 	case ArrayStartToken:
@@ -123,6 +132,25 @@ func (c *Compiler) compileStruct(tokens *TokenReader) (OpStruct, error) {
 		nextType, err := c.compileOp(tokens)
 		if err, ok := err.(ErrUnexpectedToken); ok {
 			if _, ok := err.Token.(StructEndToken); ok {
+				return s, nil
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		s = append(s, nextType)
+	}
+}
+
+func (c *Compiler) compileExpect(tokens *TokenReader) (OpExpect, error) {
+	var s = make(OpExpect, 0)
+
+	// read types until we encounter a StructEndToken ("}")
+	for {
+		nextType, err := c.compileOp(tokens)
+		if err, ok := err.(ErrUnexpectedToken); ok {
+			if _, ok := err.Token.(ExpectEndToken); ok {
 				return s, nil
 			}
 		}

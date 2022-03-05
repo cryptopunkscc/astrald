@@ -47,6 +47,12 @@ func (r *TokenReader) Read() (Token, error) {
 	case ']':
 		return ArrayEndToken{}, nil
 
+	case '<':
+		return ExpectStartToken{}, nil
+
+	case '>':
+		return ExpectEndToken{}, nil
+
 	case 'c':
 		return Uint8Token{}, nil
 
