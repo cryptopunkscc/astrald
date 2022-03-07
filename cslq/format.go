@@ -29,3 +29,10 @@ func (f Format) Decode(r io.Reader, v ...interface{}) error {
 
 	return nil
 }
+
+func (f Format) String() (s string) {
+	for _, sub := range f {
+		s = s + sub.String()
+	}
+	return
+}

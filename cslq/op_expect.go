@@ -42,3 +42,11 @@ func (op OpExpect) Decode(r io.Reader, data *Fifo) error {
 
 	return nil
 }
+
+func (op OpExpect) String() string {
+	var s = "<"
+	for _, sub := range op {
+		s = s + sub.String()
+	}
+	return s + ">"
+}

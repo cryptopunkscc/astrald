@@ -52,3 +52,7 @@ func (op OpInterface) Decode(r io.Reader, data *Fifo) error {
 
 	return errors.New("variable does not implement Unmarshaler interface")
 }
+
+func (op OpInterface) String() string {
+	return "v"
+}

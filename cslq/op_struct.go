@@ -56,3 +56,11 @@ func (op OpStruct) Decode(r io.Reader, data *Fifo) error {
 
 	return nil
 }
+
+func (op OpStruct) String() string {
+	var s = "{"
+	for _, sub := range op {
+		s = s + sub.String()
+	}
+	return s + "}"
+}

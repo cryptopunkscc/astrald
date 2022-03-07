@@ -3,6 +3,7 @@ package cslq
 import (
 	"io"
 	"reflect"
+	"strconv"
 )
 
 // OpArray represents an array of same type elements
@@ -109,4 +110,12 @@ func (op OpArray) Decode(r io.Reader, data *Fifo) error {
 	}
 
 	return nil
+}
+
+func (op OpArray) String() string {
+	if op.FixedLen < 0 {
+		return "[" + strconv.Itoa(op.FixedLen) + "]" + op.ElemOp.String()
+	} else {
+		return "[" + op.LenOp.String() + "]" + op.ElemOp.String()
+	}
 }

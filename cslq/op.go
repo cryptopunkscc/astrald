@@ -6,4 +6,5 @@ import "io"
 type Op interface {
 	Encode(w io.Writer, v *Fifo) error
 	Decode(r io.Reader, v *Fifo) error
+	String() string
 }
