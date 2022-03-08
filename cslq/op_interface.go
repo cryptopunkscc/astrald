@@ -36,6 +36,14 @@ func (op OpInterface) Encode(w io.Writer, data *Fifo) error {
 		return Encode(w, m.FormatCSLQ(), v)
 	}
 
+	if err, ok := v.(*error); ok {
+		var errStr = ""
+		if err != nil {
+			errStr = (*err).Error()
+		}
+		return Encode(w, "[q]c", errStr)
+	}
+
 	return errors.New("variable does not implement Marshaler interface")
 }
 
@@ -48,6 +56,17 @@ func (op OpInterface) Decode(r io.Reader, data *Fifo) error {
 
 	if m, ok := v.(Formatter); ok {
 		return Decode(r, m.FormatCSLQ(), v)
+	}
+
+	if err, ok := v.(*error); ok {
+		var errStr string
+		if err := Decode(r, "[q]c", &errStr); err != nil {
+			return err
+		}
+		if errStr != "" {
+			*err = errors.New(errStr)
+		}
+		return nil
 	}
 
 	return errors.New("variable does not implement Unmarshaler interface")
