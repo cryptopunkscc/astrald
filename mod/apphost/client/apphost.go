@@ -123,7 +123,7 @@ func Query(node string, query string) (io.ReadWriteCloser, error) {
 	return instance.Query(node, query)
 }
 
-func Reqister(name string) (*Listener, error) {
+func Register(name string) (*Listener, error) {
 	return instance.Register(name)
 }
 

@@ -27,7 +27,7 @@ func cmdRegister(args []string) {
 
 	portName := args[0]
 
-	l, err := astral.Reqister(portName)
+	l, err := astral.Register(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)
@@ -69,7 +69,7 @@ func cmdShare(args []string) {
 		os.Exit(exitError)
 	}
 
-	port, err := astral.Reqister(portName)
+	port, err := astral.Register(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)
@@ -108,7 +108,7 @@ func cmdExec(args []string) {
 	portName := args[0]
 	execPath := args[1]
 
-	l, err := astral.Reqister(portName)
+	l, err := astral.Register(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: register: %s\n", err.Error())
 		os.Exit(exitError)
