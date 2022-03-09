@@ -16,7 +16,7 @@ Pattern syntax uses the following characters:
 | v     | custom Marshaler/Unmarshaler             |
 | [x]y  | array of length x and elements of type y |
 | {...} | structure                                |
-| <...> | expect                                   |
+| <...> | const                                    |
 
 Whitespace characters (space, tab, newline) are ignored and can be used for visual formatting.
 
@@ -64,9 +64,9 @@ type Coords struct {
 }
 ````
 
-### Expect
+### Const
 
-You can verify the input contains certain expected values during the decoding process:
+You can mark certain pattern fragments as constant values that will be written on Encode and verified on Decode:
 
 ````go
 func main() {

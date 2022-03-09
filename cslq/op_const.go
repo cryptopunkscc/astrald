@@ -6,9 +6,9 @@ import (
 	"io"
 )
 
-type OpExpect []Op
+type OpConst []Op
 
-func (op OpExpect) Encode(w io.Writer, data *Fifo) error {
+func (op OpConst) Encode(w io.Writer, data *Fifo) error {
 	for _, o := range op {
 		if err := o.Encode(w, data); err != nil {
 			return err
@@ -17,7 +17,7 @@ func (op OpExpect) Encode(w io.Writer, data *Fifo) error {
 	return nil
 }
 
-func (op OpExpect) Decode(r io.Reader, data *Fifo) error {
+func (op OpConst) Decode(r io.Reader, data *Fifo) error {
 	for _, o := range op {
 		var buf = &bytes.Buffer{}
 		if err := o.Encode(buf, data); err != nil {
@@ -43,7 +43,7 @@ func (op OpExpect) Decode(r io.Reader, data *Fifo) error {
 	return nil
 }
 
-func (op OpExpect) String() string {
+func (op OpConst) String() string {
 	var s = "<"
 	for _, sub := range op {
 		s = s + sub.String()

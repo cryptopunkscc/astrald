@@ -1,6 +1,7 @@
 package cslq
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -24,4 +25,16 @@ func extractStructFields(rv reflect.Value) []interface{} {
 	}
 
 	return vars
+}
+
+func expectToken(tokens TokenReader, expect Token) error {
+	next, err := tokens.Read()
+	if err != nil {
+		return err
+	}
+	nextType, expectType := reflect.TypeOf(next), reflect.TypeOf(expect)
+	if nextType != expectType {
+		return fmt.Errorf("expected %s, got %s", expectType, nextType)
+	}
+	return nil
 }

@@ -5,19 +5,23 @@ import (
 	"io"
 )
 
-// TokenReader represents a tokenizer that reads bytes from the provided io.Reader and parses them
+type TokenReader interface {
+	Read() (Token, error)
+}
+
+// StreamTokenizer represents a tokenizer that reads bytes from the provided io.Reader and parses them
 // into tokens.
-type TokenReader struct {
+type StreamTokenizer struct {
 	stack *ByteStackReader
 }
 
-// NewTokenReader returns a new instance of a TokenReader over the provided io.Reader.
-func NewTokenReader(r io.Reader) *TokenReader {
-	return &TokenReader{stack: NewByteStackReader(r)}
+// TokenizeStream returns a new instance of a StreamTokenizer over the provided io.Reader.
+func TokenizeStream(r io.Reader) *StreamTokenizer {
+	return &StreamTokenizer{stack: NewByteStackReader(r)}
 }
 
 // Read reads and returns the next Token from the io.Reader
-func (r *TokenReader) Read() (Token, error) {
+func (r *StreamTokenizer) Read() (Token, error) {
 	var b byte
 	var err error
 
@@ -36,37 +40,37 @@ func (r *TokenReader) Read() (Token, error) {
 
 	switch b {
 	case '{':
-		return StructStartToken{}, nil
+		return TokenStructStart{}, nil
 
 	case '}':
-		return StructEndToken{}, nil
+		return TokenStructEnd{}, nil
 
 	case '[':
-		return ArrayStartToken{}, nil
+		return TokenArrayStart{}, nil
 
 	case ']':
-		return ArrayEndToken{}, nil
+		return TokenArrayEnd{}, nil
 
 	case '<':
-		return ExpectStartToken{}, nil
+		return TokenConstStart{}, nil
 
 	case '>':
-		return ExpectEndToken{}, nil
+		return TokenConstEnd{}, nil
 
 	case 'c':
-		return Uint8Token{}, nil
+		return TokenUint8{}, nil
 
 	case 's':
-		return Uint16Token{}, nil
+		return TokenUint16{}, nil
 
 	case 'l':
-		return Uint32Token{}, nil
+		return TokenUint32{}, nil
 
 	case 'q':
-		return Uint64Token{}, nil
+		return TokenUint64{}, nil
 
 	case 'v':
-		return InterfaceToken{}, nil
+		return TokenInterface{}, nil
 
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		n := uint64(b - '0')
@@ -74,12 +78,12 @@ func (r *TokenReader) Read() (Token, error) {
 		for {
 			c, err := r.stack.Pop()
 			if err != nil {
-				return NumberLiteralToken(n), nil
+				return TokenNumberLiteral(n), nil
 			}
 
 			if (c < '0') || (c > '9') {
 				r.stack.Push(c)
-				return NumberLiteralToken(n), nil
+				return TokenNumberLiteral(n), nil
 			}
 
 			n = n*10 + uint64(c-'0')
