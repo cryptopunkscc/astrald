@@ -1,6 +1,8 @@
 package cslq
 
 import (
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -71,6 +73,25 @@ func (r *StreamTokenizer) Read() (Token, error) {
 
 	case 'v':
 		return TokenInterface{}, nil
+
+	case 'x':
+		var (
+			err   error
+			bytes [2]byte
+		)
+
+		if bytes[0], err = r.stack.Pop(); err != nil {
+			return nil, err
+		}
+		if bytes[1], err = r.stack.Pop(); err != nil {
+			return nil, err
+		}
+
+		if dec, err := hex.DecodeString(string(bytes[:])); err != nil {
+			return nil, errors.New("invalid byte literal")
+		} else {
+			return TokenByteLiteral(dec[0]), nil
+		}
 
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		n := uint64(b - '0')
