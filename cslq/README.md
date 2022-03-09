@@ -14,6 +14,7 @@ Pattern syntax uses the following characters:
 | l     | uint32                                   |
 | q     | uint64                                   |
 | v     | custom Marshaler/Unmarshaler             |
+| x00   | byte literal (hex)                       |
 | [x]y  | array of length x and elements of type y |
 | {...} | structure                                |
 | <...> | const                                    |
