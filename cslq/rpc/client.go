@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
@@ -46,14 +47,15 @@ func ImportFuncAs(rw io.ReadWriter, funcPtr interface{}, funcName string) error 
 			}
 		}
 
-		// encode function name
-		if err := cslq.Encode(rw, "[c]c", funcName); err != nil {
+		// prepare arguments
+		var argBuffer = &bytes.Buffer{}
+		if err := argFormat.Encode(argBuffer, valuesToInterfaces(argVals)...); err != nil {
 			errPtr.Elem().Set(reflect.ValueOf(err))
 			return
 		}
 
-		// encode arguments
-		if err := argFormat.Encode(rw, valuesToInterfaces(argVals)...); err != nil {
+		// make the call
+		if err := cslq.Encode(rw, "[c]c [l]c", funcName, argBuffer.Bytes()); err != nil {
 			errPtr.Elem().Set(reflect.ValueOf(err))
 			return
 		}
@@ -70,8 +72,14 @@ func ImportFuncAs(rw io.ReadWriter, funcPtr interface{}, funcName string) error 
 			return
 		}
 
+		var retBytes []byte
+		if err := cslq.Decode(rw, "[l]c", &retBytes); err != nil {
+			errPtr.Elem().Set(reflect.ValueOf(err))
+			return
+		}
+
 		// decode returned values
-		if err := retFormat.Decode(rw, valuesToPointers(retVals)...); err != nil {
+		if err := retFormat.Decode(bytes.NewReader(retBytes), valuesToPointers(retVals)...); err != nil {
 			errPtr.Elem().Set(reflect.ValueOf(err))
 			return
 		}
