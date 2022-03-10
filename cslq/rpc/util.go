@@ -56,3 +56,24 @@ func typeToOp(t reflect.Type) cslq.Op {
 func isStructOrPtr(rv reflect.Value) bool {
 	return rv.Kind() == reflect.Struct || (rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Struct)
 }
+
+func typeToPattern(t reflect.Type) string {
+	switch t.Kind() {
+	case reflect.Uint8, reflect.Int8:
+		return "c"
+	case reflect.Uint16, reflect.Int16:
+		return "s"
+	case reflect.Uint32, reflect.Int32:
+		return "l"
+	case reflect.Uint64, reflect.Uint, reflect.Int:
+		return "q"
+	case reflect.String:
+		return "[q]c"
+	case reflect.Array, reflect.Slice:
+		return "[q]" + typeToPattern(t.Elem())
+	case reflect.Ptr, reflect.Struct:
+		return "v"
+	default:
+		return "v"
+	}
+}
