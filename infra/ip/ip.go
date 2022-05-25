@@ -11,3 +11,10 @@ func IsPrivateIP(ip net.IP) bool {
 	}
 	return len(ip) == net.IPv6len && ip[0]&0xfe == 0xfc
 }
+
+func IsLinkLocal(ip net.IP) bool {
+	if ip := ip.To4(); ip != nil {
+		return ip[0] == 169 && ip[1] == 254
+	}
+	return ip[0] == 0xfe && ip[1] == 0x80
+}

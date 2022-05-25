@@ -3,108 +3,120 @@ package inet
 import (
 	"bytes"
 	"context"
-	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/ip"
 	"log"
 	"net"
-	"strconv"
-	"strings"
 	"time"
 )
 
-func (inet *Inet) Announce(ctx context.Context, id id.Identity) error {
+var _ infra.Announcer = &Inet{}
+
+const announceInterval = 1 * time.Minute
+
+func (inet *Inet) Announce(ctx context.Context) error {
+	if err := inet.broadcastPresence(presence{
+		Identity: inet.localID,
+		Port:     inet.listenPort,
+		Flags:    flagDiscover,
+	}); err != nil {
+		return err
+	}
+
+	log.Println("[inet] announcing presence")
+
 	go func() {
-		ifaceCh := ip.WatchInterfaces(ctx)
 		for {
 			select {
-			case iface := <-ifaceCh:
-				go inet.announceOnInterface(ctx, id, iface)
+			case <-time.After(announceInterval):
+				if err := inet.broadcastPresence(presence{
+					Identity: inet.localID,
+					Port:     inet.listenPort,
+					Flags:    flagNone,
+				}); err != nil {
+					log.Println("[inet] announce error:", err)
+				}
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
+
 	return nil
 }
 
-func (inet *Inet) announceOnInterface(ctx context.Context, id id.Identity, iface *ip.Interface) {
-	if inet.config.AnnounceOnlyIface != "" {
-		if inet.config.AnnounceOnlyIface != iface.Name() {
-			return
-		}
+func (inet *Inet) broadcastPresence(p presence) error {
+	// check presence socket
+	if err := inet.setupPresenceConn(); err != nil {
+		return err
 	}
 
-	for addr := range iface.WatchAddrs(ctx) {
-		// Skip non-private addresses
-		if !addr.IsPrivate() {
+	// prepare packet data
+	var packet = &bytes.Buffer{}
+	if err := cslq.Encode(packet, "v", p); err != nil {
+		return err
+	}
+
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return err
+	}
+
+	for _, iface := range ifaces {
+		if !inet.isInterfaceEnabled(iface) {
 			continue
 		}
 
-		go func(addr *ip.Addr) {
-			err := inet.announceOnAddress(ctx, id, addr, iface.Name())
-			if err != nil {
-				// this error only means we lost the IP address, so it should be ignored
-				netUnreachable := strings.Contains(err.Error(), "network is unreachable")
-				ctxCanceled := errors.Is(err, context.Canceled)
-
-				if !(netUnreachable || ctxCanceled) {
-					log.Println("announce error:", err)
-				}
-			}
-		}(addr)
-	}
-}
-
-func (inet *Inet) announceOnAddress(ctx context.Context, id id.Identity, addr *ip.Addr, ifaceName string) error {
-	broadAddr, err := ip.BroadcastAddr(addr)
-	if err != nil {
-		return err
-	}
-
-	broadStr := net.JoinHostPort(broadAddr.String(), strconv.Itoa(defaultPresencePort))
-
-	broadConn, err := net.Dial("udp", broadStr)
-	if err != nil {
-		return err
-	}
-	defer broadConn.Close()
-
-	log.Printf("announce: %s (%s)\n", broadStr, ifaceName)
-	defer log.Printf("stop announce: %s (%s)\n", broadStr, ifaceName)
-
-	announcement := makePresence(id, inet.listenPort, 0)
-
-	for {
-		_, err = broadConn.Write(announcement)
+		addrs, err := iface.Addrs()
 		if err != nil {
 			return err
 		}
 
-		select {
-		case <-time.After(presenceInterval):
-			continue
-		case <-ctx.Done():
-			return ctx.Err()
+		for _, addr := range addrs {
+			broadcastIP, err := ip.BroadcastAddr(addr)
+			if err != nil {
+				return err
+			}
+
+			if ip.IsLinkLocal(broadcastIP) {
+				continue
+			}
+
+			var broadcastAddr = net.UDPAddr{
+				IP:   broadcastIP,
+				Port: defaultPresencePort,
+			}
+
+			_, err = inet.presenceConn.WriteTo(packet.Bytes(), &broadcastAddr)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
+	return nil
 }
 
-func makePresence(id id.Identity, port uint16, flags uint8) []byte {
-	buf := &bytes.Buffer{}
-
-	cslq.Encode(buf, "vsc", id, port, flags)
-
-	return buf.Bytes()
-}
-
-func parsePresence(data []byte) (identity id.Identity, port uint16, flags uint8, err error) {
-	if len(data) != presencePayloadLen {
-		return identity, port, flags, errors.New("invalid data")
+func (inet *Inet) sendPresence(destAddr *net.UDPAddr, p presence) (err error) {
+	// check presence socket
+	if err = inet.setupPresenceConn(); err != nil {
+		return
 	}
 
-	err = cslq.Decode(bytes.NewReader(data), "vsc", &identity, &port, &flags)
+	// prepare packet data
+	var packet = &bytes.Buffer{}
+	if err = cslq.Encode(packet, "v", p); err != nil {
+		return
+	}
 
+	// send message
+	_, err = inet.presenceConn.WriteTo(packet.Bytes(), destAddr)
 	return
+}
+
+func (inet *Inet) isInterfaceEnabled(iface net.Interface) bool {
+	return (iface.Flags&net.FlagUp != 0) &&
+		(iface.Flags&net.FlagBroadcast != 0) &&
+		(iface.Flags&net.FlagLoopback == 0)
 }

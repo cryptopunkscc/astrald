@@ -1,61 +1,62 @@
 package inet
 
 import (
+	"bytes"
 	"context"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
-	"net"
-	"strconv"
 )
 
-func (inet Inet) Discover(ctx context.Context) (<-chan infra.Presence, error) {
+var _ infra.Discoverer = &Inet{}
+
+func (inet *Inet) Discover(ctx context.Context) (<-chan infra.Presence, error) {
+	// check presence socket
+	if err := inet.setupPresenceConn(); err != nil {
+		return nil, err
+	}
+
 	outCh := make(chan infra.Presence)
-
-	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(defaultPresencePort))
-	if err != nil {
-		return nil, err
-	}
-
-	listener, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		return nil, err
-	}
 
 	go func() {
 		defer close(outCh)
 		buf := make([]byte, 1024)
 
 		for {
-			n, srcAddr, err := listener.ReadFromUDP(buf)
-			if err != nil {
-				return
-			}
-			if n != presencePayloadLen {
-				// Ignore packets of invalid length
-				continue
-			}
-
-			peerID, port, _, err := parsePresence(buf[:n])
+			n, srcAddr, err := inet.presenceConn.ReadFromUDP(buf)
 			if err != nil {
 				return
 			}
 
-			addr, err := Parse(srcAddr.IP.String() + ":" + strconv.Itoa(int(port)))
-			if err != nil {
+			var p presence
+			var r = bytes.NewReader(buf[:n])
+
+			if err := cslq.Decode(r, "v", &p); err != nil {
 				continue
 			}
 
-			presence := infra.Presence{
-				Identity: peerID,
-				Addr:     addr,
+			if p.Identity.IsEqual(inet.localID) {
+				// ignore our own presence
+				continue
 			}
 
-			outCh <- presence
+			outCh <- infra.Presence{
+				Identity: p.Identity,
+				Addr: Addr{
+					ver:  0,
+					ip:   srcAddr.IP,
+					port: uint16(p.Port),
+				},
+				Present: p.Flags&flagBye == 0,
+			}
+
+			if p.Flags&flagDiscover != 0 {
+				inet.sendPresence(srcAddr, presence{
+					Identity: inet.localID,
+					Port:     inet.listenPort,
+					Flags:    flagNone,
+				})
+			}
 		}
-	}()
-
-	go func() {
-		<-ctx.Done()
-		listener.Close()
 	}()
 
 	return outCh, nil

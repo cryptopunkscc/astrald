@@ -57,6 +57,7 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 	// Set up the infrastructure
 	node.Infra, err = infra.Run(
 		ctx,
+		node.Identity(),
 		node.Config.Infra,
 		infra.FilteredQuerier{Querier: node, FilteredID: node.identity},
 		node.Store,
@@ -83,7 +84,7 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 
 	node.Linking = linking.Run(ctx, node.identity, node.Contacts, node.Peers, node.Infra)
 
-	err = node.Presence.Announce(ctx, node.identity)
+	err = node.Presence.Announce(ctx)
 	if err != nil {
 		log.Println("announce error:", err) // non-critical
 	}

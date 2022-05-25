@@ -50,21 +50,8 @@ func (p *Presence) Subscribe(cancel sig.Signal) <-chan event.Event {
 	return p.events.Subscribe(cancel)
 }
 
-func (p *Presence) Announce(ctx context.Context, identity id.Identity) error {
-	p.ignore(identity)
-
-	err := p.net.Announce(ctx, identity)
-	if err != nil {
-		p.unignore(identity)
-		return err
-	}
-
-	go func() {
-		<-ctx.Done()
-		p.unignore(identity)
-	}()
-
-	return nil
+func (p *Presence) Announce(ctx context.Context) error {
+	return p.net.Announce(ctx)
 }
 
 func (p *Presence) process(ctx context.Context) {

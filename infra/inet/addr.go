@@ -1,74 +1,100 @@
 package inet
 
 import (
-	"encoding/binary"
+	"bytes"
 	"errors"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
 	"net"
 	"strconv"
-	"strings"
 )
 
 const NetworkName = "inet"
 
+const (
+	ipv4 = iota // IPv4 (32 bit)
+	ipv6        // IPv6 (128 bit)
+)
+
 var _ infra.Addr = Addr{}
 
 type Addr struct {
+	ver  int
 	ip   net.IP
 	port uint16
 }
 
-func Unpack(addr []byte) (Addr, error) {
-	if len(addr) != 6 {
-		return Addr{}, errors.New("invalid data length")
+func (addr Addr) Pack() []byte {
+	var b = &bytes.Buffer{}
+
+	switch addr.ver {
+	case ipv4:
+		cslq.Encode(b, "x00 [4]c s", addr.ip[len(addr.ip)-4:], addr.port)
+	case ipv6:
+		cslq.Encode(b, "x01 [16]c s", addr.ip, addr.port)
 	}
-	ip := make([]byte, 4)
-	copy(ip, addr[0:4])
-	port := binary.BigEndian.Uint16(addr[4:6])
-	return Addr{
-		ip:   ip,
-		port: port,
-	}, nil
+
+	return b.Bytes()
+}
+
+func Unpack(buf []byte) (addr Addr, err error) {
+	var r = bytes.NewReader(buf)
+
+	if err = cslq.Decode(r, "c", &addr.ver); err != nil {
+		return
+	}
+
+	switch addr.ver {
+	case ipv4:
+		return addr, cslq.Decode(r, "[4]c s", &addr.ip, &addr.port)
+	case ipv6:
+		return addr, cslq.Decode(r, "[16]c s", &addr.ip, &addr.port)
+	}
+
+	return addr, errors.New("invalid version")
+}
+
+func (addr Addr) String() string {
+	ip := addr.ip.String()
+
+	if addr.ver == ipv6 {
+		ip = "[" + ip + "]"
+	}
+
+	if addr.port != 0 {
+		ip = ip + ":" + strconv.Itoa(int(addr.port))
+	}
+	return ip
 }
 
 func Parse(s string) (addr Addr, err error) {
-	ipport := strings.Split(s, ":")
-	if len(ipport) > 2 {
-		return addr, infra.ErrInvalidAddress
+	var host, port string
+
+	host, port, err = net.SplitHostPort(s)
+	if err != nil {
+		return
 	}
 
-	addr.ip = net.ParseIP(ipport[0])
+	addr.ip = net.ParseIP(host)
 	if addr.ip == nil {
 		return addr, errors.New("invalid ip")
 	}
 
-	if len(ipport) == 2 {
-		port, err := strconv.Atoi(ipport[1])
+	if addr.ip.To4() == nil {
+		addr.ver = ipv6
+	}
 
-		if (err != nil) || (port < 0) || (port > 65535) {
-			return addr, errors.New("invalid port")
+	var p int
+	if p, err = strconv.Atoi(port); err != nil {
+		return
+	} else {
+		if (p < 0) || (p > 65535) {
+			return addr, errors.New("port out of range")
 		}
-
-		addr.port = uint16(port)
+		addr.port = uint16(p)
 	}
 
 	return
-}
-
-func (addr Addr) Pack() []byte {
-	bytes := make([]byte, 6)
-	copy(bytes[0:4], addr.ip[len(addr.ip)-4:])
-	binary.BigEndian.PutUint16(bytes[4:6], addr.port)
-
-	return bytes
-}
-
-func (addr Addr) String() string {
-	str := addr.ip.String()
-	if addr.port != 0 {
-		str = str + ":" + strconv.Itoa(int(addr.port))
-	}
-	return str
 }
 
 func (addr Addr) Network() string {

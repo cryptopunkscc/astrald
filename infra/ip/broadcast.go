@@ -4,7 +4,7 @@ import (
 	"net"
 )
 
-func BroadcastAddr(addr net.Addr) (net.Addr, error) {
+func BroadcastAddr(addr net.Addr) (net.IP, error) {
 	ip, ipnet, err := net.ParseCIDR(addr.String())
 	if err != nil {
 		return nil, err
@@ -20,8 +20,5 @@ func BroadcastAddr(addr net.Addr) (net.Addr, error) {
 		broadIP[i] = ip[i] | ^ipnet.Mask[i]
 	}
 
-	return &net.IPAddr{
-		IP:   broadIP,
-		Zone: "",
-	}, nil
+	return broadIP, nil
 }

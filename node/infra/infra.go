@@ -25,6 +25,7 @@ type Infra struct {
 	Querier  Querier
 	Store    storage.Store
 	networks map[string]infra.Network
+	localID  id.Identity
 
 	gateways  []infra.AddrSpec
 	inet      *inet.Inet
@@ -34,8 +35,9 @@ type Infra struct {
 	logLevel  int
 }
 
-func Run(ctx context.Context, cfg config.Infra, querier Querier, store storage.Store) (*Infra, error) {
+func Run(ctx context.Context, localID id.Identity, cfg config.Infra, querier Querier, store storage.Store) (*Infra, error) {
 	var i = &Infra{
+		localID:  localID,
 		Querier:  querier,
 		Store:    store,
 		gateways: make([]infra.AddrSpec, 0),

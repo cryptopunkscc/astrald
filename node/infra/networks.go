@@ -16,7 +16,7 @@ import (
 func (i *Infra) setupNetworks(ctx context.Context, cfg config.Infra) error {
 	// inet
 	if err := i.setupNetwork(func() (infra.Network, error) {
-		return inet.New(cfg.Inet)
+		return inet.New(cfg.Inet, i.localID)
 	}); err != nil {
 		i.Logf(log.Normal, "inet error: %s", err)
 	}
