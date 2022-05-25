@@ -30,14 +30,6 @@ func ServerFromStruct(v interface{}) *Server {
 	return srv
 }
 
-func Serve(listener net.Listener, server *Server) error {
-	return server.Serve(listener)
-}
-
-func ServeStruct(listener net.Listener, v interface{}) error {
-	return Serve(listener, ServerFromStruct(v))
-}
-
 // Serve accepts connections from the listener and serves them
 func (srv *Server) Serve(listener net.Listener) error {
 	for {
