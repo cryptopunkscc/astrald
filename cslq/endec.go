@@ -20,7 +20,6 @@ type Decoder struct {
 type Endec struct {
 	*Encoder
 	*Decoder
-	io.Closer
 }
 
 // NewEncoder returns a new Encoder instance that writes to the provided io.Writer.

@@ -17,9 +17,9 @@ func (op uintBase) Encode(w io.Writer, data *Fifo, targetType reflect.Type) erro
 
 	if rv.Kind() == reflect.Bool {
 		if rv.Bool() {
-			return binary.Write(w, byteOrder, reflect.ValueOf(1).Convert(targetType))
+			return binary.Write(w, byteOrder, reflect.ValueOf(1).Convert(targetType).Interface())
 		} else {
-			return binary.Write(w, byteOrder, reflect.ValueOf(0).Convert(targetType))
+			return binary.Write(w, byteOrder, reflect.ValueOf(0).Convert(targetType).Interface())
 		}
 	}
 
@@ -44,7 +44,7 @@ func (op uintBase) Decode(r io.Reader, data *Fifo, i interface{}) error {
 
 	switch rv.Kind() {
 	case reflect.Bool:
-		rv.SetBool(i != 0)
+		rv.SetBool(reflect.ValueOf(i).Elem().Uint() != 0)
 	default:
 		rv.Set(reflect.ValueOf(i).Elem().Convert(rv.Type()))
 	}
