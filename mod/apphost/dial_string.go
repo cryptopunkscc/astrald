@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
-	"log"
 )
 
 func (c *Server) handleDialString(ctx context.Context) error {
@@ -26,7 +25,8 @@ func (c *Server) handleDialString(ctx context.Context) error {
 		}
 	}
 
-	log.Printf("(apphost) [%s] -> %s\n", c.node.Contacts.DisplayName(identity), query)
+	//TODO: Emit an event for logging?
+	//log.Printf("(apphost) [%s] -> %s\n", c.node.Contacts.DisplayName(identity), query)
 
 	conn, err := c.node.Query(ctx, identity, query)
 	if err != nil {

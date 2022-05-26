@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/peer"
-	"log"
 	"sync"
 	"time"
 )
@@ -56,7 +55,8 @@ func (m *Manager) Optimize(remoteID id.Identity, d time.Duration) {
 	m.optimizers[hexID] = opt
 	opt.Start()
 
-	log.Println("(linking) optimize", m.contacts.DisplayName(remoteID))
+	//TODO: Emit an event for logging?
+	//log.Println("linking", m.contacts.DisplayName(remoteID))
 
 	go func() {
 		opt.wait(m.context)
@@ -77,6 +77,8 @@ func (m *Manager) removeOptimizer(remoteID id.Identity) {
 	if opt, found := m.optimizers[hexID]; found {
 		opt.Stop()
 		delete(m.optimizers, hexID)
-		log.Println("(linking) optimize end", m.contacts.DisplayName(remoteID))
+
+		//TODO: Emit an event for logging?
+		//log.Println("stopped linking", m.contacts.DisplayName(remoteID))
 	}
 }

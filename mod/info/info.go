@@ -131,7 +131,8 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 
 	node.Contacts.Save()
 
-	log.Printf("(info) [%s] updated\n", node.Contacts.DisplayName(identity))
+	//TODO: Emit an event for logging?
+	//log.Printf("(info) [%s] updated\n", node.Contacts.DisplayName(identity))
 }
 
 func queryContact(ctx context.Context, node *_node.Node, identity id.Identity) (*Node, error) {

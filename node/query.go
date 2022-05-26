@@ -5,20 +5,17 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"io"
-	"log"
-	"strings"
 	"time"
 )
-
-const logSilent = false
 
 func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
 	defer cancel()
 
-	if !strings.HasPrefix(query, ".") || logSilent {
-		log.Printf("[%s] -> %s\n", node.Contacts.DisplayName(remoteID), query)
-	}
+	//TODO: Emit an event for logging?
+	//if !strings.HasPrefix(query, ".") || logSilent {
+	//	log.Printf("[%s] -> %s\n", node.Contacts.DisplayName(remoteID), query)
+	//}
 
 	if remoteID.IsZero() || remoteID.IsEqual(node.identity) {
 		return node.Ports.Query(query, nil)
@@ -41,10 +38,10 @@ func (node *Node) processQueries(ctx context.Context) {
 }
 
 func (node *Node) handleQuery(query *link.Query) error {
-	// log non-silent queries
-	if !query.IsSilent() || logSilent {
-		log.Printf("[%s] <- %s (%s)\n", node.Contacts.DisplayName(query.Caller()), query, query.Link().Network())
-	}
+	//TODO: Emit an event for logging?
+	//if !query.IsSilent() || logSilent {
+	//	  log.Printf("[%s] <- %s (%s)\n", node.Contacts.DisplayName(query.Caller()), query, query.Link().Network())
+	//}
 
 	// Query a session with the service
 	localConn, err := node.Ports.Query(query.String(), query.Link())

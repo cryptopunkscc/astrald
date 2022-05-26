@@ -41,7 +41,8 @@ func (c *Server) handleRegister(ctx context.Context) error {
 			remoteID = query.Link().RemoteIdentity()
 		}
 
-		log.Printf("(apphost) [%s] <- %s\n", c.node.Contacts.DisplayName(remoteID), query.Query())
+		//TODO: Emit an event for logging?
+		//log.Printf("(apphost) [%s] <- %s\n", c.node.Contacts.DisplayName(remoteID), query.Query())
 
 		appConn, err := ipc.Dial(target)
 		if err != nil {
