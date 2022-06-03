@@ -44,8 +44,12 @@ func Resolve(data []byte) ID {
 	return r.Resolve()
 }
 
-func ResolveAll(reader io.Reader) ID {
+func ResolveAll(reader io.Reader) (ID, error) {
 	r := NewResolver()
-	_, _ = io.Copy(r, reader)
-	return r.Resolve()
+
+	if _, err := io.Copy(r, reader); err != nil {
+		return ID{}, err
+	}
+
+	return r.Resolve(), nil
 }
