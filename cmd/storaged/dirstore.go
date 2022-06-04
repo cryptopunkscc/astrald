@@ -14,6 +14,10 @@ type DirStore struct {
 	dataDir string
 }
 
+func NewDirStore(dataDir string) *DirStore {
+	return &DirStore{dataDir: dataDir}
+}
+
 func (s DirStore) Create(alloc uint64) (handler block.Block, tempID string, err error) {
 	tempID = tempName(32)
 
@@ -32,8 +36,8 @@ func (s DirStore) Open(id data.ID, _ uint32) (block.Block, error) {
 
 	file, err := os.Open(fullpath)
 	if err != nil {
-		return nil, err
+		return nil, store.ErrNotFound
 	}
 
-	return block.Wrap(file), err
+	return block.Wrap(file), nil
 }

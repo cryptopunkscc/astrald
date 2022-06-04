@@ -1,5 +1,11 @@
 package main
 
+// storage daemon example
+//
+// Usage: ./starged <node0> <node1> ...
+//
+// Run a local storage node and use listed nodes for remote queries.
+
 import (
 	"errors"
 	"fmt"
@@ -25,7 +31,7 @@ func (server *Server) Run() error {
 
 	log.Println("data dir:", server.dataDir)
 
-	store := &DirStore{dataDir: server.dataDir}
+	store := NewMetaStore(server.dataDir, os.Args[1:])
 
 	for conn := range port.AcceptAll() {
 		conn := conn
@@ -47,10 +53,6 @@ func main() {
 
 	if home, err := os.UserHomeDir(); err == nil {
 		dataDir = filepath.Join(home, ".config/astrald/storage")
-	}
-
-	if len(os.Args) >= 2 {
-		dataDir = os.Args[1]
 	}
 
 	if err := os.MkdirAll(dataDir, 0700); err != nil {

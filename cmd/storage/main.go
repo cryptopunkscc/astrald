@@ -37,7 +37,7 @@ func read(id string) {
 
 	store := _store.Bind(conn)
 
-	block, err := store.Open(blockID, 0)
+	block, err := store.Open(blockID, _store.OpenRemote)
 	if err != nil {
 		panic(err)
 	}
