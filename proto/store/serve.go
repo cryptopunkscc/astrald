@@ -62,7 +62,7 @@ func (d *dispatcher) open(blockID data.ID, flags uint32) error {
 }
 
 func (d *dispatcher) create(alloc uint64) error {
-	tempID, _block, err := d.store.Create(alloc)
+	_block, tempID, err := d.store.Create(alloc)
 
 	switch {
 	case err == nil:
