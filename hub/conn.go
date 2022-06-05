@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"io"
 )
@@ -18,6 +19,13 @@ func (conn Conn) Query() string {
 
 func (conn Conn) Link() *link.Link {
 	return conn.link
+}
+
+func (conn Conn) RemoteIdentity() id.Identity {
+	if conn.link == nil {
+		return id.Identity{}
+	}
+	return conn.link.RemoteIdentity()
 }
 
 func (conn Conn) IsLocal() bool {

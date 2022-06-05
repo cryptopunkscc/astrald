@@ -52,13 +52,10 @@ func (hub *Hub) RegisterContext(ctx context.Context, name string) (*Port, error)
 
 // Query requests to connect to a port as the provided auth.Identity
 func (hub *Hub) Query(query string, link *link.Link) (*Conn, error) {
-	hub.mu.Lock()
-	defer hub.mu.Unlock()
-
 	// Fetch the port
-	port, found := hub.ports[query]
-	if !found {
-		return nil, ErrPortNotFound
+	port, err := hub.getPort(query)
+	if err != nil {
+		return nil, err
 	}
 
 	// pass the query to the port
@@ -99,4 +96,17 @@ func (hub *Hub) release(name string) error {
 	//log.Println("port released:", name)
 
 	return nil
+}
+
+func (hub *Hub) getPort(name string) (*Port, error) {
+	hub.mu.Lock()
+	defer hub.mu.Unlock()
+
+	// Fetch the port
+	port, found := hub.ports[name]
+	if !found {
+		return nil, ErrPortNotFound
+	}
+
+	return port, nil
 }

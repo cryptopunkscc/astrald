@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 )
 
@@ -24,6 +25,15 @@ func NewQuery(query string, link *link.Link) *Query {
 // Link returns the link from which the query is coming or nil in case of local queries
 func (query *Query) Link() *link.Link {
 	return query.link
+}
+
+// RemoteIdentity returns the remote identity of the caller
+func (query *Query) RemoteIdentity() id.Identity {
+	if query.link != nil {
+		return query.link.RemoteIdentity()
+	}
+
+	return id.Identity{}
 }
 
 // IsLocal returns true if query is local
