@@ -4,7 +4,10 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
+	"time"
 )
+
+const queryResponseTimeout = 5 * time.Second
 
 // Hub facilitates registration of ports and making connections to them.
 type Hub struct {
@@ -60,10 +63,20 @@ func (hub *Hub) Query(query string, link *link.Link) (*Conn, error) {
 
 	// pass the query to the port
 	q := NewQuery(query, link)
-	port.queries <- q
+	select {
+	case port.queries <- q:
+	default:
+		return nil, ErrQueueOverflow
+	}
 
 	// Wait for the response
-	accepted := <-q.response
+	var accepted bool
+	select {
+	case accepted = <-q.response:
+	case <-time.After(queryResponseTimeout):
+		return nil, ErrTimeout
+	}
+
 	if !accepted {
 		return nil, ErrRejected
 	}

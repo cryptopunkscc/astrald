@@ -1,5 +1,7 @@
 package hub
 
+const queryQueueSize = 4
+
 // Port represents an open port in the hub
 type Port struct {
 	name    string
@@ -11,7 +13,7 @@ func NewPort(hub *Hub, name string) *Port {
 	return &Port{
 		name:    name,
 		hub:     hub,
-		queries: make(chan *Query),
+		queries: make(chan *Query, queryQueueSize),
 	}
 }
 
