@@ -6,8 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/node"
-	"io"
-	"sync"
+	"github.com/cryptopunkscc/astrald/streams"
 )
 
 const ModuleName = "gateway"
@@ -25,6 +24,9 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 		conn := req.Accept()
 
 		go func() {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			var cookie string
 
 			err = cslq.Decode(conn, "[c]c", &cookie)
@@ -48,7 +50,12 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 
 			cslq.Encode(conn, "c", true)
 
-			join(ctx, conn, out)
+			go func() {
+				<-ctx.Done()
+				out.Close()
+			}()
+
+			streams.Join(conn, out)
 		}()
 	}
 
@@ -57,29 +64,4 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 
 func (Gateway) String() string {
 	return ModuleName
-}
-
-func join(ctx context.Context, left, right io.ReadWriteCloser) error {
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		io.Copy(left, right)
-		left.Close()
-		wg.Done()
-	}()
-
-	go func() {
-		io.Copy(right, left)
-		right.Close()
-		wg.Done()
-	}()
-
-	go func() {
-		<-ctx.Done()
-		right.Close()
-	}()
-
-	wg.Wait()
-	return nil
 }
