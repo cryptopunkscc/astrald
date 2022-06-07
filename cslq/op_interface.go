@@ -33,7 +33,7 @@ func (op OpInterface) Encode(w io.Writer, data *Fifo) error {
 	}
 
 	if m, ok := v.(Formatter); ok {
-		return Encode(w, m.FormatCSLQ(), v)
+		return Encode(w, "{"+m.FormatCSLQ()+"}", v)
 	}
 
 	if err, ok := v.(*error); ok {
@@ -55,7 +55,7 @@ func (op OpInterface) Decode(r io.Reader, data *Fifo) error {
 	}
 
 	if m, ok := v.(Formatter); ok {
-		return Decode(r, m.FormatCSLQ(), v)
+		return Decode(r, "{"+m.FormatCSLQ()+"}", v)
 	}
 
 	if err, ok := v.(*error); ok {
