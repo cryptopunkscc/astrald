@@ -25,7 +25,7 @@ func (r RemoteStore) Open(id data.ID, flags uint32) (_block.Block, error) {
 		}
 
 		remoteStore := store.Bind(conn)
-		block, err := remoteStore.Open(id, flags|^uint32(store.OpenRemote))
+		block, err := remoteStore.Open(id, flags&^uint32(store.OpenRemote))
 		if err == nil {
 			return block, nil
 		}
