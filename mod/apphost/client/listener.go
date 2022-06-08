@@ -4,12 +4,13 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/ipc"
-	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"io"
 	"net"
 )
 
 type AuthFunc func(identity id.Identity, query string) bool
+
+var _ net.Listener = &Listener{}
 
 type Listener struct {
 	listener   net.Listener
@@ -43,16 +44,16 @@ func (l *Listener) Accept() (net.Conn, error) {
 
 		if err := stream.Decode("v [c]c", &remoteID, &query); err != nil {
 			conn.Close()
-			return nil, err
+			continue
 		}
 
 		if (l.authFunc == nil) || l.authFunc(remoteID, query) {
-			stream.Encode("c", proto.ResponseOK)
+			stream.Encode("c", 0)
 
 			return Conn{Conn: conn, remoteAddr: Addr{remoteID.String()}}, nil
 		}
 
-		stream.Encode("c", proto.ResponseRejected)
+		stream.Encode("c", 1)
 		conn.Close()
 	}
 }
@@ -87,8 +88,7 @@ func (l *Listener) AcceptAll() <-chan net.Conn {
 }
 
 func (l *Listener) Close() error {
-	l.listener.Close()
-	return l.portCloser.Close()
+	return l.listener.Close()
 }
 
 func (l *Listener) Target() string {

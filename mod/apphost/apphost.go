@@ -2,103 +2,108 @@ package apphost
 
 import (
 	"context"
-	"fmt"
-	_node "github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/storage"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/hub"
+	"github.com/cryptopunkscc/astrald/mod/apphost/ipc"
+	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/proto/apphost"
+	"github.com/cryptopunkscc/astrald/streams"
+	"io"
 	"log"
 	"net"
-	"os"
-	"path/filepath"
+	"sync"
 )
 
+var _ apphost.AppHost = &AppHost{}
+
 type AppHost struct {
-	node        *_node.Node
-	listeners   []net.Listener
-	clientConns chan net.Conn
+	ports *PortManager
+	mu    sync.Mutex
+
+	node *node.Node
+	conn net.Conn
 }
 
-const ModuleName = "apphost"
-const UnixSocketName = "apphost.sock"
-const DefaultSocketDir = "/var/run/astrald"
-const TCPPort = 8625
-
-func (host *AppHost) Run(ctx context.Context, node *_node.Node) error {
-	host.node = node
-
-	host.runListeners(ctx)
-
-	for conn := range host.clientConns {
-		ServeClient(ctx, conn, node)
+func (host *AppHost) Register(portName string, target string) error {
+	if host.ports.GetPort(portName) != nil {
+		return hub.ErrAlreadyRegistered
 	}
+
+	port, err := host.node.Ports.Register(portName)
+	if err != nil {
+		return err
+	}
+
+	if err := host.ports.AddPort(port, target); err != nil {
+		return err
+	}
+
+	go func() {
+		for q := range port.Queries() {
+			q := q
+			go func() {
+				remoteID := host.node.Identity()
+				if !q.IsLocal() {
+					remoteID = q.Link().RemoteIdentity()
+				}
+
+				conn, err := ipc.Dial(target)
+				if err != nil {
+					q.Reject()
+					port.Close()
+					log.Printf("[apphost] target %s unreachable, closing port %s\n", target, portName)
+					return
+				}
+
+				defer conn.Close()
+
+				stream := cslq.NewEndec(conn)
+
+				if err := stream.Encode("v [c]c", remoteID, q.Query()); err != nil {
+					log.Println("[apphost] encode error:", err)
+					return
+				}
+
+				var errorCode int
+
+				if err := stream.Decode("c", &errorCode); err != nil {
+					log.Println("[apphost] decode error:", err)
+					return
+				}
+
+				if errorCode != 0 {
+					q.Reject()
+					return
+				}
+
+				streams.Join(conn, q.Accept())
+			}()
+		}
+	}()
 
 	return nil
 }
 
-func (host *AppHost) runListeners(ctx context.Context) {
-	host.listeners = make([]net.Listener, 0)
-	host.clientConns = make(chan net.Conn)
-
-	if l, err := host.listenTCP(); err != nil {
-		log.Println("[apphost] tcp listen error:", err)
-	} else {
-		log.Println("[apphost] listen", l.Addr())
-		host.listeners = append(host.listeners, l)
-	}
-
-	if l, err := host.listenUnix(); err != nil {
-		log.Println("[apphost] unix listen error:", err)
-	} else {
-		log.Println("[apphost] listen", l.Addr())
-		host.listeners = append(host.listeners, l)
-	}
-
-	for _, listener := range host.listeners {
-		go func() {
-			for {
-				conn, err := listener.Accept()
-				if err != nil {
-					break
-				}
-				host.clientConns <- conn
-			}
-		}()
-	}
-
-	go func() {
-		<-ctx.Done()
-		for _, l := range host.listeners {
-			l.Close()
-		}
-		close(host.clientConns)
-	}()
+func (host *AppHost) Query(identity id.Identity, query string) (io.ReadWriteCloser, error) {
+	return host.node.Query(context.Background(), identity, query)
 }
 
-func (host *AppHost) listenTCP() (net.Listener, error) {
-	return net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", TCPPort))
-}
-
-func (host *AppHost) listenUnix() (net.Listener, error) {
-	var socketDir = DefaultSocketDir
-
-	if fs, ok := host.node.Store.(*storage.FilesystemStorage); ok {
-		socketDir = fs.Root()
+func (host *AppHost) Resolve(s string) (id.Identity, error) {
+	if identity, err := id.ParsePublicKeyHex(s); err == nil {
+		return identity, nil
 	}
 
-	socketPath := filepath.Join(socketDir, UnixSocketName)
-
-	if info, err := os.Stat(socketPath); err == nil {
-		if !info.Mode().IsRegular() {
-			log.Println("[apphost] stale unix socket found, removing...")
-			err := os.Remove(socketPath)
-			if err != nil {
-				return nil, err
-			}
-		}
+	if s == "localnode" {
+		return host.node.Identity(), nil
 	}
 
-	return net.Listen("unix", socketPath)
+	return host.node.Contacts.ResolveIdentity(s)
 }
 
-func (AppHost) String() string {
-	return ModuleName
+func (host *AppHost) NodeInfo(identity id.Identity) (apphost.NodeInfo, error) {
+	return apphost.NodeInfo{
+		Identity: identity,
+		Name:     host.node.Contacts.DisplayName(identity),
+	}, nil
 }

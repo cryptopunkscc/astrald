@@ -24,7 +24,7 @@ type Server struct {
 func (server *Server) Run() error {
 	log.Println("storaged starting...")
 
-	port, err := astral.Register("storage")
+	port, err := astral.Listen("storage")
 	if err != nil {
 		return err
 	}

@@ -15,17 +15,17 @@ type serverDispatcher struct {
 	server AppHost
 }
 
-func Serve(conn io.ReadWriteCloser, server AppHost) error {
+func Serve(conn io.ReadWriteCloser, server AppHost) (err error) {
 	var dispatcher = &serverDispatcher{conn: conn, server: server}
 
-	for {
-		if err := rpc.Dispatch(dispatcher.conn, "[c]c", dispatcher.dispatch); err != nil {
-			if errors.Is(err, io.EOF) || strings.Contains(err.Error(), "use of closed network connection") {
-				return nil
-			}
-			return err
+	err = rpc.Dispatch(dispatcher.conn, "[c]c", dispatcher.dispatch)
+
+	if err != nil {
+		if errors.Is(err, io.EOF) || strings.Contains(err.Error(), "use of closed network connection") {
+			err = nil
 		}
 	}
+	return
 }
 
 func (dispatcher *serverDispatcher) dispatch(cmd string) error {

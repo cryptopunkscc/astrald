@@ -30,7 +30,7 @@ func read(id string) {
 		panic(err)
 	}
 
-	conn, err := astral.Query("", "storage")
+	conn, err := astral.QueryByName("localnode", "storage")
 	if err != nil {
 		panic(err)
 	}
@@ -54,7 +54,7 @@ func read(id string) {
 }
 
 func create() {
-	conn, err := astral.Query("", "storage")
+	conn, err := astral.QueryByName("localnode", "storage")
 	if err != nil {
 		panic(err)
 	}

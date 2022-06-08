@@ -27,7 +27,7 @@ func cmdRegister(args []string) {
 
 	portName := args[0]
 
-	l, err := astral.Register(portName)
+	l, err := astral.Listen(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)
@@ -69,7 +69,7 @@ func cmdShare(args []string) {
 		os.Exit(exitError)
 	}
 
-	port, err := astral.Register(portName)
+	port, err := astral.Listen(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)
@@ -108,7 +108,7 @@ func cmdExec(args []string) {
 	portName := args[0]
 	execPath := args[1]
 
-	l, err := astral.Register(portName)
+	l, err := astral.Listen(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: register: %s\n", err.Error())
 		os.Exit(exitError)
@@ -180,7 +180,7 @@ func cmdQuery(args []string) {
 		query = args[1]
 	}
 
-	conn, err := astral.Query(nodeID, query)
+	conn, err := astral.QueryByName(nodeID, query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(exitError)
@@ -217,7 +217,7 @@ func cmdDownload(args []string) {
 		os.Exit(exitError)
 	}
 
-	conn, err := astral.Query(nodeID, query)
+	conn, err := astral.QueryByName(nodeID, query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(exitError)
@@ -243,9 +243,30 @@ func cmdDownload(args []string) {
 	os.Exit(exitSuccess)
 }
 
+func cmdResolve(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "anc resolve <name>")
+		os.Exit(exitHelp)
+	}
+
+	identity, err := astral.Resolve(args[0])
+	if err != nil {
+		fmt.Println("error:", err)
+		os.Exit(exitError)
+	}
+	fmt.Println(identity.String())
+
+	nodeInfo, err := astral.NodeInfo(identity)
+	if err != nil {
+		return
+	}
+
+	fmt.Println("name", nodeInfo.Name)
+}
+
 func help() {
 	fmt.Fprintln(os.Stderr, "astral netcat")
-	fmt.Fprintln(os.Stderr, "usage: anc <query|register|exec|share|download|help>")
+	fmt.Fprintln(os.Stderr, "usage: anc <query|register|exec|share|download|resolve|help>")
 	os.Exit(exitHelp)
 }
 
@@ -265,18 +286,20 @@ func main() {
 	}
 
 	cmd := os.Args[1]
-	switch cmd[0] {
-	case 'q':
+	switch cmd {
+	case "q", "query":
 		cmdQuery(os.Args[2:])
-	case 'r':
+	case "r", "register":
 		cmdRegister(os.Args[2:])
-	case 'e':
+	case "e", "exec":
 		cmdExec(os.Args[2:])
-	case 's':
+	case "s", "share":
 		cmdShare(os.Args[2:])
-	case 'd':
+	case "d", "download":
 		cmdDownload(os.Args[2:])
-	case 'h':
+	case "resolve":
+		cmdResolve(os.Args[2:])
+	case "h", "help":
 		help()
 	default:
 		help()
@@ -284,8 +307,8 @@ func main() {
 }
 
 func displayName(identity id.Identity) string {
-	if name, err := astral.GetNodeName(identity); err == nil {
-		return name
+	if info, err := astral.NodeInfo(identity); err == nil {
+		return info.Name
 	}
 	return identity.String()
 }

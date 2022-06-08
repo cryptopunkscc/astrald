@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"time"
 )
@@ -57,15 +58,7 @@ func (node *Node) handleQuery(query *link.Query) error {
 		return err
 	}
 
-	// Connect local and remote streams
-	go func() {
-		_, _ = io.Copy(localConn, remoteConn)
-		_ = localConn.Close()
-	}()
-	go func() {
-		_, _ = io.Copy(remoteConn, localConn)
-		_ = remoteConn.Close()
-	}()
+	go streams.Join(localConn, remoteConn)
 
 	return nil
 }

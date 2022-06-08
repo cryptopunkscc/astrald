@@ -25,7 +25,7 @@ func Start(astralHome string) error {
 		ctx,
 		astralHome,
 		admin.Admin{},
-		apphost.AppHost{},
+		&apphost.Module{},
 		connect.Connect{},
 		gateway.Gateway{},
 		info.Info{},

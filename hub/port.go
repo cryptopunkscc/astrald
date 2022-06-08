@@ -26,3 +26,8 @@ func (port *Port) Queries() <-chan *Query {
 func (port *Port) Close() error {
 	return port.hub.release(port.name)
 }
+
+// Name returns port's name
+func (port *Port) Name() string {
+	return port.name
+}

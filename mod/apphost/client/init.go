@@ -26,5 +26,5 @@ func init() {
 		}
 	}
 
-	instance = NewAppHost(target)
+	AppHostAddress = target
 }

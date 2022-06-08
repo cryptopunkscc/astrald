@@ -33,7 +33,6 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 	node := &Node{
 		Config:  cfg,
 		Store:   store,
-		Ports:   hub.New(),
 		peers:   make(map[string]*peer.Peer),
 		queries: make(chan *nlink.Query),
 		links:   make(chan *alink.Link, 1),
@@ -46,6 +45,9 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 	if err := node.setupIdentity(); err != nil {
 		return nil, fmt.Errorf("identity setup error: %w", err)
 	}
+
+	// Set up local hub
+	node.Ports = hub.New()
 
 	// Say hello
 	nodeKey := node.identity.PublicKeyHex()
