@@ -12,14 +12,12 @@ import (
 	"io"
 	"log"
 	"net"
-	"sync"
 )
 
 var _ apphost.AppHost = &AppHost{}
 
 type AppHost struct {
 	ports *PortManager
-	mu    sync.Mutex
 
 	node *node.Node
 	conn net.Conn
