@@ -49,6 +49,6 @@ func (b TempBlock) Finalize() (data.ID, error) {
 	return resolvedID, nil
 }
 
-func (b TempBlock) End() error {
-	return nil
+func (b TempBlock) Close() error {
+	return b.File.Close()
 }

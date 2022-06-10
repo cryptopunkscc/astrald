@@ -135,8 +135,8 @@ func (b *Binding) Finalize() (id data.ID, err error) {
 	return
 }
 
-func (b *Binding) End() error {
-	if err := cslq.Encode(b.t, "c", cmdEnd); err != nil {
+func (b *Binding) Close() error {
+	if err := cslq.Encode(b.t, "c", cmdClose); err != nil {
 		return err
 	}
 

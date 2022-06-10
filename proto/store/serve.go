@@ -9,16 +9,12 @@ import (
 	"io"
 )
 
-func Serve(conn io.ReadWriter, store Store) error {
-	var d = &dispatcher{conn: conn, store: store}
-	for {
-		if err := d.dispatch(); err != nil {
-			if errors.Is(err, errEnded) {
-				return nil
-			}
-			return err
-		}
+func Serve(conn io.ReadWriter, store Store) (err error) {
+	err = dispatcher{conn: conn, store: store}.dispatch()
+	if errors.Is(err, errEnded) {
+		err = nil
 	}
+	return
 }
 
 type dispatcher struct {
@@ -26,7 +22,7 @@ type dispatcher struct {
 	store Store
 }
 
-func (d *dispatcher) dispatch() error {
+func (d dispatcher) dispatch() error {
 	return rpc.Dispatch(d.conn, "c", func(cmd uint8) error {
 		switch cmd {
 		case cmdOpen:

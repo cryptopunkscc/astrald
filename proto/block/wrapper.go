@@ -49,6 +49,9 @@ func (w Wrapper) Finalize() (data.ID, error) {
 	return data.ID{}, ErrUnavailable
 }
 
-func (w Wrapper) End() error {
-	return nil
+func (w Wrapper) Close() error {
+	if typed, ok := w.object.(io.Closer); ok {
+		return typed.Close()
+	}
+	return ErrUnavailable
 }

@@ -9,7 +9,7 @@ const (
 	cmdWrite    = 0x02
 	cmdSeek     = 0x03
 	cmdFinalize = 0x04
-	cmdEnd      = 0xff
+	cmdClose    = 0xff
 )
 
 const (

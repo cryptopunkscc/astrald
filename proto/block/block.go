@@ -11,15 +11,11 @@ type (
 		io.Reader
 		io.Writer
 		io.Seeker
+		io.Closer
 		Finalizer
-		Ender
 	}
 
 	Finalizer interface {
 		Finalize() (data.ID, error)
-	}
-
-	Ender interface {
-		End() error
 	}
 )

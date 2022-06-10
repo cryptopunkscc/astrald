@@ -21,6 +21,7 @@ func Serve(t io.ReadWriter, block Block) error {
 			if errors.Is(err, ErrEnded) {
 				return nil
 			}
+			block.Close()
 			return err
 		}
 	}
@@ -40,8 +41,8 @@ func (d *dispatcher) dispatch(cmd byte) error {
 	case cmdFinalize:
 		return d.finalize()
 
-	case cmdEnd:
-		if err := d.end(); err != nil {
+	case cmdClose:
+		if err := d.close(); err != nil {
 			return err
 		}
 		return ErrEnded
@@ -119,8 +120,8 @@ func (d *dispatcher) finalize() error {
 	return cslq.Encode(d.t, "c v", errCode, id)
 }
 
-func (d *dispatcher) end() error {
-	if err := d.block.End(); err != nil {
+func (d *dispatcher) close() error {
+	if err := d.block.Close(); err != nil {
 		return err
 	}
 
