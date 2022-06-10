@@ -29,6 +29,7 @@ func (r RemoteStore) Open(id data.ID, flags uint32) (_block.Block, error) {
 		if err == nil {
 			return block, nil
 		}
+		conn.Close()
 	}
 
 	return nil, store.ErrNotFound

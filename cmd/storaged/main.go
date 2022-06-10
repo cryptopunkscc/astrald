@@ -37,7 +37,10 @@ func (server *Server) Run() error {
 		info, _ := astral.NodeInfo(query.RemoteIdentity())
 		log.Println(info.Name, "connected")
 
-		conn, _ := query.Accept()
+		conn, err := query.Accept()
+		if err != nil {
+			continue
+		}
 		go func() {
 			defer conn.Close()
 

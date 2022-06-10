@@ -26,7 +26,7 @@ func (s MetaStore) Open(id data.ID, flags uint32) (_block.Block, error) {
 		}
 	}
 
-	return block, err
+	return block, store.ErrNotFound
 }
 
 func (s MetaStore) Create(alloc uint64) (_block.Block, string, error) {
