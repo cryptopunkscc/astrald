@@ -33,15 +33,19 @@ func (server *Server) Run() error {
 
 	store := NewMetaStore(server.dataDir, os.Args[1:])
 
-	for conn := range port.AcceptAll() {
-		conn := conn
+	for query := range port.QueryCh() {
+		info, _ := astral.NodeInfo(query.RemoteIdentity())
+		log.Println(info.Name, "connected")
+
+		conn, _ := query.Accept()
 		go func() {
-			if err := _store.Serve(conn, store); err != nil {
-				if !errors.Is(err, io.EOF) {
-					log.Println("error:", err)
-				}
+			defer conn.Close()
+
+			err := _store.Serve(conn, NewAuthStore(conn, store))
+			if (err != nil) && !errors.Is(err, io.EOF) {
+				log.Println("error:", err)
 			}
-			conn.Close()
+			log.Println(info.Name, "disconnected")
 		}()
 	}
 

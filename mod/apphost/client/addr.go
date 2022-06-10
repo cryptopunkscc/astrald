@@ -1,24 +1,19 @@
 package astral
 
-import "net"
+import (
+	"net"
+)
 
-type Conn struct {
-	net.Conn
-	remoteAddr Addr
-}
+var _ net.Addr = &Addr{}
 
 type Addr struct {
 	address string
-}
-
-func (a Addr) String() string {
-	return a.address
 }
 
 func (a Addr) Network() string {
 	return "astral"
 }
 
-func (conn Conn) RemoteAddr() net.Addr {
-	return conn.remoteAddr
+func (a Addr) String() string {
+	return a.address
 }

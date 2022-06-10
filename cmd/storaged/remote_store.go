@@ -19,7 +19,7 @@ func NewRemoteStore(sources []string) *RemoteStore {
 
 func (r RemoteStore) Open(id data.ID, flags uint32) (_block.Block, error) {
 	for _, source := range r.sources {
-		conn, err := astral.QueryByName(source, "storage")
+		conn, err := astral.DialName(source, "storage")
 		if err != nil {
 			continue
 		}

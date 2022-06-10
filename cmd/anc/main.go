@@ -35,10 +35,6 @@ func cmdRegister(args []string) {
 
 	fmt.Fprintf(os.Stderr, "listening on %s\n", portName)
 
-	l = l.Auth(func(identity id.Identity, query string) bool {
-		return true
-	})
-
 	conn, err := l.Accept()
 	if err != nil {
 		return
@@ -180,7 +176,7 @@ func cmdQuery(args []string) {
 		query = args[1]
 	}
 
-	conn, err := astral.QueryByName(nodeID, query)
+	conn, err := astral.DialName(nodeID, query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(exitError)
@@ -217,7 +213,7 @@ func cmdDownload(args []string) {
 		os.Exit(exitError)
 	}
 
-	conn, err := astral.QueryByName(nodeID, query)
+	conn, err := astral.DialName(nodeID, query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(exitError)

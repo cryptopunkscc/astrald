@@ -35,7 +35,7 @@ func Listen(port string) (*Listener, error) {
 	return l, nil
 }
 
-func Query(remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
+func Dial(remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
 	host, err := Connect()
 	if err != nil {
 		return nil, err
@@ -44,13 +44,13 @@ func Query(remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
 	return host.Query(remoteID, query)
 }
 
-func QueryByName(nodeName string, query string) (io.ReadWriteCloser, error) {
+func DialName(nodeName string, query string) (io.ReadWriteCloser, error) {
 	identity, err := Resolve(nodeName)
 	if err != nil {
 		return nil, err
 	}
 
-	return Query(identity, query)
+	return Dial(identity, query)
 }
 
 func Resolve(s string) (id.Identity, error) {

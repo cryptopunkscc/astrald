@@ -40,6 +40,7 @@ func (d *dispatcher) dispatch() error {
 				return err
 			}
 			return errEnded
+
 		default:
 			return errors.New("protocol violation: unknown command")
 		}
@@ -55,6 +56,7 @@ func (d *dispatcher) open(blockID data.ID, flags uint32) error {
 			return err
 		}
 		return block.Serve(d.conn, block.Wrap(object))
+
 	default:
 		return cslq.Encode(d.conn, "c", errNotFound)
 	}
