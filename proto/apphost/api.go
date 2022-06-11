@@ -21,8 +21,11 @@ type NodeInfo struct {
 func (NodeInfo) FormatCSLQ() string { return "v [c]c" }
 
 var (
-	ErrUnknownCommand   = errors.New("unknown command")
-	ErrRejected         = errors.New("rejected")
-	ErrFailed           = errors.New("failed")
-	ErrInvalidErrorCode = errors.New("invalid error code")
+	ErrUnknownCommand    = errors.New("unknown command")
+	ErrRejected          = errors.New("rejected")
+	ErrFailed            = errors.New("failed")
+	ErrInvalidErrorCode  = errors.New("invalid error code")
+	ErrTimeout           = errors.New("timeout")
+	ErrUnexpected        = errors.New("unexpected error")
+	ErrAlreadyRegistered = errors.New("port already registered")
 )

@@ -34,6 +34,9 @@ func (client Client) Register(port string, target string) (err error) {
 	switch errorCode {
 	case success:
 
+	case errAlreadyRegistered:
+		err = ErrAlreadyRegistered
+
 	case errFailed:
 		err = ErrFailed
 
@@ -51,7 +54,7 @@ func (client Client) Query(identity id.Identity, query string) (conn io.ReadWrit
 		return
 	}
 
-	// request
+	// response
 	if err = cslq.Decode(client.conn, "c", &errorCode); err != nil {
 		return
 	}
@@ -63,6 +66,12 @@ func (client Client) Query(identity id.Identity, query string) (conn io.ReadWrit
 
 	case errRejected:
 		err = ErrRejected
+
+	case errTimeout:
+		err = ErrTimeout
+
+	case errUnexpected:
+		err = ErrUnexpected
 
 	default:
 		err = ErrInvalidErrorCode

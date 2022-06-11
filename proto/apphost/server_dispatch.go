@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/cslq/rpc"
+	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"strings"
@@ -16,6 +17,8 @@ type serverDispatcher struct {
 }
 
 func Serve(conn io.ReadWriteCloser, server AppHost) (err error) {
+	defer conn.Close()
+
 	var dispatcher = &serverDispatcher{conn: conn, server: server}
 
 	err = rpc.Dispatch(dispatcher.conn, "[c]c", dispatcher.dispatch)
@@ -53,6 +56,10 @@ func (dispatcher *serverDispatcher) register(portName string, target string) err
 	switch {
 	case err == nil:
 		return cslq.Encode(dispatcher.conn, "c", success)
+
+	case errors.Is(err, hub.ErrAlreadyRegistered), errors.Is(err, ErrAlreadyRegistered):
+		return cslq.Encode(dispatcher.conn, "c", errAlreadyRegistered)
+
 	default:
 		return cslq.Encode(dispatcher.conn, "c", errFailed)
 	}
@@ -60,12 +67,20 @@ func (dispatcher *serverDispatcher) register(portName string, target string) err
 
 func (dispatcher *serverDispatcher) query(identity id.Identity, query string) error {
 	conn, err := dispatcher.server.Query(identity, query)
-	if err != nil {
-		return cslq.Encode(dispatcher.conn, "c", errRejected)
-	}
+	switch {
+	case err == nil:
+		if err := cslq.Encode(dispatcher.conn, "c", success); err != nil {
+			return err
+		}
 
-	if err := cslq.Encode(dispatcher.conn, "c", success); err != nil {
-		return err
+	case errors.Is(err, ErrRejected):
+		return cslq.Encode(dispatcher.conn, "c", errRejected)
+
+	case errors.Is(err, ErrTimeout):
+		return cslq.Encode(dispatcher.conn, "c", errTimeout)
+
+	default:
+		return cslq.Encode(dispatcher.conn, "c", errUnexpected)
 	}
 
 	return streams.Join(dispatcher.conn, conn)
