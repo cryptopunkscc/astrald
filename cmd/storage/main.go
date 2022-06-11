@@ -46,7 +46,7 @@ func read(id string) {
 		fmt.Println("copy error:", err)
 	}
 
-	if err := block.End(); err != nil {
+	if err := block.Close(); err != nil {
 		fmt.Println("close error:", err)
 	}
 
