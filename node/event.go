@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -65,6 +66,12 @@ func (node *Node) logEvent(event event.Event) {
 			logfmt.Bool(c.Outbound(), "->", "<-"),
 			c.Query(),
 		)
+
+	case hub.EventPortRegistered:
+		log.Printf("port registered: %s\n", event.PortName)
+
+	case hub.EventPortReleased:
+		log.Printf("port released: %s\n", event.PortName)
 
 	default:
 		log.Println("event:", reflect.TypeOf(event).String())

@@ -2,6 +2,7 @@ package apphost
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/hub"
@@ -84,7 +85,21 @@ func (host *AppHost) Register(portName string, target string) error {
 }
 
 func (host *AppHost) Query(identity id.Identity, query string) (io.ReadWriteCloser, error) {
-	return host.node.Query(context.Background(), identity, query)
+	rwc, err := host.node.Query(context.Background(), identity, query)
+
+	switch {
+	case err == nil:
+	case errors.Is(err, hub.ErrRejected):
+		err = apphost.ErrRejected
+
+	case errors.Is(err, hub.ErrPortNotFound):
+		err = apphost.ErrRejected
+
+	case errors.Is(err, hub.ErrTimeout):
+		err = apphost.ErrTimeout
+	}
+
+	return rwc, err
 }
 
 func (host *AppHost) Resolve(s string) (id.Identity, error) {

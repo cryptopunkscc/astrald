@@ -47,7 +47,7 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 	}
 
 	// Set up local hub
-	node.Ports = hub.New()
+	node.Ports = hub.New(&node.events)
 
 	// Say hello
 	nodeKey := node.identity.PublicKeyHex()
