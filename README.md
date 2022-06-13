@@ -31,7 +31,7 @@ Minimal server example:
 ```go
 package main
 
-import astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+import "github.com/cryptopunkscc/astrald/lib/astral"
 
 func main() {
 	l, err := astral.Listen("myname.myapp")
@@ -55,7 +55,7 @@ Minimal client example:
 package main
 
 import (
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
 	"os"
 )

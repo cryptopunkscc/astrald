@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/cryptopunkscc/astrald/data"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	_block "github.com/cryptopunkscc/astrald/proto/block"
 	"github.com/cryptopunkscc/astrald/proto/store"
 )

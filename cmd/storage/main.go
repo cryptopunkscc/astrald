@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	_store "github.com/cryptopunkscc/astrald/proto/store"
 	"io"
 	"os"

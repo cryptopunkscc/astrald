@@ -2,26 +2,26 @@ package main
 
 import (
 	"github.com/cryptopunkscc/astrald/data"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	astral2 "github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/proto/block"
 	"github.com/cryptopunkscc/astrald/proto/store"
 	"log"
 )
 
 type AuthStore struct {
-	conn       *astral.Conn
+	conn       *astral2.Conn
 	store      store.Store
 	remoteName string
 }
 
-func NewAuthStore(conn *astral.Conn, store store.Store) *AuthStore {
+func NewAuthStore(conn *astral2.Conn, store store.Store) *AuthStore {
 	s := &AuthStore{
 		conn:       conn,
 		store:      store,
 		remoteName: conn.RemoteIdentity().String(),
 	}
 
-	if info, err := astral.NodeInfo(conn.RemoteIdentity()); err == nil {
+	if info, err := astral2.NodeInfo(conn.RemoteIdentity()); err == nil {
 		s.remoteName = info.Name
 	}
 

@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/logfmt"
-	"github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"io"
 	"net"
 	"os"
@@ -27,7 +27,7 @@ func cmdRegister(args []string) {
 
 	portName := args[0]
 
-	l, err := astral.Listen(portName)
+	l, err := astral.astral.Listen(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)

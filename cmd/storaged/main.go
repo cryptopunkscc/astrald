@@ -9,7 +9,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	_store "github.com/cryptopunkscc/astrald/proto/store"
 	"io"
 	"log"
