@@ -42,5 +42,17 @@ func (s MetaStore) Create(alloc uint64) (_block.Block, string, error) {
 }
 
 func (s MetaStore) Download(blockID data.ID, offset uint64, limit uint64) (io.ReadCloser, error) {
-	return s.local.Download(blockID, offset, limit)
+	block, err := s.local.Download(blockID, offset, limit)
+	if err == nil {
+		return block, err
+	}
+
+	if s.remote != nil {
+		block, err := s.remote.Download(blockID, offset, limit)
+		if err == nil {
+			return block, err
+		}
+	}
+
+	return block, err
 }

@@ -41,5 +41,19 @@ func (r RemoteStore) Create(alloc uint64) (_block.Block, string, error) {
 }
 
 func (r RemoteStore) Download(blockID data.ID, offset uint64, limit uint64) (io.ReadCloser, error) {
-	return nil, store.ErrUnsupported
+	for _, source := range r.sources {
+		conn, err := astral.DialName(source, "storage")
+		if err != nil {
+			continue
+		}
+
+		remoteStore := store.Bind(conn)
+		block, err := remoteStore.Download(blockID, offset, limit)
+		if err == nil {
+			return block, nil
+		}
+		conn.Close()
+	}
+
+	return nil, store.ErrNotFound
 }
