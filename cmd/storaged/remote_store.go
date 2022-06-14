@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	_block "github.com/cryptopunkscc/astrald/proto/block"
 	"github.com/cryptopunkscc/astrald/proto/store"
+	"io"
 )
 
 var _ store.Store = &RemoteStore{}
@@ -37,4 +38,8 @@ func (r RemoteStore) Open(id data.ID, flags uint32) (_block.Block, error) {
 
 func (r RemoteStore) Create(alloc uint64) (_block.Block, string, error) {
 	return nil, "", store.ErrUnsupported
+}
+
+func (r RemoteStore) Download(blockID data.ID, offset uint64, limit uint64) (io.ReadCloser, error) {
+	return nil, store.ErrUnsupported
 }

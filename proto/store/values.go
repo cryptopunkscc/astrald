@@ -5,9 +5,10 @@ import (
 )
 
 const (
-	cmdOpen   = 0x01
-	cmdCreate = 0x02
-	cmdEnd    = 0xff
+	cmdOpen     = 0x01
+	cmdCreate   = 0x02
+	cmdDownload = 0x03
+	cmdEnd      = 0xff
 )
 
 const (

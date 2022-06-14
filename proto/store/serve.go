@@ -10,7 +10,12 @@ import (
 )
 
 func Serve(conn io.ReadWriter, store Store) (err error) {
-	err = dispatcher{conn: conn, store: store}.dispatch()
+	d := dispatcher{
+		conn:  conn,
+		Endec: cslq.NewEndec(conn),
+		store: store,
+	}
+	err = d.dispatch()
 	if errors.Is(err, errEnded) {
 		err = nil
 	}
@@ -18,7 +23,8 @@ func Serve(conn io.ReadWriter, store Store) (err error) {
 }
 
 type dispatcher struct {
-	conn  io.ReadWriter
+	conn io.ReadWriter
+	*cslq.Endec
 	store Store
 }
 
@@ -31,8 +37,11 @@ func (d dispatcher) dispatch() error {
 		case cmdCreate:
 			return rpc.Dispatch(d.conn, "q", d.create)
 
+		case cmdDownload:
+			return rpc.Dispatch(d.conn, "vqq", d.download)
+
 		case cmdEnd:
-			if err := cslq.Encode(d.conn, "c", 0); err != nil {
+			if err := d.Encode("c", 0); err != nil {
 				return err
 			}
 			return errEnded
@@ -48,13 +57,13 @@ func (d *dispatcher) open(blockID data.ID, flags uint32) error {
 
 	switch {
 	case err == nil:
-		if err := cslq.Encode(d.conn, "c", success); err != nil {
+		if err := d.Encode("c", success); err != nil {
 			return err
 		}
 		return block.Serve(d.conn, block.Wrap(object))
 
 	default:
-		return cslq.Encode(d.conn, "c", errNotFound)
+		return d.Encode("c", errNotFound)
 	}
 
 }
@@ -64,12 +73,29 @@ func (d *dispatcher) create(alloc uint64) error {
 
 	switch {
 	case err == nil:
-		if err := cslq.Encode(d.conn, "c [c]c", success, tempID); err != nil {
+		if err := d.Encode("c [c]c", success, tempID); err != nil {
 			return err
 		}
 		return block.Serve(d.conn, block.Wrap(_block))
 
 	default:
-		return cslq.Encode(d.conn, "c [c]c", errFailed, "")
+		return d.Encode("c [c]c", errFailed, "")
+	}
+}
+
+func (d *dispatcher) download(blockID data.ID, offset uint64, limit uint64) error {
+	rc, err := d.store.Download(blockID, offset, limit)
+
+	switch {
+	case err == nil:
+		if err := d.Encode("c", success); err != nil {
+			return err
+		}
+		defer rc.Close()
+		_, err := io.Copy(d.conn, rc)
+		return err
+
+	default:
+		return d.Encode("c", errNotFound)
 	}
 }

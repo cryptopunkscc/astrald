@@ -17,11 +17,42 @@ func main() {
 	switch os.Args[1] {
 	case "r", "read":
 		read(os.Args[2])
+	case "d", "download":
+		download(os.Args[2])
 	case "c", "create":
 		create()
 	case "i", "identify":
 		identify(os.Args[2])
 	}
+}
+
+func download(id string) {
+	blockID, err := data.Parse(id)
+	if err != nil {
+		panic(err)
+	}
+
+	conn, err := astral.DialName("localnode", "storage")
+	if err != nil {
+		panic(err)
+	}
+
+	store := _store.Bind(conn)
+
+	block, err := store.Download(blockID, 0, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	if _, err := io.Copy(os.Stdout, block); err != nil {
+		fmt.Println("copy error:", err)
+	}
+
+	if err := block.Close(); err != nil {
+		fmt.Println("close error:", err)
+	}
+
+	conn.Close()
 }
 
 func read(id string) {

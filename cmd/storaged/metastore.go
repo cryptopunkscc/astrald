@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	_block "github.com/cryptopunkscc/astrald/proto/block"
 	"github.com/cryptopunkscc/astrald/proto/store"
+	"io"
 )
 
 var _ store.Store = &MetaStore{}
@@ -11,6 +12,13 @@ var _ store.Store = &MetaStore{}
 type MetaStore struct {
 	local  store.Store
 	remote store.Store
+}
+
+func NewMetaStore(dataDir string, sources []string) *MetaStore {
+	return &MetaStore{
+		local:  NewDirStore(dataDir),
+		remote: NewRemoteStore(sources),
+	}
 }
 
 func (s MetaStore) Open(id data.ID, flags uint32) (_block.Block, error) {
@@ -33,9 +41,6 @@ func (s MetaStore) Create(alloc uint64) (_block.Block, string, error) {
 	return s.local.Create(alloc)
 }
 
-func NewMetaStore(dataDir string, sources []string) *MetaStore {
-	return &MetaStore{
-		local:  NewDirStore(dataDir),
-		remote: NewRemoteStore(sources),
-	}
+func (s MetaStore) Download(blockID data.ID, offset uint64, limit uint64) (io.ReadCloser, error) {
+	return s.local.Download(blockID, offset, limit)
 }

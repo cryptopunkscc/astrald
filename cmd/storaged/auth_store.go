@@ -2,26 +2,29 @@ package main
 
 import (
 	"github.com/cryptopunkscc/astrald/data"
-	astral2 "github.com/cryptopunkscc/astrald/lib/astral"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/proto/block"
 	"github.com/cryptopunkscc/astrald/proto/store"
+	"io"
 	"log"
 )
 
+var _ store.Store = &AuthStore{}
+
 type AuthStore struct {
-	conn       *astral2.Conn
+	conn       *astral.Conn
 	store      store.Store
 	remoteName string
 }
 
-func NewAuthStore(conn *astral2.Conn, store store.Store) *AuthStore {
+func NewAuthStore(conn *astral.Conn, store store.Store) *AuthStore {
 	s := &AuthStore{
 		conn:       conn,
 		store:      store,
 		remoteName: conn.RemoteIdentity().String(),
 	}
 
-	if info, err := astral2.NodeInfo(conn.RemoteIdentity()); err == nil {
+	if info, err := astral.NodeInfo(conn.RemoteIdentity()); err == nil {
 		s.remoteName = info.Name
 	}
 
@@ -44,4 +47,10 @@ func (store *AuthStore) Create(alloc uint64) (block.Block, string, error) {
 		log.Printf("%s error %s\n", store.remoteName, err.Error())
 	}
 	return create, s, err
+}
+
+func (store *AuthStore) Download(blockID data.ID, offset uint64, limit uint64) (io.ReadCloser, error) {
+	log.Printf("%s download %s (offset %d limit %d)\n", store.remoteName, blockID.String(), offset, limit)
+
+	return store.store.Download(blockID, offset, limit)
 }
