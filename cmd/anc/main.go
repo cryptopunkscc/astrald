@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/logfmt"
+	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"net"
 	"os"
@@ -19,6 +20,88 @@ const (
 	exitError
 )
 
+func cmdExport(args []string) {
+	if len(args) < 2 {
+		fmt.Fprintln(os.Stderr, "anc export <astral_port> <local_address>")
+		os.Exit(exitHelp)
+	}
+
+	portName := args[0]
+	dstAddr := args[1]
+
+	port, err := astral.Listen(portName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
+		os.Exit(exitError)
+	}
+
+	fmt.Fprintf(os.Stderr, "exporting %s to %s\n", portName, dstAddr)
+
+	i := 0
+
+	for query := range port.QueryCh() {
+		i += 1
+		fmt.Printf("[%d] %s connected.\n", i, displayName(query.RemoteIdentity()))
+
+		dstConn, err := net.Dial("tcp", dstAddr)
+		if err != nil {
+			fmt.Printf("error: destination (%s) unreachable: %v\n", dstAddr, err)
+			query.Reject()
+			continue
+		}
+
+		srcConn, _ := query.Accept()
+		go func(i int) {
+			streams.Join(srcConn, dstConn)
+			fmt.Printf("[%d] %s disconnected.\n", i, displayName(query.RemoteIdentity()))
+		}(i)
+	}
+
+}
+
+func cmdImport(args []string) {
+	if len(args) < 3 {
+		fmt.Fprintln(os.Stderr, "anc import <local_address> <astral_node> <astral_port>")
+		os.Exit(exitHelp)
+	}
+
+	srcAddr := args[0]
+	nodeName := args[1]
+	portName := args[2]
+
+	srcListener, err := net.Listen("tcp", srcAddr)
+	if err != nil {
+		fmt.Println("listen error:", err)
+		os.Exit(exitError)
+	}
+
+	fmt.Fprintf(os.Stderr, "importing %s to %s:%s\n", srcAddr, nodeName, portName)
+	i := 0
+
+	for {
+		srcConn, err := srcListener.Accept()
+		if err != nil {
+			fmt.Println("accept error:", err)
+			continue
+		}
+
+		i += 1
+		fmt.Printf("[%d] %s connected.\n", i, srcConn.RemoteAddr())
+
+		dstConn, err := astral.DialName(nodeName, portName)
+		if err != nil {
+			fmt.Println("astral.dial error:", err)
+			srcConn.Close()
+			continue
+		}
+
+		go func(i int) {
+			streams.Join(srcConn, dstConn)
+			fmt.Printf("[%d] %s disconnected.\n", i, srcConn.RemoteAddr())
+		}(i)
+	}
+}
+
 func cmdRegister(args []string) {
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "anc register <name>")
@@ -27,7 +110,7 @@ func cmdRegister(args []string) {
 
 	portName := args[0]
 
-	l, err := astral.astral.Listen(portName)
+	l, err := astral.Listen(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)
@@ -295,6 +378,10 @@ func main() {
 		cmdDownload(os.Args[2:])
 	case "resolve":
 		cmdResolve(os.Args[2:])
+	case "export":
+		cmdExport(os.Args[2:])
+	case "import":
+		cmdImport(os.Args[2:])
 	case "h", "help":
 		help()
 	default:
