@@ -86,7 +86,7 @@ func (hub *Hub) Query(query string, link *link.Link) (*Conn, error) {
 	}
 
 	// Create a pipe for the caller and the responder
-	clientConn, appConn := connPipe(query, link)
+	clientConn, appConn := pipe(query, link)
 
 	// Send one side to the responder
 	q.connection <- &appConn
