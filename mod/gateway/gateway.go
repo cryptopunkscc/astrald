@@ -21,7 +21,10 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 	}
 
 	for req := range port.Queries() {
-		conn := req.Accept()
+		conn, err := req.Accept()
+		if err != nil {
+			continue
+		}
 
 		go func() {
 			ctx, cancel := context.WithCancel(ctx)

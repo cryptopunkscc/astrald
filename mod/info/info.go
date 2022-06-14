@@ -43,7 +43,10 @@ func (Info) Run(ctx context.Context, node *_node.Node) error {
 
 	go func() {
 		for query := range port.Queries() {
-			conn := query.Accept()
+			conn, err := query.Accept()
+			if err != nil {
+				continue
+			}
 
 			info := getInfo(node)
 			bytes, _ := json.Marshal(info)

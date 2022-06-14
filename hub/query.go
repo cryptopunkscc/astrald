@@ -3,6 +3,7 @@ package hub
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"sync"
 )
 
 // Query is a request handler sent to the port handler
@@ -11,6 +12,8 @@ type Query struct {
 	link       *link.Link
 	response   chan bool
 	connection chan *Conn
+	err        error
+	mu         sync.Mutex
 }
 
 func NewQuery(query string, link *link.Link) *Query {
@@ -47,14 +50,34 @@ func (query *Query) Query() string {
 }
 
 // Reject rejects the query
-func (query *Query) Reject() {
-	defer close(query.response)
+func (query *Query) Reject() error {
+	query.mu.Lock()
+	defer query.mu.Unlock()
+
 	query.response <- false
+	close(query.response)
+
+	return query.err
 }
 
 // Accept accepts the query
-func (query *Query) Accept() *Conn {
-	defer close(query.response)
+func (query *Query) Accept() (*Conn, error) {
+	query.mu.Lock()
+	defer query.mu.Unlock()
+
+	if query.err != nil {
+		return nil, query.err
+	}
+
 	query.response <- true
-	return <-query.connection
+	close(query.response)
+
+	return <-query.connection, nil
+}
+
+func (query *Query) setError(e error) {
+	query.mu.Lock()
+	defer query.mu.Unlock()
+
+	query.err = e
 }

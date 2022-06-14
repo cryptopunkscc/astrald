@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const queryResponseTimeout = 5 * time.Second
+const queryResponseTimeout = time.Second
 
 // Hub facilitates registration of ports and making connections to them.
 type Hub struct {
@@ -58,7 +58,7 @@ func (hub *Hub) RegisterContext(ctx context.Context, name string) (*Port, error)
 }
 
 // Query requests to connect to a port as the provided auth.Identity
-func (hub *Hub) Query(query string, link *link.Link) (*Conn, error) {
+func (hub *Hub) Query(ctx context.Context, query string, link *link.Link) (*Conn, error) {
 	// Fetch the port
 	port, err := hub.getPort(query)
 	if err != nil {
@@ -69,6 +69,10 @@ func (hub *Hub) Query(query string, link *link.Link) (*Conn, error) {
 	q := NewQuery(query, link)
 	select {
 	case port.queries <- q:
+
+	case <-ctx.Done():
+		return nil, ctx.Err()
+
 	default:
 		return nil, ErrQueueOverflow
 	}
@@ -77,7 +81,13 @@ func (hub *Hub) Query(query string, link *link.Link) (*Conn, error) {
 	var accepted bool
 	select {
 	case accepted = <-q.response:
+
+	case <-ctx.Done():
+		q.setError(ctx.Err())
+		return nil, ctx.Err()
+
 	case <-time.After(queryResponseTimeout):
+		q.setError(ErrTimeout)
 		return nil, ErrTimeout
 	}
 

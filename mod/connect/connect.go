@@ -23,7 +23,10 @@ func (Connect) Run(ctx context.Context, node *node.Node) error {
 			continue
 		}
 
-		conn := query.Accept()
+		conn, err := query.Accept()
+		if err != nil {
+			continue
+		}
 
 		node.Server.Conns <- &wrapper{
 			local:           node.Identity().Public(),

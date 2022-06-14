@@ -19,7 +19,7 @@ func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string)
 	//}
 
 	if remoteID.IsZero() || remoteID.IsEqual(node.identity) {
-		return node.Ports.Query(query, nil)
+		return node.Ports.Query(ctx, query, nil)
 	}
 
 	node.Linking.Optimize(remoteID, 30*time.Second)
@@ -31,21 +31,21 @@ func (node *Node) processQueries(ctx context.Context) {
 	for {
 		select {
 		case query := <-node.queries:
-			node.handleQuery(query)
+			node.handleQuery(ctx, query)
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (node *Node) handleQuery(query *link.Query) error {
+func (node *Node) handleQuery(ctx context.Context, query *link.Query) error {
 	//TODO: Emit an event for logging?
 	//if !query.IsSilent() || logSilent {
 	//	  log.Printf("[%s] <- %s (%s)\n", node.Contacts.DisplayName(query.Caller()), query, query.Link().Network())
 	//}
 
 	// Query a session with the service
-	localConn, err := node.Ports.Query(query.String(), query.Link())
+	localConn, err := node.Ports.Query(ctx, query.String(), query.Link())
 	if err != nil {
 		query.Reject()
 		return err

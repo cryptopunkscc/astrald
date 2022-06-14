@@ -31,9 +31,11 @@ func (Admin) Run(ctx context.Context, node *_node.Node) error {
 			continue
 		}
 
-		conn := query.Accept()
+		conn, err := query.Accept()
 
-		go serve(conn, node)
+		if err == nil {
+			go serve(conn, node)
+		}
 	}
 
 	return nil

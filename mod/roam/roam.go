@@ -87,7 +87,10 @@ func (roam *Roam) servePick(ctx context.Context) error {
 			continue
 		}
 
-		query := query.Accept()
+		query, err := query.Accept()
+		if err != nil {
+			continue
+		}
 
 		var remoteStreamID uint16
 
@@ -124,7 +127,7 @@ func (roam *Roam) serveDrop(ctx context.Context) {
 			continue
 		}
 
-		conn := query.Accept()
+		conn, _ := query.Accept()
 
 		var moveID, newOutputID int
 

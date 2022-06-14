@@ -76,7 +76,12 @@ func (host *AppHost) Register(portName string, target string) error {
 					return
 				}
 
-				streams.Join(conn, q.Accept())
+				accept, err := q.Accept()
+				if err != nil {
+					return
+				}
+
+				streams.Join(conn, accept)
 			}()
 		}
 	}()

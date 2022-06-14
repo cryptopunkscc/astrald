@@ -29,7 +29,9 @@ func (LinkBack) Run(ctx context.Context, n *node.Node) error {
 				continue
 			}
 
-			query.Accept().Close()
+			if conn, err := query.Accept(); err == nil {
+				conn.Close()
+			}
 
 			n.Linking.Optimize(query.Link().RemoteIdentity(), linkbackDuration)
 		}
