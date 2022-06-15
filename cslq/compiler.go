@@ -4,10 +4,12 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"sync"
 )
 
 type Compiler struct {
-	cache map[string]Format
+	cacheMu sync.Mutex
+	cache   map[string]Format
 }
 
 var defaultCompiler = NewCompiler()
@@ -30,7 +32,9 @@ func (c *Compiler) Compile(pattern string) (Format, error) {
 		return nil, err
 	}
 
+	c.cacheMu.Lock()
 	c.cache[pattern] = format
+	c.cacheMu.Unlock()
 
 	return format, err
 }
