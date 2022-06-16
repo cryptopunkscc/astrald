@@ -1,32 +1,27 @@
 package mux
 
 import (
-	"errors"
 	"sync"
 )
 
 type OutputStream struct {
-	id      int
-	mux     *Mux
-	mu      sync.Mutex
-	closeCh chan struct{}
+	id        int
+	mux       *Mux
+	closeOnce sync.Once
+	err       error
 }
 
 func NewOutputStream(mux *Mux, streamID int) *OutputStream {
 	return &OutputStream{
-		id:      streamID,
-		mux:     mux,
-		closeCh: make(chan struct{}),
+		id:  streamID,
+		mux: mux,
 	}
 }
 
 // Write writes a byte buffer to the connectiontion
 func (stream *OutputStream) Write(data []byte) (n int, err error) {
-	stream.mu.Lock()
-	defer stream.mu.Unlock()
-
-	if stream.mux == nil {
-		return 0, ErrStreamClosed
+	if stream.err != nil {
+		return 0, stream.err
 	}
 
 	left := data[:]
@@ -49,25 +44,24 @@ func (stream *OutputStream) Write(data []byte) (n int, err error) {
 	return
 }
 
+// Close closes the stream
 func (stream *OutputStream) Close() (err error) {
-	stream.mu.Lock()
-	defer stream.mu.Unlock()
+	err = ErrStreamClosed
 
-	if stream.mux == nil {
-		return errors.New("already closed")
-	}
+	stream.closeOnce.Do(func() {
+		err = nil
 
-	err = stream.mux.Write(stream.id, nil)
-	stream.mux = nil
+		stream.err = stream.mux.Write(stream.id, nil)
+		if stream.err == nil {
+			stream.err = ErrStreamClosed
+		} else {
+			err = stream.err
+		}
+	})
 
-	close(stream.closeCh)
 	return
 }
 
 func (stream OutputStream) ID() int {
 	return stream.id
-}
-
-func (stream *OutputStream) Wait() <-chan struct{} {
-	return stream.closeCh
 }

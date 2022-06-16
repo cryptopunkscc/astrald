@@ -2,13 +2,12 @@ package link
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/link/proto"
 	"github.com/cryptopunkscc/astrald/mux"
 	"io"
 	"log"
@@ -67,23 +66,18 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 		return nil, err
 	}
 
-	remoteBytes := make([]byte, 2)
+	var remoteStreamID int
 
-	_, err = inputStream.Read(remoteBytes)
-
-	if err != nil {
+	if err = cslq.Decode(inputStream, "s", &remoteStreamID); err != nil {
 		if errors.Is(err, io.EOF) {
 			return nil, ErrRejected
 		}
 		return nil, fmt.Errorf("error reading response: %w", err)
 	}
 
-	// Parse accept message
-	remoteStreamID := binary.BigEndian.Uint16(remoteBytes[0:2])
+	outputStream := link.mux.Stream(remoteStreamID)
 
-	outputStream := link.mux.Stream(int(remoteStreamID))
-
-	conn := NewConn(inputStream, outputStream, true, query)
+	conn := newConn(inputStream, outputStream, true, query)
 	conn.Attach(link)
 
 	return conn, nil
@@ -187,44 +181,46 @@ func (link *Link) add(conn *Conn) error {
 
 // sendQuery writes a frame containing the request to the control stream
 func (link *Link) sendQuery(query string, streamID int) error {
-	return link.mux.Write(controlStreamID, proto.MakeQuery(streamID, query))
+	return cslq.Encode(link.mux.Stream(controlStreamID), "v", queryData{
+		StreamID: streamID,
+		Query:    query,
+	})
 }
 
 func (link *Link) processQueries() error {
-	buf := make([]byte, mux.MaxPayload)
 	ctlStream := link.demux.DefaultStream()
 
 	defer close(link.queries)
 	for {
-		n, err := ctlStream.Read(buf)
+		var q queryData
+
+		// read next query
+		err := cslq.Decode(ctlStream, "v", &q)
 		if err != nil {
-			return fmt.Errorf("control stream error: %w", err)
+			return err
 		}
 
-		err = link.processQueryData(buf[:n])
+		// process it
+		err = link.processQueryData(q)
 		if err != nil {
 			log.Println("error processing query:", err)
 		}
 	}
 }
 
-func (link *Link) processQueryData(buf []byte) error {
-	// Parse control message
-	remoteStreamID, queryString, err := proto.ParseQuery(buf)
-	if err != nil {
-		return fmt.Errorf("parse query: %w", err)
-	}
+func (link *Link) processQueryData(q queryData) error {
+	var err error
 
 	// Prepare request object
-	outputStream := link.mux.Stream(remoteStreamID)
+	outputStream := link.mux.Stream(q.StreamID)
 	query := &Query{
-		link:         link,
-		outputStream: outputStream,
-		query:        queryString,
+		link:  link,
+		out:   outputStream,
+		query: q.Query,
 	}
 
 	// Reserve local channel
-	query.inputStream, err = link.demux.Stream()
+	query.in, err = link.demux.Stream()
 	if err != nil {
 		_ = outputStream.Close()
 		return fmt.Errorf("cannot allocate input stream: %w", err)

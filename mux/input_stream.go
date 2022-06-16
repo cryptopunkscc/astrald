@@ -1,18 +1,16 @@
 package mux
 
 import (
-	"errors"
 	"io"
 	"sync"
 )
 
 type InputStream struct {
-	id      int
-	r       io.Reader
-	w       io.WriteCloser
-	closeCh chan struct{}
-	mu      sync.Mutex
-	closed  bool
+	id        int
+	r         io.Reader
+	w         io.WriteCloser
+	closeCh   chan struct{}
+	closeOnce sync.Once
 }
 
 var _ io.Reader = &InputStream{}
@@ -36,15 +34,10 @@ func (stream *InputStream) Read(p []byte) (n int, err error) {
 }
 
 func (stream *InputStream) Close() error {
-	stream.mu.Lock()
-	defer stream.mu.Unlock()
+	defer stream.closeOnce.Do(func() {
+		close(stream.closeCh)
+	})
 
-	if stream.closed {
-		return errors.New("already closed")
-	}
-
-	defer close(stream.closeCh)
-	stream.closed = true
 	return stream.w.Close()
 }
 

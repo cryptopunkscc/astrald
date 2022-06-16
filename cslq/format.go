@@ -1,21 +1,24 @@
 package cslq
 
 import (
+	"bytes"
 	"io"
 )
 
 type Format []Op
 
 func (f Format) Encode(w io.Writer, v ...interface{}) error {
-	data := NewFifo(v...)
+	vars := NewFifo(v...)
+	buf := &bytes.Buffer{}
 
 	for _, op := range f {
-		if err := op.Encode(w, data); err != nil {
+		if err := op.Encode(buf, vars); err != nil {
 			return err
 		}
 	}
 
-	return nil
+	_, err := w.Write(buf.Bytes())
+	return err
 }
 
 func (f Format) Decode(r io.Reader, v ...interface{}) error {

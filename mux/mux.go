@@ -1,20 +1,24 @@
 package mux
 
 import (
-	"encoding/binary"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"io"
 	"sync"
 )
 
 // Mux is a simple 64k-channel multiplexer
 type Mux struct {
+	*cslq.Encoder
 	writer io.Writer
 	mu     sync.Mutex
 }
 
 // NewMux instantiates a new multiplexer that writes to the provided writer
 func NewMux(writer io.Writer) *Mux {
-	return &Mux{writer: writer}
+	return &Mux{
+		writer:  writer,
+		Encoder: cslq.NewEncoder(writer),
+	}
 }
 
 // Write writes a frame to the mux
@@ -22,7 +26,6 @@ func (mux *Mux) Write(streamID int, buf []byte) error {
 	if (streamID < 0) || (streamID >= MaxStreams) {
 		return ErrInvalidStreamID
 	}
-
 	if len(buf) > MaxPayload {
 		return ErrBufferTooBig
 	}
@@ -30,28 +33,7 @@ func (mux *Mux) Write(streamID int, buf []byte) error {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
-	var err error
-	var header [4]byte
-	var payloadLen = uint16(len(buf))
-
-	// Construct the header
-	binary.BigEndian.PutUint16(header[0:2], uint16(streamID))
-	binary.BigEndian.PutUint16(header[2:4], payloadLen)
-
-	// Write the header
-	_, err = mux.writer.Write(header[:])
-	if err != nil {
-		return err
-	}
-
-	// Write the payload
-	if payloadLen == 0 {
-		return nil
-	}
-
-	_, err = mux.writer.Write(buf[0:payloadLen])
-
-	return err
+	return mux.Encode("s[s]c", streamID, buf)
 }
 
 func (mux *Mux) Stream(streamID int) *OutputStream {

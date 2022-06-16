@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/hub"
+	"github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/mod/apphost/ipc"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/proto/apphost"
@@ -94,7 +95,7 @@ func (host *AppHost) Query(identity id.Identity, query string) (io.ReadWriteClos
 
 	switch {
 	case err == nil:
-	case errors.Is(err, hub.ErrRejected):
+	case errors.Is(err, hub.ErrRejected), errors.Is(err, link.ErrRejected):
 		err = apphost.ErrRejected
 
 	case errors.Is(err, hub.ErrPortNotFound):
@@ -102,6 +103,10 @@ func (host *AppHost) Query(identity id.Identity, query string) (io.ReadWriteClos
 
 	case errors.Is(err, hub.ErrTimeout):
 		err = apphost.ErrTimeout
+
+	default:
+		log.Println("Apphost.Query(): unexpected error:", err)
+		err = apphost.ErrUnexpected
 	}
 
 	return rwc, err

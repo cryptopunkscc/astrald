@@ -7,96 +7,88 @@ import (
 
 // Conn represents an open connection to the remote party's port. Shouldn't be instantiated directly.
 type Conn struct {
-	inputStream         *mux.InputStream
-	outputStream        *mux.OutputStream
-	fallbackInputStream *mux.InputStream
-	query               string
-	outbound            bool
-	closeCh             chan struct{}
-	closed              bool
-	outputMu            sync.Mutex
-	link                *Link
-	linkMu              sync.Mutex
+	in         *mux.InputStream
+	out        *mux.OutputStream
+	fallbackIn *mux.InputStream
+	query      string
+	outbound   bool
+	closeOnce  sync.Once
+	closeCh    chan struct{}
+	outMu      sync.Mutex
+	link       *Link
+	linkMu     sync.Mutex
 }
 
-// NewConn instantiates a new Conn
-func NewConn(inputStream *mux.InputStream, outputStream *mux.OutputStream, outbound bool, query string) *Conn {
-	c := &Conn{
-		query:        query,
-		closeCh:      make(chan struct{}),
-		inputStream:  inputStream,
-		outputStream: outputStream,
-		outbound:     outbound,
+// newConn instantiates a new Conn
+func newConn(inputStream *mux.InputStream, outputStream *mux.OutputStream, outbound bool, query string) *Conn {
+	return &Conn{
+		query:    query,
+		closeCh:  make(chan struct{}),
+		in:       inputStream,
+		out:      outputStream,
+		outbound: outbound,
 	}
-
-	go func() {
-		<-c.Wait()
-		c.Attach(nil)
-	}()
-
-	return c
 }
 
 func (conn *Conn) Read(p []byte) (n int, err error) {
-	n, err = conn.inputStream.Read(p)
+	n, err = conn.in.Read(p)
+
+	if n > 0 {
+		return
+	}
 
 	if err != nil {
-		if conn.fallbackInputStream != nil {
-			conn.inputStream = conn.fallbackInputStream
-			conn.fallbackInputStream = nil
+		if conn.fallbackIn != nil {
+			conn.in = conn.fallbackIn
+			conn.fallbackIn = nil
 			return conn.Read(p)
 		}
-		_ = conn.Close()
+		conn.Close()
 	}
-	return n, err
+
+	return
 }
 
 func (conn *Conn) Write(p []byte) (n int, err error) {
-	conn.outputMu.Lock()
-	defer conn.outputMu.Unlock()
+	conn.outMu.Lock()
+	defer conn.outMu.Unlock()
 
-	n, err = conn.outputStream.Write(p)
-	return n, err
+	return conn.out.Write(p)
 }
 
 // Close closes the connection
-func (conn *Conn) Close() error {
-	conn.outputMu.Lock()
-	defer conn.outputMu.Unlock()
+func (conn *Conn) Close() (err error) {
+	conn.outMu.Lock()
+	defer conn.outMu.Unlock()
 
-	if conn.closed {
-		return ErrAlreadyClosed
-	}
-	conn.closed = true
+	err = ErrAlreadyClosed
+	conn.closeOnce.Do(func() {
+		err = conn.out.Close()
+		conn.Attach(nil)
+		close(conn.closeCh)
+	})
 
-	defer close(conn.closeCh)
-
-	err := conn.outputStream.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return
 }
 
 func (conn *Conn) InputStream() *mux.InputStream {
-	return conn.inputStream
+	return conn.in
 }
 
 func (conn *Conn) OutputStream() *mux.OutputStream {
-	return conn.outputStream
+	return conn.out
 }
 
 func (conn *Conn) SetFallbackInputStream(fallbackInputStream *mux.InputStream) {
-	conn.fallbackInputStream = fallbackInputStream
+	conn.fallbackIn = fallbackInputStream
 }
 
 func (conn *Conn) ReplaceOutputStream(stream *mux.OutputStream) {
-	conn.outputMu.Lock()
-	defer conn.outputMu.Unlock()
+	conn.outMu.Lock()
+	defer conn.outMu.Unlock()
 
-	conn.outputStream.Close()
-	conn.outputStream = stream
+	conn.out.Close()
+	conn.out = stream
 }
 
 // Wait returns a channel that will be closed when the connection closes

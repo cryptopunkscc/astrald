@@ -23,6 +23,9 @@ func Compile(pattern string) (Format, error) {
 }
 
 func (c *Compiler) Compile(pattern string) (Format, error) {
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
+
 	if cached, found := c.cache[pattern]; found {
 		return cached, nil
 	}
@@ -32,9 +35,7 @@ func (c *Compiler) Compile(pattern string) (Format, error) {
 		return nil, err
 	}
 
-	c.cacheMu.Lock()
 	c.cache[pattern] = format
-	c.cacheMu.Unlock()
 
 	return format, err
 }

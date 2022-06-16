@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"strings"
 	"sync"
 )
@@ -29,12 +28,13 @@ func NewStreamDemux(reader io.Reader) *StreamDemux {
 
 	go func() {
 		err := demux.processFrames()
+
 		if err != nil {
 			errClosed := strings.Contains(err.Error(), "use of closed network connection")
 			errEOF := errors.Is(err, io.EOF)
 
 			if !(errEOF || errClosed) {
-				log.Println("demux error:", err)
+				log.Println("error: demux.processFrames():", err)
 			}
 		}
 
@@ -62,7 +62,7 @@ func (demux *StreamDemux) Stream() (*InputStream, error) {
 	defer demux.streamsMu.Unlock()
 
 	if demux.streams == nil {
-		return nil, errors.New("demux error")
+		return nil, errors.New("demux error: demux closed")
 	}
 
 	for i := 0; i < MaxStreams; i++ {
@@ -96,11 +96,9 @@ func (demux *StreamDemux) removeInputStream(id int) error {
 }
 
 func (demux *StreamDemux) processFrames() error {
-	buf := make([]byte, math.MaxUint16)
-
 	for {
 		// Read next frame from the mux
-		localStreamID, payloadLen, err := demux.rawDemux.ReadFrame(buf)
+		localStreamID, buf, err := demux.rawDemux.ReadFrame()
 		if err != nil {
 			return err
 		}
@@ -112,10 +110,10 @@ func (demux *StreamDemux) processFrames() error {
 			return fmt.Errorf("stream %d is closed", localStreamID)
 		}
 
-		if payloadLen == 0 {
+		if len(buf) == 0 {
 			stream.Close()
 		} else {
-			stream.write(buf[:payloadLen])
+			stream.write(buf)
 		}
 	}
 }
