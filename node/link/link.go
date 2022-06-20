@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/sig"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -114,7 +113,7 @@ func (link *Link) add(conn *Conn) {
 func (link *Link) monitorPing() {
 	for {
 		if err := link.ping(); err != nil {
-			log.Println("ping error:", err)
+			link.events.Emit(EventPingTimeout{Link: link})
 			link.Close()
 		}
 
@@ -146,7 +145,7 @@ func (link *Link) remove(conn *Conn) error {
 }
 
 func (link *Link) handleQueries() {
-	defer close(link.queries)
+	defer link.Close()
 	for query := range link.Link.Queries() {
 		if !isSilent(query) {
 			link.Activity.Add(1)
@@ -186,7 +185,6 @@ func (link *Link) ping() error {
 	case d := <-pingCh:
 		link.roundtrip = d
 	case <-time.After(pingTimeout):
-		link.Close()
 		return errors.New("ping timeout")
 	}
 

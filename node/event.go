@@ -73,6 +73,13 @@ func (node *Node) logEvent(event event.Event) {
 	case hub.EventPortReleased:
 		log.Printf("port released: %s\n", event.PortName)
 
+	case link.EventPingTimeout:
+		log.Printf(
+			"ping to %s over %s timed out",
+			displayName(event.Link.RemoteIdentity()),
+			event.Link.Network(),
+		)
+
 	default:
 		log.Println("event:", reflect.TypeOf(event).String())
 	}

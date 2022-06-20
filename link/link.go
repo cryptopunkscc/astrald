@@ -18,12 +18,15 @@ import (
 // connections over any transport.
 type Link struct {
 	queries   chan *Query
+	queriesMu sync.Mutex
 	conns     map[*Conn]struct{}
 	connsMu   sync.Mutex
 	transport auth.Conn
 	mux       *mux.Mux
 	demux     *mux.StreamDemux
 	closed    chan struct{}
+	closeOnce sync.Once
+	ctl       *mux.OutputStream
 }
 
 const controlStreamID = 0
@@ -38,8 +41,9 @@ func New(conn auth.Conn) *Link {
 		demux:     mux.NewStreamDemux(conn),
 		closed:    make(chan struct{}),
 	}
+	link.ctl = link.mux.Stream(controlStreamID)
 	go func() {
-		defer close(link.closed)
+		defer link.Close()
 
 		err := link.processQueries()
 		if err != nil {
@@ -60,7 +64,10 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 	}
 
 	// Send a query
-	err = link.sendQuery(query, inputStream.ID())
+	err = cslq.Encode(link.ctl, "v", queryData{
+		StreamID: inputStream.ID(),
+		Query:    query,
+	})
 	if err != nil {
 		inputStream.Close()
 		return nil, err
@@ -139,6 +146,17 @@ func (link *Link) Wait() <-chan struct{} {
 
 // Close closes the link
 func (link *Link) Close() error {
+	for conn := range link.conns {
+		conn.Close()
+	}
+	link.ctl.Close()
+	defer link.closeOnce.Do(func() {
+		link.queriesMu.Lock()
+		close(link.queries)
+		link.queries = nil
+		link.queriesMu.Unlock()
+		close(link.closed)
+	})
 	return link.transport.Close()
 }
 
@@ -188,14 +206,13 @@ func (link *Link) sendQuery(query string, streamID int) error {
 }
 
 func (link *Link) processQueries() error {
-	ctlStream := link.demux.DefaultStream()
+	ctl := link.demux.DefaultStream()
 
-	defer close(link.queries)
 	for {
 		var q queryData
 
 		// read next query
-		err := cslq.Decode(ctlStream, "v", &q)
+		err := cslq.Decode(ctl, "v", &q)
 		if err != nil {
 			return err
 		}
@@ -209,23 +226,30 @@ func (link *Link) processQueries() error {
 }
 
 func (link *Link) processQueryData(q queryData) error {
+	link.queriesMu.Lock()
+	defer link.queriesMu.Unlock()
+
+	if link.queries == nil {
+		return errors.New("link closed")
+	}
+
 	var err error
 
 	// Prepare request object
-	outputStream := link.mux.Stream(q.StreamID)
 	query := &Query{
 		link:  link,
-		out:   outputStream,
+		out:   link.mux.Stream(q.StreamID),
 		query: q.Query,
 	}
 
 	// Reserve local channel
 	query.in, err = link.demux.Stream()
 	if err != nil {
-		_ = outputStream.Close()
+		query.out.Close()
 		return fmt.Errorf("cannot allocate input stream: %w", err)
 	}
 
 	link.queries <- query
+
 	return nil
 }

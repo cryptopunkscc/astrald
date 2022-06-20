@@ -9,3 +9,7 @@ type EventConnEstablished struct {
 type EventConnClosed struct {
 	Conn *Conn
 }
+
+type EventPingTimeout struct {
+	Link *Link
+}
