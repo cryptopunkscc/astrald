@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handle"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/setup"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 )
 
 type Client handle.Client
@@ -37,5 +37,5 @@ func (srv Service) Run() {
 
 // NewClient returns default warpdrive client.
 func NewClient() Client {
-	return Client(handle.NewClient(astral.Instance()))
+	return Client(handle.NewClient(astral.AppHostAdapter()))
 }

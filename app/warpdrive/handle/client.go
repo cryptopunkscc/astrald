@@ -2,7 +2,7 @@ package handle
 
 import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
 	"log"
 )

@@ -1,7 +1,7 @@
 package handler
 
 import (
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"time"
 )
 

@@ -3,9 +3,11 @@ package contacts
 import (
 	"context"
 	"encoding/json"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	_node "github.com/cryptopunkscc/astrald/node"
 	"io"
+	"log"
 )
 
 const serviceHandle = "contacts"
@@ -26,7 +28,11 @@ func (p Contacts) Run(ctx context.Context, node *_node.Node) error {
 
 	go func() {
 		for query := range port.Queries() {
-			conn := query.Accept()
+			conn, err := query.Accept()
+			if err != nil {
+				log.Println("Cannot accept query", err)
+				continue
+			}
 			go func(conn io.ReadWriteCloser) {
 				defer conn.Close()
 				var contacts []Contact
@@ -50,7 +56,7 @@ func (p Contacts) String() string {
 }
 
 func Query() (peers []Contact, err error) {
-	conn, err := astral.Query("", serviceHandle)
+	conn, err := astral.Dial(id.Identity{}, serviceHandle)
 	if err != nil {
 		return
 	}
