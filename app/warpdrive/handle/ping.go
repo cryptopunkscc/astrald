@@ -2,8 +2,8 @@ package handle
 
 import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
-	"github.com/cryptopunkscc/astrald/enc"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 )
 
 func Ping(srv handler.Context, request astral.Request) {

@@ -5,11 +5,11 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/infra/bt"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/mobile/android/node/content"
 	"github.com/cryptopunkscc/astrald/mobile/android/node/notify"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	"github.com/cryptopunkscc/astrald/mod/connect"
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
@@ -45,7 +45,7 @@ func Start(
 	}
 
 	log.Println("Staring astrald")
-	astral.Instance().UseTCP = true
+	astral.ListenProtocol = "tcp"
 
 	// Set up app execution context
 	ctx, stop = context.WithCancel(context.Background())

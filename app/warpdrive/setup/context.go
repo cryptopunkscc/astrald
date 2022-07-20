@@ -3,14 +3,14 @@ package setup
 import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/mod/id"
 )
 
 func Context(ctx *handler.Context) {
 	// API
 	if ctx.Api == nil {
-		ctx.Api = astral.Instance()
+		ctx.Api = astral.AppHostAdapter()
 	}
 
 	// Identity

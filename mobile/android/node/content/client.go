@@ -2,17 +2,18 @@ package content
 
 import (
 	"encoding/gob"
-	"github.com/cryptopunkscc/astrald/enc"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
 )
 
 var _ Api = Client{}
 
-type Client struct{ Identity string }
+type Client struct{ Identity id.Identity }
 
 func (c Client) Info(uri string) (files Info, err error) {
-	conn, err := astral.Query(c.Identity, info)
+	conn, err := astral.Dial(c.Identity, info)
 	if err != nil {
 		return
 	}
@@ -29,7 +30,7 @@ func (c Client) Info(uri string) (files Info, err error) {
 }
 
 func (c Client) Reader(uri string) (reader io.ReadCloser, err error) {
-	conn, err := astral.Query(c.Identity, content)
+	conn, err := astral.Dial(c.Identity, content)
 	if err != nil {
 		return
 	}

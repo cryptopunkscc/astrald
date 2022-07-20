@@ -3,9 +3,10 @@ package id
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/enc"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	_node "github.com/cryptopunkscc/astrald/node"
+	"log"
 )
 
 const serviceHandle = "id"
@@ -21,7 +22,11 @@ func (i Id) Run(ctx context.Context, node *_node.Node) error {
 
 	go func() {
 		for query := range port.Queries() {
-			conn := query.Accept()
+			conn, err := query.Accept()
+			if err != nil {
+				log.Println("Cannot accept query", err)
+				continue
+			}
 
 			enc.WriteIdentity(conn, node.Identity())
 			conn.Close()
@@ -37,7 +42,7 @@ func (i Id) String() string {
 }
 
 func Query() (identity id.Identity, err error) {
-	conn, err := astral.Query("", "id")
+	conn, err := astral.Dial(id.Identity{}, "id")
 	if err != nil {
 		return
 	}

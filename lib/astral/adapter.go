@@ -1,0 +1,62 @@
+package astral
+
+import (
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"io"
+)
+
+var adapter Api = appHostAdapter{}
+
+func AppHostAdapter() Api {
+	return adapter
+}
+
+type appHostAdapter struct{}
+
+func (a appHostAdapter) Register(name string) (Port, error) {
+	listener, err := Listen(name)
+	if err != nil {
+		return nil, err
+	}
+	return appHostPort{listener}, err
+}
+
+func (a appHostAdapter) Query(nodeID string, query string) (io.ReadWriteCloser, error) {
+	identity, err := id.ParsePublicKeyHex(nodeID)
+	if err != nil {
+		return nil, err
+	}
+	return Dial(identity, query)
+}
+
+type appHostPort struct{ *Listener }
+
+func (a appHostPort) Next() <-chan Request {
+	c := make(chan Request)
+	go func() {
+		defer close(c)
+		for query := range a.QueryCh() {
+			q := query
+			c <- &appHostRequest{q}
+		}
+	}()
+	return c
+}
+
+func (a appHostPort) Close() error {
+	return a.listener.Close()
+}
+
+type appHostRequest struct{ *Query }
+
+func (a appHostRequest) Caller() string {
+	return a.remoteID.String()
+}
+
+func (a appHostRequest) Accept() (io.ReadWriteCloser, error) {
+	return a.Query.Accept()
+}
+
+func (a appHostRequest) Reject() {
+	a.Query.Reject()
+}

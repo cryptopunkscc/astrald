@@ -1,6 +1,6 @@
 package handler
 
-import astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+import "github.com/cryptopunkscc/astrald/lib/astral"
 
 func (ctx *Context) IsRejected(request astral.Request) bool {
 	caller := request.Caller()

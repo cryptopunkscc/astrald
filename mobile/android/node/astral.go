@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
 )
@@ -21,7 +21,7 @@ type astralPort struct {
 }
 
 type astralRequest struct {
-	query hub.Query
+	query *hub.Query
 }
 
 func (a *astralApi) Register(name string) (p astral.Port, err error) {
@@ -46,7 +46,8 @@ func (p *astralPort) Next() <-chan astral.Request {
 	go func() {
 		defer close(c)
 		for query := range p.port.Queries() {
-			c <- &astralRequest{*query}
+			q := query
+			c <- &astralRequest{q}
 		}
 	}()
 	return c
@@ -68,7 +69,7 @@ func (r *astralRequest) Query() string {
 }
 
 func (r *astralRequest) Accept() (io.ReadWriteCloser, error) {
-	return r.query.Accept(), nil
+	return r.query.Accept()
 }
 
 func (r *astralRequest) Reject() {

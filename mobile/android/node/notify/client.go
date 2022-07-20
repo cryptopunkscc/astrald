@@ -2,17 +2,18 @@ package notify
 
 import (
 	"encoding/gob"
-	"github.com/cryptopunkscc/astrald/enc"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"log"
 )
 
 var _ Api = Client{}
 
-type Client struct{ Identity string }
+type Client struct{ Identity id.Identity }
 
 func (c Client) Create(channel Channel) (err error) {
-	conn, err := astral.Query(c.Identity, createChannel)
+	conn, err := astral.Dial(c.Identity, createChannel)
 	if err != nil {
 		return
 	}
@@ -25,7 +26,7 @@ func (c Client) Create(channel Channel) (err error) {
 }
 
 func (c Client) Notify(notifications ...Notification) (err error) {
-	conn, err := astral.Query(c.Identity, notify)
+	conn, err := astral.Dial(c.Identity, notify)
 	if err != nil {
 		return
 	}
@@ -38,7 +39,7 @@ func (c Client) Notify(notifications ...Notification) (err error) {
 }
 
 func (c Client) Notifier() (dispatch Notify) {
-	conn, err := astral.Query(c.Identity, notify)
+	conn, err := astral.Dial(c.Identity, notify)
 	if err != nil {
 		return
 	}

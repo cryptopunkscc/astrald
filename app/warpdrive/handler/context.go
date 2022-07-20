@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
-	astral "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 )
 
 // Context contains dependencies required by Handlers.
