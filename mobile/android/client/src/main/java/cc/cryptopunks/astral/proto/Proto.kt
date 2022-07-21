@@ -6,7 +6,7 @@ data class Request(
     val identity: String = "",
     val path: String? = null,
 ) {
-    enum class Type { connect, register }
+    enum class Type { query, register, resolve, }
 }
 
 data class Response(

@@ -18,6 +18,9 @@ interface Network {
 
         class Register(port: String, cause: Throwable) :
             kotlin.Exception(port, cause)
+
+        class Resolve(name: String, cause: Throwable) :
+            kotlin.Exception(name, cause)
     }
 }
 

@@ -42,7 +42,7 @@ func (i Id) String() string {
 }
 
 func Query() (identity id.Identity, err error) {
-	conn, err := astral.Dial(id.Identity{}, "id")
+	conn, err := astral.DialName("localnode", "id")
 	if err != nil {
 		return
 	}
