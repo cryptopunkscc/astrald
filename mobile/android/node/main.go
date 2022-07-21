@@ -13,7 +13,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/connect"
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
-	"github.com/cryptopunkscc/astrald/mod/id"
 	"github.com/cryptopunkscc/astrald/mod/info"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
@@ -58,7 +57,6 @@ func Start(
 		connect.Connect{},
 		gateway.Gateway{},
 		info.Info{},
-		id.Id{},
 		contacts.Contacts{},
 		notify.CreateChannel{Api: adapter},
 		notify.DispatchNotification{Api: adapter},
