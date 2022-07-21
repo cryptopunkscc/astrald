@@ -17,3 +17,11 @@ For installing apk on connected device execute:
 ./installApk.sh
 ```
 This command will also build apk if wasn't created.
+
+## Cleaning
+
+For cleaning build cache execute:
+
+```sh
+./clean.sh
+```

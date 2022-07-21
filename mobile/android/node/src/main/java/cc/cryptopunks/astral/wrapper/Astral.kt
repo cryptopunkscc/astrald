@@ -2,7 +2,7 @@ package cc.cryptopunks.astral.wrapper
 
 import android.content.Context
 import android.util.Log
-import astral.Astral as Node
+import astral.Astral
 import cc.cryptopunks.astral.service.content.contentResolverMethods
 import cc.cryptopunks.astral.service.notification.notificationManagerMethods
 import kotlinx.coroutines.CompletableDeferred
@@ -42,7 +42,7 @@ fun Context.startAstral(): Unit =
     else {
         val dir = File(applicationInfo.dataDir).absolutePath
         val bluetooth = Bluetooth()
-        val android = AndroidAdapter(
+        val android = AndroidApiAdapter(
             notificationManagerMethods(),
             contentResolverMethods(),
         )
@@ -50,7 +50,7 @@ fun Context.startAstral(): Unit =
             val multicastLock = acquireMulticastWakeLock()
             try {
                 status.value = AstralStatus.Starting
-                Node.start(dir, bluetooth, android)
+                Astral.start(dir, bluetooth, android)
             } catch (e: Throwable) {
                 e.printStackTrace()
             } finally {
@@ -61,7 +61,7 @@ fun Context.startAstral(): Unit =
         }
         val id = runBlocking {
             flow { while (true) emit(delay(10)) }
-                .map { Node.identity() }
+                .map { Astral.identity() }
                 .first { !it.isNullOrBlank() }
         }
         Log.d("AstralNetwork", id)
@@ -70,12 +70,12 @@ fun Context.startAstral(): Unit =
     }
 
 fun stopAstral() = runBlocking {
-    Node.stop()
+    Astral.stop()
     astralJob.join()
 }
 
 fun startWarpdrive() {
-    Node.startWarpdrive()
+    Astral.startWarpdrive()
 }
 
 suspend fun astralIdentity() = identity.await()

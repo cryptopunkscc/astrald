@@ -6,4 +6,4 @@ test -f ./build/astral.aar || ./buildGo.sh
 
 cp ./app/build/outputs/apk/debug/app-debug.apk ./build/astral-android.apk
 
-echo "$(pwd)/libs/astral-android.apk"
+echo "$(pwd)/build/astral-android.apk"

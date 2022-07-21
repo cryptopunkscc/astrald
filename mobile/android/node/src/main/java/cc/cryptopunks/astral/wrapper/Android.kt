@@ -3,7 +3,7 @@ package cc.cryptopunks.astral.wrapper
 import cc.cryptopunks.astral.android.AndroidApi
 import cc.cryptopunks.astral.android.plus
 
-class AndroidAdapter(
+internal class AndroidApiAdapter(
     vararg methods: Methods,
 ) : AndroidApi(), astral.AndroidApi {
 

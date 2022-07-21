@@ -11,6 +11,7 @@ import (
 
 // ==================================== Mobile bluetooth adapter ====================================
 
+// Bluetooth gomobile binding interface for bluetooth have to be implemented and injected from android sources.
 type Bluetooth interface {
 	Address() string
 	Listen() (BluetoothPort, error)
@@ -40,6 +41,7 @@ func newBluetoothAdapter(client Bluetooth) bt.Client {
 	}
 }
 
+// bluetooth adapts native android bluetooth to astral infra interfaces.
 type bluetooth struct {
 	base      bt.Bluetooth
 	native    Bluetooth

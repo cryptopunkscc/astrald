@@ -6,6 +6,7 @@ import (
 	"io"
 )
 
+// AndroidApi gomobile binding interface for android API has to be implemented and injected from android sources.
 type AndroidApi interface {
 	Call(query string, arg string) error
 	Get(query string, arg string) ([]byte, error)
@@ -14,6 +15,7 @@ type AndroidApi interface {
 
 var _ android.Api = androidApi{}
 
+// androidApi adapts native android implementation of AndroidApi to android.Api interface dedicated for golang services.
 type androidApi struct {
 	api AndroidApi
 }

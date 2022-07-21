@@ -2,7 +2,7 @@ package astral
 
 import "io"
 
-// Api for astral client.
+// Api interface for astral apps that have to be either standalone and embedded in node.
 type Api interface {
 
 	// Register new astral port under a given name.

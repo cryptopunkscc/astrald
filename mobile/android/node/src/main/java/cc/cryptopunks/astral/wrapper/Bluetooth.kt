@@ -8,7 +8,7 @@ import astral.Writer
 import java.io.InputStream
 import java.util.*
 
-class Bluetooth : astral.Bluetooth {
+internal class Bluetooth : astral.Bluetooth {
 
     private val name = "AstralNode"
 
