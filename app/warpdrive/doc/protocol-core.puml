@@ -1,0 +1,114 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+'autonumber
+
+box localhost1 #White
+participant sender
+participant service1
+end box
+
+box localhost2 #White
+participant service2
+participant recipient
+end box
+
+...
+== send ==
+
+sender -> service1: query
+activate sender
+activate service1
+sender --> service1: recipient id
+sender --> service1: file path
+service1 --> service1: collect files info
+alt blocked
+service1 -> service2: query
+activate service1
+activate service2
+service1 <- service2: rejected
+deactivate service1
+deactivate service1
+deactivate service2
+deactivate sender
+...
+else not blocked
+...
+service1 -> service2: query
+activate sender
+activate service1
+activate service2
+service1 --> service2: files request
+service1 <-- service2: ok
+service2 o--> recipient: event: received
+deactivate service2
+service1 --> service1: save request
+sender <-- service1: request id
+deactivate sender
+sender <--o service1: event: sent
+deactivate service1
+end alt
+...
+service2 o-> service2: check
+alt trust
+activate service2
+service1 <- service2: query accept
+...
+else
+service2 o--> recipient: incoming files
+deactivate service2
+end alt
+
+...
+== accept ==
+
+recipient -> service2: query
+activate recipient
+activate service2
+recipient --> service2: request id
+
+service1 <- service2: query
+activate service1
+activate service2
+service1 <-- service2: request id
+sender <--o service1: event: accepted
+service1 --> service2: files port
+service2 o--> recipient: event: accepted
+service1 <-- service2: ok
+recipient <-- service2: ok
+deactivate recipient
+service1 <- service2: query files
+activate service1
+activate service2
+loop
+service1 --> service2: file
+service2 --> service2: save file
+end loop
+service1 <-- service2: ok
+deactivate service2
+deactivate service2
+deactivate service2
+deactivate service1
+deactivate service1
+
+...
+== reject ==
+
+recipient -> service2: query
+activate recipient
+activate service2
+recipient --> service2: request id
+service1 <- service2: query
+activate service1
+service1 <-- service2: request id
+service1 --> service1: reject
+sender <--o service1: event: reject
+service1 --> service2: ok
+deactivate service1
+
+recipient <-- service2: ok
+deactivate recipient
+deactivate service2
+
+
+@enduml

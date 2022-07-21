@@ -12,34 +12,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:paddingHorizontal="16dp"
-        android:text="Hello World!"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.022"/>
 
-    <ScrollView
-        android:id="@+id/scrollView"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
         android:orientation="vertical"
         app:layout_constraintBottom_toTopOf="@+id/bottomLayout"
         app:layout_constraintTop_toBottomOf="@+id/nodeIdTestView"
-        tools:layout_editor_absoluteX="0dp">
-
-        <TextView
-            android:id="@+id/logTextView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Hello World!"
-            android:textIsSelectable="true"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
-    </ScrollView>
+        tools:layout_editor_absoluteX="0dp" />
 
     <LinearLayout
         android:id="@+id/bottomLayout"
@@ -58,6 +45,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Kill Node"/>
+        <Button
+            android:id="@+id/fixLogButton"
+            android:contentDescription="call logcat -c to clear log cache"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Fix log" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

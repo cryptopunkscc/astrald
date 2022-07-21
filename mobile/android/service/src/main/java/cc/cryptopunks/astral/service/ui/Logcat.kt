@@ -1,5 +1,6 @@
 package cc.cryptopunks.astral.service.ui
 
+import cc.cryptopunks.astral.service.Config
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.awaitClose
@@ -15,12 +16,12 @@ import java.util.*
 
 suspend fun cacheLogcat() = logcatFlow().formatAstralLogs().collect(logcatCache::emit)
 
-fun clearLogcatCache() = logcatCache.resetReplayCache()
+fun clearLogcatMemory() = logcatCache.resetReplayCache()
 
 fun logcatCacheFlow(): Flow<String> = logcatCache
 
 private val logcatCache = MutableSharedFlow<String>(
-    replay = 4096,
+    replay = Config.MaxLogLines,
     onBufferOverflow = BufferOverflow.DROP_OLDEST
 )
 
@@ -50,13 +51,22 @@ private fun logcatFlow(): Flow<String> = callbackFlow {
     }
 }
 
+fun clearLogcatProcess() {
+    try {
+        Runtime.getRuntime().exec(arrayOf("logcat", "-c"))
+    } catch (e: Throwable) {
+        println("Cannot clear logcat")
+        e.printStackTrace()
+    }
+}
+
 const val ASTRAL = "Astral"
 const val GO_LOG = "GoLog"
 
 private fun Flow<String>.formatAstralLogs(): Flow<String> =
     filter { ASTRAL in it || GO_LOG in it }.map { line ->
         line.split(' ', limit = 5)
-            .run { get(1) + " " + get(4) + "\n\n" }
+            .run { get(1) + " " + get(4) }
             .split(": ", limit = 2)
             .run { get(0) + ":\n" + get(1) }
     }

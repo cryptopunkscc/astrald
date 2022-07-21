@@ -1,0 +1,78 @@
+@startuml
+'https://plantuml.com/component-diagram
+
+left to right direction
+
+package "Warpdrive" {
+cloud "Local" {
+package "sender api" {
+    [send]
+    [sent]
+    [recipients]
+    [sender events]
+}
+package "recipient api" {
+    [recipient events]
+    [accept]
+    [reject]
+    [incoming requests]
+    [update]
+}
+node "node" as local_node {
+package "sender handlers" {
+    [handle sender send]
+    [handle sender sent]
+    [handle recipients]
+    [handle sender events]
+}
+package "recipient handlers" {
+    [handle recipient accept]
+    [handle recipient reject]
+    [handle recipient subscribe]
+    [handle incoming subscribe]
+    [handle update]
+}
+package "service api" {
+    [server send]
+    [server accept]
+    [server reject]
+}
+}
+}
+
+cloud "Remote" {
+node "node" as remote_node {
+package "service handlers" {
+    [handle send]
+    [handle accept]
+    [handle reject]
+}
+}
+}
+}
+
+
+[recipients] -> [handle recipients]
+[sender events] -> [handle sender events]
+[sent] -> [handle sender sent]
+[send] --> [handle sender send]
+
+[recipient events] --> [handle recipient subscribe]
+[incoming requests] --> [handle incoming subscribe]
+[accept] --> [handle recipient accept]
+[reject] --> [handle recipient reject]
+
+[handle sender send] --> [server send]
+[server send] --> [handle send]
+[server accept] <.. [handle send]
+
+[handle recipient accept] --> [server accept]
+[server accept] -> [handle accept]
+
+[handle recipient reject] --> [server reject]
+[server reject] -> [handle reject]
+
+
+[update] --> [handle update]
+
+@enduml

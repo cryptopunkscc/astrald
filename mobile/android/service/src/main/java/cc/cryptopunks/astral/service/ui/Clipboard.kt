@@ -7,5 +7,5 @@ import android.content.Context
 internal fun Context.copyToClipboard(text: String) {
     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("identity", text)
-    clipboard.setPrimaryClip(clip)
+    clipboard.primaryClip = clip
 }

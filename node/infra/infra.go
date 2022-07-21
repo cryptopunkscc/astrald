@@ -31,7 +31,7 @@ type Infra struct {
 	inet      *inet.Inet
 	tor       *tor.Tor
 	gateway   *gw.Gateway
-	bluetooth *bt.Bluetooth
+	bluetooth bt.Client
 	logLevel  int
 }
 
@@ -87,13 +87,9 @@ func (i *Infra) Gateways() []infra.AddrSpec {
 func (i *Infra) Addresses() []infra.AddrSpec {
 	list := make([]infra.AddrSpec, 0)
 
-	type addrLister interface {
-		Addresses() []infra.AddrSpec
-	}
-
 	// collect addresses from all networks that support it
 	for _, net := range i.networks {
-		if lister, ok := net.(addrLister); ok {
+		if lister, ok := net.(infra.AddrLister); ok {
 			list = append(list, lister.Addresses()...)
 		}
 	}
