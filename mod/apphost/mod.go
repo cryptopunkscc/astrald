@@ -76,7 +76,7 @@ func (mod *Module) runListeners(ctx context.Context) {
 	}
 
 	for _, listener := range mod.listeners {
-		go func() {
+		go func(listener net.Listener) {
 			for {
 				conn, err := listener.Accept()
 				if err != nil {
@@ -84,7 +84,7 @@ func (mod *Module) runListeners(ctx context.Context) {
 				}
 				mod.clientConns <- conn
 			}
-		}()
+		}(listener)
 	}
 
 	go func() {
