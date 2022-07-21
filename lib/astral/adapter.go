@@ -47,16 +47,20 @@ func (a appHostPort) Close() error {
 	return a.listener.Close()
 }
 
-type appHostRequest struct{ *Query }
+type appHostRequest struct{ query *Query }
 
 func (a appHostRequest) Caller() string {
-	return a.remoteID.String()
+	return a.query.remoteID.String()
 }
 
 func (a appHostRequest) Accept() (io.ReadWriteCloser, error) {
-	return a.Query.Accept()
+	return a.query.Accept()
 }
 
 func (a appHostRequest) Reject() {
-	a.Query.Reject()
+	a.query.Reject()
+}
+
+func (a appHostRequest) Query() string {
+	return a.query.Query()
 }

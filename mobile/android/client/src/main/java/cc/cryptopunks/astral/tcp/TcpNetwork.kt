@@ -1,19 +1,15 @@
 package cc.cryptopunks.astral.tcp
 
-import cc.cryptopunks.astral.enc.EncConnection
-import cc.cryptopunks.astral.enc.EncNetwork
-import cc.cryptopunks.astral.enc.EncPort
-import cc.cryptopunks.astral.enc.EncStream
-import cc.cryptopunks.astral.enc.Encoder
+import cc.cryptopunks.astral.enc.*
 import cc.cryptopunks.astral.err.AstralLocalConnectionException
-import cc.cryptopunks.astral.ext.decodeL16
-import cc.cryptopunks.astral.ext.encodeL16
+import cc.cryptopunks.astral.ext.byte
+import cc.cryptopunks.astral.ext.identity
+import cc.cryptopunks.astral.ext.stringL8
 import cc.cryptopunks.astral.net.Connection
 import cc.cryptopunks.astral.net.Network
 import cc.cryptopunks.astral.net.Port
 import cc.cryptopunks.astral.proto.AstralError
 import cc.cryptopunks.astral.proto.Request
-import cc.cryptopunks.astral.proto.Response
 import java.io.Closeable
 import java.io.IOException
 import java.io.InputStream
@@ -26,50 +22,86 @@ fun astralTcpNetwork(
 ): EncNetwork =
     TcpNetwork(encoder)
 
+object AppHost {
+    const val success = 0x00
+    const val errRejected = 0x01
+    const val errFailed = 0x02
+    const val errTimeout = 0x03
+    const val errAlreadyRegistered = 0x04
+    const val errUnexpected = 0xff
+}
+
 private class TcpNetwork(
     private val encoder: Encoder,
 ) : EncNetwork {
 
+    val identity by lazy { resolve() }
+
     override fun register(port: String): EncPort {
         val serverSocket = ServerSocket(0)
         val tcpStream = TcpStream(astralSocket(), encoder)
-        val request = Request(
-            type = Request.Type.register,
-            port = port,
-            path = ":" + serverSocket.localPort
-        )
         tcpStream.runCatching {
-            encodeL16(request)
-            val response = decodeL16<Response>()
-            if (response.status != "ok")
-                throw AstralError(response.error)
+            stringL8 = Request.Type.register.name
+            stringL8 = port
+            stringL8 = "tcp:127.0.0.1:${serverSocket.localPort}"
+
+            when (val errorCode = byte.toInt()) {
+                AppHost.success -> Unit
+                AppHost.errAlreadyRegistered -> throw AstralError("port already registered")
+                AppHost.errFailed -> throw AstralError("registering port failed")
+                else -> throw AstralError("Unknown error code $errorCode")
+            }
         }.onFailure {
             throw Network.Exception.Register(port, it)
         }
         return TcpPort(port, serverSocket, encoder)
     }
 
-    // TODO
-    override fun identity(): String = ""
+    override fun identity(): String = identity.decodeToString()
 
     override fun query(port: String, identity: String): TcpStream {
         val socket = astralSocket()
         val stream = TcpStream(socket, encoder)
-        val request = Request(
-            type = Request.Type.connect,
-            identity = identity,
-            port = port,
-            path = ":" + socket.localPort,
-        )
-        try {
-            stream.encodeL16(request)
-            val response = stream.decodeL16<Response>()
-            if (response.status != "ok")
-                throw AstralError(response.error)
-        } catch (e: Throwable) {
-            throw Network.Exception.Query(port, identity, e)
+        val id = if (identity.isBlank())
+            this.identity else
+            identity.encodeToByteArray()
+
+        stream.runCatching {
+            stream.stringL8 = Request.Type.query.name
+            stream.identity = id
+            stream.stringL8 = port
+
+            when (val errorCode = byte.toInt()) {
+                AppHost.success -> Unit
+                AppHost.errRejected -> throw AstralError("Query rejected")
+                AppHost.errTimeout -> throw AstralError("Query timeout")
+                AppHost.errUnexpected -> throw AstralError("Query unexpected error")
+                else -> throw AstralError("Unknown error code $errorCode")
+            }
+        }.onFailure {
+            throw Network.Exception.Query(port, identity, it)
         }
         return stream
+    }
+
+    private fun resolve(name: String = "localnode"): ByteArray {
+        val socket = astralSocket()
+        val stream = TcpStream(socket, encoder)
+
+        return stream.runCatching {
+            stringL8 = Request.Type.resolve.name
+            stringL8 = name
+
+            when (val errorCode = byte.toInt()) {
+                AppHost.success -> identity
+                AppHost.errRejected -> throw AstralError("Query rejected")
+                AppHost.errTimeout -> throw AstralError("Query timeout")
+                AppHost.errUnexpected -> throw AstralError("Query unexpected error")
+                else -> throw AstralError("Unknown error code $errorCode")
+            }
+        }.onFailure {
+            throw Network.Exception.Resolve(name, it)
+        }.getOrThrow()
     }
 }
 
@@ -91,30 +123,29 @@ private class TcpPort(
         val socket = server.accept()
         val stream = TcpStream(socket, encoder)
         return {
-            val request = try {
-                stream.decodeL16<Request>()
+            try {
+                TcpConnectionRequest(
+                    stream = stream,
+                    caller = stream.identity,
+                    query = stream.stringL8,
+                )
             } catch (e: Throwable) {
                 close()
                 throw Port.Exception(name, e)
             }
-            TcpConnectionRequest(
-                stream = stream,
-                caller = request.identity,
-                query = request.port,
-            )
         }
     }
 }
 
 private class TcpConnectionRequest(
     private val stream: EncStream,
-    private val caller: String,
+    private val caller: ByteArray,
     private val query: String,
 ) : EncConnection {
 
     override fun accept(): EncStream {
         try {
-            stream.encodeL16(Response("ok"))
+            stream.byte = 0
         } catch (e: Throwable) {
             throw Connection.Exception.Accept(this, e)
         }
@@ -123,13 +154,14 @@ private class TcpConnectionRequest(
 
     override fun reject() {
         try {
+            stream.byte = 1
             stream.close()
         } catch (e: Throwable) {
             throw Connection.Exception.Reject(this, e)
         }
     }
 
-    override fun caller(): String = caller
+    override fun caller(): String = caller.decodeToString()
 
     override fun query(): String = query
 

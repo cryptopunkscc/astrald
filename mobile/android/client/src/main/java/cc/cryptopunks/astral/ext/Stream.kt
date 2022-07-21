@@ -118,3 +118,9 @@ var Stream.stringL16: String
         bytesL16 = string.encodeToByteArray()
     }
 
+var Stream.identity: ByteArray
+    get() = read(33)
+    set(value) {
+        require(value.size == 33) { "Invalid identity size ${value.size}, have to be 33" }
+        write(value)
+    }

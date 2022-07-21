@@ -3,7 +3,6 @@ package contacts
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	_node "github.com/cryptopunkscc/astrald/node"
 	"io"
@@ -56,7 +55,7 @@ func (p Contacts) String() string {
 }
 
 func Query() (peers []Contact, err error) {
-	conn, err := astral.Dial(id.Identity{}, serviceHandle)
+	conn, err := astral.DialName("localnode", serviceHandle)
 	if err != nil {
 		return
 	}
