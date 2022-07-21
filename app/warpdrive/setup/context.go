@@ -4,7 +4,6 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
 	"github.com/cryptopunkscc/astrald/lib/astral"
-	"github.com/cryptopunkscc/astrald/mod/id"
 )
 
 func Context(ctx *handler.Context) {
@@ -14,11 +13,11 @@ func Context(ctx *handler.Context) {
 	}
 
 	// Identity
-	identity, err := id.Query()
+	identity, err := ctx.Api.Resolve("localnode")
 	if err != nil {
 		ctx.Panic("Cannot obtain node identity", err)
 	}
-	ctx.Identity = identity.String()
+	ctx.Identity = identity
 
 	// Peers
 	service.Peer(ctx.Core).Fetch()

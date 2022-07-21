@@ -10,6 +10,9 @@ type Api interface {
 
 	// Query a specific port by name. For calling a local service, pass empty string as nodeId.
 	Query(nodeID string, query string) (io.ReadWriteCloser, error)
+
+	// Resolve node identity by name.
+	Resolve(name string) (string, error)
 }
 
 // Port for receiving local and remote requests.

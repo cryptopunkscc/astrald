@@ -13,6 +13,14 @@ func AppHostAdapter() Api {
 
 type appHostAdapter struct{}
 
+func (a appHostAdapter) Resolve(name string) (string, error) {
+	identity, err := Resolve(name)
+	if err != nil {
+		return "", err
+	}
+	return identity.String(), nil
+}
+
 func (a appHostAdapter) Register(name string) (Port, error) {
 	listener, err := Listen(name)
 	if err != nil {

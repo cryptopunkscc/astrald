@@ -16,6 +16,22 @@ type astralApi struct {
 	node *node.Node
 }
 
+func (a *astralApi) Resolve(name string) (string, error) {
+	if identity, err := id.ParsePublicKeyHex(name); err == nil {
+		return identity.String(), nil
+	}
+
+	if name == "localnode" {
+		return a.node.Identity().String(), nil
+	}
+
+	if identity, err := a.node.Contacts.ResolveIdentity(name); err == nil {
+		return identity.String(), nil
+	} else {
+		return "", err
+	}
+}
+
 type astralPort struct {
 	port hub.Port
 }
