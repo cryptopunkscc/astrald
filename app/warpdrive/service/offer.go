@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/storage/file"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/storage/memory"
-	"log"
 	"sort"
 	"sync"
 	"time"
@@ -43,7 +42,6 @@ func (core OfferUpdates) Start() func() {
 					// Wait for next element and continue buffer update.
 					receive <- <-receive
 				default:
-					log.Println("updates buffer size:", buffer.len())
 					// Start processing buffered elements:
 					// Prepare array with sorted updates.
 					startTime := time.Now().UnixNano()
