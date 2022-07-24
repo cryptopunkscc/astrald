@@ -10,15 +10,25 @@
         android:theme="@style/Theme.Astrald">
         <service
             android:name=".AstralService"
-            android:exported="true"/>
+            android:exported="true" />
+
         <activity
             android:name=".ui.MainActivity"
             android:label="@string/astral_node_app_name"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:taskAffinity="cc.cryptopunks.astral.service.ui.MainActivity">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <data
+                    android:host="main"
+                    android:scheme="astral" />
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
             </intent-filter>
         </activity>
     </application>

@@ -2,7 +2,7 @@ package cc.cryptopunks.astral.wrapper
 
 import android.content.Context
 import android.util.Log
-import astralmobile.Astralmobile
+import astral.Astral
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -20,13 +20,12 @@ import java.io.File
 import java.util.concurrent.Executors
 
 const val ASTRAL = "Astral"
-private const val ASTRAL_DIR = "astrald"
 
-private val astralScope = CoroutineScope(
-    SupervisorJob() + Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-)
-var astralJob: Job = Job().apply { complete() }
-    private set
+private val executor = Executors.newSingleThreadExecutor()
+
+private val scope = CoroutineScope(SupervisorJob() + executor.asCoroutineDispatcher())
+
+private var astralJob: Job = Job().apply { complete() }
 
 private val identity = CompletableDeferred<String>()
 
@@ -39,16 +38,12 @@ enum class AstralStatus { Starting, Started, Stopped }
 fun Context.startAstral(): Unit =
     if (status.value == AstralStatus.Started) Unit
     else {
-        val dir = File(applicationInfo.dataDir)
-            .resolve(ASTRAL_DIR)
-            .apply { mkdir() }
-            .absolutePath
-
-        astralJob = astralScope.launch {
+        val dir = File(applicationInfo.dataDir).absolutePath
+        astralJob = scope.launch {
             val multicastLock = acquireMulticastWakeLock()
             try {
                 status.value = AstralStatus.Starting
-                Astralmobile.start(dir)
+                Astral.start(dir)
             } catch (e: Throwable) {
                 e.printStackTrace()
             } finally {
@@ -59,7 +54,7 @@ fun Context.startAstral(): Unit =
         }
         val id = runBlocking {
             flow { while (true) emit(delay(10)) }
-                .map { Astralmobile.identity() }
+                .map { Astral.identity() }
                 .first { !it.isNullOrBlank() }
         }
         Log.d("AstralNetwork", id)
@@ -68,7 +63,7 @@ fun Context.startAstral(): Unit =
     }
 
 fun stopAstral() = runBlocking {
-    Astralmobile.stop()
+    Astral.stop()
     astralJob.join()
 }
 
