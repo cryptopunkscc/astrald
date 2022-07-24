@@ -50,11 +50,13 @@ func (a *astralApi) Register(name string) (p astral.Port, err error) {
 }
 
 func (a *astralApi) Query(nodeID string, query string) (rwc io.ReadWriteCloser, err error) {
-	hex, err := id.ParsePublicKeyHex(nodeID)
-	if err != nil {
-		return
+	var identity id.Identity
+	if nodeID != "" && nodeID != "localnode" {
+		if identity, err = id.ParsePublicKeyHex(nodeID); err != nil {
+			return
+		}
 	}
-	return a.node.Query(a.ctx, hex, query)
+	return a.node.Query(a.ctx, identity, query)
 }
 
 func (p *astralPort) Next() <-chan astral.Request {

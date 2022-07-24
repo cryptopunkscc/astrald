@@ -29,10 +29,12 @@ func (a appHostAdapter) Register(name string) (Port, error) {
 	return appHostPort{listener}, err
 }
 
-func (a appHostAdapter) Query(nodeID string, query string) (io.ReadWriteCloser, error) {
-	identity, err := id.ParsePublicKeyHex(nodeID)
-	if err != nil {
-		return nil, err
+func (a appHostAdapter) Query(nodeID string, query string) (rw io.ReadWriteCloser, err error) {
+	var identity id.Identity
+	if nodeID != "" && nodeID != "localnode" {
+		if identity, err = id.ParsePublicKeyHex(nodeID); err != nil {
+			return
+		}
 	}
 	return Dial(identity, query)
 }
