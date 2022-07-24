@@ -16,7 +16,7 @@ func Connect() (apphost.AppHost, error) {
 }
 
 func Listen(port string) (*Listener, error) {
-	l, err := NewListener("unix")
+	l, err := NewListener(ListenProtocol)
 	if err != nil {
 		return nil, err
 	}
