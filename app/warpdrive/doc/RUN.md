@@ -43,7 +43,7 @@ git checkout --track origin/warpdrive
 * If not, run `astrald` [./cmd/astrald/main.go](../../../cmd/astrald/main.go) executing:
 
 ```shell
-go run ./cmd/astrald/main.go
+go run ./cmd/astrald
 ```
 
 #### 3. Execute the warpdrive service.
@@ -51,7 +51,7 @@ go run ./cmd/astrald/main.go
 * From source [./app/warpdrive/cmd/main.go](../cmd/main.go)
 
 ```shell
-go run ./app/warpdrive/cmd/main.go
+go run ./app/warpdrive/cmd
 ```
 
 #### 4. Both services now should be running.

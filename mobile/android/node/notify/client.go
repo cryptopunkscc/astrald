@@ -3,7 +3,7 @@ package notify
 import (
 	"encoding/gob"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"log"
 )
@@ -21,7 +21,8 @@ func (c Client) Create(channel Channel) (err error) {
 	if err != nil {
 		return
 	}
-	_, err = enc.ReadUint8(conn)
+	var code byte
+	err = cslq.Decode(conn, "c", &code)
 	return
 }
 
@@ -34,7 +35,8 @@ func (c Client) Notify(notifications ...Notification) (err error) {
 	if err != nil {
 		return
 	}
-	_, err = enc.ReadUint8(conn)
+	var code byte
+	err = cslq.Decode(conn, "c", &code)
 	return
 }
 
@@ -55,7 +57,8 @@ func (c Client) Notifier() (dispatch Notify) {
 					log.Println("cannot encode notification", err)
 					continue
 				}
-				_, err = enc.ReadUint8(conn)
+				var code byte
+				err = cslq.Decode(conn, "c", &code)
 				if err != nil {
 					log.Println("notifier connection lost", err)
 					continue

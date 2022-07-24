@@ -12,18 +12,26 @@ var _ api.Client = Client{}
 type Client struct {
 	*log.Logger
 	astral.Api
+	localNode string
 }
 
 func NewClient(api astral.Api) Client {
-	return Client{log.Default(), api}
+	c := Client{Logger: log.Default(), Api: api}
+	localNode, err := c.Resolve("localnode")
+	if err != nil {
+		log.Panicln("Cannot resolve local node id", err)
+	}
+	c.localNode = localNode
+	return c
 }
 
 func (c *Client) query(port string) (conn io.ReadWriteCloser, err error) {
 	c.Logger = api.NewLogger("<", port)
 	// Connect to local service
-	conn, err = c.Query("", port)
+	conn, err = c.Query(c.localNode, port)
 	if err != nil {
 		c.Println("Cannot connect to service", err)
+		return nil, err
 	}
 	return
 }

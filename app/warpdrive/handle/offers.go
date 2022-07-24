@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
-	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 )
 
@@ -16,7 +16,8 @@ func (c Client) Offers(filter api.Filter) (offers []api.Offer, err error) {
 		return
 	}
 	defer conn.Close()
-	err = enc.WriteL8String(conn, string(filter))
+	// Send filter
+	err = cslq.Encode(conn, "[c]c", filter)
 	if err != nil {
 		c.Println("Cannot send filter", err)
 		return
@@ -28,7 +29,7 @@ func (c Client) Offers(filter api.Filter) (offers []api.Offer, err error) {
 		return
 	}
 	// Send OK
-	err = enc.Write(conn, uint8(0))
+	err = cslq.Encode(conn, "c", 0)
 	if err != nil {
 		c.Println("Cannot send ok", err)
 		return
@@ -47,13 +48,16 @@ func Offers(srv handler.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	f, err := enc.ReadL8String(conn)
+	// Receive filter
+	var filter api.Filter
+	err = cslq.Decode(conn, "[c]c", &filter)
 	if err != nil {
 		srv.Println("Cannot read filter", err)
 		return
 	}
+	// Collect file offers
 	var offers []api.Offer
-	switch api.Filter(f) {
+	switch filter {
 	case api.FilterIn:
 		offers = append(offers, service.Incoming(srv.Core).List()...)
 	case api.FilterOut:
@@ -62,17 +66,18 @@ func Offers(srv handler.Context, request astral.Request) {
 		offers = append(offers, service.Incoming(srv.Core).List()...)
 		offers = append(offers, service.Outgoing(srv.Core).List()...)
 	}
-	// Send outgoing files
+	// Send filtered file offers
 	err = json.NewEncoder(conn).Encode(offers)
 	if err != nil {
 		srv.Println("Cannot send incoming offers", err)
 		return
 	}
 	// Wait for OK
-	_, err = enc.ReadUint8(conn)
+	var code byte
+	err = cslq.Decode(conn, "c", &code)
 	if err != nil {
 		srv.Println("Cannot read ok", err)
 		return
 	}
-	srv.Println("Send incoming offers")
+	srv.Println("Sent incoming offers")
 }

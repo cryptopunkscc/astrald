@@ -64,7 +64,7 @@ func (offer CopyOffer) fileFrom(reader io.Reader) (err error) {
 	}
 	l, err := io.CopyN(writer, progress, info.Size)
 	if err != nil {
-		offer.Println("Cannot copy", info.Uri, err, "expected size", info.Size, "but was", l)
+		offer.Println("Cannot read", info.Uri, err, "expected size", info.Size, "but was", l)
 		return
 	}
 	if offer.Progress != info.Size {
@@ -111,7 +111,7 @@ func (offer CopyOffer) fileTo(writer io.Writer) (err error) {
 	}
 	_, err = io.CopyN(writer, progress, info.Size)
 	if err != nil {
-		offer.Println("Cannot copy", info.Uri, err)
+		offer.Println("Cannot write", info.Uri, err)
 		return
 	}
 	if offer.Progress != info.Size {

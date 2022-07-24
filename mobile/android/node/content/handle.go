@@ -3,7 +3,7 @@ package content
 import (
 	"context"
 	"encoding/gob"
-	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mobile/android/node/android"
 	_node "github.com/cryptopunkscc/astrald/node"
 	"io"
@@ -13,7 +13,7 @@ import (
 type GetInfo struct{ android.Api }
 type Read struct{ android.Api }
 
-func (gi GetInfo) Run(ctx context.Context, node *_node.Node) error {
+func (api GetInfo) Run(ctx context.Context, node *_node.Node) error {
 	port, err := node.Ports.Register(info)
 	if err != nil {
 		return err
@@ -29,13 +29,14 @@ func (gi GetInfo) Run(ctx context.Context, node *_node.Node) error {
 			}
 			go func(conn io.ReadWriteCloser) {
 				defer conn.Close()
-				uri, err := enc.ReadL8String(conn)
+				var uri string
+				err := cslq.Decode(conn, "[c]c", &uri)
 				if err != nil {
 					log.Println("Cannot read uri", err)
 					return
 				}
 				var files Info
-				err = gi.Get(info, uri, &files)
+				err = api.Get(info, uri, &files)
 				if err != nil {
 					log.Println("Cannot get info", err)
 					return
@@ -45,7 +46,8 @@ func (gi GetInfo) Run(ctx context.Context, node *_node.Node) error {
 					log.Println("Cannot encode files info", err)
 					return
 				}
-				_, _ = enc.ReadUint8(conn)
+				var code byte
+				_ = cslq.Decode(conn, "c", &code)
 			}(conn)
 		}
 	}()
@@ -54,7 +56,7 @@ func (gi GetInfo) Run(ctx context.Context, node *_node.Node) error {
 	return nil
 }
 
-func (and Read) Run(ctx context.Context, node *_node.Node) error {
+func (api Read) Run(ctx context.Context, node *_node.Node) error {
 	port, err := node.Ports.Register(content)
 	if err != nil {
 		return err
@@ -70,12 +72,13 @@ func (and Read) Run(ctx context.Context, node *_node.Node) error {
 			}
 			go func(conn io.ReadWriteCloser) {
 				defer conn.Close()
-				uri, err := enc.ReadL8String(conn)
+				var uri string
+				err := cslq.Decode(conn, "[c]c", &uri)
 				if err != nil {
 					log.Println("Cannot read uri", err)
 					return
 				}
-				reader, err := and.Read(content, uri)
+				reader, err := api.Read(content, uri)
 				defer reader.Close()
 				if err != nil {
 					log.Println("Cannot get reader for", uri, err)

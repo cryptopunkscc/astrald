@@ -15,13 +15,10 @@ device:
 $ anc query <identity> <port>
 ```
 
-The warpdrive CLI allows only for localhost connections, so you have to omit the identity as redundant, and leave only
-the correct warpdrive port.
-
-For example, to connect to warpdrive CLI, you can run ANC directly from source file [main.go](../../../cmd/anc/main.go):
+For example, to connect to warpdrive CLI on localnode, you can run ANC directly from package [amc](../../../cmd/anc):
 
 ```shell
-$ go run ./cmd/anc/main.go query wd
+$ go run ./cmd/anc query localnode wd
 connected.
 ```
 

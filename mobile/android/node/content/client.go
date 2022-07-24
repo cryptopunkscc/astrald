@@ -3,7 +3,7 @@ package content
 import (
 	"encoding/gob"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
 )
@@ -17,7 +17,7 @@ func (c Client) Info(uri string) (files Info, err error) {
 	if err != nil {
 		return
 	}
-	err = enc.WriteL8String(conn, uri)
+	err = cslq.Encode(conn, "[c]c", uri)
 	if err != nil {
 		return
 	}
@@ -25,7 +25,7 @@ func (c Client) Info(uri string) (files Info, err error) {
 	if err != nil {
 		return
 	}
-	_ = enc.Write(conn, 0)
+	_ = cslq.Encode(conn, "c", 0)
 	return
 }
 
@@ -34,11 +34,12 @@ func (c Client) Reader(uri string) (reader io.ReadCloser, err error) {
 	if err != nil {
 		return
 	}
-	err = enc.WriteL8String(conn, uri)
+	err = cslq.Encode(conn, "[c]c", uri)
 	if err != nil {
 		return
 	}
-	_, err = enc.ReadUint8(conn)
+	var code byte
+	err = cslq.Decode(conn, "c", &code)
 	if err != nil {
 		return
 	}

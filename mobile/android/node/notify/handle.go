@@ -3,7 +3,7 @@ package notify
 import (
 	"context"
 	"encoding/gob"
-	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mobile/android/node/android"
 	_node "github.com/cryptopunkscc/astrald/node"
 	"io"
@@ -13,7 +13,7 @@ import (
 type CreateChannel struct{ android.Api }
 type DispatchNotification struct{ android.Api }
 
-func (and CreateChannel) Run(ctx context.Context, node *_node.Node) error {
+func (api CreateChannel) Run(ctx context.Context, node *_node.Node) error {
 	port, err := node.Ports.Register(createChannel)
 	if err != nil {
 		return err
@@ -35,12 +35,12 @@ func (and CreateChannel) Run(ctx context.Context, node *_node.Node) error {
 					log.Println("Cannot decode notification channel", err)
 					return
 				}
-				err = and.Call(createChannel, channel)
+				err = api.Call(createChannel, channel)
 				if err != nil {
 					log.Println("Cannot create notification channel", err)
 					return
 				}
-				_ = enc.Write(conn, uint8(0))
+				_ = cslq.Encode(conn, "c", 0)
 			}(conn)
 		}
 	}()
@@ -49,7 +49,7 @@ func (and CreateChannel) Run(ctx context.Context, node *_node.Node) error {
 	return nil
 }
 
-func (and DispatchNotification) Run(ctx context.Context, node *_node.Node) error {
+func (api DispatchNotification) Run(ctx context.Context, node *_node.Node) error {
 	port, err := node.Ports.Register(notify)
 	if err != nil {
 		return err
@@ -75,12 +75,12 @@ func (and DispatchNotification) Run(ctx context.Context, node *_node.Node) error
 						}
 						return
 					}
-					err = and.Call(notify, notifications)
+					err = api.Call(notify, notifications)
 					if err != nil {
 						log.Println("Cannot dispatch notifications", err)
 						//return
 					}
-					_ = enc.Write(conn, uint8(0))
+					_ = cslq.Encode(conn, "c", 0)
 				}
 			}(conn)
 		}

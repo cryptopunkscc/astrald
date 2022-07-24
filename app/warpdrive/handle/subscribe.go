@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
-	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
 )
@@ -16,7 +16,7 @@ func (c Client) Subscribe(filter api.Filter) (offers <-chan api.Offer, err error
 	if err != nil {
 		return
 	}
-	err = enc.WriteL8String(conn, string(filter))
+	err = cslq.Encode(conn, "[c]c", filter)
 	if err != nil {
 		c.Println("Cannot send filter", err)
 		conn.Close()
@@ -53,14 +53,15 @@ func Subscribe(srv handler.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	f, err := enc.ReadL8String(conn)
+	var filter api.Filter
+	err = cslq.Decode(conn, "[c]c", &filter)
 	if err != nil {
 		srv.Println("Cannot read filter", err)
 		return
 	}
 	c := api.WriteChannel(conn)
 	defer close(c)
-	switch api.Filter(f) {
+	switch filter {
 	case api.FilterIn:
 		unsubIn := service.Incoming(srv.Core).OfferSubs.SubscribeChan(c)
 		defer unsubIn()
@@ -74,5 +75,6 @@ func Subscribe(srv handler.Context, request astral.Request) {
 		defer unsubOut()
 	}
 	// Wait for close
-	_, _ = enc.ReadUint8(conn)
+	var code byte
+	err = cslq.Decode(conn, "c", &code)
 }

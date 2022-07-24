@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
-	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 )
 
@@ -28,7 +28,8 @@ func (c Client) Update(
 		return
 	}
 	// Wait for OK
-	_, err = enc.ReadUint8(conn)
+	var code byte
+	err = cslq.Decode(conn, "c", &code)
 	if err != nil {
 		c.Println("Cannot read ok", err)
 		return
@@ -60,7 +61,7 @@ func Update(srv handler.Context, request astral.Request) {
 	// Update peer
 	service.Peer(srv.Core).Update(peerId, attr, value)
 	// Send OK
-	err = enc.Write(conn, uint8(0))
+	err = cslq.Encode(conn, "c", 0)
 	if err != nil {
 		srv.Println("Cannot send ok", err)
 		return

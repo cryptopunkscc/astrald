@@ -86,7 +86,7 @@ func cmdSend(writer io.ReadWriter, client Client, args []string) (err error) {
 		_, err = fmt.Fprintln(writer, "<filePath> <peerId>?")
 		return
 	}
-	peer := ""
+	peer := client.localNode
 	if len(args) > 1 {
 		peer = args[1]
 	}

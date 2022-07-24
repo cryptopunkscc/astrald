@@ -2,7 +2,7 @@ package handle
 
 import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
-	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 )
 
@@ -18,7 +18,8 @@ func Ping(srv handler.Context, request astral.Request) {
 	}
 	defer conn.Close()
 	for {
-		_, err = enc.ReadUint8(conn)
+		var code byte
+		err = cslq.Decode(conn, "c", &code)
 		srv.Println("Read ping", err)
 		if err != nil {
 			srv.Println("Cannot read ping", err)

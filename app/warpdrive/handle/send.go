@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
-	"github.com/cryptopunkscc/astrald/legacy/enc"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	uuid "github.com/nu7hatch/gouuid"
 	"log"
@@ -22,26 +22,26 @@ func (c Client) Send(peerId api.PeerId, filePath string) (id api.OfferId, accept
 	}
 	defer conn.Close()
 	// Send recipient id
-	err = enc.WriteL8String(conn, string(peerId))
+	err = cslq.Encode(conn, "[c]c", peerId)
 	if err != nil {
 		c.Println("Cannot send recipient id", err)
 		return
 	}
 	// Send file path
-	err = enc.WriteL8String(conn, filePath)
+	err = cslq.Encode(conn, "[c]c", filePath)
 	if err != nil {
 		c.Println("Cannot send file path", err)
 		return
 	}
 	// Read offer id
-	strId, err := enc.ReadL8String(conn)
+	err = cslq.Decode(conn, "[c]c", &id)
 	if err != nil {
 		c.Println("Cannot read offer id", err)
 		return
 	}
-	id = api.OfferId(strId)
 	// Read result code
-	code, err := enc.ReadUint8(conn)
+	var code byte
+	err = cslq.Decode(conn, "c", &code)
 	if err != nil {
 		c.Println("Cannot read offer result code", err)
 	}
@@ -61,13 +61,15 @@ func Send(srv handler.Context, request astral.Request) {
 	}
 	defer conn.Close()
 	// Read peer id
-	peerId, err := enc.ReadL8String(conn)
+	var peerId api.PeerId
+	err = cslq.Decode(conn, "[c]c", &peerId)
 	if err != nil {
 		srv.Println("Cannot read peer id", err)
 		return
 	}
 	// Read file path
-	filePath, err := enc.ReadL8String(conn)
+	var filePath string
+	err = cslq.Decode(conn, "[c]c", &filePath)
 	if err != nil {
 		srv.Println("Cannot read file path", err)
 		return
@@ -85,13 +87,13 @@ func Send(srv handler.Context, request astral.Request) {
 		return
 	}
 	// Write id to sender
-	err = enc.WriteL8String(conn, id)
+	err = cslq.Encode(conn, "[c]c", id)
 	if err != nil {
 		srv.Println("Cannot send id", id, err)
 		return
 	}
 	// Write code to sender
-	err = enc.Write(conn, code)
+	err = cslq.Encode(conn, "c", code)
 	if err != nil {
 		srv.Println("Cannot code", id, err)
 		return
@@ -99,10 +101,10 @@ func Send(srv handler.Context, request astral.Request) {
 	srv.Println(filePath, "offer sent to", peerId)
 }
 
-func send(srv handler.Context, peer string, files []api.Info) (id string, code uint8, err error) {
+func send(srv handler.Context, peer api.PeerId, files []api.Info) (id api.OfferId, code uint8, err error) {
 	srv.LogPrefix("<", api.QueryOffer)
 	// Connect to service
-	conn, err := srv.Query(peer, api.QueryOffer)
+	conn, err := srv.Query(string(peer), api.QueryOffer)
 	if err != nil {
 		srv.Println("Cannot connect", peer, len(peer), err)
 		return
@@ -110,7 +112,7 @@ func send(srv handler.Context, peer string, files []api.Info) (id string, code u
 	defer conn.Close()
 	// Send file request
 	id = newOfferId()
-	err = enc.WriteL8String(conn, id)
+	err = cslq.Encode(conn, "[c]c", id)
 	if err != nil {
 		srv.Println("Cannot send offer id", peer, err)
 		return
@@ -121,9 +123,9 @@ func send(srv handler.Context, peer string, files []api.Info) (id string, code u
 		srv.Println("Cannot send offer info", id, peer, err)
 		return
 	}
-	service.Outgoing(srv.Core).Add(id, files, api.PeerId(peer))
+	service.Outgoing(srv.Core).Add(id, files, peer)
 	// Read result code
-	code, err = enc.ReadUint8(conn)
+	err = cslq.Decode(conn, "c", &code)
 	if err != nil {
 		srv.Println("Cannot read result code", peer, err)
 		return
@@ -131,12 +133,12 @@ func send(srv handler.Context, peer string, files []api.Info) (id string, code u
 	return
 }
 
-func newOfferId() string {
+func newOfferId() api.OfferId {
 	v4, err := uuid.NewV4()
 	if err != nil {
 		panic(err)
 	}
-	return v4.String()
+	return api.OfferId(v4.String())
 }
 
 // TODO make it bulletproof
@@ -187,7 +189,8 @@ func Receive(srv handler.Context, request astral.Request) {
 		return
 	}
 	defer conn.Close()
-	offerId, err := enc.ReadL8String(conn)
+	var offerId api.OfferId
+	err = cslq.Decode(conn, "[c]c", &offerId)
 	if err != nil {
 		srv.Println("Cannot read offer id", err)
 	}
@@ -212,5 +215,5 @@ func Receive(srv handler.Context, request astral.Request) {
 		}
 	}
 	// Send received
-	_ = enc.Write(conn, code)
+	_ = cslq.Encode(conn, "c", code)
 }

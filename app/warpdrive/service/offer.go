@@ -148,7 +148,7 @@ func (offer *Offer) Set(id api.OfferId) *Offer {
 	return offer
 }
 
-func (offer *Offer) Add(offerId string, files []api.Info, peerId api.PeerId) {
+func (offer *Offer) Add(offerId api.OfferId, files []api.Info, peerId api.PeerId) {
 	offer.Offer = &api.Offer{
 		Files:  files,
 		Peer:   peerId,
@@ -156,7 +156,7 @@ func (offer *Offer) Add(offerId string, files []api.Info, peerId api.PeerId) {
 		OfferStatus: api.OfferStatus{
 			Status: api.StatusAwaiting,
 			In:     offer.incoming,
-			Id:     api.OfferId(offerId),
+			Id:     offerId,
 			Index:  -1,
 		},
 	}
