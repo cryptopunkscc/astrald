@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
@@ -67,22 +68,26 @@ func Download(ctx handler.Context, request astral.Request) {
 	}
 }
 
-func download(ctx handler.Context, id api.OfferId) (err error) {
+func download(ctx handler.Context, offerId api.OfferId) (err error) {
 	ctx.LogPrefix("<", api.QueryFiles)
 
 	// Get incoming offer service for offer id
-	offer := service.Incoming(ctx.Core).Set(id)
+	offer := service.Incoming(ctx.Core).Set(offerId)
 	if offer.Offer == nil {
-		err = errors.New(fmt.Sprint("No incoming file with id ", id))
+		err = errors.New(fmt.Sprint("No incoming file with id ", offerId))
 		ctx.Println("Cannot find incoming file", err)
 		return err
 	}
 
+	// parse peer id
+	peerId, err := id.ParsePublicKeyHex(string(offer.Peer))
+	if err != nil {
+		ctx.Println("Cannot parse peer id", err)
+		return
+	}
+
 	// Update status
 	offer.Accept()
-
-	// Obtain offer reader connection
-	peerId := string(offer.Peer)
 
 	// Connect to service
 	conn, err := ctx.Query(peerId, api.QueryFiles)

@@ -16,20 +16,17 @@ type astralApi struct {
 	node *node.Node
 }
 
-func (a *astralApi) Resolve(name string) (string, error) {
-	if identity, err := id.ParsePublicKeyHex(name); err == nil {
-		return identity.String(), nil
-	}
-
+func (a *astralApi) Resolve(name string) (identity id.Identity, err error) {
 	if name == "localnode" {
-		return a.node.Identity().String(), nil
+		return a.node.Identity(), nil
 	}
 
-	if identity, err := a.node.Contacts.ResolveIdentity(name); err == nil {
-		return identity.String(), nil
-	} else {
-		return "", err
+	if identity, err = id.ParsePublicKeyHex(name); err == nil {
+		return
 	}
+
+	identity, err = a.node.Contacts.ResolveIdentity(name)
+	return
 }
 
 type astralPort struct {
@@ -49,14 +46,8 @@ func (a *astralApi) Register(name string) (p astral.Port, err error) {
 	return
 }
 
-func (a *astralApi) Query(nodeID string, query string) (rwc io.ReadWriteCloser, err error) {
-	var identity id.Identity
-	if nodeID != "" && nodeID != "localnode" {
-		if identity, err = id.ParsePublicKeyHex(nodeID); err != nil {
-			return
-		}
-	}
-	return a.node.Query(a.ctx, identity, query)
+func (a *astralApi) Query(nodeID id.Identity, query string) (rwc io.ReadWriteCloser, err error) {
+	return a.node.Query(a.ctx, nodeID, query)
 }
 
 func (p *astralPort) Next() <-chan astral.Request {
@@ -75,11 +66,11 @@ func (p *astralPort) Close() error {
 	return p.port.Close()
 }
 
-func (r *astralRequest) Caller() string {
-	if r.query.IsLocal() {
-		return ""
+func (r *astralRequest) Caller() (identity id.Identity) {
+	if !r.query.IsLocal() {
+		identity = r.query.Link().RemoteIdentity()
 	}
-	return r.query.Link().RemoteIdentity().String()
+	return
 }
 
 func (r *astralRequest) Query() string {
@@ -90,6 +81,6 @@ func (r *astralRequest) Accept() (io.ReadWriteCloser, error) {
 	return r.query.Accept()
 }
 
-func (r *astralRequest) Reject() {
-	r.query.Reject()
+func (r *astralRequest) Reject() error {
+	return r.query.Reject()
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/app/warpdrive/api"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/handler"
 	"github.com/cryptopunkscc/astrald/app/warpdrive/service"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	uuid "github.com/nu7hatch/gouuid"
@@ -81,38 +82,43 @@ func Send(srv handler.Context, request astral.Request) {
 		return
 	}
 	// Send file to recipient service
-	id, code, err := send(srv, peerId, files)
+	offerId, code, err := send(srv, peerId, files)
 	if err != nil {
 		srv.Println("Cannot send file", err)
 		return
 	}
 	// Write id to sender
-	err = cslq.Encode(conn, "[c]c", id)
+	err = cslq.Encode(conn, "[c]c", offerId)
 	if err != nil {
-		srv.Println("Cannot send id", id, err)
+		srv.Println("Cannot send id", offerId, err)
 		return
 	}
 	// Write code to sender
 	err = cslq.Encode(conn, "c", code)
 	if err != nil {
-		srv.Println("Cannot code", id, err)
+		srv.Println("Cannot code", offerId, err)
 		return
 	}
 	srv.Println(filePath, "offer sent to", peerId)
 }
 
-func send(srv handler.Context, peer api.PeerId, files []api.Info) (id api.OfferId, code uint8, err error) {
+func send(srv handler.Context, peer api.PeerId, files []api.Info) (offerId api.OfferId, code uint8, err error) {
 	srv.LogPrefix("<", api.QueryOffer)
+	peerId, err := id.ParsePublicKeyHex(string(peer))
+	if err != nil {
+		srv.Println("Cannot parse peer id", err)
+		return
+	}
 	// Connect to service
-	conn, err := srv.Query(string(peer), api.QueryOffer)
+	conn, err := srv.Query(peerId, api.QueryOffer)
 	if err != nil {
 		srv.Println("Cannot connect", peer, len(peer), err)
 		return
 	}
 	defer conn.Close()
 	// Send file request
-	id = newOfferId()
-	err = cslq.Encode(conn, "[c]c", id)
+	offerId = newOfferId()
+	err = cslq.Encode(conn, "[c]c", offerId)
 	if err != nil {
 		srv.Println("Cannot send offer id", peer, err)
 		return
@@ -120,10 +126,10 @@ func send(srv handler.Context, peer api.PeerId, files []api.Info) (id api.OfferI
 	shrunken := shrinkPaths(files)
 	err = json.NewEncoder(conn).Encode(shrunken)
 	if err != nil {
-		srv.Println("Cannot send offer info", id, peer, err)
+		srv.Println("Cannot send offer info", offerId, peer, err)
 		return
 	}
-	service.Outgoing(srv.Core).Add(id, files, peer)
+	service.Outgoing(srv.Core).Add(offerId, files, peer)
 	// Read result code
 	err = cslq.Decode(conn, "c", &code)
 	if err != nil {
@@ -174,7 +180,7 @@ func shrinkPaths(in []api.Info) (out []api.Info) {
 }
 
 func Receive(srv handler.Context, request astral.Request) {
-	peerId := api.PeerId(request.Caller())
+	peerId := api.PeerId(request.Caller().String())
 	peer := service.Peer(srv.Core).Get(peerId)
 	// Check if peer is blocked
 	if peer.Mod == api.PeerModBlock {

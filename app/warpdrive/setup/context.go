@@ -17,7 +17,7 @@ func Context(ctx *handler.Context) {
 	if err != nil {
 		ctx.Panic("Cannot obtain node identity", err)
 	}
-	ctx.Identity = identity
+	ctx.Identity = identity.String()
 
 	// Peers
 	service.Peer(ctx.Core).Fetch()

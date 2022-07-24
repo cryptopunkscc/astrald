@@ -1,6 +1,9 @@
 package astral
 
-import "io"
+import (
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"io"
+)
 
 // Api interface for astral apps that have to be either standalone and embedded in node.
 type Api interface {
@@ -9,10 +12,10 @@ type Api interface {
 	Register(name string) (Port, error)
 
 	// Query a specific port by name. For calling a local service, pass empty string as nodeId.
-	Query(nodeID string, query string) (io.ReadWriteCloser, error)
+	Query(nodeID id.Identity, query string) (io.ReadWriteCloser, error)
 
 	// Resolve node identity by name.
-	Resolve(name string) (string, error)
+	Resolve(name string) (id.Identity, error)
 }
 
 // Port for receiving local and remote requests.
@@ -29,7 +32,7 @@ type Port interface {
 type Request interface {
 
 	// Caller returns identity of callers node.
-	Caller() string
+	Caller() id.Identity
 
 	// Query returns the requested port name.
 	Query() string
@@ -38,5 +41,5 @@ type Request interface {
 	Accept() (io.ReadWriteCloser, error)
 
 	// Reject the incoming request.
-	Reject()
+	Reject() error
 }

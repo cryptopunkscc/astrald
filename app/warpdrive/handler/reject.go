@@ -3,7 +3,7 @@ package handler
 import "github.com/cryptopunkscc/astrald/lib/astral"
 
 func (ctx *Context) IsRejected(request astral.Request) bool {
-	caller := request.Caller()
+	caller := request.Caller().String()
 	isRemote := caller != "" && caller != ctx.Identity
 	if isRemote {
 		request.Reject()
