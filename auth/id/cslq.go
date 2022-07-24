@@ -1,6 +1,9 @@
 package id
 
-import "github.com/cryptopunkscc/astrald/cslq"
+import (
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/cryptopunkscc/astrald/cslq"
+)
 
 const cslqPattern = "[33]c"
 
@@ -22,5 +25,11 @@ func (id *Identity) UnmarshalCSLQ(dec *cslq.Decoder) error {
 }
 
 func (id Identity) MarshalCSLQ(enc *cslq.Encoder) error {
-	return enc.Encode(cslqPattern, id.PublicKey().SerializeCompressed())
+	var serialized []byte
+	if id.IsZero() {
+		serialized = make([]byte, btcec.PubKeyBytesLenCompressed)
+	} else {
+		serialized = id.PublicKey().SerializeCompressed()
+	}
+	return enc.Encode(cslqPattern, serialized)
 }
