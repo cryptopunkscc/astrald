@@ -3,6 +3,7 @@ package cc.cryptopunks.astral.wrapper
 import android.content.Context
 import android.util.Log
 import astral.Astral
+import cc.cryptopunks.astral.android.resolveMethods
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -44,8 +45,9 @@ fun Context.startAstral() {
             val multicastLock = acquireMulticastWakeLock()
             try {
                 val dir = File(applicationInfo.dataDir).absolutePath
+                val modules = Modules.from(resolveMethods())
 
-                Astral.start(dir)
+                Astral.start(dir, modules)
             } catch (e: Throwable) {
                 e.printStackTrace()
             } finally {

@@ -1,2 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest package="cc.cryptopunks.astral"/>
+<manifest
+    package="cc.cryptopunks.astral"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:name="App" />
+</manifest>
