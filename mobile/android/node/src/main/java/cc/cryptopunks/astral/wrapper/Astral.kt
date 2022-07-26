@@ -35,14 +35,16 @@ val astralStatus: StateFlow<AstralStatus> get() = status
 
 enum class AstralStatus { Starting, Started, Stopped }
 
-fun Context.startAstral(): Unit =
-    if (status.value == AstralStatus.Started) Unit
-    else {
-        val dir = File(applicationInfo.dataDir).absolutePath
+fun Context.startAstral() {
+    if (status.value == AstralStatus.Stopped) {
+        status.value = AstralStatus.Starting
+
+        // Start astral daemon
         astralJob = scope.launch {
             val multicastLock = acquireMulticastWakeLock()
             try {
-                status.value = AstralStatus.Starting
+                val dir = File(applicationInfo.dataDir).absolutePath
+
                 Astral.start(dir)
             } catch (e: Throwable) {
                 e.printStackTrace()
@@ -52,15 +54,19 @@ fun Context.startAstral(): Unit =
                 multicastLock.release()
             }
         }
-        val id = runBlocking {
-            flow { while (true) emit(delay(10)) }
+
+        // Resolve local node id
+        runBlocking {
+            val id = flow { while (true) emit(delay(10)) }
                 .map { Astral.identity() }
-                .first { !it.isNullOrBlank() }
+                .first { id -> !id.isNullOrBlank() }
+            Log.d("AstralNetwork", id)
+            identity.complete(id)
         }
-        Log.d("AstralNetwork", id)
-        identity.complete(id)
+
         status.value = AstralStatus.Started
     }
+}
 
 fun stopAstral() = runBlocking {
     Astral.stop()
