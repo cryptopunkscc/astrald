@@ -8,3 +8,4 @@ def include(String mod, String path) {
 include(':astral:app', "app")
 include(':astral:service', "service")
 include(':astral:node', "node")
+include(':astral:client', 'client')
