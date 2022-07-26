@@ -8,6 +8,8 @@ require (
 	github.com/godbus/dbus/v5 v5.0.6
 	github.com/ipsn/go-libtor v1.0.380
 	github.com/jxskiss/base62 v1.0.0
+	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
+	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/stretchr/testify v1.6.1 // indirect
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 	golang.org/x/mobile v0.0.0-20220722155234-aaac322e2105 // indirect
