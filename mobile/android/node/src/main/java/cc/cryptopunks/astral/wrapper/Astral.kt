@@ -46,8 +46,9 @@ fun Context.startAstral() {
             try {
                 val dir = File(applicationInfo.dataDir).absolutePath
                 val modules = Modules.from(resolveMethods())
+                val bluetooth = Bluetooth()
 
-                Astral.start(dir, modules)
+                Astral.start(dir, modules, bluetooth)
             } catch (e: Throwable) {
                 e.printStackTrace()
             } finally {

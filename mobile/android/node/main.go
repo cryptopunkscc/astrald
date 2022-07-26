@@ -2,6 +2,7 @@ package astral
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
@@ -23,12 +24,17 @@ var dataDir string
 func Start(
 	dir string,
 	mods Modules,
+	bluetooth Bluetooth,
 ) error {
 	dataDir = dir
 	nodeDir := filepath.Join(dataDir, "node")
 	err := os.MkdirAll(nodeDir, 0700)
 	if err != nil {
 		return err
+	}
+
+	if bluetooth != nil {
+		bt.Instance = newBluetoothAdapter(bluetooth)
 	}
 
 	log.Println("Staring astrald")

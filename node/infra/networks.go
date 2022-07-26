@@ -37,7 +37,7 @@ func (i *Infra) setupNetworks(ctx context.Context, cfg config.Infra) error {
 
 	// bluetooth
 	if err := i.setupNetwork(func() (infra.Network, error) {
-		return bt.New()
+		return bt.Instance, nil
 	}); err != nil {
 		i.Logf(log.Normal, "bt error: %s", err)
 	}
