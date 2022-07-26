@@ -22,6 +22,7 @@ var dataDir string
 
 func Start(
 	dir string,
+	mods Modules,
 ) error {
 	dataDir = dir
 	nodeDir := filepath.Join(dataDir, "node")
@@ -36,14 +37,17 @@ func Start(
 	// Set up app execution context
 	ctx, stop = context.WithCancel(context.Background())
 
-	n, err := node.Run(
-		ctx, nodeDir,
+	m := []node.ModuleRunner{
 		admin.Admin{},
 		&apphost.Module{},
 		connect.Connect{},
 		gateway.Gateway{},
 		info.Info{},
-	)
+	}
+	m = append(m, androidRunners(mods)...)
+
+	n, err := node.Run(ctx, nodeDir, m...)
+
 	if err != nil {
 		return err
 	}

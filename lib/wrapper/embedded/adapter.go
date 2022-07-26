@@ -30,10 +30,12 @@ func (a *Adapter) Resolve(name string) (identity id.Identity, err error) {
 }
 
 type astralPort struct {
+	Node *node.Node
 	port hub.Port
 }
 
 type astralRequest struct {
+	Node  *node.Node
 	query *hub.Query
 }
 
@@ -42,7 +44,7 @@ func (a *Adapter) Register(name string) (p wrapper.Port, err error) {
 	if err != nil {
 		return
 	}
-	p = &astralPort{*hp}
+	p = &astralPort{a.Node, *hp}
 	return
 }
 
@@ -56,7 +58,7 @@ func (p *astralPort) Next() <-chan wrapper.Request {
 		defer close(c)
 		for query := range p.port.Queries() {
 			q := query
-			c <- &astralRequest{q}
+			c <- &astralRequest{p.Node, q}
 		}
 	}()
 	return c
@@ -66,11 +68,11 @@ func (p *astralPort) Close() error {
 	return p.port.Close()
 }
 
-func (r *astralRequest) Caller() (identity id.Identity) {
-	if !r.query.IsLocal() {
-		identity = r.query.Link().RemoteIdentity()
+func (r *astralRequest) Caller() id.Identity {
+	if r.query.IsLocal() {
+		return r.Node.Identity()
 	}
-	return
+	return r.query.Link().RemoteIdentity()
 }
 
 func (r *astralRequest) Query() string {
