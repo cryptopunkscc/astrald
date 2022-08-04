@@ -2,6 +2,7 @@ package cc.cryptopunks.astral.app
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import cc.cryptopunks.astral.mod.MethodsProvider
 import cc.cryptopunks.astral.mod.combineMethods
 import cc.cryptopunks.astral.ui.main.ActionIntentsProvider
@@ -15,6 +16,9 @@ interface AstralApplication :
     )
 
     override fun actionIntents(): Map<String, Intent> = mapOf(
-        // TODO add intents
+        "Contacts" to Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("astral://contacts")
+        )
     )
 }

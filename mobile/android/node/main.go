@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/connect"
+	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/info"
 	"github.com/cryptopunkscc/astrald/node"
@@ -47,6 +48,7 @@ func Start(
 		connect.Connect{},
 		gateway.Gateway{},
 		info.Info{},
+		contacts.Contacts{},
 		handlerRunner("android", handlers),
 	}
 

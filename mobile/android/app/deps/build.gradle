@@ -31,4 +31,5 @@ dependencies {
     api project(':astral:mod')
     api project(':astral:ui:main')
     api project(':astral:ui:permissions')
+    api project(':astral:ui:contacts')
 }
