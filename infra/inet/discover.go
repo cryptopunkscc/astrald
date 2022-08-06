@@ -15,6 +15,11 @@ func (inet *Inet) Discover(ctx context.Context) (<-chan infra.Presence, error) {
 		return nil, err
 	}
 
+	go func() {
+		<-ctx.Done()
+		_ = inet.presenceConn.Close()
+	}()
+
 	outCh := make(chan infra.Presence)
 
 	go func() {
