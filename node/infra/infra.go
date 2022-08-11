@@ -31,7 +31,7 @@ type Infra struct {
 	inet      *inet.Inet
 	tor       *tor.Tor
 	gateway   *gw.Gateway
-	bluetooth *bt.Bluetooth
+	bluetooth bt.Client
 	logLevel  int
 }
 
