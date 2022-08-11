@@ -24,7 +24,7 @@ class GsonCoder(
         string.isBlank() -> emptyList()
         else -> gson.fromJson<Array<T>>(string, TypeToken.getArray(
             TypeToken.get(type).type).type
-        ).toList()
+        )?.toList() ?: emptyList()
     }
 
     override fun <K, V> decodeMap(string: String, key: Class<K>, value: Class<V>): Map<K, V> =

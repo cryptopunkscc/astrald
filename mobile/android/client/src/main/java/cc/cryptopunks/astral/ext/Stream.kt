@@ -29,8 +29,7 @@ fun Stream.readMessage(): String? {
     } while (len == buffer.size)
     return when {
         len == -1 && result.isEmpty() -> null
-        result.contains("null") -> null
-        else -> result.toString()
+        else -> result.toString().takeIf { it != "null" }
     }
 }
 

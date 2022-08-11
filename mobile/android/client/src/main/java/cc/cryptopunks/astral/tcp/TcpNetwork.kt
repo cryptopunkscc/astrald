@@ -95,7 +95,7 @@ private class TcpNetwork(
 }
 
 private fun Stream.checkResultCode() {
-    val errorMessage = errorMessage(byte.toInt())
+    val errorMessage = errorMessage(byte.toUByte().toInt())
     if (errorMessage != null) throw AstralError(errorMessage)
 }
 
