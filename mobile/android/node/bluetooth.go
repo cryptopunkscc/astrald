@@ -62,6 +62,9 @@ func newBluetoothSocket(socket BluetoothSocket) *bluetoothSocket {
 	reader, writer := io.Pipe()
 	go func() {
 		err := socket.Read(writer)
+		writer.Close()
+		reader.Close()
+		socket.Close()
 		if err != nil {
 			log.Println("BT socket read error", err)
 		}

@@ -10,11 +10,11 @@ internal class Bluetooth : astral.Bluetooth {
 
     private val name = "AstralNode"
 
-    private val adapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-
     override fun dial(address: ByteArray): Socket {
         address.reverse()
         println("Dial to ${address.toHex()}")
+
+        val adapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
         val remoteDevice = adapter.getRemoteDevice(address)
 
