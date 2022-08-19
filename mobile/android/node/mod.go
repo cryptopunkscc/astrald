@@ -7,21 +7,24 @@ import (
 	"log"
 )
 
-func androidRunners(mods Modules) (r []node.ModuleRunner) {
+func handlerRunner(name string, handlers Handlers) (moduleRunner node.ModuleRunner) {
+	r := &handlersModuleRunner{}
+	r.name = name
+	moduleRunner = r
 	for {
-		m := mods.Next()
+		m := handlers.Next()
 		if m == nil {
 			return
 		}
-		r = append(r, androidModuleRunner{m})
+		r.handlers = append(r.handlers, m)
 	}
 }
 
-type Modules interface {
-	Next() Module
+type Handlers interface {
+	Next() Handler
 }
 
-type Module interface {
+type Handler interface {
 	Serve(conn Connection)
 	String() string
 }
@@ -31,31 +34,38 @@ type Connection interface {
 	Read(n int) ([]byte, error)
 }
 
-type androidModuleRunner struct{ Module }
+type handlersModuleRunner struct {
+	name     string
+	handlers []Handler
+}
 
-func (a androidModuleRunner) Run(ctx context.Context, n *node.Node) error {
+func (r handlersModuleRunner) String() string {
+	return r.name
+}
 
-	port, err := n.Ports.Register(a.String())
-	if err != nil {
-		return err
-	}
-	defer port.Close()
-
-	go func() {
-		for q := range port.Queries() {
-			conn, err := q.Accept()
-			if err != nil {
-				log.Println("Cannot accept query", err)
-				continue
-			}
-			go func(conn io.ReadWriteCloser) {
-				defer conn.Close()
-				w := &ConnectionWrapper{ReadWriteCloser: conn}
-				a.Serve(w)
-			}(conn)
+func (r handlersModuleRunner) Run(ctx context.Context, n *node.Node) error {
+	for _, handler := range r.handlers {
+		handler := handler
+		port, err := n.Ports.Register(handler.String())
+		if err != nil {
+			return err
 		}
-	}()
-
+		go func() {
+			defer port.Close()
+			for q := range port.Queries() {
+				conn, err := q.Accept()
+				if err != nil {
+					log.Println("Cannot accept query", err)
+					continue
+				}
+				go func(conn io.ReadWriteCloser) {
+					defer conn.Close()
+					w := &ConnectionWrapper{ReadWriteCloser: conn}
+					handler.Serve(w)
+				}(conn)
+			}
+		}()
+	}
 	<-ctx.Done()
 	return nil
 }

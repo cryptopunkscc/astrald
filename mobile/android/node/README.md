@@ -17,6 +17,15 @@ to [gomobile](https://pkg.go.dev/golang.org/x/mobile/cmd/gobind#hdr-Passing_targ
 , this can be provided as interface defined in golang and exposed as java interface through astral node arr library to
 be implemented on android side.
 
+### Custom interface
+
+For exposing some android API using custom interface is required to:
+
+1. Declare golang interface inside [node](../node)` directory.
+2. Expose as argument of [Start](main.go) function.
+3. Implement exposed java interface in [node wrapper module](src/main/java/cc/cryptopunks/astral/wrapper).
+4. Pass interface implementation to [Node.start](src/main/java/cc/cryptopunks/astral/wrapper/Astral.kt) method call.
+
 ## Astral node ARR
 
 This library module requires astral node arr as dependency.

@@ -3,34 +3,10 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="cc.cryptopunks.astral.service">
 
-    <application
-        android:allowBackup="true"
-        android:label="@string/astral_node_app_name"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.Astrald">
+    <application>
         <service
             android:name=".AstralService"
             android:exported="true" />
-
-        <activity
-            android:name=".ui.MainActivity"
-            android:label="@string/astral_node_app_name"
-            android:launchMode="singleTask"
-            android:taskAffinity="cc.cryptopunks.astral.service.ui.MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <data
-                    android:host="main"
-                    android:scheme="astral" />
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-            </intent-filter>
-        </activity>
     </application>
 
 </manifest>

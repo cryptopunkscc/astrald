@@ -6,7 +6,13 @@ def include(String mod, String path) {
 }
 
 include(':astral:app', "app")
+include(':astral:app:deps', "app/deps")
+include(':astral:intent', "intent")
 include(':astral:service', "service")
 include(':astral:node', "node")
-include(':astral:client', "client")
-include(':astral:android:api', "api")
+include(':astral:client', 'client')
+include(':astral:mod', "mod")
+include(':astral:ui:theme', "ui/theme")
+include(':astral:ui:main', "ui/main")
+include(':astral:ui:log', "ui/log")
+include(':astral:ui:permissions', "ui/permissions")

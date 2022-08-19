@@ -7,7 +7,7 @@ android {
     compileSdk 31
 
     defaultConfig {
-        minSdk 24
+        minSdk 21
         targetSdk 28
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -35,6 +35,7 @@ repositories {
 }
 dependencies {
     implementation project(':astral:node')
+    implementation project(':astral:intent')
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.1'
     implementation 'androidx.core:core-ktx:1.8.0'

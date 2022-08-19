@@ -10,24 +10,21 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/info"
 	"github.com/cryptopunkscc/astrald/node"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 var identity string
 var stop context.CancelFunc
-var ctx context.Context
-var dataDir string
 
 func Start(
 	dir string,
-	mods Modules,
+	handlers Handlers,
 	bluetooth Bluetooth,
 ) error {
-	dataDir = dir
-	nodeDir := filepath.Join(dataDir, "node")
+	nodeDir := filepath.Join(dir, "node")
 	err := os.MkdirAll(nodeDir, 0700)
 	if err != nil {
 		return err
@@ -41,6 +38,7 @@ func Start(
 	astral.ListenProtocol = "tcp"
 
 	// Set up app execution context
+	var ctx context.Context
 	ctx, stop = context.WithCancel(context.Background())
 
 	m := []node.ModuleRunner{
@@ -49,8 +47,8 @@ func Start(
 		connect.Connect{},
 		gateway.Gateway{},
 		info.Info{},
+		handlerRunner("android", handlers),
 	}
-	m = append(m, androidRunners(mods)...)
 
 	n, err := node.Run(ctx, nodeDir, m...)
 
@@ -62,6 +60,10 @@ func Start(
 
 	<-ctx.Done()
 
+	time.Sleep(300 * time.Millisecond)
+
+	log.Println("Astral stopped")
+
 	return nil
 }
 
@@ -72,5 +74,3 @@ func Identity() string {
 func Stop() {
 	stop()
 }
-
-type Writer io.Writer

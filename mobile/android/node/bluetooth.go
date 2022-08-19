@@ -23,6 +23,8 @@ type BluetoothSocket interface {
 	RemoteAddr() string // Returns the other party's network address if known, nil otherwise
 }
 
+type Writer io.Writer
+
 // ==================================== Mobile bluetooth wrapper ====================================
 
 func newBluetoothAdapter(client Bluetooth) bt.Client {
