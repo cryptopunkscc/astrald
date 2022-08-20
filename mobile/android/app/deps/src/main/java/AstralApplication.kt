@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import cc.cryptopunks.astral.mod.MethodsProvider
 import cc.cryptopunks.astral.mod.combineMethods
+import cc.cryptopunks.astral.mod.notification.notificationManagerMethods
 import cc.cryptopunks.astral.ui.main.ActionIntentsProvider
 
 interface AstralApplication :
@@ -12,7 +13,7 @@ interface AstralApplication :
     ActionIntentsProvider {
 
     override fun Context.androidMethods() = combineMethods(
-        // TODO add methods
+        notificationManagerMethods(),
     )
 
     override fun actionIntents(): Map<String, Intent> = mapOf(
