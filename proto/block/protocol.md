@@ -115,3 +115,11 @@ Error codes
 ### end (0xff)
 
 End takes no arguments and rerturns a single null byte which is the final byte of the protocol.
+
+## Side effects
+
+### [finalize](./protocol.md#finalize%20%280x04%29) -> [event:publish](../mod-event-pub.md#publish)
+
+|channel|data|type|
+|-|-|-|
+|"block"|id|[40]byte|
