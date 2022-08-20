@@ -27,10 +27,6 @@ android {
     }
 }
 dependencies {
-    implementation project(':astral:service')
-    api project(':astral:mod:notify')
-    api project(':astral:mod:content')
-    api project(':astral:ui:main')
-    api project(':astral:ui:permissions')
-    api project(':astral:ui:contacts')
+    api project(':astral:mod')
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.1"
 }
