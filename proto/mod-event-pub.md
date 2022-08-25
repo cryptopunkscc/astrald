@@ -15,7 +15,7 @@ arguments
 |type|name|desc|
 |-|-|-|
 |[c]c|channel|name of channel where evens are published|
-|[c]c|data|data frame passed to channel|
+|[s]c|data|data frame passed to channel|
 
 returned values
 

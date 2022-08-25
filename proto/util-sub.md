@@ -1,4 +1,4 @@
-# subscribe event protocol (draft)
+# subscribe protocol (draft)
 asynchronius, asymetric, protocol for subscribing events
 
 ## Overview
@@ -14,8 +14,8 @@ arguments
 
 |type|name|desc|
 |-|-|-|
-|[c]c|channel|name of channel where events are published|
-|[filter](./util-filter#filter)|filter|meta-data values filter|
+|[c]c|name|name of subscriber|
+|\*|filter|meta-data values filter|
 |c|pulse|pulse signal for keeping connection alive|
 
 returned values
@@ -23,7 +23,7 @@ returned values
 |type|name|desc|
 |-|-|-|
 |c|code|zero or an error code|
-|[s]c|data|data frame passed to channel|
+|\*|data|data frame passed to channel|
 
 flow:
 1. send `channel` name

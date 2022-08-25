@@ -8,6 +8,7 @@ protocol for remote content access
 |grant|grant the peer read access to the files|private|
 |revoke|revoke the peer read access to the files|private|
 |fetch|fetch identities of accessible files|public|
+|subscribe|subscribe identities of accessible files|public|
 |sync|download the selected files from peer|public|
 |close|close the connection|public|
 
@@ -53,6 +54,24 @@ returned values
 |type|name|desc|
 |-|-|-|
 |[uint16][40]byte|ids|files identities|
+
+### subscribe
+
+inherits [util:sub#subscribe](util-sub#subscribe)
+
+arguments
+
+|type|name|desc|
+|-|-|-|
+|[0]c|filter|filtering not supported|
+
+returned values
+
+|type|name|desc|
+|-|-|-|
+|[40]byte|data|file identity|
+
+
 
 ### sync
 arguments
