@@ -4,17 +4,27 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"time"
 )
 
-func (d Dispatcher) Ping() (err error) {
+func (d *Dispatcher) Ping() (err error) {
+	finish := make(chan struct{})
+	defer close(finish)
+	go func() {
+		select {
+		case <-d.Done():
+		case <-finish:
+		}
+		_ = d.Conn.Close()
+	}()
 	for {
 		var code byte
 		if err = cslq.Decode(d.Conn, "c", &code); err != nil {
-			return Error(err, "Cannot read ping")
+			err = Error(err, "Cannot read ping")
+			return
 		}
 		if err = d.Encode("c", code); err != nil {
-			return Error(err, "Cannot write ping")
+			err = Error(err, "Cannot write ping")
+			return
 		}
 	}
 }
@@ -116,30 +126,39 @@ func (d Dispatcher) Download(offerId OfferId) (err error) {
 		return err
 	}
 
+	finish := make(chan error)
+
+	// Ensure the status will be updated
+	go func() {
+		d.Job.Add(1)
+		select {
+		case err = <-finish:
+		case <-d.Done():
+			_ = client.Conn.Close()
+			err = <-finish
+		}
+		if err == nil {
+			_ = client.Close()
+		}
+		srv.Finish(offer, err)
+		d.Job.Done()
+	}()
+
 	// download files in background
-	go func(c RemoteClient) {
-		// Ensure the status will be updated
-		var err error
-		defer func() {
-			_ = c.Close()
-			time.Sleep(200 * time.Millisecond)
-			srv.Finish(offer, err)
-		}()
-
-		// Copy files to storage
-		err = d.File().Copy(offer).From(c.Conn)
-		if err != nil {
-			err = Error(err, "Cannot download files")
+	go func() {
+		defer close(finish)
+		// Copy files from connection to storage
+		if err = d.File().Copy(offer).From(client.Conn); err != nil {
+			finish <- Error(err, "Cannot download files")
 			return
 		}
-
 		// Send OK
-		err = c.Encode("c", 0)
-		if err != nil {
-			err = Error(err, "Cannot send ok")
+		if err = client.Encode("c", 0); err != nil {
+			finish <- Error(err, "Cannot send ok")
 			return
 		}
-	}(client)
+		finish <- nil
+	}()
 	return
 }
 

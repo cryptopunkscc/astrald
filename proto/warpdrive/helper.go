@@ -27,7 +27,7 @@ func (d *Dispatcher) filterSubscribe(
 	filter Filter,
 	get func(service OfferService) *Subscriptions,
 ) (unsub Unsubscribe) {
-	c := NewListener(d.Conn)
+	c := NewListener(d.Context, d.Conn)
 	var unsubIn Unsubscribe = func() {}
 	var unsubOut Unsubscribe = func() {}
 	switch filter {

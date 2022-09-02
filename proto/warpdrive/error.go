@@ -21,7 +21,7 @@ type wrappedError struct {
 func (e wrappedError) Error() string {
 	s := fmt.Sprintln(e.message)
 	if e.cause != nil {
-		s = fmt.Sprint(s, " - ", e.cause, "\n")
+		s = fmt.Sprint(s, " - ", e.cause)
 	}
 	return s
 }

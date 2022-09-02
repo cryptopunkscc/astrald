@@ -85,9 +85,9 @@ func (co CopyOffer) fileFrom(reader io.Reader) (err error) {
 		DrawInterval: 1000 * time.Millisecond,
 		DrawFunc:     update,
 	}
-	l, err := io.CopyN(writer, progress, info.Size)
+	co.Progress, err = io.CopyN(writer, progress, info.Size)
 	if err != nil {
-		co.Println("Cannot read", info.Uri, err, "expected size", info.Size, "but was", l)
+		co.Println("Cannot read", info.Uri, err, "expected size", info.Size, "but was", co.Progress)
 		return
 	}
 	if co.Progress != info.Size {
@@ -133,7 +133,7 @@ func (co CopyOffer) fileTo(writer io.Writer) (err error) {
 		DrawInterval: 1000 * time.Millisecond,
 		DrawFunc:     update,
 	}
-	_, err = io.CopyN(writer, progress, info.Size)
+	co.Progress, err = io.CopyN(writer, progress, info.Size)
 	if err != nil {
 		co.Println("Cannot write", info.Uri, err)
 		return

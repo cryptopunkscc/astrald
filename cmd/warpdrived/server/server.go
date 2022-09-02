@@ -16,6 +16,8 @@ type Server struct {
 	core.Component
 	warp    warpdrive.Service
 	localId id.Identity
+	Debug   bool
+	Finish  <-chan struct{}
 }
 
 func (s *Server) String() string {
@@ -33,7 +35,7 @@ func (s *Server) Run(ctx context.Context, api wrapper.Api) (err error) {
 
 	setupCore(&s.Component)
 
-	service.OfferUpdates(s.Component).Start(s)
+	s.Finish = service.OfferUpdates(s.Component).Start(s)
 
 	s.warp = service.Warpdrive(s.Component)
 
@@ -48,5 +50,6 @@ func (s *Server) Run(ctx context.Context, api wrapper.Api) (err error) {
 	}
 
 	<-s.Done()
+	<-s.Finish
 	return
 }

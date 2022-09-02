@@ -2,6 +2,7 @@ package warpdrive
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
@@ -12,7 +13,7 @@ import (
 const prompt = "warp> "
 
 func Cli(d *Dispatcher) (err error) {
-	if d.CallerId != d.LocalId {
+	if !d.Authorized {
 		return nil
 	}
 	prompt := prompt
@@ -27,6 +28,16 @@ func Cli(d *Dispatcher) (err error) {
 		err = Error(err, "Cannot connect local client")
 		return
 	}
+	finish := make(chan struct{})
+	defer close(finish)
+	go func() {
+		select {
+		case <-d.Done():
+		case <-finish:
+		}
+		_ = d.Conn.Close()
+		_ = c.Conn.Close()
+	}()
 	for scanner.Scan() {
 		text := scanner.Text()
 		switch text {
@@ -37,7 +48,7 @@ func Cli(d *Dispatcher) (err error) {
 		case "e", "exit":
 			return
 		case "", "h", "help":
-			_ = cliHelp(d.Conn, c, nil)
+			_ = cliHelp(d.Context, d.Conn, c, nil)
 			_ = d.Encode("[c]c", prompt)
 			continue
 		}
@@ -51,7 +62,7 @@ func Cli(d *Dispatcher) (err error) {
 		d.Logger = NewLogger(d.LogPrefix, fmt.Sprintf("(%s)", cmd))
 		fn, ok := commands[cmd]
 		if ok {
-			err = fn(d.Conn, c, args)
+			err = fn(d.Context, d.Conn, c, args)
 			if err != nil {
 				err = Error(err, "cli command error")
 				return
@@ -77,11 +88,11 @@ var commands = cmdMap{
 }
 
 type cmdMap map[string]cmdFunc
-type cmdFunc func(io.ReadWriter, LocalClient, []string) error
+type cmdFunc func(context.Context, io.ReadWriteCloser, LocalClient, []string) error
 
 // =========================== Commands ===============================
 
-func cliHelp(writer io.ReadWriter, _ LocalClient, _ []string) (err error) {
+func cliHelp(ctx context.Context, writer io.ReadWriteCloser, _ LocalClient, _ []string) (err error) {
 	for name := range commands {
 		if _, err = fmt.Fprintln(writer, name); err != nil {
 			return err
@@ -90,7 +101,7 @@ func cliHelp(writer io.ReadWriter, _ LocalClient, _ []string) (err error) {
 	return
 }
 
-func cliPeers(writer io.ReadWriter, client LocalClient, _ []string) (err error) {
+func cliPeers(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, _ []string) (err error) {
 	peers, err := client.Peers()
 	if err != nil {
 		return
@@ -104,7 +115,7 @@ func cliPeers(writer io.ReadWriter, client LocalClient, _ []string) (err error) 
 	return
 }
 
-func cliSend(writer io.ReadWriter, client LocalClient, args []string) (err error) {
+func cliSend(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, args []string) (err error) {
 	if len(args) < 1 {
 		_, err = fmt.Fprintln(writer, "<filePath> <peerId>?")
 		return
@@ -125,7 +136,7 @@ func cliSend(writer io.ReadWriter, client LocalClient, args []string) (err error
 	return
 }
 
-func cliSent(writer io.ReadWriter, client LocalClient, _ []string) (err error) {
+func cliSent(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, _ []string) (err error) {
 	sent, err := client.Offers(FilterOut)
 	if err != nil {
 		return err
@@ -139,7 +150,7 @@ func cliSent(writer io.ReadWriter, client LocalClient, _ []string) (err error) {
 	return
 }
 
-func cliReceived(writer io.ReadWriter, client LocalClient, _ []string) (err error) {
+func cliReceived(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, _ []string) (err error) {
 	received, err := client.Offers(FilterIn)
 	if err != nil {
 		return err
@@ -153,7 +164,7 @@ func cliReceived(writer io.ReadWriter, client LocalClient, _ []string) (err erro
 	return
 }
 
-func cliSubscribe(conn io.ReadWriter, client LocalClient, args []string) (err error) {
+func cliSubscribe(ctx context.Context, conn io.ReadWriteCloser, client LocalClient, args []string) (err error) {
 	filter := "all"
 	if len(args) > 0 {
 		filter = args[0]
@@ -169,13 +180,22 @@ func cliSubscribe(conn io.ReadWriter, client LocalClient, args []string) (err er
 	if err != nil {
 		return err
 	}
+	finish := make(chan struct{})
 	go func() {
+		select {
+		case <-ctx.Done():
+		case <-finish:
+		}
+		_ = client.Close()
+		_ = conn.Close()
+	}()
+	go func() {
+		defer close(finish)
 		var code byte
 		err = cslq.Decode(conn, "c", &code)
 		if errors.Is(err, io.EOF) {
 			err = nil
 		}
-		_ = client.Close()
 	}()
 	for offer := range offers {
 		_ = printFilesRequest(conn, offer)
@@ -183,7 +203,7 @@ func cliSubscribe(conn io.ReadWriter, client LocalClient, args []string) (err er
 	return
 }
 
-func cliStatus(conn io.ReadWriter, client LocalClient, args []string) (err error) {
+func cliStatus(ctx context.Context, conn io.ReadWriteCloser, client LocalClient, args []string) (err error) {
 	filter := "all"
 	if len(args) > 0 {
 		filter = args[0]
@@ -196,13 +216,22 @@ func cliStatus(conn io.ReadWriter, client LocalClient, args []string) (err error
 		_, err = fmt.Fprintln(conn, "Invalid filter: ", filter)
 		return
 	}
+	finish := make(chan struct{})
 	go func() {
+		select {
+		case <-ctx.Done():
+		case <-finish:
+		}
+		_ = client.Close()
+		_ = conn.Close()
+	}()
+	go func() {
+		defer close(finish)
 		var code byte
 		err = cslq.Decode(conn, "c", &code)
 		if errors.Is(err, io.EOF) {
 			err = nil
 		}
-		_ = client.Close()
 	}()
 	for event := range events {
 		_, _ = fmt.Fprintln(conn, event.Id, event.Update, event.In, event.Status, event.Index, event.Progress)
@@ -210,7 +239,7 @@ func cliStatus(conn io.ReadWriter, client LocalClient, args []string) (err error
 	return
 }
 
-func cliDownload(writer io.ReadWriter, client LocalClient, args []string) (err error) {
+func cliDownload(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, args []string) (err error) {
 	if len(args) < 1 {
 		_, err = fmt.Fprintln(writer, "<offerId>")
 		return
@@ -223,7 +252,7 @@ func cliDownload(writer io.ReadWriter, client LocalClient, args []string) (err e
 	return
 }
 
-func cliUpdate(writer io.ReadWriter, client LocalClient, args []string) (err error) {
+func cliUpdate(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, args []string) (err error) {
 	if len(args) < 3 {
 		_, err = fmt.Fprintln(writer, "<peerId> <attr> <value>")
 		return
@@ -245,7 +274,7 @@ func printFilesRequest(writer io.Writer, offer Offer) (err error) {
 	if offer.Index > -1 {
 		_, err = fmt.Fprintln(writer, "  file index:", offer.Index)
 		_, err = fmt.Fprintln(writer, "  progress:", offer.Progress)
-		_, err = fmt.Fprintln(writer, "  update at:", offer.Progress)
+		_, err = fmt.Fprintln(writer, "  update at:", offer.Update)
 	}
 	_, err = fmt.Fprintln(writer, "files:")
 	if err != nil {

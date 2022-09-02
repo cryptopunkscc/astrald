@@ -22,6 +22,9 @@ func (s *Server) register(
 		for request := range port.Next() {
 			requestId = requestId + 1
 			go func(request wrapper.Request, requestId uint) {
+				s.Job.Add(1)
+				defer s.Job.Done()
+
 				conn, err := request.Accept()
 				defer func() {
 					if err != nil {
@@ -33,13 +36,17 @@ func (s *Server) register(
 					return
 				}
 				defer conn.Close()
+				callerId := request.Caller().String()
+				authorized := callerId == s.localId.String()
 				_ = warpdrive.Dispatcher{
-					Service:   s.warp,
-					CallerId:  request.Caller().String(),
-					LocalId:   s.localId.String(),
-					Api:       s.Api,
-					Conn:      conn,
-					LogPrefix: fmt.Sprint("[WARPDRIVE] ", query, ":", requestId),
+					Context:    s.Context,
+					Service:    s.warp,
+					CallerId:   callerId,
+					Api:        s.Api,
+					Job:        s.Job,
+					Conn:       conn,
+					Authorized: s.Debug || authorized,
+					LogPrefix:  fmt.Sprint("[WARPDRIVE] ", query, ":", requestId),
 				}.Serve(dispatch)
 			}(request, requestId)
 		}

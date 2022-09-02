@@ -173,7 +173,7 @@ func (c LocalClient) Subscribe(filter Filter) (offers <-chan Offer, err error) {
 				if fmt.Sprint(errors.Unwrap(err)) == "use of closed network connection" {
 					err = nil
 				}
-				c.Println(Error(err, "Finish listening new offers"))
+				c.Print(Error(err, "Finish listening new offers"))
 				return
 			}
 			offers <- *files

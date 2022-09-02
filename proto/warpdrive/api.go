@@ -72,7 +72,7 @@ type OfferStatus struct {
 }
 
 func (offer Offer) IsOngoing() bool {
-	return offer.Index > -1 && offer.Index < len(offer.Files)
+	return offer.Status == StatusUpdated
 }
 
 type Peers map[PeerId]*Peer

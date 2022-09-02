@@ -1,6 +1,7 @@
 package warpdrive
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -31,23 +32,29 @@ func (s *Subscriptions) Subscribe(c Listener) (unsub Unsubscribe) {
 	return
 }
 
-func NewListener(w io.WriteCloser) (listener Listener) {
+func NewListener(ctx context.Context, w io.WriteCloser) (listener Listener) {
 	c := make(chan interface{}, 1024)
 	listener = c
 	e := json.NewEncoder(w)
 	go func() {
-		for i := range c {
-			var err error
-			switch v := i.(type) {
-			case []byte:
-				v = append(v, '\n')
-				_, err = w.Write(v)
-			default:
-				err = e.Encode(i)
-			}
-			if err != nil {
-				log.Println("Cannot write", err)
+		for {
+			select {
+			case <-ctx.Done():
+				_ = w.Close()
 				return
+			case i := <-c:
+				var err error
+				switch v := i.(type) {
+				case []byte:
+					v = append(v, '\n')
+					_, err = w.Write(v)
+				default:
+					err = e.Encode(i)
+				}
+				if err != nil {
+					log.Println("Cannot write", err)
+					return
+				}
 			}
 		}
 	}()

@@ -17,10 +17,16 @@ import (
 
 func main() {
 	var err error
+
+	// Set up app execution context
+	ctx, shutdown := context.WithCancel(context.Background())
+
 	// init dispatcher
 	d := warpdrive.Dispatcher{
-		LogPrefix: "[CLI]",
-		Api:       apphost.Adapter{},
+		Context:    ctx,
+		LogPrefix:  "[CLI]",
+		Api:        apphost.Adapter{},
+		Authorized: true,
 	}
 
 	// resolve identity
@@ -29,17 +35,13 @@ func main() {
 		log.Panicln(warpdrive.Error(err, "cannot resolve local node id"))
 		return
 	}
-	d.LocalId = identity.String()
-	d.CallerId = d.LocalId
+	d.CallerId = identity.String()
 
 	// setup connection
 	pr, pw := io.Pipe()
 	rw := &stdReadWrite{pr, os.Stdout}
 	d.Conn = rw
 	d.Endec = cslq.NewEndec(rw)
-
-	// Set up app execution context
-	ctx, shutdown := context.WithCancel(context.Background())
 
 	// run cli
 	go func() {
@@ -111,6 +113,5 @@ type stdReadWrite struct {
 }
 
 func (s stdReadWrite) Close() error {
-	log.Println("stdReadWrite close")
 	return nil
 }

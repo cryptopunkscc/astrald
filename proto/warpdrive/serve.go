@@ -1,6 +1,7 @@
 package warpdrive
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
@@ -8,15 +9,18 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/wrapper"
 	"io"
 	"log"
+	"sync"
 )
 
 type Dispatcher struct {
 	Service
-	CallerId  string
-	LocalId   string
-	LogPrefix string
-	Api       wrapper.Api
-	Conn      io.ReadWriteCloser
+	context.Context
+	CallerId   string
+	Authorized bool
+	LogPrefix  string
+	Api        wrapper.Api
+	Conn       io.ReadWriteCloser
+	Job        *sync.WaitGroup
 	*cslq.Endec
 	*log.Logger
 }
@@ -61,7 +65,7 @@ func Dispatch(d *Dispatcher) (err error) {
 		return rpc.Dispatch(d.Conn, "[c]c", d.Upload)
 	default:
 		// reject remote requests
-		if d.CallerId != d.LocalId {
+		if !d.Authorized {
 			return nil
 		}
 		switch cmd {

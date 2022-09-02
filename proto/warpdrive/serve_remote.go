@@ -2,7 +2,6 @@ package warpdrive
 
 import (
 	"encoding/json"
-	"time"
 )
 
 func (d *Dispatcher) Receive() (err error) {
@@ -66,25 +65,40 @@ func (d *Dispatcher) Upload(offerId OfferId) (err error) {
 		return
 	}
 
+	finish := make(chan error)
+
 	// Ensure the status will be updated
-	defer func() {
-		time.Sleep(200 * time.Millisecond)
+	go func() {
+		d.Job.Add(1)
+		select {
+		case err = <-finish:
+		case <-d.Done():
+			_ = d.Conn.Close()
+			err = <-finish
+		}
 		srv.Finish(offer, err)
+		d.Job.Done()
 	}()
 
 	// Send files
-	err = d.File().Copy(offer).To(d.Conn)
-	if err != nil {
-		err = Error(err, "Cannot upload files")
-		return
-	}
+	go func() {
+		defer close(finish)
+		// Copy files to connection
+		err := d.File().Copy(offer).To(d.Conn)
+		if err != nil {
+			err = Error(err, "Cannot upload files")
+		}
+		finish <- err
+	}()
 
 	// Read OK
-	var code byte
-	err = d.Decode("c", &code)
-	if err != nil {
-		err = Error(err, "Cannot read ok")
-		return
-	}
+	func() {
+		var code byte
+		if err := d.Decode("c", &code); err != nil {
+			err = Error(err, "Cannot read ok")
+			d.Println(err)
+			_ = d.Conn.Close()
+		}
+	}()
 	return
 }

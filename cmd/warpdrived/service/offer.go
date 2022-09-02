@@ -124,10 +124,10 @@ func (srv *Offer) StatusSubscriptions() *warpdrive.Subscriptions {
 	return srv.StatusSubs
 }
 
-func (srv Offer) dispatch(offer *warpdrive.Offer) {
+func (srv *Offer) dispatch(offer *warpdrive.Offer) {
 	offer.Update = time.Now().UnixMilli()
 	srv.Offer = offer
-	srv.Channel.Offers <- &srv
+	srv.Channel.Offers <- srv
 }
 
 var _ core.OfferUpdate = &Offer{}
@@ -179,12 +179,18 @@ func (srv *Offer) notify(data interface{}, subscribers *warpdrive.Subscriptions)
 
 type OfferUpdates core.Component
 
-func (c OfferUpdates) Start(ctx context.Context) {
+func (c OfferUpdates) Start(ctx context.Context) <-chan struct{} {
 	receive := make(chan core.OfferUpdate, 1024)
 	c.Channel.Offers = receive
-
+	finish := make(chan struct{})
 	go func() {
 		buffer := newOfferUpdatesBuffer()
+		defer func() {
+			if buffer.len() > 0 {
+				c.processUpdates(buffer)
+			}
+			close(finish)
+		}()
 		for {
 			select {
 			case update := <-receive:
@@ -208,43 +214,11 @@ func (c OfferUpdates) Start(ctx context.Context) {
 					// Start processing buffered elements:
 					// Prepare array with sorted updates.
 					startTime := time.Now().UnixNano()
-					var updates []core.OfferUpdate
-					for _, b := range buffer {
-						for _, next := range b {
-							updates = append(updates, next)
-						}
-					}
-					sort.Sort(byUpdateTime(updates))
 
-					// Save updates in memory cache.
-					c.Mutex.Incoming.Lock()
-					c.Mutex.Outgoing.Lock()
-					for _, update := range updates {
-						update.Cache()
-					}
-					c.Mutex.Incoming.Unlock()
-					c.Mutex.Outgoing.Unlock()
-
-					// Save updates in storage.
-					for _, update := range updates {
-						update.Save()
-					}
-
-					// Notify listeners
-					for _, update := range updates {
-						update.Forward()
-					}
-
-					// Display system notification
-					arr := make([]notify.Notification, len(updates))
-					for i, update := range updates {
-						arr[i] = update.Notification()
-					}
-					c.Sys.Notify(arr)
+					c.processUpdates(buffer)
 
 					// Cleanup buffer
 					buffer = newOfferUpdatesBuffer()
-
 					// Measure work/sleep cycle to 1 second
 					endTime := time.Now().UnixNano()
 					workTime := endTime - startTime
@@ -257,8 +231,50 @@ func (c OfferUpdates) Start(ctx context.Context) {
 
 	go func() {
 		<-ctx.Done()
+		c.Job.Wait()
+		time.Sleep(200 * time.Millisecond)
 		close(receive)
+		<-finish
+		c.Println("finish updating offers")
 	}()
+	return finish
+}
+
+func (c OfferUpdates) processUpdates(buffer offerUpdatesBuffer) {
+	var updates []core.OfferUpdate
+	for _, b := range buffer {
+		for _, next := range b {
+			updates = append(updates, next)
+		}
+	}
+
+	sort.Sort(byUpdateTime(updates))
+
+	// Save updates in memory cache.
+	c.Mutex.Incoming.Lock()
+	c.Mutex.Outgoing.Lock()
+	for _, update := range updates {
+		update.Cache()
+	}
+	c.Mutex.Incoming.Unlock()
+	c.Mutex.Outgoing.Unlock()
+
+	// Save updates in storage.
+	for _, update := range updates {
+		update.Save()
+	}
+
+	// Notify listeners
+	for _, update := range updates {
+		update.Forward()
+	}
+
+	// Display system notification
+	arr := make([]notify.Notification, len(updates))
+	for i, update := range updates {
+		arr[i] = update.Notification()
+	}
+	c.Sys.Notify(arr)
 }
 
 type offerUpdatesBuffer map[bool]map[warpdrive.OfferId]core.OfferUpdate

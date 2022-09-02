@@ -16,6 +16,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -43,6 +44,7 @@ func Start(
 	// Set up app execution context
 	var ctx context.Context
 	ctx, stop = context.WithCancel(context.Background())
+	services := &sync.WaitGroup{}
 
 	m := []node.ModuleRunner{
 		admin.Admin{},
@@ -52,8 +54,9 @@ func Start(
 		info.Info{},
 		contacts.Contacts{},
 		handlerRunner("android", handlers),
-		serviceRunner("warpdrive",
+		serviceRunner(services, "warpdrive",
 			&warpdrive.Server{
+				Debug: true,
 				Component: core.Component{
 					Config: core.Config{
 						Platform:       core.PlatformAndroid,
@@ -74,6 +77,8 @@ func Start(
 	identity = n.Identity().String()
 
 	<-ctx.Done()
+
+	services.Wait()
 
 	time.Sleep(300 * time.Millisecond)
 

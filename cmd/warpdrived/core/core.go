@@ -16,6 +16,7 @@ type Component struct {
 	*Observers
 	*Channel
 	wrapper.Api
+	Job *sync.WaitGroup
 }
 
 type Config struct {

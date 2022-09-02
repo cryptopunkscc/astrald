@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 func setupCore(c *core.Component) {
@@ -57,6 +58,9 @@ func setupCore(c *core.Component) {
 	default:
 		c.Sys.Notify = stub.Notify
 	}
+
+	// Workers
+	c.Job = &sync.WaitGroup{}
 }
 
 func storageDir() string {
