@@ -32,8 +32,7 @@ func main() {
 		}
 	}()
 
-	srv := &warpdrived.Server{}
-	err := srv.Run(ctx, apphost.Adapter{})
+	err := warpdrived.Desktop().Run(ctx, apphost.Adapter{})
 
 	code := 0
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/lib/warpdrived"
-	"github.com/cryptopunkscc/astrald/lib/warpdrived/core"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/connect"
@@ -54,18 +53,7 @@ func Start(
 		info.Info{},
 		contacts.Contacts{},
 		handlerRunner("android", handlers),
-		serviceRunner(services, "warpdrive",
-			&warpdrived.Server{
-				Debug: true,
-				Component: core.Component{
-					Config: core.Config{
-						Platform:       core.PlatformAndroid,
-						RepositoryDir:  filepath.Join(dir, "warpdrive"),
-						RemoteResolver: true,
-					},
-				},
-			},
-		),
+		serviceRunner(services, "warpdrive", warpdrived.Android(dir)),
 	}
 
 	n, err := node.Run(ctx, nodeDir, m...)
