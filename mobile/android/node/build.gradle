@@ -39,3 +39,21 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.8.0'
     testImplementation 'junit:junit:4.13.2'
 }
+
+task buildGo(type: Exec) {
+    group 'build'
+    commandLine 'go', 'build', '-o', '../build/astral', './'
+}
+
+task buildGoMobile(type: Exec) {
+    group 'build'
+    dependsOn buildGo
+    inputs.files file('../build/astral')
+    outputs.upToDateWhen {
+        file('../build/astral.aar').exists()
+    }
+    workingDir '../'
+    commandLine './buildGo.sh'
+}
+
+preBuild.dependsOn buildGoMobile
