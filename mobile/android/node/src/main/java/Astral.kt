@@ -32,6 +32,12 @@ private val identity = CompletableDeferred<String>()
 
 private val status = MutableStateFlow(AstralStatus.Stopped)
 
+val Context.astralDir get() = File(applicationInfo.dataDir)
+
+val File.nodeDir get() = resolve("node").apply { if (!exists()) mkdir() }
+
+val File.astralConfig get() = resolve("astrald.conf")
+
 var startTime: Long = System.currentTimeMillis(); private set
 
 val astralStatus: StateFlow<AstralStatus> get() = status
@@ -47,7 +53,7 @@ fun Context.startAstral() {
         astralJob = scope.launch {
             val multicastLock = acquireMulticastWakeLock()
             try {
-                val dir = File(applicationInfo.dataDir).absolutePath
+                val dir = astralDir.absolutePath
                 val handlers = Handlers.from(resolveMethods())
                 val bluetooth = Bluetooth()
 
