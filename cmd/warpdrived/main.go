@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/cmd/warpdrived/server"
 	"github.com/cryptopunkscc/astrald/lib/wrapper/apphost"
-	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"log"
 	"os"
 	"os/signal"
@@ -37,8 +37,7 @@ func main() {
 
 	code := 0
 	if err != nil {
-		err = warpdrive.Error(err, "cannot run server")
-		log.Println(err)
+		log.Print(fmt.Println("cannot run server", err))
 		code = 1
 		shutdown()
 	}
