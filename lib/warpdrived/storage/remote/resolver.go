@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/storage"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage"
 	"github.com/cryptopunkscc/astrald/proto/android/content"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"path"

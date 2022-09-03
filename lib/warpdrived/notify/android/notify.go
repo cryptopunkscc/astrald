@@ -2,7 +2,7 @@ package android
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/notify"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/notify"
 	android "github.com/cryptopunkscc/astrald/proto/android/notify"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"log"

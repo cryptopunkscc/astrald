@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/notify"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/notify"
 	"github.com/cryptopunkscc/astrald/lib/wrapper"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"log"

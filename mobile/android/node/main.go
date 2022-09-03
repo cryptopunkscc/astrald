@@ -2,10 +2,10 @@ package astral
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/core"
-	warpdrive "github.com/cryptopunkscc/astrald/cmd/warpdrived/server"
 	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/core"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/connect"
@@ -55,7 +55,7 @@ func Start(
 		contacts.Contacts{},
 		handlerRunner("android", handlers),
 		serviceRunner(services, "warpdrive",
-			&warpdrive.Server{
+			&warpdrived.Server{
 				Debug: true,
 				Component: core.Component{
 					Config: core.Config{

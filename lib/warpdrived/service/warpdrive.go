@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/core"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/core"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 )
 

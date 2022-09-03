@@ -1,11 +1,11 @@
-package server
+package warpdrived
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/core"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/notify/android"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/notify/stub"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/storage/file"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/core"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/notify/android"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/notify/stub"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage/file"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"log"
 	"os"

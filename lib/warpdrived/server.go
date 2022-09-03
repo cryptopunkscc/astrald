@@ -1,12 +1,12 @@
-package server
+package warpdrived
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/core"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/service"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/core"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/service"
 	"github.com/cryptopunkscc/astrald/lib/wrapper"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 )

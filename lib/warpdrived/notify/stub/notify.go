@@ -1,7 +1,7 @@
 package stub
 
 import (
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/notify"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/notify"
 )
 
 var _ notify.Notify = Notify

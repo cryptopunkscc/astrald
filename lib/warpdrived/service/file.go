@@ -1,10 +1,10 @@
 package service
 
 import (
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/core"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/storage"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/storage/file"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/storage/remote"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/core"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage/file"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage/remote"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"github.com/mitchellh/ioprogress"
 	"io"

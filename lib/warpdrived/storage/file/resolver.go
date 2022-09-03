@@ -1,7 +1,7 @@
 package file
 
 import (
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/storage"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"io"
 	"io/fs"

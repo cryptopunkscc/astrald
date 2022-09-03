@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/cmd/warpdrived/server"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived"
 	"github.com/cryptopunkscc/astrald/lib/wrapper/apphost"
 	"log"
 	"os"
@@ -32,7 +32,7 @@ func main() {
 		}
 	}()
 
-	srv := &server.Server{}
+	srv := &warpdrived.Server{}
 	err := srv.Run(ctx, apphost.Adapter{})
 
 	code := 0
