@@ -8,37 +8,64 @@ import android.app.Service
 import android.content.Context
 import android.graphics.Color
 import android.os.Build
-import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
 import cc.cryptopunks.astral.intent.astralActivityIntent
 
-internal fun Service.startForegroundNotification(@DrawableRes icon: Int) {
-    val channelId = createNotificationChannel()
+internal fun Service.startForegroundNotification() {
+    val channelId = createNotificationChannel(
+        id = "astral",
+        channelName = "Astral Service",
+        importance = NotificationManagerCompat.IMPORTANCE_LOW,
+        color = Color.BLUE,
+        visibility = Notification.VISIBILITY_PRIVATE,
+    )
 
     val pendingIntent: PendingIntent = PendingIntent
         .getActivity(this, 0, astralActivityIntent, 0)
 
-    val notification: Notification = NotificationCompat
+    val builder = NotificationCompat
         .Builder(this, channelId)
-        .setSmallIcon(icon)
+        .setSmallIcon(R.mipmap.ic_launcher)
         .setContentIntent(pendingIntent)
         .setContentTitle("Astral")
-        .build()
 
-    // Notification ID cannot be 0.
-    startForeground(1, notification)
+    startForeground(1, builder.build())
 }
 
+internal fun Context.showConfigureAstralNotification() {
+    val channelId = createNotificationChannel(
+        id = "info",
+        channelName = "info",
+        importance = NotificationManagerCompat.IMPORTANCE_MAX,
+        color = Color.BLUE,
+        visibility = Notification.VISIBILITY_PRIVATE,
+    )
 
-private fun Context.createNotificationChannel(): String {
-    val id = "astral"
-    val channelName = "Astral Service"
-    val importance = NotificationManager.IMPORTANCE_LOW
-    val color = Color.BLUE
-    val visibility = Notification.VISIBILITY_PRIVATE
+    val pendingIntent: PendingIntent = PendingIntent
+        .getActivity(this, 0, astralActivityIntent, 0)
+
+    val builder = NotificationCompat
+        .Builder(this, channelId)
+        .setSmallIcon(R.mipmap.ic_launcher)
+        .setContentIntent(pendingIntent)
+        .setContentTitle("Astral")
+        .setContentText("Configuration required")
+        .setAutoCancel(true)
+        .setPriority(NotificationCompat.PRIORITY_MAX)
+    
+    NotificationManagerCompat.from(this).notify(2, builder.build())
+}
+
+private fun Context.createNotificationChannel(
+    id: String,
+    channelName: String,
+    importance: Int,
+    color: Int,
+    visibility: Int,
+): String {
     return when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
         -> NotificationChannel(id, channelName, importance).apply {

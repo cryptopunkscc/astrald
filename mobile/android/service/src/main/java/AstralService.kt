@@ -4,6 +4,11 @@ import android.app.Service
 import android.content.Intent
 import android.util.Log
 import cc.cryptopunks.astral.node.ASTRAL
+import cc.cryptopunks.astral.node.AstralStatus
+import cc.cryptopunks.astral.node.EmptyConfig
+import cc.cryptopunks.astral.node.astralConfig
+import cc.cryptopunks.astral.node.astralStatus
+import cc.cryptopunks.astral.node.loadAstralConfig
 import cc.cryptopunks.astral.node.startAstral
 import cc.cryptopunks.astral.node.stopAstral
 import kotlinx.coroutines.CoroutineScope
@@ -19,9 +24,15 @@ class AstralService : Service(), CoroutineScope {
     private val tag = ASTRAL + "Service"
 
     override fun onCreate() {
-        Log.d(tag, "Starting astral service")
-        startForegroundNotification(R.mipmap.ic_launcher)
-        launch { startAstral() }
+        startForegroundNotification()
+        loadAstralConfig()
+        if (astralConfig.value == EmptyConfig) {
+            showConfigureAstralNotification()
+            stopSelf()
+        } else launch {
+            Log.d(tag, "Starting astral service")
+            startAstral()
+        }
     }
 
     override fun onLowMemory() {
@@ -41,8 +52,10 @@ class AstralService : Service(), CoroutineScope {
 
     override fun onDestroy() {
         stopForeground(true)
-        stopAstral()
-        Log.d(tag, "Destroying astral service")
+        if (astralStatus.value != AstralStatus.Stopped) {
+            Log.d(tag, "Destroying astral service")
+            stopAstral()
+        }
         cancel()
     }
 

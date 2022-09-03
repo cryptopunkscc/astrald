@@ -4,6 +4,9 @@ import android.content.Context
 import android.util.Log
 import astral.Astral
 import cc.cryptopunks.astral.mod.resolveMethods
+import cc.cryptopunks.astral.node.AstralStatus.Started
+import cc.cryptopunks.astral.node.AstralStatus.Starting
+import cc.cryptopunks.astral.node.AstralStatus.Stopped
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -17,8 +20,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.concurrent.Executors
+import kotlin.time.Duration.Companion.seconds
 
 const val ASTRAL = "Astral"
 
@@ -30,13 +35,11 @@ private var astralJob: Job = Job().apply { complete() }
 
 private val identity = CompletableDeferred<String>()
 
-private val status = MutableStateFlow(AstralStatus.Stopped)
+private val status = MutableStateFlow(Stopped)
 
 val Context.astralDir get() = File(applicationInfo.dataDir)
 
 val File.nodeDir get() = resolve("node").apply { if (!exists()) mkdir() }
-
-val File.astralConfig get() = resolve("astrald.conf")
 
 var startTime: Long = System.currentTimeMillis(); private set
 
@@ -45,9 +48,9 @@ val astralStatus: StateFlow<AstralStatus> get() = status
 enum class AstralStatus { Starting, Started, Stopped }
 
 fun Context.startAstral() {
-    if (status.value == AstralStatus.Stopped) {
+    if (status.value == Stopped) {
         startTime = System.currentTimeMillis()
-        status.value = AstralStatus.Starting
+        status.value = Starting
 
         // Start astral daemon
         astralJob = scope.launch {
@@ -61,7 +64,7 @@ fun Context.startAstral() {
             } catch (e: Throwable) {
                 e.printStackTrace()
             } finally {
-                status.value = AstralStatus.Stopped
+                status.value = Stopped
                 Log.d("AstralNetwork", "releasing multicast")
                 multicastLock.release()
             }
@@ -76,13 +79,18 @@ fun Context.startAstral() {
             identity.complete(id)
         }
 
-        status.value = AstralStatus.Started
+        status.value = Started
     }
 }
 
 fun stopAstral() = runBlocking {
-    Astral.stop()
-    astralJob.join()
+    val status = withTimeoutOrNull(5.seconds) {
+        status.first { it != Starting }
+    }
+    if (status != Stopped) {
+        Astral.stop()
+        astralJob.join()
+    }
 }
 
 suspend fun astralIdentity() = identity.await()

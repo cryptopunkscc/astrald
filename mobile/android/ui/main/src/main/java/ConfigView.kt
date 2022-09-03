@@ -24,6 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import cc.cryptopunks.astral.node.Config
+import cc.cryptopunks.astral.node.setAstralConfig
 import cc.cryptopunks.astral.theme.AstralTheme
 
 @Preview
@@ -65,10 +67,7 @@ internal fun ConfigView(
             val context = LocalContext.current
             Spacer(Modifier.height(32.dp))
             Button(
-                onClick = {
-                    context.astralConfig.writeText("alias: $alias")
-                    model.initialized.value = true
-                }
+                onClick = { context.setAstralConfig(Config(alias)) }
             ) {
                 Text("setup")
             }
