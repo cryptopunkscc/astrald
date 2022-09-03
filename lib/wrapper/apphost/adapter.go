@@ -42,7 +42,7 @@ func (a appHostPort) Next() <-chan wrapper.Request {
 }
 
 func (a appHostPort) Close() error {
-	return a.Close()
+	return a.Listener.Close()
 }
 
 type appHostRequest struct{ query *astral.Query }
