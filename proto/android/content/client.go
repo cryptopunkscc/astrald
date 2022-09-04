@@ -4,16 +4,17 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/lib/astral"
+	"github.com/cryptopunkscc/astrald/lib/wrapper"
 	"io"
 )
 
 type Client struct {
+	wrapper.Api
 	Identity id.Identity
 }
 
 func (c Client) Info(uri string) (files Info, err error) {
-	conn, err := astral.Dial(c.Identity, PortInfo)
+	conn, err := c.Query(c.Identity, PortInfo)
 	if err != nil {
 		return
 	}
@@ -30,7 +31,7 @@ func (c Client) Info(uri string) (files Info, err error) {
 }
 
 func (c Client) Reader(uri string) (reader io.ReadCloser, err error) {
-	conn, err := astral.Dial(c.Identity, Port)
+	conn, err := c.Query(c.Identity, Port)
 	if err != nil {
 		return
 	}

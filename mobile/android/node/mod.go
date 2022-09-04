@@ -58,8 +58,16 @@ func (r handlersModuleRunner) Run(ctx context.Context, n *node.Node) error {
 					log.Println("Cannot accept query", err)
 					continue
 				}
-				go func(conn io.ReadWriteCloser) {
+				finish := make(chan struct{})
+				go func() {
 					defer conn.Close()
+					select {
+					case <-ctx.Done():
+					case <-finish:
+					}
+				}()
+				go func(conn io.ReadWriteCloser) {
+					defer close(finish)
 					w := &ConnectionWrapper{ReadWriteCloser: conn}
 					handler.Serve(w)
 				}(conn)

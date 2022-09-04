@@ -4,14 +4,17 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/lib/astral"
+	"github.com/cryptopunkscc/astrald/lib/wrapper"
 	"log"
 )
 
-type Client struct{ Identity id.Identity }
+type Client struct {
+	wrapper.Api
+	Identity id.Identity
+}
 
 func (c Client) Create(channel Channel) (err error) {
-	conn, err := astral.Dial(c.Identity, PortChannel)
+	conn, err := c.Query(c.Identity, PortChannel)
 	if err != nil {
 		return
 	}
@@ -25,7 +28,7 @@ func (c Client) Create(channel Channel) (err error) {
 }
 
 func (c Client) Notify(notifications ...Notification) (err error) {
-	conn, err := astral.Dial(c.Identity, Port)
+	conn, err := c.Query(c.Identity, Port)
 	if err != nil {
 		return
 	}
@@ -39,7 +42,7 @@ func (c Client) Notify(notifications ...Notification) (err error) {
 }
 
 func (c Client) Notifier() (dispatch Notify) {
-	conn, err := astral.Dial(c.Identity, Port)
+	conn, err := c.Query(c.Identity, Port)
 	if err != nil {
 		return
 	}
