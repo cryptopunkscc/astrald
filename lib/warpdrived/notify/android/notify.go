@@ -3,6 +3,7 @@ package android
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/lib/warpdrived/notify"
+	"github.com/cryptopunkscc/astrald/lib/wrapper"
 	android "github.com/cryptopunkscc/astrald/proto/android/notify"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"log"
@@ -10,8 +11,9 @@ import (
 	"strings"
 )
 
-func New() notify.Notify {
+func New(api wrapper.Api) notify.Notify {
 	m := &notifier{}
+	m.Api = api
 	m.inChannel = android.Channel{
 		Id:         "warpdrive-in",
 		Name:       "Warp Drive incoming",
@@ -47,7 +49,7 @@ func New() notify.Notify {
 }
 
 type notifier struct {
-	api           android.Client
+	android.Client
 	notify        android.Notify
 	inChannel     android.Channel
 	outChannel    android.Channel
@@ -59,17 +61,17 @@ type notifier struct {
 
 func (m *notifier) CreateChannels() *notifier {
 
-	err := m.api.Create(m.inChannel)
+	err := m.Create(m.inChannel)
 	if err != nil {
 		log.Println("Cannot create incoming notification channel", err)
 		return nil
 	}
-	err = m.api.Create(m.outChannel)
+	err = m.Create(m.outChannel)
 	if err != nil {
 		log.Println("Cannot create outgoing notification channel", err)
 		return nil
 	}
-	m.notify = m.api.Notifier()
+	m.notify = m.Notifier()
 	return m
 }
 

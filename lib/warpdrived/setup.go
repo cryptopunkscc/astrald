@@ -54,7 +54,7 @@ func setupCore(c *core.Component) {
 	// Notify
 	switch c.Platform {
 	case core.PlatformAndroid:
-		c.Sys.Notify = android.New()
+		c.Sys.Notify = android.New(c.Api)
 	default:
 		c.Sys.Notify = stub.Notify
 	}

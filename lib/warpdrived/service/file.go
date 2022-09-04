@@ -21,7 +21,7 @@ func (f File) Info(uri string) (files []warpdrive.Info, err error) {
 
 func (f File) resolve() storage.FileResolver {
 	if f.RemoteResolver {
-		return remote.Resolver{}
+		return remote.Resolver(f)
 	} else {
 		return file.Resolver{}
 	}

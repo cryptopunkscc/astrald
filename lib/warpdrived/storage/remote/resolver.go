@@ -2,18 +2,23 @@ package remote
 
 import (
 	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage"
+	"github.com/cryptopunkscc/astrald/lib/wrapper"
 	"github.com/cryptopunkscc/astrald/proto/android/content"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"path"
 )
 
-var _ storage.FileResolver = Resolver{}
-
-type Resolver struct {
+type resolver struct {
 	content.Client
 }
 
-func (c Resolver) Info(uri string) (files []warpdrive.Info, err error) {
+func Resolver(api wrapper.Api) storage.FileResolver {
+	r := &resolver{}
+	r.Api = api
+	return r
+}
+
+func (c resolver) Info(uri string) (files []warpdrive.Info, err error) {
 	i, err := c.Client.Info(uri)
 	if err != nil {
 		return
