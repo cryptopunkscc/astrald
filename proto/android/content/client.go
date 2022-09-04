@@ -30,12 +30,12 @@ func (c Client) Info(uri string) (files Info, err error) {
 	return
 }
 
-func (c Client) Reader(uri string) (reader io.ReadCloser, err error) {
+func (c Client) Reader(uri string, offset int64) (reader io.ReadCloser, err error) {
 	conn, err := c.Query(c.Identity, Port)
 	if err != nil {
 		return
 	}
-	err = cslq.Encode(conn, "[c]c", uri)
+	err = cslq.Encode(conn, "[c]c q", uri, offset)
 	if err != nil {
 		return
 	}
@@ -53,6 +53,5 @@ type fileReader struct {
 }
 
 func (f fileReader) Close() error {
-	_ = cslq.Encode(f, "c", 0)
 	return f.ReadWriteCloser.Close()
 }

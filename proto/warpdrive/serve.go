@@ -62,7 +62,7 @@ func Dispatch(d *Dispatcher) (err error) {
 	case remoteSend:
 		return rpc.Dispatch(d.Conn, "", d.Receive)
 	case remoteDownload:
-		return rpc.Dispatch(d.Conn, "[c]c", d.Upload)
+		return rpc.Dispatch(d.Conn, "[c]c q q", d.Upload)
 	default:
 		// reject remote requests
 		if !d.Authorized {

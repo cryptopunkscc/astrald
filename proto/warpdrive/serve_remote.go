@@ -2,6 +2,7 @@ package warpdrive
 
 import (
 	"encoding/json"
+	"time"
 )
 
 func (d *Dispatcher) Receive() (err error) {
@@ -45,7 +46,11 @@ func (d *Dispatcher) Receive() (err error) {
 	return
 }
 
-func (d *Dispatcher) Upload(offerId OfferId) (err error) {
+func (d *Dispatcher) Upload(
+	offerId OfferId,
+	index int,
+	offset int64,
+) (err error) {
 	srv := d.Outgoing()
 
 	// Obtain setup service with offer id
@@ -67,23 +72,12 @@ func (d *Dispatcher) Upload(offerId OfferId) (err error) {
 
 	finish := make(chan error)
 
-	// Ensure the status will be updated
-	go func() {
-		d.Job.Add(1)
-		select {
-		case err = <-finish:
-		case <-d.Done():
-			_ = d.Conn.Close()
-			err = <-finish
-		}
-		srv.Finish(offer, err)
-		d.Job.Done()
-	}()
-
 	// Send files
 	go func() {
 		defer close(finish)
 		// Copy files to connection
+		offer.Index = index
+		offer.Progress = offset
 		err := d.File().Copy(offer).To(d.Conn)
 		if err != nil {
 			err = Error(err, "Cannot upload files")
@@ -92,13 +86,27 @@ func (d *Dispatcher) Upload(offerId OfferId) (err error) {
 	}()
 
 	// Read OK
-	func() {
+	go func() {
 		var code byte
 		if err := d.Decode("c", &code); err != nil {
 			err = Error(err, "Cannot read ok")
 			d.Println(err)
 			_ = d.Conn.Close()
 		}
+	}()
+
+	// Ensure the status will be updated
+	func() {
+		d.Job.Add(1)
+		select {
+		case err = <-finish:
+		case <-d.Done():
+			_ = d.Conn.Close()
+			err = <-finish
+		}
+		srv.Finish(offer, err)
+		time.Sleep(200)
+		d.Job.Done()
 	}()
 	return
 }

@@ -14,8 +14,17 @@ var _ storage.FileResolver = Resolver{}
 
 type Resolver struct{}
 
-func (s Resolver) Reader(path string) (io.ReadCloser, error) {
-	return os.Open(path)
+func (s Resolver) Reader(path string, offset int64) (r io.ReadCloser, err error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	_, err = file.Seek(offset, 0)
+	if err != nil {
+		return
+	}
+	r = file
+	return
 }
 
 func (s Resolver) Info(uri string) (files []warpdrive.Info, err error) {

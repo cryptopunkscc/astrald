@@ -21,12 +21,21 @@ func (s Storage) MkDir(path string, perm os.FileMode) error {
 	return os.MkdirAll(s.normalizePath(path), perm)
 }
 
-func (s Storage) FileWriter(path string, perm os.FileMode) (io.WriteCloser, error) {
+func (s Storage) FileWriter(path string, perm os.FileMode, offset int64) (w io.WriteCloser, err error) {
 	// Try to create storage dir on demand.
-	if err := s.MkDir("", 0755); err != nil {
-		return nil, err
+	if err = s.MkDir("", 0755); err != nil {
+		return
 	}
-	return os.OpenFile(s.normalizePath(path), os.O_RDWR|os.O_CREATE|os.O_TRUNC, perm)
+	file, err := os.OpenFile(s.normalizePath(path), os.O_RDWR|os.O_CREATE, perm)
+	if err != nil {
+		return
+	}
+	_, err = file.Seek(offset, 0)
+	if err != nil {
+		return
+	}
+	w = file
+	return
 }
 
 func (s Storage) normalizePath(path string) string {

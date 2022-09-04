@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"time"
 )
 
 func (d *Dispatcher) Ping() (err error) {
@@ -121,7 +122,7 @@ func (d Dispatcher) Download(offerId OfferId) (err error) {
 	}
 
 	// Request download
-	if err = client.Download(offerId); err != nil {
+	if err = client.Download(offerId, offer.Index, offer.Progress); err != nil {
 		err = Error(err, "Cannot download offer")
 		return err
 	}
@@ -141,6 +142,7 @@ func (d Dispatcher) Download(offerId OfferId) (err error) {
 			_ = client.Close()
 		}
 		srv.Finish(offer, err)
+		time.Sleep(200)
 		d.Job.Done()
 	}()
 

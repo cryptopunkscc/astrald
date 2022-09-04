@@ -96,7 +96,6 @@ func (srv *Offer) Add(
 
 func (srv *Offer) Accept(offer *warpdrive.Offer) {
 	offer.Status = warpdrive.StatusAccepted
-	offer.Index = -1
 	srv.dispatch(offer)
 }
 

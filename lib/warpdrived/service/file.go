@@ -46,10 +46,15 @@ type CopyOffer struct {
 func (co CopyOffer) From(reader io.Reader) (err error) {
 	offer := co.Offer.Offer
 	offer.Status = warpdrive.StatusUpdated
-	for offer.Index = range offer.Files {
+	for i := range offer.Files {
+		if i < offer.Index {
+			continue
+		}
+		offer.Index = i
 		if err = co.fileFrom(reader); err != nil {
 			return
 		}
+		offer.Progress = 0
 	}
 	return
 }
@@ -68,15 +73,22 @@ func (co CopyOffer) fileFrom(reader io.Reader) (err error) {
 		co.Update(offer, info.Size)
 		return nil
 	}
-	writer, err := s.FileWriter(info.Uri, info.Perm)
+	offset := offer.Progress
+	writer, err := s.FileWriter(info.Uri, info.Perm, offset)
 	if err != nil {
 		co.Println("Cannot get writer for", info.Uri, err)
 		return
 	}
-	defer writer.Close()
+	defer func() {
+		err := writer.Close()
+		if err != nil {
+			co.Println("Cannot close info", info.Uri, err)
+			return
+		}
+	}()
 	// Copy bytes
 	update := func(progress int64, size int64) error {
-		co.Update(offer, progress)
+		co.Update(offer, offset+progress)
 		return nil
 	}
 	progress := &ioprogress.Reader{
@@ -85,28 +97,29 @@ func (co CopyOffer) fileFrom(reader io.Reader) (err error) {
 		DrawInterval: 1000 * time.Millisecond,
 		DrawFunc:     update,
 	}
-	co.Progress, err = io.CopyN(writer, progress, info.Size)
+	l, err := io.CopyN(writer, progress, info.Size-offset)
+	co.Progress = offset + l
 	if err != nil {
 		co.Println("Cannot read", info.Uri, err, "expected size", info.Size, "but was", co.Progress)
-		return
+		return err
 	}
 	if co.Progress != info.Size {
 		co.Update(offer, info.Size)
-	}
-	err = writer.Close()
-	if err != nil {
-		co.Println("Cannot close info", info.Uri, err)
-		return
 	}
 	return
 }
 
 func (co CopyOffer) To(writer io.Writer) (err error) {
 	co.Status = warpdrive.StatusUpdated
-	for co.Index = range co.Files {
+	for i := range co.Files {
+		if i < co.Index {
+			continue
+		}
+		co.Index = i
 		if err = co.fileTo(writer); err != nil {
 			return
 		}
+		co.Progress = 0
 	}
 	return
 }
@@ -117,14 +130,15 @@ func (co CopyOffer) fileTo(writer io.Writer) (err error) {
 		co.Update(co.Offer.Offer, info.Size)
 		return
 	}
-	reader, err := co.resolve().Reader(info.Uri)
+	offset := co.Progress
+	reader, err := co.resolve().Reader(info.Uri, offset)
 	if err != nil {
 		co.Println("Cannot get reader", info.Uri, co.Id, err)
 		return
 	}
 	defer reader.Close()
 	update := func(progress int64, size int64) error {
-		co.Update(co.Offer.Offer, progress)
+		co.Update(co.Offer.Offer, offset+progress)
 		return nil
 	}
 	progress := &ioprogress.Reader{
@@ -133,11 +147,12 @@ func (co CopyOffer) fileTo(writer io.Writer) (err error) {
 		DrawInterval: 1000 * time.Millisecond,
 		DrawFunc:     update,
 	}
-	co.Progress, err = io.CopyN(writer, progress, info.Size)
+	l, err := io.CopyN(writer, progress, info.Size-offset)
 	if err != nil {
 		co.Println("Cannot write", info.Uri, err)
-		return
+		return err
 	}
+	co.Progress = offset + l
 	if co.Progress != info.Size {
 		co.Update(co.Offer.Offer, info.Size)
 	}

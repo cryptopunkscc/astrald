@@ -4,14 +4,18 @@ import (
 	"encoding/json"
 )
 
-func (c RemoteClient) Download(offerId OfferId) (err error) {
+func (c RemoteClient) Download(
+	offerId OfferId,
+	index int,
+	offset int64,
+) (err error) {
 	// Request download
 	if err = c.Encode("c", remoteDownload); err != nil {
 		err = Error(err, "Cannot request download")
 	}
 
 	// Send file request id
-	if err = c.Encode("[c]c", offerId); err != nil {
+	if err = c.Encode("[c]c q q", offerId, index, offset); err != nil {
 		err = Error(err, "Cannot send request id")
 		return
 	}
