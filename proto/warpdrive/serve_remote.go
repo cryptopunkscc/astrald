@@ -2,10 +2,34 @@ package warpdrive
 
 import (
 	"encoding/json"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"time"
 )
 
-func (d *Dispatcher) Receive() (err error) {
+func (d Dispatcher) Ping() (err error) {
+	finish := make(chan struct{})
+	defer close(finish)
+	go func() {
+		select {
+		case <-d.Done():
+		case <-finish:
+		}
+		_ = d.Conn.Close()
+	}()
+	for {
+		var code byte
+		if err = cslq.Decode(d.Conn, "c", &code); err != nil {
+			err = Error(err, "Cannot read ping")
+			return
+		}
+		if err = d.Encode("c", code); err != nil {
+			err = Error(err, "Cannot write ping")
+			return
+		}
+	}
+}
+
+func (d Dispatcher) Receive() (err error) {
 	peerId := PeerId(d.CallerId)
 	peer := d.Peer().Get(peerId)
 	// Check if peer is blocked
@@ -22,9 +46,8 @@ func (d *Dispatcher) Receive() (err error) {
 		return
 	}
 	// Read files request
-	dec := json.NewDecoder(d.Conn)
 	var files []Info
-	err = dec.Decode(&files)
+	err = json.NewDecoder(d.Conn).Decode(&files)
 	if err != nil {
 		err = Error(err, "Cannot read files for offer", offerId)
 		return
@@ -46,7 +69,7 @@ func (d *Dispatcher) Receive() (err error) {
 	return
 }
 
-func (d *Dispatcher) Upload(
+func (d Dispatcher) Upload(
 	offerId OfferId,
 	index int,
 	offset int64,

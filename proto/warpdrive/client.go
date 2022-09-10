@@ -17,41 +17,22 @@ type Client struct {
 	RemoteNode string
 }
 
-type RemoteClient struct{ Client }
-type LocalClient struct{ Client }
-
 func NewClient(api wrapper.Api) Client {
-	c := Client{Logger: log.Default(), Api: api}
-	localNode, err := c.Resolve("localnode")
+	return Client{Logger: log.Default(), Api: api}
+}
+
+// Connect to warpdrive service
+func (c Client) Connect(identity id.Identity, port string) (client Client, err error) {
+	c.Logger = NewLogger("[CLIENT]", port)
+	// Resolve local id
+	localId, err := c.Resolve("localnode")
 	if err != nil {
-		log.Panicln("Cannot resolve local node id", err)
-	}
-	c.LocalNode = localNode.String()
-	return c
-}
-
-// ConnectLocal connects to local warpdrive service
-func (c Client) ConnectLocal() (lc LocalClient, err error) {
-	if err = c.connect(id.Identity{}); err != nil {
+		c.Println("Cannot resolve local node id", err)
 		return
 	}
-	lc = LocalClient{c}
-	return
-}
-
-// ConnectRemote connects to remote warpdrive service
-func (c Client) ConnectRemote(identity id.Identity) (rc RemoteClient, err error) {
-	if err = c.connect(identity); err != nil {
-		return
-	}
-	rc = RemoteClient{c}
-	return
-}
-
-func (c *Client) connect(identity id.Identity) (err error) {
-	c.Logger = NewLogger("[CLIENT]", Port)
+	c.LocalNode = localId.String()
 	// Connect to local service
-	conn, err := c.Query(identity, Port)
+	conn, err := c.Query(identity, port)
 	if err != nil {
 		c.Println("Cannot connect to service", err)
 		return
@@ -63,10 +44,11 @@ func (c *Client) connect(identity id.Identity) (err error) {
 	} else {
 		c.RemoteNode = identity.String()
 	}
+	client = c
 	return
 }
 
-func (c *Client) Close() (err error) {
+func (c Client) Close() (err error) {
 	err = c.Encode("c", cmdClose)
 	_ = c.Conn.Close()
 	return

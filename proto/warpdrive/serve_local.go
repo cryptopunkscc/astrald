@@ -7,30 +7,7 @@ import (
 	"time"
 )
 
-func (d *Dispatcher) Ping() (err error) {
-	finish := make(chan struct{})
-	defer close(finish)
-	go func() {
-		select {
-		case <-d.Done():
-		case <-finish:
-		}
-		_ = d.Conn.Close()
-	}()
-	for {
-		var code byte
-		if err = cslq.Decode(d.Conn, "c", &code); err != nil {
-			err = Error(err, "Cannot read ping")
-			return
-		}
-		if err = d.Encode("c", code); err != nil {
-			err = Error(err, "Cannot write ping")
-			return
-		}
-	}
-}
-
-func (d *Dispatcher) send(peerId PeerId, filePath string) (err error) {
+func (d Dispatcher) CreateOffer(peerId PeerId, filePath string) (err error) {
 	// Get files info
 	files, err := d.File().Info(filePath)
 	if err != nil {
@@ -46,14 +23,14 @@ func (d *Dispatcher) send(peerId PeerId, filePath string) (err error) {
 	}
 
 	// Connect to remote client
-	client, err := NewClient(d.Api).ConnectRemote(identity)
+	client, err := NewClient(d.Api).Connect(identity, PortRemote)
 	if err != nil {
 		err = Error(err, "Cannot connect to remote", peerId)
 		return
 	}
 
 	// Send file to recipient service
-	offerId, code, err := client.send(files)
+	offerId, code, err := client.SendOffer(files)
 	_ = client.Close()
 	if err != nil {
 		err = Error(err, "Cannot send file")
@@ -78,7 +55,7 @@ func (d *Dispatcher) send(peerId PeerId, filePath string) (err error) {
 	return
 }
 
-func (d *Dispatcher) offers(filter Filter) (err error) {
+func (d Dispatcher) ListOffers(filter Filter) (err error) {
 	// Collect file offers
 	offers := d.filterOffers(filter)
 	// Send filtered file offers
@@ -93,6 +70,23 @@ func (d *Dispatcher) offers(filter Filter) (err error) {
 		return
 	}
 	d.Println("Sent", filter, "offers")
+	return
+}
+
+func (d Dispatcher) AcceptOffer(offerId OfferId) (err error) {
+	// Download offer
+	d.Println("Accepted incoming files", offerId)
+	err = d.Download(offerId)
+	if err != nil {
+		err = Error(err, "Cannot download incoming files", offerId)
+		return
+	}
+	// Send ok
+	err = d.Encode("c", 0)
+	if err != nil {
+		err = Error(err, "Cannot send ok")
+		return
+	}
 	return
 }
 
@@ -116,7 +110,7 @@ func (d Dispatcher) Download(offerId OfferId) (err error) {
 	srv.Accept(offer)
 
 	// Connect to remote warpdrive
-	client, err := NewClient(d.Api).ConnectRemote(peerId)
+	client, err := NewClient(d.Api).Connect(peerId, PortRemote)
 	if err != nil {
 		return
 	}
@@ -164,24 +158,7 @@ func (d Dispatcher) Download(offerId OfferId) (err error) {
 	return
 }
 
-func (d *Dispatcher) Accept(offerId OfferId) (err error) {
-	// Download offer
-	d.Println("Accepted incoming files", offerId)
-	err = d.Download(offerId)
-	if err != nil {
-		err = Error(err, "Cannot download incoming files", offerId)
-		return
-	}
-	// Send ok
-	err = d.Encode("c", 0)
-	if err != nil {
-		err = Error(err, "Cannot send ok")
-		return
-	}
-	return
-}
-
-func (d *Dispatcher) peers() (err error) {
+func (d Dispatcher) ListPeers() (err error) {
 	// Get peers
 	peers := d.Peer().List()
 	// Send peers
@@ -198,7 +175,7 @@ func (d *Dispatcher) peers() (err error) {
 	return
 }
 
-func (d *Dispatcher) status(filter Filter) (err error) {
+func (d Dispatcher) ListenStatus(filter Filter) (err error) {
 	unsub := d.filterSubscribe(filter, OfferService.StatusSubscriptions)
 	defer unsub()
 	// Wait for close
@@ -207,7 +184,7 @@ func (d *Dispatcher) status(filter Filter) (err error) {
 	return
 }
 
-func (d *Dispatcher) subscribe(filter Filter) (err error) {
+func (d Dispatcher) ListenOffers(filter Filter) (err error) {
 	unsub := d.filterSubscribe(filter, OfferService.OfferSubscriptions)
 	defer unsub()
 	// Wait for close
@@ -216,7 +193,7 @@ func (d *Dispatcher) subscribe(filter Filter) (err error) {
 	return
 }
 
-func (d *Dispatcher) update() (err error) {
+func (d Dispatcher) UpdatePeer() (err error) {
 	// Read peer update
 	// Fixme refactor to cslq
 	var req []string

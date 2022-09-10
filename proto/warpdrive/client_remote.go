@@ -1,37 +1,8 @@
 package warpdrive
 
-import (
-	"encoding/json"
-)
+import "encoding/json"
 
-func (c RemoteClient) Download(
-	offerId OfferId,
-	index int,
-	offset int64,
-) (err error) {
-	// Request download
-	if err = c.Encode("c", remoteDownload); err != nil {
-		err = Error(err, "Cannot request download")
-	}
-
-	// Send file request id
-	if err = c.Encode("[c]c q q", offerId, index, offset); err != nil {
-		err = Error(err, "Cannot send request id")
-		return
-	}
-
-	// Read confirmation
-	var code byte
-	err = c.Decode("c", &code)
-	if err != nil {
-		err = Error(err, "Cannot read confirmation")
-		return
-	}
-
-	return
-}
-
-func (c RemoteClient) send(files []Info) (offerId OfferId, code uint8, err error) {
+func (c Client) SendOffer(files []Info) (offerId OfferId, code uint8, err error) {
 	// Request send
 	err = c.Encode("c", remoteSend)
 	if err != nil {
@@ -58,5 +29,32 @@ func (c RemoteClient) send(files []Info) (offerId OfferId, code uint8, err error
 		err = Error(err, "Cannot read result code")
 		return
 	}
+	return
+}
+
+func (c Client) Download(
+	offerId OfferId,
+	index int,
+	offset int64,
+) (err error) {
+	// Request download
+	if err = c.Encode("c", remoteDownload); err != nil {
+		err = Error(err, "Cannot request download")
+	}
+
+	// Send file request id
+	if err = c.Encode("[c]c q q", offerId, index, offset); err != nil {
+		err = Error(err, "Cannot send request id")
+		return
+	}
+
+	// Read confirmation
+	var code byte
+	err = c.Decode("c", &code)
+	if err != nil {
+		err = Error(err, "Cannot read confirmation")
+		return
+	}
+
 	return
 }

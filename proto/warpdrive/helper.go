@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (d *Dispatcher) filterOffers(
+func (d Dispatcher) filterOffers(
 	filter Filter,
 ) (offers []Offer) {
 	switch filter {
@@ -23,7 +23,7 @@ func (d *Dispatcher) filterOffers(
 	return
 }
 
-func (d *Dispatcher) filterSubscribe(
+func (d Dispatcher) filterSubscribe(
 	filter Filter,
 	get func(service OfferService) *Subscriptions,
 ) (unsub Unsubscribe) {

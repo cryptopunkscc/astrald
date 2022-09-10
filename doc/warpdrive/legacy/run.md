@@ -60,5 +60,5 @@ Ensure there are no errors in console logs.
 
 #### 5. Interacting with service
 
-1. Standalone client - [CLI.md](../warpdrive/README.md)
+1. Standalone client - [CLI.md](../../../cmd/warpdrive/README.md)
 2. ANC & `wd` service - [anc_cli.md](anc_cli.md)

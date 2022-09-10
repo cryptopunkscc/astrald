@@ -1,6 +1,6 @@
-### Warpdrive CLI thorug ANC
+### Warpdrive CLI through ANC
 
-Combined with [ANC](../anc/README.md) (astral netcat) can be considered as
+Combined with [ANC](../../../cmd/anc/README.md) (astral netcat) can be considered as
 referential UI client for development and testing purpose. Under the hood, it translates text commands directly into
 warpdrive UI API calls and returns received results as formatted console output. Depending on needs is recommended to
 use more than one client instance connected at the same time, this can be useful for tracking subscription updates and
@@ -15,7 +15,7 @@ device:
 $ anc query <identity> <port>
 ```
 
-For example, to connect to warpdrive CLI on localnode, you can run ANC directly from package [amc](../anc):
+For example, to connect to warpdrive CLI on localnode, you can run ANC directly from package [amc](../../../cmd/anc):
 
 ```shell
 $ go run ./cmd/anc query localnode wd

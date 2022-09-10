@@ -2,26 +2,38 @@ package warpdrive
 
 import "errors"
 
-const Port = "warpdrive"
-const CliPort = "wd"
-
 const (
+	PortCli    = "wd"
+	PortLocal  = "warpdrive-local"
+	PortRemote = "warpdrive-remote"
+	PortInfo   = "warpdrive-info"
+)
 
-	// local commands
-	cmdClose = uint8(iota)
+// common commands
+const (
+	cmdClose = uint8(iota) + 0xFF
+)
 
-	localPeers
-	localSend
-	localAccept
-	localUpdate
-	localSubscribe
-	localStatus
-	localOffers
-	localPing
+// local commands
+const (
+	localListPeers = uint8(iota) + 1
+	localCreateOffer
+	localAcceptOffer
+	localListOffers
+	localListenOffers
+	localListenStatus
+	localUpdatePeer
+)
 
-	// remote commands
-	remoteSend
+// remote commands
+const (
+	remoteSend = uint8(iota) + 1
 	remoteDownload
+)
+
+// info commands
+const (
+	infoPing = uint8(iota) + 1
 )
 
 var errEnded = errors.New("ended")

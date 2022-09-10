@@ -18,7 +18,6 @@ type Server struct {
 	warp    warpdrive.Service
 	localId id.Identity
 	Debug   bool
-	Finish  <-chan struct{}
 }
 
 func (s *Server) String() string {
@@ -36,22 +35,27 @@ func (s *Server) Run(ctx context.Context, api wrapper.Api) (err error) {
 
 	setupCore(&s.Component)
 
-	s.Finish = service.OfferUpdates(s.Component).Start(s)
+	finish := service.OfferUpdates(s.Component).Start(s)
 
 	s.warp = service.Warpdrive(s.Component)
 
 	s.warp.Peer().Fetch()
 
-	if err = s.register(warpdrive.Port, warpdrive.Dispatch); err != nil {
-		return warpdrive.Error(err, "Cannot register", warpdrive.Port)
+	dispatchers := map[string]func(d *warpdrive.Dispatcher) error{
+		warpdrive.PortInfo:   warpdrive.DispatchInfo,
+		warpdrive.PortLocal:  warpdrive.DispatchLocal,
+		warpdrive.PortRemote: warpdrive.DispatchRemote,
+		warpdrive.PortCli:    warpdrive.Cli,
 	}
 
-	if err = s.register(warpdrive.CliPort, warpdrive.Cli); err != nil {
-		return warpdrive.Error(err, "Cannot register", warpdrive.CliPort)
+	for port, dispatcher := range dispatchers {
+		if err = s.register(port, dispatcher); err != nil {
+			return warpdrive.Error(err, "Cannot register", port)
+		}
 	}
 
 	<-s.Done()
-	<-s.Finish
+	<-finish
 	return
 }
 

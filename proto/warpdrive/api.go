@@ -108,10 +108,10 @@ const (
 	PeerModBlock = "block"
 )
 
-type Filter string
+type Filter uint8
 
 const (
-	FilterAll = Filter("all")
-	FilterIn  = Filter("in")
-	FilterOut = Filter("out")
+	FilterAll = Filter(iota)
+	FilterIn
+	FilterOut
 )

@@ -45,17 +45,53 @@ func (d Dispatcher) Serve(
 	return errors.Unwrap(err)
 }
 
-func Dispatch(d *Dispatcher) (err error) {
+func nextCommand(d *Dispatcher) (cmd uint8, err error) {
 	d.Logger = NewLogger(d.LogPrefix, "(~)")
-	var cmd uint8
 	err = d.Decode("c", &cmd)
-	if err != nil {
-		if errors.Is(err, io.EOF) {
-			err = errEnded
-		}
+	if err == nil {
+		d.Logger = NewLogger(d.LogPrefix, fmt.Sprintf("(%d)", cmd))
 		return
 	}
-	d.Logger = NewLogger(d.LogPrefix, fmt.Sprintf("(%d)", cmd))
+	if errors.Is(err, io.EOF) {
+		err = errEnded
+	}
+	return
+}
+
+func DispatchLocal(d *Dispatcher) (err error) {
+	// reject remote requests
+	if !d.Authorized {
+		return nil
+	}
+	cmd, err := nextCommand(d)
+	if err != nil {
+		return
+	}
+	switch cmd {
+	case localAcceptOffer:
+		return rpc.Dispatch(d.Conn, "[c]c", d.AcceptOffer)
+	case localCreateOffer:
+		return rpc.Dispatch(d.Conn, "[c]c [c]c", d.CreateOffer)
+	case localListenOffers:
+		return rpc.Dispatch(d.Conn, "c", d.ListOffers)
+	case localListenStatus:
+		return rpc.Dispatch(d.Conn, "c", d.ListenStatus)
+	case localListOffers:
+		return rpc.Dispatch(d.Conn, "c", d.ListenOffers)
+	case localListPeers:
+		return rpc.Dispatch(d.Conn, "", d.ListPeers)
+	case localUpdatePeer:
+		return rpc.Dispatch(d.Conn, "", d.UpdatePeer)
+	default:
+		return errors.New("protocol violation: unknown command")
+	}
+}
+
+func DispatchRemote(d *Dispatcher) (err error) {
+	cmd, err := nextCommand(d)
+	if err != nil {
+		return
+	}
 	switch cmd {
 	case cmdClose:
 		return errEnded
@@ -64,29 +100,21 @@ func Dispatch(d *Dispatcher) (err error) {
 	case remoteDownload:
 		return rpc.Dispatch(d.Conn, "[c]c q q", d.Upload)
 	default:
-		// reject remote requests
-		if !d.Authorized {
-			return nil
-		}
-		switch cmd {
-		case localAccept:
-			return rpc.Dispatch(d.Conn, "[c]c", d.Accept)
-		case localSend:
-			return rpc.Dispatch(d.Conn, "[c]c [c]c", d.send)
-		case localOffers:
-			return rpc.Dispatch(d.Conn, "[c]c", d.offers)
-		case localStatus:
-			return rpc.Dispatch(d.Conn, "[c]c", d.status)
-		case localSubscribe:
-			return rpc.Dispatch(d.Conn, "[c]c", d.subscribe)
-		case localPeers:
-			return rpc.Dispatch(d.Conn, "", d.peers)
-		case localUpdate:
-			return rpc.Dispatch(d.Conn, "", d.update)
-		case localPing:
-			return rpc.Dispatch(d.Conn, "", d.Ping)
-		default:
-			return errors.New("protocol violation: unknown command")
-		}
+		return errors.New("protocol violation: unknown command")
+	}
+}
+
+func DispatchInfo(d *Dispatcher) (err error) {
+	cmd, err := nextCommand(d)
+	if err != nil {
+		return
+	}
+	switch cmd {
+	case cmdClose:
+		return errEnded
+	case infoPing:
+		return rpc.Dispatch(d.Conn, "", d.Ping)
+	default:
+		return errors.New("protocol violation: unknown command")
 	}
 }

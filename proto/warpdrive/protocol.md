@@ -1,56 +1,185 @@
-# Protocol
+# warpdrive protocol (draft)
 
-## Frames
+warpdrive is a binary protocol for sharing files over astral network.
 
-| name       | short | format           | representation           | description                                                                                                                 |
-|:-----------|:------|:-----------------|:-------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| Recipients | rec   | struct           | []Peer                   | Detailed list of peers.                                                                                                     |
-| Info       | info  | l8string, struct | OfferId, []Info          | Offer id and detailed files info. Contains information required by recipient to decide whatever accept or reject the offer. |
-| Offer      | ofr   | struct           | Offer                    | Detailed collection of offers associated by ids.                                                                            |
-| Offers     | ofs   | struct           | map[OfferId]Offer        | Detailed collection of offers associated by ids.                                                                            |
-| Status     | stat  | struct           | Status                   | Offer status.                                                                                                               |
-| Args       | arg   | l8string, struct | PeerId, []Info           | Offer arguments, contains peer id and path to file.                                                                         |
-| Port       | port  | l8string         | string                   | Name of the port registered by sender, where the recipient can connect for downloading the requested files.                 |
-| Id         | id    | l8string         | OfferId                  | Offer unique identifier.                                                                                                    |
-| Attr       | attr  | 3x l8string      | [string, string, string] | Peer attribute for update.                                                                                                  |
-| File       | file  | blob             | []byte                   | A file bytes.                                                                                                               |
-| Close      | ok    | byte             | 0                        | Notifies connection is closing with success.                                                                                |
+## Overview
 
-## Flow
+Common
 
-| symbol | info                                                                        |
-|:------:|:----------------------------------------------------------------------------|
-|   </   | send command type                                                           |
-|   <-   | send a frame                                                                |
-|   ->   | receive a frame                                                             |
-|   =>   | receive a stream of frames delayed in time                                  |
-|   <>   | both sides can send or receive a frame, typically used for finishing stream |
+| code | name          | desc                                                |
+|------|---------------|-----------------------------------------------------|
+| 0xff | end           | end session                                         |
 
-### `sender`
+Local node
 
-Local protocol for communicating sender client with warpdrive service.
+| code | name          | desc                                                  |
+|------|---------------|-------------------------------------------------------|
+| 0x01 | list peers    | list known peers                                      |
+| 0x02 | create offer  | create offer with info about files available for peer |
+| 0x03 | accept offer  | accept received and start downloading in background   |
+| 0x04 | list offers   | list all incoming and/or outgoing offers              |
+| 0x04 | listen offers | listen for incoming and/or outgoing offers            |
+| 0x05 | listen status | listen status of incoming and/or outgoing offers      |
 
-| </ `recipients` | </ `send` | </ `sent` | </ `events` |
-|-----------------|-----------|-----------|-------------|
-| -> rec          | <- arg    | -> ofs    | => stat     |
-| <- ok           | -> ok     | <- ok     | <> ok       |
+Remote node
 
-### `recipient`
+| code | name       | desc                                    |
+|------|------------|-----------------------------------------|
+| 0x01 | send offer | send info about available files to peer |
+| 0x02 | download   | download file from specific offer       |
 
-Local protocol for communicating recipient client warpdrive service.
+Info
 
-| </ `offers` | </ `accept` | </ `reject` | </ `received` | </ `events` | </ `update` |
-|-------------|-------------|-------------|---------------|-------------|-------------|
-| => ofr      | <- id       | <- id       | -> ofs        | => stat     | <- attr     |
-| <> ok       | -> ok       | -> ok       | <- ok         | <> ok       | -> ok       |
+| code | name | desc                       |
+|------|------|----------------------------|
+| 0x01 | ping | ping the warpdrive service |
 
-### `service`
+## Commands
 
-Remote protocol for communicating warpdrive services.
+### list peers
 
-| </ `send` | </ `reject` | </ `accept` |
-|-----------|-------------|-------------|
-| <- info   | <- id       | <- id       |
-| -> ok     | -> ok       | <- query    |
-|           |             | => file     |
-|           |             | <- ok       |
+Returned values
+
+| type   | name     | desc                  |
+|--------|----------|-----------------------|
+| []Peer | error    | zero or an error code |
+
+### create offer
+
+Arguments
+
+| type | name      | desc                              |
+|------|-----------|-----------------------------------|
+| [c]c | peer id   | id of peer node                   |
+| [c]c | file path | path to file or directory to send |
+
+Returned values
+
+| type | name     | desc               |
+|------|----------|--------------------|
+| [c]c | offer id | id of files offers |
+
+### accept offer
+
+Arguments
+
+| type | name     | desc               |
+|------|----------|--------------------|
+| [c]c | offer id | id of files offers |
+
+Returned values
+
+| type | name | desc                  |
+|------|------|-----------------------|
+| c    | code | zero or an error code |
+
+### list offers
+
+Arguments
+
+| type | name   | desc                                |
+|------|--------|-------------------------------------|
+| c    | filter | 0 - all, 1 - incoming, 2 - outgoing |
+
+Returned values
+
+| type    | name         | desc                  |
+|---------|--------------|-----------------------|
+| []Offer | offers list  | zero or an error code |
+
+### listen offers
+
+Arguments
+
+| type | name   | desc                                |
+|------|--------|-------------------------------------|
+| c    | filter | 0 - all, 1 - incoming, 2 - outgoing |
+
+Returned values
+
+| type    | name         | desc                  |
+|---------|--------------|-----------------------|
+| []Offer | offers list  | zero or an error code |
+
+Finalize
+
+| type | name | desc                                |
+|------|------|-------------------------------------|
+| c    | code | 0 or error code                     |
+
+### listen status
+
+Arguments
+
+| type | name   | desc                                |
+|------|--------|-------------------------------------|
+| c    | filter | 0 - all, 1 - incoming, 2 - outgoing |
+
+Returned values
+
+| type          | name         | desc                  |
+|---------------|--------------|-----------------------|
+| []OfferStatus | offers list  | zero or an error code |
+
+Finalize
+
+| type | name | desc                                |
+|------|------|-------------------------------------|
+| c    | code | 0 or error code                     |
+
+### send offer
+
+Arguments
+
+| type   | name       | desc                                  |
+|--------|------------|---------------------------------------|
+| [c]c   | offer id   | the offer id                          |
+| []Info | files info | files info associated to the offer id |
+
+Returned values
+
+| type | name | desc            |
+|------|------|-----------------|
+| c    | code | 0 or error code |
+
+Finalize
+
+| type | name | desc                                |
+|------|------|-------------------------------------|
+| c    | code | 0 or error code                     |
+
+### download
+
+Arguments
+
+| type | name     | desc                      |
+|------|----------|---------------------------|
+| [c]c | offer id | the offer id              |
+| q    | index    | index of file to download |
+| q    | offset   | offset of file            |
+
+Returned values
+
+| type | name  | desc              |
+|------|-------|-------------------|
+| blob | files | files byte stream |
+
+Finalize
+
+| type | name | desc                                |
+|------|------|-------------------------------------|
+| c    | code | 0 or error code                     |
+
+### ping
+
+Arguments
+
+| type | name   | desc                      |
+|------|--------|---------------------------|
+| c    | signal | any byte value            |
+
+Returned values
+
+| type | name   | desc                     |
+|------|--------|--------------------------|
+| c    | signal | byte value from argument |

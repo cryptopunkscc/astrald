@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"io"
 	"strings"
@@ -23,7 +24,7 @@ func Cli(d *Dispatcher) (err error) {
 		err = Error(err, "Cannot write prompt")
 		return
 	}
-	c, err := NewClient(d.Api).ConnectLocal()
+	c, err := NewClient(d.Api).Connect(id.Identity{}, PortLocal)
 	if err != nil {
 		err = Error(err, "Cannot connect local client")
 		return
@@ -88,11 +89,17 @@ var commands = cmdMap{
 }
 
 type cmdMap map[string]cmdFunc
-type cmdFunc func(context.Context, io.ReadWriteCloser, LocalClient, []string) error
+type cmdFunc func(context.Context, io.ReadWriteCloser, Client, []string) error
+
+var filters = map[string]Filter{
+	"all": FilterAll,
+	"in":  FilterIn,
+	"out": FilterOut,
+}
 
 // =========================== Commands ===============================
 
-func cliHelp(ctx context.Context, writer io.ReadWriteCloser, _ LocalClient, _ []string) (err error) {
+func cliHelp(ctx context.Context, writer io.ReadWriteCloser, _ Client, _ []string) (err error) {
 	for name := range commands {
 		if _, err = fmt.Fprintln(writer, name); err != nil {
 			return err
@@ -101,8 +108,8 @@ func cliHelp(ctx context.Context, writer io.ReadWriteCloser, _ LocalClient, _ []
 	return
 }
 
-func cliPeers(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, _ []string) (err error) {
-	peers, err := client.Peers()
+func cliPeers(ctx context.Context, writer io.ReadWriteCloser, client Client, _ []string) (err error) {
+	peers, err := client.ListPeers()
 	if err != nil {
 		return
 	}
@@ -115,7 +122,7 @@ func cliPeers(ctx context.Context, writer io.ReadWriteCloser, client LocalClient
 	return
 }
 
-func cliSend(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, args []string) (err error) {
+func cliSend(ctx context.Context, writer io.ReadWriteCloser, client Client, args []string) (err error) {
 	if len(args) < 1 {
 		_, err = fmt.Fprintln(writer, "<filePath> <peerId>?")
 		return
@@ -124,7 +131,7 @@ func cliSend(ctx context.Context, writer io.ReadWriteCloser, client LocalClient,
 	if len(args) > 1 {
 		peer = args[1]
 	}
-	id, accepted, err := client.Send(PeerId(peer), args[0])
+	id, accepted, err := client.CreateOffer(PeerId(peer), args[0])
 	if err != nil {
 		return err
 	}
@@ -136,8 +143,8 @@ func cliSend(ctx context.Context, writer io.ReadWriteCloser, client LocalClient,
 	return
 }
 
-func cliSent(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, _ []string) (err error) {
-	sent, err := client.Offers(FilterOut)
+func cliSent(ctx context.Context, writer io.ReadWriteCloser, client Client, _ []string) (err error) {
+	sent, err := client.ListOffers(FilterOut)
 	if err != nil {
 		return err
 	}
@@ -150,8 +157,8 @@ func cliSent(ctx context.Context, writer io.ReadWriteCloser, client LocalClient,
 	return
 }
 
-func cliReceived(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, _ []string) (err error) {
-	received, err := client.Offers(FilterIn)
+func cliReceived(ctx context.Context, writer io.ReadWriteCloser, client Client, _ []string) (err error) {
+	received, err := client.ListOffers(FilterIn)
 	if err != nil {
 		return err
 	}
@@ -164,19 +171,18 @@ func cliReceived(ctx context.Context, writer io.ReadWriteCloser, client LocalCli
 	return
 }
 
-func cliSubscribe(ctx context.Context, conn io.ReadWriteCloser, client LocalClient, args []string) (err error) {
+func cliSubscribe(ctx context.Context, conn io.ReadWriteCloser, client Client, args []string) (err error) {
 	filter := "all"
 	if len(args) > 0 {
 		filter = args[0]
 	}
-	offers := make(<-chan Offer)
-	switch filter {
-	case "all", "out", "in":
-		offers, err = client.Subscribe(Filter(filter))
-	default:
+	f, exist := filters[filter]
+	if !exist {
 		_, err = fmt.Fprintln(conn, "Invalid filter: ", filter)
 		return
 	}
+	var offers <-chan Offer
+	offers, err = client.ListenOffers(f)
 	if err != nil {
 		return err
 	}
@@ -203,19 +209,18 @@ func cliSubscribe(ctx context.Context, conn io.ReadWriteCloser, client LocalClie
 	return
 }
 
-func cliStatus(ctx context.Context, conn io.ReadWriteCloser, client LocalClient, args []string) (err error) {
+func cliStatus(ctx context.Context, conn io.ReadWriteCloser, client Client, args []string) (err error) {
 	filter := "all"
 	if len(args) > 0 {
 		filter = args[0]
 	}
-	var events <-chan OfferStatus
-	switch filter {
-	case "all", "out", "in":
-		events, err = client.Status(Filter(filter))
-	default:
+	f, exist := filters[filter]
+	if !exist {
 		_, err = fmt.Fprintln(conn, "Invalid filter: ", filter)
 		return
 	}
+	var events <-chan OfferStatus
+	events, err = client.ListenStatus(f)
 	finish := make(chan struct{})
 	go func() {
 		select {
@@ -239,12 +244,12 @@ func cliStatus(ctx context.Context, conn io.ReadWriteCloser, client LocalClient,
 	return
 }
 
-func cliDownload(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, args []string) (err error) {
+func cliDownload(ctx context.Context, writer io.ReadWriteCloser, client Client, args []string) (err error) {
 	if len(args) < 1 {
 		_, err = fmt.Fprintln(writer, "<offerId>")
 		return
 	}
-	err = client.Accept(OfferId(args[0]))
+	err = client.AcceptOffer(OfferId(args[0]))
 	if err != nil {
 		return
 	}
@@ -252,12 +257,12 @@ func cliDownload(ctx context.Context, writer io.ReadWriteCloser, client LocalCli
 	return
 }
 
-func cliUpdate(ctx context.Context, writer io.ReadWriteCloser, client LocalClient, args []string) (err error) {
+func cliUpdate(ctx context.Context, writer io.ReadWriteCloser, client Client, args []string) (err error) {
 	if len(args) < 3 {
 		_, err = fmt.Fprintln(writer, "<peerId> <attr> <value>")
 		return
 	}
-	err = client.Update(PeerId(args[0]), args[1], args[2])
+	err = client.UpdatePeer(PeerId(args[0]), args[1], args[2])
 	if err != nil {
 		return
 	}

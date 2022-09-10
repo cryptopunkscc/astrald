@@ -8,9 +8,9 @@ import (
 	"io"
 )
 
-func (c LocalClient) Send(peerId PeerId, filePath string) (id OfferId, accepted bool, err error) {
+func (c Client) CreateOffer(peerId PeerId, filePath string) (id OfferId, accepted bool, err error) {
 	// Request send
-	err = c.Encode("c", localSend)
+	err = c.Encode("c", localCreateOffer)
 	if err != nil {
 		err = Error(err, "Cannot request send")
 		return
@@ -43,9 +43,9 @@ func (c LocalClient) Send(peerId PeerId, filePath string) (id OfferId, accepted 
 	return
 }
 
-func (c LocalClient) Accept(id OfferId) (err error) {
+func (c Client) AcceptOffer(id OfferId) (err error) {
 	// Request accept
-	err = c.Encode("c", localAccept)
+	err = c.Encode("c", localAcceptOffer)
 	if err != nil {
 		err = Error(err, "Cannot request accept")
 		return
@@ -67,16 +67,16 @@ func (c LocalClient) Accept(id OfferId) (err error) {
 	return
 }
 
-func (c LocalClient) Offers(filter Filter) (offers []Offer, err error) {
+func (c Client) ListOffers(filter Filter) (offers []Offer, err error) {
 	// Request offers
-	err = c.Encode("c", localOffers)
+	err = c.Encode("c", localListOffers)
 	if err != nil {
 		err = Error(err, "Cannot request send")
 		return
 	}
 
 	// Send filter
-	if err = cslq.Encode(c.Conn, "[c]c", filter); err != nil {
+	if err = cslq.Encode(c.Conn, "c", filter); err != nil {
 		err = Error(err, "Cannot send filter")
 		return
 	}
@@ -93,9 +93,9 @@ func (c LocalClient) Offers(filter Filter) (offers []Offer, err error) {
 	return
 }
 
-func (c LocalClient) Peers() (peers []Peer, err error) {
+func (c Client) ListPeers() (peers []Peer, err error) {
 	// Request peers
-	err = c.Encode("c", localPeers)
+	err = c.Encode("c", localListPeers)
 	if err != nil {
 		err = Error(err, "Cannot request peers")
 		return
@@ -113,15 +113,15 @@ func (c LocalClient) Peers() (peers []Peer, err error) {
 	return
 }
 
-func (c LocalClient) Status(filter Filter) (status <-chan OfferStatus, err error) {
+func (c Client) ListenStatus(filter Filter) (status <-chan OfferStatus, err error) {
 	// Request status
-	err = c.Encode("c", localStatus)
+	err = c.Encode("c", localListenStatus)
 	if err != nil {
 		err = Error(err, "Cannot request status")
 		return
 	}
 	// Connect send filter
-	err = cslq.Encode(c.Conn, "[c]c", filter)
+	err = cslq.Encode(c.Conn, "c", filter)
 	if err != nil {
 		err = Error(err, "Cannot send filter")
 		return
@@ -148,14 +148,14 @@ func (c LocalClient) Status(filter Filter) (status <-chan OfferStatus, err error
 	return
 }
 
-func (c LocalClient) Subscribe(filter Filter) (offers <-chan Offer, err error) {
+func (c Client) ListenOffers(filter Filter) (offers <-chan Offer, err error) {
 	// Request subscribe
-	err = c.Encode("c", localSubscribe)
+	err = c.Encode("c", localListenOffers)
 	if err != nil {
 		err = Error(err, "Cannot request subscribe")
 		return
 	}
-	err = cslq.Encode(c.Conn, "[c]c", filter)
+	err = cslq.Encode(c.Conn, "c", filter)
 	if err != nil {
 		err = Error(err, "Cannot send filter")
 		return
@@ -182,13 +182,13 @@ func (c LocalClient) Subscribe(filter Filter) (offers <-chan Offer, err error) {
 	return
 }
 
-func (c LocalClient) Update(
+func (c Client) UpdatePeer(
 	peerId PeerId,
 	attr string,
 	value string,
 ) (err error) {
 	// Request peer update
-	err = c.Encode("c", localUpdate)
+	err = c.Encode("c", localUpdatePeer)
 	if err != nil {
 		err = Error(err, "Cannot update")
 		return

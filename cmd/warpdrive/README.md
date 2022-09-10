@@ -1,21 +1,20 @@
-# Warp Drive CLI v1.0.0-dev
+# warp drive cli
 
-Command line service for warpdrive
+Command line interface for warpdrive.
 
 ## Run
 
 To start interactive mode, run following command from repository root: 
 
 ```shell
-go run .
+go run ./cmd/warpdrive
 ```
 
-To run single command and exit add command name and required arguments, for example:  
+To run single command and exit, append command name and required arguments, for example:  
 
 ```shell
-go run . get 9c10b4cb-b770-4602-4b51-0e755b1cea2a
+go run ./cmd/warpdrive get 9c10b4cb-b770-4602-4b51-0e755b1cea2a
 ```
-
 
 ## Commands
 
