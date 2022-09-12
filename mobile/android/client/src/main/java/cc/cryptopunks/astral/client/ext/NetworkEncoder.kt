@@ -8,6 +8,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 suspend fun NetworkEncoder.register(
     port: String,
@@ -33,18 +34,20 @@ suspend fun NetworkEncoder.register(
 suspend fun <T> NetworkEncoder.query(
     port: String,
     identity: String = "",
-    timeout: Long = 5000,
+    timeout: Long = 10000,
     handle: suspend StreamEncoder.() -> T,
 ): T =
     @Suppress("RedundantAsync")
     scope.async {
         val stream = query(port, identity)
         try {
-            stream.handle()
+            withTimeout(timeout) {
+                stream.handle()
+            }
         } catch (e: Throwable) {
             throw e
         } finally {
-            stream.close()
+            runCatching { stream.close() }
         }
     }.await()
 
