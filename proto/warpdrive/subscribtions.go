@@ -42,7 +42,10 @@ func NewListener(ctx context.Context, w io.WriteCloser) (listener Listener) {
 			case <-ctx.Done():
 				_ = w.Close()
 				return
-			case i := <-c:
+			case i, ok := <-c:
+				if !ok {
+					return
+				}
 				var err error
 				switch v := i.(type) {
 				case []byte:

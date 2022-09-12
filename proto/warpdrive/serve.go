@@ -37,6 +37,7 @@ func (d Dispatcher) Serve(
 		}
 	}
 	if errors.Is(err, errEnded) {
+		d.Println("End")
 		err = nil
 	}
 	if err != nil {
@@ -48,11 +49,14 @@ func (d Dispatcher) Serve(
 func nextCommand(d *Dispatcher) (cmd uint8, err error) {
 	d.Logger = NewLogger(d.LogPrefix, "(~)")
 	err = d.Decode("c", &cmd)
-	if err == nil {
-		d.Logger = NewLogger(d.LogPrefix, fmt.Sprintf("(%d)", cmd))
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			err = errEnded
+		}
 		return
 	}
-	if errors.Is(err, io.EOF) {
+	d.Logger = NewLogger(d.LogPrefix, fmt.Sprintf("(%d)", cmd))
+	if cmd == cmdClose {
 		err = errEnded
 	}
 	return
@@ -68,18 +72,18 @@ func DispatchLocal(d *Dispatcher) (err error) {
 		return
 	}
 	switch cmd {
-	case localAcceptOffer:
-		return rpc.Dispatch(d.Conn, "[c]c", d.AcceptOffer)
-	case localCreateOffer:
-		return rpc.Dispatch(d.Conn, "[c]c [c]c", d.CreateOffer)
-	case localListenOffers:
-		return rpc.Dispatch(d.Conn, "c", d.ListOffers)
-	case localListenStatus:
-		return rpc.Dispatch(d.Conn, "c", d.ListenStatus)
-	case localListOffers:
-		return rpc.Dispatch(d.Conn, "c", d.ListenOffers)
 	case localListPeers:
 		return rpc.Dispatch(d.Conn, "", d.ListPeers)
+	case localCreateOffer:
+		return rpc.Dispatch(d.Conn, "[c]c [c]c", d.CreateOffer)
+	case localAcceptOffer:
+		return rpc.Dispatch(d.Conn, "[c]c", d.AcceptOffer)
+	case localListOffers:
+		return rpc.Dispatch(d.Conn, "c", d.ListOffers)
+	case localListenOffers:
+		return rpc.Dispatch(d.Conn, "c", d.ListenOffers)
+	case localListenStatus:
+		return rpc.Dispatch(d.Conn, "c", d.ListenStatus)
 	case localUpdatePeer:
 		return rpc.Dispatch(d.Conn, "", d.UpdatePeer)
 	default:
@@ -93,8 +97,6 @@ func DispatchRemote(d *Dispatcher) (err error) {
 		return
 	}
 	switch cmd {
-	case cmdClose:
-		return errEnded
 	case remoteSend:
 		return rpc.Dispatch(d.Conn, "", d.Receive)
 	case remoteDownload:
@@ -110,8 +112,6 @@ func DispatchInfo(d *Dispatcher) (err error) {
 		return
 	}
 	switch cmd {
-	case cmdClose:
-		return errEnded
 	case infoPing:
 		return rpc.Dispatch(d.Conn, "", d.Ping)
 	default:
