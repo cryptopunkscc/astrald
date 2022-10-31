@@ -34,7 +34,7 @@ Info
 |------|------|----------------------------|
 | 0x01 | ping | ping the warpdrive service |
 
-## Commands
+## Local commands
 
 ### list peers
 
@@ -95,11 +95,11 @@ Arguments
 |------|--------|-------------------------------------|
 | c    | filter | 0 - all, 1 - incoming, 2 - outgoing |
 
-Returned values
+Stream values
 
-| type    | name         | desc                  |
-|---------|--------------|-----------------------|
-| []Offer | offers list  | zero or an error code |
+| type  | name      | desc                  |
+|-------|-----------|-----------------------|
+| Offer | new offer | zero or an error code |
 
 Finalize
 
@@ -115,11 +115,11 @@ Arguments
 |------|--------|-------------------------------------|
 | c    | filter | 0 - all, 1 - incoming, 2 - outgoing |
 
-Returned values
+Returned stream
 
-| type          | name         | desc                  |
-|---------------|--------------|-----------------------|
-| []OfferStatus | offers list  | zero or an error code |
+| type        | name         | desc                  |
+|-------------|--------------|-----------------------|
+| OfferStatus | offer status | zero or an error code |
 
 Finalize
 
@@ -136,7 +136,7 @@ Arguments
 | [c]c   | offer id   | the offer id                          |
 | []Info | files info | files info associated to the offer id |
 
-Returned values
+Returned value
 
 | type | name | desc            |
 |------|------|-----------------|
