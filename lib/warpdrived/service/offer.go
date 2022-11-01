@@ -17,22 +17,22 @@ import (
 func Outgoing(c core.Component) *Offer {
 	return &Offer{
 		Component:  c,
-		RWMutex:    &c.Mutex.Outgoing,
+		mu:         &c.Mutex.Outgoing,
 		mem:        memory.Outgoing(c),
 		file:       file.Outgoing(c),
-		OfferSubs:  c.Observers.OutgoingOffers,
-		StatusSubs: c.Observers.OutgoingStatus,
+		offerSubs:  c.Observers.OutgoingOffers,
+		statusSubs: c.Observers.OutgoingStatus,
 	}
 }
 
 func Incoming(c core.Component) *Offer {
 	return &Offer{
 		Component:  c,
-		RWMutex:    &c.Mutex.Incoming,
+		mu:         &c.Mutex.Incoming,
 		mem:        memory.Incoming(c),
 		file:       file.Incoming(c),
-		OfferSubs:  c.Observers.IncomingOffers,
-		StatusSubs: c.Observers.IncomingStatus,
+		offerSubs:  c.Observers.IncomingOffers,
+		statusSubs: c.Observers.IncomingStatus,
 		incoming:   true,
 	}
 }
@@ -40,9 +40,9 @@ func Incoming(c core.Component) *Offer {
 type Offer struct {
 	core.Component
 	*warpdrive.Offer
-	*sync.RWMutex
-	OfferSubs  *warpdrive.Subscriptions
-	StatusSubs *warpdrive.Subscriptions
+	mu         *sync.RWMutex
+	offerSubs  *warpdrive.Subscriptions
+	statusSubs *warpdrive.Subscriptions
 	file       storage.Offer
 	mem        storage.Offer
 	incoming   bool
@@ -51,8 +51,8 @@ type Offer struct {
 var _ warpdrive.OfferService = &Offer{}
 
 func (srv *Offer) List() (offers []warpdrive.Offer) {
-	srv.RLock()
-	defer srv.RUnlock()
+	srv.mu.RLock()
+	defer srv.mu.RUnlock()
 	m := srv.mem.Get()
 	for _, o := range m {
 		offers = append(offers, *o)
@@ -68,8 +68,8 @@ func (a byCreate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byCreate) Less(i, j int) bool { return a[i].Create < a[j].Create }
 
 func (srv *Offer) Get(id warpdrive.OfferId) (offer *warpdrive.Offer) {
-	srv.RLock()
-	defer srv.RUnlock()
+	srv.mu.RLock()
+	defer srv.mu.RUnlock()
 	offer = srv.mem.Get()[id]
 	return
 }
@@ -122,11 +122,11 @@ func (srv *Offer) dispatch(offer *warpdrive.Offer) {
 }
 
 func (srv *Offer) OfferSubscriptions() *warpdrive.Subscriptions {
-	return srv.OfferSubs
+	return srv.offerSubs
 }
 
 func (srv *Offer) StatusSubscriptions() *warpdrive.Subscriptions {
-	return srv.StatusSubs
+	return srv.statusSubs
 }
 
 var _ core.OfferUpdate = &Offer{}

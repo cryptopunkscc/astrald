@@ -13,11 +13,11 @@ import (
 )
 
 type Server struct {
-	context.Context
 	core.Component
+	ctx     context.Context
 	warp    warpdrive.Service
 	localId id.Identity
-	Debug   bool
+	debug   bool
 }
 
 func (s *Server) String() string {
@@ -27,7 +27,7 @@ func (s *Server) String() string {
 func (s *Server) Run(ctx context.Context, api wrapper.Api) (err error) {
 
 	s.Api = api
-	s.Context = ctx
+	s.ctx = ctx
 
 	if s.localId, err = s.Resolve("localnode"); err != nil {
 		return errors.New(fmt.Sprintln("Cannot resolve local id;", err))
@@ -35,7 +35,7 @@ func (s *Server) Run(ctx context.Context, api wrapper.Api) (err error) {
 
 	setupCore(&s.Component)
 
-	finish := service.OfferUpdates(s.Component).Start(s)
+	finish := service.OfferUpdates(s.Component).Start(s.ctx)
 
 	s.warp = service.Warpdrive(s.Component)
 
@@ -54,7 +54,7 @@ func (s *Server) Run(ctx context.Context, api wrapper.Api) (err error) {
 		}
 	}
 
-	<-s.Done()
+	<-s.ctx.Done()
 	<-finish
 	return
 }
@@ -91,8 +91,8 @@ func (s *Server) register(
 				_ = warpdrive.NewDispatcher(
 					logPrefix,
 					callerId,
-					s.Debug || authorized,
-					s.Context,
+					s.debug || authorized,
+					s.ctx,
 					s.Api,
 					conn,
 					s.warp,
@@ -102,7 +102,7 @@ func (s *Server) register(
 		}
 	}()
 	go func() {
-		<-s.Done()
+		<-s.ctx.Done()
 		port.Close()
 	}()
 	return

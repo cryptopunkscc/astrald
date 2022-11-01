@@ -7,7 +7,7 @@ import (
 
 func Android(dir string) *Server {
 	return &Server{
-		Debug: true,
+		debug: true,
 		Component: core.Component{
 			Config: core.Config{
 				Platform:       core.PlatformAndroid,

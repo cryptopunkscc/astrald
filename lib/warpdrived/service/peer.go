@@ -33,15 +33,6 @@ func (c Peer) Update(peerId string, attr string, value string) {
 	c.save()
 }
 
-func (c Peer) save() {
-	var peers []warpdrive.Peer
-	mem := memory.Peers(c).Get()
-	for _, p := range mem {
-		peers = append(peers, *p)
-	}
-	file.Peers(core.Component(c)).Save(peers)
-}
-
 func (c Peer) update(peerId string, attr string, value string) {
 	id := warpdrive.PeerId(peerId)
 	mem := memory.Peers(c).Get()
@@ -61,6 +52,15 @@ func (c Peer) update(peerId string, attr string, value string) {
 			return
 		}
 	}
+}
+
+func (c Peer) save() {
+	var peers []warpdrive.Peer
+	mem := memory.Peers(c).Get()
+	for _, p := range mem {
+		peers = append(peers, *p)
+	}
+	file.Peers(core.Component(c)).Save(peers)
 }
 
 func (c Peer) Get(id warpdrive.PeerId) warpdrive.Peer {
