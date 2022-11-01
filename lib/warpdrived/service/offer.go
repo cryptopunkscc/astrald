@@ -115,18 +115,18 @@ func (srv *Offer) Finish(offer *warpdrive.Offer, err error) {
 	srv.dispatch(offer)
 }
 
+func (srv *Offer) dispatch(offer *warpdrive.Offer) {
+	offer.Update = time.Now().UnixMilli()
+	srv.Offer = offer
+	srv.Channel.Offers <- srv
+}
+
 func (srv *Offer) OfferSubscriptions() *warpdrive.Subscriptions {
 	return srv.OfferSubs
 }
 
 func (srv *Offer) StatusSubscriptions() *warpdrive.Subscriptions {
 	return srv.StatusSubs
-}
-
-func (srv *Offer) dispatch(offer *warpdrive.Offer) {
-	offer.Update = time.Now().UnixMilli()
-	srv.Offer = offer
-	srv.Channel.Offers <- srv
 }
 
 var _ core.OfferUpdate = &Offer{}
@@ -148,6 +148,15 @@ func (srv *Offer) Forward() {
 	}
 }
 
+func (srv *Offer) notify(data interface{}, subscribers *warpdrive.Subscriptions) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		srv.Println("Cannot create json from data", data, err)
+		return
+	}
+	subscribers.Notify(jsonData)
+}
+
 func (srv *Offer) Stat() warpdrive.OfferStatus {
 	return srv.OfferStatus
 }
@@ -161,19 +170,6 @@ func (srv *Offer) Notification() (n notify.Notification) {
 		n.Info = &srv.Files[srv.Index]
 	}
 	return
-}
-
-func (srv *Offer) notify(data interface{}, subscribers *warpdrive.Subscriptions) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		srv.Println("Cannot create json from data", data, err)
-		return
-	}
-	subscribers.Lock()
-	defer subscribers.Unlock()
-	for subscriber := range subscribers.Set {
-		subscriber <- jsonData
-	}
 }
 
 type OfferUpdates core.Component

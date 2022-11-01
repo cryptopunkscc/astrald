@@ -78,28 +78,26 @@ func (s *Server) register(
 				defer s.Job.Done()
 
 				conn, err := request.Accept()
-				defer func() {
-					if err != nil {
-						log.Println(err)
-					}
-				}()
+				defer conn.Close()
+
 				if err != nil {
 					err = warpdrive.Error(err, "Cannot accept warpdrive connection")
+					log.Println(err)
 					return
 				}
-				defer conn.Close()
+				logPrefix := fmt.Sprint("[WARPDRIVE] ", query, ":", requestId)
 				callerId := request.Caller().String()
 				authorized := callerId == s.localId.String()
-				_ = warpdrive.Dispatcher{
-					Context:    s.Context,
-					Service:    s.warp,
-					CallerId:   callerId,
-					Api:        s.Api,
-					Job:        s.Job,
-					Conn:       conn,
-					Authorized: s.Debug || authorized,
-					LogPrefix:  fmt.Sprint("[WARPDRIVE] ", query, ":", requestId),
-				}.Serve(dispatch)
+				_ = warpdrive.NewDispatcher(
+					logPrefix,
+					callerId,
+					s.Debug || authorized,
+					s.Context,
+					s.Api,
+					conn,
+					s.warp,
+					s.Job,
+				).Serve(dispatch)
 			}(request, requestId)
 		}
 	}()

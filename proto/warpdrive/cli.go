@@ -14,17 +14,17 @@ import (
 const prompt = "warp> "
 
 func Cli(d *Dispatcher) (err error) {
-	if !d.Authorized {
+	if !d.authorized {
 		return nil
 	}
 	prompt := prompt
-	scanner := bufio.NewScanner(d.Conn)
-	_, err = d.Conn.Write([]byte(prompt))
+	scanner := bufio.NewScanner(d.conn)
+	_, err = d.conn.Write([]byte(prompt))
 	if err != nil {
 		err = Error(err, "Cannot write prompt")
 		return
 	}
-	c, err := NewClient(d.Api).Connect(id.Identity{}, PortLocal)
+	c, err := NewClient(d.api).Connect(id.Identity{}, PortLocal)
 	if err != nil {
 		err = Error(err, "Cannot connect local client")
 		return
@@ -33,46 +33,46 @@ func Cli(d *Dispatcher) (err error) {
 	defer close(finish)
 	go func() {
 		select {
-		case <-d.Done():
+		case <-d.ctx.Done():
 		case <-finish:
 		}
-		_ = d.Conn.Close()
-		_ = c.Conn.Close()
+		_ = d.conn.Close()
+		_ = c.conn.Close()
 	}()
 	for scanner.Scan() {
 		text := scanner.Text()
 		switch text {
 		case "prompt-off":
 			prompt = ""
-			_ = d.Encode("[c]c", "\n")
+			_ = d.cslq.Encode("[c]c", "\n")
 			continue
 		case "e", "exit":
 			return
 		case "", "h", "help":
-			_ = cliHelp(d.Context, d.Conn, c, nil)
-			_ = d.Encode("[c]c", prompt)
+			_ = cliHelp(d.ctx, d.conn, c, nil)
+			_ = d.cslq.Encode("[c]c", prompt)
 			continue
 		}
 
 		words := strings.Split(text, " ")
 		if len(words) == 0 {
-			_ = d.Encode("[c]c", prompt)
+			_ = d.cslq.Encode("[c]c", prompt)
 			continue
 		}
 		cmd, args := words[0], words[1:]
-		d.Logger = NewLogger(d.LogPrefix, fmt.Sprintf("(%s)", cmd))
+		d.log = NewLogger(d.logPrefix, fmt.Sprintf("(%s)", cmd))
 		fn, ok := commands[cmd]
 		if ok {
-			err = fn(d.Context, d.Conn, c, args)
+			err = fn(d.ctx, d.conn, c, args)
 			if err != nil {
 				err = Error(err, "cli command error")
 				return
 			}
 			//d.Println("OK")
 		} else {
-			d.Println("no such cli command", cmd)
+			d.log.Println("no such cli command", cmd)
 		}
-		_ = d.Encode("[c]c", prompt)
+		_ = d.cslq.Encode("[c]c", prompt)
 	}
 	return scanner.Err()
 }
@@ -127,11 +127,11 @@ func cliSend(ctx context.Context, writer io.ReadWriteCloser, client Client, args
 		_, err = fmt.Fprintln(writer, "<filePath> <peerId>?")
 		return
 	}
-	peer := client.LocalNode
+	peer := client.localNode
 	if len(args) > 1 {
 		peer = args[1]
 	}
-	id, accepted, err := client.CreateOffer(PeerId(peer), args[0])
+	peerId, accepted, err := client.CreateOffer(PeerId(peer), args[0])
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func cliSend(ctx context.Context, writer io.ReadWriteCloser, client Client, args
 	if accepted {
 		status = "accepted"
 	}
-	_, err = fmt.Fprintln(writer, id, status)
+	_, err = fmt.Fprintln(writer, peerId, status)
 	return
 }
 

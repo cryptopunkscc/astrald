@@ -13,49 +13,74 @@ import (
 )
 
 type Dispatcher struct {
-	Service
-	context.Context
-	CallerId   string
-	Authorized bool
-	LogPrefix  string
-	Api        wrapper.Api
-	Conn       io.ReadWriteCloser
-	Job        *sync.WaitGroup
-	*cslq.Endec
-	*log.Logger
+	logPrefix  string
+	callerId   string
+	authorized bool
+
+	ctx  context.Context
+	api  wrapper.Api
+	conn io.ReadWriteCloser
+
+	srv Service
+	job *sync.WaitGroup
+
+	cslq *cslq.Endec
+	log  *log.Logger
+}
+
+func NewDispatcher(
+	logPrefix string,
+	callerId string,
+	authorized bool,
+	ctx context.Context,
+	api wrapper.Api,
+	conn io.ReadWriteCloser,
+	srv Service,
+	job *sync.WaitGroup,
+) *Dispatcher {
+	return &Dispatcher{
+		logPrefix:  logPrefix,
+		callerId:   callerId,
+		authorized: authorized,
+		ctx:        ctx,
+		api:        api,
+		conn:       conn,
+		srv:        srv,
+		job:        job,
+		cslq:       cslq.NewEndec(conn),
+		log:        NewLogger(logPrefix),
+	}
 }
 
 func (d Dispatcher) Serve(
 	dispatch func(d *Dispatcher) error,
 ) (err error) {
-	d.Logger = NewLogger(d.LogPrefix)
-	d.Endec = cslq.NewEndec(d.Conn)
 	for err == nil {
 		err = dispatch(&d)
 		if err == nil {
-			d.Println("OK")
+			d.log.Println("OK")
 		}
 	}
 	if errors.Is(err, errEnded) {
-		d.Println("End")
+		d.log.Println("End")
 		err = nil
 	}
 	if err != nil {
-		d.Println(Error(err, "Failed"))
+		d.log.Println(Error(err, "Failed"))
 	}
 	return errors.Unwrap(err)
 }
 
 func nextCommand(d *Dispatcher) (cmd uint8, err error) {
-	d.Logger = NewLogger(d.LogPrefix, "(~)")
-	err = d.Decode("c", &cmd)
+	d.log = NewLogger(d.logPrefix, "(~)")
+	err = d.cslq.Decode("c", &cmd)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			err = errEnded
 		}
 		return
 	}
-	d.Logger = NewLogger(d.LogPrefix, fmt.Sprintf("(%d)", cmd))
+	d.log = NewLogger(d.logPrefix, fmt.Sprintf("(%d)", cmd))
 	if cmd == cmdClose {
 		err = errEnded
 	}
@@ -64,7 +89,7 @@ func nextCommand(d *Dispatcher) (cmd uint8, err error) {
 
 func DispatchLocal(d *Dispatcher) (err error) {
 	// reject remote requests
-	if !d.Authorized {
+	if !d.authorized {
 		return nil
 	}
 	cmd, err := nextCommand(d)
@@ -73,19 +98,19 @@ func DispatchLocal(d *Dispatcher) (err error) {
 	}
 	switch cmd {
 	case localListPeers:
-		return rpc.Dispatch(d.Conn, "", d.ListPeers)
+		return rpc.Dispatch(d.conn, "", d.ListPeers)
 	case localCreateOffer:
-		return rpc.Dispatch(d.Conn, "[c]c [c]c", d.CreateOffer)
+		return rpc.Dispatch(d.conn, "[c]c [c]c", d.CreateOffer)
 	case localAcceptOffer:
-		return rpc.Dispatch(d.Conn, "[c]c", d.AcceptOffer)
+		return rpc.Dispatch(d.conn, "[c]c", d.AcceptOffer)
 	case localListOffers:
-		return rpc.Dispatch(d.Conn, "c", d.ListOffers)
+		return rpc.Dispatch(d.conn, "c", d.ListOffers)
 	case localListenOffers:
-		return rpc.Dispatch(d.Conn, "c", d.ListenOffers)
+		return rpc.Dispatch(d.conn, "c", d.ListenOffers)
 	case localListenStatus:
-		return rpc.Dispatch(d.Conn, "c", d.ListenStatus)
+		return rpc.Dispatch(d.conn, "c", d.ListenStatus)
 	case localUpdatePeer:
-		return rpc.Dispatch(d.Conn, "", d.UpdatePeer)
+		return rpc.Dispatch(d.conn, "", d.UpdatePeer)
 	default:
 		return errors.New("protocol violation: unknown command")
 	}
@@ -98,9 +123,9 @@ func DispatchRemote(d *Dispatcher) (err error) {
 	}
 	switch cmd {
 	case remoteSend:
-		return rpc.Dispatch(d.Conn, "", d.Receive)
+		return rpc.Dispatch(d.conn, "", d.Receive)
 	case remoteDownload:
-		return rpc.Dispatch(d.Conn, "[c]c q q", d.Upload)
+		return rpc.Dispatch(d.conn, "[c]c q q", d.Upload)
 	default:
 		return errors.New("protocol violation: unknown command")
 	}
@@ -113,7 +138,7 @@ func DispatchInfo(d *Dispatcher) (err error) {
 	}
 	switch cmd {
 	case infoPing:
-		return rpc.Dispatch(d.Conn, "", d.Ping)
+		return rpc.Dispatch(d.conn, "", d.Ping)
 	default:
 		return errors.New("protocol violation: unknown command")
 	}

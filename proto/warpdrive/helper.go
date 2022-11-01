@@ -13,12 +13,12 @@ func (d Dispatcher) filterOffers(
 ) (offers []Offer) {
 	switch filter {
 	case FilterIn:
-		offers = append(offers, d.Incoming().List()...)
+		offers = append(offers, d.srv.Incoming().List()...)
 	case FilterOut:
-		offers = append(offers, d.Outgoing().List()...)
+		offers = append(offers, d.srv.Outgoing().List()...)
 	case FilterAll:
-		offers = append(offers, d.Incoming().List()...)
-		offers = append(offers, d.Outgoing().List()...)
+		offers = append(offers, d.srv.Incoming().List()...)
+		offers = append(offers, d.srv.Outgoing().List()...)
 	}
 	return
 }
@@ -27,17 +27,17 @@ func (d Dispatcher) filterSubscribe(
 	filter Filter,
 	get func(service OfferService) *Subscriptions,
 ) (unsub Unsubscribe) {
-	c := NewListener(d.Context, d.Conn)
+	c := NewListener(d.ctx, d.conn)
 	var unsubIn Unsubscribe = func() {}
 	var unsubOut Unsubscribe = func() {}
 	switch filter {
 	case FilterIn:
-		unsubIn = get(d.Incoming()).Subscribe(c)
+		unsubIn = get(d.srv.Incoming()).Subscribe(c)
 	case FilterOut:
-		unsubOut = get(d.Outgoing()).Subscribe(c)
+		unsubOut = get(d.srv.Outgoing()).Subscribe(c)
 	default:
-		unsubIn = get(d.Incoming()).Subscribe(c)
-		unsubOut = get(d.Outgoing()).Subscribe(c)
+		unsubIn = get(d.srv.Incoming()).Subscribe(c)
+		unsubOut = get(d.srv.Outgoing()).Subscribe(c)
 	}
 	return func() {
 		unsubIn()

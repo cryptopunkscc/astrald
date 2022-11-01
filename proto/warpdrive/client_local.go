@@ -4,38 +4,37 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"io"
 )
 
 func (c Client) CreateOffer(peerId PeerId, filePath string) (id OfferId, accepted bool, err error) {
 	// Request send
-	err = c.Encode("c", localCreateOffer)
+	err = c.cslq.Encode("c", localCreateOffer)
 	if err != nil {
 		err = Error(err, "Cannot request send")
 		return
 	}
 	// Send recipient id
-	err = c.Encode("[c]c", peerId)
+	err = c.cslq.Encode("[c]c", peerId)
 	if err != nil {
 		err = Error(err, "Cannot send recipient id")
 		return
 	}
 	// Send file path
-	err = c.Encode("[c]c", filePath)
+	err = c.cslq.Encode("[c]c", filePath)
 	if err != nil {
 		err = Error(err, "Cannot send file path")
 		return
 	}
 	// Read offer id
-	err = c.Decode("[c]c", &id)
+	err = c.cslq.Decode("[c]c", &id)
 	if err != nil {
 		err = Error(err, "Cannot read offer id")
 		return
 	}
 	// Read result code
 	var code byte
-	err = c.Decode("c", &code)
+	err = c.cslq.Decode("c", &code)
 	if err != nil {
 		err = Error(err, "Cannot read offer result code")
 	}
@@ -45,21 +44,21 @@ func (c Client) CreateOffer(peerId PeerId, filePath string) (id OfferId, accepte
 
 func (c Client) AcceptOffer(id OfferId) (err error) {
 	// Request accept
-	err = c.Encode("c", localAcceptOffer)
+	err = c.cslq.Encode("c", localAcceptOffer)
 	if err != nil {
 		err = Error(err, "Cannot request accept")
 		return
 	}
 
 	// Send accepted request id to service
-	err = c.Encode("[c]c", id)
+	err = c.cslq.Encode("[c]c", id)
 	if err != nil {
 		err = Error(err, "Cannot send accepted request id")
 		return
 	}
 	// Read OK
 	var code byte
-	err = c.Decode("c", &code)
+	err = c.cslq.Decode("c", &code)
 	if err != nil {
 		err = Error(err, "Cannot read ok")
 		return
@@ -69,24 +68,24 @@ func (c Client) AcceptOffer(id OfferId) (err error) {
 
 func (c Client) ListOffers(filter Filter) (offers []Offer, err error) {
 	// Request offers
-	err = c.Encode("c", localListOffers)
+	err = c.cslq.Encode("c", localListOffers)
 	if err != nil {
 		err = Error(err, "Cannot request send")
 		return
 	}
 
 	// Send filter
-	if err = cslq.Encode(c.Conn, "c", filter); err != nil {
+	if err = c.cslq.Encode("c", filter); err != nil {
 		err = Error(err, "Cannot send filter")
 		return
 	}
 	// Receive outgoing offers
-	if err = json.NewDecoder(c.Conn).Decode(&offers); err != nil {
+	if err = json.NewDecoder(c.conn).Decode(&offers); err != nil {
 		err = Error(err, "Cannot read outgoing offers")
 		return
 	}
 	// Send OK
-	if err = cslq.Encode(c.Conn, "c", 0); err != nil {
+	if err = c.cslq.Encode("c", 0); err != nil {
 		err = Error(err, "Cannot send ok")
 		return
 	}
@@ -95,18 +94,18 @@ func (c Client) ListOffers(filter Filter) (offers []Offer, err error) {
 
 func (c Client) ListPeers() (peers []Peer, err error) {
 	// Request peers
-	err = c.Encode("c", localListPeers)
+	err = c.cslq.Encode("c", localListPeers)
 	if err != nil {
 		err = Error(err, "Cannot request peers")
 		return
 	}
 	// Read peers
-	if err = json.NewDecoder(c.Conn).Decode(&peers); err != nil {
+	if err = json.NewDecoder(c.conn).Decode(&peers); err != nil {
 		err = Error(err, "Cannot read peers")
 		return
 	}
 	// Send OK
-	if err = cslq.Encode(c.Conn, "c", 0); err != nil {
+	if err = c.cslq.Encode("c", 0); err != nil {
 		err = Error(err, "Cannot send ok")
 		return
 	}
@@ -115,13 +114,13 @@ func (c Client) ListPeers() (peers []Peer, err error) {
 
 func (c Client) ListenStatus(filter Filter) (status <-chan OfferStatus, err error) {
 	// Request status
-	err = c.Encode("c", localListenStatus)
+	err = c.cslq.Encode("c", localListenStatus)
 	if err != nil {
 		err = Error(err, "Cannot request status")
 		return
 	}
 	// Connect send filter
-	err = cslq.Encode(c.Conn, "c", filter)
+	err = c.cslq.Encode("c", filter)
 	if err != nil {
 		err = Error(err, "Cannot send filter")
 		return
@@ -132,53 +131,53 @@ func (c Client) ListenStatus(filter Filter) (status <-chan OfferStatus, err erro
 		defer close(status)
 		dec := json.NewDecoder(conn)
 		files := &OfferStatus{}
-		c.Println("Start listening status")
+		c.log.Println("Start listening status")
 		for {
 			err := dec.Decode(files)
 			if err != nil {
 				if fmt.Sprint(errors.Unwrap(err)) == "use of closed network connection" {
 					err = nil
 				}
-				c.Println(Error(err, "Finish listening offer status"))
+				c.log.Println(Error(err, "Finish listening offer status"))
 				return
 			}
 			status <- *files
 		}
-	}(c.Conn, statChan)
+	}(c.conn, statChan)
 	return
 }
 
-func (c Client) ListenOffers(filter Filter) (offers <-chan Offer, err error) {
+func (c Client) ListenOffers(filter Filter) (out <-chan Offer, err error) {
 	// Request subscribe
-	err = c.Encode("c", localListenOffers)
+	err = c.cslq.Encode("c", localListenOffers)
 	if err != nil {
 		err = Error(err, "Cannot request subscribe")
 		return
 	}
-	err = cslq.Encode(c.Conn, "c", filter)
+	err = c.cslq.Encode("c", filter)
 	if err != nil {
 		err = Error(err, "Cannot send filter")
 		return
 	}
-	ofs := make(chan Offer)
-	offers = ofs
-	go func(conn io.ReadWriteCloser, offers chan Offer) {
+	offers := make(chan Offer)
+	out = offers
+	go func() {
 		defer close(offers)
-		dec := json.NewDecoder(conn)
-		files := &Offer{}
-		c.Println("Start listening offers")
+		c.log.Println("Start listening offers")
+		dec := json.NewDecoder(c.conn)
 		for {
-			err := dec.Decode(files)
+			offer := &Offer{}
+			err := dec.Decode(offer)
 			if err != nil {
 				if fmt.Sprint(errors.Unwrap(err)) == "use of closed network connection" {
 					err = nil
 				}
-				c.Print(Error(err, "Finish listening new offers"))
+				c.log.Print(Error(err, "Finish listening new offers"))
 				return
 			}
-			offers <- *files
+			offers <- *offer
 		}
-	}(c.Conn, ofs)
+	}()
 	return
 }
 
@@ -188,21 +187,21 @@ func (c Client) UpdatePeer(
 	value string,
 ) (err error) {
 	// Request peer update
-	err = c.Encode("c", localUpdatePeer)
+	err = c.cslq.Encode("c", localUpdatePeer)
 	if err != nil {
 		err = Error(err, "Cannot update")
 		return
 	}
 	// Send peers to update
 	req := []string{string(peerId), attr, value}
-	err = json.NewEncoder(c.Conn).Encode(req)
+	err = json.NewEncoder(c.conn).Encode(req)
 	if err != nil {
 		err = Error(err, "Cannot send peer update")
 		return
 	}
 	// Wait for OK
 	var code byte
-	err = cslq.Decode(c.Conn, "c", &code)
+	err = c.cslq.Decode("c", &code)
 	if err != nil {
 		err = Error(err, "Cannot read ok")
 		return

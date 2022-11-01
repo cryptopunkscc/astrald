@@ -9,47 +9,40 @@ import (
 )
 
 type Client struct {
-	wrapper.Api
-	*log.Logger
-	*cslq.Endec
-	Conn       io.ReadWriteCloser
-	LocalNode  string
-	RemoteNode string
+	api       wrapper.Api
+	conn      io.ReadWriteCloser
+	cslq      *cslq.Endec
+	log       *log.Logger
+	localNode string
 }
 
 func NewClient(api wrapper.Api) Client {
-	return Client{Logger: log.Default(), Api: api}
+	return Client{log: log.Default(), api: api}
 }
 
 // Connect to warpdrive service
 func (c Client) Connect(identity id.Identity, port string) (client Client, err error) {
-	c.Logger = NewLogger("[CLIENT]", port)
+	c.log = NewLogger("[CLIENT]", port)
 	// Resolve local id
-	localId, err := c.Resolve("localnode")
+	localId, err := c.api.Resolve("localnode")
 	if err != nil {
-		c.Println("Cannot resolve local node id", err)
+		c.log.Println("Cannot resolve local node id", err)
 		return
 	}
-	c.LocalNode = localId.String()
+	c.localNode = localId.String()
 	// Connect to local service
-	conn, err := c.Query(identity, port)
+	c.conn, err = c.api.Query(identity, port)
 	if err != nil {
-		c.Println("Cannot connect to service", err)
+		c.log.Println("Cannot connect to service", err)
 		return
 	}
-	c.Conn = conn
-	c.Endec = cslq.NewEndec(conn)
-	if identity.IsZero() {
-		c.RemoteNode = c.LocalNode
-	} else {
-		c.RemoteNode = identity.String()
-	}
+	c.cslq = cslq.NewEndec(c.conn)
 	client = c
 	return
 }
 
 func (c Client) Close() (err error) {
-	err = c.Encode("c", cmdClose)
-	_ = c.Conn.Close()
+	err = c.cslq.Encode("c", cmdClose)
+	_ = c.conn.Close()
 	return
 }

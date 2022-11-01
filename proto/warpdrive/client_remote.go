@@ -4,7 +4,7 @@ import "encoding/json"
 
 func (c Client) SendOffer(files []Info) (offerId OfferId, code uint8, err error) {
 	// Request send
-	err = c.Encode("c", remoteSend)
+	err = c.cslq.Encode("c", remoteSend)
 	if err != nil {
 		err = Error(err, "Cannot request send")
 		return
@@ -12,19 +12,19 @@ func (c Client) SendOffer(files []Info) (offerId OfferId, code uint8, err error)
 
 	// Send file request
 	offerId = newOfferId()
-	err = c.Encode("[c]c", offerId)
+	err = c.cslq.Encode("[c]c", offerId)
 	if err != nil {
 		err = Error(err, "Cannot send offer id", offerId)
 		return
 	}
 	shrunken := shrinkPaths(files)
-	err = json.NewEncoder(c.Conn).Encode(shrunken)
+	err = json.NewEncoder(c.conn).Encode(shrunken)
 	if err != nil {
 		err = Error(err, "Cannot send offer info", offerId)
 		return
 	}
 	// Read result code
-	err = c.Decode("c", &code)
+	err = c.cslq.Decode("c", &code)
 	if err != nil {
 		err = Error(err, "Cannot read result code")
 		return
@@ -38,19 +38,19 @@ func (c Client) Download(
 	offset int64,
 ) (err error) {
 	// Request download
-	if err = c.Encode("c", remoteDownload); err != nil {
+	if err = c.cslq.Encode("c", remoteDownload); err != nil {
 		err = Error(err, "Cannot request download")
 	}
 
 	// Send file request id
-	if err = c.Encode("[c]c q q", offerId, index, offset); err != nil {
+	if err = c.cslq.Encode("[c]c q q", offerId, index, offset); err != nil {
 		err = Error(err, "Cannot send request id")
 		return
 	}
 
 	// Read confirmation
 	var code byte
-	err = c.Decode("c", &code)
+	err = c.cslq.Decode("c", &code)
 	if err != nil {
 		err = Error(err, "Cannot read confirmation")
 		return
