@@ -143,7 +143,7 @@ func (d Dispatcher) Download(offerId OfferId) (err error) {
 	go func() {
 		defer close(finish)
 		// Copy files from connection to storage
-		if err = d.srv.File().Copy(offer).From(client.conn); err != nil {
+		if err = srv.Copy(offer).From(client.conn); err != nil {
 			finish <- Error(err, "Cannot download files")
 			return
 		}

@@ -10,17 +10,17 @@ var _ warpdrive.Service = Warpdrive{}
 type Warpdrive core.Component
 
 func (w Warpdrive) Incoming() warpdrive.OfferService {
-	return Incoming(core.Component(w))
+	return incoming(core.Component(w))
 }
 
 func (w Warpdrive) Outgoing() warpdrive.OfferService {
-	return Outgoing(core.Component(w))
+	return outgoing(core.Component(w))
 }
 
 func (w Warpdrive) Peer() warpdrive.PeerService {
-	return Peer(w)
+	return peer(w)
 }
 
 func (w Warpdrive) File() warpdrive.FileService {
-	return File(w)
+	return w.FileResolver
 }

@@ -101,7 +101,7 @@ func (d Dispatcher) Upload(
 		// Copy files to connection
 		offer.Index = index
 		offer.Progress = offset
-		err := d.srv.File().Copy(offer).To(d.conn)
+		err := srv.Copy(offer).To(d.conn)
 		if err != nil {
 			err = Error(err, "Cannot upload files")
 		}

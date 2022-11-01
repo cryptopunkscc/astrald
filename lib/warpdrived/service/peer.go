@@ -8,45 +8,45 @@ import (
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 )
 
-var _ warpdrive.PeerService = Peer{}
+var _ warpdrive.PeerService = peer{}
 
-type Peer core.Component
+type peer core.Component
 
-func (c Peer) Fetch() {
-	contactList, err := contacts.Client{Api: c}.List()
+func (srv peer) Fetch() {
+	contactList, err := contacts.Client{Api: srv}.List()
 	if err != nil {
-		c.Println("Cannot obtain contacts", err)
+		srv.Println("Cannot obtain contacts", err)
 		return
 	}
-	c.Mutex.Peers.Lock()
-	defer c.Mutex.Peers.Unlock()
+	srv.Mutex.Peers.Lock()
+	defer srv.Mutex.Peers.Unlock()
 	for _, contact := range contactList {
-		c.update(contact.Id, "alias", contact.Name)
+		srv.update(contact.Id, "alias", contact.Name)
 	}
-	c.save()
+	srv.save()
 }
 
-func (c Peer) Update(peerId string, attr string, value string) {
-	c.Mutex.Peers.Lock()
-	defer c.Mutex.Peers.Unlock()
-	c.update(peerId, attr, value)
-	c.save()
+func (srv peer) Update(peerId string, attr string, value string) {
+	srv.Mutex.Peers.Lock()
+	defer srv.Mutex.Peers.Unlock()
+	srv.update(peerId, attr, value)
+	srv.save()
 }
 
-func (c Peer) update(peerId string, attr string, value string) {
+func (srv peer) update(peerId string, attr string, value string) {
 	id := warpdrive.PeerId(peerId)
-	mem := memory.Peers(c).Get()
-	peer := mem[id]
-	cached := peer != nil
+	mem := memory.Peers(srv).Get()
+	p := mem[id]
+	cached := p != nil
 	if !cached {
-		peer = &warpdrive.Peer{Id: id}
-		mem[id] = peer
+		p = &warpdrive.Peer{Id: id}
+		mem[id] = p
 	}
 	switch attr {
 	case "mod":
-		peer.Mod = value
+		p.Mod = value
 	case "alias":
-		peer.Alias = value
+		p.Alias = value
 	default:
 		if cached {
 			return
@@ -54,36 +54,36 @@ func (c Peer) update(peerId string, attr string, value string) {
 	}
 }
 
-func (c Peer) save() {
+func (srv peer) save() {
 	var peers []warpdrive.Peer
-	mem := memory.Peers(c).Get()
+	mem := memory.Peers(srv).Get()
 	for _, p := range mem {
 		peers = append(peers, *p)
 	}
-	file.Peers(core.Component(c)).Save(peers)
+	file.Peers(core.Component(srv)).Save(peers)
 }
 
-func (c Peer) Get(id warpdrive.PeerId) warpdrive.Peer {
-	c.Mutex.Peers.RLock()
-	defer c.Mutex.Peers.RUnlock()
-	peer := memory.Peers(c).Get()[id]
-	if peer == nil {
-		peer = &warpdrive.Peer{
+func (srv peer) Get(id warpdrive.PeerId) warpdrive.Peer {
+	srv.Mutex.Peers.RLock()
+	defer srv.Mutex.Peers.RUnlock()
+	p := memory.Peers(srv).Get()[id]
+	if p == nil {
+		p = &warpdrive.Peer{
 			Id:    id,
 			Alias: "",
 			Mod:   "",
 		}
 	}
-	return *peer
+	return *p
 }
 
-func (c Peer) List() (peers []warpdrive.Peer) {
-	c.Fetch()
-	c.Mutex.Peers.RLock()
-	defer c.Mutex.Peers.RUnlock()
-	return memory.Peers(c).List()
+func (srv peer) List() (peers []warpdrive.Peer) {
+	srv.Fetch()
+	srv.Mutex.Peers.RLock()
+	defer srv.Mutex.Peers.RUnlock()
+	return memory.Peers(srv).List()
 }
 
-func (c Peer) Offers() *warpdrive.Subscriptions {
-	return c.IncomingOffers
+func (srv peer) Offers() *warpdrive.Subscriptions {
+	return srv.IncomingOffers
 }

@@ -12,16 +12,6 @@ type Service interface {
 	File() FileService
 }
 
-type OfferService interface {
-	List() (offers []Offer)
-	Get(id OfferId) *Offer
-	Add(offerId OfferId, files []Info, peerId PeerId) *Offer
-	Accept(offer *Offer)
-	Finish(offer *Offer, err error)
-	OfferSubscriptions() *Subscriptions
-	StatusSubscriptions() *Subscriptions
-}
-
 type PeerService interface {
 	Fetch()
 	Update(peerId string, attr string, value string)
@@ -29,14 +19,24 @@ type PeerService interface {
 	List() (peers []Peer)
 }
 
-type FileService interface {
-	Info(uri string) (files []Info, err error)
+type OfferService interface {
+	List() (offers []Offer)
+	Get(id OfferId) *Offer
+	Add(offerId OfferId, files []Info, peerId PeerId) *Offer
+	Accept(offer *Offer)
 	Copy(offer *Offer) CopyOffer
+	Finish(offer *Offer, err error)
+	OfferSubscriptions() *Subscriptions
+	StatusSubscriptions() *Subscriptions
 }
 
 type CopyOffer interface {
 	From(reader io.Reader) (err error)
 	To(writer io.Writer) (err error)
+}
+
+type FileService interface {
+	Info(uri string) (files []Info, err error)
 }
 
 type Offers map[OfferId]*Offer
