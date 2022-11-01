@@ -10,9 +10,8 @@ func Android(dir string) *Server {
 		debug: true,
 		Component: core.Component{
 			Config: core.Config{
-				Platform:       core.PlatformAndroid,
-				RepositoryDir:  filepath.Join(dir, "warpdrive"),
-				RemoteResolver: true,
+				Platform:      core.PlatformAndroid,
+				RepositoryDir: filepath.Join(dir, "warpdrive"),
 			},
 		},
 	}

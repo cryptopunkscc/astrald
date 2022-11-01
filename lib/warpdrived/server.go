@@ -26,8 +26,8 @@ func (s *Server) String() string {
 
 func (s *Server) Run(ctx context.Context, api wrapper.Api) (err error) {
 
-	s.Api = api
 	s.ctx = ctx
+	s.Api = api
 
 	if s.localId, err = s.Resolve("localnode"); err != nil {
 		return errors.New(fmt.Sprintln("Cannot resolve local id;", err))

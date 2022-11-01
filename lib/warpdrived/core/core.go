@@ -22,10 +22,9 @@ type Component struct {
 }
 
 type Config struct {
-	RepositoryDir  string
-	StorageDir     string
-	RemoteResolver bool
-	Platform       string
+	RepositoryDir string
+	StorageDir    string
+	Platform      string
 }
 
 type Sys struct {

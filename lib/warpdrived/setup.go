@@ -17,6 +17,7 @@ import (
 func setupCore(c *core.Component) {
 	// Defaults
 	c.Logger = log.Default()
+	c.Job = &sync.WaitGroup{}
 	c.Sys = &core.Sys{}
 	c.Channel = &core.Channel{}
 	c.Cache = &core.Cache{
@@ -60,13 +61,11 @@ func setupCore(c *core.Component) {
 		c.Sys.Notify = stub.Notify
 	}
 
-	// Workers
-	c.Job = &sync.WaitGroup{}
-
 	// Resolver
-	if c.RemoteResolver {
+	switch c.Platform {
+	case core.PlatformAndroid:
 		c.FileResolver = remote.Resolver(c.Api)
-	} else {
+	default:
 		c.FileResolver = &file.Resolver{}
 	}
 }
