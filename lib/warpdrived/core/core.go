@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/cryptopunkscc/astrald/lib/warpdrived/notify"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage"
 	"github.com/cryptopunkscc/astrald/lib/wrapper"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"log"
@@ -16,6 +17,7 @@ type Component struct {
 	*Observers
 	*Channel
 	wrapper.Api
+	storage.FileResolver
 	Job *sync.WaitGroup
 }
 

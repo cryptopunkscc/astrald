@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/warpdrived/notify/android"
 	"github.com/cryptopunkscc/astrald/lib/warpdrived/notify/stub"
 	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage/file"
+	"github.com/cryptopunkscc/astrald/lib/warpdrived/storage/remote"
 	"github.com/cryptopunkscc/astrald/proto/warpdrive"
 	"log"
 	"os"
@@ -61,6 +62,13 @@ func setupCore(c *core.Component) {
 
 	// Workers
 	c.Job = &sync.WaitGroup{}
+
+	// Resolver
+	if c.RemoteResolver {
+		c.FileResolver = remote.Resolver(c.Api)
+	} else {
+		c.FileResolver = &file.Resolver{}
+	}
 }
 
 func storageDir() string {
