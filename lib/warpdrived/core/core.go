@@ -51,20 +51,7 @@ type Observers struct {
 }
 
 type Channel struct {
-	Offers chan<- OfferUpdate
-}
-
-type OfferUpdate interface {
-	//Cache updated offer in memory
-	Cache()
-	//Save  updated offer in persistent storage
-	Save()
-	//Forward update to listeners
-	Forward()
-	//A Stat returns related OfferStatus
-	Stat() warpdrive.OfferStatus
-	//Notification related to this update
-	Notification() notify.Notification
+	Offers chan<- interface{}
 }
 
 const (

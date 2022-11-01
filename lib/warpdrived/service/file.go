@@ -70,7 +70,7 @@ func (co CopyOffer) fileFrom(reader io.Reader) (err error) {
 			co.Println("Cannot make dir", info.Uri, err)
 			return err
 		}
-		co.Update(offer, info.Size)
+		co.update(offer, info.Size)
 		return nil
 	}
 	offset := offer.Progress
@@ -88,7 +88,7 @@ func (co CopyOffer) fileFrom(reader io.Reader) (err error) {
 	}()
 	// Copy bytes
 	update := func(progress int64, size int64) error {
-		co.Update(offer, offset+progress)
+		co.update(offer, offset+progress)
 		return nil
 	}
 	progress := &ioprogress.Reader{
@@ -104,7 +104,7 @@ func (co CopyOffer) fileFrom(reader io.Reader) (err error) {
 		return err
 	}
 	if co.Progress != info.Size {
-		co.Update(offer, info.Size)
+		co.update(offer, info.Size)
 	}
 	return
 }
@@ -127,7 +127,7 @@ func (co CopyOffer) To(writer io.Writer) (err error) {
 func (co CopyOffer) fileTo(writer io.Writer) (err error) {
 	info := co.Files[co.Index]
 	if info.IsDir {
-		co.Update(co.Offer.Offer, info.Size)
+		co.update(co.Offer.Offer, info.Size)
 		return
 	}
 	offset := co.Progress
@@ -138,7 +138,7 @@ func (co CopyOffer) fileTo(writer io.Writer) (err error) {
 	}
 	defer reader.Close()
 	update := func(progress int64, size int64) error {
-		co.Update(co.Offer.Offer, offset+progress)
+		co.update(co.Offer.Offer, offset+progress)
 		return nil
 	}
 	progress := &ioprogress.Reader{
@@ -154,7 +154,7 @@ func (co CopyOffer) fileTo(writer io.Writer) (err error) {
 	}
 	co.Progress = offset + l
 	if co.Progress != info.Size {
-		co.Update(co.Offer.Offer, info.Size)
+		co.update(co.Offer.Offer, info.Size)
 	}
 	return
 }

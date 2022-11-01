@@ -50,6 +50,21 @@ type Offer struct {
 
 var _ warpdrive.OfferService = &Offer{}
 
+func (srv *Offer) OfferSubscriptions() *warpdrive.Subscriptions {
+	return srv.offerSubs
+}
+
+func (srv *Offer) StatusSubscriptions() *warpdrive.Subscriptions {
+	return srv.statusSubs
+}
+
+func (srv *Offer) Get(id warpdrive.OfferId) (offer *warpdrive.Offer) {
+	srv.mu.RLock()
+	defer srv.mu.RUnlock()
+	offer = srv.mem.Get()[id]
+	return
+}
+
 func (srv *Offer) List() (offers []warpdrive.Offer) {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -66,13 +81,6 @@ type byCreate []warpdrive.Offer
 func (a byCreate) Len() int           { return len(a) }
 func (a byCreate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byCreate) Less(i, j int) bool { return a[i].Create < a[j].Create }
-
-func (srv *Offer) Get(id warpdrive.OfferId) (offer *warpdrive.Offer) {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	offer = srv.mem.Get()[id]
-	return
-}
 
 func (srv *Offer) Add(
 	offerId warpdrive.OfferId,
@@ -99,11 +107,6 @@ func (srv *Offer) Accept(offer *warpdrive.Offer) {
 	srv.dispatch(offer)
 }
 
-func (srv *Offer) Update(offer *warpdrive.Offer, progress int64) {
-	offer.Progress = progress
-	srv.dispatch(offer)
-}
-
 func (srv *Offer) Finish(offer *warpdrive.Offer, err error) {
 	if err == nil {
 		offer.Index = len(offer.Files)
@@ -121,27 +124,12 @@ func (srv *Offer) dispatch(offer *warpdrive.Offer) {
 	srv.Channel.Offers <- srv
 }
 
-func (srv *Offer) OfferSubscriptions() *warpdrive.Subscriptions {
-	return srv.offerSubs
+func (srv *Offer) update(offer *warpdrive.Offer, progress int64) {
+	offer.Progress = progress
+	srv.dispatch(offer)
 }
 
-func (srv *Offer) StatusSubscriptions() *warpdrive.Subscriptions {
-	return srv.statusSubs
-}
-
-var _ core.OfferUpdate = &Offer{}
-
-func (srv *Offer) Cache() {
-	srv.mem.Save(*srv.Offer)
-}
-
-func (srv *Offer) Save() {
-	if !srv.IsOngoing() {
-		srv.file.Save(*srv.Offer)
-	}
-}
-
-func (srv *Offer) Forward() {
+func (srv *Offer) forward() {
 	srv.notify(srv.OfferStatus, srv.StatusSubscriptions())
 	if srv.Status == warpdrive.StatusAwaiting {
 		srv.notify(srv.Offer, srv.OfferSubscriptions())
@@ -157,11 +145,7 @@ func (srv *Offer) notify(data interface{}, subscribers *warpdrive.Subscriptions)
 	subscribers.Notify(jsonData)
 }
 
-func (srv *Offer) Stat() warpdrive.OfferStatus {
-	return srv.OfferStatus
-}
-
-func (srv *Offer) Notification() (n notify.Notification) {
+func (srv *Offer) notification() (n notify.Notification) {
 	n = notify.Notification{
 		Peer:  Peer(srv.Component).Get(srv.Peer),
 		Offer: *srv.Offer,
@@ -175,7 +159,7 @@ func (srv *Offer) Notification() (n notify.Notification) {
 type OfferUpdates core.Component
 
 func (c OfferUpdates) Start(ctx context.Context) <-chan struct{} {
-	receive := make(chan core.OfferUpdate, 1024)
+	receive := make(chan interface{}, 1024)
 	c.Channel.Offers = receive
 	finish := make(chan struct{})
 	go func() {
@@ -188,12 +172,13 @@ func (c OfferUpdates) Start(ctx context.Context) <-chan struct{} {
 		}()
 		for {
 			select {
-			case update := <-receive:
+			case received := <-receive:
+				update := received.(*Offer)
 				if update == nil {
 					return
 				}
 				// Add received update to buffer
-				status := update.Stat()
+				status := update.OfferStatus
 				buffer[status.In][status.Id] = update
 			default:
 				switch {
@@ -236,7 +221,7 @@ func (c OfferUpdates) Start(ctx context.Context) <-chan struct{} {
 }
 
 func (c OfferUpdates) processUpdates(buffer offerUpdatesBuffer) {
-	var updates []core.OfferUpdate
+	var updates []*Offer
 	for _, b := range buffer {
 		for _, next := range b {
 			updates = append(updates, next)
@@ -249,30 +234,32 @@ func (c OfferUpdates) processUpdates(buffer offerUpdatesBuffer) {
 	c.Mutex.Incoming.Lock()
 	c.Mutex.Outgoing.Lock()
 	for _, update := range updates {
-		update.Cache()
+		update.mem.Save(*update.Offer)
 	}
 	c.Mutex.Incoming.Unlock()
 	c.Mutex.Outgoing.Unlock()
 
 	// Save updates in storage.
 	for _, update := range updates {
-		update.Save()
+		if !update.IsOngoing() {
+			update.file.Save(*update.Offer)
+		}
 	}
 
 	// Notify listeners
 	for _, update := range updates {
-		update.Forward()
+		update.forward()
 	}
 
 	// Display system notification
 	arr := make([]notify.Notification, len(updates))
 	for i, update := range updates {
-		arr[i] = update.Notification()
+		arr[i] = update.notification()
 	}
 	c.Sys.Notify(arr)
 }
 
-type offerUpdatesBuffer map[bool]map[warpdrive.OfferId]core.OfferUpdate
+type offerUpdatesBuffer map[bool]map[warpdrive.OfferId]*Offer
 
 func newOfferUpdatesBuffer() offerUpdatesBuffer {
 	return offerUpdatesBuffer{true: {}, false: {}}
@@ -282,8 +269,8 @@ func (b offerUpdatesBuffer) len() int {
 	return len(b[true]) + len(b[false])
 }
 
-type byUpdateTime []core.OfferUpdate
+type byUpdateTime []*Offer
 
 func (a byUpdateTime) Len() int           { return len(a) }
 func (a byUpdateTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byUpdateTime) Less(i, j int) bool { return a[i].Stat().Update < a[j].Stat().Update }
+func (a byUpdateTime) Less(i, j int) bool { return a[i].Update < a[j].Update }
