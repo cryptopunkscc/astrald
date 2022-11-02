@@ -55,9 +55,10 @@ Arguments
 
 Returned values
 
-| type | name     | desc               |
-|------|----------|--------------------|
-| [c]c | offer id | id of files offers |
+| type | name        | desc                       |
+|------|-------------|----------------------------|
+| [c]c | offer id    | id of files offers         |
+| c    | result code | 0 - awaiting, 1 - accepted |
 
 ### accept offer
 
@@ -103,9 +104,9 @@ Stream values
 
 Finalize
 
-| type | name | desc                                |
-|------|------|-------------------------------------|
-| c    | code | 0 or error code                     |
+| type | name | desc                |
+|------|------|---------------------|
+| 0    | code | finish subscription |
 
 ### listen status
 
@@ -123,9 +124,11 @@ Returned stream
 
 Finalize
 
-| type | name | desc                                |
-|------|------|-------------------------------------|
-| c    | code | 0 or error code                     |
+| type | name | desc                |
+|------|------|---------------------|
+| 0    | code | finish subscription |
+
+## Remote commands
 
 ### send offer
 
@@ -138,15 +141,9 @@ Arguments
 
 Returned value
 
-| type | name | desc            |
-|------|------|-----------------|
-| c    | code | 0 or error code |
-
-Finalize
-
-| type | name | desc                                |
-|------|------|-------------------------------------|
-| c    | code | 0 or error code                     |
+| type | name        | desc                       |
+|------|-------------|----------------------------|
+| c    | result code | 0 - awaiting, 1 - accepted |
 
 ### download
 
@@ -162,13 +159,14 @@ Returned values
 
 | type | name  | desc              |
 |------|-------|-------------------|
+| c    | code  | 0 - confirmation  |
 | blob | files | files byte stream |
 
 Finalize
 
-| type | name | desc                                |
-|------|------|-------------------------------------|
-| c    | code | 0 or error code                     |
+| type | name | desc               |
+|------|------|--------------------|
+| 0    | code | finish downloading |
 
 ### ping
 
@@ -176,7 +174,7 @@ Arguments
 
 | type | name   | desc                      |
 |------|--------|---------------------------|
-| c    | signal | any byte value            |
+| c    | signal | 0 - close, (c > 0) - ping |
 
 Returned values
 

@@ -84,11 +84,6 @@ func (c Client) ListOffers(filter Filter) (offers []Offer, err error) {
 		err = Error(err, "Cannot read outgoing offers")
 		return
 	}
-	// Send OK
-	if err = c.cslq.Encode("c", 0); err != nil {
-		err = Error(err, "Cannot send ok")
-		return
-	}
 	return
 }
 
@@ -102,11 +97,6 @@ func (c Client) ListPeers() (peers []Peer, err error) {
 	// Read peers
 	if err = json.NewDecoder(c.conn).Decode(&peers); err != nil {
 		err = Error(err, "Cannot read peers")
-		return
-	}
-	// Send OK
-	if err = c.cslq.Encode("c", 0); err != nil {
-		err = Error(err, "Cannot send ok")
 		return
 	}
 	return

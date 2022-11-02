@@ -62,12 +62,6 @@ func (d Dispatcher) ListOffers(filter Filter) (err error) {
 		err = Error(err, "Cannot send incoming offers")
 		return
 	}
-	// Wait for OK
-	var code byte
-	if err = d.cslq.Decode("c", &code); err != nil {
-		err = Error(err, "Cannot read ok")
-		return
-	}
 	d.log.Println("Sent", filter, "offers")
 	return
 }
