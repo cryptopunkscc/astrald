@@ -39,15 +39,9 @@ func (d Dispatcher) CreateOffer(peerId PeerId, filePath string) (err error) {
 	d.srv.Outgoing().Add(offerId, files, peerId)
 
 	// Write id to sender
-	err = d.cslq.Encode("[c]c", offerId)
+	err = d.cslq.Encode("[c]c c", offerId, code)
 	if err != nil {
-		err = Error(err, "Cannot send id", offerId)
-		return
-	}
-	// Write code to sender
-	err = d.cslq.Encode("c", code)
-	if err != nil {
-		err = Error(err, "Cannot code", offerId)
+		err = Error(err, "Cannot send create offer result", offerId)
 		return
 	}
 	d.log.Println(filePath, "offer sent to", peerId)

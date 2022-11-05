@@ -3,18 +3,11 @@ package warpdrive
 import "encoding/json"
 
 func (c Client) SendOffer(files []Info) (offerId OfferId, code uint8, err error) {
-	// Request send
-	err = c.cslq.Encode("c", remoteSend)
-	if err != nil {
-		err = Error(err, "Cannot request send")
-		return
-	}
-
-	// Send file request
+	// Request send offer
 	offerId = newOfferId()
-	err = c.cslq.Encode("[c]c", offerId)
+	err = c.cslq.Encode("c [c]c", remoteSend, offerId)
 	if err != nil {
-		err = Error(err, "Cannot send offer id", offerId)
+		err = Error(err, "Cannot send offer with id", offerId)
 		return
 	}
 	shrunken := shrinkPaths(files)
@@ -38,14 +31,8 @@ func (c Client) Download(
 	offset int64,
 ) (err error) {
 	// Request download
-	if err = c.cslq.Encode("c", remoteDownload); err != nil {
+	if err = c.cslq.Encode("c [c]c q q", remoteDownload, offerId, index, offset); err != nil {
 		err = Error(err, "Cannot request download")
-	}
-
-	// Send file request id
-	if err = c.cslq.Encode("[c]c q q", offerId, index, offset); err != nil {
-		err = Error(err, "Cannot send request id")
-		return
 	}
 
 	// Read confirmation
