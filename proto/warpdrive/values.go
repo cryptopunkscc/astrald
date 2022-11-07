@@ -3,10 +3,8 @@ package warpdrive
 import "errors"
 
 const (
-	PortCli    = "wd"
-	PortLocal  = "warpdrive-local"
-	PortRemote = "warpdrive-remote"
-	PortInfo   = "warpdrive-info"
+	Port    = "warpdrive"
+	PortCli = "wd"
 )
 
 // common commands
@@ -27,13 +25,13 @@ const (
 
 // remote commands
 const (
-	remoteSend = uint8(iota) + 1
+	remoteSend = uint8(iota) + 100
 	remoteDownload
 )
 
 // info commands
 const (
-	infoPing = uint8(iota) + 1
+	infoPing = uint8(iota) + 200
 )
 
 var errEnded = errors.New("ended")

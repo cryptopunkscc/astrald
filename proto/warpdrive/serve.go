@@ -71,30 +71,21 @@ func (d Dispatcher) Serve(
 	return errors.Unwrap(err)
 }
 
-func nextCommand(d *Dispatcher) (cmd uint8, err error) {
-	d.log = NewLogger(d.logPrefix, "(~)")
-	err = d.cslq.Decode("c", &cmd)
-	if err != nil {
-		if errors.Is(err, io.EOF) {
-			err = errEnded
-		}
-		return
-	}
-	d.log = NewLogger(d.logPrefix, fmt.Sprintf("(%d)", cmd))
-	if cmd == cmdClose {
-		err = errEnded
-	}
-	return
-}
-
-func DispatchLocal(d *Dispatcher) (err error) {
-	// reject remote requests
-	if !d.authorized {
-		return nil
-	}
+func Dispatch(d *Dispatcher) (err error) {
 	cmd, err := nextCommand(d)
 	if err != nil {
 		return
+	}
+	switch cmd {
+	case infoPing:
+		return rpc.Dispatch(d.conn, "", d.Ping)
+	case remoteSend:
+		return rpc.Dispatch(d.conn, "", d.Receive)
+	case remoteDownload:
+		return rpc.Dispatch(d.conn, "[c]c q q", d.Upload)
+	}
+	if !d.authorized {
+		return nil
 	}
 	switch cmd {
 	case localListPeers:
@@ -111,35 +102,22 @@ func DispatchLocal(d *Dispatcher) (err error) {
 		return rpc.Dispatch(d.conn, "c", d.ListenStatus)
 	case localUpdatePeer:
 		return rpc.Dispatch(d.conn, "", d.UpdatePeer)
-	default:
-		return errors.New("protocol violation: unknown command")
 	}
+	return errors.New("protocol violation: unknown command")
 }
 
-func DispatchRemote(d *Dispatcher) (err error) {
-	cmd, err := nextCommand(d)
+func nextCommand(d *Dispatcher) (cmd uint8, err error) {
+	d.log = NewLogger(d.logPrefix, "(~)")
+	err = d.cslq.Decode("c", &cmd)
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			err = errEnded
+		}
 		return
 	}
-	switch cmd {
-	case remoteSend:
-		return rpc.Dispatch(d.conn, "", d.Receive)
-	case remoteDownload:
-		return rpc.Dispatch(d.conn, "[c]c q q", d.Upload)
-	default:
-		return errors.New("protocol violation: unknown command")
+	d.log = NewLogger(d.logPrefix, fmt.Sprintf("(%d)", cmd))
+	if cmd == cmdClose {
+		err = errEnded
 	}
-}
-
-func DispatchInfo(d *Dispatcher) (err error) {
-	cmd, err := nextCommand(d)
-	if err != nil {
-		return
-	}
-	switch cmd {
-	case infoPing:
-		return rpc.Dispatch(d.conn, "", d.Ping)
-	default:
-		return errors.New("protocol violation: unknown command")
-	}
+	return
 }

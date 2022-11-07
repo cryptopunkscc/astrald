@@ -22,7 +22,7 @@ func (d Dispatcher) CreateOffer(peerId PeerId, filePath string) (err error) {
 	}
 
 	// Connect to remote client
-	client, err := NewClient(d.api).Connect(identity, PortRemote)
+	client, err := NewClient(d.api).Connect(identity, Port)
 	if err != nil {
 		err = Error(err, "Cannot connect to remote", peerId)
 		return
@@ -51,12 +51,12 @@ func (d Dispatcher) CreateOffer(peerId PeerId, filePath string) (err error) {
 func (d Dispatcher) ListOffers(filter Filter) (err error) {
 	// Collect file offers
 	offers := d.filterOffers(filter)
+	d.log.Println("Filter", filter)
 	// Send filtered file offers
 	if err = json.NewEncoder(d.conn).Encode(offers); err != nil {
 		err = Error(err, "Cannot send incoming offers")
 		return
 	}
-	d.log.Println("Sent", filter, "offers")
 	return
 }
 
@@ -97,7 +97,7 @@ func (d Dispatcher) Download(offerId OfferId) (err error) {
 	srv.Accept(offer)
 
 	// Connect to remote warpdrive
-	client, err := NewClient(d.api).Connect(peerId, PortRemote)
+	client, err := NewClient(d.api).Connect(peerId, Port)
 	if err != nil {
 		return
 	}
@@ -123,6 +123,7 @@ func (d Dispatcher) Download(offerId OfferId) (err error) {
 			_ = client.Close()
 		}
 		srv.Finish(offer, err)
+		d.log.Println(Error(err, "Failed"))
 		time.Sleep(200)
 		d.job.Done()
 	}()
@@ -151,12 +152,6 @@ func (d Dispatcher) ListPeers() (err error) {
 	// Send peers
 	if err = json.NewEncoder(d.conn).Encode(peers); err != nil {
 		err = Error(err, "Cannot send peers")
-		return
-	}
-	// Read OK
-	var code byte
-	if err = d.cslq.Decode("c", &code); err != nil {
-		err = Error(err, "Cannot read ok")
 		return
 	}
 	return

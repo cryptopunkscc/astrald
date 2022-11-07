@@ -42,10 +42,8 @@ func (s *Server) Run(ctx context.Context, api wrapper.Api) (err error) {
 	s.warp.Peer().Fetch()
 
 	dispatchers := map[string]func(d *warpdrive.Dispatcher) error{
-		warpdrive.PortInfo:   warpdrive.DispatchInfo,
-		warpdrive.PortLocal:  warpdrive.DispatchLocal,
-		warpdrive.PortRemote: warpdrive.DispatchRemote,
-		warpdrive.PortCli:    warpdrive.Cli,
+		warpdrive.Port:    warpdrive.Dispatch,
+		warpdrive.PortCli: warpdrive.Cli,
 	}
 
 	for port, dispatcher := range dispatchers {

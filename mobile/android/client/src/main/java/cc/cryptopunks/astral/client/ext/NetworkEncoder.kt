@@ -39,7 +39,7 @@ suspend fun <T> NetworkEncoder.query(
 ): T =
     @Suppress("RedundantAsync")
     scope.async {
-        val stream = query(port, identity)
+        val stream = connect(port, identity)
         try {
             withTimeout(timeout) {
                 stream.handle()

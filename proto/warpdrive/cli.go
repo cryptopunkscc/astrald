@@ -24,7 +24,7 @@ func Cli(d *Dispatcher) (err error) {
 		err = Error(err, "Cannot write prompt")
 		return
 	}
-	c, err := NewClient(d.api).Connect(id.Identity{}, PortLocal)
+	c, err := NewClient(d.api).Connect(id.Identity{}, Port)
 	if err != nil {
 		err = Error(err, "Cannot connect local client")
 		return

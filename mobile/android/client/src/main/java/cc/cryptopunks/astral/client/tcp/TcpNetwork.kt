@@ -56,7 +56,7 @@ private class TcpNetwork(
 
     override fun identity(): String = identity.decodeToString()
 
-    override fun query(port: String, identity: String): TcpStream {
+    override fun connect(port: String, identity: String): TcpStream {
         val stream = TcpStream(astralSocket())
         val id = if (identity.isBlank())
             this.identity else

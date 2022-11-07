@@ -18,12 +18,12 @@ data class NetworkEncoder(
     val encoder: Encoder,
 ) : Network by network {
 
-    override fun query(
+    override fun connect(
         port: String,
         identity: String,
     ): StreamEncoder = StreamEncoderImpl(
         encoder = encoder,
-        stream = network.query(
+        stream = network.connect(
             port = port,
             identity = identity,
         )

@@ -22,11 +22,11 @@ func (d Dispatcher) Ping() (err error) {
 			err = Error(err, "Cannot read ping")
 			return
 		}
-		if code == 0 {
-			return
-		}
 		if err = d.cslq.Encode("c", code); err != nil {
 			err = Error(err, "Cannot write ping")
+			return
+		}
+		if code == 0 {
 			return
 		}
 	}

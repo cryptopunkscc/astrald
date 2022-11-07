@@ -8,7 +8,7 @@ import java.io.OutputStream
  * Network provides access to core network APIs
  */
 interface Network {
-    fun query(port: String, identity: String = ""): Stream
+    fun connect(port: String, identity: String = ""): Stream
     fun register(port: String): Port
     fun identity(): String
 
