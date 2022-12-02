@@ -155,11 +155,8 @@ func (roam *Roam) serveDrop(ctx context.Context) {
 }
 
 func (roam *Roam) optimizeConn(conn *link.Conn) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	var remoteID = conn.Link().RemoteIdentity()
-	var peer = roam.node.Peers.Hold(ctx, remoteID)
+	var peer = roam.node.Peers.Pool.Peer(remoteID)
 
 	for {
 		select {
@@ -167,6 +164,10 @@ func (roam *Roam) optimizeConn(conn *link.Conn) {
 			return
 		case <-time.After(time.Second):
 			best := link.Select(peer.Links(), link.LowestRoundTrip)
+
+			if best == nil {
+				return
+			}
 
 			if conn.Link() != best {
 				if err := roam.move(conn, best); err != nil {

@@ -1,4 +1,4 @@
-package peer
+package peers
 
 import "github.com/cryptopunkscc/astrald/node/link"
 

@@ -28,7 +28,7 @@ func (Connect) Run(ctx context.Context, node *node.Node) error {
 			continue
 		}
 
-		node.Server.Conns <- &wrapper{
+		node.Peers.Server.Conns <- &wrapper{
 			local:           node.Identity().Public(),
 			remote:          query.Link().RemoteIdentity(),
 			ReadWriteCloser: conn,

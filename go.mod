@@ -1,6 +1,6 @@
 module github.com/cryptopunkscc/astrald
 
-go 1.16
+go 1.19
 
 require (
 	github.com/btcsuite/btcd v0.21.0-beta

@@ -10,7 +10,7 @@ import (
 )
 
 func peers(w io.ReadWriter, node *node.Node, _ []string) error {
-	for peer := range node.Peers.All() {
+	for peer := range node.Peers.Pool.Peers(nil) {
 		peerName := node.Contacts.DisplayName(peer.Identity())
 
 		fmt.Fprintf(w, "peer %s (idle %s)\n",
@@ -43,6 +43,11 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 				)
 			}
 		}
+	}
+
+	for l := range node.Peers.Linkers() {
+		peerName := node.Contacts.DisplayName(l.RemoteID())
+		fmt.Fprintf(w, "peer %s linking...\n", peerName)
 	}
 
 	return nil

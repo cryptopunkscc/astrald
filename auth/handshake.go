@@ -9,6 +9,7 @@ import (
 
 // HandshakeInbound performs a handshake as the passive party.
 func HandshakeInbound(ctx context.Context, conn infra.Conn, localID id.Identity) (Conn, error) {
+	//TODO: handle ctx
 	bConn, err := brontide.PassiveHandshake(conn, localID.PrivateKey())
 	if err != nil {
 		return nil, err
@@ -22,6 +23,7 @@ func HandshakeInbound(ctx context.Context, conn infra.Conn, localID id.Identity)
 
 // HandshakeOutbound performs a handshake as the active party.
 func HandshakeOutbound(ctx context.Context, conn infra.Conn, expectedRemoteID id.Identity, localID id.Identity) (Conn, error) {
+	//TODO: handle ctx
 	c, err := brontide.ActiveHandshake(conn, localID.PrivateKey(), expectedRemoteID.PublicKey())
 	if err != nil {
 		return nil, err

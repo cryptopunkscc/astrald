@@ -1,11 +1,14 @@
-package server
+package peers
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/link"
+	"io"
+	"log"
 )
 
 type Server struct {
@@ -13,7 +16,7 @@ type Server struct {
 	links chan *link.Link
 }
 
-func Run(ctx context.Context, localID id.Identity, listener infra.Listener) (*Server, error) {
+func runServer(ctx context.Context, localID id.Identity, listener infra.Listener) (*Server, error) {
 	listenCh, err := listener.Listen(ctx)
 	if err != nil {
 		return nil, err
@@ -38,15 +41,19 @@ func Run(ctx context.Context, localID id.Identity, listener infra.Listener) (*Se
 
 func (i *Server) process(ctx context.Context, localID id.Identity) {
 	for conn := range i.Conns {
-		auth, err := auth.HandshakeInbound(ctx, conn, localID)
-		if err != nil {
-			conn.Close()
-			continue
-		}
-		i.links <- link.New(auth)
+		conn := conn
+		go func() {
+			auth, err := auth.HandshakeInbound(ctx, conn, localID)
+			if (err != nil) && (!errors.Is(err, io.EOF)) {
+				log.Println("peers.Server.process(): inbound handshake error:", err)
+				conn.Close()
+				return
+			}
+			i.links <- link.New(auth)
+		}()
 	}
 }
 
-func (i Server) Links() chan *link.Link {
+func (i *Server) Links() chan *link.Link {
 	return i.links
 }

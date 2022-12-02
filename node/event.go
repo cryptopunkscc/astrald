@@ -1,15 +1,22 @@
 package node
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/peer"
+	"github.com/cryptopunkscc/astrald/node/peers"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"log"
 	"reflect"
 )
+
+func (node *Node) processEvents(ctx context.Context) {
+	for event := range node.events.Subscribe(ctx.Done()) {
+		node.logEvent(event)
+	}
+}
 
 func (node *Node) logEvent(event event.Event) {
 	var displayName = node.Contacts.DisplayName
@@ -23,20 +30,20 @@ func (node *Node) logEvent(event event.Event) {
 	}
 
 	switch event := event.(type) {
-	case peer.EventLinked:
+	case peers.EventLinked:
 		log.Printf("%s linked\n", displayName(event.Peer.Identity()))
 
-	case peer.EventUnlinked:
+	case peers.EventUnlinked:
 		log.Printf("%s unlinked\n", displayName(event.Peer.Identity()))
 
-	case peer.EventLinkEstablished:
+	case peers.EventLinkEstablished:
 		log.Printf(
 			"link with %s established over %s",
 			displayName(event.Link.RemoteIdentity()),
 			event.Link.Network(),
 		)
 
-	case peer.EventLinkClosed:
+	case peers.EventLinkClosed:
 		log.Printf(
 			"link with %s over %s closed",
 			displayName(event.Link.RemoteIdentity()),

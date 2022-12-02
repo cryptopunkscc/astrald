@@ -160,6 +160,7 @@ func (link *Link) handleQueries() {
 			link.Activity.Done()
 		}
 	}
+	close(link.queries)
 }
 
 func (link *Link) ping() error {

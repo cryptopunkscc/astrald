@@ -3,7 +3,7 @@ package linkback
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/peer"
+	"github.com/cryptopunkscc/astrald/node/peers"
 	"time"
 )
 
@@ -33,14 +33,14 @@ func (LinkBack) Run(ctx context.Context, n *node.Node) error {
 				conn.Close()
 			}
 
-			n.Linking.Optimize(query.Link().RemoteIdentity(), linkbackDuration)
+			//TODO: start linkback
 		}
 	}()
 
 	for event := range n.Subscribe(ctx.Done()) {
-		if event, ok := event.(peer.EventLinked); ok {
+		if event, ok := event.(peers.EventLinked); ok {
 			if event.Link.Outbound() {
-				if c, err := event.Peer.Query(ctx, serviceHandle); err == nil {
+				if c, err := n.Query(ctx, event.Peer.Identity(), serviceHandle); err == nil {
 					c.Close()
 				}
 			}

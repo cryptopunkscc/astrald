@@ -208,6 +208,10 @@ func (link *Link) sendQuery(query string, streamID int) error {
 func (link *Link) processQueries() error {
 	ctl := link.demux.DefaultStream()
 
+	if ctl == nil {
+		return errors.New("demux closed")
+	}
+
 	for {
 		var q queryData
 

@@ -1,23 +1,17 @@
 package node
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
-	alink "github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
-	nlink "github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/linking"
-	"github.com/cryptopunkscc/astrald/node/peer"
+	"github.com/cryptopunkscc/astrald/node/peers"
 	"github.com/cryptopunkscc/astrald/node/presence"
-	"github.com/cryptopunkscc/astrald/node/server"
 	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/storage"
-	"sync"
 	"time"
 )
 
@@ -31,19 +25,12 @@ type Node struct {
 	Infra    *infra.Infra
 	Contacts *contacts.Manager
 	Ports    *hub.Hub
-	Server   *server.Server
-	Linking  *linking.Manager
+
+	Peers    *peers.Manager
 	Store    storage.Store
 	Presence *presence.Presence
-	Peers    *peer.Manager
 
-	// peers
-	peers   map[string]*peer.Peer
-	peersMu sync.Mutex
-
-	events  event.Queue
-	links   chan *alink.Link
-	queries chan *nlink.Query
+	events event.Queue
 }
 
 func (node *Node) Identity() id.Identity {
@@ -69,35 +56,4 @@ func (node *Node) NodeInfo() *nodeinfo.NodeInfo {
 	}
 
 	return i
-}
-
-func (node *Node) process(ctx context.Context) {
-	go node.processLinks(ctx)
-	go node.processQueries(ctx)
-
-	node.events.On(ctx.Done(), peer.EventLinked{}, func(e event.Event) {
-		event := e.(peer.EventLinked)
-
-		sig.OnCtx(ctx, sig.Idle(ctx, event.Peer, defaultPeerIdleTimeout), event.Peer.Unlink)
-	})
-
-	// log all node events
-	go func() {
-		for event := range node.events.Subscribe(ctx.Done()) {
-			node.logEvent(event)
-		}
-	}()
-
-	for {
-		select {
-		case l := <-node.Server.Links():
-			node.AddLink(l)
-
-		case l := <-node.Linking.Links():
-			node.AddLink(l)
-
-		case <-ctx.Done():
-			return
-		}
-	}
 }

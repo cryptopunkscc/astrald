@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
-	"time"
 )
 
 func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
@@ -22,15 +21,20 @@ func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string)
 		return node.Ports.Query(ctx, query, nil)
 	}
 
-	node.Linking.Optimize(remoteID, 30*time.Second)
+	peer, err := node.Peers.Link(ctx, remoteID)
+	if err != nil {
+		return nil, err
+	}
 
-	return node.Peers.Query(ctx, remoteID, query)
+	link := link.Select(peer.Links(), link.LowestRoundTrip)
+
+	return link.Query(ctx, query)
 }
 
 func (node *Node) processQueries(ctx context.Context) {
 	for {
 		select {
-		case query := <-node.queries:
+		case query := <-node.Peers.Queries():
 			node.handleQuery(ctx, query)
 		case <-ctx.Done():
 			return

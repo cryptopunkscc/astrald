@@ -47,24 +47,20 @@ func (c *Contact) DisplayName() string {
 	return logfmt.ID(c.identity)
 }
 
-func (c *Contact) SubscribeAddr(cancel sig.Signal, fetchAll bool) <-chan *Addr {
-	var ch chan *Addr
+// Addr returns a channel with all addresses
+func (c *Contact) Addr() <-chan infra.Addr {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	if fetchAll {
-		ch = make(chan *Addr, len(c.Addresses))
-		for _, a := range c.Addresses {
-			ch <- a
-		}
-	} else {
-		ch = make(chan *Addr)
+	var ch chan infra.Addr
+
+	// populate channel with addresses
+	ch = make(chan infra.Addr, len(c.Addresses))
+	for _, addr := range c.Addresses {
+		ch <- addr.Addr
 	}
 
-	go func() {
-		defer close(ch)
-		for i := range c.queue.Subscribe(cancel) {
-			ch <- i.(*Addr)
-		}
-	}()
+	close(ch)
 
 	return ch
 }

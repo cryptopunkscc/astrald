@@ -96,7 +96,7 @@ func init() {
 		"add":      add,
 		"forget":   forget,
 		"present":  present,
-		"optimize": optimize,
+		"link":     link,
 		"unlink":   unlink,
 	}
 }

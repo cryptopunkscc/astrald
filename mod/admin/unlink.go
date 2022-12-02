@@ -16,7 +16,7 @@ func unlink(w io.ReadWriter, node *node.Node, args []string) error {
 		return err
 	}
 
-	peer := node.Peers.Find(identity)
+	peer := node.Peers.Pool.Peer(identity)
 	if peer == nil {
 		return errors.New("peer not found")
 	}

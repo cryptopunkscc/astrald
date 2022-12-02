@@ -8,10 +8,11 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/link"
 	_node "github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/peer"
+	"github.com/cryptopunkscc/astrald/node/peers"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"io"
 	"log"
+	"time"
 )
 
 const serviceHandle = "info"
@@ -59,7 +60,7 @@ func (Info) Run(ctx context.Context, node *_node.Node) error {
 	go func() {
 		for e := range node.Subscribe(ctx.Done()) {
 			switch event := e.(type) {
-			case peer.EventLinked:
+			case peers.EventLinked:
 				refreshContact(ctx, node, event.Peer.Identity())
 
 			case presence.EventIdentityPresent:
@@ -140,7 +141,8 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 
 func queryContact(ctx context.Context, node *_node.Node, identity id.Identity) (*Node, error) {
 	// update peer info
-	conn, err := node.Query(ctx, identity, serviceHandle)
+	qctx, _ := context.WithTimeout(ctx, 10*time.Second)
+	conn, err := node.Query(qctx, identity, serviceHandle)
 
 	if err != nil {
 		return nil, err

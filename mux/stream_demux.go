@@ -34,7 +34,7 @@ func NewStreamDemux(reader io.Reader) *StreamDemux {
 			errEOF := errors.Is(err, io.EOF)
 
 			if !(errEOF || errClosed) {
-				log.Println("error: demux.processFrames():", err)
+				log.Println("mux.StreamDemux.processFrames() error:", err)
 			}
 		}
 
@@ -52,6 +52,10 @@ func NewStreamDemux(reader io.Reader) *StreamDemux {
 func (demux *StreamDemux) DefaultStream() *InputStream {
 	demux.streamsMu.Lock()
 	defer demux.streamsMu.Unlock()
+
+	if demux.streams == nil {
+		return nil
+	}
 
 	return demux.streams[defaultStreamID]
 }
