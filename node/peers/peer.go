@@ -9,12 +9,16 @@ import (
 	"time"
 )
 
+const MaxPeerLinks = 8
+
 type Peer struct {
-	id      id.Identity
-	links   map[*link.Link]struct{}
-	queries chan *link.Query
-	mu      sync.Mutex
-	events  event.Queue
+	id           id.Identity
+	links        map[*link.Link]struct{}
+	queries      chan *link.Query
+	mu           sync.Mutex
+	events       event.Queue
+	done         chan struct{}
+	disconnected bool
 }
 
 func NewPeer(id id.Identity, eventParent *event.Queue) *Peer {
@@ -22,6 +26,7 @@ func NewPeer(id id.Identity, eventParent *event.Queue) *Peer {
 		id:      id,
 		links:   make(map[*link.Link]struct{}),
 		queries: make(chan *link.Query),
+		done:    make(chan struct{}),
 	}
 
 	p.events.SetParent(eventParent)
@@ -61,6 +66,14 @@ func (peer *Peer) AddLink(l *link.Link) error {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
 
+	if peer.disconnected {
+		return errors.New("peer disconnected")
+	}
+
+	if len(peer.links) >= MaxPeerLinks {
+		return errors.New("link limit exceeded")
+	}
+
 	if _, found := peer.links[l]; found {
 		return errors.New("duplicate link")
 	}
@@ -87,6 +100,10 @@ func (peer *Peer) Unlink() {
 	}
 }
 
+func (peer *Peer) Wait() <-chan struct{} {
+	return peer.done
+}
+
 func (peer *Peer) removeLink(l *link.Link) error {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
@@ -99,6 +116,8 @@ func (peer *Peer) removeLink(l *link.Link) error {
 
 	if len(peer.links) == 0 {
 		close(peer.queries)
+		close(peer.done)
+		peer.disconnected = true
 	}
 
 	return nil

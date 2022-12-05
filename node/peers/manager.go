@@ -3,7 +3,6 @@ package peers
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	alink "github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/contacts"
@@ -11,14 +10,13 @@ import (
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
 	"log"
 	"sync"
 	"time"
 )
 
-const LinkerConcurrency = 16
 const LinkTimeout = 5 * time.Minute
+const concurrency = 16
 
 type Manager struct {
 	Pool   *Pool
@@ -167,65 +165,31 @@ func (m *Manager) makeLink(ctx context.Context, remoteID id.Identity) (*alink.Li
 		return nil, errors.New("no address found")
 	}
 
-	var dialer = NewConcurrentDialer(m.infra, LinkerConcurrency)
-	var rawConns = dialer.Dial(ctx, contact.Addr())
-	var authedConns = make(chan auth.Conn)
-	var wg = sync.WaitGroup{}
-	var authCtx, authCancel = context.WithCancel(ctx)
-	defer authCancel()
+	authed := NewConcurrentHandshake(
+		m.localID,
+		remoteID,
+		concurrency,
+	).Outbound(
+		ctx,
+		NewConcurrentDialer(
+			m.infra,
+			concurrency,
+		).Dial(
+			ctx,
+			contact.Addr(),
+		),
+	)
 
-	// close any remaining connections at the end
 	defer func() {
 		go func() {
-			for conn := range rawConns {
-				conn.Close()
-			}
-			for conn := range authedConns {
-				conn.Close()
+			for a := range authed {
+				a.Close()
 			}
 		}()
 	}()
 
-	// start handshake workers
-	wg.Add(LinkerConcurrency)
-	for i := 0; i < LinkerConcurrency; i++ {
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case <-authCtx.Done():
-					return
-				case conn, ok := <-rawConns:
-					if !ok {
-						return
-					}
-
-					authConn, err := auth.HandshakeOutbound(authCtx, conn, remoteID, m.localID)
-
-					// if handshake failed, try next connection
-					if err != nil {
-						if !errors.Is(err, io.EOF) {
-							log.Println("peers.Manager.makeLink(): outbound handshake error:", err)
-						}
-						conn.Close()
-						continue
-					}
-
-					authedConns <- authConn
-					return
-				}
-
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		close(authedConns)
-	}()
-
-	if c, ok := <-authedConns; ok {
-		return alink.New(c), nil
+	if a, ok := <-authed; ok {
+		return alink.New(a), nil
 	}
 
 	return nil, errors.New("linking failed")

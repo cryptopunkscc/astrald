@@ -12,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/info"
 	"github.com/cryptopunkscc/astrald/mod/linkback"
+	"github.com/cryptopunkscc/astrald/mod/optimizer"
 	"github.com/cryptopunkscc/astrald/mod/roam"
 	"github.com/cryptopunkscc/astrald/node"
 	"log"
@@ -82,6 +83,7 @@ func main() {
 		linkback.LinkBack{},
 		&roam.Roam{},
 		contacts.Contacts{},
+		optimizer.Optimizer{},
 	)
 	if err != nil {
 		panic(err)
