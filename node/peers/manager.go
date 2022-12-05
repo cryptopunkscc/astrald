@@ -176,7 +176,7 @@ func (m *Manager) makeLink(ctx context.Context, remoteID id.Identity) (*alink.Li
 			concurrency,
 		).Dial(
 			ctx,
-			contact.Addr(),
+			contact.Addr(nil),
 		),
 	)
 

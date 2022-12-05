@@ -15,8 +15,7 @@ import (
 	"time"
 )
 
-const defaultQueryTimeout = 15 * time.Second
-const defaultPeerIdleTimeout = 5 * time.Minute
+const defaultQueryTimeout = time.Minute
 
 type Node struct {
 	Config   config.Config

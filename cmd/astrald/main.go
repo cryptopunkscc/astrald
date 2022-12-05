@@ -11,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/info"
-	"github.com/cryptopunkscc/astrald/mod/linkback"
 	"github.com/cryptopunkscc/astrald/mod/optimizer"
 	"github.com/cryptopunkscc/astrald/mod/roam"
 	"github.com/cryptopunkscc/astrald/node"
@@ -80,10 +79,9 @@ func main() {
 		connect.Connect{},
 		gateway.Gateway{},
 		info.Info{},
-		linkback.LinkBack{},
 		&roam.Roam{},
 		contacts.Contacts{},
-		optimizer.Optimizer{},
+		&optimizer.Optimizer{},
 	)
 	if err != nil {
 		panic(err)

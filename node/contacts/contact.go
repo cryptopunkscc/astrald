@@ -1,6 +1,7 @@
 package contacts
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/logfmt"
@@ -48,7 +49,7 @@ func (c *Contact) DisplayName() string {
 }
 
 // Addr returns a channel with all addresses
-func (c *Contact) Addr() <-chan infra.Addr {
+func (c *Contact) Addr(follow context.Context) <-chan infra.Addr {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -60,7 +61,17 @@ func (c *Contact) Addr() <-chan infra.Addr {
 		ch <- addr.Addr
 	}
 
-	close(ch)
+	if follow == nil {
+		close(ch)
+		return ch
+	}
+
+	go func() {
+		for addr := range c.queue.Subscribe(follow.Done()) {
+			ch <- addr.(infra.Addr)
+		}
+		close(ch)
+	}()
 
 	return ch
 }

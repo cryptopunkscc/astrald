@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const defaultLinkTimeout = time.Minute
+
 func link(out io.ReadWriter, node *node.Node, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing arguments")
@@ -19,18 +21,18 @@ func link(out io.ReadWriter, node *node.Node, args []string) error {
 		return err
 	}
 
-	d := 10 * time.Second
+	timeout := defaultLinkTimeout
 
 	if len(args) > 1 {
-		d, err = time.ParseDuration(args[1])
+		timeout, err = time.ParseDuration(args[1])
 		if err != nil {
 			return err
 		}
 	}
 
-	timeout, _ := context.WithTimeout(context.Background(), d)
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
 
-	_, err = node.Peers.Link(timeout, remoteID)
+	_, err = node.Peers.Link(ctx, remoteID)
 	if err != nil {
 		return err
 	}
