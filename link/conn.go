@@ -64,6 +64,9 @@ func (conn *Conn) Close() (err error) {
 	err = ErrAlreadyClosed
 	conn.closeOnce.Do(func() {
 		err = conn.out.Close()
+		if err != nil {
+			conn.in.Close()
+		}
 		conn.Attach(nil)
 		close(conn.closeCh)
 	})

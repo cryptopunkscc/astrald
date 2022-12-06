@@ -35,6 +35,7 @@ func (node *Node) processQueries(ctx context.Context) {
 	for {
 		select {
 		case query := <-node.Peers.Queries():
+			ctx, _ := context.WithTimeout(ctx, defaultQueryTimeout)
 			node.handleQuery(ctx, query)
 		case <-ctx.Done():
 			return

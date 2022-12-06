@@ -62,6 +62,6 @@ func (stream *OutputStream) Close() (err error) {
 	return
 }
 
-func (stream OutputStream) ID() int {
+func (stream *OutputStream) ID() int {
 	return stream.id
 }
