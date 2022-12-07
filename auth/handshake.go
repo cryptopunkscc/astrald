@@ -9,8 +9,23 @@ import (
 
 // HandshakeInbound performs a handshake as the passive party.
 func HandshakeInbound(ctx context.Context, conn infra.Conn, localID id.Identity) (Conn, error) {
-	//TODO: handle ctx
+	//TODO: is there a better way to handle ctx here?
+	var done = make(chan struct{})
+	var errCh = make(chan error, 1)
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			errCh <- ctx.Err()
+			conn.Close()
+		case <-done:
+		}
+	}()
+
 	bConn, err := brontide.PassiveHandshake(conn, localID.PrivateKey())
+	if err, ok := <-errCh; ok {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -23,8 +38,23 @@ func HandshakeInbound(ctx context.Context, conn infra.Conn, localID id.Identity)
 
 // HandshakeOutbound performs a handshake as the active party.
 func HandshakeOutbound(ctx context.Context, conn infra.Conn, expectedRemoteID id.Identity, localID id.Identity) (Conn, error) {
-	//TODO: handle ctx
+	//TODO: is there a better way to handle ctx here?
+	var done = make(chan struct{})
+	var errCh = make(chan error, 1)
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			errCh <- ctx.Err()
+			conn.Close()
+		case <-done:
+		}
+	}()
+
 	c, err := brontide.ActiveHandshake(conn, localID.PrivateKey(), expectedRemoteID.PublicKey())
+	if err, ok := <-errCh; ok {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
