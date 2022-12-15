@@ -39,11 +39,12 @@ func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan ainfra.
 						return
 					}
 
-					authConn, err := auth.HandshakeOutbound(ctx, conn, h.remoteID, h.localID)
+					hctx, _ := context.WithTimeout(ctx, HandshakeTimeout)
+					authConn, err := auth.HandshakeOutbound(hctx, conn, h.remoteID, h.localID)
 
 					// if handshake failed, try next connection
 					if err != nil {
-						if !errors.Is(err, io.EOF) {
+						if !errors.Is(err, io.EOF) && !errors.Is(err, context.DeadlineExceeded) {
 							log.Println("peers.ConcurrentHandshake.Outbound(): handshake error:", err)
 						}
 						conn.Close()

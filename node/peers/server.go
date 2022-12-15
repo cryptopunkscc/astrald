@@ -2,14 +2,15 @@ package peers
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/link"
-	"io"
 	"log"
+	"time"
 )
+
+const HandshakeTimeout = 15 * time.Second
 
 type Server struct {
 	Conns chan infra.Conn
@@ -43,8 +44,9 @@ func (i *Server) process(ctx context.Context, localID id.Identity) {
 	for conn := range i.Conns {
 		conn := conn
 		go func() {
-			auth, err := auth.HandshakeInbound(ctx, conn, localID)
-			if (err != nil) && (!errors.Is(err, io.EOF)) {
+			hctx, _ := context.WithTimeout(ctx, HandshakeTimeout)
+			auth, err := auth.HandshakeInbound(hctx, conn, localID)
+			if err != nil {
 				log.Println("peers.Server.process(): inbound handshake error:", err)
 				conn.Close()
 				return
