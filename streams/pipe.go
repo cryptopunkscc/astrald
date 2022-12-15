@@ -1,7 +1,6 @@
 package streams
 
 import (
-	"errors"
 	"io"
 )
 
@@ -29,10 +28,7 @@ func Pipe() (left io.ReadWriteCloser, right io.ReadWriteCloser) {
 // io.ErrClosedPipe, io.EOF
 func (pipe pipeEnd) Read(p []byte) (n int, err error) {
 	n, err = pipe.ReadCloser.Read(p)
-	switch {
-	case err == nil:
-	case errors.Is(err, io.EOF): // EOF is not a fatal error
-	default:
+	if err != nil {
 		pipe.WriteCloser.Close()
 	}
 	return
@@ -40,14 +36,13 @@ func (pipe pipeEnd) Read(p []byte) (n int, err error) {
 
 func (pipe pipeEnd) Write(p []byte) (n int, err error) {
 	n, err = pipe.WriteCloser.Write(p)
-	switch {
-	case err == nil:
-	default:
+	if err != nil {
 		pipe.ReadCloser.Close()
 	}
 	return
 }
 
 func (pipe pipeEnd) Close() error {
+	pipe.ReadCloser.Close()
 	return pipe.WriteCloser.Close()
 }
