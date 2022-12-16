@@ -10,10 +10,11 @@ type Conn struct {
 	in         *mux.InputStream
 	out        *mux.OutputStream
 	fallbackIn *mux.InputStream
+	fallbackMu sync.Mutex
 	query      string
 	outbound   bool
-	closeOnce  sync.Once
 	closeCh    chan struct{}
+	closed     bool
 	outMu      sync.Mutex
 	link       *Link
 	linkMu     sync.Mutex
@@ -36,22 +37,31 @@ func (conn *Conn) Read(p []byte) (n int, err error) {
 	if n > 0 {
 		return
 	}
-
-	if err != nil {
-		if conn.fallbackIn != nil {
-			conn.in = conn.fallbackIn
-			conn.fallbackIn = nil
-			return conn.Read(p)
-		}
-		conn.Close()
+	if err == nil {
+		return
 	}
 
+	// use fallback input if set
+	conn.fallbackMu.Lock()
+	if conn.fallbackIn != nil {
+		conn.in = conn.fallbackIn
+		conn.fallbackIn = nil
+		conn.fallbackMu.Unlock()
+		return conn.Read(p)
+	}
+	conn.fallbackMu.Unlock()
+
+	conn.Close()
 	return
 }
 
 func (conn *Conn) Write(p []byte) (n int, err error) {
 	conn.outMu.Lock()
 	defer conn.outMu.Unlock()
+
+	if conn.closed {
+		return 0, ErrClosed
+	}
 
 	return conn.out.Write(p)
 }
@@ -61,15 +71,12 @@ func (conn *Conn) Close() (err error) {
 	conn.outMu.Lock()
 	defer conn.outMu.Unlock()
 
-	err = ErrAlreadyClosed
-	conn.closeOnce.Do(func() {
-		err = conn.out.Close()
-		if err != nil {
-			conn.in.Close()
-		}
+	if !conn.closed {
+		conn.closed = true
+		conn.out.Close()
 		conn.Attach(nil)
 		close(conn.closeCh)
-	})
+	}
 
 	return
 }
@@ -82,16 +89,23 @@ func (conn *Conn) OutputStream() *mux.OutputStream {
 	return conn.out
 }
 
-func (conn *Conn) SetFallbackInputStream(fallbackInputStream *mux.InputStream) {
-	conn.fallbackIn = fallbackInputStream
+func (conn *Conn) SetFallbackInputStream(fallback *mux.InputStream) {
+	conn.fallbackMu.Lock()
+	defer conn.fallbackMu.Unlock()
+	conn.fallbackIn = fallback
 }
 
-func (conn *Conn) ReplaceOutputStream(stream *mux.OutputStream) {
+func (conn *Conn) ReplaceOutputStream(replacement *mux.OutputStream) error {
 	conn.outMu.Lock()
 	defer conn.outMu.Unlock()
 
+	if conn.closed {
+		return ErrClosed
+	}
+
 	conn.out.Close()
-	conn.out = stream
+	conn.out = replacement
+	return nil
 }
 
 // Wait returns a channel that will be closed when the connection closes
@@ -116,11 +130,11 @@ func (conn *Conn) Attach(link *Link) {
 
 	if conn.link != nil {
 		conn.link.remove(conn)
-		conn.link = nil
 	}
 
-	if link != nil {
-		conn.link = link
+	conn.link = link
+
+	if conn.link != nil {
 		conn.link.add(conn)
 	}
 }

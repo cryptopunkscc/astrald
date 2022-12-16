@@ -2,7 +2,7 @@ package roam
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
 	_node "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -224,7 +224,7 @@ func (roam *Roam) drop(dest *link.Link, conn *link.Conn, moveID int) error {
 	// start the query
 	query, err := dest.Query(context.Background(), portDrop)
 	if err != nil {
-		newInputStream.Close()
+		newInputStream.Discard()
 		return err
 	}
 	defer query.Close()
@@ -234,10 +234,10 @@ func (roam *Roam) drop(dest *link.Link, conn *link.Conn, moveID int) error {
 
 	// preapre the new output stream
 	var newOutputStreamID uint16
-	cslq.Decode(query, "s", &newOutputStreamID)
-	if newOutputStreamID == 0 {
-		newInputStream.Close()
-		return errors.New("received invalid id")
+	err = cslq.Decode(query, "s", &newOutputStreamID)
+	if err != nil {
+		newInputStream.Discard()
+		return fmt.Errorf("failed to read output stream: %w", err)
 	}
 	newOutputStream := dest.OutputStream(int(newOutputStreamID))
 

@@ -5,10 +5,11 @@ import (
 )
 
 type OutputStream struct {
-	id        int
-	mux       *Mux
-	closeOnce sync.Once
-	err       error
+	id     int
+	mux    *Mux
+	closed bool
+	mu     sync.Mutex
+	err    error
 }
 
 func NewOutputStream(mux *Mux, streamID int) *OutputStream {
@@ -20,10 +21,17 @@ func NewOutputStream(mux *Mux, streamID int) *OutputStream {
 
 // Write writes a byte buffer to the connectiontion
 func (stream *OutputStream) Write(data []byte) (n int, err error) {
-	if stream.err != nil {
-		return 0, stream.err
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
+
+	if stream.closed {
+		return 0, ErrStreamClosed
 	}
 
+	return stream.write(data)
+}
+
+func (stream *OutputStream) write(data []byte) (n int, err error) {
 	left := data[:]
 
 	for len(left) > 0 {
@@ -46,19 +54,15 @@ func (stream *OutputStream) Write(data []byte) (n int, err error) {
 
 // Close closes the stream
 func (stream *OutputStream) Close() (err error) {
-	err = ErrStreamClosed
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
 
-	stream.closeOnce.Do(func() {
-		err = nil
+	if stream.closed {
+		return nil
+	}
 
-		stream.err = stream.mux.Write(stream.id, nil)
-		if stream.err == nil {
-			stream.err = ErrStreamClosed
-		} else {
-			err = stream.err
-		}
-	})
-
+	stream.mux.Write(stream.id, nil)
+	stream.closed = true
 	return
 }
 

@@ -23,8 +23,10 @@ func HandshakeInbound(ctx context.Context, conn infra.Conn, localID id.Identity)
 	}()
 
 	bConn, err := brontide.PassiveHandshake(conn, localID.PrivateKey())
-	if err, ok := <-errCh; ok {
+	select {
+	case err := <-errCh:
 		return nil, err
+	default:
 	}
 	if err != nil {
 		return nil, err
@@ -50,10 +52,11 @@ func HandshakeOutbound(ctx context.Context, conn infra.Conn, expectedRemoteID id
 		case <-done:
 		}
 	}()
-
 	c, err := brontide.ActiveHandshake(conn, localID.PrivateKey(), expectedRemoteID.PublicKey())
-	if err, ok := <-errCh; ok {
+	select {
+	case err := <-errCh:
 		return nil, err
+	default:
 	}
 	if err != nil {
 		return nil, err

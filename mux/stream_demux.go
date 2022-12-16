@@ -2,87 +2,123 @@ package mux
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"strings"
 	"sync"
 )
 
-const defaultStreamID = 0
-
 // StreamDemux reads mux frames and splits them into separate streams
 type StreamDemux struct {
 	streams   map[int]*InputStream
 	streamsMu sync.Mutex
-	rawDemux  *BasicDemux
+	frames    *FrameDemux
 }
 
 func NewStreamDemux(reader io.Reader) *StreamDemux {
 	demux := &StreamDemux{
-		rawDemux: NewBasicDemux(reader),
-		streams:  make(map[int]*InputStream),
+		frames:  NewFrameDemux(reader),
+		streams: make(map[int]*InputStream),
 	}
 
-	demux.streams[defaultStreamID] = newInputStream(defaultStreamID)
+	demux.streams[controlStreamID] = newInputStream(demux, controlStreamID)
 
-	go func() {
-		err := demux.processFrames()
-
-		if err != nil {
-			errClosed := strings.Contains(err.Error(), "use of closed network connection")
-			errEOF := errors.Is(err, io.EOF)
-
-			if !(errEOF || errClosed) {
-				log.Println("mux.StreamDemux.processFrames() error:", err)
-			}
-		}
-
-		demux.streamsMu.Lock()
-		for _, stream := range demux.streams {
-			_ = stream.Close()
-		}
-		demux.streams = nil
-		demux.streamsMu.Unlock()
-	}()
+	go demux.run()
 
 	return demux
 }
 
-func (demux *StreamDemux) DefaultStream() *InputStream {
+// ControlStream returns the default demux stream. Default stream is open as long as the demux session is running.
+func (demux *StreamDemux) ControlStream() (*InputStream, error) {
 	demux.streamsMu.Lock()
 	defer demux.streamsMu.Unlock()
 
 	if demux.streams == nil {
-		return nil
+		return nil, ErrDemuxClosed
 	}
 
-	return demux.streams[defaultStreamID]
+	return demux.streams[controlStreamID], nil
 }
 
-// Stream allocates and returns a new input stream
-func (demux *StreamDemux) Stream() (*InputStream, error) {
+// AllocStream allocates and returns a new input stream
+func (demux *StreamDemux) AllocStream() (*InputStream, error) {
 	demux.streamsMu.Lock()
 	defer demux.streamsMu.Unlock()
 
 	if demux.streams == nil {
-		return nil, errors.New("demux error: demux closed")
+		return nil, ErrDemuxClosed
 	}
 
 	for i := 0; i < MaxStreams; i++ {
 		if _, used := demux.streams[i]; !used {
-			stream := newInputStream(i)
+			stream := newInputStream(demux, i)
 
 			demux.streams[i] = stream
-			go func() {
-				<-stream.Wait()
-				demux.removeInputStream(i)
-			}()
 
 			return stream, nil
 		}
 	}
-	return nil, errors.New("all streams used")
+	return nil, ErrStreamLimitReached
+}
+
+func (demux *StreamDemux) run() {
+	err := demux.processFrames()
+
+	switch {
+	case strings.Contains(err.Error(), "use of closed network connection"):
+	case errors.Is(err, io.EOF):
+	case errors.Is(err, errControlStreamClosed):
+	default:
+		log.Println("mux.StreamDemux.run() error:", err)
+	}
+}
+
+func (demux *StreamDemux) processFrames() error {
+	defer demux.closeDemux()
+
+	for {
+		// Read next frame from the demux
+		frame, err := demux.frames.ReadFrame()
+		if err != nil {
+			return err
+		}
+
+		stream, ok := demux.getStream(frame.StreamID)
+		if !ok {
+			return ErrFrameOnClosedStream{frame.StreamID}
+		}
+
+		if frame.Size() > 0 {
+			// data frame
+			stream.write(frame.Data)
+		} else {
+			// close frame
+			if frame.StreamID == controlStreamID {
+				return errControlStreamClosed
+			}
+			stream.closeWriter(io.EOF)
+			demux.removeInputStream(stream.id)
+		}
+	}
+}
+
+func (demux *StreamDemux) closeDemux() {
+	demux.streamsMu.Lock()
+	defer demux.streamsMu.Unlock()
+
+	for _, stream := range demux.streams {
+		stream.closeWriter(io.EOF)
+		delete(demux.streams, stream.id)
+	}
+	demux.streams = nil
+}
+
+func (demux *StreamDemux) getStream(streamID int) (*InputStream, bool) {
+	demux.streamsMu.Lock()
+	defer demux.streamsMu.Unlock()
+
+	stream, found := demux.streams[streamID]
+	return stream, found
 }
 
 // removeInputStream releases a stream so that it can be used again
@@ -91,33 +127,10 @@ func (demux *StreamDemux) removeInputStream(id int) error {
 	defer demux.streamsMu.Unlock()
 
 	if _, used := demux.streams[id]; !used {
-		return errors.New("stream not used")
+		return ErrInvalidStreamID
 	}
 
 	delete(demux.streams, id)
 
 	return nil
-}
-
-func (demux *StreamDemux) processFrames() error {
-	for {
-		// Read next frame from the mux
-		localStreamID, buf, err := demux.rawDemux.ReadFrame()
-		if err != nil {
-			return err
-		}
-
-		demux.streamsMu.Lock()
-		stream, ok := demux.streams[localStreamID]
-		demux.streamsMu.Unlock()
-		if !ok {
-			return fmt.Errorf("stream %d is closed", localStreamID)
-		}
-
-		if len(buf) == 0 {
-			stream.Close()
-		} else {
-			stream.write(buf)
-		}
-	}
 }

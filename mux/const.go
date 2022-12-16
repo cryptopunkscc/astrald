@@ -1,7 +1,6 @@
 package mux
 
 import (
-	"errors"
 	"math"
 )
 
@@ -17,14 +16,4 @@ const MaxPayload = MaxFrameSize - headerLen
 // MaxStreams number of streams in the multiplexer
 const MaxStreams = 1 << 16
 
-// ErrBufferTooBig - buffer size exceeds frame size
-var ErrBufferTooBig = errors.New("payload too big")
-
-// ErrBufferTooSmall - buffer too small to read frame
-var ErrBufferTooSmall = errors.New("buffer too small")
-
-// ErrInvalidStreamID - stream ID is outside the valid range
-var ErrInvalidStreamID = errors.New("invalid stream id")
-
-// ErrStreamClosed - stream is closed and cannot be written to or read from
-var ErrStreamClosed = errors.New("stream closed")
+const controlStreamID = 0

@@ -36,6 +36,10 @@ func (mux *Mux) Write(streamID int, buf []byte) error {
 	return mux.Encode("s[s]c", streamID, buf)
 }
 
+func (mux *Mux) ControlStream() *OutputStream {
+	return NewOutputStream(mux, controlStreamID)
+}
+
 func (mux *Mux) Stream(streamID int) *OutputStream {
 	return NewOutputStream(mux, streamID)
 }

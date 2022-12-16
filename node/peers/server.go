@@ -2,10 +2,12 @@ package peers
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/link"
+	"io"
 	"log"
 	"time"
 )
@@ -47,7 +49,13 @@ func (i *Server) process(ctx context.Context, localID id.Identity) {
 			hctx, _ := context.WithTimeout(ctx, HandshakeTimeout)
 			auth, err := auth.HandshakeInbound(hctx, conn, localID)
 			if err != nil {
-				log.Println("peers.Server.process(): inbound handshake error:", err)
+				switch {
+				case errors.Is(err, io.EOF):
+				case errors.Is(err, context.DeadlineExceeded):
+				case errors.Is(err, context.Canceled):
+				default:
+					log.Println("peers.Server.process(): inbound handshake error:", err)
+				}
 				conn.Close()
 				return
 			}

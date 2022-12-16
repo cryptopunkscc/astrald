@@ -18,18 +18,14 @@ import (
 // connections over any transport.
 type Link struct {
 	queries   chan *Query
-	queriesMu sync.Mutex
 	conns     map[*Conn]struct{}
 	connsMu   sync.Mutex
 	transport auth.Conn
 	mux       *mux.Mux
 	demux     *mux.StreamDemux
-	closed    chan struct{}
-	closeOnce sync.Once
+	closeCh   chan struct{}
 	ctl       *mux.OutputStream
 }
-
-const controlStreamID = 0
 
 // New instantiates a new Link over the provided authenticated connection.
 func New(conn auth.Conn) *Link {
@@ -39,19 +35,12 @@ func New(conn auth.Conn) *Link {
 		transport: conn,
 		mux:       mux.NewMux(conn),
 		demux:     mux.NewStreamDemux(conn),
-		closed:    make(chan struct{}),
+		closeCh:   make(chan struct{}),
 	}
-	link.ctl = link.mux.Stream(controlStreamID)
-	go func() {
-		defer link.Close()
 
-		err := link.processQueries()
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				log.Println("closing link:", err)
-			}
-		}
-	}()
+	link.ctl = link.mux.ControlStream()
+	go link.run()
+
 	return link
 }
 
@@ -69,7 +58,7 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 		Query:    query,
 	})
 	if err != nil {
-		inputStream.Close()
+		inputStream.Discard()
 		return nil, err
 	}
 
@@ -79,7 +68,7 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 		if errors.Is(err, io.EOF) {
 			return nil, ErrRejected
 		}
-		return nil, fmt.Errorf("error reading response: %w", err)
+		return nil, fmt.Errorf("error reading query response: %w", err)
 	}
 
 	outputStream := link.mux.Stream(remoteStreamID)
@@ -92,7 +81,7 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 
 // AllocInputStream allocates and returns a new input stream on the multiplexer
 func (link *Link) AllocInputStream() (*mux.InputStream, error) {
-	return link.demux.Stream()
+	return link.demux.AllocStream()
 }
 
 // OutputStream returns an output stream representing the provided stream id on the multiplexer
@@ -141,22 +130,11 @@ func (link *Link) Outbound() bool {
 
 // Wait returns a channel which will be closed when the link is closed
 func (link *Link) Wait() <-chan struct{} {
-	return link.closed
+	return link.closeCh
 }
 
 // Close closes the link
 func (link *Link) Close() error {
-	for conn := range link.conns {
-		conn.Close()
-	}
-	link.ctl.Close()
-	defer link.closeOnce.Do(func() {
-		link.queriesMu.Lock()
-		close(link.queries)
-		link.queries = nil
-		link.queriesMu.Unlock()
-		close(link.closed)
-	})
 	return link.transport.Close()
 }
 
@@ -199,17 +177,19 @@ func (link *Link) add(conn *Conn) error {
 
 // sendQuery writes a frame containing the request to the control stream
 func (link *Link) sendQuery(query string, streamID int) error {
-	return cslq.Encode(link.mux.Stream(controlStreamID), "v", queryData{
+	return cslq.Encode(link.ctl, "v", queryData{
 		StreamID: streamID,
 		Query:    query,
 	})
 }
 
-func (link *Link) processQueries() error {
-	ctl := link.demux.DefaultStream()
+func (link *Link) run() error {
+	defer close(link.queries)
+	defer close(link.closeCh)
 
-	if ctl == nil {
-		return errors.New("demux closed")
+	ctl, err := link.demux.ControlStream()
+	if err != nil {
+		return err
 	}
 
 	for {
@@ -218,25 +198,21 @@ func (link *Link) processQueries() error {
 		// read next query
 		err := cslq.Decode(ctl, "v", &q)
 		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				log.Println("link.Link.run() error:", err)
+			}
 			return err
 		}
 
 		// process it
-		err = link.processQueryData(q)
+		err = link.processQuery(q)
 		if err != nil {
-			log.Println("error processing query:", err)
+			log.Println("link.Link.run() error:", err)
 		}
 	}
 }
 
-func (link *Link) processQueryData(q queryData) error {
-	link.queriesMu.Lock()
-	defer link.queriesMu.Unlock()
-
-	if link.queries == nil {
-		return errors.New("link closed")
-	}
-
+func (link *Link) processQuery(q queryData) error {
 	var err error
 
 	// Prepare request object
@@ -247,7 +223,7 @@ func (link *Link) processQueryData(q queryData) error {
 	}
 
 	// Reserve local channel
-	query.in, err = link.demux.Stream()
+	query.in, err = link.demux.AllocStream()
 	if err != nil {
 		query.out.Close()
 		return fmt.Errorf("cannot allocate input stream: %w", err)

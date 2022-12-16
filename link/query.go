@@ -28,9 +28,9 @@ func (query *Query) Accept() (*Conn, error) {
 
 // Reject the query
 func (query Query) Reject() error {
-	query.in.Close()
-
-	return query.out.Close()
+	query.out.Close()
+	
+	return query.in.Discard()
 }
 
 // Caller returns the identity of the caller

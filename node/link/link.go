@@ -146,6 +146,8 @@ func (link *Link) remove(conn *Conn) error {
 
 func (link *Link) handleQueries() {
 	defer link.Close()
+	defer close(link.queries)
+
 	for query := range link.Link.Queries() {
 		if !isSilent(query) {
 			link.Activity.Add(1)
@@ -160,7 +162,6 @@ func (link *Link) handleQueries() {
 			link.Activity.Done()
 		}
 	}
-	close(link.queries)
 }
 
 func (link *Link) ping() error {
