@@ -13,14 +13,13 @@ type Contacts struct {
 	node *node.Node
 }
 
-func (p Contacts) Run(ctx context.Context, n *node.Node) error {
-	port, err := n.Ports.Register(proto.Port)
+func (mod *Contacts) Run(ctx context.Context) error {
+	port, err := mod.node.Ports.Register(proto.Port)
 	if err != nil {
 		return err
 	}
 	defer port.Close()
 
-	p.node = n
 	go func() {
 		for query := range port.Queries() {
 			conn, err := query.Accept()
@@ -30,7 +29,7 @@ func (p Contacts) Run(ctx context.Context, n *node.Node) error {
 			}
 			go func(conn io.ReadWriteCloser) {
 				defer conn.Close()
-				_ = proto.Serve(p, conn)
+				_ = proto.Serve(mod, conn)
 			}(conn)
 		}
 	}()
@@ -39,10 +38,6 @@ func (p Contacts) Run(ctx context.Context, n *node.Node) error {
 	return nil
 }
 
-func (p Contacts) Contacts() <-chan *contacts.Contact {
-	return p.node.Contacts.All()
-}
-
-func (p Contacts) String() string {
-	return proto.Port
+func (mod *Contacts) Contacts() <-chan *contacts.Contact {
+	return mod.node.Contacts.All()
 }

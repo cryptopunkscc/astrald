@@ -14,7 +14,7 @@ import (
 )
 
 // Run starts the node, waits for it to finish and returns an error if any
-func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, error) {
+func Run(ctx context.Context, dataDir string, modules ...ModuleLoader) (*Node, error) {
 	var err error
 
 	// Storage
@@ -69,7 +69,17 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleRunner) (*Node, e
 	}
 
 	// Modules
-	node.runModules(ctx, modules)
+	node.Modules, err = NewModuleManager(node, modules)
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		err := node.Modules.Run(ctx)
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	// Presence
 	node.Presence = presence.Run(ctx, node.Infra, &node.events)

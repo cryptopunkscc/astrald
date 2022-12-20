@@ -3,7 +3,7 @@ package apphost
 import (
 	"context"
 	"fmt"
-	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/proto/apphost"
 	"github.com/cryptopunkscc/astrald/storage"
 	"log"
@@ -14,19 +14,17 @@ import (
 )
 
 type Module struct {
-	node        *_node.Node
+	node        *node.Node
 	listeners   []net.Listener
 	clientConns chan net.Conn
 }
 
-const ModuleName = "apphost2"
 const UnixSocketName = "apphost.sock"
 const DefaultSocketDir = "/var/run/astrald"
 const TCPPort = 8625
 const workerCount = 32
 
-func (mod *Module) Run(ctx context.Context, node *_node.Node) error {
-	mod.node = node
+func (mod *Module) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 
 	ports := NewPortManager()
@@ -38,7 +36,7 @@ func (mod *Module) Run(ctx context.Context, node *_node.Node) error {
 			defer wg.Done()
 			for conn := range mod.clientConns {
 				err := apphost.Serve(conn, &AppHost{
-					node:  node,
+					node:  mod.node,
 					conn:  conn,
 					ports: ports,
 				})
@@ -120,8 +118,4 @@ func (mod *Module) listenUnix() (net.Listener, error) {
 	}
 
 	return net.Listen("unix", socketPath)
-}
-
-func (Module) String() string {
-	return ModuleName
 }

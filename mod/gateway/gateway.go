@@ -9,13 +9,14 @@ import (
 	"github.com/cryptopunkscc/astrald/streams"
 )
 
-const ModuleName = "gateway"
 const queryConnect = "connect"
 
-type Gateway struct{}
+type Gateway struct {
+	node *node.Node
+}
 
-func (Gateway) Run(ctx context.Context, node *node.Node) error {
-	port, err := node.Ports.RegisterContext(ctx, gw.PortName)
+func (mod *Gateway) Run(ctx context.Context) error {
+	port, err := mod.node.Ports.RegisterContext(ctx, gw.PortName)
 	if err != nil {
 		return err
 	}
@@ -44,7 +45,7 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 				return
 			}
 
-			out, err := node.Query(ctx, nodeID, queryConnect)
+			out, err := mod.node.Query(ctx, nodeID, queryConnect)
 			if err != nil {
 				cslq.Encode(conn, "c", false)
 				conn.Close()
@@ -63,8 +64,4 @@ func (Gateway) Run(ctx context.Context, node *node.Node) error {
 	}
 
 	return nil
-}
-
-func (Gateway) String() string {
-	return ModuleName
 }

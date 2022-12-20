@@ -24,6 +24,7 @@ type Node struct {
 	Infra    *infra.Infra
 	Contacts *contacts.Manager
 	Ports    *hub.Hub
+	Modules  *ModuleManager
 
 	Peers    *peers.Manager
 	Store    storage.Store

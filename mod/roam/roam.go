@@ -12,10 +12,9 @@ import (
 )
 
 const (
-	portPick   = "roam.pick"
-	portDrop   = "roam.drop"
-	ModuleName = "roam"
-	logTag     = "(roam)"
+	portPick = "roam.pick"
+	portDrop = "roam.drop"
+	logTag   = "(roam)"
 )
 
 type Roam struct {
@@ -23,9 +22,8 @@ type Roam struct {
 	moves map[int]*link.Conn
 }
 
-func (roam *Roam) Run(ctx context.Context, node *_node.Node) error {
+func (roam *Roam) Run(ctx context.Context) error {
 	roam.moves = make(map[int]*link.Conn)
-	roam.node = node
 
 	var wg sync.WaitGroup
 
@@ -263,8 +261,4 @@ func (roam *Roam) allocMove(conn *link.Conn) int {
 		roam.moves[id] = conn
 	}
 	return id
-}
-
-func (Roam) String() string {
-	return ModuleName
 }

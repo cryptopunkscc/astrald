@@ -2,33 +2,66 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"reflect"
 	"strings"
+	"sync"
 )
 
-type ModuleRunner interface {
-	Run(context.Context, *Node) error
+type ModuleLoader interface {
+	Load(node *Node) (Module, error)
+	Name() string
 }
 
-func (node *Node) runModules(ctx context.Context, modules []ModuleRunner) {
-	names := make([]string, 0, len(modules))
-	for _, mod := range modules {
-		var name string
-		if str, ok := mod.(fmt.Stringer); ok {
-			name = str.String()
-		} else {
-			name = reflect.TypeOf(mod).Name()
+type Module interface {
+	Run(context.Context) error
+}
+
+type ModuleManager struct {
+	modules map[string]Module
+}
+
+func NewModuleManager(node *Node, loaders []ModuleLoader) (*ModuleManager, error) {
+	m := &ModuleManager{
+		modules: make(map[string]Module),
+	}
+
+	for _, builder := range loaders {
+		name := builder.Name()
+		mod, err := builder.Load(node)
+		if err != nil {
+			log.Printf("error loading module %s: %s", name, err.Error())
+			continue
 		}
-		names = append(names, name)
-		mod := mod
+		m.modules[name] = mod
+	}
+
+	return m, nil
+}
+
+func (manager *ModuleManager) Run(ctx context.Context) error {
+	var wg sync.WaitGroup
+
+	// log loaded module names
+	var modNames = make([]string, 0, len(manager.modules))
+	for name, _ := range manager.modules {
+		modNames = append(modNames, name)
+	}
+	log.Println("running modules:", strings.Join(modNames, " "))
+
+	for name, mod := range manager.modules {
+		name, mod := name, mod
+		wg.Add(1)
 		go func() {
-			err := mod.Run(ctx, node)
+			defer wg.Done()
+
+			err := mod.Run(ctx)
 			if err != nil {
-				log.Printf("module %v error: %v\n", name, err)
+				log.Printf("module %s ended with error: %s", name, err.Error())
 			}
 		}()
 	}
-	log.Println("modules:", strings.Join(names, " "))
+
+	// wait for all modules to finish
+	wg.Wait()
+	return nil
 }

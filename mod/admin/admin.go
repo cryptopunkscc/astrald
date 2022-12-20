@@ -4,22 +4,26 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 	"io"
 	"strings"
 )
 
 const promptString = "> "
-const ModuleName = "admin"
 
-type Admin struct{}
-type cmdFunc func(io.ReadWriter, *_node.Node, []string) error
+var _ node.Module = &Admin{}
+
+type Admin struct {
+	node *node.Node
+}
+
+type cmdFunc func(io.ReadWriter, *node.Node, []string) error
 type cmdMap map[string]cmdFunc
 
 var commands cmdMap
 
-func (Admin) Run(ctx context.Context, node *_node.Node) error {
-	port, err := node.Ports.RegisterContext(ctx, "admin")
+func (mod *Admin) Run(ctx context.Context) error {
+	port, err := mod.node.Ports.RegisterContext(ctx, "admin")
 	if err != nil {
 		return err
 	}
@@ -34,18 +38,14 @@ func (Admin) Run(ctx context.Context, node *_node.Node) error {
 		conn, err := query.Accept()
 
 		if err == nil {
-			go serve(conn, node)
+			go serve(conn, mod.node)
 		}
 	}
 
 	return nil
 }
 
-func (Admin) String() string {
-	return ModuleName
-}
-
-func help(stream io.ReadWriter, _ *_node.Node, _ []string) error {
+func help(stream io.ReadWriter, _ *node.Node, _ []string) error {
 	fmt.Fprintf(stream, "commands:")
 	for k := range commands {
 		fmt.Fprintf(stream, " %s", k)
@@ -55,7 +55,7 @@ func help(stream io.ReadWriter, _ *_node.Node, _ []string) error {
 	return nil
 }
 
-func serve(stream io.ReadWriteCloser, node *_node.Node) {
+func serve(stream io.ReadWriteCloser, node *node.Node) {
 	defer stream.Close()
 
 	prompt := node.Alias() + promptString
@@ -80,7 +80,9 @@ func serve(stream io.ReadWriteCloser, node *_node.Node) {
 				fmt.Fprintf(stream, "ok\n")
 			}
 		} else {
-			fmt.Fprintf(stream, "no such command\n")
+			if len(cmd) > 0 {
+				fmt.Fprintf(stream, "no such command\n")
+			}
 		}
 		stream.Write([]byte(prompt))
 	}

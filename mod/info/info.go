@@ -7,7 +7,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/link"
-	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/peers"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"io"
@@ -16,9 +16,10 @@ import (
 )
 
 const serviceHandle = "info"
-const ModuleName = "info"
 
-type Info struct{}
+type Info struct {
+	node *node.Node
+}
 
 var seen map[string]struct{}
 
@@ -33,10 +34,10 @@ type Node struct {
 	Addresses []Addr
 }
 
-func (Info) Run(ctx context.Context, node *_node.Node) error {
+func (mod *Info) Run(ctx context.Context) error {
 	seen = map[string]struct{}{}
 
-	port, err := node.Ports.Register(serviceHandle)
+	port, err := mod.node.Ports.Register(serviceHandle)
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,7 @@ func (Info) Run(ctx context.Context, node *_node.Node) error {
 				continue
 			}
 
-			info := getInfo(node)
+			info := getInfo(mod.node)
 			bytes, _ := json.Marshal(info)
 
 			conn.Write(bytes)
@@ -58,16 +59,16 @@ func (Info) Run(ctx context.Context, node *_node.Node) error {
 	}()
 
 	go func() {
-		for e := range node.Subscribe(ctx.Done()) {
+		for e := range mod.node.Subscribe(ctx.Done()) {
 			switch event := e.(type) {
 			case peers.EventLinked:
-				refreshContact(ctx, node, event.Peer.Identity())
+				refreshContact(ctx, mod.node, event.Peer.Identity())
 
 			case presence.EventIdentityPresent:
-				node.Contacts.Find(event.Identity, true).Add(event.Addr)
-				node.Contacts.Save()
+				mod.node.Contacts.Find(event.Identity, true).Add(event.Addr)
+				mod.node.Contacts.Save()
 
-				refreshContact(ctx, node, event.Identity)
+				refreshContact(ctx, mod.node, event.Identity)
 			}
 		}
 	}()
@@ -76,11 +77,7 @@ func (Info) Run(ctx context.Context, node *_node.Node) error {
 	return nil
 }
 
-func (Info) String() string {
-	return ModuleName
-}
-
-func getInfo(node *_node.Node) *Node {
+func getInfo(node *node.Node) *Node {
 	info := &Node{
 		Addresses: make([]Addr, 0),
 	}
@@ -98,7 +95,7 @@ func getInfo(node *_node.Node) *Node {
 	return info
 }
 
-func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity) {
+func refreshContact(ctx context.Context, node *node.Node, identity id.Identity) {
 	if _, found := seen[identity.PublicKeyHex()]; found {
 		return
 	}
@@ -139,7 +136,7 @@ func refreshContact(ctx context.Context, node *_node.Node, identity id.Identity)
 	//log.Printf("(info) [%s] updated\n", node.Contacts.DisplayName(identity))
 }
 
-func queryContact(ctx context.Context, node *_node.Node, identity id.Identity) (*Node, error) {
+func queryContact(ctx context.Context, node *node.Node, identity id.Identity) (*Node, error) {
 	// update peer info
 	qctx, _ := context.WithTimeout(ctx, 10*time.Second)
 	conn, err := node.Query(qctx, identity, serviceHandle)

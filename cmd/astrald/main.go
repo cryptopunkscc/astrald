@@ -74,14 +74,14 @@ func main() {
 	_, err := node.Run(
 		ctx,
 		astralRoot,
-		admin.Admin{},
-		&apphost.Module{},
-		connect.Connect{},
-		gateway.Gateway{},
-		info.Info{},
-		&roam.Roam{},
-		contacts.Contacts{},
-		&optimizer.Optimizer{},
+		admin.Loader{},
+		apphost.Loader{},
+		connect.Loader{},
+		gateway.Loader{},
+		info.Loader{},
+		roam.Loader{},
+		contacts.Loader{},
+		optimizer.Loader{},
 	)
 	if err != nil {
 		panic(err)

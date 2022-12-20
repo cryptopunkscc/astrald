@@ -42,14 +42,14 @@ func Start(
 	var ctx context.Context
 	ctx, stop = context.WithCancel(context.Background())
 
-	m := []node.ModuleRunner{
-		admin.Admin{},
-		&apphost.Module{},
-		connect.Connect{},
-		gateway.Gateway{},
-		info.Info{},
-		contacts.Contacts{},
-		handlerRunner("android", handlers),
+	m := []node.ModuleLoader{
+		admin.Loader{},
+		apphost.Loader{},
+		connect.Loader{},
+		gateway.Loader{},
+		info.Loader{},
+		contacts.Loader{},
+		handlerLoader("android", handlers),
 	}
 
 	n, err := node.Run(ctx, nodeDir, m...)

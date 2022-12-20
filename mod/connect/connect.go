@@ -6,12 +6,13 @@ import (
 )
 
 const serviceHandle = "connect"
-const ModuleName = "connect"
 
-type Connect struct{}
+type Connect struct {
+	node *node.Node
+}
 
-func (Connect) Run(ctx context.Context, node *node.Node) error {
-	port, err := node.Ports.RegisterContext(ctx, serviceHandle)
+func (mod *Connect) Run(ctx context.Context) error {
+	port, err := mod.node.Ports.RegisterContext(ctx, serviceHandle)
 	if err != nil {
 		return err
 	}
@@ -28,8 +29,8 @@ func (Connect) Run(ctx context.Context, node *node.Node) error {
 			continue
 		}
 
-		node.Peers.Server.Conns <- &wrapper{
-			local:           node.Identity().Public(),
+		mod.node.Peers.Server.Conns <- &wrapper{
+			local:           mod.node.Identity().Public(),
 			remote:          query.Link().RemoteIdentity(),
 			ReadWriteCloser: conn,
 			outbound:        false,
@@ -37,8 +38,4 @@ func (Connect) Run(ctx context.Context, node *node.Node) error {
 	}
 
 	return nil
-}
-
-func (Connect) String() string {
-	return ModuleName
 }

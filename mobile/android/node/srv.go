@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func serviceRunner(wg *sync.WaitGroup, name string, runners ...ServiceRunner) node.ModuleRunner {
+func serviceRunner(wg *sync.WaitGroup, name string, runners ...ServiceRunner) node.Module {
 	return embeddedServicesRunner{wg, name, runners}
 }
 

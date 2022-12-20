@@ -7,17 +7,8 @@ import (
 	"log"
 )
 
-func handlerRunner(name string, handlers Handlers) (moduleRunner node.ModuleRunner) {
-	r := &handlersModuleRunner{}
-	r.name = name
-	moduleRunner = r
-	for {
-		m := handlers.Next()
-		if m == nil {
-			return
-		}
-		r.handlers = append(r.handlers, m)
-	}
+func handlerLoader(name string, handlers Handlers) node.ModuleLoader {
+	return handlersModuleLoader{name: name, handlers: handlers}
 }
 
 type Handlers interface {
@@ -34,19 +25,37 @@ type Connection interface {
 	Read(n int) ([]byte, error)
 }
 
-type handlersModuleRunner struct {
+type handlersModuleLoader struct {
+	name     string
+	handlers Handlers
+}
+
+func (loader handlersModuleLoader) Name() string {
+	return loader.name
+}
+
+func (loader handlersModuleLoader) Load(node *node.Node) (node.Module, error) {
+	mod := &handlersModule{node: node}
+	for {
+		m := loader.handlers.Next()
+		if m == nil {
+			break
+		}
+		mod.handlers = append(mod.handlers, m)
+	}
+	return mod, nil
+}
+
+type handlersModule struct {
+	node     *node.Node
 	name     string
 	handlers []Handler
 }
 
-func (r handlersModuleRunner) String() string {
-	return r.name
-}
-
-func (r handlersModuleRunner) Run(ctx context.Context, n *node.Node) error {
+func (r handlersModule) Run(ctx context.Context) error {
 	for _, handler := range r.handlers {
 		handler := handler
-		port, err := n.Ports.Register(handler.String())
+		port, err := r.node.Ports.Register(handler.String())
 		if err != nil {
 			return err
 		}
