@@ -66,6 +66,7 @@ func (demux *StreamDemux) run() {
 
 	switch {
 	case strings.Contains(err.Error(), "use of closed network connection"):
+	case strings.Contains(err.Error(), "connection abort"):
 	case errors.Is(err, io.EOF):
 	case errors.Is(err, errControlStreamClosed):
 	default:
