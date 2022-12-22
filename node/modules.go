@@ -25,9 +25,9 @@ func NewModuleManager(node *Node, loaders []ModuleLoader) (*ModuleManager, error
 		modules: make(map[string]Module),
 	}
 
-	for _, builder := range loaders {
-		name := builder.Name()
-		mod, err := builder.Load(node)
+	for _, loader := range loaders {
+		name := loader.Name()
+		mod, err := loader.Load(node)
 		if err != nil {
 			log.Printf("error loading module %s: %s", name, err.Error())
 			continue

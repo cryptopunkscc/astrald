@@ -16,7 +16,7 @@ var _ infra.Announcer = &Inet{}
 const announceInterval = 1 * time.Minute
 
 func (inet *Inet) Announce(ctx context.Context) error {
-	if err := inet.broadcastPresence(presence{
+	if err := inet.broadcastPresence(&presence{
 		Identity: inet.localID,
 		Port:     inet.listenPort,
 		Flags:    flagDiscover,
@@ -30,7 +30,7 @@ func (inet *Inet) Announce(ctx context.Context) error {
 		for {
 			select {
 			case <-time.After(announceInterval):
-				if err := inet.broadcastPresence(presence{
+				if err := inet.broadcastPresence(&presence{
 					Identity: inet.localID,
 					Port:     inet.listenPort,
 					Flags:    flagNone,
@@ -46,7 +46,7 @@ func (inet *Inet) Announce(ctx context.Context) error {
 	return nil
 }
 
-func (inet *Inet) broadcastPresence(p presence) error {
+func (inet *Inet) broadcastPresence(p *presence) error {
 	// check presence socket
 	if err := inet.setupPresenceConn(); err != nil {
 		return err
