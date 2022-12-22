@@ -1,6 +1,7 @@
 package inet
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"log"
@@ -46,11 +47,16 @@ func New(config Config, localID id.Identity) (*Inet, error) {
 	return inet, nil
 }
 
-func (inet Inet) Name() string {
+func (inet *Inet) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (inet *Inet) Name() string {
 	return NetworkName
 }
 
-func (inet Inet) Addresses() []infra.AddrSpec {
+func (inet *Inet) Addresses() []infra.AddrSpec {
 	list := make([]infra.AddrSpec, 0)
 
 	ifaceAddrs, err := net.InterfaceAddrs()

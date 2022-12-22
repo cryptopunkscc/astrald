@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/bt/bluez"
 )
 
-func (Bluetooth) Addresses() []infra.AddrSpec {
+func (*Bluetooth) Addresses() []infra.AddrSpec {
 	list := make([]infra.AddrSpec, 0)
 
 	b, err := bluez.New()

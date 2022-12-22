@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	_ "github.com/cryptopunkscc/astrald/infra/tor/system"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -19,7 +18,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 )
 
 // Exit statuses
@@ -45,7 +43,8 @@ func astralDir() string {
 }
 
 func main() {
-	astralRoot := astralDir()
+	var err error
+	var astralRoot = astralDir()
 
 	// Figure out the config path
 	if len(os.Args) > 1 {
@@ -71,8 +70,7 @@ func main() {
 	}()
 
 	// start the node
-	_, err := node.Run(
-		ctx,
+	node, err := node.New(
 		astralRoot,
 		admin.Loader{},
 		apphost.Loader{},
@@ -84,21 +82,15 @@ func main() {
 		optimizer.Loader{},
 	)
 	if err != nil {
-		panic(err)
+		fmt.Println("init error:", err)
+		os.Exit(ExitNodeError)
 	}
 
-	<-ctx.Done()
-
-	time.Sleep(50 * time.Millisecond)
-
-	// Check results
-	if err != nil {
-		if !errors.Is(err, context.Canceled) {
-			fmt.Printf("error: %s\n", err)
-			os.Exit(ExitNodeError)
-		}
+	// Run the node
+	if err := node.Run(ctx); err != nil {
+		fmt.Printf("run error: %s\n", err)
+		os.Exit(ExitNodeError)
 	}
 
-	fmt.Printf("success.\n")
 	os.Exit(ExitSuccess)
 }

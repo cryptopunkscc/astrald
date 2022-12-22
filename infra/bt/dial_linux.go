@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func (bt Bluetooth) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
+func (bt *Bluetooth) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 	_addr, ok := addr.(Addr)
 	if !ok {
 		return nil, infra.ErrUnsupportedAddress

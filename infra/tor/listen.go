@@ -4,11 +4,8 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/infra"
 	"log"
-	"time"
+	"strings"
 )
-
-const retryInterval = 15 * time.Second
-const pingInterval = time.Minute
 
 func (tor *Tor) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 	output := make(chan infra.Conn)
@@ -36,7 +33,11 @@ func (tor *Tor) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 
 		for {
 			conn, err := l.Accept()
-			if err != nil {
+			switch {
+			case err == nil:
+			case strings.Contains(err.Error(), "use of closed network connection"):
+				return
+			default:
 				log.Println("[tor] accept error:", err)
 				return
 			}

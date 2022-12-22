@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func (inet Inet) Listen(ctx context.Context) (<-chan infra.Conn, error) {
+func (inet *Inet) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	// start the listener
 	var addrStr = ":" + strconv.Itoa(inet.listenPort)
@@ -21,9 +21,9 @@ func (inet Inet) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 	var output = make(chan infra.Conn)
 	go func() {
 		<-ctx.Done()
-		close(output)
-		listener.Close()
 		log.Println("[inet] stop listen tcp", addrStr)
+		listener.Close()
+		close(output)
 	}()
 
 	log.Println("[inet] listen tcp", addrStr)

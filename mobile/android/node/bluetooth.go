@@ -44,6 +44,11 @@ var _ infra.Network = &bluetooth{}
 var _ infra.Unpacker = &bluetooth{}
 var _ infra.Dialer = &bluetooth{}
 
+func (b *bluetooth) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
 func (b *bluetooth) Name() string {
 	return b.base.Name()
 }

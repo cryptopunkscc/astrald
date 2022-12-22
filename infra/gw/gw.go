@@ -30,6 +30,15 @@ func New(config Config, querier Querier) (*Gateway, error) {
 	}, nil
 }
 
+func (g *Gateway) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (*Gateway) Name() string {
+	return NetworkName
+}
+
 func Parse(str string) (Addr, error) {
 	parts := strings.SplitN(str, ":", 2)
 
@@ -47,8 +56,4 @@ func Parse(str string) (Addr, error) {
 		gate:   gate,
 		cookie: cookie,
 	}, nil
-}
-
-func (Gateway) Name() string {
-	return NetworkName
 }

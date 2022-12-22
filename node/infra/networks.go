@@ -1,7 +1,6 @@
 package infra
 
 import (
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/bt"
@@ -13,7 +12,7 @@ import (
 	"strings"
 )
 
-func (i *Infra) setupNetworks(ctx context.Context, cfg config.Infra) error {
+func (i *Infra) setupNetworks(cfg config.Infra) error {
 	// inet
 	if err := i.setupNetwork(func() (infra.Network, error) {
 		return inet.New(cfg.Inet, i.localID)
@@ -23,7 +22,7 @@ func (i *Infra) setupNetworks(ctx context.Context, cfg config.Infra) error {
 
 	// tor
 	if err := i.setupNetwork(func() (infra.Network, error) {
-		return tor.Run(ctx, cfg.Tor, i.Store)
+		return tor.New(cfg.Tor, i.Store)
 	}); err != nil {
 		i.Logf(log.Normal, "tor error: %s", err)
 	}

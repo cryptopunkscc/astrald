@@ -14,7 +14,7 @@ import (
 
 var _ infra.Listener = &Bluetooth{}
 
-func (bt Bluetooth) Listen(ctx context.Context) (<-chan infra.Conn, error) {
+func (bt *Bluetooth) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 	output := make(chan infra.Conn)
 
 	b, err := bluez.New()

@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/event"
@@ -11,12 +10,6 @@ import (
 	"log"
 	"reflect"
 )
-
-func (node *Node) processEvents(ctx context.Context) {
-	for event := range node.events.Subscribe(ctx.Done()) {
-		node.logEvent(event)
-	}
-}
 
 func (node *Node) logEvent(event event.Event) {
 	var displayName = node.Contacts.DisplayName

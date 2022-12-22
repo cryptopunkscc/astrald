@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/streams"
@@ -11,11 +12,6 @@ import (
 func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
 	defer cancel()
-
-	//TODO: Emit an event for logging?
-	//if !strings.HasPrefix(query, ".") || logSilent {
-	//	log.Printf("[%s] -> %s\n", node.Contacts.DisplayName(remoteID), query)
-	//}
 
 	if remoteID.IsZero() || remoteID.IsEqual(node.identity) {
 		return node.Ports.Query(ctx, query, nil)
@@ -27,28 +23,27 @@ func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string)
 	}
 
 	link := link.Select(peer.Links(), link.LowestRoundTrip)
+	if link == nil {
+		return nil, errors.New("no viable link")
+	}
 
 	return link.Query(ctx, query)
 }
 
-func (node *Node) processQueries(ctx context.Context) {
+func (node *Node) peerQueryWorker(ctx context.Context) error {
 	for {
 		select {
 		case query := <-node.Peers.Queries():
 			ctx, _ := context.WithTimeout(ctx, defaultQueryTimeout)
-			node.handleQuery(ctx, query)
+			node.executeQuery(ctx, query)
+
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		}
 	}
 }
 
-func (node *Node) handleQuery(ctx context.Context, query *link.Query) error {
-	//TODO: Emit an event for logging?
-	//if !query.IsSilent() || logSilent {
-	//	  log.Printf("[%s] <- %s (%s)\n", node.Contacts.DisplayName(query.Caller()), query, query.Link().Network())
-	//}
-
+func (node *Node) executeQuery(ctx context.Context, query *link.Query) error {
 	// Query a session with the service
 	localConn, err := node.Ports.Query(ctx, query.String(), query.Link())
 	if err != nil {

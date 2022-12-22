@@ -40,7 +40,6 @@ func (mod *Optimizer) Run(ctx context.Context) error {
 
 func (mod *Optimizer) Optimize(parent context.Context, peer *peers.Peer) error {
 	ctx, cancel := context.WithTimeout(parent, optimizeDuration)
-	peerName := mod.node.Contacts.DisplayName(peer.Identity())
 
 	// optimize until peer gets unlinked or optimization period ends
 	go func() {
@@ -59,7 +58,6 @@ func (mod *Optimizer) Optimize(parent context.Context, peer *peers.Peer) error {
 		if sa <= sp {
 			return errors.New("score too low")
 		}
-		log.Println("[optimizer] dial", peerName, "at", addr.Network(), addr.String(), sa, ">", sp)
 		return nil
 	})
 

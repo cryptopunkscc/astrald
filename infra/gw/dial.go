@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 )
 
-func (g Gateway) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
+func (g *Gateway) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 	a, ok := addr.(Addr)
 	if !ok {
 		return nil, infra.ErrUnsupportedAddress

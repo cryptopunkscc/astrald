@@ -29,12 +29,12 @@ func (mod *Connect) Run(ctx context.Context) error {
 			continue
 		}
 
-		mod.node.Peers.Server.Conns <- &wrapper{
+		mod.node.Peers.Server.AddConn(&wrapper{
 			local:           mod.node.Identity().Public(),
 			remote:          query.Link().RemoteIdentity(),
 			ReadWriteCloser: conn,
 			outbound:        false,
-		}
+		})
 	}
 
 	return nil

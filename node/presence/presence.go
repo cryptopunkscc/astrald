@@ -6,11 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/sig"
-	"log"
 	"sync"
 )
 
-type Presence struct {
+type Manager struct {
 	entries map[string]*entry
 	mu      sync.Mutex
 	events  event.Queue
@@ -18,23 +17,72 @@ type Presence struct {
 	net     infra.PresenceNet
 }
 
-func Run(ctx context.Context, net infra.PresenceNet, eventParent *event.Queue) *Presence {
-	p := &Presence{
+func NewManager(net infra.PresenceNet, eventParent *event.Queue) (*Manager, error) {
+	p := &Manager{
 		entries: make(map[string]*entry),
 		skip:    make(map[string]struct{}),
 		net:     net,
 	}
 	p.events.SetParent(eventParent)
-	go p.process(ctx)
-	return p
+
+	return p, nil
 }
 
-func (p *Presence) Identities() <-chan id.Identity {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (m *Manager) Run(ctx context.Context) (err error) {
+	ctx, shutdown := context.WithCancel(ctx)
 
-	ch := make(chan id.Identity, len(p.entries))
-	for hex := range p.entries {
+	var errCh = make(chan error, 2)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		discover, err := m.net.Discover(ctx)
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		for presence := range discover {
+			hex := presence.Identity.PublicKeyHex()
+			if _, skip := m.skip[hex]; skip {
+				continue
+			}
+
+			m.handle(ctx, presence)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err := m.Announce(ctx)
+		if err != nil {
+			errCh <- err
+		}
+	}()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+		case err = <-errCh:
+			shutdown()
+		}
+	}()
+
+	wg.Wait()
+
+	return nil
+}
+
+func (m *Manager) Identities() <-chan id.Identity {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	ch := make(chan id.Identity, len(m.entries))
+	for hex := range m.entries {
 		i, err := id.ParsePublicKeyHex(hex)
 		if err != nil {
 			panic(err)
@@ -46,74 +94,57 @@ func (p *Presence) Identities() <-chan id.Identity {
 	return ch
 }
 
-func (p *Presence) Subscribe(cancel sig.Signal) <-chan event.Event {
-	return p.events.Subscribe(cancel)
+func (m *Manager) Subscribe(cancel sig.Signal) <-chan event.Event {
+	return m.events.Subscribe(cancel)
 }
 
-func (p *Presence) Announce(ctx context.Context) error {
-	return p.net.Announce(ctx)
+func (m *Manager) Announce(ctx context.Context) error {
+	return m.net.Announce(ctx)
 }
 
-func (p *Presence) process(ctx context.Context) {
-	discover, err := p.net.Discover(ctx)
-	if err != nil {
-		log.Println("discover error:", err)
-		return
-	}
+func (m *Manager) ignore(identity id.Identity) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	for presence := range discover {
-		hex := presence.Identity.PublicKeyHex()
-		if _, skip := p.skip[hex]; skip {
-			continue
-		}
-
-		p.handle(ctx, presence)
-	}
+	m.skip[identity.PublicKeyHex()] = struct{}{}
 }
 
-func (p *Presence) ignore(identity id.Identity) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (m *Manager) unignore(identity id.Identity) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	p.skip[identity.PublicKeyHex()] = struct{}{}
+	delete(m.skip, identity.PublicKeyHex())
 }
 
-func (p *Presence) unignore(identity id.Identity) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	delete(p.skip, identity.PublicKeyHex())
-}
-
-func (p *Presence) handle(ctx context.Context, ip infra.Presence) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (m *Manager) handle(ctx context.Context, ip infra.Presence) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	hex := ip.Identity.PublicKeyHex()
 
-	if e, found := p.entries[hex]; found {
+	if e, found := m.entries[hex]; found {
 		e.Touch()
 		return
 	}
 
 	e := trackPresence(ctx, ip)
-	p.entries[hex] = e
+	m.entries[hex] = e
 
 	// remove presence entry when it times out
 	sig.OnCtx(ctx, e, func() {
-		p.remove(hex)
+		m.remove(hex)
 	})
 
-	p.events.Emit(EventIdentityPresent{ip.Identity, ip.Addr})
+	m.events.Emit(EventIdentityPresent{ip.Identity, ip.Addr})
 }
 
-func (p *Presence) remove(hex string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (m *Manager) remove(hex string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	if e, found := p.entries[hex]; found {
-		delete(p.entries, hex)
+	if e, found := m.entries[hex]; found {
+		delete(m.entries, hex)
 
-		p.events.Emit(EventIdentityGone{e.id})
+		m.events.Emit(EventIdentityGone{e.id})
 	}
 }

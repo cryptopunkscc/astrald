@@ -36,6 +36,10 @@ func (b *Backend) Run(ctx context.Context, config tor.Config) error {
 }
 
 func (b *Backend) Dial(ctx context.Context, network string, addr string) (net.Conn, error) {
+	//TODO: proxy is nil when Dial() is invoked before Run() sets up the proxy
+	if b.proxy == nil {
+		return nil, errors.New("proxy missing")
+	}
 	return b.proxy.DialContext(ctx, network, addr)
 }
 

@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func (inet Inet) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
+func (inet *Inet) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 	if _, ok := addr.(Addr); !ok {
 		return nil, infra.ErrUnsupportedAddress
 	}

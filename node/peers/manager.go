@@ -28,9 +28,11 @@ type Manager struct {
 	linkers  map[string]*Linker
 	mu       sync.Mutex
 	events   event.Queue
+	links    chan *alink.Link
+	timeout  chan *link.Link
 }
 
-func Run(ctx context.Context, localID id.Identity, infra *infra.Infra, contacts *contacts.Manager, eventParent *event.Queue) (*Manager, error) {
+func NewManager(localID id.Identity, infra *infra.Infra, contacts *contacts.Manager, eventParent *event.Queue) (*Manager, error) {
 	var err error
 
 	m := &Manager{
@@ -38,26 +40,44 @@ func Run(ctx context.Context, localID id.Identity, infra *infra.Infra, contacts 
 		linkers:  make(map[string]*Linker),
 		infra:    infra,
 		contacts: contacts,
+		links:    make(chan *alink.Link, 16),
+		timeout:  make(chan *link.Link, 16),
 	}
 
 	m.events.SetParent(eventParent)
 	m.Pool = NewPool(localID, &m.events)
-
-	m.Server, err = runServer(ctx, localID, infra)
+	m.Server, err = newServer(localID, infra)
 	if err != nil {
 		return nil, err
 	}
 
-	go func() {
-		for l := range m.Server.Links() {
-			if err := m.AddLink(l); err != nil {
-				panic(err)
-			}
-		}
-		log.Println("peers: server done")
-	}()
-
 	return m, nil
+}
+
+func (m *Manager) Run(ctx context.Context) error {
+	links, err := m.Server.Run(ctx)
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+
+		case link := <-links:
+			m.AddLink(link)
+
+		case link := <-m.timeout:
+			// set up a timeout for the link
+			linkCtx, cancel := context.WithCancel(ctx)
+			sig.On(link, cancel)
+			sig.OnCtx(linkCtx, sig.Idle(linkCtx, link, LinkTimeout), func() {
+				log.Println("peers.Manager.AddLink(): closing link due to timeout")
+				link.Close()
+			})
+		}
+	}
 }
 
 func (m *Manager) Queries() <-chan *link.Query {
@@ -65,18 +85,15 @@ func (m *Manager) Queries() <-chan *link.Query {
 }
 
 func (m *Manager) AddLink(l *alink.Link) (err error) {
-	lnk := link.Wrap(l, &m.events)
-	err = m.Pool.AddLink(lnk)
+	nodeLink := link.Wrap(l, &m.events)
+	err = m.Pool.AddLink(nodeLink)
 
-	// set up a timeout for the link
-	if err == nil {
-		linkCtx, cancel := context.WithCancel(context.Background())
-		sig.On(lnk, cancel)
-		sig.OnCtx(linkCtx, sig.Idle(linkCtx, lnk, LinkTimeout), func() {
-			log.Println("peers.Manager.AddLink(): closing link due to timeout")
-			lnk.Close()
-		})
+	if err != nil {
+		nodeLink.Close()
 	}
+
+	m.timeout <- nodeLink
+
 	return
 }
 

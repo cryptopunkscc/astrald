@@ -28,13 +28,23 @@ func (mod *Module) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 
 	ports := NewPortManager()
+	conns := mod.accept(ctx)
 
 	wg.Add(workerCount)
-
 	for i := 0; i < workerCount; i++ {
 		go func(i int) {
 			defer wg.Done()
-			for conn := range mod.clientConns {
+			for conn := range conns {
+				cctx, cancel := context.WithCancel(ctx)
+
+				go func() {
+					select {
+					case <-ctx.Done():
+						conn.Close()
+					case <-cctx.Done():
+					}
+				}()
+
 				err := apphost.Serve(conn, &AppHost{
 					node:  mod.node,
 					conn:  conn,
@@ -44,21 +54,17 @@ func (mod *Module) Run(ctx context.Context) error {
 					log.Printf("[apphost:%d] serve error: %s", i, err.Error())
 				}
 				conn.Close()
+				cancel()
 			}
 		}(i)
 	}
-
-	mod.runListeners(ctx)
 
 	wg.Wait()
 
 	return nil
 }
 
-func (mod *Module) runListeners(ctx context.Context) {
-	mod.listeners = make([]net.Listener, 0)
-	mod.clientConns = make(chan net.Conn)
-
+func (mod *Module) accept(ctx context.Context) <-chan net.Conn {
 	if l, err := mod.listenTCP(); err != nil {
 		log.Println("[apphost] tcp listen error:", err)
 	} else {
@@ -73,25 +79,36 @@ func (mod *Module) runListeners(ctx context.Context) {
 		mod.listeners = append(mod.listeners, l)
 	}
 
+	var ch = make(chan net.Conn)
+	var wg sync.WaitGroup
+
 	for _, listener := range mod.listeners {
-		go func(listener net.Listener) {
+		listener := listener
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
 			for {
 				conn, err := listener.Accept()
 				if err != nil {
 					break
 				}
-				mod.clientConns <- conn
+				ch <- conn
 			}
-		}(listener)
+		}()
+		go func() {
+			<-ctx.Done()
+			listener.Close()
+		}()
 	}
 
 	go func() {
-		<-ctx.Done()
-		for _, l := range mod.listeners {
-			l.Close()
-		}
-		close(mod.clientConns)
+		wg.Wait()
+		close(ch)
 	}()
+
+	return ch
 }
 
 func (mod *Module) listenTCP() (net.Listener, error) {

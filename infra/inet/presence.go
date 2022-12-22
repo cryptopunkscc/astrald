@@ -19,7 +19,7 @@ const (
 
 const presenceCSLQ = "x61 x70 x00 x00 v s c"
 
-func (p presence) MarshalCSLQ(enc *cslq.Encoder) error {
+func (p *presence) MarshalCSLQ(enc *cslq.Encoder) error {
 	return enc.Encode(presenceCSLQ, p.Identity, p.Port, p.Flags)
 }
 

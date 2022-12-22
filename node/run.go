@@ -3,41 +3,13 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/hub"
-	"github.com/cryptopunkscc/astrald/node/config"
-	"github.com/cryptopunkscc/astrald/node/contacts"
-	"github.com/cryptopunkscc/astrald/node/infra"
-	"github.com/cryptopunkscc/astrald/node/peers"
-	"github.com/cryptopunkscc/astrald/node/presence"
-	"github.com/cryptopunkscc/astrald/storage"
 	"log"
+	"sync"
 )
 
 // Run starts the node, waits for it to finish and returns an error if any
-func Run(ctx context.Context, dataDir string, modules ...ModuleLoader) (*Node, error) {
-	var err error
-
-	// Storage
-	store := storage.NewFilesystemStorage(dataDir)
-
-	// Config
-	cfg, err := config.Load(store)
-	if err != nil {
-		return nil, fmt.Errorf("config error: %w", err)
-	}
-
-	node := &Node{
-		Config: cfg,
-		Store:  store,
-	}
-
-	// Set up identity
-	if err := node.setupIdentity(); err != nil {
-		return nil, fmt.Errorf("identity setup error: %w", err)
-	}
-
-	// Set up local hub
-	node.Ports = hub.New(&node.events)
+func (node *Node) Run(ctx context.Context) (err error) {
+	ctx, shutdown := context.WithCancel(ctx)
 
 	// Say hello
 	nodeKey := node.identity.PublicKeyHex()
@@ -46,56 +18,73 @@ func Run(ctx context.Context, dataDir string, modules ...ModuleLoader) (*Node, e
 	}
 	log.Printf("astral node %s statrting...", nodeKey)
 
-	// Set up the infrastructure
-	node.Infra, err = infra.Run(
-		ctx,
-		node.Identity(),
-		node.Config.Infra,
-		infra.FilteredQuerier{Querier: node, FilteredID: node.identity},
-		node.Store,
-	)
-	if err != nil {
-		log.Println("infra error:", err)
-		return nil, err
-	}
+	var wg sync.WaitGroup
+	var errCh = make(chan error, 32)
 
-	// Contacts
-	node.Contacts = contacts.New(store)
-
-	// Run the peer manager
-	node.Peers, err = peers.Run(ctx, node.identity, node.Infra, node.Contacts, &node.events)
-	if err != nil {
-		return nil, err
-	}
-
-	// Modules
-	node.Modules, err = NewModuleManager(node, modules)
-	if err != nil {
-		panic(err)
-	}
-
+	// run the infrastructure
+	wg.Add(1)
 	go func() {
-		err := node.Modules.Run(ctx)
-		if err != nil {
-			panic(err)
+		defer wg.Done()
+		if err := node.Infra.Run(ctx); err != nil {
+			errCh <- fmt.Errorf("infrastructure error: %w", err)
 		}
 	}()
 
-	// Presence
-	node.Presence = presence.Run(ctx, node.Infra, &node.events)
+	// run the peer manager
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := node.Peers.Run(ctx); err != nil {
+			errCh <- fmt.Errorf("peer manager error: %w", err)
+		}
+	}()
 
-	err = node.Presence.Announce(ctx)
-	if err != nil {
-		log.Println("announce error:", err) // non-critical
-	}
+	// run the module manager
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := node.Modules.Run(ctx); err != nil {
+			errCh <- fmt.Errorf("module manager error: %w", err)
+		}
+	}()
 
-	// Run it
-	node.process(ctx)
+	// run presence manager
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := node.Presence.Run(ctx); err != nil {
+			errCh <- fmt.Errorf("presence manager error: %w", err)
+		}
+	}()
 
-	return node, nil
-}
+	// peer query worker
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		node.peerQueryWorker(ctx)
+	}()
 
-func (node *Node) process(ctx context.Context) {
-	go node.processQueries(ctx)
-	go node.processEvents(ctx)
+	// event logger
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for event := range node.events.Subscribe(ctx.Done()) {
+			node.logEvent(event)
+		}
+	}()
+
+	// wait for the context to end or a node error
+	go func() {
+		select {
+		case <-ctx.Done():
+		case err = <-errCh:
+			shutdown()
+		}
+	}()
+
+	// wait for all components to finish
+	wg.Wait()
+
+	return
 }

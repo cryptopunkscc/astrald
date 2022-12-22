@@ -1,6 +1,7 @@
 package bt
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/infra"
 )
 
@@ -15,6 +16,11 @@ func New() (*Bluetooth, error) {
 	return &Bluetooth{}, nil
 }
 
-func (Bluetooth) Name() string {
+func (bt *Bluetooth) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (*Bluetooth) Name() string {
 	return NetworkName
 }

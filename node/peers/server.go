@@ -15,55 +15,71 @@ import (
 const HandshakeTimeout = 15 * time.Second
 
 type Server struct {
-	Conns chan infra.Conn
-	links chan *link.Link
+	localID  id.Identity
+	listener infra.Listener
+	conns    chan infra.Conn
+	err      error
+	links    *link.Link
 }
 
-func runServer(ctx context.Context, localID id.Identity, listener infra.Listener) (*Server, error) {
-	listenCh, err := listener.Listen(ctx)
-	if err != nil {
-		return nil, err
-	}
-
+func newServer(localID id.Identity, listener infra.Listener) (*Server, error) {
 	srv := &Server{
-		Conns: make(chan infra.Conn),
-		links: make(chan *link.Link),
+		localID:  localID,
+		listener: listener,
+		conns:    make(chan infra.Conn, 8),
 	}
-
-	go srv.process(ctx, localID)
-
-	go func() {
-		defer close(srv.links)
-		for conn := range listenCh {
-			srv.Conns <- conn
-		}
-	}()
 
 	return srv, nil
 }
 
-func (i *Server) process(ctx context.Context, localID id.Identity) {
-	for conn := range i.Conns {
-		conn := conn
-		go func() {
-			hctx, _ := context.WithTimeout(ctx, HandshakeTimeout)
-			auth, err := auth.HandshakeInbound(hctx, conn, localID)
-			if err != nil {
-				switch {
-				case errors.Is(err, io.EOF):
-				case errors.Is(err, context.DeadlineExceeded):
-				case errors.Is(err, context.Canceled):
-				default:
-					log.Println("peers.Server.process(): inbound handshake error:", err)
-				}
-				conn.Close()
-				return
-			}
-			i.links <- link.New(auth)
-		}()
-	}
+func (srv *Server) AddConn(conn infra.Conn) {
+	srv.conns <- conn
 }
 
-func (i *Server) Links() chan *link.Link {
-	return i.links
+func (srv *Server) Run(ctx context.Context) (chan *link.Link, error) {
+	listenCh, err := srv.listener.Listen(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan *link.Link)
+
+	go func() {
+		for conn := range listenCh {
+			srv.conns <- conn
+		}
+		close(srv.conns)
+		defer close(ch)
+	}()
+
+	go func() {
+		for conn := range srv.conns {
+			link, err := srv.process(ctx, conn)
+			switch {
+			case err == nil:
+				ch <- link
+			case errors.Is(err, io.EOF):
+			case errors.Is(err, context.DeadlineExceeded):
+			case errors.Is(err, context.Canceled):
+			default:
+				log.Println("peers.Server: inbound handshake error:", err)
+			}
+
+		}
+	}()
+
+	return ch, nil
+}
+
+func (srv *Server) process(ctx context.Context, conn infra.Conn) (*link.Link, error) {
+	hctx, _ := context.WithTimeout(ctx, HandshakeTimeout)
+	auth, err := auth.HandshakeInbound(hctx, conn, srv.localID)
+
+	if err != nil {
+		conn.Close()
+		return nil, err
+
+	}
+
+	return link.New(auth), nil
 }

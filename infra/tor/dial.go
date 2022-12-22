@@ -7,7 +7,7 @@ import (
 )
 
 // Dial tries to establish a Tor connection to the provided address
-func (tor Tor) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err error) {
+func (tor *Tor) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err error) {
 	ctx, cancel := context.WithTimeout(ctx, tor.config.GetDialTimeout())
 	defer cancel()
 

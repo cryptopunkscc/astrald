@@ -22,27 +22,34 @@ type Tor struct {
 	serviceAddr Addr
 }
 
-func Run(ctx context.Context, config Config, store storage.Store) (*Tor, error) {
-	var backendName = config.GetBackend()
+func New(config Config, store storage.Store) (*Tor, error) {
+	tor := &Tor{
+		config: config,
+		store:  store,
+	}
+
+	var backendName = tor.config.GetBackend()
 	var backend, found = backends[backendName]
 
 	if !found {
 		return nil, errors.New("backend unavailable")
 	}
 
-	if err := backend.Run(ctx, config); err != nil {
-		return nil, err
-	}
+	tor.backend = backend
 
-	return &Tor{config: config, store: store, backend: backend}, nil
+	return tor, nil
+}
+
+func (tor *Tor) Run(ctx context.Context) error {
+	return tor.backend.Run(ctx, tor.config)
 }
 
 // Name returns the network name
-func (tor Tor) Name() string {
+func (tor *Tor) Name() string {
 	return NetworkName
 }
 
-func (tor Tor) Addresses() []infra.AddrSpec {
+func (tor *Tor) Addresses() []infra.AddrSpec {
 	if tor.serviceAddr.IsZero() {
 		return nil
 	}
