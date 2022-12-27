@@ -54,11 +54,8 @@ func New(dataDir string, modules ...ModuleLoader) (*Node, error) {
 	// hub
 	node.Ports = hub.New(&node.events)
 
-	// contacts
-	node.Contacts = contacts.New(node.Store)
-
 	// infrastructure
-	node.Infra, err = infra.NewInfra(
+	node.Infra, err = infra.New(
 		node.Identity(),
 		node.Config.Infra,
 		infra.FilteredQuerier{Querier: node, FilteredID: node.identity},
@@ -67,6 +64,9 @@ func New(dataDir string, modules ...ModuleLoader) (*Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error setting up infrastructure: %w", err)
 	}
+
+	// contacts
+	node.Contacts = contacts.New(node.Store, node.Infra)
 
 	// peer manager
 	node.Peers, err = peers.NewManager(node.identity, node.Infra, node.Contacts, &node.events)

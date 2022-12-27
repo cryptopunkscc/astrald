@@ -46,7 +46,7 @@ func (manager *ModuleManager) Run(ctx context.Context) error {
 	for name, _ := range manager.modules {
 		modNames = append(modNames, name)
 	}
-	log.Println("running modules:", strings.Join(modNames, " "))
+	log.Println("modules:", strings.Join(modNames, " "))
 
 	for name, mod := range manager.modules {
 		name, mod := name, mod

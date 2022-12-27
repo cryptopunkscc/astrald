@@ -24,20 +24,9 @@ type Addr struct {
 	port uint16
 }
 
-func (addr Addr) Pack() []byte {
-	var b = &bytes.Buffer{}
+func Unpack(buf []byte) (addr *Addr, err error) {
+	addr = &Addr{}
 
-	switch addr.ver {
-	case ipv4:
-		cslq.Encode(b, "x00 [4]c s", addr.ip[len(addr.ip)-4:], addr.port)
-	case ipv6:
-		cslq.Encode(b, "x01 [16]c s", addr.ip, addr.port)
-	}
-
-	return b.Bytes()
-}
-
-func Unpack(buf []byte) (addr Addr, err error) {
 	var r = bytes.NewReader(buf)
 
 	if err = cslq.Decode(r, "c", &addr.ver); err != nil {
@@ -52,19 +41,6 @@ func Unpack(buf []byte) (addr Addr, err error) {
 	}
 
 	return addr, errors.New("invalid version")
-}
-
-func (addr Addr) String() string {
-	ip := addr.ip.String()
-
-	if addr.ver == ipv6 {
-		ip = "[" + ip + "]"
-	}
-
-	if addr.port != 0 {
-		ip = ip + ":" + strconv.Itoa(int(addr.port))
-	}
-	return ip
 }
 
 func Parse(s string) (addr Addr, err error) {
@@ -95,6 +71,32 @@ func Parse(s string) (addr Addr, err error) {
 	}
 
 	return
+}
+
+func (addr Addr) Pack() []byte {
+	var b = &bytes.Buffer{}
+
+	switch addr.ver {
+	case ipv4:
+		cslq.Encode(b, "x00 [4]c s", addr.ip[len(addr.ip)-4:], addr.port)
+	case ipv6:
+		cslq.Encode(b, "x01 [16]c s", addr.ip, addr.port)
+	}
+
+	return b.Bytes()
+}
+
+func (addr Addr) String() string {
+	ip := addr.ip.String()
+
+	if addr.ver == ipv6 {
+		ip = "[" + ip + "]"
+	}
+
+	if addr.port != 0 {
+		ip = ip + ":" + strconv.Itoa(int(addr.port))
+	}
+	return ip
 }
 
 func (addr Addr) Network() string {

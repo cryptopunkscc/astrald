@@ -5,14 +5,12 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"io"
-	"strings"
 )
 
 const NetworkName = "gw"
 const PortName = "gateway"
 
 var _ infra.Network = &Gateway{}
-var _ infra.Dialer = &Gateway{}
 
 type Querier interface {
 	Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error)
@@ -33,27 +31,4 @@ func New(config Config, querier Querier) (*Gateway, error) {
 func (g *Gateway) Run(ctx context.Context) error {
 	<-ctx.Done()
 	return nil
-}
-
-func (*Gateway) Name() string {
-	return NetworkName
-}
-
-func Parse(str string) (Addr, error) {
-	parts := strings.SplitN(str, ":", 2)
-
-	gate, err := id.ParsePublicKeyHex(parts[0])
-	if err != nil {
-		return Addr{}, err
-	}
-
-	var cookie string
-	if len(parts) == 2 {
-		cookie = parts[1]
-	}
-
-	return Addr{
-		gate:   gate,
-		cookie: cookie,
-	}, nil
 }

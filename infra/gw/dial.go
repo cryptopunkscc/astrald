@@ -8,22 +8,17 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 )
 
-func (g *Gateway) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
-	a, ok := addr.(Addr)
-	if !ok {
-		return nil, infra.ErrUnsupportedAddress
-	}
-
-	if len(a.cookie) == 0 {
+func (g *Gateway) Dial(ctx context.Context, addr Addr) (infra.Conn, error) {
+	if len(addr.cookie) == 0 {
 		return nil, errors.New("missing cookie")
 	}
 
-	rwc, err := g.Query(ctx, a.gate, PortName)
+	rwc, err := g.Query(ctx, addr.gate, PortName)
 	if err != nil {
 		return nil, fmt.Errorf("gateway query error: %w", err)
 	}
 
-	if err := cslq.Encode(rwc, "[c]c", a.cookie); err != nil {
+	if err := cslq.Encode(rwc, "[c]c", addr.cookie); err != nil {
 		return nil, fmt.Errorf("gateway query error: %w", err)
 	}
 
@@ -40,5 +35,5 @@ func (g *Gateway) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error)
 		return nil, infra.ErrConnectionRefused
 	}
 
-	return newConn(rwc, a, true), nil
+	return newConn(rwc, addr, true), nil
 }

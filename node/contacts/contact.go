@@ -16,14 +16,14 @@ type Contact struct {
 	identity  id.Identity
 	alias     string
 	mu        sync.Mutex
-	Addresses []*Addr
+	addresses []*Addr
 	queue     *sig.Queue
 }
 
 func NewContact(identity id.Identity) *Contact {
 	return &Contact{
 		identity:  identity,
-		Addresses: make([]*Addr, 0),
+		addresses: make([]*Addr, 0),
 		queue:     &sig.Queue{},
 	}
 }
@@ -56,8 +56,8 @@ func (c *Contact) Addr(follow context.Context) <-chan infra.Addr {
 	var ch chan infra.Addr
 
 	// populate channel with addresses
-	ch = make(chan infra.Addr, len(c.Addresses))
-	for _, addr := range c.Addresses {
+	ch = make(chan infra.Addr, len(c.addresses))
+	for _, addr := range c.addresses {
 		ch <- addr.Addr
 	}
 
@@ -76,28 +76,13 @@ func (c *Contact) Addr(follow context.Context) <-chan infra.Addr {
 	return ch
 }
 
-func (c *Contact) Add(addr infra.Addr) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for _, a := range c.Addresses {
-		if infra.AddrEqual(a, addr) {
-			return
-		}
-	}
-
-	wrapped := wrapAddr(addr)
-	c.Addresses = append(c.Addresses, wrapped)
-	c.queue = c.queue.Push(wrapped)
-}
-
 func (c *Contact) Remove(addr infra.Addr) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for i, a := range c.Addresses {
+	for i, a := range c.addresses {
 		if infra.AddrEqual(a, addr) {
-			c.Addresses = append(c.Addresses[:i], c.Addresses[i+1:]...)
+			c.addresses = append(c.addresses[:i], c.addresses[i+1:]...)
 			return
 		}
 	}

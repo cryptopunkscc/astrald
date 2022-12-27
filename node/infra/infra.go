@@ -13,14 +13,13 @@ import (
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/storage"
 	"io"
+	"strings"
 	"sync"
 )
 
 type Querier interface {
 	Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error)
 }
-
-var _ infra.Unpacker = &Infra{}
 
 type Infra struct {
 	Querier  Querier
@@ -37,12 +36,13 @@ type Infra struct {
 	logLevel  int
 }
 
-func NewInfra(localID id.Identity, cfg config.Infra, querier Querier, store storage.Store) (*Infra, error) {
+func New(localID id.Identity, cfg config.Infra, querier Querier, store storage.Store) (*Infra, error) {
 	var i = &Infra{
 		localID:  localID,
 		Querier:  querier,
 		Store:    store,
 		gateways: make([]infra.AddrSpec, 0),
+		networks: make(map[string]infra.Network),
 		config:   cfg,
 		logLevel: cfg.LogLevel,
 	}
@@ -63,6 +63,12 @@ func NewInfra(localID id.Identity, cfg config.Infra, querier Querier, store stor
 func (i *Infra) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 
+	list := make([]string, 0, len(i.networks))
+	for n := range i.networks {
+		list = append(list, n)
+	}
+	i.Logf(log.Normal, "networks: %s", strings.Join(list, " "))
+
 	for net := range i.Networks() {
 		net := net
 		wg.Add(1)
@@ -74,20 +80,6 @@ func (i *Infra) Run(ctx context.Context) error {
 
 	wg.Wait()
 
-	return nil
-}
-
-func (i *Infra) setupStaticGateways(cfg config.Infra) error {
-	for _, gate := range cfg.Gateways {
-		addr, err := gw.Parse(gate)
-		if err != nil {
-			return fmt.Errorf("gateway parse error: %w", err)
-		}
-		i.gateways = append(i.gateways, infra.AddrSpec{
-			Addr:   addr,
-			Global: true,
-		})
-	}
 	return nil
 }
 
@@ -130,4 +122,18 @@ func (i *Infra) Logf(level int, fmt string, args ...interface{}) {
 	}
 
 	log.Printf("[infra] "+fmt, args...)
+}
+
+func (i *Infra) setupStaticGateways(cfg config.Infra) error {
+	for _, gate := range cfg.Gateways {
+		addr, err := gw.Parse(gate)
+		if err != nil {
+			return fmt.Errorf("gateway parse error: %w", err)
+		}
+		i.gateways = append(i.gateways, infra.AddrSpec{
+			Addr:   addr,
+			Global: true,
+		})
+	}
+	return nil
 }

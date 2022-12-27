@@ -1,29 +1,36 @@
 package contacts
 
 import (
-	"encoding/json"
+	"bytes"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"github.com/cryptopunkscc/astrald/storage"
 	"log"
 	"sync"
+	"time"
 )
 
-const contactsKey = "contacts.json"
+const contactsKey = "contacts.dat"
 
-var _ Resolver = &Manager{}
+type AddrUnpacker interface {
+	Unpack(string, []byte) (infra.Addr, error)
+}
 
 type Manager struct {
+	unpacker AddrUnpacker
 	contacts map[string]*Contact
 	store    storage.Store
 	mu       sync.Mutex
 }
 
-func New(store storage.Store) *Manager {
+func New(store storage.Store, unpacker AddrUnpacker) *Manager {
 	c := &Manager{
 		store:    store,
+		unpacker: unpacker,
 		contacts: make(map[string]*Contact),
 	}
 
@@ -44,24 +51,6 @@ func (m *Manager) DisplayName(identity id.Identity) string {
 	}
 
 	return logfmt.ID(identity)
-}
-
-func (m *Manager) Find(identity id.Identity, create bool) *Contact {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	hex := identity.PublicKeyHex()
-
-	if c, found := m.contacts[hex]; found {
-		return c
-	}
-
-	if create {
-		m.contacts[hex] = NewContact(identity)
-		return m.contacts[hex]
-	}
-
-	return nil
 }
 
 func (m *Manager) FindByAlias(alias string) (*Contact, bool) {
@@ -111,7 +100,7 @@ func (m *Manager) AddNodeInfo(info *nodeinfo.NodeInfo) error {
 	}
 
 	for _, a := range info.Addresses {
-		c.Add(a)
+		c.Add(a, time.Time{})
 	}
 
 	m.Save()
@@ -130,8 +119,8 @@ func (m *Manager) Lookup(nodeID id.Identity) (<-chan *Addr, error) {
 	}
 
 	// convert to channel
-	ch := make(chan *Addr, len(c.Addresses))
-	for _, addr := range c.Addresses {
+	ch := make(chan *Addr, len(c.addresses))
+	for _, addr := range c.addresses {
 		ch <- addr
 	}
 	close(ch)
@@ -154,22 +143,68 @@ func (m *Manager) All() <-chan *Contact {
 }
 
 func (m *Manager) Save() error {
-	data, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return err
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var data = &bytes.Buffer{}
+	var enc = cslq.NewEncoder(data)
+
+	enc.Encode("l", len(m.contacts))
+
+	for _, contact := range m.contacts {
+		enc.Encode("v [c]c s", contact.identity, contact.alias, len(contact.addresses))
+
+		for _, addr := range contact.addresses {
+			enc.Encode("[c]c [c]c q", addr.Network(), addr.Pack(), addr.ExpiresAt.Unix())
+		}
 	}
 
-	return m.store.StoreBytes(contactsKey, data)
+	return m.store.StoreBytes(contactsKey, data.Bytes())
 }
 
 func (m *Manager) load() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	bytes, err := m.store.LoadBytes(contactsKey)
+	data, err := m.store.LoadBytes(contactsKey)
 	if err != nil {
 		return err
 	}
 
-	return json.Unmarshal(bytes, m)
+	var dec = cslq.NewDecoder(bytes.NewReader(data))
+
+	var contactLen int
+
+	if err := dec.Decode("l", &contactLen); err != nil {
+		return err
+	}
+	for i := 0; i < contactLen; i++ {
+		var identity id.Identity
+		var alias string
+		var addrLen int
+
+		if err := dec.Decode("v [c]c s", &identity, &alias, &addrLen); err != nil {
+			return err
+		}
+		c := m.find(identity, true)
+		c.alias = alias
+
+		for j := 0; j < addrLen; j++ {
+			var network string
+			var address []byte
+			var expiresAt int64
+
+			if err := dec.Decode("[c]c [c]c q", &network, &address, &expiresAt); err != nil {
+				return err
+			}
+
+			addr, err := m.unpacker.Unpack(network, address)
+			if err != nil {
+				return err
+			}
+			c.Add(addr, time.Unix(expiresAt, 0))
+		}
+	}
+
+	return nil
 }

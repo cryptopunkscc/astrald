@@ -65,7 +65,7 @@ func (mod *Info) Run(ctx context.Context) error {
 				refreshContact(ctx, mod.node, event.Peer.Identity())
 
 			case presence.EventIdentityPresent:
-				mod.node.Contacts.Find(event.Identity, true).Add(event.Addr)
+				mod.node.Contacts.Find(event.Identity, true).Add(event.Addr, time.Time{})
 				mod.node.Contacts.Save()
 
 				refreshContact(ctx, mod.node, event.Identity)
@@ -127,7 +127,7 @@ func refreshContact(ctx context.Context, node *node.Node, identity id.Identity) 
 			continue
 		}
 
-		c.Add(addr)
+		c.Add(addr, time.Time{})
 	}
 
 	node.Contacts.Save()

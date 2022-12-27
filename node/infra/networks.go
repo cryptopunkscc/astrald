@@ -1,7 +1,6 @@
 package infra
 
 import (
-	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/infra/gw"
@@ -9,63 +8,46 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
-	"strings"
 )
 
 func (i *Infra) setupNetworks(cfg config.Infra) error {
+	var err error
+
 	// inet
-	if err := i.setupNetwork(func() (infra.Network, error) {
-		return inet.New(cfg.Inet, i.localID)
-	}); err != nil {
+	i.inet, err = inet.New(cfg.Inet, i.localID)
+	if err == nil {
+		i.addNetwork(inet.NetworkName, i.inet)
+	} else {
 		i.Logf(log.Normal, "inet error: %s", err)
 	}
 
 	// tor
-	if err := i.setupNetwork(func() (infra.Network, error) {
-		return tor.New(cfg.Tor, i.Store)
-	}); err != nil {
+	i.tor, err = tor.New(cfg.Tor, i.Store)
+	if err == nil {
+		i.addNetwork(tor.NetworkName, i.tor)
+	} else {
 		i.Logf(log.Normal, "tor error: %s", err)
 	}
 
 	// gateway
-	if err := i.setupNetwork(func() (infra.Network, error) {
-		return gw.New(cfg.Gw, i.Querier)
-	}); err != nil {
+	i.gateway, err = gw.New(cfg.Gw, i.Querier)
+	if err == nil {
+		i.addNetwork(gw.NetworkName, i.gateway)
+	} else {
 		i.Logf(log.Normal, "gw error: %s", err)
 	}
 
 	// bluetooth
-	if err := i.setupNetwork(func() (infra.Network, error) {
-		return bt.Instance, nil
-	}); err != nil {
-		i.Logf(log.Normal, "bt error: %s", err)
+	if bt.Instance != nil {
+		i.bluetooth = bt.Instance
+		i.addNetwork(bt.NetworkName, i.bluetooth)
+	} else {
+		i.Logf(log.Normal, "bluetooth error: adapter unavailable", err)
 	}
-
-	list := make([]string, 0, len(i.networks))
-	for n := range i.networks {
-		list = append(list, n)
-	}
-
-	i.Logf(log.Normal, "configured networks: %s", strings.Join(list, ", "))
 
 	return nil
 }
 
-func (i *Infra) setupNetwork(f func() (infra.Network, error)) error {
-	network, err := f()
-	if err != nil {
-		return err
-	}
-	return i.addNetwork(network)
-}
-
-func (i *Infra) addNetwork(n infra.Network) error {
-	if n == nil {
-		return errors.New("network is nil")
-	}
-	if i.networks == nil {
-		i.networks = make(map[string]infra.Network)
-	}
-	i.networks[n.Name()] = n
-	return nil
+func (i *Infra) addNetwork(name string, n infra.Network) {
+	i.networks[name] = n
 }

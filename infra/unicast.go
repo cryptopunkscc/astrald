@@ -11,10 +11,3 @@ type Dialer interface {
 type Listener interface {
 	Listen(ctx context.Context) (<-chan Conn, error)
 }
-
-// UnicastNet combines interfaces specific to unicast networks
-type UnicastNet interface {
-	Network
-	Dialer
-	Listener
-}

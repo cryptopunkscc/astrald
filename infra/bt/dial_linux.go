@@ -9,19 +9,26 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func (bt *Bluetooth) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
-	_addr, ok := addr.(Addr)
-	if !ok {
-		return nil, infra.ErrUnsupportedAddress
+func (bt *Bluetooth) Dial(ctx context.Context, addr Addr) (conn infra.Conn, err error) {
+	var fd int
+	var done = make(chan struct{})
+	defer close(done)
+
+	fd, err = unix.Socket(unix.AF_BLUETOOTH, unix.SOCK_STREAM, unix.BTPROTO_RFCOMM)
+	if err != nil {
+		return
 	}
 
-	fd, err := unix.Socket(unix.AF_BLUETOOTH, unix.SOCK_STREAM, unix.BTPROTO_RFCOMM)
-	if err != nil {
-		return nil, err
-	}
+	go func() {
+		select {
+		case <-ctx.Done():
+			unix.Close(fd)
+		case <-done:
+		}
+	}()
 
 	var mac [6]byte
-	copy(mac[:], _addr.Pack())
+	copy(mac[:], addr.Pack())
 
 	err = unix.Connect(fd, &unix.SockaddrRFCOMM{
 		Channel: 1,
@@ -29,13 +36,16 @@ func (bt *Bluetooth) Dial(ctx context.Context, addr infra.Addr) (infra.Conn, err
 	})
 
 	if err != nil {
-		return nil, err
+		unix.Close(fd)
+		return
 	}
 
-	return &Conn{
+	conn = &Conn{
 		nfd:        fd,
 		outbount:   true,
 		localAddr:  Addr{},
-		remoteAddr: _addr,
-	}, err
+		remoteAddr: addr,
+	}
+
+	return
 }

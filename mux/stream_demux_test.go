@@ -17,7 +17,7 @@ func TestDemux(t *testing.T) {
 	demux := NewStreamDemux(r)
 
 	setup.Add(3)
-	workers.Add(3)
+	workers.Add(4)
 	for i := 0; i < 3; i++ {
 		go func(i int) {
 			defer workers.Done()

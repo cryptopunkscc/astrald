@@ -12,7 +12,7 @@ func cmdContacts(w io.ReadWriter, node *node.Node, _ []string) error {
 		fmt.Fprintln(w, "node", c.DisplayName())
 		fmt.Fprintln(w, "pubkey", c.Identity().PublicKeyHex())
 
-		for _, addr := range c.Addresses {
+		for addr := range c.Addr(nil) {
 			printAddr(w, addr)
 		}
 		fmt.Fprintln(w)

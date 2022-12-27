@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
+	"strings"
 )
 
 var _ infra.Addr = Addr{}
@@ -14,10 +15,52 @@ type Addr struct {
 	cookie string
 }
 
+// NewAddr insatntiates and returns a new Addr
 func NewAddr(gate id.Identity, cookie string) Addr {
 	return Addr{gate: gate, cookie: cookie}
 }
 
+// Unpack converts a binary representation of the address to a struct
+func Unpack(data []byte) (Addr, error) {
+	r := bytes.NewReader(data)
+
+	var (
+		nodeID id.Identity
+		cookie string
+	)
+
+	err := cslq.Decode(r, "v [c]c", &nodeID, &cookie)
+	if err != nil {
+		return Addr{}, err
+	}
+
+	return Addr{
+		gate:   nodeID,
+		cookie: cookie,
+	}, nil
+}
+
+// Parse converts a text representation of a gateway address to an Addr struct
+func Parse(str string) (Addr, error) {
+	parts := strings.SplitN(str, ":", 2)
+
+	gate, err := id.ParsePublicKeyHex(parts[0])
+	if err != nil {
+		return Addr{}, err
+	}
+
+	var cookie string
+	if len(parts) == 2 {
+		cookie = parts[1]
+	}
+
+	return Addr{
+		gate:   gate,
+		cookie: cookie,
+	}, nil
+}
+
+// Pack returns a binary representation of the address
 func (a Addr) Pack() []byte {
 	buf := &bytes.Buffer{}
 
@@ -26,6 +69,7 @@ func (a Addr) Pack() []byte {
 	return buf.Bytes()
 }
 
+// String returns a text representation of the address
 func (a Addr) String() string {
 	if a.IsZero() {
 		return "unknown"
@@ -47,24 +91,4 @@ func (a Addr) Gate() id.Identity {
 
 func (a Addr) Network() string {
 	return NetworkName
-}
-
-// Unpack converts a binary representation of the address to a struct
-func Unpack(data []byte) (Addr, error) {
-	r := bytes.NewReader(data)
-
-	var (
-		nodeID id.Identity
-		cookie string
-	)
-
-	err := cslq.Decode(r, "v [c]c", &nodeID, &cookie)
-	if err != nil {
-		return Addr{}, err
-	}
-
-	return Addr{
-		gate:   nodeID,
-		cookie: cookie,
-	}, nil
 }

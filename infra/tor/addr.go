@@ -14,12 +14,6 @@ import (
 // Type check
 var _ infra.Addr = Addr{}
 
-// Addr holds information about a Tor address
-type Addr struct {
-	digest []byte
-	port   uint16
-}
-
 const (
 	addrVersion = 3
 	addrLen     = 35
@@ -27,35 +21,35 @@ const (
 	packPattern = "c [35]c s"
 )
 
-// Network returns the name of the network the address belongs to
-func (addr Addr) Network() string {
-	return NetworkName
+// Addr holds information about a Tor address
+type Addr struct {
+	digest []byte
+	port   uint16
 }
 
-// String returns a human-readable representation of the address
-func (addr Addr) String() string {
-	if addr.IsZero() {
-		return "none"
-	}
+// Unpack converts a binary representation of the address to a struct
+func Unpack(data []byte) (Addr, error) {
+	var (
+		err      error
+		version  int
+		keyBytes []byte
+		port     uint16
+		dec      = cslq.NewDecoder(bytes.NewReader(data))
+	)
 
-	return fmt.Sprintf("%s.onion:%d", strings.ToLower(base32.StdEncoding.EncodeToString(addr.digest)), addr.port)
-}
-
-// Pack returns binary representation of the address
-func (addr Addr) Pack() []byte {
-	var b = &bytes.Buffer{}
-
-	err := cslq.Encode(b, packPattern, addrVersion, addr.digest, addr.port)
+	err = dec.Decode(packPattern, &version, &keyBytes, &port)
 	if err != nil {
-		return nil
+		return Addr{}, err
 	}
 
-	return b.Bytes()
-}
+	if version != addrVersion {
+		return Addr{}, errors.New("invalid version")
+	}
 
-// IsZero returns true if the address has zero-value
-func (addr Addr) IsZero() bool {
-	return (addr.digest == nil) || (len(addr.digest) == 0)
+	return Addr{
+		digest: keyBytes,
+		port:   port,
+	}, nil
 }
 
 // Parse parses a string representation of a Tor address (both v2 and v3 are supported)
@@ -92,27 +86,33 @@ func Parse(s string) (Addr, error) {
 	return addr, nil
 }
 
-// Unpack converts a binary representation of the address to a struct
-func Unpack(data []byte) (Addr, error) {
-	var (
-		err      error
-		version  int
-		keyBytes []byte
-		port     uint16
-		dec      = cslq.NewDecoder(bytes.NewReader(data))
-	)
+// Network returns the name of the network the address belongs to
+func (addr Addr) Network() string {
+	return NetworkName
+}
 
-	err = dec.Decode(packPattern, &version, &keyBytes, &port)
+// String returns a human-readable representation of the address
+func (addr Addr) String() string {
+	if addr.IsZero() {
+		return "none"
+	}
+
+	return fmt.Sprintf("%s.onion:%d", strings.ToLower(base32.StdEncoding.EncodeToString(addr.digest)), addr.port)
+}
+
+// Pack returns binary representation of the address
+func (addr Addr) Pack() []byte {
+	var b = &bytes.Buffer{}
+
+	err := cslq.Encode(b, packPattern, addrVersion, addr.digest, addr.port)
 	if err != nil {
-		return Addr{}, err
+		return nil
 	}
 
-	if version != addrVersion {
-		return Addr{}, errors.New("invalid version")
-	}
+	return b.Bytes()
+}
 
-	return Addr{
-		digest: keyBytes,
-		port:   port,
-	}, nil
+// IsZero returns true if the address has zero-value
+func (addr Addr) IsZero() bool {
+	return (addr.digest == nil) || (len(addr.digest) == 0)
 }

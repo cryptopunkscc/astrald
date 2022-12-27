@@ -10,11 +10,6 @@ type Addr interface {
 	Pack() []byte    // network-specific binary represenation of the address
 }
 
-// Unpacker wraps the Unpack method. Unpack deserializes network-specific binary data into an Addr struct.
-type Unpacker interface {
-	Unpack(network string, data []byte) (Addr, error)
-}
-
 // AddrSpec holds additional information about an Addr.
 type AddrSpec struct {
 	Addr
