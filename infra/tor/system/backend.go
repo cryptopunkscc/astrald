@@ -27,12 +27,14 @@ func (b *Backend) Run(ctx context.Context, config tor.Config) error {
 		return err
 	}
 
-	if dialContext, ok := socksProxy.(proxy.ContextDialer); ok {
+	if dialContext, ok := socksProxy.(proxy.ContextDialer); !ok {
+		return errors.New("type cast failed")
+	} else {
 		b.proxy = dialContext
-		return nil
 	}
 
-	return errors.New("type cast failed")
+	<-ctx.Done()
+	return nil
 }
 
 func (b *Backend) Dial(ctx context.Context, network string, addr string) (net.Conn, error) {

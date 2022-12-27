@@ -69,12 +69,16 @@ func (i *Infra) Run(ctx context.Context) error {
 	}
 	i.Logf(log.Normal, "networks: %s", strings.Join(list, " "))
 
-	for net := range i.Networks() {
-		net := net
+	for name, net := range i.networks {
+		name, net := name, net
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			net.Run(ctx)
+			if err := net.Run(ctx); err != nil {
+				i.Logf(log.Normal, "network %s error: %s", name, err.Error())
+			} else {
+				i.Logf(log.Debug, "network %s done", name)
+			}
 		}()
 	}
 
