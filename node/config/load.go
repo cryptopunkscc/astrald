@@ -2,16 +2,15 @@ package config
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/storage"
 	"gopkg.in/yaml.v2"
 	"os"
 )
 
-func Load(store storage.Store) (Config, error) {
+func LoadYAMLFile(filePath string) (Config, error) {
 	var cfg = defaultConfig
 
 	// Load the config file
-	bytes, err := store.LoadBytes(configKey)
+	bytes, err := os.ReadFile(filePath)
 	if err == nil {
 		// Parse config file
 		err = yaml.Unmarshal(bytes, &cfg)

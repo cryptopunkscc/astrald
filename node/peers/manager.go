@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	ainfra "github.com/cryptopunkscc/astrald/infra"
 	alink "github.com/cryptopunkscc/astrald/link"
-	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/tracker"
 	"github.com/cryptopunkscc/astrald/sig"
 	"log"
 	"sync"
@@ -22,26 +23,26 @@ type Manager struct {
 	Pool   *Pool
 	Server *Server
 
-	localID  id.Identity
-	contacts *contacts.Manager
-	infra    *infra.Infra
-	linkers  map[string]*Linker
-	mu       sync.Mutex
-	events   event.Queue
-	links    chan *alink.Link
-	timeout  chan *link.Link
+	localID id.Identity
+	tracker *tracker.Tracker
+	infra   *infra.Infra
+	linkers map[string]*Linker
+	mu      sync.Mutex
+	events  event.Queue
+	links   chan *alink.Link
+	timeout chan *link.Link
 }
 
-func NewManager(localID id.Identity, infra *infra.Infra, contacts *contacts.Manager, eventParent *event.Queue) (*Manager, error) {
+func NewManager(localID id.Identity, infra *infra.Infra, tracker *tracker.Tracker, eventParent *event.Queue) (*Manager, error) {
 	var err error
 
 	m := &Manager{
-		localID:  localID,
-		linkers:  make(map[string]*Linker),
-		infra:    infra,
-		contacts: contacts,
-		links:    make(chan *alink.Link, 16),
-		timeout:  make(chan *link.Link, 16),
+		localID: localID,
+		linkers: make(map[string]*Linker),
+		infra:   infra,
+		tracker: tracker,
+		links:   make(chan *alink.Link, 16),
+		timeout: make(chan *link.Link, 16),
 	}
 
 	m.events.SetParent(eventParent)
@@ -177,10 +178,21 @@ func (m *Manager) makeLink(ctx context.Context, remoteID id.Identity) (*alink.Li
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	contact := m.contacts.Find(remoteID, false)
-	if contact == nil {
-		return nil, errors.New("no address found")
+	// Fetch addresses for the remote identity
+	addrs, err := m.tracker.AddrByIdentity(remoteID)
+	if err != nil {
+		return nil, err
 	}
+	if len(addrs) == 0 {
+		return nil, errors.New("identity has no addresses")
+	}
+
+	// Populate a channel with addresses
+	addrCh := make(chan ainfra.Addr, len(addrs))
+	for _, a := range addrs {
+		addrCh <- a
+	}
+	close(addrCh)
 
 	authed := NewConcurrentHandshake(
 		m.localID,
@@ -193,7 +205,7 @@ func (m *Manager) makeLink(ctx context.Context, remoteID id.Identity) (*alink.Li
 			concurrency,
 		).Dial(
 			ctx,
-			contact.Addr(nil),
+			addrCh,
 		),
 	)
 

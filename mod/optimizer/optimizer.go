@@ -64,8 +64,13 @@ func (mod *Optimizer) Optimize(parent context.Context, peer *peers.Peer) error {
 	retryDialer := NewRetryDialer(filterDialer, concurrency)
 
 	go func() {
-		contact := mod.node.Contacts.Find(peer.Identity(), true)
-		for addr := range contact.Addr(ctx) {
+		list, err := mod.node.Tracker.AddrByIdentity(peer.Identity())
+		if err == nil {
+			for _, i := range list {
+				retryDialer.Add(i)
+			}
+		}
+		for addr := range mod.node.Tracker.Watch(ctx, peer.Identity()) {
 			retryDialer.Add(addr)
 		}
 	}()

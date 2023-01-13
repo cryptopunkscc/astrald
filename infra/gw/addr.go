@@ -2,6 +2,7 @@ package gw
 
 import (
 	"bytes"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
@@ -12,59 +13,43 @@ var _ infra.Addr = Addr{}
 
 type Addr struct {
 	gate   id.Identity
-	cookie string
+	target id.Identity
 }
 
 // NewAddr insatntiates and returns a new Addr
-func NewAddr(gate id.Identity, cookie string) Addr {
-	return Addr{gate: gate, cookie: cookie}
+func NewAddr(gate id.Identity, target id.Identity) Addr {
+	return Addr{gate: gate, target: target}
 }
 
 // Unpack converts a binary representation of the address to a struct
-func Unpack(data []byte) (Addr, error) {
-	r := bytes.NewReader(data)
-
-	var (
-		nodeID id.Identity
-		cookie string
-	)
-
-	err := cslq.Decode(r, "v [c]c", &nodeID, &cookie)
-	if err != nil {
-		return Addr{}, err
-	}
-
-	return Addr{
-		gate:   nodeID,
-		cookie: cookie,
-	}, nil
+func Unpack(data []byte) (addr Addr, err error) {
+	return addr, cslq.Decode(bytes.NewReader(data), "vv", &addr.gate, &addr.target)
 }
 
 // Parse converts a text representation of a gateway address to an Addr struct
-func Parse(str string) (Addr, error) {
-	parts := strings.SplitN(str, ":", 2)
-
-	gate, err := id.ParsePublicKeyHex(parts[0])
+func Parse(str string) (addr Addr, err error) {
+	if len(str) != (2*66)+1 { // two public key hex strings and a separator ":"
+		return addr, errors.New("invalid address length")
+	}
+	var ids = strings.SplitN(str, ":", 2)
+	if len(ids) != 2 {
+		return addr, errors.New("invalid address string")
+	}
+	addr.gate, err = id.ParsePublicKeyHex(ids[0])
 	if err != nil {
-		return Addr{}, err
+		return
 	}
-
-	var cookie string
-	if len(parts) == 2 {
-		cookie = parts[1]
-	}
-
-	return Addr{
-		gate:   gate,
-		cookie: cookie,
-	}, nil
+	addr.target, err = id.ParsePublicKeyHex(ids[1])
+	return
 }
 
 // Pack returns a binary representation of the address
 func (a Addr) Pack() []byte {
 	buf := &bytes.Buffer{}
 
-	cslq.Encode(buf, "v [c]c", a.gate, a.cookie)
+	if err := cslq.Encode(buf, "vv", a.gate, a.target); err != nil {
+		panic(err)
+	}
 
 	return buf.Bytes()
 }
@@ -74,19 +59,19 @@ func (a Addr) String() string {
 	if a.IsZero() {
 		return "unknown"
 	}
-	return a.gate.PublicKeyHex() + ":" + a.cookie
+	return a.gate.PublicKeyHex() + ":" + a.target.PublicKeyHex()
 }
 
 func (a Addr) IsZero() bool {
 	return a.gate.IsZero()
 }
 
-func (a Addr) Cookie() string {
-	return a.cookie
-}
-
 func (a Addr) Gate() id.Identity {
 	return a.gate
+}
+
+func (a Addr) Target() id.Identity {
+	return a.target
 }
 
 func (a Addr) Network() string {

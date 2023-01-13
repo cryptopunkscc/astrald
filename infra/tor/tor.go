@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/storage"
 	"golang.org/x/net/proxy"
 )
 
@@ -13,19 +12,17 @@ const NetworkName = "tor"
 var _ infra.Network = &Tor{}
 
 type Tor struct {
-	config Config
-	store  storage.Store
-
-	backend Backend
-
+	config      Config
+	rootDir     string
+	backend     Backend
 	proxy       proxy.Dialer
 	serviceAddr Addr
 }
 
-func New(config Config, store storage.Store) (*Tor, error) {
+func New(config Config, rootDir string) (*Tor, error) {
 	tor := &Tor{
-		config: config,
-		store:  store,
+		config:  config,
+		rootDir: rootDir,
 	}
 
 	var backendName = tor.config.GetBackend()

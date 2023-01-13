@@ -13,7 +13,7 @@ func parse(w io.ReadWriter, node *node.Node, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	info, err := nodeinfo.Parse(args[0], node.Infra)
+	info, err := nodeinfo.Parse(args[0])
 	if err != nil {
 		return err
 	}
@@ -22,7 +22,11 @@ func parse(w io.ReadWriter, node *node.Node, args []string) error {
 	if info.Alias != "" {
 		fmt.Fprintf(w, "  alias     %s\n", info.Alias)
 	}
-	for _, addr := range info.Addresses {
+	for _, a := range info.Addresses {
+		addr, err := node.Infra.Unpack(a.Network(), a.Pack())
+		if err != nil {
+			continue
+		}
 		printAddr(w, addr)
 	}
 

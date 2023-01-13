@@ -16,5 +16,9 @@ func forget(w io.ReadWriter, node *node.Node, args []string) error {
 		return err
 	}
 
-	return node.Contacts.Forget(identity)
+	if err := node.Tracker.ForgetIdentity(identity); err != nil {
+		return err
+	}
+
+	return node.Contacts.Delete(identity)
 }

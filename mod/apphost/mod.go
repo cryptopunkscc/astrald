@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/proto/apphost"
-	"github.com/cryptopunkscc/astrald/storage"
 	"log"
 	"net"
 	"os"
@@ -116,10 +115,10 @@ func (mod *Module) listenTCP() (net.Listener, error) {
 }
 
 func (mod *Module) listenUnix() (net.Listener, error) {
-	var socketDir = DefaultSocketDir
 
-	if fs, ok := mod.node.Store.(*storage.FilesystemStorage); ok {
-		socketDir = fs.Root()
+	var socketDir = mod.node.RootDir()
+	if socketDir == "" {
+		socketDir = DefaultSocketDir
 	}
 
 	socketPath := filepath.Join(socketDir, UnixSocketName)

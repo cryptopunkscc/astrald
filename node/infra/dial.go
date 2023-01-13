@@ -11,6 +11,11 @@ import (
 )
 
 func (i *Infra) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err error) {
+	// try to repack the address to get the concrete type
+	if a, err := i.Unpack(addr.Network(), addr.Pack()); err == nil {
+		addr = a
+	}
+
 	i.Logf(log.Debug, "dial %s %s", addr.Network(), addr.String())
 
 	conn, err = i.dial(ctx, addr)
@@ -25,16 +30,6 @@ func (i *Infra) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err
 }
 
 func (i *Infra) dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
-	var err error
-
-	// if it's a generic addr, try to decode
-	if _, ok := addr.(*infra.GenericAddr); ok {
-		addr, err = i.Unpack(addr.Network(), addr.Pack())
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if _, found := i.networks[addr.Network()]; !found {
 		return nil, infra.ErrUnsupportedNetwork
 	}
@@ -46,9 +41,6 @@ func (i *Infra) dial(ctx context.Context, addr infra.Addr) (infra.Conn, error) {
 		return i.inet.Dial(ctx, *addr)
 
 	case tor.Addr:
-		if i.tor == nil {
-			panic("tor is nil")
-		}
 		return i.tor.Dial(ctx, addr)
 	case *tor.Addr:
 		return i.tor.Dial(ctx, *addr)

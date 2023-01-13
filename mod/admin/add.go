@@ -12,10 +12,15 @@ func add(_ io.ReadWriter, node *node.Node, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	nodeInfo, err := nodeinfo.Parse(args[0], node.Infra)
+	nodeInfo, err := nodeinfo.Parse(args[0])
 	if err != nil {
 		return err
 	}
 
-	return node.Contacts.AddNodeInfo(nodeInfo)
+	if nodeInfo.Identity.IsEqual(node.Identity()) {
+		return errors.New("cannot add self")
+	}
+
+	nodeinfo.AddToTracker(nodeInfo, node.Tracker)
+	return nodeinfo.AddToContacts(nodeInfo, node.Contacts)
 }

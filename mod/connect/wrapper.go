@@ -21,9 +21,9 @@ func (w wrapper) Outbound() bool {
 }
 
 func (w wrapper) LocalAddr() infra.Addr {
-	return gw.NewAddr(w.local, "")
+	return gw.NewAddr(w.remote, w.local)
 }
 
 func (w wrapper) RemoteAddr() infra.Addr {
-	return gw.NewAddr(w.remote, "")
+	return gw.NewAddr(w.remote, w.local)
 }

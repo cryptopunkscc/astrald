@@ -22,7 +22,7 @@ func (i *Infra) setupNetworks(cfg config.Infra) error {
 	}
 
 	// tor
-	i.tor, err = tor.New(cfg.Tor, i.Store)
+	i.tor, err = tor.New(cfg.Tor, i.rootDir)
 	if err == nil {
 		i.addNetwork(tor.NetworkName, i.tor)
 	} else {

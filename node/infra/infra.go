@@ -2,7 +2,6 @@ package infra
 
 import (
 	"context"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/bt"
@@ -11,7 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
-	"github.com/cryptopunkscc/astrald/storage"
 	"io"
 	"strings"
 	"sync"
@@ -23,9 +21,9 @@ type Querier interface {
 
 type Infra struct {
 	Querier  Querier
-	Store    storage.Store
 	networks map[string]infra.Network
 	localID  id.Identity
+	rootDir  string
 
 	gateways  []infra.AddrSpec
 	inet      *inet.Inet
@@ -36,11 +34,11 @@ type Infra struct {
 	logLevel  int
 }
 
-func New(localID id.Identity, cfg config.Infra, querier Querier, store storage.Store) (*Infra, error) {
+func New(localID id.Identity, cfg config.Infra, querier Querier, rootDir string) (*Infra, error) {
 	var i = &Infra{
 		localID:  localID,
 		Querier:  querier,
-		Store:    store,
+		rootDir:  rootDir,
 		gateways: make([]infra.AddrSpec, 0),
 		networks: make(map[string]infra.Network),
 		config:   cfg,
@@ -96,10 +94,6 @@ func (i *Infra) Networks() <-chan infra.Network {
 	return ch
 }
 
-func (i *Infra) Gateways() []infra.AddrSpec {
-	return i.gateways
-}
-
 func (i *Infra) Addresses() []infra.AddrSpec {
 	list := make([]infra.AddrSpec, 0)
 
@@ -115,7 +109,7 @@ func (i *Infra) Addresses() []infra.AddrSpec {
 	}
 
 	// append gateways
-	list = append(list, i.Gateways()...)
+	list = append(list, i.gateways...)
 
 	return list
 }
@@ -130,12 +124,14 @@ func (i *Infra) Logf(level int, fmt string, args ...interface{}) {
 
 func (i *Infra) setupStaticGateways(cfg config.Infra) error {
 	for _, gate := range cfg.Gateways {
-		addr, err := gw.Parse(gate)
+		gateID, err := id.ParsePublicKeyHex(gate)
 		if err != nil {
-			return fmt.Errorf("gateway parse error: %w", err)
+			i.Logf(log.Normal, "error parsing gateway %s: %s", gate, err.Error())
+			continue
 		}
+
 		i.gateways = append(i.gateways, infra.AddrSpec{
-			Addr:   addr,
+			Addr:   gw.NewAddr(gateID, i.localID),
 			Global: true,
 		})
 	}

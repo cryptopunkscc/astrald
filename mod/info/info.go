@@ -62,13 +62,12 @@ func (mod *Info) Run(ctx context.Context) error {
 		for e := range mod.node.Subscribe(ctx.Done()) {
 			switch event := e.(type) {
 			case peers.EventLinked:
-				refreshContact(ctx, mod.node, event.Peer.Identity())
+				refreshContact(ctx, mod.node, event.Peer.Identity(), true)
 
 			case presence.EventIdentityPresent:
-				mod.node.Contacts.Find(event.Identity, true).Add(event.Addr, time.Time{})
-				mod.node.Contacts.Save()
+				mod.node.Tracker.Add(event.Identity, event.Addr, time.Now().Add(time.Hour))
 
-				refreshContact(ctx, mod.node, event.Identity)
+				refreshContact(ctx, mod.node, event.Identity, false)
 			}
 		}
 	}()
@@ -95,9 +94,11 @@ func getInfo(node *node.Node) *Node {
 	return info
 }
 
-func refreshContact(ctx context.Context, node *node.Node, identity id.Identity) {
-	if _, found := seen[identity.PublicKeyHex()]; found {
-		return
+func refreshContact(ctx context.Context, node *node.Node, identity id.Identity, force bool) {
+	if !force {
+		if _, found := seen[identity.PublicKeyHex()]; found {
+			return
+		}
 	}
 
 	info, err := queryContact(ctx, node, identity)
@@ -111,7 +112,11 @@ func refreshContact(ctx context.Context, node *node.Node, identity id.Identity) 
 
 	seen[identity.PublicKeyHex()] = struct{}{}
 
-	c := node.Contacts.Find(identity, true)
+	c, err := node.Contacts.FindOrCreate(identity)
+	if err != nil {
+		log.Printf("(info) [%s] refreshContact(): %v\n", node.Contacts.DisplayName(identity), err)
+		return
+	}
 	if c.Alias() == "" {
 		c.SetAlias(info.Alias)
 	}
@@ -124,13 +129,13 @@ func refreshContact(ctx context.Context, node *node.Node, identity id.Identity) 
 
 		addr, err := node.Infra.Unpack(a.Network, data)
 		if err != nil {
+			log.Println("ERR UNPACKING", a.Network)
 			continue
 		}
 
-		c.Add(addr, time.Time{})
-	}
+		node.Tracker.Add(identity, addr, time.Now().Add(24*time.Hour))
 
-	node.Contacts.Save()
+	}
 
 	//TODO: Emit an event for logging?
 	//log.Printf("(info) [%s] updated\n", node.Contacts.DisplayName(identity))

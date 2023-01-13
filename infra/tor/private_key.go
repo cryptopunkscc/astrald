@@ -2,6 +2,8 @@ package tor
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 )
 
 const privateKeyFileName = "tor.key"
@@ -22,11 +24,11 @@ func (tor *Tor) getPrivateKey() (Key, error) {
 }
 
 func (tor *Tor) loadPrivateKey() (Key, error) {
-	return tor.store.LoadBytes(privateKeyFileName)
+	return os.ReadFile(filepath.Join(tor.rootDir, privateKeyFileName))
 }
 
 func (tor *Tor) savePrivateKey(key Key) error {
-	return tor.store.StoreBytes(privateKeyFileName, key)
+	return os.WriteFile(filepath.Join(tor.rootDir, privateKeyFileName), key, 0600)
 }
 
 func (tor *Tor) generatePrivateKey() (Key, error) {

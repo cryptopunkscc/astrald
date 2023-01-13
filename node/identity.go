@@ -1,40 +1,40 @@
 package node
 
 import (
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"log"
 	"os"
+	"path/filepath"
 )
 
 const defaultIdentityKey = "id"
 
-func (node *Node) setupIdentity() error {
-	var err error
+func (node *Node) loadIdentity(name string) (id.Identity, error) {
+	filePath := filepath.Join(node.rootDir, name)
 
-	// Try to load an existing identity
-	bytes, err := node.Store.LoadBytes(defaultIdentityKey)
-	if err == nil {
-		node.identity, err = id.ParsePrivateKey(bytes)
-		return err
-	}
-
-	if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-
-	// Generate a new identity
-	log.Println("generating new node identity...")
-	node.identity, err = id.GenerateIdentity()
+	bytes, err := os.ReadFile(filePath)
 	if err != nil {
-		return err
+		return id.Identity{}, err
 	}
 
-	// Save the new identity
-	err = node.Store.StoreBytes(defaultIdentityKey, node.identity.PrivateKey().Serialize())
+	return id.ParsePrivateKey(bytes)
+}
+
+func (node *Node) generateIdentity(name string) (id.Identity, error) {
+	filePath := filepath.Join(node.rootDir, name)
+
+	identity, err := id.GenerateIdentity()
 	if err != nil {
-		return err
+		return id.Identity{}, err
 	}
 
-	return nil
+	return identity, os.WriteFile(filePath, identity.PrivateKey().Serialize(), 0600)
+}
+
+func (node *Node) setupIdentity() (err error) {
+	if node.identity, err = node.loadIdentity(defaultIdentityKey); err == nil {
+		return
+	}
+
+	node.identity, err = node.generateIdentity(defaultIdentityKey)
+	return
 }

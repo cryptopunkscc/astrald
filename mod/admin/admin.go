@@ -100,5 +100,6 @@ func init() {
 		"present":  present,
 		"link":     link,
 		"unlink":   unlink,
+		"tracker":  cmdTracker,
 	}
 }

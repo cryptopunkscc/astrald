@@ -1,31 +1,21 @@
 package contacts
 
 import (
-	"context"
+	"database/sql"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/logfmt"
-	"github.com/cryptopunkscc/astrald/sig"
-	"sync"
-	"time"
+	"github.com/cryptopunkscc/astrald/node/db"
 )
 
-const defaultAddressValidity = time.Hour * 24 * 30
-
 type Contact struct {
-	identity  id.Identity
-	alias     string
-	mu        sync.Mutex
-	addresses []*Addr
-	queue     *sig.Queue
+	db       *db.Database
+	identity id.Identity
+	alias    string
 }
 
-func NewContact(identity id.Identity) *Contact {
-	return &Contact{
-		identity:  identity,
-		addresses: make([]*Addr, 0),
-		queue:     &sig.Queue{},
-	}
+type dbContact struct {
+	NodeID string
+	Alias  string
 }
 
 func (c *Contact) Identity() id.Identity {
@@ -36,8 +26,13 @@ func (c *Contact) Alias() string {
 	return c.alias
 }
 
-func (c *Contact) SetAlias(alias string) {
+func (c *Contact) SetAlias(alias string) (err error) {
+	prev := c.alias
 	c.alias = alias
+	if err = c.save(); err != nil {
+		c.alias = prev
+	}
+	return
 }
 
 func (c *Contact) DisplayName() string {
@@ -48,42 +43,24 @@ func (c *Contact) DisplayName() string {
 	return logfmt.ID(c.identity)
 }
 
-// Addr returns a channel with all addresses
-func (c *Contact) Addr(follow context.Context) <-chan infra.Addr {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *Contact) save() error {
+	return c.db.TxDo(func(tx *sql.Tx) error {
+		_, err := tx.Exec(queryUpdateContact, c.alias, c.identity.PublicKeyHex())
 
-	var ch chan infra.Addr
-
-	// populate channel with addresses
-	ch = make(chan infra.Addr, len(c.addresses))
-	for _, addr := range c.addresses {
-		ch <- addr.Addr
-	}
-
-	if follow == nil {
-		close(ch)
-		return ch
-	}
-
-	go func() {
-		for addr := range c.queue.Subscribe(follow.Done()) {
-			ch <- addr.(infra.Addr)
-		}
-		close(ch)
-	}()
-
-	return ch
+		return err
+	})
 }
 
-func (c *Contact) Remove(addr infra.Addr) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for i, a := range c.addresses {
-		if infra.AddrEqual(a, addr) {
-			c.addresses = append(c.addresses[:i], c.addresses[i+1:]...)
-			return
-		}
+func (dbc *dbContact) toContact(db *db.Database) (*Contact, error) {
+	var err error
+	var c = &Contact{
+		db: db,
 	}
+
+	c.alias = dbc.Alias
+	c.identity, err = id.ParsePublicKeyHex(dbc.NodeID)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
