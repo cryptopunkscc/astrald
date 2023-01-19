@@ -26,7 +26,7 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	go func() {
 		defer wg.Done()
 		if err := node.Infra.Run(ctx); err != nil {
-			errCh <- fmt.Errorf("infrastructure error: %w", err)
+			errCh <- fmt.Errorf("infrastructure: %w", err)
 		}
 	}()
 
@@ -35,7 +35,7 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	go func() {
 		defer wg.Done()
 		if err := node.Peers.Run(ctx); err != nil {
-			errCh <- fmt.Errorf("peer manager error: %w", err)
+			errCh <- fmt.Errorf("peer manager: %w", err)
 		}
 	}()
 
@@ -44,7 +44,7 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	go func() {
 		defer wg.Done()
 		if err := node.Modules.Run(ctx); err != nil {
-			errCh <- fmt.Errorf("module manager error: %w", err)
+			errCh <- fmt.Errorf("module manager: %w", err)
 		}
 	}()
 
@@ -53,7 +53,7 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	go func() {
 		defer wg.Done()
 		if err := node.Presence.Run(ctx); err != nil {
-			errCh <- fmt.Errorf("presence manager error: %w", err)
+			errCh <- fmt.Errorf("presence manager: %w", err)
 		}
 	}()
 
@@ -64,13 +64,13 @@ func (node *Node) Run(ctx context.Context) (err error) {
 		node.peerQueryWorker(ctx)
 	}()
 
-	// event logger
+	// event handling
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		for event := range node.events.Subscribe(ctx.Done()) {
-			node.logEvent(event)
+		if err := node.handleEvents(ctx); err != nil {
+			errCh <- fmt.Errorf("event handler: %w", err)
 		}
 	}()
 

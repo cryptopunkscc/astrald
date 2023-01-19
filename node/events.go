@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/logfmt"
@@ -10,7 +11,21 @@ import (
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"log"
 	"reflect"
+	"time"
 )
+
+func (node *Node) handleEvents(ctx context.Context) error {
+	for event := range node.events.Subscribe(ctx.Done()) {
+		node.logEvent(event)
+
+		switch event := event.(type) {
+		case presence.EventIdentityPresent:
+			node.Tracker.Add(event.Identity, event.Addr, time.Now().Add(60*time.Minute))
+		}
+	}
+
+	return nil
+}
 
 func (node *Node) logEvent(event event.Event) {
 	var displayName = node.Contacts.DisplayName
