@@ -3,6 +3,7 @@ package link
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -29,7 +30,7 @@ type Link struct {
 	roundtrip     time.Duration
 }
 
-func Wrap(link *link.Link, eventParent *event.Queue) *Link {
+func New(link *link.Link) *Link {
 	l := &Link{
 		Link:          link,
 		queries:       make(chan *Query),
@@ -37,11 +38,14 @@ func Wrap(link *link.Link, eventParent *event.Queue) *Link {
 		establishedAt: time.Now(),
 		roundtrip:     999 * time.Second, // assume super slow before first ping
 	}
-	l.events.SetParent(eventParent)
 	l.Touch()
 	go l.handleQueries()
 	go l.monitorPing()
 	return l
+}
+
+func NewFromConn(conn auth.Conn) *Link {
+	return New(link.New(conn))
 }
 
 func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/infra"
 	"sync"
+	"time"
 )
 
 type ConcurrentDialer struct {
@@ -27,18 +28,30 @@ func (d *ConcurrentDialer) Dial(ctx context.Context, addrs <-chan infra.Addr) <-
 	for i := 0; i < d.concurrency; i++ {
 		go func() {
 			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				return
-			case addr, ok := <-addrs:
-				// channel closed?
-				if !ok {
+			for {
+				select {
+				case <-ctx.Done():
 					return
-				}
 
-				conn, err := d.dialer.Dial(ctx, addr)
-				if err == nil {
-					out <- conn
+				case addr, ok := <-addrs:
+					// channel closed?
+					if !ok {
+						return
+					}
+
+					conn, err := d.dialer.Dial(ctx, addr)
+					if err != nil {
+						return
+					}
+					select {
+					case <-ctx.Done():
+						return
+
+					case <-time.After(HandshakeTimeout):
+						conn.Close()
+
+					case out <- conn:
+					}
 				}
 			}
 		}()

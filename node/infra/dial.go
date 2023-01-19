@@ -2,12 +2,14 @@ package infra
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	"github.com/cryptopunkscc/astrald/log"
+	"strings"
 )
 
 func (i *Infra) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err error) {
@@ -23,7 +25,17 @@ func (i *Infra) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err
 	if err == nil {
 		i.Logf(log.Debug, "dial %s %s success", addr.Network(), addr.String())
 	} else {
-		i.Logf(log.Debug, "dial %s %s error: %s", addr.Network(), addr.String(), err.Error())
+		switch {
+		case strings.Contains(err.Error(), "connection refused"),
+			strings.Contains(err.Error(), "operation was canceled"),
+			strings.Contains(err.Error(), "i/o timeout"),
+			errors.Is(err, context.Canceled),
+			errors.Is(err, context.DeadlineExceeded):
+			i.Logf(log.Debug, "dial %s %s error: %s", addr.Network(), addr.String(), err.Error())
+
+		default:
+			i.Logf(log.Verbose, "dial %s %s error: %s", addr.Network(), addr.String(), err.Error())
+		}
 	}
 
 	return

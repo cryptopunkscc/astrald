@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// Join copies from each stream to the other until any of them closes and then returns nil.
 func Join(left, right io.ReadWriteCloser) error {
 	var wg sync.WaitGroup
 	wg.Add(2)

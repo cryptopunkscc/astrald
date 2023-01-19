@@ -57,7 +57,7 @@ func (inet *Inet) Discover(ctx context.Context) (<-chan infra.Presence, error) {
 			if p.Flags&flagDiscover != 0 {
 				inet.sendPresence(srcAddr, presence{
 					Identity: inet.localID,
-					Port:     inet.listenPort,
+					Port:     inet.getListenPort(),
 					Flags:    flagNone,
 				})
 			}

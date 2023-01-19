@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
-	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/infra/bt"
+	"github.com/cryptopunkscc/astrald/infra/gw"
+	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"log"
 	"sync"
@@ -18,7 +22,7 @@ const (
 )
 
 type Roam struct {
-	node  *_node.Node
+	node  *node.Node
 	moves map[int]*link.Conn
 }
 
@@ -160,17 +164,24 @@ func (roam *Roam) optimizeConn(conn *link.Conn) {
 		select {
 		case <-conn.Wait():
 			return
+
 		case <-time.After(time.Second):
 			best := link.Select(peer.Links(), link.LowestRoundTrip)
 
 			if best == nil {
 				return
 			}
+			if conn.Link() == best {
+				continue
+			}
 
-			if conn.Link() != best {
-				if err := roam.move(conn, best); err != nil {
-					log.Println(logTag, "move error:", err)
-				}
+			// only move to a more preferred network (avoid unnecessary moves due to ping jitter)
+			if scoreNet(best.Network()) <= scoreNet(conn.Link().Network()) {
+				continue
+			}
+
+			if err := roam.move(conn, best); err != nil {
+				log.Println(logTag, "move error:", err)
 			}
 		}
 	}
@@ -261,4 +272,18 @@ func (roam *Roam) allocMove(conn *link.Conn) int {
 		roam.moves[id] = conn
 	}
 	return id
+}
+
+func scoreNet(net string) int {
+	switch net {
+	case tor.NetworkName:
+		return 10
+	case bt.NetworkName:
+		return 20
+	case gw.NetworkName:
+		return 30
+	case inet.NetworkName:
+		return 40
+	}
+	return 0
 }

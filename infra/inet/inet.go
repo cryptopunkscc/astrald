@@ -24,7 +24,6 @@ type Inet struct {
 func New(config Config, localID id.Identity) (*Inet, error) {
 	inet := &Inet{
 		config:      config,
-		listenPort:  defaultListenPort,
 		publicAddrs: make([]infra.AddrSpec, 0),
 		localID:     localID,
 	}
@@ -81,7 +80,7 @@ func (inet *Inet) Addresses() []infra.AddrSpec {
 
 		if ipv4.IsGlobalUnicast() || ipv4.IsPrivate() {
 			list = append(list, infra.AddrSpec{
-				Addr:   Addr{ip: ipv4, port: uint16(inet.listenPort)},
+				Addr:   Addr{ip: ipv4, port: uint16(inet.getListenPort())},
 				Global: ipv4.IsGlobalUnicast() && (!ipv4.IsPrivate()),
 			})
 		}
@@ -112,4 +111,12 @@ func (inet *Inet) setupPresenceConn() (err error) {
 	// bind the udp socket
 	inet.presenceConn, err = net.ListenUDP("udp", localAddr)
 	return
+}
+
+func (inet *Inet) getListenPort() int {
+	if inet.config.ListenPort != 0 {
+		return inet.config.ListenPort
+	}
+
+	return defaultListenPort
 }

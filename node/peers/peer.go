@@ -62,6 +62,10 @@ func (peer *Peer) Links() <-chan *link.Link {
 	return ch
 }
 
+func (peer *Peer) PreferredLink() *link.Link {
+	return link.Select(peer.Links(), link.LowestRoundTrip)
+}
+
 func (peer *Peer) AddLink(l *link.Link) error {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
@@ -78,6 +82,7 @@ func (peer *Peer) AddLink(l *link.Link) error {
 		return errors.New("duplicate link")
 	}
 
+	l.SetEventParent(&peer.events)
 	peer.links[l] = struct{}{}
 	peer.events.Emit(EventLinkEstablished{Link: l})
 

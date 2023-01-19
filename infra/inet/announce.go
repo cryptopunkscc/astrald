@@ -18,7 +18,7 @@ const announceInterval = 1 * time.Minute
 func (inet *Inet) Announce(ctx context.Context) error {
 	if err := inet.broadcastPresence(&presence{
 		Identity: inet.localID,
-		Port:     inet.listenPort,
+		Port:     inet.getListenPort(),
 		Flags:    flagDiscover,
 	}); err != nil {
 		return err
@@ -32,7 +32,7 @@ func (inet *Inet) Announce(ctx context.Context) error {
 			case <-time.After(announceInterval):
 				if err := inet.broadcastPresence(&presence{
 					Identity: inet.localID,
-					Port:     inet.listenPort,
+					Port:     inet.getListenPort(),
 					Flags:    flagNone,
 				}); err != nil {
 					log.Println("[inet] announce error:", err)

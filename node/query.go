@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/streams"
@@ -17,14 +16,9 @@ func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string)
 		return node.Ports.Query(ctx, query, nil)
 	}
 
-	peer, err := node.Peers.Link(ctx, remoteID)
+	link, err := node.Peers.Link(ctx, remoteID)
 	if err != nil {
 		return nil, err
-	}
-
-	link := link.Select(peer.Links(), link.LowestRoundTrip)
-	if link == nil {
-		return nil, errors.New("no viable link")
 	}
 
 	return link.Query(ctx, query)

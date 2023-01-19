@@ -55,7 +55,7 @@ func (d *RetryDialer) Dial(ctx context.Context) <-chan infra.Conn {
 					if err == nil {
 						out <- conn
 					} else {
-						d.retry(ctx, addr)
+						go d.retry(ctx, addr)
 					}
 				}
 			}

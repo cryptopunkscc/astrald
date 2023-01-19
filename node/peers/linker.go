@@ -1,14 +1,15 @@
 package peers
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/node/link"
 )
 
 type Linker struct {
 	remoteID id.Identity
-	ctx      context.Context
 	err      error
+	link     *link.Link
+	done     chan struct{}
 }
 
 func (l *Linker) RemoteID() id.Identity {
@@ -16,7 +17,7 @@ func (l *Linker) RemoteID() id.Identity {
 }
 
 func (l *Linker) Done() <-chan struct{} {
-	return l.ctx.Done()
+	return l.done
 }
 
 func (l *Linker) Error() error {

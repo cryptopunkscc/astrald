@@ -24,9 +24,7 @@ type Addr struct {
 	port uint16
 }
 
-func Unpack(buf []byte) (addr *Addr, err error) {
-	addr = &Addr{}
-
+func Unpack(buf []byte) (addr Addr, err error) {
 	var r = bytes.NewReader(buf)
 
 	if err = cslq.Decode(r, "c", &addr.ver); err != nil {
@@ -101,4 +99,23 @@ func (addr Addr) String() string {
 
 func (addr Addr) Network() string {
 	return NetworkName
+}
+
+func (addr Addr) IsGlobalUnicast() bool {
+	return addr.ip.IsGlobalUnicast()
+}
+
+func (addr Addr) IsPrivate() bool {
+	return addr.ip.IsPrivate()
+}
+
+func (addr Addr) IsPublicUnicast() bool {
+	return !addr.IsPrivate() && addr.IsGlobalUnicast()
+}
+
+func (addr Addr) IsZero() bool {
+	if addr.ip == nil {
+		return true
+	}
+	return false
 }

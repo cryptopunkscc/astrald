@@ -9,11 +9,14 @@ import (
 	"strings"
 )
 
+var portConfig = net.ListenConfig{}
+
 func (inet *Inet) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 	ctx, cancel := context.WithCancel(ctx)
+
 	// start the listener
-	var addrStr = ":" + strconv.Itoa(inet.listenPort)
-	listener, err := net.Listen("tcp", addrStr)
+	var addrStr = ":" + strconv.Itoa(inet.getListenPort())
+	listener, err := portConfig.Listen(ctx, "tcp", addrStr)
 	if err != nil {
 		return nil, err
 	}

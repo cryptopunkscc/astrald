@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
-	alink "github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/peers"
 	"log"
 	"time"
@@ -83,7 +83,7 @@ func (mod *Optimizer) Optimize(parent context.Context, peer *peers.Peer) error {
 		ctx,
 		retryDialer.Dial(ctx),
 	) {
-		mod.node.Peers.AddLink(alink.New(authConn))
+		mod.node.Peers.AddLink(link.NewFromConn(authConn))
 	}
 
 	return nil

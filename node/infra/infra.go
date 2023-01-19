@@ -114,6 +114,22 @@ func (i *Infra) Addresses() []infra.AddrSpec {
 	return list
 }
 
+func (i *Infra) Gateway() *gw.Gateway {
+	return i.gateway
+}
+
+func (i *Infra) Bluetooth() bt.Client {
+	return i.bluetooth
+}
+
+func (i *Infra) Tor() *tor.Tor {
+	return i.tor
+}
+
+func (i *Infra) Inet() *inet.Inet {
+	return i.inet
+}
+
 func (i *Infra) Logf(level int, fmt string, args ...interface{}) {
 	if level > i.logLevel {
 		return

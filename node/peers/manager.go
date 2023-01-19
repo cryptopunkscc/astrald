@@ -66,15 +66,15 @@ func (m *Manager) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 
-		case link := <-links:
-			m.AddLink(link)
+		case l := <-links:
+			m.AddLink(link.New(l))
 
 		case link := <-m.timeout:
 			// set up a timeout for the link
 			linkCtx, cancel := context.WithCancel(ctx)
 			sig.On(link, cancel)
 			sig.OnCtx(linkCtx, sig.Idle(linkCtx, link, LinkTimeout), func() {
-				log.Println("peers.Manager.AddLink(): closing link due to timeout")
+				log.Println("peers.Manager: closing link due to timeout")
 				link.Close()
 			})
 		}
@@ -85,17 +85,14 @@ func (m *Manager) Queries() <-chan *link.Query {
 	return m.Pool.Queries()
 }
 
-func (m *Manager) AddLink(l *alink.Link) (err error) {
-	nodeLink := link.Wrap(l, &m.events)
-	err = m.Pool.AddLink(nodeLink)
-
+func (m *Manager) AddLink(l *link.Link) error {
+	err := m.Pool.AddLink(l)
 	if err != nil {
-		nodeLink.Close()
+		l.Close()
+		return err
 	}
-
-	m.timeout <- nodeLink
-
-	return
+	m.timeout <- l
+	return nil
 }
 
 func (m *Manager) Linkers() <-chan *Linker {
@@ -111,70 +108,126 @@ func (m *Manager) Linkers() <-chan *Linker {
 	return ch
 }
 
-func (m *Manager) Link(ctx context.Context, remoteID id.Identity) (*Peer, error) {
-	m.mu.Lock()
+func (m *Manager) Link(ctx context.Context, remoteID id.Identity) (*link.Link, error) {
+	linker, isNew := m.getLinker(remoteID)
 
-	// try attaching to the existing linker first
-	if linker, found := m.linkers[remoteID.String()]; found {
-		m.mu.Unlock()
-
+	if !isNew {
 		select {
 		case <-linker.Done():
 			if linker.Error() != nil {
 				return nil, linker.Error()
 			}
-			if peer := m.Pool.Peer(remoteID); peer != nil {
-				return peer, nil
-			}
-			return nil, errors.New("unexpected error")
+			return linker.link, nil
 
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
 	}
 
-	// check if peer is already connected
-	if peer := m.Pool.Peer(remoteID); peer != nil {
-		m.mu.Unlock()
-		return peer, nil
+	defer close(linker.done)
+
+	ctx, done := context.WithCancel(ctx)
+
+	type res struct {
+		link *link.Link
+		err  error
 	}
 
-	// create a context for the linker
-	lctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	var ch = make(chan res, 2)
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	// start a new linker
-	linker := &Linker{ctx: lctx, remoteID: remoteID}
-	m.linkers[remoteID.String()] = linker
-	m.mu.Unlock()
+	// observe external link sources
+	go func() {
+		defer wg.Done()
+		for e := range m.events.Subscribe(ctx.Done()) {
+			e, ok := e.(EventLinkEstablished)
+			if !ok {
+				continue
+			}
+			if !e.Link.RemoteIdentity().IsEqual(remoteID) {
+				continue
+			}
 
-	defer func() {
-		m.mu.Lock()
-		delete(m.linkers, remoteID.String())
-		m.mu.Unlock()
+			ch <- res{e.Link, nil}
+			return
+		}
 	}()
 
-	link, err := m.makeLink(ctx, remoteID)
-	if err != nil {
-		linker.err = err
-		return nil, err
-	}
+	// try to make a new link
+	go func() {
+		defer wg.Done()
+		l, err := m.getOrMakeLink(ctx, remoteID)
+		ch <- res{l, err}
+	}()
 
-	// add the link to the pool
-	if err := m.AddLink(link); err != nil {
-		linker.err = err
-		return nil, err
-	}
+	// wait for the result
+	r := <-ch
+	linker.link, linker.err = r.link, r.err
 
-	if peer := m.Pool.Peer(remoteID); peer != nil {
-		return peer, nil
-	}
+	// clean up
+	done()
+	wg.Wait()
+	close(ch)
+	m.deleteLinker(remoteID)
 
-	linker.err = errors.New("unexpected error")
-	return nil, linker.err
+	return linker.link, linker.err
 }
 
-func (m *Manager) makeLink(ctx context.Context, remoteID id.Identity) (*alink.Link, error) {
+func (m *Manager) getLinker(remoteID id.Identity) (linker *Linker, new bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if linker, found := m.linkers[remoteID.String()]; found {
+		return linker, false
+	}
+
+	linker = &Linker{
+		remoteID: remoteID,
+		done:     make(chan struct{}),
+	}
+
+	m.linkers[remoteID.String()] = linker
+
+	return linker, true
+}
+
+func (m *Manager) deleteLinker(remoteID id.Identity) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, found := m.linkers[remoteID.String()]; !found {
+		return errors.New("linker not found")
+	}
+
+	delete(m.linkers, remoteID.String())
+	return nil
+}
+
+func (m *Manager) getOrMakeLink(ctx context.Context, remoteID id.Identity) (*link.Link, error) {
+	// check if peer is already connected
+	if peer := m.Pool.Peer(remoteID); peer != nil {
+		if link := peer.PreferredLink(); link != nil {
+			return link, nil
+		}
+	}
+
+	rawLink, err := m.makeNewLink(ctx, remoteID)
+	if err != nil {
+		return nil, err
+	}
+
+	lnk := link.New(rawLink)
+
+	// add the link to the pool
+	if err := m.AddLink(lnk); err != nil {
+		return nil, err
+	}
+
+	return lnk, nil
+}
+
+func (m *Manager) makeNewLink(ctx context.Context, remoteID id.Identity) (*alink.Link, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

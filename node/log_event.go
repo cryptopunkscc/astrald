@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/event"
@@ -81,6 +82,10 @@ func (node *Node) logEvent(event event.Event) {
 		)
 
 	default:
-		log.Println("event:", reflect.TypeOf(event).String())
+		if stringer, ok := event.(fmt.Stringer); ok {
+			log.Printf("<%s> %s\n", reflect.TypeOf(event).String(), stringer.String())
+		} else {
+			log.Printf("<%s>\n", reflect.TypeOf(event).String())
+		}
 	}
 }

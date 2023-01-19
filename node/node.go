@@ -55,6 +55,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	var dbInit bool
 	dbFile := filepath.Join(rootDir, dbFileName)
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+		log.Println("creating database at", dbFile)
 		dbInit = true
 	}
 
@@ -65,10 +66,10 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 
 	if dbInit {
 		if err := tracker.InitDatabase(node.Database); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("tracker: %w", err)
 		}
 		if err := contacts.InitDatabase(node.Database); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("contacts: %w", err)
 		}
 
 		if err := os.Chmod(dbFile, 0600); err != nil {
@@ -142,4 +143,8 @@ func (node *Node) Alias() string {
 
 func (node *Node) Subscribe(cancel sig.Signal) <-chan event.Event {
 	return node.events.Subscribe(cancel)
+}
+
+func (node *Node) Emit(e event.Event) {
+	node.events.Emit(e)
 }

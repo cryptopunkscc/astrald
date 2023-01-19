@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	ainfra "github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/infra"
 	"io"
 	"log"
 	"sync"
@@ -21,8 +21,8 @@ func NewConcurrentHandshake(localID id.Identity, remoteID id.Identity, workers i
 	return &ConcurrentHandshake{localID: localID, remoteID: remoteID, workers: workers}
 }
 
-func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan ainfra.Conn) <-chan auth.Conn {
-	var ch = make(chan auth.Conn)
+func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan infra.Conn) <-chan auth.Conn {
+	var ch = make(chan auth.Conn, h.workers)
 	var wg sync.WaitGroup
 
 	// start handshake workers
@@ -34,6 +34,7 @@ func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan ainfra.
 				select {
 				case <-ctx.Done():
 					return
+
 				case conn, ok := <-conns:
 					if !ok {
 						return

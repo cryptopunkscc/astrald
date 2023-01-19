@@ -47,6 +47,9 @@ func (m *Manager) Find(nodeID id.Identity) (c *Contact, err error) {
 		}
 
 		if err = row.Scan(&res.alias); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errors.New("not found")
+			}
 			return err
 		}
 
