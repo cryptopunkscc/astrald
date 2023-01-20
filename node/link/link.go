@@ -7,40 +7,44 @@ import (
 	"github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 	"strings"
 	"sync"
 	"time"
 )
 
-const idlePingInterval = 15 * time.Second
-const activePingInterval = 1 * time.Second
+const idlePingInterval = 60 * time.Second
+const activePingInterval = 30 * time.Second
 const pingTimeout = 15 * time.Second
-
-var _ sig.Idler = &Link{}
+const queryChanLen = 16
+const defaultIdleTimeout = 5 * time.Minute
 
 // Link wraps an astral.Link and adds activity tracking
 type Link struct {
 	sig.Activity
 	*link.Link
-	queries       chan *Query
-	events        event.Queue
-	conns         map[*Conn]struct{}
-	mu            sync.Mutex
-	establishedAt time.Time
-	roundtrip     time.Duration
+	queries          chan *Query
+	events           event.Queue
+	conns            map[*Conn]struct{}
+	mu               sync.Mutex
+	establishedAt    time.Time
+	roundtrip        time.Duration
+	idleTimeout      time.Duration
+	setIdleTimeoutCh chan time.Duration
+	err              error
 }
 
 func New(link *link.Link) *Link {
 	l := &Link{
-		Link:          link,
-		queries:       make(chan *Query),
-		conns:         make(map[*Conn]struct{}, 0),
-		establishedAt: time.Now(),
-		roundtrip:     999 * time.Second, // assume super slow before first ping
+		Link:             link,
+		queries:          make(chan *Query, queryChanLen),
+		conns:            make(map[*Conn]struct{}, 0),
+		establishedAt:    time.Now(),
+		roundtrip:        999 * time.Second, // assume super slow before first ping
+		setIdleTimeoutCh: make(chan time.Duration, 1),
+		idleTimeout:      defaultIdleTimeout,
 	}
-	l.Touch()
-	go l.handleQueries()
-	go l.monitorPing()
+
 	return l
 }
 
@@ -48,153 +52,116 @@ func NewFromConn(conn auth.Conn) *Link {
 	return New(link.New(conn))
 }
 
-func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
+func (l *Link) Query(ctx context.Context, query string) (*Conn, error) {
 	if len(query) == 0 {
 		return nil, errors.New("empty query")
 	}
 
 	// silent queries do not affect activity
 	if !(query[0] == '.') {
-		link.Activity.Add(1)
-		defer link.Activity.Done()
+		l.Activity.Add(1)
+		defer l.Activity.Done()
 	}
 
-	linkConn, err := link.Link.Query(ctx, query)
+	linkConn, err := l.Link.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
 	conn := wrapConn(linkConn)
-	conn.Attach(link)
+	conn.Attach(l)
 
-	link.events.Emit(EventConnEstablished{conn})
+	l.events.Emit(EventConnEstablished{conn})
 
 	return conn, nil
 }
 
-// RoundTrip returns link's round trip time
-func (link *Link) RoundTrip() time.Duration {
-	return link.roundtrip
+func (l *Link) Queries() <-chan *Query {
+	return l.queries
 }
 
-func (link *Link) Queries() <-chan *Query {
-	return link.queries
+func (l *Link) Err() error {
+	return l.err
 }
 
-func (link *Link) Subscribe(cancel sig.Signal) <-chan event.Event {
-	return link.events.Subscribe(cancel)
+func (l *Link) EstablishedAt() time.Time {
+	return l.establishedAt
 }
 
-func (link *Link) Conns() <-chan *Conn {
-	link.mu.Lock()
-	defer link.mu.Unlock()
+func (l *Link) Subscribe(cancel sig.Signal) <-chan event.Event {
+	return l.events.Subscribe(cancel)
+}
 
-	ch := make(chan *Conn, len(link.conns))
-	for l := range link.conns {
+func (l *Link) Conns() <-chan *Conn {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	ch := make(chan *Conn, len(l.conns))
+	for l := range l.conns {
 		ch <- l
 	}
 	close(ch)
 	return ch
 }
 
-func (link *Link) SetEventParent(parent *event.Queue) {
-	link.events.SetParent(parent)
+func (l *Link) SetEventParent(parent *event.Queue) {
+	l.events.SetParent(parent)
 }
 
-func (link *Link) add(conn *Conn) {
-	link.mu.Lock()
-	defer link.mu.Unlock()
+func (l *Link) add(conn *Conn) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
 	// skip duplicates
-	if _, found := link.conns[conn]; found {
+	if _, found := l.conns[conn]; found {
 		return
 	}
 
-	link.conns[conn] = struct{}{}
-	link.Activity.Add(1)
+	l.conns[conn] = struct{}{}
+	l.Activity.Add(1)
 }
 
-func (link *Link) monitorPing() {
-	for {
-		if err := link.ping(); err != nil {
-			link.events.Emit(EventPingTimeout{Link: link})
-			link.Close()
-		}
+func (l *Link) remove(conn *Conn) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
-		// if the connection is active, we want to monitor ping more often
-		i := idlePingInterval
-		if link.Activity.Idle() == 0 {
-			i = activePingInterval
-		}
-
-		select {
-		case <-time.After(i):
-		case <-link.Wait():
-			return
-		}
-	}
-}
-
-func (link *Link) remove(conn *Conn) error {
-	link.mu.Lock()
-	defer link.mu.Unlock()
-
-	if _, found := link.conns[conn]; !found {
+	if _, found := l.conns[conn]; !found {
 		return errors.New("not found")
 	}
-	delete(link.conns, conn)
-	link.Activity.Done()
+	delete(l.conns, conn)
+	l.Activity.Done()
 
 	return nil
 }
 
-func (link *Link) handleQueries() {
-	defer link.Close()
-	defer close(link.queries)
+func (l *Link) processQueries(ctx context.Context) error {
+	defer close(l.queries)
 
-	for query := range link.Link.Queries() {
-		if !isSilent(query) {
-			link.Activity.Add(1)
-		}
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
 
-		link.queries <- &Query{
-			link:  link,
-			Query: query,
-		}
+		case query, ok := <-l.Link.Queries():
+			if !ok {
+				l.err = io.EOF
+				return io.EOF
+			}
 
-		if !isSilent(query) {
-			link.Activity.Done()
+			if !isSilent(query) {
+				l.Activity.Add(1)
+			}
+
+			l.queries <- &Query{
+				link:  l,
+				Query: query,
+			}
+
+			if !isSilent(query) {
+				l.Activity.Done()
+			}
 		}
 	}
-}
-
-func (link *Link) ping() error {
-	pingCh := make(chan time.Duration, 1)
-
-	go func() {
-		t0 := time.Now()
-		ctx, _ := context.WithTimeout(context.Background(), pingTimeout)
-		conn, err := link.Query(ctx, ".ping")
-
-		if errors.Is(err, context.Canceled) {
-			return
-		}
-
-		pingCh <- time.Now().Sub(t0)
-
-		if err == nil {
-			conn.Close()
-		}
-	}()
-
-	select {
-	case d := <-pingCh:
-		link.roundtrip = d
-	case <-time.After(pingTimeout):
-		return errors.New("ping timeout")
-	}
-
-	return nil
 }
 
 func isSilent(q *link.Query) bool {

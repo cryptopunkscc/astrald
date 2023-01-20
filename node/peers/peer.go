@@ -62,11 +62,28 @@ func (peer *Peer) Links() <-chan *link.Link {
 	return ch
 }
 
+func (peer *Peer) LinkCount() int {
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
+	return len(peer.links)
+}
+
 func (peer *Peer) PreferredLink() *link.Link {
 	return link.Select(peer.Links(), link.LowestRoundTrip)
 }
 
-func (peer *Peer) AddLink(l *link.Link) error {
+func (peer *Peer) Unlink() {
+	for link := range peer.Links() {
+		link.Close()
+	}
+}
+
+func (peer *Peer) Wait() <-chan struct{} {
+	return peer.done
+}
+
+func (peer *Peer) addLink(l *link.Link) error {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
 
@@ -84,29 +101,14 @@ func (peer *Peer) AddLink(l *link.Link) error {
 
 	l.SetEventParent(&peer.events)
 	peer.links[l] = struct{}{}
-	peer.events.Emit(EventLinkEstablished{Link: l})
 
 	go func() {
 		for q := range l.Queries() {
 			peer.queries <- q
 		}
-		if err := peer.removeLink(l); err != nil {
-			panic(err)
-		}
-		peer.events.Emit(EventLinkClosed{Link: l})
 	}()
 
 	return nil
-}
-
-func (peer *Peer) Unlink() {
-	for link := range peer.Links() {
-		link.Close()
-	}
-}
-
-func (peer *Peer) Wait() <-chan struct{} {
-	return peer.done
 }
 
 func (peer *Peer) removeLink(l *link.Link) error {

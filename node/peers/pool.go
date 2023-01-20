@@ -36,52 +36,11 @@ func (pool *Pool) Queries() <-chan *link.Query {
 	return pool.queries
 }
 
-func (pool *Pool) AddLink(l *link.Link) error {
-	pool.mu.Lock()
-	defer pool.mu.Unlock()
-
-	if !l.LocalIdentity().IsEqual(pool.id) {
-		return errors.New("local identity mismatch")
-	}
-
-	remoteIDHex := l.RemoteIdentity().String()
-
-	if peer, found := pool.peers[remoteIDHex]; found {
-		return peer.AddLink(l)
-	}
-
-	peer := NewPeer(l.RemoteIdentity(), &pool.events)
-
-	if err := peer.AddLink(l); err != nil {
-		return err
-	}
-
-	pool.peers[remoteIDHex] = peer
-	pool.queue = pool.queue.Push(peer)
-	pool.events.Emit(EventLinked{Peer: peer, Link: l})
-
-	go func() {
-		for q := range peer.Queries() {
-			pool.queries <- q
-		}
-		pool.mu.Lock()
-		delete(pool.peers, remoteIDHex)
-		pool.events.Emit(EventUnlinked{Peer: peer})
-		pool.mu.Unlock()
-	}()
-
-	return nil
-}
-
 func (pool *Pool) Peer(remoteID id.Identity) *Peer {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-	if peer, found := pool.peers[remoteID.String()]; found {
-		return peer
-	}
-
-	return nil
+	return pool.peer(remoteID)
 }
 
 func (pool *Pool) Peers(follow context.Context) <-chan *Peer {
@@ -105,4 +64,80 @@ func (pool *Pool) Peers(follow context.Context) <-chan *Peer {
 		}
 	}()
 	return ch
+}
+
+func (pool *Pool) peer(remoteID id.Identity) *Peer {
+	if peer, found := pool.peers[remoteID.String()]; found {
+		return peer
+	}
+	return nil
+}
+
+func (pool *Pool) addLink(l *link.Link) error {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+	if !l.LocalIdentity().IsEqual(pool.id) {
+		return errors.New("local identity mismatch")
+	}
+
+	peer, isNew := pool.createPeer(l.RemoteIdentity())
+
+	if err := peer.addLink(l); err != nil {
+		if isNew {
+			pool.deletePeer(peer.Identity())
+		}
+		return err
+	}
+
+	if isNew {
+		// forward peer queries
+		go func() {
+			for q := range peer.Queries() {
+				pool.queries <- q
+			}
+		}()
+
+		pool.queue = pool.queue.Push(peer)
+		pool.events.Emit(EventPeerLinked{Peer: peer, Link: l})
+	}
+
+	return nil
+}
+
+func (pool *Pool) removeLink(l *link.Link) error {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+	peer := pool.peer(l.RemoteIdentity())
+	if peer == nil {
+		return errors.New("not found")
+	}
+
+	if err := peer.removeLink(l); err != nil {
+		return err
+	}
+
+	if peer.LinkCount() == 0 {
+		pool.deletePeer(peer.Identity())
+		pool.events.Emit(EventPeerUnlinked{Peer: peer})
+	}
+
+	return nil
+}
+
+func (pool *Pool) createPeer(nodeID id.Identity) (*Peer, bool) {
+	hexID := nodeID.PublicKeyHex()
+
+	if peer, found := pool.peers[hexID]; found {
+		return peer, false
+	}
+
+	pool.peers[hexID] = NewPeer(nodeID, &pool.events)
+
+	return pool.peers[hexID], true
+}
+
+func (pool *Pool) deletePeer(nodeID id.Identity) {
+	delete(pool.peers, nodeID.PublicKeyHex())
 }

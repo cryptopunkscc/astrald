@@ -6,7 +6,6 @@ import (
 	"errors"
 	alink "github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/peers"
 	"io"
 	"log"
 	"time"
@@ -15,7 +14,7 @@ import (
 func (mod *Module) runClient(ctx context.Context) error {
 	for e := range mod.node.Subscribe(ctx.Done()) {
 		switch event := e.(type) {
-		case peers.EventLinkEstablished:
+		case link.EventLinkEstablished:
 			go func() {
 				if err := mod.processEvent(ctx, event); err != nil {
 					if !errors.Is(err, alink.ErrRejected) {
@@ -29,7 +28,7 @@ func (mod *Module) runClient(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) processEvent(ctx context.Context, event peers.EventLinkEstablished) error {
+func (mod *Module) processEvent(ctx context.Context, event link.EventLinkEstablished) error {
 	info, err := mod.queryLinkInfo(ctx, event.Link)
 	if err != nil {
 		return err

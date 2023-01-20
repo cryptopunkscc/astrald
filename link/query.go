@@ -27,18 +27,18 @@ func (query *Query) Accept() (*Conn, error) {
 }
 
 // Reject the query
-func (query Query) Reject() error {
+func (query *Query) Reject() error {
 	query.out.Close()
-	
+
 	return query.in.Discard()
 }
 
 // Caller returns the identity of the caller
-func (query Query) Caller() id.Identity {
+func (query *Query) Caller() id.Identity {
 	return query.link.RemoteIdentity()
 }
 
 // Query returns the query string
-func (query Query) String() string {
+func (query *Query) String() string {
 	return query.query
 }

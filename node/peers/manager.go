@@ -10,39 +10,37 @@ import (
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/tracker"
-	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 	"log"
 	"sync"
-	"time"
 )
 
-const LinkTimeout = 5 * time.Minute
 const concurrency = 16
 
 type Manager struct {
 	Pool   *Pool
 	Server *Server
 
-	localID id.Identity
-	tracker *tracker.Tracker
-	infra   *infra.Infra
-	linkers map[string]*Linker
-	mu      sync.Mutex
-	events  event.Queue
-	links   chan *alink.Link
-	timeout chan *link.Link
+	localID   id.Identity
+	tracker   *tracker.Tracker
+	infra     *infra.Infra
+	linkers   map[string]*Linker
+	mu        sync.Mutex
+	events    event.Queue
+	links     chan *alink.Link
+	linkQueue chan *link.Link
 }
 
 func NewManager(localID id.Identity, infra *infra.Infra, tracker *tracker.Tracker, eventParent *event.Queue) (*Manager, error) {
 	var err error
 
 	m := &Manager{
-		localID: localID,
-		linkers: make(map[string]*Linker),
-		infra:   infra,
-		tracker: tracker,
-		links:   make(chan *alink.Link, 16),
-		timeout: make(chan *link.Link, 16),
+		localID:   localID,
+		linkers:   make(map[string]*Linker),
+		infra:     infra,
+		tracker:   tracker,
+		links:     make(chan *alink.Link, 16),
+		linkQueue: make(chan *link.Link, 16),
 	}
 
 	m.events.SetParent(eventParent)
@@ -56,7 +54,7 @@ func NewManager(localID id.Identity, infra *infra.Infra, tracker *tracker.Tracke
 }
 
 func (m *Manager) Run(ctx context.Context) error {
-	links, err := m.Server.Run(ctx)
+	linksFromServer, err := m.Server.Run(ctx)
 	if err != nil {
 		return err
 	}
@@ -66,17 +64,11 @@ func (m *Manager) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 
-		case l := <-links:
+		case l := <-linksFromServer:
 			m.AddLink(link.New(l))
 
-		case link := <-m.timeout:
-			// set up a timeout for the link
-			linkCtx, cancel := context.WithCancel(ctx)
-			sig.On(link, cancel)
-			sig.OnCtx(linkCtx, sig.Idle(linkCtx, link, LinkTimeout), func() {
-				log.Println("peers.Manager: closing link due to timeout")
-				link.Close()
-			})
+		case l := <-m.linkQueue:
+			go m.runLink(ctx, l)
 		}
 	}
 }
@@ -86,13 +78,12 @@ func (m *Manager) Queries() <-chan *link.Query {
 }
 
 func (m *Manager) AddLink(l *link.Link) error {
-	err := m.Pool.AddLink(l)
-	if err != nil {
-		l.Close()
-		return err
+	select {
+	case m.linkQueue <- l:
+		return nil
+	default:
+		return errors.New("link queue overflow")
 	}
-	m.timeout <- l
-	return nil
 }
 
 func (m *Manager) Linkers() <-chan *Linker {
@@ -141,7 +132,7 @@ func (m *Manager) Link(ctx context.Context, remoteID id.Identity) (*link.Link, e
 	go func() {
 		defer wg.Done()
 		for e := range m.events.Subscribe(ctx.Done()) {
-			e, ok := e.(EventLinkEstablished)
+			e, ok := e.(link.EventLinkEstablished)
 			if !ok {
 				continue
 			}
@@ -172,6 +163,32 @@ func (m *Manager) Link(ctx context.Context, remoteID id.Identity) (*link.Link, e
 	m.deleteLinker(remoteID)
 
 	return linker.link, linker.err
+}
+
+func (m *Manager) runLink(ctx context.Context, l *link.Link) (err error) {
+	err = m.Pool.addLink(l)
+	if err != nil {
+		l.Close()
+		return
+	}
+
+	err = l.Run(ctx)
+
+	m.Pool.removeLink(l)
+
+	switch err {
+	case nil, // ignore expected errors
+		context.Canceled,
+		context.DeadlineExceeded,
+		io.EOF,
+		link.ErrPingTimeout,
+		link.ErrIdleTimeout:
+
+	default:
+		log.Println("link error:", err)
+	}
+
+	return
 }
 
 func (m *Manager) getLinker(remoteID id.Identity) (linker *Linker, new bool) {
@@ -207,8 +224,8 @@ func (m *Manager) deleteLinker(remoteID id.Identity) error {
 func (m *Manager) getOrMakeLink(ctx context.Context, remoteID id.Identity) (*link.Link, error) {
 	// check if peer is already connected
 	if peer := m.Pool.Peer(remoteID); peer != nil {
-		if link := peer.PreferredLink(); link != nil {
-			return link, nil
+		if l := peer.PreferredLink(); l != nil {
+			return l, nil
 		}
 	}
 
@@ -217,14 +234,14 @@ func (m *Manager) getOrMakeLink(ctx context.Context, remoteID id.Identity) (*lin
 		return nil, err
 	}
 
-	lnk := link.New(rawLink)
+	l := link.New(rawLink)
 
 	// add the link to the pool
-	if err := m.AddLink(lnk); err != nil {
+	if err := m.AddLink(l); err != nil {
 		return nil, err
 	}
 
-	return lnk, nil
+	return l, nil
 }
 
 func (m *Manager) makeNewLink(ctx context.Context, remoteID id.Identity) (*alink.Link, error) {

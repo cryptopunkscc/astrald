@@ -39,24 +39,25 @@ func (node *Node) logEvent(event event.Event) {
 	}
 
 	switch event := event.(type) {
-	case peers.EventLinked:
+	case peers.EventPeerLinked:
 		log.Printf("%s linked\n", displayName(event.Peer.Identity()))
 
-	case peers.EventUnlinked:
+	case peers.EventPeerUnlinked:
 		log.Printf("%s unlinked\n", displayName(event.Peer.Identity()))
 
-	case peers.EventLinkEstablished:
+	case link.EventLinkEstablished:
 		log.Printf(
 			"link with %s established over %s",
 			displayName(event.Link.RemoteIdentity()),
 			event.Link.Network(),
 		)
 
-	case peers.EventLinkClosed:
+	case link.EventLinkClosed:
 		log.Printf(
-			"link with %s over %s closed",
+			"link with %s over %s closed (%s)",
 			displayName(event.Link.RemoteIdentity()),
 			event.Link.Network(),
+			event.Link.Err(),
 		)
 
 	case presence.EventIdentityPresent:
@@ -88,13 +89,6 @@ func (node *Node) logEvent(event event.Event) {
 
 	case hub.EventPortReleased:
 		log.Printf("port released: %s\n", event.PortName)
-
-	case link.EventPingTimeout:
-		log.Printf(
-			"ping to %s over %s timed out",
-			displayName(event.Link.RemoteIdentity()),
-			event.Link.Network(),
-		)
 
 	default:
 		if stringer, ok := event.(fmt.Stringer); ok {

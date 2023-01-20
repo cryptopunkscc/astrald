@@ -12,7 +12,10 @@ import (
 	"io"
 	"log"
 	"sync"
+	"time"
 )
+
+const queryTimeout = 30 * time.Second
 
 // A Link is a multiplexed, authenticated connection between two parties allowing them to establish multiple
 // connections over any transport.
@@ -62,17 +65,41 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 		return nil, err
 	}
 
+	var errCh = make(chan error, 1)
+	var resCh = make(chan int, 1)
+
+	go func() {
+		var remoteStreamID int
+		err := cslq.Decode(inputStream, "s", &remoteStreamID)
+		switch {
+		case err == nil:
+			resCh <- remoteStreamID
+		case errors.Is(err, io.EOF):
+			errCh <- ErrRejected
+		default:
+			errCh <- err
+		}
+		return
+	}()
+
 	var remoteStreamID int
 
-	if err = cslq.Decode(inputStream, "s", &remoteStreamID); err != nil {
-		if errors.Is(err, io.EOF) {
-			return nil, ErrRejected
-		}
-		return nil, fmt.Errorf("error reading query response: %w", err)
+	select {
+	case err := <-errCh:
+		return nil, err
+
+	case <-ctx.Done():
+		inputStream.Discard()
+		return nil, ctx.Err()
+
+	case <-time.After(queryTimeout):
+		inputStream.Discard()
+		return nil, errors.New("i/o timeout")
+
+	case remoteStreamID = <-resCh:
 	}
 
 	outputStream := link.mux.Stream(remoteStreamID)
-
 	conn := newConn(inputStream, outputStream, true, query)
 	conn.Attach(link)
 

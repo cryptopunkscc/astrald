@@ -10,6 +10,10 @@ type EventConnClosed struct {
 	Conn *Conn
 }
 
-type EventPingTimeout struct {
+type EventLinkEstablished struct {
+	Link *Link
+}
+
+type EventLinkClosed struct {
 	Link *Link
 }

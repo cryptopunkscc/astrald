@@ -57,7 +57,7 @@ func (mod *Module) Run(ctx context.Context) error {
 
 				mod.mapping = m
 
-			case peers.EventLinked:
+			case peers.EventPeerLinked:
 				if event.Link.Network() == inet.NetworkName {
 					continue
 				}

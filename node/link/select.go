@@ -14,7 +14,7 @@ func LowestRoundTrip(current *Link, next *Link) *Link {
 		return next
 	}
 
-	if next.RoundTrip() < current.RoundTrip() {
+	if next.Ping() < current.Ping() {
 		return next
 	}
 

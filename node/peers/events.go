@@ -2,19 +2,11 @@ package peers
 
 import "github.com/cryptopunkscc/astrald/node/link"
 
-type EventLinked struct {
+type EventPeerLinked struct {
 	Peer *Peer
 	Link *link.Link
 }
 
-type EventUnlinked struct {
+type EventPeerUnlinked struct {
 	Peer *Peer
-}
-
-type EventLinkEstablished struct {
-	Link *link.Link
-}
-
-type EventLinkClosed struct {
-	Link *link.Link
 }

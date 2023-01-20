@@ -25,12 +25,13 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 			}
 
 			fmt.Fprintf(w,
-				"  %s %s %s (idle %s, ping %.1fms)\n",
+				"  %s %s %s (idle %s, age %s, ping %.1fms)\n",
 				logfmt.Bool(link.Outbound(), "=>", "<="),
 				link.RemoteAddr().Network(),
 				remoteAddr,
 				link.Idle().Round(time.Second),
-				float64(link.RoundTrip().Microseconds())/1000,
+				time.Since(link.EstablishedAt()).Round(time.Second),
+				float64(link.Ping().Microseconds())/1000,
 			)
 			for c := range link.Conns() {
 				fmt.Fprintf(w,
