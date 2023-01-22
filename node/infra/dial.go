@@ -29,6 +29,7 @@ func (i *Infra) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err
 		case strings.Contains(err.Error(), "connection refused"),
 			strings.Contains(err.Error(), "operation was canceled"),
 			strings.Contains(err.Error(), "i/o timeout"),
+			errors.Is(err, infra.ErrUnsupportedNetwork),
 			errors.Is(err, context.Canceled),
 			errors.Is(err, context.DeadlineExceeded):
 			i.Logf(log.Debug, "dial %s %s error: %s", addr.Network(), addr.String(), err.Error())
