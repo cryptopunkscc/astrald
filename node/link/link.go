@@ -38,8 +38,8 @@ func New(link *link.Link) *Link {
 		Link:             link,
 		queries:          make(chan *Query, queryChanLen),
 		conns:            make(map[*Conn]struct{}, 0),
-		establishedAt:    time.Now(),
-		roundtrip:        999 * time.Second, // assume super slow before first ping
+		establishedAt:    time.Now().Round(0), // don't use monotonic clock
+		roundtrip:        999 * time.Second,   // assume super slow before first ping
 		setIdleTimeoutCh: make(chan time.Duration, 1),
 		idleTimeout:      defaultIdleTimeout,
 	}
