@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/connect"
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
+	"github.com/cryptopunkscc/astrald/mod/keepalive"
 	"github.com/cryptopunkscc/astrald/mod/linkinfo"
 	"github.com/cryptopunkscc/astrald/mod/optimizer"
 	"github.com/cryptopunkscc/astrald/mod/roam"
@@ -80,6 +81,7 @@ func main() {
 		roam.Loader{},
 		contacts.Loader{},
 		optimizer.Loader{},
+		keepalive.Loader{},
 	)
 	if err != nil {
 		fmt.Println("init error:", err)
