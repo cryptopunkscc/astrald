@@ -40,9 +40,7 @@ type bluetooth struct {
 	native Bluetooth
 }
 
-var _ infra.Network = &bluetooth{}
-var _ infra.Unpacker = &bluetooth{}
-var _ infra.Dialer = &bluetooth{}
+var _ bt.Client = &bluetooth{}
 
 func (b *bluetooth) Run(ctx context.Context) error {
 	<-ctx.Done()
@@ -53,11 +51,7 @@ func (b *bluetooth) Name() string {
 	return b.base.Name()
 }
 
-func (b *bluetooth) Unpack(network string, data []byte) (infra.Addr, error) {
-	return b.base.Unpack(network, data)
-}
-
-func (b *bluetooth) Dial(_ context.Context, addr infra.Addr) (infra.Conn, error) {
+func (b *bluetooth) Dial(_ context.Context, addr bt.Addr) (infra.Conn, error) {
 	socket, err := b.native.Dial(addr.Pack())
 	if err != nil {
 		return nil, err

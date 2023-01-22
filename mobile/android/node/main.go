@@ -2,6 +2,7 @@ package astral
 
 import (
 	"context"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -9,7 +10,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/connect"
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
-	"github.com/cryptopunkscc/astrald/mod/info"
+	"github.com/cryptopunkscc/astrald/mod/linkinfo"
+	"github.com/cryptopunkscc/astrald/mod/optimizer"
+	"github.com/cryptopunkscc/astrald/mod/roam"
 	"github.com/cryptopunkscc/astrald/node"
 	"log"
 	"os"
@@ -25,8 +28,8 @@ func Start(
 	handlers Handlers,
 	bluetooth Bluetooth,
 ) error {
-	nodeDir := filepath.Join(dir, "node")
-	err := os.MkdirAll(nodeDir, 0700)
+	astralRoot := filepath.Join(dir, "node")
+	err := os.MkdirAll(astralRoot, 0700)
 	if err != nil {
 		return err
 	}
@@ -42,21 +45,30 @@ func Start(
 	var ctx context.Context
 	ctx, stop = context.WithCancel(context.Background())
 
-	m := []node.ModuleLoader{
+	// start the node
+	n, err := node.New(
+		astralRoot,
 		admin.Loader{},
 		apphost.Loader{},
 		connect.Loader{},
 		gateway.Loader{},
-		info.Loader{},
+		linkinfo.Loader{},
+		roam.Loader{},
 		contacts.Loader{},
+		optimizer.Loader{},
 		handlerLoader("android", handlers),
-	}
-
-	n, err := node.Run(ctx, nodeDir, m...)
-
+	)
 	if err != nil {
+		fmt.Println("init error:", err)
 		return err
 	}
+
+	// Run the node
+	go func() {
+		if err := n.Run(ctx); err != nil {
+			fmt.Printf("run error: %s\n", err)
+		}
+	}()
 
 	identity = n.Identity().String()
 

@@ -10,8 +10,12 @@ import (
 	"time"
 )
 
-func serviceRunner(wg *sync.WaitGroup, name string, runners ...ServiceRunner) node.Module {
-	return embeddedServicesRunner{wg, name, runners}
+func serviceRunner(wg *sync.WaitGroup, name string, runners ...ServiceRunner) node.ModuleLoader {
+	return embeddedServicesRunner{
+		wg:      wg,
+		name:    name,
+		runners: runners,
+	}
 }
 
 type ServiceRunner interface {
@@ -22,14 +26,24 @@ type embeddedServicesRunner struct {
 	wg      *sync.WaitGroup
 	name    string
 	runners []ServiceRunner
+	node    *node.Node
+}
+
+func (e embeddedServicesRunner) Load(node *node.Node) (node.Module, error) {
+	e.node = node
+	return e, nil
+}
+
+func (e embeddedServicesRunner) Name() string {
+	return e.name
 }
 
 func (e embeddedServicesRunner) String() string {
 	return e.name
 }
 
-func (e embeddedServicesRunner) Run(ctx context.Context, n *node.Node) error {
-	api := &embedded.Adapter{Ctx: ctx, Node: n}
+func (e embeddedServicesRunner) Run(ctx context.Context) error {
+	api := &embedded.Adapter{Ctx: ctx, Node: e.node}
 	e.wg.Add(len(e.runners))
 	for _, r := range e.runners {
 		runner := r
