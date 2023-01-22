@@ -10,9 +10,10 @@ import (
 
 // StreamDemux reads mux frames and splits them into separate streams
 type StreamDemux struct {
-	streams   map[int]*InputStream
-	streamsMu sync.Mutex
-	frames    *FrameDemux
+	streams      map[int]*InputStream
+	streamsMu    sync.Mutex
+	frames       *FrameDemux
+	lastStreamID int
 }
 
 func NewStreamDemux(reader io.Reader) *StreamDemux {
@@ -50,10 +51,12 @@ func (demux *StreamDemux) AllocStream() (*InputStream, error) {
 	}
 
 	for i := 0; i < MaxStreams; i++ {
-		if _, used := demux.streams[i]; !used {
-			stream := newInputStream(demux, i)
+		s := (demux.lastStreamID + i + 1) % MaxStreams
+		if _, used := demux.streams[s]; !used {
+			stream := newInputStream(demux, s)
 
-			demux.streams[i] = stream
+			demux.streams[s] = stream
+			demux.lastStreamID = s
 
 			return stream, nil
 		}
