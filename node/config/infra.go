@@ -9,9 +9,24 @@ import (
 // Infra holds configs for individual infrastructural networks
 type Infra struct {
 	LogLevel    int         `yaml:"log_level"`
+	Networks    []string    `yaml:"networks"`
 	Gateways    []string    `yaml:"gateways"`
 	StickyNodes []string    `yaml:"sticky_nodes"`
 	Inet        inet.Config `yaml:"inet"`
 	Tor         tor.Config  `yaml:"tor"`
 	Gw          gw.Config   `yaml:"gw"`
+}
+
+func (i Infra) IsNetworkEnabled(network string) bool {
+	if len(i.Networks) == 0 {
+		return true
+	}
+
+	for _, n := range i.Networks {
+		if n == network {
+			return true
+		}
+	}
+
+	return false
 }
