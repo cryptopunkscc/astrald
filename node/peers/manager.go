@@ -135,7 +135,7 @@ func (m *Manager) Link(ctx context.Context, remoteID id.Identity) (*link.Link, e
 	// observe external link sources
 	go func() {
 		defer wg.Done()
-		for e := range m.events.Subscribe(ctx.Done()) {
+		for e := range m.events.Subscribe(ctx) {
 			e, ok := e.(link.EventLinkEstablished)
 			if !ok {
 				continue

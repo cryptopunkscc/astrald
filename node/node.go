@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
@@ -12,7 +13,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/peers"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"github.com/cryptopunkscc/astrald/node/tracker"
-	"github.com/cryptopunkscc/astrald/sig"
 	"log"
 	"os"
 	"path/filepath"
@@ -141,8 +141,8 @@ func (node *Node) Alias() string {
 	return node.Config.GetAlias()
 }
 
-func (node *Node) Subscribe(cancel sig.Signal) <-chan event.Event {
-	return node.events.Subscribe(cancel)
+func (node *Node) Subscribe(ctx context.Context) <-chan event.Event {
+	return node.events.Subscribe(ctx)
 }
 
 func (node *Node) Emit(e event.Event) {

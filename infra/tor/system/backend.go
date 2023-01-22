@@ -52,7 +52,7 @@ func (b *Backend) Listen(ctx context.Context, key tor.Key) (tor.Listener, error)
 		return nil, err
 	}
 
-	sig.On(sig.Signal(ctx.Done()), func() {
+	sig.On(ctx, func() {
 		tcpListener.Close()
 	})
 

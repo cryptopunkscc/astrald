@@ -20,7 +20,7 @@ type Optimizer struct {
 }
 
 func (mod *Optimizer) Run(ctx context.Context) error {
-	for event := range mod.node.Subscribe(ctx.Done()) {
+	for event := range mod.node.Subscribe(ctx) {
 		event := event
 		if event, ok := event.(peers.EventPeerLinked); ok {
 			peerName := mod.node.Contacts.DisplayName(event.Peer.Identity())

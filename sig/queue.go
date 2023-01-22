@@ -74,7 +74,7 @@ func (q *Queue) Data() interface{} {
 	return q.data
 }
 
-func (q *Queue) Subscribe(cancel Signal) <-chan interface{} {
+func (q *Queue) Subscribe(waiter Signal) <-chan interface{} {
 	ch := make(chan interface{})
 
 	go func() {
@@ -82,7 +82,7 @@ func (q *Queue) Subscribe(cancel Signal) <-chan interface{} {
 		defer close(ch)
 		for {
 			select {
-			case <-cancel:
+			case <-waiter.Done():
 				return
 			case <-f.Wait():
 				if f.Next() == nil {
@@ -92,7 +92,7 @@ func (q *Queue) Subscribe(cancel Signal) <-chan interface{} {
 				select {
 				case ch <- f.data:
 					f = f.Next()
-				case <-cancel:
+				case <-waiter.Done():
 					return
 				}
 

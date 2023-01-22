@@ -87,8 +87,8 @@ func (l *Link) EstablishedAt() time.Time {
 	return l.establishedAt
 }
 
-func (l *Link) Subscribe(cancel sig.Signal) <-chan event.Event {
-	return l.events.Subscribe(cancel)
+func (l *Link) Subscribe(ctx context.Context) <-chan event.Event {
+	return l.events.Subscribe(ctx)
 }
 
 func (l *Link) Conns() <-chan *Conn {

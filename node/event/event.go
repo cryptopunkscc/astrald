@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
 )
@@ -27,7 +28,7 @@ func (q *Queue) Emit(event Event) {
 	}
 }
 
-func (q *Queue) Subscribe(cancel sig.Signal) <-chan Event {
+func (q *Queue) Subscribe(ctx context.Context) <-chan Event {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -39,7 +40,7 @@ func (q *Queue) Subscribe(cancel sig.Signal) <-chan Event {
 
 	go func() {
 		defer close(ch)
-		for e := range q.queue.Subscribe(cancel) {
+		for e := range q.queue.Subscribe(ctx) {
 			ch <- e
 		}
 	}()

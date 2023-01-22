@@ -12,7 +12,7 @@ import (
 )
 
 func (mod *Module) runClient(ctx context.Context) error {
-	for e := range mod.node.Subscribe(ctx.Done()) {
+	for e := range mod.node.Subscribe(ctx) {
 		switch event := e.(type) {
 		case link.EventLinkEstablished:
 			go func() {

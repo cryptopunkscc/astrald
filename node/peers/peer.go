@@ -85,7 +85,7 @@ func (peer *Peer) Wait() <-chan struct{} {
 }
 
 func (peer *Peer) Subscribe(ctx context.Context) <-chan event.Event {
-	return peer.events.Subscribe(ctx.Done())
+	return peer.events.Subscribe(ctx)
 }
 
 func (peer *Peer) addLink(l *link.Link) error {

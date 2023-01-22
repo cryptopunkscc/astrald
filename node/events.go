@@ -15,7 +15,7 @@ import (
 )
 
 func (node *Node) handleEvents(ctx context.Context) error {
-	for event := range node.events.Subscribe(ctx.Done()) {
+	for event := range node.events.Subscribe(ctx) {
 		node.logEvent(event)
 
 		switch event := event.(type) {

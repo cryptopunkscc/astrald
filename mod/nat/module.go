@@ -21,7 +21,7 @@ type Module struct {
 
 func (mod *Module) Run(ctx context.Context) error {
 	go func() {
-		for event := range mod.node.Subscribe(ctx.Done()) {
+		for event := range mod.node.Subscribe(ctx) {
 			switch event := event.(type) {
 			case linkinfo.EventLinkInfo:
 				// filter out non-inet addresses

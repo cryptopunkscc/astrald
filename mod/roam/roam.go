@@ -54,7 +54,7 @@ func (roam *Roam) Run(ctx context.Context) error {
 }
 
 func (roam *Roam) monitorConnections(ctx context.Context) {
-	for event := range roam.node.Subscribe(ctx.Done()) {
+	for event := range roam.node.Subscribe(ctx) {
 		// skip other events
 		e, ok := event.(link.EventConnEstablished)
 		if !ok {

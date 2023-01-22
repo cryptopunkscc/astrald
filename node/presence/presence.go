@@ -94,8 +94,8 @@ func (m *Manager) Identities() <-chan id.Identity {
 	return ch
 }
 
-func (m *Manager) Subscribe(cancel sig.Signal) <-chan event.Event {
-	return m.events.Subscribe(cancel)
+func (m *Manager) Subscribe(ctx context.Context) <-chan event.Event {
+	return m.events.Subscribe(ctx)
 }
 
 func (m *Manager) Announce(ctx context.Context) error {

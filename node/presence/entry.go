@@ -41,7 +41,7 @@ func (e *entry) Idle() time.Duration {
 	return time.Now().Sub(e.lastSeen)
 }
 
-func (e *entry) Wait() <-chan struct{} {
+func (e *entry) Done() <-chan struct{} {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 

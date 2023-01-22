@@ -56,7 +56,7 @@ func (pool *Pool) Peers(follow context.Context) <-chan *Peer {
 		return ch
 	}
 
-	newPeers := pool.queue.Subscribe(follow.Done())
+	newPeers := pool.queue.Subscribe(follow)
 	go func() {
 		defer close(ch)
 		for p := range newPeers {

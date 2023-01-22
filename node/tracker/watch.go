@@ -11,7 +11,7 @@ func (tracker *Tracker) Watch(ctx context.Context, nodeID id.Identity) <-chan *A
 	out := make(chan *Addr, 1)
 	go func() {
 		defer close(out)
-		for event := range tracker.events.Subscribe(ctx.Done()) {
+		for event := range tracker.events.Subscribe(ctx) {
 			if a, ok := event.(*EventNewAddr); ok {
 				if a.NodeID.IsEqual(nodeID) {
 					out <- a.Addr

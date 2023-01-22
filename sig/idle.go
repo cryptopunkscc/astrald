@@ -6,7 +6,7 @@ import (
 )
 
 // Idle returns a Signal that will be written to once when the Idler is idle for at least the provided duration.
-func Idle(ctx context.Context, idler Idler, timeout time.Duration) Signal {
+func Idle(ctx context.Context, idler Idler, timeout time.Duration) Sig {
 	sig := New()
 
 	go func() {

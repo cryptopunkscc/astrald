@@ -103,7 +103,7 @@ func (node *Node) subscribeNewLinksWithNode(ctx context.Context, nodeID id.Ident
 
 	go func() {
 		defer close(ch)
-		for event := range node.Peers.Events().Subscribe(ctx.Done()) {
+		for event := range node.Peers.Events().Subscribe(ctx) {
 			if event, ok := event.(link.EventLinkEstablished); ok {
 				if event.Link.RemoteIdentity().IsEqual(nodeID) {
 					ch <- event.Link
