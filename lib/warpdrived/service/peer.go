@@ -21,20 +21,19 @@ func (srv peer) Fetch() {
 	srv.Mutex.Peers.Lock()
 	defer srv.Mutex.Peers.Unlock()
 	for _, contact := range contactList {
-		srv.update(contact.Id, "alias", contact.Name)
+		srv.update(warpdrive.PeerId(contact.Id), "alias", contact.Name)
 	}
 	srv.save()
 }
 
-func (srv peer) Update(peerId string, attr string, value string) {
+func (srv peer) Update(id warpdrive.PeerId, attr string, value string) {
 	srv.Mutex.Peers.Lock()
 	defer srv.Mutex.Peers.Unlock()
-	srv.update(peerId, attr, value)
+	srv.update(id, attr, value)
 	srv.save()
 }
 
-func (srv peer) update(peerId string, attr string, value string) {
-	id := warpdrive.PeerId(peerId)
+func (srv peer) update(id warpdrive.PeerId, attr string, value string) {
 	mem := memory.Peers(srv).Get()
 	p := mem[id]
 	cached := p != nil

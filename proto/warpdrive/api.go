@@ -14,7 +14,7 @@ type Service interface {
 
 type PeerService interface {
 	Fetch()
-	Update(peerId string, attr string, value string)
+	Update(id PeerId, attr string, value string)
 	Get(id PeerId) Peer
 	List() (peers []Peer)
 }
@@ -71,8 +71,8 @@ type OfferStatus struct {
 	Update int64
 }
 
-func (offer Offer) IsOngoing() bool {
-	return offer.Status == StatusUpdated
+func (o Offer) IsOngoing() bool {
+	return o.Status == StatusUpdated
 }
 
 type Peers map[PeerId]*Peer

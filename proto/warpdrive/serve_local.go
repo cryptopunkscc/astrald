@@ -187,7 +187,7 @@ func (d Dispatcher) UpdatePeer() (err error) {
 	attr := req[1]
 	value := req[2]
 	// Update peer
-	d.srv.Peer().Update(peerId, attr, value)
+	d.srv.Peer().Update(PeerId(peerId), attr, value)
 	// Send OK
 	if err = d.cslq.Encode("c", 0); err != nil {
 		err = Error(err, "Cannot send ok")
