@@ -13,11 +13,10 @@ import (
 	"time"
 )
 
-const idlePingInterval = 60 * time.Second
-const activePingInterval = 30 * time.Second
-const pingTimeout = 15 * time.Second
 const queryChanLen = 16
-const defaultIdleTimeout = 5 * time.Minute
+const defaultIdleTimeout = 60 * time.Minute
+const pingInterval = 30 * time.Minute
+const pingTimeout = 15 * time.Second
 
 // Link wraps an astral.Link and adds activity tracking
 type Link struct {
@@ -102,6 +101,13 @@ func (l *Link) Conns() <-chan *Conn {
 	}
 	close(ch)
 	return ch
+}
+
+func (l *Link) ConnCount() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	return len(l.conns)
 }
 
 func (l *Link) SetEventParent(parent *event.Queue) {

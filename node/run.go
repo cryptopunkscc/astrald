@@ -74,6 +74,15 @@ func (node *Node) Run(ctx context.Context) (err error) {
 		}
 	}()
 
+	// sticky nodes
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := node.keepStickyNodesLinked(ctx); err != nil {
+			errCh <- fmt.Errorf("keeplinked: %w", err)
+		}
+	}()
+
 	// wait for the context to end or a node error
 	go func() {
 		select {

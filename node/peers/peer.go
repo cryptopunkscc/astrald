@@ -1,6 +1,7 @@
 package peers
 
 import (
+	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/event"
@@ -70,7 +71,7 @@ func (peer *Peer) LinkCount() int {
 }
 
 func (peer *Peer) PreferredLink() *link.Link {
-	return link.Select(peer.Links(), link.LowestRoundTrip)
+	return link.Select(peer.Links(), link.BestQuality)
 }
 
 func (peer *Peer) Unlink() {
@@ -81,6 +82,10 @@ func (peer *Peer) Unlink() {
 
 func (peer *Peer) Wait() <-chan struct{} {
 	return peer.done
+}
+
+func (peer *Peer) Subscribe(ctx context.Context) <-chan event.Event {
+	return peer.events.Subscribe(ctx.Done())
 }
 
 func (peer *Peer) addLink(l *link.Link) error {

@@ -3,6 +3,7 @@ package link
 import (
 	"github.com/cryptopunkscc/astrald/mux"
 	"sync"
+	"sync/atomic"
 )
 
 // Conn represents an open connection to the remote party's port. Shouldn't be instantiated directly.
@@ -14,7 +15,7 @@ type Conn struct {
 	query      string
 	outbound   bool
 	closeCh    chan struct{}
-	closed     bool
+	closed     atomic.Bool
 	outMu      sync.Mutex
 	link       *Link
 	linkMu     sync.Mutex
@@ -59,7 +60,7 @@ func (conn *Conn) Write(p []byte) (n int, err error) {
 	conn.outMu.Lock()
 	defer conn.outMu.Unlock()
 
-	if conn.closed {
+	if conn.closed.Load() {
 		return 0, ErrClosed
 	}
 
@@ -67,18 +68,13 @@ func (conn *Conn) Write(p []byte) (n int, err error) {
 }
 
 // Close closes the connection
-func (conn *Conn) Close() (err error) {
-	conn.outMu.Lock()
-	defer conn.outMu.Unlock()
-
-	if !conn.closed {
-		conn.closed = true
+func (conn *Conn) Close() error {
+	if conn.closed.CompareAndSwap(false, true) {
 		conn.out.Close()
 		conn.Attach(nil)
 		close(conn.closeCh)
 	}
-
-	return
+	return nil
 }
 
 func (conn *Conn) InputStream() *mux.InputStream {
@@ -99,7 +95,7 @@ func (conn *Conn) ReplaceOutputStream(replacement *mux.OutputStream) error {
 	conn.outMu.Lock()
 	defer conn.outMu.Unlock()
 
-	if conn.closed {
+	if conn.closed.Load() {
 		return ErrClosed
 	}
 

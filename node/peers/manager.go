@@ -77,6 +77,10 @@ func (m *Manager) Queries() <-chan *link.Query {
 	return m.Pool.Queries()
 }
 
+func (m *Manager) Events() *event.Queue {
+	return &m.events
+}
+
 func (m *Manager) AddLink(l *link.Link) error {
 	select {
 	case m.linkQueue <- l:

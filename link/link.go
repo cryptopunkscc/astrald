@@ -62,6 +62,7 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 	})
 	if err != nil {
 		inputStream.Discard()
+		link.Close()
 		return nil, err
 	}
 
@@ -77,6 +78,7 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 		case errors.Is(err, io.EOF):
 			errCh <- ErrRejected
 		default:
+			link.Close()
 			errCh <- err
 		}
 		return
@@ -94,7 +96,8 @@ func (link *Link) Query(ctx context.Context, query string) (*Conn, error) {
 
 	case <-time.After(queryTimeout):
 		inputStream.Discard()
-		return nil, errors.New("i/o timeout")
+		link.Close()
+		return nil, ErrIOTimeout
 
 	case remoteStreamID = <-resCh:
 	}

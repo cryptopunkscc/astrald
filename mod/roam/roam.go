@@ -167,21 +167,26 @@ func (roam *Roam) optimizeConn(conn *link.Conn) {
 
 		case <-time.After(time.Second):
 			preferred := peer.PreferredLink()
+			current := conn.Link()
 
 			if preferred == nil {
 				return
 			}
-			if conn.Link() == preferred {
+			if current == preferred {
 				continue
 			}
 
 			// only move to a more preferred network (avoid unnecessary moves due to ping jitter)
-			if scoreNet(preferred.Network()) <= scoreNet(conn.Link().Network()) {
+			if scoreNet(preferred.Network()) <= scoreNet(current.Network()) {
 				continue
 			}
 
 			if err := roam.move(conn, preferred); err != nil {
 				log.Println(logTag, "move error:", err)
+			} else {
+				if current.ConnCount() == 0 {
+					current.SetIdleTimeout(time.Minute)
+				}
 			}
 		}
 	}

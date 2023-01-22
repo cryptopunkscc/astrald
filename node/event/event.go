@@ -2,7 +2,6 @@ package event
 
 import (
 	"github.com/cryptopunkscc/astrald/sig"
-	"reflect"
 	"sync"
 )
 
@@ -46,16 +45,6 @@ func (q *Queue) Subscribe(cancel sig.Signal) <-chan Event {
 	}()
 
 	return ch
-}
-
-func (q *Queue) On(cancel sig.Signal, event Event, fn func(Event)) {
-	go func() {
-		for e := range q.Subscribe(cancel) {
-			if reflect.TypeOf(e) == reflect.TypeOf(event) {
-				fn(e)
-			}
-		}
-	}()
 }
 
 func (q *Queue) SetParent(parent *Queue) {

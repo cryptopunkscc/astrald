@@ -18,15 +18,8 @@ func (l *Link) monitorPing(ctx context.Context) error {
 			return err
 		}
 
-		// if the connection is active, we want to monitor ping more often
-		interval := idlePingInterval
-		if l.Activity.Idle() == 0 {
-			interval = activePingInterval
-		}
-
-		// wait between pings
 		select {
-		case <-time.After(interval):
+		case <-time.After(pingInterval):
 
 		case <-ctx.Done():
 			return ctx.Err()
