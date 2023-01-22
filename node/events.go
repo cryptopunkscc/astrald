@@ -32,7 +32,7 @@ func (node *Node) logEvent(event event.Event) {
 
 	eventName := reflect.TypeOf(event).String()
 
-	ok := node.Config.LogEventsInclude(eventName) || node.Config.LogEventsInclude("*")
+	ok := node.Config.Log.IsEventLoggable(eventName)
 
 	if !ok {
 		return

@@ -2,12 +2,10 @@ package config
 
 import "os"
 
-const configKey = "astrald.conf"
-
 type Config struct {
-	Alias     string   `yaml:"alias"`
-	Infra     Infra    `yaml:"infra"`
-	LogEvents []string `yaml:"log_events"`
+	Alias string `yaml:"alias"`
+	Infra Infra  `yaml:"infra"`
+	Log   Log    `yaml:"log"`
 }
 
 func (c Config) GetAlias() string {
@@ -20,19 +18,4 @@ func (c Config) GetAlias() string {
 	}
 
 	return ""
-}
-
-func (c Config) LogEventsInclude(s string) bool {
-	if s == "" {
-		return false
-	}
-	if len(c.LogEvents) == 0 {
-		return false
-	}
-	for _, e := range c.LogEvents {
-		if e == s {
-			return true
-		}
-	}
-	return false
 }
