@@ -2,10 +2,8 @@ package node
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/hub"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
@@ -148,8 +146,6 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
-
-	log.Error("this is a test %s and %s and %s", errors.New("yeah"), "cool", cslq.ErrInvalidDataLength{1, 2})
 
 	return node, nil
 }
