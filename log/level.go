@@ -6,7 +6,7 @@ func getTagLevel(tag string) int {
 	if l, ok := tagLevels[tag]; ok {
 		return l
 	}
-	return LogLevel
+	return Level
 }
 
 func SetTagLevel(tag string, level int) {

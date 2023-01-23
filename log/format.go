@@ -37,6 +37,11 @@ func formatArgs(args []interface{}) []interface{} {
 			continue
 		}
 
+		if e, ok := a.(error); ok {
+			out = append(out, red+e.Error()+reset)
+			continue
+		}
+
 		out = append(out, a)
 	}
 	return out
