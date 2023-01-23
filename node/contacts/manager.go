@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/db"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"sync"
@@ -35,7 +34,7 @@ func (m *Manager) DisplayName(nodeID id.Identity) string {
 		return contact.DisplayName()
 	}
 
-	return logfmt.ID(nodeID)
+	return nodeID.Fingerprint()
 }
 
 func (m *Manager) Find(nodeID id.Identity) (c *Contact, err error) {
@@ -69,6 +68,8 @@ func (m *Manager) FindOrCreate(nodeID id.Identity) (c *Contact, err error) {
 		if err != nil {
 			return err
 		}
+
+		log.Info("%s%s%s added to contacts", log.Cyan(), nodeID.Fingerprint(), log.Reset())
 
 		m.events.Emit(EventContactAdded{nodeID})
 

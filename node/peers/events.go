@@ -1,6 +1,11 @@
 package peers
 
-import "github.com/cryptopunkscc/astrald/node/link"
+import (
+	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/node/link"
+)
+
+var log = _log.Tag("peers")
 
 type EventPeerLinked struct {
 	Peer *Peer

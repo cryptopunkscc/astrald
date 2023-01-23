@@ -8,9 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"log"
 	"sync"
 	"time"
 )
@@ -18,33 +18,34 @@ import (
 const (
 	portPick = "roam.pick"
 	portDrop = "roam.drop"
-	logTag   = "(roam)"
 )
 
-type Roam struct {
+type Module struct {
 	node  *node.Node
 	moves map[int]*link.Conn
 }
 
-func (roam *Roam) Run(ctx context.Context) error {
-	roam.moves = make(map[int]*link.Conn)
+var log = _log.Tag(ModuleName)
+
+func (mod *Module) Run(ctx context.Context) error {
+	mod.moves = make(map[int]*link.Conn)
 
 	var wg sync.WaitGroup
 
 	wg.Add(3)
 
 	go func() {
-		roam.servePick(ctx)
+		mod.servePick(ctx)
 		wg.Done()
 	}()
 
 	go func() {
-		roam.serveDrop(ctx)
+		mod.serveDrop(ctx)
 		wg.Done()
 	}()
 
 	go func() {
-		roam.monitorConnections(ctx)
+		mod.monitorConnections(ctx)
 		wg.Done()
 	}()
 
@@ -53,8 +54,8 @@ func (roam *Roam) Run(ctx context.Context) error {
 	return nil
 }
 
-func (roam *Roam) monitorConnections(ctx context.Context) {
-	for event := range roam.node.Subscribe(ctx) {
+func (mod *Module) monitorConnections(ctx context.Context) {
+	for event := range mod.node.Subscribe(ctx) {
 		// skip other events
 		e, ok := event.(link.EventConnEstablished)
 		if !ok {
@@ -72,12 +73,12 @@ func (roam *Roam) monitorConnections(ctx context.Context) {
 			continue
 		}
 
-		go roam.optimizeConn(e.Conn)
+		go mod.optimizeConn(e.Conn)
 	}
 }
 
-func (roam *Roam) servePick(ctx context.Context) error {
-	port, err := roam.node.Ports.RegisterContext(ctx, portPick)
+func (mod *Module) servePick(ctx context.Context) error {
+	port, err := mod.node.Ports.RegisterContext(ctx, portPick)
 	if err != nil {
 		return err
 	}
@@ -103,7 +104,7 @@ func (roam *Roam) servePick(ctx context.Context) error {
 		for c := range query.Link().Conns() {
 			if c.OutputStream().ID() == int(remoteStreamID) {
 				// allocate a new move for the connection
-				moveID := roam.allocMove(c)
+				moveID := mod.allocMove(c)
 				if moveID != -1 {
 					cslq.Encode(query, "c", moveID)
 				}
@@ -116,8 +117,8 @@ func (roam *Roam) servePick(ctx context.Context) error {
 	return nil
 }
 
-func (roam *Roam) serveDrop(ctx context.Context) {
-	port, err := roam.node.Ports.RegisterContext(ctx, portDrop)
+func (mod *Module) serveDrop(ctx context.Context) {
+	port, err := mod.node.Ports.RegisterContext(ctx, portDrop)
 	if err != nil {
 		return
 	}
@@ -135,7 +136,7 @@ func (roam *Roam) serveDrop(ctx context.Context) {
 
 		cslq.Decode(conn, "cs", &moveID, &newOutputID)
 
-		target, found := roam.moves[moveID]
+		target, found := mod.moves[moveID]
 		if !found {
 			conn.Close()
 			continue
@@ -156,9 +157,9 @@ func (roam *Roam) serveDrop(ctx context.Context) {
 	}
 }
 
-func (roam *Roam) optimizeConn(conn *link.Conn) {
+func (mod *Module) optimizeConn(conn *link.Conn) {
 	var remoteID = conn.Link().RemoteIdentity()
-	var peer = roam.node.Peers.Pool.Peer(remoteID)
+	var peer = mod.node.Peers.Pool.Peer(remoteID)
 
 	for {
 		select {
@@ -181,8 +182,8 @@ func (roam *Roam) optimizeConn(conn *link.Conn) {
 				continue
 			}
 
-			if err := roam.move(conn, preferred); err != nil {
-				log.Println(logTag, "move error:", err)
+			if err := mod.move(conn, preferred); err != nil {
+				log.Error("move: %s", err)
 			} else {
 				if current.ConnCount() == 0 {
 					current.SetIdleTimeout(time.Minute)
@@ -192,22 +193,22 @@ func (roam *Roam) optimizeConn(conn *link.Conn) {
 	}
 }
 
-func (roam *Roam) move(conn *link.Conn, dest *link.Link) error {
-	log.Println(logTag, "move", conn.Query(), "from", conn.Link().Network(), "to", dest.Network())
+func (mod *Module) move(conn *link.Conn, dest *link.Link) error {
+	log.Log("moving %s from %s to %s", conn.Query(), conn.Link().Network(), dest.Network())
 
-	moveID, err := roam.init(conn)
+	moveID, err := mod.init(conn)
 	if err != nil {
 		return err
 	}
 
-	return roam.drop(dest, conn, moveID)
+	return mod.drop(dest, conn, moveID)
 }
 
-func (roam *Roam) init(conn *link.Conn) (int, error) {
+func (mod *Module) init(conn *link.Conn) (int, error) {
 	// start transfer on the source link
 	init, err := conn.Link().Query(context.Background(), portPick)
 	if err != nil {
-		log.Println("(transfer) init rejected")
+		log.Error("init rejected (%s)", err)
 		return -1, err
 	}
 	defer init.Close()
@@ -225,7 +226,7 @@ func (roam *Roam) init(conn *link.Conn) (int, error) {
 	return tid, nil
 }
 
-func (roam *Roam) drop(dest *link.Link, conn *link.Conn, moveID int) error {
+func (mod *Module) drop(dest *link.Link, conn *link.Conn, moveID int) error {
 	// allocate input stream on the destination link
 	newInputStream, err := dest.AllocInputStream()
 	if err != nil {
@@ -262,19 +263,19 @@ func (roam *Roam) drop(dest *link.Link, conn *link.Conn, moveID int) error {
 	return nil
 }
 
-func (roam *Roam) unusedMoveID() int {
+func (mod *Module) unusedMoveID() int {
 	for i := 0; i < 255; i++ {
-		if _, ok := roam.moves[i]; !ok {
+		if _, ok := mod.moves[i]; !ok {
 			return i
 		}
 	}
 	return -1
 }
 
-func (roam *Roam) allocMove(conn *link.Conn) int {
-	id := roam.unusedMoveID()
+func (mod *Module) allocMove(conn *link.Conn) int {
+	id := mod.unusedMoveID()
 	if id != -1 {
-		roam.moves[id] = conn
+		mod.moves[id] = conn
 	}
 	return id
 }

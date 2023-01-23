@@ -1,6 +1,11 @@
 package contacts
 
-import "github.com/cryptopunkscc/astrald/node/db"
+import (
+	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/node/db"
+)
+
+var log = _log.Tag("contacts")
 
 const dbTableName = "contacts"
 const dbTableFields = "nodeID string, alias string"

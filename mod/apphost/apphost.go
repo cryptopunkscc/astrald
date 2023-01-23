@@ -12,7 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/proto/apphost"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
-	"log"
 	"net"
 )
 
@@ -52,7 +51,7 @@ func (host *AppHost) Register(portName string, target string) error {
 				if err != nil {
 					q.Reject()
 					port.Close()
-					log.Printf("[apphost] target %s unreachable, closing port %s\n", target, portName)
+					log.Log("target %s unreachable, closing port %s", target, portName)
 					return
 				}
 
@@ -61,14 +60,14 @@ func (host *AppHost) Register(portName string, target string) error {
 				stream := cslq.NewEndec(conn)
 
 				if err := stream.Encode("v [c]c", remoteID, q.Query()); err != nil {
-					log.Println("[apphost] encode error:", err)
+					log.Error("encode: %s", err)
 					return
 				}
 
 				var errorCode int
 
 				if err := stream.Decode("c", &errorCode); err != nil {
-					log.Println("[apphost] decode error:", err)
+					log.Error("decode: %s", err)
 					return
 				}
 
@@ -105,7 +104,7 @@ func (host *AppHost) Query(identity id.Identity, query string) (io.ReadWriteClos
 		err = apphost.ErrTimeout
 
 	default:
-		log.Println("Apphost.Query(): unexpected error:", err)
+		log.Error("query: %s", err)
 		err = apphost.ErrUnexpected
 	}
 

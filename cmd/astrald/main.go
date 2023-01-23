@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	_ "github.com/cryptopunkscc/astrald/infra/tor/system"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/connect"
@@ -14,7 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/optimizer"
 	"github.com/cryptopunkscc/astrald/mod/roam"
 	"github.com/cryptopunkscc/astrald/node"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -61,11 +61,11 @@ func main() {
 	go func() {
 		for {
 			<-sigCh
-			log.Println("shutting down...")
+			log.Log("shutting down...")
 			shutdown()
 
 			<-sigCh
-			log.Println("forcing shutdown...")
+			log.Log("forcing shutdown...")
 			os.Exit(ExitForced)
 		}
 	}()

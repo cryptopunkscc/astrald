@@ -3,9 +3,9 @@ package apphost
 import (
 	"context"
 	"fmt"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/proto/apphost"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -17,6 +17,8 @@ type Module struct {
 	listeners   []net.Listener
 	clientConns chan net.Conn
 }
+
+var log = _log.Tag(ModuleName)
 
 const UnixSocketName = "apphost.sock"
 const DefaultSocketDir = "/var/run/astrald"
@@ -50,7 +52,7 @@ func (mod *Module) Run(ctx context.Context) error {
 					ports: ports,
 				})
 				if err != nil {
-					log.Printf("[apphost:%d] serve error: %s", i, err.Error())
+					log.Error("worker %d serve error: %s", i, err.Error())
 				}
 				conn.Close()
 				cancel()
@@ -65,16 +67,16 @@ func (mod *Module) Run(ctx context.Context) error {
 
 func (mod *Module) accept(ctx context.Context) <-chan net.Conn {
 	if l, err := mod.listenTCP(); err != nil {
-		log.Println("[apphost] tcp listen error:", err)
+		log.Error("tcp listen error: %s", err)
 	} else {
-		log.Println("[apphost] listen", l.Addr())
+		log.Log("listen %s", log.Em(l.Addr().String()))
 		mod.listeners = append(mod.listeners, l)
 	}
 
 	if l, err := mod.listenUnix(); err != nil {
-		log.Println("[apphost] unix listen error:", err)
+		log.Error("unix listen error:", err)
 	} else {
-		log.Println("[apphost] listen", l.Addr())
+		log.Log("listen %s", log.Em(l.Addr().String()))
 		mod.listeners = append(mod.listeners, l)
 	}
 
@@ -125,7 +127,7 @@ func (mod *Module) listenUnix() (net.Listener, error) {
 
 	if info, err := os.Stat(socketPath); err == nil {
 		if !info.Mode().IsRegular() {
-			log.Println("[apphost] stale unix socket found, removing...")
+			log.Log("stale unix socket found, removing...")
 			err := os.Remove(socketPath)
 			if err != nil {
 				return nil, err

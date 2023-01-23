@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 )
 
@@ -14,9 +13,15 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	// Say hello
 	nodeKey := node.identity.PublicKeyHex()
 	if node.Alias() != "" {
-		nodeKey = fmt.Sprintf("%s (%s)", node.Alias(), nodeKey)
+		log.Log("astral node %s%s%s (%s) statrting...",
+			log.Green(),
+			node.Alias(),
+			log.Reset(),
+			log.Em(nodeKey),
+		)
+	} else {
+		log.Log("astral node %s statrting...", log.Em(nodeKey))
 	}
-	log.Printf("astral node %s statrting...", nodeKey)
 
 	var wg sync.WaitGroup
 	var errCh = make(chan error, 32)

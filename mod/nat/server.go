@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"io"
-	"log"
 	"time"
 )
 
@@ -57,7 +56,7 @@ func (mod *Module) runServer(ctx context.Context) error {
 					switch {
 					case errors.Is(err, io.EOF):
 					default:
-						log.Println("[nat] serve error:", err)
+						log.Error("serve: %s", err)
 					}
 				}
 			}()

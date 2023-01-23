@@ -1,6 +1,8 @@
 package nat
 
-import "github.com/cryptopunkscc/astrald/node"
+import (
+	"github.com/cryptopunkscc/astrald/node"
+)
 
 const ModuleName = "nat-tcp"
 

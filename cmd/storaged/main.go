@@ -10,9 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
+	_log "github.com/cryptopunkscc/astrald/log"
 	_store "github.com/cryptopunkscc/astrald/proto/store"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 )
@@ -21,21 +21,23 @@ type Server struct {
 	dataDir string
 }
 
+var log = _log.Tag("storaged")
+
 func (server *Server) Run() error {
-	log.Println("storaged starting...")
+	log.Log("storaged starting...")
 
 	port, err := astral.Listen("storage")
 	if err != nil {
 		return err
 	}
 
-	log.Println("data dir:", server.dataDir)
+	log.Log("data dir: %s", server.dataDir)
 
 	store := NewMetaStore(server.dataDir, os.Args[1:])
 
 	for query := range port.QueryCh() {
 		info, _ := astral.NodeInfo(query.RemoteIdentity())
-		log.Println(info.Name, "connected")
+		log.Log("%s connected", log.Em(info.Name))
 
 		conn, err := query.Accept()
 		if err != nil {
@@ -46,9 +48,9 @@ func (server *Server) Run() error {
 
 			err := _store.Serve(conn, NewAuthStore(conn, store))
 			if (err != nil) && !errors.Is(err, io.EOF) {
-				log.Println("error:", err)
+				log.Error("serve: %s", err)
 			}
-			log.Println(info.Name, "disconnected")
+			log.Log("%s disconnected", log.Em(info.Name))
 		}()
 	}
 

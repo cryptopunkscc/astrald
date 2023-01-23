@@ -2,8 +2,8 @@ package mux
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/log"
 	"io"
-	"log"
 	"strings"
 	"sync"
 )
@@ -73,7 +73,7 @@ func (demux *StreamDemux) run() {
 	case errors.Is(err, io.EOF):
 	case errors.Is(err, errControlStreamClosed):
 	default:
-		log.Println("mux.StreamDemux.run() error:", err)
+		log.Tag("demux").Error("processFrames(): %s", err)
 	}
 }
 

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"modernc.org/ql"
 	"sync"
 )
@@ -14,6 +14,8 @@ type Database struct {
 	mu sync.Mutex
 	*sql.DB
 }
+
+var log = _log.Tag("db")
 
 func NewFileDatabase(dbFile string) (*Database, error) {
 	db, err := sql.Open("ql2", dbFile)
@@ -79,28 +81,11 @@ func (db *Database) getSchema(tx *sql.Tx, tableName string) (schema string, err 
 	return
 }
 
-// EnsureSchema makes sure the provided table has the provided fields. If the table does not exist it will be created.
-// If the table exists with different fields, it will be replaced.
-func (db *Database) EnsureSchema(tableName string, fields string) error {
-	return db.TxDo(func(tx *sql.Tx) error {
-		expected := fmt.Sprintf("CREATE TABLE %s (%s);", tableName, fields)
-		current, err := db.getSchema(tx, tableName)
-
-		if (err != nil) || (current != expected) {
-
-			tx.Exec("DROP TABLE " + tableName)
-			_, err := tx.Exec(expected)
-			return err
-		}
-		return nil
-	})
-}
-
 func (db *Database) CreateTable(tableName string, fields string) error {
 	return db.TxDo(func(tx *sql.Tx) error {
 		query := fmt.Sprintf("CREATE TABLE %s (%s);", tableName, fields)
 
-		log.Println("[db]", query)
+		log.Logv(1, "%s", log.Em(query))
 
 		_, err := tx.Exec(query)
 		return err

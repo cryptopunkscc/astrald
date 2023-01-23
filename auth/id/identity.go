@@ -122,3 +122,8 @@ func (id Identity) IsZero() bool {
 func (id Identity) String() string {
 	return id.PublicKeyHex()
 }
+
+func (id Identity) Fingerprint() string {
+	hex := id.PublicKeyHex()
+	return hex[0:8] + ":" + hex[len(hex)-8:]
+}

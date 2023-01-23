@@ -4,10 +4,10 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/inet"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/linkinfo"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/peers"
-	"log"
 	"time"
 )
 
@@ -18,6 +18,8 @@ type Module struct {
 	node    *node.Node
 	mapping natMapping
 }
+
+var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
 	go func() {
@@ -53,7 +55,7 @@ func (mod *Module) Run(ctx context.Context) error {
 				}
 				m.extAddr = inetAddr
 
-				log.Printf("[nat] NAT mapping candidate: %s\n", m)
+				log.Log("NAT mapping candidate: %s", log.Em(m.String()))
 
 				mod.mapping = m
 
@@ -71,7 +73,7 @@ func (mod *Module) Run(ctx context.Context) error {
 							return
 						}
 						if err != nil {
-							log.Println("[nat] query error:", err)
+							log.Error("query error: %s", err)
 						}
 					}()
 				}

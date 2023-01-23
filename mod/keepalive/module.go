@@ -2,9 +2,8 @@ package keepalive
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/logfmt"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
-	"log"
 )
 
 const portName = "net.keepalive"
@@ -13,7 +12,9 @@ type Module struct {
 	*node.Node
 }
 
-func (m Module) Run(ctx context.Context) error {
+var log = _log.Tag(ModuleName)
+
+func (m *Module) Run(ctx context.Context) error {
 	port, err := m.Ports.RegisterContext(ctx, portName)
 	if err != nil {
 		return err
@@ -32,9 +33,9 @@ func (m Module) Run(ctx context.Context) error {
 
 		// disable timeout on the link
 		conn.Link().SetIdleTimeout(0)
-		log.Printf("[keepalive] timeout disabled for %s link with %s\n",
+		log.Log("timeout disabled for %s over %s",
+			conn.RemoteIdentity(),
 			conn.Link().Network(),
-			logfmt.ID(conn.RemoteIdentity()),
 		)
 	}
 

@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/link"
 	"io"
-	"log"
 	"time"
 )
 
@@ -62,7 +61,7 @@ func (srv *Server) Run(ctx context.Context) (chan *link.Link, error) {
 			case errors.Is(err, context.DeadlineExceeded):
 			case errors.Is(err, context.Canceled):
 			default:
-				log.Println("peers.Server: inbound handshake error:", err)
+				log.Error("inbound handshake error: %s", err)
 			}
 
 		}

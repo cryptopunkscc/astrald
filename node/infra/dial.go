@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
-	"github.com/cryptopunkscc/astrald/log"
 	"strings"
 )
 
@@ -18,12 +17,12 @@ func (i *Infra) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err
 		addr = a
 	}
 
-	i.Logf(log.Debug, "dial %s %s", addr.Network(), addr.String())
+	log.Logv(1, "dial %s %s", log.Em(addr.Network()), addr)
 
 	conn, err = i.dial(ctx, addr)
 
 	if err == nil {
-		i.Logf(log.Debug, "dial %s %s success", addr.Network(), addr.String())
+		log.Infov(1, "dial %s %s success", log.Em(addr.Network()), addr)
 	} else {
 		switch {
 		case strings.Contains(err.Error(), "connection refused"),
@@ -32,10 +31,10 @@ func (i *Infra) Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err
 			errors.Is(err, infra.ErrUnsupportedNetwork),
 			errors.Is(err, context.Canceled),
 			errors.Is(err, context.DeadlineExceeded):
-			i.Logf(log.Debug, "dial %s %s error: %s", addr.Network(), addr.String(), err.Error())
+			log.Errorv(1, "dial %s %s error: %s%s", log.Em(addr.Network()), addr, log.Red(), err.Error())
 
 		default:
-			i.Logf(log.Verbose, "dial %s %s error: %s", addr.Network(), addr.String(), err.Error())
+			log.Error("dial %s %s error: %s%s", log.Em(addr.Network()), addr, log.Red(), err.Error())
 		}
 	}
 

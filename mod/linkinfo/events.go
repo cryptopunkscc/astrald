@@ -2,7 +2,6 @@ package linkinfo
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/link"
 )
 
@@ -12,5 +11,5 @@ type EventLinkInfo struct {
 }
 
 func (e EventLinkInfo) String() string {
-	return fmt.Sprintf("received link info from %s", logfmt.ID(e.Link.RemoteIdentity()))
+	return fmt.Sprintf("received link info from %s", e.Link.RemoteIdentity().Fingerprint())
 }

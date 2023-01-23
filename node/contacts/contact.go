@@ -3,7 +3,6 @@ package contacts
 import (
 	"database/sql"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/logfmt"
 	"github.com/cryptopunkscc/astrald/node/db"
 )
 
@@ -40,7 +39,7 @@ func (c *Contact) DisplayName() string {
 		return c.alias
 	}
 
-	return logfmt.ID(c.identity)
+	return c.identity.Fingerprint()
 }
 
 func (c *Contact) save() error {

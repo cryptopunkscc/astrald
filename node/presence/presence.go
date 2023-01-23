@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
@@ -135,6 +136,8 @@ func (m *Manager) handle(ctx context.Context, ip infra.Presence) {
 		m.remove(hex)
 	})
 
+	log.Tag("presence").Info("%s present on %s", ip.Identity, log.Em(ip.Addr.Network()))
+
 	m.events.Emit(EventIdentityPresent{ip.Identity, ip.Addr})
 }
 
@@ -144,6 +147,8 @@ func (m *Manager) remove(hex string) {
 
 	if e, found := m.entries[hex]; found {
 		delete(m.entries, hex)
+
+		log.Tag("presence").Info("%s gone from %s", e.id, log.Em(e.addr.Network()))
 
 		m.events.Emit(EventIdentityGone{e.id})
 	}

@@ -8,9 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mux"
 	"io"
-	"log"
 	"sync"
 	"time"
 )
@@ -229,7 +229,7 @@ func (link *Link) run() error {
 		err := cslq.Decode(ctl, "v", &q)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				log.Println("link.Link.run() error:", err)
+				log.Error("link decode: %s", err)
 			}
 			return err
 		}
@@ -237,7 +237,7 @@ func (link *Link) run() error {
 		// process it
 		err = link.processQuery(q)
 		if err != nil {
-			log.Println("link.Link.run() error:", err)
+			log.Error("link.processQuery:", err)
 		}
 	}
 }

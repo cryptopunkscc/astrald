@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/hub"
-	"github.com/cryptopunkscc/astrald/log"
 	"time"
 )
 
@@ -34,7 +33,7 @@ func (mod *Module) runServer(ctx context.Context) error {
 			}
 
 			if err := mod.handleRequest(conn); err != nil {
-				log.Println("[linkinfo] error handling request:", err)
+				log.Error("handleRequest: %s", err)
 			}
 
 		case <-ctx.Done():

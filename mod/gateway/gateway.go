@@ -7,10 +7,10 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/infra/gw"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/streams"
-	"log"
 )
 
 const queryConnect = "connect"
@@ -18,6 +18,8 @@ const queryConnect = "connect"
 type Gateway struct {
 	node *node.Node
 }
+
+var log = _log.Tag(ModuleName)
 
 func (mod *Gateway) Run(ctx context.Context) error {
 	port, err := mod.node.Ports.RegisterContext(ctx, gw.PortName)
@@ -34,7 +36,7 @@ func (mod *Gateway) Run(ctx context.Context) error {
 		go func() {
 			if err := mod.handleConn(ctx, conn); err != nil {
 				cslq.Encode(conn, "c", false)
-				log.Println("[gateway] error serving client:", err)
+				log.Error("serve error: %s", err)
 			}
 			defer conn.Close()
 		}()

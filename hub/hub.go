@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
@@ -37,6 +38,8 @@ func (hub *Hub) Register(name string) (*Port, error) {
 
 	// Register the port
 	hub.ports[name] = NewPort(hub, name)
+
+	log.Tag("hub").Infov(1, "port %s registered", log.Em(name))
 
 	hub.events.Emit(EventPortRegistered{name})
 
@@ -118,6 +121,8 @@ func (hub *Hub) release(name string) error {
 
 	close(port.queries)
 	delete(hub.ports, name)
+
+	log.Tag("hub").Infov(1, "port %s released", log.Em(name))
 
 	hub.events.Emit(EventPortReleased{name})
 

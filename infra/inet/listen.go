@@ -3,7 +3,6 @@ package inet
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/infra"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -24,12 +23,12 @@ func (inet *Inet) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 	var output = make(chan infra.Conn)
 	go func() {
 		<-ctx.Done()
-		log.Println("[inet] stop listen tcp", addrStr)
+		log.Log("stop listen tcp %s", addrStr)
 		listener.Close()
 		close(output)
 	}()
 
-	log.Println("[inet] listen tcp", addrStr)
+	log.Log("listen tcp %s", log.Em(addrStr))
 
 	go func() {
 		defer cancel()
@@ -37,7 +36,7 @@ func (inet *Inet) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 			conn, err := listener.Accept()
 			if err != nil {
 				if !strings.Contains(err.Error(), "use of closed network connection") {
-					log.Println("[inet] accept error:", err)
+					log.Error("accept: %s", err)
 				}
 				return
 			}

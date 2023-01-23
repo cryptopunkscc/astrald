@@ -4,32 +4,33 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/peers"
-	"log"
 	"time"
 )
 
 const optimizeDuration = 60 * time.Second
-const logTag = "[optimizer]"
 const concurrency = 8
 
-type Optimizer struct {
+type Module struct {
 	node *node.Node
 }
 
-func (mod *Optimizer) Run(ctx context.Context) error {
+var log = _log.Tag(ModuleName)
+
+func (mod *Module) Run(ctx context.Context) error {
 	for event := range mod.node.Subscribe(ctx) {
 		event := event
 		if event, ok := event.(peers.EventPeerLinked); ok {
-			peerName := mod.node.Contacts.DisplayName(event.Peer.Identity())
+			nodeId := event.Peer.Identity()
 			go func() {
-				log.Println(logTag, "optimizing", peerName)
+				log.Log("optimizing %s", nodeId)
 				if err := mod.Optimize(ctx, event.Peer); err != nil {
-					log.Println(logTag, "optimize", peerName, "error:", err)
+					log.Error("optimize %s: %s", nodeId, err)
 				} else {
-					log.Println(logTag, "done optimizing", peerName)
+					log.Log("done optimizing %s", nodeId)
 				}
 			}()
 		}
@@ -38,7 +39,7 @@ func (mod *Optimizer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Optimizer) Optimize(parent context.Context, peer *peers.Peer) error {
+func (mod *Module) Optimize(parent context.Context, peer *peers.Peer) error {
 	ctx, cancel := context.WithTimeout(parent, optimizeDuration)
 
 	// optimize until peer gets unlinked or optimization period ends

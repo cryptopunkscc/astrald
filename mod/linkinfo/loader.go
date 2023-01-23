@@ -1,6 +1,8 @@
 package linkinfo
 
-import "github.com/cryptopunkscc/astrald/node"
+import (
+	"github.com/cryptopunkscc/astrald/node"
+)
 
 const ModuleName = "linkinfo"
 

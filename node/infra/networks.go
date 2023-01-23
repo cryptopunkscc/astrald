@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
 )
 
@@ -19,7 +18,7 @@ func (i *Infra) setupNetworks(cfg config.Infra) error {
 		if err == nil {
 			i.addNetwork(inet.NetworkName, i.inet)
 		} else {
-			i.Logf(log.Normal, "inet error: %s", err)
+			log.Error("inet: %s", err)
 		}
 	}
 
@@ -29,7 +28,7 @@ func (i *Infra) setupNetworks(cfg config.Infra) error {
 		if err == nil {
 			i.addNetwork(tor.NetworkName, i.tor)
 		} else {
-			i.Logf(log.Normal, "tor error: %s", err)
+			log.Error("tor: %s", err)
 		}
 	}
 
@@ -39,7 +38,7 @@ func (i *Infra) setupNetworks(cfg config.Infra) error {
 		if err == nil {
 			i.addNetwork(gw.NetworkName, i.gateway)
 		} else {
-			i.Logf(log.Normal, "gw error: %s", err)
+			log.Error("gw: %s", err)
 		}
 	}
 
@@ -49,7 +48,7 @@ func (i *Infra) setupNetworks(cfg config.Infra) error {
 			i.bluetooth = bt.Instance
 			i.addNetwork(bt.NetworkName, i.bluetooth)
 		} else {
-			i.Logf(log.Normal, "bluetooth error: adapter unavailable", err)
+			log.Error("bt: adapter unavailable")
 		}
 	}
 

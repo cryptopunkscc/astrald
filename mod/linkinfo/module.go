@@ -2,6 +2,7 @@ package linkinfo
 
 import (
 	"context"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"sync"
 )
@@ -11,6 +12,8 @@ const portName = "linkinfo"
 type Module struct {
 	node *node.Node
 }
+
+var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
 	ctx, abort := context.WithCancel(ctx)

@@ -99,6 +99,7 @@ func (pool *Pool) addLink(l *link.Link) error {
 		}()
 
 		pool.queue = pool.queue.Push(peer)
+		log.Info("%s linked", peer.Identity())
 		pool.events.Emit(EventPeerLinked{Peer: peer, Link: l})
 	}
 
@@ -120,6 +121,7 @@ func (pool *Pool) removeLink(l *link.Link) error {
 
 	if peer.LinkCount() == 0 {
 		pool.deletePeer(peer.Identity())
+		log.Info("%s unlinked", peer.Identity())
 		pool.events.Emit(EventPeerUnlinked{Peer: peer})
 	}
 

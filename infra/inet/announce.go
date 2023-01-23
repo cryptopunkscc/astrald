@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/ip"
-	"log"
 	"net"
 	"time"
 )
@@ -24,7 +23,7 @@ func (inet *Inet) Announce(ctx context.Context) error {
 		return err
 	}
 
-	log.Println("[inet] announcing presence")
+	log.Log("announcing presence")
 
 	go func() {
 		for {
@@ -35,7 +34,7 @@ func (inet *Inet) Announce(ctx context.Context) error {
 					Port:     inet.getListenPort(),
 					Flags:    flagNone,
 				}); err != nil {
-					log.Println("[inet] announce error:", err)
+					log.Error("announce: %s", err)
 				}
 			case <-ctx.Done():
 				return

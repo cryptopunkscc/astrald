@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"io"
-	"log"
 	"sync"
 )
 
@@ -50,7 +49,7 @@ func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan infra.C
 						case errors.Is(err, context.DeadlineExceeded):
 						case errors.Is(err, context.Canceled):
 						default:
-							log.Println("peers.ConcurrentHandshake.Outbound(): outbound handshake error:", err)
+							log.Error("outbound handshake: %s", err)
 						}
 						conn.Close()
 						continue

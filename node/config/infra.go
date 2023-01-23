@@ -8,7 +8,6 @@ import (
 
 // Infra holds configs for individual infrastructural networks
 type Infra struct {
-	LogLevel    int         `yaml:"log_level"`
 	Networks    []string    `yaml:"networks"`
 	Gateways    []string    `yaml:"gateways"`
 	StickyNodes []string    `yaml:"sticky_nodes"`

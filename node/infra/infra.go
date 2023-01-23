@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
-	"github.com/cryptopunkscc/astrald/log"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"io"
 	"strings"
@@ -34,6 +34,8 @@ type Infra struct {
 	logLevel  int
 }
 
+var log = _log.Tag("infra")
+
 func New(localID id.Identity, cfg config.Infra, querier Querier, rootDir string) (*Infra, error) {
 	var i = &Infra{
 		localID:  localID,
@@ -42,17 +44,16 @@ func New(localID id.Identity, cfg config.Infra, querier Querier, rootDir string)
 		gateways: make([]infra.AddrSpec, 0),
 		networks: make(map[string]infra.Network),
 		config:   cfg,
-		logLevel: cfg.LogLevel,
 	}
 
 	// static gateways
 	if err := i.setupStaticGateways(i.config); err != nil {
-		i.Logf(log.Normal, "setupStaticGateways: %s", err)
+		log.Error("setupStaticGateways: %s", err)
 	}
 
 	// setup networks
 	if err := i.setupNetworks(i.config); err != nil {
-		i.Logf(log.Normal, "setupNetworks: %s", err)
+		log.Error("setupNetworks: %s", err)
 	}
 
 	return i, nil
@@ -65,7 +66,7 @@ func (i *Infra) Run(ctx context.Context) error {
 	for n := range i.networks {
 		list = append(list, n)
 	}
-	i.Logf(log.Normal, "networks: %s", strings.Join(list, " "))
+	log.Log("enabled networks: %s", strings.Join(list, " "))
 
 	for name, net := range i.networks {
 		name, net := name, net
@@ -73,9 +74,9 @@ func (i *Infra) Run(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 			if err := net.Run(ctx); err != nil {
-				i.Logf(log.Normal, "network %s error: %s", name, err.Error())
+				log.Error("network %s error: %s", log.Em(name), err.Error())
 			} else {
-				i.Logf(log.Debug, "network %s done", name)
+				log.Log("network %s done", log.Em(name))
 			}
 		}()
 	}
@@ -130,19 +131,11 @@ func (i *Infra) Inet() *inet.Inet {
 	return i.inet
 }
 
-func (i *Infra) Logf(level int, fmt string, args ...interface{}) {
-	if level > i.logLevel {
-		return
-	}
-
-	log.Printf("[infra] "+fmt, args...)
-}
-
 func (i *Infra) setupStaticGateways(cfg config.Infra) error {
 	for _, gate := range cfg.Gateways {
 		gateID, err := id.ParsePublicKeyHex(gate)
 		if err != nil {
-			i.Logf(log.Normal, "error parsing gateway %s: %s", gate, err.Error())
+			log.Error("error parsing gateway %s: %s", gate, err.Error())
 			continue
 		}
 

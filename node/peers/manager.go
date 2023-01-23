@@ -11,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"io"
-	"log"
 	"sync"
 )
 
@@ -59,10 +58,11 @@ func (m *Manager) Run(ctx context.Context) error {
 		return err
 	}
 
+out:
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			break out
 
 		case l := <-linksFromServer:
 			m.AddLink(link.New(l))
@@ -71,6 +71,13 @@ func (m *Manager) Run(ctx context.Context) error {
 			go m.runLink(ctx, l)
 		}
 	}
+
+	for peer := range m.Pool.Peers(nil) {
+		peer.Unlink()
+		<-peer.Wait()
+	}
+
+	return nil
 }
 
 func (m *Manager) Queries() <-chan *link.Query {
@@ -189,7 +196,7 @@ func (m *Manager) runLink(ctx context.Context, l *link.Link) (err error) {
 		link.ErrIdleTimeout:
 
 	default:
-		log.Println("link error:", err)
+		log.Error("link error: %s", err)
 	}
 
 	return

@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
-	"log"
 	"net"
 	"strconv"
 	"sync"
@@ -32,7 +31,7 @@ func New(config Config, localID id.Identity) (*Inet, error) {
 	for _, addrStr := range config.PublicAddr {
 		addr, err := Parse(addrStr)
 		if err != nil {
-			log.Println("inet: parse error:", err)
+			log.Error("parse error: %s", err)
 			continue
 		}
 
@@ -40,7 +39,7 @@ func New(config Config, localID id.Identity) (*Inet, error) {
 			Addr:   addr,
 			Global: true,
 		})
-		log.Println("inet: added", addr)
+		log.Log("public addr: %s", addr)
 	}
 
 	return inet, nil

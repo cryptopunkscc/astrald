@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/link"
 	nlink "github.com/cryptopunkscc/astrald/node/link"
-	"log"
 	"time"
 )
 
@@ -37,7 +36,7 @@ func (mod *Module) query(ctx context.Context, remoteID id.Identity) error {
 	triesLeft := dialRetries
 
 	for {
-		log.Println("[nat] reties left:", triesLeft)
+		log.Logv(1, "reties left:", triesLeft)
 		// exchange addresses
 		var buf []byte
 		if err := c.Encode("[c]c[c]c", cmdAddr, mod.mapping.extAddr.Pack()); err != nil {
@@ -63,7 +62,12 @@ func (mod *Module) query(ctx context.Context, remoteID id.Identity) error {
 		}
 		var ping = time.Now().Sub(pingStart) / pingCount
 
-		log.Printf("[nat] ping %s avg %dms", remoteAddr.String(), ping.Milliseconds())
+		log.Log("ping %s avg %s%dms%s",
+			remoteAddr,
+			log.EmColor(),
+			ping.Milliseconds(),
+			log.Reset(),
+		)
 
 		// signal
 		if ping < clockSyncThreshold {
@@ -79,7 +83,7 @@ func (mod *Module) query(ctx context.Context, remoteID id.Identity) error {
 			case <-time.After(ping / 2):
 			}
 		} else {
-			log.Println("[nat] using clock-based signalling due to high latency")
+			log.Logv(1, "using clock-based signalling due to high latency")
 
 			startAt := time.Now().Add((2 * ping) + (2 * time.Second)).Unix()
 

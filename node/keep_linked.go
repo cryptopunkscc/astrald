@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"log"
 	"sync"
 	"time"
 )
@@ -20,6 +19,8 @@ func (node *Node) keepNodeLinked(ctx context.Context, nodeID id.Identity) error 
 	var best *link.Link
 
 	newLinksCh := node.subscribeNewLinksWithNode(ctx, nodeID)
+
+	log.Logv(1, "will keep %s linked", nodeID)
 
 	for {
 		newBest, err := node.Peers.Link(ctx, nodeID)
@@ -83,7 +84,7 @@ func (node *Node) keepStickyNodesLinked(ctx context.Context) error {
 	for _, sn := range node.Config.Infra.StickyNodes {
 		nodeID, err := id.ParsePublicKeyHex(sn)
 		if err != nil {
-			log.Println("sticky nodes: error parsing", sn, "error:", err)
+			log.Error("parse public key: %s", err)
 			continue
 		}
 

@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"log"
 	"strings"
 	"sync"
 )
@@ -18,18 +17,20 @@ type Module interface {
 
 type ModuleManager struct {
 	modules map[string]Module
+	node    *Node
 }
 
 func NewModuleManager(node *Node, loaders []ModuleLoader) (*ModuleManager, error) {
 	m := &ModuleManager{
 		modules: make(map[string]Module),
+		node:    node,
 	}
 
 	for _, loader := range loaders {
 		name := loader.Name()
 		mod, err := loader.Load(node)
 		if err != nil {
-			log.Printf("error loading module %s: %s", name, err.Error())
+			log.Log("error loading module %s: %s", log.Em(name))
 			continue
 		}
 		m.modules[name] = mod
@@ -46,7 +47,8 @@ func (manager *ModuleManager) Run(ctx context.Context) error {
 	for name, _ := range manager.modules {
 		modNames = append(modNames, name)
 	}
-	log.Println("modules:", strings.Join(modNames, " "))
+
+	log.Log("modules: %s", strings.Join(modNames, " "))
 
 	for name, mod := range manager.modules {
 		name, mod := name, mod
@@ -56,7 +58,12 @@ func (manager *ModuleManager) Run(ctx context.Context) error {
 
 			err := mod.Run(ctx)
 			if err != nil {
-				log.Printf("module %s ended with error: %s", name, err.Error())
+				log.Error("module %s ended with error: %s%s%s",
+					log.Em(name),
+					log.Red(),
+					err,
+					log.Reset(),
+				)
 			}
 		}()
 	}

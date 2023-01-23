@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/infra"
-	"log"
 )
 
 var _ infra.Announcer = &Infra{}
@@ -19,7 +18,7 @@ func (i *Infra) Announce(ctx context.Context) error {
 		}
 
 		if err := announcer.Announce(ctx); err != nil {
-			log.Println("[announce] error:", err)
+			log.Error("announce: %s", err)
 		} else {
 			count++
 		}

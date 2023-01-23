@@ -2,16 +2,18 @@ package contacts
 
 import (
 	"context"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	proto "github.com/cryptopunkscc/astrald/proto/contacts"
 	"io"
-	"log"
 )
 
 type Contacts struct {
 	node *node.Node
 }
+
+var log = _log.Tag("mod.contacts")
 
 func (mod *Contacts) Run(ctx context.Context) error {
 	port, err := mod.node.Ports.Register(proto.Port)
@@ -24,7 +26,7 @@ func (mod *Contacts) Run(ctx context.Context) error {
 		for query := range port.Queries() {
 			conn, err := query.Accept()
 			if err != nil {
-				log.Println("Cannot accept query", err)
+				log.Error("accept: %s", err)
 				continue
 			}
 			go func(conn io.ReadWriteCloser) {

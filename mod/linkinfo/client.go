@@ -7,7 +7,6 @@ import (
 	alink "github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"io"
-	"log"
 	"time"
 )
 
@@ -18,7 +17,7 @@ func (mod *Module) runClient(ctx context.Context) error {
 			go func() {
 				if err := mod.processEvent(ctx, event); err != nil {
 					if !errors.Is(err, alink.ErrRejected) {
-						log.Println("[linkinfo] query error:")
+						log.Error("query: %s", err)
 					}
 				}
 			}()

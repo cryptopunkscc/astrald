@@ -5,8 +5,8 @@ import (
 	bine "github.com/cretz/bine/tor"
 	"github.com/cretz/bine/torutil/ed25519"
 	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/ipsn/go-libtor"
-	"log"
 	"net"
 	"os"
 )
@@ -59,16 +59,17 @@ func (b *Backend) Run(ctx context.Context, config tor.Config) error {
 	)
 
 	if err != nil {
-		log.Panicf("Failed to start tor: %v", err)
+		log.Error("bine.Start: %s", err)
 		return err
 	}
 
-	go func() {
-		<-ctx.Done()
-		log.Println("CTX DONE", b.tor.Close())
-	}()
+	if err := b.tor.EnableNetwork(ctx, true); err != nil {
+		return err
+	}
 
-	return b.tor.EnableNetwork(ctx, true)
+	<-ctx.Done()
+
+	return b.tor.Close()
 }
 
 func init() {

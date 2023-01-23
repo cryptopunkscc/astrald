@@ -7,7 +7,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/bt/bluez"
-	"github.com/cryptopunkscc/astrald/log"
 	"golang.org/x/sys/unix"
 	"syscall"
 )
@@ -27,13 +26,13 @@ func (bt *Bluetooth) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 
 		err = b.RegisterProfile(bluez.UUID_SPP)
 		if err != nil {
-			debugf("(%s) RegisterProfile error: %s\n", NetworkName, err.Error())
+			log.Errorv(1, "RegisterProfile: %s", err.Error())
 			return
 		}
 
 		btSocket, err := unix.Socket(syscall.AF_BLUETOOTH, syscall.SOCK_STREAM, unix.BTPROTO_RFCOMM)
 		if err != nil {
-			debugf("(%s) unix.Socket error: %s\n", NetworkName, err.Error())
+			log.Errorv(1, "unix.Socket: %s", err.Error())
 			return
 		}
 
@@ -44,13 +43,13 @@ func (bt *Bluetooth) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 
 		err = unix.Bind(btSocket, addr)
 		if err != nil {
-			debugf("(%s) unix.Bind error: %s\n", NetworkName, err.Error())
+			log.Errorv(1, "unix.Bind: %s", err.Error())
 			return
 		}
 
 		err = unix.Listen(btSocket, 1)
 		if err != nil {
-			debugf("(%s) unix.Listen error: %s\n", NetworkName, err.Error())
+			log.Errorv(1, " unix.Listen: %s", err.Error())
 			return
 		}
 
@@ -58,7 +57,7 @@ func (bt *Bluetooth) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 		for _, as := range bt.Addresses() {
 			addrs = append(addrs, as.String())
 		}
-		log.Printf("(%s) listen %s\n", NetworkName, addrs)
+		log.Logv(1, "listen %s", addrs)
 
 		go func() {
 			<-ctx.Done()
@@ -70,15 +69,15 @@ func (bt *Bluetooth) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 		for {
 			nfd, sa, err := unix.Accept(btSocket)
 			if err != nil {
-				debugf("(%s) unix.Accept error: %s\n", NetworkName, err.Error())
+				log.Errorv(1, "unix.Accept: %s", err.Error())
 				return
 			}
 
 			remoteAddr, _ := Unpack(sa.(*unix.SockaddrRFCOMM).Addr[:])
 
-			log.Printf("(%s) accepted %s\n",
-				NetworkName,
-				remoteAddr.String())
+			log.Log("accepted %s %s",
+				log.Em(NetworkName),
+				remoteAddr)
 
 			output <- Conn{
 				nfd:        nfd,

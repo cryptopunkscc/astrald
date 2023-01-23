@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/db"
@@ -13,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/peers"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"github.com/cryptopunkscc/astrald/node/tracker"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -40,9 +40,13 @@ type Node struct {
 	rootDir string
 }
 
+var log = _log.Tag("node")
+
 func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	var err error
-	var node = &Node{rootDir: rootDir}
+	var node = &Node{
+		rootDir: rootDir,
+	}
 
 	// load config
 	filePath := filepath.Join(rootDir, configFileName)
@@ -51,11 +55,16 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 		return nil, fmt.Errorf("error loading config: %w", err)
 	}
 
+	for tag, level := range node.Config.Log.TagLevels {
+		_log.SetTagLevel(tag, level)
+	}
+	_log.HideDate = node.Config.Log.HideDate
+
 	// setup database
 	var dbInit bool
 	dbFile := filepath.Join(rootDir, dbFileName)
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
-		log.Println("creating database at", dbFile)
+		log.Log("creating database at %s", dbFile)
 		dbInit = true
 	}
 
@@ -73,7 +82,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 		}
 
 		if err := os.Chmod(dbFile, 0600); err != nil {
-			log.Println("cannot set 0600 mode on the database file:", err)
+			log.Error("cannot set 0600 mode on the database file: %s", err)
 		}
 	}
 
@@ -107,6 +116,17 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	_log.SetFormatter(id.Identity{}, func(v interface{}) string {
+		identity := v.(id.Identity)
+		if c, err := node.Contacts.Find(identity); err == nil {
+			if c.Alias() != "" {
+				return log.Cyan() + c.Alias() + log.Reset()
+			}
+		}
+
+		return log.Green() + identity.Fingerprint() + log.Reset()
+	})
 
 	// peer manager
 	node.Peers, err = peers.NewManager(node.identity, node.Infra, node.Tracker, &node.events)

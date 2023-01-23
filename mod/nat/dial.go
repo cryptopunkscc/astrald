@@ -6,12 +6,11 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/node/peers"
-	"log"
 	"time"
 )
 
 func (mod *Module) makeLink(ctx context.Context, remoteAddr inet.Addr, remoteID id.Identity) (conn auth.Conn, err error) {
-	log.Printf("[nat] dial %s\n", remoteAddr.String())
+	log.Logv(1, "dial %s", remoteAddr)
 
 	startTime := time.Now()
 	dialCtx, _ := context.WithTimeout(ctx, dialTimeout)
@@ -19,11 +18,11 @@ func (mod *Module) makeLink(ctx context.Context, remoteAddr inet.Addr, remoteID 
 	dialTime := float64(time.Since(startTime).Microseconds()) / 1000.0
 
 	if err != nil {
-		log.Printf("[nat] dial %s error after %.3fms: %s\n", remoteAddr.String(), dialTime, err)
+		log.Errorv(1, "dial %s after %.3fms: %s", remoteAddr, dialTime, err)
 		return nil, err
 	}
 
-	log.Printf("[nat] dial %s success after %.3fms!\n", remoteAddr.String(), dialTime)
+	log.Info("dial %s success after %.3fms!", remoteAddr, dialTime)
 
 	var authed auth.Conn
 
@@ -35,12 +34,12 @@ func (mod *Module) makeLink(ctx context.Context, remoteAddr inet.Addr, remoteID 
 	}
 
 	if err != nil {
-		log.Printf("[nat] handshake error: %s\n", err.Error())
+		log.Error("handshake error: %s", err)
 		newConn.Close()
 		return nil, err
 	}
 
-	log.Printf("[nat] successfully traversed via %s\n", remoteAddr.String())
+	log.Info("successfully traversed with %s via %s", remoteID, remoteAddr)
 
 	return authed, nil
 }

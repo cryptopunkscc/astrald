@@ -2,9 +2,9 @@ package astral
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
-	"log"
 )
 
 func handlerLoader(name string, handlers Handlers) node.ModuleLoader {
@@ -64,7 +64,7 @@ func (r handlersModule) Run(ctx context.Context) error {
 			for q := range port.Queries() {
 				conn, err := q.Accept()
 				if err != nil {
-					log.Println("Cannot accept query", err)
+					log.Error("accept query: %s", err)
 					continue
 				}
 				finish := make(chan struct{})
