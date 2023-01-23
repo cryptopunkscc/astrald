@@ -33,6 +33,7 @@ const fullTimestamp = "2006-01-02 15:04:05.000"
 const shortTimestamp = "15:04:05.000"
 
 var HideDate bool
+var LogLevel int
 
 func Sformat(format string, v ...interface{}) string {
 	return instance.Sformat(format, v...)

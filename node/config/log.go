@@ -3,6 +3,7 @@ package config
 type Log struct {
 	IncludeEvents []string       `yaml:"include_events"`
 	ExcludeEvents []string       `yaml:"exclude_events"`
+	Level         int            `yaml:"level"`
 	TagLevels     map[string]int `yaml:"tag_levels"`
 	HideDate      bool           `yaml:"hide_date"`
 }

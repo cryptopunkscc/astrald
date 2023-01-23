@@ -59,6 +59,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 		_log.SetTagLevel(tag, level)
 	}
 	_log.HideDate = node.Config.Log.HideDate
+	_log.LogLevel = node.Config.Log.Level
 
 	// setup database
 	var dbInit bool
