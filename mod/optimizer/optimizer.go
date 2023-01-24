@@ -21,7 +21,7 @@ type Module struct {
 var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
-	for event := range mod.node.Subscribe(ctx) {
+	for event := range mod.node.Events.Subscribe(ctx) {
 		event := event
 		if event, ok := event.(peers.EventPeerLinked); ok {
 			nodeId := event.Peer.Identity()
