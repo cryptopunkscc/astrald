@@ -55,7 +55,7 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) monitorConnections(ctx context.Context) {
-	for event := range mod.node.Subscribe(ctx) {
+	for event := range mod.node.Events.Subscribe(ctx) {
 		// skip other events
 		e, ok := event.(link.EventConnEstablished)
 		if !ok {
@@ -159,7 +159,7 @@ func (mod *Module) serveDrop(ctx context.Context) {
 
 func (mod *Module) optimizeConn(conn *link.Conn) {
 	var remoteID = conn.Link().RemoteIdentity()
-	var peer = mod.node.Peers.Pool.Peer(remoteID)
+	var peer = mod.node.Peers.Find(remoteID)
 
 	for {
 		select {

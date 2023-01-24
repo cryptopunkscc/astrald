@@ -17,20 +17,25 @@ import (
 const concurrency = 16
 
 type Manager struct {
-	Pool   *Pool
 	Server *Server
+	Events event.Queue
 
+	pool      *Pool
 	localID   id.Identity
 	tracker   *tracker.Tracker
 	infra     *infra.Infra
 	linkers   map[string]*Linker
 	mu        sync.Mutex
-	events    event.Queue
 	links     chan *alink.Link
 	linkQueue chan *link.Link
 }
 
-func NewManager(localID id.Identity, infra *infra.Infra, tracker *tracker.Tracker, eventParent *event.Queue) (*Manager, error) {
+func NewManager(
+	localID id.Identity,
+	infra *infra.Infra,
+	tracker *tracker.Tracker,
+	eventParent *event.Queue,
+) (*Manager, error) {
 	var err error
 
 	m := &Manager{
@@ -42,8 +47,8 @@ func NewManager(localID id.Identity, infra *infra.Infra, tracker *tracker.Tracke
 		linkQueue: make(chan *link.Link, 16),
 	}
 
-	m.events.SetParent(eventParent)
-	m.Pool = NewPool(localID, &m.events)
+	m.Events.SetParent(eventParent)
+	m.pool = newPool(localID, &m.Events)
 	m.Server, err = newServer(localID, infra)
 	if err != nil {
 		return nil, err
@@ -52,6 +57,7 @@ func NewManager(localID id.Identity, infra *infra.Infra, tracker *tracker.Tracke
 	return m, nil
 }
 
+// Run runs the manager until the context is done.
 func (m *Manager) Run(ctx context.Context) error {
 	linksFromServer, err := m.Server.Run(ctx)
 	if err != nil {
@@ -72,20 +78,16 @@ out:
 		}
 	}
 
-	for peer := range m.Pool.Peers(nil) {
+	// unlink all peers
+	for peer := range m.All(nil) {
 		peer.Unlink()
-		<-peer.Wait()
 	}
 
 	return nil
 }
 
 func (m *Manager) Queries() <-chan *link.Query {
-	return m.Pool.Queries()
-}
-
-func (m *Manager) Events() *event.Queue {
-	return &m.events
+	return m.pool.Queries()
 }
 
 func (m *Manager) AddLink(l *link.Link) error {
@@ -110,8 +112,20 @@ func (m *Manager) Linkers() <-chan *Linker {
 	return ch
 }
 
-func (m *Manager) Link(ctx context.Context, remoteID id.Identity) (*link.Link, error) {
-	linker, isNew := m.getLinker(remoteID)
+// All returns a channel populated with all currently linked peers. If ctx is not nil, the channel will keep
+// receiving peers that get linked until ctx is done.
+func (m *Manager) All(ctx context.Context) <-chan *Peer {
+	return m.pool.Peers(ctx)
+}
+
+// Find returns the peer or nil if it's not linked.
+func (m *Manager) Find(nodeID id.Identity) *Peer {
+	return m.pool.Peer(nodeID)
+}
+
+// Link returns a link with the node. If the node is not linked, it will attempt to link to it.
+func (m *Manager) Link(ctx context.Context, nodeID id.Identity) (*link.Link, error) {
+	linker, isNew := m.getLinker(nodeID)
 
 	if !isNew {
 		select {
@@ -142,12 +156,12 @@ func (m *Manager) Link(ctx context.Context, remoteID id.Identity) (*link.Link, e
 	// observe external link sources
 	go func() {
 		defer wg.Done()
-		for e := range m.events.Subscribe(ctx) {
+		for e := range m.Events.Subscribe(ctx) {
 			e, ok := e.(link.EventLinkEstablished)
 			if !ok {
 				continue
 			}
-			if !e.Link.RemoteIdentity().IsEqual(remoteID) {
+			if !e.Link.RemoteIdentity().IsEqual(nodeID) {
 				continue
 			}
 
@@ -159,7 +173,7 @@ func (m *Manager) Link(ctx context.Context, remoteID id.Identity) (*link.Link, e
 	// try to make a new link
 	go func() {
 		defer wg.Done()
-		l, err := m.getOrMakeLink(ctx, remoteID)
+		l, err := m.getOrMakeLink(ctx, nodeID)
 		ch <- res{l, err}
 	}()
 
@@ -171,13 +185,13 @@ func (m *Manager) Link(ctx context.Context, remoteID id.Identity) (*link.Link, e
 	done()
 	wg.Wait()
 	close(ch)
-	m.deleteLinker(remoteID)
+	m.deleteLinker(nodeID)
 
 	return linker.link, linker.err
 }
 
 func (m *Manager) runLink(ctx context.Context, l *link.Link) (err error) {
-	err = m.Pool.addLink(l)
+	err = m.pool.addLink(l)
 	if err != nil {
 		l.Close()
 		return
@@ -185,7 +199,7 @@ func (m *Manager) runLink(ctx context.Context, l *link.Link) (err error) {
 
 	err = l.Run(ctx)
 
-	m.Pool.removeLink(l)
+	m.pool.removeLink(l)
 
 	switch err {
 	case nil, // ignore expected errors
@@ -234,7 +248,7 @@ func (m *Manager) deleteLinker(remoteID id.Identity) error {
 
 func (m *Manager) getOrMakeLink(ctx context.Context, remoteID id.Identity) (*link.Link, error) {
 	// check if peer is already connected
-	if peer := m.Pool.Peer(remoteID); peer != nil {
+	if peer := m.pool.Peer(remoteID); peer != nil {
 		if l := peer.PreferredLink(); l != nil {
 			return l, nil
 		}

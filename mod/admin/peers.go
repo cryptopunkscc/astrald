@@ -10,14 +10,14 @@ import (
 )
 
 func peers(w io.ReadWriter, node *node.Node, _ []string) error {
-	for peer := range node.Peers.Pool.Peers(nil) {
+	for peer := range node.Peers.All(nil) {
 		peerName := node.Contacts.DisplayName(peer.Identity())
 
 		fmt.Fprintf(w, "peer %s (idle %s)\n",
 			peerName,
 			peer.Idle().Round(time.Second),
 		)
-		for link := range peer.Links() {
+		for _, link := range peer.Links() {
 			remoteAddr := link.RemoteAddr().String()
 
 			if gwAddr, ok := link.RemoteAddr().(gw.Addr); ok {

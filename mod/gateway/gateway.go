@@ -68,7 +68,7 @@ func (mod *Gateway) handleConn(ctx context.Context, conn *hub.Conn) error {
 			return err
 		}
 	} else {
-		peer := mod.node.Peers.Pool.Peer(nodeID)
+		peer := mod.node.Peers.Find(nodeID)
 		if peer == nil {
 			return errors.New("node unavailable")
 		}

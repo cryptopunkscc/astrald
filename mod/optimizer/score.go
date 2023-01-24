@@ -24,7 +24,7 @@ func scoreAddr(addr infra.Addr) int {
 }
 
 func scorePeer(peer *peers.Peer) (best int) {
-	for link := range peer.Links() {
+	for _, link := range peer.Links() {
 		score := scoreAddr(link.RemoteAddr())
 		if score > best {
 			best = score

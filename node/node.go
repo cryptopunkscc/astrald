@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
@@ -24,6 +23,7 @@ const dbFileName = "astrald.db"
 const configFileName = "astrald.conf"
 
 type Node struct {
+	Events   event.Queue
 	Config   config.Config
 	Database *db.Database
 	identity id.Identity
@@ -36,7 +36,6 @@ type Node struct {
 	Peers    *peers.Manager
 	Presence *presence.Manager
 
-	events  event.Queue
 	rootDir string
 }
 
@@ -93,7 +92,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	}
 
 	// hub
-	node.Ports = hub.New(&node.events)
+	node.Ports = hub.New(&node.Events)
 
 	// infrastructure
 	node.Infra, err = infra.New(
@@ -113,7 +112,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	}
 
 	// contacts
-	node.Contacts, err = contacts.New(node.Database, &node.events)
+	node.Contacts, err = contacts.New(node.Database, &node.Events)
 	if err != nil {
 		return nil, err
 	}
@@ -130,13 +129,13 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	})
 
 	// peer manager
-	node.Peers, err = peers.NewManager(node.identity, node.Infra, node.Tracker, &node.events)
+	node.Peers, err = peers.NewManager(node.identity, node.Infra, node.Tracker, &node.Events)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
 	}
 
 	// presence
-	node.Presence, err = presence.NewManager(node.Infra, &node.events)
+	node.Presence, err = presence.NewManager(node.Infra, &node.Events)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up presence: %w", err)
 	}
@@ -160,12 +159,4 @@ func (node *Node) Identity() id.Identity {
 
 func (node *Node) Alias() string {
 	return node.Config.GetAlias()
-}
-
-func (node *Node) Subscribe(ctx context.Context) <-chan event.Event {
-	return node.events.Subscribe(ctx)
-}
-
-func (node *Node) Emit(e event.Event) {
-	node.events.Emit(e)
 }

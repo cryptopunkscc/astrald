@@ -9,8 +9,9 @@ import (
 
 type SelectFunc func(current *Link, next *Link) *Link
 
-func Select(ch <-chan *Link, selectFunc SelectFunc) (selected *Link) {
-	for next := range ch {
+// Select selects a link from the link array using the provided select function.
+func Select(links []*Link, selectFunc SelectFunc) (selected *Link) {
+	for _, next := range links {
 		if selected == nil {
 			selected = next
 			continue
@@ -20,7 +21,8 @@ func Select(ch <-chan *Link, selectFunc SelectFunc) (selected *Link) {
 	return
 }
 
-func LowestRoundTrip(current *Link, next *Link) *Link {
+// LowestPing selects the link with the lowest ping
+func LowestPing(current *Link, next *Link) *Link {
 	if next.Ping() < current.Ping() {
 		return next
 	}
@@ -28,6 +30,7 @@ func LowestRoundTrip(current *Link, next *Link) *Link {
 	return current
 }
 
+// MostRecent selects the link with the shortest idle duration
 func MostRecent(current *Link, next *Link) *Link {
 	if next.Idle() < current.Idle() {
 		return next
@@ -36,6 +39,7 @@ func MostRecent(current *Link, next *Link) *Link {
 	return current
 }
 
+// BestQuality selects the best available link.
 func BestQuality(current *Link, next *Link) *Link {
 	if netPrio(current) > netPrio(next) {
 		return current

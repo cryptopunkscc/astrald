@@ -19,7 +19,7 @@ type Pool struct {
 	events  event.Queue
 }
 
-func NewPool(localID id.Identity, eventParent *event.Queue) *Pool {
+func newPool(localID id.Identity, eventParent *event.Queue) *Pool {
 	p := &Pool{
 		id:      localID,
 		peers:   make(map[string]*Peer),
@@ -119,7 +119,7 @@ func (pool *Pool) removeLink(l *link.Link) error {
 		return err
 	}
 
-	if peer.LinkCount() == 0 {
+	if len(peer.Links()) == 0 {
 		pool.deletePeer(peer.Identity())
 		log.Info("%s unlinked", peer.Identity())
 		pool.events.Emit(EventPeerUnlinked{Peer: peer})
@@ -135,7 +135,7 @@ func (pool *Pool) createPeer(nodeID id.Identity) (*Peer, bool) {
 		return peer, false
 	}
 
-	pool.peers[hexID] = NewPeer(nodeID, &pool.events)
+	pool.peers[hexID] = newPeer(nodeID, &pool.events)
 
 	return pool.peers[hexID], true
 }

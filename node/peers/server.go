@@ -8,10 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/link"
 	"io"
-	"time"
 )
-
-const HandshakeTimeout = 15 * time.Second
 
 type Server struct {
 	localID  id.Identity
@@ -25,7 +22,7 @@ func newServer(localID id.Identity, listener infra.Listener) (*Server, error) {
 	srv := &Server{
 		localID:  localID,
 		listener: listener,
-		conns:    make(chan infra.Conn, 8),
+		conns:    make(chan infra.Conn, serverConnQueueLen),
 	}
 
 	return srv, nil

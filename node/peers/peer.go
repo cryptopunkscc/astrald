@@ -1,8 +1,6 @@
 package peers
 
 import (
-	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -10,19 +8,19 @@ import (
 	"time"
 )
 
-const MaxPeerLinks = 8
-
 type Peer struct {
-	id           id.Identity
-	links        map[*link.Link]struct{}
-	queries      chan *link.Query
-	mu           sync.Mutex
-	events       event.Queue
-	done         chan struct{}
-	disconnected bool
+	Events event.Queue
+
+	id       id.Identity
+	links    map[*link.Link]struct{}
+	queries  chan *link.Query
+	done     chan struct{}
+	unlinked bool
+	mu       sync.Mutex
 }
 
-func NewPeer(id id.Identity, eventParent *event.Queue) *Peer {
+// newPeer returns a new Peer instance.
+func newPeer(id id.Identity, eventParent *event.Queue) *Peer {
 	p := &Peer{
 		id:      id,
 		links:   make(map[*link.Link]struct{}),
@@ -30,19 +28,60 @@ func NewPeer(id id.Identity, eventParent *event.Queue) *Peer {
 		done:    make(chan struct{}),
 	}
 
-	p.events.SetParent(eventParent)
+	p.Events.SetParent(eventParent)
 
 	return p
 }
 
+// Identity returns the identity of the peer.
 func (peer *Peer) Identity() id.Identity {
 	return peer.id
 }
 
+// Queries returns a channel receiving peer queries. The channel will be closed when the peer gets unlinked.
 func (peer *Peer) Queries() <-chan *link.Query {
 	return peer.queries
 }
 
+// Links retruns an array of peer's links.
+func (peer *Peer) Links() []*link.Link {
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
+	links := make([]*link.Link, 0, len(peer.links))
+	for l := range peer.links {
+		links = append(links, l)
+	}
+
+	return links
+}
+
+// PreferredLink returns the preferred link
+func (peer *Peer) PreferredLink() *link.Link {
+	return link.Select(peer.Links(), link.BestQuality)
+}
+
+// Unlink closes all links with the peer. After a peer is unlinked, no links can be added to it.
+func (peer *Peer) Unlink() {
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
+	peer.unlink()
+
+	for link := range peer.links {
+		link.Close()
+	}
+}
+
+// Unlinked returns true if the peer has been unlinked.
+func (peer *Peer) Unlinked() bool {
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
+	return peer.unlinked
+}
+
+// Idle returns the idle time of the most recently active link. Returns -1 if the peer has no links.
 func (peer *Peer) Idle() time.Duration {
 	l := link.Select(peer.Links(), link.MostRecent)
 	if l == nil {
@@ -51,60 +90,40 @@ func (peer *Peer) Idle() time.Duration {
 	return l.Idle()
 }
 
-func (peer *Peer) Links() <-chan *link.Link {
-	peer.mu.Lock()
-	defer peer.mu.Unlock()
-
-	ch := make(chan *link.Link, len(peer.links))
-	for l := range peer.links {
-		ch <- l
-	}
-	close(ch)
-	return ch
-}
-
-func (peer *Peer) LinkCount() int {
-	peer.mu.Lock()
-	defer peer.mu.Unlock()
-
-	return len(peer.links)
-}
-
-func (peer *Peer) PreferredLink() *link.Link {
-	return link.Select(peer.Links(), link.BestQuality)
-}
-
-func (peer *Peer) Unlink() {
-	for link := range peer.Links() {
-		link.Close()
-	}
-}
-
-func (peer *Peer) Wait() <-chan struct{} {
+// Done returns a channel that will be closed when the peer becomes unlinked.
+func (peer *Peer) Done() <-chan struct{} {
 	return peer.done
 }
 
-func (peer *Peer) Subscribe(ctx context.Context) <-chan event.Event {
-	return peer.events.Subscribe(ctx)
+// unlink marks the peer as unlinked and closes its output channels.
+func (peer *Peer) unlink() {
+	if peer.unlinked {
+		return
+	}
+	peer.unlinked = true
+	close(peer.queries)
+	close(peer.done)
 }
 
+// addLink adds a link to the peer
+// Errors: ErrPeerUnlinked, ErrPeerLinkLimitExceeded, ErrDuplicateLink
 func (peer *Peer) addLink(l *link.Link) error {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
 
-	if peer.disconnected {
-		return errors.New("peer disconnected")
+	if peer.unlinked {
+		return ErrPeerUnlinked
 	}
 
 	if len(peer.links) >= MaxPeerLinks {
-		return errors.New("link limit exceeded")
+		return ErrPeerLinkLimitExceeded
 	}
 
 	if _, found := peer.links[l]; found {
-		return errors.New("duplicate link")
+		return ErrDuplicateLink
 	}
 
-	l.SetEventParent(&peer.events)
+	l.SetEventParent(&peer.Events)
 	peer.links[l] = struct{}{}
 
 	go func() {
@@ -116,20 +135,20 @@ func (peer *Peer) addLink(l *link.Link) error {
 	return nil
 }
 
+// removeLink removes a link from the peer
+// Errors: ErrLinkNotFound
 func (peer *Peer) removeLink(l *link.Link) error {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
 
 	if _, found := peer.links[l]; !found {
-		return errors.New("not found")
+		return ErrLinkNotFound
 	}
 
 	delete(peer.links, l)
 
 	if len(peer.links) == 0 {
-		close(peer.queries)
-		close(peer.done)
-		peer.disconnected = true
+		peer.unlink()
 	}
 
 	return nil

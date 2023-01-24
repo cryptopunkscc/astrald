@@ -45,7 +45,7 @@ func (mod *Module) Optimize(parent context.Context, peer *peers.Peer) error {
 	// optimize until peer gets unlinked or optimization period ends
 	go func() {
 		select {
-		case <-peer.Wait():
+		case <-peer.Done():
 		case <-parent.Done():
 		}
 		cancel()

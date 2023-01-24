@@ -20,6 +20,7 @@ var ErrReturn = errors.New("fn must return exactly one error value")
 var ErrArgument = errors.New("fn must take exactly one argument")
 var ErrNotAFunc = errors.New("fn is not a function")
 
+// Emit pushes an event onto the event queue.
 func (q *Queue) Emit(event Event) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -34,6 +35,8 @@ func (q *Queue) Emit(event Event) {
 	}
 }
 
+// Subscribe returns a channel, which will receive events from the queue until the context ends. Channel will be
+// closed afterwards.
 func (q *Queue) Subscribe(ctx context.Context) <-chan Event {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -100,6 +103,7 @@ func (q *Queue) HandleFunc(ctx context.Context, fn interface{}) error {
 	return nil
 }
 
+// SetParent sets the parent queue. All events emitted by this queue are propagated to the parent.
 func (q *Queue) SetParent(parent *Queue) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -110,6 +114,7 @@ func (q *Queue) SetParent(parent *Queue) {
 	q.parent = parent
 }
 
+// Parent returns the parent queue. All events emitted by this queue are propagated to the parent.
 func (q *Queue) Parent() *Queue {
 	q.mu.Lock()
 	defer q.mu.Unlock()

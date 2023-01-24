@@ -11,7 +11,7 @@ import (
 )
 
 func (mod *Module) runClient(ctx context.Context) error {
-	for e := range mod.node.Subscribe(ctx) {
+	for e := range mod.node.Events.Subscribe(ctx) {
 		switch event := e.(type) {
 		case link.EventLinkEstablished:
 			go func() {
@@ -61,7 +61,7 @@ func (mod *Module) processLinkInfo(link *link.Link, jInfo *jsonInfo) error {
 		info.ReflectAddr = a
 	}
 
-	mod.node.Emit(EventLinkInfo{Link: link, Info: info})
+	mod.node.Events.Emit(EventLinkInfo{Link: link, Info: info})
 
 	return nil
 }
