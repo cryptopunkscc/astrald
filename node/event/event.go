@@ -2,7 +2,9 @@ package event
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/sig"
+	"reflect"
 	"sync"
 )
 
@@ -13,6 +15,10 @@ type Queue struct {
 	queue  *sig.Queue
 	parent *Queue
 }
+
+var ErrReturn = errors.New("fn must return exactly one error value")
+var ErrArgument = errors.New("fn must take exactly one argument")
+var ErrNotAFunc = errors.New("fn is not a function")
 
 func (q *Queue) Emit(event Event) {
 	q.mu.Lock()
@@ -46,6 +52,52 @@ func (q *Queue) Subscribe(ctx context.Context) <-chan Event {
 	}()
 
 	return ch
+}
+
+// HandleFunc takes a one argument, one result function. It will subscribe to the queue and invoke fn for every item
+// in the queue that matches the argument type. The function has to return a single value of type error. If the error
+// is not nil, HandleFunc will return the error and stop processing the queue. When the context is done, HandleFunc
+// returns nil.
+func (q *Queue) HandleFunc(ctx context.Context, fn interface{}) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var (
+		fnType = reflect.TypeOf(fn)
+		fnVal  = reflect.ValueOf(fn)
+	)
+
+	if fnType.Kind() != reflect.Func {
+		return ErrNotAFunc
+	}
+	if fnType.NumIn() != 1 {
+		return ErrArgument
+	}
+	if fnType.NumOut() != 1 {
+		return ErrReturn
+	}
+
+	var (
+		errType = reflect.TypeOf((*error)(nil)).Elem()
+		retType = fnType.Out(0)
+		argType = fnType.In(0)
+	)
+
+	if retType != errType {
+		return ErrReturn
+	}
+
+	for event := range q.Subscribe(ctx) {
+		evType := reflect.TypeOf(event)
+		if evType.ConvertibleTo(argType) {
+			ret := fnVal.Call([]reflect.Value{reflect.ValueOf(event)})
+			if !ret[0].IsNil() {
+				return ret[0].Interface().(error)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (q *Queue) SetParent(parent *Queue) {
