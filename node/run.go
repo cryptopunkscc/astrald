@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/node/peers"
 	"sync"
 )
 
@@ -86,16 +85,6 @@ func (node *Node) Run(ctx context.Context) (err error) {
 		defer wg.Done()
 		if err := node.keepStickyNodesLinked(ctx); err != nil {
 			errCh <- fmt.Errorf("keeplinked: %w", err)
-		}
-	}()
-
-	go func() {
-		err := node.Events.HandleFunc(ctx, func(e peers.EventPeerLinked) error {
-			log.Info("WOW IT WORKS! %s", e.Peer.Identity())
-			return nil //errors.New("this is too good")
-		})
-		if err != nil {
-			log.Error("Events.HandleFunc(): %s", err)
 		}
 	}()
 

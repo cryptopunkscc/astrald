@@ -1,18 +1,19 @@
 package sig
 
 import (
+	"context"
 	"sync"
 )
 
-type Queue struct {
+type Queue[T any] struct {
 	wait chan struct{}
-	next *Queue
-	data interface{}
+	next *Queue[T]
+	data T
 	mu   sync.Mutex
 }
 
 // Push adds a new value to the queue and notifies Waiters
-func (q *Queue) Push(data interface{}) *Queue {
+func (q *Queue[T]) Push(data T) *Queue[T] {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -26,13 +27,13 @@ func (q *Queue) Push(data interface{}) *Queue {
 	defer close(q.wait)
 
 	q.data = data
-	q.next = &Queue{}
+	q.next = &Queue[T]{}
 
 	return q.next
 }
 
 // Next should only be called after Wait channel closes. It returns the next Queue element or nil on EOF.
-func (q *Queue) Next() *Queue {
+func (q *Queue[T]) Next() *Queue[T] {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -40,7 +41,7 @@ func (q *Queue) Next() *Queue {
 }
 
 // Close marks this element as EOF and notifies Waiters
-func (q *Queue) Close() {
+func (q *Queue[T]) Close() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -58,7 +59,7 @@ func (q *Queue) Close() {
 }
 
 // Wait returns a channel that will be closed when the value of this element is ready
-func (q *Queue) Wait() <-chan struct{} {
+func (q *Queue[T]) Wait() <-chan struct{} {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -70,20 +71,21 @@ func (q *Queue) Wait() <-chan struct{} {
 }
 
 // Data returns nil of the value is not ready (if called before Wait closes), the value otherwise
-func (q *Queue) Data() interface{} {
+func (q *Queue[T]) Data() interface{} {
 	return q.data
 }
 
-func (q *Queue) Subscribe(waiter Signal) <-chan interface{} {
-	ch := make(chan interface{})
+func (q *Queue[T]) Subscribe(ctx context.Context) <-chan T {
+	ch := make(chan T)
 
 	go func() {
 		f := q
 		defer close(ch)
 		for {
 			select {
-			case <-waiter.Done():
+			case <-ctx.Done():
 				return
+
 			case <-f.Wait():
 				if f.Next() == nil {
 					return
@@ -92,13 +94,28 @@ func (q *Queue) Subscribe(waiter Signal) <-chan interface{} {
 				select {
 				case ch <- f.data:
 					f = f.Next()
-				case <-waiter.Done():
+				case <-ctx.Done():
 					return
 				}
-
 			}
 		}
 	}()
 
 	return ch
+}
+
+func Handle[Q any, T any](ctx context.Context, q *Queue[Q], fn func(T) error) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	for item := range q.Subscribe(ctx) {
+		var untyped any = item
+		if typed, ok := untyped.(T); ok {
+			if err := fn(typed); err != nil {
+				return err
+			}
+		}
+
+	}
+	return nil
 }

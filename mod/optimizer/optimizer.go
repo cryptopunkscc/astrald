@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/peers"
 	"time"
@@ -21,22 +22,18 @@ type Module struct {
 var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
-	for event := range mod.node.Events.Subscribe(ctx) {
-		event := event
-		if event, ok := event.(peers.EventPeerLinked); ok {
+	return event.Handle(ctx, &mod.node.Events, func(event peers.EventPeerLinked) error {
+		go func() {
 			nodeId := event.Peer.Identity()
-			go func() {
-				log.Log("optimizing %s", nodeId)
-				if err := mod.Optimize(ctx, event.Peer); err != nil {
-					log.Error("optimize %s: %s", nodeId, err)
-				} else {
-					log.Log("done optimizing %s", nodeId)
-				}
-			}()
-		}
-	}
-
-	return nil
+			log.Log("optimizing %s", nodeId)
+			if err := mod.Optimize(ctx, event.Peer); err != nil {
+				log.Error("optimize %s: %s", nodeId, err)
+			} else {
+				log.Log("done optimizing %s", nodeId)
+			}
+		}()
+		return nil
+	})
 }
 
 func (mod *Module) Optimize(parent context.Context, peer *peers.Peer) error {

@@ -11,20 +11,20 @@ import (
 )
 
 type Pool struct {
-	id      id.Identity
-	peers   map[string]*Peer
-	queue   *sig.Queue
-	mu      sync.Mutex
-	queries chan *link.Query
-	events  event.Queue
+	id         id.Identity
+	peers      map[string]*Peer
+	peersQueue *sig.Queue[*Peer]
+	mu         sync.Mutex
+	queries    chan *link.Query
+	events     event.Queue
 }
 
 func newPool(localID id.Identity, eventParent *event.Queue) *Pool {
 	p := &Pool{
-		id:      localID,
-		peers:   make(map[string]*Peer),
-		queries: make(chan *link.Query),
-		queue:   &sig.Queue{},
+		id:         localID,
+		peers:      make(map[string]*Peer),
+		queries:    make(chan *link.Query),
+		peersQueue: &sig.Queue[*Peer]{},
 	}
 
 	p.events.SetParent(eventParent)
@@ -56,13 +56,13 @@ func (pool *Pool) Peers(follow context.Context) <-chan *Peer {
 		return ch
 	}
 
-	newPeers := pool.queue.Subscribe(follow)
 	go func() {
 		defer close(ch)
-		for p := range newPeers {
-			ch <- p.(*Peer)
+		for p := range pool.peersQueue.Subscribe(follow) {
+			ch <- p
 		}
 	}()
+
 	return ch
 }
 
@@ -98,7 +98,7 @@ func (pool *Pool) addLink(l *link.Link) error {
 			}
 		}()
 
-		pool.queue = pool.queue.Push(peer)
+		pool.peersQueue = pool.peersQueue.Push(peer)
 		log.Info("%s linked", peer.Identity())
 		pool.events.Emit(EventPeerLinked{Peer: peer, Link: l})
 	}
