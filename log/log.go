@@ -33,6 +33,7 @@ const fullTimestamp = "2006-01-02 15:04:05.000"
 const shortTimestamp = "15:04:05.000"
 
 var HideDate bool
+var HideLevel bool
 var Level int
 
 func Sprint(format string, v ...interface{}) string {
@@ -173,6 +174,10 @@ func (l *Logger) log(kind int, level int, format string, v ...interface{}) {
 		timestamp = time.Now().Format(shortTimestamp)
 	} else {
 		timestamp = time.Now().Format(fullTimestamp)
+	}
+
+	if !HideLevel {
+		fmt.Fprintf(l.out, "%s(%d)%s ", l.Gray(), level, l.Reset())
 	}
 
 	fmt.Fprintf(l.out, "%s%s%s ", l.getTimeColor(), timestamp, reset)
