@@ -2,7 +2,6 @@ package inet
 
 import (
 	"golang.org/x/sys/unix"
-	"net"
 	"syscall"
 )
 
@@ -35,10 +34,6 @@ func control(network string, address string, rawConn syscall.RawConn) error {
 }
 
 func init() {
-	portConfig = net.ListenConfig{
-		Control: control,
-	}
-	dialConfig = net.Dialer{
-		Control: control,
-	}
+	portConfig.Control = control
+	dialConfig.Control = control
 }
