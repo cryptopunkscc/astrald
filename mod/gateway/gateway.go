@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/streams"
 )
 
@@ -60,27 +59,19 @@ func (mod *Gateway) handleConn(ctx context.Context, conn *hub.Conn) error {
 		return err
 	}
 
-	var lnk *link.Link
+	peer := mod.node.Peers.Find(nodeID)
+	if peer == nil {
+		return errors.New("node unavailable")
+	}
 
-	if _, err = mod.node.Contacts.Find(nodeID); err == nil {
-		lnk, err = mod.node.Peers.Link(ctx, nodeID)
-		if err != nil {
-			return err
-		}
-	} else {
-		peer := mod.node.Peers.Find(nodeID)
-		if peer == nil {
-			return errors.New("node unavailable")
-		}
-
-		lnk = peer.PreferredLink()
-		if lnk == nil {
-			return errors.New("node unavailable")
-		}
+	lnk := peer.PreferredLink()
+	if lnk == nil {
+		return errors.New("node unavailable")
 	}
 
 	out, err := lnk.Query(ctx, queryConnect)
 	if err != nil {
+		conn.Close()
 		return err
 	}
 

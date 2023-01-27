@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	ainfra "github.com/cryptopunkscc/astrald/infra"
-	alink "github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/tracker"
+	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
 	"sync"
 )
 
-const concurrency = 16
+const workers = 16
+const queueSize = 64
 
 type Manager struct {
 	Server *Server
@@ -24,10 +24,10 @@ type Manager struct {
 	localID   id.Identity
 	tracker   *tracker.Tracker
 	infra     *infra.Infra
-	linkers   map[string]*Linker
 	mu        sync.Mutex
-	links     chan *alink.Link
 	linkQueue chan *link.Link
+	tasks     *tasks.FIFOScheduler
+	linkTasks map[string]*tasks.Task[*link.Link]
 }
 
 func NewManager(
@@ -40,11 +40,11 @@ func NewManager(
 
 	m := &Manager{
 		localID:   localID,
-		linkers:   make(map[string]*Linker),
 		infra:     infra,
 		tracker:   tracker,
-		links:     make(chan *alink.Link, 16),
-		linkQueue: make(chan *link.Link, 16),
+		linkQueue: make(chan *link.Link, queueSize),
+		tasks:     tasks.NewFIFOScheduler(workers, queueSize),
+		linkTasks: make(map[string]*tasks.Task[*link.Link]),
 	}
 
 	m.Events.SetParent(eventParent)
@@ -64,19 +64,36 @@ func (m *Manager) Run(ctx context.Context) error {
 		return err
 	}
 
-out:
-	for {
-		select {
-		case <-ctx.Done():
-			break out
+	var wg sync.WaitGroup
 
-		case l := <-linksFromServer:
-			m.AddLink(link.New(l))
+	// process queues
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				return
 
-		case l := <-m.linkQueue:
-			go m.runLink(ctx, l)
+			case l := <-linksFromServer:
+				m.AddLink(link.New(l))
+
+			case l := <-m.linkQueue:
+				go m.runLink(ctx, l)
+			}
 		}
-	}
+	}()
+
+	// run the scheduler
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := m.tasks.Run(ctx); err != nil {
+			panic(err)
+		}
+	}()
+
+	wg.Wait()
 
 	// unlink all peers
 	for peer := range m.All(nil) {
@@ -99,13 +116,15 @@ func (m *Manager) AddLink(l *link.Link) error {
 	}
 }
 
-func (m *Manager) Linkers() <-chan *Linker {
+// Linkers returns a list of identities we're currently trying to link with
+func (m *Manager) Linkers() <-chan id.Identity {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	ch := make(chan *Linker, len(m.linkers))
-	for _, l := range m.linkers {
-		ch <- l
+	ch := make(chan id.Identity, len(m.linkTasks))
+	for hex := range m.linkTasks {
+		nodeID, _ := id.ParsePublicKeyHex(hex)
+		ch <- nodeID
 	}
 	close(ch)
 
@@ -125,69 +144,63 @@ func (m *Manager) Find(nodeID id.Identity) *Peer {
 
 // Link returns a link with the node. If the node is not linked, it will attempt to link to it.
 func (m *Manager) Link(ctx context.Context, nodeID id.Identity) (*link.Link, error) {
-	linker, isNew := m.getLinker(nodeID)
+	m.mu.Lock()
 
-	if !isNew {
-		select {
-		case <-linker.Done():
-			if linker.Error() != nil {
-				return nil, linker.Error()
-			}
-			return linker.link, nil
-
-		case <-ctx.Done():
-			return nil, ctx.Err()
+	// check if peer is already linked
+	if peer := m.pool.Peer(nodeID); peer != nil {
+		if l := peer.PreferredLink(); l != nil {
+			m.mu.Unlock()
+			return l, nil
 		}
 	}
 
-	defer close(linker.done)
+	var (
+		hexID    = nodeID.PublicKeyHex()
+		linkTask *tasks.Task[*link.Link]
+		ok       bool
+	)
 
-	ctx, done := context.WithCancel(ctx)
-
-	type res struct {
-		link *link.Link
-		err  error
-	}
-
-	var ch = make(chan res, 2)
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	// observe external link sources
-	go func() {
-		defer wg.Done()
-		for e := range m.Events.Subscribe(ctx) {
-			e, ok := e.(link.EventLinkEstablished)
-			if !ok {
-				continue
-			}
-			if !e.Link.RemoteIdentity().IsEqual(nodeID) {
-				continue
-			}
-
-			ch <- res{e.Link, nil}
-			return
+	// use the link task that's already running for this node, or start one
+	linkTask, ok = m.linkTasks[hexID]
+	if !ok {
+		newTask, err := m.RequestNewLink(nodeID, LinkOptions{})
+		if err != nil {
+			m.mu.Unlock()
+			return nil, err
 		}
-	}()
 
-	// try to make a new link
-	go func() {
-		defer wg.Done()
-		l, err := m.getOrMakeLink(ctx, nodeID)
-		ch <- res{l, err}
-	}()
+		linkTask = newTask
+		m.linkTasks[hexID] = newTask
 
-	// wait for the result
-	r := <-ch
-	linker.link, linker.err = r.link, r.err
+		go func() {
+			<-linkTask.Done()
+			m.mu.Lock()
+			delete(m.linkTasks, hexID)
+			m.mu.Unlock()
+		}()
+	}
+	m.mu.Unlock()
 
-	// clean up
-	done()
-	wg.Wait()
-	close(ch)
-	m.deleteLinker(nodeID)
+	// wait for the task to finish, or the context to end
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 
-	return linker.link, linker.err
+	case <-linkTask.Done():
+		return linkTask.Result(), linkTask.Err()
+	}
+}
+
+// RequestNewLink schedules a task that will try to establish a new link with the provided node (even if the node
+// is already linked).
+func (m *Manager) RequestNewLink(nodeID id.Identity, opts LinkOptions) (*tasks.Task[*link.Link], error) {
+	t := tasks.New[*link.Link](&LinkPeerTask{
+		RemoteID: nodeID,
+		Peers:    m,
+		options:  opts,
+	})
+
+	return t, m.tasks.Add(t)
 }
 
 func (m *Manager) runLink(ctx context.Context, l *link.Link) (err error) {
@@ -214,107 +227,4 @@ func (m *Manager) runLink(ctx context.Context, l *link.Link) (err error) {
 	}
 
 	return
-}
-
-func (m *Manager) getLinker(remoteID id.Identity) (linker *Linker, new bool) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if linker, found := m.linkers[remoteID.String()]; found {
-		return linker, false
-	}
-
-	linker = &Linker{
-		remoteID: remoteID,
-		done:     make(chan struct{}),
-	}
-
-	m.linkers[remoteID.String()] = linker
-
-	return linker, true
-}
-
-func (m *Manager) deleteLinker(remoteID id.Identity) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, found := m.linkers[remoteID.String()]; !found {
-		return errors.New("linker not found")
-	}
-
-	delete(m.linkers, remoteID.String())
-	return nil
-}
-
-func (m *Manager) getOrMakeLink(ctx context.Context, remoteID id.Identity) (*link.Link, error) {
-	// check if peer is already connected
-	if peer := m.pool.Peer(remoteID); peer != nil {
-		if l := peer.PreferredLink(); l != nil {
-			return l, nil
-		}
-	}
-
-	rawLink, err := m.makeNewLink(ctx, remoteID)
-	if err != nil {
-		return nil, err
-	}
-
-	l := link.New(rawLink)
-
-	// add the link to the pool
-	if err := m.AddLink(l); err != nil {
-		return nil, err
-	}
-
-	return l, nil
-}
-
-func (m *Manager) makeNewLink(ctx context.Context, remoteID id.Identity) (*alink.Link, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	// Fetch addresses for the remote identity
-	addrs, err := m.tracker.AddrByIdentity(remoteID)
-	if err != nil {
-		return nil, err
-	}
-	if len(addrs) == 0 {
-		return nil, errors.New("identity has no addresses")
-	}
-
-	// Populate a channel with addresses
-	addrCh := make(chan ainfra.Addr, len(addrs))
-	for _, a := range addrs {
-		addrCh <- a
-	}
-	close(addrCh)
-
-	authed := NewConcurrentHandshake(
-		m.localID,
-		remoteID,
-		concurrency,
-	).Outbound(
-		ctx,
-		NewConcurrentDialer(
-			m.infra,
-			concurrency,
-		).Dial(
-			ctx,
-			addrCh,
-		),
-	)
-
-	defer func() {
-		go func() {
-			for a := range authed {
-				a.Close()
-			}
-		}()
-	}()
-
-	if a, ok := <-authed; ok {
-		return alink.New(a), nil
-	}
-
-	return nil, errors.New("linking failed")
 }

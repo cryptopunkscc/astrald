@@ -47,7 +47,7 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 	}
 
 	for l := range node.Peers.Linkers() {
-		peerName := node.Contacts.DisplayName(l.RemoteID())
+		peerName := node.Contacts.DisplayName(l)
 		fmt.Fprintf(w, "peer %s linking...\n", peerName)
 	}
 

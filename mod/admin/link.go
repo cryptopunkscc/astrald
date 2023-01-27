@@ -32,12 +32,12 @@ func link(out io.ReadWriter, node *node.Node, args []string) error {
 
 	ctx, _ := context.WithTimeout(context.Background(), timeout)
 
-	_, err = node.Peers.Link(ctx, remoteID)
+	link, err := node.Peers.Link(ctx, remoteID)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(out, "linked\n")
+	fmt.Fprintf(out, "linked via %s\n", link.Network())
 
 	return nil
 }
