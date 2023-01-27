@@ -57,6 +57,9 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	for tag, level := range node.Config.Log.TagLevels {
 		_log.SetTagLevel(tag, level)
 	}
+	for tag, color := range node.Config.Log.TagColors {
+		_log.SetTagColor(tag, color)
+	}
 	_log.HideDate = node.Config.Log.HideDate
 	_log.Level = node.Config.Log.Level
 

@@ -5,10 +5,10 @@ import (
 )
 
 var instance = &Logger{
-	out:       os.Stdout,
-	emColor:   yellow,
-	tagColor:  gray,
-	timeColor: gray,
+	out:             os.Stdout,
+	emColor:         yellow,
+	defaultTagColor: gray,
+	timeColor:       gray,
 }
 
 func Instance() *Logger {

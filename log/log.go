@@ -9,13 +9,13 @@ import (
 )
 
 type Logger struct {
-	parent    *Logger
-	emColor   string
-	tagColor  string
-	timeColor string
-	tag       string
-	out       io.Writer
-	mu        sync.Mutex
+	parent          *Logger
+	emColor         string
+	defaultTagColor string
+	timeColor       string
+	tag             string
+	out             io.Writer
+	mu              sync.Mutex
 }
 
 const (
@@ -52,8 +52,8 @@ func SetEmColor(color string) {
 	instance.SetEmColor(color)
 }
 
-func SetTagColor(color string) {
-	instance.SetTagColor(color)
+func SetDefaultTagColor(color string) {
+	instance.SetDefaultTagColor(color)
 }
 
 func (l *Logger) Sformat(format string, v ...interface{}) string {
@@ -98,8 +98,8 @@ func (l *Logger) EmColor() string {
 	return l.root().emColor
 }
 
-func (l *Logger) SetTagColor(color string) {
-	l.root().tagColor = color
+func (l *Logger) SetDefaultTagColor(color string) {
+	l.root().defaultTagColor = color
 }
 
 func (l *Logger) Tag(tag string) (s *Logger) {
@@ -135,8 +135,11 @@ func (l *Logger) getTimeColor() string {
 	return l.root().timeColor
 }
 
-func (l *Logger) getTagColor() string {
-	return l.root().tagColor
+func (l *Logger) getTagColor(tag string) string {
+	if color, ok := tagColors[tag]; ok {
+		return color
+	}
+	return l.root().defaultTagColor
 }
 
 func (l *Logger) formatTag() string {
@@ -144,7 +147,7 @@ func (l *Logger) formatTag() string {
 		return ""
 	}
 
-	return l.getTagColor() + "[" + l.tag + "] " + reset
+	return l.getTagColor(l.tag) + "[" + l.tag + "] " + reset
 }
 
 func (l *Logger) root() *Logger {
