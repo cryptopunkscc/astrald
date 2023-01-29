@@ -1,4 +1,4 @@
-package linkinfo
+package reflectlink
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-const portName = "linkinfo"
+const portName = "net.reflectlink"
 
 type Module struct {
 	node *node.Node

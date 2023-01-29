@@ -1,4 +1,4 @@
-package linkinfo
+package reflectlink
 
 import (
 	"context"
@@ -18,6 +18,8 @@ func (mod *Module) runClient(ctx context.Context) error {
 				if err := mod.processEvent(ctx, event); err != nil {
 					if !errors.Is(err, alink.ErrRejected) {
 						log.Error("query: %s", err)
+					} else {
+						log.Errorv(1, "query: %s", err)
 					}
 				}
 			}()
@@ -61,7 +63,7 @@ func (mod *Module) processLinkInfo(link *link.Link, jInfo *jsonInfo) error {
 		info.ReflectAddr = a
 	}
 
-	mod.node.Events().Emit(EventLinkInfo{Link: link, Info: info})
+	mod.node.Events().Emit(EventLinkReflected{Link: link, Info: info})
 
 	return nil
 }

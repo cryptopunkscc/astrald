@@ -11,8 +11,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/keepalive"
-	"github.com/cryptopunkscc/astrald/mod/linkinfo"
 	"github.com/cryptopunkscc/astrald/mod/optimizer"
+	"github.com/cryptopunkscc/astrald/mod/reflectlink"
 	"github.com/cryptopunkscc/astrald/mod/roam"
 	"github.com/cryptopunkscc/astrald/node"
 	"os"
@@ -77,7 +77,7 @@ func main() {
 		apphost.Loader{},
 		connect.Loader{},
 		gateway.Loader{},
-		linkinfo.Loader{},
+		reflectlink.Loader{},
 		roam.Loader{},
 		contacts.Loader{},
 		optimizer.Loader{},

@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	_log "github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/linkinfo"
+	"github.com/cryptopunkscc/astrald/mod/reflectlink"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/peers"
 	"time"
@@ -25,7 +25,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	go func() {
 		for event := range mod.node.Events().Subscribe(ctx) {
 			switch event := event.(type) {
-			case linkinfo.EventLinkInfo:
+			case reflectlink.EventLinkReflected:
 				// filter out non-inet addresses
 				inetAddr, ok := event.Info.ReflectAddr.(inet.Addr)
 				if !ok {

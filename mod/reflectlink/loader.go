@@ -1,10 +1,10 @@
-package linkinfo
+package reflectlink
 
 import (
 	"github.com/cryptopunkscc/astrald/node"
 )
 
-const ModuleName = "linkinfo"
+const ModuleName = "net.reflectlink"
 
 type Loader struct{}
 

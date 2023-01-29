@@ -1,4 +1,4 @@
-package linkinfo
+package reflectlink
 
 import (
 	"github.com/cryptopunkscc/astrald/infra"
