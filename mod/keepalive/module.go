@@ -34,7 +34,7 @@ func (m *Module) Run(ctx context.Context) error {
 		// disable timeout on the link
 		conn.Link().SetIdleTimeout(0)
 		log.Log("timeout disabled for %s over %s",
-			conn.RemoteIdentity(),
+			conn.Link().RemoteIdentity(),
 			conn.Link().Network(),
 		)
 	}

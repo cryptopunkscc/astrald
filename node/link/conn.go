@@ -3,8 +3,16 @@ package link
 import (
 	"github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 	"time"
 )
+
+type BasicConn interface {
+	io.ReadWriteCloser
+	Link() *Link
+	Query() string
+	Outbound() bool
+}
 
 type Conn struct {
 	*link.Conn

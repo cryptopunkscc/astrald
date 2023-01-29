@@ -10,13 +10,13 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/tor"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
-	"io"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"strings"
 	"sync"
 )
 
 type Querier interface {
-	Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error)
+	Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error)
 }
 
 type Infra struct {

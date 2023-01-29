@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
-	"io"
+	"github.com/cryptopunkscc/astrald/node/link"
 )
 
 const NetworkName = "gw"
@@ -13,7 +13,7 @@ const PortName = "gateway"
 var _ infra.Network = &Gateway{}
 
 type Querier interface {
-	Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error)
+	Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error)
 }
 
 type Gateway struct {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"io"
+	"github.com/cryptopunkscc/astrald/node/link"
 )
 
 type FilteredQuerier struct {
@@ -12,7 +12,7 @@ type FilteredQuerier struct {
 	FilteredID id.Identity
 }
 
-func (q FilteredQuerier) Query(ctx context.Context, remoteID id.Identity, query string) (io.ReadWriteCloser, error) {
+func (q FilteredQuerier) Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error) {
 	if remoteID.IsEqual(q.FilteredID) {
 		return nil, errors.New("filtered")
 	}

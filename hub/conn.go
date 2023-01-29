@@ -1,15 +1,15 @@
 package hub
 
 import (
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 )
 
 type Conn struct {
-	query string
-	link  *link.Link
+	query    string
+	link     *link.Link
+	outbound bool
 	io.ReadWriteCloser
 }
 
@@ -21,11 +21,8 @@ func (conn Conn) Link() *link.Link {
 	return conn.link
 }
 
-func (conn Conn) RemoteIdentity() id.Identity {
-	if conn.link == nil {
-		return id.Identity{}
-	}
-	return conn.link.RemoteIdentity()
+func (conn Conn) Outbound() bool {
+	return conn.outbound
 }
 
 // pipe creates a pair of conns that talk to each other
@@ -36,6 +33,7 @@ func pipe(query string, link *link.Link) (Conn, Conn) {
 			query:           query,
 			link:            link,
 			ReadWriteCloser: l,
+			outbound:        true,
 		}, Conn{
 			query:           query,
 			link:            link,
