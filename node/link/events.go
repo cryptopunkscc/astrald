@@ -17,3 +17,9 @@ type EventLinkEstablished struct {
 type EventLinkClosed struct {
 	Link *Link
 }
+
+type EventLinkPriorityChanged struct {
+	Link *Link
+	Old  int
+	New  int
+}

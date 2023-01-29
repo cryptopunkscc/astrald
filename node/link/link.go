@@ -120,6 +120,17 @@ func (l *Link) Priority() int {
 }
 
 func (l *Link) SetPriority(priority int) {
+	if l.priority == priority {
+		return
+	}
+
+	var e = EventLinkPriorityChanged{
+		Link: l,
+		Old:  l.priority,
+		New:  priority,
+	}
+	defer l.events.Emit(e)
+
 	l.priority = priority
 }
 
