@@ -4,10 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/infra/bt"
-	"github.com/cryptopunkscc/astrald/infra/gw"
-	"github.com/cryptopunkscc/astrald/infra/inet"
-	"github.com/cryptopunkscc/astrald/infra/tor"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -69,7 +65,7 @@ func (mod *Module) monitorConnections(ctx context.Context) {
 
 		// skip our own queries and silent ports
 		q := e.Conn.Query()
-		if q == portDrop || q == portPick || q[0] == '.' {
+		if q == portDrop || q == portPick || q[0] == '.' || q[0] == ':' {
 			continue
 		}
 
@@ -177,11 +173,6 @@ func (mod *Module) optimizeConn(conn *link.Conn) {
 				continue
 			}
 
-			// only move to a more preferred network (avoid unnecessary moves due to ping jitter)
-			if scoreNet(preferred.Network()) <= scoreNet(current.Network()) {
-				continue
-			}
-
 			if err := mod.move(conn, preferred); err != nil {
 				log.Error("move: %s", err)
 			} else {
@@ -278,18 +269,4 @@ func (mod *Module) allocMove(conn *link.Conn) int {
 		mod.moves[id] = conn
 	}
 	return id
-}
-
-func scoreNet(net string) int {
-	switch net {
-	case tor.NetworkName:
-		return 10
-	case bt.NetworkName:
-		return 20
-	case gw.NetworkName:
-		return 30
-	case inet.NetworkName:
-		return 40
-	}
-	return 0
 }

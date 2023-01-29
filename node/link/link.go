@@ -27,6 +27,7 @@ type Link struct {
 	conns            map[*Conn]struct{}
 	mu               sync.Mutex
 	establishedAt    time.Time
+	priority         int
 	roundtrip        time.Duration
 	idleTimeout      time.Duration
 	setIdleTimeoutCh chan time.Duration
@@ -112,6 +113,14 @@ func (l *Link) ConnCount() int {
 
 func (l *Link) SetEventParent(parent *event.Queue) {
 	l.events.SetParent(parent)
+}
+
+func (l *Link) Priority() int {
+	return l.priority
+}
+
+func (l *Link) SetPriority(priority int) {
+	l.priority = priority
 }
 
 func (l *Link) add(conn *Conn) {

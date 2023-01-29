@@ -1,10 +1,7 @@
 package link
 
 import (
-	"github.com/cryptopunkscc/astrald/infra/bt"
-	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
-	"github.com/cryptopunkscc/astrald/infra/tor"
 )
 
 type SelectFunc func(current *Link, next *Link) *Link
@@ -12,10 +9,6 @@ type SelectFunc func(current *Link, next *Link) *Link
 // Select selects a link from the link array using the provided select function.
 func Select(links []*Link, selectFunc SelectFunc) (selected *Link) {
 	for _, next := range links {
-		if selected == nil {
-			selected = next
-			continue
-		}
 		selected = selectFunc(selected, next)
 	}
 	return
@@ -23,6 +16,10 @@ func Select(links []*Link, selectFunc SelectFunc) (selected *Link) {
 
 // LowestPing selects the link with the lowest ping
 func LowestPing(current *Link, next *Link) *Link {
+	if current == nil {
+		return next
+	}
+
 	if next.Ping() < current.Ping() {
 		return next
 	}
@@ -32,6 +29,10 @@ func LowestPing(current *Link, next *Link) *Link {
 
 // MostRecent selects the link with the shortest idle duration
 func MostRecent(current *Link, next *Link) *Link {
+	if current == nil {
+		return next
+	}
+
 	if next.Idle() < current.Idle() {
 		return next
 	}
@@ -41,11 +42,18 @@ func MostRecent(current *Link, next *Link) *Link {
 
 // BestQuality selects the best available link.
 func BestQuality(current *Link, next *Link) *Link {
-	if netPrio(current) > netPrio(next) {
+	if current == nil {
+		if next.Priority() < 0 {
+			return nil
+		}
+		return next
+	}
+
+	if current.Priority() > next.Priority() {
 		return current
 	}
 
-	if netPrio(next) > netPrio(current) {
+	if next.Priority() > current.Priority() {
 		return next
 	}
 
@@ -77,18 +85,15 @@ func BestQuality(current *Link, next *Link) *Link {
 	return current
 }
 
-// netPrio returns network priority of a link
-func netPrio(l *Link) int {
-	switch l.Network() {
-	case inet.NetworkName:
-		return 40
-	case bt.NetworkName:
-		return 30
-	case gw.NetworkName:
-		return 20
-	case tor.NetworkName:
-		return 10
+// HighestPriority selects the link with the highest priority
+func HighestPriority(current *Link, next *Link) *Link {
+	if current == nil {
+		return next
 	}
 
-	return 0
+	if next.Priority() > current.Priority() {
+		return next
+	}
+
+	return current
 }

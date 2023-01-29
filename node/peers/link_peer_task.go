@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	ainfra "github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/infra"
+	nodeinfra "github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 )
 
@@ -14,7 +15,7 @@ var ErrNodeUnreachable = errors.New("node unreachable")
 type LinkOptions struct {
 	// AddrFilter is a function called by the linker for every address. If it returns false, the address will not
 	// be used by the linker.
-	AddrFilter func(addr ainfra.Addr) bool
+	AddrFilter func(addr infra.Addr) bool
 }
 
 // LinkPeerTask represents a task that tries to establish a new link with a node
@@ -38,7 +39,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	}
 
 	// Populate a channel with addresses
-	addrCh := make(chan ainfra.Addr, len(addrs))
+	addrCh := make(chan infra.Addr, len(addrs))
 	for _, a := range addrs {
 		if task.options.AddrFilter != nil {
 			if !task.options.AddrFilter(a) {
@@ -78,6 +79,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	}
 
 	l := link.NewFromConn(authConn)
+	l.SetPriority(nodeinfra.NetworkPriority(l.Network()))
 	if err := task.Peers.AddLink(l); err != nil {
 		l.Close()
 		return nil, err

@@ -9,6 +9,13 @@ import (
 	"github.com/cryptopunkscc/astrald/node/config"
 )
 
+var networkPriorities map[string]int
+
+// NetworkPriority returns network's priority
+func NetworkPriority(netName string) int {
+	return networkPriorities[netName]
+}
+
 func (i *Infra) setupNetworks(cfg config.Infra) error {
 	var err error
 
@@ -57,4 +64,13 @@ func (i *Infra) setupNetworks(cfg config.Infra) error {
 
 func (i *Infra) addNetwork(name string, n infra.Network) {
 	i.networks[name] = n
+}
+
+func init() {
+	networkPriorities = map[string]int{
+		inet.NetworkName: 400,
+		bt.NetworkName:   300,
+		gw.NetworkName:   200,
+		tor.NetworkName:  100,
+	}
 }

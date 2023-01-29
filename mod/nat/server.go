@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"io"
 	"time"
@@ -111,7 +112,9 @@ func (mod *Module) serve(ctx context.Context, conn *hub.Conn) error {
 				continue
 			}
 
-			return mod.node.Peers.AddLink(link.NewFromConn(authed))
+			l := link.NewFromConn(authed)
+			l.SetPriority(infra.NetworkPriority(l.Network()))
+			return mod.node.Peers.AddLink(l)
 
 		case cmdTime:
 			if remoteAddr.IsZero() {
@@ -139,7 +142,9 @@ func (mod *Module) serve(ctx context.Context, conn *hub.Conn) error {
 				continue
 			}
 
-			return mod.node.Peers.AddLink(link.NewFromConn(authed))
+			l := link.NewFromConn(authed)
+			l.SetPriority(infra.NetworkPriority(l.Network()))
+			return mod.node.Peers.AddLink(l)
 
 		default:
 			return errors.New("protocol error: unknown request type")

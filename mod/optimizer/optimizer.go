@@ -7,6 +7,7 @@ import (
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/event"
+	nodeinfra "github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/peers"
 	"time"
@@ -81,7 +82,9 @@ func (mod *Module) Optimize(parent context.Context, peer *peers.Peer) error {
 		ctx,
 		retryDialer.Dial(ctx),
 	) {
-		mod.node.Peers.AddLink(link.NewFromConn(authConn))
+		l := link.NewFromConn(authConn)
+		l.SetPriority(nodeinfra.NetworkPriority(l.Network()))
+		mod.node.Peers.AddLink(l)
 	}
 
 	return nil

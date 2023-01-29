@@ -76,7 +76,9 @@ func (m *Manager) Run(ctx context.Context) error {
 				return
 
 			case l := <-linksFromServer:
-				m.AddLink(link.New(l))
+				lnk := link.New(l)
+				lnk.SetPriority(infra.NetworkPriority(lnk.Network()))
+				m.AddLink(lnk)
 
 			case l := <-m.linkQueue:
 				go m.runLink(ctx, l)
