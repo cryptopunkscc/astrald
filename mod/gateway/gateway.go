@@ -77,5 +77,9 @@ func (mod *Gateway) handleConn(ctx context.Context, conn *hub.Conn) error {
 
 	c.Encode("c", true)
 
-	return streams.Join(conn, out)
+	l, r, err := streams.Join(conn, out)
+
+	log.Logv(1, "conn for %s done (bytes read %d written %d)", peer.Identity(), l, r)
+
+	return err
 }

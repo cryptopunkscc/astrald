@@ -83,7 +83,9 @@ func (dispatcher *serverDispatcher) query(identity id.Identity, query string) er
 		return cslq.Encode(dispatcher.conn, "c", errUnexpected)
 	}
 
-	return streams.Join(dispatcher.conn, conn)
+	_, _, err = streams.Join(dispatcher.conn, conn)
+
+	return err
 }
 
 func (dispatcher *serverDispatcher) resolve(s string) error {
