@@ -23,7 +23,7 @@ type Module struct {
 var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
-	return event.Handle(ctx, &mod.node.Events, func(event peers.EventPeerLinked) error {
+	return event.Handle(ctx, mod.node.Events(), func(event peers.EventPeerLinked) error {
 		go func() {
 			nodeId := event.Peer.Identity()
 			log.Log("optimizing %s", nodeId)

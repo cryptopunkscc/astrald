@@ -18,7 +18,7 @@ const queueSize = 64
 
 type Manager struct {
 	Server *Server
-	Events event.Queue
+	events event.Queue
 
 	pool      *Pool
 	localID   id.Identity
@@ -47,8 +47,8 @@ func NewManager(
 		linkTasks: make(map[string]*tasks.Task[*link.Link]),
 	}
 
-	m.Events.SetParent(eventParent)
-	m.pool = newPool(localID, &m.Events)
+	m.events.SetParent(eventParent)
+	m.pool = newPool(localID, &m.events)
 	m.Server, err = newServer(localID, infra)
 	if err != nil {
 		return nil, err
@@ -107,6 +107,10 @@ func (m *Manager) Run(ctx context.Context) error {
 
 func (m *Manager) Queries() <-chan *link.Query {
 	return m.pool.Queries()
+}
+
+func (m *Manager) Events() *event.Queue {
+	return &m.events
 }
 
 func (m *Manager) AddLink(l *link.Link) error {

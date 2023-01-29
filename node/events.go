@@ -10,7 +10,7 @@ import (
 )
 
 func (node *Node) handleEvents(ctx context.Context) error {
-	for event := range node.Events.Subscribe(ctx) {
+	for event := range node.events.Subscribe(ctx) {
 		node.logEvent(event)
 
 		switch event := event.(type) {

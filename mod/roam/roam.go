@@ -51,7 +51,7 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) monitorConnections(ctx context.Context) {
-	for event := range mod.node.Events.Subscribe(ctx) {
+	for event := range mod.node.Events().Subscribe(ctx) {
 		// skip other events
 		e, ok := event.(link.EventConnEstablished)
 		if !ok {

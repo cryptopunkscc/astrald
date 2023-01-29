@@ -38,7 +38,7 @@ func (tracker *Tracker) Add(identity id.Identity, addr infra.Addr, expiresAt tim
 		if err != nil {
 			return
 		}
-		tracker.events.Emit(&EventNewAddr{
+		tracker.events.Emit(EventNewAddr{
 			NodeID: identity,
 			Addr: &Addr{
 				Addr:      addr,

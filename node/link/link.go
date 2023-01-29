@@ -80,16 +80,16 @@ func (l *Link) Queries() <-chan *Query {
 	return l.queries
 }
 
+func (l *Link) Events() *event.Queue {
+	return &l.events
+}
+
 func (l *Link) Err() error {
 	return l.err
 }
 
 func (l *Link) EstablishedAt() time.Time {
 	return l.establishedAt
-}
-
-func (l *Link) Subscribe(ctx context.Context) <-chan event.Event {
-	return l.events.Subscribe(ctx)
 }
 
 func (l *Link) Conns() <-chan *Conn {
@@ -109,10 +109,6 @@ func (l *Link) ConnCount() int {
 	defer l.mu.Unlock()
 
 	return len(l.conns)
-}
-
-func (l *Link) SetEventParent(parent *event.Queue) {
-	l.events.SetParent(parent)
 }
 
 func (l *Link) Priority() int {

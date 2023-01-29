@@ -23,7 +23,7 @@ const dbFileName = "astrald.db"
 const configFileName = "astrald.conf"
 
 type Node struct {
-	Events   event.Queue
+	events   event.Queue
 	Config   config.Config
 	Database *db.Database
 	identity id.Identity
@@ -37,6 +37,10 @@ type Node struct {
 	Presence *presence.Manager
 
 	rootDir string
+}
+
+func (node *Node) Events() *event.Queue {
+	return &node.events
 }
 
 var log = _log.Tag("node")
@@ -95,7 +99,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	}
 
 	// hub
-	node.Ports = hub.New(&node.Events)
+	node.Ports = hub.New(&node.events)
 
 	// infrastructure
 	node.Infra, err = infra.New(
@@ -115,7 +119,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	}
 
 	// contacts
-	node.Contacts, err = contacts.New(node.Database, &node.Events)
+	node.Contacts, err = contacts.New(node.Database, &node.events)
 	if err != nil {
 		return nil, err
 	}
@@ -132,13 +136,13 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	})
 
 	// peer manager
-	node.Peers, err = peers.NewManager(node.identity, node.Infra, node.Tracker, &node.Events)
+	node.Peers, err = peers.NewManager(node.identity, node.Infra, node.Tracker, &node.events)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
 	}
 
 	// presence
-	node.Presence, err = presence.NewManager(node.Infra, &node.Events)
+	node.Presence, err = presence.NewManager(node.Infra, &node.events)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up presence: %w", err)
 	}

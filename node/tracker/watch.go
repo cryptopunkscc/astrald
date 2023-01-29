@@ -3,6 +3,7 @@ package tracker
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/node/event"
 )
 
 // Watch returns a channel which will receive all new addresses added to identity. The channel is closed when
@@ -11,13 +12,12 @@ func (tracker *Tracker) Watch(ctx context.Context, nodeID id.Identity) <-chan *A
 	out := make(chan *Addr, 1)
 	go func() {
 		defer close(out)
-		for event := range tracker.events.Subscribe(ctx) {
-			if a, ok := event.(*EventNewAddr); ok {
-				if a.NodeID.IsEqual(nodeID) {
-					out <- a.Addr
-				}
+		event.Handle(ctx, &tracker.events, func(e EventNewAddr) error {
+			if e.NodeID.IsEqual(nodeID) {
+				out <- e.Addr
 			}
-		}
+			return nil
+		})
 	}()
 	return out
 }

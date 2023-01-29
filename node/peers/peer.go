@@ -9,7 +9,7 @@ import (
 )
 
 type Peer struct {
-	Events event.Queue
+	events event.Queue
 
 	id       id.Identity
 	links    map[*link.Link]struct{}
@@ -28,7 +28,7 @@ func newPeer(id id.Identity, eventParent *event.Queue) *Peer {
 		done:    make(chan struct{}),
 	}
 
-	p.Events.SetParent(eventParent)
+	p.events.SetParent(eventParent)
 
 	return p
 }
@@ -95,6 +95,11 @@ func (peer *Peer) Done() <-chan struct{} {
 	return peer.done
 }
 
+// Events returns the event queue of the peer
+func (peer *Peer) Events() *event.Queue {
+	return &peer.events
+}
+
 // unlink marks the peer as unlinked and closes its output channels.
 func (peer *Peer) unlink() {
 	if peer.unlinked {
@@ -123,7 +128,7 @@ func (peer *Peer) addLink(l *link.Link) error {
 		return ErrDuplicateLink
 	}
 
-	l.SetEventParent(&peer.Events)
+	l.Events().SetParent(&peer.events)
 	peer.links[l] = struct{}{}
 
 	go func() {
