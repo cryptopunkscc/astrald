@@ -10,10 +10,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/hkdf"
-
-	"github.com/btcsuite/btcd/btcec"
 )
 
 const (
@@ -63,9 +62,11 @@ var (
 	// ephemeralGen is the default ephemeral key generator, used to derive a
 	// unique ephemeral key for each brontide handshake.
 	ephemeralGen = func() (*btcec.PrivateKey, error) {
-		return btcec.NewPrivateKey(btcec.S256())
+		return btcec.NewPrivateKey()
 	}
 )
+
+// TODO(roasbeef): free buffer pool?
 
 // ecdh performs an ECDH operation between pub and priv. The returned value is
 // the sha256 of the compressed shared point.
@@ -81,10 +82,14 @@ type cipherState struct {
 	// nonce is the nonce passed into the chacha20-poly1305 instance for
 	// encryption+decryption. The nonce is incremented after each successful
 	// encryption/decryption.
+	//
+	// TODO(roasbeef): this should actually be 96 bit
 	nonce uint64
 
 	// secretKey is the shared symmetric key which will be used to
 	// instantiate the cipher.
+	//
+	// TODO(roasbeef): m-lock??
 	secretKey [32]byte
 
 	// salt is an additional secret which is used during key rotation to
@@ -340,19 +345,21 @@ func EphemeralGenerator(gen func() (*btcec.PrivateKey, error)) func(*Machine) {
 // itself.
 //
 // The acts proceeds the following order (initiator on the left):
-//  GenActOne()   ->
-//                    RecvActOne()
-//                <-  GenActTwo()
-//  RecvActTwo()
-//  GenActThree() ->
-//                    RecvActThree()
+//
+//	GenActOne()   ->
+//	                  RecvActOne()
+//	              <-  GenActTwo()
+//	RecvActTwo()
+//	GenActThree() ->
+//	                  RecvActThree()
 //
 // This exchange corresponds to the following Noise handshake:
-//   <- s
-//   ...
-//   -> e, es
-//   <- e, ee
-//   -> s, se
+//
+//	<- s
+//	...
+//	-> e, es
+//	<- e, ee
+//	-> s, se
 type Machine struct {
 	sendCipher cipherState
 	recvCipher cipherState
@@ -439,7 +446,7 @@ const (
 // and the responder's static key. Future payloads are encrypted with a key
 // derived from this result.
 //
-//    -> e, es
+//	-> e, es
 func (b *Machine) GenActOne() ([ActOneSize]byte, error) {
 	var actOne [ActOneSize]byte
 
@@ -494,7 +501,7 @@ func (b *Machine) RecvActOne(actOne [ActOneSize]byte) error {
 	copy(p[:], actOne[34:])
 
 	// e
-	b.remoteEphemeral, err = btcec.ParsePubKey(e[:], btcec.S256())
+	b.remoteEphemeral, err = btcec.ParsePubKey(e[:])
 	if err != nil {
 		return err
 	}
@@ -518,7 +525,7 @@ func (b *Machine) RecvActOne(actOne [ActOneSize]byte) error {
 // act one, but then results in a different ECDH operation between the
 // initiator's and responder's ephemeral keys.
 //
-//    <- e, ee
+//	<- e, ee
 func (b *Machine) GenActTwo() ([ActTwoSize]byte, error) {
 	var actTwo [ActTwoSize]byte
 
@@ -572,7 +579,7 @@ func (b *Machine) RecvActTwo(actTwo [ActTwoSize]byte) error {
 	copy(p[:], actTwo[34:])
 
 	// e
-	b.remoteEphemeral, err = btcec.ParsePubKey(e[:], btcec.S256())
+	b.remoteEphemeral, err = btcec.ParsePubKey(e[:])
 	if err != nil {
 		return err
 	}
@@ -595,7 +602,7 @@ func (b *Machine) RecvActTwo(actTwo [ActTwoSize]byte) error {
 // the responder. This act also includes the final ECDH operation which yields
 // the final session.
 //
-//    -> s, se
+//	-> s, se
 func (b *Machine) GenActThree() ([ActThreeSize]byte, error) {
 	var actThree [ActThreeSize]byte
 
@@ -648,7 +655,7 @@ func (b *Machine) RecvActThree(actThree [ActThreeSize]byte) error {
 	if err != nil {
 		return err
 	}
-	b.remoteStatic, err = btcec.ParsePubKey(remotePub, btcec.S256())
+	b.remoteStatic, err = btcec.ParsePubKey(remotePub)
 	if err != nil {
 		return err
 	}
@@ -847,8 +854,11 @@ func (b *Machine) ReadHeader(r io.Reader) (uint32, error) {
 	}
 
 	// Attempt to decrypt+auth the packet length present in the stream.
+	//
+	// By passing in `nextCipherHeader` as the destination, we avoid making
+	// the library allocate a new buffer to decode the plaintext.
 	pktLenBytes, err := b.recvCipher.Decrypt(
-		nil, nil, b.nextCipherHeader[:],
+		nil, b.nextCipherHeader[:0], b.nextCipherHeader[:],
 	)
 	if err != nil {
 		return 0, err
@@ -873,27 +883,11 @@ func (b *Machine) ReadBody(r io.Reader, buf []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// Finally, decrypt the message held in the buffer, and return a
-	// new byte slice containing the plaintext.
-	return b.recvCipher.Decrypt(nil, nil, buf)
-}
-
-// SetCurveToNil sets the 'Curve' parameter to nil on the handshakeState keys.
-// This allows us to log the Machine object without spammy log messages.
-func (b *Machine) SetCurveToNil() {
-	if b.localStatic != nil {
-		b.localStatic.PubKey().Curve = nil
-	}
-
-	if b.localEphemeral != nil {
-		b.localEphemeral.PubKey().Curve = nil
-	}
-
-	if b.remoteStatic != nil {
-		b.remoteStatic.Curve = nil
-	}
-
-	if b.remoteEphemeral != nil {
-		b.remoteEphemeral.Curve = nil
-	}
+	// Finally, decrypt the message held in the buffer, and return a new
+	// byte slice containing the plaintext.
+	//
+	// By passing in the buf (the ciphertext) as the first argument, we end
+	// up re-using it as we don't force the library to allocate a new
+	// buffer to decode the plaintext.
+	return b.recvCipher.Decrypt(nil, buf[:0], buf)
 }

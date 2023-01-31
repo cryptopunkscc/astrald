@@ -2,7 +2,7 @@ package brontide
 
 import (
 	"crypto/sha256"
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 )
 
 // SingleKeyECDH is an abstraction interface that hides the implementation of an
@@ -40,15 +40,21 @@ func (p *PrivKeyECDH) PubKey() *btcec.PublicKey {
 // k is our private key, and P is the public key, we perform the following
 // operation:
 //
-//  sx := k*P
-//  s := sha256(sx.SerializeCompressed())
+//	sx := k*P
+//	s := sha256(sx.SerializeCompressed())
 //
 // NOTE: This is part of the SingleKeyECDH interface.
 func (p *PrivKeyECDH) ECDH(pub *btcec.PublicKey) ([32]byte, error) {
-	s := &btcec.PublicKey{}
-	s.X, s.Y = btcec.S256().ScalarMult(pub.X, pub.Y, p.PrivKey.D.Bytes())
+	var (
+		pubJacobian btcec.JacobianPoint
+		s           btcec.JacobianPoint
+	)
+	pub.AsJacobian(&pubJacobian)
 
-	return sha256.Sum256(s.SerializeCompressed()), nil
+	btcec.ScalarMultNonConst(&p.PrivKey.Key, &pubJacobian, &s)
+	s.ToAffine()
+	sPubKey := btcec.NewPublicKey(&s.X, &s.Y)
+	return sha256.Sum256(sPubKey.SerializeCompressed()), nil
 }
 
 var _ SingleKeyECDH = (*PrivKeyECDH)(nil)

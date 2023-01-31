@@ -3,7 +3,7 @@ package id
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 )
 
 // Identity is an eliptic-curve-based identity
@@ -19,7 +19,7 @@ func GenerateIdentity() (Identity, error) {
 	var err error
 	id := Identity{}
 
-	id.privateKey, err = btcec.NewPrivateKey(btcec.S256())
+	id.privateKey, err = btcec.NewPrivateKey()
 	if err != nil {
 		return Identity{}, err
 	}
@@ -32,7 +32,7 @@ func PublicKey(key *btcec.PublicKey) Identity {
 }
 
 func ParsePrivateKey(data []byte) (Identity, error) {
-	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), data)
+	priv, _ := btcec.PrivKeyFromBytes(data)
 	if priv == nil {
 		return Identity{}, errors.New("parse error")
 	}
@@ -47,7 +47,7 @@ func ParsePublicKey(pkData []byte) (Identity, error) {
 		return Identity{}, nil
 	}
 
-	key, err := btcec.ParsePubKey(pkData, btcec.S256())
+	key, err := btcec.ParsePubKey(pkData)
 	if err != nil {
 		return Identity{}, err
 	}
