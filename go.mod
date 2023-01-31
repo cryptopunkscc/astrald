@@ -3,7 +3,7 @@ module github.com/cryptopunkscc/astrald
 go 1.19
 
 require (
-	github.com/btcsuite/btcd v0.21.0-beta
+	github.com/btcsuite/btcd v0.23.3
 	github.com/cretz/bine v0.1.0
 	github.com/godbus/dbus/v5 v5.0.6
 	github.com/ipsn/go-libtor v1.0.380
@@ -18,7 +18,7 @@ require (
 require (
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
-	github.com/stretchr/testify v1.6.1 // indirect
+	github.com/stretchr/testify v1.7.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	modernc.org/b v1.0.3 // indirect
 	modernc.org/db v1.0.5 // indirect
