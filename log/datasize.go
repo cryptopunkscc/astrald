@@ -1,8 +1,6 @@
-package logfmt
+package log
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type DataSize uint64
 

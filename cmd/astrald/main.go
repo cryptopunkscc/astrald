@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/connect"
-	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/keepalive"
 	"github.com/cryptopunkscc/astrald/mod/optimizer"
@@ -79,7 +78,6 @@ func main() {
 		gateway.Loader{},
 		reflectlink.Loader{},
 		roam.Loader{},
-		contacts.Loader{},
 		optimizer.Loader{},
 		keepalive.Loader{},
 	)

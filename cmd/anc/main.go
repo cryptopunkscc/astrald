@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/astral"
-	"github.com/cryptopunkscc/astrald/logfmt"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"net"
@@ -173,7 +173,7 @@ func cmdShare(args []string) {
 				fmt.Fprintln(os.Stderr, conn.RemoteAddr(), "error sending file:", err)
 				return
 			}
-			fmt.Fprintln(os.Stderr, addrName(conn.RemoteAddr()), "downloaded", logfmt.DataSize(n).HumanReadable())
+			fmt.Fprintln(os.Stderr, addrName(conn.RemoteAddr()), "downloaded", log.DataSize(n).HumanReadable())
 		}()
 	}
 }
@@ -316,7 +316,7 @@ func cmdDownload(args []string) {
 		os.Exit(exitError)
 	}
 
-	fmt.Fprintln(os.Stderr, "Downloaded", logfmt.DataSize(n).HumanReadable())
+	fmt.Fprintln(os.Stderr, "Downloaded", log.DataSize(n).HumanReadable())
 
 	io.Copy(os.Stdout, conn)
 	os.Exit(exitSuccess)

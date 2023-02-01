@@ -3,7 +3,7 @@ package admin
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/infra/gw"
-	"github.com/cryptopunkscc/astrald/logfmt"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
 	"time"
@@ -26,7 +26,7 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 
 			fmt.Fprintf(w,
 				"  %s %s %s (idle %s, age %s, prio %d, ping %.1fms)\n",
-				logfmt.Bool(link.Outbound(), "=>", "<="),
+				log.Bool(link.Outbound(), "=>", "<="),
 				link.RemoteAddr().Network(),
 				remoteAddr,
 				link.Idle().Round(time.Second),
@@ -37,7 +37,7 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 			for c := range link.Conns() {
 				fmt.Fprintf(w,
 					"    %s %s [%d:%d] (idle %s)\n",
-					logfmt.Bool(c.Outbound(), "->", "<-"),
+					log.Bool(c.Outbound(), "->", "<-"),
 					c.Query(),
 					c.InputStream().ID(),
 					c.OutputStream().ID(),
