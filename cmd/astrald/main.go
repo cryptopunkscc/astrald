@@ -6,6 +6,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/infra/tor/system"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/agent"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/connect"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
@@ -80,6 +81,7 @@ func main() {
 		roam.Loader{},
 		optimizer.Loader{},
 		keepalive.Loader{},
+		agent.Loader{},
 	)
 	if err != nil {
 		fmt.Println("init error:", err)

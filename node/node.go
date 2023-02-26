@@ -167,3 +167,8 @@ func (node *Node) Identity() id.Identity {
 func (node *Node) Alias() string {
 	return node.Config.GetAlias()
 }
+
+func (node *Node) SetAlias(alias string) error {
+	//TODO: unimplemented
+	return nil
+}
