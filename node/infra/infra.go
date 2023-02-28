@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/bt"
@@ -11,6 +12,7 @@ import (
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"os"
 	"strings"
 	"sync"
 )
@@ -30,29 +32,37 @@ type Infra struct {
 	tor       *tor.Tor
 	gateway   *gw.Gateway
 	bluetooth bt.Client
-	config    config.Infra
+	config    *Config
 	logLevel  int
 }
 
 var log = _log.Tag("infra")
 
-func New(localID id.Identity, cfg config.Infra, querier Querier, rootDir string) (*Infra, error) {
+func New(localID id.Identity, configStore config.Store, querier Querier, rootDir string) (*Infra, error) {
 	var i = &Infra{
 		localID:  localID,
 		Querier:  querier,
 		rootDir:  rootDir,
 		gateways: make([]infra.AddrSpec, 0),
 		networks: make(map[string]infra.Network),
-		config:   cfg,
+		config:   &Config{},
+	}
+
+	if err := configStore.LoadYAML(configName, i.config); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			log.Error("config error: %s", err)
+		} else {
+			log.Errorv(2, "config error: %s", err)
+		}
 	}
 
 	// static gateways
-	if err := i.setupStaticGateways(i.config); err != nil {
+	if err := i.setupStaticGateways(); err != nil {
 		log.Error("setupStaticGateways: %s", err)
 	}
 
 	// setup networks
-	if err := i.setupNetworks(i.config); err != nil {
+	if err := i.setupNetworks(); err != nil {
 		log.Error("setupNetworks: %s", err)
 	}
 
@@ -131,8 +141,12 @@ func (i *Infra) Inet() *inet.Inet {
 	return i.inet
 }
 
-func (i *Infra) setupStaticGateways(cfg config.Infra) error {
-	for _, gate := range cfg.Gateways {
+func (i *Infra) Config() *Config {
+	return i.config
+}
+
+func (i *Infra) setupStaticGateways() error {
+	for _, gate := range i.config.Gateways {
 		gateID, err := id.ParsePublicKeyHex(gate)
 		if err != nil {
 			log.Error("error parsing gateway %s: %s", gate, err.Error())

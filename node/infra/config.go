@@ -1,4 +1,4 @@
-package config
+package infra
 
 import (
 	"github.com/cryptopunkscc/astrald/infra/gw"
@@ -6,8 +6,9 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/tor"
 )
 
-// Infra holds configs for individual infrastructural networks
-type Infra struct {
+const configName = "infra"
+
+type Config struct {
 	Networks    []string    `yaml:"networks"`
 	Gateways    []string    `yaml:"gateways"`
 	StickyNodes []string    `yaml:"sticky_nodes"`
@@ -16,12 +17,12 @@ type Infra struct {
 	Gw          gw.Config   `yaml:"gw"`
 }
 
-func (i Infra) IsNetworkEnabled(network string) bool {
-	if len(i.Networks) == 0 {
+func (cfg Config) networksContain(network string) bool {
+	if len(cfg.Networks) == 0 {
 		return true
 	}
 
-	for _, n := range i.Networks {
+	for _, n := range cfg.Networks {
 		if n == network {
 			return true
 		}

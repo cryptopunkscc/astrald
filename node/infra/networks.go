@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
-	"github.com/cryptopunkscc/astrald/node/config"
 )
 
 var networkPriorities map[string]int
@@ -16,12 +15,12 @@ func NetworkPriority(netName string) int {
 	return networkPriorities[netName]
 }
 
-func (i *Infra) setupNetworks(cfg config.Infra) error {
+func (i *Infra) setupNetworks() error {
 	var err error
 
 	// inet
-	if i.config.IsNetworkEnabled(inet.NetworkName) {
-		i.inet, err = inet.New(cfg.Inet, i.localID)
+	if i.config.networksContain(inet.NetworkName) {
+		i.inet, err = inet.New(i.config.Inet, i.localID)
 		if err == nil {
 			i.addNetwork(inet.NetworkName, i.inet)
 		} else {
@@ -30,8 +29,8 @@ func (i *Infra) setupNetworks(cfg config.Infra) error {
 	}
 
 	// tor
-	if i.config.IsNetworkEnabled(tor.NetworkName) {
-		i.tor, err = tor.New(cfg.Tor, i.rootDir)
+	if i.config.networksContain(tor.NetworkName) {
+		i.tor, err = tor.New(i.config.Tor, i.rootDir)
 		if err == nil {
 			i.addNetwork(tor.NetworkName, i.tor)
 		} else {
@@ -40,8 +39,8 @@ func (i *Infra) setupNetworks(cfg config.Infra) error {
 	}
 
 	// gateway
-	if i.config.IsNetworkEnabled(gw.NetworkName) {
-		i.gateway, err = gw.New(cfg.Gw, i.Querier)
+	if i.config.networksContain(gw.NetworkName) {
+		i.gateway, err = gw.New(i.config.Gw, i.Querier)
 		if err == nil {
 			i.addNetwork(gw.NetworkName, i.gateway)
 		} else {
@@ -50,7 +49,7 @@ func (i *Infra) setupNetworks(cfg config.Infra) error {
 	}
 
 	// bluetooth
-	if i.config.IsNetworkEnabled(bt.NetworkName) {
+	if i.config.networksContain(bt.NetworkName) {
 		if bt.Instance != nil {
 			i.bluetooth = bt.Instance
 			i.addNetwork(bt.NetworkName, i.bluetooth)

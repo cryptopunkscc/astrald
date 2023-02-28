@@ -81,7 +81,7 @@ func (node *Node) keepNodeLinked(ctx context.Context, nodeID id.Identity) error 
 func (node *Node) keepStickyNodesLinked(ctx context.Context) error {
 	var wg sync.WaitGroup
 
-	for _, sn := range node.Config.Infra.StickyNodes {
+	for _, sn := range node.Infra.Config().StickyNodes {
 		nodeID, err := id.ParsePublicKeyHex(sn)
 		if err != nil {
 			log.Error("parse public key: %s", err)

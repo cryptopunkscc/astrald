@@ -25,7 +25,7 @@ func (node *Node) handleEvents(ctx context.Context) error {
 func (node *Node) logEvent(ev event.Event) {
 	var eventName = reflect.TypeOf(ev).String()
 
-	if !node.Config.Log.IsEventLoggable(eventName) {
+	if !node.logConfig.IsEventLoggable(eventName) {
 		return
 	}
 

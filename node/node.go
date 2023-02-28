@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/hub"
@@ -14,19 +15,21 @@ import (
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 )
 
 const defaultQueryTimeout = time.Minute
 const dbFileName = "astrald.db"
-const configFileName = "astrald.conf"
 
 type Node struct {
-	events   event.Queue
-	Config   config.Config
-	Database *db.Database
-	identity id.Identity
+	events      event.Queue
+	configStore config.Store
+	config      *Config
+	logConfig   *LogConfig
+	database    *db.Database
+	identity    id.Identity
 
 	Infra    *infra.Infra
 	Tracker  *tracker.Tracker
@@ -39,33 +42,29 @@ type Node struct {
 	rootDir string
 }
 
-func (node *Node) Events() *event.Queue {
-	return &node.events
-}
-
 var log = _log.Tag("node")
 
+// New instantiates a new node
 func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	var err error
 	var node = &Node{
 		rootDir: rootDir,
 	}
 
-	// load config
-	filePath := filepath.Join(rootDir, configFileName)
-	node.Config, err = config.LoadYAMLFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("error loading config: %w", err)
+	node.configStore, _ = config.NewFileStore(path.Join(rootDir, "config"))
+
+	// setup logger
+	if err := node.setupLogging(node.configStore); err != nil {
+		return nil, fmt.Errorf("logger error: %w", err)
 	}
 
-	for tag, level := range node.Config.Log.TagLevels {
-		_log.SetTagLevel(tag, level)
+	// load config
+	node.config, err = LoadConfig(node.configStore)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("error loading config: %w", err)
+		}
 	}
-	for tag, color := range node.Config.Log.TagColors {
-		_log.SetTagColor(tag, color)
-	}
-	_log.HideDate = node.Config.Log.HideDate
-	_log.Level = node.Config.Log.Level
 
 	// setup database
 	var dbInit bool
@@ -75,16 +74,16 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 		dbInit = true
 	}
 
-	node.Database, err = db.NewFileDatabase(dbFile)
+	node.database, err = db.NewFileDatabase(dbFile)
 	if err != nil {
 		return nil, fmt.Errorf("db error: %w", err)
 	}
 
 	if dbInit {
-		if err := tracker.InitDatabase(node.Database); err != nil {
+		if err := tracker.InitDatabase(node.database); err != nil {
 			return nil, fmt.Errorf("tracker: %w", err)
 		}
-		if err := contacts.InitDatabase(node.Database); err != nil {
+		if err := contacts.InitDatabase(node.database); err != nil {
 			return nil, fmt.Errorf("contacts: %w", err)
 		}
 
@@ -104,7 +103,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	// infrastructure
 	node.Infra, err = infra.New(
 		node.Identity(),
-		node.Config.Infra,
+		node.configStore,
 		infra.FilteredQuerier{Querier: node, FilteredID: node.identity},
 		node.RootDir(),
 	)
@@ -113,13 +112,13 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	}
 
 	// tracker
-	node.Tracker, err = tracker.New(node.Database, node.Infra)
+	node.Tracker, err = tracker.New(node.database, node.Infra)
 	if err != nil {
 		return nil, err
 	}
 
 	// contacts
-	node.Contacts, err = contacts.New(node.Database, &node.events)
+	node.Contacts, err = contacts.New(node.database, &node.events)
 	if err != nil {
 		return nil, err
 	}
@@ -156,19 +155,51 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	return node, nil
 }
 
+// RootDir returns node's root directory where all node-related files are stored
 func (node *Node) RootDir() string {
 	return node.rootDir
 }
 
+// Identity returns node's identity
 func (node *Node) Identity() id.Identity {
 	return node.identity
 }
 
-func (node *Node) Alias() string {
-	return node.Config.GetAlias()
+// Events returns the event queue for the node
+func (node *Node) Events() *event.Queue {
+	return &node.events
 }
 
+// Alias returns node's alias
+func (node *Node) Alias() string {
+	return node.config.Alias()
+}
+
+// SetAlias sets the node alias
 func (node *Node) SetAlias(alias string) error {
-	//TODO: unimplemented
+	return node.config.SetAlias(alias)
+}
+
+// ConfigStore returns config storage for the node
+func (node *Node) ConfigStore() config.Store {
+	return node.configStore
+}
+
+func (node *Node) setupLogging(store config.Store) error {
+	node.logConfig = &LogConfig{}
+
+	if err := store.LoadYAML("log", node.logConfig); err != nil {
+		return nil
+	}
+
+	for tag, level := range node.logConfig.TagLevels {
+		_log.SetTagLevel(tag, level)
+	}
+	for tag, color := range node.logConfig.TagColors {
+		_log.SetTagColor(tag, color)
+	}
+	_log.HideDate = node.logConfig.HideDate
+	_log.Level = node.logConfig.Level
+
 	return nil
 }

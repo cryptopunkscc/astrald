@@ -84,6 +84,8 @@ func serve(stream io.ReadWriteCloser, node *node.Node) {
 				fmt.Fprintf(stream, "no such command\n")
 			}
 		}
+
+		prompt = node.Alias() + promptString
 		stream.Write([]byte(prompt))
 	}
 }
