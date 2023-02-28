@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	_ "github.com/cryptopunkscc/astrald/infra/tor/system"
 	"github.com/cryptopunkscc/astrald/log"
@@ -18,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -38,7 +40,6 @@ func astralDir() string {
 	}
 
 	dir := filepath.Join(cfgDir, "astrald")
-	os.MkdirAll(dir, 0700)
 
 	return dir
 }
@@ -47,10 +48,17 @@ func main() {
 	var err error
 	var astralRoot = astralDir()
 
-	// Figure out the config path
-	if len(os.Args) > 1 {
-		astralRoot = os.Args[1]
+	flag.StringVar(&astralRoot, "datadir", astralRoot, "set data directory")
+	flag.Parse()
+
+	if strings.HasPrefix(astralRoot, "~/") {
+		if homeDir, err := os.UserHomeDir(); err == nil {
+			astralRoot = filepath.Join(homeDir, astralRoot[2:])
+		}
 	}
+
+	// make sure root directory exists
+	os.MkdirAll(astralRoot, 0700)
 
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())
