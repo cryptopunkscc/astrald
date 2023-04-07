@@ -29,12 +29,20 @@ func (mod *Connect) Run(ctx context.Context) error {
 			continue
 		}
 
-		mod.node.Peers.Server.AddConn(&wrapper{
+		infraConn := &wrapper{
 			local:           mod.node.Identity().Public(),
 			remote:          query.Link().RemoteIdentity(),
 			ReadWriteCloser: conn,
 			outbound:        false,
-		})
+		}
+
+		authConn, err := mod.node.Peers.Server().Handshake(ctx, infraConn)
+		if err != nil {
+			infraConn.Close()
+			continue
+		}
+
+		mod.node.Peers.AddAuthConn(authConn)
 	}
 
 	return nil

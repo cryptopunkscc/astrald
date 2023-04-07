@@ -48,10 +48,10 @@ func (node *Node) keepNodeLinked(ctx context.Context, nodeID id.Identity) error 
 		if best != newBest {
 			// keep the best link always active so that it never times out
 			if best != nil {
-				best.Activity.Done()
+				best.Activity().Done()
 			}
 			best = newBest
-			best.Activity.Add(1)
+			best.Activity().Add(1)
 
 			// ask the other node to never close the link due to inactivity
 			if conn, err := best.Query(ctx, "net.keepalive"); err == nil {
@@ -62,7 +62,7 @@ func (node *Node) keepNodeLinked(ctx context.Context, nodeID id.Identity) error 
 	wait:
 		for {
 			select {
-			case <-best.Wait(): // find new best when current best closes
+			case <-best.Done(): // find new best when current best closes
 				break wait
 
 			case <-newLinksCh: // find new best when a new link was established

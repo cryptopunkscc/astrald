@@ -5,27 +5,25 @@ import (
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type Peer struct {
-	events event.Queue
-
 	id       id.Identity
-	links    map[*link.Link]struct{}
-	queries  chan *link.Query
+	links    *LinkSet
+	events   event.Queue
 	done     chan struct{}
-	unlinked bool
+	unlinked atomic.Bool
 	mu       sync.Mutex
 }
 
 // newPeer returns a new Peer instance.
 func newPeer(id id.Identity, eventParent *event.Queue) *Peer {
 	p := &Peer{
-		id:      id,
-		links:   make(map[*link.Link]struct{}),
-		queries: make(chan *link.Query),
-		done:    make(chan struct{}),
+		id:    id,
+		links: NewLinkSet(),
+		done:  make(chan struct{}),
 	}
 
 	p.events.SetParent(eventParent)
@@ -38,22 +36,9 @@ func (peer *Peer) Identity() id.Identity {
 	return peer.id
 }
 
-// Queries returns a channel receiving peer queries. The channel will be closed when the peer gets unlinked.
-func (peer *Peer) Queries() <-chan *link.Query {
-	return peer.queries
-}
-
 // Links retruns an array of peer's links.
 func (peer *Peer) Links() []*link.Link {
-	peer.mu.Lock()
-	defer peer.mu.Unlock()
-
-	links := make([]*link.Link, 0, len(peer.links))
-	for l := range peer.links {
-		links = append(links, l)
-	}
-
-	return links
+	return peer.links.All()
 }
 
 // PreferredLink returns the preferred link
@@ -61,24 +46,16 @@ func (peer *Peer) PreferredLink() *link.Link {
 	return link.Select(peer.Links(), link.BestQuality)
 }
 
-// Unlink closes all links with the peer. After a peer is unlinked, no links can be added to it.
+// Unlink closes all links with the peer.
 func (peer *Peer) Unlink() {
-	peer.mu.Lock()
-	defer peer.mu.Unlock()
-
-	peer.unlink()
-
-	for link := range peer.links {
+	for _, link := range peer.links.All() {
 		link.Close()
 	}
 }
 
 // Unlinked returns true if the peer has been unlinked.
 func (peer *Peer) Unlinked() bool {
-	peer.mu.Lock()
-	defer peer.mu.Unlock()
-
-	return peer.unlinked
+	return peer.unlinked.Load()
 }
 
 // Idle returns the idle time of the most recently active link. Returns -1 if the peer has no links.
@@ -87,7 +64,7 @@ func (peer *Peer) Idle() time.Duration {
 	if l == nil {
 		return -1
 	}
-	return l.Idle()
+	return l.Activity().Idle()
 }
 
 // Done returns a channel that will be closed when the peer becomes unlinked.
@@ -100,61 +77,30 @@ func (peer *Peer) Events() *event.Queue {
 	return &peer.events
 }
 
-// unlink marks the peer as unlinked and closes its output channels.
-func (peer *Peer) unlink() {
-	if peer.unlinked {
-		return
+// setUnlinked marks the peer as unlinked. Returns false if the peer was already unlinked, true otherwise.
+func (peer *Peer) setUnlinked() bool {
+	if peer.unlinked.CompareAndSwap(false, true) {
+		close(peer.done)
+		return true
 	}
-	peer.unlinked = true
-	close(peer.queries)
-	close(peer.done)
+	return false
 }
 
-// addLink adds a link to the peer
-// Errors: ErrPeerUnlinked, ErrPeerLinkLimitExceeded, ErrDuplicateLink
-func (peer *Peer) addLink(l *link.Link) error {
-	peer.mu.Lock()
-	defer peer.mu.Unlock()
-
-	if peer.unlinked {
+// addLink adds a link to the peer. Peer cannot be unlinked.
+func (peer *Peer) addLink(l *link.Link) (err error) {
+	if peer.unlinked.Load() {
 		return ErrPeerUnlinked
 	}
 
-	if len(peer.links) >= MaxPeerLinks {
-		return ErrPeerLinkLimitExceeded
+	if err = peer.links.Add(l); err == nil {
+		l.Events().SetParent(&peer.events)
 	}
-
-	if _, found := peer.links[l]; found {
-		return ErrDuplicateLink
-	}
-
-	l.Events().SetParent(&peer.events)
-	peer.links[l] = struct{}{}
-
-	go func() {
-		for q := range l.Queries() {
-			peer.queries <- q
-		}
-	}()
-
-	return nil
+	return
 }
 
-// removeLink removes a link from the peer
-// Errors: ErrLinkNotFound
-func (peer *Peer) removeLink(l *link.Link) error {
-	peer.mu.Lock()
-	defer peer.mu.Unlock()
-
-	if _, found := peer.links[l]; !found {
-		return ErrLinkNotFound
+func (peer *Peer) removeLink(l *link.Link) (err error) {
+	if err = peer.links.Remove(l); err == nil {
+		l.Events().SetParent(nil)
 	}
-
-	delete(peer.links, l)
-
-	if len(peer.links) == 0 {
-		peer.unlink()
-	}
-
-	return nil
+	return
 }

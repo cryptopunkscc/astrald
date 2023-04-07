@@ -2,49 +2,57 @@ package link
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/link"
 	"time"
 )
 
-// Ping returns link's round trip time
-func (l *Link) Ping() time.Duration {
-	return l.roundtrip
+type Ping struct {
+	link *Link
+	rtt  time.Duration
 }
 
-func (l *Link) monitorPing(ctx context.Context) error {
+func NewPing(link *Link) *Ping {
+	return &Ping{
+		link: link,
+		rtt:  999 * time.Second, // assume super slow before first ping
+	}
+}
+
+// RTT returns link's round trip time
+func (ping *Ping) RTT() time.Duration {
+	return ping.rtt
+}
+
+func (ping *Ping) Run(ctx context.Context) error {
 	for {
-		if err := l.ping(ctx); err != nil {
-			l.Close()
+		if err := ping.ping(ctx); err != nil {
 			return err
 		}
 
 		select {
 		case <-time.After(pingInterval):
-
 		case <-ctx.Done():
 			return ctx.Err()
-
-		case <-l.Wait():
-			return nil
 		}
 	}
 }
 
-func (l *Link) ping(ctx context.Context) error {
+func (ping *Ping) ping(ctx context.Context) error {
 	pingCh := make(chan time.Duration, 1)
 	errCh := make(chan error, 1)
 
 	go func() {
 		startTime := time.Now()
-		conn, err := l.Query(ctx, ".ping")
+		conn, err := ping.link.Query(ctx, ".ping")
 		roundTrip := time.Since(startTime)
 
 		switch err {
 		case nil:
 			conn.Close()
 			fallthrough
-		case link.ErrRejected:
+
+		case ErrRejected:
 			pingCh <- roundTrip
+
 		default:
 			errCh <- err
 		}
@@ -52,13 +60,12 @@ func (l *Link) ping(ctx context.Context) error {
 
 	select {
 	case d := <-pingCh:
-		l.roundtrip = d
+		ping.rtt = d
 
 	case err := <-errCh:
 		return err
 
 	case <-time.After(pingTimeout):
-		l.err = ErrPingTimeout
 		return ErrPingTimeout
 
 	case <-ctx.Done():

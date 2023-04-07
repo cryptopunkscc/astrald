@@ -10,7 +10,7 @@ import (
 )
 
 func peers(w io.ReadWriter, node *node.Node, _ []string) error {
-	for peer := range node.Peers.All(nil) {
+	for _, peer := range node.Peers.Peers() {
 		peerName := node.Contacts.DisplayName(peer.Identity())
 
 		fmt.Fprintf(w, "peer %s (idle %s)\n",
@@ -29,18 +29,18 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 				log.Bool(link.Outbound(), "=>", "<="),
 				link.RemoteAddr().Network(),
 				remoteAddr,
-				link.Idle().Round(time.Second),
+				link.Activity().Idle().Round(time.Second),
 				time.Since(link.EstablishedAt()).Round(time.Second),
 				link.Priority(),
-				float64(link.Ping().Microseconds())/1000,
+				float64(link.Ping().RTT().Microseconds())/1000,
 			)
-			for c := range link.Conns() {
+			for _, c := range link.Conns().All() {
 				fmt.Fprintf(w,
 					"    %s %s [%d:%d] (idle %s)\n",
 					log.Bool(c.Outbound(), "->", "<-"),
 					c.Query(),
-					c.InputStream().ID(),
-					c.OutputStream().ID(),
+					c.LocalPort(),
+					c.RemotePort(),
 					c.Idle().Round(time.Second),
 				)
 			}

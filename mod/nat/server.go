@@ -112,7 +112,7 @@ func (mod *Module) serve(ctx context.Context, conn *hub.Conn) error {
 				continue
 			}
 
-			l := link.NewFromConn(authed)
+			l := link.New(authed)
 			l.SetPriority(infra.NetworkPriority(l.Network()))
 			return mod.node.Peers.AddLink(l)
 
@@ -142,7 +142,7 @@ func (mod *Module) serve(ctx context.Context, conn *hub.Conn) error {
 				continue
 			}
 
-			l := link.NewFromConn(authed)
+			l := link.New(authed)
 			l.SetPriority(infra.NetworkPriority(l.Network()))
 			return mod.node.Peers.AddLink(l)
 

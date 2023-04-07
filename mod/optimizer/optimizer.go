@@ -82,7 +82,7 @@ func (mod *Module) Optimize(parent context.Context, peer *peers.Peer) error {
 		ctx,
 		retryDialer.Dial(ctx),
 	) {
-		l := link.NewFromConn(authConn)
+		l := link.New(authConn)
 		l.SetPriority(nodeinfra.NetworkPriority(l.Network()))
 		mod.node.Peers.AddLink(l)
 	}

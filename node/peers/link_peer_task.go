@@ -78,7 +78,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 		return nil, ErrNodeUnreachable
 	}
 
-	l := link.NewFromConn(authConn)
+	l := link.New(authConn)
 	l.SetPriority(nodeinfra.NetworkPriority(l.Network()))
 	if err := task.Peers.AddLink(l); err != nil {
 		l.Close()

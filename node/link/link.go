@@ -3,189 +3,233 @@ package link
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth"
-	"github.com/cryptopunkscc/astrald/link"
+	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/link/ctl"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
-	"strings"
-	"sync"
+	"github.com/cryptopunkscc/astrald/streams"
+	"github.com/cryptopunkscc/astrald/tasks"
+	"sync/atomic"
 	"time"
 )
 
-const queryChanLen = 16
 const defaultIdleTimeout = 60 * time.Minute
 const pingInterval = 30 * time.Minute
 const pingTimeout = 15 * time.Second
+const muxControlPort = 0
 
-// Link wraps an astral.Link and adds activity tracking
+var ErrInvalidQuery = errors.New("invalid query")
+var ErrRejected = errors.New("query rejected")
+
+type QueryHandlerFunc func(query *Query) error
+
+// Link represents an astral link over an authenticated transport
 type Link struct {
-	sig.Activity
-	*link.Link
-	queries          chan *Query
-	events           event.Queue
-	conns            map[*Conn]struct{}
-	mu               sync.Mutex
-	establishedAt    time.Time
-	priority         int
-	roundtrip        time.Duration
-	idleTimeout      time.Duration
-	setIdleTimeoutCh chan time.Duration
-	err              error
+	activity      sig.Activity
+	events        event.Queue
+	conn          auth.Conn
+	mux           *mux.FrameMux
+	ctl           *ctl.Control
+	conns         *ConnSet
+	establishedAt time.Time
+	ping          *Ping
+	idle          *Idle
+	control       *Control
+	priority      int
+	queryTimeout  time.Duration
+	queryHandler  QueryHandlerFunc
+	doneCh        chan struct{}
+	closed        atomic.Bool
+	err           error
 }
 
-func New(link *link.Link) *Link {
+func (l *Link) Activity() *sig.Activity {
+	return &l.activity
+}
+
+func (l *Link) Idle() *Idle {
+	return l.idle
+}
+
+func New(conn auth.Conn) *Link {
 	l := &Link{
-		Link:             link,
-		queries:          make(chan *Query, queryChanLen),
-		conns:            make(map[*Conn]struct{}, 0),
-		establishedAt:    time.Now().Round(0), // don't use monotonic clock
-		roundtrip:        999 * time.Second,   // assume super slow before first ping
-		setIdleTimeoutCh: make(chan time.Duration, 1),
-		idleTimeout:      defaultIdleTimeout,
+		conn:          conn,
+		conns:         NewConnSet(),
+		doneCh:        make(chan struct{}),
+		establishedAt: time.Now().Round(0), // don't use monotonic clock
+		queryTimeout:  DefaultQueryTimeout,
 	}
+
+	l.mux = mux.NewFrameMux(conn, l.onFrameDropped)
+
+	// set up control connection
+	var out = mux.NewFrameWriter(l.mux, muxControlPort)
+	var in = mux.NewFrameReader()
+
+	if err := l.mux.Bind(muxControlPort, in.HandleFrame); err != nil {
+		panic(err)
+	}
+
+	l.ctl = ctl.New(streams.ReadWriteCloseSplit{Reader: in, Writer: out})
+
+	l.ping = NewPing(l)
+	l.idle = NewIdle(l)
+	l.control = NewControl(l)
 
 	return l
 }
 
-func NewFromConn(conn auth.Conn) *Link {
-	return New(link.New(conn))
+func (l *Link) Run(ctx context.Context) error {
+	defer l.conn.Close() // close transport after link closes
+
+	l.activity.Touch() // reset idle to 0
+
+	return tasks.Group(l.idle, l.ping, l.control, l.mux).Run(ctx)
 }
 
-func (l *Link) Query(ctx context.Context, query string) (*Conn, error) {
+func (l *Link) Query(ctx context.Context, query string) (conn *Conn, err error) {
+	if l.closed.Load() {
+		return nil, ErrLinkClosed
+	}
+
 	if len(query) == 0 {
-		return nil, errors.New("empty query")
+		return nil, ErrInvalidQuery
 	}
 
 	// silent queries do not affect activity
-	if !(query[0] == '.') {
-		l.Activity.Add(1)
-		defer l.Activity.Done()
+	if query[0] != '.' {
+		l.activity.Add(1)
+		defer l.activity.Done()
 	}
 
-	linkConn, err := l.Link.Query(ctx, query)
+	var reader = mux.NewFrameReader()
+	localPort, err := l.mux.BindAny(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	conn := wrapConn(linkConn)
-	conn.Attach(l)
-
-	l.events.Emit(EventConnEstablished{conn})
-
-	return conn, nil
-}
-
-func (l *Link) Queries() <-chan *Query {
-	return l.queries
-}
-
-func (l *Link) Events() *event.Queue {
-	return &l.events
-}
-
-func (l *Link) Err() error {
-	return l.err
-}
-
-func (l *Link) EstablishedAt() time.Time {
-	return l.establishedAt
-}
-
-func (l *Link) Conns() <-chan *Conn {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	ch := make(chan *Conn, len(l.conns))
-	for l := range l.conns {
-		ch <- l
-	}
-	close(ch)
-	return ch
-}
-
-func (l *Link) ConnCount() int {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	return len(l.conns)
-}
-
-func (l *Link) Priority() int {
-	return l.priority
-}
-
-func (l *Link) SetPriority(priority int) {
-	if l.priority == priority {
-		return
+	// write query frame
+	err = l.ctl.WriteQuery(query, localPort)
+	if err != nil {
+		l.mux.Unbind(localPort)
+		return nil, fmt.Errorf("query failed: %w", err)
 	}
 
-	var e = EventLinkPriorityChanged{
-		Link: l,
-		Old:  l.priority,
-		New:  priority,
-	}
-	defer l.events.Emit(e)
+	// read the remote port of the connection
+	var remotePort int
+	var reply = make(chan struct{})
 
-	l.priority = priority
+	go func() {
+		err = cslq.Decode(reader, "s", &remotePort)
+		close(reply)
+	}()
+
+	select {
+	case <-ctx.Done():
+		l.mux.Unbind(localPort)
+		return nil, ctx.Err()
+
+	case <-time.After(l.queryTimeout):
+		l.mux.Unbind(localPort)
+		return nil, ErrQueryTimeout
+
+	case <-reply:
+	}
+
+	if err != nil {
+		return nil, ErrRejected
+	}
+
+	conn = &Conn{
+		localPort: localPort,
+		query:     query,
+		reader:    reader,
+		writer:    mux.NewFrameWriter(l.mux, remotePort),
+		link:      l,
+		done:      make(chan struct{}),
+	}
+
+	l.add(conn)
+
+	l.Events().Emit(EventConnEstablished{Conn: conn})
+
+	return
 }
 
-func (l *Link) add(conn *Conn) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	// skip duplicates
-	if _, found := l.conns[conn]; found {
-		return
+func (l *Link) Close() error {
+	if l.closed.CompareAndSwap(false, true) {
+		_ = l.ctl.WriteClose()
+		l.conn.Close()
+		close(l.doneCh)
 	}
-
-	l.conns[conn] = struct{}{}
-	l.Activity.Add(1)
-}
-
-func (l *Link) remove(conn *Conn) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if _, found := l.conns[conn]; !found {
-		return errors.New("not found")
-	}
-	delete(l.conns, conn)
-	l.Activity.Done()
-
 	return nil
 }
 
-func (l *Link) processQueries(ctx context.Context) error {
-	defer close(l.queries)
+func (l *Link) onQuery(query string, remotePort int) error {
+	var writer = mux.NewFrameWriter(l.mux, remotePort)
+	var reader = mux.NewFrameReader()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
+	localPort, err := l.mux.BindAny(reader)
+	if err != nil {
+		writer.Close()
+		return err
+	}
 
-		case query, ok := <-l.Link.Queries():
-			if !ok {
-				l.err = io.EOF
-				return io.EOF
-			}
+	var q = &Query{
+		query:     query,
+		localPort: localPort,
+		input:     reader,
+		output:    writer,
+		link:      l,
+	}
 
-			if !isSilent(query) {
-				l.Activity.Add(1)
-			}
+	if l.queryHandler == nil {
+		log.Log("no query handler set - automatically rejecting query: %s", query)
+		_ = q.Reject()
+		return nil
+	}
 
-			l.queries <- &Query{
-				link:  l,
-				Query: query,
-			}
+	err = l.queryHandler(q)
+	if err != nil {
+		log.Log("rejecting query %s due to handler error: %s", query, err)
+		q.Reject()
+	}
 
-			if !isSilent(query) {
-				l.Activity.Done()
-			}
-		}
+	return err
+}
+
+func (l *Link) onDrop(remotePort int) error {
+	conn := l.conns.FindByRemotePort(remotePort)
+	if conn != nil {
+		conn.Close()
+	}
+	return nil
+}
+
+func (l *Link) onClose() error {
+	return l.Close()
+}
+
+func (l *Link) onFrameDropped(frame mux.Frame) error {
+	if !frame.EOF() {
+		_ = l.ctl.WriteDrop(frame.Port)
+	}
+	return nil
+}
+
+func (l *Link) add(conn *Conn) {
+	if err := l.conns.Add(conn); err == nil {
+		l.activity.Add(1)
 	}
 }
 
-func isSilent(q *link.Query) bool {
-	return strings.HasPrefix(q.String(), ".")
+func (l *Link) remove(conn *Conn) error {
+	if err := l.conns.Remove(conn); err == nil {
+		l.activity.Done()
+	}
+	return nil
 }

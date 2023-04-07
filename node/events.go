@@ -10,28 +10,28 @@ import (
 )
 
 func (node *Node) handleEvents(ctx context.Context) error {
-	for event := range node.events.Subscribe(ctx) {
-		node.logEvent(event)
+	for e := range node.events.Subscribe(ctx) {
+		node.logEvent(e)
 
-		switch event := event.(type) {
+		switch e := e.(type) {
 		case presence.EventIdentityPresent:
-			node.Tracker.Add(event.Identity, event.Addr, time.Now().Add(60*time.Minute))
+			_ = node.Tracker.Add(e.Identity, e.Addr, time.Now().Add(60*time.Minute))
 		}
 	}
 
 	return nil
 }
 
-func (node *Node) logEvent(ev event.Event) {
-	var eventName = reflect.TypeOf(ev).String()
+func (node *Node) logEvent(e event.Event) {
+	var eventName = reflect.TypeOf(e).String()
 
 	if !node.logConfig.IsEventLoggable(eventName) {
 		return
 	}
 
-	if stringer, ok := ev.(fmt.Stringer); ok {
-		log.Log("%s<%s>%s %s%s", log.Purple(), reflect.TypeOf(ev).String(), log.Gray(), stringer.String(), log.Reset())
+	if stringer, ok := e.(fmt.Stringer); ok {
+		log.Log("%s<%s>%s %s%s", log.Purple(), reflect.TypeOf(e).String(), log.Gray(), stringer.String(), log.Reset())
 	} else {
-		log.Log("%s<%s>%s", log.Purple(), reflect.TypeOf(ev).String(), log.Reset())
+		log.Log("%s<%s>%s", log.Purple(), reflect.TypeOf(e).String(), log.Reset())
 	}
 }

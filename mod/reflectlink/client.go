@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	alink "github.com/cryptopunkscc/astrald/link"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"io"
 	"time"
@@ -16,7 +15,7 @@ func (mod *Module) runClient(ctx context.Context) error {
 		case link.EventLinkEstablished:
 			go func() {
 				if err := mod.processEvent(ctx, event); err != nil {
-					if !errors.Is(err, alink.ErrRejected) {
+					if !errors.Is(err, link.ErrRejected) {
 						log.Error("query: %s", err)
 					} else {
 						log.Errorv(1, "query: %s", err)

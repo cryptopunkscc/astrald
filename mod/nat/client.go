@@ -102,7 +102,7 @@ func (mod *Module) query(ctx context.Context, remoteID id.Identity) error {
 		// dial
 		authed, err := mod.makeLink(ctx, remoteAddr, remoteID)
 		if err == nil {
-			l := link.NewFromConn(authed)
+			l := link.New(authed)
 			l.SetPriority(infra.NetworkPriority(l.Network()))
 			return mod.node.Peers.AddLink(l)
 		}

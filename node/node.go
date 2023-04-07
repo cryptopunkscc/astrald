@@ -11,6 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/db"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/peers"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"github.com/cryptopunkscc/astrald/node/tracker"
@@ -30,6 +31,7 @@ type Node struct {
 	logConfig   *LogConfig
 	database    *db.Database
 	identity    id.Identity
+	queryQueue  chan *link.Query
 
 	Infra    *infra.Infra
 	Tracker  *tracker.Tracker
@@ -48,7 +50,8 @@ var log = _log.Tag("node")
 func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	var err error
 	var node = &Node{
-		rootDir: rootDir,
+		rootDir:    rootDir,
+		queryQueue: make(chan *link.Query),
 	}
 
 	node.configStore, _ = config.NewFileStore(path.Join(rootDir, "config"))
@@ -135,7 +138,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	})
 
 	// peer manager
-	node.Peers, err = peers.NewManager(node.identity, node.Infra, node.Tracker, &node.events)
+	node.Peers, err = peers.NewManager(node.identity, node.Infra, node.Tracker, &node.events, node.onQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
 	}

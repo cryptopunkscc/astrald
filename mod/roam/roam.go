@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
 	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
@@ -91,22 +92,24 @@ func (mod *Module) servePick(ctx context.Context) error {
 			continue
 		}
 
-		var remoteStreamID uint16
+		var remotePort int
 
-		// read remote stream id of the connection to pick
-		cslq.Decode(query, "s", &remoteStreamID)
+		// read remote port of the connection to pick
+		cslq.Decode(query, "s", &remotePort)
 
 		// find the connection
-		for c := range query.Link().Conns() {
-			if c.OutputStream().ID() == int(remoteStreamID) {
-				// allocate a new move for the connection
-				moveID := mod.allocMove(c)
-				if moveID != -1 {
-					cslq.Encode(query, "c", moveID)
-				}
-				break
-			}
+		c := query.Link().Conns().FindByRemotePort(remotePort)
+		if c == nil {
+			query.Close()
+			continue
 		}
+
+		// allocate a new move for the connection
+		moveID := mod.allocMove(c)
+		if moveID != -1 {
+			cslq.Encode(query, "c", moveID)
+		}
+
 		query.Close()
 	}
 
@@ -128,9 +131,9 @@ func (mod *Module) serveDrop(ctx context.Context) {
 
 		conn, _ := query.Accept()
 
-		var moveID, newOutputID int
+		var moveID, newRemotePort int
 
-		cslq.Decode(conn, "cs", &moveID, &newOutputID)
+		cslq.Decode(conn, "cs", &moveID, &newRemotePort)
 
 		target, found := mod.moves[moveID]
 		if !found {
@@ -139,14 +142,21 @@ func (mod *Module) serveDrop(ctx context.Context) {
 		}
 
 		// allocate a new input stream and write its id
-		newInputStream, _ := conn.Link().AllocInputStream()
-		target.SetFallbackInputStream(newInputStream)
+		var newReader = mux.NewFrameReader()
+		newLocalPort, err := conn.Link().Mux().BindAny(newReader)
+		if err != nil {
+			conn.Link().Mux().Unbind(newLocalPort)
+			conn.Close()
+			continue
+		}
 
-		cslq.Encode(conn, "s", newInputStream.ID())
+		target.SetFallbackReader(newReader)
+
+		cslq.Encode(conn, "s", newLocalPort)
 
 		// replace the output stream and finalize the move
-		newOutputStream := conn.Link().OutputStream(int(newOutputID))
-		target.ReplaceOutputStream(newOutputStream)
+		newWriter := mux.NewFrameWriter(conn.Link().Mux(), newRemotePort)
+		target.SetWriter(newWriter)
 		target.Attach(conn.Link())
 
 		conn.Close()
@@ -159,7 +169,7 @@ func (mod *Module) optimizeConn(conn *link.Conn) {
 
 	for {
 		select {
-		case <-conn.Wait():
+		case <-conn.Done():
 			return
 
 		case <-time.After(time.Second):
@@ -176,8 +186,8 @@ func (mod *Module) optimizeConn(conn *link.Conn) {
 			if err := mod.move(conn, preferred); err != nil {
 				log.Error("move: %s", err)
 			} else {
-				if current.ConnCount() == 0 {
-					current.SetIdleTimeout(time.Minute)
+				if current.Conns().Count() == 0 {
+					current.Idle().SetIdleTimeout(time.Minute)
 				}
 			}
 		}
@@ -205,7 +215,7 @@ func (mod *Module) init(conn *link.Conn) (int, error) {
 	defer init.Close()
 
 	// write input stream id of the connection to be migrated
-	cslq.Encode(init, "s", conn.InputStream().ID())
+	cslq.Encode(init, "s", conn.LocalPort())
 
 	// read transfer id
 	var tid int
@@ -217,39 +227,40 @@ func (mod *Module) init(conn *link.Conn) (int, error) {
 	return tid, nil
 }
 
-func (mod *Module) drop(dest *link.Link, conn *link.Conn, moveID int) error {
-	// allocate input stream on the destination link
-	newInputStream, err := dest.AllocInputStream()
+func (mod *Module) drop(target *link.Link, conn *link.Conn, moveID int) error {
+	// allocate a new port on the destination link
+	var newReader = mux.NewFrameReader()
+	newLocalPort, err := target.Mux().BindAny(newReader)
 	if err != nil {
 		return err
 	}
 
 	// set connection to fall back to the new input stream
-	conn.SetFallbackInputStream(newInputStream)
+	conn.SetFallbackReader(newReader)
 
 	// start the query
-	query, err := dest.Query(context.Background(), portDrop)
+	query, err := target.Query(context.Background(), portDrop)
 	if err != nil {
-		newInputStream.Discard()
+		target.Mux().Unbind(newLocalPort)
 		return err
 	}
 	defer query.Close()
 
 	// write move id and new input stream id
-	cslq.Encode(query, "cs", moveID, newInputStream.ID())
+	cslq.Encode(query, "cs", moveID, newLocalPort)
 
 	// preapre the new output stream
-	var newOutputStreamID uint16
-	err = cslq.Decode(query, "s", &newOutputStreamID)
+	var newRemotePort int
+	err = cslq.Decode(query, "s", &newRemotePort)
 	if err != nil {
-		newInputStream.Discard()
-		return fmt.Errorf("failed to read output stream: %w", err)
+		target.Mux().Unbind(newLocalPort)
+		return fmt.Errorf("read error: %w", err)
 	}
-	newOutputStream := dest.OutputStream(int(newOutputStreamID))
+	newWriter := mux.NewFrameWriter(target.Mux(), newRemotePort)
 
 	// finalize the move
-	conn.ReplaceOutputStream(newOutputStream)
-	conn.Attach(dest)
+	conn.SetWriter(newWriter)
+	conn.Attach(target)
 
 	return nil
 }

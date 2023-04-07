@@ -6,76 +6,71 @@ import (
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/link"
 	"io"
 )
+
+type AuthConnHandlerFunc func(auth.Conn) error
 
 type Server struct {
 	localID  id.Identity
 	listener infra.Listener
-	conns    chan infra.Conn
-	err      error
-	links    *link.Link
+	handler  AuthConnHandlerFunc
 }
 
-func newServer(localID id.Identity, listener infra.Listener) (*Server, error) {
+func newServer(localID id.Identity, listener infra.Listener, handler AuthConnHandlerFunc) (*Server, error) {
 	srv := &Server{
 		localID:  localID,
 		listener: listener,
-		conns:    make(chan infra.Conn, serverConnQueueLen),
+		handler:  handler,
 	}
 
 	return srv, nil
 }
 
-func (srv *Server) AddConn(conn infra.Conn) {
-	srv.conns <- conn
-}
-
-func (srv *Server) Run(ctx context.Context) (chan *link.Link, error) {
+func (srv *Server) Run(ctx context.Context) error {
 	listenCh, err := srv.listener.Listen(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	ch := make(chan *link.Link)
-
-	go func() {
-		for conn := range listenCh {
-			srv.conns <- conn
-		}
-		close(srv.conns)
-		defer close(ch)
-	}()
-
-	go func() {
-		for conn := range srv.conns {
-			link, err := srv.process(ctx, conn)
-			switch {
-			case err == nil:
-				ch <- link
-			case errors.Is(err, io.EOF):
-			case errors.Is(err, context.DeadlineExceeded):
-			case errors.Is(err, context.Canceled):
-			default:
-				log.Error("inbound handshake error: %s", err)
+	for {
+		select {
+		case conn, ok := <-listenCh:
+			if !ok {
+				return nil
 			}
 
-		}
-	}()
+			authConn, err := srv.Handshake(ctx, conn)
+			switch {
+			case err == nil:
+				srv.handler(authConn)
 
-	return ch, nil
+			case errors.Is(err, io.EOF),
+				errors.Is(err, context.DeadlineExceeded),
+				errors.Is(err, context.Canceled):
+				log.Errorv(2, "inbound handshake error: %s", err)
+
+			default:
+				log.Errorv(1, "inbound handshake error: %s", err)
+			}
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
 
-func (srv *Server) process(ctx context.Context, conn infra.Conn) (*link.Link, error) {
-	hctx, _ := context.WithTimeout(ctx, HandshakeTimeout)
-	auth, err := auth.HandshakeInbound(hctx, conn, srv.localID)
+func (srv *Server) Handshake(ctx context.Context, conn infra.Conn) (authConn auth.Conn, err error) {
+	hsCtx, _ := context.WithTimeout(ctx, HandshakeTimeout)
+	authConn, err = auth.HandshakeInbound(hsCtx, conn, srv.localID)
 
 	if err != nil {
 		conn.Close()
-		return nil, err
-
 	}
 
-	return link.New(auth), nil
+	return
+}
+
+func (srv *Server) SetHandler(handler AuthConnHandlerFunc) {
+	srv.handler = handler
 }

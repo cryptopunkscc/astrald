@@ -20,7 +20,7 @@ func LowestPing(current *Link, next *Link) *Link {
 		return next
 	}
 
-	if next.Ping() < current.Ping() {
+	if next.Ping().RTT() < current.Ping().RTT() {
 		return next
 	}
 
@@ -33,7 +33,7 @@ func MostRecent(current *Link, next *Link) *Link {
 		return next
 	}
 
-	if next.Idle() < current.Idle() {
+	if next.activity.Idle() < current.activity.Idle() {
 		return next
 	}
 
@@ -78,7 +78,7 @@ func BestQuality(current *Link, next *Link) *Link {
 	}
 
 	// for gw and tor just pick best latency
-	if next.Ping() < current.Ping() {
+	if next.Ping().RTT() < current.Ping().RTT() {
 		return next
 	}
 

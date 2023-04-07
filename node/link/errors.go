@@ -4,3 +4,5 @@ import "errors"
 
 var ErrPingTimeout = errors.New("ping timeout")
 var ErrIdleTimeout = errors.New("idle timeout")
+var ErrLinkClosed = errors.New("link closed")
+var ErrQueryTimeout = errors.New("query timedout")

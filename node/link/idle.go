@@ -6,12 +6,26 @@ import (
 	"time"
 )
 
-func (l *Link) IdleTimeout() time.Duration {
+type Idle struct {
+	link             *Link
+	idleTimeout      time.Duration
+	setIdleTimeoutCh chan time.Duration
+}
+
+func NewIdle(link *Link) *Idle {
+	return &Idle{
+		link:             link,
+		setIdleTimeoutCh: make(chan time.Duration, 1),
+		idleTimeout:      defaultIdleTimeout,
+	}
+}
+
+func (l *Idle) IdleTimeout() time.Duration {
 	return l.idleTimeout
 }
 
 // SetIdleTimeout sets the duriation of inactivity after which the link is closed. Set to 0 to never time out.
-func (l *Link) SetIdleTimeout(d time.Duration) error {
+func (l *Idle) SetIdleTimeout(d time.Duration) error {
 	select {
 	case l.setIdleTimeoutCh <- d:
 		return nil
@@ -20,7 +34,7 @@ func (l *Link) SetIdleTimeout(d time.Duration) error {
 	}
 }
 
-func (l *Link) monitorIdle(ctx context.Context) error {
+func (l *Idle) Run(ctx context.Context) error {
 	for {
 		if l.idleTimeout == 0 {
 			select {
@@ -31,9 +45,8 @@ func (l *Link) monitorIdle(ctx context.Context) error {
 				return ctx.Err()
 			}
 		} else {
-			var left = l.idleTimeout - l.Idle()
+			var left = l.idleTimeout - l.link.activity.Idle()
 			if left <= 0 {
-				l.err = ErrIdleTimeout
 				return ErrIdleTimeout
 			}
 
