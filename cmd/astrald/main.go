@@ -15,6 +15,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/optimizer"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink"
 	"github.com/cryptopunkscc/astrald/mod/roam"
+	"github.com/cryptopunkscc/astrald/mod/tcpfwd"
 	"github.com/cryptopunkscc/astrald/node"
 	"os"
 	"os/signal"
@@ -90,6 +91,7 @@ func main() {
 		optimizer.Loader{},
 		keepalive.Loader{},
 		agent.Loader{},
+		tcpfwd.Loader{},
 	)
 	if err != nil {
 		fmt.Println("init error:", err)
