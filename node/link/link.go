@@ -47,14 +47,6 @@ type Link struct {
 	err           error
 }
 
-func (l *Link) Activity() *sig.Activity {
-	return &l.activity
-}
-
-func (l *Link) Idle() *Idle {
-	return l.idle
-}
-
 func New(conn auth.Conn) *Link {
 	l := &Link{
 		conn:          conn,
@@ -106,7 +98,7 @@ func (l *Link) Query(ctx context.Context, query string) (conn *Conn, err error) 
 		defer l.activity.Done()
 	}
 
-	var reader = mux.NewFrameReader()
+	var reader = NewPortReader()
 	localPort, err := l.mux.BindAny(reader)
 	if err != nil {
 		return nil, err
@@ -151,7 +143,12 @@ func (l *Link) Query(ctx context.Context, query string) (conn *Conn, err error) 
 		writer:    mux.NewFrameWriter(l.mux, remotePort),
 		link:      l,
 		done:      make(chan struct{}),
+		outbound:  true,
 	}
+
+	reader.SetErrorHandler(func(err error) {
+		conn.closeWithError(err)
+	})
 
 	l.add(conn)
 
@@ -171,7 +168,7 @@ func (l *Link) Close() error {
 
 func (l *Link) onQuery(query string, remotePort int) error {
 	var writer = mux.NewFrameWriter(l.mux, remotePort)
-	var reader = mux.NewFrameReader()
+	var reader = NewPortReader()
 
 	localPort, err := l.mux.BindAny(reader)
 	if err != nil {
@@ -182,8 +179,8 @@ func (l *Link) onQuery(query string, remotePort int) error {
 	var q = &Query{
 		query:     query,
 		localPort: localPort,
-		input:     reader,
-		output:    writer,
+		reader:    reader,
+		writer:    writer,
 		link:      l,
 	}
 

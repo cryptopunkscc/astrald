@@ -5,8 +5,17 @@ import (
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/sig"
 	"time"
 )
+
+func (l *Link) Activity() *sig.Activity {
+	return &l.activity
+}
+
+func (l *Link) Idle() *Idle {
+	return l.idle
+}
 
 func (l *Link) SetQueryHandler(queryHandler QueryHandlerFunc) {
 	l.queryHandler = queryHandler

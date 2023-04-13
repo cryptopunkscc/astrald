@@ -20,7 +20,7 @@ type EventConnClosed struct {
 }
 
 func (e EventConnClosed) String() string {
-	return fmt.Sprintf("query=%s localPort=%d outbound=%t", e.Conn.Query(), e.Conn.LocalPort(), e.Conn.Outbound())
+	return fmt.Sprintf("query=%s localPort=%d outbound=%t err=%s", e.Conn.Query(), e.Conn.LocalPort(), e.Conn.Outbound(), e.Conn.err)
 }
 
 type EventLinkEstablished struct {
