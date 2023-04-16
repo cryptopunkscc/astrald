@@ -67,7 +67,7 @@ func (mod *Module) getLocalInfo() *jsonInfo {
 		AddrList: make([]jsonAddrSpec, 0),
 	}
 
-	for _, a := range mod.node.Infra.Addresses() {
+	for _, a := range mod.node.Infra().LocalAddrs() {
 		info.AddrList = append(info.AddrList, jsonAddrSpec{
 			Network:   a.Network(),
 			Address:   a.Pack(),

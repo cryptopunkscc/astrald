@@ -42,7 +42,7 @@ func (mod *Module) processLinkInfo(link *link.Link, jInfo *jsonInfo) error {
 	info := &Info{Addrs: make([]AddrSpec, 0)}
 
 	for _, a := range jInfo.AddrList {
-		addr, err := mod.node.Infra.Unpack(a.Network, a.Address)
+		addr, err := mod.node.Infra().Unpack(a.Network, a.Address)
 		if err != nil {
 			continue
 		}
@@ -58,7 +58,7 @@ func (mod *Module) processLinkInfo(link *link.Link, jInfo *jsonInfo) error {
 		mod.node.Tracker.Add(remoteID, addr, expiresAt)
 	}
 
-	if a, err := mod.node.Infra.Unpack(jInfo.ReflectAddr.Network, jInfo.ReflectAddr.Address); err == nil {
+	if a, err := mod.node.Infra().Unpack(jInfo.ReflectAddr.Network, jInfo.ReflectAddr.Address); err == nil {
 		info.ReflectAddr = a
 	}
 

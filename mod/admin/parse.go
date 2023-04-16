@@ -23,7 +23,7 @@ func parse(w io.ReadWriter, node *node.Node, args []string) error {
 		fmt.Fprintf(w, "  alias     %s\n", info.Alias)
 	}
 	for _, a := range info.Addresses {
-		addr, err := node.Infra.Unpack(a.Network(), a.Pack())
+		addr, err := node.Infra().Unpack(a.Network(), a.Pack())
 		if err != nil {
 			continue
 		}

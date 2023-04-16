@@ -33,7 +33,7 @@ func (mod *Module) Run(ctx context.Context) error {
 				}
 
 				// check if it's one of our detected addresses
-				for _, a := range mod.node.Infra.Addresses() {
+				for _, a := range mod.node.Infra().LocalAddrs() {
 					if infra.AddrEqual(a.Addr, inetAddr) {
 						continue
 					}

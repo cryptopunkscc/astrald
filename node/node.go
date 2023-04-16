@@ -33,7 +33,7 @@ type Node struct {
 	identity    id.Identity
 	queryQueue  chan *link.Query
 
-	Infra    *infra.Infra
+	infra    *infra.Infra
 	Tracker  *tracker.Tracker
 	Contacts *contacts.Manager
 	Ports    *hub.Hub
@@ -104,7 +104,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	node.Ports = hub.New(&node.events)
 
 	// infrastructure
-	node.Infra, err = infra.New(
+	node.infra, err = infra.New(
 		node.Identity(),
 		node.configStore,
 		infra.FilteredQuerier{Querier: node, FilteredID: node.identity},
@@ -115,7 +115,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	}
 
 	// tracker
-	node.Tracker, err = tracker.New(node.database, node.Infra)
+	node.Tracker, err = tracker.New(node.database, node.infra)
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +138,13 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	})
 
 	// peer manager
-	node.Peers, err = peers.NewManager(node.identity, node.Infra, node.Tracker, &node.events, node.onQuery)
+	node.Peers, err = peers.NewManager(node.identity, node.infra, node.Tracker, &node.events, node.onQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
 	}
 
 	// presence
-	node.Presence, err = presence.NewManager(node.Infra, &node.events)
+	node.Presence, err = presence.NewManager(node.infra, &node.events)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up presence: %w", err)
 	}
@@ -156,6 +156,11 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	}
 
 	return node, nil
+}
+
+// Infra returns node's infrastructure component
+func (node *Node) Infra() Infra {
+	return node.infra
 }
 
 // RootDir returns node's root directory where all node-related files are stored

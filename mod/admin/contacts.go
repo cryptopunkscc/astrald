@@ -20,7 +20,7 @@ func cmdContacts(w io.ReadWriter, node *node.Node, _ []string) error {
 		}
 
 		for _, a := range addrs {
-			addr, err := node.Infra.Unpack(a.Network(), a.Pack())
+			addr, err := node.Infra().Unpack(a.Network(), a.Pack())
 			if err != nil {
 				continue
 			}

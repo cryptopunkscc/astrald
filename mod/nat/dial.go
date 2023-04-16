@@ -14,7 +14,7 @@ func (mod *Module) makeLink(ctx context.Context, remoteAddr inet.Addr, remoteID 
 
 	startTime := time.Now()
 	dialCtx, _ := context.WithTimeout(ctx, dialTimeout)
-	newConn, err := mod.node.Infra.Inet().DialFrom(dialCtx, remoteAddr, mod.mapping.intAddr)
+	newConn, err := mod.node.Infra().Inet().DialFrom(dialCtx, remoteAddr, mod.mapping.intAddr)
 	dialTime := float64(time.Since(startTime).Microseconds()) / 1000.0
 
 	if err != nil {

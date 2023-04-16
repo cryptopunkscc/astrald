@@ -105,7 +105,7 @@ func (i *Infra) Networks() <-chan infra.Network {
 	return ch
 }
 
-func (i *Infra) Addresses() []infra.AddrSpec {
+func (i *Infra) LocalAddrs() []infra.AddrSpec {
 	list := make([]infra.AddrSpec, 0)
 
 	type addrLister interface {

@@ -50,7 +50,7 @@ func (mod *Module) Optimize(parent context.Context, peer *peers.Peer) error {
 	}()
 
 	// use FilterDialer to dial only addresses with potentially better quality score
-	filterDialer := NewFilterDialer(mod.node.Infra, func(addr infra.Addr) error {
+	filterDialer := NewFilterDialer(mod.node.Infra(), func(addr infra.Addr) error {
 		sa := scoreAddr(addr)
 		sp := scorePeer(peer)
 

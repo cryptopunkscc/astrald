@@ -30,7 +30,7 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := node.Infra.Run(ctx); err != nil {
+		if err := node.infra.Run(ctx); err != nil {
 			errCh <- fmt.Errorf("infrastructure: %w", err)
 		}
 	}()
@@ -78,15 +78,6 @@ func (node *Node) Run(ctx context.Context) (err error) {
 
 		if err := node.handleEvents(ctx); err != nil {
 			errCh <- fmt.Errorf("event handler: %w", err)
-		}
-	}()
-
-	// sticky nodes
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := node.keepStickyNodesLinked(ctx); err != nil {
-			errCh <- fmt.Errorf("keeplinked: %w", err)
 		}
 	}()
 
