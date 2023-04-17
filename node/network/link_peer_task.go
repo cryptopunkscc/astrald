@@ -1,4 +1,4 @@
-package peers
+package network
 
 import (
 	"context"
@@ -21,7 +21,7 @@ type LinkOptions struct {
 // LinkPeerTask represents a task that tries to establish a new link with a node
 type LinkPeerTask struct {
 	RemoteID id.Identity
-	Peers    *Manager
+	Peers    *Network
 	options  LinkOptions
 }
 

@@ -20,7 +20,7 @@ var _ apphost.AppHost = &AppHost{}
 type AppHost struct {
 	ports *PortManager
 
-	node *node.Node
+	node node.Node
 	conn net.Conn
 }
 
@@ -29,7 +29,7 @@ func (host *AppHost) Register(portName string, target string) error {
 		return hub.ErrAlreadyRegistered
 	}
 
-	port, err := host.node.Ports.Register(portName)
+	port, err := host.node.Services().Register(portName)
 	if err != nil {
 		return err
 	}
@@ -120,12 +120,12 @@ func (host *AppHost) Resolve(s string) (id.Identity, error) {
 		return host.node.Identity(), nil
 	}
 
-	return host.node.Contacts.ResolveIdentity(s)
+	return host.node.Contacts().ResolveIdentity(s)
 }
 
 func (host *AppHost) NodeInfo(identity id.Identity) (apphost.NodeInfo, error) {
 	return apphost.NodeInfo{
 		Identity: identity,
-		Name:     host.node.Contacts.DisplayName(identity),
+		Name:     host.node.Contacts().DisplayName(identity),
 	}, nil
 }

@@ -9,13 +9,13 @@ import (
 const portName = "sys.agent"
 
 type Module struct {
-	node *node.Node
+	node node.Node
 }
 
 var log = _log.Tag(ModuleName)
 
 func (m *Module) Run(ctx context.Context) error {
-	port, err := m.node.Ports.RegisterContext(ctx, portName)
+	port, err := m.node.Services().RegisterContext(ctx, portName)
 	if err != nil {
 		return err
 	}

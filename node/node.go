@@ -12,7 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/peers"
+	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/presence"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"os"
@@ -24,7 +24,7 @@ import (
 const defaultQueryTimeout = time.Minute
 const dbFileName = "astrald.db"
 
-type Node struct {
+type CoreNode struct {
 	events      event.Queue
 	configStore config.Store
 	config      *Config
@@ -34,12 +34,12 @@ type Node struct {
 	queryQueue  chan *link.Query
 
 	infra    *infra.Infra
-	Tracker  *tracker.Tracker
-	Contacts *contacts.Manager
-	Ports    *hub.Hub
-	Modules  *ModuleManager
-	Peers    *peers.Manager
-	Presence *presence.Manager
+	network  *network.Network
+	tracker  *tracker.CoreTracker
+	contacts *contacts.Manager
+	services *hub.Hub
+	modules  *ModuleManager
+	presence *presence.Manager
 
 	rootDir string
 }
@@ -47,9 +47,9 @@ type Node struct {
 var log = _log.Tag("node")
 
 // New instantiates a new node
-func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
+func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	var err error
-	var node = &Node{
+	var node = &CoreNode{
 		rootDir:    rootDir,
 		queryQueue: make(chan *link.Query),
 	}
@@ -101,7 +101,7 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	}
 
 	// hub
-	node.Ports = hub.New(&node.events)
+	node.services = hub.New(&node.events)
 
 	// infrastructure
 	node.infra, err = infra.New(
@@ -115,20 +115,20 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	}
 
 	// tracker
-	node.Tracker, err = tracker.New(node.database, node.infra)
+	node.tracker, err = tracker.New(node.database, node.infra)
 	if err != nil {
 		return nil, err
 	}
 
 	// contacts
-	node.Contacts, err = contacts.New(node.database, &node.events)
+	node.contacts, err = contacts.New(node.database, &node.events)
 	if err != nil {
 		return nil, err
 	}
 
 	_log.SetFormatter(id.Identity{}, func(v interface{}) string {
 		identity := v.(id.Identity)
-		if c, err := node.Contacts.Find(identity); err == nil {
+		if c, err := node.contacts.Find(identity); err == nil {
 			if c.Alias() != "" {
 				return log.Cyan() + c.Alias() + log.Reset()
 			}
@@ -138,19 +138,19 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 	})
 
 	// peer manager
-	node.Peers, err = peers.NewManager(node.identity, node.infra, node.Tracker, &node.events, node.onQuery)
+	node.network, err = network.NewNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
 	}
 
 	// presence
-	node.Presence, err = presence.NewManager(node.infra, &node.events)
+	node.presence, err = presence.NewManager(node.infra, &node.events)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up presence: %w", err)
 	}
 
 	// modules
-	node.Modules, err = NewModuleManager(node, modules)
+	node.modules, err = NewModuleManager(node, modules)
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
@@ -159,41 +159,57 @@ func New(rootDir string, modules ...ModuleLoader) (*Node, error) {
 }
 
 // Infra returns node's infrastructure component
-func (node *Node) Infra() Infra {
+func (node *CoreNode) Infra() Infra {
 	return node.infra
 }
 
+func (node *CoreNode) Services() Services {
+	return node.services
+}
+
+func (node *CoreNode) Contacts() Contacts {
+	return node.contacts
+}
+
+func (node *CoreNode) Tracker() Tracker {
+	return node.tracker
+}
+
+func (node *CoreNode) Network() Network {
+	return node.network
+}
+
 // RootDir returns node's root directory where all node-related files are stored
-func (node *Node) RootDir() string {
+func (node *CoreNode) RootDir() string {
 	return node.rootDir
 }
 
 // Identity returns node's identity
-func (node *Node) Identity() id.Identity {
+func (node *CoreNode) Identity() id.Identity {
 	return node.identity
 }
 
 // Events returns the event queue for the node
-func (node *Node) Events() *event.Queue {
+func (node *CoreNode) Events() *event.Queue {
 	return &node.events
 }
 
 // Alias returns node's alias
-func (node *Node) Alias() string {
+func (node *CoreNode) Alias() string {
 	return node.config.Alias()
 }
 
 // SetAlias sets the node alias
-func (node *Node) SetAlias(alias string) error {
+func (node *CoreNode) SetAlias(alias string) error {
 	return node.config.SetAlias(alias)
 }
 
 // ConfigStore returns config storage for the node
-func (node *Node) ConfigStore() config.Store {
+func (node *CoreNode) ConfigStore() config.Store {
 	return node.configStore
 }
 
-func (node *Node) setupLogging(store config.Store) error {
+func (node *CoreNode) setupLogging(store config.Store) error {
 	node.logConfig = &LogConfig{}
 
 	if err := store.LoadYAML("log", node.logConfig); err != nil {

@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/infra/tor"
-	"github.com/cryptopunkscc/astrald/node/peers"
+	"github.com/cryptopunkscc/astrald/node/network"
 )
 
 func scoreAddr(addr infra.Addr) int {
@@ -23,7 +23,7 @@ func scoreAddr(addr infra.Addr) int {
 	return 0
 }
 
-func scorePeer(peer *peers.Peer) (best int) {
+func scorePeer(peer *network.Peer) (best int) {
 	for _, link := range peer.Links() {
 		score := scoreAddr(link.RemoteAddr())
 		if score > best {

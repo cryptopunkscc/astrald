@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra/inet"
-	"github.com/cryptopunkscc/astrald/node/peers"
+	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
 )
 
@@ -26,7 +26,7 @@ func (mod *Module) makeLink(ctx context.Context, remoteAddr inet.Addr, remoteID 
 
 	var authed auth.Conn
 
-	hsCtx, _ := context.WithTimeout(ctx, peers.HandshakeTimeout)
+	hsCtx, _ := context.WithTimeout(ctx, network.HandshakeTimeout)
 	if remoteID.IsZero() {
 		authed, err = auth.HandshakeInbound(hsCtx, inboundConn{newConn}, mod.node.Identity())
 	} else {

@@ -14,7 +14,8 @@ type Runner interface {
 }
 
 type GroupRunner struct {
-	runners []Runner
+	runners     []Runner
+	DoneHandler func(Runner, error)
 }
 
 type RunError struct {
@@ -43,40 +44,28 @@ func Group(runners ...Runner) *GroupRunner {
 	return &GroupRunner{runners: runners}
 }
 
-// Run all runners concurrently. If any of the runners returns an error, context for all other runners will
-// be canceled and the first error is returned wrapped in a RunError. Returns nil if all runners return
-// without an error.
+// Run runs all runners concurrently and returns after all runners are done. If DoneHandler is set, it
+// will be called after a runner returns. Returns nil or context error.
 func (g *GroupRunner) Run(ctx context.Context) (err error) {
-	var runCtx, cancel = context.WithCancel(ctx)
-	defer cancel()
-
 	var wg sync.WaitGroup
-	var ch = make(chan error, len(g.runners))
 
-	for i, r := range g.runners {
-		r := r
-		i := i
+	for _, runner := range g.runners {
+		runner := runner
 
-		if r == nil {
+		if runner == nil {
 			continue
 		}
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := r.Run(runCtx); err != nil {
-				ch <- RunError{err: err, runner: r, id: i}
-				cancel()
+			var err = runner.Run(ctx)
+			if g.DoneHandler != nil {
+				g.DoneHandler(runner, err)
 			}
 		}()
 	}
 
 	wg.Wait()
-
-	select {
-	case err = <-ch:
-	default:
-	}
-
-	return
+	return ctx.Err()
 }

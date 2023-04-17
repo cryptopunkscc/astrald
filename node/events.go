@@ -9,20 +9,20 @@ import (
 	"time"
 )
 
-func (node *Node) handleEvents(ctx context.Context) error {
+func (node *CoreNode) handleEvents(ctx context.Context) error {
 	for e := range node.events.Subscribe(ctx) {
 		node.logEvent(e)
 
 		switch e := e.(type) {
 		case presence.EventIdentityPresent:
-			_ = node.Tracker.Add(e.Identity, e.Addr, time.Now().Add(60*time.Minute))
+			_ = node.Tracker().Add(e.Identity, e.Addr, time.Now().Add(60*time.Minute))
 		}
 	}
 
 	return nil
 }
 
-func (node *Node) logEvent(e event.Event) {
+func (node *CoreNode) logEvent(e event.Event) {
 	var eventName = reflect.TypeOf(e).String()
 
 	if !node.logConfig.IsEventLoggable(eventName) {

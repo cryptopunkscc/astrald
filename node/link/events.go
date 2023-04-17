@@ -44,11 +44,12 @@ type EventLinkClosed struct {
 
 func (e EventLinkClosed) String() string {
 	return fmt.Sprintf(
-		"network=%s localAddr=%s remoteAddr=%s prio=%d remoteID=%s",
+		"network=%s localAddr=%s remoteAddr=%s prio=%d err=%s remoteID=%s",
 		e.Link.Network(),
 		e.Link.LocalAddr(),
 		e.Link.RemoteAddr(),
 		e.Link.Priority(),
+		e.Link.Err(),
 		log.Sprint("%s", e.Link.RemoteIdentity()),
 	)
 }

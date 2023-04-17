@@ -7,7 +7,7 @@ import (
 )
 
 type ModuleLoader interface {
-	Load(node *Node) (Module, error)
+	Load(node Node) (Module, error)
 	Name() string
 }
 
@@ -17,10 +17,10 @@ type Module interface {
 
 type ModuleManager struct {
 	modules map[string]Module
-	node    *Node
+	node    Node
 }
 
-func NewModuleManager(node *Node, loaders []ModuleLoader) (*ModuleManager, error) {
+func NewModuleManager(node Node, loaders []ModuleLoader) (*ModuleManager, error) {
 	m := &ModuleManager{
 		modules: make(map[string]Module),
 		node:    node,

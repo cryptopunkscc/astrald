@@ -11,7 +11,7 @@ type Loader struct{}
 
 var log = _log.Tag(ModuleName)
 
-func (Loader) Load(node *node.Node) (node.Module, error) {
+func (Loader) Load(node node.Node) (node.Module, error) {
 	mod := &Module{node: node}
 
 	if err := node.ConfigStore().LoadYAML("keepalive", &mod.config); err != nil {

@@ -5,13 +5,14 @@ import (
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/network"
 	"io"
 	"time"
 )
 
-func peers(w io.ReadWriter, node *node.Node, _ []string) error {
-	for _, peer := range node.Peers.Peers() {
-		peerName := node.Contacts.DisplayName(peer.Identity())
+func peers(w io.ReadWriter, node node.Node, _ []string) error {
+	for _, peer := range node.Network().Peers().All() {
+		peerName := node.Contacts().DisplayName(peer.Identity())
 
 		fmt.Fprintf(w, "peer %s (idle %s)\n",
 			peerName,
@@ -21,7 +22,7 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 			remoteAddr := link.RemoteAddr().String()
 
 			if gwAddr, ok := link.RemoteAddr().(gw.Addr); ok {
-				remoteAddr = "via " + node.Contacts.DisplayName(gwAddr.Gate())
+				remoteAddr = "via " + node.Contacts().DisplayName(gwAddr.Gate())
 			}
 
 			fmt.Fprintf(w,
@@ -32,7 +33,7 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 				link.Activity().Idle().Round(time.Second),
 				time.Since(link.EstablishedAt()).Round(time.Second),
 				link.Priority(),
-				float64(link.Ping().RTT().Microseconds())/1000,
+				float64(link.Ping().Last().Microseconds())/1000,
 			)
 			for _, c := range link.Conns().All() {
 				fmt.Fprintf(w,
@@ -49,9 +50,11 @@ func peers(w io.ReadWriter, node *node.Node, _ []string) error {
 		fmt.Fprintf(w, "\n")
 	}
 
-	for l := range node.Peers.Linkers() {
-		peerName := node.Contacts.DisplayName(l)
-		fmt.Fprintf(w, "peer %s linking...\n", peerName)
+	if n, ok := node.Network().(*network.Network); ok {
+		for _, l := range n.Linkers() {
+			peerName := node.Contacts().DisplayName(l)
+			fmt.Fprintf(w, "peer %s linking...\n", peerName)
+		}
 	}
 
 	return nil

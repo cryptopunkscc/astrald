@@ -12,7 +12,7 @@ import (
 const portName = "net.keepalive"
 
 type Module struct {
-	node   *node.Node
+	node   node.Node
 	config *Config
 }
 
@@ -35,7 +35,7 @@ func (m *Module) Run(ctx context.Context) error {
 	}()
 
 	for _, sn := range m.config.StickyNodes {
-		nodeID, err := m.node.Contacts.ResolveIdentity(sn)
+		nodeID, err := m.node.Contacts().ResolveIdentity(sn)
 		if err != nil {
 			log.Error("error resolving %s: %s", sn, err)
 			continue
@@ -53,7 +53,7 @@ func (m *Module) Run(ctx context.Context) error {
 }
 
 func (m *Module) runServer(ctx context.Context) error {
-	port, err := m.node.Ports.RegisterContext(ctx, portName)
+	port, err := m.node.Services().RegisterContext(ctx, portName)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (m *Module) runServer(ctx context.Context) error {
 		}
 
 		// disable timeout on the link
-		conn.Link().Idle().SetIdleTimeout(0)
+		conn.Link().Idle().SetTimeout(0)
 		log.Log("timeout disabled for %s over %s",
 			conn.Link().RemoteIdentity(),
 			conn.Link().Network(),
@@ -89,7 +89,7 @@ func (m *Module) keepNodeLinked(ctx context.Context, nodeID id.Identity) error {
 	log.Logv(1, "will keep %s linked", nodeID)
 
 	for {
-		newBest, err := m.node.Peers.Link(ctx, nodeID)
+		newBest, err := m.node.Network().Link(ctx, nodeID)
 
 		if err != nil {
 			var ival time.Duration
@@ -149,7 +149,7 @@ func (m *Module) subscribeNewLinksWithNode(ctx context.Context, nodeID id.Identi
 
 	go func() {
 		defer close(ch)
-		for event := range m.node.Peers.Events().Subscribe(ctx) {
+		for event := range m.node.Network().Events().Subscribe(ctx) {
 			if event, ok := event.(link.EventLinkEstablished); ok {
 				if event.Link.RemoteIdentity().IsEqual(nodeID) {
 					ch <- event.Link

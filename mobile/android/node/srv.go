@@ -26,10 +26,10 @@ type embeddedServicesRunner struct {
 	wg      *sync.WaitGroup
 	name    string
 	runners []ServiceRunner
-	node    *node.Node
+	node    node.Node
 }
 
-func (e embeddedServicesRunner) Load(node *node.Node) (node.Module, error) {
+func (e embeddedServicesRunner) Load(node node.Node) (node.Module, error) {
 	e.node = node
 	return e, nil
 }

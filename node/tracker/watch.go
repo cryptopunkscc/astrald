@@ -8,7 +8,7 @@ import (
 
 // Watch returns a channel which will receive all new addresses added to identity. The channel is closed when
 // the context is done.
-func (tracker *Tracker) Watch(ctx context.Context, nodeID id.Identity) <-chan *Addr {
+func (tracker *CoreTracker) Watch(ctx context.Context, nodeID id.Identity) <-chan *Addr {
 	out := make(chan *Addr, 1)
 	go func() {
 		defer close(out)

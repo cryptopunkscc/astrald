@@ -8,7 +8,7 @@ const ModuleName = "gateway"
 
 type Loader struct{}
 
-func (Loader) Load(node *node.Node) (node.Module, error) {
+func (Loader) Load(node node.Node) (node.Module, error) {
 	mod := &Gateway{node: node}
 
 	return mod, nil

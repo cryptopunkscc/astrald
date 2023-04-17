@@ -132,6 +132,10 @@ func (m *Manager) Delete(identity id.Identity) error {
 }
 
 func (m *Manager) ResolveIdentity(str string) (id.Identity, error) {
+	if str == "localnode" {
+		return id.Identity{}, nil
+	}
+
 	if id, err := id.ParsePublicKeyHex(str); err == nil {
 		return id, nil
 	}

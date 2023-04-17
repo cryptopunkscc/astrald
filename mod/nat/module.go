@@ -7,7 +7,7 @@ import (
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/peers"
+	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
 )
 
@@ -15,7 +15,7 @@ const portName = "net.nat.tcp"
 const dialTimeout = 5 * time.Second
 
 type Module struct {
-	node    *node.Node
+	node    node.Node
 	mapping natMapping
 }
 
@@ -59,7 +59,7 @@ func (mod *Module) Run(ctx context.Context) error {
 
 				mod.mapping = m
 
-			case peers.EventPeerLinked:
+			case network.EventPeerLinked:
 				if event.Link.Network() == inet.NetworkName {
 					continue
 				}

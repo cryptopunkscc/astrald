@@ -6,7 +6,7 @@ import (
 )
 
 // Identities returns a list of all tracked identities
-func (tracker *Tracker) Identities() ([]id.Identity, error) {
+func (tracker *CoreTracker) Identities() ([]id.Identity, error) {
 	ids := make([]id.Identity, 0)
 
 	err := tracker.db.TxDo(func(tx *sql.Tx) error {

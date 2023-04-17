@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-func cmdContacts(w io.ReadWriter, node *node.Node, _ []string) error {
-	for c := range node.Contacts.All() {
+func cmdContacts(w io.ReadWriter, node node.Node, _ []string) error {
+	for c := range node.Contacts().All() {
 		fmt.Fprintln(w, "node", c.DisplayName())
 		fmt.Fprintln(w, "pubkey", c.Identity().PublicKeyHex())
 
-		addrs, err := node.Tracker.AddrByIdentity(c.Identity())
+		addrs, err := node.Tracker().AddrByIdentity(c.Identity())
 		if err != nil {
 			return err
 		}

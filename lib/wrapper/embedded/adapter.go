@@ -13,7 +13,7 @@ var _ wrapper.Api = &Adapter{}
 
 type Adapter struct {
 	Ctx  context.Context
-	Node *node.Node
+	Node node.Node
 }
 
 func (a *Adapter) Resolve(name string) (identity id.Identity, err error) {
@@ -25,22 +25,22 @@ func (a *Adapter) Resolve(name string) (identity id.Identity, err error) {
 		return
 	}
 
-	identity, err = a.Node.Contacts.ResolveIdentity(name)
+	identity, err = a.Node.Contacts().ResolveIdentity(name)
 	return
 }
 
 type astralPort struct {
-	Node *node.Node
+	Node node.Node
 	port hub.Port
 }
 
 type astralRequest struct {
-	Node  *node.Node
+	Node  node.Node
 	query *hub.Query
 }
 
 func (a *Adapter) Register(name string) (p wrapper.Port, err error) {
-	hp, err := a.Node.Ports.RegisterContext(a.Ctx, name)
+	hp, err := a.Node.Services().RegisterContext(a.Ctx, name)
 	if err != nil {
 		return
 	}

@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-func parse(w io.ReadWriter, node *node.Node, args []string) error {
+func parse(w io.ReadWriter, node node.Node, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
 	}

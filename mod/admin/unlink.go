@@ -6,17 +6,17 @@ import (
 	"io"
 )
 
-func unlink(w io.ReadWriter, node *node.Node, args []string) error {
+func unlink(w io.ReadWriter, node node.Node, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
 	}
 
-	identity, err := node.Contacts.ResolveIdentity(args[0])
+	identity, err := node.Contacts().ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
 
-	peer := node.Peers.Find(identity)
+	peer := node.Network().Peers().Find(identity)
 	if peer == nil {
 		return errors.New("peer not found")
 	}

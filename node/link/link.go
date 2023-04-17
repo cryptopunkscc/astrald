@@ -68,19 +68,27 @@ func New(conn auth.Conn) *Link {
 
 	l.ctl = ctl.New(streams.ReadWriteCloseSplit{Reader: in, Writer: out})
 
+	l.control = NewControl(l)
 	l.ping = NewPing(l)
 	l.idle = NewIdle(l)
-	l.control = NewControl(l)
 
 	return l
 }
 
 func (l *Link) Run(ctx context.Context) error {
 	defer l.conn.Close() // close transport after link closes
+	l.activity.Touch()   // reset idle to 0
 
-	l.activity.Touch() // reset idle to 0
+	var runCtx, cancel = context.WithCancel(ctx)
+	defer cancel()
+	var group = tasks.Group(l.idle, l.ping, l.control, l.mux)
+	group.DoneHandler = func(runner tasks.Runner, err error) {
+		if runner == l.control {
+			cancel()
+		}
+	}
 
-	return tasks.Group(l.idle, l.ping, l.control, l.mux).Run(ctx)
+	return group.Run(runCtx)
 }
 
 func (l *Link) Query(ctx context.Context, query string) (conn *Conn, err error) {
@@ -158,7 +166,12 @@ func (l *Link) Query(ctx context.Context, query string) (conn *Conn, err error) 
 }
 
 func (l *Link) Close() error {
+	return l.CloseWithError(ErrLinkClosed)
+}
+
+func (l *Link) CloseWithError(e error) error {
 	if l.closed.CompareAndSwap(false, true) {
+		l.err = e
 		_ = l.ctl.WriteClose()
 		l.conn.Close()
 		close(l.doneCh)
@@ -208,7 +221,7 @@ func (l *Link) onDrop(remotePort int) error {
 }
 
 func (l *Link) onClose() error {
-	return l.Close()
+	return l.CloseWithError(ErrLinkClosed)
 }
 
 func (l *Link) onFrameDropped(frame mux.Frame) error {

@@ -13,7 +13,7 @@ import (
 var log = _log.Tag(ModuleName)
 
 type Module struct {
-	node   *node.Node
+	node   node.Node
 	config Config
 }
 
@@ -55,7 +55,7 @@ func (m *Module) Run(ctx context.Context) error {
 }
 
 func (m *Module) ServeOut(ctx context.Context, astral string, tcp string) error {
-	port, err := m.node.Ports.RegisterContext(ctx, astral)
+	port, err := m.node.Services().RegisterContext(ctx, astral)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (m *Module) ServeIn(ctx context.Context, tcp string, astral string) error {
 		nodeHex, port = "localnode", parts[0]
 	}
 
-	nodeID, err := m.node.Contacts.ResolveIdentity(nodeHex)
+	nodeID, err := m.node.Contacts().ResolveIdentity(nodeHex)
 	if err != nil {
 		return err
 	}

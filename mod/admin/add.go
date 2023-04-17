@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-func add(_ io.ReadWriter, node *node.Node, args []string) error {
+func add(_ io.ReadWriter, node node.Node, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
 	}
@@ -21,6 +21,6 @@ func add(_ io.ReadWriter, node *node.Node, args []string) error {
 		return errors.New("cannot add self")
 	}
 
-	nodeinfo.AddToTracker(nodeInfo, node.Tracker)
-	return nodeinfo.AddToContacts(nodeInfo, node.Contacts)
+	nodeinfo.AddToTracker(nodeInfo, node.Tracker())
+	return nodeinfo.AddToContacts(nodeInfo, node.Contacts())
 }

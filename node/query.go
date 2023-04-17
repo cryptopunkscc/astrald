@@ -6,17 +6,18 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/streams"
+	"time"
 )
 
-func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error) {
+func (node *CoreNode) Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
 	defer cancel()
 
 	if remoteID.IsZero() || remoteID.IsEqual(node.identity) {
-		return node.Ports.Query(ctx, query, nil)
+		return node.Services().Query(ctx, query, nil)
 	}
 
-	link, err := node.Peers.Link(ctx, remoteID)
+	link, err := node.Network().Link(ctx, remoteID)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +25,7 @@ func (node *Node) Query(ctx context.Context, remoteID id.Identity, query string)
 	return link.Query(ctx, query)
 }
 
-func (node *Node) onQuery(query *link.Query) error {
+func (node *CoreNode) onQuery(query *link.Query) error {
 	select {
 	case node.queryQueue <- query:
 	default:
@@ -34,14 +35,20 @@ func (node *Node) onQuery(query *link.Query) error {
 	return nil
 }
 
-func (node *Node) peerQueryWorker(ctx context.Context) error {
+func (node *CoreNode) peerQueryWorker(ctx context.Context) error {
 	for {
 		select {
 		case query := <-node.queryQueue:
-			log.Log("worker: start query %s", query.Query())
 			ctx, _ := context.WithTimeout(ctx, defaultQueryTimeout)
-			node.executeQuery(ctx, query)
-			log.Log("worker: done query %s", query.Query())
+			var start = time.Now()
+			var err = node.executeQuery(ctx, query)
+			var elapsed = time.Since(start)
+
+			log.Logv(2, "served query %s (time %s, err %s)",
+				query.Query(),
+				elapsed.Round(time.Microsecond),
+				err,
+			)
 
 		case <-ctx.Done():
 			return ctx.Err()
@@ -49,9 +56,9 @@ func (node *Node) peerQueryWorker(ctx context.Context) error {
 	}
 }
 
-func (node *Node) executeQuery(ctx context.Context, query *link.Query) error {
+func (node *CoreNode) executeQuery(ctx context.Context, query *link.Query) error {
 	// Query a session with the service
-	localConn, err := node.Ports.Query(ctx, query.Query(), query.Link())
+	localConn, err := node.Services().Query(ctx, query.Query(), query.Link())
 	if err != nil {
 		query.Reject()
 		return err

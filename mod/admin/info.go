@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-func info(w io.ReadWriter, node *node.Node, _ []string) error {
+func info(w io.ReadWriter, node node.Node, _ []string) error {
 	nodeInfo := nodeinfo.New(node.Identity())
 	nodeInfo.Alias = node.Alias()
 

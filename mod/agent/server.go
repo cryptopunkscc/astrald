@@ -32,7 +32,7 @@ var (
 )
 
 type Server struct {
-	node *node.Node
+	node node.Node
 	conn *hub.Conn
 	auth bool
 }

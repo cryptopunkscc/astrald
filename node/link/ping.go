@@ -17,16 +17,22 @@ func NewPing(link *Link) *Ping {
 	}
 }
 
-// RTT returns link's round trip time
-func (ping *Ping) RTT() time.Duration {
+// Last returns link's last measured round trip time
+func (ping *Ping) Last() time.Duration {
 	return ping.rtt
 }
 
 func (ping *Ping) Run(ctx context.Context) error {
 	for {
-		if err := ping.ping(ctx); err != nil {
+		rtt, err := ping.ping(ctx)
+		if err != nil {
+			if err == ErrPingTimeout {
+				ping.link.CloseWithError(ErrPingTimeout)
+			}
 			return err
 		}
+
+		ping.rtt = rtt
 
 		select {
 		case <-time.After(pingInterval):
@@ -36,7 +42,7 @@ func (ping *Ping) Run(ctx context.Context) error {
 	}
 }
 
-func (ping *Ping) ping(ctx context.Context) error {
+func (ping *Ping) ping(ctx context.Context) (time.Duration, error) {
 	pingCh := make(chan time.Duration, 1)
 	errCh := make(chan error, 1)
 
@@ -60,17 +66,15 @@ func (ping *Ping) ping(ctx context.Context) error {
 
 	select {
 	case d := <-pingCh:
-		ping.rtt = d
+		return d, nil
 
 	case err := <-errCh:
-		return err
+		return 0, err
 
 	case <-time.After(pingTimeout):
-		return ErrPingTimeout
+		return 0, ErrPingTimeout
 
 	case <-ctx.Done():
-		return ctx.Err()
+		return 0, ctx.Err()
 	}
-
-	return nil
 }

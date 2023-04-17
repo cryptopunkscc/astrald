@@ -15,13 +15,13 @@ import (
 const queryConnect = "connect"
 
 type Gateway struct {
-	node *node.Node
+	node node.Node
 }
 
 var log = _log.Tag(ModuleName)
 
 func (mod *Gateway) Run(ctx context.Context) error {
-	port, err := mod.node.Ports.RegisterContext(ctx, gw.PortName)
+	port, err := mod.node.Services().RegisterContext(ctx, gw.PortName)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (mod *Gateway) handleConn(ctx context.Context, conn *hub.Conn) error {
 		return err
 	}
 
-	peer := mod.node.Peers.Find(nodeID)
+	peer := mod.node.Network().Peers().Find(nodeID)
 	if peer == nil {
 		return errors.New("node unavailable")
 	}

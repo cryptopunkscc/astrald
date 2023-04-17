@@ -1,4 +1,4 @@
-package peers
+package network
 
 import (
 	"context"
@@ -17,13 +17,13 @@ import (
 const workers = 16
 const queueSize = 64
 
-type Manager struct {
+type Network struct {
 	links        *LinkSet
 	peers        *PeerSet
 	server       *Server
 	localID      id.Identity
 	events       event.Queue
-	tracker      *tracker.Tracker
+	tracker      *tracker.CoreTracker
 	infra        *infra.Infra
 	tasks        *tasks.FIFOScheduler
 	linkTasks    map[string]*tasks.Task[*link.Link]
@@ -33,16 +33,16 @@ type Manager struct {
 	mu           sync.Mutex
 }
 
-func NewManager(
+func NewNetwork(
 	localID id.Identity,
 	infra *infra.Infra,
-	tracker *tracker.Tracker,
+	tracker *tracker.CoreTracker,
 	eventParent *event.Queue,
 	queryHandler link.QueryHandlerFunc,
-) (*Manager, error) {
+) (*Network, error) {
 	var err error
 
-	m := &Manager{
+	m := &Network{
 		localID:      localID,
 		infra:        infra,
 		tracker:      tracker,
@@ -63,20 +63,20 @@ func NewManager(
 }
 
 // Run runs the manager until the context is done.
-func (m *Manager) Run(ctx context.Context) error {
-	if !m.running.CompareAndSwap(false, true) {
+func (n *Network) Run(ctx context.Context) error {
+	if !n.running.CompareAndSwap(false, true) {
 		return errors.New("already running")
 	}
-	defer m.running.Store(false)
+	defer n.running.Store(false)
 
-	m.ctx = ctx
+	n.ctx = ctx
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		err := m.server.Run(ctx)
+		err := n.server.Run(ctx)
 		if err != nil {
 			log.Error("server error: %s", err)
 		}
@@ -86,7 +86,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := m.tasks.Run(ctx); err != nil {
+		if err := n.tasks.Run(ctx); err != nil {
 			panic(err)
 		}
 	}()
@@ -94,58 +94,52 @@ func (m *Manager) Run(ctx context.Context) error {
 	wg.Wait()
 
 	// unlink all peers
-	for _, peer := range m.Peers() {
+	for _, peer := range n.Peers().All() {
 		peer.Unlink()
 	}
 
 	return nil
 }
 
-func (m *Manager) Server() *Server {
-	return m.server
+func (n *Network) Server() *Server {
+	return n.server
 }
 
-func (m *Manager) Events() *event.Queue {
-	return &m.events
+func (n *Network) Events() *event.Queue {
+	return &n.events
 }
 
-func (m *Manager) AddLink(l *link.Link) error {
-	return m.addLink(l)
+func (n *Network) AddLink(l *link.Link) error {
+	return n.addLink(l)
 }
 
 // Linkers returns a list of identities we're currently trying to link with
-func (m *Manager) Linkers() <-chan id.Identity {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (n *Network) Linkers() []id.Identity {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
-	ch := make(chan id.Identity, len(m.linkTasks))
-	for hex := range m.linkTasks {
+	var list = make([]id.Identity, 0, len(n.linkTasks))
+	for hex := range n.linkTasks {
 		nodeID, _ := id.ParsePublicKeyHex(hex)
-		ch <- nodeID
+		list = append(list, nodeID)
 	}
-	close(ch)
 
-	return ch
+	return list
 }
 
-// Peers returns a list of all linked peers.
-func (m *Manager) Peers() []*Peer {
-	return m.peers.All()
-}
-
-// Find returns the peer or nil if it's not linked.
-func (m *Manager) Find(nodeID id.Identity) *Peer {
-	return m.peers.Find(nodeID)
+// Peers returns the set of linked peers.
+func (n *Network) Peers() *PeerSet {
+	return n.peers
 }
 
 // Link returns a link with the node. If the node is not linked, it will attempt to link to it.
-func (m *Manager) Link(ctx context.Context, nodeID id.Identity) (*link.Link, error) {
-	m.mu.Lock()
+func (n *Network) Link(ctx context.Context, nodeID id.Identity) (*link.Link, error) {
+	n.mu.Lock()
 
 	// check if peer is already linked
-	if peer := m.peers.Find(nodeID); peer != nil {
+	if peer := n.peers.Find(nodeID); peer != nil {
 		if l := peer.PreferredLink(); l != nil {
-			m.mu.Unlock()
+			n.mu.Unlock()
 			return l, nil
 		}
 	}
@@ -157,25 +151,25 @@ func (m *Manager) Link(ctx context.Context, nodeID id.Identity) (*link.Link, err
 	)
 
 	// use the link task that's already running for this node, or start one
-	linkTask, ok = m.linkTasks[hexID]
+	linkTask, ok = n.linkTasks[hexID]
 	if !ok {
-		newTask, err := m.RequestNewLink(nodeID, LinkOptions{})
+		newTask, err := n.RequestNewLink(nodeID, LinkOptions{})
 		if err != nil {
-			m.mu.Unlock()
+			n.mu.Unlock()
 			return nil, err
 		}
 
 		linkTask = newTask
-		m.linkTasks[hexID] = newTask
+		n.linkTasks[hexID] = newTask
 
 		go func() {
 			<-linkTask.Done()
-			m.mu.Lock()
-			delete(m.linkTasks, hexID)
-			m.mu.Unlock()
+			n.mu.Lock()
+			delete(n.linkTasks, hexID)
+			n.mu.Unlock()
 		}()
 	}
-	m.mu.Unlock()
+	n.mu.Unlock()
 
 	// wait for the task to finish, or the context to end
 	select {
@@ -188,73 +182,75 @@ func (m *Manager) Link(ctx context.Context, nodeID id.Identity) (*link.Link, err
 }
 
 // AddAuthConn adds a new link to the manager over the provided authenticated connection.
-func (m *Manager) AddAuthConn(conn auth.Conn) error {
-	if !conn.LocalIdentity().IsEqual(m.localID) {
+func (n *Network) AddAuthConn(conn auth.Conn) error {
+	if !conn.LocalIdentity().IsEqual(n.localID) {
 		return ErrIdentityMismatch
 	}
 
 	l := link.New(conn)
 	l.SetPriority(infra.NetworkPriority(l.Network()))
-	return m.addLink(l)
+	return n.addLink(l)
 }
 
 // RequestNewLink schedules a task that will try to establish a new link with the provided node (even if the node
 // is already linked).
-func (m *Manager) RequestNewLink(nodeID id.Identity, opts LinkOptions) (*tasks.Task[*link.Link], error) {
+func (n *Network) RequestNewLink(nodeID id.Identity, opts LinkOptions) (*tasks.Task[*link.Link], error) {
 	t := tasks.New[*link.Link](&LinkPeerTask{
 		RemoteID: nodeID,
-		Peers:    m,
+		Peers:    n,
 		options:  opts,
 	})
 
-	return t, m.tasks.Add(t)
+	return t, n.tasks.Add(t)
 }
 
-func (m *Manager) onQuery(query *link.Query) (err error) {
-	err = m.queryHandler(query)
+func (n *Network) onQuery(query *link.Query) (err error) {
+	err = n.queryHandler(query)
 
 	return err
 }
 
-func (m *Manager) addLink(l *link.Link) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (n *Network) addLink(l *link.Link) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
-	if !m.running.Load() {
+	if !n.running.Load() {
 		return ErrNotRunning
 	}
 
-	if !l.LocalIdentity().IsEqual(m.localID) {
+	if !l.LocalIdentity().IsEqual(n.localID) {
 		return ErrIdentityMismatch
 	}
 
-	if err := m.links.Add(l); err != nil {
+	if err := n.links.Add(l); err != nil {
 		return err
 	}
 
-	l.Events().SetParent(&m.events)
+	l.Events().SetParent(&n.events)
 
 	var remoteID = l.RemoteIdentity()
 
-	var peer = m.peers.Find(remoteID)
+	var peer = n.peers.Find(remoteID)
 	if peer == nil {
-		peer = newPeer(remoteID, &m.events)
-		m.peers.Add(peer)
+		peer = newPeer(remoteID, &n.events)
+		n.peers.Add(peer)
+		log.Logv(0, "%s linked", l.RemoteIdentity())
 		peer.Events().Emit(EventPeerLinked{
 			Link: l,
 			Peer: peer,
 		})
 	}
 
+	log.Logv(1, "established link with %s over %s", l.RemoteIdentity(), l.Network())
 	_ = peer.addLink(l)
 	peer.Events().Emit(link.EventLinkEstablished{Link: l})
 
 	go func() {
-		l.SetQueryHandler(m.onQuery)
-		if err := l.Run(m.ctx); err != nil {
-			log.Error("link closed: %s", err)
+		l.SetQueryHandler(n.onQuery)
+		if err := l.Run(n.ctx); err != nil {
+			log.Logv(1, "closed link with %s over %s: %s", l.RemoteIdentity(), l.Network(), l.Err())
 		}
-		if err := m.removeLink(l); err != nil {
+		if err := n.removeLink(l); err != nil {
 			panic(err)
 		}
 	}()
@@ -262,15 +258,15 @@ func (m *Manager) addLink(l *link.Link) error {
 	return nil
 }
 
-func (m *Manager) removeLink(l *link.Link) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (n *Network) removeLink(l *link.Link) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
-	if err := m.links.Remove(l); err != nil {
+	if err := n.links.Remove(l); err != nil {
 		return err
 	}
 
-	peer := m.peers.Find(l.RemoteIdentity())
+	peer := n.peers.Find(l.RemoteIdentity())
 	if peer == nil {
 		panic("peer is nil")
 	}
@@ -279,10 +275,11 @@ func (m *Manager) removeLink(l *link.Link) error {
 	peer.Events().Emit(link.EventLinkClosed{Link: l})
 
 	if peer.links.Count() == 0 {
+		log.Logv(0, "%s unlinked", l.RemoteIdentity())
 		peer.Events().Emit(EventPeerUnlinked{
 			Peer: peer,
 		})
-		m.peers.Remove(peer)
+		n.peers.Remove(peer)
 		peer.setUnlinked()
 	}
 

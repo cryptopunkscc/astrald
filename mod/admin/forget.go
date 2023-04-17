@@ -6,19 +6,19 @@ import (
 	"io"
 )
 
-func forget(w io.ReadWriter, node *node.Node, args []string) error {
+func forget(w io.ReadWriter, node node.Node, args []string) error {
 	if len(args) == 0 {
 		return errors.New("missing node id")
 	}
 
-	identity, err := node.Contacts.ResolveIdentity(args[0])
+	identity, err := node.Contacts().ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
 
-	if err := node.Tracker.ForgetIdentity(identity); err != nil {
+	if err := node.Tracker().ForgetIdentity(identity); err != nil {
 		return err
 	}
 
-	return node.Contacts.Delete(identity)
+	return node.Contacts().Delete(identity)
 }

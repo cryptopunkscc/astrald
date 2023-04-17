@@ -8,7 +8,7 @@ import (
 
 const defaultIdentityKey = "id"
 
-func (node *Node) loadIdentity(name string) (id.Identity, error) {
+func (node *CoreNode) loadIdentity(name string) (id.Identity, error) {
 	filePath := filepath.Join(node.rootDir, name)
 
 	bytes, err := os.ReadFile(filePath)
@@ -19,7 +19,7 @@ func (node *Node) loadIdentity(name string) (id.Identity, error) {
 	return id.ParsePrivateKey(bytes)
 }
 
-func (node *Node) generateIdentity(name string) (id.Identity, error) {
+func (node *CoreNode) generateIdentity(name string) (id.Identity, error) {
 	filePath := filepath.Join(node.rootDir, name)
 
 	identity, err := id.GenerateIdentity()
@@ -30,7 +30,7 @@ func (node *Node) generateIdentity(name string) (id.Identity, error) {
 	return identity, os.WriteFile(filePath, identity.PrivateKey().Serialize(), 0600)
 }
 
-func (node *Node) setupIdentity() (err error) {
+func (node *CoreNode) setupIdentity() (err error) {
 	if node.identity, err = node.loadIdentity(defaultIdentityKey); err == nil {
 		return
 	}

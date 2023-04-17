@@ -14,16 +14,16 @@ const promptString = "> "
 var _ node.Module = &Admin{}
 
 type Admin struct {
-	node *node.Node
+	node node.Node
 }
 
-type cmdFunc func(io.ReadWriter, *node.Node, []string) error
+type cmdFunc func(io.ReadWriter, node.Node, []string) error
 type cmdMap map[string]cmdFunc
 
 var commands cmdMap
 
 func (mod *Admin) Run(ctx context.Context) error {
-	port, err := mod.node.Ports.RegisterContext(ctx, "admin")
+	port, err := mod.node.Services().RegisterContext(ctx, "admin")
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func (mod *Admin) Run(ctx context.Context) error {
 	return nil
 }
 
-func help(stream io.ReadWriter, _ *node.Node, _ []string) error {
+func help(stream io.ReadWriter, _ node.Node, _ []string) error {
 	fmt.Fprintf(stream, "commands:")
 	for k := range commands {
 		fmt.Fprintf(stream, " %s", k)
@@ -55,7 +55,7 @@ func help(stream io.ReadWriter, _ *node.Node, _ []string) error {
 	return nil
 }
 
-func serve(stream io.ReadWriteCloser, node *node.Node) {
+func serve(stream io.ReadWriteCloser, node node.Node) {
 	defer stream.Close()
 
 	prompt := node.Alias() + promptString
@@ -99,7 +99,6 @@ func init() {
 		"parse":    parse,
 		"add":      add,
 		"forget":   forget,
-		"present":  present,
 		"link":     link,
 		"unlink":   unlink,
 		"tracker":  cmdTracker,

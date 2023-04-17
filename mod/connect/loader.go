@@ -6,7 +6,7 @@ const ModuleName = "connect"
 
 type Loader struct{}
 
-func (Loader) Load(node *node.Node) (node.Module, error) {
+func (Loader) Load(node node.Node) (node.Module, error) {
 	mod := &Connect{node: node}
 
 	return mod, nil

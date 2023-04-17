@@ -6,8 +6,8 @@ import (
 	"io"
 )
 
-func cmdTracker(w io.ReadWriter, node *node.Node, _ []string) error {
-	ids, err := node.Tracker.Identities()
+func cmdTracker(w io.ReadWriter, node node.Node, _ []string) error {
+	ids, err := node.Tracker().Identities()
 	if err != nil {
 		return err
 	}
@@ -15,7 +15,7 @@ func cmdTracker(w io.ReadWriter, node *node.Node, _ []string) error {
 	for _, nodeID := range ids {
 		fmt.Fprintln(w, nodeID.PublicKeyHex())
 
-		addrs, err := node.Tracker.AddrByIdentity(nodeID)
+		addrs, err := node.Tracker().AddrByIdentity(nodeID)
 		if err != nil {
 			return err
 		}

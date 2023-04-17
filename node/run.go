@@ -7,7 +7,7 @@ import (
 )
 
 // Run starts the node, waits for it to finish and returns an error if any
-func (node *Node) Run(ctx context.Context) (err error) {
+func (node *CoreNode) Run(ctx context.Context) (err error) {
 	ctx, shutdown := context.WithCancel(ctx)
 
 	// Say hello
@@ -39,7 +39,7 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := node.Peers.Run(ctx); err != nil {
+		if err := node.network.Run(ctx); err != nil {
 			errCh <- fmt.Errorf("peer manager: %w", err)
 		}
 	}()
@@ -48,7 +48,7 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := node.Modules.Run(ctx); err != nil {
+		if err := node.modules.Run(ctx); err != nil {
 			errCh <- fmt.Errorf("module manager: %w", err)
 		}
 	}()
@@ -57,7 +57,7 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := node.Presence.Run(ctx); err != nil {
+		if err := node.presence.Run(ctx); err != nil {
 			errCh <- fmt.Errorf("presence manager: %w", err)
 		}
 	}()

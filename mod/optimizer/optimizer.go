@@ -9,7 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/event"
 	nodeinfra "github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/peers"
+	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
 )
 
@@ -17,13 +17,13 @@ const optimizeDuration = 60 * time.Second
 const concurrency = 8
 
 type Module struct {
-	node *node.Node
+	node node.Node
 }
 
 var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
-	return event.Handle(ctx, mod.node.Events(), func(event peers.EventPeerLinked) error {
+	return event.Handle(ctx, mod.node.Events(), func(event network.EventPeerLinked) error {
 		go func() {
 			nodeId := event.Peer.Identity()
 			log.Log("optimizing %s", nodeId)
@@ -37,7 +37,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	})
 }
 
-func (mod *Module) Optimize(parent context.Context, peer *peers.Peer) error {
+func (mod *Module) Optimize(parent context.Context, peer *network.Peer) error {
 	ctx, cancel := context.WithTimeout(parent, optimizeDuration)
 
 	// optimize until peer gets unlinked or optimization period ends
@@ -63,18 +63,18 @@ func (mod *Module) Optimize(parent context.Context, peer *peers.Peer) error {
 	retryDialer := NewRetryDialer(filterDialer, concurrency)
 
 	go func() {
-		list, err := mod.node.Tracker.AddrByIdentity(peer.Identity())
+		list, err := mod.node.Tracker().AddrByIdentity(peer.Identity())
 		if err == nil {
 			for _, i := range list {
 				retryDialer.Add(i)
 			}
 		}
-		for addr := range mod.node.Tracker.Watch(ctx, peer.Identity()) {
+		for addr := range mod.node.Tracker().Watch(ctx, peer.Identity()) {
 			retryDialer.Add(addr)
 		}
 	}()
 
-	for authConn := range peers.NewConcurrentHandshake(
+	for authConn := range network.NewConcurrentHandshake(
 		mod.node.Identity(),
 		peer.Identity(),
 		concurrency,
@@ -84,7 +84,7 @@ func (mod *Module) Optimize(parent context.Context, peer *peers.Peer) error {
 	) {
 		l := link.New(authConn)
 		l.SetPriority(nodeinfra.NetworkPriority(l.Network()))
-		mod.node.Peers.AddLink(l)
+		mod.node.Network().AddLink(l)
 	}
 
 	return nil

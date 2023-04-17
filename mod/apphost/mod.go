@@ -13,7 +13,7 @@ import (
 )
 
 type Module struct {
-	node        *node.Node
+	node        node.Node
 	listeners   []net.Listener
 	clientConns chan net.Conn
 }

@@ -8,7 +8,7 @@ const ModuleName = "net.tcpfwd"
 
 type Loader struct{}
 
-func (Loader) Load(node *node.Node) (node.Module, error) {
+func (Loader) Load(node node.Node) (node.Module, error) {
 	mod := &Module{node: node}
 
 	if err := node.ConfigStore().LoadYAML("tcpfwd", &mod.config); err != nil {

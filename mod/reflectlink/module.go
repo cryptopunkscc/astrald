@@ -10,7 +10,7 @@ import (
 const portName = "net.reflectlink"
 
 type Module struct {
-	node *node.Node
+	node node.Node
 }
 
 var log = _log.Tag(ModuleName)

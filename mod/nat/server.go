@@ -22,7 +22,7 @@ const cmdTime = "time"
 const maxTimeDistance = 30 * time.Second
 
 func (mod *Module) runServer(ctx context.Context) error {
-	port, err := mod.node.Ports.Register(portName)
+	port, err := mod.node.Services().Register(portName)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (mod *Module) serve(ctx context.Context, conn *hub.Conn) error {
 
 			l := link.New(authed)
 			l.SetPriority(infra.NetworkPriority(l.Network()))
-			return mod.node.Peers.AddLink(l)
+			return mod.node.Network().AddLink(l)
 
 		case cmdTime:
 			if remoteAddr.IsZero() {
@@ -144,7 +144,7 @@ func (mod *Module) serve(ctx context.Context, conn *hub.Conn) error {
 
 			l := link.New(authed)
 			l.SetPriority(infra.NetworkPriority(l.Network()))
-			return mod.node.Peers.AddLink(l)
+			return mod.node.Network().AddLink(l)
 
 		default:
 			return errors.New("protocol error: unknown request type")

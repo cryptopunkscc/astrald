@@ -66,7 +66,7 @@ func TestAdd(t *testing.T) {
 	}
 }
 
-func setup() (*Tracker, error) {
+func setup() (*CoreTracker, error) {
 	memDB, err := db.NewMemDatabase("test")
 	if err != nil {
 		return nil, err

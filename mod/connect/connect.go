@@ -8,11 +8,11 @@ import (
 const serviceHandle = "connect"
 
 type Connect struct {
-	node *node.Node
+	node node.Node
 }
 
 func (mod *Connect) Run(ctx context.Context) error {
-	port, err := mod.node.Ports.RegisterContext(ctx, serviceHandle)
+	port, err := mod.node.Services().RegisterContext(ctx, serviceHandle)
 	if err != nil {
 		return err
 	}
@@ -36,13 +36,13 @@ func (mod *Connect) Run(ctx context.Context) error {
 			outbound:        false,
 		}
 
-		authConn, err := mod.node.Peers.Server().Handshake(ctx, infraConn)
+		authConn, err := mod.node.Network().Server().Handshake(ctx, infraConn)
 		if err != nil {
 			infraConn.Close()
 			continue
 		}
 
-		mod.node.Peers.AddAuthConn(authConn)
+		mod.node.Network().AddAuthConn(authConn)
 	}
 
 	return nil

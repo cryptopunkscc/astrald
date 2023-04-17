@@ -34,7 +34,7 @@ func (loader handlersModuleLoader) Name() string {
 	return loader.name
 }
 
-func (loader handlersModuleLoader) Load(node *node.Node) (node.Module, error) {
+func (loader handlersModuleLoader) Load(node node.Node) (node.Module, error) {
 	mod := &handlersModule{node: node}
 	for {
 		m := loader.handlers.Next()
@@ -47,7 +47,7 @@ func (loader handlersModuleLoader) Load(node *node.Node) (node.Module, error) {
 }
 
 type handlersModule struct {
-	node     *node.Node
+	node     node.Node
 	name     string
 	handlers []Handler
 }
@@ -55,7 +55,7 @@ type handlersModule struct {
 func (r handlersModule) Run(ctx context.Context) error {
 	for _, handler := range r.handlers {
 		handler := handler
-		port, err := r.node.Ports.Register(handler.String())
+		port, err := r.node.Services().Register(handler.String())
 		if err != nil {
 			return err
 		}

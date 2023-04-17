@@ -1,4 +1,4 @@
-package peers
+package network
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"

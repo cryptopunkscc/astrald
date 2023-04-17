@@ -1,4 +1,4 @@
-package peers
+package network
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var log = _log.Tag("peers")
+var log = _log.Tag("network")
 
 var (
 	ErrPeerUnlinked          = errors.New("peer unlinked")

@@ -104,7 +104,7 @@ func (mod *Module) query(ctx context.Context, remoteID id.Identity) error {
 		if err == nil {
 			l := link.New(authed)
 			l.SetPriority(infra.NetworkPriority(l.Network()))
-			return mod.node.Peers.AddLink(l)
+			return mod.node.Network().AddLink(l)
 		}
 
 		triesLeft--

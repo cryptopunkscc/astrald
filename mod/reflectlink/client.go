@@ -55,7 +55,7 @@ func (mod *Module) processLinkInfo(link *link.Link, jInfo *jsonInfo) error {
 			Public:    a.Public,
 		})
 
-		mod.node.Tracker.Add(remoteID, addr, expiresAt)
+		mod.node.Tracker().Add(remoteID, addr, expiresAt)
 	}
 
 	if a, err := mod.node.Infra().Unpack(jInfo.ReflectAddr.Network, jInfo.ReflectAddr.Address); err == nil {

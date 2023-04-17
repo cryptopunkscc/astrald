@@ -11,12 +11,12 @@ import (
 
 const defaultLinkTimeout = time.Minute
 
-func link(out io.ReadWriter, node *node.Node, args []string) error {
+func link(out io.ReadWriter, node node.Node, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing arguments")
 	}
 
-	remoteID, err := node.Contacts.ResolveIdentity(args[0])
+	remoteID, err := node.Contacts().ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func link(out io.ReadWriter, node *node.Node, args []string) error {
 
 	ctx, _ := context.WithTimeout(context.Background(), timeout)
 
-	link, err := node.Peers.Link(ctx, remoteID)
+	link, err := node.Network().Link(ctx, remoteID)
 	if err != nil {
 		return err
 	}

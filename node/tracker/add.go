@@ -8,7 +8,7 @@ import (
 )
 
 // Add adds an address to the identity. If the address already exists, its expiry time will be replaced.
-func (tracker *Tracker) Add(identity id.Identity, addr infra.Addr, expiresAt time.Time) error {
+func (tracker *CoreTracker) Add(identity id.Identity, addr infra.Addr, expiresAt time.Time) error {
 	idHex := identity.PublicKeyHex()
 
 	// repack the address to validate it and get a concrete type if possible

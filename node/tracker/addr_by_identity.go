@@ -6,7 +6,7 @@ import (
 )
 
 // AddrByIdentity returns all addresses for the provided identity.
-func (tracker *Tracker) AddrByIdentity(identity id.Identity) ([]Addr, error) {
+func (tracker *CoreTracker) AddrByIdentity(identity id.Identity) ([]Addr, error) {
 	dbRows, err := tracker.dbAddrByIdentity(identity)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (tracker *Tracker) AddrByIdentity(identity id.Identity) ([]Addr, error) {
 	return res, nil
 }
 
-func (tracker *Tracker) dbAddrByIdentity(identity id.Identity) ([]dbAddr, error) {
+func (tracker *CoreTracker) dbAddrByIdentity(identity id.Identity) ([]dbAddr, error) {
 	var dbRows = make([]dbAddr, 0)
 	var idHex = identity.PublicKeyHex()
 

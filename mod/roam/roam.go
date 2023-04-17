@@ -18,7 +18,7 @@ const (
 )
 
 type Module struct {
-	node  *node.Node
+	node  node.Node
 	moves map[int]*link.Conn
 }
 
@@ -75,7 +75,7 @@ func (mod *Module) monitorConnections(ctx context.Context) {
 }
 
 func (mod *Module) servePick(ctx context.Context) error {
-	port, err := mod.node.Ports.RegisterContext(ctx, portPick)
+	port, err := mod.node.Services().RegisterContext(ctx, portPick)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (mod *Module) servePick(ctx context.Context) error {
 }
 
 func (mod *Module) serveDrop(ctx context.Context) {
-	port, err := mod.node.Ports.RegisterContext(ctx, portDrop)
+	port, err := mod.node.Services().RegisterContext(ctx, portDrop)
 	if err != nil {
 		return
 	}
@@ -165,7 +165,7 @@ func (mod *Module) serveDrop(ctx context.Context) {
 
 func (mod *Module) optimizeConn(conn *link.Conn) {
 	var remoteID = conn.Link().RemoteIdentity()
-	var peer = mod.node.Peers.Find(remoteID)
+	var peer = mod.node.Network().Peers().Find(remoteID)
 
 	for {
 		select {
@@ -187,7 +187,7 @@ func (mod *Module) optimizeConn(conn *link.Conn) {
 				log.Error("move: %s", err)
 			} else {
 				if current.Conns().Count() == 0 {
-					current.Idle().SetIdleTimeout(time.Minute)
+					current.Idle().SetTimeout(time.Minute)
 				}
 			}
 		}
