@@ -9,11 +9,28 @@ const (
 	mcClose = 0
 	mcQuery = 1
 	mcDrop  = 2
+	mcPing  = 3
 )
 
 type Message interface{}
 
 type CloseMessage struct {
+}
+
+type PingMessage struct {
+	port int
+}
+
+func (m *PingMessage) Port() int {
+	return m.port
+}
+
+func (m *PingMessage) MarshalCSLQ(enc *cslq.Encoder) error {
+	return enc.Encode("s", m.port)
+}
+
+func (m *PingMessage) UnmarshalCSLQ(dec *cslq.Decoder) error {
+	return dec.Decode("s", &m.port)
 }
 
 type QueryMessage struct {

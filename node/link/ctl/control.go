@@ -34,6 +34,12 @@ func (ctl *Control) ReadMessage() (Message, error) {
 		var msg DropMessage
 		var err = cslq.Decode(ctl.rw, "v", &msg)
 		return msg, err
+
+	case mcPing:
+		var msg PingMessage
+		var err = cslq.Decode(ctl.rw, "v", &msg)
+		return msg, err
+
 	}
 
 	return nil, errors.New("unknown message type")
@@ -52,4 +58,8 @@ func (ctl *Control) WriteQuery(query string, port int) error {
 
 func (ctl *Control) WriteDrop(port int) error {
 	return cslq.Encode(ctl.rw, "cv", mcDrop, &DropMessage{port: port})
+}
+
+func (ctl *Control) WritePing(port int) error {
+	return cslq.Encode(ctl.rw, "cv", mcPing, &PingMessage{port: port})
 }

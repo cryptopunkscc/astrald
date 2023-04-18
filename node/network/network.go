@@ -245,6 +245,9 @@ func (n *Network) addLink(l *link.Link) error {
 	_ = peer.addLink(l)
 	peer.Events().Emit(link.EventLinkEstablished{Link: l})
 
+	// update pings and detect dead links
+	peer.Check()
+
 	go func() {
 		l.SetQueryHandler(n.onQuery)
 		if err := l.Run(n.ctx); err != nil {
@@ -281,6 +284,9 @@ func (n *Network) removeLink(l *link.Link) error {
 		})
 		n.peers.Remove(peer)
 		peer.setUnlinked()
+	} else {
+		// update pings and detect dead links
+		peer.Check()
 	}
 
 	return nil

@@ -2,79 +2,166 @@ package link
 
 import (
 	"context"
+	"fmt"
+	"github.com/cryptopunkscc/astrald/mux"
+	"io"
+	"sync"
 	"time"
 )
 
+const pingInterval = 30 * time.Minute
+const pingCooldown = time.Second
+const pingTimeout = 10 * time.Second
+const pingMeasurements = 3
+const defaultRTT = 999 * time.Second
+
 type Ping struct {
-	link *Link
-	rtt  time.Duration
+	link   *Link
+	rtts   []time.Duration
+	mu     sync.Mutex
+	wakeCh chan struct{}
 }
 
 func NewPing(link *Link) *Ping {
 	return &Ping{
-		link: link,
-		rtt:  999 * time.Second, // assume super slow before first ping
+		link:   link,
+		wakeCh: make(chan struct{}, pingMeasurements),
 	}
 }
 
 // Last returns link's last measured round trip time
 func (ping *Ping) Last() time.Duration {
-	return ping.rtt
+	ping.mu.Lock()
+	defer ping.mu.Unlock()
+
+	if len(ping.rtts) == 0 {
+		return defaultRTT
+	}
+	return ping.rtts[len(ping.rtts)-1]
 }
 
-func (ping *Ping) Run(ctx context.Context) error {
-	for {
-		rtt, err := ping.ping(ctx)
-		if err != nil {
-			if err == ErrPingTimeout {
-				ping.link.CloseWithError(ErrPingTimeout)
-			}
-			return err
-		}
+func (ping *Ping) Average() time.Duration {
+	ping.mu.Lock()
+	defer ping.mu.Unlock()
 
-		ping.rtt = rtt
+	var count = len(ping.rtts)
+	if count == 0 {
+		return defaultRTT
+	}
 
+	var total time.Duration
+	for _, d := range ping.rtts {
+		total += d
+	}
+
+	return total / time.Duration(count)
+}
+
+func (ping *Ping) Check() {
+	for i := 0; i < pingMeasurements; i++ {
 		select {
-		case <-time.After(pingInterval):
-		case <-ctx.Done():
-			return ctx.Err()
+		case ping.wakeCh <- struct{}{}:
+		default:
+			return
 		}
 	}
 }
 
-func (ping *Ping) ping(ctx context.Context) (time.Duration, error) {
-	pingCh := make(chan time.Duration, 1)
-	errCh := make(chan error, 1)
+func (ping *Ping) pushRTT(rtt time.Duration) {
+	ping.mu.Lock()
+	defer ping.mu.Unlock()
 
+	if ping.rtts == nil {
+		ping.rtts = []time.Duration{rtt}
+		return
+	}
+
+	ping.rtts = append(ping.rtts, rtt)
+
+	if len(ping.rtts) > pingMeasurements {
+		ping.rtts = ping.rtts[1:]
+	}
+}
+
+func (ping *Ping) Run(ctx context.Context) error {
 	go func() {
-		startTime := time.Now()
-		conn, err := ping.link.Query(ctx, ".ping")
-		roundTrip := time.Since(startTime)
-
-		switch err {
-		case nil:
-			conn.Close()
-			fallthrough
-
-		case ErrRejected:
-			pingCh <- roundTrip
-
-		default:
-			errCh <- err
+		ping.Check()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(pingInterval):
+				ping.Check()
+			}
 		}
 	}()
 
-	select {
-	case d := <-pingCh:
-		return d, nil
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
 
-	case err := <-errCh:
-		return 0, err
+		case <-ping.wakeCh:
+		}
+
+		err := ping.ping(ctx)
+		if err != nil {
+			ping.link.CloseWithError(err)
+			return err
+		}
+
+		log.Infov(2, "ping with %s: last %s avg %s",
+			ping.link.RemoteIdentity(),
+			ping.Last().Round(time.Microsecond),
+			ping.Average().Round(time.Microsecond),
+		)
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		case <-time.After(pingCooldown):
+		}
+	}
+}
+
+func (ping *Ping) ping(ctx context.Context) error {
+	resultCh := make(chan error, 1)
+
+	var reader = mux.NewFrameReader()
+	localPort, err := ping.link.mux.BindAny(reader)
+	if err != nil {
+		return err
+	}
+
+	startTime := time.Now()
+	if err := ping.link.ctl.WritePing(localPort); err != nil {
+		ping.link.mux.Unbind(localPort)
+		return err
+	}
+
+	go func() {
+		var buf [1]byte
+		_, err := reader.Read(buf[:])
+		if err != io.EOF {
+			resultCh <- fmt.Errorf("unexpected ping response: %w", err)
+			return
+		}
+		resultCh <- nil
+	}()
+
+	select {
+	case err := <-resultCh:
+		if err != nil {
+			return err
+		}
+		ping.pushRTT(time.Since(startTime))
+		return nil
 
 	case <-time.After(pingTimeout):
-		return 0, ErrPingTimeout
+		return ErrPingTimeout
 
 	case <-ctx.Done():
-		return 0, ctx.Err()
+		return ctx.Err()
 	}
 }

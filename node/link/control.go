@@ -39,6 +39,11 @@ func (c *Control) Run(ctx context.Context) error {
 			}
 			return io.EOF
 
+		case ctl.PingMessage:
+			if err := c.link.onPing(msg.Port()); err != nil {
+				return err
+			}
+
 		default:
 			return errors.New("unknown control message")
 		}

@@ -46,6 +46,13 @@ func (peer *Peer) PreferredLink() *link.Link {
 	return link.Select(peer.Links(), link.BestQuality)
 }
 
+// Check ping of every link with the peer.
+func (peer *Peer) Check() {
+	for _, l := range peer.Links() {
+		l.Ping().Check()
+	}
+}
+
 // Unlink closes all links with the peer.
 func (peer *Peer) Unlink() {
 	for _, link := range peer.links.All() {

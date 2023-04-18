@@ -17,12 +17,16 @@ func (node *CoreNode) Query(ctx context.Context, remoteID id.Identity, query str
 		return node.Services().Query(ctx, query, nil)
 	}
 
-	link, err := node.Network().Link(ctx, remoteID)
+	if peer := node.Network().Peers().Find(remoteID); peer != nil {
+		peer.Check()
+	}
+
+	l, err := node.Network().Link(ctx, remoteID)
 	if err != nil {
 		return nil, err
 	}
 
-	return link.Query(ctx, query)
+	return l.Query(ctx, query)
 }
 
 func (node *CoreNode) onQuery(query *link.Query) error {

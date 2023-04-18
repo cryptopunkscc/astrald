@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/log"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link/ctl"
@@ -18,14 +18,15 @@ import (
 )
 
 const defaultIdleTimeout = 60 * time.Minute
-const pingInterval = 30 * time.Minute
-const pingTimeout = 15 * time.Second
+
 const muxControlPort = 0
 
 var ErrInvalidQuery = errors.New("invalid query")
 var ErrRejected = errors.New("query rejected")
 
 type QueryHandlerFunc func(query *Query) error
+
+var log = _log.Tag("link")
 
 // Link represents an astral link over an authenticated transport
 type Link struct {
@@ -229,6 +230,10 @@ func (l *Link) onFrameDropped(frame mux.Frame) error {
 		_ = l.ctl.WriteDrop(frame.Port)
 	}
 	return nil
+}
+
+func (l *Link) onPing(port int) error {
+	return l.mux.Close(port)
 }
 
 func (l *Link) add(conn *Conn) {
