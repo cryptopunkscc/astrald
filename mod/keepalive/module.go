@@ -13,7 +13,7 @@ const portName = "net.keepalive"
 
 type Module struct {
 	node   node.Node
-	config *Config
+	config Config
 }
 
 // time between successive link retries, in seconds
