@@ -110,8 +110,9 @@ func (ping *Ping) Run(ctx context.Context) error {
 			return err
 		}
 
-		log.Infov(2, "ping with %s: last %s avg %s",
+		log.Infov(2, "ping with %s over %s: last %s avg %s",
 			ping.link.RemoteIdentity(),
+			ping.link.Network(),
 			ping.Last().Round(time.Microsecond),
 			ping.Average().Round(time.Microsecond),
 		)

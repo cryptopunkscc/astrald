@@ -85,6 +85,7 @@ func (l *Link) Run(ctx context.Context) error {
 	var group = tasks.Group(l.idle, l.ping, l.control, l.mux)
 	group.DoneHandler = func(runner tasks.Runner, err error) {
 		if runner == l.control {
+			l.CloseWithError(err)
 			cancel()
 		}
 	}

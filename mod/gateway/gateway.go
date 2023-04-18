@@ -69,6 +69,9 @@ func (mod *Gateway) handleConn(ctx context.Context, conn *hub.Conn) error {
 		return errors.New("node unavailable")
 	}
 
+	// check link health
+	lnk.Ping().Check()
+
 	out, err := lnk.Query(ctx, queryConnect)
 	if err != nil {
 		conn.Close()
