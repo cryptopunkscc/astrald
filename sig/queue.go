@@ -71,7 +71,7 @@ func (q *Queue[T]) Wait() <-chan struct{} {
 }
 
 // Data returns nil of the value is not ready (if called before Wait closes), the value otherwise
-func (q *Queue[T]) Data() interface{} {
+func (q *Queue[T]) Data() T {
 	return q.data
 }
 
@@ -115,7 +115,7 @@ func Handle[Q any, T any](ctx context.Context, q *Queue[Q], fn func(T) error) er
 				return err
 			}
 		}
-
 	}
+
 	return nil
 }
