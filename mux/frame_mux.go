@@ -12,6 +12,7 @@ type FrameMux struct {
 	portHandlers   map[int]FrameHandlerFunc
 	defaultHandler FrameHandlerFunc
 	logID          int
+	nextPort       int
 }
 
 func NewFrameMux(transport io.ReadWriter, defaultHandler FrameHandlerFunc) *FrameMux {
@@ -93,8 +94,10 @@ func (mux *FrameMux) BindAnyFunc(handler FrameHandlerFunc) (port int, err error)
 	port = -1
 
 	for i := 0; i < MaxPorts; i++ {
-		if _, used := mux.portHandlers[i]; !used {
-			port = i
+		p := (mux.nextPort + i) % MaxPorts
+		if _, used := mux.portHandlers[p]; !used {
+			port = p
+			mux.nextPort = p + 1
 			break
 		}
 	}
