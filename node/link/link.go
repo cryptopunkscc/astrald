@@ -157,7 +157,9 @@ func (l *Link) Query(ctx context.Context, query string) (conn *Conn, err error) 
 	}
 
 	reader.SetErrorHandler(func(err error) {
-		conn.closeWithError(err)
+		if err == ErrBufferOverflow {
+			conn.closeWithError(err)
+		}
 	})
 
 	l.add(conn)

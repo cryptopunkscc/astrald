@@ -37,7 +37,9 @@ func (query *Query) Accept() (*Conn, error) {
 
 		if port, ok := conn.reader.(*PortReader); ok {
 			port.SetErrorHandler(func(err error) {
-				conn.closeWithError(err)
+				if err == ErrBufferOverflow {
+					conn.closeWithError(err)
+				}
 			})
 		}
 
