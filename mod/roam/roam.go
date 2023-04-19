@@ -2,7 +2,6 @@ package roam
 
 import (
 	"context"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mux"
@@ -87,7 +86,7 @@ func (mod *Module) servePick(ctx context.Context) error {
 			continue
 		}
 
-		query, err := query.Accept()
+		client, err := query.Accept()
 		if err != nil {
 			continue
 		}
@@ -95,22 +94,22 @@ func (mod *Module) servePick(ctx context.Context) error {
 		var remotePort int
 
 		// read remote port of the connection to pick
-		cslq.Decode(query, "s", &remotePort)
+		cslq.Decode(client, "s", &remotePort)
 
 		// find the connection
-		c := query.Link().Conns().FindByRemotePort(remotePort)
+		c := client.Link().Conns().FindByRemotePort(remotePort)
 		if c == nil {
-			query.Close()
+			client.Close()
 			continue
 		}
 
 		// allocate a new move for the connection
 		moveID := mod.allocMove(c)
 		if moveID != -1 {
-			cslq.Encode(query, "c", moveID)
+			cslq.Encode(client, "c", moveID)
 		}
 
-		query.Close()
+		client.Close()
 	}
 
 	return nil
@@ -129,37 +128,40 @@ func (mod *Module) serveDrop(ctx context.Context) {
 			continue
 		}
 
-		conn, _ := query.Accept()
+		client, _ := query.Accept()
 
+		var targetLink = client.Link()
 		var moveID, newRemotePort int
 
-		cslq.Decode(conn, "cs", &moveID, &newRemotePort)
+		if err := cslq.Decode(client, "cs", &moveID, &newRemotePort); err != nil {
+			client.Close()
+			continue
+		}
 
-		target, found := mod.moves[moveID]
+		movable, found := mod.moves[moveID]
 		if !found {
-			conn.Close()
+			client.Close()
 			continue
 		}
 
 		// allocate a new input stream and write its id
-		var newReader = mux.NewFrameReader()
-		newLocalPort, err := conn.Link().Mux().BindAny(newReader)
+		var newReader = link.NewPortReader()
+		newLocalPort, err := targetLink.Mux().BindAny(newReader)
 		if err != nil {
-			conn.Link().Mux().Unbind(newLocalPort)
-			conn.Close()
+			client.Close()
 			continue
 		}
 
-		target.SetFallbackReader(newReader)
+		movable.SetFallbackReader(newReader)
 
-		cslq.Encode(conn, "s", newLocalPort)
+		cslq.Encode(client, "s", newLocalPort)
 
 		// replace the output stream and finalize the move
-		newWriter := mux.NewFrameWriter(conn.Link().Mux(), newRemotePort)
-		target.SetWriter(newWriter)
-		target.Attach(conn.Link())
+		newWriter := mux.NewFrameWriter(targetLink.Mux(), newRemotePort)
+		movable.SetWriter(newWriter)
+		movable.Attach(targetLink)
 
-		conn.Close()
+		client.Close()
 	}
 }
 
@@ -184,83 +186,96 @@ func (mod *Module) optimizeConn(conn *link.Conn) {
 			}
 
 			if err := mod.move(conn, preferred); err != nil {
-				log.Error("move: %s", err)
+				log.Error("error moving connection: %s", err)
 			} else {
 				if current.Conns().Count() == 0 {
-					current.Idle().SetTimeout(time.Minute)
+					current.Idle().SetTimeout(5 * time.Minute)
 				}
 			}
 		}
 	}
 }
 
-func (mod *Module) move(conn *link.Conn, dest *link.Link) error {
-	log.Log("moving %s from %s to %s", conn.Query(), conn.Link().Network(), dest.Network())
+func (mod *Module) move(movable *link.Conn, targetLink *link.Link) error {
+	var srcNet = movable.Link().Network()
+	var dstNet = targetLink.Network()
+	var query = movable.Query()
 
-	moveID, err := mod.init(conn)
+	log.Logv(1, "moving %s from %s to %s", query, srcNet, dstNet)
+
+	moveID, err := mod.pick(movable)
 	if err != nil {
 		return err
 	}
 
-	return mod.drop(dest, conn, moveID)
+	err = mod.drop(targetLink, movable, moveID)
+	if err == nil {
+		log.Info("moved %s from %s to %s", query, srcNet, dstNet)
+	}
+	return err
 }
 
-func (mod *Module) init(conn *link.Conn) (int, error) {
+func (mod *Module) pick(movable *link.Conn) (int, error) {
 	// start transfer on the source link
-	init, err := conn.Link().Query(context.Background(), portPick)
+	server, err := movable.Link().Query(context.Background(), portPick)
 	if err != nil {
-		log.Error("init rejected (%s)", err)
 		return -1, err
 	}
-	defer init.Close()
+	defer server.Close()
 
 	// write input stream id of the connection to be migrated
-	cslq.Encode(init, "s", conn.LocalPort())
+	if err := cslq.Encode(server, "s", movable.LocalPort()); err != nil {
+		return -1, err
+	}
 
 	// read transfer id
-	var tid int
-	err = cslq.Decode(init, "c", &tid)
+	var moveID int
+	err = cslq.Decode(server, "c", &moveID)
 	if err != nil {
 		return -1, err
 	}
 
-	return tid, nil
+	return moveID, nil
 }
 
-func (mod *Module) drop(target *link.Link, conn *link.Conn, moveID int) error {
+func (mod *Module) drop(targetLink *link.Link, movable *link.Conn, moveID int) error {
 	// allocate a new port on the destination link
-	var newReader = mux.NewFrameReader()
-	newLocalPort, err := target.Mux().BindAny(newReader)
+	var newReader = link.NewPortReader()
+	newLocalPort, err := targetLink.Mux().BindAny(newReader)
 	if err != nil {
 		return err
 	}
 
 	// set connection to fall back to the new input stream
-	conn.SetFallbackReader(newReader)
+	movable.SetFallbackReader(newReader)
 
 	// start the query
-	query, err := target.Query(context.Background(), portDrop)
+	query, err := targetLink.Query(context.Background(), portDrop)
 	if err != nil {
-		target.Mux().Unbind(newLocalPort)
+		targetLink.Mux().Unbind(newLocalPort)
 		return err
 	}
 	defer query.Close()
 
 	// write move id and new input stream id
-	cslq.Encode(query, "cs", moveID, newLocalPort)
+	if err := cslq.Encode(query, "cs", moveID, newLocalPort); err != nil {
+		return err
+	}
 
 	// preapre the new output stream
 	var newRemotePort int
 	err = cslq.Decode(query, "s", &newRemotePort)
 	if err != nil {
-		target.Mux().Unbind(newLocalPort)
-		return fmt.Errorf("read error: %w", err)
+		targetLink.Mux().Unbind(newLocalPort)
+		return err
 	}
-	newWriter := mux.NewFrameWriter(target.Mux(), newRemotePort)
+	newWriter := mux.NewFrameWriter(targetLink.Mux(), newRemotePort)
 
 	// finalize the move
-	conn.SetWriter(newWriter)
-	conn.Attach(target)
+	if err := movable.SetWriter(newWriter); err != nil {
+		return err
+	}
+	movable.Attach(targetLink)
 
 	return nil
 }
