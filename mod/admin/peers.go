@@ -33,7 +33,7 @@ func peers(w io.ReadWriter, node node.Node, _ []string) error {
 				link.Activity().Idle().Round(time.Second),
 				time.Since(link.EstablishedAt()).Round(time.Second),
 				link.Priority(),
-				float64(link.Ping().Last().Microseconds())/1000,
+				float64(link.Health().AverageRTT().Microseconds())/1000,
 			)
 			for _, c := range link.Conns().All() {
 				fmt.Fprintf(w,

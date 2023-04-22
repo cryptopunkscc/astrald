@@ -45,6 +45,7 @@ func (conn *Conn) Read(p []byte) (n int, err error) {
 
 	n, err = conn.reader.Read(p)
 	if err == nil {
+		conn.link.Health().Check()
 		return
 	}
 
@@ -67,6 +68,8 @@ func (conn *Conn) Write(p []byte) (n int, err error) {
 	}
 
 	defer conn.activity.Touch()
+
+	conn.link.Health().Check()
 
 	n, err = conn.writer.Write(p)
 	if err != nil {

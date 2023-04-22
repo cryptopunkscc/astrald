@@ -21,7 +21,7 @@ type LinkOptions struct {
 // LinkPeerTask represents a task that tries to establish a new link with a node
 type LinkPeerTask struct {
 	RemoteID id.Identity
-	Peers    *Network
+	Network  *Network
 	options  LinkOptions
 }
 
@@ -30,7 +30,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	defer cancel()
 
 	// Fetch addresses for the remote identity
-	addrs, err := task.Peers.tracker.AddrByIdentity(task.RemoteID)
+	addrs, err := task.Network.tracker.AddrByIdentity(task.RemoteID)
 	if err != nil {
 		return nil, err
 	}
@@ -51,13 +51,13 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	close(addrCh)
 
 	authed := NewConcurrentHandshake(
-		task.Peers.localID,
+		task.Network.localID,
 		task.RemoteID,
 		workers,
 	).Outbound(
 		ctx,
 		NewConcurrentDialer(
-			task.Peers.infra,
+			task.Network.infra,
 			workers,
 		).Dial(
 			ctx,
@@ -80,7 +80,8 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 
 	l := link.New(authConn)
 	l.SetPriority(nodeinfra.NetworkPriority(l.Network()))
-	if err := task.Peers.AddLink(l); err != nil {
+	if err := task.Network.AddLink(l); err != nil {
+		log.Errorv(1, "LinkPeerTask: error adding link to network: %s", err)
 		l.Close()
 		return nil, err
 	}

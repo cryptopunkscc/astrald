@@ -64,8 +64,8 @@ func (l *Link) Mux() *mux.FrameMux {
 	return l.mux
 }
 
-func (l *Link) Ping() *Ping {
-	return l.ping
+func (l *Link) Health() *Health {
+	return l.health
 }
 
 func (l *Link) Outbound() bool {

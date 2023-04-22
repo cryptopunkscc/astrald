@@ -197,7 +197,7 @@ func (n *Network) AddAuthConn(conn auth.Conn) error {
 func (n *Network) RequestNewLink(nodeID id.Identity, opts LinkOptions) (*tasks.Task[*link.Link], error) {
 	t := tasks.New[*link.Link](&LinkPeerTask{
 		RemoteID: nodeID,
-		Peers:    n,
+		Network:  n,
 		options:  opts,
 	})
 

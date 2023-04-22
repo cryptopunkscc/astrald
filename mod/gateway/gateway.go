@@ -70,7 +70,7 @@ func (mod *Gateway) handleConn(ctx context.Context, conn *hub.Conn) error {
 	}
 
 	// check link health
-	lnk.Ping().Check()
+	lnk.Health().Check()
 
 	out, err := lnk.Query(ctx, queryConnect)
 	if err != nil {

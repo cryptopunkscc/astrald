@@ -37,7 +37,7 @@ type Link struct {
 	ctl           *ctl.Control
 	conns         *ConnSet
 	establishedAt time.Time
-	ping          *Ping
+	health        *Health
 	idle          *Idle
 	control       *Control
 	priority      int
@@ -70,7 +70,7 @@ func New(conn auth.Conn) *Link {
 	l.ctl = ctl.New(streams.ReadWriteCloseSplit{Reader: in, Writer: out})
 
 	l.control = NewControl(l)
-	l.ping = NewPing(l)
+	l.health = NewHealth(l)
 	l.idle = NewIdle(l)
 
 	return l
@@ -82,7 +82,7 @@ func (l *Link) Run(ctx context.Context) error {
 
 	var runCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
-	var group = tasks.Group(l.idle, l.ping, l.control, l.mux)
+	var group = tasks.Group(l.idle, l.health, l.control, l.mux)
 	group.DoneHandler = func(runner tasks.Runner, err error) {
 		if runner == l.control {
 			l.CloseWithError(err)
@@ -179,6 +179,13 @@ func (l *Link) CloseWithError(e error) error {
 		_ = l.ctl.WriteClose()
 		l.conn.Close()
 		close(l.doneCh)
+	} else {
+		log.Errorv(2, "link with %s over %s double closed. first: %s, new: %s",
+			l.RemoteIdentity(),
+			l.Network(),
+			l.err,
+			e,
+		)
 	}
 	return nil
 }
