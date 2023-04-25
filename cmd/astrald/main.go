@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/keepalive"
 	"github.com/cryptopunkscc/astrald/mod/optimizer"
+	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink"
 	"github.com/cryptopunkscc/astrald/mod/roam"
 	"github.com/cryptopunkscc/astrald/mod/tcpfwd"
@@ -92,6 +93,7 @@ func main() {
 		keepalive.Loader{},
 		agent.Loader{},
 		tcpfwd.Loader{},
+		presence.Loader{},
 	)
 	if err != nil {
 		fmt.Println("init error:", err)

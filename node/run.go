@@ -53,15 +53,6 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	// run presence manager
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := node.presence.Run(ctx); err != nil {
-			errCh <- fmt.Errorf("presence manager: %w", err)
-		}
-	}()
-
 	// peer query worker
 	for i := 0; i < 8; i++ {
 		wg.Add(1)

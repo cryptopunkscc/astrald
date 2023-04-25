@@ -13,7 +13,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
-	"github.com/cryptopunkscc/astrald/node/presence"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"os"
 	"path"
@@ -39,7 +38,6 @@ type CoreNode struct {
 	contacts *contacts.Manager
 	services *hub.Hub
 	modules  *ModuleManager
-	presence *presence.Manager
 
 	rootDir string
 }
@@ -141,12 +139,6 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	node.network, err = network.NewNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
-	}
-
-	// presence
-	node.presence, err = presence.NewManager(node.infra, &node.events)
-	if err != nil {
-		return nil, fmt.Errorf("error setting up presence: %w", err)
 	}
 
 	// modules

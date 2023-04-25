@@ -4,32 +4,24 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
+	"time"
 )
 
-type Manager struct {
+type Module struct {
+	node   node.Node
+	config Config
+
 	entries map[string]*entry
 	mu      sync.Mutex
 	events  event.Queue
 	skip    map[string]struct{}
-	net     infra.PresenceNet
 }
 
-func NewManager(net infra.PresenceNet, eventParent *event.Queue) (*Manager, error) {
-	p := &Manager{
-		entries: make(map[string]*entry),
-		skip:    make(map[string]struct{}),
-		net:     net,
-	}
-	p.events.SetParent(eventParent)
-
-	return p, nil
-}
-
-func (m *Manager) Run(ctx context.Context) (err error) {
+func (m *Module) Run(ctx context.Context) (err error) {
 	ctx, shutdown := context.WithCancel(ctx)
 
 	var errCh = make(chan error, 2)
@@ -39,7 +31,7 @@ func (m *Manager) Run(ctx context.Context) (err error) {
 	go func() {
 		defer wg.Done()
 
-		discover, err := m.net.Discover(ctx)
+		discover, err := m.node.Infra().Discover(ctx)
 		if err != nil {
 			errCh <- err
 			return
@@ -78,7 +70,7 @@ func (m *Manager) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (m *Manager) Identities() <-chan id.Identity {
+func (m *Module) Identities() <-chan id.Identity {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -95,25 +87,25 @@ func (m *Manager) Identities() <-chan id.Identity {
 	return ch
 }
 
-func (m *Manager) Announce(ctx context.Context) error {
-	return m.net.Announce(ctx)
+func (m *Module) Announce(ctx context.Context) error {
+	return m.node.Infra().Announce(ctx)
 }
 
-func (m *Manager) ignore(identity id.Identity) {
+func (m *Module) ignore(identity id.Identity) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.skip[identity.PublicKeyHex()] = struct{}{}
 }
 
-func (m *Manager) unignore(identity id.Identity) {
+func (m *Module) unignore(identity id.Identity) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	delete(m.skip, identity.PublicKeyHex())
 }
 
-func (m *Manager) handle(ctx context.Context, ip infra.Presence) {
+func (m *Module) handle(ctx context.Context, ip infra.Presence) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -135,9 +127,11 @@ func (m *Manager) handle(ctx context.Context, ip infra.Presence) {
 	log.Tag("presence").Info("%s present on %s", ip.Identity, log.Em(ip.Addr.Network()))
 
 	m.events.Emit(EventIdentityPresent{ip.Identity, ip.Addr})
+
+	_ = m.node.Tracker().Add(ip.Identity, ip.Addr, time.Now().Add(60*time.Minute))
 }
 
-func (m *Manager) remove(hex string) {
+func (m *Module) remove(hex string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

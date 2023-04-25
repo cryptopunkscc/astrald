@@ -4,19 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node/event"
-	"github.com/cryptopunkscc/astrald/node/presence"
 	"reflect"
-	"time"
 )
 
 func (node *CoreNode) handleEvents(ctx context.Context) error {
 	for e := range node.events.Subscribe(ctx) {
 		node.logEvent(e)
-
-		switch e := e.(type) {
-		case presence.EventIdentityPresent:
-			_ = node.Tracker().Add(e.Identity, e.Addr, time.Now().Add(60*time.Minute))
-		}
 	}
 
 	return nil

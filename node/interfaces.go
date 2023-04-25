@@ -33,6 +33,7 @@ type Node interface {
 
 // Infra is an interface for infrastructural networks
 type Infra interface {
+	infra.PresenceNet
 	Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err error)
 	LocalAddrs() []infra.AddrSpec
 	Unpack(network string, data []byte) (infra.Addr, error)
