@@ -14,7 +14,7 @@ func (inet *Inet) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	// start the listener
-	var addrStr = ":" + strconv.Itoa(inet.getListenPort())
+	var addrStr = ":" + strconv.Itoa(inet.ListenPort())
 	listener, err := portConfig.Listen(ctx, "tcp", addrStr)
 	if err != nil {
 		return nil, err

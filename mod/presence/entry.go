@@ -19,7 +19,7 @@ type entry struct {
 	mu       sync.Mutex
 }
 
-func trackPresence(ctx context.Context, presence infra.Presence) *entry {
+func trackPresence(ctx context.Context, presence Presence) *entry {
 	e := &entry{
 		id:       presence.Identity,
 		lastSeen: time.Now(),

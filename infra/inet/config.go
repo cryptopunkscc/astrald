@@ -1,12 +1,7 @@
 package inet
 
-import "time"
-
 const (
-	defaultListenPort   = 1791
-	defaultPresencePort = 8829
-	presencePayloadLen  = 36
-	presenceInterval    = time.Minute
+	defaultListenPort = 1791
 )
 
 type Config struct {

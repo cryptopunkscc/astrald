@@ -1,8 +1,4 @@
-# inet
-
-Support for IP networks.
-
-## Presence protocol
+# Presence protocol
 
 Presence protocol is used to announce/discover astral nodes on local network(s). It's a binary protocol and uses
 UDP port 8829 for all (broadcast and unicast) communication.

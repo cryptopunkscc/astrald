@@ -5,19 +5,17 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/infra"
 	"net"
-	"strconv"
 	"sync"
 )
 
 var _ infra.Network = &Inet{}
 
 type Inet struct {
-	config       Config
-	listenPort   int
-	publicAddrs  []infra.AddrSpec
-	mu           sync.Mutex
-	presenceConn *net.UDPConn
-	localID      id.Identity
+	config      Config
+	listenPort  int
+	publicAddrs []infra.AddrSpec
+	mu          sync.Mutex
+	localID     id.Identity
 }
 
 func New(config Config, localID id.Identity) (*Inet, error) {
@@ -79,7 +77,7 @@ func (inet *Inet) Addresses() []infra.AddrSpec {
 
 		if ipv4.IsGlobalUnicast() || ipv4.IsPrivate() {
 			list = append(list, infra.AddrSpec{
-				Addr:   Addr{ip: ipv4, port: uint16(inet.getListenPort())},
+				Addr:   Addr{ip: ipv4, port: uint16(inet.ListenPort())},
 				Global: ipv4.IsGlobalUnicast() && (!ipv4.IsPrivate()),
 			})
 		}
@@ -91,28 +89,7 @@ func (inet *Inet) Addresses() []infra.AddrSpec {
 	return list
 }
 
-func (inet *Inet) setupPresenceConn() (err error) {
-	inet.mu.Lock()
-	defer inet.mu.Unlock()
-
-	// already set up?
-	if inet.presenceConn != nil {
-		return nil
-	}
-
-	// resolve local address
-	var localAddr *net.UDPAddr
-	localAddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(defaultPresencePort))
-	if err != nil {
-		return
-	}
-
-	// bind the udp socket
-	inet.presenceConn, err = net.ListenUDP("udp", localAddr)
-	return
-}
-
-func (inet *Inet) getListenPort() int {
+func (inet *Inet) ListenPort() int {
 	if inet.config.ListenPort != 0 {
 		return inet.config.ListenPort
 	}
