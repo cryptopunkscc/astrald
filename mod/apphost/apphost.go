@@ -5,10 +5,10 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/mod/apphost/ipc"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/proto/apphost"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -26,7 +26,7 @@ type AppHost struct {
 
 func (host *AppHost) Register(portName string, target string) error {
 	if host.ports.GetPort(portName) != nil {
-		return hub.ErrAlreadyRegistered
+		return services.ErrAlreadyRegistered
 	}
 
 	port, err := host.node.Services().Register(portName)
@@ -94,13 +94,13 @@ func (host *AppHost) Query(identity id.Identity, query string) (io.ReadWriteClos
 
 	switch {
 	case err == nil:
-	case errors.Is(err, hub.ErrRejected), errors.Is(err, link.ErrRejected):
+	case errors.Is(err, services.ErrRejected), errors.Is(err, link.ErrRejected):
 		err = apphost.ErrRejected
 
-	case errors.Is(err, hub.ErrPortNotFound):
+	case errors.Is(err, services.ErrServiceNotFound):
 		err = apphost.ErrRejected
 
-	case errors.Is(err, hub.ErrTimeout):
+	case errors.Is(err, services.ErrTimeout):
 		err = apphost.ErrTimeout
 
 	default:

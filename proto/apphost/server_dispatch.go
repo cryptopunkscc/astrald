@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/cslq/rpc"
-	"github.com/cryptopunkscc/astrald/hub"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"strings"
@@ -57,7 +57,7 @@ func (dispatcher *serverDispatcher) register(portName string, target string) err
 	case err == nil:
 		return cslq.Encode(dispatcher.conn, "c", success)
 
-	case errors.Is(err, hub.ErrAlreadyRegistered), errors.Is(err, ErrAlreadyRegistered):
+	case errors.Is(err, services.ErrAlreadyRegistered), errors.Is(err, ErrAlreadyRegistered):
 		return cslq.Encode(dispatcher.conn, "c", errAlreadyRegistered)
 
 	default:

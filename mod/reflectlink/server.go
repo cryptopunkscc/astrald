@@ -3,7 +3,7 @@ package reflectlink
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/hub"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"time"
 )
 
@@ -42,7 +42,7 @@ func (mod *Module) runServer(ctx context.Context) error {
 	}
 }
 
-func (mod *Module) handleRequest(conn *hub.Conn) error {
+func (mod *Module) handleRequest(conn *services.Conn) error {
 	var info = mod.getLocalInfo()
 	var remoteAddr = conn.Link().RemoteAddr()
 

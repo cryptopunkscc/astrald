@@ -5,10 +5,10 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/infra/gw"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
 )
 
@@ -44,7 +44,7 @@ func (mod *Gateway) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Gateway) handleConn(ctx context.Context, conn *hub.Conn) error {
+func (mod *Gateway) handleConn(ctx context.Context, conn *services.Conn) error {
 	c := cslq.NewEndec(conn)
 
 	var cookie string

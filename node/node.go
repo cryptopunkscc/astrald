@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/hub"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/contacts"
@@ -13,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"os"
 	"path"
@@ -36,7 +36,7 @@ type CoreNode struct {
 	network  *network.Network
 	tracker  *tracker.CoreTracker
 	contacts *contacts.Manager
-	services *hub.Hub
+	services *services.Manager
 	modules  *ModuleManager
 
 	rootDir string
@@ -99,7 +99,7 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	}
 
 	// hub
-	node.services = hub.New(&node.events)
+	node.services = services.New(&node.events)
 
 	// infrastructure
 	node.infra, err = infra.New(
@@ -124,6 +124,7 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 		return nil, err
 	}
 
+	// format identities in logs
 	_log.SetFormatter(id.Identity{}, func(v interface{}) string {
 		identity := v.(id.Identity)
 		if c, err := node.contacts.Find(identity); err == nil {
@@ -133,6 +134,11 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 		}
 
 		return log.Green() + identity.Fingerprint() + log.Reset()
+	})
+
+	// format strings in logs
+	_log.SetFormatter("", func(v interface{}) string {
+		return log.EmColor() + v.(string) + log.Reset()
 	})
 
 	// peer manager

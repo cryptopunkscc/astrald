@@ -1,12 +1,12 @@
 package apphost
 
 import (
-	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/mod/apphost/ipc"
+	"github.com/cryptopunkscc/astrald/node/services"
 )
 
 type PortEntry struct {
-	port   *hub.Port
+	port   *services.Service
 	target string
 }
 

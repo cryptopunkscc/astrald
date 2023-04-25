@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/node/config"
@@ -12,6 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"time"
 )
@@ -68,7 +68,7 @@ type Contacts interface {
 }
 
 type Services interface {
-	Register(name string) (*hub.Port, error)
-	RegisterContext(ctx context.Context, name string) (*hub.Port, error)
-	Query(ctx context.Context, query string, link *link.Link) (*hub.Conn, error)
+	Register(name string) (*services.Service, error)
+	RegisterContext(ctx context.Context, name string) (*services.Service, error)
+	Query(ctx context.Context, query string, link *link.Link) (*services.Conn, error)
 }

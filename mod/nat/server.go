@@ -5,10 +5,10 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/infra/inet"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"io"
 	"time"
 )
@@ -66,7 +66,7 @@ func (mod *Module) runServer(ctx context.Context) error {
 	}
 }
 
-func (mod *Module) serve(ctx context.Context, conn *hub.Conn) error {
+func (mod *Module) serve(ctx context.Context, conn *services.Conn) error {
 	defer conn.Close()
 	var c = cslq.NewEndec(conn)
 	var remoteAddr inet.Addr

@@ -1,4 +1,4 @@
-package hub
+package services
 
 import (
 	"github.com/cryptopunkscc/astrald/node/link"

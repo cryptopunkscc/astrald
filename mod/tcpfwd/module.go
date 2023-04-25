@@ -43,7 +43,6 @@ func (m *Module) Run(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 
-			log.Logv(1, "forwarding %s to %s", tcpPort, astralPort)
 			if err := m.ServeIn(ctx, tcpPort, astralPort); err != nil {
 				log.Errorv(1, "error: %s", err)
 			}
@@ -98,6 +97,8 @@ func (m *Module) ServeIn(ctx context.Context, tcp string, astral string) error {
 		<-ctx.Done()
 		listener.Close()
 	}()
+
+	log.Logv(1, "forwarding %s to %s:%s", tcp, nodeID, port)
 
 	for {
 		inConn, err := listener.Accept()

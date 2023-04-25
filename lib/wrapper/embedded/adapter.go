@@ -3,9 +3,9 @@ package embedded
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/lib/wrapper"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"io"
 )
 
@@ -31,12 +31,12 @@ func (a *Adapter) Resolve(name string) (identity id.Identity, err error) {
 
 type astralPort struct {
 	Node node.Node
-	port hub.Port
+	port services.Service
 }
 
 type astralRequest struct {
 	Node  node.Node
-	query *hub.Query
+	query *services.Query
 }
 
 func (a *Adapter) Register(name string) (p wrapper.Port, err error) {

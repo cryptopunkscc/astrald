@@ -1,7 +1,7 @@
 package apphost
 
 import (
-	"github.com/cryptopunkscc/astrald/hub"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"sync"
 )
 
@@ -16,7 +16,7 @@ func NewPortManager() *PortManager {
 	}
 }
 
-func (m *PortManager) GetPort(portName string) *hub.Port {
+func (m *PortManager) GetPort(portName string) *services.Service {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -28,14 +28,14 @@ func (m *PortManager) GetPort(portName string) *hub.Port {
 	return nil
 }
 
-func (m *PortManager) AddPort(port *hub.Port, target string) error {
+func (m *PortManager) AddPort(port *services.Service, target string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	portName := port.Name()
 
 	if _, found := m.ports[portName]; found {
-		return hub.ErrAlreadyRegistered
+		return services.ErrAlreadyRegistered
 	}
 
 	m.ports[portName] = PortEntry{

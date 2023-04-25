@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/cryptopunkscc/astrald/hub"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"io"
 	"os"
 	"reflect"
@@ -33,7 +33,7 @@ var (
 
 type Server struct {
 	node node.Node
-	conn *hub.Conn
+	conn *services.Conn
 	auth bool
 }
 
