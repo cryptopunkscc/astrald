@@ -96,13 +96,12 @@ func (i *Infra) Run(ctx context.Context) error {
 	return nil
 }
 
-func (i *Infra) Networks() <-chan infra.Network {
-	ch := make(chan infra.Network, len(i.networks))
-	for _, n := range i.networks {
-		ch <- n
+func (i *Infra) Networks() map[string]infra.Network {
+	clone := make(map[string]infra.Network)
+	for k, v := range i.networks {
+		clone[k] = v
 	}
-	close(ch)
-	return ch
+	return clone
 }
 
 func (i *Infra) LocalAddrs() []infra.AddrSpec {

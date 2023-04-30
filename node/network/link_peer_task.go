@@ -41,6 +41,14 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	// Populate a channel with addresses
 	addrCh := make(chan infra.Addr, len(addrs))
 	for _, a := range addrs {
+		for n := range task.Network.infra.Networks() {
+			if a.Network() == n {
+				goto supported
+			}
+		}
+		continue
+
+	supported:
 		if task.options.AddrFilter != nil {
 			if !task.options.AddrFilter(a) {
 				continue

@@ -17,7 +17,7 @@ func (i *Infra) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 	var output = make(chan infra.Conn)
 	var wg = sync.WaitGroup{}
 
-	for network := range i.Networks() {
+	for _, network := range i.Networks() {
 		listener, ok := network.(infra.Listener)
 		if !ok {
 			continue
