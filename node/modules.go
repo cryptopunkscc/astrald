@@ -30,7 +30,7 @@ func NewModuleManager(node Node, loaders []ModuleLoader) (*ModuleManager, error)
 		name := loader.Name()
 		mod, err := loader.Load(node)
 		if err != nil {
-			log.Log("error loading module %s: %s", log.Em(name))
+			log.Log("error loading module %s: %s", name, err)
 			continue
 		}
 		m.modules[name] = mod
@@ -58,11 +58,9 @@ func (manager *ModuleManager) Run(ctx context.Context) error {
 
 			err := mod.Run(ctx)
 			if err != nil {
-				log.Error("module %s ended with error: %s%s%s",
-					log.Em(name),
-					log.Red(),
+				log.Error("module %s ended with error: %s",
+					name,
 					err,
-					log.Reset(),
 				)
 			}
 		}()

@@ -141,6 +141,14 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 		return log.EmColor() + v.(string) + log.Reset()
 	})
 
+	_log.SetFormatter(time.Duration(0), func(i interface{}) string {
+		return log.Purple() + i.(time.Duration).String() + log.Reset()
+	})
+
+	_log.SetFormatter(nil, func(i interface{}) string {
+		return log.Red() + "nil" + log.Reset()
+	})
+
 	// peer manager
 	node.network, err = network.NewNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery)
 	if err != nil {

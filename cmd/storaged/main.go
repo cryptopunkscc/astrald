@@ -37,7 +37,7 @@ func (server *Server) Run() error {
 
 	for query := range port.QueryCh() {
 		info, _ := astral.NodeInfo(query.RemoteIdentity())
-		log.Log("%s connected", log.Em(info.Name))
+		log.Log("%s connected", info.Name)
 
 		conn, err := query.Accept()
 		if err != nil {
@@ -50,7 +50,7 @@ func (server *Server) Run() error {
 			if (err != nil) && !errors.Is(err, io.EOF) {
 				log.Error("serve: %s", err)
 			}
-			log.Log("%s disconnected", log.Em(info.Name))
+			log.Log("%s disconnected", info.Name)
 		}()
 	}
 

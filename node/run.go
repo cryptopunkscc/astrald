@@ -17,10 +17,10 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 			log.Green(),
 			node.Alias(),
 			log.Reset(),
-			log.Em(nodeKey),
+			nodeKey,
 		)
 	} else {
-		log.Log("astral node %s statrting...", log.Em(nodeKey))
+		log.Log("astral node %s statrting...", nodeKey)
 	}
 
 	var wg sync.WaitGroup

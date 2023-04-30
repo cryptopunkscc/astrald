@@ -8,10 +8,6 @@ type Formatter func(interface{}) string
 
 var formatters map[string]Formatter
 
-func Em(text string) string {
-	return instance.Em(text)
-}
-
 func SetFormatter(t interface{}, formatter Formatter) {
 	var typeName string
 	if t == nil {
@@ -45,10 +41,6 @@ func formatArgs(args []interface{}) []interface{} {
 		out = append(out, a)
 	}
 	return out
-}
-
-func (l *Logger) Em(text string) string {
-	return l.getEmColor() + text + reset
 }
 
 func Bool(b bool, true string, false string) string {

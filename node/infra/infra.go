@@ -84,9 +84,9 @@ func (i *Infra) Run(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 			if err := net.Run(ctx); err != nil {
-				log.Error("network %s error: %s", log.Em(name), err.Error())
+				log.Error("network %s error: %s", name, err)
 			} else {
-				log.Log("network %s done", log.Em(name))
+				log.Log("network %s done", name)
 			}
 		}()
 	}

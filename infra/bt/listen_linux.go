@@ -76,7 +76,7 @@ func (bt *Bluetooth) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 			remoteAddr, _ := Unpack(sa.(*unix.SockaddrRFCOMM).Addr[:])
 
 			log.Log("accepted %s %s",
-				log.Em(NetworkName),
+				NetworkName,
 				remoteAddr)
 
 			output <- Conn{

@@ -28,7 +28,7 @@ func (tor *Tor) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 
 		tor.serviceAddr, _ = Parse(l.Addr())
 
-		log.Log("listen %s", log.Em(tor.serviceAddr.String()))
+		log.Log("listen %s", tor.serviceAddr.String())
 
 		for {
 			conn, err := l.Accept()

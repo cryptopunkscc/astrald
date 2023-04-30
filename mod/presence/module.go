@@ -152,7 +152,7 @@ func (m *Module) handle(ctx context.Context, ip Presence) {
 		m.remove(hex)
 	})
 
-	log.Tag("presence").Info("%s present on %s", ip.Identity, log.Em(ip.Addr.Network()))
+	log.Tag("presence").Info("%s present on %s", ip.Identity, ip.Addr.Network())
 
 	m.events.Emit(EventIdentityPresent{ip.Identity, ip.Addr})
 
@@ -225,7 +225,7 @@ func (m *Module) remove(hex string) {
 	if e, found := m.entries[hex]; found {
 		delete(m.entries, hex)
 
-		log.Tag("presence").Info("%s gone from %s", e.id, log.Em(e.addr.Network()))
+		log.Tag("presence").Info("%s gone from %s", e.id, e.addr.Network())
 
 		m.events.Emit(EventIdentityGone{e.id})
 	}

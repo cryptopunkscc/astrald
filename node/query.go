@@ -48,8 +48,9 @@ func (node *CoreNode) peerQueryWorker(ctx context.Context) error {
 			var err = node.executeQuery(ctx, query)
 			var elapsed = time.Since(start)
 
-			log.Logv(2, "served query %s (time %s, err %s)",
+			log.Logv(2, "served query %s for %s (time %s, err %s)",
 				query.Query(),
+				query.Link().RemoteIdentity(),
 				elapsed.Round(time.Microsecond),
 				err,
 			)

@@ -28,7 +28,7 @@ func (inet *Inet) Listen(ctx context.Context) (<-chan infra.Conn, error) {
 		close(output)
 	}()
 
-	log.Log("listen tcp %s", log.Em(addrStr))
+	log.Log("listen tcp %s", addrStr)
 
 	go func() {
 		defer cancel()

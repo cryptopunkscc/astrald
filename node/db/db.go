@@ -85,7 +85,7 @@ func (db *Database) CreateTable(tableName string, fields string) error {
 	return db.TxDo(func(tx *sql.Tx) error {
 		query := fmt.Sprintf("CREATE TABLE %s (%s);", tableName, fields)
 
-		log.Logv(1, "%s", log.Em(query))
+		log.Logv(1, "%s", query)
 
 		_, err := tx.Exec(query)
 		return err

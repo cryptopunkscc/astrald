@@ -52,7 +52,7 @@ func (mod *Module) Run(ctx context.Context) error {
 					ports: ports,
 				})
 				if err != nil {
-					log.Error("worker %d serve error: %s", i, err.Error())
+					log.Error("worker %d serve error: %s", i, err)
 				}
 				conn.Close()
 				cancel()
@@ -69,14 +69,14 @@ func (mod *Module) accept(ctx context.Context) <-chan net.Conn {
 	if l, err := mod.listenTCP(); err != nil {
 		log.Error("tcp listen error: %s", err)
 	} else {
-		log.Log("listen %s", log.Em(l.Addr().String()))
+		log.Log("listen %s", l.Addr().String())
 		mod.listeners = append(mod.listeners, l)
 	}
 
 	if l, err := mod.listenUnix(); err != nil {
 		log.Error("unix listen error:", err)
 	} else {
-		log.Log("listen %s", log.Em(l.Addr().String()))
+		log.Log("listen %s", l.Addr().String())
 		mod.listeners = append(mod.listeners, l)
 	}
 

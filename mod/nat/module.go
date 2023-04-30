@@ -55,7 +55,7 @@ func (mod *Module) Run(ctx context.Context) error {
 				}
 				m.extAddr = inetAddr
 
-				log.Log("NAT mapping candidate: %s", log.Em(m.String()))
+				log.Log("NAT mapping candidate: %s", m.String())
 
 				mod.mapping = m
 
