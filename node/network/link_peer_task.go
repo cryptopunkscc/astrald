@@ -38,17 +38,16 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 		return nil, errors.New("identity has no addresses")
 	}
 
-	// Populate a channel with addresses
-	addrCh := make(chan infra.Addr, len(addrs))
-	for _, a := range addrs {
-		for n := range task.Network.infra.Networks() {
-			if a.Network() == n {
-				goto supported
-			}
-		}
-		continue
+	// Get a list of supported networks
+	var networks = task.Network.infra.Networks()
 
-	supported:
+	// Populate a channel with addresses
+	var addrCh = make(chan infra.Addr, len(addrs))
+	for _, a := range addrs {
+		if _, found := networks[a.Network()]; !found {
+			continue
+		}
+
 		if task.options.AddrFilter != nil {
 			if !task.options.AddrFilter(a) {
 				continue
