@@ -2,7 +2,6 @@ package tracker
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/node/db"
 	"modernc.org/ql"
 	"testing"

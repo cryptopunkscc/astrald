@@ -4,11 +4,11 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/brontide"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 )
 
 // HandshakeInbound performs a handshake as the passive party.
-func HandshakeInbound(ctx context.Context, conn infra.Conn, localID id.Identity) (Conn, error) {
+func HandshakeInbound(ctx context.Context, conn net.Conn, localID id.Identity) (*NoiseConn, error) {
 	//TODO: is there a better way to handle ctx here?
 	var done = make(chan struct{})
 	var errCh = make(chan error, 1)
@@ -32,14 +32,14 @@ func HandshakeInbound(ctx context.Context, conn infra.Conn, localID id.Identity)
 		return nil, err
 	}
 
-	return &brontideConn{
-		netConn: conn,
-		bConn:   bConn,
+	return &NoiseConn{
+		conn:     conn,
+		brontide: bConn,
 	}, nil
 }
 
 // HandshakeOutbound performs a handshake as the active party.
-func HandshakeOutbound(ctx context.Context, conn infra.Conn, expectedRemoteID id.Identity, localID id.Identity) (Conn, error) {
+func HandshakeOutbound(ctx context.Context, conn net.Conn, expectedRemoteID id.Identity, localID id.Identity) (*NoiseConn, error) {
 	//TODO: is there a better way to handle ctx here?
 	var done = make(chan struct{})
 	var errCh = make(chan error, 1)
@@ -62,8 +62,8 @@ func HandshakeOutbound(ctx context.Context, conn infra.Conn, expectedRemoteID id
 		return nil, err
 	}
 
-	return &brontideConn{
-		netConn: conn,
-		bConn:   c,
+	return &NoiseConn{
+		conn:     conn,
+		brontide: c,
 	}, nil
 }

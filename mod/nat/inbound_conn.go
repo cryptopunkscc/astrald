@@ -1,9 +1,11 @@
 package nat
 
-import "github.com/cryptopunkscc/astrald/infra"
+import (
+	"github.com/cryptopunkscc/astrald/net"
+)
 
 type inboundConn struct {
-	infra.Conn
+	net.Conn
 }
 
 func (inboundConn) Outbound() bool {

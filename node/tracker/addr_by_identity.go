@@ -19,7 +19,7 @@ func (tracker *CoreTracker) AddrByIdentity(identity id.Identity) ([]Addr, error)
 			return nil, err
 		}
 		res = append(res, Addr{
-			Addr:      addr,
+			Endpoint:  addr,
 			ExpiresAt: dbRow.ExpiresAt,
 		})
 	}

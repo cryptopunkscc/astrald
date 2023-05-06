@@ -2,7 +2,8 @@ package network
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/infra"
 	"sync"
 	"time"
 )
@@ -19,8 +20,8 @@ func NewConcurrentDialer(dialer infra.Dialer, concurrency int) *ConcurrentDialer
 	}
 }
 
-func (d *ConcurrentDialer) Dial(ctx context.Context, addrs <-chan infra.Addr) <-chan infra.Conn {
-	out := make(chan infra.Conn)
+func (d *ConcurrentDialer) Dial(ctx context.Context, endpoints <-chan net.Endpoint) <-chan net.Conn {
+	out := make(chan net.Conn)
 
 	// spawn workers
 	var wg sync.WaitGroup
@@ -33,13 +34,13 @@ func (d *ConcurrentDialer) Dial(ctx context.Context, addrs <-chan infra.Addr) <-
 				case <-ctx.Done():
 					return
 
-				case addr, ok := <-addrs:
+				case endpoint, ok := <-endpoints:
 					// channel closed?
 					if !ok {
 						return
 					}
 
-					conn, err := d.dialer.Dial(ctx, addr)
+					conn, err := d.dialer.Dial(ctx, endpoint)
 					if err != nil {
 						return
 					}

@@ -2,7 +2,7 @@ package nodeinfo
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 	"testing"
 )
 
@@ -11,8 +11,8 @@ func TestMarshalling(t *testing.T) {
 	var nodeInfo = New(testID)
 
 	nodeInfo.Alias = "tester"
-	nodeInfo.Addresses = append(nodeInfo.Addresses, infra.NewGenericAddr("test", []byte{1, 2, 3, 4}))
-	nodeInfo.Addresses = append(nodeInfo.Addresses, infra.NewGenericAddr("tset", []byte{4, 3, 2, 1}))
+	nodeInfo.Endpoints = append(nodeInfo.Endpoints, net.NewGenericEndpoint("test", []byte{1, 2, 3, 4}))
+	nodeInfo.Endpoints = append(nodeInfo.Endpoints, net.NewGenericEndpoint("tset", []byte{4, 3, 2, 1}))
 
 	var s = nodeInfo.String()
 
@@ -24,11 +24,11 @@ func TestMarshalling(t *testing.T) {
 	if read.Alias != nodeInfo.Alias {
 		t.Fatal("alias mismatch")
 	}
-	if len(read.Addresses) != len(nodeInfo.Addresses) {
+	if len(read.Endpoints) != len(nodeInfo.Endpoints) {
 		t.Fatal("address count mismatch")
 	}
-	for i := range read.Addresses {
-		if !infra.AddrEqual(read.Addresses[i], nodeInfo.Addresses[i]) {
+	for i := range read.Endpoints {
+		if !net.EndpointEqual(read.Endpoints[i], nodeInfo.Endpoints[i]) {
 			t.Fatal("address")
 		}
 	}

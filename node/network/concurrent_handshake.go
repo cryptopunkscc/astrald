@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 	"io"
 	"sync"
 )
@@ -20,8 +20,8 @@ func NewConcurrentHandshake(localID id.Identity, remoteID id.Identity, workers i
 	return &ConcurrentHandshake{localID: localID, remoteID: remoteID, workers: workers}
 }
 
-func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan infra.Conn) <-chan auth.Conn {
-	var ch = make(chan auth.Conn, h.workers)
+func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan net.Conn) <-chan net.SecureConn {
+	var ch = make(chan net.SecureConn, h.workers)
 	var wg sync.WaitGroup
 
 	// start handshake workers
@@ -40,7 +40,7 @@ func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan infra.C
 					}
 
 					hctx, _ := context.WithTimeout(ctx, HandshakeTimeout)
-					authConn, err := auth.HandshakeOutbound(hctx, conn, h.remoteID, h.localID)
+					secureConn, err := auth.HandshakeOutbound(hctx, conn, h.remoteID, h.localID)
 
 					// if handshake failed, try next connection
 					if err != nil {
@@ -55,7 +55,7 @@ func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan infra.C
 						continue
 					}
 
-					ch <- authConn
+					ch <- secureConn
 					return
 				}
 

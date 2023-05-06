@@ -3,7 +3,6 @@ package astral
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/infra/bt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
@@ -14,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/reflectlink"
 	"github.com/cryptopunkscc/astrald/mod/roam"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/bt"
 	"log"
 	"os"
 	"path/filepath"

@@ -2,8 +2,8 @@ package link
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
 	"github.com/cryptopunkscc/astrald/mux"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/sig"
 	"time"
@@ -73,21 +73,21 @@ func (l *Link) Outbound() bool {
 }
 
 func (l *Link) Network() string {
-	if l.conn.LocalAddr() != nil {
-		return l.conn.LocalAddr().Network()
+	if l.conn.LocalEndpoint() != nil {
+		return l.conn.LocalEndpoint().Network()
 	}
-	if l.conn.RemoteAddr() != nil {
-		return l.conn.RemoteAddr().Network()
+	if l.conn.RemoteEndpoint() != nil {
+		return l.conn.RemoteEndpoint().Network()
 	}
 	return ""
 }
 
-func (l *Link) RemoteAddr() infra.Addr {
-	return l.conn.RemoteAddr()
+func (l *Link) RemoteEndpoint() net.Endpoint {
+	return l.conn.RemoteEndpoint()
 }
 
-func (l *Link) LocalAddr() infra.Addr {
-	return l.conn.LocalAddr()
+func (l *Link) LocalEndpoint() net.Endpoint {
+	return l.conn.LocalEndpoint()
 }
 
 func (l *Link) RemoteIdentity() id.Identity {

@@ -5,19 +5,20 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/infra"
 	"io"
 )
 
-type AuthConnHandlerFunc func(auth.Conn) error
+type SecureConnHandlerFunc func(conn net.SecureConn) error
 
 type Server struct {
 	localID  id.Identity
 	listener infra.Listener
-	handler  AuthConnHandlerFunc
+	handler  SecureConnHandlerFunc
 }
 
-func newServer(localID id.Identity, listener infra.Listener, handler AuthConnHandlerFunc) (*Server, error) {
+func newServer(localID id.Identity, listener infra.Listener, handler SecureConnHandlerFunc) (*Server, error) {
 	srv := &Server{
 		localID:  localID,
 		listener: listener,
@@ -60,9 +61,9 @@ func (srv *Server) Run(ctx context.Context) error {
 	}
 }
 
-func (srv *Server) Handshake(ctx context.Context, conn infra.Conn) (authConn auth.Conn, err error) {
+func (srv *Server) Handshake(ctx context.Context, conn net.Conn) (secureConn net.SecureConn, err error) {
 	hsCtx, _ := context.WithTimeout(ctx, HandshakeTimeout)
-	authConn, err = auth.HandshakeInbound(hsCtx, conn, srv.localID)
+	secureConn, err = auth.HandshakeInbound(hsCtx, conn, srv.localID)
 
 	if err != nil {
 		conn.Close()
@@ -71,6 +72,6 @@ func (srv *Server) Handshake(ctx context.Context, conn infra.Conn) (authConn aut
 	return
 }
 
-func (srv *Server) SetHandler(handler AuthConnHandlerFunc) {
+func (srv *Server) SetHandler(handler SecureConnHandlerFunc) {
 	srv.handler = handler
 }

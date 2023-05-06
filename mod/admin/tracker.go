@@ -21,7 +21,7 @@ func cmdTracker(w io.ReadWriter, node node.Node, _ []string) error {
 		}
 
 		for _, addr := range addrs {
-			printAddr(w, addr)
+			printEndpoint(w, addr)
 		}
 
 		fmt.Fprintln(w)

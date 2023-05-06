@@ -3,14 +3,15 @@ package optimizer
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/infra"
 	"sync"
 	"time"
 )
 
 type RetryDialer struct {
 	dialer      infra.Dialer
-	queue       chan infra.Addr
+	queue       chan net.Endpoint
 	concurrency int
 }
 
@@ -21,21 +22,21 @@ func NewRetryDialer(dialer infra.Dialer, concurrency int) *RetryDialer {
 	return &RetryDialer{
 		dialer:      dialer,
 		concurrency: concurrency,
-		queue:       make(chan infra.Addr, queueSize),
+		queue:       make(chan net.Endpoint, queueSize),
 	}
 }
 
-func (d *RetryDialer) Add(addr infra.Addr) error {
+func (d *RetryDialer) Add(e net.Endpoint) error {
 	select {
-	case d.queue <- addr:
+	case d.queue <- e:
 		return nil
 	default:
 		return errors.New("queue overflow")
 	}
 }
 
-func (d *RetryDialer) Dial(ctx context.Context) <-chan infra.Conn {
-	var out = make(chan infra.Conn)
+func (d *RetryDialer) Dial(ctx context.Context) <-chan net.Conn {
+	var out = make(chan net.Conn)
 	var wg sync.WaitGroup
 
 	wg.Add(d.concurrency)
@@ -69,11 +70,11 @@ func (d *RetryDialer) Dial(ctx context.Context) <-chan infra.Conn {
 	return out
 }
 
-func (d *RetryDialer) retry(ctx context.Context, addr infra.Addr) {
+func (d *RetryDialer) retry(ctx context.Context, e net.Endpoint) {
 	select {
 	case <-ctx.Done():
 		return
 	case <-time.After(retryDelay):
-		d.Add(addr)
+		d.Add(e)
 	}
 }

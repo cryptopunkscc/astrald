@@ -3,11 +3,10 @@ package optimizer
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/infra"
 	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/event"
-	nodeinfra "github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
@@ -50,7 +49,7 @@ func (mod *Module) Optimize(parent context.Context, peer *network.Peer) error {
 	}()
 
 	// use FilterDialer to dial only addresses with potentially better quality score
-	filterDialer := NewFilterDialer(mod.node.Infra(), func(addr infra.Addr) error {
+	filterDialer := NewFilterDialer(mod.node.Infra(), func(addr net.Endpoint) error {
 		sa := scoreAddr(addr)
 		sp := scorePeer(peer)
 
@@ -83,7 +82,7 @@ func (mod *Module) Optimize(parent context.Context, peer *network.Peer) error {
 		retryDialer.Dial(ctx),
 	) {
 		l := link.New(authConn)
-		l.SetPriority(nodeinfra.NetworkPriority(l.Network()))
+		l.SetPriority(network.NetworkPriority(l.Network()))
 		mod.node.Network().AddLink(l)
 	}
 

@@ -2,12 +2,12 @@ package presence
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 )
 
 type EventIdentityPresent struct {
 	Identity id.Identity
-	Addr     infra.Addr
+	Endpoint net.Endpoint
 }
 
 type EventIdentityGone struct {

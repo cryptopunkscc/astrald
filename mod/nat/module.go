@@ -2,11 +2,11 @@ package nat
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/infra/inet"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
 )
@@ -27,20 +27,20 @@ func (mod *Module) Run(ctx context.Context) error {
 			switch event := event.(type) {
 			case reflectlink.EventLinkReflected:
 				// filter out non-inet addresses
-				inetAddr, ok := event.Info.ReflectAddr.(inet.Addr)
+				inetAddr, ok := event.Info.ReflectAddr.(inet.Endpoint)
 				if !ok {
 					continue
 				}
 
 				// check if it's one of our detected addresses
-				for _, a := range mod.node.Infra().LocalAddrs() {
-					if infra.AddrEqual(a.Addr, inetAddr) {
+				for _, a := range mod.node.Infra().Endpoints() {
+					if net.EndpointEqual(a, inetAddr) {
 						continue
 					}
 				}
 
 				// if reflected address is different from the local endpoint it's possibly a nat mapping
-				if infra.AddrEqual(event.Link.LocalAddr(), event.Info.ReflectAddr) {
+				if net.EndpointEqual(event.Link.LocalEndpoint(), event.Info.ReflectAddr) {
 					continue
 				}
 
@@ -50,7 +50,7 @@ func (mod *Module) Run(ctx context.Context) error {
 				}
 
 				var m natMapping
-				if m.intAddr, ok = event.Link.LocalAddr().(inet.Addr); !ok {
+				if m.intAddr, ok = event.Link.LocalEndpoint().(inet.Endpoint); !ok {
 					continue
 				}
 				m.extAddr = inetAddr
@@ -60,7 +60,7 @@ func (mod *Module) Run(ctx context.Context) error {
 				mod.mapping = m
 
 			case network.EventPeerLinked:
-				if event.Link.Network() == inet.NetworkName {
+				if event.Link.Network() == inet.DriverName {
 					continue
 				}
 				if !event.Link.Outbound() {

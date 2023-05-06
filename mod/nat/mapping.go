@@ -2,12 +2,12 @@ package nat
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
 )
 
 type natMapping struct {
-	intAddr inet.Addr
-	extAddr inet.Addr
+	intAddr inet.Endpoint
+	extAddr inet.Endpoint
 }
 
 func (m natMapping) String() string {

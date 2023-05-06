@@ -78,7 +78,7 @@ func (srv *Server) ServeCall(rw io.ReadWriter) (info CallInfo, err error) {
 
 			var ctx = context.Background()
 			if conn, ok := rw.(net.Conn); ok {
-				ctx = context.WithValue(ctx, "RemoteAddr", conn.RemoteAddr())
+				ctx = context.WithValue(ctx, "RemoteEndpoint", conn.RemoteAddr())
 			}
 			argVals[0] = reflect.ValueOf(ctx)
 		}

@@ -117,7 +117,6 @@ func (mod *Module) listenTCP() (net.Listener, error) {
 }
 
 func (mod *Module) listenUnix() (net.Listener, error) {
-
 	var socketDir = mod.node.RootDir()
 	if socketDir == "" {
 		socketDir = DefaultSocketDir

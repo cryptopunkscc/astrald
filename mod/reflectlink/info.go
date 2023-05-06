@@ -1,17 +1,17 @@
 package reflectlink
 
 import (
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 	"time"
 )
 
 type Info struct {
-	ReflectAddr infra.Addr
+	ReflectAddr net.Endpoint
 	Addrs       []AddrSpec
 }
 
 type AddrSpec struct {
-	Addr      infra.Addr
+	Addr      net.Endpoint
 	ExpiresAt time.Time
 	Public    bool
 }

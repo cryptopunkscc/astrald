@@ -29,14 +29,14 @@ type Writer io.Writer
 
 func newBluetoothAdapter(client Bluetooth) bt.Client {
 	return &bluetooth{
-		base:   bt.Bluetooth{},
+		base:   bt.Driver{},
 		native: client,
 	}
 }
 
-// bluetooth adapts native android bluetooth to astral infra interfaces.
+// bluetooth adapts native android bluetooth to astral drivers interfaces.
 type bluetooth struct {
-	base   bt.Bluetooth
+	base   bt.Driver
 	native Bluetooth
 }
 
@@ -51,7 +51,7 @@ func (b *bluetooth) Name() string {
 	return b.base.Name()
 }
 
-func (b *bluetooth) Dial(_ context.Context, addr bt.Addr) (infra.Conn, error) {
+func (b *bluetooth) Dial(_ context.Context, addr bt.Endpoint) (infra.Conn, error) {
 	socket, err := b.native.Dial(addr.Pack())
 	if err != nil {
 		return nil, err

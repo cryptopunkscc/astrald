@@ -5,9 +5,9 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/infra/inet"
-	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"io"
 	"time"
@@ -69,7 +69,7 @@ func (mod *Module) runServer(ctx context.Context) error {
 func (mod *Module) serve(ctx context.Context, conn *services.Conn) error {
 	defer conn.Close()
 	var c = cslq.NewEndec(conn)
-	var remoteAddr inet.Addr
+	var remoteAddr inet.Endpoint
 	var cmd string
 
 	for {
@@ -113,7 +113,7 @@ func (mod *Module) serve(ctx context.Context, conn *services.Conn) error {
 			}
 
 			l := link.New(authed)
-			l.SetPriority(infra.NetworkPriority(l.Network()))
+			l.SetPriority(network.NetworkPriority(l.Network()))
 			return mod.node.Network().AddLink(l)
 
 		case cmdTime:
@@ -143,7 +143,7 @@ func (mod *Module) serve(ctx context.Context, conn *services.Conn) error {
 			}
 
 			l := link.New(authed)
-			l.SetPriority(infra.NetworkPriority(l.Network()))
+			l.SetPriority(network.NetworkPriority(l.Network()))
 			return mod.node.Network().AddLink(l)
 
 		default:

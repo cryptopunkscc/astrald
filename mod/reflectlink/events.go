@@ -11,11 +11,11 @@ type EventLinkReflected struct {
 }
 
 func (e EventLinkReflected) String() string {
-	return fmt.Sprintf("RemoteID=%s Network=%s LocalAddr=%s RemoteAddr=%s ReflectAddr=%s",
+	return fmt.Sprintf("RemoteID=%s Network=%s LocalEndpoint=%s RemoteEndpoint=%s ReflectAddr=%s",
 		e.Link.RemoteIdentity().Fingerprint(),
 		e.Link.Network(),
-		e.Link.LocalAddr(),
-		e.Link.RemoteAddr(),
+		e.Link.LocalEndpoint(),
+		e.Link.RemoteEndpoint(),
 		e.Info.ReflectAddr,
 	)
 }

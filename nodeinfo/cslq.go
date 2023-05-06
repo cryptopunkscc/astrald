@@ -3,10 +3,10 @@ package nodeinfo
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/infra/gw"
-	"github.com/cryptopunkscc/astrald/infra/inet"
-	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/tor"
 )
 
 const infoPrefix = "node1"
@@ -23,7 +23,7 @@ func (info *NodeInfo) UnmarshalCSLQ(dec *cslq.Decoder) error {
 		return err
 	}
 
-	addrs := make([]infra.Addr, 0, count)
+	addrs := make([]net.Endpoint, 0, count)
 	for i := 0; i < count; i++ {
 		addr, err := decodeAddr(dec)
 		if err != nil {
@@ -31,23 +31,23 @@ func (info *NodeInfo) UnmarshalCSLQ(dec *cslq.Decoder) error {
 		}
 		addrs = append(addrs, addr)
 	}
-	info.Addresses = addrs
+	info.Endpoints = addrs
 
 	return nil
 }
 
 func (info *NodeInfo) MarshalCSLQ(enc *cslq.Encoder) error {
-	addrs := info.Addresses[:]
-	if len(addrs) > 255 {
-		addrs = addrs[:255]
+	endpoints := info.Endpoints
+	if len(endpoints) > 255 {
+		endpoints = endpoints[:255]
 	}
 
-	err := enc.Encode("[c]c v c", info.Alias, info.Identity, len(addrs))
+	err := enc.Encode("[c]c v c", info.Alias, info.Identity, len(endpoints))
 	if err != nil {
 		return err
 	}
 
-	for _, addr := range addrs {
+	for _, addr := range endpoints {
 		if err := encodeAddr(enc, addr); err != nil {
 			return nil
 		}
@@ -56,22 +56,22 @@ func (info *NodeInfo) MarshalCSLQ(enc *cslq.Encoder) error {
 	return nil
 }
 
-func encodeAddr(enc *cslq.Encoder, addr infra.Addr) error {
+func encodeAddr(enc *cslq.Encoder, addr net.Endpoint) error {
 	switch addr.Network() {
-	case inet.NetworkName:
+	case inet.DriverName:
 		if err := enc.Encode("c", netCodeInet); err != nil {
 			return err
 		}
-	case tor.NetworkName:
+	case tor.DriverName:
 		if err := enc.Encode("c", netCodeTor); err != nil {
 			return err
 		}
-	case gw.NetworkName:
+	case gw.DriverName:
 		if err := enc.Encode("c", netCodeGateway); err != nil {
 			return err
 		}
-		gwAddr, _ := addr.(gw.Addr)
-		addr = gw.NewAddr(gwAddr.Gate(), gwAddr.Target())
+		gwAddr, _ := addr.(gw.Endpoint)
+		addr = gw.NewEndpoint(gwAddr.Gate(), gwAddr.Target())
 	default:
 		err := enc.Encode("c[c]c", 255, addr.Network())
 		if err != nil {
@@ -84,7 +84,7 @@ func encodeAddr(enc *cslq.Encoder, addr infra.Addr) error {
 	return nil
 }
 
-func decodeAddr(dec *cslq.Decoder) (*infra.GenericAddr, error) {
+func decodeAddr(dec *cslq.Decoder) (*net.GenericEndpoint, error) {
 	var netCode int
 	var netName string
 
@@ -94,13 +94,13 @@ func decodeAddr(dec *cslq.Decoder) (*infra.GenericAddr, error) {
 
 	switch netCode {
 	case netCodeInet:
-		netName = inet.NetworkName
+		netName = inet.DriverName
 
 	case netCodeTor:
-		netName = tor.NetworkName
+		netName = tor.DriverName
 
 	case netCodeGateway:
-		netName = gw.NetworkName
+		netName = gw.DriverName
 
 	case netCodeOther:
 		if err := dec.Decode("[c]c", &netName); err != nil {
@@ -115,5 +115,5 @@ func decodeAddr(dec *cslq.Decoder) (*infra.GenericAddr, error) {
 		return nil, err
 	}
 
-	return infra.NewGenericAddr(netName, data), nil
+	return net.NewGenericEndpoint(netName, data), nil
 }

@@ -19,7 +19,7 @@ func AddToContacts(nodeInfo *NodeInfo, contacts node.Contacts) error {
 }
 
 func AddToTracker(nodeInfo *NodeInfo, tracker node.Tracker) error {
-	for _, a := range nodeInfo.Addresses {
+	for _, a := range nodeInfo.Endpoints {
 		if err := tracker.Add(nodeInfo.Identity, a, time.Now().Add(7*24*time.Hour)); err != nil {
 			return err
 		}

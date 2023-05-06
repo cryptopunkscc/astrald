@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/cslq"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mux"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link/ctl"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -32,7 +32,7 @@ var log = _log.Tag("link")
 type Link struct {
 	activity      sig.Activity
 	events        event.Queue
-	conn          auth.Conn
+	conn          net.SecureConn
 	mux           *mux.FrameMux
 	ctl           *ctl.Control
 	conns         *ConnSet
@@ -48,7 +48,7 @@ type Link struct {
 	err           error
 }
 
-func New(conn auth.Conn) *Link {
+func New(conn net.SecureConn) *Link {
 	l := &Link{
 		conn:          conn,
 		conns:         NewConnSet(),

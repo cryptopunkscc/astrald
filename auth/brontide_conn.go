@@ -3,43 +3,46 @@ package auth
 import (
 	"github.com/cryptopunkscc/astrald/auth/brontide"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 )
 
-type brontideConn struct {
-	netConn        infra.Conn
-	bConn          *brontide.Conn
+var _ net.SecureConn = &NoiseConn{}
+
+// NoiseConn is a net.SecureConn authenticated and ecrypted via the noise_xk protocol
+type NoiseConn struct {
+	conn           net.Conn
+	brontide       *brontide.Conn
 	remoteIdentity *id.Identity
 }
 
-func (conn *brontideConn) Read(p []byte) (n int, err error) {
-	return conn.bConn.Read(p)
+func (conn *NoiseConn) Read(p []byte) (n int, err error) {
+	return conn.brontide.Read(p)
 }
 
-func (conn *brontideConn) Write(p []byte) (n int, err error) {
-	return conn.bConn.Write(p)
+func (conn *NoiseConn) Write(p []byte) (n int, err error) {
+	return conn.brontide.Write(p)
 }
 
-func (conn *brontideConn) Close() error {
-	return conn.bConn.Close()
+func (conn *NoiseConn) Close() error {
+	return conn.brontide.Close()
 }
 
-func (conn *brontideConn) Outbound() bool {
-	return conn.netConn.Outbound()
+func (conn *NoiseConn) Outbound() bool {
+	return conn.conn.Outbound()
 }
 
-func (conn *brontideConn) LocalAddr() infra.Addr {
-	return conn.netConn.LocalAddr()
+func (conn *NoiseConn) LocalEndpoint() net.Endpoint {
+	return conn.conn.LocalEndpoint()
 }
 
-func (conn *brontideConn) RemoteAddr() infra.Addr {
-	return conn.netConn.RemoteAddr()
+func (conn *NoiseConn) RemoteEndpoint() net.Endpoint {
+	return conn.conn.RemoteEndpoint()
 }
 
-func (conn *brontideConn) LocalIdentity() id.Identity {
-	return id.PublicKey(conn.bConn.LocalPub())
+func (conn *NoiseConn) LocalIdentity() id.Identity {
+	return id.PublicKey(conn.brontide.LocalPub())
 }
 
-func (conn *brontideConn) RemoteIdentity() id.Identity {
-	return id.PublicKey(conn.bConn.RemotePub())
+func (conn *NoiseConn) RemoteIdentity() id.Identity {
+	return id.PublicKey(conn.brontide.RemotePub())
 }

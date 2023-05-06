@@ -3,8 +3,8 @@ package network
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -24,7 +24,7 @@ type Network struct {
 	localID      id.Identity
 	events       event.Queue
 	tracker      *tracker.CoreTracker
-	infra        *infra.Infra
+	infra        *infra.CoreInfra
 	tasks        *tasks.FIFOScheduler
 	linkTasks    map[string]*tasks.Task[*link.Link]
 	queryHandler link.QueryHandlerFunc
@@ -35,7 +35,7 @@ type Network struct {
 
 func NewNetwork(
 	localID id.Identity,
-	infra *infra.Infra,
+	infra *infra.CoreInfra,
 	tracker *tracker.CoreTracker,
 	eventParent *event.Queue,
 	queryHandler link.QueryHandlerFunc,
@@ -54,7 +54,7 @@ func NewNetwork(
 	}
 
 	m.events.SetParent(eventParent)
-	m.server, err = newServer(localID, infra, m.AddAuthConn)
+	m.server, err = newServer(localID, infra, m.AddSecureConn)
 	if err != nil {
 		return nil, err
 	}
@@ -181,14 +181,14 @@ func (n *Network) Link(ctx context.Context, nodeID id.Identity) (*link.Link, err
 	}
 }
 
-// AddAuthConn adds a new link to the manager over the provided authenticated connection.
-func (n *Network) AddAuthConn(conn auth.Conn) error {
+// AddSecureConn adds a new link to the manager over the provided authenticated connection.
+func (n *Network) AddSecureConn(conn net.SecureConn) error {
 	if !conn.LocalIdentity().IsEqual(n.localID) {
 		return ErrIdentityMismatch
 	}
 
 	l := link.New(conn)
-	l.SetPriority(infra.NetworkPriority(l.Network()))
+	l.SetPriority(NetworkPriority(l.Network()))
 	return n.addLink(l)
 }
 

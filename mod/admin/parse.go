@@ -22,12 +22,12 @@ func parse(w io.ReadWriter, node node.Node, args []string) error {
 	if info.Alias != "" {
 		fmt.Fprintf(w, "  alias     %s\n", info.Alias)
 	}
-	for _, a := range info.Addresses {
+	for _, a := range info.Endpoints {
 		addr, err := node.Infra().Unpack(a.Network(), a.Pack())
 		if err != nil {
 			continue
 		}
-		printAddr(w, addr)
+		printEndpoint(w, addr)
 	}
 
 	return nil

@@ -43,7 +43,7 @@ func (peer *Peer) Links() []*link.Link {
 
 // PreferredLink returns the preferred link
 func (peer *Peer) PreferredLink() *link.Link {
-	return link.Select(peer.Links(), link.BestQuality)
+	return link.Select(peer.Links(), BestQuality)
 }
 
 // Check checks health of every link with the peer.

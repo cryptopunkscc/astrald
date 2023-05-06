@@ -3,22 +3,22 @@ package infra
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 	"sync"
 )
 
-var _ infra.Listener = &Infra{}
+var _ Listener = &CoreInfra{}
 
-func (i *Infra) Listen(ctx context.Context) (<-chan infra.Conn, error) {
-	if len(i.networks) == 0 {
-		return nil, errors.New("no networks available")
+func (i *CoreInfra) Listen(ctx context.Context) (<-chan net.Conn, error) {
+	if len(i.networkDrivers) == 0 {
+		return nil, errors.New("no drivers available")
 	}
 
-	var output = make(chan infra.Conn)
+	var output = make(chan net.Conn)
 	var wg = sync.WaitGroup{}
 
-	for _, network := range i.Networks() {
-		listener, ok := network.(infra.Listener)
+	for _, network := range i.Drivers() {
+		listener, ok := network.(Listener)
 		if !ok {
 			continue
 		}

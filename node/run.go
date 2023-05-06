@@ -13,10 +13,8 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 	// Say hello
 	nodeKey := node.identity.PublicKeyHex()
 	if node.Alias() != "" {
-		log.Log("astral node %s%s%s (%s) statrting...",
-			log.Green(),
-			node.Alias(),
-			log.Reset(),
+		log.Log("astral node %s (%s) statrting...",
+			aliasString(node.Alias()),
 			nodeKey,
 		)
 	} else {

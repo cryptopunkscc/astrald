@@ -1,23 +1,19 @@
 package optimizer
 
 import (
-	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/infra/bt"
-	"github.com/cryptopunkscc/astrald/infra/gw"
-	"github.com/cryptopunkscc/astrald/infra/inet"
-	"github.com/cryptopunkscc/astrald/infra/tor"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/network"
 )
 
-func scoreAddr(addr infra.Addr) int {
+func scoreAddr(addr net.Endpoint) int {
 	switch addr.Network() {
-	case tor.NetworkName:
+	case "tor":
 		return 10
-	case bt.NetworkName:
+	case "bt":
 		return 20
-	case gw.NetworkName:
+	case "gw":
 		return 30
-	case inet.NetworkName:
+	case "inet":
 		return 40
 	}
 	return 0
@@ -25,7 +21,7 @@ func scoreAddr(addr infra.Addr) int {
 
 func scorePeer(peer *network.Peer) (best int) {
 	for _, link := range peer.Links() {
-		score := scoreAddr(link.RemoteAddr())
+		score := scoreAddr(link.RemoteEndpoint())
 		if score > best {
 			best = score
 		}

@@ -4,8 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
-	nodeinfra "github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/link"
 )
 
@@ -13,9 +12,9 @@ var ErrNodeUnreachable = errors.New("node unreachable")
 
 // LinkOptions stores options for tasks that create new links with other nodes
 type LinkOptions struct {
-	// AddrFilter is a function called by the linker for every address. If it returns false, the address will not
+	// EndpointFilter is a function called by the linker for every address. If it returns false, the address will not
 	// be used by the linker.
-	AddrFilter func(addr infra.Addr) bool
+	EndpointFilter func(addr net.Endpoint) bool
 }
 
 // LinkPeerTask represents a task that tries to establish a new link with a node
@@ -30,32 +29,32 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	defer cancel()
 
 	// Fetch addresses for the remote identity
-	addrs, err := task.Network.tracker.AddrByIdentity(task.RemoteID)
+	endpoints, err := task.Network.tracker.AddrByIdentity(task.RemoteID)
 	if err != nil {
 		return nil, err
 	}
-	if len(addrs) == 0 {
+	if len(endpoints) == 0 {
 		return nil, errors.New("identity has no addresses")
 	}
 
 	// Get a list of supported networks
-	var networks = task.Network.infra.Networks()
+	var networks = task.Network.infra.Drivers()
 
 	// Populate a channel with addresses
-	var addrCh = make(chan infra.Addr, len(addrs))
-	for _, a := range addrs {
-		if _, found := networks[a.Network()]; !found {
+	var ch = make(chan net.Endpoint, len(endpoints))
+	for _, e := range endpoints {
+		if _, found := networks[e.Network()]; !found {
 			continue
 		}
 
-		if task.options.AddrFilter != nil {
-			if !task.options.AddrFilter(a) {
+		if task.options.EndpointFilter != nil {
+			if !task.options.EndpointFilter(e) {
 				continue
 			}
 		}
-		addrCh <- a
+		ch <- e
 	}
-	close(addrCh)
+	close(ch)
 
 	authed := NewConcurrentHandshake(
 		task.Network.localID,
@@ -68,7 +67,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 			workers,
 		).Dial(
 			ctx,
-			addrCh,
+			ch,
 		),
 	)
 
@@ -86,7 +85,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	}
 
 	l := link.New(authConn)
-	l.SetPriority(nodeinfra.NetworkPriority(l.Network()))
+	l.SetPriority(NetworkPriority(l.Network()))
 	if err := task.Network.AddLink(l); err != nil {
 		log.Errorv(1, "LinkPeerTask: error adding link to network: %s", err)
 		l.Close()

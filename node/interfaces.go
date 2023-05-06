@@ -2,13 +2,12 @@ package node
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/services"
@@ -24,32 +23,24 @@ type Node interface {
 	RootDir() string
 	ConfigStore() config.Store
 	Events() *event.Queue
-	Infra() Infra
+	Infra() infra.Infra
 	Network() Network
 	Tracker() Tracker
 	Contacts() Contacts
 	Services() Services
 }
 
-// Infra is an interface for infrastructural networks
-type Infra interface {
-	Dial(ctx context.Context, addr infra.Addr) (conn infra.Conn, err error)
-	LocalAddrs() []infra.AddrSpec
-	Unpack(network string, data []byte) (infra.Addr, error)
-	Inet() *inet.Inet
-}
-
 type Network interface {
-	Link(ctx context.Context, nodeID id.Identity) (*link.Link, error)
+	Link(context.Context, id.Identity) (*link.Link, error)
 	Events() *event.Queue
-	AddLink(l *link.Link) error
+	AddLink(*link.Link) error
 	Peers() *network.PeerSet
 	Server() *network.Server
-	AddAuthConn(conn auth.Conn) error
+	AddSecureConn(conn net.SecureConn) error
 }
 
 type Tracker interface {
-	Add(identity id.Identity, addr infra.Addr, expiresAt time.Time) error
+	Add(identity id.Identity, addr net.Endpoint, expiresAt time.Time) error
 	Identities() ([]id.Identity, error)
 	ForgetIdentity(identity id.Identity) error
 	Watch(ctx context.Context, nodeID id.Identity) <-chan *tracker.Addr

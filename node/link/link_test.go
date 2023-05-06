@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"sync"
@@ -20,12 +20,12 @@ func (conn *MockAuth) Outbound() bool {
 	return conn.outbound
 }
 
-func (conn *MockAuth) LocalAddr() infra.Addr {
-	return infra.NewGenericAddr("test", []byte{})
+func (conn *MockAuth) LocalEndpoint() net.Endpoint {
+	return net.NewGenericEndpoint("test", []byte{})
 }
 
-func (conn *MockAuth) RemoteAddr() infra.Addr {
-	return infra.NewGenericAddr("test", []byte{})
+func (conn *MockAuth) RemoteEndpoint() net.Endpoint {
+	return net.NewGenericEndpoint("test", []byte{})
 }
 
 func (conn *MockAuth) RemoteIdentity() id.Identity {

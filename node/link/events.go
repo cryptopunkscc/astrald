@@ -31,8 +31,8 @@ func (e EventLinkEstablished) String() string {
 	return fmt.Sprintf(
 		"network=%s localAddr=%s remoteAddr=%s prio=%d remoteID=%s",
 		e.Link.Network(),
-		e.Link.LocalAddr(),
-		e.Link.RemoteAddr(),
+		e.Link.LocalEndpoint(),
+		e.Link.RemoteEndpoint(),
 		e.Link.Priority(),
 		_log.Sprint("%s", e.Link.RemoteIdentity()),
 	)
@@ -46,8 +46,8 @@ func (e EventLinkClosed) String() string {
 	return fmt.Sprintf(
 		"network=%s localAddr=%s remoteAddr=%s prio=%d err=%s remoteID=%s",
 		e.Link.Network(),
-		e.Link.LocalAddr(),
-		e.Link.RemoteAddr(),
+		e.Link.LocalEndpoint(),
+		e.Link.RemoteEndpoint(),
 		e.Link.Priority(),
 		e.Link.Err(),
 		_log.Sprint("%s", e.Link.RemoteIdentity()),
@@ -64,8 +64,8 @@ func (e EventLinkPriorityChanged) String() string {
 	return fmt.Sprintf(
 		"network=%s localAddr=%s remoteAddr=%s prio=%d remoteID=%s",
 		e.Link.Network(),
-		e.Link.LocalAddr(),
-		e.Link.RemoteAddr(),
+		e.Link.LocalEndpoint(),
+		e.Link.RemoteEndpoint(),
 		e.Link.Priority(),
 		_log.Sprint("%s", e.Link.RemoteIdentity()),
 	)

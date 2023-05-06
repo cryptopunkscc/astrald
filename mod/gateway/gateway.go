@@ -5,9 +5,9 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/infra/gw"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
 )

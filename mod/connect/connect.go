@@ -42,7 +42,7 @@ func (mod *Connect) Run(ctx context.Context) error {
 			continue
 		}
 
-		mod.node.Network().AddAuthConn(authConn)
+		mod.node.Network().AddSecureConn(authConn)
 	}
 
 	return nil

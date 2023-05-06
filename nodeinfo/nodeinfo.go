@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/jxskiss/base62"
 	"strings"
 )
@@ -12,14 +13,27 @@ import (
 type NodeInfo struct {
 	Identity  id.Identity
 	Alias     string
-	Addresses []infra.Addr
+	Endpoints []net.Endpoint
 }
 
 func New(identity id.Identity) *NodeInfo {
-	return &NodeInfo{
+	info := &NodeInfo{
 		Identity:  identity,
-		Addresses: make([]infra.Addr, 0),
+		Alias:     "",
+		Endpoints: make([]net.Endpoint, 0),
 	}
+
+	return info
+}
+
+func FromNode(node node.Node) *NodeInfo {
+	info := &NodeInfo{
+		Identity:  node.Identity().Public(),
+		Alias:     node.Alias(),
+		Endpoints: node.Infra().Endpoints(),
+	}
+
+	return info
 }
 
 func Parse(s string) (*NodeInfo, error) {

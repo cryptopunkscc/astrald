@@ -2,9 +2,9 @@ package admin
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/infra/gw"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"io"
 	"time"
@@ -19,16 +19,16 @@ func peers(w io.ReadWriter, node node.Node, _ []string) error {
 			peer.Idle().Round(time.Second),
 		)
 		for _, link := range peer.Links() {
-			remoteAddr := link.RemoteAddr().String()
+			remoteAddr := link.RemoteEndpoint().String()
 
-			if gwAddr, ok := link.RemoteAddr().(gw.Addr); ok {
-				remoteAddr = "via " + node.Contacts().DisplayName(gwAddr.Gate())
+			if gwEndpoint, ok := link.RemoteEndpoint().(gw.Endpoint); ok {
+				remoteAddr = "via " + node.Contacts().DisplayName(gwEndpoint.Gate())
 			}
 
 			fmt.Fprintf(w,
 				"  %s %s %s (idle %s, age %s, prio %d, ping %.1fms)\n",
 				log.Bool(link.Outbound(), "=>", "<="),
-				link.RemoteAddr().Network(),
+				link.RemoteEndpoint().Network(),
 				remoteAddr,
 				link.Activity().Idle().Round(time.Second),
 				time.Since(link.EstablishedAt()).Round(time.Second),

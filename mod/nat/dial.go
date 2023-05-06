@@ -2,19 +2,27 @@ package nat
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra/inet"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
 )
 
-func (mod *Module) makeLink(ctx context.Context, remoteAddr inet.Addr, remoteID id.Identity) (conn auth.Conn, err error) {
+func (mod *Module) makeLink(ctx context.Context, remoteAddr inet.Endpoint, remoteID id.Identity) (conn net.SecureConn, err error) {
 	log.Logv(1, "dial %s", remoteAddr)
+
+	drv, ok := infra.GetDriver[*inet.Driver](mod.node.Infra(), inet.DriverName)
+	if !ok {
+		return nil, errors.New("inet unsupported")
+	}
 
 	startTime := time.Now()
 	dialCtx, _ := context.WithTimeout(ctx, dialTimeout)
-	newConn, err := mod.node.Infra().Inet().DialFrom(dialCtx, remoteAddr, mod.mapping.intAddr)
+	newConn, err := drv.DialFrom(dialCtx, remoteAddr, mod.mapping.intAddr)
 	dialTime := float64(time.Since(startTime).Microseconds()) / 1000.0
 
 	if err != nil {
@@ -24,13 +32,11 @@ func (mod *Module) makeLink(ctx context.Context, remoteAddr inet.Addr, remoteID 
 
 	log.Info("dial %s success after %.3fms!", remoteAddr, dialTime)
 
-	var authed auth.Conn
-
 	hsCtx, _ := context.WithTimeout(ctx, network.HandshakeTimeout)
 	if remoteID.IsZero() {
-		authed, err = auth.HandshakeInbound(hsCtx, inboundConn{newConn}, mod.node.Identity())
+		conn, err = auth.HandshakeInbound(hsCtx, inboundConn{newConn}, mod.node.Identity())
 	} else {
-		authed, err = auth.HandshakeOutbound(hsCtx, newConn, remoteID, mod.node.Identity())
+		conn, err = auth.HandshakeOutbound(hsCtx, newConn, remoteID, mod.node.Identity())
 	}
 
 	if err != nil {
@@ -41,5 +47,5 @@ func (mod *Module) makeLink(ctx context.Context, remoteAddr inet.Addr, remoteID 
 
 	log.Info("successfully traversed with %s via %s", remoteID, remoteAddr)
 
-	return authed, nil
+	return
 }

@@ -1,12 +1,12 @@
 package tracker
 
 import (
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 	"time"
 )
 
 type Addr struct {
-	infra.Addr
+	net.Endpoint
 	ExpiresAt time.Time
 }
 

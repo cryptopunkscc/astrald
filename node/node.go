@@ -32,7 +32,7 @@ type CoreNode struct {
 	identity    id.Identity
 	queryQueue  chan *link.Query
 
-	infra    *infra.Infra
+	infra    *infra.CoreInfra
 	network  *network.Network
 	tracker  *tracker.CoreTracker
 	contacts *contacts.Manager
@@ -41,8 +41,6 @@ type CoreNode struct {
 
 	rootDir string
 }
-
-var log = _log.Tag("node")
 
 // New instantiates a new node
 func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
@@ -102,12 +100,7 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	node.services = services.New(&node.events)
 
 	// infrastructure
-	node.infra, err = infra.New(
-		node.Identity(),
-		node.configStore,
-		infra.FilteredQuerier{Querier: node, FilteredID: node.identity},
-		node.RootDir(),
-	)
+	node.infra, err = infra.NewCoreInfra(node, node.configStore)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up infrastructure: %w", err)
 	}
@@ -136,19 +129,6 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 		return log.Green() + identity.Fingerprint() + log.Reset()
 	})
 
-	// format strings in logs
-	_log.SetFormatter("", func(v interface{}) string {
-		return log.EmColor() + v.(string) + log.Reset()
-	})
-
-	_log.SetFormatter(time.Duration(0), func(i interface{}) string {
-		return log.Purple() + i.(time.Duration).String() + log.Reset()
-	})
-
-	_log.SetFormatter(nil, func(i interface{}) string {
-		return log.Red() + "nil" + log.Reset()
-	})
-
 	// peer manager
 	node.network, err = network.NewNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery)
 	if err != nil {
@@ -165,7 +145,7 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 }
 
 // Infra returns node's infrastructure component
-func (node *CoreNode) Infra() Infra {
+func (node *CoreNode) Infra() infra.Infra {
 	return node.infra
 }
 

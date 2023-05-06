@@ -44,7 +44,7 @@ func (mod *Module) runServer(ctx context.Context) error {
 
 func (mod *Module) handleRequest(conn *services.Conn) error {
 	var info = mod.getLocalInfo()
-	var remoteAddr = conn.Link().RemoteAddr()
+	var remoteAddr = conn.Link().RemoteEndpoint()
 
 	info.ReflectAddr = jsonAddr{
 		Network: remoteAddr.Network(),
@@ -67,7 +67,7 @@ func (mod *Module) getLocalInfo() *jsonInfo {
 		AddrList: make([]jsonAddrSpec, 0),
 	}
 
-	for _, a := range mod.node.Infra().LocalAddrs() {
+	for _, a := range mod.node.Infra().Endpoints() {
 		info.AddrList = append(info.AddrList, jsonAddrSpec{
 			Network:   a.Network(),
 			Address:   a.Pack(),

@@ -2,12 +2,12 @@ package connect
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
-	"github.com/cryptopunkscc/astrald/infra/gw"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
 	"io"
 )
 
-var _ infra.Conn = &wrapper{}
+var _ net.Conn = &wrapper{}
 
 type wrapper struct {
 	io.ReadWriteCloser
@@ -20,10 +20,10 @@ func (w wrapper) Outbound() bool {
 	return w.outbound
 }
 
-func (w wrapper) LocalAddr() infra.Addr {
-	return gw.NewAddr(w.remote, w.local)
+func (w wrapper) LocalEndpoint() net.Endpoint {
+	return gw.NewEndpoint(w.remote, w.local)
 }
 
-func (w wrapper) RemoteAddr() infra.Addr {
-	return gw.NewAddr(w.remote, w.local)
+func (w wrapper) RemoteEndpoint() net.Endpoint {
+	return gw.NewEndpoint(w.remote, w.local)
 }

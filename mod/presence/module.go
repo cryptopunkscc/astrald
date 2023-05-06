@@ -5,12 +5,13 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/infra/inet"
-	"github.com/cryptopunkscc/astrald/infra/ip"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/ip"
 	"github.com/cryptopunkscc/astrald/sig"
-	"net"
+	_net "net"
 	"strconv"
 	"sync"
 	"time"
@@ -20,7 +21,7 @@ type Module struct {
 	node   node.Node
 	config Config
 
-	presenceConn *net.UDPConn
+	presenceConn *_net.UDPConn
 
 	entries map[string]*entry
 	mu      sync.Mutex
@@ -152,11 +153,11 @@ func (m *Module) handle(ctx context.Context, ip Presence) {
 		m.remove(hex)
 	})
 
-	log.Tag("presence").Info("%s present on %s", ip.Identity, ip.Addr.Network())
+	log.Tag("presence").Info("%s present on %s", ip.Identity, ip.Endpoint.Network())
 
-	m.events.Emit(EventIdentityPresent{ip.Identity, ip.Addr})
+	m.events.Emit(EventIdentityPresent{ip.Identity, ip.Endpoint})
 
-	_ = m.node.Tracker().Add(ip.Identity, ip.Addr, time.Now().Add(60*time.Minute))
+	_ = m.node.Tracker().Add(ip.Identity, ip.Endpoint, time.Now().Add(60*time.Minute))
 }
 
 func (m *Module) Discover(ctx context.Context) (<-chan Presence, error) {
@@ -201,7 +202,7 @@ func (m *Module) Discover(ctx context.Context) (<-chan Presence, error) {
 
 			outCh <- Presence{
 				Identity: p.Identity,
-				Addr:     addr,
+				Endpoint: addr,
 				Present:  p.Flags&flagBye == 0,
 			}
 
@@ -231,10 +232,10 @@ func (m *Module) remove(hex string) {
 	}
 }
 
-func (inet *Module) Announce(ctx context.Context) error {
-	if err := inet.broadcastPresence(&presence{
-		Identity: inet.node.Identity(),
-		Port:     inet.getListenPort(),
+func (m *Module) Announce(ctx context.Context) error {
+	if err := m.broadcastPresence(&presence{
+		Identity: m.node.Identity(),
+		Port:     m.getListenPort(),
 		Flags:    flagDiscover,
 	}); err != nil {
 		return err
@@ -246,9 +247,9 @@ func (inet *Module) Announce(ctx context.Context) error {
 		for {
 			select {
 			case <-time.After(announceInterval):
-				if err := inet.broadcastPresence(&presence{
-					Identity: inet.node.Identity(),
-					Port:     inet.getListenPort(),
+				if err := m.broadcastPresence(&presence{
+					Identity: m.node.Identity(),
+					Port:     m.getListenPort(),
 					Flags:    flagNone,
 				}); err != nil {
 					log.Error("announce: %s", err)
@@ -262,9 +263,9 @@ func (inet *Module) Announce(ctx context.Context) error {
 	return nil
 }
 
-func (inet *Module) broadcastPresence(p *presence) error {
+func (m *Module) broadcastPresence(p *presence) error {
 	// check presence socket
-	if err := inet.setupPresenceConn(); err != nil {
+	if err := m.setupPresenceConn(); err != nil {
 		return err
 	}
 
@@ -274,7 +275,7 @@ func (inet *Module) broadcastPresence(p *presence) error {
 		return err
 	}
 
-	ifaces, err := net.Interfaces()
+	ifaces, err := _net.Interfaces()
 	if err != nil {
 		return err
 	}
@@ -299,12 +300,12 @@ func (inet *Module) broadcastPresence(p *presence) error {
 				continue
 			}
 
-			var broadcastAddr = net.UDPAddr{
+			var broadcastAddr = _net.UDPAddr{
 				IP:   broadcastIP,
 				Port: defaultPresencePort,
 			}
 
-			_, err = inet.presenceConn.WriteTo(packet.Bytes(), &broadcastAddr)
+			_, err = m.presenceConn.WriteTo(packet.Bytes(), &broadcastAddr)
 			if err != nil {
 				return err
 			}
@@ -314,40 +315,45 @@ func (inet *Module) broadcastPresence(p *presence) error {
 	return nil
 }
 
-func isInterfaceEnabled(iface net.Interface) bool {
-	return (iface.Flags&net.FlagUp != 0) &&
-		(iface.Flags&net.FlagBroadcast != 0) &&
-		(iface.Flags&net.FlagLoopback == 0)
+func isInterfaceEnabled(iface _net.Interface) bool {
+	return (iface.Flags&_net.FlagUp != 0) &&
+		(iface.Flags&_net.FlagBroadcast != 0) &&
+		(iface.Flags&_net.FlagLoopback == 0)
 }
 
-func (inet *Module) getListenPort() int {
-	return inet.node.Infra().Inet().ListenPort()
+func (m *Module) getListenPort() int {
+	drv, ok := infra.GetDriver[*inet.Driver](m.node.Infra(), inet.DriverName)
+	if !ok {
+		return -1
+	}
+
+	return drv.ListenPort()
 }
 
-func (inet *Module) setupPresenceConn() (err error) {
-	inet.mu.Lock()
-	defer inet.mu.Unlock()
+func (m *Module) setupPresenceConn() (err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	// already set up?
-	if inet.presenceConn != nil {
+	if m.presenceConn != nil {
 		return nil
 	}
 
 	// resolve local address
-	var localAddr *net.UDPAddr
-	localAddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(defaultPresencePort))
+	var localAddr *_net.UDPAddr
+	localAddr, err = _net.ResolveUDPAddr("udp", ":"+strconv.Itoa(defaultPresencePort))
 	if err != nil {
 		return
 	}
 
 	// bind the udp socket
-	inet.presenceConn, err = net.ListenUDP("udp", localAddr)
+	m.presenceConn, err = _net.ListenUDP("udp", localAddr)
 	return
 }
 
-func (inet *Module) sendPresence(destAddr *net.UDPAddr, p presence) (err error) {
+func (m *Module) sendPresence(destAddr *_net.UDPAddr, p presence) (err error) {
 	// check presence socket
-	if err = inet.setupPresenceConn(); err != nil {
+	if err = m.setupPresenceConn(); err != nil {
 		return
 	}
 
@@ -358,6 +364,6 @@ func (inet *Module) sendPresence(destAddr *net.UDPAddr, p presence) (err error) 
 	}
 
 	// send message
-	_, err = inet.presenceConn.WriteTo(packet.Bytes(), destAddr)
+	_, err = m.presenceConn.WriteTo(packet.Bytes(), destAddr)
 	return
 }

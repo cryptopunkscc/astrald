@@ -3,16 +3,16 @@ package tracker
 import (
 	"database/sql"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/infra"
+	"github.com/cryptopunkscc/astrald/net"
 	"time"
 )
 
-// Add adds an address to the identity. If the address already exists, its expiry time will be replaced.
-func (tracker *CoreTracker) Add(identity id.Identity, addr infra.Addr, expiresAt time.Time) error {
+// Add adds an endpoint to the identity. If the endpoint already exists, its expiry time will be replaced.
+func (tracker *CoreTracker) Add(identity id.Identity, e net.Endpoint, expiresAt time.Time) error {
 	idHex := identity.PublicKeyHex()
 
-	// repack the address to validate it and get a concrete type if possible
-	addr, err := tracker.unpacker.Unpack(addr.Network(), addr.Pack())
+	// repack the endpoint to validate it and get a concrete type if possible
+	e, err := tracker.unpacker.Unpack(e.Network(), e.Pack())
 	if err != nil {
 		return err
 	}
@@ -21,8 +21,8 @@ func (tracker *CoreTracker) Add(identity id.Identity, addr infra.Addr, expiresAt
 		_, err = tx.Exec(
 			queryDeleteAddr,
 			idHex,
-			addr.Network(),
-			string(addr.Pack()),
+			e.Network(),
+			string(e.Pack()),
 		)
 		if err != nil {
 			return
@@ -31,8 +31,8 @@ func (tracker *CoreTracker) Add(identity id.Identity, addr infra.Addr, expiresAt
 		_, err = tx.Exec(
 			queryInsert,
 			idHex,
-			addr.Network(),
-			string(addr.Pack()),
+			e.Network(),
+			string(e.Pack()),
 			expiresAt,
 		)
 		if err != nil {
@@ -41,7 +41,7 @@ func (tracker *CoreTracker) Add(identity id.Identity, addr infra.Addr, expiresAt
 		tracker.events.Emit(EventNewAddr{
 			NodeID: identity,
 			Addr: &Addr{
-				Addr:      addr,
+				Endpoint:  e,
 				ExpiresAt: expiresAt,
 			}})
 

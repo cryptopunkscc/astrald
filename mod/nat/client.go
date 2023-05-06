@@ -5,9 +5,9 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/infra/inet"
-	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
 )
 
@@ -103,7 +103,7 @@ func (mod *Module) query(ctx context.Context, remoteID id.Identity) error {
 		authed, err := mod.makeLink(ctx, remoteAddr, remoteID)
 		if err == nil {
 			l := link.New(authed)
-			l.SetPriority(infra.NetworkPriority(l.Network()))
+			l.SetPriority(network.NetworkPriority(l.Network()))
 			return mod.node.Network().AddLink(l)
 		}
 
