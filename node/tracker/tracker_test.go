@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/db"
 	"modernc.org/ql"
 	"testing"
@@ -11,8 +12,8 @@ import (
 type unpacker struct {
 }
 
-func (*unpacker) Unpack(s string, bytes []byte) (infra.Addr, error) {
-	return infra.NewGenericAddr(s, bytes), nil
+func (*unpacker) Unpack(s string, bytes []byte) (net.Endpoint, error) {
+	return net.NewGenericEndpoint(s, bytes), nil
 }
 
 func TestNew(t *testing.T) {
@@ -39,8 +40,8 @@ func TestAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addr1 := infra.NewGenericAddr("test", []byte{0, 1, 2, 3, 4, 5})
-	addr2 := infra.NewGenericAddr("test", []byte{0, 1, 2, 3, 4, 6})
+	addr1 := net.NewGenericEndpoint("test", []byte{0, 1, 2, 3, 4, 5})
+	addr2 := net.NewGenericEndpoint("test", []byte{0, 1, 2, 3, 4, 6})
 
 	// add an addr that expires in one hour
 	err = tracker.Add(testID, addr1, time.Now().Add(time.Hour))
