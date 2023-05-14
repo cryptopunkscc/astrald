@@ -50,7 +50,7 @@ func peers(w io.ReadWriter, node node.Node, _ []string) error {
 		fmt.Fprintf(w, "\n")
 	}
 
-	if n, ok := node.Network().(*network.Network); ok {
+	if n, ok := node.Network().(*network.CoreNetwork); ok {
 		for _, l := range n.Linkers() {
 			peerName := node.Contacts().DisplayName(l)
 			fmt.Fprintf(w, "peer %s linking...\n", peerName)

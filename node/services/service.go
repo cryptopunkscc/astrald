@@ -6,10 +6,10 @@ const queryQueueSize = 4
 type Service struct {
 	name    string
 	queries chan *Query
-	manager *Manager
+	manager *CoreService
 }
 
-func NewService(hub *Manager, name string) *Service {
+func NewService(hub *CoreService, name string) *Service {
 	return &Service{
 		name:    name,
 		manager: hub,

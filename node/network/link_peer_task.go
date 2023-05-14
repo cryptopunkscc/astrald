@@ -20,7 +20,7 @@ type LinkOptions struct {
 // LinkPeerTask represents a task that tries to establish a new link with a node
 type LinkPeerTask struct {
 	RemoteID id.Identity
-	Network  *Network
+	Network  *CoreNetwork
 	options  LinkOptions
 }
 

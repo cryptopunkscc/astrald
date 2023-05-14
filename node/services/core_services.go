@@ -13,15 +13,15 @@ var log = _log.Tag("services")
 
 const queryResponseTimeout = time.Second
 
-// Manager facilitates registration of services and querying them.
-type Manager struct {
+// CoreService facilitates registration of services and querying them.
+type CoreService struct {
 	services map[string]*Service
 	mu       sync.Mutex
 	events   event.Queue
 }
 
-func New(eventParent *event.Queue) *Manager {
-	hub := &Manager{
+func NewCoreServices(eventParent *event.Queue) *CoreService {
+	hub := &CoreService{
 		services: make(map[string]*Service),
 	}
 	hub.events.SetParent(eventParent)
@@ -29,7 +29,7 @@ func New(eventParent *event.Queue) *Manager {
 }
 
 // Register registers a service with the provided name and returns its handler.
-func (m *Manager) Register(name string) (*Service, error) {
+func (m *CoreService) Register(name string) (*Service, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -48,7 +48,7 @@ func (m *Manager) Register(name string) (*Service, error) {
 	return m.services[name], nil
 }
 
-func (m *Manager) RegisterContext(ctx context.Context, name string) (*Service, error) {
+func (m *CoreService) RegisterContext(ctx context.Context, name string) (*Service, error) {
 	service, err := m.Register(name)
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (m *Manager) RegisterContext(ctx context.Context, name string) (*Service, e
 }
 
 // Query sends a query to a service as the provided auth.Identity
-func (m *Manager) Query(ctx context.Context, query string, link *link.Link) (*Conn, error) {
+func (m *CoreService) Query(ctx context.Context, query string, link *link.Link) (*Conn, error) {
 	// Fetch the service
 	service, err := m.getService(query)
 	if err != nil {
@@ -112,7 +112,7 @@ func (m *Manager) Query(ctx context.Context, query string, link *link.Link) (*Co
 }
 
 // release closes a service in the manager
-func (m *Manager) release(name string) error {
+func (m *CoreService) release(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -131,7 +131,7 @@ func (m *Manager) release(name string) error {
 	return nil
 }
 
-func (m *Manager) getService(name string) (*Service, error) {
+func (m *CoreService) getService(name string) (*Service, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

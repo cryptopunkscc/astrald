@@ -74,7 +74,7 @@ func setup() (*CoreTracker, error) {
 
 	InitDatabase(memDB)
 
-	t, err := New(memDB, &unpacker{})
+	t, err := NewCoreTracker(memDB, &unpacker{})
 	if err != nil {
 		return nil, err
 	}

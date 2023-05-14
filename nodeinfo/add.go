@@ -1,11 +1,12 @@
 package nodeinfo
 
 import (
-	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/contacts"
+	"github.com/cryptopunkscc/astrald/node/tracker"
 	"time"
 )
 
-func AddToContacts(nodeInfo *NodeInfo, contacts node.Contacts) error {
+func AddToContacts(nodeInfo *NodeInfo, contacts contacts.Contacts) error {
 	c, err := contacts.FindOrCreate(nodeInfo.Identity)
 	if err != nil {
 		return err
@@ -18,7 +19,7 @@ func AddToContacts(nodeInfo *NodeInfo, contacts node.Contacts) error {
 	return nil
 }
 
-func AddToTracker(nodeInfo *NodeInfo, tracker node.Tracker) error {
+func AddToTracker(nodeInfo *NodeInfo, tracker tracker.Tracker) error {
 	for _, a := range nodeInfo.Endpoints {
 		if err := tracker.Add(nodeInfo.Identity, a, time.Now().Add(7*24*time.Hour)); err != nil {
 			return err

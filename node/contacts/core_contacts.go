@@ -9,14 +9,14 @@ import (
 	"sync"
 )
 
-type Manager struct {
+type CoreContacts struct {
 	db     *db.Database
 	mu     sync.Mutex
 	events event.Queue
 }
 
-func New(db *db.Database, eventParent *event.Queue) (*Manager, error) {
-	var c = &Manager{
+func NewCoreContacts(db *db.Database, eventParent *event.Queue) (*CoreContacts, error) {
+	var c = &CoreContacts{
 		db: db,
 	}
 
@@ -25,7 +25,7 @@ func New(db *db.Database, eventParent *event.Queue) (*Manager, error) {
 	return c, nil
 }
 
-func (m *Manager) DisplayName(nodeID id.Identity) string {
+func (m *CoreContacts) DisplayName(nodeID id.Identity) string {
 	if nodeID.IsZero() {
 		return "unknown"
 	}
@@ -37,7 +37,7 @@ func (m *Manager) DisplayName(nodeID id.Identity) string {
 	return nodeID.Fingerprint()
 }
 
-func (m *Manager) Find(nodeID id.Identity) (c *Contact, err error) {
+func (m *CoreContacts) Find(nodeID id.Identity) (c *Contact, err error) {
 	err = m.db.TxDo(func(tx *sql.Tx) error {
 		row := tx.QueryRow(querySelectAliasByID, nodeID.PublicKeyHex())
 		res := &Contact{
@@ -58,7 +58,7 @@ func (m *Manager) Find(nodeID id.Identity) (c *Contact, err error) {
 	return
 }
 
-func (m *Manager) FindOrCreate(nodeID id.Identity) (c *Contact, err error) {
+func (m *CoreContacts) FindOrCreate(nodeID id.Identity) (c *Contact, err error) {
 	if c, err = m.Find(nodeID); err == nil {
 		return
 	}
@@ -79,7 +79,7 @@ func (m *Manager) FindOrCreate(nodeID id.Identity) (c *Contact, err error) {
 	return
 }
 
-func (m *Manager) FindByAlias(alias string) (c *Contact, found bool) {
+func (m *CoreContacts) FindByAlias(alias string) (c *Contact, found bool) {
 	m.db.TxDo(func(tx *sql.Tx) error {
 		res, err := tx.Query(querySelectIDByAlias, alias)
 		if err != nil {
@@ -112,7 +112,7 @@ func (m *Manager) FindByAlias(alias string) (c *Contact, found bool) {
 	return
 }
 
-func (m *Manager) Delete(identity id.Identity) error {
+func (m *CoreContacts) Delete(identity id.Identity) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -131,7 +131,7 @@ func (m *Manager) Delete(identity id.Identity) error {
 	})
 }
 
-func (m *Manager) ResolveIdentity(str string) (id.Identity, error) {
+func (m *CoreContacts) ResolveIdentity(str string) (id.Identity, error) {
 	if str == "localnode" {
 		return id.Identity{}, nil
 	}
@@ -148,7 +148,7 @@ func (m *Manager) ResolveIdentity(str string) (id.Identity, error) {
 }
 
 // All returns a closed channel populated with all contacts
-func (m *Manager) All() <-chan *Contact {
+func (m *CoreContacts) All() <-chan *Contact {
 	var ch chan *Contact
 	m.db.TxDo(func(tx *sql.Tx) error {
 		rows, err := tx.Query(queryCountContacts)
