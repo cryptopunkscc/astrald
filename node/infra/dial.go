@@ -13,12 +13,12 @@ func (i *CoreInfra) Dial(ctx context.Context, e net.Endpoint) (conn net.Conn, er
 		e = a
 	}
 
-	log.Logv(1, "dial %s %s", e.Network(), e)
+	log.Logv(2, "dial %s %s", e.Network(), e)
 
 	conn, err = i.dial(ctx, e)
 
 	if err == nil {
-		log.Infov(1, "dial %s %s success", e.Network(), e)
+		log.Infov(2, "dial %s %s success", e.Network(), e)
 	} else {
 		switch {
 		case strings.Contains(err.Error(), "connection refused"),

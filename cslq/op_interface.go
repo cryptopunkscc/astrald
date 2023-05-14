@@ -2,7 +2,9 @@ package cslq
 
 import (
 	"errors"
+	"fmt"
 	"io"
+	"reflect"
 )
 
 // OpInterface codes value using Marshaler or Unmarshaler interfaces.
@@ -33,7 +35,15 @@ func (op OpInterface) Encode(w io.Writer, data *Fifo) error {
 	}
 
 	if m, ok := v.(Formatter); ok {
-		return Encode(w, "{"+m.FormatCSLQ()+"}", v)
+		var f = m.FormatCSLQ()
+		if isStruct(v) {
+			f = "{" + f + "}"
+		}
+		return Encode(w, m.FormatCSLQ(), v)
+	}
+
+	if f, err := ScanStructFormat(v); err == nil {
+		return Encode(w, "{"+f+"}", v)
 	}
 
 	if err, ok := v.(*error); ok {
@@ -55,7 +65,15 @@ func (op OpInterface) Decode(r io.Reader, data *Fifo) error {
 	}
 
 	if m, ok := v.(Formatter); ok {
-		return Decode(r, "{"+m.FormatCSLQ()+"}", v)
+		var f = m.FormatCSLQ()
+		if isStruct(v) {
+			f = "{" + f + "}"
+		}
+		return Decode(r, f, v)
+	}
+
+	if f, err := ScanStructFormat(v); err == nil {
+		return Decode(r, "{"+f+"}", v)
 	}
 
 	if err, ok := v.(*error); ok {
@@ -74,4 +92,46 @@ func (op OpInterface) Decode(r io.Reader, data *Fifo) error {
 
 func (op OpInterface) String() string {
 	return "v"
+}
+
+func ScanStructFormat(v any) (string, error) {
+	var f string
+	var t = reflect.TypeOf(v)
+
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
+	if t.Kind() != reflect.Struct {
+		return f, errors.New("v is not a struct nor a pointer to a struct")
+	}
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+
+		tag := field.Tag.Get(tagCSLQ)
+		if tag == "" {
+			return f, fmt.Errorf("field %s has no %s tag", field.Name, tagCSLQ)
+		}
+		if tag == tagSkip {
+			continue
+		}
+
+		f = f + tag
+	}
+
+	return f, nil
+}
+
+func isStruct(v interface{}) bool {
+	var t = reflect.TypeOf(v)
+
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
+	return t.Kind() == reflect.Struct
 }

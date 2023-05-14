@@ -20,7 +20,7 @@ func NewRemoteStore(sources []string) *RemoteStore {
 
 func (r RemoteStore) Open(id data.ID, flags uint32) (_block.Block, error) {
 	for _, source := range r.sources {
-		conn, err := astral.DialName(source, "storage")
+		conn, err := astral.QueryName(source, "storage")
 		if err != nil {
 			continue
 		}
@@ -42,7 +42,7 @@ func (r RemoteStore) Create(alloc uint64) (_block.Block, string, error) {
 
 func (r RemoteStore) Download(blockID data.ID, offset uint64, limit uint64) (io.ReadCloser, error) {
 	for _, source := range r.sources {
-		conn, err := astral.DialName(source, "storage")
+		conn, err := astral.QueryName(source, "storage")
 		if err != nil {
 			continue
 		}

@@ -26,7 +26,7 @@ var log = _log.Tag("storaged")
 func (server *Server) Run() error {
 	log.Log("storaged starting...")
 
-	port, err := astral.Listen("storage")
+	port, err := astral.Register("storage")
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func (server *Server) Run() error {
 	store := NewMetaStore(server.dataDir, os.Args[1:])
 
 	for query := range port.QueryCh() {
-		info, _ := astral.NodeInfo(query.RemoteIdentity())
+		info, _ := astral.GetNodeInfo(query.RemoteIdentity())
 		log.Log("%s connected", info.Name)
 
 		conn, err := query.Accept()

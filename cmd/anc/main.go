@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 )
 
@@ -29,7 +28,7 @@ func cmdExport(args []string) {
 	portName := args[0]
 	dstAddr := args[1]
 
-	port, err := astral.Listen(portName)
+	port, err := astral.Register(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)
@@ -88,7 +87,7 @@ func cmdImport(args []string) {
 		i += 1
 		fmt.Printf("[%d] %s connected.\n", i, srcConn.RemoteAddr())
 
-		dstConn, err := astral.DialName(nodeName, portName)
+		dstConn, err := astral.QueryName(nodeName, portName)
 		if err != nil {
 			fmt.Println("astral.dial error:", err)
 			srcConn.Close()
@@ -110,7 +109,7 @@ func cmdRegister(args []string) {
 
 	portName := args[0]
 
-	l, err := astral.Listen(portName)
+	l, err := astral.Register(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)
@@ -120,6 +119,7 @@ func cmdRegister(args []string) {
 
 	conn, err := l.Accept()
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "accept error: %s\n", err)
 		return
 	}
 
@@ -148,7 +148,7 @@ func cmdShare(args []string) {
 		os.Exit(exitError)
 	}
 
-	port, err := astral.Listen(portName)
+	port, err := astral.Register(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
 		os.Exit(exitError)
@@ -187,7 +187,7 @@ func cmdExec(args []string) {
 	portName := args[0]
 	execPath := args[1]
 
-	l, err := astral.Listen(portName)
+	l, err := astral.Register(portName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: register: %s\n", err.Error())
 		os.Exit(exitError)
@@ -259,7 +259,7 @@ func cmdQuery(args []string) {
 		query = args[1]
 	}
 
-	conn, err := astral.DialName(nodeID, query)
+	conn, err := astral.QueryName(nodeID, query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(exitError)
@@ -296,7 +296,7 @@ func cmdDownload(args []string) {
 		os.Exit(exitError)
 	}
 
-	conn, err := astral.DialName(nodeID, query)
+	conn, err := astral.QueryName(nodeID, query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(exitError)
@@ -335,7 +335,7 @@ func cmdResolve(args []string) {
 	}
 	fmt.Println(identity.String())
 
-	nodeInfo, err := astral.NodeInfo(identity)
+	nodeInfo, err := astral.GetNodeInfo(identity)
 	if err != nil {
 		return
 	}
@@ -352,16 +352,6 @@ func help() {
 func main() {
 	if len(os.Args) < 2 {
 		help()
-	}
-
-	// Check if ANC_PROTO is set in the environment
-	for _, env := range os.Environ() {
-		env = strings.ToLower(env)
-		parts := strings.SplitN(env, "=", 2)
-		if parts[0] == "anc_proto" {
-			astral.ListenProtocol = parts[1]
-			break
-		}
 	}
 
 	cmd := os.Args[1]
@@ -390,7 +380,7 @@ func main() {
 }
 
 func displayName(identity id.Identity) string {
-	if info, err := astral.NodeInfo(identity); err == nil {
+	if info, err := astral.GetNodeInfo(identity); err == nil {
 		return info.Name
 	}
 	return identity.String()

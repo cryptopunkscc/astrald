@@ -70,3 +70,7 @@ func (manager *ModuleManager) Run(ctx context.Context) error {
 	wg.Wait()
 	return nil
 }
+
+func (manager *ModuleManager) FindModule(name string) Module {
+	return manager.modules[name]
+}

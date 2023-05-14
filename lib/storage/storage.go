@@ -28,7 +28,7 @@ func (client *Client) Open(blockID string, flags uint32) (block.Block, error) {
 		return nil, err
 	}
 
-	conn, err := astral.DialName(client.nodeName, "storage")
+	conn, err := astral.QueryName(client.nodeName, "storage")
 	if err != nil {
 		panic(err)
 	}
@@ -44,7 +44,7 @@ func (client *Client) Download(blockID string, offset uint64, limit uint64) (io.
 		return nil, err
 	}
 
-	conn, err := astral.DialName(client.nodeName, "storage")
+	conn, err := astral.QueryName(client.nodeName, "storage")
 	if err != nil {
 		return nil, err
 	}

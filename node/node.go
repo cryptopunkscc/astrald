@@ -42,6 +42,10 @@ type CoreNode struct {
 	rootDir string
 }
 
+func (node *CoreNode) Modules() *ModuleManager {
+	return node.modules
+}
+
 // New instantiates a new node
 func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	var err error
@@ -120,6 +124,11 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	// format identities in logs
 	_log.SetFormatter(id.Identity{}, func(v interface{}) string {
 		identity := v.(id.Identity)
+
+		if node.identity.IsEqual(identity) {
+			return log.Green() + node.Alias() + log.Reset()
+		}
+
 		if c, err := node.contacts.Find(identity); err == nil {
 			if c.Alias() != "" {
 				return log.Cyan() + c.Alias() + log.Reset()

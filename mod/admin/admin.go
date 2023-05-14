@@ -103,5 +103,6 @@ func init() {
 		"unlink":   unlink,
 		"tracker":  cmdTracker,
 		"check":    check,
+		"launch":   launch,
 	}
 }

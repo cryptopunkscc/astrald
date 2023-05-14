@@ -24,7 +24,16 @@ func NewFileStore(baseDir string) (*FileStore, error) {
 }
 
 func (store *FileStore) Read(name string) ([]byte, error) {
-	return os.ReadFile(path.Join(store.baseDir, name))
+	bytes, err := os.ReadFile(path.Join(store.baseDir, name))
+
+	switch {
+	case err == nil:
+
+	case strings.Contains(err.Error(), "no such file or directory"):
+		err = ErrNotFound
+	}
+
+	return bytes, err
 }
 
 func (store *FileStore) Write(name string, data []byte) error {

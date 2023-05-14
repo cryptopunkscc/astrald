@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/astral"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/proto/block"
 	"github.com/cryptopunkscc/astrald/proto/store"
 	"io"
@@ -24,7 +23,7 @@ func NewAuthStore(conn *astral.Conn, store store.Store) *AuthStore {
 		remoteName: conn.RemoteIdentity().String(),
 	}
 
-	if info, err := astral.NodeInfo(conn.RemoteIdentity()); err == nil {
+	if info, err := astral.GetNodeInfo(conn.RemoteIdentity()); err == nil {
 		s.remoteName = info.Name
 	}
 
