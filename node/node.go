@@ -220,5 +220,9 @@ func (node *CoreNode) setupLogging(store config.Store) error {
 	_log.HideDate = node.logConfig.HideDate
 	_log.Level = node.logConfig.Level
 
+	if fileStore, ok := node.configStore.(*config.FileStore); ok {
+		fileStore.Errorv = log.Tag("config").Errorv
+	}
+
 	return nil
 }

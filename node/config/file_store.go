@@ -8,19 +8,21 @@ import (
 	"strings"
 )
 
-type Store interface {
-	Read(name string) ([]byte, error)
-	Write(name string, data []byte) error
-	LoadYAML(name string, out interface{}) error
-	StoreYAML(name string, in interface{}) error
-}
-
 type FileStore struct {
 	baseDir string
+	Errorv  func(level int, fmt string, v ...any)
 }
 
 func NewFileStore(baseDir string) (*FileStore, error) {
-	return &FileStore{baseDir: baseDir}, nil
+	return &FileStore{
+		baseDir: baseDir,
+		Errorv: func(_ int, f string, v ...any) {
+			if !strings.HasSuffix(f, "\n") {
+				f = f + "\n"
+			}
+			fmt.Printf(f, v...)
+		},
+	}, nil
 }
 
 func (store *FileStore) Read(name string) ([]byte, error) {
@@ -30,7 +32,11 @@ func (store *FileStore) Read(name string) ([]byte, error) {
 	case err == nil:
 
 	case strings.Contains(err.Error(), "no such file or directory"):
+		store.Errorv(2, "config %s not found", name)
 		err = ErrNotFound
+
+	default:
+		store.Errorv(1, "error reading config %s: %s", name, err)
 	}
 
 	return bytes, err
@@ -56,7 +62,11 @@ func (store *FileStore) LoadYAML(name string, out interface{}) error {
 		return err
 	}
 
-	return yaml.Unmarshal(bytes, out)
+	err = yaml.Unmarshal(bytes, out)
+	if err != nil {
+		store.Errorv(1, "error parsing config %s: %s", name, err)
+	}
+	return err
 }
 
 func (store *FileStore) StoreYAML(name string, in interface{}) error {

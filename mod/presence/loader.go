@@ -3,6 +3,7 @@ package presence
 import (
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/config"
 )
 
 const ModuleName = "presence"
@@ -11,7 +12,7 @@ var log = _log.Tag(ModuleName)
 
 type Loader struct{}
 
-func (Loader) Load(node node.Node) (node.Module, error) {
+func (Loader) Load(node node.Node, configStore config.Store) (node.Module, error) {
 	mod := &Module{
 		node:    node,
 		config:  defaultConfig,

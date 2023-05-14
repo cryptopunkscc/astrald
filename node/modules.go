@@ -2,12 +2,13 @@ package node
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/node/config"
 	"strings"
 	"sync"
 )
 
 type ModuleLoader interface {
-	Load(node Node) (Module, error)
+	Load(node Node, configStore config.Store) (Module, error)
 	Name() string
 }
 
@@ -26,9 +27,11 @@ func NewModuleManager(node Node, loaders []ModuleLoader) (*ModuleManager, error)
 		node:    node,
 	}
 
+	prefixStore := config.NewPrefixStore(node.ConfigStore(), "mod_")
+
 	for _, loader := range loaders {
 		name := loader.Name()
-		mod, err := loader.Load(node)
+		mod, err := loader.Load(node, prefixStore)
 		if err != nil {
 			log.Log("error loading module %s: %s", name, err)
 			continue
