@@ -21,13 +21,13 @@ type ModuleManager struct {
 	node    Node
 }
 
-func NewModuleManager(node Node, loaders []ModuleLoader) (*ModuleManager, error) {
+func NewModuleManager(node Node, loaders []ModuleLoader, configStore config.Store) (*ModuleManager, error) {
 	m := &ModuleManager{
 		modules: make(map[string]Module),
 		node:    node,
 	}
 
-	prefixStore := config.NewPrefixStore(node.ConfigStore(), "mod_")
+	prefixStore := config.NewPrefixStore(configStore, "mod_")
 
 	for _, loader := range loaders {
 		name := loader.Name()

@@ -21,7 +21,7 @@ func (Loader) Load(node node.Node, configStore config.Store) (node.Module, error
 	}
 	mod.events.SetParent(node.Events())
 
-	if err := node.ConfigStore().LoadYAML("presence", &mod.config); err != nil {
+	if err := configStore.LoadYAML("presence", &mod.config); err != nil {
 		log.Errorv(2, "error loading config: %s", err)
 	}
 

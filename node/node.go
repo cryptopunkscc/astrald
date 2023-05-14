@@ -145,7 +145,7 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	}
 
 	// modules
-	node.modules, err = NewModuleManager(node, modules)
+	node.modules, err = NewModuleManager(node, modules, node.configStore)
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
@@ -197,11 +197,6 @@ func (node *CoreNode) Alias() string {
 // SetAlias sets the node alias
 func (node *CoreNode) SetAlias(alias string) error {
 	return node.config.SetAlias(alias)
-}
-
-// ConfigStore returns config storage for the node
-func (node *CoreNode) ConfigStore() config.Store {
-	return node.configStore
 }
 
 func (node *CoreNode) setupLogging(store config.Store) error {

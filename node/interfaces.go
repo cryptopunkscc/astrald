@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
@@ -21,7 +20,6 @@ type Node interface {
 	SetAlias(alias string) error
 	Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error)
 	RootDir() string
-	ConfigStore() config.Store
 	Events() *event.Queue
 	Infra() infra.Infra
 	Network() Network
