@@ -25,13 +25,7 @@ func NewCoreModules(node Node, mods []string, configStore config.Store, log *log
 		configStore: configStore,
 		loaded:      make(map[string]Module),
 		node:        node,
-	}
-
-	for _, name := range mods {
-		if err := m.Load(name); err != nil {
-			m.log.Log("error loading module %s: %s", name, err)
-			continue
-		}
+		enabled:     mods,
 	}
 
 	return m, nil
@@ -39,6 +33,13 @@ func NewCoreModules(node Node, mods []string, configStore config.Store, log *log
 
 func (m *CoreModules) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
+
+	for _, name := range m.enabled {
+		if err := m.Load(name); err != nil {
+			m.log.Log("error loading module %s: %s", name, err)
+			continue
+		}
+	}
 
 	// log loaded module names
 	var modNames = make([]string, 0, len(m.loaded))

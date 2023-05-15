@@ -1,6 +1,7 @@
 package apphost
 
 import (
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"net"
@@ -19,6 +20,13 @@ func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module,
 	}
 
 	configStore.LoadYAML(ModuleName, &mod.config)
+
+	adm, err := modules.Find[*admin.Module](node.Modules())
+	if err == nil {
+		adm.AddCommand("apphost", &Admin{
+			mod: mod,
+		})
+	}
 
 	return mod, nil
 }

@@ -13,6 +13,7 @@ type Infra interface {
 	Dial(ctx context.Context, addr net.Endpoint) (conn net.Conn, err error)
 	Endpoints() []net.Endpoint
 	Unpack(network string, data []byte) (net.Endpoint, error)
+	Parse(network string, address string) (net.Endpoint, error)
 	AddDriver(name string, driver Driver) error
 	Drivers() map[string]Driver
 }

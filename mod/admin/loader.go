@@ -9,8 +9,18 @@ const ModuleName = "admin"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, _ config.Store) (modules.Module, error) {
-	mod := &Admin{node: node}
+func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module, error) {
+	mod := &Module{
+		config:   defaultConfig,
+		node:     node,
+		commands: make(map[string]Command),
+	}
+
+	configStore.LoadYAML(ModuleName, &mod.config)
+
+	mod.AddCommand("help", &HelpCommand{mod: mod})
+	mod.AddCommand("tracker", &TrackerCommand{node: node})
+	mod.AddCommand("net", &NetCommand{mod: mod})
 
 	return mod, nil
 }

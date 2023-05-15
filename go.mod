@@ -14,6 +14,8 @@ require (
 	modernc.org/ql v1.4.4
 )
 
+require bitbucket.org/creachadair/shell v0.0.7 // indirect
+
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.1.3
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
