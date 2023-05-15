@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"net"
+	"path/filepath"
 )
 
 type Session struct {
@@ -40,7 +41,7 @@ func (s *Session) auth(_ context.Context) error {
 		if !ok {
 			return errors.New("unauthorized")
 		}
-		s.appName = app
+		s.appName = filepath.Base(app)
 	}
 
 	return s.WriteErr(nil)

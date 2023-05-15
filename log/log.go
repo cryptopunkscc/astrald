@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 )
@@ -168,7 +169,7 @@ func (l *Logger) log(kind int, level int, format string, v ...interface{}) {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 
-	if format[len(format)-1] != '\n' {
+	if !strings.HasSuffix(format, "\n") {
 		format += "\n"
 	}
 
