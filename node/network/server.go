@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"io"
@@ -16,13 +17,15 @@ type Server struct {
 	localID  id.Identity
 	listener infra.Listener
 	handler  SecureConnHandlerFunc
+	log      *log.Logger
 }
 
-func newServer(localID id.Identity, listener infra.Listener, handler SecureConnHandlerFunc) (*Server, error) {
+func newServer(localID id.Identity, listener infra.Listener, handler SecureConnHandlerFunc, log *log.Logger) (*Server, error) {
 	srv := &Server{
 		localID:  localID,
 		listener: listener,
 		handler:  handler,
+		log:      log,
 	}
 
 	return srv, nil
@@ -49,10 +52,10 @@ func (srv *Server) Run(ctx context.Context) error {
 			case errors.Is(err, io.EOF),
 				errors.Is(err, context.DeadlineExceeded),
 				errors.Is(err, context.Canceled):
-				log.Errorv(2, "inbound handshake error: %s", err)
+				srv.log.Errorv(2, "inbound handshake error: %s", err)
 
 			default:
-				log.Errorv(1, "inbound handshake error: %s", err)
+				srv.log.Errorv(1, "inbound handshake error: %s", err)
 			}
 
 		case <-ctx.Done():

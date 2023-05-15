@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/db"
 	"modernc.org/ql"
@@ -74,7 +75,7 @@ func setup() (*CoreTracker, error) {
 
 	InitDatabase(memDB)
 
-	t, err := NewCoreTracker(memDB, &unpacker{})
+	t, err := NewCoreTracker(memDB, &unpacker{}, log.Tag(logTag))
 	if err != nil {
 		return nil, err
 	}

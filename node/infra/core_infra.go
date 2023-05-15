@@ -3,11 +3,14 @@ package infra
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"os"
 	"strings"
 	"sync"
 )
+
+const logTag = "infra"
 
 var _ Infra = &CoreInfra{}
 
@@ -16,21 +19,23 @@ type CoreInfra struct {
 	config         Config
 	configStore    config.Store
 	networkDrivers map[string]Driver
+	log            *log.Logger
 }
 
-func NewCoreInfra(node Node, configStore config.Store) (*CoreInfra, error) {
+func NewCoreInfra(node Node, configStore config.Store, log *log.Logger) (*CoreInfra, error) {
 	var i = &CoreInfra{
 		node:           node,
 		configStore:    configStore,
 		networkDrivers: make(map[string]Driver),
 		config:         defaultConfig,
+		log:            log.Tag(logTag),
 	}
 
 	if err := configStore.LoadYAML(configName, &i.config); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			log.Error("config error: %s", err)
+			i.log.Error("config error: %s", err)
 		} else {
-			log.Errorv(2, "config error: %s", err)
+			i.log.Errorv(2, "config error: %s", err)
 		}
 	}
 
@@ -45,7 +50,7 @@ func NewCoreInfra(node Node, configStore config.Store) (*CoreInfra, error) {
 func (i *CoreInfra) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 
-	log.Log("enabled drivers: %s", strings.Join(i.config.Drivers, " "))
+	i.log.Log("enabled drivers: %s", strings.Join(i.config.Drivers, " "))
 
 	for _, name := range i.config.Drivers {
 		if network, found := i.networkDrivers[name]; found {
@@ -53,13 +58,13 @@ func (i *CoreInfra) Run(ctx context.Context) error {
 			go func() {
 				defer wg.Done()
 				if err := network.Run(ctx); err != nil {
-					log.Error("network %s error: %s", name, err)
+					i.log.Error("network %s error: %s", name, err)
 				} else {
-					log.Log("network %s done", name)
+					i.log.Log("network %s done", name)
 				}
 			}()
 		} else {
-			log.Error("network driver not found: %s", name)
+			i.log.Error("network driver not found: %s", name)
 		}
 	}
 

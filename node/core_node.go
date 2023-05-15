@@ -4,13 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/db"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
@@ -22,35 +23,37 @@ import (
 
 const defaultQueryTimeout = time.Minute
 const dbFileName = "astrald.db"
+const logTag = "node"
+
+var _ Node = &CoreNode{}
 
 type CoreNode struct {
 	events      event.Queue
 	configStore config.Store
-	config      *Config
-	logConfig   *LogConfig
+	config      Config
+	logConfig   LogConfig
 	database    *db.Database
 	identity    id.Identity
 	queryQueue  chan *link.Query
 
+	log      *log.Logger
 	infra    *infra.CoreInfra
 	network  *network.CoreNetwork
 	tracker  *tracker.CoreTracker
 	contacts *contacts.CoreContacts
 	services *services.CoreService
-	modules  *ModuleManager
+	modules  *modules.CoreModules
 
 	rootDir string
 }
 
-func (node *CoreNode) Modules() *ModuleManager {
-	return node.modules
-}
-
-// New instantiates a new node
-func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
+// NewCoreNode instantiates a new node
+func NewCoreNode(rootDir string) (*CoreNode, error) {
 	var err error
 	var node = &CoreNode{
+		log:        log.Tag(logTag),
 		rootDir:    rootDir,
+		config:     defaultConfig,
 		queryQueue: make(chan *link.Query),
 	}
 
@@ -62,7 +65,7 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	}
 
 	// load config
-	node.config, err = LoadConfig(node.configStore)
+	err = node.configStore.LoadYAML("node", &node.config)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("error loading config: %w", err)
@@ -73,7 +76,7 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	var dbInit bool
 	dbFile := filepath.Join(rootDir, dbFileName)
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
-		log.Log("creating database at %s", dbFile)
+		node.log.Log("creating database at %s", dbFile)
 		dbInit = true
 	}
 
@@ -91,7 +94,7 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 		}
 
 		if err := os.Chmod(dbFile, 0600); err != nil {
-			log.Error("cannot set 0600 mode on the database file: %s", err)
+			node.log.Error("cannot set 0600 mode on the database file: %s", err)
 		}
 	}
 
@@ -101,16 +104,16 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	}
 
 	// hub
-	node.services = services.NewCoreServices(&node.events)
+	node.services = services.NewCoreServices(&node.events, node.log)
 
 	// infrastructure
-	node.infra, err = infra.NewCoreInfra(node, node.configStore)
+	node.infra, err = infra.NewCoreInfra(node, node.configStore, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up infrastructure: %w", err)
 	}
 
 	// tracker
-	node.tracker, err = tracker.NewCoreTracker(node.database, node.infra)
+	node.tracker, err = tracker.NewCoreTracker(node.database, node.infra, node.log)
 	if err != nil {
 		return nil, err
 	}
@@ -122,30 +125,30 @@ func New(rootDir string, modules ...ModuleLoader) (*CoreNode, error) {
 	}
 
 	// format identities in logs
-	_log.SetFormatter(id.Identity{}, func(v interface{}) string {
+	log.SetFormatter(id.Identity{}, func(v interface{}) string {
 		identity := v.(id.Identity)
 
 		if node.identity.IsEqual(identity) {
-			return log.Green() + node.Alias() + log.Reset()
+			return node.log.Green() + node.Alias() + node.log.Reset()
 		}
 
 		if c, err := node.contacts.Find(identity); err == nil {
 			if c.Alias() != "" {
-				return log.Cyan() + c.Alias() + log.Reset()
+				return node.log.Cyan() + c.Alias() + node.log.Reset()
 			}
 		}
 
-		return log.Green() + identity.Fingerprint() + log.Reset()
+		return node.log.Green() + identity.Fingerprint() + node.log.Reset()
 	})
 
 	// peer manager
-	node.network, err = network.NewCoreNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery)
+	node.network, err = network.NewCoreNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
 	}
 
 	// modules
-	node.modules, err = NewModuleManager(node, modules, node.configStore)
+	node.modules, err = modules.NewCoreModules(node, node.config.Modules, node.configStore, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
@@ -174,6 +177,10 @@ func (node *CoreNode) Network() network.Network {
 	return node.network
 }
 
+func (node *CoreNode) Modules() modules.Modules {
+	return node.modules
+}
+
 // RootDir returns node's root directory where all node-related files are stored
 func (node *CoreNode) RootDir() string {
 	return node.rootDir
@@ -191,32 +198,31 @@ func (node *CoreNode) Events() *event.Queue {
 
 // Alias returns node's alias
 func (node *CoreNode) Alias() string {
-	return node.config.Alias()
+	return node.config.Alias
 }
 
 // SetAlias sets the node alias
 func (node *CoreNode) SetAlias(alias string) error {
-	return node.config.SetAlias(alias)
+	node.config.Alias = alias
+	return node.configStore.StoreYAML(configName, node.config)
 }
 
 func (node *CoreNode) setupLogging(store config.Store) error {
-	node.logConfig = &LogConfig{}
-
-	if err := store.LoadYAML("log", node.logConfig); err != nil {
+	if err := store.LoadYAML("log", &node.logConfig); err != nil {
 		return nil
 	}
 
 	for tag, level := range node.logConfig.TagLevels {
-		_log.SetTagLevel(tag, level)
+		log.SetTagLevel(tag, level)
 	}
 	for tag, color := range node.logConfig.TagColors {
-		_log.SetTagColor(tag, color)
+		log.SetTagColor(tag, color)
 	}
-	_log.HideDate = node.logConfig.HideDate
-	_log.Level = node.logConfig.Level
+	log.HideDate = node.logConfig.HideDate
+	log.Level = node.logConfig.Level
 
 	if fileStore, ok := node.configStore.(*config.FileStore); ok {
-		fileStore.Errorv = log.Tag("config").Errorv
+		fileStore.Errorv = node.log.Tag("config").Errorv
 	}
 
 	return nil

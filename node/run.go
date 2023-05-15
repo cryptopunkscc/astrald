@@ -13,12 +13,12 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 	// Say hello
 	nodeKey := node.identity.PublicKeyHex()
 	if node.Alias() != "" {
-		log.Log("astral node %s (%s) statrting...",
+		node.log.Log("astral node %s (%s) statrting...",
 			aliasString(node.Alias()),
 			nodeKey,
 		)
 	} else {
-		log.Log("astral node %s statrting...", nodeKey)
+		node.log.Log("astral node %s statrting...", nodeKey)
 	}
 
 	var wg sync.WaitGroup

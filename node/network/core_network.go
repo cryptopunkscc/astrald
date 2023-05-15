@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
@@ -16,6 +17,7 @@ import (
 
 const workers = 16
 const queueSize = 64
+const logTag = "network"
 
 type CoreNetwork struct {
 	links        *LinkSet
@@ -23,6 +25,7 @@ type CoreNetwork struct {
 	server       *Server
 	localID      id.Identity
 	events       event.Queue
+	log          *log.Logger
 	tracker      *tracker.CoreTracker
 	infra        *infra.CoreInfra
 	tasks        *tasks.FIFOScheduler
@@ -39,6 +42,7 @@ func NewCoreNetwork(
 	tracker *tracker.CoreTracker,
 	eventParent *event.Queue,
 	queryHandler link.QueryHandlerFunc,
+	log *log.Logger,
 ) (*CoreNetwork, error) {
 	var err error
 
@@ -47,6 +51,7 @@ func NewCoreNetwork(
 		infra:        infra,
 		tracker:      tracker,
 		queryHandler: queryHandler,
+		log:          log.Tag(logTag),
 		peers:        NewPeerSet(),
 		links:        NewLinkSet(),
 		tasks:        tasks.NewFIFOScheduler(workers, queueSize),
@@ -54,7 +59,7 @@ func NewCoreNetwork(
 	}
 
 	m.events.SetParent(eventParent)
-	m.server, err = newServer(localID, infra, m.AddSecureConn)
+	m.server, err = newServer(localID, infra, m.AddSecureConn, m.log)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +83,7 @@ func (n *CoreNetwork) Run(ctx context.Context) error {
 
 		err := n.server.Run(ctx)
 		if err != nil {
-			log.Error("server error: %s", err)
+			n.log.Error("server error: %s", err)
 		}
 	}()
 
@@ -234,14 +239,14 @@ func (n *CoreNetwork) addLink(l *link.Link) error {
 	if peer == nil {
 		peer = newPeer(remoteID, &n.events)
 		n.peers.Add(peer)
-		log.Logv(0, "%s linked", l.RemoteIdentity())
+		n.log.Logv(0, "%s linked", l.RemoteIdentity())
 		peer.Events().Emit(EventPeerLinked{
 			Link: l,
 			Peer: peer,
 		})
 	}
 
-	log.Logv(1, "established link with %s over %s", l.RemoteIdentity(), l.Network())
+	n.log.Logv(1, "established link with %s over %s", l.RemoteIdentity(), l.Network())
 	_ = peer.addLink(l)
 	peer.Events().Emit(link.EventLinkEstablished{Link: l})
 
@@ -251,7 +256,7 @@ func (n *CoreNetwork) addLink(l *link.Link) error {
 	go func() {
 		l.SetQueryHandler(n.onQuery)
 		if err := l.Run(n.ctx); err != nil {
-			log.Logv(1, "closed link with %s over %s: %s", l.RemoteIdentity(), l.Network(), l.Err())
+			n.log.Logv(1, "closed link with %s over %s: %s", l.RemoteIdentity(), l.Network(), l.Err())
 		}
 		if err := n.removeLink(l); err != nil {
 			panic(err)
@@ -278,7 +283,7 @@ func (n *CoreNetwork) removeLink(l *link.Link) error {
 	peer.Events().Emit(link.EventLinkClosed{Link: l})
 
 	if peer.links.Count() == 0 {
-		log.Logv(0, "%s unlinked", l.RemoteIdentity())
+		n.log.Logv(0, "%s unlinked", l.RemoteIdentity())
 		peer.Events().Emit(EventPeerUnlinked{
 			Peer: peer,
 		})

@@ -2,7 +2,6 @@ package tracker
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/db"
 )
@@ -17,7 +16,7 @@ const queryInsert = "INSERT INTO addrs VALUES ($1, $2, $3, $4)"
 const queryUnexpiredAddrsByIdentity = "SELECT * FROM addrs WHERE nodeID = $1 AND expiresAt > now()"
 const queryUniqueIDs = "SELECT DISTINCT nodeID FROM addrs"
 
-var log = _log.Tag("tracker")
+const logTag = "tracker"
 
 type AddrUnpacker interface {
 	Unpack(string, []byte) (net.Endpoint, error)

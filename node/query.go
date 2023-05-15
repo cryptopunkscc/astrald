@@ -33,7 +33,7 @@ func (node *CoreNode) onQuery(query *link.Query) error {
 	select {
 	case node.queryQueue <- query:
 	default:
-		log.Error("query dropped due to queue overflow: %s", query.Query())
+		node.log.Error("query dropped due to queue overflow: %s", query.Query())
 		return errors.New("query queue overflow")
 	}
 	return nil
@@ -48,7 +48,7 @@ func (node *CoreNode) peerQueryWorker(ctx context.Context) error {
 			var err = node.executeQuery(ctx, query)
 			var elapsed = time.Since(start)
 
-			log.Logv(2, "served query %s for %s (time %s, err %s)",
+			node.log.Logv(2, "served query %s for %s (time %s, err %s)",
 				query.Query(),
 				query.Link().RemoteIdentity(),
 				elapsed.Round(time.Microsecond),

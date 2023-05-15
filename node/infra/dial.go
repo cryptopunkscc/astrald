@@ -13,12 +13,12 @@ func (i *CoreInfra) Dial(ctx context.Context, e net.Endpoint) (conn net.Conn, er
 		e = a
 	}
 
-	log.Logv(2, "dial %s %s", e.Network(), e)
+	i.log.Logv(2, "dial %s %s", e.Network(), e)
 
 	conn, err = i.dial(ctx, e)
 
 	if err == nil {
-		log.Infov(2, "dial %s %s success", e.Network(), e)
+		i.log.Infov(2, "dial %s %s success", e.Network(), e)
 	} else {
 		switch {
 		case strings.Contains(err.Error(), "connection refused"),
@@ -27,10 +27,10 @@ func (i *CoreInfra) Dial(ctx context.Context, e net.Endpoint) (conn net.Conn, er
 			errors.Is(err, ErrUnsupportedNetwork),
 			errors.Is(err, context.Canceled),
 			errors.Is(err, context.DeadlineExceeded):
-			log.Errorv(2, "dial %s %s error: %s", e.Network(), e, err)
+			i.log.Errorv(2, "dial %s %s error: %s", e.Network(), e, err)
 
 		default:
-			log.Errorv(1, "dial %s %s error: %s", e.Network(), e, err)
+			i.log.Errorv(1, "dial %s %s error: %s", e.Network(), e, err)
 		}
 	}
 

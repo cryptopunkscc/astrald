@@ -1,4 +1,4 @@
-package node
+package modules
 
 import (
 	"context"
@@ -7,12 +7,12 @@ import (
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 )
 
+// Node is a subset of node.Node that's exposed to modules
 type Node interface {
 	Identity() id.Identity
 	Alias() string
@@ -24,5 +24,5 @@ type Node interface {
 	Tracker() tracker.Tracker
 	Contacts() contacts.Contacts
 	Services() services.Services
-	Modules() modules.Modules
+	Modules() Modules
 }

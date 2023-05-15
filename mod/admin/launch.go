@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	_node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"io"
 )
 
@@ -13,18 +14,8 @@ func launch(w io.ReadWriter, node _node.Node, args []string) error {
 		return errors.New("usage: launch <runtime> <app_path>")
 	}
 
-	coreNode, ok := node.(*_node.CoreNode)
-	if !ok {
-		return errors.New("not running on a core node")
-	}
-
-	mod := coreNode.Modules().FindModule("apphost")
-	if mod == nil {
-		return errors.New("apphost module not found")
-	}
-
-	host, ok := mod.(*apphost.Module)
-	if !ok {
+	host, err := modules.Find[*apphost.Module](node.Modules())
+	if err != nil {
 		return errors.New("apphost module not found")
 	}
 

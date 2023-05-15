@@ -49,7 +49,7 @@ func (h *ConcurrentHandshake) Outbound(ctx context.Context, conns <-chan net.Con
 						case errors.Is(err, context.DeadlineExceeded):
 						case errors.Is(err, context.Canceled):
 						default:
-							log.Error("outbound handshake: %s", err)
+							//TODO: add injectable error handler?
 						}
 						conn.Close()
 						continue

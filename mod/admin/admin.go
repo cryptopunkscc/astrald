@@ -5,13 +5,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"io"
 	"strings"
 )
 
 const promptString = "> "
 
-var _ node.Module = &Admin{}
+var _ modules.Module = &Admin{}
 
 type Admin struct {
 	node node.Node

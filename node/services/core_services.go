@@ -2,27 +2,28 @@ package services
 
 import (
 	"context"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
 	"time"
 )
 
-var log = _log.Tag("services")
-
 const queryResponseTimeout = time.Second
+const logTag = "services"
 
 // CoreService facilitates registration of services and querying them.
 type CoreService struct {
 	services map[string]*Service
 	mu       sync.Mutex
 	events   event.Queue
+	log      *log.Logger
 }
 
-func NewCoreServices(eventParent *event.Queue) *CoreService {
+func NewCoreServices(eventParent *event.Queue, log *log.Logger) *CoreService {
 	hub := &CoreService{
 		services: make(map[string]*Service),
+		log:      log.Tag(logTag),
 	}
 	hub.events.SetParent(eventParent)
 	return hub
@@ -41,7 +42,7 @@ func (m *CoreService) Register(name string) (*Service, error) {
 	// Register the service
 	m.services[name] = NewService(m, name)
 
-	log.Infov(1, "service %s registered", name)
+	m.log.Infov(1, "service %s registered", name)
 
 	m.events.Emit(EventServiceRegistered{name})
 
@@ -124,7 +125,7 @@ func (m *CoreService) release(name string) error {
 	close(service.queries)
 	delete(m.services, name)
 
-	log.Infov(1, "service %s released", name)
+	m.log.Infov(1, "service %s released", name)
 
 	m.events.Emit(EventServiceReleased{name})
 

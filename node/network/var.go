@@ -2,11 +2,8 @@ package network
 
 import (
 	"errors"
-	_log "github.com/cryptopunkscc/astrald/log"
 	"time"
 )
-
-var log = _log.Tag("network")
 
 var (
 	ErrPeerUnlinked          = errors.New("peer unlinked")

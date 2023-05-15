@@ -52,9 +52,9 @@ func (i *CoreInfra) Drivers() map[string]Driver {
 func (i *CoreInfra) loadDrivers() error {
 	for name, injector := range drivers {
 		if err := injector.Inject(i, i.configStore); err != nil {
-			log.Errorv(1, "error loading network driver %s: %s", name, err)
+			i.log.Errorv(1, "error loading network driver %s: %s", name, err)
 		} else {
-			log.Infov(2, "loaded network driver %s", name)
+			i.log.Infov(2, "loaded network driver %s", name)
 		}
 	}
 

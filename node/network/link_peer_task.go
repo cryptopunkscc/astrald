@@ -87,7 +87,6 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	l := link.New(authConn)
 	l.SetPriority(NetworkPriority(l.Network()))
 	if err := task.Network.AddLink(l); err != nil {
-		log.Errorv(1, "LinkPeerTask: error adding link to network: %s", err)
 		l.Close()
 		return nil, err
 	}

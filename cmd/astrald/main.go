@@ -5,22 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/agent"
-	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/mod/connect"
-	"github.com/cryptopunkscc/astrald/mod/gateway"
-	"github.com/cryptopunkscc/astrald/mod/keepalive"
-	"github.com/cryptopunkscc/astrald/mod/optimizer"
-	"github.com/cryptopunkscc/astrald/mod/presence"
-	"github.com/cryptopunkscc/astrald/mod/reflectlink"
-	"github.com/cryptopunkscc/astrald/mod/roam"
-	"github.com/cryptopunkscc/astrald/mod/tcpfwd"
 	"github.com/cryptopunkscc/astrald/node"
-	_ "github.com/cryptopunkscc/astrald/node/infra/drivers/bt"
-	_ "github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
-	_ "github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
-	_ "github.com/cryptopunkscc/astrald/node/infra/drivers/tor"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -84,20 +69,7 @@ func main() {
 	}()
 
 	// start the node
-	node, err := node.New(
-		astralRoot,
-		admin.Loader{},
-		apphost.Loader{},
-		connect.Loader{},
-		gateway.Loader{},
-		reflectlink.Loader{},
-		roam.Loader{},
-		optimizer.Loader{},
-		keepalive.Loader{},
-		agent.Loader{},
-		tcpfwd.Loader{},
-		presence.Loader{},
-	)
+	node, err := node.NewCoreNode(astralRoot)
 	if err != nil {
 		fmt.Println("init error:", err)
 		os.Exit(ExitNodeError)
