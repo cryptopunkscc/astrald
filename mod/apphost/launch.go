@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
+	"os"
 	"os/exec"
 )
 
@@ -20,6 +21,7 @@ func (mod *Module) Launch(runtime string, path string) error {
 	mod.tokens[token] = path
 
 	cmd := exec.Command(rbin, path)
+	cmd.Env = os.Environ() // TODO: rethink the security of this, maybe whitelist only some variables?
 	cmd.Env = append(cmd.Env, proto.EnvKeyAddr+"="+mod.getListeners())
 	cmd.Env = append(cmd.Env, proto.EnvKeyToken+"="+token)
 
