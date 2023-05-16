@@ -2,7 +2,6 @@ package contacts
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/node"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -10,12 +9,10 @@ import (
 	"time"
 )
 
-func (m *Module) setupDatabase() (err error) {
-	var path = DatabaseName
+const DatabaseName = "contacts.db"
 
-	if coreNode, ok := m.node.(*node.CoreNode); ok {
-		path = filepath.Join(coreNode.RootDir(), DatabaseName)
-	}
+func (m *Module) setupDatabase() (err error) {
+	var path = filepath.Join(m.rootDir, DatabaseName)
 
 	m.db, err = gorm.Open(
 		sqlite.Open(path),
@@ -26,17 +23,21 @@ func (m *Module) setupDatabase() (err error) {
 	}
 
 	// Migrate the schema
-	if err := m.db.AutoMigrate(&DbNode{}); err != nil {
+	if err := m.db.AutoMigrate(&dbNode{}); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-type DbNode struct {
+type dbNode struct {
 	CreatedAt time.Time
 	Identity  string `gorm:"primaryKey"`
 	Alias     string `gorm:"index"`
+}
+
+func (dbNode) TableName() string {
+	return "nodes"
 }
 
 type Node struct {

@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
-	"github.com/cryptopunkscc/astrald/node/db"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -16,13 +15,10 @@ import (
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"os"
-	"path"
-	"path/filepath"
 	"time"
 )
 
 const defaultQueryTimeout = time.Minute
-const dbFileName = "astrald.db"
 const logTag = "node"
 
 var _ Node = &CoreNode{}
@@ -32,7 +28,6 @@ type CoreNode struct {
 	configStore config.Store
 	config      Config
 	logConfig   LogConfig
-	database    *db.Database
 	identity    id.Identity
 	queryQueue  chan *link.Query
 
@@ -57,7 +52,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		queryQueue: make(chan *link.Query),
 	}
 
-	node.configStore, _ = config.NewFileStore(path.Join(rootDir, "config"))
+	node.configStore, _ = config.NewFileStore(rootDir)
 
 	// logger
 	if err := node.setupLogging(node.configStore); err != nil {
@@ -69,29 +64,6 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("error loading config: %w", err)
-		}
-	}
-
-	// database
-	var dbInit bool
-	dbFile := filepath.Join(rootDir, dbFileName)
-	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
-		node.log.Log("creating database at %s", dbFile)
-		dbInit = true
-	}
-
-	node.database, err = db.NewFileDatabase(dbFile)
-	if err != nil {
-		return nil, fmt.Errorf("db error: %w", err)
-	}
-
-	if dbInit {
-		if err := tracker.InitDatabase(node.database); err != nil {
-			return nil, fmt.Errorf("tracker: %w", err)
-		}
-
-		if err := os.Chmod(dbFile, 0600); err != nil {
-			node.log.Error("cannot set 0600 mode on the database file: %s", err)
 		}
 	}
 
@@ -113,7 +85,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	}
 
 	// tracker
-	node.tracker, err = tracker.NewCoreTracker(node.database, node.infra, node.log)
+	node.tracker, err = tracker.NewCoreTracker(node.configStore, node.infra, node.log, &node.events)
 	if err != nil {
 		return nil, err
 	}
@@ -171,11 +143,6 @@ func (node *CoreNode) Modules() modules.Modules {
 
 func (node *CoreNode) Resolver() resolver.Resolver {
 	return node.resolver
-}
-
-// RootDir returns node's root directory where all node-related files are stored
-func (node *CoreNode) RootDir() string {
-	return node.rootDir
 }
 
 // Identity returns node's identity

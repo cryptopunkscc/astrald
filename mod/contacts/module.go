@@ -13,11 +13,12 @@ import (
 var _ modules.Module = &Module{}
 
 type Module struct {
-	config Config
-	node   node.Node
-	log    *log.Logger
-	db     *gorm.DB
-	ready  chan struct{}
+	config  Config
+	node    node.Node
+	log     *log.Logger
+	rootDir string
+	db      *gorm.DB
+	ready   chan struct{}
 }
 
 func (m *Module) Run(ctx context.Context) error {
@@ -35,7 +36,7 @@ func (m *Module) Run(ctx context.Context) error {
 }
 
 func (m *Module) All() ([]Node, error) {
-	var dbNodes []DbNode
+	var dbNodes []dbNode
 
 	res := m.db.Find(&dbNodes)
 	if res.Error != nil {
@@ -60,7 +61,7 @@ func (m *Module) All() ([]Node, error) {
 func (m *Module) Find(identity id.Identity) (Node, error) {
 	keyHex := identity.PublicKeyHex()
 
-	var dbNode DbNode
+	var dbNode dbNode
 
 	if tx := m.db.First(&dbNode, "identity = ?", keyHex); tx.Error != nil {
 		return Node{}, tx.Error
@@ -83,7 +84,7 @@ func (m *Module) FindOrCreate(identity id.Identity) (Node, error) {
 		return node, nil
 	}
 
-	m.db.Create(&DbNode{
+	m.db.Create(&dbNode{
 		Identity: identity.PublicKeyHex(),
 	})
 
@@ -93,7 +94,7 @@ func (m *Module) FindOrCreate(identity id.Identity) (Node, error) {
 }
 
 func (m *Module) FindByAlias(alias string) (Node, error) {
-	var dbNode DbNode
+	var dbNode dbNode
 
 	if tx := m.db.First(&dbNode, "alias = ?", alias); tx.Error != nil {
 		return Node{}, tx.Error
@@ -112,14 +113,14 @@ func (m *Module) FindByAlias(alias string) (Node, error) {
 }
 
 func (m *Module) Save(node Node) error {
-	return m.db.Save(&DbNode{
+	return m.db.Save(&dbNode{
 		Identity: node.Identity.PublicKeyHex(),
 		Alias:    node.Alias,
 	}).Error
 }
 
 func (m *Module) Delete(identity id.Identity) error {
-	return m.db.Delete(&DbNode{}, "identity = ?", identity.PublicKeyHex()).Error
+	return m.db.Delete(&dbNode{}, "identity = ?", identity.PublicKeyHex()).Error
 }
 
 func (m *Module) Ready() <-chan struct{} {

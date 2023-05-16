@@ -1,38 +1,36 @@
 package tracker
 
 import (
-	"database/sql"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"time"
 )
 
 // Identities returns a list of all tracked identities
 func (tracker *CoreTracker) Identities() ([]id.Identity, error) {
-	ids := make([]id.Identity, 0)
+	type row struct {
+		Identity string
+	}
 
-	err := tracker.db.TxDo(func(tx *sql.Tx) error {
-		rows, err := tx.Query(queryUniqueIDs)
-		if err != nil {
-			return err
-		}
+	var dbIDs []row
 
-		for rows.Next() {
-			var hex string
-			if err := rows.Scan(&hex); err != nil {
-				return err
-			}
-
-			nodeID, err := id.ParsePublicKeyHex(hex)
-			if err != nil {
-				continue
-			}
-
-			ids = append(ids, nodeID)
-		}
-		return nil
-	})
+	err := tracker.db.
+		Model(&dbEndpoint{}).
+		Select("identity").
+		Group("identity").
+		Find(&dbIDs, "expires_at > ?", time.Now()).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return ids, nil
+	identities := make([]id.Identity, 0)
+
+	for _, dbID := range dbIDs {
+		identity, err := id.ParsePublicKeyHex(dbID.Identity)
+		if err != nil {
+			continue
+		}
+		identities = append(identities, identity)
+	}
+
+	return identities, nil
 }

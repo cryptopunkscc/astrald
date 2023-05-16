@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node/tracker"
 	"time"
 )
 
@@ -62,15 +63,19 @@ func (mod *Module) Optimize(parent context.Context, peer *network.Peer) error {
 	retryDialer := NewRetryDialer(filterDialer, concurrency)
 
 	go func() {
-		list, err := mod.node.Tracker().AddrByIdentity(peer.Identity())
+		list, err := mod.node.Tracker().FindAll(peer.Identity())
 		if err == nil {
 			for _, i := range list {
 				retryDialer.Add(i)
 			}
 		}
-		for addr := range mod.node.Tracker().Watch(ctx, peer.Identity()) {
-			retryDialer.Add(addr)
-		}
+
+		event.Handle(ctx, mod.node.Events(), func(e tracker.EventNewEndpoint) error {
+			if e.Identity.IsEqual(peer.Identity()) {
+				retryDialer.Add(e.TrackedEndpoint.Endpoint)
+			}
+			return nil
+		})
 	}()
 
 	for authConn := range network.NewConcurrentHandshake(

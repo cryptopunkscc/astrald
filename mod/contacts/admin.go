@@ -59,8 +59,12 @@ func (adm *Admin) add(_ *admin.Terminal, args []string) error {
 		return errors.New("cannot add self")
 	}
 
-	for _, a := range info.Endpoints {
-		if err := adm.mod.node.Tracker().Add(info.Identity, a, time.Now().Add(7*24*time.Hour)); err != nil {
+	for _, ep := range info.Endpoints {
+		ep, err := adm.mod.node.Infra().Unpack(ep.Network(), ep.Pack())
+		if err != nil {
+			return err
+		}
+		if err := adm.mod.node.Tracker().Add(info.Identity, ep, time.Now().Add(7*24*time.Hour)); err != nil {
 			return err
 		}
 	}
@@ -124,7 +128,7 @@ func (adm *Admin) printNode(term *admin.Terminal, node Node, showInfo bool) erro
 
 	term.Printf("%s (%s)\n", node.Alias, node.Identity)
 
-	endpoints, err := adm.mod.node.Tracker().AddrByIdentity(node.Identity)
+	endpoints, err := adm.mod.node.Tracker().FindAll(node.Identity)
 	if err != nil {
 		return err
 	}
@@ -237,8 +241,7 @@ func (adm *Admin) ShortDescription() string {
 func (adm *Admin) formatEndpoint(endpoint net.Endpoint) string {
 	var suffix string
 
-	switch e := endpoint.(type) {
-	case tracker.Addr:
+	if e, ok := endpoint.(tracker.TrackedEndpoint); ok {
 		d := e.ExpiresAt.Sub(time.Now()).Round(time.Second)
 		suffix = fmt.Sprintf(" (expires in %s)", d)
 		endpoint = e.Endpoint

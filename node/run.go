@@ -82,9 +82,5 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 	// wait for all components to finish
 	wg.Wait()
 
-	if node.database != nil {
-		node.database.Close()
-	}
-
 	return
 }

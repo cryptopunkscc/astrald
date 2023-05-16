@@ -32,6 +32,9 @@ func (cmd *CmdTracker) Exec(term *Terminal, args []string) error {
 	case "help":
 		return cmd.help(term)
 
+	case "delete":
+		return cmd.delete(term, args[2:])
+
 	default:
 		return errors.New("invalid command")
 	}
@@ -76,7 +79,7 @@ func (cmd *CmdTracker) list(term *Terminal) error {
 
 		term.Printf("%s (%s)\n", nodeName, nodeID)
 
-		endpoints, err := cmd.mod.node.Tracker().AddrByIdentity(nodeID)
+		endpoints, err := cmd.mod.node.Tracker().FindAll(nodeID)
 		if err != nil {
 			return err
 		}
@@ -96,8 +99,23 @@ func (cmd *CmdTracker) help(term *Terminal) error {
 	term.Printf("commands:\n")
 	term.Printf("  list     list all nodes and addresses\n")
 	term.Printf("  add      add an address to a node\n")
+	term.Printf("  delete   delete node from the tracker\n")
 	term.Printf("  help     show help\n")
 	return nil
+}
+
+func (cmd *CmdTracker) delete(term *Terminal, args []string) error {
+	if len(args) < 1 {
+		term.Println("usage: tracker delete <node>")
+		return errors.New("misisng arguments")
+	}
+
+	identity, err := cmd.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	return cmd.mod.node.Tracker().DeleteAll(identity)
 }
 
 func (cmd *CmdTracker) ShortDescription() string {
@@ -107,8 +125,7 @@ func (cmd *CmdTracker) ShortDescription() string {
 func (cmd *CmdTracker) formatEndpoint(endpoint net.Endpoint) string {
 	var suffix string
 
-	switch e := endpoint.(type) {
-	case tracker.Addr:
+	if e, ok := endpoint.(tracker.TrackedEndpoint); ok {
 		d := e.ExpiresAt.Sub(time.Now()).Round(time.Second)
 		suffix = fmt.Sprintf(" (expires in %s)", d)
 		endpoint = e.Endpoint

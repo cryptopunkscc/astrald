@@ -1,5 +1,7 @@
 package config
 
+var _ Store = &PrefixStore{}
+
 type PrefixStore struct {
 	Store
 	Prefix string

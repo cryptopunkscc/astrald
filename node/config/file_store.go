@@ -81,3 +81,7 @@ func (store *FileStore) StoreYAML(name string, in interface{}) error {
 
 	return store.Write(name, bytes)
 }
+
+func (store *FileStore) BaseDir() string {
+	return store.baseDir
+}

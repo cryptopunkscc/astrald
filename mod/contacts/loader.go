@@ -8,7 +8,6 @@ import (
 )
 
 const ModuleName = "contacts"
-const DatabaseName = "contacts.db"
 
 type Loader struct{}
 
@@ -19,6 +18,8 @@ func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module,
 		log:    log.Tag("contacts"),
 		ready:  make(chan struct{}),
 	}
+
+	mod.rootDir = configStore.BaseDir()
 
 	configStore.LoadYAML(ModuleName, &mod.config)
 
