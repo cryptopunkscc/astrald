@@ -29,6 +29,7 @@ var (
 	ErrAuthFailed     = errors.New("auth_failed")
 	ErrUnauthorized   = errors.New("unauthorized")
 	ErrInvalidRequest = errors.New("invalid_request")
+	ErrUnsupported    = errors.New("unsupported")
 )
 
 type Server struct {
@@ -134,7 +135,11 @@ func (srv *Server) handleRequest(req interface{}) interface{} {
 			return ErrUnauthorized
 		}
 
-		return srv.node.SetAlias(req.Alias)
+		if coreNode, ok := srv.node.(*node.CoreNode); ok {
+			return coreNode.SetAlias(req.Alias)
+		}
+
+		return ErrUnsupported
 
 	case GetAliasRequest:
 		if !srv.auth {

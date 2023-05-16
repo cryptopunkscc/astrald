@@ -1,28 +1,31 @@
-package admin
+package contacts
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
-const ModuleName = "admin"
+const ModuleName = "contacts"
+const DatabaseName = "contacts.db"
 
 type Loader struct{}
 
 func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module, error) {
 	mod := &Module{
-		config:   defaultConfig,
-		node:     node,
-		commands: make(map[string]Command),
-		log:      log.Tag(ModuleName),
+		node:   node,
+		config: defaultConfig,
+		log:    log.Tag("contacts"),
+		ready:  make(chan struct{}),
 	}
 
 	configStore.LoadYAML(ModuleName, &mod.config)
 
-	mod.AddCommand("help", &CmdHelp{mod: mod})
-	mod.AddCommand("tracker", &CmdTracker{mod: mod})
-	mod.AddCommand("net", &CmdNet{mod: mod})
+	adm, err := modules.Find[*admin.Module](node.Modules())
+	if err == nil {
+		adm.AddCommand("contacts", NewAdmin(mod))
+	}
 
 	return mod, nil
 }

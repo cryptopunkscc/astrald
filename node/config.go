@@ -14,7 +14,7 @@ type Config struct {
 var defaultConfig = Config{
 	Alias: "localnode",
 	Modules: []string{
-		"admin", "agent", "apphost", "connect", "gateway", "net.keepalive",
+		"admin", "contacts", "agent", "apphost", "connect", "gateway", "net.keepalive",
 		"optimizer", "presence", "net.reflectlink", "roam", "net.tcpfwd",
 	},
 }

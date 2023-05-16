@@ -3,7 +3,6 @@ package apphost
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -67,7 +66,7 @@ func (s *Session) query(p proto.QueryParams) error {
 func (s *Session) resolve(p proto.ResolveParams) error {
 	log.Logv(2, "<%s> resolve: %s", s.appName, p.Name)
 
-	remoteID, err := s.realResolve(p.Name)
+	remoteID, err := s.mod.node.Resolver().Resolve(p.Name)
 	if err == nil {
 		s.WriteErr(nil)
 		return s.WriteMsg(proto.ResolveData{Identity: remoteID})
@@ -88,7 +87,7 @@ func (s *Session) nodeInfo(p proto.NodeInfoParams) error {
 		data.Name = s.mod.node.Alias()
 	} else {
 		data.Identity = p.Identity
-		data.Name = s.mod.node.Contacts().DisplayName(p.Identity)
+		data.Name = s.mod.node.Resolver().DisplayName(p.Identity)
 	}
 
 	return s.WriteMsg(data)
@@ -158,16 +157,4 @@ func (s *Session) forwardService(srv *services.Service, target string) {
 
 		go streams.Join(conn, qConn)
 	}
-}
-
-func (s *Session) realResolve(str string) (id.Identity, error) {
-	if identity, err := id.ParsePublicKeyHex(str); err == nil {
-		return identity, nil
-	}
-
-	if str == "localnode" {
-		return s.mod.node.Identity(), nil
-	}
-
-	return s.mod.node.Contacts().ResolveIdentity(str)
 }

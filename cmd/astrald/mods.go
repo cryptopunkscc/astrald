@@ -7,6 +7,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/agent"
 	_ "github.com/cryptopunkscc/astrald/mod/apphost"
 	_ "github.com/cryptopunkscc/astrald/mod/connect"
+	_ "github.com/cryptopunkscc/astrald/mod/contacts"
 	_ "github.com/cryptopunkscc/astrald/mod/gateway"
 	_ "github.com/cryptopunkscc/astrald/mod/keepalive"
 	_ "github.com/cryptopunkscc/astrald/mod/optimizer"

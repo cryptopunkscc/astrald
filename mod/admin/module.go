@@ -2,9 +2,8 @@ package admin
 
 import (
 	"bitbucket.org/creachadair/shell"
-	"bufio"
 	"context"
-	"fmt"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"io"
@@ -16,6 +15,7 @@ type Module struct {
 	config   Config
 	node     node.Node
 	commands map[string]Command
+	log      *log.Logger
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -32,58 +32,52 @@ func (mod *Module) Run(ctx context.Context) error {
 		}
 
 		conn, err := query.Accept()
-
-		if err == nil {
-			go mod.serve(conn, mod.node)
+		if err != nil {
+			mod.log.Errorv(2, "accept: %s", err)
+			continue
 		}
+
+		go func() {
+			if err := mod.serve(conn, mod.node); err != nil {
+				mod.log.Errorv(2, "serve: %s", err)
+			}
+		}()
 	}
 
 	return nil
 }
 
-func (mod *Module) serve(stream io.ReadWriteCloser, node node.Node) {
+func (mod *Module) serve(stream io.ReadWriteCloser, node node.Node) error {
 	defer stream.Close()
 
-	prompt := node.Alias() + mod.config.Prompt
+	var term = NewTerminal(stream)
 
-	scanner := bufio.NewScanner(stream)
-	stream.Write([]byte(prompt))
+	for {
+		term.Printf("%s%s", node.Alias(), mod.config.Prompt)
 
-	for scanner.Scan() {
-		split, valid := shell.Split(scanner.Text())
-		if len(split) == 0 {
-			goto prompt
+		line, err := term.ScanLine()
+		if err != nil {
+			return err
+		}
+
+		args, valid := shell.Split(line)
+		if len(args) == 0 {
+			continue
 		}
 		if !valid {
-			fmt.Fprintf(stream, "error: unclosed quotes\n")
-			goto prompt
+			term.Printf("error: unclosed quotes\n")
+			continue
 		}
 
-		if c, found := mod.commands[split[0]]; found {
-			err := c.Exec(NewTerminal(stream), split)
+		if cmd, found := mod.commands[args[0]]; found {
+			err := cmd.Exec(term, args)
 			if err != nil {
-				fmt.Fprintf(stream, "error: %v\n", err)
+				term.Printf("error: %v\n", err)
 			} else {
-				fmt.Fprintf(stream, "ok\n")
+				term.Printf("ok\n")
 			}
 		} else {
-			fn, ok := commands[split[0]]
-			if ok {
-				err := fn(stream, node, split[1:])
-				if err != nil {
-					fmt.Fprintf(stream, "error: %v\n", err)
-				} else {
-					fmt.Fprintf(stream, "ok\n")
-				}
-			} else {
-				if len(split[0]) > 0 {
-					fmt.Fprintf(stream, "no such command\n")
-				}
-			}
+			term.Printf("command not found\n")
 		}
-
-	prompt:
-		prompt = node.Alias() + mod.config.Prompt
-		stream.Write([]byte(prompt))
 	}
 }

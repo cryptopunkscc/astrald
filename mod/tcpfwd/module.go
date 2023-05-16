@@ -2,22 +2,28 @@ package tcpfwd
 
 import (
 	"context"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/streams"
 	"net"
 	"strings"
 	"sync"
 )
 
-var log = _log.Tag(ModuleName)
-
 type Module struct {
 	node   node.Node
 	config Config
+	log    *log.Logger
 }
 
 func (m *Module) Run(ctx context.Context) error {
+	_, err := modules.WaitReady[*contacts.Module](ctx, m.node.Modules())
+	if err != nil {
+		return err
+	}
+
 	var wg sync.WaitGroup
 
 	for astralPort, tcpPort := range m.config.Out {
@@ -28,9 +34,9 @@ func (m *Module) Run(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 
-			log.Logv(1, "forwarding %s to %s", astralPort, tcpPort)
+			m.log.Logv(1, "forwarding %s to %s", astralPort, tcpPort)
 			if err := m.ServeOut(ctx, astralPort, tcpPort); err != nil {
-				log.Errorv(1, "error: %s", err)
+				m.log.Errorv(1, "error: %s", err)
 			}
 		}()
 	}
@@ -44,7 +50,7 @@ func (m *Module) Run(ctx context.Context) error {
 			defer wg.Done()
 
 			if err := m.ServeIn(ctx, tcpPort, astralPort); err != nil {
-				log.Errorv(1, "error: %s", err)
+				m.log.Errorv(1, "error: %s", err)
 			}
 		}()
 	}
@@ -62,7 +68,7 @@ func (m *Module) ServeOut(ctx context.Context, astral string, tcp string) error 
 	for query := range port.Queries() {
 		outConn, err := net.Dial("tcp", tcp)
 		if err != nil {
-			log.Errorv(1, "error forwarding %s to %s: %s", astral, tcp, err)
+			m.log.Errorv(1, "error forwarding %s to %s: %s", astral, tcp, err)
 			query.Reject()
 			continue
 		}
@@ -83,7 +89,7 @@ func (m *Module) ServeIn(ctx context.Context, tcp string, astral string) error {
 		nodeHex, port = "localnode", parts[0]
 	}
 
-	nodeID, err := m.node.Contacts().ResolveIdentity(nodeHex)
+	nodeID, err := m.node.Resolver().Resolve(nodeHex)
 	if err != nil {
 		return err
 	}
@@ -98,7 +104,7 @@ func (m *Module) ServeIn(ctx context.Context, tcp string, astral string) error {
 		listener.Close()
 	}()
 
-	log.Logv(1, "forwarding %s to %s:%s", tcp, nodeID, port)
+	m.log.Logv(1, "forwarding %s to %s:%s", tcp, nodeID, port)
 
 	for {
 		inConn, err := listener.Accept()

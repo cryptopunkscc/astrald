@@ -26,7 +26,7 @@ func (adm *Admin) Exec(t *admin.Terminal, args []string) error {
 	}
 }
 
-func (adm *Admin) HelpDescription() string {
+func (adm *Admin) ShortDescription() string {
 	return "manage apps and permissions"
 }
 

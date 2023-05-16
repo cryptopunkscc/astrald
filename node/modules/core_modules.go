@@ -33,37 +33,35 @@ func NewCoreModules(node Node, mods []string, configStore config.Store, log *log
 
 func (m *CoreModules) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
+	var loaded = make([]string, 0, len(m.enabled))
 
 	for _, name := range m.enabled {
 		if err := m.Load(name); err != nil {
-			m.log.Log("error loading module %s: %s", name, err)
-			continue
+			m.log.Error("load %s: %s", name, err)
+		} else {
+			loaded = append(loaded, name)
 		}
 	}
 
-	// log loaded module names
-	var modNames = make([]string, 0, len(m.loaded))
-	for name, _ := range m.loaded {
-		modNames = append(modNames, name)
-	}
-
-	m.log.Log("enabled: %s", strings.Join(modNames, " "))
-
-	for name, mod := range m.loaded {
-		name, mod := name, mod
+	var started = make([]string, 0, len(loaded))
+	for _, name := range loaded {
+		mod, ok := m.loaded[name]
+		if !ok {
+			continue
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
 			err := mod.Run(ctx)
 			if err != nil {
-				m.log.Error("module %s ended with error: %s",
-					name,
-					err,
-				)
+				m.log.Error("run %s: %s", name, err)
 			}
 		}()
+		started = append(started, name)
 	}
+
+	m.log.Log("started: %s", strings.Join(started, " "))
 
 	// wait for all modules to finish
 	wg.Wait()

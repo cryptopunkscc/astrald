@@ -8,7 +8,6 @@ import (
 
 type ModuleLoader interface {
 	Load(node Node, configStore config.Store) (Module, error)
-	Name() string
 }
 
 type Module interface {

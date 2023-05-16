@@ -1,6 +1,7 @@
 package tcpfwd
 
 import (
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -13,15 +14,12 @@ func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module,
 	mod := &Module{
 		node:   node,
 		config: defaultConfig,
+		log:    log.Tag(ModuleName),
 	}
 
 	configStore.LoadYAML("tcpfwd", &mod.config)
 
 	return mod, nil
-}
-
-func (Loader) Name() string {
-	return ModuleName
 }
 
 func init() {

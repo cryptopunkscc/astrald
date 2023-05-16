@@ -6,13 +6,13 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/config"
-	"github.com/cryptopunkscc/astrald/node/contacts"
 	"github.com/cryptopunkscc/astrald/node/db"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node/resolver"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"os"
@@ -40,9 +40,9 @@ type CoreNode struct {
 	infra    *infra.CoreInfra
 	network  *network.CoreNetwork
 	tracker  *tracker.CoreTracker
-	contacts *contacts.CoreContacts
 	services *services.CoreService
 	modules  *modules.CoreModules
+	resolver *resolver.CoreResolver
 
 	rootDir string
 }
@@ -59,12 +59,12 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 
 	node.configStore, _ = config.NewFileStore(path.Join(rootDir, "config"))
 
-	// setup logger
+	// logger
 	if err := node.setupLogging(node.configStore); err != nil {
 		return nil, fmt.Errorf("logger error: %w", err)
 	}
 
-	// load config
+	// config
 	err = node.configStore.LoadYAML("node", &node.config)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -72,7 +72,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		}
 	}
 
-	// setup database
+	// database
 	var dbInit bool
 	dbFile := filepath.Join(rootDir, dbFileName)
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
@@ -89,9 +89,6 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		if err := tracker.InitDatabase(node.database); err != nil {
 			return nil, fmt.Errorf("tracker: %w", err)
 		}
-		if err := contacts.InitDatabase(node.database); err != nil {
-			return nil, fmt.Errorf("contacts: %w", err)
-		}
 
 		if err := os.Chmod(dbFile, 0600); err != nil {
 			node.log.Error("cannot set 0600 mode on the database file: %s", err)
@@ -102,6 +99,9 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	if err := node.setupIdentity(); err != nil {
 		return nil, fmt.Errorf("error setting up identity: %w", err)
 	}
+
+	// resolver
+	node.resolver = resolver.NewCoreResolver(node)
 
 	// hub
 	node.services = services.NewCoreServices(&node.events, node.log)
@@ -118,13 +118,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		return nil, err
 	}
 
-	// contacts
-	node.contacts, err = contacts.NewCoreContacts(node.database, &node.events)
-	if err != nil {
-		return nil, err
-	}
-
-	// format identities in logs
+	// resolve identities in logs
 	log.SetFormatter(id.Identity{}, func(v interface{}) string {
 		identity := v.(id.Identity)
 
@@ -132,16 +126,14 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 			return node.log.Green() + node.Alias() + node.log.Reset()
 		}
 
-		if c, err := node.contacts.Find(identity); err == nil {
-			if c.Alias() != "" {
-				return node.log.Cyan() + c.Alias() + node.log.Reset()
-			}
+		if c := node.Resolver().DisplayName(identity); len(c) > 0 {
+			return node.log.Cyan() + c + node.log.Reset()
 		}
 
-		return node.log.Green() + identity.Fingerprint() + node.log.Reset()
+		return node.log.Cyan() + identity.Fingerprint() + node.log.Reset()
 	})
 
-	// peer manager
+	// network
 	node.network, err = network.NewCoreNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
@@ -165,10 +157,6 @@ func (node *CoreNode) Services() services.Services {
 	return node.services
 }
 
-func (node *CoreNode) Contacts() contacts.Contacts {
-	return node.contacts
-}
-
 func (node *CoreNode) Tracker() tracker.Tracker {
 	return node.tracker
 }
@@ -179,6 +167,10 @@ func (node *CoreNode) Network() network.Network {
 
 func (node *CoreNode) Modules() modules.Modules {
 	return node.modules
+}
+
+func (node *CoreNode) Resolver() resolver.Resolver {
+	return node.resolver
 }
 
 // RootDir returns node's root directory where all node-related files are stored
