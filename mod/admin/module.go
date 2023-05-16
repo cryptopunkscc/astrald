@@ -3,6 +3,7 @@ package admin
 import (
 	"bitbucket.org/creachadair/shell"
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -60,24 +61,26 @@ func (mod *Module) serve(stream io.ReadWriteCloser, node node.Node) error {
 			return err
 		}
 
-		args, valid := shell.Split(line)
-		if len(args) == 0 {
-			continue
-		}
-		if !valid {
-			term.Printf("error: unclosed quotes\n")
-			continue
-		}
-
-		if cmd, found := mod.commands[args[0]]; found {
-			err := cmd.Exec(term, args)
-			if err != nil {
-				term.Printf("error: %v\n", err)
-			} else {
-				term.Printf("ok\n")
-			}
+		if err := mod.exec(line, term); err != nil {
+			term.Printf("error: %v\n", err)
 		} else {
-			term.Printf("command not found\n")
+			term.Printf("ok\n")
 		}
+	}
+}
+
+func (mod *Module) exec(line string, term *Terminal) error {
+	args, valid := shell.Split(line)
+	if len(args) == 0 {
+		return nil
+	}
+	if !valid {
+		return errors.New("unclosed quotes")
+	}
+
+	if cmd, found := mod.commands[args[0]]; found {
+		return cmd.Exec(term, args)
+	} else {
+		return errors.New("command not found")
 	}
 }

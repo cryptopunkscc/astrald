@@ -23,6 +23,7 @@ func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module,
 	mod.AddCommand("help", &CmdHelp{mod: mod})
 	mod.AddCommand("tracker", &CmdTracker{mod: mod})
 	mod.AddCommand("net", &CmdNet{mod: mod})
+	mod.AddCommand("enter", &CmdEnter{mod: mod})
 
 	return mod, nil
 }
