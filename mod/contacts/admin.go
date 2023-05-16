@@ -83,7 +83,7 @@ func (adm *Admin) list(term *admin.Terminal, _ []string) error {
 	}
 
 	for _, node := range nodes {
-		if err := adm.printNode(term, node); err != nil {
+		if err := adm.printNode(term, node, false); err != nil {
 			return err
 		}
 	}
@@ -108,14 +108,20 @@ func (adm *Admin) show(term *admin.Terminal, args []string) error {
 		return err
 	}
 
-	if err := adm.printNode(term, node); err != nil {
+	if err := adm.printNode(term, node, true); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (adm *Admin) printNode(term *admin.Terminal, node Node) error {
+func (adm *Admin) printNode(term *admin.Terminal, node Node, showInfo bool) error {
+	var info = &nodeinfo.NodeInfo{
+		Identity:  node.Identity,
+		Alias:     node.Alias,
+		Endpoints: []net.Endpoint{},
+	}
+
 	term.Printf("%s (%s)\n", node.Alias, node.Identity)
 
 	endpoints, err := adm.mod.node.Tracker().AddrByIdentity(node.Identity)
@@ -124,9 +130,14 @@ func (adm *Admin) printNode(term *admin.Terminal, node Node) error {
 	}
 
 	for _, e := range endpoints {
+		info.Endpoints = append(info.Endpoints, e.Endpoint)
 		term.Printf("  %s\n", adm.formatEndpoint(e))
 	}
 	term.Println()
+
+	if showInfo {
+		term.Printf("  nodeinfo %s\n", info)
+	}
 
 	return nil
 }
