@@ -53,6 +53,7 @@ func (i *CoreInfra) Run(ctx context.Context) error {
 	i.log.Log("enabled drivers: %s", strings.Join(i.config.Drivers, " "))
 
 	for _, name := range i.config.Drivers {
+		name := name
 		if network, found := i.networkDrivers[name]; found {
 			wg.Add(1)
 			go func() {

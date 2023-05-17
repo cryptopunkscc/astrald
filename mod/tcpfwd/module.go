@@ -49,7 +49,11 @@ func (m *Module) Run(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 
-			if err := m.ServeIn(ctx, tcpPort, astralPort); err != nil {
+			err := m.ServeIn(ctx, tcpPort, astralPort)
+			switch {
+			case err == nil:
+			case strings.Contains(err.Error(), "use of closed network connection"):
+			default:
 				m.log.Errorv(1, "error: %s", err)
 			}
 		}()

@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"io"
+	"strings"
 )
 
 var _ modules.Module = &Module{}
@@ -39,7 +40,11 @@ func (mod *Module) Run(ctx context.Context) error {
 		}
 
 		go func() {
-			if err := mod.serve(conn, mod.node); err != nil {
+			err := mod.serve(conn, mod.node)
+			switch {
+			case err == nil:
+			case strings.Contains(err.Error(), "on closed pipe"):
+			default:
 				mod.log.Errorv(2, "serve: %s", err)
 			}
 		}()

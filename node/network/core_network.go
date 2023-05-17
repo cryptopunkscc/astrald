@@ -82,9 +82,14 @@ func (n *CoreNetwork) Run(ctx context.Context) error {
 		defer wg.Done()
 
 		err := n.server.Run(ctx)
-		if err != nil {
+		switch {
+		case err == nil:
+		case errors.Is(err, context.Canceled):
+		default:
 			n.log.Error("server error: %s", err)
+
 		}
+
 	}()
 
 	// run the scheduler
