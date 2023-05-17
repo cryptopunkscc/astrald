@@ -1,7 +1,7 @@
 package tor
 
 import (
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/infra"
 )
 
@@ -9,14 +9,14 @@ var _ infra.DriverInjector = &Injector{}
 
 type Injector struct{}
 
-func (*Injector) Inject(i infra.Infra, configStore config.Store) error {
+func (*Injector) Inject(i infra.Infra, assets assets.Store) error {
 	drv := &Driver{
-		config:      defaultConfig,
-		configStore: configStore,
+		config: defaultConfig,
+		assets: assets,
 	}
 
-	if configStore != nil {
-		configStore.LoadYAML(DriverName, &drv.config)
+	if assets != nil {
+		assets.LoadYAML(DriverName, &drv.config)
 	}
 
 	return i.AddDriver(DriverName, drv)

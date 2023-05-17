@@ -24,11 +24,11 @@ func (drv *Driver) getPrivateKey() (Key, error) {
 }
 
 func (drv *Driver) loadPrivateKey() (Key, error) {
-	return drv.configStore.Read(privateKeyFileName)
+	return drv.assets.Read(privateKeyFileName)
 }
 
 func (drv *Driver) savePrivateKey(key Key) error {
-	return drv.configStore.Write(privateKeyFileName, key)
+	return drv.assets.Write(privateKeyFileName, key)
 }
 
 func (drv *Driver) generatePrivateKey() (Key, error) {

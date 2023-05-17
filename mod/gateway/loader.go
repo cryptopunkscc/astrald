@@ -1,7 +1,7 @@
 package gateway
 
 import (
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
@@ -9,7 +9,7 @@ const ModuleName = "gateway"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, _ config.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, _ assets.Store) (modules.Module, error) {
 	mod := &Gateway{node: node}
 
 	return mod, nil

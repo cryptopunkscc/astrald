@@ -3,7 +3,7 @@ package infra
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 )
 
 var drivers map[string]DriverInjector
@@ -14,7 +14,7 @@ type Driver interface {
 }
 
 type DriverInjector interface {
-	Inject(infra Infra, configStore config.Store) error
+	Inject(Infra, assets.Store) error
 }
 
 func RegisterDriver(name string, driver DriverInjector) error {
@@ -51,7 +51,7 @@ func (i *CoreInfra) Drivers() map[string]Driver {
 
 func (i *CoreInfra) loadDrivers() error {
 	for name, injector := range drivers {
-		if err := injector.Inject(i, i.configStore); err != nil {
+		if err := injector.Inject(i, i.assets); err != nil {
 			i.log.Errorv(1, "error loading network driver %s: %s", name, err)
 		} else {
 			i.log.Infov(2, "loaded network driver %s", name)

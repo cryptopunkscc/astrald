@@ -3,25 +3,30 @@ package contacts
 import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
 const ModuleName = "contacts"
+const DatabaseName = "contacts.db"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module, error) {
-	mod := &Module{
+func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
+	var err error
+	var mod = &Module{
 		node:   node,
 		config: defaultConfig,
 		log:    log.Tag("contacts"),
 		ready:  make(chan struct{}),
 	}
 
-	mod.rootDir = configStore.BaseDir()
+	assets.LoadYAML(ModuleName, &mod.config)
 
-	configStore.LoadYAML(ModuleName, &mod.config)
+	mod.db, err = assets.OpenDB(DatabaseName)
+	if err != nil {
+		return nil, err
+	}
 
 	adm, err := modules.Find[*admin.Module](node.Modules())
 	if err == nil {

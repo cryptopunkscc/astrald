@@ -3,7 +3,7 @@ package tor
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"golang.org/x/net/proxy"
 	"net"
@@ -15,7 +15,7 @@ var _ infra.Driver = &Driver{}
 
 type Driver struct {
 	config      Config
-	configStore config.Store
+	assets      assets.Store
 	proxy       proxy.ContextDialer
 	serviceAddr Endpoint
 }

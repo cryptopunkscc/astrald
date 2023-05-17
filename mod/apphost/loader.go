@@ -2,7 +2,7 @@ package apphost
 
 import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"net"
 )
@@ -11,7 +11,7 @@ const ModuleName = "apphost"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
 	mod := &Module{
 		config:    defaultConfig,
 		node:      node,
@@ -19,7 +19,7 @@ func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module,
 		tokens:    make(map[string]string, 0),
 	}
 
-	configStore.LoadYAML(ModuleName, &mod.config)
+	assets.LoadYAML(ModuleName, &mod.config)
 
 	adm, err := modules.Find[*admin.Module](node.Modules())
 	if err == nil {

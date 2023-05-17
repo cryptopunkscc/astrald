@@ -2,7 +2,7 @@ package keepalive
 
 import (
 	_log "github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
@@ -13,10 +13,10 @@ type Loader struct{}
 
 var log = _log.Tag(ModuleName)
 
-func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
 	mod := &Module{node: node}
 
-	configStore.LoadYAML(configName, &mod.config)
+	assets.LoadYAML(configName, &mod.config)
 
 	return mod, nil
 }

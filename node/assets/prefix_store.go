@@ -1,4 +1,8 @@
-package config
+package assets
+
+import (
+	"gorm.io/gorm"
+)
 
 var _ Store = &PrefixStore{}
 
@@ -25,4 +29,8 @@ func (s *PrefixStore) LoadYAML(name string, out interface{}) error {
 
 func (s *PrefixStore) StoreYAML(name string, in interface{}) error {
 	return s.Store.StoreYAML(s.Prefix+name, in)
+}
+
+func (s *PrefixStore) OpenDB(name string) (*gorm.DB, error) {
+	return s.Store.OpenDB(s.Prefix + name)
 }

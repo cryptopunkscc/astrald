@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"os"
 	"strings"
 	"sync"
@@ -17,21 +17,21 @@ var _ Infra = &CoreInfra{}
 type CoreInfra struct {
 	node           Node
 	config         Config
-	configStore    config.Store
+	assets         assets.Store
 	networkDrivers map[string]Driver
 	log            *log.Logger
 }
 
-func NewCoreInfra(node Node, configStore config.Store, log *log.Logger) (*CoreInfra, error) {
+func NewCoreInfra(node Node, assets assets.Store, log *log.Logger) (*CoreInfra, error) {
 	var i = &CoreInfra{
 		node:           node,
-		configStore:    configStore,
+		assets:         assets,
 		networkDrivers: make(map[string]Driver),
 		config:         defaultConfig,
 		log:            log.Tag(logTag),
 	}
 
-	if err := configStore.LoadYAML(configName, &i.config); err != nil {
+	if err := assets.LoadYAML(configName, &i.config); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			i.log.Error("config error: %s", err)
 		} else {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"strings"
 	"sync"
 )
@@ -12,20 +12,20 @@ import (
 var _ Modules = &CoreModules{}
 
 type CoreModules struct {
-	loaded      map[string]Module
-	enabled     []string
-	node        Node
-	configStore config.Store
-	log         *log.Logger
+	loaded  map[string]Module
+	enabled []string
+	node    Node
+	assets  assets.Store
+	log     *log.Logger
 }
 
-func NewCoreModules(node Node, mods []string, configStore config.Store, log *log.Logger) (*CoreModules, error) {
+func NewCoreModules(node Node, mods []string, assets assets.Store, log *log.Logger) (*CoreModules, error) {
 	m := &CoreModules{
-		log:         log.Tag("modules"),
-		configStore: configStore,
-		loaded:      make(map[string]Module),
-		node:        node,
-		enabled:     mods,
+		log:     log.Tag("modules"),
+		assets:  assets,
+		loaded:  make(map[string]Module),
+		node:    node,
+		enabled: mods,
 	}
 
 	return m, nil
@@ -74,7 +74,7 @@ func (m *CoreModules) Load(name string) error {
 		return errors.New("module not found")
 	}
 
-	mod, err := loader.Load(m.node, config.NewPrefixStore(m.configStore, "mod_"))
+	mod, err := loader.Load(m.node, assets.NewPrefixStore(m.assets, "mod_"))
 	if err != nil {
 		return err
 	}

@@ -1,27 +1,28 @@
-package config
+package assets
 
 import (
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
+var _ Store = &FileStore{}
+
 type FileStore struct {
 	baseDir string
-	Errorv  func(level int, fmt string, v ...any)
+	log     Logger
 }
 
-func NewFileStore(baseDir string) (*FileStore, error) {
+func NewFileStore(baseDir string, log Logger) (*FileStore, error) {
 	return &FileStore{
 		baseDir: baseDir,
-		Errorv: func(_ int, f string, v ...any) {
-			if !strings.HasSuffix(f, "\n") {
-				f = f + "\n"
-			}
-			fmt.Printf(f, v...)
-		},
+		log:     log,
 	}, nil
 }
 
@@ -32,11 +33,11 @@ func (store *FileStore) Read(name string) ([]byte, error) {
 	case err == nil:
 
 	case strings.Contains(err.Error(), "no such file or directory"):
-		store.Errorv(2, "config %s not found", name)
+		store.log.Errorv(2, "config %s not found", name)
 		err = ErrNotFound
 
 	default:
-		store.Errorv(1, "error reading config %s: %s", name, err)
+		store.log.Errorv(1, "error reading config %s: %s", name, err)
 	}
 
 	return bytes, err
@@ -64,7 +65,7 @@ func (store *FileStore) LoadYAML(name string, out interface{}) error {
 
 	err = yaml.Unmarshal(bytes, out)
 	if err != nil {
-		store.Errorv(1, "error parsing config %s: %s", name, err)
+		store.log.Errorv(1, "error parsing config %s: %s", name, err)
 	}
 	return err
 }
@@ -82,6 +83,9 @@ func (store *FileStore) StoreYAML(name string, in interface{}) error {
 	return store.Write(name, bytes)
 }
 
-func (store *FileStore) BaseDir() string {
-	return store.baseDir
+func (store *FileStore) OpenDB(name string) (*gorm.DB, error) {
+	return gorm.Open(
+		sqlite.Open(filepath.Join(store.baseDir, name)),
+		&gorm.Config{Logger: logger.Default.LogMode(logger.Silent)},
+	)
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -24,12 +24,12 @@ const logTag = "node"
 var _ Node = &CoreNode{}
 
 type CoreNode struct {
-	events      event.Queue
-	configStore config.Store
-	config      Config
-	logConfig   LogConfig
-	identity    id.Identity
-	queryQueue  chan *link.Query
+	events     event.Queue
+	assets     assets.Store
+	config     Config
+	logConfig  LogConfig
+	identity   id.Identity
+	queryQueue chan *link.Query
 
 	log      *log.Logger
 	infra    *infra.CoreInfra
@@ -52,15 +52,15 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		queryQueue: make(chan *link.Query),
 	}
 
-	node.configStore, _ = config.NewFileStore(rootDir)
+	node.assets, _ = assets.NewFileStore(rootDir, node.log.Tag("assets"))
 
 	// logger
-	if err := node.setupLogging(node.configStore); err != nil {
+	if err := node.setupLogging(node.assets); err != nil {
 		return nil, fmt.Errorf("logger error: %w", err)
 	}
 
 	// config
-	err = node.configStore.LoadYAML("node", &node.config)
+	err = node.assets.LoadYAML("node", &node.config)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("error loading config: %w", err)
@@ -79,13 +79,13 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	node.services = services.NewCoreServices(&node.events, node.log)
 
 	// infrastructure
-	node.infra, err = infra.NewCoreInfra(node, node.configStore, node.log)
+	node.infra, err = infra.NewCoreInfra(node, node.assets, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up infrastructure: %w", err)
 	}
 
 	// tracker
-	node.tracker, err = tracker.NewCoreTracker(node.configStore, node.infra, node.log, &node.events)
+	node.tracker, err = tracker.NewCoreTracker(node.assets, node.infra, node.log, &node.events)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	}
 
 	// modules
-	node.modules, err = modules.NewCoreModules(node, node.config.Modules, node.configStore, node.log)
+	node.modules, err = modules.NewCoreModules(node, node.config.Modules, node.assets, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
@@ -163,11 +163,11 @@ func (node *CoreNode) Alias() string {
 // SetAlias sets the node alias
 func (node *CoreNode) SetAlias(alias string) error {
 	node.config.Alias = alias
-	return node.configStore.StoreYAML(configName, node.config)
+	return node.assets.StoreYAML(configName, node.config)
 }
 
-func (node *CoreNode) setupLogging(store config.Store) error {
-	if err := store.LoadYAML("log", &node.logConfig); err != nil {
+func (node *CoreNode) setupLogging(assets assets.Store) error {
+	if err := assets.LoadYAML("log", &node.logConfig); err != nil {
 		return nil
 	}
 
@@ -179,10 +179,6 @@ func (node *CoreNode) setupLogging(store config.Store) error {
 	}
 	log.HideDate = node.logConfig.HideDate
 	log.Level = node.logConfig.Level
-
-	if fileStore, ok := node.configStore.(*config.FileStore); ok {
-		fileStore.Errorv = node.log.Tag("config").Errorv
-	}
 
 	return nil
 }

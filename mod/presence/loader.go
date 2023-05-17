@@ -2,7 +2,7 @@ package presence
 
 import (
 	_log "github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node/config"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
@@ -12,7 +12,7 @@ var log = _log.Tag(ModuleName)
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
 	mod := &Module{
 		node:    node,
 		config:  defaultConfig,
@@ -21,7 +21,7 @@ func (Loader) Load(node modules.Node, configStore config.Store) (modules.Module,
 	}
 	mod.events.SetParent(node.Events())
 
-	if err := configStore.LoadYAML("presence", &mod.config); err != nil {
+	if err := assets.LoadYAML("presence", &mod.config); err != nil {
 		log.Errorv(2, "error loading config: %s", err)
 	}
 

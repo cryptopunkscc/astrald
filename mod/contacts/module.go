@@ -13,12 +13,11 @@ import (
 var _ modules.Module = &Module{}
 
 type Module struct {
-	config  Config
-	node    node.Node
-	log     *log.Logger
-	rootDir string
-	db      *gorm.DB
-	ready   chan struct{}
+	config Config
+	node   node.Node
+	log    *log.Logger
+	db     *gorm.DB
+	ready  chan struct{}
 }
 
 func (m *Module) Run(ctx context.Context) error {
