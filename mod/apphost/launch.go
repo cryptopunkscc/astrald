@@ -40,6 +40,10 @@ func (mod *Module) Launch(runtime string, path string) error {
 		return errors.New("unsupported runtime")
 	}
 
+	return mod.LaunchRaw(rbin, path)
+}
+
+func (mod *Module) LaunchRaw(path string, args ...string) error {
 	sum := sha256.New()
 	sum.Write([]byte(path))
 	token := hex.EncodeToString(sum.Sum(nil))
@@ -47,8 +51,8 @@ func (mod *Module) Launch(runtime string, path string) error {
 
 	log := log.Tag(filepath.Base(path))
 
-	cmd := exec.Command(rbin, path)
-	cmd.Env = os.Environ() // TODO: rethink the security of this, maybe whitelist only some variables?
+	cmd := exec.Command(path, args...)
+	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, proto.EnvKeyAddr+"="+mod.getListeners())
 	cmd.Env = append(cmd.Env, proto.EnvKeyToken+"="+token)
 	cmd.Stdout = LogWriter{Log: log.Logv}

@@ -5,6 +5,8 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 )
 
+const ZeroIdentity = "<anonymous>"
+
 type Resolver interface {
 	Resolve(s string) (id.Identity, error)
 	DisplayName(identity id.Identity) string
@@ -44,6 +46,10 @@ func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
 }
 
 func (c *CoreResolver) DisplayName(identity id.Identity) string {
+	if identity.IsZero() {
+		return ZeroIdentity
+	}
+
 	if identity.IsEqual(c.node.Identity()) {
 		return c.node.Alias()
 	}

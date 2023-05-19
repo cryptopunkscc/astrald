@@ -2,6 +2,7 @@ package contacts
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
@@ -58,6 +59,9 @@ func (m *Module) All() ([]Node, error) {
 }
 
 func (m *Module) Find(identity id.Identity) (Node, error) {
+	if identity.IsZero() {
+		return Node{}, errors.New("zero identity")
+	}
 	keyHex := identity.PublicKeyHex()
 
 	var dbNode dbNode

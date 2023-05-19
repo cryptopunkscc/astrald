@@ -39,6 +39,10 @@ func (s *Session) Serve(ctx context.Context) error {
 }
 
 func (s *Session) query(p proto.QueryParams) error {
+	if p.Identity.IsZero() {
+		p.Identity = s.mod.node.Identity()
+	}
+
 	log.Logv(2, "<%s> query: %s %s", s.appName, p.Identity, p.Query)
 	conn, err := s.mod.node.Query(context.Background(), p.Identity, p.Query)
 
