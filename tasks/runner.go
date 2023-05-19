@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -13,6 +14,8 @@ type Runner interface {
 	Run(context.Context) error
 }
 
+type RunFunc func(context.Context) error
+
 type GroupRunner struct {
 	runners     []Runner
 	DoneHandler func(Runner, error)
@@ -22,6 +25,17 @@ type RunError struct {
 	err    error
 	runner Runner
 	id     int
+}
+
+type RunFuncAdapter struct {
+	RunFunc func(context.Context) error
+}
+
+func (r RunFuncAdapter) Run(ctx context.Context) error {
+	if r.RunFunc == nil {
+		return errors.New("run function is nil")
+	}
+	return r.RunFunc(ctx)
 }
 
 func (e RunError) Error() string {
