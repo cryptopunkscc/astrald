@@ -95,6 +95,9 @@ func (id Identity) PublicKey() *btcec.PublicKey {
 
 // PublicKeyHex returns a serialized, compressed, hex-encoded public key
 func (id Identity) PublicKeyHex() string {
+	if id.PublicKey() == nil {
+		return ""
+	}
 	return hex.EncodeToString(id.PublicKey().SerializeCompressed())
 }
 

@@ -12,6 +12,20 @@ type Config struct {
 
 	// Allow anonymous sessions (with an empty access token)
 	AllowAnonymous bool `yaml:"allow_anonymous"`
+
+	Apps map[string]configApp `yaml:"apps"`
+	Boot []configBoot         `yaml:"boot"`
+}
+
+type configApp struct {
+	Runtime  string `yaml:"runtime"`
+	Path     string `yaml:"path"`
+	Identity string `yaml:"identity"`
+}
+
+type configBoot struct {
+	App  string   `yaml:"app"`
+	Args []string `yaml:"args"`
 }
 
 var defaultConfig = Config{

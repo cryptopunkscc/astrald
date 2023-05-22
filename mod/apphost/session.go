@@ -3,18 +3,18 @@ package apphost
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"net"
-	"path/filepath"
 )
 
 type Session struct {
 	*cslq.Endec
 	*proto.Conn
-	ctx     context.Context
-	mod     *Module
-	appName string
+	ctx context.Context
+	mod *Module
+	app AppInfo
 }
 
 func NewSession(mod *Module, conn net.Conn) *Session {
@@ -35,13 +35,15 @@ func (s *Session) auth(_ context.Context) error {
 			s.WriteErr(proto.ErrUnauthorized)
 			return errors.New("unauthorized")
 		}
-		s.appName = "anonymous"
+		s.app = AppInfo{
+			Identity: id.Identity{},
+		}
 	} else {
 		app, ok := s.mod.tokens[p.Token]
 		if !ok {
 			return errors.New("unauthorized")
 		}
-		s.appName = filepath.Base(app)
+		s.app = app
 	}
 
 	return s.WriteErr(nil)

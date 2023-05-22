@@ -10,23 +10,11 @@ import (
 )
 
 func (node *CoreNode) Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error) {
-	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
-	defer cancel()
-
 	if remoteID.IsZero() || remoteID.IsEqual(node.identity) {
-		return node.Services().Query(ctx, query, nil)
+		return node.Services().QueryAs(ctx, query, nil, node.identity)
 	}
 
-	if peer := node.Network().Peers().Find(remoteID); peer != nil {
-		peer.Check()
-	}
-
-	l, err := node.Network().Link(ctx, remoteID)
-	if err != nil {
-		return nil, err
-	}
-
-	return l.Query(ctx, query)
+	return node.Network().Query(ctx, remoteID, query)
 }
 
 func (node *CoreNode) onQuery(query *link.Query) error {

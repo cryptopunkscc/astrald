@@ -95,6 +95,20 @@ func (s *Session) Register(service string, target string) (err error) {
 	return
 }
 
+func (s *Session) Launch(app string, args []string, env []string) (err error) {
+	if err = s.auth(); err != nil {
+		return
+	}
+
+	err = s.invoke(proto.CmdLaunch, proto.LaunchParams{
+		App:  app,
+		Args: args,
+		Env:  env,
+	})
+
+	return err
+}
+
 func (s *Session) proto() string {
 	p := strings.SplitN(s.addr, ":", 2)
 	return p[0]

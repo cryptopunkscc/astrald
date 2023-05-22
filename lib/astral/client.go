@@ -108,6 +108,19 @@ func (c *Client) Register(service string) (l *Listener, err error) {
 	return
 }
 
+func (c *Client) Launch(app string, args []string, env []string) error {
+	s, err := c.Session()
+	if err != nil {
+		return err
+	}
+
+	return s.Launch(app, args, env)
+}
+
+func Launch(app string, args []string, env []string) error {
+	return defaultClient.Launch(app, args, env)
+}
+
 func Query(remoteID id.Identity, query string) (*Conn, error) {
 	return defaultClient.Query(remoteID, query)
 }

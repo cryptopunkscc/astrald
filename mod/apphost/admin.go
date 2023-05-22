@@ -2,7 +2,9 @@ package apphost
 
 import (
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"os"
 )
 
 type Admin struct {
@@ -17,6 +19,9 @@ func (adm *Admin) Exec(t *admin.Terminal, args []string) error {
 	switch args[1] {
 	case "run":
 		return adm.run(t, args[2:])
+
+	case "apps":
+		return adm.apps(t, args[2:])
 
 	case "help":
 		return adm.usage(t)
@@ -39,10 +44,25 @@ func (adm *Admin) usage(out *admin.Terminal) error {
 }
 
 func (adm *Admin) run(out *admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		out.Println("usage: apphost run <runtime> <app_path>")
+	if len(args) < 1 {
+		out.Println("usage: apphost run <appname> [args...]")
 		return errors.New("missing arguments")
 	}
 
-	return adm.mod.Launch(args[0], args[1])
+	return adm.mod.Launch(args[0], args[1:], os.Environ())
+}
+
+func (adm *Admin) apps(out *admin.Terminal, args []string) error {
+	for name, app := range adm.mod.config.Apps {
+		var displayName string
+		identity, err := adm.mod.node.Resolver().Resolve(app.Identity)
+		if err != nil {
+			displayName = app.Identity
+		} else {
+			displayName = adm.mod.node.Resolver().DisplayName(identity)
+		}
+		fmt.Fprintf(out, "- %s (as %s): %s %s\n", name, displayName, app.Runtime, app.Path)
+	}
+
+	return nil
 }

@@ -14,12 +14,14 @@ type Query struct {
 	connection chan *Conn
 	err        error
 	mu         sync.Mutex
+	remoteID   id.Identity
 }
 
-func NewQuery(query string, link *link.Link) *Query {
+func NewQuery(query string, link *link.Link, remoteID id.Identity) *Query {
 	return &Query{
 		query:      query,
 		link:       link,
+		remoteID:   remoteID,
 		response:   make(chan bool, 1),
 		connection: make(chan *Conn, 1),
 	}
@@ -32,6 +34,10 @@ func (query *Query) Link() *link.Link {
 
 // RemoteIdentity returns the remote identity of the caller
 func (query *Query) RemoteIdentity() id.Identity {
+	if !query.remoteID.IsZero() {
+		return query.remoteID
+	}
+
 	if query.link != nil {
 		return query.link.RemoteIdentity()
 	}

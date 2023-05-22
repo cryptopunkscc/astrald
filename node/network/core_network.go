@@ -13,11 +13,15 @@ import (
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const workers = 16
 const queueSize = 64
 const logTag = "network"
+const defaultQueryTimeout = time.Minute
+
+var _ Network = &CoreNetwork{}
 
 type CoreNetwork struct {
 	links        *LinkSet
@@ -34,6 +38,22 @@ type CoreNetwork struct {
 	ctx          context.Context
 	running      atomic.Bool
 	mu           sync.Mutex
+}
+
+func (n *CoreNetwork) Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
+	defer cancel()
+
+	if peer := n.Peers().Find(remoteID); peer != nil {
+		peer.Check()
+	}
+
+	l, err := n.Link(ctx, remoteID)
+	if err != nil {
+		return nil, err
+	}
+
+	return l.Query(ctx, query)
 }
 
 func NewCoreNetwork(

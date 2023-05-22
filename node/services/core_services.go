@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -62,9 +63,11 @@ func (m *CoreService) RegisterContext(ctx context.Context, name string) (*Servic
 
 	return service, nil
 }
-
-// Query sends a query to a service as the provided auth.Identity
 func (m *CoreService) Query(ctx context.Context, query string, link *link.Link) (*Conn, error) {
+	return m.QueryAs(ctx, query, link, link.RemoteIdentity())
+}
+
+func (m *CoreService) QueryAs(ctx context.Context, query string, link *link.Link, identity id.Identity) (*Conn, error) {
 	// Fetch the service
 	service, err := m.getService(query)
 	if err != nil {
@@ -72,7 +75,7 @@ func (m *CoreService) Query(ctx context.Context, query string, link *link.Link) 
 	}
 
 	// pass the query to the service
-	q := NewQuery(query, link)
+	q := NewQuery(query, link, identity)
 	select {
 	case service.queries <- q:
 
@@ -103,6 +106,8 @@ func (m *CoreService) Query(ctx context.Context, query string, link *link.Link) 
 
 	// Create a pipe for the caller and the responder
 	clientConn, appConn := pipe(query, link)
+
+	appConn.remoteID = identity
 
 	// Send one side to the responder
 	q.connection <- &appConn

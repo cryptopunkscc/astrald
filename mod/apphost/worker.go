@@ -29,7 +29,7 @@ func (mod *Module) worker(ctx context.Context) error {
 		case strings.Contains(err.Error(), "use of closed network connection"):
 		case strings.Contains(err.Error(), "read/write on closed pipe"):
 		default:
-			log.Error("serve error: %s", err)
+			mod.log.Error("serve error: %s", err)
 		}
 
 		conn.Close()

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -19,7 +20,8 @@ type Module struct {
 }
 
 type Source struct {
-	Service string
+	Service  string
+	Identity id.Identity
 }
 
 func (m *Module) Run(ctx context.Context) error {
@@ -34,7 +36,7 @@ func (m *Module) AddSource(source *Source) {
 	defer m.mu.Unlock()
 
 	m.sources[source] = struct{}{}
-	m.log.Info("registered source: %s", source.Service)
+	m.log.Info("%s registered source %s", source.Identity, source.Service)
 }
 
 func (m *Module) RemoveSource(source *Source) {
@@ -42,5 +44,5 @@ func (m *Module) RemoveSource(source *Source) {
 	defer m.mu.Unlock()
 
 	delete(m.sources, source)
-	m.log.Logv(1, "unregistered source: %s", source.Service)
+	m.log.Logv(1, "%s unregistered source %s", source.Identity, source.Service)
 }

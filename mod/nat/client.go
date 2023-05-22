@@ -18,7 +18,7 @@ const clockSyncThreshold = 100 * time.Millisecond
 
 func (mod *Module) query(ctx context.Context, remoteID id.Identity) error {
 	// connect to nat service
-	conn, err := mod.node.Query(ctx, remoteID, portName)
+	conn, err := mod.node.Network().Query(ctx, remoteID, portName)
 	if err != nil {
 		return err
 	}

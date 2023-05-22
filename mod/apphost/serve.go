@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
+	"io"
 )
 
 func (s *Session) Serve(ctx context.Context) error {
@@ -32,19 +33,33 @@ func (s *Session) Serve(ctx context.Context) error {
 		case proto.CmdNodeInfo:
 			return cslq.Invoke(s, s.nodeInfo)
 
+		case proto.CmdLaunch:
+			return cslq.Invoke(s, s.launch)
+
 		default:
 			return s.WriteErr(proto.ErrUnknownCommand)
 		}
 	})
 }
 
-func (s *Session) query(p proto.QueryParams) error {
-	if p.Identity.IsZero() {
-		p.Identity = s.mod.node.Identity()
+func (s *Session) query(params proto.QueryParams) error {
+	if params.Identity.IsZero() {
+		params.Identity = s.mod.node.Identity()
 	}
 
-	log.Logv(2, "<%s> query: %s %s", s.appName, p.Identity, p.Query)
-	conn, err := s.mod.node.Query(context.Background(), p.Identity, p.Query)
+	s.mod.log.Logv(2, "%s query %s:%s", s.app.Identity, params.Identity, params.Query)
+
+	var err error
+	var conn io.ReadWriteCloser
+
+	if params.Identity.IsEqual(s.mod.node.Identity()) {
+		conn, err = s.mod.node.Services().QueryAs(s.ctx, params.Query, nil, s.app.Identity)
+		if err != nil {
+			return err
+		}
+	} else {
+		conn, err = s.mod.node.Network().Query(s.ctx, params.Identity, params.Query)
+	}
 
 	if err == nil {
 		s.WriteErr(nil)
@@ -62,13 +77,13 @@ func (s *Session) query(p proto.QueryParams) error {
 		return s.WriteErr(proto.ErrTimeout)
 
 	default:
-		log.Error("query: %s", err)
+		s.mod.log.Error("query %s", err)
 		return s.WriteErr(proto.ErrUnexpected)
 	}
 }
 
 func (s *Session) resolve(p proto.ResolveParams) error {
-	log.Logv(2, "<%s> resolve: %s", s.appName, p.Name)
+	s.mod.log.Logv(2, "%s resolve %s", s.app.Identity, p.Name)
 
 	remoteID, err := s.mod.node.Resolver().Resolve(p.Name)
 	if err == nil {
@@ -80,7 +95,7 @@ func (s *Session) resolve(p proto.ResolveParams) error {
 }
 
 func (s *Session) nodeInfo(p proto.NodeInfoParams) error {
-	log.Logv(2, "<%s> nodeInfo: %s", s.appName, p.Identity)
+	s.mod.log.Logv(2, "%s nodeInfo %s", s.app.Identity, p.Identity)
 
 	s.WriteErr(nil)
 
@@ -97,8 +112,17 @@ func (s *Session) nodeInfo(p proto.NodeInfoParams) error {
 	return s.WriteMsg(data)
 }
 
+func (s *Session) launch(params proto.LaunchParams) error {
+	err := s.mod.Launch(params.App, params.Args, params.Env)
+
+	if err != nil {
+		return s.WriteErr(proto.ErrFailed)
+	}
+	return s.WriteErr(nil)
+}
+
 func (s *Session) register(p proto.RegisterParams) error {
-	log.Logv(2, "<%s> register: %s -> %s", s.appName, p.Service, p.Target)
+	s.mod.log.Logv(2, "%s register %s -> %s", s.app.Identity, p.Service, p.Target)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	srv, err := s.mod.node.Services().RegisterContext(ctx, p.Service)
@@ -132,7 +156,7 @@ func (s *Session) forwardService(srv *services.Service, target string) {
 	for query := range srv.Queries() {
 		c, err := proto.Dial(target)
 		if err != nil {
-			log.Errorv(2, "%s -> %s dial error: %s", srv.Name(), target, err)
+			s.mod.log.Errorv(2, "%s -> %s dial error: %s", srv.Name(), target, err)
 			query.Reject()
 			continue
 		}

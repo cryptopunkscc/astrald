@@ -10,6 +10,7 @@ import (
 
 type Network interface {
 	Link(context.Context, id.Identity) (*link.Link, error)
+	Query(context.Context, id.Identity, string) (link.BasicConn, error)
 	Events() *event.Queue
 	Peers() *PeerSet
 	Server() *Server

@@ -4,10 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -34,25 +33,42 @@ func (w LogWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (mod *Module) Launch(runtime string, path string) error {
+func (mod *Module) Launch(appName string, args []string, env []string) error {
+	app, found := mod.config.Apps[appName]
+	if !found {
+		return errors.New("app not found")
+	}
+
+	identity, err := mod.node.Resolver().Resolve(app.Identity)
+	if err != nil {
+		return err
+	}
+
+	return mod.LaunchRuntime(app.Runtime, app.Path, identity, args, env)
+}
+
+func (mod *Module) LaunchRuntime(runtime string, path string, identity id.Identity, args []string, env []string) error {
 	rbin, found := mod.config.Runtime[runtime]
 	if !found {
 		return errors.New("unsupported runtime")
 	}
 
-	return mod.LaunchRaw(rbin, path)
+	return mod.LaunchRaw(rbin, identity, append([]string{path}, args...), env)
 }
 
-func (mod *Module) LaunchRaw(path string, args ...string) error {
+func (mod *Module) LaunchRaw(path string, identity id.Identity, args []string, env []string) error {
 	sum := sha256.New()
 	sum.Write([]byte(path))
 	token := hex.EncodeToString(sum.Sum(nil))
-	mod.tokens[token] = path
 
-	log := log.Tag(filepath.Base(path))
+	mod.tokens[token] = AppInfo{
+		Identity: identity,
+	}
+
+	log := mod.log.Tag(mod.node.Resolver().DisplayName(identity))
 
 	cmd := exec.Command(path, args...)
-	cmd.Env = os.Environ()
+	cmd.Env = env
 	cmd.Env = append(cmd.Env, proto.EnvKeyAddr+"="+mod.getListeners())
 	cmd.Env = append(cmd.Env, proto.EnvKeyToken+"="+token)
 	cmd.Stdout = LogWriter{Log: log.Logv}

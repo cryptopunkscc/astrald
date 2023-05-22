@@ -1,6 +1,7 @@
 package services
 
 import (
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -10,7 +11,12 @@ type Conn struct {
 	query    string
 	link     *link.Link
 	outbound bool
+	remoteID id.Identity
 	io.ReadWriteCloser
+}
+
+func (conn Conn) RemoteIdentity() id.Identity {
+	return conn.remoteID
 }
 
 func (conn Conn) Query() string {
