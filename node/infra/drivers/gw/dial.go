@@ -2,6 +2,7 @@ package gw
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/net"
@@ -17,6 +18,10 @@ func (drv *Driver) Dial(ctx context.Context, addr net.Endpoint) (net.Conn, error
 	}
 
 	gwAddr := addr.(Endpoint)
+
+	if gwAddr.gate.IsEqual(drv.infra.Node().Identity()) {
+		return nil, errors.New("cannot use self as a gateway")
+	}
 
 	rwc, err := drv.infra.Node().Query(ctx, gwAddr.gate, PortName)
 	if err != nil {
