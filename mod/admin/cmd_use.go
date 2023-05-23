@@ -2,13 +2,13 @@ package admin
 
 import "errors"
 
-var _ Command = &CmdEnter{}
+var _ Command = &CmdUse{}
 
-type CmdEnter struct {
+type CmdUse struct {
 	mod *Module
 }
 
-func (cmd *CmdEnter) Exec(term *Terminal, args []string) error {
+func (cmd *CmdUse) Exec(term *Terminal, args []string) error {
 	if len(args) < 2 {
 		return cmd.help(term, nil)
 	}
@@ -41,11 +41,11 @@ func (cmd *CmdEnter) Exec(term *Terminal, args []string) error {
 	}
 }
 
-func (cmd *CmdEnter) help(term *Terminal, _ []string) error {
-	term.Printf("usage: enter <command>\n")
+func (cmd *CmdUse) help(term *Terminal, _ []string) error {
+	term.Printf("usage: use <command>\n")
 	return nil
 }
 
-func (cmd *CmdEnter) ShortDescription() string {
-	return "enter a command"
+func (cmd *CmdUse) ShortDescription() string {
+	return "enter the context of a command"
 }
