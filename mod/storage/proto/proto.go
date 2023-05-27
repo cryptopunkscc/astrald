@@ -1,16 +1,16 @@
 package proto
 
-import "github.com/cryptopunkscc/astrald/data"
+import (
+	"github.com/cryptopunkscc/astrald/cslq/stream"
+	"io"
+)
 
-type MsgRegisterSource struct {
-	Service string `cslq:"[c]c"`
+var es stream.ErrorSpace
+
+var ErrUnavailable = es.NewError(0x01, "unavailable")
+
+func New(rw io.ReadWriter) *stream.Stream {
+	var s = stream.NewStream(rw, es)
+	s.ErrorType = "c"
+	return s
 }
-
-type MsgRead struct {
-	DataID data.ID `cslq:"v"`
-	Start  int64   `cslq:"q"`
-	Len    int64   `cslq:"q"`
-}
-
-const Success = 0
-const ErrCodeUnavailable = 1

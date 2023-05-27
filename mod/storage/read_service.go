@@ -43,13 +43,15 @@ func (s *ReadService) Run(ctx context.Context) error {
 func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
 	defer conn.Close()
 	return cslq.Invoke(conn, func(msg proto.MsgRead) error {
+		var stream = proto.New(conn)
+
 		source, err := s.findSource(ctx, msg)
 		if err != nil {
-			return cslq.Encode(conn, "c", proto.ErrCodeUnavailable)
+			return stream.WriteError(proto.ErrUnavailable)
 		}
 		defer source.Close()
 
-		if err := cslq.Encode(conn, "c", proto.Success); err != nil {
+		if err := stream.WriteError(nil); err != nil {
 			return err
 		}
 
@@ -85,16 +87,14 @@ func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead) (io.Rea
 				return
 			}
 
-			if err := cslq.Encode(conn, "v", msg); err != nil {
+			var stream = proto.New(conn)
+
+			if err := stream.Encode(msg); err != nil {
 				return
 			}
 
-			var errCode int
-			if err := cslq.Decode(conn, "c", &errCode); err != nil {
-				return
-			}
-
-			if errCode != proto.Success {
+			err = stream.ReadError()
+			if err != nil {
 				return
 			}
 

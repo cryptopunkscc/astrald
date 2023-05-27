@@ -39,6 +39,8 @@ func (m *RegisterService) Run(ctx context.Context) error {
 func (m *RegisterService) handle(ctx context.Context, conn *services.Conn) error {
 	defer conn.Close()
 	return cslq.Invoke(conn, func(msg proto.MsgRegisterSource) error {
+		var stream = proto.New(conn)
+
 		source := &Source{
 			Service:  msg.Service,
 			Identity: conn.RemoteIdentity(),
@@ -46,6 +48,6 @@ func (m *RegisterService) handle(ctx context.Context, conn *services.Conn) error
 
 		m.AddSource(source)
 
-		return cslq.Encode(conn, "c", proto.Success)
+		return stream.WriteError(nil)
 	})
 }
