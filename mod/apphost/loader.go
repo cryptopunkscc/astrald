@@ -1,6 +1,7 @@
 package apphost
 
 import (
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/node/assets"
@@ -17,7 +18,7 @@ func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, erro
 		config:    defaultConfig,
 		node:      node,
 		listeners: make([]net.Listener, 0),
-		tokens:    make(map[string]AppInfo, 0),
+		tokens:    make(map[string]id.Identity, 0),
 		log:       log.Tag(ModuleName),
 	}
 

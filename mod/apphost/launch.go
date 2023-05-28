@@ -1,8 +1,6 @@
 package apphost
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
@@ -57,15 +55,8 @@ func (mod *Module) LaunchRuntime(runtime string, path string, identity id.Identi
 }
 
 func (mod *Module) LaunchRaw(path string, identity id.Identity, args []string, env []string) error {
-	sum := sha256.New()
-	sum.Write([]byte(path))
-	token := hex.EncodeToString(sum.Sum(nil))
-
-	mod.tokens[token] = AppInfo{
-		Identity: identity,
-	}
-
-	log := mod.log.Tag(mod.node.Resolver().DisplayName(identity))
+	var token = mod.createToken(identity)
+	var log = mod.log.Tag(mod.node.Resolver().DisplayName(identity))
 
 	cmd := exec.Command(path, args...)
 	cmd.Env = env

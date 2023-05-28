@@ -13,8 +13,9 @@ type Config struct {
 	// Allow anonymous sessions (with an empty access token)
 	AllowAnonymous bool `yaml:"allow_anonymous"`
 
-	Apps map[string]configApp `yaml:"apps"`
-	Boot []configBoot         `yaml:"boot"`
+	Tokens map[string]string    `yaml:"tokens"`
+	Apps   map[string]configApp `yaml:"apps"`
+	Boot   []configBoot         `yaml:"boot"`
 }
 
 type configApp struct {
@@ -34,6 +35,8 @@ var defaultConfig = Config{
 		"unix:~/.apphost.sock",
 	},
 	Runtime:        map[string]string{},
+	Tokens:         map[string]string{},
+	Apps:           map[string]configApp{},
 	Workers:        256,
 	AllowAnonymous: false,
 }

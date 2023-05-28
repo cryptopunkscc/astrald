@@ -47,13 +47,13 @@ func (s *Session) query(params proto.QueryParams) error {
 		params.Identity = s.mod.node.Identity()
 	}
 
-	s.mod.log.Logv(2, "%s query %s:%s", s.app.Identity, params.Identity, params.Query)
+	s.mod.log.Logv(2, "%s query %s:%s", s.remoteID, params.Identity, params.Query)
 
 	var err error
 	var conn io.ReadWriteCloser
 
 	if params.Identity.IsEqual(s.mod.node.Identity()) {
-		conn, err = s.mod.node.Services().QueryAs(s.ctx, params.Query, nil, s.app.Identity)
+		conn, err = s.mod.node.Services().QueryAs(s.ctx, params.Query, nil, s.remoteID)
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func (s *Session) query(params proto.QueryParams) error {
 }
 
 func (s *Session) resolve(p proto.ResolveParams) error {
-	s.mod.log.Logv(2, "%s resolve %s", s.app.Identity, p.Name)
+	s.mod.log.Logv(2, "%s resolve %s", s.remoteID, p.Name)
 
 	remoteID, err := s.mod.node.Resolver().Resolve(p.Name)
 	if err == nil {
@@ -95,7 +95,7 @@ func (s *Session) resolve(p proto.ResolveParams) error {
 }
 
 func (s *Session) nodeInfo(p proto.NodeInfoParams) error {
-	s.mod.log.Logv(2, "%s nodeInfo %s", s.app.Identity, p.Identity)
+	s.mod.log.Logv(2, "%s nodeInfo %s", s.remoteID, p.Identity)
 
 	s.WriteErr(nil)
 
@@ -122,10 +122,10 @@ func (s *Session) launch(params proto.LaunchParams) error {
 }
 
 func (s *Session) register(p proto.RegisterParams) error {
-	s.mod.log.Logv(2, "%s register %s -> %s", s.app.Identity, p.Service, p.Target)
+	s.mod.log.Logv(2, "%s register %s -> %s", s.remoteID, p.Service, p.Target)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	srv, err := s.mod.node.Services().RegisterContext(ctx, p.Service, s.app.Identity)
+	srv, err := s.mod.node.Services().RegisterContext(ctx, p.Service, s.remoteID)
 	if err == nil {
 		s.WriteErr(nil)
 		go func() {

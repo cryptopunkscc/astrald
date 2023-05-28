@@ -12,9 +12,9 @@ import (
 type Session struct {
 	*cslq.Endec
 	*proto.Conn
-	ctx context.Context
-	mod *Module
-	app AppInfo
+	ctx      context.Context
+	mod      *Module
+	remoteID id.Identity
 }
 
 func NewSession(mod *Module, conn net.Conn) *Session {
@@ -30,20 +30,14 @@ func (s *Session) auth(_ context.Context) error {
 	if err := s.ReadMsg(&p); err != nil {
 		return err
 	}
-	if len(p.Token) == 0 {
-		if !s.mod.config.AllowAnonymous {
-			s.WriteErr(proto.ErrUnauthorized)
-			return errors.New("unauthorized")
-		}
-		s.app = AppInfo{
-			Identity: id.Identity{},
-		}
-	} else {
-		app, ok := s.mod.tokens[p.Token]
-		if !ok {
-			return errors.New("unauthorized")
-		}
-		s.app = app
+
+	if len(p.Token) > 0 {
+		s.remoteID = s.mod.authToken(p.Token)
+	}
+
+	if s.remoteID.IsZero() && !s.mod.config.AllowAnonymous {
+		s.WriteErr(proto.ErrUnauthorized)
+		return errors.New("unauthorized")
 	}
 
 	return s.WriteErr(nil)
