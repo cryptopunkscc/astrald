@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/storage/proto"
 	"github.com/cryptopunkscc/astrald/node/services"
@@ -45,7 +46,7 @@ func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
 	return cslq.Invoke(conn, func(msg proto.MsgRead) error {
 		var stream = proto.New(conn)
 
-		source, err := s.findSource(ctx, msg)
+		source, err := s.findSource(ctx, msg, conn.RemoteIdentity())
 		if err != nil {
 			return stream.WriteError(proto.ErrUnavailable)
 		}
@@ -60,7 +61,7 @@ func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
 	})
 }
 
-func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead) (io.ReadCloser, error) {
+func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead, identity id.Identity) (io.ReadCloser, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -75,8 +76,8 @@ func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead) (io.Rea
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			conn, err := s.node.Services().QueryAs(ctx, source.Service, nil, identity)
 
-			conn, err := s.node.Query(ctx, s.node.Identity(), source.Service)
 			if err != nil {
 				switch {
 				case errors.Is(err, context.Canceled):
