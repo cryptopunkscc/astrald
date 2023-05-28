@@ -74,7 +74,7 @@ func (mod *Module) monitorConnections(ctx context.Context) {
 }
 
 func (mod *Module) servePick(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterContext(ctx, portPick)
+	port, err := mod.node.Services().RegisterContext(ctx, portPick, mod.node.Identity())
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func (mod *Module) servePick(ctx context.Context) error {
 }
 
 func (mod *Module) serveDrop(ctx context.Context) {
-	port, err := mod.node.Services().RegisterContext(ctx, portDrop)
+	port, err := mod.node.Services().RegisterContext(ctx, portDrop, mod.node.Identity())
 	if err != nil {
 		return
 	}

@@ -60,7 +60,7 @@ func (m *Module) Run(ctx context.Context) error {
 }
 
 func (m *Module) runServer(ctx context.Context) error {
-	port, err := m.node.Services().RegisterContext(ctx, portName)
+	port, err := m.node.Services().RegisterContext(ctx, portName, m.node.Identity())
 	if err != nil {
 		return err
 	}

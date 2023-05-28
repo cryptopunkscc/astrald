@@ -13,6 +13,8 @@ import (
 const queryResponseTimeout = time.Second
 const logTag = "services"
 
+var _ Services = &CoreService{}
+
 // CoreService facilitates registration of services and querying them.
 type CoreService struct {
 	services map[string]*Service
@@ -31,7 +33,7 @@ func NewCoreServices(eventParent *event.Queue, log *log.Logger) *CoreService {
 }
 
 // Register registers a service with the provided name and returns its handler.
-func (m *CoreService) Register(name string) (*Service, error) {
+func (m *CoreService) Register(name string, identity id.Identity) (*Service, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -41,7 +43,7 @@ func (m *CoreService) Register(name string) (*Service, error) {
 	}
 
 	// Register the service
-	m.services[name] = NewService(m, name)
+	m.services[name] = NewService(m, name, identity)
 
 	m.log.Infov(1, "service %s registered", name)
 
@@ -50,8 +52,24 @@ func (m *CoreService) Register(name string) (*Service, error) {
 	return m.services[name], nil
 }
 
-func (m *CoreService) RegisterContext(ctx context.Context, name string) (*Service, error) {
-	service, err := m.Register(name)
+// List returns information about all registered services
+func (m *CoreService) List() []ServiceInfo {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var list = make([]ServiceInfo, 0, len(m.services))
+	for _, service := range m.services {
+		list = append(list, ServiceInfo{
+			Name:         service.name,
+			Identity:     service.identity,
+			RegisteredAt: service.registeredAt,
+		})
+	}
+	return list
+}
+
+func (m *CoreService) RegisterContext(ctx context.Context, name string, identity id.Identity) (*Service, error) {
+	service, err := m.Register(name, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +81,7 @@ func (m *CoreService) RegisterContext(ctx context.Context, name string) (*Servic
 
 	return service, nil
 }
+
 func (m *CoreService) Query(ctx context.Context, query string, link *link.Link) (*Conn, error) {
 	return m.QueryAs(ctx, query, link, link.RemoteIdentity())
 }
@@ -117,8 +136,8 @@ func (m *CoreService) QueryAs(ctx context.Context, query string, link *link.Link
 	return &clientConn, nil
 }
 
-// release closes a service in the manager
-func (m *CoreService) release(name string) error {
+// Release closes a service in the manager
+func (m *CoreService) Release(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

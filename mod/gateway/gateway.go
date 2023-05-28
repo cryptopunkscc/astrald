@@ -21,7 +21,7 @@ type Gateway struct {
 var log = _log.Tag(ModuleName)
 
 func (mod *Gateway) Run(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterContext(ctx, gw.PortName)
+	port, err := mod.node.Services().RegisterContext(ctx, gw.PortName, mod.node.Identity())
 	if err != nil {
 		return err
 	}

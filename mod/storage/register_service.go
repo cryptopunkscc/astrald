@@ -15,7 +15,7 @@ type RegisterService struct {
 }
 
 func (m *RegisterService) Run(ctx context.Context) error {
-	srv, err := m.node.Services().RegisterContext(ctx, "storage.register")
+	srv, err := m.node.Services().RegisterContext(ctx, "storage.register", m.node.Identity())
 	if err != nil {
 		return err
 	}
