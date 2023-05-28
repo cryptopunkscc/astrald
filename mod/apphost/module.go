@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"net"
+	"os"
 	"sync"
 )
 
@@ -50,7 +51,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		boot := boot
 		go func() {
 			mod.log.Infov(1, "starting %s...", boot.App)
-			err := mod.Launch(boot.App, boot.Args, []string{})
+			err := mod.Launch(boot.App, boot.Args, os.Environ())
 			if err != nil {
 				mod.log.Infov(1, "app %s ended with error: %s", boot.App, err)
 			}

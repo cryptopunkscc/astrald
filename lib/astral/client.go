@@ -10,22 +10,33 @@ import (
 
 const defaultApphostAddr = "tcp:127.0.0.1:8625"
 
-type Client struct {
+type ClientInfo struct {
 	addr  string
 	token string
-	proto string
 }
 
-var defaultClient Client
+func (c *ClientInfo) Storage(identity id.Identity, service string) *Storage {
+	return &Storage{
+		client:   c,
+		Identity: identity,
+		Service:  service,
+	}
+}
 
-func NewClient(addr string, token string) *Client {
-	return &Client{
+func (c *ClientInfo) LocalStorage() *Storage {
+	return c.Storage(id.Identity{}, "storage.read")
+}
+
+var Client ClientInfo
+
+func NewClient(addr string, token string) *ClientInfo {
+	return &ClientInfo{
 		addr:  addr,
 		token: token,
 	}
 }
 
-func (c *Client) Session() (*Session, error) {
+func (c *ClientInfo) Session() (*Session, error) {
 	if len(c.addr) == 0 {
 		return nil, errors.New("missing apphost address")
 	}
@@ -38,7 +49,7 @@ func (c *Client) Session() (*Session, error) {
 	return nil, errors.New("apphost unrachable")
 }
 
-func (c *Client) Query(remoteID id.Identity, query string) (conn *Conn, err error) {
+func (c *ClientInfo) Query(remoteID id.Identity, query string) (conn *Conn, err error) {
 	s, err := c.Session()
 	if err != nil {
 		return nil, err
@@ -47,7 +58,7 @@ func (c *Client) Query(remoteID id.Identity, query string) (conn *Conn, err erro
 	return s.Query(remoteID, query)
 }
 
-func (c *Client) QueryName(name string, query string) (conn *Conn, err error) {
+func (c *ClientInfo) QueryName(name string, query string) (conn *Conn, err error) {
 	identity, err := c.Resolve(name)
 	if err != nil {
 		return
@@ -56,7 +67,7 @@ func (c *Client) QueryName(name string, query string) (conn *Conn, err error) {
 	return c.Query(identity, query)
 }
 
-func (c *Client) Resolve(name string) (id.Identity, error) {
+func (c *ClientInfo) Resolve(name string) (id.Identity, error) {
 	s, err := c.Session()
 	if err != nil {
 		return id.Identity{}, err
@@ -65,7 +76,7 @@ func (c *Client) Resolve(name string) (id.Identity, error) {
 	return s.Resolve(name)
 }
 
-func (c *Client) NodeInfo(identity id.Identity) (info proto.NodeInfoData, err error) {
+func (c *ClientInfo) NodeInfo(identity id.Identity) (info proto.NodeInfoData, err error) {
 	s, err := c.Session()
 	if err != nil {
 		return
@@ -74,7 +85,7 @@ func (c *Client) NodeInfo(identity id.Identity) (info proto.NodeInfoData, err er
 	return s.NodeInfo(identity)
 }
 
-func (c *Client) Register(service string) (l *Listener, err error) {
+func (c *ClientInfo) Register(service string) (l *Listener, err error) {
 	s, err := c.Session()
 	if err != nil {
 		return
@@ -108,7 +119,7 @@ func (c *Client) Register(service string) (l *Listener, err error) {
 	return
 }
 
-func (c *Client) Launch(app string, args []string, env []string) error {
+func (c *ClientInfo) Launch(app string, args []string, env []string) error {
 	s, err := c.Session()
 	if err != nil {
 		return err
@@ -118,27 +129,27 @@ func (c *Client) Launch(app string, args []string, env []string) error {
 }
 
 func Launch(app string, args []string, env []string) error {
-	return defaultClient.Launch(app, args, env)
+	return Client.Launch(app, args, env)
 }
 
 func Query(remoteID id.Identity, query string) (*Conn, error) {
-	return defaultClient.Query(remoteID, query)
+	return Client.Query(remoteID, query)
 }
 
 func QueryName(name string, query string) (conn *Conn, err error) {
-	return defaultClient.QueryName(name, query)
+	return Client.QueryName(name, query)
 }
 
 func Resolve(name string) (id.Identity, error) {
-	return defaultClient.Resolve(name)
+	return Client.Resolve(name)
 }
 
 func GetNodeInfo(identity id.Identity) (info proto.NodeInfoData, err error) {
-	return defaultClient.NodeInfo(identity)
+	return Client.NodeInfo(identity)
 }
 
 func Register(service string) (l *Listener, err error) {
-	return defaultClient.Register(service)
+	return Client.Register(service)
 }
 
 func init() {
@@ -155,10 +166,10 @@ func init() {
 		conn, err := proto.Dial(addr)
 		if err == nil {
 			conn.Close()
-			defaultClient.addr = addr
+			Client.addr = addr
 			break
 		}
 	}
 
-	defaultClient.token = os.Getenv(proto.EnvKeyToken)
+	Client.token = os.Getenv(proto.EnvKeyToken)
 }

@@ -52,8 +52,13 @@ func (stream *Stream) ReadError() error {
 	if err := cslq.Decode(stream, stream.ErrorType, &code); err != nil {
 		return err
 	}
-	err, _ := stream.ByCode(code)
-	return err
+	if code == 0 {
+		return nil
+	}
+	if err, found := stream.ByCode(code); found {
+		return err
+	}
+	return errors.New("invalid error code")
 }
 
 // Close closes the stream if the underlying transport is an io.Closer.
