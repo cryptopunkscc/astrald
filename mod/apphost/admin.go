@@ -2,9 +2,11 @@ package apphost
 
 import (
 	"errors"
-	"fmt"
+	"flag"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"os"
+	"path/filepath"
+	"strconv"
 )
 
 type Admin struct {
@@ -20,8 +22,11 @@ func (adm *Admin) Exec(t *admin.Terminal, args []string) error {
 	case "run":
 		return adm.run(t, args[2:])
 
-	case "apps":
-		return adm.apps(t, args[2:])
+	case "list":
+		return adm.list(t, args[2:])
+
+	case "kill":
+		return adm.kill(t, args[2:])
 
 	case "help":
 		return adm.usage(t)
@@ -38,31 +43,71 @@ func (adm *Admin) ShortDescription() string {
 func (adm *Admin) usage(out *admin.Terminal) error {
 	out.Println("usage: apphost <command>")
 	out.Println()
-	out.Println("commands: run, help")
+	out.Println("commands:")
+	out.Println("  run       run an executable with node's identity")
+	out.Println("  list      list processes")
+	out.Println("  kill      kill a process")
+	out.Println("  help      show help")
 
 	return nil
 }
 
-func (adm *Admin) run(out *admin.Terminal, args []string) error {
+func (adm *Admin) run(term *admin.Terminal, args []string) error {
+	var err error
+	var identity = adm.mod.node.Identity()
+	var name string
+	var f = flag.NewFlagSet("apphost run", flag.ContinueOnError)
+	f.SetOutput(term)
+	f.StringVar(&name, "i", "", "set identity")
+	if err := f.Parse(args); err != nil {
+		return err
+	}
+
+	args = f.Args()
+
 	if len(args) < 1 {
-		out.Println("usage: apphost run <appname> [args...]")
+		f.Usage()
 		return errors.New("missing arguments")
 	}
 
-	return adm.mod.Launch(args[0], args[1:], os.Environ())
-}
-
-func (adm *Admin) apps(out *admin.Terminal, args []string) error {
-	for name, app := range adm.mod.config.Apps {
-		var displayName string
-		identity, err := adm.mod.node.Resolver().Resolve(app.Identity)
+	if name != "" {
+		identity, err = adm.mod.node.Resolver().Resolve(name)
 		if err != nil {
-			displayName = app.Identity
-		} else {
-			displayName = adm.mod.node.Resolver().DisplayName(identity)
+			return err
 		}
-		fmt.Fprintf(out, "- %s (as %s): %s %s\n", name, displayName, app.Runtime, app.Path)
 	}
 
+	_, err = adm.mod.Exec(identity, args[0], args[1:], os.Environ())
+
+	return err
+}
+
+func (adm *Admin) list(out *admin.Terminal, args []string) error {
+	out.Printf("%-6s %-10s %-30s %s\n", "ID", "STATE", "NAME", "IDENTITY")
+
+	for i, e := range adm.mod.execs {
+		var identity = adm.mod.node.Resolver().DisplayName(e.identity)
+		var name = filepath.Base(e.path)
+
+		out.Printf("%-6d %-10s %-30s %s\n", i, e.State(), name, identity)
+	}
 	return nil
+}
+
+func (adm *Admin) kill(out *admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		out.Println("usage: apphost kill <ID>")
+		return errors.New("missing arguments")
+	}
+
+	i, err := strconv.Atoi(args[0])
+	if err != nil {
+		return err
+	}
+
+	if (i < 0) || (i >= len(adm.mod.execs)) {
+		return errors.New("invalid id")
+	}
+
+	return adm.mod.execs[i].Kill()
 }

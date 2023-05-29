@@ -9,7 +9,7 @@ const (
 	CmdQuery    = "query"
 	CmdResolve  = "resolve"
 	CmdNodeInfo = "nodeInfo"
-	CmdLaunch   = "launch"
+	CmdExec     = "exec"
 )
 
 type Command struct {
@@ -39,10 +39,11 @@ type NodeInfoData struct {
 	Name     string      `cslq:"[c]c"`
 }
 
-type LaunchParams struct {
-	App  string   `cslq:"[c]c"`
-	Args []string `cslq:"[s][s]c"`
-	Env  []string `cslq:"[s][s]c"`
+type ExecParams struct {
+	Identity id.Identity `cslq:"v"`
+	Exec     string      `cslq:"[c]c"`
+	Args     []string    `cslq:"[s][s]c"`
+	Env      []string    `cslq:"[s][s]c"`
 }
 
 type InQueryParams struct {

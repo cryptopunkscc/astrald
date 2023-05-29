@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -20,6 +21,7 @@ type Module struct {
 	log       *log.Logger
 	listeners []net.Listener
 	tokens    map[string]id.Identity
+	execs     []*Exec
 	mu        sync.Mutex
 }
 
@@ -41,8 +43,8 @@ func (mod *Module) Run(ctx context.Context) error {
 		}(i)
 	}
 
-	if len(mod.config.Boot) > 0 {
-		mod.log.Infov(1, "starting boot apps...")
+	if len(mod.config.Autorun) > 0 {
+		mod.log.Infov(1, "%d autorun entries", len(mod.config.Autorun))
 	}
 
 	_, err := modules.WaitReady[*contacts.Module](ctx, mod.node.Modules())
@@ -50,14 +52,30 @@ func (mod *Module) Run(ctx context.Context) error {
 		mod.log.Errorv(1, "error waiting for mod_contacts: %s", err)
 	}
 
-	for _, boot := range mod.config.Boot {
-		boot := boot
+	for _, run := range mod.config.Autorun {
+		run := run
 		go func() {
-			mod.log.Infov(1, "starting %s...", boot.App)
-			err := mod.Launch(boot.App, boot.Args, os.Environ())
+			identity, err := mod.node.Resolver().Resolve(run.Identity)
 			if err != nil {
-				mod.log.Infov(1, "app %s ended with error: %s", boot.App, err)
+				mod.log.Error("unknown identity: %s", run.Identity)
 			}
+
+			var basename = filepath.Base(run.Exec)
+
+			mod.log.Infov(1, "starting %s as %s...", basename, identity)
+
+			exec, err := mod.Exec(identity, run.Exec, run.Args, os.Environ())
+			if err != nil {
+				mod.log.Errorv(1, "%s (%s) failed to start: %s", basename, identity, err)
+			}
+
+			<-exec.Done()
+
+			err = exec.err
+			if err != nil {
+				mod.log.Errorv(1, "%s (%s) exited with error: %s", basename, identity, err)
+			}
+
 		}()
 	}
 

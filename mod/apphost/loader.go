@@ -19,6 +19,7 @@ func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, erro
 		node:      node,
 		listeners: make([]net.Listener, 0),
 		tokens:    make(map[string]id.Identity, 0),
+		execs:     []*Exec{},
 		log:       log.Tag(ModuleName),
 	}
 

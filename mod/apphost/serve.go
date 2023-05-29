@@ -33,8 +33,8 @@ func (s *Session) Serve(ctx context.Context) error {
 		case proto.CmdNodeInfo:
 			return cslq.Invoke(s, s.nodeInfo)
 
-		case proto.CmdLaunch:
-			return cslq.Invoke(s, s.launch)
+		case proto.CmdExec:
+			return cslq.Invoke(s, s.exec)
 
 		default:
 			return s.WriteErr(proto.ErrUnknownCommand)
@@ -112,8 +112,14 @@ func (s *Session) nodeInfo(p proto.NodeInfoParams) error {
 	return s.WriteMsg(data)
 }
 
-func (s *Session) launch(params proto.LaunchParams) error {
-	err := s.mod.Launch(params.App, params.Args, params.Env)
+func (s *Session) exec(params proto.ExecParams) error {
+	var identity = s.remoteID
+
+	if !params.Identity.IsZero() {
+		identity = params.Identity
+	}
+
+	_, err := s.mod.Exec(identity, params.Exec, params.Args, params.Env)
 
 	if err != nil {
 		return s.WriteErr(proto.ErrFailed)

@@ -95,15 +95,16 @@ func (s *Session) Register(service string, target string) (err error) {
 	return
 }
 
-func (s *Session) Launch(app string, args []string, env []string) (err error) {
+func (s *Session) Exec(identity id.Identity, app string, args []string, env []string) (err error) {
 	if err = s.auth(); err != nil {
 		return
 	}
 
-	err = s.invoke(proto.CmdLaunch, proto.LaunchParams{
-		App:  app,
-		Args: args,
-		Env:  env,
+	err = s.invoke(proto.CmdExec, proto.ExecParams{
+		Identity: identity,
+		Exec:     app,
+		Args:     args,
+		Env:      env,
 	})
 
 	return err
