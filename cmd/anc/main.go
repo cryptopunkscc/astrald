@@ -1,17 +1,20 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/astral"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 )
+
+var wait = true
 
 const (
 	exitSuccess = iota
@@ -19,186 +22,205 @@ const (
 	exitError
 )
 
+func log(f string, v ...any) {
+	fmt.Fprintf(os.Stderr, f, v...)
+	if !strings.HasSuffix(f, "\n") {
+		fmt.Println()
+	}
+}
+
 func cmdExport(args []string) {
 	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "anc export <astral_port> <local_address>")
+		log("anc export <astral_port> <local_address>")
 		os.Exit(exitHelp)
 	}
 
-	portName := args[0]
-	dstAddr := args[1]
+	var serviceName = args[0]
+	var dstAddr = args[1]
 
-	port, err := astral.Register(portName)
+	service, err := astral.Register(serviceName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
+		log("register error: %s", err)
 		os.Exit(exitError)
 	}
 
-	fmt.Fprintf(os.Stderr, "exporting %s to %s\n", portName, dstAddr)
+	log("forwarding %s to %s", serviceName, dstAddr)
 
-	i := 0
+	for query := range service.QueryCh() {
+		var peerName = displayName(query.RemoteIdentity())
 
-	for query := range port.QueryCh() {
-		i += 1
-		fmt.Printf("[%d] %s connected.\n", i, displayName(query.RemoteIdentity()))
+		log("[%s] connected.", peerName)
 
 		dstConn, err := net.Dial("tcp", dstAddr)
 		if err != nil {
-			fmt.Printf("error: destination (%s) unreachable: %v\n", dstAddr, err)
+			log("[%s] error dialing %s: %s\n", peerName, dstAddr, err)
 			query.Reject()
 			continue
 		}
 
 		srcConn, _ := query.Accept()
-		go func(i int) {
-			streams.Join(srcConn, dstConn)
-			fmt.Printf("[%d] %s disconnected.\n", i, displayName(query.RemoteIdentity()))
-		}(i)
+		go func() {
+			wc, rc, _ := streams.Join(srcConn, dstConn)
+			log("[%s] disconnected (%d read, %d written).", peerName, rc, wc)
+		}()
 	}
 
 }
 
 func cmdImport(args []string) {
 	if len(args) < 3 {
-		fmt.Fprintln(os.Stderr, "anc import <local_address> <astral_node> <astral_port>")
+		log("anc import <local_address> <astral_node> <astral_port>")
 		os.Exit(exitHelp)
 	}
 
 	srcAddr := args[0]
 	nodeName := args[1]
-	portName := args[2]
+	serviceName := args[2]
 
 	srcListener, err := net.Listen("tcp", srcAddr)
 	if err != nil {
-		fmt.Println("listen error:", err)
+		log("listen error: %s", err)
 		os.Exit(exitError)
 	}
 
-	fmt.Fprintf(os.Stderr, "importing %s to %s:%s\n", srcAddr, nodeName, portName)
+	log("forwarding %s to %s:%s\n", srcAddr, nodeName, serviceName)
 	i := 0
 
 	for {
 		srcConn, err := srcListener.Accept()
 		if err != nil {
-			fmt.Println("accept error:", err)
+			log("accept error: %s", err)
 			continue
 		}
+		var conn = (srcConn).(*astral.Conn)
+		var peerName = displayName(conn.RemoteIdentity())
 
-		i += 1
-		fmt.Printf("[%d] %s connected.\n", i, srcConn.RemoteAddr())
+		log("[%s] connected.", peerName)
 
-		dstConn, err := astral.QueryName(nodeName, portName)
+		dstConn, err := astral.QueryName(nodeName, serviceName)
 		if err != nil {
-			fmt.Println("astral.dial error:", err)
-			srcConn.Close()
+			log("[%s] query %s:%s error: %s", peerName, nodeName, serviceName, err)
+			conn.Close()
 			continue
 		}
 
 		go func(i int) {
-			streams.Join(srcConn, dstConn)
-			fmt.Printf("[%d] %s disconnected.\n", i, srcConn.RemoteAddr())
+			wc, rc, _ := streams.Join(conn, dstConn)
+			log("[%s] disconnected (%d read, %d written).", peerName, rc, wc)
 		}(i)
 	}
 }
 
 func cmdRegister(args []string) {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "anc register <name>")
+		log("anc register <name>")
 		os.Exit(exitHelp)
 	}
 
-	portName := args[0]
+	serviceName := args[0]
 
-	l, err := astral.Register(portName)
+	l, err := astral.Register(serviceName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
+		log("register error: %s", err.Error())
 		os.Exit(exitError)
 	}
 
-	fmt.Fprintf(os.Stderr, "listening on %s\n", portName)
+	log("listening on %s", serviceName)
 
-	conn, err := l.Accept()
+	nconn, err := l.Accept()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "accept error: %s\n", err)
+		log("accept error: %s", err)
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "%s connected.\n", addrName(conn.RemoteAddr()))
+	var conn = nconn.(*astral.Conn)
+	var peerName = displayName(conn.RemoteIdentity())
+
+	log("[%s] connected.", peerName)
 
 	go func() {
-		io.Copy(conn, os.Stdin)
-		conn.Close()
+		n, _ := io.Copy(conn, os.Stdin)
+		if !wait {
+			conn.Close()
+		}
+		log("[%s] wrote %d bytes", peerName, n)
 	}()
 
-	io.Copy(os.Stdout, conn)
+	n, _ := io.Copy(os.Stdout, conn)
+	log("[%s] read %d bytes", peerName, n)
+
 	os.Exit(exitSuccess)
 }
 
 func cmdShare(args []string) {
 	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "anc share <name> <file>")
+		log("anc share <name> <file>")
 		os.Exit(exitHelp)
 	}
 
-	portName := args[0]
-	filename := args[1]
+	var serviceName = args[0]
+	var filename = args[1]
 
 	if _, err := os.Stat(filename); err != nil {
-		fmt.Fprintf(os.Stderr, "file not found: %s\n", filename)
+		log("file not found: %s", filename)
 		os.Exit(exitError)
 	}
 
-	port, err := astral.Register(portName)
+	port, err := astral.Register(serviceName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "register error: %s\n", err.Error())
+		log("register error: %s", err.Error())
 		os.Exit(exitError)
 	}
 
-	fmt.Fprintf(os.Stderr, "listening on %s\n", portName)
+	log("serving %s on %s", filename, serviceName)
 
 	for conn := range port.AcceptAll() {
-		fmt.Fprintln(os.Stderr, addrName(conn.RemoteAddr()), "connected.")
+		var conn = conn.(*astral.Conn)
+		var peerName = displayName(conn.RemoteIdentity())
+
+		log("[%s] connected.\n", peerName)
 
 		file, err := os.Open(filename)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error opening file:", err)
+			log("[%s] error opening file: %s\n", peerName, err)
 			os.Exit(exitError)
 		}
 
-		conn := conn
 		go func() {
 			defer conn.Close()
 			n, err := io.Copy(conn, file)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, conn.RemoteAddr(), "error sending file:", err)
+				log("[%s] write error: %s\n", peerName, err)
 				return
 			}
-			fmt.Fprintln(os.Stderr, addrName(conn.RemoteAddr()), "downloaded", log.DataSize(n).HumanReadable())
+			log("[%s] sent %d bytes\n", peerName, n)
 		}()
 	}
 }
 
 func cmdExec(args []string) {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "anc exec <name> <exec_path>")
+		log("anc exec <name> <exec_path>")
 		os.Exit(exitHelp)
 	}
 
-	portName := args[0]
+	serviceName := args[0]
 	execPath := args[1]
 
-	l, err := astral.Register(portName)
+	service, err := astral.Register(serviceName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: register: %s\n", err.Error())
+		log("register error: %s", err)
 		os.Exit(exitError)
 	}
 
-	fmt.Fprintf(os.Stderr, "listening on %s\n", portName)
+	log("listening on %s", serviceName)
 
-	for conn := range l.AcceptAll() {
-		conn := conn
+	for conn := range service.AcceptAll() {
+		conn := conn.(*astral.Conn)
 
-		fmt.Fprintf(os.Stderr, "%s connected.\n", addrName(conn.RemoteAddr()))
+		var peerName = displayName(conn.RemoteIdentity())
+
+		log("[%s] connected.", peerName)
 
 		go func() {
 			proc := exec.Command(execPath)
@@ -207,7 +229,7 @@ func cmdExec(args []string) {
 			stderr, _ := proc.StderrPipe()
 			err = proc.Start()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				log("exec error: %s", err)
 				os.Exit(exitError)
 			}
 
@@ -238,7 +260,7 @@ func cmdExec(args []string) {
 			wg.Wait()
 			proc.Wait()
 
-			fmt.Fprintln(os.Stderr, conn.RemoteAddr(), "disconnected.")
+			log("[%s] disconnected.", peerName)
 		}()
 	}
 
@@ -249,10 +271,11 @@ func cmdQuery(args []string) {
 	var nodeID, query string
 
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "anc query [nodeid] <query>")
+		log("anc query [node] <query>")
 		os.Exit(exitHelp)
 	}
 
+	nodeID = "localnode"
 	query = args[0]
 	if len(args) > 1 {
 		nodeID = args[0]
@@ -261,18 +284,24 @@ func cmdQuery(args []string) {
 
 	conn, err := astral.QueryName(nodeID, query)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		log("error: %s", err)
 		os.Exit(exitError)
 	}
+	var peerName = displayName(conn.RemoteIdentity())
 
-	fmt.Fprintf(os.Stderr, "connected.\n")
+	log("connected.")
 
 	go func() {
-		io.Copy(conn, os.Stdin)
-		conn.Close()
+		n, _ := io.Copy(conn, os.Stdin)
+		if !wait {
+			conn.Close()
+		}
+		log("[%s] wrote %d bytes", peerName, n)
 	}()
 
-	io.Copy(os.Stdout, conn)
+	n, _ := io.Copy(os.Stdout, conn)
+	log("[%s] read %d bytes", peerName, n)
+
 	os.Exit(exitSuccess)
 }
 
@@ -280,7 +309,7 @@ func cmdDownload(args []string) {
 	var nodeID, query, filename string
 
 	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "anc download <nodeid> <query> [filename]")
+		log("anc download <node> <service> [filename]")
 		os.Exit(exitHelp)
 	}
 
@@ -292,45 +321,43 @@ func cmdDownload(args []string) {
 	}
 
 	if _, err := os.Stat(filename); err == nil {
-		fmt.Fprintf(os.Stderr, "file already exists: %s\n", filename)
+		log("file already exists: %s", filename)
 		os.Exit(exitError)
 	}
 
 	conn, err := astral.QueryName(nodeID, query)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		log("error: %s", err)
 		os.Exit(exitError)
 	}
 
-	fmt.Fprintf(os.Stderr, "connected.\n")
+	log("connected.")
 
 	file, err := os.Create(filename)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error creating file:", err)
+		log("error creating file %s: %s", filename, err)
 		os.Exit(exitError)
 	}
 
 	n, err := io.Copy(file, conn)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		log("download error: %s", err)
 		os.Exit(exitError)
 	}
 
-	fmt.Fprintln(os.Stderr, "Downloaded", log.DataSize(n).HumanReadable())
-
-	io.Copy(os.Stdout, conn)
+	log("read %d bytes", n)
 	os.Exit(exitSuccess)
 }
 
 func cmdResolve(args []string) {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "anc resolve <name>")
+		log("anc resolve <name>")
 		os.Exit(exitHelp)
 	}
 
 	identity, err := astral.Resolve(args[0])
 	if err != nil {
-		fmt.Println("error:", err)
+		log("error:", err)
 		os.Exit(exitError)
 	}
 	fmt.Println(identity.String())
@@ -340,12 +367,12 @@ func cmdResolve(args []string) {
 		return
 	}
 
-	fmt.Println("name", nodeInfo.Name)
+	fmt.Println("alias", nodeInfo.Name)
 }
 
 func help() {
-	fmt.Fprintln(os.Stderr, "astral netcat")
-	fmt.Fprintln(os.Stderr, "usage: anc <query|register|exec|share|download|resolve|help>")
+	log("astral netcat")
+	log("usage: anc <query|register|exec|share|download|resolve|help>")
 	os.Exit(exitHelp)
 }
 
@@ -354,24 +381,29 @@ func main() {
 		help()
 	}
 
-	cmd := os.Args[1]
+	flag.BoolVar(&wait, "w", false, "wait for remote EOF")
+	flag.Parse()
+
+	var args = flag.Args()
+
+	cmd := args[0]
 	switch cmd {
 	case "q", "query":
-		cmdQuery(os.Args[2:])
+		cmdQuery(args[1:])
 	case "r", "register":
-		cmdRegister(os.Args[2:])
+		cmdRegister(args[1:])
 	case "e", "exec":
-		cmdExec(os.Args[2:])
+		cmdExec(args[1:])
 	case "s", "share":
-		cmdShare(os.Args[2:])
+		cmdShare(args[1:])
 	case "d", "download":
-		cmdDownload(os.Args[2:])
+		cmdDownload(args[1:])
 	case "resolve":
-		cmdResolve(os.Args[2:])
+		cmdResolve(args[1:])
 	case "export":
-		cmdExport(os.Args[2:])
+		cmdExport(args[1:])
 	case "import":
-		cmdImport(os.Args[2:])
+		cmdImport(args[1:])
 	case "h", "help":
 		help()
 	default:
@@ -384,17 +416,4 @@ func displayName(identity id.Identity) string {
 		return info.Name
 	}
 	return identity.String()
-}
-
-func addrName(addr net.Addr) string {
-	if addr.Network() != "astral" {
-		return addr.String()
-	}
-
-	identity, err := id.ParsePublicKeyHex(addr.String())
-	if err != nil {
-		return addr.String()
-	}
-
-	return displayName(identity)
 }
