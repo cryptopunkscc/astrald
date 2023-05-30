@@ -64,7 +64,7 @@ func (m *Module) Run(ctx context.Context) error {
 }
 
 func (m *Module) ServeOut(ctx context.Context, astral string, tcp string) error {
-	port, err := m.node.Services().RegisterContext(ctx, astral, m.node.Identity())
+	port, err := m.node.Services().RegisterAs(ctx, astral, m.node.Identity())
 	if err != nil {
 		return err
 	}

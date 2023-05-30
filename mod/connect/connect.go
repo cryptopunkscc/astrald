@@ -12,7 +12,7 @@ type Connect struct {
 }
 
 func (mod *Connect) Run(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterContext(ctx, serviceHandle, mod.node.Identity())
+	port, err := mod.node.Services().RegisterAs(ctx, serviceHandle, mod.node.Identity())
 	if err != nil {
 		return err
 	}

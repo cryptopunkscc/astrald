@@ -15,7 +15,7 @@ type Module struct {
 var log = _log.Tag(ModuleName)
 
 func (m *Module) Run(ctx context.Context) error {
-	port, err := m.node.Services().RegisterContext(ctx, portName, m.node.Identity())
+	port, err := m.node.Services().RegisterAs(ctx, portName, m.node.Identity())
 	if err != nil {
 		return err
 	}

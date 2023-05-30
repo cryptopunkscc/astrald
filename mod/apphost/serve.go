@@ -131,7 +131,7 @@ func (s *Session) register(p proto.RegisterParams) error {
 	s.mod.log.Logv(2, "%s register %s -> %s", s.remoteID, p.Service, p.Target)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	srv, err := s.mod.node.Services().RegisterContext(ctx, p.Service, s.remoteID)
+	srv, err := s.mod.node.Services().RegisterAs(ctx, p.Service, s.remoteID)
 	if err == nil {
 		s.WriteErr(nil)
 		go func() {

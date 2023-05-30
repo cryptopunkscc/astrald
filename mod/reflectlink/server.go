@@ -8,7 +8,7 @@ import (
 )
 
 func (mod *Module) runServer(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterContext(ctx, portName, mod.node.Identity())
+	port, err := mod.node.Services().RegisterAs(ctx, portName, mod.node.Identity())
 	if err != nil {
 		return err
 	}

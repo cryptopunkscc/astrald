@@ -8,8 +8,8 @@ import (
 )
 
 type Services interface {
-	Register(name string, identity id.Identity) (*Service, error)
-	RegisterContext(ctx context.Context, name string, identity id.Identity) (*Service, error)
+	Register(ctx context.Context, name string) (*Service, error)
+	RegisterAs(ctx context.Context, name string, identity id.Identity) (*Service, error)
 	Query(ctx context.Context, query string, link *link.Link) (*Conn, error)
 	QueryAs(ctx context.Context, query string, link *link.Link, identity id.Identity) (*Conn, error)
 	Release(name string) error

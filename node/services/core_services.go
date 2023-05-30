@@ -32,26 +32,6 @@ func NewCoreServices(eventParent *event.Queue, log *log.Logger) *CoreService {
 	return hub
 }
 
-// Register registers a service with the provided name and returns its handler.
-func (m *CoreService) Register(name string, identity id.Identity) (*Service, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Check if the requested service is available
-	if _, found := m.services[name]; found {
-		return nil, ErrAlreadyRegistered
-	}
-
-	// Register the service
-	m.services[name] = NewService(m, name, identity)
-
-	m.log.Infov(1, "service %s registered", name)
-
-	m.events.Emit(EventServiceRegistered{name})
-
-	return m.services[name], nil
-}
-
 // List returns information about all registered services
 func (m *CoreService) List() []ServiceInfo {
 	m.mu.Lock()
@@ -68,8 +48,14 @@ func (m *CoreService) List() []ServiceInfo {
 	return list
 }
 
-func (m *CoreService) RegisterContext(ctx context.Context, name string, identity id.Identity) (*Service, error) {
-	service, err := m.Register(name, identity)
+// Register registers a service as the default identity
+func (m *CoreService) Register(ctx context.Context, name string) (*Service, error) {
+	return m.RegisterAs(ctx, name, id.Identity{}) //TODO: this should be node's identity by default
+}
+
+// RegisterAs registers a service as the specified identity
+func (m *CoreService) RegisterAs(ctx context.Context, name string, identity id.Identity) (*Service, error) {
+	service, err := m.register(name, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +66,25 @@ func (m *CoreService) RegisterContext(ctx context.Context, name string, identity
 	}()
 
 	return service, nil
+}
+
+func (m *CoreService) register(name string, identity id.Identity) (*Service, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Check if the requested service is available
+	if _, found := m.services[name]; found {
+		return nil, ErrAlreadyRegistered
+	}
+
+	// register the service
+	m.services[name] = NewService(m, name, identity)
+
+	m.log.Infov(1, "service %s registered", name)
+
+	m.events.Emit(EventServiceRegistered{name})
+
+	return m.services[name], nil
 }
 
 func (m *CoreService) Query(ctx context.Context, query string, link *link.Link) (*Conn, error) {

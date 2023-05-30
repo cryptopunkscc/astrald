@@ -21,7 +21,7 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterContext(ctx, "admin", mod.node.Identity())
+	port, err := mod.node.Services().RegisterAs(ctx, "admin", mod.node.Identity())
 	if err != nil {
 		return err
 	}

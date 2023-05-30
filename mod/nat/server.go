@@ -22,7 +22,7 @@ const cmdTime = "time"
 const maxTimeDistance = 30 * time.Second
 
 func (mod *Module) runServer(ctx context.Context) error {
-	port, err := mod.node.Services().Register(portName, mod.node.Identity())
+	port, err := mod.node.Services().RegisterAs(ctx, portName, mod.node.Identity())
 	if err != nil {
 		return err
 	}

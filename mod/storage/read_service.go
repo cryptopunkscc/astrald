@@ -20,7 +20,7 @@ type ReadService struct {
 }
 
 func (s *ReadService) Run(ctx context.Context) error {
-	srv, err := s.node.Services().RegisterContext(ctx, "storage.read", s.node.Identity())
+	srv, err := s.node.Services().RegisterAs(ctx, "storage.read", s.node.Identity())
 	if err != nil {
 		return err
 	}
