@@ -4,18 +4,19 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
+	"math/rand"
 	"os"
 	"strings"
 )
 
 const defaultApphostAddr = "tcp:127.0.0.1:8625"
 
-type ClientInfo struct {
+type ApphostClient struct {
 	addr  string
 	token string
 }
 
-func (c *ClientInfo) Storage(identity id.Identity, service string) *Storage {
+func (c *ApphostClient) Storage(identity id.Identity, service string) *Storage {
 	return &Storage{
 		client:   c,
 		Identity: identity,
@@ -23,20 +24,24 @@ func (c *ClientInfo) Storage(identity id.Identity, service string) *Storage {
 	}
 }
 
-func (c *ClientInfo) LocalStorage() *Storage {
+func (c *ApphostClient) Discovery() *Discovery {
+	return NewDiscovery(c)
+}
+
+func (c *ApphostClient) LocalStorage() *Storage {
 	return c.Storage(id.Identity{}, "storage.read")
 }
 
-var Client ClientInfo
+var Client ApphostClient
 
-func NewClient(addr string, token string) *ClientInfo {
-	return &ClientInfo{
+func NewClient(addr string, token string) *ApphostClient {
+	return &ApphostClient{
 		addr:  addr,
 		token: token,
 	}
 }
 
-func (c *ClientInfo) Session() (*Session, error) {
+func (c *ApphostClient) Session() (*Session, error) {
 	if len(c.addr) == 0 {
 		return nil, errors.New("missing apphost address")
 	}
@@ -49,7 +54,7 @@ func (c *ClientInfo) Session() (*Session, error) {
 	return nil, errors.New("apphost unrachable")
 }
 
-func (c *ClientInfo) Query(remoteID id.Identity, query string) (conn *Conn, err error) {
+func (c *ApphostClient) Query(remoteID id.Identity, query string) (conn *Conn, err error) {
 	s, err := c.Session()
 	if err != nil {
 		return nil, err
@@ -58,7 +63,7 @@ func (c *ClientInfo) Query(remoteID id.Identity, query string) (conn *Conn, err 
 	return s.Query(remoteID, query)
 }
 
-func (c *ClientInfo) QueryName(name string, query string) (conn *Conn, err error) {
+func (c *ApphostClient) QueryName(name string, query string) (conn *Conn, err error) {
 	identity, err := c.Resolve(name)
 	if err != nil {
 		return
@@ -67,7 +72,7 @@ func (c *ClientInfo) QueryName(name string, query string) (conn *Conn, err error
 	return c.Query(identity, query)
 }
 
-func (c *ClientInfo) Resolve(name string) (id.Identity, error) {
+func (c *ApphostClient) Resolve(name string) (id.Identity, error) {
 	s, err := c.Session()
 	if err != nil {
 		return id.Identity{}, err
@@ -76,7 +81,7 @@ func (c *ClientInfo) Resolve(name string) (id.Identity, error) {
 	return s.Resolve(name)
 }
 
-func (c *ClientInfo) NodeInfo(identity id.Identity) (info proto.NodeInfoData, err error) {
+func (c *ApphostClient) NodeInfo(identity id.Identity) (info proto.NodeInfoData, err error) {
 	s, err := c.Session()
 	if err != nil {
 		return
@@ -85,7 +90,7 @@ func (c *ClientInfo) NodeInfo(identity id.Identity) (info proto.NodeInfoData, er
 	return s.NodeInfo(identity)
 }
 
-func (c *ClientInfo) Register(service string) (l *Listener, err error) {
+func (c *ApphostClient) Register(service string) (l *Listener, err error) {
 	s, err := c.Session()
 	if err != nil {
 		return
@@ -119,7 +124,7 @@ func (c *ClientInfo) Register(service string) (l *Listener, err error) {
 	return
 }
 
-func (c *ClientInfo) Exec(identity id.Identity, app string, args []string, env []string) error {
+func (c *ApphostClient) Exec(identity id.Identity, app string, args []string, env []string) error {
 	s, err := c.Session()
 	if err != nil {
 		return err
@@ -172,4 +177,13 @@ func init() {
 	}
 
 	Client.token = os.Getenv(proto.EnvKeyToken)
+}
+
+func randomName(length int) (s string) {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	var name = make([]byte, length)
+	for i := 0; i < len(name); i++ {
+		name[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(name[:])
 }

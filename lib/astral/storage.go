@@ -8,7 +8,7 @@ import (
 )
 
 type Storage struct {
-	client   *ClientInfo
+	client   *ApphostClient
 	Identity id.Identity
 	Service  string
 }

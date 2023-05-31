@@ -79,7 +79,7 @@ func (m *CoreService) Query(ctx context.Context, identity id.Identity, query str
 		panic("service has nil handler")
 	}
 
-	service.handler(q)
+	service.handler(ctx, q)
 
 	select {
 	case accepted := <-q.response:
@@ -100,7 +100,7 @@ func (m *CoreService) Query(ctx context.Context, identity id.Identity, query str
 }
 
 // Register registers a service as the specified identity
-func (m *CoreService) Register(ctx context.Context, identity id.Identity, name string, handler HandlerFunc) (*Service, error) {
+func (m *CoreService) Register(ctx context.Context, identity id.Identity, name string, handler QueryHandlerFunc) (*Service, error) {
 	service, err := m.register(name, identity, handler)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (m *CoreService) Register(ctx context.Context, identity id.Identity, name s
 	return service, nil
 }
 
-func (m *CoreService) register(name string, identity id.Identity, handler HandlerFunc) (*Service, error) {
+func (m *CoreService) register(name string, identity id.Identity, handler QueryHandlerFunc) (*Service, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

@@ -14,10 +14,7 @@ type Connect struct {
 }
 
 func (mod *Connect) Run(ctx context.Context) error {
-	_, err := mod.node.Services().Register(ctx, mod.node.Identity(), serviceName, func(query *services.Query) error {
-		mod.handleQuery(ctx, query)
-		return nil
-	})
+	_, err := mod.node.Services().Register(ctx, mod.node.Identity(), serviceName, mod.handleQuery)
 	if err != nil {
 		return err
 	}

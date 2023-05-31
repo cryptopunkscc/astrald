@@ -62,14 +62,11 @@ func (m *Module) Run(ctx context.Context) error {
 }
 
 func (m *Module) runServer(ctx context.Context) error {
-	_, err := m.node.Services().Register(ctx, m.node.Identity(), portName, func(query *services.Query) error {
-		m.handleQuery(query)
-		return nil
-	})
+	_, err := m.node.Services().Register(ctx, m.node.Identity(), portName, m.handleQuery)
 	return err
 }
 
-func (m *Module) handleQuery(q *services.Query) error {
+func (m *Module) handleQuery(_ context.Context, q *services.Query) error {
 	if q.Source() == services.SourceLocal {
 		q.Reject()
 		return errors.New("local query not allowed")

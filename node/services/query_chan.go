@@ -1,6 +1,9 @@
 package services
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 type QueryChan chan *Query
 
@@ -16,10 +19,13 @@ func (l QueryChan) Accept() (*Conn, error) {
 	return q.Accept()
 }
 
-func (l QueryChan) Push(q *Query) error {
+func (l QueryChan) Push(ctx context.Context, q *Query) error {
 	select {
 	case l <- q:
 		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+
 	default:
 		return ErrQueueOverflow
 	}
