@@ -3,51 +3,44 @@ package services
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"sync"
+	"sync/atomic"
 )
+
+const SourceNetwork = "network"
+const SourceLocal = "local"
 
 // Query is a request handler sent to the port handler
 type Query struct {
-	query      string
-	link       *link.Link
-	response   chan bool
-	connection chan *Conn
-	err        error
-	mu         sync.Mutex
-	remoteID   id.Identity
+	query    string
+	source   string
+	link     *link.Link
+	response chan bool
+	handled  atomic.Bool
+	conn     *Conn
+	err      error
+	remoteID id.Identity
 }
 
-func NewQuery(query string, link *link.Link, remoteID id.Identity) *Query {
+func newQuery(query string, link *link.Link, remoteID id.Identity, conn *Conn) *Query {
 	return &Query{
-		query:      query,
-		link:       link,
-		remoteID:   remoteID,
-		response:   make(chan bool, 1),
-		connection: make(chan *Conn, 1),
+		query:    query,
+		link:     link,
+		remoteID: remoteID,
+		conn:     conn,
+		response: make(chan bool, 1),
 	}
-}
-
-// Link returns the link from which the query is coming or nil in case of local queries
-func (query *Query) Link() *link.Link {
-	return query.link
 }
 
 // RemoteIdentity returns the remote identity of the caller
 func (query *Query) RemoteIdentity() id.Identity {
-	if !query.remoteID.IsZero() {
-		return query.remoteID
-	}
-
-	if query.link != nil {
-		return query.link.RemoteIdentity()
-	}
-
-	return id.Identity{}
+	return query.remoteID
 }
 
-// IsLocal returns true if query is local
-func (query *Query) IsLocal() bool {
-	return query.link == nil
+func (query *Query) Source() string {
+	if query.link != nil {
+		return SourceNetwork
+	}
+	return SourceLocal
 }
 
 // Query returns query string
@@ -57,33 +50,29 @@ func (query *Query) Query() string {
 
 // Reject rejects the query
 func (query *Query) Reject() error {
-	query.mu.Lock()
-	defer query.mu.Unlock()
-
-	query.response <- false
-	close(query.response)
-
+	if query.handled.CompareAndSwap(false, true) {
+		query.response <- false
+		query.err = ErrQueryHandled
+		return nil
+	}
 	return query.err
 }
 
 // Accept accepts the query
 func (query *Query) Accept() (*Conn, error) {
-	query.mu.Lock()
-	defer query.mu.Unlock()
-
-	if query.err != nil {
-		return nil, query.err
+	if query.handled.CompareAndSwap(false, true) {
+		query.response <- true
+		query.err = ErrQueryHandled
+		return query.conn, nil
 	}
-
-	query.response <- true
-	close(query.response)
-
-	return <-query.connection, nil
+	return nil, query.err
 }
 
-func (query *Query) setError(e error) {
-	query.mu.Lock()
-	defer query.mu.Unlock()
-
-	query.err = e
+func (query *Query) cancel(e error) error {
+	if query.handled.CompareAndSwap(false, true) {
+		query.response <- false
+		query.err = e
+		return nil
+	}
+	return query.err
 }

@@ -2,11 +2,13 @@ package keepalive
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"sync"
 	"time"
 )
@@ -60,29 +62,30 @@ func (m *Module) Run(ctx context.Context) error {
 }
 
 func (m *Module) runServer(ctx context.Context) error {
-	port, err := m.node.Services().RegisterAs(ctx, portName, m.node.Identity())
-	if err != nil {
-		return err
+	_, err := m.node.Services().Register(ctx, m.node.Identity(), portName, func(query *services.Query) error {
+		m.handleQuery(query)
+		return nil
+	})
+	return err
+}
+
+func (m *Module) handleQuery(q *services.Query) error {
+	if q.Source() == services.SourceLocal {
+		q.Reject()
+		return errors.New("local query not allowed")
 	}
 
-	for q := range port.Queries() {
-		if q.IsLocal() {
-			q.Reject()
-			continue
-		}
-
-		conn, err := q.Accept()
-		if err == nil {
-			conn.Close()
-		}
-
-		// disable timeout on the link
-		conn.Link().Idle().SetTimeout(0)
-		log.Log("timeout disabled for %s over %s",
-			conn.Link().RemoteIdentity(),
-			conn.Link().Network(),
-		)
+	conn, err := q.Accept()
+	if err == nil {
+		conn.Close()
 	}
+
+	// disable timeout on the link
+	conn.Link().Idle().SetTimeout(0)
+	log.Log("timeout disabled for %s over %s",
+		conn.Link().RemoteIdentity(),
+		conn.Link().Network(),
+	)
 
 	return nil
 }

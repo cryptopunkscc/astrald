@@ -87,7 +87,12 @@ func (cmd *CmdServices) release(term *Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	return cmd.mod.node.Services().Release(args[0])
+	service, err := cmd.mod.node.Services().Find(args[0])
+	if err != nil {
+		return err
+	}
+
+	return service.Close()
 }
 
 func (cmd *CmdServices) help(term *Terminal) error {

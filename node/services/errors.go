@@ -10,6 +10,9 @@ var ErrAlreadyRegistered = errors.New("service already registered")
 // ErrRejected - connection request was rejected
 var ErrRejected = errors.New("rejected")
 
+// ErrQueryHandled - Reject/Accept called more than once
+var ErrQueryHandled = errors.New("query already handled")
+
 // ErrServiceNotFound - provided port has not been registered
 var ErrServiceNotFound = errors.New("service not found")
 

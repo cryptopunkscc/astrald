@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"io"
 	"strings"
 )
@@ -21,14 +22,20 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterAs(ctx, "admin", mod.node.Identity())
+	var queries = services.NewQueryChan(4)
+	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), "admin", queries.Push)
 	if err != nil {
 		return err
 	}
 
-	for query := range port.Queries() {
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
+
+	for query := range queries {
 		// Only accept local queries
-		if !query.IsLocal() {
+		if query.Source() != services.SourceLocal {
 			query.Reject()
 			continue
 		}

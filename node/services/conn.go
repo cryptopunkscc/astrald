@@ -32,15 +32,15 @@ func (conn Conn) Outbound() bool {
 }
 
 // pipe creates a pair of conns that talk to each other
-func pipe(query string, link *link.Link) (Conn, Conn) {
+func pipe(query string, link *link.Link) (*Conn, *Conn) {
 	l, r := streams.Pipe()
 
-	return Conn{
+	return &Conn{
 			query:           query,
 			link:            link,
 			ReadWriteCloser: l,
 			outbound:        true,
-		}, Conn{
+		}, &Conn{
 			query:           query,
 			link:            link,
 			ReadWriteCloser: r,

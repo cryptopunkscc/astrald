@@ -8,11 +8,9 @@ import (
 )
 
 type Services interface {
-	Register(ctx context.Context, name string) (*Service, error)
-	RegisterAs(ctx context.Context, name string, identity id.Identity) (*Service, error)
-	Query(ctx context.Context, query string, link *link.Link) (*Conn, error)
-	QueryAs(ctx context.Context, query string, link *link.Link, identity id.Identity) (*Conn, error)
-	Release(name string) error
+	Register(ctx context.Context, identity id.Identity, name string, handler HandlerFunc) (*Service, error)
+	Query(ctx context.Context, caller id.Identity, query string, link *link.Link) (*Conn, error)
+	Find(name string) (*Service, error)
 	List() []ServiceInfo
 }
 

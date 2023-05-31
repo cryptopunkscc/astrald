@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
 	"net"
 	"strings"
@@ -64,12 +65,18 @@ func (m *Module) Run(ctx context.Context) error {
 }
 
 func (m *Module) ServeOut(ctx context.Context, astral string, tcp string) error {
-	port, err := m.node.Services().RegisterAs(ctx, astral, m.node.Identity())
+	var queries = services.NewQueryChan(4)
+	service, err := m.node.Services().Register(ctx, m.node.Identity(), astral, queries.Push)
 	if err != nil {
 		return err
 	}
 
-	for query := range port.Queries() {
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
+
+	for query := range queries {
 		outConn, err := net.Dial("tcp", tcp)
 		if err != nil {
 			m.log.Errorv(1, "error forwarding %s to %s: %s", astral, tcp, err)

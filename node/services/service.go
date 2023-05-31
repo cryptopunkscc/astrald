@@ -1,39 +1,48 @@
 package services
 
 import (
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"sync/atomic"
 	"time"
 )
 
-const queryQueueSize = 4
+type HandlerFunc func(query *Query) error
 
 // Service represents a registered service
 type Service struct {
 	name         string
-	queries      chan *Query
+	handler      HandlerFunc
 	manager      *CoreService
 	identity     id.Identity
 	registeredAt time.Time
+	done         chan struct{}
+	closed       atomic.Bool
 }
 
-func NewService(hub *CoreService, name string, identity id.Identity) *Service {
+func newService(hub *CoreService, identity id.Identity, name string, handler HandlerFunc) *Service {
 	return &Service{
-		name:         name,
-		identity:     identity,
-		registeredAt: time.Now(),
 		manager:      hub,
-		queries:      make(chan *Query, queryQueueSize),
+		identity:     identity,
+		name:         name,
+		handler:      handler,
+		registeredAt: time.Now(),
+		done:         make(chan struct{}),
 	}
-}
-
-// Queries returns a channel with incoming queries
-func (service *Service) Queries() <-chan *Query {
-	return service.queries
 }
 
 // Close closees the service
 func (service *Service) Close() error {
-	return service.manager.Release(service.name)
+	if service.closed.CompareAndSwap(false, true) {
+		service.manager.release(service.name)
+		close(service.done)
+		return nil
+	}
+	return errors.New("already done")
+}
+
+func (service *Service) Done() <-chan struct{} {
+	return service.done
 }
 
 // Name returns service's name

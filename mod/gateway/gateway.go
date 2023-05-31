@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
+	"sync"
 )
 
 const queryConnect = "connect"
@@ -21,35 +22,41 @@ type Gateway struct {
 var log = _log.Tag(ModuleName)
 
 func (mod *Gateway) Run(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterAs(ctx, gw.PortName, mod.node.Identity())
+	var queries = services.NewQueryChan(8)
+
+	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), gw.PortName, queries.Push)
 	if err != nil {
 		return err
 	}
 
-	for req := range port.Queries() {
-		conn, err := req.Accept()
-		if err != nil {
-			continue
-		}
-
+	var wg sync.WaitGroup
+	wg.Add(128)
+	for i := 0; i < 128; i++ {
 		go func() {
-			if err := mod.handleConn(ctx, conn); err != nil {
-				cslq.Encode(conn, "c", false)
-				log.Error("serve error: %s", err)
+			for query := range queries {
+				mod.handleQuery(ctx, query)
 			}
-			defer conn.Close()
+			wg.Done()
 		}()
 	}
+
+	<-service.Done()
+	close(queries)
+	wg.Wait()
 
 	return nil
 }
 
-func (mod *Gateway) handleConn(ctx context.Context, conn *services.Conn) error {
-	c := cslq.NewEndec(conn)
+func (mod *Gateway) handleQuery(ctx context.Context, query *services.Query) error {
+	conn, err := query.Accept()
+	if err != nil {
+		return err
+	}
 
+	var c = cslq.NewEndec(conn)
 	var cookie string
 
-	err := c.Decode("[c]c", &cookie)
+	err = c.Decode("[c]c", &cookie)
 	if err != nil {
 		return err
 	}

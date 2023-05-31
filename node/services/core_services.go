@@ -48,14 +48,60 @@ func (m *CoreService) List() []ServiceInfo {
 	return list
 }
 
-// Register registers a service as the default identity
-func (m *CoreService) Register(ctx context.Context, name string) (*Service, error) {
-	return m.RegisterAs(ctx, name, id.Identity{}) //TODO: this should be node's identity by default
+func (m *CoreService) Find(name string) (*Service, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Fetch the service
+	service, found := m.services[name]
+	if !found {
+		return nil, ErrServiceNotFound
+	}
+
+	return service, nil
 }
 
-// RegisterAs registers a service as the specified identity
-func (m *CoreService) RegisterAs(ctx context.Context, name string, identity id.Identity) (*Service, error) {
-	service, err := m.register(name, identity)
+func (m *CoreService) Query(ctx context.Context, identity id.Identity, query string, link *link.Link) (*Conn, error) {
+	// Fetch the service
+	service, err := m.Find(query)
+	if err != nil {
+		return nil, err
+	}
+
+	cliConn, srvConn := pipe(query, link)
+	srvConn.remoteID = identity
+	cliConn.remoteID = service.Identity()
+
+	// pass the query to the service
+	var q = newQuery(query, link, identity, srvConn)
+
+	if service.handler == nil {
+		panic("service has nil handler")
+	}
+
+	service.handler(q)
+
+	select {
+	case accepted := <-q.response:
+		if accepted {
+			return cliConn, nil
+		}
+		return nil, ErrRejected
+
+	case <-ctx.Done():
+		q.cancel(ctx.Err())
+		return nil, ctx.Err()
+
+	case <-time.After(queryResponseTimeout):
+		q.cancel(ErrTimeout)
+		return nil, ErrTimeout
+	}
+
+}
+
+// Register registers a service as the specified identity
+func (m *CoreService) Register(ctx context.Context, identity id.Identity, name string, handler HandlerFunc) (*Service, error) {
+	service, err := m.register(name, identity, handler)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +114,7 @@ func (m *CoreService) RegisterAs(ctx context.Context, name string, identity id.I
 	return service, nil
 }
 
-func (m *CoreService) register(name string, identity id.Identity) (*Service, error) {
+func (m *CoreService) register(name string, identity id.Identity, handler HandlerFunc) (*Service, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -78,7 +124,7 @@ func (m *CoreService) register(name string, identity id.Identity) (*Service, err
 	}
 
 	// register the service
-	m.services[name] = NewService(m, name, identity)
+	m.services[name] = newService(m, identity, name, handler)
 
 	m.log.Infov(1, "service %s registered", name)
 
@@ -87,71 +133,16 @@ func (m *CoreService) register(name string, identity id.Identity) (*Service, err
 	return m.services[name], nil
 }
 
-func (m *CoreService) Query(ctx context.Context, query string, link *link.Link) (*Conn, error) {
-	return m.QueryAs(ctx, query, link, link.RemoteIdentity())
-}
-
-func (m *CoreService) QueryAs(ctx context.Context, query string, link *link.Link, identity id.Identity) (*Conn, error) {
-	// Fetch the service
-	service, err := m.getService(query)
-	if err != nil {
-		return nil, err
-	}
-
-	// pass the query to the service
-	q := NewQuery(query, link, identity)
-	select {
-	case service.queries <- q:
-
-	case <-ctx.Done():
-		return nil, ctx.Err()
-
-	default:
-		return nil, ErrQueueOverflow
-	}
-
-	// Wait for the response
-	var accepted bool
-	select {
-	case accepted = <-q.response:
-
-	case <-ctx.Done():
-		q.setError(ctx.Err())
-		return nil, ctx.Err()
-
-	case <-time.After(queryResponseTimeout):
-		q.setError(ErrTimeout)
-		return nil, ErrTimeout
-	}
-
-	if !accepted {
-		return nil, ErrRejected
-	}
-
-	// Create a pipe for the caller and the responder
-	clientConn, appConn := pipe(query, link)
-
-	appConn.remoteID = identity
-
-	// Send one side to the responder
-	q.connection <- &appConn
-	close(q.connection)
-
-	// Return the other side to the caller
-	return &clientConn, nil
-}
-
-// Release closes a service in the manager
-func (m *CoreService) Release(name string) error {
+// release removes a service from the manager
+func (m *CoreService) release(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	service, found := m.services[name]
+	_, found := m.services[name]
 	if !found {
 		return ErrServiceNotFound
 	}
 
-	close(service.queries)
 	delete(m.services, name)
 
 	m.log.Infov(1, "service %s released", name)
@@ -159,17 +150,4 @@ func (m *CoreService) Release(name string) error {
 	m.events.Emit(EventServiceReleased{name})
 
 	return nil
-}
-
-func (m *CoreService) getService(name string) (*Service, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Fetch the service
-	service, found := m.services[name]
-	if !found {
-		return nil, ErrServiceNotFound
-	}
-
-	return service, nil
 }

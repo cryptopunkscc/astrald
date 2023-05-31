@@ -2,48 +2,55 @@ package connect
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/services"
 )
 
-const serviceHandle = "connect"
+const serviceName = "connect"
 
 type Connect struct {
 	node node.Node
 }
 
 func (mod *Connect) Run(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterAs(ctx, serviceHandle, mod.node.Identity())
+	_, err := mod.node.Services().Register(ctx, mod.node.Identity(), serviceName, func(query *services.Query) error {
+		mod.handleQuery(ctx, query)
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 
-	for query := range port.Queries() {
-		// skip local queries
-		if query.IsLocal() {
-			query.Reject()
-			continue
-		}
-
-		conn, err := query.Accept()
-		if err != nil {
-			continue
-		}
-
-		infraConn := &wrapper{
-			local:           mod.node.Identity().Public(),
-			remote:          query.Link().RemoteIdentity(),
-			ReadWriteCloser: conn,
-			outbound:        false,
-		}
-
-		authConn, err := mod.node.Network().Server().Handshake(ctx, infraConn)
-		if err != nil {
-			infraConn.Close()
-			continue
-		}
-
-		mod.node.Network().AddSecureConn(authConn)
-	}
+	<-ctx.Done()
 
 	return nil
+}
+
+func (mod *Connect) handleQuery(ctx context.Context, query *services.Query) error {
+	// skip local queries
+	if query.Source() == services.SourceLocal {
+		query.Reject()
+		return errors.New("local query not allowed")
+	}
+
+	conn, err := query.Accept()
+	if err != nil {
+		return err
+	}
+
+	infraConn := &wrapper{
+		local:           mod.node.Identity().Public(),
+		remote:          query.RemoteIdentity(),
+		ReadWriteCloser: conn,
+		outbound:        false,
+	}
+
+	authConn, err := mod.node.Network().Server().Handshake(ctx, infraConn)
+	if err != nil {
+		infraConn.Close()
+		return err
+	}
+
+	return mod.node.Network().AddSecureConn(authConn)
 }

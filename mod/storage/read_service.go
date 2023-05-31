@@ -20,12 +20,18 @@ type ReadService struct {
 }
 
 func (s *ReadService) Run(ctx context.Context) error {
-	srv, err := s.node.Services().RegisterAs(ctx, "storage.read", s.node.Identity())
+	var queries = services.NewQueryChan(4)
+	service, err := s.node.Services().Register(ctx, s.node.Identity(), "storage.read", queries.Push)
 	if err != nil {
 		return err
 	}
 
-	for query := range srv.Queries() {
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
+
+	for query := range queries {
 		conn, err := query.Accept()
 		if err != nil {
 			continue
@@ -76,7 +82,7 @@ func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead, identit
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			conn, err := s.node.Services().QueryAs(ctx, source.Service, nil, identity)
+			conn, err := s.node.Services().Query(ctx, identity, source.Service, nil)
 
 			if err != nil {
 				switch {

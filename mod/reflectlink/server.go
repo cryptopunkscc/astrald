@@ -8,38 +8,35 @@ import (
 )
 
 func (mod *Module) runServer(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterAs(ctx, portName, mod.node.Identity())
+	var queries = services.NewQueryChan(1)
+	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), portName, queries.Push)
 	if err != nil {
 		return err
 	}
-	defer port.Close()
 
-	for {
-		select {
-		case query, ok := <-port.Queries():
-			if !ok {
-				return nil
-			}
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
 
-			// local queries happen outside of links
-			if query.IsLocal() {
-				query.Reject()
-				break
-			}
+	for query := range queries {
+		// local queries happen outside of links
+		if query.Source() == services.SourceLocal {
+			query.Reject()
+			break
+		}
 
-			conn, err := query.Accept()
-			if err != nil {
-				break
-			}
+		conn, err := query.Accept()
+		if err != nil {
+			break
+		}
 
-			if err := mod.handleRequest(conn); err != nil {
-				log.Error("handleRequest: %s", err)
-			}
-
-		case <-ctx.Done():
-			return nil
+		if err := mod.handleRequest(conn); err != nil {
+			log.Error("handleRequest: %s", err)
 		}
 	}
+
+	return nil
 }
 
 func (mod *Module) handleRequest(conn *services.Conn) error {

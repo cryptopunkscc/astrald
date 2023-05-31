@@ -22,48 +22,46 @@ const cmdTime = "time"
 const maxTimeDistance = 30 * time.Second
 
 func (mod *Module) runServer(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterAs(ctx, portName, mod.node.Identity())
+	var queries = services.NewQueryChan(1)
+	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), portName, queries.Push)
 	if err != nil {
 		return err
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
 
-		case query, ok := <-port.Queries():
-			if !ok {
-				return nil
-			}
-
-			if mod.mapping.extAddr.IsZero() {
-				query.Reject()
-				continue
-			}
-
-			if query.IsLocal() {
-				query.Reject()
-				continue
-			}
-
-			conn, err := query.Accept()
-			if err != nil {
-				continue
-			}
-
-			go func() {
-				if err := mod.serve(ctx, conn); err != nil {
-					switch {
-					case errors.Is(err, io.EOF):
-					default:
-						log.Error("serve: %s", err)
-					}
-				}
-			}()
-
+	for query := range queries {
+		if mod.mapping.extAddr.IsZero() {
+			query.Reject()
+			continue
 		}
+
+		if query.Source() == services.SourceLocal {
+			query.Reject()
+			continue
+		}
+
+		conn, err := query.Accept()
+		if err != nil {
+			continue
+		}
+
+		go func() {
+			if err := mod.serve(ctx, conn); err != nil {
+				switch {
+				case errors.Is(err, io.EOF):
+				default:
+					log.Error("serve: %s", err)
+				}
+			}
+		}()
+
 	}
+
+	return nil
 }
 
 func (mod *Module) serve(ctx context.Context, conn *services.Conn) error {

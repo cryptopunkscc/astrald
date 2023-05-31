@@ -15,12 +15,18 @@ type RegisterService struct {
 }
 
 func (m *RegisterService) Run(ctx context.Context) error {
-	srv, err := m.node.Services().RegisterAs(ctx, "storage.register", m.node.Identity())
+	var queries = services.NewQueryChan(4)
+	service, err := m.node.Services().Register(ctx, m.node.Identity(), "storage.register", queries.Push)
 	if err != nil {
 		return err
 	}
 
-	for query := range srv.Queries() {
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
+
+	for query := range queries {
 		conn, err := query.Accept()
 		if err != nil {
 			continue

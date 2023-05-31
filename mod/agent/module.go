@@ -4,6 +4,7 @@ import (
 	"context"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/services"
 )
 
 const portName = "sys.agent"
@@ -15,14 +16,21 @@ type Module struct {
 var log = _log.Tag(ModuleName)
 
 func (m *Module) Run(ctx context.Context) error {
-	port, err := m.node.Services().RegisterAs(ctx, portName, m.node.Identity())
+	var queries = services.NewQueryChan(1)
+
+	service, err := m.node.Services().Register(ctx, m.node.Identity(), portName, queries.Push)
 	if err != nil {
 		return err
 	}
 
-	for q := range port.Queries() {
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
+
+	for q := range queries {
 		// allow local connections only
-		if !q.IsLocal() {
+		if q.Source() != services.SourceLocal {
 			q.Reject()
 			continue
 		}

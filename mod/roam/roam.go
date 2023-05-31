@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/services"
 	"sync"
 	"time"
 )
@@ -74,14 +75,20 @@ func (mod *Module) monitorConnections(ctx context.Context) {
 }
 
 func (mod *Module) servePick(ctx context.Context) error {
-	port, err := mod.node.Services().RegisterAs(ctx, portPick, mod.node.Identity())
+	var queries = services.NewQueryChan(4)
+	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), portPick, queries.Push)
 	if err != nil {
 		return err
 	}
 
-	for query := range port.Queries() {
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
+
+	for query := range queries {
 		// skip local queries
-		if query.IsLocal() {
+		if query.Source() == services.SourceLocal {
 			query.Reject()
 			continue
 		}
@@ -116,14 +123,21 @@ func (mod *Module) servePick(ctx context.Context) error {
 }
 
 func (mod *Module) serveDrop(ctx context.Context) {
-	port, err := mod.node.Services().RegisterAs(ctx, portDrop, mod.node.Identity())
+	var queries = services.NewQueryChan(4)
+
+	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), portDrop, queries.Push)
 	if err != nil {
 		return
 	}
 
-	for query := range port.Queries() {
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
+
+	for query := range queries {
 		// skip local queries
-		if query.IsLocal() {
+		if query.Source() == services.SourceLocal {
 			query.Reject()
 			continue
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
+	"sync"
 )
 
 func (s *Session) Serve(ctx context.Context) error {
@@ -53,7 +54,7 @@ func (s *Session) query(params proto.QueryParams) error {
 	var conn io.ReadWriteCloser
 
 	if params.Identity.IsEqual(s.mod.node.Identity()) {
-		conn, err = s.mod.node.Services().QueryAs(s.ctx, params.Query, nil, s.remoteID)
+		conn, err = s.mod.node.Services().Query(s.ctx, s.remoteID, params.Query, nil)
 		if err != nil {
 			return err
 		}
@@ -130,39 +131,52 @@ func (s *Session) exec(params proto.ExecParams) error {
 func (s *Session) register(p proto.RegisterParams) error {
 	s.mod.log.Logv(2, "%s register %s -> %s", s.remoteID, p.Service, p.Target)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	srv, err := s.mod.node.Services().RegisterAs(ctx, p.Service, s.remoteID)
-	if err == nil {
-		s.WriteErr(nil)
+	var ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+	defer s.Close()
+
+	var queries = services.NewQueryChan(1)
+
+	service, err := s.mod.node.Services().Register(ctx, s.remoteID, p.Service, queries.Push)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrAlreadyRegistered):
+			return s.WriteErr(proto.ErrAlreadyRegistered)
+
+		default:
+			return s.WriteErr(proto.ErrUnexpected)
+		}
+	}
+	s.WriteErr(nil)
+
+	go func() {
+		io.Copy(streams.NilWriter{}, s)
+		service.Close()
+	}()
+
+	go func() {
+		<-service.Done()
+		close(queries)
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(128)
+	for i := 0; i < 128; i++ {
 		go func() {
-			var buf [16]byte
-			for {
-				if _, err := s.Read(buf[:]); err != nil {
-					break
-				}
-			}
-			cancel()
-			s.Close()
+			s.forwardWorker(queries, p.Target)
+			wg.Done()
 		}()
-		s.forwardService(srv, p.Target)
-		return nil
 	}
-	cancel()
+	wg.Wait()
 
-	switch {
-	case errors.Is(err, services.ErrAlreadyRegistered):
-		return s.WriteErr(proto.ErrAlreadyRegistered)
-
-	default:
-		return s.WriteErr(proto.ErrUnexpected)
-	}
+	return nil
 }
 
-func (s *Session) forwardService(srv *services.Service, target string) {
-	for query := range srv.Queries() {
+func (s *Session) forwardWorker(queries services.QueryChan, target string) {
+	for query := range queries {
 		c, err := proto.Dial(target)
 		if err != nil {
-			s.mod.log.Errorv(2, "%s -> %s dial error: %s", srv.Name(), target, err)
+			s.mod.log.Errorv(2, "%s -> %s dial error: %s", query.Query(), target, err)
 			query.Reject()
 			continue
 		}
@@ -189,6 +203,6 @@ func (s *Session) forwardService(srv *services.Service, target string) {
 			continue
 		}
 
-		go streams.Join(conn, qConn)
+		streams.Join(conn, qConn)
 	}
 }

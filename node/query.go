@@ -11,7 +11,7 @@ import (
 
 func (node *CoreNode) Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error) {
 	if remoteID.IsZero() || remoteID.IsEqual(node.identity) {
-		return node.Services().QueryAs(ctx, query, nil, node.identity)
+		return node.Services().Query(ctx, node.identity, query, nil)
 	}
 
 	return node.Network().Query(ctx, remoteID, query)
@@ -51,7 +51,7 @@ func (node *CoreNode) peerQueryWorker(ctx context.Context) error {
 
 func (node *CoreNode) executeQuery(ctx context.Context, query *link.Query) error {
 	// Query a session with the service
-	localConn, err := node.Services().Query(ctx, query.Query(), query.Link())
+	localConn, err := node.Services().Query(ctx, query.Link().RemoteIdentity(), query.Query(), query.Link())
 	if err != nil {
 		query.Reject()
 		return err
