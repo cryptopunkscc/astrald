@@ -2,18 +2,17 @@ package reflectlink
 
 import (
 	"context"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"sync"
 )
 
-const portName = "net.reflectlink"
+const serviceName = "net.reflectlink"
 
 type Module struct {
 	node node.Node
+	log  *log.Logger
 }
-
-var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
 	ctx, abort := context.WithCancel(ctx)

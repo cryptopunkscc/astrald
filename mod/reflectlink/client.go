@@ -16,9 +16,9 @@ func (mod *Module) runClient(ctx context.Context) error {
 			go func() {
 				if err := mod.processEvent(ctx, event); err != nil {
 					if !errors.Is(err, link.ErrRejected) {
-						log.Error("query: %s", err)
+						mod.log.Error("query: %s", err)
 					} else {
-						log.Errorv(1, "query: %s", err)
+						mod.log.Errorv(1, "query: %s", err)
 					}
 				}
 			}()
@@ -68,7 +68,7 @@ func (mod *Module) processLinkInfo(link *link.Link, jInfo *jsonInfo) error {
 }
 
 func (mod *Module) queryLinkInfo(ctx context.Context, link *link.Link) (*jsonInfo, error) {
-	conn, err := link.Query(ctx, portName)
+	conn, err := link.Query(ctx, serviceName)
 	if err != nil {
 		return nil, err
 	}

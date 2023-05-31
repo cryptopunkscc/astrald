@@ -79,7 +79,7 @@ func (m *CoreService) Query(ctx context.Context, identity id.Identity, query str
 		panic("service has nil handler")
 	}
 
-	service.handler(ctx, q)
+	go service.handler(ctx, q)
 
 	select {
 	case accepted := <-q.response:
@@ -93,10 +93,10 @@ func (m *CoreService) Query(ctx context.Context, identity id.Identity, query str
 		return nil, ctx.Err()
 
 	case <-time.After(queryResponseTimeout):
+		log.Errorv(1, "service %s (%s) failed due to timeout", service.Name(), service.Identity())
 		q.cancel(ErrTimeout)
 		return nil, ErrTimeout
 	}
-
 }
 
 // Register registers a service as the specified identity

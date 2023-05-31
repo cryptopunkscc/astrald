@@ -8,38 +8,38 @@ import (
 )
 
 func (mod *Module) runServer(ctx context.Context) error {
-	var queries = services.NewQueryChan(1)
-	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), portName, queries.Push)
+	_, err := mod.node.Services().Register(ctx, mod.node.Identity(), serviceName, mod.handleQuery)
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		<-service.Done()
-		close(queries)
-	}()
+	<-ctx.Done()
 
-	for query := range queries {
-		// local queries happen outside of links
-		if query.Source() == services.SourceLocal {
-			query.Reject()
-			break
-		}
+	return nil
+}
 
-		conn, err := query.Accept()
-		if err != nil {
-			break
-		}
+func (mod *Module) handleQuery(ctx context.Context, query *services.Query) error {
+	mod.log.Logv(2, "query from %s", query.RemoteIdentity())
+	if query.Source() == services.SourceLocal {
+		query.Reject()
+		return nil
+	}
 
-		if err := mod.handleRequest(conn); err != nil {
-			log.Error("handleRequest: %s", err)
-		}
+	conn, err := query.Accept()
+	if err != nil {
+		return nil
+	}
+
+	if err := mod.sendInfo(conn); err != nil {
+		mod.log.Error("sendInfo: %s", err)
 	}
 
 	return nil
 }
 
-func (mod *Module) handleRequest(conn *services.Conn) error {
+func (mod *Module) sendInfo(conn *services.Conn) error {
+	defer conn.Close()
+
 	var info = mod.getLocalInfo()
 	var remoteAddr = conn.Link().RemoteEndpoint()
 
@@ -54,7 +54,6 @@ func (mod *Module) handleRequest(conn *services.Conn) error {
 	}
 
 	conn.Write(bytes)
-	conn.Close()
 
 	return nil
 }
