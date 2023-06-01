@@ -3,6 +3,8 @@ package reflectlink
 import (
 	"context"
 	"encoding/json"
+	"github.com/cryptopunkscc/astrald/mod/discovery"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"time"
 )
@@ -11,6 +13,15 @@ func (mod *Module) runServer(ctx context.Context) error {
 	_, err := mod.node.Services().Register(ctx, mod.node.Identity(), serviceName, mod.handleQuery)
 	if err != nil {
 		return err
+	}
+
+	discovery, err := modules.Find[*discovery.Module](mod.node.Modules())
+	if err == nil {
+		discovery.AddSource(mod, mod.node.Identity())
+		go func() {
+			<-ctx.Done()
+			discovery.RemoveSource(mod)
+		}()
 	}
 
 	<-ctx.Done()

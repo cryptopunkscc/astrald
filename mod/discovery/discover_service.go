@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -48,16 +47,13 @@ func (m *DiscoveryService) handleQuery(ctx context.Context, query *services.Quer
 		go func() {
 			defer wg.Done()
 
-			sconn, err := m.node.Services().Query(ctx, query.RemoteIdentity(), source.Service, nil)
+			list, err := source.Discover(ctx, query.RemoteIdentity(), query.Source())
 			if err != nil {
-				m.RemoveSource(source)
 				return
 			}
 
-			for err == nil {
-				err = cslq.Invoke(sconn, func(msg proto.ServiceEntry) error {
-					return conn.Encode(msg)
-				})
+			for _, item := range list {
+				conn.Encode(item)
 			}
 		}()
 	}

@@ -41,10 +41,11 @@ func (m *RegisterService) handleQuery(_ context.Context, query *services.Query) 
 
 	return cslq.Invoke(conn, func(msg proto.MsgRegister) error {
 		var stream = proto.New(conn)
+		var remoteID = conn.RemoteIdentity()
 
-		source := &Source{
-			Identity: conn.RemoteIdentity(),
-			Service:  msg.Service,
+		source := &ServiceSource{
+			services: m.node.Services(),
+			service:  msg.Service,
 		}
 
 		service, err := m.node.Services().Find(msg.Service)
@@ -52,13 +53,13 @@ func (m *RegisterService) handleQuery(_ context.Context, query *services.Query) 
 			defer conn.Close()
 			return stream.WriteError(proto.ErrRegistrationFailed)
 		} else {
-			if !service.Identity().IsEqual(source.Identity) {
+			if !service.Identity().IsEqual(remoteID) {
 				defer conn.Close()
 				return stream.WriteError(proto.ErrRegistrationFailed)
 			}
 		}
 
-		m.AddSource(source)
+		m.AddSource(source, conn.RemoteIdentity())
 
 		go func() {
 			<-service.Done()

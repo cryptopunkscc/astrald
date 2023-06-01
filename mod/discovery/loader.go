@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -16,8 +17,10 @@ func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, erro
 		node:    node,
 		config:  defaultConfig,
 		log:     log.Tag(ModuleName),
-		sources: map[*Source]struct{}{},
+		sources: map[Source]id.Identity{},
 	}
+
+	mod.events.SetParent(node.Events())
 
 	assets.LoadYAML(ModuleName, &mod.config)
 
