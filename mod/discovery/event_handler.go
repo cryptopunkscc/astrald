@@ -36,6 +36,7 @@ func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPe
 	}
 
 	if len(list) > 0 {
+		srv.log.Infov(2, "discover %s: %v services available", e.Peer.Identity(), len(list))
 		srv.events.Emit(EventPeerServices{
 			Identity: e.Peer.Identity(),
 			Services: list,

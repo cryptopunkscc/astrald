@@ -18,7 +18,7 @@ type Module struct {
 }
 
 func (mod *Module) Discover(ctx context.Context, caller id.Identity, medium string) ([]proto.ServiceEntry, error) {
-	if medium == services.SourceLocal {
+	if medium == services.SourceNetwork {
 		return []proto.ServiceEntry{{
 			Name:  serviceName,
 			Type:  "net.reflectlink",
