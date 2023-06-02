@@ -4,23 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
+	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
-	"time"
 )
 
-func (mod *Module) runServer(ctx context.Context) error {
+type Server struct {
+	*Module
+}
+
+func (mod *Server) Run(ctx context.Context) error {
 	_, err := mod.node.Services().Register(ctx, mod.node.Identity(), serviceName, mod.handleQuery)
 	if err != nil {
 		return err
 	}
 
-	discovery, err := modules.Find[*discovery.Module](mod.node.Modules())
+	disco, err := modules.Find[*discovery.Module](mod.node.Modules())
 	if err == nil {
-		discovery.AddSource(mod, mod.node.Identity())
+		disco.AddSource(mod, mod.node.Identity())
 		go func() {
 			<-ctx.Done()
-			discovery.RemoveSource(mod)
+			disco.RemoveSource(mod)
 		}()
 	}
 
@@ -29,7 +33,7 @@ func (mod *Module) runServer(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) handleQuery(ctx context.Context, query *services.Query) error {
+func (mod *Server) handleQuery(ctx context.Context, query *services.Query) error {
 	mod.log.Logv(2, "query from %s", query.RemoteIdentity())
 	if query.Source() == services.SourceLocal {
 		query.Reject()
@@ -41,47 +45,23 @@ func (mod *Module) handleQuery(ctx context.Context, query *services.Query) error
 		return nil
 	}
 
-	if err := mod.sendInfo(conn); err != nil {
-		mod.log.Error("sendInfo: %s", err)
+	if err := mod.reflect(ctx, conn); err != nil {
+		mod.log.Error("reflect: %s", err)
 	}
 
 	return nil
 }
 
-func (mod *Module) sendInfo(conn *services.Conn) error {
+func (mod *Server) reflect(ctx context.Context, conn *services.Conn) error {
 	defer conn.Close()
 
-	var info = mod.getLocalInfo()
-	var remoteAddr = conn.Link().RemoteEndpoint()
+	var e = conn.Link().RemoteEndpoint()
+	var ref proto.Reflection
 
-	info.ReflectAddr = jsonAddr{
-		Network: remoteAddr.Network(),
-		Address: remoteAddr.Pack(),
+	ref.RemoteEndpoint = proto.Endpoint{
+		Network: e.Network(),
+		Address: e.String(),
 	}
 
-	bytes, err := json.Marshal(info)
-	if err != nil {
-		return err
-	}
-
-	conn.Write(bytes)
-
-	return nil
-}
-
-func (mod *Module) getLocalInfo() *jsonInfo {
-	var info = &jsonInfo{
-		AddrList: make([]jsonAddrSpec, 0),
-	}
-
-	for _, a := range mod.node.Infra().Endpoints() {
-		info.AddrList = append(info.AddrList, jsonAddrSpec{
-			Network:   a.Network(),
-			Address:   a.Pack(),
-			Public:    false,
-			ExpiresAt: int(time.Now().Add(time.Hour * 24 * 7 * 4).Unix()),
-		})
-	}
-
-	return info
+	return json.NewEncoder(conn).Encode(ref)
 }

@@ -3,81 +3,39 @@ package reflectlink
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
+	"github.com/cryptopunkscc/astrald/node/event"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"io"
-	"time"
 )
 
-func (mod *Module) runClient(ctx context.Context) error {
-	for e := range mod.node.Events().Subscribe(ctx) {
-		switch event := e.(type) {
-		case link.EventLinkEstablished:
-			go func() {
-				if err := mod.processEvent(ctx, event); err != nil {
-					if !errors.Is(err, link.ErrRejected) {
-						mod.log.Error("query: %s", err)
-					} else {
-						mod.log.Errorv(1, "query: %s", err)
-					}
-				}
-			}()
-		}
-	}
-
-	return nil
+type Client struct {
+	*Module
 }
 
-func (mod *Module) processEvent(ctx context.Context, event link.EventLinkEstablished) error {
-	info, err := mod.queryLinkInfo(ctx, event.Link)
+func (mod *Client) Run(ctx context.Context) error {
+	return event.Handle(ctx, mod.node.Events(), mod.handleLinkEstablished)
+}
+
+func (mod *Client) handleLinkEstablished(ctx context.Context, event link.EventLinkEstablished) error {
+	conn, err := event.Link.Query(ctx, serviceName)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	var ref proto.Reflection
+
+	err = json.NewDecoder(conn).Decode(&ref)
 	if err != nil {
 		return err
 	}
 
-	return mod.processLinkInfo(event.Link, info)
-}
-
-func (mod *Module) processLinkInfo(link *link.Link, jInfo *jsonInfo) error {
-	remoteID := link.RemoteIdentity()
-	info := &Info{Addrs: make([]AddrSpec, 0)}
-
-	for _, a := range jInfo.AddrList {
-		addr, err := mod.node.Infra().Unpack(a.Network, a.Address)
-		if err != nil {
-			continue
-		}
-
-		var expiresAt = time.Unix(int64(a.ExpiresAt), 0)
-
-		info.Addrs = append(info.Addrs, AddrSpec{
-			Addr:      addr,
-			ExpiresAt: expiresAt,
-			Public:    a.Public,
-		})
-
-		mod.node.Tracker().Add(remoteID, addr, expiresAt)
+	endpoint, err := mod.node.Infra().Parse(ref.RemoteEndpoint.Network, ref.RemoteEndpoint.Address)
+	if err != nil {
+		return err
 	}
 
-	if a, err := mod.node.Infra().Unpack(jInfo.ReflectAddr.Network, jInfo.ReflectAddr.Address); err == nil {
-		info.ReflectAddr = a
-	}
-
-	mod.node.Events().Emit(EventLinkReflected{Link: link, Info: info})
+	mod.node.Events().Emit(EventLinkReflected{Link: event.Link, Endpoint: endpoint})
 
 	return nil
-}
-
-func (mod *Module) queryLinkInfo(ctx context.Context, link *link.Link) (*jsonInfo, error) {
-	conn, err := link.Query(ctx, serviceName)
-	if err != nil {
-		return nil, err
-	}
-
-	bytes, err := io.ReadAll(conn)
-	info := &jsonInfo{}
-	if err := json.Unmarshal(bytes, &info); err != nil {
-		return nil, err
-	}
-
-	return info, nil
 }

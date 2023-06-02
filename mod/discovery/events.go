@@ -7,12 +7,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 )
 
-type EventPeerServices struct {
+type EventServicesDiscovered struct {
 	Identity id.Identity
 	Services []proto.ServiceEntry
 }
 
-func (e EventPeerServices) String() string {
+func (e EventServicesDiscovered) String() string {
 	s := log.Sprint("%s", e.Identity)
 
 	for _, srv := range e.Services {

@@ -7,46 +7,32 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/services"
-	"sync"
+	"github.com/cryptopunkscc/astrald/tasks"
 )
 
 const serviceName = "net.reflectlink"
+const serviceType = "net.reflectlink"
 
 type Module struct {
 	node node.Node
 	log  *log.Logger
 }
 
+func (mod *Module) Run(ctx context.Context) error {
+	return tasks.Group(
+		&Server{Module: mod},
+		&Client{Module: mod},
+	).Run(ctx)
+}
+
 func (mod *Module) Discover(ctx context.Context, caller id.Identity, medium string) ([]proto.ServiceEntry, error) {
 	if medium == services.SourceNetwork {
 		return []proto.ServiceEntry{{
 			Name:  serviceName,
-			Type:  "net.reflectlink",
+			Type:  serviceType,
 			Extra: nil,
 		}}, nil
 	}
 
 	return []proto.ServiceEntry{}, nil
-}
-
-func (mod *Module) Run(ctx context.Context) error {
-	ctx, abort := context.WithCancel(ctx)
-	defer abort()
-
-	var wg = sync.WaitGroup{}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		mod.runServer(ctx)
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		mod.runClient(ctx)
-	}()
-
-	wg.Wait()
-	return nil
 }

@@ -13,17 +13,14 @@ type EventHandler struct {
 }
 
 func (srv *EventHandler) Run(ctx context.Context) error {
-	return event.Handle(ctx, srv.node.Events(), func(e network.EventPeerLinked) error {
-		srv.handlePeerLinked(ctx, e)
-
-		return nil
-	})
+	return event.Handle(ctx, srv.node.Events(), srv.handlePeerLinked)
 }
 
 func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPeerLinked) error {
-	conn, err := srv.node.Network().Query(ctx, e.Peer.Identity(), discoverServiceName)
+	var identity = e.Peer.Identity()
+	var conn, err = srv.node.Network().Query(ctx, identity, discoverServiceName)
 	if err != nil {
-		srv.log.Errorv(2, "discover %s: %s", e.Peer.Identity(), err)
+		srv.log.Errorv(2, "discover %s: %s", identity, err)
 		return err
 	}
 
@@ -35,10 +32,12 @@ func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPe
 		})
 	}
 
+	srv.setCache(identity, list)
+
 	if len(list) > 0 {
-		srv.log.Infov(2, "discover %s: %v services available", e.Peer.Identity(), len(list))
-		srv.events.Emit(EventPeerServices{
-			Identity: e.Peer.Identity(),
+		srv.log.Infov(2, "discover %s: %v services available", identity, len(list))
+		srv.events.Emit(EventServicesDiscovered{
+			Identity: identity,
 			Services: list,
 		})
 	}
