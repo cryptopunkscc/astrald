@@ -30,7 +30,7 @@ func (m *Module) Run(ctx context.Context) error {
 
 	for q := range queries {
 		// allow local connections only
-		if q.Source() != services.SourceLocal {
+		if q.Origin() != services.OriginLocal {
 			q.Reject()
 			continue
 		}

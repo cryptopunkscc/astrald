@@ -47,7 +47,7 @@ func (m *DiscoveryService) handleQuery(ctx context.Context, query *services.Quer
 		go func() {
 			defer wg.Done()
 
-			list, err := source.Discover(ctx, query.RemoteIdentity(), query.Source())
+			list, err := source.Discover(ctx, query.RemoteIdentity(), query.Origin())
 			if err != nil {
 				return
 			}

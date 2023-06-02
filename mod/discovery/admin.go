@@ -40,7 +40,7 @@ func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
 
 func (adm *Admin) query(term *admin.Terminal, args []string) error {
 	var err error
-	var origin = services.SourceLocal
+	var origin = services.OriginLocal
 	var caller = adm.mod.node.Identity()
 	var callerArg string
 	var target = adm.mod.node.Identity()
@@ -49,7 +49,7 @@ func (adm *Admin) query(term *admin.Terminal, args []string) error {
 	f.SetOutput(term)
 	f.StringVar(&callerArg, "c", "", "set caller identity")
 	f.StringVar(&targetArg, "t", "", "set target identity")
-	f.StringVar(&origin, "o", services.SourceLocal, "set origin for the query (local/network)")
+	f.StringVar(&origin, "o", services.OriginLocal, "set origin for the query (local/network)")
 	f.Parse(args)
 	args = f.Args()
 

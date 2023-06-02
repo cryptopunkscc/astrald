@@ -26,7 +26,7 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) Discover(ctx context.Context, caller id.Identity, medium string) ([]proto.ServiceEntry, error) {
-	if medium == services.SourceNetwork {
+	if medium == services.OriginNetwork {
 		return []proto.ServiceEntry{{
 			Name:  serviceName,
 			Type:  serviceType,

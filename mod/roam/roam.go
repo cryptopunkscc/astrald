@@ -88,7 +88,7 @@ func (mod *Module) servePick(ctx context.Context) error {
 
 	for query := range queries {
 		// skip local queries
-		if query.Source() == services.SourceLocal {
+		if query.Origin() == services.OriginLocal {
 			query.Reject()
 			continue
 		}
@@ -137,7 +137,7 @@ func (mod *Module) serveDrop(ctx context.Context) {
 
 	for query := range queries {
 		// skip local queries
-		if query.Source() == services.SourceLocal {
+		if query.Origin() == services.OriginLocal {
 			query.Reject()
 			continue
 		}

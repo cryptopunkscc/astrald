@@ -35,7 +35,7 @@ func (mod *Server) Run(ctx context.Context) error {
 
 func (mod *Server) handleQuery(ctx context.Context, query *services.Query) error {
 	mod.log.Logv(2, "query from %s", query.RemoteIdentity())
-	if query.Source() == services.SourceLocal {
+	if query.Origin() == services.OriginLocal {
 		query.Reject()
 		return nil
 	}

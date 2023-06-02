@@ -67,7 +67,7 @@ func (m *Module) runServer(ctx context.Context) error {
 }
 
 func (m *Module) handleQuery(_ context.Context, q *services.Query) error {
-	if q.Source() == services.SourceLocal {
+	if q.Origin() == services.OriginLocal {
 		q.Reject()
 		return errors.New("local query not allowed")
 	}

@@ -6,13 +6,12 @@ import (
 	"sync/atomic"
 )
 
-const SourceNetwork = "network"
-const SourceLocal = "local"
+const OriginNetwork = "network"
+const OriginLocal = "local"
 
 // Query is a request handler sent to the port handler
 type Query struct {
 	query    string
-	source   string
 	link     *link.Link
 	response chan bool
 	handled  atomic.Bool
@@ -36,11 +35,11 @@ func (query *Query) RemoteIdentity() id.Identity {
 	return query.remoteID
 }
 
-func (query *Query) Source() string {
+func (query *Query) Origin() string {
 	if query.link != nil {
-		return SourceNetwork
+		return OriginNetwork
 	}
-	return SourceLocal
+	return OriginLocal
 }
 
 // Query returns query string

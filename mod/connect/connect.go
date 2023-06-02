@@ -26,7 +26,7 @@ func (mod *Connect) Run(ctx context.Context) error {
 
 func (mod *Connect) handleQuery(ctx context.Context, query *services.Query) error {
 	// skip local queries
-	if query.Source() == services.SourceLocal {
+	if query.Origin() == services.OriginLocal {
 		query.Reject()
 		return errors.New("local query not allowed")
 	}

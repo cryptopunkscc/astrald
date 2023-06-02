@@ -35,7 +35,7 @@ func (mod *Module) Run(ctx context.Context) error {
 
 	for query := range queries {
 		// Only accept local queries
-		if query.Source() != services.SourceLocal {
+		if query.Origin() != services.OriginLocal {
 			query.Reject()
 			continue
 		}
