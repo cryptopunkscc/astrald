@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/network"
 )
 
@@ -13,7 +13,7 @@ type EventHandler struct {
 }
 
 func (srv *EventHandler) Run(ctx context.Context) error {
-	return event.Handle(ctx, srv.node.Events(), srv.handlePeerLinked)
+	return events.Handle(ctx, srv.node.Events(), srv.handlePeerLinked)
 }
 
 func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPeerLinked) error {

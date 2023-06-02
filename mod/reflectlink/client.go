@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/tasks"
 )
 
 type Client struct {
@@ -13,7 +14,9 @@ type Client struct {
 }
 
 func (mod *Client) Run(ctx context.Context) error {
-	return event.Handle(ctx, mod.node.Events(), mod.handleLinkEstablished)
+	return tasks.Group(
+		events.Runner(mod.node.Events(), mod.handleLinkEstablished),
+	).Run(ctx)
 }
 
 func (mod *Client) handleLinkEstablished(ctx context.Context, event link.EventLinkEstablished) error {

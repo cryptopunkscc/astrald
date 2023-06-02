@@ -4,7 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/sig"
 	"time"
 )
@@ -21,7 +21,7 @@ func (l *Link) SetQueryHandler(queryHandler QueryHandlerFunc) {
 	l.queryHandler = queryHandler
 }
 
-func (l *Link) Events() *event.Queue {
+func (l *Link) Events() *events.Queue {
 	return &l.events
 }
 

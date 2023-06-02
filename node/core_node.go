@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -23,7 +23,7 @@ const logTag = "node"
 var _ Node = &CoreNode{}
 
 type CoreNode struct {
-	events     event.Queue
+	events     events.Queue
 	assets     assets.Store
 	config     Config
 	logConfig  LogConfig
@@ -150,7 +150,7 @@ func (node *CoreNode) Identity() id.Identity {
 }
 
 // Events returns the event queue for the node
-func (node *CoreNode) Events() *event.Queue {
+func (node *CoreNode) Events() *events.Queue {
 	return &node.events
 }
 

@@ -1,4 +1,4 @@
-package event
+package events
 
 import (
 	"context"
@@ -40,12 +40,6 @@ func (q *Queue) Subscribe(ctx context.Context) <-chan Event {
 	}()
 
 	return ch
-}
-
-// Handle will subscribe to the Queue for the duration of the context and will invoke fn for every
-// element that matches fn's argument type. If fn returns an error, Handle stops and retruns the error.
-func Handle[EventType Event](ctx context.Context, q *Queue, fn func(context.Context, EventType) error) error {
-	return sig.Handle(ctx, q.getQueue(), fn)
 }
 
 // SetParent sets the parent queue. All events emitted by this queue are propagated to the parent.

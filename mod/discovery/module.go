@@ -9,7 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"reflect"
 	"sync"
@@ -17,7 +17,7 @@ import (
 
 type Module struct {
 	node      node.Node
-	events    event.Queue
+	events    events.Queue
 	config    Config
 	log       *log.Logger
 	sources   map[Source]id.Identity

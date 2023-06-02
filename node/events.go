@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"reflect"
 )
 
@@ -15,7 +15,7 @@ func (node *CoreNode) handleEvents(ctx context.Context) error {
 	return nil
 }
 
-func (node *CoreNode) logEvent(e event.Event) {
+func (node *CoreNode) logEvent(e events.Event) {
 	var eventName = reflect.TypeOf(e).String()
 
 	if !node.logConfig.IsEventLoggable(eventName) {

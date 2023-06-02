@@ -8,7 +8,7 @@ import (
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/link/ctl"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/streams"
@@ -31,7 +31,7 @@ var log = _log.Tag("link")
 // Link represents an astral link over an authenticated transport
 type Link struct {
 	activity      sig.Activity
-	events        event.Queue
+	events        events.Queue
 	conn          net.SecureConn
 	mux           *mux.FrameMux
 	ctl           *ctl.Control

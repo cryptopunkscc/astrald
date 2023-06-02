@@ -2,7 +2,7 @@ package network
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
 	"sync/atomic"
@@ -12,14 +12,14 @@ import (
 type Peer struct {
 	id       id.Identity
 	links    *LinkSet
-	events   event.Queue
+	events   events.Queue
 	done     chan struct{}
 	unlinked atomic.Bool
 	mu       sync.Mutex
 }
 
 // newPeer returns a new Peer instance.
-func newPeer(id id.Identity, eventParent *event.Queue) *Peer {
+func newPeer(id id.Identity, eventParent *events.Queue) *Peer {
 	p := &Peer{
 		id:    id,
 		links: NewLinkSet(),
@@ -80,7 +80,7 @@ func (peer *Peer) Done() <-chan struct{} {
 }
 
 // Events returns the event queue of the peer
-func (peer *Peer) Events() *event.Queue {
+func (peer *Peer) Events() *events.Queue {
 	return &peer.events
 }
 

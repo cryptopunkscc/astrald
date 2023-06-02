@@ -6,7 +6,7 @@ import (
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/tracker"
@@ -23,7 +23,7 @@ type Module struct {
 var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
-	return event.Handle(ctx, mod.node.Events(), func(ctx context.Context, event network.EventPeerLinked) error {
+	return events.Handle(ctx, mod.node.Events(), func(ctx context.Context, event network.EventPeerLinked) error {
 		go func() {
 			nodeId := event.Peer.Identity()
 			log.Log("optimizing %s", nodeId)
@@ -70,7 +70,7 @@ func (mod *Module) Optimize(parent context.Context, peer *network.Peer) error {
 			}
 		}
 
-		event.Handle(ctx, mod.node.Events(), func(ctx context.Context, e tracker.EventNewEndpoint) error {
+		events.Handle(ctx, mod.node.Events(), func(ctx context.Context, e tracker.EventNewEndpoint) error {
 			if e.Identity.IsEqual(peer.Identity()) {
 				retryDialer.Add(e.TrackedEndpoint.Endpoint)
 			}

@@ -3,7 +3,7 @@ package tracker
 import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"gorm.io/gorm"
 )
 
@@ -14,13 +14,13 @@ const logTag = "tracker"
 type CoreTracker struct {
 	db     *gorm.DB
 	parser EndpointParser
-	events event.Queue
+	events events.Queue
 	log    *log.Logger
 }
 
 // NewCoreTracker returns a new instance of a CoreTracker. It will use db for persistency and the provided unpacker
 // to unpack addresses stored in the database.
-func NewCoreTracker(assets assets.Store, parser EndpointParser, log *log.Logger, events *event.Queue) (*CoreTracker, error) {
+func NewCoreTracker(assets assets.Store, parser EndpointParser, log *log.Logger, events *events.Queue) (*CoreTracker, error) {
 	var err error
 	var tracker = &CoreTracker{
 		parser: parser,

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
 	"time"
@@ -19,11 +19,11 @@ var _ Services = &CoreService{}
 type CoreService struct {
 	services map[string]*Service
 	mu       sync.Mutex
-	events   event.Queue
+	events   events.Queue
 	log      *log.Logger
 }
 
-func NewCoreServices(eventParent *event.Queue, log *log.Logger) *CoreService {
+func NewCoreServices(eventParent *events.Queue, log *log.Logger) *CoreService {
 	hub := &CoreService{
 		services: make(map[string]*Service),
 		log:      log.Tag(logTag),

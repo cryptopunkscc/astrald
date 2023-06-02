@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
 	"github.com/cryptopunkscc/astrald/node/infra/drivers/ip"
@@ -25,7 +25,7 @@ type Module struct {
 
 	entries map[string]*entry
 	mu      sync.Mutex
-	events  event.Queue
+	events  events.Queue
 	skip    map[string]struct{}
 }
 

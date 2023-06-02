@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/event"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/tracker"
@@ -28,7 +28,7 @@ type CoreNetwork struct {
 	peers        *PeerSet
 	server       *Server
 	localID      id.Identity
-	events       event.Queue
+	events       events.Queue
 	log          *log.Logger
 	tracker      *tracker.CoreTracker
 	infra        *infra.CoreInfra
@@ -60,7 +60,7 @@ func NewCoreNetwork(
 	localID id.Identity,
 	infra *infra.CoreInfra,
 	tracker *tracker.CoreTracker,
-	eventParent *event.Queue,
+	eventParent *events.Queue,
 	queryHandler link.QueryHandlerFunc,
 	log *log.Logger,
 ) (*CoreNetwork, error) {
@@ -135,7 +135,7 @@ func (n *CoreNetwork) Server() *Server {
 	return n.server
 }
 
-func (n *CoreNetwork) Events() *event.Queue {
+func (n *CoreNetwork) Events() *events.Queue {
 	return &n.events
 }
 
