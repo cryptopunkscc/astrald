@@ -14,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/resolver"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
-	"os"
 	"time"
 )
 
@@ -62,7 +61,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	// config
 	err = node.assets.LoadYAML("node", &node.config)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
+		if !errors.Is(err, assets.ErrNotFound) {
 			return nil, fmt.Errorf("error loading config: %w", err)
 		}
 	}
