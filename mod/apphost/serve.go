@@ -3,8 +3,12 @@ package apphost
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
+	"github.com/cryptopunkscc/astrald/mod/shift"
+	shiftp "github.com/cryptopunkscc/astrald/mod/shift/proto"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
@@ -59,7 +63,54 @@ func (s *Session) query(params proto.QueryParams) error {
 			return err
 		}
 	} else {
-		conn, err = s.mod.node.Network().Query(s.ctx, params.Identity, params.Query)
+		var caller id.Identity
+
+		if s.remoteID.IsEqual(s.mod.node.Identity()) {
+			conn, err = s.mod.node.Network().Query(s.ctx, params.Identity, params.Query)
+		} else {
+			// Get private key from the store
+			caller, err = s.mod.keys.Find(s.remoteID)
+			if err != nil {
+				log.Errorv(2, "no private key for %s", s.remoteID)
+				return proto.ErrUnauthorized
+			}
+
+			conn, err = s.mod.node.Network().Query(s.ctx, params.Identity, shift.ServiceName)
+			if err != nil {
+				log.Errorv(2, "error shifting identity: %s", err)
+				return proto.ErrUnauthorized
+			}
+
+			c := shiftp.New(conn)
+
+			var shiftParams shiftp.ShiftParams
+
+			shiftParams, err = shiftp.BuildShiftParams(caller, s.mod.node.Identity())
+			if err != nil {
+				return err
+			}
+
+			err = c.Encode(
+				shiftp.Cmd{Cmd: shiftp.CmdShift},
+				shiftParams,
+			)
+			if err != nil {
+				return err
+			}
+			if err = c.ReadError(); err != nil {
+				return err
+			}
+
+			err = c.Encode(shiftp.Cmd{Cmd: shiftp.CmdQuery},
+				shiftp.QueryParams{
+					Query: params.Query,
+				})
+			if err != nil {
+				return err
+			}
+
+			err = c.ReadError()
+		}
 	}
 
 	if err == nil {
@@ -71,14 +122,18 @@ func (s *Session) query(params proto.QueryParams) error {
 	switch {
 	case errors.Is(err, services.ErrRejected),
 		errors.Is(err, link.ErrRejected),
+		errors.Is(err, shiftp.ErrRejected),
 		errors.Is(err, services.ErrServiceNotFound):
 		return s.WriteErr(proto.ErrRejected)
+
+	case errors.Is(err, shiftp.ErrDenied):
+		return s.WriteErr(proto.ErrUnauthorized)
 
 	case errors.Is(err, services.ErrTimeout):
 		return s.WriteErr(proto.ErrTimeout)
 
 	default:
-		s.mod.log.Error("query %s", err)
+		s.mod.log.Error("unexpected error processing query: %s", err)
 		return s.WriteErr(proto.ErrUnexpected)
 	}
 }

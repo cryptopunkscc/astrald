@@ -16,6 +16,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/profile"
 	_ "github.com/cryptopunkscc/astrald/mod/reflectlink"
 	_ "github.com/cryptopunkscc/astrald/mod/roam"
+	_ "github.com/cryptopunkscc/astrald/mod/shift"
 	_ "github.com/cryptopunkscc/astrald/mod/storage"
 	_ "github.com/cryptopunkscc/astrald/mod/tcpfwd"
 )

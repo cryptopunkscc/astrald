@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"math/rand"
 	"net"
@@ -17,6 +18,7 @@ import (
 type Module struct {
 	config    Config
 	node      node.Node
+	keys      assets.KeyStore
 	conns     <-chan net.Conn
 	log       *log.Logger
 	listeners []net.Listener

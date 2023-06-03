@@ -151,23 +151,7 @@ func (adm *Admin) setAlias(_ *admin.Terminal, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	nodeName, newAlias := args[0], args[1]
-
-	var r = &Resolver{mod: adm.mod}
-
-	nodeID, err := r.Resolve(nodeName)
-	if err != nil {
-		return err
-	}
-
-	node, err := adm.mod.FindOrCreate(nodeID)
-	if err != nil {
-		return err
-	}
-
-	node.Alias = newAlias
-
-	return adm.mod.Save(node)
+	return adm.mod.SetAlias(args[0], args[1])
 }
 
 func (adm *Admin) parse(term *admin.Terminal, args []string) error {

@@ -129,3 +129,21 @@ func (m *Module) Delete(identity id.Identity) error {
 func (m *Module) Ready() <-chan struct{} {
 	return m.ready
 }
+
+func (m *Module) SetAlias(oldAlias, newAlias string) error {
+	var r = &Resolver{mod: m}
+
+	identity, err := r.Resolve(oldAlias)
+	if err != nil {
+		return err
+	}
+
+	node, err := m.FindOrCreate(identity)
+	if err != nil {
+		return err
+	}
+
+	node.Alias = newAlias
+
+	return m.Save(node)
+}

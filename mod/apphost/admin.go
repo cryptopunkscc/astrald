@@ -3,7 +3,10 @@ package apphost
 import (
 	"errors"
 	"flag"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/contacts"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,7 +18,7 @@ type Admin struct {
 
 func (adm *Admin) Exec(t *admin.Terminal, args []string) error {
 	if len(args) <= 1 {
-		return adm.usage(t)
+		return adm.help(t)
 	}
 
 	switch args[1] {
@@ -28,8 +31,11 @@ func (adm *Admin) Exec(t *admin.Terminal, args []string) error {
 	case "kill":
 		return adm.kill(t, args[2:])
 
+	case "keys":
+		return adm.keys(t, args[2:])
+
 	case "help":
-		return adm.usage(t)
+		return adm.help(t)
 
 	default:
 		return errors.New("unknown command")
@@ -40,7 +46,7 @@ func (adm *Admin) ShortDescription() string {
 	return "manage apps and permissions"
 }
 
-func (adm *Admin) usage(out *admin.Terminal) error {
+func (adm *Admin) help(out *admin.Terminal) error {
 	out.Println("usage: apphost <command>")
 	out.Println()
 	out.Println("commands:")
@@ -110,4 +116,37 @@ func (adm *Admin) kill(out *admin.Terminal, args []string) error {
 	}
 
 	return adm.mod.execs[i].Kill()
+}
+
+func (adm *Admin) keys(out *admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("keys: missing argument")
+	}
+
+	switch args[0] {
+	case "new":
+		key, err := id.GenerateIdentity()
+		if err != nil {
+			return err
+		}
+
+		if err = adm.mod.keys.Save(key); err != nil {
+			return err
+		}
+
+		out.Println("created identity:", key.PublicKeyHex())
+
+		if len(args) >= 2 {
+			alias := args[1]
+			modContacts, err := modules.Find[*contacts.Module](adm.mod.node.Modules())
+			if err != nil {
+				out.Println("cannot set alias:", err)
+				return nil
+			}
+
+			modContacts.SetAlias(key.PublicKeyHex(), alias)
+		}
+	}
+
+	return nil
 }

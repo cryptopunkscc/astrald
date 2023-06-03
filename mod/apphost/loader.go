@@ -14,6 +14,8 @@ const ModuleName = "apphost"
 type Loader struct{}
 
 func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
+	var err error
+
 	mod := &Module{
 		config:    defaultConfig,
 		node:      node,
@@ -23,13 +25,16 @@ func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, erro
 		log:       log.Tag(ModuleName),
 	}
 
-	assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(ModuleName, &mod.config)
+
+	mod.keys, err = assets.KeyStore()
+	if err != nil {
+		return nil, err
+	}
 
 	adm, err := modules.Find[*admin.Module](node.Modules())
 	if err == nil {
-		adm.AddCommand("apphost", &Admin{
-			mod: mod,
-		})
+		_ = adm.AddCommand("apphost", &Admin{mod: mod})
 	}
 
 	return mod, nil

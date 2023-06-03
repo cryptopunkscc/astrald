@@ -42,6 +42,10 @@ func (query *Query) Origin() string {
 	return OriginLocal
 }
 
+func (query *Query) Link() *link.Link {
+	return query.link
+}
+
 // Query returns query string
 func (query *Query) Query() string {
 	return query.query
