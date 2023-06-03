@@ -15,8 +15,25 @@ import (
 var _ Store = &FileStore{}
 
 type FileStore struct {
-	baseDir string
-	log     Logger
+	baseDir  string
+	log      Logger
+	keyStore KeyStore
+}
+
+func (store *FileStore) KeyStore() (KeyStore, error) {
+	if store.keyStore == nil {
+		db, err := store.OpenDB("keys.db")
+		if err != nil {
+			return nil, err
+		}
+
+		store.keyStore, err = NewGormKeyStore(db)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return store.keyStore, nil
 }
 
 func NewFileStore(baseDir string, log Logger) (*FileStore, error) {
