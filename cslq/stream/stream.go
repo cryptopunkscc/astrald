@@ -27,9 +27,14 @@ func NewStream(io io.ReadWriter, errorSpace ErrorSpace) *Stream {
 	}
 }
 
-// Encode encodes and writes a struct to the stream.
-func (stream *Stream) Encode(v interface{}) error {
-	return cslq.Encode(stream, "v", v)
+// Encode encodes and writes one or many structs to the stream.
+func (stream *Stream) Encode(v ...interface{}) error {
+	for _, i := range v {
+		if err := cslq.Encode(stream, "v", i); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Decode reads and decodes a struct from the stream. Argument v must be a pointer to a struct.
