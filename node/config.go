@@ -15,7 +15,7 @@ var defaultConfig = Config{
 	Alias: "localnode",
 	Modules: []string{
 		"admin", "contacts", "discovery", "agent", "apphost", "connect", "gateway", "net.keepalive",
-		"optimizer", "presence", "net.reflectlink", "roam", "net.tcpfwd", "profile",
+		"optimizer", "presence", "net.reflectlink", "roam", "net.tcpfwd", "profile", "shift",
 	},
 }
 
