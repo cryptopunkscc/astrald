@@ -59,9 +59,6 @@ func (s *Session) query(params proto.QueryParams) error {
 
 	if params.Identity.IsEqual(s.mod.node.Identity()) {
 		conn, err = s.mod.node.Services().Query(s.ctx, s.remoteID, params.Query, nil)
-		if err != nil {
-			return err
-		}
 	} else {
 		var caller id.Identity
 
@@ -80,6 +77,7 @@ func (s *Session) query(params proto.QueryParams) error {
 				log.Errorv(2, "error shifting identity: %s", err)
 				return proto.ErrUnauthorized
 			}
+			defer conn.Close()
 
 			c := shiftp.New(conn)
 

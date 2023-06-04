@@ -35,6 +35,7 @@ func (h *EventHandler) updateIdentity(identity id.Identity, serviceName string) 
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	var profile proto.Profile
 	err = json.NewDecoder(conn).Decode(&profile)
