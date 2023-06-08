@@ -14,7 +14,7 @@ func (drv *Driver) Endpoints() []net.Endpoint {
 	for _, gate := range drv.config.Gateways {
 		gateID, err := id.ParsePublicKeyHex(gate)
 		if err != nil {
-			log.Error("error parsing gateway %s: %s", gate, err.Error())
+			drv.log.Error("error parsing gateway %s: %s", gate, err.Error())
 			continue
 		}
 

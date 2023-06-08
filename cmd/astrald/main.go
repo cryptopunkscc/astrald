@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"os"
 	"os/signal"
@@ -59,11 +58,11 @@ func main() {
 	go func() {
 		for {
 			<-sigCh
-			log.Log("shutting down...")
+			fmt.Println("shutting down...")
 			shutdown()
 
 			<-sigCh
-			log.Log("forcing shutdown...")
+			fmt.Println("forcing shutdown...")
 			os.Exit(ExitForced)
 		}
 	}()

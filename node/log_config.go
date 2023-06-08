@@ -7,6 +7,7 @@ type LogConfig struct {
 	TagLevels     map[string]int    `yaml:"tag_levels,omitempty"`
 	TagColors     map[string]string `yaml:"tag_colors,omitempty"`
 	HideDate      bool              `yaml:"hide_date,omitempty"`
+	LogFile       string            `yaml:"log_file,omitempty"`
 }
 
 func (c LogConfig) isIncluded(event string) bool {

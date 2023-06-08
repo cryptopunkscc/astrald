@@ -23,20 +23,20 @@ func (drv *Driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 
 		key, err := drv.getPrivateKey()
 		if err != nil {
-			log.Error("getPrivateKey: %s", err)
+			drv.log.Error("getPrivateKey: %s", err)
 			return
 		}
 
 		l, err := drv.listen(ctx, key)
 		if err != nil {
-			log.Error("listen: %s", err)
+			drv.log.Error("listen: %s", err)
 			return
 		}
 		defer l.Close()
 
 		drv.serviceAddr, _ = Parse(l.Addr())
 
-		log.Log("listen %s", drv.serviceAddr)
+		drv.log.Log("listen %s", drv.serviceAddr)
 
 		for {
 			conn, err := l.Accept()
@@ -45,7 +45,7 @@ func (drv *Driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 			case strings.Contains(err.Error(), "use of closed network connection"):
 				return
 			default:
-				log.Error("accept: %s", err)
+				drv.log.Error("accept: %s", err)
 				return
 			}
 			output <- newConn(conn, Endpoint{}, false)

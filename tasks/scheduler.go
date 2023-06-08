@@ -2,8 +2,6 @@ package tasks
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/log"
-	"reflect"
 	"sync"
 	"sync/atomic"
 )
@@ -90,7 +88,6 @@ func (s *FIFOScheduler) worker(ctx context.Context) error {
 		case t := <-s.queue:
 			s.busy.Add(1)
 			if err := t.Run(ctx); err != nil {
-				log.Tag("fifo").Errorv(2, "error running %s: %s", reflect.TypeOf(t), err)
 				s.err.Add(1)
 			} else {
 				s.done.Add(1)

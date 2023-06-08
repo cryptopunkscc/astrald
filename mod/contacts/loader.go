@@ -12,12 +12,12 @@ const DatabaseName = "contacts.db"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
 	var err error
 	var mod = &Module{
 		node:   node,
 		config: defaultConfig,
-		log:    log.Tag("contacts"),
+		log:    log,
 		ready:  make(chan struct{}),
 	}
 

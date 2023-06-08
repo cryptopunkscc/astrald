@@ -26,9 +26,7 @@ func (conn *Conn) Read(p []byte) (n int, err error) {
 	}
 
 	for {
-		log.Logv(1, "POLL...")
 		n, err = unix.Poll([]unix.PollFd{fd}, -1)
-		log.Logv(1, "POLL %d %s", n, err)
 
 		// retry only on interrupt
 		if err != unix.EINTR {
@@ -43,9 +41,7 @@ func (conn *Conn) Read(p []byte) (n int, err error) {
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 
-	log.Logv(1, "READ...")
 	n, err = unix.Read(conn.nfd, p)
-	log.Logv(1, "READ %d %s", n, err)
 
 	if n < 0 {
 		return 0, err
@@ -61,9 +57,7 @@ func (conn *Conn) Write(p []byte) (n int, err error) {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
-	log.Logv(1, "WRITE...")
 	n, err = unix.Write(conn.nfd, p)
-	log.Logv(1, "WRITTEN %d %s", n, err)
 
 	if n < 0 {
 		n = 0

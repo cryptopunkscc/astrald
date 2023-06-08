@@ -3,7 +3,7 @@ package optimizer
 import (
 	"context"
 	"errors"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -18,19 +18,18 @@ const concurrency = 8
 
 type Module struct {
 	node node.Node
+	log  *log.Logger
 }
-
-var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
 	return events.Handle(ctx, mod.node.Events(), func(ctx context.Context, event network.EventPeerLinked) error {
 		go func() {
 			nodeId := event.Peer.Identity()
-			log.Log("optimizing %s", nodeId)
+			mod.log.Log("optimizing %s", nodeId)
 			if err := mod.Optimize(ctx, event.Peer); err != nil {
-				log.Error("optimize %s: %s", nodeId, err)
+				mod.log.Error("optimize %s: %s", nodeId, err)
 			} else {
-				log.Log("done optimizing %s", nodeId)
+				mod.log.Log("done optimizing %s", nodeId)
 			}
 		}()
 		return nil
@@ -86,7 +85,7 @@ func (mod *Module) Optimize(parent context.Context, peer *network.Peer) error {
 		ctx,
 		retryDialer.Dial(ctx),
 	) {
-		l := link.New(authConn)
+		l := link.New(authConn, mod.log)
 		l.SetPriority(network.NetworkPriority(l.Network()))
 		mod.node.Network().AddLink(l)
 	}

@@ -3,7 +3,7 @@ package roam
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -20,9 +20,8 @@ const (
 type Module struct {
 	node  node.Node
 	moves map[int]*link.Conn
+	log   *log.Logger
 }
-
-var log = _log.Tag(ModuleName)
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.moves = make(map[int]*link.Conn)
@@ -200,7 +199,7 @@ func (mod *Module) optimizeConn(conn *link.Conn) {
 			}
 
 			if err := mod.move(conn, preferred); err != nil {
-				log.Error("error moving connection: %s", err)
+				mod.log.Error("error moving connection: %s", err)
 			} else {
 				if current.Conns().Count() == 0 {
 					current.Idle().SetTimeout(5 * time.Minute)
@@ -215,7 +214,7 @@ func (mod *Module) move(movable *link.Conn, targetLink *link.Link) error {
 	var dstNet = targetLink.Network()
 	var query = movable.Query()
 
-	log.Logv(1, "moving %s from %s to %s", query, srcNet, dstNet)
+	mod.log.Logv(1, "moving %s from %s to %s", query, srcNet, dstNet)
 
 	moveID, err := mod.pick(movable)
 	if err != nil {
@@ -224,7 +223,7 @@ func (mod *Module) move(movable *link.Conn, targetLink *link.Link) error {
 
 	err = mod.drop(targetLink, movable, moveID)
 	if err == nil {
-		log.Info("moved %s from %s to %s", query, srcNet, dstNet)
+		mod.log.Info("moved %s from %s to %s", query, srcNet, dstNet)
 	}
 	return err
 }

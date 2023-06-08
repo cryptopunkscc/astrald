@@ -14,6 +14,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/resolver"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
+	"os"
 	"time"
 )
 
@@ -23,12 +24,15 @@ const logTag = "node"
 var _ Node = &CoreNode{}
 
 type CoreNode struct {
-	events     events.Queue
-	assets     assets.Store
-	config     Config
-	logConfig  LogConfig
-	identity   id.Identity
-	queryQueue chan *link.Query
+	events       events.Queue
+	assets       assets.Store
+	config       Config
+	logConfig    LogConfig
+	identity     id.Identity
+	queryQueue   chan *link.Query
+	screenOutput *log.LinePrinter
+	screenFilter *log.PrinterFilter
+	logOutput    *log.PrinterSplitter
 
 	log      *log.Logger
 	infra    *infra.CoreInfra
@@ -45,11 +49,17 @@ type CoreNode struct {
 func NewCoreNode(rootDir string) (*CoreNode, error) {
 	var err error
 	var node = &CoreNode{
-		log:        log.Tag(logTag),
 		rootDir:    rootDir,
 		config:     defaultConfig,
 		queryQueue: make(chan *link.Query),
 	}
+
+	node.screenOutput = log.NewLinePrinter(log.NewColorOutput(os.Stdout))
+	node.screenFilter = log.NewPrinterFilter(node.screenOutput)
+	node.logOutput = log.NewPrinterSplitter(node.screenFilter)
+	node.log = log.NewLogger(node.logOutput).Tag(logTag)
+
+	node.pushLogFormatters()
 
 	node.assets, _ = assets.NewFileStore(rootDir, node.log.Tag("assets"))
 
@@ -88,21 +98,6 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// resolve identities in logs
-	log.SetFormatter(id.Identity{}, func(v interface{}) string {
-		identity := v.(id.Identity)
-
-		if node.identity.IsEqual(identity) {
-			return node.log.Green() + node.Alias() + node.log.Reset()
-		}
-
-		if c := node.Resolver().DisplayName(identity); len(c) > 0 {
-			return node.log.Cyan() + c + node.log.Reset()
-		}
-
-		return node.log.Cyan() + identity.Fingerprint() + node.log.Reset()
-	})
 
 	// network
 	node.network, err = network.NewCoreNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery, node.log)
@@ -171,13 +166,26 @@ func (node *CoreNode) setupLogging(assets assets.Store) error {
 	}
 
 	for tag, level := range node.logConfig.TagLevels {
-		log.SetTagLevel(tag, level)
+		node.screenFilter.TagLevels[tag] = level
 	}
 	for tag, color := range node.logConfig.TagColors {
-		log.SetTagColor(tag, color)
+		node.screenOutput.TagColors[tag] = log.ParseColor(color)
 	}
-	log.HideDate = node.logConfig.HideDate
-	log.Level = node.logConfig.Level
+	node.screenOutput.SetHideDate(node.logConfig.HideDate)
+	node.screenFilter.Level = node.logConfig.Level
+
+	var logFile = node.logConfig.LogFile
+
+	if logFile != "" {
+		fileOutput, err := log.NewFileOutput(logFile)
+		if err != nil {
+			node.log.Error("error opening log file %v: %v", logFile, err)
+			return nil
+		}
+
+		filePrinter := log.NewLinePrinter(fileOutput)
+		node.logOutput.Add(filePrinter)
+	}
 
 	return nil
 }

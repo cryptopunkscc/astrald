@@ -2,7 +2,6 @@ package link
 
 import (
 	"fmt"
-	_log "github.com/cryptopunkscc/astrald/log"
 )
 
 type Event interface{}
@@ -34,7 +33,7 @@ func (e EventLinkEstablished) String() string {
 		e.Link.LocalEndpoint(),
 		e.Link.RemoteEndpoint(),
 		e.Link.Priority(),
-		_log.Sprint("%s", e.Link.RemoteIdentity()),
+		e.Link.RemoteIdentity().String(),
 	)
 }
 
@@ -50,7 +49,7 @@ func (e EventLinkClosed) String() string {
 		e.Link.RemoteEndpoint(),
 		e.Link.Priority(),
 		e.Link.Err(),
-		_log.Sprint("%s", e.Link.RemoteIdentity()),
+		e.Link.RemoteIdentity().String(),
 	)
 }
 
@@ -67,6 +66,6 @@ func (e EventLinkPriorityChanged) String() string {
 		e.Link.LocalEndpoint(),
 		e.Link.RemoteEndpoint(),
 		e.Link.Priority(),
-		_log.Sprint("%s", e.Link.RemoteIdentity()),
+		e.Link.RemoteIdentity().String(),
 	)
 }

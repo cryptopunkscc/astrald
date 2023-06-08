@@ -11,13 +11,13 @@ const configName = "storage"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
 	var err error
 	var mod = &Module{
 		node:    node,
 		config:  defaultConfig,
 		sources: make(map[*Source]struct{}, 0),
-		log:     log.Tag(ModuleName),
+		log:     log,
 	}
 
 	assets.LoadYAML(configName, &mod.config)
@@ -28,10 +28,6 @@ func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, erro
 	}
 
 	return mod, nil
-}
-
-func (Loader) Name() string {
-	return ModuleName
 }
 
 func init() {

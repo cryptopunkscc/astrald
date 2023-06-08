@@ -10,11 +10,11 @@ const ModuleName = "net.tcpfwd"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
 	mod := &Module{
 		node:   node,
 		config: defaultConfig,
-		log:    log.Tag(ModuleName),
+		log:    log,
 	}
 
 	assets.LoadYAML("tcpfwd", &mod.config)

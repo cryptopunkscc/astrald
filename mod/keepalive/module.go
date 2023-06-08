@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -18,6 +19,7 @@ const portName = "net.keepalive"
 type Module struct {
 	node   node.Node
 	config Config
+	log    *log.Logger
 }
 
 // time between successive link retries, in seconds
@@ -39,14 +41,14 @@ func (m *Module) Run(ctx context.Context) error {
 		defer wg.Done()
 
 		if err := m.runServer(ctx); err != nil {
-			log.Errorv(1, "error running server: %s", err)
+			m.log.Errorv(1, "error running server: %s", err)
 		}
 	}()
 
 	for _, sn := range m.config.StickyNodes {
 		nodeID, err := m.node.Resolver().Resolve(sn)
 		if err != nil {
-			log.Error("error resolving %s: %s", sn, err)
+			m.log.Error("error resolving %s: %s", sn, err)
 			continue
 		}
 
@@ -79,7 +81,7 @@ func (m *Module) handleQuery(_ context.Context, q *services.Query) error {
 
 	// disable timeout on the link
 	conn.Link().Idle().SetTimeout(0)
-	log.Log("timeout disabled for %s over %s",
+	m.log.Log("timeout disabled for %s over %s",
 		conn.Link().RemoteIdentity(),
 		conn.Link().Network(),
 	)
@@ -93,7 +95,7 @@ func (m *Module) keepNodeLinked(ctx context.Context, nodeID id.Identity) error {
 
 	newLinksCh := m.subscribeNewLinksWithNode(ctx, nodeID)
 
-	log.Logv(1, "will keep %s linked", nodeID)
+	m.log.Logv(1, "will keep %s linked", nodeID)
 
 	for {
 		newBest, err := m.node.Network().Link(ctx, nodeID)

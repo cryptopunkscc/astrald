@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"io"
@@ -34,6 +35,7 @@ var (
 
 type Server struct {
 	node node.Node
+	log  *log.Logger
 	conn *services.Conn
 	auth bool
 }
@@ -75,7 +77,7 @@ func (srv *Server) Run(ctx context.Context) error {
 				return err
 			}
 
-			log.Infov(2, "request: %s", reflect.TypeOf(req).String())
+			srv.log.Infov(2, "request: %s", reflect.TypeOf(req).String())
 
 			var res = srv.handleRequest(req)
 

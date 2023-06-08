@@ -74,7 +74,7 @@ func (m *CoreModules) Load(name string) error {
 		return errors.New("module not found")
 	}
 
-	mod, err := loader.Load(m.node, assets.NewPrefixStore(m.assets, "mod_"))
+	mod, err := loader.Load(m.node, assets.NewPrefixStore(m.assets, "mod_"), m.log.Tag(name))
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package gw
 
 import (
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/infra"
 )
@@ -9,14 +10,44 @@ var _ infra.DriverInjector = &Injector{}
 
 type Injector struct{}
 
-func (*Injector) Inject(i infra.Infra, assets assets.Store) error {
+func (*Injector) Inject(i infra.Infra, assets assets.Store, l *log.Logger) error {
 	drv := &Driver{
 		infra:  i,
 		config: defaultConfig,
+		log:    l,
 	}
 
+	l.Root().PushFormatFunc(func(v any) ([]log.Op, bool) {
+		ep, ok := v.(Endpoint)
+		if !ok {
+			return nil, false
+		}
+
+		var ops = make([]log.Op, 0)
+
+		if format, ok := l.Format(ep.gate); ok {
+			ops = append(ops, format...)
+		} else {
+			ops = append(ops, log.OpText{Text: ep.gate.String()})
+		}
+
+		ops = append(ops,
+			log.OpColor{Color: log.White},
+			log.OpText{Text: ":"},
+			log.OpReset{},
+		)
+
+		if format, ok := l.Format(ep.target); ok {
+			ops = append(ops, format...)
+		} else {
+			ops = append(ops, log.OpText{Text: ep.gate.String()})
+		}
+
+		return ops, true
+	})
+
 	if err := assets.LoadYAML(DriverName, &drv.config); err != nil {
-		log.Errorv(2, "error reading config: %s", err)
+		l.Errorv(2, "error reading config: %s", err)
 	}
 
 	return i.AddDriver(DriverName, drv)

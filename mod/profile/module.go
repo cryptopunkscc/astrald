@@ -2,7 +2,7 @@ package profile
 
 import (
 	"context"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
@@ -12,7 +12,7 @@ const serviceType = "sys.profile"
 
 type Module struct {
 	node node.Node
-	log  *_log.Logger
+	log  *log.Logger
 }
 
 func (m *Module) Run(ctx context.Context) error {

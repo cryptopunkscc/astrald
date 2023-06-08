@@ -3,11 +3,12 @@ package modules
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
 )
 
 type ModuleLoader interface {
-	Load(Node, assets.Store) (Module, error)
+	Load(Node, assets.Store, *log.Logger) (Module, error)
 }
 
 type Module interface {

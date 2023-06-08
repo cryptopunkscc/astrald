@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
@@ -23,6 +24,7 @@ type Module struct {
 
 	presenceConn *_net.UDPConn
 
+	log     *log.Logger
 	entries map[string]*entry
 	mu      sync.Mutex
 	events  events.Queue
@@ -153,7 +155,7 @@ func (m *Module) handle(ctx context.Context, ip Presence) {
 		m.remove(hex)
 	})
 
-	log.Tag("presence").Info("%s present on %s", ip.Identity, ip.Endpoint.Network())
+	m.log.Info("%s present on %s", ip.Identity, ip.Endpoint.Network())
 
 	m.events.Emit(EventIdentityPresent{ip.Identity, ip.Endpoint})
 
@@ -226,7 +228,7 @@ func (m *Module) remove(hex string) {
 	if e, found := m.entries[hex]; found {
 		delete(m.entries, hex)
 
-		log.Tag("presence").Info("%s gone from %s", e.id, e.addr.Network())
+		m.log.Info("%s gone from %s", e.id, e.addr.Network())
 
 		m.events.Emit(EventIdentityGone{e.id})
 	}
@@ -241,7 +243,7 @@ func (m *Module) Announce(ctx context.Context) error {
 		return err
 	}
 
-	log.Log("announcing presence")
+	m.log.Log("announcing presence")
 
 	go func() {
 		for {
@@ -252,7 +254,7 @@ func (m *Module) Announce(ctx context.Context) error {
 					Port:     m.getListenPort(),
 					Flags:    flagNone,
 				}); err != nil {
-					log.Error("announce: %s", err)
+					m.log.Error("announce: %s", err)
 				}
 			case <-ctx.Done():
 				return

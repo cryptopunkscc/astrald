@@ -3,7 +3,7 @@ package link
 import (
 	"context"
 	"fmt"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mux"
 	"io"
 	"sync"
@@ -21,13 +21,13 @@ type Health struct {
 	rtts   []time.Duration
 	mu     sync.Mutex
 	wakeCh chan struct{}
-	log    *_log.Logger
+	log    *log.Logger
 }
 
 func NewHealth(link *Link) *Health {
 	return &Health{
 		link:   link,
-		log:    log.Tag("ping"),
+		log:    link.log.Tag("ping"),
 		wakeCh: make(chan struct{}, pingMeasurements),
 	}
 }

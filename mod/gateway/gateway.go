@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
 	"github.com/cryptopunkscc/astrald/node/services"
@@ -17,9 +17,8 @@ const queryConnect = "connect"
 
 type Gateway struct {
 	node node.Node
+	log  *log.Logger
 }
-
-var log = _log.Tag(ModuleName)
 
 func (mod *Gateway) Run(ctx context.Context) error {
 	var queries = services.NewQueryChan(8)
@@ -89,7 +88,7 @@ func (mod *Gateway) handleQuery(ctx context.Context, query *services.Query) erro
 
 	l, r, err := streams.Join(conn, out)
 
-	log.Logv(1, "conn for %s done (bytes read %d written %d)", peer.Identity(), l, r)
+	mod.log.Logv(1, "conn for %s done (bytes read %d written %d)", peer.Identity(), l, r)
 
 	return err
 }

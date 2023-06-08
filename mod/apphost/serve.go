@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"github.com/cryptopunkscc/astrald/mod/shift"
 	shiftp "github.com/cryptopunkscc/astrald/mod/shift/proto"
@@ -68,13 +67,13 @@ func (s *Session) query(params proto.QueryParams) error {
 			// Get private key from the store
 			caller, err = s.mod.keys.Find(s.remoteID)
 			if err != nil {
-				log.Errorv(2, "no private key for %s", s.remoteID)
+				s.mod.log.Errorv(2, "no private key for %s", s.remoteID)
 				return proto.ErrUnauthorized
 			}
 
 			conn, err = s.mod.node.Network().Query(s.ctx, params.Identity, shift.ServiceName)
 			if err != nil {
-				log.Errorv(2, "error shifting identity: %s", err)
+				s.mod.log.Errorv(2, "error shifting identity: %s", err)
 				return proto.ErrUnauthorized
 			}
 			defer conn.Close()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/link"
 )
@@ -22,6 +23,7 @@ type LinkPeerTask struct {
 	RemoteID id.Identity
 	Network  *CoreNetwork
 	options  LinkOptions
+	log      *log.Logger
 }
 
 func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
@@ -84,7 +86,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 		return nil, ErrNodeUnreachable
 	}
 
-	l := link.New(authConn)
+	l := link.New(authConn, task.log)
 	l.SetPriority(NetworkPriority(l.Network()))
 	if err := task.Network.AddLink(l); err != nil {
 		l.Close()

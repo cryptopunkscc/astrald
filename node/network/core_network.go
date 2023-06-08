@@ -217,7 +217,7 @@ func (n *CoreNetwork) AddSecureConn(conn net.SecureConn) error {
 		return ErrIdentityMismatch
 	}
 
-	l := link.New(conn)
+	l := link.New(conn, n.log)
 	l.SetPriority(NetworkPriority(l.Network()))
 	return n.addLink(l)
 }
@@ -229,6 +229,7 @@ func (n *CoreNetwork) RequestNewLink(nodeID id.Identity, opts LinkOptions) (*tas
 		RemoteID: nodeID,
 		Network:  n,
 		options:  opts,
+		log:      n.log,
 	})
 
 	return t, n.tasks.Add(t)

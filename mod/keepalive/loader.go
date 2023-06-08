@@ -11,18 +11,15 @@ const configName = "keepalive"
 
 type Loader struct{}
 
-var log = _log.Tag(ModuleName)
-
-func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
-	mod := &Module{node: node}
+func (Loader) Load(node modules.Node, assets assets.Store, log *_log.Logger) (modules.Module, error) {
+	mod := &Module{
+		node: node,
+		log:  log,
+	}
 
 	assets.LoadYAML(configName, &mod.config)
 
 	return mod, nil
-}
-
-func (Loader) Name() string {
-	return ModuleName
 }
 
 func init() {

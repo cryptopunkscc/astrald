@@ -10,17 +10,13 @@ const ModuleName = "net.reflectlink"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, _ assets.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, _ assets.Store, log *_log.Logger) (modules.Module, error) {
 	mod := &Module{
 		node: node,
-		log:  _log.Tag(ModuleName),
+		log:  log,
 	}
 
 	return mod, nil
-}
-
-func (Loader) Name() string {
-	return ModuleName
 }
 
 func init() {

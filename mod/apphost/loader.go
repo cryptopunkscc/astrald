@@ -13,7 +13,7 @@ const ModuleName = "apphost"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
 	var err error
 
 	mod := &Module{
@@ -22,7 +22,7 @@ func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, erro
 		listeners: make([]net.Listener, 0),
 		tokens:    make(map[string]id.Identity, 0),
 		execs:     []*Exec{},
-		log:       log.Tag(ModuleName),
+		log:       log,
 	}
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
@@ -38,10 +38,6 @@ func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, erro
 	}
 
 	return mod, nil
-}
-
-func (Loader) Name() string {
-	return ModuleName
 }
 
 func init() {

@@ -23,8 +23,8 @@ func (node *CoreNode) logEvent(e events.Event) {
 	}
 
 	if stringer, ok := e.(fmt.Stringer); ok {
-		node.log.Log("%s<%s>%s %s%s", node.log.Purple(), reflect.TypeOf(e).String(), node.log.Gray(), stringer.String(), node.log.Reset())
+		node.log.Log("<%s> %s", reflect.TypeOf(e).String(), stringer.String())
 	} else {
-		node.log.Log("%s<%s>%s", node.log.Purple(), reflect.TypeOf(e).String(), node.log.Reset())
+		node.log.Log("<%s>", reflect.TypeOf(e).String())
 	}
 }

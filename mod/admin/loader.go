@@ -10,12 +10,12 @@ const ModuleName = "admin"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Store) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
 	mod := &Module{
 		config:   defaultConfig,
 		node:     node,
 		commands: make(map[string]Command),
-		log:      log.Tag(ModuleName),
+		log:      log,
 	}
 
 	assets.LoadYAML(ModuleName, &mod.config)

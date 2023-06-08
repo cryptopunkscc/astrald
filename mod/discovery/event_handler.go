@@ -37,8 +37,9 @@ func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPe
 	if len(list) > 0 {
 		srv.log.Infov(2, "discover %s: %v services available", identity, len(list))
 		srv.events.Emit(EventServicesDiscovered{
-			Identity: identity,
-			Services: list,
+			identityName: srv.log.Sprintf("%v", identity),
+			Identity:     identity,
+			Services:     list,
 		})
 	}
 

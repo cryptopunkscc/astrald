@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -26,8 +26,6 @@ var ErrRejected = errors.New("query rejected")
 
 type QueryHandlerFunc func(query *Query) error
 
-var log = _log.Tag("link")
-
 // Link represents an astral link over an authenticated transport
 type Link struct {
 	activity      sig.Activity
@@ -46,34 +44,35 @@ type Link struct {
 	doneCh        chan struct{}
 	closed        atomic.Bool
 	err           error
+	log           *log.Logger
 }
 
-func New(conn net.SecureConn) *Link {
-	l := &Link{
+func New(conn net.SecureConn, l *log.Logger) *Link {
+	lnk := &Link{
 		conn:          conn,
 		conns:         NewConnSet(),
 		doneCh:        make(chan struct{}),
 		establishedAt: time.Now().Round(0), // don't use monotonic clock
 		queryTimeout:  DefaultQueryTimeout,
+		log:           l,
 	}
 
-	l.mux = mux.NewFrameMux(conn, l.onFrameDropped)
+	lnk.mux = mux.NewFrameMux(conn, lnk.onFrameDropped)
 
 	// set up control connection
-	var out = mux.NewFrameWriter(l.mux, muxControlPort)
+	var out = mux.NewFrameWriter(lnk.mux, muxControlPort)
 	var in = mux.NewFrameReader()
 
-	if err := l.mux.Bind(muxControlPort, in.HandleFrame); err != nil {
+	if err := lnk.mux.Bind(muxControlPort, in.HandleFrame); err != nil {
 		panic(err)
 	}
 
-	l.ctl = ctl.New(streams.ReadWriteCloseSplit{Reader: in, Writer: out})
+	lnk.ctl = ctl.New(streams.ReadWriteCloseSplit{Reader: in, Writer: out})
+	lnk.control = NewControl(lnk)
+	lnk.health = NewHealth(lnk)
+	lnk.idle = NewIdle(lnk)
 
-	l.control = NewControl(l)
-	l.health = NewHealth(l)
-	l.idle = NewIdle(l)
-
-	return l
+	return lnk
 }
 
 func (l *Link) Run(ctx context.Context) error {
@@ -180,7 +179,7 @@ func (l *Link) CloseWithError(e error) error {
 		l.conn.Close()
 		close(l.doneCh)
 	} else {
-		log.Errorv(2, "link with %s over %s double closed. first: %s, new: %s",
+		l.log.Errorv(2, "link with %s over %s double closed. first: %s, new: %s",
 			l.RemoteIdentity(),
 			l.Network(),
 			l.err,
@@ -209,14 +208,14 @@ func (l *Link) onQuery(query string, remotePort int) error {
 	}
 
 	if l.queryHandler == nil {
-		log.Log("no query handler set - automatically rejecting query: %s", query)
+		l.log.Log("no query handler set - automatically rejecting query: %s", query)
 		_ = q.Reject()
 		return nil
 	}
 
 	err = l.queryHandler(q)
 	if err != nil {
-		log.Log("rejecting query %s due to handler error: %s", query, err)
+		l.log.Log("rejecting query %s due to handler error: %s", query, err)
 		q.Reject()
 	}
 

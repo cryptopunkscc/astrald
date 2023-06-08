@@ -45,7 +45,7 @@ func TestLink(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var link = New(&MockAuth{ReadWriteCloser: s})
+		var link = New(&MockAuth{ReadWriteCloser: s}, nil)
 
 		link.SetQueryHandler(func(query *Query) error {
 			return query.Reject()
@@ -60,7 +60,7 @@ func TestLink(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var link = New(&MockAuth{ReadWriteCloser: c})
+		var link = New(&MockAuth{ReadWriteCloser: c}, nil)
 
 		link.SetQueryHandler(func(query *Query) error {
 			return query.Reject()

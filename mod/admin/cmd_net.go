@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
@@ -122,7 +121,7 @@ func (cmd *CmdNet) ls(term *Terminal, _ []string) error {
 			}
 
 			term.Printf("  %s %s %s (idle %s, age %s, prio %d, ping %.1fms)\n",
-				log.Bool(link.Outbound(), "=>", "<="),
+				DoubleArrow(link.Outbound()),
 				link.RemoteEndpoint().Network(),
 				remoteAddr,
 				link.Activity().Idle().Round(time.Second),
@@ -132,7 +131,7 @@ func (cmd *CmdNet) ls(term *Terminal, _ []string) error {
 			)
 			for _, c := range link.Conns().All() {
 				term.Printf("    %s %s [%d:%d] (idle %s)\n",
-					log.Bool(c.Outbound(), "->", "<-"),
+					Arrow(c.Outbound()),
 					c.Query(),
 					c.LocalPort(),
 					c.RemotePort(),

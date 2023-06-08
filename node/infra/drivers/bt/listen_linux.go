@@ -27,13 +27,13 @@ func (drv *Driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 
 		err = b.RegisterProfile(bluez.UUID_SPP)
 		if err != nil {
-			log.Errorv(1, "RegisterProfile: %s", err.Error())
+			drv.log.Errorv(1, "RegisterProfile: %s", err.Error())
 			return
 		}
 
 		btSocket, err := unix.Socket(syscall.AF_BLUETOOTH, syscall.SOCK_STREAM, unix.BTPROTO_RFCOMM)
 		if err != nil {
-			log.Errorv(1, "unix.Socket: %s", err.Error())
+			drv.log.Errorv(1, "unix.Socket: %s", err.Error())
 			return
 		}
 
@@ -44,19 +44,19 @@ func (drv *Driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 
 		err = unix.Bind(btSocket, addr)
 		if err != nil {
-			log.Errorv(1, "unix.Bind: %s", err.Error())
+			drv.log.Errorv(1, "unix.Bind: %s", err.Error())
 			return
 		}
 
 		err = unix.Listen(btSocket, 1)
 		if err != nil {
-			log.Errorv(1, " unix.Listen: %s", err.Error())
+			drv.log.Errorv(1, " unix.Listen: %s", err.Error())
 			return
 		}
 
 		var endpoints []string
 		for _, endpoint := range drv.Endpoints() {
-			log.Logv(1, "listen %s", endpoint)
+			drv.log.Logv(1, "listen %s", endpoint)
 			endpoints = append(endpoints, endpoint.String())
 		}
 
@@ -70,13 +70,13 @@ func (drv *Driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 		for {
 			nfd, sa, err := unix.Accept(btSocket)
 			if err != nil {
-				log.Errorv(1, "unix.Accept: %s", err.Error())
+				drv.log.Errorv(1, "unix.Accept: %s", err.Error())
 				return
 			}
 
 			remoteEndpoint, _ := Unpack(sa.(*unix.SockaddrRFCOMM).Addr[:])
 
-			log.Log("accepted %s %s",
+			drv.log.Log("accepted %s %s",
 				DriverName,
 				remoteEndpoint)
 

@@ -2,7 +2,7 @@ package agent
 
 import (
 	"context"
-	_log "github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/services"
 )
@@ -11,9 +11,8 @@ const portName = "sys.agent"
 
 type Module struct {
 	node node.Node
+	log  *log.Logger
 }
-
-var log = _log.Tag(ModuleName)
 
 func (m *Module) Run(ctx context.Context) error {
 	var queries = services.NewQueryChan(1)
@@ -43,11 +42,12 @@ func (m *Module) Run(ctx context.Context) error {
 		s := &Server{
 			node: m.node,
 			conn: conn,
+			log:  m.log,
 		}
 
 		go func() {
 			if err := s.Run(ctx); err != nil {
-				log.Error("serve error: %s", err)
+				m.log.Error("serve error: %s", err)
 			}
 		}()
 	}
