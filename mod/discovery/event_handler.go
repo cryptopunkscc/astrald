@@ -24,10 +24,10 @@ func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPe
 		return err
 	}
 
-	var list = make([]proto.ServiceEntry, 0)
+	var list = make([]ServiceEntry, 0)
 	for err == nil {
 		err = cslq.Invoke(conn, func(msg proto.ServiceEntry) error {
-			list = append(list, msg)
+			list = append(list, ServiceEntry(msg))
 			return nil
 		})
 	}

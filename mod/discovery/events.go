@@ -3,13 +3,12 @@ package discovery
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 )
 
 type EventServicesDiscovered struct {
 	identityName string
 	Identity     id.Identity
-	Services     []proto.ServiceEntry
+	Services     []ServiceEntry
 }
 
 func (e EventServicesDiscovered) String() string {

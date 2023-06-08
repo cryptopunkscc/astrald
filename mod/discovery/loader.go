@@ -4,7 +4,6 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -20,7 +19,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		config:  defaultConfig,
 		log:     log,
 		sources: map[Source]id.Identity{},
-		cache:   map[string][]proto.ServiceEntry{},
+		cache:   map[string][]ServiceEntry{},
 	}
 
 	mod.events.SetParent(node.Events())

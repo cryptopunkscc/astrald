@@ -22,7 +22,7 @@ type Module struct {
 	log       *log.Logger
 	sources   map[Source]id.Identity
 	sourcesMu sync.Mutex
-	cache     map[string][]proto.ServiceEntry
+	cache     map[string][]ServiceEntry
 	cacheMu   sync.Mutex
 }
 
@@ -129,14 +129,14 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 	return list, nil
 }
 
-func (m *Module) setCache(identity id.Identity, list []proto.ServiceEntry) {
+func (m *Module) setCache(identity id.Identity, list []ServiceEntry) {
 	m.cacheMu.Lock()
 	defer m.cacheMu.Unlock()
 
 	m.cache[identity.String()] = list
 }
 
-func (m *Module) getCache(identity id.Identity) []proto.ServiceEntry {
+func (m *Module) getCache(identity id.Identity) []ServiceEntry {
 	m.cacheMu.Lock()
 	defer m.cacheMu.Unlock()
 
