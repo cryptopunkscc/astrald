@@ -2,6 +2,7 @@ package storage
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -25,6 +26,15 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	mod.db, err = assets.OpenDB(ModuleName)
 	if err != nil {
 		return nil, err
+	}
+
+	if err = mod.setupDatabase(); err != nil {
+		return nil, err
+	}
+
+	adm, err := modules.Find[*admin.Module](node.Modules())
+	if err == nil {
+		adm.AddCommand("storage", NewAdmin(mod))
 	}
 
 	return mod, nil

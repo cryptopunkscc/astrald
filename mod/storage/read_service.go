@@ -5,12 +5,14 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/storage/proto"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var _ tasks.Runner = &ReadService{}
@@ -47,10 +49,31 @@ func (s *ReadService) Run(ctx context.Context) error {
 	return nil
 }
 
+func (s *ReadService) checkAccess(identity id.Identity, dataID data.ID) bool {
+	if identity.IsZero() {
+		return false
+	}
+	if identity.IsEqual(s.node.Identity()) {
+		return true
+	}
+	if a := s.FindAccess(identity, dataID); a != nil {
+		if a.ExpiresAt.After(time.Now()) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
 	defer conn.Close()
 	return cslq.Invoke(conn, func(msg proto.MsgRead) error {
 		var stream = proto.New(conn)
+
+		if !s.checkAccess(conn.RemoteIdentity(), msg.DataID) {
+			s.log.Errorv(2, "access denied to %v to %v", conn.RemoteIdentity(), msg.DataID)
+			return stream.WriteError(proto.ErrUnavailable)
+		}
 
 		source, err := s.findSource(ctx, msg, conn.RemoteIdentity())
 		if err != nil {

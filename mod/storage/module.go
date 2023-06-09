@@ -24,25 +24,25 @@ type Source struct {
 	Identity id.Identity
 }
 
-func (m *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
-		&RegisterService{Module: m},
-		&ReadService{Module: m},
+		&RegisterService{Module: mod},
+		&ReadService{Module: mod},
 	).Run(ctx)
 }
 
-func (m *Module) AddSource(source *Source) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (mod *Module) AddSource(source *Source) {
+	mod.mu.Lock()
+	defer mod.mu.Unlock()
 
-	m.sources[source] = struct{}{}
-	m.log.Info("%s registered source %s", source.Identity, source.Service)
+	mod.sources[source] = struct{}{}
+	mod.log.Info("%s registered source %s", source.Identity, source.Service)
 }
 
-func (m *Module) RemoveSource(source *Source) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (mod *Module) RemoveSource(source *Source) {
+	mod.mu.Lock()
+	defer mod.mu.Unlock()
 
-	delete(m.sources, source)
-	m.log.Logv(1, "%s unregistered source %s", source.Identity, source.Service)
+	delete(mod.sources, source)
+	mod.log.Logv(1, "%s unregistered source %s", source.Identity, source.Service)
 }

@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"errors"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"gorm.io/driver/sqlite"
@@ -18,22 +19,6 @@ type FileStore struct {
 	baseDir  string
 	log      Logger
 	keyStore KeyStore
-}
-
-func (store *FileStore) KeyStore() (KeyStore, error) {
-	if store.keyStore == nil {
-		db, err := store.OpenDB("keys.db")
-		if err != nil {
-			return nil, err
-		}
-
-		store.keyStore, err = NewGormKeyStore(db)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return store.keyStore, nil
 }
 
 func NewFileStore(baseDir string, log Logger) (*FileStore, error) {
@@ -101,8 +86,30 @@ func (store *FileStore) StoreYAML(name string, in interface{}) error {
 }
 
 func (store *FileStore) OpenDB(name string) (*gorm.DB, error) {
+	if name == "" {
+		return nil, errors.New("invalid name")
+	}
+	if !strings.HasSuffix(name, ".db") {
+		name = name + ".db"
+	}
 	return gorm.Open(
 		sqlite.Open(filepath.Join(store.baseDir, name)),
 		&gorm.Config{Logger: logger.Default.LogMode(logger.Silent)},
 	)
+}
+
+func (store *FileStore) KeyStore() (KeyStore, error) {
+	if store.keyStore == nil {
+		db, err := store.OpenDB("keys.db")
+		if err != nil {
+			return nil, err
+		}
+
+		store.keyStore, err = NewGormKeyStore(db)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return store.keyStore, nil
 }
