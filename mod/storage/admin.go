@@ -18,10 +18,13 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(*admin.Terminal, []string) error{
-		"grant":  adm.grant,
-		"revoke": adm.revoke,
-		"list":   adm.list,
-		"help":   adm.help,
+		"grant":           adm.grant,
+		"revoke":          adm.revoke,
+		"list":            adm.list,
+		"providers":       adm.providers,
+		"add_provider":    adm.addProvider,
+		"remove_provider": adm.removeProvider,
+		"help":            adm.help,
 	}
 
 	return adm
@@ -115,6 +118,46 @@ func (adm *Admin) list(term *admin.Terminal, args []string) error {
 	}
 
 	return nil
+}
+
+func (adm *Admin) providers(term *admin.Terminal, args []string) error {
+	list, err := adm.mod.AllProviders()
+	if err != nil {
+		return err
+	}
+
+	for _, identity := range list {
+		name := adm.mod.node.Resolver().DisplayName(identity)
+		term.Printf("%s %s\n", identity.String(), name)
+	}
+
+	return nil
+}
+
+func (adm *Admin) addProvider(term *admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("usage: addprovider <identity>")
+	}
+
+	identity, err := adm.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.AddProvider(identity)
+}
+
+func (adm *Admin) removeProvider(term *admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("usage: remove_provider <identity>")
+	}
+
+	identity, err := adm.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.RemoveProvider(identity)
 }
 
 func (adm *Admin) help(term *admin.Terminal, _ []string) error {

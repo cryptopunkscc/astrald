@@ -60,6 +60,7 @@ func (mod *Module) Run(ctx context.Context) error {
 			identity, err := mod.node.Resolver().Resolve(run.Identity)
 			if err != nil {
 				mod.log.Error("unknown identity: %s", run.Identity)
+				return
 			}
 
 			var basename = filepath.Base(run.Exec)
@@ -68,7 +69,8 @@ func (mod *Module) Run(ctx context.Context) error {
 
 			exec, err := mod.Exec(identity, run.Exec, run.Args, os.Environ())
 			if err != nil {
-				mod.log.Errorv(1, "%s (%s) failed to start: %s", basename, identity, err)
+				mod.log.Errorv(0, "%s (%s) failed to start: %s", basename, identity, err)
+				return
 			}
 
 			<-exec.Done()
@@ -77,7 +79,6 @@ func (mod *Module) Run(ctx context.Context) error {
 			if err != nil {
 				mod.log.Errorv(1, "%s (%s) exited with error: %s", basename, identity, err)
 			}
-
 		}()
 	}
 

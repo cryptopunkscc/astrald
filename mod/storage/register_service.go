@@ -10,14 +10,17 @@ import (
 
 var _ tasks.Runner = &RegisterService{}
 
+const snRegister = "storage.register"
+
 type RegisterService struct {
 	*Module
 }
 
 func (m *RegisterService) Run(ctx context.Context) error {
 	var queries = services.NewQueryChan(4)
-	service, err := m.node.Services().Register(ctx, m.node.Identity(), "storage.register", queries.Push)
+	service, err := m.node.Services().Register(ctx, m.node.Identity(), snRegister, queries.Push)
 	if err != nil {
+		m.log.Error("cannot register service %s: %s", snRegister, err)
 		return err
 	}
 
@@ -27,6 +30,12 @@ func (m *RegisterService) Run(ctx context.Context) error {
 	}()
 
 	for query := range queries {
+		if !m.IsProvider(query.RemoteIdentity()) {
+			m.log.Errorv(2, "register_provider: %v is not a provider, rejecting...", query.RemoteIdentity())
+			query.Reject()
+			continue
+		}
+
 		conn, err := query.Accept()
 		if err != nil {
 			continue

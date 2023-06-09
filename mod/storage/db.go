@@ -13,13 +13,21 @@ type dbAccess struct {
 	CreatedAt time.Time
 }
 
-func (dbAccess) TableName() string {
-	return "accesses"
+func (dbAccess) TableName() string { return "accesses" }
+
+type dbProvider struct {
+	Identity  string `gorm:"primaryKey"`
+	CreatedAt time.Time
 }
+
+func (dbProvider) TableName() string { return "providers" }
 
 func (mod *Module) setupDatabase() (err error) {
 	// Migrate the schema
 	if err := mod.db.AutoMigrate(&dbAccess{}); err != nil {
+		return err
+	}
+	if err := mod.db.AutoMigrate(&dbProvider{}); err != nil {
 		return err
 	}
 
