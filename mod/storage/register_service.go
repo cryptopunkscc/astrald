@@ -47,12 +47,12 @@ func (m *RegisterService) handle(ctx context.Context, conn *services.Conn) error
 	return cslq.Invoke(conn, func(msg proto.MsgRegisterSource) error {
 		var stream = proto.New(conn)
 
-		source := &Source{
+		source := &DataSource{
 			Service:  msg.Service,
 			Identity: conn.RemoteIdentity(),
 		}
 
-		m.AddSource(source)
+		m.AddDataSource(source)
 
 		return stream.WriteError(nil)
 	})

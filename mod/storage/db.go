@@ -37,5 +37,14 @@ func (dba dbAccess) toAccess() (*Access, error) {
 	if a.DataID, err = data.Parse(dba.DataID); err != nil {
 		return nil, err
 	}
+
 	return a, nil
+}
+
+func toDbAccess(access *Access) dbAccess {
+	return dbAccess{
+		Identity:  access.Identity.String(),
+		DataID:    access.DataID.String(),
+		ExpiresAt: access.ExpiresAt,
+	}
 }

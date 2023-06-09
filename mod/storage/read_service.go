@@ -5,14 +5,15 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/discovery"
+	discoproto "github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/mod/storage/proto"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 var _ tasks.Runner = &ReadService{}
@@ -33,6 +34,17 @@ func (s *ReadService) Run(ctx context.Context) error {
 		close(queries)
 	}()
 
+	disco, err := modules.Find[*discovery.Module](s.node.Modules())
+	if err == nil {
+		disco.AddSource(s, s.node.Identity())
+		go func() {
+			<-ctx.Done()
+			disco.RemoveSource(s)
+		}()
+	} else {
+		s.log.Errorv(2, "can't regsiter service discovery source: %s", err)
+	}
+
 	for query := range queries {
 		conn, err := query.Accept()
 		if err != nil {
@@ -49,20 +61,15 @@ func (s *ReadService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *ReadService) checkAccess(identity id.Identity, dataID data.ID) bool {
-	if identity.IsZero() {
-		return false
+func (s *ReadService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discoproto.ServiceEntry, error) {
+	var list []discoproto.ServiceEntry
+	if s.DataAccessCountByIdentity(caller) > 0 {
+		list = append(list, discoproto.ServiceEntry{
+			Name: "storage.read",
+			Type: "storage.read",
+		})
 	}
-	if identity.IsEqual(s.node.Identity()) {
-		return true
-	}
-	if a := s.FindAccess(identity, dataID); a != nil {
-		if a.ExpiresAt.After(time.Now()) {
-			return true
-		}
-	}
-
-	return false
+	return list, nil
 }
 
 func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
@@ -70,7 +77,7 @@ func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
 	return cslq.Invoke(conn, func(msg proto.MsgRead) error {
 		var stream = proto.New(conn)
 
-		if !s.checkAccess(conn.RemoteIdentity(), msg.DataID) {
+		if !s.CheckAccess(conn.RemoteIdentity(), msg.DataID) {
 			s.log.Errorv(2, "access denied to %v to %v", conn.RemoteIdentity(), msg.DataID)
 			return stream.WriteError(proto.ErrUnavailable)
 		}
@@ -99,7 +106,7 @@ func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead, identit
 	var found atomic.Bool
 
 	var wg sync.WaitGroup
-	for source := range s.sources {
+	for source := range s.dataSources {
 		source := source
 
 		wg.Add(1)
@@ -112,7 +119,7 @@ func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead, identit
 				case errors.Is(err, context.Canceled):
 				case errors.Is(err, context.DeadlineExceeded):
 				default:
-					s.RemoveSource(source)
+					s.RemoveDataSource(source)
 				}
 				return
 			}
