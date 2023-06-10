@@ -17,13 +17,15 @@ import (
 
 var _ tasks.Runner = &ReadService{}
 
+const ReadServiceName = "storage.read"
+
 type ReadService struct {
 	*Module
 }
 
 func (s *ReadService) Run(ctx context.Context) error {
 	var queries = services.NewQueryChan(4)
-	service, err := s.node.Services().Register(ctx, s.node.Identity(), "storage.read", queries.Push)
+	service, err := s.node.Services().Register(ctx, s.node.Identity(), ReadServiceName, queries.Push)
 	if err != nil {
 		return err
 	}
@@ -64,8 +66,8 @@ func (s *ReadService) Discover(ctx context.Context, caller id.Identity, origin s
 	var list []discovery.ServiceEntry
 	if s.DataAccessCountByIdentity(caller) > 0 {
 		list = append(list, discovery.ServiceEntry{
-			Name: "storage.read",
-			Type: "storage.read",
+			Name: ReadServiceName,
+			Type: ReadServiceName,
 		})
 	}
 	return list, nil

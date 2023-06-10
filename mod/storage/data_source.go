@@ -22,3 +22,14 @@ func (mod *Module) RemoveDataSource(source *DataSource) {
 	delete(mod.dataSources, source)
 	mod.log.Logv(1, "%s unregistered source %s", source.Identity, source.Service)
 }
+
+func (mod *Module) DataSources() []*DataSource {
+	mod.dataSourcesMu.Lock()
+	defer mod.dataSourcesMu.Unlock()
+
+	var list = make([]*DataSource, 0, len(mod.dataSources))
+	for source := range mod.dataSources {
+		list = append(list, source)
+	}
+	return list
+}

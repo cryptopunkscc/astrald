@@ -10,7 +10,7 @@ import (
 
 var _ tasks.Runner = &RegisterService{}
 
-const snRegister = "storage.register"
+const RegisterServiceName = "storage.register"
 
 type RegisterService struct {
 	*Module
@@ -18,9 +18,9 @@ type RegisterService struct {
 
 func (m *RegisterService) Run(ctx context.Context) error {
 	var queries = services.NewQueryChan(4)
-	service, err := m.node.Services().Register(ctx, m.node.Identity(), snRegister, queries.Push)
+	service, err := m.node.Services().Register(ctx, m.node.Identity(), RegisterServiceName, queries.Push)
 	if err != nil {
-		m.log.Error("cannot register service %s: %s", snRegister, err)
+		m.log.Error("cannot register service %s: %s", RegisterServiceName, err)
 		return err
 	}
 

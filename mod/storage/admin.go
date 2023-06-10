@@ -21,6 +21,7 @@ func NewAdmin(mod *Module) *Admin {
 		"grant":           adm.grant,
 		"revoke":          adm.revoke,
 		"list":            adm.list,
+		"sources":         adm.sources,
 		"providers":       adm.providers,
 		"add_provider":    adm.addProvider,
 		"remove_provider": adm.removeProvider,
@@ -120,6 +121,20 @@ func (adm *Admin) list(term *admin.Terminal, args []string) error {
 	return nil
 }
 
+func (adm *Admin) sources(term *admin.Terminal, args []string) error {
+	var sources = adm.mod.DataSources()
+
+	term.Printf("%d registered data source(s)\n", len(sources))
+	var fmt = "%-20s %s\n"
+	term.Printf(fmt, "IDENTITY", "SERVICE")
+	for _, source := range sources {
+		name := adm.mod.node.Resolver().DisplayName(source.Identity)
+		term.Printf(fmt, name, source.Service)
+	}
+
+	return nil
+}
+
 func (adm *Admin) providers(term *admin.Terminal, args []string) error {
 	list, err := adm.mod.AllProviders()
 	if err != nil {
@@ -128,7 +143,7 @@ func (adm *Admin) providers(term *admin.Terminal, args []string) error {
 
 	for _, identity := range list {
 		name := adm.mod.node.Resolver().DisplayName(identity)
-		term.Printf("%s %s\n", identity.String(), name)
+		term.Printf("%s\n", name)
 	}
 
 	return nil
@@ -166,6 +181,10 @@ func (adm *Admin) help(term *admin.Terminal, _ []string) error {
 	term.Printf("  grant <identity> <dataID> [duration]      grant access to data\n")
 	term.Printf("  revoke <identity> <dataID>                grant access to data\n")
 	term.Printf("  list                                      list access entries\n")
+	term.Printf("  sources                                   list registered sources\n")
+	term.Printf("  providers                                 list identities allowed as providers\n")
+	term.Printf("  add_provider <identity>                   add a provider\n")
+	term.Printf("  remove_provider <identity>                remove a provider\n")
 	term.Printf("  help                                      show help\n")
 	return nil
 }
