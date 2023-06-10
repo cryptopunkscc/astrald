@@ -69,8 +69,8 @@ func (m *Module) RemoveSource(source Source) {
 	m.log.Logv(1, "unregistered source: %s (%s)", s, identity)
 }
 
-func (m *Module) QueryLocal(ctx context.Context, caller id.Identity, origin string) ([]proto.ServiceEntry, error) {
-	var list = make([]proto.ServiceEntry, 0)
+func (m *Module) QueryLocal(ctx context.Context, caller id.Identity, origin string) ([]ServiceEntry, error) {
+	var list = make([]ServiceEntry, 0)
 
 	var wg sync.WaitGroup
 
@@ -95,7 +95,7 @@ func (m *Module) QueryLocal(ctx context.Context, caller id.Identity, origin stri
 	return list, nil
 }
 
-func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, callerID id.Identity) ([]proto.ServiceEntry, error) {
+func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, callerID id.Identity) ([]ServiceEntry, error) {
 	if callerID.IsZero() {
 		callerID = m.node.Identity()
 	}
@@ -112,7 +112,7 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 		return nil, err
 	}
 
-	var list = make([]proto.ServiceEntry, 0)
+	var list = make([]ServiceEntry, 0)
 
 	go func() {
 		<-ctx.Done()
@@ -121,7 +121,7 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 
 	for err == nil {
 		err = cslq.Invoke(q, func(msg proto.ServiceEntry) error {
-			list = append(list, msg)
+			list = append(list, ServiceEntry(msg))
 			return nil
 		})
 	}

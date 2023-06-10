@@ -40,8 +40,8 @@ func (m *DiscoveryService) handleQuery(ctx context.Context, query *services.Quer
 
 	var wg sync.WaitGroup
 
-	for source := range m.sources {
-		source := source
+	for source, sourceID := range m.sources {
+		source, sourceID := source, sourceID
 
 		wg.Add(1)
 		go func() {
@@ -53,6 +53,7 @@ func (m *DiscoveryService) handleQuery(ctx context.Context, query *services.Quer
 			}
 
 			for _, item := range list {
+				item.Identity = sourceID
 				conn.Encode(item)
 			}
 		}()

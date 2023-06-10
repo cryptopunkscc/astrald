@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	discoproto "github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
@@ -16,12 +15,13 @@ type ProfileService struct {
 	*Module
 }
 
-func (srv *ProfileService) Discover(ctx context.Context, caller id.Identity, medium string) ([]discoproto.ServiceEntry, error) {
-	return []discoproto.ServiceEntry{
+func (srv *ProfileService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discovery.ServiceEntry, error) {
+	return []discovery.ServiceEntry{
 		{
-			Name:  serviceName,
-			Type:  serviceType,
-			Extra: nil,
+			Identity: srv.node.Identity(),
+			Name:     serviceName,
+			Type:     serviceType,
+			Extra:    nil,
 		},
 	}, nil
 }

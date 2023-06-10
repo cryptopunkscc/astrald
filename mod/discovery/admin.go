@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"reflect"
 )
@@ -67,7 +66,7 @@ func (adm *Admin) query(term *admin.Terminal, args []string) error {
 		}
 	}
 
-	var list []proto.ServiceEntry
+	var list []ServiceEntry
 
 	var targetName = adm.mod.node.Resolver().DisplayName(target)
 	var callerName = adm.mod.node.Resolver().DisplayName(caller)
@@ -88,9 +87,12 @@ func (adm *Admin) query(term *admin.Terminal, args []string) error {
 		return nil
 	}
 
-	term.Printf("%-30s %-30s %s\n", "SERVICE", "TYPE", "EXTRA")
+	fmt := "%-20s %-30s %-30s %s\n"
+
+	term.Printf(fmt, "IDENTITY", "SERVICE", "TYPE", "EXTRA")
 	for _, item := range list {
-		term.Printf("%-30s %-30s %s\n", item.Name, item.Type, item.Extra)
+		name := adm.mod.node.Resolver().DisplayName(item.Identity)
+		term.Printf(fmt, name, item.Name, item.Type, item.Extra)
 	}
 
 	return nil

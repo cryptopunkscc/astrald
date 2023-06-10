@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
+	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -25,14 +25,15 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) Discover(ctx context.Context, caller id.Identity, medium string) ([]proto.ServiceEntry, error) {
-	if medium == services.OriginNetwork {
-		return []proto.ServiceEntry{{
-			Name:  serviceName,
-			Type:  serviceType,
-			Extra: nil,
+func (mod *Module) Discover(ctx context.Context, caller id.Identity, origin string) ([]discovery.ServiceEntry, error) {
+	if origin == services.OriginNetwork {
+		return []discovery.ServiceEntry{{
+			Identity: mod.node.Identity(),
+			Name:     serviceName,
+			Type:     serviceType,
+			Extra:    nil,
 		}}, nil
 	}
 
-	return []proto.ServiceEntry{}, nil
+	return []discovery.ServiceEntry{}, nil
 }

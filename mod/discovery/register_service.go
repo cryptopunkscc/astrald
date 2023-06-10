@@ -48,6 +48,7 @@ func (m *RegisterService) handleQuery(_ context.Context, query *services.Query) 
 			service:  msg.Service,
 		}
 
+		// check if the caller is also the owner of the service
 		service, err := m.node.Services().Find(msg.Service)
 		if err != nil {
 			defer conn.Close()

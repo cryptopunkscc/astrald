@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	discoproto "github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/mod/storage/proto"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
@@ -61,10 +60,10 @@ func (s *ReadService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *ReadService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discoproto.ServiceEntry, error) {
-	var list []discoproto.ServiceEntry
+func (s *ReadService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discovery.ServiceEntry, error) {
+	var list []discovery.ServiceEntry
 	if s.DataAccessCountByIdentity(caller) > 0 {
-		list = append(list, discoproto.ServiceEntry{
+		list = append(list, discovery.ServiceEntry{
 			Name: "storage.read",
 			Type: "storage.read",
 		})
