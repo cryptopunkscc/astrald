@@ -25,7 +25,7 @@ func (*Injector) Inject(i infra.Infra, assets assets.Store, l *log.Logger) error
 
 		var ops = make([]log.Op, 0)
 
-		if format, ok := l.Format(ep.gate); ok {
+		if format, ok := l.Render(ep.gate); ok {
 			ops = append(ops, format...)
 		} else {
 			ops = append(ops, log.OpText{Text: ep.gate.String()})
@@ -37,7 +37,7 @@ func (*Injector) Inject(i infra.Infra, assets assets.Store, l *log.Logger) error
 			log.OpReset{},
 		)
 
-		if format, ok := l.Format(ep.target); ok {
+		if format, ok := l.Render(ep.target); ok {
 			ops = append(ops, format...)
 		} else {
 			ops = append(ops, log.OpText{Text: ep.gate.String()})

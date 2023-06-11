@@ -89,10 +89,16 @@ func (adm *Admin) query(term *admin.Terminal, args []string) error {
 
 	fmt := "%-20s %-30s %-30s %s\n"
 
-	term.Printf(fmt, "IDENTITY", "SERVICE", "TYPE", "EXTRA")
+	term.Printf(
+		fmt,
+		admin.Header("Identity"),
+		admin.Header("Service"),
+		admin.Header("Type"),
+		admin.Header("Extra"),
+	)
+
 	for _, item := range list {
-		name := adm.mod.node.Resolver().DisplayName(item.Identity)
-		term.Printf(fmt, name, item.Name, item.Type, item.Extra)
+		term.Printf(fmt, item.Identity, admin.Keyword(item.Name), item.Type, item.Extra)
 	}
 
 	return nil
@@ -106,16 +112,20 @@ func (adm *Admin) sources(term *admin.Terminal, _ []string) error {
 		return nil
 	}
 
-	var f = "%-25s %-35s\n"
+	var f = "%-25s %s\n"
 
-	term.Printf(f, "IDENTITY", "TYPE")
+	term.Printf(f,
+		admin.Header("Identity"),
+		admin.Header("Type"),
+	)
+
 	for src, identity := range list {
-		var name = adm.mod.node.Resolver().DisplayName(identity)
 		var typ = reflect.TypeOf(src).String()
 		if s, ok := src.(*ServiceSource); ok {
 			typ = "service: " + s.service
 		}
-		term.Printf(f, name, typ)
+
+		term.Printf(f, identity, typ)
 	}
 
 	return nil

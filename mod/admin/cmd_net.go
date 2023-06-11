@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
 )
@@ -107,27 +106,20 @@ func (cmd *CmdNet) unlinkHelp(term *Terminal) error {
 
 func (cmd *CmdNet) ls(term *Terminal, _ []string) error {
 	for _, peer := range cmd.mod.node.Network().Peers().All() {
-		peerName := cmd.mod.node.Resolver().DisplayName(peer.Identity())
-
 		term.Printf("peer %s (idle %s)\n",
-			peerName,
+			peer.Identity(),
 			peer.Idle().Round(time.Second),
 		)
 		for _, link := range peer.Links() {
-			remoteAddr := link.RemoteEndpoint().String()
-
-			if gwEndpoint, ok := link.RemoteEndpoint().(gw.Endpoint); ok {
-				remoteAddr = "via " + cmd.mod.node.Resolver().DisplayName(gwEndpoint.Gate())
-			}
-
-			term.Printf("  %s %s %s (idle %s, age %s, prio %d, ping %.1fms)\n",
+			term.Printf("  %s %s %s (idle %s, age %s, prio %d, ping %.1f)\n",
 				DoubleArrow(link.Outbound()),
 				link.RemoteEndpoint().Network(),
-				remoteAddr,
+				link.RemoteEndpoint(),
 				link.Activity().Idle().Round(time.Second),
 				time.Since(link.EstablishedAt()).Round(time.Second),
 				link.Priority(),
-				float64(link.Health().AverageRTT().Microseconds())/1000,
+				link.Health().AverageRTT().Round(100*time.Microsecond),
+				//float64(link.Health().AverageRTT().Microseconds())/1000,
 			)
 			for _, c := range link.Conns().All() {
 				term.Printf("    %s %s [%d:%d] (idle %s)\n",

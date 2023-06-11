@@ -63,10 +63,10 @@ func (mod *Module) Run(ctx context.Context) error {
 func (mod *Module) serve(stream io.ReadWriteCloser, node node.Node) error {
 	defer stream.Close()
 
-	var term = NewTerminal(stream)
+	var term = NewTerminal(stream, mod.log)
 
 	for {
-		term.Printf("%s%s", node.Alias(), mod.config.Prompt)
+		term.Printf("%s%s", node.Identity(), mod.config.Prompt)
 
 		line, err := term.ScanLine()
 		if err != nil {

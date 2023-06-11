@@ -64,20 +64,20 @@ func (cmd *CmdServices) list(term *Terminal, args []string) error {
 	var format = "%-40s %-12s %s\n"
 
 	if showTime {
-		format = "%-40s %-20s %s\n"
-		term.Printf("NAME                                     TIME                 IDENTITY\n")
+		format = "%-40s %-21s %s\n"
+		term.Printf(format, Header("NAME"), Header("TIME"), Header("IDENTITY"))
 	} else {
-		term.Printf("NAME                                     AGE          IDENTITY\n")
+		term.Printf(format, Header("NAME"), Header("AGE"), Header("IDENTITY"))
 	}
 
 	for _, service := range list {
-		var identity = cmd.mod.node.Resolver().DisplayName(service.Identity)
-		var age = time.Since(service.RegisteredAt).Round(time.Second).String()
+		var age any = time.Since(service.RegisteredAt).Round(time.Second)
+
 		if showTime {
-			age = service.RegisteredAt.Format(timestampFormat)
+			age = service.RegisteredAt
 		}
 
-		term.Printf(format, service.Name, age, identity)
+		term.Printf(format, Keyword(service.Name), age, service.Identity)
 	}
 	return nil
 }

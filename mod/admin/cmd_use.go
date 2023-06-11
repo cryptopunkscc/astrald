@@ -22,7 +22,7 @@ func (cmd *CmdUse) Exec(term *Terminal, args []string) error {
 	term.Printf("type exit to go back\n")
 
 	for {
-		term.Printf("%s[%s]%s", cmd.mod.node.Alias(), enterCmd, cmd.mod.config.Prompt)
+		term.Printf("%s[%s]%s", cmd.mod.node.Identity(), Keyword(enterCmd), cmd.mod.config.Prompt)
 
 		line, err := term.ScanLine()
 		if err != nil {

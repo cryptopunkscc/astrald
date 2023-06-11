@@ -97,8 +97,11 @@ func (adm *Admin) list(term *admin.Terminal, args []string) error {
 	if tx.Error != nil {
 		return tx.Error
 	}
+	f := "%-20s%-16s%s\n"
 
 	term.Printf("showing %d results\n", len(list))
+	term.Printf(f, admin.Header("IDENTITY"), admin.Header("EXPIRY"), admin.Header("DATAID"))
+
 	for _, item := range list {
 		access, err := item.toAccess()
 		if err != nil {
@@ -112,8 +115,8 @@ func (adm *Admin) list(term *admin.Terminal, args []string) error {
 			expiry = time.Until(access.ExpiresAt).Round(time.Second).String()
 		}
 
-		term.Printf("%-20s%-14s%s\n",
-			adm.mod.node.Resolver().DisplayName(access.Identity),
+		term.Printf(f,
+			access.Identity,
 			expiry,
 			access.DataID)
 	}
@@ -126,10 +129,9 @@ func (adm *Admin) sources(term *admin.Terminal, args []string) error {
 
 	term.Printf("%d registered data source(s)\n", len(sources))
 	var fmt = "%-20s %s\n"
-	term.Printf(fmt, "IDENTITY", "SERVICE")
+	term.Printf(fmt, admin.Header("IDENTITY"), admin.Header("SERVICE"))
 	for _, source := range sources {
-		name := adm.mod.node.Resolver().DisplayName(source.Identity)
-		term.Printf(fmt, name, source.Service)
+		term.Printf(fmt, source.Identity, source.Service)
 	}
 
 	return nil
@@ -142,8 +144,7 @@ func (adm *Admin) providers(term *admin.Terminal, args []string) error {
 	}
 
 	for _, identity := range list {
-		name := adm.mod.node.Resolver().DisplayName(identity)
-		term.Printf("%s\n", name)
+		term.Printf("%s\n", identity)
 	}
 
 	return nil
@@ -173,6 +174,10 @@ func (adm *Admin) removeProvider(term *admin.Terminal, args []string) error {
 	}
 
 	return adm.mod.RemoveProvider(identity)
+}
+
+func (adm *Admin) ShortDescription() string {
+	return "manage storage providers and data access"
 }
 
 func (adm *Admin) help(term *admin.Terminal, _ []string) error {

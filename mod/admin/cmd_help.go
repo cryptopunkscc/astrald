@@ -31,7 +31,7 @@ func (cmd *CmdHelp) Exec(term *Terminal, _ []string) error {
 		if d, ok := c.(ShortDescriber); ok {
 			desc = d.ShortDescription()
 		}
-		term.Printf("  %-12s %s\n", name, desc)
+		term.Printf("  %-12s %s\n", Keyword(name), desc)
 	}
 
 	return nil

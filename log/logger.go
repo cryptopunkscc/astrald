@@ -3,6 +3,7 @@ package log
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -62,7 +63,7 @@ func (l *Logger) Errorv(level int, format string, v ...interface{}) {
 }
 
 func (l *Logger) Logf(t Type, level int, ts time.Time, tag string, f string, v ...interface{}) {
-	l.printer.Log(t, level, ts, tag, l.toOps(f, v...)...)
+	l.printer.Log(t, level, ts, tag, l.Renderf(f, v...)...)
 }
 
 func (l *Logger) SetNestedTag(nestedTag bool) {
@@ -73,7 +74,7 @@ func (l *Logger) Sprintf(f string, v ...any) string {
 	var buf = &bytes.Buffer{}
 	var out = NewMonoOutput(buf)
 
-	ops := l.toOps(f, v...)
+	ops := l.Renderf(f, v...)
 	for _, op := range ops {
 		out.Do(op)
 	}
@@ -99,7 +100,7 @@ func (l *Logger) Root() *Logger {
 	return l
 }
 
-func (l *Logger) Format(v any) ([]Op, bool) {
+func (l *Logger) Render(v any) ([]Op, bool) {
 	for _, fn := range l.formatters {
 		if ops, ok := fn(v); ok {
 			return ops, true
@@ -107,13 +108,13 @@ func (l *Logger) Format(v any) ([]Op, bool) {
 	}
 
 	if l.parent != nil {
-		return l.parent.Format(v)
+		return l.parent.Render(v)
 	}
 
 	return nil, false
 }
 
-func (l *Logger) toOps(f string, v ...any) []Op {
+func (l *Logger) Renderf(f string, v ...any) []Op {
 	var ops = make([]Op, 0)
 
 	for {
@@ -154,13 +155,75 @@ func (l *Logger) toOps(f string, v ...any) []Op {
 			nv := v[0]
 			v = v[1:]
 
-			if vops, ok := l.Format(nv); ok {
+			if vops, ok := l.Render(nv); ok {
 				ops = append(ops, vops...)
 				ops = append(ops, OpReset{})
 				continue
 			}
 
 			ops = append(ops, OpText{Text: fmt.Sprintf("%v", nv)})
+
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.':
+			var orig = "%"
+			var last = 1
+			for ; (len(v) >= last) && isDigit(f[last]); last++ {
+			}
+
+			orig = orig + f[:last]
+
+			limit, _ := strconv.Atoi(f[:last])
+			var alignRight = limit >= 0
+			if limit < 0 {
+				limit = -limit
+			}
+
+			f = f[last:]
+
+			if len(f) == 0 {
+				break
+			}
+
+			if (f[0] != 's') && (f[0] != 'd') && (f[0] != 'f') {
+				continue
+			}
+
+			orig = orig + string(f[0])
+			f = f[1:]
+
+			obj := v[0]
+			v = v[1:]
+
+			if vops, ok := l.Render(obj); ok {
+				var lops []Op
+				for _, op := range vops {
+					if text, ok := op.(OpText); ok {
+						if len(text.Text) > limit {
+							text.Text = text.Text[0:limit]
+						}
+						limit = limit - len(text.Text)
+					}
+					lops = append(lops, op)
+				}
+
+				if limit > 0 {
+					if alignRight {
+						ops = append(ops, OpText{Text: strings.Repeat(" ", limit)})
+					}
+				}
+
+				ops = append(ops, lops...)
+
+				if limit > 0 {
+					if !alignRight {
+						ops = append(ops, OpText{Text: strings.Repeat(" ", limit)})
+					}
+				}
+
+				ops = append(ops, OpReset{})
+				continue
+			}
+
+			ops = append(ops, OpText{Text: fmt.Sprintf(orig, obj)})
 
 		default:
 			ops = append(ops, OpText{Text: "%"})
@@ -169,6 +232,10 @@ func (l *Logger) toOps(f string, v ...any) []Op {
 	}
 
 	return ops
+}
+
+func isDigit(b byte) bool {
+	return (b >= '0') && (b <= '9')
 }
 
 func (l *Logger) getTag() string {

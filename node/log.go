@@ -2,7 +2,9 @@ package node
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
+	"strings"
 	"time"
 )
 
@@ -82,6 +84,33 @@ func (node *CoreNode) pushLogFormatters() {
 			log.OpText{Text: name},
 			log.OpReset{},
 		}, true
+	})
+
+	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
+		dataID, ok := v.(data.ID)
+		if !ok {
+			return nil, false
+		}
+
+		var ops []log.Op
+		var s = dataID.String()
+
+		if strings.HasPrefix(s, "id1") {
+			s = s[3:]
+			ops = append(ops,
+				log.OpColor{Color: log.Blue},
+				log.OpText{Text: "id1"},
+				log.OpReset{},
+			)
+		}
+
+		ops = append(ops,
+			log.OpColor{Color: log.BrightBlue},
+			log.OpText{Text: s},
+			log.OpReset{},
+		)
+
+		return ops, true
 	})
 
 	// nil format

@@ -75,17 +75,17 @@ func (cmd *CmdTracker) list(term *Terminal) error {
 	}
 
 	for _, nodeID := range ids {
-		var nodeName = cmd.mod.node.Resolver().DisplayName(nodeID)
-
-		term.Printf("%s (%s)\n", nodeName, nodeID)
+		term.Printf("%s (%s)\n", nodeID, nodeID.String())
 
 		endpoints, err := cmd.mod.node.Tracker().FindAll(nodeID)
 		if err != nil {
 			return err
 		}
 
+		var f = "  %-10s %s (expires %s)\n"
+
 		for _, ep := range endpoints {
-			term.Printf("  %s\n", cmd.formatEndpoint(ep))
+			term.Printf(f, ep.Network(), ep.Endpoint, ep.ExpiresAt)
 		}
 
 		term.Println()
