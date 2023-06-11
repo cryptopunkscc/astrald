@@ -94,7 +94,7 @@ func (s *Session) query(params proto.QueryParams) error {
 			if err != nil {
 				return err
 			}
-			if err = c.ReadError(); err != nil {
+			if err = c.DecodeErr(); err != nil {
 				return err
 			}
 
@@ -106,7 +106,7 @@ func (s *Session) query(params proto.QueryParams) error {
 				return err
 			}
 
-			err = c.ReadError()
+			err = c.DecodeErr()
 		}
 	}
 

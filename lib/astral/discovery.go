@@ -3,7 +3,7 @@ package astral
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
+	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"io"
 )
 
@@ -14,9 +14,10 @@ type Discovery struct {
 }
 
 type ServiceInfo struct {
-	Name  string
-	Type  string
-	Extra []byte
+	Identity id.Identity
+	Name     string
+	Type     string
+	Extra    []byte
 }
 
 func NewDiscovery(apphost *ApphostClient) *Discovery {
@@ -24,20 +25,19 @@ func NewDiscovery(apphost *ApphostClient) *Discovery {
 }
 
 func (d *Discovery) RegisterSource(name string) (io.Closer, error) {
-	rconn, err := d.Query(id.Identity{}, "services.register")
+	conn, err := d.Query(id.Identity{}, "services.register")
 	if err != nil {
 		return nil, err
 	}
 
-	conn := proto.New(rconn)
-	conn.Encode(proto.MsgRegister{Service: name})
+	session := rpc.New(conn)
 
-	err = conn.ReadError()
+	err = session.Register(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return rconn, nil
+	return conn, nil
 }
 
 func (d *Discovery) RegisterHandler(handler DiscoveryHandler) (io.Closer, error) {
@@ -59,10 +59,11 @@ func (d *Discovery) RegisterHandler(handler DiscoveryHandler) (io.Closer, error)
 			services := handler(conn.RemoteIdentity())
 
 			for _, s := range services {
-				cslq.Encode(conn, "v", proto.ServiceEntry{
-					Name:  s.Name,
-					Type:  s.Type,
-					Extra: s.Extra,
+				cslq.Encode(conn, "v", rpc.ServiceEntry{
+					Identity: s.Identity,
+					Name:     s.Name,
+					Type:     s.Type,
+					Extra:    s.Extra,
 				})
 			}
 
@@ -80,14 +81,14 @@ func (d *Discovery) Discover(identity id.Identity) ([]ServiceInfo, error) {
 	}
 
 	var list []ServiceInfo
-	var conn = proto.New(c)
 
 	for err == nil {
-		err = cslq.Invoke(conn, func(msg proto.ServiceEntry) error {
+		err = cslq.Invoke(c, func(msg rpc.ServiceEntry) error {
 			list = append(list, ServiceInfo{
-				Name:  msg.Name,
-				Type:  msg.Type,
-				Extra: msg.Extra,
+				Identity: msg.Identity,
+				Name:     msg.Name,
+				Type:     msg.Type,
+				Extra:    msg.Extra,
 			})
 			return nil
 		})

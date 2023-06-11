@@ -49,11 +49,11 @@ const (
 const presenceCSLQ = "x61 x70 x00 x00 v s c"
 
 func (p *presence) MarshalCSLQ(enc *cslq.Encoder) error {
-	return enc.Encode(presenceCSLQ, p.Identity, p.Port, p.Flags)
+	return enc.Encodef(presenceCSLQ, p.Identity, p.Port, p.Flags)
 }
 
 func (p *presence) UnmarshalCSLQ(dec *cslq.Decoder) error {
-	return dec.Decode(presenceCSLQ, &p.Identity, &p.Port, &p.Flags)
+	return dec.Decodef(presenceCSLQ, &p.Identity, &p.Port, &p.Flags)
 }
 
 func (m *Module) Run(ctx context.Context) (err error) {

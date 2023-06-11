@@ -54,7 +54,7 @@ func (srv *Service) startSession(ctx context.Context, conn *services.Conn, origi
 			srv.log.Logv(2, "(%s) shifting to %s...", identity, params.Identity)
 
 			if !params.Verify(identity) {
-				if err := c.WriteError(proto.ErrDenied); err != nil {
+				if err := c.EncodeErr(proto.ErrDenied); err != nil {
 					return err
 				}
 				continue
@@ -62,7 +62,7 @@ func (srv *Service) startSession(ctx context.Context, conn *services.Conn, origi
 
 			identity = params.Identity
 
-			if err := c.WriteError(nil); err != nil {
+			if err := c.EncodeErr(nil); err != nil {
 				return err
 			}
 
@@ -77,19 +77,19 @@ func (srv *Service) startSession(ctx context.Context, conn *services.Conn, origi
 			q, err := srv.node.Services().Query(ctx, identity, params.Query, origin)
 
 			if err != nil {
-				return c.WriteError(proto.ErrRejected)
+				return c.EncodeErr(proto.ErrRejected)
 			}
 
-			if err := c.WriteError(nil); err != nil {
+			if err := c.EncodeErr(nil); err != nil {
 				return err
 			}
 
-			streams.Join(q, c)
+			streams.Join(q, conn)
 
 			return nil
 
 		default:
-			return c.WriteError(proto.ErrInvalidRequest)
+			return c.EncodeErr(proto.ErrInvalidRequest)
 		}
 	}
 }

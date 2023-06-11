@@ -10,7 +10,7 @@ const cslqPattern = "[33]c"
 func (id *Identity) UnmarshalCSLQ(dec *cslq.Decoder) error {
 	var bytes []byte
 
-	if err := dec.Decode(cslqPattern, &bytes); err != nil {
+	if err := dec.Decodef(cslqPattern, &bytes); err != nil {
 		return err
 	}
 
@@ -31,5 +31,5 @@ func (id Identity) MarshalCSLQ(enc *cslq.Encoder) error {
 	} else {
 		serialized = id.PublicKey().SerializeCompressed()
 	}
-	return enc.Encode(cslqPattern, serialized)
+	return enc.Encodef(cslqPattern, serialized)
 }

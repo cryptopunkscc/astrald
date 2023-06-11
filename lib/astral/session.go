@@ -59,7 +59,7 @@ func (s *Session) Resolve(name string) (identity id.Identity, err error) {
 
 	var data proto.ResolveData
 
-	err = s.Decode("v", &data)
+	err = s.Decodef("v", &data)
 
 	return data.Identity, err
 }
@@ -75,7 +75,7 @@ func (s *Session) NodeInfo(identity id.Identity) (info proto.NodeInfoData, err e
 		return
 	}
 
-	err = s.Decode("v", &info)
+	err = s.Decodef("v", &info)
 	return
 }
 

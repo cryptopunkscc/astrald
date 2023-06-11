@@ -2,7 +2,7 @@ package discovery
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
+	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
@@ -36,7 +36,7 @@ func (m *DiscoveryService) handleQuery(ctx context.Context, query *services.Quer
 	}
 	defer nconn.Close()
 
-	var conn = proto.New(nconn)
+	var session = rpc.New(nconn)
 
 	var wg sync.WaitGroup
 
@@ -54,7 +54,7 @@ func (m *DiscoveryService) handleQuery(ctx context.Context, query *services.Quer
 
 			for _, item := range list {
 				item.Identity = sourceID
-				conn.Encode(item)
+				session.Encode(item)
 			}
 		}()
 	}

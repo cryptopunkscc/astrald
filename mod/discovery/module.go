@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
+	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -120,7 +120,7 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 	}()
 
 	for err == nil {
-		err = cslq.Invoke(q, func(msg proto.ServiceEntry) error {
+		err = cslq.Invoke(q, func(msg rpc.ServiceEntry) error {
 			list = append(list, ServiceEntry(msg))
 			return nil
 		})

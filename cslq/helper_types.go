@@ -1,43 +1,60 @@
 package cslq
 
-type String8 string
-type String16 string
-type String32 string
-type String64 string
+import (
+	"time"
+)
 
-type Buffer8 []byte
-type Buffer16 []byte
-type Buffer32 []byte
-type Buffer64 []byte
+type StringC string
+type StringS string
+type StringL string
+type StringQ string
 
-func (s String8) FormatCSLQ() string {
+type BufferC []byte
+type BufferS []byte
+type BufferL []byte
+type BufferQ []byte
+
+type Time time.Time
+
+func (s StringC) FormatCSLQ() string {
 	return "[c]c"
 }
 
-func (s String16) FormatCSLQ() string {
+func (s StringS) FormatCSLQ() string {
 	return "[s]c"
 }
 
-func (s String32) FormatCSLQ() string {
+func (s StringL) FormatCSLQ() string {
 	return "[l]c"
 }
 
-func (s String64) FormatCSLQ() string {
+func (s StringQ) FormatCSLQ() string {
 	return "[q]c"
 }
 
-func (s Buffer8) FormatCSLQ() string {
+func (s BufferC) FormatCSLQ() string {
 	return "[c]c"
 }
 
-func (s Buffer16) FormatCSLQ() string {
+func (s BufferS) FormatCSLQ() string {
 	return "[s]c"
 }
 
-func (s Buffer32) FormatCSLQ() string {
+func (s BufferL) FormatCSLQ() string {
 	return "[l]c"
 }
 
-func (s Buffer64) FormatCSLQ() string {
+func (s BufferQ) FormatCSLQ() string {
 	return "[q]c"
+}
+
+func (t *Time) UnmarshalCSLQ(dec *Decoder) (err error) {
+	var v int64
+	err = dec.Decodef("q", &v)
+	*(*time.Time)(t) = time.Unix(0, v)
+	return
+}
+
+func (t *Time) MarshalCSLQ(enc *Encoder) error {
+	return enc.Encodef("q", (*time.Time)(t).UnixNano())
 }

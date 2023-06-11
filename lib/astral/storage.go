@@ -3,7 +3,7 @@ package astral
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage/proto"
+	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
 	"io"
 )
 
@@ -24,20 +24,5 @@ func (s *Storage) Read(dataID data.ID, start int, n int) (r io.Reader, err error
 		}
 	}()
 
-	stream := proto.New(conn)
-
-	err = stream.Encode(proto.MsgRead{
-		DataID: dataID,
-		Start:  int64(start),
-		Len:    int64(n),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if err = stream.ReadError(); err != nil {
-		return nil, err
-	}
-
-	return conn, nil
+	return rpc.New(conn).Read(dataID, start, n)
 }

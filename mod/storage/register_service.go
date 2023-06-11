@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/storage/proto"
+	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
@@ -30,20 +30,10 @@ func (m *RegisterService) Run(ctx context.Context) error {
 	}()
 
 	for query := range queries {
-		if !m.IsProvider(query.RemoteIdentity()) {
-			m.log.Errorv(2, "register_provider: %v is not a provider, rejecting...", query.RemoteIdentity())
-			query.Reject()
-			continue
-		}
-
-		conn, err := query.Accept()
-		if err != nil {
-			continue
-		}
-
+		query := query
 		go func() {
-			if err := m.handle(ctx, conn); err != nil {
-				m.log.Errorv(0, "register(): %s", err)
+			if err := m.handle(ctx, query); err != nil {
+				m.log.Errorv(0, "RegisterService.handle(): %s", err)
 			}
 		}()
 	}
@@ -51,10 +41,21 @@ func (m *RegisterService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (m *RegisterService) handle(ctx context.Context, conn *services.Conn) error {
+func (m *RegisterService) handle(ctx context.Context, query *services.Query) error {
+	if !m.IsProvider(query.RemoteIdentity()) {
+		m.log.Errorv(2, "register_provider: %v is not a provider, rejecting...", query.RemoteIdentity())
+		query.Reject()
+		return nil
+	}
+
+	conn, err := query.Accept()
+	if err != nil {
+		return err
+	}
+
 	defer conn.Close()
-	return cslq.Invoke(conn, func(msg proto.MsgRegisterSource) error {
-		var stream = proto.New(conn)
+	return cslq.Invoke(conn, func(msg rpc.MsgRegisterSource) error {
+		var session = rpc.New(conn)
 
 		source := &DataSource{
 			Service:  msg.Service,
@@ -63,6 +64,6 @@ func (m *RegisterService) handle(ctx context.Context, conn *services.Conn) error
 
 		m.AddDataSource(source)
 
-		return stream.WriteError(nil)
+		return session.EncodeErr(nil)
 	})
 }

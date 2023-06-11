@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	"github.com/cryptopunkscc/astrald/mod/storage/proto"
+	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -75,21 +75,21 @@ func (s *ReadService) Discover(ctx context.Context, caller id.Identity, origin s
 
 func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
 	defer conn.Close()
-	return cslq.Invoke(conn, func(msg proto.MsgRead) error {
-		var stream = proto.New(conn)
+	return cslq.Invoke(conn, func(msg rpc.MsgRead) error {
+		var session = rpc.New(conn)
 
 		if !s.CheckAccess(conn.RemoteIdentity(), msg.DataID) {
 			s.log.Errorv(2, "access denied to %v to %v", conn.RemoteIdentity(), msg.DataID)
-			return stream.WriteError(proto.ErrUnavailable)
+			return session.EncodeErr(rpc.ErrUnavailable)
 		}
 
 		source, err := s.findSource(ctx, msg, conn.RemoteIdentity())
 		if err != nil {
-			return stream.WriteError(proto.ErrUnavailable)
+			return session.EncodeErr(rpc.ErrUnavailable)
 		}
 		defer source.Close()
 
-		if err := stream.WriteError(nil); err != nil {
+		if err := session.EncodeErr(nil); err != nil {
 			return err
 		}
 
@@ -98,7 +98,7 @@ func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
 	})
 }
 
-func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead, identity id.Identity) (io.ReadCloser, error) {
+func (s *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, identity id.Identity) (io.ReadCloser, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -114,7 +114,6 @@ func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead, identit
 		go func() {
 			defer wg.Done()
 			conn, err := s.node.Services().Query(ctx, identity, source.Service, nil)
-
 			if err != nil {
 				switch {
 				case errors.Is(err, context.Canceled):
@@ -125,13 +124,8 @@ func (s *ReadService) findSource(ctx context.Context, msg proto.MsgRead, identit
 				return
 			}
 
-			var stream = proto.New(conn)
+			_, err = rpc.New(conn).Read(msg.DataID, int(msg.Start), int(msg.Len))
 
-			if err := stream.Encode(msg); err != nil {
-				return
-			}
-
-			err = stream.ReadError()
 			if err != nil {
 				return
 			}

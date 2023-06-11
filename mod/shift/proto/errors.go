@@ -1,11 +1,15 @@
 package proto
 
 import (
-	"github.com/cryptopunkscc/astrald/cslq/stream"
+	"github.com/cryptopunkscc/astrald/cslq/rpc"
 	"io"
 )
 
-var es stream.ErrorSpace
+type Session struct {
+	*rpc.Session[string]
+}
+
+var es rpc.ErrorSpace
 
 var (
 	ErrRejected       = es.NewError(0x01, "rejected")
@@ -13,6 +17,6 @@ var (
 	ErrInvalidRequest = es.NewError(0xff, "invalid request")
 )
 
-func New(c io.ReadWriter) *stream.Stream {
-	return stream.NewStream(c, es)
+func New(c io.ReadWriter) Session {
+	return Session{rpc.NewSession[string](c, es)}
 }

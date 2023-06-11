@@ -1,27 +1,27 @@
-package stream
+package rpc
 
 import "errors"
 
 // ErrorSpace is a collection of ProtocolErrors which is used to encode/decode errors over a stream.
 type ErrorSpace struct {
-	err map[int]*ProtocolError
+	err map[int]*RPCError
 }
 
 // NewError creates a new error and wraps it using WrapError.
-func (space *ErrorSpace) NewError(code int, error string) (err *ProtocolError) {
+func (space *ErrorSpace) NewError(code int, error string) (err *RPCError) {
 	return space.WrapError(code, errors.New(error))
 }
 
 // WrapError wraps an error into a new error in the space. If another error with the same code exists,
 // it will be overwritten. Code cannot be zero, since zero is reserved for no error (nil).
-func (space *ErrorSpace) WrapError(code int, error error) (err *ProtocolError) {
+func (space *ErrorSpace) WrapError(code int, error error) (err *RPCError) {
 	if code == 0 {
 		panic("code cannot be zero")
 	}
 	if space.err == nil {
-		space.err = map[int]*ProtocolError{}
+		space.err = map[int]*RPCError{}
 	}
-	err = &ProtocolError{
+	err = &RPCError{
 		code:  code,
 		error: error,
 	}
@@ -31,7 +31,7 @@ func (space *ErrorSpace) WrapError(code int, error error) (err *ProtocolError) {
 
 // ByCode returns the error assigned to the code (or nil if the code is zero) and true. If the code is invalid it
 // returns nil and false.
-func (space *ErrorSpace) ByCode(code int) (*ProtocolError, bool) {
+func (space *ErrorSpace) ByCode(code int) (*RPCError, bool) {
 	if code == 0 {
 		return nil, true
 	}

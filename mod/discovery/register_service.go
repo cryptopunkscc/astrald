@@ -3,7 +3,7 @@ package discovery
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
+	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -39,8 +39,8 @@ func (m *RegisterService) handleQuery(_ context.Context, query *services.Query) 
 		return err
 	}
 
-	return cslq.Invoke(conn, func(msg proto.MsgRegister) error {
-		var stream = proto.New(conn)
+	return cslq.Invoke(conn, func(msg rpc.MsgRegister) error {
+		var session = rpc.New(conn)
 		var remoteID = conn.RemoteIdentity()
 
 		source := &ServiceSource{
@@ -52,11 +52,11 @@ func (m *RegisterService) handleQuery(_ context.Context, query *services.Query) 
 		service, err := m.node.Services().Find(msg.Service)
 		if err != nil {
 			defer conn.Close()
-			return stream.WriteError(proto.ErrRegistrationFailed)
+			return session.EncodeErr(rpc.ErrRegistrationFailed)
 		} else {
 			if !service.Identity().IsEqual(remoteID) {
 				defer conn.Close()
-				return stream.WriteError(proto.ErrRegistrationFailed)
+				return session.EncodeErr(rpc.ErrRegistrationFailed)
 			}
 		}
 
@@ -72,6 +72,6 @@ func (m *RegisterService) handleQuery(_ context.Context, query *services.Query) 
 			m.RemoveSource(source)
 		}()
 
-		return stream.WriteError(nil)
+		return session.EncodeErr(nil)
 	})
 }

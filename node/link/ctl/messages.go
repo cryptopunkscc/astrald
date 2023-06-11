@@ -26,11 +26,11 @@ func (m *PingMessage) Port() int {
 }
 
 func (m *PingMessage) MarshalCSLQ(enc *cslq.Encoder) error {
-	return enc.Encode("s", m.port)
+	return enc.Encodef("s", m.port)
 }
 
 func (m *PingMessage) UnmarshalCSLQ(dec *cslq.Decoder) error {
-	return dec.Decode("s", &m.port)
+	return dec.Decodef("s", &m.port)
 }
 
 type QueryMessage struct {
@@ -47,11 +47,11 @@ func (m *QueryMessage) Port() int {
 }
 
 func (m *QueryMessage) MarshalCSLQ(enc *cslq.Encoder) error {
-	return enc.Encode("[c]c s", m.query, m.port)
+	return enc.Encodef("[c]c s", m.query, m.port)
 }
 
 func (m *QueryMessage) UnmarshalCSLQ(dec *cslq.Decoder) error {
-	return dec.Decode("[c]c s", &m.query, &m.port)
+	return dec.Decodef("[c]c s", &m.query, &m.port)
 }
 
 type DropMessage struct {
@@ -63,9 +63,9 @@ func (m *DropMessage) Port() int {
 }
 
 func (m *DropMessage) MarshalCSLQ(enc *cslq.Encoder) error {
-	return enc.Encode("c", m.port)
+	return enc.Encodef("c", m.port)
 }
 
 func (m *DropMessage) UnmarshalCSLQ(dec *cslq.Decoder) error {
-	return dec.Decode("c", &m.port)
+	return dec.Decodef("c", &m.port)
 }

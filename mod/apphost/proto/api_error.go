@@ -24,7 +24,7 @@ func makeError(code int, msg string) *apiError {
 }
 
 func (e apiError) MarshalCSLQ(enc *cslq.Encoder) error {
-	return enc.Encode("c", e.code)
+	return enc.Encodef("c", e.code)
 }
 
 func (e apiError) Code() int {

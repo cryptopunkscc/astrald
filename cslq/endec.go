@@ -44,22 +44,42 @@ func NewEndec(rw io.ReadWriter) *Endec {
 	}
 }
 
-// Encode encodes vars according to the pattern.
-func (enc *Encoder) Encode(pattern string, v ...interface{}) error {
-	if format, err := Compile(pattern); err != nil {
+// Encodef encodes vars according to the format.
+func (enc *Encoder) Encodef(f string, v ...interface{}) error {
+	if format, err := Compile(f); err != nil {
 		return err
 	} else {
 		return format.Encode(enc.w, v...)
 	}
 }
 
-// Decode decodes vars using the pattern.
-func (dec *Decoder) Decode(pattern string, v ...interface{}) error {
-	if format, err := Compile(pattern); err != nil {
+// Encode encodes all arguments using the "v" format
+func (enc *Encoder) Encode(v ...interface{}) error {
+	for _, i := range v {
+		if err := enc.Encodef("v", i); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Decodef decodes vars using the format.
+func (dec *Decoder) Decodef(f string, v ...interface{}) error {
+	if format, err := Compile(f); err != nil {
 		return err
 	} else {
 		return format.Decode(dec.r, v...)
 	}
+}
+
+// Decode decodes a struct from the stream using the "v" format. Argument v must be a pointer to a struct.
+func (dec *Decoder) Decode(v ...any) error {
+	for _, i := range v {
+		if err := dec.Decodef("v", i); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Close closes the underlying transport if supported.
@@ -77,10 +97,10 @@ func (enc *Encoder) Close() error {
 
 // Encode encodes vars according to the pattern.
 func Encode(w io.Writer, pattern string, v ...interface{}) error {
-	return NewEncoder(w).Encode(pattern, v...)
+	return NewEncoder(w).Encodef(pattern, v...)
 }
 
 // Decode decodes vars using the pattern.
 func Decode(r io.Reader, pattern string, v ...interface{}) error {
-	return NewDecoder(r).Decode(pattern, v...)
+	return NewDecoder(r).Decodef(pattern, v...)
 }

@@ -1,6 +1,8 @@
-package proto
+package rpc
 
-import "github.com/cryptopunkscc/astrald/data"
+import (
+	"github.com/cryptopunkscc/astrald/data"
+)
 
 type MsgRegisterSource struct {
 	Service string `cslq:"[c]c"`

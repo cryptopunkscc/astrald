@@ -19,7 +19,7 @@ const netCodeOther = 255
 func (info *NodeInfo) UnmarshalCSLQ(dec *cslq.Decoder) error {
 	var count int
 
-	if err := dec.Decode("[c]c v c", &info.Alias, &info.Identity, &count); err != nil {
+	if err := dec.Decodef("[c]c v c", &info.Alias, &info.Identity, &count); err != nil {
 		return err
 	}
 
@@ -42,7 +42,7 @@ func (info *NodeInfo) MarshalCSLQ(enc *cslq.Encoder) error {
 		endpoints = endpoints[:255]
 	}
 
-	err := enc.Encode("[c]c v c", info.Alias, info.Identity, len(endpoints))
+	err := enc.Encodef("[c]c v c", info.Alias, info.Identity, len(endpoints))
 	if err != nil {
 		return err
 	}
@@ -59,26 +59,26 @@ func (info *NodeInfo) MarshalCSLQ(enc *cslq.Encoder) error {
 func encodeAddr(enc *cslq.Encoder, addr net.Endpoint) error {
 	switch addr.Network() {
 	case inet.DriverName:
-		if err := enc.Encode("c", netCodeInet); err != nil {
+		if err := enc.Encodef("c", netCodeInet); err != nil {
 			return err
 		}
 	case tor.DriverName:
-		if err := enc.Encode("c", netCodeTor); err != nil {
+		if err := enc.Encodef("c", netCodeTor); err != nil {
 			return err
 		}
 	case gw.DriverName:
-		if err := enc.Encode("c", netCodeGateway); err != nil {
+		if err := enc.Encodef("c", netCodeGateway); err != nil {
 			return err
 		}
 		gwAddr, _ := addr.(gw.Endpoint)
 		addr = gw.NewEndpoint(gwAddr.Gate(), gwAddr.Target())
 	default:
-		err := enc.Encode("c[c]c", 255, addr.Network())
+		err := enc.Encodef("c[c]c", 255, addr.Network())
 		if err != nil {
 			return err
 		}
 	}
-	if err := enc.Encode("[c]c", addr.Pack()); err != nil {
+	if err := enc.Encodef("[c]c", addr.Pack()); err != nil {
 		return err
 	}
 	return nil
@@ -88,7 +88,7 @@ func decodeAddr(dec *cslq.Decoder) (*net.GenericEndpoint, error) {
 	var netCode int
 	var netName string
 
-	if err := dec.Decode("c", &netCode); err != nil {
+	if err := dec.Decodef("c", &netCode); err != nil {
 		return nil, err
 	}
 
@@ -103,7 +103,7 @@ func decodeAddr(dec *cslq.Decoder) (*net.GenericEndpoint, error) {
 		netName = gw.DriverName
 
 	case netCodeOther:
-		if err := dec.Decode("[c]c", &netName); err != nil {
+		if err := dec.Decodef("[c]c", &netName); err != nil {
 			return nil, err
 		}
 	default:
@@ -111,7 +111,7 @@ func decodeAddr(dec *cslq.Decoder) (*net.GenericEndpoint, error) {
 	}
 
 	var data []byte
-	if err := dec.Decode("[c]c", &data); err != nil {
+	if err := dec.Decodef("[c]c", &data); err != nil {
 		return nil, err
 	}
 

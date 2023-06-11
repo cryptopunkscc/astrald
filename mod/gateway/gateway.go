@@ -55,7 +55,7 @@ func (mod *Gateway) handleQuery(ctx context.Context, query *services.Query) erro
 	var c = cslq.NewEndec(conn)
 	var cookie string
 
-	err = c.Decode("[c]c", &cookie)
+	err = c.Decodef("[c]c", &cookie)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (mod *Gateway) handleQuery(ctx context.Context, query *services.Query) erro
 		return err
 	}
 
-	c.Encode("c", true)
+	c.Encodef("c", true)
 
 	l, r, err := streams.Join(conn, out)
 

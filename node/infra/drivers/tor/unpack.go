@@ -27,7 +27,7 @@ func Unpack(data []byte) (Endpoint, error) {
 		dec      = cslq.NewDecoder(bytes.NewReader(data))
 	)
 
-	err = dec.Decode(packPattern, &version, &keyBytes, &port)
+	err = dec.Decodef(packPattern, &version, &keyBytes, &port)
 	if err != nil {
 		return Endpoint{}, err
 	}

@@ -1,5 +1,5 @@
 package discovery
 
-import "github.com/cryptopunkscc/astrald/mod/discovery/proto"
+import "github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 
-type ServiceEntry proto.ServiceEntry
+type ServiceEntry rpc.ServiceEntry

@@ -7,7 +7,7 @@ var _ cslq.Unmarshaler = &ID{}
 
 func (id *ID) UnmarshalCSLQ(dec *cslq.Decoder) (err error) {
 	var buf [40]byte
-	if err = dec.Decode("[40]c", &buf); err != nil {
+	if err = dec.Decodef("[40]c", &buf); err != nil {
 		return
 	}
 
@@ -17,5 +17,5 @@ func (id *ID) UnmarshalCSLQ(dec *cslq.Decoder) (err error) {
 }
 
 func (id ID) MarshalCSLQ(enc *cslq.Encoder) error {
-	return enc.Encode("[40]c", id.Pack())
+	return enc.Encodef("[40]c", id.Pack())
 }

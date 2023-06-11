@@ -3,7 +3,7 @@ package discovery
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
+	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/network"
 )
@@ -26,7 +26,7 @@ func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPe
 
 	var list = make([]ServiceEntry, 0)
 	for err == nil {
-		err = cslq.Invoke(conn, func(msg proto.ServiceEntry) error {
+		err = cslq.Invoke(conn, func(msg rpc.ServiceEntry) error {
 			list = append(list, ServiceEntry(msg))
 			return nil
 		})
