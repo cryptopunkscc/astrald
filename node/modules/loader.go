@@ -26,3 +26,11 @@ func RegisterModule(name string, loader ModuleLoader) error {
 
 	return nil
 }
+
+func RegisteredModules() []string {
+	var list = make([]string, 0, len(moduleLoaders))
+	for m := range moduleLoaders {
+		list = append(list, m)
+	}
+	return list
+}

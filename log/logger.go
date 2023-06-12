@@ -166,7 +166,7 @@ func (l *Logger) Renderf(f string, v ...any) []Op {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.':
 			var orig = "%"
 			var last = 1
-			for ; (len(v) >= last) && isDigit(f[last]); last++ {
+			for ; (len(f) >= last) && isDigit(f[last]); last++ {
 			}
 
 			orig = orig + f[:last]

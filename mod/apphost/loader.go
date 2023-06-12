@@ -3,7 +3,6 @@ package apphost
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"net"
@@ -30,11 +29,6 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	mod.keys, err = assets.KeyStore()
 	if err != nil {
 		return nil, err
-	}
-
-	adm, err := modules.Find[*admin.Module](node.Modules())
-	if err == nil {
-		_ = adm.AddCommand("apphost", &Admin{mod: mod})
 	}
 
 	return mod, nil

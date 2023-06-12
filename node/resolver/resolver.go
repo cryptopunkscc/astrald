@@ -18,7 +18,6 @@ var _ Resolver = &CoreResolver{}
 type Node interface {
 	Identity() id.Identity
 	Tracker() tracker.Tracker
-	Alias() string
 }
 
 type CoreResolver struct {
@@ -34,7 +33,7 @@ func NewCoreResolver(node Node) *CoreResolver {
 }
 
 func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
-	if s == "localnode" || s == c.node.Alias() {
+	if s == "localnode" {
 		return c.node.Identity(), nil
 	}
 
@@ -54,10 +53,6 @@ func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
 func (c *CoreResolver) DisplayName(identity id.Identity) string {
 	if identity.IsZero() {
 		return ZeroIdentity
-	}
-
-	if identity.IsEqual(c.node.Identity()) {
-		return c.node.Alias()
 	}
 
 	if alias, err := c.node.Tracker().GetAlias(identity); err == nil {

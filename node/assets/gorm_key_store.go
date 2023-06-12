@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var _ KeyStore = &GormKeyStore{}
+
 type GormKeyStore struct {
 	db *gorm.DB
 }
@@ -50,6 +52,32 @@ func (store *GormKeyStore) Find(identity id.Identity) (id.Identity, error) {
 	return record.Identity(), nil
 }
 
+func (store *GormKeyStore) Count() (int, error) {
+	var c int64
+	err := store.db.Model(&gormIdentity{}).Count(&c).Error
+	return int(c), err
+}
+
+func (store *GormKeyStore) First() (id.Identity, error) {
+	var row gormIdentity
+	err := store.db.Model(&gormIdentity{}).Order("created_at").First(&row).Error
+	if err != nil {
+		return id.Identity{}, err
+	}
+
+	pk, err := hex.DecodeString(row.PrivateKey)
+	if err != nil {
+		return id.Identity{}, err
+	}
+
+	identity, err := id.ParsePrivateKey(pk)
+	if err != nil {
+		return id.Identity{}, err
+	}
+
+	return identity, nil
+}
+
 func (store *GormKeyStore) migrateDB() error {
 	return store.db.AutoMigrate(&gormIdentity{})
 }
@@ -73,7 +101,9 @@ func (i gormIdentity) Identity() id.Identity {
 }
 
 type gormIdentity struct {
-	PublicKey  string `gorm:"index"`
-	PrivateKey string
+	PublicKey  string `gorm:"primaryKey"`
+	PrivateKey string `gorm:"index;unique;not null"`
 	CreatedAt  time.Time
 }
+
+func (gormIdentity) TableName() string { return "identities" }

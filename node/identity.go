@@ -1,40 +1,95 @@
 package node
 
 import (
+	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"os"
-	"path/filepath"
 )
 
 const defaultIdentityKey = "id"
 
-func (node *CoreNode) loadIdentity(name string) (id.Identity, error) {
-	filePath := filepath.Join(node.rootDir, name)
+func (node *CoreNode) setupIdentity() (err error) {
+	//TODO: remove this function after migrations are done
+	node.importIdentity(defaultIdentityKey)
 
-	bytes, err := os.ReadFile(filePath)
-	if err != nil {
-		return id.Identity{}, err
+	if len(node.config.Identity) > 0 {
+		return node.loadConfigIdentity()
 	}
 
-	return id.ParsePrivateKey(bytes)
+	return node.loadDefaultIdentity()
 }
 
-func (node *CoreNode) generateIdentity(name string) (id.Identity, error) {
-	filePath := filepath.Join(node.rootDir, name)
+func (node *CoreNode) loadConfigIdentity() error {
+	identity, err := func() (i id.Identity, e error) {
+		i, e = id.ParsePublicKeyHex(node.config.Identity)
+		if e == nil {
+			return
+		}
 
+		i, e = node.Tracker().IdentityByAlias(node.config.Identity)
+		if e == nil {
+			return
+		}
+
+		return id.Identity{}, errors.New("unknown identity")
+	}()
+	if err != nil {
+		return err
+	}
+
+	if node.identity, err = node.keys.Find(identity); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (node *CoreNode) loadDefaultIdentity() error {
+	count, err := node.keys.Count()
+	if err != nil {
+		return err
+	}
+
+	// if there are no keys in the store, this is the first run
+	if count == 0 {
+		var alias = "localnode"
+		if hostname, err := os.Hostname(); err == nil {
+			alias = hostname
+		}
+
+		node.identity, err = node.generateIdentity(alias)
+	} else {
+		node.identity, err = node.keys.First()
+	}
+
+	return err
+}
+
+func (node *CoreNode) generateIdentity(alias string) (id.Identity, error) {
 	identity, err := id.GenerateIdentity()
 	if err != nil {
 		return id.Identity{}, err
 	}
 
-	return identity, os.WriteFile(filePath, identity.PrivateKey().Serialize(), 0600)
+	node.tracker.SetAlias(identity, alias)
+
+	return identity, node.keys.Save(identity)
 }
 
-func (node *CoreNode) setupIdentity() (err error) {
-	if node.identity, err = node.loadIdentity(defaultIdentityKey); err == nil {
-		return
+// deprecated
+func (node *CoreNode) importIdentity(name string) error {
+	bytes, err := node.assets.Read(name)
+	if err != nil {
+		return err
 	}
 
-	node.identity, err = node.generateIdentity(defaultIdentityKey)
-	return
+	identity, err := id.ParsePrivateKey(bytes)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("READ", identity.PublicKeyHex())
+
+	return node.keys.Save(identity)
 }

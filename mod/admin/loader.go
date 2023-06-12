@@ -22,7 +22,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	assets.LoadYAML(ModuleName, &mod.config)
 
 	mod.AddCommand("help", &CmdHelp{mod: mod})
-	mod.AddCommand("tracker", &CmdTracker{mod: mod})
+	mod.AddCommand("tracker", NewCmdTracker(mod))
 	mod.AddCommand("net", &CmdNet{mod: mod})
 	mod.AddCommand("services", &CmdServices{mod: mod})
 	mod.AddCommand("use", &CmdUse{mod: mod})

@@ -154,13 +154,11 @@ func (s *Session) nodeInfo(p proto.NodeInfoParams) error {
 
 	var data proto.NodeInfoData
 
-	if p.Identity.IsZero() {
-		data.Identity = s.mod.node.Identity()
-		data.Name = s.mod.node.Alias()
-	} else {
+	data.Identity = s.remoteID
+	if !p.Identity.IsZero() {
 		data.Identity = p.Identity
-		data.Name = s.mod.node.Resolver().DisplayName(p.Identity)
 	}
+	data.Name = s.mod.node.Resolver().DisplayName(data.Identity)
 
 	return s.WriteMsg(data)
 }

@@ -31,6 +31,7 @@ func NewCoreInfra(node Node, assets assets.Store, log *log.Logger) (*CoreInfra, 
 		log:            log.Tag(logTag),
 	}
 
+	// load config file
 	if err := assets.LoadYAML(configName, &i.config); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			i.log.Error("config error: %s", err)

@@ -3,7 +3,6 @@ package discovery
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -25,11 +24,6 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	mod.events.SetParent(node.Events())
 
 	assets.LoadYAML(ModuleName, &mod.config)
-
-	adm, err := modules.Find[*admin.Module](node.Modules())
-	if err == nil {
-		adm.AddCommand("discovery", NewAdmin(mod))
-	}
 
 	return mod, err
 }

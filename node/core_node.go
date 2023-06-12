@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
@@ -14,7 +13,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/resolver"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
-	"os"
 	"time"
 )
 
@@ -24,61 +22,57 @@ const logTag = "node"
 var _ Node = &CoreNode{}
 
 type CoreNode struct {
-	events       events.Queue
-	assets       assets.Store
-	config       Config
-	logConfig    LogConfig
-	identity     id.Identity
-	queryQueue   chan *link.Query
-	screenOutput *log.LinePrinter
-	screenFilter *log.PrinterFilter
-	logOutput    *log.PrinterSplitter
+	config   Config
+	identity id.Identity
+	assets   assets.Store
+	keys     assets.KeyStore
 
-	log      *log.Logger
 	infra    *infra.CoreInfra
 	network  *network.CoreNetwork
 	tracker  *tracker.CoreTracker
 	services *services.CoreService
 	modules  *modules.CoreModules
 	resolver *resolver.CoreResolver
+	events   events.Queue
 
-	rootDir string
+	queryQueue chan *link.Query
+	logConfig  LogConfig
+	logFields
 }
 
 // NewCoreNode instantiates a new node
 func NewCoreNode(rootDir string) (*CoreNode, error) {
 	var err error
 	var node = &CoreNode{
-		rootDir:    rootDir,
 		config:     defaultConfig,
 		queryQueue: make(chan *link.Query),
 	}
 
-	node.screenOutput = log.NewLinePrinter(log.NewColorOutput(os.Stdout))
-	node.screenFilter = log.NewPrinterFilter(node.screenOutput)
-	node.logOutput = log.NewPrinterSplitter(node.screenFilter)
-	node.log = log.NewLogger(node.logOutput).Tag(logTag)
+	// basic logs
+	node.setupLogs()
 
-	node.pushLogFormatters()
+	// assets
+	node.assets, err = assets.NewFileStore(rootDir, node.log.Tag("assets"))
+	if err != nil {
+		return nil, err
+	}
 
-	node.assets, _ = assets.NewFileStore(rootDir, node.log.Tag("assets"))
+	node.keys, err = node.assets.KeyStore()
+	if err != nil {
+		return nil, err
+	}
 
-	// logger
-	if err := node.setupLogging(node.assets); err != nil {
+	// log config
+	if err := node.loadLogConfig(node.assets); err != nil {
 		return nil, fmt.Errorf("logger error: %w", err)
 	}
 
-	// config
-	err = node.assets.LoadYAML("node", &node.config)
+	// node config
+	err = node.assets.LoadYAML(configName, &node.config)
 	if err != nil {
 		if !errors.Is(err, assets.ErrNotFound) {
 			return nil, fmt.Errorf("error loading config: %w", err)
 		}
-	}
-
-	// identity
-	if err := node.setupIdentity(); err != nil {
-		return nil, fmt.Errorf("error setting up identity: %w", err)
 	}
 
 	// infrastructure
@@ -91,6 +85,11 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	node.tracker, err = tracker.NewCoreTracker(node.assets, node.infra, node.log, &node.events)
 	if err != nil {
 		return nil, err
+	}
+
+	// identity
+	if err := node.setupIdentity(); err != nil {
+		return nil, fmt.Errorf("error setting up identity: %w", err)
 	}
 
 	// resolver
@@ -106,7 +105,11 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	}
 
 	// modules
-	node.modules, err = modules.NewCoreModules(node, node.config.Modules, node.assets, node.log)
+	var enabled = node.config.Modules
+	if enabled == nil {
+		enabled = modules.RegisteredModules()
+	}
+	node.modules, err = modules.NewCoreModules(node, enabled, node.assets, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
@@ -147,45 +150,4 @@ func (node *CoreNode) Identity() id.Identity {
 // Events returns the event queue for the node
 func (node *CoreNode) Events() *events.Queue {
 	return &node.events
-}
-
-// Alias returns node's alias
-func (node *CoreNode) Alias() string {
-	return node.config.Alias
-}
-
-// SetAlias sets the node alias
-func (node *CoreNode) SetAlias(alias string) error {
-	node.config.Alias = alias
-	return node.assets.StoreYAML(configName, node.config)
-}
-
-func (node *CoreNode) setupLogging(assets assets.Store) error {
-	if err := assets.LoadYAML("log", &node.logConfig); err != nil {
-		return nil
-	}
-
-	for tag, level := range node.logConfig.TagLevels {
-		node.screenFilter.TagLevels[tag] = level
-	}
-	for tag, color := range node.logConfig.TagColors {
-		node.screenOutput.TagColors[tag] = log.ParseColor(color)
-	}
-	node.screenOutput.SetHideDate(node.logConfig.HideDate)
-	node.screenFilter.Level = node.logConfig.Level
-
-	var logFile = node.logConfig.LogFile
-
-	if logFile != "" {
-		fileOutput, err := log.NewFileOutput(logFile)
-		if err != nil {
-			node.log.Error("error opening log file %v: %v", logFile, err)
-			return nil
-		}
-
-		filePrinter := log.NewLinePrinter(fileOutput)
-		node.logOutput.Add(filePrinter)
-	}
-
-	return nil
 }

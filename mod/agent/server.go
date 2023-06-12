@@ -31,6 +31,7 @@ var (
 	ErrUnauthorized   = errors.New("unauthorized")
 	ErrInvalidRequest = errors.New("invalid_request")
 	ErrUnsupported    = errors.New("unsupported")
+	ErrInternalError  = errors.New("internal_error")
 )
 
 type Server struct {
@@ -137,21 +138,22 @@ func (srv *Server) handleRequest(req interface{}) interface{} {
 			return ErrUnauthorized
 		}
 
-		if coreNode, ok := srv.node.(*node.CoreNode); ok {
-			return coreNode.SetAlias(req.Alias)
-		}
-
-		return ErrUnsupported
+		return srv.node.Tracker().SetAlias(srv.node.Identity(), req.Alias)
 
 	case GetAliasRequest:
 		if !srv.auth {
 			return ErrUnauthorized
 		}
 
+		alias, err := srv.node.Tracker().GetAlias(srv.node.Identity())
+		if err != nil {
+			return ErrInternalError
+		}
+
 		return struct {
 			Alias string `json:"alias"`
 		}{
-			Alias: srv.node.Alias(),
+			Alias: alias,
 		}
 	}
 

@@ -4,14 +4,25 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/node/assets"
+	"os"
 	"strings"
 	"time"
 )
 
-// aliasString is a type used to force formatting of aliases
-type aliasString string
+type logFields struct {
+	screenOutput *log.LinePrinter
+	screenFilter *log.PrinterFilter
+	logOutput    *log.PrinterSplitter
+	log          *log.Logger
+}
 
-func (node *CoreNode) pushLogFormatters() {
+func (node *CoreNode) setupLogs() {
+	node.screenOutput = log.NewLinePrinter(log.NewColorOutput(os.Stdout))
+	node.screenFilter = log.NewPrinterFilter(node.screenOutput)
+	node.logOutput = log.NewPrinterSplitter(node.screenFilter)
+	node.log = log.NewLogger(node.logOutput).Tag(logTag)
+
 	// string format
 	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
 		s, ok := v.(string)
@@ -21,19 +32,6 @@ func (node *CoreNode) pushLogFormatters() {
 		return []log.Op{
 			log.OpColor{Color: log.Yellow},
 			log.OpText{Text: s},
-			log.OpReset{},
-		}, true
-	})
-
-	// aliasString format
-	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		s, ok := v.(aliasString)
-		if !ok {
-			return nil, false
-		}
-		return []log.Op{
-			log.OpColor{Color: log.Green},
-			log.OpText{Text: string(s)},
 			log.OpReset{},
 		}, true
 	})
@@ -132,4 +130,34 @@ func (node *CoreNode) pushLogFormatters() {
 			log.OpReset{},
 		}, true
 	})
+}
+
+func (node *CoreNode) loadLogConfig(assets assets.Store) error {
+	if err := assets.LoadYAML("log", &node.logConfig); err != nil {
+		return nil
+	}
+
+	for tag, level := range node.logConfig.TagLevels {
+		node.screenFilter.TagLevels[tag] = level
+	}
+	for tag, color := range node.logConfig.TagColors {
+		node.screenOutput.TagColors[tag] = log.ParseColor(color)
+	}
+	node.screenOutput.SetHideDate(node.logConfig.HideDate)
+	node.screenFilter.Level = node.logConfig.Level
+
+	var logFile = node.logConfig.LogFile
+
+	if logFile != "" {
+		fileOutput, err := log.NewFileOutput(logFile)
+		if err != nil {
+			node.log.Error("error opening log file %v: %v", logFile, err)
+			return nil
+		}
+
+		filePrinter := log.NewLinePrinter(fileOutput)
+		node.logOutput.Add(filePrinter)
+	}
+
+	return nil
 }

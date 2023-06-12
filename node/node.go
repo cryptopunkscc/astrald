@@ -15,7 +15,6 @@ import (
 
 type Node interface {
 	Identity() id.Identity
-	Alias() string
 	Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error)
 	Events() *events.Queue
 	Infra() infra.Infra

@@ -7,9 +7,11 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"reflect"
 	"sync"
@@ -27,6 +29,12 @@ type Module struct {
 }
 
 func (m *Module) Run(ctx context.Context) error {
+	// inject admin command
+
+	if adm, err := modules.Find[*admin.Module](m.node.Modules()); err == nil {
+		adm.AddCommand("discovery", NewAdmin(m))
+	}
+
 	return tasks.Group(
 		&DiscoveryService{Module: m},
 		&RegisterService{Module: m},

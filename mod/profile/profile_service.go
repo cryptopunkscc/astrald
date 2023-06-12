@@ -61,7 +61,7 @@ func (srv *ProfileService) getLocalProfile() *proto.Profile {
 		Endpoints: []proto.Endpoint{},
 	}
 
-	p.Alias = srv.node.Alias()
+	p.Alias = srv.node.Resolver().DisplayName(srv.node.Identity())
 
 	for _, a := range srv.node.Infra().Endpoints() {
 		p.Endpoints = append(p.Endpoints, proto.Endpoint{

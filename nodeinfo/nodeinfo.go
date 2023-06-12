@@ -29,7 +29,7 @@ func New(identity id.Identity) *NodeInfo {
 func FromNode(node node.Node) *NodeInfo {
 	info := &NodeInfo{
 		Identity:  node.Identity().Public(),
-		Alias:     node.Alias(),
+		Alias:     node.Resolver().DisplayName(node.Identity()),
 		Endpoints: node.Infra().Endpoints(),
 	}
 

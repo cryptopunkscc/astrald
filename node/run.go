@@ -11,15 +11,10 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 	ctx, shutdown := context.WithCancel(ctx)
 
 	// Say hello
-	nodeKey := node.identity.PublicKeyHex()
-	if node.Alias() != "" {
-		node.log.Log("astral node %s (%s) statrting...",
-			aliasString(node.Alias()),
-			nodeKey,
-		)
-	} else {
-		node.log.Log("astral node %s statrting...", nodeKey)
-	}
+	node.log.Log("astral node %s (%s) statrting...",
+		node.identity,
+		node.identity.PublicKeyHex(),
+	)
 
 	var wg sync.WaitGroup
 	var errCh = make(chan error, 32)
