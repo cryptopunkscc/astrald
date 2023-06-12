@@ -3,9 +3,7 @@ package tcpfwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
 	"net"
@@ -20,11 +18,6 @@ type Module struct {
 }
 
 func (m *Module) Run(ctx context.Context) error {
-	_, err := modules.WaitReady[*contacts.Module](ctx, m.node.Modules())
-	if err != nil {
-		return err
-	}
-
 	var wg sync.WaitGroup
 
 	for astralPort, tcpPort := range m.config.Out {

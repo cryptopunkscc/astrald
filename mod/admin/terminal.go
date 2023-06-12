@@ -19,6 +19,8 @@ type Terminal struct {
 
 type Header string
 type Keyword string
+type Faded string
+type Important string
 
 func NewTerminal(rw io.ReadWriter, logger *log.Logger) *Terminal {
 	l := logger.Tag("")
@@ -36,7 +38,7 @@ func NewTerminal(rw io.ReadWriter, logger *log.Logger) *Terminal {
 			return nil, false
 		}
 		return []log.Op{
-			log.OpBold{Bold: true},
+			log.OpColor{Color: log.White},
 			log.OpText{Text: strings.ToUpper(string(s))},
 			log.OpReset{},
 		}, true
@@ -49,6 +51,30 @@ func NewTerminal(rw io.ReadWriter, logger *log.Logger) *Terminal {
 		}
 		return []log.Op{
 			log.OpColor{Color: log.Yellow},
+			log.OpText{Text: string(s)},
+			log.OpReset{},
+		}, true
+	})
+
+	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
+		s, ok := v.(Faded)
+		if !ok {
+			return nil, false
+		}
+		return []log.Op{
+			log.OpColor{Color: log.BrightBlack},
+			log.OpText{Text: string(s)},
+			log.OpReset{},
+		}, true
+	})
+
+	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
+		s, ok := v.(Important)
+		if !ok {
+			return nil, false
+		}
+		return []log.Op{
+			log.OpColor{Color: log.BrightRed},
 			log.OpText{Text: string(s)},
 			log.OpReset{},
 		}, true
@@ -81,7 +107,12 @@ func (t *Terminal) Printf(f string, v ...any) {
 func (t *Terminal) Println(v ...any) {
 	if useColorTerminal {
 		for _, i := range v {
-			t.output.Do(t.log.Render(i))
+			ops, b := t.log.Render(i)
+			if b {
+				t.output.Do(ops...)
+			} else {
+				fmt.Fprintln(t, i)
+			}
 		}
 		t.output.Do(log.OpText{Text: "\n"})
 		return

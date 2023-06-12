@@ -14,9 +14,7 @@ type dbEndpoint struct {
 	ExpiresAt time.Time
 }
 
-func (dbEndpoint) TableName() string {
-	return "endpoints"
-}
+func (dbEndpoint) TableName() string { return "endpoints" }
 
 func (tracker *CoreTracker) dbEndpointToEndopoint(src dbEndpoint) (TrackedEndpoint, error) {
 	identity, err := id.ParsePublicKeyHex(src.Identity)
@@ -36,3 +34,17 @@ func (tracker *CoreTracker) dbEndpointToEndopoint(src dbEndpoint) (TrackedEndpoi
 		ExpiresAt: src.ExpiresAt,
 	}, nil
 }
+
+func (tracker *CoreTracker) dbAutoMigrate() (err error) {
+	return tracker.db.AutoMigrate(
+		&dbEndpoint{},
+		&dbAliases{},
+	)
+}
+
+type dbAliases struct {
+	Identity string `gorm:"primaryKey"`
+	Alias    string `gorm:"index;unique;not null"`
+}
+
+func (dbAliases) TableName() string { return "aliases" }

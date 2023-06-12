@@ -3,6 +3,7 @@ package resolver
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/node/tracker"
 )
 
 const ZeroIdentity = "<anonymous>"
@@ -16,6 +17,7 @@ var _ Resolver = &CoreResolver{}
 
 type Node interface {
 	Identity() id.Identity
+	Tracker() tracker.Tracker
 	Alias() string
 }
 
@@ -36,6 +38,10 @@ func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
 		return c.node.Identity(), nil
 	}
 
+	if identity, err := c.node.Tracker().IdentityByAlias(s); err == nil {
+		return identity, nil
+	}
+
 	for _, r := range c.resolvers {
 		if i, err := r.Resolve(s); err == nil {
 			return i, nil
@@ -52,6 +58,10 @@ func (c *CoreResolver) DisplayName(identity id.Identity) string {
 
 	if identity.IsEqual(c.node.Identity()) {
 		return c.node.Alias()
+	}
+
+	if alias, err := c.node.Tracker().GetAlias(identity); err == nil {
+		return alias
 	}
 
 	for _, r := range c.resolvers {

@@ -5,8 +5,6 @@ import (
 	"flag"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/contacts"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -118,7 +116,7 @@ func (adm *Admin) kill(out *admin.Terminal, args []string) error {
 	return adm.mod.execs[i].Kill()
 }
 
-func (adm *Admin) keys(out *admin.Terminal, args []string) error {
+func (adm *Admin) keys(term *admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("keys: missing argument")
 	}
@@ -134,18 +132,14 @@ func (adm *Admin) keys(out *admin.Terminal, args []string) error {
 			return err
 		}
 
-		out.Println("created identity:", key.PublicKeyHex())
-
 		if len(args) >= 2 {
 			alias := args[1]
-			modContacts, err := modules.Find[*contacts.Module](adm.mod.node.Modules())
-			if err != nil {
-				out.Println("cannot set alias:", err)
-				return nil
+			if err := adm.mod.node.Tracker().SetAlias(key, alias); err != nil {
+				term.Printf("cannot set alias: %v\n", err)
 			}
-
-			modContacts.SetAlias(key.PublicKeyHex(), alias)
 		}
+
+		term.Printf("created identity %s (%s)\n", key, admin.Faded(key.String()))
 	}
 
 	return nil

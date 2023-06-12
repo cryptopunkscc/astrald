@@ -29,6 +29,12 @@ func (cmd *CmdTracker) Exec(term *Terminal, args []string) error {
 	case "add":
 		return cmd.add(term, args[2:])
 
+	case "set_alias":
+		return cmd.setAlias(term, args[2:])
+
+	case "show":
+		return cmd.show(term, args[2:])
+
 	case "help":
 		return cmd.help(term)
 
@@ -65,7 +71,60 @@ func (cmd *CmdTracker) add(term *Terminal, args []string) error {
 		}
 	}
 
-	return cmd.mod.node.Tracker().Add(identity, ep, time.Now().Add(duration))
+	return cmd.mod.node.Tracker().AddEndpoint(identity, ep, time.Now().Add(duration))
+}
+
+func (cmd *CmdTracker) setAlias(term *Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("not enough arguments")
+	}
+
+	identity, err := cmd.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	return cmd.mod.node.Tracker().SetAlias(identity, args[1])
+}
+
+func (cmd *CmdTracker) show(term *Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("not enough arguments")
+	}
+
+	identity, err := cmd.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	term.Printf("%s (%s)\n", identity, Faded(identity.String()))
+
+	// check private key
+	if keys, err := cmd.mod.assets.KeyStore(); err == nil {
+		if pi, err := keys.Find(identity); err == nil {
+			if pi.PrivateKey() != nil {
+				term.Printf("%s\n", Important("private key available"))
+			}
+		}
+	}
+
+	term.Println()
+
+	// print endpoints
+	if endpoints, err := cmd.mod.node.Tracker().EndpointsByIdentity(identity); err == nil {
+		if len(endpoints) == 0 {
+			term.Printf("no known endpoints.\n")
+		} else {
+			var f = "%-10s %-40s %s\n"
+			term.Printf(f, Header("Network"), Header("Address"), Header("Expires"))
+			for _, ep := range endpoints {
+				term.Printf(f, ep.Network(), ep.Endpoint, ep.ExpiresAt)
+			}
+			term.Printf("%d %s\n", len(endpoints), Faded("endpoints."))
+		}
+	}
+
+	return nil
 }
 
 func (cmd *CmdTracker) list(term *Terminal) error {
@@ -74,21 +133,10 @@ func (cmd *CmdTracker) list(term *Terminal) error {
 		return err
 	}
 
+	var f = "%-30s %s\n"
+	term.Printf(f, Header("Alias"), Header("PubKey"))
 	for _, nodeID := range ids {
-		term.Printf("%s (%s)\n", nodeID, nodeID.String())
-
-		endpoints, err := cmd.mod.node.Tracker().FindAll(nodeID)
-		if err != nil {
-			return err
-		}
-
-		var f = "  %-10s %s (expires %s)\n"
-
-		for _, ep := range endpoints {
-			term.Printf(f, ep.Network(), ep.Endpoint, ep.ExpiresAt)
-		}
-
-		term.Println()
+		term.Printf(f, nodeID, nodeID.String())
 	}
 
 	return nil
@@ -97,10 +145,12 @@ func (cmd *CmdTracker) list(term *Terminal) error {
 func (cmd *CmdTracker) help(term *Terminal) error {
 	term.Printf("help: tracker <command> [options]\n\n")
 	term.Printf("commands:\n")
-	term.Printf("  list     list all nodes and addresses\n")
-	term.Printf("  add      add an address to a node\n")
-	term.Printf("  delete   delete node from the tracker\n")
-	term.Printf("  help     show help\n")
+	term.Printf("  list                              list all identities\n")
+	term.Printf("  add                               add an endpoint to an identity\n")
+	term.Printf("  set_alias <identity> <alias>      set identity's alias\n")
+	term.Printf("  show <identity>                   show info about an identity\n")
+	term.Printf("  delete                            delete identity endpoints\n")
+	term.Printf("  help                              show help\n")
 	return nil
 }
 

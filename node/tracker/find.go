@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func (tracker *CoreTracker) FindAll(identity id.Identity) ([]TrackedEndpoint, error) {
+func (tracker *CoreTracker) EndpointsByIdentity(identity id.Identity) ([]TrackedEndpoint, error) {
 	var dbEndpoints []dbEndpoint
 
 	if tx := tracker.db.Find(

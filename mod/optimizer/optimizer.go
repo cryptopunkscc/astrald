@@ -62,7 +62,7 @@ func (mod *Module) Optimize(parent context.Context, peer *network.Peer) error {
 	retryDialer := NewRetryDialer(filterDialer, concurrency)
 
 	go func() {
-		list, err := mod.node.Tracker().FindAll(peer.Identity())
+		list, err := mod.node.Tracker().EndpointsByIdentity(peer.Identity())
 		if err == nil {
 			for _, i := range list {
 				retryDialer.Add(i)

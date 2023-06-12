@@ -31,7 +31,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	defer cancel()
 
 	// Fetch addresses for the remote identity
-	endpoints, err := task.Network.tracker.FindAll(task.RemoteID)
+	endpoints, err := task.Network.tracker.EndpointsByIdentity(task.RemoteID)
 	if err != nil {
 		return nil, err
 	}

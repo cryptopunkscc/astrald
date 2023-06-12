@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"io"
@@ -17,6 +18,7 @@ var _ modules.Module = &Module{}
 type Module struct {
 	config   Config
 	node     node.Node
+	assets   assets.Store
 	commands map[string]Command
 	log      *log.Logger
 }

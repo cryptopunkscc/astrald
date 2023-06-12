@@ -1,6 +1,7 @@
 package tracker
 
 import (
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -16,6 +17,20 @@ type CoreTracker struct {
 	parser EndpointParser
 	events events.Queue
 	log    *log.Logger
+}
+
+func (tracker *CoreTracker) IdentityByAlias(alias string) (id.Identity, error) {
+	var row dbAliases
+	if err := tracker.db.First(&row, "alias = ?", alias).Error; err != nil {
+		return id.Identity{}, err
+	}
+
+	identity, err := id.ParsePublicKeyHex(row.Identity)
+	if err != nil {
+		return id.Identity{}, err
+	}
+
+	return identity, nil
 }
 
 // NewCoreTracker returns a new instance of a CoreTracker. It will use db for persistency and the provided unpacker
@@ -35,7 +50,7 @@ func NewCoreTracker(assets assets.Store, parser EndpointParser, log *log.Logger,
 	}
 
 	// Migrate the schema
-	if err := tracker.db.AutoMigrate(&dbEndpoint{}); err != nil {
+	if err = tracker.dbAutoMigrate(); err != nil {
 		return nil, err
 	}
 
@@ -44,4 +59,20 @@ func NewCoreTracker(assets assets.Store, parser EndpointParser, log *log.Logger,
 	}
 
 	return tracker, nil
+}
+
+func (tracker *CoreTracker) SetAlias(identity id.Identity, alias string) error {
+	return tracker.db.Save(&dbAliases{
+		Identity: identity.String(),
+		Alias:    alias,
+	}).Error
+}
+
+func (tracker *CoreTracker) GetAlias(identity id.Identity) (string, error) {
+	var row dbAliases
+	if err := tracker.db.First(&row, "identity = ?", identity.String()).Error; err != nil {
+		return "", err
+	}
+
+	return row.Alias, nil
 }

@@ -2,7 +2,6 @@ package tracker
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"time"
 )
 
 // Identities returns a list of all tracked identities
@@ -14,10 +13,10 @@ func (tracker *CoreTracker) Identities() ([]id.Identity, error) {
 	var dbIDs []row
 
 	err := tracker.db.
-		Model(&dbEndpoint{}).
+		Model(&dbAliases{}).
 		Select("identity").
 		Group("identity").
-		Find(&dbIDs, "expires_at > ?", time.Now()).Error
+		Find(&dbIDs).Error
 	if err != nil {
 		return nil, err
 	}

@@ -18,7 +18,6 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		node:   node,
 		config: defaultConfig,
 		log:    log,
-		ready:  make(chan struct{}),
 	}
 
 	assets.LoadYAML(ModuleName, &mod.config)

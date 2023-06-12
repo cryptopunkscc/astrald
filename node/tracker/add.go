@@ -7,7 +7,7 @@ import (
 )
 
 // Add adds an endpoint to the identity. If the endpoint already exists, its expiry time will be replaced.
-func (tracker *CoreTracker) Add(identity id.Identity, e net.Endpoint, expiresAt time.Time) (err error) {
+func (tracker *CoreTracker) AddEndpoint(identity id.Identity, e net.Endpoint, expiresAt time.Time) (err error) {
 	var dbEp dbEndpoint
 
 	e, err = tracker.parser.Parse(e.Network(), e.String())

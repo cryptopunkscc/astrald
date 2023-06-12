@@ -73,8 +73,16 @@ func (node *CoreNode) pushLogFormatters() {
 
 		var color = log.Cyan
 
+		if ks, err := node.assets.KeyStore(); err == nil {
+			if identity, err := ks.Find(identity); err == nil {
+				if identity.PrivateKey() != nil {
+					color = log.Green
+				}
+			}
+		}
+
 		if node.identity.IsEqual(identity) {
-			color = log.Green
+			color = log.BrightGreen
 		}
 
 		var name = node.Resolver().DisplayName(identity)

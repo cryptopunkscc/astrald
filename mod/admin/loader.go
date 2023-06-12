@@ -14,6 +14,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	mod := &Module{
 		config:   defaultConfig,
 		node:     node,
+		assets:   assets,
 		commands: make(map[string]Command),
 		log:      log,
 	}

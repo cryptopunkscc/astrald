@@ -49,7 +49,7 @@ func (h *EventHandler) updateIdentity(identity id.Identity, serviceName string) 
 			continue
 		}
 
-		h.node.Tracker().Add(identity, ep, pep.ExpiresAt)
+		h.node.Tracker().AddEndpoint(identity, ep, pep.ExpiresAt)
 	}
 
 	return nil

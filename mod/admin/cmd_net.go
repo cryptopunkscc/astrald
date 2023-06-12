@@ -111,7 +111,7 @@ func (cmd *CmdNet) ls(term *Terminal, _ []string) error {
 			peer.Idle().Round(time.Second),
 		)
 		for _, link := range peer.Links() {
-			term.Printf("  %s %s %s (idle %s, age %s, prio %d, ping %.1f)\n",
+			term.Printf("  %s %s %s (idle %s, age %s, prio %d, ping %f)\n",
 				DoubleArrow(link.Outbound()),
 				link.RemoteEndpoint().Network(),
 				link.RemoteEndpoint(),
@@ -119,7 +119,6 @@ func (cmd *CmdNet) ls(term *Terminal, _ []string) error {
 				time.Since(link.EstablishedAt()).Round(time.Second),
 				link.Priority(),
 				link.Health().AverageRTT().Round(100*time.Microsecond),
-				//float64(link.Health().AverageRTT().Microseconds())/1000,
 			)
 			for _, c := range link.Conns().All() {
 				term.Printf("    %s %s [%d:%d] (idle %s)\n",

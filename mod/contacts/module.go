@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/node/resolver"
 	"gorm.io/gorm"
 )
 
@@ -18,7 +17,6 @@ type Module struct {
 	node   node.Node
 	log    *log.Logger
 	db     *gorm.DB
-	ready  chan struct{}
 }
 
 func (m *Module) Run(ctx context.Context) error {
@@ -26,11 +24,6 @@ func (m *Module) Run(ctx context.Context) error {
 		return err
 	}
 
-	if coreResolver, ok := m.node.Resolver().(*resolver.CoreResolver); ok {
-		coreResolver.AddResolver(&Resolver{mod: m})
-	}
-
-	close(m.ready)
 	<-ctx.Done()
 	return nil
 }
@@ -124,26 +117,4 @@ func (m *Module) Save(node Node) error {
 
 func (m *Module) Delete(identity id.Identity) error {
 	return m.db.Delete(&dbNode{}, "identity = ?", identity.PublicKeyHex()).Error
-}
-
-func (m *Module) Ready() <-chan struct{} {
-	return m.ready
-}
-
-func (m *Module) SetAlias(oldAlias, newAlias string) error {
-	var r = &Resolver{mod: m}
-
-	identity, err := r.Resolve(oldAlias)
-	if err != nil {
-		return err
-	}
-
-	node, err := m.FindOrCreate(identity)
-	if err != nil {
-		return err
-	}
-
-	node.Alias = newAlias
-
-	return m.Save(node)
 }

@@ -187,11 +187,22 @@ func (l *Logger) Renderf(f string, v ...any) []Op {
 				continue
 			}
 
+			var typ = f[0]
+
 			orig = orig + string(f[0])
 			f = f[1:]
 
 			obj := v[0]
 			v = v[1:]
+
+			if typ == 'f' {
+				if vops, ok := l.Render(obj); ok {
+					ops = append(ops, vops...)
+				} else {
+					ops = append(ops, OpText{Text: fmt.Sprintf(orig, obj)})
+				}
+				continue
+			}
 
 			if vops, ok := l.Render(obj); ok {
 				var lops []Op
@@ -201,22 +212,20 @@ func (l *Logger) Renderf(f string, v ...any) []Op {
 							text.Text = text.Text[0:limit]
 						}
 						limit = limit - len(text.Text)
+						lops = append(lops, text)
+						continue
 					}
 					lops = append(lops, op)
 				}
 
-				if limit > 0 {
-					if alignRight {
-						ops = append(ops, OpText{Text: strings.Repeat(" ", limit)})
-					}
+				if (limit > 0) && alignRight {
+					ops = append(ops, OpText{Text: strings.Repeat(" ", limit)})
 				}
 
 				ops = append(ops, lops...)
 
-				if limit > 0 {
-					if !alignRight {
-						ops = append(ops, OpText{Text: strings.Repeat(" ", limit)})
-					}
+				if (limit > 0) && !alignRight {
+					ops = append(ops, OpText{Text: strings.Repeat(" ", limit)})
 				}
 
 				ops = append(ops, OpReset{})

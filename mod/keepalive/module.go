@@ -5,10 +5,8 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"sync"
 	"time"
@@ -29,11 +27,6 @@ var relinkIntervals = []int{5, 5, 15, 30, 60, 60, 60, 60, 5 * 60, 5 * 60, 5 * 60
 const checkBestLinkInterval = 5 * time.Minute
 
 func (m *Module) Run(ctx context.Context) error {
-	_, err := modules.WaitReady[*contacts.Module](ctx, m.node.Modules())
-	if err != nil {
-		return err
-	}
-
 	var wg sync.WaitGroup
 
 	wg.Add(1)

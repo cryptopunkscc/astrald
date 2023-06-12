@@ -19,14 +19,13 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(*admin.Terminal, []string) error{
-		"add":       adm.add,
-		"parse":     adm.parse,
-		"list":      adm.list,
-		"show":      adm.show,
-		"set_alias": adm.setAlias,
-		"remove":    adm.remove,
-		"info":      adm.info,
-		"help":      adm.help,
+		"add":    adm.add,
+		"parse":  adm.parse,
+		"list":   adm.list,
+		"show":   adm.show,
+		"remove": adm.remove,
+		"info":   adm.info,
+		"help":   adm.help,
 	}
 
 	return adm
@@ -64,20 +63,12 @@ func (adm *Admin) add(_ *admin.Terminal, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := adm.mod.node.Tracker().Add(info.Identity, ep, time.Now().Add(7*24*time.Hour)); err != nil {
+		if err := adm.mod.node.Tracker().AddEndpoint(info.Identity, ep, time.Now().Add(7*24*time.Hour)); err != nil {
 			return err
 		}
 	}
 
-	node, err := adm.mod.FindOrCreate(info.Identity)
-	if err != nil {
-		return err
-	}
-
-	node.Alias = info.Alias
-
-	return adm.mod.Save(node)
-
+	return adm.mod.node.Tracker().SetAlias(info.Identity, info.Alias)
 }
 
 func (adm *Admin) list(term *admin.Terminal, _ []string) error {
@@ -128,7 +119,7 @@ func (adm *Admin) printNode(term *admin.Terminal, node Node, showInfo bool) erro
 
 	term.Printf("%s (%s)\n", node.Alias, node.Identity)
 
-	endpoints, err := adm.mod.node.Tracker().FindAll(node.Identity)
+	endpoints, err := adm.mod.node.Tracker().EndpointsByIdentity(node.Identity)
 	if err != nil {
 		return err
 	}
@@ -144,14 +135,6 @@ func (adm *Admin) printNode(term *admin.Terminal, node Node, showInfo bool) erro
 	}
 
 	return nil
-}
-
-func (adm *Admin) setAlias(_ *admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		return errors.New("argument missing")
-	}
-
-	return adm.mod.SetAlias(args[0], args[1])
 }
 
 func (adm *Admin) parse(term *admin.Terminal, args []string) error {

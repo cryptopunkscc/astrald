@@ -81,12 +81,6 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		return nil, fmt.Errorf("error setting up identity: %w", err)
 	}
 
-	// resolver
-	node.resolver = resolver.NewCoreResolver(node)
-
-	// hub
-	node.services = services.NewCoreServices(&node.events, node.log)
-
 	// infrastructure
 	node.infra, err = infra.NewCoreInfra(node, node.assets, node.log)
 	if err != nil {
@@ -98,6 +92,12 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// resolver
+	node.resolver = resolver.NewCoreResolver(node)
+
+	// hub
+	node.services = services.NewCoreServices(&node.events, node.log)
 
 	// network
 	node.network, err = network.NewCoreNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery, node.log)

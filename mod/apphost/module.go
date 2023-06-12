@@ -4,10 +4,8 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/contacts"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"math/rand"
 	"net"
 	"os"
@@ -47,11 +45,6 @@ func (mod *Module) Run(ctx context.Context) error {
 
 	if len(mod.config.Autorun) > 0 {
 		mod.log.Infov(1, "%d autorun entries", len(mod.config.Autorun))
-	}
-
-	_, err := modules.WaitReady[*contacts.Module](ctx, mod.node.Modules())
-	if err != nil {
-		mod.log.Errorv(1, "error waiting for mod_contacts: %s", err)
 	}
 
 	for _, run := range mod.config.Autorun {
