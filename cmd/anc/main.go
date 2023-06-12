@@ -199,13 +199,14 @@ func cmdShare(args []string) {
 }
 
 func cmdExec(args []string) {
-	if len(args) < 1 {
-		log("anc exec <name> <exec_path>")
+	if len(args) < 2 {
+		log("anc exec <name> <exec_path> [args]")
 		os.Exit(exitHelp)
 	}
 
 	serviceName := args[0]
 	execPath := args[1]
+	args = args[2:]
 
 	service, err := astral.Register(serviceName)
 	if err != nil {
@@ -223,7 +224,7 @@ func cmdExec(args []string) {
 		log("[%s] connected.", peerName)
 
 		go func() {
-			proc := exec.Command(execPath)
+			proc := exec.Command(execPath, args...)
 			stdin, _ := proc.StdinPipe()
 			stdout, _ := proc.StdoutPipe()
 			stderr, _ := proc.StderrPipe()
