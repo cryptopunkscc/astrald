@@ -1,38 +1,27 @@
 package tracker
 
 import (
-	"fmt"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/net"
 	"time"
 )
 
 type dbEndpoint struct {
-	Identity  string `gorm:"primaryKey"`
-	Network   string `gorm:"primaryKey"`
-	Address   string `gorm:"primaryKey"`
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	Identity      string `gorm:"primaryKey"`
+	Network       string `gorm:"primaryKey"`
+	Address       string `gorm:"primaryKey"`
+	CreatedAt     time.Time
+	LastSuccessAt time.Time
 }
 
 func (dbEndpoint) TableName() string { return "endpoints" }
 
-func (tracker *CoreTracker) dbEndpointToEndopoint(src dbEndpoint) (TrackedEndpoint, error) {
-	identity, err := id.ParsePublicKeyHex(src.Identity)
-	if err != nil {
-		return TrackedEndpoint{}, err
-	}
-
+func (tracker *CoreTracker) dbEndpointToEndopoint(src dbEndpoint) (net.Endpoint, error) {
 	endpoint, err := tracker.parser.Parse(src.Network, src.Address)
 	if err != nil {
-		fmt.Println(src.Network, src.Address)
-		return TrackedEndpoint{}, err
+		return nil, err
 	}
 
-	return TrackedEndpoint{
-		Identity:  identity,
-		Endpoint:  endpoint,
-		ExpiresAt: src.ExpiresAt,
-	}, nil
+	return endpoint, nil
 }
 
 func (tracker *CoreTracker) dbAutoMigrate() (err error) {

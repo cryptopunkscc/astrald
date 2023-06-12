@@ -3,6 +3,7 @@ package tracker
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"gorm.io/gorm"
@@ -10,6 +11,8 @@ import (
 
 const DatabaseName = "tracker.db"
 const logTag = "tracker"
+
+var _ Tracker = &CoreTracker{}
 
 // CoreTracker stores information about addresses of other nodes on the network.
 type CoreTracker struct {
@@ -19,18 +22,8 @@ type CoreTracker struct {
 	log    *log.Logger
 }
 
-func (tracker *CoreTracker) IdentityByAlias(alias string) (id.Identity, error) {
-	var row dbAliases
-	if err := tracker.db.First(&row, "alias = ?", alias).Error; err != nil {
-		return id.Identity{}, err
-	}
-
-	identity, err := id.ParsePublicKeyHex(row.Identity)
-	if err != nil {
-		return id.Identity{}, err
-	}
-
-	return identity, nil
+type EndpointParser interface {
+	Parse(network string, address string) (net.Endpoint, error)
 }
 
 // NewCoreTracker returns a new instance of a CoreTracker. It will use db for persistency and the provided unpacker
@@ -54,11 +47,21 @@ func NewCoreTracker(assets assets.Store, parser EndpointParser, log *log.Logger,
 		return nil, err
 	}
 
-	if err := tracker.cleanup(); err != nil {
-		return nil, err
+	return tracker, nil
+}
+
+func (tracker *CoreTracker) IdentityByAlias(alias string) (id.Identity, error) {
+	var row dbAliases
+	if err := tracker.db.First(&row, "alias = ?", alias).Error; err != nil {
+		return id.Identity{}, err
 	}
 
-	return tracker, nil
+	identity, err := id.ParsePublicKeyHex(row.Identity)
+	if err != nil {
+		return id.Identity{}, err
+	}
+
+	return identity, nil
 }
 
 func (tracker *CoreTracker) SetAlias(identity id.Identity, alias string) error {

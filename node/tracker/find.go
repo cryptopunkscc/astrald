@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func (tracker *CoreTracker) EndpointsByIdentity(identity id.Identity) ([]TrackedEndpoint, error) {
+func (tracker *CoreTracker) EndpointsByIdentity(identity id.Identity) ([]net.Endpoint, error) {
 	var dbEndpoints []dbEndpoint
 
 	if tx := tracker.db.Find(
@@ -18,7 +18,7 @@ func (tracker *CoreTracker) EndpointsByIdentity(identity id.Identity) ([]Tracked
 		return nil, tx.Error
 	}
 
-	var endpoints = make([]TrackedEndpoint, 0, len(dbEndpoints))
+	var endpoints = make([]net.Endpoint, 0, len(dbEndpoints))
 
 	for _, dbEp := range dbEndpoints {
 		if ep, err := tracker.dbEndpointToEndopoint(dbEp); err == nil {

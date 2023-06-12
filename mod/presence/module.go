@@ -159,7 +159,7 @@ func (m *Module) handle(ctx context.Context, ip Presence) {
 
 	m.events.Emit(EventIdentityPresent{ip.Identity, ip.Endpoint})
 
-	_ = m.node.Tracker().AddEndpoint(ip.Identity, ip.Endpoint, time.Now().Add(60*time.Minute))
+	_ = m.node.Tracker().AddEndpoint(ip.Identity, ip.Endpoint)
 }
 
 func (m *Module) Discover(ctx context.Context) (<-chan Presence, error) {

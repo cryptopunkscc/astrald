@@ -71,7 +71,7 @@ func (mod *Module) Optimize(parent context.Context, peer *network.Peer) error {
 
 		events.Handle(ctx, mod.node.Events(), func(ctx context.Context, e tracker.EventNewEndpoint) error {
 			if e.Identity.IsEqual(peer.Identity()) {
-				retryDialer.Add(e.TrackedEndpoint.Endpoint)
+				retryDialer.Add(e.Endpoint)
 			}
 			return nil
 		})

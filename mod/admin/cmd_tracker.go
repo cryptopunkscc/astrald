@@ -2,10 +2,7 @@ package admin
 
 import (
 	"errors"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
-	"github.com/cryptopunkscc/astrald/node/tracker"
 	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"time"
 )
@@ -92,11 +89,8 @@ func (cmd *CmdTracker) show(term *Terminal, args []string) error {
 
 	if identity.IsEqual(cmd.mod.node.Identity()) {
 		endpoints = cmd.mod.node.Infra().Endpoints()
-	} else if teps, err := cmd.mod.node.Tracker().EndpointsByIdentity(identity); err == nil {
-		endpoints = make([]net.Endpoint, 0, len(teps))
-		for _, ep := range teps {
-			endpoints = append(endpoints, ep.Endpoint)
-		}
+	} else {
+		endpoints, err = cmd.mod.node.Tracker().EndpointsByIdentity(identity)
 	}
 
 	if len(endpoints) == 0 {
@@ -137,16 +131,7 @@ func (cmd *CmdTracker) addEndpoint(term *Terminal, args []string) error {
 		return err
 	}
 
-	var duration = defaultAddDuration
-
-	if len(args) > 3 {
-		duration, err = time.ParseDuration(args[3])
-		if err != nil {
-			return err
-		}
-	}
-
-	return cmd.mod.node.Tracker().AddEndpoint(identity, ep, time.Now().Add(duration))
+	return cmd.mod.node.Tracker().AddEndpoint(identity, ep)
 }
 
 func (cmd *CmdTracker) parse(term *Terminal, args []string) error {
@@ -195,7 +180,7 @@ func (cmd *CmdTracker) add(_ *Terminal, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := cmd.mod.node.Tracker().AddEndpoint(info.Identity, ep, time.Now().Add(7*24*time.Hour)); err != nil {
+		if err := cmd.mod.node.Tracker().AddEndpoint(info.Identity, ep); err != nil {
 			return err
 		}
 	}
@@ -218,7 +203,7 @@ func (cmd *CmdTracker) setAlias(term *Terminal, args []string) error {
 
 func (cmd *CmdTracker) remove(term *Terminal, args []string) error {
 	if len(args) < 1 {
-		term.Println("usage: tracker remove <node>")
+		term.Println("usage: tracker remove <identity>")
 		return errors.New("misisng arguments")
 	}
 
@@ -239,30 +224,11 @@ func (cmd *CmdTracker) help(term *Terminal, _ []string) error {
 	term.Printf("  parse <nodelink>                        parse nodelink data\n")
 	term.Printf("  add <nodelink>                          add nodelink data\n")
 	term.Printf("  set_alias <identity> <alias>            set identity's alias\n")
-	term.Printf("  remove <identity>                       delete identity endpoints\n")
+	term.Printf("  remove <identity>                       delete identity's endpoints\n")
 	term.Printf("  help                                    show help\n")
 	return nil
 }
 
 func (cmd *CmdTracker) ShortDescription() string {
 	return "manage node tracker entries"
-}
-
-func (cmd *CmdTracker) formatEndpoint(endpoint net.Endpoint) string {
-	var suffix string
-
-	if e, ok := endpoint.(tracker.TrackedEndpoint); ok {
-		d := e.ExpiresAt.Sub(time.Now()).Round(time.Second)
-		suffix = fmt.Sprintf(" (expires in %s)", d)
-		endpoint = e.Endpoint
-	}
-
-	network, address := endpoint.Network(), endpoint.String()
-
-	if e, ok := endpoint.(gw.Endpoint); ok {
-		var r = cmd.mod.node.Resolver()
-		address = fmt.Sprintf("%s:%s", r.DisplayName(e.Gate()), r.DisplayName(e.Target()))
-	}
-
-	return fmt.Sprintf("%-10s%s"+suffix, network, address)
 }
