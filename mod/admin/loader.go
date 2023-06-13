@@ -19,13 +19,13 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		log:      log,
 	}
 
-	assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(ModuleName, &mod.config)
 
-	mod.AddCommand("help", &CmdHelp{mod: mod})
-	mod.AddCommand("tracker", NewCmdTracker(mod))
-	mod.AddCommand("net", &CmdNet{mod: mod})
-	mod.AddCommand("services", &CmdServices{mod: mod})
-	mod.AddCommand("use", &CmdUse{mod: mod})
+	_ = mod.AddCommand("help", &CmdHelp{mod: mod})
+	_ = mod.AddCommand("tracker", NewCmdTracker(mod))
+	_ = mod.AddCommand("net", &CmdNet{mod: mod})
+	_ = mod.AddCommand("services", &CmdServices{mod: mod})
+	_ = mod.AddCommand("use", &CmdUse{mod: mod})
 
 	return mod, nil
 }

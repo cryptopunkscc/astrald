@@ -54,8 +54,6 @@ func (i *CoreInfra) loadDrivers() error {
 	for name, injector := range drivers {
 		if err := injector.Inject(i, i.assets, i.log.Tag(name)); err != nil {
 			i.log.Errorv(1, "error loading network driver %s: %s", name, err)
-		} else {
-			i.log.Infov(2, "loaded network driver %s", name)
 		}
 	}
 

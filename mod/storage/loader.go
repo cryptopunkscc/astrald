@@ -23,7 +23,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 
 	mod.events.SetParent(node.Events())
 
-	assets.LoadYAML(configName, &mod.config)
+	_ = assets.LoadYAML(configName, &mod.config)
 
 	mod.db, err = assets.OpenDB(ModuleName)
 	if err != nil {

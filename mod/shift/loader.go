@@ -17,7 +17,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		log:  log.Tag(ModuleName),
 	}
 
-	assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(ModuleName, &mod.config)
 
 	return mod, err
 }

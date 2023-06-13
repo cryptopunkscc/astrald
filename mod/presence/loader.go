@@ -20,9 +20,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	}
 	mod.events.SetParent(node.Events())
 
-	if err := assets.LoadYAML("presence", &mod.config); err != nil {
-		log.Errorv(2, "error loading config: %s", err)
-	}
+	_ = assets.LoadYAML("presence", &mod.config)
 
 	return mod, nil
 }

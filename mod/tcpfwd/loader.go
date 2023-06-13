@@ -17,7 +17,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		log:    log,
 	}
 
-	assets.LoadYAML("tcpfwd", &mod.config)
+	_ = assets.LoadYAML("tcpfwd", &mod.config)
 
 	return mod, nil
 }

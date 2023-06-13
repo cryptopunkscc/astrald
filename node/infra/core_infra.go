@@ -2,10 +2,8 @@ package infra
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
-	"os"
 	"strings"
 	"sync"
 )
@@ -32,13 +30,7 @@ func NewCoreInfra(node Node, assets assets.Store, log *log.Logger) (*CoreInfra, 
 	}
 
 	// load config file
-	if err := assets.LoadYAML(configName, &i.config); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			i.log.Error("config error: %s", err)
-		} else {
-			i.log.Errorv(2, "config error: %s", err)
-		}
-	}
+	_ = assets.LoadYAML(configName, &i.config)
 
 	// load network drivers
 	if err := i.loadDrivers(); err != nil {
@@ -51,7 +43,15 @@ func NewCoreInfra(node Node, assets assets.Store, log *log.Logger) (*CoreInfra, 
 func (i *CoreInfra) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 
-	i.log.Log("enabled drivers: %s", strings.Join(i.config.Drivers, " "))
+	var loaded []string
+	for name := range i.networkDrivers {
+		loaded = append(loaded, name)
+	}
+
+	i.log.Log("drivers loaded: %s, enabled: %s",
+		strings.Join(loaded, " "),
+		strings.Join(i.config.Drivers, " "),
+	)
 
 	for _, name := range i.config.Drivers {
 		name := name
@@ -62,7 +62,7 @@ func (i *CoreInfra) Run(ctx context.Context) error {
 				if err := network.Run(ctx); err != nil {
 					i.log.Error("network %s error: %s", name, err)
 				} else {
-					i.log.Log("network %s done", name)
+					i.log.Logv(1, "network %s done", name)
 				}
 			}()
 		} else {

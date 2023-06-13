@@ -23,7 +23,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 
 	mod.events.SetParent(node.Events())
 
-	assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(ModuleName, &mod.config)
 
 	return mod, err
 }

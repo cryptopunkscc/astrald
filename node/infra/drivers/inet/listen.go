@@ -27,12 +27,12 @@ func (drv *Driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 	var output = make(chan net.Conn)
 	go func() {
 		<-ctx.Done()
-		drv.log.Log("stop listen tcp %s", addrStr)
+		drv.log.Logv(1, "stop listen tcp %s", addrStr)
 		listener.Close()
 		close(output)
 	}()
 
-	drv.log.Log("listen tcp %s", addrStr)
+	drv.log.Logv(1, "listen tcp %s", addrStr)
 
 	go func() {
 		defer cancel()
@@ -40,7 +40,7 @@ func (drv *Driver) Listen(ctx context.Context) (<-chan net.Conn, error) {
 			conn, err := listener.Accept()
 			if err != nil {
 				if !strings.Contains(err.Error(), "use of closed network connection") {
-					drv.log.Error("accept: %s", err)
+					drv.log.Errorv(1, "accept: %s", err)
 				}
 				return
 			}

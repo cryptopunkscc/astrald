@@ -126,7 +126,7 @@ func (m *CoreService) register(name string, identity id.Identity, handler QueryH
 	// register the service
 	m.services[name] = newService(m, identity, name, handler)
 
-	m.log.Infov(1, "service %s registered", name)
+	m.log.Infov(1, "%v registered %s", identity, name)
 
 	m.events.Emit(EventServiceRegistered{name})
 
@@ -138,14 +138,14 @@ func (m *CoreService) release(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	_, found := m.services[name]
+	s, found := m.services[name]
 	if !found {
 		return ErrServiceNotFound
 	}
 
 	delete(m.services, name)
 
-	m.log.Infov(1, "service %s released", name)
+	m.log.Infov(1, "%v released %s", s.identity, name)
 
 	m.events.Emit(EventServiceReleased{name})
 

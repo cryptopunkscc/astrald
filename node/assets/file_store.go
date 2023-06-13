@@ -3,6 +3,7 @@ package assets
 import (
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/log"
 	"gopkg.in/yaml.v2"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -17,11 +18,11 @@ var _ Store = &FileStore{}
 
 type FileStore struct {
 	baseDir  string
-	log      Logger
+	log      *log.Logger
 	keyStore KeyStore
 }
 
-func NewFileStore(baseDir string, log Logger) (*FileStore, error) {
+func NewFileStore(baseDir string, log *log.Logger) (*FileStore, error) {
 	return &FileStore{
 		baseDir: baseDir,
 		log:     log,
@@ -35,7 +36,6 @@ func (store *FileStore) Read(name string) ([]byte, error) {
 	case err == nil:
 
 	case strings.Contains(err.Error(), "no such file or directory"):
-		store.log.Errorv(2, "config %s not found", name)
 		err = ErrNotFound
 
 	default:

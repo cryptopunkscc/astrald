@@ -54,7 +54,7 @@ func (m *Module) AddSource(source Source, identity id.Identity) {
 	} else {
 		s = reflect.TypeOf(source).String()
 	}
-	m.log.Info("registered source: %s (%s)", s, identity)
+	m.log.Infov(1, "registered source: %s (%s)", s, identity)
 }
 
 func (m *Module) RemoveSource(source Source) {

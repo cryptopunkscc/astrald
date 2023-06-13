@@ -54,7 +54,10 @@ func (m *CoreModules) Run(ctx context.Context) error {
 			defer wg.Done()
 
 			err := mod.Run(ctx)
-			if err != nil {
+			switch {
+			case err == nil:
+			case errors.Is(err, context.Canceled):
+			default:
 				m.log.Error("run %s: %s", name, err)
 			}
 		}()
