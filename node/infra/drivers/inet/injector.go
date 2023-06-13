@@ -30,12 +30,11 @@ func (*Injector) Inject(i infra.Infra, assets assets.Store, l *log.Logger) error
 	for _, addrStr := range drv.config.PublicAddr {
 		addr, err := Parse(addrStr)
 		if err != nil {
-			l.Error("parse error: %s", err)
+			l.Error("error parsing '%s': %s", addrStr, err)
 			continue
 		}
 
 		drv.publicAddrs = append(drv.publicAddrs, addr)
-		l.Log("public addr: %s", addr)
 	}
 
 	l.Root().PushFormatFunc(func(v any) ([]log.Op, bool) {

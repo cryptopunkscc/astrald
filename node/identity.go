@@ -2,7 +2,6 @@ package node
 
 import (
 	"errors"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"os"
 )
@@ -88,8 +87,6 @@ func (node *CoreNode) importIdentity(name string) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("READ", identity.PublicKeyHex())
 
 	return node.keys.Save(identity)
 }

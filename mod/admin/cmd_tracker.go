@@ -101,16 +101,15 @@ func (cmd *CmdTracker) show(term *Terminal, args []string) error {
 		for _, ep := range endpoints {
 			term.Printf(f, ep.Network(), ep)
 		}
-		term.Printf("%d %s\n", len(endpoints), Faded("endpoint(s)."))
-	}
+		term.Printf("%d %s\n\n", len(endpoints), Faded("endpoint(s)."))
 
-	term.Println()
-	info := nodeinfo.NodeInfo{
-		Identity:  identity,
-		Alias:     alias,
-		Endpoints: endpoints,
+		info := nodeinfo.NodeInfo{
+			Identity:  identity,
+			Alias:     alias,
+			Endpoints: endpoints,
+		}
+		term.Printf("%s %s\n", Header("nodelink"), info.String())
 	}
-	term.Printf("%s %s\n", Header("nodelink"), info.String())
 
 	return nil
 }

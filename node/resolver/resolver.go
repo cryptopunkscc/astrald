@@ -37,6 +37,10 @@ func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
 		return c.node.Identity(), nil
 	}
 
+	if identity, err := id.ParsePublicKeyHex(s); err == nil {
+		return identity, nil
+	}
+
 	if identity, err := c.node.Tracker().IdentityByAlias(s); err == nil {
 		return identity, nil
 	}

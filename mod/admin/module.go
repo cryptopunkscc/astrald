@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/services"
-	"io"
 	"strings"
 )
 
@@ -62,13 +61,13 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) serve(stream io.ReadWriteCloser, node node.Node) error {
-	defer stream.Close()
+func (mod *Module) serve(conn *services.Conn, node node.Node) error {
+	defer conn.Close()
 
-	var term = NewTerminal(stream, mod.log)
+	var term = NewTerminal(conn, mod.log)
 
 	for {
-		term.Printf("%s%s", node.Identity(), mod.config.Prompt)
+		term.Printf("%s@%s%s", conn.RemoteIdentity(), node.Identity(), mod.config.Prompt)
 
 		line, err := term.ScanLine()
 		if err != nil {

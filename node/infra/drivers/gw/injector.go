@@ -46,9 +46,7 @@ func (*Injector) Inject(i infra.Infra, assets assets.Store, l *log.Logger) error
 		return ops, true
 	})
 
-	if err := assets.LoadYAML(DriverName, &drv.config); err != nil {
-		l.Errorv(2, "error reading config: %s", err)
-	}
+	_ = assets.LoadYAML(DriverName, &drv.config)
 
 	return i.AddDriver(DriverName, drv)
 }
