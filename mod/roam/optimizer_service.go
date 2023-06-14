@@ -2,7 +2,6 @@ package roam
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -17,7 +16,7 @@ type OptimizerService struct {
 func (service *OptimizerService) Run(ctx context.Context) error {
 	for event := range service.node.Events().Subscribe(ctx) {
 		// skip other events
-		e, ok := event.(link.EventConnEstablished)
+		e, ok := event.(link.EventConnAdded)
 		if !ok {
 			continue
 		}
@@ -90,10 +89,7 @@ func (service *OptimizerService) move(movable *link.Conn, targetLink *link.Link)
 }
 
 func (service *OptimizerService) pick(movable *link.Conn) (int, error) {
-	sourceLink, ok := movable.Source().(*link.Link)
-	if !ok {
-		return -1, errors.New("connection is not a link")
-	}
+	sourceLink := movable.Link()
 
 	// start transfer on the source link
 	server, err := query.Run(service.ctx,

@@ -20,19 +20,19 @@ func Accept(query Query, remoteWriter net.SecureWriteCloser, handler func(conn n
 }
 
 func Run(ctx context.Context, router Router, query Query) (net.SecureConn, error) {
-	r, wc := io.Pipe()
+	localReader, wc := io.Pipe()
 
-	lswc := net.NewSecureWriteCloser(wc, query.Caller())
+	remoteWriter := net.NewSecureWriteCloser(wc, query.Caller())
 
-	rswc, err := router.RouteQuery(ctx, query, lswc)
+	localWriter, err := router.RouteQuery(ctx, query, remoteWriter)
 	if err != nil {
 		return nil, err
 	}
 
-	if !query.Target().IsEqual(rswc.RemoteIdentity()) {
-		rswc.Close()
+	if !query.Target().IsEqual(localWriter.RemoteIdentity()) {
+		localWriter.Close()
 		return nil, errors.New("response identity mismatch")
 	}
 
-	return net.NewSecureConn(rswc, r, query.Caller()), err
+	return net.NewSecureConn(localWriter, localReader, query.Caller()), err
 }

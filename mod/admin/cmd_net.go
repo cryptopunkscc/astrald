@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"time"
 )
@@ -120,14 +121,43 @@ func (cmd *CmdNet) ls(term *Terminal, _ []string) error {
 				link.Priority(),
 				link.Health().AverageRTT().Round(100*time.Microsecond),
 			)
-			for _, c := range link.Conns().All() {
-				term.Printf("    %s %s [%d:%d] (idle %s)\n",
-					Arrow(c.Outbound()),
-					c.Query(),
-					c.LocalPort(),
-					c.RemotePort(),
-					c.Idle().Round(time.Second),
+
+			for _, conn := range link.Conns().All() {
+				var lc, rc string
+				if conn.LocalClosed() {
+					lc = "!"
+				}
+				if conn.RemoteClosed() {
+					rc = "!"
+				}
+
+				if conn.Outbound() {
+					term.Printf("    %v [%-3d%s->%s%3d] %v:%s",
+						conn.LocalIdentity(),
+						conn.LocalPort(),
+						lc, rc,
+						conn.RemotePort(),
+						conn.RemoteIdentity(),
+						conn.Query(),
+					)
+
+				} else {
+					term.Printf("    %v:%s [%-3d%s<-%s%3d] %v",
+						conn.LocalIdentity(),
+						conn.Query(),
+						conn.LocalPort(),
+						lc, rc,
+						conn.RemotePort(),
+						conn.RemoteIdentity(),
+					)
+				}
+
+				term.Printf(" (in/out: %v/%v)",
+					log.DataSize(conn.BytesIn()).HumanReadable(),
+					log.DataSize(conn.BytesOut()).HumanReadable(),
 				)
+
+				term.Printf("\n")
 			}
 		}
 

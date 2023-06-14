@@ -14,12 +14,20 @@ type secureConn struct {
 	outbound      bool
 }
 
-func NewSecureConn(remoteWriter SecureWriteCloser, localReader io.Reader, localIdentity id.Identity) SecureConn {
+func NewSecureConn(localWriter SecureWriteCloser, localReader io.Reader, localIdentity id.Identity) SecureConn {
 	return &secureConn{
-		SecureWriteCloser: remoteWriter,
+		SecureWriteCloser: localWriter,
 		Reader:            localReader,
 		localIdentity:     localIdentity,
 	}
+}
+
+func (s *secureConn) Read(p []byte) (n int, err error) {
+	n, err = s.Reader.Read(p)
+	if err != nil {
+		s.Close()
+	}
+	return n, err
 }
 
 func (s *secureConn) Outbound() bool {

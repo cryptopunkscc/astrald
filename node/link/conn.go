@@ -2,197 +2,129 @@ package link
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
-	"sync"
 	"sync/atomic"
-	"time"
 )
 
-var _ net.SecureConn = &Conn{}
+const (
+	StateOpen    = "open"
+	StateClosing = "closing"
+	StateClosed  = "closed"
+)
 
 type Conn struct {
 	remoteWriter net.SecureWriteCloser
 	localWriter  net.SecureWriteCloser
 
-	localPort      int
-	reader         io.Reader
-	writer         io.WriteCloser
-	fallbackReader io.Reader
-	query          string
-	link           *Link
-	outbound       bool
-	activity       sig.Activity
-	done           chan struct{}
-	closed         atomic.Bool
-	err            error
-	wmu            sync.Mutex // writer mutex
-	frmu           sync.Mutex // fallback reader mutex
-	lmu            sync.Mutex // link mutex
+	query      string
+	localPort  int
+	remotePort int
+	outbound   bool
+
+	activity sig.Activity
+	bytesOut int
+	bytesIn  int
+
+	remoteClosed atomic.Bool
+	localClosed  atomic.Bool
+	StateChanged func()
 }
 
-func (conn *Conn) Link() *Link {
-	return conn.link
-}
+func NewConn(localPort int, localWriter net.SecureWriteCloser, remotePort int, remoteWriter net.SecureWriteCloser, query string, outbound bool) *Conn {
+	c := &Conn{
+		localPort:    localPort,
+		localWriter:  localWriter,
+		remotePort:   remotePort,
+		remoteWriter: remoteWriter,
+		query:        query,
+		outbound:     outbound,
+	}
 
-func (conn *Conn) LocalEndpoint() net.Endpoint {
-	return nil
-}
+	if m, ok := c.remoteWriter.(*WriterMonitor); ok {
+		m.AfterWrite = func(i int, err error) {
+			c.bytesIn += i
+		}
+		m.AfterClose = func(err error) {
+			if c.remoteClosed.CompareAndSwap(false, true) {
+				if c.StateChanged != nil {
+					c.StateChanged()
+				}
+			}
+		}
+	}
 
-func (conn *Conn) RemoteEndpoint() net.Endpoint {
-	return nil
-}
+	if m, ok := c.localWriter.(*WriterMonitor); ok {
+		m.AfterWrite = func(i int, err error) {
+			c.bytesOut += i
+		}
+		m.AfterClose = func(err error) {
+			if c.localClosed.CompareAndSwap(false, true) {
+				if c.StateChanged != nil {
+					c.StateChanged()
+				}
+			}
+		}
+	}
 
-func (conn *Conn) RemoteIdentity() id.Identity {
-	return conn.link.RemoteIdentity()
+	return c
 }
 
 func (conn *Conn) LocalIdentity() id.Identity {
-	return conn.link.LocalIdentity()
+	return conn.remoteWriter.RemoteIdentity()
 }
 
-func (conn *Conn) Read(p []byte) (n int, err error) {
-	if conn.closed.Load() {
-		return 0, conn.err
-	}
-
-	defer conn.activity.Touch()
-
-	n, err = conn.reader.Read(p)
-	if err == nil {
-		conn.link.Health().Check()
-		return
-	}
-
-	// try to switch to fallback reader and try reading again
-	if conn.switchToFallbackReader() {
-		return conn.Read(p)
-	}
-
-	conn.closeWithError(err)
-
-	return n, conn.err
-}
-
-func (conn *Conn) Write(p []byte) (n int, err error) {
-	conn.wmu.Lock()
-	defer conn.wmu.Unlock()
-
-	if conn.closed.Load() {
-		return 0, conn.err
-	}
-
-	defer conn.activity.Touch()
-
-	conn.link.Health().Check()
-
-	n, err = conn.writer.Write(p)
-	if err != nil {
-		conn.closeWithError(err)
-	}
-
-	return n, conn.err
-}
-
-func (conn *Conn) Close() error {
-	return conn.closeWithError(ErrConnClosed)
-}
-
-func (conn *Conn) SetFallbackReader(r io.Reader) {
-	conn.frmu.Lock()
-	defer conn.frmu.Unlock()
-
-	conn.fallbackReader = r
-}
-
-func (conn *Conn) SetWriter(w io.WriteCloser) error {
-	conn.wmu.Lock()
-	defer conn.wmu.Unlock()
-
-	if conn.closed.Load() {
-		return conn.err
-	}
-
-	conn.writer.Close()
-	conn.writer = w
-	return nil
-}
-
-func (conn *Conn) Attach(link *Link) {
-	conn.lmu.Lock()
-	defer conn.lmu.Unlock()
-
-	if conn.link == link {
-		return
-	}
-
-	if conn.link != nil {
-		conn.link.remove(conn)
-	}
-
-	conn.link = link
-
-	if conn.link != nil {
-		conn.link.add(conn)
-	}
-}
-
-func (conn *Conn) LocalPort() int {
-	return conn.localPort
-}
-
-// RemotePort returns the remote port on the multiplexer, or -1 if the connection is not multiplexed.
-func (conn *Conn) RemotePort() int {
-	if w, ok := conn.writer.(*mux.FrameWriter); ok {
-		return w.Port()
-	}
-	return -1
-}
-
-func (conn *Conn) Outbound() bool {
-	return conn.outbound
-}
-
-func (conn *Conn) Source() any {
-	return conn.link
+func (conn *Conn) RemoteIdentity() id.Identity {
+	return conn.localWriter.RemoteIdentity()
 }
 
 func (conn *Conn) Query() string {
 	return conn.query
 }
 
-func (conn *Conn) Idle() time.Duration {
-	return conn.activity.Idle()
+func (conn *Conn) Outbound() bool {
+	return conn.outbound
 }
 
-func (conn *Conn) Done() <-chan struct{} {
-	return conn.done
+func (conn *Conn) LocalClosed() bool {
+	return conn.localClosed.Load()
 }
 
-func (conn *Conn) closeWithError(e error) error {
-	if conn.closed.CompareAndSwap(false, true) {
-		conn.writer.Close()
-		conn.err = e
-		close(conn.done)
-		conn.link.Events().Emit(EventConnClosed{Conn: conn})
-		conn.link.remove(conn)
+func (conn *Conn) RemoteClosed() bool {
+	return conn.remoteClosed.Load()
+}
+
+func (conn *Conn) BytesOut() int {
+	return conn.bytesOut
+}
+
+func (conn *Conn) BytesIn() int {
+	return conn.bytesIn
+}
+
+func (conn *Conn) LocalPort() int {
+	return conn.localPort
+}
+
+func (conn *Conn) RemotePort() int {
+	return conn.remotePort
+}
+
+func (conn *Conn) State() string {
+	var c int
+	if conn.localClosed.Load() {
+		c++
 	}
-	return nil
-}
-
-// switchToFallback switches the reader to the fallback if one is set.
-// Returns true if switch was successful, false otherwise.
-func (conn *Conn) switchToFallbackReader() bool {
-	conn.frmu.Lock()
-	defer conn.frmu.Unlock()
-
-	if conn.fallbackReader == nil {
-		return false
+	if conn.remoteClosed.Load() {
+		c++
 	}
-
-	conn.reader = conn.fallbackReader
-	conn.fallbackReader = nil
-	return true
+	switch c {
+	case 0:
+		return StateOpen
+	case 1:
+		return StateClosing
+	case 2:
+		return StateClosed
+	}
+	panic("?")
 }

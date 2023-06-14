@@ -29,6 +29,8 @@ func (server *Server) RouteQuery(ctx context.Context, q query.Query, remoteWrite
 	if linker, ok := remoteWriter.(query.Linker); ok {
 		if l, ok := linker.Link().(*link.Link); ok {
 			return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+				defer conn.Close()
+
 				l.Idle().SetTimeout(0)
 
 				server.log.Log("timeout disabled for %s over %s",

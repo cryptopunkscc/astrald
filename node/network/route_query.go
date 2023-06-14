@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/query"
 )
 
-func (n *CoreNetwork) RouteQuery(ctx context.Context, query query.Query, w net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (n *CoreNetwork) RouteQuery(ctx context.Context, query query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
 	defer cancel()
 
@@ -19,5 +19,5 @@ func (n *CoreNetwork) RouteQuery(ctx context.Context, query query.Query, w net.S
 		return nil, err
 	}
 
-	return l.RouteQuery(ctx, query, w)
+	return l.RouteQuery(ctx, query, remoteWriter)
 }

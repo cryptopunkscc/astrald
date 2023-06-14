@@ -6,20 +6,34 @@ import (
 
 type Event interface{}
 
-type EventConnEstablished struct {
-	Conn *Conn
+type EventConnAdded struct {
+	localName  string
+	remoteName string
+	Conn       *Conn
 }
 
-func (e EventConnEstablished) String() string {
-	return fmt.Sprintf("query=%s localPort=%d outbound=%t", e.Conn.Query(), e.Conn.LocalPort(), e.Conn.Outbound())
+func (e EventConnAdded) String() string {
+	return fmt.Sprintf("query=%s outbound=%t localID=%s remoteID=%s",
+		e.Conn.Query(),
+		e.Conn.Outbound(),
+		e.localName,
+		e.remoteName,
+	)
 }
 
-type EventConnClosed struct {
-	Conn *Conn
+type EventConnRemoved struct {
+	localName  string
+	remoteName string
+	Conn       *Conn
 }
 
-func (e EventConnClosed) String() string {
-	return fmt.Sprintf("query=%s localPort=%d outbound=%t err=%s", e.Conn.Query(), e.Conn.LocalPort(), e.Conn.Outbound(), e.Conn.err)
+func (e EventConnRemoved) String() string {
+	return fmt.Sprintf("query=%s outbound=%t localID=%s remoteID=%s",
+		e.Conn.Query(),
+		e.Conn.Outbound(),
+		e.localName,
+		e.remoteName,
+	)
 }
 
 type EventLinkEstablished struct {

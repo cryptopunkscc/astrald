@@ -95,21 +95,27 @@ func (l *Link) handleQueryMessage(ctx context.Context, msg ctl.QueryMessage) (er
 
 	var q = query.NewOrigin(l.RemoteIdentity(), l.LocalIdentity(), msg.Query(), query.OriginNetwork)
 
-	var remote = NewSecureFrameWriter(l, msg.Port())
+	var localWriter = &WriterMonitor{Target: NewSecureFrameWriter(l, msg.Port())}
 
-	local, err := l.queryRouter.RouteQuery(ctx, q, remote)
+	remoteWriter, err := l.queryRouter.RouteQuery(ctx, q, localWriter)
 	if err != nil {
-		remote.Close()
+		localWriter.Close()
 		return nil
 	}
 
-	localPort, err := l.mux.BindAny(WriterFrameHandler{local})
+	remoteWriter = &WriterMonitor{Target: remoteWriter}
+
+	localPort, err := l.mux.BindAny(WriterFrameHandler{remoteWriter})
 	if err != nil {
-		remote.Close()
+		localWriter.Close()
 		return err
 	}
 
-	return cslq.Encode(remote, "s", localPort)
+	conn := NewConn(localPort, localWriter, msg.Port(), remoteWriter, msg.Query(), false)
+
+	l.add(conn)
+
+	return cslq.Encode(localWriter, "s", localPort)
 }
 
 func (l *Link) Close() error {
@@ -140,7 +146,7 @@ func (l *Link) Transport() net.SecureConn {
 func (l *Link) onDrop(remotePort int) error {
 	conn := l.conns.FindByRemotePort(remotePort)
 	if conn != nil {
-		conn.Close()
+		conn.localWriter.Close()
 	}
 	return nil
 }
@@ -163,6 +169,24 @@ func (l *Link) onPing(port int) error {
 func (l *Link) add(conn *Conn) {
 	if err := l.conns.Add(conn); err == nil {
 		l.activity.Add(1)
+
+		l.events.Emit(EventConnAdded{
+			localName:  l.log.Sprintf("%v", conn.LocalIdentity()),
+			remoteName: l.log.Sprintf("%v", conn.RemoteIdentity()),
+			Conn:       conn,
+		})
+
+		conn.StateChanged = func() {
+			if conn.State() == StateClosed {
+				l.remove(conn)
+
+				l.events.Emit(EventConnRemoved{
+					localName:  l.log.Sprintf("%v", conn.LocalIdentity()),
+					remoteName: l.log.Sprintf("%v", conn.RemoteIdentity()),
+					Conn:       conn,
+				})
+			}
+		}
 	}
 }
 

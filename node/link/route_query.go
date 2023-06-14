@@ -36,10 +36,12 @@ func (l *Link) RouteQuery(ctx context.Context, query query.Query, remoteWriter n
 		defer l.activity.Done()
 	}
 
+	remoteMonitor := &WriterMonitor{Target: remoteWriter}
+
 	var portCh = make(chan int, 1)
 
 	handler := NewCaptureFrameHandler(
-		WriterFrameHandler{remoteWriter},
+		WriterFrameHandler{remoteMonitor},
 		func(frame mux.Frame) {
 			defer close(portCh)
 			if frame.EOF() {
@@ -74,17 +76,14 @@ func (l *Link) RouteQuery(ctx context.Context, query query.Query, remoteWriter n
 			return nil, ErrRejected
 		}
 
-		localWriter := NewSecureFrameWriter(l, remotePort)
+		localWriter := &WriterMonitor{Target: NewSecureFrameWriter(l, remotePort)}
 
-		conn := &Conn{
-			localPort:    localPort,
-			query:        query.Query(),
-			remoteWriter: remoteWriter,
-			localWriter:  localWriter,
-			link:         l,
-			done:         make(chan struct{}),
-			outbound:     true,
-		}
+		conn := NewConn(
+			localPort, localWriter,
+			remotePort, remoteMonitor,
+			query.Query(), true,
+		)
+
 		l.add(conn)
 
 		return localWriter, nil
