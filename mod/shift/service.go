@@ -2,37 +2,37 @@ package shift
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/shift/proto"
-	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/services"
-	"github.com/cryptopunkscc/astrald/streams"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/query"
+	"io"
 )
 
 const ServiceName = "sys.shift"
+
+var _ query.Router = &Service{}
 
 type Service struct {
 	*Module
 }
 
-func (srv *Service) Run(ctx context.Context) error {
-	_, err := srv.node.Services().Register(ctx, srv.node.Identity(), ServiceName, srv.onQuery)
+func (service *Service) Run(ctx context.Context) error {
+	_, err := service.node.Services().Register(ctx, service.node.Identity(), ServiceName, service)
 
 	return err
 }
 
-func (srv *Service) onQuery(ctx context.Context, query *services.Query) error {
-	conn, err := query.Accept()
-	if err == nil {
-		go func() {
-			err := srv.startSession(ctx, conn, query.Link())
-			srv.log.Logv(2, "(%s) session err: %s", query.RemoteIdentity(), err)
-		}()
-	}
+func (service *Service) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+		if err := service.startSession(ctx, conn, q.Origin()); err != nil {
 
-	return err
+			service.log.Logv(2, "(%s) session err: %s", q.Caller(), err)
+		}
+	})
 }
 
-func (srv *Service) startSession(ctx context.Context, conn *services.Conn, origin *link.Link) error {
+func (service *Service) startSession(ctx context.Context, conn net.SecureConn, origin string) error {
 	var err error
 	var identity = conn.RemoteIdentity()
 	var c = proto.New(conn)
@@ -51,7 +51,7 @@ func (srv *Service) startSession(ctx context.Context, conn *services.Conn, origi
 			if err := c.Decode(&params); err != nil {
 				return err
 			}
-			srv.log.Logv(2, "(%s) shifting to %s...", identity, params.Identity)
+			service.log.Logv(2, "(%s) shifting to %s...", identity, params.Identity)
 
 			if !params.Verify(identity) {
 				if err := c.EncodeErr(proto.ErrDenied); err != nil {
@@ -72,10 +72,11 @@ func (srv *Service) startSession(ctx context.Context, conn *services.Conn, origi
 				return err
 			}
 
-			srv.log.Logv(2, "(%s) executing query %s...", identity, params.Query)
+			service.log.Logv(2, "(%s) executing query %s...", identity, params.Query)
 
-			q, err := srv.node.Services().Query(ctx, identity, params.Query, origin)
+			query := query.NewOrigin(identity, id.Identity{}, params.Query, origin)
 
+			localWriter, err := service.node.Services().RouteQuery(ctx, query, conn)
 			if err != nil {
 				return c.EncodeErr(proto.ErrRejected)
 			}
@@ -84,7 +85,7 @@ func (srv *Service) startSession(ctx context.Context, conn *services.Conn, origi
 				return err
 			}
 
-			streams.Join(q, conn)
+			io.Copy(localWriter, conn)
 
 			return nil
 

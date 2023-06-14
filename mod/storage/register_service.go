@@ -4,7 +4,9 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -16,43 +18,30 @@ type RegisterService struct {
 	*Module
 }
 
-func (m *RegisterService) Run(ctx context.Context) error {
-	var queries = services.NewQueryChan(4)
-	service, err := m.node.Services().Register(ctx, m.node.Identity(), RegisterServiceName, queries.Push)
+func (service *RegisterService) Run(ctx context.Context) error {
+	s, err := service.node.Services().Register(ctx, service.node.Identity(), RegisterServiceName, service)
 	if err != nil {
-		m.log.Error("cannot register service %s: %s", RegisterServiceName, err)
+		service.log.Error("cannot register service %s: %s", RegisterServiceName, err)
 		return err
 	}
 
-	go func() {
-		<-service.Done()
-		close(queries)
-	}()
-
-	for query := range queries {
-		query := query
-		go func() {
-			if err := m.handle(ctx, query); err != nil {
-				m.log.Errorv(0, "RegisterService.handle(): %s", err)
-			}
-		}()
-	}
+	<-s.Done()
 
 	return nil
 }
 
-func (m *RegisterService) handle(ctx context.Context, query *services.Query) error {
-	if !m.IsProvider(query.RemoteIdentity()) {
-		m.log.Errorv(2, "register_provider: %v is not a provider, rejecting...", query.RemoteIdentity())
-		query.Reject()
-		return nil
+func (service *RegisterService) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if !service.IsProvider(q.Caller()) {
+		service.log.Errorv(2, "register_provider: %v is not a provider, rejecting...", q.Caller())
+		return nil, link.ErrRejected
 	}
 
-	conn, err := query.Accept()
-	if err != nil {
-		return err
-	}
+	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+		service.handle(service.ctx, conn)
+	})
+}
 
+func (service *RegisterService) handle(ctx context.Context, conn net.SecureConn) error {
 	defer conn.Close()
 	return cslq.Invoke(conn, func(msg rpc.MsgRegisterSource) error {
 		var session = rpc.New(conn)
@@ -62,7 +51,7 @@ func (m *RegisterService) handle(ctx context.Context, query *services.Query) err
 			Identity: conn.RemoteIdentity(),
 		}
 
-		m.AddDataSource(source)
+		service.AddDataSource(source)
 
 		return session.EncodeErr(nil)
 	})

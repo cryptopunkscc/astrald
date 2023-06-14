@@ -5,57 +5,48 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/query"
 )
 
 type Server struct {
 	*Module
 }
 
-func (mod *Server) Run(ctx context.Context) error {
-	_, err := mod.node.Services().Register(ctx, mod.node.Identity(), serviceName, mod.handleQuery)
+func (server *Server) Run(ctx context.Context) error {
+	s, err := server.node.Services().Register(ctx, server.node.Identity(), serviceName, server)
 	if err != nil {
 		return err
 	}
 
-	disco, err := modules.Find[*discovery.Module](mod.node.Modules())
+	disco, err := modules.Find[*discovery.Module](server.node.Modules())
 	if err == nil {
-		disco.AddSource(mod, mod.node.Identity())
-		go func() {
-			<-ctx.Done()
-			disco.RemoveSource(mod)
-		}()
+		disco.AddSourceContext(ctx, server, server.node.Identity())
 	}
 
-	<-ctx.Done()
+	<-s.Done()
 
 	return nil
 }
 
-func (mod *Server) handleQuery(ctx context.Context, query *services.Query) error {
-	mod.log.Logv(2, "query from %s", query.RemoteIdentity())
-	if query.Origin() == services.OriginLocal {
-		query.Reject()
-		return nil
+func (server *Server) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if linker, ok := remoteWriter.(query.Linker); ok {
+		if l, ok := linker.Link().(*link.Link); ok {
+			return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+				server.reflectLink(conn, l)
+			})
+		}
 	}
 
-	conn, err := query.Accept()
-	if err != nil {
-		return nil
-	}
-
-	if err := mod.reflect(ctx, conn); err != nil {
-		mod.log.Error("reflect: %s", err)
-	}
-
-	return nil
+	return nil, link.ErrRejected
 }
 
-func (mod *Server) reflect(ctx context.Context, conn *services.Conn) error {
+func (server *Server) reflectLink(conn net.SecureConn, sourceLink *link.Link) error {
 	defer conn.Close()
 
-	var e = conn.Link().RemoteEndpoint()
+	var e = sourceLink.RemoteEndpoint()
 	var ref proto.Reflection
 
 	ref.RemoteEndpoint = proto.Endpoint{

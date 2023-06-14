@@ -3,125 +3,37 @@ package tcpfwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/services"
-	"github.com/cryptopunkscc/astrald/streams"
-	"net"
-	"strings"
-	"sync"
+	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/tasks"
 )
 
 type Module struct {
-	node   node.Node
+	node   modules.Node
 	config Config
 	log    *log.Logger
+	ctx    context.Context
 }
 
 func (m *Module) Run(ctx context.Context) error {
-	var wg sync.WaitGroup
+	m.ctx = ctx
 
-	for astralPort, tcpPort := range m.config.Out {
-		var astralPort = astralPort
-		var tcpPort = tcpPort
+	var runners []tasks.Runner
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			m.log.Logv(1, "forwarding %s to %s", astralPort, tcpPort)
-			if err := m.ServeOut(ctx, astralPort, tcpPort); err != nil {
-				m.log.Errorv(1, "error: %s", err)
-			}
-		}()
+	for serviceName, target := range m.config.Out {
+		runners = append(runners, &ForwardOutServer{
+			Module:      m,
+			serviceName: serviceName,
+			target:      target,
+		})
 	}
 
-	for tcpPort, astralPort := range m.config.In {
-		var astralPort = astralPort
-		var tcpPort = tcpPort
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			err := m.ServeIn(ctx, tcpPort, astralPort)
-			switch {
-			case err == nil:
-			case strings.Contains(err.Error(), "use of closed network connection"):
-			default:
-				m.log.Errorv(1, "error: %s", err)
-			}
-		}()
+	for tcpAddr, target := range m.config.In {
+		runners = append(runners, &ForwardInServer{
+			Module:  m,
+			tcpAddr: tcpAddr,
+			target:  target,
+		})
 	}
 
-	wg.Wait()
-	return nil
-}
-
-func (m *Module) ServeOut(ctx context.Context, astral string, tcp string) error {
-	var queries = services.NewQueryChan(4)
-	service, err := m.node.Services().Register(ctx, m.node.Identity(), astral, queries.Push)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		<-service.Done()
-		close(queries)
-	}()
-
-	for query := range queries {
-		outConn, err := net.Dial("tcp", tcp)
-		if err != nil {
-			m.log.Errorv(1, "error forwarding %s to %s: %s", astral, tcp, err)
-			query.Reject()
-			continue
-		}
-
-		inConn, err := query.Accept()
-		go streams.Join(inConn, outConn)
-	}
-
-	return nil
-}
-
-func (m *Module) ServeIn(ctx context.Context, tcp string, astral string) error {
-	var nodeHex, port string
-	var parts = strings.SplitN(astral, ":", 2)
-	if len(parts) == 2 {
-		nodeHex, port = parts[0], parts[1]
-	} else {
-		nodeHex, port = "localnode", parts[0]
-	}
-
-	nodeID, err := m.node.Resolver().Resolve(nodeHex)
-	if err != nil {
-		return err
-	}
-
-	listener, err := net.Listen("tcp", tcp)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		<-ctx.Done()
-		listener.Close()
-	}()
-
-	m.log.Logv(1, "forwarding %s to %s:%s", tcp, nodeID, port)
-
-	for {
-		inConn, err := listener.Accept()
-		if err != nil {
-			return err
-		}
-
-		outConn, err := m.node.Query(ctx, nodeID, port)
-		if err != nil {
-			inConn.Close()
-			continue
-		}
-
-		go streams.Join(inConn, outConn)
-	}
+	return tasks.Group(runners...).Run(ctx)
 }

@@ -5,14 +5,16 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/node/services"
-	"strings"
+	"github.com/cryptopunkscc/astrald/query"
 )
 
 var _ modules.Module = &Module{}
+
+const ServiceName = "admin"
 
 type Module struct {
 	config   Config
@@ -23,55 +25,35 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	var queries = services.NewQueryChan(4)
-	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), "admin", queries.Push)
+	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), ServiceName, mod)
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		<-service.Done()
-		close(queries)
-	}()
-
-	for query := range queries {
-		// Only accept local queries
-		if query.Origin() != services.OriginLocal {
-			query.Reject()
-			continue
-		}
-
-		conn, err := query.Accept()
-		if err != nil {
-			mod.log.Errorv(2, "accept: %s", err)
-			continue
-		}
-
-		go func() {
-			err := mod.serve(conn, mod.node)
-			switch {
-			case err == nil:
-			case strings.Contains(err.Error(), "on closed pipe"):
-			default:
-				mod.log.Errorv(2, "serve: %s", err)
-			}
-		}()
-	}
+	<-service.Done()
 
 	return nil
 }
 
-func (mod *Module) serve(conn *services.Conn, node node.Node) error {
+func (mod *Module) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if q.Origin() != query.OriginLocal {
+		return nil, errors.New("unauthorized")
+	}
+
+	return query.Accept(q, remoteWriter, mod.serve)
+}
+
+func (mod *Module) serve(conn net.SecureConn) {
 	defer conn.Close()
 
 	var term = NewTerminal(conn, mod.log)
 
 	for {
-		term.Printf("%s@%s%s", conn.RemoteIdentity(), node.Identity(), mod.config.Prompt)
+		term.Printf("%s@%s%s", conn.RemoteIdentity(), mod.node.Identity(), mod.config.Prompt)
 
 		line, err := term.ScanLine()
 		if err != nil {
-			return err
+			return
 		}
 
 		if err := mod.exec(line, term); err != nil {

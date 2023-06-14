@@ -1,8 +1,9 @@
 package link
 
 import (
-	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mux"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"sync"
@@ -10,16 +11,12 @@ import (
 	"time"
 )
 
-var ErrConnClosed = errors.New("connection closed")
-
-type BasicConn interface {
-	io.ReadWriteCloser
-	Link() *Link
-	Query() string
-	Outbound() bool
-}
+var _ net.SecureConn = &Conn{}
 
 type Conn struct {
+	remoteWriter net.SecureWriteCloser
+	localWriter  net.SecureWriteCloser
+
 	localPort      int
 	reader         io.Reader
 	writer         io.WriteCloser
@@ -34,6 +31,26 @@ type Conn struct {
 	wmu            sync.Mutex // writer mutex
 	frmu           sync.Mutex // fallback reader mutex
 	lmu            sync.Mutex // link mutex
+}
+
+func (conn *Conn) Link() *Link {
+	return conn.link
+}
+
+func (conn *Conn) LocalEndpoint() net.Endpoint {
+	return nil
+}
+
+func (conn *Conn) RemoteEndpoint() net.Endpoint {
+	return nil
+}
+
+func (conn *Conn) RemoteIdentity() id.Identity {
+	return conn.link.RemoteIdentity()
+}
+
+func (conn *Conn) LocalIdentity() id.Identity {
+	return conn.link.LocalIdentity()
 }
 
 func (conn *Conn) Read(p []byte) (n int, err error) {
@@ -138,7 +155,7 @@ func (conn *Conn) Outbound() bool {
 	return conn.outbound
 }
 
-func (conn *Conn) Link() *Link {
+func (conn *Conn) Source() any {
 	return conn.link
 }
 

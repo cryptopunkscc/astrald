@@ -6,8 +6,9 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/query"
 	"time"
 )
 
@@ -15,10 +16,24 @@ type ProfileService struct {
 	*Module
 }
 
-func (srv *ProfileService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discovery.ServiceEntry, error) {
+func (service *ProfileService) Run(ctx context.Context) error {
+	s, err := service.node.Services().Register(ctx, service.node.Identity(), serviceName, service)
+
+	disco, err := modules.Find[*discovery.Module](service.node.Modules())
+	if err == nil {
+		disco.AddSourceContext(ctx, service, service.node.Identity())
+	} else {
+		service.log.Errorv(2, "can't regsiter service discovery source: %s", err)
+	}
+
+	<-s.Done()
+	return err
+}
+
+func (service *ProfileService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discovery.ServiceEntry, error) {
 	return []discovery.ServiceEntry{
 		{
-			Identity: srv.node.Identity(),
+			Identity: service.node.Identity(),
 			Name:     serviceName,
 			Type:     serviceType,
 			Extra:    nil,
@@ -26,44 +41,28 @@ func (srv *ProfileService) Discover(ctx context.Context, caller id.Identity, ori
 	}, nil
 }
 
-func (srv *ProfileService) Run(ctx context.Context) error {
-	_, err := srv.node.Services().Register(ctx, srv.node.Identity(), serviceName, srv.handle)
-
-	disco, err := modules.Find[*discovery.Module](srv.node.Modules())
-	if err == nil {
-		disco.AddSource(srv, srv.node.Identity())
-		go func() {
-			<-ctx.Done()
-			disco.RemoveSource(srv)
-		}()
-	} else {
-		srv.log.Errorv(2, "can't regsiter service discovery source: %s", err)
-	}
-
-	<-ctx.Done()
-	return err
+func (service *ProfileService) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+		service.serve(conn)
+	})
 }
 
-func (srv *ProfileService) handle(ctx context.Context, query *services.Query) error {
-	conn, err := query.Accept()
-	if err != nil {
-		return err
-	}
+func (service *ProfileService) serve(conn net.SecureConn) {
 	defer conn.Close()
 
-	srv.log.Infov(2, "%s asked for profile", query.RemoteIdentity())
+	service.log.Infov(2, "%s asked for profile", conn.RemoteIdentity())
 
-	return json.NewEncoder(conn).Encode(srv.getLocalProfile())
+	json.NewEncoder(conn).Encode(service.getLocalProfile())
 }
 
-func (srv *ProfileService) getLocalProfile() *proto.Profile {
+func (service *ProfileService) getLocalProfile() *proto.Profile {
 	var p = &proto.Profile{
 		Endpoints: []proto.Endpoint{},
 	}
 
-	p.Alias = srv.node.Resolver().DisplayName(srv.node.Identity())
+	p.Alias = service.node.Resolver().DisplayName(service.node.Identity())
 
-	for _, a := range srv.node.Infra().Endpoints() {
+	for _, a := range service.node.Infra().Endpoints() {
 		p.Endpoints = append(p.Endpoints, proto.Endpoint{
 			Network:   a.Network(),
 			Address:   a.String(),

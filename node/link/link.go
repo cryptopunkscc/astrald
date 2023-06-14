@@ -3,13 +3,13 @@ package link
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/link/ctl"
+	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -18,19 +18,15 @@ import (
 )
 
 const defaultIdleTimeout = 60 * time.Minute
-
 const muxControlPort = 0
 
-var ErrInvalidQuery = errors.New("invalid query")
-var ErrRejected = errors.New("query rejected")
-
-type QueryHandlerFunc func(query *Query) error
+var _ query.Link = &Link{}
 
 // Link represents an astral link over an authenticated transport
 type Link struct {
 	activity      sig.Activity
 	events        events.Queue
-	conn          net.SecureConn
+	transport     net.SecureConn
 	mux           *mux.FrameMux
 	ctl           *ctl.Control
 	conns         *ConnSet
@@ -40,16 +36,16 @@ type Link struct {
 	control       *Control
 	priority      int
 	queryTimeout  time.Duration
-	queryHandler  QueryHandlerFunc
+	queryRouter   query.Router
 	doneCh        chan struct{}
 	closed        atomic.Bool
 	err           error
 	log           *log.Logger
 }
 
-func New(conn net.SecureConn, l *log.Logger) *Link {
+func New(transport net.SecureConn, l *log.Logger) *Link {
 	lnk := &Link{
-		conn:          conn,
+		transport:     transport,
 		conns:         NewConnSet(),
 		doneCh:        make(chan struct{}),
 		establishedAt: time.Now().Round(0), // don't use monotonic clock
@@ -57,7 +53,7 @@ func New(conn net.SecureConn, l *log.Logger) *Link {
 		log:           l,
 	}
 
-	lnk.mux = mux.NewFrameMux(conn, lnk.onFrameDropped)
+	lnk.mux = mux.NewFrameMux(transport, lnk.onFrameDropped)
 
 	// set up control connection
 	var out = mux.NewFrameWriter(lnk.mux, muxControlPort)
@@ -76,8 +72,8 @@ func New(conn net.SecureConn, l *log.Logger) *Link {
 }
 
 func (l *Link) Run(ctx context.Context) error {
-	defer l.conn.Close() // close transport after link closes
-	l.activity.Touch()   // reset idle to 0
+	defer l.transport.Close() // close transport after link closes
+	l.activity.Touch()        // reset idle to 0
 
 	var runCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -92,80 +88,28 @@ func (l *Link) Run(ctx context.Context) error {
 	return group.Run(runCtx)
 }
 
-func (l *Link) Query(ctx context.Context, query string) (conn *Conn, err error) {
-	if l.closed.Load() {
-		return nil, ErrLinkClosed
+func (l *Link) handleQueryMessage(ctx context.Context, msg ctl.QueryMessage) (err error) {
+	if l.queryRouter == nil {
+		return errors.New("query handler missing")
 	}
 
-	if len(query) == 0 {
-		return nil, ErrInvalidQuery
-	}
+	var q = query.NewOrigin(l.RemoteIdentity(), l.LocalIdentity(), msg.Query(), query.OriginNetwork)
 
-	// silent queries do not affect activity
-	if query[0] != '.' {
-		l.activity.Add(1)
-		defer l.activity.Done()
-	}
+	var remote = NewSecureFrameWriter(l, msg.Port())
 
-	var reader = NewPortReader()
-	localPort, err := l.mux.BindAny(reader)
+	local, err := l.queryRouter.RouteQuery(ctx, q, remote)
 	if err != nil {
-		return nil, err
+		remote.Close()
+		return nil
 	}
 
-	// write query frame
-	err = l.ctl.WriteQuery(query, localPort)
+	localPort, err := l.mux.BindAny(WriterFrameHandler{local})
 	if err != nil {
-		l.mux.Unbind(localPort)
-		return nil, fmt.Errorf("query failed: %w", err)
+		remote.Close()
+		return err
 	}
 
-	// read the remote port of the connection
-	var remotePort int
-	var reply = make(chan struct{})
-
-	go func() {
-		err = cslq.Decode(reader, "s", &remotePort)
-		close(reply)
-	}()
-
-	select {
-	case <-ctx.Done():
-		l.mux.Unbind(localPort)
-		return nil, ctx.Err()
-
-	case <-time.After(l.queryTimeout):
-		l.mux.Unbind(localPort)
-		return nil, ErrQueryTimeout
-
-	case <-reply:
-	}
-
-	if err != nil {
-		return nil, ErrRejected
-	}
-
-	conn = &Conn{
-		localPort: localPort,
-		query:     query,
-		reader:    reader,
-		writer:    mux.NewFrameWriter(l.mux, remotePort),
-		link:      l,
-		done:      make(chan struct{}),
-		outbound:  true,
-	}
-
-	reader.SetErrorHandler(func(err error) {
-		if err == ErrBufferOverflow {
-			conn.closeWithError(err)
-		}
-	})
-
-	l.add(conn)
-
-	l.Events().Emit(EventConnEstablished{Conn: conn})
-
-	return
+	return cslq.Encode(remote, "s", localPort)
 }
 
 func (l *Link) Close() error {
@@ -176,7 +120,7 @@ func (l *Link) CloseWithError(e error) error {
 	if l.closed.CompareAndSwap(false, true) {
 		l.err = e
 		_ = l.ctl.WriteClose()
-		l.conn.Close()
+		l.transport.Close()
 		close(l.doneCh)
 	} else {
 		l.log.Errorv(2, "link with %s over %s double closed. first: %s, new: %s",
@@ -189,37 +133,8 @@ func (l *Link) CloseWithError(e error) error {
 	return nil
 }
 
-func (l *Link) onQuery(query string, remotePort int) error {
-	var writer = mux.NewFrameWriter(l.mux, remotePort)
-	var reader = NewPortReader()
-
-	localPort, err := l.mux.BindAny(reader)
-	if err != nil {
-		writer.Close()
-		return err
-	}
-
-	var q = &Query{
-		query:     query,
-		localPort: localPort,
-		reader:    reader,
-		writer:    writer,
-		link:      l,
-	}
-
-	if l.queryHandler == nil {
-		l.log.Log("no query handler set - automatically rejecting query: %s", query)
-		_ = q.Reject()
-		return nil
-	}
-
-	err = l.queryHandler(q)
-	if err != nil {
-		l.log.Log("rejecting query %s due to handler error: %s", query, err)
-		q.Reject()
-	}
-
-	return err
+func (l *Link) Transport() net.SecureConn {
+	return l.transport
 }
 
 func (l *Link) onDrop(remotePort int) error {

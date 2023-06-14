@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/services"
 	"io"
 	"os"
 	"reflect"
@@ -37,7 +37,7 @@ var (
 type Server struct {
 	node node.Node
 	log  *log.Logger
-	conn *services.Conn
+	conn net.SecureConn
 	auth bool
 }
 

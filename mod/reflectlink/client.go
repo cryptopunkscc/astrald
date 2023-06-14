@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -20,7 +21,10 @@ func (mod *Client) Run(ctx context.Context) error {
 }
 
 func (mod *Client) handleLinkEstablished(ctx context.Context, event link.EventLinkEstablished) error {
-	conn, err := event.Link.Query(ctx, serviceName)
+	conn, err := query.Run(ctx,
+		event.Link,
+		query.New(event.Link.LocalIdentity(), event.Link.RemoteIdentity(), serviceName),
+	)
 	if err != nil {
 		return err
 	}

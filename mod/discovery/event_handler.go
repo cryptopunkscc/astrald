@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/query"
 )
 
 type EventHandler struct {
@@ -18,7 +19,10 @@ func (srv *EventHandler) Run(ctx context.Context) error {
 
 func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPeerLinked) error {
 	var identity = e.Peer.Identity()
-	var conn, err = srv.node.Network().Query(ctx, identity, discoverServiceName)
+	var conn, err = query.Run(ctx,
+		srv.node.Network(),
+		query.New(srv.node.Identity(), identity, discoverServiceName),
+	)
 	if err != nil {
 		srv.log.Errorv(2, "discover %s: %s", identity, err)
 		return err

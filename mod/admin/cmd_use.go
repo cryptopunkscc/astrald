@@ -3,7 +3,6 @@ package admin
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/node/services"
 )
 
 var _ Command = &CmdUse{}
@@ -26,8 +25,11 @@ func (cmd *CmdUse) Exec(term *Terminal, args []string) error {
 	term.Printf("type exit to go back\n")
 
 	var identity id.Identity
-	if conn, ok := term.ReadWriter.(*services.Conn); ok {
-		identity = conn.RemoteIdentity()
+
+	type check interface{ RemoteIdentity() id.Identity }
+
+	if i, ok := term.ReadWriter.(check); ok {
+		identity = i.RemoteIdentity()
 	}
 
 	for {

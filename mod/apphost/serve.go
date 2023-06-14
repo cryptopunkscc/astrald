@@ -10,9 +10,9 @@ import (
 	shiftp "github.com/cryptopunkscc/astrald/mod/shift/proto"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
-	"sync"
 )
 
 func (s *Session) Serve(ctx context.Context) error {
@@ -56,58 +56,60 @@ func (s *Session) query(params proto.QueryParams) error {
 	var err error
 	var conn io.ReadWriteCloser
 
-	if params.Identity.IsEqual(s.mod.node.Identity()) {
-		conn, err = s.mod.node.Services().Query(s.ctx, s.remoteID, params.Query, nil)
+	q := query.New(s.remoteID, params.Identity, params.Query)
+
+	if q.Target().IsEqual(s.mod.node.Identity()) {
+		// make a local query
+		conn, err = query.Run(s.ctx, s.mod.node.Services(), q)
+	} else if q.Caller().IsEqual(s.mod.node.Identity()) {
+		// make a direct query
+		conn, err = query.Run(s.ctx, s.mod.node.Network(), q)
 	} else {
+		// make a shift query
 		var caller id.Identity
-
-		if s.remoteID.IsEqual(s.mod.node.Identity()) {
-			conn, err = s.mod.node.Network().Query(s.ctx, params.Identity, params.Query)
-		} else {
-			// Get private key from the store
-			caller, err = s.mod.keys.Find(s.remoteID)
-			if err != nil {
-				s.mod.log.Errorv(2, "no private key for %s", s.remoteID)
-				return proto.ErrUnauthorized
-			}
-
-			conn, err = s.mod.node.Network().Query(s.ctx, params.Identity, shift.ServiceName)
-			if err != nil {
-				s.mod.log.Errorv(2, "error shifting identity: %s", err)
-				return proto.ErrUnauthorized
-			}
-			defer conn.Close()
-
-			c := shiftp.New(conn)
-
-			var shiftParams shiftp.ShiftParams
-
-			shiftParams, err = shiftp.BuildShiftParams(caller, s.mod.node.Identity())
-			if err != nil {
-				return err
-			}
-
-			err = c.Encode(
-				shiftp.Cmd{Cmd: shiftp.CmdShift},
-				shiftParams,
-			)
-			if err != nil {
-				return err
-			}
-			if err = c.DecodeErr(); err != nil {
-				return err
-			}
-
-			err = c.Encode(shiftp.Cmd{Cmd: shiftp.CmdQuery},
-				shiftp.QueryParams{
-					Query: params.Query,
-				})
-			if err != nil {
-				return err
-			}
-
-			err = c.DecodeErr()
+		// Get private key from the store
+		caller, err = s.mod.keys.Find(s.remoteID)
+		if err != nil {
+			s.mod.log.Errorv(2, "no private key for %s", s.remoteID)
+			return proto.ErrUnauthorized
 		}
+
+		conn, err = query.Run(s.ctx, s.mod.node.Network(), query.New(s.mod.node.Identity(), q.Target(), shift.ServiceName))
+		if err != nil {
+			s.mod.log.Errorv(2, "error connecting to shift service: %s", err)
+			return proto.ErrUnauthorized
+		}
+		defer conn.Close()
+
+		c := shiftp.New(conn)
+
+		var shiftParams shiftp.ShiftParams
+
+		shiftParams, err = shiftp.BuildShiftParams(caller, s.mod.node.Identity())
+		if err != nil {
+			return err
+		}
+
+		err = c.Encode(
+			shiftp.Cmd{Cmd: shiftp.CmdShift},
+			shiftParams,
+		)
+		if err != nil {
+			return err
+		}
+		if err = c.DecodeErr(); err != nil {
+			return err
+		}
+
+		err = c.Encode(shiftp.Cmd{Cmd: shiftp.CmdQuery},
+			shiftp.QueryParams{
+				Query: params.Query,
+			})
+		if err != nil {
+			return err
+		}
+
+		err = c.DecodeErr()
 	}
 
 	if err == nil {
@@ -185,9 +187,13 @@ func (s *Session) register(p proto.RegisterParams) error {
 	defer cancel()
 	defer s.Close()
 
-	var queries = services.NewQueryChan(1)
+	relay := &RelayRouter{
+		log:      s.log,
+		target:   p.Target,
+		identity: s.remoteID,
+	}
 
-	service, err := s.mod.node.Services().Register(ctx, s.remoteID, p.Service, queries.Push)
+	service, err := s.mod.node.Services().Register(ctx, s.remoteID, p.Service, relay)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrAlreadyRegistered):
@@ -199,60 +205,8 @@ func (s *Session) register(p proto.RegisterParams) error {
 	}
 	s.WriteErr(nil)
 
-	go func() {
-		io.Copy(streams.NilWriter{}, s)
-		service.Close()
-	}()
+	// wait for the other party to close the session
+	io.Copy(streams.NilWriter{}, s)
 
-	go func() {
-		<-service.Done()
-		close(queries)
-	}()
-
-	var wg sync.WaitGroup
-	wg.Add(128)
-	for i := 0; i < 128; i++ {
-		go func() {
-			s.forwardWorker(queries, p.Target)
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-
-	return nil
-}
-
-func (s *Session) forwardWorker(queries services.QueryChan, target string) {
-	for query := range queries {
-		c, err := proto.Dial(target)
-		if err != nil {
-			s.mod.log.Errorv(2, "%s -> %s dial error: %s", query.Query(), target, err)
-			query.Reject()
-			continue
-		}
-
-		conn := proto.NewConn(c)
-
-		err = conn.WriteMsg(proto.InQueryParams{
-			Identity: query.RemoteIdentity(),
-			Query:    query.Query(),
-		})
-		if err != nil {
-			continue
-		}
-
-		if conn.ReadErr() != nil {
-			query.Reject()
-			conn.Close()
-			continue
-		}
-
-		qConn, err := query.Accept()
-		if err != nil {
-			conn.Close()
-			continue
-		}
-
-		streams.Join(conn, qConn)
-	}
+	return service.Close()
 }

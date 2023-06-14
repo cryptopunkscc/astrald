@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"net"
 )
@@ -15,13 +16,15 @@ type Session struct {
 	ctx      context.Context
 	mod      *Module
 	remoteID id.Identity
+	log      *log.Logger
 }
 
-func NewSession(mod *Module, conn net.Conn) *Session {
+func NewSession(mod *Module, conn net.Conn, log *log.Logger) *Session {
 	return &Session{
 		mod:   mod,
 		Conn:  proto.NewConn(conn),
 		Endec: cslq.NewEndec(conn),
+		log:   log,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/query"
 )
 
 type Source interface {
@@ -15,6 +16,7 @@ type Source interface {
 var _ Source = &ServiceSource{}
 
 type ServiceSource struct {
+	identity id.Identity
 	services services.Services
 	service  string
 }
@@ -24,7 +26,10 @@ func (src *ServiceSource) String() string {
 }
 
 func (src *ServiceSource) Discover(ctx context.Context, caller id.Identity, origin string) ([]ServiceEntry, error) {
-	conn, err := src.services.Query(ctx, caller, src.service, nil)
+	conn, err := query.Run(ctx,
+		src.services,
+		query.New(caller, src.identity, src.service),
+	)
 	if err != nil {
 		return nil, err
 	}

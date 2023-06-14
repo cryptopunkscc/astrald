@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/resolver"
@@ -30,13 +29,12 @@ type CoreNode struct {
 	infra    *infra.CoreInfra
 	network  *network.CoreNetwork
 	tracker  *tracker.CoreTracker
-	services *services.CoreService
+	services *services.CoreServices
 	modules  *modules.CoreModules
 	resolver *resolver.CoreResolver
 	events   events.Queue
 
-	queryQueue chan *link.Query
-	logConfig  LogConfig
+	logConfig LogConfig
 	logFields
 }
 
@@ -44,8 +42,7 @@ type CoreNode struct {
 func NewCoreNode(rootDir string) (*CoreNode, error) {
 	var err error
 	var node = &CoreNode{
-		config:     defaultConfig,
-		queryQueue: make(chan *link.Query),
+		config: defaultConfig,
 	}
 
 	// basic logs
@@ -99,7 +96,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	node.services = services.NewCoreServices(&node.events, node.log)
 
 	// network
-	node.network, err = network.NewCoreNetwork(node.identity, node.infra, node.tracker, &node.events, node.onQuery, node.log)
+	node.network, err = network.NewCoreNetwork(node.identity, node.infra, node.tracker, &node.events, node.services, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
 	}

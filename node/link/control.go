@@ -24,7 +24,7 @@ func (c *Control) Run(ctx context.Context) error {
 
 		switch msg := msg.(type) {
 		case ctl.QueryMessage:
-			if err := c.link.onQuery(msg.Query(), msg.Port()); err != nil {
+			if err := c.link.handleQueryMessage(ctx, msg); err != nil {
 				return err
 			}
 

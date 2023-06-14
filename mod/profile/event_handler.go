@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/query"
 )
 
 type EventHandler struct {
@@ -23,15 +24,16 @@ func (h *EventHandler) handleServicesDiscovered(ctx context.Context, e discovery
 			continue
 		}
 		if srv.Type == serviceType {
-			return h.updateIdentity(e.Identity, srv.Name)
+			return h.updateIdentityProfile(e.Identity, srv.Name)
 		}
 	}
 	return nil
 }
 
-func (h *EventHandler) updateIdentity(identity id.Identity, serviceName string) error {
-	h.log.Infov(2, "updating profile for %s", identity)
-	conn, err := h.node.Query(context.Background(), identity, serviceName)
+func (h *EventHandler) updateIdentityProfile(target id.Identity, serviceName string) error {
+	h.log.Infov(2, "updating profile for %s", target)
+
+	conn, err := query.Run(h.ctx, h.node, query.New(h.node.Identity(), target, serviceName))
 	if err != nil {
 		return err
 	}
@@ -49,8 +51,10 @@ func (h *EventHandler) updateIdentity(identity id.Identity, serviceName string) 
 			continue
 		}
 
-		h.node.Tracker().AddEndpoint(identity, ep)
+		h.node.Tracker().AddEndpoint(target, ep)
 	}
+
+	h.log.Info("%s profile updated.", target)
 
 	return nil
 }

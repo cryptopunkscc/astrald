@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/query"
 	"sync"
 	"time"
 )
@@ -13,18 +13,19 @@ import (
 const queryResponseTimeout = time.Second
 const logTag = "services"
 
-var _ Services = &CoreService{}
+var _ Services = &CoreServices{}
+var _ query.Router = &CoreServices{}
 
-// CoreService facilitates registration of services and querying them.
-type CoreService struct {
+// CoreServices facilitates registration of services and querying them.
+type CoreServices struct {
 	services map[string]*Service
 	mu       sync.Mutex
 	events   events.Queue
 	log      *log.Logger
 }
 
-func NewCoreServices(eventParent *events.Queue, log *log.Logger) *CoreService {
-	hub := &CoreService{
+func NewCoreServices(eventParent *events.Queue, log *log.Logger) *CoreServices {
+	hub := &CoreServices{
 		services: make(map[string]*Service),
 		log:      log.Tag(logTag),
 	}
@@ -33,12 +34,12 @@ func NewCoreServices(eventParent *events.Queue, log *log.Logger) *CoreService {
 }
 
 // List returns information about all registered services
-func (m *CoreService) List() []ServiceInfo {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (srv *CoreServices) List() []ServiceInfo {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
 
-	var list = make([]ServiceInfo, 0, len(m.services))
-	for _, service := range m.services {
+	var list = make([]ServiceInfo, 0, len(srv.services))
+	for _, service := range srv.services {
 		list = append(list, ServiceInfo{
 			Name:         service.name,
 			Identity:     service.identity,
@@ -48,12 +49,12 @@ func (m *CoreService) List() []ServiceInfo {
 	return list
 }
 
-func (m *CoreService) Find(name string) (*Service, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (srv *CoreServices) Find(name string) (*Service, error) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
 
 	// Fetch the service
-	service, found := m.services[name]
+	service, found := srv.services[name]
 	if !found {
 		return nil, ErrServiceNotFound
 	}
@@ -61,47 +62,9 @@ func (m *CoreService) Find(name string) (*Service, error) {
 	return service, nil
 }
 
-func (m *CoreService) Query(ctx context.Context, identity id.Identity, query string, link *link.Link) (*Conn, error) {
-	// Fetch the service
-	service, err := m.Find(query)
-	if err != nil {
-		return nil, err
-	}
-
-	cliConn, srvConn := pipe(query, link)
-	srvConn.remoteID = identity
-	cliConn.remoteID = service.Identity()
-
-	// pass the query to the service
-	var q = newQuery(query, link, identity, srvConn)
-
-	if service.handler == nil {
-		panic("service has nil handler")
-	}
-
-	go service.handler(ctx, q)
-
-	select {
-	case accepted := <-q.response:
-		if accepted {
-			return cliConn, nil
-		}
-		return nil, ErrRejected
-
-	case <-ctx.Done():
-		q.cancel(ctx.Err())
-		return nil, ctx.Err()
-
-	case <-time.After(queryResponseTimeout):
-		m.log.Errorv(1, "service %s (%s) failed due to timeout", service.Name(), service.Identity())
-		q.cancel(ErrTimeout)
-		return nil, ErrTimeout
-	}
-}
-
 // Register registers a service as the specified identity
-func (m *CoreService) Register(ctx context.Context, identity id.Identity, name string, handler QueryHandlerFunc) (*Service, error) {
-	service, err := m.register(name, identity, handler)
+func (srv *CoreServices) Register(ctx context.Context, identity id.Identity, name string, handler query.Router) (*Service, error) {
+	service, err := srv.register(name, identity, handler)
 	if err != nil {
 		return nil, err
 	}
@@ -114,40 +77,46 @@ func (m *CoreService) Register(ctx context.Context, identity id.Identity, name s
 	return service, nil
 }
 
-func (m *CoreService) register(name string, identity id.Identity, handler QueryHandlerFunc) (*Service, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (srv *CoreServices) register(name string, identity id.Identity, handler query.Router) (*Service, error) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
 
 	// Check if the requested service is available
-	if _, found := m.services[name]; found {
+	if _, found := srv.services[name]; found {
 		return nil, ErrAlreadyRegistered
 	}
 
 	// register the service
-	m.services[name] = newService(m, identity, name, handler)
+	srv.services[name] = newService(srv, identity, name, handler)
 
-	m.log.Infov(1, "%v registered %s", identity, name)
+	srv.log.Infov(1, "registered %v:%s", identity, name)
 
-	m.events.Emit(EventServiceRegistered{name})
+	srv.events.Emit(EventServiceRegistered{
+		Identity: identity,
+		Name:     name,
+	})
 
-	return m.services[name], nil
+	return srv.services[name], nil
 }
 
 // release removes a service from the manager
-func (m *CoreService) release(name string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (srv *CoreServices) release(name string) error {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
 
-	s, found := m.services[name]
+	s, found := srv.services[name]
 	if !found {
 		return ErrServiceNotFound
 	}
 
-	delete(m.services, name)
+	delete(srv.services, name)
 
-	m.log.Infov(1, "%v released %s", s.identity, name)
+	srv.log.Infov(1, "released %v:%s", s.identity, s.name)
 
-	m.events.Emit(EventServiceReleased{name})
+	srv.events.Emit(EventServiceReleased{
+		Identity: s.identity,
+		Name:     s.name,
+	})
 
 	return nil
 }

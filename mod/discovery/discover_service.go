@@ -3,7 +3,8 @@ package discovery
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 )
@@ -16,38 +17,36 @@ type DiscoveryService struct {
 
 const discoverServiceName = "services.discover"
 
-func (m *DiscoveryService) Run(ctx context.Context) error {
-	var workers = RunQueryWorkers(ctx, m.handleQuery, 8)
+func (service *DiscoveryService) RouteQuery(ctx context.Context, q query.Query, swc net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return query.Accept(q, swc, func(conn net.SecureConn) {
+		service.serveDiscover(conn, q.Origin())
+	})
+}
 
-	service, err := m.node.Services().Register(ctx, m.node.Identity(), discoverServiceName, workers.Enqueue)
+func (service *DiscoveryService) Run(ctx context.Context) error {
+	s, err := service.node.Services().Register(ctx, service.node.Identity(), discoverServiceName, service)
 	if err != nil {
 		return err
 	}
 
-	<-service.Done()
+	<-s.Done()
 
 	return nil
 }
 
-func (m *DiscoveryService) handleQuery(ctx context.Context, query *services.Query) error {
-	nconn, err := query.Accept()
-	if err != nil {
-		return err
-	}
-	defer nconn.Close()
-
-	var session = rpc.New(nconn)
+func (service *DiscoveryService) serveDiscover(conn net.SecureConn, origin string) {
+	var session = rpc.New(conn)
 
 	var wg sync.WaitGroup
 
-	for source, sourceID := range m.sources {
+	for source, sourceID := range service.sources {
 		source, sourceID := source, sourceID
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
-			list, err := source.Discover(ctx, query.RemoteIdentity(), query.Origin())
+			list, err := source.Discover(service.ctx, conn.RemoteIdentity(), origin)
 			if err != nil {
 				return
 			}
@@ -60,6 +59,4 @@ func (m *DiscoveryService) handleQuery(ctx context.Context, query *services.Quer
 	}
 
 	wg.Wait()
-
-	return nil
 }

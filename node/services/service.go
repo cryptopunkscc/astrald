@@ -1,32 +1,30 @@
 package services
 
 import (
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/query"
 	"sync/atomic"
 	"time"
 )
 
-type QueryHandlerFunc func(context.Context, *Query) error
-
 // Service represents a registered service
 type Service struct {
 	name         string
-	handler      QueryHandlerFunc
-	manager      *CoreService
+	router       query.Router
+	manager      *CoreServices
 	identity     id.Identity
 	registeredAt time.Time
 	done         chan struct{}
 	closed       atomic.Bool
 }
 
-func newService(hub *CoreService, identity id.Identity, name string, handler QueryHandlerFunc) *Service {
+func newService(hub *CoreServices, identity id.Identity, name string, router query.Router) *Service {
 	return &Service{
 		manager:      hub,
 		identity:     identity,
 		name:         name,
-		handler:      handler,
+		router:       router,
 		registeredAt: time.Now(),
 		done:         make(chan struct{}),
 	}

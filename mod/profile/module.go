@@ -13,11 +13,13 @@ const serviceType = "sys.profile"
 type Module struct {
 	node node.Node
 	log  *log.Logger
+	ctx  context.Context
 }
 
-func (m *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
 	return tasks.Group(
-		&ProfileService{Module: m},
-		&EventHandler{Module: m},
+		&ProfileService{Module: mod},
+		&EventHandler{Module: mod},
 	).Run(ctx)
 }

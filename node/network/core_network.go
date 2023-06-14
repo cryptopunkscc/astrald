@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/tracker"
+	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 	"sync/atomic"
@@ -19,41 +20,26 @@ import (
 const workers = 16
 const queueSize = 64
 const logTag = "network"
-const defaultQueryTimeout = time.Minute
+const defaultQueryTimeout = 30 * time.Second
 
 var _ Network = &CoreNetwork{}
+var _ query.Router = &CoreNetwork{}
 
 type CoreNetwork struct {
-	links        *LinkSet
-	peers        *PeerSet
-	server       *Server
-	localID      id.Identity
-	events       events.Queue
-	log          *log.Logger
-	tracker      *tracker.CoreTracker
-	infra        *infra.CoreInfra
-	tasks        *tasks.FIFOScheduler
-	linkTasks    map[string]*tasks.Task[*link.Link]
-	queryHandler link.QueryHandlerFunc
-	ctx          context.Context
-	running      atomic.Bool
-	mu           sync.Mutex
-}
-
-func (n *CoreNetwork) Query(ctx context.Context, remoteID id.Identity, query string) (link.BasicConn, error) {
-	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
-	defer cancel()
-
-	if peer := n.Peers().Find(remoteID); peer != nil {
-		peer.Check()
-	}
-
-	l, err := n.Link(ctx, remoteID)
-	if err != nil {
-		return nil, err
-	}
-
-	return l.Query(ctx, query)
+	links       *LinkSet
+	peers       *PeerSet
+	server      *Server
+	localID     id.Identity
+	events      events.Queue
+	log         *log.Logger
+	tracker     *tracker.CoreTracker
+	infra       *infra.CoreInfra
+	tasks       *tasks.FIFOScheduler
+	linkTasks   map[string]*tasks.Task[*link.Link]
+	queryRouter query.Router
+	ctx         context.Context
+	running     atomic.Bool
+	mu          sync.Mutex
 }
 
 func NewCoreNetwork(
@@ -61,21 +47,21 @@ func NewCoreNetwork(
 	infra *infra.CoreInfra,
 	tracker *tracker.CoreTracker,
 	eventParent *events.Queue,
-	queryHandler link.QueryHandlerFunc,
+	queryRouter query.Router,
 	log *log.Logger,
 ) (*CoreNetwork, error) {
 	var err error
 
 	m := &CoreNetwork{
-		localID:      localID,
-		infra:        infra,
-		tracker:      tracker,
-		queryHandler: queryHandler,
-		log:          log.Tag(logTag),
-		peers:        NewPeerSet(),
-		links:        NewLinkSet(),
-		tasks:        tasks.NewFIFOScheduler(workers, queueSize),
-		linkTasks:    make(map[string]*tasks.Task[*link.Link]),
+		localID:     localID,
+		infra:       infra,
+		tracker:     tracker,
+		queryRouter: queryRouter,
+		log:         log.Tag(logTag),
+		peers:       NewPeerSet(),
+		links:       NewLinkSet(),
+		tasks:       tasks.NewFIFOScheduler(workers, queueSize),
+		linkTasks:   make(map[string]*tasks.Task[*link.Link]),
 	}
 
 	m.events.SetParent(eventParent)
@@ -235,12 +221,6 @@ func (n *CoreNetwork) RequestNewLink(nodeID id.Identity, opts LinkOptions) (*tas
 	return t, n.tasks.Add(t)
 }
 
-func (n *CoreNetwork) onQuery(query *link.Query) (err error) {
-	err = n.queryHandler(query)
-
-	return err
-}
-
 func (n *CoreNetwork) addLink(l *link.Link) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -280,7 +260,7 @@ func (n *CoreNetwork) addLink(l *link.Link) error {
 	peer.Check()
 
 	go func() {
-		l.SetQueryHandler(n.onQuery)
+		l.SetQueryRouter(n.queryRouter)
 		if err := l.Run(n.ctx); err != nil {
 			n.log.Logv(1, "closed link with %s over %s: %s", l.RemoteIdentity(), l.Network(), l.Err())
 		}

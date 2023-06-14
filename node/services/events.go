@@ -2,10 +2,12 @@ package services
 
 import (
 	"fmt"
+	"github.com/cryptopunkscc/astrald/auth/id"
 )
 
 type EventServiceRegistered struct {
-	Name string
+	Identity id.Identity
+	Name     string
 }
 
 func (e EventServiceRegistered) String() string {
@@ -13,7 +15,8 @@ func (e EventServiceRegistered) String() string {
 }
 
 type EventServiceReleased struct {
-	Name string
+	Identity id.Identity
+	Name     string
 }
 
 func (e EventServiceReleased) String() string {

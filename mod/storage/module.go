@@ -18,6 +18,7 @@ type Module struct {
 	db     *gorm.DB
 	log    *log.Logger
 	events events.Queue
+	ctx    context.Context
 
 	dataSources   map[*DataSource]struct{}
 	dataSourcesMu sync.Mutex
@@ -27,6 +28,8 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
+
 	// inject admin command
 	if adm, err := modules.Find[*admin.Module](mod.node.Modules()); err == nil {
 		adm.AddCommand("storage", NewAdmin(mod))

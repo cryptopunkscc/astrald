@@ -130,7 +130,14 @@ func (cmd *CmdTracker) addEndpoint(term *Terminal, args []string) error {
 		return err
 	}
 
-	return cmd.mod.node.Tracker().AddEndpoint(identity, ep)
+	err = cmd.mod.node.Tracker().AddEndpoint(identity, ep)
+	if err != nil {
+		return err
+	}
+
+	term.Printf("%s %v added to %s\n", ep.Network(), ep, identity)
+
+	return nil
 }
 
 func (cmd *CmdTracker) parse(term *Terminal, args []string) error {

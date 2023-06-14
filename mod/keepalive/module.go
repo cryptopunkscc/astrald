@@ -2,22 +2,22 @@ package keepalive
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/query"
 	"sync"
 	"time"
 )
 
-const portName = "net.keepalive"
+const serviceName = "net.keepalive"
 
 type Module struct {
-	node   node.Node
 	config Config
+	node   node.Node
 	log    *log.Logger
+	ctx    context.Context
 }
 
 // time between successive link retries, in seconds
@@ -26,72 +26,37 @@ var relinkIntervals = []int{5, 5, 15, 30, 60, 60, 60, 60, 5 * 60, 5 * 60, 5 * 60
 // interval between periodic checks for new best link
 const checkBestLinkInterval = 5 * time.Minute
 
-func (m *Module) Run(ctx context.Context) error {
+func (module *Module) Run(ctx context.Context) error {
+	module.ctx = ctx
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		if err := m.runServer(ctx); err != nil {
-			m.log.Errorv(1, "error running server: %s", err)
-		}
-	}()
-
-	for _, sn := range m.config.StickyNodes {
-		nodeID, err := m.node.Resolver().Resolve(sn)
+	for _, sn := range module.config.StickyNodes {
+		nodeID, err := module.node.Resolver().Resolve(sn)
 		if err != nil {
-			m.log.Error("error resolving %s: %s", sn, err)
+			module.log.Error("error resolving %s: %s", sn, err)
 			continue
 		}
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m.keepNodeLinked(ctx, nodeID)
+			module.keepNodeLinked(ctx, nodeID)
 		}()
 	}
 
-	wg.Wait()
-	return nil
+	return NewServer(module).Run(ctx)
 }
 
-func (m *Module) runServer(ctx context.Context) error {
-	_, err := m.node.Services().Register(ctx, m.node.Identity(), portName, m.handleQuery)
-	return err
-}
-
-func (m *Module) handleQuery(_ context.Context, q *services.Query) error {
-	if q.Origin() == services.OriginLocal {
-		q.Reject()
-		return errors.New("local query not allowed")
-	}
-
-	conn, err := q.Accept()
-	if err == nil {
-		conn.Close()
-	}
-
-	// disable timeout on the link
-	conn.Link().Idle().SetTimeout(0)
-	m.log.Log("timeout disabled for %s over %s",
-		conn.Link().RemoteIdentity(),
-		conn.Link().Network(),
-	)
-
-	return nil
-}
-
-func (m *Module) keepNodeLinked(ctx context.Context, nodeID id.Identity) error {
+func (module *Module) keepNodeLinked(ctx context.Context, nodeID id.Identity) error {
 	var errc int
 	var best *link.Link
 
-	newLinksCh := m.subscribeNewLinksWithNode(ctx, nodeID)
+	newLinksCh := module.subscribeNewLinksWithNode(ctx, nodeID)
 
-	m.log.Logv(1, "will keep %s linked", nodeID)
+	module.log.Logv(1, "will keep %s linked", nodeID)
 
 	for {
-		newBest, err := m.node.Network().Link(ctx, nodeID)
+		newBest, err := module.node.Network().Link(ctx, nodeID)
 
 		if err != nil {
 			var ival time.Duration
@@ -122,7 +87,11 @@ func (m *Module) keepNodeLinked(ctx context.Context, nodeID id.Identity) error {
 			best.Activity().Add(1)
 
 			// ask the other node to never close the link due to inactivity
-			if conn, err := best.Query(ctx, "net.keepalive"); err == nil {
+			conn, err := query.Run(ctx,
+				best,
+				query.New(module.node.Identity(), best.RemoteIdentity(), serviceName),
+			)
+			if err == nil {
 				conn.Close()
 			}
 		}
@@ -146,12 +115,12 @@ func (m *Module) keepNodeLinked(ctx context.Context, nodeID id.Identity) error {
 	}
 }
 
-func (m *Module) subscribeNewLinksWithNode(ctx context.Context, nodeID id.Identity) <-chan *link.Link {
+func (module *Module) subscribeNewLinksWithNode(ctx context.Context, nodeID id.Identity) <-chan *link.Link {
 	var ch = make(chan *link.Link)
 
 	go func() {
 		defer close(ch)
-		for event := range m.node.Network().Events().Subscribe(ctx) {
+		for event := range module.node.Network().Events().Subscribe(ctx) {
 			if event, ok := event.(link.EventLinkEstablished); ok {
 				if event.Link.RemoteIdentity().IsEqual(nodeID) {
 					ch <- event.Link

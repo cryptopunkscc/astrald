@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/sig"
 	"time"
 )
@@ -17,8 +18,8 @@ func (l *Link) Idle() *Idle {
 	return l.idle
 }
 
-func (l *Link) SetQueryHandler(queryHandler QueryHandlerFunc) {
-	l.queryHandler = queryHandler
+func (l *Link) SetQueryRouter(queryHandler query.Router) {
+	l.queryRouter = queryHandler
 }
 
 func (l *Link) Events() *events.Queue {
@@ -69,31 +70,31 @@ func (l *Link) Health() *Health {
 }
 
 func (l *Link) Outbound() bool {
-	return l.conn.Outbound()
+	return l.transport.Outbound()
 }
 
 func (l *Link) Network() string {
-	if l.conn.LocalEndpoint() != nil {
-		return l.conn.LocalEndpoint().Network()
+	if l.transport.LocalEndpoint() != nil {
+		return l.transport.LocalEndpoint().Network()
 	}
-	if l.conn.RemoteEndpoint() != nil {
-		return l.conn.RemoteEndpoint().Network()
+	if l.transport.RemoteEndpoint() != nil {
+		return l.transport.RemoteEndpoint().Network()
 	}
 	return ""
 }
 
 func (l *Link) RemoteEndpoint() net.Endpoint {
-	return l.conn.RemoteEndpoint()
+	return l.transport.RemoteEndpoint()
 }
 
 func (l *Link) LocalEndpoint() net.Endpoint {
-	return l.conn.LocalEndpoint()
+	return l.transport.LocalEndpoint()
 }
 
 func (l *Link) RemoteIdentity() id.Identity {
-	return l.conn.RemoteIdentity()
+	return l.transport.RemoteIdentity()
 }
 
 func (l *Link) LocalIdentity() id.Identity {
-	return l.conn.LocalIdentity()
+	return l.transport.LocalIdentity()
 }

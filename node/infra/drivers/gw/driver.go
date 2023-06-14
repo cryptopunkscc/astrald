@@ -7,7 +7,7 @@ import (
 )
 
 const DriverName = "gw"
-const PortName = "gateway"
+const ServiceName = "gateway"
 
 var _ infra.Driver = &Driver{}
 

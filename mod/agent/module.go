@@ -3,54 +3,49 @@ package agent
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/query"
 )
 
-const portName = "sys.agent"
+const serviceName = "sys.agent"
 
 type Module struct {
 	node node.Node
 	log  *log.Logger
+	ctx  context.Context
 }
 
-func (m *Module) Run(ctx context.Context) error {
-	var queries = services.NewQueryChan(1)
+func (module *Module) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if q.Origin() != query.OriginLocal {
+		return nil, link.ErrRejected
+	}
 
-	service, err := m.node.Services().Register(ctx, m.node.Identity(), portName, queries.Push)
+	return query.Accept(q, remoteWriter, module.serve)
+}
+
+func (module *Module) serve(conn net.SecureConn) {
+	s := &Server{
+		node: module.node,
+		conn: conn,
+		log:  module.log,
+	}
+
+	if err := s.Run(module.ctx); err != nil {
+		module.log.Error("serve error: %s", err)
+	}
+}
+
+func (module *Module) Run(ctx context.Context) error {
+	module.ctx = ctx
+
+	service, err := module.node.Services().Register(ctx, module.node.Identity(), serviceName, module)
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		<-service.Done()
-		close(queries)
-	}()
-
-	for q := range queries {
-		// allow local connections only
-		if q.Origin() != services.OriginLocal {
-			q.Reject()
-			continue
-		}
-
-		conn, err := q.Accept()
-		if err != nil {
-			continue
-		}
-
-		s := &Server{
-			node: m.node,
-			conn: conn,
-			log:  m.log,
-		}
-
-		go func() {
-			if err := s.Run(ctx); err != nil {
-				m.log.Error("serve error: %s", err)
-			}
-		}()
-	}
+	<-service.Done()
 
 	return nil
 }

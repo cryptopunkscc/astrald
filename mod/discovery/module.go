@@ -12,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"reflect"
 	"sync"
@@ -26,6 +27,7 @@ type Module struct {
 	sourcesMu sync.Mutex
 	cache     map[string][]ServiceEntry
 	cacheMu   sync.Mutex
+	ctx       context.Context
 }
 
 func (m *Module) Run(ctx context.Context) error {
@@ -35,11 +37,21 @@ func (m *Module) Run(ctx context.Context) error {
 		adm.AddCommand("discovery", NewAdmin(m))
 	}
 
+	m.ctx = ctx
+
 	return tasks.Group(
 		&DiscoveryService{Module: m},
 		&RegisterService{Module: m},
 		&EventHandler{Module: m},
 	).Run(ctx)
+}
+
+func (m *Module) AddSourceContext(ctx context.Context, source Source, identity id.Identity) {
+	m.AddSource(source, identity)
+	go func() {
+		<-ctx.Done()
+		m.RemoveSource(source)
+	}()
 }
 
 func (m *Module) AddSource(source Source, identity id.Identity) {
@@ -115,7 +127,10 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	q, err := m.node.Network().Query(ctx, remoteID, "services.discover")
+	q, err := query.Run(ctx,
+		m.node.Network(),
+		query.New(m.node.Identity(), remoteID, discoverServiceName),
+	)
 	if err != nil {
 		return nil, err
 	}

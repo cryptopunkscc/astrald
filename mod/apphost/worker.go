@@ -19,7 +19,7 @@ func (mod *Module) worker(ctx context.Context) error {
 			}
 		}()
 
-		session := NewSession(mod, conn)
+		session := NewSession(mod, conn, mod.log)
 		err := session.Serve(ctx)
 
 		switch {

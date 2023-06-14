@@ -7,28 +7,29 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/query"
 )
 
 var _ infra.Dialer = &Driver{}
 
-func (drv *Driver) Dial(ctx context.Context, addr net.Endpoint) (net.Conn, error) {
-	addr, err := drv.Unpack(addr.Network(), addr.Pack())
+func (drv *Driver) Dial(ctx context.Context, e net.Endpoint) (net.Conn, error) {
+	e, err := drv.Unpack(e.Network(), e.Pack())
 	if err != nil {
 		return nil, err
 	}
 
-	gwAddr := addr.(Endpoint)
+	endpoint := e.(Endpoint)
 
-	if gwAddr.gate.IsEqual(drv.infra.Node().Identity()) {
+	if endpoint.gate.IsEqual(drv.infra.Node().Identity()) {
 		return nil, errors.New("cannot use self as a gateway")
 	}
 
-	rwc, err := drv.infra.Node().Query(ctx, gwAddr.gate, PortName)
+	rwc, err := query.Run(ctx, drv.infra.Node(), query.New(drv.infra.Node().Identity(), endpoint.Gate(), ServiceName))
 	if err != nil {
 		return nil, fmt.Errorf("gateway query error: %w", err)
 	}
 
-	if err := cslq.Encode(rwc, "[c]c", gwAddr.target.PublicKeyHex()); err != nil {
+	if err := cslq.Encode(rwc, "[c]c", endpoint.target.PublicKeyHex()); err != nil {
 		return nil, fmt.Errorf("gateway query error: %w", err)
 	}
 
@@ -45,5 +46,5 @@ func (drv *Driver) Dial(ctx context.Context, addr net.Endpoint) (net.Conn, error
 		return nil, infra.ErrConnectionRefused
 	}
 
-	return newConn(rwc, gwAddr, true), nil
+	return newConn(rwc, endpoint, true), nil
 }

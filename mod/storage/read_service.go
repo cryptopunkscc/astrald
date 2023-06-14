@@ -7,8 +7,9 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
 	"sync"
@@ -23,48 +24,33 @@ type ReadService struct {
 	*Module
 }
 
-func (s *ReadService) Run(ctx context.Context) error {
-	var queries = services.NewQueryChan(4)
-	service, err := s.node.Services().Register(ctx, s.node.Identity(), ReadServiceName, queries.Push)
+func (service *ReadService) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+		service.handle(service.ctx, conn, q.Origin())
+	})
+}
+
+func (service *ReadService) Run(ctx context.Context) error {
+	s, err := service.node.Services().Register(ctx, service.node.Identity(), ReadServiceName, service)
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		<-service.Done()
-		close(queries)
-	}()
-
-	disco, err := modules.Find[*discovery.Module](s.node.Modules())
+	disco, err := modules.Find[*discovery.Module](service.node.Modules())
 	if err == nil {
-		disco.AddSource(s, s.node.Identity())
-		go func() {
-			<-ctx.Done()
-			disco.RemoveSource(s)
-		}()
+		disco.AddSourceContext(ctx, service, service.node.Identity())
 	} else {
-		s.log.Errorv(2, "can't regsiter service discovery source: %s", err)
+		service.log.Errorv(2, "can't regsiter service discovery source: %s", err)
 	}
 
-	for query := range queries {
-		conn, err := query.Accept()
-		if err != nil {
-			continue
-		}
-
-		go func() {
-			if err := s.handle(ctx, conn); err != nil {
-				s.log.Errorv(0, "read(): %s", err)
-			}
-		}()
-	}
+	<-s.Done()
 
 	return nil
 }
 
-func (s *ReadService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discovery.ServiceEntry, error) {
+func (service *ReadService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discovery.ServiceEntry, error) {
 	var list []discovery.ServiceEntry
-	if s.DataAccessCountByIdentity(caller) > 0 {
+	if service.DataAccessCountByIdentity(caller) > 0 {
 		list = append(list, discovery.ServiceEntry{
 			Name: ReadServiceName,
 			Type: ReadServiceName,
@@ -73,17 +59,16 @@ func (s *ReadService) Discover(ctx context.Context, caller id.Identity, origin s
 	return list, nil
 }
 
-func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
-	defer conn.Close()
+func (service *ReadService) handle(ctx context.Context, conn net.SecureConn, origin string) error {
 	return cslq.Invoke(conn, func(msg rpc.MsgRead) error {
 		var session = rpc.New(conn)
 
-		if !s.CheckAccess(conn.RemoteIdentity(), msg.DataID) {
-			s.log.Errorv(2, "access denied to %v to %v", conn.RemoteIdentity(), msg.DataID)
+		if !service.CheckAccess(conn.RemoteIdentity(), msg.DataID) {
+			service.log.Errorv(2, "access denied to %v to %v", conn.RemoteIdentity(), msg.DataID)
 			return session.EncodeErr(rpc.ErrUnavailable)
 		}
 
-		source, err := s.findSource(ctx, msg, conn.RemoteIdentity())
+		source, err := service.findSource(ctx, msg, conn.RemoteIdentity(), origin)
 		if err != nil {
 			return session.EncodeErr(rpc.ErrUnavailable)
 		}
@@ -94,11 +79,12 @@ func (s *ReadService) handle(ctx context.Context, conn *services.Conn) error {
 		}
 
 		_, err = io.Copy(conn, source)
+		conn.Close()
 		return err
 	})
 }
 
-func (s *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, identity id.Identity) (io.ReadCloser, error) {
+func (service *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, caller id.Identity, origin string) (io.ReadCloser, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -107,19 +93,26 @@ func (s *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, identity 
 	var found atomic.Bool
 
 	var wg sync.WaitGroup
-	for source := range s.dataSources {
+	for source := range service.dataSources {
 		source := source
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			conn, err := s.node.Services().Query(ctx, identity, source.Service, nil)
+
+			conn, err := query.Run(ctx, service.node.Services(), query.NewOrigin(
+				caller,
+				source.Identity,
+				source.Service,
+				origin,
+			))
+
 			if err != nil {
 				switch {
 				case errors.Is(err, context.Canceled):
 				case errors.Is(err, context.DeadlineExceeded):
 				default:
-					s.RemoveDataSource(source)
+					service.RemoveDataSource(source)
 				}
 				return
 			}

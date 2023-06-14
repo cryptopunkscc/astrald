@@ -6,11 +6,12 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/query"
 )
 
 type Network interface {
+	query.Router
 	Link(context.Context, id.Identity) (*link.Link, error)
-	Query(context.Context, id.Identity, string) (link.BasicConn, error)
 	Events() *events.Queue
 	Peers() *PeerSet
 	Server() *Server

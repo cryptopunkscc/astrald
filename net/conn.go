@@ -19,3 +19,8 @@ type SecureConn interface {
 	RemoteIdentity() id.Identity // Returns the remote identity
 	LocalIdentity() id.Identity  // Returns the local identity
 }
+
+type SecureWriteCloser interface {
+	io.WriteCloser
+	RemoteIdentity() id.Identity // Returns the remote identity
+}

@@ -46,15 +46,6 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	// peer query worker
-	for i := 0; i < 8; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			node.peerQueryWorker(ctx)
-		}()
-	}
-
 	// event handling
 	wg.Add(1)
 	go func() {
