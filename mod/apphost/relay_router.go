@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/query"
 	"io"
 )
 
@@ -16,7 +15,7 @@ type RelayRouter struct {
 	identity id.Identity
 }
 
-func (fwd *RelayRouter) RouteQuery(ctx context.Context, query query.Query, swc net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (fwd *RelayRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
 	c, err := proto.Dial(fwd.target)
 	if err != nil {
 		fwd.log.Errorv(2, "%s:%s forward to %s: %s", query.Target(), query.Query(), fwd.target, err)
@@ -38,8 +37,8 @@ func (fwd *RelayRouter) RouteQuery(ctx context.Context, query query.Query, swc n
 	}
 
 	go func() {
-		io.Copy(swc, c)
-		swc.Close()
+		io.Copy(caller, c)
+		caller.Close()
 	}()
 
 	return net.NewSecureWriteCloser(c, query.Target()), err

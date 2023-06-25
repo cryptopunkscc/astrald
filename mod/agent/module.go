@@ -5,8 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/query"
 )
 
 const serviceName = "sys.agent"
@@ -17,12 +15,12 @@ type Module struct {
 	ctx  context.Context
 }
 
-func (module *Module) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	if q.Origin() != query.OriginLocal {
-		return nil, link.ErrRejected
+func (module *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if query.Origin() != net.OriginLocal {
+		return nil, net.ErrRejected
 	}
 
-	return query.Accept(q, remoteWriter, module.serve)
+	return net.Accept(query, caller, module.serve)
 }
 
 func (module *Module) serve(conn net.SecureConn) {

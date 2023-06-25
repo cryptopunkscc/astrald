@@ -3,7 +3,6 @@ package tcpfwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/streams"
 	_net "net"
 )
@@ -26,14 +25,14 @@ func (server *ForwardOutServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (server *ForwardOutServer) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (server *ForwardOutServer) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
 	outConn, err := _net.Dial("tcp", server.target)
 	if err != nil {
 		server.log.Errorv(1, "error forwarding %s to %s: %s", server.serviceName, server.target, err)
 		return nil, err
 	}
 
-	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.SecureConn) {
 		streams.Join(conn, outConn)
 	})
 }

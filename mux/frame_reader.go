@@ -17,16 +17,21 @@ func NewFrameReader() *FrameReader {
 	}
 }
 
-func (reader *FrameReader) HandleFrame(frame Frame) error {
-	if frame.EOF() {
+func (reader *FrameReader) HandleFrame(frame Frame) {
+	if frame.IsEmpty() {
 		reader.w.Close()
-		return io.EOF
+		return
 	}
 
-	_, err := reader.w.Write(frame.Data)
-	return err
+	reader.w.Write(frame.Data)
+	return
 }
 
 func (reader *FrameReader) Read(p []byte) (int, error) {
 	return reader.r.Read(p)
+}
+
+// Close closes the writer side of the pipe
+func (reader *FrameReader) Close() error {
+	return reader.w.Close()
 }

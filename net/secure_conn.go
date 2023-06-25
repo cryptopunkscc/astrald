@@ -43,7 +43,7 @@ func (s *secureConn) RemoteEndpoint() Endpoint {
 }
 
 func (s *secureConn) RemoteIdentity() id.Identity {
-	return s.SecureWriteCloser.RemoteIdentity()
+	return s.SecureWriteCloser.Identity()
 }
 
 func (s *secureConn) LocalIdentity() id.Identity {

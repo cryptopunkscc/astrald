@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/network"
-	"github.com/cryptopunkscc/astrald/query"
 )
 
 type EventHandler struct {
@@ -14,18 +14,19 @@ type EventHandler struct {
 }
 
 func (srv *EventHandler) Run(ctx context.Context) error {
-	return events.Handle(ctx, srv.node.Events(), srv.handlePeerLinked)
+	return events.Handle(ctx, srv.node.Events(), srv.handleLinkAdded)
 }
 
-func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPeerLinked) error {
-	var identity = e.Peer.Identity()
-	var conn, err = query.Run(ctx,
+func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLinkAdded) error {
+	var remoteIdentity = e.Link.RemoteIdentity()
+
+	var conn, err = net.Route(ctx,
 		srv.node.Network(),
-		query.New(srv.node.Identity(), identity, discoverServiceName),
+		net.NewQuery(srv.node.Identity(), remoteIdentity, discoverServiceName),
 	)
 	if err != nil {
-		srv.log.Errorv(2, "discover %s: %s", identity, err)
-		return err
+		srv.log.Errorv(2, "discover %s: %s", remoteIdentity, err)
+		return nil
 	}
 
 	var list = make([]ServiceEntry, 0)
@@ -36,15 +37,17 @@ func (srv *EventHandler) handlePeerLinked(ctx context.Context, e network.EventPe
 		})
 	}
 
-	srv.setCache(identity, list)
+	srv.setCache(remoteIdentity, list)
 
 	if len(list) > 0 {
-		srv.log.Infov(2, "discover %s: %v services available", identity, len(list))
+		srv.log.Infov(2, "discover %s: %v services available", remoteIdentity, len(list))
 		srv.events.Emit(EventServicesDiscovered{
-			identityName: srv.log.Sprintf("%v", identity),
-			Identity:     identity,
+			identityName: srv.log.Sprintf("%v", remoteIdentity),
+			Identity:     remoteIdentity,
 			Services:     list,
 		})
+	} else {
+		srv.log.Infov(2, "discover %s: no services available", remoteIdentity)
 	}
 
 	return nil

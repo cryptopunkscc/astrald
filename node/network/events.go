@@ -1,14 +1,13 @@
 package network
 
 import (
-	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/net"
 )
 
-type EventPeerLinked struct {
-	Peer *Peer
-	Link *link.Link
+type EventLinkAdded struct {
+	Link net.Link
 }
 
-type EventPeerUnlinked struct {
-	Peer *Peer
+type EventLinkRemoved struct {
+	Link net.Link
 }

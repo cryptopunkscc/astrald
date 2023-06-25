@@ -16,6 +16,7 @@ var (
 	ErrFailed            = makeError(0x02, "failed")
 	ErrTimeout           = makeError(0x03, "timeout")
 	ErrAlreadyRegistered = makeError(0x04, "port already registered")
+	ErrRouteNotFound     = makeError(0x05, "route not found")
 	ErrUnauthorized      = makeError(0x10, "unauthorized")
 	ErrUnknownCommand    = makeError(0xfd, "unknown command")
 	ErrUnexpected        = makeError(0xff, "unexpected error")

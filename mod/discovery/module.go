@@ -9,10 +9,10 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"reflect"
 	"sync"
@@ -127,9 +127,9 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	q, err := query.Run(ctx,
+	q, err := net.Route(ctx,
 		m.node.Network(),
-		query.New(m.node.Identity(), remoteID, discoverServiceName),
+		net.NewQuery(m.node.Identity(), remoteID, discoverServiceName),
 	)
 	if err != nil {
 		return nil, err

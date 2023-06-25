@@ -3,16 +3,14 @@ package apphost
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
-	"github.com/cryptopunkscc/astrald/mod/shift"
 	shiftp "github.com/cryptopunkscc/astrald/mod/shift/proto"
-	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/services"
-	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
+	"reflect"
 )
 
 func (s *Session) Serve(ctx context.Context) error {
@@ -47,83 +45,27 @@ func (s *Session) Serve(ctx context.Context) error {
 }
 
 func (s *Session) query(params proto.QueryParams) error {
-	if params.Identity.IsZero() {
-		params.Identity = s.mod.node.Identity()
-	}
-
-	s.mod.log.Logv(2, "%s query %s:%s", s.remoteID, params.Identity, params.Query)
-
 	var err error
-	var conn io.ReadWriteCloser
+	var targetWriter net.SecureConn
 
-	q := query.New(s.remoteID, params.Identity, params.Query)
+	q := net.NewQuery(s.remoteID, params.Identity, params.Query)
 
-	if q.Target().IsEqual(s.mod.node.Identity()) {
-		// make a local query
-		conn, err = query.Run(s.ctx, s.mod.node.Services(), q)
-	} else if q.Caller().IsEqual(s.mod.node.Identity()) {
-		// make a direct query
-		conn, err = query.Run(s.ctx, s.mod.node.Network(), q)
-	} else {
-		// make a shift query
-		var caller id.Identity
-		// Get private key from the store
-		caller, err = s.mod.keys.Find(s.remoteID)
-		if err != nil {
-			s.mod.log.Errorv(2, "no private key for %s", s.remoteID)
-			return proto.ErrUnauthorized
-		}
-
-		conn, err = query.Run(s.ctx, s.mod.node.Network(), query.New(s.mod.node.Identity(), q.Target(), shift.ServiceName))
-		if err != nil {
-			s.mod.log.Errorv(2, "error connecting to shift service: %s", err)
-			return proto.ErrUnauthorized
-		}
-		defer conn.Close()
-
-		c := shiftp.New(conn)
-
-		var shiftParams shiftp.ShiftParams
-
-		shiftParams, err = shiftp.BuildShiftParams(caller, s.mod.node.Identity())
-		if err != nil {
-			return err
-		}
-
-		err = c.Encode(
-			shiftp.Cmd{Cmd: shiftp.CmdShift},
-			shiftParams,
-		)
-		if err != nil {
-			return err
-		}
-		if err = c.DecodeErr(); err != nil {
-			return err
-		}
-
-		err = c.Encode(shiftp.Cmd{Cmd: shiftp.CmdQuery},
-			shiftp.QueryParams{
-				Query: params.Query,
-			})
-		if err != nil {
-			return err
-		}
-
-		err = c.DecodeErr()
-	}
+	targetWriter, err = net.Route(s.ctx, s.mod.node.Router(), q)
 
 	if err == nil {
 		s.WriteErr(nil)
-		_, _, err := streams.Join(s, conn)
+		_, _, err := streams.Join(s, targetWriter)
 		return err
 	}
 
 	switch {
-	case errors.Is(err, services.ErrRejected),
-		errors.Is(err, link.ErrRejected),
+	case errors.Is(err, net.ErrRejected),
 		errors.Is(err, shiftp.ErrRejected),
 		errors.Is(err, services.ErrServiceNotFound):
 		return s.WriteErr(proto.ErrRejected)
+
+	case errors.Is(err, &net.ErrRouteNotFound{}):
+		return s.WriteErr(proto.ErrRouteNotFound)
 
 	case errors.Is(err, shiftp.ErrDenied):
 		return s.WriteErr(proto.ErrUnauthorized)
@@ -132,7 +74,7 @@ func (s *Session) query(params proto.QueryParams) error {
 		return s.WriteErr(proto.ErrTimeout)
 
 	default:
-		s.mod.log.Error("unexpected error processing query: %s", err)
+		s.mod.log.Error("unexpected error processing query: %s", reflect.TypeOf(err))
 		return s.WriteErr(proto.ErrUnexpected)
 	}
 }

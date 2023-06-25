@@ -4,13 +4,12 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/query"
 	"time"
 )
 
 type Services interface {
-	Register(ctx context.Context, identity id.Identity, name string, handler query.Router) (*Service, error)
-	RouteQuery(ctx context.Context, query query.Query, w net.SecureWriteCloser) (net.SecureWriteCloser, error)
+	net.Router
+	Register(ctx context.Context, identity id.Identity, name string, handler net.Router) (*Service, error)
 	Find(name string) (*Service, error)
 	List() []ServiceInfo
 }

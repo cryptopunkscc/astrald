@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
 	"sync"
@@ -24,9 +23,9 @@ type ReadService struct {
 	*Module
 }
 
-func (service *ReadService) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
-		service.handle(service.ctx, conn, q.Origin())
+func (service *ReadService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return net.Accept(query, caller, func(conn net.SecureConn) {
+		service.handle(service.ctx, conn, query.Origin())
 	})
 }
 
@@ -100,7 +99,7 @@ func (service *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, cal
 		go func() {
 			defer wg.Done()
 
-			conn, err := query.Run(ctx, service.node.Services(), query.NewOrigin(
+			conn, err := net.Route(ctx, service.node.Services(), net.NewOrigin(
 				caller,
 				source.Identity,
 				source.Service,

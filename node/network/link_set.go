@@ -1,26 +1,27 @@
 package network
 
 import (
-	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/net"
 	"sync"
 )
 
 type LinkSet struct {
 	mu    sync.Mutex
-	links []*link.Link
-	index map[*link.Link]struct{}
+	links []net.Link
+	index map[net.Link]struct{}
 }
 
 func NewLinkSet() *LinkSet {
 	return &LinkSet{
-		links: make([]*link.Link, 0),
-		index: make(map[*link.Link]struct{}),
+		links: make([]net.Link, 0),
+		index: make(map[net.Link]struct{}),
 	}
 }
 
 // Add adds a link to the set.
 // Possible errors: ErrDuplicateLink
-func (set *LinkSet) Add(l *link.Link) error {
+func (set *LinkSet) Add(l net.Link) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
@@ -36,7 +37,7 @@ func (set *LinkSet) Add(l *link.Link) error {
 
 // Remove removes a link from the set.
 // Errors: ErrLinkNotFound
-func (set *LinkSet) Remove(l *link.Link) error {
+func (set *LinkSet) Remove(l net.Link) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
@@ -61,7 +62,7 @@ func (set *LinkSet) Remove(l *link.Link) error {
 }
 
 // Contains returns true if a link is a part of the set
-func (set *LinkSet) Contains(l *link.Link) (found bool) {
+func (set *LinkSet) Contains(l net.Link) (found bool) {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
@@ -70,11 +71,11 @@ func (set *LinkSet) Contains(l *link.Link) (found bool) {
 }
 
 // All returns a copy of an array holding all links in the set
-func (set *LinkSet) All() []*link.Link {
+func (set *LinkSet) All() []net.Link {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
-	links := make([]*link.Link, len(set.links))
+	links := make([]net.Link, len(set.links))
 	copy(links, set.links)
 
 	return links
@@ -82,4 +83,28 @@ func (set *LinkSet) All() []*link.Link {
 
 func (set *LinkSet) Count() int {
 	return len(set.links)
+}
+
+func (set *LinkSet) ByRemoteIdentity(identity id.Identity) *LinkSet {
+	var subset = NewLinkSet()
+
+	for _, l := range set.All() {
+		if l.RemoteIdentity().IsEqual(identity) {
+			subset.Add(l)
+		}
+	}
+
+	return subset
+}
+
+func (set *LinkSet) ByLocalIdentity(identity id.Identity) *LinkSet {
+	var subset = NewLinkSet()
+
+	for _, l := range set.All() {
+		if l.LocalIdentity().IsEqual(identity) {
+			subset.Add(l)
+		}
+	}
+
+	return subset
 }

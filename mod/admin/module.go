@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/query"
 )
 
 var _ modules.Module = &Module{}
@@ -35,12 +34,12 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	if q.Origin() != query.OriginLocal {
-		return nil, errors.New("unauthorized")
+func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if query.Origin() != net.OriginLocal {
+		return nil, net.ErrRejected
 	}
 
-	return query.Accept(q, remoteWriter, mod.serve)
+	return net.Accept(query, caller, mod.serve)
 }
 
 func (mod *Module) serve(conn net.SecureConn) {

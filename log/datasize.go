@@ -61,18 +61,18 @@ func (s DataSize) String() string {
 func (s DataSize) HumanReadable() string {
 	switch {
 	case s > EB:
-		return fmt.Sprintf("%.1f EB", s.EBytes())
+		return fmt.Sprintf("%.1fEB", s.EBytes())
 	case s > PB:
-		return fmt.Sprintf("%.1f PB", s.PBytes())
+		return fmt.Sprintf("%.1fPB", s.PBytes())
 	case s > TB:
-		return fmt.Sprintf("%.1f TB", s.TBytes())
+		return fmt.Sprintf("%.1fTB", s.TBytes())
 	case s > GB:
-		return fmt.Sprintf("%.1f GB", s.GBytes())
+		return fmt.Sprintf("%.1fGB", s.GBytes())
 	case s > MB:
-		return fmt.Sprintf("%.1f MB", s.MBytes())
+		return fmt.Sprintf("%.1fMB", s.MBytes())
 	case s > KB:
-		return fmt.Sprintf("%.1f KB", s.KBytes())
+		return fmt.Sprintf("%.1fKB", s.KBytes())
 	default:
-		return fmt.Sprintf("%d B", s)
+		return fmt.Sprintf("%dB", s)
 	}
 }

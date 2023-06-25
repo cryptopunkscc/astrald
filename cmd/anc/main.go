@@ -276,7 +276,6 @@ func cmdQuery(args []string) {
 		os.Exit(exitHelp)
 	}
 
-	nodeID = "localnode"
 	query = args[0]
 	if len(args) > 1 {
 		nodeID = args[0]

@@ -4,8 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/query"
+	"github.com/cryptopunkscc/astrald/node/oldlink"
 )
 
 type PickService struct {
@@ -21,19 +20,19 @@ func (service *PickService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (service *PickService) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	if linker, ok := remoteWriter.(query.Linker); ok {
-		if l, ok := linker.Link().(*link.Link); ok {
-			return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+func (service *PickService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if linker, ok := caller.(net.Linker); ok {
+		if l, ok := linker.Link().(*oldlink.Link); ok {
+			return net.Accept(query, caller, func(conn net.SecureConn) {
 				service.serve(conn, l)
 			})
 		}
 	}
 
-	return nil, link.ErrRejected
+	return nil, net.ErrRejected
 }
 
-func (service *PickService) serve(client net.SecureConn, l *link.Link) {
+func (service *PickService) serve(client net.SecureConn, l *oldlink.Link) {
 	defer client.Close()
 
 	var remotePort int

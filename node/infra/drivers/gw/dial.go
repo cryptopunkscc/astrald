@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/infra"
-	"github.com/cryptopunkscc/astrald/query"
 )
 
 var _ infra.Dialer = &Driver{}
@@ -24,7 +23,7 @@ func (drv *Driver) Dial(ctx context.Context, e net.Endpoint) (net.Conn, error) {
 		return nil, errors.New("cannot use self as a gateway")
 	}
 
-	rwc, err := query.Run(ctx, drv.infra.Node(), query.New(drv.infra.Node().Identity(), endpoint.Gate(), ServiceName))
+	rwc, err := net.Route(ctx, drv.infra.Node().Router(), net.NewQuery(drv.infra.Node().Identity(), endpoint.Gate(), ServiceName))
 	if err != nil {
 		return nil, fmt.Errorf("gateway query error: %w", err)
 	}

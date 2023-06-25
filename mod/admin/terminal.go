@@ -127,7 +127,7 @@ func (t *Terminal) Scanf(f string, v ...any) {
 func (t *Terminal) ScanLine() (string, error) {
 	var scanner = bufio.NewScanner(t)
 	if !scanner.Scan() {
-		return "", scanner.Err()
+		return "", io.EOF
 	}
 	return scanner.Text(), nil
 }

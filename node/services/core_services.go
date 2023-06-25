@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/query"
 	"sync"
 	"time"
 )
@@ -14,7 +14,7 @@ const queryResponseTimeout = time.Second
 const logTag = "services"
 
 var _ Services = &CoreServices{}
-var _ query.Router = &CoreServices{}
+var _ net.Router = &CoreServices{}
 
 // CoreServices facilitates registration of services and querying them.
 type CoreServices struct {
@@ -63,7 +63,7 @@ func (srv *CoreServices) Find(name string) (*Service, error) {
 }
 
 // Register registers a service as the specified identity
-func (srv *CoreServices) Register(ctx context.Context, identity id.Identity, name string, handler query.Router) (*Service, error) {
+func (srv *CoreServices) Register(ctx context.Context, identity id.Identity, name string, handler net.Router) (*Service, error) {
 	service, err := srv.register(name, identity, handler)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (srv *CoreServices) Register(ctx context.Context, identity id.Identity, nam
 	return service, nil
 }
 
-func (srv *CoreServices) register(name string, identity id.Identity, handler query.Router) (*Service, error) {
+func (srv *CoreServices) register(name string, identity id.Identity, handler net.Router) (*Service, error) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 

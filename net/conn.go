@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-// Conn represents a raw network connection
+// Conn represents a raw, unencrypted, unauthenticated network connection
 type Conn interface {
 	io.ReadWriteCloser        // Basic IO operations
 	Outbound() bool           // Returns true if we are the active party, false otherwise
@@ -18,9 +18,4 @@ type SecureConn interface {
 	Conn
 	RemoteIdentity() id.Identity // Returns the remote identity
 	LocalIdentity() id.Identity  // Returns the local identity
-}
-
-type SecureWriteCloser interface {
-	io.WriteCloser
-	RemoteIdentity() id.Identity // Returns the remote identity
 }

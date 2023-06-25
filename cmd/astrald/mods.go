@@ -10,7 +10,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/discovery"
 	_ "github.com/cryptopunkscc/astrald/mod/gateway"
 	_ "github.com/cryptopunkscc/astrald/mod/keepalive"
-	_ "github.com/cryptopunkscc/astrald/mod/optimizer"
+	//_ "github.com/cryptopunkscc/astrald/mod/optimizer"
 	_ "github.com/cryptopunkscc/astrald/mod/presence"
 	_ "github.com/cryptopunkscc/astrald/mod/profile"
 	_ "github.com/cryptopunkscc/astrald/mod/reflectlink"

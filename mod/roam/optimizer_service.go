@@ -4,8 +4,9 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mux"
-	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/query"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/oldlink"
 	"time"
 )
 
@@ -16,7 +17,7 @@ type OptimizerService struct {
 func (service *OptimizerService) Run(ctx context.Context) error {
 	for event := range service.node.Events().Subscribe(ctx) {
 		// skip other events
-		e, ok := event.(link.EventConnAdded)
+		e, ok := event.(oldlink.EventConnAdded)
 		if !ok {
 			continue
 		}
@@ -38,7 +39,7 @@ func (service *OptimizerService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (service *OptimizerService) optimizeConn(conn *link.Conn) {
+func (service *OptimizerService) optimizeConn(conn *node.Conn) {
 	var remoteID = conn.RemoteIdentity()
 	var peer = service.node.Network().Peers().Find(remoteID)
 
@@ -69,7 +70,7 @@ func (service *OptimizerService) optimizeConn(conn *link.Conn) {
 	}
 }
 
-func (service *OptimizerService) move(movable *link.Conn, targetLink *link.Link) error {
+func (service *OptimizerService) move(movable *node.Conn, targetLink *oldlink.Link) error {
 	var srcNet = movable.Link().Network()
 	var dstNet = targetLink.Network()
 	var query = movable.Query()
@@ -88,13 +89,13 @@ func (service *OptimizerService) move(movable *link.Conn, targetLink *link.Link)
 	return err
 }
 
-func (service *OptimizerService) pick(movable *link.Conn) (int, error) {
+func (service *OptimizerService) pick(movable *node.Conn) (int, error) {
 	sourceLink := movable.Link()
 
 	// start transfer on the source link
-	server, err := query.Run(service.ctx,
+	server, err := net.Route(service.ctx,
 		sourceLink,
-		query.New(sourceLink.LocalIdentity(), sourceLink.RemoteIdentity(), pickServiceName),
+		net.NewQuery(sourceLink.LocalIdentity(), sourceLink.RemoteIdentity(), pickServiceName),
 	)
 	if err != nil {
 		return -1, err
@@ -116,9 +117,9 @@ func (service *OptimizerService) pick(movable *link.Conn) (int, error) {
 	return moveID, nil
 }
 
-func (service *OptimizerService) drop(targetLink *link.Link, movable *link.Conn, moveID int) error {
+func (service *OptimizerService) drop(targetLink *oldlink.Link, movable *node.Conn, moveID int) error {
 	// allocate a new port on the destination link
-	var newReader = link.NewPortReader()
+	var newReader = oldlink.NewPortReader()
 	newLocalPort, err := targetLink.Mux().BindAny(newReader)
 	if err != nil {
 		return err
@@ -128,9 +129,9 @@ func (service *OptimizerService) drop(targetLink *link.Link, movable *link.Conn,
 	movable.SetFallbackReader(newReader)
 
 	// start the query
-	query, err := query.Run(service.ctx,
+	query, err := net.Route(service.ctx,
 		targetLink,
-		query.New(targetLink.LocalIdentity(), targetLink.RemoteIdentity(), dropServiceName),
+		net.NewQuery(targetLink.LocalIdentity(), targetLink.RemoteIdentity(), dropServiceName),
 	)
 	if err != nil {
 		targetLink.Mux().Unbind(newLocalPort)

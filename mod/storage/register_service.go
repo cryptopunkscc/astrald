@@ -5,8 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -30,13 +28,13 @@ func (service *RegisterService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (service *RegisterService) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	if !service.IsProvider(q.Caller()) {
-		service.log.Errorv(2, "register_provider: %v is not a provider, rejecting...", q.Caller())
-		return nil, link.ErrRejected
+func (service *RegisterService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if !service.IsProvider(query.Caller()) {
+		service.log.Errorv(2, "register_provider: %v is not a provider, rejecting...", query.Caller())
+		return nil, net.ErrRejected
 	}
 
-	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.SecureConn) {
 		service.handle(service.ctx, conn)
 	})
 }

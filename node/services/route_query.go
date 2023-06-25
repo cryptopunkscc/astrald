@@ -4,37 +4,36 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/query"
 )
 
-func (srv *CoreServices) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (srv *CoreServices) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
 	// Fetch the service
-	service, err := srv.Find(q.Query())
+	service, err := srv.Find(query.Query())
 	if err != nil {
 		return nil, err
 	}
 
-	if !q.Target().IsZero() && !q.Target().IsEqual(service.identity) {
+	if !query.Target().IsZero() && !query.Target().IsEqual(service.identity) {
 		return nil, errors.New("target identity mismatch")
 	}
 
-	if q.Target().IsZero() {
-		q = query.NewOrigin(q.Caller(), service.identity, q.Query(), q.Origin())
+	if query.Target().IsZero() {
+		query = net.NewOrigin(query.Caller(), service.identity, query.Query(), query.Origin())
 	}
 
 	if service.router == nil {
 		return nil, errors.New("service unreachable")
 	}
 
-	localWriter, err := service.router.RouteQuery(ctx, q, remoteWriter)
+	target, err := service.router.RouteQuery(ctx, query, caller)
 	if err != nil {
 		return nil, err
 	}
 
-	if !localWriter.RemoteIdentity().IsEqual(q.Target()) {
-		localWriter.Close()
+	if !target.Identity().IsEqual(query.Target()) {
+		target.Close()
 		return nil, errors.New("response identity mismatch")
 	}
 
-	return localWriter, err
+	return target, err
 }

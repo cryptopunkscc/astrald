@@ -5,10 +5,11 @@ import (
 	"encoding/hex"
 )
 
+// Endpoint represents a dialable address on a network (such as IP address and port)
 type Endpoint interface {
 	Network() string // network name
-	String() string  // string representation of the address for display
-	Pack() []byte    // network-specific binary represenation of the address
+	String() string  // text representation of the address
+	Pack() []byte    // binary represenation of the address
 }
 
 // EndpointEqual compares two addresses

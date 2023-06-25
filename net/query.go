@@ -1,4 +1,4 @@
-package query
+package net
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
@@ -23,7 +23,7 @@ type query struct {
 	origin string
 }
 
-func New(caller id.Identity, target id.Identity, q string) Query {
+func NewQuery(caller id.Identity, target id.Identity, q string) Query {
 	return &query{caller: caller, target: target, query: q, origin: OriginLocal}
 }
 

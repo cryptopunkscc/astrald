@@ -3,7 +3,7 @@ package services
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/query"
+	"github.com/cryptopunkscc/astrald/net"
 	"sync/atomic"
 	"time"
 )
@@ -11,7 +11,7 @@ import (
 // Service represents a registered service
 type Service struct {
 	name         string
-	router       query.Router
+	router       net.Router
 	manager      *CoreServices
 	identity     id.Identity
 	registeredAt time.Time
@@ -19,7 +19,7 @@ type Service struct {
 	closed       atomic.Bool
 }
 
-func newService(hub *CoreServices, identity id.Identity, name string, router query.Router) *Service {
+func newService(hub *CoreServices, identity id.Identity, name string, router net.Router) *Service {
 	return &Service{
 		manager:      hub,
 		identity:     identity,

@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/query"
 	"time"
 )
 
@@ -41,8 +40,8 @@ func (service *ProfileService) Discover(ctx context.Context, caller id.Identity,
 	}, nil
 }
 
-func (service *ProfileService) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+func (service *ProfileService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return net.Accept(query, caller, func(conn net.SecureConn) {
 		service.serve(conn)
 	})
 }

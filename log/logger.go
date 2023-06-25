@@ -192,6 +192,15 @@ func (l *Logger) Renderf(f string, v ...any) []Op {
 			orig = orig + string(f[0])
 			f = f[1:]
 
+			if len(v) == 0 {
+				ops = append(ops,
+					OpColor{Color: Red},
+					OpText{Text: "!{MISSING_ARG}"},
+					OpReset{},
+				)
+				continue
+			}
+
 			obj := v[0]
 			v = v[1:]
 

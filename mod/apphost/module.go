@@ -87,21 +87,30 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) authToken(token string) id.Identity {
+func (mod *Module) authToken(token string) (identity id.Identity) {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()
 
+	var err error
+
 	if s, ok := mod.config.Tokens[token]; ok {
-		if i, err := mod.node.Resolver().Resolve(s); err == nil {
-			return i
-		}
+		identity, err = mod.node.Resolver().Resolve(s)
 	}
 
-	if identity, found := mod.tokens[token]; found {
+	if identity.IsZero() {
+		identity, _ = mod.tokens[token]
+	}
+
+	if identity.IsZero() {
 		return identity
 	}
 
-	return id.Identity{}
+	identity, err = mod.keys.Find(identity)
+	if err != nil {
+		return id.Identity{}
+	}
+
+	return identity
 }
 
 func (mod *Module) createToken(identity id.Identity) string {

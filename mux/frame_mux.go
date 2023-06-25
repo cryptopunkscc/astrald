@@ -4,21 +4,24 @@ import (
 	"context"
 	"io"
 	"sync"
+	"sync/atomic"
 )
 
 type FrameMux struct {
 	mu             sync.Mutex
 	mux            *RawMux
-	portHandlers   map[int]FrameHandlerFunc
-	defaultHandler FrameHandlerFunc
+	portHandlers   map[int]FrameHandler
+	defaultHandler FrameHandler
 	logID          int
 	nextPort       int
 }
 
-func NewFrameMux(transport io.ReadWriter, defaultHandler FrameHandlerFunc) *FrameMux {
+var nextID atomic.Int64
+
+func NewFrameMux(transport io.ReadWriter, defaultHandler FrameHandler) *FrameMux {
 	return &FrameMux{
 		mux:            NewRawMux(transport),
-		portHandlers:   make(map[int]FrameHandlerFunc),
+		portHandlers:   make(map[int]FrameHandler),
 		defaultHandler: defaultHandler,
 	}
 }
@@ -33,7 +36,7 @@ func (mux *FrameMux) Run(ctx context.Context) error {
 	for {
 		frame.Port, frame.Data, err = mux.mux.Read()
 		if err != nil {
-			return io.EOF
+			return err
 		}
 
 		mux.mu.Lock()
@@ -41,11 +44,9 @@ func (mux *FrameMux) Run(ctx context.Context) error {
 		mux.mu.Unlock()
 
 		if found {
-			if frame.EOF() || handler(frame) != nil {
-				mux.Unbind(frame.Port)
-			}
+			handler.HandleFrame(frame)
 		} else if mux.defaultHandler != nil {
-			_ = mux.defaultHandler(frame)
+			mux.defaultHandler.HandleFrame(frame)
 		}
 
 		select {
@@ -56,15 +57,10 @@ func (mux *FrameMux) Run(ctx context.Context) error {
 	}
 }
 
-// Close sends an EOF frame to the specified remote port
-func (mux *FrameMux) Close(remotePort int) error {
-	return mux.mux.Write(remotePort, []byte{})
-}
-
 // Bind binds a local port to a frame handler. The handler will receive frames received on the specified port.
 // The last frame a handler receives will be an EOF after which the port is unbound. If the hander returns
 // a non nil-error, the port will be unbound.
-func (mux *FrameMux) Bind(localPort int, handler FrameHandlerFunc) error {
+func (mux *FrameMux) Bind(localPort int, handler FrameHandler) error {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
@@ -83,11 +79,6 @@ func (mux *FrameMux) Bind(localPort int, handler FrameHandlerFunc) error {
 
 // BindAny binds a FrameHandler to any avaiable port.
 func (mux *FrameMux) BindAny(handler FrameHandler) (port int, err error) {
-	return mux.BindAnyFunc(handler.HandleFrame)
-}
-
-// BindAnyFunc binds a FrameHandlerFunc to any available port.
-func (mux *FrameMux) BindAnyFunc(handler FrameHandlerFunc) (port int, err error) {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
@@ -119,12 +110,23 @@ func (mux *FrameMux) Unbind(port int) error {
 	return mux.unbind(port)
 }
 
+func (mux *FrameMux) Write(frame Frame) error {
+	return mux.mux.Write(frame.Port, frame.Data)
+}
+
+// Close sends an EOF frame to the specified remote port
+func (mux *FrameMux) Close(remotePort int) error {
+	return mux.mux.Write(remotePort, []byte{})
+}
+
 // Unbind unbinds any handler assigned to the specified port.
 func (mux *FrameMux) unbind(port int) error {
-	if handler, found := mux.portHandlers[port]; !found {
+	if h, found := mux.portHandlers[port]; !found {
 		return ErrPortNotInUse
 	} else {
-		_ = handler(Frame{Port: port, Data: []byte{}})
+		if cb, ok := h.(AfterUnbind); ok {
+			defer cb.AfterUnbind()
+		}
 	}
 
 	delete(mux.portHandlers, port)
@@ -132,17 +134,11 @@ func (mux *FrameMux) unbind(port int) error {
 	return nil
 }
 
-// SetDefaultHandlder sets the catch-all FrameHandlerFunc that will receive all frames received on unbound ports.
-// Set to nil to clear.
-func (mux *FrameMux) SetDefaultHandlder(defaultHandlder FrameHandlerFunc) {
-	mux.defaultHandler = defaultHandlder
-}
-
 func (mux *FrameMux) unbindAll() {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
-	for port := range mux.portHandlers {
+	for port, _ := range mux.portHandlers {
 		_ = mux.unbind(port)
 	}
 }

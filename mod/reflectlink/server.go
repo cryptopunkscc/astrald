@@ -6,9 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/query"
 )
 
 type Server struct {
@@ -31,22 +29,22 @@ func (server *Server) Run(ctx context.Context) error {
 	return nil
 }
 
-func (server *Server) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	if linker, ok := remoteWriter.(query.Linker); ok {
-		if l, ok := linker.Link().(*link.Link); ok {
-			return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+func (server *Server) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if linker, ok := caller.(net.Linker); ok {
+		if l := linker.Link(); l != nil {
+			return net.Accept(query, caller, func(conn net.SecureConn) {
 				server.reflectLink(conn, l)
 			})
 		}
 	}
 
-	return nil, link.ErrRejected
+	return nil, net.ErrRejected
 }
 
-func (server *Server) reflectLink(conn net.SecureConn, sourceLink *link.Link) error {
+func (server *Server) reflectLink(conn net.SecureConn, sourceLink net.Link) error {
 	defer conn.Close()
 
-	var e = sourceLink.RemoteEndpoint()
+	var e = sourceLink.Transport().RemoteEndpoint()
 	var ref proto.Reflection
 
 	ref.RemoteEndpoint = proto.Endpoint{

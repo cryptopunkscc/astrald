@@ -2,22 +2,17 @@ package network
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/query"
 )
 
-func (n *CoreNetwork) RouteQuery(ctx context.Context, query query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (n *CoreNetwork) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (targetWriter net.SecureWriteCloser, err error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
 	defer cancel()
 
-	if peer := n.Peers().Find(query.Target()); peer != nil {
-		peer.Check()
+	if query.Caller().IsZero() {
+		return nil, errors.New("caller has zero value")
 	}
 
-	l, err := n.Link(ctx, query.Target())
-	if err != nil {
-		return nil, err
-	}
-
-	return l.RouteQuery(ctx, query, remoteWriter)
+	return NewPeerRouter(n, query.Target()).RouteQuery(ctx, query, caller)
 }

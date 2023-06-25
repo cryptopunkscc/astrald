@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
-	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/streams"
 )
 
@@ -33,8 +32,8 @@ func (module *Gateway) Run(ctx context.Context) error {
 	return nil
 }
 
-func (module *Gateway) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+func (module *Gateway) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return net.Accept(query, caller, func(conn net.SecureConn) {
 		module.handleQuery(conn)
 	})
 }
@@ -54,7 +53,7 @@ func (module *Gateway) handleQuery(conn net.SecureConn) error {
 		return err
 	}
 
-	out, err := query.Run(module.ctx, module.node.Network(), query.New(module.node.Identity(), nodeID, queryConnect))
+	out, err := net.Route(module.ctx, module.node.Network(), net.NewQuery(module.node.Identity(), nodeID, queryConnect))
 	if err != nil {
 		conn.Close()
 		return err

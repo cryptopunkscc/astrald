@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
@@ -12,10 +13,8 @@ import (
 	"github.com/cryptopunkscc/astrald/node/resolver"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/node/tracker"
-	"time"
 )
 
-const defaultQueryTimeout = time.Minute
 const logTag = "node"
 
 var _ Node = &CoreNode{}
@@ -25,6 +24,7 @@ type CoreNode struct {
 	identity id.Identity
 	assets   assets.Store
 	keys     assets.KeyStore
+	router   *MonitoredRouter
 
 	infra    *infra.CoreInfra
 	network  *network.CoreNetwork
@@ -96,7 +96,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	node.services = services.NewCoreServices(&node.events, node.log)
 
 	// network
-	node.network, err = network.NewCoreNetwork(node.identity, node.infra, node.tracker, &node.events, node.services, node.log)
+	node.network, err = network.NewCoreNetwork(node, &node.events, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up peer manager: %w", err)
 	}
@@ -111,7 +111,16 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
 
+	node.router = NewMonitoredRouter(net.SerialRouter{
+		node.Services(),
+		node.Network(),
+	}, node.log)
+
 	return node, nil
+}
+
+func (node *CoreNode) Conns() *ConnSet {
+	return node.router.Conns()
 }
 
 // Infra returns node's infrastructure component
@@ -142,6 +151,10 @@ func (node *CoreNode) Resolver() resolver.Resolver {
 // Identity returns node's identity
 func (node *CoreNode) Identity() id.Identity {
 	return node.identity
+}
+
+func (node *CoreNode) Router() net.Router {
+	return node.router
 }
 
 // Events returns the event queue for the node

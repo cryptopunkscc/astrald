@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
@@ -30,8 +29,8 @@ func (srv *RegisterService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *RegisterService) RouteQuery(ctx context.Context, q query.Query, swc net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	return query.Accept(q, swc, func(conn net.SecureConn) {
+func (srv *RegisterService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return net.Accept(query, caller, func(conn net.SecureConn) {
 		cslq.Invoke(conn, func(msg rpc.MsgRegister) error {
 			return srv.serveRegister(conn, msg)
 		})

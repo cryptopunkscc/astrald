@@ -5,13 +5,12 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/shift/proto"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/query"
 	"io"
 )
 
 const ServiceName = "sys.shift"
 
-var _ query.Router = &Service{}
+var _ net.Router = &Service{}
 
 type Service struct {
 	*Module
@@ -23,20 +22,21 @@ func (service *Service) Run(ctx context.Context) error {
 	return err
 }
 
-func (service *Service) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
-		if err := service.startSession(ctx, conn, q.Origin()); err != nil {
-
-			service.log.Logv(2, "(%s) session err: %s", q.Caller(), err)
+func (service *Service) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return net.Accept(query, caller, func(conn net.SecureConn) {
+		if err := service.serve(ctx, conn, query.Origin()); err != nil {
+			service.log.Errorv(2, "(%s) serve: %s", query.Caller(), err)
 		}
 	})
 }
 
-func (service *Service) startSession(ctx context.Context, conn net.SecureConn, origin string) error {
+func (service *Service) serve(ctx context.Context, conn net.SecureConn, origin string) error {
 	var err error
-	var identity = conn.RemoteIdentity()
+	var caller = conn.RemoteIdentity()
 	var c = proto.New(conn)
 	defer c.Close()
+
+	service.log.Logv(2, "(%s) connected", caller)
 
 	for {
 		var cmd proto.Cmd
@@ -51,16 +51,18 @@ func (service *Service) startSession(ctx context.Context, conn net.SecureConn, o
 			if err := c.Decode(&params); err != nil {
 				return err
 			}
-			service.log.Logv(2, "(%s) shifting to %s...", identity, params.Identity)
 
-			if !params.Verify(identity) {
+			if !params.Verify(caller) {
+				service.log.Logv(2, "(%s) shift to %s denied", caller, params.Identity)
 				if err := c.EncodeErr(proto.ErrDenied); err != nil {
 					return err
 				}
 				continue
 			}
 
-			identity = params.Identity
+			service.log.Logv(2, "(%s) shifted to %s", caller, params.Identity)
+
+			caller = params.Identity
 
 			if err := c.EncodeErr(nil); err != nil {
 				return err
@@ -72,11 +74,13 @@ func (service *Service) startSession(ctx context.Context, conn net.SecureConn, o
 				return err
 			}
 
-			service.log.Logv(2, "(%s) executing query %s...", identity, params.Query)
+			var q = net.NewOrigin(caller, id.Identity{}, params.Query, origin)
+			var shiftedConn = replaceIdentity{SecureConn: conn, remoteIdentity: caller}
 
-			query := query.NewOrigin(identity, id.Identity{}, params.Query, origin)
+			service.log.Logv(2, "(%s) routing query -> %s:%s", caller, q.Target(), q.Query())
 
-			localWriter, err := service.node.Services().RouteQuery(ctx, query, conn)
+			localWriter, err := service.node.Services().RouteQuery(ctx, q,
+				shiftedConn)
 			if err != nil {
 				return c.EncodeErr(proto.ErrRejected)
 			}

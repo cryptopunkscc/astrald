@@ -5,8 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/query"
+	"github.com/cryptopunkscc/astrald/node/oldlink"
 )
 
 type DropService struct {
@@ -22,19 +21,19 @@ func (service *DropService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (service *DropService) RouteQuery(ctx context.Context, q query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	if linker, ok := remoteWriter.(query.Linker); ok {
-		if l, ok := linker.Link().(*link.Link); ok {
-			return query.Accept(q, remoteWriter, func(conn net.SecureConn) {
+func (service *DropService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if linker, ok := caller.(net.Linker); ok {
+		if l, ok := linker.Link().(*oldlink.Link); ok {
+			return net.Accept(query, caller, func(conn net.SecureConn) {
 				service.serve(conn, l)
 			})
 		}
 	}
 
-	return nil, link.ErrRejected
+	return nil, net.ErrRejected
 }
 
-func (service *DropService) serve(client net.SecureConn, l *link.Link) {
+func (service *DropService) serve(client net.SecureConn, l *oldlink.Link) {
 	defer client.Close()
 
 	var moveID, newRemotePort int
@@ -50,7 +49,7 @@ func (service *DropService) serve(client net.SecureConn, l *link.Link) {
 	delete(service.moves, moveID)
 
 	// allocate a new input stream and write its id
-	var newReader = link.NewPortReader()
+	var newReader = oldlink.NewPortReader()
 	newLocalPort, err := l.Mux().BindAny(newReader)
 	if err != nil {
 		return

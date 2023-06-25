@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -15,14 +14,14 @@ const (
 
 type Module struct {
 	node  node.Node
-	moves map[int]*link.Conn
+	moves map[int]*node.Conn
 	log   *log.Logger
 	ctx   context.Context
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
-	mod.moves = make(map[int]*link.Conn)
+	mod.moves = make(map[int]*node.Conn)
 
 	return tasks.Group(
 		&PickService{Module: mod},
@@ -31,7 +30,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) allocMove(conn *link.Conn) int {
+func (mod *Module) allocMove(conn *node.Conn) int {
 	id := mod.unusedMoveID()
 	if id != -1 {
 		mod.moves[id] = conn

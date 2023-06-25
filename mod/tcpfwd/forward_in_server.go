@@ -2,7 +2,7 @@ package tcpfwd
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/query"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/streams"
 	_net "net"
 	"strings"
@@ -52,7 +52,7 @@ func (server *ForwardInServer) serve(in _net.Conn) {
 		return
 	}
 
-	out, err := query.Run(server.ctx, server.node, query.New(server.node.Identity(), nodeID, q))
+	out, err := net.Route(server.ctx, server.node.Router(), net.NewQuery(server.node.Identity(), nodeID, q))
 	if err != nil {
 		in.Close()
 		return

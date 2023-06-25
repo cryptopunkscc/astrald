@@ -6,13 +6,15 @@ type Frame struct {
 	Data []byte
 }
 
-type FrameHandlerFunc func(frame Frame) error
-
 type FrameHandler interface {
-	HandleFrame(Frame) error
+	HandleFrame(Frame)
 }
 
-// EOF returns true if the frame represents an EOF.
-func (frame Frame) EOF() bool {
+// IsEmpty returns true if the frame's data length is zero.
+func (frame Frame) IsEmpty() bool {
 	return len(frame.Data) == 0
+}
+
+type AfterUnbind interface {
+	AfterUnbind()
 }

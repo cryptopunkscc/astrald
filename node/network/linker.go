@@ -2,13 +2,13 @@ package network
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/net"
 )
 
 type Linker struct {
 	remoteID id.Identity
 	err      error
-	link     *link.Link
+	link     net.Link
 	done     chan struct{}
 }
 

@@ -21,18 +21,20 @@ type RawMux struct {
 	transport io.ReadWriter
 	rmu       sync.Mutex
 	wmu       sync.Mutex
+	id        int
 }
 
 // NewRawMux returns a new instance of RawMux that uses the provided transport.
 func NewRawMux(transport io.ReadWriter) *RawMux {
 	return &RawMux{
 		transport: transport,
+		id:        int(nextID.Add(1)),
 	}
 }
 
 // Write writes a single data frame. Port cannot exceed MaxPorts-1. Frame cannot be larger than MaxFrameSize.
 // Errors: ErrInvalidPort, ErrFrameTooLarge, ...
-func (mux *RawMux) Write(port int, frame []byte) error {
+func (mux *RawMux) Write(port int, frame []byte) (err error) {
 	mux.wmu.Lock()
 	defer mux.wmu.Unlock()
 

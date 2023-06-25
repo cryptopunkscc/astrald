@@ -20,7 +20,12 @@ type Server struct {
 	log      *log.Logger
 }
 
-func newServer(localID id.Identity, listener infra.Listener, handler SecureConnHandlerFunc, log *log.Logger) (*Server, error) {
+func newServer(localID id.Identity, i infra.Infra, handler SecureConnHandlerFunc, log *log.Logger) (*Server, error) {
+	listener, ok := i.(infra.Listener)
+	if !ok {
+		return nil, errors.New("infra is not a listener")
+	}
+
 	srv := &Server{
 		localID:  localID,
 		listener: listener,

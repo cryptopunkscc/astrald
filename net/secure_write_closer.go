@@ -5,17 +5,30 @@ import (
 	"io"
 )
 
+type SecureWriteCloser interface {
+	io.WriteCloser
+	Identity() id.Identity // Returns the remote identity
+}
+
 var _ SecureWriteCloser = &secureWriteCloser{}
+var _ Linker = &secureWriteCloser{}
 
 type secureWriteCloser struct {
 	io.WriteCloser
-	remoteIdentity id.Identity
+	identity id.Identity
 }
 
 func NewSecureWriteCloser(writeCloser io.WriteCloser, remoteIdentity id.Identity) SecureWriteCloser {
-	return &secureWriteCloser{WriteCloser: writeCloser, remoteIdentity: remoteIdentity}
+	return &secureWriteCloser{WriteCloser: writeCloser, identity: remoteIdentity}
 }
 
-func (s *secureWriteCloser) RemoteIdentity() id.Identity {
-	return s.remoteIdentity
+func (s *secureWriteCloser) Identity() id.Identity {
+	return s.identity
+}
+
+func (s *secureWriteCloser) Link() Link {
+	if l, ok := s.WriteCloser.(Linker); ok {
+		return l.Link()
+	}
+	return nil
 }

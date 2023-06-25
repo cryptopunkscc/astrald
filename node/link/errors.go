@@ -2,9 +2,11 @@ package link
 
 import "errors"
 
-var ErrPingTimeout = errors.New("ping timeout")
-var ErrIdleTimeout = errors.New("idle timeout")
+var ErrProtocolError = errors.New("protocol error")
 var ErrLinkClosed = errors.New("link closed")
-var ErrBufferOverflow = errors.New("buffer overflow")
-var ErrRejected = errors.New("query rejected")
-var ErrConnClosed = errors.New("connection closed")
+var ErrLinkClosedByPeer = errors.New("link closed by peer")
+var ErrRemoteBufferOverflow = errors.New("buffer overflow")
+var ErrPortClosed = errors.New("port closed")
+var ErrPingTimeout = errors.New("ping timeout")
+var ErrTooManyPings = errors.New("too many pings in progress")
+var ErrInvalidNonce = errors.New("invalid ping nonce")

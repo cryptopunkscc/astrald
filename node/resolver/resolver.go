@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/tracker"
 )
 
-const ZeroIdentity = "<anonymous>"
+const ZeroIdentity = "<anyone>"
 
 type Resolver interface {
 	Resolve(s string) (id.Identity, error)
@@ -33,6 +33,10 @@ func NewCoreResolver(node Node) *CoreResolver {
 }
 
 func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
+	if s == "" {
+		return id.Identity{}, nil
+	}
+
 	if s == "localnode" {
 		return c.node.Identity(), nil
 	}

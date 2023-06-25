@@ -26,12 +26,12 @@ type LinkPeerTask struct {
 	log      *log.Logger
 }
 
-func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
+func (task *LinkPeerTask) Run(ctx context.Context) (net.Link, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// Fetch addresses for the remote identity
-	endpoints, err := task.Network.tracker.EndpointsByIdentity(task.RemoteID)
+	endpoints, err := task.Network.node.Tracker().EndpointsByIdentity(task.RemoteID)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	}
 
 	// Get a list of supported networks
-	var networks = task.Network.infra.Drivers()
+	var networks = task.Network.node.Infra().Drivers()
 
 	// Populate a channel with addresses
 	var ch = make(chan net.Endpoint, len(endpoints))
@@ -59,13 +59,13 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 	close(ch)
 
 	authed := NewConcurrentHandshake(
-		task.Network.localID,
+		task.Network.node.Identity(),
 		task.RemoteID,
 		workers,
 	).Outbound(
 		ctx,
 		NewConcurrentDialer(
-			task.Network.infra,
+			task.Network.node.Infra(),
 			workers,
 		).Dial(
 			ctx,
@@ -86,8 +86,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (*link.Link, error) {
 		return nil, ErrNodeUnreachable
 	}
 
-	l := link.New(authConn, task.log)
-	l.SetPriority(NetworkPriority(l.Network()))
+	l := link.NewCoreLink(authConn)
 	if err := task.Network.AddLink(l); err != nil {
 		l.Close()
 		return nil, err

@@ -1,94 +1,84 @@
 package link
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/query"
-	"time"
 )
 
-const DefaultQueryTimeout = 30 * time.Second
-
-func (l *Link) RouteQuery(ctx context.Context, query query.Query, remoteWriter net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	if l.closed.Load() {
-		return nil, ErrLinkClosed
-	}
-
-	if !query.Target().IsEqual(l.RemoteIdentity()) {
+func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (target net.SecureWriteCloser, err error) {
+	if !query.Target().IsEqual(link.RemoteIdentity()) {
 		return nil, errors.New("target/link identity mismatch")
 	}
-
-	if !query.Caller().IsEqual(l.LocalIdentity()) {
+	if !query.Caller().IsEqual(link.LocalIdentity()) {
 		return nil, errors.New("caller/link identity mismatch")
 	}
-
-	if !query.Caller().IsEqual(remoteWriter.RemoteIdentity()) {
+	if !query.Caller().IsEqual(caller.Identity()) {
 		return nil, errors.New("caller/writer identity mismatch")
 	}
 
-	// silent queries do not affect activity
-	if query.Query()[0] != '.' {
-		l.activity.Add(1)
-		defer l.activity.Done()
-	}
-
-	remoteMonitor := &WriterMonitor{Target: remoteWriter}
-
-	var portCh = make(chan int, 1)
-
-	handler := NewCaptureFrameHandler(
-		WriterFrameHandler{remoteMonitor},
-		func(frame mux.Frame) {
-			defer close(portCh)
-			if frame.EOF() {
-				return
-			}
-			if len(frame.Data) != 2 {
-				return
-			}
-			var remotePort int
-
-			err := cslq.Decode(bytes.NewReader(frame.Data), "s", &remotePort)
-			if err != nil {
-				return
-			}
-
-			portCh <- remotePort
-		},
-	)
-
-	localPort, err := l.mux.BindAny(handler)
+	var responseHandler = &ResponseHandler{}
+	localPort, err := link.mux.BindAny(responseHandler)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = l.ctl.WriteQuery(query.Query(), localPort); err != nil {
-		return nil, err
-	}
+	// set up response handler
+	var done = make(chan struct{})
+	responseHandler.Func = func(res Response, herr error) {
+		defer close(done)
 
-	select {
-	case remotePort, ok := <-portCh:
-		if !ok {
-			return nil, ErrRejected
+		// we only want to capture the first frame containing the response, so unbind
+		link.mux.Unbind(localPort)
+
+		if err = herr; err != nil {
+			return
+		}
+		if err = codeToError(res.Error); err != nil {
+			if res.Error == errRouteNotFound {
+				err = &net.ErrRouteNotFound{Router: link}
+			}
+			return
 		}
 
-		localWriter := &WriterMonitor{Target: NewSecureFrameWriter(l, remotePort)}
-
-		conn := NewConn(
-			localPort, localWriter,
-			remotePort, remoteMonitor,
-			query.Query(), true,
+		target = net.NewSecureWriteCloser(
+			NewPortWriter(link, res.Port),
+			link.RemoteIdentity(),
 		)
 
-		l.add(conn)
+		err = link.Bind(localPort, caller)
+	}
 
-		return localWriter, nil
-
+	// send the query to the remote peer
+	if err := link.control.Query(query.Query(), localPort); err != nil {
+		return nil, err
+	}
+	select {
+	case <-done:
+		return
 	case <-ctx.Done():
+		go func() {
+			<-done
+			if target != nil {
+				target.Close()
+			}
+		}()
+
 		return nil, ctx.Err()
+	}
+}
+
+func codeToError(code int) error {
+	switch code {
+	case errSuccess:
+		return nil
+	case errRejected:
+		return net.ErrRejected
+	case errRouteNotFound:
+		return &net.ErrRouteNotFound{}
+	case errUnexpected:
+		return errors.New("unexpected error")
+	default:
+		return errors.New("invalid error")
 	}
 }

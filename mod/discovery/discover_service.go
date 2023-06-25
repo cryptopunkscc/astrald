@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/query"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 )
@@ -17,12 +16,6 @@ type DiscoveryService struct {
 
 const discoverServiceName = "services.discover"
 
-func (service *DiscoveryService) RouteQuery(ctx context.Context, q query.Query, swc net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	return query.Accept(q, swc, func(conn net.SecureConn) {
-		service.serveDiscover(conn, q.Origin())
-	})
-}
-
 func (service *DiscoveryService) Run(ctx context.Context) error {
 	s, err := service.node.Services().Register(ctx, service.node.Identity(), discoverServiceName, service)
 	if err != nil {
@@ -34,10 +27,19 @@ func (service *DiscoveryService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (service *DiscoveryService) serveDiscover(conn net.SecureConn, origin string) {
+func (service *DiscoveryService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	return net.Accept(query, caller, func(conn net.SecureConn) {
+		service.serve(conn, query.Origin())
+	})
+}
+
+func (service *DiscoveryService) serve(conn net.SecureConn, origin string) {
+	defer conn.Close()
 	var session = rpc.New(conn)
 
 	var wg sync.WaitGroup
+
+	service.log.Logv(1, "discovery request from %v (%s)", conn.RemoteIdentity(), origin)
 
 	for source, sourceID := range service.sources {
 		source, sourceID := source, sourceID

@@ -5,8 +5,8 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/services"
-	"github.com/cryptopunkscc/astrald/query"
 )
 
 type Source interface {
@@ -26,9 +26,9 @@ func (src *ServiceSource) String() string {
 }
 
 func (src *ServiceSource) Discover(ctx context.Context, caller id.Identity, origin string) ([]ServiceEntry, error) {
-	conn, err := query.Run(ctx,
+	conn, err := net.Route(ctx,
 		src.services,
-		query.New(caller, src.identity, src.service),
+		net.NewQuery(caller, src.identity, src.service),
 	)
 	if err != nil {
 		return nil, err
