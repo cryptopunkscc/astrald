@@ -47,9 +47,11 @@ func (server *Server) reflectLink(conn net.SecureConn, sourceLink net.Link) erro
 	var e = sourceLink.Transport().RemoteEndpoint()
 	var ref proto.Reflection
 
-	ref.RemoteEndpoint = proto.Endpoint{
-		Network: e.Network(),
-		Address: e.String(),
+	if e != nil {
+		ref.RemoteEndpoint = proto.Endpoint{
+			Network: e.Network(),
+			Address: e.String(),
+		}
 	}
 
 	return json.NewEncoder(conn).Encode(ref)
