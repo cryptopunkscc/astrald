@@ -3,10 +3,12 @@ package reflectlink
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"reflect"
 )
 
 type Server struct {
@@ -45,6 +47,12 @@ func (server *Server) reflectLink(conn net.SecureConn, sourceLink net.Link) erro
 	defer conn.Close()
 
 	var e = sourceLink.Transport().RemoteEndpoint()
+	if e == nil {
+		server.log.Errorv(2, "link with %v has no remote endpoint (transport type %v)",
+			sourceLink.RemoteIdentity(), reflect.TypeOf(sourceLink.Transport()))
+		return errors.New("remote endpoint is nil")
+	}
+
 	var ref proto.Reflection
 
 	if e != nil {
