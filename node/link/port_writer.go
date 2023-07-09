@@ -1,6 +1,7 @@
 package link
 
 import (
+	"fmt"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"io"
@@ -22,6 +23,11 @@ func NewPortWriter(link *CoreLink, port int) *PortWriter {
 }
 
 func (w *PortWriter) Write(p []byte) (n int, err error) {
+	if len(p) == 0 {
+		fmt.Println("WRITE EMPTY")
+		return
+	}
+
 	defer w.link.Touch()
 
 	w.Lock()

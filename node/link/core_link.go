@@ -14,7 +14,7 @@ import (
 
 var _ net.Link = &CoreLink{}
 
-const portBufferSize = 128 * 1024
+const portBufferSize = mux.MaxFrameSize * 4
 const controlPort = 0
 
 type CoreLink struct {
@@ -72,7 +72,7 @@ func (link *CoreLink) CloseWithError(e error) error {
 }
 
 func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) error {
-	err := link.mux.Bind(localPort, &PortBinding{link: link, WriteCloser: wc, port: localPort})
+	err := link.mux.Bind(localPort, NewPortBinding(wc, link, localPort))
 	if err != nil {
 		return err
 	}
@@ -84,10 +84,7 @@ func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) error {
 
 func (link *CoreLink) BindAny(wc io.WriteCloser) (int, error) {
 	var err error
-	var handler = &PortBinding{
-		WriteCloser: wc,
-		link:        link,
-	}
+	var handler = NewPortBinding(wc, link, 0)
 	handler.port, err = link.mux.BindAny(handler)
 
 	link.control.GrowBuffer(handler.port, portBufferSize)
