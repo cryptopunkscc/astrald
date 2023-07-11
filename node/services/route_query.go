@@ -18,7 +18,7 @@ func (srv *CoreServices) RouteQuery(ctx context.Context, query net.Query, caller
 	}
 
 	if query.Target().IsZero() {
-		query = net.NewOrigin(query.Caller(), service.identity, query.Query(), query.Origin())
+		query = net.NewQueryOrigin(query.Caller(), service.identity, query.Query(), query.Origin())
 	}
 
 	if service.router == nil {

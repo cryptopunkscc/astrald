@@ -74,7 +74,7 @@ func (service *Service) serve(ctx context.Context, conn net.SecureConn, origin s
 				return err
 			}
 
-			var q = net.NewOrigin(caller, id.Identity{}, params.Query, origin)
+			var q = net.NewQueryOrigin(caller, id.Identity{}, params.Query, origin)
 			var shiftedConn = replaceIdentity{SecureConn: conn, remoteIdentity: caller}
 
 			service.log.Logv(2, "(%s) routing query -> %s:%s", caller, q.Target(), q.Query())

@@ -99,7 +99,7 @@ func (service *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, cal
 		go func() {
 			defer wg.Done()
 
-			conn, err := net.Route(ctx, service.node.Services(), net.NewOrigin(
+			conn, err := net.Route(ctx, service.node.Services(), net.NewQueryOrigin(
 				caller,
 				source.Identity,
 				source.Service,

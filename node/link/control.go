@@ -145,7 +145,13 @@ func (c *Control) Query(service string, localPort int) error {
 }
 
 func (c *Control) handleQuery(msg Query) error {
-	var q = net.NewOrigin(c.RemoteIdentity(), c.LocalIdentity(), msg.Service, net.OriginNetwork)
+	// queries can take a long time to finish, so run them in a goroutine
+	go c.executeQuery(msg)
+	return nil
+}
+
+func (c *Control) executeQuery(msg Query) error {
+	var q = net.NewQueryOrigin(c.RemoteIdentity(), c.LocalIdentity(), msg.Service, net.OriginNetwork)
 
 	var portWriter = NewPortWriter(c.CoreLink, msg.Port)
 

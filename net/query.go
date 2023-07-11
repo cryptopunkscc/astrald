@@ -27,7 +27,7 @@ func NewQuery(caller id.Identity, target id.Identity, q string) Query {
 	return &query{caller: caller, target: target, query: q, origin: OriginLocal}
 }
 
-func NewOrigin(caller id.Identity, target id.Identity, q string, origin string) Query {
+func NewQueryOrigin(caller id.Identity, target id.Identity, q string, origin string) Query {
 	return &query{caller: caller, target: target, query: q, origin: origin}
 }
 
