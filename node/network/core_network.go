@@ -33,6 +33,7 @@ type CoreNetwork struct {
 	ctx       context.Context
 	running   atomic.Bool
 	mu        sync.Mutex
+	linkMu    sync.Mutex
 }
 
 func NewCoreNetwork(node Node, eventParent *events.Queue, log *log.Logger) (*CoreNetwork, error) {
@@ -118,12 +119,9 @@ func (n *CoreNetwork) Links() *LinkSet {
 
 // Link returns a link with the node. If the node is not linked, it will attempt to link to it.
 func (n *CoreNetwork) Link(ctx context.Context, nodeID id.Identity) (net.Link, error) {
-	n.mu.Lock()
-
 	// check if peer is already linked
 	var links = n.links.ByRemoteIdentity(nodeID).All()
 	if len(links) > 0 {
-		n.mu.Unlock()
 		return links[0], nil
 	}
 
@@ -131,37 +129,49 @@ func (n *CoreNetwork) Link(ctx context.Context, nodeID id.Identity) (net.Link, e
 		hexID    = nodeID.PublicKeyHex()
 		linkTask *tasks.Task[net.Link]
 		ok       bool
+		err      error
 	)
 
 	// use the link task that's already running for this node, or start one
+	n.linkMu.Lock()
 	linkTask, ok = n.linkTasks[hexID]
-	if !ok {
-		newTask, err := n.RequestNewLink(nodeID, LinkOptions{})
-		if err != nil {
-			n.mu.Unlock()
-			return nil, err
-		}
-
-		linkTask = newTask
-		n.linkTasks[hexID] = newTask
-
-		go func() {
-			<-linkTask.Done()
-			n.mu.Lock()
-			delete(n.linkTasks, hexID)
-			n.mu.Unlock()
-		}()
-	}
-	n.mu.Unlock()
-
-	// wait for the task to finish, or the context to end
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-
-	case <-linkTask.Done():
+	if ok {
+		n.linkMu.Unlock()
+		<-linkTask.Done()
 		return linkTask.Result(), linkTask.Err()
 	}
+
+	linkTask, err = n.RequestNewLink(nodeID, LinkOptions{})
+	if err != nil {
+		n.linkMu.Unlock()
+		return nil, err
+	}
+
+	n.linkTasks[hexID] = linkTask
+	n.linkMu.Unlock()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			linkTask.Cancel()
+		case <-linkTask.Done():
+		}
+	}()
+
+	<-linkTask.Done()
+
+	link := linkTask.Result()
+	err = linkTask.Err()
+
+	n.linkMu.Lock()
+	delete(n.linkTasks, hexID)
+	n.linkMu.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return link, nil
 }
 
 // RequestNewLink schedules a task that will try to establish a new link with the provided node (even if the node
@@ -189,17 +199,10 @@ func (n *CoreNetwork) addLink(l net.Link) error {
 		return ErrIdentityMismatch
 	}
 
-	if err := n.links.Add(l); err != nil {
-		return err
-	}
-
 	if corelink, ok := l.(*link.CoreLink); ok {
 		corelink.SetUplink(n.node.Router())
 		defer corelink.Check()
 	}
-
-	n.log.Logv(1, "added link with %v", l.RemoteIdentity())
-	n.events.Emit(EventLinkAdded{Link: l})
 
 	go func() {
 		err := l.Run(n.ctx)
@@ -209,6 +212,13 @@ func (n *CoreNetwork) addLink(l net.Link) error {
 		n.log.Logv(2, "removed link with %v: %v", l.RemoteIdentity(), err)
 		n.events.Emit(EventLinkRemoved{Link: l})
 	}()
+
+	if err := n.links.Add(l); err != nil {
+		return err
+	}
+
+	n.log.Logv(1, "added link with %v", l.RemoteIdentity())
+	n.events.Emit(EventLinkAdded{Link: l})
 
 	return nil
 }

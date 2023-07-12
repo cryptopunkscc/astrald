@@ -1,7 +1,6 @@
 package link
 
 import (
-	"fmt"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"io"
@@ -24,7 +23,6 @@ func NewPortWriter(link *CoreLink, port int) *PortWriter {
 
 func (w *PortWriter) Write(p []byte) (n int, err error) {
 	if len(p) == 0 {
-		fmt.Println("WRITE EMPTY")
 		return
 	}
 
@@ -42,6 +40,8 @@ func (w *PortWriter) Write(p []byte) (n int, err error) {
 		if frameLen > mux.MaxFrameSize {
 			frameLen = mux.MaxFrameSize
 		}
+
+		w.link.health.Check()
 
 		// TODO: stop waiting and close the connection after timeout
 		if err = w.link.remoteBuffers.wait(w.port, frameLen); err != nil {

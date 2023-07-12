@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
 	"sync"
-	"time"
 )
 
 var _ net.Link = &CoreLink{}
@@ -28,18 +27,20 @@ type CoreLink struct {
 	ctxCancel     context.CancelFunc
 	mu            sync.Mutex
 	err           error
-	lastCheck     time.Time
-	checkMu       sync.Mutex
+	health        *health
+	running       chan struct{}
 }
 
 func NewCoreLink(transport net.SecureConn) *CoreLink {
 	link := &CoreLink{
 		transport: transport,
+		running:   make(chan struct{}),
 	}
 
 	link.remoteBuffers = newRemoteBuffers(link)
 	link.mux = mux.NewFrameMux(transport, &UnexpectedFrameHandler{CoreLink: link})
 	link.control = NewControl(link)
+	link.health = newHealth(link)
 	if err := link.mux.Bind(controlPort, link.control); err != nil {
 		panic(err)
 	}
@@ -50,8 +51,9 @@ func NewCoreLink(transport net.SecureConn) *CoreLink {
 func (link *CoreLink) Run(ctx context.Context) error {
 	link.ctx, link.ctxCancel = context.WithCancel(ctx)
 
-	var group = tasks.Group(link.mux, link.control)
+	var group = tasks.Group(link.mux, link.control, link.health)
 
+	close(link.running)
 	group.Run(link.ctx)
 
 	return link.err
@@ -105,19 +107,7 @@ func (link *CoreLink) RemoteIdentity() id.Identity {
 }
 
 func (link *CoreLink) Check() {
-	link.checkMu.Lock()
-	defer link.checkMu.Unlock()
-
-	if time.Since(link.lastCheck) < time.Second {
-		return
-	}
-
-	_, err := link.control.Ping()
-	if err != nil {
-		link.CloseWithError(err)
-	}
-
-	link.lastCheck = time.Now()
+	link.health.Check()
 }
 
 func (link *CoreLink) Uplink() net.Router {
@@ -133,6 +123,7 @@ func (link *CoreLink) Transport() net.SecureConn {
 }
 
 func (link *CoreLink) Done() <-chan struct{} {
+	<-link.running
 	return link.ctx.Done()
 }
 

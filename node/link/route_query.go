@@ -17,6 +17,8 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 		return nil, errors.New("caller/writer identity mismatch")
 	}
 
+	link.health.Check()
+
 	var responseHandler = &ResponseHandler{}
 	localPort, err := link.mux.BindAny(responseHandler)
 	if err != nil {
