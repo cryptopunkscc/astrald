@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
-	shiftp "github.com/cryptopunkscc/astrald/mod/shift/proto"
+	routerpc "github.com/cryptopunkscc/astrald/mod/route/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
@@ -60,14 +60,14 @@ func (s *Session) query(params proto.QueryParams) error {
 
 	switch {
 	case errors.Is(err, net.ErrRejected),
-		errors.Is(err, shiftp.ErrRejected),
+		errors.Is(err, routerpc.ErrRejected),
 		errors.Is(err, services.ErrServiceNotFound):
 		return s.WriteErr(proto.ErrRejected)
 
 	case errors.Is(err, &net.ErrRouteNotFound{}):
 		return s.WriteErr(proto.ErrRouteNotFound)
 
-	case errors.Is(err, shiftp.ErrDenied):
+	case errors.Is(err, routerpc.ErrDenied):
 		return s.WriteErr(proto.ErrUnauthorized)
 
 	case errors.Is(err, services.ErrTimeout):

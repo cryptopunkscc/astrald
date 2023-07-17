@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
+	"github.com/cryptopunkscc/astrald/mod/route"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -26,18 +27,23 @@ type Module struct {
 	sources   map[Source]id.Identity
 	sourcesMu sync.Mutex
 	cache     map[string][]ServiceEntry
+	routes    map[string]id.Identity
 	cacheMu   sync.Mutex
 	ctx       context.Context
 }
 
 func (m *Module) Run(ctx context.Context) error {
-	// inject admin command
+	m.ctx = ctx
 
+	// inject admin command
 	if adm, err := modules.Find[*admin.Module](m.node.Modules()); err == nil {
 		adm.AddCommand("discovery", NewAdmin(m))
 	}
 
-	m.ctx = ctx
+	// register as a router
+	if coreRouter, ok := m.node.Router().(*node.CoreRouter); ok {
+		coreRouter.Routers.AddRouter(m)
+	}
 
 	return tasks.Group(
 		&DiscoveryService{Module: m},
@@ -145,11 +151,28 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 	for err == nil {
 		err = cslq.Invoke(q, func(msg rpc.ServiceEntry) error {
 			list = append(list, ServiceEntry(msg))
+			if !msg.Identity.IsEqual(remoteID) {
+				m.routes[msg.Identity.PublicKeyHex()] = remoteID
+			}
 			return nil
 		})
 	}
 
 	return list, nil
+}
+
+func (m *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	relay, found := m.routes[query.Target().PublicKeyHex()]
+	if !found {
+		return nil, &net.ErrRouteNotFound{Router: m}
+	}
+
+	routeMod, err := modules.Find[*route.Module](m.node.Modules())
+	if err != nil {
+		return nil, err
+	}
+
+	return routeMod.RouteVia(ctx, relay, query, caller)
 }
 
 func (m *Module) setCache(identity id.Identity, list []ServiceEntry) {

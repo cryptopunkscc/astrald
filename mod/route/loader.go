@@ -1,4 +1,4 @@
-package shift
+package route
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
-const ModuleName = "shift"
+const ModuleName = "route"
 
 type Loader struct{}
 
@@ -18,6 +18,8 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	}
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
+
+	mod.keys, err = assets.KeyStore()
 
 	return mod, err
 }

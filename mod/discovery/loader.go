@@ -19,6 +19,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		log:     log,
 		sources: map[Source]id.Identity{},
 		cache:   map[string][]ServiceEntry{},
+		routes:  map[string]id.Identity{},
 	}
 
 	mod.events.SetParent(node.Events())

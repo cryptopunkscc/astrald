@@ -1,4 +1,4 @@
-package shift
+package route
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"

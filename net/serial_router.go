@@ -7,11 +7,17 @@ import (
 
 // SerialRouter tries to route queries through every router in the array and returns first successful attempt or
 // ErrRouteNotFound. Use Trace() method of the errors to see details of the failed routing attempt.
-type SerialRouter []Router
+type SerialRouter struct {
+	Routers []Router
+}
 
-func (m SerialRouter) RouteQuery(ctx context.Context, query Query, caller SecureWriteCloser) (SecureWriteCloser, error) {
+func NewSerialRouter(routers ...Router) *SerialRouter {
+	return &SerialRouter{Routers: routers}
+}
+
+func (m *SerialRouter) RouteQuery(ctx context.Context, query Query, caller SecureWriteCloser) (SecureWriteCloser, error) {
 	var rerr = &ErrRouteNotFound{Router: m}
-	for _, router := range m {
+	for _, router := range m.Routers {
 		target, err := router.RouteQuery(ctx, query, caller)
 		if err == nil {
 			return target, nil
@@ -22,4 +28,8 @@ func (m SerialRouter) RouteQuery(ctx context.Context, query Query, caller Secure
 		rerr.Fails = append(rerr.Fails, err)
 	}
 	return nil, rerr
+}
+
+func (m *SerialRouter) AddRouter(router Router) {
+	m.Routers = append(m.Routers, router)
 }

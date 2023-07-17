@@ -24,8 +24,8 @@ type CoreNode struct {
 	identity id.Identity
 	assets   assets.Store
 	keys     assets.KeyStore
-	router   *MonitoredRouter
 
+	router   *CoreRouter
 	infra    *infra.CoreInfra
 	network  *network.CoreNetwork
 	tracker  *tracker.CoreTracker
@@ -111,10 +111,12 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
 
-	node.router = NewMonitoredRouter(net.SerialRouter{
+	var routers = []net.Router{
 		node.Services(),
 		node.Network(),
-	}, node.log)
+	}
+
+	node.router = NewCoreRouter(routers, node.log)
 
 	return node, nil
 }
