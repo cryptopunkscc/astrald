@@ -32,6 +32,9 @@ func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLin
 	var list = make([]ServiceEntry, 0)
 	for err == nil {
 		err = cslq.Invoke(conn, func(msg rpc.ServiceEntry) error {
+			if !msg.Identity.IsEqual(remoteIdentity) {
+				srv.routes[msg.Identity.PublicKeyHex()] = remoteIdentity
+			}
 			list = append(list, ServiceEntry(msg))
 			return nil
 		})
