@@ -48,6 +48,10 @@ func (s *Session) query(params proto.QueryParams) error {
 	var err error
 	var targetWriter net.SecureConn
 
+	if params.Identity.IsZero() {
+		params.Identity = s.mod.node.Identity() //TODO: by default call your own service, not relay's
+	}
+
 	q := net.NewQuery(s.remoteID, params.Identity, params.Query)
 
 	targetWriter, err = net.Route(s.ctx, s.mod.node.Router(), q)
@@ -146,6 +150,11 @@ func (s *Session) register(p proto.RegisterParams) error {
 		}
 	}
 	s.WriteErr(nil)
+
+	go func() {
+		<-service.Done()
+		s.Close()
+	}()
 
 	// wait for the other party to close the session
 	io.Copy(streams.NilWriter{}, s)

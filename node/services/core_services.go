@@ -18,7 +18,7 @@ var _ net.Router = &CoreServices{}
 
 // CoreServices facilitates registration of services and querying them.
 type CoreServices struct {
-	services map[string]*Service
+	services []*Service
 	mu       sync.Mutex
 	events   events.Queue
 	log      *log.Logger
@@ -26,7 +26,7 @@ type CoreServices struct {
 
 func NewCoreServices(eventParent *events.Queue, log *log.Logger) *CoreServices {
 	hub := &CoreServices{
-		services: make(map[string]*Service),
+		services: make([]*Service, 0),
 		log:      log.Tag(logTag),
 	}
 	hub.events.SetParent(eventParent)
@@ -48,18 +48,36 @@ func (srv *CoreServices) List() []ServiceInfo {
 	}
 	return list
 }
-
-func (srv *CoreServices) Find(name string) (*Service, error) {
+func (srv *CoreServices) Find(identity id.Identity, name string) (*Service, error) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 
-	// Fetch the service
-	service, found := srv.services[name]
-	if !found {
-		return nil, ErrServiceNotFound
+	return srv.find(identity, name)
+}
+
+func (srv *CoreServices) find(identity id.Identity, name string) (*Service, error) {
+	for _, service := range srv.services {
+		if service.Name() == name && service.Identity().IsEqual(identity) {
+			return service, nil
+		}
 	}
 
-	return service, nil
+	return nil, ErrServiceNotFound
+}
+
+func (srv *CoreServices) FindByName(name string) ([]*Service, error) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+
+	var list = make([]*Service, 0)
+
+	for _, service := range srv.services {
+		if service.Name() == name {
+			list = append(list, service)
+		}
+	}
+
+	return list, nil
 }
 
 // Register registers a service as the specified identity
@@ -82,12 +100,14 @@ func (srv *CoreServices) register(name string, identity id.Identity, handler net
 	defer srv.mu.Unlock()
 
 	// Check if the requested service is available
-	if _, found := srv.services[name]; found {
+	if _, err := srv.find(identity, name); err == nil {
 		return nil, ErrAlreadyRegistered
 	}
 
+	var service = newService(srv, identity, name, handler)
+
 	// register the service
-	srv.services[name] = newService(srv, identity, name, handler)
+	srv.services = append(srv.services, service)
 
 	srv.log.Infov(1, "registered %v:%s", identity, name)
 
@@ -96,26 +116,33 @@ func (srv *CoreServices) register(name string, identity id.Identity, handler net
 		Name:     name,
 	})
 
-	return srv.services[name], nil
+	return service, nil
 }
 
 // release removes a service from the manager
-func (srv *CoreServices) release(name string) error {
+func (srv *CoreServices) release(service *Service) error {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 
-	s, found := srv.services[name]
-	if !found {
+	var idx = -1
+	for i, s := range srv.services {
+		if s == service {
+			idx = i
+			break
+		}
+	}
+
+	if idx == -1 {
 		return ErrServiceNotFound
 	}
 
-	delete(srv.services, name)
+	srv.services = append(srv.services[:idx], srv.services[idx+1:]...)
 
-	srv.log.Infov(1, "released %v:%s", s.identity, s.name)
+	srv.log.Infov(1, "released %v:%s", service.identity, service.name)
 
 	srv.events.Emit(EventServiceReleased{
-		Identity: s.identity,
-		Name:     s.name,
+		Identity: service.identity,
+		Name:     service.name,
 	})
 
 	return nil

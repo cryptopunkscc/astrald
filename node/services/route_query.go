@@ -8,24 +8,16 @@ import (
 
 func (srv *CoreServices) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
 	// Fetch the service
-	service, err := srv.Find(query.Query())
+	service, err := srv.Find(query.Target(), query.Query())
 	if err != nil {
-		return nil, err
+		return nil, &net.ErrRouteNotFound{Router: srv}
 	}
 
-	if !query.Target().IsZero() && !query.Target().IsEqual(service.identity) {
-		return nil, errors.New("target identity mismatch")
-	}
-
-	if query.Target().IsZero() {
-		query = net.NewQueryOrigin(query.Caller(), service.identity, query.Query(), query.Origin())
-	}
-
-	if service.router == nil {
+	if service.Router == nil {
 		return nil, errors.New("service unreachable")
 	}
 
-	target, err := service.router.RouteQuery(ctx, query, caller)
+	target, err := service.RouteQuery(ctx, query, caller)
 	if err != nil {
 		return nil, err
 	}

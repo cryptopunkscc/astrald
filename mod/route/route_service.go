@@ -82,7 +82,7 @@ func (service *RouteService) serve(ctx context.Context, conn net.SecureConn, ori
 				return err
 			}
 
-			srv, err := service.node.Services().Find(query.Query)
+			srv, err := service.node.Services().Find(query.Target, query.Query)
 			if err != nil {
 				return c.EncodeErr(proto.ErrRejected)
 			}
@@ -116,7 +116,7 @@ func (service *RouteService) serve(ctx context.Context, conn net.SecureConn, ori
 
 			service.log.Logv(2, "(%s) routing query -> %s:%s", caller, q.Target(), q.Query())
 
-			localWriter, err := service.node.Services().RouteQuery(ctx, q, shiftedConn)
+			localWriter, err := srv.RouteQuery(ctx, q, shiftedConn)
 			if err != nil {
 				return c.EncodeErr(proto.ErrRejected)
 			}

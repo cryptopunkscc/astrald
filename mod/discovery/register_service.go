@@ -48,15 +48,10 @@ func (srv *RegisterService) serveRegister(conn net.SecureConn, msg rpc.MsgRegist
 	}
 
 	// check if the caller is also the owner of the service
-	service, err := srv.node.Services().Find(msg.Service)
+	service, err := srv.node.Services().Find(conn.RemoteIdentity(), msg.Service)
 	if err != nil {
 		defer conn.Close()
 		return session.EncodeErr(rpc.ErrRegistrationFailed)
-	} else {
-		if !service.Identity().IsEqual(remoteID) {
-			defer conn.Close()
-			return session.EncodeErr(rpc.ErrRegistrationFailed)
-		}
 	}
 
 	srv.AddSource(source, conn.RemoteIdentity())

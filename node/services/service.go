@@ -8,10 +8,12 @@ import (
 	"time"
 )
 
+var _ net.Router = &Service{}
+
 // Service represents a registered service
 type Service struct {
+	net.Router
 	name         string
-	router       net.Router
 	manager      *CoreServices
 	identity     id.Identity
 	registeredAt time.Time
@@ -24,7 +26,7 @@ func newService(hub *CoreServices, identity id.Identity, name string, router net
 		manager:      hub,
 		identity:     identity,
 		name:         name,
-		router:       router,
+		Router:       router,
 		registeredAt: time.Now(),
 		done:         make(chan struct{}),
 	}
@@ -33,7 +35,7 @@ func newService(hub *CoreServices, identity id.Identity, name string, router net
 // Close closees the service
 func (service *Service) Close() error {
 	if service.closed.CompareAndSwap(false, true) {
-		service.manager.release(service.name)
+		service.manager.release(service)
 		close(service.done)
 		return nil
 	}

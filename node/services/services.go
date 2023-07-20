@@ -10,7 +10,8 @@ import (
 type Services interface {
 	net.Router
 	Register(ctx context.Context, identity id.Identity, name string, handler net.Router) (*Service, error)
-	Find(name string) (*Service, error)
+	Find(identity id.Identity, name string) (*Service, error)
+	FindByName(name string) ([]*Service, error)
 	List() []ServiceInfo
 }
 
