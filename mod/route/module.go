@@ -21,6 +21,11 @@ type Module struct {
 }
 
 func (m *Module) Run(ctx context.Context) error {
+	// register as a router
+	if coreRouter, ok := m.node.Router().(*node.CoreRouter); ok {
+		coreRouter.Routers.AddRouter(m)
+	}
+
 	return tasks.Group(
 		&RouteService{Module: m},
 	).Run(ctx)
@@ -35,6 +40,12 @@ func (m *Module) RouteVia(ctx context.Context, relay id.Identity, query net.Quer
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			routeConn.Close()
+		}
+	}()
 
 	var rpc = proto.New(routeConn)
 
@@ -82,4 +93,16 @@ func (m *Module) RouteVia(ctx context.Context, relay id.Identity, query net.Quer
 	}()
 
 	return net.NewSecureWriteCloser(routeConn, query.Target()), nil
+}
+
+func (m *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+	if query.Caller().IsEqual(m.node.Identity()) {
+		return nil, &net.ErrRouteNotFound{Router: m}
+	}
+
+	if m.node.Network().Links().ByRemoteIdentity(query.Target()).Count() > 0 {
+		return m.RouteVia(ctx, query.Target(), query, caller)
+	}
+
+	return nil, &net.ErrRouteNotFound{Router: m}
 }

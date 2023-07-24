@@ -2,6 +2,7 @@ package admin
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/log"
 	"io"
@@ -12,6 +13,7 @@ import (
 const useColorTerminal = true
 
 type Terminal struct {
+	Color  bool
 	log    *log.Logger
 	output log.Output
 	io.ReadWriter
@@ -90,14 +92,30 @@ func NewTerminal(rw io.ReadWriter, logger *log.Logger) *Terminal {
 		}, true
 	})
 	return &Terminal{
+		Color:      useColorTerminal,
 		ReadWriter: rw,
 		output:     log.NewColorOutput(rw),
 		log:        l,
 	}
 }
 
+func (t *Terminal) Sprintf(f string, v ...any) string {
+	var buf = &bytes.Buffer{}
+	var out log.Output
+
+	if t.Color {
+		out = log.NewColorOutput(buf)
+	} else {
+		out = log.NewMonoOutput(buf)
+	}
+
+	out.Do(t.log.Renderf(f, v...)...)
+
+	return buf.String()
+}
+
 func (t *Terminal) Printf(f string, v ...any) {
-	if useColorTerminal {
+	if t.Color {
 		t.output.Do(t.log.Renderf(f, v...)...)
 		return
 	}
@@ -105,7 +123,7 @@ func (t *Terminal) Printf(f string, v ...any) {
 }
 
 func (t *Terminal) Println(v ...any) {
-	if useColorTerminal {
+	if t.Color {
 		for _, i := range v {
 			ops, b := t.log.Render(i)
 			if b {

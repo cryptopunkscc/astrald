@@ -12,7 +12,10 @@ const (
 	StateClosed  = "closed"
 )
 
+var nextConnID atomic.Int64
+
 type Conn struct {
+	id            int64
 	target        *MonitoredWriter
 	caller        *MonitoredWriter
 	query         net.Query
@@ -23,18 +26,11 @@ type Conn struct {
 	done         chan struct{}
 }
 
-func (conn *Conn) Target() *MonitoredWriter {
-	return conn.target
-}
-
-func (conn *Conn) Caller() *MonitoredWriter {
-	return conn.caller
-}
-
-type check interface{ Port() int }
+type checkPort interface{ Port() int }
 
 func NewConn(caller *MonitoredWriter, target *MonitoredWriter, query net.Query) *Conn {
 	c := &Conn{
+		id:            nextConnID.Add(1),
 		target:        target,
 		caller:        caller,
 		query:         query,
@@ -57,6 +53,18 @@ func NewConn(caller *MonitoredWriter, target *MonitoredWriter, query net.Query) 
 	return c
 }
 
+func (conn *Conn) ID() int64 {
+	return conn.id
+}
+
+func (conn *Conn) Target() *MonitoredWriter {
+	return conn.target
+}
+
+func (conn *Conn) Caller() *MonitoredWriter {
+	return conn.caller
+}
+
 func (conn *Conn) Query() net.Query {
 	return conn.query
 }
@@ -76,14 +84,14 @@ func (conn *Conn) BytesIn() int {
 }
 
 func (conn *Conn) LocalPort() int {
-	if p, ok := conn.target.SecureWriteCloser.(check); ok {
+	if p, ok := conn.target.SecureWriteCloser.(checkPort); ok {
 		return p.Port()
 	}
 	return -1
 }
 
 func (conn *Conn) RemotePort() int {
-	if p, ok := conn.caller.SecureWriteCloser.(check); ok {
+	if p, ok := conn.caller.SecureWriteCloser.(checkPort); ok {
 		return p.Port()
 	}
 	return -1

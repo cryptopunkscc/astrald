@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -118,13 +119,23 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 		return errors.New("unsupported node type")
 	}
 
-	var f = "%-20s %-20s %-20s %-8s %-8s %8s %8s\n"
+	var f1 = "%-6d %-30s %-20s %-8s %-8s %8s %8s\n"
+	var f2 = "%-6d %s %-20s %-8s %-8s %8s %8s\n"
 
-	term.Printf(f, Header("Caller"), Header("Target"), Header("Query"), Header("State"), Header("Origin"), Header("In"), Header("Out"))
+	term.Printf(f1, Header("ID"), Header("Identities"), Header("Query"), Header("State"), Header("Origin"), Header("In"), Header("Out"))
 	for _, conn := range corenode.Conns().All() {
-		term.Printf(f,
-			conn.Caller().Identity(),
-			conn.Target().Identity(),
+		c := term.Color
+		term.Color = false
+		var peersWidth = len(term.Sprintf(term.Sprintf("%s:%s", conn.Caller().Identity(), conn.Target().Identity())))
+		term.Color = c
+		var peers = term.Sprintf("%s:%s", conn.Caller().Identity(), conn.Target().Identity())
+		if peersWidth < 30 {
+			peers = peers + strings.Repeat(" ", 30-peersWidth)
+		}
+
+		term.Printf(f2,
+			conn.ID(),
+			peers,
 			conn.Query().Query(),
 			conn.State(),
 			conn.Query().Origin(),
