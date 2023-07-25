@@ -62,6 +62,19 @@ func (set *ConnSet) Count() int {
 	return len(set.items)
 }
 
+func (set *ConnSet) Find(id int) *Conn {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
+	for _, conn := range set.items {
+		if conn.ID() == id {
+			return conn
+		}
+	}
+
+	return nil
+}
+
 func (set *ConnSet) FindByRemotePort(remotePort int) *Conn {
 	set.mu.Lock()
 	defer set.mu.Unlock()

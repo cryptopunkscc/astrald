@@ -53,8 +53,8 @@ func NewConn(caller *MonitoredWriter, target *MonitoredWriter, query net.Query) 
 	return c
 }
 
-func (conn *Conn) ID() int64 {
-	return conn.id
+func (conn *Conn) ID() int {
+	return int(conn.id)
 }
 
 func (conn *Conn) Target() *MonitoredWriter {
