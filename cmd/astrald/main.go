@@ -4,13 +4,17 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/node"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
+
+var astralRoot string
 
 // Exit statuses
 const (
@@ -35,7 +39,7 @@ func astralDir() string {
 
 func main() {
 	var err error
-	var astralRoot = astralDir()
+	astralRoot = astralDir()
 
 	flag.StringVar(&astralRoot, "datadir", astralRoot, "set data directory")
 	flag.Parse()
@@ -51,6 +55,13 @@ func main() {
 
 	// Set up app execution context
 	ctx, shutdown := context.WithCancel(context.Background())
+
+	debug.LogDir = astralRoot
+	defer debug.SaveLog(func(p any) {
+		debug.SigInt(p)
+		time.Sleep(time.Second) // give components time to exit cleanly
+		debug.Exit(p)
+	})
 
 	// Trap ctrl+c
 	sigCh := make(chan os.Signal)

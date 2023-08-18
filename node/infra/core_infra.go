@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"strings"
@@ -58,7 +59,13 @@ func (i *CoreInfra) Run(ctx context.Context) error {
 		if network, found := i.networkDrivers[name]; found {
 			wg.Add(1)
 			go func() {
+				defer debug.SaveLog(func(p any) {
+					i.log.Error("network driver %s panicked: %v", name, p)
+					debug.SigInt(p)
+				})
+
 				defer wg.Done()
+
 				if err := network.Run(ctx); err != nil {
 					i.log.Error("network %s error: %s", name, err)
 				} else {

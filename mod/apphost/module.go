@@ -3,6 +3,7 @@ package apphost
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/node"
@@ -43,6 +44,8 @@ func (mod *Module) Run(ctx context.Context) error {
 	wg.Add(workerCount)
 	for i := 0; i < workerCount; i++ {
 		go func(i int) {
+			defer debug.SaveLog(debug.SigInt)
+
 			defer wg.Done()
 			if err := mod.worker(ctx); err != nil {
 				mod.log.Error("[%d] error: %s", i, err)

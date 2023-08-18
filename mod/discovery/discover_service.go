@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -29,6 +30,10 @@ func (service *DiscoveryService) Run(ctx context.Context) error {
 
 func (service *DiscoveryService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
+		defer debug.SaveLog(func(p any) {
+			service.log.Error("discovery panicked: %v", p)
+		})
+
 		service.serve(conn, query.Origin())
 	})
 }

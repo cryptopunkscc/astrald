@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
@@ -34,6 +35,10 @@ func (module *Gateway) Run(ctx context.Context) error {
 
 func (module *Gateway) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
+		defer debug.SaveLog(func(p any) {
+			module.log.Error("gateway panicked: %v", p)
+		})
+
 		module.handleQuery(conn)
 	})
 }

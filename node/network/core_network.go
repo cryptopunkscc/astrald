@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -70,6 +71,7 @@ func (n *CoreNetwork) Run(ctx context.Context) error {
 
 	wg.Add(1)
 	go func() {
+		defer debug.SaveLog(debug.SigInt)
 		defer wg.Done()
 
 		err := n.server.Run(ctx)
@@ -205,6 +207,8 @@ func (n *CoreNetwork) addLink(l net.Link) error {
 	}
 
 	go func() {
+		defer debug.SaveLog(debug.SigInt)
+
 		err := l.Run(n.ctx)
 		if e := n.links.Remove(l); e != nil {
 			panic(e)

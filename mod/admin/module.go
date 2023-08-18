@@ -4,6 +4,7 @@ import (
 	"bitbucket.org/creachadair/shell"
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
@@ -43,6 +44,10 @@ func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.S
 }
 
 func (mod *Module) serve(conn net.SecureConn) {
+	defer debug.SaveLog(func(p any) {
+		mod.log.Error("admin session panicked: %v", p)
+	})
+
 	defer conn.Close()
 
 	var term = NewTerminal(conn, mod.log)

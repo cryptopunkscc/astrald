@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"io"
@@ -146,7 +147,13 @@ func (c *Control) Query(service string, localPort int) error {
 
 func (c *Control) handleQuery(msg Query) error {
 	// queries can take a long time to finish, so run them in a goroutine
-	go c.executeQuery(msg)
+	go func() {
+		defer debug.SaveLog(func(p any) {
+			c.Close()
+		})
+		c.executeQuery(msg)
+	}()
+
 	return nil
 }
 

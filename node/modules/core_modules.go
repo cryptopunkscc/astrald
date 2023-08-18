@@ -3,6 +3,7 @@ package modules
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"strings"
@@ -49,8 +50,14 @@ func (m *CoreModules) Run(ctx context.Context) error {
 		if !ok {
 			continue
 		}
+
+		name := name
 		wg.Add(1)
 		go func() {
+			defer debug.SaveLog(func(p any) {
+				m.log.Error("module %s panicked: %v", name, p)
+			})
+
 			defer wg.Done()
 
 			err := mod.Run(ctx)
@@ -58,7 +65,7 @@ func (m *CoreModules) Run(ctx context.Context) error {
 			case err == nil:
 			case errors.Is(err, context.Canceled):
 			default:
-				m.log.Error("run %s: %s", name, err)
+				m.log.Error("module %s ended with error: %s", name, err)
 			}
 		}()
 		started = append(started, name)
