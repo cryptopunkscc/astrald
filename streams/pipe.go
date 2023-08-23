@@ -4,45 +4,45 @@ import (
 	"io"
 )
 
-var _ io.ReadWriteCloser = pipeEnd{}
+var _ io.ReadWriteCloser = PipeEnd{}
 
-type pipeEnd struct {
-	io.ReadCloser
-	io.WriteCloser
+type PipeEnd struct {
+	r *io.PipeReader
+	w *io.PipeWriter
 }
 
 // Pipe builds a bidirectional pipe and returns both ends of it
-func Pipe() (left io.ReadWriteCloser, right io.ReadWriteCloser) {
+func Pipe() (left PipeEnd, right PipeEnd) {
 	lr, rw := io.Pipe()
 	rr, lw := io.Pipe()
 
-	return pipeEnd{
-			ReadCloser:  lr,
-			WriteCloser: lw,
-		}, pipeEnd{
-			ReadCloser:  rr,
-			WriteCloser: rw,
+	return PipeEnd{
+			r: lr,
+			w: lw,
+		}, PipeEnd{
+			r: rr,
+			w: rw,
 		}
 }
 
 // io.ErrClosedPipe, io.EOF
-func (pipe pipeEnd) Read(p []byte) (n int, err error) {
-	n, err = pipe.ReadCloser.Read(p)
+func (pipe PipeEnd) Read(p []byte) (n int, err error) {
+	n, err = pipe.r.Read(p)
 	if err != nil {
-		pipe.WriteCloser.Close()
+		pipe.w.Close()
 	}
 	return
 }
 
-func (pipe pipeEnd) Write(p []byte) (n int, err error) {
-	n, err = pipe.WriteCloser.Write(p)
+func (pipe PipeEnd) Write(p []byte) (n int, err error) {
+	n, err = pipe.w.Write(p)
 	if err != nil {
-		pipe.ReadCloser.Close()
+		pipe.r.Close()
 	}
 	return
 }
 
-func (pipe pipeEnd) Close() error {
-	pipe.ReadCloser.Close()
-	return pipe.WriteCloser.Close()
+func (pipe PipeEnd) Close() error {
+	pipe.r.Close()
+	return pipe.w.Close()
 }

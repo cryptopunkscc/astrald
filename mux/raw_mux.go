@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"encoding/binary"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"io"
 	"sync"
@@ -21,6 +22,7 @@ type RawMux struct {
 	transport io.ReadWriter
 	rmu       sync.Mutex
 	wmu       sync.Mutex
+	endec     *cslq.Endec
 	id        int
 }
 
@@ -28,6 +30,7 @@ type RawMux struct {
 func NewRawMux(transport io.ReadWriter) *RawMux {
 	return &RawMux{
 		transport: transport,
+		endec:     cslq.NewEndec(transport),
 		id:        int(nextID.Add(1)),
 	}
 }
@@ -46,7 +49,21 @@ func (mux *RawMux) Write(port int, frame []byte) (err error) {
 		return ErrFrameTooLarge
 	}
 
-	return cslq.Encode(mux.transport, frameFormat, port, frame)
+	err = binary.Write(mux.transport, binary.BigEndian, uint16(port))
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(mux.transport, binary.BigEndian, uint16(len(frame)))
+	if err != nil {
+		return
+	}
+
+	if len(frame) > 0 {
+		_, err = mux.transport.Write(frame)
+	}
+
+	return err
 }
 
 // Read reads a single data frame.
@@ -54,7 +71,27 @@ func (mux *RawMux) Read() (port int, frame []byte, err error) {
 	mux.rmu.Lock()
 	defer mux.rmu.Unlock()
 
-	return port, frame, cslq.Decode(mux.transport, frameFormat, &port, &frame)
+	var p uint16
+	var l uint16
+
+	err = binary.Read(mux.transport, binary.BigEndian, &p)
+	if err != nil {
+		return
+	}
+	port = int(p)
+
+	err = binary.Read(mux.transport, binary.BigEndian, &l)
+	if err != nil {
+		return
+	}
+	if l == 0 {
+		return int(p), []byte{}, err
+	}
+
+	frame = make([]byte, l)
+	_, err = io.ReadFull(mux.transport, frame)
+
+	return
 }
 
 // Close closes the transport if it's an io.Closer. Returns ErrCloseUnsupported otherwise.
