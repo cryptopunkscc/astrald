@@ -135,7 +135,7 @@ func (link *CoreLink) write(port int, frame []byte) error {
 	link.mu.Lock()
 	defer link.mu.Unlock()
 
-	bufferSize, open := link.remoteBuffers.sizes[port]
+	bufferSize, open := link.remoteBuffers.size(port)
 	if !open {
 		return ErrRemoteBufferOverflow
 	}
