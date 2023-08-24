@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/sig"
 	"reflect"
 	"strings"
 	"time"
@@ -148,15 +149,22 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 }
 
 func (cmd *CmdNet) links(term *Terminal, _ []string) error {
-	var f = "%-24s %-24s %-8s %-16s\n"
+	var f = "%-24s %-24s %-8s %-12s %10s\n"
 
-	term.Printf(f, Header("Local"), Header("Remote"), Header("Net"), Header("Type"))
+	term.Printf(f, Header("Local"), Header("Remote"), Header("Net"), Header("Type"), Header("Idle"))
 	for _, l := range cmd.mod.node.Network().Links().All() {
+		var idle time.Duration = -1
+
+		if i, ok := l.(sig.Idler); ok {
+			idle = i.Idle().Round(time.Second)
+		}
+
 		term.Printf(f,
 			l.LocalIdentity(),
 			l.RemoteIdentity(),
 			Keyword(net.Network(l)),
-			Keyword(reflect.TypeOf(l).String()),
+			Keyword(getLinkType(l)),
+			idle,
 		)
 	}
 
@@ -190,4 +198,12 @@ func (cmd *CmdNet) help(term *Terminal) error {
 
 func (cmd *CmdNet) ShortDescription() string {
 	return "manage p2p network"
+}
+
+func getLinkType(l any) string {
+	var t = reflect.TypeOf(l)
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t.Name()
 }
