@@ -21,8 +21,14 @@ func (h *health) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-h.sig:
+			// no need to ping if the link is active
+			if h.link.Idle() < time.Second {
+				continue
+			}
+
 			_, err := h.link.control.Ping()
 			if err != nil {
+				h.link.CloseWithError(err)
 				return err
 			}
 

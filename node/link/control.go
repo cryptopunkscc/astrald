@@ -13,7 +13,8 @@ import (
 	"time"
 )
 
-const pingTimeout = 10 * time.Second
+const pingTimeout = 30 * time.Second
+const maxConcurrentPings = 10
 
 type Control struct {
 	*CoreLink
@@ -64,8 +65,10 @@ func (c *Control) AfterUnbind() {
 	c.CloseWithError(ErrLinkClosedByPeer)
 }
 
+// Ping sends a ping request and waits for the response. Returns roundtrip time or an error.
+// Errors: ErrTooManyPings, ErrPingTimeout.
 func (c *Control) Ping() (time.Duration, error) {
-	if len(c.pings) > 5 {
+	if len(c.pings) > maxConcurrentPings {
 		return 0, ErrTooManyPings
 	}
 
@@ -83,7 +86,6 @@ func (c *Control) Ping() (time.Duration, error) {
 	case <-ch:
 		return time.Since(pingAt), nil
 	case <-time.After(pingTimeout):
-		c.CloseWithError(ErrPingTimeout)
 		return 0, ErrPingTimeout
 	}
 }

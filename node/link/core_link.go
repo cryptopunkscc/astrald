@@ -9,11 +9,12 @@ import (
 	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
 	"sync"
+	"time"
 )
 
 var _ net.Link = &CoreLink{}
 
-const portBufferSize = mux.MaxFrameSize * 4
+const portBufferSize = 1024 * 1024
 const controlPort = 0
 
 type CoreLink struct {
@@ -120,6 +121,10 @@ func (link *CoreLink) SetUplink(uplink net.Router) {
 
 func (link *CoreLink) Transport() net.SecureConn {
 	return link.transport
+}
+
+func (link *CoreLink) Ping() (time.Duration, error) {
+	return link.control.Ping()
 }
 
 func (link *CoreLink) Done() <-chan struct{} {

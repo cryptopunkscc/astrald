@@ -10,15 +10,22 @@ import (
 var _ io.WriteCloser = &PortWriter{}
 var _ net.Linker = &PortWriter{}
 
+const defaultMaxFrameSize = 1024 * 8
+
 type PortWriter struct {
 	sync.Mutex
-	link *CoreLink
-	port int
-	err  error
+	link         *CoreLink
+	port         int
+	err          error
+	maxFrameSize int
 }
 
 func NewPortWriter(link *CoreLink, port int) *PortWriter {
-	return &PortWriter{link: link, port: port}
+	return &PortWriter{
+		link:         link,
+		port:         port,
+		maxFrameSize: defaultMaxFrameSize,
+	}
 }
 
 func (w *PortWriter) Write(p []byte) (n int, err error) {
@@ -37,8 +44,8 @@ func (w *PortWriter) Write(p []byte) (n int, err error) {
 
 	for {
 		var frameLen = len(p)
-		if frameLen > mux.MaxFrameSize {
-			frameLen = mux.MaxFrameSize
+		if frameLen > w.maxFrameSize {
+			frameLen = w.maxFrameSize
 		}
 
 		w.link.health.Check()
@@ -58,6 +65,14 @@ func (w *PortWriter) Write(p []byte) (n int, err error) {
 			return n, nil
 		}
 	}
+}
+
+func (w *PortWriter) MaxFrameSize() int {
+	return w.maxFrameSize
+}
+
+func (w *PortWriter) SetMaxFrameSize(maxFrameSize int) {
+	w.maxFrameSize = maxFrameSize
 }
 
 func (w *PortWriter) Close() error {
