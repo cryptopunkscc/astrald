@@ -17,7 +17,7 @@ func NewPeerRouter(network *CoreNetwork, target id.Identity) *PeerRouter {
 
 func (router *PeerRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
 	var links = router.links.ByRemoteIdentity(router.Target).ByLocalIdentity(query.Caller())
-	var best = net.SelectLink(links.All(), BestQuality)
+	var best = net.SelectLink(links.AllRaw(), BestQuality)
 
 	if best == nil {
 		best, _ = router.Link(ctx, query.Target())

@@ -1,13 +1,9 @@
 package network
 
-import (
-	"github.com/cryptopunkscc/astrald/net"
-)
-
 type EventLinkAdded struct {
-	Link net.Link
+	Link *ActiveLink
 }
 
 type EventLinkRemoved struct {
-	Link net.Link
+	Link *ActiveLink
 }

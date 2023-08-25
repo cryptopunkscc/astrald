@@ -12,6 +12,7 @@ var (
 	ErrLinkNotFound          = errors.New("not found")
 	ErrNotRunning            = errors.New("not running")
 	ErrIdentityMismatch      = errors.New("local identity mismatch")
+	ErrLinkIsNil             = errors.New("link is nil")
 )
 
 const MaxPeerLinks = 8

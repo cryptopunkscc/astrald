@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -34,6 +35,12 @@ func (cmd *CmdNet) Exec(term *Terminal, args []string) error {
 
 	case "links":
 		return cmd.links(term, args[2:])
+
+	case "show":
+		return cmd.show(term, args[2:])
+
+	case "close":
+		return cmd.close(term, args[2:])
 
 	case "conns":
 		return cmd.conns(term, args[2:])
@@ -148,23 +155,81 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 	return nil
 }
 
-func (cmd *CmdNet) links(term *Terminal, _ []string) error {
-	var f = "%-24s %-24s %-8s %-12s %10s\n"
+func (cmd *CmdNet) show(term *Terminal, args []string) error {
+	if len(args) < 1 {
+		term.Printf("usage: net show <linkID>")
+		return nil
+	}
 
-	term.Printf(f, Header("Local"), Header("Remote"), Header("Net"), Header("Type"), Header("Idle"))
+	lid, err := strconv.Atoi(args[0])
+	if err != nil {
+		return err
+	}
+
+	l, err := cmd.mod.node.Network().Links().Find(lid)
+	if err != nil {
+		return err
+	}
+
+	term.Printf("ID:               %v (%v)\n", l.ID(), getLinkType(l.Link))
+	term.Printf("Identities:       %v:%v\n", l.LocalIdentity(), l.RemoteIdentity())
+	if t := l.Transport(); t != nil {
+		term.Printf("Network:          %v\n", net.Network(l))
+		term.Printf("Local endpoint:   %v\n", t.LocalEndpoint())
+		term.Printf("Remote endpoint:  %v\n", t.RemoteEndpoint())
+		term.Printf("Outbound:         %v\n", t.Outbound())
+	}
+	term.Printf("Age:              %v (%v)\n",
+		time.Since(l.AddedAt()).Round(time.Second),
+		l.AddedAt(),
+	)
+	if idler, ok := l.Link.(sig.Idler); ok {
+		term.Printf("Idle:             %v\n", idler.Idle().Round(time.Second))
+	}
+	return nil
+}
+
+func (cmd *CmdNet) close(term *Terminal, args []string) error {
+	if len(args) < 1 {
+		term.Printf("usage: net close <linkID>")
+		return nil
+	}
+
+	lid, err := strconv.Atoi(args[0])
+	if err != nil {
+		return err
+	}
+
+	l, err := cmd.mod.node.Network().Links().Find(lid)
+	if err != nil {
+		return err
+	}
+
+	return l.Close()
+}
+
+func (cmd *CmdNet) links(term *Terminal, _ []string) error {
+	var f = "%-8d %-24s %-24s %-8s %10s %10s\n"
+
+	term.Printf(f, Header("ID"), Header("Local"), Header("Remote"), Header("Net"), Header("Idle"), Header("Age"))
 	for _, l := range cmd.mod.node.Network().Links().All() {
+		if l == nil {
+			term.Printf("[nil link]\n")
+			continue
+		}
 		var idle time.Duration = -1
 
-		if i, ok := l.(sig.Idler); ok {
+		if i, ok := l.Link.(sig.Idler); ok {
 			idle = i.Idle().Round(time.Second)
 		}
 
 		term.Printf(f,
+			l.ID(),
 			l.LocalIdentity(),
 			l.RemoteIdentity(),
 			Keyword(net.Network(l)),
-			Keyword(getLinkType(l)),
 			idle,
+			time.Since(l.AddedAt()).Round(time.Second),
 		)
 	}
 
@@ -177,7 +242,7 @@ func (cmd *CmdNet) check(_ *Terminal, _ []string) error {
 	}
 
 	for _, l := range cmd.mod.node.Network().Links().All() {
-		if c, ok := l.(checker); ok {
+		if c, ok := l.Link.(checker); ok {
 			c.Check()
 		}
 	}
@@ -188,6 +253,8 @@ func (cmd *CmdNet) help(term *Terminal) error {
 	term.Printf("help: net <command> [options]\n\n")
 	term.Printf("commands:\n\n")
 	term.Printf("  links     list all links\n")
+	term.Printf("  show      show link info\n")
+	term.Printf("  close     close a link\n")
 	term.Printf("  link      link a node\n")
 	term.Printf("  unlink    unlink a node\n")
 	term.Printf("  conns     list all connections\n")

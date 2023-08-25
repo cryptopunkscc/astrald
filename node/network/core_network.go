@@ -206,23 +206,24 @@ func (n *CoreNetwork) addLink(l net.Link) error {
 		defer corelink.Check()
 	}
 
+	active, err := n.links.Add(l)
+	if err != nil {
+		return err
+	}
+
 	go func() {
 		defer debug.SaveLog(debug.SigInt)
 
 		err := l.Run(n.ctx)
-		if e := n.links.Remove(l); e != nil {
+		if e := n.links.Remove(active.ID()); e != nil {
 			panic(e)
 		}
-		n.log.Logv(2, "removed link with %v: %v", l.RemoteIdentity(), err)
-		n.events.Emit(EventLinkRemoved{Link: l})
+		n.log.Logv(2, "removed link %v with %v: %v", active.ID(), l.RemoteIdentity(), err)
+		n.events.Emit(EventLinkRemoved{Link: active})
 	}()
 
-	if err := n.links.Add(l); err != nil {
-		return err
-	}
-
-	n.log.Logv(1, "added link with %v", l.RemoteIdentity())
-	n.events.Emit(EventLinkAdded{Link: l})
+	n.log.Logv(1, "added link %v with %v", active.ID(), l.RemoteIdentity())
+	n.events.Emit(EventLinkAdded{Link: active})
 
 	return nil
 }

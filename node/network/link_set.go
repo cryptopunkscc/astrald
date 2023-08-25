@@ -4,79 +4,121 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type LinkSet struct {
-	mu    sync.Mutex
-	links []net.Link
-	index map[net.Link]struct{}
+	mu     sync.Mutex
+	links  map[int]*ActiveLink
+	index  map[net.Link]int
+	nextID atomic.Int64
+}
+
+type ActiveLink struct {
+	id    int
+	added time.Time
+	net.Link
+}
+
+func (a *ActiveLink) ID() int {
+	return a.id
+}
+
+func (a *ActiveLink) AddedAt() time.Time {
+	return a.added
 }
 
 func NewLinkSet() *LinkSet {
 	return &LinkSet{
-		links: make([]net.Link, 0),
-		index: make(map[net.Link]struct{}),
+		links: make(map[int]*ActiveLink, 0),
+		index: make(map[net.Link]int),
 	}
 }
 
 // Add adds a link to the set.
 // Possible errors: ErrDuplicateLink
-func (set *LinkSet) Add(l net.Link) error {
+func (set *LinkSet) Add(l net.Link) (*ActiveLink, error) {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
-	if _, found := set.index[l]; found {
-		return ErrDuplicateLink
+	if l == nil {
+		return nil, ErrLinkIsNil
 	}
 
-	set.links = append(set.links, l)
-	set.index[l] = struct{}{}
+	if _, found := set.index[l]; found {
+		return nil, ErrDuplicateLink
+	}
 
-	return nil
+	active := &ActiveLink{
+		id:    int(set.nextID.Add(1)),
+		added: time.Now(),
+		Link:  l,
+	}
+
+	set.add(active)
+
+	return active, nil
+}
+
+func (set *LinkSet) add(active *ActiveLink) {
+	set.links[active.id] = active
+	set.index[active.Link] = active.id
+}
+
+func (set *LinkSet) Find(id int) (*ActiveLink, error) {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
+	return set.find(id)
+}
+
+func (set *LinkSet) find(id int) (*ActiveLink, error) {
+	if active, found := set.links[id]; found {
+		return active, nil
+	}
+
+	return nil, ErrLinkNotFound
 }
 
 // Remove removes a link from the set.
 // Errors: ErrLinkNotFound
-func (set *LinkSet) Remove(l net.Link) error {
+func (set *LinkSet) Remove(id int) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
-	_, found := set.index[l]
-	if !found {
-		return ErrLinkNotFound
+	l, err := set.find(id)
+	if err != nil {
+		return err
 	}
 
-	// lookup the index
-	var idx = -1
-	for i, s := range set.links {
-		if l == s {
-			idx = i
-			break
-		}
-	}
-
-	set.links = append(set.links[0:idx], set.links[idx+1:]...)
-	delete(set.index, l)
+	delete(set.index, l.Link)
+	delete(set.links, l.id)
 
 	return nil
 }
 
-// Contains returns true if a link is a part of the set
-func (set *LinkSet) Contains(l net.Link) (found bool) {
+// All returns a copy of an array holding all links in the set
+func (set *LinkSet) All() []*ActiveLink {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
-	_, found = set.index[l]
-	return
+	links := make([]*ActiveLink, 0, len(set.links))
+	for _, l := range set.links {
+		links = append(links, l)
+	}
+
+	return links
 }
 
-// All returns a copy of an array holding all links in the set
-func (set *LinkSet) All() []net.Link {
+func (set *LinkSet) AllRaw() []net.Link {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
 	links := make([]net.Link, len(set.links))
-	copy(links, set.links)
+	for _, l := range set.links {
+		links = append(links, l.Link)
+	}
 
 	return links
 }
@@ -88,9 +130,9 @@ func (set *LinkSet) Count() int {
 func (set *LinkSet) ByRemoteIdentity(identity id.Identity) *LinkSet {
 	var subset = NewLinkSet()
 
-	for _, l := range set.All() {
+	for _, l := range set.links {
 		if l.RemoteIdentity().IsEqual(identity) {
-			subset.Add(l)
+			subset.add(l)
 		}
 	}
 
@@ -100,9 +142,9 @@ func (set *LinkSet) ByRemoteIdentity(identity id.Identity) *LinkSet {
 func (set *LinkSet) ByLocalIdentity(identity id.Identity) *LinkSet {
 	var subset = NewLinkSet()
 
-	for _, l := range set.All() {
+	for _, l := range set.links {
 		if l.LocalIdentity().IsEqual(identity) {
-			subset.Add(l)
+			subset.add(l)
 		}
 	}
 
