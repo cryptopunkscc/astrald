@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"sync"
 )
 
 var _ modules.Module = &Module{}
@@ -22,6 +23,7 @@ type Module struct {
 	assets   assets.Store
 	commands map[string]Command
 	log      *log.Logger
+	mu       sync.Mutex
 }
 
 func (mod *Module) Run(ctx context.Context) error {

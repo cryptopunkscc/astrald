@@ -5,6 +5,9 @@ type Command interface {
 }
 
 func (mod *Module) AddCommand(name string, cmd Command) error {
+	mod.mu.Lock()
+	defer mod.mu.Unlock()
+
 	mod.commands[name] = cmd
 	return nil
 }
