@@ -6,14 +6,16 @@ import (
 )
 
 type health struct {
-	link *CoreLink
-	sig  chan struct{}
+	link    *CoreLink
+	sig     chan struct{}
+	latency time.Duration
 }
 
 func newHealth(link *CoreLink) *health {
 	return &health{
-		link: link,
-		sig:  make(chan struct{}, 1),
+		link:    link,
+		sig:     make(chan struct{}, 1),
+		latency: -1,
 	}
 }
 
@@ -21,12 +23,8 @@ func (h *health) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-h.sig:
-			// no need to ping if the link is active
-			if h.link.Idle() < time.Second {
-				continue
-			}
-
-			_, err := h.link.control.Ping()
+			var err error
+			h.latency, err = h.link.control.Ping()
 			if err != nil {
 				h.link.CloseWithError(err)
 				return err
@@ -56,4 +54,8 @@ func (h *health) Check() {
 	case h.sig <- struct{}{}:
 	default:
 	}
+}
+
+func (h *health) Latency() time.Duration {
+	return h.latency
 }

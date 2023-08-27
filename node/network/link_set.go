@@ -124,10 +124,16 @@ func (set *LinkSet) AllRaw() []net.Link {
 }
 
 func (set *LinkSet) Count() int {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
 	return len(set.links)
 }
 
 func (set *LinkSet) ByRemoteIdentity(identity id.Identity) *LinkSet {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
 	var subset = NewLinkSet()
 
 	for _, l := range set.links {
@@ -140,6 +146,9 @@ func (set *LinkSet) ByRemoteIdentity(identity id.Identity) *LinkSet {
 }
 
 func (set *LinkSet) ByLocalIdentity(identity id.Identity) *LinkSet {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
 	var subset = NewLinkSet()
 
 	for _, l := range set.links {

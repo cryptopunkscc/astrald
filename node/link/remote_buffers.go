@@ -50,9 +50,13 @@ func (buffers *remoteBuffers) wait(port int, size int) error {
 
 	for {
 		if buffers.link.err != nil {
-			return buffers.link.err
+			return buffers.link.err // should this be simply ErrLinkClosed?
 		}
-		if s, ok := buffers.sizes[port]; ok && s >= size {
+		s, ok := buffers.sizes[port]
+		if !ok {
+			return ErrPortClosed
+		}
+		if s >= size {
 			return nil
 		}
 		buffers.cond.Wait()

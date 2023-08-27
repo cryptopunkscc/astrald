@@ -21,6 +21,10 @@ type CmdNet struct {
 	mod *Module
 }
 
+type checkLatency interface {
+	Latency() time.Duration
+}
+
 func (cmd *CmdNet) Exec(term *Terminal, args []string) error {
 	if len(args) < 2 {
 		return cmd.help(term)
@@ -179,6 +183,9 @@ func (cmd *CmdNet) show(term *Terminal, args []string) error {
 		term.Printf("Remote endpoint:  %v\n", t.RemoteEndpoint())
 		term.Printf("Outbound:         %v\n", t.Outbound())
 	}
+	if l, ok := l.Link.(checkLatency); ok {
+		term.Printf("Latency:          %v\n", l.Latency().Round(time.Millisecond))
+	}
 	term.Printf("Age:              %v (%v)\n",
 		time.Since(l.AddedAt()).Round(time.Second),
 		l.AddedAt(),
@@ -209,18 +216,23 @@ func (cmd *CmdNet) close(term *Terminal, args []string) error {
 }
 
 func (cmd *CmdNet) links(term *Terminal, _ []string) error {
-	var f = "%-8d %-24s %-24s %-8s %10s %10s\n"
+	var f = "%-8d %-24s %-24s %-8s %10s %10s %10s\n"
 
-	term.Printf(f, Header("ID"), Header("Local"), Header("Remote"), Header("Net"), Header("Idle"), Header("Age"))
+	term.Printf(f, Header("ID"), Header("Local"), Header("Remote"), Header("Net"), Header("Idle"), Header("Age"), Header("Ping"))
 	for _, l := range cmd.mod.node.Network().Links().All() {
 		if l == nil {
 			term.Printf("[nil link]\n")
 			continue
 		}
 		var idle time.Duration = -1
+		var lat time.Duration = -1
 
 		if i, ok := l.Link.(sig.Idler); ok {
 			idle = i.Idle().Round(time.Second)
+		}
+
+		if l, ok := l.Link.(checkLatency); ok {
+			lat = l.Latency()
 		}
 
 		term.Printf(f,
@@ -230,6 +242,7 @@ func (cmd *CmdNet) links(term *Terminal, _ []string) error {
 			Keyword(net.Network(l)),
 			idle,
 			time.Since(l.AddedAt()).Round(time.Second),
+			lat.Round(time.Millisecond),
 		)
 	}
 

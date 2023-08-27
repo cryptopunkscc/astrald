@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const pingTimeout = 30 * time.Second
+const pingTimeout = 15 * time.Second
 const maxConcurrentPings = 10
 
 type Control struct {

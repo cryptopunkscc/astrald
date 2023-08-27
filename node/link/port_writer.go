@@ -1,16 +1,19 @@
 package link
 
 import (
+	"fmt"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"io"
 	"sync"
+	"time"
 )
 
 var _ io.WriteCloser = &PortWriter{}
 var _ net.Linker = &PortWriter{}
 
 const defaultMaxFrameSize = 1024 * 8
+const debugBufferUnderruns = false
 
 type PortWriter struct {
 	sync.Mutex
@@ -42,18 +45,40 @@ func (w *PortWriter) Write(p []byte) (n int, err error) {
 		return 0, w.err
 	}
 
+	w.link.health.Check()
+
 	for {
 		var frameLen = len(p)
 		if frameLen > w.maxFrameSize {
 			frameLen = w.maxFrameSize
 		}
 
-		w.link.health.Check()
+		var waitCh = make(chan struct{})
+		go func() {
+			t0 := time.Now()
+			for {
+				select {
+				case <-time.After(100 * time.Millisecond):
+					if debugBufferUnderruns {
+						fmt.Printf("BUFFER UNDERRUN: %s port %d: %v bytes waiting for %s\n",
+							w.link.RemoteIdentity().Fingerprint(),
+							w.port,
+							frameLen,
+							time.Since(t0).Round(10*time.Millisecond),
+						)
+					}
 
-		// TODO: stop waiting and close the connection after timeout
+				case <-waitCh:
+					return
+				}
+			}
+		}()
+
 		if err = w.link.remoteBuffers.wait(w.port, frameLen); err != nil {
+			close(waitCh)
 			return 0, err
 		}
+		close(waitCh)
 
 		if err = w.link.write(w.port, p[:frameLen]); err != nil {
 			return n, err

@@ -25,6 +25,9 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 		return nil, err
 	}
 
+	// initialize buffer for response handling
+	link.control.GrowBuffer(localPort, 1024*16)
+
 	// set up response handler
 	var done = make(chan struct{})
 	responseHandler.Func = func(res Response, herr error) {
@@ -34,25 +37,28 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 		link.mux.Unbind(localPort)
 
 		if err = herr; err != nil {
+			link.control.Reset(localPort)
 			return
 		}
 		if err = codeToError(res.Error); err != nil {
+			link.control.Reset(localPort)
 			if res.Error == errRouteNotFound {
 				err = &net.ErrRouteNotFound{Router: link}
 			}
 			return
 		}
 
+		err = link.Bind(localPort, caller)
+
 		target = net.NewSecureWriteCloser(
 			NewPortWriter(link, res.Port),
 			link.RemoteIdentity(),
 		)
-
-		err = link.Bind(localPort, caller)
 	}
 
 	// send the query to the remote peer
 	if err := link.control.Query(query.Query(), localPort); err != nil {
+		link.CloseWithError(err)
 		return nil, err
 	}
 	select {

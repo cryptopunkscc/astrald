@@ -14,11 +14,11 @@ import (
 
 var _ net.Link = &CoreLink{}
 
-const portBufferSize = 1024 * 1024
+const portBufferSize = 2 * 1024 * 1024
 const controlPort = 0
 
 type CoreLink struct {
-	sig.Activity  //TODO: this should be in a container
+	sig.Activity
 	transport     net.SecureConn
 	uplink        net.Router
 	mux           *mux.FrameMux
@@ -60,6 +60,7 @@ func (link *CoreLink) Run(ctx context.Context) error {
 	return link.err
 }
 
+// CloseWithError closes the link with provided error as the reason.
 func (link *CoreLink) CloseWithError(e error) error {
 	link.mu.Lock()
 	defer link.mu.Unlock()
@@ -74,6 +75,7 @@ func (link *CoreLink) CloseWithError(e error) error {
 	return link.transport.Close()
 }
 
+// Bind binds a specific port on the link's multiplexer to a WriteCloser.
 func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) error {
 	err := link.mux.Bind(localPort, NewPortBinding(wc, link, localPort))
 	if err != nil {
@@ -85,6 +87,7 @@ func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) error {
 	return nil
 }
 
+// BindAny binds any port on the link's multiplexer to a WriteCloser.
 func (link *CoreLink) BindAny(wc io.WriteCloser) (int, error) {
 	var err error
 	var handler = NewPortBinding(wc, link, 0)
@@ -95,26 +98,33 @@ func (link *CoreLink) BindAny(wc io.WriteCloser) (int, error) {
 	return handler.port, err
 }
 
+// Close closes the link.
 func (link *CoreLink) Close() error {
 	return link.CloseWithError(ErrLinkClosed)
 }
 
+// LocalIdentity returns the identity of the local party.
 func (link *CoreLink) LocalIdentity() id.Identity {
 	return link.transport.LocalIdentity()
 }
 
+// RemoteIdentity returns the identity of the remote party.
 func (link *CoreLink) RemoteIdentity() id.Identity {
 	return link.transport.RemoteIdentity()
 }
 
+// Check marks the link for health check. This can be called many times without
+// causing any congestion, as health checks are rate limited.
 func (link *CoreLink) Check() {
 	link.health.Check()
 }
 
+// Uplink returns the upstream router to which incoming queries will be sent
 func (link *CoreLink) Uplink() net.Router {
 	return link.uplink
 }
 
+// SetUplink sets the upstream router to which incoming queries will ne sent
 func (link *CoreLink) SetUplink(uplink net.Router) {
 	link.uplink = uplink
 }
@@ -123,15 +133,24 @@ func (link *CoreLink) Transport() net.SecureConn {
 	return link.transport
 }
 
+// Ping sends a new ping request and returns its roundtrip time
 func (link *CoreLink) Ping() (time.Duration, error) {
 	return link.control.Ping()
 }
 
+// Latency returns the last measured latency of the link. It does not trigger a new measurement. If the latency
+// is not known, it returns -1.
+func (link *CoreLink) Latency() time.Duration {
+	return link.health.Latency()
+}
+
+// Done returns a channel that will be closed when the link closes
 func (link *CoreLink) Done() <-chan struct{} {
 	<-link.running
 	return link.ctx.Done()
 }
 
+// Err returns the error that caused the link to close or nil if the link is open
 func (link *CoreLink) Err() error {
 	return link.err
 }

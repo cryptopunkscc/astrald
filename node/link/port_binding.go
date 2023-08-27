@@ -14,7 +14,6 @@ type PortBinding struct {
 	capacity int
 	used     int
 	chunks   [][]byte
-	err      error
 	ch       chan struct{}
 	mu       sync.Mutex
 }
@@ -47,13 +46,10 @@ func (b *PortBinding) HandleFrame(frame mux.Frame) {
 	// add chunk to the buffer
 	if err := b.pushChunk(frame.Data); err != nil {
 		b.link.CloseWithError(err)
-		b.err = err
 	}
 }
 
 func (b *PortBinding) pushChunk(p []byte) error {
-	defer b.signal()
-
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -64,12 +60,35 @@ func (b *PortBinding) pushChunk(p []byte) error {
 	b.chunks = append(b.chunks, p)
 	b.used += len(p)
 
+	b.signal()
+
 	return nil
 }
 
+func (b *PortBinding) popChunk() ([]byte, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if len(b.chunks) == 0 {
+		return nil, ErrPortBufferEmpty
+	}
+
+	chunk := b.chunks[0]
+	b.chunks = b.chunks[1:]
+	b.used -= len(chunk)
+
+	return chunk, nil
+}
+
+func (b *PortBinding) chunkCount() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return len(b.chunks)
+}
+
 func (b *PortBinding) AfterUnbind() {
-	b.err = io.EOF
-	b.signal()
+	b.pushChunk([]byte{})
 }
 
 func (b *PortBinding) signal() {
@@ -80,57 +99,54 @@ func (b *PortBinding) signal() {
 }
 
 func (b *PortBinding) flusher() {
-	defer b.target.Close()
+	defer func() {
+		b.target.Close()
+		b.link.control.Reset(b.port)
+	}()
 
 	for {
 		b.wait()
+		var flushed int
 
-		if err := b.flush(); err != nil {
-			return
+		for {
+			chunk, err := b.popChunk()
+			if err != nil {
+				break
+			}
+
+			// EOF?
+			if len(chunk) == 0 {
+				return
+			}
+
+			n, err := b.target.Write(chunk)
+			if len(chunk) != n {
+				b.link.CloseWithError(errors.New("partial write on port"))
+				return
+			}
+			if err != nil {
+				b.link.CloseWithError(err)
+				return
+			}
+
+			flushed += n
+			if flushed >= defaultMaxFrameSize {
+				break
+			}
 		}
 
-		if b.err != nil {
-			return
+		if flushed > 0 {
+			_ = b.link.control.GrowBuffer(b.port, flushed)
 		}
 	}
 }
 
 func (b *PortBinding) wait() error {
+	if b.chunkCount() > 0 {
+		return nil
+	}
 	<-b.ch
 	return nil
-}
-
-// flush flushes all chunks in the buffer
-func (b *PortBinding) flush() error {
-	for {
-		b.mu.Lock()
-		if len(b.chunks) == 0 {
-			b.mu.Unlock()
-			return nil
-		}
-		chunk := b.chunks[0]
-		b.mu.Unlock()
-
-		// TODO: add timeout
-		n, err := b.target.Write(chunk)
-		if err != nil {
-			return err
-		}
-		if n != len(chunk) {
-			return errors.New("partial write")
-		}
-
-		b.mu.Lock()
-		b.chunks = b.chunks[1:]
-		b.used -= n
-		b.mu.Unlock()
-
-		_ = b.link.control.GrowBuffer(b.port, n)
-	}
-}
-
-func (b *PortBinding) closeWithError(e error) {
-	b.err = e
 }
 
 func (b *PortBinding) available() int {
