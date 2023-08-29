@@ -1,6 +1,6 @@
 module github.com/cryptopunkscc/astrald
 
-go 1.19
+go 1.21
 
 require (
 	bitbucket.org/creachadair/shell v0.0.7
