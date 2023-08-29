@@ -39,9 +39,11 @@ type Pong struct {
 type Query struct {
 	Service string `cslq:"[c]c"`
 	Port    int    `cslq:"s"`
+	Buffer  int    `cslq:"l"`
 }
 
 type Response struct {
-	Error int `cslq:"c"`
-	Port  int `cslq:"s"`
+	Error  int `cslq:"c"`
+	Port   int `cslq:"s"`
+	Buffer int `cslq:"l"`
 }

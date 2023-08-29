@@ -74,11 +74,11 @@ func (w *PortWriter) Write(p []byte) (n int, err error) {
 			}
 		}()
 
-		if err = w.link.remoteBuffers.wait(w.port, frameLen); err != nil {
-			close(waitCh)
+		err = w.link.remoteBuffers.wait(w.port, frameLen)
+		close(waitCh)
+		if err != nil {
 			return 0, err
 		}
-		close(waitCh)
 
 		if err = w.link.write(w.port, p[:frameLen]); err != nil {
 			return n, err

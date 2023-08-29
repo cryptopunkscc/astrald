@@ -14,7 +14,7 @@ import (
 
 var _ net.Link = &CoreLink{}
 
-const portBufferSize = 2 * 1024 * 1024
+const portBufferSize = 4 * 1024 * 1024
 const controlPort = 0
 
 type CoreLink struct {
@@ -81,8 +81,6 @@ func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) error {
 	if err != nil {
 		return err
 	}
-
-	link.control.GrowBuffer(localPort, portBufferSize)
 
 	return nil
 }

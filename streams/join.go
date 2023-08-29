@@ -12,23 +12,25 @@ func Join(left, right io.ReadWriteCloser) (writtenL int64, writtenR int64, err e
 	wg.Add(2)
 
 	go func() {
+		defer wg.Done()
+		defer left.Close()
+
 		var errL error
 		writtenL, errL = io.Copy(left, right)
 		if err == nil {
 			err = errL
 		}
-		left.Close()
-		wg.Done()
 	}()
 
 	go func() {
+		defer wg.Done()
+		defer right.Close()
+
 		var errR error
 		writtenR, errR = io.Copy(right, left)
 		if err == nil {
 			err = errR
 		}
-		right.Close()
-		wg.Done()
 	}()
 
 	wg.Wait()

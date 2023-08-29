@@ -143,6 +143,7 @@ func (c *Control) Query(service string, localPort int) error {
 	cslq.Encode(buf, "cv", codeQuery, Query{
 		Service: service,
 		Port:    localPort,
+		Buffer:  portBufferSize,
 	})
 	return c.mux.Write(mux.Frame{Data: buf.Bytes()})
 }
@@ -179,13 +180,15 @@ func (c *Control) executeQuery(msg Query) error {
 		return c.WriteResponse(msg.Port, &Response{Error: code})
 	}
 
+	c.remoteBuffers.grow(msg.Port, msg.Buffer)
+
 	localPort, err := c.BindAny(target)
 	if err != nil {
 		target.Close()
 		return c.WriteResponse(msg.Port, &Response{Error: errUnexpected})
 	}
 
-	return c.WriteResponse(msg.Port, &Response{Port: localPort})
+	return c.WriteResponse(msg.Port, &Response{Port: localPort, Buffer: portBufferSize})
 }
 
 func (c *Control) WriteResponse(port int, r *Response) error {
