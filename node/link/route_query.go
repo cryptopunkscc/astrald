@@ -7,6 +7,7 @@ import (
 )
 
 func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (target net.SecureWriteCloser, err error) {
+	// validate identities
 	if !query.Target().IsEqual(link.RemoteIdentity()) {
 		return nil, errors.New("target/link identity mismatch")
 	}
@@ -17,8 +18,10 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 		return nil, errors.New("caller/writer identity mismatch")
 	}
 
+	// request a health check to make sure the link is responsive
 	link.health.Check()
 
+	// get a free port and bind a response handler to it
 	var responseHandler = &ResponseHandler{}
 	localPort, err := link.mux.BindAny(responseHandler)
 	if err != nil {
@@ -30,7 +33,7 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 	responseHandler.Func = func(res Response, herr error) {
 		defer close(done)
 
-		// we only want to capture the first frame containing the response, so unbind
+		// we have the response, so unbind the port so that it can be bound to the caller
 		link.mux.Unbind(localPort)
 
 		if err = herr; err != nil {
@@ -38,17 +41,22 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 			return
 		}
 
-		if err = codeToError(res.Error); err != nil {
+		// check error response
+		err = codeToError(res.Error)
+		if err != nil {
 			if res.Error == errRouteNotFound {
 				err = &net.ErrRouteNotFound{Router: link}
 			}
 			return
 		}
 
+		// grow the remote buffer for the port
 		link.remoteBuffers.grow(res.Port, res.Buffer)
 
+		// rebind the port to the caller
 		err = link.Bind(localPort, caller)
 
+		// prepare the target
 		target = net.NewSecureWriteCloser(
 			NewPortWriter(link, res.Port),
 			link.RemoteIdentity(),

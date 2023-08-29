@@ -90,16 +90,19 @@ func (c *Control) Ping() (time.Duration, error) {
 	}
 }
 
+// handlePing is called when a Ping message is received
 func (c *Control) handlePing(msg Ping) error {
 	return c.Pong(msg.Nonce)
 }
 
+// Pong sends a Pong message with the provided nonce
 func (c *Control) Pong(nonce int) error {
 	var buf = &bytes.Buffer{}
 	cslq.Encode(buf, "cv", codePong, Pong{Nonce: nonce})
 	return c.mux.Write(mux.Frame{Data: buf.Bytes()})
 }
 
+// handlePong is called when a Pong message is received
 func (c *Control) handlePong(msg Pong) error {
 	ping, found := c.pings[msg.Nonce]
 	if !found {
@@ -110,6 +113,7 @@ func (c *Control) handlePong(msg Pong) error {
 	return nil
 }
 
+// GrowBuffer sends a GrowBuffer message to indicate that there is more space in port's receive buffer
 func (c *Control) GrowBuffer(port int, size int) error {
 	var buf = &bytes.Buffer{}
 	cslq.Encode(buf, "cv", codeGrowBuffer, GrowBuffer{
@@ -125,6 +129,7 @@ func (c *Control) handleGrowBuffer(msg GrowBuffer) error {
 	return nil
 }
 
+// Reset sends a Reset message to indicate that local port has closed and should not be sent any data
 func (c *Control) Reset(port int) error {
 	var buf = &bytes.Buffer{}
 	cslq.Encode(buf, "cv", codeReset, Reset{
@@ -138,10 +143,11 @@ func (c *Control) handleReset(msg Reset) error {
 	return nil
 }
 
-func (c *Control) Query(service string, localPort int) error {
+// Query sends a Query messsage to the remote party
+func (c *Control) Query(query string, localPort int) error {
 	var buf = &bytes.Buffer{}
 	cslq.Encode(buf, "cv", codeQuery, Query{
-		Service: service,
+		Service: query,
 		Port:    localPort,
 		Buffer:  portBufferSize,
 	})
@@ -160,8 +166,9 @@ func (c *Control) handleQuery(msg Query) error {
 	return nil
 }
 
+// executeQuery executes an incoming query
 func (c *Control) executeQuery(msg Query) error {
-	var q = net.NewQueryOrigin(c.RemoteIdentity(), c.LocalIdentity(), msg.Service, net.OriginNetwork)
+	var query = net.NewQueryOrigin(c.RemoteIdentity(), c.LocalIdentity(), msg.Service, net.OriginNetwork)
 
 	var portWriter = NewPortWriter(c.CoreLink, msg.Port)
 
@@ -171,7 +178,8 @@ func (c *Control) executeQuery(msg Query) error {
 
 	caller := net.NewSecureWriteCloser(portWriter, c.RemoteIdentity())
 
-	target, err := c.uplink.RouteQuery(c.ctx, q, caller)
+	// route the query upstream
+	target, err := c.uplink.RouteQuery(c.ctx, query, caller)
 	if err != nil {
 		var code = errRejected
 		if errors.Is(err, &net.ErrRouteNotFound{}) {
@@ -182,6 +190,7 @@ func (c *Control) executeQuery(msg Query) error {
 
 	c.remoteBuffers.grow(msg.Port, msg.Buffer)
 
+	// asign a local port to the target
 	localPort, err := c.BindAny(target)
 	if err != nil {
 		target.Close()

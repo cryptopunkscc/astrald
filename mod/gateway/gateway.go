@@ -55,6 +55,9 @@ func (module *Gateway) handleQuery(conn net.SecureConn) error {
 
 	nodeID, err := id.ParsePublicKeyHex(cookie)
 	if err != nil {
+		module.log.Errorv(2, "invalid request from %v: malformed target identity", conn.RemoteIdentity())
+		c.Encodef("c", false)
+		conn.Close()
 		return err
 	}
 
