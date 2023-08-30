@@ -25,7 +25,7 @@ type CoreLink struct {
 	control       *Control
 	remoteBuffers *remoteBuffers
 	ctx           context.Context
-	ctxCancel     context.CancelFunc
+	cancelCtx     context.CancelFunc
 	mu            sync.Mutex
 	err           error
 	health        *health
@@ -50,7 +50,7 @@ func NewCoreLink(transport net.SecureConn) *CoreLink {
 }
 
 func (link *CoreLink) Run(ctx context.Context) error {
-	link.ctx, link.ctxCancel = context.WithCancel(ctx)
+	link.ctx, link.cancelCtx = context.WithCancel(ctx)
 
 	var group = tasks.Group(link.mux, link.control, link.health)
 
@@ -71,8 +71,10 @@ func (link *CoreLink) CloseWithError(e error) error {
 	link.err = e
 
 	defer link.remoteBuffers.reset(0)
-	defer link.ctxCancel()
-	return link.transport.Close()
+	if link.cancelCtx != nil {
+		defer link.cancelCtx()
+	}
+	return link.Transport().Close()
 }
 
 // Bind binds a specific port on the link's multiplexer to a WriteCloser.
