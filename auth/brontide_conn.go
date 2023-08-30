@@ -10,9 +10,8 @@ var _ net.SecureConn = &NoiseConn{}
 
 // NoiseConn is a net.SecureConn authenticated and ecrypted via the noise_xk protocol
 type NoiseConn struct {
-	conn           net.Conn
-	brontide       *brontide.Conn
-	remoteIdentity *id.Identity
+	conn     net.Conn
+	brontide *brontide.Conn
 }
 
 func (conn *NoiseConn) Read(p []byte) (n int, err error) {
