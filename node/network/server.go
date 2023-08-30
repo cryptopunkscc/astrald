@@ -3,24 +3,25 @@ package network
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"io"
 )
 
 type SecureConnHandlerFunc func(conn net.SecureConn) error
+type LinkHandlerFunc func(net.Link) error
 
 type Server struct {
 	localID  id.Identity
 	listener infra.Listener
-	handler  SecureConnHandlerFunc
+	handler  LinkHandlerFunc
 	log      *log.Logger
 }
 
-func newServer(localID id.Identity, i infra.Infra, handler SecureConnHandlerFunc, log *log.Logger) (*Server, error) {
+func newServer(localID id.Identity, i infra.Infra, handler LinkHandlerFunc, log *log.Logger) (*Server, error) {
 	listener, ok := i.(infra.Listener)
 	if !ok {
 		return nil, errors.New("infra is not a listener")
@@ -49,10 +50,11 @@ func (srv *Server) Run(ctx context.Context) error {
 				return nil
 			}
 
-			authConn, err := srv.Handshake(ctx, conn)
+			l, err := link.Accept(ctx, conn, srv.localID)
+
 			switch {
 			case err == nil:
-				srv.handler(authConn)
+				srv.handler(l)
 
 			case errors.Is(err, io.EOF),
 				errors.Is(err, context.DeadlineExceeded),
@@ -67,19 +69,4 @@ func (srv *Server) Run(ctx context.Context) error {
 			return ctx.Err()
 		}
 	}
-}
-
-func (srv *Server) Handshake(ctx context.Context, conn net.Conn) (secureConn net.SecureConn, err error) {
-	hsCtx, _ := context.WithTimeout(ctx, HandshakeTimeout)
-	secureConn, err = auth.HandshakeInbound(hsCtx, conn, srv.localID)
-
-	if err != nil {
-		conn.Close()
-	}
-
-	return
-}
-
-func (srv *Server) SetHandler(handler SecureConnHandlerFunc) {
-	srv.handler = handler
 }

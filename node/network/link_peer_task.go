@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/link"
 )
 
 var ErrNodeUnreachable = errors.New("node unreachable")
@@ -58,7 +57,7 @@ func (task *LinkPeerTask) Run(ctx context.Context) (net.Link, error) {
 	}
 	close(ch)
 
-	authed := NewConcurrentHandshake(
+	links := NewConcurrentHandshake(
 		task.Network.node.Identity(),
 		task.RemoteID,
 		workers,
@@ -75,18 +74,17 @@ func (task *LinkPeerTask) Run(ctx context.Context) (net.Link, error) {
 
 	defer func() {
 		go func() {
-			for a := range authed {
+			for a := range links {
 				a.Close()
 			}
 		}()
 	}()
 
-	authConn, ok := <-authed
+	l, ok := <-links
 	if !ok {
 		return nil, ErrNodeUnreachable
 	}
 
-	l := link.NewCoreLink(authConn)
 	if err := task.Network.AddLink(l); err != nil {
 		l.Close()
 		return nil, err

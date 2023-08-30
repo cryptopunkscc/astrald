@@ -49,9 +49,7 @@ func NewCoreNetwork(node Node, eventParent *events.Queue, log *log.Logger) (*Cor
 	}
 
 	m.events.SetParent(eventParent)
-	m.server, err = newServer(node.Identity(), node.Infra(), func(conn net.SecureConn) error {
-		return m.AddLink(link.NewCoreLink(conn))
-	}, m.log)
+	m.server, err = newServer(node.Identity(), node.Infra(), m.AddLink, m.log)
 	if err != nil {
 		return nil, err
 	}

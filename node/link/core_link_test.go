@@ -19,6 +19,27 @@ type SecureConn struct {
 	io.ReadWriteCloser
 }
 
+type FakeConn struct {
+	io.ReadWriteCloser
+	outbound bool
+}
+
+func (n *FakeConn) Outbound() bool {
+	return n.outbound
+}
+
+func (n *FakeConn) LocalEndpoint() net.Endpoint {
+	return net.NewGenericEndpoint("none", []byte{0})
+}
+
+func (n *FakeConn) RemoteEndpoint() net.Endpoint {
+	return net.NewGenericEndpoint("none", []byte{0})
+}
+
+func (n *FakeConn) Close() error {
+	return n.ReadWriteCloser.Close()
+}
+
 const msg = "IMPORTANT: hello from the other side\n"
 
 func NewSecureConn(localIdentity id.Identity, remoteIdentity id.Identity, readWriteCloser io.ReadWriteCloser) *SecureConn {
@@ -113,4 +134,41 @@ func TestCoreLink(t *testing.T) {
 	if !errors.Is(id2link.Err(), ErrLinkClosed) {
 		t.Fatalf("link2 closed with %s, expected %s", id1link.Err(), ErrLinkClosed)
 	}
+}
+
+func TestOpenAccept(t *testing.T) {
+	var wg sync.WaitGroup
+	var left, right = streams.Pipe()
+	var leftID, _ = id.GenerateIdentity()
+	var rightID, _ = id.GenerateIdentity()
+	var ctx = context.Background()
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+
+		conn := &FakeConn{ReadWriteCloser: left}
+
+		link, err := Accept(ctx, conn, leftID)
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+		link.Close()
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		conn := &FakeConn{ReadWriteCloser: right}
+
+		link, err := Open(ctx, conn, leftID, rightID)
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+		link.Close()
+	}()
+
+	wg.Wait()
 }
