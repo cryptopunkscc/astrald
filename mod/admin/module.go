@@ -4,6 +4,7 @@ import (
 	"bitbucket.org/creachadair/shell"
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
@@ -37,12 +38,34 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	if query.Origin() != net.OriginLocal {
+func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	// check if the caller has access to the admin panel
+	if !mod.hasAccess(caller.Identity()) {
 		return nil, net.ErrRejected
 	}
 
 	return net.Accept(query, caller, mod.serve)
+}
+
+func (mod *Module) hasAccess(identity id.Identity) bool {
+	// Node's identity always has access to itself
+	if identity.IsEqual(mod.node.Identity()) {
+		return true
+	}
+
+	// Check config file admins
+	for _, name := range mod.config.Admins {
+		admin, err := mod.node.Resolver().Resolve(name)
+		if err != nil {
+			continue
+		}
+
+		if identity.IsEqual(admin) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (mod *Module) serve(conn net.SecureConn) {

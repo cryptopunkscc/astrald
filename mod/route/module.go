@@ -95,7 +95,7 @@ func (m *Module) RouteVia(ctx context.Context, relay id.Identity, query net.Quer
 	return net.NewSecureWriteCloser(routeConn, query.Target()), nil
 }
 
-func (m *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (m *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	if query.Caller().IsEqual(m.node.Identity()) {
 		return nil, &net.ErrRouteNotFound{Router: m}
 	}

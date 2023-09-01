@@ -31,7 +31,7 @@ func (server *Server) Run(ctx context.Context) error {
 	return nil
 }
 
-func (server *Server) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (server *Server) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	if linker, ok := caller.(net.Linker); ok {
 		if l := linker.Link(); l != nil {
 			return net.Accept(query, caller, func(conn net.SecureConn) {

@@ -6,7 +6,9 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -48,6 +50,9 @@ func (cmd *CmdNet) Exec(term *Terminal, args []string) error {
 
 	case "conns":
 		return cmd.conns(term, args[2:])
+
+	case "conn":
+		return cmd.conn(term, args[2:])
 
 	case "check":
 		return cmd.check(term, args[2:])
@@ -131,10 +136,10 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 		return errors.New("unsupported node type")
 	}
 
-	var f1 = "%-6d %-30s %-20s %-8s %-8s %8s %8s\n"
-	var f2 = "%-6d %s %-20s %-8s %-8s %8s %8s\n"
+	var f1 = "%-6d %-30s %-20s %-8s %8s %8s\n"
+	var f2 = "%-6d %s %-20s %-8s %8s %8s\n"
 
-	term.Printf(f1, Header("ID"), Header("Identities"), Header("Query"), Header("State"), Header("Origin"), Header("In"), Header("Out"))
+	term.Printf(f1, Header("ID"), Header("Identities"), Header("Query"), Header("State"), Header("In"), Header("Out"))
 	for _, conn := range corenode.Conns().All() {
 		c := term.Color
 		term.Color = false
@@ -150,13 +155,59 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 			peers,
 			conn.Query().Query(),
 			conn.State(),
-			conn.Query().Origin(),
 			log.DataSize(conn.BytesIn()).HumanReadable(),
 			log.DataSize(conn.BytesOut()).HumanReadable(),
 		)
 	}
 
 	return nil
+}
+
+func (cmd *CmdNet) conn(term *Terminal, args []string) error {
+	corenode, ok := cmd.mod.node.(*node.CoreNode)
+	if !ok {
+		return errors.New("unsupported node type")
+	}
+
+	if len(args) < 1 {
+		term.Printf("usage: net conn <ConnID>\n")
+		return nil
+	}
+
+	cid, err := strconv.Atoi(args[0])
+	if err != nil {
+		return err
+	}
+
+	conn := corenode.Conns().Find(cid)
+	if conn == nil {
+		return errors.New("no such connection")
+	}
+
+	term.Printf("Caller:\n")
+	cmd.printWriterInfo(term, conn.Caller())
+
+	term.Printf("Target:\n")
+	cmd.printWriterInfo(term, conn.Target())
+
+	return nil
+}
+
+func (cmd *CmdNet) printWriterInfo(term *Terminal, writer io.Writer) {
+	final := net.FinalWriter(writer)
+	term.Printf("Final: %s\n", reflect.TypeOf(final))
+
+	if w, ok := final.(*link.PortWriter); ok {
+		term.Printf("Port: %d\n", w.Port())
+	}
+
+	if w, ok := final.(*net.PipeWriter); ok {
+		term.Printf("Source: %d\n", reflect.TypeOf(w.Source()))
+		if b, ok := w.Source().(*link.PortBinding); ok {
+			term.Printf("Port: %d\n", b.Port())
+
+		}
+	}
 }
 
 func (cmd *CmdNet) show(term *Terminal, args []string) error {

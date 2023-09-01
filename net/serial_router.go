@@ -15,10 +15,10 @@ func NewSerialRouter(routers ...Router) *SerialRouter {
 	return &SerialRouter{Routers: routers}
 }
 
-func (m *SerialRouter) RouteQuery(ctx context.Context, query Query, caller SecureWriteCloser) (SecureWriteCloser, error) {
+func (m *SerialRouter) RouteQuery(ctx context.Context, query Query, caller SecureWriteCloser, hints Hints) (SecureWriteCloser, error) {
 	var rerr = &ErrRouteNotFound{Router: m}
 	for _, router := range m.Routers {
-		target, err := router.RouteQuery(ctx, query, caller)
+		target, err := router.RouteQuery(ctx, query, caller, hints)
 		if err == nil {
 			return target, nil
 		}

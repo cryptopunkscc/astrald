@@ -6,6 +6,7 @@ import (
 )
 
 var _ SecureConn = &secureConn{}
+var _ WriterIter = &secureConn{}
 
 type secureConn struct {
 	SecureWriteCloser
@@ -48,4 +49,12 @@ func (s *secureConn) RemoteIdentity() id.Identity {
 
 func (s *secureConn) LocalIdentity() id.Identity {
 	return s.localIdentity
+}
+
+func (s *secureConn) NextWriter() io.Writer {
+	return s.SecureWriteCloser
+}
+
+func (s *secureConn) NextReader() io.Reader {
+	return s.Reader
 }

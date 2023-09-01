@@ -3,9 +3,11 @@ package node
 import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 )
 
 var _ net.SecureWriteCloser = &MonitoredWriter{}
+var _ net.WriterIter = &MonitoredWriter{}
 
 type MonitoredWriter struct {
 	net.SecureWriteCloser
@@ -45,9 +47,6 @@ func (w *MonitoredWriter) Bytes() int {
 	return w.bytes
 }
 
-func (w *MonitoredWriter) Link() net.Link {
-	if l, ok := w.SecureWriteCloser.(net.Linker); ok {
-		return l.Link()
-	}
-	return nil
+func (w *MonitoredWriter) NextWriter() io.Writer {
+	return w.SecureWriteCloser
 }

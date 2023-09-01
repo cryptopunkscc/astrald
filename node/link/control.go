@@ -168,7 +168,7 @@ func (c *Control) handleQuery(msg Query) error {
 
 // executeQuery executes an incoming query
 func (c *Control) executeQuery(msg Query) error {
-	var query = net.NewQueryOrigin(c.RemoteIdentity(), c.LocalIdentity(), msg.Service, net.OriginNetwork)
+	var query = net.NewQuery(c.RemoteIdentity(), c.LocalIdentity(), msg.Service)
 
 	var portWriter = NewPortWriter(c.CoreLink, msg.Port)
 
@@ -179,7 +179,7 @@ func (c *Control) executeQuery(msg Query) error {
 	caller := net.NewSecureWriteCloser(portWriter, c.RemoteIdentity())
 
 	// route the query upstream
-	target, err := c.uplink.RouteQuery(c.ctx, query, caller)
+	target, err := c.uplink.RouteQuery(c.ctx, query, caller, net.Hints{Origin: net.OriginNetwork})
 	if err != nil {
 		var code = errRejected
 		if errors.Is(err, &net.ErrRouteNotFound{}) {
@@ -191,13 +191,17 @@ func (c *Control) executeQuery(msg Query) error {
 	c.remoteBuffers.grow(msg.Port, msg.Buffer)
 
 	// asign a local port to the target
-	localPort, err := c.BindAny(target)
+	binding, err := c.BindAny(target)
 	if err != nil {
 		target.Close()
 		return c.WriteResponse(msg.Port, &Response{Error: errUnexpected})
 	}
 
-	return c.WriteResponse(msg.Port, &Response{Port: localPort, Buffer: portBufferSize})
+	if sourcer, ok := net.FinalWriter(target).(net.Sourcer); ok {
+		sourcer.SetSource(binding)
+	}
+
+	return c.WriteResponse(msg.Port, &Response{Port: binding.port, Buffer: portBufferSize})
 }
 
 func (c *Control) WriteResponse(port int, r *Response) error {

@@ -33,7 +33,7 @@ func (module *Gateway) Run(ctx context.Context) error {
 	return nil
 }
 
-func (module *Gateway) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (module *Gateway) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		defer debug.SaveLog(func(p any) {
 			module.log.Error("gateway panicked: %v", p)

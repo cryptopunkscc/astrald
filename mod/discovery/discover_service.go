@@ -28,13 +28,13 @@ func (service *DiscoveryService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (service *DiscoveryService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (service *DiscoveryService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		defer debug.SaveLog(func(p any) {
 			service.log.Error("discovery panicked: %v", p)
 		})
 
-		service.serve(conn, query.Origin())
+		service.serve(conn, hints.Origin)
 	})
 }
 

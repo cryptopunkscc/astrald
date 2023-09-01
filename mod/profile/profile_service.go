@@ -40,7 +40,7 @@ func (service *ProfileService) Discover(ctx context.Context, caller id.Identity,
 	}, nil
 }
 
-func (service *ProfileService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (service *ProfileService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		service.serve(conn)
 	})

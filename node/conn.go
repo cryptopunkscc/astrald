@@ -21,12 +21,10 @@ type Conn struct {
 	query         net.Query
 	establishedAt time.Time
 
-	remoteClosed atomic.Bool
-	localClosed  atomic.Bool
+	targetClosed atomic.Bool
+	callerClosed atomic.Bool
 	done         chan struct{}
 }
-
-type checkPort interface{ Port() int }
 
 func NewConn(caller *MonitoredWriter, target *MonitoredWriter, query net.Query) *Conn {
 	c := &Conn{
@@ -39,13 +37,13 @@ func NewConn(caller *MonitoredWriter, target *MonitoredWriter, query net.Query) 
 	}
 
 	c.target.AfterClose = func(err error) {
-		if c.remoteClosed.CompareAndSwap(false, true) {
+		if c.targetClosed.CompareAndSwap(false, true) {
 			c.checkClosed()
 		}
 	}
 
 	c.caller.AfterClose = func(err error) {
-		if c.localClosed.CompareAndSwap(false, true) {
+		if c.callerClosed.CompareAndSwap(false, true) {
 			c.checkClosed()
 		}
 	}
@@ -70,31 +68,11 @@ func (conn *Conn) Query() net.Query {
 }
 
 func (conn *Conn) BytesOut() int {
-	if conn.query.Origin() == net.OriginNetwork {
-		return conn.caller.Bytes()
-	}
 	return conn.target.Bytes()
 }
 
 func (conn *Conn) BytesIn() int {
-	if conn.query.Origin() == net.OriginNetwork {
-		return conn.target.Bytes()
-	}
 	return conn.caller.Bytes()
-}
-
-func (conn *Conn) LocalPort() int {
-	if p, ok := conn.target.SecureWriteCloser.(checkPort); ok {
-		return p.Port()
-	}
-	return -1
-}
-
-func (conn *Conn) RemotePort() int {
-	if p, ok := conn.caller.SecureWriteCloser.(checkPort); ok {
-		return p.Port()
-	}
-	return -1
 }
 
 func (conn *Conn) Done() <-chan struct{} {
@@ -103,10 +81,10 @@ func (conn *Conn) Done() <-chan struct{} {
 
 func (conn *Conn) State() string {
 	var c int
-	if conn.localClosed.Load() {
+	if conn.callerClosed.Load() {
 		c++
 	}
-	if conn.remoteClosed.Load() {
+	if conn.targetClosed.Load() {
 		c++
 	}
 	switch c {
@@ -121,7 +99,7 @@ func (conn *Conn) State() string {
 }
 
 func (conn *Conn) checkClosed() {
-	if conn.localClosed.Load() && conn.remoteClosed.Load() {
+	if conn.callerClosed.Load() && conn.targetClosed.Load() {
 		close(conn.done)
 	}
 }

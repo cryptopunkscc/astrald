@@ -23,9 +23,9 @@ type ReadService struct {
 	*Module
 }
 
-func (service *ReadService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (service *ReadService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
-		service.handle(service.ctx, conn, query.Origin())
+		service.handle(service.ctx, conn, hints.Origin)
 	})
 }
 
@@ -99,12 +99,12 @@ func (service *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, cal
 		go func() {
 			defer wg.Done()
 
-			conn, err := net.Route(ctx, service.node.Services(), net.NewQueryOrigin(
-				caller,
-				source.Identity,
-				source.Service,
-				origin,
-			))
+			conn, err := net.RouteWithHints(
+				ctx,
+				service.node.Services(),
+				net.NewQuery(caller, source.Identity, source.Service),
+				net.Hints{Origin: origin},
+			)
 
 			if err != nil {
 				switch {

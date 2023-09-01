@@ -56,7 +56,7 @@ type TestRouter struct {
 	t *testing.T
 }
 
-func (l *TestRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (l *TestRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		_, err := conn.Write([]byte(msg))
 		if err != nil {

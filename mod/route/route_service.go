@@ -22,11 +22,11 @@ func (service *RouteService) Run(ctx context.Context) error {
 	return err
 }
 
-func (service *RouteService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (service *RouteService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		defer conn.Close()
 
-		if err := service.serve(ctx, conn, query.Origin()); err != nil {
+		if err := service.serve(ctx, conn, hints.Origin); err != nil {
 			service.log.Errorv(2, "(%s) serve: %s", query.Caller(), err)
 		}
 	})
@@ -111,12 +111,12 @@ func (service *RouteService) serve(ctx context.Context, conn net.SecureConn, ori
 				}
 			}
 
-			var q = net.NewQueryOrigin(caller, target, query.Query, origin)
+			var q = net.NewQuery(caller, target, query.Query)
 			var shiftedConn = replaceIdentity{SecureConn: conn, remoteIdentity: caller}
 
 			service.log.Logv(2, "(%s) routing query -> %s:%s", caller, q.Target(), q.Query())
 
-			localWriter, err := srv.RouteQuery(ctx, q, shiftedConn)
+			localWriter, err := srv.RouteQuery(ctx, q, shiftedConn, net.Hints{Origin: origin})
 			if err != nil {
 				return c.EncodeErr(proto.ErrRejected)
 			}

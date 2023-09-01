@@ -74,29 +74,3 @@ func (set *ConnSet) Find(id int) *Conn {
 
 	return nil
 }
-
-func (set *ConnSet) FindByRemotePort(remotePort int) *Conn {
-	set.mu.Lock()
-	defer set.mu.Unlock()
-
-	for _, conn := range set.items {
-		if conn.RemotePort() == remotePort {
-			return conn
-		}
-	}
-
-	return nil
-}
-
-func (set *ConnSet) FindByLocalPort(localPort int) *Conn {
-	set.mu.Lock()
-	defer set.mu.Unlock()
-
-	for _, conn := range set.items {
-		if conn.LocalPort() == localPort {
-			return conn
-		}
-	}
-
-	return nil
-}

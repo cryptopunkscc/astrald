@@ -15,7 +15,7 @@ type RelayRouter struct {
 	identity id.Identity
 }
 
-func (fwd *RelayRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, opts net.Hints) (net.SecureWriteCloser, error) {
+func (fwd *RelayRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	c, err := proto.Dial(fwd.target)
 	if err != nil {
 		fwd.log.Errorv(2, "%s:%s forward to %s: %s", query.Target(), query.Query(), fwd.target, err)

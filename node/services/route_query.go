@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 )
 
-func (srv *CoreServices) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (srv *CoreServices) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	// Fetch the service
 	service, err := srv.Find(query.Target(), query.Query())
 	if err != nil {
@@ -17,7 +17,7 @@ func (srv *CoreServices) RouteQuery(ctx context.Context, query net.Query, caller
 		return nil, errors.New("service unreachable")
 	}
 
-	target, err := service.RouteQuery(ctx, query, caller)
+	target, err := service.RouteQuery(ctx, query, caller, hints)
 	if err != nil {
 		return nil, err
 	}

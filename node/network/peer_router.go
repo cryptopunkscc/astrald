@@ -15,7 +15,7 @@ func NewPeerRouter(network *CoreNetwork, target id.Identity) *PeerRouter {
 	return &PeerRouter{Target: target, CoreNetwork: network}
 }
 
-func (router *PeerRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (router *PeerRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	var links = router.links.ByRemoteIdentity(router.Target).ByLocalIdentity(query.Caller())
 	var best = net.SelectLink(links.AllRaw(), BestQuality)
 
@@ -27,5 +27,5 @@ func (router *PeerRouter) RouteQuery(ctx context.Context, query net.Query, calle
 		return nil, &net.ErrRouteNotFound{Router: router}
 	}
 
-	return best.RouteQuery(ctx, query, caller)
+	return best.RouteQuery(ctx, query, caller, hints)
 }

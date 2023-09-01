@@ -11,7 +11,7 @@ type SecureWriteCloser interface {
 }
 
 var _ SecureWriteCloser = &secureWriteCloser{}
-var _ Linker = &secureWriteCloser{}
+var _ WriterIter = &secureWriteCloser{}
 
 type secureWriteCloser struct {
 	io.WriteCloser
@@ -26,9 +26,6 @@ func (s *secureWriteCloser) Identity() id.Identity {
 	return s.identity
 }
 
-func (s *secureWriteCloser) Link() Link {
-	if l, ok := s.WriteCloser.(Linker); ok {
-		return l.Link()
-	}
-	return nil
+func (s *secureWriteCloser) NextWriter() io.Writer {
+	return s.WriteCloser
 }

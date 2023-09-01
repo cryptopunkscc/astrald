@@ -25,16 +25,16 @@ func NewCoreRouter(routers []net.Router, log *log.Logger) *CoreRouter {
 	return router
 }
 
-func (router *CoreRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	router.log.Logv(2, "routing query %v -> %v:%v (origin %s)...", query.Caller(), query.Target(), query.Query(), query.Origin())
+func (router *CoreRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	router.log.Logv(2, "routing query %v -> %v:%v (origin %s)...", query.Caller(), query.Target(), query.Query(), hints.Origin)
 
 	var startedAt = time.Now()
-	target, err := router.Monitor.RouteQuery(ctx, query, caller)
+	target, err := router.Monitor.RouteQuery(ctx, query, caller, hints)
 	var d = time.Since(startedAt)
 
 	if err != nil {
 		router.log.Infov(1, "error routing %s query %v -> %v:%v after %v: %v",
-			query.Origin(), query.Caller(), query.Target(), query.Query(), d, err,
+			hints.Origin, query.Caller(), query.Target(), query.Query(), d, err,
 		)
 		if rnf, ok := err.(*net.ErrRouteNotFound); ok {
 			for _, line := range strings.Split(rnf.Trace(), "\n") {
@@ -45,7 +45,7 @@ func (router *CoreRouter) RouteQuery(ctx context.Context, query net.Query, calle
 		}
 	} else {
 		router.log.Infov(1, "routed %s query %v -> %v:%v in %v",
-			query.Origin(), query.Caller(), target.Identity(), query.Query(), d,
+			hints.Origin, query.Caller(), target.Identity(), query.Query(), d,
 		)
 	}
 

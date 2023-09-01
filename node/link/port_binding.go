@@ -15,7 +15,7 @@ type PortBinding struct {
 	used     int
 	chunks   [][]byte
 	ch       chan struct{}
-	mu       sync.Mutex
+	chunksMu sync.Mutex
 }
 
 func NewPortBinding(writeCloser io.WriteCloser, link *CoreLink, port int) *PortBinding {
@@ -49,9 +49,25 @@ func (b *PortBinding) HandleFrame(frame mux.Frame) {
 	}
 }
 
+func (b *PortBinding) AfterUnbind() {
+	b.pushChunk([]byte{})
+}
+
+func (b *PortBinding) Target() io.WriteCloser {
+	return b.target
+}
+
+func (b *PortBinding) Link() *CoreLink {
+	return b.link
+}
+
+func (b *PortBinding) Port() int {
+	return b.port
+}
+
 func (b *PortBinding) pushChunk(p []byte) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.chunksMu.Lock()
+	defer b.chunksMu.Unlock()
 
 	if len(p) > b.available() {
 		return ErrPortBufferOverflow
@@ -66,8 +82,8 @@ func (b *PortBinding) pushChunk(p []byte) error {
 }
 
 func (b *PortBinding) popChunk() ([]byte, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.chunksMu.Lock()
+	defer b.chunksMu.Unlock()
 
 	if len(b.chunks) == 0 {
 		return nil, ErrPortBufferEmpty
@@ -81,14 +97,10 @@ func (b *PortBinding) popChunk() ([]byte, error) {
 }
 
 func (b *PortBinding) chunkCount() int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.chunksMu.Lock()
+	defer b.chunksMu.Unlock()
 
 	return len(b.chunks)
-}
-
-func (b *PortBinding) AfterUnbind() {
-	b.pushChunk([]byte{})
 }
 
 func (b *PortBinding) signal() {

@@ -13,7 +13,7 @@ type Connect struct {
 	node node.Node
 }
 
-func (mod *Connect) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (mod *Connect) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		l, err := link.Accept(ctx, conn, mod.node.Identity())
 		if err != nil {

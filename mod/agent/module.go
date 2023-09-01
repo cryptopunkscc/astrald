@@ -15,8 +15,8 @@ type Module struct {
 	ctx  context.Context
 }
 
-func (module *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
-	if query.Origin() != net.OriginLocal {
+func (module *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	if hints.Origin != net.OriginLocal {
 		return nil, net.ErrRejected
 	}
 

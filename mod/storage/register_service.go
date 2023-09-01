@@ -28,7 +28,7 @@ func (service *RegisterService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (service *RegisterService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (service *RegisterService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	if !service.IsProvider(query.Caller()) {
 		service.log.Errorv(2, "register_provider: %v is not a provider, rejecting...", query.Caller())
 		return nil, net.ErrRejected

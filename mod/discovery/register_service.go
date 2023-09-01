@@ -29,7 +29,7 @@ func (srv *RegisterService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *RegisterService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (srv *RegisterService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		cslq.Invoke(conn, func(msg rpc.MsgRegister) error {
 			return srv.serveRegister(conn, msg)

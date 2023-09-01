@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 )
 
-func (n *CoreNetwork) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (targetWriter net.SecureWriteCloser, err error) {
+func (n *CoreNetwork) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (targetWriter net.SecureWriteCloser, err error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
 	defer cancel()
 
@@ -14,5 +14,5 @@ func (n *CoreNetwork) RouteQuery(ctx context.Context, query net.Query, caller ne
 		return nil, errors.New("caller has zero value")
 	}
 
-	return NewPeerRouter(n, query.Target()).RouteQuery(ctx, query, caller)
+	return NewPeerRouter(n, query.Target()).RouteQuery(ctx, query, caller, hints)
 }

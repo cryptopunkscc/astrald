@@ -161,7 +161,7 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 	return list, nil
 }
 
-func (m *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (m *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	relay, found := m.routes[query.Target().PublicKeyHex()]
 	if !found {
 		return nil, &net.ErrRouteNotFound{Router: m}

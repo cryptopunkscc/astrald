@@ -21,10 +21,10 @@ func NewMonitoredRouter(router net.Router) *MonitoredRouter {
 	}
 }
 
-func (router *MonitoredRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (target net.SecureWriteCloser, err error) {
+func (router *MonitoredRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
 	var callerMonitor = NewMonitoredWriter(caller)
 
-	target, err = router.Router.RouteQuery(ctx, query, callerMonitor)
+	target, err = router.Router.RouteQuery(ctx, query, callerMonitor, hints)
 	if err != nil {
 		return nil, err
 	}

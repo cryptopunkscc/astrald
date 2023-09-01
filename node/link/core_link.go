@@ -78,24 +78,24 @@ func (link *CoreLink) CloseWithError(e error) error {
 }
 
 // Bind binds a specific port on the link's multiplexer to a WriteCloser.
-func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) error {
-	err := link.mux.Bind(localPort, NewPortBinding(wc, link, localPort))
-	if err != nil {
-		return err
-	}
+func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) (binding *PortBinding, err error) {
+	binding = NewPortBinding(wc, link, localPort)
+	err = link.mux.Bind(localPort, binding)
 
-	return nil
+	return
 }
 
 // BindAny binds any port on the link's multiplexer to a WriteCloser.
-func (link *CoreLink) BindAny(wc io.WriteCloser) (int, error) {
-	var err error
-	var handler = NewPortBinding(wc, link, 0)
-	handler.port, err = link.mux.BindAny(handler)
+func (link *CoreLink) BindAny(wc io.WriteCloser) (binding *PortBinding, err error) {
+	binding = NewPortBinding(wc, link, 0)
+	binding.port, err = link.mux.BindAny(binding)
 
-	link.control.GrowBuffer(handler.port, portBufferSize)
+	return
+}
 
-	return handler.port, err
+// Unbind unbinds a local port
+func (link *CoreLink) Unbind(port int) error {
+	return link.mux.Unbind(port)
 }
 
 // Close closes the link.

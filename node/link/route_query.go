@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 )
 
-func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (target net.SecureWriteCloser, err error) {
+func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
 	// validate identities
 	if !query.Target().IsEqual(link.RemoteIdentity()) {
 		return nil, errors.New("target/link identity mismatch")
@@ -50,11 +50,19 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 			return
 		}
 
+		// rebind the port to the caller
+		var binding *PortBinding
+		binding, err = link.Bind(localPort, caller)
+		if err != nil {
+			return
+		}
+
+		if sourced, ok := net.FinalWriter(caller).(net.Sourcer); ok {
+			sourced.SetSource(binding)
+		}
+
 		// grow the remote buffer for the port
 		link.remoteBuffers.grow(res.Port, res.Buffer)
-
-		// rebind the port to the caller
-		err = link.Bind(localPort, caller)
 
 		// prepare the target
 		target = net.NewSecureWriteCloser(

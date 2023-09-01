@@ -25,7 +25,7 @@ func (server *ForwardOutServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (server *ForwardOutServer) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser) (net.SecureWriteCloser, error) {
+func (server *ForwardOutServer) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	outConn, err := _net.Dial("tcp", server.target)
 	if err != nil {
 		server.log.Errorv(1, "error forwarding %s to %s: %s", server.serviceName, server.target, err)
