@@ -7,8 +7,8 @@ type Config struct {
 	// Number of apphost workers
 	Workers int `yaml:"workers"`
 
-	// Allow anonymous sessions (with an empty access token)
-	AllowAnonymous bool `yaml:"allow_anonymous"`
+	// Identity to use for anonymous connections
+	DefaultIdentity string `yaml:"default_identity"`
 
 	Tokens  map[string]string `yaml:"tokens"`
 	Autorun []configRun       `yaml:"autorun"`
@@ -25,7 +25,6 @@ var defaultConfig = Config{
 		"tcp:127.0.0.1:8625",
 		"unix:~/.apphost.sock",
 	},
-	Tokens:         map[string]string{},
-	Workers:        256,
-	AllowAnonymous: false,
+	Tokens:  map[string]string{},
+	Workers: 256,
 }

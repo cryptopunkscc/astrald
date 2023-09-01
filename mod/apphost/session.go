@@ -38,7 +38,11 @@ func (s *Session) auth(_ context.Context) error {
 		s.remoteID = s.mod.authToken(p.Token)
 	}
 
-	if s.remoteID.IsZero() && !s.mod.config.AllowAnonymous {
+	if s.remoteID.IsZero() {
+		s.remoteID = s.mod.defaultIdentity()
+	}
+
+	if s.remoteID.IsZero() {
 		s.WriteErr(proto.ErrUnauthorized)
 		return errors.New("unauthorized")
 	}

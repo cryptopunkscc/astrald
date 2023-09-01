@@ -127,6 +127,11 @@ func (mod *Module) createToken(identity id.Identity) string {
 	return token
 }
 
+func (mod *Module) defaultIdentity() id.Identity {
+	i, _ := mod.node.Resolver().Resolve(mod.config.DefaultIdentity)
+	return i
+}
+
 func randomString(length int) (s string) {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
 	var name = make([]byte, length)
