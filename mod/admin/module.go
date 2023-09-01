@@ -41,9 +41,11 @@ func (mod *Module) Run(ctx context.Context) error {
 func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	// check if the caller has access to the admin panel
 	if !mod.hasAccess(caller.Identity()) {
+		mod.log.Errorv(1, "denied access to %v", caller.Identity())
 		return nil, net.ErrRejected
 	}
 
+	mod.log.Info("%v has accessed the admin panel", caller.Identity())
 	return net.Accept(query, caller, mod.serve)
 }
 
