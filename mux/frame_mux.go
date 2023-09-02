@@ -10,18 +10,18 @@ import (
 type FrameMux struct {
 	mu             sync.Mutex
 	mux            *RawMux
-	portHandlers   map[int]FrameHandler
-	defaultHandler FrameHandler
+	portHandlers   map[int]HandlerFunc
+	defaultHandler HandlerFunc
 	logID          int
 	nextPort       int
 }
 
 var nextID atomic.Int64
 
-func NewFrameMux(transport io.ReadWriter, defaultHandler FrameHandler) *FrameMux {
+func NewFrameMux(transport io.ReadWriter, defaultHandler HandlerFunc) *FrameMux {
 	return &FrameMux{
 		mux:            NewRawMux(transport),
-		portHandlers:   make(map[int]FrameHandler),
+		portHandlers:   make(map[int]HandlerFunc),
 		defaultHandler: defaultHandler,
 	}
 }
@@ -33,20 +33,19 @@ func (mux *FrameMux) Run(ctx context.Context) error {
 
 	defer mux.unbindAll()
 
+	frame.Mux = mux
+
 	for {
 		frame.Port, frame.Data, err = mux.mux.Read()
 		if err != nil {
 			return err
 		}
 
-		mux.mu.Lock()
-		handler, found := mux.portHandlers[frame.Port]
-		mux.mu.Unlock()
-
-		if found {
-			handler.HandleFrame(frame)
+		handler := mux.portHandler(frame.Port)
+		if handler != nil {
+			handler(frame)
 		} else if mux.defaultHandler != nil {
-			mux.defaultHandler.HandleFrame(frame)
+			mux.defaultHandler(frame)
 		}
 
 		select {
@@ -57,28 +56,37 @@ func (mux *FrameMux) Run(ctx context.Context) error {
 	}
 }
 
-// Bind binds a local port to a frame handler. The handler will receive frames received on the specified port.
-// The last frame a handler receives will be an EOF after which the port is unbound. If the hander returns
-// a non nil-error, the port will be unbound.
-func (mux *FrameMux) Bind(localPort int, handler FrameHandler) error {
+func (mux *FrameMux) portHandler(port int) HandlerFunc {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
-	if localPort < 0 || localPort > MaxPorts-1 {
+	return mux.portHandlers[port]
+}
+
+// Bind binds a local port to a frame handler. The handler will receive frames received on the specified port.
+// The last frame a handler receives will be an EOF after which the port is unbound. If the hander returns
+// a non nil-error, the port will be unbound.
+func (mux *FrameMux) Bind(port int, handler HandlerFunc) error {
+	mux.mu.Lock()
+	defer mux.mu.Unlock()
+
+	if port < 0 || port > MaxPorts-1 {
 		return ErrInvalidPort
 	}
 
-	if _, used := mux.portHandlers[localPort]; used {
+	if _, used := mux.portHandlers[port]; used {
 		return ErrPortInUse
 	}
 
-	mux.portHandlers[localPort] = handler
+	mux.portHandlers[port] = handler
+
+	handler(Bind{Port: port})
 
 	return nil
 }
 
-// BindAny binds a FrameHandler to any avaiable port.
-func (mux *FrameMux) BindAny(handler FrameHandler) (port int, err error) {
+// BindAny binds a HandlerFunc to any avaiable port.
+func (mux *FrameMux) BindAny(handler HandlerFunc) (port int, err error) {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
@@ -98,6 +106,8 @@ func (mux *FrameMux) BindAny(handler FrameHandler) (port int, err error) {
 	}
 
 	mux.portHandlers[port] = handler
+
+	handler(Bind{Mux: mux, Port: port})
 
 	return
 }
@@ -121,12 +131,10 @@ func (mux *FrameMux) Close(remotePort int) error {
 
 // Unbind unbinds any handler assigned to the specified port.
 func (mux *FrameMux) unbind(port int) error {
-	if h, found := mux.portHandlers[port]; !found {
+	if handler, found := mux.portHandlers[port]; !found {
 		return ErrPortNotInUse
 	} else {
-		if cb, ok := h.(AfterUnbind); ok {
-			defer cb.AfterUnbind()
-		}
+		handler(Unbind{Mux: mux, Port: port})
 	}
 
 	delete(mux.portHandlers, port)

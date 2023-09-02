@@ -17,9 +17,19 @@ func NewFrameReader() *FrameReader {
 	}
 }
 
-func (reader *FrameReader) HandleFrame(frame Frame) {
+func (reader *FrameReader) HandleMux(event Event) {
+	switch event := event.(type) {
+	case Frame:
+		reader.handleFrame(event)
+
+	case Unbind:
+		reader.Close()
+	}
+}
+
+func (reader *FrameReader) handleFrame(frame Frame) {
 	if frame.IsEmpty() {
-		reader.w.Close()
+		frame.Mux.Unbind(frame.Port)
 		return
 	}
 

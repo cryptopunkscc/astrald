@@ -36,11 +36,21 @@ func (c *Control) Run(ctx context.Context) error {
 	return nil
 }
 
-func (c *Control) HandleFrame(frame mux.Frame) {
+func (c *Control) handleMux(event mux.Event) {
+	switch event := event.(type) {
+	case mux.Frame:
+		c.handleFrame(event)
+
+	case mux.Unbind:
+		c.CloseWithError(io.EOF)
+	}
+}
+
+func (c *Control) handleFrame(frame mux.Frame) {
 	c.Touch()
 
 	if frame.IsEmpty() {
-		c.CloseWithError(io.EOF)
+		c.Unbind(frame.Port)
 		return
 	}
 
@@ -59,10 +69,6 @@ func (c *Control) HandleFrame(frame mux.Frame) {
 	default:
 		c.CloseWithError(ErrProtocolError)
 	}
-}
-
-func (c *Control) AfterUnbind() {
-	c.CloseWithError(ErrLinkClosedByPeer)
 }
 
 // Ping sends a ping request and waits for the response. Returns roundtrip time or an error.

@@ -16,6 +16,7 @@ type PortBinding struct {
 	chunks   [][]byte
 	ch       chan struct{}
 	chunksMu sync.Mutex
+	targetMu sync.RWMutex
 }
 
 func NewPortBinding(writeCloser io.WriteCloser, link *CoreLink, port int) *PortBinding {
@@ -33,13 +34,23 @@ func NewPortBinding(writeCloser io.WriteCloser, link *CoreLink, port int) *PortB
 	return binding
 }
 
-func (b *PortBinding) HandleFrame(frame mux.Frame) {
+func (b *PortBinding) HandleMux(event mux.Event) {
+	switch event := event.(type) {
+	case mux.Frame:
+		b.handleFrame(event)
+
+	case mux.Unbind:
+		b.pushChunk([]byte{})
+	}
+}
+
+func (b *PortBinding) handleFrame(frame mux.Frame) {
 	// register link activity
 	b.link.Touch()
 
 	// check EOF
 	if frame.IsEmpty() {
-		b.link.mux.Unbind(b.port)
+		frame.Mux.Unbind(frame.Port)
 		return
 	}
 
@@ -49,12 +60,18 @@ func (b *PortBinding) HandleFrame(frame mux.Frame) {
 	}
 }
 
-func (b *PortBinding) AfterUnbind() {
-	b.pushChunk([]byte{})
+func (b *PortBinding) Target() io.WriteCloser {
+	b.targetMu.RLock()
+	defer b.targetMu.RUnlock()
+
+	return b.target
 }
 
-func (b *PortBinding) Target() io.WriteCloser {
-	return b.target
+func (b *PortBinding) SetTarget(target io.WriteCloser) {
+	b.targetMu.Lock()
+	defer b.targetMu.Unlock()
+
+	b.target = target
 }
 
 func (b *PortBinding) Link() *CoreLink {
@@ -112,6 +129,9 @@ func (b *PortBinding) signal() {
 
 func (b *PortBinding) flusher() {
 	defer func() {
+		b.targetMu.Lock()
+		defer b.targetMu.Unlock()
+
 		b.target.Close()
 		b.link.control.Reset(b.port)
 	}()
@@ -131,7 +151,7 @@ func (b *PortBinding) flusher() {
 				return
 			}
 
-			n, err := b.target.Write(chunk)
+			n, err := b.write(chunk)
 			if len(chunk) != n {
 				b.link.CloseWithError(errors.New("partial write on port"))
 				return
@@ -151,6 +171,13 @@ func (b *PortBinding) flusher() {
 			_ = b.link.control.GrowBuffer(b.port, flushed)
 		}
 	}
+}
+
+func (b *PortBinding) write(p []byte) (int, error) {
+	b.targetMu.RLock()
+	defer b.targetMu.RUnlock()
+
+	return b.target.Write(p)
 }
 
 func (b *PortBinding) wait() error {

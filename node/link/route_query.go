@@ -23,7 +23,7 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 
 	// get a free port and bind a response handler to it
 	var responseHandler = &ResponseHandler{}
-	localPort, err := link.mux.BindAny(responseHandler)
+	localPort, err := link.mux.BindAny(responseHandler.HandleMux)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 		defer close(done)
 
 		// we have the response, so unbind the port so that it can be bound to the caller
-		link.mux.Unbind(localPort)
+		link.Unbind(localPort)
 
 		if err = herr; err != nil {
 			link.CloseWithError(err)

@@ -14,6 +14,8 @@ import (
 
 var _ net.Link = &CoreLink{}
 
+var DefaultMuxHandler = func(event mux.Event) {}
+
 const portBufferSize = 4 * 1024 * 1024
 const controlPort = 0
 
@@ -39,10 +41,10 @@ func NewCoreLink(transport net.SecureConn) *CoreLink {
 	}
 
 	link.remoteBuffers = newRemoteBuffers(link)
-	link.mux = mux.NewFrameMux(transport, &UnexpectedFrameHandler{CoreLink: link})
+	link.mux = mux.NewFrameMux(transport, DefaultMuxHandler)
 	link.control = NewControl(link)
 	link.health = newHealth(link)
-	if err := link.mux.Bind(controlPort, link.control); err != nil {
+	if err := link.mux.Bind(controlPort, link.control.handleMux); err != nil {
 		panic(err)
 	}
 
@@ -80,7 +82,7 @@ func (link *CoreLink) CloseWithError(e error) error {
 // Bind binds a specific port on the link's multiplexer to a WriteCloser.
 func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) (binding *PortBinding, err error) {
 	binding = NewPortBinding(wc, link, localPort)
-	err = link.mux.Bind(localPort, binding)
+	err = link.mux.Bind(localPort, binding.HandleMux)
 
 	return
 }
@@ -88,7 +90,7 @@ func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) (binding *PortBindi
 // BindAny binds any port on the link's multiplexer to a WriteCloser.
 func (link *CoreLink) BindAny(wc io.WriteCloser) (binding *PortBinding, err error) {
 	binding = NewPortBinding(wc, link, 0)
-	binding.port, err = link.mux.BindAny(binding)
+	binding.port, err = link.mux.BindAny(binding.HandleMux)
 
 	return
 }

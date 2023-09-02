@@ -11,6 +11,13 @@ type ResponseHandler struct {
 	Func func(response Response, err error)
 }
 
+func (h *ResponseHandler) HandleMux(event mux.Event) {
+	switch event := event.(type) {
+	case mux.Frame:
+		h.HandleFrame(event)
+	}
+}
+
 func (h *ResponseHandler) HandleFrame(frame mux.Frame) {
 	if frame.IsEmpty() {
 		h.Func(Response{}, io.EOF)
