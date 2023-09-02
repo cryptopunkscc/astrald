@@ -59,7 +59,10 @@ func (m *Module) RouteVia(ctx context.Context, relay id.Identity, query net.Quer
 
 	err = rpc.Query(query.Target(), query.Query())
 	if err != nil {
-		return nil, err
+		if errors.Is(err, proto.ErrRejected) {
+			return net.Reject()
+		}
+		return nil, &net.ErrRouteNotFound{Router: m}
 	}
 
 	if !routeConn.RemoteIdentity().IsEqual(query.Target()) {

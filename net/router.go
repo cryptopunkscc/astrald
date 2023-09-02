@@ -22,6 +22,10 @@ func Accept(query Query, caller SecureWriteCloser, handler func(conn SecureConn)
 	return NewSecureWriteCloser(wc, query.Target()), nil
 }
 
+func Reject() (SecureWriteCloser, error) {
+	return nil, ErrRejected
+}
+
 // Route routes a query through the provided Router. It returns a SecureConn if query was successfully routed
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...

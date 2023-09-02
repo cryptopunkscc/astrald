@@ -35,24 +35,20 @@ func (service *RouteService) RouteQuery(ctx context.Context, query net.Query, ca
 func (service *RouteService) serve(ctx context.Context, conn net.SecureConn, origin string) error {
 	var err error
 	var caller = conn.RemoteIdentity()
-	var c = proto.New(conn)
-	defer c.Close()
-
-	service.log.Logv(2, "(%s) connected", caller)
+	var rpc = proto.New(conn)
+	defer rpc.Close()
 
 	for {
 		var cmd proto.Cmd
-		err = c.Decode(&cmd)
+		err = rpc.Decode(&cmd)
 		if err != nil {
 			return err
 		}
 
-		service.log.Logv(2, "(%s) cmd: %s", caller, cmd)
-
 		switch cmd.Cmd {
 		case proto.CmdCert:
 			var cert proto.RelayCert
-			if err := c.Decode(&cert); err != nil {
+			if err := rpc.Decode(&cert); err != nil {
 				return err
 			}
 
@@ -61,77 +57,72 @@ func (service *RouteService) serve(ctx context.Context, conn net.SecureConn, ori
 			}
 
 			if err := cert.Verify(); err != nil {
-				service.log.Logv(2, "(%s) route to %s denied: %v", caller, cert.Identity, err)
-				if err := c.EncodeErr(proto.ErrDenied); err != nil {
+				service.log.Logv(2, "%s provided an invalid certificate for %s: %v", caller, cert.Identity, err)
+				if err := rpc.EncodeErr(proto.ErrDenied); err != nil {
 					return err
 				}
 				continue
 			}
 
-			service.log.Logv(2, "(%s) shifted to %s", caller, cert.Identity)
+			service.log.Logv(2, "%s shifted to %s", caller, cert.Identity)
 
 			caller = cert.Identity
 
-			if err := c.EncodeErr(nil); err != nil {
+			if err := rpc.EncodeErr(nil); err != nil {
 				return err
 			}
 
 		case proto.CmdQuery:
-			var query proto.QueryParams
-			if err := c.Decode(&query); err != nil {
+			var params proto.QueryParams
+			if err := rpc.Decode(&params); err != nil {
 				return err
 			}
 
-			srv, err := service.node.Services().Find(query.Target, query.Query)
-			if err != nil {
-				return c.EncodeErr(proto.ErrRejected)
-			}
-			if !srv.Identity().IsEqual(query.Target) {
-				return c.EncodeErr(proto.ErrRejected)
-			}
-
 			var target = service.node.Identity()
-			if !query.Target.IsEqual(target) {
-				target, err = service.keys.Find(query.Target)
+
+			// if query target is not the node, look up private keys for the target identity
+			if !params.Target.IsEqual(target) {
+				target, err = service.keys.Find(params.Target)
 				if err != nil {
-					return c.EncodeErr(proto.ErrUnableToProcess)
+					return rpc.EncodeErr(proto.ErrUnableToProcess)
 				}
 			}
 
-			c.EncodeErr(nil)
+			rpc.EncodeErr(nil)
 
+			// send a certificate if node is not the target
 			if !target.IsEqual(service.node.Identity()) {
 				var cert = proto.NewRelayCert(target, service.node.Identity())
 				if err = cert.Sign(); err != nil {
 					return err
 				}
 
-				if err = c.Encode(cert); err != nil {
+				if err = rpc.Encode(cert); err != nil {
 					return err
 				}
 			}
 
-			var q = net.NewQuery(caller, target, query.Query)
-			var shiftedConn = replaceIdentity{SecureConn: conn, remoteIdentity: caller}
+			var query = net.NewQuery(caller, target, params.Query)
+			var shiftedConn = &replaceIdentity{SecureConn: conn, remoteIdentity: caller}
+			shiftedConn.Lock()
 
-			service.log.Logv(2, "(%s) routing query -> %s:%s", caller, q.Target(), q.Query())
-
-			localWriter, err := srv.RouteQuery(ctx, q, shiftedConn, net.Hints{Origin: origin})
+			localWriter, err := service.node.Router().RouteQuery(ctx, query, shiftedConn, net.Hints{Origin: origin})
 			if err != nil {
-				return c.EncodeErr(proto.ErrRejected)
+				return rpc.EncodeErr(proto.ErrRejected)
 			}
 
-			if err := c.EncodeErr(nil); err != nil {
+			if err := rpc.EncodeErr(nil); err != nil {
 				return err
 			}
 
+			shiftedConn.Unlock()
 			io.Copy(localWriter, conn)
 			localWriter.Close()
 
 			return nil
 
 		default:
-			return c.EncodeErr(proto.ErrInvalidRequest)
+			return rpc.EncodeErr(proto.ErrInvalidRequest)
 		}
 	}
 }
