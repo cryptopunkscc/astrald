@@ -11,3 +11,4 @@ I publish this for developers to get early feedback on the ideas expressed by th
 
 - [Quick start](docs/quickstart.md)
 - [Core concepts](docs/overview.md)
+- [Modules](mod/README.md)
