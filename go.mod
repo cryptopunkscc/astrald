@@ -4,20 +4,28 @@ go 1.21
 
 require (
 	bitbucket.org/creachadair/shell v0.0.7
-	github.com/godbus/dbus/v5 v5.0.6
-	github.com/jxskiss/base62 v1.0.0
-	golang.org/x/crypto v0.5.0
-	golang.org/x/net v0.7.0
-	golang.org/x/sys v0.5.0
+	github.com/glebarez/sqlite v1.9.0
+	github.com/godbus/dbus/v5 v5.1.0
+	github.com/jxskiss/base62 v1.1.0
+	golang.org/x/crypto v0.12.0
+	golang.org/x/net v0.10.0
+	golang.org/x/sys v0.12.0
 	gopkg.in/yaml.v2 v2.4.0
-	gorm.io/driver/sqlite v1.5.0
-	gorm.io/gorm v1.25.1
+	gorm.io/gorm v1.25.4
 )
 
 require (
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/glebarez/go-sqlite v1.21.2 // indirect
+	github.com/google/uuid v1.3.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/mattn/go-sqlite3 v1.14.16 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	modernc.org/libc v1.24.1 // indirect
+	modernc.org/mathutil v1.6.0 // indirect
+	modernc.org/memory v1.7.1 // indirect
+	modernc.org/sqlite v1.25.0 // indirect
 )
 
 require (

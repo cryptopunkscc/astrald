@@ -19,6 +19,7 @@ type Conn struct {
 	target        *MonitoredWriter
 	caller        *MonitoredWriter
 	query         net.Query
+	hints         net.Hints
 	establishedAt time.Time
 
 	targetClosed atomic.Bool
@@ -26,12 +27,13 @@ type Conn struct {
 	done         chan struct{}
 }
 
-func NewConn(caller *MonitoredWriter, target *MonitoredWriter, query net.Query) *Conn {
+func NewConn(caller *MonitoredWriter, target *MonitoredWriter, query net.Query, hints net.Hints) *Conn {
 	c := &Conn{
 		id:            nextConnID.Add(1),
 		target:        target,
 		caller:        caller,
 		query:         query,
+		hints:         hints,
 		done:          make(chan struct{}),
 		establishedAt: time.Now(),
 	}
@@ -65,6 +67,10 @@ func (conn *Conn) Caller() *MonitoredWriter {
 
 func (conn *Conn) Query() net.Query {
 	return conn.query
+}
+
+func (conn *Conn) Hints() net.Hints {
+	return conn.hints
 }
 
 func (conn *Conn) BytesOut() int {

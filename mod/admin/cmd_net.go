@@ -267,9 +267,9 @@ func (cmd *CmdNet) close(term *Terminal, args []string) error {
 }
 
 func (cmd *CmdNet) links(term *Terminal, _ []string) error {
-	var f = "%-8d %-24s %-24s %-8s %10s %10s %10s\n"
+	var f = "%-8d %-24s %-8s %10s %10s %10s\n"
 
-	term.Printf(f, Header("ID"), Header("Local"), Header("Remote"), Header("Net"), Header("Idle"), Header("Age"), Header("Ping"))
+	term.Printf(f, Header("ID"), Header("Remote"), Header("Net"), Header("Idle"), Header("Age"), Header("Ping"))
 	for _, l := range cmd.mod.node.Network().Links().All() {
 		if l == nil {
 			term.Printf("[nil link]\n")
@@ -288,7 +288,6 @@ func (cmd *CmdNet) links(term *Terminal, _ []string) error {
 
 		term.Printf(f,
 			l.ID(),
-			l.LocalIdentity(),
 			l.RemoteIdentity(),
 			Keyword(net.Network(l)),
 			idle,

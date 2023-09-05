@@ -36,6 +36,7 @@ func (m *Module) RouteVia(ctx context.Context, relay id.Identity, query net.Quer
 		return nil, errors.New("caller private key missing")
 	}
 
+	// call the router on the relay
 	routeConn, err := net.Route(ctx, m.node.Router(), net.NewQuery(m.node.Identity(), relay, RouteServiceName))
 	if err != nil {
 		return nil, err
@@ -49,6 +50,7 @@ func (m *Module) RouteVia(ctx context.Context, relay id.Identity, query net.Quer
 
 	var rpc = proto.New(routeConn)
 
+	// present a certificate if needed
 	if !query.Caller().IsEqual(m.node.Identity()) {
 		var cert = proto.NewRelayCert(query.Caller(), routeConn.LocalIdentity())
 
@@ -57,6 +59,7 @@ func (m *Module) RouteVia(ctx context.Context, relay id.Identity, query net.Quer
 		}
 	}
 
+	// send the query
 	err = rpc.Query(query.Target(), query.Query())
 	if err != nil {
 		if errors.Is(err, proto.ErrRejected) {
@@ -65,6 +68,7 @@ func (m *Module) RouteVia(ctx context.Context, relay id.Identity, query net.Quer
 		return nil, &net.ErrRouteNotFound{Router: m}
 	}
 
+	// expect a certificate if the remote party needs to provide it
 	if !routeConn.RemoteIdentity().IsEqual(query.Target()) {
 		var cert proto.RelayCert
 		if err := rpc.Decode(&cert); err != nil {

@@ -30,7 +30,7 @@ func (router *MonitoredRouter) RouteQuery(ctx context.Context, query net.Query, 
 	}
 
 	var targetMonitor = NewMonitoredWriter(target)
-	var conn = NewConn(callerMonitor, targetMonitor, query)
+	var conn = NewConn(callerMonitor, targetMonitor, query, hints)
 
 	router.conns.Add(conn)
 	go func() {
