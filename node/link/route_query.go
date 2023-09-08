@@ -51,24 +51,16 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 		}
 
 		// rebind the port to the caller
-		var binding *PortBinding
-		binding, err = link.Bind(localPort, caller)
+		_, err = link.Bind(localPort, caller)
 		if err != nil {
 			return
-		}
-
-		if sourced, ok := net.FinalWriter(caller).(net.Sourcer); ok {
-			sourced.SetSource(binding)
 		}
 
 		// grow the remote buffer for the port
 		link.remoteBuffers.grow(res.Port, res.Buffer)
 
 		// prepare the target
-		target = net.NewSecureWriteCloser(
-			NewPortWriter(link, res.Port),
-			link.RemoteIdentity(),
-		)
+		target = NewPortWriter(link, res.Port)
 	}
 
 	// send the query to the remote peer

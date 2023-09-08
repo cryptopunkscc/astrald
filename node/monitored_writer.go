@@ -3,14 +3,14 @@ package node
 import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
 )
 
 var _ net.SecureWriteCloser = &MonitoredWriter{}
-var _ net.WriterIter = &MonitoredWriter{}
+var _ net.OutputGetter = &MonitoredWriter{}
 
 type MonitoredWriter struct {
-	net.SecureWriteCloser
+	*net.SourceField
+	*net.OutputField
 	sig.Activity
 	bytes      int
 	AfterWrite func(int, error)
@@ -18,7 +18,12 @@ type MonitoredWriter struct {
 }
 
 func NewMonitoredWriter(w net.SecureWriteCloser) *MonitoredWriter {
-	return &MonitoredWriter{SecureWriteCloser: w}
+	m := &MonitoredWriter{
+		SourceField: net.NewSourceField(nil),
+	}
+	m.OutputField = net.NewOutputField(m, w)
+
+	return m
 }
 
 func (w *MonitoredWriter) Write(p []byte) (n int, err error) {
@@ -45,8 +50,4 @@ func (w *MonitoredWriter) Close() (err error) {
 
 func (w *MonitoredWriter) Bytes() int {
 	return w.bytes
-}
-
-func (w *MonitoredWriter) NextWriter() io.Writer {
-	return w.SecureWriteCloser
 }

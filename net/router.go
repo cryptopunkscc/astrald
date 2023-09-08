@@ -14,12 +14,12 @@ type Hints struct {
 }
 
 // Accept accepts the query and runs the handler in a new goroutine.
-func Accept(query Query, caller SecureWriteCloser, handler func(conn SecureConn)) (SecureWriteCloser, error) {
-	r, wc := Pipe()
+func Accept(query Query, src SecureWriteCloser, handler func(conn SecureConn)) (SecureWriteCloser, error) {
+	pipeReader, pipeWriter := SecurePipe(query.Target())
 
-	go handler(NewSecureConn(caller, r, query.Target()))
+	go handler(NewSecureConn(src, pipeReader, false))
 
-	return NewSecureWriteCloser(wc, query.Target()), nil
+	return pipeWriter, nil
 }
 
 func Reject() (SecureWriteCloser, error) {
@@ -34,11 +34,9 @@ func Route(ctx context.Context, router Router, query Query) (SecureConn, error) 
 }
 
 func RouteWithHints(ctx context.Context, router Router, query Query, hints Hints) (SecureConn, error) {
-	r, w := Pipe()
+	pipeReader, pipeWriter := SecurePipe(query.Caller())
 
-	caller := NewSecureWriteCloser(w, query.Caller())
-
-	target, err := router.RouteQuery(ctx, query, caller, hints)
+	target, err := router.RouteQuery(ctx, query, pipeWriter, hints)
 	if err != nil {
 		return nil, err
 	}
@@ -48,5 +46,5 @@ func RouteWithHints(ctx context.Context, router Router, query Query, hints Hints
 		return nil, errors.New("response identity mismatch")
 	}
 
-	return NewSecureConn(target, r, query.Caller()), err
+	return NewSecureConn(target, pipeReader, true), err
 }

@@ -2,29 +2,28 @@ package net
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"io"
 )
 
 var _ SecureConn = &secureConn{}
-var _ WriterIter = &secureConn{}
+var _ SourceGetter = &secureConn{}
+var _ OutputGetter = &secureConn{}
 
 type secureConn struct {
 	SecureWriteCloser
-	io.Reader
-	localIdentity id.Identity
-	outbound      bool
+	SecureReader
+	outbound bool
 }
 
-func NewSecureConn(localWriter SecureWriteCloser, localReader io.Reader, localIdentity id.Identity) SecureConn {
+func NewSecureConn(w SecureWriteCloser, r SecureReader, outbound bool) SecureConn {
 	return &secureConn{
-		SecureWriteCloser: localWriter,
-		Reader:            localReader,
-		localIdentity:     localIdentity,
+		SecureWriteCloser: w,
+		SecureReader:      r,
+		outbound:          outbound,
 	}
 }
 
 func (s *secureConn) Read(p []byte) (n int, err error) {
-	n, err = s.Reader.Read(p)
+	n, err = s.SecureReader.Read(p)
 	if err != nil {
 		s.Close()
 	}
@@ -48,13 +47,13 @@ func (s *secureConn) RemoteIdentity() id.Identity {
 }
 
 func (s *secureConn) LocalIdentity() id.Identity {
-	return s.localIdentity
+	return s.SecureReader.Identity()
 }
 
-func (s *secureConn) NextWriter() io.Writer {
+func (s *secureConn) Source() any {
+	return s.SecureReader
+}
+
+func (s *secureConn) Output() SecureWriteCloser {
 	return s.SecureWriteCloser
-}
-
-func (s *secureConn) NextReader() io.Reader {
-	return s.Reader
 }

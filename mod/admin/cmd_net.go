@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -184,28 +183,42 @@ func (cmd *CmdNet) conn(term *Terminal, args []string) error {
 		return errors.New("no such connection")
 	}
 
-	term.Printf("Caller:\n")
-	cmd.printWriterInfo(term, conn.Caller())
+	term.Printf("CALLER CHAIN\n")
+	cmd.printChainInfo(term, conn.Caller())
 
-	term.Printf("Target:\n")
-	cmd.printWriterInfo(term, conn.Target())
+	term.Printf("\nTARGET CHAIN\n")
+	cmd.printChainInfo(term, conn.Target())
 
 	return nil
 }
 
-func (cmd *CmdNet) printWriterInfo(term *Terminal, writer io.Writer) {
-	final := net.FinalWriter(writer)
-	term.Printf("Final: %s\n", reflect.TypeOf(final))
+func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
+	i := net.RootSource(element)
 
-	if w, ok := final.(*link.PortWriter); ok {
-		term.Printf("Port: %d\n", w.Port())
-	}
+	for i != nil {
+		term.Printf("\n%s\n", Keyword(reflect.TypeOf(i).Elem().Name()))
 
-	if w, ok := final.(*net.PipeWriter); ok {
-		term.Printf("Source: %d\n", reflect.TypeOf(w.Source()))
-		if b, ok := w.Source().(*link.PortBinding); ok {
-			term.Printf("Port: %d\n", b.Port())
+		switch w := i.(type) {
+		case *link.PortBinding:
+			term.Printf("  Identity: %d\n", w.Identity())
+			term.Printf("  Port: %d\n", w.Port())
 
+		case *link.PortWriter:
+			term.Printf("  Identity: %d\n", w.Identity())
+			term.Printf("  Port: %d\n", w.Port())
+
+		case *node.MonitoredWriter:
+			term.Printf("  Identity: %d\n", w.Identity())
+			term.Printf("  Bytes: %d\n", w.Bytes())
+
+		case *net.SecurePipeWriter:
+			term.Printf("  Identity: %d\n", w.Identity())
+		}
+
+		if nw, ok := i.(net.OutputGetter); ok {
+			i = nw.Output()
+		} else {
+			break
 		}
 	}
 }

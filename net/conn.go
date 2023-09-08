@@ -19,3 +19,7 @@ type SecureConn interface {
 	RemoteIdentity() id.Identity // Returns the remote identity
 	LocalIdentity() id.Identity  // Returns the local identity
 }
+
+type Transporter interface {
+	Transport() SecureConn
+}

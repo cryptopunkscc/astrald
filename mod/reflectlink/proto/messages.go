@@ -6,5 +6,5 @@ type Endpoint struct {
 }
 
 type Reflection struct {
-	RemoteEndpoint Endpoint `json:"remoteEndpoint,omitempty"`
+	RemoteEndpoint Endpoint `json:"endpoint,omitempty"`
 }

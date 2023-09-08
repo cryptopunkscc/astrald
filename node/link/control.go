@@ -176,13 +176,11 @@ func (c *Control) handleQuery(msg Query) error {
 func (c *Control) executeQuery(msg Query) error {
 	var query = net.NewQuery(c.RemoteIdentity(), c.LocalIdentity(), msg.Service)
 
-	var portWriter = NewPortWriter(c.CoreLink, msg.Port)
+	var caller = NewPortWriter(c.CoreLink, msg.Port)
 
 	// lock the port writer so that the target cannot write to it before we get a chance to send the query response
-	portWriter.Lock()
-	defer portWriter.Unlock()
-
-	caller := net.NewSecureWriteCloser(portWriter, c.RemoteIdentity())
+	caller.Lock()
+	defer caller.Unlock()
 
 	// route the query upstream
 	target, err := c.uplink.RouteQuery(c.ctx, query, caller, net.Hints{Origin: net.OriginNetwork})
@@ -201,10 +199,6 @@ func (c *Control) executeQuery(msg Query) error {
 	if err != nil {
 		target.Close()
 		return c.WriteResponse(msg.Port, &Response{Error: errUnexpected})
-	}
-
-	if sourcer, ok := net.FinalWriter(target).(net.Sourcer); ok {
-		sourcer.SetSource(binding)
 	}
 
 	return c.WriteResponse(msg.Port, &Response{Port: binding.port, Buffer: portBufferSize})

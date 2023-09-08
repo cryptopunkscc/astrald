@@ -3,7 +3,6 @@ package reflectlink
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
 	"github.com/cryptopunkscc/astrald/net"
@@ -32,35 +31,45 @@ func (server *Server) Run(ctx context.Context) error {
 }
 
 func (server *Server) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	if linker, ok := caller.(net.Linker); ok {
-		if l := linker.Link(); l != nil {
-			return net.Accept(query, caller, func(conn net.SecureConn) {
-				server.reflectLink(conn, l)
-			})
-		}
+	// Reject queries coming from sources without transport
+	var output = net.FinalOutput(caller)
+	var t, ok = output.(net.Transporter)
+	if !ok {
+		return net.Reject()
+	}
+	if t.Transport() == nil {
+		return net.Reject()
 	}
 
-	return nil, net.ErrRejected
+	return net.Accept(query, caller, server.reflect)
 }
 
-func (server *Server) reflectLink(conn net.SecureConn, sourceLink net.Link) error {
+func (server *Server) reflect(conn net.SecureConn) {
 	defer conn.Close()
 
-	var e = sourceLink.Transport().RemoteEndpoint()
-	if e == nil {
+	var output, _ = net.FinalOutput(conn).(net.Transporter)
+	var endpoint = output.Transport().RemoteEndpoint()
+
+	if endpoint == nil {
 		server.log.Errorv(2, "link with %v has no remote endpoint (transport type %v)",
-			sourceLink.RemoteIdentity(), reflect.TypeOf(sourceLink.Transport()))
-		return errors.New("remote endpoint is nil")
+			conn.RemoteIdentity(),
+			reflect.TypeOf(output.Transport()),
+		)
+		return
 	}
 
-	var ref proto.Reflection
+	var reflection proto.Reflection
 
-	if e != nil {
-		ref.RemoteEndpoint = proto.Endpoint{
-			Network: e.Network(),
-			Address: e.String(),
+	if endpoint != nil {
+		reflection.RemoteEndpoint = proto.Endpoint{
+			Network: endpoint.Network(),
+			Address: endpoint.String(),
 		}
 	}
 
-	return json.NewEncoder(conn).Encode(ref)
+	json.NewEncoder(conn).Encode(reflection)
+
+	server.log.Infov(2, "reflected %v", conn.RemoteIdentity())
+
+	return
 }

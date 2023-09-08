@@ -3,11 +3,13 @@ package link
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/mux"
+	"github.com/cryptopunkscc/astrald/net"
 	"io"
 	"sync"
 )
 
 type PortBinding struct {
+	*net.OutputField
 	target   io.WriteCloser
 	link     *CoreLink
 	port     int
@@ -16,18 +18,18 @@ type PortBinding struct {
 	chunks   [][]byte
 	ch       chan struct{}
 	chunksMu sync.Mutex
-	targetMu sync.RWMutex
+	outputMu sync.RWMutex
 }
 
-func NewPortBinding(writeCloser io.WriteCloser, link *CoreLink, port int) *PortBinding {
+func NewPortBinding(output net.SecureWriteCloser, link *CoreLink, port int) *PortBinding {
 	binding := &PortBinding{
-		target:   writeCloser,
 		port:     port,
 		link:     link,
 		capacity: portBufferSize,
 		chunks:   make([][]byte, 0),
 		ch:       make(chan struct{}, 1),
 	}
+	binding.OutputField = net.NewOutputField(binding, output)
 
 	go binding.flusher()
 
@@ -44,6 +46,18 @@ func (b *PortBinding) HandleMux(event mux.Event) {
 	}
 }
 
+func (b *PortBinding) Link() *CoreLink {
+	return b.link
+}
+
+func (b *PortBinding) Transport() net.SecureConn {
+	return b.link.Transport()
+}
+
+func (b *PortBinding) Port() int {
+	return b.port
+}
+
 func (b *PortBinding) handleFrame(frame mux.Frame) {
 	// register link activity
 	b.link.Touch()
@@ -58,28 +72,6 @@ func (b *PortBinding) handleFrame(frame mux.Frame) {
 	if err := b.pushChunk(frame.Data); err != nil {
 		b.link.CloseWithError(err)
 	}
-}
-
-func (b *PortBinding) Target() io.WriteCloser {
-	b.targetMu.RLock()
-	defer b.targetMu.RUnlock()
-
-	return b.target
-}
-
-func (b *PortBinding) SetTarget(target io.WriteCloser) {
-	b.targetMu.Lock()
-	defer b.targetMu.Unlock()
-
-	b.target = target
-}
-
-func (b *PortBinding) Link() *CoreLink {
-	return b.link
-}
-
-func (b *PortBinding) Port() int {
-	return b.port
 }
 
 func (b *PortBinding) pushChunk(p []byte) error {
@@ -129,10 +121,10 @@ func (b *PortBinding) signal() {
 
 func (b *PortBinding) flusher() {
 	defer func() {
-		b.targetMu.Lock()
-		defer b.targetMu.Unlock()
+		b.outputMu.Lock()
+		defer b.outputMu.Unlock()
 
-		b.target.Close()
+		b.OutputField.Close()
 		b.link.control.Reset(b.port)
 	}()
 
@@ -174,10 +166,10 @@ func (b *PortBinding) flusher() {
 }
 
 func (b *PortBinding) write(p []byte) (int, error) {
-	b.targetMu.RLock()
-	defer b.targetMu.RUnlock()
+	b.outputMu.RLock()
+	defer b.outputMu.RUnlock()
 
-	return b.target.Write(p)
+	return b.OutputField.Write(p)
 }
 
 func (b *PortBinding) wait() error {

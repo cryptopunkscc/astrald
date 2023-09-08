@@ -2,20 +2,20 @@ package link
 
 import (
 	"fmt"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
-	"io"
 	"sync"
 	"time"
 )
 
-var _ io.WriteCloser = &PortWriter{}
-var _ net.Linker = &PortWriter{}
+var _ net.SecureWriteCloser = &PortWriter{}
 
 const defaultMaxFrameSize = 1024 * 8
 const debugBufferUnderruns = false
 
 type PortWriter struct {
+	*net.SourceField
 	sync.Mutex
 	link         *CoreLink
 	port         int
@@ -28,6 +28,7 @@ func NewPortWriter(link *CoreLink, port int) *PortWriter {
 		link:         link,
 		port:         port,
 		maxFrameSize: defaultMaxFrameSize,
+		SourceField:  net.NewSourceField(nil),
 	}
 }
 
@@ -92,6 +93,10 @@ func (w *PortWriter) Write(p []byte) (n int, err error) {
 	}
 }
 
+func (w *PortWriter) Identity() id.Identity {
+	return w.link.RemoteIdentity()
+}
+
 func (w *PortWriter) MaxFrameSize() int {
 	return w.maxFrameSize
 }
@@ -113,7 +118,11 @@ func (w *PortWriter) Close() error {
 	return w.link.mux.Write(mux.Frame{Port: w.port})
 }
 
-func (w *PortWriter) Link() net.Link {
+func (w *PortWriter) Transport() net.SecureConn {
+	return w.link.Transport()
+}
+
+func (w *PortWriter) Link() *CoreLink {
 	return w.link
 }
 

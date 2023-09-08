@@ -16,10 +16,6 @@ type Link interface {
 	Done() <-chan struct{}
 }
 
-type Linker interface {
-	Link() Link
-}
-
 // Network returns link's network name or unknown if network could not be determined
 func Network(link Link) string {
 	var t = link.Transport()

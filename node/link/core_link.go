@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
-	"io"
 	"sync"
 	"time"
 )
@@ -80,16 +79,16 @@ func (link *CoreLink) CloseWithError(e error) error {
 }
 
 // Bind binds a specific port on the link's multiplexer to a WriteCloser.
-func (link *CoreLink) Bind(localPort int, wc io.WriteCloser) (binding *PortBinding, err error) {
-	binding = NewPortBinding(wc, link, localPort)
+func (link *CoreLink) Bind(localPort int, output net.SecureWriteCloser) (binding *PortBinding, err error) {
+	binding = NewPortBinding(output, link, localPort)
 	err = link.mux.Bind(localPort, binding.HandleMux)
 
 	return
 }
 
 // BindAny binds any port on the link's multiplexer to a WriteCloser.
-func (link *CoreLink) BindAny(wc io.WriteCloser) (binding *PortBinding, err error) {
-	binding = NewPortBinding(wc, link, 0)
+func (link *CoreLink) BindAny(output net.SecureWriteCloser) (binding *PortBinding, err error) {
+	binding = NewPortBinding(output, link, 0)
 	binding.port, err = link.mux.BindAny(binding.HandleMux)
 
 	return
