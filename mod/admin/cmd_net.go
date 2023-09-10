@@ -200,7 +200,7 @@ func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
 
 		switch w := i.(type) {
 		case *link.PortBinding:
-			term.Printf("  Identity: %d\n", w.Identity())
+			term.Printf("  Identity: %d\n", w.Output().Identity())
 			term.Printf("  Port: %d\n", w.Port())
 
 		case *link.PortWriter:

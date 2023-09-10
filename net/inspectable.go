@@ -40,7 +40,7 @@ type OutputSetter interface {
 
 type OutputField struct {
 	parent any
-	SecureWriteCloser
+	output SecureWriteCloser
 	sync.Mutex
 }
 
@@ -54,17 +54,17 @@ func (field *OutputField) Output() SecureWriteCloser {
 	field.Lock()
 	defer field.Unlock()
 
-	return field.SecureWriteCloser
+	return field.output
 }
 
 func (field *OutputField) SetOutput(output SecureWriteCloser) error {
 	field.Lock()
 	defer field.Unlock()
 
-	if s, ok := field.SecureWriteCloser.(SourceSetter); ok {
+	if s, ok := field.output.(SourceSetter); ok {
 		s.SetSource(nil)
 	}
-	field.SecureWriteCloser = output
+	field.output = output
 	if s, ok := output.(SourceSetter); ok {
 		s.SetSource(field.parent)
 	}

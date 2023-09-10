@@ -124,7 +124,7 @@ func (b *PortBinding) flusher() {
 		b.outputMu.Lock()
 		defer b.outputMu.Unlock()
 
-		b.OutputField.Close()
+		b.OutputField.Output().Close()
 		b.link.control.Reset(b.port)
 	}()
 
@@ -169,7 +169,7 @@ func (b *PortBinding) write(p []byte) (int, error) {
 	b.outputMu.RLock()
 	defer b.outputMu.RUnlock()
 
-	return b.OutputField.Write(p)
+	return b.OutputField.Output().Write(p)
 }
 
 func (b *PortBinding) wait() error {

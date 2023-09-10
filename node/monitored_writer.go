@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -17,6 +18,10 @@ type MonitoredWriter struct {
 	AfterClose func(error)
 }
 
+func (w *MonitoredWriter) Identity() id.Identity {
+	return w.Output().Identity()
+}
+
 func NewMonitoredWriter(w net.SecureWriteCloser) *MonitoredWriter {
 	m := &MonitoredWriter{
 		SourceField: net.NewSourceField(nil),
@@ -29,7 +34,7 @@ func NewMonitoredWriter(w net.SecureWriteCloser) *MonitoredWriter {
 func (w *MonitoredWriter) Write(p []byte) (n int, err error) {
 	defer w.Touch()
 
-	n, err = w.SecureWriteCloser.Write(p)
+	n, err = w.Output().Write(p)
 	w.bytes += n
 
 	if w.AfterWrite != nil {
@@ -41,7 +46,7 @@ func (w *MonitoredWriter) Write(p []byte) (n int, err error) {
 func (w *MonitoredWriter) Close() (err error) {
 	defer w.Touch()
 
-	err = w.SecureWriteCloser.Close()
+	err = w.Output().Close()
 	if w.AfterClose != nil {
 		w.AfterClose(err)
 	}
