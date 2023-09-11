@@ -80,7 +80,7 @@ func (link *CoreLink) CloseWithError(e error) error {
 
 // Bind binds a specific port on the link's multiplexer to a WriteCloser.
 func (link *CoreLink) Bind(localPort int, output net.SecureWriteCloser) (binding *PortBinding, err error) {
-	binding = NewPortBinding(output, link, localPort)
+	binding = NewPortBinding(output, link)
 	err = link.mux.Bind(localPort, binding.HandleMux)
 
 	return
@@ -88,8 +88,8 @@ func (link *CoreLink) Bind(localPort int, output net.SecureWriteCloser) (binding
 
 // BindAny binds any port on the link's multiplexer to a WriteCloser.
 func (link *CoreLink) BindAny(output net.SecureWriteCloser) (binding *PortBinding, err error) {
-	binding = NewPortBinding(output, link, 0)
-	binding.port, err = link.mux.BindAny(binding.HandleMux)
+	binding = NewPortBinding(output, link)
+	_, err = link.mux.BindAny(binding.HandleMux)
 
 	return
 }

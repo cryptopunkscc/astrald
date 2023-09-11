@@ -129,3 +129,8 @@ func (w *PortWriter) Link() *CoreLink {
 func (w *PortWriter) Port() int {
 	return w.port
 }
+
+func (w *PortWriter) BufferSize() int {
+	size, _ := w.link.remoteBuffers.size(w.port)
+	return size
+}

@@ -202,10 +202,52 @@ func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
 		case *link.PortBinding:
 			term.Printf("  Identity: %d\n", w.Output().Identity())
 			term.Printf("  Port: %d\n", w.Port())
+			if t := w.Transport(); t != nil {
+				var (
+					network                       = "unknown"
+					localEndpoint, remoteEndpoint string
+				)
+				if e := t.LocalEndpoint(); e != nil {
+					network = e.Network()
+					localEndpoint = e.String()
+				}
+
+				if e := t.RemoteEndpoint(); e != nil {
+					remoteEndpoint = e.String()
+				}
+
+				term.Printf("  Transport: %s %s~%s\n",
+					network,
+					localEndpoint,
+					remoteEndpoint,
+				)
+			}
+			term.Printf("  Buffer: %d/%d\n", w.Used(), w.BufferSize())
 
 		case *link.PortWriter:
 			term.Printf("  Identity: %d\n", w.Identity())
 			term.Printf("  Port: %d\n", w.Port())
+			if t := w.Transport(); t != nil {
+				var (
+					network                       = "unknown"
+					localEndpoint, remoteEndpoint string
+				)
+				if e := t.LocalEndpoint(); e != nil {
+					network = e.Network()
+					localEndpoint = e.String()
+				}
+
+				if e := t.RemoteEndpoint(); e != nil {
+					remoteEndpoint = e.String()
+				}
+
+				term.Printf("  Transport: %s %s~%s\n",
+					network,
+					localEndpoint,
+					remoteEndpoint,
+				)
+			}
+			term.Printf("  Buffer: %d\n", w.BufferSize())
 
 		case *node.MonitoredWriter:
 			term.Printf("  Identity: %d\n", w.Identity())

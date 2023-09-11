@@ -201,7 +201,7 @@ func (c *Control) executeQuery(msg Query) error {
 		return c.WriteResponse(msg.Port, &Response{Error: errUnexpected})
 	}
 
-	return c.WriteResponse(msg.Port, &Response{Port: binding.port, Buffer: portBufferSize})
+	return c.WriteResponse(msg.Port, &Response{Port: int(binding.port.Load()), Buffer: portBufferSize})
 }
 
 func (c *Control) WriteResponse(port int, r *Response) error {
