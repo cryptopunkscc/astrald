@@ -40,7 +40,7 @@ func (binding *PortBinding) HandleMux(event mux.Event) {
 
 	case mux.Unbind:
 		binding.link.control.Reset(int(binding.port.Swap(0)))
-		binding.Output().Close()
+		binding.async.Close()
 	}
 }
 
