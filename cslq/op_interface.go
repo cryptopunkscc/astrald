@@ -10,16 +10,6 @@ import (
 // OpInterface codes value using Marshaler or Unmarshaler interfaces.
 type OpInterface struct{}
 
-// Unmarshaler is an interface implemented by objects that can decode CSLQ representation of themselves.
-type Unmarshaler interface {
-	UnmarshalCSLQ(dec *Decoder) error
-}
-
-// Marshaler is an interface implemented by objects that can encode CSLQ representation of themselves.
-type Marshaler interface {
-	MarshalCSLQ(enc *Encoder) error
-}
-
 // Formatter returns its own CSLQ pattern for encoding/decoding operations.
 // NOTE: If Formatter is a struct, the returned pattern should be enclosed in "{}". Marshaler/Unmarshaler takes
 // priority if also satisfied.

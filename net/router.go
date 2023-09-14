@@ -9,10 +9,6 @@ type Router interface {
 	RouteQuery(ctx context.Context, query Query, caller SecureWriteCloser, hints Hints) (SecureWriteCloser, error)
 }
 
-type Hints struct {
-	Origin string
-}
-
 // Accept accepts the query and runs the handler in a new goroutine.
 func Accept(query Query, src SecureWriteCloser, handler func(conn SecureConn)) (SecureWriteCloser, error) {
 	pipeReader, pipeWriter := SecurePipe(query.Target())
@@ -30,7 +26,7 @@ func Reject() (SecureWriteCloser, error) {
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...
 func Route(ctx context.Context, router Router, query Query) (SecureConn, error) {
-	return RouteWithHints(ctx, router, query, Hints{Origin: OriginLocal})
+	return RouteWithHints(ctx, router, query, DefaultHints())
 }
 
 func RouteWithHints(ctx context.Context, router Router, query Query, hints Hints) (SecureConn, error) {
@@ -41,9 +37,11 @@ func RouteWithHints(ctx context.Context, router Router, query Query, hints Hints
 		return nil, err
 	}
 
-	if !query.Target().IsZero() && !query.Target().IsEqual(target.Identity()) {
-		target.Close()
-		return nil, errors.New("response identity mismatch")
+	if !hints.AllowRedirect {
+		if !query.Target().IsZero() && !query.Target().IsEqual(target.Identity()) {
+			target.Close()
+			return nil, errors.New("response identity mismatch")
+		}
 	}
 
 	return NewSecureConn(target, pipeReader, true), err

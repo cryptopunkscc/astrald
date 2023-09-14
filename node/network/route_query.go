@@ -11,7 +11,7 @@ func (n *CoreNetwork) RouteQuery(ctx context.Context, query net.Query, caller ne
 	defer cancel()
 
 	if query.Caller().IsZero() {
-		return nil, errors.New("caller has zero value")
+		return nil, errors.New("caller identity missing in query")
 	}
 
 	return NewPeerRouter(n, query.Target()).RouteQuery(ctx, query, caller, hints)

@@ -10,7 +10,7 @@ func (srv *CoreServices) RouteQuery(ctx context.Context, query net.Query, caller
 	// Fetch the service
 	service, err := srv.Find(query.Target(), query.Query())
 	if err != nil {
-		return nil, &net.ErrRouteNotFound{Router: srv}
+		return net.RouteNotFound(srv)
 	}
 
 	if service.Router == nil {
@@ -22,9 +22,9 @@ func (srv *CoreServices) RouteQuery(ctx context.Context, query net.Query, caller
 		return nil, err
 	}
 
-	if !target.Identity().IsEqual(query.Target()) {
+	if !target.Identity().IsEqual(query.Target()) && !hints.AllowRedirect {
 		target.Close()
-		return nil, errors.New("response identity mismatch")
+		return net.RouteNotFound(srv, errors.New("response identity mismatch"))
 	}
 
 	return target, err

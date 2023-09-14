@@ -25,7 +25,7 @@ type ReadService struct {
 
 func (service *ReadService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
-		service.handle(service.ctx, conn, hints.Origin)
+		service.handle(ctx, conn, hints)
 	})
 }
 
@@ -58,7 +58,7 @@ func (service *ReadService) Discover(ctx context.Context, caller id.Identity, or
 	return list, nil
 }
 
-func (service *ReadService) handle(ctx context.Context, conn net.SecureConn, origin string) error {
+func (service *ReadService) handle(ctx context.Context, conn net.SecureConn, hints net.Hints) error {
 	return cslq.Invoke(conn, func(msg rpc.MsgRead) error {
 		var session = rpc.New(conn)
 
@@ -67,7 +67,7 @@ func (service *ReadService) handle(ctx context.Context, conn net.SecureConn, ori
 			return session.EncodeErr(rpc.ErrUnavailable)
 		}
 
-		source, err := service.findSource(ctx, msg, conn.RemoteIdentity(), origin)
+		source, err := service.findSource(ctx, msg, conn.RemoteIdentity(), hints)
 		if err != nil {
 			return session.EncodeErr(rpc.ErrUnavailable)
 		}
@@ -83,7 +83,7 @@ func (service *ReadService) handle(ctx context.Context, conn net.SecureConn, ori
 	})
 }
 
-func (service *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, caller id.Identity, origin string) (io.ReadCloser, error) {
+func (service *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, caller id.Identity, hints net.Hints) (io.ReadCloser, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -103,7 +103,7 @@ func (service *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, cal
 				ctx,
 				service.node.Services(),
 				net.NewQuery(caller, source.Identity, source.Service),
-				net.Hints{Origin: origin},
+				hints,
 			)
 
 			if err != nil {

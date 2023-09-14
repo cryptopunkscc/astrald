@@ -9,7 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
-	"github.com/cryptopunkscc/astrald/mod/route"
+	"github.com/cryptopunkscc/astrald/mod/router"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -164,15 +164,15 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 func (m *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	relay, found := m.routes[query.Target().PublicKeyHex()]
 	if !found {
-		return nil, &net.ErrRouteNotFound{Router: m}
+		return net.RouteNotFound(m)
 	}
 
-	routeMod, err := modules.Find[*route.Module](m.node.Modules())
+	routeMod, err := modules.Find[*router.Module](m.node.Modules())
 	if err != nil {
 		return nil, err
 	}
 
-	return routeMod.RouteVia(ctx, relay, query, caller)
+	return routeMod.RouteVia(ctx, relay, query, caller, hints)
 }
 
 func (m *Module) setCache(identity id.Identity, list []ServiceEntry) {

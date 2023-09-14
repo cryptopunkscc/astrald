@@ -12,6 +12,8 @@ type Identity struct {
 	publicKey  *btcec.PublicKey
 }
 
+var Anyone = Identity{}
+
 var ErrInvalidKeyLength = errors.New("invalid key length")
 
 // GenerateIdentity returns a new Identity

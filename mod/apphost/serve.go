@@ -5,12 +5,11 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
-	routerpc "github.com/cryptopunkscc/astrald/mod/route/proto"
+	routerpc "github.com/cryptopunkscc/astrald/mod/router/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
-	"reflect"
 )
 
 func (s *Session) Serve(ctx context.Context) error {
@@ -46,19 +45,18 @@ func (s *Session) Serve(ctx context.Context) error {
 
 func (s *Session) query(params proto.QueryParams) error {
 	var err error
-	var targetWriter net.SecureConn
+	var conn net.SecureConn
 
 	if params.Identity.IsZero() {
 		params.Identity = s.mod.node.Identity() //TODO: by default call your own service, not relay's
 	}
 
-	q := net.NewQuery(s.remoteID, params.Identity, params.Query)
-
-	targetWriter, err = net.Route(s.ctx, s.mod.node.Router(), q)
+	var query = net.NewQuery(s.remoteID, params.Identity, params.Query)
+	conn, err = net.Route(s.ctx, s.mod.node.Router(), query)
 
 	if err == nil {
 		s.WriteErr(nil)
-		_, _, err := streams.Join(s, targetWriter)
+		_, _, err := streams.Join(s, conn)
 		return err
 	}
 
@@ -78,7 +76,7 @@ func (s *Session) query(params proto.QueryParams) error {
 		return s.WriteErr(proto.ErrTimeout)
 
 	default:
-		s.mod.log.Error("unexpected error processing query: %s", reflect.TypeOf(err))
+		s.mod.log.Error("unexpected error processing query: %s", err)
 		return s.WriteErr(proto.ErrUnexpected)
 	}
 }

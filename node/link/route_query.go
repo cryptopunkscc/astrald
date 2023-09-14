@@ -8,14 +8,16 @@ import (
 
 func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
 	// validate identities
-	if !query.Target().IsEqual(link.RemoteIdentity()) {
-		return nil, errors.New("target/link identity mismatch")
-	}
-	if !query.Caller().IsEqual(link.LocalIdentity()) {
-		return nil, errors.New("caller/link identity mismatch")
-	}
-	if !query.Caller().IsEqual(caller.Identity()) {
-		return nil, errors.New("caller/writer identity mismatch")
+	if !hints.AllowRedirect {
+		if !query.Target().IsEqual(link.RemoteIdentity()) {
+			return net.RouteNotFound(link, errors.New("target/link identity mismatch"))
+		}
+		if !query.Caller().IsEqual(link.LocalIdentity()) {
+			return net.RouteNotFound(link, errors.New("caller/link identity mismatch"))
+		}
+		if !query.Caller().IsEqual(caller.Identity()) {
+			return net.RouteNotFound(link, errors.New("caller/writer identity mismatch"))
+		}
 	}
 
 	// request a health check to make sure the link is responsive

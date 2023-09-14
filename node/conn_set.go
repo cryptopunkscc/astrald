@@ -7,18 +7,18 @@ import (
 
 type ConnSet struct {
 	mu    sync.Mutex
-	items []*Conn
-	incl  map[*Conn]struct{}
+	items []*MonitoredConn
+	incl  map[*MonitoredConn]struct{}
 }
 
 func NewConnSet() *ConnSet {
 	return &ConnSet{
-		items: make([]*Conn, 0),
-		incl:  make(map[*Conn]struct{}),
+		items: make([]*MonitoredConn, 0),
+		incl:  make(map[*MonitoredConn]struct{}),
 	}
 }
 
-func (set *ConnSet) Add(conn *Conn) error {
+func (set *ConnSet) Add(conn *MonitoredConn) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
@@ -31,7 +31,7 @@ func (set *ConnSet) Add(conn *Conn) error {
 	return nil
 }
 
-func (set *ConnSet) Remove(conn *Conn) error {
+func (set *ConnSet) Remove(conn *MonitoredConn) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
@@ -49,11 +49,11 @@ func (set *ConnSet) Remove(conn *Conn) error {
 	return nil
 }
 
-func (set *ConnSet) All() []*Conn {
+func (set *ConnSet) All() []*MonitoredConn {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
-	var clone = make([]*Conn, len(set.items))
+	var clone = make([]*MonitoredConn, len(set.items))
 	copy(clone, set.items)
 	return clone
 }
@@ -62,7 +62,7 @@ func (set *ConnSet) Count() int {
 	return len(set.items)
 }
 
-func (set *ConnSet) Find(id int) *Conn {
+func (set *ConnSet) Find(id int) *MonitoredConn {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/router"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
@@ -142,9 +143,9 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 	for _, conn := range corenode.Conns().All() {
 		c := term.Color
 		term.Color = false
-		var peersWidth = len(term.Sprintf(term.Sprintf("%s:%s", conn.Caller().Identity(), conn.Target().Identity())))
+		var peersWidth = len(term.Sprintf(term.Sprintf("%s:%s", conn.Query().Caller(), conn.Query().Target())))
 		term.Color = c
-		var peers = term.Sprintf("%s:%s", conn.Caller().Identity(), conn.Target().Identity())
+		var peers = term.Sprintf("%s:%s", conn.Query().Caller(), conn.Query().Target())
 		if peersWidth < 30 {
 			peers = peers + strings.Repeat(" ", 30-peersWidth)
 		}
@@ -255,6 +256,10 @@ func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
 
 		case *net.SecurePipeWriter:
 			term.Printf("  Identity: %d\n", w.Identity())
+
+		case *router.IdentityTranslation:
+			term.Printf("  Identity: %d\n", w.Identity())
+
 		}
 
 		if nw, ok := i.(net.OutputGetter); ok {

@@ -55,8 +55,8 @@ func (t *Time) UnmarshalCSLQ(dec *Decoder) (err error) {
 	return
 }
 
-func (t *Time) MarshalCSLQ(enc *Encoder) error {
-	return enc.Encodef("q", (*time.Time)(t).UnixNano())
+func (t Time) MarshalCSLQ(enc *Encoder) error {
+	return enc.Encodef("q", (time.Time)(t).UnixNano())
 }
 
 func (t Time) Time() time.Time {

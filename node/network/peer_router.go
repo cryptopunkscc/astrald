@@ -24,7 +24,7 @@ func (router *PeerRouter) RouteQuery(ctx context.Context, query net.Query, calle
 	}
 
 	if best == nil {
-		return nil, &net.ErrRouteNotFound{Router: router}
+		return net.RouteNotFound(router)
 	}
 
 	return best.RouteQuery(ctx, query, caller, hints)

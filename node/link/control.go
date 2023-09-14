@@ -183,7 +183,7 @@ func (c *Control) executeQuery(msg Query) error {
 	defer caller.Unlock()
 
 	// route the query upstream
-	target, err := c.uplink.RouteQuery(c.ctx, query, caller, net.Hints{Origin: net.OriginNetwork})
+	target, err := c.uplink.RouteQuery(c.ctx, query, caller, net.DefaultHints().WithOrigin(net.OriginNetwork))
 	if err != nil {
 		var code = errRejected
 		if errors.Is(err, &net.ErrRouteNotFound{}) {

@@ -13,7 +13,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/presence"
 	_ "github.com/cryptopunkscc/astrald/mod/profile"
 	_ "github.com/cryptopunkscc/astrald/mod/reflectlink"
-	_ "github.com/cryptopunkscc/astrald/mod/route"
+	_ "github.com/cryptopunkscc/astrald/mod/router"
 	_ "github.com/cryptopunkscc/astrald/mod/speedtest"
 	_ "github.com/cryptopunkscc/astrald/mod/storage"
 	_ "github.com/cryptopunkscc/astrald/mod/tcpfwd"

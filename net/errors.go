@@ -17,6 +17,13 @@ type ErrRouteNotFound struct {
 	Fails  []error
 }
 
+func RouteNotFound(r Router, errors ...error) (SecureWriteCloser, error) {
+	return nil, &ErrRouteNotFound{
+		Router: r,
+		Fails:  errors,
+	}
+}
+
 func (e *ErrRouteNotFound) Error() string {
 	return "route not found"
 }
