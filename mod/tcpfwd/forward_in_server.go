@@ -2,16 +2,19 @@ package tcpfwd
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/streams"
+	"io"
 	_net "net"
 	"strings"
+	"time"
 )
 
 type ForwardInServer struct {
 	*Module
-	tcpAddr string
-	target  string
+	identity id.Identity
+	tcpAddr  string
+	target   string
 }
 
 func (server *ForwardInServer) Run(ctx context.Context) error {
@@ -33,30 +36,67 @@ func (server *ForwardInServer) Run(ctx context.Context) error {
 			return err
 		}
 
-		go server.serve(inConn)
+		go func() {
+			if err := server.serve(inConn); err != nil {
+				server.log.Errorv(1, "serve error: %v", err)
+			}
+		}()
 	}
 }
 
-func (server *ForwardInServer) serve(in _net.Conn) {
-	var nodeHex, q string
+func (server *ForwardInServer) serve(in _net.Conn) error {
+	defer in.Close()
 
-	var parts = strings.SplitN(server.target, ":", 2)
+	var err error
+	var nodeHex, queryText string
+	var caller = server.node.Identity()
+
+	t := server.target
+	if idx := strings.Index(t, "@"); idx != -1 {
+		callerName := t[:idx]
+		t = t[idx+1:]
+
+		caller, err = server.node.Resolver().Resolve(callerName)
+		if err != nil {
+			return err
+		}
+
+		keystore, err := server.assets.KeyStore()
+		if err != nil {
+			return err
+		}
+
+		caller, err = keystore.Find(caller)
+		if err != nil {
+			return err
+		}
+	}
+
+	var parts = strings.SplitN(t, ":", 2)
 	if len(parts) == 2 {
-		nodeHex, q = parts[0], parts[1]
+		nodeHex, queryText = parts[0], parts[1]
 	} else {
-		nodeHex, q = "localnode", parts[0]
+		nodeHex, queryText = "localnode", parts[0]
 	}
 
-	nodeID, err := server.node.Resolver().Resolve(nodeHex)
+	target, err := server.node.Resolver().Resolve(nodeHex)
 	if err != nil {
-		return
+		return err
 	}
 
-	out, err := net.Route(server.ctx, server.node.Router(), net.NewQuery(server.node.Identity(), nodeID, q))
+	query := net.NewQuery(caller, target, queryText)
+	src := net.NewSecurePipeWriter(in, caller)
+
+	ctx, cancel := context.WithTimeout(server.ctx, 30*time.Second)
+	defer cancel()
+
+	dst, err := server.node.Router().RouteQuery(ctx, query, src, net.DefaultHints())
 	if err != nil {
-		in.Close()
-		return
+		return err
 	}
 
-	streams.Join(in, out)
+	io.Copy(dst, in)
+	dst.Close()
+
+	return nil
 }

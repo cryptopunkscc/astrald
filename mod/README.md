@@ -1,6 +1,8 @@
 # Modules
 
-Modules extend the core functionality of `astrald`.
+Modules are optional extensions of the core functionality of `astrald`.
+They are compiled into the node and have full access to the node's internals.
+They should only be used for extending low-level functionality of the node.
 
 ### Core modules
 
@@ -17,3 +19,17 @@ Modules extend the core functionality of `astrald`.
 | speedtest                    | a tool for benchmarking link speed                       |
 | storage                      | provides storage and sharing APIs                        |
 | [tcpfwd](tcpfwd/README.md)   | TCP tunnelling over astral                               |
+
+### Enabled modules
+
+By default, all compiled modules are enabled. To manually select which modules
+should be enabled, add the following to `node.yaml` in your
+[config directory](../docs/quickstart.md#config-directory):
+
+```yaml
+modules:
+  - admin
+  - apphost
+  - connect
+  - ...
+```

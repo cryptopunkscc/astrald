@@ -256,6 +256,7 @@ func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
 
 		case *net.SecurePipeWriter:
 			term.Printf("  Identity: %d\n", w.Identity())
+			term.Printf("  Transport: %s\n", reflect.TypeOf(w.Insecure()))
 
 		case *router.IdentityTranslation:
 			term.Printf("  Identity: %d\n", w.Identity())

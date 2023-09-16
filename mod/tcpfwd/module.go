@@ -3,12 +3,14 @@ package tcpfwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
 type Module struct {
 	node   modules.Node
+	assets assets.Store
 	config Config
 	log    *log.Logger
 	ctx    context.Context
@@ -29,9 +31,10 @@ func (m *Module) Run(ctx context.Context) error {
 
 	for tcpAddr, target := range m.config.In {
 		runners = append(runners, &ForwardInServer{
-			Module:  m,
-			tcpAddr: tcpAddr,
-			target:  target,
+			Module:   m,
+			identity: m.node.Identity(),
+			tcpAddr:  tcpAddr,
+			target:   target,
 		})
 	}
 
