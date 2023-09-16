@@ -64,7 +64,12 @@ func (tracker *CoreTracker) IdentityByAlias(alias string) (id.Identity, error) {
 	return identity, nil
 }
 
+// SetAlias sets the alias for the identity. Set an empty alias to unset.
 func (tracker *CoreTracker) SetAlias(identity id.Identity, alias string) error {
+	if alias == "" {
+		return tracker.db.Delete(&dbAliases{}, "identity = ?", identity.String()).Error
+	}
+
 	return tracker.db.Save(&dbAliases{
 		Identity: identity.String(),
 		Alias:    alias,
@@ -78,4 +83,18 @@ func (tracker *CoreTracker) GetAlias(identity id.Identity) (string, error) {
 	}
 
 	return row.Alias, nil
+}
+
+// Clear deletes all enpoints of the identity
+func (tracker *CoreTracker) Clear(identity id.Identity) error {
+	return tracker.db.Delete(&dbEndpoint{}, "identity = ?", identity.String()).Error
+}
+
+// Remove removes enpoints and the alias of the identity
+func (tracker *CoreTracker) Remove(identity id.Identity) error {
+	if err := tracker.db.Delete(&dbAliases{}, "identity = ?", identity.String()).Error; err != nil {
+		return err
+	}
+
+	return tracker.db.Delete(&dbEndpoint{}, "identity = ?", identity.String()).Error
 }

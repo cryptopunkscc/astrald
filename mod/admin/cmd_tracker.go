@@ -4,10 +4,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/nodeinfo"
-	"time"
 )
-
-const defaultAddDuration = 30 * 24 * time.Hour
 
 var _ Command = &CmdTracker{}
 
@@ -25,6 +22,7 @@ func NewCmdTracker(mod *Module) *CmdTracker {
 		"set_alias":    cmd.setAlias,
 		"show":         cmd.show,
 		"parse":        cmd.parse,
+		"clear":        cmd.clear,
 		"remove":       cmd.remove,
 		"help":         cmd.help,
 	}
@@ -207,6 +205,20 @@ func (cmd *CmdTracker) setAlias(term *Terminal, args []string) error {
 	return cmd.mod.node.Tracker().SetAlias(identity, args[1])
 }
 
+func (cmd *CmdTracker) clear(term *Terminal, args []string) error {
+	if len(args) < 1 {
+		term.Println("usage: tracker clear <identity>")
+		return errors.New("misisng arguments")
+	}
+
+	identity, err := cmd.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	return cmd.mod.node.Tracker().Clear(identity)
+}
+
 func (cmd *CmdTracker) remove(term *Terminal, args []string) error {
 	if len(args) < 1 {
 		term.Println("usage: tracker remove <identity>")
@@ -218,7 +230,7 @@ func (cmd *CmdTracker) remove(term *Terminal, args []string) error {
 		return err
 	}
 
-	return cmd.mod.node.Tracker().DeleteAll(identity)
+	return cmd.mod.node.Tracker().Remove(identity)
 }
 
 func (cmd *CmdTracker) help(term *Terminal, _ []string) error {
@@ -230,7 +242,8 @@ func (cmd *CmdTracker) help(term *Terminal, _ []string) error {
 	term.Printf("  parse <nodelink>                        parse nodelink data\n")
 	term.Printf("  add <nodelink>                          add nodelink data\n")
 	term.Printf("  set_alias <identity> <alias>            set identity's alias\n")
-	term.Printf("  remove <identity>                       delete identity's endpoints\n")
+	term.Printf("  clear <identity>                        clear identity's endpoints\n")
+	term.Printf("  remove <identity>                       remove all identity data\n")
 	term.Printf("  help                                    show help\n")
 	return nil
 }

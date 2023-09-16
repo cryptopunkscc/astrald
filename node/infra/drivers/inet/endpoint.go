@@ -51,6 +51,14 @@ func (e Endpoint) Network() string {
 	return DriverName
 }
 
+func (e Endpoint) Port() int {
+	return int(e.port)
+}
+
+func (e Endpoint) IP() _net.IP {
+	return e.ip
+}
+
 func (e Endpoint) IsGlobalUnicast() bool {
 	return e.ip.IsGlobalUnicast()
 }

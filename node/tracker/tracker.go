@@ -8,7 +8,8 @@ import (
 type Tracker interface {
 	AddEndpoint(identity id.Identity, endpoint net.Endpoint) error
 	EndpointsByIdentity(identity id.Identity) ([]net.Endpoint, error)
-	DeleteAll(identity id.Identity) error
+	Clear(identity id.Identity) error
+	Remove(identity id.Identity) error
 	Identities() ([]id.Identity, error)
 	SetAlias(identity id.Identity, alias string) error
 	GetAlias(identity id.Identity) (string, error)

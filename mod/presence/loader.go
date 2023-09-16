@@ -12,15 +12,15 @@ type Loader struct{}
 
 func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
 	mod := &Module{
-		node:    node,
-		config:  defaultConfig,
-		entries: make(map[string]*entry),
-		skip:    make(map[string]struct{}),
-		log:     log,
+		node:   node,
+		config: defaultConfig,
+		log:    log,
 	}
 	mod.events.SetParent(node.Events())
+	mod.Discover = NewDiscoverService(mod)
+	mod.Announce = &AnnounceService{Module: mod}
 
-	_ = assets.LoadYAML("presence", &mod.config)
+	_ = assets.LoadYAML(ModuleName, &mod.config)
 
 	return mod, nil
 }
