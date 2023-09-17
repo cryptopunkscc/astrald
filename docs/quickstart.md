@@ -85,3 +85,7 @@ The first `demo` is the identity the user is using to interact with the admin
 console, the second `demo` is the identity of the node.
 
 If you got this far, you have a fully functional astral node up and running.
+
+## What's next?
+
+* [TCP tunnels](tcp-tunnels.md) guide.
