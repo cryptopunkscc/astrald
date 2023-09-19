@@ -1,17 +1,17 @@
-package discovery
+package sdp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/mod/router"
+	"github.com/cryptopunkscc/astrald/mod/sdp/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -23,8 +23,9 @@ type Module struct {
 	node      node.Node
 	events    events.Queue
 	config    Config
+	assets    assets.Store
 	log       *log.Logger
-	sources   map[Source]id.Identity
+	sources   map[Source]struct{}
 	sourcesMu sync.Mutex
 	cache     map[string][]ServiceEntry
 	routes    map[string]id.Identity
@@ -37,7 +38,7 @@ func (m *Module) Run(ctx context.Context) error {
 
 	// inject admin command
 	if adm, err := modules.Find[*admin.Module](m.node.Modules()); err == nil {
-		adm.AddCommand("discovery", NewAdmin(m))
+		adm.AddCommand(ModuleName, NewAdmin(m))
 	}
 
 	// register as a router
@@ -47,24 +48,15 @@ func (m *Module) Run(ctx context.Context) error {
 
 	return tasks.Group(
 		&DiscoveryService{Module: m},
-		&RegisterService{Module: m},
 		&EventHandler{Module: m},
 	).Run(ctx)
 }
 
-func (m *Module) AddSourceContext(ctx context.Context, source Source, identity id.Identity) {
-	m.AddSource(source, identity)
-	go func() {
-		<-ctx.Done()
-		m.RemoveSource(source)
-	}()
-}
-
-func (m *Module) AddSource(source Source, identity id.Identity) {
+func (m *Module) AddSource(source Source) {
 	m.sourcesMu.Lock()
 	defer m.sourcesMu.Unlock()
 
-	m.sources[source] = identity
+	m.sources[source] = struct{}{}
 
 	var s string
 	if stringer, ok := source.(fmt.Stringer); ok {
@@ -72,7 +64,7 @@ func (m *Module) AddSource(source Source, identity id.Identity) {
 	} else {
 		s = reflect.TypeOf(source).String()
 	}
-	m.log.Infov(1, "registered source: %s (%s)", s, identity)
+	m.log.Infov(1, "registered source: %s", s)
 }
 
 func (m *Module) RemoveSource(source Source) {
@@ -126,16 +118,24 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 		callerID = m.node.Identity()
 	}
 
-	if !callerID.IsEqual(m.node.Identity()) {
-		return nil, errors.New("switching identities unimplemented")
-	}
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	if callerID.PrivateKey() == nil {
+		keyStore, err := m.assets.KeyStore()
+		if err != nil {
+			return nil, err
+		}
+
+		callerID, err = keyStore.Find(callerID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	q, err := net.Route(ctx,
-		m.node.Network(),
-		net.NewQuery(m.node.Identity(), remoteID, discoverServiceName),
+		m.node.Router(),
+		net.NewQuery(callerID, remoteID, DiscoverServiceName),
 	)
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 	}()
 
 	for err == nil {
-		err = cslq.Invoke(q, func(msg rpc.ServiceEntry) error {
+		err = cslq.Invoke(q, func(msg proto.ServiceEntry) error {
 			list = append(list, ServiceEntry(msg))
 			if !msg.Identity.IsEqual(remoteID) {
 				m.routes[msg.Identity.PublicKeyHex()] = remoteID

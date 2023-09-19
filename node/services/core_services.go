@@ -65,7 +65,7 @@ func (srv *CoreServices) find(identity id.Identity, name string) (*Service, erro
 	return nil, ErrServiceNotFound
 }
 
-func (srv *CoreServices) FindByName(name string) ([]*Service, error) {
+func (srv *CoreServices) FindByName(name string) []*Service {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 
@@ -77,7 +77,7 @@ func (srv *CoreServices) FindByName(name string) ([]*Service, error) {
 		}
 	}
 
-	return list, nil
+	return list
 }
 
 // Register registers a service as the specified identity

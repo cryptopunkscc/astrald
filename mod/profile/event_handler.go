@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
+	"github.com/cryptopunkscc/astrald/mod/sdp"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
 )
@@ -18,7 +18,7 @@ func (h *EventHandler) Run(ctx context.Context) error {
 	return events.Handle(ctx, h.node.Events(), h.handleServicesDiscovered)
 }
 
-func (h *EventHandler) handleServicesDiscovered(ctx context.Context, e discovery.EventServicesDiscovered) error {
+func (h *EventHandler) handleServicesDiscovered(ctx context.Context, e sdp.EventServicesDiscovered) error {
 	for _, srv := range e.Services {
 		if e.Identity.IsEqual(h.node.Identity()) {
 			continue

@@ -1,10 +1,10 @@
-package discovery
+package sdp
 
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
+	"github.com/cryptopunkscc/astrald/mod/sdp/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/services"
 )
@@ -37,7 +37,7 @@ func (src *ServiceSource) Discover(ctx context.Context, caller id.Identity, orig
 	var list = make([]ServiceEntry, 0)
 
 	for err == nil {
-		err = cslq.Invoke(conn, func(msg rpc.ServiceEntry) error {
+		err = cslq.Invoke(conn, func(msg proto.ServiceEntry) error {
 			msg.Identity = conn.RemoteIdentity()
 			list = append(list, ServiceEntry(msg))
 			return nil

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
+	"github.com/cryptopunkscc/astrald/mod/sdp"
 	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -35,9 +35,10 @@ func (service *ReadService) Run(ctx context.Context) error {
 		return err
 	}
 
-	disco, err := modules.Find[*discovery.Module](service.node.Modules())
+	disco, err := modules.Find[*sdp.Module](service.node.Modules())
 	if err == nil {
-		disco.AddSourceContext(ctx, service, service.node.Identity())
+		disco.AddSource(service)
+		defer disco.RemoveSource(service)
 	} else {
 		service.log.Errorv(2, "can't regsiter service discovery source: %s", err)
 	}
@@ -47,10 +48,10 @@ func (service *ReadService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (service *ReadService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discovery.ServiceEntry, error) {
-	var list []discovery.ServiceEntry
+func (service *ReadService) Discover(ctx context.Context, caller id.Identity, origin string) ([]sdp.ServiceEntry, error) {
+	var list []sdp.ServiceEntry
 	if service.DataAccessCountByIdentity(caller) > 0 {
-		list = append(list, discovery.ServiceEntry{
+		list = append(list, sdp.ServiceEntry{
 			Name: ReadServiceName,
 			Type: ReadServiceName,
 		})

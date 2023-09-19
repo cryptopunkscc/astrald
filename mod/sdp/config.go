@@ -1,4 +1,4 @@
-package discovery
+package sdp
 
 type Config struct {
 }

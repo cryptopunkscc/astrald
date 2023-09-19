@@ -1,4 +1,4 @@
-package discovery
+package sdp
 
 import (
 	"context"
@@ -114,20 +114,19 @@ func (adm *Admin) sources(term *admin.Terminal, _ []string) error {
 		return nil
 	}
 
-	var f = "%-25s %s\n"
+	var f = "%s\n"
 
 	term.Printf(f,
-		admin.Header("Identity"),
-		admin.Header("Type"),
+		admin.Header("Source"),
 	)
 
-	for src, identity := range list {
-		var typ = reflect.TypeOf(src).String()
-		if s, ok := src.(*ServiceSource); ok {
-			typ = "service: " + s.service
+	for src, _ := range list {
+		var typ = reflect.TypeOf(src)
+		if typ.Kind() == reflect.Ptr {
+			typ = typ.Elem()
 		}
 
-		term.Printf(f, identity, typ)
+		term.Printf(f, typ)
 	}
 
 	return nil
@@ -143,7 +142,7 @@ func (adm *Admin) routes(term *admin.Terminal, _ []string) error {
 }
 
 func (adm *Admin) help(term *admin.Terminal, _ []string) error {
-	term.Printf("usage: discovery <command>\n\n")
+	term.Printf("usage: %s <command>\n\n", ModuleName)
 	term.Printf("commands:\n")
 	var f = "  %-15s %s\n"
 	term.Printf(f, "sources", "show registered discovery sources")
@@ -153,5 +152,5 @@ func (adm *Admin) help(term *admin.Terminal, _ []string) error {
 }
 
 func (adm *Admin) ShortDescription() string {
-	return "manage contacts"
+	return "service discovery tools"
 }

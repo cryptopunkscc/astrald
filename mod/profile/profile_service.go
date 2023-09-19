@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
+	"github.com/cryptopunkscc/astrald/mod/sdp"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"time"
@@ -18,9 +18,10 @@ type ProfileService struct {
 func (service *ProfileService) Run(ctx context.Context) error {
 	s, err := service.node.Services().Register(ctx, service.node.Identity(), serviceName, service)
 
-	disco, err := modules.Find[*discovery.Module](service.node.Modules())
+	disco, err := modules.Find[*sdp.Module](service.node.Modules())
 	if err == nil {
-		disco.AddSourceContext(ctx, service, service.node.Identity())
+		disco.AddSource(service)
+		defer disco.RemoveSource(service)
 	} else {
 		service.log.Errorv(2, "can't regsiter service discovery source: %s", err)
 	}
@@ -29,8 +30,8 @@ func (service *ProfileService) Run(ctx context.Context) error {
 	return err
 }
 
-func (service *ProfileService) Discover(ctx context.Context, caller id.Identity, origin string) ([]discovery.ServiceEntry, error) {
-	return []discovery.ServiceEntry{
+func (service *ProfileService) Discover(ctx context.Context, caller id.Identity, origin string) ([]sdp.ServiceEntry, error) {
+	return []sdp.ServiceEntry{
 		{
 			Identity: service.node.Identity(),
 			Name:     serviceName,

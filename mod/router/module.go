@@ -113,7 +113,23 @@ func (m *Module) RouteVia(
 	return proxy, nil
 }
 
+func (m *Module) isLocal(identity id.Identity) bool {
+	if m.node.Identity().IsEqual(identity) {
+		return true
+	}
+	for _, info := range m.node.Services().List() {
+		if info.Identity.IsEqual(identity) {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	if m.isLocal(query.Target()) {
+		return net.RouteNotFound(m)
+	}
+
 	if query.Caller().IsEqual(m.node.Identity()) {
 		return net.RouteNotFound(m)
 	}

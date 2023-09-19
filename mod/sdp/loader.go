@@ -1,4 +1,4 @@
-package discovery
+package sdp
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
-const ModuleName = "discovery"
+const ModuleName = "sdp"
 
 type Loader struct{}
 
@@ -17,12 +17,14 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		node:    node,
 		config:  defaultConfig,
 		log:     log,
-		sources: map[Source]id.Identity{},
+		assets:  assets,
+		sources: map[Source]struct{}{},
 		cache:   map[string][]ServiceEntry{},
 		routes:  map[string]id.Identity{},
 	}
 
 	mod.events.SetParent(node.Events())
+	mod.AddSource(NewLocalServices(node.Services()))
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
 

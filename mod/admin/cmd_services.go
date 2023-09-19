@@ -87,12 +87,7 @@ func (cmd *CmdServices) release(term *Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	services, err := cmd.mod.node.Services().FindByName(args[0])
-	if err != nil {
-		return err
-	}
-
-	for _, service := range services {
+	for _, service := range cmd.mod.node.Services().FindByName(args[0]) {
 		service.Close()
 	}
 

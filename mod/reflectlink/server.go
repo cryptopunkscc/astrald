@@ -3,8 +3,8 @@ package reflectlink
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
+	"github.com/cryptopunkscc/astrald/mod/sdp"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"reflect"
@@ -20,9 +20,10 @@ func (server *Server) Run(ctx context.Context) error {
 		return err
 	}
 
-	disco, err := modules.Find[*discovery.Module](server.node.Modules())
+	disco, err := modules.Find[*sdp.Module](server.node.Modules())
 	if err == nil {
-		disco.AddSourceContext(ctx, server, server.node.Identity())
+		disco.AddSource(server)
+		defer disco.RemoveSource(server)
 	}
 
 	<-s.Done()

@@ -1,9 +1,9 @@
-package discovery
+package sdp
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/debug"
-	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
@@ -15,10 +15,10 @@ type DiscoveryService struct {
 	*Module
 }
 
-const discoverServiceName = "services.discover"
+const DiscoverServiceName = "core.sdp.discover"
 
 func (service *DiscoveryService) Run(ctx context.Context) error {
-	s, err := service.node.Services().Register(ctx, service.node.Identity(), discoverServiceName, service)
+	s, err := service.node.Services().Register(ctx, service.node.Identity(), DiscoverServiceName, service)
 	if err != nil {
 		return err
 	}
@@ -40,14 +40,13 @@ func (service *DiscoveryService) RouteQuery(ctx context.Context, query net.Query
 
 func (service *DiscoveryService) serve(conn net.SecureConn, origin string) {
 	defer conn.Close()
-	var session = rpc.New(conn)
 
 	var wg sync.WaitGroup
 
 	service.log.Logv(1, "discovery request from %v (%s)", conn.RemoteIdentity(), origin)
 
-	for source, sourceID := range service.sources {
-		source, sourceID := source, sourceID
+	for source := range service.sources {
+		source := source
 
 		wg.Add(1)
 		go func() {
@@ -59,8 +58,7 @@ func (service *DiscoveryService) serve(conn net.SecureConn, origin string) {
 			}
 
 			for _, item := range list {
-				item.Identity = sourceID
-				session.Encode(item)
+				cslq.Encode(conn, "v", item)
 			}
 		}()
 	}

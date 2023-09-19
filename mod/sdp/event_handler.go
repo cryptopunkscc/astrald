@@ -1,9 +1,9 @@
-package discovery
+package sdp
 
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/discovery/rpc"
+	"github.com/cryptopunkscc/astrald/mod/sdp/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/network"
@@ -22,7 +22,7 @@ func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLin
 
 	var conn, err = net.Route(ctx,
 		srv.node.Network(),
-		net.NewQuery(srv.node.Identity(), remoteIdentity, discoverServiceName),
+		net.NewQuery(srv.node.Identity(), remoteIdentity, DiscoverServiceName),
 	)
 	if err != nil {
 		srv.log.Errorv(2, "discover %s: %s", remoteIdentity, err)
@@ -31,7 +31,7 @@ func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLin
 
 	var list = make([]ServiceEntry, 0)
 	for err == nil {
-		err = cslq.Invoke(conn, func(msg rpc.ServiceEntry) error {
+		err = cslq.Invoke(conn, func(msg proto.ServiceEntry) error {
 			if !msg.Identity.IsEqual(remoteIdentity) {
 				srv.routes[msg.Identity.PublicKeyHex()] = remoteIdentity
 			}
@@ -43,14 +43,14 @@ func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLin
 	srv.setCache(remoteIdentity, list)
 
 	if len(list) > 0 {
-		srv.log.Infov(2, "discover %s: %v services available", remoteIdentity, len(list))
+		srv.log.Infov(1, "discovered %v services on %v", len(list), remoteIdentity)
 		srv.events.Emit(EventServicesDiscovered{
 			identityName: srv.log.Sprintf("%v", remoteIdentity),
 			Identity:     remoteIdentity,
 			Services:     list,
 		})
 	} else {
-		srv.log.Infov(2, "discover %s: no services available", remoteIdentity)
+		srv.log.Infov(1, "no services available on %v", remoteIdentity)
 	}
 
 	return nil
