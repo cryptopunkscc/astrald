@@ -18,7 +18,7 @@ They should only be used for extending low-level functionality of the node.
 | route                        | lets identites route queries via links between nodes     |
 | speedtest                    | a tool for benchmarking link speed                       |
 | storage                      | provides storage and sharing APIs                        |
-| [tcpfwd](tcpfwd/README.md)   | TCP tunnelling over astral                               |
+| [fwd](fwd/README.md)         | Cross-network forwarding                                 |
 
 ### Enabled modules
 

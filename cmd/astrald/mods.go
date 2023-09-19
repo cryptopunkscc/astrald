@@ -7,6 +7,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/agent"
 	_ "github.com/cryptopunkscc/astrald/mod/apphost"
 	_ "github.com/cryptopunkscc/astrald/mod/connect"
+	_ "github.com/cryptopunkscc/astrald/mod/fwd"
 	_ "github.com/cryptopunkscc/astrald/mod/gateway"
 	_ "github.com/cryptopunkscc/astrald/mod/keepalive"
 	_ "github.com/cryptopunkscc/astrald/mod/presence"
@@ -16,5 +17,4 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/sdp"
 	_ "github.com/cryptopunkscc/astrald/mod/speedtest"
 	_ "github.com/cryptopunkscc/astrald/mod/storage"
-	_ "github.com/cryptopunkscc/astrald/mod/tcpfwd"
 )

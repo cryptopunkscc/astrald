@@ -1,4 +1,4 @@
-package tcpfwd
+package fwd
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
@@ -6,19 +6,20 @@ import (
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
-const ModuleName = "net.tcpfwd"
+const ModuleName = "fwd"
 
 type Loader struct{}
 
 func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
 	mod := &Module{
-		node:   node,
-		assets: assets,
-		config: defaultConfig,
-		log:    log,
+		node:    node,
+		assets:  assets,
+		config:  defaultConfig,
+		log:     log,
+		servers: make(map[*ServerRunner]struct{}),
 	}
 
-	_ = assets.LoadYAML("tcpfwd", &mod.config)
+	_ = assets.LoadYAML(ModuleName, &mod.config)
 
 	return mod, nil
 }

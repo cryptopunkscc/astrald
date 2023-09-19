@@ -1,0 +1,56 @@
+package fwd
+
+import (
+	"context"
+	"fmt"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/tasks"
+	"time"
+)
+
+type Server interface {
+	tasks.Runner
+	fmt.Stringer
+	Target() net.Router
+}
+
+type ServerRunner struct {
+	Server
+	startedAt time.Time
+	ctx       context.Context
+	cancel    context.CancelFunc
+	err       error
+	done      chan struct{}
+}
+
+func NewServerRunner(ctx context.Context, s Server) *ServerRunner {
+	ctx, cancel := context.WithCancel(ctx)
+
+	return &ServerRunner{
+		Server:    s,
+		startedAt: time.Now(),
+		ctx:       ctx,
+		cancel:    cancel,
+	}
+}
+
+func (srv *ServerRunner) Run(ctx context.Context) error {
+	srv.done = make(chan struct{})
+	defer close(srv.done)
+	srv.ctx = ctx
+	srv.err = srv.Server.Run(ctx)
+	return srv.err
+}
+
+func (srv *ServerRunner) Done() <-chan struct{} {
+	return srv.done
+}
+
+func (srv *ServerRunner) String() string {
+	return srv.Server.String()
+}
+
+func (srv *ServerRunner) Stop() error {
+	srv.cancel()
+	return nil
+}

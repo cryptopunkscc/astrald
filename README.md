@@ -9,6 +9,7 @@ I publish this for developers to get early feedback on the ideas expressed by th
 
 ## Docs
 
-- [Quick start](docs/quickstart.md)
 - [Core concepts](docs/overview.md)
+- [Quick start](docs/quickstart.md)
+- [TCP tunneling guide](docs/tcp-tunnels.md)
 - [Modules](mod/README.md)
