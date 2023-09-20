@@ -25,9 +25,12 @@ type Module struct {
 	commands map[string]Command
 	log      *log.Logger
 	mu       sync.Mutex
+	ctx      context.Context
 }
 
 func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
+
 	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), ServiceName, mod)
 	if err != nil {
 		return err

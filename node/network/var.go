@@ -2,7 +2,6 @@ package network
 
 import (
 	"errors"
-	"time"
 )
 
 var (
@@ -14,6 +13,3 @@ var (
 	ErrIdentityMismatch      = errors.New("local identity mismatch")
 	ErrLinkIsNil             = errors.New("link is nil")
 )
-
-const MaxPeerLinks = 8
-const HandshakeTimeout = 15 * time.Second

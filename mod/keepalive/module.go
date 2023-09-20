@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
 	"time"
 )
@@ -51,36 +52,41 @@ func (module *Module) keepNodeLinked(ctx context.Context, nodeID id.Identity) er
 	module.log.Logv(1, "will keep %s linked", nodeID)
 
 	for {
-		best, err := module.node.Network().Link(ctx, nodeID)
+		var links = module.node.Network().Links().ByRemoteIdentity(nodeID).All()
 
-		if err != nil {
-			var ival time.Duration
-			if errc < len(relinkIntervals) {
-				ival = time.Duration(relinkIntervals[errc]) * time.Second
-			} else {
-				ival = time.Duration(relinkIntervals[len(relinkIntervals)-1]) * time.Second
-			}
-
+		// are we already linked?
+		if len(links) > 0 {
+			errc = 0
 			select {
-			case <-time.After(ival):
-				errc++
+			case <-links[0].Done(): // wait for the link to close
 				continue
-
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}
-
-		errc = 0
-	wait:
-		for {
-			select {
-			case <-best.Done(): // find new best when current best closes
-				break wait
 
 			case <-ctx.Done(): // abort when context ends
 				return ctx.Err()
 			}
+		}
+
+		link, err := link.MakeLink(ctx, module.node, nodeID, link.Opts{})
+		if err == nil {
+			module.node.Network().AddLink(link)
+			continue
+		}
+
+		errc++
+
+		var ival time.Duration
+		if errc < len(relinkIntervals) {
+			ival = time.Duration(relinkIntervals[errc]) * time.Second
+		} else {
+			ival = time.Duration(relinkIntervals[len(relinkIntervals)-1]) * time.Second
+		}
+
+		select {
+		case <-time.After(ival):
+			continue
+
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 }

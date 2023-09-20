@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/router"
@@ -63,42 +62,6 @@ func (cmd *CmdNet) Exec(term *Terminal, args []string) error {
 	default:
 		return errors.New("invalid command")
 	}
-}
-
-func (cmd *CmdNet) link(term *Terminal, args []string) error {
-	if len(args) < 1 {
-		return cmd.linkHelp(term)
-	}
-
-	remoteID, err := cmd.mod.node.Resolver().Resolve(args[0])
-	if err != nil {
-		return err
-	}
-
-	timeout := defaultLinkTimeout
-
-	if len(args) > 1 {
-		timeout, err = time.ParseDuration(args[1])
-		if err != nil {
-			return err
-		}
-	}
-
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
-
-	link, err := cmd.mod.node.Network().Link(ctx, remoteID)
-	if err != nil {
-		return err
-	}
-
-	term.Printf("linked via %s\n", net.Network(link))
-
-	return nil
-}
-
-func (cmd *CmdNet) linkHelp(term *Terminal) error {
-	term.Printf("help: net link <node>\n\n")
-	return nil
 }
 
 func (cmd *CmdNet) unlink(term *Terminal, args []string) error {
@@ -397,4 +360,14 @@ func getLinkType(l any) string {
 		t = t.Elem()
 	}
 	return t.Name()
+}
+
+func selectEndpoints(list []net.Endpoint, selector func(net.Endpoint) bool) []net.Endpoint {
+	var filtered = make([]net.Endpoint, 0)
+	for _, e := range list {
+		if selector(e) {
+			filtered = append(filtered, e)
+		}
+	}
+	return filtered
 }

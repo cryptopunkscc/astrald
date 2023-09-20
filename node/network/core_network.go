@@ -3,7 +3,6 @@ package network
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
@@ -115,76 +114,6 @@ func (n *CoreNetwork) AddLink(l net.Link) error {
 
 func (n *CoreNetwork) Links() *LinkSet {
 	return n.links
-}
-
-// Link returns a link with the node. If the node is not linked, it will attempt to link to it.
-func (n *CoreNetwork) Link(ctx context.Context, nodeID id.Identity) (net.Link, error) {
-	// check if peer is already linked
-	var links = n.links.ByRemoteIdentity(nodeID).All()
-	if len(links) > 0 {
-		return links[0], nil
-	}
-
-	var (
-		hexID    = nodeID.PublicKeyHex()
-		linkTask *tasks.Task[net.Link]
-		ok       bool
-		err      error
-	)
-
-	// use the link task that's already running for this node, or start one
-	n.linkMu.Lock()
-	linkTask, ok = n.linkTasks[hexID]
-	if ok {
-		n.linkMu.Unlock()
-		<-linkTask.Done()
-		return linkTask.Result(), linkTask.Err()
-	}
-
-	linkTask, err = n.RequestNewLink(nodeID, LinkOptions{})
-	if err != nil {
-		n.linkMu.Unlock()
-		return nil, err
-	}
-
-	n.linkTasks[hexID] = linkTask
-	n.linkMu.Unlock()
-
-	go func() {
-		select {
-		case <-ctx.Done():
-			linkTask.Cancel()
-		case <-linkTask.Done():
-		}
-	}()
-
-	<-linkTask.Done()
-
-	link := linkTask.Result()
-	err = linkTask.Err()
-
-	n.linkMu.Lock()
-	delete(n.linkTasks, hexID)
-	n.linkMu.Unlock()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return link, nil
-}
-
-// RequestNewLink schedules a task that will try to establish a new link with the provided node (even if the node
-// is already linked).
-func (n *CoreNetwork) RequestNewLink(nodeID id.Identity, opts LinkOptions) (*tasks.Task[net.Link], error) {
-	t := tasks.New[net.Link](&LinkPeerTask{
-		RemoteID: nodeID,
-		Network:  n,
-		options:  opts,
-		log:      n.log,
-	})
-
-	return t, n.tasks.Add(t)
 }
 
 func (n *CoreNetwork) addLink(l net.Link) error {
