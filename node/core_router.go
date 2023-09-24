@@ -9,9 +9,10 @@ import (
 )
 
 type CoreRouter struct {
-	Routers *net.SerialRouter
-	Monitor *MonitoredRouter
-	log     *log.Logger
+	Routers       *net.SerialRouter
+	Monitor       *MonitoredRouter
+	log           *log.Logger
+	logRouteTrace bool
 }
 
 func NewCoreRouter(routers []net.Router, log *log.Logger) *CoreRouter {
@@ -26,26 +27,49 @@ func NewCoreRouter(routers []net.Router, log *log.Logger) *CoreRouter {
 }
 
 func (router *CoreRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	router.log.Logv(2, "routing query %v -> %v:%v (origin %s)...", query.Caller(), query.Target(), query.Query(), hints.Origin)
+	router.log.Logv(
+		2,
+		"[%v] %v -> %v:%v routing...",
+		query.Nonce(),
+		query.Caller(),
+		query.Target(),
+		query.Query(),
+	)
 
 	var startedAt = time.Now()
 	target, err := router.Monitor.RouteQuery(ctx, query, caller, hints)
-	var d = time.Since(startedAt)
+	var d = time.Since(startedAt).Round(1 * time.Microsecond)
 
 	if err != nil {
-		router.log.Infov(1, "error routing %s query %v -> %v:%v after %v: %v",
-			hints.Origin, query.Caller(), query.Target(), query.Query(), d, err,
+		router.log.Infov(
+			0,
+			"[%v] %v -> %v:%v error (%v): %v",
+			query.Nonce(),
+			query.Caller(),
+			query.Target(),
+			query.Query(),
+			d,
+			err,
 		)
-		if rnf, ok := err.(*net.ErrRouteNotFound); ok {
-			for _, line := range strings.Split(rnf.Trace(), "\n") {
-				if len(line) > 0 {
-					router.log.Logv(2, "%v", line)
+
+		if router.logRouteTrace {
+			if rnf, ok := err.(*net.ErrRouteNotFound); ok {
+				for _, line := range strings.Split(rnf.Trace(), "\n") {
+					if len(line) > 0 {
+						router.log.Logv(2, "%v", line)
+					}
 				}
 			}
 		}
 	} else {
-		router.log.Infov(1, "routed %s query %v -> %v:%v in %v",
-			hints.Origin, query.Caller(), target.Identity(), query.Query(), d,
+		router.log.Infov(
+			1,
+			"[%v] %v -> %v:%v routed in %v",
+			query.Nonce(),
+			query.Caller(),
+			target.Identity(),
+			query.Query(),
+			d,
 		)
 	}
 
@@ -54,4 +78,12 @@ func (router *CoreRouter) RouteQuery(ctx context.Context, query net.Query, calle
 
 func (router *CoreRouter) Conns() *ConnSet {
 	return router.Monitor.Conns()
+}
+
+func (router *CoreRouter) LogRouteTrace() bool {
+	return router.logRouteTrace
+}
+
+func (router *CoreRouter) SetLogRouteTrace(logRouteTrace bool) {
+	router.logRouteTrace = logRouteTrace
 }

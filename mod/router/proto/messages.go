@@ -6,6 +6,7 @@ type QueryParams struct {
 	Cert   []byte      `cslq:"[s]c"`
 	Target id.Identity `cslq:"v"`
 	Query  string      `cslq:"[c]c"`
+	Nonce  uint64      `cslq:"q"`
 }
 
 type QueryResponse struct {

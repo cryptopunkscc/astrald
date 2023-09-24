@@ -150,12 +150,13 @@ func (c *Control) handleReset(msg Reset) error {
 }
 
 // Query sends a Query messsage to the remote party
-func (c *Control) Query(query string, localPort int) error {
+func (c *Control) Query(nonce uint64, query string, localPort int) error {
 	var buf = &bytes.Buffer{}
 	cslq.Encode(buf, "cv", codeQuery, Query{
-		Service: query,
-		Port:    localPort,
-		Buffer:  portBufferSize,
+		Query:  query,
+		Port:   localPort,
+		Buffer: portBufferSize,
+		Nonce:  nonce,
 	})
 	return c.mux.Write(mux.Frame{Data: buf.Bytes()})
 }
@@ -174,7 +175,7 @@ func (c *Control) handleQuery(msg Query) error {
 
 // executeQuery executes an incoming query
 func (c *Control) executeQuery(msg Query) error {
-	var query = net.NewQuery(c.RemoteIdentity(), c.LocalIdentity(), msg.Service)
+	var query = net.NewQueryNonce(c.RemoteIdentity(), c.LocalIdentity(), msg.Query, net.Nonce(msg.Nonce))
 
 	var caller = NewPortWriter(c.CoreLink, msg.Port)
 

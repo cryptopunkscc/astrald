@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"os"
 	"strings"
@@ -88,6 +89,18 @@ func (node *CoreNode) setupLogs() {
 		return []log.Op{
 			log.OpColor{Color: color},
 			log.OpText{Text: name},
+			log.OpReset{},
+		}, true
+	})
+
+	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
+		s, ok := v.(net.Nonce)
+		if !ok {
+			return nil, false
+		}
+		return []log.Op{
+			log.OpColor{Color: log.Yellow},
+			log.OpText{Text: s.String()},
 			log.OpReset{},
 		}, true
 	})

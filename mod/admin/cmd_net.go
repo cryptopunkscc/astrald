@@ -99,10 +99,19 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 		return errors.New("unsupported node type")
 	}
 
-	var f1 = "%-6d %-30s %-20s %-8s %8s %8s\n"
-	var f2 = "%-6d %s %-20s %-8s %8s %8s\n"
+	var f1 = "%-6d %-30s %-20s %-8s %8s %8s %-16s\n"
+	var f2 = "%-6d %s %-20s %-8s %8s %8s %-16s\n"
 
-	term.Printf(f1, Header("ID"), Header("Identities"), Header("Query"), Header("State"), Header("In"), Header("Out"))
+	term.Printf(
+		f1,
+		Header("ID"),
+		Header("Identities"),
+		Header("Query"),
+		Header("State"),
+		Header("In"),
+		Header("Out"),
+		Header("Nonce"),
+	)
 	for _, conn := range corenode.Conns().All() {
 		c := term.Color
 		term.Color = false
@@ -120,6 +129,7 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 			conn.State(),
 			log.DataSize(conn.BytesIn()).HumanReadable(),
 			log.DataSize(conn.BytesOut()).HumanReadable(),
+			conn.Query().Nonce(),
 		)
 	}
 

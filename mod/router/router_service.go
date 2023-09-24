@@ -74,7 +74,7 @@ func (srv *RouterService) serve(ctx context.Context, conn net.SecureConn) error 
 
 	// create a proxy service
 	redirectCtx, _ := context.WithTimeout(ctx, time.Minute)
-	var realQuery = net.NewQuery(callerIM.identity, params.Target, params.Query)
+	var realQuery = net.NewQueryNonce(callerIM.identity, params.Target, params.Query, net.Nonce(params.Nonce))
 
 	redirect, err := NewRedirect(redirectCtx, realQuery, conn.RemoteIdentity(), srv.node)
 	if err != nil {

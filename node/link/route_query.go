@@ -66,7 +66,7 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 	}
 
 	// send the query to the remote peer
-	if err := link.control.Query(query.Query(), localPort); err != nil {
+	if err := link.control.Query(uint64(query.Nonce()), query.Query(), localPort); err != nil {
 		link.CloseWithError(err)
 		return nil, err
 	}

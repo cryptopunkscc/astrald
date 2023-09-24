@@ -53,6 +53,7 @@ func (m *Module) RouteVia(
 	var queryParams = &proto.QueryParams{
 		Target: query.Target(),
 		Query:  query.Query(),
+		Nonce:  uint64(query.Nonce()),
 	}
 
 	// attach a caller certificate if necessary
@@ -97,7 +98,7 @@ func (m *Module) RouteVia(
 	}
 
 	// route through the proxy service
-	var proxyQuery = net.NewQuery(m.node.Identity(), routerIdentity, response.ProxyService)
+	var proxyQuery = net.NewQueryNonce(m.node.Identity(), routerIdentity, response.ProxyService, query.Nonce())
 	if !caller.Identity().IsEqual(m.node.Identity()) {
 		caller = NewIdentityTranslation(caller, m.node.Identity())
 	}

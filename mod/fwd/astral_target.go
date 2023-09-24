@@ -23,7 +23,7 @@ func NewAstralTarget(query net.Query, router net.Router, label string) (*AstralT
 func (t *AstralTarget) RouteQuery(ctx context.Context, query net.Query, src net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return t.router.RouteQuery(
 		ctx,
-		t.query,
+		net.NewQuery(t.query.Caller(), t.query.Target(), t.query.Query()),
 		router.NewIdentityTranslation(src, t.query.Caller()),
 		net.DefaultHints(),
 	)
