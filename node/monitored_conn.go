@@ -2,6 +2,7 @@ package node
 
 import (
 	"github.com/cryptopunkscc/astrald/net"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -23,8 +24,9 @@ type MonitoredConn struct {
 	hints         net.Hints
 	establishedAt time.Time
 
-	targetClosed atomic.Bool
-	callerClosed atomic.Bool
+	closeMu      sync.Mutex
+	targetClosed bool
+	callerClosed bool
 	done         chan struct{}
 }
 
@@ -47,9 +49,7 @@ func (conn *MonitoredConn) SetTarget(target *MonitoredWriter) {
 	conn.target = target
 	if target != nil {
 		target.AfterClose = func(err error) {
-			if conn.targetClosed.CompareAndSwap(false, true) {
-				conn.checkClosed()
-			}
+			conn.onTargetClosed()
 		}
 	}
 }
@@ -58,9 +58,7 @@ func (conn *MonitoredConn) SetCaller(caller *MonitoredWriter) {
 	conn.caller = caller
 	if caller != nil {
 		caller.AfterClose = func(err error) {
-			if conn.callerClosed.CompareAndSwap(false, true) {
-				conn.checkClosed()
-			}
+			conn.onCallerClosed()
 		}
 	}
 }
@@ -108,14 +106,17 @@ func (conn *MonitoredConn) Done() <-chan struct{} {
 }
 
 func (conn *MonitoredConn) State() string {
+	conn.closeMu.Lock()
+	defer conn.closeMu.Unlock()
+
 	if conn.target == nil {
 		return StateRouting
 	}
 	var c int
-	if conn.callerClosed.Load() {
+	if conn.callerClosed {
 		c++
 	}
-	if conn.targetClosed.Load() {
+	if conn.targetClosed {
 		c++
 	}
 	switch c {
@@ -129,8 +130,22 @@ func (conn *MonitoredConn) State() string {
 	panic("?")
 }
 
-func (conn *MonitoredConn) checkClosed() {
-	if conn.callerClosed.Load() && conn.targetClosed.Load() {
+func (conn *MonitoredConn) onTargetClosed() {
+	conn.closeMu.Lock()
+	defer conn.closeMu.Unlock()
+
+	conn.targetClosed = true
+	if conn.callerClosed {
+		close(conn.done)
+	}
+}
+
+func (conn *MonitoredConn) onCallerClosed() {
+	conn.closeMu.Lock()
+	defer conn.closeMu.Unlock()
+
+	conn.callerClosed = true
+	if conn.targetClosed {
 		close(conn.done)
 	}
 }
