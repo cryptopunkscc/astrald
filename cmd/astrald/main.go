@@ -60,7 +60,6 @@ func main() {
 	defer debug.SaveLog(func(p any) {
 		debug.SigInt(p)
 		time.Sleep(time.Second) // give components time to exit cleanly
-		debug.Exit(p)
 	})
 
 	// Trap ctrl+c

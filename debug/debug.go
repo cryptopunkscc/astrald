@@ -13,14 +13,11 @@ const PanicExitCode = 5
 
 var LogDir string
 
+// SaveLog will save the crash log to a file, then invoke the provided function (if not nil) and panic again
 func SaveLog(after func(p any)) {
 	var p = recover()
 	if p == nil {
 		return
-	}
-
-	if after != nil {
-		defer after(p)
 	}
 
 	var ts = time.Now().Format("20060102030405")
@@ -41,10 +38,11 @@ func SaveLog(after func(p any)) {
 
 	fmt.Printf("crash log saved to %s\n", path)
 
-}
+	if after != nil {
+		after(p)
+	}
 
-func Exit(p any) {
-	os.Exit(PanicExitCode)
+	panic(p)
 }
 
 func SigInt(p any) {
