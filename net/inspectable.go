@@ -10,8 +10,12 @@ type SourceSetter interface {
 	SetSource(any) error
 }
 
-var _ SourceGetter = &SourceField{}
-var _ SourceSetter = &SourceField{}
+type SourceGetSetter interface {
+	SourceGetter
+	SourceSetter
+}
+
+var _ SourceGetSetter = &SourceField{}
 
 type SourceField struct {
 	source any
@@ -21,12 +25,12 @@ func NewSourceField(source any) *SourceField {
 	return &SourceField{source: source}
 }
 
-func (s *SourceField) Source() any {
-	return s.source
+func (field *SourceField) Source() any {
+	return field.source
 }
 
-func (s *SourceField) SetSource(source any) error {
-	s.source = source
+func (field *SourceField) SetSource(source any) error {
+	field.source = source
 	return nil
 }
 
@@ -37,6 +41,13 @@ type OutputGetter interface {
 type OutputSetter interface {
 	SetOutput(SecureWriteCloser) error
 }
+
+type OutputGetSetter interface {
+	OutputGetter
+	OutputSetter
+}
+
+var _ OutputGetSetter = &OutputField{}
 
 type OutputField struct {
 	parent any
@@ -61,12 +72,16 @@ func (field *OutputField) SetOutput(output SecureWriteCloser) error {
 	field.Lock()
 	defer field.Unlock()
 
-	if s, ok := field.output.(SourceSetter); ok {
-		s.SetSource(nil)
+	if s, ok := field.output.(SourceGetSetter); ok {
+		if s.Source() == field.parent {
+			s.SetSource(nil)
+		}
 	}
 	field.output = output
-	if s, ok := output.(SourceSetter); ok {
-		s.SetSource(field.parent)
+	if s, ok := output.(SourceGetSetter); ok {
+		if s.Source() == nil {
+			s.SetSource(field.parent)
+		}
 	}
 	return nil
 }
