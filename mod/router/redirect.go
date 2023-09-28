@@ -51,8 +51,12 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 	// add identity transaltion
 	mon, ok := proxyCaller.(*node.MonitoredWriter)
 	if ok {
-		var t = NewIdentityTranslation(mon.Output(), finalQuery.Caller())
+		next := mon.Output()
+		var t = NewIdentityTranslation(next, finalQuery.Caller())
 		mon.SetOutput(t)
+		if s, ok := next.(net.SourceSetter); ok {
+			s.SetSource(t)
+		}
 	} else {
 		proxyCaller = NewIdentityTranslation(proxyCaller, finalQuery.Caller())
 	}

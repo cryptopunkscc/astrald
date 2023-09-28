@@ -56,6 +56,9 @@ func (cmd *CmdNet) Exec(term *Terminal, args []string) error {
 	case "check":
 		return cmd.check(term, args[2:])
 
+	case "reroute":
+		return cmd.reroute(term, args[2:])
+
 	case "help":
 		return cmd.help(term)
 
@@ -99,8 +102,8 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 		return errors.New("unsupported node type")
 	}
 
-	var f1 = "%-6d %-30s %-20s %-8s %8s %8s %-16s\n"
-	var f2 = "%-6d %s %-20s %-8s %8s %8s %-16s\n"
+	var f1 = "%-6d %-30s %-20s %-10s %8s %8s %-16s\n"
+	var f2 = "%-6d %s %-20s %-10s %8s %8s %-16s\n"
 
 	term.Printf(
 		f1,
@@ -201,6 +204,7 @@ func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
 		case *link.PortWriter:
 			term.Printf("  Identity: %d\n", w.Identity())
 			term.Printf("  Port: %d\n", w.Port())
+			term.Printf("  Source: %s\n", reflect.TypeOf(w.Source()))
 			if t := w.Transport(); t != nil {
 				var (
 					network                       = "unknown"
@@ -344,6 +348,45 @@ func (cmd *CmdNet) check(_ *Terminal, _ []string) error {
 		}
 	}
 	return nil
+}
+
+func (cmd *CmdNet) reroute(term *Terminal, args []string) error {
+	corenode, ok := cmd.mod.node.(*node.CoreNode)
+	if !ok {
+		return errors.New("unsupported node type")
+	}
+
+	if len(args) < 2 {
+		term.Printf("usage: net conn <ConnID> <LinkID>\n")
+		return nil
+	}
+
+	cid, err := strconv.Atoi(args[0])
+	if err != nil {
+		return err
+	}
+
+	conn := corenode.Conns().Find(cid)
+	if conn == nil {
+		return errors.New("no such connection")
+	}
+
+	lid, err := strconv.Atoi(args[1])
+	if err != nil {
+		return err
+	}
+
+	lnk, err := corenode.Network().Links().Find(lid)
+	if err != nil {
+		return err
+	}
+
+	modRouter, ok := cmd.mod.node.Modules().Find(router.ModuleName).(*router.Module)
+	if !ok {
+		return errors.New("router module not loaded")
+	}
+
+	return modRouter.Reroute(conn.Query().Nonce(), lnk)
 }
 
 func (cmd *CmdNet) help(term *Terminal) error {

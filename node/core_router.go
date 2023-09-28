@@ -63,7 +63,7 @@ func (router *CoreRouter) RouteQuery(ctx context.Context, query net.Query, calle
 		}
 	} else {
 		router.log.Infov(
-			1,
+			0,
 			"[%v] %v -> %v:%v routed in %v",
 			query.Nonce(),
 			query.Caller(),

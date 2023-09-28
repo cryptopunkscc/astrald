@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	StateRouting = "routing"
-	StateOpen    = "open"
-	StateClosing = "closing"
-	StateClosed  = "closed"
+	StateRouting       = "routing"
+	StateOpen          = "open"
+	StateClosingTarget = "closing-t"
+	StateClosingCaller = "closing-c"
+	StateClosed        = "closed"
 )
 
 var nextConnID atomic.Int64
@@ -123,7 +124,10 @@ func (conn *MonitoredConn) State() string {
 	case 0:
 		return StateOpen
 	case 1:
-		return StateClosing
+		if conn.targetClosed {
+			return StateClosingTarget
+		}
+		return StateClosingCaller
 	case 2:
 		return StateClosed
 	}
@@ -134,6 +138,10 @@ func (conn *MonitoredConn) onTargetClosed() {
 	conn.closeMu.Lock()
 	defer conn.closeMu.Unlock()
 
+	if conn.targetClosed {
+		return
+	}
+
 	conn.targetClosed = true
 	if conn.callerClosed {
 		close(conn.done)
@@ -143,6 +151,10 @@ func (conn *MonitoredConn) onTargetClosed() {
 func (conn *MonitoredConn) onCallerClosed() {
 	conn.closeMu.Lock()
 	defer conn.closeMu.Unlock()
+
+	if conn.callerClosed {
+		return
+	}
 
 	conn.callerClosed = true
 	if conn.targetClosed {
