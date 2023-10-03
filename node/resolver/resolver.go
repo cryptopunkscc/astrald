@@ -33,7 +33,7 @@ func NewCoreResolver(node Node) *CoreResolver {
 }
 
 func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
-	if s == "" {
+	if s == "" || s == "anyone" {
 		return id.Identity{}, nil
 	}
 

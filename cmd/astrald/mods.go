@@ -9,7 +9,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/connect"
 	_ "github.com/cryptopunkscc/astrald/mod/fwd"
 	_ "github.com/cryptopunkscc/astrald/mod/gateway"
-	_ "github.com/cryptopunkscc/astrald/mod/keepalive"
+	_ "github.com/cryptopunkscc/astrald/mod/policy"
 	_ "github.com/cryptopunkscc/astrald/mod/presence"
 	_ "github.com/cryptopunkscc/astrald/mod/profile"
 	_ "github.com/cryptopunkscc/astrald/mod/reflectlink"

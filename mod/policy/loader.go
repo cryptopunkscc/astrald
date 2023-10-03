@@ -1,4 +1,4 @@
-package keepalive
+package policy
 
 import (
 	_log "github.com/cryptopunkscc/astrald/log"
@@ -6,18 +6,19 @@ import (
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
-const ModuleName = "net.keepalive"
-const configName = "keepalive"
+const ModuleName = "policy"
 
 type Loader struct{}
 
 func (Loader) Load(node modules.Node, assets assets.Store, log *_log.Logger) (modules.Module, error) {
 	mod := &Module{
-		node: node,
-		log:  log,
+		node:     node,
+		log:      log,
+		config:   defaultConfig,
+		policies: make(map[*RunningPolicy]struct{}),
 	}
 
-	_ = assets.LoadYAML(configName, &mod.config)
+	_ = assets.LoadYAML(ModuleName, &mod.config)
 
 	return mod, nil
 }

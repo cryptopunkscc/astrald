@@ -3,24 +3,28 @@ package node
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/events"
 )
 
 const MonitoredConnHint = "monitored_conn"
 
 type MonitoredRouter struct {
 	net.Router
-	conns *ConnSet
+	conns  *ConnSet
+	events events.Queue
 }
 
 func (router *MonitoredRouter) Conns() *ConnSet {
 	return router.conns
 }
 
-func NewMonitoredRouter(router net.Router) *MonitoredRouter {
-	return &MonitoredRouter{
+func NewMonitoredRouter(router net.Router, eventParent *events.Queue) *MonitoredRouter {
+	r := &MonitoredRouter{
 		Router: router,
 		conns:  NewConnSet(),
 	}
+	r.events.SetParent(eventParent)
+	return r
 }
 
 func (router *MonitoredRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
@@ -48,10 +52,13 @@ func (router *MonitoredRouter) RouteQuery(ctx context.Context, query net.Query, 
 	var targetMonitor = NewMonitoredWriter(target)
 	conn.SetTarget(targetMonitor)
 
+	router.events.Emit(EventConnAdded{Conn: conn})
+
 	// remove the conn after it's closed
 	go func() {
 		<-conn.Done()
 		router.conns.Remove(conn)
+		router.events.Emit(EventConnRemoved{Conn: conn})
 	}()
 
 	return targetMonitor, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"strings"
 	"time"
 )
@@ -12,16 +13,17 @@ type CoreRouter struct {
 	Routers       *net.SerialRouter
 	Monitor       *MonitoredRouter
 	log           *log.Logger
+	events        events.Queue
 	logRouteTrace bool
 }
 
-func NewCoreRouter(routers []net.Router, log *log.Logger) *CoreRouter {
+func NewCoreRouter(routers []net.Router, log *log.Logger, eventParent *events.Queue) *CoreRouter {
 	var router = &CoreRouter{
 		Routers: net.NewSerialRouter(routers...),
 		log:     log,
 	}
 
-	router.Monitor = NewMonitoredRouter(router.Routers)
+	router.Monitor = NewMonitoredRouter(router.Routers, eventParent)
 
 	return router
 }

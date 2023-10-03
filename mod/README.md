@@ -10,15 +10,16 @@ They should only be used for extending low-level functionality of the node.
 |:-----------------------------|:---------------------------------------------------------|
 | admin                        | the admin console                                        |
 | [apphost](apphost/README.md) | provides an interface for apps to interact with the node |
-| discovery                    | provides service discovery mechanism                     |
+| [fwd](fwd/README.md)         | Cross-network forwarding                                 |
 | gateway                      | adds gateway functionality to the node                   |
+| policy                       | policy management                                        |
 | presence                     | discover other nodes in local networks                   |
 | profile                      | allows nodes to exchange their profiles                  |
 | reflectlink                  | provides link information to other nodes                 |
-| route                        | lets identites route queries via links between nodes     |
+| router                       | lets identites route queries via links between nodes     |
+| sdp                          | provides service discovery mechanism                     |
 | speedtest                    | a tool for benchmarking link speed                       |
-| storage                      | provides storage and sharing APIs                        |
-| [fwd](fwd/README.md)         | Cross-network forwarding                                 |
+| storage                      | provides storage APIs                                    |
 
 ### Enabled modules
 
