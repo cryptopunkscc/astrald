@@ -31,6 +31,5 @@ should be enabled, add the following to `node.yaml` in your
 modules:
   - admin
   - apphost
-  - connect
   - ...
 ```

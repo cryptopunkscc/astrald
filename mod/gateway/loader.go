@@ -11,7 +11,7 @@ const ModuleName = "gateway"
 type Loader struct{}
 
 func (Loader) Load(node modules.Node, _ assets.Store, log *log.Logger) (modules.Module, error) {
-	mod := &Gateway{
+	mod := &Module{
 		node: node,
 		log:  log,
 	}
