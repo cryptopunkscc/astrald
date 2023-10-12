@@ -58,3 +58,19 @@ func (info *NodeInfo) String() string {
 	}
 	return infoPrefix + base62.EncodeToString(buf.Bytes())
 }
+
+func SaveToNode(info *NodeInfo, node node.Node, saveAlias bool) error {
+	for _, ep := range info.Endpoints {
+		ep, err := node.Infra().Unpack(ep.Network(), ep.Pack())
+		if err != nil {
+			return err
+		}
+		if err := node.Tracker().AddEndpoint(info.Identity, ep); err != nil {
+			return err
+		}
+	}
+	if saveAlias {
+		return node.Tracker().SetAlias(info.Identity, info.Alias)
+	}
+	return nil
+}

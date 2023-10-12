@@ -179,17 +179,7 @@ func (cmd *CmdTracker) add(_ *Terminal, args []string) error {
 		return errors.New("cannot add self")
 	}
 
-	for _, ep := range info.Endpoints {
-		ep, err := cmd.mod.node.Infra().Unpack(ep.Network(), ep.Pack())
-		if err != nil {
-			return err
-		}
-		if err := cmd.mod.node.Tracker().AddEndpoint(info.Identity, ep); err != nil {
-			return err
-		}
-	}
-
-	return cmd.mod.node.Tracker().SetAlias(info.Identity, info.Alias)
+	return nodeinfo.SaveToNode(info, cmd.mod.node, true)
 }
 
 func (cmd *CmdTracker) setAlias(term *Terminal, args []string) error {

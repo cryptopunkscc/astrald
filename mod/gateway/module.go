@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 )
@@ -28,11 +29,23 @@ type Module struct {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	for _, gate := range mod.config.Subscribe {
-		gateID, err := mod.node.Resolver().Resolve(gate)
-		if err != nil {
-			mod.log.Error("config error: cannot resolve %s: %v", gate, err)
+	for _, gateName := range mod.config.Subscribe {
+		var gateID id.Identity
+
+		if info, err := nodeinfo.Parse(gateName); err == nil {
+			if err := nodeinfo.SaveToNode(info, mod.node, true); err != nil {
+				mod.log.Error("config error: cannot save nodeinfo %s: %v", gateName, err)
+				continue
+			}
+			gateID = info.Identity
+		} else {
+			gateID, err = mod.node.Resolver().Resolve(gateName)
+			if err != nil {
+				mod.log.Error("config error: cannot resolve %s: %v", gateName, err)
+				continue
+			}
 		}
+
 		mod.Subscribe(gateID)
 	}
 
