@@ -31,29 +31,29 @@ func RegisterDriver(name string, driver DriverInjector) error {
 	return nil
 }
 
-func (i *CoreInfra) AddDriver(name string, driver Driver) error {
-	if _, found := i.networkDrivers[name]; found {
+func (infra *CoreInfra) AddDriver(name string, driver Driver) error {
+	if _, found := infra.networkDrivers[name]; found {
 		return errors.New("driver already added")
 	}
 
-	i.networkDrivers[name] = driver
+	infra.networkDrivers[name] = driver
 	return nil
 }
 
-func (i *CoreInfra) Drivers() map[string]Driver {
+func (infra *CoreInfra) Drivers() map[string]Driver {
 	enabledDrivers := make(map[string]Driver)
-	for k, v := range i.networkDrivers {
-		if i.config.driversContain(k) {
+	for k, v := range infra.networkDrivers {
+		if infra.config.driversContain(k) {
 			enabledDrivers[k] = v
 		}
 	}
 	return enabledDrivers
 }
 
-func (i *CoreInfra) loadDrivers() error {
+func (infra *CoreInfra) loadDrivers() error {
 	for name, injector := range drivers {
-		if err := injector.Inject(i, i.assets, i.log.Tag(name)); err != nil {
-			i.log.Errorv(1, "error loading network driver %s: %s", name, err)
+		if err := injector.Inject(infra, infra.assets, infra.log.Tag(name)); err != nil {
+			infra.log.Errorv(1, "error loading network driver %s: %s", name, err)
 		}
 	}
 

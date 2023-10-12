@@ -1,4 +1,4 @@
-package gw
+package gateway
 
 import (
 	"bytes"
@@ -20,10 +20,10 @@ func NewEndpoint(gate id.Identity, target id.Identity) Endpoint {
 }
 
 // Pack returns a binary representation of the address
-func (a Endpoint) Pack() []byte {
+func (endpoint Endpoint) Pack() []byte {
 	buf := &bytes.Buffer{}
 
-	if err := cslq.Encode(buf, "vv", a.gate, a.target); err != nil {
+	if err := cslq.Encode(buf, "vv", endpoint.gate, endpoint.target); err != nil {
 		panic(err)
 	}
 
@@ -31,25 +31,25 @@ func (a Endpoint) Pack() []byte {
 }
 
 // String returns a text representation of the address
-func (a Endpoint) String() string {
-	if a.IsZero() {
+func (endpoint Endpoint) String() string {
+	if endpoint.IsZero() {
 		return "unknown"
 	}
-	return a.gate.PublicKeyHex() + ":" + a.target.PublicKeyHex()
+	return endpoint.gate.PublicKeyHex() + ":" + endpoint.target.PublicKeyHex()
 }
 
-func (a Endpoint) IsZero() bool {
-	return a.gate.IsZero()
+func (endpoint Endpoint) IsZero() bool {
+	return endpoint.gate.IsZero()
 }
 
-func (a Endpoint) Gate() id.Identity {
-	return a.gate
+func (endpoint Endpoint) Gate() id.Identity {
+	return endpoint.gate
 }
 
-func (a Endpoint) Target() id.Identity {
-	return a.target
+func (endpoint Endpoint) Target() id.Identity {
+	return endpoint.target
 }
 
-func (a Endpoint) Network() string {
-	return DriverName
+func (endpoint Endpoint) Network() string {
+	return NetworkName
 }

@@ -48,6 +48,7 @@ func (srv *CoreServices) List() []ServiceInfo {
 	}
 	return list
 }
+
 func (srv *CoreServices) Find(identity id.Identity, name string) (*Service, error) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()

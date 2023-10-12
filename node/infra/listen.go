@@ -9,15 +9,15 @@ import (
 
 var _ Listener = &CoreInfra{}
 
-func (i *CoreInfra) Listen(ctx context.Context) (<-chan net.Conn, error) {
-	if len(i.networkDrivers) == 0 {
+func (infra *CoreInfra) Listen(ctx context.Context) (<-chan net.Conn, error) {
+	if len(infra.networkDrivers) == 0 {
 		return nil, errors.New("no drivers available")
 	}
 
 	var output = make(chan net.Conn)
 	var wg = sync.WaitGroup{}
 
-	for _, network := range i.Drivers() {
+	for _, network := range infra.Drivers() {
 		listener, ok := network.(Listener)
 		if !ok {
 			continue

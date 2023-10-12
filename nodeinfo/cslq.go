@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
 	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
 	"github.com/cryptopunkscc/astrald/node/infra/drivers/tor"
 )
@@ -15,6 +14,7 @@ const netCodeInet = 0
 const netCodeTor = 1
 const netCodeGateway = 2
 const netCodeOther = 255
+const netNameGateway = "gw"
 
 func (info *NodeInfo) UnmarshalCSLQ(dec *cslq.Decoder) error {
 	var count int
@@ -66,12 +66,10 @@ func encodeAddr(enc *cslq.Encoder, addr net.Endpoint) error {
 		if err := enc.Encodef("c", netCodeTor); err != nil {
 			return err
 		}
-	case gw.DriverName:
+	case netNameGateway:
 		if err := enc.Encodef("c", netCodeGateway); err != nil {
 			return err
 		}
-		gwAddr, _ := addr.(gw.Endpoint)
-		addr = gw.NewEndpoint(gwAddr.Gate(), gwAddr.Target())
 	default:
 		err := enc.Encodef("c[c]c", 255, addr.Network())
 		if err != nil {
@@ -100,7 +98,7 @@ func decodeAddr(dec *cslq.Decoder) (*net.GenericEndpoint, error) {
 		netName = tor.DriverName
 
 	case netCodeGateway:
-		netName = gw.DriverName
+		netName = netNameGateway
 
 	case netCodeOther:
 		if err := dec.Decodef("[c]c", &netName); err != nil {

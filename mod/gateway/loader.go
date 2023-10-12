@@ -1,8 +1,9 @@
 package gateway
 
 import (
-	"github.com/cryptopunkscc/astrald/log"
+	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
@@ -10,11 +11,51 @@ const ModuleName = "gateway"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, _ assets.Store, log *log.Logger) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store, log *_log.Logger) (modules.Module, error) {
 	mod := &Module{
-		node: node,
-		log:  log,
+		node:        node,
+		log:         log,
+		config:      defaultConfig,
+		dialer:      NewDialer(node),
+		subscribers: make(map[string]*Subscriber),
 	}
+
+	_ = assets.LoadYAML(ModuleName, &mod.config)
+
+	if i, ok := mod.node.Infra().(*infra.CoreInfra); ok {
+		i.AddDialer(NetworkName, mod.dialer)
+		i.AddUnpacker(NetworkName, mod)
+		i.AddEndpoints(mod)
+	}
+
+	log.Root().PushFormatFunc(func(v any) ([]_log.Op, bool) {
+		ep, ok := v.(Endpoint)
+		if !ok {
+			return nil, false
+		}
+
+		var ops = make([]_log.Op, 0)
+
+		if format, ok := log.Render(ep.gate); ok {
+			ops = append(ops, format...)
+		} else {
+			ops = append(ops, _log.OpText{Text: ep.gate.String()})
+		}
+
+		ops = append(ops,
+			_log.OpColor{Color: _log.White},
+			_log.OpText{Text: ":"},
+			_log.OpReset{},
+		)
+
+		if format, ok := log.Render(ep.target); ok {
+			ops = append(ops, format...)
+		} else {
+			ops = append(ops, _log.OpText{Text: ep.gate.String()})
+		}
+
+		return ops, true
+	})
 
 	return mod, nil
 }

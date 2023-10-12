@@ -19,6 +19,10 @@ type CoreInfra struct {
 	assets         assets.Store
 	networkDrivers map[string]Driver
 	log            *log.Logger
+	endpoints      []EndpointLister
+	dialers        map[string]Dialer
+	unpackers      map[string]Unpacker
+	mu             sync.Mutex
 }
 
 func NewCoreInfra(node Node, assets assets.Store, log *log.Logger) (*CoreInfra, error) {
@@ -26,6 +30,8 @@ func NewCoreInfra(node Node, assets assets.Store, log *log.Logger) (*CoreInfra, 
 		node:           node,
 		assets:         assets,
 		networkDrivers: make(map[string]Driver),
+		dialers:        make(map[string]Dialer),
+		unpackers:      make(map[string]Unpacker),
 		config:         defaultConfig,
 		log:            log.Tag(logTag),
 	}
@@ -41,39 +47,39 @@ func NewCoreInfra(node Node, assets assets.Store, log *log.Logger) (*CoreInfra, 
 	return i, nil
 }
 
-func (i *CoreInfra) Run(ctx context.Context) error {
+func (infra *CoreInfra) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 
 	var loaded []string
-	for name := range i.networkDrivers {
+	for name := range infra.networkDrivers {
 		loaded = append(loaded, name)
 	}
 
-	i.log.Log("drivers loaded: %s, enabled: %s",
+	infra.log.Log("drivers loaded: %s, enabled: %s",
 		strings.Join(loaded, " "),
-		strings.Join(i.config.Drivers, " "),
+		strings.Join(infra.config.Drivers, " "),
 	)
 
-	for _, name := range i.config.Drivers {
+	for _, name := range infra.config.Drivers {
 		name := name
-		if network, found := i.networkDrivers[name]; found {
+		if network, found := infra.networkDrivers[name]; found {
 			wg.Add(1)
 			go func() {
 				defer debug.SaveLog(func(p any) {
-					i.log.Error("network driver %s panicked: %v", name, p)
+					infra.log.Error("network driver %s panicked: %v", name, p)
 					debug.SigInt(p)
 				})
 
 				defer wg.Done()
 
 				if err := network.Run(ctx); err != nil {
-					i.log.Error("network %s error: %s", name, err)
+					infra.log.Error("network %s error: %s", name, err)
 				} else {
-					i.log.Logv(1, "network %s done", name)
+					infra.log.Logv(1, "network %s done", name)
 				}
 			}()
 		} else {
-			i.log.Error("network driver not found: %s", name)
+			infra.log.Error("network driver not found: %s", name)
 		}
 	}
 
@@ -82,6 +88,6 @@ func (i *CoreInfra) Run(ctx context.Context) error {
 	return nil
 }
 
-func (i *CoreInfra) Node() Node {
-	return i.node
+func (infra *CoreInfra) Node() Node {
+	return infra.node
 }

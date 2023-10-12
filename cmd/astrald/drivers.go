@@ -4,7 +4,6 @@ package main
 
 import (
 	_ "github.com/cryptopunkscc/astrald/node/infra/drivers/bt"
-	_ "github.com/cryptopunkscc/astrald/node/infra/drivers/gw"
 	_ "github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
 	_ "github.com/cryptopunkscc/astrald/node/infra/drivers/tor"
 )

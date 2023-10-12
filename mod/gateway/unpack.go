@@ -1,4 +1,4 @@
-package gw
+package gateway
 
 import (
 	"bytes"
@@ -7,8 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 )
 
-func (drv *Driver) Unpack(network string, data []byte) (net.Endpoint, error) {
-	if network != DriverName {
+func (mod *Module) Unpack(network string, data []byte) (net.Endpoint, error) {
+	if network != NetworkName {
 		return nil, errors.New("invalid network")
 	}
 	return Unpack(data)

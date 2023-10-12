@@ -1,4 +1,4 @@
-package gw
+package gateway
 
 import (
 	"errors"
@@ -8,10 +8,10 @@ import (
 	"strings"
 )
 
-var _ infra.Parser = &Driver{}
+var _ infra.Parser = &Module{}
 
-func (drv *Driver) Parse(network string, address string) (net.Endpoint, error) {
-	if network != DriverName {
+func (mod *Module) Parse(network string, address string) (net.Endpoint, error) {
+	if network != NetworkName {
 		return nil, errors.New("invalid network")
 	}
 
@@ -23,11 +23,11 @@ func (drv *Driver) Parse(network string, address string) (net.Endpoint, error) {
 	var err error
 	var endpoint Endpoint
 
-	endpoint.gate, err = drv.infra.Node().Resolver().Resolve(ids[0])
+	endpoint.gate, err = mod.node.Resolver().Resolve(ids[0])
 	if err != nil {
 		return nil, err
 	}
-	endpoint.target, err = drv.infra.Node().Resolver().Resolve(ids[1])
+	endpoint.target, err = mod.node.Resolver().Resolve(ids[1])
 	return endpoint, err
 }
 

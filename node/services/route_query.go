@@ -4,11 +4,17 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/net"
+	"strings"
 )
 
 func (srv *CoreServices) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	// Fetch the service
-	service, err := srv.Find(query.Target(), query.Query())
+	serviceName := query.Query()
+	if idx := strings.IndexByte(serviceName, '?'); idx != -1 {
+		serviceName = serviceName[0:idx]
+	}
+
+	service, err := srv.Find(query.Target(), serviceName)
 	if err != nil {
 		return net.RouteNotFound(srv)
 	}

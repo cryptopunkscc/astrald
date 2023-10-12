@@ -7,18 +7,18 @@ import (
 	"strings"
 )
 
-func (i *CoreInfra) Dial(ctx context.Context, e net.Endpoint) (conn net.Conn, err error) {
+func (infra *CoreInfra) Dial(ctx context.Context, e net.Endpoint) (conn net.Conn, err error) {
 	// try to repack the address to get the concrete type
-	if a, err := i.Unpack(e.Network(), e.Pack()); err == nil {
+	if a, err := infra.Unpack(e.Network(), e.Pack()); err == nil {
 		e = a
 	}
 
-	i.log.Logv(2, "dial %s %s", e.Network(), e)
+	infra.log.Logv(2, "dial %s %s", e.Network(), e)
 
-	conn, err = i.dial(ctx, e)
+	conn, err = infra.dial(ctx, e)
 
 	if err == nil {
-		i.log.Infov(2, "dial %s %s success", e.Network(), e)
+		infra.log.Infov(2, "dial %s %s success", e.Network(), e)
 	} else {
 		switch {
 		case strings.Contains(err.Error(), "connection refused"),
@@ -27,22 +27,52 @@ func (i *CoreInfra) Dial(ctx context.Context, e net.Endpoint) (conn net.Conn, er
 			errors.Is(err, ErrUnsupportedNetwork),
 			errors.Is(err, context.Canceled),
 			errors.Is(err, context.DeadlineExceeded):
-			i.log.Errorv(2, "dial %s %s error: %s", e.Network(), e, err)
+			infra.log.Errorv(2, "dial %s %s error: %s", e.Network(), e, err)
 
 		default:
-			i.log.Errorv(1, "dial %s %s error: %s", e.Network(), e, err)
+			infra.log.Errorv(1, "dial %s %s error: %s", e.Network(), e, err)
 		}
 	}
 
 	return
 }
 
-func (i *CoreInfra) dial(ctx context.Context, addr net.Endpoint) (net.Conn, error) {
-	if !i.config.driversContain(addr.Network()) {
+func (infra *CoreInfra) AddDialer(network string, d Dialer) error {
+	infra.mu.Lock()
+	defer infra.mu.Unlock()
+
+	if _, found := infra.dialers[network]; found {
+		return errors.New("already added")
+	}
+
+	infra.dialers[network] = d
+
+	return nil
+}
+
+func (infra *CoreInfra) RemoveDialer(network string) error {
+	infra.mu.Lock()
+	defer infra.mu.Unlock()
+
+	if _, found := infra.dialers[network]; !found {
+		return errors.New("not found")
+	}
+
+	delete(infra.dialers, network)
+
+	return nil
+}
+
+func (infra *CoreInfra) dial(ctx context.Context, addr net.Endpoint) (net.Conn, error) {
+	if dialer, found := infra.dialers[addr.Network()]; found {
+		return dialer.Dial(ctx, addr)
+	}
+
+	if !infra.config.driversContain(addr.Network()) {
 		return nil, ErrUnsupportedNetwork
 	}
 
-	network, found := i.networkDrivers[addr.Network()]
+	network, found := infra.networkDrivers[addr.Network()]
 	if !found {
 		return nil, ErrUnsupportedNetwork
 	}
