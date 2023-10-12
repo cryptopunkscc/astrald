@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -51,8 +52,9 @@ func (policy *AlwaysLinkedPolicy) AddIdentity(identity id.Identity) error {
 
 	hex := identity.PublicKeyHex()
 
-	if _, found := policy.workers[hex]; found {
-		return errors.New("identity already added")
+	if w, found := policy.workers[hex]; found {
+		w.Add(1)
+		return nil
 	}
 
 	worker := newAlwaysLinkedWorker(policy.node, identity)
@@ -85,7 +87,7 @@ func (policy *AlwaysLinkedPolicy) RemoveIdentity(identity id.Identity) error {
 		return errors.New("identity not found")
 	}
 
-	worker.cancel()
+	worker.Add(-1)
 	return nil
 }
 
@@ -110,12 +112,21 @@ type alwaysLinkedWorker struct {
 	target   id.Identity
 	errCount int
 	cancel   context.CancelFunc
+	counter  atomic.Int32
 }
 
 func newAlwaysLinkedWorker(node node.Node, target id.Identity) *alwaysLinkedWorker {
-	return &alwaysLinkedWorker{
+	w := &alwaysLinkedWorker{
 		node:   node,
 		target: target,
+	}
+	w.counter.Add(1)
+	return w
+}
+
+func (worker *alwaysLinkedWorker) Add(delta int32) {
+	if worker.counter.Add(delta) == 0 {
+		worker.cancel()
 	}
 }
 

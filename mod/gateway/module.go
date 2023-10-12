@@ -5,8 +5,10 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/policy"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 )
@@ -53,6 +55,15 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 	var s = NewSubscriber(gateway, mod.node, mod.log)
 	mod.subscribers[hex] = s
 
+	var alwaysLinkedPolicy *policy.AlwaysLinkedPolicy
+	if modPolicy, err := modules.Find[*policy.Module](mod.node.Modules()); err == nil {
+		alwaysLinkedPolicy = modPolicy.AlwaysLinkedPolicy()
+	}
+
+	if alwaysLinkedPolicy != nil {
+		alwaysLinkedPolicy.AddIdentity(gateway)
+	}
+
 	go func() {
 		err := s.Run(mod.ctx)
 		if err != nil {
@@ -62,6 +73,9 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 		defer mod.mu.Unlock()
 
 		delete(mod.subscribers, hex)
+		if alwaysLinkedPolicy != nil {
+			alwaysLinkedPolicy.RemoveIdentity(gateway)
+		}
 	}()
 
 	return nil

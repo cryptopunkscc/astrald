@@ -89,3 +89,12 @@ func (mod *Module) AddPolicy(policy Policy) error {
 
 	return nil
 }
+
+func (mod *Module) AlwaysLinkedPolicy() *AlwaysLinkedPolicy {
+	for p := range mod.policies {
+		if p, ok := p.Policy.(*AlwaysLinkedPolicy); ok {
+			return p
+		}
+	}
+	return nil
+}
