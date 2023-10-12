@@ -7,9 +7,9 @@ require (
 	github.com/glebarez/sqlite v1.9.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/jxskiss/base62 v1.1.0
-	golang.org/x/crypto v0.12.0
-	golang.org/x/net v0.10.0
-	golang.org/x/sys v0.12.0
+	golang.org/x/crypto v0.14.0
+	golang.org/x/net v0.17.0
+	golang.org/x/sys v0.13.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/gorm v1.25.4
 )
