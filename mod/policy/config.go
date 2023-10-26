@@ -17,6 +17,7 @@ type ConfigRerouteConns struct {
 }
 
 var defaultConfig = Config{
+	AlwaysLinked:  &ConfigAlwaysLinked{},
 	OptimizeLinks: &ConfigOptimizeLinks{},
 	RerouteConns:  &ConfigRerouteConns{},
 }
