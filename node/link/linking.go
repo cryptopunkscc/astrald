@@ -3,6 +3,7 @@ package link
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
@@ -116,7 +117,11 @@ func Accept(
 
 		default:
 			cslq.Encode(secureConn, "c", 1)
-			return nil, errors.New("unsupported feature requested by the remote party")
+			return nil, fmt.Errorf("remote party (%s from %s) requested an invalid feature: %s",
+				secureConn.RemoteIdentity(),
+				secureConn.RemoteEndpoint(),
+				feature,
+			)
 		}
 	}
 }
