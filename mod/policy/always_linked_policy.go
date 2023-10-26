@@ -147,6 +147,7 @@ func (worker *alwaysLinkedWorker) Run(ctx context.Context) error {
 			var wg sync.WaitGroup
 			wg.Add(len(links))
 			for _, lnk := range links {
+				lnk := lnk
 				go func() {
 					defer wg.Done()
 					select {

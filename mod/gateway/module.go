@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/policy"
@@ -62,7 +61,7 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 	var hex = gateway.PublicKeyHex()
 
 	if _, found := mod.subscribers[hex]; found {
-		return errors.New("already subscribed")
+		return ErrAlreadySubscribed
 	}
 
 	var s = NewSubscriber(gateway, mod.node, mod.log)
@@ -100,7 +99,7 @@ func (mod *Module) Unsubscribe(gateway id.Identity) error {
 
 	s, found := mod.subscribers[gateway.PublicKeyHex()]
 	if !found {
-		return errors.New("subscription not found")
+		return ErrNotSubscribed
 	}
 
 	s.Cancel()

@@ -20,6 +20,10 @@ func (dialer *Dialer) Dial(ctx context.Context, endpoint net.Endpoint) (net.Conn
 		return nil, err
 	}
 
+	if e.Gate().IsEqual(dialer.node.Identity()) {
+		return nil, ErrSelfGateway
+	}
+
 	var query = net.NewQuery(dialer.node.Identity(), e.Gate(), RouteServiceName+"?"+e.Target().PublicKeyHex())
 
 	conn, err := net.Route(ctx, dialer.node.Router(), query)

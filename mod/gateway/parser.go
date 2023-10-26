@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/infra"
@@ -12,12 +11,12 @@ var _ infra.Parser = &Module{}
 
 func (mod *Module) Parse(network string, address string) (net.Endpoint, error) {
 	if network != NetworkName {
-		return nil, errors.New("invalid network")
+		return nil, infra.ErrUnsupportedNetwork
 	}
 
 	var ids = strings.SplitN(address, ":", 2)
 	if len(ids) != 2 {
-		return nil, errors.New("invalid address string")
+		return nil, ErrParseError{msg: "invalid address string"}
 	}
 
 	var err error
@@ -34,11 +33,11 @@ func (mod *Module) Parse(network string, address string) (net.Endpoint, error) {
 // Parse converts a text representation of a gateway address to an Endpoint struct
 func Parse(str string) (addr Endpoint, err error) {
 	if len(str) != (2*66)+1 { // two public key hex strings and a separator ":"
-		return addr, errors.New("invalid address length")
+		return addr, ErrParseError{msg: "invalid address length"}
 	}
 	var ids = strings.SplitN(str, ":", 2)
 	if len(ids) != 2 {
-		return addr, errors.New("invalid address string")
+		return addr, ErrParseError{msg: "invalid address string"}
 	}
 	addr.gate, err = id.ParsePublicKeyHex(ids[0])
 	if err != nil {

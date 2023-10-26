@@ -12,6 +12,7 @@ import (
 )
 
 const RouteServiceName = "gateway.route"
+const RouteServiceType = "gateway.route"
 
 type RouteService struct {
 	*Module
@@ -89,7 +90,7 @@ func (srv *RouteService) Discover(ctx context.Context, caller id.Identity, origi
 		{
 			Identity: srv.node.Identity(),
 			Name:     RouteServiceName,
-			Type:     "gateway.route",
+			Type:     RouteServiceType,
 		},
 	}, nil
 }
