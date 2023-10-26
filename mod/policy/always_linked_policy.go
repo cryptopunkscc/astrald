@@ -46,6 +46,10 @@ func (policy *AlwaysLinkedPolicy) AddIdentity(identity id.Identity) error {
 		return errors.New("policy not running")
 	}
 
+	if identity.IsEqual(policy.node.Identity()) {
+		return errors.New("cannot link to self")
+	}
+
 	if identity.IsZero() {
 		return errors.New("identity cannot be zero")
 	}
@@ -137,7 +141,7 @@ func (worker *alwaysLinkedWorker) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
+		case <-time.After(time.Second):
 		}
 
 		var links = worker.node.Network().Links().ByRemoteIdentity(worker.target).All()
@@ -173,6 +177,8 @@ func (worker *alwaysLinkedWorker) Run(ctx context.Context) error {
 			}
 		}
 
-		worker.node.Network().AddLink(lnk)
+		if err := worker.node.Network().AddLink(lnk); err != nil {
+			return err
+		}
 	}
 }

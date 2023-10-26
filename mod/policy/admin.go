@@ -35,6 +35,12 @@ func (adm *Admin) list(term *admin.Terminal, args []string) error {
 			f,
 			policy.Name(),
 		)
+
+		if p, ok := policy.Policy.(*AlwaysLinkedPolicy); ok {
+			for _, i := range p.Identities() {
+				term.Printf("- %v\n", i)
+			}
+		}
 	}
 	return nil
 }

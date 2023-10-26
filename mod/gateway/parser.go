@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/infra"
@@ -27,22 +28,37 @@ func (mod *Module) Parse(network string, address string) (net.Endpoint, error) {
 		return nil, err
 	}
 	endpoint.target, err = mod.node.Resolver().Resolve(ids[1])
-	return endpoint, err
+	if err != nil {
+		return nil, err
+	}
+
+	if endpoint.gate.IsEqual(endpoint.target) {
+		return nil, errors.New("invalid endpoint")
+	}
+
+	return endpoint, nil
 }
 
 // Parse converts a text representation of a gateway address to an Endpoint struct
-func Parse(str string) (addr Endpoint, err error) {
+func Parse(str string) (endpoint Endpoint, err error) {
 	if len(str) != (2*66)+1 { // two public key hex strings and a separator ":"
-		return addr, ErrParseError{msg: "invalid address length"}
+		return endpoint, ErrParseError{msg: "invalid address length"}
 	}
 	var ids = strings.SplitN(str, ":", 2)
 	if len(ids) != 2 {
-		return addr, ErrParseError{msg: "invalid address string"}
+		return Endpoint{}, ErrParseError{msg: "invalid address string"}
 	}
-	addr.gate, err = id.ParsePublicKeyHex(ids[0])
+	endpoint.gate, err = id.ParsePublicKeyHex(ids[0])
 	if err != nil {
-		return
+		return Endpoint{}, err
 	}
-	addr.target, err = id.ParsePublicKeyHex(ids[1])
+	endpoint.target, err = id.ParsePublicKeyHex(ids[1])
+	if err != nil {
+		return Endpoint{}, err
+	}
+	if endpoint.gate.IsEqual(endpoint.target) {
+		return Endpoint{}, errors.New("invalid endpoint")
+	}
+
 	return
 }

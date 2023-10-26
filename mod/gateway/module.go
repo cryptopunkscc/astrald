@@ -58,6 +58,10 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()
 
+	if gateway.IsEqual(mod.node.Identity()) {
+		return ErrSelfGateway
+	}
+
 	var hex = gateway.PublicKeyHex()
 
 	if _, found := mod.subscribers[hex]; found {
