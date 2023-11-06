@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/glebarez/sqlite"
 	"gopkg.in/yaml.v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -85,6 +84,8 @@ func (store *FileStore) StoreYAML(name string, in interface{}) error {
 	return store.Write(name, bytes)
 }
 
+var SqliteOpen func(string) gorm.Dialector
+
 func (store *FileStore) OpenDB(name string) (*gorm.DB, error) {
 	if name == "" {
 		return nil, errors.New("invalid name")
@@ -93,7 +94,7 @@ func (store *FileStore) OpenDB(name string) (*gorm.DB, error) {
 		name = name + ".db"
 	}
 	return gorm.Open(
-		sqlite.Open(filepath.Join(store.baseDir, name)),
+		SqliteOpen(filepath.Join(store.baseDir, name)),
 		&gorm.Config{Logger: logger.Default.LogMode(logger.Silent)},
 	)
 }

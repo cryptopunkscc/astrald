@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/glebarez/sqlite"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -78,6 +80,7 @@ func main() {
 	}()
 
 	// start the node
+	assets.SqliteOpen = sqlite.Open
 	node, err := node.NewCoreNode(astralRoot)
 	if err != nil {
 		fmt.Println("init error:", err)
