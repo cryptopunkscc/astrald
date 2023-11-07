@@ -57,6 +57,9 @@ func (policy *RerouteConnsPolicy) rerouteConn(ctx context.Context, conn *node.Mo
 		var currentScore = scoreNetwork(currentNet)
 		var currentLink = policy.getLink(conn)
 		var links = policy.node.Network().Links().ByRemoteIdentity(remoteID).All()
+		if len(links) == 0 { // peer unlinked
+			return
+		}
 		var best, bestScore = bestLinkScore(links)
 		var bestNet = policy.getTransportNetwork(best.Transport())
 
