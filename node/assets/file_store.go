@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/glebarez/sqlite"
 	"gopkg.in/yaml.v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -15,6 +14,7 @@ import (
 )
 
 var _ Store = &FileStore{}
+var DBOpener func(string) gorm.Dialector
 
 type FileStore struct {
 	baseDir  string
@@ -93,7 +93,7 @@ func (store *FileStore) OpenDB(name string) (*gorm.DB, error) {
 		name = name + ".db"
 	}
 	return gorm.Open(
-		sqlite.Open(filepath.Join(store.baseDir, name)),
+		DBOpener(filepath.Join(store.baseDir, name)),
 		&gorm.Config{Logger: logger.Default.LogMode(logger.Silent)},
 	)
 }
