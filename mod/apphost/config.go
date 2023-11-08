@@ -26,6 +26,8 @@ var defaultConfig = Config{
 	Listen: []string{
 		"tcp:127.0.0.1:8625",
 		"unix:~/.apphost.sock",
+		"memu:apphost",
+		"memb:apphost",
 	},
 	Tokens:        map[string]string{},
 	Workers:       256,
