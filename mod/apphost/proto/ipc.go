@@ -1,6 +1,8 @@
 package proto
 
 import (
+	"github.com/akutz/memconn"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"math/rand"
 	"net"
 	"os"
@@ -25,6 +27,9 @@ func Dial(target string) (c net.Conn, err error) {
 
 	case "unix":
 		c, err = net.Dial("unix", addr)
+
+	case "memu", "memb":
+		c, err = memconn.Dial(proto, addr)
 
 	default:
 		err = ErrUnsupportedProtocol
@@ -57,6 +62,9 @@ func Listen(ipcAddress string) (net.Listener, error) {
 
 		return net.Listen("unix", path)
 
+	case "memu", "memb":
+		return memconn.Listen(protocol, address)
+
 	default:
 		return nil, ErrUnsupportedProtocol
 	}
@@ -75,6 +83,13 @@ func ListenAny(protocol string) (net.Listener, error) {
 				"apphostclient."+tempName(16),
 			),
 		)
+
+	case "memu", "memb":
+		identity, err := id.GenerateIdentity()
+		if err != nil {
+			return nil, err
+		}
+		return memconn.Listen("memu", identity.String())
 
 	default:
 		return nil, ErrUnsupportedProtocol

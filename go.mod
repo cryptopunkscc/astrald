@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	bitbucket.org/creachadair/shell v0.0.7
+	github.com/akutz/memconn v0.1.0
 	github.com/glebarez/sqlite v1.9.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/jxskiss/base62 v1.1.0
