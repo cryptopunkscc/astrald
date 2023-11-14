@@ -265,7 +265,8 @@ func (cmd *CmdNet) show(term *Terminal, args []string) error {
 	}
 
 	term.Printf("ID:               %v (%v)\n", l.ID(), getLinkType(l.Link))
-	term.Printf("Identities:       %v:%v\n", l.LocalIdentity(), l.RemoteIdentity())
+	term.Printf("Local identity:   %v (%v)\n", l.LocalIdentity(), Faded(l.LocalIdentity().PublicKeyHex()))
+	term.Printf("Remote identity:  %v (%v)\n", l.RemoteIdentity(), Faded(l.RemoteIdentity().PublicKeyHex()))
 	if t := l.Transport(); t != nil {
 		term.Printf("Network:          %v\n", net.Network(l))
 		term.Printf("Local endpoint:   %v\n", t.LocalEndpoint())
