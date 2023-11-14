@@ -9,12 +9,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	_debug "runtime/debug"
 	"strings"
 	"syscall"
 	"time"
 )
 
 var astralRoot string
+var version bool
 
 // Exit statuses
 const (
@@ -42,7 +44,21 @@ func main() {
 	astralRoot = astralDir()
 
 	flag.StringVar(&astralRoot, "datadir", astralRoot, "set data directory")
+	flag.BoolVar(&version, "v", false, "show version")
 	flag.Parse()
+
+	if version {
+		if info, ok := _debug.ReadBuildInfo(); ok {
+			for _, setting := range info.Settings {
+				if setting.Key == "vcs.revision" {
+					fmt.Println("commit", setting.Value)
+					os.Exit(0)
+				}
+			}
+		}
+		fmt.Println("no version info available")
+		os.Exit(0)
+	}
 
 	if strings.HasPrefix(astralRoot, "~/") {
 		if homeDir, err := os.UserHomeDir(); err == nil {
