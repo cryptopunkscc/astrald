@@ -16,7 +16,11 @@ type ProfileService struct {
 }
 
 func (service *ProfileService) Run(ctx context.Context) error {
-	s, err := service.node.Services().Register(ctx, service.node.Identity(), serviceName, service)
+	var err = service.node.AddRoute(serviceName, service)
+	if err != nil {
+		return err
+	}
+	defer service.node.RemoveRoute(serviceName)
 
 	disco, err := modules.Find[*sdp.Module](service.node.Modules())
 	if err == nil {
@@ -26,7 +30,7 @@ func (service *ProfileService) Run(ctx context.Context) error {
 		service.log.Errorv(2, "can't regsiter service discovery source: %s", err)
 	}
 
-	<-s.Done()
+	<-ctx.Done()
 	return err
 }
 

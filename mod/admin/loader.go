@@ -24,8 +24,8 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	_ = mod.AddCommand("help", &CmdHelp{mod: mod})
 	_ = mod.AddCommand("tracker", NewCmdTracker(mod))
 	_ = mod.AddCommand("net", &CmdNet{mod: mod})
-	_ = mod.AddCommand("services", &CmdServices{mod: mod})
 	_ = mod.AddCommand("use", &CmdUse{mod: mod})
+	_ = mod.AddCommand("node", &CmdNode{mod: mod})
 
 	return mod, nil
 }

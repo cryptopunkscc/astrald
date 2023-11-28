@@ -7,14 +7,6 @@ import (
 	"reflect"
 )
 
-type EventConnAdded struct {
-	Conn *MonitoredConn
-}
-
-type EventConnRemoved struct {
-	Conn *MonitoredConn
-}
-
 func (node *CoreNode) handleEvents(ctx context.Context) error {
 	for e := range node.events.Subscribe(ctx) {
 		node.logEvent(e)

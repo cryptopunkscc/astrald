@@ -31,12 +31,13 @@ type Module struct {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	service, err := mod.node.Services().Register(ctx, mod.node.Identity(), ServiceName, mod)
+	err := mod.node.AddRoute(ServiceName, mod)
 	if err != nil {
 		return err
 	}
+	defer mod.node.RemoveRoute(ServiceName)
 
-	<-service.Done()
+	<-ctx.Done()
 
 	return nil
 }
@@ -45,7 +46,7 @@ func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.S
 	// check if the caller has access to the admin panel
 	if !mod.hasAccess(caller.Identity()) {
 		mod.log.Errorv(1, "denied access to %v", caller.Identity())
-		return nil, net.ErrRejected
+		return net.Reject()
 	}
 
 	mod.log.Info("%v has accessed the admin panel", caller.Identity())

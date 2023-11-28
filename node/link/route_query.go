@@ -8,16 +8,15 @@ import (
 
 func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
 	// validate identities
-	if !hints.AllowRedirect {
-		if !query.Target().IsEqual(link.RemoteIdentity()) {
-			return net.RouteNotFound(link, errors.New("target/link identity mismatch"))
-		}
-		if !query.Caller().IsEqual(link.LocalIdentity()) {
-			return net.RouteNotFound(link, errors.New("caller/link identity mismatch"))
-		}
-		if !query.Caller().IsEqual(caller.Identity()) {
-			return net.RouteNotFound(link, errors.New("caller/writer identity mismatch"))
-		}
+	switch {
+	case !query.Target().IsEqual(link.RemoteIdentity()):
+		return net.RouteNotFound(link, errors.New("target/link identity mismatch"))
+
+	case !query.Caller().IsEqual(link.LocalIdentity()):
+		return net.RouteNotFound(link, errors.New("caller/link identity mismatch"))
+
+	case !query.Caller().IsEqual(caller.Identity()):
+		return net.RouteNotFound(link, errors.New("caller/writer identity mismatch"))
 	}
 
 	// request a health check to make sure the link is responsive
@@ -46,9 +45,6 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 		// check error response
 		err = codeToError(res.Error)
 		if err != nil {
-			if res.Error == errRouteNotFound {
-				err = &net.ErrRouteNotFound{Router: link}
-			}
 			return
 		}
 
@@ -83,7 +79,7 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 			}
 		}()
 
-		return nil, ctx.Err()
+		return nil, net.ErrAborted
 	}
 }
 
@@ -94,7 +90,7 @@ func codeToError(code int) error {
 	case errRejected:
 		return net.ErrRejected
 	case errRouteNotFound:
-		return &net.ErrRouteNotFound{}
+		return net.ErrRejected
 	case errUnexpected:
 		return errors.New("unexpected error")
 	default:

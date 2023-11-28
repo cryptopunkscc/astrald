@@ -38,12 +38,13 @@ func (module *Module) serve(conn net.SecureConn) {
 func (module *Module) Run(ctx context.Context) error {
 	module.ctx = ctx
 
-	service, err := module.node.Services().Register(ctx, module.node.Identity(), serviceName, module)
+	err := module.node.AddRoute(serviceName, module)
 	if err != nil {
 		return err
 	}
+	defer module.node.RemoveRoute(serviceName)
 
-	<-service.Done()
+	<-ctx.Done()
 
 	return nil
 }

@@ -16,30 +16,32 @@ type RelayRouter struct {
 }
 
 func (fwd *RelayRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	tcpConn, err := proto.Dial(fwd.target)
+	target, err := proto.Dial(fwd.target)
 	if err != nil {
 		fwd.log.Errorv(2, "%s:%s forward to %s: %s", query.Target(), query.Query(), fwd.target, err)
-		return nil, err
+		return net.Reject()
 	}
 
-	conn := proto.NewConn(tcpConn)
+	conn := proto.NewConn(target)
 
 	err = conn.WriteMsg(proto.InQueryParams{
 		Identity: query.Caller(),
 		Query:    query.Query(),
 	})
 	if err != nil {
-		return nil, err
+		target.Close()
+		return net.Reject()
 	}
 
 	if conn.ReadErr() != nil {
-		return nil, err
+		target.Close()
+		return net.Reject()
 	}
 
 	go func() {
-		io.Copy(caller, tcpConn)
+		io.Copy(caller, target)
 		caller.Close()
 	}()
 
-	return net.NewSecurePipeWriter(tcpConn, query.Target()), err
+	return net.NewSecurePipeWriter(target, query.Target()), nil
 }

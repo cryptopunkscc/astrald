@@ -1,32 +1,39 @@
 package net
 
 type Hints struct {
-	Origin        string
-	AllowRedirect bool
-	DontMonitor   bool
-	Extra         map[string]any
-	_             struct{}
+	Origin  string // Origin denotes the where the query originated (OriginLocal or OriginNetwork)
+	Silent  bool   // Silent tells the router to not log the query
+	Reroute bool   // Reroute allows a nonce to reenter the router event though it's already en route
+	Update  bool   // Update tells the monitored router to update query details for the nonce when rerouting
+	Extra   map[string]any
+	_       struct{}
 }
 
 func DefaultHints() Hints {
 	return Hints{Origin: OriginLocal}
 }
 
-func (hints Hints) SetAllowRedirect() Hints {
-	var clone = hints.clone()
-	clone.AllowRedirect = true
-	return clone
-}
-
-func (hints Hints) SetDontMonitor() Hints {
-	var clone = hints.clone()
-	clone.DontMonitor = true
-	return clone
-}
-
 func (hints Hints) WithOrigin(origin string) Hints {
 	var clone = hints.clone()
 	clone.Origin = origin
+	return clone
+}
+
+func (hints Hints) SetSilent() Hints {
+	var clone = hints.clone()
+	clone.Silent = true
+	return clone
+}
+
+func (hints Hints) SetReroute() Hints {
+	var clone = hints.clone()
+	clone.Reroute = true
+	return clone
+}
+
+func (hints Hints) SetUpdate() Hints {
+	var clone = hints.clone()
+	clone.Update = true
 	return clone
 }
 

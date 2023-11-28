@@ -1,14 +1,19 @@
 package admin
 
 import (
+	"cmp"
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/router"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/node/network"
+	nodeRouter "github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/sig"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -50,6 +55,9 @@ func (cmd *CmdNet) Exec(term *Terminal, args []string) error {
 	case "conns":
 		return cmd.conns(term, args[2:])
 
+	case "routes":
+		return cmd.routes(term, args[2:])
+
 	case "conn":
 		return cmd.conn(term, args[2:])
 
@@ -58,6 +66,9 @@ func (cmd *CmdNet) Exec(term *Terminal, args []string) error {
 
 	case "reroute":
 		return cmd.reroute(term, args[2:])
+
+	case "set_router":
+		return cmd.setRouter(term, args[2:])
 
 	case "help":
 		return cmd.help(term)
@@ -227,7 +238,7 @@ func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
 			}
 			term.Printf("  Buffer: %d\n", w.BufferSize())
 
-		case *node.MonitoredWriter:
+		case *nodeRouter.MonitoredWriter:
 			term.Printf("  Identity: %d\n", w.Identity())
 			term.Printf("  Bytes: %d\n", w.Bytes())
 
@@ -308,8 +319,13 @@ func (cmd *CmdNet) close(term *Terminal, args []string) error {
 func (cmd *CmdNet) links(term *Terminal, _ []string) error {
 	var f = "%-8d %-24s %-8s %10s %10s %10s\n"
 
+	links := cmd.mod.node.Network().Links().All()
+	slices.SortFunc(links, func(a, b *network.ActiveLink) int {
+		return cmp.Compare(a.ID(), b.ID())
+	})
+
 	term.Printf(f, Header("ID"), Header("Remote"), Header("Net"), Header("Idle"), Header("Age"), Header("Ping"))
-	for _, l := range cmd.mod.node.Network().Links().All() {
+	for _, l := range links {
 		if l == nil {
 			term.Printf("[nil link]\n")
 			continue
@@ -388,6 +404,31 @@ func (cmd *CmdNet) reroute(term *Terminal, args []string) error {
 	}
 
 	return modRouter.Reroute(conn.Query().Nonce(), lnk)
+}
+
+func (cmd *CmdNet) setRouter(term *Terminal, args []string) error {
+	routerMod, err := modules.Find[*router.Module](cmd.mod.node.Modules())
+	if err != nil {
+		return err
+	}
+
+	if len(args) < 2 {
+		return errors.New("usage: set_router <target> <router>")
+	}
+
+	target, err := cmd.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	router, err := cmd.mod.node.Resolver().Resolve(args[1])
+	if err != nil {
+		return err
+	}
+
+	routerMod.SetRouter(target, router)
+
+	return nil
 }
 
 func (cmd *CmdNet) help(term *Terminal) error {

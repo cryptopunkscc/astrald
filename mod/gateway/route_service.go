@@ -20,17 +20,18 @@ type RouteService struct {
 }
 
 func (srv *RouteService) Run(ctx context.Context) error {
-	s, err := srv.node.Services().Register(ctx, srv.node.Identity(), RouteServiceName, srv)
+	var err = srv.node.AddRoute(RouteServiceName, srv)
 	if err != nil {
 		return err
 	}
+	defer srv.node.RemoveRoute(RouteServiceName)
 
 	if disco, err := modules.Find[*sdp.Module](srv.node.Modules()); err == nil {
 		disco.AddSource(srv)
 		defer disco.RemoveSource(srv)
 	}
 
-	<-s.Done()
+	<-ctx.Done()
 	return nil
 }
 
@@ -75,7 +76,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 
 	maskedCaller := router.NewIdentityTranslation(caller, srv.node.Identity())
 
-	dst, err := srv.router.RouteQuery(ctx, maskedQuery, maskedCaller, hints.SetDontMonitor())
+	dst, err := srv.router.RouteQuery(ctx, maskedQuery, maskedCaller, hints.SetReroute())
 	if err != nil {
 		return nil, err
 	}

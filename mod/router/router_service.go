@@ -18,9 +18,15 @@ type RouterService struct {
 }
 
 func (srv *RouterService) Run(ctx context.Context) error {
-	_, err := srv.node.Services().Register(ctx, srv.node.Identity(), RouterServiceName, srv)
+	err := srv.node.AddRoute(RouterServiceName, srv)
+	if err != nil {
+		return err
+	}
+	defer srv.node.RemoveRoute(RouterServiceName)
 
-	return err
+	<-ctx.Done()
+
+	return nil
 }
 
 func (srv *RouterService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
@@ -47,7 +53,7 @@ func (srv *RouterService) serve(ctx context.Context, conn net.SecureConn) error 
 	// apply caller certificate
 	if len(params.Cert) > 0 {
 		if err = callerIM.Apply(params.Cert); err != nil {
-			session.EncodeErr(proto.ErrUnableToProcess)
+			session.EncodeErr(proto.ErrCertificateRejected)
 			return err
 		}
 	}
@@ -59,7 +65,7 @@ func (srv *RouterService) serve(ctx context.Context, conn net.SecureConn) error 
 		// look up private keys for the target identity
 		targetKey, err := srv.keys.Find(params.Target)
 		if err != nil {
-			_ = session.EncodeErr(proto.ErrUnableToProcess)
+			_ = session.EncodeErr(proto.ErrRouteNotFound)
 			return errors.New("private key for target identity missing")
 		}
 
@@ -67,7 +73,7 @@ func (srv *RouterService) serve(ctx context.Context, conn net.SecureConn) error 
 		var cert = NewRouterCert(targetKey, srv.node.Identity(), time.Now().Add(time.Minute))
 		response.Cert, err = cslq.Marshal(cert)
 		if err != nil {
-			_ = session.EncodeErr(proto.ErrUnableToProcess)
+			_ = session.EncodeErr(proto.ErrRouteNotFound)
 			return err
 		}
 	}
@@ -78,7 +84,7 @@ func (srv *RouterService) serve(ctx context.Context, conn net.SecureConn) error 
 
 	redirect, err := NewRedirect(redirectCtx, realQuery, conn.RemoteIdentity(), srv.node)
 	if err != nil {
-		session.EncodeErr(proto.ErrUnableToProcess)
+		session.EncodeErr(proto.ErrInternalError)
 		return err
 	}
 

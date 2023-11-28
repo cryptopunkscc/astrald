@@ -7,9 +7,9 @@ import (
 var es rpc.ErrorSpace
 
 var (
-	ErrRejected           = es.NewError(0x01, "rejected")
-	ErrDenied             = es.NewError(0x02, "denied")
-	ErrUnableToProcess    = es.NewError(0x03, "unable to process")
-	ErrInvalidCertificate = es.NewError(0x04, "invalid certificate")
-	ErrInvalidRequest     = es.NewError(0xff, "invalid request")
+	ErrRejected            = es.NewError(0x01, "rejected")
+	ErrDenied              = es.NewError(0x02, "denied")
+	ErrCertificateRejected = es.NewError(0x03, "certificate rejected")
+	ErrRouteNotFound       = es.NewError(0x05, "route not found")
+	ErrInternalError       = es.NewError(0xff, "internal error")
 )

@@ -2,10 +2,12 @@ package apphost
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/sdp"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -24,14 +26,21 @@ type Module struct {
 	log       *log.Logger
 	listeners []net.Listener
 	tokens    map[string]id.Identity
+	tokensMu  sync.Mutex
+	guests    map[string]*Guest
+	guestsMu  sync.Mutex
 	execs     []*Exec
-	mu        sync.Mutex
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	// inject admin command
 	if adm, err := modules.Find[*admin.Module](mod.node.Modules()); err == nil {
 		_ = adm.AddCommand("apphost", &Admin{mod: mod})
+	}
+
+	if disco, err := modules.Find[*sdp.Module](mod.node.Modules()); err == nil {
+		disco.AddSource(mod)
+		defer disco.RemoveSource(mod)
 	}
 
 	var wg sync.WaitGroup
@@ -90,9 +99,69 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
+func (mod *Module) addGuestRoute(identity id.Identity, name string, target string) error {
+	mod.guestsMu.Lock()
+	defer mod.guestsMu.Unlock()
+
+	if len(name) == 0 {
+		return errors.New("invalid name")
+	}
+
+	var key = identity.PublicKeyHex()
+
+	var guest *Guest
+	if g, found := mod.guests[key]; found {
+		guest = g
+	} else {
+		guest = NewGuest(identity)
+		mod.node.Router().AddRoute(id.Anyone, identity, guest, 90)
+		mod.guests[key] = guest
+	}
+
+	relay := &RelayRouter{
+		log:      mod.log,
+		target:   target,
+		identity: identity,
+	}
+
+	return guest.AddRoute(name, relay)
+}
+
+func (mod *Module) removeGuestRoute(identity id.Identity, name string) error {
+	mod.guestsMu.Lock()
+	defer mod.guestsMu.Unlock()
+
+	var key = identity.PublicKeyHex()
+
+	var guest = mod.guests[key]
+	if guest == nil {
+		return errors.New("route not found")
+	}
+
+	if err := guest.RemoveRoute(name); err != nil {
+		return err
+	}
+
+	if guest.RouteCount() == 0 {
+		delete(mod.guests, key)
+		mod.node.Router().RemoveRoute(id.Anyone, identity, guest)
+	}
+
+	return nil
+}
+
+func (mod *Module) getGuest(id id.Identity) *Guest {
+	mod.guestsMu.Lock()
+	defer mod.guestsMu.Unlock()
+
+	var key = id.PublicKeyHex()
+
+	return mod.guests[key]
+}
+
 func (mod *Module) authToken(token string) (identity id.Identity) {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
+	mod.tokensMu.Lock()
+	defer mod.tokensMu.Unlock()
 
 	var err error
 
@@ -117,8 +186,8 @@ func (mod *Module) authToken(token string) (identity id.Identity) {
 }
 
 func (mod *Module) createToken(identity id.Identity) string {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
+	mod.tokensMu.Lock()
+	defer mod.tokensMu.Unlock()
 
 	var token = randomString(32)
 

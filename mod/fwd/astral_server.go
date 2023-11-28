@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/services"
 	"strings"
 )
 
@@ -15,7 +14,6 @@ type AstralServer struct {
 	serviceName string
 	identity    id.Identity
 	target      net.Router
-	service     *services.Service
 }
 
 func NewAstralServer(mod *Module, serviceName string, target net.Router) (*AstralServer, error) {
@@ -51,17 +49,19 @@ func NewAstralServer(mod *Module, serviceName string, target net.Router) (*Astra
 
 	srv.identity = identity
 	srv.serviceName = serviceName
-	srv.service, err = srv.node.Services().Register(context.Background(), identity, serviceName, srv)
-	if err != nil {
-		return nil, err
-	}
 
 	return srv, nil
 }
 
 func (srv *AstralServer) Run(ctx context.Context) error {
+	var err = srv.node.AddRoute(srv.serviceName, srv)
+	if err != nil {
+		return err
+	}
+	defer srv.node.RemoveRoute(srv.serviceName)
+
 	<-ctx.Done()
-	srv.service.Close()
+
 	return nil
 }
 

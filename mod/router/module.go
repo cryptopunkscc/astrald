@@ -11,28 +11,27 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/cryptopunkscc/astrald/tasks"
+	"sync"
 	"time"
 )
 
 type Module struct {
-	node   node.Node
-	keys   assets.KeyStore
-	log    *log.Logger
-	config Config
-	ctx    context.Context
+	node     node.Node
+	keys     assets.KeyStore
+	log      *log.Logger
+	config   Config
+	ctx      context.Context
+	routes   map[string]id.Identity
+	routesMu sync.Mutex
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	// register as a router
-	if coreRouter, ok := mod.node.Router().(*node.CoreRouter); ok {
-		coreRouter.Routers.AddRouter(mod)
-	} else {
-		return errors.New("unsupported router type")
-	}
+	mod.node.Router().AddRoute(id.Anyone, id.Anyone, mod, 20)
 
 	return tasks.Group(
 		&RouterService{Module: mod},
@@ -40,16 +39,38 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
+func (mod *Module) SetRouter(target id.Identity, router id.Identity) {
+	mod.routesMu.Lock()
+	defer mod.routesMu.Unlock()
+
+	if router.IsZero() {
+		delete(mod.routes, target.PublicKeyHex())
+	} else {
+		mod.routes[target.PublicKeyHex()] = router
+	}
+}
+
+func (mod *Module) GetRouter(target id.Identity) id.Identity {
+	mod.routesMu.Lock()
+	defer mod.routesMu.Unlock()
+
+	if router, found := mod.routes[target.PublicKeyHex()]; found {
+		return router
+	}
+
+	return id.Identity{}
+}
+
 func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	if mod.isLocal(query.Target()) {
 		return net.RouteNotFound(mod)
 	}
 
-	if query.Caller().IsEqual(mod.node.Identity()) {
-		return net.RouteNotFound(mod)
+	if r := mod.GetRouter(query.Target()); !r.IsZero() {
+		return mod.RouteVia(ctx, r, query, caller, hints)
 	}
 
-	if mod.node.Network().Links().ByRemoteIdentity(query.Target()).Count() > 0 {
+	if (query.Caller().PrivateKey() != nil) && !query.Caller().IsEqual(mod.node.Identity()) {
 		return mod.RouteVia(ctx, query.Target(), query, caller, hints)
 	}
 
@@ -85,8 +106,17 @@ func (mod *Module) RouteVia(
 		}
 	}
 
+	if !query.Target().IsEqual(routerIdentity) {
+		mod.log.Logv(2, "routing to %v via %v...", query.Target(), routerIdentity)
+	}
+
 	// open a router session
-	routerConn, err := net.Route(ctx, mod.node.Router(), net.NewQuery(mod.node.Identity(), routerIdentity, RouterServiceName))
+	routerConn, err := net.RouteWithHints(
+		ctx,
+		mod.node.Router(),
+		net.NewQuery(mod.node.Identity(), routerIdentity, RouterServiceName),
+		net.DefaultHints().SetSilent(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +128,8 @@ func (mod *Module) RouteVia(
 	switch {
 	case errors.Is(err, proto.ErrRejected):
 		return net.Reject()
+	case errors.Is(err, proto.ErrRouteNotFound):
+		return net.RouteNotFound(mod)
 	case err != nil:
 		return net.RouteNotFound(mod, err)
 	}
@@ -121,9 +153,9 @@ func (mod *Module) RouteVia(
 	if !caller.Identity().IsEqual(mod.node.Identity()) {
 		caller = NewIdentityTranslation(caller, mod.node.Identity())
 	}
-	proxy, err := mod.node.Router().RouteQuery(ctx, proxyQuery, caller, net.DefaultHints().SetDontMonitor().SetAllowRedirect())
+	proxy, err := mod.node.Router().RouteQuery(ctx, proxyQuery, caller, net.DefaultHints().SetReroute())
 	if err != nil {
-		return net.RouteNotFound(mod, err)
+		return nil, err
 	}
 
 	if !proxy.Identity().IsEqual(query.Target()) {
@@ -244,8 +276,8 @@ func (mod *Module) insertSwitcherAfter(item any) (*SwitchWriter, error) {
 	return switcher, nil
 }
 
-func (mod *Module) findConnByNonce(nonce net.Nonce) *node.MonitoredConn {
-	coreRouter, ok := mod.node.Router().(*node.CoreRouter)
+func (mod *Module) findConnByNonce(nonce net.Nonce) *router.MonitoredConn {
+	coreRouter, ok := mod.node.Router().(*router.CoreRouter)
 	if !ok {
 		return nil
 	}
@@ -259,15 +291,7 @@ func (mod *Module) findConnByNonce(nonce net.Nonce) *node.MonitoredConn {
 }
 
 func (mod *Module) isLocal(identity id.Identity) bool {
-	if mod.node.Identity().IsEqual(identity) {
-		return true
-	}
-	for _, info := range mod.node.Services().List() {
-		if info.Identity.IsEqual(identity) {
-			return true
-		}
-	}
-	return false
+	return mod.node.Identity().IsEqual(identity)
 }
 
 func (mod *Module) getRouter(w net.SecureWriteCloser) id.Identity {

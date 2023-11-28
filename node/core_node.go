@@ -4,15 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/resolver"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/node/tracker"
+	"time"
 )
 
 const logTag = "node"
@@ -25,14 +25,16 @@ type CoreNode struct {
 	assets   assets.Store
 	keys     assets.KeyStore
 
-	router   *CoreRouter
+	router   *router.CoreRouter
 	infra    *infra.CoreInfra
 	network  *network.CoreNetwork
 	tracker  *tracker.CoreTracker
-	services *services.CoreServices
 	modules  *modules.CoreModules
 	resolver *resolver.CoreResolver
 	events   events.Queue
+	routes   *router.QueryRouter
+
+	startedAt time.Time
 
 	logConfig LogConfig
 	logFields
@@ -43,6 +45,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	var err error
 	var node = &CoreNode{
 		config: defaultConfig,
+		routes: router.NewQueryRouter(),
 	}
 
 	// basic logs
@@ -92,9 +95,6 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	// resolver
 	node.resolver = resolver.NewCoreResolver(node)
 
-	// hub
-	node.services = services.NewCoreServices(&node.events, node.log)
-
 	// network
 	node.network, err = network.NewCoreNetwork(node, &node.events, node.log)
 	if err != nil {
@@ -111,28 +111,22 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
 
-	var routers = []net.Router{
-		node.Services(),
-		node.Network(),
-	}
+	node.router = router.NewCoreRouter(node.log, &node.events)
+	node.router.AddRoute(id.Anyone, node.Identity(), node, 100)
+	node.router.AddRoute(node.Identity(), id.Anyone, node.Network(), 0)
 
-	node.router = NewCoreRouter(routers, node.log, &node.events)
 	node.router.SetLogRouteTrace(node.config.LogRouteTrace)
 
 	return node, nil
 }
 
-func (node *CoreNode) Conns() *ConnSet {
+func (node *CoreNode) Conns() *router.ConnSet {
 	return node.router.Conns()
 }
 
 // Infra returns node's infrastructure component
 func (node *CoreNode) Infra() infra.Infra {
 	return node.infra
-}
-
-func (node *CoreNode) Services() services.Services {
-	return node.services
 }
 
 func (node *CoreNode) Tracker() tracker.Tracker {
@@ -156,11 +150,15 @@ func (node *CoreNode) Identity() id.Identity {
 	return node.identity
 }
 
-func (node *CoreNode) Router() net.Router {
+func (node *CoreNode) Router() router.Router {
 	return node.router
 }
 
 // Events returns the event queue for the node
 func (node *CoreNode) Events() *events.Queue {
 	return &node.events
+}
+
+func (node *CoreNode) StartedAt() time.Time {
+	return node.startedAt
 }

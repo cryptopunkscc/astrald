@@ -14,9 +14,14 @@ type RerouteService struct {
 }
 
 func (srv *RerouteService) Run(ctx context.Context) error {
-	srv.node.Services().Register(ctx, srv.node.Identity(), RerouteServiceName, srv)
+	err := srv.node.AddRoute(RerouteServiceName, srv)
+	if err != nil {
+		return err
+	}
+	defer srv.node.RemoveRoute(RerouteServiceName)
 
 	<-ctx.Done()
+
 	return nil
 }
 

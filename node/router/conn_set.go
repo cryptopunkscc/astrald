@@ -1,7 +1,8 @@
-package node
+package router
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/net"
 	"sync"
 )
 
@@ -68,6 +69,19 @@ func (set *ConnSet) Find(id int) *MonitoredConn {
 
 	for _, conn := range set.items {
 		if conn.ID() == id {
+			return conn
+		}
+	}
+
+	return nil
+}
+
+func (set *ConnSet) FindByNonce(nonce net.Nonce) *MonitoredConn {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
+	for _, conn := range set.items {
+		if conn.query.Nonce() == nonce {
 			return conn
 		}
 	}

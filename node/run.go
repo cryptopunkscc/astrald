@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 )
 
 // Run starts the node, waits for it to finish and returns an error if any
@@ -64,6 +65,8 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 			shutdown()
 		}
 	}()
+
+	node.startedAt = time.Now()
 
 	// wait for all components to finish
 	wg.Wait()

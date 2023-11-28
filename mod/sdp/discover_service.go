@@ -16,14 +16,16 @@ type DiscoveryService struct {
 }
 
 const DiscoverServiceName = "core.sdp.discover"
+const SourceServiceName = "core.sdp.source"
 
 func (service *DiscoveryService) Run(ctx context.Context) error {
-	s, err := service.node.Services().Register(ctx, service.node.Identity(), DiscoverServiceName, service)
+	err := service.node.AddRoute(DiscoverServiceName, service)
 	if err != nil {
 		return err
 	}
+	defer service.node.RemoveRoute(DiscoverServiceName)
 
-	<-s.Done()
+	<-ctx.Done()
 
 	return nil
 }

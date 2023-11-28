@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/resolver"
+	"github.com/cryptopunkscc/astrald/node/router"
 )
 
 // Infra is an interface for infrastructural networks
@@ -22,7 +23,7 @@ type Infra interface {
 type Node interface {
 	Resolver() resolver.Resolver
 	Identity() id.Identity
-	Router() net.Router
+	Router() router.Router
 }
 
 // Dialer wraps the Dial method. Dial opens an unicast connection with the provided address.

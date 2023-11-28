@@ -19,7 +19,8 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		config:    defaultConfig,
 		node:      node,
 		listeners: make([]net.Listener, 0),
-		tokens:    make(map[string]id.Identity, 0),
+		tokens:    make(map[string]id.Identity),
+		guests:    make(map[string]*Guest),
 		execs:     []*Exec{},
 		log:       log,
 	}

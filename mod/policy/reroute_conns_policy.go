@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node/router"
 	"time"
 )
 
@@ -22,7 +22,7 @@ func NewRerouteConnsPolicy(mod *Module) *RerouteConnsPolicy {
 func (policy *RerouteConnsPolicy) Run(ctx context.Context) error {
 	for event := range policy.node.Events().Subscribe(ctx) {
 		switch event := event.(type) {
-		case node.EventConnAdded:
+		case router.EventConnAdded:
 			if policy.isReroutable(event.Conn) {
 				go policy.rerouteConn(ctx, event.Conn)
 			}
@@ -35,7 +35,7 @@ func (policy *RerouteConnsPolicy) Name() string {
 	return "reroute_conns"
 }
 
-func (policy *RerouteConnsPolicy) rerouteConn(ctx context.Context, conn *node.MonitoredConn) {
+func (policy *RerouteConnsPolicy) rerouteConn(ctx context.Context, conn *router.MonitoredConn) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -118,14 +118,14 @@ func (policy *RerouteConnsPolicy) watchLinksWith(ctx context.Context, identity i
 	return ch
 }
 
-func (policy *RerouteConnsPolicy) isReroutable(conn *node.MonitoredConn) bool {
+func (policy *RerouteConnsPolicy) isReroutable(conn *router.MonitoredConn) bool {
 	if _, ok := net.FinalOutput(conn.Target()).(*link.PortWriter); ok {
 		return true
 	}
 	return false
 }
 
-func (policy *RerouteConnsPolicy) getLink(conn *node.MonitoredConn) net.Link {
+func (policy *RerouteConnsPolicy) getLink(conn *router.MonitoredConn) net.Link {
 	type linkTest interface {
 		Link() *link.CoreLink
 	}
@@ -138,7 +138,7 @@ func (policy *RerouteConnsPolicy) getLink(conn *node.MonitoredConn) net.Link {
 	return l.Link()
 }
 
-func (policy *RerouteConnsPolicy) getConnNetwork(conn *node.MonitoredConn) string {
+func (policy *RerouteConnsPolicy) getConnNetwork(conn *router.MonitoredConn) string {
 	if t, ok := net.FinalOutput(conn.Target()).(net.Transporter); ok {
 		return policy.getTransportNetwork(t.Transport())
 	}

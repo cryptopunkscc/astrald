@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/resolver"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 )
 
@@ -18,8 +18,10 @@ type Node interface {
 	Infra() infra.Infra
 	Network() network.Network
 	Tracker() tracker.Tracker
-	Services() services.Services
 	Modules() Modules
 	Resolver() resolver.Resolver
-	Router() net.Router
+	Router() router.Router
+	AddRoute(string, net.Router) error
+	RemoveRoute(string) error
+	Routes() []router.QueryRoute
 }

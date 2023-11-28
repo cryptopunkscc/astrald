@@ -21,7 +21,7 @@ func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLin
 	var remoteIdentity = e.Link.RemoteIdentity()
 
 	var conn, err = net.Route(ctx,
-		srv.node.Network(),
+		srv.node.Router(),
 		net.NewQuery(srv.node.Identity(), remoteIdentity, DiscoverServiceName),
 	)
 	if err != nil {
@@ -33,7 +33,9 @@ func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLin
 	for err == nil {
 		err = cslq.Invoke(conn, func(msg proto.ServiceEntry) error {
 			if !msg.Identity.IsEqual(remoteIdentity) {
-				srv.routes[msg.Identity.PublicKeyHex()] = remoteIdentity
+				if srv.routerMod != nil {
+					srv.routerMod.SetRouter(msg.Identity, remoteIdentity)
+				}
 			}
 			list = append(list, ServiceEntry(msg))
 			return nil

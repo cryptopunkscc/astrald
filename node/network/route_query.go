@@ -8,31 +8,29 @@ import (
 )
 
 func (n *CoreNetwork) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (targetWriter net.SecureWriteCloser, err error) {
-	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
-	defer cancel()
-
-	if query.Target().IsEqual(n.node.Identity()) {
+	// don't open a new link with the target if we have one already
+	if n.links.ByRemoteIdentity(query.Target()).Count() > 0 {
 		return net.RouteNotFound(n)
-	}
-
-	if query.Caller().IsZero() {
-		return net.RouteNotFound(n, errors.New("caller identity missing in query"))
-	}
-
-	var links = n.links.ByRemoteIdentity(query.Target()).All()
-	if len(links) > 0 {
-		return links[0].RouteQuery(ctx, query, caller, hints)
 	}
 
 	lnk, err := link.MakeLink(ctx, n.node, query.Target(), link.Opts{})
 	if err != nil {
-		return net.RouteNotFound(n)
+		switch {
+		case errors.Is(err, context.Canceled):
+			return nil, net.ErrAborted
+
+		case errors.Is(err, context.DeadlineExceeded):
+			return nil, net.ErrTimeout
+		}
+
+		return net.RouteNotFound(n, err)
 	}
 
 	err = n.AddLink(lnk)
 	if err != nil {
-		return net.RouteNotFound(n)
+		return net.RouteNotFound(n, err)
 	}
 
-	return lnk.RouteQuery(ctx, query, caller, hints)
+	// reroute the query
+	return n.node.Router().RouteQuery(ctx, query, caller, hints.SetReroute())
 }

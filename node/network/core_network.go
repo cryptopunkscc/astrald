@@ -138,10 +138,13 @@ func (n *CoreNetwork) addLink(l net.Link) error {
 		return err
 	}
 
+	n.node.Router().AddRoute(l.LocalIdentity(), l.RemoteIdentity(), l, 50)
+
 	go func() {
 		defer debug.SaveLog(debug.SigInt)
 
 		err := l.Run(n.ctx)
+		n.node.Router().RemoveRoute(l.LocalIdentity(), l.RemoteIdentity(), l)
 		if e := n.links.Remove(active.ID()); e != nil {
 			panic(e)
 		}

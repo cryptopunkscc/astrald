@@ -30,10 +30,11 @@ func (service *ReadService) RouteQuery(ctx context.Context, query net.Query, cal
 }
 
 func (service *ReadService) Run(ctx context.Context) error {
-	s, err := service.node.Services().Register(ctx, service.node.Identity(), ReadServiceName, service)
+	err := service.node.AddRoute(ReadServiceName, service)
 	if err != nil {
 		return err
 	}
+	defer service.node.RemoveRoute(ReadServiceName)
 
 	disco, err := modules.Find[*sdp.Module](service.node.Modules())
 	if err == nil {
@@ -43,7 +44,7 @@ func (service *ReadService) Run(ctx context.Context) error {
 		service.log.Errorv(2, "can't regsiter service discovery source: %s", err)
 	}
 
-	<-s.Done()
+	<-ctx.Done()
 
 	return nil
 }
@@ -102,7 +103,7 @@ func (service *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, cal
 
 			conn, err := net.RouteWithHints(
 				ctx,
-				service.node.Services(),
+				service.node.Router(),
 				net.NewQuery(caller, source.Identity, source.Service),
 				hints,
 			)

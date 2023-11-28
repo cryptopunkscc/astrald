@@ -3,7 +3,6 @@ package link
 import (
 	"bytes"
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/mux"
@@ -186,11 +185,7 @@ func (c *Control) executeQuery(msg Query) error {
 	// route the query upstream
 	target, err := c.uplink.RouteQuery(c.ctx, query, caller, net.DefaultHints().WithOrigin(net.OriginNetwork))
 	if err != nil {
-		var code = errRejected
-		if errors.Is(err, &net.ErrRouteNotFound{}) {
-			code = errRouteNotFound
-		}
-		return c.WriteResponse(msg.Port, &Response{Error: code})
+		return c.WriteResponse(msg.Port, &Response{Error: errRejected})
 	}
 
 	c.remoteBuffers.grow(msg.Port, msg.Buffer)

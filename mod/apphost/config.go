@@ -12,6 +12,8 @@ type Config struct {
 
 	Tokens  map[string]string `yaml:"tokens"`
 	Autorun []configRun       `yaml:"autorun"`
+
+	RoutePriority int `yaml:"route_priority"`
 }
 
 type configRun struct {
@@ -25,6 +27,7 @@ var defaultConfig = Config{
 		"tcp:127.0.0.1:8625",
 		"unix:~/.apphost.sock",
 	},
-	Tokens:  map[string]string{},
-	Workers: 256,
+	Tokens:        map[string]string{},
+	Workers:       256,
+	RoutePriority: 90,
 }

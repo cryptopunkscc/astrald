@@ -28,7 +28,7 @@ type Module struct {
 	sources   map[Source]struct{}
 	sourcesMu sync.Mutex
 	cache     map[string][]ServiceEntry
-	routes    map[string]id.Identity
+	routerMod *router.Module
 	cacheMu   sync.Mutex
 	ctx       context.Context
 }
@@ -36,14 +36,11 @@ type Module struct {
 func (m *Module) Run(ctx context.Context) error {
 	m.ctx = ctx
 
+	m.routerMod, _ = modules.Find[*router.Module](m.node.Modules())
+
 	// inject admin command
 	if adm, err := modules.Find[*admin.Module](m.node.Modules()); err == nil {
 		adm.AddCommand(ModuleName, NewAdmin(m))
-	}
-
-	// register as a router
-	if coreRouter, ok := m.node.Router().(*node.CoreRouter); ok {
-		coreRouter.Routers.AddRouter(m)
 	}
 
 	return tasks.Group(
@@ -147,32 +144,19 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 		<-ctx.Done()
 		q.Close()
 	}()
-
 	for err == nil {
 		err = cslq.Invoke(q, func(msg proto.ServiceEntry) error {
 			list = append(list, ServiceEntry(msg))
 			if !msg.Identity.IsEqual(remoteID) {
-				m.routes[msg.Identity.PublicKeyHex()] = remoteID
+				if m.routerMod != nil {
+					m.routerMod.SetRouter(msg.Identity, remoteID)
+				}
 			}
 			return nil
 		})
 	}
 
 	return list, nil
-}
-
-func (m *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	relay, found := m.routes[query.Target().PublicKeyHex()]
-	if !found {
-		return net.RouteNotFound(m)
-	}
-
-	routeMod, err := modules.Find[*router.Module](m.node.Modules())
-	if err != nil {
-		return nil, err
-	}
-
-	return routeMod.RouteVia(ctx, relay, query, caller, hints)
 }
 
 func (m *Module) setCache(identity id.Identity, list []ServiceEntry) {

@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	routerpc "github.com/cryptopunkscc/astrald/mod/router/proto"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/services"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 )
@@ -62,8 +61,7 @@ func (s *Session) query(params proto.QueryParams) error {
 
 	switch {
 	case errors.Is(err, net.ErrRejected),
-		errors.Is(err, routerpc.ErrRejected),
-		errors.Is(err, services.ErrServiceNotFound):
+		errors.Is(err, routerpc.ErrRejected):
 		return s.WriteErr(proto.ErrRejected)
 
 	case errors.Is(err, &net.ErrRouteNotFound{}):
@@ -71,9 +69,6 @@ func (s *Session) query(params proto.QueryParams) error {
 
 	case errors.Is(err, routerpc.ErrDenied):
 		return s.WriteErr(proto.ErrUnauthorized)
-
-	case errors.Is(err, services.ErrTimeout):
-		return s.WriteErr(proto.ErrTimeout)
 
 	default:
 		s.mod.log.Error("unexpected error processing query: %s", err)
@@ -126,36 +121,16 @@ func (s *Session) exec(params proto.ExecParams) error {
 
 func (s *Session) register(p proto.RegisterParams) error {
 	s.mod.log.Logv(2, "%s register %s -> %s", s.remoteID, p.Service, p.Target)
-
-	var ctx, cancel = context.WithCancel(context.Background())
-	defer cancel()
 	defer s.Close()
 
-	relay := &RelayRouter{
-		log:      s.log,
-		target:   p.Target,
-		identity: s.remoteID,
-	}
-
-	service, err := s.mod.node.Services().Register(ctx, s.remoteID, p.Service, relay)
+	err := s.mod.addGuestRoute(s.remoteID, p.Service, p.Target)
 	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrAlreadyRegistered):
-			return s.WriteErr(proto.ErrAlreadyRegistered)
-
-		default:
-			return s.WriteErr(proto.ErrUnexpected)
-		}
+		return s.WriteErr(proto.ErrAlreadyRegistered)
 	}
 	s.WriteErr(nil)
-
-	go func() {
-		<-service.Done()
-		s.Close()
-	}()
 
 	// wait for the other party to close the session
 	io.Copy(streams.NilWriter{}, s)
 
-	return service.Close()
+	return s.mod.removeGuestRoute(s.remoteID, p.Service)
 }

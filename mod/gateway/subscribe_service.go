@@ -23,17 +23,18 @@ type Subscription struct {
 }
 
 func (srv *SubscribeService) Run(ctx context.Context) error {
-	s, err := srv.node.Services().Register(ctx, srv.node.Identity(), SubscribeServiceName, srv)
+	var err = srv.node.AddRoute(SubscribeServiceName, srv)
 	if err != nil {
 		return err
 	}
+	defer srv.node.RemoveRoute(SubscribeServiceName)
 
 	if disco, err := modules.Find[*sdp.Module](srv.node.Modules()); err == nil {
 		disco.AddSource(srv)
 		defer disco.RemoveSource(srv)
 	}
 
-	<-s.Done()
+	<-ctx.Done()
 	return nil
 }
 

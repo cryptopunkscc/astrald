@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/services"
+	"github.com/cryptopunkscc/astrald/node/router"
 )
 
 // Redirect is a service that redirects a query to a different target
@@ -16,7 +16,6 @@ type Redirect struct {
 	Node        node.Node
 	Allow       id.Identity
 	Query       net.Query
-	service     *services.Service
 }
 
 // NewRedirect creates a new redirection service on the node. Only `allow` can route to the service and the request
@@ -33,7 +32,7 @@ func NewRedirect(ctx context.Context, query net.Query, allow id.Identity, node n
 	rand.Read(randBytes)
 	r.ServiceName = RouterServiceName + "." + hex.EncodeToString(randBytes)
 
-	r.service, err = node.Services().Register(ctx, node.Identity(), r.ServiceName, r)
+	err = node.AddRoute(r.ServiceName, r)
 
 	return r, err
 }
@@ -44,12 +43,12 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 		return net.Reject()
 	}
 
-	defer r.service.Close()
+	defer r.Node.RemoveRoute(r.ServiceName)
 
 	finalQuery := r.Query
 
 	// add identity transaltion
-	mon, ok := proxyCaller.(*node.MonitoredWriter)
+	mon, ok := proxyCaller.(*router.MonitoredWriter)
 	if ok {
 		next := mon.Output()
 		var t = NewIdentityTranslation(next, finalQuery.Caller())
@@ -61,14 +60,8 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 		proxyCaller = NewIdentityTranslation(proxyCaller, finalQuery.Caller())
 	}
 
-	// update query on the connection monitor
-	if v, ok := hints.Value(node.MonitoredConnHint); ok && v != nil {
-		if tracker, ok := v.(*node.MonitoredConn); ok {
-			tracker.SetQuery(finalQuery)
-		}
-	}
-
-	target, err := r.Node.Router().RouteQuery(ctx, finalQuery, proxyCaller, hints.SetDontMonitor().SetAllowRedirect())
+	// reroute the query to its final destination
+	target, err := r.Node.Router().RouteQuery(ctx, finalQuery, proxyCaller, hints.SetReroute().SetUpdate())
 	if err != nil {
 		return nil, err
 	}

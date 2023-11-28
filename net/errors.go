@@ -11,6 +11,12 @@ import (
 // ErrRejected - the query was rejected by the target
 var ErrRejected = errors.New("query rejected")
 
+// ErrAborted - query was aborted and routing did not finish
+var ErrAborted = errors.New("query aborted")
+
+// ErrTimeout - query timed out
+var ErrTimeout = errors.New("query timeout")
+
 // ErrRouteNotFound - failed to route the query to the destination
 type ErrRouteNotFound struct {
 	Router Router

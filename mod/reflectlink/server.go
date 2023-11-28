@@ -15,10 +15,11 @@ type Server struct {
 }
 
 func (server *Server) Run(ctx context.Context) error {
-	s, err := server.node.Services().Register(ctx, server.node.Identity(), serviceName, server)
+	err := server.node.AddRoute(serviceName, server)
 	if err != nil {
 		return err
 	}
+	defer server.node.RemoveRoute(serviceName)
 
 	disco, err := modules.Find[*sdp.Module](server.node.Modules())
 	if err == nil {
@@ -26,7 +27,7 @@ func (server *Server) Run(ctx context.Context) error {
 		defer disco.RemoveSource(server)
 	}
 
-	<-s.Done()
+	<-ctx.Done()
 
 	return nil
 }

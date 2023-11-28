@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/net"
 	"reflect"
@@ -21,7 +20,6 @@ func NewAdmin(mod *Module) *Admin {
 		"help":    adm.help,
 		"query":   adm.query,
 		"sources": adm.sources,
-		"routes":  adm.routes,
 	}
 	return adm
 }
@@ -127,15 +125,6 @@ func (adm *Admin) sources(term *admin.Terminal, _ []string) error {
 		}
 
 		term.Printf(f, typ)
-	}
-
-	return nil
-}
-
-func (adm *Admin) routes(term *admin.Terminal, _ []string) error {
-	for target, via := range adm.mod.routes {
-		t, _ := id.ParsePublicKeyHex(target)
-		term.Printf("%v via %v\n", t, via)
 	}
 
 	return nil

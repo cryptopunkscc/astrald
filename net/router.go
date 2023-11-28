@@ -37,11 +37,9 @@ func RouteWithHints(ctx context.Context, router Router, query Query, hints Hints
 		return nil, err
 	}
 
-	if !hints.AllowRedirect {
-		if !query.Target().IsZero() && !query.Target().IsEqual(target.Identity()) {
-			target.Close()
-			return nil, errors.New("response identity mismatch")
-		}
+	if !query.Target().IsEqual(target.Identity()) {
+		target.Close()
+		return nil, errors.New("response identity mismatch")
 	}
 
 	return NewSecureConn(target, pipeReader, true), err

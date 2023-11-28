@@ -20,12 +20,13 @@ type Service struct {
 }
 
 func (srv *Service) Run(ctx context.Context) error {
-	s, err := srv.node.Services().Register(ctx, srv.node.Identity(), ServiceName, srv)
+	err := srv.node.AddRoute(ServiceName, srv)
 	if err != nil {
 		return err
 	}
+	defer srv.node.RemoveRoute(ServiceName)
 
-	<-s.Done()
+	<-ctx.Done()
 	return nil
 }
 
