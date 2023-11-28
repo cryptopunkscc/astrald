@@ -20,11 +20,17 @@ type RouteService struct {
 }
 
 func (srv *RouteService) Run(ctx context.Context) error {
-	var err = srv.node.AddRoute(RouteServiceName, srv)
+	var err = srv.node.AddRoute(RouteServiceName+"?*", srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.RemoveRoute(RouteServiceName)
+	defer srv.node.RemoveRoute(RouteServiceName + "?*")
+
+	err = srv.node.AddRoute(RouteServiceName+".*", srv)
+	if err != nil {
+		return err
+	}
+	defer srv.node.RemoveRoute(RouteServiceName + ".*")
 
 	if disco, err := modules.Find[*sdp.Module](srv.node.Modules()); err == nil {
 		disco.AddSource(srv)
@@ -36,13 +42,21 @@ func (srv *RouteService) Run(ctx context.Context) error {
 }
 
 func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	_, arg, ok := strings.Cut(query.Query(), "?")
-	if !ok {
+	var targetKey string
+
+	switch {
+	case strings.HasPrefix(query.Query(), RouteServiceName+"."):
+		targetKey, _ = strings.CutPrefix(query.Query(), RouteServiceName+".")
+
+	case strings.HasPrefix(query.Query(), RouteServiceName+"?"):
+		targetKey, _ = strings.CutPrefix(query.Query(), RouteServiceName+"?")
+
+	default:
 		return net.Reject()
 	}
 
 	// check if the target is us
-	if arg == srv.node.Identity().PublicKeyHex() {
+	if targetKey == srv.node.Identity().PublicKeyHex() {
 		return net.Accept(query, caller, func(conn net.SecureConn) {
 			gwConn := newConn(
 				conn,
@@ -62,7 +76,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 		})
 	}
 
-	targetIdentity, err := id.ParsePublicKeyHex(arg)
+	targetIdentity, err := id.ParsePublicKeyHex(targetKey)
 	if err != nil {
 		return net.Reject()
 	}
@@ -75,6 +89,8 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 	)
 
 	maskedCaller := router.NewIdentityTranslation(caller, srv.node.Identity())
+
+	srv.log.Logv(2, "forwarding %v to %v", query.Caller(), targetIdentity)
 
 	dst, err := srv.router.RouteQuery(ctx, maskedQuery, maskedCaller, hints.SetReroute())
 	if err != nil {
