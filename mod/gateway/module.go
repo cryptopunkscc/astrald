@@ -4,10 +4,10 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/policy"
+	"github.com/cryptopunkscc/astrald/mod/policy/api"
+	"github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
@@ -23,10 +23,15 @@ type Module struct {
 	dialer      *Dialer
 	subscribers map[string]*Subscriber
 	mu          sync.Mutex
+	sdp         sdp.API
+	policy      policy.API
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
+
+	mod.sdp, _ = mod.node.Modules().Find("sdp").(sdp.API)
+	mod.policy, _ = mod.node.Modules().Find("policy").(policy.API)
 
 	for _, gateName := range mod.config.Subscribe {
 		var gateID id.Identity
@@ -71,13 +76,8 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 	var s = NewSubscriber(gateway, mod.node, mod.log)
 	mod.subscribers[hex] = s
 
-	var alwaysLinkedPolicy *policy.AlwaysLinkedPolicy
-	if modPolicy, err := modules.Find[*policy.Module](mod.node.Modules()); err == nil {
-		alwaysLinkedPolicy = modPolicy.AlwaysLinkedPolicy()
-	}
-
-	if alwaysLinkedPolicy != nil {
-		alwaysLinkedPolicy.AddIdentity(gateway)
+	if mod.policy != nil {
+		mod.policy.AddAlwaysLinkedIdentity(gateway)
 	}
 
 	go func() {
@@ -89,8 +89,8 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 		defer mod.mu.Unlock()
 
 		delete(mod.subscribers, hex)
-		if alwaysLinkedPolicy != nil {
-			alwaysLinkedPolicy.RemoveIdentity(gateway)
+		if mod.policy != nil {
+			mod.policy.RemoveAlwaysLinkedIdentity(gateway)
 		}
 	}()
 

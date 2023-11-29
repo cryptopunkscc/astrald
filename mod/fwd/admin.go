@@ -2,17 +2,17 @@ package fwd
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
 )
 
 type Admin struct {
 	mod  *Module
-	cmds map[string]func(*admin.Terminal, []string) error
+	cmds map[string]func(admin.Terminal, []string) error
 }
 
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
-	adm.cmds = map[string]func(*admin.Terminal, []string) error{
+	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"list":  adm.list,
 		"start": adm.start,
 		"stop":  adm.stop,
@@ -21,7 +21,7 @@ func NewAdmin(mod *Module) *Admin {
 	return adm
 }
 
-func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
+func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	if len(args) < 2 {
 		return adm.help(term, []string{})
 	}
@@ -34,7 +34,7 @@ func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
 	return errors.New("unknown command")
 }
 
-func (adm *Admin) list(term *admin.Terminal, args []string) error {
+func (adm *Admin) list(term admin.Terminal, args []string) error {
 	var f = "%-39s %-39s\n"
 	term.Printf(f, admin.Header("Server"), admin.Header("Target"))
 	for _, server := range adm.mod.Servers() {
@@ -48,7 +48,7 @@ func (adm *Admin) list(term *admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) stop(term *admin.Terminal, args []string) error {
+func (adm *Admin) stop(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
 	}
@@ -66,7 +66,7 @@ func (adm *Admin) stop(term *admin.Terminal, args []string) error {
 	return errors.New("server not found")
 }
 
-func (adm *Admin) start(term *admin.Terminal, args []string) error {
+func (adm *Admin) start(term admin.Terminal, args []string) error {
 	if len(args) < 2 {
 		return errors.New("missing argument")
 	}
@@ -84,7 +84,7 @@ func (adm *Admin) start(term *admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) help(term *admin.Terminal, _ []string) error {
+func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %s <command>\n\n", ModuleName)
 	term.Printf("commands:\n")
 	var f = "  %-26s %s\n"

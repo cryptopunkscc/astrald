@@ -3,9 +3,8 @@ package speedtest
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -19,7 +18,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
 	// inject admin command
-	if adm, err := modules.Find[*admin.Module](mod.node.Modules()); err == nil {
+	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
 		adm.AddCommand("speedtest", NewAdmin(mod))
 	}
 

@@ -3,6 +3,7 @@ package sdp
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
+	. "github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/mod/sdp/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -33,8 +34,8 @@ func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLin
 	for err == nil {
 		err = cslq.Invoke(conn, func(msg proto.ServiceEntry) error {
 			if !msg.Identity.IsEqual(remoteIdentity) {
-				if srv.routerMod != nil {
-					srv.routerMod.SetRouter(msg.Identity, remoteIdentity)
+				if srv.router != nil {
+					srv.router.SetRouter(msg.Identity, remoteIdentity)
 				}
 			}
 			list = append(list, ServiceEntry(msg))
@@ -46,11 +47,11 @@ func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLin
 
 	if len(list) > 0 {
 		srv.log.Infov(1, "discovered %v services on %v", len(list), remoteIdentity)
-		srv.events.Emit(EventServicesDiscovered{
-			identityName: srv.log.Sprintf("%v", remoteIdentity),
-			Identity:     remoteIdentity,
-			Services:     list,
-		})
+		srv.events.Emit(NewEventServicesDiscovered(
+			srv.log.Sprintf("%v", remoteIdentity),
+			remoteIdentity,
+			list,
+		))
 	} else {
 		srv.log.Infov(1, "no services available on %v", remoteIdentity)
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/sdp"
+	"github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -16,9 +16,12 @@ const serviceType = "net.reflectlink"
 type Module struct {
 	node node.Node
 	log  *log.Logger
+	sdp  sdp.API
 }
 
 func (mod *Module) Run(ctx context.Context) error {
+	mod.sdp, _ = mod.node.Modules().Find("sdp").(sdp.API)
+
 	return tasks.Group(
 		&Server{Module: mod},
 		&Client{Module: mod},

@@ -5,10 +5,9 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/sdp"
+	"github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
 	"sync"
@@ -36,12 +35,9 @@ func (service *ReadService) Run(ctx context.Context) error {
 	}
 	defer service.node.RemoveRoute(ReadServiceName)
 
-	disco, err := modules.Find[*sdp.Module](service.node.Modules())
-	if err == nil {
-		disco.AddSource(service)
-		defer disco.RemoveSource(service)
-	} else {
-		service.log.Errorv(2, "can't regsiter service discovery source: %s", err)
+	if service.sdp != nil {
+		service.sdp.AddSource(service)
+		defer service.sdp.RemoveSource(service)
 	}
 
 	<-ctx.Done()

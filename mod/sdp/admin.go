@@ -4,19 +4,20 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
+	. "github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"reflect"
 )
 
 type Admin struct {
 	mod  *Module
-	cmds map[string]func(*admin.Terminal, []string) error
+	cmds map[string]func(admin.Terminal, []string) error
 }
 
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
-	adm.cmds = map[string]func(*admin.Terminal, []string) error{
+	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"help":    adm.help,
 		"query":   adm.query,
 		"sources": adm.sources,
@@ -24,7 +25,7 @@ func NewAdmin(mod *Module) *Admin {
 	return adm
 }
 
-func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
+func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	if len(args) < 2 {
 		return adm.help(term, []string{})
 	}
@@ -37,7 +38,7 @@ func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
 	return errors.New("unknown command")
 }
 
-func (adm *Admin) query(term *admin.Terminal, args []string) error {
+func (adm *Admin) query(term admin.Terminal, args []string) error {
 	var err error
 	var origin = net.OriginLocal
 	var caller = adm.mod.node.Identity()
@@ -104,7 +105,7 @@ func (adm *Admin) query(term *admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) sources(term *admin.Terminal, _ []string) error {
+func (adm *Admin) sources(term admin.Terminal, _ []string) error {
 	var list = adm.mod.sources
 
 	if len(list) == 0 {
@@ -130,7 +131,7 @@ func (adm *Admin) sources(term *admin.Terminal, _ []string) error {
 	return nil
 }
 
-func (adm *Admin) help(term *admin.Terminal, _ []string) error {
+func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %s <command>\n\n", ModuleName)
 	term.Printf("commands:\n")
 	var f = "  %-15s %s\n"

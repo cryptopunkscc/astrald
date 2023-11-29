@@ -5,9 +5,8 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
-	"github.com/cryptopunkscc/astrald/mod/sdp"
+	"github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"time"
 )
 
@@ -22,12 +21,9 @@ func (service *ProfileService) Run(ctx context.Context) error {
 	}
 	defer service.node.RemoveRoute(serviceName)
 
-	disco, err := modules.Find[*sdp.Module](service.node.Modules())
-	if err == nil {
-		disco.AddSource(service)
-		defer disco.RemoveSource(service)
-	} else {
-		service.log.Errorv(2, "can't regsiter service discovery source: %s", err)
+	if service.sdp != nil {
+		service.sdp.AddSource(service)
+		defer service.sdp.RemoveSource(service)
 	}
 
 	<-ctx.Done()

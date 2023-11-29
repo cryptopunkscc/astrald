@@ -4,7 +4,7 @@ import (
 	"errors"
 	"flag"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,7 +14,7 @@ type Admin struct {
 	mod *Module
 }
 
-func (adm *Admin) Exec(t *admin.Terminal, args []string) error {
+func (adm *Admin) Exec(t admin.Terminal, args []string) error {
 	if len(args) <= 1 {
 		return adm.help(t)
 	}
@@ -44,7 +44,7 @@ func (adm *Admin) ShortDescription() string {
 	return "manage apps and permissions"
 }
 
-func (adm *Admin) help(out *admin.Terminal) error {
+func (adm *Admin) help(out admin.Terminal) error {
 	out.Println("usage: apphost <command>")
 	out.Println()
 	out.Println("commands:")
@@ -56,7 +56,7 @@ func (adm *Admin) help(out *admin.Terminal) error {
 	return nil
 }
 
-func (adm *Admin) run(term *admin.Terminal, args []string) error {
+func (adm *Admin) run(term admin.Terminal, args []string) error {
 	var err error
 	var identity = adm.mod.node.Identity()
 	var name string
@@ -86,7 +86,7 @@ func (adm *Admin) run(term *admin.Terminal, args []string) error {
 	return err
 }
 
-func (adm *Admin) list(out *admin.Terminal, args []string) error {
+func (adm *Admin) list(out admin.Terminal, args []string) error {
 	out.Printf("%-6s %-10s %-30s %s\n", "ID", "STATE", "NAME", "IDENTITY")
 
 	for i, e := range adm.mod.execs {
@@ -98,7 +98,7 @@ func (adm *Admin) list(out *admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) kill(out *admin.Terminal, args []string) error {
+func (adm *Admin) kill(out admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		out.Println("usage: apphost kill <ID>")
 		return errors.New("missing arguments")
@@ -116,7 +116,7 @@ func (adm *Admin) kill(out *admin.Terminal, args []string) error {
 	return adm.mod.execs[i].Kill()
 }
 
-func (adm *Admin) keys(term *admin.Terminal, args []string) error {
+func (adm *Admin) keys(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("keys: missing argument")
 	}

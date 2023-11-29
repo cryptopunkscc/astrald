@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
+	"github.com/cryptopunkscc/astrald/net"
 	"io"
 	"strings"
 	"time"
@@ -12,19 +15,17 @@ import (
 
 const useColorTerminal = true
 
-type Terminal struct {
-	Color  bool
-	log    *log.Logger
-	output log.Output
+var _ Terminal = &ColorTerminal{}
+
+type ColorTerminal struct {
+	userIdentity id.Identity
+	color        bool
+	log          *log.Logger
+	output       log.Output
 	io.ReadWriter
 }
 
-type Header string
-type Keyword string
-type Faded string
-type Important string
-
-func NewTerminal(rw io.ReadWriter, logger *log.Logger) *Terminal {
+func NewColorTerminal(rw net.SecureConn, logger *log.Logger) *ColorTerminal {
 	l := logger.Tag("")
 	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
 		s, ok := v.(string)
@@ -91,19 +92,20 @@ func NewTerminal(rw io.ReadWriter, logger *log.Logger) *Terminal {
 			log.OpText{Text: t.Format(timestampFormat)},
 		}, true
 	})
-	return &Terminal{
-		Color:      useColorTerminal,
-		ReadWriter: rw,
-		output:     log.NewColorOutput(rw),
-		log:        l,
+	return &ColorTerminal{
+		color:        useColorTerminal,
+		userIdentity: rw.RemoteIdentity(),
+		ReadWriter:   rw,
+		output:       log.NewColorOutput(rw),
+		log:          l,
 	}
 }
 
-func (t *Terminal) Sprintf(f string, v ...any) string {
+func (t *ColorTerminal) Sprintf(f string, v ...any) string {
 	var buf = &bytes.Buffer{}
 	var out log.Output
 
-	if t.Color {
+	if t.color {
 		out = log.NewColorOutput(buf)
 	} else {
 		out = log.NewMonoOutput(buf)
@@ -114,16 +116,16 @@ func (t *Terminal) Sprintf(f string, v ...any) string {
 	return buf.String()
 }
 
-func (t *Terminal) Printf(f string, v ...any) {
-	if t.Color {
+func (t *ColorTerminal) Printf(f string, v ...any) {
+	if t.color {
 		t.output.Do(t.log.Renderf(f, v...)...)
 		return
 	}
 	fmt.Fprintf(t, f, v...)
 }
 
-func (t *Terminal) Println(v ...any) {
-	if t.Color {
+func (t *ColorTerminal) Println(v ...any) {
+	if t.color {
 		for _, i := range v {
 			ops, b := t.log.Render(i)
 			if b {
@@ -138,14 +140,26 @@ func (t *Terminal) Println(v ...any) {
 	fmt.Fprintln(t, v...)
 }
 
-func (t *Terminal) Scanf(f string, v ...any) {
+func (t *ColorTerminal) Scanf(f string, v ...any) {
 	fmt.Fscanf(t, f, v...)
 }
 
-func (t *Terminal) ScanLine() (string, error) {
+func (t *ColorTerminal) ScanLine() (string, error) {
 	var scanner = bufio.NewScanner(t)
 	if !scanner.Scan() {
 		return "", io.EOF
 	}
 	return scanner.Text(), nil
+}
+
+func (t *ColorTerminal) Color() bool {
+	return t.color
+}
+
+func (t *ColorTerminal) SetColor(Color bool) {
+	t.color = Color
+}
+
+func (t *ColorTerminal) UserIdentity() id.Identity {
+	return t.userIdentity
 }

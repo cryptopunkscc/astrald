@@ -2,6 +2,7 @@ package admin
 
 import (
 	"cmp"
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"reflect"
@@ -17,7 +18,7 @@ type CmdNode struct {
 	mod *Module
 }
 
-func (cmd *CmdNode) Exec(term *Terminal, args []string) error {
+func (cmd *CmdNode) Exec(term Terminal, args []string) error {
 	var nodeID = cmd.mod.node.Identity()
 
 	term.Printf("%v (%v)\n\n", nodeID, Faded(nodeID.PublicKeyHex()))
@@ -54,7 +55,7 @@ func (cmd *CmdNode) Exec(term *Terminal, args []string) error {
 	return nil
 }
 
-func (cmd *CmdNode) help(term *Terminal, _ []string) error {
+func (cmd *CmdNode) help(term Terminal, _ []string) error {
 	term.Printf("usage: node\n")
 	return nil
 }

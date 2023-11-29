@@ -4,9 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mod/sdp"
+	"github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"time"
 )
 
@@ -29,9 +28,9 @@ func (srv *SubscribeService) Run(ctx context.Context) error {
 	}
 	defer srv.node.RemoveRoute(SubscribeServiceName)
 
-	if disco, err := modules.Find[*sdp.Module](srv.node.Modules()); err == nil {
-		disco.AddSource(srv)
-		defer disco.RemoveSource(srv)
+	if srv.sdp != nil {
+		srv.sdp.AddSource(srv)
+		defer srv.sdp.RemoveSource(srv)
 	}
 
 	<-ctx.Done()

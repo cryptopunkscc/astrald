@@ -3,11 +3,9 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mod/router"
-	"github.com/cryptopunkscc/astrald/mod/sdp"
+	"github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"strings"
 )
 
@@ -32,9 +30,9 @@ func (srv *RouteService) Run(ctx context.Context) error {
 	}
 	defer srv.node.RemoveRoute(RouteServiceName + ".*")
 
-	if disco, err := modules.Find[*sdp.Module](srv.node.Modules()); err == nil {
-		disco.AddSource(srv)
-		defer disco.RemoveSource(srv)
+	if srv.sdp != nil {
+		srv.sdp.AddSource(srv)
+		defer srv.sdp.RemoveSource(srv)
 	}
 
 	<-ctx.Done()
@@ -88,7 +86,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 		query.Nonce(),
 	)
 
-	maskedCaller := router.NewIdentityTranslation(caller, srv.node.Identity())
+	maskedCaller := net.NewIdentityTranslation(caller, srv.node.Identity())
 
 	srv.log.Logv(2, "forwarding %v to %v", query.Caller(), targetIdentity)
 
@@ -97,7 +95,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 		return nil, err
 	}
 
-	var maskedTarget = router.NewIdentityTranslation(dst, srv.node.Identity())
+	var maskedTarget = net.NewIdentityTranslation(dst, srv.node.Identity())
 
 	return maskedTarget, nil
 }

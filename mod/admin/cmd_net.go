@@ -4,13 +4,12 @@ import (
 	"cmp"
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/router"
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/link"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/node/network"
-	nodeRouter "github.com/cryptopunkscc/astrald/node/router"
+	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/sig"
 	"reflect"
 	"slices"
@@ -31,7 +30,7 @@ type checkLatency interface {
 	Latency() time.Duration
 }
 
-func (cmd *CmdNet) Exec(term *Terminal, args []string) error {
+func (cmd *CmdNet) Exec(term Terminal, args []string) error {
 	if len(args) < 2 {
 		return cmd.help(term)
 	}
@@ -78,7 +77,7 @@ func (cmd *CmdNet) Exec(term *Terminal, args []string) error {
 	}
 }
 
-func (cmd *CmdNet) unlink(term *Terminal, args []string) error {
+func (cmd *CmdNet) unlink(term Terminal, args []string) error {
 	if len(args) < 1 {
 		return cmd.unlinkHelp(term)
 	}
@@ -102,12 +101,12 @@ func (cmd *CmdNet) unlink(term *Terminal, args []string) error {
 	return nil
 }
 
-func (cmd *CmdNet) unlinkHelp(term *Terminal) error {
+func (cmd *CmdNet) unlinkHelp(term Terminal) error {
 	term.Printf("help: net unlink <node>\n\n")
 	return nil
 }
 
-func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
+func (cmd *CmdNet) conns(term Terminal, _ []string) error {
 	corenode, ok := cmd.mod.node.(*node.CoreNode)
 	if !ok {
 		return errors.New("unsupported node type")
@@ -127,10 +126,10 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 		Header("Nonce"),
 	)
 	for _, conn := range corenode.Conns().All() {
-		c := term.Color
-		term.Color = false
+		c := term.Color()
+		term.SetColor(false)
 		var peersWidth = len(term.Sprintf(term.Sprintf("%s:%s", conn.Query().Caller(), conn.Query().Target())))
-		term.Color = c
+		term.SetColor(c)
 		var peers = term.Sprintf("%s:%s", conn.Query().Caller(), conn.Query().Target())
 		if peersWidth < 30 {
 			peers = peers + strings.Repeat(" ", 30-peersWidth)
@@ -150,7 +149,7 @@ func (cmd *CmdNet) conns(term *Terminal, _ []string) error {
 	return nil
 }
 
-func (cmd *CmdNet) conn(term *Terminal, args []string) error {
+func (cmd *CmdNet) conn(term Terminal, args []string) error {
 	corenode, ok := cmd.mod.node.(*node.CoreNode)
 	if !ok {
 		return errors.New("unsupported node type")
@@ -180,7 +179,7 @@ func (cmd *CmdNet) conn(term *Terminal, args []string) error {
 	return nil
 }
 
-func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
+func (cmd *CmdNet) printChainInfo(term Terminal, element any) {
 	i := net.RootSource(element)
 
 	for i != nil {
@@ -238,7 +237,7 @@ func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
 			}
 			term.Printf("  Buffer: %d\n", w.BufferSize())
 
-		case *nodeRouter.MonitoredWriter:
+		case *router.MonitoredWriter:
 			term.Printf("  Identity: %d\n", w.Identity())
 			term.Printf("  Bytes: %d\n", w.Bytes())
 
@@ -246,7 +245,7 @@ func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
 			term.Printf("  Identity: %d\n", w.Identity())
 			term.Printf("  Transport: %s\n", reflect.TypeOf(w.Insecure()))
 
-		case *router.IdentityTranslation:
+		case *net.IdentityTranslation:
 			term.Printf("  Identity: %d\n", w.Identity())
 
 		}
@@ -259,7 +258,7 @@ func (cmd *CmdNet) printChainInfo(term *Terminal, element any) {
 	}
 }
 
-func (cmd *CmdNet) show(term *Terminal, args []string) error {
+func (cmd *CmdNet) show(term Terminal, args []string) error {
 	if len(args) < 1 {
 		term.Printf("usage: net show <linkID>")
 		return nil
@@ -297,7 +296,7 @@ func (cmd *CmdNet) show(term *Terminal, args []string) error {
 	return nil
 }
 
-func (cmd *CmdNet) close(term *Terminal, args []string) error {
+func (cmd *CmdNet) close(term Terminal, args []string) error {
 	if len(args) < 1 {
 		term.Printf("usage: net close <linkID>")
 		return nil
@@ -316,7 +315,7 @@ func (cmd *CmdNet) close(term *Terminal, args []string) error {
 	return l.Close()
 }
 
-func (cmd *CmdNet) links(term *Terminal, _ []string) error {
+func (cmd *CmdNet) links(term Terminal, _ []string) error {
 	var f = "%-8d %-24s %-8s %10s %10s %10s\n"
 
 	links := cmd.mod.node.Network().Links().All()
@@ -354,7 +353,7 @@ func (cmd *CmdNet) links(term *Terminal, _ []string) error {
 	return nil
 }
 
-func (cmd *CmdNet) check(_ *Terminal, _ []string) error {
+func (cmd *CmdNet) check(_ Terminal, _ []string) error {
 	type checker interface {
 		Check()
 	}
@@ -367,7 +366,11 @@ func (cmd *CmdNet) check(_ *Terminal, _ []string) error {
 	return nil
 }
 
-func (cmd *CmdNet) reroute(term *Terminal, args []string) error {
+func (cmd *CmdNet) reroute(term Terminal, args []string) error {
+	if cmd.mod.router == nil {
+		return errModuleNotLoaded{"router"}
+	}
+
 	corenode, ok := cmd.mod.node.(*node.CoreNode)
 	if !ok {
 		return errors.New("unsupported node type")
@@ -398,18 +401,12 @@ func (cmd *CmdNet) reroute(term *Terminal, args []string) error {
 		return err
 	}
 
-	modRouter, ok := cmd.mod.node.Modules().Find(router.ModuleName).(*router.Module)
-	if !ok {
-		return errors.New("router module not loaded")
-	}
-
-	return modRouter.Reroute(conn.Query().Nonce(), lnk)
+	return cmd.mod.router.Reroute(conn.Query().Nonce(), lnk)
 }
 
-func (cmd *CmdNet) setRouter(term *Terminal, args []string) error {
-	routerMod, err := modules.Find[*router.Module](cmd.mod.node.Modules())
-	if err != nil {
-		return err
+func (cmd *CmdNet) setRouter(term Terminal, args []string) error {
+	if cmd.mod.router == nil {
+		return errModuleNotLoaded{"router"}
 	}
 
 	if len(args) < 2 {
@@ -426,12 +423,12 @@ func (cmd *CmdNet) setRouter(term *Terminal, args []string) error {
 		return err
 	}
 
-	routerMod.SetRouter(target, router)
+	cmd.mod.router.SetRouter(target, router)
 
 	return nil
 }
 
-func (cmd *CmdNet) help(term *Terminal) error {
+func (cmd *CmdNet) help(term Terminal) error {
 	term.Printf("help: net <command> [options]\n\n")
 	term.Printf("commands:\n\n")
 	term.Printf("  links     list all links\n")

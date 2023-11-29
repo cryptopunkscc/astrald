@@ -2,6 +2,7 @@ package admin
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )

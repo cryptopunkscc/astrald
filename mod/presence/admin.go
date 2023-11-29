@@ -1,7 +1,7 @@
 package presence
 
 import (
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	"time"
 )
 
@@ -15,7 +15,7 @@ func NewAdmin(mod *Module) *Admin {
 	return adm
 }
 
-func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
+func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	f := "%-20s %-20s %-12s %-8s %s\n"
 	term.Printf(f,
 		admin.Header("Alias"),

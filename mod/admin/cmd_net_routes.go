@@ -1,11 +1,12 @@
 package admin
 
 import (
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"reflect"
 )
 
-func (cmd *CmdNet) routes(term *Terminal, _ []string) error {
+func (cmd *CmdNet) routes(term Terminal, _ []string) error {
 	var routes []router.Route
 
 	routes = cmd.mod.node.Router().Routes()

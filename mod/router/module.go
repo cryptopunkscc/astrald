@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/log"
+	. "github.com/cryptopunkscc/astrald/mod/router/api"
 	"github.com/cryptopunkscc/astrald/mod/router/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
@@ -17,6 +18,8 @@ import (
 	"sync"
 	"time"
 )
+
+var _ API = &Module{}
 
 type Module struct {
 	node     node.Node
@@ -151,7 +154,7 @@ func (mod *Module) RouteVia(
 	// route through the proxy service
 	var proxyQuery = net.NewQueryNonce(mod.node.Identity(), routerIdentity, response.ProxyService, query.Nonce())
 	if !caller.Identity().IsEqual(mod.node.Identity()) {
-		caller = NewIdentityTranslation(caller, mod.node.Identity())
+		caller = net.NewIdentityTranslation(caller, mod.node.Identity())
 	}
 	proxy, err := mod.node.Router().RouteQuery(ctx, proxyQuery, caller, net.DefaultHints().SetReroute())
 	if err != nil {
@@ -159,7 +162,7 @@ func (mod *Module) RouteVia(
 	}
 
 	if !proxy.Identity().IsEqual(query.Target()) {
-		proxy = NewIdentityTranslation(proxy, query.Target())
+		proxy = net.NewIdentityTranslation(proxy, query.Target())
 	}
 
 	return proxy, nil

@@ -2,6 +2,7 @@ package sdp
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
+	. "github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )

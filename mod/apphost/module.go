@@ -6,11 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/sdp"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
+	"github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"math/rand"
 	"net"
 	"os"
@@ -34,13 +33,13 @@ type Module struct {
 
 func (mod *Module) Run(ctx context.Context) error {
 	// inject admin command
-	if adm, err := modules.Find[*admin.Module](mod.node.Modules()); err == nil {
+	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
 		_ = adm.AddCommand("apphost", &Admin{mod: mod})
 	}
 
-	if disco, err := modules.Find[*sdp.Module](mod.node.Modules()); err == nil {
-		disco.AddSource(mod)
-		defer disco.RemoveSource(mod)
+	if m, _ := mod.node.Modules().Find("admin").(sdp.API); m != nil {
+		m.AddSource(mod)
+		defer m.RemoveSource(mod)
 	}
 
 	var wg sync.WaitGroup

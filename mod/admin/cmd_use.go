@@ -2,7 +2,7 @@ package admin
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
 )
 
 var _ Command = &CmdUse{}
@@ -11,7 +11,7 @@ type CmdUse struct {
 	mod *Module
 }
 
-func (cmd *CmdUse) Exec(term *Terminal, args []string) error {
+func (cmd *CmdUse) Exec(term Terminal, args []string) error {
 	if len(args) < 2 {
 		return cmd.help(term, nil)
 	}
@@ -24,16 +24,8 @@ func (cmd *CmdUse) Exec(term *Terminal, args []string) error {
 
 	term.Printf("type exit to go back\n")
 
-	var identity id.Identity
-
-	type check interface{ RemoteIdentity() id.Identity }
-
-	if i, ok := term.ReadWriter.(check); ok {
-		identity = i.RemoteIdentity()
-	}
-
 	for {
-		term.Printf("%s@%s:%s%s", identity, cmd.mod.node.Identity(), Keyword(enterCmd), cmd.mod.config.Prompt)
+		term.Printf("%s@%s:%s%s", term.UserIdentity(), cmd.mod.node.Identity(), Keyword(enterCmd), cmd.mod.config.Prompt)
 
 		line, err := term.ScanLine()
 		if err != nil {
@@ -52,7 +44,7 @@ func (cmd *CmdUse) Exec(term *Terminal, args []string) error {
 	}
 }
 
-func (cmd *CmdUse) help(term *Terminal, _ []string) error {
+func (cmd *CmdUse) help(term Terminal, _ []string) error {
 	term.Printf("usage: use <command>\n")
 	return nil
 }

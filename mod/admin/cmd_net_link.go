@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"flag"
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/link"
 )
 
-func (cmd *CmdNet) link(term *Terminal, args []string) error {
+func (cmd *CmdNet) link(term Terminal, args []string) error {
 	flags := flag.NewFlagSet("net link <nodeID>", flag.ContinueOnError)
 	flags.SetOutput(term)
 	flags.Usage = func() {

@@ -51,13 +51,13 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 	mon, ok := proxyCaller.(*router.MonitoredWriter)
 	if ok {
 		next := mon.Output()
-		var t = NewIdentityTranslation(next, finalQuery.Caller())
+		var t = net.NewIdentityTranslation(next, finalQuery.Caller())
 		mon.SetOutput(t)
 		if s, ok := next.(net.SourceSetter); ok {
 			s.SetSource(t)
 		}
 	} else {
-		proxyCaller = NewIdentityTranslation(proxyCaller, finalQuery.Caller())
+		proxyCaller = net.NewIdentityTranslation(proxyCaller, finalQuery.Caller())
 	}
 
 	// reroute the query to its final destination
@@ -67,7 +67,7 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 	}
 
 	if !target.Identity().IsEqual(r.Node.Identity()) {
-		target = NewIdentityTranslation(target, r.Node.Identity())
+		target = net.NewIdentityTranslation(target, r.Node.Identity())
 	}
 
 	return target, nil

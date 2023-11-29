@@ -6,14 +6,14 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/router"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
+	"github.com/cryptopunkscc/astrald/mod/router/api"
+	. "github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/mod/sdp/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"reflect"
 	"sync"
@@ -28,7 +28,7 @@ type Module struct {
 	sources   map[Source]struct{}
 	sourcesMu sync.Mutex
 	cache     map[string][]ServiceEntry
-	routerMod *router.Module
+	router    router.API
 	cacheMu   sync.Mutex
 	ctx       context.Context
 }
@@ -36,10 +36,10 @@ type Module struct {
 func (m *Module) Run(ctx context.Context) error {
 	m.ctx = ctx
 
-	m.routerMod, _ = modules.Find[*router.Module](m.node.Modules())
+	m.router, _ = m.node.Modules().Find("router").(router.API)
 
 	// inject admin command
-	if adm, err := modules.Find[*admin.Module](m.node.Modules()); err == nil {
+	if adm, _ := m.node.Modules().Find("admin").(admin.API); adm != nil {
 		adm.AddCommand(ModuleName, NewAdmin(m))
 	}
 
@@ -148,8 +148,8 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 		err = cslq.Invoke(q, func(msg proto.ServiceEntry) error {
 			list = append(list, ServiceEntry(msg))
 			if !msg.Identity.IsEqual(remoteID) {
-				if m.routerMod != nil {
-					m.routerMod.SetRouter(msg.Identity, remoteID)
+				if m.router != nil {
+					m.router.SetRouter(msg.Identity, remoteID)
 				}
 			}
 			return nil

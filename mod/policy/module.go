@@ -2,31 +2,35 @@ package policy
 
 import (
 	"context"
+	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/router"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
+	. "github.com/cryptopunkscc/astrald/mod/policy/api"
+	"github.com/cryptopunkscc/astrald/mod/router/api"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
+var _ API = &Module{}
+
 type Module struct {
-	config    Config
-	node      node.Node
-	log       *log.Logger
-	ctx       context.Context
-	modRouter *router.Module
-	policies  map[*RunningPolicy]struct{}
+	config   Config
+	node     node.Node
+	log      *log.Logger
+	ctx      context.Context
+	router   router.API
+	policies map[*RunningPolicy]struct{}
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
 	// inject admin command
-	if adm, err := modules.Find[*admin.Module](mod.node.Modules()); err == nil {
+	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
 		adm.AddCommand(ModuleName, NewAdmin(mod))
 	}
 
-	mod.modRouter, _ = modules.Find[*router.Module](mod.node.Modules())
+	mod.router, _ = mod.node.Modules().Find("router").(router.API)
 
 	if mod.config.AlwaysLinked != nil {
 		if err := mod.addAlwaysLinkedPolicyFromConfig(mod.config.AlwaysLinked); err != nil {
@@ -46,6 +50,22 @@ func (mod *Module) Run(ctx context.Context) error {
 
 	<-ctx.Done()
 	return nil
+}
+
+func (mod *Module) AddAlwaysLinkedIdentity(identity id.Identity) error {
+	if p := mod.AlwaysLinkedPolicy(); p != nil {
+		return p.AddIdentity(identity)
+	}
+
+	return errors.New("always linked policy disabled")
+}
+
+func (mod *Module) RemoveAlwaysLinkedIdentity(identity id.Identity) error {
+	if p := mod.AlwaysLinkedPolicy(); p != nil {
+		return p.RemoveIdentity(identity)
+	}
+
+	return errors.New("always linked policy disabled")
 }
 
 func (mod *Module) addAlwaysLinkedPolicyFromConfig(cfg *ConfigAlwaysLinked) error {

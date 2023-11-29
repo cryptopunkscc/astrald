@@ -2,6 +2,7 @@ package admin
 
 import (
 	"errors"
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/nodeinfo"
 )
@@ -10,12 +11,12 @@ var _ Command = &CmdTracker{}
 
 type CmdTracker struct {
 	mod  *Module
-	cmds map[string]func(*Terminal, []string) error
+	cmds map[string]func(Terminal, []string) error
 }
 
 func NewCmdTracker(mod *Module) *CmdTracker {
 	cmd := &CmdTracker{mod: mod}
-	cmd.cmds = map[string]func(*Terminal, []string) error{
+	cmd.cmds = map[string]func(Terminal, []string) error{
 		"list":         cmd.list,
 		"add":          cmd.add,
 		"add_endpoint": cmd.addEndpoint,
@@ -29,7 +30,7 @@ func NewCmdTracker(mod *Module) *CmdTracker {
 	return cmd
 }
 
-func (cmd *CmdTracker) Exec(term *Terminal, args []string) error {
+func (cmd *CmdTracker) Exec(term Terminal, args []string) error {
 	if len(args) < 2 {
 		return cmd.help(term, []string{})
 	}
@@ -42,7 +43,7 @@ func (cmd *CmdTracker) Exec(term *Terminal, args []string) error {
 	return errors.New("unknown command")
 }
 
-func (cmd *CmdTracker) list(term *Terminal, _ []string) error {
+func (cmd *CmdTracker) list(term Terminal, _ []string) error {
 	ids, err := cmd.mod.node.Tracker().Identities()
 	if err != nil {
 		return err
@@ -57,7 +58,7 @@ func (cmd *CmdTracker) list(term *Terminal, _ []string) error {
 	return nil
 }
 
-func (cmd *CmdTracker) show(term *Terminal, args []string) error {
+func (cmd *CmdTracker) show(term Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("not enough arguments")
 	}
@@ -112,7 +113,7 @@ func (cmd *CmdTracker) show(term *Terminal, args []string) error {
 	return nil
 }
 
-func (cmd *CmdTracker) addEndpoint(term *Terminal, args []string) error {
+func (cmd *CmdTracker) addEndpoint(term Terminal, args []string) error {
 	if len(args) < 3 {
 		term.Println("usage: tracker add_endpoint <node> <network> <address>")
 		return errors.New("misisng arguments")
@@ -138,7 +139,7 @@ func (cmd *CmdTracker) addEndpoint(term *Terminal, args []string) error {
 	return nil
 }
 
-func (cmd *CmdTracker) parse(term *Terminal, args []string) error {
+func (cmd *CmdTracker) parse(term Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
 	}
@@ -165,7 +166,7 @@ func (cmd *CmdTracker) parse(term *Terminal, args []string) error {
 	return nil
 }
 
-func (cmd *CmdTracker) add(_ *Terminal, args []string) error {
+func (cmd *CmdTracker) add(_ Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
 	}
@@ -182,7 +183,7 @@ func (cmd *CmdTracker) add(_ *Terminal, args []string) error {
 	return nodeinfo.SaveToNode(info, cmd.mod.node, true)
 }
 
-func (cmd *CmdTracker) setAlias(term *Terminal, args []string) error {
+func (cmd *CmdTracker) setAlias(term Terminal, args []string) error {
 	if len(args) < 2 {
 		return errors.New("not enough arguments")
 	}
@@ -195,7 +196,7 @@ func (cmd *CmdTracker) setAlias(term *Terminal, args []string) error {
 	return cmd.mod.node.Tracker().SetAlias(identity, args[1])
 }
 
-func (cmd *CmdTracker) clear(term *Terminal, args []string) error {
+func (cmd *CmdTracker) clear(term Terminal, args []string) error {
 	if len(args) < 1 {
 		term.Println("usage: tracker clear <identity>")
 		return errors.New("misisng arguments")
@@ -209,7 +210,7 @@ func (cmd *CmdTracker) clear(term *Terminal, args []string) error {
 	return cmd.mod.node.Tracker().Clear(identity)
 }
 
-func (cmd *CmdTracker) remove(term *Terminal, args []string) error {
+func (cmd *CmdTracker) remove(term Terminal, args []string) error {
 	if len(args) < 1 {
 		term.Println("usage: tracker remove <identity>")
 		return errors.New("misisng arguments")
@@ -223,7 +224,7 @@ func (cmd *CmdTracker) remove(term *Terminal, args []string) error {
 	return cmd.mod.node.Tracker().Remove(identity)
 }
 
-func (cmd *CmdTracker) help(term *Terminal, _ []string) error {
+func (cmd *CmdTracker) help(term Terminal, _ []string) error {
 	term.Printf("help: tracker <command> [options]\n\n")
 	term.Printf("commands:\n")
 	term.Printf("  list                                    list all identities\n")

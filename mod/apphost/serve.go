@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
-	routerpc "github.com/cryptopunkscc/astrald/mod/router/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -60,15 +59,11 @@ func (s *Session) query(params proto.QueryParams) error {
 	}
 
 	switch {
-	case errors.Is(err, net.ErrRejected),
-		errors.Is(err, routerpc.ErrRejected):
+	case errors.Is(err, net.ErrRejected):
 		return s.WriteErr(proto.ErrRejected)
 
 	case errors.Is(err, &net.ErrRouteNotFound{}):
 		return s.WriteErr(proto.ErrRouteNotFound)
-
-	case errors.Is(err, routerpc.ErrDenied):
-		return s.WriteErr(proto.ErrUnauthorized)
 
 	default:
 		s.mod.log.Error("unexpected error processing query: %s", err)

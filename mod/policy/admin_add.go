@@ -3,10 +3,10 @@ package policy
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
 )
 
-func (adm *Admin) add(term *admin.Terminal, args []string) error {
+func (adm *Admin) add(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("usage: policy add <policy> [policy_options]")
 	}
@@ -25,7 +25,7 @@ func (adm *Admin) add(term *admin.Terminal, args []string) error {
 	return errors.New("unknown policy")
 }
 
-func (adm *Admin) addAlwaysLinkedPolicy(_ *admin.Terminal, args []string) error {
+func (adm *Admin) addAlwaysLinkedPolicy(_ admin.Terminal, args []string) error {
 	var targets = make([]id.Identity, 0)
 	for _, name := range args {
 		target, err := adm.mod.node.Resolver().Resolve(name)

@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
-const ModuleName = "route"
+const ModuleName = "router"
 
 type Loader struct{}
 

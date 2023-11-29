@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
+	"github.com/cryptopunkscc/astrald/mod/router/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
@@ -15,6 +17,7 @@ import (
 )
 
 var _ modules.Module = &Module{}
+var _ API = &Module{}
 
 const ServiceName = "admin"
 
@@ -26,6 +29,7 @@ type Module struct {
 	log      *log.Logger
 	mu       sync.Mutex
 	ctx      context.Context
+	router   router.API
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -36,6 +40,8 @@ func (mod *Module) Run(ctx context.Context) error {
 		return err
 	}
 	defer mod.node.RemoveRoute(ServiceName)
+
+	mod.router, _ = mod.node.Modules().Find("router").(router.API)
 
 	<-ctx.Done()
 
@@ -81,7 +87,7 @@ func (mod *Module) serve(conn net.SecureConn) {
 
 	defer conn.Close()
 
-	var term = NewTerminal(conn, mod.log)
+	var term = NewColorTerminal(conn, mod.log)
 
 	for {
 		term.Printf("%s@%s%s", conn.RemoteIdentity(), mod.node.Identity(), mod.config.Prompt)
@@ -99,7 +105,7 @@ func (mod *Module) serve(conn net.SecureConn) {
 	}
 }
 
-func (mod *Module) exec(line string, term *Terminal) error {
+func (mod *Module) exec(line string, term Terminal) error {
 	args, valid := shell.Split(line)
 	if len(args) == 0 {
 		return nil

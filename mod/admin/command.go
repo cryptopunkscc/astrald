@@ -1,8 +1,6 @@
 package admin
 
-type Command interface {
-	Exec(out *Terminal, args []string) error
-}
+import . "github.com/cryptopunkscc/astrald/mod/admin/api"
 
 func (mod *Module) AddCommand(name string, cmd Command) error {
 	mod.mu.Lock()

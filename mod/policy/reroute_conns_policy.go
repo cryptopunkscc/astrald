@@ -70,7 +70,7 @@ func (policy *RerouteConnsPolicy) rerouteConn(ctx context.Context, conn *router.
 				bestNet,
 				best.ID(),
 			)
-			err := policy.modRouter.Reroute(nonce, best.Link)
+			err := policy.router.Reroute(nonce, best.Link)
 			if err != nil {
 				policy.log.Errorv(1, "[%v] error rerouting: %v", nonce, err)
 			} else {

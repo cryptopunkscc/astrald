@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	"time"
 )
 
@@ -12,12 +12,12 @@ const defaultAccessDuration = time.Hour * 24 * 365 * 100
 
 type Admin struct {
 	mod  *Module
-	cmds map[string]func(*admin.Terminal, []string) error
+	cmds map[string]func(admin.Terminal, []string) error
 }
 
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
-	adm.cmds = map[string]func(*admin.Terminal, []string) error{
+	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"grant":           adm.grant,
 		"revoke":          adm.revoke,
 		"list":            adm.list,
@@ -31,7 +31,7 @@ func NewAdmin(mod *Module) *Admin {
 	return adm
 }
 
-func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
+func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	if len(args) < 2 {
 		return adm.help(term, []string{})
 	}
@@ -44,7 +44,7 @@ func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
 	return errors.New("unknown command")
 }
 
-func (adm *Admin) grant(term *admin.Terminal, args []string) error {
+func (adm *Admin) grant(term admin.Terminal, args []string) error {
 	if len(args) < 2 {
 		return errors.New("argument missing")
 	}
@@ -71,7 +71,7 @@ func (adm *Admin) grant(term *admin.Terminal, args []string) error {
 	return adm.mod.GrantAccess(identity, dataID, expiresAt)
 }
 
-func (adm *Admin) revoke(term *admin.Terminal, args []string) error {
+func (adm *Admin) revoke(term admin.Terminal, args []string) error {
 	if len(args) < 2 {
 		return errors.New("argument missing")
 	}
@@ -90,7 +90,7 @@ func (adm *Admin) revoke(term *admin.Terminal, args []string) error {
 	return adm.mod.RevokeAccess(identity, dataID)
 }
 
-func (adm *Admin) list(term *admin.Terminal, args []string) error {
+func (adm *Admin) list(term admin.Terminal, args []string) error {
 	var list []dbAccess
 
 	tx := adm.mod.db.Limit(100).Find(&list)
@@ -124,7 +124,7 @@ func (adm *Admin) list(term *admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) sources(term *admin.Terminal, args []string) error {
+func (adm *Admin) sources(term admin.Terminal, args []string) error {
 	var sources = adm.mod.DataSources()
 
 	term.Printf("%d registered data source(s)\n", len(sources))
@@ -137,7 +137,7 @@ func (adm *Admin) sources(term *admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) providers(term *admin.Terminal, args []string) error {
+func (adm *Admin) providers(term admin.Terminal, args []string) error {
 	list, err := adm.mod.AllProviders()
 	if err != nil {
 		return err
@@ -150,7 +150,7 @@ func (adm *Admin) providers(term *admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) addProvider(term *admin.Terminal, args []string) error {
+func (adm *Admin) addProvider(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("usage: addprovider <identity>")
 	}
@@ -163,7 +163,7 @@ func (adm *Admin) addProvider(term *admin.Terminal, args []string) error {
 	return adm.mod.AddProvider(identity)
 }
 
-func (adm *Admin) removeProvider(term *admin.Terminal, args []string) error {
+func (adm *Admin) removeProvider(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("usage: remove_provider <identity>")
 	}
@@ -180,7 +180,7 @@ func (adm *Admin) ShortDescription() string {
 	return "manage storage providers and data access"
 }
 
-func (adm *Admin) help(term *admin.Terminal, _ []string) error {
+func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: contacts <command>\n\n")
 	term.Printf("commands:\n")
 	term.Printf("  grant <identity> <dataID> [duration]      grant access to data\n")

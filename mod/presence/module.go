@@ -3,10 +3,9 @@ package presence
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"net"
 	"strconv"
@@ -39,7 +38,7 @@ func (mod *Module) Run(ctx context.Context) (err error) {
 	}()
 
 	// inject admin command
-	if adm, err := modules.Find[*admin.Module](mod.node.Modules()); err == nil {
+	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
 		adm.AddCommand(ModuleName, NewAdmin(mod))
 	}
 

@@ -1,6 +1,7 @@
 package admin
 
 import (
+	. "github.com/cryptopunkscc/astrald/mod/admin/api"
 	"sort"
 )
 
@@ -14,7 +15,7 @@ type ShortDescriber interface {
 	ShortDescription() string
 }
 
-func (cmd *CmdHelp) Exec(term *Terminal, _ []string) error {
+func (cmd *CmdHelp) Exec(term Terminal, _ []string) error {
 	term.Printf("commands:\n\n")
 
 	// get a sorted command list

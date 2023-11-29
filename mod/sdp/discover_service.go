@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/debug"
+	. "github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
@@ -14,9 +15,6 @@ var _ tasks.Runner = &DiscoveryService{}
 type DiscoveryService struct {
 	*Module
 }
-
-const DiscoverServiceName = "core.sdp.discover"
-const SourceServiceName = "core.sdp.source"
 
 func (service *DiscoveryService) Run(ctx context.Context) error {
 	err := service.node.AddRoute(DiscoverServiceName, service)

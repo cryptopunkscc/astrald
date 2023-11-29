@@ -1,24 +1,23 @@
-package router
+package net
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/net"
 )
 
-var _ net.SecureWriteCloser = &IdentityTranslation{}
+var _ SecureWriteCloser = &IdentityTranslation{}
 
 type IdentityTranslation struct {
-	*net.OutputField
-	*net.SourceField
+	*OutputField
+	*SourceField
 	identity id.Identity
 }
 
-func NewIdentityTranslation(w net.SecureWriteCloser, identity id.Identity) *IdentityTranslation {
+func NewIdentityTranslation(w SecureWriteCloser, identity id.Identity) *IdentityTranslation {
 	var t = &IdentityTranslation{
-		SourceField: net.NewSourceField(nil),
+		SourceField: NewSourceField(nil),
 		identity:    identity,
 	}
-	t.OutputField = net.NewOutputField(t, w)
+	t.OutputField = NewOutputField(t, w)
 	return t
 }
 

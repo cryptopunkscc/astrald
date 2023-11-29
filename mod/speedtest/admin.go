@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -23,7 +23,7 @@ func NewAdmin(mod *Module) *Admin {
 	return adm
 }
 
-func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
+func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	if len(args) < 2 {
 		return adm.help(term, []string{})
 	}
@@ -74,7 +74,7 @@ func (adm *Admin) Exec(term *admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) help(term *admin.Terminal, _ []string) error {
+func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: speedtest <linkID>\n")
 	return nil
 }

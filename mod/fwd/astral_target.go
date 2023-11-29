@@ -2,7 +2,6 @@ package fwd
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/mod/router"
 	"github.com/cryptopunkscc/astrald/net"
 )
 
@@ -24,7 +23,7 @@ func (t *AstralTarget) RouteQuery(ctx context.Context, query net.Query, src net.
 	return t.router.RouteQuery(
 		ctx,
 		net.NewQuery(t.query.Caller(), t.query.Target(), t.query.Query()),
-		router.NewIdentityTranslation(src, t.query.Caller()),
+		net.NewIdentityTranslation(src, t.query.Caller()),
 		net.DefaultHints(),
 	)
 }
