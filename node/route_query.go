@@ -18,6 +18,6 @@ func (node *CoreNode) RemoveRoute(name string) error {
 	return node.routes.RemoveRoute(name)
 }
 
-func (node *CoreNode) Routes() []router.QueryRoute {
+func (node *CoreNode) Routes() []router.LocalRoute {
 	return node.routes.Routes()
 }

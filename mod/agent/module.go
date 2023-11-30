@@ -38,11 +38,11 @@ func (module *Module) serve(conn net.SecureConn) {
 func (module *Module) Run(ctx context.Context) error {
 	module.ctx = ctx
 
-	err := module.node.AddRoute(serviceName, module)
+	err := module.node.LocalRouter().AddRoute(serviceName, module)
 	if err != nil {
 		return err
 	}
-	defer module.node.RemoveRoute(serviceName)
+	defer module.node.LocalRouter().RemoveRoute(serviceName)
 
 	<-ctx.Done()
 

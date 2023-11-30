@@ -18,17 +18,17 @@ type RouteService struct {
 }
 
 func (srv *RouteService) Run(ctx context.Context) error {
-	var err = srv.node.AddRoute(RouteServiceName+"?*", srv)
+	var err = srv.node.LocalRouter().AddRoute(RouteServiceName+"?*", srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.RemoveRoute(RouteServiceName + "?*")
+	defer srv.node.LocalRouter().RemoveRoute(RouteServiceName + "?*")
 
-	err = srv.node.AddRoute(RouteServiceName+".*", srv)
+	err = srv.node.LocalRouter().AddRoute(RouteServiceName+".*", srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.RemoveRoute(RouteServiceName + ".*")
+	defer srv.node.LocalRouter().RemoveRoute(RouteServiceName + ".*")
 
 	if srv.sdp != nil {
 		srv.sdp.AddSource(srv)

@@ -32,7 +32,7 @@ type CoreNode struct {
 	modules  *modules.CoreModules
 	resolver *resolver.CoreResolver
 	events   events.Queue
-	routes   *router.QueryRouter
+	routes   *router.PrefixRouter
 
 	startedAt time.Time
 
@@ -151,6 +151,10 @@ func (node *CoreNode) Identity() id.Identity {
 
 func (node *CoreNode) Router() router.Router {
 	return node.router
+}
+
+func (node *CoreNode) LocalRouter() router.LocalRouter {
+	return node.routes
 }
 
 // Events returns the event queue for the node

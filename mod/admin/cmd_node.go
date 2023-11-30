@@ -42,14 +42,14 @@ func (cmd *CmdNode) Exec(term Terminal, args []string) error {
 	// Show routes
 	term.Printf("\n%s\n\n", Header("Routes"))
 	var routeFmt = "%-32s %-32s\n"
-	var routes = cmd.mod.node.Routes()
-	slices.SortFunc(routes, func(a, b router.QueryRoute) int {
+	var routes = cmd.mod.node.LocalRouter().Routes()
+	slices.SortFunc(routes, func(a, b router.LocalRoute) int {
 		return cmp.Compare(a.Name, b.Name)
 	})
 
 	term.Printf(routeFmt, Header("Name"), Header("Type"))
 	for _, route := range routes {
-		term.Printf(routeFmt, route.Name, reflect.TypeOf(route.Router))
+		term.Printf(routeFmt, route.Name, reflect.TypeOf(route.Target))
 	}
 
 	return nil

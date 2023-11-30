@@ -11,7 +11,7 @@ import (
 type Guest struct {
 	Identity id.Identity
 
-	router *router.QueryRouter
+	router *router.PrefixRouter
 	count  atomic.Int32
 }
 

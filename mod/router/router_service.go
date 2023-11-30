@@ -18,11 +18,11 @@ type RouterService struct {
 }
 
 func (srv *RouterService) Run(ctx context.Context) error {
-	err := srv.node.AddRoute(RouterServiceName, srv)
+	err := srv.node.LocalRouter().AddRoute(RouterServiceName, srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.RemoveRoute(RouterServiceName)
+	defer srv.node.LocalRouter().RemoveRoute(RouterServiceName)
 
 	<-ctx.Done()
 

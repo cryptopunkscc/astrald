@@ -2,7 +2,6 @@ package node
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -21,7 +20,5 @@ type Node interface {
 	Modules() modules.Modules
 	Resolver() resolver.Resolver
 	Router() router.Router
-	AddRoute(string, net.Router) error
-	RemoveRoute(string) error
-	Routes() []router.QueryRoute
+	LocalRouter() router.LocalRouter
 }

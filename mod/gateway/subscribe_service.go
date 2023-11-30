@@ -22,11 +22,11 @@ type Subscription struct {
 }
 
 func (srv *SubscribeService) Run(ctx context.Context) error {
-	var err = srv.node.AddRoute(SubscribeServiceName, srv)
+	var err = srv.node.LocalRouter().AddRoute(SubscribeServiceName, srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.RemoveRoute(SubscribeServiceName)
+	defer srv.node.LocalRouter().RemoveRoute(SubscribeServiceName)
 
 	if srv.sdp != nil {
 		srv.sdp.AddSource(srv)

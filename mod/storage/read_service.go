@@ -29,11 +29,11 @@ func (service *ReadService) RouteQuery(ctx context.Context, query net.Query, cal
 }
 
 func (service *ReadService) Run(ctx context.Context) error {
-	err := service.node.AddRoute(ReadServiceName, service)
+	err := service.node.LocalRouter().AddRoute(ReadServiceName, service)
 	if err != nil {
 		return err
 	}
-	defer service.node.RemoveRoute(ReadServiceName)
+	defer service.node.LocalRouter().RemoveRoute(ReadServiceName)
 
 	if service.sdp != nil {
 		service.sdp.AddSource(service)

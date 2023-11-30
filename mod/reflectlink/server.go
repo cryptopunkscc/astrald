@@ -13,11 +13,11 @@ type Server struct {
 }
 
 func (server *Server) Run(ctx context.Context) error {
-	err := server.node.AddRoute(serviceName, server)
+	err := server.node.LocalRouter().AddRoute(serviceName, server)
 	if err != nil {
 		return err
 	}
-	defer server.node.RemoveRoute(serviceName)
+	defer server.node.LocalRouter().RemoveRoute(serviceName)
 
 	if server.sdp != nil {
 		server.sdp.AddSource(server)

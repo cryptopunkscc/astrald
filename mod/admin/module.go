@@ -35,11 +35,11 @@ type Module struct {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	err := mod.node.AddRoute(ServiceName, mod)
+	err := mod.node.LocalRouter().AddRoute(ServiceName, mod)
 	if err != nil {
 		return err
 	}
-	defer mod.node.RemoveRoute(ServiceName)
+	defer mod.node.LocalRouter().RemoveRoute(ServiceName)
 
 	mod.router, _ = mod.node.Modules().Find("router").(router.API)
 

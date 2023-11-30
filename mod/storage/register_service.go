@@ -17,12 +17,12 @@ type RegisterService struct {
 }
 
 func (service *RegisterService) Run(ctx context.Context) error {
-	err := service.node.AddRoute(RegisterServiceName, service)
+	err := service.node.LocalRouter().AddRoute(RegisterServiceName, service)
 	if err != nil {
 		service.log.Error("cannot register service %s: %s", RegisterServiceName, err)
 		return err
 	}
-	defer service.node.RemoveRoute(RegisterServiceName)
+	defer service.node.LocalRouter().RemoveRoute(RegisterServiceName)
 
 	<-ctx.Done()
 	return nil

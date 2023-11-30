@@ -32,7 +32,7 @@ func NewRedirect(ctx context.Context, query net.Query, allow id.Identity, node n
 	rand.Read(randBytes)
 	r.ServiceName = RouterServiceName + "." + hex.EncodeToString(randBytes)
 
-	err = node.AddRoute(r.ServiceName, r)
+	err = node.LocalRouter().AddRoute(r.ServiceName, r)
 
 	return r, err
 }
@@ -43,7 +43,7 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 		return net.Reject()
 	}
 
-	defer r.Node.RemoveRoute(r.ServiceName)
+	defer r.Node.LocalRouter().RemoveRoute(r.ServiceName)
 
 	finalQuery := r.Query
 
