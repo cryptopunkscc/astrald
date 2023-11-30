@@ -26,7 +26,7 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 	var responseHandler = &ResponseHandler{}
 	localPort, err := link.mux.BindAny(responseHandler.HandleMux)
 	if err != nil {
-		return nil, err
+		return net.RouteNotFound(link, err)
 	}
 
 	// set up response handler
@@ -64,7 +64,7 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 	// send the query to the remote peer
 	if err := link.control.Query(uint64(query.Nonce()), query.Query(), localPort); err != nil {
 		link.CloseWithError(err)
-		return nil, err
+		return net.RouteNotFound(link, err)
 	}
 
 	select {
@@ -79,7 +79,7 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 			}
 		}()
 
-		return nil, net.ErrAborted
+		return net.Abort()
 	}
 }
 

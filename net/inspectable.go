@@ -87,6 +87,10 @@ func (field *OutputField) SetOutput(output SecureWriteCloser) error {
 }
 
 func RootSource(src any) any {
+	if src == nil {
+		return nil
+	}
+
 	for {
 		getter, ok := src.(SourceGetter)
 		if !ok {

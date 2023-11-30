@@ -171,11 +171,18 @@ func (cmd *CmdNet) conn(term Terminal, args []string) error {
 	}
 
 	term.Printf("CALLER CHAIN\n")
-	cmd.printChainInfo(term, conn.Caller())
+	if conn.Caller() == nil {
+		term.Printf("caller is nil\n")
+	} else {
+		cmd.printChainInfo(term, conn.Caller())
+	}
 
 	term.Printf("\nTARGET CHAIN\n")
-	cmd.printChainInfo(term, conn.Target())
-
+	if conn.Target() == nil {
+		term.Printf("target is nil\n")
+	} else {
+		cmd.printChainInfo(term, conn.Target())
+	}
 	return nil
 }
 

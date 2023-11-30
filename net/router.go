@@ -22,6 +22,10 @@ func Reject() (SecureWriteCloser, error) {
 	return nil, ErrRejected
 }
 
+func Abort() (SecureWriteCloser, error) {
+	return nil, ErrAborted
+}
+
 // Route routes a query through the provided Router. It returns a SecureConn if query was successfully routed
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...
