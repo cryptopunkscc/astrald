@@ -113,7 +113,6 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 
 	node.router = router.NewCoreRouter(node.log, &node.events)
 	node.router.AddRoute(id.Anyone, node.Identity(), node, 100)
-	node.router.AddRoute(node.Identity(), id.Anyone, node.Network(), 0)
 
 	node.router.SetLogRouteTrace(node.config.LogRouteTrace)
 

@@ -44,6 +44,10 @@ func (mod *Module) Run(ctx context.Context) error {
 		}
 	}
 
+	if err := mod.addAutoLinkPolicy(); err != nil {
+		mod.log.Errorv(0, "error adding auto_link policy: %v", err)
+	}
+
 	if mod.config.RerouteConns != nil {
 		mod.AddPolicy(NewRerouteConnsPolicy(mod))
 	}
@@ -66,6 +70,12 @@ func (mod *Module) RemoveAlwaysLinkedIdentity(identity id.Identity) error {
 	}
 
 	return errors.New("always linked policy disabled")
+}
+
+func (mod *Module) addAutoLinkPolicy() error {
+	policy := NewAutoLinkPolicy(mod)
+
+	return mod.AddPolicy(policy)
 }
 
 func (mod *Module) addAlwaysLinkedPolicyFromConfig(cfg *ConfigAlwaysLinked) error {

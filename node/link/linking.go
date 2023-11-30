@@ -12,9 +12,11 @@ import (
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const DefaultWorkerCount = 8
+const DefaultTimeout = time.Minute
 const featureMux = "mux"
 const featureListFormat = "[s][c]c"
 
@@ -169,7 +171,7 @@ func MakeLink(
 		workers = DefaultWorkerCount
 	}
 
-	workerCtx, cancelWorkers := context.WithCancel(ctx)
+	workerCtx, cancelWorkers := context.WithTimeout(ctx, DefaultTimeout)
 	defer cancelWorkers()
 
 	wg.Add(workers)

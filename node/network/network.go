@@ -6,7 +6,6 @@ import (
 )
 
 type Network interface {
-	net.Router
 	Events() *events.Queue
 	Server() *Server
 	AddLink(net.Link) error
