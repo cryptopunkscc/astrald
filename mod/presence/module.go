@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin/api"
+	tcp "github.com/cryptopunkscc/astrald/mod/tcp/api"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -18,6 +19,8 @@ type Module struct {
 	socket *net.UDPConn
 	events events.Queue
 
+	tcp tcp.API
+
 	Discover *DiscoverService
 	Announce *AnnounceService
 }
@@ -27,6 +30,8 @@ const defaultPresencePort = 8829
 func (mod *Module) Run(ctx context.Context) (err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	mod.tcp, _ = mod.node.Modules().Find("tcp").(tcp.API)
 
 	if err := mod.setupSocket(); err != nil {
 		return err

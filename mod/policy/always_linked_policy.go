@@ -66,7 +66,7 @@ func (policy *AlwaysLinkedPolicy) AddIdentity(identity id.Identity) error {
 
 	go func() {
 		if err := worker.Run(policy.ctx); err != nil {
-			policy.log.Errorv(2, "always_linked_policy worker ended with error:", err)
+			policy.log.Errorv(2, "always_linked_policy worker ended with error: %v", err)
 		}
 		policy.mu.Lock()
 		defer policy.mu.Unlock()
@@ -140,7 +140,7 @@ func (worker *alwaysLinkedWorker) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		case <-time.After(time.Second):
 		}
 
@@ -173,7 +173,7 @@ func (worker *alwaysLinkedWorker) Run(ctx context.Context) error {
 				continue
 
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil
 			}
 		}
 

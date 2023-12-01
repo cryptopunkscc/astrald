@@ -5,9 +5,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/presence/proto"
-	"github.com/cryptopunkscc/astrald/node/infra"
-	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
-	"github.com/cryptopunkscc/astrald/node/infra/drivers/ip"
 	"net"
 	"time"
 )
@@ -83,12 +80,12 @@ func (srv *AnnounceService) broadcastPresence() error {
 		}
 
 		for _, addr := range addrs {
-			broadcastIP, err := ip.BroadcastAddr(addr)
+			broadcastIP, err := BroadcastAddr(addr)
 			if err != nil {
 				return err
 			}
 
-			if ip.IsLinkLocal(broadcastIP) {
+			if IsLinkLocal(broadcastIP) {
 				continue
 			}
 
@@ -126,10 +123,9 @@ func (srv *AnnounceService) sendAdTo(dst *net.UDPAddr) error {
 }
 
 func (srv *AnnounceService) getListenPort() int {
-	drv, ok := infra.GetDriver[*inet.Driver](srv.node.Infra(), inet.DriverName)
-	if !ok {
+	if srv.tcp == nil {
 		return -1
 	}
 
-	return drv.ListenPort()
+	return srv.tcp.ListenPort()
 }

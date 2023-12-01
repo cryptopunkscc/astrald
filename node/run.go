@@ -71,5 +71,7 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 	// wait for all components to finish
 	wg.Wait()
 
+	time.Sleep(100 * time.Millisecond) // wait a little bit of time for all the buffers to flush
+
 	return
 }

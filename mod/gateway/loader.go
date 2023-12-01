@@ -23,8 +23,9 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *_log.Logger) (mo
 	_ = assets.LoadYAML(ModuleName, &mod.config)
 
 	if i, ok := mod.node.Infra().(*infra.CoreInfra); ok {
-		i.AddDialer(NetworkName, mod.dialer)
-		i.AddUnpacker(NetworkName, mod)
+		i.SetDialer(NetworkName, mod.dialer)
+		i.SetUnpacker(NetworkName, mod)
+		i.SetParser(NetworkName, mod)
 		i.AddEndpoints(mod)
 	}
 

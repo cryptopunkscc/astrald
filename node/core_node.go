@@ -76,7 +76,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	}
 
 	// infrastructure
-	node.infra, err = infra.NewCoreInfra(node, node.assets, node.log)
+	node.infra, err = infra.NewCoreInfra(node.assets, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up infrastructure: %w", err)
 	}

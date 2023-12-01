@@ -5,7 +5,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/presence/proto"
-	"github.com/cryptopunkscc/astrald/node/infra/drivers/inet"
 	"net"
 	"strconv"
 	"time"
@@ -91,7 +90,7 @@ func (srv *DiscoverService) readAd() (*Ad, error) {
 
 		hostPort := net.JoinHostPort(srcAddr.IP.String(), strconv.Itoa(msg.Port))
 
-		endpoint, err := inet.Parse(hostPort)
+		endpoint, err := srv.tcp.Parse("tcp", hostPort)
 		if err != nil {
 			panic(err)
 		}

@@ -7,21 +7,10 @@ import (
 
 // Endpoints returns a copy of a list of all infrastructural endpoints
 func (infra *CoreInfra) Endpoints() []net.Endpoint {
-	infra.mu.Lock()
-	defer infra.mu.Unlock()
+	infra.mu.RLock()
+	defer infra.mu.RUnlock()
 
 	var endpoints = make([]net.Endpoint, 0)
-
-	// collect addresses from all enabled drivers
-	for name, drv := range infra.networkDrivers {
-		if !infra.config.driversContain(name) {
-			continue
-		}
-
-		if lister, ok := drv.(EndpointLister); ok {
-			endpoints = append(endpoints, lister.Endpoints()...)
-		}
-	}
 
 	for _, e := range infra.endpoints {
 		endpoints = append(endpoints, e.Endpoints()...)

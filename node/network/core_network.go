@@ -20,7 +20,6 @@ type CoreNetwork struct {
 	ctx     context.Context
 	node    Node
 	links   *LinkSet
-	server  *Server
 	events  events.Queue
 	log     *log.Logger
 	running atomic.Bool
@@ -28,8 +27,6 @@ type CoreNetwork struct {
 }
 
 func NewCoreNetwork(node Node, eventParent *events.Queue, log *log.Logger) (*CoreNetwork, error) {
-	var err error
-
 	m := &CoreNetwork{
 		node:  node,
 		log:   log.Tag(logTag),
@@ -37,10 +34,6 @@ func NewCoreNetwork(node Node, eventParent *events.Queue, log *log.Logger) (*Cor
 	}
 
 	m.events.SetParent(eventParent)
-	m.server, err = newServer(node.Identity(), node.Infra(), m.AddLink, m.log)
-	if err != nil {
-		return nil, err
-	}
 
 	return m, nil
 }
@@ -50,37 +43,26 @@ func (n *CoreNetwork) Run(ctx context.Context) error {
 	if !n.running.CompareAndSwap(false, true) {
 		return errors.New("already running")
 	}
-
 	n.ctx = ctx
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer debug.SaveLog(debug.SigInt)
-		defer wg.Done()
-
-		err := n.server.Run(ctx)
-		switch {
-		case err == nil:
-		case errors.Is(err, context.Canceled):
-		default:
-			n.log.Error("server error: %s", err)
-		}
-
-	}()
 
 	<-ctx.Done()
-
-	// wait for the server to shut down
-	wg.Wait()
 
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
+	n.log.Logv(1, "closing all links...")
+
+	var wg sync.WaitGroup
 	// close all links
 	for _, l := range n.links.All() {
+		wg.Add(1)
+		go func() {
+			<-l.Done()
+			wg.Done()
+		}()
 		l.Close()
 	}
+	wg.Wait()
 
 	n.running.Store(false)
 
@@ -123,14 +105,10 @@ func (n *CoreNetwork) AddLink(l net.Link) error {
 		n.events.Emit(EventLinkRemoved{Link: active})
 	}()
 
-	n.log.Logv(1, "added link %v with %v", active.ID(), l.RemoteIdentity())
+	n.log.Logv(1, "added link %v with %v (%s)", active.ID(), l.RemoteIdentity(), net.Network(l))
 	n.events.Emit(EventLinkAdded{Link: active})
 
 	return nil
-}
-
-func (n *CoreNetwork) Server() *Server {
-	return n.server
 }
 
 func (n *CoreNetwork) Events() *events.Queue {

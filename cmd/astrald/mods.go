@@ -16,4 +16,6 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/sdp"
 	_ "github.com/cryptopunkscc/astrald/mod/speedtest"
 	_ "github.com/cryptopunkscc/astrald/mod/storage"
+	_ "github.com/cryptopunkscc/astrald/mod/tcp"
+	_ "github.com/cryptopunkscc/astrald/mod/tor"
 )

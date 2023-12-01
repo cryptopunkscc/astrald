@@ -186,7 +186,7 @@ func scoreNetwork(network string) int {
 		return 20
 	case "gw":
 		return 30
-	case "inet":
+	case "inet", "tcp":
 		return 40
 	}
 	return 0

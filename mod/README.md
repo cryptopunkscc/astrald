@@ -20,6 +20,8 @@ They should only be used for extending low-level functionality of the node.
 | sdp                          | provides service discovery mechanism                     |
 | speedtest                    | a tool for benchmarking link speed                       |
 | storage                      | provides storage APIs                                    |
+| tcp                          | TCP driver                                               |
+| tor                          | Tor driver                                               |
 
 ### Enabled modules
 

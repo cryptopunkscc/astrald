@@ -3,25 +3,25 @@ package fwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	tor2 "github.com/cryptopunkscc/astrald/mod/tor/api"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra/drivers/tor"
 	"io"
 )
 
 type TorTarget struct {
-	tor      *tor.Driver
+	tor      tor2.API
 	identity id.Identity
-	endpoint tor.Endpoint
+	endpoint net.Endpoint
 }
 
-func NewTorTarget(drv *tor.Driver, addr string, identiy id.Identity) (*TorTarget, error) {
+func NewTorTarget(drv tor2.API, addr string, identiy id.Identity) (*TorTarget, error) {
 	var err error
 	var t = &TorTarget{
 		identity: identiy,
 		tor:      drv,
 	}
 
-	t.endpoint, err = tor.Parse(addr)
+	t.endpoint, err = drv.Parse("tor", addr)
 	if err != nil {
 		return nil, err
 	}

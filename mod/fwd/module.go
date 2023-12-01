@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin/api"
+	"github.com/cryptopunkscc/astrald/mod/tcp/api"
+	"github.com/cryptopunkscc/astrald/mod/tor/api"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/infra/drivers/tor"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"strings"
 	"sync"
@@ -22,6 +23,8 @@ type Module struct {
 	ctx     context.Context
 	servers map[*ServerRunner]struct{}
 	mu      sync.Mutex
+	tcp     tcp.API
+	tor     tor.API
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -31,6 +34,9 @@ func (mod *Module) Run(ctx context.Context) error {
 	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
 		adm.AddCommand(ModuleName, NewAdmin(mod))
 	}
+
+	mod.tcp, _ = mod.node.Modules().Find("tcp").(tcp.API)
+	mod.tor, _ = mod.node.Modules().Find("tor").(tor.API)
 
 	for server, target := range mod.config.Forwards {
 		err := mod.CreateForward(server, target)
@@ -94,14 +100,10 @@ func (mod *Module) runServer(s *ServerRunner) error {
 	go func() {
 		defer s.Stop()
 
-		mod.log.Logv(1, "starting server %v", s)
-
 		err := s.Run(s.ctx)
 
 		if err != nil {
 			mod.log.Errorv(1, "%v ended with error: %v", s, err)
-		} else {
-			mod.log.Errorv(1, "%v exited", s)
 		}
 
 		mod.mu.Lock()
@@ -179,17 +181,11 @@ func (mod *Module) parseTarget(uri string) (net.Router, error) {
 		return NewAstralTarget(query, mod.node.Router(), label)
 
 	case "tor":
-		driver, found := mod.node.Infra().Drivers()[tor.DriverName]
-		if !found {
+		if mod.tor == nil {
 			return nil, errors.New("tor driver not found")
 		}
 
-		torDriver, ok := driver.(*tor.Driver)
-		if !ok {
-			return nil, errors.New("tor driver not found")
-		}
-
-		return NewTorTarget(torDriver, uri, mod.node.Identity())
+		return NewTorTarget(mod.tor, uri, mod.node.Identity())
 
 	default:
 		return nil, errors.New("unsupported protocol")

@@ -6,8 +6,7 @@ import (
 )
 
 type Network interface {
-	Events() *events.Queue
-	Server() *Server
 	AddLink(net.Link) error
 	Links() *LinkSet
+	Events() *events.Queue
 }

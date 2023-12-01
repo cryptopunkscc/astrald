@@ -2,7 +2,6 @@ package sdp
 
 import (
 	"context"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/log"
@@ -15,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/tasks"
-	"reflect"
 	"sync"
 )
 
@@ -54,34 +52,18 @@ func (m *Module) AddSource(source Source) {
 	defer m.sourcesMu.Unlock()
 
 	m.sources[source] = struct{}{}
-
-	var s string
-	if stringer, ok := source.(fmt.Stringer); ok {
-		s = stringer.String()
-	} else {
-		s = reflect.TypeOf(source).String()
-	}
-	m.log.Infov(1, "registered source: %s", s)
 }
 
 func (m *Module) RemoveSource(source Source) {
 	m.sourcesMu.Lock()
 	defer m.sourcesMu.Unlock()
 
-	identity, found := m.sources[source]
+	_, found := m.sources[source]
 	if !found {
 		return
 	}
 
 	delete(m.sources, source)
-
-	var s string
-	if stringer, ok := source.(fmt.Stringer); ok {
-		s = stringer.String()
-	} else {
-		s = reflect.TypeOf(source).String()
-	}
-	m.log.Logv(1, "unregistered source: %s (%s)", s, identity)
 }
 
 func (m *Module) QueryLocal(ctx context.Context, caller id.Identity, origin string) ([]ServiceEntry, error) {
