@@ -2,15 +2,20 @@ package storage
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/mod/sdp/api"
+	storage "github.com/cryptopunkscc/astrald/mod/storage/api"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
+	"io"
 	"sync"
 )
+
+var _ storage.API = &Module{}
 
 type Module struct {
 	node   node.Node
@@ -21,8 +26,10 @@ type Module struct {
 	ctx    context.Context
 	sdp    sdp.API
 
-	dataSources   map[*DataSource]struct{}
-	dataSourcesMu sync.Mutex
+	localFiles *LocalFiles
+
+	readers   []storage.Reader
+	readersMu sync.Mutex
 
 	accessCheckers   map[AccessChecker]struct{}
 	accessCheckersMu sync.Mutex
@@ -38,8 +45,32 @@ func (mod *Module) Run(ctx context.Context) error {
 		adm.AddCommand("storage", NewAdmin(mod))
 	}
 
-	return tasks.Group(
-		&RegisterService{Module: mod},
-		&ReadService{Module: mod},
-	).Run(ctx)
+	var runners = []tasks.Runner{
+		mod.localFiles,
+		NewReadService(mod),
+	}
+
+	tasks.Group(runners...).Run(ctx)
+
+	<-ctx.Done()
+
+	return nil
+}
+
+func (mod *Module) Read(id data.ID, offset int, length int) (io.ReadCloser, error) {
+	mod.readersMu.Lock()
+	defer mod.readersMu.Unlock()
+
+	for _, source := range mod.readers {
+		r, err := source.Read(id, offset, length)
+		if err == nil {
+			return r, nil
+		}
+	}
+
+	return nil, storage.ErrNotFound
+}
+
+func (mod *Module) LocalFiles() storage.LocalFiles {
+	return mod.localFiles
 }

@@ -5,10 +5,12 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/admin/api"
+	"io"
+	"reflect"
 	"time"
 )
 
-const defaultAccessDuration = time.Hour * 24 * 365 * 100
+const defaultAccessDuration = time.Hour * 24 * 365 * 100 // 100 years
 
 type Admin struct {
 	mod  *Module
@@ -18,14 +20,16 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"grant":           adm.grant,
-		"revoke":          adm.revoke,
-		"list":            adm.list,
-		"sources":         adm.sources,
-		"providers":       adm.providers,
-		"add_provider":    adm.addProvider,
-		"remove_provider": adm.removeProvider,
-		"help":            adm.help,
+		"grant":   adm.grant,
+		"revoke":  adm.revoke,
+		"access":  adm.access,
+		"read":    adm.read,
+		"add":     adm.add,
+		"rm":      adm.rm,
+		"ls":      adm.ls,
+		"rescan":  adm.rescan,
+		"sources": adm.sources,
+		"help":    adm.help,
 	}
 
 	return adm
@@ -90,7 +94,7 @@ func (adm *Admin) revoke(term admin.Terminal, args []string) error {
 	return adm.mod.RevokeAccess(identity, dataID)
 }
 
-func (adm *Admin) list(term admin.Terminal, args []string) error {
+func (adm *Admin) access(term admin.Terminal, args []string) error {
 	var list []dbAccess
 
 	tx := adm.mod.db.Limit(100).Find(&list)
@@ -124,72 +128,87 @@ func (adm *Admin) list(term admin.Terminal, args []string) error {
 	return nil
 }
 
+func (adm *Admin) read(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("argument missing")
+	}
+
+	for _, idstr := range args {
+		dataID, err := data.Parse(idstr)
+		if err != nil {
+			return err
+		}
+
+		r, err := adm.mod.Read(dataID, 0, 0)
+		if err != nil {
+			return err
+		}
+
+		io.Copy(term, r)
+	}
+
+	return nil
+}
+
+func (adm *Admin) rescan(term admin.Terminal, args []string) error {
+	adm.mod.localFiles.Rescan(adm.mod.ctx)
+
+	return nil
+}
+
+func (adm *Admin) add(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing arguments")
+	}
+
+	return adm.mod.localFiles.AddDir(adm.mod.ctx, args[0])
+}
+
+func (adm *Admin) rm(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing arguments")
+	}
+
+	return adm.mod.localFiles.RemoveDir(adm.mod.ctx, args[0])
+}
+
+func (adm *Admin) ls(term admin.Terminal, args []string) error {
+	var prefix = ""
+
+	if len(args) > 0 {
+		prefix = args[0]
+	}
+
+	var files = adm.mod.localFiles.findByPrefix(prefix)
+	for _, file := range files {
+		term.Printf("%-68s %v\n", file.ID, file.Path)
+	}
+	return nil
+}
+
 func (adm *Admin) sources(term admin.Terminal, args []string) error {
-	var sources = adm.mod.DataSources()
-
-	term.Printf("%d registered data source(s)\n", len(sources))
-	var fmt = "%-20s %s\n"
-	term.Printf(fmt, admin.Header("IDENTITY"), admin.Header("SERVICE"))
-	for _, source := range sources {
-		term.Printf(fmt, source.Identity, source.Service)
+	term.Printf("Enabled data sources:\n")
+	for _, source := range adm.mod.Readers() {
+		term.Printf("%s\n", reflect.TypeOf(source))
 	}
 
 	return nil
-}
-
-func (adm *Admin) providers(term admin.Terminal, args []string) error {
-	list, err := adm.mod.AllProviders()
-	if err != nil {
-		return err
-	}
-
-	for _, identity := range list {
-		term.Printf("%s\n", identity)
-	}
-
-	return nil
-}
-
-func (adm *Admin) addProvider(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("usage: addprovider <identity>")
-	}
-
-	identity, err := adm.mod.node.Resolver().Resolve(args[0])
-	if err != nil {
-		return err
-	}
-
-	return adm.mod.AddProvider(identity)
-}
-
-func (adm *Admin) removeProvider(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("usage: remove_provider <identity>")
-	}
-
-	identity, err := adm.mod.node.Resolver().Resolve(args[0])
-	if err != nil {
-		return err
-	}
-
-	return adm.mod.RemoveProvider(identity)
 }
 
 func (adm *Admin) ShortDescription() string {
-	return "manage storage providers and data access"
+	return "manage storage"
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: contacts <command>\n\n")
 	term.Printf("commands:\n")
 	term.Printf("  grant <identity> <dataID> [duration]      grant access to data\n")
-	term.Printf("  revoke <identity> <dataID>                grant access to data\n")
-	term.Printf("  list                                      list access entries\n")
-	term.Printf("  sources                                   list registered sources\n")
-	term.Printf("  providers                                 list identities allowed as providers\n")
-	term.Printf("  add_provider <identity>                   add a provider\n")
-	term.Printf("  remove_provider <identity>                remove a provider\n")
+	term.Printf("  revoke <identity> <dataID>                revoke access to data\n")
+	term.Printf("  access                                    show all access entries\n")
+	term.Printf("  add <dir>                                 add local directory to the index\n")
+	term.Printf("  rm <dir>                                  remove local directory from the index\n")
+	term.Printf("  ls [prefix]                               list all indexed local files\n")
+	term.Printf("  read [dataID]                             read a file by ID (caution - may print binary data)\n")
 	term.Printf("  help                                      show help\n")
 	return nil
 }

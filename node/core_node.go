@@ -35,6 +35,7 @@ type CoreNode struct {
 	routes   *router.PrefixRouter
 
 	startedAt time.Time
+	rootDir   string
 
 	logConfig LogConfig
 	logFields
@@ -44,8 +45,9 @@ type CoreNode struct {
 func NewCoreNode(rootDir string) (*CoreNode, error) {
 	var err error
 	var node = &CoreNode{
-		config: defaultConfig,
-		routes: router.NewQueryRouter(),
+		config:  defaultConfig,
+		rootDir: rootDir,
+		routes:  router.NewQueryRouter(),
 	}
 
 	// basic logs
@@ -164,4 +166,8 @@ func (node *CoreNode) Events() *events.Queue {
 
 func (node *CoreNode) StartedAt() time.Time {
 	return node.startedAt
+}
+
+func (node *CoreNode) RootDir() string {
+	return node.rootDir
 }

@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node/assets"
+	storage "github.com/cryptopunkscc/astrald/mod/storage/api"
+	_assets "github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"path/filepath"
 )
 
 const ModuleName = "storage"
@@ -11,12 +14,12 @@ const configName = "storage"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets _assets.Store, log *log.Logger) (modules.Module, error) {
 	var err error
 	var mod = &Module{
 		node:           node,
 		config:         defaultConfig,
-		dataSources:    make(map[*DataSource]struct{}, 0),
+		readers:        make([]storage.Reader, 0),
 		accessCheckers: make(map[AccessChecker]struct{}, 0),
 		log:            log,
 	}
@@ -34,7 +37,25 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		return nil, err
 	}
 
+	mod.localFiles = NewLocalFiles(mod)
+	mod.AddReader(mod.localFiles)
+	for _, path := range mod.config.LocalFiles {
+		mod.localFiles.AddDir(context.Background(), path)
+	}
+
+	if fs, ok := node.(hasRootDir); ok {
+		var root = fs.RootDir()
+		if root != "" {
+			dataDir := filepath.Join(root, "data")
+			mod.localFiles.AddDir(context.Background(), dataDir)
+		}
+	}
+
 	return mod, nil
+}
+
+type hasRootDir interface {
+	RootDir() string
 }
 
 func init() {

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const idPrefix = "id1"
+const idPrefix = "data1"
 const zBase32CharSet = "ybndrfg8ejkmcpqxot1uwisza345h769"
 
 var zBase32Encoding = base32.NewEncoding(zBase32CharSet)

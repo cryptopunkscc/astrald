@@ -37,7 +37,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		_ = adm.AddCommand("apphost", &Admin{mod: mod})
 	}
 
-	if m, _ := mod.node.Modules().Find("admin").(sdp.API); m != nil {
+	if m, _ := mod.node.Modules().Find("sdp").(sdp.API); m != nil {
 		m.AddSource(mod)
 		defer m.RemoveSource(mod)
 	}

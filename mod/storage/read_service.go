@@ -2,141 +2,59 @@ package storage
 
 import (
 	"context"
-	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/sdp/api"
-	"github.com/cryptopunkscc/astrald/mod/storage/rpc"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/tasks"
 	"io"
-	"sync"
-	"sync/atomic"
+	"strings"
 )
 
-var _ tasks.Runner = &ReadService{}
-
-const ReadServiceName = "storage.read"
+const readServicePrefix = "storage.read."
 
 type ReadService struct {
 	*Module
 }
 
-func (service *ReadService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.SecureConn) {
-		service.handle(ctx, conn, hints)
-	})
+func NewReadService(module *Module) *ReadService {
+	return &ReadService{Module: module}
 }
 
-func (service *ReadService) Run(ctx context.Context) error {
-	err := service.node.LocalRouter().AddRoute(ReadServiceName, service)
+func (srv *ReadService) Run(ctx context.Context) error {
+	err := srv.node.LocalRouter().AddRoute(readServicePrefix+"*", srv)
 	if err != nil {
 		return err
 	}
-	defer service.node.LocalRouter().RemoveRoute(ReadServiceName)
-
-	if service.sdp != nil {
-		service.sdp.AddSource(service)
-		defer service.sdp.RemoveSource(service)
-	}
+	defer srv.node.LocalRouter().RemoveRoute(readServicePrefix + "*")
 
 	<-ctx.Done()
-
 	return nil
 }
 
-func (service *ReadService) Discover(ctx context.Context, caller id.Identity, origin string) ([]sdp.ServiceEntry, error) {
-	var list []sdp.ServiceEntry
-	if service.DataAccessCountByIdentity(caller) > 0 {
-		list = append(list, sdp.ServiceEntry{
-			Name: ReadServiceName,
-			Type: ReadServiceName,
-		})
+func (srv *ReadService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	idstr, found := strings.CutPrefix(query.Query(), readServicePrefix)
+	if !found {
+		return net.Reject()
 	}
-	return list, nil
-}
 
-func (service *ReadService) handle(ctx context.Context, conn net.SecureConn, hints net.Hints) error {
-	return cslq.Invoke(conn, func(msg rpc.MsgRead) error {
-		var session = rpc.New(conn)
+	dataID, err := data.Parse(idstr)
+	if err != nil {
+		srv.log.Errorv(2, "parse error: %v", err)
+		return net.Reject()
+	}
 
-		if !service.CheckAccess(conn.RemoteIdentity(), msg.DataID) {
-			service.log.Errorv(2, "access denied to %v to %v", conn.RemoteIdentity(), msg.DataID)
-			return session.EncodeErr(rpc.ErrUnavailable)
-		}
+	if !srv.CheckAccess(query.Caller(), dataID) {
+		srv.log.Errorv(2, "access to %v denied for %v", dataID, query.Caller())
+		return net.Reject()
+	}
 
-		source, err := service.findSource(ctx, msg, conn.RemoteIdentity(), hints)
-		if err != nil {
-			return session.EncodeErr(rpc.ErrUnavailable)
-		}
-		defer source.Close()
+	r, err := srv.Read(dataID, 0, 0)
+	if err != nil {
+		return net.Reject()
+	}
 
-		if err := session.EncodeErr(nil); err != nil {
-			return err
-		}
+	return net.Accept(query, caller, func(conn net.SecureConn) {
+		defer r.Close()
+		defer conn.Close()
 
-		_, err = io.Copy(conn, source)
-		conn.Close()
-		return err
+		io.Copy(conn, r)
 	})
-}
-
-func (service *ReadService) findSource(ctx context.Context, msg rpc.MsgRead, caller id.Identity, hints net.Hints) (io.ReadCloser, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	var ch = make(chan io.ReadCloser)
-
-	var found atomic.Bool
-
-	var wg sync.WaitGroup
-	for source := range service.dataSources {
-		source := source
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			conn, err := net.RouteWithHints(
-				ctx,
-				service.node.Router(),
-				net.NewQuery(caller, source.Identity, source.Service),
-				hints,
-			)
-
-			if err != nil {
-				switch {
-				case errors.Is(err, context.Canceled):
-				case errors.Is(err, context.DeadlineExceeded):
-				default:
-					service.RemoveDataSource(source)
-				}
-				return
-			}
-
-			_, err = rpc.New(conn).Read(msg.DataID, int(msg.Start), int(msg.Len))
-
-			if err != nil {
-				return
-			}
-
-			if found.CompareAndSwap(false, true) {
-				ch <- conn
-				return
-			}
-
-			conn.Close()
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-
-	if source, ok := <-ch; ok {
-		return source, nil
-	}
-
-	return nil, errors.New("no source found")
 }
