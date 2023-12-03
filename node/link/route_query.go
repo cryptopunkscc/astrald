@@ -71,6 +71,9 @@ func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller ne
 	case <-done:
 		return
 
+	case <-link.Done():
+		return net.Abort()
+
 	case <-ctx.Done():
 		go func() {
 			<-done

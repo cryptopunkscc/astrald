@@ -16,6 +16,8 @@ import (
 
 var _ Router = &CoreRouter{}
 
+const routingTimeout = time.Minute
+
 type CoreRouter struct {
 	log           *log.Logger
 	events        events.Queue
@@ -76,6 +78,9 @@ func (r *CoreRouter) RouteQuery(ctx context.Context, query net.Query, caller net
 
 		target, err = r.routeQuery(ctx, query, caller, hints)
 	} else {
+		ctx, cancel := context.WithTimeout(ctx, routingTimeout)
+		defer cancel()
+
 		target, err = r.routeMonitored(ctx, query, caller, hints)
 	}
 
