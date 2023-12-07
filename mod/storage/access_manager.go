@@ -61,14 +61,19 @@ func (mod *AccessManager) Revoke(identity id.Identity, dataID data.ID) error {
 }
 
 func (mod *AccessManager) Verify(identity id.Identity, dataID data.ID) bool {
-	if identity.IsZero() {
-		return false
-	}
+	// local node has access to everything
 	if identity.IsEqual(mod.node.Identity()) {
 		return true
 	}
-	if a := mod.findAccess(identity, dataID); a != nil {
-		if a.ExpiresAt.After(time.Now()) {
+
+	// check if the data is public
+	if a := mod.findAccess(id.Anyone, dataID); a != nil {
+		return true
+	}
+
+	// check if the identity has access
+	if !identity.IsZero() {
+		if a := mod.findAccess(identity, dataID); a != nil {
 			return true
 		}
 	}
@@ -98,10 +103,16 @@ func (mod *AccessManager) RemoveAccessVerifier(checker storage.AccessVerifier) {
 
 func (mod *AccessManager) findAccess(identity id.Identity, dataID data.ID) *Access {
 	var dba dbAccess
-	tx := mod.db.First(&dba, "identity = ? and data_id = ?", identity.String(), dataID.String())
+	tx := mod.db.First(&dba,
+		"identity = ? and data_id = ? and expires_at > ?",
+		identity.String(),
+		dataID.String(),
+		time.Now(),
+	)
 	if tx.Error != nil {
 		return nil
 	}
+
 	return &Access{
 		Identity:  identity,
 		DataID:    dataID,
@@ -114,8 +125,10 @@ func (dba dbAccess) toAccess() (*Access, error) {
 	var a = &Access{
 		ExpiresAt: dba.ExpiresAt,
 	}
-	if a.Identity, err = id.ParsePublicKeyHex(dba.Identity); err != nil {
-		return nil, err
+	if dba.Identity != "" {
+		if a.Identity, err = id.ParsePublicKeyHex(dba.Identity); err != nil {
+			return nil, err
+		}
 	}
 	if a.DataID, err = data.Parse(dba.DataID); err != nil {
 		return nil, err

@@ -6,8 +6,11 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin/api"
+	"github.com/cryptopunkscc/astrald/net"
 	"io"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -155,22 +158,62 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 
 	var url = args[0]
 
-	term.Printf("downloading %v...\n", url)
+	if matched, _ := regexp.Match("^https?:", []byte(url)); matched {
+		term.Printf("downloading %v...\n", url)
 
-	// Make a GET request to the URL
-	response, err := http.Get(url)
+		// Make a GET request to the URL
+		response, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		defer response.Body.Close()
+
+		w, err := adm.mod.Data().Store(int(response.ContentLength))
+		if err != nil {
+			return err
+		}
+		defer w.Discard()
+
+		io.Copy(w, response.Body)
+
+		dataID, err := w.Commit()
+		if err != nil {
+			return err
+		}
+
+		term.Printf("stored as %v (%s)\n", dataID, log.DataSize(dataID.Size))
+
+		return nil
+	}
+
+	if cut, found := strings.CutPrefix(url, "astral:"); found {
+		url = cut
+	}
+	uri, err := adm.mod.Parse(url)
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
 
-	w, err := adm.mod.Data().Store(int(response.ContentLength))
+	if uri.User.IsZero() {
+		uri.User = term.UserIdentity()
+	}
+
+	term.Printf("fetching %v@%v:%v...\n", uri.User, uri.Target, uri.Query)
+
+	var query = net.NewQuery(uri.User, uri.Target, uri.Query)
+
+	conn, err := net.Route(adm.mod.ctx, adm.mod.node.Router(), query)
+	if err != nil {
+		return err
+	}
+
+	w, err := adm.mod.Data().Store(0)
 	if err != nil {
 		return err
 	}
 	defer w.Discard()
 
-	io.Copy(w, response.Body)
+	io.Copy(w, conn)
 
 	dataID, err := w.Commit()
 	if err != nil {
