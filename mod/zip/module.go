@@ -3,7 +3,6 @@ package zip
 import (
 	"archive/zip"
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	_data "github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
@@ -30,29 +29,32 @@ type Module struct {
 	storage storage.API
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Prepare(ctx context.Context) error {
+	var err error
+
+	mod.data, err = data.Load(mod.node)
+	if err != nil {
+		return err
+	}
+
+	mod.storage, err = storage.Load(mod.node)
+	if err != nil {
+		return err
+	}
+
 	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
-		adm.AddCommand("zip", NewAdmin(mod))
-	}
-
-	mod.data, _ = mod.node.Modules().Find("data").(data.API)
-	if mod.data == nil {
-		return errors.New("data module not found")
-	}
-
-	mod.storage, _ = mod.node.Modules().Find("storage").(storage.API)
-	if mod.storage == nil {
-		return errors.New("storage module not found")
+	if adm, err := admin.Load(mod.node); err == nil {
+		adm.AddCommand(ModuleName, NewAdmin(mod))
 	}
 
 	mod.storage.Data().AddIndexer(mod)
-	defer mod.storage.Data().RemoveIndexer(mod)
 	mod.storage.Data().AddReader(mod)
-	defer mod.storage.Data().RemoveReader(mod)
 	mod.storage.Access().AddAccessVerifier(mod)
-	defer mod.storage.Access().RemoveAccessVerifier(mod)
 
+	return nil
+}
+
+func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
 		&Service{Module: mod},
 	).Run(ctx)

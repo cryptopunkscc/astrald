@@ -27,11 +27,20 @@ type Module struct {
 
 const defaultPresencePort = 8829
 
+func (mod *Module) Prepare(ctx context.Context) (err error) {
+	mod.tcp, _ = tcp.Load(mod.node)
+
+	// inject admin command
+	if adm, err := admin.Load(mod.node); err == nil {
+		adm.AddCommand(ModuleName, NewAdmin(mod))
+	}
+
+	return nil
+}
+
 func (mod *Module) Run(ctx context.Context) (err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
-	mod.tcp, _ = mod.node.Modules().Find("tcp").(tcp.API)
 
 	if err := mod.setupSocket(); err != nil {
 		return err
@@ -41,11 +50,6 @@ func (mod *Module) Run(ctx context.Context) (err error) {
 		<-ctx.Done()
 		mod.socket.Close()
 	}()
-
-	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
-		adm.AddCommand(ModuleName, NewAdmin(mod))
-	}
 
 	mod.log.Infov(2, "using socket %s", mod.socket.LocalAddr())
 

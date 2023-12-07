@@ -3,9 +3,12 @@ package data
 import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/node/modules"
 	"io"
 	"time"
 )
+
+const ModuleName = "data"
 
 type API interface {
 	Events() *events.Queue
@@ -23,3 +26,11 @@ type TypeInfo struct {
 }
 
 type EventDataIndexed TypeInfo
+
+func Load(node modules.Node) (API, error) {
+	api, ok := node.Modules().Find(ModuleName).(API)
+	if !ok {
+		return nil, modules.ErrNotFound
+	}
+	return api, nil
+}

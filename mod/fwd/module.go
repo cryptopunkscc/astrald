@@ -27,16 +27,20 @@ type Module struct {
 	tor     tor.API
 }
 
-func (mod *Module) Run(ctx context.Context) error {
-	mod.ctx = ctx
+func (mod *Module) Prepare(ctx context.Context) error {
+	mod.tcp, _ = tcp.Load(mod.node)
+	mod.tor, _ = tor.Load(mod.node)
 
 	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
+	if adm, err := admin.Load(mod.node); err == nil {
 		adm.AddCommand(ModuleName, NewAdmin(mod))
 	}
 
-	mod.tcp, _ = mod.node.Modules().Find("tcp").(tcp.API)
-	mod.tor, _ = mod.node.Modules().Find("tor").(tor.API)
+	return nil
+}
+
+func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
 
 	for server, target := range mod.config.Forwards {
 		err := mod.CreateForward(server, target)

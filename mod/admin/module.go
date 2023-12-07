@@ -32,6 +32,12 @@ type Module struct {
 	router   router.API
 }
 
+func (mod *Module) Prepare(ctx context.Context) error {
+	mod.router, _ = router.Load(mod.node)
+
+	return nil
+}
+
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
@@ -40,8 +46,6 @@ func (mod *Module) Run(ctx context.Context) error {
 		return err
 	}
 	defer mod.node.LocalRouter().RemoveRoute(ServiceName)
-
-	mod.router, _ = mod.node.Modules().Find("router").(router.API)
 
 	<-ctx.Done()
 

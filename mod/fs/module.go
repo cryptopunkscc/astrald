@@ -2,7 +2,6 @@ package fs
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	admin "github.com/cryptopunkscc/astrald/mod/admin/api"
@@ -29,24 +28,31 @@ type Module struct {
 	storer  *StorerService
 }
 
-func (mod *Module) Run(ctx context.Context) error {
-	mod.ctx = ctx
-
-	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
-		adm.AddCommand("fs", NewAdmin(mod))
-	}
+func (mod *Module) Prepare(ctx context.Context) error {
+	var err error
 
 	// set up dependencies
-	mod.storage, _ = mod.node.Modules().Find("storage").(storage.API)
-	if mod.storage == nil {
-		return errors.New("storage module not found")
+	mod.storage, err = storage.Load(mod.node)
+	if err != nil {
+		return err
 	}
+
 	mod.storage.Data().AddReader(mod.indexer)
 	mod.storage.Data().AddIndexer(mod.indexer)
 	mod.storage.Data().AddReader(mod.storer)
 	mod.storage.Data().AddIndexer(mod.storer)
 	mod.storage.Data().AddStorer(mod.storer)
+
+	// inject admin command
+	if adm, err := admin.Load(mod.node); err == nil {
+		adm.AddCommand("fs", NewAdmin(mod))
+	}
+
+	return nil
+}
+
+func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
 
 	tasks.Group(mod.indexer).Run(ctx)
 

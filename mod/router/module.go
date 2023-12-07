@@ -31,10 +31,12 @@ type Module struct {
 	routesMu sync.Mutex
 }
 
+func (mod *Module) Prepare(ctx context.Context) error {
+	return mod.node.Router().AddRoute(id.Anyone, id.Anyone, mod, 20)
+}
+
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
-
-	mod.node.Router().AddRoute(id.Anyone, id.Anyone, mod, 20)
 
 	return tasks.Group(
 		&RouterService{Module: mod},

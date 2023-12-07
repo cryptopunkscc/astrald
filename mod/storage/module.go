@@ -27,21 +27,21 @@ type Module struct {
 	data   *DataManager
 }
 
+func (mod *Module) Prepare(ctx context.Context) error {
+	mod.sdp, _ = sdp.Load(mod.node)
+
+	// inject admin command
+	if adm, err := admin.Load(mod.node); err == nil {
+		adm.AddCommand(storage.ModuleName, NewAdmin(mod))
+	}
+
+	return nil
+}
+
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	mod.sdp, _ = mod.node.Modules().Find("sdp").(sdp.API)
-
-	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
-		adm.AddCommand("storage", NewAdmin(mod))
-	}
-
-	var runners = []tasks.Runner{
-		NewReadService(mod),
-	}
-
-	tasks.Group(runners...).Run(ctx)
+	tasks.Group(NewReadService(mod)).Run(ctx)
 
 	<-ctx.Done()
 

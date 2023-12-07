@@ -31,47 +31,51 @@ type Module struct {
 	ctx       context.Context
 }
 
-func (m *Module) Run(ctx context.Context) error {
-	m.ctx = ctx
-
-	m.router, _ = m.node.Modules().Find("router").(router.API)
+func (mod *Module) Prepare(ctx context.Context) error {
+	mod.router, _ = router.Load(mod.node)
 
 	// inject admin command
-	if adm, _ := m.node.Modules().Find("admin").(admin.API); adm != nil {
-		adm.AddCommand(ModuleName, NewAdmin(m))
+	if adm, err := admin.Load(mod.node); err == nil {
+		adm.AddCommand(ModuleName, NewAdmin(mod))
 	}
 
+	return nil
+}
+
+func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
+
 	return tasks.Group(
-		&DiscoveryService{Module: m},
-		&EventHandler{Module: m},
+		&DiscoveryService{Module: mod},
+		&EventHandler{Module: mod},
 	).Run(ctx)
 }
 
-func (m *Module) AddSource(source Source) {
-	m.sourcesMu.Lock()
-	defer m.sourcesMu.Unlock()
+func (mod *Module) AddSource(source Source) {
+	mod.sourcesMu.Lock()
+	defer mod.sourcesMu.Unlock()
 
-	m.sources[source] = struct{}{}
+	mod.sources[source] = struct{}{}
 }
 
-func (m *Module) RemoveSource(source Source) {
-	m.sourcesMu.Lock()
-	defer m.sourcesMu.Unlock()
+func (mod *Module) RemoveSource(source Source) {
+	mod.sourcesMu.Lock()
+	defer mod.sourcesMu.Unlock()
 
-	_, found := m.sources[source]
+	_, found := mod.sources[source]
 	if !found {
 		return
 	}
 
-	delete(m.sources, source)
+	delete(mod.sources, source)
 }
 
-func (m *Module) QueryLocal(ctx context.Context, caller id.Identity, origin string) ([]ServiceEntry, error) {
+func (mod *Module) QueryLocal(ctx context.Context, caller id.Identity, origin string) ([]ServiceEntry, error) {
 	var list = make([]ServiceEntry, 0)
 
 	var wg sync.WaitGroup
 
-	for source := range m.sources {
+	for source := range mod.sources {
 		source := source
 
 		wg.Add(1)
@@ -92,16 +96,16 @@ func (m *Module) QueryLocal(ctx context.Context, caller id.Identity, origin stri
 	return list, nil
 }
 
-func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, callerID id.Identity) ([]ServiceEntry, error) {
+func (mod *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, callerID id.Identity) ([]ServiceEntry, error) {
 	if callerID.IsZero() {
-		callerID = m.node.Identity()
+		callerID = mod.node.Identity()
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	if callerID.PrivateKey() == nil {
-		keyStore, err := m.assets.KeyStore()
+		keyStore, err := mod.assets.KeyStore()
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +117,7 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 	}
 
 	q, err := net.Route(ctx,
-		m.node.Router(),
+		mod.node.Router(),
 		net.NewQuery(callerID, remoteID, DiscoverServiceName),
 	)
 	if err != nil {
@@ -130,8 +134,8 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 		err = cslq.Invoke(q, func(msg proto.ServiceEntry) error {
 			list = append(list, ServiceEntry(msg))
 			if !msg.Identity.IsEqual(remoteID) {
-				if m.router != nil {
-					m.router.SetRouter(msg.Identity, remoteID)
+				if mod.router != nil {
+					mod.router.SetRouter(msg.Identity, remoteID)
 				}
 			}
 			return nil
@@ -141,16 +145,16 @@ func (m *Module) QueryRemoteAs(ctx context.Context, remoteID id.Identity, caller
 	return list, nil
 }
 
-func (m *Module) setCache(identity id.Identity, list []ServiceEntry) {
-	m.cacheMu.Lock()
-	defer m.cacheMu.Unlock()
+func (mod *Module) setCache(identity id.Identity, list []ServiceEntry) {
+	mod.cacheMu.Lock()
+	defer mod.cacheMu.Unlock()
 
-	m.cache[identity.String()] = list
+	mod.cache[identity.String()] = list
 }
 
-func (m *Module) getCache(identity id.Identity) []ServiceEntry {
-	m.cacheMu.Lock()
-	defer m.cacheMu.Unlock()
+func (mod *Module) getCache(identity id.Identity) []ServiceEntry {
+	mod.cacheMu.Lock()
+	defer mod.cacheMu.Unlock()
 
-	return m.cache[identity.String()]
+	return mod.cache[identity.String()]
 }

@@ -2,12 +2,11 @@ package tcp
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
+	tcp "github.com/cryptopunkscc/astrald/mod/tcp/api"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"strconv"
 )
-
-const ModuleName = "tcp"
 
 type Loader struct{}
 
@@ -18,7 +17,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, l *log.Logger) (modul
 		config: defaultConfig,
 	}
 
-	_ = assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(tcp.ModuleName, &mod.config)
 
 	// Parse public endpoints
 	for _, pe := range mod.config.PublicEndpoints {
@@ -76,7 +75,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, l *log.Logger) (modul
 }
 
 func init() {
-	if err := modules.RegisterModule(ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(tcp.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

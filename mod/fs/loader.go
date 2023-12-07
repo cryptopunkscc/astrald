@@ -2,13 +2,12 @@ package fs
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
+	fs "github.com/cryptopunkscc/astrald/mod/fs/api"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"os"
 	"path/filepath"
 )
-
-const ModuleName = "fs"
 
 type Loader struct{}
 
@@ -22,10 +21,10 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 
 	mod.events.SetParent(node.Events())
 
-	_ = assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(fs.ModuleName, &mod.config)
 
 	// set up database
-	mod.db, err = assets.OpenDB(ModuleName)
+	mod.db, err = assets.OpenDB(fs.ModuleName)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +59,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 }
 
 func init() {
-	if err := modules.RegisterModule(ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(fs.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

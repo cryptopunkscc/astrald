@@ -15,6 +15,10 @@ type Module interface {
 	Run(context.Context) error
 }
 
+type Preparer interface {
+	Prepare(context.Context) error
+}
+
 var moduleLoaders = map[string]ModuleLoader{}
 
 func RegisterModule(name string, loader ModuleLoader) error {

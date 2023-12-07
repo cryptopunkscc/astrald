@@ -7,8 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
-const ModuleName = "admin"
-
 type Loader struct{}
 
 func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {

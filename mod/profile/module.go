@@ -18,10 +18,14 @@ type Module struct {
 	sdp  sdp.API
 }
 
+func (mod *Module) Prepare(ctx context.Context) error {
+	mod.sdp, _ = sdp.Load(mod.node)
+
+	return nil
+}
+
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
-
-	mod.sdp, _ = mod.node.Modules().Find("sdp").(sdp.API)
 
 	return tasks.Group(
 		&ProfileService{Module: mod},

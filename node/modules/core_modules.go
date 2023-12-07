@@ -34,8 +34,9 @@ func NewCoreModules(node Node, mods []string, assets assets.Store, log *log.Logg
 
 func (m *CoreModules) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
-	var loaded = make([]string, 0, len(m.enabled))
 
+	// Step 1 - load all modules
+	var loaded = make([]string, 0, len(m.enabled))
 	for _, name := range m.enabled {
 		if err := m.Load(name); err != nil {
 			m.log.Error("load %s: %s", name, err)
@@ -44,8 +45,22 @@ func (m *CoreModules) Run(ctx context.Context) error {
 		}
 	}
 
-	var started = make([]string, 0, len(loaded))
+	// Step 2 - configure modules
+	var prepared = make([]string, 0, len(loaded))
 	for _, name := range loaded {
+		if p, ok := m.loaded[name].(Preparer); ok {
+			err := p.Prepare(ctx)
+			if err != nil {
+				m.log.Error("module %s error: %v", name, err)
+				continue
+			}
+		}
+		prepared = append(prepared, name)
+	}
+
+	// Step 3 - run modules
+	var started = make([]string, 0, len(prepared))
+	for _, name := range prepared {
 		mod, ok := m.loaded[name]
 		if !ok {
 			continue

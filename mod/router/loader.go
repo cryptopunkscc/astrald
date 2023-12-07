@@ -3,11 +3,10 @@ package router
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
+	router "github.com/cryptopunkscc/astrald/mod/router/api"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
-
-const ModuleName = "router"
 
 type Loader struct{}
 
@@ -15,11 +14,11 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	var err error
 	var mod = &Module{
 		node:   node,
-		log:    log.Tag(ModuleName),
+		log:    log.Tag(router.ModuleName),
 		routes: make(map[string]id.Identity),
 	}
 
-	_ = assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(router.ModuleName, &mod.config)
 
 	mod.keys, err = assets.KeyStore()
 
@@ -27,7 +26,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 }
 
 func init() {
-	if err := modules.RegisterModule(ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(router.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

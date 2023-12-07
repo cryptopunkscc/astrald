@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	data "github.com/cryptopunkscc/astrald/mod/data/api"
@@ -32,20 +31,27 @@ func (mod *Module) Events() *events.Queue {
 	return &mod.events
 }
 
-func (mod *Module) Run(ctx context.Context) error {
-	mod.ctx = ctx
+func (mod *Module) Prepare(ctx context.Context) error {
+	var err error
 
-	mod.storage, _ = mod.node.Modules().Find("storage").(storage.API)
-	if mod.storage == nil {
-		return errors.New("required storage module not loaded")
+	// set up dependencies
+	mod.storage, err = storage.Load(mod.node)
+	if err != nil {
+		return err
 	}
 
-	mod.fs, _ = mod.node.Modules().Find("fs").(fs.API)
+	mod.fs, _ = fs.Load(mod.node)
 
 	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
-		adm.AddCommand("data", NewAdmin(mod))
+	if adm, err := admin.Load(mod.node); err == nil {
+		adm.AddCommand(data.ModuleName, NewAdmin(mod))
 	}
+
+	return nil
+}
+
+func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
 
 	return tasks.Group(&IndexerService{Module: mod}).Run(ctx)
 }

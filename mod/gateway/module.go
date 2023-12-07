@@ -27,11 +27,15 @@ type Module struct {
 	policy      policy.API
 }
 
+func (mod *Module) Prepare(ctx context.Context) error {
+	mod.sdp, _ = sdp.Load(mod.node)
+	mod.policy, _ = policy.Load(mod.node)
+
+	return nil
+}
+
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
-
-	mod.sdp, _ = mod.node.Modules().Find("sdp").(sdp.API)
-	mod.policy, _ = mod.node.Modules().Find("policy").(policy.API)
 
 	for _, gateName := range mod.config.Subscribe {
 		var gateID id.Identity

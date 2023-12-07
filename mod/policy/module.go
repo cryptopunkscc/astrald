@@ -22,15 +22,20 @@ type Module struct {
 	policies map[*RunningPolicy]struct{}
 }
 
-func (mod *Module) Run(ctx context.Context) error {
-	mod.ctx = ctx
+func (mod *Module) Prepare(ctx context.Context) error {
+
+	mod.router, _ = router.Load(mod.node)
 
 	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
+	if adm, err := admin.Load(mod.node); err == nil {
 		adm.AddCommand(ModuleName, NewAdmin(mod))
 	}
 
-	mod.router, _ = mod.node.Modules().Find("router").(router.API)
+	return nil
+}
+
+func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
 
 	if mod.config.AlwaysLinked != nil {
 		if err := mod.addAlwaysLinkedPolicyFromConfig(mod.config.AlwaysLinked); err != nil {

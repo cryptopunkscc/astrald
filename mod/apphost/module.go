@@ -31,21 +31,28 @@ type Module struct {
 	guestsMu  sync.Mutex
 	execs     []*Exec
 	data      data.API
+	sdp       sdp.API
+}
+
+func (mod *Module) Prepare(ctx context.Context) error {
+	var err error
+
+	mod.data, _ = data.Load(mod.node)
+
+	mod.sdp, err = sdp.Load(mod.node)
+	if err == nil {
+		mod.sdp.AddSource(mod)
+	}
+
+	// inject admin command
+	if adm, err := admin.Load(mod.node); err == nil {
+		adm.AddCommand(ModuleName, &Admin{mod: mod})
+	}
+
+	return nil
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
-		_ = adm.AddCommand("apphost", &Admin{mod: mod})
-	}
-
-	if m, _ := mod.node.Modules().Find("sdp").(sdp.API); m != nil {
-		m.AddSource(mod)
-		defer m.RemoveSource(mod)
-	}
-
-	mod.data, _ = mod.node.Modules().Find("data").(data.API)
-
 	var wg sync.WaitGroup
 	var workerCount = mod.config.Workers
 

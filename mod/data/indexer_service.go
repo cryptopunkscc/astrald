@@ -26,7 +26,6 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 
 	go srv.handleEvents(ctx)
 
-	time.Sleep(time.Second) // wait for all indexers to register
 	for _, d := range srv.storage.Data().IndexSince(t) {
 		srv.index(d)
 	}

@@ -14,13 +14,17 @@ type Module struct {
 	ctx  context.Context
 }
 
+func (mod *Module) Prepare(ctx context.Context) error {
+	// inject admin command
+	if adm, err := admin.Load(mod.node); err == nil {
+		adm.AddCommand(ModuleName, NewAdmin(mod))
+	}
+
+	return nil
+}
+
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
-
-	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
-		adm.AddCommand("speedtest", NewAdmin(mod))
-	}
 
 	return tasks.Group(&Service{Module: mod}).Run(ctx)
 }

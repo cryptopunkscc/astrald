@@ -2,11 +2,10 @@ package policy
 
 import (
 	_log "github.com/cryptopunkscc/astrald/log"
+	policy "github.com/cryptopunkscc/astrald/mod/policy/api"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
-
-const ModuleName = "policy"
 
 type Loader struct{}
 
@@ -18,13 +17,13 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *_log.Logger) (mo
 		policies: make(map[*RunningPolicy]struct{}),
 	}
 
-	_ = assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(policy.ModuleName, &mod.config)
 
 	return mod, nil
 }
 
 func init() {
-	if err := modules.RegisterModule(ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(policy.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

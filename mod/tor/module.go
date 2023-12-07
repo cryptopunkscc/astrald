@@ -22,13 +22,17 @@ type Module struct {
 	server *Server
 }
 
-func (mod *Module) Run(ctx context.Context) error {
-	mod.ctx = ctx
-
+func (mod *Module) Prepare(ctx context.Context) error {
 	// inject admin command
-	if adm, _ := mod.node.Modules().Find("admin").(admin.API); adm != nil {
+	if adm, err := admin.Load(mod.node); err == nil {
 		adm.AddCommand(ModuleName, NewAdmin(mod))
 	}
+
+	return nil
+}
+
+func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
 
 	tasks.Group(mod.server).Run(ctx)
 
