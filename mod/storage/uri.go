@@ -12,8 +12,6 @@ type URI struct {
 	Query  string
 }
 
-var userPattern = "^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
-
 func (mod *Module) Parse(s string) (*URI, error) {
 	var uri URI
 	var err error

@@ -3,6 +3,7 @@ package main
 // this file includes all modules that should be compiled into the node
 
 import (
+	_ "github.com/cryptopunkscc/astrald/mod/acl"
 	_ "github.com/cryptopunkscc/astrald/mod/admin"
 	_ "github.com/cryptopunkscc/astrald/mod/agent"
 	_ "github.com/cryptopunkscc/astrald/mod/apphost"

@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -85,6 +86,8 @@ func (m *CoreModules) Run(ctx context.Context) error {
 		}()
 		started = append(started, name)
 	}
+
+	slices.Sort(started)
 
 	m.log.Log("started: %s", strings.Join(started, " "))
 

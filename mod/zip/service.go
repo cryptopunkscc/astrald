@@ -51,7 +51,6 @@ func (srv *Service) autoIndexZip(zipID data.ID) error {
 		&storage.ReadOpts{NoVirtual: srv.config.NoVirtual},
 	)
 	if err != nil {
-		srv.log.Errorv(1, "index %v: %v", zipID, err)
 		return err
 	}
 	found.Close()

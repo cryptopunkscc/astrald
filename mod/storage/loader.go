@@ -28,10 +28,6 @@ func (Loader) Load(node modules.Node, assets _assets.Store, log *log.Logger) (mo
 		return nil, err
 	}
 
-	if err = mod.setupDatabase(); err != nil {
-		return nil, err
-	}
-
 	return mod, nil
 }
 

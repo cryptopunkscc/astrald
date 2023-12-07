@@ -60,7 +60,20 @@ func Listen(ipcAddress string) (net.Listener, error) {
 			}
 		}
 
-		return net.Listen("unix", path)
+		listen, err := net.Listen("unix", path)
+		if err != nil {
+			// if the socket already exists, remove it if it's stale it and listen again
+			if strings.Contains(err.Error(), "already in use") {
+				rerr := os.Remove(path)
+				if rerr != nil {
+					return nil, err
+				}
+
+				listen, err = net.Listen("unix", path)
+			}
+		}
+
+		return listen, err
 
 	case "memu", "memb":
 		return memconn.Listen(protocol, address)
