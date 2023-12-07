@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin/api"
+	data "github.com/cryptopunkscc/astrald/mod/data/api"
 	"github.com/cryptopunkscc/astrald/mod/sdp/api"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
@@ -29,6 +30,7 @@ type Module struct {
 	guests    map[string]*Guest
 	guestsMu  sync.Mutex
 	execs     []*Exec
+	data      data.API
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -41,6 +43,8 @@ func (mod *Module) Run(ctx context.Context) error {
 		m.AddSource(mod)
 		defer m.RemoveSource(mod)
 	}
+
+	mod.data, _ = mod.node.Modules().Find("data").(data.API)
 
 	var wg sync.WaitGroup
 	var workerCount = mod.config.Workers

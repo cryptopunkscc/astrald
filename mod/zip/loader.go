@@ -1,40 +1,37 @@
-package storage
+package zip
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
-	_assets "github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
-const ModuleName = "storage"
-const configName = "storage"
+const ModuleName = "zip"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets _assets.Store, log *log.Logger) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
 	var err error
 	var mod = &Module{
 		node:   node,
 		config: defaultConfig,
 		log:    log,
 	}
-	mod.access = NewAccessManager(mod)
-	mod.data = NewDataManager(mod)
 
 	mod.events.SetParent(node.Events())
 
-	_ = assets.LoadYAML(configName, &mod.config)
+	_ = assets.LoadYAML(ModuleName, &mod.config)
 
 	mod.db, err = assets.OpenDB(ModuleName)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = mod.setupDatabase(); err != nil {
+	if err := mod.db.AutoMigrate(&dbZipContent{}); err != nil {
 		return nil, err
 	}
 
-	return mod, nil
+	return mod, err
 }
 
 func init() {

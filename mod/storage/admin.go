@@ -4,9 +4,10 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	"io"
-	"reflect"
+	"net/http"
 	"time"
 )
 
@@ -20,16 +21,13 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"grant":   adm.grant,
-		"revoke":  adm.revoke,
-		"access":  adm.access,
-		"read":    adm.read,
-		"add":     adm.add,
-		"rm":      adm.rm,
-		"ls":      adm.ls,
-		"rescan":  adm.rescan,
-		"sources": adm.sources,
-		"help":    adm.help,
+		"grant":  adm.grant,
+		"revoke": adm.revoke,
+		"access": adm.access,
+		"read":   adm.read,
+		"ls":     adm.ls,
+		"get":    adm.get,
+		"help":   adm.help,
 	}
 
 	return adm
@@ -72,7 +70,7 @@ func (adm *Admin) grant(term admin.Terminal, args []string) error {
 		expiresAt = time.Now().Add(d)
 	}
 
-	return adm.mod.GrantAccess(identity, dataID, expiresAt)
+	return adm.mod.Access().Grant(identity, dataID, expiresAt)
 }
 
 func (adm *Admin) revoke(term admin.Terminal, args []string) error {
@@ -91,7 +89,7 @@ func (adm *Admin) revoke(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	return adm.mod.RevokeAccess(identity, dataID)
+	return adm.mod.Access().Revoke(identity, dataID)
 }
 
 func (adm *Admin) access(term admin.Terminal, args []string) error {
@@ -139,7 +137,7 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 			return err
 		}
 
-		r, err := adm.mod.Read(dataID, 0, 0)
+		r, err := adm.mod.Data().Read(dataID, nil)
 		if err != nil {
 			return err
 		}
@@ -150,47 +148,53 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) rescan(term admin.Terminal, args []string) error {
-	adm.mod.localFiles.Rescan(adm.mod.ctx)
+func (adm *Admin) get(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("argument missing")
+	}
+
+	var url = args[0]
+
+	term.Printf("downloading %v...\n", url)
+
+	// Make a GET request to the URL
+	response, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	w, err := adm.mod.Data().Store(int(response.ContentLength))
+	if err != nil {
+		return err
+	}
+	defer w.Discard()
+
+	io.Copy(w, response.Body)
+
+	dataID, err := w.Commit()
+	if err != nil {
+		return err
+	}
+
+	term.Printf("stored as %v (%s)\n", dataID, log.DataSize(dataID.Size))
 
 	return nil
-}
-
-func (adm *Admin) add(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("missing arguments")
-	}
-
-	return adm.mod.localFiles.AddDir(adm.mod.ctx, args[0])
-}
-
-func (adm *Admin) rm(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("missing arguments")
-	}
-
-	return adm.mod.localFiles.RemoveDir(adm.mod.ctx, args[0])
 }
 
 func (adm *Admin) ls(term admin.Terminal, args []string) error {
-	var prefix = ""
+	var since = time.Time{}
 
-	if len(args) > 0 {
-		prefix = args[0]
-	}
-
-	var files = adm.mod.localFiles.findByPrefix(prefix)
+	var format = "%10s %-66s %s\n"
+	var files = adm.mod.Data().IndexSince(since)
+	var total int
+	term.Printf(format, admin.Header("Size"), admin.Header("ID"), admin.Header("Indexed"))
 	for _, file := range files {
-		term.Printf("%-68s %v\n", file.ID, file.Path)
+		term.Printf(format, log.DataSize(file.ID.Size), file.ID, file.IndexedAt)
+		total += int(file.ID.Size)
 	}
-	return nil
-}
 
-func (adm *Admin) sources(term admin.Terminal, args []string) error {
-	term.Printf("Enabled data sources:\n")
-	for _, source := range adm.mod.Readers() {
-		term.Printf("%s\n", reflect.TypeOf(source))
-	}
+	term.Printf("%d files, %v total\n", len(files), log.DataSize(total))
 
 	return nil
 }
@@ -200,15 +204,14 @@ func (adm *Admin) ShortDescription() string {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: contacts <command>\n\n")
+	term.Printf("usage: storage <command>\n\n")
 	term.Printf("commands:\n")
 	term.Printf("  grant <identity> <dataID> [duration]      grant access to data\n")
 	term.Printf("  revoke <identity> <dataID>                revoke access to data\n")
 	term.Printf("  access                                    show all access entries\n")
-	term.Printf("  add <dir>                                 add local directory to the index\n")
-	term.Printf("  rm <dir>                                  remove local directory from the index\n")
-	term.Printf("  ls [prefix]                               list all indexed local files\n")
-	term.Printf("  read [dataID]                             read a file by ID (caution - may print binary data)\n")
+	term.Printf("  ls                                        list all indexed data\n")
+	term.Printf("  read [dataID]                             read data by ID (caution - may print binary data)\n")
+	term.Printf("  get <url>                                 download data over http(s)\n")
 	term.Printf("  help                                      show help\n")
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"hash"
 	"io"
+	"os"
 )
 
 type Resolver interface {
@@ -52,4 +53,19 @@ func ResolveAll(reader io.Reader) (ID, error) {
 	}
 
 	return r.Resolve(), nil
+}
+
+func ResolveFile(path string) (ID, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return ID{}, err
+	}
+	defer file.Close()
+
+	fileID, err := ResolveAll(file)
+	if err != nil {
+		return ID{}, err
+	}
+
+	return fileID, nil
 }

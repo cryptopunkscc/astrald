@@ -41,12 +41,12 @@ func (srv *ReadService) RouteQuery(ctx context.Context, query net.Query, caller 
 		return net.Reject()
 	}
 
-	if !srv.CheckAccess(query.Caller(), dataID) {
+	if !srv.Access().Verify(query.Caller(), dataID) {
 		srv.log.Errorv(2, "access to %v denied for %v", dataID, query.Caller())
 		return net.Reject()
 	}
 
-	r, err := srv.Read(dataID, 0, 0)
+	r, err := srv.Data().Read(dataID, nil)
 	if err != nil {
 		return net.Reject()
 	}

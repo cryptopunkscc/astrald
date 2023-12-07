@@ -16,20 +16,8 @@ type ApphostClient struct {
 	token string
 }
 
-func (c *ApphostClient) Storage(identity id.Identity, service string) *Storage {
-	return &Storage{
-		client:   c,
-		Identity: identity,
-		Service:  service,
-	}
-}
-
 func (c *ApphostClient) Discovery() *Discovery {
 	return NewDiscovery(c)
-}
-
-func (c *ApphostClient) LocalStorage() *Storage {
-	return c.Storage(id.Identity{}, "storage.read")
 }
 
 var Client ApphostClient

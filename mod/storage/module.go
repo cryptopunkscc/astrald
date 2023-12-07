@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin/api"
 	"github.com/cryptopunkscc/astrald/mod/sdp/api"
@@ -11,8 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
-	"io"
-	"sync"
 )
 
 var _ storage.API = &Module{}
@@ -26,13 +23,8 @@ type Module struct {
 	ctx    context.Context
 	sdp    sdp.API
 
-	localFiles *LocalFiles
-
-	readers   []storage.Reader
-	readersMu sync.Mutex
-
-	accessCheckers   map[AccessChecker]struct{}
-	accessCheckersMu sync.Mutex
+	access *AccessManager
+	data   *DataManager
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -46,7 +38,6 @@ func (mod *Module) Run(ctx context.Context) error {
 	}
 
 	var runners = []tasks.Runner{
-		mod.localFiles,
 		NewReadService(mod),
 	}
 
@@ -57,20 +48,14 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Read(id data.ID, offset int, length int) (io.ReadCloser, error) {
-	mod.readersMu.Lock()
-	defer mod.readersMu.Unlock()
-
-	for _, source := range mod.readers {
-		r, err := source.Read(id, offset, length)
-		if err == nil {
-			return r, nil
-		}
-	}
-
-	return nil, storage.ErrNotFound
+func (mod *Module) Access() storage.AccessManager {
+	return mod.access
 }
 
-func (mod *Module) LocalFiles() storage.LocalFiles {
-	return mod.localFiles
+func (mod *Module) Data() storage.DataManager {
+	return mod.data
+}
+
+func (mod *Module) Events() *events.Queue {
+	return &mod.events
 }

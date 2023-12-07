@@ -1,4 +1,4 @@
-package storage
+package data
 
 type Config struct {
 }
