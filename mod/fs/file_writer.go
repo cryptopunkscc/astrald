@@ -14,10 +14,10 @@ type FileWriter struct {
 	tempID   string
 	file     *os.File
 	resolver data.Resolver
-	store    *StorerService
+	store    *StoreService
 }
 
-func NewFileWriter(parent *StorerService, path string) (*FileWriter, error) {
+func NewFileWriter(parent *StoreService, path string) (*FileWriter, error) {
 	var rbytes = make([]byte, 8)
 	rand.Read(rbytes)
 

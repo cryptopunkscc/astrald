@@ -8,7 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"io"
 	"net/http"
+	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -26,6 +28,7 @@ func NewAdmin(mod *Module) *Admin {
 		"read": adm.read,
 		"list": adm.list,
 		"get":  adm.get,
+		"info": adm.info,
 		"help": adm.help,
 	}
 
@@ -154,6 +157,55 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 	}
 
 	term.Printf("stored as %v (%s)\n", dataID, log.DataSize(dataID.Size))
+
+	return nil
+}
+
+func (adm *Admin) info(term admin.Terminal, args []string) error {
+	var f = "%-32s %s\n"
+	var names []string
+
+	// list readers
+	names = adm.mod.data.readers.Keys()
+	slices.Sort(names)
+
+	term.Printf(f, admin.Header("Reader"), admin.Header("Type"))
+	for _, name := range names {
+		v, ok := adm.mod.data.readers.Get(name)
+		if !ok {
+			continue
+		}
+		term.Printf(f, name, reflect.TypeOf(v))
+	}
+	term.Println()
+
+	// list stores
+	names = adm.mod.data.stores.Keys()
+	slices.Sort(names)
+
+	term.Printf(f, admin.Header("Store"), admin.Header("Type"))
+	for _, name := range names {
+		v, ok := adm.mod.data.stores.Get(name)
+		if !ok {
+			continue
+		}
+		term.Printf(f, name, reflect.TypeOf(v))
+	}
+	term.Println()
+
+	// list indexes
+	names = adm.mod.data.indexes.Keys()
+	slices.Sort(names)
+
+	term.Printf(f, admin.Header("Index"), admin.Header("Type"))
+	for _, name := range names {
+		v, ok := adm.mod.data.indexes.Get(name)
+		if !ok {
+			continue
+		}
+		term.Printf(f, name, reflect.TypeOf(v))
+	}
+	term.Println()
 
 	return nil
 }

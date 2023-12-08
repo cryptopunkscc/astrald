@@ -53,5 +53,5 @@ func (mod *Module) Prepare(ctx context.Context) error {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	return tasks.Group(&IndexerService{Module: mod}).Run(ctx)
+	return tasks.Group(&IndexService{Module: mod}).Run(ctx)
 }

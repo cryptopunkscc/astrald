@@ -14,21 +14,21 @@ import (
 	"time"
 )
 
-type StorerService struct {
+type StoreService struct {
 	*Module
 	paths sig.Set[string]
 }
 
-func NewStorerService(mod *Module) *StorerService {
-	return &StorerService{Module: mod}
+func NewStoreService(mod *Module) *StoreService {
+	return &StoreService{Module: mod}
 }
 
-func (srv *StorerService) Run(ctx context.Context) error {
+func (srv *StoreService) Run(ctx context.Context) error {
 	<-ctx.Done()
 	return nil
 }
 
-func (srv *StorerService) Read(dataID data.ID, opts *storage.ReadOpts) (io.ReadCloser, error) {
+func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (io.ReadCloser, error) {
 	if opts == nil {
 		opts = &storage.ReadOpts{}
 	}
@@ -45,7 +45,7 @@ func (srv *StorerService) Read(dataID data.ID, opts *storage.ReadOpts) (io.ReadC
 	return nil, storage.ErrNotFound
 }
 
-func (srv *StorerService) readPath(path string, offset int) (io.ReadCloser, error) {
+func (srv *StoreService) readPath(path string, offset int) (io.ReadCloser, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func (srv *StorerService) readPath(path string, offset int) (io.ReadCloser, erro
 	return f, nil
 }
 
-func (srv *StorerService) Store(alloc int) (storage.DataWriter, error) {
+func (srv *StoreService) Store(alloc int) (storage.DataWriter, error) {
 	for _, dir := range srv.paths.Clone() {
 		r, err := srv.storePath(dir, alloc)
 		if err == nil {
@@ -77,7 +77,7 @@ func (srv *StorerService) Store(alloc int) (storage.DataWriter, error) {
 	return nil, errors.New("no space available")
 }
 
-func (srv *StorerService) storePath(path string, alloc int) (storage.DataWriter, error) {
+func (srv *StoreService) storePath(path string, alloc int) (storage.DataWriter, error) {
 	usage, err := DiskUsage(path)
 	if err != nil {
 		return nil, err
@@ -92,19 +92,19 @@ func (srv *StorerService) storePath(path string, alloc int) (storage.DataWriter,
 	return w, err
 }
 
-func (srv *StorerService) AddPath(path string) error {
+func (srv *StoreService) AddPath(path string) error {
 	return srv.paths.Add(path)
 }
 
-func (srv *StorerService) RemovePath(path string) error {
+func (srv *StoreService) RemovePath(path string) error {
 	return srv.paths.Remove(path)
 }
 
-func (srv *StorerService) Paths() []string {
+func (srv *StoreService) Paths() []string {
 	return srv.paths.Clone()
 }
 
-func (srv *StorerService) Delete(dataID data.ID) error {
+func (srv *StoreService) Delete(dataID data.ID) error {
 	var deleted bool
 
 	for _, dir := range srv.paths.Clone() {
@@ -124,7 +124,7 @@ func (srv *StorerService) Delete(dataID data.ID) error {
 	return errors.New("not found")
 }
 
-func (srv *StorerService) deletePath(dir string, dataID data.ID) error {
+func (srv *StoreService) deletePath(dir string, dataID data.ID) error {
 	path := filepath.Join(dir, dataID.String())
 
 	info, err := os.Stat(path)
@@ -140,7 +140,7 @@ func (srv *StorerService) deletePath(dir string, dataID data.ID) error {
 
 	return nil
 }
-func (srv *StorerService) IndexSince(since time.Time) []storage.DataInfo {
+func (srv *StoreService) IndexSince(since time.Time) []storage.DataInfo {
 	var list []storage.DataInfo
 
 	for _, dir := range srv.paths.Clone() {
@@ -154,7 +154,7 @@ func (srv *StorerService) IndexSince(since time.Time) []storage.DataInfo {
 	return list
 }
 
-func (srv *StorerService) readDirSince(dir string, since time.Time) []storage.DataInfo {
+func (srv *StoreService) readDirSince(dir string, since time.Time) []storage.DataInfo {
 	var list []storage.DataInfo
 
 	entries, err := os.ReadDir(dir)

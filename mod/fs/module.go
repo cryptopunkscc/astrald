@@ -13,6 +13,9 @@ import (
 	"gorm.io/gorm"
 )
 
+const nameReadOnly = "mod.fs.readonly"
+const nameReadWrite = "mod.fs.readwrite"
+
 var _ fs.API = &Module{}
 
 type Module struct {
@@ -24,8 +27,8 @@ type Module struct {
 	ctx    context.Context
 
 	storage storage.API
-	indexer *IndexerService
-	storer  *StorerService
+	index   *IndexService
+	store   *StoreService
 }
 
 func (mod *Module) Prepare(ctx context.Context) error {
@@ -37,15 +40,18 @@ func (mod *Module) Prepare(ctx context.Context) error {
 		return err
 	}
 
-	mod.storage.Data().AddReader(mod.indexer)
-	mod.storage.Data().AddIndexer(mod.indexer)
-	mod.storage.Data().AddReader(mod.storer)
-	mod.storage.Data().AddIndexer(mod.storer)
-	mod.storage.Data().AddStorer(mod.storer)
+	// read only
+	mod.storage.Data().AddReader(nameReadOnly, mod.index)
+	mod.storage.Data().AddIndex(nameReadOnly, mod.index)
+
+	// read write
+	mod.storage.Data().AddReader(nameReadWrite, mod.store)
+	mod.storage.Data().AddStore(nameReadWrite, mod.store)
+	mod.storage.Data().AddIndex(nameReadWrite, mod.store)
 
 	// inject admin command
 	if adm, err := admin.Load(mod.node); err == nil {
-		adm.AddCommand("fs", NewAdmin(mod))
+		adm.AddCommand(fs.ModuleName, NewAdmin(mod))
 	}
 
 	return nil
@@ -54,7 +60,7 @@ func (mod *Module) Prepare(ctx context.Context) error {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	tasks.Group(mod.indexer).Run(ctx)
+	tasks.Group(mod.index).Run(ctx)
 
 	<-ctx.Done()
 	return nil

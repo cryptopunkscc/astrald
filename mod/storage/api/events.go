@@ -8,10 +8,32 @@ type EventDataRemoved struct {
 	ID data.ID
 }
 
-type EventIndexerAdded struct {
-	Indexer
+type EventReaderAdded struct {
+	Name string
+	Reader
 }
 
-type EventIndexerRemoved struct {
-	Indexer
+type EventReaderRemoved struct {
+	Name string
+	Reader
+}
+
+type EventStoreAdded struct {
+	Name string
+	Store
+}
+
+type EventStoreRemoved struct {
+	Name string
+	Store
+}
+
+type EventIndexAdded struct {
+	Name string
+	Index
+}
+
+type EventIndexRemoved struct {
+	Name string
+	Index
 }

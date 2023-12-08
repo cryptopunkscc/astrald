@@ -14,9 +14,9 @@ var _ storage.DataManager = &DataManager{}
 type DataManager struct {
 	*Module
 
-	readers  sig.Set[storage.Reader]
-	storers  sig.Set[storage.Storer]
-	indexers sig.Set[storage.Indexer]
+	readers sig.Map[string, storage.Reader]
+	stores  sig.Map[string, storage.Store]
+	indexes sig.Map[string, storage.Index]
 }
 
 func NewDataManager(module *Module) *DataManager {
@@ -35,8 +35,8 @@ func (mod *DataManager) Read(id data.ID, opts *storage.ReadOpts) (io.ReadCloser,
 }
 
 func (mod *DataManager) Store(alloc int) (storage.DataWriter, error) {
-	for _, storer := range mod.storers.Clone() {
-		w, err := storer.Store(alloc)
+	for _, store := range mod.stores.Clone() {
+		w, err := store.Store(alloc)
 		if err == nil {
 			return w, err
 		}
@@ -48,8 +48,8 @@ func (mod *DataManager) Store(alloc int) (storage.DataWriter, error) {
 func (mod *DataManager) IndexSince(since time.Time) []storage.DataInfo {
 	var list []storage.DataInfo
 
-	for _, indexer := range mod.indexers.Clone() {
-		list = append(list, indexer.IndexSince(since)...)
+	for _, index := range mod.indexes.Clone() {
+		list = append(list, index.IndexSince(since)...)
 	}
 
 	slices.SortFunc(list, func(a, b storage.DataInfo) int {
@@ -59,42 +59,65 @@ func (mod *DataManager) IndexSince(since time.Time) []storage.DataInfo {
 	return list
 }
 
-func (mod *DataManager) AddReader(reader storage.Reader) {
-	mod.readers.Add(reader)
-}
-
-func (mod *DataManager) RemoveReader(reader storage.Reader) {
-	mod.readers.Remove(reader)
-}
-
-func (mod *DataManager) AddStorer(storer storage.Storer) {
-	mod.storers.Add(storer)
-}
-
-func (mod *DataManager) RemoveStorer(storer storage.Storer) {
-	mod.storers.Remove(storer)
-}
-
-func (mod *DataManager) AddIndexer(indexer storage.Indexer) {
-	if err := mod.indexers.Add(indexer); err == nil {
-		mod.events.Emit(storage.EventIndexerAdded{Indexer: indexer})
+func (mod *DataManager) AddReader(name string, reader storage.Reader) error {
+	if mod.readers.Set(name, reader) {
+		mod.events.Emit(storage.EventReaderAdded{
+			Name:   name,
+			Reader: reader,
+		})
+		return nil
 	}
+	return storage.ErrAlreadyExists
 }
 
-func (mod *DataManager) RemoveIndexer(indexer storage.Indexer) {
-	if err := mod.indexers.Remove(indexer); err == nil {
-		mod.events.Emit(storage.EventIndexerRemoved{Indexer: indexer})
+func (mod *DataManager) RemoveReader(name string) error {
+	if reader, ok := mod.readers.Delete(name); ok {
+		mod.events.Emit(storage.EventReaderRemoved{
+			Name:   name,
+			Reader: reader,
+		})
 	}
+	return storage.ErrNotFound
 }
 
-func (mod *DataManager) Readers() []storage.Reader {
-	return mod.readers.Clone()
+func (mod *DataManager) AddStore(name string, store storage.Store) error {
+	if mod.stores.Set(name, store) {
+		mod.events.Emit(storage.EventStoreAdded{
+			Name:  name,
+			Store: store,
+		})
+		return nil
+	}
+	return storage.ErrAlreadyExists
 }
 
-func (mod *DataManager) Storers() []storage.Storer {
-	return mod.storers.Clone()
+func (mod *DataManager) RemoveStore(name string) error {
+	if store, ok := mod.stores.Delete(name); ok {
+		mod.events.Emit(storage.EventStoreRemoved{
+			Name:  name,
+			Store: store,
+		})
+	}
+	return storage.ErrNotFound
 }
 
-func (mod *DataManager) Indexers() []storage.Indexer {
-	return mod.indexers.Clone()
+func (mod *DataManager) AddIndex(name string, index storage.Index) error {
+	if mod.indexes.Set(name, index) {
+		mod.events.Emit(storage.EventIndexAdded{
+			Name:  name,
+			Index: index,
+		})
+		return nil
+	}
+	return storage.ErrAlreadyExists
+}
+
+func (mod *DataManager) RemoveIndex(name string) error {
+	if index, ok := mod.indexes.Delete(name); ok {
+		mod.events.Emit(storage.EventIndexRemoved{
+			Name:  name,
+			Index: index,
+		})
+	}
+	return storage.ErrNotFound
 }

@@ -47,8 +47,8 @@ func (mod *Module) Prepare(ctx context.Context) error {
 		adm.AddCommand(ModuleName, NewAdmin(mod))
 	}
 
-	mod.storage.Data().AddIndexer(mod)
-	mod.storage.Data().AddReader(mod)
+	mod.storage.Data().AddIndex("mod.zip", mod)
+	mod.storage.Data().AddReader("mod.zip", mod)
 	mod.storage.Access().AddAccessVerifier(mod)
 
 	return nil

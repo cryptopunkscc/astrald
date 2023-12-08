@@ -18,7 +18,7 @@ const fileQueueSize = 1 << 18
 const dirQueueSize = 1 << 14
 const updateDelay = 3 * time.Second
 
-type IndexerService struct {
+type IndexService struct {
 	*Module
 	cond      *sync.Cond
 	dirQueue  chan string
@@ -29,8 +29,8 @@ type IndexerService struct {
 	mu       sync.Mutex
 }
 
-func NewIndexerService(mod *Module) *IndexerService {
-	return &IndexerService{
+func NewIndexService(mod *Module) *IndexService {
+	return &IndexService{
 		Module:    mod,
 		cond:      sync.NewCond(&sync.Mutex{}),
 		modified:  map[string]time.Time{},
@@ -39,7 +39,7 @@ func NewIndexerService(mod *Module) *IndexerService {
 	}
 }
 
-func (srv *IndexerService) Run(ctx context.Context) error {
+func (srv *IndexService) Run(ctx context.Context) error {
 	var err error
 
 	srv.watcher, err = fsnotify.NewWatcher()
@@ -58,7 +58,7 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *IndexerService) Read(id data.ID, opts *storage.ReadOpts) (io.ReadCloser, error) {
+func (srv *IndexService) Read(id data.ID, opts *storage.ReadOpts) (io.ReadCloser, error) {
 	if opts == nil {
 		opts = &storage.ReadOpts{}
 	}
@@ -97,7 +97,7 @@ func (srv *IndexerService) Read(id data.ID, opts *storage.ReadOpts) (io.ReadClos
 	return nil, storage.ErrNotFound
 }
 
-func (srv *IndexerService) IndexSince(time time.Time) []storage.DataInfo {
+func (srv *IndexService) IndexSince(time time.Time) []storage.DataInfo {
 	var list []storage.DataInfo
 
 	var rows []*dbLocalFile
@@ -121,7 +121,7 @@ func (srv *IndexerService) IndexSince(time time.Time) []storage.DataInfo {
 	return list
 }
 
-func (srv *IndexerService) Add(path string) error {
+func (srv *IndexService) Add(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func (srv *IndexerService) Add(path string) error {
 	return errors.New("invalid path")
 }
 
-func (srv *IndexerService) enqueueDir(path string) error {
+func (srv *IndexService) enqueueDir(path string) error {
 	select {
 	case srv.dirQueue <- path:
 		return nil
@@ -145,7 +145,7 @@ func (srv *IndexerService) enqueueDir(path string) error {
 	return errors.New("queue full")
 }
 
-func (srv *IndexerService) enqueueFile(path string) error {
+func (srv *IndexService) enqueueFile(path string) error {
 	select {
 	case srv.fileQueue <- path:
 		return nil
@@ -155,7 +155,7 @@ func (srv *IndexerService) enqueueFile(path string) error {
 	return errors.New("queue full")
 }
 
-func (srv *IndexerService) fileWorker(ctx context.Context) {
+func (srv *IndexService) fileWorker(ctx context.Context) {
 	for {
 		var path string
 
@@ -174,7 +174,7 @@ func (srv *IndexerService) fileWorker(ctx context.Context) {
 	}
 }
 
-func (srv *IndexerService) verifyRow(_ context.Context, row *dbLocalFile) error {
+func (srv *IndexService) verifyRow(_ context.Context, row *dbLocalFile) error {
 	info, err := os.Stat(row.Path)
 
 	// check if path isn't accessible or isn't a file
@@ -191,7 +191,7 @@ func (srv *IndexerService) verifyRow(_ context.Context, row *dbLocalFile) error 
 	return srv.reindexRow(row)
 }
 
-func (srv *IndexerService) indexFile(ctx context.Context, path string) error {
+func (srv *IndexService) indexFile(ctx context.Context, path string) error {
 	var indexedAt = time.Now()
 
 	fileID, err := data.ResolveFile(path)
@@ -221,7 +221,7 @@ func (srv *IndexerService) indexFile(ctx context.Context, path string) error {
 	return nil
 }
 
-func (srv *IndexerService) reindexRow(row *dbLocalFile) error {
+func (srv *IndexService) reindexRow(row *dbLocalFile) error {
 	row.IndexedAt = time.Now()
 	oldID, _ := data.Parse(row.DataID)
 	fileID, err := data.ResolveFile(row.Path)
@@ -258,7 +258,7 @@ func (srv *IndexerService) reindexRow(row *dbLocalFile) error {
 	return nil
 }
 
-func (srv *IndexerService) unindexRow(row *dbLocalFile) error {
+func (srv *IndexService) unindexRow(row *dbLocalFile) error {
 	var err = srv.dbDeleteByPath(row.Path)
 	if err != nil {
 		srv.log.Error("unindex %v: %v", row.Path, err)
@@ -275,7 +275,7 @@ func (srv *IndexerService) unindexRow(row *dbLocalFile) error {
 	return nil
 }
 
-func (srv *IndexerService) dirWorker(ctx context.Context) {
+func (srv *IndexService) dirWorker(ctx context.Context) {
 	for {
 		var path string
 
@@ -311,7 +311,7 @@ func (srv *IndexerService) dirWorker(ctx context.Context) {
 	}
 }
 
-func (srv *IndexerService) watcherWorker(ctx context.Context) error {
+func (srv *IndexService) watcherWorker(ctx context.Context) error {
 	for {
 		select {
 		case event, ok := <-srv.watcher.Events:
@@ -355,7 +355,7 @@ func (srv *IndexerService) watcherWorker(ctx context.Context) error {
 	}
 }
 
-func (srv *IndexerService) watchDir(path string) error {
+func (srv *IndexService) watchDir(path string) error {
 	if srv.watcher == nil {
 		return nil
 	}
@@ -370,7 +370,7 @@ func (srv *IndexerService) watchDir(path string) error {
 	return err
 }
 
-func (srv *IndexerService) unwatchDir(path string) error {
+func (srv *IndexService) unwatchDir(path string) error {
 	if srv.watcher == nil {
 		return nil
 	}
@@ -387,7 +387,7 @@ func (srv *IndexerService) unwatchDir(path string) error {
 	return err
 }
 
-func (srv *IndexerService) onFileModified(ctx context.Context, path string) {
+func (srv *IndexService) onFileModified(ctx context.Context, path string) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 
@@ -398,7 +398,7 @@ func (srv *IndexerService) onFileModified(ctx context.Context, path string) {
 	srv.modified[path] = time.Now().Add(updateDelay)
 }
 
-func (srv *IndexerService) fileModifiedTimeout(ctx context.Context, path string) {
+func (srv *IndexService) fileModifiedTimeout(ctx context.Context, path string) {
 	for {
 		srv.mu.Lock()
 		deadline, found := srv.modified[path]
@@ -425,7 +425,7 @@ func (srv *IndexerService) fileModifiedTimeout(ctx context.Context, path string)
 	}
 }
 
-func (srv *IndexerService) verifyTree(ctx context.Context, path string) {
+func (srv *IndexService) verifyTree(ctx context.Context, path string) {
 	var rows []*dbLocalFile
 
 	var tx = srv.db.Where("path = ? or path like ?", path, path+"/%").Find(&rows)

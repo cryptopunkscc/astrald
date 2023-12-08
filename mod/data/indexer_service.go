@@ -13,11 +13,11 @@ import (
 	"time"
 )
 
-type IndexerService struct {
+type IndexService struct {
 	*Module
 }
 
-func (srv *IndexerService) Run(ctx context.Context) error {
+func (srv *IndexService) Run(ctx context.Context) error {
 	var t time.Time
 
 	if c, err := srv.mostRecentContainer(); err == nil {
@@ -34,7 +34,7 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *IndexerService) handleEvents(ctx context.Context) {
+func (srv *IndexService) handleEvents(ctx context.Context) {
 	for event := range srv.node.Events().Subscribe(ctx) {
 		switch event := event.(type) {
 		case storage.EventDataAdded:
@@ -43,7 +43,7 @@ func (srv *IndexerService) handleEvents(ctx context.Context) {
 	}
 }
 
-func (srv *IndexerService) index(info storage.DataInfo) error {
+func (srv *IndexService) index(info storage.DataInfo) error {
 	// skip already indexed data
 	if _, err := srv.findByDataID(info.ID); err == nil {
 		return errors.New("already indexed")
@@ -99,7 +99,7 @@ func (srv *IndexerService) index(info storage.DataInfo) error {
 	return nil
 }
 
-func (srv *IndexerService) getFileName(dataID data.ID) string {
+func (srv *IndexService) getFileName(dataID data.ID) string {
 	if srv.fs == nil {
 		return ""
 	}

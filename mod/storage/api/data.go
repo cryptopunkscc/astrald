@@ -7,38 +7,38 @@ import (
 )
 
 type DataManager interface {
-	Storer
 	Reader
-	Indexer
-	AddStorer(Storer)
-	RemoveStorer(Storer)
-	AddReader(Reader)
-	RemoveReader(Reader)
-	AddIndexer(indexer Indexer)
-	RemoveIndexer(indexer Indexer)
-}
-
-type Storer interface {
-	Store(int) (DataWriter, error)
-}
-
-type ReadOpts struct {
-	Offset    uint64
-	NoVirtual bool
+	Store
+	Index
+	AddReader(name string, reader Reader) error
+	AddStore(name string, store Store) error
+	AddIndex(name string, index Index) error
+	RemoveReader(name string) error
+	RemoveStore(name string) error
+	RemoveIndex(name string) error
 }
 
 type Reader interface {
 	Read(id data.ID, opts *ReadOpts) (io.ReadCloser, error)
 }
 
-type Indexer interface {
-	IndexSince(time time.Time) []DataInfo
+type Store interface {
+	Store(int) (DataWriter, error)
+}
+
+type Index interface {
+	IndexSince(since time.Time) []DataInfo
 }
 
 type DataWriter interface {
 	io.Writer
 	Commit() (data.ID, error)
 	Discard()
+}
+
+type ReadOpts struct {
+	Offset    uint64
+	NoVirtual bool
 }
 
 type DataInfo struct {

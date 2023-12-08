@@ -34,14 +34,14 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	}
 
 	// set up services
-	mod.indexer = NewIndexerService(mod)
+	mod.index = NewIndexService(mod)
 	for _, path := range mod.config.Index {
-		mod.indexer.Add(path)
+		mod.index.Add(path)
 	}
 
-	mod.storer = NewStorerService(mod)
+	mod.store = NewStoreService(mod)
 	for _, path := range mod.config.Store {
-		mod.storer.AddPath(path)
+		mod.store.AddPath(path)
 	}
 
 	// if no storage paths are configured, use a default one
@@ -50,7 +50,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 			dataPath := filepath.Join(n.RootDir(), "data")
 			err := os.MkdirAll(dataPath, 0600)
 			if err == nil {
-				mod.storer.AddPath(dataPath)
+				mod.store.AddPath(dataPath)
 			}
 		}
 	}
