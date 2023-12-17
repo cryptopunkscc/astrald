@@ -46,14 +46,14 @@ func Open(
 
 	secureConn, err := auth.HandshakeOutbound(ctx, conn, remoteID, localID)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("outbound handshake: %w", err)
 	}
 
 	var linkFeatures []string
 
 	err = cslq.Decode(secureConn, featureListFormat, &linkFeatures)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("read features: %w", err)
 	}
 
 	var muxFound bool
@@ -68,14 +68,13 @@ func Open(
 
 	err = cslq.Encode(secureConn, "[c]c", featureMux)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("write mux: %w", err)
 	}
 
 	var errCode int
 	err = cslq.Decode(secureConn, "c", &errCode)
 	if errCode != 0 {
-		err = errors.New("link feature negotation error")
-		return
+		return nil, errors.New("link feature negotation error")
 	}
 
 	return NewCoreLink(secureConn), nil

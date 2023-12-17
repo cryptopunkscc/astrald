@@ -7,10 +7,13 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/link"
 	"strings"
+	"time"
 )
 
 const RouteServiceName = "gateway.route"
 const RouteServiceType = "gateway.route"
+
+const acceptTimeout = 15 * time.Second
 
 type RouteService struct {
 	*Module
@@ -62,7 +65,11 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 				NewEndpoint(query.Caller(), query.Target()),
 				false,
 			)
-			l, err := link.Accept(ctx, gwConn, srv.node.Identity())
+
+			actx, cancel := context.WithTimeout(context.Background(), acceptTimeout)
+			defer cancel()
+
+			l, err := link.Accept(actx, gwConn, srv.node.Identity())
 			if err != nil {
 				return
 			}
