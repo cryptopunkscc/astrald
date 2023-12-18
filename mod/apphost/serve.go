@@ -46,7 +46,7 @@ func (s *Session) query(params proto.QueryParams) error {
 	var conn net.SecureConn
 
 	if params.Identity.IsZero() {
-		params.Identity = s.mod.node.Identity() //TODO: by default call your own service, not relay's
+		params.Identity = s.remoteID
 	}
 
 	var query = net.NewQuery(s.remoteID, params.Identity, params.Query)
