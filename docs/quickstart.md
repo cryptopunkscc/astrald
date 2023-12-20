@@ -34,11 +34,15 @@ public  key is the canonical way to represent an identity. Aliases are
 assigned  locally (sort  of like /etc/hosts file) and should only be used
 for convenience.
 
-### Config directory
+### Config directory (Linux)
 
 By default, `astrald` will use `$HOME/.config/astrald` directory for all
 resource and  config files. You can specify a different path using `-datadir`
 option.
+
+#### Config directory (MacOS)
+
+On Mac, `astrald` will use `~/Library/Application Support/astrald` directory for resource and config files. 
 
 ## Default identity
 
