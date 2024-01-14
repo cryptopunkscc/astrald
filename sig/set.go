@@ -42,6 +42,19 @@ func (set *Set[T]) Remove(item T) error {
 	return errors.New("not found")
 }
 
+func (set *Set[T]) Contains(item T) bool {
+	set.mu.RLock()
+	defer set.mu.RUnlock()
+
+	for _, i := range set.items {
+		if i == item {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (set *Set[T]) Clone() []T {
 	set.mu.RLock()
 	defer set.mu.RUnlock()

@@ -3,8 +3,8 @@ package astral
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/sdp/api"
-	"github.com/cryptopunkscc/astrald/mod/sdp/proto"
+	"github.com/cryptopunkscc/astrald/mod/discovery"
+	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 )
 
 type DiscoveryHandler func(remoteID id.Identity) []ServiceInfo
@@ -25,7 +25,7 @@ func NewDiscovery(apphost *ApphostClient) *Discovery {
 }
 
 func (d *Discovery) Discover(identity id.Identity) ([]ServiceInfo, error) {
-	c, err := d.Query(identity, sdp.DiscoverServiceName)
+	c, err := d.Query(identity, discovery.DiscoverServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (d *Discovery) Discover(identity id.Identity) ([]ServiceInfo, error) {
 	var list []ServiceInfo
 
 	for err == nil {
-		err = cslq.Invoke(c, func(msg proto.ServiceEntry) error {
+		err = cslq.Invoke(c, func(msg proto.Service) error {
 			list = append(list, ServiceInfo{
 				Identity: msg.Identity,
 				Name:     msg.Name,

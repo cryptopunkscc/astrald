@@ -6,22 +6,22 @@ They should only be used for extending low-level functionality of the node.
 
 ### Core modules
 
-| name                         | description                                              |
-|:-----------------------------|:---------------------------------------------------------|
-| admin                        | the admin console                                        |
-| [apphost](apphost/README.md) | provides an interface for apps to interact with the node |
-| [fwd](fwd/README.md)         | Cross-network forwarding                                 |
-| gateway                      | adds gateway functionality to the node                   |
-| policy                       | policy management                                        |
-| presence                     | discover other nodes in local networks                   |
-| profile                      | allows nodes to exchange their profiles                  |
-| reflectlink                  | provides link information to other nodes                 |
-| router                       | lets identites route queries via links between nodes     |
-| sdp                          | provides service discovery mechanism                     |
-| speedtest                    | a tool for benchmarking link speed                       |
-| storage                      | provides storage APIs                                    |
-| tcp                          | TCP driver                                               |
-| tor                          | Tor driver                                               |
+| name                             | description                                              |
+|:---------------------------------|:---------------------------------------------------------|
+| admin                            | the admin console                                        |
+| [apphost](apphost/src/README.md) | provides an interface for apps to interact with the node |
+| [fwd](fwd/src/README.md)         | cross-network forwarding                                 |
+| gateway                          | adds gateway functionality to the node                   |
+| policy                           | policy management                                        |
+| presence                         | discover other nodes in local networks                   |
+| profile                          | allows nodes to exchange their profiles                  |
+| reflectlink                      | provides link information to other nodes                 |
+| relay                            | lets identites relay queries for other identities        |
+| discovery                        | provides discovery mechanism                             |
+| speedtest                        | a tool for benchmarking link speed                       |
+| storage                          | provides storage APIs                                    |
+| tcp                              | TCP driver                                               |
+| tor                              | Tor driver                                               |
 
 ### Enabled modules
 

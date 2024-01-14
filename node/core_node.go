@@ -47,7 +47,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	var node = &CoreNode{
 		config:  defaultConfig,
 		rootDir: rootDir,
-		routes:  router.NewQueryRouter(),
+		routes:  router.NewPrefixRouter(true),
 	}
 
 	// basic logs

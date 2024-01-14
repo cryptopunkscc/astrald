@@ -52,6 +52,22 @@ func (store *GormKeyStore) Find(identity id.Identity) (id.Identity, error) {
 	return record.Identity(), nil
 }
 
+func (store *GormKeyStore) All() ([]id.Identity, error) {
+	var rows []gormIdentity
+	var all []id.Identity
+
+	if tx := store.db.Find(&rows); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	for _, row := range rows {
+		all = append(all, row.Identity())
+	}
+
+	return all, nil
+
+}
+
 func (store *GormKeyStore) Count() (int, error) {
 	var c int64
 	err := store.db.Model(&gormIdentity{}).Count(&c).Error

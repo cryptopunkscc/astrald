@@ -34,34 +34,68 @@ func NewCoreModules(node Node, mods []string, assets assets.Store, log *log.Logg
 }
 
 func (m *CoreModules) Run(ctx context.Context) error {
-	var wg sync.WaitGroup
+	// Load enabled modules. Loaders should only return a new instance of the module and must not try
+	// to access other modules, as the order of loading is undefined.
+	var loaded = m.loadEnabled()
 
-	// Step 1 - load all modules
+	// Dependencies - in this stage modules load their deps and injects its handlers.
+	var deps = m.loadDependecies(loaded)
+
+	// Prepare - In this stage, modules should perform any configuration necessary before services are run.
+	var prepared = m.prepareModules(ctx, deps)
+
+	// Run modules. During this stage modules should run all their services for the duration of the context.
+	return m.runModules(ctx, prepared)
+}
+
+func (m *CoreModules) loadEnabled() []string {
+	// Sage 1 - Load. During this stage
 	var loaded = make([]string, 0, len(m.enabled))
 	for _, name := range m.enabled {
-		if err := m.Load(name); err != nil {
+		if err := m.loadModule(name); err != nil {
 			m.log.Error("load %s: %s", name, err)
 		} else {
 			loaded = append(loaded, name)
 		}
 	}
+	return loaded
+}
 
-	// Step 2 - configure modules
-	var prepared = make([]string, 0, len(loaded))
-	for _, name := range loaded {
+func (m *CoreModules) loadDependecies(modules []string) []string {
+	var loaded = make([]string, 0, len(modules))
+	for _, name := range modules {
+		if p, ok := m.loaded[name].(DependencyLoader); ok {
+			err := p.LoadDependencies()
+			if err != nil {
+				m.log.Error("module %s load dependencies: %v", name, err)
+				continue
+			}
+		}
+		loaded = append(loaded, name)
+	}
+	return loaded
+}
+
+func (m *CoreModules) prepareModules(ctx context.Context, modules []string) []string {
+	var prepared = make([]string, 0, len(modules))
+	for _, name := range modules {
 		if p, ok := m.loaded[name].(Preparer); ok {
 			err := p.Prepare(ctx)
 			if err != nil {
-				m.log.Error("module %s error: %v", name, err)
+				m.log.Error("module %s prepare: %v", name, err)
 				continue
 			}
 		}
 		prepared = append(prepared, name)
 	}
+	return prepared
+}
 
-	// Step 3 - run modules
-	var started = make([]string, 0, len(prepared))
-	for _, name := range prepared {
+func (m *CoreModules) runModules(ctx context.Context, modules []string) error {
+	var wg sync.WaitGroup
+
+	var started = make([]string, 0, len(modules))
+	for _, name := range modules {
 		mod, ok := m.loaded[name]
 		if !ok {
 			continue
@@ -93,10 +127,11 @@ func (m *CoreModules) Run(ctx context.Context) error {
 
 	// wait for all modules to finish
 	wg.Wait()
+
 	return nil
 }
 
-func (m *CoreModules) Load(name string) error {
+func (m *CoreModules) loadModule(name string) error {
 	loader, found := moduleLoaders[name]
 	if !found {
 		return errors.New("module not found")

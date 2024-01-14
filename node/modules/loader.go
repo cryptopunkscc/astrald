@@ -15,6 +15,10 @@ type Module interface {
 	Run(context.Context) error
 }
 
+type DependencyLoader interface {
+	LoadDependencies() error
+}
+
 type Preparer interface {
 	Prepare(context.Context) error
 }

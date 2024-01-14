@@ -72,4 +72,4 @@ rpcpassword=mypassword
 
 ## Advanced config
 
-Check [fwd's documentation](../mod/fwd/README.md) for detailed options.
+Check [fwd's documentation](../mod/fwd/src/README.md) for detailed options.

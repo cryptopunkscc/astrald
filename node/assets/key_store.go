@@ -7,4 +7,5 @@ type KeyStore interface {
 	Find(identity id.Identity) (id.Identity, error)
 	Count() (int, error)
 	First() (id.Identity, error)
+	All() ([]id.Identity, error)
 }

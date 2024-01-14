@@ -18,15 +18,19 @@ var _ LocalRouter = &PrefixRouter{}
 // router.AddRoute("my_service", router)    // will only match the string "my_service"
 // router.AddRoute("my_service.*", router)  // will match all queries that begin with "my_service."
 type PrefixRouter struct {
-	exact  map[string]net.Router
-	prefix map[string]net.Router
-	mu     sync.RWMutex
+	Exclusive bool
+	exact     map[string]net.Router
+	prefix    map[string]net.Router
+	mu        sync.RWMutex
 }
 
-func NewQueryRouter() *PrefixRouter {
+// NewPrefixRouter makes a new PrefixRouter. If exclusive is true, it will reject unmatched queries, otherwise it
+// will return the RouteNotFound error.
+func NewPrefixRouter(exclusive bool) *PrefixRouter {
 	return &PrefixRouter{
-		exact:  make(map[string]net.Router),
-		prefix: make(map[string]net.Router),
+		exact:     make(map[string]net.Router),
+		prefix:    make(map[string]net.Router),
+		Exclusive: exclusive,
 	}
 }
 
@@ -34,7 +38,11 @@ func (router *PrefixRouter) RouteQuery(ctx context.Context, query net.Query, cal
 	route := router.Match(query.Query())
 
 	if route == nil {
-		return net.Reject()
+		if router.Exclusive == true {
+			return net.Reject()
+		} else {
+			return net.RouteNotFound(router)
+		}
 	}
 
 	return route.RouteQuery(ctx, query, caller, hints)

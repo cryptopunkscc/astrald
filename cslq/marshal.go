@@ -12,11 +12,15 @@ type Marshaler interface {
 	MarshalCSLQ(enc *Encoder) error
 }
 
-func Marshal(v any) ([]byte, error) {
+func Marshal(v ...any) ([]byte, error) {
 	var buf = &bytes.Buffer{}
-	var err = Encode(buf, "v", v)
-
-	return buf.Bytes(), err
+	for _, i := range v {
+		var err = Encode(buf, "v", i)
+		if err != nil {
+			return buf.Bytes(), err
+		}
+	}
+	return buf.Bytes(), nil
 }
 
 func Unmarshal(data []byte, v any) error {
