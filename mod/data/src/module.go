@@ -34,7 +34,11 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) StoreADC0(t string, alloc int) (storage.DataWriter, error) {
-	w, err := mod.storage.Data().Store(alloc + len(t) + 5)
+	w, err := mod.storage.Data().Store(
+		&storage.StoreOpts{
+			Alloc: alloc + len(t) + 5,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}

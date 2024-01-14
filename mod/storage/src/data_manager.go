@@ -49,9 +49,13 @@ func (mod *DataManager) ReadAll(id data.ID, opts *storage.ReadOpts) ([]byte, err
 	return io.ReadAll(r)
 }
 
-func (mod *DataManager) Store(alloc int) (storage.DataWriter, error) {
+func (mod *DataManager) Store(opts *storage.StoreOpts) (storage.DataWriter, error) {
+	if opts == nil {
+		opts = &storage.StoreOpts{}
+	}
+
 	for _, store := range mod.stores.Clone() {
-		w, err := store.Store(alloc)
+		w, err := store.Store(opts)
 		if err == nil {
 			return w, err
 		}
@@ -60,8 +64,12 @@ func (mod *DataManager) Store(alloc int) (storage.DataWriter, error) {
 	return nil, storage.ErrStorageUnavailable
 }
 
-func (mod *DataManager) StoreBytes(bytes []byte) (data.ID, error) {
-	w, err := mod.Store(len(bytes))
+func (mod *DataManager) StoreBytes(bytes []byte, opts *storage.StoreOpts) (data.ID, error) {
+	if opts == nil {
+		opts = &storage.StoreOpts{Alloc: len(bytes)}
+	}
+
+	w, err := mod.Store(opts)
 	if err != nil {
 		return data.ID{}, err
 	}
@@ -75,14 +83,14 @@ func (mod *DataManager) StoreBytes(bytes []byte) (data.ID, error) {
 	return w.Commit()
 }
 
-func (mod *DataManager) IndexSince(since time.Time) []storage.DataInfo {
-	var list []storage.DataInfo
+func (mod *DataManager) IndexSince(since time.Time) []storage.IndexEntry {
+	var list []storage.IndexEntry
 
 	for _, index := range mod.indexes.Clone() {
 		list = append(list, index.IndexSince(since)...)
 	}
 
-	slices.SortFunc(list, func(a, b storage.DataInfo) int {
+	slices.SortFunc(list, func(a, b storage.IndexEntry) int {
 		return a.IndexedAt.Compare(b.IndexedAt)
 	})
 

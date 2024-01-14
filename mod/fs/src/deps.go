@@ -1,6 +1,8 @@
 package fs
 
 import (
+	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -22,6 +24,11 @@ func (mod *Module) LoadDependencies() error {
 	mod.storage.Data().AddReader(nameReadWrite, mod.store)
 	mod.storage.Data().AddStore(nameReadWrite, mod.store)
 	mod.storage.Data().AddIndex(nameReadWrite, mod.store)
+
+	// inject admin command
+	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
+		adm.AddCommand(fs.ModuleName, NewAdmin(mod))
+	}
 
 	return nil
 }

@@ -78,7 +78,7 @@ func (mod *Module) Read(dataID _data.ID, opts *storage.ReadOpts) (storage.DataRe
 		}
 	}
 
-	return file, err
+	return &Reader{File: file, name: "mod.zip"}, err
 }
 
 func (mod *Module) Verify(identity id.Identity, dataID _data.ID) bool {
@@ -103,8 +103,8 @@ func (mod *Module) Verify(identity id.Identity, dataID _data.ID) bool {
 	return false
 }
 
-func (mod *Module) IndexSince(time time.Time) []storage.DataInfo {
-	var list []storage.DataInfo
+func (mod *Module) IndexSince(time time.Time) []storage.IndexEntry {
+	var list []storage.IndexEntry
 	var rows []*dbZipContent
 
 	mod.db.Where("indexed_at > ?", time).Order("indexed_at").Find(&rows)
@@ -115,7 +115,7 @@ func (mod *Module) IndexSince(time time.Time) []storage.DataInfo {
 			continue
 		}
 
-		list = append(list, storage.DataInfo{
+		list = append(list, storage.IndexEntry{
 			ID:        dataID,
 			IndexedAt: row.IndexedAt,
 		})

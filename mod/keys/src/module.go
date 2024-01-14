@@ -74,7 +74,7 @@ func (mod *Module) SaveKey(key id.Identity) (_data.ID, error) {
 		Bytes: key.PrivateKey().Serialize(),
 	}
 
-	w, err := mod.storage.Data().Store(70)
+	w, err := mod.storage.Data().Store(&storage.StoreOpts{Alloc: 70})
 	if err != nil {
 		return _data.ID{}, err
 	}
@@ -196,7 +196,7 @@ func (mod *Module) importKeys() error {
 			Bytes: key.PrivateKey().Serialize(),
 		}
 
-		w, err := mod.storage.Data().Store(70)
+		w, err := mod.storage.Data().Store(&storage.StoreOpts{Alloc: 70})
 		if err != nil {
 			return err
 		}

@@ -2,7 +2,7 @@ package storage
 
 import "github.com/cryptopunkscc/astrald/data"
 
-type EventDataAdded DataInfo
+type EventDataAdded IndexEntry
 
 type EventDataRemoved struct {
 	ID data.ID

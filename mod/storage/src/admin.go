@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/net"
 	"io"
 	"net/http"
@@ -104,7 +105,11 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 		}
 		defer response.Body.Close()
 
-		w, err := adm.mod.Data().Store(int(response.ContentLength))
+		w, err := adm.mod.Data().Store(
+			&storage.StoreOpts{
+				Alloc: int(response.ContentLength),
+			},
+		)
 		if err != nil {
 			return err
 		}
@@ -143,7 +148,7 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	w, err := adm.mod.Data().Store(0)
+	w, err := adm.mod.Data().Store(nil)
 	if err != nil {
 		return err
 	}

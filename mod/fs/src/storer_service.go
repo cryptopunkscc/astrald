@@ -38,7 +38,7 @@ func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.D
 
 		r, err := srv.readPath(path, int(opts.Offset))
 		if err == nil {
-			return r, err
+			return &Reader{ReadCloser: r, name: nameReadWrite}, err
 		}
 	}
 
@@ -66,9 +66,9 @@ func (srv *StoreService) readPath(path string, offset int) (io.ReadCloser, error
 	return f, nil
 }
 
-func (srv *StoreService) Store(alloc int) (storage.DataWriter, error) {
+func (srv *StoreService) Store(opts *storage.StoreOpts) (storage.DataWriter, error) {
 	for _, dir := range srv.paths.Clone() {
-		r, err := srv.storePath(dir, alloc)
+		r, err := srv.storePath(dir, opts.Alloc)
 		if err == nil {
 			return r, err
 		}
@@ -140,22 +140,23 @@ func (srv *StoreService) deletePath(dir string, dataID data.ID) error {
 
 	return nil
 }
-func (srv *StoreService) IndexSince(since time.Time) []storage.DataInfo {
-	var list []storage.DataInfo
+
+func (srv *StoreService) IndexSince(since time.Time) []storage.IndexEntry {
+	var list []storage.IndexEntry
 
 	for _, dir := range srv.paths.Clone() {
 		list = append(list, srv.readDirSince(dir, since)...)
 	}
 
-	slices.SortFunc(list, func(a, b storage.DataInfo) int {
+	slices.SortFunc(list, func(a, b storage.IndexEntry) int {
 		return a.IndexedAt.Compare(b.IndexedAt)
 	})
 
 	return list
 }
 
-func (srv *StoreService) readDirSince(dir string, since time.Time) []storage.DataInfo {
-	var list []storage.DataInfo
+func (srv *StoreService) readDirSince(dir string, since time.Time) []storage.IndexEntry {
+	var list []storage.IndexEntry
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -178,7 +179,7 @@ func (srv *StoreService) readDirSince(dir string, since time.Time) []storage.Dat
 		}
 
 		if info.ModTime().After(since) {
-			list = append(list, storage.DataInfo{
+			list = append(list, storage.IndexEntry{
 				ID:        dataID,
 				IndexedAt: info.ModTime(),
 			})

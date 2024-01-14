@@ -38,12 +38,12 @@ func (srv *IndexService) handleEvents(ctx context.Context) {
 	for event := range srv.node.Events().Subscribe(ctx) {
 		switch event := event.(type) {
 		case storage.EventDataAdded:
-			srv.index(storage.DataInfo(event))
+			srv.index(storage.IndexEntry(event))
 		}
 	}
 }
 
-func (srv *IndexService) index(info storage.DataInfo) error {
+func (srv *IndexService) index(info storage.IndexEntry) error {
 	// skip already indexed data
 	if _, err := srv.findByDataID(info.ID); err == nil {
 		return errors.New("already indexed")

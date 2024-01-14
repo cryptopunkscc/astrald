@@ -91,14 +91,17 @@ func (srv *IndexService) Read(id data.ID, opts *storage.ReadOpts) (storage.DataR
 			continue
 		}
 
-		return f, nil
+		return &Reader{
+			ReadCloser: f,
+			name:       nameReadOnly,
+		}, nil
 	}
 
 	return nil, storage.ErrNotFound
 }
 
-func (srv *IndexService) IndexSince(time time.Time) []storage.DataInfo {
-	var list []storage.DataInfo
+func (srv *IndexService) IndexSince(time time.Time) []storage.IndexEntry {
+	var list []storage.IndexEntry
 
 	var rows []*dbLocalFile
 	var tx = srv.db.Where("indexed_at > ?", time).Find(&rows).Order("indexed_at")
@@ -112,7 +115,7 @@ func (srv *IndexService) IndexSince(time time.Time) []storage.DataInfo {
 			continue
 		}
 
-		list = append(list, storage.DataInfo{
+		list = append(list, storage.IndexEntry{
 			ID:        dataID,
 			IndexedAt: row.IndexedAt,
 		})

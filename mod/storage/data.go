@@ -10,7 +10,7 @@ type DataManager interface {
 	Store
 	Index
 	ReadAll(id data.ID, opts *ReadOpts) ([]byte, error)
-	StoreBytes(bytes []byte) (data.ID, error)
+	StoreBytes(bytes []byte, opts *StoreOpts) (data.ID, error)
 	AddReader(name string, reader Reader) error
 	AddStore(name string, store Store) error
 	AddIndex(name string, index Index) error
@@ -20,15 +20,15 @@ type DataManager interface {
 }
 
 type Reader interface {
-	Read(id data.ID, opts *ReadOpts) (DataReader, error)
+	Read(dataID data.ID, opts *ReadOpts) (DataReader, error)
 }
 
 type Store interface {
-	Store(int) (DataWriter, error)
+	Store(opts *StoreOpts) (DataWriter, error)
 }
 
 type Index interface {
-	IndexSince(since time.Time) []DataInfo
+	IndexSince(since time.Time) []IndexEntry
 }
 
 type DataWriter interface {
@@ -40,6 +40,11 @@ type DataWriter interface {
 type DataReader interface {
 	Read(p []byte) (n int, err error)
 	Close() error
+	Info() *ReaderInfo
+}
+
+type ReaderInfo struct {
+	Name string
 }
 
 type ReadOpts struct {
@@ -47,7 +52,11 @@ type ReadOpts struct {
 	NoVirtual bool
 }
 
-type DataInfo struct {
+type StoreOpts struct {
+	Alloc int
+}
+
+type IndexEntry struct {
 	ID        data.ID
 	IndexedAt time.Time
 }
