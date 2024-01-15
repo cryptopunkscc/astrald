@@ -17,3 +17,9 @@ type EventLocalFileChanged struct {
 	NewID     data.ID
 	IndexedAt time.Time
 }
+
+const FileDescriptorType = "mod.fs.file"
+
+type FileDescriptor struct {
+	Paths []string
+}

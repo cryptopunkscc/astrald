@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
+	_data "github.com/cryptopunkscc/astrald/mod/data"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
@@ -26,8 +27,29 @@ type Module struct {
 	ctx    context.Context
 
 	storage storage.Module
+	data    _data.Module
 	index   *IndexService
 	store   *StoreService
+}
+
+func (mod *Module) DescribeData(ctx context.Context, dataID data.ID, opts *_data.DescribeOpts) []_data.Descriptor {
+	var desc fs.FileDescriptor
+	var files = mod.dbFindByID(dataID)
+
+	if len(files) == 0 {
+		return nil
+	}
+
+	for _, file := range files {
+		desc.Paths = append(desc.Paths, file.Path)
+	}
+
+	return []_data.Descriptor{
+		{
+			Type: fs.FileDescriptorType,
+			Data: desc,
+		},
+	}
 }
 
 func (mod *Module) Run(ctx context.Context) error {

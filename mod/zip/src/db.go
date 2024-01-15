@@ -14,13 +14,24 @@ type dbZipContent struct {
 
 func (dbZipContent) TableName() string { return "zip_contents" }
 
-func (mod *Module) dbFindByID(dataID _data.ID) *dbZipContent {
-	var row *dbZipContent
+func (mod *Module) dbFindByFileID(dataID _data.ID) ([]dbZipContent, error) {
+	var rows []dbZipContent
 
-	tx := mod.db.Where("file_id = ?", dataID.String()).Find(&row)
+	tx := mod.db.Where("file_id = ?", dataID.String()).Find(&rows)
 	if tx.Error != nil {
-		return nil
+		return nil, tx.Error
 	}
 
-	return row
+	return rows, nil
+}
+
+func (mod *Module) dbFindByZipID(dataID _data.ID) ([]dbZipContent, error) {
+	var rows []dbZipContent
+
+	tx := mod.db.Where("zip_id = ?", dataID.String()).Find(&rows)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return rows, nil
 }

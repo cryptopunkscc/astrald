@@ -30,6 +30,25 @@ type Module struct {
 	db      *gorm.DB
 }
 
+func (mod *Module) DescribeData(ctx context.Context, dataID _data.ID, opts *data.DescribeOpts) []data.Descriptor {
+	var desc []data.Descriptor
+
+	row, err := mod.dbFindByDataID(dataID)
+	if err != nil {
+		return nil
+	}
+
+	desc = append(desc, data.Descriptor{
+		Type: keys.KeyDescriptorType,
+		Data: keys.KeyDescriptor{
+			KeyType:   row.Type,
+			PublicKey: row.PublicKey,
+		},
+	})
+
+	return desc
+}
+
 var adc0PrivateKey = data.ADC0Header(keys.PrivateKeyDataType)
 
 func (mod *Module) Run(ctx context.Context) error {

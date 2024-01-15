@@ -1,6 +1,9 @@
 package relay
 
-import "time"
+import (
+	"github.com/cryptopunkscc/astrald/data"
+	"time"
+)
 
 type dbRelayCert struct {
 	DataID    string    `gorm:"primaryKey"`
@@ -12,4 +15,15 @@ type dbRelayCert struct {
 
 func (dbRelayCert) TableName() string {
 	return "relay_certs"
+}
+
+func (mod *Module) dbFindByDataID(dataID data.ID) (*dbRelayCert, error) {
+	var row dbRelayCert
+
+	var tx = mod.db.Where("data_id = ?", dataID.String()).First(&row)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return &row, nil
 }

@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
@@ -155,6 +156,26 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 	}
 
 	return nil, relay.ErrCertNotFound
+}
+
+func (mod *Module) LoadCert(dataID data.ID) (*relay.RelayCert, error) {
+	dataType, r, err := mod.data.OpenADC0(dataID)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+
+	switch dataType {
+	case relay.RelayCertType:
+		var cert relay.RelayCert
+		if err = cslq.Decode(r, "v", &cert); err != nil {
+			return nil, err
+		}
+
+		return &cert, nil
+	}
+
+	return nil, errors.New("invalid data type")
 }
 
 func (mod *Module) FindExternalRelays(targetID id.Identity) ([]id.Identity, error) {

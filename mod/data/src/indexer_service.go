@@ -62,7 +62,7 @@ func (srv *IndexService) index(info storage.IndexEntry) error {
 		reader     = bytes.NewReader(firstBytes)
 		adc0Header _data.ADC0Header
 		dataType   string
-		header     string
+		header     = "mimetype"
 	)
 
 	if err := cslq.Decode(reader, "v", &adc0Header); err == nil {

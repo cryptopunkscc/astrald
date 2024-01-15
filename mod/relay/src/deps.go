@@ -8,9 +8,17 @@ import (
 )
 
 func (mod *Module) LoadDependencies() error {
-	mod.data, _ = modules.Load[data.Module](mod.node, data.ModuleName)
+	var err error
+
+	mod.data, err = modules.Load[data.Module](mod.node, data.ModuleName)
+	if err != nil {
+		return err
+	}
+
 	mod.storage, _ = modules.Load[storage.Module](mod.node, storage.ModuleName)
 	mod.keys, _ = modules.Load[keys.Module](mod.node, keys.ModuleName)
+
+	_ = mod.data.AddDescriber(mod)
 
 	return nil
 }

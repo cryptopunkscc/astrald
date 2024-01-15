@@ -19,5 +19,7 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
+	mod.data.AddDescriber(mod)
+
 	return nil
 }

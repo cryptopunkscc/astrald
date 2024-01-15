@@ -1,7 +1,7 @@
 package zip
 
 import (
-	"archive/zip"
+	_zip "archive/zip"
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	_data "github.com/cryptopunkscc/astrald/data"
@@ -42,10 +42,15 @@ func (mod *Module) Read(dataID _data.ID, opts *storage.ReadOpts) (storage.DataRe
 		return nil, storage.ErrInvalidOffset
 	}
 
-	var zipRow = mod.dbFindByID(dataID)
-	if zipRow == nil {
+	var zipRows, err = mod.dbFindByFileID(dataID)
+	if err != nil {
+		return nil, err
+	}
+	if len(zipRows) == 0 {
 		return nil, storage.ErrNotFound
 	}
+
+	var zipRow = zipRows[0]
 
 	if opts.NoVirtual {
 		return nil, storage.ErrNoVirtual
@@ -61,7 +66,7 @@ func (mod *Module) Read(dataID _data.ID, opts *storage.ReadOpts) (storage.DataRe
 		dataID:  zipID,
 	}
 
-	zipFile, err := zip.NewReader(zipReaderAt, int64(zipID.Size))
+	zipFile, err := _zip.NewReader(zipReaderAt, int64(zipID.Size))
 	if err != nil {
 		return nil, storage.ErrNotFound
 	}

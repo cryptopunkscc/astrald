@@ -2,7 +2,6 @@ package zip
 
 import (
 	"context"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"time"
@@ -16,7 +15,6 @@ type IndexerService struct {
 
 func (srv *IndexerService) Run(ctx context.Context) error {
 	for event := range srv.data.SubscribeType(ctx, zipMimeType, time.Time{}) {
-		fmt.Println(event.Type)
 		srv.autoIndexZip(event.DataID)
 	}
 

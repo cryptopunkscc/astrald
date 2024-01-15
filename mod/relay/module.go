@@ -29,3 +29,13 @@ type FindOpts struct {
 	Direction       Direction
 	IncludeExpired  bool
 }
+
+const CertDescriptorType = "mod.relay.cert"
+
+type CertDescriptor struct {
+	TargetID      id.Identity
+	RelayID       id.Identity
+	Direction     Direction
+	ExpiresAt     time.Time
+	ValidateError error
+}

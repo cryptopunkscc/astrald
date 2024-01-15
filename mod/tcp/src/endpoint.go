@@ -3,7 +3,7 @@ package tcp
 import (
 	"bytes"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
 	_net "net"
 	"strconv"
 )
@@ -13,7 +13,7 @@ const (
 	ipv6        // IPv6 (128 bit)
 )
 
-var _ net.Endpoint = Endpoint{}
+var _ tcp.Endpoint = Endpoint{}
 
 type Endpoint struct {
 	ver  int

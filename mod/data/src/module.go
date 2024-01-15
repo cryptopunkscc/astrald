@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
 )
@@ -23,8 +24,9 @@ type Module struct {
 	events events.Queue
 	db     *gorm.DB
 
-	storage storage.Module
-	fs      fs.Module
+	describers sig.Set[data.Describer]
+	storage    storage.Module
+	fs         fs.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {

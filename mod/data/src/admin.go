@@ -1,6 +1,7 @@
 package data
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -16,6 +17,7 @@ func NewAdmin(mod *Module) *Admin {
 	var cmd = &Admin{mod: mod}
 	cmd.cmds = map[string]func(admin.Terminal, []string) error{
 		"list":      cmd.list,
+		"describe":  cmd.describe,
 		"set_label": cmd.setLabel,
 		"get_label": cmd.getLabel,
 	}
@@ -38,6 +40,28 @@ func (cmd *Admin) list(term admin.Terminal, args []string) error {
 			cmd.mod.GetLabel(item.DataID),
 		)
 	}
+
+	return nil
+}
+
+func (cmd *Admin) describe(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	dataID, err := data.Parse(args[0])
+	if err != nil {
+		return err
+	}
+
+	var desc = cmd.mod.DescribeData(nil, dataID, nil)
+	bytes, err := json.MarshalIndent(desc, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	term.Write(bytes)
+	term.Println()
 
 	return nil
 }
@@ -87,7 +111,7 @@ func (cmd *Admin) Exec(term admin.Terminal, args []string) error {
 }
 
 func (cmd *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: data <list|set_label|get_label>\n")
+	term.Printf("usage: data <list|describe|set_label|get_label>\n")
 	return nil
 }
 
