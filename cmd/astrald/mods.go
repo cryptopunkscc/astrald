@@ -12,6 +12,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/fs/src"
 	_ "github.com/cryptopunkscc/astrald/mod/fwd/src"
 	_ "github.com/cryptopunkscc/astrald/mod/gateway/src"
+	_ "github.com/cryptopunkscc/astrald/mod/index/src"
 	_ "github.com/cryptopunkscc/astrald/mod/keys/src"
 	_ "github.com/cryptopunkscc/astrald/mod/policy/src"
 	_ "github.com/cryptopunkscc/astrald/mod/presence/src"
