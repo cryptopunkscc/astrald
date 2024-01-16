@@ -12,6 +12,7 @@ import (
 )
 
 const minimumSubscriptionDuration = 15 * time.Minute
+const subscribeRetryInterval = 60 * time.Second
 
 type Subscriber struct {
 	node    node.Node
@@ -39,7 +40,7 @@ func (s *Subscriber) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return nil
-			case <-time.After(5 * time.Second):
+			case <-time.After(subscribeRetryInterval):
 			}
 			continue
 		}
@@ -52,7 +53,7 @@ func (s *Subscriber) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return nil
-			case <-time.After(5 * time.Second):
+			case <-time.After(subscribeRetryInterval):
 			}
 			continue
 		}
