@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	_data "github.com/cryptopunkscc/astrald/mod/data"
 	"github.com/cryptopunkscc/astrald/mod/fs"
+	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -13,8 +14,8 @@ import (
 	"gorm.io/gorm"
 )
 
-const nameReadOnly = "mod.fs.readonly"
-const nameReadWrite = "mod.fs.readwrite"
+const nameReadOnly = "mod.fs.ro"
+const nameReadWrite = "mod.fs.rw"
 
 var _ fs.Module = &Module{}
 
@@ -28,34 +29,20 @@ type Module struct {
 
 	storage storage.Module
 	data    _data.Module
-	index   *IndexService
+	index   index.Module
+
+	indexer *IndexerService
 	store   *StoreService
 }
 
-func (mod *Module) DescribeData(ctx context.Context, dataID data.ID, opts *_data.DescribeOpts) []_data.Descriptor {
-	var desc fs.FileDescriptor
-	var files = mod.dbFindByID(dataID)
-
-	if len(files) == 0 {
-		return nil
-	}
-
-	for _, file := range files {
-		desc.Paths = append(desc.Paths, file.Path)
-	}
-
-	return []_data.Descriptor{
-		{
-			Type: fs.FileDescriptorType,
-			Data: desc,
-		},
-	}
+func (mod *Module) Prepare(ctx context.Context) error {
+	return nil
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	tasks.Group(mod.index).Run(ctx)
+	tasks.Group(mod.indexer).Run(ctx)
 
 	<-ctx.Done()
 	return nil

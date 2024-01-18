@@ -49,7 +49,7 @@ func (mod *Module) SubscribeType(ctx context.Context, typ string, since time.Tim
 
 		// subscribe to new items
 		for event := range subscription {
-			e, ok := event.(data.EventDataIndexed)
+			e, ok := event.(data.EventDataIdentified)
 			if !ok {
 				continue
 			}

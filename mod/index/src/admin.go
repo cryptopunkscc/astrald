@@ -1,12 +1,13 @@
 package index
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/index"
-	"github.com/cryptopunkscc/astrald/mod/wallet"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -20,15 +21,17 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"create":   adm.create,
-		"delete":   adm.delete,
-		"list":     adm.list,
-		"add":      adm.add,
-		"remove":   adm.remove,
-		"show":     adm.show,
-		"find":     adm.find,
-		"contains": adm.contains,
-		"help":     adm.help,
+		"create":    adm.create,
+		"delete":    adm.delete,
+		"list":      adm.list,
+		"add":       adm.add,
+		"remove":    adm.remove,
+		"add_union": adm.addUnion,
+		"info":      adm.info,
+		"show":      adm.show,
+		"find":      adm.find,
+		"contains":  adm.contains,
+		"help":      adm.help,
 	}
 
 	return adm
@@ -52,7 +55,13 @@ func (adm *Admin) create(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	_, err := adm.mod.CreateIndex(args[0], index.TypeSet)
+	var typ = index.TypeSet
+
+	if len(args) >= 2 {
+		typ = index.Type(args[1])
+	}
+
+	_, err := adm.mod.CreateIndex(args[0], typ)
 
 	return err
 }
@@ -70,6 +79,10 @@ func (adm *Admin) list(term admin.Terminal, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	slices.SortFunc(list, func(a, b index.Info) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 
 	var f = "%-20s %-6s %8s %v\n"
 	term.Printf(f, admin.Header("Created at"), admin.Header("Type"), admin.Header("Size"), admin.Header("Name"))
@@ -107,6 +120,38 @@ func (adm *Admin) add(term admin.Terminal, args []string) error {
 	}
 
 	return nil
+}
+
+func (adm *Admin) remove(term admin.Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("missing argument")
+	}
+
+	var name = args[0]
+
+	for _, d := range args[1:] {
+		dataID, err := data.Parse(d)
+		if err != nil {
+			term.Printf("%v parse error: %v\n", d, err)
+			continue
+		}
+		err = adm.mod.RemoveFromSet(name, dataID)
+		if err != nil {
+			term.Printf("%v error: %v\n", dataID, err)
+			continue
+		}
+		term.Printf("%v removed\n", dataID)
+	}
+
+	return nil
+}
+
+func (adm *Admin) addUnion(term admin.Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("missing argument")
+	}
+
+	return adm.mod.AddToUnion(args[0], args[1])
 }
 
 func (adm *Admin) contains(term admin.Terminal, args []string) error {
@@ -152,6 +197,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 	}
 
 	var f = "%-20s %-8s %s\n"
+	term.Printf("\n")
 	term.Printf(f, admin.Header("Updated at"), admin.Header("Status"), admin.Header("DataID"))
 	for _, item := range list {
 		var status = "added"
@@ -164,6 +210,43 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 			status,
 			item.DataID,
 		)
+	}
+
+	return nil
+}
+
+func (adm *Admin) info(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	name := args[0]
+
+	indexRow, err := adm.mod.dbFindIndexByName(name)
+	if err != nil {
+		return err
+	}
+
+	var size int
+	size, err = adm.mod.dbEntryCountByIndexID(indexRow.ID)
+
+	term.Printf("Index type: %v\n", indexRow.Type)
+	term.Printf("Created at: %v\n", indexRow.CreatedAt)
+	term.Printf("Index size: %v\n", size)
+	if index.Type(indexRow.Type) == index.TypeUnion {
+		unions, err := adm.mod.dbUnionFindByUnionID(indexRow.ID)
+		if err != nil {
+			return err
+		}
+
+		slices.SortFunc(unions, func(a, b dbUnion) int {
+			return cmp.Compare(a.Set.Name, b.Set.Name)
+		})
+
+		term.Printf("%v\n", admin.Header("Members"))
+		for _, union := range unions {
+			term.Printf("%v\n", union.Set.Name)
+		}
 	}
 
 	return nil
@@ -188,42 +271,30 @@ func (adm *Admin) find(term admin.Terminal, args []string) error {
 		return errors.New("not found")
 	}
 
+	slices.Sort(list)
+
 	term.Printf("%s\n", strings.Join(list, "\n"))
 
 	return nil
 }
 
-func (adm *Admin) remove(term admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		return errors.New("missing argument")
-	}
-
-	var name = args[0]
-
-	for _, d := range args[1:] {
-		dataID, err := data.Parse(d)
-		if err != nil {
-			term.Printf("%v parse error: %v\n", d, err)
-			continue
-		}
-		err = adm.mod.RemoveFromSet(name, dataID)
-		if err != nil {
-			term.Printf("%v error: %v\n", dataID, err)
-			continue
-		}
-		term.Printf("%v removed\n", dataID)
-	}
-
-	return nil
-}
-
 func (adm *Admin) ShortDescription() string {
-	return "manage " + wallet.ModuleName
+	return "manage " + index.ModuleName
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", wallet.ModuleName)
+	term.Printf("usage: %s <command>\n\n", index.ModuleName)
 	term.Printf("commands:\n")
-	term.Printf("  help            show help\n")
+	term.Printf("  list                          list all indexes\n")
+	term.Printf("  create <name> [type]          create a new index, type can be set/union (default=set)\n")
+	term.Printf("  delete <name>                 delete an index\n")
+	term.Printf("  add <name> <dataID>           add data to a set\n")
+	term.Printf("  remove <name> <dataID>        remove data from a set\n")
+	term.Printf("  add_union <union> <set>       add a set to an union\n")
+	term.Printf("  find <dataID>                 search indexes for data\n")
+	term.Printf("  contains <name> <[]dataID>    check if an index contains provided data\n")
+	term.Printf("  info <name>                   info info about an index\n")
+	term.Printf("  show <name>                   list all data from an index\n")
+	term.Printf("  help                          info help\n")
 	return nil
 }

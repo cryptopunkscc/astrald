@@ -7,13 +7,13 @@ import (
 	_data "github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Module struct {
@@ -25,6 +25,7 @@ type Module struct {
 	db      *gorm.DB
 	data    data.Module
 	storage storage.Module
+	index   index.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -106,25 +107,4 @@ func (mod *Module) Verify(identity id.Identity, dataID _data.ID) bool {
 	}
 
 	return false
-}
-
-func (mod *Module) IndexSince(time time.Time) []storage.IndexEntry {
-	var list []storage.IndexEntry
-	var rows []*dbZipContent
-
-	mod.db.Where("indexed_at > ?", time).Order("indexed_at").Find(&rows)
-
-	for _, row := range rows {
-		dataID, err := _data.Parse(row.FileID)
-		if err != nil {
-			continue
-		}
-
-		list = append(list, storage.IndexEntry{
-			ID:        dataID,
-			IndexedAt: row.IndexedAt,
-		})
-	}
-
-	return list
 }

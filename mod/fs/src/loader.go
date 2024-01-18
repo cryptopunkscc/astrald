@@ -34,9 +34,9 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 	}
 
 	// set up services
-	mod.index = NewIndexService(mod)
+	mod.indexer = NewIndexerService(mod)
 	for _, path := range mod.config.Index {
-		mod.index.Add(path)
+		mod.indexer.Add(path)
 	}
 
 	mod.store = NewStoreService(mod)

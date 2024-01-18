@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/sig"
 	"slices"
 	"strings"
 	"sync"
@@ -62,33 +63,55 @@ func (m *CoreModules) loadEnabled() []string {
 }
 
 func (m *CoreModules) loadDependecies(modules []string) []string {
-	var loaded = make([]string, 0, len(modules))
+	var loaded sig.Set[string]
+
+	var wg sync.WaitGroup
 	for _, name := range modules {
-		if p, ok := m.loaded[name].(DependencyLoader); ok {
-			err := p.LoadDependencies()
-			if err != nil {
-				m.log.Error("module %s load dependencies: %v", name, err)
-				continue
+		name := name
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if p, ok := m.loaded[name].(DependencyLoader); ok {
+				err := p.LoadDependencies()
+				if err != nil {
+					m.log.Error("module %s load dependencies: %v", name, err)
+					return
+				}
 			}
-		}
-		loaded = append(loaded, name)
+			loaded.Add(name)
+		}()
 	}
-	return loaded
+
+	wg.Wait()
+
+	return loaded.Clone()
 }
 
 func (m *CoreModules) prepareModules(ctx context.Context, modules []string) []string {
-	var prepared = make([]string, 0, len(modules))
+	var prepared sig.Set[string]
+
+	var wg sync.WaitGroup
 	for _, name := range modules {
-		if p, ok := m.loaded[name].(Preparer); ok {
-			err := p.Prepare(ctx)
-			if err != nil {
-				m.log.Error("module %s prepare: %v", name, err)
-				continue
+		name := name
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if p, ok := m.loaded[name].(Preparer); ok {
+				err := p.Prepare(ctx)
+				if err != nil {
+					m.log.Error("module %s prepare: %v", name, err)
+					return
+				}
 			}
-		}
-		prepared = append(prepared, name)
+			prepared.Add(name)
+		}()
 	}
-	return prepared
+
+	wg.Wait()
+
+	return prepared.Clone()
 }
 
 func (m *CoreModules) runModules(ctx context.Context, modules []string) error {

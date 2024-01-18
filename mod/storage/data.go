@@ -2,21 +2,17 @@ package storage
 
 import (
 	"github.com/cryptopunkscc/astrald/data"
-	"time"
 )
 
 type DataManager interface {
 	Reader
 	Store
-	Index
 	ReadAll(id data.ID, opts *ReadOpts) ([]byte, error)
 	StoreBytes(bytes []byte, opts *StoreOpts) (data.ID, error)
 	AddReader(name string, reader Reader) error
 	AddStore(name string, store Store) error
-	AddIndex(name string, index Index) error
 	RemoveReader(name string) error
 	RemoveStore(name string) error
-	RemoveIndex(name string) error
 }
 
 type Reader interface {
@@ -25,10 +21,6 @@ type Reader interface {
 
 type Store interface {
 	Store(opts *StoreOpts) (DataWriter, error)
-}
-
-type Index interface {
-	IndexSince(since time.Time) []IndexEntry
 }
 
 type DataWriter interface {
@@ -54,9 +46,4 @@ type ReadOpts struct {
 
 type StoreOpts struct {
 	Alloc int
-}
-
-type IndexEntry struct {
-	ID        data.ID
-	IndexedAt time.Time
 }

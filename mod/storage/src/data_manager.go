@@ -5,8 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
-	"slices"
-	"time"
 )
 
 var _ storage.DataManager = &DataManager{}
@@ -18,7 +16,6 @@ type DataManager struct {
 
 	readers sig.Map[string, storage.Reader]
 	stores  sig.Map[string, storage.Store]
-	indexes sig.Map[string, storage.Index]
 }
 
 func NewDataManager(module *Module) *DataManager {
@@ -57,7 +54,7 @@ func (mod *DataManager) Store(opts *storage.StoreOpts) (storage.DataWriter, erro
 	for _, store := range mod.stores.Clone() {
 		w, err := store.Store(opts)
 		if err == nil {
-			return w, err
+			return NewDataWriterWrapper(mod.Module, w), err
 		}
 	}
 
@@ -81,20 +78,6 @@ func (mod *DataManager) StoreBytes(bytes []byte, opts *storage.StoreOpts) (data.
 	}
 
 	return w.Commit()
-}
-
-func (mod *DataManager) IndexSince(since time.Time) []storage.IndexEntry {
-	var list []storage.IndexEntry
-
-	for _, index := range mod.indexes.Clone() {
-		list = append(list, index.IndexSince(since)...)
-	}
-
-	slices.SortFunc(list, func(a, b storage.IndexEntry) int {
-		return a.IndexedAt.Compare(b.IndexedAt)
-	})
-
-	return list
 }
 
 func (mod *DataManager) AddReader(name string, reader storage.Reader) error {
@@ -134,27 +117,6 @@ func (mod *DataManager) RemoveStore(name string) error {
 		mod.events.Emit(storage.EventStoreRemoved{
 			Name:  name,
 			Store: store,
-		})
-	}
-	return storage.ErrNotFound
-}
-
-func (mod *DataManager) AddIndex(name string, index storage.Index) error {
-	if mod.indexes.Set(name, index) {
-		mod.events.Emit(storage.EventIndexAdded{
-			Name:  name,
-			Index: index,
-		})
-		return nil
-	}
-	return storage.ErrAlreadyExists
-}
-
-func (mod *DataManager) RemoveIndex(name string) error {
-	if index, ok := mod.indexes.Delete(name); ok {
-		mod.events.Emit(storage.EventIndexRemoved{
-			Name:  name,
-			Index: index,
 		})
 	}
 	return storage.ErrNotFound

@@ -14,7 +14,7 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"add": adm.add,
+		"index": adm.index,
 	}
 
 	return adm
@@ -33,7 +33,7 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	return errors.New("unknown command")
 }
 
-func (adm *Admin) add(term admin.Terminal, args []string) error {
+func (adm *Admin) index(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
 	}
@@ -43,7 +43,7 @@ func (adm *Admin) add(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	return adm.mod.indexZip(dataID, false)
+	return adm.mod.Index(dataID, true)
 }
 
 func (adm *Admin) ShortDescription() string {
@@ -53,7 +53,7 @@ func (adm *Admin) ShortDescription() string {
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: zip <command>\n\n")
 	term.Printf("commands:\n")
-	term.Printf("  add <dataID>               index contents of a zip file\n")
+	term.Printf("  index <dataID>             index the contents of a zip file\n")
 	term.Printf("  help                       show help\n")
 	return nil
 }

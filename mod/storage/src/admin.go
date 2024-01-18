@@ -27,7 +27,6 @@ func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"read": adm.read,
-		"list": adm.list,
 		"get":  adm.get,
 		"info": adm.info,
 		"help": adm.help,
@@ -47,23 +46,6 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	}
 
 	return errors.New("unknown command")
-}
-
-func (adm *Admin) list(term admin.Terminal, args []string) error {
-	var since = time.Time{}
-
-	var format = "%10s %-66s %s\n"
-	var files = adm.mod.Data().IndexSince(since)
-	var total int
-	term.Printf(format, admin.Header("Size"), admin.Header("ID"), admin.Header("Indexed"))
-	for _, file := range files {
-		term.Printf(format, log.DataSize(file.ID.Size), file.ID, file.IndexedAt)
-		total += int(file.ID.Size)
-	}
-
-	term.Printf("%d files, %v total\n", len(files), log.DataSize(total))
-
-	return nil
 }
 
 func (adm *Admin) read(term admin.Terminal, args []string) error {
@@ -198,20 +180,6 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	}
 	term.Println()
 
-	// list indexes
-	names = adm.mod.data.indexes.Keys()
-	slices.Sort(names)
-
-	term.Printf(f, admin.Header("Index"), admin.Header("Type"))
-	for _, name := range names {
-		v, ok := adm.mod.data.indexes.Get(name)
-		if !ok {
-			continue
-		}
-		term.Printf(f, name, reflect.TypeOf(v))
-	}
-	term.Println()
-
 	return nil
 }
 
@@ -222,9 +190,9 @@ func (adm *Admin) ShortDescription() string {
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: storage <command>\n\n")
 	term.Printf("commands:\n")
-	term.Printf("  list                                      list all indexed data\n")
 	term.Printf("  read [dataID]                             read data by ID (caution - may print binary data)\n")
 	term.Printf("  get <url>                                 download data over http(s)\n")
+	term.Printf("  info                                      show info\n")
 	term.Printf("  help                                      show help\n")
 	return nil
 }

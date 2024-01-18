@@ -50,7 +50,7 @@ func (mod *Module) dbCreateIndex(name string, typ string) (*dbIndex, error) {
 	}
 
 	switch index.Type(typ) {
-	case index.TypeSet:
+	case index.TypeSet, index.TypeUnion:
 	default:
 		return nil, errors.New("invalid index type")
 	}
@@ -64,47 +64,11 @@ func (mod *Module) dbCreateIndex(name string, typ string) (*dbIndex, error) {
 	return &row, tx.Error
 }
 
-func (mod *Module) dbDeleteIndex(name string) error {
+func (mod *Module) dbDeleteIndexByName(name string) error {
 	indexRow, err := mod.dbFindIndexByName(name)
 	if err != nil {
 		return err
 	}
-
-	//// find all entries in the index
-	//var entries []dbIndexEntry
-	//var tx = mod.db.
-	//	Where("index_id = ? and added = true", indexRow.ID).
-	//	Preload("Data").
-	//	Find(&entries)
-	//if tx.Error != nil {
-	//	return tx.Error
-	//}
-	//
-	//// mark all entries as removed
-	//for _, entry := range entries {
-	//	dataID, err := data.Parse(entry.Data.DataID)
-	//	if err != nil {
-	//		mod.log.Errorv(2, "parse '%v' error: %v", entry.Data.DataID, err)
-	//		continue
-	//	}
-	//
-	//	row, err := mod.dbEntryRemoveFromIndex(indexRow.ID, entry.DataID)
-	//	if err != nil {
-	//		mod.log.Errorv(2, "remove %v from %v: %v", entry.DataID, indexRow.ID, err)
-	//		continue
-	//	}
-	//	mod.events.Emit(storage.EventIndexEntryUpdate{
-	//		IndexName: name,
-	//		DataID:    dataID,
-	//		Added:     false,
-	//		UpdatedAt: row.UpdatedAt,
-	//	})
-	//}
-	//
-	//tx = mod.db.Model(&dbIndexEntry{}).Delete("index_id = ?", indexRow.ID)
-	//if tx.Error != nil {
-	//	return tx.Error
-	//}
 
 	var tx = mod.db.Model(&dbIndex{}).Delete("id = ?", indexRow.ID)
 	if tx.Error != nil {

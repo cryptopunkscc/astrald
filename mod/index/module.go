@@ -6,6 +6,7 @@ import (
 )
 
 const ModuleName = "index"
+const LocalNodeUnionName = "localnode"
 
 type Module interface {
 	CreateIndex(name string, typ Type) (*Info, error)
@@ -15,6 +16,9 @@ type Module interface {
 	IndexInfo(name string) (*Info, error)
 	UpdatedSince(name string, since time.Time) ([]Entry, error)
 	Contains(name string, dataID data.ID) (bool, error)
+	Find(dataID data.ID) ([]string, error)
+	GetEntry(name string, dataID data.ID) (*Entry, error)
+	AddToUnion(union string, set string) error
 }
 
 type Info struct {
@@ -33,5 +37,6 @@ type Entry struct {
 type Type string
 
 const (
-	TypeSet = Type("set")
+	TypeSet   = Type("set")
+	TypeUnion = Type("union")
 )

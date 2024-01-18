@@ -41,6 +41,18 @@ func (mod *Module) dbEntryFindByIndexID(indexID uint) ([]dbEntry, error) {
 	return rows, tx.Error
 }
 
+func (mod *Module) dbEntryCountByIndexID(indexID uint) (int, error) {
+	var count int64
+	var tx = mod.db.
+		Model(&dbEntry{}).
+		Where("index_id = ?", indexID).
+		Count(&count)
+	if tx.Error != nil {
+		return -1, tx.Error
+	}
+	return int(count), nil
+}
+
 func (mod *Module) dbEntryFindByDataID(dataID uint) ([]dbEntry, error) {
 	var rows []dbEntry
 	var tx = mod.db.Where("data_id = ?", dataID).Preload("Index").Find(&rows)

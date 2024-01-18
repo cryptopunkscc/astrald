@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/fs"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -69,15 +69,11 @@ func (w *FileWriter) Commit() (data.ID, error) {
 		os.Remove(oldPath)
 	}
 
-	info, err := os.Stat(newPath)
-	if err != nil {
-		return data.ID{}, err
-	}
-
 	if w.store != nil {
-		w.store.events.Emit(storage.EventDataAdded{
-			ID:        dataID,
-			IndexedAt: info.ModTime(),
+		w.store.index.AddToSet(nameReadWrite, dataID)
+		w.store.events.Emit(fs.EventFileAdded{
+			DataID: dataID,
+			Path:   newPath,
 		})
 	}
 

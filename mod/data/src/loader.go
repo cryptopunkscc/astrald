@@ -11,8 +11,9 @@ type Loader struct{}
 
 func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
 	mod := &Module{
-		node: node,
-		log:  log,
+		node:  node,
+		log:   log,
+		ready: make(chan struct{}),
 	}
 
 	var err error

@@ -1,15 +1,15 @@
 package zip
 
 import (
-	"archive/zip"
+	_zip "archive/zip"
 	"errors"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/zip"
 	"path/filepath"
-	"time"
 )
 
-func (mod *Module) indexZip(zipID data.ID, reindex bool) error {
+func (mod *Module) Index(zipID data.ID, reindex bool) error {
 	if mod.isIndexed(zipID) && !reindex {
 		return errors.New("already indexed")
 	}
@@ -21,9 +21,20 @@ func (mod *Module) indexZip(zipID data.ID, reindex bool) error {
 		dataID:  zipID,
 	}
 
-	reader, err := zip.NewReader(r, int64(zipID.Size))
+	reader, err := _zip.NewReader(r, int64(zipID.Size))
 	if err != nil {
 		return err
+	}
+
+	var indexName = "mod.zip.archive." + zipID.String()
+	_, err = mod.index.CreateIndex(indexName, index.TypeSet)
+	if err != nil {
+		mod.log.Error("error creating index %v: %v", indexName, err)
+	} else {
+		err = mod.index.AddToUnion(index.LocalNodeUnionName, indexName)
+		if err != nil {
+			mod.log.Error("error adding %v to localnode union: %v", indexName, err)
+		}
 	}
 
 	for _, file := range reader.File {
@@ -40,25 +51,25 @@ func (mod *Module) indexZip(zipID data.ID, reindex bool) error {
 			continue
 		}
 
-		indexedAt := time.Now()
-
 		mod.db.Create(&dbZipContent{
-			ZipID:     zipID.String(),
-			Path:      file.Name,
-			FileID:    fileID.String(),
-			IndexedAt: indexedAt,
+			ZipID:  zipID.String(),
+			Path:   file.Name,
+			FileID: fileID.String(),
 		})
 
 		mod.data.SetLabel(fileID, filepath.Base(file.Name))
 
 		mod.log.Infov(1, "indexed %s (%v)", file.Name, fileID)
 
-		mod.events.Emit(storage.EventDataAdded{
-			ID:        fileID,
-			IndexedAt: indexedAt,
-		})
-
+		mod.index.AddToSet(indexName, fileID)
 	}
+
+	err = mod.index.AddToSet(zip.ArchivesIndexName, zipID)
+	if err != nil {
+		mod.log.Error("error adding archive to %v index: %v", zip.ArchivesIndexName, err)
+	}
+
+	mod.events.Emit(zip.EventArchiveIndexed{DataID: zipID})
 
 	return nil
 }

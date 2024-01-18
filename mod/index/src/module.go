@@ -3,7 +3,6 @@ package index
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/index"
@@ -51,7 +50,32 @@ func (mod *Module) CreateIndex(name string, typ index.Type) (*index.Info, error)
 }
 
 func (mod *Module) DeleteIndex(name string) error {
-	var err = mod.dbDeleteIndex(name)
+	indexRow, err := mod.dbFindIndexByName(name)
+	if err != nil {
+		return err
+	}
+
+	// remove all entries from the index
+	entryRows, err := mod.dbEntryFindUpdatedSince(indexRow.ID, time.Time{})
+	if err != nil {
+		return err
+	}
+
+	for _, row := range entryRows {
+		dataID, err := data.Parse(row.Data.DataID)
+		if err != nil {
+			continue
+		}
+
+		mod.removeFromIndex(indexRow, dataID)
+	}
+
+	var tx = mod.db.Model(&dbUnion{}).Delete("set_id = ?", indexRow.ID)
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	err = mod.dbDeleteIndexByName(name)
 	if err != nil {
 		return err
 	}
@@ -70,19 +94,28 @@ func (mod *Module) AddToSet(name string, dataID data.ID) error {
 		return errors.New("index is not a set")
 	}
 
+	return mod.addToIndex(indexRow, dataID)
+}
+
+func (mod *Module) addToIndex(indexRow *dbIndex, dataID data.ID) error {
 	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID.String())
 	if err != nil {
-		return fmt.Errorf("cannot get data row id: %w", err)
+		return err
 	}
 
 	row, err := mod.dbEntryAddToIndex(indexRow.ID, dataRow.ID)
 	if err == nil {
-		mod.events.Emit(index.EventIndexEntryUpdate{
-			IndexName: name,
+		mod.events.Emit(index.EventEntryUpdate{
+			IndexName: indexRow.Name,
 			DataID:    dataID,
 			Added:     true,
 			UpdatedAt: row.UpdatedAt,
 		})
+	}
+
+	unions, err := mod.dbUnionFindBySetID(indexRow.ID)
+	for _, union := range unions {
+		mod.addToIndex(union.Union, dataID)
 	}
 
 	return err
@@ -97,19 +130,38 @@ func (mod *Module) RemoveFromSet(name string, dataID data.ID) error {
 		return errors.New("index is not a set")
 	}
 
+	return mod.removeFromIndex(indexRow, dataID)
+}
+
+func (mod *Module) removeFromIndex(indexRow *dbIndex, dataID data.ID) error {
 	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID.String())
 	if err != nil {
 		return err
 	}
 
-	row, err := mod.dbEntryRemoveFromIndex(indexRow.ID, dataRow.ID)
-	if err == nil {
-		mod.events.Emit(index.EventIndexEntryUpdate{
-			IndexName: name,
-			DataID:    dataID,
-			Added:     false,
-			UpdatedAt: row.UpdatedAt,
-		})
+	entryRow, err := mod.dbEntryRemoveFromIndex(indexRow.ID, dataRow.ID)
+	if err != nil {
+		return err
+	}
+
+	mod.events.Emit(index.EventEntryUpdate{
+		IndexName: indexRow.Name,
+		DataID:    dataID,
+		Added:     false,
+		UpdatedAt: entryRow.UpdatedAt,
+	})
+
+	unions, err := mod.dbUnionFindBySetID(indexRow.ID)
+	for _, union := range unions {
+		found, err := mod.dbUnionContains(union.UnionID, dataRow.ID)
+		switch {
+		case err != nil:
+			mod.log.Error("database error: %v", err)
+			continue
+		case found:
+			continue
+		}
+		mod.removeFromIndex(union.Union, dataID)
 	}
 
 	return err
@@ -248,4 +300,72 @@ func (mod *Module) UpdatedSince(name string, since time.Time) ([]index.Entry, er
 	}
 
 	return updates, nil
+}
+
+func (mod *Module) AddToUnion(union string, set string) error {
+	unionRow, err := mod.dbFindIndexByName(union)
+	if err != nil {
+		return err
+	}
+
+	setRow, err := mod.dbFindIndexByName(set)
+	if err != nil {
+		return err
+	}
+
+	err = mod.dbUnionCreate(unionRow.ID, setRow.ID)
+	if err != nil {
+		return err
+	}
+
+	entries, err := mod.dbEntryFindUpdatedSince(setRow.ID, time.Time{})
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		if !entry.Added {
+			continue
+		}
+
+		dataID, err := data.Parse(entry.Data.DataID)
+		if err != nil {
+			continue
+		}
+
+		err = mod.addToIndex(unionRow, dataID)
+		if err != nil {
+			mod.log.Errorv(2,
+				"error adding %v to union %v: %v",
+				dataID,
+				unionRow.Name,
+				err,
+			)
+		}
+	}
+
+	return nil
+}
+
+func (mod *Module) GetEntry(name string, dataID data.ID) (*index.Entry, error) {
+	indexRow, err := mod.dbFindIndexByName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID.String())
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := mod.dbEntryFind(indexRow.ID, dataRow.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &index.Entry{
+		DataID:    dataID,
+		Added:     row.Added,
+		UpdatedAt: row.UpdatedAt,
+	}, nil
 }

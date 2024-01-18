@@ -6,16 +6,27 @@ import (
 )
 
 const ModuleName = "fs"
+const IndexNameAll = "mod.fs.all"
 
 type Module interface {
 	Find(id data.ID) []string
 }
 
-type EventLocalFileChanged struct {
+type EventFileChanged struct {
 	Path      string
 	OldID     data.ID
 	NewID     data.ID
 	IndexedAt time.Time
+}
+
+type EventFileAdded struct {
+	Path   string
+	DataID data.ID
+}
+
+type EventFileRemoved struct {
+	Path   string
+	DataID data.ID
 }
 
 const FileDescriptorType = "mod.fs.file"

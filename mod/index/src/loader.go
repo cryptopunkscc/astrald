@@ -3,7 +3,6 @@ package index
 import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/index"
-	"github.com/cryptopunkscc/astrald/mod/wallet"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -18,7 +17,7 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		assets: assets,
 	}
 
-	_ = assets.LoadYAML(wallet.ModuleName, &mod.config)
+	_ = assets.LoadYAML(index.ModuleName, &mod.config)
 
 	mod.events.SetParent(node.Events())
 
@@ -27,16 +26,23 @@ func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (mod
 		return nil, err
 	}
 
-	err = mod.db.AutoMigrate(&dbIndex{}, &dbEntry{})
+	err = mod.db.AutoMigrate(&dbIndex{}, &dbEntry{}, &dbUnion{})
 	if err != nil {
 		return nil, err
+	}
+
+	if _, err := mod.IndexInfo(index.LocalNodeUnionName); err != nil {
+		_, err = mod.CreateIndex(index.LocalNodeUnionName, index.TypeUnion)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return mod, err
 }
 
 func init() {
-	if err := modules.RegisterModule(wallet.ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(index.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

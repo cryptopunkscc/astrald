@@ -2,14 +2,12 @@ package zip
 
 import (
 	_data "github.com/cryptopunkscc/astrald/data"
-	"time"
 )
 
 type dbZipContent struct {
-	ZipID     string
-	Path      string
-	FileID    string
-	IndexedAt time.Time
+	ZipID  string `gorm:"primaryKey"`
+	Path   string `gorm:"primaryKey"`
+	FileID string `gorm:"index"`
 }
 
 func (dbZipContent) TableName() string { return "zip_contents" }

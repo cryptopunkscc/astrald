@@ -2,24 +2,8 @@ package zip
 
 import "github.com/cryptopunkscc/astrald/data"
 
-const ArchiveDescriptorType = "mod.zip.archive"
+const ArchivesIndexName = "mod.zip.archives"
 
-type ArchiveDescriptor struct {
-	Files []ArchiveFile
-}
-
-type ArchiveFile struct {
-	DataID data.ID
-	Path   string
-}
-
-const MemberDescriptorType = "mod.zip.member"
-
-type MemberDescriptor struct {
-	Memberships []Membership
-}
-
-type Membership struct {
-	ZipID data.ID
-	Path  string
+type Module interface {
+	Index(zipID data.ID, reindex bool) error
 }

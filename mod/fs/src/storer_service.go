@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"syscall"
-	"time"
 )
 
 type StoreService struct {
@@ -110,14 +109,15 @@ func (srv *StoreService) Delete(dataID data.ID) error {
 	for _, dir := range srv.paths.Clone() {
 		err := srv.deletePath(dir, dataID)
 		if err == nil {
+			srv.events.Emit(fs.EventFileRemoved{
+				DataID: dataID,
+				Path:   dir,
+			})
 			deleted = true
 		}
 	}
 
 	if deleted {
-		srv.events.Emit(storage.EventDataRemoved{
-			ID: dataID,
-		})
 		return nil
 	}
 
@@ -136,57 +136,7 @@ func (srv *StoreService) deletePath(dir string, dataID data.ID) error {
 		return storage.ErrNotFound
 	}
 
-	os.Remove(path)
-
-	return nil
-}
-
-func (srv *StoreService) IndexSince(since time.Time) []storage.IndexEntry {
-	var list []storage.IndexEntry
-
-	for _, dir := range srv.paths.Clone() {
-		list = append(list, srv.readDirSince(dir, since)...)
-	}
-
-	slices.SortFunc(list, func(a, b storage.IndexEntry) int {
-		return a.IndexedAt.Compare(b.IndexedAt)
-	})
-
-	return list
-}
-
-func (srv *StoreService) readDirSince(dir string, since time.Time) []storage.IndexEntry {
-	var list []storage.IndexEntry
-
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil
-	}
-
-	for _, entry := range entries {
-		if !entry.Type().IsRegular() {
-			continue
-		}
-
-		dataID, err := data.Parse(entry.Name())
-		if err != nil {
-			continue
-		}
-
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-
-		if info.ModTime().After(since) {
-			list = append(list, storage.IndexEntry{
-				ID:        dataID,
-				IndexedAt: info.ModTime(),
-			})
-		}
-	}
-
-	return list
+	return os.Remove(path)
 }
 
 func DiskUsage(path string) (usage *DiskUsageInfo, err error) {

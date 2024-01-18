@@ -34,5 +34,5 @@ func (srv *IndexerService) autoIndexZip(zipID data.ID) error {
 	}
 	found.Close()
 
-	return srv.indexZip(zipID, false)
+	return srv.Index(zipID, false)
 }

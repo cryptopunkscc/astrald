@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -9,6 +10,7 @@ import (
 )
 
 const ModuleName = "data"
+const IdentifiedDataIndexName = "mod.data.identified"
 
 type Module interface {
 	// Events returns module's event queue
@@ -26,6 +28,8 @@ type Module interface {
 
 	SetLabel(data.ID, string)
 	GetLabel(data.ID) string
+
+	Ready(ctx context.Context) error
 }
 
 type Describer interface {
@@ -60,4 +64,6 @@ type TypeInfo struct {
 	Type      string
 }
 
-type EventDataIndexed TypeInfo
+type EventDataIdentified TypeInfo
+
+var ErrAlreadyIndexed = errors.New("already indexed")

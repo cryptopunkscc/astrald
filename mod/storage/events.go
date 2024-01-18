@@ -2,10 +2,8 @@ package storage
 
 import "github.com/cryptopunkscc/astrald/data"
 
-type EventDataAdded IndexEntry
-
-type EventDataRemoved struct {
-	ID data.ID
+type EventDataCommitted struct {
+	DataID data.ID
 }
 
 type EventReaderAdded struct {
@@ -26,14 +24,4 @@ type EventStoreAdded struct {
 type EventStoreRemoved struct {
 	Name string
 	Store
-}
-
-type EventIndexAdded struct {
-	Name string
-	Index
-}
-
-type EventIndexRemoved struct {
-	Name string
-	Index
 }

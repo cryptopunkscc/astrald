@@ -17,6 +17,7 @@ func NewAdmin(mod *Module) *Admin {
 	var cmd = &Admin{mod: mod}
 	cmd.cmds = map[string]func(admin.Terminal, []string) error{
 		"list":      cmd.list,
+		"index":     cmd.index,
 		"describe":  cmd.describe,
 		"set_label": cmd.setLabel,
 		"get_label": cmd.getLabel,
@@ -42,6 +43,19 @@ func (cmd *Admin) list(term admin.Terminal, args []string) error {
 	}
 
 	return nil
+}
+
+func (cmd *Admin) index(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	dataID, err := data.Parse(args[0])
+	if err != nil {
+		return err
+	}
+
+	return cmd.mod.Index(dataID)
 }
 
 func (cmd *Admin) describe(term admin.Terminal, args []string) error {

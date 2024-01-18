@@ -15,9 +15,15 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.storage, _ = modules.Load[storage.Module](mod.node, storage.ModuleName)
-	mod.keys, _ = modules.Load[keys.Module](mod.node, keys.ModuleName)
+	mod.storage, err = modules.Load[storage.Module](mod.node, storage.ModuleName)
+	if err != nil {
+		return err
+	}
 
+	mod.keys, err = modules.Load[keys.Module](mod.node, keys.ModuleName)
+	if err != nil {
+		return err
+	}
 	_ = mod.data.AddDescriber(mod)
 
 	return nil
