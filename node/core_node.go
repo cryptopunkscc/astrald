@@ -12,6 +12,9 @@ import (
 	"github.com/cryptopunkscc/astrald/node/resolver"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/node/tracker"
+	"github.com/cryptopunkscc/astrald/resources"
+	"gorm.io/gorm"
+	"os"
 	"time"
 )
 
@@ -20,11 +23,10 @@ const logTag = "node"
 var _ Node = &CoreNode{}
 
 type CoreNode struct {
-	config   Config
 	identity id.Identity
-	assets   assets.Store
-	keys     assets.KeyStore
+	config   Config
 
+	assets   *assets.CoreAssets
 	router   *router.CoreRouter
 	infra    *infra.CoreInfra
 	network  *network.CoreNetwork
@@ -35,44 +37,42 @@ type CoreNode struct {
 	routes   *router.PrefixRouter
 
 	startedAt time.Time
-	rootDir   string
 
 	logConfig LogConfig
 	logFields
 }
 
 // NewCoreNode instantiates a new node
-func NewCoreNode(rootDir string) (*CoreNode, error) {
+func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error) {
 	var err error
+
+	if nodeID.PrivateKey() == nil {
+		return nil, errors.New("private key required")
+	}
+
+	if res == nil {
+		res = resources.NewMemResources()
+	}
+
 	var node = &CoreNode{
-		config:  defaultConfig,
-		rootDir: rootDir,
-		routes:  router.NewPrefixRouter(true),
+		identity: nodeID,
+		config:   defaultConfig,
+		assets:   assets.NewCoreAssets(res),
+		routes:   router.NewPrefixRouter(true),
 	}
 
 	// basic logs
 	node.setupLogs()
 
-	// assets
-	node.assets, err = assets.NewFileStore(rootDir, node.log.Tag("assets"))
-	if err != nil {
-		return nil, err
-	}
-
-	node.keys, err = node.assets.KeyStore()
-	if err != nil {
-		return nil, err
-	}
-
 	// log config
-	if err := node.loadLogConfig(node.assets); err != nil {
+	if err := node.loadLogConfig(); err != nil {
 		return nil, fmt.Errorf("logger error: %w", err)
 	}
 
 	// node config
 	err = node.assets.LoadYAML(configName, &node.config)
 	if err != nil {
-		if !errors.Is(err, assets.ErrNotFound) {
+		if !errors.Is(err, resources.ErrNotFound) {
 			return nil, fmt.Errorf("error loading config: %w", err)
 		}
 	}
@@ -89,9 +89,10 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 		return nil, err
 	}
 
-	// identity
-	if err := node.setupIdentity(); err != nil {
-		return nil, fmt.Errorf("error setting up identity: %w", err)
+	// check if our alias is set
+	err = node.checkNodeAlias()
+	if err != nil {
+		node.log.Error("checkNodeAlias: %v", err)
 	}
 
 	// resolver
@@ -108,7 +109,7 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	if enabled == nil {
 		enabled = modules.RegisteredModules()
 	}
-	node.modules, err = modules.NewCoreModules(node, enabled, node.assets, node.log)
+	node.modules, err = modules.NewCoreModules(node, enabled, node.assets.WithPrefix("mod_"), node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
@@ -119,6 +120,27 @@ func NewCoreNode(rootDir string) (*CoreNode, error) {
 	node.router.SetLogRouteTrace(node.config.LogRouteTrace)
 
 	return node, nil
+}
+
+func (node *CoreNode) checkNodeAlias() error {
+	alias, err := node.tracker.GetAlias(node.identity)
+	if (err != nil) && (!errors.Is(err, gorm.ErrRecordNotFound)) {
+		return err
+	}
+	if alias != "" {
+		return nil
+	}
+
+	alias = "localnode"
+
+	hostname, err := os.Hostname()
+	if err == nil {
+		if hostname != "" && hostname != "localhost" {
+			alias = hostname
+		}
+	}
+
+	return node.tracker.SetAlias(node.identity, alias)
 }
 
 func (node *CoreNode) Conns() *router.ConnSet {
@@ -166,8 +188,4 @@ func (node *CoreNode) Events() *events.Queue {
 
 func (node *CoreNode) StartedAt() time.Time {
 	return node.startedAt
-}
-
-func (node *CoreNode) RootDir() string {
-	return node.rootDir
 }

@@ -28,7 +28,7 @@ type EndpointParser interface {
 
 // NewCoreTracker returns a new instance of a CoreTracker. It will use db for persistency and the provided unpacker
 // to unpack addresses stored in the database.
-func NewCoreTracker(assets assets.Store, parser EndpointParser, log *log.Logger, events *events.Queue) (*CoreTracker, error) {
+func NewCoreTracker(assets assets.Assets, parser EndpointParser, log *log.Logger, events *events.Queue) (*CoreTracker, error) {
 	var err error
 	var tracker = &CoreTracker{
 		parser: parser,

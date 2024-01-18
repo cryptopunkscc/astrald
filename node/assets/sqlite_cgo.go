@@ -5,5 +5,5 @@ package assets
 import "gorm.io/driver/sqlite"
 
 func init() {
-	DBOpener = sqlite.Open
+	dbOpen = sqlite.Open
 }

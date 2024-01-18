@@ -13,7 +13,7 @@ var _ Infra = &CoreInfra{}
 
 type CoreInfra struct {
 	config Config
-	assets assets.Store
+	assets assets.Assets
 	log    *log.Logger
 
 	endpoints []EndpointLister
@@ -23,7 +23,7 @@ type CoreInfra struct {
 	mu        sync.RWMutex
 }
 
-func NewCoreInfra(assets assets.Store, log *log.Logger) (*CoreInfra, error) {
+func NewCoreInfra(assets assets.Assets, log *log.Logger) (*CoreInfra, error) {
 	var i = &CoreInfra{
 		assets:    assets,
 		dialers:   make(map[string]Dialer),

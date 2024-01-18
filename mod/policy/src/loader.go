@@ -9,7 +9,7 @@ import (
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Store, log *_log.Logger) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Assets, log *_log.Logger) (modules.Module, error) {
 	mod := &Module{
 		node:     node,
 		log:      log,

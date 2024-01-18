@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/assets"
 	"os"
 	"strings"
 	"time"
@@ -72,14 +71,6 @@ func (node *CoreNode) setupLogs() {
 
 		var color = log.Cyan
 
-		if ks, err := node.assets.KeyStore(); err == nil {
-			if identity, err := ks.Find(identity); err == nil {
-				if identity.PrivateKey() != nil {
-					color = log.Green
-				}
-			}
-		}
-
 		if node.identity.IsEqual(identity) {
 			color = log.BrightGreen
 		}
@@ -145,8 +136,8 @@ func (node *CoreNode) setupLogs() {
 	})
 }
 
-func (node *CoreNode) loadLogConfig(assets assets.Store) error {
-	if err := assets.LoadYAML("log", &node.logConfig); err != nil {
+func (node *CoreNode) loadLogConfig() error {
+	if err := node.assets.LoadYAML("log", &node.logConfig); err != nil {
 		return nil
 	}
 

@@ -21,7 +21,7 @@ type Module struct {
 	node     node.Node
 	events   events.Queue
 	config   Config
-	assets   assets.Store
+	assets   assets.Assets
 	log      *log.Logger
 	services sig.Set[discovery.ServiceDiscoverer]
 	data     sig.Set[discovery.DataDiscoverer]

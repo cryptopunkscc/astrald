@@ -10,7 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/data"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/assets"
 	"gorm.io/gorm"
 	"net"
 	"os"
@@ -23,7 +22,6 @@ var _ apphost.Module = &Module{}
 type Module struct {
 	config Config
 	node   node.Node
-	keys   assets.KeyStore
 	data   data.Module
 	sdp    discovery.Module
 	log    *log.Logger

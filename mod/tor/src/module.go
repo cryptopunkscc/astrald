@@ -14,7 +14,7 @@ const defaultListenPort = 1791
 type Module struct {
 	config Config
 	node   node.Node
-	assets assets.Store
+	assets assets.Assets
 	log    *log.Logger
 	ctx    context.Context
 	proxy  proxy.ContextDialer

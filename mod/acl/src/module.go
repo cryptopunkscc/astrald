@@ -18,7 +18,7 @@ type Module struct {
 	config  Config
 	node    node.Node
 	log     *log.Logger
-	assets  assets.Store
+	assets  assets.Assets
 	storage storage.Module
 	db      *gorm.DB
 }

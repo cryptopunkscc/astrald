@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tor"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"strings"
 	"sync"
@@ -16,7 +15,6 @@ import (
 
 type Module struct {
 	node    modules.Node
-	assets  assets.Store
 	config  Config
 	log     *log.Logger
 	ctx     context.Context

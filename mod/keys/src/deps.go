@@ -1,7 +1,9 @@
 package keys
 
 import (
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -20,6 +22,10 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.data.AddDescriber(mod)
+
+	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
+		adm.AddCommand(keys.ModuleName, NewAdmin(mod))
+	}
 
 	return nil
 }

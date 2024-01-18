@@ -18,11 +18,11 @@ type CoreModules struct {
 	loaded  map[string]Module
 	enabled []string
 	node    Node
-	assets  assets.Store
+	assets  assets.Assets
 	log     *log.Logger
 }
 
-func NewCoreModules(node Node, mods []string, assets assets.Store, log *log.Logger) (*CoreModules, error) {
+func NewCoreModules(node Node, mods []string, assets assets.Assets, log *log.Logger) (*CoreModules, error) {
 	m := &CoreModules{
 		log:     log.Tag("modules"),
 		assets:  assets,
@@ -160,7 +160,7 @@ func (m *CoreModules) loadModule(name string) error {
 		return errors.New("module not found")
 	}
 
-	mod, err := loader.Load(m.node, assets.NewPrefixStore(m.assets, "mod_"), m.log.Tag(name))
+	mod, err := loader.Load(m.node, m.assets, m.log.Tag(name))
 	if err != nil {
 		return err
 	}

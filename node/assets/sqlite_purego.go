@@ -5,5 +5,5 @@ package assets
 import "github.com/glebarez/sqlite"
 
 func init() {
-	DBOpener = sqlite.Open
+	dbOpen = sqlite.Open
 }

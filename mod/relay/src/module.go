@@ -25,7 +25,7 @@ var _ relay.Module = &Module{}
 
 type Module struct {
 	node     node.Node
-	assets   assets.Store
+	assets   assets.Assets
 	log      *log.Logger
 	config   Config
 	ctx      context.Context

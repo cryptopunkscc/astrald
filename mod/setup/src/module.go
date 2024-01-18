@@ -15,7 +15,7 @@ type Module struct {
 	config Config
 	node   node.Node
 	log    *log.Logger
-	assets assets.Store
+	assets assets.Assets
 
 	user    user.Module
 	keys    keys.Module

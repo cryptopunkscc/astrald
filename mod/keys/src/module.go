@@ -24,7 +24,7 @@ type Module struct {
 	config  Config
 	node    node.Node
 	log     *log.Logger
-	assets  assets.Store
+	assets  assets.Assets
 	storage storage.Module
 	data    data.Module
 	db      *gorm.DB
@@ -52,11 +52,6 @@ func (mod *Module) DescribeData(ctx context.Context, dataID _data.ID, opts *data
 var adc0PrivateKey = data.ADC0Header(keys.PrivateKeyDataType)
 
 func (mod *Module) Run(ctx context.Context) error {
-	err := mod.importKeys()
-	if err != nil {
-		mod.log.Error("error importing keys: %v", err)
-	}
-
 	return tasks.Group(
 		&IndexerService{Module: mod},
 		&Service{Module: mod},
@@ -192,44 +187,4 @@ func (mod *Module) Sign(identity id.Identity, hash []byte) ([]byte, error) {
 	}
 
 	return ecdsa.SignASN1(rand.Reader, identity.PrivateKey().ToECDSA(), hash)
-}
-
-func (mod *Module) importKeys() error {
-	store, err := mod.assets.KeyStore()
-	if err != nil {
-		return err
-	}
-
-	all, err := store.All()
-	if err != nil {
-		return err
-	}
-
-	for _, key := range all {
-		if key.PrivateKey() == nil {
-			continue
-		}
-
-		pk := keys.PrivateKey{
-			Type:  keys.KeyTypeIdentity,
-			Bytes: key.PrivateKey().Serialize(),
-		}
-
-		w, err := mod.storage.Data().Store(&storage.StoreOpts{Alloc: 70})
-		if err != nil {
-			return err
-		}
-
-		err = cslq.Encode(w, "vv", data.ADC0Header(keys.PrivateKeyDataType), &pk)
-		if err != nil {
-			continue
-		}
-
-		_, err = w.Commit()
-		if err != nil {
-			mod.log.Errorv(1, "error importing private key %v: %v", key, err)
-		}
-	}
-
-	return nil
 }

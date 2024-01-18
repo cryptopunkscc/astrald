@@ -8,7 +8,7 @@ import (
 )
 
 type ModuleLoader interface {
-	Load(Node, assets.Store, *log.Logger) (Module, error)
+	Load(Node, assets.Assets, *log.Logger) (Module, error)
 }
 
 type Module interface {

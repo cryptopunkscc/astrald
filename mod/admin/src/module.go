@@ -26,7 +26,7 @@ const ServiceName = "admin"
 type Module struct {
 	config   Config
 	node     node.Node
-	assets   assets.Store
+	assets   assets.Assets
 	admins   sig.Set[string]
 	commands map[string]admin.Command
 	log      *log.Logger

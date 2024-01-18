@@ -13,7 +13,7 @@ const ModuleName = "tor"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Store, logger *log.Logger) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Assets, logger *log.Logger) (modules.Module, error) {
 	mod := &Module{
 		node:   node,
 		log:    logger,

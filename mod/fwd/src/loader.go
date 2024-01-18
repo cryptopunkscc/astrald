@@ -10,10 +10,9 @@ const ModuleName = "fwd"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Store, log *log.Logger) (modules.Module, error) {
+func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (modules.Module, error) {
 	mod := &Module{
 		node:    node,
-		assets:  assets,
 		config:  defaultConfig,
 		log:     log,
 		servers: make(map[*ServerRunner]struct{}),
