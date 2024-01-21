@@ -10,6 +10,8 @@ type LogConfig struct {
 	LogFile       string            `yaml:"log_file,omitempty"`
 }
 
+var defaultLogConfig = LogConfig{}
+
 func (c LogConfig) isIncluded(event string) bool {
 	if len(c.IncludeEvents) == 0 {
 		return false

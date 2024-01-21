@@ -137,6 +137,8 @@ func (node *CoreNode) setupLogs() {
 }
 
 func (node *CoreNode) loadLogConfig() error {
+	node.logConfig = defaultLogConfig
+
 	if err := node.assets.LoadYAML("log", &node.logConfig); err != nil {
 		return nil
 	}

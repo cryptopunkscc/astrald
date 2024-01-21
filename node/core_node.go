@@ -57,12 +57,13 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 	var node = &CoreNode{
 		identity: nodeID,
 		config:   defaultConfig,
-		assets:   assets.NewCoreAssets(res),
 		routes:   router.NewPrefixRouter(true),
 	}
 
 	// basic logs
 	node.setupLogs()
+
+	node.assets = assets.NewCoreAssets(res, nil)
 
 	// log config
 	if err := node.loadLogConfig(); err != nil {

@@ -18,15 +18,13 @@ func (mod *Module) dbUnionCreate(unionID uint, setID uint) error {
 	return tx.Error
 }
 
-func (mod *Module) dbUnionFindBySetID(setID uint) ([]dbUnion, error) {
-	var rows []dbUnion
+func (mod *Module) dbUnionDelete(unionID uint, setID uint) error {
+	var tx = mod.db.Delete(&dbUnion{
+		SetID:   setID,
+		UnionID: unionID,
+	})
 
-	var tx = mod.db.
-		Where("set_id = ?", setID).
-		Preload("Union").
-		Find(&rows)
-
-	return rows, tx.Error
+	return tx.Error
 }
 
 func (mod *Module) dbUnionFindByUnionID(unionID uint) ([]dbUnion, error) {
@@ -38,20 +36,4 @@ func (mod *Module) dbUnionFindByUnionID(unionID uint) ([]dbUnion, error) {
 		Find(&rows)
 
 	return rows, tx.Error
-}
-
-func (mod *Module) dbUnionContains(unionID uint, dataID uint) (bool, error) {
-	unions, err := mod.dbUnionFindByUnionID(unionID)
-	if err != nil {
-		return false, err
-	}
-
-	for _, union := range unions {
-		entry, err := mod.dbEntryFind(union.SetID, dataID)
-		if (err == nil) && entry.Added {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }

@@ -103,22 +103,7 @@ func (mod *Module) addToIndex(indexRow *dbIndex, dataID data.ID) error {
 		return err
 	}
 
-	row, err := mod.dbEntryAddToIndex(indexRow.ID, dataRow.ID)
-	if err == nil {
-		mod.events.Emit(index.EventEntryUpdate{
-			IndexName: indexRow.Name,
-			DataID:    dataID,
-			Added:     true,
-			UpdatedAt: row.UpdatedAt,
-		})
-	}
-
-	unions, err := mod.dbUnionFindBySetID(indexRow.ID)
-	for _, union := range unions {
-		mod.addToIndex(union.Union, dataID)
-	}
-
-	return err
+	return mod.dbIndexAddDataID([]uint{indexRow.ID}, dataRow.ID)
 }
 
 func (mod *Module) RemoveFromSet(name string, dataID data.ID) error {
@@ -139,32 +124,7 @@ func (mod *Module) removeFromIndex(indexRow *dbIndex, dataID data.ID) error {
 		return err
 	}
 
-	entryRow, err := mod.dbEntryRemoveFromIndex(indexRow.ID, dataRow.ID)
-	if err != nil {
-		return err
-	}
-
-	mod.events.Emit(index.EventEntryUpdate{
-		IndexName: indexRow.Name,
-		DataID:    dataID,
-		Added:     false,
-		UpdatedAt: entryRow.UpdatedAt,
-	})
-
-	unions, err := mod.dbUnionFindBySetID(indexRow.ID)
-	for _, union := range unions {
-		found, err := mod.dbUnionContains(union.UnionID, dataRow.ID)
-		switch {
-		case err != nil:
-			mod.log.Error("database error: %v", err)
-			continue
-		case found:
-			continue
-		}
-		mod.removeFromIndex(union.Union, dataID)
-	}
-
-	return err
+	return mod.dbIndexRemoveDataID([]uint{indexRow.ID}, dataRow.ID)
 }
 
 func (mod *Module) IndexInfo(name string) (*index.Info, error) {
@@ -302,13 +262,13 @@ func (mod *Module) UpdatedSince(name string, since time.Time) ([]index.Entry, er
 	return updates, nil
 }
 
-func (mod *Module) AddToUnion(union string, set string) error {
+func (mod *Module) AddToUnion(union string, index string) error {
 	unionRow, err := mod.dbFindIndexByName(union)
 	if err != nil {
 		return err
 	}
 
-	setRow, err := mod.dbFindIndexByName(set)
+	setRow, err := mod.dbFindIndexByName(index)
 	if err != nil {
 		return err
 	}
@@ -341,6 +301,46 @@ func (mod *Module) AddToUnion(union string, set string) error {
 				unionRow.Name,
 				err,
 			)
+		}
+	}
+
+	return nil
+}
+
+func (mod *Module) RemoveFromUnion(union string, index string) error {
+	unionRow, err := mod.dbFindIndexByName(union)
+	if err != nil {
+		return err
+	}
+
+	indexRow, err := mod.dbFindIndexByName(index)
+	if err != nil {
+		return err
+	}
+
+	err = mod.dbUnionDelete(unionRow.ID, indexRow.ID)
+	if err != nil {
+		return err
+	}
+
+	var dataIDs []uint
+
+	err = mod.db.
+		Model(&dbEntry{}).
+		Where("index_id = ? and added = true", indexRow.ID).
+		Select("data_id").
+		Find(&dataIDs).Error
+	if err != nil {
+		return err
+	}
+
+	for _, dataID := range dataIDs {
+		found, err := mod.dbUnionSubsetsContain(unionRow.ID, dataID)
+		if err != nil {
+			return err
+		}
+		if !found {
+			mod.dbIndexRemoveDataID([]uint{unionRow.ID}, dataID)
 		}
 	}
 

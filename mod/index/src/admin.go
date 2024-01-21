@@ -21,17 +21,18 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"create":    adm.create,
-		"delete":    adm.delete,
-		"list":      adm.list,
-		"add":       adm.add,
-		"remove":    adm.remove,
-		"add_union": adm.addUnion,
-		"info":      adm.info,
-		"show":      adm.show,
-		"find":      adm.find,
-		"contains":  adm.contains,
-		"help":      adm.help,
+		"create":       adm.create,
+		"delete":       adm.delete,
+		"list":         adm.list,
+		"add":          adm.add,
+		"remove":       adm.remove,
+		"add_union":    adm.addUnion,
+		"remove_union": adm.removeUnion,
+		"info":         adm.info,
+		"show":         adm.show,
+		"find":         adm.find,
+		"contains":     adm.contains,
+		"help":         adm.help,
 	}
 
 	return adm
@@ -152,6 +153,14 @@ func (adm *Admin) addUnion(term admin.Terminal, args []string) error {
 	}
 
 	return adm.mod.AddToUnion(args[0], args[1])
+}
+
+func (adm *Admin) removeUnion(term admin.Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("missing argument")
+	}
+
+	return adm.mod.RemoveFromUnion(args[0], args[1])
 }
 
 func (adm *Admin) contains(term admin.Terminal, args []string) error {
