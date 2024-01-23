@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
@@ -103,7 +104,7 @@ func (mod *Module) discoverUsers(ctx context.Context) {
 func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
 	var r = bytes.NewReader(certBytes)
 
-	var dataType data.ADC0Header
+	var dataType adc.Header
 	err := cslq.Decode(r, "v", &dataType)
 	if err != nil {
 		return err

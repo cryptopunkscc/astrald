@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"time"
 )
@@ -18,11 +19,16 @@ func (mod *Module) IndexCert(dataID data.ID) error {
 		return relay.ErrCertAlreadyIndexed
 	}
 
-	dataType, r, err := mod.data.OpenADC0(dataID)
+	r, err := mod.storage.Data().Read(dataID, nil)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
+
+	dataType, err := adc.ReadHeader(r)
+	if err != nil {
+		return err
+	}
 
 	switch dataType {
 	case relay.RelayCertType:
@@ -55,7 +61,13 @@ func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction
 	}
 
 	// create a data writer
-	w, err := mod.data.StoreADC0(relay.RelayCertType, 0)
+	w, err := mod.storage.Data().Store(nil)
+	if err != nil {
+		return data.ID{}, err
+	}
+
+	// write data type
+	err = adc.WriteHeader(w, relay.RelayCertType)
 	if err != nil {
 		return data.ID{}, err
 	}
@@ -159,11 +171,16 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 }
 
 func (mod *Module) LoadCert(dataID data.ID) (*relay.RelayCert, error) {
-	dataType, r, err := mod.data.OpenADC0(dataID)
+	r, err := mod.storage.Data().Read(dataID, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
+
+	dataType, err := adc.ReadHeader(r)
+	if err != nil {
+		return nil, err
+	}
 
 	switch dataType {
 	case relay.RelayCertType:

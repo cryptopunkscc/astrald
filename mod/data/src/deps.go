@@ -36,7 +36,7 @@ func (mod *Module) LoadDependencies() error {
 	go events.Handle(context.Background(), mod.node.Events(),
 		func(ctx context.Context, event index.EventEntryUpdate) error {
 			if event.IndexName == index.LocalNodeUnionName && event.Added {
-				mod.Index(event.DataID)
+				mod.Identify(event.DataID)
 			}
 			return nil
 		})

@@ -34,7 +34,7 @@ func (mod *Module) RemoveDescriber(describer data.Describer) error {
 func (mod *Module) describe(dataID _data.ID) []data.Descriptor {
 	var descs []data.Descriptor
 
-	row, err := mod.findByDataID(dataID)
+	row, err := mod.dbDataTypeFindByDataID(dataID.String())
 	if err == nil {
 		descs = append(descs, data.Descriptor{
 			Type: data.TypeDescriptorType,

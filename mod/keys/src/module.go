@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/data"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -49,7 +50,7 @@ func (mod *Module) DescribeData(ctx context.Context, dataID _data.ID, opts *data
 	return desc
 }
 
-var adc0PrivateKey = data.ADC0Header(keys.PrivateKeyDataType)
+var privateKeyHeader = adc.Header(keys.PrivateKeyDataType)
 
 func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
@@ -93,7 +94,12 @@ func (mod *Module) SaveKey(key id.Identity) (_data.ID, error) {
 		return _data.ID{}, err
 	}
 
-	err = cslq.Encode(w, "vv", &adc0PrivateKey, &pk)
+	err = adc.WriteHeader(w, privateKeyHeader)
+	if err != nil {
+		return _data.ID{}, nil
+	}
+
+	err = cslq.Encode(w, "v", &pk)
 	if err != nil {
 		return _data.ID{}, err
 	}
@@ -107,12 +113,15 @@ func (mod *Module) SaveKey(key id.Identity) (_data.ID, error) {
 }
 
 func (mod *Module) IndexKey(dataID _data.ID) error {
-	dataType, r, err := mod.data.OpenADC0(dataID)
+	r, err := mod.storage.Data().Read(dataID, nil)
 	if err != nil {
 		return err
 	}
-	if dataType != keys.PrivateKeyDataType {
-		return errors.New("not a private key file")
+	defer r.Close()
+
+	err = adc.ExpectHeader(r, keys.PrivateKeyDataType)
+	if err != nil {
+		return err
 	}
 
 	var pk keys.PrivateKey
@@ -139,12 +148,15 @@ func (mod *Module) IndexKey(dataID _data.ID) error {
 }
 
 func (mod *Module) LoadPrivateKey(dataID _data.ID) (*keys.PrivateKey, error) {
-	dataType, r, err := mod.data.OpenADC0(dataID)
+	r, err := mod.storage.Data().Read(dataID, nil)
 	if err != nil {
 		return nil, err
 	}
-	if dataType != keys.PrivateKeyDataType {
-		return nil, errors.New("not a private key file")
+	defer r.Close()
+
+	err = adc.ExpectHeader(r, keys.PrivateKeyDataType)
+	if err != nil {
+		return nil, err
 	}
 
 	var pk keys.PrivateKey

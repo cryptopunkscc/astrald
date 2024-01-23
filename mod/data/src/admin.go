@@ -26,7 +26,7 @@ func NewAdmin(mod *Module) *Admin {
 }
 
 func (cmd *Admin) list(term admin.Terminal, args []string) error {
-	list, err := cmd.mod.All(time.Time{})
+	list, err := cmd.mod.FindByType("", time.Time{})
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (cmd *Admin) index(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	return cmd.mod.Index(dataID)
+	return cmd.mod.Identify(dataID)
 }
 
 func (cmd *Admin) describe(term admin.Terminal, args []string) error {

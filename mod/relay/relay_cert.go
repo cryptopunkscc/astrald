@@ -7,7 +7,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/lib/adc"
 	"time"
 )
 
@@ -111,7 +111,7 @@ func (cert *RelayCert) UnmarshalCSLQ(dec *cslq.Decoder) error {
 func UnmarshalCert(p []byte) (*RelayCert, error) {
 	var r = bytes.NewReader(p)
 
-	var t data.ADC0Header
+	var t adc.Header
 	var cert RelayCert
 
 	var err = cslq.Decode(r, "vv", &t, &cert)

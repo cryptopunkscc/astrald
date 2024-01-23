@@ -3,7 +3,7 @@ package keys
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 )
@@ -33,7 +33,9 @@ func (mod *Module) importNodeIdentity() error {
 		return err
 	}
 
-	err = cslq.Encode(w, "vv", data.ADC0Header(keys.PrivateKeyDataType), &pk)
+	adc.WriteHeader(w, keys.PrivateKeyDataType)
+
+	err = cslq.Encode(w, "v", &pk)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"time"
 )
@@ -16,11 +15,9 @@ type Module interface {
 	// Events returns module's event queue
 	Events() *events.Queue
 
+	Identify(dataID data.ID) error
 	FindByType(typ string, since time.Time) ([]TypeInfo, error)
 	SubscribeType(ctx context.Context, typ string, since time.Time) <-chan TypeInfo
-
-	OpenADC0(data.ID) (string, storage.DataReader, error)
-	StoreADC0(t string, alloc int) (storage.DataWriter, error)
 
 	Describer
 	AddDescriber(Describer) error

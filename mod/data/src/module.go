@@ -3,8 +3,8 @@ package data
 import (
 	"bytes"
 	"context"
-	"github.com/cryptopunkscc/astrald/cslq"
 	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/data"
 	"github.com/cryptopunkscc/astrald/mod/fs"
@@ -19,6 +19,10 @@ import (
 )
 
 var _ data.Module = &Module{}
+
+const identifySize = 4096
+const adcMethod = "adc"
+const mimetypeMethod = "mimetype"
 
 type Module struct {
 	node   node.Node
@@ -42,60 +46,124 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) StoreADC0(t string, alloc int) (storage.DataWriter, error) {
-	w, err := mod.storage.Data().Store(
-		&storage.StoreOpts{
-			Alloc: alloc + len(t) + 5,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	err = cslq.Encode(w, "v", data.ADC0Header(t))
-	if err != nil {
-		return nil, err
-	}
-
-	return w, nil
-}
-
 func (mod *Module) Events() *events.Queue {
 	return &mod.events
 }
 
-func (mod *Module) Index(dataID _data.ID) error {
+// SubscribeType returns a channel that will be populated with all data entries since the provided timestamp and
+// subscribed to any new items until context is done. If typ is empty, all data entries will be passed regardless
+// of the type.
+func (mod *Module) SubscribeType(ctx context.Context, typ string, since time.Time) <-chan data.TypeInfo {
+	if since.After(time.Now()) {
+		return nil
+	}
+
+	var ch = make(chan data.TypeInfo)
+	var subscription = mod.events.Subscribe(ctx)
+
+	go func() {
+		defer close(ch)
+
+		// catch up with existing entries
+		list, err := mod.FindByType(typ, since)
+		if err != nil {
+			return
+		}
+		for _, item := range list {
+			select {
+			case ch <- item:
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		// subscribe to new items
+		for event := range subscription {
+			e, ok := event.(data.EventDataIdentified)
+			if !ok {
+				continue
+			}
+			if typ != "" && e.Type != typ {
+				continue
+			}
+			ch <- data.TypeInfo(e)
+		}
+	}()
+
+	return ch
+}
+
+// FindByType returns all data items indexed since time ts. If t is not empty, only items of type t will
+// be returned.
+func (mod *Module) FindByType(t string, ts time.Time) ([]data.TypeInfo, error) {
+	var list []data.TypeInfo
+	var rows []*dbDataType
+
+	// filter by type if provided
+	var q = mod.db
+	if t != "" {
+		q = q.Where("type = ?", t)
+	}
+
+	// filter by time if provided
+	if !ts.IsZero() {
+		q = q.Where("indexed_at > ?", ts)
+	}
+
+	// fetch rows
+	var tx = q.Order("indexed_at").Find(&rows)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	for _, row := range rows {
+		dataID, err := _data.Parse(row.DataID)
+		if err != nil {
+			continue
+		}
+
+		list = append(list, data.TypeInfo{
+			DataID:    dataID,
+			IndexedAt: row.IndexedAt,
+			Header:    row.Header,
+			Type:      row.Type,
+		})
+	}
+
+	return list, nil
+}
+
+// Identify identifies and indexes data type. If data is already indexed, it returns
+// ErrAlreadyIndexed.
+func (mod *Module) Identify(dataID _data.ID) error {
 	// check if data is already indexed
-	if _, err := mod.dbDataTypeFindByDataID(dataID.String()); err == nil {
+	_, err := mod.dbDataTypeFindByDataID(dataID.String())
+	if err == nil {
 		return data.ErrAlreadyIndexed
 	}
 
+	// read first bytes for type identification
 	dataReader, err := mod.storage.Data().Read(dataID, nil)
 	if err != nil {
 		return err
 	}
 
-	var firstBytes = make([]byte, 512)
+	var firstBytes = make([]byte, identifySize)
 	dataReader.Read(firstBytes)
 	dataReader.Close()
 
-	var (
-		reader     = bytes.NewReader(firstBytes)
-		adc0Header data.ADC0Header
-		dataType   string
-		header     = "mimetype"
-	)
+	var reader = bytes.NewReader(firstBytes)
+	var header, dataType string
 
-	// detect type either via adc0 or mime
-	if err := cslq.Decode(reader, "v", &adc0Header); err == nil {
-		dataType = string(adc0Header)
-		header = "adc0"
+	// detect type either via adc or mime
+	adcHeader, err := adc.ReadHeader(reader)
+	if err == nil {
+		header, dataType = adcMethod, string(adcHeader)
 	} else {
-		dataType = mimetype.Detect(firstBytes).String()
+		header, dataType = mimetypeMethod, mimetype.Detect(firstBytes).String()
 	}
 
 	var indexedAt = time.Now()
-
 	var tx = mod.db.Create(&dbDataType{
 		DataID:    dataID.String(),
 		IndexedAt: indexedAt,
