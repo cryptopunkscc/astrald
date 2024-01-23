@@ -49,7 +49,6 @@ func (adm *Admin) grant(term admin.Terminal, args []string) error {
 	var err error
 	var identity id.Identity
 	var dataID data.ID
-	var expiresAt = time.Now().Add(defaultAccessDuration)
 
 	if identity, err = adm.mod.node.Resolver().Resolve(args[0]); err != nil {
 		return err
@@ -57,15 +56,8 @@ func (adm *Admin) grant(term admin.Terminal, args []string) error {
 	if dataID, err = data.Parse(args[1]); err != nil {
 		return err
 	}
-	if len(args) >= 3 {
-		d, err := time.ParseDuration(args[2])
-		if err != nil {
-			return err
-		}
-		expiresAt = time.Now().Add(d)
-	}
 
-	return adm.mod.Grant(identity, dataID, expiresAt)
+	return adm.mod.Grant(identity, dataID)
 }
 
 func (adm *Admin) revoke(term admin.Terminal, args []string) error {
@@ -88,41 +80,30 @@ func (adm *Admin) revoke(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) list(term admin.Terminal, args []string) error {
-	var list []dbPerm
-
-	tx := adm.mod.db.Limit(1000).Find(&list)
-	if tx.Error != nil {
-		return tx.Error
+	if len(args) < 1 {
+		return errors.New("argument missing")
 	}
-	f := "%-20s%-16s%s\n"
 
-	term.Printf("showing %d results\n", len(list))
-	term.Printf(f, admin.Header("IDENTITY"), admin.Header("EXPIRY"), admin.Header("DATAID"))
+	identity, err := adm.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
 
-	for _, perm := range list {
-		userID, err := id.ParsePublicKeyHex(perm.Identity)
-		if err != nil {
-			continue
+	var indexName = adm.mod.localShareIndexName(identity)
+
+	entries, err := adm.mod.index.UpdatedSince(indexName, time.Time{})
+
+	for _, entry := range entries {
+		if entry.Added {
+			term.Printf("%v\n", entry.DataID)
 		}
-
-		dataID, err := data.Parse(perm.DataID)
-		if err != nil {
-			continue
-		}
-
-		var expiry = "expired"
-		if perm.ExpiresAt.After(time.Now()) {
-			expiry = time.Until(perm.ExpiresAt).Round(time.Second).String()
-		}
-
-		term.Printf(f, userID, expiry, dataID)
 	}
 
 	return nil
 }
 
 func (adm *Admin) ShortDescription() string {
-	return "data access control list"
+	return "manage data sharing"
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
@@ -130,7 +111,7 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("commands:\n")
 	term.Printf("  grant <identity> <dataID> [duration]      grant access to data\n")
 	term.Printf("  revoke <identity> <dataID>                revoke access to data\n")
-	term.Printf("  list                                      show all access entries\n")
+	term.Printf("  list <identitiy>                          list data shared with an identity\n")
 	term.Printf("  help                                      show help\n")
 	return nil
 }

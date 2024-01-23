@@ -2,13 +2,15 @@ package acl
 
 import (
 	"context"
+	"fmt"
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/acl"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"gorm.io/gorm"
 )
 
@@ -20,21 +22,68 @@ type Module struct {
 	log     *log.Logger
 	assets  assets.Assets
 	storage storage.Module
+	index   index.Module
 	db      *gorm.DB
 }
 
-func (mod *Module) Prepare(ctx context.Context) error {
-	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(acl.ModuleName, NewAdmin(mod))
-	}
-
-	mod.storage.Access().AddAccessVerifier(mod)
-
-	return nil
-}
+const localSharePrefix = "mod.share.local."
+const setSuffix = ".set"
+const publicIndexName = "mod.share.public"
 
 func (mod *Module) Run(ctx context.Context) error {
 	<-ctx.Done()
 
 	return nil
+}
+
+func (mod *Module) makeIndexFor(identity id.Identity) error {
+	unionName := localSharePrefix + identity.PublicKeyHex()
+
+	info, err := mod.index.IndexInfo(unionName)
+	if err == nil {
+		if info.Type != index.TypeUnion {
+			return fmt.Errorf("index %s is not a union", unionName)
+		}
+		return nil
+	}
+
+	var setName = unionName + setSuffix
+
+	_, err = mod.index.CreateIndex(unionName, index.TypeUnion)
+	if err != nil {
+		return err
+	}
+
+	_, err = mod.index.CreateIndex(setName, index.TypeSet)
+	if err != nil {
+		return err
+	}
+
+	err = mod.index.AddToUnion(unionName, publicIndexName)
+	if err != nil {
+		return err
+	}
+
+	return mod.index.AddToUnion(unionName, setName)
+}
+
+func (mod *Module) localShareIndexName(identity id.Identity) string {
+	return localSharePrefix + identity.PublicKeyHex()
+}
+
+func (mod *Module) addToLocalShareIndex(identity id.Identity, dataID data.ID) error {
+	var err = mod.makeIndexFor(identity)
+	if err != nil {
+		return err
+	}
+
+	return mod.index.AddToSet(mod.localShareIndexName(identity)+setSuffix, dataID)
+}
+
+func (mod *Module) removeFromLocalShareIndex(identity id.Identity, dataID data.ID) error {
+	return mod.index.RemoveFromSet(mod.localShareIndexName(identity)+setSuffix, dataID)
+}
+
+func (mod *Module) localShareIndexContains(identity id.Identity, dataID data.ID) (bool, error) {
+	return mod.index.Contains(mod.localShareIndexName(identity), dataID)
 }

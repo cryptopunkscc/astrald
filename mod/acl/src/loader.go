@@ -23,9 +23,6 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	if err != nil {
 		return nil, err
 	}
-	if err = mod.db.AutoMigrate(&dbPerm{}); err != nil {
-		return nil, err
-	}
 
 	return mod, nil
 }

@@ -167,7 +167,7 @@ func (mod *Module) Contains(name string, dataID data.ID) (bool, error) {
 		return false, err
 	}
 
-	_, err = mod.dbEntryFind(indexRow.ID, dataRow.ID)
+	entry, err := mod.dbEntryFind(indexRow.ID, dataRow.ID)
 
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
@@ -175,7 +175,7 @@ func (mod *Module) Contains(name string, dataID data.ID) (bool, error) {
 	case err != nil:
 		return false, err
 	default:
-		return true, nil
+		return entry.Added, nil
 	}
 }
 
