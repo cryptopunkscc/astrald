@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/data"
 	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -25,6 +26,7 @@ type Module struct {
 	db      *gorm.DB
 	data    data.Module
 	storage storage.Module
+	shares  shares.Module
 	index   index.Module
 }
 
@@ -87,12 +89,13 @@ func (mod *Module) Read(dataID _data.ID, opts *storage.ReadOpts) (storage.DataRe
 	return &Reader{File: file, name: "mod.zip"}, err
 }
 
-func (mod *Module) Verify(identity id.Identity, dataID _data.ID) bool {
+// Authorize authorizes access if the dataID is contained within a zip file that the identity has access to.
+func (mod *Module) Authorize(identity id.Identity, dataID _data.ID) error {
 	var rows []*dbZipContent
 
-	tx := mod.db.Where("file_id = ?", dataID.String()).Find(&rows)
+	var tx = mod.db.Where("file_id = ?", dataID.String()).Find(&rows)
 	if tx.Error != nil {
-		return false
+		return shares.ErrDenied
 	}
 
 	for _, row := range rows {
@@ -101,10 +104,15 @@ func (mod *Module) Verify(identity id.Identity, dataID _data.ID) bool {
 			continue
 		}
 
-		if mod.storage.Access().Verify(identity, zipID) {
-			return true
+		// sanity check to avoid infitite loops
+		if zipID.IsEqual(dataID) {
+			continue
+		}
+
+		if mod.shares.Authorize(identity, zipID) == nil {
+			return nil
 		}
 	}
 
-	return false
+	return shares.ErrDenied
 }

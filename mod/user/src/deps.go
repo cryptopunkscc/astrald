@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -16,6 +17,11 @@ func (mod *Module) LoadDependencies() error {
 
 	// load required dependencies
 	mod.storage, err = modules.Load[storage.Module](mod.node, storage.ModuleName)
+	if err != nil {
+		return err
+	}
+
+	mod.shares, err = modules.Load[shares.Module](mod.node, shares.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -37,9 +43,7 @@ func (mod *Module) LoadDependencies() error {
 		mod.sdp.AddDataDiscoverer(mod)
 	}
 
-	if mod.storage != nil {
-		mod.storage.Access().AddAccessVerifier(mod)
-	}
+	mod.shares.AddAuthorizer(mod)
 
 	return nil
 }

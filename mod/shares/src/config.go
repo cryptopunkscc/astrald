@@ -1,4 +1,4 @@
-package acl
+package shares
 
 type Config struct {
 }

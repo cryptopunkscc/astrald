@@ -17,9 +17,6 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		log:    log,
 	}
 
-	mod.access = NewAccessManager(mod)
-	mod.data = NewDataManager(mod)
-
 	mod.events.SetParent(node.Events())
 
 	_ = assets.LoadYAML(storage.ModuleName, &mod.config)

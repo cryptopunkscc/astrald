@@ -1,9 +1,9 @@
-package acl
+package shares
 
 import (
-	"github.com/cryptopunkscc/astrald/mod/acl"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -22,10 +22,8 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(acl.ModuleName, NewAdmin(mod))
+		adm.AddCommand(shares.ModuleName, NewAdmin(mod))
 	}
-
-	mod.storage.Access().AddAccessVerifier(mod)
 
 	mod.index.CreateIndex(publicIndexName, index.TypeSet)
 

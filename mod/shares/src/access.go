@@ -1,4 +1,4 @@
-package acl
+package shares
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"

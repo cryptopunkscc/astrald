@@ -1,4 +1,4 @@
-package acl
+package shares
 
 import (
 	"context"
@@ -6,24 +6,27 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/acl"
 	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
 )
 
-var _ acl.Module = &Module{}
+var _ shares.Module = &Module{}
 
 type Module struct {
-	config  Config
-	node    node.Node
-	log     *log.Logger
-	assets  assets.Assets
-	storage storage.Module
-	index   index.Module
-	db      *gorm.DB
+	config      Config
+	node        node.Node
+	log         *log.Logger
+	assets      assets.Assets
+	db          *gorm.DB
+	authorizers sig.Set[shares.Authorizer]
+	storage     storage.Module
+	index       index.Module
 }
 
 const localSharePrefix = "mod.share.local."
@@ -31,6 +34,11 @@ const setSuffix = ".set"
 const publicIndexName = "mod.share.public"
 
 func (mod *Module) Run(ctx context.Context) error {
+	tasks.Group(
+		NewReadService(mod),
+		NewSyncService(mod),
+	).Run(ctx)
+
 	<-ctx.Done()
 
 	return nil

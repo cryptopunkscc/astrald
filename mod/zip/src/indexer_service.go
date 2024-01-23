@@ -25,7 +25,7 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 
 func (srv *IndexerService) autoIndexZip(zipID data.ID) error {
 	// check if the file is accessible
-	found, err := srv.storage.Data().Read(
+	found, err := srv.storage.Read(
 		zipID,
 		&storage.ReadOpts{NoVirtual: srv.config.NoVirtual},
 	)

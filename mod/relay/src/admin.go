@@ -54,7 +54,7 @@ func (adm *Admin) certs(term admin.Terminal, args []string) error {
 	)
 
 	for _, dataID := range dataIDs {
-		data, err := adm.mod.storage.Data().ReadAll(dataID, nil)
+		data, err := adm.mod.storage.ReadAll(dataID, nil)
 		if err != nil {
 			term.Printf("%v error: %v\n", dataID, err)
 			continue

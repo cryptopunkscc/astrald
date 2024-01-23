@@ -5,13 +5,17 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	_data "github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/net"
 )
 
-func (mod *Module) Verify(identity id.Identity, dataID _data.ID) bool {
+func (mod *Module) Authorize(identity id.Identity, dataID _data.ID) error {
 	_, found := mod.identities.Get(identity.PublicKeyHex())
+	if found {
+		return nil
+	}
 
-	return found
+	return shares.ErrDenied
 }
 
 func (mod *Module) DiscoverData(ctx context.Context, caller id.Identity, origin string) ([][]byte, error) {

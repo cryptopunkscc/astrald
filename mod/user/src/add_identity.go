@@ -47,7 +47,7 @@ func (mod *Module) addIdentity(identity id.Identity) error {
 			mod.log.Error("error generating relay certificate for %v: %v", identity, err)
 		}
 
-		i.cert, err = mod.storage.Data().ReadAll(certID, nil)
+		i.cert, err = mod.storage.ReadAll(certID, nil)
 		if err != nil {
 			return err
 		}

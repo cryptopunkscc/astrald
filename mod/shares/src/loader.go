@@ -1,8 +1,8 @@
-package acl
+package shares
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/acl"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -17,9 +17,14 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		assets: assets,
 	}
 
-	_ = assets.LoadYAML(acl.ModuleName, &mod.config)
+	_ = assets.LoadYAML(shares.ModuleName, &mod.config)
 
-	mod.db, err = assets.OpenDB(acl.ModuleName)
+	mod.db, err = assets.OpenDB(shares.ModuleName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.AddAuthorizer(&ACLAuthorizer{mod})
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +33,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 }
 
 func init() {
-	if err := modules.RegisterModule(acl.ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(shares.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"bytes"
 	"encoding/base32"
 	"encoding/binary"
 	"errors"
@@ -29,6 +30,18 @@ func (id ID) String() string {
 	enc := zBase32Encoding.EncodeToString(packed[:])
 	enc = strings.TrimLeft(enc, zBase32CharSet[0:1])
 	return idPrefix + enc
+}
+
+func (id ID) IsEqual(other ID) bool {
+	if id.Size != other.Size {
+		return false
+	}
+
+	if bytes.Compare(id.Hash[:], other.Hash[:]) != 0 {
+		return false
+	}
+
+	return true
 }
 
 func Unpack(data [40]byte) (id ID) {

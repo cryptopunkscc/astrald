@@ -3,7 +3,6 @@ package main
 // this file includes all modules that should be compiled into the node
 
 import (
-	_ "github.com/cryptopunkscc/astrald/mod/acl/src"
 	_ "github.com/cryptopunkscc/astrald/mod/admin/src"
 	_ "github.com/cryptopunkscc/astrald/mod/agent/src"
 	_ "github.com/cryptopunkscc/astrald/mod/apphost/src"
@@ -20,6 +19,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/reflectlink/src"
 	_ "github.com/cryptopunkscc/astrald/mod/relay/src"
 	_ "github.com/cryptopunkscc/astrald/mod/setup/src"
+	_ "github.com/cryptopunkscc/astrald/mod/shares/src"
 	_ "github.com/cryptopunkscc/astrald/mod/speedtest/src"
 	_ "github.com/cryptopunkscc/astrald/mod/storage/src"
 	_ "github.com/cryptopunkscc/astrald/mod/tcp/src"

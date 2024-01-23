@@ -1,4 +1,4 @@
-package storage
+package shares
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const readServicePrefix = "storage.read."
+const readServicePrefix = "shares.read."
 
 type ReadService struct {
 	*Module
@@ -41,12 +41,13 @@ func (srv *ReadService) RouteQuery(ctx context.Context, query net.Query, caller 
 		return net.Reject()
 	}
 
-	if !srv.Access().Verify(query.Caller(), dataID) {
-		srv.log.Errorv(2, "access to %v denied for %v", dataID, query.Caller())
+	err = srv.Authorize(query.Caller(), dataID)
+	if err != nil {
+		srv.log.Errorv(2, "access to %v denied for %v (%v)", dataID, query.Caller(), err)
 		return net.Reject()
 	}
 
-	r, err := srv.Data().Read(dataID, nil)
+	r, err := srv.storage.Read(dataID, nil)
 	if err != nil {
 		return net.Reject()
 	}

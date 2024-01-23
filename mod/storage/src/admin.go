@@ -13,10 +13,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"time"
 )
-
-const defaultAccessDuration = time.Hour * 24 * 365 * 100 // 100 years
 
 type Admin struct {
 	mod  *Module
@@ -59,7 +56,7 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 			return err
 		}
 
-		r, err := adm.mod.Data().Read(dataID, nil)
+		r, err := adm.mod.Read(dataID, nil)
 		if err != nil {
 			return err
 		}
@@ -87,7 +84,7 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 		}
 		defer response.Body.Close()
 
-		w, err := adm.mod.Data().Store(
+		w, err := adm.mod.Store(
 			&storage.StoreOpts{
 				Alloc: int(response.ContentLength),
 			},
@@ -130,7 +127,7 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	w, err := adm.mod.Data().Store(nil)
+	w, err := adm.mod.Store(nil)
 	if err != nil {
 		return err
 	}
@@ -153,12 +150,12 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	var names []string
 
 	// list readers
-	names = adm.mod.data.readers.Keys()
+	names = adm.mod.readers.Keys()
 	slices.Sort(names)
 
 	term.Printf(f, admin.Header("Reader"), admin.Header("Type"))
 	for _, name := range names {
-		v, ok := adm.mod.data.readers.Get(name)
+		v, ok := adm.mod.readers.Get(name)
 		if !ok {
 			continue
 		}
@@ -167,12 +164,12 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	term.Println()
 
 	// list stores
-	names = adm.mod.data.stores.Keys()
+	names = adm.mod.stores.Keys()
 	slices.Sort(names)
 
 	term.Printf(f, admin.Header("Store"), admin.Header("Type"))
 	for _, name := range names {
-		v, ok := adm.mod.data.stores.Get(name)
+		v, ok := adm.mod.stores.Get(name)
 		if !ok {
 			continue
 		}

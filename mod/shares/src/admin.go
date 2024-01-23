@@ -1,11 +1,11 @@
-package acl
+package shares
 
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/acl"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"time"
 )
 
@@ -107,7 +107,7 @@ func (adm *Admin) ShortDescription() string {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", acl.ModuleName)
+	term.Printf("usage: %s <command>\n\n", shares.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  grant <identity> <dataID> [duration]      grant access to data\n")
 	term.Printf("  revoke <identity> <dataID>                revoke access to data\n")

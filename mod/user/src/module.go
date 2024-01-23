@@ -15,6 +15,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/node"
@@ -33,6 +34,7 @@ type Module struct {
 	assets  assets.Assets
 	db      *gorm.DB
 	storage storage.Module
+	shares  shares.Module
 	data    data.Module
 	sdp     discovery.Module
 	relay   relay.Module
@@ -130,7 +132,7 @@ func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
 		return errors.New("relay mismatch")
 	}
 
-	mod.storage.Data().StoreBytes(certBytes, nil)
+	mod.storage.StoreBytes(certBytes, nil)
 
 	return nil
 }

@@ -32,11 +32,11 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	// read only
-	mod.storage.Data().AddReader(nameReadOnly, mod.indexer)
+	mod.storage.AddReader(nameReadOnly, mod.indexer)
 
 	// read write
-	mod.storage.Data().AddReader(nameReadWrite, mod.store)
-	mod.storage.Data().AddStore(nameReadWrite, mod.store)
+	mod.storage.AddReader(nameReadWrite, mod.store)
+	mod.storage.AddStore(nameReadWrite, mod.store)
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {

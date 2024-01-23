@@ -143,7 +143,7 @@ func (mod *Module) Identify(dataID _data.ID) error {
 	}
 
 	// read first bytes for type identification
-	dataReader, err := mod.storage.Data().Read(dataID, nil)
+	dataReader, err := mod.storage.Read(dataID, nil)
 	if err != nil {
 		return err
 	}
