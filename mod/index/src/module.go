@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/index"
@@ -159,7 +160,10 @@ func (mod *Module) IndexInfo(name string) (*index.Info, error) {
 func (mod *Module) Contains(name string, dataID data.ID) (bool, error) {
 	indexRow, err := mod.dbFindIndexByName(name)
 	if err != nil {
-		return false, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, index.ErrIndexNotFound
+		}
+		return false, fmt.Errorf("cannot read index %s: %w", name, err)
 	}
 
 	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID.String())

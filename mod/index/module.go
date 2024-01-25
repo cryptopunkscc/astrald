@@ -1,6 +1,7 @@
 package index
 
 import (
+	"errors"
 	"github.com/cryptopunkscc/astrald/data"
 	"time"
 )
@@ -14,6 +15,7 @@ type Module interface {
 	AddToSet(name string, dataID data.ID) error
 	RemoveFromSet(name string, dataID data.ID) error
 	IndexInfo(name string) (*Info, error)
+	AllIndexes() ([]Info, error)
 	UpdatedBetween(name string, since time.Time, until time.Time) ([]Entry, error)
 	Contains(name string, dataID data.ID) (bool, error)
 	Find(dataID data.ID) ([]string, error)
@@ -40,3 +42,5 @@ const (
 	TypeSet   = Type("set")
 	TypeUnion = Type("union")
 )
+
+var ErrIndexNotFound = errors.New("index not found")

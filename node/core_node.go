@@ -59,6 +59,7 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 		config:   defaultConfig,
 		routes:   router.NewPrefixRouter(true),
 	}
+	node.routes.EnableParams = true
 
 	// basic logs
 	node.setupLogs()

@@ -39,6 +39,7 @@ func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.D
 		if err == nil {
 			return &Reader{ReadCloser: r, name: nameReadWrite}, err
 		}
+		srv.log.Errorv(1, "error reading %v: %v", path, err)
 	}
 
 	return nil, storage.ErrNotFound
@@ -51,7 +52,7 @@ func (srv *StoreService) readPath(path string, offset int) (io.ReadCloser, error
 	}
 
 	if offset > 0 {
-		r, err := f.Seek(io.SeekStart, offset)
+		r, err := f.Seek(int64(offset), io.SeekStart)
 		if err != nil {
 			f.Close()
 			return nil, err

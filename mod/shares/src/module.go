@@ -14,6 +14,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
@@ -188,13 +189,26 @@ func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataRea
 		return nil, storage.ErrNotFound
 	}
 
+	params := map[string]string{
+		"id": dataID.String(),
+	}
+
+	if opts.Offset != 0 {
+		params["offset"] = strconv.FormatUint(opts.Offset, 10)
+	}
+
+	var query = router.FormatQuery(readServiceName, params)
 	for _, row := range rows {
-		var query = net.NewQuery(row.Caller, row.Target, readServicePrefix+dataID.String())
+		var q = net.NewQuery(
+			row.Caller,
+			row.Target,
+			query,
+		)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
-		conn, err := net.Route(ctx, mod.node.Router(), query)
+		conn, err := net.Route(ctx, mod.node.Router(), q)
 		if err != nil {
 			continue
 		}
@@ -336,5 +350,9 @@ func (mod *Module) removeFromLocalShareIndex(identity id.Identity, dataID data.I
 }
 
 func (mod *Module) localShareIndexContains(identity id.Identity, dataID data.ID) (bool, error) {
-	return mod.index.Contains(mod.localShareIndexName(identity), dataID)
+	contains, err := mod.index.Contains(mod.localShareIndexName(identity), dataID)
+	if errors.Is(err, index.ErrIndexNotFound) {
+		return false, nil
+	}
+	return contains, err
 }

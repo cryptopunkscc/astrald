@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.IndexName}}</title>
+</head>
+<body>
+<p><a href="/">root</a> > {{.IndexName}}</p>
+<div>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+        </tr>
+        {{range .Entries}}
+            <tr>
+                <td><a href="/data/{{.DataID.String}}">{{.Label}}</a></td>
+                <td>{{.Type}}</td>
+            </tr>
+        {{end}}
+    </table>
+</div>
+</body>
+</html>

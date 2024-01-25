@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>mod_webdata</title>
+</head>
+<body>
+<p>root</p>
+
+<div>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+        </tr>
+    {{range .}}
+        <tr>
+            <td><a href="/index/{{.Name}}">{{.Name}}</a></td>
+            <td>{{.Type}}</td>
+        </tr>
+    {{end}}
+    </table>
+</div>
+</body>
+</html>
