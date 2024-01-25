@@ -25,7 +25,7 @@ const (
 func log(f string, v ...any) {
 	fmt.Fprintf(os.Stderr, f, v...)
 	if !strings.HasSuffix(f, "\n") {
-		fmt.Println()
+		fmt.Fprintf(os.Stderr, "\n")
 	}
 }
 
