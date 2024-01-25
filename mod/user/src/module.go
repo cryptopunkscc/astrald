@@ -43,7 +43,8 @@ type Module struct {
 	apphost apphost.Module
 
 	identities     sig.Map[string, *Identity]
-	profileHandler *ProfileHandler
+	profileService *ProfileService
+	notifyService  *NotifyService
 }
 
 func (mod *Module) Run(ctx context.Context) error {

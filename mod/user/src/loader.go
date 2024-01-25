@@ -17,7 +17,8 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		assets: assets,
 	}
 
-	mod.profileHandler = &ProfileHandler{Module: mod}
+	mod.profileService = &ProfileService{Module: mod}
+	mod.notifyService = &NotifyService{Module: mod}
 
 	mod.db, err = assets.OpenDB(user.ModuleName)
 	if err != nil {

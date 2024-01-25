@@ -18,10 +18,11 @@ var _ LocalRouter = &PrefixRouter{}
 // router.AddRoute("my_service", router)    // will only match the string "my_service"
 // router.AddRoute("my_service.*", router)  // will match all queries that begin with "my_service."
 type PrefixRouter struct {
-	Exclusive bool
-	exact     map[string]net.Router
-	prefix    map[string]net.Router
-	mu        sync.RWMutex
+	Exclusive    bool
+	EnableParams bool
+	exact        map[string]net.Router
+	prefix       map[string]net.Router
+	mu           sync.RWMutex
 }
 
 // NewPrefixRouter makes a new PrefixRouter. If exclusive is true, it will reject unmatched queries, otherwise it
@@ -35,7 +36,14 @@ func NewPrefixRouter(exclusive bool) *PrefixRouter {
 }
 
 func (router *PrefixRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	route := router.Match(query.Query())
+	var baseQuery = query.Query()
+	if router.EnableParams {
+		if i := strings.IndexByte(baseQuery, '?'); i != -1 {
+			baseQuery = baseQuery[:i]
+		}
+	}
+
+	route := router.Match(baseQuery)
 
 	if route == nil {
 		if router.Exclusive == true {

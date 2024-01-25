@@ -26,6 +26,7 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.index.CreateIndex(publicIndexName, index.TypeSet)
+	mod.storage.AddReader(shares.ModuleName, mod)
 
 	return err
 }

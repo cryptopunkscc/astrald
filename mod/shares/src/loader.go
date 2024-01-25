@@ -24,6 +24,11 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		return nil, err
 	}
 
+	err = mod.db.AutoMigrate(&dbRemoteShare{}, &dbRemoteData{})
+	if err != nil {
+		return nil, err
+	}
+
 	err = mod.AddAuthorizer(&ACLAuthorizer{mod})
 	if err != nil {
 		return nil, err

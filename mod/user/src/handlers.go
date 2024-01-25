@@ -59,10 +59,5 @@ func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.S
 		return net.RouteNotFound(mod)
 	}
 
-	//TODO: find a better way to handle this
-	if query.Query() == userProfileServiceName {
-		return mod.profileHandler.RouteQuery(ctx, query, caller, hints)
-	}
-
 	return identity.routes.RouteQuery(ctx, query, caller, hints)
 }

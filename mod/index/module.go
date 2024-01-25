@@ -14,7 +14,7 @@ type Module interface {
 	AddToSet(name string, dataID data.ID) error
 	RemoveFromSet(name string, dataID data.ID) error
 	IndexInfo(name string) (*Info, error)
-	UpdatedSince(name string, since time.Time) ([]Entry, error)
+	UpdatedBetween(name string, since time.Time, until time.Time) ([]Entry, error)
 	Contains(name string, dataID data.ID) (bool, error)
 	Find(dataID data.ID) ([]string, error)
 	GetEntry(name string, dataID data.ID) (*Entry, error)

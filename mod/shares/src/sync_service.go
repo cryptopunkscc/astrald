@@ -54,21 +54,23 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 		defer conn.Close()
 
 		var indexName = srv.localShareIndexName(caller.Identity())
+		var timestamp = time.Now()
 
-		entries, err := srv.index.UpdatedSince(indexName, since)
+		entries, err := srv.index.UpdatedBetween(indexName, since, timestamp)
 		if err != nil {
 			return
 		}
 
 		for _, entry := range entries {
-			var added byte
+			var op byte
 			if entry.Added {
-				added = 1
+				op = 1
+			} else {
+				op = 2
 			}
 
-			err = cslq.Encode(conn, "vcv",
-				cslq.Time(entry.UpdatedAt),
-				added,
+			err = cslq.Encode(conn, "cv",
+				op,
 				entry.DataID,
 			)
 
@@ -76,5 +78,7 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 				return
 			}
 		}
+
+		cslq.Encode(conn, "cq", 0, timestamp.UnixNano())
 	})
 }

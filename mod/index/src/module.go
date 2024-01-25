@@ -56,7 +56,7 @@ func (mod *Module) DeleteIndex(name string) error {
 	}
 
 	// remove all entries from the index
-	entryRows, err := mod.dbEntryFindUpdatedSince(indexRow.ID, time.Time{})
+	entryRows, err := mod.dbEntryFindUpdatedBetween(indexRow.ID, time.Time{}, time.Time{})
 	if err != nil {
 		return err
 	}
@@ -233,13 +233,13 @@ func (mod *Module) AllIndexes() ([]index.Info, error) {
 	return list, err
 }
 
-func (mod *Module) UpdatedSince(name string, since time.Time) ([]index.Entry, error) {
+func (mod *Module) UpdatedBetween(name string, since time.Time, until time.Time) ([]index.Entry, error) {
 	indexRow, err := mod.dbFindIndexByName(name)
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := mod.dbEntryFindUpdatedSince(indexRow.ID, since)
+	rows, err := mod.dbEntryFindUpdatedBetween(indexRow.ID, since, until)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func (mod *Module) AddToUnion(union string, index string) error {
 		return err
 	}
 
-	entries, err := mod.dbEntryFindUpdatedSince(setRow.ID, time.Time{})
+	entries, err := mod.dbEntryFindUpdatedBetween(setRow.ID, time.Time{}, time.Time{})
 	if err != nil {
 		return err
 	}

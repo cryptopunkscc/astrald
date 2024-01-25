@@ -153,6 +153,17 @@ func (r *CoreRouter) routeMonitored(ctx context.Context, query net.Query, caller
 }
 
 func (r *CoreRouter) routeQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
+	if via, found := hints.Value(ViaRouterHintKey); found {
+		switch typed := via.(type) {
+		case net.RouteQueryFunc:
+			return typed(ctx, query, caller, hints)
+		case net.Router:
+			return typed.RouteQuery(ctx, query, caller, hints)
+		default:
+			return net.RouteNotFound(r, errors.New("via: unknown router type"))
+		}
+	}
+
 	var routes = MatchRoutes(r.Routes(), query.Caller(), query.Target())
 	var routingErrors []error
 

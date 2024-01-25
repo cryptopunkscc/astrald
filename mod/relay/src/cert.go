@@ -198,11 +198,12 @@ func (mod *Module) LoadCert(dataID data.ID) (*relay.RelayCert, error) {
 func (mod *Module) FindExternalRelays(targetID id.Identity) ([]id.Identity, error) {
 	var rows []dbRelayCert
 	var tx = mod.db.Where("relay_id != ? and target_id = ? and expires_at > ? and direction in ?",
-		mod.node.Identity().PublicKeyHex(),
-		targetID.PublicKeyHex(),
+		mod.node.Identity(),
+		targetID,
 		time.Now(),
 		[]relay.Direction{relay.Inbound, relay.Both},
-	).Find(&rows)
+	).Group("relay_id").
+		Find(&rows)
 
 	if tx.Error != nil {
 		return nil, tx.Error

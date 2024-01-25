@@ -30,6 +30,7 @@ func (mod *Module) addIdentity(identity id.Identity) error {
 		cert:     nil,
 		routes:   router.NewPrefixRouter(false),
 	}
+	i.routes.EnableParams = true
 
 	// get user certificate for local relay
 	i.cert, err = mod.relay.ReadCert(&relay.FindOpts{
@@ -65,6 +66,9 @@ func (mod *Module) addIdentity(identity id.Identity) error {
 		mod.node.Identity(),
 		_data.Resolve(i.cert),
 	)
+
+	i.routes.AddRoute(userProfileServiceName, mod.profileService)
+	i.routes.AddRoute(notifyServiceName, mod.notifyService)
 
 	mod.node.Router().AddRoute(id.Anyone, i.identity, mod, 100)
 

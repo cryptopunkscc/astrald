@@ -119,3 +119,9 @@ func (mod *Module) RouteVia(
 
 	return proxy, nil
 }
+
+func (mod *Module) RouterFuncVia(relay id.Identity) net.RouteQueryFunc {
+	return func(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+		return mod.RouteVia(ctx, relay, query, caller, hints)
+	}
+}

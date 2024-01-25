@@ -43,7 +43,7 @@ func (mod *Module) dbEntryFindByIndexID(indexID uint) ([]dbEntry, error) {
 	return rows, tx.Error
 }
 
-func (mod *Module) dbEntryFindUpdatedSince(indexID uint, since time.Time) ([]dbEntry, error) {
+func (mod *Module) dbEntryFindUpdatedBetween(indexID uint, since time.Time, until time.Time) ([]dbEntry, error) {
 	var rows []dbEntry
 
 	query := mod.db.
@@ -53,6 +53,9 @@ func (mod *Module) dbEntryFindUpdatedSince(indexID uint, since time.Time) ([]dbE
 
 	if !since.IsZero() {
 		query = query.Where("updated_at > ?", since)
+	}
+	if !until.IsZero() {
+		query = query.Where("updated_at < ?", until)
 	}
 
 	var tx = query.Find(&rows)

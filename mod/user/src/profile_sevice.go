@@ -10,7 +10,7 @@ import (
 const userProfileServiceType = "user.profile"
 const userProfileServiceName = "profile"
 
-type ProfileHandler struct {
+type ProfileService struct {
 	*Module
 }
 
@@ -18,17 +18,17 @@ type ProfileData struct {
 	Alias string `json:"alias"`
 }
 
-func (handler *ProfileHandler) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *ProfileService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		defer conn.Close()
 
 		enc := json.NewEncoder(conn)
-		enc.Encode(handler.getProfile(query.Target()))
+		enc.Encode(srv.getProfile(query.Target()))
 	})
 }
 
-func (handler *ProfileHandler) getProfile(identity id.Identity) (p ProfileData) {
-	p.Alias = handler.node.Resolver().DisplayName(identity)
+func (srv *ProfileService) getProfile(identity id.Identity) (p ProfileData) {
+	p.Alias = srv.node.Resolver().DisplayName(identity)
 
 	return
 }

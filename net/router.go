@@ -9,6 +9,8 @@ type Router interface {
 	RouteQuery(ctx context.Context, query Query, caller SecureWriteCloser, hints Hints) (SecureWriteCloser, error)
 }
 
+type RouteQueryFunc func(context.Context, Query, SecureWriteCloser, Hints) (SecureWriteCloser, error)
+
 // Accept accepts the query and runs the handler in a new goroutine.
 func Accept(query Query, src SecureWriteCloser, handler func(conn SecureConn)) (SecureWriteCloser, error) {
 	pipeReader, pipeWriter := SecurePipe(query.Target())
