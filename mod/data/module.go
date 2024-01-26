@@ -16,6 +16,7 @@ type Module interface {
 	Events() *events.Queue
 
 	Identify(dataID data.ID) error
+	TypeInfo(dataID data.ID) (*TypeInfo, error)
 	FindByType(typ string, since time.Time) ([]TypeInfo, error)
 	SubscribeType(ctx context.Context, typ string, since time.Time) <-chan TypeInfo
 

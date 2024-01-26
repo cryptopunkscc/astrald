@@ -133,6 +133,21 @@ func (mod *Module) FindByType(t string, ts time.Time) ([]data.TypeInfo, error) {
 	return list, nil
 }
 
+func (mod *Module) TypeInfo(dataID _data.ID) (*data.TypeInfo, error) {
+	var row dbDataType
+	var err = mod.db.Where("data_id = ?", dataID).First(&row).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &data.TypeInfo{
+		DataID:    dataID,
+		IndexedAt: row.IndexedAt,
+		Header:    row.Header,
+		Type:      row.Type,
+	}, nil
+}
+
 // Identify identifies and indexes data type. If data is already indexed, it returns
 // ErrAlreadyIndexed.
 func (mod *Module) Identify(dataID _data.ID) error {
@@ -143,7 +158,7 @@ func (mod *Module) Identify(dataID _data.ID) error {
 	}
 
 	// read first bytes for type identification
-	dataReader, err := mod.storage.Read(dataID, nil)
+	dataReader, err := mod.storage.Read(dataID, &storage.ReadOpts{Virtual: true, Network: true})
 	if err != nil {
 		return err
 	}

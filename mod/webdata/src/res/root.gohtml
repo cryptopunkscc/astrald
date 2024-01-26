@@ -11,11 +11,13 @@
         <tr>
             <th>Name</th>
             <th>Type</th>
+            <th>Size</th>
         </tr>
     {{range .}}
         <tr>
             <td><a href="/index/{{.Name}}">{{.Name}}</a></td>
             <td>{{.Type}}</td>
+            <td>{{.Size}}</td>
         </tr>
     {{end}}
     </table>

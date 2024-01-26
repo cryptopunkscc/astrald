@@ -1,9 +1,8 @@
 package zip
 
 type Config struct {
-	NoVirtual bool // don't automatically index zip files from virtual sources (such as other zip files)
+	Virtual bool // automatically index zip files from virtual sources (such as other zip files)
+	Network bool
 }
 
-var defaultConfig = Config{
-	NoVirtual: true,
-}
+var defaultConfig = Config{}

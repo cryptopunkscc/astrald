@@ -113,7 +113,7 @@ func (mod *Module) SaveKey(key id.Identity) (_data.ID, error) {
 }
 
 func (mod *Module) IndexKey(dataID _data.ID) error {
-	r, err := mod.storage.Read(dataID, nil)
+	r, err := mod.storage.Read(dataID, &storage.ReadOpts{Virtual: true})
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (mod *Module) IndexKey(dataID _data.ID) error {
 }
 
 func (mod *Module) LoadPrivateKey(dataID _data.ID) (*keys.PrivateKey, error) {
-	r, err := mod.storage.Read(dataID, nil)
+	r, err := mod.storage.Read(dataID, &storage.ReadOpts{Virtual: true})
 	if err != nil {
 		return nil, err
 	}

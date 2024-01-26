@@ -33,6 +33,7 @@ type Module struct {
 	authorizers sig.Set[shares.Authorizer]
 	storage     storage.Module
 	index       index.Module
+	notify      sig.Set[string]
 }
 
 const localShareIndexPrefix = "mod.shares.local"
@@ -182,6 +183,10 @@ func (mod *Module) Unsync(caller id.Identity, target id.Identity) error {
 }
 
 func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
+	if !opts.Network {
+		return nil, storage.ErrNotFound
+	}
+
 	var rows []dbRemoteData
 
 	var tx = mod.db.Where("data_id = ?", dataID).Find(&rows)

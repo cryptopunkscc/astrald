@@ -62,6 +62,11 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 		}
 
 		for _, entry := range entries {
+			// if we're syncing from scratch, skip deleted items
+			if since.IsZero() && !entry.Added {
+				continue
+			}
+
 			var op byte
 			if entry.Added {
 				op = 1

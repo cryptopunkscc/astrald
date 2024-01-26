@@ -13,7 +13,7 @@ import (
 )
 
 var _ storage.Module = &Module{}
-var defaultReadOpts = &storage.ReadOpts{}
+var defaultReadOpts = &storage.ReadOpts{Virtual: true}
 
 type Module struct {
 	node   node.Node

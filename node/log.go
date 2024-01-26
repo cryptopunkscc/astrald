@@ -5,6 +5,8 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
+	"io"
+	_log "log"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +20,9 @@ type logFields struct {
 }
 
 func (node *CoreNode) setupLogs() {
+	//TODO: output to our native log
+	_log.SetOutput(io.Discard)
+
 	node.screenOutput = log.NewLinePrinter(log.NewColorOutput(os.Stdout))
 	node.screenFilter = log.NewPrinterFilter(node.screenOutput)
 	node.logOutput = log.NewPrinterSplitter(node.screenFilter)

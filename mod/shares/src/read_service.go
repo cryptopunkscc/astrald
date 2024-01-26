@@ -52,7 +52,7 @@ func (srv *ReadService) RouteQuery(ctx context.Context, query net.Query, caller 
 		return net.Reject()
 	}
 
-	var opts = &storage.ReadOpts{}
+	var opts = &storage.ReadOpts{Virtual: true}
 	if s, found := params["offset"]; found {
 		opts.Offset, err = strconv.ParseUint(s, 10, 64)
 		if err != nil {

@@ -40,8 +40,9 @@ type ReaderInfo struct {
 }
 
 type ReadOpts struct {
-	Offset    uint64
-	NoVirtual bool
+	Offset  uint64
+	Virtual bool
+	Network bool
 }
 
 type StoreOpts struct {

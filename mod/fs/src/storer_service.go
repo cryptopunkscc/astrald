@@ -39,7 +39,6 @@ func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.D
 		if err == nil {
 			return &Reader{ReadCloser: r, name: nameReadWrite}, err
 		}
-		srv.log.Errorv(1, "error reading %v: %v", path, err)
 	}
 
 	return nil, storage.ErrNotFound

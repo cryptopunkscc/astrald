@@ -21,6 +21,7 @@ type Module interface {
 	Find(dataID data.ID) ([]string, error)
 	GetEntry(name string, dataID data.ID) (*Entry, error)
 	AddToUnion(union string, set string) error
+	RemoveFromUnion(union string, index string) error
 }
 
 type Info struct {

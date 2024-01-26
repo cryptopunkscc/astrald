@@ -1,12 +1,15 @@
 package webdata
 
 import (
+	"cmp"
 	"context"
-	"github.com/cryptopunkscc/astrald/data"
-	data2 "github.com/cryptopunkscc/astrald/mod/data"
+	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/media"
 	"html/template"
 	"net/http"
 	"path"
+	"slices"
 	"time"
 )
 
@@ -21,7 +24,7 @@ type IndexPage struct {
 }
 
 type Entry struct {
-	DataID data.ID
+	DataID _data.ID
 	Label  string
 	Type   string
 }
@@ -29,12 +32,12 @@ type Entry struct {
 func NewIndexHandler(module *Module) *IndexHandler {
 	handler := &IndexHandler{Module: module}
 
-	data, err := res.ReadFile("res/index.gohtml")
+	bytes, err := res.ReadFile("res/index.gohtml")
 	if err != nil {
 		panic(err)
 	}
 
-	handler.template, err = template.New("index").Parse(string(data))
+	handler.template, err = template.New("index").Parse(string(bytes))
 	if err != nil {
 		panic(err)
 	}
@@ -71,15 +74,21 @@ func (mod *IndexHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 		descs := mod.data.DescribeData(context.Background(), item.DataID, nil)
 		for _, desc := range descs {
 			switch typed := desc.Data.(type) {
-			case data2.LabelDescriptor:
+			case data.LabelDescriptor:
 				entry.Label = typed.Label
-			case data2.TypeDescriptor:
+			case data.TypeDescriptor:
 				entry.Type = typed.Type
+			case media.MediaDescriptor:
+				entry.Label = typed.Artist + " - " + typed.Title
 			}
 		}
 
 		page.Entries = append(page.Entries, entry)
 	}
+
+	slices.SortFunc(page.Entries, func(a, b Entry) int {
+		return cmp.Compare(a.Label, b.Label)
+	})
 
 	err = mod.template.Execute(w, page)
 	if err != nil {

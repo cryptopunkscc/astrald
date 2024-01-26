@@ -41,6 +41,10 @@ func (mod *Module) Read(dataID _data.ID, opts *storage.ReadOpts) (storage.DataRe
 		opts = &storage.ReadOpts{}
 	}
 
+	if !opts.Virtual {
+		return nil, storage.ErrNotFound
+	}
+
 	if opts.Offset > dataID.Size {
 		return nil, storage.ErrInvalidOffset
 	}
@@ -54,10 +58,6 @@ func (mod *Module) Read(dataID _data.ID, opts *storage.ReadOpts) (storage.DataRe
 	}
 
 	var zipRow = zipRows[0]
-
-	if opts.NoVirtual {
-		return nil, storage.ErrNoVirtual
-	}
 
 	zipID, err := _data.Parse(zipRow.ZipID)
 	if err != nil {

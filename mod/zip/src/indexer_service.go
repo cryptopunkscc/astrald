@@ -27,7 +27,10 @@ func (srv *IndexerService) autoIndexZip(zipID data.ID) error {
 	// check if the file is accessible
 	found, err := srv.storage.Read(
 		zipID,
-		&storage.ReadOpts{NoVirtual: srv.config.NoVirtual},
+		&storage.ReadOpts{
+			Virtual: srv.config.Virtual,
+			Network: srv.config.Network,
+		},
 	)
 	if err != nil {
 		return err

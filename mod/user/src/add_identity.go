@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	_data "github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/relay"
+	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/router"
 )
 
@@ -48,7 +49,7 @@ func (mod *Module) addIdentity(identity id.Identity) error {
 			mod.log.Error("error generating relay certificate for %v: %v", identity, err)
 		}
 
-		i.cert, err = mod.storage.ReadAll(certID, nil)
+		i.cert, err = mod.storage.ReadAll(certID, &storage.ReadOpts{Virtual: true})
 		if err != nil {
 			return err
 		}

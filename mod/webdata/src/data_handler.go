@@ -29,7 +29,7 @@ func (mod *DataHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	reqRange := r.Header.Get("Range")
 
-	var opts = &storage.ReadOpts{}
+	var opts = &storage.ReadOpts{Virtual: true, Network: true}
 	var length = int64(dataID.Size)
 
 	ranges, err := ParseRange(reqRange, int64(dataID.Size))

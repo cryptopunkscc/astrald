@@ -135,11 +135,14 @@ func (adm *Admin) grant(term admin.Terminal, args []string) error {
 	if identity, err = adm.mod.node.Resolver().Resolve(args[0]); err != nil {
 		return err
 	}
-	if dataID, err = data.Parse(args[1]); err != nil {
-		return err
+	if dataID, err = data.Parse(args[1]); err == nil {
+		return adm.mod.Grant(identity, dataID)
+	}
+	if _, err = adm.mod.index.IndexInfo(args[1]); err == nil {
+		return adm.mod.GrantIndex(identity, args[1])
 	}
 
-	return adm.mod.Grant(identity, dataID)
+	return errors.New("invalid target")
 }
 
 func (adm *Admin) revoke(term admin.Terminal, args []string) error {
@@ -154,11 +157,15 @@ func (adm *Admin) revoke(term admin.Terminal, args []string) error {
 	if identity, err = adm.mod.node.Resolver().Resolve(args[0]); err != nil {
 		return err
 	}
-	if dataID, err = data.Parse(args[1]); err != nil {
-		return err
+	if dataID, err = data.Parse(args[1]); err == nil {
+		return adm.mod.Revoke(identity, dataID)
+
+	}
+	if _, err = adm.mod.index.IndexInfo(args[1]); err == nil {
+		return adm.mod.RevokeIndex(identity, args[1])
 	}
 
-	return adm.mod.Revoke(identity, dataID)
+	return errors.New("invalid target")
 }
 
 func (adm *Admin) local(term admin.Terminal, args []string) error {
@@ -222,8 +229,8 @@ func (adm *Admin) ShortDescription() string {
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %s <command>\n\n", shares.ModuleName)
 	term.Printf("commands:\n")
-	term.Printf("  grant <identity> <dataID>                 grant access to data\n")
-	term.Printf("  revoke <identity> <dataID>                revoke access to data\n")
+	term.Printf("  grant <identity> <dataID|index>           grant access to data or an index\n")
+	term.Printf("  revoke <identity> <dataID|index>          revoke access to data or an index\n")
 	term.Printf("  local <identitiy>                         list local shres for the identity\n")
 	term.Printf("  remote [identity]                         list remote shares\n")
 	term.Printf("  sync [guest@]<host>                       sync remote share\n")

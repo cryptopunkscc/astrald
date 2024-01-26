@@ -1,8 +1,11 @@
 package webdata
 
 import (
+	"cmp"
+	"github.com/cryptopunkscc/astrald/mod/index"
 	"html/template"
 	"net/http"
+	"slices"
 )
 
 type RootHandler struct {
@@ -33,6 +36,10 @@ func (mod *RootHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	slices.SortFunc(list, func(a, b index.Info) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 
 	if len(list) > 0 {
 		err = mod.template.Execute(w, list)
