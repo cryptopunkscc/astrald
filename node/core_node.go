@@ -64,7 +64,10 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 	// basic logs
 	node.setupLogs()
 
-	node.assets = assets.NewCoreAssets(res, nil)
+	node.assets, err = assets.NewCoreAssets(res, nil)
+	if err != nil {
+		return nil, fmt.Errorf("database error: %w", err)
+	}
 
 	// log config
 	if err := node.loadLogConfig(); err != nil {
@@ -111,7 +114,7 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 	if enabled == nil {
 		enabled = modules.RegisteredModules()
 	}
-	node.modules, err = modules.NewCoreModules(node, enabled, node.assets.WithPrefix("mod_"), node.log)
+	node.modules, err = modules.NewCoreModules(node, enabled, node.assets, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}

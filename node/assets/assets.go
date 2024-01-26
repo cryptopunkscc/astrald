@@ -11,5 +11,5 @@ type Assets interface {
 	Write(name string, data []byte) error
 	LoadYAML(name string, out interface{}) error
 	StoreYAML(name string, in interface{}) error
-	OpenDB(name string) (*gorm.DB, error)
+	Database() *gorm.DB
 }

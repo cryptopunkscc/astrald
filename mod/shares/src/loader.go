@@ -19,10 +19,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	_ = assets.LoadYAML(shares.ModuleName, &mod.config)
 
-	mod.db, err = assets.OpenDB(shares.ModuleName)
-	if err != nil {
-		return nil, err
-	}
+	mod.db = assets.Database()
 
 	err = mod.db.AutoMigrate(&dbRemoteShare{}, &dbRemoteData{})
 	if err != nil {

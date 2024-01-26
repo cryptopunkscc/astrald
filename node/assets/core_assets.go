@@ -16,14 +16,27 @@ var _ Assets = &CoreAssets{}
 
 var dbOpen func(string) gorm.Dialector
 
+const defaultDatabaseName = "astrald"
+
 type CoreAssets struct {
-	res    resources.Resources
-	log    *log.Logger
-	prefix string
+	res resources.Resources
+	log *log.Logger
+	db  *gorm.DB
 }
 
-func NewCoreAssets(res resources.Resources, log *log.Logger) *CoreAssets {
-	return &CoreAssets{res: res, log: log}
+func NewCoreAssets(res resources.Resources, log *log.Logger) (*CoreAssets, error) {
+	var err error
+	var a = &CoreAssets{
+		res: res,
+		log: log,
+	}
+
+	a.db, err = a.OpenDatabase(defaultDatabaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	return a, nil
 }
 
 func (assets *CoreAssets) Res() resources.Resources {
@@ -31,11 +44,11 @@ func (assets *CoreAssets) Res() resources.Resources {
 }
 
 func (assets *CoreAssets) Read(name string) ([]byte, error) {
-	return assets.res.Read(assets.prefix + name)
+	return assets.res.Read(name)
 }
 
 func (assets *CoreAssets) Write(name string, data []byte) error {
-	return assets.res.Write(assets.prefix+name, data)
+	return assets.res.Write(name, data)
 }
 
 func (assets *CoreAssets) LoadYAML(name string, out interface{}) error {
@@ -43,7 +56,7 @@ func (assets *CoreAssets) LoadYAML(name string, out interface{}) error {
 		name = name + ".yaml"
 	}
 
-	bytes, err := assets.Res().Read(assets.prefix + name)
+	bytes, err := assets.Res().Read(name)
 	if err != nil {
 		return err
 	}
@@ -61,10 +74,14 @@ func (assets *CoreAssets) StoreYAML(name string, in interface{}) error {
 		return err
 	}
 
-	return assets.Res().Write(assets.prefix+name, bytes)
+	return assets.Res().Write(name, bytes)
 }
 
-func (assets *CoreAssets) OpenDB(name string) (*gorm.DB, error) {
+func (assets *CoreAssets) Database() *gorm.DB {
+	return assets.db
+}
+
+func (assets *CoreAssets) OpenDatabase(name string) (*gorm.DB, error) {
 	if name == "" {
 		return nil, errors.New("invalid name")
 	}
@@ -92,7 +109,7 @@ func (assets *CoreAssets) OpenDB(name string) (*gorm.DB, error) {
 
 	switch res := assets.res.(type) {
 	case *resources.FileResources:
-		var dbPath = filepath.Join(res.Root(), assets.prefix+name)
+		var dbPath = filepath.Join(res.Root(), name)
 
 		return gorm.Open(
 			dbOpen(dbPath),
@@ -109,14 +126,6 @@ func (assets *CoreAssets) OpenDB(name string) (*gorm.DB, error) {
 	}
 
 	return nil, errors.New("database unavailable")
-}
-
-func (assets *CoreAssets) WithPrefix(prefix string) *CoreAssets {
-	return &CoreAssets{
-		res:    assets.res,
-		log:    assets.log,
-		prefix: prefix,
-	}
 }
 
 type logWriter struct {

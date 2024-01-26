@@ -10,7 +10,6 @@ import (
 type Loader struct{}
 
 func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (modules.Module, error) {
-	var err error
 	var mod = &Module{
 		node:   node,
 		config: defaultConfig,
@@ -21,10 +20,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	_ = assets.LoadYAML(storage.ModuleName, &mod.config)
 
-	mod.db, err = assets.OpenDB(storage.ModuleName)
-	if err != nil {
-		return nil, err
-	}
+	mod.db = assets.Database()
 
 	return mod, nil
 }

@@ -21,10 +21,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.indexer = &IndexerService{Module: mod}
 
-	mod.db, err = assets.OpenDB(media.ModuleName)
-	if err != nil {
-		return nil, err
-	}
+	mod.db = assets.Database()
 
 	err = mod.db.AutoMigrate(&dbMediaInfo{})
 	if err != nil {

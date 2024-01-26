@@ -37,10 +37,7 @@ func NewCoreTracker(assets assets.Assets, parser EndpointParser, log *log.Logger
 
 	tracker.events.SetParent(events)
 
-	tracker.db, err = assets.OpenDB(DatabaseName)
-	if err != nil {
-		return nil, err
-	}
+	tracker.db = assets.Database()
 
 	// Migrate the schema
 	if err = tracker.dbAutoMigrate(); err != nil {

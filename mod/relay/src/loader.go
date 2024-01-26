@@ -21,10 +21,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	_ = assets.LoadYAML(relay.ModuleName, &mod.config)
 
-	mod.db, err = assets.OpenDB(relay.ModuleName)
-	if err != nil {
-		return nil, err
-	}
+	mod.db = assets.Database()
 
 	if err = mod.db.AutoMigrate(&dbRelayCert{}); err != nil {
 		return nil, err

@@ -21,10 +21,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.events.SetParent(node.Events())
 
-	mod.db, err = assets.OpenDB(index.ModuleName)
-	if err != nil {
-		return nil, err
-	}
+	mod.db = assets.Database()
 
 	err = mod.db.AutoMigrate(&dbIndex{}, &dbEntry{}, &dbUnion{})
 	if err != nil {

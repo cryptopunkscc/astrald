@@ -25,10 +25,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	_ = assets.LoadYAML(apphost.ModuleName, &mod.config)
 
 	// set up database
-	mod.db, err = assets.OpenDB(apphost.ModuleName)
-	if err != nil {
-		return nil, err
-	}
+	mod.db = assets.Database()
 
 	err = mod.db.AutoMigrate(&dbAccessToken{})
 	if err != nil {

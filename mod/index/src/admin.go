@@ -128,7 +128,7 @@ func (adm *Admin) list(term admin.Terminal, _ []string) error {
 		}
 		name := item.Name
 		if item.Description != "" {
-			name = item.Description
+			name = item.Description + " (" + item.Name + ")"
 		}
 		term.Printf(f,
 			item.CreatedAt,
