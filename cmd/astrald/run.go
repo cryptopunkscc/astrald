@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/debug"
+	"github.com/cryptopunkscc/astrald/lib/adc"
+	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"os"
@@ -61,9 +65,23 @@ func setupResources(args *Args) (resources.Resources, error) {
 
 // setupNodeIdentity reads node's identity from resources or generates one if needed
 func setupNodeIdentity(resources resources.Resources) (id.Identity, error) {
-	key, err := resources.Read(resNodeIdentity)
+	keyBytes, err := resources.Read(resNodeIdentity)
 	if err == nil {
-		return id.ParsePrivateKey(key)
+		if len(keyBytes) == 32 {
+			return id.ParsePrivateKey(keyBytes)
+		}
+
+		var r = bytes.NewReader(keyBytes)
+		err = adc.ExpectHeader(r, keys.PrivateKeyDataType)
+		if err != nil {
+			return id.Identity{}, err
+		}
+		var pk keys.PrivateKey
+		err = cslq.Decode(r, "v", &pk)
+		if err != nil {
+			return id.Identity{}, err
+		}
+		return id.ParsePrivateKey(pk.Bytes)
 	}
 
 	nodeID, err := id.GenerateIdentity()
@@ -71,7 +89,17 @@ func setupNodeIdentity(resources resources.Resources) (id.Identity, error) {
 		return id.Identity{}, err
 	}
 
-	err = resources.Write(resNodeIdentity, nodeID.PrivateKey().Serialize())
+	var buf = &bytes.Buffer{}
+
+	err = cslq.Encode(buf, "vv", adc.Header(keys.PrivateKeyDataType), keys.PrivateKey{
+		Type:  keys.KeyTypeIdentity,
+		Bytes: nodeID.PrivateKey().Serialize(),
+	})
+	if err != nil {
+		return id.Identity{}, err
+	}
+
+	err = resources.Write(resNodeIdentity, buf.Bytes())
 	if err != nil {
 		return id.Identity{}, err
 	}
