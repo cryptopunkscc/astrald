@@ -79,6 +79,13 @@ func (mod *Module) Sync(caller id.Identity, target id.Identity) error {
 		timestamp = strconv.FormatInt(row.LastUpdate.UnixNano(), 10)
 	} else {
 		mod.index.CreateIndex(remoteIndexName, index.TypeSet)
+		mod.index.SetVisible(remoteIndexName, true)
+		mod.index.SetDescription(remoteIndexName,
+			fmt.Sprintf(
+				"Data shared by %s",
+				mod.node.Resolver().DisplayName(target),
+			),
+		)
 	}
 
 	var query = net.NewQuery(caller, target, syncServicePrefix+timestamp)
@@ -312,6 +319,13 @@ func (mod *Module) makeLocalIndexFor(identity id.Identity) error {
 	if err != nil {
 		return err
 	}
+	mod.index.SetVisible(unionName, true)
+
+	mod.index.SetDescription(unionName,
+		fmt.Sprintf(
+			"Files shared with %s",
+			mod.node.Resolver().DisplayName(identity),
+		))
 
 	_, err = mod.index.CreateIndex(setName, index.TypeSet)
 	if err != nil {

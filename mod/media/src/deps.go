@@ -49,6 +49,8 @@ func (mod *Module) LoadDependencies() error {
 		if err != nil {
 			return err
 		}
+		mod.index.SetVisible(media.IndexNameAll, true)
+		mod.index.SetDescription(media.IndexNameAll, "All media")
 	}
 
 	return nil

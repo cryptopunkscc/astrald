@@ -32,6 +32,8 @@ func NewAdmin(mod *Module) *Admin {
 		"show":         adm.show,
 		"find":         adm.find,
 		"contains":     adm.contains,
+		"set_visible":  adm.setVisible,
+		"set_desc":     adm.setDesc,
 		"help":         adm.help,
 	}
 
@@ -49,6 +51,38 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	}
 
 	return errors.New("unknown command")
+}
+
+func (adm *Admin) setDesc(term admin.Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("missing argument")
+	}
+
+	name, desc := args[0], args[1]
+
+	return adm.mod.SetDescription(name, desc)
+}
+
+func (adm *Admin) setVisible(term admin.Terminal, args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing argument")
+	}
+
+	var visible = true
+	name := args[0]
+
+	if len(args) >= 2 {
+		switch args[1] {
+		case "t", "true", "y", "yes":
+			visible = true
+		case "f", "false", "n", "no":
+			visible = false
+		default:
+			return fmt.Errorf("invalid argument: %s", args[1])
+		}
+	}
+
+	return adm.mod.SetVisible(name, visible)
 }
 
 func (adm *Admin) create(term admin.Terminal, args []string) error {
@@ -85,14 +119,23 @@ func (adm *Admin) list(term admin.Terminal, _ []string) error {
 		return cmp.Compare(a.Name, b.Name)
 	})
 
-	var f = "%-20s %-6s %8s %v\n"
-	term.Printf(f, admin.Header("Created at"), admin.Header("Type"), admin.Header("Size"), admin.Header("Name"))
+	var f = "%-20s %-6s %8s %1s %v\n"
+	term.Printf(f, admin.Header("Created at"), admin.Header("Type"), admin.Header("Size"), admin.Header("V"), admin.Header("Name"))
 	for _, item := range list {
+		var v = "n"
+		if item.Visible {
+			v = "y"
+		}
+		name := item.Name
+		if item.Description != "" {
+			name = item.Description
+		}
 		term.Printf(f,
 			item.CreatedAt,
 			item.Type,
 			strconv.Itoa(item.Size),
-			item.Name,
+			v,
+			name,
 		)
 	}
 

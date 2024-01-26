@@ -57,8 +57,17 @@ func (mod *IndexHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	info, err := mod.index.IndexInfo(indexName)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	var page = &IndexPage{
 		IndexName: indexName,
+	}
+	if info.Description != "" {
+		page.IndexName = info.Description
 	}
 
 	for _, item := range list {

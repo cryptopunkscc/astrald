@@ -13,13 +13,13 @@
             <th>Type</th>
             <th>Size</th>
         </tr>
-    {{range .}}
+        {{range .}}
         <tr>
-            <td><a href="/index/{{.Name}}">{{.Name}}</a></td>
+            <td><a href="/index/{{.Name}}">{{if eq .Description ""}}{{.Name}}{{else}}{{.Description}}{{end}}</a></td>
             <td>{{.Type}}</td>
             <td>{{.Size}}</td>
         </tr>
-    {{end}}
+        {{end}}
     </table>
 </div>
 </body>

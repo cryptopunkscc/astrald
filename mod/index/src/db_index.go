@@ -7,10 +7,12 @@ import (
 )
 
 type dbIndex struct {
-	ID        uint   `gorm:"primarykey"`
-	Name      string `gorm:"uniqueIndex"`
-	Type      string
-	CreatedAt time.Time
+	ID          uint   `gorm:"primarykey"`
+	Name        string `gorm:"uniqueIndex"`
+	Type        string
+	Visible     bool `gorm:"index;default:false;not null"`
+	Description string
+	CreatedAt   time.Time
 }
 
 func (dbIndex) TableName() string { return "indexes" }
@@ -29,6 +31,22 @@ func (mod *Module) dbFindIndexByName(name string) (*dbIndex, error) {
 	}
 
 	return &row, nil
+}
+
+func (mod *Module) dbIndexSetVisible(name string, visible bool) error {
+	return mod.db.
+		Model(&dbIndex{}).
+		Where("name = ?", name).
+		Update("visible", visible).
+		Error
+}
+
+func (mod *Module) dbIndexSetDescription(name string, desc string) error {
+	return mod.db.
+		Model(&dbIndex{}).
+		Where("name = ?", name).
+		Update("description", desc).
+		Error
 }
 
 func (mod *Module) dbFindIndexByNameAndType(name string, kind string) (*dbIndex, error) {

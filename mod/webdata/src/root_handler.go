@@ -31,19 +31,35 @@ func NewRootHandler(module *Module) *RootHandler {
 }
 
 func (mod *RootHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	var showHidden = r.URL.Query().Has("hidden")
+
 	list, err := mod.index.AllIndexes()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	slices.SortFunc(list, func(a, b index.Info) int {
+	var filtered []index.Info
+	for _, i := range list {
+		if !i.Visible && !showHidden {
+			continue
+		}
+		filtered = append(filtered, i)
+	}
+
+	slices.SortFunc(filtered, func(a, b index.Info) int {
 		return cmp.Compare(a.Name, b.Name)
 	})
 
-	if len(list) > 0 {
-		err = mod.template.Execute(w, list)
+	if len(filtered) > 0 {
+		err = mod.template.Execute(w, filtered)
 		if err != nil {
+			mod.log.Errorv(1, "error rendering root template: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}

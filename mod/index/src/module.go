@@ -135,10 +135,12 @@ func (mod *Module) IndexInfo(name string) (*index.Info, error) {
 	}
 
 	var info = &index.Info{
-		Name:      indexRow.Name,
-		Type:      index.Type(indexRow.Type),
-		Size:      0,
-		CreatedAt: indexRow.CreatedAt,
+		Name:        indexRow.Name,
+		Type:        index.Type(indexRow.Type),
+		Size:        0,
+		Visible:     indexRow.Visible,
+		Description: indexRow.Description,
+		CreatedAt:   indexRow.CreatedAt,
 	}
 
 	var count int64
@@ -227,10 +229,12 @@ func (mod *Module) AllIndexes() ([]index.Info, error) {
 		}
 
 		list = append(list, index.Info{
-			Name:      row.Name,
-			Type:      index.Type(row.Type),
-			Size:      int(count),
-			CreatedAt: row.CreatedAt,
+			Name:        row.Name,
+			Type:        index.Type(row.Type),
+			Size:        int(count),
+			Visible:     row.Visible,
+			Description: row.Description,
+			CreatedAt:   row.CreatedAt,
 		})
 	}
 
@@ -372,4 +376,12 @@ func (mod *Module) GetEntry(name string, dataID data.ID) (*index.Entry, error) {
 		Added:     row.Added,
 		UpdatedAt: row.UpdatedAt,
 	}, nil
+}
+
+func (mod *Module) SetVisible(name string, visible bool) error {
+	return mod.dbIndexSetVisible(name, visible)
+}
+
+func (mod *Module) SetDescription(name string, desc string) error {
+	return mod.dbIndexSetDescription(name, desc)
 }

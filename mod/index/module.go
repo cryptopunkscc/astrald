@@ -22,13 +22,17 @@ type Module interface {
 	GetEntry(name string, dataID data.ID) (*Entry, error)
 	AddToUnion(union string, set string) error
 	RemoveFromUnion(union string, index string) error
+	SetVisible(name string, visible bool) error
+	SetDescription(name string, desc string) error
 }
 
 type Info struct {
-	Name      string
-	Type      Type
-	Size      int
-	CreatedAt time.Time
+	Name        string
+	Type        Type
+	Size        int
+	Visible     bool
+	Description string
+	CreatedAt   time.Time
 }
 
 type Entry struct {

@@ -61,6 +61,8 @@ func (mod *Module) LoadDependencies() error {
 			return err
 		}
 		mod.index.AddToUnion(index.LocalNodeUnionName, fs.IndexNameAll)
+		mod.index.SetVisible(fs.IndexNameAll, true)
+		mod.index.SetDescription(fs.IndexNameAll, "Local filesystem")
 	}
 
 	if _, err = mod.index.IndexInfo(nameReadOnly); err != nil {
