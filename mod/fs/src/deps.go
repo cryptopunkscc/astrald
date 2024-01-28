@@ -10,6 +10,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/resources"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -106,6 +109,25 @@ func (mod *Module) LoadDependencies() error {
 			mod.index.AddToSet(fs.MemorySetName, event.DataID)
 			return nil
 		})
+	}
+
+	// if we have file-based resources, use that as writable storage
+	fileRes, ok := mod.assets.Res().(*resources.FileResources)
+	if ok {
+		dataPath := filepath.Join(fileRes.Root(), "data")
+		err = os.MkdirAll(dataPath, 0700)
+		if err == nil {
+			err = mod.store.AddPath(dataPath)
+			if err != nil {
+				mod.log.Error("error adding writable data path: %v", err)
+			}
+		}
+	} else {
+		mod.mem = NewMemStore(&mod.events, 0)
+	}
+
+	for _, path := range mod.config.Store {
+		mod.store.AddPath(path)
 	}
 
 	return nil

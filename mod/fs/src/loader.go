@@ -5,9 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/resources"
-	"os"
-	"path/filepath"
 )
 
 type Loader struct{}
@@ -16,6 +13,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	var err error
 	var mod = &Module{
 		node:   node,
+		assets: assets,
 		log:    log,
 		config: defaultConfig,
 	}
@@ -37,24 +35,9 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		mod.indexer.Add(path)
 	}
 
-	mod.store = NewStoreService(mod)
-	for _, path := range mod.config.Store {
-		mod.store.AddPath(path)
-	}
-
-	// if we have file-based resources, use that as writable storage
-	fileRes, ok := assets.Res().(*resources.FileResources)
-	if ok {
-		dataPath := filepath.Join(fileRes.Root(), "data")
-		err = os.MkdirAll(dataPath, 0700)
-		if err == nil {
-			err = mod.store.AddPath(dataPath)
-			if err != nil {
-				mod.log.Error("error adding writable data path: %v", err)
-			}
-		}
-	} else {
-		mod.mem = NewMemStore(&mod.events, 0)
+	mod.store, err = NewStoreService(mod)
+	if err != nil {
+		return nil, err
 	}
 
 	return mod, nil

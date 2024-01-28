@@ -84,9 +84,11 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 		}
 		defer response.Body.Close()
 
+		var alloc = max(response.ContentLength, 0)
+
 		w, err := adm.mod.Store(
 			&storage.StoreOpts{
-				Alloc: int(response.ContentLength),
+				Alloc: int(alloc),
 			},
 		)
 		if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
@@ -19,6 +20,7 @@ var _ fs.Module = &Module{}
 type Module struct {
 	config Config
 	node   node.Node
+	assets assets.Assets
 	log    *log.Logger
 	events events.Queue
 	db     *gorm.DB

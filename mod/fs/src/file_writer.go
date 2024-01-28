@@ -6,10 +6,15 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/fs"
+	"github.com/cryptopunkscc/astrald/mod/storage"
 	"os"
 	"path/filepath"
 	"sync/atomic"
 )
+
+var _ storage.DataWriter = &FileWriter{}
+
+const tempFilePrefix = ".tmp."
 
 type FileWriter struct {
 	path      string
@@ -24,7 +29,7 @@ func NewFileWriter(parent *StoreService, path string) (*FileWriter, error) {
 	var rbytes = make([]byte, 8)
 	rand.Read(rbytes)
 
-	var tempID = ".tmp." + hex.EncodeToString(rbytes)
+	var tempID = tempFilePrefix + hex.EncodeToString(rbytes)
 
 	file, err := os.Create(filepath.Join(path, tempID))
 	if err != nil {
@@ -69,13 +74,11 @@ func (w *FileWriter) Commit() (data.ID, error) {
 		os.Remove(oldPath)
 	}
 
-	if w.store != nil {
-		w.store.index.AddToSet(fs.ReadWriteSetName, dataID)
-		w.store.events.Emit(fs.EventFileAdded{
-			DataID: dataID,
-			Path:   newPath,
-		})
-	}
+	w.store.index.AddToSet(fs.ReadWriteSetName, dataID)
+	w.store.events.Emit(fs.EventFileAdded{
+		DataID: dataID,
+		Path:   newPath,
+	})
 
 	return dataID, err
 }

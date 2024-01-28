@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -45,6 +46,9 @@ func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataRea
 func (mod *Module) Store(opts *storage.StoreOpts) (storage.DataWriter, error) {
 	if opts == nil {
 		opts = &storage.StoreOpts{}
+	}
+	if opts.Alloc < 0 {
+		return nil, errors.New("alloc cannot be less than 0")
 	}
 
 	for _, store := range mod.stores.Clone() {
