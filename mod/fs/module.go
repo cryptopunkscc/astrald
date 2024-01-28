@@ -6,7 +6,10 @@ import (
 )
 
 const ModuleName = "fs"
-const IndexNameAll = "mod.fs.all"
+const AllSetName = "mod.fs.all"
+const MemorySetName = "mod.fs.mem"
+const ReadOnlySetName = "mod.fs.ro"
+const ReadWriteSetName = "mod.fs.rw"
 
 type Module interface {
 	Find(id data.ID) []string

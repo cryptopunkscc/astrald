@@ -37,7 +37,7 @@ func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.D
 
 		r, err := srv.readPath(path, int(opts.Offset))
 		if err == nil {
-			return &Reader{ReadCloser: r, name: nameReadWrite}, err
+			return &Reader{ReadCloser: r, name: fs.ReadWriteSetName}, err
 		}
 	}
 

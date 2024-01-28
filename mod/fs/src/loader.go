@@ -53,6 +53,8 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 				mod.log.Error("error adding writable data path: %v", err)
 			}
 		}
+	} else {
+		mod.mem = NewMemStore(&mod.events, 0)
 	}
 
 	return mod, nil

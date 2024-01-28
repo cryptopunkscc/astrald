@@ -94,7 +94,10 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 		}
 		defer w.Discard()
 
-		io.Copy(w, response.Body)
+		_, err = io.Copy(w, response.Body)
+		if err != nil {
+			return err
+		}
 
 		dataID, err := w.Commit()
 		if err != nil {

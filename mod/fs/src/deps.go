@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"time"
 )
@@ -32,11 +33,17 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	// read only
-	mod.storage.AddReader(nameReadOnly, mod.indexer)
+	mod.storage.AddReader(fs.ReadOnlySetName, mod.indexer)
 
 	// read write
-	mod.storage.AddReader(nameReadWrite, mod.store)
-	mod.storage.AddStore(nameReadWrite, mod.store)
+	mod.storage.AddReader(fs.ReadWriteSetName, mod.store)
+	mod.storage.AddStore(fs.ReadWriteSetName, mod.store)
+
+	// memory
+	if mod.mem != nil {
+		mod.storage.AddReader(fs.MemorySetName, mod.mem)
+		mod.storage.AddStore(fs.MemorySetName, mod.mem)
+	}
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
@@ -55,30 +62,50 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	// create our indexes if needed
-	if _, err = mod.index.IndexInfo(fs.IndexNameAll); err != nil {
-		_, err = mod.index.CreateIndex(fs.IndexNameAll, index.TypeUnion)
+	if _, err = mod.index.IndexInfo(fs.AllSetName); err != nil {
+		_, err = mod.index.CreateIndex(fs.AllSetName, index.TypeUnion)
 		if err != nil {
 			return err
 		}
-		mod.index.AddToUnion(index.LocalNodeUnionName, fs.IndexNameAll)
-		mod.index.SetVisible(fs.IndexNameAll, true)
-		mod.index.SetDescription(fs.IndexNameAll, "Local filesystem")
+		mod.index.AddToUnion(index.LocalNodeUnionName, fs.AllSetName)
+		mod.index.SetVisible(fs.AllSetName, true)
+		mod.index.SetDescription(fs.AllSetName, "Local filesystem")
 	}
 
-	if _, err = mod.index.IndexInfo(nameReadOnly); err != nil {
-		_, err = mod.index.CreateIndex(nameReadOnly, index.TypeSet)
+	if _, err = mod.index.IndexInfo(fs.ReadOnlySetName); err != nil {
+		_, err = mod.index.CreateIndex(fs.ReadOnlySetName, index.TypeSet)
 		if err != nil {
 			return err
 		}
-		mod.index.AddToUnion(fs.IndexNameAll, nameReadOnly)
+		mod.index.AddToUnion(fs.AllSetName, fs.ReadOnlySetName)
 	}
 
-	if _, err = mod.index.IndexInfo(nameReadWrite); err != nil {
-		_, err = mod.index.CreateIndex(nameReadWrite, index.TypeSet)
+	if _, err = mod.index.IndexInfo(fs.ReadWriteSetName); err != nil {
+		_, err = mod.index.CreateIndex(fs.ReadWriteSetName, index.TypeSet)
 		if err != nil {
 			return err
 		}
-		mod.index.AddToUnion(fs.IndexNameAll, nameReadWrite)
+		mod.index.AddToUnion(fs.AllSetName, fs.ReadWriteSetName)
+	}
+
+	if mod.mem != nil {
+		_, err := mod.index.IndexInfo(fs.MemorySetName)
+		if err != nil {
+			_, err = mod.index.CreateIndex(fs.MemorySetName, index.TypeSet)
+			if err != nil {
+				return err
+			}
+
+			err = mod.index.AddToUnion(fs.AllSetName, fs.MemorySetName)
+			if err != nil {
+				return err
+			}
+		}
+
+		go events.Handle(context.Background(), &mod.events, func(ctx context.Context, event storage.EventDataCommitted) error {
+			mod.index.AddToSet(fs.MemorySetName, event.DataID)
+			return nil
+		})
 	}
 
 	return nil

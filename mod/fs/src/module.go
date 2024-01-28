@@ -14,9 +14,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const nameReadOnly = "mod.fs.ro"
-const nameReadWrite = "mod.fs.rw"
-
 var _ fs.Module = &Module{}
 
 type Module struct {
@@ -33,6 +30,7 @@ type Module struct {
 
 	indexer *IndexerService
 	store   *StoreService
+	mem     *MemStore
 }
 
 func (mod *Module) Prepare(ctx context.Context) error {

@@ -70,7 +70,7 @@ func (w *FileWriter) Commit() (data.ID, error) {
 	}
 
 	if w.store != nil {
-		w.store.index.AddToSet(nameReadWrite, dataID)
+		w.store.index.AddToSet(fs.ReadWriteSetName, dataID)
 		w.store.events.Emit(fs.EventFileAdded{
 			DataID: dataID,
 			Path:   newPath,
