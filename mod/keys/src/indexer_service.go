@@ -2,8 +2,8 @@ package keys
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
-	"time"
 )
 
 type IndexerService struct {
@@ -11,7 +11,7 @@ type IndexerService struct {
 }
 
 func (srv *IndexerService) Run(ctx context.Context) error {
-	for event := range srv.data.SubscribeType(ctx, keys.PrivateKeyDataType, time.Time{}) {
+	for event := range srv.content.Scan(ctx, &content.ScanOpts{Type: keys.PrivateKeyDataType}) {
 		srv.IndexKey(event.DataID)
 	}
 

@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"time"
 )
 
 type IndexerService struct {
@@ -11,7 +10,7 @@ type IndexerService struct {
 }
 
 func (srv *IndexerService) Run(ctx context.Context) error {
-	for event := range srv.data.SubscribeType(ctx, "", time.Time{}) {
+	for event := range srv.content.Scan(ctx, nil) {
 		switch event.Type {
 		case relay.RelayCertType:
 			err := srv.IndexCert(event.DataID)

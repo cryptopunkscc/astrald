@@ -1,7 +1,7 @@
 package zip
 
 import (
-	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/data"
 )
 
 type dbZipContent struct {
@@ -12,7 +12,7 @@ type dbZipContent struct {
 
 func (dbZipContent) TableName() string { return "zip_contents" }
 
-func (mod *Module) dbFindByFileID(dataID _data.ID) ([]dbZipContent, error) {
+func (mod *Module) dbFindByFileID(dataID data.ID) ([]dbZipContent, error) {
 	var rows []dbZipContent
 
 	tx := mod.db.Where("file_id = ?", dataID.String()).Find(&rows)
@@ -23,7 +23,7 @@ func (mod *Module) dbFindByFileID(dataID _data.ID) ([]dbZipContent, error) {
 	return rows, nil
 }
 
-func (mod *Module) dbFindByZipID(dataID _data.ID) ([]dbZipContent, error) {
+func (mod *Module) dbFindByZipID(dataID data.ID) ([]dbZipContent, error) {
 	var rows []dbZipContent
 
 	tx := mod.db.Where("zip_id = ?", dataID.String()).Find(&rows)

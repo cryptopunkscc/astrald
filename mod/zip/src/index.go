@@ -57,7 +57,7 @@ func (mod *Module) Index(zipID data.ID, reindex bool) error {
 			FileID: fileID.String(),
 		})
 
-		mod.data.SetLabel(fileID, filepath.Base(file.Name))
+		mod.content.SetLabel(fileID, filepath.Base(file.Name))
 
 		mod.log.Infov(1, "indexed %s (%v)", file.Name, fileID)
 

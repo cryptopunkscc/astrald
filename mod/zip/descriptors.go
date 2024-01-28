@@ -2,10 +2,12 @@ package zip
 
 import "github.com/cryptopunkscc/astrald/data"
 
-const ArchiveDescriptorType = "mod.zip.archive"
-
 type ArchiveDescriptor struct {
 	Files []ArchiveFile
+}
+
+func (ArchiveDescriptor) DescriptorType() string {
+	return "mod.zip.archive"
 }
 
 type ArchiveFile struct {
@@ -13,10 +15,12 @@ type ArchiveFile struct {
 	Path   string
 }
 
-const MemberDescriptorType = "mod.zip.member"
-
 type MemberDescriptor struct {
 	Memberships []Membership
+}
+
+func (MemberDescriptor) DescriptorType() string {
+	return "mod.zip.member"
 }
 
 type Membership struct {

@@ -22,9 +22,11 @@ type PrivateKey struct {
 	Bytes []byte `cslq:"[c]c"`
 }
 
-const KeyDescriptorType = "mod.keys.private_key"
-
 type KeyDescriptor struct {
 	KeyType   string
 	PublicKey string
+}
+
+func (k KeyDescriptor) DescriptorType() string {
+	return "mod.keys.private_key"
 }

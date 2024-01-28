@@ -63,12 +63,7 @@ func (mod *Module) DeleteIndex(name string) error {
 	}
 
 	for _, row := range entryRows {
-		dataID, err := data.Parse(row.Data.DataID)
-		if err != nil {
-			continue
-		}
-
-		mod.removeFromIndex(indexRow, dataID)
+		mod.removeFromIndex(indexRow, row.Data.DataID)
 	}
 
 	var tx = mod.db.Model(&dbUnion{}).Delete("set_id = ?", indexRow.ID)
@@ -99,7 +94,7 @@ func (mod *Module) AddToSet(name string, dataID data.ID) error {
 }
 
 func (mod *Module) addToIndex(indexRow *dbIndex, dataID data.ID) error {
-	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID.String())
+	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID)
 	if err != nil {
 		return err
 	}
@@ -120,7 +115,7 @@ func (mod *Module) RemoveFromSet(name string, dataID data.ID) error {
 }
 
 func (mod *Module) removeFromIndex(indexRow *dbIndex, dataID data.ID) error {
-	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID.String())
+	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID)
 	if err != nil {
 		return err
 	}
@@ -168,7 +163,7 @@ func (mod *Module) Contains(name string, dataID data.ID) (bool, error) {
 		return false, fmt.Errorf("cannot read index %s: %w", name, err)
 	}
 
-	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID.String())
+	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID)
 	if err != nil {
 		return false, err
 	}
@@ -186,7 +181,7 @@ func (mod *Module) Contains(name string, dataID data.ID) (bool, error) {
 }
 
 func (mod *Module) Find(dataID data.ID) ([]string, error) {
-	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID.String())
+	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID)
 	if err != nil {
 		return nil, err
 	}
@@ -255,19 +250,58 @@ func (mod *Module) UpdatedBetween(name string, since time.Time, until time.Time)
 	var updates []index.Entry
 
 	for _, row := range rows {
-		dataID, err := data.Parse(row.Data.DataID)
-		if err != nil {
-			return nil, err
-		}
-
 		updates = append(updates, index.Entry{
-			DataID:    dataID,
+			DataID:    row.Data.DataID,
 			Added:     row.Added,
 			UpdatedAt: row.UpdatedAt,
 		})
 	}
 
 	return updates, nil
+}
+
+func (mod *Module) Scan(name string, opts *index.ScanOpts) ([]*index.Entry, error) {
+	indexRow, err := mod.dbFindIndexByName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts == nil {
+		opts = &index.ScanOpts{}
+	}
+
+	var rows []dbEntry
+	var q = mod.db.
+		Where("index_id = ?", indexRow.ID).
+		Order("updated_at").
+		Preload("Data")
+
+	if !opts.UpdatedAfter.IsZero() {
+		q = q.Where("updated_at > ?", opts.UpdatedAfter)
+	}
+	if !opts.UpdatedBefore.IsZero() {
+		q = q.Where("updated_at < ?", opts.UpdatedBefore)
+	}
+	if !opts.IncludeRemoved {
+		q = q.Where("added = true")
+	}
+
+	err = q.Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []*index.Entry
+
+	for _, row := range rows {
+		entries = append(entries, &index.Entry{
+			DataID:    row.Data.DataID,
+			Added:     row.Added,
+			UpdatedAt: row.UpdatedAt,
+		})
+	}
+
+	return entries, nil
 }
 
 func (mod *Module) AddToUnion(union string, index string) error {
@@ -296,16 +330,11 @@ func (mod *Module) AddToUnion(union string, index string) error {
 			continue
 		}
 
-		dataID, err := data.Parse(entry.Data.DataID)
-		if err != nil {
-			continue
-		}
-
-		err = mod.addToIndex(unionRow, dataID)
+		err = mod.addToIndex(unionRow, entry.Data.DataID)
 		if err != nil {
 			mod.log.Errorv(2,
 				"error adding %v to union %v: %v",
-				dataID,
+				entry.Data.DataID,
 				unionRow.Name,
 				err,
 			)
@@ -361,7 +390,7 @@ func (mod *Module) GetEntry(name string, dataID data.ID) (*index.Entry, error) {
 		return nil, err
 	}
 
-	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID.String())
+	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID)
 	if err != nil {
 		return nil, err
 	}

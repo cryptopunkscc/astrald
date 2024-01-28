@@ -6,12 +6,12 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
@@ -35,7 +35,7 @@ type Module struct {
 	db      *gorm.DB
 	storage storage.Module
 	shares  shares.Module
-	data    data.Module
+	content content.Module
 	sdp     discovery.Module
 	relay   relay.Module
 	keys    keys.Module
@@ -78,7 +78,7 @@ func (mod *Module) discoverUsers(ctx context.Context) {
 		for _, cert := range event.Info.Data {
 			err := mod.checkCert(event.Identity, cert.Bytes)
 			if err != nil {
-				mod.log.Errorv(2, "checkCert %v from %v: %v", _data.Resolve(cert.Bytes), event.Identity, err)
+				mod.log.Errorv(2, "checkCert %v from %v: %v", data.Resolve(cert.Bytes), event.Identity, err)
 			}
 		}
 

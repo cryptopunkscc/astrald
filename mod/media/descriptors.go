@@ -1,5 +1,7 @@
 package media
 
-const MediaDescriptorType = "mod.media.info"
+type Descriptor Info
 
-type MediaDescriptor Info
+func (Descriptor) DescriptorType() string {
+	return "mod.media.info"
+}

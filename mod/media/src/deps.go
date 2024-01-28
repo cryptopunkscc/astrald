@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -19,7 +19,7 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(media.ModuleName, NewAdmin(mod))
 	}
 
-	mod.data, err = modules.Load[data.Module](mod.node, data.ModuleName)
+	mod.content, err = modules.Load[content.Module](mod.node, content.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -37,11 +37,11 @@ func (mod *Module) LoadDependencies() error {
 	// wait for data module to finish preparing
 	ctx, cancel := context.WithTimeoutCause(context.Background(), 15*time.Second, errors.New("data module timed out"))
 	defer cancel()
-	if err := mod.data.Ready(ctx); err != nil {
+	if err := mod.content.Ready(ctx); err != nil {
 		return err
 	}
 
-	mod.data.AddDescriber(mod)
+	mod.content.AddDescriber(mod)
 
 	// create our indexes if needed
 	if _, err = mod.index.IndexInfo(media.IndexNameAll); err != nil {

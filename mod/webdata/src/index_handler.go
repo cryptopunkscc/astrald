@@ -3,14 +3,13 @@ package webdata
 import (
 	"cmp"
 	"context"
-	_data "github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"html/template"
 	"net/http"
 	"path"
 	"slices"
-	"time"
 )
 
 type IndexHandler struct {
@@ -24,7 +23,7 @@ type IndexPage struct {
 }
 
 type Entry struct {
-	DataID _data.ID
+	DataID data.ID
 	Label  string
 	Type   string
 }
@@ -48,7 +47,7 @@ func NewIndexHandler(module *Module) *IndexHandler {
 func (mod *IndexHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 	var indexName = path.Base(r.URL.Path)
 
-	list, err := mod.index.UpdatedBetween(indexName, time.Time{}, time.Time{})
+	list, err := mod.index.Scan(indexName, nil)
 	switch err {
 	case nil:
 	default:
@@ -80,14 +79,14 @@ func (mod *IndexHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 			Label:  item.DataID.String(),
 		}
 
-		descs := mod.data.DescribeData(context.Background(), item.DataID, nil)
+		descs := mod.content.Describe(context.Background(), item.DataID, nil)
 		for _, desc := range descs {
-			switch typed := desc.Data.(type) {
-			case data.LabelDescriptor:
+			switch typed := desc.(type) {
+			case content.LabelDescriptor:
 				entry.Label = typed.Label
-			case data.TypeDescriptor:
+			case content.TypeDescriptor:
 				entry.Type = typed.Type
-			case media.MediaDescriptor:
+			case media.Descriptor:
 				entry.Label = typed.Artist + " - " + typed.Title
 			}
 		}

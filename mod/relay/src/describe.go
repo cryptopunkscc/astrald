@@ -3,12 +3,12 @@ package relay
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	_data "github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 )
 
-func (mod *Module) DescribeData(ctx context.Context, dataID _data.ID, opts *data.DescribeOpts) []data.Descriptor {
+func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []content.Descriptor {
 	row, err := mod.dbFindByDataID(dataID)
 	if err != nil {
 		return nil
@@ -32,14 +32,13 @@ func (mod *Module) DescribeData(ctx context.Context, dataID _data.ID, opts *data
 		verr = cert.Validate()
 	}
 
-	return []data.Descriptor{{
-		Type: relay.CertDescriptorType,
-		Data: relay.CertDescriptor{
+	return []content.Descriptor{
+		relay.CertDescriptor{
 			TargetID:      targetID,
 			RelayID:       relayID,
 			Direction:     relay.Direction(row.Direction),
 			ExpiresAt:     row.ExpiresAt,
 			ValidateError: verr,
 		},
-	}}
+	}
 }

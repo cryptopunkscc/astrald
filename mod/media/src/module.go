@@ -3,7 +3,7 @@ package media
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
@@ -19,7 +19,7 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	data    data.Module
+	content content.Module
 	storage storage.Module
 	index   index.Module
 

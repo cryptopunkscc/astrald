@@ -3,13 +3,13 @@ package user
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/net"
 )
 
-func (mod *Module) Authorize(identity id.Identity, dataID _data.ID) error {
+func (mod *Module) Authorize(identity id.Identity, dataID data.ID) error {
 	_, found := mod.identities.Get(identity.PublicKeyHex())
 	if found {
 		return nil

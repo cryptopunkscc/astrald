@@ -4,9 +4,9 @@ import (
 	_zip "archive/zip"
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -24,7 +24,7 @@ type Module struct {
 	log    *log.Logger
 
 	db      *gorm.DB
-	data    data.Module
+	content content.Module
 	storage storage.Module
 	shares  shares.Module
 	index   index.Module
@@ -36,7 +36,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) Read(dataID _data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
+func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
 	if opts == nil {
 		opts = &storage.ReadOpts{}
 	}
@@ -59,7 +59,7 @@ func (mod *Module) Read(dataID _data.ID, opts *storage.ReadOpts) (storage.DataRe
 
 	var zipRow = zipRows[0]
 
-	zipID, err := _data.Parse(zipRow.ZipID)
+	zipID, err := data.Parse(zipRow.ZipID)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (mod *Module) Read(dataID _data.ID, opts *storage.ReadOpts) (storage.DataRe
 }
 
 // Authorize authorizes access if the dataID is contained within a zip file that the identity has access to.
-func (mod *Module) Authorize(identity id.Identity, dataID _data.ID) error {
+func (mod *Module) Authorize(identity id.Identity, dataID data.ID) error {
 	var rows []*dbZipContent
 
 	var tx = mod.db.Where("file_id = ?", dataID.String()).Find(&rows)
@@ -99,7 +99,7 @@ func (mod *Module) Authorize(identity id.Identity, dataID _data.ID) error {
 	}
 
 	for _, row := range rows {
-		zipID, err := _data.Parse(row.ZipID)
+		zipID, err := data.Parse(row.ZipID)
 		if err != nil {
 			continue
 		}

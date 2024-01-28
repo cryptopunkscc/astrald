@@ -2,7 +2,6 @@ package index
 
 import (
 	"errors"
-	_data "github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"time"
 )
@@ -111,14 +110,9 @@ func (mod *Module) dbIndexSetAdded(indexID uint, dataID uint) (*dbEntry, error) 
 		return nil, err
 	}
 
-	d, err := _data.Parse(row.Data.DataID)
-	if err != nil {
-		return nil, err
-	}
-
 	mod.events.Emit(index.EventEntryUpdate{
 		IndexName: row.Index.Name,
-		DataID:    d,
+		DataID:    row.Data.DataID,
 		Added:     true,
 		UpdatedAt: row.UpdatedAt,
 	})
@@ -240,14 +234,9 @@ func (mod *Module) dbIndexSetRemoved(indexID uint, dataID uint) (*dbEntry, error
 		return nil, err
 	}
 
-	d, err := _data.Parse(row.Data.DataID)
-	if err != nil {
-		return nil, err
-	}
-
 	mod.events.Emit(index.EventEntryUpdate{
 		IndexName: row.Index.Name,
-		DataID:    d,
+		DataID:    row.Data.DataID,
 		Added:     false,
 		UpdatedAt: row.UpdatedAt,
 	})

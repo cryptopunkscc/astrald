@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Admin struct {
@@ -243,7 +242,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 
 	name := args[0]
 
-	list, err := adm.mod.UpdatedBetween(name, time.Time{}, time.Time{})
+	list, err := adm.mod.Scan(name, nil)
 	if err != nil {
 		return err
 	}

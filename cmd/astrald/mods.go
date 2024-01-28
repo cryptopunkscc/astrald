@@ -6,7 +6,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/admin/src"
 	_ "github.com/cryptopunkscc/astrald/mod/agent/src"
 	_ "github.com/cryptopunkscc/astrald/mod/apphost/src"
-	_ "github.com/cryptopunkscc/astrald/mod/data/src"
+	_ "github.com/cryptopunkscc/astrald/mod/content/src"
 	_ "github.com/cryptopunkscc/astrald/mod/discovery/src"
 	_ "github.com/cryptopunkscc/astrald/mod/fs/src"
 	_ "github.com/cryptopunkscc/astrald/mod/fwd/src"

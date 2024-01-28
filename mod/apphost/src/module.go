@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/node"
 	"gorm.io/gorm"
@@ -20,12 +20,12 @@ import (
 var _ apphost.Module = &Module{}
 
 type Module struct {
-	config Config
-	node   node.Node
-	data   data.Module
-	sdp    discovery.Module
-	log    *log.Logger
-	db     *gorm.DB
+	config  Config
+	node    node.Node
+	content content.Module
+	sdp     discovery.Module
+	log     *log.Logger
+	db      *gorm.DB
 
 	listeners []net.Listener
 	conns     <-chan net.Conn

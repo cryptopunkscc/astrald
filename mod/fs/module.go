@@ -29,8 +29,10 @@ type EventFileRemoved struct {
 	DataID data.ID
 }
 
-const FileDescriptorType = "mod.fs.file"
-
 type FileDescriptor struct {
 	Paths []string
+}
+
+func (FileDescriptor) DescriptorType() string {
+	return "mod.fs.file"
 }

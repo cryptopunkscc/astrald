@@ -3,7 +3,7 @@ package user
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/router"
@@ -65,7 +65,7 @@ func (mod *Module) addIdentity(identity id.Identity) error {
 	mod.log.Infov(1, "added user %v@%v (cert %v)",
 		i.identity,
 		mod.node.Identity(),
-		_data.Resolve(i.cert),
+		data.Resolve(i.cert),
 	)
 
 	i.routes.AddRoute(userProfileServiceName, mod.profileService)

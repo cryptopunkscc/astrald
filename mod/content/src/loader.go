@@ -1,8 +1,8 @@
-package data
+package content
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -17,7 +17,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		ready: make(chan struct{}),
 	}
 
-	_ = assets.LoadYAML(data.ModuleName, &mod.config)
+	_ = assets.LoadYAML(content.ModuleName, &mod.config)
 
 	mod.events.SetParent(node.Events())
 
@@ -32,7 +32,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 }
 
 func init() {
-	if err := modules.RegisterModule(data.ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(content.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

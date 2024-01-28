@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"strings"
-	"time"
 )
 
 type Admin struct {
@@ -180,7 +179,7 @@ func (adm *Admin) local(term admin.Terminal, args []string) error {
 
 	var indexName = adm.mod.localShareIndexName(identity)
 
-	entries, err := adm.mod.index.UpdatedBetween(indexName, time.Time{}, time.Time{})
+	entries, err := adm.mod.index.Scan(indexName, nil)
 
 	for _, entry := range entries {
 		if entry.Added {

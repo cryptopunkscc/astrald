@@ -1,9 +1,9 @@
-package data
+package content
 
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -30,7 +30,7 @@ func (mod *Module) LoadDependencies() error {
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(data.ModuleName, NewAdmin(mod))
+		adm.AddCommand(content.ModuleName, NewAdmin(mod))
 	}
 
 	go events.Handle(context.Background(), mod.node.Events(),
@@ -42,8 +42,8 @@ func (mod *Module) LoadDependencies() error {
 		})
 
 	// create an index for identified data
-	if _, err = mod.index.IndexInfo(data.IdentifiedDataIndexName); err != nil {
-		_, err = mod.index.CreateIndex(data.IdentifiedDataIndexName, index.TypeSet)
+	if _, err = mod.index.IndexInfo(content.IdentifiedDataSetName); err != nil {
+		_, err = mod.index.CreateIndex(content.IdentifiedDataSetName, index.TypeSet)
 		if err != nil {
 			return err
 		}

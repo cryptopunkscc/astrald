@@ -1,7 +1,7 @@
 package relay
 
 import (
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -10,7 +10,7 @@ import (
 func (mod *Module) LoadDependencies() error {
 	var err error
 
-	mod.data, err = modules.Load[data.Module](mod.node, data.ModuleName)
+	mod.content, err = modules.Load[content.Module](mod.node, content.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -24,7 +24,7 @@ func (mod *Module) LoadDependencies() error {
 	if err != nil {
 		return err
 	}
-	_ = mod.data.AddDescriber(mod)
+	_ = mod.content.AddDescriber(mod)
 
 	return nil
 }

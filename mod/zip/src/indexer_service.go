@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/storage"
-	"time"
 )
 
 const zipMimeType = "application/zip"
@@ -14,7 +13,7 @@ type IndexerService struct {
 }
 
 func (srv *IndexerService) Run(ctx context.Context) error {
-	for event := range srv.data.SubscribeType(ctx, zipMimeType, time.Time{}) {
+	for event := range srv.content.Scan(ctx, nil) {
 		srv.autoIndexZip(event.DataID)
 	}
 

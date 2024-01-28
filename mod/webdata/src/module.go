@@ -6,7 +6,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -29,7 +29,7 @@ type Module struct {
 	storage storage.Module
 	shares  shares.Module
 	index   index.Module
-	data    data.Module
+	content content.Module
 
 	rootHandler  *RootHandler
 	dataHandler  *DataHandler

@@ -3,7 +3,7 @@ package keys
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	_data "github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 )
@@ -61,7 +61,7 @@ func (adm *Admin) list(term admin.Terminal, args []string) error {
 
 	term.Printf("Found %d key(s)\n", len(rows))
 	for _, row := range rows {
-		dataID, _ := _data.Parse(row.DataID)
+		dataID, _ := data.Parse(row.DataID)
 		identity, _ := id.ParsePublicKeyHex(row.PublicKey)
 
 		term.Printf("%-24s %-64s %v\n", admin.Keyword(row.Type), dataID, identity)
@@ -75,7 +75,7 @@ func (adm *Admin) index(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := _data.Parse(args[0])
+	dataID, err := data.Parse(args[0])
 	if err != nil {
 		return err
 	}

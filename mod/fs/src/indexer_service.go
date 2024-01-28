@@ -198,8 +198,8 @@ func (srv *IndexerService) indexFile(ctx context.Context, path string) error {
 		Path:   path,
 	})
 
-	if srv.data.GetLabel(fileID) == "" {
-		srv.data.SetLabel(fileID, filepath.Base(path))
+	if srv.content.GetLabel(fileID) == "" {
+		srv.content.SetLabel(fileID, filepath.Base(path))
 	}
 
 	return nil

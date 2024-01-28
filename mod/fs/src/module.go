@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
-	_data "github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -28,7 +28,7 @@ type Module struct {
 	ctx    context.Context
 
 	storage storage.Module
-	data    _data.Module
+	content content.Module
 	index   index.Module
 
 	indexer *IndexerService

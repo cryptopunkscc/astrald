@@ -3,11 +3,11 @@ package fs
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
-	_data "github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 )
 
-func (mod *Module) DescribeData(ctx context.Context, dataID data.ID, opts *_data.DescribeOpts) []_data.Descriptor {
+func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []content.Descriptor {
 	var desc fs.FileDescriptor
 	var files = mod.dbFindByID(dataID)
 
@@ -19,10 +19,5 @@ func (mod *Module) DescribeData(ctx context.Context, dataID data.ID, opts *_data
 		desc.Paths = append(desc.Paths, file.Path)
 	}
 
-	return []_data.Descriptor{
-		{
-			Type: fs.FileDescriptorType,
-			Data: desc,
-		},
-	}
+	return []content.Descriptor{desc}
 }

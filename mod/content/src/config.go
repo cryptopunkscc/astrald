@@ -1,4 +1,4 @@
-package data
+package content
 
 type Config struct {
 }

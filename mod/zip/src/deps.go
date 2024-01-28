@@ -2,7 +2,7 @@ package zip
 
 import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -13,7 +13,7 @@ import (
 func (mod *Module) LoadDependencies() error {
 	var err error
 
-	mod.data, err = modules.Load[data.Module](mod.node, data.ModuleName)
+	mod.content, err = modules.Load[content.Module](mod.node, content.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func (mod *Module) LoadDependencies() error {
 
 	mod.index.CreateIndex(zip.ArchivesIndexName, index.TypeSet)
 
-	mod.data.AddDescriber(mod)
+	mod.content.AddDescriber(mod)
 	mod.shares.AddAuthorizer(mod)
 	mod.storage.AddReader("mod.zip", mod)
 

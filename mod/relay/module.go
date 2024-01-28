@@ -34,12 +34,14 @@ type FindOpts struct {
 	IncludeExpired  bool
 }
 
-const CertDescriptorType = "mod.relay.cert"
-
 type CertDescriptor struct {
 	TargetID      id.Identity
 	RelayID       id.Identity
 	Direction     Direction
 	ExpiresAt     time.Time
 	ValidateError error
+}
+
+func (CertDescriptor) DescriptorType() string {
+	return "mod.relay.cert"
 }

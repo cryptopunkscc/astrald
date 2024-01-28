@@ -2,7 +2,7 @@ package webdata
 
 import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -28,7 +28,7 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.data, err = modules.Load[data.Module](mod.node, data.ModuleName)
+	mod.content, err = modules.Load[content.Module](mod.node, content.ModuleName)
 	if err != nil {
 		return err
 	}

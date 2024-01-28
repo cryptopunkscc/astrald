@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -33,7 +33,7 @@ type Module struct {
 	routesMu sync.Mutex
 	db       *gorm.DB
 	storage  storage.Module
-	data     data.Module
+	content  content.Module
 	keys     keys.Module
 }
 

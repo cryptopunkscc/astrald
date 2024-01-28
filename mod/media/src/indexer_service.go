@@ -22,7 +22,7 @@ var networkAutoIndexWhitelist = []string{
 }
 
 func (srv *IndexerService) Run(ctx context.Context) error {
-	for event := range srv.data.SubscribeType(ctx, "", time.Time{}) {
+	for event := range srv.content.Scan(ctx, nil) {
 		found, err := srv.index.Contains(media.IndexNameAll, event.DataID)
 		if found {
 			continue
@@ -40,13 +40,13 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 }
 
 func (srv *IndexerService) autoIndex(dataID data.ID, dataType string) (*media.Info, error) {
-	var noNetwork bool
+	var enableNetwork bool
 
 	if slices.Contains(networkAutoIndexWhitelist, dataType) {
-		noNetwork = true
+		enableNetwork = true
 	}
 
-	return srv.indexAs(dataID, dataType, noNetwork)
+	return srv.indexAs(dataID, dataType, enableNetwork)
 }
 
 func (srv *IndexerService) indexAs(dataID data.ID, dataType string, enableNetwork bool) (*media.Info, error) {
@@ -86,15 +86,15 @@ func (srv *IndexerService) indexAs(dataID data.ID, dataType string, enableNetwor
 		return info, err
 	}
 
-	if srv.data.GetLabel(dataID) == "" {
-		srv.data.SetLabel(dataID, info.Title)
+	if srv.content.GetLabel(dataID) == "" {
+		srv.content.SetLabel(dataID, info.Title)
 	}
 
 	return info, srv.index.AddToSet(media.IndexNameAll, dataID)
 }
 
 func (srv *IndexerService) indexData(dataID data.ID) (*media.Info, error) {
-	info, err := srv.data.TypeInfo(dataID)
+	info, err := srv.content.Identify(dataID)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (srv *IndexerService) indexData(dataID data.ID) (*media.Info, error) {
 }
 
 func (srv *IndexerService) scan(dataID data.ID) (*media.Info, error) {
-	info, err := srv.data.TypeInfo(dataID)
+	info, err := srv.content.Identify(dataID)
 	if err != nil {
 		return nil, err
 	}

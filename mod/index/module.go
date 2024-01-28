@@ -16,7 +16,7 @@ type Module interface {
 	RemoveFromSet(name string, dataID data.ID) error
 	IndexInfo(name string) (*Info, error)
 	AllIndexes() ([]Info, error)
-	UpdatedBetween(name string, since time.Time, until time.Time) ([]Entry, error)
+	Scan(name string, opts *ScanOpts) ([]*Entry, error)
 	Contains(name string, dataID data.ID) (bool, error)
 	Find(dataID data.ID) ([]string, error)
 	GetEntry(name string, dataID data.ID) (*Entry, error)
@@ -24,6 +24,12 @@ type Module interface {
 	RemoveFromUnion(union string, index string) error
 	SetVisible(name string, visible bool) error
 	SetDescription(name string, desc string) error
+}
+
+type ScanOpts struct {
+	UpdatedAfter   time.Time
+	UpdatedBefore  time.Time
+	IncludeRemoved bool
 }
 
 type Info struct {
