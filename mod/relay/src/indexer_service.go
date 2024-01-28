@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/relay"
+	"github.com/cryptopunkscc/astrald/mod/storage"
 )
 
 type IndexerService struct {
@@ -17,7 +18,7 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 			switch err {
 			case nil:
 				srv.log.Infov(1, "added certificate %v", event.DataID)
-			case relay.ErrCertAlreadyIndexed:
+			case relay.ErrCertAlreadyIndexed, storage.ErrNotFound:
 				// nothing
 			default:
 				srv.log.Errorv(1, "error adding cert %v: %v", event.DataID, err)

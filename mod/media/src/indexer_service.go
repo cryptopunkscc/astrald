@@ -2,6 +2,7 @@ package media
 
 import (
 	"context"
+	"errors"
 	"github.com/acuteaura-forks/go-matroska/ebml"
 	"github.com/acuteaura-forks/go-matroska/matroska"
 	"github.com/bogem/id3v2"
@@ -29,7 +30,7 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 		}
 
 		_, err = srv.autoIndex(event.DataID, event.Type)
-		if err != nil {
+		if err != nil && !errors.Is(err, storage.ErrNotFound) {
 			srv.log.Error("error indexing %v: %v", event.DataID, err)
 		}
 	}
