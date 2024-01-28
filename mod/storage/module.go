@@ -1,6 +1,9 @@
 package storage
 
-import "github.com/cryptopunkscc/astrald/data"
+import (
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/data"
+)
 
 const ModuleName = "storage"
 
@@ -40,9 +43,10 @@ type ReaderInfo struct {
 }
 
 type ReadOpts struct {
-	Offset  uint64
-	Virtual bool
-	Network bool
+	Offset         uint64
+	Virtual        bool
+	Network        bool
+	IdentityFilter func(id.Identity) bool
 }
 
 type StoreOpts struct {

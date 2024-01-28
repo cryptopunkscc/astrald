@@ -211,6 +211,13 @@ func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataRea
 
 	var query = router.FormatQuery(readServiceName, params)
 	for _, row := range rows {
+		// apply identity filter if provided
+		if opts.IdentityFilter != nil {
+			if !opts.IdentityFilter(row.Target) {
+				continue
+			}
+		}
+
 		var q = net.NewQuery(
 			row.Caller,
 			row.Target,
