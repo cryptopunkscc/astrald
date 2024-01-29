@@ -32,12 +32,12 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.rootHandler = NewRootHandler(mod)
 	mod.dataHandler = NewDataHandler(mod)
-	mod.indexHandler = NewIndexHandler(mod)
+	mod.setHandler = NewSetHandler(mod)
 
 	mod.mux = http.NewServeMux()
 	mod.mux.HandleFunc("/", mod.rootHandler.handleRequest)
 	mod.mux.HandleFunc("/data/", mod.dataHandler.handleRequest)
-	mod.mux.HandleFunc("/index/", mod.indexHandler.handleRequest)
+	mod.mux.HandleFunc("/set/", mod.setHandler.handleRequest)
 
 	return mod, err
 }

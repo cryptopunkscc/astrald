@@ -1,28 +1,28 @@
-package index
+package sets
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"time"
 )
 
-type dbEntry struct {
+type dbMember struct {
 	DataID uint `gorm:"primaryKey"`
 	Data   dbData
 
-	IndexID uint `gorm:"primaryKey"`
-	Index   dbIndex
+	SetID uint `gorm:"primaryKey"`
+	Set   dbSet
 
 	Added     bool `gorm:"default:true;not null"`
 	UpdatedAt time.Time
 }
 
-func (dbEntry) TableName() string { return "entries" }
+func (dbMember) TableName() string { return sets.DBPrefix + "members" }
 
-func (mod *Module) dbEntryCreate(indexID uint, dataID uint) (*dbEntry, error) {
-	var row = dbEntry{
-		DataID:  dataID,
-		IndexID: indexID,
+func (mod *Module) dbMemberCreate(setID uint, dataID uint) (*dbMember, error) {
+	var row = dbMember{
+		DataID: dataID,
+		SetID:  setID,
 	}
 
 	var tx = mod.db.Create(&row)
@@ -30,23 +30,23 @@ func (mod *Module) dbEntryCreate(indexID uint, dataID uint) (*dbEntry, error) {
 	return &row, tx.Error
 }
 
-func (mod *Module) dbEntryFind(indexID uint, dataID uint) (*dbEntry, error) {
-	var row dbEntry
-	var tx = mod.db.Where("index_id = ? and data_id = ?", indexID, dataID).First(&row)
+func (mod *Module) dbMemberFind(setID uint, dataID uint) (*dbMember, error) {
+	var row dbMember
+	var tx = mod.db.Where("set_id = ? and data_id = ?", setID, dataID).First(&row)
 	return &row, tx.Error
 }
 
-func (mod *Module) dbEntryFindByIndexID(indexID uint) ([]dbEntry, error) {
-	var rows []dbEntry
-	var tx = mod.db.Where("index_id = ?", indexID).Preload("Data").Find(&rows)
+func (mod *Module) dbMemberFindBySetID(setID uint) ([]dbMember, error) {
+	var rows []dbMember
+	var tx = mod.db.Where("set_id = ?", setID).Preload("Data").Find(&rows)
 	return rows, tx.Error
 }
 
-func (mod *Module) dbEntryFindUpdatedBetween(indexID uint, since time.Time, until time.Time) ([]dbEntry, error) {
-	var rows []dbEntry
+func (mod *Module) dbMemberFindUpdatedBetween(setID uint, since time.Time, until time.Time) ([]dbMember, error) {
+	var rows []dbMember
 
 	query := mod.db.
-		Where("index_id = ?", indexID).
+		Where("set_id = ?", setID).
 		Order("updated_at asc").
 		Preload("Data")
 
@@ -62,11 +62,11 @@ func (mod *Module) dbEntryFindUpdatedBetween(indexID uint, since time.Time, unti
 	return rows, tx.Error
 }
 
-func (mod *Module) dbEntryCountByIndexID(indexID uint) (int, error) {
+func (mod *Module) dbMemberCountBySetID(setID uint) (int, error) {
 	var count int64
 	var tx = mod.db.
-		Model(&dbEntry{}).
-		Where("index_id = ?", indexID).
+		Model(&dbMember{}).
+		Where("set_id = ?", setID).
 		Count(&count)
 	if tx.Error != nil {
 		return -1, tx.Error
@@ -74,16 +74,16 @@ func (mod *Module) dbEntryCountByIndexID(indexID uint) (int, error) {
 	return int(count), nil
 }
 
-func (mod *Module) dbEntryFindByDataID(dataID uint) ([]dbEntry, error) {
-	var rows []dbEntry
-	var tx = mod.db.Where("data_id = ?", dataID).Preload("Index").Find(&rows)
+func (mod *Module) dbMemberFindByDataID(dataID uint) ([]dbMember, error) {
+	var rows []dbMember
+	var tx = mod.db.Where("data_id = ?", dataID).Preload("Set").Find(&rows)
 	return rows, tx.Error
 }
 
-func (mod *Module) dbIndexSetAdded(indexID uint, dataID uint) (*dbEntry, error) {
-	row, err := mod.dbEntryFind(indexID, dataID)
+func (mod *Module) dbSetMarkAsAdded(setID uint, dataID uint) (*dbMember, error) {
+	row, err := mod.dbMemberFind(setID, dataID)
 	if err != nil {
-		row, err = mod.dbEntryCreate(indexID, dataID)
+		row, err = mod.dbMemberCreate(setID, dataID)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +93,7 @@ func (mod *Module) dbIndexSetAdded(indexID uint, dataID uint) (*dbEntry, error) 
 		}
 		row.Added = true
 		var tx = mod.db.
-			Where("data_id = ? and index_id = ?", dataID, indexID).
+			Where("data_id = ? and set_id = ?", dataID, setID).
 			Save(&row)
 		if tx.Error != nil {
 			return nil, tx.Error
@@ -105,13 +105,13 @@ func (mod *Module) dbIndexSetAdded(indexID uint, dataID uint) (*dbEntry, error) 
 		return nil, err
 	}
 
-	err = mod.db.Model(&row).Association("Index").Find(&row.Index)
+	err = mod.db.Model(&row).Association("Set").Find(&row.Set)
 	if err != nil {
 		return nil, err
 	}
 
-	mod.events.Emit(index.EventEntryUpdate{
-		IndexName: row.Index.Name,
+	mod.events.Emit(sets.EventEntryUpdate{
+		SetName:   row.Set.Name,
 		DataID:    row.Data.DataID,
 		Added:     true,
 		UpdatedAt: row.UpdatedAt,
@@ -120,14 +120,14 @@ func (mod *Module) dbIndexSetAdded(indexID uint, dataID uint) (*dbEntry, error) 
 	return row, nil
 }
 
-func (mod *Module) dbIndexAddDataID(indexes []uint, dataID uint) error {
+func (mod *Module) dbSetAddDataID(setIDs []uint, dataID uint) error {
 	var added []uint
-	for _, indexID := range indexes {
-		_, err := mod.dbIndexSetAdded(indexID, dataID)
+	for _, setID := range setIDs {
+		_, err := mod.dbSetMarkAsAdded(setID, dataID)
 		if err != nil {
 			continue
 		}
-		added = append(added, indexID)
+		added = append(added, setID)
 	}
 
 	if len(added) == 0 {
@@ -144,17 +144,17 @@ func (mod *Module) dbIndexAddDataID(indexes []uint, dataID uint) error {
 		return tx.Error
 	}
 
-	return mod.dbIndexAddDataID(unionIDs, dataID)
+	return mod.dbSetAddDataID(unionIDs, dataID)
 }
 
-func (mod *Module) dbIndexRemoveDataID(indexes []uint, dataID uint) error {
+func (mod *Module) dbSetRemoveDataID(setIDs []uint, dataID uint) error {
 	var removed []uint
-	for _, indexID := range indexes {
-		_, err := mod.dbIndexSetRemoved(indexID, dataID)
+	for _, setID := range setIDs {
+		_, err := mod.dbSetMarkAsRemoved(setID, dataID)
 		if err != nil {
 			continue
 		}
-		removed = append(removed, indexID)
+		removed = append(removed, setID)
 	}
 
 	if len(removed) == 0 {
@@ -184,7 +184,7 @@ func (mod *Module) dbIndexRemoveDataID(indexes []uint, dataID uint) error {
 		}
 	}
 
-	return mod.dbIndexRemoveDataID(selected, dataID)
+	return mod.dbSetRemoveDataID(selected, dataID)
 }
 
 func (mod *Module) dbUnionSubsetsContain(unionID uint, dataID uint) (bool, error) {
@@ -196,8 +196,8 @@ func (mod *Module) dbUnionSubsetsContain(unionID uint, dataID uint) (bool, error
 	var count int64
 
 	var tx = mod.db.
-		Model(&dbEntry{}).
-		Where("data_id = ? and index_id in (?) and added = true", dataID, subsets).
+		Model(&dbMember{}).
+		Where("data_id = ? and set_id in (?) and added = true", dataID, subsets).
 		Count(&count)
 
 	if tx.Error != nil {
@@ -207,8 +207,8 @@ func (mod *Module) dbUnionSubsetsContain(unionID uint, dataID uint) (bool, error
 	return count > 0, nil
 }
 
-func (mod *Module) dbIndexSetRemoved(indexID uint, dataID uint) (*dbEntry, error) {
-	row, err := mod.dbEntryFind(indexID, dataID)
+func (mod *Module) dbSetMarkAsRemoved(setID uint, dataID uint) (*dbMember, error) {
+	row, err := mod.dbMemberFind(setID, dataID)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (mod *Module) dbIndexSetRemoved(indexID uint, dataID uint) (*dbEntry, error
 
 	row.Added = false
 	var tx = mod.db.
-		Where("data_id = ? and index_id = ?", dataID, indexID).
+		Where("data_id = ? and set_id = ?", dataID, setID).
 		Save(&row)
 	if tx.Error != nil {
 		return nil, tx.Error
@@ -229,13 +229,13 @@ func (mod *Module) dbIndexSetRemoved(indexID uint, dataID uint) (*dbEntry, error
 		return nil, err
 	}
 
-	err = mod.db.Model(&row).Association("Index").Find(&row.Index)
+	err = mod.db.Model(&row).Association("Set").Find(&row.Set)
 	if err != nil {
 		return nil, err
 	}
 
-	mod.events.Emit(index.EventEntryUpdate{
-		IndexName: row.Index.Name,
+	mod.events.Emit(sets.EventEntryUpdate{
+		SetName:   row.Set.Name,
 		DataID:    row.Data.DataID,
 		Added:     false,
 		UpdatedAt: row.UpdatedAt,

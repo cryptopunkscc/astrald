@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
@@ -28,7 +28,7 @@ type Module struct {
 
 	storage storage.Module
 	content content.Module
-	index   index.Module
+	sets    sets.Module
 
 	indexer *IndexerService
 	store   *StoreService

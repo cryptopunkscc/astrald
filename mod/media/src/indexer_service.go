@@ -8,6 +8,7 @@ import (
 	"github.com/bogem/id3v2"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/media"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"io"
 	"slices"
@@ -22,15 +23,20 @@ var networkAutoIndexWhitelist = []string{
 	"audio/mpeg",
 }
 
+var ErrAlreadyIndexed = errors.New("already indexed")
+
 func (srv *IndexerService) Run(ctx context.Context) error {
 	for event := range srv.content.Scan(ctx, nil) {
-		found, err := srv.index.Contains(media.IndexNameAll, event.DataID)
-		if found {
+		_, err := srv.sets.Member(media.AllSet, event.DataID)
+		if !errors.Is(err, sets.ErrMemberNotFound) {
 			continue
 		}
 
 		_, err = srv.autoIndex(event.DataID, event.Type)
-		if err != nil && !errors.Is(err, storage.ErrNotFound) {
+		switch {
+		case err == nil:
+		case errors.Is(err, storage.ErrNotFound), errors.Is(err, ErrAlreadyIndexed):
+		default:
 			srv.log.Error("error indexing %v: %v", event.DataID, err)
 		}
 	}
@@ -41,6 +47,11 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 }
 
 func (srv *IndexerService) autoIndex(dataID data.ID, dataType string) (*media.Info, error) {
+	var row dbMediaInfo
+	if srv.db.Where("data_id = ?", dataID).First(&row).Error == nil {
+		return nil, ErrAlreadyIndexed
+	}
+
 	var enableNetwork bool
 
 	if slices.Contains(networkAutoIndexWhitelist, dataType) {
@@ -91,7 +102,7 @@ func (srv *IndexerService) indexAs(dataID data.ID, dataType string, enableNetwor
 		srv.content.SetLabel(dataID, info.Title)
 	}
 
-	return info, srv.index.AddToSet(media.IndexNameAll, dataID)
+	return info, srv.sets.AddToSet(media.AllSet, dataID)
 }
 
 func (srv *IndexerService) indexData(dataID data.ID) (*media.Info, error) {

@@ -4,7 +4,7 @@ import (
 	_zip "archive/zip"
 	"errors"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/zip"
 	"path/filepath"
 )
@@ -26,14 +26,14 @@ func (mod *Module) Index(zipID data.ID, reindex bool) error {
 		return err
 	}
 
-	var indexName = "mod.zip.archive." + zipID.String()
-	_, err = mod.index.CreateIndex(indexName, index.TypeSet)
+	var setName = "mod.zip.archive." + zipID.String()
+	_, err = mod.sets.CreateSet(setName, sets.TypeSet)
 	if err != nil {
-		mod.log.Error("error creating index %v: %v", indexName, err)
+		mod.log.Error("error creating set %v: %v", setName, err)
 	} else {
-		err = mod.index.AddToUnion(index.LocalNodeUnionName, indexName)
+		err = mod.sets.AddToUnion(sets.LocalNodeSet, setName)
 		if err != nil {
-			mod.log.Error("error adding %v to localnode union: %v", indexName, err)
+			mod.log.Error("error adding %v to localnode union: %v", setName, err)
 		}
 	}
 
@@ -61,12 +61,12 @@ func (mod *Module) Index(zipID data.ID, reindex bool) error {
 
 		mod.log.Infov(1, "indexed %s (%v)", file.Name, fileID)
 
-		mod.index.AddToSet(indexName, fileID)
+		mod.sets.AddToSet(setName, fileID)
 	}
 
-	err = mod.index.AddToSet(zip.ArchivesIndexName, zipID)
+	err = mod.sets.AddToSet(zip.ArchivesSet, zipID)
 	if err != nil {
-		mod.log.Error("error adding archive to %v index: %v", zip.ArchivesIndexName, err)
+		mod.log.Error("error adding archive to set %v: %v", zip.ArchivesSet, err)
 	}
 
 	mod.events.Emit(zip.EventArchiveIndexed{DataID: zipID})

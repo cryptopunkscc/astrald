@@ -1,7 +1,8 @@
-package index
+package sets
 
 import (
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"time"
 )
 
@@ -11,7 +12,7 @@ type dbData struct {
 	CreatedAt time.Time
 }
 
-func (dbData) TableName() string { return "data" }
+func (dbData) TableName() string { return sets.DBPrefix + "data" }
 
 func (mod *Module) dbDataFindByDataID(dataID data.ID) (*dbData, error) {
 	var row dbData

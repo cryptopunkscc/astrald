@@ -1,4 +1,4 @@
-package index
+package sets
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 )
 
 type EventEntryUpdate struct {
-	IndexName string
+	SetName   string
 	DataID    data.ID
 	Added     bool
 	UpdatedAt time.Time
@@ -15,15 +15,15 @@ type EventEntryUpdate struct {
 
 func (event EventEntryUpdate) String() string {
 	if event.Added {
-		return fmt.Sprintf("%s added %s", event.IndexName, event.DataID.String())
+		return fmt.Sprintf("%s added %s", event.SetName, event.DataID.String())
 	}
-	return fmt.Sprintf("%s removed %s", event.IndexName, event.DataID.String())
+	return fmt.Sprintf("%s removed %s", event.SetName, event.DataID.String())
 }
 
-type EventIndexCreated struct {
+type EventSetCreated struct {
 	Info *Info
 }
 
-type EventIndexDeleted struct {
+type EventSetDeleted struct {
 	Name string
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/net"
@@ -32,13 +32,13 @@ type Module struct {
 	db          *gorm.DB
 	authorizers sig.Set[shares.Authorizer]
 	storage     storage.Module
-	index       index.Module
+	sets        sets.Module
 	notify      sig.Set[string]
 }
 
-const localShareIndexPrefix = "mod.shares.local"
-const remoteShareIndexPrefix = "mod.shares.remote"
-const publicIndexName = "mod.shares.public"
+const localShareSetPrefix = "mod.shares.local"
+const remoteShareSetPrefix = "mod.shares.remote"
+const publicSetName = "mod.shares.public"
 const setSuffix = ".set"
 const resyncInterval = time.Hour
 const resyncAge = 5 * time.Minute
@@ -73,14 +73,14 @@ func (mod *Module) Sync(caller id.Identity, target id.Identity) error {
 
 	var row dbRemoteShare
 	var timestamp = "0"
-	var remoteIndexName = mod.remoteShareIndexName(caller, target)
+	var remoteSetName = mod.remoteShareSetName(caller, target)
 	var fetchTx = mod.db.Where("caller = ? and target = ?", caller, target).First(&row)
 	if fetchTx.Error == nil {
 		timestamp = strconv.FormatInt(row.LastUpdate.UnixNano(), 10)
 	} else {
-		mod.index.CreateIndex(remoteIndexName, index.TypeSet)
-		mod.index.SetVisible(remoteIndexName, true)
-		mod.index.SetDescription(remoteIndexName,
+		mod.sets.CreateSet(remoteSetName, sets.TypeSet)
+		mod.sets.SetVisible(remoteSetName, true)
+		mod.sets.SetDescription(remoteSetName,
 			fmt.Sprintf(
 				"Data shared by %s",
 				mod.node.Resolver().DisplayName(target),
@@ -138,7 +138,7 @@ func (mod *Module) Sync(caller id.Identity, target id.Identity) error {
 				mod.log.Errorv(1, "sync: error adding remote data: %v", tx.Error)
 			}
 
-			mod.index.AddToSet(remoteIndexName, dataID)
+			mod.sets.AddToSet(remoteSetName, dataID)
 
 		case 2: // remove
 			var dataID data.ID
@@ -157,7 +157,7 @@ func (mod *Module) Sync(caller id.Identity, target id.Identity) error {
 				mod.log.Errorv(1, "sync: error removing remote data: %v", tx.Error)
 			}
 
-			mod.index.RemoveFromSet(remoteIndexName, dataID)
+			mod.sets.RemoveFromSet(remoteSetName, dataID)
 
 		default:
 			return errors.New("protocol error")
@@ -184,7 +184,7 @@ func (mod *Module) Unsync(caller id.Identity, target id.Identity) error {
 
 	err = mod.db.Delete(&share).Error
 	if err == nil {
-		mod.index.DeleteIndex(mod.remoteShareIndexName(caller, target))
+		mod.sets.DeleteSet(mod.remoteShareSetName(caller, target))
 	}
 	return err
 }
@@ -309,76 +309,80 @@ func (mod *Module) resync(minAge time.Duration) error {
 	return nil
 }
 
-func (mod *Module) makeLocalIndexFor(identity id.Identity) error {
-	unionName := mod.localShareIndexName(identity)
+func (mod *Module) makeLocalSetFor(identity id.Identity) error {
+	unionName := mod.localShareSetName(identity)
 
-	info, err := mod.index.IndexInfo(unionName)
+	info, err := mod.sets.SetInfo(unionName)
 	if err == nil {
-		if info.Type != index.TypeUnion {
-			return fmt.Errorf("index %s is not a union", unionName)
+		if info.Type != sets.TypeUnion {
+			return fmt.Errorf("set %s is not a union", unionName)
 		}
 		return nil
 	}
 
 	var setName = unionName + setSuffix
 
-	_, err = mod.index.CreateIndex(unionName, index.TypeUnion)
+	_, err = mod.sets.CreateSet(unionName, sets.TypeUnion)
 	if err != nil {
 		return err
 	}
-	mod.index.SetVisible(unionName, true)
+	mod.sets.SetVisible(unionName, true)
 
-	mod.index.SetDescription(unionName,
+	mod.sets.SetDescription(unionName,
 		fmt.Sprintf(
 			"Files shared with %s",
 			mod.node.Resolver().DisplayName(identity),
 		))
 
-	_, err = mod.index.CreateIndex(setName, index.TypeSet)
+	_, err = mod.sets.CreateSet(setName, sets.TypeSet)
 	if err != nil {
 		return err
 	}
 
-	err = mod.index.AddToUnion(unionName, publicIndexName)
+	err = mod.sets.AddToUnion(unionName, publicSetName)
 	if err != nil {
 		return err
 	}
 
-	return mod.index.AddToUnion(unionName, setName)
+	return mod.sets.AddToUnion(unionName, setName)
 }
 
-func (mod *Module) localShareIndexName(identity id.Identity) string {
+func (mod *Module) localShareSetName(identity id.Identity) string {
 	return fmt.Sprintf("%v.%v",
-		localShareIndexPrefix,
+		localShareSetPrefix,
 		identity.PublicKeyHex(),
 	)
 }
 
-func (mod *Module) remoteShareIndexName(guest id.Identity, host id.Identity) string {
+func (mod *Module) remoteShareSetName(guest id.Identity, host id.Identity) string {
 	return fmt.Sprintf("%v.%v.%v",
-		remoteShareIndexPrefix,
+		remoteShareSetPrefix,
 		guest.PublicKeyHex(),
 		host.PublicKeyHex(),
 	)
 }
 
-func (mod *Module) addToLocalShareIndex(identity id.Identity, dataID data.ID) error {
-	var err = mod.makeLocalIndexFor(identity)
+func (mod *Module) addToLocalShareSet(identity id.Identity, dataID data.ID) error {
+	var err = mod.makeLocalSetFor(identity)
 	if err != nil {
 		return err
 	}
 
-	return mod.index.AddToSet(mod.localShareIndexName(identity)+setSuffix, dataID)
+	return mod.sets.AddToSet(mod.localShareSetName(identity)+setSuffix, dataID)
 }
 
-func (mod *Module) removeFromLocalShareIndex(identity id.Identity, dataID data.ID) error {
-	return mod.index.RemoveFromSet(mod.localShareIndexName(identity)+setSuffix, dataID)
+func (mod *Module) removeFromLocalShareSet(identity id.Identity, dataID data.ID) error {
+	return mod.sets.RemoveFromSet(mod.localShareSetName(identity)+setSuffix, dataID)
 }
 
-func (mod *Module) localShareIndexContains(identity id.Identity, dataID data.ID) (bool, error) {
-	contains, err := mod.index.Contains(mod.localShareIndexName(identity), dataID)
-	if errors.Is(err, index.ErrIndexNotFound) {
+func (mod *Module) localShareSetContains(identity id.Identity, dataID data.ID) (bool, error) {
+	_, err := mod.sets.Member(mod.localShareSetName(identity), dataID)
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, sets.ErrMemberNotFound):
 		return false, nil
+	default:
+		return false, err
 	}
-	return contains, err
 }

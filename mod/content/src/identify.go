@@ -56,12 +56,12 @@ func (mod *Module) Identify(dataID data.ID) (*content.Info, error) {
 	}
 
 	if method != "" {
-		mod.log.Logv(1, "%v indexed as %s (%s)", dataID, dataType, method)
+		mod.log.Logv(1, "%v identified as %s (%s)", dataID, dataType, method)
 	} else {
-		mod.log.Logv(1, "%v indexed as %s", dataID, dataType)
+		mod.log.Logv(1, "%v identified as %s", dataID, dataType)
 	}
 
-	if err := mod.index.AddToSet(content.IdentifiedDataSetName, dataID); err != nil {
+	if err := mod.sets.AddToSet(content.IdentifiedDataSetName, dataID); err != nil {
 		mod.log.Error("error adding to set: %v", err)
 	}
 
@@ -81,7 +81,7 @@ func (mod *Module) Identify(dataID data.ID) (*content.Info, error) {
 func (mod *Module) IdentifySet(set string) ([]*content.Info, error) {
 	var list []*content.Info
 
-	entries, err := mod.index.Scan(set, nil)
+	entries, err := mod.sets.Scan(set, nil)
 	if err != nil {
 		return nil, err
 	}

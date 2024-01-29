@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -32,7 +32,7 @@ type Module struct {
 
 	storage storage.Module
 	fs      fs.Module
-	index   index.Module
+	sets    sets.Module
 
 	ready chan struct{}
 }
@@ -96,7 +96,7 @@ func (mod *Module) Forget(dataID data.ID) error {
 		return err
 	}
 
-	return mod.index.RemoveFromSet(content.IdentifiedDataSetName, dataID)
+	return mod.sets.RemoveFromSet(content.IdentifiedDataSetName, dataID)
 }
 
 func (mod *Module) Ready(ctx context.Context) error {

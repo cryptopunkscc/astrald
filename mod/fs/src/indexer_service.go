@@ -192,7 +192,7 @@ func (srv *IndexerService) indexFile(ctx context.Context, path string) error {
 
 	srv.log.Logv(2, "indexed %v (%v)", path, fileID)
 
-	srv.index.AddToSet(fs.ReadOnlySetName, fileID)
+	srv.sets.AddToSet(fs.ReadOnlySetName, fileID)
 	srv.events.Emit(fs.EventFileAdded{
 		DataID: fileID,
 		Path:   path,
@@ -229,7 +229,7 @@ func (srv *IndexerService) reindexRow(row *dbLocalFile) error {
 	})
 
 	if f := srv.dbFindByID(fileID); len(f) == 0 {
-		srv.index.RemoveFromSet(fs.ReadOnlySetName, oldID)
+		srv.sets.RemoveFromSet(fs.ReadOnlySetName, oldID)
 	}
 
 	srv.events.Emit(fs.EventFileAdded{
@@ -237,7 +237,7 @@ func (srv *IndexerService) reindexRow(row *dbLocalFile) error {
 		DataID: fileID,
 	})
 
-	srv.index.AddToSet(fs.ReadOnlySetName, fileID)
+	srv.sets.AddToSet(fs.ReadOnlySetName, fileID)
 
 	srv.events.Emit(fs.EventFileChanged{
 		Path:      row.Path,
@@ -263,7 +263,7 @@ func (srv *IndexerService) unindexRow(row *dbLocalFile) error {
 		return nil
 	}
 
-	srv.index.RemoveFromSet(fs.ReadOnlySetName, dataID)
+	srv.sets.RemoveFromSet(fs.ReadOnlySetName, dataID)
 
 	srv.events.Emit(fs.EventFileRemoved{
 		Path:   row.Path,

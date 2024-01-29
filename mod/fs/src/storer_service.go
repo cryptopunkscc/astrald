@@ -57,7 +57,7 @@ func (srv *StoreService) onRemoved(path string) {
 		return
 	}
 
-	srv.index.RemoveFromSet(fs.ReadWriteSetName, dataID)
+	srv.sets.RemoveFromSet(fs.ReadWriteSetName, dataID)
 }
 
 func (srv *StoreService) verify(path string) {
@@ -67,7 +67,7 @@ func (srv *StoreService) verify(path string) {
 		return
 	}
 
-	entry, err := srv.index.GetEntry(fs.ReadWriteSetName, dataID)
+	entry, err := srv.sets.Member(fs.ReadWriteSetName, dataID)
 	if err != nil {
 		srv.rescan(path)
 		return
@@ -95,7 +95,7 @@ func (srv *StoreService) rescan(path string) {
 		os.Rename(path, newPath)
 	}
 
-	srv.index.AddToSet(fs.ReadWriteSetName, dataID)
+	srv.sets.AddToSet(fs.ReadWriteSetName, dataID)
 }
 
 func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
@@ -103,7 +103,7 @@ func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.D
 		opts = &storage.ReadOpts{}
 	}
 
-	if found, _ := srv.index.Contains(fs.ReadWriteSetName, dataID); !found {
+	if m, _ := srv.sets.Member(fs.ReadWriteSetName, dataID); m == nil {
 		return nil, storage.ErrNotFound
 	}
 
@@ -116,7 +116,7 @@ func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.D
 		}
 	}
 
-	srv.index.RemoveFromSet(fs.ReadWriteSetName, dataID)
+	srv.sets.RemoveFromSet(fs.ReadWriteSetName, dataID)
 
 	return nil, storage.ErrNotFound
 }

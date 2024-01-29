@@ -2,7 +2,7 @@ package webdata
 
 import (
 	"cmp"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"html/template"
 	"net/http"
 	"slices"
@@ -22,7 +22,7 @@ func NewRootHandler(module *Module) *RootHandler {
 		panic(err)
 	}
 
-	handler.template, err = template.New("index").Parse(string(data))
+	handler.template, err = template.New("root").Parse(string(data))
 	if err != nil {
 		panic(err)
 	}
@@ -38,13 +38,13 @@ func (mod *RootHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	var showHidden = r.URL.Query().Has("hidden")
 
-	list, err := mod.index.AllIndexes()
+	list, err := mod.sets.AllSets()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	var filtered []index.Info
+	var filtered []sets.Info
 	for _, i := range list {
 		if !i.Visible && !showHidden {
 			continue
@@ -52,7 +52,7 @@ func (mod *RootHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 		filtered = append(filtered, i)
 	}
 
-	slices.SortFunc(filtered, func(a, b index.Info) int {
+	slices.SortFunc(filtered, func(a, b sets.Info) int {
 		return cmp.Compare(a.Name, b.Name)
 	})
 

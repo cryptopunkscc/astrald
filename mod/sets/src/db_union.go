@@ -1,13 +1,15 @@
-package index
+package sets
+
+import "github.com/cryptopunkscc/astrald/mod/sets"
 
 type dbUnion struct {
 	UnionID uint `gorm:"primaryKey"`
-	Union   *dbIndex
+	Union   *dbSet
 	SetID   uint `gorm:"primaryKey"`
-	Set     *dbIndex
+	Set     *dbSet
 }
 
-func (dbUnion) TableName() string { return "unions" }
+func (dbUnion) TableName() string { return sets.DBPrefix + "unions" }
 
 func (mod *Module) dbUnionCreate(unionID uint, setID uint) error {
 	var tx = mod.db.Create(&dbUnion{

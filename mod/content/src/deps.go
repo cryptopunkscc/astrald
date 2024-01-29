@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -20,7 +20,7 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.index, err = modules.Load[index.Module](mod.node, index.ModuleName)
+	mod.sets, err = modules.Load[sets.Module](mod.node, sets.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -34,16 +34,16 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	go events.Handle(context.Background(), mod.node.Events(),
-		func(ctx context.Context, event index.EventEntryUpdate) error {
+		func(ctx context.Context, event sets.EventEntryUpdate) error {
 			if event.Added {
 				mod.Identify(event.DataID)
 			}
 			return nil
 		})
 
-	// create an index for identified data
-	if _, err = mod.index.IndexInfo(content.IdentifiedDataSetName); err != nil {
-		_, err = mod.index.CreateIndex(content.IdentifiedDataSetName, index.TypeSet)
+	// create a set for identified data
+	if _, err = mod.sets.SetInfo(content.IdentifiedDataSetName); err != nil {
+		_, err = mod.sets.CreateSet(content.IdentifiedDataSetName, sets.TypeSet)
 		if err != nil {
 			return err
 		}

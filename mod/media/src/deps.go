@@ -5,8 +5,8 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/index"
 	"github.com/cryptopunkscc/astrald/mod/media"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"time"
@@ -29,7 +29,7 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.index, err = modules.Load[index.Module](mod.node, index.ModuleName)
+	mod.sets, err = modules.Load[sets.Module](mod.node, sets.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -43,14 +43,14 @@ func (mod *Module) LoadDependencies() error {
 
 	mod.content.AddDescriber(mod)
 
-	// create our indexes if needed
-	if _, err = mod.index.IndexInfo(media.IndexNameAll); err != nil {
-		_, err = mod.index.CreateIndex(media.IndexNameAll, index.TypeSet)
+	// create our sets if needed
+	if _, err = mod.sets.SetInfo(media.AllSet); err != nil {
+		_, err = mod.sets.CreateSet(media.AllSet, sets.TypeSet)
 		if err != nil {
 			return err
 		}
-		mod.index.SetVisible(media.IndexNameAll, true)
-		mod.index.SetDescription(media.IndexNameAll, "All media")
+		mod.sets.SetVisible(media.AllSet, true)
+		mod.sets.SetDescription(media.AllSet, "All media")
 	}
 
 	return nil

@@ -1,4 +1,4 @@
-package index
+package sets
 
 type Config struct {
 }

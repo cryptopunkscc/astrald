@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
@@ -28,12 +28,12 @@ type Module struct {
 
 	storage storage.Module
 	shares  shares.Module
-	index   index.Module
+	sets    sets.Module
 	content content.Module
 
-	rootHandler  *RootHandler
-	dataHandler  *DataHandler
-	indexHandler *IndexHandler
+	rootHandler *RootHandler
+	dataHandler *DataHandler
+	setHandler  *SetHandler
 }
 
 func (mod *Module) Run(ctx context.Context) error { // Create a new ServeMux

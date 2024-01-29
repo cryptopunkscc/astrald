@@ -1,8 +1,8 @@
-package index
+package sets
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -17,19 +17,19 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		assets: assets,
 	}
 
-	_ = assets.LoadYAML(index.ModuleName, &mod.config)
+	_ = assets.LoadYAML(sets.ModuleName, &mod.config)
 
 	mod.events.SetParent(node.Events())
 
 	mod.db = assets.Database()
 
-	err = mod.db.AutoMigrate(&dbIndex{}, &dbEntry{}, &dbUnion{})
+	err = mod.db.AutoMigrate(&dbSet{}, &dbMember{}, &dbUnion{})
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := mod.IndexInfo(index.LocalNodeUnionName); err != nil {
-		_, err = mod.CreateIndex(index.LocalNodeUnionName, index.TypeUnion)
+	if _, err := mod.SetInfo(sets.LocalNodeSet); err != nil {
+		_, err = mod.CreateSet(sets.LocalNodeSet, sets.TypeUnion)
 		if err != nil {
 			return nil, err
 		}
@@ -39,7 +39,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 }
 
 func init() {
-	if err := modules.RegisterModule(index.ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(sets.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

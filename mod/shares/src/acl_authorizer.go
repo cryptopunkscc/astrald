@@ -11,11 +11,10 @@ type ACLAuthorizer struct {
 }
 
 func (auth *ACLAuthorizer) Authorize(identity id.Identity, dataID data.ID) error {
-	found, err := auth.localShareIndexContains(identity, dataID)
+	found, err := auth.localShareSetContains(identity, dataID)
 	if err != nil {
-		return err
+		return shares.ErrDenied
 	}
-
 	if !found {
 		return shares.ErrDenied
 	}

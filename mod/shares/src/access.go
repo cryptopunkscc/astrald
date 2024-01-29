@@ -11,29 +11,29 @@ import (
 const notifyDelay = time.Second * 5
 
 func (mod *Module) Grant(identity id.Identity, dataID data.ID) error {
-	return mod.addToLocalShareIndex(identity, dataID)
+	return mod.addToLocalShareSet(identity, dataID)
 }
 
-func (mod *Module) GrantIndex(identity id.Identity, indexName string) error {
-	return mod.index.AddToUnion(
-		mod.localShareIndexName(identity),
-		indexName,
+func (mod *Module) GrantSet(identity id.Identity, set string) error {
+	return mod.sets.AddToUnion(
+		mod.localShareSetName(identity),
+		set,
 	)
 }
 
 func (mod *Module) Revoke(identity id.Identity, dataID data.ID) error {
-	return mod.removeFromLocalShareIndex(identity, dataID)
+	return mod.removeFromLocalShareSet(identity, dataID)
 }
 
-func (mod *Module) RevokeIndex(identity id.Identity, indexName string) error {
-	return mod.index.RemoveFromUnion(
-		mod.localShareIndexName(identity),
-		indexName,
+func (mod *Module) RevokeSet(identity id.Identity, set string) error {
+	return mod.sets.RemoveFromUnion(
+		mod.localShareSetName(identity),
+		set,
 	)
 }
 
 func (mod *Module) Verify(identity id.Identity, dataID data.ID) bool {
-	found, err := mod.localShareIndexContains(identity, dataID)
+	found, err := mod.localShareSetContains(identity, dataID)
 
 	return (err == nil) && found
 }

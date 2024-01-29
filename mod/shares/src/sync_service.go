@@ -3,7 +3,7 @@ package shares
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/net"
 	"strconv"
 	"strings"
@@ -54,12 +54,12 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		defer conn.Close()
 
-		var indexName = srv.localShareIndexName(caller.Identity())
+		var setName = srv.localShareSetName(caller.Identity())
 		var timestamp = time.Now()
 
 		removed := !since.IsZero()
 
-		entries, err := srv.index.Scan(indexName, &index.ScanOpts{
+		entries, err := srv.sets.Scan(setName, &sets.ScanOpts{
 			UpdatedAfter:   since,
 			UpdatedBefore:  timestamp,
 			IncludeRemoved: removed,

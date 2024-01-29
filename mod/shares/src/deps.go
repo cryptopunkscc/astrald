@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/index"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -20,7 +20,7 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.index, err = modules.Load[index.Module](mod.node, index.ModuleName)
+	mod.sets, err = modules.Load[sets.Module](mod.node, sets.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -29,12 +29,12 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(shares.ModuleName, NewAdmin(mod))
 	}
 
-	mod.index.CreateIndex(publicIndexName, index.TypeSet)
+	mod.sets.CreateSet(publicSetName, sets.TypeSet)
 	mod.storage.AddReader(shares.ModuleName, mod)
 
 	go events.Handle(context.Background(), mod.node.Events(),
-		func(ctx context.Context, event index.EventEntryUpdate) error {
-			_, s, found := strings.Cut(event.IndexName, localShareIndexPrefix+".")
+		func(ctx context.Context, event sets.EventEntryUpdate) error {
+			_, s, found := strings.Cut(event.SetName, localShareSetPrefix+".")
 			if !found {
 				return nil
 			}

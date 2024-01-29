@@ -12,14 +12,14 @@ import (
 	"slices"
 )
 
-type IndexHandler struct {
+type SetHandler struct {
 	*Module
 	template *template.Template
 }
 
-type IndexPage struct {
-	IndexName string
-	Entries   []Entry
+type SetPage struct {
+	SetName string
+	Entries []Entry
 }
 
 type Entry struct {
@@ -28,15 +28,15 @@ type Entry struct {
 	Type   string
 }
 
-func NewIndexHandler(module *Module) *IndexHandler {
-	handler := &IndexHandler{Module: module}
+func NewSetHandler(module *Module) *SetHandler {
+	handler := &SetHandler{Module: module}
 
-	bytes, err := res.ReadFile("res/index.gohtml")
+	bytes, err := res.ReadFile("res/set.gohtml")
 	if err != nil {
 		panic(err)
 	}
 
-	handler.template, err = template.New("index").Parse(string(bytes))
+	handler.template, err = template.New("set").Parse(string(bytes))
 	if err != nil {
 		panic(err)
 	}
@@ -44,29 +44,29 @@ func NewIndexHandler(module *Module) *IndexHandler {
 	return handler
 }
 
-func (mod *IndexHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
-	var indexName = path.Base(r.URL.Path)
+func (mod *SetHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
+	var setName = path.Base(r.URL.Path)
 
-	list, err := mod.index.Scan(indexName, nil)
+	list, err := mod.sets.Scan(setName, nil)
 	switch err {
 	case nil:
 	default:
-		mod.log.Errorv(1, "error reading index: %v", err)
+		mod.log.Errorv(1, "error scanning set: %v", err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	info, err := mod.index.IndexInfo(indexName)
+	info, err := mod.sets.SetInfo(setName)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	var page = &IndexPage{
-		IndexName: indexName,
+	var page = &SetPage{
+		SetName: setName,
 	}
 	if info.Description != "" {
-		page.IndexName = info.Description
+		page.SetName = info.Description
 	}
 
 	for _, item := range list {
