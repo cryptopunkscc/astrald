@@ -1,10 +1,12 @@
 package sets
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/sig"
+	"time"
 )
 
 var _ sets.Editor = &Editor{}
@@ -94,6 +96,59 @@ func (e *Editor) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 	}
 
 	return entries, nil
+}
+
+func (e *Editor) Trim(t time.Time) error {
+	if t.After(time.Now()) {
+		return errors.New("invalid time")
+	}
+
+	if !t.After(e.set.TrimmedAt) {
+		return errors.New("already trimmed with later date")
+	}
+
+	e.set.TrimmedAt = t
+	err := e.db.Save(e.set).Error
+	if err != nil {
+		return err
+	}
+
+	err = e.db.
+		Where("removed = true AND updated_at < ?", t).
+		Delete(&dbMember{}).Error
+
+	return err
+}
+
+func (e *Editor) TrimmedAt() time.Time {
+	return e.set.TrimmedAt
+}
+
+func (e *Editor) Reset() error {
+	var err error
+	var ids []uint
+
+	err = e.db.
+		Model(&dbMember{}).
+		Select("data_id").
+		Where("set_id = ?", e.set.ID).
+		Find(&ids).Error
+	if err != nil {
+		return err
+	}
+
+	err = e.RemoveByID(ids...)
+	if err != nil {
+		return err
+	}
+
+	e.set.TrimmedAt = time.Now()
+	err = e.db.Save(e.set).Error
+
+	e.events.Emit(eventSetUpdated{row: e.set})
+	e.events.Emit(sets.EventSetUpdated{Name: e.set.Name})
+
+	return err
 }
 
 func (e *Editor) AddByID(ids ...uint) error {

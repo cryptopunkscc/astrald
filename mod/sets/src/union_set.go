@@ -156,6 +156,7 @@ func (set *UnionSet) Info() (*sets.Info, error) {
 		Visible:     set.row.Visible,
 		Description: set.row.Description,
 		CreatedAt:   set.row.CreatedAt,
+		TrimmedAt:   set.row.TrimmedAt,
 	}
 
 	var count int64

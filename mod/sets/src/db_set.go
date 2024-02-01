@@ -13,6 +13,7 @@ type dbSet struct {
 	InclusionsAsSuper []dbSetInclusion `gorm:"foreignKey:SupersetID;OnDelete:CASCADE"`
 	InclusionsAsSub   []dbSetInclusion `gorm:"foreignKey:SubsetID;OnDelete:CASCADE"`
 	Description       string
+	TrimmedAt         time.Time `gorm:"default:CURRENT_TIMESTAMP;NOT NULL"`
 	CreatedAt         time.Time
 }
 

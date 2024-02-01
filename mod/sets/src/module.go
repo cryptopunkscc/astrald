@@ -104,6 +104,7 @@ func (mod *Module) Create(name string, typ sets.Type) (sets.Set, error) {
 		Type:      sets.Type(row.Type),
 		Size:      0,
 		CreatedAt: row.CreatedAt,
+		TrimmedAt: row.TrimmedAt,
 	}
 
 	mod.events.Emit(sets.EventSetCreated{Info: info})
@@ -162,6 +163,7 @@ func (mod *Module) SetInfo(name string) (*sets.Info, error) {
 		Visible:     setRow.Visible,
 		Description: setRow.Description,
 		CreatedAt:   setRow.CreatedAt,
+		TrimmedAt:   setRow.TrimmedAt,
 	}
 
 	var count int64
@@ -231,6 +233,7 @@ func (mod *Module) All() ([]sets.Info, error) {
 			Visible:     row.Visible,
 			Description: row.Description,
 			CreatedAt:   row.CreatedAt,
+			TrimmedAt:   row.TrimmedAt,
 		})
 	}
 

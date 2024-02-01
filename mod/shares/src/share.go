@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/sets"
+	"time"
 )
 
 type Share struct {
@@ -13,38 +14,12 @@ type Share struct {
 	basic    sets.Basic
 }
 
-func (share *Share) unionSetName() string {
-	return fmt.Sprintf("%v.%v",
-		localShareSetPrefix,
-		share.identity.PublicKeyHex(),
-	)
-}
+func (mod *Module) FindOrCreateShare(identity id.Identity) (*Share, error) {
+	if share, err := mod.FindShare(identity); err == nil {
+		return share, nil
+	}
 
-func (share *Share) basicSetName() string {
-	return fmt.Sprintf("%v.%v.set",
-		localShareSetPrefix,
-		share.identity.PublicKeyHex(),
-	)
-}
-
-func (share *Share) AddData(dataID ...data.ID) error {
-	return share.basic.Add(dataID...)
-}
-
-func (share *Share) AddSet(name ...string) error {
-	return share.union.Add(name...)
-}
-
-func (share *Share) RemoveData(dataID ...data.ID) error {
-	return share.basic.Remove(dataID...)
-}
-
-func (share *Share) RemoveSet(name ...string) error {
-	return share.union.Remove(name...)
-}
-
-func (share *Share) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
-	return share.union.Scan(opts)
+	return mod.CreateShare(identity)
 }
 
 func (mod *Module) CreateShare(identity id.Identity) (*Share, error) {
@@ -94,10 +69,44 @@ func (mod *Module) FindShare(identity id.Identity) (*Share, error) {
 	return share, nil
 }
 
-func (mod *Module) FindOrCreateShare(identity id.Identity) (*Share, error) {
-	if share, err := mod.FindShare(identity); err == nil {
-		return share, nil
-	}
+func (share *Share) AddData(dataID ...data.ID) error {
+	return share.basic.Add(dataID...)
+}
 
-	return mod.CreateShare(identity)
+func (share *Share) AddSet(name ...string) error {
+	return share.union.Add(name...)
+}
+
+func (share *Share) RemoveData(dataID ...data.ID) error {
+	return share.basic.Remove(dataID...)
+}
+
+func (share *Share) RemoveSet(name ...string) error {
+	return share.union.Remove(name...)
+}
+
+func (share *Share) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
+	return share.union.Scan(opts)
+}
+
+func (share *Share) TrimmedAt() time.Time {
+	info, err := share.union.Info()
+	if err != nil {
+		return time.Time{}
+	}
+	return info.TrimmedAt
+}
+
+func (share *Share) basicSetName() string {
+	return fmt.Sprintf("%v.%v.set",
+		localShareSetPrefix,
+		share.identity.PublicKeyHex(),
+	)
+}
+
+func (share *Share) unionSetName() string {
+	return fmt.Sprintf("%v.%v",
+		localShareSetPrefix,
+		share.identity.PublicKeyHex(),
+	)
 }

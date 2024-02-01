@@ -11,6 +11,13 @@ import (
 )
 
 const syncServicePrefix = "shares.sync."
+const (
+	opDone     = 0x00
+	opAdd      = 0x01
+	opRemove   = 0x02
+	opResync   = 0x03
+	opNotFound = 0xff
+)
 
 type SyncService struct {
 	*Module
@@ -55,17 +62,23 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 		defer conn.Close()
 
 		var before = time.Now()
-		var removed = !since.IsZero()
+		var updateMode = !since.IsZero()
 
 		share, err := srv.FindShare(caller.Identity())
 		if err != nil {
+			cslq.Encode(conn, "c", opNotFound)
+			return
+		}
+
+		if updateMode && share.TrimmedAt().After(since) {
+			cslq.Encode(conn, "c", opResync)
 			return
 		}
 
 		entries, err := share.Scan(&sets.ScanOpts{
 			UpdatedAfter:   since,
 			UpdatedBefore:  before,
-			IncludeRemoved: removed,
+			IncludeRemoved: updateMode,
 		})
 		if err != nil {
 			return
@@ -73,10 +86,10 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 
 		for _, entry := range entries {
 			var op byte
-			if !entry.Removed {
-				op = 1
+			if entry.Removed {
+				op = opRemove
 			} else {
-				op = 2
+				op = opAdd
 			}
 
 			err = cslq.Encode(conn, "cv",
@@ -89,6 +102,6 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 			}
 		}
 
-		cslq.Encode(conn, "cq", 0, before.UnixNano())
+		cslq.Encode(conn, "cq", opDone, before.UnixNano())
 	})
 }

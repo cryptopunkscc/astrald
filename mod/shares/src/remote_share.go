@@ -163,7 +163,7 @@ func (share *RemoteShare) Sync() error {
 		}
 
 		switch op {
-		case 0: // done
+		case opDone: // done
 			var timestamp int64
 			err = cslq.Decode(conn, "q", &timestamp)
 			if err != nil {
@@ -172,7 +172,7 @@ func (share *RemoteShare) Sync() error {
 
 			return remoteShare.SetLastUpdate(time.Unix(0, timestamp))
 
-		case 1: // add
+		case opAdd: // add
 			var dataID data.ID
 			err = cslq.Decode(conn, "v", &dataID)
 			if err != nil {
@@ -190,7 +190,7 @@ func (share *RemoteShare) Sync() error {
 
 			remoteShare.set.Add(dataID)
 
-		case 2: // remove
+		case opRemove: // remove
 			var dataID data.ID
 			err = cslq.Decode(conn, "v", &dataID)
 			if err != nil {
@@ -208,6 +208,17 @@ func (share *RemoteShare) Sync() error {
 			}
 
 			remoteShare.set.Remove(dataID)
+
+		case opResync:
+			conn.Close()
+			err = share.Reset()
+			if err != nil {
+				return err
+			}
+			return share.Sync()
+
+		case opNotFound:
+			return errors.New("remote share not found")
 
 		default:
 			return errors.New("protocol error")
@@ -235,6 +246,22 @@ func (share *RemoteShare) Unsync() error {
 	return share.set.Delete()
 }
 
+func (share *RemoteShare) Reset() error {
+	err := share.mod.db.
+		Where("caller = ? and target = ?", share.caller, share.target).
+		Delete(&dbRemoteData{}).Error
+	if err != nil {
+		return err
+	}
+
+	err = share.set.Reset()
+	if err != nil {
+		return err
+	}
+
+	return share.SetLastUpdate(time.Time{})
+}
+
 func (share *RemoteShare) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 	return share.set.Scan(opts)
 }
@@ -256,6 +283,7 @@ func (share *RemoteShare) Info() (*sets.Info, error) {
 		Visible:     false,
 		Description: "",
 		CreatedAt:   time.Time{},
+		TrimmedAt:   share.set.TrimmedAt(),
 	}, nil
 }
 

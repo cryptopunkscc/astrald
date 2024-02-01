@@ -57,6 +57,9 @@ type Editor interface {
 	Remove(...data.ID) error
 	RemoveByID(...uint) error
 	Delete() error
+	Reset() error
+	Trim(time.Time) error
+	TrimmedAt() time.Time
 }
 
 type ScanOpts struct {
@@ -73,6 +76,7 @@ type Info struct {
 	Visible     bool
 	Description string
 	CreatedAt   time.Time
+	TrimmedAt   time.Time
 }
 
 type Member struct {
