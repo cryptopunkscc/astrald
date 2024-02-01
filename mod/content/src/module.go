@@ -29,6 +29,7 @@ type Module struct {
 	db     *gorm.DB
 
 	describers sig.Set[content.Describer]
+	identified sets.Basic
 
 	storage storage.Module
 	fs      fs.Module
@@ -96,7 +97,7 @@ func (mod *Module) Forget(dataID data.ID) error {
 		return err
 	}
 
-	return mod.sets.RemoveFromSet(content.IdentifiedDataSetName, dataID)
+	return mod.identified.Remove(dataID)
 }
 
 func (mod *Module) Ready(ctx context.Context) error {

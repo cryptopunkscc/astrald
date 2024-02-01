@@ -20,17 +20,17 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
+		"add":          adm.add,
+		"remove":       adm.remove,
+		"scan":         adm.scan,
 		"create":       adm.create,
 		"delete":       adm.delete,
 		"list":         adm.list,
-		"add":          adm.add,
-		"remove":       adm.remove,
+		"sync":         adm.sync,
 		"add_union":    adm.addUnion,
 		"remove_union": adm.removeUnion,
 		"info":         adm.info,
-		"show":         adm.show,
 		"where":        adm.where,
-		"contains":     adm.contains,
 		"set_visible":  adm.setVisible,
 		"set_desc":     adm.setDesc,
 		"help":         adm.help,
@@ -89,13 +89,13 @@ func (adm *Admin) create(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	var typ = sets.TypeSet
+	var typ = sets.TypeBasic
 
 	if len(args) >= 2 {
 		typ = sets.Type(args[1])
 	}
 
-	_, err := adm.mod.CreateSet(args[0], typ)
+	_, err := adm.mod.Create(args[0], typ)
 
 	return err
 }
@@ -105,11 +105,16 @@ func (adm *Admin) delete(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	return adm.mod.DeleteSet(args[0])
+	set, err := adm.mod.Edit(args[0])
+	if err != nil {
+		return err
+	}
+
+	return set.Delete()
 }
 
 func (adm *Admin) list(term admin.Terminal, _ []string) error {
-	list, err := adm.mod.AllSets()
+	list, err := adm.mod.All()
 	if err != nil {
 		return err
 	}
@@ -146,20 +151,32 @@ func (adm *Admin) add(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	var name = args[0]
+	set, err := adm.mod.Edit(args[0])
+	if err != nil {
+		return err
+	}
 
-	for _, d := range args[1:] {
-		dataID, err := data.Parse(d)
-		if err != nil {
-			term.Printf("%v parse error: %v\n", d, err)
+	for _, arg := range args[1:] {
+		if dataID, err := data.Parse(arg); err == nil {
+			err = set.Add(dataID)
+			if err != nil {
+				term.Printf("add %v: %v\n", dataID, err)
+			} else {
+				term.Printf("add %v: ok\n", dataID)
+			}
 			continue
 		}
-		err = adm.mod.AddToSet(name, dataID)
-		if err != nil {
-			term.Printf("%v error: %v\n", dataID, err)
+		if i, err := strconv.ParseUint(arg, 10, 64); err == nil {
+			err = set.AddByID(uint(i))
+			if err != nil {
+				term.Printf("add %v: %v\n", i, err)
+			} else {
+				term.Printf("add %v: ok\n", i)
+			}
 			continue
 		}
-		term.Printf("%v added\n", dataID)
+
+		term.Printf("add %v: %v\n", arg, errors.New("unrecognized id"))
 	}
 
 	return nil
@@ -170,23 +187,55 @@ func (adm *Admin) remove(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	var name = args[0]
+	set, err := adm.mod.Edit(args[0])
+	if err != nil {
+		return err
+	}
 
-	for _, d := range args[1:] {
-		dataID, err := data.Parse(d)
-		if err != nil {
-			term.Printf("%v parse error: %v\n", d, err)
+	for _, arg := range args[1:] {
+		if dataID, err := data.Parse(arg); err == nil {
+			err = set.Remove(dataID)
+			if err != nil {
+				term.Printf("remove %v: %v\n", dataID, err)
+			} else {
+				term.Printf("remove %v: ok\n", dataID)
+			}
 			continue
 		}
-		err = adm.mod.RemoveFromSet(name, dataID)
-		if err != nil {
-			term.Printf("%v error: %v\n", dataID, err)
+		if i, err := strconv.ParseUint(arg, 10, 64); err == nil {
+			err = set.RemoveByID(uint(i))
+			if err != nil {
+				term.Printf("remove %v: %v\n", i, err)
+			} else {
+				term.Printf("remove %v: ok\n", i)
+			}
 			continue
 		}
-		term.Printf("%v removed\n", dataID)
+
+		term.Printf("remove %v: %v\n", arg, errors.New("unrecognized id"))
 	}
 
 	return nil
+}
+
+func (adm *Admin) sync(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	var name = args[0]
+
+	set, err := adm.mod.Open(name)
+	if err != nil {
+		return err
+	}
+
+	switch typed := set.(type) {
+	case *UnionSet:
+		return typed.Sync()
+	}
+
+	return errors.New("unsupported set type")
 }
 
 func (adm *Admin) addUnion(term admin.Terminal, args []string) error {
@@ -194,7 +243,12 @@ func (adm *Admin) addUnion(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	return adm.mod.AddToUnion(args[0], args[1])
+	super, err := adm.mod.unionOpener(args[0])
+	if err != nil {
+		return err
+	}
+
+	return super.Add(args[1:]...)
 }
 
 func (adm *Admin) removeUnion(term admin.Terminal, args []string) error {
@@ -202,41 +256,15 @@ func (adm *Admin) removeUnion(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	return adm.mod.RemoveFromUnion(args[0], args[1])
-}
-
-func (adm *Admin) contains(term admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		return errors.New("missing argument")
+	super, err := adm.mod.unionOpener(args[0])
+	if err != nil {
+		return err
 	}
 
-	var name = args[0]
-
-	for _, d := range args[1:] {
-		dataID, err := data.Parse(d)
-		if err != nil {
-			term.Printf("%v: %v\n", d, fmt.Errorf("parse error: %w", err))
-			continue
-		}
-
-		var status = "yes"
-		_, err = adm.mod.Member(name, dataID)
-		switch {
-		case err == nil:
-		case errors.Is(err, sets.ErrMemberNotFound):
-			status = "no"
-		default:
-			term.Printf("%v: %v\n", dataID, err)
-			continue
-		}
-
-		term.Printf("%v: %v\n", dataID, status)
-	}
-
-	return nil
+	return super.Remove(args[1:]...)
 }
 
-func (adm *Admin) show(term admin.Terminal, args []string) error {
+func (adm *Admin) scan(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
 	}
@@ -250,11 +278,11 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 
 	var f = "%-20s %-8s %s\n"
 	term.Printf("\n")
-	term.Printf(f, admin.Header("Updated at"), admin.Header("Status"), admin.Header("DataID"))
+	term.Printf(f, admin.Header("Updated at"), admin.Header("Removed"), admin.Header("DataID"))
 	for _, item := range list {
-		var status = "added"
-		if !item.Added {
-			status = "removed"
+		var status = "no"
+		if item.Removed {
+			status = "yes"
 		}
 
 		term.Printf(f,
@@ -274,32 +302,19 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 
 	name := args[0]
 
-	setRow, err := adm.mod.dbFindSetByName(name)
+	set, err := adm.mod.Open(name)
 	if err != nil {
 		return err
 	}
 
-	var size int
-	size, err = adm.mod.dbMemberCountBySetID(setRow.ID)
-
-	term.Printf("Set type: %v\n", setRow.Type)
-	term.Printf("Created at: %v\n", setRow.CreatedAt)
-	term.Printf("Set size: %v\n", size)
-	if sets.Type(setRow.Type) == sets.TypeUnion {
-		unions, err := adm.mod.dbUnionFindByUnionID(setRow.ID)
-		if err != nil {
-			return err
-		}
-
-		slices.SortFunc(unions, func(a, b dbUnion) int {
-			return cmp.Compare(a.Set.Name, b.Set.Name)
-		})
-
-		term.Printf("%v\n", admin.Header("Members"))
-		for _, union := range unions {
-			term.Printf("%v\n", union.Set.Name)
-		}
+	info, err := set.Info()
+	if err != nil {
+		return err
 	}
+
+	term.Printf("Set type: %v\n", info.Type)
+	term.Printf("Created at: %v\n", info.CreatedAt)
+	term.Printf("Set size: %v\n", info.Size)
 
 	return nil
 }
@@ -344,7 +359,6 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("  remove <name> <dataID>        remove data from a set\n")
 	term.Printf("  add_union <union> <set>       add a set to a union\n")
 	term.Printf("  where <dataID>                show sets containing data\n")
-	term.Printf("  contains <name> <[]dataID>    check if a set contains data\n")
 	term.Printf("  info <name>                   show info about a set\n")
 	term.Printf("  show <name>                   show set members\n")
 	term.Printf("  help                          show help\n")

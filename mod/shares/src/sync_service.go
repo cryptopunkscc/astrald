@@ -54,14 +54,17 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		defer conn.Close()
 
-		var setName = srv.localShareSetName(caller.Identity())
-		var timestamp = time.Now()
+		var before = time.Now()
+		var removed = !since.IsZero()
 
-		removed := !since.IsZero()
+		share, err := srv.FindShare(caller.Identity())
+		if err != nil {
+			return
+		}
 
-		entries, err := srv.sets.Scan(setName, &sets.ScanOpts{
+		entries, err := share.Scan(&sets.ScanOpts{
 			UpdatedAfter:   since,
-			UpdatedBefore:  timestamp,
+			UpdatedBefore:  before,
 			IncludeRemoved: removed,
 		})
 		if err != nil {
@@ -70,7 +73,7 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 
 		for _, entry := range entries {
 			var op byte
-			if entry.Added {
+			if !entry.Removed {
 				op = 1
 			} else {
 				op = 2
@@ -86,6 +89,6 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 			}
 		}
 
-		cslq.Encode(conn, "cq", 0, timestamp.UnixNano())
+		cslq.Encode(conn, "cq", 0, before.UnixNano())
 	})
 }

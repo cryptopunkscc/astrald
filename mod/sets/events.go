@@ -6,18 +6,18 @@ import (
 	"time"
 )
 
-type EventEntryUpdate struct {
-	SetName   string
+type EventMemberUpdate struct {
+	Set       string
 	DataID    data.ID
-	Added     bool
+	Removed   bool
 	UpdatedAt time.Time
 }
 
-func (event EventEntryUpdate) String() string {
-	if event.Added {
-		return fmt.Sprintf("%s added %s", event.SetName, event.DataID.String())
+func (event EventMemberUpdate) String() string {
+	if event.Removed {
+		return fmt.Sprintf("%s added %s", event.Set, event.DataID.String())
 	}
-	return fmt.Sprintf("%s removed %s", event.SetName, event.DataID.String())
+	return fmt.Sprintf("%s removed %s", event.Set, event.DataID.String())
 }
 
 type EventSetCreated struct {
@@ -25,5 +25,9 @@ type EventSetCreated struct {
 }
 
 type EventSetDeleted struct {
+	Name string
+}
+
+type EventSetUpdated struct {
 	Name string
 }

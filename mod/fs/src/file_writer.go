@@ -74,7 +74,7 @@ func (w *FileWriter) Commit() (data.ID, error) {
 		os.Remove(oldPath)
 	}
 
-	w.store.sets.AddToSet(fs.ReadWriteSetName, dataID)
+	w.store.rwSet.Add(dataID)
 	w.store.events.Emit(fs.EventFileAdded{
 		DataID: dataID,
 		Path:   newPath,

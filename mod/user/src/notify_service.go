@@ -49,36 +49,26 @@ func (srv *NotifyService) RouteQuery(ctx context.Context, query net.Query, calle
 		if i := strings.IndexByte(query.Query(), '?'); i != -1 {
 			realCaller, err := id.ParsePublicKeyHex(query.Query()[i+1:])
 			if err == nil {
-				lastSync, err := srv.shares.LastSynced(userID, realCaller)
+				remoteShare, err := srv.shares.FindRemoteShare(userID, realCaller)
 				if err != nil {
-					return net.Reject()
-				}
-
-				if lastSync.IsZero() {
 					return net.Reject()
 				}
 
 				return net.Accept(query, caller, func(conn net.SecureConn) {
 					conn.Close()
-
-					srv.shares.Sync(userID, realCaller)
+					remoteShare.Sync()
 				})
 			}
 		}
 	}
 
-	lastSync, err := srv.shares.LastSynced(userID, query.Caller())
+	remoteShare, err := srv.shares.FindRemoteShare(userID, query.Caller())
 	if err != nil {
-		return net.Reject()
-	}
-
-	if lastSync.IsZero() {
 		return net.Reject()
 	}
 
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		conn.Close()
-
-		srv.shares.Sync(userID, query.Caller())
+		remoteShare.Sync()
 	})
 }

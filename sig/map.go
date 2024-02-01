@@ -9,6 +9,7 @@ type Map[K comparable, V any] struct {
 }
 
 // Set sets the value of the key only if no other value is aready set. Returns true on success.
+// To overwrite the data use Replace().
 func (m *Map[K, V]) Set(key K, value V) (ok bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

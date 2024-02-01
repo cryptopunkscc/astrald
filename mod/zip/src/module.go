@@ -28,6 +28,8 @@ type Module struct {
 	storage storage.Module
 	shares  shares.Module
 	sets    sets.Module
+
+	archives sets.Union
 }
 
 func (mod *Module) Run(ctx context.Context) error {

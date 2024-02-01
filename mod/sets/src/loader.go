@@ -23,16 +23,37 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.db = assets.Database()
 
-	err = mod.db.AutoMigrate(&dbSet{}, &dbMember{}, &dbUnion{})
+	err = mod.db.AutoMigrate(&dbSet{}, &dbMember{}, &dbSetInclusion{})
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := mod.SetInfo(sets.LocalNodeSet); err != nil {
-		_, err = mod.CreateSet(sets.LocalNodeSet, sets.TypeUnion)
+	mod.SetOpener(sets.TypeBasic, func(name string) (sets.Set, error) {
+		return mod.basicOpener(name)
+	})
+	mod.SetOpener(sets.TypeUnion, func(name string) (sets.Set, error) {
+		return mod.unionOpener(name)
+	})
+
+	mod.universe, err = sets.Open[*UnionSet](mod, sets.UniverseSet)
+	if err != nil {
+		mod.universe, err = mod.createUnion(sets.UniverseSet)
 		if err != nil {
 			return nil, err
 		}
+		mod.SetVisible(sets.UniverseSet, true)
+		mod.SetDescription(sets.UniverseSet, "All data from everywhere")
+	}
+
+	mod.localnode, err = sets.Open[*UnionSet](mod, sets.LocalNodeSet)
+	if err != nil {
+		mod.localnode, err = mod.createUnion(sets.LocalNodeSet)
+		if err != nil {
+			return nil, err
+		}
+		mod.universe.Add(sets.LocalNodeSet)
+		mod.SetVisible(sets.LocalNodeSet, true)
+		mod.SetDescription(sets.LocalNodeSet, "All data on this node")
 	}
 
 	return mod, err

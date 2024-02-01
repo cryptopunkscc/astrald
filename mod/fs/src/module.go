@@ -30,9 +30,13 @@ type Module struct {
 	content content.Module
 	sets    sets.Module
 
-	indexer *IndexerService
-	store   *StoreService
-	mem     *MemStore
+	indexer  *IndexerService
+	store    *StoreService
+	memStore *MemStore
+	memSet   sets.Basic
+	allSet   sets.Union
+	roSet    sets.Basic
+	rwSet    sets.Basic
 }
 
 func (mod *Module) Prepare(ctx context.Context) error {

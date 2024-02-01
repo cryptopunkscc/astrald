@@ -38,7 +38,7 @@ func (mod *RootHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	var showHidden = r.URL.Query().Has("hidden")
 
-	list, err := mod.sets.AllSets()
+	list, err := mod.sets.All()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

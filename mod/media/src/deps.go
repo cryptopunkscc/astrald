@@ -44,8 +44,9 @@ func (mod *Module) LoadDependencies() error {
 	mod.content.AddDescriber(mod)
 
 	// create our sets if needed
-	if _, err = mod.sets.SetInfo(media.AllSet); err != nil {
-		_, err = mod.sets.CreateSet(media.AllSet, sets.TypeSet)
+	mod.allSet, err = sets.Open[sets.Basic](mod.sets, media.AllSet)
+	if err != nil {
+		mod.allSet, err = mod.sets.CreateBasic(media.AllSet)
 		if err != nil {
 			return err
 		}

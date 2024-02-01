@@ -26,18 +26,13 @@ func (srv *NotifyService) Run(ctx context.Context) error {
 }
 
 func (srv *NotifyService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	lastSync, err := srv.LastSynced(query.Target(), query.Caller())
+	remoteShare, err := srv.FindRemoteShare(query.Target(), query.Caller())
 	if err != nil {
-		return net.Reject()
-	}
-
-	if lastSync.IsZero() {
 		return net.Reject()
 	}
 
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		conn.Close()
-
-		srv.Sync(query.Target(), query.Caller())
+		remoteShare.Sync()
 	})
 }

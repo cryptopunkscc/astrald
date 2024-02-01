@@ -99,8 +99,8 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 
 		term.Printf(f, path, log.DataSize(free))
 	}
-	if adm.mod.mem != nil {
-		term.Printf(f, "<mem>", log.DataSize(adm.mod.mem.Free()))
+	if adm.mod.memStore != nil {
+		term.Printf(f, "<mem>", log.DataSize(adm.mod.memStore.Free()))
 	}
 
 	term.Printf("\n%s\n", admin.Header("INDEX PATH"))

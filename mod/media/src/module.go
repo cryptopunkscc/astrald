@@ -22,6 +22,7 @@ type Module struct {
 	content content.Module
 	storage storage.Module
 	sets    sets.Module
+	allSet  sets.Basic
 
 	indexer *IndexerService
 }

@@ -34,16 +34,16 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	go events.Handle(context.Background(), mod.node.Events(),
-		func(ctx context.Context, event sets.EventEntryUpdate) error {
-			if event.Added {
+		func(ctx context.Context, event sets.EventMemberUpdate) error {
+			if !event.Removed {
 				mod.Identify(event.DataID)
 			}
 			return nil
 		})
 
-	// create a set for identified data
-	if _, err = mod.sets.SetInfo(content.IdentifiedDataSetName); err != nil {
-		_, err = mod.sets.CreateSet(content.IdentifiedDataSetName, sets.TypeSet)
+	mod.identified, err = sets.Open[sets.Basic](mod.sets, content.IdentifiedDataSetName)
+	if err != nil {
+		mod.identified, err = mod.sets.CreateBasic(content.IdentifiedDataSetName)
 		if err != nil {
 			return err
 		}

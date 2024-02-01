@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/fs"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
@@ -57,7 +58,7 @@ func (srv *StoreService) onRemoved(path string) {
 		return
 	}
 
-	srv.sets.RemoveFromSet(fs.ReadWriteSetName, dataID)
+	srv.rwSet.Remove(dataID)
 }
 
 func (srv *StoreService) verify(path string) {
@@ -67,8 +68,8 @@ func (srv *StoreService) verify(path string) {
 		return
 	}
 
-	entry, err := srv.sets.Member(fs.ReadWriteSetName, dataID)
-	if err != nil {
+	scan, err := srv.rwSet.Scan(&sets.ScanOpts{DataID: dataID})
+	if len(scan) == 0 {
 		srv.rescan(path)
 		return
 	}
@@ -78,7 +79,7 @@ func (srv *StoreService) verify(path string) {
 		return
 	}
 
-	if stat.ModTime().After(entry.UpdatedAt) {
+	if stat.ModTime().After(scan[0].UpdatedAt) {
 		srv.rescan(path)
 	}
 }
@@ -95,7 +96,7 @@ func (srv *StoreService) rescan(path string) {
 		os.Rename(path, newPath)
 	}
 
-	srv.sets.AddToSet(fs.ReadWriteSetName, dataID)
+	srv.rwSet.Add(dataID)
 }
 
 func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
@@ -103,7 +104,8 @@ func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.D
 		opts = &storage.ReadOpts{}
 	}
 
-	if m, _ := srv.sets.Member(fs.ReadWriteSetName, dataID); m == nil {
+	scan, _ := srv.rwSet.Scan(&sets.ScanOpts{DataID: dataID})
+	if len(scan) == 0 {
 		return nil, storage.ErrNotFound
 	}
 
@@ -116,7 +118,7 @@ func (srv *StoreService) Read(dataID data.ID, opts *storage.ReadOpts) (storage.D
 		}
 	}
 
-	srv.sets.RemoveFromSet(fs.ReadWriteSetName, dataID)
+	srv.rwSet.Remove(dataID)
 
 	return nil, storage.ErrNotFound
 }

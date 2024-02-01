@@ -47,10 +47,15 @@ func NewSetHandler(module *Module) *SetHandler {
 func (mod *SetHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 	var setName = path.Base(r.URL.Path)
 
-	list, err := mod.sets.Scan(setName, nil)
-	switch err {
-	case nil:
-	default:
+	set, err := mod.sets.Open(setName)
+	if err != nil {
+		mod.log.Errorv(1, "error opening set: %v", err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	list, err := set.Scan(nil)
+	if err != nil {
 		mod.log.Errorv(1, "error scanning set: %v", err)
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -70,7 +75,7 @@ func (mod *SetHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, item := range list {
-		if !item.Added {
+		if item.Removed {
 			continue
 		}
 

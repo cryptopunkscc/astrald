@@ -29,12 +29,24 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(shares.ModuleName, NewAdmin(mod))
 	}
 
-	mod.sets.CreateSet(publicSetName, sets.TypeSet)
+	mod.sets.SetOpener(shares.SetType, mod.setOpener)
+	mod.sets.Create(publicSetName, sets.TypeBasic)
 	mod.storage.AddReader(shares.ModuleName, mod)
 
+	mod.remoteShares, err = sets.Open[sets.Union](mod.sets, shares.RemoteSharesSetName)
+	if err != nil {
+		mod.remoteShares, err = mod.sets.CreateUnion(shares.RemoteSharesSetName)
+		if err != nil {
+			return err
+		}
+		mod.sets.SetDescription(shares.RemoteSharesSetName, "All data from remote shares")
+		mod.sets.SetVisible(shares.RemoteSharesSetName, true)
+		mod.sets.Universe().Add(shares.RemoteSharesSetName)
+	}
+
 	go events.Handle(context.Background(), mod.node.Events(),
-		func(ctx context.Context, event sets.EventEntryUpdate) error {
-			_, s, found := strings.Cut(event.SetName, localShareSetPrefix+".")
+		func(ctx context.Context, event sets.EventMemberUpdate) error {
+			_, s, found := strings.Cut(event.Set, localShareSetPrefix+".")
 			if !found {
 				return nil
 			}

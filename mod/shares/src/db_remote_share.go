@@ -2,6 +2,7 @@ package shares
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"time"
 )
 
@@ -12,5 +13,5 @@ type dbRemoteShare struct {
 }
 
 func (dbRemoteShare) TableName() string {
-	return "remote_shares"
+	return shares.DBPrefix + "remote_shares"
 }

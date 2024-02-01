@@ -44,6 +44,15 @@ func (id ID) IsEqual(other ID) bool {
 	return true
 }
 
+func (id ID) IsZero() bool {
+	for _, b := range id.Hash {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func Unpack(data [40]byte) (id ID) {
 	id.Size = binary.BigEndian.Uint64(data[0:8])
 	copy(id.Hash[:], data[8:40])
