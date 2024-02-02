@@ -28,19 +28,7 @@ func (mod *Module) LoadDependencies() error {
 	// optional
 	mod.fs, _ = modules.Load[fs.Module](mod.node, fs.ModuleName)
 
-	// inject admin command
-	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(content.ModuleName, NewAdmin(mod))
-	}
-
-	go events.Handle(context.Background(), mod.node.Events(),
-		func(event sets.EventMemberUpdate) error {
-			if !event.Removed {
-				mod.Identify(event.DataID)
-			}
-			return nil
-		})
-
+	// make a set for identified data
 	mod.identified, err = sets.Open[sets.Basic](mod.sets, content.IdentifiedDataSetName)
 	if err != nil {
 		mod.identified, err = mod.sets.CreateBasic(content.IdentifiedDataSetName)
@@ -48,6 +36,20 @@ func (mod *Module) LoadDependencies() error {
 			return err
 		}
 	}
+
+	// inject admin command
+	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
+		adm.AddCommand(content.ModuleName, NewAdmin(mod))
+	}
+
+	// try to identify any data added to any index
+	go events.Handle(context.Background(), mod.node.Events(),
+		func(event sets.EventMemberUpdate) error {
+			if !event.Removed {
+				mod.Identify(event.DataID)
+			}
+			return nil
+		})
 
 	mod.setReady()
 

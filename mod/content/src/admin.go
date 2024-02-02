@@ -1,9 +1,11 @@
 package content
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
@@ -116,25 +118,24 @@ func (cmd *Admin) describe(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	var desc = cmd.mod.Describe(nil, dataID, nil)
+	opts := &content.DescribeOpts{
+		Network: true,
+		IdentityFilter: func(identity id.Identity) bool {
+			return true
+		},
+	}
 
-	var m = map[string][]any{}
+	var desc = cmd.mod.Describe(context.Background(), dataID, opts)
+
 	for _, d := range desc {
-		t := d.DescriptorType()
-		if a, ok := m[t]; ok {
-			a = append(a, d)
-		} else {
-			m[t] = []any{d}
+		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Info.InfoType()))
+
+		j, err := json.MarshalIndent(d.Info, "  ", "  ")
+		if err != nil {
+			term.Printf("marshal error: %v\n", err)
 		}
+		term.Printf("%s\n\n", string(j))
 	}
-
-	bytes, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	term.Write(bytes)
-	term.Println()
 
 	return nil
 }

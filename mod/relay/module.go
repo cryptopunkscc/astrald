@@ -42,6 +42,6 @@ type CertDescriptor struct {
 	ValidateError error
 }
 
-func (CertDescriptor) DescriptorType() string {
+func (CertDescriptor) InfoType() string {
 	return "mod.relay.cert"
 }

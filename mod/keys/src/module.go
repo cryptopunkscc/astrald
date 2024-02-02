@@ -31,28 +31,12 @@ type Module struct {
 	db      *gorm.DB
 }
 
-func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []content.Descriptor {
-	var desc []content.Descriptor
-
-	row, err := mod.dbFindByDataID(dataID)
-	if err != nil {
-		return nil
-	}
-
-	desc = append(desc, keys.KeyDescriptor{
-		KeyType:   row.Type,
-		PublicKey: row.PublicKey,
-	})
-
-	return desc
-}
-
+var ErrAlreadyIndexed = errors.New("already indexed")
 var privateKeyHeader = adc.Header(keys.PrivateKeyDataType)
 
 func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
 		&IndexerService{Module: mod},
-		&Service{Module: mod},
 	).Run(ctx)
 }
 
@@ -110,6 +94,12 @@ func (mod *Module) SaveKey(key id.Identity) (data.ID, error) {
 }
 
 func (mod *Module) IndexKey(dataID data.ID) error {
+	var row dbPrivateKey
+	var err = mod.db.Where("data_id = ?", dataID).First(&row).Error
+	if err == nil {
+		return ErrAlreadyIndexed
+	}
+
 	r, err := mod.storage.Read(dataID, &storage.ReadOpts{Virtual: true})
 	if err != nil {
 		return err
@@ -135,13 +125,11 @@ func (mod *Module) IndexKey(dataID data.ID) error {
 		return err
 	}
 
-	var row = dbPrivateKey{
+	return mod.db.Create(&dbPrivateKey{
 		DataID:    dataID,
 		Type:      pk.Type,
 		PublicKey: identity,
-	}
-
-	return mod.db.Create(&row).Error
+	}).Error
 }
 
 func (mod *Module) LoadPrivateKey(dataID data.ID) (*keys.PrivateKey, error) {

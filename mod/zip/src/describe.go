@@ -7,14 +7,14 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/zip"
 )
 
-func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) (desc []content.Descriptor) {
+func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) (desc []*content.Descriptor) {
 	desc = append(desc, mod.describeArchive(dataID)...)
 	desc = append(desc, mod.describeMember(dataID)...)
 
 	return
 }
 
-func (mod *Module) describeArchive(dataID data.ID) []content.Descriptor {
+func (mod *Module) describeArchive(dataID data.ID) []*content.Descriptor {
 	var row dbZip
 
 	var err = mod.db.
@@ -34,10 +34,13 @@ func (mod *Module) describeArchive(dataID data.ID) []content.Descriptor {
 		})
 	}
 
-	return []content.Descriptor{desc}
+	return []*content.Descriptor{{
+		Source: mod.node.Identity(),
+		Info:   desc,
+	}}
 }
 
-func (mod *Module) describeMember(dataID data.ID) []content.Descriptor {
+func (mod *Module) describeMember(dataID data.ID) []*content.Descriptor {
 	rows, _ := mod.dbFindByFileID(dataID)
 	if len(rows) == 0 {
 		return nil
@@ -51,5 +54,8 @@ func (mod *Module) describeMember(dataID data.ID) []content.Descriptor {
 		})
 	}
 
-	return []content.Descriptor{desc}
+	return []*content.Descriptor{{
+		Source: mod.node.Identity(),
+		Info:   desc,
+	}}
 }

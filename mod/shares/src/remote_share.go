@@ -2,14 +2,18 @@ package shares
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/net"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -260,6 +264,72 @@ func (share *RemoteShare) Reset() error {
 	}
 
 	return share.SetLastUpdate(time.Time{})
+}
+
+func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID) ([]*content.Descriptor, error) {
+	var list []*content.Descriptor
+	var rawJSON []byte
+
+	var row dbRemoteDesc
+	err := share.mod.db.
+		Where("caller = ? AND target = ? AND data_id = ?", share.caller, share.target, dataID).
+		First(&row).Error
+
+	if err == nil {
+		rawJSON = []byte(row.Desc)
+	} else {
+		var query = net.NewQuery(
+			share.caller,
+			share.target,
+			describeServiceName+"?id="+dataID.String(),
+		)
+
+		conn, err := net.Route(ctx, share.mod.node.Router(), query)
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+
+		rawJSON, err = io.ReadAll(conn)
+		if err != nil {
+			return nil, err
+		}
+
+		share.mod.db.Create(&dbRemoteDesc{
+			Caller: share.caller,
+			Target: share.target,
+			DataID: dataID,
+			Desc:   string(rawJSON),
+		})
+	}
+
+	var j []JSONDescriptor
+	err = json.Unmarshal(rawJSON, &j)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, d := range j {
+		desc := &content.Descriptor{
+			Source: share.target,
+		}
+
+		switch d.Type {
+		case media.Descriptor{}.InfoType():
+			var v media.Descriptor
+			err = json.Unmarshal(d.Info, &v)
+			if err != nil {
+				continue
+			}
+			desc.Info = v
+		default:
+			continue
+		}
+
+		list = append(list, desc)
+	}
+
+	return list, nil
 }
 
 func (share *RemoteShare) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {

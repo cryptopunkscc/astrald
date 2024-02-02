@@ -47,7 +47,7 @@ func (mod *Module) Run(ctx context.Context) error {
 // Scan returns a channel that will be populated with all data entries since the provided timestamp and
 // subscribed to any new items until context is done. If type is empty, all data entries will be passed regardless
 // of the type.
-func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *content.Info {
+func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *content.TypeInfo {
 	if opts == nil {
 		opts = &content.ScanOpts{}
 	}
@@ -56,7 +56,7 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 		return nil
 	}
 
-	var ch = make(chan *content.Info)
+	var ch = make(chan *content.TypeInfo)
 	var subscription = mod.events.Subscribe(ctx)
 
 	go func() {
@@ -81,10 +81,10 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 			if !ok {
 				continue
 			}
-			if opts.Type != "" && e.Info.Type != opts.Type {
+			if opts.Type != "" && e.TypeInfo.Type != opts.Type {
 				continue
 			}
-			ch <- e.Info
+			ch <- e.TypeInfo
 		}
 	}()
 
@@ -112,8 +112,8 @@ func (mod *Module) Ready(ctx context.Context) error {
 
 // find returns all data items indexed since time ts. If t is not empty, only items of type t will
 // be returned.
-func (mod *Module) find(opts *content.ScanOpts) ([]*content.Info, error) {
-	var list []*content.Info
+func (mod *Module) find(opts *content.ScanOpts) ([]*content.TypeInfo, error) {
+	var list []*content.TypeInfo
 	var rows []*dbDataType
 
 	if opts == nil {
@@ -129,21 +129,21 @@ func (mod *Module) find(opts *content.ScanOpts) ([]*content.Info, error) {
 
 	// filter by time if provided
 	if !opts.After.IsZero() {
-		query = query.Where("indexed_at > ?", opts.After)
+		query = query.Where("identified_at > ?", opts.After)
 	}
 
 	// fetch rows
-	var tx = query.Order("indexed_at").Find(&rows)
+	var tx = query.Order("identified_at").Find(&rows)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
 
 	for _, row := range rows {
-		list = append(list, &content.Info{
-			DataID:    row.DataID,
-			IndexedAt: row.IndexedAt,
-			Method:    row.Method,
-			Type:      row.Type,
+		list = append(list, &content.TypeInfo{
+			DataID:       row.DataID,
+			IdentifiedAt: row.IdentifiedAt,
+			Method:       row.Method,
+			Type:         row.Type,
 		})
 	}
 

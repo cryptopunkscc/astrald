@@ -21,7 +21,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.db = assets.Database()
 
-	err = mod.db.AutoMigrate(&dbRemoteShare{}, &dbRemoteData{})
+	err = mod.db.AutoMigrate(&dbRemoteShare{}, &dbRemoteData{}, &dbRemoteDesc{})
 	if err != nil {
 		return nil, err
 	}

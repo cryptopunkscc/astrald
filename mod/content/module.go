@@ -2,25 +2,24 @@ package content
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"time"
 )
 
 const ModuleName = "content"
+const DBPrefix = "content__"
 const IdentifiedDataSetName = "mod.content.identified"
 
 type Module interface {
-	Identify(dataID data.ID) (*Info, error)
-	IdentifySet(setName string) ([]*Info, error)
+	Identify(dataID data.ID) (*TypeInfo, error)
+	IdentifySet(setName string) ([]*TypeInfo, error)
 	Forget(dataID data.ID) error
-	Scan(ctx context.Context, opts *ScanOpts) <-chan *Info
+	Scan(ctx context.Context, opts *ScanOpts) <-chan *TypeInfo
 
 	Describer
 	AddDescriber(Describer) error
 	RemoveDescriber(Describer) error
-
-	SetLabel(data.ID, string)
-	GetLabel(data.ID) string
 
 	Ready(ctx context.Context) error
 }
@@ -31,20 +30,21 @@ type ScanOpts struct {
 }
 
 type Describer interface {
-	Describe(ctx context.Context, dataID data.ID, opts *DescribeOpts) []Descriptor
+	Describe(ctx context.Context, dataID data.ID, opts *DescribeOpts) []*Descriptor
 }
 
 type DescribeOpts struct {
-	// for future use
+	Network        bool
+	IdentityFilter func(id.Identity) bool
 }
 
-type Info struct {
-	DataID    data.ID
-	IndexedAt time.Time
-	Method    string // method used to detect type (adc | mimetype)
-	Type      string // detected data type
+type TypeInfo struct {
+	DataID       data.ID
+	Type         string // detected data type
+	Method       string // method used to detect type (adc | mimetype)
+	IdentifiedAt time.Time
 }
 
 type EventDataIdentified struct {
-	Info *Info
+	TypeInfo *TypeInfo
 }

@@ -1,0 +1,45 @@
+package shares
+
+import (
+	"context"
+	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
+)
+
+var _ content.Describer = &Module{}
+
+func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []*content.Descriptor {
+	var list []*content.Descriptor
+	// both network flag and an identity filter need to be provided
+	if !opts.Network || opts.IdentityFilter == nil {
+		return nil
+	}
+
+	var err error
+	var rows []*dbRemoteData
+
+	err = mod.db.Where("data_id = ?", dataID).Find(&rows).Error
+	if err != nil {
+		return nil
+	}
+
+	for _, row := range rows {
+		if !opts.IdentityFilter(row.Target) {
+			continue
+		}
+
+		share, err := mod.findRemoteShare(row.Caller, row.Target)
+		if err != nil {
+			continue
+		}
+
+		res, err := share.Describe(ctx, dataID)
+		if err != nil {
+			continue
+		}
+
+		list = append(list, res...)
+	}
+
+	return list
+}

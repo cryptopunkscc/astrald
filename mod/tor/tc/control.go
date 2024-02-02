@@ -109,10 +109,6 @@ func (ctl *Control) GetInfo(arg string) (string, error) {
 	}
 
 	for _, l := range lines {
-		fmt.Println(l)
-	}
-
-	for _, l := range lines {
 		kv := strings.SplitN(l, "=", 2)
 		if len(kv) > 1 {
 			return kv[1], nil

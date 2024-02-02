@@ -38,7 +38,6 @@ func (m *IdentityMachine) Apply(certBytes []byte) error {
 		}
 
 		if !cert.RelayID.IsEqual(m.identity) {
-			fmt.Println(cert.RelayID.String(), m.identity.String())
 			return errors.New("relay identity mismatch")
 		}
 

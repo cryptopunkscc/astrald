@@ -2,6 +2,6 @@ package media
 
 type Descriptor Info
 
-func (Descriptor) DescriptorType() string {
+func (Descriptor) InfoType() string {
 	return "mod.media.info"
 }

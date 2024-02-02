@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -29,6 +30,7 @@ type Module struct {
 	authorizers  sig.Set[shares.Authorizer]
 	storage      storage.Module
 	sets         sets.Module
+	content      content.Module
 	notify       sig.Set[string]
 	remoteShares sets.Union
 }
@@ -55,6 +57,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		NewReadService(mod),
 		NewSyncService(mod),
 		NewNotifyService(mod),
+		NewDescribeService(mod),
 	).Run(ctx)
 
 	<-ctx.Done()

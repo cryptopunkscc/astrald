@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/relay"
 )
 
-func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []content.Descriptor {
+func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []*content.Descriptor {
 	row, err := mod.dbFindByDataID(dataID)
 	if err != nil {
 		return nil
@@ -32,13 +32,14 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 		verr = cert.Validate()
 	}
 
-	return []content.Descriptor{
-		relay.CertDescriptor{
+	return []*content.Descriptor{{
+		Source: mod.node.Identity(),
+		Info: relay.CertDescriptor{
 			TargetID:      targetID,
 			RelayID:       relayID,
 			Direction:     relay.Direction(row.Direction),
 			ExpiresAt:     row.ExpiresAt,
 			ValidateError: verr,
 		},
-	}
+	}}
 }

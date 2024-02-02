@@ -3,6 +3,7 @@ package keys
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/keys"
 )
 
 type dbPrivateKey struct {
@@ -12,13 +13,5 @@ type dbPrivateKey struct {
 }
 
 func (dbPrivateKey) TableName() string {
-	return "private_keys"
-}
-
-func (mod *Module) dbFindByDataID(id data.ID) (*dbPrivateKey, error) {
-	var row dbPrivateKey
-
-	var tx = mod.db.Where("data_id = ?", id.String()).First(&row)
-
-	return &row, tx.Error
+	return keys.DBPrefix + "private_keys"
 }

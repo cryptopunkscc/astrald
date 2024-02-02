@@ -2,14 +2,13 @@ package fs
 
 import (
 	"context"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
-func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []content.Descriptor {
+func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []*content.Descriptor {
 	var desc fs.FileDescriptor
 	var rows []*dbLocalFile
 
@@ -36,9 +35,11 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 	}
 
 	for _, file := range rows {
-		fmt.Println(file.Path)
 		desc.Paths = append(desc.Paths, file.Path)
 	}
 
-	return []content.Descriptor{desc}
+	return []*content.Descriptor{{
+		Source: mod.node.Identity(),
+		Info:   desc,
+	}}
 }

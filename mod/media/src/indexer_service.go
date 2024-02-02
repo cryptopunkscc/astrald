@@ -20,7 +20,7 @@ type IndexerService struct {
 }
 
 var networkAutoIndexWhitelist = []string{
-	"audio/mpeg",
+	//"audio/mpeg",
 }
 
 var ErrAlreadyIndexed = errors.New("already indexed")

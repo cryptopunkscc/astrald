@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -25,6 +26,11 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
+	mod.content, err = modules.Load[content.Module](mod.node, content.ModuleName)
+	if err != nil {
+		return err
+	}
+
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
 		adm.AddCommand(shares.ModuleName, NewAdmin(mod))
 	}
@@ -32,6 +38,7 @@ func (mod *Module) LoadDependencies() error {
 	mod.sets.SetOpener(shares.SetType, mod.setOpener)
 	mod.sets.Create(publicSetName, sets.TypeBasic)
 	mod.storage.AddReader(shares.ModuleName, mod)
+	mod.content.AddDescriber(mod)
 
 	mod.remoteShares, err = sets.Open[sets.Union](mod.sets, shares.RemoteSharesSetName)
 	if err != nil {

@@ -11,15 +11,18 @@ import (
 )
 
 // Identify returns info about data type.
-func (mod *Module) Identify(dataID data.ID) (*content.Info, error) {
+func (mod *Module) Identify(dataID data.ID) (*content.TypeInfo, error) {
+	var err error
+	var row dbDataType
+
 	// check if data is already indexed
-	row, err := mod.dbDataTypeFindByDataID(dataID.String())
+	err = mod.db.Where("data_id = ?", dataID).First(&row).Error
 	if err == nil {
-		return &content.Info{
-			DataID:    dataID,
-			IndexedAt: row.IndexedAt,
-			Method:    row.Method,
-			Type:      row.Type,
+		return &content.TypeInfo{
+			DataID:       dataID,
+			IdentifiedAt: row.IdentifiedAt,
+			Method:       row.Method,
+			Type:         row.Type,
 		}, nil
 	}
 
@@ -46,10 +49,10 @@ func (mod *Module) Identify(dataID data.ID) (*content.Info, error) {
 
 	var indexedAt = time.Now()
 	var tx = mod.db.Create(&dbDataType{
-		DataID:    dataID,
-		IndexedAt: indexedAt,
-		Method:    method,
-		Type:      dataType,
+		DataID:       dataID,
+		IdentifiedAt: indexedAt,
+		Method:       method,
+		Type:         dataType,
 	})
 	if tx.Error != nil {
 		return nil, tx.Error
@@ -65,21 +68,21 @@ func (mod *Module) Identify(dataID data.ID) (*content.Info, error) {
 		mod.log.Error("error adding to set: %v", err)
 	}
 
-	info := &content.Info{
-		DataID:    dataID,
-		IndexedAt: indexedAt,
-		Method:    method,
-		Type:      dataType,
+	info := &content.TypeInfo{
+		DataID:       dataID,
+		IdentifiedAt: indexedAt,
+		Method:       method,
+		Type:         dataType,
 	}
 
-	mod.events.Emit(content.EventDataIdentified{Info: info})
+	mod.events.Emit(content.EventDataIdentified{TypeInfo: info})
 
 	return info, nil
 }
 
 // IdentifySet identifies all data objects in a set
-func (mod *Module) IdentifySet(name string) ([]*content.Info, error) {
-	var list []*content.Info
+func (mod *Module) IdentifySet(name string) ([]*content.TypeInfo, error) {
+	var list []*content.TypeInfo
 
 	set, err := mod.sets.Open(name)
 	if err != nil {

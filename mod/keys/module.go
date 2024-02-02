@@ -6,6 +6,7 @@ import (
 )
 
 const ModuleName = "keys"
+const DBPrefix = "keys__"
 
 type Module interface {
 	CreateKey(alias string) (identity id.Identity, dataID data.ID, err error)
@@ -27,6 +28,6 @@ type KeyDescriptor struct {
 	PublicKey id.Identity
 }
 
-func (k KeyDescriptor) DescriptorType() string {
+func (k KeyDescriptor) InfoType() string {
 	return "mod.keys.private_key"
 }

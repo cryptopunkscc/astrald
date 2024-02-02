@@ -36,6 +36,6 @@ type FileDescriptor struct {
 	Paths []string
 }
 
-func (FileDescriptor) DescriptorType() string {
+func (FileDescriptor) InfoType() string {
 	return "mod.fs.file"
 }
