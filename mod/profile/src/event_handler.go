@@ -18,7 +18,7 @@ func (h *EventHandler) Run(ctx context.Context) error {
 	return events.Handle(ctx, h.node.Events(), h.handleDiscovered)
 }
 
-func (h *EventHandler) handleDiscovered(ctx context.Context, e discovery.EventDiscovered) error {
+func (h *EventHandler) handleDiscovered(e discovery.EventDiscovered) error {
 	for _, srv := range e.Info.Services {
 		if srv.Identity.IsEqual(h.node.Identity()) {
 			continue

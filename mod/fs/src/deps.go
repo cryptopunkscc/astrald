@@ -136,7 +136,7 @@ func (mod *Module) createSets() error {
 			mod.allSet.Add(fs.MemorySetName)
 		}
 
-		go events.Handle(context.Background(), &mod.memStore.events, func(ctx context.Context, event storage.EventDataCommitted) error {
+		go events.Handle(context.Background(), &mod.memStore.events, func(event storage.EventDataCommitted) error {
 			mod.memSet.Add(event.DataID)
 			return nil
 		})

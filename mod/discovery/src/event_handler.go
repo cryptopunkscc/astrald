@@ -12,7 +12,9 @@ type EventHandler struct {
 }
 
 func (srv *EventHandler) Run(ctx context.Context) error {
-	return events.Handle(ctx, srv.node.Events(), srv.handleLinkAdded)
+	return events.Handle(ctx, srv.node.Events(), func(e network.EventLinkAdded) error {
+		return srv.handleLinkAdded(ctx, e)
+	})
 }
 
 func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLinkAdded) error {

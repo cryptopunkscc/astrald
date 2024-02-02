@@ -34,7 +34,7 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	go events.Handle(context.Background(), mod.node.Events(),
-		func(ctx context.Context, event sets.EventMemberUpdate) error {
+		func(event sets.EventMemberUpdate) error {
 			if !event.Removed {
 				mod.Identify(event.DataID)
 			}

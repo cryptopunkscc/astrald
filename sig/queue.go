@@ -104,14 +104,14 @@ func (q *Queue[T]) Subscribe(ctx context.Context) <-chan T {
 	return ch
 }
 
-func Handle[Q any, T any](ctx context.Context, q *Queue[Q], fn func(context.Context, T) error) error {
+func Handle[Q any, T any](ctx context.Context, q *Queue[Q], fn func(T) error) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	for item := range q.Subscribe(ctx) {
 		var untyped any = item
 		if typed, ok := untyped.(T); ok {
-			if err := fn(ctx, typed); err != nil {
+			if err := fn(typed); err != nil {
 				return err
 			}
 		}

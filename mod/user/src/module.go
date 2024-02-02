@@ -69,7 +69,7 @@ func (mod *Module) Find(identity id.Identity) *Identity {
 }
 
 func (mod *Module) discoverUsers(ctx context.Context) {
-	events.Handle(ctx, mod.node.Events(), func(ctx context.Context, event discovery.EventDiscovered) error {
+	events.Handle(ctx, mod.node.Events(), func(event discovery.EventDiscovered) error {
 		// make sure we're not getting our own services
 		if event.Identity.IsEqual(mod.node.Identity()) {
 			return nil

@@ -16,7 +16,9 @@ type Client struct {
 
 func (mod *Client) Run(ctx context.Context) error {
 	return tasks.Group(
-		events.Runner(mod.node.Events(), mod.handleLinkAdded),
+		events.Runner(mod.node.Events(), func(e network.EventLinkAdded) error {
+			return mod.handleLinkAdded(ctx, e)
+		}),
 	).Run(ctx)
 }
 

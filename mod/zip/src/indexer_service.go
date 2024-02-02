@@ -16,7 +16,7 @@ type IndexerService struct {
 }
 
 func (srv *IndexerService) Run(ctx context.Context) error {
-	go events.Handle(ctx, srv.node.Events(), func(ctx context.Context, event sets.EventMemberUpdate) error {
+	go events.Handle(ctx, srv.node.Events(), func(event sets.EventMemberUpdate) error {
 		if event.Removed {
 			srv.onRemove(event.DataID)
 		} else {

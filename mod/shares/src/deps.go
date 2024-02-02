@@ -45,7 +45,7 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	go events.Handle(context.Background(), mod.node.Events(),
-		func(ctx context.Context, event sets.EventMemberUpdate) error {
+		func(event sets.EventMemberUpdate) error {
 			_, s, found := strings.Cut(event.Set, localShareSetPrefix+".")
 			if !found {
 				return nil
