@@ -5,7 +5,9 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/media"
+	"github.com/cryptopunkscc/astrald/mod/relay"
 	"html/template"
 	"net/http"
 	"path"
@@ -93,6 +95,12 @@ func (mod *SetHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 				entry.Type = typed.Type
 			case media.Descriptor:
 				entry.Label = typed.Artist + " - " + typed.Title
+			case keys.KeyDescriptor:
+				entry.Label = "Private key of " + mod.node.Resolver().DisplayName(typed.PublicKey)
+			case relay.CertDescriptor:
+				relayName := mod.node.Resolver().DisplayName(typed.RelayID)
+				targetName := mod.node.Resolver().DisplayName(typed.TargetID)
+				entry.Label = "Relay certificate for " + targetName + "@" + relayName
 			}
 		}
 

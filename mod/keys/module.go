@@ -24,7 +24,7 @@ type PrivateKey struct {
 
 type KeyDescriptor struct {
 	KeyType   string
-	PublicKey string
+	PublicKey id.Identity
 }
 
 func (k KeyDescriptor) DescriptorType() string {

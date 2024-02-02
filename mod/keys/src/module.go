@@ -136,9 +136,9 @@ func (mod *Module) IndexKey(dataID data.ID) error {
 	}
 
 	var row = dbPrivateKey{
-		DataID:    dataID.String(),
+		DataID:    dataID,
 		Type:      pk.Type,
-		PublicKey: identity.PublicKeyHex(),
+		PublicKey: identity,
 	}
 
 	return mod.db.Create(&row).Error
@@ -172,12 +172,7 @@ func (mod *Module) FindIdentity(hex string) (id.Identity, error) {
 		return id.Identity{}, tx.Error
 	}
 
-	dataID, err := data.Parse(row.DataID)
-	if err != nil {
-		return id.Identity{}, err
-	}
-
-	pk, err := mod.LoadPrivateKey(dataID)
+	pk, err := mod.LoadPrivateKey(row.DataID)
 	if err != nil {
 		return id.Identity{}, err
 	}

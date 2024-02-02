@@ -61,10 +61,7 @@ func (adm *Admin) list(term admin.Terminal, args []string) error {
 
 	term.Printf("Found %d key(s)\n", len(rows))
 	for _, row := range rows {
-		dataID, _ := data.Parse(row.DataID)
-		identity, _ := id.ParsePublicKeyHex(row.PublicKey)
-
-		term.Printf("%-24s %-64s %v\n", admin.Keyword(row.Type), dataID, identity)
+		term.Printf("%-24s %-64s %v\n", admin.Keyword(row.Type), row.DataID, row.PublicKey)
 	}
 
 	return nil

@@ -1,11 +1,14 @@
 package keys
 
-import "github.com/cryptopunkscc/astrald/data"
+import (
+	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/data"
+)
 
 type dbPrivateKey struct {
-	DataID    string `gorm:"uniqueIndex"`
-	Type      string `gorm:"index"`
-	PublicKey string `gorm:"index"`
+	DataID    data.ID     `gorm:"uniqueIndex"`
+	Type      string      `gorm:"index"`
+	PublicKey id.Identity `gorm:"index"`
 }
 
 func (dbPrivateKey) TableName() string {
