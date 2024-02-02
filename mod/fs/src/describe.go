@@ -30,7 +30,6 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 		return nil
 	}
 	if len(rows) == 0 {
-		mod.log.Errorv(1, "describe: no paths")
 		return nil
 	}
 
