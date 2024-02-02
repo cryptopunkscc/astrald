@@ -98,10 +98,6 @@ func (srv *IndexerService) indexAs(dataID data.ID, dataType string, enableNetwor
 		return info, err
 	}
 
-	if srv.content.GetLabel(dataID) == "" {
-		srv.content.SetLabel(dataID, info.Title)
-	}
-
 	return info, srv.allSet.Add(dataID)
 }
 

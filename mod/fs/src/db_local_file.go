@@ -6,8 +6,8 @@ import (
 )
 
 type dbLocalFile struct {
-	Path      string `gorm:"primaryKey,index"`
-	DataID    string `gorm:"index"`
+	Path      string  `gorm:"primaryKey,index"`
+	DataID    data.ID `gorm:"index"`
 	IndexedAt time.Time
 }
 

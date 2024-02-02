@@ -3,6 +3,7 @@ package sets
 import (
 	"cmp"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -20,20 +21,20 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"add":          adm.add,
-		"remove":       adm.remove,
-		"scan":         adm.scan,
-		"create":       adm.create,
-		"delete":       adm.delete,
-		"list":         adm.list,
-		"sync":         adm.sync,
-		"add_union":    adm.addUnion,
-		"remove_union": adm.removeUnion,
-		"info":         adm.info,
-		"where":        adm.where,
-		"set_visible":  adm.setVisible,
-		"set_desc":     adm.setDesc,
-		"help":         adm.help,
+		"list":        adm.list,
+		"create":      adm.create,
+		"delete":      adm.delete,
+		"add":         adm.add,
+		"remove":      adm.remove,
+		"include":     adm.include,
+		"exclude":     adm.exclude,
+		"scan":        adm.scan,
+		"sync":        adm.sync,
+		"show":        adm.show,
+		"where":       adm.where,
+		"set_visible": adm.setVisible,
+		"set_desc":    adm.setDesc,
+		"help":        adm.help,
 	}
 
 	return adm
@@ -50,38 +51,6 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	}
 
 	return errors.New("unknown command")
-}
-
-func (adm *Admin) setDesc(term admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		return errors.New("missing argument")
-	}
-
-	name, desc := args[0], args[1]
-
-	return adm.mod.SetDescription(name, desc)
-}
-
-func (adm *Admin) setVisible(term admin.Terminal, args []string) error {
-	if len(args) == 0 {
-		return errors.New("missing argument")
-	}
-
-	var visible = true
-	name := args[0]
-
-	if len(args) >= 2 {
-		switch args[1] {
-		case "t", "true", "y", "yes":
-			visible = true
-		case "f", "false", "n", "no":
-			visible = false
-		default:
-			return fmt.Errorf("invalid argument: %s", args[1])
-		}
-	}
-
-	return adm.mod.SetVisible(name, visible)
 }
 
 func (adm *Admin) create(term admin.Terminal, args []string) error {
@@ -111,39 +80,6 @@ func (adm *Admin) delete(term admin.Terminal, args []string) error {
 	}
 
 	return set.Delete()
-}
-
-func (adm *Admin) list(term admin.Terminal, _ []string) error {
-	list, err := adm.mod.All()
-	if err != nil {
-		return err
-	}
-
-	slices.SortFunc(list, func(a, b sets.Info) int {
-		return cmp.Compare(a.Name, b.Name)
-	})
-
-	var f = "%-20s %-6s %8s %1s %v\n"
-	term.Printf(f, admin.Header("Created at"), admin.Header("Type"), admin.Header("Size"), admin.Header("V"), admin.Header("Name"))
-	for _, item := range list {
-		var v = "n"
-		if item.Visible {
-			v = "y"
-		}
-		name := item.Name
-		if item.Description != "" {
-			name = item.Description + " (" + item.Name + ")"
-		}
-		term.Printf(f,
-			item.CreatedAt,
-			item.Type,
-			strconv.Itoa(item.Size),
-			v,
-			name,
-		)
-	}
-
-	return nil
 }
 
 func (adm *Admin) add(term admin.Terminal, args []string) error {
@@ -218,6 +154,39 @@ func (adm *Admin) remove(term admin.Terminal, args []string) error {
 	return nil
 }
 
+func (adm *Admin) list(term admin.Terminal, _ []string) error {
+	list, err := adm.mod.All()
+	if err != nil {
+		return err
+	}
+
+	slices.SortFunc(list, func(a, b sets.Info) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
+
+	var f = "%-20s %-6s %8s %1s %v\n"
+	term.Printf(f, admin.Header("Created at"), admin.Header("Type"), admin.Header("Size"), admin.Header("V"), admin.Header("Name"))
+	for _, item := range list {
+		var v = "n"
+		if item.Visible {
+			v = "y"
+		}
+		name := item.Name
+		if item.Description != "" {
+			name = item.Description + " (" + item.Name + ")"
+		}
+		term.Printf(f,
+			item.CreatedAt,
+			item.Type,
+			strconv.Itoa(item.Size),
+			v,
+			name,
+		)
+	}
+
+	return nil
+}
+
 func (adm *Admin) sync(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
@@ -238,7 +207,7 @@ func (adm *Admin) sync(term admin.Terminal, args []string) error {
 	return errors.New("unsupported set type")
 }
 
-func (adm *Admin) addUnion(term admin.Terminal, args []string) error {
+func (adm *Admin) include(term admin.Terminal, args []string) error {
 	if len(args) < 2 {
 		return errors.New("missing argument")
 	}
@@ -251,7 +220,7 @@ func (adm *Admin) addUnion(term admin.Terminal, args []string) error {
 	return super.Add(args[1:]...)
 }
 
-func (adm *Admin) removeUnion(term admin.Terminal, args []string) error {
+func (adm *Admin) exclude(term admin.Terminal, args []string) error {
 	if len(args) < 2 {
 		return errors.New("missing argument")
 	}
@@ -265,13 +234,21 @@ func (adm *Admin) removeUnion(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) scan(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("missing argument")
+	opts := &sets.ScanOpts{}
+
+	var flags = flag.NewFlagSet("scan", flag.ContinueOnError)
+	flags.BoolVar(&opts.IncludeRemoved, "r", false, "show removed objects")
+	err := flags.Parse(args)
+	if err != nil {
+		return err
 	}
 
-	name := args[0]
+	if len(flags.Args()) < 1 {
+		return errors.New("set name missing")
+	}
+	name := flags.Args()[0]
 
-	list, err := adm.mod.Scan(name, nil)
+	list, err := adm.mod.Scan(name, opts)
 	if err != nil {
 		return err
 	}
@@ -295,7 +272,7 @@ func (adm *Admin) scan(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) info(term admin.Terminal, args []string) error {
+func (adm *Admin) show(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
 	}
@@ -315,6 +292,18 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	term.Printf("Set type: %v\n", info.Type)
 	term.Printf("Created at: %v\n", info.CreatedAt)
 	term.Printf("Set size: %v\n", info.Size)
+
+	switch typed := set.(type) {
+	case *UnionSet:
+		term.Printf("Subsets:\n")
+		subsets, err := typed.Subsets()
+		if err != nil {
+			return err
+		}
+		for _, s := range subsets {
+			term.Printf("- %s\n", s)
+		}
+	}
 
 	return nil
 }
@@ -345,6 +334,38 @@ func (adm *Admin) where(term admin.Terminal, args []string) error {
 	return nil
 }
 
+func (adm *Admin) setDesc(term admin.Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("missing argument")
+	}
+
+	name, desc := args[0], args[1]
+
+	return adm.mod.SetDescription(name, desc)
+}
+
+func (adm *Admin) setVisible(term admin.Terminal, args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing argument")
+	}
+
+	var visible = true
+	name := args[0]
+
+	if len(args) >= 2 {
+		switch args[1] {
+		case "t", "true", "y", "yes":
+			visible = true
+		case "f", "false", "n", "no":
+			visible = false
+		default:
+			return fmt.Errorf("invalid argument: %s", args[1])
+		}
+	}
+
+	return adm.mod.SetVisible(name, visible)
+}
+
 func (adm *Admin) ShortDescription() string {
 	return "manage " + sets.ModuleName
 }
@@ -353,14 +374,15 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %s <command>\n\n", sets.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  list                          list all sets\n")
-	term.Printf("  create <name> [type]          create a new set, type can be set/union (default=set)\n")
+	term.Printf("  create <name> [type]          create a new set (default type=basic)\n")
 	term.Printf("  delete <name>                 delete a set\n")
 	term.Printf("  add <name> <dataID>           add data to a set\n")
 	term.Printf("  remove <name> <dataID>        remove data from a set\n")
-	term.Printf("  add_union <union> <set>       add a set to a union\n")
+	term.Printf("  include <superset> <subset>   add a set to a union\n")
+	term.Printf("  exclude <superset> <subset>   remove a set from a union\n")
+	term.Printf("  scan [-r] <set>               list objects in a set; use -r to include removed\n")
 	term.Printf("  where <dataID>                show sets containing data\n")
-	term.Printf("  info <name>                   show info about a set\n")
-	term.Printf("  show <name>                   show set members\n")
+	term.Printf("  show <name>                   show info about a set\n")
 	term.Printf("  help                          show help\n")
 	return nil
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/zip"
-	"path/filepath"
 )
 
 const archiveSetPrefix = "mod.zip.archive."
@@ -82,8 +81,6 @@ func (mod *Module) Index(zipID data.ID) error {
 		if err != nil {
 			return err
 		}
-
-		mod.content.SetLabel(fileID, filepath.Base(file.Name))
 
 		mod.log.Infov(1, "indexed %s (%v)", file.Name, fileID)
 

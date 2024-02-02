@@ -5,12 +5,15 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/relay"
+	"github.com/cryptopunkscc/astrald/mod/zip"
 	"html/template"
 	"net/http"
 	"path"
+	"path/filepath"
 	"slices"
 )
 
@@ -21,7 +24,7 @@ type SetHandler struct {
 
 type SetPage struct {
 	SetName string
-	Entries []Entry
+	Entries []*Entry
 }
 
 type Entry struct {
@@ -81,7 +84,7 @@ func (mod *SetHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		var entry = Entry{
+		var entry = &Entry{
 			DataID: item.DataID,
 			Label:  item.DataID.String(),
 		}
@@ -101,13 +104,23 @@ func (mod *SetHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 				relayName := mod.node.Resolver().DisplayName(typed.RelayID)
 				targetName := mod.node.Resolver().DisplayName(typed.TargetID)
 				entry.Label = "Relay certificate for " + targetName + "@" + relayName
+			case fs.FileDescriptor:
+				if len(typed.Paths) == 0 {
+					continue
+				}
+				entry.Label = filepath.Base(typed.Paths[0])
+			case zip.MemberDescriptor:
+				if len(typed.Memberships) == 0 {
+					continue
+				}
+				entry.Label = filepath.Base(typed.Memberships[0].Path)
 			}
 		}
 
 		page.Entries = append(page.Entries, entry)
 	}
 
-	slices.SortFunc(page.Entries, func(a, b Entry) int {
+	slices.SortFunc(page.Entries, func(a, b *Entry) int {
 		return cmp.Compare(a.Label, b.Label)
 	})
 

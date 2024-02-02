@@ -56,12 +56,7 @@ func (adm *Admin) ls(term admin.Terminal, args []string) error {
 	var f = "%-64s %-20s %s\n"
 	term.Printf(f, admin.Header("DataID"), admin.Header("Indexed"), admin.Header("Path"))
 	for _, localFile := range localFiles {
-		dataID, err := data.Parse(localFile.DataID)
-		if err != nil {
-			continue
-		}
-
-		term.Printf(f, dataID, localFile.IndexedAt, localFile.Path)
+		term.Printf(f, localFile.DataID, localFile.IndexedAt, localFile.Path)
 	}
 
 	return nil

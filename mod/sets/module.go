@@ -48,6 +48,7 @@ type Union interface {
 	Set
 	Add(name ...string) error
 	Remove(name ...string) error
+	Subsets() ([]string, error)
 }
 
 type Editor interface {

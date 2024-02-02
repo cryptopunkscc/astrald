@@ -133,6 +133,24 @@ func (set *UnionSet) Remove(names ...string) error {
 	return nil
 }
 
+func (set *UnionSet) Subsets() ([]string, error) {
+	var list []string
+
+	var err = set.db.
+		Model(&dbSet{}).
+		Select("name").
+		Where(
+			"id IN (?)",
+			set.db.
+				Model(&dbSetInclusion{}).
+				Where("superset_id = ?", set.row.ID).
+				Select("subset_id"),
+		).
+		Find(&list).Error
+
+	return list, err
+}
+
 func (set *UnionSet) Sync() error {
 	var err error
 

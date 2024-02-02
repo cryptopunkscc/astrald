@@ -190,13 +190,14 @@ func (mod *Module) Where(dataID data.ID) ([]string, error) {
 
 	var rows []dbMember
 	err = mod.db.
+		Preload("Set").
 		Where("data_id = ?", dataRow.ID).
 		Find(&rows).Error
 
 	var list []string
 
 	for _, row := range rows {
-		if row.Removed {
+		if !row.Removed {
 			list = append(list, row.Set.Name)
 		}
 	}

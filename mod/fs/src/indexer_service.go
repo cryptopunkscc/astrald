@@ -181,7 +181,7 @@ func (srv *IndexerService) indexFile(ctx context.Context, path string) error {
 
 	var tx = srv.db.Create(&dbLocalFile{
 		Path:      path,
-		DataID:    fileID.String(),
+		DataID:    fileID,
 		IndexedAt: indexedAt,
 	})
 
@@ -198,21 +198,17 @@ func (srv *IndexerService) indexFile(ctx context.Context, path string) error {
 		Path:   path,
 	})
 
-	if srv.content.GetLabel(fileID) == "" {
-		srv.content.SetLabel(fileID, filepath.Base(path))
-	}
-
 	return nil
 }
 
 func (srv *IndexerService) reindexRow(row *dbLocalFile) error {
 	row.IndexedAt = time.Now()
-	oldID, _ := data.Parse(row.DataID)
+	oldID := row.DataID
 	fileID, err := data.ResolveFile(row.Path)
 	if err != nil {
 		return err
 	}
-	row.DataID = fileID.String()
+	row.DataID = fileID
 
 	// update the database
 	err = srv.db.Where("path = ?", row.Path).Save(row).Error
@@ -257,16 +253,11 @@ func (srv *IndexerService) unindexRow(row *dbLocalFile) error {
 
 	srv.log.Logv(2, "unindexed %v", row.Path)
 
-	dataID, err := data.Parse(row.DataID)
-	if err != nil {
-		return nil
-	}
-
-	srv.roSet.Remove(dataID)
+	srv.roSet.Remove(row.DataID)
 
 	srv.events.Emit(fs.EventFileRemoved{
 		Path:   row.Path,
-		DataID: dataID,
+		DataID: row.DataID,
 	})
 
 	return nil
