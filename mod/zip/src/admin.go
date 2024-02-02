@@ -14,7 +14,9 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"index": adm.index,
+		"index":   adm.index,
+		"unindex": adm.unindex,
+		"forget":  adm.forget,
 	}
 
 	return adm
@@ -43,7 +45,33 @@ func (adm *Admin) index(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	return adm.mod.Index(dataID, true)
+	return adm.mod.Index(dataID)
+}
+
+func (adm *Admin) unindex(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	dataID, err := data.Parse(args[0])
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.Unindex(dataID)
+}
+
+func (adm *Admin) forget(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	dataID, err := data.Parse(args[0])
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.Forget(dataID)
 }
 
 func (adm *Admin) ShortDescription() string {

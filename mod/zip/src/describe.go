@@ -15,22 +15,22 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 }
 
 func (mod *Module) describeArchive(dataID data.ID) []content.Descriptor {
-	rows, _ := mod.dbFindByZipID(dataID)
-	if len(rows) == 0 {
+	var row dbZip
+
+	var err = mod.db.
+		Preload("Contents").
+		Where("data_id = ?", dataID).
+		First(&row).Error
+	if err != nil {
 		return nil
 	}
 
 	var desc zip.ArchiveDescriptor
 
-	for _, row := range rows {
-		dataID, err := data.Parse(row.FileID)
-		if err != nil {
-			continue
-		}
-
+	for _, i := range row.Contents {
 		desc.Files = append(desc.Files, zip.ArchiveFile{
-			DataID: dataID,
-			Path:   row.Path,
+			DataID: i.FileID,
+			Path:   i.Path,
 		})
 	}
 
@@ -45,13 +45,8 @@ func (mod *Module) describeMember(dataID data.ID) []content.Descriptor {
 	var desc zip.MemberDescriptor
 
 	for _, row := range rows {
-		zipID, err := data.Parse(row.ZipID)
-		if err != nil {
-			continue
-		}
-
 		desc.Memberships = append(desc.Memberships, zip.Membership{
-			ZipID: zipID,
+			ZipID: row.Zip.DataID,
 			Path:  row.Path,
 		})
 	}

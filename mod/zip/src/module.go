@@ -29,7 +29,7 @@ type Module struct {
 	shares  shares.Module
 	sets    sets.Module
 
-	archives sets.Union
+	allArchived sets.Union
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -61,7 +61,7 @@ func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataRea
 
 	var zipRow = zipRows[0]
 
-	zipID, err := data.Parse(zipRow.ZipID)
+	zipID := zipRow.Zip.DataID
 	if err != nil {
 		return nil, err
 	}
@@ -93,18 +93,24 @@ func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataRea
 
 // Authorize authorizes access if the dataID is contained within a zip file that the identity has access to.
 func (mod *Module) Authorize(identity id.Identity, dataID data.ID) error {
-	var rows []*dbZipContent
+	var rows []*dbContents
 
-	var tx = mod.db.Where("file_id = ?", dataID.String()).Find(&rows)
+	var tx = mod.db.
+		Unscoped().
+		Preload("Zip").
+		Where("file_id = ?", dataID).
+		Find(&rows)
 	if tx.Error != nil {
 		return shares.ErrDenied
 	}
 
 	for _, row := range rows {
-		zipID, err := data.Parse(row.ZipID)
-		if err != nil {
+		if row.Zip == nil {
+			mod.log.Errorv(1, "db row for file %v has null reference to zip", dataID)
 			continue
 		}
+
+		zipID := row.Zip.DataID
 
 		// sanity check to avoid infitite loops
 		if zipID.IsEqual(dataID) {

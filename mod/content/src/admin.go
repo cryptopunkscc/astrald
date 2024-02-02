@@ -117,7 +117,18 @@ func (cmd *Admin) describe(term admin.Terminal, args []string) error {
 	}
 
 	var desc = cmd.mod.Describe(nil, dataID, nil)
-	bytes, err := json.MarshalIndent(desc, "", "  ")
+
+	var m = map[string][]any{}
+	for _, d := range desc {
+		t := d.DescriptorType()
+		if a, ok := m[t]; ok {
+			a = append(a, d)
+		} else {
+			m[t] = []any{d}
+		}
+	}
+
+	bytes, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return err
 	}

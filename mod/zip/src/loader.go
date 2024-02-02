@@ -2,11 +2,10 @@ package zip
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/zip"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
-
-const ModuleName = "zip"
 
 type Loader struct{}
 
@@ -20,11 +19,12 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.events.SetParent(node.Events())
 
-	_ = assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(zip.ModuleName, &mod.config)
 
 	mod.db = assets.Database()
 
-	if err := mod.db.AutoMigrate(&dbZipContent{}); err != nil {
+	err = mod.db.AutoMigrate(&dbZip{}, &dbContents{})
+	if err != nil {
 		return nil, err
 	}
 
@@ -32,7 +32,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 }
 
 func init() {
-	if err := modules.RegisterModule(ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(zip.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

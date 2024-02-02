@@ -284,6 +284,15 @@ func (e *Editor) Delete() error {
 			UpdatedAt: row.UpdatedAt,
 		})
 	}
+
+	// delete inclusions
+	err = e.db.
+		Where("subset_id = ? or superset_id = ?", e.set.ID, e.set.ID).
+		Delete(&dbSetInclusion{}).Error
+	if err != nil {
+		return err
+	}
+
 	err = e.db.Delete(e.set).Error
 	if err != nil {
 		return err

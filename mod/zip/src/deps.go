@@ -35,17 +35,17 @@ func (mod *Module) LoadDependencies() error {
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(ModuleName, NewAdmin(mod))
+		adm.AddCommand(zip.ModuleName, NewAdmin(mod))
 	}
 
 	// load set
-	mod.archives, err = sets.Open[sets.Union](mod.sets, zip.ArchivesSet)
+	mod.allArchived, err = sets.Open[sets.Union](mod.sets, zip.AllArchivedSet)
 	if err != nil {
-		mod.archives, err = mod.sets.CreateUnion(zip.ArchivesSet)
+		mod.allArchived, err = mod.sets.CreateUnion(zip.AllArchivedSet)
 		if err != nil {
 			return err
 		}
-		mod.sets.Localnode().Add(zip.ArchivesSet)
+		mod.sets.Localnode().Add(zip.AllArchivedSet)
 	}
 
 	mod.content.AddDescriber(mod)

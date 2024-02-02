@@ -2,20 +2,40 @@ package zip
 
 import (
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/zip"
+	"gorm.io/gorm"
+	"time"
 )
 
-type dbZipContent struct {
-	ZipID  string `gorm:"primaryKey"`
-	Path   string `gorm:"primaryKey"`
-	FileID string `gorm:"index"`
+type dbZip struct {
+	ID        uint         `gorm:"primarykey"`
+	DataID    data.ID      `gorm:"uniqueIndex"`
+	Contents  []dbContents `gorm:"OnDelete:CASCADE;foreignKey:ZipID"`
+	CreatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
-func (dbZipContent) TableName() string { return "zip_contents" }
+func (dbZip) TableName() string { return zip.DBPrefix + "zips" }
 
-func (mod *Module) dbFindByFileID(dataID data.ID) ([]dbZipContent, error) {
-	var rows []dbZipContent
+type dbContents struct {
+	ZipID    uint `gorm:"primaryKey"`
+	Zip      *dbZip
+	FileID   data.ID `gorm:"index"`
+	Path     string  `gorm:"primaryKey"`
+	Comment  string
+	Modified time.Time
+}
 
-	tx := mod.db.Where("file_id = ?", dataID.String()).Find(&rows)
+func (dbContents) TableName() string { return zip.DBPrefix + "contents" }
+
+func (mod *Module) dbFindByFileID(dataID data.ID) ([]dbContents, error) {
+	var rows []dbContents
+
+	tx := mod.db.
+		Unscoped().
+		Preload("Zip").
+		Where("file_id = ?", dataID).
+		Find(&rows)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
@@ -23,10 +43,10 @@ func (mod *Module) dbFindByFileID(dataID data.ID) ([]dbZipContent, error) {
 	return rows, nil
 }
 
-func (mod *Module) dbFindByZipID(dataID data.ID) ([]dbZipContent, error) {
-	var rows []dbZipContent
+func (mod *Module) dbFindByZipID(zipID data.ID) ([]dbContents, error) {
+	var rows []dbContents
 
-	tx := mod.db.Where("zip_id = ?", dataID.String()).Find(&rows)
+	tx := mod.db.Where("zip_id = ?", zipID).Find(&rows)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
