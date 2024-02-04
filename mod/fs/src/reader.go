@@ -8,7 +8,7 @@ import (
 var _ storage.DataReader = &Reader{}
 
 type Reader struct {
-	io.ReadCloser
+	io.ReadSeekCloser
 	name string
 }
 

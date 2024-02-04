@@ -10,11 +10,6 @@ var _ content.Describer = &Module{}
 
 func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []*content.Descriptor {
 	var list []*content.Descriptor
-	// both network flag and an identity filter need to be provided
-	if !opts.Network || opts.IdentityFilter == nil {
-		return nil
-	}
-
 	var err error
 	var rows []*dbRemoteData
 
@@ -24,16 +19,12 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 	}
 
 	for _, row := range rows {
-		if !opts.IdentityFilter(row.Target) {
-			continue
-		}
-
 		share, err := mod.findRemoteShare(row.Caller, row.Target)
 		if err != nil {
 			continue
 		}
 
-		res, err := share.Describe(ctx, dataID)
+		res, err := share.Describe(ctx, dataID, opts)
 		if err != nil {
 			continue
 		}

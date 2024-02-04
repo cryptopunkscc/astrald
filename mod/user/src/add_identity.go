@@ -58,7 +58,7 @@ func (mod *Module) addIdentity(identity id.Identity) error {
 		return err
 	}
 
-	if !mod.identities.Set(i.identity.PublicKeyHex(), i) {
+	if _, ok := mod.identities.Set(i.identity.PublicKeyHex(), i); !ok {
 		return errors.New("identity already added")
 	}
 

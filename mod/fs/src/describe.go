@@ -39,6 +39,6 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 
 	return []*content.Descriptor{{
 		Source: mod.node.Identity(),
-		Info:   desc,
+		Data:   desc,
 	}}
 }

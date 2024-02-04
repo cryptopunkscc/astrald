@@ -64,7 +64,7 @@ func (srv *SyncService) RouteQuery(ctx context.Context, query net.Query, caller 
 		var before = time.Now()
 		var updateMode = !since.IsZero()
 
-		share, err := srv.FindShare(caller.Identity())
+		share, err := srv.FindLocalShare(caller.Identity())
 		if err != nil {
 			cslq.Encode(conn, "c", opNotFound)
 			return

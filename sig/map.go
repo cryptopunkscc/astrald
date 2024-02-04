@@ -8,9 +8,10 @@ type Map[K comparable, V any] struct {
 	mu sync.RWMutex
 }
 
-// Set sets the value of the key only if no other value is aready set. Returns true on success.
+// Set sets the value of a new key and returns the value and true. If the key already exists
+// Set returns the existing value and returns false.
 // To overwrite the data use Replace().
-func (m *Map[K, V]) Set(key K, value V) (ok bool) {
+func (m *Map[K, V]) Set(key K, value V) (val V, ok bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -18,13 +19,13 @@ func (m *Map[K, V]) Set(key K, value V) (ok bool) {
 		m.m = map[K]V{}
 	}
 
-	if _, found := m.m[key]; found {
-		return false
+	if v, found := m.m[key]; found {
+		return v, false
 	}
 
 	m.m[key] = value
 
-	return true
+	return value, true
 }
 
 // Replace sets the value of the key. If key already had a value it will be returned and ok will
@@ -105,6 +106,18 @@ func (m *Map[K, V]) Keys() (keys []K) {
 
 	for k, _ := range m.m {
 		keys = append(keys, k)
+	}
+
+	return
+}
+
+// Values returns a list of the values in the map
+func (m *Map[K, V]) Values() (vals []V) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for _, v := range m.m {
+		vals = append(vals, v)
 	}
 
 	return

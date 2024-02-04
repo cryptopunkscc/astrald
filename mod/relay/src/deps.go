@@ -3,6 +3,7 @@ package relay
 import (
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -25,6 +26,8 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 	_ = mod.content.AddDescriber(mod)
+
+	mod.content.AddPrototypes(relay.CertDescriptor{})
 
 	return nil
 }

@@ -29,6 +29,7 @@ type Module struct {
 	db     *gorm.DB
 
 	describers sig.Set[content.Describer]
+	prototypes sig.Map[string, content.DescriptorData]
 	identified sets.Basic
 
 	storage storage.Module

@@ -21,6 +21,9 @@ type Module interface {
 	AddDescriber(Describer) error
 	RemoveDescriber(Describer) error
 
+	AddPrototypes(protos ...DescriptorData) error
+	UnmarshalDescriptor(name string, buf []byte) DescriptorData
+
 	Ready(ctx context.Context) error
 }
 

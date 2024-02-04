@@ -3,7 +3,6 @@ package webdata
 import (
 	"cmp"
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
@@ -90,16 +89,11 @@ func (mod *SetHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 			Label:  item.DataID.String(),
 		}
 
-		var opts = &content.DescribeOpts{
-			Network: true,
-			IdentityFilter: func(identity id.Identity) bool {
-				return true
-			},
-		}
+		var opts = &content.DescribeOpts{}
 
 		descs := mod.content.Describe(context.Background(), item.DataID, opts)
 		for _, desc := range descs {
-			switch typed := desc.Info.(type) {
+			switch typed := desc.Data.(type) {
 			case content.LabelDescriptor:
 				entry.Label = typed.Label
 			case content.TypeDescriptor:

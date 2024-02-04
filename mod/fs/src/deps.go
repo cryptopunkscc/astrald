@@ -47,10 +47,8 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(fs.ModuleName, NewAdmin(mod))
 	}
 
-	if mod.content != nil {
-		mod.content.AddDescriber(mod)
-	}
-
+	mod.content.AddDescriber(mod)
+	mod.content.AddPrototypes(fs.FileDescriptor{})
 	mod.memStore = NewMemStore(&mod.events, 0)
 
 	// wait for data module to finish preparing

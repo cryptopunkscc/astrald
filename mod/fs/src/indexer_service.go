@@ -92,8 +92,8 @@ func (srv *IndexerService) Read(id data.ID, opts *storage.ReadOpts) (storage.Dat
 		}
 
 		return &Reader{
-			ReadCloser: f,
-			name:       fs.ReadOnlySetName,
+			ReadSeekCloser: f,
+			name:           fs.ReadOnlySetName,
 		}, nil
 	}
 

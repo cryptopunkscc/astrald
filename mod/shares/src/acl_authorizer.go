@@ -12,7 +12,7 @@ type ACLAuthorizer struct {
 }
 
 func (auth *ACLAuthorizer) Authorize(identity id.Identity, dataID data.ID) error {
-	share, err := auth.FindShare(identity)
+	share, err := auth.FindLocalShare(identity)
 	if err != nil {
 		return shares.ErrDenied
 	}

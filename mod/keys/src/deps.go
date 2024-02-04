@@ -27,5 +27,7 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(keys.ModuleName, NewAdmin(mod))
 	}
 
+	mod.content.AddPrototypes(keys.KeyDescriptor{})
+
 	return nil
 }

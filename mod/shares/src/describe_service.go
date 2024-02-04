@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/router"
+	"slices"
 )
 
 const describeServiceName = "shares.describe"
@@ -60,13 +61,17 @@ func (srv *DescribeService) RouteQuery(ctx context.Context, query net.Query, cal
 		var list []JSONDescriptor
 
 		for _, d := range srv.content.Describe(ctx, dataID, nil) {
-			b, err := json.Marshal(d.Info)
+			if !slices.Contains(srv.config.DescriptorWhitelist, d.Data.DescriptorType()) {
+				continue
+			}
+
+			b, err := json.Marshal(d.Data)
 			if err != nil {
 				continue
 			}
 
 			list = append(list, JSONDescriptor{
-				Type: d.Info.InfoType(),
+				Type: d.Data.DescriptorType(),
 				Info: json.RawMessage(b),
 			})
 		}

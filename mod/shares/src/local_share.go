@@ -8,23 +8,23 @@ import (
 	"time"
 )
 
-type Share struct {
+type LocalShare struct {
 	identity id.Identity
 	union    sets.Union
 	basic    sets.Basic
 }
 
-func (mod *Module) FindOrCreateShare(identity id.Identity) (*Share, error) {
-	if share, err := mod.FindShare(identity); err == nil {
+func (mod *Module) FindOrCreateLocalShare(identity id.Identity) (*LocalShare, error) {
+	if share, err := mod.FindLocalShare(identity); err == nil {
 		return share, nil
 	}
 
-	return mod.CreateShare(identity)
+	return mod.CreateLocalShare(identity)
 }
 
-func (mod *Module) CreateShare(identity id.Identity) (*Share, error) {
+func (mod *Module) CreateLocalShare(identity id.Identity) (*LocalShare, error) {
 	var err error
-	var share = &Share{identity: identity}
+	var share = &LocalShare{identity: identity}
 
 	share.union, err = mod.sets.CreateUnion(share.unionSetName())
 	if err != nil {
@@ -52,9 +52,9 @@ func (mod *Module) CreateShare(identity id.Identity) (*Share, error) {
 	return share, nil
 }
 
-func (mod *Module) FindShare(identity id.Identity) (*Share, error) {
+func (mod *Module) FindLocalShare(identity id.Identity) (*LocalShare, error) {
 	var err error
-	var share = &Share{identity: identity}
+	var share = &LocalShare{identity: identity}
 
 	share.union, err = sets.Open[sets.Union](mod.sets, share.unionSetName())
 	if err != nil {
@@ -69,27 +69,27 @@ func (mod *Module) FindShare(identity id.Identity) (*Share, error) {
 	return share, nil
 }
 
-func (share *Share) AddData(dataID ...data.ID) error {
+func (share *LocalShare) AddData(dataID ...data.ID) error {
 	return share.basic.Add(dataID...)
 }
 
-func (share *Share) AddSet(name ...string) error {
+func (share *LocalShare) AddSet(name ...string) error {
 	return share.union.Add(name...)
 }
 
-func (share *Share) RemoveData(dataID ...data.ID) error {
+func (share *LocalShare) RemoveData(dataID ...data.ID) error {
 	return share.basic.Remove(dataID...)
 }
 
-func (share *Share) RemoveSet(name ...string) error {
+func (share *LocalShare) RemoveSet(name ...string) error {
 	return share.union.Remove(name...)
 }
 
-func (share *Share) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
+func (share *LocalShare) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 	return share.union.Scan(opts)
 }
 
-func (share *Share) TrimmedAt() time.Time {
+func (share *LocalShare) TrimmedAt() time.Time {
 	info, err := share.union.Info()
 	if err != nil {
 		return time.Time{}
@@ -97,14 +97,14 @@ func (share *Share) TrimmedAt() time.Time {
 	return info.TrimmedAt
 }
 
-func (share *Share) basicSetName() string {
+func (share *LocalShare) basicSetName() string {
 	return fmt.Sprintf("%v.%v.set",
 		localShareSetPrefix,
 		share.identity.PublicKeyHex(),
 	)
 }
 
-func (share *Share) unionSetName() string {
+func (share *LocalShare) unionSetName() string {
 	return fmt.Sprintf("%v.%v",
 		localShareSetPrefix,
 		share.identity.PublicKeyHex(),

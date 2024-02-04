@@ -19,6 +19,7 @@ type Module interface {
 	RemoveAuthorizer(Authorizer) error
 
 	FindRemoteShare(caller id.Identity, target id.Identity) (RemoteShare, error)
+	Notify(identity id.Identity) error
 }
 
 type Authorizer interface {

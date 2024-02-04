@@ -42,7 +42,7 @@ func (w *MemDataWriter) Commit() (data.ID, error) {
 	var buf = w.buf.Bytes()
 	var dataID = data.Resolve(buf)
 
-	if w.objects.Set(dataID.String(), buf) {
+	if _, ok := w.objects.Set(dataID.String(), buf); ok {
 		w.events.Emit(storage.EventDataCommitted{DataID: dataID})
 	}
 

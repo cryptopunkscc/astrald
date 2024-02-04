@@ -24,6 +24,7 @@ func NewAdmin(mod *Module) *Admin {
 		"sync":    adm.sync,
 		"syncall": adm.syncAll,
 		"unsync":  adm.unsync,
+		"notify":  adm.notify,
 		"help":    adm.help,
 	}
 
@@ -56,7 +57,7 @@ func (adm *Admin) add(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	share, err := adm.mod.FindOrCreateShare(identity)
+	share, err := adm.mod.FindOrCreateLocalShare(identity)
 	if err != nil {
 		return err
 	}
@@ -81,7 +82,7 @@ func (adm *Admin) remove(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	share, err := adm.mod.FindOrCreateShare(identity)
+	share, err := adm.mod.FindOrCreateLocalShare(identity)
 	if err != nil {
 		return err
 	}
@@ -165,6 +166,19 @@ func (adm *Admin) unsync(term admin.Terminal, args []string) error {
 	return err
 }
 
+func (adm *Admin) notify(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("argument missing")
+	}
+
+	identity, err := adm.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.Notify(identity)
+}
+
 func (adm *Admin) local(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
@@ -175,7 +189,7 @@ func (adm *Admin) local(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	share, err := adm.mod.FindShare(identity)
+	share, err := adm.mod.FindLocalShare(identity)
 	if err != nil {
 		return err
 	}

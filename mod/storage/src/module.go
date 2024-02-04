@@ -90,7 +90,7 @@ func (mod *Module) StoreBytes(bytes []byte, opts *storage.StoreOpts) (data.ID, e
 }
 
 func (mod *Module) AddReader(name string, reader storage.Reader) error {
-	if mod.readers.Set(name, reader) {
+	if _, ok := mod.readers.Set(name, reader); ok {
 		mod.events.Emit(storage.EventReaderAdded{
 			Name:   name,
 			Reader: reader,
@@ -101,7 +101,7 @@ func (mod *Module) AddReader(name string, reader storage.Reader) error {
 }
 
 func (mod *Module) AddStore(name string, store storage.Store) error {
-	if mod.stores.Set(name, store) {
+	if _, ok := mod.stores.Set(name, store); ok {
 		mod.events.Emit(storage.EventStoreAdded{
 			Name:  name,
 			Store: store,

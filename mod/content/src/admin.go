@@ -9,6 +9,8 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/sig"
+	"slices"
 	"time"
 )
 
@@ -20,12 +22,13 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var cmd = &Admin{mod: mod}
 	cmd.cmds = map[string]func(admin.Terminal, []string) error{
-		"find":      cmd.find,
-		"identify":  cmd.identify,
-		"forget":    cmd.forget,
-		"describe":  cmd.describe,
-		"set_label": cmd.setLabel,
-		"get_label": cmd.getLabel,
+		"find":       cmd.find,
+		"identify":   cmd.identify,
+		"forget":     cmd.forget,
+		"describe":   cmd.describe,
+		"prototypes": cmd.prototypes,
+		"set_label":  cmd.setLabel,
+		"get_label":  cmd.getLabel,
 	}
 	return cmd
 }
@@ -109,8 +112,23 @@ func (cmd *Admin) identify(term admin.Terminal, args []string) error {
 }
 
 func (cmd *Admin) describe(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("missing argument")
+	var err error
+	var opts = &content.DescribeOpts{
+		IdentityFilter: func(identity id.Identity) bool {
+			return true
+		},
+	}
+
+	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
+	flags.BoolVar(&opts.Network, "n", false, "use network sources")
+	flags.SetOutput(term)
+	err = flags.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	if len(flags.Args()) == 0 {
+		return errors.New("missing data id")
 	}
 
 	dataID, err := data.Parse(args[0])
@@ -118,19 +136,12 @@ func (cmd *Admin) describe(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	opts := &content.DescribeOpts{
-		Network: true,
-		IdentityFilter: func(identity id.Identity) bool {
-			return true
-		},
-	}
-
 	var desc = cmd.mod.Describe(context.Background(), dataID, opts)
 
 	for _, d := range desc {
-		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Info.InfoType()))
+		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Data.DescriptorType()))
 
-		j, err := json.MarshalIndent(d.Info, "  ", "  ")
+		j, err := json.MarshalIndent(d.Data, "  ", "  ")
 		if err != nil {
 			term.Printf("marshal error: %v\n", err)
 		}
@@ -151,6 +162,19 @@ func (cmd *Admin) forget(term admin.Terminal, args []string) error {
 	}
 
 	return cmd.mod.Forget(dataID)
+}
+
+func (cmd *Admin) prototypes(term admin.Terminal, args []string) error {
+	list, _ := sig.MapSlice(cmd.mod.prototypes.Values(), func(i content.DescriptorData) (string, error) {
+		return i.DescriptorType(), nil
+	})
+
+	slices.Sort(list)
+
+	for _, p := range list {
+		term.Printf("%s\n", p)
+	}
+	return nil
 }
 
 func (cmd *Admin) setLabel(term admin.Terminal, args []string) error {

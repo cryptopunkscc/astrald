@@ -20,7 +20,7 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 
 	desc = append(desc, &content.Descriptor{
 		Source: mod.node.Identity(),
-		Info: keys.KeyDescriptor{
+		Data: keys.KeyDescriptor{
 			KeyType:   row.Type,
 			PublicKey: row.PublicKey,
 		},

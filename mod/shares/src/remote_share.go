@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/net"
@@ -194,6 +193,16 @@ func (share *RemoteShare) Sync() error {
 
 			remoteShare.set.Add(dataID)
 
+			// cache descriptors
+			share.mod.tasks <- func(ctx context.Context) {
+				_, err := remoteShare.Describe(ctx, dataID, &content.DescribeOpts{
+					Network: true,
+				})
+				if err != nil {
+					share.mod.log.Errorv(2, "describe %v: %v", dataID, err)
+				}
+			}
+
 		case opRemove: // remove
 			var dataID data.ID
 			err = cslq.Decode(conn, "v", &dataID)
@@ -266,7 +275,7 @@ func (share *RemoteShare) Reset() error {
 	return share.SetLastUpdate(time.Time{})
 }
 
-func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID) ([]*content.Descriptor, error) {
+func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) ([]*content.Descriptor, error) {
 	var list []*content.Descriptor
 	var rawJSON []byte
 
@@ -278,6 +287,15 @@ func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID) ([]*cont
 	if err == nil {
 		rawJSON = []byte(row.Desc)
 	} else {
+		if !opts.Network {
+			return nil, nil
+		}
+		if opts.IdentityFilter != nil {
+			if !opts.IdentityFilter(share.target) {
+				return nil, nil
+			}
+		}
+
 		var query = net.NewQuery(
 			share.caller,
 			share.target,
@@ -310,23 +328,15 @@ func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID) ([]*cont
 	}
 
 	for _, d := range j {
-		desc := &content.Descriptor{
-			Source: share.target,
-		}
-
-		switch d.Type {
-		case media.Descriptor{}.InfoType():
-			var v media.Descriptor
-			err = json.Unmarshal(d.Info, &v)
-			if err != nil {
-				continue
-			}
-			desc.Info = v
-		default:
+		var proto = share.mod.content.UnmarshalDescriptor(d.Type, d.Info)
+		if proto == nil {
 			continue
 		}
 
-		list = append(list, desc)
+		list = append(list, &content.Descriptor{
+			Source: share.target,
+			Data:   proto,
+		})
 	}
 
 	return list, nil

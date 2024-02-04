@@ -34,7 +34,7 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 
 	return []*content.Descriptor{{
 		Source: mod.node.Identity(),
-		Info: relay.CertDescriptor{
+		Data: relay.CertDescriptor{
 			TargetID:      targetID,
 			RelayID:       relayID,
 			Direction:     relay.Direction(row.Direction),

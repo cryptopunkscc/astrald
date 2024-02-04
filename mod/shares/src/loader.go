@@ -1,6 +1,7 @@
 package shares
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/node/assets"
@@ -9,12 +10,16 @@ import (
 
 type Loader struct{}
 
+const taskQueueSize = 4096
+
 func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (modules.Module, error) {
 	var err error
 	var mod = &Module{
 		node:   node,
+		config: defaultConfig,
 		log:    log,
 		assets: assets,
+		tasks:  make(chan func(ctx context.Context), taskQueueSize),
 	}
 
 	_ = assets.LoadYAML(shares.ModuleName, &mod.config)

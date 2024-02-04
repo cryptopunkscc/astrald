@@ -16,7 +16,7 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 
 	return []*content.Descriptor{{
 		Source: mod.node.Identity(),
-		Info: media.Descriptor{
+		Data: media.Descriptor{
 			Type:     row.Type,
 			Title:    row.Title,
 			Artist:   row.Artist,

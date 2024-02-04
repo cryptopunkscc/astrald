@@ -2,6 +2,8 @@ package storage
 
 import (
 	"errors"
+	"flag"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -46,17 +48,35 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) read(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("argument missing")
+	var err error
+	var opts = &storage.ReadOpts{
+		Virtual: true,
+		Network: false,
+		IdentityFilter: func(identity id.Identity) bool {
+			return true
+		},
 	}
 
-	for _, idstr := range args {
+	var flags = flag.NewFlagSet("read", flag.ContinueOnError)
+	flags.BoolVar(&opts.Virtual, "v", true, "use virtual sources")
+	flags.BoolVar(&opts.Network, "n", false, "use network sources")
+	flags.SetOutput(term)
+	err = flags.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	if len(flags.Args()) == 0 {
+		return errors.New("missing data id")
+	}
+
+	for _, idstr := range flags.Args() {
 		dataID, err := data.Parse(idstr)
 		if err != nil {
 			return err
 		}
 
-		r, err := adm.mod.Read(dataID, nil)
+		r, err := adm.mod.Read(dataID, opts)
 		if err != nil {
 			return err
 		}

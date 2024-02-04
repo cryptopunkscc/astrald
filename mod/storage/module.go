@@ -33,6 +33,7 @@ type DataWriter interface {
 }
 
 type DataReader interface {
+	Seek(offset int64, whence int) (int64, error)
 	Read(p []byte) (n int, err error)
 	Close() error
 	Info() *ReaderInfo

@@ -31,8 +31,9 @@ type Module struct {
 	storage      storage.Module
 	sets         sets.Module
 	content      content.Module
-	notify       sig.Set[string]
+	notify       sig.Map[string, *Notification]
 	remoteShares sets.Union
+	tasks        chan func(ctx context.Context)
 }
 
 const localShareSetPrefix = "mod.shares.local"
@@ -40,6 +41,7 @@ const remoteShareSetPrefix = "mod.shares.remote"
 const publicSetName = "mod.shares.public"
 const resyncInterval = time.Hour
 const resyncAge = 5 * time.Minute
+const workers = 8
 
 func (mod *Module) Run(ctx context.Context) error {
 	go func() {
@@ -52,6 +54,19 @@ func (mod *Module) Run(ctx context.Context) error {
 			}
 		}
 	}()
+
+	for i := 0; i < workers; i++ {
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case task := <-mod.tasks:
+					task(ctx)
+				}
+			}
+		}()
+	}
 
 	tasks.Group(
 		NewReadService(mod),
@@ -108,7 +123,13 @@ func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataRea
 			continue
 		}
 
-		return &RemoteDataReader{ReadCloser: conn}, nil
+		return &RemoteDataReader{
+			caller:     row.Caller,
+			target:     row.Target,
+			mod:        mod,
+			dataID:     dataID,
+			ReadCloser: conn,
+		}, nil
 	}
 
 	return nil, storage.ErrNotFound

@@ -42,6 +42,7 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.content.AddDescriber(mod)
+	mod.content.AddPrototypes(media.Descriptor{})
 
 	// create our sets if needed
 	mod.allSet, err = sets.Open[sets.Basic](mod.sets, media.AllSet)

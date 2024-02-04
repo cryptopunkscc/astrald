@@ -28,6 +28,6 @@ type KeyDescriptor struct {
 	PublicKey id.Identity
 }
 
-func (k KeyDescriptor) InfoType() string {
+func (k KeyDescriptor) DescriptorType() string {
 	return "mod.keys.private_key"
 }

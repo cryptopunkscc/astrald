@@ -36,7 +36,7 @@ func (mod *Module) describeArchive(dataID data.ID) []*content.Descriptor {
 
 	return []*content.Descriptor{{
 		Source: mod.node.Identity(),
-		Info:   desc,
+		Data:   desc,
 	}}
 }
 
@@ -56,6 +56,6 @@ func (mod *Module) describeMember(dataID data.ID) []*content.Descriptor {
 
 	return []*content.Descriptor{{
 		Source: mod.node.Identity(),
-		Info:   desc,
+		Data:   desc,
 	}}
 }

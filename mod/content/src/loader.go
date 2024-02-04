@@ -28,6 +28,8 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		return nil, err
 	}
 
+	mod.AddPrototypes(content.LabelDescriptor{}, content.TypeDescriptor{})
+
 	return mod, nil
 }
 

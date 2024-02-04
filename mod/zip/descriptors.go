@@ -6,7 +6,7 @@ type ArchiveDescriptor struct {
 	Files []ArchiveFile
 }
 
-func (ArchiveDescriptor) InfoType() string {
+func (ArchiveDescriptor) DescriptorType() string {
 	return "mod.zip.archive"
 }
 
@@ -19,7 +19,7 @@ type MemberDescriptor struct {
 	Memberships []Membership
 }
 
-func (MemberDescriptor) InfoType() string {
+func (MemberDescriptor) DescriptorType() string {
 	return "mod.zip.member"
 }
 
