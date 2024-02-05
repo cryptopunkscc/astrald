@@ -30,12 +30,12 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	}
 
 	// set up services
-	mod.indexer = NewIndexerService(mod)
+	mod.readonly = NewReadOnlyService(mod)
 	for _, path := range mod.config.Index {
-		mod.indexer.Add(path)
+		mod.readonly.Add(path)
 	}
 
-	mod.store, err = NewStoreService(mod)
+	mod.readwrite, err = NewReadWriteService(mod)
 	if err != nil {
 		return nil, err
 	}

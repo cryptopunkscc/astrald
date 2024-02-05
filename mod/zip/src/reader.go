@@ -7,7 +7,7 @@ import (
 	"io/fs"
 )
 
-var _ storage.DataReader = &Reader{}
+var _ storage.Reader = &Reader{}
 
 type Reader struct {
 	fs.File

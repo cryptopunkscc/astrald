@@ -62,9 +62,9 @@ func (srv *IndexerService) autoIndex(dataID data.ID, dataType string) (*media.In
 }
 
 func (srv *IndexerService) indexAs(dataID data.ID, dataType string, enableNetwork bool) (*media.Info, error) {
-	r, err := srv.storage.Read(
+	r, err := srv.storage.Open(
 		dataID,
-		&storage.ReadOpts{
+		&storage.OpenOpts{
 			Virtual: true,
 			Network: enableNetwork,
 		},
@@ -116,7 +116,7 @@ func (srv *IndexerService) scan(dataID data.ID) (*media.Info, error) {
 		return nil, err
 	}
 
-	r, err := srv.storage.Read(dataID, &storage.ReadOpts{Virtual: true})
+	r, err := srv.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
 	if err != nil {
 		return nil, err
 	}

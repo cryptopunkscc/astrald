@@ -29,7 +29,7 @@ type IndexerService struct {
 	mu       sync.Mutex
 }
 
-func NewIndexerService(mod *Module) *IndexerService {
+func NewReadOnlyService(mod *Module) *IndexerService {
 	return &IndexerService{
 		Module:    mod,
 		cond:      sync.NewCond(&sync.Mutex{}),
@@ -58,9 +58,9 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *IndexerService) Read(id data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
+func (srv *IndexerService) Open(id data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
 	if opts == nil {
-		opts = &storage.ReadOpts{}
+		opts = &storage.OpenOpts{}
 	}
 
 	files := srv.dbFindByID(id)

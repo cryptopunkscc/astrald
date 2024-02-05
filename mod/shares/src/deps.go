@@ -37,7 +37,7 @@ func (mod *Module) LoadDependencies() error {
 
 	mod.sets.SetOpener(shares.SetType, mod.setOpener)
 	mod.sets.Create(publicSetName, sets.TypeBasic)
-	mod.storage.AddReader(shares.ModuleName, mod)
+	mod.storage.AddOpener(shares.ModuleName, mod, 10)
 	mod.content.AddDescriber(mod)
 
 	mod.remoteShares, err = sets.Open[sets.Union](mod.sets, shares.RemoteSharesSetName)

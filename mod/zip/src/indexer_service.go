@@ -36,9 +36,9 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 
 func (srv *IndexerService) onAdd(dataID data.ID) error {
 	if !srv.isIndexed(dataID, false) {
-		found, err := srv.storage.Read(
+		found, err := srv.storage.Open(
 			dataID,
-			&storage.ReadOpts{
+			&storage.OpenOpts{
 				Virtual: srv.config.Virtual,
 				Network: srv.config.Network,
 			},
@@ -54,9 +54,9 @@ func (srv *IndexerService) onAdd(dataID data.ID) error {
 
 func (srv *IndexerService) onRemove(dataID data.ID) error {
 	if srv.isIndexed(dataID, false) {
-		found, err := srv.storage.Read(
+		found, err := srv.storage.Open(
 			dataID,
-			&storage.ReadOpts{
+			&storage.OpenOpts{
 				Virtual: srv.config.Virtual,
 				Network: srv.config.Network,
 			},
@@ -72,9 +72,9 @@ func (srv *IndexerService) onRemove(dataID data.ID) error {
 
 func (srv *IndexerService) autoIndexZip(zipID data.ID) error {
 	// check if the file is accessible
-	found, err := srv.storage.Read(
+	found, err := srv.storage.Open(
 		zipID,
-		&storage.ReadOpts{
+		&storage.OpenOpts{
 			Virtual: srv.config.Virtual,
 			Network: srv.config.Network,
 		},

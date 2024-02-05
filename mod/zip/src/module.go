@@ -38,9 +38,9 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
+func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
 	if opts == nil {
-		opts = &storage.ReadOpts{}
+		opts = &storage.OpenOpts{}
 	}
 
 	if !opts.Virtual {

@@ -28,7 +28,7 @@ func (mod *Module) importNodeIdentity() error {
 		Bytes: mod.node.Identity().PrivateKey().Serialize(),
 	}
 
-	w, err := mod.storage.Store(&storage.StoreOpts{Alloc: 70})
+	w, err := mod.storage.Create(&storage.CreateOpts{Alloc: 70})
 	if err != nil {
 		return err
 	}

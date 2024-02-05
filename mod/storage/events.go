@@ -6,22 +6,22 @@ type EventDataCommitted struct {
 	DataID data.ID
 }
 
-type EventReaderAdded struct {
+type EventOpenerAdded struct {
 	Name string
-	Reader
+	Opener
 }
 
 type EventReaderRemoved struct {
 	Name string
-	Reader
+	Opener
 }
 
 type EventStoreAdded struct {
 	Name string
-	Store
+	Creator
 }
 
 type EventStoreRemoved struct {
 	Name string
-	Store
+	Creator
 }

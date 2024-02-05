@@ -70,7 +70,7 @@ func (mod *Module) SaveKey(key id.Identity) (data.ID, error) {
 		Bytes: key.PrivateKey().Serialize(),
 	}
 
-	w, err := mod.storage.Store(&storage.StoreOpts{Alloc: 70})
+	w, err := mod.storage.Create(&storage.CreateOpts{Alloc: 70})
 	if err != nil {
 		return data.ID{}, err
 	}
@@ -100,7 +100,7 @@ func (mod *Module) IndexKey(dataID data.ID) error {
 		return ErrAlreadyIndexed
 	}
 
-	r, err := mod.storage.Read(dataID, &storage.ReadOpts{Virtual: true})
+	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (mod *Module) IndexKey(dataID data.ID) error {
 }
 
 func (mod *Module) LoadPrivateKey(dataID data.ID) (*keys.PrivateKey, error) {
-	r, err := mod.storage.Read(dataID, &storage.ReadOpts{Virtual: true})
+	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
 	if err != nil {
 		return nil, err
 	}

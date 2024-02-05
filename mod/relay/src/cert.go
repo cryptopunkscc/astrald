@@ -20,7 +20,7 @@ func (mod *Module) IndexCert(dataID data.ID) error {
 		return relay.ErrCertAlreadyIndexed
 	}
 
-	r, err := mod.storage.Read(dataID, &storage.ReadOpts{Virtual: true})
+	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction
 	}
 
 	// create a data writer
-	w, err := mod.storage.Store(nil)
+	w, err := mod.storage.Create(nil)
 	if err != nil {
 		return data.ID{}, err
 	}
@@ -160,7 +160,7 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 	}
 
 	for _, certID := range certIDs {
-		bytes, err := mod.storage.ReadAll(certID, &storage.ReadOpts{Virtual: true})
+		bytes, err := mod.storage.ReadAll(certID, &storage.OpenOpts{Virtual: true})
 		if err != nil {
 			mod.log.Errorv(2, "error reading %v: %v", certID, err)
 			continue
@@ -172,7 +172,7 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 }
 
 func (mod *Module) LoadCert(dataID data.ID) (*relay.RelayCert, error) {
-	r, err := mod.storage.Read(dataID, &storage.ReadOpts{Virtual: true})
+	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
 	if err != nil {
 		return nil, err
 	}

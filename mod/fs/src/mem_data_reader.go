@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 )
 
-var _ storage.DataReader = &MemDataReader{}
+var _ storage.Reader = &MemDataReader{}
 
 type MemDataReader struct {
 	bytes  []byte

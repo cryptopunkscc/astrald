@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var _ storage.DataReader = &RemoteDataReader{}
+var _ storage.Reader = &RemoteDataReader{}
 
 type RemoteDataReader struct {
 	mod    *Module

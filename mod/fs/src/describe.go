@@ -14,8 +14,8 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 
 	query := mod.db.Where("data_id = ?", dataID)
 
-	// exclude store paths
-	for _, path := range mod.store.paths.Clone() {
+	// exclude rw paths
+	for _, path := range mod.readwrite.paths.Clone() {
 		query = query.Where("path not like ?", path+"/%")
 	}
 

@@ -43,7 +43,7 @@ func (adm *Admin) add(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	return adm.mod.indexer.Add(args[0])
+	return adm.mod.readonly.Add(args[0])
 }
 
 func (adm *Admin) ls(term admin.Terminal, args []string) error {
@@ -85,7 +85,7 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	f := "%-64s %s\n"
 
 	term.Printf(f, admin.Header("Store Path"), admin.Header("Free"))
-	for _, path := range adm.mod.store.Paths() {
+	for _, path := range adm.mod.readwrite.Paths() {
 		var free int
 		usage, _ := DiskUsage(path)
 		if usage != nil {
@@ -99,7 +99,7 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	}
 
 	term.Printf("\n%s\n", admin.Header("INDEX PATH"))
-	for _, path := range adm.mod.indexer.watcher.WatchList() {
+	for _, path := range adm.mod.readonly.watcher.WatchList() {
 		term.Printf("%s\n", path)
 	}
 	return nil

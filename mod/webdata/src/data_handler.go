@@ -29,7 +29,7 @@ func (mod *DataHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	reqRange := r.Header.Get("Range")
 
-	var opts = &storage.ReadOpts{Virtual: true, Network: true}
+	var opts = &storage.OpenOpts{Virtual: true, Network: true}
 	var length = int64(dataID.Size)
 
 	ranges, err := ParseRange(reqRange, int64(dataID.Size))
@@ -44,7 +44,7 @@ func (mod *DataHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reader, err := mod.storage.Read(dataID, opts)
+	reader, err := mod.storage.Open(dataID, opts)
 	if err != nil {
 		mod.log.Errorv(2, "read %v: %v", dataID, err)
 		w.WriteHeader(http.StatusNotFound)

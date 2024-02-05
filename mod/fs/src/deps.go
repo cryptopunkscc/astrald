@@ -36,11 +36,11 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	// read only
-	mod.storage.AddReader(fs.ReadOnlySetName, mod.indexer)
+	mod.storage.AddOpener(fs.ReadOnlySetName, mod.readonly, 30)
 
 	// read write
-	mod.storage.AddReader(fs.ReadWriteSetName, mod.store)
-	mod.storage.AddStore(fs.ReadWriteSetName, mod.store)
+	mod.storage.AddOpener(fs.ReadWriteSetName, mod.readwrite, 30)
+	mod.storage.AddCreator(fs.ReadWriteSetName, mod.readwrite, 30)
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
@@ -66,23 +66,26 @@ func (mod *Module) LoadDependencies() error {
 	// if we have file-based resources, use that as writable storage
 	fileRes, ok := mod.assets.Res().(*resources.FileResources)
 	if ok {
-		mod.indexer.Add(filepath.Join(fileRes.Root(), "static_data"))
+		mod.readonly.Add(filepath.Join(fileRes.Root(), "static_data"))
 
 		dataPath := filepath.Join(fileRes.Root(), "data")
 		err = os.MkdirAll(dataPath, 0700)
 		if err == nil {
-			err = mod.store.AddPath(dataPath)
+			err = mod.readwrite.AddPath(dataPath)
 			if err != nil {
 				mod.log.Error("error adding writable data path: %v", err)
 			}
 		}
 	} else {
-		mod.storage.AddReader(fs.MemorySetName, mod.memStore)
-		mod.storage.AddStore(fs.MemorySetName, mod.memStore)
+		// prefer memory for reads because of performance
+		mod.storage.AddOpener(fs.MemorySetName, mod.memStore, 40)
+
+		// avoid memory for writes because of its non-persistance
+		mod.storage.AddCreator(fs.MemorySetName, mod.memStore, 0)
 	}
 
 	for _, path := range mod.config.Store {
-		mod.store.AddPath(path)
+		mod.readwrite.AddPath(path)
 	}
 
 	return nil

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/data"
@@ -11,10 +12,26 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"io"
+	"slices"
 )
 
 var _ storage.Module = &Module{}
-var defaultReadOpts = &storage.ReadOpts{Virtual: true}
+var defaultReadOpts = &storage.OpenOpts{Virtual: true}
+
+// ReadAllMaxSize is the limit on data size accepted by ReadAll() (to avoid accidental OOM)
+var ReadAllMaxSize uint64 = 1024 * 1024 * 1024
+
+type Opener struct {
+	storage.Opener
+	Name     string
+	Priority int
+}
+
+type Creator struct {
+	storage.Creator
+	Name     string
+	Priority int
+}
 
 type Module struct {
 	node   node.Node
@@ -24,17 +41,23 @@ type Module struct {
 	events events.Queue
 	ctx    context.Context
 
-	readers sig.Map[string, storage.Reader]
-	stores  sig.Map[string, storage.Store]
+	openers  sig.Map[string, *Opener]
+	creators sig.Map[string, *Creator]
 }
 
-func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
+func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
 	if opts == nil {
 		opts = defaultReadOpts
 	}
 
-	for _, reader := range mod.readers.Clone() {
-		r, err := reader.Read(dataID, opts)
+	openers := mod.openers.Values()
+
+	slices.SortFunc(openers, func(a, b *Opener) int {
+		return cmp.Compare(a.Priority, b.Priority) * -1 // from high to low
+	})
+
+	for _, opener := range openers {
+		r, err := opener.Open(dataID, opts)
 		if err == nil {
 			return r, nil
 		}
@@ -43,16 +66,23 @@ func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataRea
 	return nil, storage.ErrNotFound
 }
 
-func (mod *Module) Store(opts *storage.StoreOpts) (storage.DataWriter, error) {
+func (mod *Module) Create(opts *storage.CreateOpts) (storage.Writer, error) {
 	if opts == nil {
-		opts = &storage.StoreOpts{}
+		opts = &storage.CreateOpts{}
 	}
+
 	if opts.Alloc < 0 {
 		return nil, errors.New("alloc cannot be less than 0")
 	}
 
-	for _, store := range mod.stores.Clone() {
-		w, err := store.Store(opts)
+	creators := mod.creators.Values()
+
+	slices.SortFunc(creators, func(a, b *Creator) int {
+		return cmp.Compare(a.Priority, b.Priority) * -1 // from high to low
+	})
+
+	for _, creator := range creators {
+		w, err := creator.Create(opts)
 		if err == nil {
 			return NewDataWriterWrapper(mod, w), err
 		}
@@ -61,8 +91,11 @@ func (mod *Module) Store(opts *storage.StoreOpts) (storage.DataWriter, error) {
 	return nil, storage.ErrStorageUnavailable
 }
 
-func (mod *Module) ReadAll(id data.ID, opts *storage.ReadOpts) ([]byte, error) {
-	r, err := mod.Read(id, opts)
+func (mod *Module) ReadAll(id data.ID, opts *storage.OpenOpts) ([]byte, error) {
+	if id.Size > ReadAllMaxSize {
+		return nil, errors.New("data too big")
+	}
+	r, err := mod.Open(id, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -70,12 +103,12 @@ func (mod *Module) ReadAll(id data.ID, opts *storage.ReadOpts) ([]byte, error) {
 	return io.ReadAll(r)
 }
 
-func (mod *Module) StoreBytes(bytes []byte, opts *storage.StoreOpts) (data.ID, error) {
+func (mod *Module) Put(bytes []byte, opts *storage.CreateOpts) (data.ID, error) {
 	if opts == nil {
-		opts = &storage.StoreOpts{Alloc: len(bytes)}
+		opts = &storage.CreateOpts{Alloc: len(bytes)}
 	}
 
-	w, err := mod.Store(opts)
+	w, err := mod.Create(opts)
 	if err != nil {
 		return data.ID{}, err
 	}
@@ -89,43 +122,54 @@ func (mod *Module) StoreBytes(bytes []byte, opts *storage.StoreOpts) (data.ID, e
 	return w.Commit()
 }
 
-func (mod *Module) AddReader(name string, reader storage.Reader) error {
-	if _, ok := mod.readers.Set(name, reader); ok {
-		mod.events.Emit(storage.EventReaderAdded{
+func (mod *Module) AddOpener(name string, opener storage.Opener, priority int) error {
+	_, ok := mod.openers.Set(name, &Opener{
+		Opener:   opener,
+		Name:     name,
+		Priority: priority,
+	})
+	if ok {
+		mod.events.Emit(storage.EventOpenerAdded{
 			Name:   name,
-			Reader: reader,
+			Opener: opener,
 		})
 		return nil
 	}
 	return storage.ErrAlreadyExists
 }
 
-func (mod *Module) AddStore(name string, store storage.Store) error {
-	if _, ok := mod.stores.Set(name, store); ok {
+func (mod *Module) AddCreator(name string, creator storage.Creator, priority int) error {
+	_, ok := mod.creators.Set(name, &Creator{
+		Creator:  creator,
+		Name:     name,
+		Priority: priority,
+	})
+
+	if ok {
 		mod.events.Emit(storage.EventStoreAdded{
-			Name:  name,
-			Store: store,
+			Name:    name,
+			Creator: creator,
 		})
 		return nil
 	}
 	return storage.ErrAlreadyExists
 }
 
-func (mod *Module) RemoveReader(name string) error {
-	if reader, ok := mod.readers.Delete(name); ok {
+func (mod *Module) RemoveOpener(name string) error {
+	if opener, ok := mod.openers.Delete(name); ok {
 		mod.events.Emit(storage.EventReaderRemoved{
 			Name:   name,
-			Reader: reader,
+			Opener: opener,
 		})
 	}
 	return storage.ErrNotFound
 }
 
-func (mod *Module) RemoveStore(name string) error {
-	if store, ok := mod.stores.Delete(name); ok {
+func (mod *Module) RemoveCreator(name string) error {
+	if creator, ok := mod.creators.Delete(name); ok {
 		mod.events.Emit(storage.EventStoreRemoved{
-			Name:  name,
-			Store: store,
+			Name:    name,
+			Creator: creator,
 		})
 	}
 	return storage.ErrNotFound

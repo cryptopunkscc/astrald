@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"cmp"
 	"errors"
 	"flag"
 	"github.com/cryptopunkscc/astrald/auth/id"
@@ -14,6 +15,7 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -25,10 +27,10 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"read": adm.read,
-		"get":  adm.get,
-		"info": adm.info,
-		"help": adm.help,
+		"read":  adm.read,
+		"fetch": adm.fetch,
+		"info":  adm.info,
+		"help":  adm.help,
 	}
 
 	return adm
@@ -49,12 +51,10 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 
 func (adm *Admin) read(term admin.Terminal, args []string) error {
 	var err error
-	var opts = &storage.ReadOpts{
-		Virtual: true,
-		Network: false,
-		IdentityFilter: func(identity id.Identity) bool {
-			return true
-		},
+	var opts = &storage.OpenOpts{
+		Virtual:        true,
+		Network:        false,
+		IdentityFilter: id.AllowEveryone,
 	}
 
 	var flags = flag.NewFlagSet("read", flag.ContinueOnError)
@@ -76,7 +76,7 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 			return err
 		}
 
-		r, err := adm.mod.Read(dataID, opts)
+		r, err := adm.mod.Open(dataID, opts)
 		if err != nil {
 			return err
 		}
@@ -87,7 +87,7 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) get(term admin.Terminal, args []string) error {
+func (adm *Admin) fetch(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
 	}
@@ -106,8 +106,8 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 
 		var alloc = max(response.ContentLength, 0)
 
-		w, err := adm.mod.Store(
-			&storage.StoreOpts{
+		w, err := adm.mod.Create(
+			&storage.CreateOpts{
 				Alloc: int(alloc),
 			},
 		)
@@ -152,7 +152,7 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	w, err := adm.mod.Store(nil)
+	w, err := adm.mod.Create(nil)
 	if err != nil {
 		return err
 	}
@@ -171,34 +171,41 @@ func (adm *Admin) get(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	var f = "%-32s %s\n"
-	var names []string
+	var f = "%-32s %6s %s\n"
 
-	// list readers
-	names = adm.mod.readers.Keys()
-	slices.Sort(names)
+	// list openers
+	openers := adm.mod.openers.Values()
+	slices.SortFunc(openers, func(a, b *Opener) int {
+		return cmp.Compare(a.Priority, b.Priority) * -1
+	})
 
-	term.Printf(f, admin.Header("Reader"), admin.Header("Type"))
-	for _, name := range names {
-		v, ok := adm.mod.readers.Get(name)
-		if !ok {
-			continue
-		}
-		term.Printf(f, name, reflect.TypeOf(v))
+	term.Printf("Openers:\n")
+	term.Printf(f, admin.Header("Name"), admin.Header("Prio"), admin.Header("Type"))
+	for _, opener := range openers {
+		term.Printf(
+			f,
+			opener.Name,
+			strconv.FormatInt(int64(opener.Priority), 10),
+			reflect.TypeOf(opener.Opener),
+		)
 	}
 	term.Println()
 
-	// list stores
-	names = adm.mod.stores.Keys()
-	slices.Sort(names)
+	// list creators
+	creators := adm.mod.creators.Values()
+	slices.SortFunc(creators, func(a, b *Creator) int {
+		return cmp.Compare(a.Priority, b.Priority) * -1
+	})
 
-	term.Printf(f, admin.Header("Store"), admin.Header("Type"))
-	for _, name := range names {
-		v, ok := adm.mod.stores.Get(name)
-		if !ok {
-			continue
-		}
-		term.Printf(f, name, reflect.TypeOf(v))
+	term.Printf("Creators:\n")
+	term.Printf(f, admin.Header("Prio"), admin.Header("Name"), admin.Header("Type"))
+	for _, creator := range creators {
+		term.Printf(
+			f,
+			creator.Name,
+			strconv.FormatInt(int64(creator.Priority), 10),
+			reflect.TypeOf(creator.Creator),
+		)
 	}
 	term.Println()
 
@@ -213,7 +220,7 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: storage <command>\n\n")
 	term.Printf("commands:\n")
 	term.Printf("  read [dataID]                             read data by ID (caution - may print binary data)\n")
-	term.Printf("  get <url>                                 download data over http(s)\n")
+	term.Printf("  fetch <url>                               download data to storage\n")
 	term.Printf("  info                                      show info\n")
 	term.Printf("  help                                      show help\n")
 	return nil

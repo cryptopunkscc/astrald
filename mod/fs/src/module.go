@@ -30,13 +30,13 @@ type Module struct {
 	content content.Module
 	sets    sets.Module
 
-	indexer  *IndexerService
-	store    *StoreService
-	memStore *MemStore
-	memSet   sets.Basic
-	allSet   sets.Union
-	roSet    sets.Basic
-	rwSet    sets.Basic
+	readonly  *IndexerService
+	readwrite *ReadWriteService
+	memStore  *MemStore
+	memSet    sets.Basic
+	allSet    sets.Union
+	roSet     sets.Basic
+	rwSet     sets.Basic
 }
 
 func (mod *Module) Prepare(ctx context.Context) error {
@@ -46,7 +46,7 @@ func (mod *Module) Prepare(ctx context.Context) error {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	tasks.Group(mod.indexer).Run(ctx)
+	tasks.Group(mod.readonly).Run(ctx)
 
 	<-ctx.Done()
 	return nil

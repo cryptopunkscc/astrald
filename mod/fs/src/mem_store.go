@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 )
 
-var _ storage.Reader = &MemStore{}
-var _ storage.Store = &MemStore{}
+var _ storage.Opener = &MemStore{}
+var _ storage.Creator = &MemStore{}
 
 const DefaultMemStoreSize = 64 * 1024 * 1024 // 64MB
 
@@ -29,7 +29,7 @@ func NewMemStore(events *events.Queue, size int64) *MemStore {
 	return mem
 }
 
-func (mem *MemStore) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
+func (mem *MemStore) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
 	bytes, found := mem.objects.Get(dataID.String())
 	if !found {
 		return nil, storage.ErrNotFound
@@ -38,7 +38,7 @@ func (mem *MemStore) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataR
 	return NewMemDataReader(bytes), nil
 }
 
-func (mem *MemStore) Store(opts *storage.StoreOpts) (storage.DataWriter, error) {
+func (mem *MemStore) Create(opts *storage.CreateOpts) (storage.Writer, error) {
 	return NewMemDataWriter(mem), nil
 }
 

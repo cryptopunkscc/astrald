@@ -133,7 +133,7 @@ func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
 		return errors.New("relay mismatch")
 	}
 
-	mod.storage.StoreBytes(certBytes, nil)
+	mod.storage.Put(certBytes, nil)
 
 	return nil
 }

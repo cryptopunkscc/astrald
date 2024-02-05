@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 )
 
-var _ storage.DataWriter = &MemDataWriter{}
+var _ storage.Writer = &MemDataWriter{}
 
 type MemDataWriter struct {
 	*MemStore

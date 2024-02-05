@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-var _ storage.DataReader = &Reader{}
+var _ storage.Reader = &Reader{}
 
 type Reader struct {
 	io.ReadSeekCloser

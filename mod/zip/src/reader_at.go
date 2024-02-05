@@ -11,7 +11,7 @@ type readerAt struct {
 }
 
 func (r *readerAt) ReadAt(p []byte, off int64) (n int, err error) {
-	f, err := r.storage.Read(r.dataID, &storage.ReadOpts{Offset: uint64(off), Virtual: true})
+	f, err := r.storage.Open(r.dataID, &storage.OpenOpts{Offset: uint64(off), Virtual: true})
 	if err != nil {
 		return 0, err
 	}

@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 )
 
-var _ storage.DataWriter = &FileWriter{}
+var _ storage.Writer = &FileWriter{}
 
 const tempFilePrefix = ".tmp."
 
@@ -21,11 +21,11 @@ type FileWriter struct {
 	tempID    string
 	file      *os.File
 	resolver  data.Resolver
-	store     *StoreService
+	readwrite *ReadWriteService
 	finalized atomic.Bool
 }
 
-func NewFileWriter(parent *StoreService, path string) (*FileWriter, error) {
+func NewFileWriter(parent *ReadWriteService, path string) (*FileWriter, error) {
 	var rbytes = make([]byte, 8)
 	rand.Read(rbytes)
 
@@ -39,11 +39,11 @@ func NewFileWriter(parent *StoreService, path string) (*FileWriter, error) {
 	resolver := data.NewResolver()
 
 	return &FileWriter{
-		path:     path,
-		tempID:   tempID,
-		file:     file,
-		resolver: resolver,
-		store:    parent,
+		path:      path,
+		tempID:    tempID,
+		file:      file,
+		resolver:  resolver,
+		readwrite: parent,
 	}, nil
 }
 
@@ -74,8 +74,8 @@ func (w *FileWriter) Commit() (data.ID, error) {
 		os.Remove(oldPath)
 	}
 
-	w.store.rwSet.Add(dataID)
-	w.store.events.Emit(fs.EventFileAdded{
+	w.readwrite.rwSet.Add(dataID)
+	w.readwrite.events.Emit(fs.EventFileAdded{
 		DataID: dataID,
 		Path:   newPath,
 	})

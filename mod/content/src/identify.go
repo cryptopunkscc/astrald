@@ -27,7 +27,7 @@ func (mod *Module) Identify(dataID data.ID) (*content.TypeInfo, error) {
 	}
 
 	// read first bytes for type identification
-	dataReader, err := mod.storage.Read(dataID, &storage.ReadOpts{Virtual: true, Network: true})
+	dataReader, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true, Network: true})
 	if err != nil {
 		return nil, err
 	}

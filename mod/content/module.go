@@ -38,7 +38,7 @@ type Describer interface {
 
 type DescribeOpts struct {
 	Network        bool
-	IdentityFilter func(id.Identity) bool
+	IdentityFilter id.Filter
 }
 
 type TypeInfo struct {

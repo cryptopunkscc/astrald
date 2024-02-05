@@ -80,7 +80,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Read(dataID data.ID, opts *storage.ReadOpts) (storage.DataReader, error) {
+func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
 	if !opts.Network {
 		return nil, storage.ErrNotFound
 	}

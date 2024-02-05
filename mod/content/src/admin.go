@@ -114,9 +114,7 @@ func (cmd *Admin) identify(term admin.Terminal, args []string) error {
 func (cmd *Admin) describe(term admin.Terminal, args []string) error {
 	var err error
 	var opts = &content.DescribeOpts{
-		IdentityFilter: func(identity id.Identity) bool {
-			return true
-		},
+		IdentityFilter: id.AllowEveryone,
 	}
 
 	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
