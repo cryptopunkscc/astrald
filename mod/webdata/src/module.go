@@ -3,7 +3,6 @@ package webdata
 import (
 	"context"
 	"embed"
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
@@ -12,10 +11,14 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
+	"github.com/gin-gonic/gin"
+	"html/template"
+	"io"
 	"net/http"
+	"regexp"
 )
 
-//go:embed res/*
+//go:embed assets/* tmpl/*
 var res embed.FS
 
 type Module struct {
@@ -30,33 +33,93 @@ type Module struct {
 	shares  shares.Module
 	sets    sets.Module
 	content content.Module
-
-	rootHandler *RootHandler
-	dataHandler *DataHandler
-	setHandler  *SetHandler
 }
 
-func (mod *Module) Run(ctx context.Context) error { // Create a new ServeMux
-	var addr = mod.config.Listen
+func (mod *Module) Run(ctx context.Context) error {
+	gin.DisableConsoleColor()
+	gin.SetMode(gin.ReleaseMode)
 
-	if addr == "" {
-		return errors.New("listen addr not configured")
+	r := gin.New()
+	r.Use(gin.LoggerWithWriter(io.Discard), gin.Recovery())
+
+	templ := template.Must(
+		template.New("").
+			Funcs(r.FuncMap).
+			ParseFS(res, "tmpl/*"))
+
+	r.SetHTMLTemplate(templ)
+
+	// Serve static files from the embedded filesystem
+	r.GET("/assets/*filepath", mod.handleAssets)
+	r.GET("/sets/:name", mod.handleSetsShow)
+	r.GET("/objects/:id/open", mod.handleObjectsOpen)
+	r.GET("/objects/:id/show", mod.handleObjectsShow)
+	r.GET("/", mod.handleSetsIndex)
+
+	var server = http.Server{
+		Addr:    mod.config.Listen,
+		Handler: r,
 	}
 
-	var server = &http.Server{
-		Addr:    addr,
-		Handler: mod.mux,
-	}
-
-	go func() {
-		mod.log.Info("listen %v as %v", addr, mod.identity)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			mod.log.Error("listen error: %v", err)
-		}
-	}()
+	go server.ListenAndServe()
 
 	<-ctx.Done()
-	server.Close()
+	server.Shutdown(context.Background())
 
 	return nil
+}
+
+func (mod *Module) handleAssets(c *gin.Context) {
+	// Extract the requested file path from the URL parameter
+	filepath := c.Param("filepath")
+
+	// Open the file from the embedded filesystem
+	file, err := res.Open("assets" + filepath)
+	if err != nil {
+		// Handle the error, e.g., file not found
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	defer file.Close()
+	var buf = make([]byte, 512)
+	n, err := file.Read(buf)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.Header("Content-Type", http.DetectContentType(buf))
+	c.Header("Content-Disposition", "inline")
+
+	_, err = c.Writer.Write(buf[:n])
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	_, err = io.Copy(c.Writer, file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+}
+
+func (mod *Module) parseIdentities(s string) string {
+	pattern := regexp.MustCompile(`\{\{([0-9A-Fa-f]{66})}}`)
+
+	// Replace matches using a custom function
+	return pattern.ReplaceAllStringFunc(s, func(match string) string {
+		// Extract the hex string inside the curly braces
+		hex := pattern.FindStringSubmatch(match)[1]
+
+		identity, err := id.ParsePublicKeyHex(hex)
+		if err != nil {
+			return match
+		}
+
+		name := mod.node.Resolver().DisplayName(identity)
+
+		// Return the modified string
+		return name
+	})
 }

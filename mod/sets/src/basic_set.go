@@ -43,8 +43,8 @@ func (set *BasicSet) Remove(dataID ...data.ID) error {
 
 }
 
-func (set *BasicSet) Info() (*sets.Info, error) {
-	var info = &sets.Info{
+func (set *BasicSet) Info() (*sets.Stat, error) {
+	var info = &sets.Stat{
 		Name:        set.row.Name,
 		Type:        sets.Type(set.row.Type),
 		Size:        -1,
@@ -56,13 +56,12 @@ func (set *BasicSet) Info() (*sets.Info, error) {
 
 	var count int64
 
-	var tx = set.db.
+	var err = set.db.
 		Model(&dbMember{}).
 		Where("set_id = ? and removed = false", set.row.ID).
-		Count(&count)
-
-	if tx.Error != nil {
-		return nil, tx.Error
+		Count(&count).Error
+	if err != nil {
+		return nil, err
 	}
 
 	info.Size = int(count)

@@ -99,7 +99,7 @@ func (mod *Module) Create(name string, typ sets.Type) (sets.Set, error) {
 		return nil, err
 	}
 
-	var info = &sets.Info{
+	var info = &sets.Stat{
 		Name:      row.Name,
 		Type:      sets.Type(row.Type),
 		Size:      0,
@@ -107,7 +107,7 @@ func (mod *Module) Create(name string, typ sets.Type) (sets.Set, error) {
 		TrimmedAt: row.TrimmedAt,
 	}
 
-	mod.events.Emit(sets.EventSetCreated{Info: info})
+	mod.events.Emit(sets.EventSetCreated{Stat: info})
 
 	return set, nil
 }
@@ -150,13 +150,13 @@ func (mod *Module) createUnion(name string, members ...string) (*UnionSet, error
 	return set, set.Add(members...)
 }
 
-func (mod *Module) SetInfo(name string) (*sets.Info, error) {
+func (mod *Module) Stat(name string) (*sets.Stat, error) {
 	setRow, err := mod.dbFindSetByName(name)
 	if err != nil {
 		return nil, err
 	}
 
-	var info = &sets.Info{
+	var info = &sets.Stat{
 		Name:        setRow.Name,
 		Type:        sets.Type(setRow.Type),
 		Size:        -1,
@@ -166,18 +166,22 @@ func (mod *Module) SetInfo(name string) (*sets.Info, error) {
 		TrimmedAt:   setRow.TrimmedAt,
 	}
 
-	var count int64
+	var rows []dbMember
 
-	var tx = mod.db.
+	err = mod.db.
 		Model(&dbMember{}).
+		Preload("Data").
 		Where("set_id = ? and removed = false", setRow.ID).
-		Count(&count)
-
-	if tx.Error != nil {
-		return nil, tx.Error
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
 	}
 
-	info.Size = int(count)
+	for _, row := range rows {
+		info.DataSize += row.Data.DataID.Size
+	}
+
+	info.Size = len(rows)
 
 	return info, nil
 }
@@ -205,37 +209,16 @@ func (mod *Module) Where(dataID data.ID) ([]string, error) {
 	return list, nil
 }
 
-func (mod *Module) All() ([]sets.Info, error) {
-	var list []sets.Info
+func (mod *Module) All() ([]string, error) {
+	var list []string
 
-	var rows []dbSet
-	var err = mod.db.Find(&rows).Error
+	var err = mod.db.
+		Model(&dbSet{}).
+		Select("name").
+		Find(&list).Error
 	if err != nil {
+		mod.log.Errorv(2, "All(): %v", err)
 		return nil, err
-	}
-
-	for _, row := range rows {
-		var count int64
-
-		var tx = mod.db.
-			Model(&dbMember{}).
-			Where("set_id = ? and removed = false", row.ID).
-			Count(&count)
-
-		if tx.Error != nil {
-			mod.log.Errorv(2, "error getting entry count: %v", tx.Error)
-			count = -1
-		}
-
-		list = append(list, sets.Info{
-			Name:        row.Name,
-			Type:        sets.Type(row.Type),
-			Size:        int(count),
-			Visible:     row.Visible,
-			Description: row.Description,
-			CreatedAt:   row.CreatedAt,
-			TrimmedAt:   row.TrimmedAt,
-		})
 	}
 
 	return list, err

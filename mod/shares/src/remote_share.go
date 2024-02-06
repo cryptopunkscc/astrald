@@ -355,8 +355,8 @@ func (share *RemoteShare) SetLastUpdate(t time.Time) error {
 	return share.mod.db.Save(&share.row).Error
 }
 
-func (share *RemoteShare) Info() (*sets.Info, error) {
-	return &sets.Info{
+func (share *RemoteShare) Info() (*sets.Stat, error) {
+	return &sets.Stat{
 		Name:        share.setName(),
 		Type:        "share",
 		Size:        0,

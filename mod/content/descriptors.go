@@ -19,6 +19,7 @@ type TypeDescriptor struct {
 func (TypeDescriptor) DescriptorType() string {
 	return "mod.content.type"
 }
+func (d TypeDescriptor) String() string { return d.Type }
 
 type LabelDescriptor struct {
 	Label string
@@ -27,3 +28,4 @@ type LabelDescriptor struct {
 func (LabelDescriptor) DescriptorType() string {
 	return "mod.content.label"
 }
+func (d LabelDescriptor) String() string { return d.Label }

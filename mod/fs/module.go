@@ -2,6 +2,7 @@ package fs
 
 import (
 	"github.com/cryptopunkscc/astrald/data"
+	"path/filepath"
 	"time"
 )
 
@@ -38,4 +39,10 @@ type FileDescriptor struct {
 
 func (FileDescriptor) DescriptorType() string {
 	return "mod.fs.file"
+}
+func (d FileDescriptor) String() string {
+	if len(d.Paths) == 0 {
+		return ""
+	}
+	return filepath.Base(d.Paths[0])
 }

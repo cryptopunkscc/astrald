@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/webdata"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"net/http"
 )
 
 type Loader struct{}
@@ -29,15 +28,6 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 			return nil, fmt.Errorf("config: cannot resolve identity: %w", err)
 		}
 	}
-
-	mod.rootHandler = NewRootHandler(mod)
-	mod.dataHandler = NewDataHandler(mod)
-	mod.setHandler = NewSetHandler(mod)
-
-	mod.mux = http.NewServeMux()
-	mod.mux.HandleFunc("/", mod.rootHandler.handleRequest)
-	mod.mux.HandleFunc("/data/", mod.dataHandler.handleRequest)
-	mod.mux.HandleFunc("/set/", mod.setHandler.handleRequest)
 
 	return mod, err
 }

@@ -1,6 +1,7 @@
 package keys
 
 import (
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 )
@@ -30,4 +31,7 @@ type KeyDescriptor struct {
 
 func (k KeyDescriptor) DescriptorType() string {
 	return "mod.keys.private_key"
+}
+func (k KeyDescriptor) String() string {
+	return fmt.Sprintf("Private key of {{%s}}", k.PublicKey.PublicKeyHex())
 }

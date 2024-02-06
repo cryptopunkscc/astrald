@@ -21,7 +21,7 @@ func (event EventMemberUpdate) String() string {
 }
 
 type EventSetCreated struct {
-	Info *Info
+	Stat *Stat
 }
 
 type EventSetDeleted struct {

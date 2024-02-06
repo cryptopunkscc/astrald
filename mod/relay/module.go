@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/net"
@@ -44,4 +45,7 @@ type CertDescriptor struct {
 
 func (CertDescriptor) DescriptorType() string {
 	return "mod.relay.cert"
+}
+func (d CertDescriptor) String() string {
+	return fmt.Sprintf("Relay certificate for {{%s}}@{{%s}}", d.TargetID, d.RelayID)
 }

@@ -15,8 +15,8 @@ type Module interface {
 	Create(set string, typ Type) (Set, error)
 	CreateBasic(name string, members ...data.ID) (Basic, error)
 	CreateUnion(name string, members ...string) (Union, error)
-	SetInfo(set string) (*Info, error)
-	All() ([]Info, error)
+	Stat(set string) (*Stat, error)
+	All() ([]string, error)
 	Where(dataID data.ID) ([]string, error)
 
 	Universe() Union
@@ -35,7 +35,7 @@ type Opener func(name string) (Set, error)
 
 type Set interface {
 	Scan(opts *ScanOpts) ([]*Member, error)
-	Info() (*Info, error)
+	Info() (*Stat, error)
 }
 
 type Basic interface {
@@ -70,10 +70,11 @@ type ScanOpts struct {
 	DataID         data.ID
 }
 
-type Info struct {
+type Stat struct {
 	Name        string
 	Type        Type
 	Size        int
+	DataSize    uint64
 	Visible     bool
 	Description string
 	CreatedAt   time.Time

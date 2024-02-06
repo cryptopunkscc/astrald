@@ -1,7 +1,6 @@
 package sets
 
 import (
-	"cmp"
 	"errors"
 	"flag"
 	"fmt"
@@ -160,25 +159,28 @@ func (adm *Admin) list(term admin.Terminal, _ []string) error {
 		return err
 	}
 
-	slices.SortFunc(list, func(a, b sets.Info) int {
-		return cmp.Compare(a.Name, b.Name)
-	})
+	slices.Sort(list)
 
 	var f = "%-20s %-6s %8s %1s %v\n"
 	term.Printf(f, admin.Header("Created at"), admin.Header("Type"), admin.Header("Size"), admin.Header("V"), admin.Header("Name"))
 	for _, item := range list {
+		set, err := adm.mod.Stat(item)
+		if err != nil {
+			continue
+		}
+
 		var v = "n"
-		if item.Visible {
+		if set.Visible {
 			v = "y"
 		}
-		name := item.Name
-		if item.Description != "" {
-			name = item.Description + " (" + item.Name + ")"
+		name := set.Name
+		if set.Description != "" {
+			name = set.Description + " (" + set.Name + ")"
 		}
 		term.Printf(f,
-			item.CreatedAt,
-			item.Type,
-			strconv.Itoa(item.Size),
+			set.CreatedAt,
+			set.Type,
+			strconv.Itoa(set.Size),
 			v,
 			name,
 		)

@@ -4,30 +4,22 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
-	"path"
 	"strconv"
 )
 
-type DataHandler struct {
-	*Module
-}
-
-func NewDataHandler(module *Module) *DataHandler {
-	return &DataHandler{Module: module}
-}
-
-func (mod *DataHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
-	dataID, err := data.Parse(path.Base(r.URL.Path))
+func (mod *Module) handleObjectsOpen(c *gin.Context) {
+	dataID, err := data.Parse(c.Param("id"))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Accept-Ranges", "bytes")
+	c.Header("Accept-Ranges", "bytes")
 
-	reqRange := r.Header.Get("Range")
+	reqRange := c.GetHeader("Range")
 
 	var opts = &storage.OpenOpts{Virtual: true, Network: true}
 	var length = int64(dataID.Size)
@@ -40,19 +32,26 @@ func (mod *DataHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	if err = mod.shares.Authorize(mod.identity, dataID); err != nil {
 		mod.log.Errorv(1, "denied %v access to %v: %v", mod.identity, dataID, err)
-		w.WriteHeader(http.StatusForbidden)
+		c.Status(http.StatusForbidden)
 		return
 	}
 
 	reader, err := mod.storage.Open(dataID, opts)
 	if err != nil {
 		mod.log.Errorv(2, "read %v: %v", dataID, err)
-		w.WriteHeader(http.StatusNotFound)
+		c.Status(http.StatusNotFound)
 		return
 	}
 	defer reader.Close()
 
-	w.Header().Set("Content-Length", strconv.FormatInt(length, 10))
+	c.Header("Content-Length", strconv.FormatInt(length, 10))
+
+	if d := c.Query("download"); d != "" {
+		c.Header(
+			"Content-Disposition",
+			fmt.Sprintf("attachment; filename=\"%s\"", dataID.String()),
+		)
+	}
 
 	if opts.Offset > 0 || uint64(length) != dataID.Size {
 		resRange := fmt.Sprintf("bytes %d-%d/%d",
@@ -61,9 +60,9 @@ func (mod *DataHandler) handleRequest(w http.ResponseWriter, r *http.Request) {
 			dataID.Size,
 		)
 
-		w.Header().Set("Content-Range", resRange)
-		w.WriteHeader(http.StatusPartialContent)
+		c.Header("Content-Range", resRange)
+		c.Status(http.StatusPartialContent)
 	}
 
-	io.CopyN(w, reader, length)
+	io.CopyN(c.Writer, reader, length)
 }

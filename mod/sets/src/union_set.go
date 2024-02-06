@@ -166,8 +166,8 @@ func (set *UnionSet) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 	return set.edit.Scan(opts)
 }
 
-func (set *UnionSet) Info() (*sets.Info, error) {
-	var info = &sets.Info{
+func (set *UnionSet) Info() (*sets.Stat, error) {
+	var info = &sets.Stat{
 		Name:        set.row.Name,
 		Type:        sets.Type(set.row.Type),
 		Size:        -1,
