@@ -15,7 +15,6 @@ import (
 	"html/template"
 	"io"
 	"net/http"
-	"regexp"
 )
 
 //go:embed assets/* tmpl/*
@@ -102,24 +101,4 @@ func (mod *Module) handleAssets(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
-}
-
-func (mod *Module) parseIdentities(s string) string {
-	pattern := regexp.MustCompile(`\{\{([0-9A-Fa-f]{66})}}`)
-
-	// Replace matches using a custom function
-	return pattern.ReplaceAllStringFunc(s, func(match string) string {
-		// Extract the hex string inside the curly braces
-		hex := pattern.FindStringSubmatch(match)[1]
-
-		identity, err := id.ParsePublicKeyHex(hex)
-		if err != nil {
-			return match
-		}
-
-		name := mod.node.Resolver().DisplayName(identity)
-
-		// Return the modified string
-		return name
-	})
 }

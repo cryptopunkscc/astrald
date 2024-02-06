@@ -29,9 +29,9 @@ func (mod *Module) LoadDependencies() error {
 	mod.fs, _ = modules.Load[fs.Module](mod.node, fs.ModuleName)
 
 	// make a set for identified data
-	mod.identified, err = sets.Open[sets.Basic](mod.sets, content.IdentifiedDataSetName)
+	mod.identified, err = mod.sets.Open(content.IdentifiedSet, false)
 	if err != nil {
-		mod.identified, err = mod.sets.CreateBasic(content.IdentifiedDataSetName)
+		mod.identified, err = mod.sets.Create(content.IdentifiedSet)
 		if err != nil {
 			return err
 		}

@@ -5,6 +5,7 @@ import (
 )
 
 const ModuleName = "user"
+const DBPrefix = "user__"
 
 type Module interface {
 	AddIdentity(identity id.Identity) error

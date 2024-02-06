@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/zip"
 )
 
-const archiveSetPrefix = "mod.zip.archive."
+const archiveSetPrefix = ".zip.contents."
 
 func (mod *Module) Index(zipID data.ID) error {
 	var zipRow dbZip
@@ -35,15 +35,16 @@ func (mod *Module) Index(zipID data.ID) error {
 
 	mod.log.Logv(1, "indexing %v", zipID)
 
-	// create database model
-	zipRow = dbZip{DataID: zipID}
+	// create database row and a set
+	var setName = archiveSetPrefix + zipID.String()
+
+	zipRow = dbZip{DataID: zipID, SetName: setName}
 	err = mod.db.Create(&zipRow).Error
 	if err != nil {
 		return err
 	}
 
-	var setName = archiveSetPrefix + zipID.String()
-	set, err := mod.sets.CreateBasic(setName)
+	set, err := mod.sets.CreateManaged(setName, ZipSetType)
 	if err != nil {
 		mod.log.Error("error creating set %v: %v", setName, err)
 		return err
@@ -89,7 +90,7 @@ func (mod *Module) Index(zipID data.ID) error {
 
 	mod.events.Emit(zip.EventArchiveIndexed{DataID: zipID})
 
-	err = mod.allArchived.Add(setName)
+	err = mod.sets.Virtual().AddSubset(setName)
 	if err != nil {
 		mod.log.Error("error adding %v to archives union: %v", setName, err)
 		return err
@@ -108,7 +109,7 @@ func (mod *Module) Unindex(zipID data.ID) error {
 		return err
 	}
 
-	mod.allArchived.Remove(archiveSetPrefix + zipID.String())
+	mod.sets.Virtual().RemoveSubset(row.SetName)
 
 	return mod.db.Delete(&row).Error
 }
@@ -126,7 +127,18 @@ func (mod *Module) restore(zipID data.ID) error {
 		return errors.New("zip not deleted")
 	}
 
-	return mod.allArchived.Add(archiveSetPrefix + zipID.String())
+	var setName string
+	err := mod.db.
+		Model(&dbZip{}).
+		Select("set_name").
+		Where("data_id = ?", zipID).
+		First(&setName).Error
+	if err != nil {
+		return err
+	}
+
+	err = mod.sets.Virtual().AddSubset(setName)
+	return err
 }
 
 func (mod *Module) Forget(zipID data.ID) error {
@@ -157,10 +169,9 @@ func (mod *Module) Forget(zipID data.ID) error {
 	}
 
 	// delete the set
-	setName := archiveSetPrefix + zipID.String()
-	mod.allArchived.Remove(setName)
+	mod.sets.Virtual().RemoveSubset(row.SetName)
 
-	set, err := mod.sets.Edit(setName)
+	set, err := mod.sets.Open(row.SetName, false)
 	if err != nil {
 		return err
 	}

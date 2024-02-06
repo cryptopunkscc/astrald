@@ -33,10 +33,9 @@ type Module struct {
 	readonly  *IndexerService
 	readwrite *ReadWriteService
 	memStore  *MemStore
-	memSet    sets.Basic
-	allSet    sets.Union
-	roSet     sets.Basic
-	rwSet     sets.Basic
+	memSet    sets.Set
+	roSet     sets.Set
+	rwSet     sets.Set
 }
 
 func (mod *Module) Prepare(ctx context.Context) error {

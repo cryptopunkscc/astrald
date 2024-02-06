@@ -2,6 +2,7 @@ package apphost
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"math/rand"
 )
 
@@ -11,7 +12,7 @@ type dbAccessToken struct {
 }
 
 func (dbAccessToken) TableName() string {
-	return "access_tokens"
+	return apphost.DBPrefix + "access_tokens"
 }
 
 func (mod *Module) CreateAccessToken(identity id.Identity) (string, error) {

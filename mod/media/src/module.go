@@ -19,10 +19,10 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	content content.Module
-	storage storage.Module
-	sets    sets.Module
-	allSet  sets.Basic
+	content    content.Module
+	storage    storage.Module
+	sets       sets.Module
+	indexedSet sets.Set
 
 	indexer *IndexerService
 }

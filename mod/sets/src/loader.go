@@ -13,6 +13,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	var err error
 	var mod = &Module{
 		node:   node,
+		config: defaultConfig,
 		log:    log,
 		assets: assets,
 	}
@@ -28,33 +29,40 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		return nil, err
 	}
 
-	mod.SetOpener(sets.TypeBasic, func(name string) (sets.Set, error) {
-		return mod.basicOpener(name)
-	})
-	mod.SetOpener(sets.TypeUnion, func(name string) (sets.Set, error) {
-		return mod.unionOpener(name)
+	// basic set has no additional wrapper
+	mod.SetWrapper(sets.TypeBasic, func(s sets.Set) (sets.Set, error) {
+		return s, nil
 	})
 
-	mod.universe, err = sets.Open[*UnionSet](mod, sets.UniverseSet)
-	if err != nil {
-		mod.universe, err = mod.createUnion(sets.UniverseSet)
-		if err != nil {
-			return nil, err
-		}
-		mod.SetVisible(sets.UniverseSet, true)
-		mod.SetDescription(sets.UniverseSet, "All data from everywhere")
-	}
+	// add a wrapper for a union set
+	mod.SetWrapper(sets.TypeUnion, mod.unionWrapper)
 
-	mod.localnode, err = sets.Open[*UnionSet](mod, sets.LocalNodeSet)
+	// create core sets
+	mod.device, err = mod.OpenOrCreateUnion(sets.DeviceSet)
 	if err != nil {
-		mod.localnode, err = mod.createUnion(sets.LocalNodeSet)
-		if err != nil {
-			return nil, err
-		}
-		mod.universe.Add(sets.LocalNodeSet)
-		mod.SetVisible(sets.LocalNodeSet, true)
-		mod.SetDescription(sets.LocalNodeSet, "All data on this node")
+		return nil, err
 	}
+	mod.device.SetDisplayName(mod.config.Display.Device)
+
+	mod.virtual, err = mod.OpenOrCreateUnion(sets.VirtualSet)
+	if err != nil {
+		return nil, err
+	}
+	mod.virtual.SetDisplayName(mod.config.Display.Virtual)
+
+	mod.network, err = mod.OpenOrCreateUnion(sets.NetworkSet)
+	if err != nil {
+		return nil, err
+	}
+	mod.network.SetDisplayName(mod.config.Display.Network)
+
+	mod.universe, err = mod.OpenOrCreateUnion(sets.UniverseSet)
+	if err != nil {
+		return nil, err
+	}
+	mod.universe.SetDisplayName(mod.config.Display.Universe)
+
+	mod.universe.AddSubset(sets.DeviceSet, sets.VirtualSet, sets.NetworkSet)
 
 	return mod, err
 }

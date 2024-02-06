@@ -134,6 +134,9 @@ func (adm *Admin) sync(term admin.Terminal, args []string) error {
 	}
 
 	share, err := adm.mod.FindOrCreateRemoteShare(caller, target)
+	if err != nil {
+		return err
+	}
 
 	err = share.Sync()
 	if err == nil {
@@ -221,12 +224,12 @@ func (adm *Admin) remote(term admin.Terminal, args []string) error {
 			return err
 		}
 
-		share, err := adm.mod.FindRemoteShare(caller, target)
+		share, err := adm.mod.findRemoteShare(caller, target)
 		if err != nil {
 			return err
 		}
 
-		scan, err := share.Scan(nil)
+		scan, err := share.set.Scan(nil)
 		if err != nil {
 			return err
 		}

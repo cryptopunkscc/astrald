@@ -18,87 +18,42 @@ import (
 	"time"
 )
 
-var _ sets.Set = &RemoteShare{}
 var _ shares.RemoteShare = &RemoteShare{}
 
 type RemoteShare struct {
 	mod    *Module
+	row    *dbRemoteShare
+	set    sets.Set
 	caller id.Identity
 	target id.Identity
-	set    sets.Editor
-	row    *dbRemoteShare
 }
 
-func (mod *Module) setOpener(name string) (sets.Set, error) {
-	after, ok := strings.CutPrefix(name, remoteShareSetPrefix+".")
-	if !ok {
-		return nil, errors.New("invalid set name")
-	}
-
-	idstr := strings.Split(after, ".")
-	if len(idstr) != 2 {
-		return nil, errors.New("invalid set name")
-	}
-
-	caller, err := id.ParsePublicKeyHex(idstr[0])
-	if err != nil {
-		return nil, err
-	}
-
-	target, err := id.ParsePublicKeyHex(idstr[1])
-	if err != nil {
-		return nil, err
-	}
-
+func (mod *Module) CreateRemoteShare(caller id.Identity, target id.Identity) (*RemoteShare, error) {
 	var share = &RemoteShare{
 		mod:    mod,
 		caller: caller,
 		target: target,
 	}
 
-	share.set, err = mod.sets.Edit(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return share, nil
-}
-
-func (mod *Module) CreateRemoteShare(caller id.Identity, target id.Identity) (*RemoteShare, error) {
-	var share = &RemoteShare{mod: mod, caller: caller, target: target}
-
 	var row = dbRemoteShare{
-		Caller: caller,
-		Target: target,
+		Caller:  caller,
+		Target:  target,
+		SetName: share.setName(),
 	}
-
 	var err = mod.db.Create(&row).Error
 	if err != nil {
+		if strings.Contains(err.Error(), "constraint failed") {
+			return nil, errors.New("remote share already exists")
+		}
 		return nil, err
 	}
-	share.row = &row
 
-	setName := share.setName()
-
-	_, err = mod.sets.Create(setName, shares.SetType)
+	share.set, err = mod.sets.CreateManaged(row.SetName, shares.RemoteSetType)
 	if err != nil {
-		return nil, err
+		mod.db.Delete(&row)
+		return nil, fmt.Errorf("cannot create set: %w", err)
 	}
-
-	share.set, err = mod.sets.Edit(setName)
-	if err != nil {
-		return nil, err
-	}
-
-	mod.remoteShares.Add(setName)
-	mod.sets.SetVisible(setName, true)
-	mod.sets.SetDescription(setName,
-		fmt.Sprintf(
-			"Data shared with %s by %s",
-			mod.node.Resolver().DisplayName(caller),
-			mod.node.Resolver().DisplayName(target),
-		),
-	)
+	mod.sets.Network().AddSubset(row.SetName)
 
 	return share, nil
 }
@@ -116,8 +71,14 @@ func (mod *Module) findRemoteShare(caller id.Identity, target id.Identity) (*Rem
 		return nil, err
 	}
 
-	var share = &RemoteShare{mod: mod, caller: caller, target: target, row: &row}
-	share.set, err = mod.sets.Edit(share.setName())
+	var share = &RemoteShare{
+		mod:    mod,
+		caller: caller,
+		target: target,
+		row:    &row,
+	}
+
+	share.set, err = mod.sets.Open(share.row.SetName, false)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +228,7 @@ func (share *RemoteShare) Reset() error {
 		return err
 	}
 
-	err = share.set.Reset()
+	err = share.set.Clear()
 	if err != nil {
 		return err
 	}
@@ -355,22 +316,10 @@ func (share *RemoteShare) SetLastUpdate(t time.Time) error {
 	return share.mod.db.Save(&share.row).Error
 }
 
-func (share *RemoteShare) Info() (*sets.Stat, error) {
-	return &sets.Stat{
-		Name:        share.setName(),
-		Type:        "share",
-		Size:        0,
-		Visible:     false,
-		Description: "",
-		CreatedAt:   time.Time{},
-		TrimmedAt:   share.set.TrimmedAt(),
-	}, nil
-}
-
 func (share *RemoteShare) setName() string {
 	return fmt.Sprintf("%v.%v.%v",
 		remoteShareSetPrefix,
-		share.caller.PublicKeyHex(),
-		share.target.PublicKeyHex(),
+		share.mod.node.Resolver().DisplayName(share.caller),
+		share.mod.node.Resolver().DisplayName(share.target),
 	)
 }

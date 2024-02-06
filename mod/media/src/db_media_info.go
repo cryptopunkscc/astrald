@@ -2,6 +2,7 @@ package media
 
 import (
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/media"
 	"time"
 )
 
@@ -16,5 +17,5 @@ type dbMediaInfo struct {
 }
 
 func (dbMediaInfo) TableName() string {
-	return "media_info"
+	return media.DBPrefix + "media_info"
 }

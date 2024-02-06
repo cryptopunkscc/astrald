@@ -84,7 +84,7 @@ func (mod *Module) Identify(dataID data.ID) (*content.TypeInfo, error) {
 func (mod *Module) IdentifySet(name string) ([]*content.TypeInfo, error) {
 	var list []*content.TypeInfo
 
-	set, err := mod.sets.Open(name)
+	set, err := mod.sets.Open(name, false)
 	if err != nil {
 		return nil, err
 	}

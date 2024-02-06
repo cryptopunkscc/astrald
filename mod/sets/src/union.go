@@ -2,34 +2,34 @@ package sets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"gorm.io/gorm"
 )
 
-var _ sets.Union = &UnionSet{}
+var _ sets.Union = &Union{}
 
-type UnionSet struct {
-	*Module
-	row  *dbSet
-	edit sets.Editor
+type Union struct {
+	sets.Set
+	mod *Module
+	row *dbSet
 }
 
-func (mod *Module) unionOpener(name string) (*UnionSet, error) {
+func (mod *Module) unionWrapper(set sets.Set) (sets.Set, error) {
 	var err error
-	var set = &UnionSet{Module: mod}
 
-	set.row, err = mod.dbFindSetByName(name)
+	var union = &Union{
+		Set: set,
+		mod: mod,
+	}
+
+	union.row, err = mod.dbFindSetByName(set.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	set.edit, err = mod.Edit(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return set, nil
+	return union, nil
 }
 
 func (mod *Module) watchUnionMembers(ctx context.Context) error {
@@ -78,7 +78,7 @@ func (mod *Module) syncInclusions(inclusions ...dbSetInclusion) error {
 	}
 
 	for _, row := range rows {
-		super, err := sets.Open[*UnionSet](mod, row.Name)
+		super, err := mod.OpenUnion(row.Name, false)
 		if err != nil {
 			continue
 		}
@@ -88,60 +88,66 @@ func (mod *Module) syncInclusions(inclusions ...dbSetInclusion) error {
 	return nil
 }
 
-func (set *UnionSet) Add(names ...string) error {
+func (set *Union) AddSubset(names ...string) error {
 	defer set.Sync()
+	var errs []error
 
 	for _, name := range names {
-		subsetRow, err := set.dbFindSetByName(name)
+		subsetRow, err := set.mod.dbFindSetByName(name)
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 
-		err = set.db.Create(&dbSetInclusion{
+		err = set.mod.db.Create(&dbSetInclusion{
 			SupersetID: set.row.ID,
 			SubsetID:   subsetRow.ID,
 		}).Error
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 	}
 
-	set.events.Emit(eventSetUpdated{row: set.row})
-	set.events.Emit(sets.EventSetUpdated{Name: set.row.Name})
+	set.mod.events.Emit(eventSetUpdated{row: set.row})
+	set.mod.events.Emit(sets.EventSetUpdated{Name: set.row.Name})
 
-	return nil
+	return errors.Join(errs...)
 }
 
-func (set *UnionSet) Remove(names ...string) error {
+func (set *Union) RemoveSubset(names ...string) error {
 	defer set.Sync()
+	var errs []error
 
 	for _, name := range names {
-		subsetRow, err := set.dbFindSetByName(name)
+		subsetRow, err := set.mod.dbFindSetByName(name)
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 
-		err = set.db.Delete(&dbSetInclusion{
+		err = set.mod.db.Delete(&dbSetInclusion{
 			SupersetID: set.row.ID,
 			SubsetID:   subsetRow.ID,
 		}).Error
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
-func (set *UnionSet) Subsets() ([]string, error) {
+func (set *Union) Subsets() ([]string, error) {
 	var list []string
 
-	var err = set.db.
+	var err = set.mod.db.
 		Model(&dbSet{}).
 		Select("name").
 		Where(
 			"id IN (?)",
-			set.db.
+			set.mod.db.
 				Model(&dbSetInclusion{}).
 				Where("superset_id = ?", set.row.ID).
 				Select("subset_id"),
@@ -151,7 +157,7 @@ func (set *UnionSet) Subsets() ([]string, error) {
 	return list, err
 }
 
-func (set *UnionSet) Sync() error {
+func (set *Union) Sync() error {
 	var err error
 
 	err = set.deleteExcess()
@@ -162,38 +168,7 @@ func (set *UnionSet) Sync() error {
 	return set.addMissing()
 }
 
-func (set *UnionSet) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
-	return set.edit.Scan(opts)
-}
-
-func (set *UnionSet) Info() (*sets.Stat, error) {
-	var info = &sets.Stat{
-		Name:        set.row.Name,
-		Type:        sets.Type(set.row.Type),
-		Size:        -1,
-		Visible:     set.row.Visible,
-		Description: set.row.Description,
-		CreatedAt:   set.row.CreatedAt,
-		TrimmedAt:   set.row.TrimmedAt,
-	}
-
-	var count int64
-
-	var tx = set.db.
-		Model(&dbMember{}).
-		Where("set_id = ? and removed = false", set.row.ID).
-		Count(&count)
-
-	if tx.Error != nil {
-		return nil, tx.Error
-	}
-
-	info.Size = int(count)
-
-	return info, nil
-}
-
-func (set *UnionSet) deleteExcess() error {
+func (set *Union) deleteExcess() error {
 	var err error
 	var ids []uint
 
@@ -203,10 +178,10 @@ func (set *UnionSet) deleteExcess() error {
 		return fmt.Errorf("select error: %w", err)
 	}
 
-	return set.edit.RemoveByID(ids...)
+	return set.Set.RemoveByID(ids...)
 }
 
-func (set *UnionSet) addMissing() error {
+func (set *Union) addMissing() error {
 	var err error
 	var missingIDs []uint
 
@@ -215,37 +190,37 @@ func (set *UnionSet) addMissing() error {
 		return err
 	}
 
-	return set.edit.AddByID(missingIDs...)
+	return set.Set.AddByID(missingIDs...)
 }
 
-func (set *UnionSet) dbSubsets() *gorm.DB {
-	return set.db.
+func (set *Union) dbSubsets() *gorm.DB {
+	return set.mod.db.
 		Model(&dbSetInclusion{}).
 		Select("subset_id").
 		Where("superset_id = ?", set.row.ID)
 }
 
-func (set *UnionSet) dbMembers() *gorm.DB {
-	return set.db.
+func (set *Union) dbMembers() *gorm.DB {
+	return set.mod.db.
 		Model(&dbMember{}).
 		Select("data_id").
 		Where("removed = false AND set_id = ?", set.row.ID)
 }
 
-func (set *UnionSet) dbSubsetMembers() *gorm.DB {
-	return set.db.
+func (set *Union) dbSubsetMembers() *gorm.DB {
+	return set.mod.db.
 		Model(&dbMember{}).
 		Select("data_id").
 		Distinct("data_id").
 		Where("removed = false AND set_id IN (?)", set.dbSubsets())
 }
 
-func (set *UnionSet) dbExcessMembers() *gorm.DB {
+func (set *Union) dbExcessMembers() *gorm.DB {
 	return set.dbMembers().
 		Where("removed = false AND data_id NOT in (?)", set.dbSubsetMembers())
 }
 
-func (set *UnionSet) dbMissingMembers() *gorm.DB {
+func (set *Union) dbMissingMembers() *gorm.DB {
 	return set.dbSubsetMembers().
 		Where("data_id NOT IN (?)", set.dbMembers())
 }

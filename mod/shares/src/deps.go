@@ -35,21 +35,9 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(shares.ModuleName, NewAdmin(mod))
 	}
 
-	mod.sets.SetOpener(shares.SetType, mod.setOpener)
-	mod.sets.Create(publicSetName, sets.TypeBasic)
+	mod.sets.SetWrapper(shares.RemoteSetType, mod.remoteShareWrapper)
 	mod.storage.AddOpener(shares.ModuleName, mod, 10)
 	mod.content.AddDescriber(mod)
-
-	mod.remoteShares, err = sets.Open[sets.Union](mod.sets, shares.RemoteSharesSetName)
-	if err != nil {
-		mod.remoteShares, err = mod.sets.CreateUnion(shares.RemoteSharesSetName)
-		if err != nil {
-			return err
-		}
-		mod.sets.SetDescription(shares.RemoteSharesSetName, "All data from remote shares")
-		mod.sets.SetVisible(shares.RemoteSharesSetName, true)
-		mod.sets.Universe().Add(shares.RemoteSharesSetName)
-	}
 
 	go events.Handle(context.Background(), mod.node.Events(),
 		func(event sets.EventMemberUpdate) error {

@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+const IndexedSet = ".mod.media.index"
+
 func (mod *Module) LoadDependencies() error {
 	var err error
 
@@ -45,14 +47,9 @@ func (mod *Module) LoadDependencies() error {
 	mod.content.AddPrototypes(media.Descriptor{})
 
 	// create our sets if needed
-	mod.allSet, err = sets.Open[sets.Basic](mod.sets, media.AllSet)
+	mod.indexedSet, err = mod.sets.Open(IndexedSet, true)
 	if err != nil {
-		mod.allSet, err = mod.sets.CreateBasic(media.AllSet)
-		if err != nil {
-			return err
-		}
-		mod.sets.SetVisible(media.AllSet, true)
-		mod.sets.SetDescription(media.AllSet, "All media")
+		return err
 	}
 
 	return nil

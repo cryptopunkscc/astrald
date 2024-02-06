@@ -4,14 +4,13 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/sets"
 	"time"
 )
 
 const ModuleName = "shares"
 const DBPrefix = "shares__"
-const SetType = "share"
-const RemoteSharesSetName = "mod.shares.remote"
+const RemoteSetType = "remote"
+const LocalSetType = "local"
 
 type Module interface {
 	Authorizer
@@ -27,7 +26,6 @@ type Authorizer interface {
 }
 
 type RemoteShare interface {
-	Scan(opts *sets.ScanOpts) ([]*sets.Member, error)
 	Sync() error
 	Unsync() error
 	LastUpdate() time.Time

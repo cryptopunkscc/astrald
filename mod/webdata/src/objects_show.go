@@ -1,14 +1,17 @@
 package webdata
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"slices"
 	"strconv"
 )
 
@@ -24,7 +27,7 @@ type objectsShowPage struct {
 	DisplayName string
 	DataID      data.ID
 	Type        string
-	Sets        []string
+	Sets        []setShort
 	Descs       []desc
 }
 
@@ -48,8 +51,22 @@ func (mod *Module) handleObjectsShow(c *gin.Context) {
 	var page = objectsShowPage{
 		DataID:      dataID,
 		DisplayName: dataID.String(),
-		Sets:        where,
 	}
+
+	for _, setName := range where {
+		set, err := mod.sets.Open(setName, false)
+		if err != nil {
+			continue
+		}
+		page.Sets = append(page.Sets, setShort{
+			Name:        setName,
+			DisplayName: node.FormatString(mod.node, set.DisplayName()),
+		})
+	}
+
+	slices.SortFunc(page.Sets, func(a, b setShort) int {
+		return cmp.Compare(a.DisplayName, b.DisplayName)
+	})
 
 	best := slicesSelect(descs, mod.preferredDesc)
 	if best != nil {
@@ -80,7 +97,7 @@ func (mod *Module) handleObjectsShow(c *gin.Context) {
 		})
 	}
 
-	page.DisplayName = mod.parseIdentities(page.DisplayName)
+	page.DisplayName = node.FormatString(mod.node, page.DisplayName)
 
 	c.HTML(http.StatusOK, "objects.show.gohtml", &page)
 }

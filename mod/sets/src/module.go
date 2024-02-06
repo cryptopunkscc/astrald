@@ -2,7 +2,6 @@ package sets
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/sets"
@@ -17,137 +16,33 @@ import (
 var _ sets.Module = &Module{}
 
 type Module struct {
-	config  Config
-	node    node.Node
-	log     *log.Logger
-	assets  assets.Assets
-	events  events.Queue
-	db      *gorm.DB
-	openers sig.Map[string, sets.Opener]
+	config   Config
+	node     node.Node
+	log      *log.Logger
+	assets   assets.Assets
+	events   events.Queue
+	db       *gorm.DB
+	wrappers sig.Map[string, sets.WrapperFunc]
 
-	universe  *UnionSet
-	localnode *UnionSet
+	universe sets.Union
+	device   sets.Union
+	virtual  sets.Union
+	network  sets.Union
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
-		&Service{Module: mod},
 		tasks.RunFuncAdapter{RunFunc: mod.watchUnionMembers},
 	).Run(ctx)
 }
 
-func (mod *Module) Edit(set string) (sets.Editor, error) {
-	return NewEditor(mod, set)
+func (mod *Module) SetWrapper(typ sets.Type, manager sets.WrapperFunc) {
+	mod.wrappers.Replace(string(typ), manager)
 }
 
-func (mod *Module) Open(set string) (sets.Set, error) {
-	var row dbSet
-	var err = mod.db.Where("name = ?", set).First(&row).Error
-	if err != nil {
-		return nil, err
-	}
-
-	opener, ok := mod.openers.Get(row.Type)
-	if !ok {
-		return nil, errors.New("unsupported set type")
-	}
-
-	return opener(set)
-}
-
-func (mod *Module) openByID(id uint) (sets.Set, error) {
-	var row dbSet
-	var err = mod.db.Where("id = ?", id).First(&row).Error
-	if err != nil {
-		return nil, err
-	}
-
-	opener, ok := mod.openers.Get(row.Type)
-	if !ok {
-		return nil, errors.New("unsupported set type")
-	}
-
-	return opener(row.Name)
-}
-
-func (mod *Module) SetOpener(typ sets.Type, opener sets.Opener) {
-	mod.openers.Replace(string(typ), opener)
-}
-
-func (mod *Module) GetOpener(typ sets.Type) sets.Opener {
-	v, _ := mod.openers.Get(string(typ))
+func (mod *Module) Wrapper(typ sets.Type) sets.WrapperFunc {
+	v, _ := mod.wrappers.Get(string(typ))
 	return v
-}
-
-func (mod *Module) Create(name string, typ sets.Type) (sets.Set, error) {
-	opener, found := mod.openers.Get(string(typ))
-	if !found {
-		return nil, errors.New("unsupported set type")
-	}
-
-	var row = dbSet{
-		Name: name,
-		Type: string(typ),
-	}
-	err := mod.db.Create(&row).Error
-	if err != nil {
-		return nil, err
-	}
-
-	set, err := opener(name)
-	if err != nil {
-		return nil, err
-	}
-
-	var info = &sets.Stat{
-		Name:      row.Name,
-		Type:      sets.Type(row.Type),
-		Size:      0,
-		CreatedAt: row.CreatedAt,
-		TrimmedAt: row.TrimmedAt,
-	}
-
-	mod.events.Emit(sets.EventSetCreated{Stat: info})
-
-	return set, nil
-}
-
-func (mod *Module) CreateBasic(name string, members ...data.ID) (sets.Basic, error) {
-	s, err := mod.Create(name, sets.TypeBasic)
-	if err != nil {
-		return nil, err
-	}
-	set, ok := s.(*BasicSet)
-	if !ok {
-		panic("typecast failed")
-	}
-
-	return set, set.Add(members...)
-}
-
-func (mod *Module) CreateUnion(name string, members ...string) (sets.Union, error) {
-	return mod.createUnion(name, members...)
-}
-
-func (mod *Module) Universe() sets.Union {
-	return mod.universe
-}
-
-func (mod *Module) Localnode() sets.Union {
-	return mod.localnode
-}
-
-func (mod *Module) createUnion(name string, members ...string) (*UnionSet, error) {
-	s, err := mod.Create(name, sets.TypeUnion)
-	if err != nil {
-		return nil, err
-	}
-	set, ok := s.(*UnionSet)
-	if !ok {
-		panic("typecast failed")
-	}
-
-	return set, set.Add(members...)
 }
 
 func (mod *Module) Stat(name string) (*sets.Stat, error) {
@@ -225,7 +120,7 @@ func (mod *Module) All() ([]string, error) {
 }
 
 func (mod *Module) Scan(name string, opts *sets.ScanOpts) ([]*sets.Member, error) {
-	set, err := mod.Open(name)
+	set, err := mod.Open(name, false)
 	if err != nil {
 		return nil, err
 	}
@@ -247,4 +142,20 @@ func (mod *Module) SetDescription(name string, desc string) error {
 		Where("name = ?", name).
 		Update("description", desc).
 		Error
+}
+
+func (mod *Module) Universe() sets.Union {
+	return mod.universe
+}
+
+func (mod *Module) Device() sets.Union {
+	return mod.device
+}
+
+func (mod *Module) Virtual() sets.Union {
+	return mod.virtual
+}
+
+func (mod *Module) Network() sets.Union {
+	return mod.network
 }

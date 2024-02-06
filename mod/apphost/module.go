@@ -5,6 +5,7 @@ import (
 )
 
 const ModuleName = "apphost"
+const DBPrefix = "apphost__"
 
 type Module interface {
 	SetDefaultIdentity(id.Identity) error

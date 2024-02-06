@@ -22,23 +22,21 @@ import (
 var _ shares.Module = &Module{}
 
 type Module struct {
-	config       Config
-	node         node.Node
-	log          *log.Logger
-	assets       assets.Assets
-	db           *gorm.DB
-	authorizers  sig.Set[shares.Authorizer]
-	storage      storage.Module
-	sets         sets.Module
-	content      content.Module
-	notify       sig.Map[string, *Notification]
-	remoteShares sets.Union
-	tasks        chan func(ctx context.Context)
+	config      Config
+	node        node.Node
+	log         *log.Logger
+	assets      assets.Assets
+	db          *gorm.DB
+	authorizers sig.Set[shares.Authorizer]
+	storage     storage.Module
+	sets        sets.Module
+	content     content.Module
+	notify      sig.Map[string, *Notification]
+	tasks       chan func(ctx context.Context)
 }
 
-const localShareSetPrefix = "mod.shares.local"
-const remoteShareSetPrefix = "mod.shares.remote"
-const publicSetName = "mod.shares.public"
+const localShareSetPrefix = ".shares.local"
+const remoteShareSetPrefix = ".shares.remote"
 const resyncInterval = time.Hour
 const resyncAge = 5 * time.Minute
 const workers = 8

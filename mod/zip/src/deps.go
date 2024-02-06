@@ -38,16 +38,7 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(zip.ModuleName, NewAdmin(mod))
 	}
 
-	// load set
-	mod.allArchived, err = sets.Open[sets.Union](mod.sets, zip.AllArchivedSet)
-	if err != nil {
-		mod.allArchived, err = mod.sets.CreateUnion(zip.AllArchivedSet)
-		if err != nil {
-			return err
-		}
-		mod.sets.Localnode().Add(zip.AllArchivedSet)
-	}
-
+	mod.sets.SetWrapper(ZipSetType, mod.wrapper)
 	mod.content.AddDescriber(mod)
 	mod.content.AddPrototypes(zip.ArchiveDescriptor{}, zip.MemberDescriptor{})
 	mod.shares.AddAuthorizer(mod)

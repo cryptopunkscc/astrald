@@ -8,10 +8,14 @@ import (
 	"time"
 )
 
+const explicitSuffix = ".explicit"
+
 type LocalShare struct {
+	mod      *Module
 	identity id.Identity
 	union    sets.Union
-	basic    sets.Basic
+	explicit sets.Set
+	row      *dbLocalShare
 }
 
 func (mod *Module) FindOrCreateLocalShare(identity id.Identity) (*LocalShare, error) {
@@ -24,44 +28,58 @@ func (mod *Module) FindOrCreateLocalShare(identity id.Identity) (*LocalShare, er
 
 func (mod *Module) CreateLocalShare(identity id.Identity) (*LocalShare, error) {
 	var err error
-	var share = &LocalShare{identity: identity}
+	var share = &LocalShare{mod: mod, identity: identity}
 
-	share.union, err = mod.sets.CreateUnion(share.unionSetName())
+	// create database row
+	var row = dbLocalShare{
+		Caller:  identity,
+		SetName: share.rootSetName(),
+	}
+
+	err = mod.db.Create(&row).Error
 	if err != nil {
 		return nil, err
 	}
+	share.row = &row
 
-	share.basic, err = mod.sets.CreateBasic(share.basicSetName())
+	// create set structure
+	share.union, err = mod.sets.CreateUnion(row.SetName)
 	if err != nil {
 		return nil, err
 	}
+	share.union.SetDisplayName(fmt.Sprintf("Data shared with {{%s}}", identity))
 
-	err = share.union.Add(share.basicSetName())
+	share.explicit, err = mod.sets.Create(row.SetName + explicitSuffix)
 	if err != nil {
 		return nil, err
 	}
+	share.explicit.SetDisplayName(fmt.Sprintf("Data shared with {{%s}} (explicit)", identity))
 
-	mod.sets.SetVisible(share.unionSetName(), true)
-	mod.sets.SetDescription(share.unionSetName(),
-		fmt.Sprintf(
-			"Data shared with %s",
-			mod.node.Resolver().DisplayName(identity),
-		),
-	)
+	err = share.union.AddSubset(row.SetName + explicitSuffix)
+	if err != nil {
+		return nil, err
+	}
 
 	return share, nil
 }
 
 func (mod *Module) FindLocalShare(identity id.Identity) (*LocalShare, error) {
 	var err error
-	var share = &LocalShare{identity: identity}
+	var share = &LocalShare{mod: mod, identity: identity}
 
-	share.union, err = sets.Open[sets.Union](mod.sets, share.unionSetName())
+	err = mod.db.
+		Where("caller = ?", identity).
+		First(&share.row).Error
 	if err != nil {
 		return nil, err
 	}
 
-	share.basic, err = sets.Open[sets.Basic](mod.sets, share.basicSetName())
+	share.union, err = mod.sets.OpenUnion(share.row.SetName, false)
+	if err != nil {
+		return nil, err
+	}
+
+	share.explicit, err = mod.sets.Open(share.row.SetName+explicitSuffix, false)
 	if err != nil {
 		return nil, err
 	}
@@ -70,19 +88,19 @@ func (mod *Module) FindLocalShare(identity id.Identity) (*LocalShare, error) {
 }
 
 func (share *LocalShare) AddData(dataID ...data.ID) error {
-	return share.basic.Add(dataID...)
+	return share.explicit.Add(dataID...)
 }
 
 func (share *LocalShare) AddSet(name ...string) error {
-	return share.union.Add(name...)
+	return share.union.AddSubset(name...)
 }
 
 func (share *LocalShare) RemoveData(dataID ...data.ID) error {
-	return share.basic.Remove(dataID...)
+	return share.explicit.Remove(dataID...)
 }
 
 func (share *LocalShare) RemoveSet(name ...string) error {
-	return share.union.Remove(name...)
+	return share.union.RemoveSubset(name...)
 }
 
 func (share *LocalShare) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
@@ -90,23 +108,18 @@ func (share *LocalShare) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 }
 
 func (share *LocalShare) TrimmedAt() time.Time {
-	info, err := share.union.Info()
+	info, err := share.union.Stat()
 	if err != nil {
 		return time.Time{}
 	}
 	return info.TrimmedAt
 }
 
-func (share *LocalShare) basicSetName() string {
-	return fmt.Sprintf("%v.%v.set",
-		localShareSetPrefix,
-		share.identity.PublicKeyHex(),
-	)
-}
+func (share *LocalShare) rootSetName() string {
+	name := share.mod.node.Resolver().DisplayName(share.identity)
 
-func (share *LocalShare) unionSetName() string {
 	return fmt.Sprintf("%v.%v",
 		localShareSetPrefix,
-		share.identity.PublicKeyHex(),
+		name,
 	)
 }

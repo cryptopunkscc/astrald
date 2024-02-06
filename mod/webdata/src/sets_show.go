@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/sets"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -24,13 +25,19 @@ func (o *object) SizeHuman() string {
 	return log.DataSize(o.DataID.Size).HumanReadable()
 }
 
+type setShort struct {
+	Name        string
+	DisplayName string
+}
+
 type setPage struct {
 	Name        string
 	DisplayName string
 	Count       int
 	TotalSize   uint64
 	Type        string
-	Subsets     []string
+	SubsetCount int
+	Subsets     []setShort
 	Objects     []*object
 }
 
@@ -41,13 +48,13 @@ func (p *setPage) TotalSizeHuman() string {
 func (mod *Module) handleSetsShow(c *gin.Context) {
 	setName := c.Param("name")
 
-	stat, err := mod.sets.Stat(setName)
+	set, err := mod.sets.Open(setName, false)
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
 
-	set, err := mod.sets.Open(setName)
+	stat, err := set.Stat()
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
@@ -60,15 +67,11 @@ func (mod *Module) handleSetsShow(c *gin.Context) {
 	}
 
 	var page = setPage{
-		Name:      setName,
-		Count:     stat.Size,
-		TotalSize: stat.DataSize,
-		Type:      string(stat.Type),
-	}
-
-	page.DisplayName = stat.Name
-	if stat.Description != "" {
-		page.DisplayName = stat.Description
+		DisplayName: node.FormatString(mod.node, set.DisplayName()),
+		Name:        setName,
+		Count:       stat.Size,
+		TotalSize:   stat.DataSize,
+		Type:        string(stat.Type),
 	}
 
 	for _, m := range members {
@@ -94,7 +97,7 @@ func (mod *Module) handleSetsShow(c *gin.Context) {
 			}
 		}
 
-		obj.DisplayName = mod.parseIdentities(obj.DisplayName)
+		obj.DisplayName = node.FormatString(mod.node, obj.DisplayName)
 
 		page.Objects = append(page.Objects, obj)
 	}
@@ -105,7 +108,26 @@ func (mod *Module) handleSetsShow(c *gin.Context) {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		page.Subsets, _ = union.Subsets()
+
+		subsets, _ := union.Subsets()
+		for _, subname := range subsets {
+			sub, err := mod.sets.Open(subname, false)
+			if err != nil {
+				page.Subsets = append(page.Subsets, setShort{
+					Name:        subname,
+					DisplayName: subname,
+				})
+				continue
+			}
+			page.Subsets = append(
+				page.Subsets,
+				setShort{
+					Name:        subname,
+					DisplayName: node.FormatString(mod.node, sub.DisplayName()),
+				},
+			)
+		}
+		page.SubsetCount = len(page.Subsets)
 	}
 
 	c.HTML(http.StatusOK, "sets.show.gohtml", &page)

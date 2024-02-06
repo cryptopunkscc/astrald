@@ -1,66 +1,60 @@
 package sets
 
 import (
-	"errors"
 	"github.com/cryptopunkscc/astrald/data"
 	"time"
 )
 
 const ModuleName = "sets"
-const LocalNodeSet = "localnode"
+const DeviceSet = "device"
+const VirtualSet = "virtual"
+const NetworkSet = "network"
 const UniverseSet = "universe"
 const DBPrefix = "sets__"
 
 type Module interface {
-	Create(set string, typ Type) (Set, error)
-	CreateBasic(name string, members ...data.ID) (Basic, error)
-	CreateUnion(name string, members ...string) (Union, error)
-	Stat(set string) (*Stat, error)
+	Create(name string) (Set, error)
+	CreateUnion(name string) (Union, error)
+	CreateManaged(name string, typ Type) (Set, error)
+
+	Open(name string, create bool) (Set, error)
+	OpenUnion(name string, create bool) (Union, error)
+
 	All() ([]string, error)
 	Where(dataID data.ID) ([]string, error)
 
+	SetWrapper(typ Type, fn WrapperFunc)
+	Wrapper(typ Type) WrapperFunc
+
 	Universe() Union
-	Localnode() Union
-
-	SetVisible(set string, visible bool) error
-	SetDescription(set string, desc string) error
-
-	SetOpener(typ Type, opener Opener)
-	GetOpener(typ Type) Opener
-	Open(set string) (Set, error)
-	Edit(set string) (Editor, error)
+	Device() Union
+	Virtual() Union
+	Network() Union
 }
 
-type Opener func(name string) (Set, error)
+type WrapperFunc func(Set) (Set, error)
 
 type Set interface {
-	Scan(opts *ScanOpts) ([]*Member, error)
-	Info() (*Stat, error)
-}
-
-type Basic interface {
-	Set
-	Add(dataID ...data.ID) error
-	Remove(dataID ...data.ID) error
-}
-
-type Union interface {
-	Set
-	Add(name ...string) error
-	Remove(name ...string) error
-	Subsets() ([]string, error)
-}
-
-type Editor interface {
+	Name() string
+	DisplayName() string
+	SetDisplayName(s string) error
 	Scan(opts *ScanOpts) ([]*Member, error)
 	Add(...data.ID) error
 	AddByID(...uint) error
 	Remove(...data.ID) error
 	RemoveByID(...uint) error
 	Delete() error
-	Reset() error
+	Clear() error
 	Trim(time.Time) error
-	TrimmedAt() time.Time
+	Stat() (*Stat, error)
+}
+
+type Union interface {
+	Set
+	Sync() error
+	AddSubset(name ...string) error
+	RemoveSubset(name ...string) error
+	Subsets() ([]string, error)
 }
 
 type ScanOpts struct {
@@ -93,18 +87,3 @@ const (
 	TypeBasic = Type("basic")
 	TypeUnion = Type("union")
 )
-
-func Open[T any](mod Module, name string) (T, error) {
-	var set any
-	var err error
-	var zero T
-
-	set, err = mod.Open(name)
-	if err != nil {
-		return zero, err
-	}
-	if t, ok := set.(T); ok {
-		return t, nil
-	}
-	return zero, errors.New("typecast failed")
-}

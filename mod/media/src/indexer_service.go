@@ -27,7 +27,7 @@ var ErrAlreadyIndexed = errors.New("already indexed")
 
 func (srv *IndexerService) Run(ctx context.Context) error {
 	for event := range srv.content.Scan(ctx, nil) {
-		scan, err := srv.allSet.Scan(&sets.ScanOpts{DataID: event.DataID})
+		scan, err := srv.indexedSet.Scan(&sets.ScanOpts{DataID: event.DataID})
 		if err != nil || len(scan) > 0 {
 			continue
 		}
@@ -98,7 +98,7 @@ func (srv *IndexerService) indexAs(dataID data.ID, dataType string, enableNetwor
 		return info, err
 	}
 
-	return info, srv.allSet.Add(dataID)
+	return info, srv.indexedSet.Add(dataID)
 }
 
 func (srv *IndexerService) indexData(dataID data.ID) (*media.Info, error) {

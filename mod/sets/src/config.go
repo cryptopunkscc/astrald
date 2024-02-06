@@ -1,6 +1,21 @@
 package sets
 
-type Config struct {
+type configDisplay struct {
+	Device   string
+	Network  string
+	Virtual  string
+	Universe string
 }
 
-var defaultConfig = Config{}
+type Config struct {
+	Display configDisplay
+}
+
+var defaultConfig = Config{
+	Display: configDisplay{
+		Device:   "Device",
+		Network:  "Network",
+		Virtual:  "Virtual",
+		Universe: "Universe",
+	},
+}

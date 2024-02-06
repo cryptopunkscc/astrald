@@ -6,11 +6,13 @@ import (
 	"time"
 )
 
-const ModuleName = "fs"
-const AllSetName = "mod.fs.all"
-const MemorySetName = "mod.fs.mem"
-const ReadOnlySetName = "mod.fs.ro"
-const ReadWriteSetName = "mod.fs.rw"
+const (
+	ModuleName       = "fs"
+	DBPrefix         = "fs__"
+	MemorySetName    = ".fs.memory"
+	ReadOnlySetName  = ".fs.readonly"
+	ReadWriteSetName = ".fs.readwrite"
+)
 
 type Module interface {
 	Find(id data.ID) []string

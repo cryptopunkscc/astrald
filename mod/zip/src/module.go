@@ -17,6 +17,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const ZipSetType = "zip"
+
 type Module struct {
 	config Config
 	node   node.Node
@@ -28,8 +30,6 @@ type Module struct {
 	storage storage.Module
 	shares  shares.Module
 	sets    sets.Module
-
-	allArchived sets.Union
 }
 
 func (mod *Module) Run(ctx context.Context) error {

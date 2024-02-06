@@ -1,13 +1,16 @@
 package content
 
-import "github.com/cryptopunkscc/astrald/data"
+import (
+	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/mod/content"
+)
 
 type dbLabel struct {
 	DataID string `gorm:"primaryKey,index"`
 	Label  string
 }
 
-func (dbLabel) TableName() string { return "labels" }
+func (dbLabel) TableName() string { return content.DBPrefix + "labels" }
 
 func (mod *Module) SetLabel(dataID data.ID, label string) {
 	mod.db.Where("data_id = ?", dataID.String()).Delete(&dbLabel{})

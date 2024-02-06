@@ -1,9 +1,12 @@
 package webdata
 
 import (
+	"cmp"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"slices"
 )
 
 type setInfo struct {
@@ -28,30 +31,30 @@ func (mod *Module) handleSetsIndex(c *gin.Context) {
 		if setName[0] == '.' && !showHidden {
 			continue
 		}
-		stat, err := mod.sets.Stat(setName)
+		set, err := mod.sets.Open(setName, false)
+		if err != nil {
+			continue
+		}
+
+		stat, err := set.Stat()
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 			mod.log.Errorv(1, "sets.Stat %s: %v", setName, err)
 			return
 		}
 
-		if !stat.Visible && !showHidden {
-			continue
-		}
-
-		name := stat.Name
-		if stat.Description != "" {
-			name = stat.Description
-		}
-
 		list = append(list, setInfo{
 			ID:       stat.Name,
-			Name:     name,
+			Name:     node.FormatString(mod.node, set.DisplayName()),
 			Size:     stat.Size,
 			DataSize: log.DataSize(stat.DataSize).HumanReadable(),
 			Type:     string(stat.Type),
 		})
 	}
+
+	slices.SortFunc(list, func(a, b setInfo) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 
 	c.HTML(http.StatusOK, "sets.index.gohtml", gin.H{
 		"sets": list,

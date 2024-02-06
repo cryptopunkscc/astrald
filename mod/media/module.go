@@ -3,7 +3,7 @@ package media
 import "time"
 
 const ModuleName = "media"
-const AllSet = "mod.media.all"
+const DBPrefix = "media__"
 
 type Module interface {
 }

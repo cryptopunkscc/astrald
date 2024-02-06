@@ -19,18 +19,28 @@
         <small>{{.TotalSizeHuman}} &bull; {{.Count}} items &bull; {{.Type}}</small>
     </div>
 
-    {{if eq .Type "union"}}
-        <div>
-            <small>
-                Subsets
-                {{range .Subsets}}
-                    &middot; <a href="/sets/{{.}}">{{.}}</a>
-                {{end}}
-            </small>
+    {{if gt .SubsetCount 0 }}
+        <div class="accordion" id="subsets">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#subsetsBody" aria-expanded="false" aria-controls="collapseTwo">
+                            Subsets
+                        </button>
+                    </h2>
+                    <div id="subsetsBody" class="accordion-collapse collapse" data-bs-parent="#subsets">
+                        <div class="accordion-body">
+                            <ul>
+                                {{range .Subsets}}
+                                    <li><a href="/sets/{{.Name}}">{{.DisplayName}}</a></li>
+                                {{end}}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
         </div>
     {{end}}
 
-    <h2 class="my-3">Objects</h2>
+    <h4 class="my-3">Objects</h4>
     {{range .Objects}}
     <ul class="list-group list-group-flush">
         <li class="list-group-item">

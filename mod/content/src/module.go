@@ -30,7 +30,7 @@ type Module struct {
 
 	describers sig.Set[content.Describer]
 	prototypes sig.Map[string, content.DescriptorData]
-	identified sets.Basic
+	identified sets.Set
 
 	storage storage.Module
 	fs      fs.Module

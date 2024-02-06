@@ -9,7 +9,7 @@ import (
 
 const ModuleName = "content"
 const DBPrefix = "content__"
-const IdentifiedDataSetName = "mod.content.identified"
+const IdentifiedSet = ".mod.content.identified"
 
 type Module interface {
 	Identify(dataID data.ID) (*TypeInfo, error)

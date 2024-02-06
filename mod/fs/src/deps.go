@@ -94,54 +94,30 @@ func (mod *Module) LoadDependencies() error {
 func (mod *Module) createSets() error {
 	var err error
 
-	// All
-	mod.allSet, err = sets.Open[sets.Union](mod.sets, fs.AllSetName)
-	if err != nil {
-		mod.allSet, err = mod.sets.CreateUnion(fs.AllSetName)
-		if err != nil {
-			return err
-		}
-		mod.sets.Localnode().Add(fs.AllSetName)
-		mod.sets.SetVisible(fs.AllSetName, true)
-		mod.sets.SetDescription(fs.AllSetName, "Local filesystem")
-	}
-
 	// Read-only
-	mod.roSet, err = sets.Open[sets.Basic](mod.sets, fs.ReadOnlySetName)
+	mod.roSet, err = mod.sets.Open(fs.ReadOnlySetName, true)
 	if err != nil {
-		mod.roSet, err = mod.sets.CreateBasic(fs.ReadOnlySetName)
-		if err != nil {
-			return err
-		}
-		mod.allSet.Add(fs.ReadOnlySetName)
+		return err
 	}
 
 	// Read-write
-	mod.rwSet, err = sets.Open[sets.Basic](mod.sets, fs.ReadWriteSetName)
+	mod.rwSet, err = mod.sets.Open(fs.ReadWriteSetName, true)
 	if err != nil {
-		mod.rwSet, err = mod.sets.CreateBasic(fs.ReadWriteSetName)
-		if err != nil {
-			return err
-		}
-		mod.allSet.Add(fs.ReadWriteSetName)
+		return err
 	}
 
-	// Memory set
-	if mod.memStore != nil {
-		mod.memSet, err = sets.Open[sets.Basic](mod.sets, fs.MemorySetName)
-		if err != nil {
-			mod.memSet, err = mod.sets.CreateBasic(fs.MemorySetName)
-			if err != nil {
-				return err
-			}
-			mod.allSet.Add(fs.MemorySetName)
-		}
-
-		go events.Handle(context.Background(), &mod.memStore.events, func(event storage.EventDataCommitted) error {
-			mod.memSet.Add(event.DataID)
-			return nil
-		})
+	// Memory
+	mod.memSet, err = mod.sets.Open(fs.MemorySetName, true)
+	if err != nil {
+		return err
 	}
+
+	mod.sets.Device().AddSubset(fs.ReadOnlySetName, fs.ReadWriteSetName)
+
+	go events.Handle(context.Background(), &mod.memStore.events, func(event storage.EventDataCommitted) error {
+		mod.memSet.Add(event.DataID)
+		return nil
+	})
 
 	return nil
 }

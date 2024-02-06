@@ -9,6 +9,7 @@ import (
 type dbRemoteShare struct {
 	Caller     id.Identity `gorm:"primaryKey"`
 	Target     id.Identity `gorm:"primaryKey"`
+	SetName    string      `gorm:"uniqueIndex;not null;default:null"`
 	LastUpdate time.Time
 }
 
