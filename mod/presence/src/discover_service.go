@@ -12,8 +12,6 @@ import (
 	"time"
 )
 
-const PresenceTimeout = 15 * time.Minute
-
 type DiscoverService struct {
 	*Module
 	cache map[string]*Ad
@@ -37,9 +35,10 @@ func (srv *DiscoverService) Run(ctx context.Context) error {
 
 		srv.log.Logv(
 			2,
-			"received an ad from %v endpoint %v",
+			"received an ad from %v endpoint %v expires %v",
 			ad.Identity,
 			ad.Endpoint,
+			ad.ExpiresAt,
 		)
 
 		srv.events.Emit(EventAdReceived{ad})
@@ -77,7 +76,9 @@ func (srv *DiscoverService) Run(ctx context.Context) error {
 func (srv *DiscoverService) RecentAds() []*Ad {
 	var res = make([]*Ad, 0, len(srv.cache))
 	for _, p := range srv.cache {
-		res = append(res, p)
+		if p.ExpiresAt.After(time.Now()) {
+			res = append(res, p)
+		}
 	}
 	return res
 }
@@ -94,7 +95,7 @@ func (srv *DiscoverService) readAd() (*Ad, error) {
 		var msg proto.Ad
 		err = cslq.Decode(bytes.NewReader(buf[:n]), "v", &msg)
 		if err != nil {
-			srv.log.Errorv(1, "received an invalid ad from %v: %v", srcAddr, err)
+			srv.log.Errorv(1, "error decoding ad from %v: %v", srcAddr, err)
 			continue
 		}
 
@@ -120,7 +121,7 @@ func (srv *DiscoverService) readAd() (*Ad, error) {
 			Identity:  msg.Identity,
 			Alias:     msg.Alias,
 			Endpoint:  endpoint,
-			Timestamp: time.Now(),
+			ExpiresAt: msg.ExpiresAt,
 			Flags:     msg.Flags,
 		}, nil
 	}
@@ -134,7 +135,7 @@ func (srv *DiscoverService) save(ad *Ad) {
 
 func (srv *DiscoverService) clean() {
 	for hexID, p := range srv.cache {
-		if time.Since(p.Timestamp) >= PresenceTimeout {
+		if p.ExpiresAt.Before(time.Now()) {
 			delete(srv.cache, hexID)
 		}
 	}

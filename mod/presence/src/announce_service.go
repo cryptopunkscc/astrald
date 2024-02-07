@@ -48,7 +48,7 @@ func (srv *AnnounceService) periodicAnnouncer(ctx context.Context) {
 		}
 
 		select {
-		case <-time.After(announceInterval):
+		case <-time.After(announceInterval - 5*time.Second): // broadcast 5s early to avoid presence timeout
 		case e := <-srv.v:
 			enabled = e
 
@@ -107,10 +107,11 @@ func (srv *AnnounceService) signedAdWithFlags(flags ...string) (*proto.Ad, error
 
 func (srv *AnnounceService) newAd() *proto.Ad {
 	return &proto.Ad{
-		Identity: srv.node.Identity(),
-		Alias:    srv.myAlias(),
-		Port:     srv.tcp.ListenPort(),
-		Flags:    srv.flags.Clone(),
+		Identity:  srv.node.Identity(),
+		Alias:     srv.myAlias(),
+		ExpiresAt: time.Now().Add(announceInterval),
+		Port:      srv.tcp.ListenPort(),
+		Flags:     srv.flags.Clone(),
 	}
 }
 

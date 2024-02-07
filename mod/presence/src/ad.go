@@ -13,7 +13,7 @@ type Ad struct {
 	Identity  id.Identity
 	Alias     string
 	Endpoint  net.Endpoint
-	Timestamp time.Time
+	ExpiresAt time.Time
 	Flags     []string
 	UDPAddr   *_net.UDPAddr
 }

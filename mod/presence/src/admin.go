@@ -85,7 +85,7 @@ func (adm *Admin) list(term admin.Terminal, args []string) error {
 		admin.Header("ID"),
 		admin.Header("Alias"),
 		admin.Header("Endpoint"),
-		admin.Header("Age"),
+		admin.Header("Valid"),
 		admin.Header("Flags"),
 	)
 	for _, ad := range adm.mod.discover.RecentAds() {
@@ -93,7 +93,7 @@ func (adm *Admin) list(term admin.Terminal, args []string) error {
 			ad.Identity,
 			ad.Alias,
 			ad.Endpoint,
-			time.Since(ad.Timestamp).Round(time.Second),
+			time.Until(ad.ExpiresAt).Round(time.Second),
 			strings.Join(ad.Flags, ","),
 		)
 	}
