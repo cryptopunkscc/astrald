@@ -1,14 +1,18 @@
 package shares
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/sets"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"time"
 )
 
 const explicitSuffix = ".explicit"
+
+var _ shares.LocalShare = &LocalShare{}
 
 type LocalShare struct {
 	mod      *Module
@@ -18,15 +22,23 @@ type LocalShare struct {
 	row      *dbLocalShare
 }
 
-func (mod *Module) FindOrCreateLocalShare(identity id.Identity) (*LocalShare, error) {
+func (mod *Module) LocalShare(identity id.Identity, create bool) (shares.LocalShare, error) {
 	if share, err := mod.FindLocalShare(identity); err == nil {
 		return share, nil
 	}
 
-	return mod.CreateLocalShare(identity)
+	if create {
+		return mod.CreateLocalShare(identity)
+	}
+
+	return nil, errors.New("not found")
 }
 
 func (mod *Module) CreateLocalShare(identity id.Identity) (*LocalShare, error) {
+	if identity.IsZero() {
+		return nil, errors.New("identity is zero")
+	}
+
 	var err error
 	var share = &LocalShare{mod: mod, identity: identity}
 
@@ -87,7 +99,7 @@ func (mod *Module) FindLocalShare(identity id.Identity) (*LocalShare, error) {
 	return share, nil
 }
 
-func (share *LocalShare) AddData(dataID ...data.ID) error {
+func (share *LocalShare) AddObject(dataID ...data.ID) error {
 	return share.explicit.Add(dataID...)
 }
 
@@ -95,12 +107,16 @@ func (share *LocalShare) AddSet(name ...string) error {
 	return share.union.AddSubset(name...)
 }
 
-func (share *LocalShare) RemoveData(dataID ...data.ID) error {
+func (share *LocalShare) RemoveObject(dataID ...data.ID) error {
 	return share.explicit.Remove(dataID...)
 }
 
 func (share *LocalShare) RemoveSet(name ...string) error {
 	return share.union.RemoveSubset(name...)
+}
+
+func (share *LocalShare) Identity() id.Identity {
+	return share.identity
 }
 
 func (share *LocalShare) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {

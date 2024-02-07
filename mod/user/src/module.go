@@ -15,6 +15,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -41,6 +42,7 @@ type Module struct {
 	keys    keys.Module
 	admin   admin.Module
 	apphost apphost.Module
+	sets    sets.Module
 
 	identities     sig.Map[string, *Identity]
 	profileService *ProfileService

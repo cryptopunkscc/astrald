@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
+	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -27,6 +28,11 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.relay, err = modules.Load[relay.Module](mod.node, relay.ModuleName)
+	if err != nil {
+		return err
+	}
+
+	mod.sets, err = modules.Load[sets.Module](mod.node, sets.ModuleName)
 	if err != nil {
 		return err
 	}

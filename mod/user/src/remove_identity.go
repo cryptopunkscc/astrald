@@ -6,7 +6,7 @@ import (
 )
 
 func (mod *Module) RemoveIdentity(identity id.Identity) error {
-	_, ok := mod.identities.Delete(identity.PublicKeyHex())
+	i, ok := mod.identities.Delete(identity.PublicKeyHex())
 	if !ok {
 		return errors.New("identity not found")
 	}
@@ -17,7 +17,5 @@ func (mod *Module) RemoveIdentity(identity id.Identity) error {
 		mod.admin.RemoveAdmin(identity)
 	}
 
-	var tx = mod.db.Delete(&dbIdentity{Identity: identity.PublicKeyHex()})
-
-	return tx.Error
+	return i.destroy()
 }

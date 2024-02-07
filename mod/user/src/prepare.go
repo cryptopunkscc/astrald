@@ -2,7 +2,7 @@ package user
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"errors"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -20,7 +20,11 @@ func (mod *Module) Prepare(ctx context.Context) error {
 			continue
 		}
 
-		mod.db.Create(&dbIdentity{Identity: userID.PublicKeyHex()})
+		err = mod.addIdentity(userID)
+		if err != nil {
+			mod.log.Error("cannot add identity %v: %v", userID, err)
+			continue
+		}
 	}
 
 	var rows []dbIdentity
@@ -31,15 +35,9 @@ func (mod *Module) Prepare(ctx context.Context) error {
 	}
 
 	for _, row := range rows {
-		userID, err := id.ParsePublicKeyHex(row.Identity)
-		if err != nil {
-			mod.log.Error("db: invalid identity '%v': %v", row.Identity, err)
-			continue
-		}
-
-		err = mod.addIdentity(userID)
-		if err != nil {
-			mod.log.Error("cannot add identity %v: %v", userID, err)
+		err := mod.addIdentity(row.Identity)
+		if err != nil && !errors.Is(err, errIdentityAlreadyAdded) {
+			mod.log.Error("cannot add identity %v: %v", row.Identity, err)
 			continue
 		}
 

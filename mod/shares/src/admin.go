@@ -57,13 +57,13 @@ func (adm *Admin) add(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	share, err := adm.mod.FindOrCreateLocalShare(identity)
+	share, err := adm.mod.LocalShare(identity, true)
 	if err != nil {
 		return err
 	}
 
 	if dataID, err = data.Parse(args[1]); err == nil {
-		return share.AddData(dataID)
+		return share.AddObject(dataID)
 	}
 
 	return share.AddSet(args[1])
@@ -82,13 +82,13 @@ func (adm *Admin) remove(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	share, err := adm.mod.FindOrCreateLocalShare(identity)
+	share, err := adm.mod.LocalShare(identity, false)
 	if err != nil {
 		return err
 	}
 
 	if dataID, err = data.Parse(args[1]); err == nil {
-		return share.RemoveData(dataID)
+		return share.RemoveObject(dataID)
 	}
 
 	return share.RemoveSet(args[1])
