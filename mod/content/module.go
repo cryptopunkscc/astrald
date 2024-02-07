@@ -21,6 +21,8 @@ type Module interface {
 	AddDescriber(Describer) error
 	RemoveDescriber(Describer) error
 
+	BestTitle(dataID data.ID) string
+
 	AddPrototypes(protos ...DescriptorData) error
 	UnmarshalDescriptor(name string, buf []byte) DescriptorData
 

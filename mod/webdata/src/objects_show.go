@@ -3,7 +3,6 @@ package webdata
 import (
 	"cmp"
 	"encoding/json"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
@@ -50,7 +49,7 @@ func (mod *Module) handleObjectsShow(c *gin.Context) {
 
 	var page = objectsShowPage{
 		DataID:      dataID,
-		DisplayName: dataID.String(),
+		DisplayName: mod.content.BestTitle(dataID),
 	}
 
 	for _, setName := range where {
@@ -62,18 +61,12 @@ func (mod *Module) handleObjectsShow(c *gin.Context) {
 			Name:        setName,
 			DisplayName: node.FormatString(mod.node, set.DisplayName()),
 		})
+
 	}
 
 	slices.SortFunc(page.Sets, func(a, b setShort) int {
 		return cmp.Compare(a.DisplayName, b.DisplayName)
 	})
-
-	best := slicesSelect(descs, mod.preferredDesc)
-	if best != nil {
-		if s, ok := best.Data.(fmt.Stringer); ok {
-			page.DisplayName = s.String()
-		}
-	}
 
 	for i, d := range descs {
 		if td, ok := d.Data.(content.TypeDescriptor); ok {

@@ -1,14 +1,10 @@
 package webdata
 
 import (
-	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/keys"
-	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/gin-gonic/gin"
@@ -77,20 +73,15 @@ func (mod *Module) handleSetsShow(c *gin.Context) {
 	for _, m := range members {
 		obj := &object{
 			DataID:      m.DataID,
-			DisplayName: m.DataID.String(),
+			DisplayName: mod.content.BestTitle(m.DataID),
 			Type:        "unknown",
 		}
 
 		descs := mod.content.Describe(c, m.DataID, &content.DescribeOpts{
 			IdentityFilter: id.AllowEveryone,
 		})
-		best := slicesSelect(descs, mod.preferredDesc)
-		if best != nil {
-			if s, ok := best.Data.(fmt.Stringer); ok {
-				obj.DisplayName = s.String()
-			}
-		}
 
+		// find the type descriptor
 		for _, d := range descs {
 			if td, ok := d.Data.(content.TypeDescriptor); ok {
 				obj.Type = td.Type
@@ -98,7 +89,6 @@ func (mod *Module) handleSetsShow(c *gin.Context) {
 		}
 
 		obj.DisplayName = node.FormatString(mod.node, obj.DisplayName)
-
 		page.Objects = append(page.Objects, obj)
 	}
 
@@ -131,49 +121,4 @@ func (mod *Module) handleSetsShow(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "sets.show.gohtml", &page)
-}
-
-func slicesSelect[T any](list []T, pick func(a, b T) T) T {
-	var zero T
-	if len(list) == 0 {
-		return zero
-	}
-	if len(list) == 1 {
-		return list[0]
-	}
-	best := list[0]
-	for _, next := range list[1:] {
-		best = pick(best, next)
-	}
-	return best
-}
-
-func (mod *Module) preferredDesc(a, b *content.Descriptor) *content.Descriptor {
-	as := mod.scoreIdentity(a.Source) + mod.scoreType(a.Data.DescriptorType())
-	bs := mod.scoreIdentity(b.Source) + mod.scoreType(b.Data.DescriptorType())
-	if bs > as {
-		return b
-	}
-	return a
-
-}
-
-func (mod *Module) scoreType(t string) int {
-	var m = map[string]int{
-		content.LabelDescriptor{}.DescriptorType(): 100,
-		media.Descriptor{}.DescriptorType():        90,
-		keys.KeyDescriptor{}.DescriptorType():      90,
-		fs.FileDescriptor{}.DescriptorType():       80,
-		content.TypeDescriptor{}.DescriptorType():  -100,
-	}
-
-	return m[t]
-}
-
-func (mod *Module) scoreIdentity(identity id.Identity) int {
-	if identity.IsEqual(mod.node.Identity()) {
-		return 9
-	}
-
-	return 0
 }

@@ -27,21 +27,19 @@ type Node interface {
 // FormatString replaces public keys in the string with identity aliases. Public keys must
 // be surrounded by double curly braces {{ and }}.
 func FormatString(node Node, s string) string {
-	pattern := regexp.MustCompile(`\{\{([0-9A-Fa-f]{66})}}`)
+	pattern := regexp.MustCompile(`\{\{([0-9A-Za-z:_-]*)}}`)
 
 	// Replace matches using a custom function
 	return pattern.ReplaceAllStringFunc(s, func(match string) string {
-		// Extract the hex string inside the curly braces
-		hex := pattern.FindStringSubmatch(match)[1]
+		// Extract the string inside the curly braces
+		val := pattern.FindStringSubmatch(match)[1]
 
-		identity, err := id.ParsePublicKeyHex(hex)
-		if err != nil {
-			return match
+		for _, f := range formatters {
+			if s := f(node, val); s != "" {
+				return s
+			}
 		}
 
-		name := node.Resolver().DisplayName(identity)
-
-		// Return the modified string
-		return name
+		return match
 	})
 }
