@@ -42,6 +42,15 @@ func (set *Set[T]) Remove(item T) error {
 	return errors.New("not found")
 }
 
+func (set *Set[T]) Clear() error {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
+	set.items = nil
+
+	return nil
+}
+
 func (set *Set[T]) Contains(item T) bool {
 	set.mu.RLock()
 	defer set.mu.RUnlock()

@@ -1,9 +1,9 @@
 package presence
 
 import (
-	"bytes"
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/presence/proto"
 	"net"
 	"time"
@@ -14,61 +14,113 @@ const announceInterval = 5 * time.Minute
 type AnnounceService struct {
 	*Module
 	myAd *proto.Ad
+	v    chan bool
 }
 
 func (srv *AnnounceService) Run(ctx context.Context) error {
-	if !srv.config.Discoverable {
-		return nil
-	}
+	srv.v = make(chan bool)
 
 	srv.myAd = &proto.Ad{
 		Identity: srv.node.Identity(),
-		Port:     srv.getListenPort(),
-		Flags:    proto.FlagDiscover,
+		Port:     srv.tcp.ListenPort(),
+		Flags:    []string{presence.DiscoverFlag},
 	}
+
 	srv.myAd.Alias, _ = srv.node.Tracker().GetAlias(srv.node.Identity())
 
-	srv.log.Log("discoverable as %v", srv.node.Identity())
+	srv.myAd.Flags = nil
 
-	if err := srv.broadcastPresence(); err != nil {
-		return err
-	}
+	go srv.periodicAnnouncer(ctx)
 
-	srv.myAd.Flags = 0
+	<-ctx.Done()
+	return nil
+}
+
+func (srv *AnnounceService) periodicAnnouncer(ctx context.Context) {
+	var enabled = srv.visible.Load()
 
 	for {
-		select {
-		case <-time.After(announceInterval):
-			if err := srv.broadcastPresence(); err != nil {
+		if enabled {
+			if err := srv.announceWithFlag(srv.flagsOnce.Clone()...); err != nil {
 				srv.log.Error("broadcast error: %s", err)
 			}
+			srv.flagsOnce.Clear()
+		}
+
+		select {
+		case <-time.After(announceInterval):
+		case e := <-srv.v:
+			enabled = e
 
 		case <-ctx.Done():
-			return nil
+			return
 		}
 	}
 }
 
-func (srv *AnnounceService) SendAdTo(dst *net.UDPAddr) error {
-	if !srv.config.Discoverable {
-		return ErrNotDiscoverable
-	}
-
-	return srv.sendAdTo(dst)
-}
-
-func (srv *AnnounceService) broadcastPresence() error {
-	// prepare data
-	data, err := srv.adData()
+func (srv *AnnounceService) announceWithFlag(flags ...string) error {
+	ad, err := srv.signedAdWithFlags(flags...)
 	if err != nil {
 		return err
 	}
 
+	buf, err := cslq.Marshal(ad)
+	if err != nil {
+		return err
+	}
+
+	return srv.bcastBytes(buf)
+}
+
+func (srv *AnnounceService) sendWithFlags(dst *net.UDPAddr, flags ...string) error {
+	ad, err := srv.signedAdWithFlags(flags...)
+	if err != nil {
+		return err
+	}
+
+	buf, err := cslq.Marshal(&ad)
+	if err != nil {
+		return err
+	}
+
+	_, err = srv.socket.WriteTo(buf, dst)
+	return err
+}
+
+func (srv *AnnounceService) signedAdWithFlags(flags ...string) (*proto.Ad, error) {
+	var err error
+	var ad = srv.newAd()
+
+	for _, f := range flags {
+		if !srv.flags.Contains(f) {
+			ad.Flags = append(ad.Flags, f)
+		}
+	}
+
+	ad.Sig, err = srv.keys.Sign(srv.node.Identity(), ad.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	return ad, nil
+}
+
+func (srv *AnnounceService) newAd() *proto.Ad {
+	return &proto.Ad{
+		Identity: srv.node.Identity(),
+		Alias:    srv.myAlias(),
+		Port:     srv.tcp.ListenPort(),
+		Flags:    srv.flags.Clone(),
+	}
+}
+
+func (srv *AnnounceService) bcastBytes(data []byte) error {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return err
 	}
 
+	// go over all network interfaces
 	for _, iface := range ifaces {
 		if !isInterfaceEnabled(iface) {
 			continue
@@ -79,6 +131,7 @@ func (srv *AnnounceService) broadcastPresence() error {
 			return err
 		}
 
+		// go over all addresses of the interface
 		for _, addr := range addrs {
 			broadcastIP, err := BroadcastAddr(addr)
 			if err != nil {
@@ -102,30 +155,4 @@ func (srv *AnnounceService) broadcastPresence() error {
 	}
 
 	return nil
-}
-
-func (srv *AnnounceService) adData() ([]byte, error) {
-	var data = &bytes.Buffer{}
-	if err := cslq.Encode(data, "v", srv.myAd); err != nil {
-		return nil, err
-	}
-	return data.Bytes(), nil
-}
-
-func (srv *AnnounceService) sendAdTo(dst *net.UDPAddr) error {
-	data, err := srv.adData()
-	if err != nil {
-		return err
-	}
-
-	_, err = srv.socket.WriteTo(data, dst)
-	return err
-}
-
-func (srv *AnnounceService) getListenPort() int {
-	if srv.tcp == nil {
-		return -1
-	}
-
-	return srv.tcp.ListenPort()
 }

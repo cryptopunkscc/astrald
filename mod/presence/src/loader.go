@@ -17,8 +17,8 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		log:    log,
 	}
 	mod.events.SetParent(node.Events())
-	mod.Discover = NewDiscoverService(mod)
-	mod.Announce = &AnnounceService{Module: mod}
+	mod.discover = NewDiscoverService(mod)
+	mod.announce = &AnnounceService{Module: mod}
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
 

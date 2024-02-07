@@ -3,6 +3,8 @@ package presence
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/presence/proto"
 	"net"
@@ -43,7 +45,7 @@ func (srv *DiscoverService) Run(ctx context.Context) error {
 		srv.events.Emit(EventAdReceived{ad})
 
 		if ad.DiscoverFlag() {
-			srv.Announce.SendAdTo(ad.UDPAddr)
+			srv.announce.sendWithFlags(ad.UDPAddr)
 		}
 
 		if srv.config.AutoAdd {
@@ -89,13 +91,18 @@ func (srv *DiscoverService) readAd() (*Ad, error) {
 		var msg proto.Ad
 		err = cslq.Decode(bytes.NewReader(buf[:n]), "v", &msg)
 		if err != nil {
-			srv.log.Errorv(2, "received an invalid ad from %v: %v", srcAddr, err)
+			srv.log.Errorv(1, "received an invalid ad from %v: %v", srcAddr, err)
 			continue
 		}
 
 		// ignore our own ad
 		if msg.Identity.IsEqual(srv.node.Identity()) {
 			continue
+		}
+
+		// verify signature
+		if !ecdsa.VerifyASN1(msg.Identity.PublicKey().ToECDSA(), msg.Hash(), msg.Sig) {
+			return nil, errors.New("invalid ad signature")
 		}
 
 		hostPort := net.JoinHostPort(srcAddr.IP.String(), strconv.Itoa(msg.Port))
@@ -111,7 +118,7 @@ func (srv *DiscoverService) readAd() (*Ad, error) {
 			Alias:     msg.Alias,
 			Endpoint:  endpoint,
 			Timestamp: time.Now(),
-			Flags:     int(msg.Flags),
+			Flags:     msg.Flags,
 		}, nil
 	}
 }
