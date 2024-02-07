@@ -1,8 +1,10 @@
 package webdata
 
 import (
+	"cmp"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"slices"
 )
 
 type presenceInfo struct {
@@ -28,6 +30,10 @@ func (mod *Module) handlePresenceIndex(c *gin.Context) {
 			Flags:       p.Flags,
 		})
 	}
+
+	slices.SortFunc(page.Presence, func(a, b presenceInfo) int {
+		return cmp.Compare(a.DisplayName, b.DisplayName)
+	})
 
 	c.HTML(http.StatusOK, "presence.index.gohtml", &page)
 }

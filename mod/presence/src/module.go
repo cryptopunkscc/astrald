@@ -2,7 +2,6 @@ package presence
 
 import (
 	"context"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/presence"
@@ -86,7 +85,6 @@ func (mod *Module) Visible() bool {
 }
 
 func (mod *Module) SetFlags(flags ...string) error {
-	fmt.Println("SET", flags)
 	for _, f := range flags {
 		mod.flags.Add(f)
 	}
@@ -94,7 +92,6 @@ func (mod *Module) SetFlags(flags ...string) error {
 }
 
 func (mod *Module) ClearFlags(flags ...string) error {
-	fmt.Println("CLEAR", flags)
 	for _, f := range flags {
 		mod.flags.Remove(f)
 	}
