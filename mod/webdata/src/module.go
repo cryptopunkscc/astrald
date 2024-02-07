@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -28,10 +29,11 @@ type Module struct {
 	identity id.Identity
 	mux      *http.ServeMux
 
-	storage storage.Module
-	shares  shares.Module
-	sets    sets.Module
-	content content.Module
+	storage  storage.Module
+	shares   shares.Module
+	sets     sets.Module
+	content  content.Module
+	presence presence.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -53,6 +55,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	r.GET("/sets/:name", mod.handleSetsShow)
 	r.GET("/objects/:id/open", mod.handleObjectsOpen)
 	r.GET("/objects/:id/show", mod.handleObjectsShow)
+	r.GET("/presence", mod.handlePresenceIndex)
 	r.GET("/", mod.handleSetsIndex)
 
 	var server = http.Server{

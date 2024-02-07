@@ -3,6 +3,7 @@ package setup
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/setup"
 	"github.com/cryptopunkscc/astrald/net"
 )
@@ -49,7 +50,10 @@ func (srv *Service) RouteQuery(ctx context.Context, query net.Query, caller net.
 func (srv *Service) setDefaultIdentity() {
 	if len(srv.user.Identities()) == 0 {
 		srv.apphost.SetDefaultIdentity(srv.node.Identity())
+		srv.presence.SetFlags(presence.PairingFlag)
+		srv.presence.SetVisible(true)
 	} else {
 		srv.apphost.SetDefaultIdentity(id.Identity{})
+		srv.presence.ClearFlags(presence.PairingFlag)
 	}
 }

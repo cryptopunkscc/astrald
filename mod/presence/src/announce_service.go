@@ -78,7 +78,7 @@ func (srv *AnnounceService) sendWithFlags(dst *net.UDPAddr, flags ...string) err
 		return err
 	}
 
-	buf, err := cslq.Marshal(&ad)
+	buf, err := cslq.Marshal(ad)
 	if err != nil {
 		return err
 	}

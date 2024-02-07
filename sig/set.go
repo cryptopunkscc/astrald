@@ -37,8 +37,6 @@ func (set *Set[T]) Remove(item T) error {
 		}
 	}
 
-	set.items = append(set.items, item)
-
 	return errors.New("not found")
 }
 

@@ -45,7 +45,10 @@ func (srv *DiscoverService) Run(ctx context.Context) error {
 		srv.events.Emit(EventAdReceived{ad})
 
 		if ad.DiscoverFlag() {
-			srv.announce.sendWithFlags(ad.UDPAddr)
+			err = srv.announce.sendWithFlags(ad.UDPAddr)
+			if err != nil {
+				srv.log.Errorv(2, "error responding to discover request: %v", err)
+			}
 		}
 
 		if srv.config.AutoAdd {

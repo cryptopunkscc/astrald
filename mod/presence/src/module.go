@@ -2,6 +2,7 @@ package presence
 
 import (
 	"context"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/presence"
@@ -55,6 +56,20 @@ func (mod *Module) Run(ctx context.Context) (err error) {
 	return tasks.Group(mod.discover, mod.announce).Run(ctx)
 }
 
+func (mod *Module) List() []*presence.Presence {
+	var list []*presence.Presence
+
+	for _, ad := range mod.discover.RecentAds() {
+		list = append(list, &presence.Presence{
+			Identity: ad.Identity,
+			Alias:    ad.Alias,
+			Flags:    ad.Flags,
+		})
+	}
+
+	return list
+}
+
 func (mod *Module) SetVisible(b bool) error {
 	if mod.visible.CompareAndSwap(!b, b) {
 		if b {
@@ -64,6 +79,30 @@ func (mod *Module) SetVisible(b bool) error {
 	}
 
 	return nil
+}
+
+func (mod *Module) Visible() bool {
+	return mod.visible.Load()
+}
+
+func (mod *Module) SetFlags(flags ...string) error {
+	fmt.Println("SET", flags)
+	for _, f := range flags {
+		mod.flags.Add(f)
+	}
+	return nil
+}
+
+func (mod *Module) ClearFlags(flags ...string) error {
+	fmt.Println("CLEAR", flags)
+	for _, f := range flags {
+		mod.flags.Remove(f)
+	}
+	return nil
+}
+
+func (mod *Module) Flags() []string {
+	return mod.flags.Clone()
 }
 
 func (mod *Module) myAlias() string {

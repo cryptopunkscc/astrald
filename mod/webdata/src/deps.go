@@ -3,6 +3,7 @@ package webdata
 import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -29,6 +30,11 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.content, err = modules.Load[content.Module](mod.node, content.ModuleName)
+	if err != nil {
+		return err
+	}
+
+	mod.presence, err = modules.Load[presence.Module](mod.node, presence.ModuleName)
 	if err != nil {
 		return err
 	}

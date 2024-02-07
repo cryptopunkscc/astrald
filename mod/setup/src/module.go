@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
@@ -17,9 +18,10 @@ type Module struct {
 	log    *log.Logger
 	assets assets.Assets
 
-	user    user.Module
-	keys    keys.Module
-	apphost apphost.Module
+	user     user.Module
+	keys     keys.Module
+	apphost  apphost.Module
+	presence presence.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {
