@@ -13,6 +13,7 @@ import (
 	"net"
 	"strconv"
 	"sync/atomic"
+	"time"
 )
 
 var _ presence.Module = &Module{}
@@ -27,9 +28,8 @@ type Module struct {
 	tcp  tcp.Module
 	keys keys.Module
 
-	visible   atomic.Bool
-	flags     sig.Set[string] // flags attached to every ad
-	flagsOnce sig.Set[string] // flags attached to the next broadcast ad only
+	visible    atomic.Bool
+	outFilters sig.Set[presence.AdOutHook]
 
 	discover *DiscoverService
 	announce *AnnounceService
@@ -40,6 +40,14 @@ const defaultPresencePort = 8829
 func (mod *Module) Run(ctx context.Context) (err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	if mod.config.Discoverable {
+		go func() {
+			// wait for services to start
+			time.Sleep(time.Second)
+			mod.SetVisible(true)
+		}()
+	}
 
 	if err := mod.setupSocket(); err != nil {
 		return err
@@ -53,6 +61,11 @@ func (mod *Module) Run(ctx context.Context) (err error) {
 	mod.log.Infov(2, "using socket %s", mod.socket.LocalAddr())
 
 	return tasks.Group(mod.discover, mod.announce).Run(ctx)
+}
+
+func (mod *Module) Broadcast(flags ...string) error {
+	_, err := mod.announce.announceWithFlag(flags...)
+	return err
 }
 
 func (mod *Module) List() []*presence.Presence {
@@ -72,9 +85,12 @@ func (mod *Module) List() []*presence.Presence {
 func (mod *Module) SetVisible(b bool) error {
 	if mod.visible.CompareAndSwap(!b, b) {
 		if b {
-			mod.flagsOnce.Add(presence.DiscoverFlag)
+			mod.AddHookAdOut(NewFlagOnce(mod, presence.DiscoverFlag))
 		}
-		mod.announce.v <- b
+		select {
+		case mod.announce.v <- b:
+		default:
+		}
 	}
 
 	return nil
@@ -84,22 +100,12 @@ func (mod *Module) Visible() bool {
 	return mod.visible.Load()
 }
 
-func (mod *Module) SetFlags(flags ...string) error {
-	for _, f := range flags {
-		mod.flags.Add(f)
-	}
-	return nil
+func (mod *Module) AddHookAdOut(filter presence.AdOutHook) error {
+	return mod.outFilters.Add(filter)
 }
 
-func (mod *Module) ClearFlags(flags ...string) error {
-	for _, f := range flags {
-		mod.flags.Remove(f)
-	}
-	return nil
-}
-
-func (mod *Module) Flags() []string {
-	return mod.flags.Clone()
+func (mod *Module) RemoveHookAdOut(filterFunc presence.AdOutHook) error {
+	return mod.outFilters.Remove(filterFunc)
 }
 
 func (mod *Module) myAlias() string {

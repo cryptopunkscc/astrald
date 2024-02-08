@@ -6,6 +6,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/presence/proto"
 	"net"
 	"strconv"
@@ -43,7 +44,7 @@ func (srv *DiscoverService) Run(ctx context.Context) error {
 
 		srv.events.Emit(EventAdReceived{ad})
 
-		if ad.DiscoverFlag() {
+		if ad.Has(presence.DiscoverFlag) {
 			err = srv.announce.sendWithFlags(ad.UDPAddr)
 			if err != nil {
 				srv.log.Errorv(2, "error responding to discover request: %v", err)

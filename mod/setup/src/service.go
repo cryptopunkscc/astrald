@@ -3,7 +3,6 @@ package setup
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/setup"
 	"github.com/cryptopunkscc/astrald/net"
 )
@@ -17,6 +16,10 @@ func (srv *SetupService) Run(ctx context.Context) error {
 	defer srv.node.LocalRouter().RemoveRoute(setup.ModuleName)
 
 	srv.setDefaultIdentity()
+
+	if srv.needsSetup() {
+		srv.presence.SetVisible(true)
+	}
 
 	<-ctx.Done()
 
@@ -33,6 +36,7 @@ func (srv *SetupService) Serve(conn net.SecureConn) {
 	}
 
 	srv.setDefaultIdentity()
+	srv.presence.Broadcast() // update our setup flag
 }
 
 func (srv *SetupService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
@@ -50,10 +54,7 @@ func (srv *SetupService) RouteQuery(ctx context.Context, query net.Query, caller
 func (srv *SetupService) setDefaultIdentity() {
 	if len(srv.user.Identities()) == 0 {
 		srv.apphost.SetDefaultIdentity(srv.node.Identity())
-		srv.presence.SetFlags(presence.SetupFlag)
-		srv.presence.SetVisible(true)
 	} else {
 		srv.apphost.SetDefaultIdentity(id.Identity{})
-		srv.presence.ClearFlags(presence.SetupFlag)
 	}
 }

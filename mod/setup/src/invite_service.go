@@ -87,6 +87,8 @@ func (srv *InviteService) RouteQuery(ctx context.Context, query net.Query, calle
 
 		cslq.Encode(conn, "v", cert)
 
+		srv.presence.Broadcast() // broadcast our presence to remove the setup flag
+
 		return
 	})
 }

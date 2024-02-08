@@ -2,7 +2,6 @@ package presence
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -22,11 +21,6 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	mod.announce = &AnnounceService{Module: mod}
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
-
-	if mod.config.Discoverable {
-		mod.visible.Store(true)
-		mod.flagsOnce.Add(presence.DiscoverFlag)
-	}
 
 	return mod, nil
 }

@@ -39,6 +39,8 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
+	mod.presence.AddHookAdOut(mod)
+
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
 		adm.AddCommand(setup.ModuleName, NewAdmin(mod))
 	}

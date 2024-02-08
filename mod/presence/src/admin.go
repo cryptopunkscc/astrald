@@ -16,12 +16,10 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"list":    adm.list,
-		"visible": adm.visible,
-		"set":     adm.set,
-		"clear":   adm.clear,
-		"flags":   adm.flags,
-		"help":    adm.help,
+		"list":      adm.list,
+		"visible":   adm.visible,
+		"broadcast": adm.broadcast,
+		"help":      adm.help,
 	}
 	return adm
 }
@@ -56,27 +54,8 @@ func (adm *Admin) visible(term admin.Terminal, args []string) error {
 	return adm.mod.SetVisible(v)
 }
 
-func (adm *Admin) set(term admin.Terminal, args []string) error {
-	if len(args) == 0 {
-		return errors.New("missing argument")
-	}
-
-	return adm.mod.SetFlags(args[0:]...)
-}
-
-func (adm *Admin) clear(term admin.Terminal, args []string) error {
-	if len(args) == 0 {
-		return errors.New("missing argument")
-	}
-
-	return adm.mod.ClearFlags(args[0:]...)
-}
-
-func (adm *Admin) flags(term admin.Terminal, args []string) error {
-	for _, f := range adm.mod.flags.Clone() {
-		term.Printf("%s\n", f)
-	}
-	return nil
+func (adm *Admin) broadcast(term admin.Terminal, args []string) error {
+	return adm.mod.Broadcast(args...)
 }
 
 func (adm *Admin) list(term admin.Terminal, args []string) error {

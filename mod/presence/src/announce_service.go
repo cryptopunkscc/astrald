@@ -5,7 +5,10 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/presence/proto"
+	"github.com/cryptopunkscc/astrald/sig"
 	"net"
+	"slices"
+	"strings"
 	"time"
 )
 
@@ -13,22 +16,21 @@ const announceInterval = 5 * time.Minute
 
 type AnnounceService struct {
 	*Module
-	myAd *proto.Ad
-	v    chan bool
+	v chan bool
+}
+
+var _ presence.PendingAd = &PendingAd{}
+
+type PendingAd struct {
+	flags sig.Set[string]
+}
+
+func (ad *PendingAd) AddFlag(flag string) {
+	ad.flags.Add(flag)
 }
 
 func (srv *AnnounceService) Run(ctx context.Context) error {
-	srv.v = make(chan bool)
-
-	srv.myAd = &proto.Ad{
-		Identity: srv.node.Identity(),
-		Port:     srv.tcp.ListenPort(),
-		Flags:    []string{presence.DiscoverFlag},
-	}
-
-	srv.myAd.Alias, _ = srv.node.Tracker().GetAlias(srv.node.Identity())
-
-	srv.myAd.Flags = nil
+	srv.v = make(chan bool, 1)
 
 	go srv.periodicAnnouncer(ctx)
 
@@ -41,10 +43,11 @@ func (srv *AnnounceService) periodicAnnouncer(ctx context.Context) {
 
 	for {
 		if enabled {
-			if err := srv.announceWithFlag(srv.flagsOnce.Clone()...); err != nil {
-				srv.log.Error("broadcast error: %s", err)
+			if ad, err := srv.announceWithFlag(); err != nil {
+				srv.log.Error("announce error: %s", err)
+			} else {
+				srv.log.Errorv(2, "announced presence with flags: %v", strings.Join(ad.Flags, ", "))
 			}
-			srv.flagsOnce.Clear()
 		}
 
 		select {
@@ -58,18 +61,18 @@ func (srv *AnnounceService) periodicAnnouncer(ctx context.Context) {
 	}
 }
 
-func (srv *AnnounceService) announceWithFlag(flags ...string) error {
+func (srv *AnnounceService) announceWithFlag(flags ...string) (*proto.Ad, error) {
 	ad, err := srv.signedAdWithFlags(flags...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	buf, err := cslq.Marshal(ad)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return srv.bcastBytes(buf)
+	return ad, srv.bcastBytes(buf)
 }
 
 func (srv *AnnounceService) sendWithFlags(dst *net.UDPAddr, flags ...string) error {
@@ -92,7 +95,7 @@ func (srv *AnnounceService) signedAdWithFlags(flags ...string) (*proto.Ad, error
 	var ad = srv.newAd()
 
 	for _, f := range flags {
-		if !srv.flags.Contains(f) {
+		if !slices.Contains(ad.Flags, f) {
 			ad.Flags = append(ad.Flags, f)
 		}
 	}
@@ -106,12 +109,16 @@ func (srv *AnnounceService) signedAdWithFlags(flags ...string) (*proto.Ad, error
 }
 
 func (srv *AnnounceService) newAd() *proto.Ad {
+	var pad = &PendingAd{}
+	for _, f := range srv.outFilters.Clone() {
+		f.OnPendingAd(pad)
+	}
 	return &proto.Ad{
 		Identity:  srv.node.Identity(),
 		Alias:     srv.myAlias(),
 		ExpiresAt: time.Now().Add(announceInterval),
 		Port:      srv.tcp.ListenPort(),
-		Flags:     srv.flags.Clone(),
+		Flags:     pad.flags.Clone(),
 	}
 }
 

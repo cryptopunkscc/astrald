@@ -2,7 +2,6 @@ package presence
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/net"
 	_net "net"
 	"slices"
@@ -18,6 +17,6 @@ type Ad struct {
 	UDPAddr   *_net.UDPAddr
 }
 
-func (ad *Ad) DiscoverFlag() bool {
-	return slices.Contains(ad.Flags, presence.DiscoverFlag)
+func (ad *Ad) Has(flag string) bool {
+	return slices.Contains(ad.Flags, flag)
 }

@@ -32,10 +32,6 @@ type Module struct {
 	inviteService *InviteService
 }
 
-func (mod *Module) Invite(ctx context.Context, userID id.Identity, nodeID id.Identity) error {
-	return mod.inviteService.Invite(ctx, userID, nodeID)
-}
-
 func (mod *Module) Run(ctx context.Context) error {
 	mod.inviteService = NewInviteService(mod, func(identity id.Identity) bool {
 		return true
@@ -45,4 +41,18 @@ func (mod *Module) Run(ctx context.Context) error {
 		&SetupService{Module: mod},
 		mod.inviteService,
 	).Run(ctx)
+}
+
+func (mod *Module) Invite(ctx context.Context, userID id.Identity, nodeID id.Identity) error {
+	return mod.inviteService.Invite(ctx, userID, nodeID)
+}
+
+func (mod *Module) OnPendingAd(ad presence.PendingAd) {
+	if mod.needsSetup() {
+		ad.AddFlag(presence.SetupFlag)
+	}
+}
+
+func (mod *Module) needsSetup() bool {
+	return len(mod.user.Identities()) == 0
 }
