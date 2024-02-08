@@ -1,16 +1,17 @@
 package relay
 
 import (
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"time"
 )
 
 type dbRelayCert struct {
-	DataID    string    `gorm:"primaryKey"`
-	TargetID  string    `gorm:"index"`
-	RelayID   string    `gorm:"index"`
-	Direction string    `gorm:"index"`
-	ExpiresAt time.Time `gorm:"index"`
+	DataID    data.ID     `gorm:"primaryKey"`
+	TargetID  id.Identity `gorm:"index"`
+	RelayID   id.Identity `gorm:"index"`
+	Direction string      `gorm:"index"`
+	ExpiresAt time.Time   `gorm:"index"`
 }
 
 func (dbRelayCert) TableName() string {

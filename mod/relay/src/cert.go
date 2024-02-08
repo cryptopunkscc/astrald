@@ -12,9 +12,7 @@ import (
 	"time"
 )
 
-const defaultCertDuration = 100 * 365 * 24 * time.Hour
-
-func (mod *Module) IndexCert(dataID data.ID) error {
+func (mod *Module) indexData(dataID data.ID) error {
 	// check if cert is already indexed
 	if mod.isCertIndexed(dataID) {
 		return relay.ErrCertAlreadyIndexed
@@ -37,21 +35,34 @@ func (mod *Module) IndexCert(dataID data.ID) error {
 		if err = cslq.Decode(r, "v", &cert); err != nil {
 			return err
 		}
-		if err := cert.Verify(); err != nil {
-			return err
-		}
-		tx := mod.db.Create(&dbRelayCert{
-			DataID:    dataID.String(),
-			Direction: string(cert.Direction),
-			TargetID:  cert.TargetID.PublicKeyHex(),
-			RelayID:   cert.RelayID.PublicKeyHex(),
-			ExpiresAt: cert.ExpiresAt,
-		})
-		return tx.Error
+
+		return mod.index(&cert)
 
 	default:
 		return nil
 	}
+}
+
+func (mod *Module) Index(cert *relay.RelayCert) error {
+	if err := cert.Verify(); err != nil {
+		return err
+	}
+
+	return mod.index(cert)
+}
+
+func (mod *Module) index(cert *relay.RelayCert) error {
+	var w = data.NewResolver()
+	cslq.Encode(w, "vv", adc.Header(relay.RelayCertType), cert)
+	dataID := w.Resolve()
+
+	return mod.db.Create(&dbRelayCert{
+		DataID:    dataID,
+		Direction: string(cert.Direction),
+		TargetID:  cert.TargetID,
+		RelayID:   cert.RelayID,
+		ExpiresAt: cert.ExpiresAt,
+	}).Error
 }
 
 func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction relay.Direction, duration time.Duration) (data.ID, error) {
@@ -86,7 +97,7 @@ func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction
 	}
 
 	// add the certificate to the index
-	err = mod.IndexCert(dataID)
+	err = mod.indexData(dataID)
 	if err != nil {
 		return data.ID{}, err
 	}
@@ -95,13 +106,15 @@ func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction
 }
 
 func (mod *Module) FindCerts(opts *relay.FindOpts) ([]data.ID, error) {
-	var rows []dbRelayCert
+	var list []data.ID
 
 	if opts == nil {
 		opts = &relay.FindOpts{}
 	}
 
-	var q = mod.db
+	var q = mod.db.
+		Model(&dbRelayCert{}).
+		Order("expires_at desc")
 
 	if !opts.RelayID.IsZero() {
 		q = q.Where("relay_id = ?", opts.RelayID.PublicKeyHex())
@@ -134,23 +147,7 @@ func (mod *Module) FindCerts(opts *relay.FindOpts) ([]data.ID, error) {
 		q = q.Where("expires_at > ?", time.Now())
 	}
 
-	var tx = q.Order("expires_at desc").Find(&rows)
-	if tx.Error != nil {
-		return nil, tx.Error
-	}
-
-	var list []data.ID
-
-	for _, row := range rows {
-		dataID, err := data.Parse(row.DataID)
-		if err != nil {
-			mod.log.Errorv(2, "error parsing %v: %v", row.DataID, err)
-			continue
-		}
-		list = append(list, dataID)
-	}
-
-	return list, nil
+	return list, q.Select("data_id").Find(&list).Error
 }
 
 func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
@@ -197,26 +194,23 @@ func (mod *Module) LoadCert(dataID data.ID) (*relay.RelayCert, error) {
 }
 
 func (mod *Module) FindExternalRelays(targetID id.Identity) ([]id.Identity, error) {
-	var rows []dbRelayCert
-	var tx = mod.db.Where("relay_id != ? and target_id = ? and expires_at > ? and direction in ?",
-		mod.node.Identity(),
-		targetID,
-		time.Now(),
-		[]relay.Direction{relay.Inbound, relay.Both},
-	).Group("relay_id").
-		Find(&rows)
-
-	if tx.Error != nil {
-		return nil, tx.Error
-	}
-
 	var relays []id.Identity
-	for _, row := range rows {
-		relayID, err := id.ParsePublicKeyHex(row.RelayID)
-		if err != nil {
-			continue
-		}
-		relays = append(relays, relayID)
+
+	var q = mod.db.
+		Model(&dbRelayCert{}).
+		Where("relay_id != ? and target_id = ? and expires_at > ? and direction in ?",
+			mod.node.Identity(),
+			targetID,
+			time.Now(),
+			[]relay.Direction{relay.Inbound, relay.Both},
+		)
+
+	var err = q.
+		Select("relay_id").
+		Find(&relays).
+		Error
+	if err != nil {
+		return nil, err
 	}
 
 	return relays, nil
@@ -231,7 +225,7 @@ func (mod *Module) makeCert(
 	var err error
 
 	if duration == 0 {
-		duration = defaultCertDuration
+		duration = relay.DefaultCertDuration
 	}
 
 	var cert = relay.RelayCert{

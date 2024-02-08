@@ -21,5 +21,5 @@ type Presence struct {
 
 const (
 	DiscoverFlag = "discover"
-	PairingFlag  = "pairing"
+	SetupFlag    = "setup"
 )

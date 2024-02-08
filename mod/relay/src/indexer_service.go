@@ -14,7 +14,7 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 	for event := range srv.content.Scan(ctx, nil) {
 		switch event.Type {
 		case relay.RelayCertType:
-			err := srv.IndexCert(event.DataID)
+			err := srv.indexData(event.DataID)
 			switch err {
 			case nil:
 				srv.log.Infov(1, "added certificate %v", event.DataID)

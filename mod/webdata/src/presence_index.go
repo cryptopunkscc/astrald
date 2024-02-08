@@ -9,6 +9,7 @@ import (
 
 type presenceInfo struct {
 	DisplayName string
+	Key         string
 	Alias       string
 	Flags       []string
 }
@@ -26,6 +27,7 @@ func (mod *Module) handlePresenceIndex(c *gin.Context) {
 	for _, p := range mod.presence.List() {
 		page.Presence = append(page.Presence, presenceInfo{
 			DisplayName: mod.node.Resolver().DisplayName(p.Identity),
+			Key:         p.Identity.PublicKeyHex(),
 			Alias:       p.Alias,
 			Flags:       p.Flags,
 		})

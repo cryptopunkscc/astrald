@@ -20,6 +20,8 @@ type Module interface {
 	Reroute(nonce net.Nonce, router net.Router) error
 	MakeCert(targetID id.Identity, relayID id.Identity, direction Direction, duration time.Duration) (data.ID, error)
 	FindCerts(opts *FindOpts) ([]data.ID, error)
+	Index(cert *RelayCert) error
+	Save(cert *RelayCert) (data.ID, error)
 	ReadCert(opts *FindOpts) ([]byte, error)
 	FindExternalRelays(targetID id.Identity) ([]id.Identity, error)
 	RouteVia(ctx context.Context, relayID id.Identity, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error)

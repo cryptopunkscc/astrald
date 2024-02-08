@@ -8,8 +8,10 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/sets"
+	"github.com/cryptopunkscc/astrald/mod/setup"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/gin-gonic/gin"
@@ -34,6 +36,8 @@ type Module struct {
 	sets     sets.Module
 	content  content.Module
 	presence presence.Module
+	setup    setup.Module
+	user     user.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -56,6 +60,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	r.GET("/objects/:id/open", mod.handleObjectsOpen)
 	r.GET("/objects/:id/show", mod.handleObjectsShow)
 	r.GET("/presence", mod.handlePresenceIndex)
+	r.GET("/invite/:id", mod.handleInvite)
 	r.GET("/", mod.handleSetsIndex)
 
 	var server = http.Server{

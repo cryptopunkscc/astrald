@@ -8,11 +8,11 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 )
 
-type Service struct {
+type SetupService struct {
 	*Module
 }
 
-func (srv *Service) Run(ctx context.Context) error {
+func (srv *SetupService) Run(ctx context.Context) error {
 	srv.node.LocalRouter().AddRoute(setup.ModuleName, srv)
 	defer srv.node.LocalRouter().RemoveRoute(setup.ModuleName)
 
@@ -23,7 +23,7 @@ func (srv *Service) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *Service) Serve(conn net.SecureConn) {
+func (srv *SetupService) Serve(conn net.SecureConn) {
 	defer conn.Close()
 
 	var d = NewSetupDialogue(srv.Module, conn)
@@ -35,7 +35,7 @@ func (srv *Service) Serve(conn net.SecureConn) {
 	srv.setDefaultIdentity()
 }
 
-func (srv *Service) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *SetupService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	if hints.Origin != net.OriginLocal {
 		return net.Reject()
 	}
@@ -47,13 +47,13 @@ func (srv *Service) RouteQuery(ctx context.Context, query net.Query, caller net.
 	return net.Accept(query, caller, srv.Serve)
 }
 
-func (srv *Service) setDefaultIdentity() {
+func (srv *SetupService) setDefaultIdentity() {
 	if len(srv.user.Identities()) == 0 {
 		srv.apphost.SetDefaultIdentity(srv.node.Identity())
-		srv.presence.SetFlags(presence.PairingFlag)
+		srv.presence.SetFlags(presence.SetupFlag)
 		srv.presence.SetVisible(true)
 	} else {
 		srv.apphost.SetDefaultIdentity(id.Identity{})
-		srv.presence.ClearFlags(presence.PairingFlag)
+		srv.presence.ClearFlags(presence.SetupFlag)
 	}
 }

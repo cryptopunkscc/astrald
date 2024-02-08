@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/setup"
@@ -14,10 +15,32 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"help": adm.help,
+		"invite": adm.invite,
+		"help":   adm.help,
 	}
 
 	return adm
+}
+
+func (adm *Admin) invite(term admin.Terminal, args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing argument")
+	}
+
+	if term.UserIdentity().IsEqual(adm.mod.node.Identity()) {
+		return errors.New("cannot invite as node")
+	}
+
+	nodeID, err := adm.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	if nodeID.IsEqual(adm.mod.node.Identity()) {
+		return errors.New("cannot invite self")
+	}
+
+	return adm.mod.inviteService.Invite(context.Background(), term.UserIdentity(), nodeID)
 }
 
 func (adm *Admin) Exec(term admin.Terminal, args []string) error {

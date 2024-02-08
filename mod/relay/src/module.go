@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -45,6 +47,35 @@ func (mod *Module) Run(ctx context.Context) error {
 		&RelayService{Module: mod},
 		&RerouteService{Module: mod},
 	).Run(ctx)
+}
+
+func (mod *Module) Save(cert *relay.RelayCert) (dataID data.ID, err error) {
+	// validate the certificate
+	err = cert.Validate()
+	if err != nil {
+		return
+	}
+
+	// create storage writer
+	w, err := mod.storage.Create(nil)
+	if err != nil {
+		return
+	}
+
+	// encode the header and the cert
+	err = cslq.Encode(w, "vv", adc.Header(relay.RelayCertType), cert)
+	if err != nil {
+		return
+	}
+
+	// get dataID for the object
+	dataID, err = w.Commit()
+	if err != nil {
+		return
+	}
+
+	err = mod.index(cert)
+	return
 }
 
 func (mod *Module) Reroute(nonce net.Nonce, router net.Router) error {
