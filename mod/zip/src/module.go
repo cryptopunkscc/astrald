@@ -51,21 +51,28 @@ func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader,
 		return nil, storage.ErrInvalidOffset
 	}
 
-	var zipRows, err = mod.dbFindByFileID(dataID)
-	if err != nil {
-		return nil, err
-	}
-	if len(zipRows) == 0 {
-		return nil, storage.ErrNotFound
-	}
-
-	var zipRow = zipRows[0]
-
-	zipID := zipRow.Zip.DataID
+	var rows []dbContents
+	err := mod.db.
+		Unscoped().
+		Preload("Zip").
+		Where("file_id = ?", dataID).
+		Find(&rows).Error
 	if err != nil {
 		return nil, err
 	}
 
+	for _, row := range rows {
+		r, err := mod.open(row.Zip.DataID, row.Path, opts)
+		if err == nil {
+			mod.log.Logv(2, "opened %v from %v/%v", dataID, row.Zip.DataID, row.Path)
+			return r, nil
+		}
+	}
+
+	return nil, storage.ErrNotFound
+}
+
+func (mod *Module) open(zipID data.ID, path string, opts *storage.OpenOpts) (storage.Reader, error) {
 	var zipReaderAt = &readerAt{
 		storage: mod.storage,
 		dataID:  zipID,
@@ -76,7 +83,7 @@ func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader,
 		return nil, storage.ErrNotFound
 	}
 
-	file, err := zipFile.Open(zipRow.Path)
+	file, err := zipFile.Open(path)
 	if err != nil {
 		return nil, err
 	}
