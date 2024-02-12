@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/node/authorizer"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
@@ -20,6 +21,7 @@ import (
 
 var _ modules.Module = &Module{}
 var _ admin.Module = &Module{}
+var _ authorizer.Authorizer = &Module{}
 
 const ServiceName = "admin"
 
@@ -52,12 +54,10 @@ func (mod *Module) Run(ctx context.Context) error {
 
 func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	// check if the caller has access to the admin panel
-	if !mod.hasAccess(caller.Identity()) {
-		mod.log.Errorv(1, "denied access to %v", caller.Identity())
+	if !mod.node.Auth().Authorize(caller.Identity(), admin.AccessAction) {
 		return net.Reject()
 	}
 
-	mod.log.Info("%v has accessed the admin panel", caller.Identity())
 	return net.Accept(query, caller, mod.serve)
 }
 

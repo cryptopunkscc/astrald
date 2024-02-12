@@ -41,7 +41,6 @@ func (mod *Module) LoadDependencies() error {
 	mod.sets.SetWrapper(ZipSetType, mod.wrapper)
 	mod.content.AddDescriber(mod)
 	mod.content.AddPrototypes(zip.ArchiveDescriptor{}, zip.MemberDescriptor{})
-	mod.shares.AddAuthorizer(mod)
 	mod.storage.AddOpener("mod.zip", mod, 20)
 
 	return nil

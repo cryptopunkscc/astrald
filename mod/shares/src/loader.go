@@ -31,15 +31,17 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		return nil, err
 	}
 
-	err = mod.AddAuthorizer(&ACLAuthorizer{mod})
+	err = mod.addAuthorizer(&ACLAuthorizer{mod})
 	if err != nil {
 		return nil, err
 	}
 
-	err = mod.AddAuthorizer(&SelfAuthorizer{mod})
+	err = mod.addAuthorizer(&SelfAuthorizer{mod})
 	if err != nil {
 		return nil, err
 	}
+
+	mod.node.Auth().Add(&Authorizer{mod: mod})
 
 	return mod, nil
 }

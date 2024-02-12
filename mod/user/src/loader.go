@@ -20,6 +20,8 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	mod.profileService = &ProfileService{Module: mod}
 	mod.notifyService = &NotifyService{Module: mod}
 
+	_ = assets.LoadYAML(user.ModuleName, &mod.config)
+
 	mod.db = assets.Database()
 
 	err = mod.db.AutoMigrate(&dbIdentity{})
@@ -27,7 +29,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		return nil, err
 	}
 
-	_ = assets.LoadYAML(user.ModuleName, &mod.config)
+	mod.node.Auth().Add(&Authorizer{mod: mod})
 
 	return mod, err
 }

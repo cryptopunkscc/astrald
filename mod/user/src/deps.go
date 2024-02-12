@@ -49,7 +49,5 @@ func (mod *Module) LoadDependencies() error {
 		mod.sdp.AddDataDiscoverer(mod)
 	}
 
-	mod.shares.AddAuthorizer(mod)
-
 	return nil
 }

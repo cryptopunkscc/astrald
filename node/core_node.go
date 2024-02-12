@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/node/authorizer"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -33,6 +34,7 @@ type CoreNode struct {
 	tracker  *tracker.CoreTracker
 	modules  *modules.CoreModules
 	resolver *resolver.CoreResolver
+	auth     *authorizer.CoreAuthorizer
 	events   events.Queue
 	routes   *router.PrefixRouter
 
@@ -80,6 +82,12 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 		if !errors.Is(err, resources.ErrNotFound) {
 			return nil, fmt.Errorf("error loading config: %w", err)
 		}
+	}
+
+	// authorizer
+	node.auth, err = authorizer.NewCoreAuthorizer(node.log.Tag("auth"))
+	if err != nil {
+		return nil, fmt.Errorf("error setting up authorizer: %w", err)
 	}
 
 	// infrastructure
@@ -163,6 +171,10 @@ func (node *CoreNode) Tracker() tracker.Tracker {
 
 func (node *CoreNode) Network() network.Network {
 	return node.network
+}
+
+func (node *CoreNode) Auth() authorizer.AuthSet {
+	return node.auth
 }
 
 func (node *CoreNode) Modules() modules.Modules {

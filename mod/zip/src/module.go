@@ -3,7 +3,6 @@ package zip
 import (
 	_zip "archive/zip"
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
@@ -96,38 +95,4 @@ func (mod *Module) open(zipID data.ID, path string, opts *storage.OpenOpts) (sto
 	}
 
 	return &Reader{File: file, name: "mod.zip"}, err
-}
-
-// Authorize authorizes access if the dataID is contained within a zip file that the identity has access to.
-func (mod *Module) Authorize(identity id.Identity, dataID data.ID) error {
-	var rows []*dbContents
-
-	var tx = mod.db.
-		Unscoped().
-		Preload("Zip").
-		Where("file_id = ?", dataID).
-		Find(&rows)
-	if tx.Error != nil {
-		return shares.ErrDenied
-	}
-
-	for _, row := range rows {
-		if row.Zip == nil {
-			mod.log.Errorv(1, "db row for file %v has null reference to zip", dataID)
-			continue
-		}
-
-		zipID := row.Zip.DataID
-
-		// sanity check to avoid infitite loops
-		if zipID.IsEqual(dataID) {
-			continue
-		}
-
-		if mod.shares.Authorize(identity, zipID) == nil {
-			return nil
-		}
-	}
-
-	return shares.ErrDenied
 }

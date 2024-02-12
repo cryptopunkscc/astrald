@@ -46,9 +46,7 @@ func (srv *ReadService) RouteQuery(ctx context.Context, query net.Query, caller 
 		return net.Reject()
 	}
 
-	err = srv.Authorize(query.Caller(), dataID)
-	if err != nil {
-		srv.log.Errorv(2, "access to %v denied for %v (%v)", dataID, query.Caller(), err)
+	if !srv.node.Auth().Authorize(query.Caller(), storage.OpenAction, dataID) {
 		return net.Reject()
 	}
 

@@ -28,6 +28,8 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		return nil, err
 	}
 
+	node.Auth().Add(&Authorizer{mod: mod})
+
 	return mod, err
 }
 

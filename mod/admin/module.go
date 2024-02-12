@@ -6,11 +6,10 @@ import (
 )
 
 const ModuleName = "admin"
+const AccessAction = "mod.admin.access"
 
 type Module interface {
 	AddCommand(name string, cmd Command) error
-	AddAdmin(identity id.Identity) error
-	RemoveAdmin(identity id.Identity) error
 }
 
 type Command interface {

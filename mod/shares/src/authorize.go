@@ -21,10 +21,10 @@ func (mod *Module) Authorize(identity id.Identity, dataID data.ID) error {
 	return shares.ErrDenied
 }
 
-func (mod *Module) AddAuthorizer(authorizer shares.Authorizer) error {
+func (mod *Module) addAuthorizer(authorizer DataAuthorizer) error {
 	return mod.authorizers.Add(authorizer)
 }
 
-func (mod *Module) RemoveAuthorizer(authorizer shares.Authorizer) error {
+func (mod *Module) removeAuthorizer(authorizer DataAuthorizer) error {
 	return mod.authorizers.Remove(authorizer)
 }

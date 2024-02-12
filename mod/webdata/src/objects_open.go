@@ -30,8 +30,7 @@ func (mod *Module) handleObjectsOpen(c *gin.Context) {
 		length = ranges[0].Length
 	}
 
-	if err = mod.shares.Authorize(mod.identity, dataID); err != nil {
-		mod.log.Errorv(1, "denied %v access to %v: %v", mod.identity, dataID, err)
+	if !mod.node.Auth().Authorize(mod.identity, storage.OpenAction, dataID) {
 		c.Status(http.StatusForbidden)
 		return
 	}

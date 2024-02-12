@@ -13,9 +13,5 @@ func (mod *Module) RemoveIdentity(identity id.Identity) error {
 
 	mod.node.Router().RemoveRoute(id.Anyone, identity, mod)
 
-	if mod.admin != nil {
-		mod.admin.RemoveAdmin(identity)
-	}
-
 	return i.destroy()
 }

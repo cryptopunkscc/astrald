@@ -38,9 +38,5 @@ func (mod *Module) addIdentity(identity id.Identity) error {
 
 	mod.node.Router().AddRoute(id.Anyone, i.identity, mod, 100)
 
-	if mod.admin != nil {
-		mod.admin.AddAdmin(i.identity)
-	}
-
 	return nil
 }

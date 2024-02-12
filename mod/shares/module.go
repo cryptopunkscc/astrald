@@ -11,20 +11,11 @@ import (
 const ModuleName = "shares"
 const DBPrefix = "shares__"
 const RemoteSetType = "remote"
-const LocalSetType = "local"
 
 type Module interface {
-	Authorizer
-	AddAuthorizer(Authorizer) error
-	RemoveAuthorizer(Authorizer) error
-
 	FindRemoteShare(caller id.Identity, target id.Identity) (RemoteShare, error)
 	LocalShare(caller id.Identity, create bool) (LocalShare, error)
 	Notify(identity id.Identity) error
-}
-
-type Authorizer interface {
-	Authorize(identity id.Identity, dataID data.ID) error
 }
 
 type LocalShare interface {

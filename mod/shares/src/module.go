@@ -27,7 +27,7 @@ type Module struct {
 	log         *log.Logger
 	assets      assets.Assets
 	db          *gorm.DB
-	authorizers sig.Set[shares.Authorizer]
+	authorizers sig.Set[DataAuthorizer]
 	storage     storage.Module
 	sets        sets.Module
 	content     content.Module

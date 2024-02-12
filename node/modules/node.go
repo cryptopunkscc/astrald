@@ -2,6 +2,7 @@ package modules
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/node/authorizer"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/infra"
 	"github.com/cryptopunkscc/astrald/node/network"
@@ -17,6 +18,7 @@ type Node interface {
 	Infra() infra.Infra
 	Network() network.Network
 	Tracker() tracker.Tracker
+	Auth() authorizer.AuthSet
 	Modules() Modules
 	Resolver() resolver.Resolver
 	Router() router.Router
