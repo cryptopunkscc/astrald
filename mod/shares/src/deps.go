@@ -2,7 +2,6 @@ package shares
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/sets"
@@ -10,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"strings"
 )
 
 func (mod *Module) LoadDependencies() error {
@@ -40,18 +38,15 @@ func (mod *Module) LoadDependencies() error {
 	mod.content.AddDescriber(mod)
 
 	go events.Handle(context.Background(), mod.node.Events(),
-		func(event sets.EventMemberUpdate) error {
-			_, s, found := strings.Cut(event.Set, localShareSetPrefix+".")
-			if !found {
-				return nil
-			}
-
-			identity, err := id.ParsePublicKeyHex(s)
+		func(event sets.EventSetUpdated) error {
+			var row dbLocalShare
+			var err = mod.db.Where("set_name = ?", event.Name).
+				First(&row).Error
 			if err != nil {
 				return nil
 			}
 
-			mod.Notify(identity)
+			mod.Notify(row.Caller)
 			return nil
 		})
 
