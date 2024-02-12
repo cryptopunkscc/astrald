@@ -39,7 +39,9 @@ func run(ctx context.Context, args *Args) error {
 
 func setupResources(args *Args) (resources.Resources, error) {
 	if args.Ghost {
-		return resources.NewMemResources(), nil
+		mem := resources.NewMemResources()
+		mem.Write("log.yaml", []byte("level: 2"))
+		return mem, nil
 	}
 
 	nodeRes, err := resources.NewFileResources(args.NodeRoot, true)
