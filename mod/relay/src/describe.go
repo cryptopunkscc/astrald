@@ -8,7 +8,10 @@ import (
 )
 
 func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []*content.Descriptor {
-	row, err := mod.dbFindByDataID(dataID)
+	var row dbCert
+	err := mod.db.
+		Where("data_id = ?", dataID).
+		First(&row).Error
 	if err != nil {
 		return nil
 	}

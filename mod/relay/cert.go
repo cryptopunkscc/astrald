@@ -20,7 +20,7 @@ const (
 	DefaultCertDuration = 100 * 365 * 24 * time.Hour
 )
 
-type RelayCert struct {
+type Cert struct {
 	TargetID  id.Identity
 	RelayID   id.Identity
 	Direction Direction
@@ -29,11 +29,11 @@ type RelayCert struct {
 	RelaySig  []byte
 }
 
-func (cert *RelayCert) Hash() []byte {
+func (cert *Cert) Hash() []byte {
 	var hash = sha256.New()
 	var err = cslq.Encode(hash,
 		"[c]cvv[c]cv",
-		RelayCertType,
+		CertType,
 		cert.TargetID,
 		cert.RelayID,
 		cert.Direction,
@@ -46,7 +46,7 @@ func (cert *RelayCert) Hash() []byte {
 }
 
 // Validate checks if the certificate is valid, i.e. it hasn't expired and signatures are valid
-func (cert *RelayCert) Validate() error {
+func (cert *Cert) Validate() error {
 	switch {
 	case cert.ExpiresAt.Before(time.Now()):
 		return errors.New("certificate expired")
@@ -58,12 +58,12 @@ func (cert *RelayCert) Validate() error {
 }
 
 // Verify verifies signatures of the certificate
-func (cert *RelayCert) Verify() error {
+func (cert *Cert) Verify() error {
 	return errors.Join(cert.VerifyRelay(), cert.VerifyTarget())
 }
 
 // VerifyRelay verfies relay signature
-func (cert *RelayCert) VerifyRelay() error {
+func (cert *Cert) VerifyRelay() error {
 	switch {
 	case cert.RelaySig == nil:
 		return errors.New("relay signature missing")
@@ -81,7 +81,7 @@ func (cert *RelayCert) VerifyRelay() error {
 }
 
 // VerifyTarget verifies target signature
-func (cert *RelayCert) VerifyTarget() error {
+func (cert *Cert) VerifyTarget() error {
 	switch {
 	case cert.TargetSig == nil:
 		return errors.New("target signature missing")
@@ -98,7 +98,7 @@ func (cert *RelayCert) VerifyTarget() error {
 	return nil
 }
 
-func (cert RelayCert) MarshalCSLQ(enc *cslq.Encoder) error {
+func (cert Cert) MarshalCSLQ(enc *cslq.Encoder) error {
 	return enc.Encodef("vv[c]cv[c]c[c]c",
 		cert.TargetID,
 		cert.RelayID,
@@ -109,7 +109,7 @@ func (cert RelayCert) MarshalCSLQ(enc *cslq.Encoder) error {
 	)
 }
 
-func (cert *RelayCert) UnmarshalCSLQ(dec *cslq.Decoder) error {
+func (cert *Cert) UnmarshalCSLQ(dec *cslq.Decoder) error {
 	var expiresAt cslq.Time
 	err := dec.Decodef("vv[c]cv[c]c[c]c",
 		&cert.TargetID,
@@ -123,18 +123,18 @@ func (cert *RelayCert) UnmarshalCSLQ(dec *cslq.Decoder) error {
 	return err
 }
 
-func UnmarshalCert(p []byte) (*RelayCert, error) {
+func UnmarshalCert(p []byte) (*Cert, error) {
 	var r = bytes.NewReader(p)
 
 	var t adc.Header
-	var cert RelayCert
+	var cert Cert
 
 	var err = cslq.Decode(r, "vv", &t, &cert)
 	if err != nil {
 		return nil, err
 	}
 
-	if t != RelayCertType {
+	if t != CertType {
 		return nil, errors.New("invalid data type")
 	}
 

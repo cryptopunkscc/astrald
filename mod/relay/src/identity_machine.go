@@ -31,8 +31,8 @@ func (m *IdentityMachine) Apply(certBytes []byte) error {
 	}
 
 	switch dataType {
-	case relay.RelayCertType:
-		var cert relay.RelayCert
+	case relay.CertType:
+		var cert relay.Cert
 		if err := cslq.Decode(r, "v", &cert); err != nil {
 			return err
 		}

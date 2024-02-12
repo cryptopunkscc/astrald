@@ -31,7 +31,7 @@ func NewRedirect(ctx context.Context, query net.Query, allow id.Identity, node n
 
 	var randBytes = make([]byte, 16)
 	rand.Read(randBytes)
-	r.ServiceName = relay.RelayServiceName + "." + hex.EncodeToString(randBytes)
+	r.ServiceName = relay.ServiceName + "." + hex.EncodeToString(randBytes)
 
 	err = node.LocalRouter().AddRoute(r.ServiceName, r)
 

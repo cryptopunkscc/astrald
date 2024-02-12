@@ -114,11 +114,11 @@ func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	if dataType != relay.RelayCertType {
+	if dataType != relay.CertType {
 		return errors.New("invalid data type")
 	}
 
-	var cert relay.RelayCert
+	var cert relay.Cert
 
 	err = cslq.Decode(r, "v", &cert)
 	if err != nil {

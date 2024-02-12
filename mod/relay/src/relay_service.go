@@ -15,11 +15,11 @@ type RelayService struct {
 }
 
 func (srv *RelayService) Run(ctx context.Context) error {
-	err := srv.node.LocalRouter().AddRoute(relay.RelayServiceName, srv)
+	err := srv.node.LocalRouter().AddRoute(relay.ServiceName, srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.LocalRouter().RemoveRoute(relay.RelayServiceName)
+	defer srv.node.LocalRouter().RemoveRoute(relay.ServiceName)
 
 	<-ctx.Done()
 

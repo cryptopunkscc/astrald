@@ -68,7 +68,7 @@ func (mod *Module) RouteVia(
 	relayConn, err := net.RouteWithHints(
 		ctx,
 		mod.node.Router(),
-		net.NewQuery(mod.node.Identity(), relayID, relay.RelayServiceName),
+		net.NewQuery(mod.node.Identity(), relayID, relay.ServiceName),
 		net.DefaultHints().SetSilent(),
 	)
 	if err != nil {

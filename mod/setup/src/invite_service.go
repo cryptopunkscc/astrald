@@ -38,7 +38,7 @@ func (srv *InviteService) RouteQuery(ctx context.Context, query net.Query, calle
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		defer conn.Close()
 		var err error
-		var cert relay.RelayCert
+		var cert relay.Cert
 
 		err = cslq.Decode(conn, "v", &cert)
 		if err != nil {
@@ -95,7 +95,7 @@ func (srv *InviteService) RouteQuery(ctx context.Context, query net.Query, calle
 
 func (srv *InviteService) Invite(ctx context.Context, userID id.Identity, nodeID id.Identity) error {
 	var err error
-	var cert = relay.RelayCert{
+	var cert = relay.Cert{
 		TargetID:  userID,
 		RelayID:   nodeID,
 		Direction: relay.Both,
@@ -140,7 +140,7 @@ func (srv *InviteService) Invite(ctx context.Context, userID id.Identity, nodeID
 	return nil
 }
 
-func (srv *InviteService) joinByCert(cert *relay.RelayCert) error {
+func (srv *InviteService) joinByCert(cert *relay.Cert) error {
 	err := cert.Validate()
 	if err != nil {
 		return err

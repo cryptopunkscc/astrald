@@ -30,8 +30,8 @@ func (mod *Module) indexData(dataID data.ID) error {
 	}
 
 	switch dataType {
-	case relay.RelayCertType:
-		var cert relay.RelayCert
+	case relay.CertType:
+		var cert relay.Cert
 		if err = cslq.Decode(r, "v", &cert); err != nil {
 			return err
 		}
@@ -43,7 +43,7 @@ func (mod *Module) indexData(dataID data.ID) error {
 	}
 }
 
-func (mod *Module) Index(cert *relay.RelayCert) error {
+func (mod *Module) Index(cert *relay.Cert) error {
 	if err := cert.Verify(); err != nil {
 		return err
 	}
@@ -51,12 +51,12 @@ func (mod *Module) Index(cert *relay.RelayCert) error {
 	return mod.index(cert)
 }
 
-func (mod *Module) index(cert *relay.RelayCert) error {
+func (mod *Module) index(cert *relay.Cert) error {
 	var w = data.NewResolver()
-	cslq.Encode(w, "vv", adc.Header(relay.RelayCertType), cert)
+	cslq.Encode(w, "vv", adc.Header(relay.CertType), cert)
 	dataID := w.Resolve()
 
-	return mod.db.Create(&dbRelayCert{
+	return mod.db.Create(&dbCert{
 		DataID:    dataID,
 		Direction: string(cert.Direction),
 		TargetID:  cert.TargetID,
@@ -79,7 +79,7 @@ func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction
 	}
 
 	// write data type
-	err = adc.WriteHeader(w, relay.RelayCertType)
+	err = adc.WriteHeader(w, relay.CertType)
 	if err != nil {
 		return data.ID{}, err
 	}
@@ -113,7 +113,7 @@ func (mod *Module) FindCerts(opts *relay.FindOpts) ([]data.ID, error) {
 	}
 
 	var q = mod.db.
-		Model(&dbRelayCert{}).
+		Model(&dbCert{}).
 		Order("expires_at desc")
 
 	if !opts.RelayID.IsZero() {
@@ -168,7 +168,7 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 	return nil, relay.ErrCertNotFound
 }
 
-func (mod *Module) LoadCert(dataID data.ID) (*relay.RelayCert, error) {
+func (mod *Module) LoadCert(dataID data.ID) (*relay.Cert, error) {
 	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
 	if err != nil {
 		return nil, err
@@ -181,8 +181,8 @@ func (mod *Module) LoadCert(dataID data.ID) (*relay.RelayCert, error) {
 	}
 
 	switch dataType {
-	case relay.RelayCertType:
-		var cert relay.RelayCert
+	case relay.CertType:
+		var cert relay.Cert
 		if err = cslq.Decode(r, "v", &cert); err != nil {
 			return nil, err
 		}
@@ -197,7 +197,7 @@ func (mod *Module) FindExternalRelays(targetID id.Identity) ([]id.Identity, erro
 	var relays []id.Identity
 
 	var q = mod.db.
-		Model(&dbRelayCert{}).
+		Model(&dbCert{}).
 		Where("relay_id != ? and target_id = ? and expires_at > ? and direction in ?",
 			mod.node.Identity(),
 			targetID,
@@ -221,14 +221,14 @@ func (mod *Module) makeCert(
 	relayID id.Identity,
 	direction relay.Direction,
 	duration time.Duration,
-) (*relay.RelayCert, error) {
+) (*relay.Cert, error) {
 	var err error
 
 	if duration == 0 {
 		duration = relay.DefaultCertDuration
 	}
 
-	var cert = relay.RelayCert{
+	var cert = relay.Cert{
 		TargetID:  targetID,
 		RelayID:   relayID,
 		Direction: direction,
@@ -257,7 +257,7 @@ func (mod *Module) makeCert(
 
 func (mod *Module) isCertIndexed(dataID data.ID) bool {
 	var c int64
-	var tx = mod.db.Model(&dbRelayCert{}).Where("data_id = ?", dataID.String()).Count(&c)
+	var tx = mod.db.Model(&dbCert{}).Where("data_id = ?", dataID.String()).Count(&c)
 	if tx.Error != nil {
 		mod.log.Errorv(1, "database error: %v", tx.Error)
 	}

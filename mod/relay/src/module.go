@@ -49,7 +49,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) Save(cert *relay.RelayCert) (dataID data.ID, err error) {
+func (mod *Module) Save(cert *relay.Cert) (dataID data.ID, err error) {
 	// validate the certificate
 	err = cert.Validate()
 	if err != nil {
@@ -63,7 +63,7 @@ func (mod *Module) Save(cert *relay.RelayCert) (dataID data.ID, err error) {
 	}
 
 	// encode the header and the cert
-	err = cslq.Encode(w, "vv", adc.Header(relay.RelayCertType), cert)
+	err = cslq.Encode(w, "vv", adc.Header(relay.CertType), cert)
 	if err != nil {
 		return
 	}
@@ -212,4 +212,26 @@ func (mod *Module) getRouter(w net.SecureWriteCloser) id.Identity {
 		return final.Identity()
 	}
 	return id.Identity{}
+}
+
+func (mod *Module) verifyIndex(dataID data.ID) error {
+	var row dbCert
+	var err = mod.db.
+		Where("data_id = ?", dataID).
+		First(&row).Error
+	if err != nil {
+		return nil
+	}
+
+	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
+	if err == nil {
+		r.Close()
+		return nil
+	}
+
+	err = mod.db.Delete(&row).Error
+	if err != nil {
+		mod.log.Errorv(2, "db: delete error: %v", err)
+	}
+	return nil
 }
