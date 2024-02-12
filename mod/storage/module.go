@@ -10,6 +10,7 @@ const ModuleName = "storage"
 type Module interface {
 	Opener
 	Creator
+	Purger
 
 	// ReadAll reads the whole object into memory and returns the buffer
 	ReadAll(id data.ID, opts *OpenOpts) ([]byte, error)
@@ -34,6 +35,10 @@ type Module interface {
 
 	// RemoveCreator removes a registered Creator
 	RemoveCreator(name string) error
+
+	AddPurger(name string, purger Purger) error
+
+	RemovePurger(name string) error
 }
 
 // Opener is an interface opening data from storage
@@ -44,6 +49,14 @@ type Opener interface {
 // Creator is an interface for creating new data objects in storage
 type Creator interface {
 	Create(opts *CreateOpts) (Writer, error)
+}
+
+type Purger interface {
+	Purge(dataID data.ID, opts *PurgeOpts) (int, error)
+}
+
+type PurgeOpts struct {
+	// for future use
 }
 
 // Reader is an interface for reading data objects

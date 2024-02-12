@@ -6,6 +6,10 @@ type EventDataCommitted struct {
 	DataID data.ID
 }
 
+type EventDataPurged struct {
+	DataID data.ID
+}
+
 type EventOpenerAdded struct {
 	Name string
 	Opener
@@ -24,4 +28,14 @@ type EventStoreAdded struct {
 type EventStoreRemoved struct {
 	Name string
 	Creator
+}
+
+type EventPurgerAdded struct {
+	Name   string
+	Purger Purger
+}
+
+type EventPurgerRemoved struct {
+	Name   string
+	Purger Purger
 }

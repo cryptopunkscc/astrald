@@ -44,7 +44,7 @@ func (srv *SetupService) RouteQuery(ctx context.Context, query net.Query, caller
 		return net.Reject()
 	}
 
-	if len(srv.user.Identities()) > 0 {
+	if !srv.needsSetup() {
 		return net.Reject()
 	}
 

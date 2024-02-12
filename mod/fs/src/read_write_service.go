@@ -170,6 +170,29 @@ func (srv *ReadWriteService) createPath(path string, alloc int) (storage.Writer,
 	return w, err
 }
 
+func (srv *ReadWriteService) Purge(dataID data.ID, opts *storage.PurgeOpts) (n int, err error) {
+	filename := dataID.String()
+	var errs []error
+	for _, dir := range srv.paths.Clone() {
+		path := filepath.Join(dir, filename)
+		stat, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		if !stat.Mode().IsRegular() {
+			continue
+		}
+		err = os.Remove(path)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		n++
+	}
+
+	return n, errors.Join(errs...)
+}
+
 func (srv *ReadWriteService) AddPath(path string) error {
 	srv.watcher.Add(path, false)
 	err := srv.paths.Add(path)

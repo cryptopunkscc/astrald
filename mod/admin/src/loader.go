@@ -27,6 +27,8 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	_ = mod.AddCommand("node", &CmdNode{mod: mod})
 	_ = mod.AddCommand(admin.ModuleName, NewCmdAdmin(mod))
 
+	mod.node.Auth().Add(mod)
+
 	return mod, nil
 }
 

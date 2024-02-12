@@ -41,6 +41,7 @@ func (mod *Module) LoadDependencies() error {
 	// read write
 	mod.storage.AddOpener(fs.ReadWriteSetName, mod.readwrite, 30)
 	mod.storage.AddCreator(fs.ReadWriteSetName, mod.readwrite, 30)
+	mod.storage.AddPurger(fs.ReadWriteSetName, mod.readwrite)
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
@@ -82,6 +83,8 @@ func (mod *Module) LoadDependencies() error {
 
 		// avoid memory for writes because of its non-persistance
 		mod.storage.AddCreator(fs.MemorySetName, mod.memStore, 0)
+
+		mod.storage.AddPurger(fs.MemorySetName, mod.memStore)
 	}
 
 	for _, path := range mod.config.Store {
@@ -116,6 +119,14 @@ func (mod *Module) createSets() error {
 
 	go events.Handle(context.Background(), &mod.memStore.events, func(event storage.EventDataCommitted) error {
 		mod.memSet.Add(event.DataID)
+		return nil
+	})
+
+	go events.Handle(context.Background(), mod.node.Events(), func(event storage.EventDataPurged) error {
+		if _, found := mod.memStore.objects.Get(event.DataID.String()); found {
+			return nil
+		}
+		mod.memSet.Remove(event.DataID)
 		return nil
 	})
 

@@ -28,6 +28,7 @@ func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"read":  adm.read,
+		"purge": adm.purge,
 		"fetch": adm.fetch,
 		"info":  adm.info,
 		"help":  adm.help,
@@ -47,6 +48,30 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	}
 
 	return errors.New("unknown command")
+}
+
+func (adm *Admin) purge(term admin.Terminal, args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing argument")
+	}
+
+	for _, arg := range args {
+		dataID, err := data.Parse(arg)
+		if err != nil {
+			term.Printf("parse '%v': %v\n", arg, err)
+		}
+
+		n, err := adm.mod.Purge(dataID, nil)
+
+		var extra string
+		if err != nil {
+			extra = " (with errors)"
+		}
+
+		term.Printf("%v: purged %v%v\n", dataID, n, extra)
+	}
+
+	return nil
 }
 
 func (adm *Admin) read(term admin.Terminal, args []string) error {

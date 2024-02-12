@@ -10,6 +10,7 @@ import (
 
 var _ storage.Opener = &MemStore{}
 var _ storage.Creator = &MemStore{}
+var _ storage.Purger = &MemStore{}
 
 const DefaultMemStoreSize = 64 * 1024 * 1024 // 64MB
 
@@ -36,6 +37,14 @@ func (mem *MemStore) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reade
 	}
 
 	return NewMemDataReader(bytes), nil
+}
+
+func (mem *MemStore) Purge(dataID data.ID, opts *storage.PurgeOpts) (int, error) {
+	_, ok := mem.objects.Delete(dataID.String())
+	if ok {
+		return 1, nil
+	}
+	return 0, nil
 }
 
 func (mem *MemStore) Create(opts *storage.CreateOpts) (storage.Writer, error) {

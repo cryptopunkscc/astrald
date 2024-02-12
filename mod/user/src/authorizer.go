@@ -22,7 +22,8 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 	switch action {
 	case admin.AccessAction,
 		storage.OpenAction,
-		storage.CreateAction:
+		storage.CreateAction,
+		storage.PurgeAction:
 		return true
 	}
 
