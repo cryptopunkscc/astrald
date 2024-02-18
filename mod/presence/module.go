@@ -31,4 +31,5 @@ type Presence struct {
 const (
 	DiscoverFlag = "discover"
 	SetupFlag    = "setup"
+	ScanAction   = "mod.presence.scan"
 )

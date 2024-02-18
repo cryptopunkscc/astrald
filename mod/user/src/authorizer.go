@@ -3,6 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/authorizer"
 )
@@ -23,7 +24,8 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 	case admin.AccessAction,
 		storage.OpenAction,
 		storage.CreateAction,
-		storage.PurgeAction:
+		storage.PurgeAction,
+		presence.ScanAction:
 		return true
 	}
 

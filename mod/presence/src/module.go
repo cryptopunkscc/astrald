@@ -60,7 +60,11 @@ func (mod *Module) Run(ctx context.Context) (err error) {
 
 	mod.log.Infov(2, "using socket %s", mod.socket.LocalAddr())
 
-	return tasks.Group(mod.discover, mod.announce).Run(ctx)
+	return tasks.Group(
+		mod.discover,
+		mod.announce,
+		NewAPIService(mod),
+	).Run(ctx)
 }
 
 func (mod *Module) Broadcast(flags ...string) error {
