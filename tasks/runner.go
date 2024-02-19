@@ -3,8 +3,6 @@ package tasks
 import (
 	"context"
 	"errors"
-	"fmt"
-	"reflect"
 	"sync"
 )
 
@@ -16,70 +14,47 @@ type Runner interface {
 
 type RunFunc func(context.Context) error
 
-type GroupRunner struct {
-	runners     []Runner
-	DoneHandler func(Runner, error)
+func Func(fn RunFunc) *FuncRunner {
+	return &FuncRunner{Func: fn}
 }
 
-type RunError struct {
-	err    error
-	runner Runner
-	id     int
-}
-
-type RunFuncAdapter struct {
-	RunFunc func(context.Context) error
-}
-
-func (r RunFuncAdapter) Run(ctx context.Context) error {
-	if r.RunFunc == nil {
-		return errors.New("run function is nil")
+func Run(ctx context.Context, runners ...RunFunc) error {
+	if len(runners) == 0 {
+		return nil
 	}
-	return r.RunFunc(ctx)
-}
 
-func (e RunError) Error() string {
-	return fmt.Sprintf("runner %s (#%d) failed: %s", reflect.TypeOf(e.runner), e.id, e.err.Error())
-}
-
-func (e RunError) Unwrap() error {
-	return e.err
-}
-
-func (e RunError) Runner() Runner {
-	return e.runner
-}
-
-func (e RunError) ID() int {
-	return e.id
-}
-
-func Group(runners ...Runner) *GroupRunner {
-	return &GroupRunner{runners: runners}
-}
-
-// Run runs all runners concurrently and returns after all runners are done. If DoneHandler is set, it
-// will be called after a runner returns. Returns nil or context error.
-func (g *GroupRunner) Run(ctx context.Context) (err error) {
+	var errs = make([]error, 0, len(runners))
+	var mu sync.Mutex
 	var wg sync.WaitGroup
-
-	for _, runner := range g.runners {
-		runner := runner
-
-		if runner == nil {
+	for _, r := range runners {
+		r := r
+		if r == nil {
 			continue
 		}
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var err = runner.Run(ctx)
-			if g.DoneHandler != nil {
-				g.DoneHandler(runner, err)
+			var err = r(ctx)
+			if err != nil {
+				mu.Lock()
+				errs = append(errs, err)
+				mu.Unlock()
 			}
 		}()
 	}
-
 	wg.Wait()
-	return ctx.Err()
+
+	return errors.Join(errs...)
+}
+
+type FuncRunner struct {
+	Func RunFunc
+}
+
+func (r FuncRunner) Run(ctx context.Context) error {
+	if r.Func == nil {
+		panic("func is nil")
+	}
+	return r.Func(ctx)
 }

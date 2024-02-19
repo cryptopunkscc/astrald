@@ -31,9 +31,9 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	return tasks.Group(
-		tasks.RunFuncAdapter{RunFunc: mod.watchUnionMembers},
-	).Run(ctx)
+	return tasks.Run(ctx,
+		mod.watchUnionMembers,
+	)
 }
 
 func (mod *Module) SetWrapper(typ sets.Type, manager sets.WrapperFunc) {
