@@ -21,11 +21,14 @@ type Module interface {
 	AddDescriber(Describer) error
 	RemoveDescriber(Describer) error
 
-	BestTitle(dataID data.ID) string
+	Finder
+	AddFinder(Finder) error
+	RemoveFinder(Finder) error
 
 	AddPrototypes(protos ...desc.Data) error
 	UnmarshalDescriptor(name string, buf []byte) desc.Data
 
+	BestTitle(dataID data.ID) string
 	Ready(ctx context.Context) error
 }
 

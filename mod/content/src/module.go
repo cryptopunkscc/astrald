@@ -30,6 +30,7 @@ type Module struct {
 	db     *gorm.DB
 
 	describers sig.Set[content.Describer]
+	finders    sig.Set[content.Finder]
 	prototypes sig.Map[string, desc.Data]
 	identified sets.Set
 
@@ -65,7 +66,7 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 		defer close(ch)
 
 		// catch up with existing entries
-		list, err := mod.find(opts)
+		list, err := mod.scan(opts)
 		if err != nil {
 			return
 		}
@@ -114,7 +115,7 @@ func (mod *Module) Ready(ctx context.Context) error {
 
 // find returns all data items indexed since time ts. If t is not empty, only items of type t will
 // be returned.
-func (mod *Module) find(opts *content.ScanOpts) ([]*content.TypeInfo, error) {
+func (mod *Module) scan(opts *content.ScanOpts) ([]*content.TypeInfo, error) {
 	var list []*content.TypeInfo
 	var rows []*dbDataType
 

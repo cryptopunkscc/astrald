@@ -23,6 +23,7 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var cmd = &Admin{mod: mod}
 	cmd.cmds = map[string]func(admin.Terminal, []string) error{
+		"scan":       cmd.scan,
 		"find":       cmd.find,
 		"identify":   cmd.identify,
 		"forget":     cmd.forget,
@@ -35,10 +36,29 @@ func NewAdmin(mod *Module) *Admin {
 }
 
 func (cmd *Admin) find(term admin.Terminal, args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing argument")
+	}
+
+	var opts = &content.FindOpts{}
+
+	matches, err := cmd.mod.Find(context.Background(), args[0], opts)
+
+	for _, match := range matches {
+		term.Printf("%v %v\n",
+			match.DataID,
+			cmd.mod.BestTitle(match.DataID),
+		)
+	}
+
+	return err
+}
+
+func (cmd *Admin) scan(term admin.Terminal, args []string) error {
 	var opts = &content.ScanOpts{}
 	var since string
 
-	var flags = flag.NewFlagSet("find", flag.ContinueOnError)
+	var flags = flag.NewFlagSet("scan", flag.ContinueOnError)
 	flags.StringVar(&opts.Type, "t", "", "show objects of this type only")
 	flags.StringVar(&since, "a", "", "show objects indexed after a time (YYYY-MM-DD HH:MM:SS)")
 	flags.SetOutput(term)
@@ -54,7 +74,7 @@ func (cmd *Admin) find(term admin.Terminal, args []string) error {
 		}
 	}
 
-	list, err := cmd.mod.find(opts)
+	list, err := cmd.mod.scan(opts)
 	if err != nil {
 		return err
 	}
@@ -223,7 +243,8 @@ func (cmd *Admin) Exec(term admin.Terminal, args []string) error {
 func (cmd *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %s <command>\n\n", content.ModuleName)
 	term.Printf("commands:\n")
-	term.Printf("  find [args]                  list identified objects\n")
+	term.Printf("  scan [args]                  list identified objects\n")
+	term.Printf("  find <query>                 find objects\n")
 	term.Printf("  identify <dataID|set>        identify an object's type\n")
 	term.Printf("  forget <dataID>              forget an object (remove from cache)\n")
 	term.Printf("  describe <dataID>            describe an object\n")
