@@ -1,31 +1,20 @@
 package content
 
-import "github.com/cryptopunkscc/astrald/auth/id"
-
-type Descriptor struct {
-	Source id.Identity
-	Data   DescriptorData
+type TypeDesc struct {
+	Method      string
+	ContentType string
 }
 
-type DescriptorData interface {
-	DescriptorType() string
-}
-
-type TypeDescriptor struct {
-	Method string
-	Type   string
-}
-
-func (TypeDescriptor) DescriptorType() string {
+func (TypeDesc) Type() string {
 	return "mod.content.type"
 }
-func (d TypeDescriptor) String() string { return d.Type }
+func (d TypeDesc) String() string { return d.ContentType }
 
-type LabelDescriptor struct {
+type LabelDesc struct {
 	Label string
 }
 
-func (LabelDescriptor) DescriptorType() string {
+func (LabelDesc) Type() string {
 	return "mod.content.label"
 }
-func (d LabelDescriptor) String() string { return d.Label }
+func (d LabelDesc) String() string { return d.Label }

@@ -2,8 +2,8 @@ package content
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"time"
 )
 
@@ -23,24 +23,17 @@ type Module interface {
 
 	BestTitle(dataID data.ID) string
 
-	AddPrototypes(protos ...DescriptorData) error
-	UnmarshalDescriptor(name string, buf []byte) DescriptorData
+	AddPrototypes(protos ...desc.Data) error
+	UnmarshalDescriptor(name string, buf []byte) desc.Data
 
 	Ready(ctx context.Context) error
 }
 
+type Describer desc.Describer[data.ID]
+
 type ScanOpts struct {
 	Type  string
 	After time.Time
-}
-
-type Describer interface {
-	Describe(ctx context.Context, dataID data.ID, opts *DescribeOpts) []*Descriptor
-}
-
-type DescribeOpts struct {
-	Network        bool
-	IdentityFilter id.Filter
 }
 
 type TypeInfo struct {

@@ -9,10 +9,10 @@ type Module interface {
 }
 
 type Info struct {
-	Type     string // audio|video
-	Title    string
-	Artist   string
-	Album    string
-	Genre    string
-	Duration time.Duration
+	MediaType string // audio|video
+	Title     string
+	Artist    string
+	Album     string
+	Genre     string
+	Duration  time.Duration
 }

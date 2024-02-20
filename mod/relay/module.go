@@ -38,7 +38,7 @@ type FindOpts struct {
 	IncludeExpired  bool
 }
 
-type CertDescriptor struct {
+type CertDesc struct {
 	TargetID      id.Identity
 	RelayID       id.Identity
 	Direction     Direction
@@ -46,9 +46,9 @@ type CertDescriptor struct {
 	ValidateError error
 }
 
-func (CertDescriptor) DescriptorType() string {
+func (CertDesc) Type() string {
 	return "mod.relay.cert"
 }
-func (d CertDescriptor) String() string {
+func (d CertDesc) String() string {
 	return fmt.Sprintf("Relay certificate for {{%s}}@{{%s}}", d.TargetID, d.RelayID)
 }

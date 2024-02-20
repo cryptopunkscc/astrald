@@ -61,7 +61,7 @@ func (srv *DescribeService) RouteQuery(ctx context.Context, query net.Query, cal
 		var list []JSONDescriptor
 
 		for _, d := range srv.content.Describe(ctx, dataID, nil) {
-			if !slices.Contains(srv.config.DescriptorWhitelist, d.Data.DescriptorType()) {
+			if !slices.Contains(srv.config.DescriptorWhitelist, d.Data.Type()) {
 				continue
 			}
 
@@ -71,7 +71,7 @@ func (srv *DescribeService) RouteQuery(ctx context.Context, query net.Query, cal
 			}
 
 			list = append(list, JSONDescriptor{
-				Type: d.Data.DescriptorType(),
+				Type: d.Data.Type(),
 				Info: json.RawMessage(b),
 			})
 		}

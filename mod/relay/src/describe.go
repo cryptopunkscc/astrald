@@ -3,11 +3,11 @@ package relay
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 )
 
-func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []*content.Descriptor {
+func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) []*desc.Desc {
 	var row dbCert
 	err := mod.db.
 		Where("data_id = ?", dataID).
@@ -24,9 +24,9 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.D
 		verr = cert.Validate()
 	}
 
-	return []*content.Descriptor{{
+	return []*desc.Desc{{
 		Source: mod.node.Identity(),
-		Data: relay.CertDescriptor{
+		Data: relay.CertDesc{
 			TargetID:      row.TargetID,
 			RelayID:       row.RelayID,
 			Direction:     relay.Direction(row.Direction),

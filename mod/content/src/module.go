@@ -3,6 +3,7 @@ package content
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
@@ -29,7 +30,7 @@ type Module struct {
 	db     *gorm.DB
 
 	describers sig.Set[content.Describer]
-	prototypes sig.Map[string, content.DescriptorData]
+	prototypes sig.Map[string, desc.Data]
 	identified sets.Set
 
 	storage storage.Module

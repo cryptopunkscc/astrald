@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -12,13 +13,13 @@ import (
 )
 
 func (mod *Module) BestTitle(dataID data.ID) string {
-	descs := mod.Describe(context.Background(), dataID, &content.DescribeOpts{
+	descs := mod.Describe(context.Background(), dataID, &desc.Opts{
 		IdentityFilter: id.AllowEveryone,
 	})
 
-	var m = map[string]*content.Descriptor{}
+	var m = map[string]*desc.Desc{}
 	for _, desc := range descs {
-		t := desc.Data.DescriptorType()
+		t := desc.Data.Type()
 		cur, found := m[t]
 		if !found {
 			m[t] = desc
@@ -29,28 +30,28 @@ func (mod *Module) BestTitle(dataID data.ID) string {
 		}
 	}
 
-	if desc, found := m[content.LabelDescriptor{}.DescriptorType()]; found {
-		d, _ := desc.Data.(content.LabelDescriptor)
+	if desc, found := m[content.LabelDesc{}.Type()]; found {
+		d, _ := desc.Data.(content.LabelDesc)
 		return d.Label
 	}
 
-	if desc, found := m[media.Descriptor{}.DescriptorType()]; found {
-		d, _ := desc.Data.(media.Descriptor)
+	if desc, found := m[media.Desc{}.Type()]; found {
+		d, _ := desc.Data.(media.Desc)
 		return d.String()
 	}
 
-	if desc, found := m[keys.KeyDescriptor{}.DescriptorType()]; found {
-		d, _ := desc.Data.(keys.KeyDescriptor)
+	if desc, found := m[keys.KeyDesc{}.Type()]; found {
+		d, _ := desc.Data.(keys.KeyDesc)
 		return d.String()
 	}
 
-	if desc, found := m[fs.FileDescriptor{}.DescriptorType()]; found {
-		d, _ := desc.Data.(fs.FileDescriptor)
+	if desc, found := m[fs.FileDesc{}.Type()]; found {
+		d, _ := desc.Data.(fs.FileDesc)
 		return d.String()
 	}
 
-	if desc, found := m[content.TypeDescriptor{}.DescriptorType()]; found {
-		d, _ := desc.Data.(content.TypeDescriptor)
+	if desc, found := m[content.TypeDesc{}.Type()]; found {
+		d, _ := desc.Data.(content.TypeDesc)
 		return "Untitled " + d.String()
 	}
 
@@ -63,7 +64,7 @@ func (mod *Module) BestTitle(dataID data.ID) string {
 	return dataID.String()
 }
 
-func (mod *Module) compareTrust(a, b *content.Descriptor) int {
+func (mod *Module) compareTrust(a, b *desc.Desc) int {
 	if a.Source.IsEqual(b.Source) {
 		return 0
 	}

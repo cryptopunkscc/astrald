@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/net"
@@ -156,7 +156,7 @@ func (share *RemoteShare) Sync() error {
 
 			// cache descriptors
 			share.mod.tasks <- func(ctx context.Context) {
-				_, err := remoteShare.Describe(ctx, dataID, &content.DescribeOpts{
+				_, err := remoteShare.Describe(ctx, dataID, &desc.Opts{
 					Network: true,
 				})
 				if err != nil {
@@ -236,8 +236,8 @@ func (share *RemoteShare) Reset() error {
 	return share.SetLastUpdate(time.Time{})
 }
 
-func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) ([]*content.Descriptor, error) {
-	var list []*content.Descriptor
+func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) ([]*desc.Desc, error) {
+	var list []*desc.Desc
 	var rawJSON []byte
 
 	var row dbRemoteDesc
@@ -294,7 +294,7 @@ func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID, opts *co
 			continue
 		}
 
-		list = append(list, &content.Descriptor{
+		list = append(list, &desc.Desc{
 			Source: share.target,
 			Data:   proto,
 		})

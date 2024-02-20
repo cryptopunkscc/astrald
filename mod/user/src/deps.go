@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
@@ -37,6 +38,11 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
+	mod.dir, err = modules.Load[dir.Module](mod.node, dir.ModuleName)
+	if err != nil {
+		return err
+	}
+
 	// load optional dependencies
 	mod.content, _ = modules.Load[content.Module](mod.node, content.ModuleName)
 	mod.sdp, _ = modules.Load[discovery.Module](mod.node, discovery.ModuleName)
@@ -48,6 +54,8 @@ func (mod *Module) LoadDependencies() error {
 		mod.sdp.AddServiceDiscoverer(mod)
 		mod.sdp.AddDataDiscoverer(mod)
 	}
+
+	mod.dir.AddDescriber(mod)
 
 	return nil
 }

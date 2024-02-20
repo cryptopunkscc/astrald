@@ -3,13 +3,14 @@ package shares
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/content"
 )
 
 var _ content.Describer = &Module{}
 
-func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *content.DescribeOpts) []*content.Descriptor {
-	var list []*content.Descriptor
+func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) []*desc.Desc {
+	var list []*desc.Desc
 	var err error
 	var rows []*dbRemoteData
 

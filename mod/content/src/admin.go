@@ -7,6 +7,7 @@ import (
 	"flag"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	desc2 "github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -113,7 +114,7 @@ func (cmd *Admin) identify(term admin.Terminal, args []string) error {
 
 func (cmd *Admin) describe(term admin.Terminal, args []string) error {
 	var err error
-	var opts = &content.DescribeOpts{
+	var opts = &desc2.Opts{
 		IdentityFilter: id.AllowEveryone,
 	}
 
@@ -137,7 +138,7 @@ func (cmd *Admin) describe(term admin.Terminal, args []string) error {
 	var desc = cmd.mod.Describe(context.Background(), dataID, opts)
 
 	for _, d := range desc {
-		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Data.DescriptorType()))
+		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Data.Type()))
 
 		j, err := json.MarshalIndent(d.Data, "  ", "  ")
 		if err != nil {
@@ -163,8 +164,8 @@ func (cmd *Admin) forget(term admin.Terminal, args []string) error {
 }
 
 func (cmd *Admin) prototypes(term admin.Terminal, args []string) error {
-	list, _ := sig.MapSlice(cmd.mod.prototypes.Values(), func(i content.DescriptorData) (string, error) {
-		return i.DescriptorType(), nil
+	list, _ := sig.MapSlice(cmd.mod.prototypes.Values(), func(i desc2.Data) (string, error) {
+		return i.Type(), nil
 	})
 
 	slices.Sort(list)

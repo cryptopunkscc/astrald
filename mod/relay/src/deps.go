@@ -35,7 +35,7 @@ func (mod *Module) LoadDependencies() error {
 
 	mod.node.Router().AddRoute(id.Anyone, id.Anyone, mod, 20)
 
-	mod.content.AddPrototypes(relay.CertDescriptor{})
+	mod.content.AddPrototypes(relay.CertDesc{})
 
 	return nil
 }

@@ -88,7 +88,7 @@ func (srv *IndexerService) indexAs(dataID data.ID, dataType string, enableNetwor
 
 	err = srv.db.Create(&dbMediaInfo{
 		DataID: dataID,
-		Type:   info.Type,
+		Type:   info.MediaType,
 		Artist: info.Artist,
 		Title:  info.Title,
 		Album:  info.Album,
@@ -144,11 +144,11 @@ func (srv *IndexerService) scanID3v2(r io.Reader) (*media.Info, error) {
 	}
 
 	return &media.Info{
-		Type:   "audio",
-		Title:  tag.Title(),
-		Artist: tag.Artist(),
-		Album:  tag.Album(),
-		Genre:  tag.Genre(),
+		MediaType: "audio",
+		Title:     tag.Title(),
+		Artist:    tag.Artist(),
+		Album:     tag.Album(),
+		Genre:     tag.Genre(),
 	}, err
 }
 
@@ -159,7 +159,7 @@ func (srv *IndexerService) scanMatroska(r io.Reader) (*media.Info, error) {
 	}
 
 	var info = &media.Info{
-		Type: "video",
+		MediaType: "video",
 	}
 
 	if file.Segment != nil || len(file.Segment.Info) > 0 {

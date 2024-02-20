@@ -17,10 +17,10 @@ type Config struct {
 var defaultConfig = Config{
 	NotifyDelay: 10 * time.Second,
 	DescriptorWhitelist: []string{
-		content.TypeDescriptor{}.DescriptorType(),
-		keys.KeyDescriptor{}.DescriptorType(),
-		media.Descriptor{}.DescriptorType(),
-		zip.ArchiveDescriptor{}.DescriptorType(),
-		relay.CertDescriptor{}.DescriptorType(),
+		content.TypeDesc{}.Type(),
+		keys.KeyDesc{}.Type(),
+		media.Desc{}.Type(),
+		zip.ArchiveDesc{}.Type(),
+		relay.CertDesc{}.Type(),
 	},
 }

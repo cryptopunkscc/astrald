@@ -12,3 +12,11 @@ type Module interface {
 	RemoveIdentity(identity id.Identity) error
 	Identities() []id.Identity
 }
+
+type UserDesc struct {
+	Name string
+}
+
+func (UserDesc) Type() string {
+	return "user"
+}

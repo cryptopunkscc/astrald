@@ -24,14 +24,14 @@ type PrivateKey struct {
 	Bytes []byte `cslq:"[c]c"`
 }
 
-type KeyDescriptor struct {
+type KeyDesc struct {
 	KeyType   string
 	PublicKey id.Identity
 }
 
-func (k KeyDescriptor) DescriptorType() string {
+func (k KeyDesc) Type() string {
 	return "mod.keys.private_key"
 }
-func (k KeyDescriptor) String() string {
+func (k KeyDesc) String() string {
 	return fmt.Sprintf("Private key of {{%s}}", k.PublicKey.PublicKeyHex())
 }

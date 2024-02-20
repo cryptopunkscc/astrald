@@ -44,7 +44,7 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.content.AddDescriber(mod)
-	mod.content.AddPrototypes(media.Descriptor{})
+	mod.content.AddPrototypes(media.Desc{})
 
 	// create our sets if needed
 	mod.indexedSet, err = mod.sets.Open(IndexedSet, true)

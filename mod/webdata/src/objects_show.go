@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/node"
@@ -14,7 +15,7 @@ import (
 	"strconv"
 )
 
-type desc struct {
+type descItem struct {
 	ID     string
 	Source string
 	Type   string
@@ -27,7 +28,7 @@ type objectsShowPage struct {
 	DataID      data.ID
 	Type        string
 	Sets        []setShort
-	Descs       []desc
+	Descs       []descItem
 }
 
 func (p objectsShowPage) SizeHuman() string {
@@ -41,7 +42,7 @@ func (mod *Module) handleObjectsShow(c *gin.Context) {
 		return
 	}
 
-	descs := mod.content.Describe(c, dataID, &content.DescribeOpts{
+	descs := mod.content.Describe(c, dataID, &desc.Opts{
 		IdentityFilter: id.AllowEveryone,
 	})
 
@@ -69,8 +70,8 @@ func (mod *Module) handleObjectsShow(c *gin.Context) {
 	})
 
 	for i, d := range descs {
-		if td, ok := d.Data.(content.TypeDescriptor); ok {
-			page.Type = td.Type
+		if td, ok := d.Data.(content.TypeDesc); ok {
+			page.Type = td.ContentType
 		}
 
 		sourceName := mod.node.Resolver().DisplayName(d.Source)
@@ -81,10 +82,10 @@ func (mod *Module) handleObjectsShow(c *gin.Context) {
 			return
 		}
 
-		page.Descs = append(page.Descs, desc{
+		page.Descs = append(page.Descs, descItem{
 			ID:     "desc_" + strconv.FormatInt(int64(i), 10),
 			Source: sourceName,
-			Type:   d.Data.DescriptorType(),
+			Type:   d.Data.Type(),
 			Data:   d.Data,
 			JSON:   string(j),
 		})

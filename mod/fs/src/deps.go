@@ -49,7 +49,7 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.content.AddDescriber(mod)
-	mod.content.AddPrototypes(fs.FileDescriptor{})
+	mod.content.AddPrototypes(fs.FileDesc{})
 	mod.memStore = NewMemStore(&mod.events, 0)
 
 	// wait for data module to finish preparing

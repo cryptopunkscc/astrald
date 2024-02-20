@@ -3,6 +3,7 @@ package webdata
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/sets"
@@ -77,14 +78,14 @@ func (mod *Module) handleSetsShow(c *gin.Context) {
 			Type:        "unknown",
 		}
 
-		descs := mod.content.Describe(c, m.DataID, &content.DescribeOpts{
+		descs := mod.content.Describe(c, m.DataID, &desc.Opts{
 			IdentityFilter: id.AllowEveryone,
 		})
 
 		// find the type descriptor
 		for _, d := range descs {
-			if td, ok := d.Data.(content.TypeDescriptor); ok {
-				obj.Type = td.Type
+			if td, ok := d.Data.(content.TypeDesc); ok {
+				obj.Type = td.ContentType
 			}
 		}
 
