@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/storage/cslq"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -33,6 +34,10 @@ type Module struct {
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
+
+	if err := cslq.NewStorageService(mod.node, mod).Run(ctx); err != nil {
+		return err
+	}
 
 	<-ctx.Done()
 

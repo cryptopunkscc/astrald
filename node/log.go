@@ -169,6 +169,5 @@ func (node *CoreNode) loadLogConfig() error {
 		filePrinter := log.NewLinePrinter(fileOutput)
 		node.logOutput.Add(filePrinter)
 	}
-
 	return nil
 }
