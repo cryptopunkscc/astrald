@@ -14,10 +14,10 @@ const (
 )
 
 type writerClient struct {
-	conn io.ReadWriter
+	conn io.ReadWriteCloser
 }
 
-func newWriterClient(conn io.ReadWriter) storage.Writer {
+func newWriterClient(conn io.ReadWriteCloser) storage.Writer {
 	return &writerClient{conn}
 }
 
@@ -38,6 +38,7 @@ func (w writerClient) Commit() (id data.ID, err error) {
 	if err = cslq.Decode(w.conn, "v", &id); err != nil {
 		return
 	}
+	err = w.conn.Close()
 	return
 }
 
@@ -45,5 +46,6 @@ func (w writerClient) Discard() (err error) {
 	if err = cslq.Encode(w.conn, "c", WriterDiscard); err != nil {
 		return
 	}
+	err = w.conn.Close()
 	return
 }

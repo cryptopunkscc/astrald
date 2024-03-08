@@ -9,6 +9,7 @@ import (
 	client "github.com/cryptopunkscc/astrald/mod/storage/cslq/client"
 	"github.com/go-playground/assert/v2"
 	"path"
+	"strings"
 	"testing"
 	"time"
 )
@@ -80,6 +81,7 @@ func (t *testStorageModule) testCreate(
 	tt *testing.T,
 	s storage.Creator,
 ) {
+
 	tt.Run("Create", func(tt *testing.T) {
 		opts := &storage.CreateOpts{Alloc: 1}
 		writer, err := s.Create(opts)
@@ -95,6 +97,12 @@ func (t *testStorageModule) testCreate(
 			d, err := writer.Commit()
 			t.verifyEq(tt, err, d)
 		})
+	})
+
+	tt.Run("Create", func(tt *testing.T) {
+		opts := &storage.CreateOpts{Alloc: 1}
+		writer, err := s.Create(opts)
+		t.verifyEq(tt, err, opts)
 
 		tt.Run("Discard", func(tt *testing.T) {
 			err := writer.Discard()
@@ -336,7 +344,7 @@ func (t *testStorageModule) verify(
 	args ...any,
 ) {
 	tt.Helper()
-	name := path.Base(tt.Name())
+	name := strings.Split(path.Base(tt.Name()), "#")[0]
 	if err != nil {
 		tt.Error(args, err)
 	}
