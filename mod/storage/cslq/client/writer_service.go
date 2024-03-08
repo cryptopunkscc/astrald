@@ -41,11 +41,15 @@ func (w *writerService) Handle(cmd byte) (err error) {
 		}
 		return ErrClose
 	case WriterWrite:
-		var l int
-		if err = cslq.Decode(w.conn, "c", &l); err != nil {
+		var b []byte
+		if err = cslq.Decode(w.conn, "[l]c", &b); err != nil {
 			return
 		}
-		if _, err = io.CopyN(w.writer, w.conn, int64(l)); err != nil {
+		var l int
+		if l, err = w.writer.Write(b); err != nil {
+			return
+		}
+		if err = cslq.Encode(w.conn, "l", l); err != nil {
 			return
 		}
 	case WriterCommit:
@@ -54,6 +58,7 @@ func (w *writerService) Handle(cmd byte) (err error) {
 		if err = cslq.Encode(w.conn, "v", dataID); err != nil {
 			return
 		}
+		return ErrClose
 	}
 	return
 }

@@ -22,12 +22,12 @@ func newWriterClient(conn io.ReadWriteCloser) storage.Writer {
 }
 
 func (w writerClient) Write(p []byte) (n int, err error) {
-	err = cslq.Encode(w.conn, "c [c]c", WriterWrite, p)
+	err = cslq.Encode(w.conn, "c [l]c", WriterWrite, p)
 	if err != nil {
 		n = -1
 		return
 	}
-	n = len(p)
+	cslq.Decode(w.conn, "l", &n)
 	return
 }
 
