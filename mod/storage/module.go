@@ -80,7 +80,7 @@ type Writer interface {
 }
 
 type ReaderInfo struct {
-	Name string
+	Name string `json:"name"`
 }
 
 type OpenOpts struct {
@@ -99,5 +99,5 @@ type OpenOpts struct {
 
 type CreateOpts struct {
 	// Creator should expect the data to be at least Alloc bytes in size
-	Alloc int
+	Alloc int `json:"alloc"`
 }
