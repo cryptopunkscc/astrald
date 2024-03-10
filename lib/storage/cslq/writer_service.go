@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/storage"
+	api "github.com/cryptopunkscc/astrald/mod/storage/cslq"
 	"io"
 	"log"
 )
@@ -35,12 +36,12 @@ func (w *writerService) Loop() (err error) {
 
 func (w *writerService) Handle(cmd byte) (err error) {
 	switch cmd {
-	case WriterDiscard:
+	case api.WriterDiscard:
 		if err = w.writer.Discard(); err != nil {
 			log.Println(err)
 		}
 		return ErrClose
-	case WriterWrite:
+	case api.WriterWrite:
 		var b []byte
 		if err = cslq.Decode(w.conn, "[l]c", &b); err != nil {
 			return
@@ -52,7 +53,7 @@ func (w *writerService) Handle(cmd byte) (err error) {
 		if err = cslq.Encode(w.conn, "l", l); err != nil {
 			return
 		}
-	case WriterCommit:
+	case api.WriterCommit:
 		var dataID data.ID
 		dataID, err = w.writer.Commit()
 		if err = cslq.Encode(w.conn, "v", dataID); err != nil {

@@ -6,8 +6,9 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/data"
+	client "github.com/cryptopunkscc/astrald/lib/storage/cslq"
 	"github.com/cryptopunkscc/astrald/mod/storage"
-	client "github.com/cryptopunkscc/astrald/mod/storage/cslq/client"
+	api "github.com/cryptopunkscc/astrald/mod/storage/cslq"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"io"
@@ -22,7 +23,7 @@ type StorageService struct {
 }
 
 func NewStorageService(node node.Node, mod storage.Module) *StorageService {
-	return &StorageService{node: node, mod: mod, port: client.Port}
+	return &StorageService{node: node, mod: mod, port: api.Port}
 }
 
 func (s *StorageService) Run(ctx context.Context) (err error) {
@@ -69,7 +70,7 @@ func (s *StorageService) handle(
 	args *cslq.Decoder,
 ) (err error) {
 	switch cmd {
-	case client.ReadAll:
+	case api.ReadAll:
 		var i data.ID
 		var opts storage.OpenOpts
 		if err = args.Decodef("v {q c c}", &i, &opts); err != nil {
@@ -82,7 +83,7 @@ func (s *StorageService) handle(
 		if err = cslq.Encode(conn, "[l]c", all); err != nil {
 			return
 		}
-	case client.Put:
+	case api.Put:
 		var bytes []byte
 		var opts storage.CreateOpts
 		if err = args.Decodef("[l]c v", &bytes, &opts); err != nil {
@@ -95,7 +96,7 @@ func (s *StorageService) handle(
 		if err = cslq.Encode(conn, "v", dataID); err != nil {
 			return
 		}
-	case client.AddOpener:
+	case api.AddOpener:
 		var name string
 		var port string
 		var priority int
@@ -106,7 +107,7 @@ func (s *StorageService) handle(
 		if err = s.mod.AddOpener(name, c, priority); err != nil {
 			return
 		}
-	case client.RemoveOpener:
+	case api.RemoveOpener:
 		var name string
 		if err = args.Decodef("[c]c", &name); err != nil {
 			return
@@ -114,7 +115,7 @@ func (s *StorageService) handle(
 		if err = s.mod.RemoveOpener(name); err != nil {
 			return
 		}
-	case client.AddCreator:
+	case api.AddCreator:
 		var name string
 		var port string
 		var priority int
@@ -125,7 +126,7 @@ func (s *StorageService) handle(
 		if err = s.mod.AddCreator(name, c, priority); err != nil {
 			return
 		}
-	case client.RemoveCreator:
+	case api.RemoveCreator:
 		var name string
 		if err = args.Decodef("[c]c", &name); err != nil {
 			return
@@ -133,7 +134,7 @@ func (s *StorageService) handle(
 		if err = s.mod.RemoveCreator(name); err != nil {
 			return
 		}
-	case client.AddPurger:
+	case api.AddPurger:
 		var name string
 		var port string
 		if err = args.Decodef("[c]c [c]c", &name, &port); err != nil {
@@ -143,7 +144,7 @@ func (s *StorageService) handle(
 		if err = s.mod.AddPurger(name, c); err != nil {
 			return
 		}
-	case client.RemovePurger:
+	case api.RemovePurger:
 		var name string
 		if err = args.Decodef("[c]c", &name); err != nil {
 			return
@@ -151,15 +152,15 @@ func (s *StorageService) handle(
 		if err = s.mod.RemovePurger(name); err != nil {
 			return
 		}
-	case client.OpenerOpen:
+	case api.OpenerOpen:
 		if err = client.NewOpenerService(s.mod, remoteID).Handle(conn, args); err != nil {
 			return
 		}
-	case client.CreatorCreate:
+	case api.CreatorCreate:
 		if err = client.NewCreatorService(s.mod).Handle(conn, args); err != nil {
 			return
 		}
-	case client.PurgerPurge:
+	case api.PurgerPurge:
 		if err = client.NewPurgerService(s.mod).Handle(conn, args); err != nil {
 			return
 		}

@@ -5,8 +5,9 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/astral"
+	client "github.com/cryptopunkscc/astrald/lib/storage/cslq"
 	"github.com/cryptopunkscc/astrald/mod/storage"
-	client "github.com/cryptopunkscc/astrald/mod/storage/cslq/client"
+	api "github.com/cryptopunkscc/astrald/mod/storage/cslq"
 	"github.com/go-playground/assert/v2"
 	"path"
 	"strings"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-const testStoragePort = client.Port + "test"
+const testStoragePort = api.Port + "test."
 
 func TestNewStorageService(tt *testing.T) {
 	// start service

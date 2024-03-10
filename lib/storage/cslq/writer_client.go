@@ -4,13 +4,8 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/storage"
+	api "github.com/cryptopunkscc/astrald/mod/storage/cslq"
 	"io"
-)
-
-const (
-	WriterWrite = byte(iota) + 1
-	WriterCommit
-	WriterDiscard
 )
 
 type writerClient struct {
@@ -22,17 +17,17 @@ func newWriterClient(conn io.ReadWriteCloser) storage.Writer {
 }
 
 func (w writerClient) Write(p []byte) (n int, err error) {
-	err = cslq.Encode(w.conn, "c [l]c", WriterWrite, p)
+	err = cslq.Encode(w.conn, "c [l]c", api.WriterWrite, p)
 	if err != nil {
 		n = -1
 		return
 	}
-	cslq.Decode(w.conn, "l", &n)
+	err = cslq.Decode(w.conn, "l", &n)
 	return
 }
 
 func (w writerClient) Commit() (id data.ID, err error) {
-	if err = cslq.Encode(w.conn, "c", WriterCommit); err != nil {
+	if err = cslq.Encode(w.conn, "c", api.WriterCommit); err != nil {
 		return
 	}
 	if err = cslq.Decode(w.conn, "v", &id); err != nil {
@@ -43,7 +38,7 @@ func (w writerClient) Commit() (id data.ID, err error) {
 }
 
 func (w writerClient) Discard() (err error) {
-	if err = cslq.Encode(w.conn, "c", WriterDiscard); err != nil {
+	if err = cslq.Encode(w.conn, "c", api.WriterDiscard); err != nil {
 		return
 	}
 	err = w.conn.Close()

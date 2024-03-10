@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/storage"
-	"github.com/cryptopunkscc/astrald/mod/storage/cslq"
+	cslq "github.com/cryptopunkscc/astrald/mod/storage/cslq/src"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/sig"

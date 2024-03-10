@@ -3,14 +3,8 @@ package storage
 import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/storage"
+	api "github.com/cryptopunkscc/astrald/mod/storage/cslq"
 	"io"
-)
-
-const (
-	ReaderRead = byte(iota) + 1
-	ReaderSeek
-	ReaderInfo
-	ReaderClose
 )
 
 type readerClient struct {
@@ -22,7 +16,7 @@ func newReaderClient(conn io.ReadWriteCloser) storage.Reader {
 }
 
 func (r *readerClient) Read(p []byte) (n int, err error) {
-	if err = cslq.Encode(r.conn, "c l", ReaderRead, cap(p)); err != nil {
+	if err = cslq.Encode(r.conn, "c l", api.ReaderRead, cap(p)); err != nil {
 		return
 	}
 	n, err = r.conn.Read(p)
@@ -30,7 +24,7 @@ func (r *readerClient) Read(p []byte) (n int, err error) {
 }
 
 func (r *readerClient) Seek(offset int64, whence int) (new int64, err error) {
-	if err = cslq.Encode(r.conn, "c q l", ReaderSeek, offset, whence); err != nil {
+	if err = cslq.Encode(r.conn, "c q l", api.ReaderSeek, offset, whence); err != nil {
 		return
 	}
 	if err = cslq.Decode(r.conn, "q", &new); err != nil {
@@ -40,16 +34,16 @@ func (r *readerClient) Seek(offset int64, whence int) (new int64, err error) {
 }
 
 func (r *readerClient) Close() (err error) {
-	if err = cslq.Encode(r.conn, "c", ReaderClose); err != nil {
+	if err = cslq.Encode(r.conn, "c", api.ReaderClose); err != nil {
 		return
 	}
-	r.conn.Close()
+	err = r.conn.Close()
 	return
 }
 
 func (r *readerClient) Info() (info *storage.ReaderInfo) {
 	i := storage.ReaderInfo{}
-	if err := cslq.Encode(r.conn, "c", ReaderInfo); err != nil {
+	if err := cslq.Encode(r.conn, "c", api.ReaderInfo); err != nil {
 		return
 	}
 	if err := cslq.Decode(r.conn, "{[c]c}", &i); err != nil {
