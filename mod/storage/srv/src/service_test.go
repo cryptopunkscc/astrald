@@ -26,7 +26,8 @@ func TestStorageService(t *testing.T) {
 
 	service := NewService(m, nil)
 	service.port = testStoragePort
-	if err := service.run(ctx); err != nil {
+	service.register = service.registerTestRoute
+	if err := service.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
 
@@ -149,8 +150,8 @@ func TestStorageService(t *testing.T) {
 	})
 }
 
-func (s *Service) run(ctx context.Context) (err error) {
-	l, err := astral.Register(s.port + "*")
+func (s *Service) registerTestRoute(ctx context.Context, route string) (err error) {
+	l, err := astral.Register(route)
 	if err != nil {
 		return
 	}
