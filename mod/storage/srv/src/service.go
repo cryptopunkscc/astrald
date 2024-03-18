@@ -19,6 +19,7 @@ type Service struct {
 	unmarshal UnmarshalFunc
 	encoder   GetEncoder
 	handlers  Handlers[Context]
+	register  func(ctx context.Context, route string) (err error)
 }
 
 type GetEncoder func(writer io.Writer) Encoder
@@ -32,6 +33,7 @@ func NewService(module storage.Module, node node.Node) (s *Service) {
 		encoder:   func(writer io.Writer) Encoder { return json.NewEncoder(writer) },
 		handlers:  make(Handlers[Context]),
 	}
+	s.register = s.registerRoute
 	h := s.handlers
 
 	Bind(h, proto.ReadAllReq{}, readAll)
@@ -52,22 +54,30 @@ func (s *Service) Run(ctx context.Context) (err error) {
 		}
 
 		route := s.port + h.Query()
-		if err = s.node.LocalRouter().AddRoute(route, s); err != nil {
+		if err = s.register(ctx, route); err != nil {
 			return
 		}
-		defer s.node.LocalRouter().RemoveRoute(route)
 	}
 
 	if routeAny {
 		route := s.port + "*"
-		if err = s.node.LocalRouter().AddRoute(route, s); err != nil {
+		if err = s.register(ctx, route); err != nil {
 			return
 		}
-		defer s.node.LocalRouter().RemoveRoute(route)
 	}
 
-	<-ctx.Done()
-	return nil
+	return
+}
+
+func (s *Service) registerRoute(ctx context.Context, route string) (err error) {
+	if err = s.node.LocalRouter().AddRoute(route, s); err != nil {
+		return
+	}
+	go func() {
+		<-ctx.Done()
+		_ = s.node.LocalRouter().RemoveRoute(route)
+	}()
+	return
 }
 
 func (s *Service) RouteQuery(_ context.Context, query net.Query, caller net.SecureWriteCloser, _ net.Hints) (net.SecureWriteCloser, error) {
