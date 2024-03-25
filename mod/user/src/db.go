@@ -7,7 +7,6 @@ import (
 
 type dbIdentity struct {
 	Identity id.Identity `gorm:"primaryKey"`
-	SetName  string      `gorm:"uniqueIndex"`
 }
 
 func (dbIdentity) TableName() string {

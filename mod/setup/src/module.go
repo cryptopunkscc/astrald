@@ -54,5 +54,5 @@ func (mod *Module) OnPendingAd(ad presence.PendingAd) {
 }
 
 func (mod *Module) needsSetup() bool {
-	return len(mod.user.Identities()) == 0
+	return mod.user.LocalUser() == nil
 }

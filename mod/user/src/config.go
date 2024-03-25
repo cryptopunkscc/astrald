@@ -1,7 +1,7 @@
 package user
 
 type Config struct {
-	Identities []string
+	LocalUser string
 }
 
 var defaultConfig = Config{}

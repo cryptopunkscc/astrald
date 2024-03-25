@@ -10,13 +10,15 @@ import (
 func (mod *Module) DiscoverData(ctx context.Context, caller id.Identity, origin string) ([][]byte, error) {
 	var data [][]byte
 
-	for _, i := range mod.identities.Clone() {
-		if len(i.cert) == 0 {
-			continue
-		}
-
-		data = append(data, i.cert)
+	if mod.localUser == nil {
+		return nil, nil
 	}
+
+	if len(mod.localUser.cert) == 0 {
+		return nil, nil
+	}
+
+	data = append(data, mod.localUser.cert)
 
 	return data, nil
 }
@@ -24,29 +26,36 @@ func (mod *Module) DiscoverData(ctx context.Context, caller id.Identity, origin 
 func (mod *Module) DiscoverServices(ctx context.Context, caller id.Identity, origin string) ([]discovery.Service, error) {
 	var services []discovery.Service
 
-	for _, i := range mod.identities.Clone() {
-		services = append(services,
-			discovery.Service{
-				Identity: i.identity,
-				Name:     userProfileServiceName,
-				Type:     userProfileServiceType,
-				Extra:    nil,
-			})
+	var user = mod.LocalUser()
+	if user == nil {
+		return nil, nil
 	}
+
+	services = append(services,
+		discovery.Service{
+			Identity: user.Identity(),
+			Name:     userProfileServiceName,
+			Type:     userProfileServiceType,
+			Extra:    nil,
+		})
 
 	return services, nil
 }
 
 func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	user := mod.LocalUser()
+	if user == nil {
+		return net.RouteNotFound(mod)
+	}
+
 	targetID := query.Target()
 	if targetID.IsZero() {
 		return net.RouteNotFound(mod)
 	}
 
-	identity, ok := mod.identities.Get(targetID.PublicKeyHex())
-	if !ok {
+	if !targetID.IsEqual(user.Identity()) {
 		return net.RouteNotFound(mod)
 	}
 
-	return identity.routes.RouteQuery(ctx, query, caller, hints)
+	return mod.routes.RouteQuery(ctx, query, caller, hints)
 }

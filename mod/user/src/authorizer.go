@@ -15,8 +15,15 @@ type Authorizer struct {
 }
 
 func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...any) bool {
-	_, found := auth.mod.identities.Get(identity.PublicKeyHex())
-	if !found {
+	var localUser = auth.mod.LocalUser()
+	if localUser == nil {
+		return false
+	}
+	var userID = localUser.Identity()
+	if userID.IsZero() {
+		return false
+	}
+	if !userID.IsEqual(identity) {
 		return false
 	}
 

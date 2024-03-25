@@ -31,7 +31,7 @@ func (srv *InviteService) Run(ctx context.Context) error {
 }
 
 func (srv *InviteService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	if len(srv.user.Identities()) != 0 {
+	if !srv.needsSetup() {
 		return net.Reject()
 	}
 
@@ -151,7 +151,7 @@ func (srv *InviteService) joinByCert(cert *relay.Cert) error {
 		return err
 	}
 
-	srv.user.AddIdentity(cert.TargetID)
+	srv.user.SetLocalUser(cert.TargetID)
 
 	return err
 }

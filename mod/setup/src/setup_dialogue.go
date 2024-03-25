@@ -75,8 +75,8 @@ func (d *SetupDialogue) createNewUser() error {
 		return err
 	}
 
-	d.Say("Adding a new user...")
-	err = d.user.AddIdentity(identity)
+	d.Say("Setting local user identity...")
+	err = d.user.SetLocalUser(identity)
 	if err != nil {
 		return err
 	}

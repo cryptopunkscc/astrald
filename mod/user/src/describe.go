@@ -8,7 +8,12 @@ import (
 )
 
 func (mod *Module) Describe(ctx context.Context, identity id.Identity, opts *desc.Opts) []*desc.Desc {
-	if _, found := mod.identities.Get(identity.PublicKeyHex()); found {
+	localUser := mod.LocalUser()
+	if localUser == nil {
+		return nil
+	}
+
+	if identity.IsEqual(localUser.Identity()) {
 		return []*desc.Desc{{
 			Source: mod.node.Identity(),
 			Data:   user.UserDesc{Name: mod.node.Resolver().DisplayName(identity)},

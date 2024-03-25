@@ -14,10 +14,9 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"add":    adm.add,
-		"remove": adm.remove,
-		"list":   adm.list,
-		"help":   adm.help,
+		"set":  adm.set,
+		"info": adm.info,
+		"help": adm.help,
 	}
 
 	return adm
@@ -36,7 +35,7 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	return errors.New("unknown command")
 }
 
-func (adm *Admin) add(term admin.Terminal, args []string) error {
+func (adm *Admin) set(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
 	}
@@ -46,32 +45,14 @@ func (adm *Admin) add(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	return adm.mod.AddIdentity(identity)
+	return adm.mod.SetLocalUser(identity)
 }
 
-func (adm *Admin) remove(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("missing argument")
-	}
+func (adm *Admin) info(term admin.Terminal, args []string) error {
+	var localUser = adm.mod.LocalUser().Identity()
 
-	identity, err := adm.mod.node.Resolver().Resolve(args[0])
-	if err != nil {
-		return err
-	}
-
-	return adm.mod.RemoveIdentity(identity)
-}
-
-func (adm *Admin) list(term admin.Terminal, args []string) error {
-	term.Printf("User identities:\n")
-
-	for _, user := range adm.mod.identities.Clone() {
-		var p admin.Important
-		if user.identity.PrivateKey() != nil {
-			p = " (private key)"
-		}
-		term.Printf("%s%s\n", user.identity, p)
-	}
+	term.Printf("Identity: %v\n", localUser)
+	term.Printf("PubKey:   %v\n", localUser.PublicKeyHex())
 
 	return nil
 }
@@ -83,9 +64,8 @@ func (adm *Admin) ShortDescription() string {
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %s <command>\n\n", user.ModuleName)
 	term.Printf("commands:\n")
-	term.Printf("  add <identity>       add identity to the user\n")
-	term.Printf("  remove <identity>    remove identity from the user\n")
-	term.Printf("  list                 list user's identities\n")
+	term.Printf("  set <identity>       set local user identity\n")
+	term.Printf("  info                 show user info\n")
 	term.Printf("  help                 show help\n")
 	return nil
 }

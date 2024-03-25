@@ -23,7 +23,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/cryptopunkscc/astrald/node/router"
 	"gorm.io/gorm"
 )
 
@@ -46,7 +46,8 @@ type Module struct {
 	sets    sets.Module
 	dir     dir.Module
 
-	identities     sig.Map[string, *Identity]
+	localUser      *LocalUser
+	routes         *router.PrefixRouter
 	profileService *ProfileService
 	notifyService  *NotifyService
 }
@@ -55,21 +56,6 @@ func (mod *Module) Run(ctx context.Context) error {
 	<-ctx.Done()
 
 	return nil
-}
-
-func (mod *Module) Identities() []id.Identity {
-	var list []id.Identity
-
-	for _, i := range mod.identities.Clone() {
-		list = append(list, i.identity)
-	}
-
-	return list
-}
-
-func (mod *Module) Find(identity id.Identity) *Identity {
-	v, _ := mod.identities.Get(identity.PublicKeyHex())
-	return v
 }
 
 func (mod *Module) discoverUsers(ctx context.Context) {

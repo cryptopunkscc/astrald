@@ -13,15 +13,13 @@ func (mod *Module) handleInvite(c *gin.Context) {
 		return
 	}
 
-	userIDs := mod.user.Identities()
-	if len(userIDs) == 0 {
+	user := mod.user.LocalUser()
+	if user == nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
 
-	userID := userIDs[0]
-
-	err = mod.setup.Invite(c, userID, nodeID)
+	err = mod.setup.Invite(c, user.Identity(), nodeID)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "error",

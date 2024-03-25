@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/node/modules"
@@ -13,34 +12,15 @@ func (mod *Module) Prepare(ctx context.Context) error {
 		adm.AddCommand(user.ModuleName, NewAdmin(mod))
 	}
 
-	for _, u := range mod.config.Identities {
-		userID, err := mod.node.Resolver().Resolve(u)
+	if local := mod.config.LocalUser; local != "" {
+		localUser, err := mod.node.Resolver().Resolve(local)
 		if err != nil {
-			mod.log.Error("config: cannot resolve identity '%v': %v", u, err)
-			continue
+			mod.log.Error("config: cannot resolve local user %v: %v", local, err)
 		}
-
-		err = mod.addIdentity(userID)
+		err = mod.SetLocalUser(localUser)
 		if err != nil {
-			mod.log.Error("cannot add identity %v: %v", userID, err)
-			continue
+			mod.log.Error("SetLocalUser: %v", err)
 		}
-	}
-
-	var rows []dbIdentity
-
-	var tx = mod.db.Find(&rows)
-	if tx.Error != nil {
-		return tx.Error
-	}
-
-	for _, row := range rows {
-		err := mod.addIdentity(row.Identity)
-		if err != nil && !errors.Is(err, errIdentityAlreadyAdded) {
-			mod.log.Error("cannot add identity %v: %v", row.Identity, err)
-			continue
-		}
-
 	}
 
 	// look for user profiles in discovered services
