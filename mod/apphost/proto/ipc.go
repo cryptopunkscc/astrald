@@ -102,7 +102,7 @@ func ListenAny(protocol string) (net.Listener, error) {
 		if err != nil {
 			return nil, err
 		}
-		return memconn.Listen("memu", identity.String())
+		return memconn.Listen(protocol, identity.String())
 
 	default:
 		return nil, ErrUnsupportedProtocol
