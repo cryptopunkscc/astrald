@@ -12,7 +12,7 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 	ctx, shutdown := context.WithCancel(ctx)
 
 	// Say hello
-	node.log.Log("astral node %s (%s) statrting...",
+	node.log.Log("astral node %s (%s) starting...",
 		node.identity,
 		node.identity.PublicKeyHex(),
 	)
