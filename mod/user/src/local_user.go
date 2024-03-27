@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/mod/user"
+	"gorm.io/gorm"
 )
 
 type LocalUser struct {
@@ -31,7 +32,7 @@ func (mod *Module) LocalUser() user.LocalUser {
 }
 
 func (mod *Module) SetLocalUser(identity id.Identity) error {
-	var err = mod.db.Model(&dbIdentity{}).Delete("true").Error
+	var err = mod.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbIdentity{}).Error
 	if err != nil {
 		return err
 	}
@@ -53,6 +54,8 @@ func (mod *Module) SetLocalUser(identity id.Identity) error {
 	}
 
 	mod.localUser = localUser
+
+	mod.log.Info("local user set to %v", identity)
 
 	return nil
 }

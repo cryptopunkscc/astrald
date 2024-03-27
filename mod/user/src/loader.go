@@ -24,7 +24,10 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	mod.profileService = &ProfileService{Module: mod}
 	mod.notifyService = &NotifyService{Module: mod}
 
-	_ = assets.LoadYAML(user.ModuleName, &mod.config)
+	err = assets.LoadYAML(user.ModuleName, &mod.config)
+	if err != nil {
+
+	}
 
 	mod.db = assets.Database()
 
