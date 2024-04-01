@@ -1,7 +1,7 @@
 package proto
 
 const (
-	Port = "storage."
+	Port = "storage"
 )
 
 const (

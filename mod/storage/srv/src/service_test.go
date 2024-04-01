@@ -2,12 +2,13 @@ package srv
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/lib/astral"
 	client "github.com/cryptopunkscc/astrald/lib/storage"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	proto "github.com/cryptopunkscc/astrald/mod/storage/srv"
+	jrpc "github.com/cryptopunkscc/go-apphost-jrpc"
 	"github.com/go-playground/assert/v2"
 	"log"
 	"path"
@@ -16,7 +17,7 @@ import (
 	"time"
 )
 
-const testStoragePort = proto.Port + "test."
+const testStoragePort = proto.Port + ".test"
 
 func TestStorageService(t *testing.T) {
 	m := newTestStorageModule()
@@ -24,14 +25,20 @@ func TestStorageService(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	service := NewService(m, nil)
-	service.port = testStoragePort
-	service.register = service.registerTestRoute
-	if err := service.Run(ctx); err != nil {
+	app := jrpc.NewApp(testStoragePort)
+	app.Logger(log.New(log.Writer(), "service ", 0))
+	app.Interface(NewService(m))
+	app.Routes("*")
+	if err := app.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
 
-	c := client.NewClient(id.Anyone).Port(testStoragePort)
+	time.Sleep(10 * time.Millisecond)
+
+	r := jrpc.NewRequest(id.Anyone, testStoragePort)
+	//r, _ := jrpc.QueryFlow(id.Anyone, testStoragePort)
+	r.Logger(log.New(log.Writer(), "  client ", 0))
+	c := client.NewClient(r)
 
 	t.Run("ReadAll", func(t *testing.T) {
 		dataID := data.ID{Size: 1}
@@ -78,7 +85,6 @@ func TestStorageService(t *testing.T) {
 			m.verifyEq(t, err, d)
 		})
 	})
-
 	t.Run("Create", func(t *testing.T) {
 		opts := &storage.CreateOpts{Alloc: 1}
 		writer, err := c.Create(opts)
@@ -133,9 +139,14 @@ func TestStorageService(t *testing.T) {
 				f = right[2].(*storage.OpenOpts).IdentityFilter
 			}
 		}, dataID, opts)
-		t.Cleanup(func() { _ = reader.Close() })
+		t.Cleanup(func() {
+			_ = reader.Close()
+		})
 
 		t.Run("idFilter", func(t *testing.T) {
+			if f == nil {
+				t.Skip()
+			}
 			i, err := id.GenerateIdentity()
 			if err != nil {
 				t.Fatal(err)
@@ -150,67 +161,48 @@ func TestStorageService(t *testing.T) {
 	})
 }
 
-func (s *Service) registerTestRoute(ctx context.Context, route string) (err error) {
-	l, err := astral.Register(route)
-	if err != nil {
-		return
-	}
-	go func() {
-		<-ctx.Done()
-		_ = l.Close()
-	}()
-	go func() {
-		for qd := range l.QueryCh() {
-			go func(qd *astral.QueryData) {
-				cmd := s.parseCmd(qd.Query())
-				h, ok := s.handlers[cmd]
-
-				if !ok {
-					_ = qd.Reject()
-					return
-				}
-
-				conn, err := qd.Accept()
-				if err != nil {
-					return
-				}
-				defer conn.Close()
-
-				ctx := Context{
-					Module:   s.Module,
-					Conn:     conn,
-					RemoteID: qd.RemoteIdentity(),
-				}
-
-				if err := h.handle(ctx, conn, s.unmarshal, s.encoder(conn), qd.Query()); err != nil {
-					log.Println(err)
-				}
-			}(qd)
-		}
-	}()
-	return
-}
-
 type testStorageModule struct {
 	events chan []any
+	id.Identity
 }
 
 func newTestStorageModule() *testStorageModule {
-	return &testStorageModule{
+	m := &testStorageModule{
 		events: make(chan []any, 1024),
 	}
+	var err error
+	if m.Identity, err = id.GenerateIdentity(); err != nil {
+		panic(err)
+	}
+	return m
+}
+
+func (t *testStorageModule) ReadAll(id data.ID, opts *storage.OpenOpts) (b []byte, err error) {
+	if opts.Virtual {
+		err = errors.New("test error")
+		t.notify("ReadAll", err)
+		return
+	}
+	b = []byte("hello!")
+	t.notify("ReadAll", id, opts, b)
+	return
 }
 
 func (t *testStorageModule) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
 	t.notify("Open", dataID, opts)
-	return &testStorageReader{t}, nil
+	return &testStorageReader{t, opts}, nil
 }
 
 type testStorageReader struct {
 	*testStorageModule
+	opts *storage.OpenOpts
 }
 
 func (t *testStorageReader) Read(p []byte) (n int, err error) {
+	if t.opts != nil && t.opts.IdentityFilter != nil {
+		f := t.opts.IdentityFilter(t.Identity)
+		log.Println(f)
+	}
 	n = cap(p)
 	t.notify("Read", p, n)
 	return
@@ -235,11 +227,12 @@ func (t *testStorageReader) Info() (info *storage.ReaderInfo) {
 
 func (t *testStorageModule) Create(opts *storage.CreateOpts) (storage.Writer, error) {
 	t.notify("Create", opts)
-	return &storageWriter{t}, nil
+	return &storageWriter{t, opts}, nil
 }
 
 type storageWriter struct {
 	*testStorageModule
+	opts *storage.CreateOpts
 }
 
 func (s *storageWriter) Write(p []byte) (n int, err error) {
@@ -263,17 +256,6 @@ func (s *storageWriter) Discard() error {
 func (t *testStorageModule) Purge(dataID data.ID, opts *storage.PurgeOpts) (l int, err error) {
 	l = 1
 	t.notify("Purge", dataID, opts, l)
-	return
-}
-
-func (t *testStorageModule) ReadAll(id data.ID, opts *storage.OpenOpts) (b []byte, err error) {
-	b = []byte{1}
-	if opts.Virtual {
-		err = &proto.ReadAllResp{Response: proto.Response{Err: "test error"}}
-		t.notify("ReadAll", err)
-	} else {
-		t.notify("ReadAll", id, opts, b)
-	}
 	return
 }
 

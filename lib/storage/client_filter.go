@@ -2,29 +2,18 @@ package storage
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	proto "github.com/cryptopunkscc/astrald/mod/storage/srv"
+	jrpc "github.com/cryptopunkscc/go-apphost-jrpc"
 	"io"
 )
 
 func (c *Client) IdFilter() (filter id.Filter, closer io.Closer, err error) {
-	conn, err := c.query(nil)
-	if err != nil {
-		return
-	}
-	closer = conn
-	enc := proto.NewBinaryEncoder(conn)
+	closer = c.conn
 	filter = func(identity id.Identity) (b bool) {
-		if identity.PublicKey() == nil {
+		if identity.IsEqual(id.Anyone) {
 			return true
 		}
-		bytes := identity.PublicKey().SerializeCompressed()
-		if err := enc.Encode(bytes); err != nil {
-			return
-		}
-		if err := enc.Decode(&b); err != nil {
-			return
-		}
-		return
+		b, _ = jrpc.Query[bool](c.conn, "", identity)
+		return b
 	}
 	return
 }

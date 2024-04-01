@@ -35,7 +35,7 @@ type Module struct {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	if err := srv.NewService(mod, mod.node).Run(ctx); err != nil {
+	if err := srv.RunStorageRpc(ctx, mod.node, mod); err != nil {
 		return err
 	}
 

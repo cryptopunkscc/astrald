@@ -2,39 +2,22 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	proto "github.com/cryptopunkscc/astrald/mod/storage/srv"
-	"io"
+	jrpc "github.com/cryptopunkscc/go-apphost-jrpc"
 )
 
 type Client struct {
-	target   id.Identity
-	port     string
-	query    queryFunc
-	response responseFunc
+	conn jrpc.Conn
 }
 
-type queryFunc func(req proto.Request) (io.ReadWriteCloser, error)
-type responseFunc func(closer io.ReadWriteCloser, resp any) error
-
-func NewClient(target id.Identity) (c *Client) {
-	c = &Client{target: target, port: proto.Port}
-	c.query = c.jsonQuery
-	c.response = jsonResponse
-	return
-}
-
-func (c *Client) Port(port string) *Client {
-	c.port = port
-	return c
+func NewClient(conn jrpc.Conn) *Client {
+	return &Client{conn: conn}
 }
 
 func (c *Client) ReadAll(dataID data.ID, opts *storage.OpenOpts) (b []byte, err error) {
-	req := proto.ReadAllReq{
+	req := proto.ReadAll{
 		ID:      dataID,
 		Offset:  opts.Offset,
 		Virtual: opts.Virtual,
@@ -43,44 +26,31 @@ func (c *Client) ReadAll(dataID data.ID, opts *storage.OpenOpts) (b []byte, err 
 
 	// register id filtering service if needed
 	if opts.IdentityFilter != nil {
-		var h Handler
-		if h, err = NewIdentityFilterService(opts.IdentityFilter); err != nil {
-			return
-		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		if err = RegisterHandler(ctx, h); err != nil {
+		if req.Filter, err = RunIdentityFilterService(ctx, opts.IdentityFilter); err != nil {
 			return
 		}
-		req.Filter = h.String()
 	}
 
-	resp := proto.ReadAllResp{Bytes: b}
-	err = c.request(req, &resp)
-	b = resp.Bytes
+	b, err = jrpc.Query[[]byte](c.conn, "readAll", req)
 	return
 }
 
 func (c *Client) Put(b []byte, opts *storage.CreateOpts) (i data.ID, err error) {
-	req := proto.PutReq{Bytes: b, CreateOpts: opts}
-	resp := proto.PutResp{}
-	if err = c.request(req, &resp); err != nil {
-		return
-	}
-	i = *resp.ID
+	req := proto.Put{Bytes: b, CreateOpts: opts}
+	i, err = jrpc.Query[data.ID](c.conn, "put", req)
 	return
 }
 
 func (c *Client) Purge(dataID data.ID, opts *storage.PurgeOpts) (i int, err error) {
-	req := proto.PurgeReq{ID: dataID, PurgeOpts: opts}
-	resp := proto.PurgeResp{}
-	err = c.request(req, &resp)
-	i = resp.Total
+	req := proto.Purge{ID: dataID, PurgeOpts: opts}
+	i, err = jrpc.Query[int](c.conn, "purge", req)
 	return
 }
 
 func (c *Client) Open(dataID data.ID, opts *storage.OpenOpts) (r storage.Reader, err error) {
-	req := proto.OpenReq{
+	req := proto.Open{
 		ID:      dataID,
 		Offset:  opts.Offset,
 		Virtual: opts.Virtual,
@@ -95,19 +65,14 @@ func (c *Client) Open(dataID data.ID, opts *storage.OpenOpts) (r storage.Reader,
 		}
 	}()
 	if opts.IdentityFilter != nil {
-		var h Handler
-		if h, err = NewIdentityFilterService(opts.IdentityFilter); err != nil {
+		if req.Filter, err = RunIdentityFilterService(ctx, opts.IdentityFilter); err != nil {
 			return
 		}
-		if err = RegisterHandler(ctx, h); err != nil {
-			return
-		}
-		req.Filter = h.String()
 	}
 
 	// query open
-	conn, err := c.query(req)
-	if err != nil {
+	conn := c.conn.Copy()
+	if err = jrpc.Call(conn, "open", req); err != nil {
 		return
 	}
 
@@ -122,42 +87,10 @@ func (c *Client) Open(dataID data.ID, opts *storage.OpenOpts) (r storage.Reader,
 }
 
 func (c *Client) Create(opts *storage.CreateOpts) (w storage.Writer, err error) {
-	req := proto.CreateReq{CreateOpts: opts}
-	conn, err := c.query(req)
-	if err != nil {
+	req := proto.Create{CreateOpts: opts}
+	if err = jrpc.Call(c.conn, "create", req); err != nil {
 		return
 	}
-	w = NewWriterClient(conn)
+	w = NewWriterClient(c.conn)
 	return
-}
-
-func (c *Client) request(req proto.Request, resp error) (err error) {
-	conn, err := c.query(req)
-	if err != nil {
-		return
-	}
-	defer conn.Close()
-	if err = c.response(conn, resp); err == nil {
-		if resp.Error() != "" {
-			err = resp
-		}
-	}
-	return
-}
-
-func (c *Client) jsonQuery(req proto.Request) (conn io.ReadWriteCloser, err error) {
-	query := c.port
-	if req != nil {
-		var bytes []byte
-		if bytes, err = json.Marshal(req); err != nil {
-			return
-		}
-		query = query + req.Query() + "?" + string(bytes)
-	}
-	conn, err = astral.Query(c.target, query)
-	return
-}
-
-func jsonResponse(conn io.ReadWriteCloser, resp any) (err error) {
-	return json.NewDecoder(conn).Decode(resp)
 }
