@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/storage"
+	srv "github.com/cryptopunkscc/astrald/mod/storage/srv/src"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -33,6 +34,10 @@ type Module struct {
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
+
+	if err := srv.NewService(mod, mod.node).Run(ctx); err != nil {
+		return err
+	}
 
 	<-ctx.Done()
 
