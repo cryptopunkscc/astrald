@@ -6,7 +6,9 @@ require (
 	bitbucket.org/creachadair/shell v0.0.7
 	github.com/acuteaura-forks/go-matroska v0.0.0-20230403130951-5b3a344d8c11
 	github.com/akutz/memconn v0.1.0
+	github.com/dhowden/tag v0.0.0-20240122214204-713ab0e94639
 	github.com/fsnotify/fsnotify v1.7.0
+	github.com/gin-gonic/gin v1.9.1
 	github.com/glebarez/sqlite v1.9.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/jxskiss/base62 v1.1.0
@@ -20,15 +22,12 @@ require (
 )
 
 require (
-	github.com/bogem/id3v2 v1.2.0 // indirect
 	github.com/bytedance/sonic v1.10.2 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/chenzhuoyu/iasm v0.9.1 // indirect
-	github.com/dhowden/tag v0.0.0-20240122214204-713ab0e94639 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect

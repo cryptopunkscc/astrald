@@ -44,8 +44,9 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.content.AddDescriber(mod)
-	mod.content.AddFinder(mod)
-	mod.content.AddPrototypes(media.Desc{})
+	mod.content.AddPrototypes(&media.Audio{})
+	mod.content.AddPrototypes(&media.Video{})
+	mod.content.AddPrototypes(&media.Image{})
 
 	// create our sets if needed
 	mod.indexedSet, err = mod.sets.Open(IndexedSet, true)

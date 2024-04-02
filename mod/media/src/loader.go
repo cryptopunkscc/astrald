@@ -23,9 +23,24 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.db = assets.Database()
 
-	err = mod.db.AutoMigrate(&dbMediaInfo{})
+	err = mod.db.AutoMigrate(&dbImage{}, &dbAudio{}, &dbVideo{})
 	if err != nil {
 		return nil, err
+	}
+
+	mod.images = NewImageIndexer(mod)
+	mod.audio = NewAudioIndexer(mod)
+	mod.matroska = NewMatroskaIndexer(mod)
+
+	mod.indexers = map[string]Indexer{
+		"audio/mpeg":       mod.audio,
+		"audio/flac":       mod.audio,
+		"audio/ogg":        mod.audio,
+		"audio/aac":        mod.audio,
+		"audio/mp4":        mod.audio,
+		"image/jpeg":       mod.images,
+		"image/png":        mod.images,
+		"video/x-matroska": mod.matroska,
 	}
 
 	return mod, err

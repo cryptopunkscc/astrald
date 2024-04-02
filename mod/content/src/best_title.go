@@ -35,11 +35,6 @@ func (mod *Module) BestTitle(dataID data.ID) string {
 		return d.Label
 	}
 
-	if desc, found := m[media.Desc{}.Type()]; found {
-		d, _ := desc.Data.(media.Desc)
-		return d.String()
-	}
-
 	if desc, found := m[keys.KeyDesc{}.Type()]; found {
 		d, _ := desc.Data.(keys.KeyDesc)
 		return d.String()
@@ -47,6 +42,21 @@ func (mod *Module) BestTitle(dataID data.ID) string {
 
 	if desc, found := m[fs.FileDesc{}.Type()]; found {
 		d, _ := desc.Data.(fs.FileDesc)
+		return d.String()
+	}
+
+	if desc, found := m[(&media.Audio{}).Type()]; found {
+		d, _ := desc.Data.(*media.Audio)
+		return d.String()
+	}
+
+	if desc, found := m[(&media.Video{}).Type()]; found {
+		d, _ := desc.Data.(*media.Video)
+		return d.String()
+	}
+
+	if desc, found := m[(&media.Image{}).Type()]; found {
+		d, _ := desc.Data.(*media.Image)
 		return d.String()
 	}
 

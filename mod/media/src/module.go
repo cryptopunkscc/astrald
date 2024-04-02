@@ -25,6 +25,16 @@ type Module struct {
 	indexedSet sets.Set
 
 	indexer *IndexerService
+
+	images   *ImageIndexer
+	audio    *AudioIndexer
+	matroska *MatroskaIndexer
+
+	indexers map[string]Indexer
+}
+
+type Indexer interface {
+	content.Describer
 }
 
 func (mod *Module) Run(ctx context.Context) error {

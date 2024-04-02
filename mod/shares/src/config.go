@@ -19,7 +19,9 @@ var defaultConfig = Config{
 	DescriptorWhitelist: []string{
 		content.TypeDesc{}.Type(),
 		keys.KeyDesc{}.Type(),
-		media.Desc{}.Type(),
+		(&media.Audio{}).Type(),
+		(&media.Video{}).Type(),
+		(&media.Image{}).Type(),
 		zip.ArchiveDesc{}.Type(),
 		relay.CertDesc{}.Type(),
 	},
