@@ -11,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
 )
@@ -61,7 +60,8 @@ func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader,
 	}
 
 	for _, row := range rows {
-		r, err := mod.open(row.Zip.DataID, row.Path, opts)
+
+		r, err := mod.open(row.Zip.DataID, row.Path, row.FileID, opts)
 		if err == nil {
 			mod.log.Logv(2, "opened %v from %v/%v", dataID, row.Zip.DataID, row.Path)
 			return r, nil
@@ -71,28 +71,29 @@ func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader,
 	return nil, storage.ErrNotFound
 }
 
-func (mod *Module) open(zipID data.ID, path string, opts *storage.OpenOpts) (storage.Reader, error) {
+func (mod *Module) open(zipID data.ID, path string, fileID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
+	zipFile, err := mod.openZip(zipID)
+	if err != nil {
+		return nil, storage.ErrNotFound
+	}
+
+	var r = &contentReader{
+		zip:    zipFile,
+		path:   path,
+		dataID: fileID,
+	}
+
+	err = r.open()
+
+	return r, err
+}
+
+func (mod *Module) openZip(zipID data.ID) (*_zip.Reader, error) {
 	var zipReaderAt = &readerAt{
 		storage: mod.storage,
 		dataID:  zipID,
 	}
 
 	zipFile, err := _zip.NewReader(zipReaderAt, int64(zipID.Size))
-	if err != nil {
-		return nil, storage.ErrNotFound
-	}
-
-	file, err := zipFile.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	if opts.Offset > 0 {
-		if err := streams.Skip(file, opts.Offset); err != nil {
-			file.Close()
-			return nil, err
-		}
-	}
-
-	return &Reader{File: file, name: "mod.zip"}, err
+	return zipFile, err
 }
