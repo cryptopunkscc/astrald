@@ -40,6 +40,8 @@ func (mod *AudioIndexer) Describe(ctx context.Context, dataID data.ID, opts *des
 		})
 		if err != nil {
 			mod.log.Errorv(2, "error indexing %v: %v", dataID, err)
+		} else {
+			mod.log.Infov(1, "indexed %s by %s", audio.Title, audio.Artist)
 		}
 	}
 	if audio == nil {
