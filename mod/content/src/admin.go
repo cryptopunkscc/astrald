@@ -2,15 +2,19 @@ package content
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
-	desc2 "github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/sig"
+	"reflect"
 	"slices"
 	"time"
 )
@@ -23,14 +27,14 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var cmd = &Admin{mod: mod}
 	cmd.cmds = map[string]func(admin.Terminal, []string) error{
-		"scan":       cmd.scan,
-		"find":       cmd.find,
-		"identify":   cmd.identify,
-		"forget":     cmd.forget,
-		"describe":   cmd.describe,
-		"prototypes": cmd.prototypes,
-		"set_label":  cmd.setLabel,
-		"get_label":  cmd.getLabel,
+		"scan":      cmd.scan,
+		"find":      cmd.find,
+		"identify":  cmd.identify,
+		"forget":    cmd.forget,
+		"describe":  cmd.describe,
+		"info":      cmd.info,
+		"set_label": cmd.setLabel,
+		"get_label": cmd.getLabel,
 	}
 	return cmd
 }
@@ -134,10 +138,11 @@ func (cmd *Admin) identify(term admin.Terminal, args []string) error {
 
 func (cmd *Admin) describe(term admin.Terminal, args []string) error {
 	var err error
-	var opts = &desc2.Opts{
+	var opts = &desc.Opts{
 		IdentityFilter: id.AllowEveryone,
 	}
 
+	// parse args
 	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
 	flags.BoolVar(&opts.Network, "n", false, "use network sources")
 	flags.SetOutput(term)
@@ -146,7 +151,9 @@ func (cmd *Admin) describe(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	if len(flags.Args()) == 0 {
+	args = flags.Args()
+
+	if len(args) == 0 {
 		return errors.New("missing data id")
 	}
 
@@ -157,6 +164,16 @@ func (cmd *Admin) describe(term admin.Terminal, args []string) error {
 
 	var desc = cmd.mod.Describe(context.Background(), dataID, opts)
 
+	term.Printf("%-6s %v\n", admin.Header("SHA256"), admin.Keyword(hex.EncodeToString(dataID.Hash[:])))
+	term.Printf("%-6s %v", admin.Header("SIZE"), admin.Keyword(log.DataSize(dataID.Size).HumanReadable()))
+
+	if dataID.Size > 1023 {
+		term.Printf(" (%v bytes)", dataID.Size)
+	}
+
+	term.Printf("\n\n")
+
+	// print descriptors
 	for _, d := range desc {
 		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Data.Type()))
 
@@ -183,16 +200,43 @@ func (cmd *Admin) forget(term admin.Terminal, args []string) error {
 	return cmd.mod.Forget(dataID)
 }
 
-func (cmd *Admin) prototypes(term admin.Terminal, args []string) error {
-	list, _ := sig.MapSlice(cmd.mod.prototypes.Values(), func(i desc2.Data) (string, error) {
+func (cmd *Admin) info(term admin.Terminal, args []string) error {
+	term.Printf("%v\n\n", admin.Header("Prototypes"))
+	list, _ := sig.MapSlice(cmd.mod.prototypes.Values(), func(i desc.Data) (string, error) {
 		return i.Type(), nil
 	})
-
 	slices.Sort(list)
 
 	for _, p := range list {
 		term.Printf("%s\n", p)
 	}
+
+	term.Printf("\n%v\n\n", admin.Header("Describers"))
+	list, _ = sig.MapSlice(cmd.mod.describers.Clone(), func(i content.Describer) (string, error) {
+		if s, ok := i.(fmt.Stringer); ok {
+			return s.String(), nil
+		}
+		return reflect.TypeOf(i).String(), nil
+	})
+	slices.Sort(list)
+
+	for _, p := range list {
+		term.Printf("%s\n", p)
+	}
+
+	term.Printf("\n%v\n\n", admin.Header("Finders"))
+	list, _ = sig.MapSlice(cmd.mod.finders.Clone(), func(i content.Finder) (string, error) {
+		if s, ok := i.(fmt.Stringer); ok {
+			return s.String(), nil
+		}
+		return reflect.TypeOf(i).String(), nil
+	})
+	slices.Sort(list)
+
+	for _, p := range list {
+		term.Printf("%s\n", p)
+	}
+
 	return nil
 }
 

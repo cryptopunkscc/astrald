@@ -49,10 +49,15 @@ func (adm *Admin) set(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	var localUser = adm.mod.LocalUser().Identity()
+	localUser := adm.mod.LocalUser()
+	if localUser == nil {
+		return errors.New("no local user")
+	}
 
-	term.Printf("Identity: %v\n", localUser)
-	term.Printf("PubKey:   %v\n", localUser.PublicKeyHex())
+	var userID = localUser.Identity()
+
+	term.Printf("Identity: %v\n", userID)
+	term.Printf("PubKey:   %v\n", userID.PublicKeyHex())
 
 	return nil
 }

@@ -84,6 +84,11 @@ func (router *PrefixRouter) AddRoute(name string, target net.Router) error {
 	return nil
 }
 
+// AddRouteFunc adds a route handler function to the router
+func (router *PrefixRouter) AddRouteFunc(name string, fn net.RouteQueryFunc) error {
+	return router.AddRoute(name, Func(fn))
+}
+
 // RemoveRoute removes a route from the router
 func (router *PrefixRouter) RemoveRoute(name string) error {
 	router.mu.Lock()

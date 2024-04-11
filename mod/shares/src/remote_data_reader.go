@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"io"
-	"strconv"
 	"time"
 )
 
@@ -16,39 +15,39 @@ var _ storage.Reader = &RemoteDataReader{}
 
 type RemoteDataReader struct {
 	mod    *Module
-	dataID data.ID
 	caller id.Identity
 	target id.Identity
+	dataID data.ID
+	pos    int64
 	io.ReadCloser
-	pos int
 }
 
 func (r *RemoteDataReader) Read(p []byte) (n int, err error) {
 	n, err = r.ReadCloser.Read(p)
-	r.pos += n
+	r.pos += int64(n)
 	return n, err
 }
 
 func (r *RemoteDataReader) Seek(offset int64, whence int) (int64, error) {
 	r.ReadCloser.Close()
 
-	params := map[string]string{
+	params := router.Params{
 		"id": r.dataID.String(),
 	}
 
-	var o uint64
+	var o int64
 
 	switch whence {
 	case io.SeekStart:
-		o = uint64(offset)
+		o = offset
 	case io.SeekCurrent:
-		o = uint64(int64(r.pos) + offset)
+		o = r.pos + offset
 	case io.SeekEnd:
-		o = uint64(int64(r.dataID.Size) + offset)
+		o = int64(r.dataID.Size) + offset
 	}
-	params["offset"] = strconv.FormatUint(o, 10)
+	params.SetInt("offset", int(o))
 
-	var query = router.FormatQuery(readServiceName, params)
+	var query = router.Query(readServiceName, params)
 
 	var q = net.NewQuery(
 		r.caller,
@@ -65,7 +64,7 @@ func (r *RemoteDataReader) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	r.ReadCloser = conn
-	r.pos = int(o)
+	r.pos = o
 
 	return 0, nil
 }

@@ -56,7 +56,7 @@ func (srv *NotifyService) RouteQuery(ctx context.Context, query net.Query, calle
 
 				return net.Accept(query, caller, func(conn net.SecureConn) {
 					conn.Close()
-					remoteShare.Sync()
+					remoteShare.Sync(context.TODO())
 				})
 			}
 		}
@@ -69,6 +69,6 @@ func (srv *NotifyService) RouteQuery(ctx context.Context, query net.Query, calle
 
 	return net.Accept(query, caller, func(conn net.SecureConn) {
 		conn.Close()
-		remoteShare.Sync()
+		remoteShare.Sync(context.TODO())
 	})
 }

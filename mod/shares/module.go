@@ -1,6 +1,7 @@
 package shares
 
 import (
+	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
@@ -11,6 +12,7 @@ import (
 const ModuleName = "shares"
 const DBPrefix = "shares__"
 const RemoteSetType = "remote"
+const DescribeAction = "shares.describe"
 
 type Module interface {
 	FindRemoteShare(caller id.Identity, target id.Identity) (RemoteShare, error)
@@ -28,7 +30,7 @@ type LocalShare interface {
 }
 
 type RemoteShare interface {
-	Sync() error
+	Sync(context.Context) error
 	Unsync() error
 	LastUpdate() time.Time
 }

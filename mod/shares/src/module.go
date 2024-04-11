@@ -2,24 +2,31 @@ package shares
 
 import (
 	"context"
+	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
-	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/sig"
-	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
-	"strconv"
+	"sync"
 	"time"
 )
 
+const localShareSetPrefix = ".shares.local"
+const remoteShareSetPrefix = ".shares.remote"
+const resyncInterval = time.Hour
+const resyncAge = 5 * time.Minute
+const workers = 8
+
 var _ shares.Module = &Module{}
+var _ content.Describer = &Module{}
 
 type Module struct {
 	config      Config
@@ -33,13 +40,16 @@ type Module struct {
 	content     content.Module
 	notify      sig.Map[string, *Notification]
 	tasks       chan func(ctx context.Context)
+
+	shares *Provider
 }
 
-const localShareSetPrefix = ".shares.local"
-const remoteShareSetPrefix = ".shares.remote"
-const resyncInterval = time.Hour
-const resyncAge = 5 * time.Minute
-const workers = 8
+type Notification struct {
+	*Module
+	Identity id.Identity
+	NotifyAt time.Time
+	sync.Mutex
+}
 
 func (mod *Module) Run(ctx context.Context) error {
 	go func() {
@@ -66,12 +76,12 @@ func (mod *Module) Run(ctx context.Context) error {
 		}()
 	}
 
-	tasks.Group(
-		NewReadService(mod),
-		NewSyncService(mod),
-		NewNotifyService(mod),
-		NewDescribeService(mod),
-	).Run(ctx)
+	mod.shares = NewProvider(mod)
+
+	err := mod.node.LocalRouter().AddRoute("shares.*", mod.shares)
+	if err != nil {
+		return err
+	}
 
 	<-ctx.Done()
 
@@ -90,33 +100,13 @@ func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader,
 		return nil, storage.ErrNotFound
 	}
 
-	params := map[string]string{
-		"id": dataID.String(),
-	}
-
-	if opts.Offset != 0 {
-		params["offset"] = strconv.FormatUint(opts.Offset, 10)
-	}
-
-	var query = router.FormatQuery(readServiceName, params)
 	for _, row := range rows {
-		// apply identity filter if provided
-		if opts.IdentityFilter != nil {
-			if !opts.IdentityFilter(row.Target) {
-				continue
-			}
-		}
-
-		var q = net.NewQuery(
-			row.Caller,
-			row.Target,
-			query,
-		)
+		c := NewConsumer(mod, row.Caller, row.Target)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
-		conn, err := net.Route(ctx, mod.node.Router(), q)
+		conn, err := c.Open(ctx, dataID, opts)
 		if err != nil {
 			continue
 		}
@@ -131,6 +121,79 @@ func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader,
 	}
 
 	return nil, storage.ErrNotFound
+}
+
+func (mod *Module) Notify(identity id.Identity) error {
+	n, ok := mod.notify.Set(identity.String(), &Notification{
+		Module:   mod,
+		Identity: identity,
+		NotifyAt: time.Now().Add(mod.config.NotifyDelay),
+	})
+	if !ok {
+		n.Lock()
+		n.NotifyAt = time.Now().Add(mod.config.NotifyDelay)
+		n.Unlock()
+		return nil
+	}
+
+	sig.At(&n.NotifyAt, n, func() {
+		mod.tasks <- func(ctx context.Context) {
+			c := NewConsumer(mod, mod.node.Identity(), n.Identity)
+			c.Notify(ctx)
+			mod.notify.Delete(identity.String())
+		}
+	})
+
+	return nil
+}
+
+func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) []*desc.Desc {
+	var list []*desc.Desc
+	var err error
+	var rows []*dbRemoteData
+
+	err = mod.db.Where("data_id = ?", dataID).Find(&rows).Error
+	if err != nil {
+		return nil
+	}
+
+	for _, row := range rows {
+		share, err := mod.findRemoteShare(row.Caller, row.Target)
+		if err != nil {
+			continue
+		}
+
+		res, err := share.Describe(ctx, dataID, opts)
+		if err != nil {
+			continue
+		}
+
+		list = append(list, res...)
+	}
+
+	return list
+}
+
+func (mod *Module) Authorize(identity id.Identity, dataID data.ID) error {
+	for _, authorizer := range mod.authorizers.Clone() {
+		var err = authorizer.Authorize(identity, dataID)
+		switch {
+		case err == nil:
+			return nil
+		case errors.Is(err, shares.ErrDenied):
+		default:
+			return err
+		}
+	}
+	return shares.ErrDenied
+}
+
+func (mod *Module) addAuthorizer(authorizer DataAuthorizer) error {
+	return mod.authorizers.Add(authorizer)
+}
+
+func (mod *Module) removeAuthorizer(authorizer DataAuthorizer) error {
+	return mod.authorizers.Remove(authorizer)
 }
 
 func (mod *Module) resync(minAge time.Duration) error {
@@ -153,7 +216,7 @@ func (mod *Module) resync(minAge time.Duration) error {
 			)
 		}
 
-		err = share.Sync()
+		err = share.Sync(context.TODO())
 		if err != nil {
 			mod.log.Errorv(1, "sync %v@%v error: %v",
 				row.Caller,

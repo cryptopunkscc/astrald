@@ -1,12 +1,16 @@
 package shares
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"strings"
+	"time"
 )
 
 type Admin struct {
@@ -17,15 +21,18 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"add":     adm.add,
-		"remove":  adm.remove,
-		"local":   adm.local,
-		"remote":  adm.remote,
-		"sync":    adm.sync,
-		"syncall": adm.syncAll,
-		"unsync":  adm.unsync,
-		"notify":  adm.notify,
-		"help":    adm.help,
+		"add":        adm.add,
+		"remove":     adm.remove,
+		"local":      adm.local,
+		"remote":     adm.remote,
+		"sync":       adm.sync,
+		"rawsync":    adm.rawsync,
+		"describe":   adm.describe,
+		"syncall":    adm.syncAll,
+		"unsync":     adm.unsync,
+		"notify":     adm.notify,
+		"purgecache": adm.purgecache,
+		"help":       adm.help,
 	}
 
 	return adm
@@ -111,7 +118,10 @@ func (adm *Admin) syncAll(term admin.Terminal, args []string) error {
 			continue
 		}
 
-		err = share.Sync()
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		err = share.Sync(ctx)
 		if err != nil {
 			term.Printf("%v\n", err)
 			continue
@@ -138,12 +148,84 @@ func (adm *Admin) sync(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	err = share.Sync()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	err = share.Sync(ctx)
 	if err == nil {
 		term.Printf("synced %v@%v\n", caller, target)
 	}
 
 	return err
+}
+
+func (adm *Admin) rawsync(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("argument missing")
+	}
+
+	caller, target, err := adm.parseCallerAndTarget(args[0], term.UserIdentity())
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	c := NewConsumer(adm.mod, caller, target)
+
+	sync, err := c.Sync(ctx, time.Time{})
+	if err != nil {
+		return err
+	}
+
+	for _, u := range sync.Updates {
+		term.Printf("%-64s %v\n", u.DataID, u.Removed)
+	}
+
+	term.Printf("%v\n", sync.Time)
+
+	return nil
+}
+
+func (adm *Admin) describe(term admin.Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("argument missing")
+	}
+
+	caller, target, err := adm.parseCallerAndTarget(args[0], term.UserIdentity())
+	if err != nil {
+		return err
+	}
+
+	dataID, err := data.Parse(args[1])
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	c := NewConsumer(adm.mod, caller, target)
+
+	descs, err := c.Describe(ctx, dataID, &desc.Opts{})
+	if err != nil {
+		return err
+	}
+
+	for _, desc := range descs {
+		term.Printf("%s\n\n  ", admin.Keyword(desc.Type()))
+
+		bytes, err := json.MarshalIndent(desc, "  ", "  ")
+		if err != nil {
+			return err
+		}
+
+		term.Write(bytes)
+		term.Printf("\n\n")
+	}
+
+	return nil
 }
 
 func (adm *Admin) unsync(term admin.Terminal, args []string) error {
@@ -180,6 +262,20 @@ func (adm *Admin) notify(term admin.Terminal, args []string) error {
 	}
 
 	return adm.mod.Notify(identity)
+}
+
+func (adm *Admin) purgecache(term admin.Terminal, args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: purgecache <minAge>")
+	}
+
+	cache := &DescriptorCache{mod: adm.mod}
+	minAge, err := time.ParseDuration(args[0])
+	if err != nil {
+		return err
+	}
+
+	return cache.Purge(minAge)
 }
 
 func (adm *Admin) local(term admin.Terminal, args []string) error {

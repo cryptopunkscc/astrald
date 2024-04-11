@@ -2,18 +2,13 @@ package shares
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/net"
-	"io"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -93,112 +88,63 @@ func (mod *Module) FindOrCreateRemoteShare(caller id.Identity, target id.Identit
 	return mod.CreateRemoteShare(caller, target)
 }
 
-func (share *RemoteShare) Sync() error {
+func (share *RemoteShare) Sync(ctx context.Context) (err error) {
 	if share.target.IsEqual(share.mod.node.Identity()) {
 		return errors.New("cannot sync with self")
 	}
 
-	remoteShare, err := share.mod.FindOrCreateRemoteShare(share.caller, share.target)
-	if err != nil {
-		return err
-	}
+	c := NewConsumer(share.mod, share.caller, share.target)
 
-	var timestamp = "0"
-	if !remoteShare.row.LastUpdate.IsZero() {
-		timestamp = strconv.FormatInt(remoteShare.row.LastUpdate.UnixNano(), 10)
-	}
-
-	var query = net.NewQuery(share.caller, share.target, syncServicePrefix+timestamp)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	conn, err := net.Route(ctx, share.mod.node.Router(), query)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	for {
-		var op byte
-		err = cslq.Decode(conn, "c", &op)
+	sync, err := c.Sync(ctx, share.LastUpdate())
+	switch err {
+	case nil:
+	case ErrResyncRequired:
+		sync, err = c.Sync(ctx, time.Time{})
 		if err != nil {
-			return err
+			return
 		}
+	default:
+		return
+	}
 
-		switch op {
-		case opDone: // done
-			var timestamp int64
-			err = cslq.Decode(conn, "q", &timestamp)
-			if err != nil {
-				return err
-			}
-
-			return remoteShare.SetLastUpdate(time.Unix(0, timestamp))
-
-		case opAdd: // add
-			var dataID data.ID
-			err = cslq.Decode(conn, "v", &dataID)
-			if err != nil {
-				return err
-			}
-
-			var tx = share.mod.db.Create(&dbRemoteData{
-				Caller: share.caller,
-				Target: share.target,
-				DataID: dataID,
-			})
-			if tx.Error != nil {
-				share.mod.log.Errorv(1, "sync: error adding remote data: %v", tx.Error)
-			}
-
-			remoteShare.set.Add(dataID)
-
-			// cache descriptors
-			share.mod.tasks <- func(ctx context.Context) {
-				_, err := remoteShare.Describe(ctx, dataID, &desc.Opts{
-					Network: true,
-				})
-				if err != nil {
-					share.mod.log.Errorv(2, "describe %v: %v", dataID, err)
-				}
-			}
-
-		case opRemove: // remove
-			var dataID data.ID
-			err = cslq.Decode(conn, "v", &dataID)
-			if err != nil {
-				return err
-			}
-
+	for _, update := range sync.Updates {
+		if update.Removed {
 			var tx = share.mod.db.Delete(&dbRemoteData{
 				Caller: share.caller,
 				Target: share.target,
-				DataID: dataID,
+				DataID: update.DataID,
 			})
 
 			if tx.Error != nil {
 				share.mod.log.Errorv(1, "sync: error removing remote data: %v", tx.Error)
 			}
 
-			remoteShare.set.Remove(dataID)
-
-		case opResync:
-			conn.Close()
-			err = share.Reset()
-			if err != nil {
-				return err
+			share.set.Remove(update.DataID)
+		} else {
+			var tx = share.mod.db.Create(&dbRemoteData{
+				Caller: share.caller,
+				Target: share.target,
+				DataID: update.DataID,
+			})
+			if tx.Error != nil {
+				share.mod.log.Errorv(1, "sync: error adding remote data: %v", tx.Error)
 			}
-			return share.Sync()
 
-		case opNotFound:
-			return errors.New("remote share not found")
+			share.set.Add(update.DataID)
 
-		default:
-			return errors.New("protocol error")
+			// add a task to cache descriptors
+			share.mod.tasks <- func(ctx context.Context) {
+				_, err := share.Describe(ctx, update.DataID, &desc.Opts{
+					Network: true,
+				})
+				if err != nil {
+					share.mod.log.Errorv(2, "describe %v: %v", update.DataID, err)
+				}
+			}
 		}
 	}
 
+	return share.SetLastUpdate(sync.Time)
 }
 
 func (share *RemoteShare) Unsync() error {
@@ -236,71 +182,53 @@ func (share *RemoteShare) Reset() error {
 	return share.SetLastUpdate(time.Time{})
 }
 
-func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) ([]*desc.Desc, error) {
-	var list []*desc.Desc
-	var rawJSON []byte
+func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) (descs []*desc.Desc, err error) {
+	cache := &DescriptorCache{mod: share.mod}
 
-	var row dbRemoteDesc
-	err := share.mod.db.
-		Where("caller = ? AND target = ? AND data_id = ?", share.caller, share.target, dataID).
-		First(&row).Error
-
+	// try cached data first
+	descData, err := cache.Load(share.caller, share.target, dataID, 0)
 	if err == nil {
-		rawJSON = []byte(row.Desc)
-	} else {
-		if !opts.Network {
+		return addSourceToData(descData, share.target), nil
+	}
+
+	// check conditions
+	if !opts.Network {
+		return nil, nil
+	}
+
+	if opts.IdentityFilter != nil {
+		if !opts.IdentityFilter(share.target) {
 			return nil, nil
 		}
-		if opts.IdentityFilter != nil {
-			if !opts.IdentityFilter(share.target) {
-				return nil, nil
-			}
-		}
-
-		var query = net.NewQuery(
-			share.caller,
-			share.target,
-			describeServiceName+"?id="+dataID.String(),
-		)
-
-		conn, err := net.Route(ctx, share.mod.node.Router(), query)
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-
-		rawJSON, err = io.ReadAll(conn)
-		if err != nil {
-			return nil, err
-		}
-
-		share.mod.db.Create(&dbRemoteDesc{
-			Caller: share.caller,
-			Target: share.target,
-			DataID: dataID,
-			Desc:   string(rawJSON),
-		})
 	}
 
-	var j []JSONDescriptor
-	err = json.Unmarshal(rawJSON, &j)
+	// make the request
+	descData, err = NewConsumer(
+		share.mod,
+		share.caller,
+		share.target,
+	).Describe(ctx, dataID, opts)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	for _, d := range j {
-		var proto = share.mod.content.UnmarshalDescriptor(d.Type, d.Info)
-		if proto == nil {
-			continue
-		}
+	// cache results
+	err = cache.Store(share.caller, share.target, dataID, descData)
+	if err != nil {
+		share.mod.log.Error("error storing cache: %v", err)
+	}
 
-		list = append(list, &desc.Desc{
-			Source: share.target,
-			Data:   proto,
+	return addSourceToData(descData, share.target), nil
+}
+
+func addSourceToData(list []desc.Data, source id.Identity) (descs []*desc.Desc) {
+	for _, item := range list {
+		descs = append(descs, &desc.Desc{
+			Source: source,
+			Data:   item,
 		})
 	}
-
-	return list, nil
+	return
 }
 
 func (share *RemoteShare) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
