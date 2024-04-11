@@ -17,6 +17,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
+	"strings"
 )
 
 var _ keys.Module = &Module{}
@@ -125,11 +126,20 @@ func (mod *Module) IndexKey(dataID data.ID) error {
 		return err
 	}
 
-	return mod.db.Create(&dbPrivateKey{
+	err = mod.db.Create(&dbPrivateKey{
 		DataID:    dataID,
 		Type:      pk.Type,
 		PublicKey: identity,
 	}).Error
+
+	switch {
+	case err == nil:
+		return nil
+	case strings.Contains(err.Error(), "UNIQUE constraint failed"):
+		return nil
+	default:
+		return err
+	}
 }
 
 func (mod *Module) LoadPrivateKey(dataID data.ID) (*keys.PrivateKey, error) {

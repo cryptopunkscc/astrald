@@ -1,7 +1,7 @@
 package user
 
 type Config struct {
-	LocalUser string `yaml:"local_user"`
+	Identity string `yaml:"identity"`
 }
 
 var defaultConfig = Config{}

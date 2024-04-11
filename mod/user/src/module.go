@@ -1,13 +1,8 @@
 package user
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
@@ -22,7 +17,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"gorm.io/gorm"
 )
@@ -46,7 +40,8 @@ type Module struct {
 	sets    sets.Module
 	dir     dir.Module
 
-	localUser      *LocalUser
+	userID         id.Identity
+	userCert       []byte
 	routes         *router.PrefixRouter
 	profileService *ProfileService
 	notifyService  *NotifyService
@@ -58,72 +53,29 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) discoverUsers(ctx context.Context) {
-	events.Handle(ctx, mod.node.Events(), func(event discovery.EventDiscovered) error {
-		// make sure we're not getting our own services
-		if event.Identity.IsEqual(mod.node.Identity()) {
-			return nil
-		}
-
-		for _, cert := range event.Info.Data {
-			err := mod.checkCert(event.Identity, cert.Bytes)
-			if err != nil {
-				mod.log.Errorv(2, "checkCert %v from %v: %v", data.Resolve(cert.Bytes), event.Identity, err)
-			}
-		}
-
-		for _, service := range event.Info.Services {
-			// look only for user profiles
-			if service.Type != userProfileServiceType {
-				continue
-			}
-
-			// and only if they're hosted
-			if service.Identity.IsEqual(event.Identity) {
-				continue
-			}
-
-			mod.log.Infov(2, "user %v discovered on %v", service.Identity, event.Identity)
-
-			if len(service.Extra) == 0 {
-				continue
-			}
-		}
-
-		return nil
-	})
+func (mod *Module) UserID() id.Identity {
+	return mod.userID
 }
 
-func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
-	var r = bytes.NewReader(certBytes)
-
-	var dataType adc.Header
-	err := cslq.Decode(r, "v", &dataType)
-	if err != nil {
-		return err
-	}
-	if dataType != relay.CertType {
-		return errors.New("invalid data type")
-	}
-
-	var cert relay.Cert
-
-	err = cslq.Decode(r, "v", &cert)
+func (mod *Module) SetUserID(userID id.Identity) error {
+	err := mod.setUserID(userID)
 	if err != nil {
 		return err
 	}
 
-	err = cert.Validate()
+	return mod.storeUserID(userID)
+}
+
+func (mod *Module) setUserID(userID id.Identity) error {
+	cert, err := mod.loadCert(userID, mod.node.Identity(), true)
 	if err != nil {
 		return err
 	}
 
-	if !cert.RelayID.IsEqual(relayID) {
-		mod.log.Errorv(2, "%v is not %v", cert.RelayID, relayID)
-		return errors.New("relay mismatch")
-	}
+	mod.userID = userID
+	mod.userCert = cert
 
-	mod.storage.Put(certBytes, nil)
+	mod.log.Info("user identity set to %v", mod.userID)
 
 	return nil
 }

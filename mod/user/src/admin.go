@@ -45,16 +45,14 @@ func (adm *Admin) set(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	return adm.mod.SetLocalUser(identity)
+	return adm.mod.SetUserID(identity)
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	localUser := adm.mod.LocalUser()
-	if localUser == nil {
-		return errors.New("no local user")
+	userID := adm.mod.UserID()
+	if userID.IsZero() {
+		return errors.New("no user identity set")
 	}
-
-	var userID = localUser.Identity()
 
 	term.Printf("Identity: %v\n", userID)
 	term.Printf("PubKey:   %v\n", userID.PublicKeyHex())

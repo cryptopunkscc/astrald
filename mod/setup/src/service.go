@@ -52,7 +52,7 @@ func (srv *SetupService) RouteQuery(ctx context.Context, query net.Query, caller
 }
 
 func (srv *SetupService) setDefaultIdentity() {
-	if srv.user.LocalUser() == nil {
+	if srv.user.UserID().IsZero() {
 		srv.apphost.SetDefaultIdentity(srv.node.Identity())
 	} else {
 		srv.apphost.SetDefaultIdentity(id.Identity{})
