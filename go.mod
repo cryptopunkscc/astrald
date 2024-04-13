@@ -6,6 +6,7 @@ require (
 	bitbucket.org/creachadair/shell v0.0.7
 	github.com/acuteaura-forks/go-matroska v0.0.0-20230403130951-5b3a344d8c11
 	github.com/akutz/memconn v0.1.0
+	github.com/cryptopunkscc/go-apphost-jrpc v0.0.0-20240411182101-cb3652e71ef6
 	github.com/dhowden/tag v0.0.0-20240122214204-713ab0e94639
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gin-gonic/gin v1.9.1
@@ -25,7 +26,6 @@ require (
 	github.com/bytedance/sonic v1.10.2 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/chenzhuoyu/iasm v0.9.1 // indirect
-	github.com/cryptopunkscc/go-apphost-jrpc v0.0.0-20240324234843-ffa0855324ca // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
@@ -68,4 +68,4 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
-replace github.com/cryptopunkscc/go-apphost-jrpc => ../go-apphost-jrpc
+//replace github.com/cryptopunkscc/go-apphost-jrpc => ../go-apphost-jrpc
