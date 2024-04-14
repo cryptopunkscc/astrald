@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var ErrKeyNotFound = errors.New("key not found")
@@ -43,6 +44,24 @@ func (params Params) GetDataID(key string) (data.ID, error) {
 	}
 
 	return id, nil
+}
+
+func (params Params) GetUnixNano(key string) (time.Time, error) {
+	v, found := params[key]
+	if !found {
+		return time.Time{}, ErrKeyNotFound
+	}
+
+	nsec, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("parse error: %w", err)
+	}
+
+	return time.Unix(0, nsec), nil
+}
+
+func (params Params) SetUnixNano(key string, value time.Time) {
+	params[key] = strconv.FormatInt(value.UnixNano(), 10)
 }
 
 func SplitQueryParams(query string) (path, params string) {
