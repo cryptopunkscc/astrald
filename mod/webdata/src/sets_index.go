@@ -3,7 +3,6 @@ package webdata
 import (
 	"cmp"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"slices"
@@ -13,7 +12,6 @@ type setInfo struct {
 	ID       string
 	Name     string
 	Size     int
-	Type     string
 	DataSize string
 }
 
@@ -45,10 +43,9 @@ func (mod *Module) handleSetsIndex(c *gin.Context) {
 
 		list = append(list, setInfo{
 			ID:       stat.Name,
-			Name:     node.FormatString(mod.node, set.DisplayName()),
+			Name:     set.Name(),
 			Size:     stat.Size,
 			DataSize: log.DataSize(stat.DataSize).HumanReadable(),
-			Type:     string(stat.Type),
 		})
 	}
 

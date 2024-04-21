@@ -44,7 +44,6 @@ type Module struct {
 	userCert       []byte
 	routes         *router.PrefixRouter
 	profileService *ProfileService
-	notifyService  *NotifyService
 }
 
 func (mod *Module) Run(ctx context.Context) error {

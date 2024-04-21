@@ -38,7 +38,6 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(zip.ModuleName, NewAdmin(mod))
 	}
 
-	mod.sets.SetWrapper(ZipSetType, mod.wrapper)
 	mod.content.AddDescriber(mod)
 	mod.content.AddPrototypes(zip.ArchiveDesc{}, zip.MemberDesc{})
 	mod.storage.AddOpener("mod.zip", mod, 20)

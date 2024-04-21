@@ -7,9 +7,9 @@ import (
 )
 
 type dbData struct {
-	ID        uint    `gorm:"primarykey"`
-	DataID    data.ID `gorm:"uniqueIndex"`
-	CreatedAt time.Time
+	ID        uint      `gorm:"primarykey"`
+	DataID    data.ID   `gorm:"uniqueIndex"`
+	CreatedAt time.Time `gorm:"index"`
 }
 
 func (dbData) TableName() string { return sets.DBPrefix + "data" }

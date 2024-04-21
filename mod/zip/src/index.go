@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/zip"
 )
 
-const archiveSetPrefix = ".zip.contents."
+const archiveSetPrefix = "zip:"
 
 func (mod *Module) Index(zipID data.ID) error {
 	var zipRow dbZip
@@ -41,12 +41,6 @@ func (mod *Module) Index(zipID data.ID) error {
 	zipRow = dbZip{DataID: zipID, SetName: setName}
 	err = mod.db.Create(&zipRow).Error
 	if err != nil {
-		return err
-	}
-
-	set, err := mod.sets.CreateManaged(setName, ZipSetType)
-	if err != nil {
-		mod.log.Error("error creating set %v: %v", setName, err)
 		return err
 	}
 
@@ -84,17 +78,9 @@ func (mod *Module) Index(zipID data.ID) error {
 		}
 
 		mod.log.Infov(1, "indexed %s (%v)", file.Name, fileID)
-
-		set.Add(fileID)
 	}
 
 	mod.events.Emit(zip.EventArchiveIndexed{DataID: zipID})
-
-	err = mod.sets.Virtual().AddSubset(setName)
-	if err != nil {
-		mod.log.Error("error adding %v to archives union: %v", setName, err)
-		return err
-	}
 
 	return nil
 }
@@ -108,8 +94,6 @@ func (mod *Module) Unindex(zipID data.ID) error {
 	if err != nil {
 		return err
 	}
-
-	mod.sets.Virtual().RemoveSubset(row.SetName)
 
 	return mod.db.Delete(&row).Error
 }
@@ -133,11 +117,7 @@ func (mod *Module) restore(zipID data.ID) error {
 		Select("set_name").
 		Where("data_id = ?", zipID).
 		First(&setName).Error
-	if err != nil {
-		return err
-	}
 
-	err = mod.sets.Virtual().AddSubset(setName)
 	return err
 }
 
@@ -167,9 +147,6 @@ func (mod *Module) Forget(zipID data.ID) error {
 	if err != nil {
 		return fmt.Errorf("error deleting row: %w", err)
 	}
-
-	// delete the set
-	mod.sets.Virtual().RemoveSubset(row.SetName)
 
 	set, err := mod.sets.Open(row.SetName, false)
 	if err != nil {

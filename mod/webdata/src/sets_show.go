@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -64,11 +63,10 @@ func (mod *Module) handleSetsShow(c *gin.Context) {
 	}
 
 	var page = setPage{
-		DisplayName: node.FormatString(mod.node, set.DisplayName()),
+		DisplayName: set.Name(),
 		Name:        setName,
 		Count:       stat.Size,
 		TotalSize:   stat.DataSize,
-		Type:        string(stat.Type),
 	}
 
 	for _, m := range members {
@@ -91,34 +89,6 @@ func (mod *Module) handleSetsShow(c *gin.Context) {
 
 		obj.DisplayName = node.FormatString(mod.node, obj.DisplayName)
 		page.Objects = append(page.Objects, obj)
-	}
-
-	if stat.Type == sets.TypeUnion {
-		union, ok := set.(sets.Union)
-		if !ok {
-			c.Status(http.StatusInternalServerError)
-			return
-		}
-
-		subsets, _ := union.Subsets()
-		for _, subname := range subsets {
-			sub, err := mod.sets.Open(subname, false)
-			if err != nil {
-				page.Subsets = append(page.Subsets, setShort{
-					Name:        subname,
-					DisplayName: subname,
-				})
-				continue
-			}
-			page.Subsets = append(
-				page.Subsets,
-				setShort{
-					Name:        subname,
-					DisplayName: node.FormatString(mod.node, sub.DisplayName()),
-				},
-			)
-		}
-		page.SubsetCount = len(page.Subsets)
 	}
 
 	c.HTML(http.StatusOK, "sets.show.gohtml", &page)

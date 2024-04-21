@@ -60,7 +60,7 @@ func (mod *Module) handleObjectsShow(c *gin.Context) {
 		}
 		page.Sets = append(page.Sets, setShort{
 			Name:        setName,
-			DisplayName: node.FormatString(mod.node, set.DisplayName()),
+			DisplayName: set.Name(),
 		})
 
 	}

@@ -20,31 +20,6 @@ func (set *Set) Name() string {
 	return set.row.Name
 }
 
-func (set *Set) DisplayName() string {
-	switch set.row.Name {
-	case sets.DeviceSet:
-		return "Device"
-	case sets.VirtualSet:
-		return "Virtual"
-	case sets.NetworkSet:
-		return "Network"
-	case sets.UniverseSet:
-		return "Universe"
-	}
-	if set.row.Description != "" {
-		return set.row.Description
-	}
-	return set.row.Name
-}
-
-func (set *Set) SetDisplayName(s string) error {
-	set.row.Description = s
-
-	return set.Module.db.
-		Model(&set.row).
-		Update("description", s).Error
-}
-
 func (set *Set) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 	if opts == nil {
 		opts = &sets.ScanOpts{}
@@ -162,7 +137,6 @@ func (set *Set) RemoveByID(ids ...uint) error {
 		})
 	}
 
-	set.events.Emit(eventSetUpdated{row: set.row})
 	set.events.Emit(sets.EventSetUpdated{Name: set.row.Name})
 
 	return nil
@@ -207,7 +181,6 @@ func (set *Set) AddByID(ids ...uint) error {
 		return err
 	}
 
-	set.events.Emit(eventSetUpdated{row: set.row})
 	set.events.Emit(sets.EventSetUpdated{Name: set.row.Name})
 
 	return nil
@@ -216,13 +189,10 @@ func (set *Set) AddByID(ids ...uint) error {
 func (set *Set) Stat() (*sets.Stat, error) {
 	var err error
 	var info = &sets.Stat{
-		Name:        set.row.Name,
-		Type:        sets.Type(set.row.Type),
-		Size:        -1,
-		Visible:     set.row.Visible,
-		Description: set.row.Description,
-		CreatedAt:   set.row.CreatedAt,
-		TrimmedAt:   set.row.TrimmedAt,
+		Name:      set.row.Name,
+		Size:      -1,
+		CreatedAt: set.row.CreatedAt,
+		TrimmedAt: set.row.TrimmedAt,
 	}
 
 	var rows []dbMember
@@ -292,7 +262,6 @@ func (set *Set) Clear() error {
 	set.row.TrimmedAt = time.Now()
 	err = set.db.Save(set.row).Error
 
-	set.events.Emit(eventSetUpdated{row: set.row})
 	set.events.Emit(sets.EventSetUpdated{Name: set.row.Name})
 
 	return err
@@ -336,20 +305,11 @@ func (set *Set) Delete() error {
 		})
 	}
 
-	// delete inclusions
-	err = set.db.
-		Where("subset_id = ? or superset_id = ?", set.row.ID, set.row.ID).
-		Delete(&dbSetInclusion{}).Error
-	if err != nil {
-		return err
-	}
-
 	err = set.db.Delete(set.row).Error
 	if err != nil {
 		return err
 	}
 
-	set.events.Emit(eventSetDeleted{row: &lastState})
 	set.events.Emit(sets.EventSetDeleted{Name: set.row.Name})
 
 	return nil

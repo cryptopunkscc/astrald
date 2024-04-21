@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/shares"
@@ -21,16 +22,12 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"add":        adm.add,
-		"remove":     adm.remove,
-		"local":      adm.local,
 		"remote":     adm.remote,
 		"sync":       adm.sync,
 		"rawsync":    adm.rawsync,
 		"describe":   adm.describe,
 		"syncall":    adm.syncAll,
 		"unsync":     adm.unsync,
-		"notify":     adm.notify,
 		"purgecache": adm.purgecache,
 		"help":       adm.help,
 	}
@@ -49,56 +46,6 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	}
 
 	return errors.New("unknown command")
-}
-
-func (adm *Admin) add(term admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		return errors.New("argument missing")
-	}
-
-	var err error
-	var identity id.Identity
-	var dataID data.ID
-
-	if identity, err = adm.mod.node.Resolver().Resolve(args[0]); err != nil {
-		return err
-	}
-
-	share, err := adm.mod.LocalShare(identity, true)
-	if err != nil {
-		return err
-	}
-
-	if dataID, err = data.Parse(args[1]); err == nil {
-		return share.AddObject(dataID)
-	}
-
-	return share.AddSet(args[1])
-}
-
-func (adm *Admin) remove(term admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		return errors.New("argument missing")
-	}
-
-	var err error
-	var identity id.Identity
-	var dataID data.ID
-
-	if identity, err = adm.mod.node.Resolver().Resolve(args[0]); err != nil {
-		return err
-	}
-
-	share, err := adm.mod.LocalShare(identity, false)
-	if err != nil {
-		return err
-	}
-
-	if dataID, err = data.Parse(args[1]); err == nil {
-		return share.RemoveObject(dataID)
-	}
-
-	return share.RemoveSet(args[1])
 }
 
 func (adm *Admin) syncAll(term admin.Terminal, args []string) error {
@@ -164,26 +111,35 @@ func (adm *Admin) rawsync(term admin.Terminal, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	caller, target, err := adm.parseCallerAndTarget(args[0], term.UserIdentity())
+	a, err := arl.Parse(args[0], adm.mod.node.Resolver())
 	if err != nil {
 		return err
 	}
+
+	if a.Caller.IsZero() {
+		a.Caller = term.UserIdentity()
+	}
+
+	if a.Query == "" {
+		a.Query = "shares.sync"
+	}
+
+	c := NewConsumer(adm.mod, a.Caller, a.Target)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	c := NewConsumer(adm.mod, caller, target)
-
-	sync, err := c.Sync(ctx, time.Time{})
+	diff, err := c.Sync(ctx, time.Time{})
 	if err != nil {
 		return err
 	}
 
-	for _, u := range sync.Updates {
-		term.Printf("%-64s %v\n", u.DataID, u.Removed)
+	term.Printf("%-64s %v\n", admin.Header("DataID"), admin.Header("Present"))
+	for _, u := range diff.Updates {
+		term.Printf("%-64s %v\n", u.DataID, u.Present)
 	}
 
-	term.Printf("%v\n", sync.Time)
+	term.Printf("%v\n", diff.Time)
 
 	return nil
 }
@@ -251,19 +207,6 @@ func (adm *Admin) unsync(term admin.Terminal, args []string) error {
 	return err
 }
 
-func (adm *Admin) notify(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("argument missing")
-	}
-
-	identity, err := adm.mod.node.Resolver().Resolve(args[0])
-	if err != nil {
-		return err
-	}
-
-	return adm.mod.Notify(identity)
-}
-
 func (adm *Admin) purgecache(term admin.Terminal, args []string) error {
 	if len(args) == 0 {
 		return errors.New("usage: purgecache <minAge>")
@@ -276,29 +219,6 @@ func (adm *Admin) purgecache(term admin.Terminal, args []string) error {
 	}
 
 	return cache.Purge(minAge)
-}
-
-func (adm *Admin) local(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("argument missing")
-	}
-
-	identity, err := adm.mod.node.Resolver().Resolve(args[0])
-	if err != nil {
-		return err
-	}
-
-	share, err := adm.mod.FindLocalShare(identity)
-	if err != nil {
-		return err
-	}
-
-	entries, err := share.Scan(nil)
-	for _, entry := range entries {
-		term.Printf("%v\n", entry.DataID)
-	}
-
-	return nil
 }
 
 func (adm *Admin) remote(term admin.Terminal, args []string) error {

@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+var callerExp = regexp.MustCompile(`^([a-zA-Z0-9_.-]+)@`)
+var queryExp = regexp.MustCompile(`^[a-zA-Z0-9_.-]+:(.*)$`)
+
 // ARL - Astral Resource Locator
 type ARL struct {
 	Caller id.Identity
@@ -14,8 +17,9 @@ type ARL struct {
 	Query  string
 }
 
-var callerExp = regexp.MustCompile(`^([a-zA-Z0-9_.-]+)@`)
-var queryExp = regexp.MustCompile(`^[a-zA-Z0-9_.-]+:(.*)$`)
+func New(caller id.Identity, target id.Identity, query string) *ARL {
+	return &ARL{Caller: caller, Target: target, Query: query}
+}
 
 func Split(s string) (caller, target, query string) {
 	matches := callerExp.FindStringSubmatch(s)

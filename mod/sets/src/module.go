@@ -8,77 +8,62 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/sig"
-	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
 )
 
 var _ sets.Module = &Module{}
 
 type Module struct {
-	config   Config
-	node     node.Node
-	log      *log.Logger
-	assets   assets.Assets
-	events   events.Queue
-	db       *gorm.DB
-	wrappers sig.Map[string, sets.WrapperFunc]
-
-	universe sets.Union
-	device   sets.Union
-	virtual  sets.Union
-	network  sets.Union
+	config Config
+	node   node.Node
+	log    *log.Logger
+	assets assets.Assets
+	events events.Queue
+	db     *gorm.DB
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	return tasks.Run(ctx,
-		mod.watchUnionMembers,
-	)
+	<-ctx.Done()
+
+	return nil
 }
 
-func (mod *Module) SetWrapper(typ sets.Type, manager sets.WrapperFunc) {
-	mod.wrappers.Replace(string(typ), manager)
-}
+func (mod *Module) Create(name string) (sets.Set, error) {
+	var row = dbSet{
+		Name: name,
+	}
 
-func (mod *Module) Wrapper(typ sets.Type) sets.WrapperFunc {
-	v, _ := mod.wrappers.Get(string(typ))
-	return v
-}
-
-func (mod *Module) Stat(name string) (*sets.Stat, error) {
-	setRow, err := mod.dbFindSetByName(name)
+	err := mod.db.Create(&row).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var info = &sets.Stat{
-		Name:        setRow.Name,
-		Type:        sets.Type(setRow.Type),
-		Size:        -1,
-		Visible:     setRow.Visible,
-		Description: setRow.Description,
-		CreatedAt:   setRow.CreatedAt,
-		TrimmedAt:   setRow.TrimmedAt,
+	var set = &Set{
+		Module: mod,
+		row:    &row,
 	}
 
-	var rows []dbMember
+	mod.events.Emit(sets.EventSetCreated{Set: set})
 
-	err = mod.db.
-		Model(&dbMember{}).
-		Preload("Data").
-		Where("set_id = ? and removed = false", setRow.ID).
-		Find(&rows).Error
+	return set, nil
+}
+
+func (mod *Module) Open(name string, create bool) (sets.Set, error) {
+	var row dbSet
+	var err = mod.db.Where("name = ?", name).First(&row).Error
 	if err != nil {
+		if create {
+			return mod.Create(name)
+		}
 		return nil, err
 	}
 
-	for _, row := range rows {
-		info.DataSize += row.Data.DataID.Size
+	var set = &Set{
+		Module: mod,
+		row:    &row,
 	}
 
-	info.Size = len(rows)
-
-	return info, nil
+	return set, nil
 }
 
 func (mod *Module) Where(dataID data.ID) ([]string, error) {
@@ -126,36 +111,4 @@ func (mod *Module) Scan(name string, opts *sets.ScanOpts) ([]*sets.Member, error
 	}
 
 	return set.Scan(opts)
-}
-
-func (mod *Module) SetVisible(name string, visible bool) error {
-	return mod.db.
-		Model(&dbSet{}).
-		Where("name = ?", name).
-		Update("visible", visible).
-		Error
-}
-
-func (mod *Module) SetDescription(name string, desc string) error {
-	return mod.db.
-		Model(&dbSet{}).
-		Where("name = ?", name).
-		Update("description", desc).
-		Error
-}
-
-func (mod *Module) Universe() sets.Union {
-	return mod.universe
-}
-
-func (mod *Module) Device() sets.Union {
-	return mod.device
-}
-
-func (mod *Module) Virtual() sets.Union {
-	return mod.virtual
-}
-
-func (mod *Module) Network() sets.Union {
-	return mod.network
 }

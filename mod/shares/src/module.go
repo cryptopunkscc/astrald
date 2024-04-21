@@ -123,30 +123,6 @@ func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader,
 	return nil, storage.ErrNotFound
 }
 
-func (mod *Module) Notify(identity id.Identity) error {
-	n, ok := mod.notify.Set(identity.String(), &Notification{
-		Module:   mod,
-		Identity: identity,
-		NotifyAt: time.Now().Add(mod.config.NotifyDelay),
-	})
-	if !ok {
-		n.Lock()
-		n.NotifyAt = time.Now().Add(mod.config.NotifyDelay)
-		n.Unlock()
-		return nil
-	}
-
-	sig.At(&n.NotifyAt, n, func() {
-		mod.tasks <- func(ctx context.Context) {
-			c := NewConsumer(mod, mod.node.Identity(), n.Identity)
-			c.Notify(ctx)
-			mod.notify.Delete(identity.String())
-		}
-	})
-
-	return nil
-}
-
 func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) []*desc.Desc {
 	var list []*desc.Desc
 	var err error
@@ -186,6 +162,10 @@ func (mod *Module) Authorize(identity id.Identity, dataID data.ID) error {
 		}
 	}
 	return shares.ErrDenied
+}
+
+func (mod *Module) openExportSet(identity id.Identity) (sets.Set, error) {
+	return mod.sets.Open("export:"+identity.PublicKeyHex(), false)
 }
 
 func (mod *Module) addAuthorizer(authorizer DataAuthorizer) error {

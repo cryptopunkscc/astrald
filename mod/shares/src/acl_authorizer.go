@@ -12,12 +12,12 @@ type ACLAuthorizer struct {
 }
 
 func (auth *ACLAuthorizer) Authorize(identity id.Identity, dataID data.ID) error {
-	share, err := auth.FindLocalShare(identity)
+	set, err := auth.openExportSet(identity)
 	if err != nil {
 		return shares.ErrDenied
 	}
 
-	scan, err := share.Scan(&sets.ScanOpts{DataID: dataID})
+	scan, err := set.Scan(&sets.ScanOpts{DataID: dataID})
 	if len(scan) == 1 {
 		return nil
 	}

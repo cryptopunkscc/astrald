@@ -3,8 +3,7 @@ package shares
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/sets"
+	"github.com/cryptopunkscc/astrald/mod/sets/sync"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/net"
@@ -12,20 +11,10 @@ import (
 	"io"
 	"slices"
 	"strconv"
-	"time"
-)
-
-const (
-	opDone     = 0x00
-	opAdd      = 0x01
-	opRemove   = 0x02
-	opResync   = 0x03
-	opNotFound = 0xff
 )
 
 const readServiceName = "shares.read"
 const notifyServiceName = "shares.notify"
-const describeServiceName = "shares.describe"
 
 type JSONDescriptor struct {
 	Type string
@@ -98,64 +87,14 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 }
 
 func (srv *Provider) Sync(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	var since = time.Time{}
-
-	_, params := router.ParseQuery(query.Query())
-	ts, _ := params.GetInt("since")
-	if ts > 0 {
-		since = time.Unix(0, int64(ts))
-	}
-
-	if since.After(time.Now()) {
+	set, err := srv.openExportSet(caller.Identity())
+	if err != nil {
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
-		defer conn.Close()
+	p := sync.NewProvider(set)
 
-		var before = time.Now()
-		var updateMode = !since.IsZero()
-
-		share, err := srv.FindLocalShare(caller.Identity())
-		if err != nil {
-			cslq.Encode(conn, "c", opNotFound)
-			return
-		}
-
-		if updateMode && share.TrimmedAt().After(since) {
-			cslq.Encode(conn, "c", opResync)
-			return
-		}
-
-		entries, err := share.Scan(&sets.ScanOpts{
-			UpdatedAfter:   since,
-			UpdatedBefore:  before,
-			IncludeRemoved: updateMode,
-		})
-		if err != nil {
-			return
-		}
-
-		for _, entry := range entries {
-			var op byte
-			if entry.Removed {
-				op = opRemove
-			} else {
-				op = opAdd
-			}
-
-			err = cslq.Encode(conn, "cv",
-				op,
-				entry.DataID,
-			)
-
-			if err != nil {
-				return
-			}
-		}
-
-		cslq.Encode(conn, "cq", opDone, before.UnixNano())
-	})
+	return p.RouteQuery(ctx, query, caller, hints)
 }
 
 func (srv *Provider) Describe(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {

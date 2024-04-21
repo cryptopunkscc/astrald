@@ -115,8 +115,6 @@ func (mod *Module) createSets() error {
 		return err
 	}
 
-	mod.sets.Device().AddSubset(fs.ReadOnlySetName, fs.ReadWriteSetName)
-
 	go events.Handle(context.Background(), &mod.memStore.events, func(event storage.EventDataCommitted) error {
 		mod.memSet.Add(event.DataID)
 		return nil
