@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
-	"time"
 )
 
 var _ storage.Writer = &Writer{}
@@ -75,10 +74,15 @@ func (w *Writer) Commit() (data.ID, error) {
 		os.Remove(oldPath)
 	}
 
+	stat, err := os.Stat(newPath)
+	if err != nil {
+		return dataID, err
+	}
+
 	err = w.mod.db.Create(&dbLocalFile{
-		Path:      newPath,
-		DataID:    dataID,
-		IndexedAt: time.Now(),
+		Path:    newPath,
+		DataID:  dataID,
+		ModTime: stat.ModTime(),
 	}).Error
 	if err == nil {
 		w.mod.events.Emit(fs.EventFileAdded{

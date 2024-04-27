@@ -9,7 +9,8 @@ import (
 type dbLocalFile struct {
 	Path      string  `gorm:"primaryKey,index"`
 	DataID    data.ID `gorm:"index"`
-	IndexedAt time.Time
+	ModTime   time.Time
+	UpdatedAt time.Time
 }
 
 func (dbLocalFile) TableName() string { return fs.DBPrefix + "local_files" }

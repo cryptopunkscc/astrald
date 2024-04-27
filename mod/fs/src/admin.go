@@ -19,7 +19,7 @@ func NewAdmin(mod *Module) *Admin {
 		"watch":  adm.watch,
 		"update": adm.update,
 		"rename": adm.rename,
-		"ls":     adm.ls,
+		"find":   adm.find,
 		"path":   adm.path,
 		"info":   adm.info,
 		"help":   adm.help,
@@ -81,17 +81,13 @@ func (adm *Admin) rename(term admin.Terminal, args []string) error {
 	return adm.mod.rename(args[0], args[1])
 }
 
-func (adm *Admin) ls(term admin.Terminal, args []string) error {
-	var localFiles []*dbLocalFile
-	tx := adm.mod.db.Order("indexed_at").Find(&localFiles)
-	if tx.Error != nil {
-		return tx.Error
-	}
+func (adm *Admin) find(term admin.Terminal, args []string) error {
+	files := adm.mod.Find(nil)
 
-	var f = "%-64s %-20s %s\n"
-	term.Printf(f, admin.Header("DataID"), admin.Header("Indexed"), admin.Header("Path"))
-	for _, localFile := range localFiles {
-		term.Printf(f, localFile.DataID, localFile.IndexedAt, localFile.Path)
+	var f = "%-64s %s\n"
+	term.Printf(f, admin.Header("ID"), admin.Header("Path"))
+	for _, file := range files {
+		term.Printf(f, file.ObjectID, file.Path)
 	}
 
 	return nil
@@ -149,7 +145,7 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: fs <command>\n\n")
 	term.Printf("commands:\n")
 	term.Printf("  watch <path>               watch a directory tree for changes\n")
-	term.Printf("  ls                         list all indexed files\n")
+	term.Printf("  find                       list all indexed files\n")
 	term.Printf("  path <objectID>            show local path(s) for the object\n")
 	term.Printf("  info                       show index info\n")
 	term.Printf("  help                       show help\n")

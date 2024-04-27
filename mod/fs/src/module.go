@@ -107,26 +107,51 @@ func (mod *Module) Create(opts *storage.CreateOpts) (storage.Writer, error) {
 	return nil, errors.New("no space available")
 }
 
-func (mod *Module) Find(ctx context.Context, query string, opts *content.FindOpts) (matches []content.Match, err error) {
+func (mod *Module) Purge(objectID data.ID, opts *storage.PurgeOpts) (count int, err error) {
+	var id = objectID.String()
+
+	for _, dir := range mod.config.Store {
+		var path = filepath.Join(dir, id)
+
+		if os.Remove(path) == nil {
+			count++
+		}
+	}
+
+	return
+}
+
+func (mod *Module) Find(opts *fs.FindOpts) (files []*fs.File) {
+	if opts == nil {
+		opts = &fs.FindOpts{}
+	}
+
 	var rows []*dbLocalFile
 
-	err = mod.db.
-		Where("LOWER(PATH) like ?", "%"+strings.ToLower(query)+"%").
-		Find(&rows).
-		Error
+	var q = mod.db.Order("updated_at asc")
+
+	if !opts.UpdatedAfter.IsZero() {
+		q = q.Where("updated_at > ?", opts.UpdatedAfter)
+	}
+
+	err := q.Find(&rows).Error
 	if err != nil {
 		return
 	}
 
 	for _, row := range rows {
-		matches = append(matches, content.Match{
-			DataID: row.DataID,
-			Score:  100,
-			Exp:    "file path contains query",
+		files = append(files, &fs.File{
+			Path:     row.Path,
+			ObjectID: row.DataID,
+			ModTime:  row.ModTime,
 		})
 	}
 
 	return
+}
+
+func (mod *Module) Path(objectID data.ID) []string {
+	return mod.path(objectID)
 }
 
 // Watch a directory tree for updates
@@ -188,7 +213,7 @@ func (mod *Module) validate(path string) error {
 		return errors.New("not indexed")
 	}
 
-	if stat.ModTime().After(row.IndexedAt) {
+	if stat.ModTime().After(row.ModTime) {
 		return errors.New("file modified")
 	}
 
@@ -214,7 +239,7 @@ func (mod *Module) update(path string) (data.ID, error) {
 	if err == nil {
 		var modtime = stat.ModTime()
 		// if file hasn't changed, just return nil
-		if !modtime.After(row.IndexedAt) {
+		if !modtime.After(row.ModTime) {
 			return row.DataID, nil
 		}
 	}
@@ -225,9 +250,9 @@ func (mod *Module) update(path string) (data.ID, error) {
 	}
 
 	updated := &dbLocalFile{
-		Path:      path,
-		DataID:    dataID,
-		IndexedAt: stat.ModTime(),
+		Path:    path,
+		DataID:  dataID,
+		ModTime: stat.ModTime(),
 	}
 
 	if row.Path == "" {

@@ -36,6 +36,7 @@ func (mod *Module) LoadDependencies() error {
 
 	mod.storage.AddOpener(fs.ModuleName, mod, 30)
 	mod.storage.AddCreator(fs.ModuleName, mod, 30)
+	mod.storage.AddPurger(fs.ModuleName, mod)
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
@@ -43,7 +44,7 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.content.AddDescriber(mod)
-	mod.content.AddFinder(mod)
+	mod.content.AddFinder(NewFinder(mod))
 	mod.content.AddPrototypes(fs.FileDesc{})
 
 	// wait for data module to finish preparing
