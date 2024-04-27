@@ -10,22 +10,23 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
+	"time"
 )
 
-var _ storage.Writer = &FileWriter{}
+var _ storage.Writer = &Writer{}
 
 const tempFilePrefix = ".tmp."
 
-type FileWriter struct {
+type Writer struct {
+	mod       *Module
 	path      string
 	tempID    string
 	file      *os.File
 	resolver  data.Resolver
-	readwrite *ReadWriteService
 	finalized atomic.Bool
 }
 
-func NewFileWriter(parent *ReadWriteService, path string) (*FileWriter, error) {
+func NewWriter(mod *Module, path string) (*Writer, error) {
 	var rbytes = make([]byte, 8)
 	rand.Read(rbytes)
 
@@ -38,16 +39,16 @@ func NewFileWriter(parent *ReadWriteService, path string) (*FileWriter, error) {
 
 	resolver := data.NewResolver()
 
-	return &FileWriter{
-		path:      path,
-		tempID:    tempID,
-		file:      file,
-		resolver:  resolver,
-		readwrite: parent,
+	return &Writer{
+		mod:      mod,
+		path:     path,
+		tempID:   tempID,
+		file:     file,
+		resolver: resolver,
 	}, nil
 }
 
-func (w *FileWriter) Write(p []byte) (n int, err error) {
+func (w *Writer) Write(p []byte) (n int, err error) {
 	n, err = w.file.Write(p)
 
 	if n > 0 {
@@ -57,7 +58,7 @@ func (w *FileWriter) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (w *FileWriter) Commit() (data.ID, error) {
+func (w *Writer) Commit() (data.ID, error) {
 	if !w.finalized.CompareAndSwap(false, true) {
 		return data.ID{}, errors.New("writer closed")
 	}
@@ -74,16 +75,22 @@ func (w *FileWriter) Commit() (data.ID, error) {
 		os.Remove(oldPath)
 	}
 
-	w.readwrite.rwSet.Add(dataID)
-	w.readwrite.events.Emit(fs.EventFileAdded{
-		DataID: dataID,
-		Path:   newPath,
-	})
+	err = w.mod.db.Create(&dbLocalFile{
+		Path:      newPath,
+		DataID:    dataID,
+		IndexedAt: time.Now(),
+	}).Error
+	if err == nil {
+		w.mod.events.Emit(fs.EventFileAdded{
+			Path:   newPath,
+			DataID: dataID,
+		})
+	}
 
 	return dataID, err
 }
 
-func (w *FileWriter) Discard() error {
+func (w *Writer) Discard() error {
 	if !w.finalized.CompareAndSwap(false, true) {
 		return errors.New("writer closed")
 	}

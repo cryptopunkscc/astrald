@@ -1,4 +1,4 @@
-package fs
+package mem
 
 import (
 	"github.com/cryptopunkscc/astrald/mod/storage"
@@ -6,19 +6,19 @@ import (
 	"sync/atomic"
 )
 
-var _ storage.Reader = &MemDataReader{}
+var _ storage.Reader = &Reader{}
 
-type MemDataReader struct {
+type Reader struct {
 	bytes  []byte
 	offset int64
 	closed atomic.Bool
 }
 
-func NewMemDataReader(bytes []byte) *MemDataReader {
-	return &MemDataReader{bytes: bytes}
+func NewMemDataReader(bytes []byte) *Reader {
+	return &Reader{bytes: bytes}
 }
 
-func (r *MemDataReader) Read(p []byte) (n int, err error) {
+func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.closed.Load() {
 		return 0, storage.ErrClosedPipe
 	}
@@ -38,7 +38,7 @@ func (r *MemDataReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func (r *MemDataReader) Seek(offset int64, whence int) (int64, error) {
+func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 	if r.closed.Load() {
 		return 0, storage.ErrClosedPipe
 	}
@@ -60,11 +60,11 @@ func (r *MemDataReader) Seek(offset int64, whence int) (int64, error) {
 	return r.offset, nil
 }
 
-func (r *MemDataReader) Close() error {
+func (r *Reader) Close() error {
 	r.closed.Store(true)
 	return nil
 }
 
-func (r *MemDataReader) Info() *storage.ReaderInfo {
+func (r *Reader) Info() *storage.ReaderInfo {
 	return &storage.ReaderInfo{Name: "memory"}
 }

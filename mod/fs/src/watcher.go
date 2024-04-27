@@ -16,7 +16,7 @@ const DefaultWriteTimeout = 3 * time.Second
 
 type Watcher struct {
 	OnWrite       func(string)
-	onWriteDone   func(string)
+	OnWriteDone   func(string) // called WriteTimeout after last write
 	OnFileCreated func(string)
 	OnDirCreated  func(string)
 	OnRenamed     func(string)
@@ -47,38 +47,40 @@ func NewWatcher() (*Watcher, error) {
 	return w, nil
 }
 
-func (w *Watcher) Add(path string, tree bool) error {
+func (w *Watcher) Add(path string, tree bool) (added []string, err error) {
 	if slices.Contains(w.watcher.WatchList(), path) {
-		return errors.New("already added")
+		return nil, errors.New("already added")
 	}
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !stat.IsDir() {
-		return errors.New("not a directory")
+		return nil, errors.New("not a directory")
 	}
 
 	err = w.watcher.Add(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	added = append(added, path)
 
 	if !tree {
-		return nil
+		return
 	}
 
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, entry := range entries {
-		w.Add(filepath.Join(path, entry.Name()), tree)
+		a, _ := w.Add(filepath.Join(path, entry.Name()), tree)
+		added = append(added, a...)
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (w *Watcher) Remove(path string, tree bool) error {
@@ -100,6 +102,10 @@ func (w *Watcher) Remove(path string, tree bool) error {
 	return nil
 }
 
+func (w *Watcher) List() []string {
+	return w.watcher.WatchList()
+}
+
 func (w *Watcher) onWrite(path string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -118,8 +124,8 @@ func (w *Watcher) onWrite(path string) {
 		delete(w.timeouts, path)
 		w.mu.Unlock()
 
-		if w.onWriteDone != nil {
-			w.onWriteDone(path)
+		if w.OnWriteDone != nil {
+			w.OnWriteDone(path)
 		}
 	})
 }

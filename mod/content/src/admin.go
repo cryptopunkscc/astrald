@@ -49,8 +49,9 @@ func (cmd *Admin) find(term admin.Terminal, args []string) error {
 	matches, err := cmd.mod.Find(context.Background(), args[0], opts)
 
 	for _, match := range matches {
-		term.Printf("%v %v\n",
+		term.Printf("%-64s %v; %v\n",
 			match.DataID,
+			match.Exp,
 			cmd.mod.BestTitle(match.DataID),
 		)
 	}

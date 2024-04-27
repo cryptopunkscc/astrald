@@ -1,4 +1,4 @@
-package fs
+package mem
 
 import (
 	"bytes"
@@ -7,22 +7,22 @@ import (
 	"sync/atomic"
 )
 
-var _ storage.Writer = &MemDataWriter{}
+var _ storage.Writer = &Writer{}
 
-type MemDataWriter struct {
-	*MemStore
+type Writer struct {
+	*Store
 	buf    *bytes.Buffer
 	closed atomic.Bool
 }
 
-func NewMemDataWriter(memStore *MemStore) *MemDataWriter {
-	return &MemDataWriter{
-		MemStore: memStore,
-		buf:      &bytes.Buffer{},
+func NewMemDataWriter(memStore *Store) *Writer {
+	return &Writer{
+		Store: memStore,
+		buf:   &bytes.Buffer{},
 	}
 }
 
-func (w *MemDataWriter) Write(p []byte) (n int, err error) {
+func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.closed.Load() {
 		return 0, storage.ErrClosedPipe
 	}
@@ -34,7 +34,7 @@ func (w *MemDataWriter) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (w *MemDataWriter) Commit() (data.ID, error) {
+func (w *Writer) Commit() (data.ID, error) {
 	if !w.closed.CompareAndSwap(false, true) {
 		return data.ID{}, storage.ErrClosedPipe
 	}
@@ -49,7 +49,7 @@ func (w *MemDataWriter) Commit() (data.ID, error) {
 	return dataID, nil
 }
 
-func (w *MemDataWriter) Discard() error {
+func (w *Writer) Discard() error {
 	if w.closed.CompareAndSwap(false, true) {
 		w.used.Add(int64(-w.buf.Len())) // free up space
 		w.buf = nil

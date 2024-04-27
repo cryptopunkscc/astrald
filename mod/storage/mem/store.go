@@ -1,4 +1,4 @@
-package fs
+package mem
 
 import (
 	"github.com/cryptopunkscc/astrald/data"
@@ -8,21 +8,21 @@ import (
 	"sync/atomic"
 )
 
-var _ storage.Opener = &MemStore{}
-var _ storage.Creator = &MemStore{}
-var _ storage.Purger = &MemStore{}
+var _ storage.Opener = &Store{}
+var _ storage.Creator = &Store{}
+var _ storage.Purger = &Store{}
 
-const DefaultMemStoreSize = 64 * 1024 * 1024 // 64MB
+const DefaultSize = 64 * 1024 * 1024 // 64MB
 
-type MemStore struct {
+type Store struct {
 	objects sig.Map[string, []byte]
 	events  events.Queue
 	used    atomic.Int64
 	size    int64
 }
 
-func NewMemStore(events *events.Queue, size int64) *MemStore {
-	var mem = &MemStore{size: DefaultMemStoreSize}
+func NewMemStore(events *events.Queue, size int64) *Store {
+	var mem = &Store{size: DefaultSize}
 	if size != 0 {
 		mem.size = size
 	}
@@ -30,7 +30,7 @@ func NewMemStore(events *events.Queue, size int64) *MemStore {
 	return mem
 }
 
-func (mem *MemStore) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
+func (mem *Store) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
 	bytes, found := mem.objects.Get(dataID.String())
 	if !found {
 		return nil, storage.ErrNotFound
@@ -39,7 +39,7 @@ func (mem *MemStore) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reade
 	return NewMemDataReader(bytes), nil
 }
 
-func (mem *MemStore) Purge(dataID data.ID, opts *storage.PurgeOpts) (int, error) {
+func (mem *Store) Purge(dataID data.ID, opts *storage.PurgeOpts) (int, error) {
 	_, ok := mem.objects.Delete(dataID.String())
 	if ok {
 		return 1, nil
@@ -47,14 +47,14 @@ func (mem *MemStore) Purge(dataID data.ID, opts *storage.PurgeOpts) (int, error)
 	return 0, nil
 }
 
-func (mem *MemStore) Create(opts *storage.CreateOpts) (storage.Writer, error) {
+func (mem *Store) Create(opts *storage.CreateOpts) (storage.Writer, error) {
 	return NewMemDataWriter(mem), nil
 }
 
-func (mem *MemStore) Used() int64 {
+func (mem *Store) Used() int64 {
 	return mem.used.Load()
 }
 
-func (mem *MemStore) Free() int64 {
+func (mem *Store) Free() int64 {
 	return mem.size - mem.used.Load()
 }
