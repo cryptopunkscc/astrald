@@ -42,6 +42,19 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
+	go mod.identifyFS()
+
+	go func() {
+		for event := range mod.node.Events().Subscribe(ctx) {
+			switch e := event.(type) {
+			case fs.EventFileAdded:
+				mod.Identify(e.DataID)
+			case fs.EventFileChanged:
+				mod.Identify(e.NewID)
+			}
+		}
+	}()
+
 	<-ctx.Done()
 
 	return nil

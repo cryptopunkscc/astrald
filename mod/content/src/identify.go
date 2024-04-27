@@ -104,3 +104,13 @@ func (mod *Module) IdentifySet(name string) ([]*content.TypeInfo, error) {
 
 	return list, nil
 }
+
+func (mod *Module) identifyFS() {
+	if mod.fs == nil {
+		return
+	}
+
+	for _, file := range mod.fs.Find(nil) {
+		mod.Identify(file.ObjectID)
+	}
+}
