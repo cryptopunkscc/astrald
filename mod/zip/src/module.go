@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
@@ -14,8 +13,6 @@ import (
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
 )
-
-const ZipSetType = "zip"
 
 type Module struct {
 	config Config
@@ -27,7 +24,6 @@ type Module struct {
 	content content.Module
 	storage storage.Module
 	shares  shares.Module
-	sets    sets.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {

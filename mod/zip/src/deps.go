@@ -3,7 +3,6 @@ package zip
 import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/mod/zip"
@@ -24,11 +23,6 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.shares, err = modules.Load[shares.Module](mod.node, shares.ModuleName)
-	if err != nil {
-		return err
-	}
-
-	mod.sets, err = modules.Load[sets.Module](mod.node, sets.ModuleName)
 	if err != nil {
 		return err
 	}

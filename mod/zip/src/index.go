@@ -148,11 +148,7 @@ func (mod *Module) Forget(zipID data.ID) error {
 		return fmt.Errorf("error deleting row: %w", err)
 	}
 
-	set, err := mod.sets.Open(row.SetName, false)
-	if err != nil {
-		return err
-	}
-	return set.Delete()
+	return nil
 }
 
 func (mod *Module) isIndexed(zipID data.ID, includeDeleted bool) bool {
