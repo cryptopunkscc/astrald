@@ -4,10 +4,12 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/dhowden/tag"
 	"io"
+	"strings"
 )
 
 var _ Indexer = &AudioIndexer{}
@@ -52,6 +54,31 @@ func (mod *AudioIndexer) Describe(ctx context.Context, dataID data.ID, opts *des
 		Source: mod.node.Identity(),
 		Data:   audio,
 	}}
+}
+
+func (mod *AudioIndexer) Find(ctx context.Context, query string, opts *content.FindOpts) (matches []content.Match, err error) {
+	var rows []*dbAudio
+
+	query = "%" + strings.ToLower(query) + "%"
+
+	err = mod.db.
+		Where("LOWER(artist) LIKE ? OR LOWER(title) LIKE ? OR LOWER(album) LIKE ?", query, query, query).
+		Find(&rows).
+		Error
+	if err != nil {
+		mod.log.Error("db error: %v", err)
+		return
+	}
+
+	for _, row := range rows {
+		matches = append(matches, content.Match{
+			DataID: row.DataID,
+			Score:  100,
+			Exp:    "audio tags match query",
+		})
+	}
+
+	return
 }
 
 func (mod *AudioIndexer) index(dataID data.ID, opts *storage.OpenOpts) (*media.Audio, error) {

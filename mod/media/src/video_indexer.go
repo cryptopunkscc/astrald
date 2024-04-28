@@ -6,11 +6,15 @@ import (
 	"github.com/acuteaura-forks/go-matroska/matroska"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"io"
+	"strings"
 	"time"
 )
+
+var _ Indexer = &MatroskaIndexer{}
 
 type MatroskaIndexer struct {
 	*Module
@@ -46,6 +50,31 @@ func (mod *MatroskaIndexer) Describe(ctx context.Context, dataID data.ID, opts *
 		Source: mod.node.Identity(),
 		Data:   info,
 	}}
+}
+
+func (mod *MatroskaIndexer) Find(ctx context.Context, query string, opts *content.FindOpts) (matches []content.Match, err error) {
+	var rows []*dbVideo
+
+	query = "%" + strings.ToLower(query) + "%"
+
+	err = mod.db.
+		Where("LOWER(title) LIKE ?", query).
+		Find(&rows).
+		Error
+	if err != nil {
+		mod.log.Error("db error: %v", err)
+		return
+	}
+
+	for _, row := range rows {
+		matches = append(matches, content.Match{
+			DataID: row.DataID,
+			Score:  100,
+			Exp:    "video matches query",
+		})
+	}
+
+	return
 }
 
 func (mod *MatroskaIndexer) index(dataID data.ID, opts *storage.OpenOpts) (*media.Video, error) {

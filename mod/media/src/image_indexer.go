@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"image"
@@ -49,6 +50,11 @@ func (mod *ImageIndexer) Describe(ctx context.Context, dataID data.ID, opts *des
 		Source: mod.node.Identity(),
 		Data:   img,
 	}}
+}
+
+func (mod *ImageIndexer) Find(ctx context.Context, query string, opts *content.FindOpts) (matches []content.Match, err error) {
+	// images are not searchable yet
+	return
 }
 
 func (mod *ImageIndexer) index(dataID data.ID, opts *storage.OpenOpts) (*media.Image, error) {
