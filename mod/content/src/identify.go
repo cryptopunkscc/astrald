@@ -58,15 +58,7 @@ func (mod *Module) Identify(dataID data.ID) (*content.TypeInfo, error) {
 		return nil, tx.Error
 	}
 
-	if method != "" {
-		mod.log.Logv(1, "%v identified as %s (%s)", dataID, dataType, method)
-	} else {
-		mod.log.Logv(1, "%v identified as %s", dataID, dataType)
-	}
-
-	if err := mod.identified.Add(dataID); err != nil {
-		mod.log.Error("error adding to set: %v", err)
-	}
+	mod.log.Logv(1, "%v identified as %s via %s", dataID, dataType, method)
 
 	info := &content.TypeInfo{
 		DataID:       dataID,
@@ -78,31 +70,6 @@ func (mod *Module) Identify(dataID data.ID) (*content.TypeInfo, error) {
 	mod.events.Emit(content.EventDataIdentified{TypeInfo: info})
 
 	return info, nil
-}
-
-// IdentifySet identifies all data objects in a set
-func (mod *Module) IdentifySet(name string) ([]*content.TypeInfo, error) {
-	var list []*content.TypeInfo
-
-	set, err := mod.sets.Open(name, false)
-	if err != nil {
-		return nil, err
-	}
-
-	entries, err := set.Scan(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, entry := range entries {
-		info, err := mod.Identify(entry.DataID)
-		if err != nil {
-			continue
-		}
-		list = append(list, info)
-	}
-
-	return list, nil
 }
 
 func (mod *Module) identifyFS() {

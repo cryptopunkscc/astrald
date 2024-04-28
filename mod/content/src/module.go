@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -32,11 +31,9 @@ type Module struct {
 	describers sig.Set[content.Describer]
 	finders    sig.Set[content.Finder]
 	prototypes sig.Map[string, desc.Data]
-	identified sets.Set
 
 	storage storage.Module
 	fs      fs.Module
-	sets    sets.Module
 
 	ready chan struct{}
 }
@@ -108,12 +105,7 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 }
 
 func (mod *Module) Forget(dataID data.ID) error {
-	var err = mod.db.Delete(&dbDataType{}, dataID).Error
-	if err != nil {
-		return err
-	}
-
-	return mod.identified.Remove(dataID)
+	return mod.db.Delete(&dbDataType{}, dataID).Error
 }
 
 func (mod *Module) Ready(ctx context.Context) error {

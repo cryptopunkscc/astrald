@@ -105,20 +105,7 @@ func (cmd *Admin) identify(term admin.Terminal, args []string) error {
 
 	dataID, err := data.Parse(args[0])
 	if err != nil {
-		info, err := cmd.mod.IdentifySet(args[0])
-		if err != nil {
-			return err
-		}
-
-		j, err := json.MarshalIndent(info, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		term.Write(j)
-		term.Println()
-
-		return nil
+		return err
 	}
 
 	info, err := cmd.mod.Identify(dataID)

@@ -13,7 +13,6 @@ const IdentifiedSet = ".mod.content.identified"
 
 type Module interface {
 	Identify(dataID data.ID) (*TypeInfo, error)
-	IdentifySet(setName string) ([]*TypeInfo, error)
 	Forget(dataID data.ID) error
 	Scan(ctx context.Context, opts *ScanOpts) <-chan *TypeInfo
 
