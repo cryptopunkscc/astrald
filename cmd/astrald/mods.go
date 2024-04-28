@@ -28,6 +28,5 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/tcp/src"
 	_ "github.com/cryptopunkscc/astrald/mod/tor/src"
 	_ "github.com/cryptopunkscc/astrald/mod/user/src"
-	_ "github.com/cryptopunkscc/astrald/mod/webdata/src"
 	_ "github.com/cryptopunkscc/astrald/mod/zip/src"
 )
