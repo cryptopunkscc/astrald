@@ -127,7 +127,7 @@ func (adm *Admin) sources(term admin.Terminal, _ []string) error {
 		admin.Header("Source"),
 	)
 
-	for src, _ := range list {
+	for _, src := range list {
 		var typ = reflect.TypeOf(src)
 		if typ.Kind() == reflect.Ptr {
 			typ = typ.Elem()
