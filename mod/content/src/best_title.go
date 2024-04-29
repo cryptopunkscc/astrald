@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/media"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
-func (mod *Module) BestTitle(dataID data.ID) string {
-	descs := mod.Describe(context.Background(), dataID, &desc.Opts{
+func (mod *Module) BestTitle(objectID object.ID) string {
+	descs := mod.objects.Describe(context.Background(), objectID, &desc.Opts{
 		IdentityFilter: id.AllowEveryone,
 	})
 
@@ -71,7 +71,7 @@ func (mod *Module) BestTitle(dataID data.ID) string {
 		}
 	}
 
-	return dataID.String()
+	return objectID.String()
 }
 
 func (mod *Module) compareTrust(a, b *desc.Desc) int {

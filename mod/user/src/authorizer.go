@@ -3,9 +3,9 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/authorizer"
 )
 
@@ -26,9 +26,9 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 
 	switch action {
 	case admin.AccessAction,
-		storage.OpenAction,
-		storage.CreateAction,
-		storage.PurgeAction,
+		objects.ReadAction,
+		objects.CreateAction,
+		objects.PurgeAction,
 		shares.DescribeAction,
 		presence.ScanAction:
 		return true

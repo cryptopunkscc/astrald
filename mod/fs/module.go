@@ -1,7 +1,7 @@
 package fs
 
 import (
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 	"path/filepath"
 	"time"
 )
@@ -13,12 +13,12 @@ const (
 
 type Module interface {
 	Find(opts *FindOpts) []*File
-	Path(objectID data.ID) []string
+	Path(objectID object.ID) []string
 }
 
 type File struct {
 	Path     string
-	ObjectID data.ID
+	ObjectID object.ID
 	ModTime  time.Time
 }
 

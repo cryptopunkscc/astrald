@@ -2,11 +2,10 @@ package media
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
-	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/media"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/object"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -24,9 +23,9 @@ func NewImageIndexer(mod *Module) *ImageIndexer {
 	return &ImageIndexer{Module: mod}
 }
 
-func (mod *ImageIndexer) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) []*desc.Desc {
+func (mod *ImageIndexer) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) []*desc.Desc {
 	var row dbImage
-	var err = mod.db.Where("data_id = ?", dataID).First(&row).Error
+	var err = mod.db.Where("data_id = ?", objectID).First(&row).Error
 	var img *media.Image
 	if err == nil {
 		img = &media.Image{
@@ -35,11 +34,11 @@ func (mod *ImageIndexer) Describe(ctx context.Context, dataID data.ID, opts *des
 			Height: row.Height,
 		}
 	} else {
-		img, err = mod.index(dataID, &storage.OpenOpts{
+		img, err = mod.index(objectID, &objects.OpenOpts{
 			Virtual: true,
 		})
 		if err != nil {
-			mod.log.Errorv(2, "error indexing %v: %v", dataID, err)
+			mod.log.Errorv(2, "error indexing %v: %v", objectID, err)
 		}
 	}
 	if img == nil {
@@ -52,13 +51,13 @@ func (mod *ImageIndexer) Describe(ctx context.Context, dataID data.ID, opts *des
 	}}
 }
 
-func (mod *ImageIndexer) Find(ctx context.Context, query string, opts *content.FindOpts) (matches []content.Match, err error) {
+func (mod *ImageIndexer) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
 	// images are not searchable yet
 	return
 }
 
-func (mod *ImageIndexer) index(dataID data.ID, opts *storage.OpenOpts) (*media.Image, error) {
-	r, err := mod.storage.Open(dataID, opts)
+func (mod *ImageIndexer) index(objectID object.ID, opts *objects.OpenOpts) (*media.Image, error) {
+	r, err := mod.objects.Open(objectID, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +69,7 @@ func (mod *ImageIndexer) index(dataID data.ID, opts *storage.OpenOpts) (*media.I
 	}
 
 	err = mod.db.Create(&dbImage{
-		DataID: dataID,
+		DataID: objectID,
 		Format: img.Format,
 		Width:  img.Width,
 		Height: img.Height,

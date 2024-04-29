@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/media"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"time"
 )
@@ -23,10 +23,12 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.storage, err = modules.Load[storage.Module](mod.node, storage.ModuleName)
+	mod.objects, err = modules.Load[objects.Module](mod.node, objects.ModuleName)
 	if err != nil {
 		return err
 	}
+
+	mod.objects.AddDescriber(mod)
 
 	// wait for data module to finish preparing
 	ctx, cancel := context.WithTimeoutCause(context.Background(), 15*time.Second, errors.New("data module timed out"))
@@ -35,11 +37,8 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.content.AddDescriber(mod)
-	mod.content.AddFinder(mod)
-	mod.content.AddPrototypes(&media.Audio{})
-	mod.content.AddPrototypes(&media.Video{})
-	mod.content.AddPrototypes(&media.Image{})
+	mod.objects.AddFinder(mod)
+	mod.objects.AddPrototypes(&media.Audio{}, &media.Video{}, &media.Image{})
 
 	return nil
 }

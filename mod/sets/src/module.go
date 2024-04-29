@@ -2,12 +2,12 @@ package sets
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 )
 
@@ -66,8 +66,8 @@ func (mod *Module) Open(name string, create bool) (sets.Set, error) {
 	return set, nil
 }
 
-func (mod *Module) Where(dataID data.ID) ([]string, error) {
-	dataRow, err := mod.dbDataFindOrCreateByDataID(dataID)
+func (mod *Module) Where(objectID object.ID) ([]string, error) {
+	dataRow, err := mod.dbDataFindOrCreateByObjectID(objectID)
 	if err != nil {
 		return nil, err
 	}

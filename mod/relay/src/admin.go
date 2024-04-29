@@ -38,7 +38,7 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) certs(term admin.Terminal, args []string) error {
-	dataIDs, err := adm.mod.FindCerts(&relay.FindOpts{IncludeExpired: true})
+	objectIDs, err := adm.mod.FindCerts(&relay.FindOpts{IncludeExpired: true})
 	if err != nil {
 		return err
 	}
@@ -46,29 +46,29 @@ func (adm *Admin) certs(term admin.Terminal, args []string) error {
 	const f = "%-64s %-33s %-33s %-10s %-20s\n"
 
 	term.Printf(f,
-		admin.Header("DataID"),
+		admin.Header("ObjectID"),
 		admin.Header("Target"),
 		admin.Header("Relay"),
 		admin.Header("Direction"),
 		admin.Header("Expires at"),
 	)
 
-	for _, dataID := range dataIDs {
-		data, err := adm.mod.storage.ReadAll(dataID, nil)
+	for _, objectID := range objectIDs {
+		object, err := adm.mod.objects.Get(objectID, nil)
 		if err != nil {
-			term.Printf("%v error: %v\n", dataID, err)
+			term.Printf("%v error: %v\n", objectID, err)
 			continue
 		}
 
-		cert, err := relay.UnmarshalCert(data)
+		cert, err := relay.UnmarshalCert(object)
 		if err != nil {
-			term.Printf("%v error: %v\n", dataID, err)
+			term.Printf("%v error: %v\n", objectID, err)
 			continue
 		}
 
 		term.Printf(
 			f,
-			dataID,
+			objectID,
 			cert.TargetID,
 			cert.RelayID,
 			admin.Keyword(cert.Direction),

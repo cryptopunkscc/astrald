@@ -2,7 +2,7 @@ package sync
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
 
@@ -19,8 +19,8 @@ type Diff struct {
 }
 
 type Update struct {
-	DataID  data.ID
-	Present bool
+	ObjectID object.ID
+	Present  bool
 }
 
 var ErrResyncRequired = errors.New("resync required")

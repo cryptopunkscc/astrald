@@ -2,12 +2,12 @@ package keys
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 type dbPrivateKey struct {
-	DataID    data.ID     `gorm:"uniqueIndex"`
+	DataID    object.ID   `gorm:"uniqueIndex"`
 	Type      string      `gorm:"index"`
 	PublicKey id.Identity `gorm:"index"`
 }

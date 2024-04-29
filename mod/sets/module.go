@@ -1,7 +1,7 @@
 package sets
 
 import (
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
 
@@ -13,14 +13,14 @@ type Module interface {
 	Create(name string) (Set, error)
 
 	All() ([]string, error)
-	Where(dataID data.ID) ([]string, error)
+	Where(object.ID) ([]string, error)
 }
 
 type Set interface {
 	Name() string
 	Scan(opts *ScanOpts) ([]*Member, error)
-	Add(...data.ID) error
-	Remove(...data.ID) error
+	Add(...object.ID) error
+	Remove(...object.ID) error
 	Delete() error
 	Clear() error
 	Trim(time.Time) error
@@ -32,7 +32,7 @@ type ScanOpts struct {
 	UpdatedAfter   time.Time
 	UpdatedBefore  time.Time
 	IncludeRemoved bool
-	DataID         data.ID
+	ObjectID       object.ID
 }
 
 type Stat struct {
@@ -44,7 +44,7 @@ type Stat struct {
 }
 
 type Member struct {
-	DataID    data.ID
+	ObjectID  object.ID
 	Removed   bool
 	UpdatedAt time.Time
 }

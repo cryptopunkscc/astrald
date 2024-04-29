@@ -1,17 +1,17 @@
 package fs
 
 import (
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"io"
 )
 
-var _ storage.Reader = &Reader{}
+var _ objects.Reader = &Reader{}
 
 type Reader struct {
 	io.ReadSeekCloser
 	name string
 }
 
-func (r *Reader) Info() *storage.ReaderInfo {
-	return &storage.ReaderInfo{Name: r.name}
+func (r *Reader) Info() *objects.ReaderInfo {
+	return &objects.ReaderInfo{Name: r.name}
 }

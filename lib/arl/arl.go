@@ -38,19 +38,23 @@ func Split(s string) (caller, target, query string) {
 	return
 }
 
-func Parse(s string, resolver resolver.Resolver) (asp *ARL, err error) {
+func Parse(s string, resolver resolver.Resolver) (arl *ARL, err error) {
+	if after, found := strings.CutPrefix(s, "astral://"); found {
+		s = after
+	}
+
 	var c, t string
-	asp = &ARL{}
-	c, t, asp.Query = Split(s)
+	arl = &ARL{}
+	c, t, arl.Query = Split(s)
 
 	if len(c) != 0 {
 		if resolver != nil {
-			asp.Caller, err = resolver.Resolve(c)
+			arl.Caller, err = resolver.Resolve(c)
 			if err != nil {
 				return
 			}
 		} else {
-			asp.Caller, err = id.ParsePublicKeyHex(c)
+			arl.Caller, err = id.ParsePublicKeyHex(c)
 			if err != nil {
 				return
 			}
@@ -59,12 +63,12 @@ func Parse(s string, resolver resolver.Resolver) (asp *ARL, err error) {
 
 	if len(t) != 0 {
 		if resolver != nil {
-			asp.Target, err = resolver.Resolve(t)
+			arl.Target, err = resolver.Resolve(t)
 			if err != nil {
 				return
 			}
 		} else {
-			asp.Target, err = id.ParsePublicKeyHex(t)
+			arl.Target, err = id.ParsePublicKeyHex(t)
 			if err != nil {
 				return
 			}

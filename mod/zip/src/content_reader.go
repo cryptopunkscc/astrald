@@ -2,20 +2,20 @@ package zip
 
 import (
 	"archive/zip"
-	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"io/fs"
 )
 
 var _ io.ReadSeeker = &contentReader{}
-var _ storage.Reader = &contentReader{}
+var _ objects.Reader = &contentReader{}
 
 type contentReader struct {
-	zip    *zip.Reader
-	path   string
-	dataID data.ID
+	zip      *zip.Reader
+	path     string
+	objectID object.ID
 
 	file fs.File
 	pos  int64
@@ -36,7 +36,7 @@ func (r *contentReader) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekCurrent:
 		target = int64(r.pos) + offset
 	case io.SeekEnd:
-		target = int64(r.dataID.Size) + offset
+		target = int64(r.objectID.Size) + offset
 	}
 
 	if target == r.pos {
@@ -77,6 +77,6 @@ func (r *contentReader) open() (err error) {
 	return
 }
 
-func (r *contentReader) Info() *storage.ReaderInfo {
-	return &storage.ReaderInfo{Name: "mod.zip"}
+func (r *contentReader) Info() *objects.ReaderInfo {
+	return &objects.ReaderInfo{Name: "mod.zip"}
 }

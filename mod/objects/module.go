@@ -1,23 +1,16 @@
-package storage
+package objects
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
-const ModuleName = "storage"
+const ModuleName = "objects"
 
 type Module interface {
-	Opener
-	Creator
-	Purger
-
-	// ReadAll reads the whole object into memory and returns the buffer
-	ReadAll(id data.ID, opts *OpenOpts) ([]byte, error)
-
-	// Put commits the buffer to storage and returns its ID
-	Put(bytes []byte, opts *CreateOpts) (data.ID, error)
-
 	// AddOpener registers an Opener. Openers are queried from highest to lowest priority.
 	// Priority ranges:
 	// 40-49 - memory cache
@@ -25,25 +18,42 @@ type Module interface {
 	// 20-29 - virtual storage like compressed or generated data
 	// 10-19 - storage accessed via network
 	AddOpener(name string, opener Opener, priority int) error
-
-	// RemoveOpener removes a registered Opener
-	RemoveOpener(name string) error
+	Opener
 
 	// AddCreator registers a Creator. Creators are queried from highest to lowest priority.
 	// See AddOpener for priority ranges.
 	AddCreator(name string, creator Creator, priority int) error
+	Creator
 
-	// RemoveCreator removes a registered Creator
-	RemoveCreator(name string) error
+	AddDescriber(Describer) error
+	Describer
 
 	AddPurger(name string, purger Purger) error
+	Purger
 
-	RemovePurger(name string) error
+	AddFinder(Finder) error
+	Finder
+
+	AddPrototypes(protos ...desc.Data) error
+	UnmarshalDescriptor(name string, buf []byte) desc.Data
+
+	// Get reads the whole object into memory and returns the buffer
+	Get(id object.ID, opts *OpenOpts) ([]byte, error)
+
+	// Put commits the object to storage and returns its ID
+	Put(object []byte, opts *CreateOpts) (object.ID, error)
+
+	Connect(caller id.Identity, target id.Identity) (Consumer, error)
+}
+
+type Consumer interface {
+	Describe(context.Context, object.ID, *desc.Opts) ([]desc.Data, error)
+	Open(context.Context, object.ID, *OpenOpts) (net.SecureConn, error)
 }
 
 // Opener is an interface opening data from storage
 type Opener interface {
-	Open(dataID data.ID, opts *OpenOpts) (Reader, error)
+	Open(objectID object.ID, opts *OpenOpts) (Reader, error)
 }
 
 // Creator is an interface for creating new data objects in storage
@@ -51,8 +61,26 @@ type Creator interface {
 	Create(opts *CreateOpts) (Writer, error)
 }
 
+type Describer desc.Describer[object.ID]
+
+type Finder interface {
+	Find(ctx context.Context, query string, opts *FindOpts) ([]Match, error)
+}
+
+type FindOpts struct {
+	Network bool
+	Virtual bool
+	Filter  id.Filter
+}
+
+type Match struct {
+	ObjectID object.ID
+	Score    int
+	Exp      string
+}
+
 type Purger interface {
-	Purge(dataID data.ID, opts *PurgeOpts) (int, error)
+	Purge(object.ID, *PurgeOpts) (int, error)
 }
 
 type PurgeOpts struct {
@@ -73,7 +101,7 @@ type Writer interface {
 	Write(p []byte) (n int, err error)
 
 	// Commit commits the written data to storage and returns its ID. Closes the Writer.
-	Commit() (data.ID, error)
+	Commit() (object.ID, error)
 
 	// Discard the data written so far and close the Writer.
 	Discard() error

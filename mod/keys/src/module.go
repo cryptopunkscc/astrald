@@ -7,14 +7,14 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
 	"strings"
@@ -27,7 +27,7 @@ type Module struct {
 	node    node.Node
 	log     *log.Logger
 	assets  assets.Assets
-	storage storage.Module
+	objects objects.Module
 	content content.Module
 	db      *gorm.DB
 }
@@ -41,9 +41,9 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) CreateKey(alias string) (identity id.Identity, dataID data.ID, err error) {
+func (mod *Module) CreateKey(alias string) (identity id.Identity, objectID object.ID, err error) {
 	if _, err := mod.node.Tracker().IdentityByAlias(alias); err == nil {
-		return identity, dataID, errors.New("alias already in use")
+		return identity, objectID, errors.New("alias already in use")
 	}
 
 	identity, err = id.GenerateIdentity()
@@ -51,7 +51,7 @@ func (mod *Module) CreateKey(alias string) (identity id.Identity, dataID data.ID
 		return
 	}
 
-	dataID, err = mod.SaveKey(identity)
+	objectID, err = mod.SaveKey(identity)
 	if err != nil {
 		return
 	}
@@ -61,9 +61,9 @@ func (mod *Module) CreateKey(alias string) (identity id.Identity, dataID data.ID
 	return
 }
 
-func (mod *Module) SaveKey(key id.Identity) (data.ID, error) {
+func (mod *Module) SaveKey(key id.Identity) (object.ID, error) {
 	if key.PrivateKey() == nil {
-		return data.ID{}, errors.New("private key is nil")
+		return object.ID{}, errors.New("private key is nil")
 	}
 
 	pk := keys.PrivateKey{
@@ -71,37 +71,37 @@ func (mod *Module) SaveKey(key id.Identity) (data.ID, error) {
 		Bytes: key.PrivateKey().Serialize(),
 	}
 
-	w, err := mod.storage.Create(&storage.CreateOpts{Alloc: 70})
+	w, err := mod.objects.Create(&objects.CreateOpts{Alloc: 70})
 	if err != nil {
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
 	err = adc.WriteHeader(w, privateKeyHeader)
 	if err != nil {
-		return data.ID{}, nil
+		return object.ID{}, nil
 	}
 
 	err = cslq.Encode(w, "v", &pk)
 	if err != nil {
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
-	dataID, err := w.Commit()
+	objectID, err := w.Commit()
 	if err != nil {
 		mod.log.Errorv(1, "error importing private key %v: %v", key, err)
 	}
 
-	return dataID, mod.IndexKey(dataID)
+	return objectID, mod.IndexKey(objectID)
 }
 
-func (mod *Module) IndexKey(dataID data.ID) error {
+func (mod *Module) IndexKey(objectID object.ID) error {
 	var row dbPrivateKey
-	var err = mod.db.Where("data_id = ?", dataID).First(&row).Error
+	var err = mod.db.Where("data_id = ?", objectID).First(&row).Error
 	if err == nil {
 		return ErrAlreadyIndexed
 	}
 
-	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
+	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (mod *Module) IndexKey(dataID data.ID) error {
 	}
 
 	err = mod.db.Create(&dbPrivateKey{
-		DataID:    dataID,
+		DataID:    objectID,
 		Type:      pk.Type,
 		PublicKey: identity,
 	}).Error
@@ -142,8 +142,8 @@ func (mod *Module) IndexKey(dataID data.ID) error {
 	}
 }
 
-func (mod *Module) LoadPrivateKey(dataID data.ID) (*keys.PrivateKey, error) {
-	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
+func (mod *Module) LoadPrivateKey(objectID object.ID) (*keys.PrivateKey, error) {
+	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
 	if err != nil {
 		return nil, err
 	}

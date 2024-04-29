@@ -1,4 +1,4 @@
-package data
+package object
 
 import (
 	"bytes"
@@ -59,7 +59,7 @@ func Unpack(data [40]byte) (id ID) {
 	return
 }
 
-func Parse(s string) (id ID, err error) {
+func ParseID(s string) (id ID, err error) {
 	// Check and trim the prefix
 	if !strings.HasPrefix(s, idPrefix) {
 		return ID{}, errors.New("invalid prefix")

@@ -1,13 +1,13 @@
 package content
 
 import (
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
 
 type dbDataType struct {
-	DataID       data.ID   `gorm:"primaryKey,index"`
+	DataID       object.ID `gorm:"primaryKey"`
 	Type         string    `gorm:"index"`
 	Method       string    `gorm:"index"`
 	IdentifiedAt time.Time `gorm:"index"`

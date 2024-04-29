@@ -1,4 +1,4 @@
-package data
+package object
 
 import (
 	"database/sql/driver"
@@ -15,7 +15,7 @@ func (id *ID) Scan(src any) error {
 		return errors.New("typcase failed")
 	}
 
-	parsed, err := Parse(str)
+	parsed, err := ParseID(str)
 	if err != nil {
 		return err
 	}

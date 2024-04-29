@@ -3,10 +3,10 @@ package user
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 func (mod *Module) DiscoverData(ctx context.Context, caller id.Identity, origin string) ([][]byte, error) {
@@ -57,7 +57,7 @@ func (mod *Module) discoverUsers(ctx context.Context) {
 		for _, cert := range event.Info.Data {
 			err := mod.checkCert(event.Identity, cert.Bytes)
 			if err != nil {
-				mod.log.Errorv(2, "checkCert %v from %v: %v", data.Resolve(cert.Bytes), event.Identity, err)
+				mod.log.Errorv(2, "checkCert %v from %v: %v", object.Resolve(cert.Bytes), event.Identity, err)
 			}
 		}
 

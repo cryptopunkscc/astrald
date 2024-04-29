@@ -6,8 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
-	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/resources"
 	"os"
@@ -19,7 +19,7 @@ func (mod *Module) LoadDependencies() error {
 	var err error
 
 	// required
-	mod.storage, err = modules.Load[storage.Module](mod.node, storage.ModuleName)
+	mod.objects, err = modules.Load[objects.Module](mod.node, objects.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -34,18 +34,18 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.storage.AddOpener(fs.ModuleName, mod, 30)
-	mod.storage.AddCreator(fs.ModuleName, mod, 30)
-	mod.storage.AddPurger(fs.ModuleName, mod)
+	mod.objects.AddOpener(fs.ModuleName, mod, 30)
+	mod.objects.AddCreator(fs.ModuleName, mod, 30)
+	mod.objects.AddDescriber(mod)
+	mod.objects.AddPurger(fs.ModuleName, mod)
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
 		adm.AddCommand(fs.ModuleName, NewAdmin(mod))
 	}
 
-	mod.content.AddDescriber(mod)
-	mod.content.AddFinder(NewFinder(mod))
-	mod.content.AddPrototypes(fs.FileDesc{})
+	mod.objects.AddFinder(NewFinder(mod))
+	mod.objects.AddPrototypes(fs.FileDesc{})
 
 	// wait for data module to finish preparing
 	ctx, cancel := context.WithTimeoutCause(context.Background(), 15*time.Second, errors.New("data module timed out"))

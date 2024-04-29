@@ -31,8 +31,8 @@ type Info struct {
 
 // Data respresents a single data entry in discovery response
 type Data struct {
-	DataID id.Identity
-	Bytes  []byte
+	Identity id.Identity
+	Bytes    []byte
 }
 
 // Service represents a single service entry in discovery response

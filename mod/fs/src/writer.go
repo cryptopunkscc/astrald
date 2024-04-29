@@ -4,15 +4,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/object"
 	"os"
 	"path/filepath"
 	"sync/atomic"
 )
 
-var _ storage.Writer = &Writer{}
+var _ objects.Writer = &Writer{}
 
 const tempFilePrefix = ".tmp."
 
@@ -21,7 +21,7 @@ type Writer struct {
 	path      string
 	tempID    string
 	file      *os.File
-	resolver  data.Resolver
+	resolver  object.Resolver
 	finalized atomic.Bool
 }
 
@@ -36,7 +36,7 @@ func NewWriter(mod *Module, path string) (*Writer, error) {
 		return nil, err
 	}
 
-	resolver := data.NewResolver()
+	resolver := object.NewResolver()
 
 	return &Writer{
 		mod:      mod,
@@ -57,17 +57,17 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (w *Writer) Commit() (data.ID, error) {
+func (w *Writer) Commit() (object.ID, error) {
 	if !w.finalized.CompareAndSwap(false, true) {
-		return data.ID{}, errors.New("writer closed")
+		return object.ID{}, errors.New("writer closed")
 	}
 
 	w.file.Close()
 
-	dataID := w.resolver.Resolve()
+	objectID := w.resolver.Resolve()
 
 	var oldPath = filepath.Join(w.path, w.tempID)
-	var newPath = filepath.Join(w.path, dataID.String())
+	var newPath = filepath.Join(w.path, objectID.String())
 
 	err := os.Rename(oldPath, newPath)
 	if err != nil {
@@ -76,22 +76,22 @@ func (w *Writer) Commit() (data.ID, error) {
 
 	stat, err := os.Stat(newPath)
 	if err != nil {
-		return dataID, err
+		return objectID, err
 	}
 
 	err = w.mod.db.Create(&dbLocalFile{
 		Path:    newPath,
-		DataID:  dataID,
+		DataID:  objectID,
 		ModTime: stat.ModTime(),
 	}).Error
 	if err == nil {
 		w.mod.events.Emit(fs.EventFileAdded{
-			Path:   newPath,
-			DataID: dataID,
+			Path:     newPath,
+			ObjectID: objectID,
 		})
 	}
 
-	return dataID, err
+	return objectID, err
 }
 
 func (w *Writer) Discard() error {

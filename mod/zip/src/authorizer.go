@@ -2,9 +2,9 @@ package zip
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node/authorizer"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 var _ authorizer.Authorizer = &Authorizer{}
@@ -15,11 +15,11 @@ type Authorizer struct {
 
 func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...any) bool {
 	switch action {
-	case storage.OpenAction:
+	case objects.ReadAction:
 		if len(args) == 0 {
 			return false
 		}
-		dataID, ok := args[0].(data.ID)
+		objectID, ok := args[0].(object.ID)
 		if !ok {
 			return false
 		}
@@ -29,7 +29,7 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 		var err = auth.mod.db.
 			Unscoped().
 			Preload("Zip").
-			Where("file_id = ?", dataID).
+			Where("file_id = ?", objectID).
 			Find(&rows).Error
 		if err != nil {
 			return false
@@ -37,18 +37,18 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 
 		for _, row := range rows {
 			if row.Zip == nil {
-				auth.mod.log.Errorv(1, "db row for file %v has null reference to zip", dataID)
+				auth.mod.log.Errorv(1, "db row for file %v has null reference to zip", objectID)
 				continue
 			}
 
 			zipID := row.Zip.DataID
 
 			// sanity check
-			if zipID.IsEqual(dataID) {
+			if zipID.IsEqual(objectID) {
 				continue
 			}
 
-			return auth.mod.node.Auth().Authorize(identity, storage.OpenAction, zipID)
+			return auth.mod.node.Auth().Authorize(identity, objects.ReadAction, zipID)
 		}
 	}
 

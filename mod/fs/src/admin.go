@@ -2,9 +2,9 @@ package fs
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/object"
 	"slices"
 )
 
@@ -63,12 +63,12 @@ func (adm *Admin) update(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := adm.mod.update(args[0])
+	objectID, err := adm.mod.update(args[0])
 	if err != nil {
 		return err
 	}
 
-	term.Printf("id: %s\n", dataID)
+	term.Printf("id: %s\n", objectID)
 
 	return nil
 }
@@ -98,12 +98,12 @@ func (adm *Admin) path(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
-	paths := adm.mod.path(dataID)
+	paths := adm.mod.path(objectID)
 	term.Printf("found %d path(s)\n", len(paths))
 	for _, path := range paths {
 		term.Printf("%s\n", path)

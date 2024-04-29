@@ -2,12 +2,12 @@ package mem
 
 import (
 	"bytes"
-	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/object"
 	"sync/atomic"
 )
 
-var _ storage.Writer = &Writer{}
+var _ objects.Writer = &Writer{}
 
 type Writer struct {
 	*Store
@@ -24,29 +24,29 @@ func NewMemDataWriter(memStore *Store) *Writer {
 
 func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.closed.Load() {
-		return 0, storage.ErrClosedPipe
+		return 0, objects.ErrClosedPipe
 	}
 	if int64(len(p)) > w.Free() {
-		return 0, storage.ErrNoSpaceLeft
+		return 0, objects.ErrNoSpaceLeft
 	}
 	n, err = w.buf.Write(p)
 	w.used.Add(int64(n))
 	return n, err
 }
 
-func (w *Writer) Commit() (data.ID, error) {
+func (w *Writer) Commit() (object.ID, error) {
 	if !w.closed.CompareAndSwap(false, true) {
-		return data.ID{}, storage.ErrClosedPipe
+		return object.ID{}, objects.ErrClosedPipe
 	}
 
 	var buf = w.buf.Bytes()
-	var dataID = data.Resolve(buf)
+	var objectID = object.Resolve(buf)
 
-	if _, ok := w.objects.Set(dataID.String(), buf); ok {
-		w.events.Emit(storage.EventDataCommitted{DataID: dataID})
+	if _, ok := w.objects.Set(objectID.String(), buf); ok {
+		w.events.Emit(objects.EventObjectCommitted{ObjectID: objectID})
 	}
 
-	return dataID, nil
+	return objectID, nil
 }
 
 func (w *Writer) Discard() error {

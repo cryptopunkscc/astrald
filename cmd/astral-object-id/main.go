@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"os"
 )
@@ -35,17 +35,17 @@ func main() {
 		}
 	}
 
-	dataID, err := data.ResolveAll(input)
+	objectID, err := object.ResolveAll(input)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(3)
 	}
 
 	if verbose {
-		fmt.Println("id:  ", dataID.String())
-		fmt.Println("size:", dataID.Size)
-		fmt.Println("hash:", hex.EncodeToString(dataID.Hash[:]))
+		fmt.Println("id:  ", objectID.String())
+		fmt.Println("size:", objectID.Size)
+		fmt.Println("hash:", hex.EncodeToString(objectID.Hash[:]))
 	} else {
-		fmt.Println(dataID.String())
+		fmt.Println(objectID.String())
 	}
 }

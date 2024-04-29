@@ -4,15 +4,14 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"sync"
@@ -26,7 +25,7 @@ const resyncAge = 5 * time.Minute
 const workers = 8
 
 var _ shares.Module = &Module{}
-var _ content.Describer = &Module{}
+var _ objects.Describer = &Module{}
 
 type Module struct {
 	config      Config
@@ -35,9 +34,8 @@ type Module struct {
 	assets      assets.Assets
 	db          *gorm.DB
 	authorizers sig.Set[DataAuthorizer]
-	storage     storage.Module
+	objects     objects.Module
 	sets        sets.Module
-	content     content.Module
 	notify      sig.Map[string, *Notification]
 	tasks       chan func(ctx context.Context)
 
@@ -88,25 +86,28 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
+func (mod *Module) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if !opts.Network {
-		return nil, storage.ErrNotFound
+		return nil, objects.ErrNotFound
 	}
 
 	var rows []dbRemoteData
 
-	var tx = mod.db.Where("data_id = ?", dataID).Find(&rows)
+	var tx = mod.db.Where("data_id = ?", objectID).Find(&rows)
 	if tx.Error != nil {
-		return nil, storage.ErrNotFound
+		return nil, objects.ErrNotFound
 	}
 
 	for _, row := range rows {
-		c := NewConsumer(mod, row.Caller, row.Target)
+		remoteObjects, err := mod.objects.Connect(row.Caller, row.Target)
+		if err != nil {
+			continue
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
-		conn, err := c.Open(ctx, dataID, opts)
+		conn, err := remoteObjects.Open(ctx, objectID, opts)
 		if err != nil {
 			continue
 		}
@@ -115,20 +116,20 @@ func (mod *Module) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader,
 			caller:     row.Caller,
 			target:     row.Target,
 			mod:        mod,
-			dataID:     dataID,
+			objectID:   objectID,
 			ReadCloser: conn,
 		}, nil
 	}
 
-	return nil, storage.ErrNotFound
+	return nil, objects.ErrNotFound
 }
 
-func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) []*desc.Desc {
+func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) []*desc.Desc {
 	var list []*desc.Desc
 	var err error
 	var rows []*dbRemoteData
 
-	err = mod.db.Where("data_id = ?", dataID).Find(&rows).Error
+	err = mod.db.Where("data_id = ?", objectID).Find(&rows).Error
 	if err != nil {
 		return nil
 	}
@@ -139,7 +140,7 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts
 			continue
 		}
 
-		res, err := share.Describe(ctx, dataID, opts)
+		res, err := share.Describe(ctx, objectID, opts)
 		if err != nil {
 			continue
 		}
@@ -150,9 +151,9 @@ func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts
 	return list
 }
 
-func (mod *Module) Authorize(identity id.Identity, dataID data.ID) error {
+func (mod *Module) Authorize(identity id.Identity, objectID object.ID) error {
 	for _, authorizer := range mod.authorizers.Clone() {
-		var err = authorizer.Authorize(identity, dataID)
+		var err = authorizer.Authorize(identity, objectID)
 		switch {
 		case err == nil:
 			return nil

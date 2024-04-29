@@ -2,14 +2,14 @@ package content
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"time"
@@ -28,11 +28,9 @@ type Module struct {
 	events events.Queue
 	db     *gorm.DB
 
-	describers sig.Set[content.Describer]
-	finders    sig.Set[content.Finder]
 	prototypes sig.Map[string, desc.Data]
 
-	storage storage.Module
+	objects objects.Module
 	fs      fs.Module
 
 	ready chan struct{}
@@ -45,7 +43,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		for event := range mod.node.Events().Subscribe(ctx) {
 			switch e := event.(type) {
 			case fs.EventFileAdded:
-				mod.Identify(e.DataID)
+				mod.Identify(e.ObjectID)
 			case fs.EventFileChanged:
 				mod.Identify(e.NewID)
 			}
@@ -90,7 +88,7 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 
 		// subscribe to new items
 		for event := range subscription {
-			e, ok := event.(content.EventDataIdentified)
+			e, ok := event.(content.EventObjectIdentified)
 			if !ok {
 				continue
 			}
@@ -104,8 +102,8 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 	return ch
 }
 
-func (mod *Module) Forget(dataID data.ID) error {
-	return mod.db.Delete(&dbDataType{}, dataID).Error
+func (mod *Module) Forget(objectID object.ID) error {
+	return mod.db.Delete(&dbDataType{}, objectID).Error
 }
 
 func (mod *Module) Ready(ctx context.Context) error {
@@ -148,7 +146,7 @@ func (mod *Module) scan(opts *content.ScanOpts) ([]*content.TypeInfo, error) {
 
 	for _, row := range rows {
 		list = append(list, &content.TypeInfo{
-			DataID:       row.DataID,
+			ObjectID:     row.DataID,
 			IdentifiedAt: row.IdentifiedAt,
 			Method:       row.Method,
 			Type:         row.Type,

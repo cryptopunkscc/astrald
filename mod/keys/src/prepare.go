@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/keys"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (mod *Module) Prepare(ctx context.Context) error {
@@ -28,7 +28,7 @@ func (mod *Module) importNodeIdentity() error {
 		Bytes: mod.node.Identity().PrivateKey().Serialize(),
 	}
 
-	w, err := mod.storage.Create(&storage.CreateOpts{Alloc: 70})
+	w, err := mod.objects.Create(&objects.CreateOpts{Alloc: 70})
 	if err != nil {
 		return err
 	}

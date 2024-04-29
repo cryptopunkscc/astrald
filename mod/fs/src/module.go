@@ -4,15 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
-	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"io"
@@ -22,7 +22,7 @@ import (
 )
 
 var _ fs.Module = &Module{}
-var defaultOpenOpts = &storage.OpenOpts{}
+var defaultOpenOpts = &objects.OpenOpts{}
 
 const workers = 1
 const updatesLen = 1024
@@ -36,7 +36,7 @@ type Module struct {
 	db     *gorm.DB
 	ctx    context.Context
 
-	storage storage.Module
+	objects objects.Module
 	content content.Module
 	sets    sets.Module
 
@@ -58,7 +58,7 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 // Open an object from the local filesystem
-func (mod *Module) Open(objectID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
+func (mod *Module) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if opts == nil {
 		opts = defaultOpenOpts
 	}
@@ -93,10 +93,10 @@ func (mod *Module) Open(objectID data.ID, opts *storage.OpenOpts) (storage.Reade
 		}, nil
 	}
 
-	return nil, storage.ErrNotFound
+	return nil, objects.ErrNotFound
 }
 
-func (mod *Module) Create(opts *storage.CreateOpts) (storage.Writer, error) {
+func (mod *Module) Create(opts *objects.CreateOpts) (objects.Writer, error) {
 	for _, dir := range mod.config.Store {
 		r, err := mod.createObjectAt(dir, opts.Alloc)
 		if err == nil {
@@ -107,7 +107,7 @@ func (mod *Module) Create(opts *storage.CreateOpts) (storage.Writer, error) {
 	return nil, errors.New("no space available")
 }
 
-func (mod *Module) Purge(objectID data.ID, opts *storage.PurgeOpts) (count int, err error) {
+func (mod *Module) Purge(objectID object.ID, opts *objects.PurgeOpts) (count int, err error) {
 	var id = objectID.String()
 
 	for _, dir := range mod.config.Store {
@@ -150,7 +150,7 @@ func (mod *Module) Find(opts *fs.FindOpts) (files []*fs.File) {
 	return
 }
 
-func (mod *Module) Path(objectID data.ID) []string {
+func (mod *Module) Path(objectID object.ID) []string {
 	return mod.path(objectID)
 }
 
@@ -179,12 +179,12 @@ func (mod *Module) Watch(path string) (added []string, err error) {
 }
 
 // path retruns a list of known paths to an object in the filesystem
-func (mod *Module) path(dataID data.ID) []string {
+func (mod *Module) path(objectID object.ID) []string {
 	var list []string
 
 	var err = mod.db.
 		Model(&dbLocalFile{}).
-		Where("data_id = ?", dataID).
+		Where("data_id = ?", objectID).
 		Select("path").
 		Find(&list).
 		Error
@@ -221,9 +221,9 @@ func (mod *Module) validate(path string) error {
 }
 
 // update updates the index entry for the path. path must be absolute.
-func (mod *Module) update(path string) (data.ID, error) {
+func (mod *Module) update(path string) (object.ID, error) {
 	if len(path) == 0 || path[0] != '/' {
-		return data.ID{}, errors.New("invalid path")
+		return object.ID{}, errors.New("invalid path")
 	}
 
 	stat, err := os.Stat(path)
@@ -231,7 +231,7 @@ func (mod *Module) update(path string) (data.ID, error) {
 		if err := mod.deletePath(path); err != nil {
 			mod.log.Errorv(2, "deletePath: %v", err)
 		}
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
 	var row dbLocalFile
@@ -244,14 +244,14 @@ func (mod *Module) update(path string) (data.ID, error) {
 		}
 	}
 
-	dataID, err := data.ResolveFile(path)
+	objectID, err := object.ResolveFile(path)
 	if err != nil {
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
 	updated := &dbLocalFile{
 		Path:    path,
-		DataID:  dataID,
+		DataID:  objectID,
 		ModTime: stat.ModTime(),
 	}
 
@@ -259,8 +259,8 @@ func (mod *Module) update(path string) (data.ID, error) {
 		err = mod.db.Create(updated).Error
 		if err == nil {
 			mod.events.Emit(fs.EventFileAdded{
-				Path:   updated.Path,
-				DataID: updated.DataID,
+				Path:     updated.Path,
+				ObjectID: updated.DataID,
 			})
 		}
 	} else {
@@ -294,8 +294,8 @@ func (mod *Module) deletePath(path string) error {
 	}
 
 	mod.events.Emit(fs.EventFileRemoved{
-		Path:   path,
-		DataID: row.DataID,
+		Path:     path,
+		ObjectID: row.DataID,
 	})
 
 	return nil
@@ -357,7 +357,7 @@ func (mod *Module) isPathIgnored(path string) bool {
 	return false
 }
 
-func (mod *Module) createObjectAt(path string, alloc int) (storage.Writer, error) {
+func (mod *Module) createObjectAt(path string, alloc int) (objects.Writer, error) {
 	usage, err := DiskUsage(path)
 	if err != nil {
 		return nil, err

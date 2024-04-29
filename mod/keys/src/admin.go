@@ -3,9 +3,9 @@ package keys
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 type Admin struct {
@@ -31,7 +31,7 @@ func (adm *Admin) new(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	dataID, err := adm.mod.SaveKey(key)
+	objectID, err := adm.mod.SaveKey(key)
 	if err != nil {
 		return err
 	}
@@ -43,10 +43,10 @@ func (adm *Admin) new(term admin.Terminal, args []string) error {
 		}
 	}
 
-	term.Printf("created key %s (%s) dataID %v\n",
+	term.Printf("created key %s (%s) objectID %v\n",
 		key,
 		admin.Faded(key.String()),
-		dataID,
+		objectID,
 	)
 
 	return nil
@@ -72,12 +72,12 @@ func (adm *Admin) index(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
-	return adm.mod.IndexKey(dataID)
+	return adm.mod.IndexKey(objectID)
 }
 
 func (adm *Admin) Exec(term admin.Terminal, args []string) error {

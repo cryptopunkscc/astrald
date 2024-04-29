@@ -2,10 +2,10 @@ package node
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	_log "log"
 	"os"
@@ -139,7 +139,7 @@ func (node *CoreNode) setupLogs() {
 	})
 
 	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		dataID, ok := v.(data.ID)
+		dataID, ok := v.(object.ID)
 		if !ok {
 			return nil, false
 		}

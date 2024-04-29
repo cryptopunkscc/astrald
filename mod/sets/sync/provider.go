@@ -56,7 +56,7 @@ func (srv *Provider) RouteQuery(ctx context.Context, query net.Query, caller net
 
 			err = cslq.Encode(conn, "cv",
 				op,
-				entry.DataID,
+				entry.ObjectID,
 			)
 
 			if err != nil {

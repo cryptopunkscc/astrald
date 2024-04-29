@@ -1,12 +1,12 @@
 package mem
 
 import (
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"io"
 	"sync/atomic"
 )
 
-var _ storage.Reader = &Reader{}
+var _ objects.Reader = &Reader{}
 
 type Reader struct {
 	bytes  []byte
@@ -20,7 +20,7 @@ func NewMemDataReader(bytes []byte) *Reader {
 
 func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.closed.Load() {
-		return 0, storage.ErrClosedPipe
+		return 0, objects.ErrClosedPipe
 	}
 
 	if len(p) == 0 {
@@ -40,7 +40,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 
 func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 	if r.closed.Load() {
-		return 0, storage.ErrClosedPipe
+		return 0, objects.ErrClosedPipe
 	}
 
 	var l = int64(len(r.bytes))
@@ -65,6 +65,6 @@ func (r *Reader) Close() error {
 	return nil
 }
 
-func (r *Reader) Info() *storage.ReaderInfo {
-	return &storage.ReaderInfo{Name: "memory"}
+func (r *Reader) Info() *objects.ReaderInfo {
+	return &objects.ReaderInfo{Name: "memory"}
 }

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
+	"github.com/cryptopunkscc/astrald/object"
 	"strings"
 	"time"
 )
@@ -111,35 +111,35 @@ func (share *Import) Sync(ctx context.Context) (err error) {
 			var tx = share.mod.db.Create(&dbRemoteData{
 				Caller: share.caller,
 				Target: share.target,
-				DataID: update.DataID,
+				DataID: update.ObjectID,
 			})
 			if tx.Error != nil {
 				share.mod.log.Errorv(1, "sync: error adding remote data: %v", tx.Error)
 			}
 
-			share.set.Add(update.DataID)
+			share.set.Add(update.ObjectID)
 
 			// add a task to cache descriptors
 			share.mod.tasks <- func(ctx context.Context) {
-				_, err := share.Describe(ctx, update.DataID, &desc.Opts{
+				_, err := share.Describe(ctx, update.ObjectID, &desc.Opts{
 					Network: true,
 				})
 				if err != nil {
-					share.mod.log.Errorv(2, "describe %v: %v", update.DataID, err)
+					share.mod.log.Errorv(2, "describe %v: %v", update.ObjectID, err)
 				}
 			}
 		} else {
 			var tx = share.mod.db.Delete(&dbRemoteData{
 				Caller: share.caller,
 				Target: share.target,
-				DataID: update.DataID,
+				DataID: update.ObjectID,
 			})
 
 			if tx.Error != nil {
 				share.mod.log.Errorv(1, "sync: error removing remote data: %v", tx.Error)
 			}
 
-			share.set.Remove(update.DataID)
+			share.set.Remove(update.ObjectID)
 		}
 	}
 
@@ -181,11 +181,11 @@ func (share *Import) Reset() error {
 	return share.SetLastUpdate(time.Time{})
 }
 
-func (share *Import) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) (descs []*desc.Desc, err error) {
+func (share *Import) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) (descs []*desc.Desc, err error) {
 	cache := &DescriptorCache{mod: share.mod}
 
 	// try cached data first
-	descData, err := cache.Load(share.caller, share.target, dataID, 0)
+	descData, err := cache.Load(share.caller, share.target, objectID, 0)
 	if err == nil {
 		return addSourceToData(descData, share.target), nil
 	}
@@ -201,18 +201,19 @@ func (share *Import) Describe(ctx context.Context, dataID data.ID, opts *desc.Op
 		}
 	}
 
+	remoteObjects, err := share.mod.objects.Connect(share.caller, share.target)
+	if err != nil {
+		return
+	}
+
 	// make the request
-	descData, err = NewConsumer(
-		share.mod,
-		share.caller,
-		share.target,
-	).Describe(ctx, dataID, opts)
+	descData, err = remoteObjects.Describe(ctx, objectID, opts)
 	if err != nil {
 		return
 	}
 
 	// cache results
-	err = cache.Store(share.caller, share.target, dataID, descData)
+	err = cache.Store(share.caller, share.target, objectID, descData)
 	if err != nil {
 		share.mod.log.Error("error storing cache: %v", err)
 	}

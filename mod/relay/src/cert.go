@@ -5,20 +5,20 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/adc"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
 
-func (mod *Module) indexData(dataID data.ID) error {
+func (mod *Module) indexData(objectID object.ID) error {
 	// check if cert is already indexed
-	if mod.isCertIndexed(dataID) {
+	if mod.isCertIndexed(objectID) {
 		return relay.ErrCertAlreadyIndexed
 	}
 
-	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
+	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
 	if err != nil {
 		return err
 	}
@@ -52,12 +52,12 @@ func (mod *Module) Index(cert *relay.Cert) error {
 }
 
 func (mod *Module) index(cert *relay.Cert) error {
-	var w = data.NewResolver()
+	var w = object.NewResolver()
 	cslq.Encode(w, "vv", adc.Header(relay.CertType), cert)
-	dataID := w.Resolve()
+	objectID := w.Resolve()
 
 	return mod.db.Create(&dbCert{
-		DataID:    dataID,
+		DataID:    objectID,
 		Direction: string(cert.Direction),
 		TargetID:  cert.TargetID,
 		RelayID:   cert.RelayID,
@@ -65,48 +65,48 @@ func (mod *Module) index(cert *relay.Cert) error {
 	}).Error
 }
 
-func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction relay.Direction, duration time.Duration) (data.ID, error) {
+func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction relay.Direction, duration time.Duration) (object.ID, error) {
 	// create the certificate object
 	cert, err := mod.makeCert(targetID, relayID, direction, duration)
 	if err != nil {
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
 	// create a data writer
-	w, err := mod.storage.Create(nil)
+	w, err := mod.objects.Create(nil)
 	if err != nil {
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
 	// write data type
 	err = adc.WriteHeader(w, relay.CertType)
 	if err != nil {
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
 	// encode the certificate
 	err = cslq.Encode(w, "v", cert)
 	if err != nil {
-		return data.ID{}, fmt.Errorf("encode error: %w", err)
+		return object.ID{}, fmt.Errorf("encode error: %w", err)
 	}
 
 	// commit to storage
-	dataID, err := w.Commit()
+	objectID, err := w.Commit()
 	if err != nil {
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
 	// add the certificate to the index
-	err = mod.indexData(dataID)
+	err = mod.indexData(objectID)
 	if err != nil {
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
-	return dataID, err
+	return objectID, err
 }
 
-func (mod *Module) FindCerts(opts *relay.FindOpts) ([]data.ID, error) {
-	var list []data.ID
+func (mod *Module) FindCerts(opts *relay.FindOpts) ([]object.ID, error) {
+	var list []object.ID
 
 	if opts == nil {
 		opts = &relay.FindOpts{}
@@ -157,7 +157,7 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 	}
 
 	for _, certID := range certIDs {
-		bytes, err := mod.storage.ReadAll(certID, &storage.OpenOpts{Virtual: true})
+		bytes, err := mod.objects.Get(certID, &objects.OpenOpts{Virtual: true})
 		if err != nil {
 			mod.log.Errorv(2, "error reading %v: %v", certID, err)
 			continue
@@ -168,8 +168,8 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 	return nil, relay.ErrCertNotFound
 }
 
-func (mod *Module) LoadCert(dataID data.ID) (*relay.Cert, error) {
-	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
+func (mod *Module) LoadCert(objectID object.ID) (*relay.Cert, error) {
+	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
 	if err != nil {
 		return nil, err
 	}
@@ -255,9 +255,9 @@ func (mod *Module) makeCert(
 	return &cert, nil
 }
 
-func (mod *Module) isCertIndexed(dataID data.ID) bool {
+func (mod *Module) isCertIndexed(objectID object.ID) bool {
 	var c int64
-	var tx = mod.db.Model(&dbCert{}).Where("data_id = ?", dataID.String()).Count(&c)
+	var tx = mod.db.Model(&dbCert{}).Where("data_id = ?", objectID.String()).Count(&c)
 	if tx.Error != nil {
 		mod.log.Errorv(1, "database error: %v", tx.Error)
 	}

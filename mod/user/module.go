@@ -2,7 +2,7 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 const ModuleName = "user"
@@ -16,7 +16,7 @@ type Module interface {
 type Profile struct {
 	Identity id.Identity
 	Name     string
-	Avatar   data.ID
+	Avatar   object.ID
 }
 
 type UserDesc struct {

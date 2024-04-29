@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/events"
 )
 
@@ -24,24 +24,24 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 
 func (srv *IndexerService) watchNewCerts(ctx context.Context) {
 	for event := range srv.content.Scan(ctx, &content.ScanOpts{Type: relay.CertType}) {
-		err := srv.indexData(event.DataID)
+		err := srv.indexData(event.ObjectID)
 		switch {
 		case err == nil:
-			srv.log.Infov(1, "added certificate %v", event.DataID)
+			srv.log.Infov(1, "added certificate %v", event.ObjectID)
 
 		case errors.Is(err, relay.ErrCertAlreadyIndexed),
-			errors.Is(err, storage.ErrNotFound):
+			errors.Is(err, objects.ErrNotFound):
 			// nothing
 
 		default:
-			srv.log.Errorv(1, "error adding cert %v: %v", event.DataID, err)
+			srv.log.Errorv(1, "error adding cert %v: %v", event.ObjectID, err)
 		}
 	}
 }
 
 func (srv *IndexerService) watchPurges(ctx context.Context) {
-	_ = events.Handle[storage.EventDataPurged](ctx, srv.node.Events(), func(event storage.EventDataPurged) error {
-		srv.verifyIndex(event.DataID)
+	_ = events.Handle[objects.EventObjectPurged](ctx, srv.node.Events(), func(event objects.EventObjectPurged) error {
+		srv.verifyIndex(event.ObjectID)
 		return nil
 	})
 }

@@ -2,7 +2,7 @@ package fs
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"strings"
 )
 
@@ -14,7 +14,7 @@ func NewFinder(module *Module) *Finder {
 	return &Finder{mod: module}
 }
 
-func (finder *Finder) Find(ctx context.Context, query string, opts *content.FindOpts) (matches []content.Match, err error) {
+func (finder *Finder) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
 	var rows []*dbLocalFile
 
 	err = finder.mod.db.
@@ -26,10 +26,10 @@ func (finder *Finder) Find(ctx context.Context, query string, opts *content.Find
 	}
 
 	for _, row := range rows {
-		matches = append(matches, content.Match{
-			DataID: row.DataID,
-			Score:  100,
-			Exp:    "file path contains query",
+		matches = append(matches, objects.Match{
+			ObjectID: row.DataID,
+			Score:    100,
+			Exp:      "file path contains query",
 		})
 	}
 

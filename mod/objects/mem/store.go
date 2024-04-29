@@ -1,16 +1,16 @@
 package mem
 
 import (
-	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync/atomic"
 )
 
-var _ storage.Opener = &Store{}
-var _ storage.Creator = &Store{}
-var _ storage.Purger = &Store{}
+var _ objects.Opener = &Store{}
+var _ objects.Creator = &Store{}
+var _ objects.Purger = &Store{}
 
 const DefaultSize = 64 * 1024 * 1024 // 64MB
 
@@ -30,24 +30,24 @@ func NewMemStore(events *events.Queue, size int64) *Store {
 	return mem
 }
 
-func (mem *Store) Open(dataID data.ID, opts *storage.OpenOpts) (storage.Reader, error) {
-	bytes, found := mem.objects.Get(dataID.String())
+func (mem *Store) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+	bytes, found := mem.objects.Get(objectID.String())
 	if !found {
-		return nil, storage.ErrNotFound
+		return nil, objects.ErrNotFound
 	}
 
 	return NewMemDataReader(bytes), nil
 }
 
-func (mem *Store) Purge(dataID data.ID, opts *storage.PurgeOpts) (int, error) {
-	_, ok := mem.objects.Delete(dataID.String())
+func (mem *Store) Purge(objectID object.ID, opts *objects.PurgeOpts) (int, error) {
+	_, ok := mem.objects.Delete(objectID.String())
 	if ok {
 		return 1, nil
 	}
 	return 0, nil
 }
 
-func (mem *Store) Create(opts *storage.CreateOpts) (storage.Writer, error) {
+func (mem *Store) Create(opts *objects.CreateOpts) (objects.Writer, error) {
 	return NewMemDataWriter(mem), nil
 }
 

@@ -3,7 +3,7 @@ package router
 import (
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 	"strconv"
 	"strings"
 	"time"
@@ -32,15 +32,15 @@ func (params Params) SetInt(key string, value int) {
 	params[key] = strconv.FormatInt(int64(value), 10)
 }
 
-func (params Params) GetDataID(key string) (data.ID, error) {
+func (params Params) GetObjectID(key string) (object.ID, error) {
 	v, found := params[key]
 	if !found {
-		return data.ID{}, ErrKeyNotFound
+		return object.ID{}, ErrKeyNotFound
 	}
 
-	id, err := data.Parse(v)
+	id, err := object.ParseID(v)
 	if err != nil {
-		return data.ID{}, err
+		return object.ID{}, err
 	}
 
 	return id, nil

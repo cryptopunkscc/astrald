@@ -1,8 +1,8 @@
-package storage
+package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
@@ -18,7 +18,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.events.SetParent(node.Events())
 
-	_ = assets.LoadYAML(storage.ModuleName, &mod.config)
+	_ = assets.LoadYAML(objects.ModuleName, &mod.config)
 
 	mod.db = assets.Database()
 
@@ -26,7 +26,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 }
 
 func init() {
-	if err := modules.RegisterModule(storage.ModuleName, Loader{}); err != nil {
+	if err := modules.RegisterModule(objects.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

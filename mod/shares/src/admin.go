@@ -2,12 +2,9 @@ package shares
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/arl"
-	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"strings"
@@ -25,7 +22,6 @@ func NewAdmin(mod *Module) *Admin {
 		"remote":     adm.remote,
 		"sync":       adm.sync,
 		"rawsync":    adm.rawsync,
-		"describe":   adm.describe,
 		"syncall":    adm.syncAll,
 		"unsync":     adm.unsync,
 		"purgecache": adm.purgecache,
@@ -134,52 +130,12 @@ func (adm *Admin) rawsync(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("%-64s %v\n", admin.Header("DataID"), admin.Header("Present"))
+	term.Printf("%-64s %v\n", admin.Header("ObjectID"), admin.Header("Present"))
 	for _, u := range diff.Updates {
-		term.Printf("%-64s %v\n", u.DataID, u.Present)
+		term.Printf("%-64s %v\n", u.ObjectID, u.Present)
 	}
 
 	term.Printf("%v\n", diff.Time)
-
-	return nil
-}
-
-func (adm *Admin) describe(term admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		return errors.New("argument missing")
-	}
-
-	caller, target, err := adm.parseCallerAndTarget(args[0], term.UserIdentity())
-	if err != nil {
-		return err
-	}
-
-	dataID, err := data.Parse(args[1])
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	c := NewConsumer(adm.mod, caller, target)
-
-	descs, err := c.Describe(ctx, dataID, &desc.Opts{})
-	if err != nil {
-		return err
-	}
-
-	for _, desc := range descs {
-		term.Printf("%s\n\n  ", admin.Keyword(desc.Type()))
-
-		bytes, err := json.MarshalIndent(desc, "  ", "  ")
-		if err != nil {
-			return err
-		}
-
-		term.Write(bytes)
-		term.Printf("\n\n")
-	}
 
 	return nil
 }
@@ -251,7 +207,7 @@ func (adm *Admin) remote(term admin.Terminal, args []string) error {
 		}
 
 		for _, item := range scan {
-			term.Printf("%v\n", item.DataID)
+			term.Printf("%v\n", item.ObjectID)
 		}
 	}
 
@@ -266,8 +222,6 @@ func (adm *Admin) ShortDescription() string {
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %s <command>\n\n", shares.ModuleName)
 	term.Printf("commands:\n")
-	term.Printf("  add <identity> <dataID|set>               add access to data or a set\n")
-	term.Printf("  remove <identity> <dataID|set>            remove access to data or a set\n")
 	term.Printf("  local <identitiy>                         list local shres for the identity\n")
 	term.Printf("  remote [identity]                         list remote shares\n")
 	term.Printf("  sync [guest@]<host>                       sync remote share\n")

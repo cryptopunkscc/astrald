@@ -19,7 +19,7 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 			opts.IdentityFilter = id.AllowEveryone
 		}
 
-		srv.Describe(ctx, event.DataID, opts)
+		srv.Describe(ctx, event.ObjectID, opts)
 	}
 
 	return nil

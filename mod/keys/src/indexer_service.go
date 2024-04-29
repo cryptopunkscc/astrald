@@ -13,7 +13,7 @@ type IndexerService struct {
 
 func (srv *IndexerService) Run(ctx context.Context) error {
 	for event := range srv.content.Scan(ctx, &content.ScanOpts{Type: keys.PrivateKeyDataType}) {
-		err := srv.IndexKey(event.DataID)
+		err := srv.IndexKey(event.ObjectID)
 		switch {
 		case err == nil:
 		case errors.Is(err, ErrAlreadyIndexed):

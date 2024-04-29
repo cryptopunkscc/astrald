@@ -6,8 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/adc"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/mod/storage"
 )
 
 func (mod *Module) loadCert(userID id.Identity, nodeID id.Identity, autoCreate bool) (cert []byte, err error) {
@@ -33,7 +33,7 @@ func (mod *Module) makeCert(userID id.Identity, nodeID id.Identity) (cert []byte
 		return
 	}
 
-	return mod.storage.ReadAll(certID, &storage.OpenOpts{Virtual: true})
+	return mod.objects.Get(certID, &objects.OpenOpts{Virtual: true})
 }
 
 func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
@@ -65,7 +65,7 @@ func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
 		return errors.New("relay mismatch")
 	}
 
-	mod.storage.Put(certBytes, nil)
+	mod.objects.Put(certBytes, nil)
 
 	return nil
 }

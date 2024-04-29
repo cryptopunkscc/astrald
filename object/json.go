@@ -1,4 +1,4 @@
-package data
+package object
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ func (id *ID) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	parsed, err := Parse(s)
+	parsed, err := ParseID(s)
 	if err != nil {
 		return err
 	}

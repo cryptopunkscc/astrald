@@ -1,20 +1,14 @@
 package content
 
 import (
-	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
-	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
-	"reflect"
 	"slices"
 	"time"
 )
@@ -28,35 +22,13 @@ func NewAdmin(mod *Module) *Admin {
 	var cmd = &Admin{mod: mod}
 	cmd.cmds = map[string]func(admin.Terminal, []string) error{
 		"scan":      cmd.scan,
-		"find":      cmd.find,
 		"identify":  cmd.identify,
 		"forget":    cmd.forget,
-		"describe":  cmd.describe,
 		"info":      cmd.info,
 		"set_label": cmd.setLabel,
 		"get_label": cmd.getLabel,
 	}
 	return cmd
-}
-
-func (cmd *Admin) find(term admin.Terminal, args []string) error {
-	if len(args) == 0 {
-		return errors.New("missing argument")
-	}
-
-	var opts = &content.FindOpts{}
-
-	matches, err := cmd.mod.Find(context.Background(), args[0], opts)
-
-	for _, match := range matches {
-		term.Printf("%-64s %v; %v\n",
-			match.DataID,
-			match.Exp,
-			cmd.mod.BestTitle(match.DataID),
-		)
-	}
-
-	return err
 }
 
 func (cmd *Admin) scan(term admin.Terminal, args []string) error {
@@ -88,10 +60,10 @@ func (cmd *Admin) scan(term admin.Terminal, args []string) error {
 	term.Printf(format, admin.Header("ID"), admin.Header("Method"), admin.Header("Type"), admin.Header("Label"))
 	for _, item := range list {
 		term.Printf(format,
-			item.DataID,
+			item.ObjectID,
 			item.Method,
 			item.Type,
-			cmd.mod.GetLabel(item.DataID),
+			cmd.mod.GetLabel(item.ObjectID),
 		)
 	}
 
@@ -103,12 +75,12 @@ func (cmd *Admin) identify(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
-	info, err := cmd.mod.Identify(dataID)
+	info, err := cmd.mod.Identify(objectID)
 	if err != nil {
 		return err
 	}
@@ -124,100 +96,23 @@ func (cmd *Admin) identify(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (cmd *Admin) describe(term admin.Terminal, args []string) error {
-	var err error
-	var opts = &desc.Opts{
-		IdentityFilter: id.AllowEveryone,
-	}
-
-	// parse args
-	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
-	flags.BoolVar(&opts.Network, "n", false, "use network sources")
-	flags.SetOutput(term)
-	err = flags.Parse(args)
-	if err != nil {
-		return err
-	}
-
-	args = flags.Args()
-
-	if len(args) == 0 {
-		return errors.New("missing data id")
-	}
-
-	dataID, err := data.Parse(args[0])
-	if err != nil {
-		return err
-	}
-
-	var desc = cmd.mod.Describe(context.Background(), dataID, opts)
-
-	term.Printf("%-6s %v\n", admin.Header("SHA256"), admin.Keyword(hex.EncodeToString(dataID.Hash[:])))
-	term.Printf("%-6s %v", admin.Header("SIZE"), admin.Keyword(log.DataSize(dataID.Size).HumanReadable()))
-
-	if dataID.Size > 1023 {
-		term.Printf(" (%v bytes)", dataID.Size)
-	}
-
-	term.Printf("\n\n")
-
-	// print descriptors
-	for _, d := range desc {
-		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Data.Type()))
-
-		j, err := json.MarshalIndent(d.Data, "  ", "  ")
-		if err != nil {
-			term.Printf("marshal error: %v\n", err)
-		}
-		term.Printf("%s\n\n", string(j))
-	}
-
-	return nil
-}
-
 func (cmd *Admin) forget(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
-	return cmd.mod.Forget(dataID)
+	return cmd.mod.Forget(objectID)
 }
 
 func (cmd *Admin) info(term admin.Terminal, args []string) error {
 	term.Printf("%v\n\n", admin.Header("Prototypes"))
 	list, _ := sig.MapSlice(cmd.mod.prototypes.Values(), func(i desc.Data) (string, error) {
 		return i.Type(), nil
-	})
-	slices.Sort(list)
-
-	for _, p := range list {
-		term.Printf("%s\n", p)
-	}
-
-	term.Printf("\n%v\n\n", admin.Header("Describers"))
-	list, _ = sig.MapSlice(cmd.mod.describers.Clone(), func(i content.Describer) (string, error) {
-		if s, ok := i.(fmt.Stringer); ok {
-			return s.String(), nil
-		}
-		return reflect.TypeOf(i).String(), nil
-	})
-	slices.Sort(list)
-
-	for _, p := range list {
-		term.Printf("%s\n", p)
-	}
-
-	term.Printf("\n%v\n\n", admin.Header("Finders"))
-	list, _ = sig.MapSlice(cmd.mod.finders.Clone(), func(i content.Finder) (string, error) {
-		if s, ok := i.(fmt.Stringer); ok {
-			return s.String(), nil
-		}
-		return reflect.TypeOf(i).String(), nil
 	})
 	slices.Sort(list)
 
@@ -233,14 +128,14 @@ func (cmd *Admin) setLabel(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
 	label := args[1]
 
-	cmd.mod.SetLabel(dataID, label)
+	cmd.mod.SetLabel(objectID, label)
 
 	return nil
 }
@@ -250,12 +145,12 @@ func (cmd *Admin) getLabel(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
-	term.Printf("%s\n", cmd.mod.GetLabel(dataID))
+	term.Printf("%s\n", cmd.mod.GetLabel(objectID))
 	return nil
 }
 
@@ -275,14 +170,12 @@ func (cmd *Admin) Exec(term admin.Terminal, args []string) error {
 func (cmd *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %s <command>\n\n", content.ModuleName)
 	term.Printf("commands:\n")
-	term.Printf("  scan [args]                  list identified objects\n")
-	term.Printf("  find <query>                 find objects\n")
-	term.Printf("  identify <dataID|set>        identify an object's type\n")
-	term.Printf("  forget <dataID>              forget an object (remove from cache)\n")
-	term.Printf("  describe <dataID>            describe an object\n")
-	term.Printf("  set_label <dataID> <label>   assign a label to an object\n")
-	term.Printf("  get_label <dataID>           show object's label\n")
-	term.Printf("  help                         show help\n")
+	term.Printf("  scan [args]                    list identified objects\n")
+	term.Printf("  identify <objectID>            identify an object\n")
+	term.Printf("  forget <objectID>              forget an object (remove from cache)\n")
+	term.Printf("  set_label <objectID> <label>   assign a label to an object\n")
+	term.Printf("  get_label <objectID>           show object's label\n")
+	term.Printf("  help                           show help\n")
 	return nil
 }
 

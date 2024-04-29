@@ -3,10 +3,10 @@ package sync
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/router"
+	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
 
@@ -53,27 +53,27 @@ func (c *Consumer) Sync(ctx context.Context, since time.Time) (diff Diff, err er
 			return
 
 		case opAdd: // add
-			var dataID data.ID
-			err = cslq.Decode(conn, "v", &dataID)
+			var objectID object.ID
+			err = cslq.Decode(conn, "v", &objectID)
 			if err != nil {
 				return
 			}
 
 			diff.Updates = append(diff.Updates, Update{
-				DataID:  dataID,
-				Present: true,
+				ObjectID: objectID,
+				Present:  true,
 			})
 
 		case opRemove: // remove
-			var dataID data.ID
-			err = cslq.Decode(conn, "v", &dataID)
+			var objectID object.ID
+			err = cslq.Decode(conn, "v", &objectID)
 			if err != nil {
 				return
 			}
 
 			diff.Updates = append(diff.Updates, Update{
-				DataID:  dataID,
-				Present: false,
+				ObjectID: objectID,
+				Present:  false,
 			})
 
 		case opResync:

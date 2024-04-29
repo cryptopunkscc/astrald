@@ -3,10 +3,10 @@ package sets
 import (
 	"errors"
 	"flag"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/sets"
+	"github.com/cryptopunkscc/astrald/object"
 	"slices"
 	"strconv"
 	"strings"
@@ -81,17 +81,17 @@ func (adm *Admin) add(term admin.Terminal, args []string) error {
 	}
 
 	for _, arg := range args[1:] {
-		dataID, err := data.Parse(arg)
+		objectID, err := object.ParseID(arg)
 		if err != nil {
 			term.Printf("%v: parse error: %v\n", arg, err)
 			continue
 		}
 
-		err = set.Add(dataID)
+		err = set.Add(objectID)
 		if err != nil {
-			term.Printf("%v: add error: %v\n", dataID, err)
+			term.Printf("%v: add error: %v\n", objectID, err)
 		} else {
-			term.Printf("%v: added\n", dataID)
+			term.Printf("%v: added\n", objectID)
 		}
 	}
 
@@ -109,17 +109,17 @@ func (adm *Admin) remove(term admin.Terminal, args []string) error {
 	}
 
 	for _, arg := range args[1:] {
-		dataID, err := data.Parse(arg)
+		objectID, err := object.ParseID(arg)
 		if err == nil {
 			term.Printf("%v: parse error: %v\n", arg, err)
 			continue
 		}
 
-		err = set.Remove(dataID)
+		err = set.Remove(objectID)
 		if err != nil {
-			term.Printf("%v: remove error: %v\n", dataID, err)
+			term.Printf("%v: remove error: %v\n", objectID, err)
 		} else {
-			term.Printf("%v: removed\n", dataID)
+			term.Printf("%v: removed\n", objectID)
 		}
 	}
 
@@ -179,7 +179,7 @@ func (adm *Admin) scan(term admin.Terminal, args []string) error {
 
 	var f = "%-20s %-8s %s\n"
 	term.Printf("\n")
-	term.Printf(f, admin.Header("Updated at"), admin.Header("Removed"), admin.Header("DataID"))
+	term.Printf(f, admin.Header("Updated at"), admin.Header("Removed"), admin.Header("ObjectID"))
 	for _, item := range list {
 		var status = "no"
 		if item.Removed {
@@ -189,7 +189,7 @@ func (adm *Admin) scan(term admin.Terminal, args []string) error {
 		term.Printf(f,
 			item.UpdatedAt,
 			status,
-			item.DataID,
+			item.ObjectID,
 		)
 	}
 
@@ -224,12 +224,12 @@ func (adm *Admin) where(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
-	list, err := adm.mod.Where(dataID)
+	list, err := adm.mod.Where(objectID)
 	if err != nil {
 		return err
 	}
@@ -255,13 +255,11 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("  list                          list all sets\n")
 	term.Printf("  create <name> [type]          create a new set (default type=basic)\n")
 	term.Printf("  delete <name>                 delete a set\n")
-	term.Printf("  add <name> <dataID>           add data to a set\n")
-	term.Printf("  remove <name> <dataID>        remove data from a set\n")
-	term.Printf("  include <superset> <subset>   add a set to a union\n")
-	term.Printf("  exclude <superset> <subset>   remove a set from a union\n")
+	term.Printf("  add <name> <objectID>         add an object to a set\n")
+	term.Printf("  remove <name> <objectID>      remove an object from a set\n")
 	term.Printf("  scan [-r] <set>               list objects in a set; use -r to include removed\n")
-	term.Printf("  where <dataID>                show sets containing data\n")
 	term.Printf("  show <name>                   show info about a set\n")
+	term.Printf("  where <objectID>              show sets containing the object\n")
 	term.Printf("  help                          show help\n")
 	return nil
 }

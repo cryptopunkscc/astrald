@@ -3,22 +3,22 @@ package shares
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/router"
+	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"time"
 )
 
-var _ storage.Reader = &RemoteDataReader{}
+var _ objects.Reader = &RemoteDataReader{}
 
 type RemoteDataReader struct {
-	mod    *Module
-	caller id.Identity
-	target id.Identity
-	dataID data.ID
-	pos    int64
+	mod      *Module
+	caller   id.Identity
+	target   id.Identity
+	objectID object.ID
+	pos      int64
 	io.ReadCloser
 }
 
@@ -32,7 +32,7 @@ func (r *RemoteDataReader) Seek(offset int64, whence int) (int64, error) {
 	r.ReadCloser.Close()
 
 	params := router.Params{
-		"id": r.dataID.String(),
+		"id": r.objectID.String(),
 	}
 
 	var o int64
@@ -43,7 +43,7 @@ func (r *RemoteDataReader) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekCurrent:
 		o = r.pos + offset
 	case io.SeekEnd:
-		o = int64(r.dataID.Size) + offset
+		o = int64(r.objectID.Size) + offset
 	}
 	params.SetInt("offset", int(o))
 
@@ -69,6 +69,6 @@ func (r *RemoteDataReader) Seek(offset int64, whence int) (int64, error) {
 	return 0, nil
 }
 
-func (r *RemoteDataReader) Info() *storage.ReaderInfo {
-	return &storage.ReaderInfo{Name: "shares"}
+func (r *RemoteDataReader) Info() *objects.ReaderInfo {
+	return &objects.ReaderInfo{Name: "shares"}
 }

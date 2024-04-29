@@ -2,13 +2,13 @@ package fs
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 type EventFileChanged struct {
 	Path  string
-	OldID data.ID
-	NewID data.ID
+	OldID object.ID
+	NewID object.ID
 }
 
 func (e EventFileChanged) String() string {
@@ -16,19 +16,19 @@ func (e EventFileChanged) String() string {
 }
 
 type EventFileAdded struct {
-	Path   string
-	DataID data.ID
+	Path     string
+	ObjectID object.ID
 }
 
 func (e EventFileAdded) String() string {
-	return fmt.Sprintf("added %s (%s)", e.Path, e.DataID)
+	return fmt.Sprintf("added %s (%s)", e.Path, e.ObjectID)
 }
 
 type EventFileRemoved struct {
-	Path   string
-	DataID data.ID
+	Path     string
+	ObjectID object.ID
 }
 
 func (e EventFileRemoved) String() string {
-	return fmt.Sprintf("removed %s (%s)", e.Path, e.DataID)
+	return fmt.Sprintf("removed %s (%s)", e.Path, e.ObjectID)
 }

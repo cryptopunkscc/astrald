@@ -1,12 +1,12 @@
 package content
 
 import (
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 type Loader struct{}
@@ -30,8 +30,6 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		return nil, err
 	}
 
-	mod.AddPrototypes(content.LabelDesc{}, content.TypeDesc{})
-
 	return mod, nil
 }
 
@@ -41,7 +39,7 @@ func init() {
 	}
 
 	node.AddFormatter(func(n node.Node, s string) string {
-		dataID, err := data.Parse(s)
+		objectID, err := object.ParseID(s)
 		if err != nil {
 			return ""
 		}
@@ -51,6 +49,6 @@ func init() {
 			return ""
 		}
 
-		return mod.BestTitle(dataID)
+		return mod.BestTitle(objectID)
 	})
 }

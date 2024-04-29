@@ -1,4 +1,4 @@
-package data
+package object
 
 import "github.com/cryptopunkscc/astrald/cslq"
 
