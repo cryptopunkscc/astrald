@@ -2,9 +2,10 @@ package node
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	_log "log"
 	"os"
@@ -89,6 +90,42 @@ func (node *CoreNode) setupLogs() {
 		}, true
 	})
 
+	// ARL format
+	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
+		var ops []log.Op
+
+		a, ok := v.(*arl.ARL)
+		if !ok {
+			return nil, false
+		}
+
+		if !a.Caller.IsZero() {
+			if cops, b := node.log.Render(a.Caller); b {
+				ops = append(ops, cops...)
+				ops = append(ops, log.OpText{Text: "@"})
+			} else {
+				return nil, false
+			}
+		}
+
+		if tops, b := node.log.Render(a.Target); b {
+			ops = append(ops, tops...)
+		} else {
+			return nil, false
+		}
+
+		if len(a.Query) > 0 {
+			if qops, b := node.log.Render(a.Query); b {
+				ops = append(ops, log.OpText{Text: ":"})
+				ops = append(ops, qops...)
+			} else {
+				return nil, false
+			}
+		}
+
+		return ops, true
+	})
+
 	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
 		s, ok := v.(net.Nonce)
 		if !ok {
@@ -102,7 +139,7 @@ func (node *CoreNode) setupLogs() {
 	})
 
 	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		dataID, ok := v.(data.ID)
+		dataID, ok := v.(object.ID)
 		if !ok {
 			return nil, false
 		}

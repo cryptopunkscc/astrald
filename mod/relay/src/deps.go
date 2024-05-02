@@ -5,8 +5,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
@@ -18,16 +18,17 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.storage, err = modules.Load[storage.Module](mod.node, storage.ModuleName)
+	mod.objects, err = modules.Load[objects.Module](mod.node, objects.ModuleName)
 	if err != nil {
 		return err
 	}
+
+	mod.objects.AddDescriber(mod)
 
 	mod.keys, err = modules.Load[keys.Module](mod.node, keys.ModuleName)
 	if err != nil {
 		return err
 	}
-	_ = mod.content.AddDescriber(mod)
 
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
 		adm.AddCommand(relay.ModuleName, NewAdmin(mod))
@@ -35,7 +36,7 @@ func (mod *Module) LoadDependencies() error {
 
 	mod.node.Router().AddRoute(id.Anyone, id.Anyone, mod, 20)
 
-	mod.content.AddPrototypes(relay.CertDesc{})
+	mod.objects.AddPrototypes(relay.CertDesc{})
 
 	return nil
 }

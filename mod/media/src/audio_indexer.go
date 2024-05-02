@@ -2,12 +2,13 @@ package media
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/media"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/dhowden/tag"
 	"io"
+	"strings"
 )
 
 var _ Indexer = &AudioIndexer{}
@@ -20,10 +21,10 @@ func NewAudioIndexer(mod *Module) *AudioIndexer {
 	return &AudioIndexer{Module: mod}
 }
 
-func (mod *AudioIndexer) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) []*desc.Desc {
+func (mod *AudioIndexer) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) []*desc.Desc {
 	var audio *media.Audio
 	var row dbAudio
-	var err = mod.db.Where("data_id = ?", dataID).First(&row).Error
+	var err = mod.db.Where("data_id = ?", objectID).First(&row).Error
 	if err == nil {
 		audio = &media.Audio{
 			Format:   row.Format,
@@ -35,11 +36,11 @@ func (mod *AudioIndexer) Describe(ctx context.Context, dataID data.ID, opts *des
 			Year:     row.Year,
 		}
 	} else {
-		audio, err = mod.index(dataID, &storage.OpenOpts{
+		audio, err = mod.index(objectID, &objects.OpenOpts{
 			Virtual: true,
 		})
 		if err != nil {
-			mod.log.Errorv(2, "error indexing %v: %v", dataID, err)
+			mod.log.Errorv(2, "error indexing %v: %v", objectID, err)
 		} else {
 			mod.log.Infov(1, "indexed %s by %s", audio.Title, audio.Artist)
 		}
@@ -54,8 +55,33 @@ func (mod *AudioIndexer) Describe(ctx context.Context, dataID data.ID, opts *des
 	}}
 }
 
-func (mod *AudioIndexer) index(dataID data.ID, opts *storage.OpenOpts) (*media.Audio, error) {
-	r, err := mod.storage.Open(dataID, opts)
+func (mod *AudioIndexer) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
+	var rows []*dbAudio
+
+	query = "%" + strings.ToLower(query) + "%"
+
+	err = mod.db.
+		Where("LOWER(artist) LIKE ? OR LOWER(title) LIKE ? OR LOWER(album) LIKE ?", query, query, query).
+		Find(&rows).
+		Error
+	if err != nil {
+		mod.log.Error("db error: %v", err)
+		return
+	}
+
+	for _, row := range rows {
+		matches = append(matches, objects.Match{
+			ObjectID: row.DataID,
+			Score:    100,
+			Exp:      "audio tags match query",
+		})
+	}
+
+	return
+}
+
+func (mod *AudioIndexer) index(objectID object.ID, opts *objects.OpenOpts) (*media.Audio, error) {
+	r, err := mod.objects.Open(objectID, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +93,7 @@ func (mod *AudioIndexer) index(dataID data.ID, opts *storage.OpenOpts) (*media.A
 	}
 
 	err = mod.db.Create(&dbAudio{
-		DataID:   dataID,
+		DataID:   objectID,
 		Format:   info.Format,
 		Duration: info.Duration,
 		Title:    info.Title,

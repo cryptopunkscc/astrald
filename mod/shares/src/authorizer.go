@@ -2,9 +2,9 @@ package shares
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node/authorizer"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 var _ authorizer.Authorizer = &Authorizer{}
@@ -15,16 +15,16 @@ type Authorizer struct {
 
 func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...any) bool {
 	switch action {
-	case storage.OpenAction:
+	case objects.ReadAction:
 		if len(args) == 0 {
 			return false
 		}
-		dataID, ok := args[0].(data.ID)
+		objectID, ok := args[0].(object.ID)
 		if !ok {
 			return false
 		}
 
-		return auth.mod.Authorize(identity, dataID) == nil
+		return auth.mod.Authorize(identity, objectID) == nil
 	}
 
 	return false

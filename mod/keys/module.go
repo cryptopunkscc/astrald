@@ -3,15 +3,15 @@ package keys
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 const ModuleName = "keys"
 const DBPrefix = "keys__"
 
 type Module interface {
-	CreateKey(alias string) (identity id.Identity, dataID data.ID, err error)
-	LoadPrivateKey(dataID data.ID) (*PrivateKey, error)
+	CreateKey(alias string) (id.Identity, object.ID, error)
+	LoadPrivateKey(object.ID) (*PrivateKey, error)
 	FindIdentity(hex string) (id.Identity, error)
 	Sign(identity id.Identity, hash []byte) ([]byte, error)
 }

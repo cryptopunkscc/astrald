@@ -2,22 +2,22 @@ package relay
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/relay"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
-func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) []*desc.Desc {
+func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) []*desc.Desc {
 	var row dbCert
 	err := mod.db.
-		Where("data_id = ?", dataID).
+		Where("data_id = ?", objectID).
 		First(&row).Error
 	if err != nil {
 		return nil
 	}
 
 	var verr error
-	cert, err := mod.LoadCert(dataID)
+	cert, err := mod.LoadCert(objectID)
 	if err != nil {
 		verr = err
 	} else {

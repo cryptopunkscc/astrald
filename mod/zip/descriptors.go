@@ -1,6 +1,6 @@
 package zip
 
-import "github.com/cryptopunkscc/astrald/data"
+import "github.com/cryptopunkscc/astrald/object"
 
 type ArchiveDesc struct {
 	Files []ArchiveFile
@@ -11,8 +11,8 @@ func (ArchiveDesc) Type() string {
 }
 
 type ArchiveFile struct {
-	DataID data.ID
-	Path   string
+	ObjectID object.ID
+	Path     string
 }
 
 type MemberDesc struct {
@@ -24,6 +24,6 @@ func (MemberDesc) Type() string {
 }
 
 type Membership struct {
-	ZipID data.ID
+	ZipID object.ID
 	Path  string
 }

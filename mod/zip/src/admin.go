@@ -2,8 +2,8 @@ package zip
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 type Admin struct {
@@ -40,12 +40,12 @@ func (adm *Admin) index(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
-	return adm.mod.Index(dataID)
+	return adm.mod.Index(objectID)
 }
 
 func (adm *Admin) unindex(term admin.Terminal, args []string) error {
@@ -53,12 +53,12 @@ func (adm *Admin) unindex(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
-	return adm.mod.Unindex(dataID)
+	return adm.mod.Unindex(objectID)
 }
 
 func (adm *Admin) forget(term admin.Terminal, args []string) error {
@@ -66,12 +66,12 @@ func (adm *Admin) forget(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	dataID, err := data.Parse(args[0])
+	objectID, err := object.ParseID(args[0])
 	if err != nil {
 		return err
 	}
 
-	return adm.mod.Forget(dataID)
+	return adm.mod.Forget(objectID)
 }
 
 func (adm *Admin) ShortDescription() string {
@@ -81,7 +81,7 @@ func (adm *Admin) ShortDescription() string {
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: zip <command>\n\n")
 	term.Printf("commands:\n")
-	term.Printf("  index <dataID>             index the contents of a zip file\n")
+	term.Printf("  index <objectID>           index the contents of a zip file\n")
 	term.Printf("  help                       show help\n")
 	return nil
 }

@@ -151,7 +151,7 @@ func (srv *InviteService) joinByCert(cert *relay.Cert) error {
 		return err
 	}
 
-	srv.user.SetLocalUser(cert.TargetID)
+	srv.user.SetUserID(cert.TargetID)
 
 	return err
 }

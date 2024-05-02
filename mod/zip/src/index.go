@@ -4,13 +4,13 @@ import (
 	_zip "archive/zip"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/zip"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
-const archiveSetPrefix = ".zip.contents."
+const archiveSetPrefix = "zip:"
 
-func (mod *Module) Index(zipID data.ID) error {
+func (mod *Module) Index(zipID object.ID) error {
 	var zipRow dbZip
 
 	err := mod.db.Unscoped().Where("data_id = ?", zipID).First(&zipRow).Error
@@ -24,8 +24,8 @@ func (mod *Module) Index(zipID data.ID) error {
 	// create a zip reader
 	reader, err := _zip.NewReader(
 		&readerAt{
-			storage: mod.storage,
-			dataID:  zipID,
+			objects:  mod.objects,
+			objectID: zipID,
 		},
 		int64(zipID.Size),
 	)
@@ -44,12 +44,6 @@ func (mod *Module) Index(zipID data.ID) error {
 		return err
 	}
 
-	set, err := mod.sets.CreateManaged(setName, ZipSetType)
-	if err != nil {
-		mod.log.Error("error creating set %v: %v", setName, err)
-		return err
-	}
-
 	for _, file := range reader.File {
 		if file.FileInfo().IsDir() {
 			continue
@@ -62,7 +56,7 @@ func (mod *Module) Index(zipID data.ID) error {
 		}
 		defer f.Close()
 
-		fileID, err := data.ResolveAll(f)
+		fileID, err := object.ResolveAll(f)
 		if err != nil {
 			mod.log.Errorv(1, "resolve %v: %v", file.Name, err)
 			continue
@@ -84,22 +78,14 @@ func (mod *Module) Index(zipID data.ID) error {
 		}
 
 		mod.log.Infov(1, "indexed %s (%v)", file.Name, fileID)
-
-		set.Add(fileID)
 	}
 
-	mod.events.Emit(zip.EventArchiveIndexed{DataID: zipID})
-
-	err = mod.sets.Virtual().AddSubset(setName)
-	if err != nil {
-		mod.log.Error("error adding %v to archives union: %v", setName, err)
-		return err
-	}
+	mod.events.Emit(zip.EventArchiveIndexed{ObjectID: zipID})
 
 	return nil
 }
 
-func (mod *Module) Unindex(zipID data.ID) error {
+func (mod *Module) Unindex(zipID object.ID) error {
 	var row dbZip
 	var err = mod.db.
 		Model(&dbZip{}).
@@ -109,12 +95,10 @@ func (mod *Module) Unindex(zipID data.ID) error {
 		return err
 	}
 
-	mod.sets.Virtual().RemoveSubset(row.SetName)
-
 	return mod.db.Delete(&row).Error
 }
 
-func (mod *Module) restore(zipID data.ID) error {
+func (mod *Module) restore(zipID object.ID) error {
 	var tx = mod.db.
 		Unscoped().
 		Model(&dbZip{}).
@@ -133,15 +117,11 @@ func (mod *Module) restore(zipID data.ID) error {
 		Select("set_name").
 		Where("data_id = ?", zipID).
 		First(&setName).Error
-	if err != nil {
-		return err
-	}
 
-	err = mod.sets.Virtual().AddSubset(setName)
 	return err
 }
 
-func (mod *Module) Forget(zipID data.ID) error {
+func (mod *Module) Forget(zipID object.ID) error {
 	// find the row to be deleted
 	var row dbZip
 	var err = mod.db.
@@ -168,17 +148,10 @@ func (mod *Module) Forget(zipID data.ID) error {
 		return fmt.Errorf("error deleting row: %w", err)
 	}
 
-	// delete the set
-	mod.sets.Virtual().RemoveSubset(row.SetName)
-
-	set, err := mod.sets.Open(row.SetName, false)
-	if err != nil {
-		return err
-	}
-	return set.Delete()
+	return nil
 }
 
-func (mod *Module) isIndexed(zipID data.ID, includeDeleted bool) bool {
+func (mod *Module) isIndexed(zipID object.ID, includeDeleted bool) bool {
 	var count int64
 	db := mod.db
 	if includeDeleted {

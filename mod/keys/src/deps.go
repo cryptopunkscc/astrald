@@ -4,14 +4,14 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
 func (mod *Module) LoadDependencies() error {
 	var err error
 
-	mod.storage, err = modules.Load[storage.Module](mod.node, storage.ModuleName)
+	mod.objects, err = modules.Load[objects.Module](mod.node, objects.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -21,13 +21,13 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.content.AddDescriber(mod)
+	mod.objects.AddDescriber(mod)
 
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
 		adm.AddCommand(keys.ModuleName, NewAdmin(mod))
 	}
 
-	mod.content.AddPrototypes(keys.KeyDesc{})
+	mod.objects.AddPrototypes(keys.KeyDesc{})
 
 	return nil
 }

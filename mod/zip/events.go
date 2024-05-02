@@ -1,7 +1,7 @@
 package zip
 
-import "github.com/cryptopunkscc/astrald/data"
+import "github.com/cryptopunkscc/astrald/object"
 
 type EventArchiveIndexed struct {
-	DataID data.ID
+	ObjectID object.ID
 }

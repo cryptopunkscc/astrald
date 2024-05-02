@@ -3,8 +3,9 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/presence"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/node/authorizer"
 )
 
@@ -15,23 +16,20 @@ type Authorizer struct {
 }
 
 func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...any) bool {
-	var localUser = auth.mod.LocalUser()
-	if localUser == nil {
+	if identity.IsZero() {
 		return false
 	}
-	var userID = localUser.Identity()
-	if userID.IsZero() {
-		return false
-	}
-	if !userID.IsEqual(identity) {
+
+	if !identity.IsEqual(auth.mod.UserID()) {
 		return false
 	}
 
 	switch action {
 	case admin.AccessAction,
-		storage.OpenAction,
-		storage.CreateAction,
-		storage.PurgeAction,
+		objects.ReadAction,
+		objects.CreateAction,
+		objects.PurgeAction,
+		shares.DescribeAction,
 		presence.ScanAction:
 		return true
 	}

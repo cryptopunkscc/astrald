@@ -2,25 +2,20 @@ package shares
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/net"
-	"io"
-	"strconv"
+	"github.com/cryptopunkscc/astrald/object"
 	"strings"
 	"time"
 )
 
-var _ shares.RemoteShare = &RemoteShare{}
+var _ shares.RemoteShare = &Import{}
 
-type RemoteShare struct {
+type Import struct {
 	mod    *Module
 	row    *dbRemoteShare
 	set    sets.Set
@@ -28,8 +23,8 @@ type RemoteShare struct {
 	target id.Identity
 }
 
-func (mod *Module) CreateRemoteShare(caller id.Identity, target id.Identity) (*RemoteShare, error) {
-	var share = &RemoteShare{
+func (mod *Module) CreateRemoteShare(caller id.Identity, target id.Identity) (*Import, error) {
+	var share = &Import{
 		mod:    mod,
 		caller: caller,
 		target: target,
@@ -48,12 +43,11 @@ func (mod *Module) CreateRemoteShare(caller id.Identity, target id.Identity) (*R
 		return nil, err
 	}
 
-	share.set, err = mod.sets.CreateManaged(row.SetName, shares.RemoteSetType)
+	share.set, err = mod.sets.Create(row.SetName)
 	if err != nil {
 		mod.db.Delete(&row)
 		return nil, fmt.Errorf("cannot create set: %w", err)
 	}
-	mod.sets.Network().AddSubset(row.SetName)
 
 	return share, nil
 }
@@ -62,7 +56,7 @@ func (mod *Module) FindRemoteShare(caller id.Identity, target id.Identity) (shar
 	return mod.findRemoteShare(caller, target)
 }
 
-func (mod *Module) findRemoteShare(caller id.Identity, target id.Identity) (*RemoteShare, error) {
+func (mod *Module) findRemoteShare(caller id.Identity, target id.Identity) (*Import, error) {
 	var row dbRemoteShare
 	var err = mod.db.
 		Where("caller = ? AND target = ?", caller, target).
@@ -71,7 +65,7 @@ func (mod *Module) findRemoteShare(caller id.Identity, target id.Identity) (*Rem
 		return nil, err
 	}
 
-	var share = &RemoteShare{
+	var share = &Import{
 		mod:    mod,
 		caller: caller,
 		target: target,
@@ -86,122 +80,73 @@ func (mod *Module) findRemoteShare(caller id.Identity, target id.Identity) (*Rem
 	return share, nil
 }
 
-func (mod *Module) FindOrCreateRemoteShare(caller id.Identity, target id.Identity) (*RemoteShare, error) {
+func (mod *Module) FindOrCreateRemoteShare(caller id.Identity, target id.Identity) (*Import, error) {
 	if share, err := mod.findRemoteShare(caller, target); err == nil {
 		return share, nil
 	}
 	return mod.CreateRemoteShare(caller, target)
 }
 
-func (share *RemoteShare) Sync() error {
+func (share *Import) Sync(ctx context.Context) (err error) {
 	if share.target.IsEqual(share.mod.node.Identity()) {
 		return errors.New("cannot sync with self")
 	}
 
-	remoteShare, err := share.mod.FindOrCreateRemoteShare(share.caller, share.target)
-	if err != nil {
-		return err
-	}
+	c := NewConsumer(share.mod, share.caller, share.target)
 
-	var timestamp = "0"
-	if !remoteShare.row.LastUpdate.IsZero() {
-		timestamp = strconv.FormatInt(remoteShare.row.LastUpdate.UnixNano(), 10)
-	}
-
-	var query = net.NewQuery(share.caller, share.target, syncServicePrefix+timestamp)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	conn, err := net.Route(ctx, share.mod.node.Router(), query)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	for {
-		var op byte
-		err = cslq.Decode(conn, "c", &op)
+	diff, err := c.Sync(ctx, share.LastUpdate())
+	switch err {
+	case nil:
+	case ErrResyncRequired:
+		diff, err = c.Sync(ctx, time.Time{})
 		if err != nil {
-			return err
+			return
 		}
+	default:
+		return
+	}
 
-		switch op {
-		case opDone: // done
-			var timestamp int64
-			err = cslq.Decode(conn, "q", &timestamp)
-			if err != nil {
-				return err
-			}
-
-			return remoteShare.SetLastUpdate(time.Unix(0, timestamp))
-
-		case opAdd: // add
-			var dataID data.ID
-			err = cslq.Decode(conn, "v", &dataID)
-			if err != nil {
-				return err
-			}
-
+	for _, update := range diff.Updates {
+		if update.Present {
 			var tx = share.mod.db.Create(&dbRemoteData{
 				Caller: share.caller,
 				Target: share.target,
-				DataID: dataID,
+				DataID: update.ObjectID,
 			})
 			if tx.Error != nil {
 				share.mod.log.Errorv(1, "sync: error adding remote data: %v", tx.Error)
 			}
 
-			remoteShare.set.Add(dataID)
+			share.set.Add(update.ObjectID)
 
-			// cache descriptors
+			// add a task to cache descriptors
 			share.mod.tasks <- func(ctx context.Context) {
-				_, err := remoteShare.Describe(ctx, dataID, &desc.Opts{
+				_, err := share.Describe(ctx, update.ObjectID, &desc.Opts{
 					Network: true,
 				})
 				if err != nil {
-					share.mod.log.Errorv(2, "describe %v: %v", dataID, err)
+					share.mod.log.Errorv(2, "describe %v: %v", update.ObjectID, err)
 				}
 			}
-
-		case opRemove: // remove
-			var dataID data.ID
-			err = cslq.Decode(conn, "v", &dataID)
-			if err != nil {
-				return err
-			}
-
+		} else {
 			var tx = share.mod.db.Delete(&dbRemoteData{
 				Caller: share.caller,
 				Target: share.target,
-				DataID: dataID,
+				DataID: update.ObjectID,
 			})
 
 			if tx.Error != nil {
 				share.mod.log.Errorv(1, "sync: error removing remote data: %v", tx.Error)
 			}
 
-			remoteShare.set.Remove(dataID)
-
-		case opResync:
-			conn.Close()
-			err = share.Reset()
-			if err != nil {
-				return err
-			}
-			return share.Sync()
-
-		case opNotFound:
-			return errors.New("remote share not found")
-
-		default:
-			return errors.New("protocol error")
+			share.set.Remove(update.ObjectID)
 		}
 	}
 
+	return share.SetLastUpdate(diff.Time)
 }
 
-func (share *RemoteShare) Unsync() error {
+func (share *Import) Unsync() error {
 	var err error
 
 	err = share.mod.db.
@@ -220,7 +165,7 @@ func (share *RemoteShare) Unsync() error {
 	return share.set.Delete()
 }
 
-func (share *RemoteShare) Reset() error {
+func (share *Import) Reset() error {
 	err := share.mod.db.
 		Where("caller = ? and target = ?", share.caller, share.target).
 		Delete(&dbRemoteData{}).Error
@@ -236,90 +181,72 @@ func (share *RemoteShare) Reset() error {
 	return share.SetLastUpdate(time.Time{})
 }
 
-func (share *RemoteShare) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) ([]*desc.Desc, error) {
-	var list []*desc.Desc
-	var rawJSON []byte
+func (share *Import) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) (descs []*desc.Desc, err error) {
+	cache := &DescriptorCache{mod: share.mod}
 
-	var row dbRemoteDesc
-	err := share.mod.db.
-		Where("caller = ? AND target = ? AND data_id = ?", share.caller, share.target, dataID).
-		First(&row).Error
-
+	// try cached data first
+	descData, err := cache.Load(share.caller, share.target, objectID, 0)
 	if err == nil {
-		rawJSON = []byte(row.Desc)
-	} else {
-		if !opts.Network {
+		return addSourceToData(descData, share.target), nil
+	}
+
+	// check conditions
+	if !opts.Network {
+		return nil, nil
+	}
+
+	if opts.IdentityFilter != nil {
+		if !opts.IdentityFilter(share.target) {
 			return nil, nil
 		}
-		if opts.IdentityFilter != nil {
-			if !opts.IdentityFilter(share.target) {
-				return nil, nil
-			}
-		}
-
-		var query = net.NewQuery(
-			share.caller,
-			share.target,
-			describeServiceName+"?id="+dataID.String(),
-		)
-
-		conn, err := net.Route(ctx, share.mod.node.Router(), query)
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-
-		rawJSON, err = io.ReadAll(conn)
-		if err != nil {
-			return nil, err
-		}
-
-		share.mod.db.Create(&dbRemoteDesc{
-			Caller: share.caller,
-			Target: share.target,
-			DataID: dataID,
-			Desc:   string(rawJSON),
-		})
 	}
 
-	var j []JSONDescriptor
-	err = json.Unmarshal(rawJSON, &j)
+	remoteObjects, err := share.mod.objects.Connect(share.caller, share.target)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	for _, d := range j {
-		var proto = share.mod.content.UnmarshalDescriptor(d.Type, d.Info)
-		if proto == nil {
-			continue
-		}
-
-		list = append(list, &desc.Desc{
-			Source: share.target,
-			Data:   proto,
-		})
+	// make the request
+	descData, err = remoteObjects.Describe(ctx, objectID, opts)
+	if err != nil {
+		return
 	}
 
-	return list, nil
+	// cache results
+	err = cache.Store(share.caller, share.target, objectID, descData)
+	if err != nil {
+		share.mod.log.Error("error storing cache: %v", err)
+	}
+
+	return addSourceToData(descData, share.target), nil
 }
 
-func (share *RemoteShare) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
+func addSourceToData(list []desc.Data, source id.Identity) (descs []*desc.Desc) {
+	for _, item := range list {
+		descs = append(descs, &desc.Desc{
+			Source: source,
+			Data:   item,
+		})
+	}
+	return
+}
+
+func (share *Import) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 	return share.set.Scan(opts)
 }
 
-func (share *RemoteShare) LastUpdate() time.Time {
+func (share *Import) LastUpdate() time.Time {
 	return share.row.LastUpdate
 }
 
-func (share *RemoteShare) SetLastUpdate(t time.Time) error {
+func (share *Import) SetLastUpdate(t time.Time) error {
 	share.row.LastUpdate = t
 	return share.mod.db.Save(&share.row).Error
 }
 
-func (share *RemoteShare) setName() string {
-	return fmt.Sprintf("%v.%v.%v",
-		remoteShareSetPrefix,
-		share.mod.node.Resolver().DisplayName(share.caller),
-		share.mod.node.Resolver().DisplayName(share.target),
+func (share *Import) setName() string {
+	return fmt.Sprintf("import:%v@%v",
+		share.caller.PublicKeyHex(),
+		share.target.PublicKeyHex(),
 	)
 }

@@ -1,15 +1,15 @@
 package zip
 
 import (
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/zip"
+	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"time"
 )
 
 type dbZip struct {
 	ID        uint         `gorm:"primarykey"`
-	DataID    data.ID      `gorm:"uniqueIndex"`
+	DataID    object.ID    `gorm:"uniqueIndex"`
 	Contents  []dbContents `gorm:"OnDelete:CASCADE;foreignKey:ZipID"`
 	SetName   string       `gorm:"uniqueIndex"`
 	CreatedAt time.Time
@@ -21,21 +21,21 @@ func (dbZip) TableName() string { return zip.DBPrefix + "zips" }
 type dbContents struct {
 	ZipID    uint `gorm:"primaryKey"`
 	Zip      *dbZip
-	FileID   data.ID `gorm:"index"`
-	Path     string  `gorm:"primaryKey"`
+	FileID   object.ID `gorm:"index"`
+	Path     string    `gorm:"primaryKey"`
 	Comment  string
 	Modified time.Time
 }
 
 func (dbContents) TableName() string { return zip.DBPrefix + "contents" }
 
-func (mod *Module) dbFindByFileID(dataID data.ID) ([]dbContents, error) {
+func (mod *Module) dbFindByFileID(objectID object.ID) ([]dbContents, error) {
 	var rows []dbContents
 
 	tx := mod.db.
 		Unscoped().
 		Preload("Zip").
-		Where("file_id = ?", dataID).
+		Where("file_id = ?", objectID).
 		Find(&rows)
 	if tx.Error != nil {
 		return nil, tx.Error

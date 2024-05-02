@@ -1,14 +1,14 @@
 package media
 
 import (
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/media"
+	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
 
 type dbAudio struct {
-	DataID   data.ID `gorm:"primaryKey"`
-	Format   string  `gorm:"index"`
+	DataID   object.ID `gorm:"primaryKey"`
+	Format   string    `gorm:"index"`
 	Duration time.Duration
 	Title    string `gorm:"index"`
 	Artist   string `gorm:"index"`

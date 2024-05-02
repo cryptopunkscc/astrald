@@ -6,17 +6,17 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/mod/storage"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/router"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
@@ -34,7 +34,7 @@ type Module struct {
 	routes   map[string]id.Identity
 	routesMu sync.Mutex
 	db       *gorm.DB
-	storage  storage.Module
+	objects  objects.Module
 	content  content.Module
 	keys     keys.Module
 }
@@ -49,7 +49,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) Save(cert *relay.Cert) (dataID data.ID, err error) {
+func (mod *Module) Save(cert *relay.Cert) (objectID object.ID, err error) {
 	// validate the certificate
 	err = cert.Validate()
 	if err != nil {
@@ -57,7 +57,7 @@ func (mod *Module) Save(cert *relay.Cert) (dataID data.ID, err error) {
 	}
 
 	// create storage writer
-	w, err := mod.storage.Create(nil)
+	w, err := mod.objects.Create(nil)
 	if err != nil {
 		return
 	}
@@ -68,8 +68,8 @@ func (mod *Module) Save(cert *relay.Cert) (dataID data.ID, err error) {
 		return
 	}
 
-	// get dataID for the object
-	dataID, err = w.Commit()
+	// commit the object
+	objectID, err = w.Commit()
 	if err != nil {
 		return
 	}
@@ -214,16 +214,16 @@ func (mod *Module) getRouter(w net.SecureWriteCloser) id.Identity {
 	return id.Identity{}
 }
 
-func (mod *Module) verifyIndex(dataID data.ID) error {
+func (mod *Module) verifyIndex(objectID object.ID) error {
 	var row dbCert
 	var err = mod.db.
-		Where("data_id = ?", dataID).
+		Where("data_id = ?", objectID).
 		First(&row).Error
 	if err != nil {
 		return nil
 	}
 
-	r, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true})
+	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
 	if err == nil {
 		r.Close()
 		return nil

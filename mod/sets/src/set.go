@@ -3,8 +3,8 @@ package sets
 import (
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/mod/sets"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"time"
 )
@@ -18,31 +18,6 @@ type Set struct {
 
 func (set *Set) Name() string {
 	return set.row.Name
-}
-
-func (set *Set) DisplayName() string {
-	switch set.row.Name {
-	case sets.DeviceSet:
-		return "Device"
-	case sets.VirtualSet:
-		return "Virtual"
-	case sets.NetworkSet:
-		return "Network"
-	case sets.UniverseSet:
-		return "Universe"
-	}
-	if set.row.Description != "" {
-		return set.row.Description
-	}
-	return set.row.Name
-}
-
-func (set *Set) SetDisplayName(s string) error {
-	set.row.Description = s
-
-	return set.Module.db.
-		Model(&set.row).
-		Update("description", s).Error
 }
 
 func (set *Set) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
@@ -65,8 +40,8 @@ func (set *Set) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 	if !opts.IncludeRemoved {
 		q = q.Where("removed = false")
 	}
-	if !opts.DataID.IsZero() {
-		row, err := set.dbDataFindByDataID(opts.DataID)
+	if !opts.ObjectID.IsZero() {
+		row, err := set.dbDataFindByObjectID(opts.ObjectID)
 		if err != nil {
 			return nil, err
 		}
@@ -82,7 +57,7 @@ func (set *Set) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 
 	for _, row := range rows {
 		entries = append(entries, &sets.Member{
-			DataID:    row.Data.DataID,
+			ObjectID:  row.Data.DataID,
 			Removed:   row.Removed,
 			UpdatedAt: row.UpdatedAt,
 		})
@@ -91,11 +66,11 @@ func (set *Set) Scan(opts *sets.ScanOpts) ([]*sets.Member, error) {
 	return entries, nil
 }
 
-func (set *Set) Add(dataIDs ...data.ID) error {
+func (set *Set) Add(objectIDs ...object.ID) error {
 	var ids []uint
 
-	for _, dataID := range dataIDs {
-		row, err := set.dbDataFindOrCreateByDataID(dataID)
+	for _, objectID := range objectIDs {
+		row, err := set.dbDataFindOrCreateByObjectID(objectID)
 		if err != nil {
 			return err
 		}
@@ -104,11 +79,11 @@ func (set *Set) Add(dataIDs ...data.ID) error {
 	return set.AddByID(ids...)
 }
 
-func (set *Set) Remove(dataIDs ...data.ID) error {
+func (set *Set) Remove(objectIDs ...object.ID) error {
 	var ids []uint
 
-	for _, dataID := range dataIDs {
-		row, err := set.dbDataFindOrCreateByDataID(dataID)
+	for _, objectID := range objectIDs {
+		row, err := set.dbDataFindOrCreateByObjectID(objectID)
 		if err != nil {
 			return err
 		}
@@ -156,13 +131,12 @@ func (set *Set) RemoveByID(ids ...uint) error {
 	for _, row := range rows {
 		set.events.Emit(sets.EventMemberUpdate{
 			Set:       set.row.Name,
-			DataID:    row.Data.DataID,
+			ObjectID:  row.Data.DataID,
 			Removed:   row.Removed,
 			UpdatedAt: row.UpdatedAt,
 		})
 	}
 
-	set.events.Emit(eventSetUpdated{row: set.row})
 	set.events.Emit(sets.EventSetUpdated{Name: set.row.Name})
 
 	return nil
@@ -207,7 +181,6 @@ func (set *Set) AddByID(ids ...uint) error {
 		return err
 	}
 
-	set.events.Emit(eventSetUpdated{row: set.row})
 	set.events.Emit(sets.EventSetUpdated{Name: set.row.Name})
 
 	return nil
@@ -216,13 +189,10 @@ func (set *Set) AddByID(ids ...uint) error {
 func (set *Set) Stat() (*sets.Stat, error) {
 	var err error
 	var info = &sets.Stat{
-		Name:        set.row.Name,
-		Type:        sets.Type(set.row.Type),
-		Size:        -1,
-		Visible:     set.row.Visible,
-		Description: set.row.Description,
-		CreatedAt:   set.row.CreatedAt,
-		TrimmedAt:   set.row.TrimmedAt,
+		Name:      set.row.Name,
+		Size:      -1,
+		CreatedAt: set.row.CreatedAt,
+		TrimmedAt: set.row.TrimmedAt,
 	}
 
 	var rows []dbMember
@@ -292,7 +262,6 @@ func (set *Set) Clear() error {
 	set.row.TrimmedAt = time.Now()
 	err = set.db.Save(set.row).Error
 
-	set.events.Emit(eventSetUpdated{row: set.row})
 	set.events.Emit(sets.EventSetUpdated{Name: set.row.Name})
 
 	return err
@@ -330,18 +299,10 @@ func (set *Set) Delete() error {
 	for _, row := range rows {
 		set.events.Emit(sets.EventMemberUpdate{
 			Set:       set.row.Name,
-			DataID:    row.Data.DataID,
+			ObjectID:  row.Data.DataID,
 			Removed:   true,
 			UpdatedAt: row.UpdatedAt,
 		})
-	}
-
-	// delete inclusions
-	err = set.db.
-		Where("subset_id = ? or superset_id = ?", set.row.ID, set.row.ID).
-		Delete(&dbSetInclusion{}).Error
-	if err != nil {
-		return err
 	}
 
 	err = set.db.Delete(set.row).Error
@@ -349,7 +310,6 @@ func (set *Set) Delete() error {
 		return err
 	}
 
-	set.events.Emit(eventSetDeleted{row: &lastState})
 	set.events.Emit(sets.EventSetDeleted{Name: set.row.Name})
 
 	return nil
@@ -373,7 +333,7 @@ func (set *Set) unremove(ids []uint) error {
 
 	var rows []dbMember
 
-	// reload rows to include DataID
+	// reload rows to include ObjectID
 	err = set.db.
 		Preload("Data").
 		Where("set_id = ? AND data_id IN (?)", set.row.ID, ids).
@@ -386,7 +346,7 @@ func (set *Set) unremove(ids []uint) error {
 	for _, row := range rows {
 		set.events.Emit(sets.EventMemberUpdate{
 			Set:       set.row.Name,
-			DataID:    row.Data.DataID,
+			ObjectID:  row.Data.DataID,
 			Removed:   row.Removed,
 			UpdatedAt: row.UpdatedAt,
 		})
@@ -428,7 +388,7 @@ func (set *Set) insert(ids []uint) error {
 	for _, row := range rows {
 		set.events.Emit(sets.EventMemberUpdate{
 			Set:       set.row.Name,
-			DataID:    row.Data.DataID,
+			ObjectID:  row.Data.DataID,
 			Removed:   row.Removed,
 			UpdatedAt: row.UpdatedAt,
 		})

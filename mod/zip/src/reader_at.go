@@ -1,17 +1,17 @@
 package zip
 
 import (
-	"github.com/cryptopunkscc/astrald/data"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 type readerAt struct {
-	storage storage.Module
-	dataID  data.ID
+	objects  objects.Module
+	objectID object.ID
 }
 
 func (r *readerAt) ReadAt(p []byte, off int64) (n int, err error) {
-	f, err := r.storage.Open(r.dataID, &storage.OpenOpts{Offset: uint64(off), Virtual: true})
+	f, err := r.objects.Open(r.objectID, &objects.OpenOpts{Offset: uint64(off), Virtual: true})
 	if err != nil {
 		return 0, err
 	}

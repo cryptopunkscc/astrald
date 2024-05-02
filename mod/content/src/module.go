@@ -2,15 +2,14 @@ package content
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/sets"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"time"
@@ -29,19 +28,28 @@ type Module struct {
 	events events.Queue
 	db     *gorm.DB
 
-	describers sig.Set[content.Describer]
-	finders    sig.Set[content.Finder]
 	prototypes sig.Map[string, desc.Data]
-	identified sets.Set
 
-	storage storage.Module
+	objects objects.Module
 	fs      fs.Module
-	sets    sets.Module
 
 	ready chan struct{}
 }
 
 func (mod *Module) Run(ctx context.Context) error {
+	go mod.identifyFS()
+
+	go func() {
+		for event := range mod.node.Events().Subscribe(ctx) {
+			switch e := event.(type) {
+			case fs.EventFileAdded:
+				mod.Identify(e.ObjectID)
+			case fs.EventFileChanged:
+				mod.Identify(e.NewID)
+			}
+		}
+	}()
+
 	<-ctx.Done()
 
 	return nil
@@ -80,7 +88,7 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 
 		// subscribe to new items
 		for event := range subscription {
-			e, ok := event.(content.EventDataIdentified)
+			e, ok := event.(content.EventObjectIdentified)
 			if !ok {
 				continue
 			}
@@ -94,13 +102,8 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 	return ch
 }
 
-func (mod *Module) Forget(dataID data.ID) error {
-	var err = mod.db.Delete(&dbDataType{}, dataID).Error
-	if err != nil {
-		return err
-	}
-
-	return mod.identified.Remove(dataID)
+func (mod *Module) Forget(objectID object.ID) error {
+	return mod.db.Delete(&dbDataType{}, objectID).Error
 }
 
 func (mod *Module) Ready(ctx context.Context) error {
@@ -143,7 +146,7 @@ func (mod *Module) scan(opts *content.ScanOpts) ([]*content.TypeInfo, error) {
 
 	for _, row := range rows {
 		list = append(list, &content.TypeInfo{
-			DataID:       row.DataID,
+			ObjectID:     row.DataID,
 			IdentifiedAt: row.IdentifiedAt,
 			Method:       row.Method,
 			Type:         row.Type,

@@ -2,24 +2,24 @@ package zip
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/zip"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
-func (mod *Module) Describe(ctx context.Context, dataID data.ID, opts *desc.Opts) (desc []*desc.Desc) {
-	desc = append(desc, mod.describeArchive(dataID)...)
-	desc = append(desc, mod.describeMember(dataID)...)
+func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) (desc []*desc.Desc) {
+	desc = append(desc, mod.describeArchive(objectID)...)
+	desc = append(desc, mod.describeMember(objectID)...)
 
 	return
 }
 
-func (mod *Module) describeArchive(dataID data.ID) []*desc.Desc {
+func (mod *Module) describeArchive(objectID object.ID) []*desc.Desc {
 	var row dbZip
 
 	var err = mod.db.
 		Preload("Contents").
-		Where("data_id = ?", dataID).
+		Where("data_id = ?", objectID).
 		First(&row).Error
 	if err != nil {
 		return nil
@@ -29,8 +29,8 @@ func (mod *Module) describeArchive(dataID data.ID) []*desc.Desc {
 
 	for _, i := range row.Contents {
 		ad.Files = append(ad.Files, zip.ArchiveFile{
-			DataID: i.FileID,
-			Path:   i.Path,
+			ObjectID: i.FileID,
+			Path:     i.Path,
 		})
 	}
 
@@ -40,8 +40,8 @@ func (mod *Module) describeArchive(dataID data.ID) []*desc.Desc {
 	}}
 }
 
-func (mod *Module) describeMember(dataID data.ID) []*desc.Desc {
-	rows, _ := mod.dbFindByFileID(dataID)
+func (mod *Module) describeMember(objectID object.ID) []*desc.Desc {
+	rows, _ := mod.dbFindByFileID(objectID)
 	if len(rows) == 0 {
 		return nil
 	}

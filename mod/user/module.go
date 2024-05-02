@@ -2,25 +2,21 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 )
 
 const ModuleName = "user"
 const DBPrefix = "users__"
 
 type Module interface {
-	LocalUser() LocalUser
-	SetLocalUser(identity id.Identity) error
+	UserID() id.Identity
+	SetUserID(userID id.Identity) error
 }
 
 type Profile struct {
 	Identity id.Identity
 	Name     string
-	Avatar   data.ID
-}
-
-type LocalUser interface {
-	Identity() id.Identity
+	Avatar   object.ID
 }
 
 type UserDesc struct {

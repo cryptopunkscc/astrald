@@ -2,24 +2,24 @@ package content
 
 import (
 	"bytes"
-	"github.com/cryptopunkscc/astrald/data"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/storage"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/wailsapp/mimetype"
 	"time"
 )
 
 // Identify returns info about data type.
-func (mod *Module) Identify(dataID data.ID) (*content.TypeInfo, error) {
+func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 	var err error
 	var row dbDataType
 
 	// check if data is already indexed
-	err = mod.db.Where("data_id = ?", dataID).First(&row).Error
+	err = mod.db.Where("data_id = ?", objectID).First(&row).Error
 	if err == nil {
 		return &content.TypeInfo{
-			DataID:       dataID,
+			ObjectID:     objectID,
 			IdentifiedAt: row.IdentifiedAt,
 			Method:       row.Method,
 			Type:         row.Type,
@@ -27,7 +27,7 @@ func (mod *Module) Identify(dataID data.ID) (*content.TypeInfo, error) {
 	}
 
 	// read first bytes for type identification
-	dataReader, err := mod.storage.Open(dataID, &storage.OpenOpts{Virtual: true, Network: true})
+	dataReader, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true, Network: true})
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (mod *Module) Identify(dataID data.ID) (*content.TypeInfo, error) {
 
 	var indexedAt = time.Now()
 	var tx = mod.db.Create(&dbDataType{
-		DataID:       dataID,
+		DataID:       objectID,
 		IdentifiedAt: indexedAt,
 		Method:       method,
 		Type:         dataType,
@@ -58,49 +58,26 @@ func (mod *Module) Identify(dataID data.ID) (*content.TypeInfo, error) {
 		return nil, tx.Error
 	}
 
-	if method != "" {
-		mod.log.Logv(1, "%v identified as %s (%s)", dataID, dataType, method)
-	} else {
-		mod.log.Logv(1, "%v identified as %s", dataID, dataType)
-	}
-
-	if err := mod.identified.Add(dataID); err != nil {
-		mod.log.Error("error adding to set: %v", err)
-	}
+	mod.log.Logv(1, "%v identified as %s via %s", objectID, dataType, method)
 
 	info := &content.TypeInfo{
-		DataID:       dataID,
+		ObjectID:     objectID,
 		IdentifiedAt: indexedAt,
 		Method:       method,
 		Type:         dataType,
 	}
 
-	mod.events.Emit(content.EventDataIdentified{TypeInfo: info})
+	mod.events.Emit(content.EventObjectIdentified{TypeInfo: info})
 
 	return info, nil
 }
 
-// IdentifySet identifies all data objects in a set
-func (mod *Module) IdentifySet(name string) ([]*content.TypeInfo, error) {
-	var list []*content.TypeInfo
-
-	set, err := mod.sets.Open(name, false)
-	if err != nil {
-		return nil, err
+func (mod *Module) identifyFS() {
+	if mod.fs == nil {
+		return
 	}
 
-	entries, err := set.Scan(nil)
-	if err != nil {
-		return nil, err
+	for _, file := range mod.fs.Find(nil) {
+		mod.Identify(file.ObjectID)
 	}
-
-	for _, entry := range entries {
-		info, err := mod.Identify(entry.DataID)
-		if err != nil {
-			continue
-		}
-		list = append(list, info)
-	}
-
-	return list, nil
 }

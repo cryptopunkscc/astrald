@@ -22,7 +22,6 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.routes.EnableParams = true
 	mod.profileService = &ProfileService{Module: mod}
-	mod.notifyService = &NotifyService{Module: mod}
 
 	err = assets.LoadYAML(user.ModuleName, &mod.config)
 	if err != nil {

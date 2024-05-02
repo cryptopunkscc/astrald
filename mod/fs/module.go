@@ -1,38 +1,29 @@
 package fs
 
 import (
-	"github.com/cryptopunkscc/astrald/data"
+	"github.com/cryptopunkscc/astrald/object"
 	"path/filepath"
 	"time"
 )
 
 const (
-	ModuleName       = "fs"
-	DBPrefix         = "fs__"
-	MemorySetName    = ".fs.memory"
-	ReadOnlySetName  = ".fs.readonly"
-	ReadWriteSetName = ".fs.readwrite"
+	ModuleName = "fs"
+	DBPrefix   = "fs__"
 )
 
 type Module interface {
-	Find(id data.ID) []string
+	Find(opts *FindOpts) []*File
+	Path(objectID object.ID) []string
 }
 
-type EventFileChanged struct {
-	Path      string
-	OldID     data.ID
-	NewID     data.ID
-	IndexedAt time.Time
+type File struct {
+	Path     string
+	ObjectID object.ID
+	ModTime  time.Time
 }
 
-type EventFileAdded struct {
-	Path   string
-	DataID data.ID
-}
-
-type EventFileRemoved struct {
-	Path   string
-	DataID data.ID
+type FindOpts struct {
+	UpdatedAfter time.Time
 }
 
 type FileDesc struct {
