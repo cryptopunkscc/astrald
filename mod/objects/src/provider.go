@@ -3,13 +3,13 @@ package objects
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"io"
 	"slices"
-	"strconv"
 )
 
 type JSONDescriptor struct {
@@ -53,22 +53,16 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 		return net.Reject()
 	}
 
-	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ReadAction, objectID) {
+	var opts = &objects.OpenOpts{Zone: objects.DefaultZones}
+	opts.Offset, err = params.GetUint64("offset")
+	if err != nil && !errors.Is(err, router.ErrKeyNotFound) {
+		srv.mod.log.Errorv(2, "offset: invalid argument: %v", err)
 		return net.Reject()
 	}
 
-	var opts = &objects.OpenOpts{}
-	if s, found := params["offset"]; found {
-		opts.Offset, err = strconv.ParseUint(s, 10, 64)
-		if err != nil {
-			srv.mod.log.Errorv(2, "parse offset error: %v", err)
-			return net.Reject()
-		}
-	}
-
-	r, err := srv.mod.Open(context.Background(), objectID, opts)
+	r, err := srv.mod.OpenAs(ctx, query.Caller(), objectID, opts)
 	if err != nil {
-		srv.mod.log.Errorv(2, "read %v error: %v", objectID, err)
+		srv.mod.log.Errorv(2, "open %v error: %v", objectID, err)
 		return net.Reject()
 	}
 

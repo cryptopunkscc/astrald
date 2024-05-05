@@ -110,7 +110,7 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 			return err
 		}
 
-		r, err := adm.mod.Open(context.Background(), objectID, opts)
+		r, err := adm.mod.OpenAs(context.Background(), term.UserIdentity(), objectID, opts)
 		if err != nil {
 			return err
 		}

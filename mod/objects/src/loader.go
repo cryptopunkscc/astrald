@@ -22,6 +22,11 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.db = assets.Database()
 
+	err := mod.node.Auth().Add(mod)
+	if err != nil {
+		panic(err)
+	}
+
 	return mod, nil
 }
 

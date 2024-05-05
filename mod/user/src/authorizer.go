@@ -26,9 +26,9 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 
 	switch action {
 	case admin.AccessAction,
-		objects.ReadAction,
-		objects.CreateAction,
-		objects.PurgeAction,
+		objects.ActionRead,
+		objects.ActionCreate,
+		objects.ActionPurge,
 		shares.DescribeAction,
 		presence.ScanAction:
 		return true

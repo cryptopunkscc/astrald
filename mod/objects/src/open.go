@@ -3,6 +3,7 @@ package objects
 import (
 	"cmp"
 	"context"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"slices"
@@ -65,6 +66,14 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	}
 
 	return nil, objects.ErrNotFound
+}
+
+func (mod *Module) OpenAs(ctx context.Context, consumer id.Identity, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+	if !mod.node.Auth().Authorize(consumer, objects.ActionRead, objectID) {
+		return nil, objects.ErrAccessDenied
+	}
+
+	return mod.Open(ctx, objectID, opts)
 }
 
 func (mod *Module) AddOpener(opener objects.Opener, priority int) error {
