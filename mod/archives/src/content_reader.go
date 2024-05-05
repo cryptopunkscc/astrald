@@ -1,4 +1,4 @@
-package zip
+package archives
 
 import (
 	"archive/zip"
@@ -78,5 +78,5 @@ func (r *contentReader) open() (err error) {
 }
 
 func (r *contentReader) Info() *objects.ReaderInfo {
-	return &objects.ReaderInfo{Name: "mod.zip"}
+	return &objects.ReaderInfo{Name: "mod.archives"}
 }

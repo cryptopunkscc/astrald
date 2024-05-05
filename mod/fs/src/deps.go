@@ -34,10 +34,10 @@ func (mod *Module) LoadDependencies() error {
 		return err
 	}
 
-	mod.objects.AddOpener(fs.ModuleName, mod, 30)
-	mod.objects.AddCreator(fs.ModuleName, mod, 30)
+	mod.objects.AddOpener(mod, 30)
+	mod.objects.AddCreator(mod, 30)
 	mod.objects.AddDescriber(mod)
-	mod.objects.AddPurger(fs.ModuleName, mod)
+	mod.objects.AddPurger(mod)
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {

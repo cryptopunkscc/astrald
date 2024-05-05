@@ -57,7 +57,7 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 		return net.Reject()
 	}
 
-	var opts = &objects.OpenOpts{Virtual: true}
+	var opts = &objects.OpenOpts{}
 	if s, found := params["offset"]; found {
 		opts.Offset, err = strconv.ParseUint(s, 10, 64)
 		if err != nil {
@@ -66,7 +66,7 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 		}
 	}
 
-	r, err := srv.mod.Open(objectID, opts)
+	r, err := srv.mod.Open(context.Background(), objectID, opts)
 	if err != nil {
 		srv.mod.log.Errorv(2, "read %v error: %v", objectID, err)
 		return net.Reject()
@@ -110,7 +110,7 @@ func (srv *Provider) Describe(ctx context.Context, query net.Query, caller net.S
 
 			list = append(list, JSONDescriptor{
 				Type: d.Data.Type(),
-				Data: json.RawMessage(b),
+				Data: b,
 			})
 		}
 

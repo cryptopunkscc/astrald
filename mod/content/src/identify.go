@@ -2,10 +2,13 @@ package content
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
+	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/wailsapp/mimetype"
 	"time"
 )
@@ -13,21 +16,27 @@ import (
 // Identify returns info about data type.
 func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 	var err error
-	var row dbDataType
 
-	// check if data is already indexed
-	err = mod.db.Where("data_id = ?", objectID).First(&row).Error
-	if err == nil {
-		return &content.TypeInfo{
-			ObjectID:     objectID,
-			IdentifiedAt: row.IdentifiedAt,
-			Method:       row.Method,
-			Type:         row.Type,
-		}, nil
+	ch, ok := mod.ongoing.Set(objectID.String(), sig.New())
+	if ok {
+		defer func() {
+			mod.ongoing.Delete(objectID.String())
+			close(ch)
+		}()
+	} else {
+		<-ch
+		if c := mod.getCache(objectID); c != nil {
+			return c, nil
+		}
+		return nil, errors.New("unidentified object")
+	}
+
+	if c := mod.getCache(objectID); c != nil {
+		return c, nil
 	}
 
 	// read first bytes for type identification
-	dataReader, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true, Network: true})
+	dataReader, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +79,22 @@ func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 	mod.events.Emit(content.EventObjectIdentified{TypeInfo: info})
 
 	return info, nil
+}
+
+func (mod *Module) getCache(objectID object.ID) *content.TypeInfo {
+	var row dbDataType
+
+	err := mod.db.Where("data_id = ?", objectID).First(&row).Error
+	if err != nil {
+		return nil
+	}
+
+	return &content.TypeInfo{
+		ObjectID:     row.DataID,
+		IdentifiedAt: row.IdentifiedAt,
+		Method:       row.Method,
+		Type:         row.Type,
+	}
 }
 
 func (mod *Module) identifyFS() {

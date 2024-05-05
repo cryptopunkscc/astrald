@@ -58,9 +58,13 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 // Open an object from the local filesystem
-func (mod *Module) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mod *Module) Open(_ context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if opts == nil {
 		opts = defaultOpenOpts
+	}
+
+	if !opts.Zone.Is(objects.ZoneLocal) {
+		return nil, objects.ErrZoneExcluded
 	}
 
 	paths := mod.path(objectID)
@@ -275,6 +279,13 @@ func (mod *Module) update(path string) (object.ID, error) {
 				NewID: updated.DataID,
 			})
 		}
+	}
+
+	if err == nil {
+		mod.events.Emit(objects.EventObjectDiscovered{
+			ObjectID: updated.DataID,
+			Zone:     objects.ZoneLocal,
+		})
 	}
 
 	return updated.DataID, err

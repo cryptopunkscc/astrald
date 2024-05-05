@@ -29,9 +29,9 @@ type Module struct {
 	db     *gorm.DB
 
 	prototypes sig.Map[string, desc.Data]
-
-	objects objects.Module
-	fs      fs.Module
+	ongoing    sig.Map[string, chan struct{}]
+	objects    objects.Module
+	fs         fs.Module
 
 	ready chan struct{}
 }
@@ -42,10 +42,8 @@ func (mod *Module) Run(ctx context.Context) error {
 	go func() {
 		for event := range mod.node.Events().Subscribe(ctx) {
 			switch e := event.(type) {
-			case fs.EventFileAdded:
+			case objects.EventObjectDiscovered:
 				mod.Identify(e.ObjectID)
-			case fs.EventFileChanged:
-				mod.Identify(e.NewID)
 			}
 		}
 	}()

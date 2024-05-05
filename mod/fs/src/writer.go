@@ -89,6 +89,10 @@ func (w *Writer) Commit() (object.ID, error) {
 			Path:     newPath,
 			ObjectID: objectID,
 		})
+		w.mod.events.Emit(objects.EventObjectDiscovered{
+			ObjectID: objectID,
+			Zone:     objects.ZoneLocal,
+		})
 	}
 
 	return objectID, err

@@ -29,10 +29,6 @@ func (mod *Module) Purge(objectID object.ID, opts *objects.PurgeOpts) (int, erro
 	return total, errors.Join(errs...)
 }
 
-func (mod *Module) AddPurger(name string, purger objects.Purger) error {
-	_, ok := mod.purgers.Set(name, purger)
-	if !ok {
-		return objects.ErrAlreadyExists
-	}
-	return nil
+func (mod *Module) AddPurger(purger objects.Purger) error {
+	return mod.purgers.Add(purger)
 }

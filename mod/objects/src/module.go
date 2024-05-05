@@ -32,11 +32,11 @@ type Module struct {
 	ctx    context.Context
 
 	prototypes sig.Map[string, desc.Data]
-	openers    sig.Map[string, *Opener]
-	creators   sig.Map[string, *Creator]
+	openers    sig.Set[*Opener]
+	creators   sig.Set[*Creator]
 	describers sig.Set[objects.Describer]
 	finders    sig.Set[objects.Finder]
-	purgers    sig.Map[string, objects.Purger]
+	purgers    sig.Set[objects.Purger]
 
 	provider *Provider
 
@@ -98,7 +98,7 @@ func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {
 	if id.Size > ReadAllMaxSize {
 		return nil, errors.New("data too big")
 	}
-	r, err := mod.Open(id, opts)
+	r, err := mod.Open(context.Background(), id, opts)
 	if err != nil {
 		return nil, err
 	}

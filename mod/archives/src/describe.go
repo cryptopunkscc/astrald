@@ -1,9 +1,9 @@
-package zip
+package archives
 
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/lib/desc"
-	"github.com/cryptopunkscc/astrald/mod/zip"
+	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -15,47 +15,48 @@ func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.
 }
 
 func (mod *Module) describeArchive(objectID object.ID) []*desc.Desc {
-	var row dbZip
-
-	var err = mod.db.
-		Preload("Contents").
-		Where("data_id = ?", objectID).
-		First(&row).Error
-	if err != nil {
+	var data archives.ArchiveDesc
+	var archive = mod.getCache(objectID)
+	if archive == nil {
 		return nil
 	}
 
-	var ad zip.ArchiveDesc
-
-	for _, i := range row.Contents {
-		ad.Files = append(ad.Files, zip.ArchiveFile{
-			ObjectID: i.FileID,
-			Path:     i.Path,
+	for _, e := range archive.Entries {
+		data.Files = append(data.Files, archives.ArchiveEntry{
+			ObjectID: e.ObjectID,
+			Path:     e.Path,
 		})
 	}
 
 	return []*desc.Desc{{
 		Source: mod.node.Identity(),
-		Data:   ad,
+		Data:   data,
 	}}
 }
 
 func (mod *Module) describeMember(objectID object.ID) []*desc.Desc {
-	rows, _ := mod.dbFindByFileID(objectID)
+	var rows []*dbEntry
+
+	mod.db.
+		Where("object_id = ?", objectID).
+		Preload("Parent").
+		Find(&rows)
+
 	if len(rows) == 0 {
 		return nil
 	}
-	var ad zip.MemberDesc
+
+	var data archives.EntryDesc
 
 	for _, row := range rows {
-		ad.Memberships = append(ad.Memberships, zip.Membership{
-			ZipID: row.Zip.DataID,
-			Path:  row.Path,
+		data.Containers = append(data.Containers, archives.Container{
+			ObjectID: row.Parent.ObjectID,
+			Path:     row.Path,
 		})
 	}
 
 	return []*desc.Desc{{
 		Source: mod.node.Identity(),
-		Data:   ad,
+		Data:   data,
 	}}
 }

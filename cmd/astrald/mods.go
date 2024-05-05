@@ -6,6 +6,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/admin/src"
 	_ "github.com/cryptopunkscc/astrald/mod/agent/src"
 	_ "github.com/cryptopunkscc/astrald/mod/apphost/src"
+	_ "github.com/cryptopunkscc/astrald/mod/archives/src"
 	_ "github.com/cryptopunkscc/astrald/mod/content/src"
 	_ "github.com/cryptopunkscc/astrald/mod/dir/src"
 	_ "github.com/cryptopunkscc/astrald/mod/discovery/src"
@@ -28,5 +29,4 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/tcp/src"
 	_ "github.com/cryptopunkscc/astrald/mod/tor/src"
 	_ "github.com/cryptopunkscc/astrald/mod/user/src"
-	_ "github.com/cryptopunkscc/astrald/mod/zip/src"
 )

@@ -9,3 +9,8 @@ type EventObjectCommitted struct {
 type EventObjectPurged struct {
 	ObjectID object.ID
 }
+
+type EventObjectDiscovered struct {
+	ObjectID object.ID
+	Zone     Zone
+}

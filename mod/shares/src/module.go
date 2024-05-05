@@ -86,9 +86,9 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !opts.Network {
-		return nil, objects.ErrNotFound
+func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+	if !opts.Zone.Is(objects.ZoneNetwork) {
+		return nil, objects.ErrZoneExcluded
 	}
 
 	var rows []dbRemoteData
@@ -103,9 +103,6 @@ func (mod *Module) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Rea
 		if err != nil {
 			continue
 		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
 
 		conn, err := remoteObjects.Open(ctx, objectID, opts)
 		if err != nil {

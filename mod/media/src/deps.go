@@ -38,7 +38,7 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.objects.AddFinder(mod)
-	mod.objects.AddPrototypes(&media.Audio{}, &media.Video{}, &media.Image{})
+	mod.objects.AddPrototypes(&media.Audio{})
 
 	return nil
 }

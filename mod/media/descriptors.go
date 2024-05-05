@@ -1,7 +1,6 @@
 package media
 
 import (
-	"fmt"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"time"
 )
@@ -29,37 +28,4 @@ func (a *Audio) String() string {
 		s = s + " by " + a.Artist
 	}
 	return s
-}
-
-// Video descriptor
-type Video struct {
-	Format   string
-	Title    string
-	Duration time.Duration
-}
-
-var _ desc.Data = &Video{}
-
-func (*Video) Type() string { return "mod.media.video" }
-func (v *Video) String() string {
-	if len(v.Title) > 0 {
-		return v.Title
-	}
-
-	return "Untitled video"
-}
-
-// Image descriptor
-type Image struct {
-	Format string
-	Width  int
-	Height int
-}
-
-var _ desc.Data = &Image{}
-
-func (*Image) Type() string { return "mod.media.image" }
-func (i *Image) String() string {
-	return fmt.Sprintf("%dx%dpx image", i.Width, i.Height)
-
 }

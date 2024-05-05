@@ -83,14 +83,13 @@ func (adm *Admin) purge(term admin.Terminal, args []string) error {
 func (adm *Admin) read(term admin.Terminal, args []string) error {
 	var err error
 	var opts = &objects.OpenOpts{
-		Virtual:        true,
-		Network:        false,
+		Zone:           objects.DefaultZones,
 		IdentityFilter: id.AllowEveryone,
 	}
+	var zones string
 
 	var flags = flag.NewFlagSet("read", flag.ContinueOnError)
-	flags.BoolVar(&opts.Virtual, "v", true, "use virtual sources")
-	flags.BoolVar(&opts.Network, "n", false, "use network sources")
+	flags.StringVar(&zones, "z", "lv", "enabled zones")
 	flags.SetOutput(term)
 	err = flags.Parse(args)
 	if err != nil {
@@ -101,13 +100,17 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 		return errors.New("missing data id")
 	}
 
+	if len(zones) > 0 {
+		opts.Zone = objects.Zones(zones)
+	}
+
 	for _, arg := range flags.Args() {
 		objectID, err := object.ParseID(arg)
 		if err != nil {
 			return err
 		}
 
-		r, err := adm.mod.Open(objectID, opts)
+		r, err := adm.mod.Open(context.Background(), objectID, opts)
 		if err != nil {
 			return err
 		}
@@ -214,20 +217,19 @@ func (adm *Admin) fetch(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	var f = "%-32s %6s %s\n"
+	var f = "%6s %s\n"
 
 	// list openers
-	openers := adm.mod.openers.Values()
+	openers := adm.mod.openers.Clone()
 	slices.SortFunc(openers, func(a, b *Opener) int {
 		return cmp.Compare(a.Priority, b.Priority) * -1
 	})
 
 	term.Printf("Openers:\n")
-	term.Printf(f, admin.Header("Name"), admin.Header("Prio"), admin.Header("Type"))
+	term.Printf(f, admin.Header("Prio"), admin.Header("Type"))
 	for _, opener := range openers {
 		term.Printf(
 			f,
-			opener.Name,
 			strconv.FormatInt(int64(opener.Priority), 10),
 			reflect.TypeOf(opener.Opener),
 		)
@@ -235,17 +237,16 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	term.Println()
 
 	// list creators
-	creators := adm.mod.creators.Values()
+	creators := adm.mod.creators.Clone()
 	slices.SortFunc(creators, func(a, b *Creator) int {
 		return cmp.Compare(a.Priority, b.Priority) * -1
 	})
 
 	term.Printf("Creators:\n")
-	term.Printf(f, admin.Header("Prio"), admin.Header("Name"), admin.Header("Type"))
+	term.Printf(f, admin.Header("Prio"), admin.Header("Type"))
 	for _, creator := range creators {
 		term.Printf(
 			f,
-			creator.Name,
 			strconv.FormatInt(int64(creator.Priority), 10),
 			reflect.TypeOf(creator.Creator),
 		)

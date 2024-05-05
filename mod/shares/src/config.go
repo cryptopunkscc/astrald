@@ -1,11 +1,11 @@
 package shares
 
 import (
+	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/mod/zip"
 	"time"
 )
 
@@ -20,9 +20,7 @@ var defaultConfig = Config{
 		content.TypeDesc{}.Type(),
 		keys.KeyDesc{}.Type(),
 		(&media.Audio{}).Type(),
-		(&media.Video{}).Type(),
-		(&media.Image{}).Type(),
-		zip.ArchiveDesc{}.Type(),
+		archives.ArchiveDesc{}.Type(),
 		relay.CertDesc{}.Type(),
 	},
 }

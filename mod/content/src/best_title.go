@@ -50,16 +50,6 @@ func (mod *Module) BestTitle(objectID object.ID) string {
 		return d.String()
 	}
 
-	if desc, found := m[(&media.Video{}).Type()]; found {
-		d, _ := desc.Data.(*media.Video)
-		return d.String()
-	}
-
-	if desc, found := m[(&media.Image{}).Type()]; found {
-		d, _ := desc.Data.(*media.Image)
-		return d.String()
-	}
-
 	if desc, found := m[content.TypeDesc{}.Type()]; found {
 		d, _ := desc.Data.(content.TypeDesc)
 		return "Untitled " + d.String()

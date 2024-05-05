@@ -9,7 +9,6 @@ import (
 
 type Creator struct {
 	objects.Creator
-	Name     string
 	Priority int
 }
 
@@ -22,7 +21,7 @@ func (mod *Module) Create(opts *objects.CreateOpts) (objects.Writer, error) {
 		return nil, errors.New("alloc cannot be less than 0")
 	}
 
-	creators := mod.creators.Values()
+	creators := mod.creators.Clone()
 
 	slices.SortFunc(creators, func(a, b *Creator) int {
 		return cmp.Compare(a.Priority, b.Priority) * -1 // from high to low
@@ -38,14 +37,9 @@ func (mod *Module) Create(opts *objects.CreateOpts) (objects.Writer, error) {
 	return nil, objects.ErrStorageUnavailable
 }
 
-func (mod *Module) AddCreator(name string, creator objects.Creator, priority int) error {
-	_, ok := mod.creators.Set(name, &Creator{
+func (mod *Module) AddCreator(creator objects.Creator, priority int) error {
+	return mod.creators.Add(&Creator{
 		Creator:  creator,
-		Name:     name,
 		Priority: priority,
 	})
-	if !ok {
-		return objects.ErrAlreadyExists
-	}
-	return nil
 }

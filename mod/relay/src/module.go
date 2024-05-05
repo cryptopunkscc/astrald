@@ -223,7 +223,7 @@ func (mod *Module) verifyIndex(objectID object.ID) error {
 		return nil
 	}
 
-	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
+	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts)
 	if err == nil {
 		r.Close()
 		return nil

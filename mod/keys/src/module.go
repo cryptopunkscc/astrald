@@ -101,7 +101,7 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 		return ErrAlreadyIndexed
 	}
 
-	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
+	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 }
 
 func (mod *Module) LoadPrivateKey(objectID object.ID) (*keys.PrivateKey, error) {
-	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
+	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts)
 	if err != nil {
 		return nil, err
 	}
