@@ -11,91 +11,85 @@ import (
 
 // Flags provides a thread-safe observable flag set
 type Flags struct {
-	flagMap map[string]bool
-	waitMap map[string][]chan struct{}
-	mtx     sync.Mutex
+	flagStates   map[string]bool
+	flagChannels map[string]chan struct{}
+	mu           sync.Mutex
 }
 
 func NewFlags() *Flags {
-	flag := &Flags{
-		flagMap: make(map[string]bool),
-		waitMap: make(map[string][]chan struct{}),
+	return &Flags{
+		flagStates:   make(map[string]bool),
+		flagChannels: make(map[string]chan struct{}),
 	}
-
-	return flag
 }
 
 // Set sets the provided flags
 func (flags *Flags) Set(flag ...string) {
-	flags.mtx.Lock()
-	defer flags.mtx.Unlock()
+	flags.mu.Lock()
+	defer flags.mu.Unlock()
 
 	for _, f := range flag {
-		flags.flagMap[f] = true
-	}
-
-	for _, f := range flag {
-		for _, ch := range flags.waitMap[f] {
+		flags.flagStates[f] = true
+		if ch, ok := flags.flagChannels[f]; ok {
 			close(ch)
+			delete(flags.flagChannels, f)
 		}
-		flags.waitMap[f] = nil
 	}
 }
 
 // Clear clears the provided flags
 func (flags *Flags) Clear(flag ...string) {
-	flags.mtx.Lock()
-	defer flags.mtx.Unlock()
+	flags.mu.Lock()
+	defer flags.mu.Unlock()
 
 	for _, f := range flag {
-		flags.flagMap[f] = false
-	}
-
-	for _, f := range flag {
-		for _, ch := range flags.waitMap[f] {
+		flags.flagStates[f] = false
+		if ch, ok := flags.flagChannels[f]; ok {
 			close(ch)
+			delete(flags.flagChannels, f)
 		}
-		flags.waitMap[f] = nil
 	}
 }
 
 // IsSet returns true if the flag is up, false otherwise
 func (flags *Flags) IsSet(flag string) bool {
-	flags.mtx.Lock()
-	defer flags.mtx.Unlock()
-	return flags.flagMap[flag]
+	flags.mu.Lock()
+	defer flags.mu.Unlock()
+
+	return flags.flagStates[flag]
 }
 
 // Flags returns a list of all set flags
 func (flags *Flags) Flags() []string {
-	flags.mtx.Lock()
-	defer flags.mtx.Unlock()
+	flags.mu.Lock()
+	defer flags.mu.Unlock()
 
 	var setFlags []string
-	for flag, isSet := range flags.flagMap {
-		if isSet {
+	for flag, state := range flags.flagStates {
+		if state {
 			setFlags = append(setFlags, flag)
 		}
 	}
-
 	return setFlags
 }
 
 // Wait returns a channel that will be closed as soon as the flag is in the specified state.
 // If the flag is already in the specified state, Wait immediately returns a closed channel.
 func (flags *Flags) Wait(flag string, state bool) <-chan struct{} {
-	flags.mtx.Lock()
-	defer flags.mtx.Unlock()
+	flags.mu.Lock()
+	defer flags.mu.Unlock()
 
-	if flags.flagMap[flag] == state {
+	if flags.flagStates[flag] == state {
 		ch := make(chan struct{})
 		close(ch)
 		return ch
 	}
 
-	ch := make(chan struct{})
-	flags.waitMap[flag] = append(flags.waitMap[flag], ch)
-
+	ch, ok := flags.flagChannels[flag]
+	if !ok {
+		ch = make(chan struct{})
+		flags.flagChannels[flag] = ch
+	}
 	return ch
 }
 
@@ -104,24 +98,23 @@ func (flags *Flags) Wait(flag string, state bool) <-chan struct{} {
 // 2. Flag is in the specified state - WaitContext returns nil
 // If the flag is already in the specified state when the function is called, it returns nil immediately.
 func (flags *Flags) WaitContext(ctx context.Context, flag string, state bool) error {
-	flags.mtx.Lock()
-	defer flags.mtx.Unlock()
-
-	if flags.flagMap[flag] == state {
+	flags.mu.Lock()
+	if flags.flagStates[flag] == state {
+		flags.mu.Unlock()
 		return nil
 	}
 
-	ch := make(chan struct{})
-	flags.waitMap[flag] = append(flags.waitMap[flag], ch)
-
-	flags.mtx.Unlock()
+	ch, ok := flags.flagChannels[flag]
+	if !ok {
+		ch = make(chan struct{})
+		flags.flagChannels[flag] = ch
+	}
+	flags.mu.Unlock()
 
 	select {
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-ch:
 		return nil
-
-	case <-ctx.Done():
-
-		return ctx.Err()
 	}
 }
