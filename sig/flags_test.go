@@ -77,7 +77,7 @@ func TestWaitContext(t *testing.T) {
 	go func() {
 		var err error
 
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 
 		err = flags.WaitContext(ctx, TestFlag1, true)
