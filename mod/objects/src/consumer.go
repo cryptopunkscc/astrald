@@ -3,14 +3,19 @@ package objects
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
+	"strconv"
 )
+
+var _ objects.Consumer = &Consumer{}
 
 type Consumer struct {
 	mod    *Module
@@ -22,7 +27,7 @@ func NewConsumer(mod *Module, caller id.Identity, target id.Identity) *Consumer 
 	return &Consumer{mod: mod, caller: caller, target: target}
 }
 
-func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opts) (data []desc.Data, err error) {
+func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opts) (descs []*desc.Desc, err error) {
 	var query = net.NewQuery(
 		c.caller,
 		c.target,
@@ -57,10 +62,13 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opt
 			continue
 		}
 
-		data = append(data, d)
+		descs = append(descs, &desc.Desc{
+			Source: c.target,
+			Data:   d,
+		})
 	}
 
-	return data, nil
+	return descs, nil
 }
 
 func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (conn net.SecureConn, err error) {
@@ -68,8 +76,8 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 		"id": objectID.String(),
 	}
 
-	if opts.IdentityFilter != nil {
-		if !opts.IdentityFilter(c.target) {
+	if opts.QueryFilter != nil {
+		if !opts.QueryFilter(c.target) {
 			return
 		}
 	}
@@ -81,4 +89,57 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	var query = net.NewQuery(c.caller, c.target, router.Query(readServiceName, params))
 
 	return net.Route(ctx, c.mod.node.Router(), query)
+}
+
+func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
+	params := router.Params{
+		"size": strconv.FormatInt(int64(len(p)), 10),
+	}
+
+	var query = net.NewQuery(c.caller, c.target, router.Query(putServiceName, params))
+
+	conn, err := net.Route(ctx, c.mod.node.Router(), query)
+	if err != nil {
+		return object.ID{}, err
+	}
+	defer conn.Close()
+
+	n, err := conn.Write(p)
+	if err != nil {
+		return object.ID{}, err
+	}
+	if n != len(p) {
+		return object.ID{}, errors.New("write failed")
+	}
+
+	var status int
+	var objectID object.ID
+
+	err = cslq.Decode(conn, "cv", &status, &objectID)
+	if err != nil {
+		return object.ID{}, err
+	}
+	if status != 0 {
+		return object.ID{}, errors.New("remote error")
+	}
+
+	return objectID, nil
+}
+
+func (c *Consumer) Find(ctx context.Context, q string) (matches []objects.Match, err error) {
+	params := router.Params{
+		"q": q,
+	}
+
+	var query = net.NewQuery(c.caller, c.target, router.Query(findServiceName, params))
+
+	conn, err := net.Route(ctx, c.mod.node.Router(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	err = json.NewDecoder(conn).Decode(&matches)
+
+	return
 }

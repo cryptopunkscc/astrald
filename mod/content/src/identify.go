@@ -36,7 +36,7 @@ func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 	}
 
 	// read first bytes for type identification
-	dataReader, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts)
+	dataReader, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return nil, err
 	}

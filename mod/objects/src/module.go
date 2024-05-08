@@ -76,7 +76,7 @@ func (mod *Module) Find(ctx context.Context, query string, opts *objects.FindOpt
 	var errs []error
 
 	if opts == nil {
-		opts = &objects.FindOpts{}
+		opts = objects.DefaultFindOpts()
 	}
 
 	for _, finder := range mod.finders.Clone() {

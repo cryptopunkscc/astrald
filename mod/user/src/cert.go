@@ -33,7 +33,7 @@ func (mod *Module) makeCert(userID id.Identity, nodeID id.Identity) (cert []byte
 		return
 	}
 
-	return mod.objects.Get(certID, objects.DefaultOpenOpts)
+	return mod.objects.Get(certID, objects.DefaultOpenOpts())
 }
 
 func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {

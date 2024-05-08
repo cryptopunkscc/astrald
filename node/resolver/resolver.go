@@ -1,7 +1,7 @@
 package resolver
 
 import (
-	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 )
@@ -55,7 +55,7 @@ func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
 		}
 	}
 
-	return id.Identity{}, errors.New("unknown identity")
+	return id.Identity{}, fmt.Errorf("unknown identity: %s", s)
 }
 
 func (c *CoreResolver) DisplayName(identity id.Identity) string {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 	"os"
 	"path/filepath"
@@ -91,7 +92,7 @@ func (w *Writer) Commit() (object.ID, error) {
 		})
 		w.mod.events.Emit(objects.EventObjectDiscovered{
 			ObjectID: objectID,
-			Zone:     objects.ZoneLocal,
+			Zone:     net.ZoneDevice,
 		})
 	}
 

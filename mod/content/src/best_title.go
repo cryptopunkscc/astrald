@@ -3,7 +3,6 @@ package content
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
@@ -13,50 +12,48 @@ import (
 )
 
 func (mod *Module) BestTitle(objectID object.ID) string {
-	descs := mod.objects.Describe(context.Background(), objectID, &desc.Opts{
-		IdentityFilter: id.AllowEveryone,
-	})
+	descs := mod.objects.Describe(context.Background(), objectID, desc.DefaultOpts())
 
 	var m = map[string]*desc.Desc{}
-	for _, desc := range descs {
-		t := desc.Data.Type()
+	for _, d := range descs {
+		t := d.Data.Type()
 		cur, found := m[t]
 		if !found {
-			m[t] = desc
+			m[t] = d
 			continue
 		}
-		if mod.compareTrust(cur, desc) > 0 {
-			m[t] = desc
+		if mod.compareTrust(cur, d) > 0 {
+			m[t] = d
 		}
 	}
 
-	if desc, found := m[content.LabelDesc{}.Type()]; found {
-		d, _ := desc.Data.(content.LabelDesc)
+	if d, found := m[content.LabelDesc{}.Type()]; found {
+		d, _ := d.Data.(content.LabelDesc)
 		return d.Label
 	}
 
-	if desc, found := m[keys.KeyDesc{}.Type()]; found {
-		d, _ := desc.Data.(keys.KeyDesc)
+	if d, found := m[keys.KeyDesc{}.Type()]; found {
+		d, _ := d.Data.(keys.KeyDesc)
 		return d.String()
 	}
 
-	if desc, found := m[fs.FileDesc{}.Type()]; found {
-		d, _ := desc.Data.(fs.FileDesc)
+	if d, found := m[fs.FileDesc{}.Type()]; found {
+		d, _ := d.Data.(fs.FileDesc)
 		return d.String()
 	}
 
-	if desc, found := m[(&media.Audio{}).Type()]; found {
-		d, _ := desc.Data.(*media.Audio)
+	if d, found := m[(&media.Audio{}).Type()]; found {
+		d, _ := d.Data.(*media.Audio)
 		return d.String()
 	}
 
-	if desc, found := m[content.TypeDesc{}.Type()]; found {
-		d, _ := desc.Data.(content.TypeDesc)
+	if d, found := m[content.TypeDesc{}.Type()]; found {
+		d, _ := d.Data.(content.TypeDesc)
 		return "Untitled " + d.String()
 	}
 
-	for _, desc := range descs {
-		if s, ok := desc.Data.(fmt.Stringer); ok {
+	for _, d := range descs {
+		if s, ok := d.Data.(fmt.Stringer); ok {
 			return s.String()
 		}
 	}

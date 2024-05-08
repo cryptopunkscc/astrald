@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shares"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/object"
@@ -31,11 +32,11 @@ type Module struct {
 	shares  shares.Module
 
 	mu            sync.Mutex
-	autoIndexZone objects.Zone
+	autoIndexZone net.Zone
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	mod.autoIndexZone = objects.Zones(mod.config.AutoIndexZones)
+	mod.autoIndexZone = net.Zones(mod.config.AutoIndexZones)
 
 	go events.Handle(ctx, mod.node.Events(), func(event objects.EventObjectDiscovered) error {
 		return mod.onObjectDiscovered(ctx, event)
@@ -64,7 +65,7 @@ func (mod *Module) onObjectDiscovered(ctx context.Context, event objects.EventOb
 		for _, entry := range archive.Entries {
 			mod.events.Emit(objects.EventObjectDiscovered{
 				ObjectID: entry.ObjectID,
-				Zone:     objects.ZoneVirtual | event.Zone,
+				Zone:     net.ZoneVirtual | event.Zone,
 			})
 		}
 	}
@@ -76,8 +77,8 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 		opts = &objects.OpenOpts{}
 	}
 
-	if !opts.Zone.Is(objects.ZoneVirtual) {
-		return nil, objects.ErrZoneExcluded
+	if !opts.Zone.Is(net.ZoneVirtual) {
+		return nil, net.ErrZoneExcluded
 	}
 
 	if opts.Offset > objectID.Size {

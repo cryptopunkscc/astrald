@@ -19,7 +19,7 @@ func (mod *Module) indexData(objectID object.ID) error {
 		return relay.ErrCertAlreadyIndexed
 	}
 
-	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts)
+	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 }
 
 func (mod *Module) LoadCert(objectID object.ID) (*relay.Cert, error) {
-	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts)
+	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return nil, err
 	}

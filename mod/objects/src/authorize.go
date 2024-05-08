@@ -10,7 +10,7 @@ import (
 func (mod *Module) Authorize(id id.Identity, action string, args ...any) bool {
 	switch action {
 	case objects.ActionRead,
-		objects.ActionCreate,
+		objects.ActionWrite,
 		objects.ActionPurge:
 		if len(args) == 0 {
 			return false

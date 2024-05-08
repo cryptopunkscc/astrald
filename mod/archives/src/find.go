@@ -3,10 +3,15 @@ package archives
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"strings"
 )
 
 func (mod *Module) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
+	if !opts.Zone.Is(net.ZoneVirtual) {
+		return nil, net.ErrZoneExcluded
+	}
+
 	var rows []*dbEntry
 
 	query = "%" + strings.ToLower(query) + "%"

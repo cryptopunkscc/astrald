@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/object"
@@ -18,8 +19,6 @@ import (
 	"time"
 )
 
-const localShareSetPrefix = ".shares.local"
-const remoteShareSetPrefix = ".shares.remote"
 const resyncInterval = time.Hour
 const resyncAge = 5 * time.Minute
 const workers = 8
@@ -87,8 +86,8 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !opts.Zone.Is(objects.ZoneNetwork) {
-		return nil, objects.ErrZoneExcluded
+	if !opts.Zone.Is(net.ZoneNetwork) {
+		return nil, net.ErrZoneExcluded
 	}
 
 	var rows []dbRemoteData

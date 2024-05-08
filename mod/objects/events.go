@@ -1,6 +1,9 @@
 package objects
 
-import "github.com/cryptopunkscc/astrald/object"
+import (
+	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/object"
+)
 
 type EventObjectCommitted struct {
 	ObjectID object.ID
@@ -12,5 +15,5 @@ type EventObjectPurged struct {
 
 type EventObjectDiscovered struct {
 	ObjectID object.ID
-	Zone     Zone
+	Zone     net.Zone
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -32,7 +33,7 @@ func (mod *Module) Index(ctx context.Context, objectID object.ID, opts *objects.
 	for _, entry := range archive.Entries {
 		mod.events.Emit(objects.EventObjectDiscovered{
 			ObjectID: entry.ObjectID,
-			Zone:     objects.ZoneVirtual,
+			Zone:     net.ZoneVirtual,
 		})
 	}
 

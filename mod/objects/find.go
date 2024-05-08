@@ -2,7 +2,7 @@ package objects
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -11,12 +11,17 @@ type Finder interface {
 }
 
 type FindOpts struct {
-	Zone   Zone
-	Filter id.Filter
+	net.Scope
 }
 
 type Match struct {
 	ObjectID object.ID
 	Score    int
 	Exp      string
+}
+
+func DefaultFindOpts() *FindOpts {
+	return &FindOpts{
+		Scope: net.DefaultScope(),
+	}
 }

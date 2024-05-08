@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/net"
 )
 
 type Admin struct {
@@ -28,25 +28,30 @@ func NewAdmin(mod *Module) *Admin {
 
 func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	var err error
-	var opts = &desc.Opts{
-		IdentityFilter: id.AllowEveryone,
-	}
+	var zonesArg string
+	var opts = desc.DefaultOpts()
 
 	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
-	flags.BoolVar(&opts.Network, "n", false, "use network sources")
+	flags.StringVar(&zonesArg, "z", "lv", "set zones to use")
 	flags.SetOutput(term)
 	err = flags.Parse(args)
 	if err != nil {
 		return err
 	}
 
-	if len(flags.Args()) == 0 {
-		return errors.New("missing data id")
+	args = flags.Args()
+
+	if len(args) == 0 {
+		return errors.New("missing identity")
 	}
 
 	identity, err := adm.mod.node.Resolver().Resolve(args[0])
 	if err != nil {
 		return err
+	}
+
+	if zonesArg != "" {
+		opts.Zone = net.Zones(zonesArg)
 	}
 
 	var descs = adm.mod.Describe(context.Background(), identity, opts)

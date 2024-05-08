@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"io"
@@ -32,12 +32,10 @@ func NewProvider(mod *Module) *Provider {
 
 	srv.router.AddRouteFunc(readServiceName, srv.Read)
 	srv.router.AddRouteFunc(describeServiceName, srv.Describe)
+	srv.router.AddRouteFunc(putServiceName, srv.Put)
+	srv.router.AddRouteFunc(findServiceName, srv.Find)
 
 	return srv
-}
-
-func (srv *Provider) Run(ctx context.Context) error {
-	return nil
 }
 
 func (srv *Provider) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
@@ -53,7 +51,7 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 		return net.Reject()
 	}
 
-	var opts = &objects.OpenOpts{Zone: objects.DefaultZones}
+	var opts = objects.DefaultOpenOpts()
 	opts.Offset, err = params.GetUint64("offset")
 	if err != nil && !errors.Is(err, router.ErrKeyNotFound) {
 		srv.mod.log.Errorv(2, "offset: invalid argument: %v", err)
@@ -83,7 +81,7 @@ func (srv *Provider) Describe(ctx context.Context, query net.Query, caller net.S
 		return net.Reject()
 	}
 
-	if !srv.mod.node.Auth().Authorize(query.Caller(), shares.DescribeAction, objectID) {
+	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionRead, objectID) {
 		return net.Reject()
 	}
 
@@ -109,5 +107,71 @@ func (srv *Provider) Describe(ctx context.Context, query net.Query, caller net.S
 		}
 
 		json.NewEncoder(conn).Encode(list)
+	})
+}
+
+func (srv *Provider) Put(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	_, params := router.ParseQuery(query.Query())
+
+	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionWrite) {
+		return net.Reject()
+	}
+
+	size, err := params.GetUint64("size")
+	if err != nil {
+		return net.Reject()
+	}
+
+	w, err := srv.mod.Create(&objects.CreateOpts{Alloc: int(size)})
+	if err != nil {
+		return net.Reject()
+	}
+
+	return net.Accept(query, caller, func(conn net.SecureConn) {
+		defer conn.Close()
+
+		_, err := io.CopyN(w, conn, int64(size))
+		if err != nil {
+			cslq.Encode(conn, "c", 1)
+			return
+		}
+
+		objectID, err := w.Commit()
+		if err != nil {
+			cslq.Encode(conn, "c", 1)
+			return
+		}
+
+		cslq.Encode(conn, "cv", 0, objectID)
+	})
+}
+
+func (srv *Provider) Find(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionFind) {
+		return net.Reject()
+	}
+
+	_, params := router.ParseQuery(query.Query())
+
+	q, ok := params["q"]
+	if !ok {
+		return net.Reject()
+	}
+
+	matches, err := srv.mod.Find(ctx, q, objects.DefaultFindOpts())
+	if err != nil {
+		return net.Reject()
+	}
+
+	matches = slices.DeleteFunc(matches, func(match objects.Match) bool {
+		return !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionRead, match.ObjectID)
+	})
+
+	return net.Accept(query, caller, func(conn net.SecureConn) {
+		defer conn.Close()
+
+		json.NewEncoder(conn).Encode(matches)
+
+		return
 	})
 }

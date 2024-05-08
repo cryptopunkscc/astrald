@@ -3,6 +3,7 @@ package desc
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/net"
 )
 
 type Describer[T any] interface {
@@ -21,13 +22,18 @@ type Data interface {
 }
 
 type Opts struct {
-	Network        bool
-	IdentityFilter id.Filter
+	net.Scope
+}
+
+func DefaultOpts() *Opts {
+	return &Opts{
+		Scope: net.DefaultScope(),
+	}
 }
 
 func Collect[T any](ctx context.Context, object T, opts *Opts, d ...Describer[T]) []*Desc {
 	if opts == nil {
-		opts = &Opts{}
+		opts = DefaultOpts()
 	}
 
 	var descs []*Desc

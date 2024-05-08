@@ -3,6 +3,7 @@ package fs
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"strings"
 )
 
@@ -15,6 +16,10 @@ func NewFinder(module *Module) *Finder {
 }
 
 func (finder *Finder) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
+	if !opts.Zone.Is(net.ZoneDevice) {
+		return nil, net.ErrZoneExcluded
+	}
+
 	var rows []*dbLocalFile
 
 	err = finder.mod.db.

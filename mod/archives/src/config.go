@@ -1,9 +1,11 @@
 package archives
 
+import "github.com/cryptopunkscc/astrald/net"
+
 type Config struct {
-	AutoIndexZones string // list of zones (l - local, v - virtual, n - network)
+	AutoIndexZones string
 }
 
 var defaultConfig = Config{
-	AutoIndexZones: "lv",
+	AutoIndexZones: (net.ZoneDevice | net.ZoneVirtual).String(),
 }

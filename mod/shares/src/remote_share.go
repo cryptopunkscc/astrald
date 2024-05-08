@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 	"strings"
 	"time"
@@ -121,9 +122,9 @@ func (share *Import) Sync(ctx context.Context) (err error) {
 
 			// add a task to cache descriptors
 			share.mod.tasks <- func(ctx context.Context) {
-				_, err := share.Describe(ctx, update.ObjectID, &desc.Opts{
-					Network: true,
-				})
+				opts := desc.DefaultOpts()
+				opts.Zone |= net.ZoneNetwork
+				_, err := share.Describe(ctx, update.ObjectID, opts)
 				if err != nil {
 					share.mod.log.Errorv(2, "describe %v: %v", update.ObjectID, err)
 				}
@@ -191,12 +192,12 @@ func (share *Import) Describe(ctx context.Context, objectID object.ID, opts *des
 	}
 
 	// check conditions
-	if !opts.Network {
+	if !opts.Zone.Is(net.ZoneNetwork) {
 		return nil, nil
 	}
 
-	if opts.IdentityFilter != nil {
-		if !opts.IdentityFilter(share.target) {
+	if opts.QueryFilter != nil {
+		if !opts.QueryFilter(share.target) {
 			return nil, nil
 		}
 	}
@@ -207,9 +208,13 @@ func (share *Import) Describe(ctx context.Context, objectID object.ID, opts *des
 	}
 
 	// make the request
-	descData, err = remoteObjects.Describe(ctx, objectID, opts)
+	descs, err = remoteObjects.Describe(ctx, objectID, opts)
 	if err != nil {
 		return
+	}
+
+	for _, d := range descs {
+		descData = append(descData, d.Data)
 	}
 
 	// cache results
@@ -218,7 +223,7 @@ func (share *Import) Describe(ctx context.Context, objectID object.ID, opts *des
 		share.mod.log.Error("error storing cache: %v", err)
 	}
 
-	return addSourceToData(descData, share.target), nil
+	return descs, nil
 }
 
 func addSourceToData(list []desc.Data, source id.Identity) (descs []*desc.Desc) {

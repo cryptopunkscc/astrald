@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 	"slices"
 	"time"
@@ -21,8 +22,7 @@ type OpenerSet []*Opener
 
 func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if opts == nil {
-		opts = &objects.OpenOpts{}
-		*opts = *objects.DefaultOpenOpts
+		opts = objects.DefaultOpenOpts()
 	}
 
 	zone := opts.Zone
@@ -39,8 +39,8 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	defer cancel()
 
 	// limit first attempt to local zone
-	if zone.Is(objects.ZoneLocal) {
-		opts.Zone = zone & objects.ZoneLocal
+	if zone.Is(net.ZoneDevice) {
+		opts.Zone = zone & net.ZoneDevice
 		r, err := openers.OpenFirst(ctx, objectID, opts)
 		if err == nil {
 			return r, nil
@@ -48,8 +48,8 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	}
 
 	// then include the virtual zone
-	if zone.Is(objects.ZoneVirtual) {
-		opts.Zone = zone & (objects.ZoneLocal | objects.ZoneVirtual)
+	if zone.Is(net.ZoneVirtual) {
+		opts.Zone = zone & (net.ZoneDevice | net.ZoneVirtual)
 		r, err := openers.OpenFirst(ctx, objectID, opts)
 		if err == nil {
 			return r, nil
@@ -57,8 +57,8 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	}
 
 	// then include the network
-	if zone.Is(objects.ZoneNetwork) {
-		opts.Zone = zone & (objects.ZoneLocal | objects.ZoneVirtual | objects.ZoneNetwork)
+	if zone.Is(net.ZoneNetwork) {
+		opts.Zone = zone & (net.ZoneDevice | net.ZoneVirtual | net.ZoneNetwork)
 		r, err := openers.OpenFirst(ctx, objectID, opts)
 		if err == nil {
 			return r, nil

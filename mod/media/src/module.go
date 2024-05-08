@@ -2,11 +2,11 @@ package media
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/object"
@@ -42,10 +42,10 @@ func (mod *Module) Run(ctx context.Context) error {
 	})
 
 	for event := range mod.content.Scan(ctx, nil) {
-		opts := &desc.Opts{}
+		opts := desc.DefaultOpts()
+
 		if slices.Contains(mod.config.AutoIndexNet, event.Type) {
-			opts.Network = true
-			opts.IdentityFilter = id.AllowEveryone
+			opts.Zone |= net.ZoneNetwork
 		}
 
 		mod.Describe(ctx, event.ObjectID, opts)

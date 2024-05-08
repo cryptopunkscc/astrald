@@ -41,8 +41,10 @@ type Module interface {
 }
 
 type Consumer interface {
-	Describe(context.Context, object.ID, *desc.Opts) ([]desc.Data, error)
+	Describe(context.Context, object.ID, *desc.Opts) ([]*desc.Desc, error)
 	Open(context.Context, object.ID, *OpenOpts) (net.SecureConn, error)
+	Put(context.Context, []byte) (object.ID, error)
+	Find(context.Context, string) ([]Match, error)
 }
 
 type Describer interface {

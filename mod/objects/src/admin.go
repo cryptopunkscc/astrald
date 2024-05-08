@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
@@ -83,8 +84,8 @@ func (adm *Admin) purge(term admin.Terminal, args []string) error {
 func (adm *Admin) read(term admin.Terminal, args []string) error {
 	var err error
 	var opts = &objects.OpenOpts{
-		Zone:           objects.DefaultZones,
-		IdentityFilter: id.AllowEveryone,
+		Zone:        net.DefaultZones,
+		QueryFilter: id.AllowEveryone,
 	}
 	var zones string
 
@@ -101,7 +102,7 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 	}
 
 	if len(zones) > 0 {
-		opts.Zone = objects.Zones(zones)
+		opts.Zone = net.Zones(zones)
 	}
 
 	for _, arg := range flags.Args() {
@@ -123,13 +124,14 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 
 func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	var err error
-	var opts = &desc.Opts{
-		IdentityFilter: id.AllowEveryone,
-	}
+	var zonesArg string
+	var provider string
+	var opts = desc.DefaultOpts()
 
 	// parse args
 	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
-	flags.BoolVar(&opts.Network, "n", false, "use network sources")
+	flags.StringVar(&zonesArg, "z", opts.Zone.String(), "set zones to use")
+	flags.StringVar(&provider, "p", "", "query this provider")
 	flags.SetOutput(term)
 	err = flags.Parse(args)
 	if err != nil {
@@ -147,7 +149,27 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	var desc = adm.mod.Describe(context.Background(), objectID, opts)
+	if zonesArg != "" {
+		opts.Zone = net.Zones(zonesArg)
+	}
+
+	var descs []*desc.Desc
+
+	if len(provider) > 0 {
+		providerID, err := adm.mod.node.Resolver().Resolve(provider)
+		if err != nil {
+			return err
+		}
+
+		c := NewConsumer(adm.mod, term.UserIdentity(), providerID)
+
+		descs, err = c.Describe(context.Background(), objectID, desc.DefaultOpts())
+		if err != nil {
+			return err
+		}
+	} else {
+		descs = adm.mod.Describe(context.Background(), objectID, opts)
+	}
 
 	term.Printf("%-6s %v\n", admin.Header("SHA256"), admin.Keyword(hex.EncodeToString(objectID.Hash[:])))
 	term.Printf("%-6s %v", admin.Header("SIZE"), admin.Keyword(log.DataSize(objectID.Size).HumanReadable()))
@@ -159,7 +181,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	term.Printf("\n\n")
 
 	// print descriptors
-	for _, d := range desc {
+	for _, d := range descs {
 		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Data.Type()))
 
 		j, err := json.MarshalIndent(d.Data, "  ", "  ")
@@ -177,9 +199,46 @@ func (adm *Admin) find(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	var opts = &objects.FindOpts{}
+	var opts = objects.DefaultFindOpts()
+	var zonesArg string
+	var provider string
+	var err error
 
-	matches, err := adm.mod.Find(context.Background(), args[0], opts)
+	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
+	flags.StringVar(&zonesArg, "z", opts.Zone.String(), "set zones to use")
+	flags.StringVar(&provider, "p", "", "query this provider")
+	flags.SetOutput(term)
+	err = flags.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	if zonesArg != "" {
+		opts.Zone = net.Zones(zonesArg)
+	}
+
+	args = flags.Args()
+
+	var matches []objects.Match
+
+	if len(provider) > 0 {
+		var providerID id.Identity
+
+		providerID, err = adm.mod.node.Resolver().Resolve(provider)
+		if err != nil {
+			return err
+		}
+
+		c := NewConsumer(adm.mod, term.UserIdentity(), providerID)
+
+		matches, err = c.Find(context.Background(), args[0])
+	} else {
+		matches, err = adm.mod.Find(context.Background(), args[0], opts)
+	}
+
+	if err != nil {
+		return err
+	}
 
 	for _, match := range matches {
 		var name string
