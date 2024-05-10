@@ -18,19 +18,23 @@ import (
 var _ objects.Consumer = &Consumer{}
 
 type Consumer struct {
-	mod    *Module
-	caller id.Identity
-	target id.Identity
+	mod        *Module
+	consumerID id.Identity
+	providerID id.Identity
 }
 
-func NewConsumer(mod *Module, caller id.Identity, target id.Identity) *Consumer {
-	return &Consumer{mod: mod, caller: caller, target: target}
+func NewConsumer(mod *Module, consumerID id.Identity, providerID id.Identity) *Consumer {
+	return &Consumer{
+		mod:        mod,
+		consumerID: consumerID,
+		providerID: providerID,
+	}
 }
 
 func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opts) (descs []*desc.Desc, err error) {
 	var query = net.NewQuery(
-		c.caller,
-		c.target,
+		c.consumerID,
+		c.providerID,
 		router.Query(
 			describeServiceName,
 			router.Params{
@@ -63,7 +67,7 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opt
 		}
 
 		descs = append(descs, &desc.Desc{
-			Source: c.target,
+			Source: c.providerID,
 			Data:   d,
 		})
 	}
@@ -71,13 +75,13 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opt
 	return descs, nil
 }
 
-func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (conn net.SecureConn, err error) {
+func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (r objects.Reader, err error) {
 	params := router.Params{
 		"id": objectID.String(),
 	}
 
 	if opts.QueryFilter != nil {
-		if !opts.QueryFilter(c.target) {
+		if !opts.QueryFilter(c.providerID) {
 			return
 		}
 	}
@@ -86,9 +90,23 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 		params.SetInt("offset", int(opts.Offset))
 	}
 
-	var query = net.NewQuery(c.caller, c.target, router.Query(readServiceName, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(readServiceName, params))
 
-	return net.Route(ctx, c.mod.node.Router(), query)
+	conn, err := net.Route(ctx, c.mod.node.Router(), query)
+	if err != nil {
+		return nil, err
+	}
+
+	r = &NetworkReader{
+		mod:        c.mod,
+		objectID:   objectID,
+		consumer:   c.consumerID,
+		provider:   c.providerID,
+		pos:        int64(opts.Offset),
+		ReadCloser: conn,
+	}
+
+	return
 }
 
 func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
@@ -96,7 +114,7 @@ func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
 		"size": strconv.FormatInt(int64(len(p)), 10),
 	}
 
-	var query = net.NewQuery(c.caller, c.target, router.Query(putServiceName, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(putServiceName, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {
@@ -131,7 +149,7 @@ func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Matc
 		"q": q,
 	}
 
-	var query = net.NewQuery(c.caller, c.target, router.Query(searchServiceName, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(searchServiceName, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {

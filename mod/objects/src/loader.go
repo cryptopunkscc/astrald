@@ -27,6 +27,8 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 		panic(err)
 	}
 
+	mod.AddFinder(&LinkedFinder{mod: mod})
+
 	return mod, nil
 }
 

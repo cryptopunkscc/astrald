@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 	"slices"
+	"sync"
 	"time"
 )
 
@@ -56,10 +57,9 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 		}
 	}
 
-	// then include the network
+	// then try the network
 	if zone.Is(net.ZoneNetwork) {
-		opts.Zone = zone & (net.ZoneDevice | net.ZoneVirtual | net.ZoneNetwork)
-		r, err := openers.OpenFirst(ctx, objectID, opts)
+		r, err := mod.openNetwork(ctx, objectID, opts)
 		if err == nil {
 			return r, nil
 		}
@@ -81,6 +81,59 @@ func (mod *Module) AddOpener(opener objects.Opener, priority int) error {
 		Opener:   opener,
 		Priority: priority,
 	})
+}
+
+func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+	if !opts.Zone.Is(net.ZoneNetwork) {
+		return nil, net.ErrZoneExcluded
+	}
+
+	providers := mod.Find(ctx, objectID, &net.Scope{Zone: opts.Zone})
+
+	if opts.QueryFilter != nil {
+		providers = slices.DeleteFunc(providers, func(identity id.Identity) bool {
+			return !opts.QueryFilter(identity)
+		})
+	}
+
+	var conns = make(chan objects.Reader, 1)
+	var wg sync.WaitGroup
+
+	ctx, done := context.WithCancel(ctx)
+	defer done()
+
+	for _, providerID := range providers {
+		providerID := providerID
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			c := NewConsumer(mod, mod.node.Identity(), providerID)
+
+			r, err := c.Open(ctx, objectID, opts)
+			if err != nil {
+				return
+			}
+
+			select {
+			case conns <- r:
+				done()
+			default:
+				r.Close()
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(conns)
+
+	r, ok := <-conns
+	if !ok {
+		return nil, objects.ErrNotFound
+	}
+
+	return r, nil
 }
 
 func (set OpenerSet) OpenFirst(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {

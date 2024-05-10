@@ -103,18 +103,12 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 			continue
 		}
 
-		conn, err := remoteObjects.Open(ctx, objectID, opts)
+		r, err := remoteObjects.Open(ctx, objectID, opts)
 		if err != nil {
 			continue
 		}
 
-		return &RemoteDataReader{
-			caller:     row.Caller,
-			target:     row.Target,
-			mod:        mod,
-			objectID:   objectID,
-			ReadCloser: conn,
-		}, nil
+		return r, nil
 	}
 
 	return nil, objects.ErrNotFound

@@ -37,6 +37,7 @@ type Module struct {
 	describers sig.Set[objects.Describer]
 	searchers  sig.Set[objects.Searcher]
 	purgers    sig.Set[objects.Purger]
+	finders    sig.Set[objects.Finder]
 
 	provider *Provider
 

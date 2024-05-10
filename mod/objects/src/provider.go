@@ -52,6 +52,11 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 	}
 
 	var opts = objects.DefaultOpenOpts()
+
+	if hints.Origin == net.OriginLocal {
+		opts.Zone |= net.ZoneNetwork
+	}
+
 	opts.Offset, err = params.GetUint64("offset")
 	if err != nil && !errors.Is(err, router.ErrKeyNotFound) {
 		srv.mod.log.Errorv(2, "offset: invalid argument: %v", err)

@@ -83,14 +83,11 @@ func (adm *Admin) purge(term admin.Terminal, args []string) error {
 
 func (adm *Admin) read(term admin.Terminal, args []string) error {
 	var err error
-	var opts = &objects.OpenOpts{
-		Zone:        net.DefaultZones,
-		QueryFilter: id.AllowEveryone,
-	}
+	var opts = objects.DefaultOpenOpts()
 	var zones string
 
 	var flags = flag.NewFlagSet("read", flag.ContinueOnError)
-	flags.StringVar(&zones, "z", "lv", "enabled zones")
+	flags.StringVar(&zones, "z", opts.Zone.String(), "enabled zones")
 	flags.SetOutput(term)
 	err = flags.Parse(args)
 	if err != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
-	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -28,6 +27,9 @@ type Module interface {
 	AddSearcher(Searcher) error
 	Searcher
 
+	AddFinder(Finder) error
+	Finder
+
 	AddPrototypes(protos ...desc.Data) error
 	UnmarshalDescriptor(name string, buf []byte) desc.Data
 
@@ -42,7 +44,7 @@ type Module interface {
 
 type Consumer interface {
 	Describe(context.Context, object.ID, *desc.Opts) ([]*desc.Desc, error)
-	Open(context.Context, object.ID, *OpenOpts) (net.SecureConn, error)
+	Open(context.Context, object.ID, *OpenOpts) (Reader, error)
 	Put(context.Context, []byte) (object.ID, error)
 	Search(context.Context, string) ([]Match, error)
 }
