@@ -29,7 +29,7 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 		objects.ActionRead,
 		objects.ActionWrite,
 		objects.ActionPurge,
-		objects.ActionFind,
+		objects.ActionSearch,
 		shares.DescribeAction,
 		presence.ScanAction:
 		return true

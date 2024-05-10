@@ -15,7 +15,7 @@ func NewFinder(module *Module) *Finder {
 	return &Finder{mod: module}
 }
 
-func (finder *Finder) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
+func (finder *Finder) Search(ctx context.Context, query string, opts *objects.SearchOpts) (matches []objects.Match, err error) {
 	if !opts.Zone.Is(net.ZoneDevice) {
 		return nil, net.ErrZoneExcluded
 	}

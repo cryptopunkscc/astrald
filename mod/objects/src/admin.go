@@ -35,7 +35,7 @@ func NewAdmin(mod *Module) *Admin {
 		"read":     adm.read,
 		"purge":    adm.purge,
 		"describe": adm.describe,
-		"find":     adm.find,
+		"search":   adm.search,
 		"fetch":    adm.fetch,
 		"info":     adm.info,
 		"help":     adm.help,
@@ -194,12 +194,12 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) find(term admin.Terminal, args []string) error {
+func (adm *Admin) search(term admin.Terminal, args []string) error {
 	if len(args) == 0 {
 		return errors.New("missing argument")
 	}
 
-	var opts = objects.DefaultFindOpts()
+	var opts = objects.DefaultSearchOpts()
 	var zonesArg string
 	var provider string
 	var err error
@@ -231,9 +231,9 @@ func (adm *Admin) find(term admin.Terminal, args []string) error {
 
 		c := NewConsumer(adm.mod, term.UserIdentity(), providerID)
 
-		matches, err = c.Find(context.Background(), args[0])
+		matches, err = c.Search(context.Background(), args[0])
 	} else {
-		matches, err = adm.mod.Find(context.Background(), args[0], opts)
+		matches, err = adm.mod.Search(context.Background(), args[0], opts)
 	}
 
 	if err != nil {
@@ -325,8 +325,8 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 		term.Printf("%s\n", p)
 	}
 
-	term.Printf("\n%v\n\n", admin.Header("Finders"))
-	list, _ = sig.MapSlice(adm.mod.finders.Clone(), func(i objects.Finder) (string, error) {
+	term.Printf("\n%v\n\n", admin.Header("Searchers"))
+	list, _ = sig.MapSlice(adm.mod.searchers.Clone(), func(i objects.Searcher) (string, error) {
 		if s, ok := i.(fmt.Stringer); ok {
 			return s.String(), nil
 		}

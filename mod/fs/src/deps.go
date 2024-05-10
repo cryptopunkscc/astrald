@@ -44,7 +44,7 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(fs.ModuleName, NewAdmin(mod))
 	}
 
-	mod.objects.AddFinder(NewFinder(mod))
+	mod.objects.AddSearcher(NewFinder(mod))
 	mod.objects.AddPrototypes(fs.FileDesc{})
 
 	// wait for data module to finish preparing

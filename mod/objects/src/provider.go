@@ -33,7 +33,7 @@ func NewProvider(mod *Module) *Provider {
 	srv.router.AddRouteFunc(readServiceName, srv.Read)
 	srv.router.AddRouteFunc(describeServiceName, srv.Describe)
 	srv.router.AddRouteFunc(putServiceName, srv.Put)
-	srv.router.AddRouteFunc(findServiceName, srv.Find)
+	srv.router.AddRouteFunc(searchServiceName, srv.Search)
 
 	return srv
 }
@@ -146,8 +146,8 @@ func (srv *Provider) Put(ctx context.Context, query net.Query, caller net.Secure
 	})
 }
 
-func (srv *Provider) Find(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionFind) {
+func (srv *Provider) Search(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionSearch) {
 		return net.Reject()
 	}
 
@@ -158,7 +158,7 @@ func (srv *Provider) Find(ctx context.Context, query net.Query, caller net.Secur
 		return net.Reject()
 	}
 
-	matches, err := srv.mod.Find(ctx, q, objects.DefaultFindOpts())
+	matches, err := srv.mod.Search(ctx, q, objects.DefaultSearchOpts())
 	if err != nil {
 		return net.Reject()
 	}

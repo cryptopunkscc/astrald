@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func (mod *Module) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
+func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (matches []objects.Match, err error) {
 	if !opts.Zone.Is(net.ZoneVirtual) {
 		return nil, net.ErrZoneExcluded
 	}

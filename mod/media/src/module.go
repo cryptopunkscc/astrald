@@ -32,7 +32,7 @@ type Module struct {
 
 type Indexer interface {
 	objects.Describer
-	objects.Finder
+	objects.Searcher
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -67,8 +67,8 @@ func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.
 	return nil
 }
 
-func (mod *Module) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
-	if s, _ := mod.audio.Find(ctx, query, opts); len(s) > 0 {
+func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (matches []objects.Match, err error) {
+	if s, _ := mod.audio.Search(ctx, query, opts); len(s) > 0 {
 		matches = append(matches, s...)
 	}
 	return

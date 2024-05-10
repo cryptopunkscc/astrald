@@ -126,12 +126,12 @@ func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
 	return objectID, nil
 }
 
-func (c *Consumer) Find(ctx context.Context, q string) (matches []objects.Match, err error) {
+func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Match, err error) {
 	params := router.Params{
 		"q": q,
 	}
 
-	var query = net.NewQuery(c.caller, c.target, router.Query(findServiceName, params))
+	var query = net.NewQuery(c.caller, c.target, router.Query(searchServiceName, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {

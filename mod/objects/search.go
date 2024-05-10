@@ -6,11 +6,11 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-type Finder interface {
-	Find(ctx context.Context, query string, opts *FindOpts) ([]Match, error)
+type Searcher interface {
+	Search(ctx context.Context, query string, opts *SearchOpts) ([]Match, error)
 }
 
-type FindOpts struct {
+type SearchOpts struct {
 	net.Scope
 }
 
@@ -20,8 +20,8 @@ type Match struct {
 	Exp      string
 }
 
-func DefaultFindOpts() *FindOpts {
-	return &FindOpts{
+func DefaultSearchOpts() *SearchOpts {
+	return &SearchOpts{
 		Scope: net.DefaultScope(),
 	}
 }

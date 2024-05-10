@@ -25,8 +25,8 @@ type Module interface {
 	AddPurger(purger Purger) error
 	Purger
 
-	AddFinder(Finder) error
-	Finder
+	AddSearcher(Searcher) error
+	Searcher
 
 	AddPrototypes(protos ...desc.Data) error
 	UnmarshalDescriptor(name string, buf []byte) desc.Data
@@ -44,7 +44,7 @@ type Consumer interface {
 	Describe(context.Context, object.ID, *desc.Opts) ([]*desc.Desc, error)
 	Open(context.Context, object.ID, *OpenOpts) (net.SecureConn, error)
 	Put(context.Context, []byte) (object.ID, error)
-	Find(context.Context, string) ([]Match, error)
+	Search(context.Context, string) ([]Match, error)
 }
 
 type Describer interface {

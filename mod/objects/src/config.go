@@ -11,7 +11,7 @@ import (
 const readServiceName = "objects.read"
 const describeServiceName = "objects.describe"
 const putServiceName = "objects.put"
-const findServiceName = "objects.find"
+const searchServiceName = "objects.search"
 
 type Config struct {
 	DescriptorWhitelist []string

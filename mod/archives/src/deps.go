@@ -35,7 +35,7 @@ func (mod *Module) LoadDependencies() error {
 	mod.objects.AddPrototypes(archives.ArchiveDesc{}, archives.EntryDesc{})
 	mod.objects.AddOpener(mod, 20)
 	mod.objects.AddDescriber(mod)
-	mod.objects.AddFinder(mod)
+	mod.objects.AddSearcher(mod)
 
 	return nil
 }

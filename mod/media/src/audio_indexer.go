@@ -42,7 +42,7 @@ func (mod *AudioIndexer) Describe(ctx context.Context, objectID object.ID, opts 
 	return
 }
 
-func (mod *AudioIndexer) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
+func (mod *AudioIndexer) Search(ctx context.Context, query string, opts *objects.SearchOpts) (matches []objects.Match, err error) {
 	var rows []*dbAudio
 
 	query = "%" + strings.ToLower(query) + "%"

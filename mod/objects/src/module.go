@@ -35,7 +35,7 @@ type Module struct {
 	openers    sig.Set[*Opener]
 	creators   sig.Set[*Creator]
 	describers sig.Set[objects.Describer]
-	finders    sig.Set[objects.Finder]
+	searchers  sig.Set[objects.Searcher]
 	purgers    sig.Set[objects.Purger]
 
 	provider *Provider
@@ -71,16 +71,16 @@ func (mod *Module) AddDescriber(describer objects.Describer) error {
 	return mod.describers.Add(describer)
 }
 
-func (mod *Module) Find(ctx context.Context, query string, opts *objects.FindOpts) ([]objects.Match, error) {
+func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) ([]objects.Match, error) {
 	var matches []objects.Match
 	var errs []error
 
 	if opts == nil {
-		opts = objects.DefaultFindOpts()
+		opts = objects.DefaultSearchOpts()
 	}
 
-	for _, finder := range mod.finders.Clone() {
-		m, err := finder.Find(ctx, query, opts)
+	for _, searcher := range mod.searchers.Clone() {
+		m, err := searcher.Search(ctx, query, opts)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -90,8 +90,8 @@ func (mod *Module) Find(ctx context.Context, query string, opts *objects.FindOpt
 	return matches, nil
 }
 
-func (mod *Module) AddFinder(finder objects.Finder) error {
-	return mod.finders.Add(finder)
+func (mod *Module) AddSearcher(searcher objects.Searcher) error {
+	return mod.searchers.Add(searcher)
 }
 
 func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {
