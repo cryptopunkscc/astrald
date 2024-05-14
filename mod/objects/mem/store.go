@@ -1,7 +1,9 @@
 package mem
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -30,7 +32,11 @@ func NewMemStore(events *events.Queue, size int64) *Store {
 	return mem
 }
 
-func (mem *Store) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mem *Store) Open(_ context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+	if !opts.Zone.Is(net.ZoneDevice) {
+		return nil, net.ErrZoneExcluded
+	}
+
 	bytes, found := mem.objects.Get(objectID.String())
 	if !found {
 		return nil, objects.ErrNotFound

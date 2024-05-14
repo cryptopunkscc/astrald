@@ -1,11 +1,11 @@
-package zip
+package archives
 
 import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/mod/zip"
 	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
@@ -29,12 +29,13 @@ func (mod *Module) LoadDependencies() error {
 
 	// inject admin command
 	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(zip.ModuleName, NewAdmin(mod))
+		adm.AddCommand(archives.ModuleName, NewAdmin(mod))
 	}
 
-	mod.objects.AddPrototypes(zip.ArchiveDesc{}, zip.MemberDesc{})
-	mod.objects.AddOpener("mod.zip", mod, 20)
+	mod.objects.AddPrototypes(archives.ArchiveDesc{}, archives.EntryDesc{})
+	mod.objects.AddOpener(mod, 20)
 	mod.objects.AddDescriber(mod)
+	mod.objects.AddSearcher(mod)
 
 	return nil
 }

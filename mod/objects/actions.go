@@ -1,7 +1,8 @@
 package objects
 
 const (
-	ReadAction   = "objects.read"
-	CreateAction = "objects.create"
-	PurgeAction  = "objects.purge"
+	ActionRead   = "objects.read"
+	ActionWrite  = "objects.write"
+	ActionPurge  = "objects.purge"
+	ActionSearch = "objects.search"
 )

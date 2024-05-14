@@ -1,4 +1,4 @@
-package zip
+package archives
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
@@ -15,7 +15,7 @@ type Authorizer struct {
 
 func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...any) bool {
 	switch action {
-	case objects.ReadAction:
+	case objects.ActionRead:
 		if len(args) == 0 {
 			return false
 		}
@@ -24,31 +24,31 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 			return false
 		}
 
-		var rows []*dbContents
+		var rows []*dbEntry
 
 		var err = auth.mod.db.
 			Unscoped().
-			Preload("Zip").
-			Where("file_id = ?", objectID).
+			Preload("Parent").
+			Where("object_id = ?", objectID).
 			Find(&rows).Error
 		if err != nil {
 			return false
 		}
 
 		for _, row := range rows {
-			if row.Zip == nil {
-				auth.mod.log.Errorv(1, "db row for file %v has null reference to zip", objectID)
+			if row.Parent == nil {
+				auth.mod.log.Errorv(1, "db: entry for %v references an invalid parent", objectID)
 				continue
 			}
 
-			zipID := row.Zip.DataID
+			zipID := row.Parent.ObjectID
 
 			// sanity check
 			if zipID.IsEqual(objectID) {
 				continue
 			}
 
-			return auth.mod.node.Auth().Authorize(identity, objects.ReadAction, zipID)
+			return auth.mod.node.Auth().Authorize(identity, objects.ActionRead, zipID)
 		}
 	}
 
@@ -56,5 +56,5 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 }
 
 func (auth *Authorizer) String() string {
-	return "mod.zip"
+	return "mod.archives"
 }

@@ -5,9 +5,9 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/dhowden/tag"
-	"io"
 	"strings"
 )
 
@@ -21,41 +21,28 @@ func NewAudioIndexer(mod *Module) *AudioIndexer {
 	return &AudioIndexer{Module: mod}
 }
 
-func (mod *AudioIndexer) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) []*desc.Desc {
-	var audio *media.Audio
-	var row dbAudio
-	var err = mod.db.Where("data_id = ?", objectID).First(&row).Error
-	if err == nil {
-		audio = &media.Audio{
-			Format:   row.Format,
-			Duration: row.Duration,
-			Title:    row.Title,
-			Artist:   row.Artist,
-			Album:    row.Album,
-			Genre:    row.Genre,
-			Year:     row.Year,
-		}
-	} else {
-		audio, err = mod.index(objectID, &objects.OpenOpts{
-			Virtual: true,
-		})
-		if err != nil {
-			mod.log.Errorv(2, "error indexing %v: %v", objectID, err)
-		} else {
-			mod.log.Infov(1, "indexed %s by %s", audio.Title, audio.Artist)
-		}
-	}
-	if audio == nil {
-		return nil
+func (mod *AudioIndexer) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) (descs []*desc.Desc) {
+	openOpts := &objects.OpenOpts{
+		Zone: net.ZoneDevice | net.ZoneVirtual,
 	}
 
-	return []*desc.Desc{{
-		Source: mod.node.Identity(),
-		Data:   audio,
-	}}
+	if opts.Zone.Is(net.ZoneNetwork) {
+		openOpts.Zone |= net.ZoneNetwork
+	}
+
+	audio, _ := mod.Index(ctx, objectID, openOpts)
+
+	if audio != nil {
+		descs = append(descs, &desc.Desc{
+			Source: mod.node.Identity(),
+			Data:   audio,
+		})
+	}
+
+	return
 }
 
-func (mod *AudioIndexer) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
+func (mod *AudioIndexer) Search(ctx context.Context, query string, opts *objects.SearchOpts) (matches []objects.Match, err error) {
 	var rows []*dbAudio
 
 	query = "%" + strings.ToLower(query) + "%"
@@ -71,7 +58,7 @@ func (mod *AudioIndexer) Find(ctx context.Context, query string, opts *objects.F
 
 	for _, row := range rows {
 		matches = append(matches, objects.Match{
-			ObjectID: row.DataID,
+			ObjectID: row.ObjectID,
 			Score:    100,
 			Exp:      "audio tags match query",
 		})
@@ -80,33 +67,33 @@ func (mod *AudioIndexer) Find(ctx context.Context, query string, opts *objects.F
 	return
 }
 
-func (mod *AudioIndexer) index(objectID object.ID, opts *objects.OpenOpts) (*media.Audio, error) {
-	r, err := mod.objects.Open(objectID, opts)
+func (mod *AudioIndexer) Forget(objectID object.ID) error {
+	return mod.clearCache(objectID)
+}
+
+func (mod *AudioIndexer) Index(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (*media.Audio, error) {
+	// check cache
+	if c := mod.getCache(objectID); c != nil {
+		return c, nil
+	}
+
+	// scan the object
+	info, err := mod.scanObject(ctx, objectID, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// save to cache
+	return info, mod.setCache(objectID, info)
+}
+
+func (mod *AudioIndexer) scanObject(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (*media.Audio, error) {
+	r, err := mod.objects.Open(ctx, objectID, opts)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	info, err := mod.scan(r)
-	if err != nil {
-		return nil, err
-	}
-
-	err = mod.db.Create(&dbAudio{
-		DataID:   objectID,
-		Format:   info.Format,
-		Duration: info.Duration,
-		Title:    info.Title,
-		Artist:   info.Artist,
-		Album:    info.Album,
-		Genre:    info.Genre,
-		Year:     info.Year,
-	}).Error
-
-	return info, err
-}
-
-func (mod *AudioIndexer) scan(r io.ReadSeeker) (*media.Audio, error) {
 	meta, err := tag.ReadFrom(r)
 	if err != nil {
 		return nil, err
@@ -120,4 +107,43 @@ func (mod *AudioIndexer) scan(r io.ReadSeeker) (*media.Audio, error) {
 		Genre:  meta.Genre(),
 		Year:   meta.Year(),
 	}, err
+}
+
+func (mod *AudioIndexer) setCache(objectID object.ID, audio *media.Audio) error {
+	return mod.db.Create(&dbAudio{
+		ObjectID: objectID,
+		Format:   audio.Format,
+		Duration: audio.Duration,
+		Title:    audio.Title,
+		Artist:   audio.Artist,
+		Album:    audio.Album,
+		Genre:    audio.Genre,
+		Year:     audio.Year,
+	}).Error
+}
+
+func (mod *AudioIndexer) clearCache(objectID object.ID) error {
+	return mod.db.
+		Where("object_id = ?", objectID).
+		Delete(&dbAudio{}).
+		Error
+}
+
+func (mod *AudioIndexer) getCache(objectID object.ID) (audio *media.Audio) {
+	var row dbAudio
+
+	err := mod.db.Where("object_id = ?", objectID).First(&row).Error
+	if err != nil {
+		return nil
+	}
+
+	return &media.Audio{
+		Format:   row.Format,
+		Duration: row.Duration,
+		Title:    row.Title,
+		Artist:   row.Artist,
+		Album:    row.Album,
+		Genre:    row.Genre,
+		Year:     row.Year,
+	}
 }

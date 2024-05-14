@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/events"
@@ -58,9 +59,13 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 // Open an object from the local filesystem
-func (mod *Module) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mod *Module) Open(_ context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if opts == nil {
 		opts = defaultOpenOpts
+	}
+
+	if !opts.Zone.Is(net.ZoneDevice) {
+		return nil, net.ErrZoneExcluded
 	}
 
 	paths := mod.path(objectID)
@@ -275,6 +280,13 @@ func (mod *Module) update(path string) (object.ID, error) {
 				NewID: updated.DataID,
 			})
 		}
+	}
+
+	if err == nil {
+		mod.events.Emit(objects.EventObjectDiscovered{
+			ObjectID: updated.DataID,
+			Zone:     net.ZoneDevice,
+		})
 	}
 
 	return updated.DataID, err

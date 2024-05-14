@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
@@ -34,7 +35,7 @@ func NewAdmin(mod *Module) *Admin {
 		"read":     adm.read,
 		"purge":    adm.purge,
 		"describe": adm.describe,
-		"find":     adm.find,
+		"search":   adm.search,
 		"fetch":    adm.fetch,
 		"info":     adm.info,
 		"help":     adm.help,
@@ -82,15 +83,11 @@ func (adm *Admin) purge(term admin.Terminal, args []string) error {
 
 func (adm *Admin) read(term admin.Terminal, args []string) error {
 	var err error
-	var opts = &objects.OpenOpts{
-		Virtual:        true,
-		Network:        false,
-		IdentityFilter: id.AllowEveryone,
-	}
+	var opts = objects.DefaultOpenOpts()
+	var zones string
 
 	var flags = flag.NewFlagSet("read", flag.ContinueOnError)
-	flags.BoolVar(&opts.Virtual, "v", true, "use virtual sources")
-	flags.BoolVar(&opts.Network, "n", false, "use network sources")
+	flags.StringVar(&zones, "z", opts.Zone.String(), "enabled zones")
 	flags.SetOutput(term)
 	err = flags.Parse(args)
 	if err != nil {
@@ -101,13 +98,17 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 		return errors.New("missing data id")
 	}
 
+	if len(zones) > 0 {
+		opts.Zone = net.Zones(zones)
+	}
+
 	for _, arg := range flags.Args() {
 		objectID, err := object.ParseID(arg)
 		if err != nil {
 			return err
 		}
 
-		r, err := adm.mod.Open(objectID, opts)
+		r, err := adm.mod.OpenAs(context.Background(), term.UserIdentity(), objectID, opts)
 		if err != nil {
 			return err
 		}
@@ -120,13 +121,14 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 
 func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	var err error
-	var opts = &desc.Opts{
-		IdentityFilter: id.AllowEveryone,
-	}
+	var zonesArg string
+	var provider string
+	var opts = desc.DefaultOpts()
 
 	// parse args
 	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
-	flags.BoolVar(&opts.Network, "n", false, "use network sources")
+	flags.StringVar(&zonesArg, "z", opts.Zone.String(), "set zones to use")
+	flags.StringVar(&provider, "p", "", "query this provider")
 	flags.SetOutput(term)
 	err = flags.Parse(args)
 	if err != nil {
@@ -144,7 +146,27 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	var desc = adm.mod.Describe(context.Background(), objectID, opts)
+	if zonesArg != "" {
+		opts.Zone = net.Zones(zonesArg)
+	}
+
+	var descs []*desc.Desc
+
+	if len(provider) > 0 {
+		providerID, err := adm.mod.node.Resolver().Resolve(provider)
+		if err != nil {
+			return err
+		}
+
+		c := NewConsumer(adm.mod, term.UserIdentity(), providerID)
+
+		descs, err = c.Describe(context.Background(), objectID, desc.DefaultOpts())
+		if err != nil {
+			return err
+		}
+	} else {
+		descs = adm.mod.Describe(context.Background(), objectID, opts)
+	}
 
 	term.Printf("%-6s %v\n", admin.Header("SHA256"), admin.Keyword(hex.EncodeToString(objectID.Hash[:])))
 	term.Printf("%-6s %v", admin.Header("SIZE"), admin.Keyword(log.DataSize(objectID.Size).HumanReadable()))
@@ -156,7 +178,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	term.Printf("\n\n")
 
 	// print descriptors
-	for _, d := range desc {
+	for _, d := range descs {
 		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Data.Type()))
 
 		j, err := json.MarshalIndent(d.Data, "  ", "  ")
@@ -169,14 +191,51 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) find(term admin.Terminal, args []string) error {
+func (adm *Admin) search(term admin.Terminal, args []string) error {
 	if len(args) == 0 {
 		return errors.New("missing argument")
 	}
 
-	var opts = &objects.FindOpts{}
+	var opts = objects.DefaultSearchOpts()
+	var zonesArg string
+	var provider string
+	var err error
 
-	matches, err := adm.mod.Find(context.Background(), args[0], opts)
+	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
+	flags.StringVar(&zonesArg, "z", opts.Zone.String(), "set zones to use")
+	flags.StringVar(&provider, "p", "", "query this provider")
+	flags.SetOutput(term)
+	err = flags.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	if zonesArg != "" {
+		opts.Zone = net.Zones(zonesArg)
+	}
+
+	args = flags.Args()
+
+	var matches []objects.Match
+
+	if len(provider) > 0 {
+		var providerID id.Identity
+
+		providerID, err = adm.mod.node.Resolver().Resolve(provider)
+		if err != nil {
+			return err
+		}
+
+		c := NewConsumer(adm.mod, term.UserIdentity(), providerID)
+
+		matches, err = c.Search(context.Background(), args[0])
+	} else {
+		matches, err = adm.mod.Search(context.Background(), args[0], opts)
+	}
+
+	if err != nil {
+		return err
+	}
 
 	for _, match := range matches {
 		var name string
@@ -214,20 +273,19 @@ func (adm *Admin) fetch(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	var f = "%-32s %6s %s\n"
+	var f = "%6s %s\n"
 
 	// list openers
-	openers := adm.mod.openers.Values()
+	openers := adm.mod.openers.Clone()
 	slices.SortFunc(openers, func(a, b *Opener) int {
 		return cmp.Compare(a.Priority, b.Priority) * -1
 	})
 
 	term.Printf("Openers:\n")
-	term.Printf(f, admin.Header("Name"), admin.Header("Prio"), admin.Header("Type"))
+	term.Printf(f, admin.Header("Prio"), admin.Header("Type"))
 	for _, opener := range openers {
 		term.Printf(
 			f,
-			opener.Name,
 			strconv.FormatInt(int64(opener.Priority), 10),
 			reflect.TypeOf(opener.Opener),
 		)
@@ -235,17 +293,16 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	term.Println()
 
 	// list creators
-	creators := adm.mod.creators.Values()
+	creators := adm.mod.creators.Clone()
 	slices.SortFunc(creators, func(a, b *Creator) int {
 		return cmp.Compare(a.Priority, b.Priority) * -1
 	})
 
 	term.Printf("Creators:\n")
-	term.Printf(f, admin.Header("Prio"), admin.Header("Name"), admin.Header("Type"))
+	term.Printf(f, admin.Header("Prio"), admin.Header("Type"))
 	for _, creator := range creators {
 		term.Printf(
 			f,
-			creator.Name,
 			strconv.FormatInt(int64(creator.Priority), 10),
 			reflect.TypeOf(creator.Creator),
 		)
@@ -265,8 +322,8 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 		term.Printf("%s\n", p)
 	}
 
-	term.Printf("\n%v\n\n", admin.Header("Finders"))
-	list, _ = sig.MapSlice(adm.mod.finders.Clone(), func(i objects.Finder) (string, error) {
+	term.Printf("\n%v\n\n", admin.Header("Searchers"))
+	list, _ = sig.MapSlice(adm.mod.searchers.Clone(), func(i objects.Searcher) (string, error) {
 		if s, ok := i.(fmt.Stringer); ok {
 			return s.String(), nil
 		}

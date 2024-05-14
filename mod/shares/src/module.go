@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/object"
@@ -18,8 +19,6 @@ import (
 	"time"
 )
 
-const localShareSetPrefix = ".shares.local"
-const remoteShareSetPrefix = ".shares.remote"
 const resyncInterval = time.Hour
 const resyncAge = 5 * time.Minute
 const workers = 8
@@ -86,9 +85,9 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !opts.Network {
-		return nil, objects.ErrNotFound
+func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+	if !opts.Zone.Is(net.ZoneNetwork) {
+		return nil, net.ErrZoneExcluded
 	}
 
 	var rows []dbRemoteData
@@ -104,21 +103,12 @@ func (mod *Module) Open(objectID object.ID, opts *objects.OpenOpts) (objects.Rea
 			continue
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-
-		conn, err := remoteObjects.Open(ctx, objectID, opts)
+		r, err := remoteObjects.Open(ctx, objectID, opts)
 		if err != nil {
 			continue
 		}
 
-		return &RemoteDataReader{
-			caller:     row.Caller,
-			target:     row.Target,
-			mod:        mod,
-			objectID:   objectID,
-			ReadCloser: conn,
-		}, nil
+		return r, nil
 	}
 
 	return nil, objects.ErrNotFound

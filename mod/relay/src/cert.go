@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
@@ -18,7 +19,7 @@ func (mod *Module) indexData(objectID object.ID) error {
 		return relay.ErrCertAlreadyIndexed
 	}
 
-	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
+	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return err
 	}
@@ -157,7 +158,7 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 	}
 
 	for _, certID := range certIDs {
-		bytes, err := mod.objects.Get(certID, &objects.OpenOpts{Virtual: true})
+		bytes, err := mod.objects.Get(certID, nil)
 		if err != nil {
 			mod.log.Errorv(2, "error reading %v: %v", certID, err)
 			continue
@@ -169,7 +170,7 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 }
 
 func (mod *Module) LoadCert(objectID object.ID) (*relay.Cert, error) {
-	r, err := mod.objects.Open(objectID, &objects.OpenOpts{Virtual: true})
+	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return nil, err
 	}

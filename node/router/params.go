@@ -28,6 +28,20 @@ func (params Params) GetInt(key string) (int, error) {
 
 }
 
+func (params Params) GetUint64(key string) (uint64, error) {
+	v, found := params[key]
+	if !found {
+		return 0, ErrKeyNotFound
+	}
+
+	i, err := strconv.ParseUint(v, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse error: %w", err)
+	}
+
+	return i, nil
+}
+
 func (params Params) SetInt(key string, value int) {
 	params[key] = strconv.FormatInt(int64(value), 10)
 }

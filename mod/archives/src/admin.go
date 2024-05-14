@@ -1,8 +1,10 @@
-package zip
+package archives
 
 import (
+	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -14,9 +16,9 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"index":   adm.index,
-		"unindex": adm.unindex,
-		"forget":  adm.forget,
+		"index":  adm.index,
+		"forget": adm.forget,
+		"help":   adm.help,
 	}
 
 	return adm
@@ -45,20 +47,14 @@ func (adm *Admin) index(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	return adm.mod.Index(objectID)
-}
-
-func (adm *Admin) unindex(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("missing argument")
+	archive, err := adm.mod.Index(context.Background(), objectID, &objects.OpenOpts{})
+	if archive != nil {
+		for _, entry := range archive.Entries {
+			term.Printf("%-64s %s\n", entry.ObjectID, entry.Path)
+		}
 	}
 
-	objectID, err := object.ParseID(args[0])
-	if err != nil {
-		return err
-	}
-
-	return adm.mod.Unindex(objectID)
+	return err
 }
 
 func (adm *Admin) forget(term admin.Terminal, args []string) error {
@@ -75,13 +71,14 @@ func (adm *Admin) forget(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) ShortDescription() string {
-	return "zip indexer"
+	return "archive indexer"
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: zip <command>\n\n")
+	term.Printf("usage: archives <command>\n\n")
 	term.Printf("commands:\n")
-	term.Printf("  index <objectID>           index the contents of a zip file\n")
+	term.Printf("  index <objectID>           add an archive to the index\n")
+	term.Printf("  forget <objectID>          remove an archive from the index\n")
 	term.Printf("  help                       show help\n")
 	return nil
 }

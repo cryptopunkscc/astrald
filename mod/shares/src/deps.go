@@ -25,7 +25,7 @@ func (mod *Module) LoadDependencies() error {
 		adm.AddCommand(shares.ModuleName, NewAdmin(mod))
 	}
 
-	mod.objects.AddOpener(shares.ModuleName, mod, 10)
+	mod.objects.AddOpener(mod, 10)
 	mod.objects.AddDescriber(mod)
 
 	return err

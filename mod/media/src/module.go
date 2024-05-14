@@ -6,11 +6,13 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/resources"
-	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
+	"slices"
 )
 
 type Module struct {
@@ -23,24 +25,33 @@ type Module struct {
 	content content.Module
 	objects objects.Module
 
-	indexer *IndexerService
-
-	images   *ImageIndexer
-	audio    *AudioIndexer
-	matroska *MatroskaIndexer
+	audio *AudioIndexer
 
 	indexers map[string]Indexer
 }
 
 type Indexer interface {
 	objects.Describer
-	objects.Finder
+	objects.Searcher
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	return tasks.Group(
-		mod.indexer,
-	).Run(ctx)
+	go events.Handle(ctx, mod.node.Events(), func(event objects.EventObjectDiscovered) error {
+		mod.Describe(ctx, event.ObjectID, &desc.Opts{})
+		return nil
+	})
+
+	for event := range mod.content.Scan(ctx, nil) {
+		opts := desc.DefaultOpts()
+
+		if slices.Contains(mod.config.AutoIndexNet, event.Type) {
+			opts.Zone |= net.ZoneNetwork
+		}
+
+		mod.Describe(ctx, event.ObjectID, opts)
+	}
+
+	return nil
 }
 
 func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) []*desc.Desc {
@@ -56,14 +67,8 @@ func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.
 	return nil
 }
 
-func (mod *Module) Find(ctx context.Context, query string, opts *objects.FindOpts) (matches []objects.Match, err error) {
-	if s, _ := mod.audio.Find(ctx, query, opts); len(s) > 0 {
-		matches = append(matches, s...)
-	}
-	if s, _ := mod.images.Find(ctx, query, opts); len(s) > 0 {
-		matches = append(matches, s...)
-	}
-	if s, _ := mod.matroska.Find(ctx, query, opts); len(s) > 0 {
+func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (matches []objects.Match, err error) {
+	if s, _ := mod.audio.Search(ctx, query, opts); len(s) > 0 {
 		matches = append(matches, s...)
 	}
 	return

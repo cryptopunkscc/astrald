@@ -7,7 +7,7 @@ import (
 )
 
 type dbAudio struct {
-	DataID   object.ID `gorm:"primaryKey"`
+	ObjectID object.ID `gorm:"primaryKey"`
 	Format   string    `gorm:"index"`
 	Duration time.Duration
 	Title    string `gorm:"index"`

@@ -15,7 +15,7 @@ type Authorizer struct {
 
 func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...any) bool {
 	switch action {
-	case objects.ReadAction:
+	case objects.ActionRead:
 		if len(args) == 0 {
 			return false
 		}
