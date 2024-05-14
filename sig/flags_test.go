@@ -108,7 +108,7 @@ func TestWaitContext(t *testing.T) {
 		tick <- struct{}{}
 	}()
 
-	flags.Set(TestFlag1)
+	flags.IsSet(TestFlag1)
 
 	<-tick
 

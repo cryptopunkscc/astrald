@@ -11,14 +11,14 @@ import (
 
 // Flags provides a thread-safe observable flag set
 type Flags struct {
-	flagStates   map[string]bool
+	flagStates   map[string]struct{}
 	flagChannels map[string]chan struct{}
 	mu           sync.Mutex
 }
 
 func NewFlags() *Flags {
 	return &Flags{
-		flagStates:   make(map[string]bool),
+		flagStates:   make(map[string]struct{}),
 		flagChannels: make(map[string]chan struct{}),
 	}
 }
@@ -29,7 +29,11 @@ func (flags *Flags) Set(flag ...string) {
 	defer flags.mu.Unlock()
 
 	for _, f := range flag {
-		flags.flagStates[f] = true
+		if _, ok := flags.flagStates[f]; ok {
+			continue
+		}
+
+		flags.flagStates[f] = struct{}{}
 		if ch, ok := flags.flagChannels[f]; ok {
 			close(ch)
 			delete(flags.flagChannels, f)
@@ -43,7 +47,11 @@ func (flags *Flags) Clear(flag ...string) {
 	defer flags.mu.Unlock()
 
 	for _, f := range flag {
-		flags.flagStates[f] = false
+		if _, ok := flags.flagStates[f]; !ok {
+			continue
+		}
+
+		delete(flags.flagStates, f)
 		if ch, ok := flags.flagChannels[f]; ok {
 			close(ch)
 			delete(flags.flagChannels, f)
@@ -56,7 +64,8 @@ func (flags *Flags) IsSet(flag string) bool {
 	flags.mu.Lock()
 	defer flags.mu.Unlock()
 
-	return flags.flagStates[flag]
+	_, ok := flags.flagStates[flag]
+	return ok
 }
 
 // Flags returns a list of all set flags
@@ -65,10 +74,8 @@ func (flags *Flags) Flags() []string {
 	defer flags.mu.Unlock()
 
 	var setFlags []string
-	for flag, state := range flags.flagStates {
-		if state {
-			setFlags = append(setFlags, flag)
-		}
+	for flag := range flags.flagStates {
+		setFlags = append(setFlags, flag)
 	}
 	return setFlags
 }
@@ -79,7 +86,7 @@ func (flags *Flags) Wait(flag string, state bool) <-chan struct{} {
 	flags.mu.Lock()
 	defer flags.mu.Unlock()
 
-	if flags.flagStates[flag] == state {
+	if _, ok := flags.flagStates[flag]; ok == state {
 		ch := make(chan struct{})
 		close(ch)
 		return ch
@@ -99,22 +106,25 @@ func (flags *Flags) Wait(flag string, state bool) <-chan struct{} {
 // If the flag is already in the specified state when the function is called, it returns nil immediately.
 func (flags *Flags) WaitContext(ctx context.Context, flag string, state bool) error {
 	flags.mu.Lock()
-	if flags.flagStates[flag] == state {
-		flags.mu.Unlock()
-		return nil
-	}
+	defer flags.mu.Unlock()
 
 	ch, ok := flags.flagChannels[flag]
 	if !ok {
 		ch = make(chan struct{})
 		flags.flagChannels[flag] = ch
 	}
-	flags.mu.Unlock()
+
+	if curState, ok := flags.flagStates[flag]; ok {
+		if (curState == struct{}{} && !state) || (curState != struct{}{} && state) {
+			return nil
+		}
+	}
 
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-ch:
+	default:
 		return nil
 	}
+
 }
