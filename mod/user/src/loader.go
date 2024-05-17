@@ -30,7 +30,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	mod.db = assets.Database()
 
-	err = mod.db.AutoMigrate(&dbIdentity{})
+	err = mod.db.AutoMigrate(&dbIdentity{}, &dbNodeContract{})
 	if err != nil {
 		return nil, err
 	}

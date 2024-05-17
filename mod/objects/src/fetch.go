@@ -10,10 +10,10 @@ import (
 	"net/http"
 )
 
-func (mod *Module) Fetch(addr string) (objectID object.ID, err error) {
+func (mod *Module) fetch(addr string) (objectID object.ID, err error) {
 	switch {
 	case isURL(addr):
-		return mod.FetchURL(addr)
+		return mod.fetchURL(addr)
 
 	case isARL(addr):
 		var a *arl.ARL
@@ -22,13 +22,13 @@ func (mod *Module) Fetch(addr string) (objectID object.ID, err error) {
 		if err != nil {
 			return
 		}
-		return mod.FetchARL(a)
+		return mod.fetchARL(a)
 	}
 
 	return objectID, errors.New("scheme not supported")
 }
 
-func (mod *Module) FetchURL(url string) (objectID object.ID, err error) {
+func (mod *Module) fetchURL(url string) (objectID object.ID, err error) {
 	// Make a GET request to the URL
 	response, err := http.Get(url)
 	if err != nil {
@@ -56,7 +56,7 @@ func (mod *Module) FetchURL(url string) (objectID object.ID, err error) {
 	return w.Commit()
 }
 
-func (mod *Module) FetchARL(a *arl.ARL) (objectID object.ID, err error) {
+func (mod *Module) fetchARL(a *arl.ARL) (objectID object.ID, err error) {
 	if a.Caller.IsZero() {
 		a.Caller = mod.node.Identity()
 	}

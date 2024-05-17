@@ -4,10 +4,14 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
 const ModuleName = "objects"
+
+// ReadAllMaxSize is the size limit for loading objects into memory
+const ReadAllMaxSize = 64 * 1024 * 1024 // 64 MB
 
 type Module interface {
 	// AddOpener registers an Opener. Openers are queried from highest to lowest priority.
@@ -29,6 +33,16 @@ type Module interface {
 
 	AddFinder(Finder) error
 	Finder
+
+	Encode(obj Object) ([]byte, error)
+	Decode(data []byte) (Object, error)
+	SetDecoder(string, Decoder) error
+
+	// Load decodes the object into memory and returns it
+	Load(context.Context, object.ID, *net.Scope) (Object, error)
+
+	// Store encodes the object to local storage
+	Store(context.Context, Object) (object.ID, error)
 
 	AddPrototypes(protos ...desc.Data) error
 	UnmarshalDescriptor(name string, buf []byte) desc.Data

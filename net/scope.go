@@ -18,8 +18,8 @@ const (
 const AllZones = ZoneDevice | ZoneVirtual | ZoneNetwork
 const DefaultZones = ZoneDevice | ZoneVirtual
 
-func DefaultScope() Scope {
-	return Scope{
+func DefaultScope() *Scope {
+	return &Scope{
 		Zone:        DefaultZones,
 		QueryFilter: nil,
 	}

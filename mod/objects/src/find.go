@@ -16,8 +16,7 @@ func (mod *Module) Find(ctx context.Context, objectID object.ID, scope *net.Scop
 	var unique = map[string]struct{}{}
 
 	if scope == nil {
-		def := net.DefaultScope()
-		scope = &def
+		scope = net.DefaultScope()
 	}
 
 	for _, finder := range mod.finders.Clone() {

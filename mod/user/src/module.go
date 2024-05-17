@@ -15,10 +15,13 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/user"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/router"
+	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
+	"time"
 )
 
 var _ user.Module = &Module{}
@@ -47,9 +50,43 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
+	go mod.rescanContracts(ctx)
+
 	<-ctx.Done()
 
 	return nil
+}
+
+func (mod *Module) Nodes(userID id.Identity) (nodes []id.Identity) {
+	err := mod.db.
+		Model(&dbNodeContract{}).
+		Where("expires_at > ?", time.Now()).
+		Where("user_id = ?", userID).
+		Select("node_id").
+		Find(&nodes).
+		Error
+
+	if err != nil {
+		mod.log.Errorv(1, "db error: %v", err)
+	}
+
+	return
+}
+
+func (mod *Module) Owner(nodeID id.Identity) (userID id.Identity) {
+	err := mod.db.
+		Model(&dbNodeContract{}).
+		Where("expires_at > ?", time.Now()).
+		Where("node_id = ?", nodeID).
+		Select("user_id").
+		Find(&userID).
+		Error
+
+	if err != nil {
+		mod.log.Errorv(1, "db error: %v", err)
+	}
+
+	return
 }
 
 func (mod *Module) UserID() id.Identity {
@@ -65,6 +102,27 @@ func (mod *Module) SetUserID(userID id.Identity) error {
 	return mod.storeUserID(userID)
 }
 
+func (mod *Module) rescanContracts(ctx context.Context) error {
+	opts := &content.ScanOpts{
+		Type: (&user.NodeContract{}).ObjectType(),
+	}
+
+	for info := range mod.content.Scan(ctx, opts) {
+		object, err := mod.objects.Load(ctx, info.ObjectID, net.DefaultScope())
+		if err != nil {
+			continue
+		}
+
+		contract, ok := object.(*user.NodeContract)
+		if !ok {
+			continue
+		}
+
+		mod.setCache(info.ObjectID, contract)
+	}
+	return nil
+}
+
 func (mod *Module) setUserID(userID id.Identity) error {
 	cert, err := mod.loadCert(userID, mod.node.Identity(), true)
 	if err != nil {
@@ -77,4 +135,33 @@ func (mod *Module) setUserID(userID id.Identity) error {
 	mod.log.Info("user identity set to %v", mod.userID)
 
 	return nil
+}
+
+func (mod *Module) setCache(objectID object.ID, contract *user.NodeContract) error {
+	if err := contract.Validate(); err != nil {
+		return err
+	}
+	return mod.db.Create(&dbNodeContract{
+		ObjectID:  objectID,
+		UserID:    contract.UserID,
+		NodeID:    contract.NodeID,
+		ExpiresAt: contract.ExpiresAt,
+	}).Error
+}
+
+func (mod *Module) clearCache(objectID object.ID) error {
+	return mod.db.Where("object_id = ?", objectID).Delete(&dbNodeContract{}).Error
+}
+
+func (mod *Module) getCache(objectID object.ID) *user.NodeContract {
+	var row dbNodeContract
+	err := mod.db.First(&row, "object_id = ?", objectID).Error
+	if err != nil {
+		return nil
+	}
+	return &user.NodeContract{
+		UserID:    row.UserID,
+		NodeID:    row.NodeID,
+		ExpiresAt: row.ExpiresAt,
+	}
 }

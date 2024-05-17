@@ -11,7 +11,7 @@ type Searcher interface {
 }
 
 type SearchOpts struct {
-	net.Scope
+	*net.Scope
 }
 
 type Match struct {

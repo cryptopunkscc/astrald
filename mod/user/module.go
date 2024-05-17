@@ -11,6 +11,9 @@ const DBPrefix = "users__"
 type Module interface {
 	UserID() id.Identity
 	SetUserID(userID id.Identity) error
+
+	Nodes(userID id.Identity) []id.Identity
+	Owner(nodeID id.Identity) id.Identity
 }
 
 type Profile struct {

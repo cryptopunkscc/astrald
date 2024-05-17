@@ -14,9 +14,11 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"set":  adm.set,
-		"info": adm.info,
-		"help": adm.help,
+		"set":   adm.set,
+		"nodes": adm.nodes,
+		"owner": adm.owner,
+		"info":  adm.info,
+		"help":  adm.help,
 	}
 
 	return adm
@@ -33,6 +35,45 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	}
 
 	return errors.New("unknown command")
+}
+
+func (adm *Admin) nodes(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	userID, err := adm.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	nodes := adm.mod.Nodes(userID)
+
+	for _, node := range nodes {
+		term.Printf("%v\n", node)
+	}
+
+	return nil
+}
+
+func (adm *Admin) owner(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	nodeID, err := adm.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	userID := adm.mod.Owner(nodeID)
+
+	if userID.IsZero() {
+		return errors.New("user unknown")
+	}
+	term.Printf("%v\n", userID)
+
+	return nil
 }
 
 func (adm *Admin) set(term admin.Terminal, args []string) error {

@@ -27,7 +27,7 @@ type Opts struct {
 
 func DefaultOpts() *Opts {
 	return &Opts{
-		Scope: net.DefaultScope(),
+		Scope: *net.DefaultScope(),
 	}
 }
 

@@ -37,6 +37,7 @@ func NewAdmin(mod *Module) *Admin {
 		"describe": adm.describe,
 		"search":   adm.search,
 		"fetch":    adm.fetch,
+		"show":     adm.show,
 		"info":     adm.info,
 		"help":     adm.help,
 	}
@@ -114,6 +115,51 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 		}
 
 		io.Copy(term, r)
+	}
+
+	return nil
+}
+
+func (adm *Admin) show(term admin.Terminal, args []string) error {
+	var err error
+	var scope = net.DefaultScope()
+	var zones string
+
+	var flags = flag.NewFlagSet("show", flag.ContinueOnError)
+	flags.StringVar(&zones, "z", scope.Zone.String(), "enabled zones")
+	flags.SetOutput(term)
+	err = flags.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	if len(flags.Args()) == 0 {
+		return errors.New("missing data id")
+	}
+
+	if len(zones) > 0 {
+		scope.Zone = net.Zones(zones)
+	}
+
+	for _, arg := range flags.Args() {
+		objectID, err := object.ParseID(arg)
+		if err != nil {
+			return err
+		}
+
+		obj, err := adm.mod.Load(context.Background(), objectID, scope)
+		if err != nil {
+			return err
+		}
+
+		term.Printf("%v %s\n\n", objectID, obj.ObjectType())
+		j, err := json.MarshalIndent(obj, "  ", "  ")
+		if err != nil {
+			term.Printf("error encoding to JSON: %v\n", err)
+			continue
+		}
+
+		term.Printf("%s\n", string(j))
 	}
 
 	return nil
@@ -261,7 +307,7 @@ func (adm *Admin) fetch(term admin.Terminal, args []string) error {
 
 	term.Printf("fetching %v...\n", args[0])
 
-	objectID, err := adm.mod.Fetch(args[0])
+	objectID, err := adm.mod.fetch(args[0])
 
 	if err != nil {
 		return err

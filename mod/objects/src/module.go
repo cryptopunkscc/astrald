@@ -1,14 +1,18 @@
 package objects
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/events"
 	"github.com/cryptopunkscc/astrald/object"
@@ -19,9 +23,6 @@ import (
 )
 
 var _ objects.Module = &Module{}
-
-// ReadAllMaxSize is the limit on data size accepted by Get() (to avoid accidental OOM)
-var ReadAllMaxSize uint64 = 1024 * 1024 * 1024
 
 type Module struct {
 	node   node.Node
@@ -38,6 +39,7 @@ type Module struct {
 	searchers  sig.Set[objects.Searcher]
 	purgers    sig.Set[objects.Purger]
 	finders    sig.Set[objects.Finder]
+	decoders   sig.Map[string, objects.Decoder]
 
 	provider *Provider
 
@@ -58,45 +60,35 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) []*desc.Desc {
-	var describers []desc.Describer[object.ID]
-
-	for _, d := range mod.describers.Clone() {
-		describers = append(describers, d)
+func (mod *Module) Store(ctx context.Context, obj objects.Object) (objectID object.ID, err error) {
+	var buf = &bytes.Buffer{}
+	err = cslq.Encode(buf, "vv", adc.Header(obj.ObjectType()), obj)
+	if err != nil {
+		return
 	}
 
-	return desc.Collect(ctx, objectID, opts, describers...)
+	return mod.Put(buf.Bytes(), nil)
 }
 
-func (mod *Module) AddDescriber(describer objects.Describer) error {
-	return mod.describers.Add(describer)
-}
-
-func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) ([]objects.Match, error) {
-	var matches []objects.Match
-	var errs []error
-
-	if opts == nil {
-		opts = objects.DefaultSearchOpts()
+func (mod *Module) Load(ctx context.Context, objectID object.ID, scope *net.Scope) (objects.Object, error) {
+	if objectID.Size > objects.ReadAllMaxSize {
+		return nil, objects.ErrObjectTooLarge
 	}
 
-	for _, searcher := range mod.searchers.Clone() {
-		m, err := searcher.Search(ctx, query, opts)
-		if err != nil {
-			errs = append(errs, err)
-		}
-		matches = append(matches, m...)
+	r, err := mod.Open(ctx, objectID, &objects.OpenOpts{
+		Zone:        scope.Zone,
+		QueryFilter: scope.QueryFilter,
+	})
+	if err != nil {
+		return nil, err
 	}
+	defer r.Close()
 
-	return matches, nil
-}
-
-func (mod *Module) AddSearcher(searcher objects.Searcher) error {
-	return mod.searchers.Add(searcher)
+	return mod.decodeStream(r)
 }
 
 func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {
-	if id.Size > ReadAllMaxSize {
+	if id.Size > objects.ReadAllMaxSize {
 		return nil, errors.New("data too big")
 	}
 	r, err := mod.Open(context.Background(), id, opts)

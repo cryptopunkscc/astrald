@@ -25,6 +25,8 @@ func (header Header) MarshalCSLQ(enc *cslq.Encoder) error {
 	return enc.Encodef(format, header)
 }
 
+func (header Header) String() string { return string(header) }
+
 func ReadHeader(reader io.Reader) (Header, error) {
 	var header Header
 	var err = cslq.Decode(reader, "v", &header)
