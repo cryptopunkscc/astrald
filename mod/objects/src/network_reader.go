@@ -48,7 +48,7 @@ func (r *NetworkReader) Seek(offset int64, whence int) (int64, error) {
 	}
 	params.SetInt("offset", int(o))
 
-	var query = router.Query(readServiceName, params)
+	var query = router.Query(methodRead, params)
 
 	var q = net.NewQuery(
 		r.consumer,

@@ -8,10 +8,14 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/relay"
 )
 
-const readServiceName = "objects.read"
-const describeServiceName = "objects.describe"
-const putServiceName = "objects.put"
-const searchServiceName = "objects.search"
+const (
+	methodPut      = "objects.put"
+	methodRead     = "objects.read"
+	methodDescribe = "objects.describe"
+	methodRelease  = "objects.release"
+	methodSearch   = "objects.search"
+	methodHold     = "objects.hold"
+)
 
 type Config struct {
 	DescriptorWhitelist []string

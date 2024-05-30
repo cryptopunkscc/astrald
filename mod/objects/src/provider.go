@@ -30,10 +30,12 @@ func NewProvider(mod *Module) *Provider {
 
 	srv.router.EnableParams = true
 
-	srv.router.AddRouteFunc(readServiceName, srv.Read)
-	srv.router.AddRouteFunc(describeServiceName, srv.Describe)
-	srv.router.AddRouteFunc(putServiceName, srv.Put)
-	srv.router.AddRouteFunc(searchServiceName, srv.Search)
+	srv.router.AddRouteFunc(methodRead, srv.Read)
+	srv.router.AddRouteFunc(methodDescribe, srv.Describe)
+	srv.router.AddRouteFunc(methodPut, srv.Put)
+	srv.router.AddRouteFunc(methodHold, srv.Hold)
+	srv.router.AddRouteFunc(methodRelease, srv.Release)
+	srv.router.AddRouteFunc(methodSearch, srv.Search)
 
 	return srv
 }
@@ -74,6 +76,42 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 		defer conn.Close()
 
 		io.Copy(conn, r)
+	})
+}
+
+func (srv *Provider) Release(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	_, params := router.ParseQuery(query.Query())
+
+	objectID, err := params.GetObjectID("id")
+	if err != nil {
+		srv.mod.log.Errorv(2, "invalid id: %v", err)
+		return net.Reject()
+	}
+
+	return net.Accept(query, caller, func(conn net.SecureConn) {
+		defer conn.Close()
+
+		srv.mod.Release(query.Caller(), objectID)
+	})
+}
+
+func (srv *Provider) Hold(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	_, params := router.ParseQuery(query.Query())
+
+	objectID, err := params.GetObjectID("id")
+	if err != nil {
+		srv.mod.log.Errorv(2, "invalid id: %v", err)
+		return net.Reject()
+	}
+
+	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionRead, objectID) {
+		return net.Reject()
+	}
+
+	return net.Accept(query, caller, func(conn net.SecureConn) {
+		defer conn.Close()
+
+		srv.mod.Hold(query.Caller(), objectID)
 	})
 }
 
@@ -146,6 +184,8 @@ func (srv *Provider) Put(ctx context.Context, query net.Query, caller net.Secure
 			cslq.Encode(conn, "c", 1)
 			return
 		}
+
+		srv.mod.Hold(query.Caller(), objectID)
 
 		cslq.Encode(conn, "cv", 0, objectID)
 	})

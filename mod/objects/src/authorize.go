@@ -12,18 +12,21 @@ func (mod *Module) Authorize(id id.Identity, action string, args ...any) bool {
 	case objects.ActionRead,
 		objects.ActionWrite,
 		objects.ActionPurge:
-		if len(args) == 0 {
-			return false
-		}
-		_, ok := args[0].(object.ID)
-		if !ok {
-			return false
-		}
-
-		if id.IsEqual(mod.node.Identity()) {
-			return true
-		}
+	default:
+		return false
 	}
-	return false
 
+	if id.IsEqual(mod.node.Identity()) {
+		return true
+	}
+
+	if len(args) == 0 {
+		return false
+	}
+	objectID, ok := args[0].(object.ID)
+	if !ok {
+		return false
+	}
+
+	return mod.isHolding(id, objectID)
 }

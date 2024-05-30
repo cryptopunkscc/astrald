@@ -36,7 +36,7 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opt
 		c.consumerID,
 		c.providerID,
 		router.Query(
-			describeServiceName,
+			methodDescribe,
 			router.Params{
 				"id": objectID.String(),
 			},
@@ -90,7 +90,7 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 		params.SetInt("offset", int(opts.Offset))
 	}
 
-	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(readServiceName, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodRead, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {
@@ -114,7 +114,7 @@ func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
 		"size": strconv.FormatInt(int64(len(p)), 10),
 	}
 
-	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(putServiceName, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodPut, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {
@@ -149,7 +149,7 @@ func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Matc
 		"q": q,
 	}
 
-	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(searchServiceName, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodSearch, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {
@@ -160,4 +160,30 @@ func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Matc
 	err = json.NewDecoder(conn).Decode(&matches)
 
 	return
+}
+
+func (c *Consumer) Release(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) bool {
+	params := router.Params{
+		"id": objectID.String(),
+	}
+
+	if opts.QueryFilter != nil {
+		if !opts.QueryFilter(c.providerID) {
+			return false
+		}
+	}
+
+	if opts.Offset != 0 {
+		params.SetInt("offset", int(opts.Offset))
+	}
+
+	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodRelease, params))
+
+	conn, err := net.Route(ctx, c.mod.node.Router(), query)
+	if err == nil {
+		conn.Close()
+		return true
+	}
+
+	return false
 }
