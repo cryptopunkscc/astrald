@@ -283,7 +283,7 @@ func (mod *Module) update(path string) (object.ID, error) {
 	}
 
 	if err == nil {
-		mod.events.Emit(objects.EventObjectDiscovered{
+		mod.events.Emit(objects.EventDiscovered{
 			ObjectID: updated.DataID,
 			Zone:     net.ZoneDevice,
 		})

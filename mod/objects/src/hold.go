@@ -2,6 +2,7 @@ package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm/clause"
 )
@@ -16,14 +17,28 @@ func (mod *Module) Hold(identity id.Identity, objectIDs ...object.ID) error {
 		})
 	}
 
-	return mod.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&rows).Error
+	err := mod.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&rows).Error
+	if err == nil {
+		mod.events.Emit(objects.EventHeld{
+			HolderID:  identity,
+			ObjectIDs: objectIDs,
+		})
+	}
+	return err
 }
 
 func (mod *Module) Release(identity id.Identity, objectIDs ...object.ID) error {
-	return mod.db.
+	err := mod.db.
 		Where("holder_id = ? and object_id IN (?)", identity, objectIDs).
 		Delete(&dbHolding{}).
 		Error
+	if err == nil {
+		mod.events.Emit(objects.EventReleased{
+			HolderID:  identity,
+			ObjectIDs: objectIDs,
+		})
+	}
+	return err
 }
 
 func (mod *Module) Holders(objectID object.ID) (holders []id.Identity) {

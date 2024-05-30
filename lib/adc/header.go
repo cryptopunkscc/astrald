@@ -22,6 +22,10 @@ func (header *Header) UnmarshalCSLQ(dec *cslq.Decoder) error {
 }
 
 func (header Header) MarshalCSLQ(enc *cslq.Encoder) error {
+	if len(header) == 0 {
+		return nil
+	}
+
 	return enc.Encodef(format, header)
 }
 

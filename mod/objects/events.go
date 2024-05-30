@@ -1,19 +1,30 @@
 package objects
 
 import (
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-type EventObjectCommitted struct {
+type EventCommitted struct {
 	ObjectID object.ID
 }
 
-type EventObjectPurged struct {
+type EventPurged struct {
 	ObjectID object.ID
 }
 
-type EventObjectDiscovered struct {
+type EventDiscovered struct {
 	ObjectID object.ID
 	Zone     net.Zone
+}
+
+type EventHeld struct {
+	HolderID  id.Identity
+	ObjectIDs []object.ID
+}
+
+type EventReleased struct {
+	HolderID  id.Identity
+	ObjectIDs []object.ID
 }

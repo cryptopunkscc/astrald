@@ -38,7 +38,7 @@ type Module struct {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.autoIndexZone = net.Zones(mod.config.AutoIndexZones)
 
-	go events.Handle(ctx, mod.node.Events(), func(event objects.EventObjectDiscovered) error {
+	go events.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
 		return mod.onObjectDiscovered(ctx, event)
 	})
 
@@ -49,7 +49,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) onObjectDiscovered(ctx context.Context, event objects.EventObjectDiscovered) error {
+func (mod *Module) onObjectDiscovered(ctx context.Context, event objects.EventDiscovered) error {
 	info, _ := mod.content.Identify(event.ObjectID)
 	if info != nil && info.Type == zipMimeType {
 		archive, _ := mod.Index(
@@ -63,7 +63,7 @@ func (mod *Module) onObjectDiscovered(ctx context.Context, event objects.EventOb
 		}
 
 		for _, entry := range archive.Entries {
-			mod.events.Emit(objects.EventObjectDiscovered{
+			mod.events.Emit(objects.EventDiscovered{
 				ObjectID: entry.ObjectID,
 				Zone:     net.ZoneVirtual | event.Zone,
 			})

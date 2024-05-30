@@ -23,7 +23,7 @@ func (mod *Module) Purge(objectID object.ID, opts *objects.PurgeOpts) (int, erro
 	}
 
 	if total > 0 {
-		mod.events.Emit(objects.EventObjectPurged{ObjectID: objectID})
+		mod.events.Emit(objects.EventPurged{ObjectID: objectID})
 	}
 
 	return total, errors.Join(errs...)

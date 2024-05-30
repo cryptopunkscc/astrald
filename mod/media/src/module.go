@@ -36,7 +36,7 @@ type Indexer interface {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	go events.Handle(ctx, mod.node.Events(), func(event objects.EventObjectDiscovered) error {
+	go events.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
 		mod.Describe(ctx, event.ObjectID, &desc.Opts{})
 		return nil
 	})

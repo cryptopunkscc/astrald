@@ -53,7 +53,7 @@ func (mod *Module) Index(cert *relay.Cert) error {
 }
 
 func (mod *Module) index(cert *relay.Cert) error {
-	var w = object.NewResolver()
+	var w = object.NewWriteResolver(nil)
 	cslq.Encode(w, "vv", adc.Header(relay.CertType), cert)
 	objectID := w.Resolve()
 

@@ -84,7 +84,15 @@ func (mod *Module) Load(ctx context.Context, objectID object.ID, scope *net.Scop
 	}
 	defer r.Close()
 
-	return mod.decodeStream(r)
+	realID, obj, err := mod.decodeStream(r)
+	if err != nil {
+		return nil, err
+	}
+	if !realID.IsEqual(objectID) {
+		return nil, objects.ErrHashMismatch
+	}
+
+	return obj, err
 }
 
 func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {
@@ -96,7 +104,18 @@ func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {
 		return nil, err
 	}
 
-	return io.ReadAll(r)
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	realID := object.Resolve(data)
+
+	if !realID.IsEqual(id) {
+		return nil, objects.ErrHashMismatch
+	}
+
+	return data, err
 }
 
 func (mod *Module) Put(bytes []byte, opts *objects.CreateOpts) (object.ID, error) {

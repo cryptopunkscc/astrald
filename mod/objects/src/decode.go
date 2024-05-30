@@ -6,13 +6,16 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
 func (mod *Module) Decode(data []byte) (objects.Object, error) {
 	var r = bytes.NewReader(data)
 
-	return mod.decodeStream(r)
+	_, obj, err := mod.decodeStream(r)
+
+	return obj, err
 }
 
 func (mod *Module) SetDecoder(s string, decoder objects.Decoder) error {
@@ -30,24 +33,30 @@ func (mod *Module) Encode(obj objects.Object) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func (mod *Module) decodeStream(r io.Reader) (objects.Object, error) {
+func (mod *Module) decodeStream(r io.Reader) (object.ID, objects.Object, error) {
 	var err error
 	var header adc.Header
 
-	err = cslq.Decode(r, "v", &header)
+	rr := object.NewReadResolver(r)
+
+	err = cslq.Decode(rr, "v", &header)
 	if err != nil {
-		return nil, err
+		return object.ID{}, nil, err
 	}
 
 	decoder, found := mod.decoders.Get(header.String())
 	if !found {
-		return nil, fmt.Errorf("decoder for %s not found", header.String())
+		return object.ID{}, nil, fmt.Errorf("decoder for %s not found", header.String())
 	}
 
-	obj, err := io.ReadAll(r)
+	objectBytes, err := io.ReadAll(rr)
 	if err != nil {
-		return nil, err
+		return object.ID{}, nil, err
 	}
 
-	return decoder(obj)
+	objectID := rr.Resolve()
+
+	object, err := decoder(objectBytes)
+
+	return objectID, object, err
 }

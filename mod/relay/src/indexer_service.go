@@ -40,7 +40,7 @@ func (srv *IndexerService) watchNewCerts(ctx context.Context) {
 }
 
 func (srv *IndexerService) watchPurges(ctx context.Context) {
-	_ = events.Handle[objects.EventObjectPurged](ctx, srv.node.Events(), func(event objects.EventObjectPurged) error {
+	_ = events.Handle[objects.EventPurged](ctx, srv.node.Events(), func(event objects.EventPurged) error {
 		srv.verifyIndex(event.ObjectID)
 		return nil
 	})

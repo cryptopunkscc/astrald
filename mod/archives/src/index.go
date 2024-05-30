@@ -31,7 +31,7 @@ func (mod *Module) Index(ctx context.Context, objectID object.ID, opts *objects.
 
 	mod.events.Emit(archives.EventArchiveIndexed{ObjectID: objectID, Archive: archive})
 	for _, entry := range archive.Entries {
-		mod.events.Emit(objects.EventObjectDiscovered{
+		mod.events.Emit(objects.EventDiscovered{
 			ObjectID: entry.ObjectID,
 			Zone:     net.ZoneVirtual,
 		})

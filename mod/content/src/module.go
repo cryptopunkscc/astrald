@@ -42,7 +42,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	go func() {
 		for event := range mod.node.Events().Subscribe(ctx) {
 			switch e := event.(type) {
-			case objects.EventObjectDiscovered:
+			case objects.EventDiscovered:
 				mod.Identify(e.ObjectID)
 			}
 		}

@@ -162,7 +162,7 @@ func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Matc
 	return
 }
 
-func (c *Consumer) Release(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) bool {
+func (c *Consumer) Hold(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) bool {
 	params := router.Params{
 		"id": objectID.String(),
 	}
@@ -173,8 +173,26 @@ func (c *Consumer) Release(ctx context.Context, objectID object.ID, opts *object
 		}
 	}
 
-	if opts.Offset != 0 {
-		params.SetInt("offset", int(opts.Offset))
+	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodHold, params))
+
+	conn, err := net.Route(ctx, c.mod.node.Router(), query)
+	if err == nil {
+		conn.Close()
+		return true
+	}
+
+	return false
+}
+
+func (c *Consumer) Release(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) bool {
+	params := router.Params{
+		"id": objectID.String(),
+	}
+
+	if opts.QueryFilter != nil {
+		if !opts.QueryFilter(c.providerID) {
+			return false
+		}
 	}
 
 	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodRelease, params))

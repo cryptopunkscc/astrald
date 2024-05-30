@@ -43,7 +43,7 @@ func (w *Writer) Commit() (object.ID, error) {
 	var objectID = object.Resolve(buf)
 
 	if _, ok := w.objects.Set(objectID.String(), buf); ok {
-		w.events.Emit(objects.EventObjectCommitted{ObjectID: objectID})
+		w.events.Emit(objects.EventCommitted{ObjectID: objectID})
 	}
 
 	return objectID, nil

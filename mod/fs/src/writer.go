@@ -22,7 +22,7 @@ type Writer struct {
 	path      string
 	tempID    string
 	file      *os.File
-	resolver  object.Resolver
+	resolver  *object.WriteResolver
 	finalized atomic.Bool
 }
 
@@ -37,7 +37,7 @@ func NewWriter(mod *Module, path string) (*Writer, error) {
 		return nil, err
 	}
 
-	resolver := object.NewResolver()
+	resolver := object.NewWriteResolver(nil)
 
 	return &Writer{
 		mod:      mod,
@@ -90,7 +90,7 @@ func (w *Writer) Commit() (object.ID, error) {
 			Path:     newPath,
 			ObjectID: objectID,
 		})
-		w.mod.events.Emit(objects.EventObjectDiscovered{
+		w.mod.events.Emit(objects.EventDiscovered{
 			ObjectID: objectID,
 			Zone:     net.ZoneDevice,
 		})

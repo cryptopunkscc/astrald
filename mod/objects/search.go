@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 )
 
+// Searcher is used to find objects matching a query
 type Searcher interface {
 	Search(ctx context.Context, query string, opts *SearchOpts) ([]Match, error)
 }

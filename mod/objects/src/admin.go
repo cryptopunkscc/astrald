@@ -38,9 +38,9 @@ func NewAdmin(mod *Module) *Admin {
 		"search":   adm.search,
 		"fetch":    adm.fetch,
 		"hold":     adm.hold,
-		"holders":  adm.holders,
-		"holdings": adm.holdings,
 		"release":  adm.release,
+		"holders":  adm.holders,
+		"inv":      adm.inv,
 		"show":     adm.show,
 		"info":     adm.info,
 		"help":     adm.help,
@@ -351,14 +351,14 @@ func (adm *Admin) holders(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) holdings(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("argument missing")
-	}
+func (adm *Admin) inv(term admin.Terminal, args []string) (err error) {
+	holderID := term.UserIdentity()
 
-	holderID, err := adm.mod.node.Resolver().Resolve(args[0])
-	if err != nil {
-		return err
+	if len(args) > 0 {
+		holderID, err = adm.mod.node.Resolver().Resolve(args[0])
+		if err != nil {
+			return
+		}
 	}
 
 	objectIDs := adm.mod.Holdings(holderID)
