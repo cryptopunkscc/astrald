@@ -6,7 +6,8 @@ import (
 )
 
 const ModuleName = "admin"
-const AccessAction = "mod.admin.access"
+const ActionAccess = "mod.admin.access"
+const ActionSudo = "mod.admin.sudo"
 
 type Module interface {
 	AddCommand(name string, cmd Command) error
@@ -18,6 +19,7 @@ type Command interface {
 
 type Terminal interface {
 	UserIdentity() id.Identity
+	SetUserIdentity(id.Identity)
 	Sprintf(f string, v ...any) string
 	Printf(f string, v ...any)
 	Println(v ...any)

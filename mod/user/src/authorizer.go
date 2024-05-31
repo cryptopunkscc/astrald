@@ -39,7 +39,8 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 	// allow the user to perform whitelisted actions
 	if identity.IsEqual(auth.mod.UserID()) {
 		switch action {
-		case admin.AccessAction,
+		case admin.ActionAccess,
+			admin.ActionSudo,
 			objects.ActionRead,
 			objects.ActionWrite,
 			objects.ActionPurge,

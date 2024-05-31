@@ -54,7 +54,7 @@ func (mod *Module) Run(ctx context.Context) error {
 
 func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	// check if the caller has access to the admin panel
-	if !mod.node.Auth().Authorize(caller.Identity(), admin.AccessAction) {
+	if !mod.node.Auth().Authorize(caller.Identity(), admin.ActionAccess) {
 		return net.Reject()
 	}
 
@@ -88,7 +88,7 @@ func (mod *Module) serve(conn net.SecureConn) {
 	var term = NewColorTerminal(conn, mod.log)
 
 	for {
-		term.Printf("%s@%s%s", conn.RemoteIdentity(), mod.node.Identity(), mod.config.Prompt)
+		term.Printf("%s@%s%s", term.UserIdentity(), mod.node.Identity(), mod.config.Prompt)
 
 		line, err := term.ScanLine()
 		if err != nil {

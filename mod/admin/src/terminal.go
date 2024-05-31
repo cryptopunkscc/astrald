@@ -163,3 +163,7 @@ func (t *ColorTerminal) SetColor(Color bool) {
 func (t *ColorTerminal) UserIdentity() id.Identity {
 	return t.userIdentity
 }
+
+func (t *ColorTerminal) SetUserIdentity(identity id.Identity) {
+	t.userIdentity = identity
+}

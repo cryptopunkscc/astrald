@@ -9,9 +9,11 @@ import (
 var _ authorizer.Authorizer = &Module{}
 
 func (mod *Module) Authorize(identity id.Identity, action string, args ...any) bool {
-	if action != admin.AccessAction {
-		return false
+	switch action {
+	case admin.ActionAccess:
+		return mod.hasAccess(identity)
+	case admin.ActionSudo:
+		return identity.IsEqual(mod.node.Identity())
 	}
-
-	return mod.hasAccess(identity)
+	return false
 }

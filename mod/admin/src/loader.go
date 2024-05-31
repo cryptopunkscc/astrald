@@ -24,6 +24,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	_ = mod.AddCommand("tracker", NewCmdTracker(mod))
 	_ = mod.AddCommand("net", &CmdNet{mod: mod})
 	_ = mod.AddCommand("use", &CmdUse{mod: mod})
+	_ = mod.AddCommand("sudo", &CmdSudo{mod: mod})
 	_ = mod.AddCommand("node", &CmdNode{mod: mod})
 	_ = mod.AddCommand(admin.ModuleName, NewCmdAdmin(mod))
 
