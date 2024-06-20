@@ -68,3 +68,10 @@ func (set *Set[T]) Clone() []T {
 
 	return slices.Clone(set.items)
 }
+
+func (set *Set[T]) Count() int {
+	set.mu.RLock()
+	defer set.mu.RUnlock()
+
+	return len(set.items)
+}
