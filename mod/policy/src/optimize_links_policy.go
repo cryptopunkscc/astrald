@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/tracker"
 	"sync"
@@ -55,7 +55,7 @@ func (policy *OptimizeLinksPolicy) addWorker(target id.Identity) error {
 	}
 
 	var hex = target.PublicKeyHex()
-	var worker = newOptimizeLinksWorker(policy.node, target)
+	var worker = newOptimizeLinksWorker(policy.Module, target)
 
 	policy.workers[hex] = worker
 
@@ -76,14 +76,16 @@ func (policy *OptimizeLinksPolicy) Name() string {
 }
 
 type optimizeLinksWorker struct {
+	*Module
 	node   node.Node
 	target id.Identity
 	cond   *sync.Cond
 }
 
-func newOptimizeLinksWorker(node node.Node, target id.Identity) *optimizeLinksWorker {
+func newOptimizeLinksWorker(mod *Module, target id.Identity) *optimizeLinksWorker {
 	return &optimizeLinksWorker{
-		node:   node,
+		Module: mod,
+		node:   mod.node,
 		target: target,
 		cond:   sync.NewCond(&sync.Mutex{}),
 	}
@@ -131,11 +133,8 @@ func (worker *optimizeLinksWorker) Run(ctx context.Context) error {
 			continue
 		}
 
-		lnk, err := link.MakeLink(ctx, worker.node, worker.target, link.Opts{
-			Endpoints: try,
-		})
+		_, err = worker.nodes.Link(ctx, worker.target, nodes.LinkOpts{Endpoints: try})
 		if err == nil {
-			worker.node.Network().AddLink(lnk)
 			time.Sleep(1 * time.Second)
 			continue
 		}

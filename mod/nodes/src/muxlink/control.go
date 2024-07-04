@@ -1,4 +1,4 @@
-package link
+package muxlink
 
 import (
 	"bytes"
@@ -16,17 +16,17 @@ const pingTimeout = 15 * time.Second
 const maxConcurrentPings = 10
 
 type Control struct {
-	*CoreLink
+	*Link
 	notify map[int][]chan struct{}
 	pings  map[int]chan struct{}
 	nonce  int
 }
 
-func NewControl(link *CoreLink) *Control {
+func NewControl(link *Link) *Control {
 	return &Control{
-		CoreLink: link,
-		notify:   map[int][]chan struct{}{},
-		pings:    map[int]chan struct{}{},
+		Link:   link,
+		notify: map[int][]chan struct{}{},
+		pings:  map[int]chan struct{}{},
 	}
 }
 
@@ -176,14 +176,14 @@ func (c *Control) handleQuery(msg Query) error {
 func (c *Control) executeQuery(msg Query) error {
 	var query = net.NewQueryNonce(c.RemoteIdentity(), c.LocalIdentity(), msg.Query, net.Nonce(msg.Nonce))
 
-	var caller = NewPortWriter(c.CoreLink, msg.Port)
+	var caller = NewPortWriter(c.Link, msg.Port)
 
 	// lock the port writer so that the target cannot write to it before we get a chance to send the query response
 	caller.Lock()
 	defer caller.Unlock()
 
 	// route the query upstream
-	target, err := c.uplink.RouteQuery(c.ctx, query, caller, net.DefaultHints().WithOrigin(net.OriginNetwork))
+	target, err := c.localRouter.RouteQuery(c.ctx, query, caller, net.DefaultHints().WithOrigin(net.OriginNetwork))
 	if err != nil {
 		return c.WriteResponse(msg.Port, &Response{Error: errRejected})
 	}

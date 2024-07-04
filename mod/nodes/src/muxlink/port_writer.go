@@ -1,4 +1,4 @@
-package link
+package muxlink
 
 import (
 	"fmt"
@@ -17,13 +17,13 @@ const debugBufferUnderruns = false
 type PortWriter struct {
 	*net.SourceField
 	sync.Mutex
-	link         *CoreLink
+	link         *Link
 	port         int
 	err          error
 	maxFrameSize int
 }
 
-func NewPortWriter(link *CoreLink, port int) *PortWriter {
+func NewPortWriter(link *Link, port int) *PortWriter {
 	return &PortWriter{
 		link:         link,
 		port:         port,
@@ -122,7 +122,7 @@ func (w *PortWriter) Transport() net.SecureConn {
 	return w.link.Transport()
 }
 
-func (w *PortWriter) Link() *CoreLink {
+func (w *PortWriter) Link() *Link {
 	return w.link
 }
 

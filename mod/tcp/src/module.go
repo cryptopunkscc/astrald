@@ -3,6 +3,7 @@ package tcp
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -15,6 +16,7 @@ type Module struct {
 	node            node.Node
 	log             *log.Logger
 	ctx             context.Context
+	nodes           nodes.Module
 	publicEndpoints []Endpoint
 }
 

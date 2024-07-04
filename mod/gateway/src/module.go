@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/policy"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
@@ -26,13 +27,19 @@ type Module struct {
 	mu          sync.Mutex
 	sdp         discovery.Module
 	policy      policy.Module
+	nodes       nodes.Module
 }
 
-func (mod *Module) Prepare(ctx context.Context) error {
+func (mod *Module) Prepare(ctx context.Context) (err error) {
+	mod.nodes, err = modules.Load[nodes.Module](mod.node, nodes.ModuleName)
+	if err != nil {
+		return
+	}
+
 	mod.sdp, _ = modules.Load[discovery.Module](mod.node, discovery.ModuleName)
 	mod.policy, _ = modules.Load[policy.Module](mod.node, policy.ModuleName)
 
-	return nil
+	return
 }
 
 func (mod *Module) Run(ctx context.Context) error {

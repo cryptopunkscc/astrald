@@ -1,4 +1,4 @@
-package link
+package muxlink
 
 import (
 	"github.com/cryptopunkscc/astrald/mux"
@@ -10,11 +10,11 @@ import (
 type PortBinding struct {
 	*net.OutputField
 	async *streams.AsyncWriter
-	link  *CoreLink
+	link  *Link
 	port  atomic.Int32
 }
 
-func NewPortBinding(output net.SecureWriteCloser, link *CoreLink) *PortBinding {
+func NewPortBinding(output net.SecureWriteCloser, link *Link) *PortBinding {
 	binding := &PortBinding{
 		link:  link,
 		async: streams.NewAsyncWriter(output, portBufferSize),
@@ -44,7 +44,7 @@ func (binding *PortBinding) HandleMux(event mux.Event) {
 	}
 }
 
-func (binding *PortBinding) Link() *CoreLink {
+func (binding *PortBinding) Link() *Link {
 	return binding.link
 }
 

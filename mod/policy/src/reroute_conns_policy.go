@@ -3,8 +3,8 @@ package policy
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"time"
@@ -119,7 +119,7 @@ func (policy *RerouteConnsPolicy) watchLinksWith(ctx context.Context, identity i
 }
 
 func (policy *RerouteConnsPolicy) isReroutable(conn *router.MonitoredConn) bool {
-	if _, ok := net.FinalOutput(conn.Target()).(*link.PortWriter); ok {
+	if _, ok := net.FinalOutput(conn.Target()).(*muxlink.PortWriter); ok {
 		return true
 	}
 	return false
@@ -127,7 +127,7 @@ func (policy *RerouteConnsPolicy) isReroutable(conn *router.MonitoredConn) bool 
 
 func (policy *RerouteConnsPolicy) getLink(conn *router.MonitoredConn) net.Link {
 	type linkTest interface {
-		Link() *link.CoreLink
+		Link() *muxlink.Link
 	}
 
 	final := net.FinalOutput(conn.Target())

@@ -19,6 +19,11 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	_ = assets.LoadYAML(nodes.ModuleName, &mod.config)
 
+	err = node.Network().AddLinker(&Linker{mod})
+	if err != nil {
+		return nil, err
+	}
+
 	return mod, err
 }
 

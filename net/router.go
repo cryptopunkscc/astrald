@@ -11,6 +11,19 @@ type Router interface {
 
 type RouteQueryFunc func(context.Context, Query, SecureWriteCloser, Hints) (SecureWriteCloser, error)
 
+var _ Router = NilRouter{}
+
+type NilRouter struct {
+	Soft bool // return ErrRouteNotFound instead of ErrRejected
+}
+
+func (r NilRouter) RouteQuery(ctx context.Context, query Query, caller SecureWriteCloser, hints Hints) (SecureWriteCloser, error) {
+	if r.Soft {
+		return RouteNotFound(r, errors.New("nil router"))
+	}
+	return Reject()
+}
+
 // Accept accepts the query and runs the handler in a new goroutine.
 func Accept(query Query, src SecureWriteCloser, handler func(conn SecureConn)) (SecureWriteCloser, error) {
 	pipeReader, pipeWriter := SecurePipe(query.Target())

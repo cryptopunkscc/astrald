@@ -1,16 +1,16 @@
-package link
+package muxlink
 
 import (
 	"sync"
 )
 
 type remoteBuffers struct {
-	link  *CoreLink
+	link  *Link
 	sizes map[int]int
 	cond  *sync.Cond
 }
 
-func newRemoteBuffers(link *CoreLink) *remoteBuffers {
+func newRemoteBuffers(link *Link) *remoteBuffers {
 	return &remoteBuffers{
 		sizes: map[int]int{},
 		cond:  sync.NewCond(&sync.Mutex{}),

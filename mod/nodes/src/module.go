@@ -6,11 +6,16 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/tasks"
+	"time"
 )
+
+const DefaultWorkerCount = 8
+const DefaultTimeout = time.Minute
 
 var _ nodes.Module = &Module{}
 
@@ -27,6 +32,48 @@ func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
 		&Service{Module: mod},
 	).Run(ctx)
+}
+
+func (mod *Module) AcceptLink(ctx context.Context, conn net.Conn) (net.Link, error) {
+	l, err := muxlink.Accept(ctx, conn, mod.node.Identity(), mod.node.LocalRouter())
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.node.Network().AddLink(l)
+	if err != nil {
+		l.Close()
+	}
+
+	return l, err
+}
+
+func (mod *Module) InitLink(ctx context.Context, conn net.Conn, remoteID id.Identity) (net.Link, error) {
+	l, err := muxlink.Open(ctx, conn, remoteID, mod.node.Identity(), mod.node.LocalRouter())
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.node.Network().AddLink(l)
+	if err != nil {
+		l.Close()
+	}
+
+	return l, err
+}
+
+func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts nodes.LinkOpts) (net.Link, error) {
+	l, err := (&Linker{mod}).LinkOpts(ctx, remoteIdentity, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.node.Network().AddLink(l)
+	if err != nil {
+		l.Close()
+	}
+
+	return l, err
 }
 
 func (mod *Module) Resolve(ctx context.Context, identity id.Identity, opts *nodes.ResolveOpts) ([]net.Endpoint, error) {

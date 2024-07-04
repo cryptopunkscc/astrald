@@ -1,4 +1,4 @@
-package link
+package muxlink
 
 import (
 	"bytes"
@@ -66,18 +66,18 @@ func (l *TestRouter) RouteQuery(ctx context.Context, query net.Query, caller net
 	})
 }
 
-func TestCoreLink(t *testing.T) {
+func TestLink(t *testing.T) {
 	var ctx, cancel = context.WithCancel(context.Background())
 	var id1, _ = id.GenerateIdentity()
 	var id2, _ = id.GenerateIdentity()
 
 	var id1conn, id2conn = streams.Pipe()
-	var id1link = NewCoreLink(NewSecureConn(id1, id2, id1conn))
-	var id2link = NewCoreLink(NewSecureConn(id2, id1, id2conn))
+	var id1link = NewLink(NewSecureConn(id1, id2, id1conn), nil)
+	var id2link = NewLink(NewSecureConn(id2, id1, id2conn), nil)
 	var wg sync.WaitGroup
 
-	id1link.SetUplink(&TestRouter{t})
-	id2link.SetUplink(&TestRouter{t})
+	id1link.SetLocalRouter(&TestRouter{t})
+	id2link.SetLocalRouter(&TestRouter{t})
 
 	wg.Add(1)
 	go func() {
@@ -149,7 +149,7 @@ func TestOpenAccept(t *testing.T) {
 
 		conn := &FakeConn{ReadWriteCloser: left}
 
-		link, err := Accept(ctx, conn, leftID)
+		link, err := Accept(ctx, conn, leftID, nil)
 		if err != nil {
 			t.Fatal(err)
 			return
@@ -162,7 +162,7 @@ func TestOpenAccept(t *testing.T) {
 
 		conn := &FakeConn{ReadWriteCloser: right}
 
-		link, err := Open(ctx, conn, leftID, rightID)
+		link, err := Open(ctx, conn, leftID, rightID, nil)
 		if err != nil {
 			t.Fatal(err)
 			return

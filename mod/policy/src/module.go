@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/policy"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/node"
@@ -18,6 +19,7 @@ type Module struct {
 	log      *log.Logger
 	ctx      context.Context
 	relay    relay.Module
+	nodes    nodes.Module
 	policies map[*RunningPolicy]struct{}
 }
 

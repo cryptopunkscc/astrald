@@ -2,7 +2,6 @@ package tcp
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/node/link"
 	_net "net"
 	"strconv"
 )
@@ -45,15 +44,10 @@ func (srv *Server) Run(ctx context.Context) error {
 		var conn = wrapTCPConn(rawConn, false)
 
 		go func() {
-			l, err := link.Accept(ctx, conn, srv.node.Identity())
+			_, err := srv.nodes.AcceptLink(ctx, conn)
 			if err != nil {
 				srv.log.Errorv(1, "handshake failed from %v: %v", conn.RemoteEndpoint(), err)
 				return
-			}
-
-			err = srv.node.Network().AddLink(l)
-			if err != nil {
-				l.Close()
 			}
 		}()
 	}

@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"strings"
 	"time"
 )
@@ -60,14 +59,9 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 			actx, cancel := context.WithTimeout(context.Background(), acceptTimeout)
 			defer cancel()
 
-			l, err := link.Accept(actx, gwConn, srv.node.Identity())
+			_, err := srv.nodes.AcceptLink(actx, gwConn)
 			if err != nil {
 				return
-			}
-
-			err = srv.node.Network().AddLink(l)
-			if err != nil {
-				l.Close()
 			}
 		})
 	}

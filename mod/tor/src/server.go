@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"github.com/cryptopunkscc/astrald/mod/tor/tc"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	_net "net"
@@ -55,15 +54,9 @@ func (srv *Server) Run(ctx context.Context) error {
 		var conn = newConn(rawConn, Endpoint{}, false)
 
 		go func() {
-			l, err := link.Accept(ctx, conn, srv.node.Identity())
+			_, err := srv.nodes.AcceptLink(ctx, conn)
 			if err != nil {
 				srv.log.Errorv(1, "handshake failed from %v: %v", conn.RemoteEndpoint(), err)
-				return
-			}
-
-			err = srv.node.Network().AddLink(l)
-			if err != nil {
-				l.Close()
 			}
 		}()
 	}

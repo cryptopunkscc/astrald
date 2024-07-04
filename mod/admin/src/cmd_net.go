@@ -5,9 +5,9 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -17,8 +17,6 @@ import (
 	"strings"
 	"time"
 )
-
-const defaultLinkTimeout = time.Minute
 
 var _ admin.Command = &CmdNet{}
 
@@ -190,7 +188,7 @@ func (cmd *CmdNet) printChainInfo(term admin.Terminal, element any) {
 		term.Printf("\n%s\n", admin.Keyword(reflect.TypeOf(i).Elem().Name()))
 
 		switch w := i.(type) {
-		case *link.PortBinding:
+		case *muxlink.PortBinding:
 			term.Printf("  Identity: %d\n", w.Output().Identity())
 			term.Printf("  Port: %d\n", w.Port())
 			if t := w.Transport(); t != nil {
@@ -215,7 +213,7 @@ func (cmd *CmdNet) printChainInfo(term admin.Terminal, element any) {
 			}
 			term.Printf("  Buffer: %d/%d\n", w.Used(), w.BufferSize())
 
-		case *link.PortWriter:
+		case *muxlink.PortWriter:
 			term.Printf("  Identity: %d\n", w.Identity())
 			term.Printf("  Port: %d\n", w.Port())
 			term.Printf("  Source: %s\n", reflect.TypeOf(w.Source()))

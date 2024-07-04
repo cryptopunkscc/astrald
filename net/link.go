@@ -9,6 +9,7 @@ import (
 type Link interface {
 	tasks.Runner
 	Router
+	SetLocalRouter(Router)
 	LocalIdentity() id.Identity
 	RemoteIdentity() id.Identity
 	Transport() SecureConn

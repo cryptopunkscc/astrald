@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"strings"
 	"sync"
 )
@@ -56,7 +55,7 @@ func (policy *AutoLinkPolicy) RouteQuery(ctx context.Context, query net.Query, c
 		return net.RouteNotFound(policy)
 	}
 
-	lnk, err := link.MakeLink(ctx, policy.node, query.Target(), link.Opts{})
+	_, err = policy.node.Network().Link(ctx, query.Target())
 	if err != nil {
 		switch {
 		case errors.Is(err, context.Canceled):
@@ -69,11 +68,6 @@ func (policy *AutoLinkPolicy) RouteQuery(ctx context.Context, query net.Query, c
 			return net.RouteNotFound(policy)
 		}
 
-		return net.RouteNotFound(policy, err)
-	}
-
-	err = policy.node.Network().AddLink(lnk)
-	if err != nil {
 		return net.RouteNotFound(policy, err)
 	}
 

@@ -3,6 +3,7 @@ package tor
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -14,6 +15,7 @@ const defaultListenPort = 1791
 type Module struct {
 	config Config
 	node   node.Node
+	nodes  nodes.Module
 	assets assets.Assets
 	log    *log.Logger
 	ctx    context.Context

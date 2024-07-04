@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/link"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -164,7 +163,7 @@ func (worker *alwaysLinkedWorker) Run(ctx context.Context) error {
 			continue
 		}
 
-		lnk, err := link.MakeLink(ctx, worker.node, worker.target, link.Opts{})
+		_, err := worker.node.Network().Link(ctx, worker.target)
 		if err != nil {
 			worker.errCount++
 
@@ -175,10 +174,6 @@ func (worker *alwaysLinkedWorker) Run(ctx context.Context) error {
 			case <-ctx.Done():
 				return nil
 			}
-		}
-
-		if err := worker.node.Network().AddLink(lnk); err != nil {
-			return err
 		}
 	}
 }

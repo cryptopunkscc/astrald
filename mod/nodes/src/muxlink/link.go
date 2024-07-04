@@ -1,4 +1,4 @@
-package link
+package muxlink
 
 import (
 	"context"
@@ -11,17 +11,17 @@ import (
 	"time"
 )
 
-var _ net.Link = &CoreLink{}
+var _ net.Link = &Link{}
 
 var DefaultMuxHandler = func(event mux.Event) {}
 
 const portBufferSize = 4 * 1024 * 1024
 const controlPort = 0
 
-type CoreLink struct {
+type Link struct {
 	sig.Activity
 	transport     net.SecureConn
-	uplink        net.Router
+	localRouter   net.Router
 	mux           *mux.FrameMux
 	control       *Control
 	remoteBuffers *remoteBuffers
@@ -33,10 +33,14 @@ type CoreLink struct {
 	running       chan struct{}
 }
 
-func NewCoreLink(transport net.SecureConn) *CoreLink {
-	link := &CoreLink{
-		transport: transport,
-		running:   make(chan struct{}),
+func NewLink(transport net.SecureConn, localRouter net.Router) *Link {
+	link := &Link{
+		transport:   transport,
+		running:     make(chan struct{}),
+		localRouter: localRouter,
+	}
+	if link.localRouter == nil {
+		link.localRouter = &net.NilRouter{}
 	}
 
 	link.remoteBuffers = newRemoteBuffers(link)
@@ -50,7 +54,7 @@ func NewCoreLink(transport net.SecureConn) *CoreLink {
 	return link
 }
 
-func (link *CoreLink) Run(ctx context.Context) error {
+func (link *Link) Run(ctx context.Context) error {
 	link.ctx, link.cancelCtx = context.WithCancel(ctx)
 
 	var group = tasks.Group(link.mux, link.control, link.health)
@@ -62,7 +66,7 @@ func (link *CoreLink) Run(ctx context.Context) error {
 }
 
 // CloseWithError closes the link with provided error as the reason.
-func (link *CoreLink) CloseWithError(e error) error {
+func (link *Link) CloseWithError(e error) error {
 	link.mu.Lock()
 	defer link.mu.Unlock()
 
@@ -79,7 +83,7 @@ func (link *CoreLink) CloseWithError(e error) error {
 }
 
 // Bind binds a specific port on the link's multiplexer to a WriteCloser.
-func (link *CoreLink) Bind(localPort int, output net.SecureWriteCloser) (binding *PortBinding, err error) {
+func (link *Link) Bind(localPort int, output net.SecureWriteCloser) (binding *PortBinding, err error) {
 	binding = NewPortBinding(output, link)
 	err = link.mux.Bind(localPort, binding.HandleMux)
 
@@ -87,7 +91,7 @@ func (link *CoreLink) Bind(localPort int, output net.SecureWriteCloser) (binding
 }
 
 // BindAny binds any port on the link's multiplexer to a WriteCloser.
-func (link *CoreLink) BindAny(output net.SecureWriteCloser) (binding *PortBinding, err error) {
+func (link *Link) BindAny(output net.SecureWriteCloser) (binding *PortBinding, err error) {
 	binding = NewPortBinding(output, link)
 	_, err = link.mux.BindAny(binding.HandleMux)
 
@@ -95,68 +99,68 @@ func (link *CoreLink) BindAny(output net.SecureWriteCloser) (binding *PortBindin
 }
 
 // Unbind unbinds a local port
-func (link *CoreLink) Unbind(port int) error {
+func (link *Link) Unbind(port int) error {
 	return link.mux.Unbind(port)
 }
 
 // Close closes the link.
-func (link *CoreLink) Close() error {
+func (link *Link) Close() error {
 	return link.CloseWithError(ErrLinkClosed)
 }
 
 // LocalIdentity returns the identity of the local party.
-func (link *CoreLink) LocalIdentity() id.Identity {
+func (link *Link) LocalIdentity() id.Identity {
 	return link.transport.LocalIdentity()
 }
 
 // RemoteIdentity returns the identity of the remote party.
-func (link *CoreLink) RemoteIdentity() id.Identity {
+func (link *Link) RemoteIdentity() id.Identity {
 	return link.transport.RemoteIdentity()
 }
 
 // Check marks the link for health check. This can be called many times without
 // causing any congestion, as health checks are rate limited.
-func (link *CoreLink) Check() {
+func (link *Link) Check() {
 	link.health.Check()
 }
 
-// Uplink returns the upstream router to which incoming queries will be sent
-func (link *CoreLink) Uplink() net.Router {
-	return link.uplink
+// LocalRouter returns the upstream router to which incoming queries will be sent
+func (link *Link) LocalRouter() net.Router {
+	return link.localRouter
 }
 
-// SetUplink sets the upstream router to which incoming queries will ne sent
-func (link *CoreLink) SetUplink(uplink net.Router) {
-	link.uplink = uplink
+// SetLocalRouter sets the upstream router to which incoming queries will ne sent
+func (link *Link) SetLocalRouter(uplink net.Router) {
+	link.localRouter = uplink
 }
 
-func (link *CoreLink) Transport() net.SecureConn {
+func (link *Link) Transport() net.SecureConn {
 	return link.transport
 }
 
 // Ping sends a new ping request and returns its roundtrip time
-func (link *CoreLink) Ping() (time.Duration, error) {
+func (link *Link) Ping() (time.Duration, error) {
 	return link.control.Ping()
 }
 
 // Latency returns the last measured latency of the link. It does not trigger a new measurement. If the latency
 // is not known, it returns -1.
-func (link *CoreLink) Latency() time.Duration {
+func (link *Link) Latency() time.Duration {
 	return link.health.Latency()
 }
 
 // Done returns a channel that will be closed when the link closes
-func (link *CoreLink) Done() <-chan struct{} {
+func (link *Link) Done() <-chan struct{} {
 	<-link.running
 	return link.ctx.Done()
 }
 
 // Err returns the error that caused the link to close or nil if the link is open
-func (link *CoreLink) Err() error {
+func (link *Link) Err() error {
 	return link.err
 }
 
-func (link *CoreLink) write(port int, frame []byte) error {
+func (link *Link) write(port int, frame []byte) error {
 	link.mu.Lock()
 	defer link.mu.Unlock()
 

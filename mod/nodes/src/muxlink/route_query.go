@@ -1,4 +1,4 @@
-package link
+package muxlink
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 )
 
-func (link *CoreLink) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
+func (link *Link) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
 	// validate identities
 	switch {
 	case !query.Target().IsEqual(link.RemoteIdentity()):

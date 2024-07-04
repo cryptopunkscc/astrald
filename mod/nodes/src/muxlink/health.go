@@ -1,4 +1,4 @@
-package link
+package muxlink
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 )
 
 type health struct {
-	link    *CoreLink
+	link    *Link
 	sig     chan struct{}
 	latency time.Duration
 }
 
-func newHealth(link *CoreLink) *health {
+func newHealth(link *Link) *health {
 	return &health{
 		link:    link,
 		sig:     make(chan struct{}, 1),

@@ -3,11 +3,12 @@ package network
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/node/link"
+	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
 	"sync/atomic"
 )
@@ -19,6 +20,7 @@ var _ Network = &CoreNetwork{}
 type CoreNetwork struct {
 	ctx     context.Context
 	node    Node
+	linkers sig.Set[Linker]
 	links   *LinkSet
 	events  events.Queue
 	log     *log.Logger
@@ -69,6 +71,64 @@ func (n *CoreNetwork) Run(ctx context.Context) error {
 	return nil
 }
 
+func (n *CoreNetwork) AddLinker(linker Linker) error {
+	return n.linkers.Add(linker)
+}
+
+func (n *CoreNetwork) Link(ctx context.Context, identity id.Identity) (net.Link, error) {
+	linkers := n.linkers.Clone()
+
+	if len(linkers) == 0 {
+		return nil, errors.New("no linkers found")
+	}
+
+	var errs = make(chan error, len(linkers))
+	var link = make(chan net.Link, 1)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var wg sync.WaitGroup
+
+	wg.Add(len(linkers))
+	for _, linker := range linkers {
+		linker := linker
+		go func() {
+			defer wg.Done()
+
+			l, err := linker.Link(ctx, identity)
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			select {
+			case link <- l:
+				cancel()
+			default:
+				l.Close()
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errs)
+
+	if len(link) != 1 {
+		return nil, errors.Join(sig.ChanToArray(errs)...)
+	}
+
+	l := <-link
+
+	err := n.AddLink(l)
+	if err != nil {
+		l.Close()
+		return nil, err
+	}
+
+	return l, nil
+}
+
 func (n *CoreNetwork) AddLink(l net.Link) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -79,11 +139,6 @@ func (n *CoreNetwork) AddLink(l net.Link) error {
 
 	if !l.LocalIdentity().IsEqual(n.node.Identity()) {
 		return ErrIdentityMismatch
-	}
-
-	if corelink, ok := l.(*link.CoreLink); ok {
-		corelink.SetUplink(n.node.Router())
-		defer corelink.Check()
 	}
 
 	active, err := n.links.Add(l)
