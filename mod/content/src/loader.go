@@ -3,10 +3,8 @@ package content
 import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 type Loader struct{}
@@ -37,18 +35,4 @@ func init() {
 	if err := modules.RegisterModule(content.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
-
-	node.AddFormatter(func(n node.Node, s string) string {
-		objectID, err := object.ParseID(s)
-		if err != nil {
-			return ""
-		}
-
-		mod, ok := modules.Load[content.Module](n, content.ModuleName)
-		if ok != nil {
-			return ""
-		}
-
-		return mod.BestTitle(objectID)
-	})
 }
