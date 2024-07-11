@@ -21,7 +21,6 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 	_ = assets.LoadYAML(admin.ModuleName, &mod.config)
 
 	_ = mod.AddCommand("help", &CmdHelp{mod: mod})
-	_ = mod.AddCommand("tracker", NewCmdTracker(mod))
 	_ = mod.AddCommand("net", &CmdNet{mod: mod})
 	_ = mod.AddCommand("use", &CmdUse{mod: mod})
 	_ = mod.AddCommand("sudo", &CmdSudo{mod: mod})

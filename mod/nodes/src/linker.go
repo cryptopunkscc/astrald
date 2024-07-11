@@ -29,7 +29,7 @@ func (linker *Linker) LinkOpts(ctx context.Context, remoteIdentity id.Identity, 
 
 	var endpoints = opts.Endpoints
 	if endpoints == nil {
-		endpoints, _ = linker.node.Tracker().EndpointsByIdentity(remoteIdentity)
+		endpoints = linker.Endpoints(remoteIdentity)
 	}
 
 	if len(endpoints) == 0 {

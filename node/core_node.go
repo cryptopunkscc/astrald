@@ -12,10 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/resolver"
 	"github.com/cryptopunkscc/astrald/node/router"
-	"github.com/cryptopunkscc/astrald/node/tracker"
 	"github.com/cryptopunkscc/astrald/resources"
-	"gorm.io/gorm"
-	"os"
 	"time"
 )
 
@@ -31,7 +28,6 @@ type CoreNode struct {
 	router   *router.CoreRouter
 	infra    *infra.CoreInfra
 	network  *network.CoreNetwork
-	tracker  *tracker.CoreTracker
 	modules  *modules.CoreModules
 	resolver *resolver.CoreResolver
 	auth     *authorizer.CoreAuthorizer
@@ -96,18 +92,6 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 		return nil, fmt.Errorf("error setting up infrastructure: %w", err)
 	}
 
-	// tracker
-	node.tracker, err = tracker.NewCoreTracker(node.assets, node.infra, node.log, &node.events)
-	if err != nil {
-		return nil, err
-	}
-
-	// check if our alias is set
-	err = node.checkNodeAlias()
-	if err != nil {
-		node.log.Error("checkNodeAlias: %v", err)
-	}
-
 	// resolver
 	node.resolver = resolver.NewCoreResolver(node)
 
@@ -135,27 +119,6 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 	return node, nil
 }
 
-func (node *CoreNode) checkNodeAlias() error {
-	alias, err := node.tracker.GetAlias(node.identity)
-	if (err != nil) && (!errors.Is(err, gorm.ErrRecordNotFound)) {
-		return err
-	}
-	if alias != "" {
-		return nil
-	}
-
-	alias = "localnode"
-
-	hostname, err := os.Hostname()
-	if err == nil {
-		if hostname != "" && hostname != "localhost" {
-			alias = hostname
-		}
-	}
-
-	return node.tracker.SetAlias(node.identity, alias)
-}
-
 func (node *CoreNode) Conns() *router.ConnSet {
 	return node.router.Conns()
 }
@@ -163,10 +126,6 @@ func (node *CoreNode) Conns() *router.ConnSet {
 // Infra returns node's infrastructure component
 func (node *CoreNode) Infra() infra.Infra {
 	return node.infra
-}
-
-func (node *CoreNode) Tracker() tracker.Tracker {
-	return node.tracker
 }
 
 func (node *CoreNode) Network() network.Network {
@@ -181,7 +140,7 @@ func (node *CoreNode) Modules() modules.Modules {
 	return node.modules
 }
 
-func (node *CoreNode) Resolver() resolver.Resolver {
+func (node *CoreNode) Resolver() resolver.ResolveEngine {
 	return node.resolver
 }
 

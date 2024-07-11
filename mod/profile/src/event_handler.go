@@ -51,7 +51,7 @@ func (h *EventHandler) updateIdentityProfile(target id.Identity, serviceName str
 			continue
 		}
 
-		h.node.Tracker().AddEndpoint(target, ep)
+		_ = h.nodes.AddEndpoint(target, ep)
 	}
 
 	h.log.Info("%s profile updated.", target)

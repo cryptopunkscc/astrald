@@ -19,7 +19,24 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 
 	_ = assets.LoadYAML(dir.ModuleName, &mod.config)
 
-	return mod, err
+	mod.db = assets.Database()
+
+	err = mod.db.AutoMigrate(&dbAlias{})
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.node.Resolver().AddResolver(mod)
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.setDefaultAlias()
+	if err != nil {
+		mod.log.Errorv(1, "error setting default alias: %v", err)
+	}
+
+	return mod, nil
 }
 
 func init() {

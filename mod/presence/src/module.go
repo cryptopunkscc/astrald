@@ -3,7 +3,9 @@ package presence
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/node"
@@ -30,6 +32,9 @@ type Module struct {
 
 	visible    atomic.Bool
 	outFilters sig.Set[presence.AdOutHook]
+
+	dir   dir.Module
+	nodes nodes.Module
 
 	discover *DiscoverService
 	announce *AnnounceService
@@ -113,7 +118,7 @@ func (mod *Module) RemoveHookAdOut(filterFunc presence.AdOutHook) error {
 }
 
 func (mod *Module) myAlias() string {
-	a, _ := mod.node.Tracker().GetAlias(mod.node.Identity())
+	a, _ := mod.dir.GetAlias(mod.node.Identity())
 	return a
 }
 

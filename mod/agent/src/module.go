@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 )
@@ -13,36 +14,38 @@ type Module struct {
 	node node.Node
 	log  *log.Logger
 	ctx  context.Context
+
+	dir dir.Module
 }
 
-func (module *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	if hints.Origin != net.OriginLocal {
 		return nil, net.ErrRejected
 	}
 
-	return net.Accept(query, caller, module.serve)
+	return net.Accept(query, caller, mod.serve)
 }
 
-func (module *Module) serve(conn net.SecureConn) {
+func (mod *Module) serve(conn net.SecureConn) {
 	s := &Server{
-		node: module.node,
+		mod:  mod,
 		conn: conn,
-		log:  module.log,
+		log:  mod.log,
 	}
 
-	if err := s.Run(module.ctx); err != nil {
-		module.log.Error("serve error: %s", err)
+	if err := s.Run(mod.ctx); err != nil {
+		mod.log.Error("serve error: %s", err)
 	}
 }
 
-func (module *Module) Run(ctx context.Context) error {
-	module.ctx = ctx
+func (mod *Module) Run(ctx context.Context) error {
+	mod.ctx = ctx
 
-	err := module.node.LocalRouter().AddRoute(serviceName, module)
+	err := mod.node.LocalRouter().AddRoute(serviceName, mod)
 	if err != nil {
 		return err
 	}
-	defer module.node.LocalRouter().RemoveRoute(serviceName)
+	defer mod.node.LocalRouter().RemoveRoute(serviceName)
 
 	<-ctx.Done()
 

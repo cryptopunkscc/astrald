@@ -20,10 +20,64 @@ func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"help":     adm.help,
+		"setalias": adm.setAlias,
+		"getalias": adm.getAlias,
+		"resolve":  adm.resolve,
 		"describe": adm.describe,
 	}
 
 	return adm
+}
+
+func (adm *Admin) setAlias(term admin.Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("not enough arguments")
+	}
+
+	identity, err := adm.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.SetAlias(identity, args[1])
+}
+
+func (adm *Admin) getAlias(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("not enough arguments")
+	}
+
+	identity, err := adm.mod.node.Resolver().Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	alias, err := adm.mod.GetAlias(identity)
+	if err != nil {
+		return err
+	}
+	if alias == "" {
+		term.Printf("no alias set\n")
+	} else {
+		term.Printf("%s\n", alias)
+	}
+
+	return nil
+}
+
+func (adm *Admin) resolve(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("not enough arguments")
+	}
+
+	identity, err := adm.mod.Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	term.Printf("%s\n", identity.String())
+
+	return nil
 }
 
 func (adm *Admin) describe(term admin.Terminal, args []string) error {

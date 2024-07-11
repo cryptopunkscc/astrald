@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/node/resolver"
 	"github.com/cryptopunkscc/astrald/node/router"
-	"github.com/cryptopunkscc/astrald/node/tracker"
 	"regexp"
 )
 
@@ -18,10 +17,9 @@ type Node interface {
 	Events() *events.Queue
 	Infra() infra.Infra
 	Network() network.Network
-	Tracker() tracker.Tracker
 	Auth() authorizer.AuthSet
 	Modules() modules.Modules
-	Resolver() resolver.Resolver
+	Resolver() resolver.ResolveEngine
 	Router() router.Router
 	LocalRouter() router.LocalRouter
 }

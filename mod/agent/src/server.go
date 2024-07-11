@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 	"io"
 	"os"
 	"reflect"
@@ -35,7 +34,7 @@ var (
 )
 
 type Server struct {
-	node node.Node
+	mod  *Module
 	log  *log.Logger
 	conn net.SecureConn
 	auth bool
@@ -138,14 +137,14 @@ func (srv *Server) handleRequest(req interface{}) interface{} {
 			return ErrUnauthorized
 		}
 
-		return srv.node.Tracker().SetAlias(srv.node.Identity(), req.Alias)
+		return srv.mod.dir.SetAlias(srv.mod.node.Identity(), req.Alias)
 
 	case GetAliasRequest:
 		if !srv.auth {
 			return ErrUnauthorized
 		}
 
-		alias, err := srv.node.Tracker().GetAlias(srv.node.Identity())
+		alias, err := srv.mod.dir.GetAlias(srv.mod.node.Identity())
 		if err != nil {
 			return ErrInternalError
 		}

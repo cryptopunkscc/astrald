@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/node"
@@ -30,6 +31,7 @@ type Module struct {
 	objects objects.Module
 	content content.Module
 	db      *gorm.DB
+	dir     dir.Module
 }
 
 var ErrAlreadyIndexed = errors.New("already indexed")
@@ -42,7 +44,8 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) CreateKey(alias string) (identity id.Identity, objectID object.ID, err error) {
-	if _, err := mod.node.Tracker().IdentityByAlias(alias); err == nil {
+	_, err = mod.dir.Resolve(alias)
+	if err == nil {
 		return identity, objectID, errors.New("alias already in use")
 	}
 
@@ -56,7 +59,7 @@ func (mod *Module) CreateKey(alias string) (identity id.Identity, objectID objec
 		return
 	}
 
-	err = mod.node.Tracker().SetAlias(identity, alias)
+	err = mod.dir.SetAlias(identity, alias)
 
 	return
 }

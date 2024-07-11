@@ -10,8 +10,8 @@ import (
 )
 
 func (mod *Module) Describe(ctx context.Context, identity id.Identity, opts *desc.Opts) []*desc.Desc {
-	endpoints, err := mod.node.Tracker().EndpointsByIdentity(identity)
-	if err != nil || len(endpoints) == 0 {
+	endpoints := mod.Endpoints(identity)
+	if len(endpoints) == 0 {
 		return nil
 	}
 

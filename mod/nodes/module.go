@@ -16,13 +16,22 @@ type Module interface {
 	AcceptLink(ctx context.Context, conn net.Conn) (net.Link, error)
 	InitLink(ctx context.Context, conn net.Conn, remoteID id.Identity) (net.Link, error)
 
-	AddEndpoint(nodeID id.Identity, endpoint net.Endpoint) error
-	RemoveEndpoint(nodeID id.Identity, endpoint net.Endpoint) error
-	Forget(nodeID id.Identity) error
+	ParseInfo(s string) (*NodeInfo, error)
+
+	AddEndpoint(id.Identity, ...net.Endpoint) error
+	RemoveEndpoint(id.Identity, ...net.Endpoint) error
+
+	Endpoints(id.Identity) []net.Endpoint
 }
 
 type Resolver interface {
 	Resolve(context.Context, id.Identity, *ResolveOpts) ([]net.Endpoint, error)
+}
+
+type NodeInfo struct {
+	Identity  id.Identity
+	Alias     string
+	Endpoints []net.Endpoint
 }
 
 type Info struct {

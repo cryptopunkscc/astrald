@@ -4,13 +4,13 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/policy"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	"github.com/cryptopunkscc/astrald/nodeinfo"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 )
@@ -28,9 +28,15 @@ type Module struct {
 	sdp         discovery.Module
 	policy      policy.Module
 	nodes       nodes.Module
+	dir         dir.Module
 }
 
 func (mod *Module) Prepare(ctx context.Context) (err error) {
+	mod.dir, err = modules.Load[dir.Module](mod.node, dir.ModuleName)
+	if err != nil {
+		return
+	}
+
 	mod.nodes, err = modules.Load[nodes.Module](mod.node, nodes.ModuleName)
 	if err != nil {
 		return
@@ -48,9 +54,15 @@ func (mod *Module) Run(ctx context.Context) error {
 	for _, gateName := range mod.config.Subscribe {
 		var gateID id.Identity
 
-		if info, err := nodeinfo.Parse(gateName); err == nil {
-			if err := nodeinfo.SaveToNode(info, mod.node, true); err != nil {
-				mod.log.Error("config error: cannot save nodeinfo %s: %v", gateName, err)
+		if info, err := mod.nodes.ParseInfo(gateName); err == nil {
+			err = mod.nodes.AddEndpoint(info.Identity, info.Endpoints...)
+			if err != nil {
+				mod.log.Error("config error: endpoints: %v", err)
+				continue
+			}
+			err = mod.dir.SetAlias(info.Identity, info.Alias)
+			if err != nil {
+				mod.log.Error("config error: set alias: %v", err)
 				continue
 			}
 			gateID = info.Identity
@@ -62,7 +74,9 @@ func (mod *Module) Run(ctx context.Context) error {
 			}
 		}
 
-		mod.Subscribe(gateID)
+		if !gateID.IsZero() {
+			mod.Subscribe(gateID)
+		}
 	}
 
 	return tasks.Group(

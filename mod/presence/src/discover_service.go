@@ -52,20 +52,20 @@ func (srv *DiscoverService) Run(ctx context.Context) error {
 		}
 
 		if srv.config.AutoAdd {
-			_ = srv.node.Tracker().AddEndpoint(ad.Identity, ad.Endpoint)
+			_ = srv.nodes.AddEndpoint(ad.Identity, ad.Endpoint)
 		}
 
 		if !srv.config.TrustAliases || ad.Alias == "" {
 			continue
 		}
-		if _, err := srv.node.Tracker().GetAlias(ad.Identity); err == nil {
+		if _, err := srv.dir.GetAlias(ad.Identity); err == nil {
 			continue
 		}
-		if _, err := srv.node.Tracker().IdentityByAlias(ad.Alias); err == nil {
+		if _, err := srv.dir.Resolve(ad.Alias); err == nil {
 			continue
 		}
 
-		err = srv.node.Tracker().SetAlias(ad.Identity, ad.Alias)
+		err = srv.dir.SetAlias(ad.Identity, ad.Alias)
 		if err != nil {
 			srv.log.Error("error setting alias '%v' for %v: %v", ad.Alias, ad.Identity.Fingerprint(), err)
 		} else {

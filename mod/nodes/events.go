@@ -1,4 +1,4 @@
-package tracker
+package nodes
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"

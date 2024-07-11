@@ -38,7 +38,7 @@ func (adm *Admin) new(term admin.Terminal, args []string) error {
 
 	if len(args) >= 1 {
 		alias := args[0]
-		if err := adm.mod.node.Tracker().SetAlias(key, alias); err != nil {
+		if err := adm.mod.dir.SetAlias(key, alias); err != nil {
 			term.Printf("cannot set alias: %v\n", err)
 		}
 	}

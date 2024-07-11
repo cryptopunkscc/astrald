@@ -5,17 +5,24 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/tasks"
+	"github.com/jxskiss/base62"
+	"gorm.io/gorm"
+	"strings"
 	"time"
 )
 
 const DefaultWorkerCount = 8
 const DefaultTimeout = time.Minute
+const infoPrefix = "node1"
+
+type NodeInfo nodes.NodeInfo
 
 var _ nodes.Module = &Module{}
 
@@ -25,13 +32,39 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	dir dir.Module
+	dir  dir.Module
+	keys keys.Module
+	db   *gorm.DB
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
 		&Service{Module: mod},
 	).Run(ctx)
+}
+
+func (mod *Module) ParseInfo(s string) (*nodes.NodeInfo, error) {
+	trimmed := strings.TrimPrefix(s, infoPrefix)
+	data, err := base62.DecodeString(trimmed)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := (&InfoEncoder{mod}).Unpack(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return (*nodes.NodeInfo)(info), nil
+}
+
+func (mod *Module) InfoString(info *nodes.NodeInfo) string {
+	packed, err := (&InfoEncoder{mod}).Pack((*NodeInfo)(info))
+	if err != nil {
+		return ""
+	}
+
+	return infoPrefix + base62.EncodeToString(packed)
 }
 
 func (mod *Module) AcceptLink(ctx context.Context, conn net.Conn) (net.Link, error) {
@@ -77,17 +110,10 @@ func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts no
 }
 
 func (mod *Module) Resolve(ctx context.Context, identity id.Identity, opts *nodes.ResolveOpts) ([]net.Endpoint, error) {
-	return mod.node.Tracker().EndpointsByIdentity(identity)
+	return mod.Endpoints(identity), nil
 }
 
-func (mod *Module) AddEndpoint(nodeID id.Identity, endpoint net.Endpoint) error {
-	return mod.node.Tracker().AddEndpoint(nodeID, endpoint)
-}
-
-func (mod *Module) RemoveEndpoint(nodeID id.Identity, endpoint net.Endpoint) error {
-	panic("implement me")
-}
-
-func (mod *Module) Forget(nodeID id.Identity) error {
-	return mod.node.Tracker().Clear(nodeID)
+func (mod *Module) Nodes() (nodes []id.Identity) {
+	mod.db.Model(&dbEndpoint{}).Distinct("identity").Find(&nodes)
+	return
 }

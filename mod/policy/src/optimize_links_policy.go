@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/node/network"
-	"github.com/cryptopunkscc/astrald/node/tracker"
 	"sync"
 	"time"
 )
@@ -115,10 +114,7 @@ func (worker *optimizeLinksWorker) Run(ctx context.Context) error {
 			return nil
 		}
 
-		endpoints, err := worker.node.Tracker().EndpointsByIdentity(worker.target)
-		if err != nil {
-			return err
-		}
+		endpoints := worker.nodes.Endpoints(worker.target)
 
 		var _, bestScore = bestLinkScore(links)
 		var try = make([]net.Endpoint, 0)
@@ -133,7 +129,7 @@ func (worker *optimizeLinksWorker) Run(ctx context.Context) error {
 			continue
 		}
 
-		_, err = worker.nodes.Link(ctx, worker.target, nodes.LinkOpts{Endpoints: try})
+		_, err := worker.nodes.Link(ctx, worker.target, nodes.LinkOpts{Endpoints: try})
 		if err == nil {
 			time.Sleep(1 * time.Second)
 			continue
@@ -165,7 +161,7 @@ func (worker *optimizeLinksWorker) watch(ctx context.Context) {
 					worker.cond.Broadcast()
 				}
 
-			case tracker.EventNewEndpoint:
+			case nodes.EventNewEndpoint:
 				if event.Identity.IsEqual(worker.target) {
 					worker.cond.Broadcast()
 				}
