@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/node"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -13,7 +13,7 @@ const serviceName = ".profile"
 const serviceType = "node.profile"
 
 type Module struct {
-	node  node.Node
+	node  node2.Node
 	log   *log.Logger
 	ctx   context.Context
 	sdp   discovery.Module

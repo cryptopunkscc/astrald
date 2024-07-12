@@ -3,14 +3,14 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
+	node2 "github.com/cryptopunkscc/astrald/node"
 )
 
 type Dialer struct {
-	node node.Node
+	node node2.Node
 }
 
-func NewDialer(node node.Node) *Dialer {
+func NewDialer(node node2.Node) *Dialer {
 	return &Dialer{node: node}
 }
 

@@ -3,16 +3,17 @@ package gateway
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node"
 	"strings"
 )
 
-var _ infra.Parser = &Module{}
+var _ node.Parser = &Module{}
 
 func (mod *Module) Parse(network string, address string) (net.Endpoint, error) {
 	if network != NetworkName {
-		return nil, infra.ErrUnsupportedNetwork
+		return nil, core.ErrUnsupportedNetwork
 	}
 
 	var ids = strings.SplitN(address, ":", 2)

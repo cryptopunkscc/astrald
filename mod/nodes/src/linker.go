@@ -7,12 +7,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/network"
+	"github.com/cryptopunkscc/astrald/node"
 	"sync"
 	"sync/atomic"
 )
 
-var _ network.Linker = &Linker{}
+var _ node.Linker = &Linker{}
 
 type Linker struct {
 	*Module

@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/network"
+	node "github.com/cryptopunkscc/astrald/node"
 	"sync"
 	"time"
 )
@@ -35,7 +35,7 @@ func (policy *OptimizeLinksPolicy) Run(ctx context.Context) error {
 	events := policy.node.Events().Subscribe(ctx)
 
 	for event := range events {
-		event, ok := event.(network.EventLinkAdded)
+		event, ok := event.(core.EventLinkAdded)
 		if !ok {
 			continue
 		}
@@ -150,12 +150,12 @@ func (worker *optimizeLinksWorker) watch(ctx context.Context) {
 			}
 
 			switch event := event.(type) {
-			case network.EventLinkAdded:
+			case core.EventLinkAdded:
 				if event.Link.RemoteIdentity().IsEqual(worker.target) {
 					worker.cond.Broadcast()
 				}
 
-			case network.EventLinkRemoved:
+			case core.EventLinkRemoved:
 				if event.Link.RemoteIdentity().IsEqual(worker.target) {
 					time.Sleep(250 * time.Millisecond) // wait in case all links are being closed
 					worker.cond.Broadcast()
@@ -187,7 +187,7 @@ func scoreNetwork(network string) int {
 	return 0
 }
 
-func bestLinkScore(links []*network.ActiveLink) (*network.ActiveLink, int) {
+func bestLinkScore(links []node.ActiveLink) (node.ActiveLink, int) {
 	if len(links) == 0 {
 		return nil, 0
 	}
@@ -196,7 +196,7 @@ func bestLinkScore(links []*network.ActiveLink) (*network.ActiveLink, int) {
 	var bestScore = scoreNetwork(linkNetwork(best))
 
 	for _, lnk := range links {
-		s := scoreNetwork(linkNetwork(lnk.Link))
+		s := scoreNetwork(linkNetwork(lnk))
 		if s > bestScore {
 			best = lnk
 			bestScore = s

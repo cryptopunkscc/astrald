@@ -8,14 +8,14 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/policy"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/node"
+	node2 "github.com/cryptopunkscc/astrald/node"
 )
 
 var _ policy.Module = &Module{}
 
 type Module struct {
 	config   Config
-	node     node.Node
+	node     node2.Node
 	log      *log.Logger
 	ctx      context.Context
 	relay    relay.Module

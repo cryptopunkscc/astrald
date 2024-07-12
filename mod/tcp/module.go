@@ -2,17 +2,17 @@ package tcp
 
 import (
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node"
 	_net "net"
 )
 
 const ModuleName = "tcp"
 
 type Module interface {
-	infra.Dialer
-	infra.Unpacker
-	infra.Parser
-	infra.EndpointLister
+	node.Dialer
+	node.Unpacker
+	node.Parser
+	node.EndpointLister
 	ListenPort() int
 }
 

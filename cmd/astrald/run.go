@@ -9,7 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/keys"
-	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/resources"
 	"os"
 	"time"
@@ -29,7 +29,7 @@ func run(ctx context.Context, args *Args) error {
 	}
 
 	// run the node
-	coreNode, err := node.NewCoreNode(nodeID, nodeRes)
+	coreNode, err := core.NewCoreNode(nodeID, nodeRes)
 	if err != nil {
 		return err
 	}

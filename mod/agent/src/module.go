@@ -5,13 +5,13 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
+	node2 "github.com/cryptopunkscc/astrald/node"
 )
 
 const serviceName = "sys.agent"
 
 type Module struct {
-	node node.Node
+	node node2.Node
 	log  *log.Logger
 	ctx  context.Context
 

@@ -2,12 +2,12 @@ package admin
 
 import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/node/router"
+	"github.com/cryptopunkscc/astrald/node"
 	"reflect"
 )
 
 func (cmd *CmdNet) routes(term admin.Terminal, _ []string) error {
-	var routes []router.Route
+	var routes []node.Route
 
 	routes = cmd.mod.node.Router().Routes()
 

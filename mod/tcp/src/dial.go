@@ -2,8 +2,8 @@ package tcp
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra"
 	_net "net"
 )
 
@@ -11,7 +11,7 @@ func (mod *Module) Dial(ctx context.Context, endpoint net.Endpoint) (net.Conn, e
 	switch endpoint.Network() {
 	case "tcp", "inet":
 	default:
-		return nil, infra.ErrUnsupportedNetwork
+		return nil, core.ErrUnsupportedNetwork
 	}
 
 	var dialer = _net.Dialer{Timeout: mod.config.DialTimeout}

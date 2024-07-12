@@ -2,13 +2,13 @@ package content
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/events"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -22,7 +22,7 @@ const adcMethod = "adc"
 const mimetypeMethod = "mimetype"
 
 type Module struct {
-	node   node.Node
+	node   node2.Node
 	config Config
 	log    *log.Logger
 	events events.Queue

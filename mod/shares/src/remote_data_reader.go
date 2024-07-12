@@ -3,9 +3,9 @@ package shares
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"time"
@@ -31,7 +31,7 @@ func (r *RemoteDataReader) Read(p []byte) (n int, err error) {
 func (r *RemoteDataReader) Seek(offset int64, whence int) (int64, error) {
 	r.ReadCloser.Close()
 
-	params := router.Params{
+	params := core.Params{
 		"id": r.objectID.String(),
 	}
 
@@ -47,7 +47,7 @@ func (r *RemoteDataReader) Seek(offset int64, whence int) (int64, error) {
 	}
 	params.SetInt("offset", int(o))
 
-	var query = router.Query(readServiceName, params)
+	var query = core.Query(readServiceName, params)
 
 	var q = net.NewQuery(
 		r.caller,

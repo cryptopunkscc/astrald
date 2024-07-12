@@ -2,10 +2,10 @@ package sync
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
@@ -20,7 +20,7 @@ func NewConsumer(arl *arl.ARL, router net.Router) *Consumer {
 }
 
 func (c *Consumer) Sync(ctx context.Context, since time.Time) (diff Diff, err error) {
-	var params = router.Params{}
+	var params = core.Params{}
 
 	if !since.IsZero() {
 		params.SetUnixNano("since", since)
@@ -29,7 +29,7 @@ func (c *Consumer) Sync(ctx context.Context, since time.Time) (diff Diff, err er
 	var query = net.NewQuery(
 		c.arl.Caller,
 		c.arl.Target,
-		router.Query(c.arl.Query, params),
+		core.Query(c.arl.Query, params),
 	)
 
 	conn, err := net.Route(ctx, c.router, query)

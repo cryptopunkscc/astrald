@@ -1,18 +1,18 @@
 package content
 
 import (
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
 func (mod *Module) LoadDependencies() error {
 	var err error
 
 	// required
-	mod.objects, err = modules.Load[objects.Module](mod.node, objects.ModuleName)
+	mod.objects, err = core.Load[objects.Module](mod.node, objects.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -21,10 +21,10 @@ func (mod *Module) LoadDependencies() error {
 	mod.objects.AddPrototypes(content.LabelDesc{}, content.TypeDesc{})
 
 	// optional
-	mod.fs, _ = modules.Load[fs.Module](mod.node, fs.ModuleName)
+	mod.fs, _ = core.Load[fs.Module](mod.node, fs.ModuleName)
 
 	// inject admin command
-	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
+	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
 		adm.AddCommand(content.ModuleName, NewAdmin(mod))
 	}
 

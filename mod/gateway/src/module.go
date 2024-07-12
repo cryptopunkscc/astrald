@@ -3,14 +3,14 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/policy"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/modules"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 )
@@ -19,7 +19,7 @@ const NetworkName = "gw"
 
 type Module struct {
 	config      Config
-	node        node.Node
+	node        node2.Node
 	log         *log.Logger
 	ctx         context.Context
 	dialer      *Dialer
@@ -32,18 +32,18 @@ type Module struct {
 }
 
 func (mod *Module) Prepare(ctx context.Context) (err error) {
-	mod.dir, err = modules.Load[dir.Module](mod.node, dir.ModuleName)
+	mod.dir, err = core.Load[dir.Module](mod.node, dir.ModuleName)
 	if err != nil {
 		return
 	}
 
-	mod.nodes, err = modules.Load[nodes.Module](mod.node, nodes.ModuleName)
+	mod.nodes, err = core.Load[nodes.Module](mod.node, nodes.ModuleName)
 	if err != nil {
 		return
 	}
 
-	mod.sdp, _ = modules.Load[discovery.Module](mod.node, discovery.ModuleName)
-	mod.policy, _ = modules.Load[policy.Module](mod.node, policy.ModuleName)
+	mod.sdp, _ = core.Load[discovery.Module](mod.node, discovery.ModuleName)
+	mod.policy, _ = core.Load[policy.Module](mod.node, policy.ModuleName)
 
 	return
 }

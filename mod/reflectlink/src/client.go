@@ -3,10 +3,10 @@ package reflectlink
 import (
 	"context"
 	"encoding/json"
+	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/node/network"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -16,13 +16,13 @@ type Client struct {
 
 func (mod *Client) Run(ctx context.Context) error {
 	return tasks.Group(
-		events.Runner(mod.node.Events(), func(e network.EventLinkAdded) error {
+		events.Runner(mod.node.Events(), func(e core.EventLinkAdded) error {
 			return mod.handleLinkAdded(ctx, e)
 		}),
 	).Run(ctx)
 }
 
-func (mod *Client) handleLinkAdded(ctx context.Context, event network.EventLinkAdded) error {
+func (mod *Client) handleLinkAdded(ctx context.Context, event core.EventLinkAdded) error {
 	// only reflect outbound links
 	if !event.Link.Transport().Outbound() {
 		return nil

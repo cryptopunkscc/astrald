@@ -2,11 +2,11 @@ package tcp
 
 import (
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node"
 	_net "net"
 )
 
-var _ infra.EndpointLister = &Module{}
+var _ node.EndpointLister = &Module{}
 
 func (mod *Module) Endpoints() []net.Endpoint {
 	list := make([]net.Endpoint, 0)

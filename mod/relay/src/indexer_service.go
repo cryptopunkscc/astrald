@@ -3,10 +3,10 @@ package relay
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/node/events"
 )
 
 type IndexerService struct {

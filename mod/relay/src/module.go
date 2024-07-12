@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
@@ -13,9 +15,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/router"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -26,7 +26,7 @@ import (
 var _ relay.Module = &Module{}
 
 type Module struct {
-	node     node.Node
+	node     node2.Node
 	assets   assets.Assets
 	log      *log.Logger
 	config   Config
@@ -189,8 +189,8 @@ func (mod *Module) insertSwitcherAfter(item any) (*SwitchWriter, error) {
 	return switcher, nil
 }
 
-func (mod *Module) findConnByNonce(nonce net.Nonce) *router.MonitoredConn {
-	coreRouter, ok := mod.node.Router().(*router.CoreRouter)
+func (mod *Module) findConnByNonce(nonce net.Nonce) *core.MonitoredConn {
+	coreRouter, ok := mod.node.Router().(*core.CoreRouter)
 	if !ok {
 		return nil
 	}

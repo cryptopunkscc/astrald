@@ -3,10 +3,9 @@ package policy
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/network"
-	"github.com/cryptopunkscc/astrald/node/router"
 	"time"
 )
 
@@ -22,7 +21,7 @@ func NewRerouteConnsPolicy(mod *Module) *RerouteConnsPolicy {
 func (policy *RerouteConnsPolicy) Run(ctx context.Context) error {
 	for event := range policy.node.Events().Subscribe(ctx) {
 		switch event := event.(type) {
-		case router.EventConnAdded:
+		case core.EventConnAdded:
 			if policy.isReroutable(event.Conn) {
 				go policy.rerouteConn(ctx, event.Conn)
 			}
@@ -35,7 +34,7 @@ func (policy *RerouteConnsPolicy) Name() string {
 	return "reroute_conns"
 }
 
-func (policy *RerouteConnsPolicy) rerouteConn(ctx context.Context, conn *router.MonitoredConn) {
+func (policy *RerouteConnsPolicy) rerouteConn(ctx context.Context, conn *core.MonitoredConn) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -63,14 +62,14 @@ func (policy *RerouteConnsPolicy) rerouteConn(ctx context.Context, conn *router.
 		var best, bestScore = bestLinkScore(links)
 		var bestNet = policy.getTransportNetwork(best.Transport())
 
-		if (bestScore > currentScore) && (currentLink != best.Link) {
+		if (bestScore > currentScore) && (currentLink != best) {
 			policy.log.Logv(2, "[%v] rerouting from %v to %v (link %v)",
 				nonce,
 				currentNet,
 				bestNet,
 				best.ID(),
 			)
-			err := policy.relay.Reroute(nonce, best.Link)
+			err := policy.relay.Reroute(nonce, best)
 			if err != nil {
 				policy.log.Errorv(1, "[%v] error rerouting: %v", nonce, err)
 			} else {
@@ -100,7 +99,7 @@ func (policy *RerouteConnsPolicy) watchLinksWith(ctx context.Context, identity i
 	go func() {
 		defer close(ch)
 		for event := range policy.node.Events().Subscribe(ctx) {
-			event, ok := event.(network.EventLinkAdded)
+			event, ok := event.(core.EventLinkAdded)
 			if !ok {
 				continue
 			}
@@ -118,14 +117,14 @@ func (policy *RerouteConnsPolicy) watchLinksWith(ctx context.Context, identity i
 	return ch
 }
 
-func (policy *RerouteConnsPolicy) isReroutable(conn *router.MonitoredConn) bool {
+func (policy *RerouteConnsPolicy) isReroutable(conn *core.MonitoredConn) bool {
 	if _, ok := net.FinalOutput(conn.Target()).(*muxlink.PortWriter); ok {
 		return true
 	}
 	return false
 }
 
-func (policy *RerouteConnsPolicy) getLink(conn *router.MonitoredConn) net.Link {
+func (policy *RerouteConnsPolicy) getLink(conn *core.MonitoredConn) net.Link {
 	type linkTest interface {
 		Link() *muxlink.Link
 	}
@@ -138,7 +137,7 @@ func (policy *RerouteConnsPolicy) getLink(conn *router.MonitoredConn) net.Link {
 	return l.Link()
 }
 
-func (policy *RerouteConnsPolicy) getConnNetwork(conn *router.MonitoredConn) string {
+func (policy *RerouteConnsPolicy) getConnNetwork(conn *core.MonitoredConn) string {
 	if t, ok := net.FinalOutput(conn.Target()).(net.Transporter); ok {
 		return policy.getTransportNetwork(t.Transport())
 	}

@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -14,7 +14,7 @@ const serviceName = ".reflect"
 const serviceType = "mod.reflectlink"
 
 type Module struct {
-	node node.Node
+	node node2.Node
 	log  *log.Logger
 	sdp  discovery.Module
 }

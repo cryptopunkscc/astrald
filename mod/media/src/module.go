@@ -2,13 +2,13 @@ package media
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/events"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/resources"
 	"gorm.io/gorm"
@@ -17,7 +17,7 @@ import (
 
 type Module struct {
 	config Config
-	node   node.Node
+	node   node2.Node
 	db     *gorm.DB
 	log    *log.Logger
 	assets resources.Resources

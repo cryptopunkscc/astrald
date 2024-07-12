@@ -3,12 +3,12 @@ package fs
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
-	"github.com/cryptopunkscc/astrald/node/modules"
 	"github.com/cryptopunkscc/astrald/resources"
 	"os"
 	"path/filepath"
@@ -19,17 +19,17 @@ func (mod *Module) LoadDependencies() error {
 	var err error
 
 	// required
-	mod.objects, err = modules.Load[objects.Module](mod.node, objects.ModuleName)
+	mod.objects, err = core.Load[objects.Module](mod.node, objects.ModuleName)
 	if err != nil {
 		return err
 	}
 
-	mod.content, err = modules.Load[content.Module](mod.node, content.ModuleName)
+	mod.content, err = core.Load[content.Module](mod.node, content.ModuleName)
 	if err != nil {
 		return err
 	}
 
-	mod.sets, err = modules.Load[sets.Module](mod.node, sets.ModuleName)
+	mod.sets, err = core.Load[sets.Module](mod.node, sets.ModuleName)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func (mod *Module) LoadDependencies() error {
 	mod.objects.AddPurger(mod)
 
 	// inject admin command
-	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
+	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
 		adm.AddCommand(fs.ModuleName, NewAdmin(mod))
 	}
 

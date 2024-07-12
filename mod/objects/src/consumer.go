@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"strconv"
@@ -35,9 +35,9 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opt
 	var query = net.NewQuery(
 		c.consumerID,
 		c.providerID,
-		router.Query(
+		core.Query(
 			methodDescribe,
-			router.Params{
+			core.Params{
 				"id": objectID.String(),
 			},
 		),
@@ -76,7 +76,7 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opt
 }
 
 func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (r objects.Reader, err error) {
-	params := router.Params{
+	params := core.Params{
 		"id": objectID.String(),
 	}
 
@@ -90,7 +90,7 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 		params.SetInt("offset", int(opts.Offset))
 	}
 
-	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodRead, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, core.Query(methodRead, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {
@@ -110,11 +110,11 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 }
 
 func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
-	params := router.Params{
+	params := core.Params{
 		"size": strconv.FormatInt(int64(len(p)), 10),
 	}
 
-	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodPut, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, core.Query(methodPut, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {
@@ -145,11 +145,11 @@ func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
 }
 
 func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Match, err error) {
-	params := router.Params{
+	params := core.Params{
 		"q": q,
 	}
 
-	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodSearch, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, core.Query(methodSearch, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {
@@ -163,7 +163,7 @@ func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Matc
 }
 
 func (c *Consumer) Hold(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) bool {
-	params := router.Params{
+	params := core.Params{
 		"id": objectID.String(),
 	}
 
@@ -173,7 +173,7 @@ func (c *Consumer) Hold(ctx context.Context, objectID object.ID, opts *objects.O
 		}
 	}
 
-	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodHold, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, core.Query(methodHold, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err == nil {
@@ -185,7 +185,7 @@ func (c *Consumer) Hold(ctx context.Context, objectID object.ID, opts *objects.O
 }
 
 func (c *Consumer) Release(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) bool {
-	params := router.Params{
+	params := core.Params{
 		"id": objectID.String(),
 	}
 
@@ -195,7 +195,7 @@ func (c *Consumer) Release(ctx context.Context, objectID object.ID, opts *object
 		}
 	}
 
-	var query = net.NewQuery(c.consumerID, c.providerID, router.Query(methodRelease, params))
+	var query = net.NewQuery(c.consumerID, c.providerID, core.Query(methodRelease, params))
 
 	conn, err := net.Route(ctx, c.mod.node.Router(), query)
 	if err == nil {

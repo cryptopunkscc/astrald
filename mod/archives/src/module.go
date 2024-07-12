@@ -3,14 +3,14 @@ package archives
 import (
 	_zip "archive/zip"
 	"context"
+	events2 "github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/events"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"sync"
@@ -22,8 +22,8 @@ var _ archives.Module = &Module{}
 
 type Module struct {
 	config Config
-	node   node.Node
-	events events.Queue
+	node   node2.Node
+	events events2.Queue
 	log    *log.Logger
 
 	db      *gorm.DB
@@ -38,7 +38,7 @@ type Module struct {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.autoIndexZone = net.Zones(mod.config.AutoIndexZones)
 
-	go events.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
+	go events2.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
 		return mod.onObjectDiscovered(ctx, event)
 	})
 

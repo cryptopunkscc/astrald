@@ -2,9 +2,9 @@ package admin
 
 import (
 	"cmp"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/router"
 	"reflect"
 	"slices"
 	"sort"
@@ -35,7 +35,7 @@ func (cmd *CmdNode) Exec(term admin.Terminal, args []string) error {
 	}
 	sort.Strings(names)
 	term.Printf("%s: %s\n", admin.Header("Modules"), strings.Join(names, " "))
-	if coreNode, ok := cmd.mod.node.(*node.CoreNode); ok {
+	if coreNode, ok := cmd.mod.node.(*core.CoreNode); ok {
 		term.Printf("%s: %v\n", admin.Header("Uptime"), time.Since(coreNode.StartedAt()).Round(time.Second))
 	}
 
@@ -49,7 +49,7 @@ func (cmd *CmdNode) Exec(term admin.Terminal, args []string) error {
 	term.Printf("\n%s\n\n", admin.Header("Routes"))
 	var routeFmt = "%-32s %-32s\n"
 	var routes = cmd.mod.node.LocalRouter().Routes()
-	slices.SortFunc(routes, func(a, b router.LocalRoute) int {
+	slices.SortFunc(routes, func(a, b node.LocalRoute) int {
 		return cmp.Compare(a.Name, b.Name)
 	})
 

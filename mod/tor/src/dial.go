@@ -3,11 +3,11 @@ package tor
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node"
 	_net "net"
 )
 
-var _ infra.Dialer = &Module{}
+var _ node.Dialer = &Module{}
 
 // Dial tries to establish a Driver connection to the provided address
 func (mod *Module) Dial(ctx context.Context, endpoint net.Endpoint) (conn net.Conn, err error) {

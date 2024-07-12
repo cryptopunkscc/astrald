@@ -8,13 +8,13 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tor"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/modules"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"strings"
 	"sync"
 )
 
 type Module struct {
-	node    modules.Node
+	node    node2.Node
 	config  Config
 	log     *log.Logger
 	ctx     context.Context

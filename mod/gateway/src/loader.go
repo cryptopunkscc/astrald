@@ -1,17 +1,17 @@
 package gateway
 
 import (
+	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/core/assets"
 	_log "github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/infra"
-	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/node"
 )
 
 const ModuleName = "gateway"
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Assets, log *_log.Logger) (modules.Module, error) {
+func (Loader) Load(node node.Node, assets assets.Assets, log *_log.Logger) (node.Module, error) {
 	mod := &Module{
 		node:        node,
 		log:         log,
@@ -22,7 +22,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *_log.Logger) (m
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
 
-	if i, ok := mod.node.Infra().(*infra.CoreInfra); ok {
+	if i, ok := mod.node.Infra().(*core.CoreInfra); ok {
 		i.SetDialer(NetworkName, mod.dialer)
 		i.SetUnpacker(NetworkName, mod)
 		i.SetParser(NetworkName, mod)
@@ -62,7 +62,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *_log.Logger) (m
 }
 
 func init() {
-	if err := modules.RegisterModule(ModuleName, Loader{}); err != nil {
+	if err := core.RegisterModule(ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

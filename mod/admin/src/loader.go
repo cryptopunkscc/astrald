@@ -1,15 +1,16 @@
 package admin
 
 import (
+	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/node"
 )
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (modules.Module, error) {
+func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (node.Module, error) {
 	mod := &Module{
 		config:   defaultConfig,
 		node:     node,
@@ -33,7 +34,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 }
 
 func init() {
-	if err := modules.RegisterModule(admin.ModuleName, Loader{}); err != nil {
+	if err := core.RegisterModule(admin.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

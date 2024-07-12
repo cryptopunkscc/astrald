@@ -2,8 +2,8 @@ package tcp
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra"
 	_net "net"
 	"strconv"
 )
@@ -12,7 +12,7 @@ func (mod *Module) Parse(network string, address string) (net.Endpoint, error) {
 	switch network {
 	case "tcp", "inet":
 	default:
-		return nil, infra.ErrUnsupportedNetwork
+		return nil, core.ErrUnsupportedNetwork
 	}
 
 	return Parse(address)

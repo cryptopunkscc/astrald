@@ -4,15 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/events"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -30,7 +30,7 @@ const updatesLen = 1024
 
 type Module struct {
 	config Config
-	node   node.Node
+	node   node2.Node
 	assets assets.Assets
 	log    *log.Logger
 	events events.Queue

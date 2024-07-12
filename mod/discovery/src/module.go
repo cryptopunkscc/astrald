@@ -3,14 +3,14 @@ package discovery
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/events"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
@@ -18,7 +18,7 @@ import (
 var _ discovery.Module = &Module{}
 
 type Module struct {
-	node     node.Node
+	node     node2.Node
 	events   events.Queue
 	config   Config
 	assets   assets.Assets

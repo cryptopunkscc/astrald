@@ -2,9 +2,9 @@ package apphost
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
 func (mod *Module) Prepare(ctx context.Context) error {
@@ -19,7 +19,7 @@ func (mod *Module) Prepare(ctx context.Context) error {
 	}
 
 	// inject admin command
-	if adm, err := modules.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
+	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
 		adm.AddCommand(apphost.ModuleName, &Admin{mod: mod})
 	}
 

@@ -1,15 +1,16 @@
 package policy
 
 import (
+	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/core/assets"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/policy"
-	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/node"
 )
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Assets, log *_log.Logger) (modules.Module, error) {
+func (Loader) Load(node node.Node, assets assets.Assets, log *_log.Logger) (node.Module, error) {
 	mod := &Module{
 		node:     node,
 		log:      log,
@@ -23,7 +24,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *_log.Logger) (m
 }
 
 func init() {
-	if err := modules.RegisterModule(policy.ModuleName, Loader{}); err != nil {
+	if err := core.RegisterModule(policy.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

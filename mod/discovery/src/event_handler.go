@@ -2,9 +2,9 @@ package discovery
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	"github.com/cryptopunkscc/astrald/node/events"
-	"github.com/cryptopunkscc/astrald/node/network"
 )
 
 type EventHandler struct {
@@ -12,12 +12,12 @@ type EventHandler struct {
 }
 
 func (srv *EventHandler) Run(ctx context.Context) error {
-	return events.Handle(ctx, srv.node.Events(), func(e network.EventLinkAdded) error {
+	return events.Handle(ctx, srv.node.Events(), func(e core.EventLinkAdded) error {
 		return srv.handleLinkAdded(ctx, e)
 	})
 }
 
-func (srv *EventHandler) handleLinkAdded(ctx context.Context, e network.EventLinkAdded) error {
+func (srv *EventHandler) handleLinkAdded(ctx context.Context, e core.EventLinkAdded) error {
 	var remoteIdentity = e.Link.RemoteIdentity()
 
 	info, err := srv.DiscoverRemote(ctx, remoteIdentity, srv.node.Identity())

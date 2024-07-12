@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"github.com/cryptopunkscc/astrald/node"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -13,7 +13,7 @@ var _ tcp.Module = &Module{}
 
 type Module struct {
 	config          Config
-	node            node.Node
+	node            node2.Node
 	log             *log.Logger
 	ctx             context.Context
 	nodes           nodes.Module

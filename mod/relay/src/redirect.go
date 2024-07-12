@@ -5,10 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/router"
 )
 
 // Redirect is a service that redirects a query to a different target
@@ -49,7 +49,7 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 	finalQuery := r.Query
 
 	// add identity transaltion
-	mon, ok := proxyCaller.(*router.MonitoredWriter)
+	mon, ok := proxyCaller.(*core.MonitoredWriter)
 	if ok {
 		next := mon.Output()
 		var t = net.NewIdentityTranslation(next, finalQuery.Caller())

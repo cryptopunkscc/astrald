@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node"
 	"strconv"
 	"strings"
 )
 
-var _ infra.Parser = &Module{}
+var _ node.Parser = &Module{}
 
 func (mod *Module) Parse(network string, address string) (net.Endpoint, error) {
 	return Parse(address)

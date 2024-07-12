@@ -1,16 +1,17 @@
 package apphost
 
 import (
+	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/modules"
+	"github.com/cryptopunkscc/astrald/node"
 	"net"
 )
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (modules.Module, error) {
+func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (node.Module, error) {
 	var err error
 
 	mod := &Module{
@@ -36,7 +37,7 @@ func (Loader) Load(node modules.Node, assets assets.Assets, log *log.Logger) (mo
 }
 
 func init() {
-	if err := modules.RegisterModule(apphost.ModuleName, Loader{}); err != nil {
+	if err := core.RegisterModule(apphost.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

@@ -3,10 +3,10 @@ package admin
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/node/authorizer"
+	"github.com/cryptopunkscc/astrald/node"
 )
 
-var _ authorizer.Authorizer = &Module{}
+var _ node.Authorizer = &Module{}
 
 func (mod *Module) Authorize(identity id.Identity, action string, args ...any) bool {
 	switch action {

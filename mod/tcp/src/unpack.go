@@ -3,18 +3,19 @@ package tcp
 import (
 	"bytes"
 	"errors"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra"
+	"github.com/cryptopunkscc/astrald/node"
 )
 
-var _ infra.Unpacker = &Module{}
+var _ node.Unpacker = &Module{}
 
 func (mod *Module) Unpack(network string, data []byte) (net.Endpoint, error) {
 	switch network {
 	case "tcp", "inet":
 	default:
-		return nil, infra.ErrUnsupportedNetwork
+		return nil, core.ErrUnsupportedNetwork
 	}
 	return Unpack(data)
 }

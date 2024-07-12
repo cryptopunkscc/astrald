@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
@@ -13,8 +14,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/assets"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
@@ -25,7 +25,7 @@ var _ keys.Module = &Module{}
 
 type Module struct {
 	config  Config
-	node    node.Node
+	node    node2.Node
 	log     *log.Logger
 	assets  assets.Assets
 	objects objects.Module

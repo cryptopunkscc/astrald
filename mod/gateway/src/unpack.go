@@ -2,14 +2,14 @@ package gateway
 
 import (
 	"bytes"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/infra"
 )
 
 func (mod *Module) Unpack(network string, data []byte) (net.Endpoint, error) {
 	if network != NetworkName {
-		return nil, infra.ErrUnsupportedNetwork
+		return nil, core.ErrUnsupportedNetwork
 	}
 	return Unpack(data)
 }

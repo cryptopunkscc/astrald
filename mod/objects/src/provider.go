@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/router"
 	"io"
 	"slices"
 )
@@ -19,13 +19,13 @@ type JSONDescriptor struct {
 
 type Provider struct {
 	mod    *Module
-	router *router.PrefixRouter
+	router *core.PrefixRouter
 }
 
 func NewProvider(mod *Module) *Provider {
 	var srv = &Provider{
 		mod:    mod,
-		router: router.NewPrefixRouter(true),
+		router: core.NewPrefixRouter(true),
 	}
 
 	srv.router.EnableParams = true
@@ -45,7 +45,7 @@ func (srv *Provider) RouteQuery(ctx context.Context, query net.Query, caller net
 }
 
 func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	_, params := router.ParseQuery(query.Query())
+	_, params := core.ParseQuery(query.Query())
 
 	objectID, err := params.GetObjectID("id")
 	if err != nil {
@@ -60,7 +60,7 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 	}
 
 	opts.Offset, err = params.GetUint64("offset")
-	if err != nil && !errors.Is(err, router.ErrKeyNotFound) {
+	if err != nil && !errors.Is(err, core.ErrKeyNotFound) {
 		srv.mod.log.Errorv(2, "offset: invalid argument: %v", err)
 		return net.Reject()
 	}
@@ -80,7 +80,7 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 }
 
 func (srv *Provider) Release(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	_, params := router.ParseQuery(query.Query())
+	_, params := core.ParseQuery(query.Query())
 
 	objectID, err := params.GetObjectID("id")
 	if err != nil {
@@ -96,7 +96,7 @@ func (srv *Provider) Release(ctx context.Context, query net.Query, caller net.Se
 }
 
 func (srv *Provider) Hold(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	_, params := router.ParseQuery(query.Query())
+	_, params := core.ParseQuery(query.Query())
 
 	objectID, err := params.GetObjectID("id")
 	if err != nil {
@@ -116,7 +116,7 @@ func (srv *Provider) Hold(ctx context.Context, query net.Query, caller net.Secur
 }
 
 func (srv *Provider) Describe(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	_, params := router.ParseQuery(query.Query())
+	_, params := core.ParseQuery(query.Query())
 
 	objectID, err := params.GetObjectID("id")
 	if err != nil {
@@ -154,7 +154,7 @@ func (srv *Provider) Describe(ctx context.Context, query net.Query, caller net.S
 }
 
 func (srv *Provider) Put(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	_, params := router.ParseQuery(query.Query())
+	_, params := core.ParseQuery(query.Query())
 
 	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionWrite) {
 		return net.Reject()
@@ -196,7 +196,7 @@ func (srv *Provider) Search(ctx context.Context, query net.Query, caller net.Sec
 		return net.Reject()
 	}
 
-	_, params := router.ParseQuery(query.Query())
+	_, params := core.ParseQuery(query.Query())
 
 	q, ok := params["q"]
 	if !ok {

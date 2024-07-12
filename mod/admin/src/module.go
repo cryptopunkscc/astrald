@@ -5,29 +5,27 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/assets"
-	"github.com/cryptopunkscc/astrald/node/authorizer"
-	"github.com/cryptopunkscc/astrald/node/modules"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
 )
 
-var _ modules.Module = &Module{}
+var _ node2.Module = &Module{}
 var _ admin.Module = &Module{}
-var _ authorizer.Authorizer = &Module{}
+var _ node2.Authorizer = &Module{}
 
 const ServiceName = "admin"
 
 type Module struct {
 	config   Config
-	node     node.Node
+	node     node2.Node
 	assets   assets.Assets
 	admins   sig.Set[string]
 	commands map[string]admin.Command

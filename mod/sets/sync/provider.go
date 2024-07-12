@@ -2,10 +2,10 @@ package sync
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node/router"
 	"time"
 )
 
@@ -18,7 +18,7 @@ func NewProvider(set sets.Set) *Provider {
 }
 
 func (srv *Provider) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	_, params := router.ParseQuery(query.Query())
+	_, params := core.ParseQuery(query.Query())
 
 	since, _ := params.GetUnixNano("since")
 

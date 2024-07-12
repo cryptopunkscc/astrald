@@ -3,13 +3,12 @@ package admin
 import (
 	"cmp"
 	"errors"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/network"
-	"github.com/cryptopunkscc/astrald/node/router"
 	"github.com/cryptopunkscc/astrald/sig"
 	"reflect"
 	"slices"
@@ -34,9 +33,6 @@ func (cmd *CmdNet) Exec(term admin.Terminal, args []string) error {
 	}
 
 	switch args[1] {
-	case "link":
-		return cmd.link(term, args[2:])
-
 	case "unlink":
 		return cmd.unlink(term, args[2:])
 
@@ -102,7 +98,7 @@ func (cmd *CmdNet) unlinkHelp(term admin.Terminal) error {
 }
 
 func (cmd *CmdNet) conns(term admin.Terminal, _ []string) error {
-	corenode, ok := cmd.mod.node.(*node.CoreNode)
+	corenode, ok := cmd.mod.node.(*core.CoreNode)
 	if !ok {
 		return errors.New("unsupported node type")
 	}
@@ -145,7 +141,7 @@ func (cmd *CmdNet) conns(term admin.Terminal, _ []string) error {
 }
 
 func (cmd *CmdNet) conn(term admin.Terminal, args []string) error {
-	corenode, ok := cmd.mod.node.(*node.CoreNode)
+	corenode, ok := cmd.mod.node.(*core.CoreNode)
 	if !ok {
 		return errors.New("unsupported node type")
 	}
@@ -239,7 +235,7 @@ func (cmd *CmdNet) printChainInfo(term admin.Terminal, element any) {
 			}
 			term.Printf("  Buffer: %d\n", w.BufferSize())
 
-		case *router.MonitoredWriter:
+		case *core.MonitoredWriter:
 			term.Printf("  Identity: %d\n", w.Identity())
 			term.Printf("  Bytes: %d\n", w.Bytes())
 
@@ -276,7 +272,7 @@ func (cmd *CmdNet) show(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("ID:               %v (%v)\n", l.ID(), getLinkType(l.Link))
+	term.Printf("ID:               %v (%v)\n", l.ID(), getLinkType(l))
 	term.Printf("Local identity:   %v (%v)\n", l.LocalIdentity(), admin.Faded(l.LocalIdentity().PublicKeyHex()))
 	term.Printf("Remote identity:  %v (%v)\n", l.RemoteIdentity(), admin.Faded(l.RemoteIdentity().PublicKeyHex()))
 	if t := l.Transport(); t != nil {
@@ -285,14 +281,14 @@ func (cmd *CmdNet) show(term admin.Terminal, args []string) error {
 		term.Printf("Remote endpoint:  %v\n", t.RemoteEndpoint())
 		term.Printf("Outbound:         %v\n", t.Outbound())
 	}
-	if l, ok := l.Link.(checkLatency); ok {
+	if l, ok := l.(checkLatency); ok {
 		term.Printf("Latency:          %v\n", l.Latency().Round(time.Millisecond))
 	}
 	term.Printf("Age:              %v (%v)\n",
 		time.Since(l.AddedAt()).Round(time.Second),
 		l.AddedAt(),
 	)
-	if idler, ok := l.Link.(sig.Idler); ok {
+	if idler, ok := l.(sig.Idler); ok {
 		term.Printf("Idle:             %v\n", idler.Idle().Round(time.Second))
 	}
 	return nil
@@ -321,7 +317,7 @@ func (cmd *CmdNet) links(term admin.Terminal, _ []string) error {
 	var f = "%-8d %-24s %-8s %10s %10s %10s\n"
 
 	links := cmd.mod.node.Network().Links().All()
-	slices.SortFunc(links, func(a, b *network.ActiveLink) int {
+	slices.SortFunc(links, func(a, b node.ActiveLink) int {
 		return cmp.Compare(a.ID(), b.ID())
 	})
 
@@ -341,11 +337,11 @@ func (cmd *CmdNet) links(term admin.Terminal, _ []string) error {
 		var idle time.Duration = -1
 		var lat time.Duration = -1
 
-		if i, ok := l.Link.(sig.Idler); ok {
+		if i, ok := l.(sig.Idler); ok {
 			idle = i.Idle().Round(time.Second)
 		}
 
-		if l, ok := l.Link.(checkLatency); ok {
+		if l, ok := l.(checkLatency); ok {
 			lat = l.Latency()
 		}
 
@@ -368,7 +364,7 @@ func (cmd *CmdNet) check(_ admin.Terminal, _ []string) error {
 	}
 
 	for _, l := range cmd.mod.node.Network().Links().All() {
-		if c, ok := l.Link.(checker); ok {
+		if c, ok := l.(checker); ok {
 			c.Check()
 		}
 	}
@@ -380,7 +376,7 @@ func (cmd *CmdNet) reroute(term admin.Terminal, args []string) error {
 		return errModuleNotLoaded{"relay"}
 	}
 
-	corenode, ok := cmd.mod.node.(*node.CoreNode)
+	corenode, ok := cmd.mod.node.(*core.CoreNode)
 	if !ok {
 		return errors.New("unsupported node type")
 	}

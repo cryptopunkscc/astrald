@@ -2,14 +2,14 @@ package presence
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/node/events"
+	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"net"
@@ -21,7 +21,7 @@ import (
 var _ presence.Module = &Module{}
 
 type Module struct {
-	node   node.Node
+	node   node2.Node
 	config Config
 	log    *log.Logger
 	socket *net.UDPConn
