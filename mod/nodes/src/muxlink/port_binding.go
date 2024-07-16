@@ -48,7 +48,7 @@ func (binding *PortBinding) Link() *Link {
 	return binding.link
 }
 
-func (binding *PortBinding) Transport() net.SecureConn {
+func (binding *PortBinding) Transport() net.Conn {
 	return binding.link.Transport()
 }
 

@@ -2,7 +2,7 @@ package setup
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 )
 
 const ModuleName = "setup"

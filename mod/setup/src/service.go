@@ -2,7 +2,7 @@ package setup
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/setup"
 	"github.com/cryptopunkscc/astrald/net"
 )
@@ -26,7 +26,7 @@ func (srv *SetupService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *SetupService) Serve(conn net.SecureConn) {
+func (srv *SetupService) Serve(conn net.Conn) {
 	defer conn.Close()
 
 	var d = NewSetupDialogue(srv.Module, conn)

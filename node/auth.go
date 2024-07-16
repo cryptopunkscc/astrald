@@ -1,6 +1,8 @@
 package node
 
-import "github.com/cryptopunkscc/astrald/auth/id"
+import (
+	"github.com/cryptopunkscc/astrald/id"
+)
 
 type AuthEngine interface {
 	Authorize(id id.Identity, action string, args ...any) bool

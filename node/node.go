@@ -1,8 +1,8 @@
 package node
 
 import (
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/events"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/net"
 	"time"
 )
@@ -11,7 +11,6 @@ import (
 type Node interface {
 	Identity() id.Identity
 	Events() *events.Queue
-	Infra() Infra
 	Network() NetworkEngine
 	Auth() AuthEngine
 	Modules() ModuleEngine
@@ -52,9 +51,9 @@ type Router interface {
 }
 
 type Route struct {
-	Caller   id.Identity
-	Target   id.Identity
-	Router   net.Router
+	Caller id.Identity
+	Target id.Identity
+	Router net.Router
 	Priority int
 }
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 	"time"
 )
 
@@ -15,7 +15,7 @@ const minimumSubscriptionDuration = 15 * time.Minute
 const subscribeRetryInterval = 60 * time.Second
 
 type Subscriber struct {
-	node    node2.Node
+	node    node.Node
 	log     *log.Logger
 	gateway id.Identity
 	cancel  context.CancelFunc
@@ -25,7 +25,7 @@ func (s *Subscriber) Gateway() id.Identity {
 	return s.gateway
 }
 
-func NewSubscriber(gateway id.Identity, node node2.Node, log *log.Logger) *Subscriber {
+func NewSubscriber(gateway id.Identity, node node.Node, log *log.Logger) *Subscriber {
 	return &Subscriber{node: node, log: log, gateway: gateway}
 }
 

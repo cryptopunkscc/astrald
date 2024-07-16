@@ -2,8 +2,8 @@ package proto
 
 import (
 	"crypto/sha256"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/id"
 	"time"
 )
 
@@ -13,8 +13,8 @@ const (
 )
 
 type Ad struct {
-	Identity  id.Identity
-	Alias     string
+	Identity id.Identity
+	Alias    string
 	Port      int
 	ExpiresAt time.Time
 	Flags     []string

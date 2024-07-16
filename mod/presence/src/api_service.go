@@ -30,7 +30,7 @@ func (srv *APIService) RouteQuery(ctx context.Context, query net.Query, caller n
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer conn.Close()
 
 		list := srv.mod.List()

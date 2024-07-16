@@ -5,12 +5,12 @@ import (
 	"encoding/base32"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"strings"
 )
 
 // Type check
-var _ net.Endpoint = Endpoint{}
+var _ exonet.Endpoint = &Endpoint{}
 
 const (
 	addrVersion = 3
@@ -26,12 +26,12 @@ type Endpoint struct {
 }
 
 // Network returns the name of the network the address belongs to
-func (addr Endpoint) Network() string {
+func (addr *Endpoint) Network() string {
 	return ModuleName
 }
 
-// String returns a human-readable representation of the address
-func (addr Endpoint) String() string {
+// Address returns a human-readable representation of the address
+func (addr *Endpoint) Address() string {
 	if addr.IsZero() {
 		return "none"
 	}
@@ -40,7 +40,7 @@ func (addr Endpoint) String() string {
 }
 
 // Pack returns binary representation of the address
-func (addr Endpoint) Pack() []byte {
+func (addr *Endpoint) Pack() []byte {
 	var b = &bytes.Buffer{}
 
 	err := cslq.Encode(b, packPattern, addrVersion, addr.digest, addr.port)
@@ -52,6 +52,6 @@ func (addr Endpoint) Pack() []byte {
 }
 
 // IsZero returns true if the address has zero-value
-func (addr Endpoint) IsZero() bool {
+func (addr *Endpoint) IsZero() bool {
 	return (addr.digest == nil) || (len(addr.digest) == 0)
 }

@@ -60,7 +60,7 @@ func (srv *Provider) Notify(ctx context.Context, query net.Query, caller net.Sec
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		conn.Close()
 		srv.tasks <- func(ctx context.Context) {
 			remoteShare.Sync(ctx)

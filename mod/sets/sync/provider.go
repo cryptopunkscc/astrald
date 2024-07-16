@@ -26,7 +26,7 @@ func (srv *Provider) RouteQuery(ctx context.Context, query net.Query, caller net
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer conn.Close()
 
 		var before = time.Now()

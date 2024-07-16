@@ -24,11 +24,6 @@ func (Loader) Load(node node.Node, assets assets.Assets, logger *log.Logger) (no
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
 
-	node.Infra().SetDialer("tor", mod)
-	node.Infra().SetParser("tor", mod)
-	node.Infra().SetUnpacker("tor", mod)
-	node.Infra().AddEndpoints(mod)
-
 	mod.server = NewServer(mod)
 
 	var baseDialer = &net.Dialer{Timeout: mod.config.DialTimeout}
@@ -45,14 +40,14 @@ func (Loader) Load(node node.Node, assets assets.Assets, logger *log.Logger) (no
 	}
 
 	logger.Root().PushFormatFunc(func(v any) ([]log.Op, bool) {
-		ep, ok := v.(Endpoint)
+		ep, ok := v.(*Endpoint)
 		if !ok {
 			return nil, false
 		}
 
 		return []log.Op{
 			log.OpColor{Color: log.Cyan},
-			log.OpText{Text: ep.String()},
+			log.OpText{Text: ep.Address()},
 			log.OpReset{},
 		}, true
 	})

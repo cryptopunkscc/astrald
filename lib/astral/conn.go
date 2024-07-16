@@ -1,7 +1,7 @@
 package astral
 
 import (
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"net"
 )
 

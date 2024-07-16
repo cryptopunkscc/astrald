@@ -83,7 +83,7 @@ func (enc *InfoEncoder) Unpack(data []byte) (*NodeInfo, error) {
 			return nil, err
 		}
 
-		e, err := enc.node.Infra().Unpack(netName, b)
+		e, err := enc.exonet.Unpack(netName, b)
 		if err != nil {
 			return nil, err
 		}

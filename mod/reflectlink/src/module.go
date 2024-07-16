@@ -2,9 +2,10 @@ package reflectlink
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/net"
 	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -14,9 +15,10 @@ const serviceName = ".reflect"
 const serviceType = "mod.reflectlink"
 
 type Module struct {
-	node node2.Node
-	log  *log.Logger
-	sdp  discovery.Module
+	node   node2.Node
+	log    *log.Logger
+	sdp    discovery.Module
+	exonet exonet.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {

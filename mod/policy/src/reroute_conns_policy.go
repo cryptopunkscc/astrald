@@ -2,8 +2,9 @@ package policy
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
 	"time"
@@ -138,16 +139,22 @@ func (policy *RerouteConnsPolicy) getLink(conn *core.MonitoredConn) net.Link {
 }
 
 func (policy *RerouteConnsPolicy) getConnNetwork(conn *core.MonitoredConn) string {
-	if t, ok := net.FinalOutput(conn.Target()).(net.Transporter); ok {
+	if t, ok := net.FinalOutput(conn.Target()).(exonet.Transporter); ok {
 		return policy.getTransportNetwork(t.Transport())
 	}
 	return ""
 }
 
-func (policy *RerouteConnsPolicy) getTransportNetwork(t net.SecureConn) string {
-	if t == nil {
+func (policy *RerouteConnsPolicy) getTransportNetwork(c any) string {
+	if c == nil {
 		return ""
 	}
+
+	t, ok := c.(exonet.Conn)
+	if !ok {
+		return ""
+	}
+
 	if t.LocalEndpoint() != nil {
 		return t.LocalEndpoint().Network()
 	}

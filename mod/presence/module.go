@@ -1,6 +1,8 @@
 package presence
 
-import "github.com/cryptopunkscc/astrald/auth/id"
+import (
+	"github.com/cryptopunkscc/astrald/id"
+)
 
 const ModuleName = "presence"
 

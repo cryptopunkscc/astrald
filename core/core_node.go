@@ -3,9 +3,9 @@ package core
 import (
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/events"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"time"
@@ -21,7 +21,6 @@ type CoreNode struct {
 
 	assets   *assets.CoreAssets
 	router   *CoreRouter
-	infra    *CoreInfra
 	network  *Network
 	modules  *CoreModules
 	resolver *CoreResolver
@@ -81,12 +80,6 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 		return nil, fmt.Errorf("error setting up authorizer: %w", err)
 	}
 
-	// infrastructure
-	node.infra, err = NewCoreInfra(node.assets, node.log)
-	if err != nil {
-		return nil, fmt.Errorf("error setting up infrastructure: %w", err)
-	}
-
 	// resolver
 	node.resolver = NewCoreResolver(node)
 
@@ -116,11 +109,6 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 
 func (node *CoreNode) Conns() *ConnSet {
 	return node.router.Conns()
-}
-
-// Infra returns node's infrastructure component
-func (node *CoreNode) Infra() node.Infra {
-	return node.infra
 }
 
 func (node *CoreNode) Network() node.NetworkEngine {

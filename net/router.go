@@ -25,7 +25,7 @@ func (r NilRouter) RouteQuery(ctx context.Context, query Query, caller SecureWri
 }
 
 // Accept accepts the query and runs the handler in a new goroutine.
-func Accept(query Query, src SecureWriteCloser, handler func(conn SecureConn)) (SecureWriteCloser, error) {
+func Accept(query Query, src SecureWriteCloser, handler func(conn Conn)) (SecureWriteCloser, error) {
 	pipeReader, pipeWriter := SecurePipe(query.Target())
 
 	go handler(NewSecureConn(src, pipeReader, false))
@@ -44,11 +44,11 @@ func Abort() (SecureWriteCloser, error) {
 // Route routes a query through the provided Router. It returns a SecureConn if query was successfully routed
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...
-func Route(ctx context.Context, router Router, query Query) (SecureConn, error) {
+func Route(ctx context.Context, router Router, query Query) (Conn, error) {
 	return RouteWithHints(ctx, router, query, DefaultHints())
 }
 
-func RouteWithHints(ctx context.Context, router Router, query Query, hints Hints) (SecureConn, error) {
+func RouteWithHints(ctx context.Context, router Router, query Query, hints Hints) (Conn, error) {
 	pipeReader, pipeWriter := SecurePipe(query.Caller())
 
 	target, err := router.RouteQuery(ctx, query, pipeWriter, hints)

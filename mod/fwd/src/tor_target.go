@@ -2,7 +2,8 @@ package fwd
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tor"
 	"github.com/cryptopunkscc/astrald/net"
 	"io"
@@ -11,7 +12,7 @@ import (
 type TorTarget struct {
 	tor      tor.Module
 	identity id.Identity
-	endpoint net.Endpoint
+	endpoint exonet.Endpoint
 }
 
 func NewTorTarget(drv tor.Module, addr string, identiy id.Identity) (*TorTarget, error) {
@@ -44,5 +45,5 @@ func (t *TorTarget) RouteQuery(ctx context.Context, query net.Query, src net.Sec
 }
 
 func (t *TorTarget) String() string {
-	return "tor://" + t.endpoint.String()
+	return "tor://" + t.endpoint.Address()
 }

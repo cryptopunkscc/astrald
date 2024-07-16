@@ -2,7 +2,7 @@ package shares
 
 import (
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/object"
 	"time"

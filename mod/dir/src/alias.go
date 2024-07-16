@@ -1,6 +1,8 @@
 package dir
 
-import "github.com/cryptopunkscc/astrald/auth/id"
+import (
+	"github.com/cryptopunkscc/astrald/id"
+)
 
 // SetAlias sets the alias for the identity. Set an empty alias to unset.
 func (mod *Module) SetAlias(identity id.Identity, alias string) error {

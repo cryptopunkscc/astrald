@@ -1,7 +1,7 @@
 package net
 
 import (
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -12,24 +12,7 @@ type Link interface {
 	SetLocalRouter(Router)
 	LocalIdentity() id.Identity
 	RemoteIdentity() id.Identity
-	Transport() SecureConn
+	Transport() Conn
 	Close() error
 	Done() <-chan struct{}
-}
-
-// Network returns link's network name or unknown if network could not be determined
-func Network(link Link) string {
-	var t = link.Transport()
-	if t == nil {
-		return "unknown"
-	}
-
-	if e := t.RemoteEndpoint(); e != nil {
-		return e.Network()
-	}
-	if e := t.LocalEndpoint(); e != nil {
-		return e.Network()
-	}
-
-	return "unknown"
 }

@@ -1,7 +1,7 @@
 package net
 
 import (
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 )
 
 var _ SecureWriteCloser = &IdentityTranslation{}

@@ -71,7 +71,7 @@ func (srv *Provider) Read(ctx context.Context, query net.Query, caller net.Secur
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer r.Close()
 		defer conn.Close()
 
@@ -88,7 +88,7 @@ func (srv *Provider) Release(ctx context.Context, query net.Query, caller net.Se
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer conn.Close()
 
 		srv.mod.Release(query.Caller(), objectID)
@@ -108,7 +108,7 @@ func (srv *Provider) Hold(ctx context.Context, query net.Query, caller net.Secur
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer conn.Close()
 
 		srv.mod.Hold(query.Caller(), objectID)
@@ -128,7 +128,7 @@ func (srv *Provider) Describe(ctx context.Context, query net.Query, caller net.S
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer conn.Close()
 
 		var list []JSONDescriptor
@@ -170,7 +170,7 @@ func (srv *Provider) Put(ctx context.Context, query net.Query, caller net.Secure
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer conn.Close()
 
 		_, err := io.CopyN(w, conn, int64(size))
@@ -212,7 +212,7 @@ func (srv *Provider) Search(ctx context.Context, query net.Query, caller net.Sec
 		return !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionRead, match.ObjectID)
 	})
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer conn.Close()
 
 		json.NewEncoder(conn).Encode(matches)

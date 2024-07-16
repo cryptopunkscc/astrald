@@ -3,11 +3,12 @@ package policy
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/net"
-	node "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 	"sync"
 	"time"
 )
@@ -117,7 +118,7 @@ func (worker *optimizeLinksWorker) Run(ctx context.Context) error {
 		endpoints := worker.nodes.Endpoints(worker.target)
 
 		var _, bestScore = bestLinkScore(links)
-		var try = make([]net.Endpoint, 0)
+		var try = make([]exonet.Endpoint, 0)
 		for _, ep := range endpoints {
 			if scoreNetwork(ep.Network()) > bestScore {
 				try = append(try, ep)
@@ -206,7 +207,7 @@ func bestLinkScore(links []node.ActiveLink) (node.ActiveLink, int) {
 }
 
 func linkNetwork(l net.Link) string {
-	var t = l.Transport()
+	var t = l.Transport().(exonet.Conn)
 	if t == nil {
 		return ""
 	}

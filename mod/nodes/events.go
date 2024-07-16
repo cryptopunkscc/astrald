@@ -1,11 +1,11 @@
 package nodes
 
 import (
-	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
 type EventNewEndpoint struct {
 	Identity id.Identity
-	Endpoint net.Endpoint
+	Endpoint exonet.Endpoint
 }

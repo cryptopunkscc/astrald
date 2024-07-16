@@ -29,7 +29,7 @@ func (service *DiscoveryService) Run(ctx context.Context) error {
 }
 
 func (service *DiscoveryService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer debug.SaveLog(func(p any) {
 			service.log.Error("discovery panicked: %v", p)
 		})
@@ -41,7 +41,7 @@ func (service *DiscoveryService) RouteQuery(ctx context.Context, query net.Query
 	})
 }
 
-func (service *DiscoveryService) serve(conn net.SecureConn, origin string) error {
+func (service *DiscoveryService) serve(conn net.Conn, origin string) error {
 	defer conn.Close()
 
 	service.log.Logv(1, "discovery request from %v (%s)", conn.RemoteIdentity(), origin)

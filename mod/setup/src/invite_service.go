@@ -3,8 +3,8 @@ package setup
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	id2 "github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/net"
 	"time"
@@ -12,10 +12,10 @@ import (
 
 type InviteService struct {
 	*Module
-	Accept id.Filter
+	Accept id2.Filter
 }
 
-func NewInviteService(module *Module, accept id.Filter) *InviteService {
+func NewInviteService(module *Module, accept id2.Filter) *InviteService {
 	return &InviteService{Module: module, Accept: accept}
 }
 
@@ -35,7 +35,7 @@ func (srv *InviteService) RouteQuery(ctx context.Context, query net.Query, calle
 		return net.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer conn.Close()
 		var err error
 		var cert relay.Cert
@@ -93,7 +93,7 @@ func (srv *InviteService) RouteQuery(ctx context.Context, query net.Query, calle
 	})
 }
 
-func (srv *InviteService) Invite(ctx context.Context, userID id.Identity, nodeID id.Identity) error {
+func (srv *InviteService) Invite(ctx context.Context, userID id2.Identity, nodeID id2.Identity) error {
 	var err error
 	var cert = relay.Cert{
 		TargetID:  userID,

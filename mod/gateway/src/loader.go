@@ -22,13 +22,6 @@ func (Loader) Load(node node.Node, assets assets.Assets, log *_log.Logger) (node
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
 
-	if i, ok := mod.node.Infra().(*core.CoreInfra); ok {
-		i.SetDialer(NetworkName, mod.dialer)
-		i.SetUnpacker(NetworkName, mod)
-		i.SetParser(NetworkName, mod)
-		i.AddEndpoints(mod)
-	}
-
 	log.Root().PushFormatFunc(func(v any) ([]_log.Op, bool) {
 		ep, ok := v.(Endpoint)
 		if !ok {

@@ -3,11 +3,11 @@ package dir
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	node2 "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -19,7 +19,7 @@ var _ dir.Module = &Module{}
 
 type Module struct {
 	config Config
-	node   node2.Node
+	node   node.Node
 	log    *log.Logger
 	assets resources.Resources
 	db     *gorm.DB

@@ -25,14 +25,14 @@ func (srv *RerouteService) Run(ctx context.Context) error {
 }
 
 func (srv *RerouteService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		if err := srv.serve(conn); err != nil {
 			srv.log.Errorv(1, "reroute serve: %v", err)
 		}
 	})
 }
 
-func (srv *RerouteService) serve(client net.SecureConn) error {
+func (srv *RerouteService) serve(client net.Conn) error {
 	var err error
 	var nonce uint64
 

@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
@@ -187,18 +188,18 @@ func (cmd *CmdNet) printChainInfo(term admin.Terminal, element any) {
 		case *muxlink.PortBinding:
 			term.Printf("  Identity: %d\n", w.Output().Identity())
 			term.Printf("  Port: %d\n", w.Port())
-			if t := w.Transport(); t != nil {
+			if t := w.Transport().(exonet.Conn); t != nil {
 				var (
 					network                       = "unknown"
 					localEndpoint, remoteEndpoint string
 				)
 				if e := t.LocalEndpoint(); e != nil {
 					network = e.Network()
-					localEndpoint = e.String()
+					localEndpoint = e.Address()
 				}
 
 				if e := t.RemoteEndpoint(); e != nil {
-					remoteEndpoint = e.String()
+					remoteEndpoint = e.Address()
 				}
 
 				term.Printf("  Transport: %s %s~%s\n",
@@ -213,18 +214,18 @@ func (cmd *CmdNet) printChainInfo(term admin.Terminal, element any) {
 			term.Printf("  Identity: %d\n", w.Identity())
 			term.Printf("  Port: %d\n", w.Port())
 			term.Printf("  Source: %s\n", reflect.TypeOf(w.Source()))
-			if t := w.Transport(); t != nil {
+			if t := w.Transport().(exonet.Conn); t != nil {
 				var (
 					network                       = "unknown"
 					localEndpoint, remoteEndpoint string
 				)
 				if e := t.LocalEndpoint(); e != nil {
 					network = e.Network()
-					localEndpoint = e.String()
+					localEndpoint = e.Address()
 				}
 
 				if e := t.RemoteEndpoint(); e != nil {
-					remoteEndpoint = e.String()
+					remoteEndpoint = e.Address()
 				}
 
 				term.Printf("  Transport: %s %s~%s\n",
@@ -241,7 +242,7 @@ func (cmd *CmdNet) printChainInfo(term admin.Terminal, element any) {
 
 		case *net.SecurePipeWriter:
 			term.Printf("  Identity: %d\n", w.Identity())
-			term.Printf("  Transport: %s\n", reflect.TypeOf(w.Insecure()))
+			term.Printf("  Transport: %s\n", reflect.TypeOf(w.Transport()))
 
 		case *net.IdentityTranslation:
 			term.Printf("  Identity: %d\n", w.Identity())
@@ -275,8 +276,8 @@ func (cmd *CmdNet) show(term admin.Terminal, args []string) error {
 	term.Printf("ID:               %v (%v)\n", l.ID(), getLinkType(l))
 	term.Printf("Local identity:   %v (%v)\n", l.LocalIdentity(), admin.Faded(l.LocalIdentity().PublicKeyHex()))
 	term.Printf("Remote identity:  %v (%v)\n", l.RemoteIdentity(), admin.Faded(l.RemoteIdentity().PublicKeyHex()))
-	if t := l.Transport(); t != nil {
-		term.Printf("Network:          %v\n", net.Network(l))
+	if t := l.Transport().(exonet.Conn); t != nil {
+		term.Printf("Network:          %v\n", exonet.Network(l))
 		term.Printf("Local endpoint:   %v\n", t.LocalEndpoint())
 		term.Printf("Remote endpoint:  %v\n", t.RemoteEndpoint())
 		term.Printf("Outbound:         %v\n", t.Outbound())
@@ -348,7 +349,7 @@ func (cmd *CmdNet) links(term admin.Terminal, _ []string) error {
 		term.Printf(f,
 			l.ID(),
 			l.RemoteIdentity(),
-			admin.Keyword(net.Network(l)),
+			admin.Keyword(exonet.Network(l)),
 			idle,
 			time.Since(l.AddedAt()).Round(time.Second),
 			lat.Round(time.Millisecond),
@@ -435,8 +436,8 @@ func getLinkType(l any) string {
 	return t.Name()
 }
 
-func selectEndpoints(list []net.Endpoint, selector func(net.Endpoint) bool) []net.Endpoint {
-	var filtered = make([]net.Endpoint, 0)
+func selectEndpoints(list []exonet.Endpoint, selector func(exonet.Endpoint) bool) []exonet.Endpoint {
+	var filtered = make([]exonet.Endpoint, 0)
 	for _, e := range list {
 		if selector(e) {
 			filtered = append(filtered, e)

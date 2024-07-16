@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/events"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -23,8 +24,13 @@ func (mod *Client) Run(ctx context.Context) error {
 }
 
 func (mod *Client) handleLinkAdded(ctx context.Context, event core.EventLinkAdded) error {
+	t, ok := event.Link.Transport().(exonet.Conn)
+	if !ok {
+		return nil
+	}
+
 	// only reflect outbound links
-	if !event.Link.Transport().Outbound() {
+	if t.Outbound() {
 		return nil
 	}
 
@@ -44,7 +50,7 @@ func (mod *Client) handleLinkAdded(ctx context.Context, event core.EventLinkAdde
 		return err
 	}
 
-	endpoint, err := mod.node.Infra().Parse(ref.RemoteEndpoint.Network, ref.RemoteEndpoint.Address)
+	endpoint, err := mod.exonet.Parse(ref.RemoteEndpoint.Network, ref.RemoteEndpoint.Address)
 	if err != nil {
 		return err
 	}

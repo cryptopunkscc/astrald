@@ -2,15 +2,15 @@ package gateway
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/policy"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 )
@@ -19,7 +19,7 @@ const NetworkName = "gw"
 
 type Module struct {
 	config      Config
-	node        node2.Node
+	node        node.Node
 	log         *log.Logger
 	ctx         context.Context
 	dialer      *Dialer
@@ -28,6 +28,7 @@ type Module struct {
 	sdp         discovery.Module
 	policy      policy.Module
 	nodes       nodes.Module
+	exonet      exonet.Module
 	dir         dir.Module
 }
 
@@ -42,8 +43,17 @@ func (mod *Module) Prepare(ctx context.Context) (err error) {
 		return
 	}
 
+	mod.exonet, err = core.Load[exonet.Module](mod.node, exonet.ModuleName)
+	if err != nil {
+		return
+	}
+
 	mod.sdp, _ = core.Load[discovery.Module](mod.node, discovery.ModuleName)
 	mod.policy, _ = core.Load[policy.Module](mod.node, policy.ModuleName)
+
+	mod.exonet.SetDialer("gw", mod.dialer)
+	mod.exonet.SetUnpacker("gw", mod)
+	mod.exonet.SetParser("gw", mod)
 
 	return
 }
@@ -136,8 +146,8 @@ func (mod *Module) Unsubscribe(gateway id.Identity) error {
 	return nil
 }
 
-func (mod *Module) Endpoints() []net.Endpoint {
-	var list = make([]net.Endpoint, 0)
+func (mod *Module) Endpoints() []exonet.Endpoint {
+	var list = make([]exonet.Endpoint, 0)
 
 	for _, s := range mod.subscribers {
 		list = append(list, NewEndpoint(s.Gateway(), mod.node.Identity()))

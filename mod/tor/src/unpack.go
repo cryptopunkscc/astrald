@@ -3,23 +3,21 @@ package tor
 import (
 	"bytes"
 	"errors"
-	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
-var _ node.Unpacker = &Module{}
+var _ exonet.Unpacker = &Module{}
 
-func (mod *Module) Unpack(network string, data []byte) (net.Endpoint, error) {
+func (mod *Module) Unpack(network string, data []byte) (exonet.Endpoint, error) {
 	if network != ModuleName {
-		return nil, core.ErrUnsupportedNetwork
+		return nil, exonet.ErrUnsupportedNetwork
 	}
 	return Unpack(data)
 }
 
 // Unpack converts a binary representation of the address to a struct
-func Unpack(data []byte) (Endpoint, error) {
+func Unpack(data []byte) (*Endpoint, error) {
 	var (
 		err      error
 		version  int
@@ -30,14 +28,14 @@ func Unpack(data []byte) (Endpoint, error) {
 
 	err = dec.Decodef(packPattern, &version, &keyBytes, &port)
 	if err != nil {
-		return Endpoint{}, err
+		return nil, err
 	}
 
 	if version != addrVersion {
-		return Endpoint{}, errors.New("invalid version")
+		return nil, errors.New("invalid version")
 	}
 
-	return Endpoint{
+	return &Endpoint{
 		digest: keyBytes,
 		port:   port,
 	}, nil

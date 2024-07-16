@@ -39,12 +39,6 @@ func (cmd *CmdNode) Exec(term admin.Terminal, args []string) error {
 		term.Printf("%s: %v\n", admin.Header("Uptime"), time.Since(coreNode.StartedAt()).Round(time.Second))
 	}
 
-	term.Printf("\n%s\n\n", admin.Header("Endpoints"))
-
-	for _, endpoint := range cmd.mod.node.Infra().Endpoints() {
-		term.Printf("%-8s %v\n", endpoint.Network(), endpoint)
-	}
-
 	// Show routes
 	term.Printf("\n%s\n\n", admin.Header("Routes"))
 	var routeFmt = "%-32s %-32s\n"

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/auth"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
 	"github.com/cryptopunkscc/astrald/net"
 	"time"
 )
@@ -19,7 +20,7 @@ const featureListFormat = "[s][c]c"
 // Open negotiaties a link over the provided conn as the active party
 func Open(
 	ctx context.Context,
-	conn net.Conn,
+	conn exonet.Conn,
 	remoteID id.Identity,
 	localID id.Identity,
 	localRouter net.Router,
@@ -30,7 +31,7 @@ func Open(
 		}
 	}()
 
-	secureConn, err := auth.HandshakeOutbound(ctx, conn, remoteID, localID)
+	secureConn, err := noise.HandshakeOutbound(ctx, conn, remoteID, localID)
 	if err != nil {
 		return nil, fmt.Errorf("outbound handshake: %w", err)
 	}
@@ -67,14 +68,14 @@ func Open(
 }
 
 // Accept negotiaties a link over the provided conn as the passive party
-func Accept(ctx context.Context, conn net.Conn, localID id.Identity, localRouter net.Router) (link *Link, err error) {
+func Accept(ctx context.Context, conn exonet.Conn, localID id.Identity, localRouter net.Router) (link *Link, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
 		}
 	}()
 
-	secureConn, err := auth.HandshakeInbound(ctx, conn, localID)
+	secureConn, err := noise.HandshakeInbound(ctx, conn, localID)
 	if err != nil {
 		return
 	}

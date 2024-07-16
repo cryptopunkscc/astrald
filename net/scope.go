@@ -1,6 +1,8 @@
 package net
 
-import "github.com/cryptopunkscc/astrald/auth/id"
+import (
+	"github.com/cryptopunkscc/astrald/id"
+)
 
 type Zone int
 

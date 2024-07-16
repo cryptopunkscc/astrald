@@ -2,7 +2,7 @@ package astral
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"math/rand"
 	"os"

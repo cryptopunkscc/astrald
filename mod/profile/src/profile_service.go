@@ -3,7 +3,7 @@ package profile
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 	"github.com/cryptopunkscc/astrald/net"
@@ -42,12 +42,12 @@ func (service *ProfileService) DiscoverServices(ctx context.Context, caller id.I
 }
 
 func (service *ProfileService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		service.serve(conn)
 	})
 }
 
-func (service *ProfileService) serve(conn net.SecureConn) {
+func (service *ProfileService) serve(conn net.Conn) {
 	defer conn.Close()
 
 	service.log.Infov(2, "%s asked for profile", conn.RemoteIdentity())
@@ -62,10 +62,12 @@ func (service *ProfileService) getLocalProfile() *proto.Profile {
 
 	p.Alias = service.node.Resolver().DisplayName(service.node.Identity())
 
-	for _, a := range service.node.Infra().Endpoints() {
+	endpoints, _ := service.exonet.Resolve(context.Background(), service.node.Identity())
+
+	for _, a := range endpoints {
 		p.Endpoints = append(p.Endpoints, proto.Endpoint{
 			Network:   a.Network(),
-			Address:   a.String(),
+			Address:   a.Address(),
 			Public:    false,
 			ExpiresAt: time.Now().Add(time.Hour * 24 * 365),
 		})

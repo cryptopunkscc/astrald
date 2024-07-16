@@ -3,8 +3,10 @@ package muxlink
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -24,16 +26,37 @@ type FakeConn struct {
 	outbound bool
 }
 
+type GenericEndpoint struct {
+	network string
+	bytes   []byte
+}
+
+func NewGenericEndpoint(network string, bytes []byte) *GenericEndpoint {
+	return &GenericEndpoint{network: network, bytes: bytes}
+}
+
+func (g *GenericEndpoint) Network() string {
+	return g.network
+}
+
+func (g *GenericEndpoint) Address() string {
+	return hex.EncodeToString(g.bytes)
+}
+
+func (g *GenericEndpoint) Pack() []byte {
+	return g.bytes
+}
+
 func (n *FakeConn) Outbound() bool {
 	return n.outbound
 }
 
-func (n *FakeConn) LocalEndpoint() net.Endpoint {
-	return net.NewGenericEndpoint("none", []byte{0})
+func (n *FakeConn) LocalEndpoint() exonet.Endpoint {
+	return NewGenericEndpoint("none", []byte{0})
 }
 
-func (n *FakeConn) RemoteEndpoint() net.Endpoint {
-	return net.NewGenericEndpoint("none", []byte{0})
+func (n *FakeConn) RemoteEndpoint() exonet.Endpoint {
+	return NewGenericEndpoint("none", []byte{0})
 }
 
 func (n *FakeConn) Close() error {
@@ -46,18 +69,18 @@ func NewSecureConn(localIdentity id.Identity, remoteIdentity id.Identity, readWr
 	return &SecureConn{localIdentity: localIdentity, remoteIdentity: remoteIdentity, ReadWriteCloser: readWriteCloser}
 }
 
-func (s SecureConn) Outbound() bool               { return false }
-func (s SecureConn) LocalEndpoint() net.Endpoint  { return nil }
-func (s SecureConn) RemoteEndpoint() net.Endpoint { return nil }
-func (s *SecureConn) RemoteIdentity() id.Identity { return s.remoteIdentity }
-func (s *SecureConn) LocalIdentity() id.Identity  { return s.localIdentity }
+func (s SecureConn) Outbound() bool                  { return false }
+func (s SecureConn) LocalEndpoint() exonet.Endpoint  { return nil }
+func (s SecureConn) RemoteEndpoint() exonet.Endpoint { return nil }
+func (s *SecureConn) RemoteIdentity() id.Identity    { return s.remoteIdentity }
+func (s *SecureConn) LocalIdentity() id.Identity     { return s.localIdentity }
 
 type TestRouter struct {
 	t *testing.T
 }
 
 func (l *TestRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
 			l.t.Fatal(err)

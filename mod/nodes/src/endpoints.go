@@ -2,12 +2,12 @@ package nodes
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"gorm.io/gorm/clause"
 )
 
-func (mod *Module) Endpoints(nodeID id.Identity) (endpoints []net.Endpoint) {
+func (mod *Module) Endpoints(nodeID id.Identity) (endpoints []exonet.Endpoint) {
 	var rows []dbEndpoint
 
 	err := mod.db.Find(&rows, "identity = ?", nodeID).Error
@@ -16,7 +16,7 @@ func (mod *Module) Endpoints(nodeID id.Identity) (endpoints []net.Endpoint) {
 	}
 
 	for _, row := range rows {
-		e, err := mod.node.Infra().Parse(row.Network, row.Address)
+		e, err := mod.exonet.Parse(row.Network, row.Address)
 		if err != nil {
 			mod.log.Errorv(1, "Endpoints(): error parsing db row: %v", err)
 			continue
@@ -27,7 +27,7 @@ func (mod *Module) Endpoints(nodeID id.Identity) (endpoints []net.Endpoint) {
 	return
 }
 
-func (mod *Module) AddEndpoint(nodeID id.Identity, endpoint ...net.Endpoint) error {
+func (mod *Module) AddEndpoint(nodeID id.Identity, endpoint ...exonet.Endpoint) error {
 	var errs []error
 	var err error
 	for _, e := range endpoint {
@@ -39,16 +39,16 @@ func (mod *Module) AddEndpoint(nodeID id.Identity, endpoint ...net.Endpoint) err
 	return errors.Join(errs...)
 }
 
-func (mod *Module) addEndpoint(nodeID id.Identity, endpoint net.Endpoint) error {
+func (mod *Module) addEndpoint(nodeID id.Identity, endpoint exonet.Endpoint) error {
 	return mod.db.Clauses(clause.OnConflict{DoNothing: true}).
 		Create(&dbEndpoint{
 			Identity: nodeID,
 			Network:  endpoint.Network(),
-			Address:  endpoint.String(),
+			Address:  endpoint.Address(),
 		}).Error
 }
 
-func (mod *Module) RemoveEndpoint(nodeID id.Identity, endpoint ...net.Endpoint) error {
+func (mod *Module) RemoveEndpoint(nodeID id.Identity, endpoint ...exonet.Endpoint) error {
 	var errs []error
 	var err error
 	for _, e := range endpoint {
@@ -60,10 +60,10 @@ func (mod *Module) RemoveEndpoint(nodeID id.Identity, endpoint ...net.Endpoint) 
 	return errors.Join(errs...)
 }
 
-func (mod *Module) removeEndpoint(nodeID id.Identity, endpoint net.Endpoint) error {
+func (mod *Module) removeEndpoint(nodeID id.Identity, endpoint exonet.Endpoint) error {
 	return mod.db.Delete(&dbEndpoint{
 		Identity: nodeID,
 		Network:  endpoint.Network(),
-		Address:  endpoint.String(),
+		Address:  endpoint.Address(),
 	}).Error
 }

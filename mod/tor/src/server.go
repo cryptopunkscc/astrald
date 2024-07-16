@@ -12,7 +12,7 @@ import (
 
 type Server struct {
 	*Module
-	endpoint Endpoint
+	endpoint *Endpoint
 }
 
 func NewServer(module *Module) *Server {
@@ -51,7 +51,7 @@ func (srv *Server) Run(ctx context.Context) error {
 			return err
 		}
 
-		var conn = newConn(rawConn, Endpoint{}, false)
+		var conn = newConn(rawConn, nil, false)
 
 		go func() {
 			_, err := srv.nodes.AcceptLink(ctx, conn)

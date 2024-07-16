@@ -1,6 +1,8 @@
 package proto
 
-import "github.com/cryptopunkscc/astrald/auth/id"
+import (
+	"github.com/cryptopunkscc/astrald/id"
+)
 
 type Info struct {
 	Data     []Data    `cslq:"[c]v"`

@@ -4,20 +4,19 @@ import (
 	"encoding/base32"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"strconv"
 	"strings"
 )
 
-var _ node.Parser = &Module{}
+var _ exonet.Parser = &Module{}
 
-func (mod *Module) Parse(network string, address string) (net.Endpoint, error) {
+func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error) {
 	return Parse(address)
 }
 
 // Parse parses a string representation of a Driver address (both v2 and v3 are supported)
-func Parse(s string) (Endpoint, error) {
+func Parse(s string) (*Endpoint, error) {
 	var (
 		err      error
 		port     = defaultListenPort
@@ -27,7 +26,7 @@ func Parse(s string) (Endpoint, error) {
 	if len(hostPort) > 1 {
 		port, err = strconv.Atoi(hostPort[1])
 		if err != nil {
-			return Endpoint{}, fmt.Errorf("invalid address: %w", err)
+			return nil, fmt.Errorf("invalid address: %w", err)
 		}
 	}
 
@@ -35,17 +34,17 @@ func Parse(s string) (Endpoint, error) {
 
 	bytes, err := base32.StdEncoding.DecodeString(b32data)
 	if err != nil {
-		return Endpoint{}, fmt.Errorf("invalid address: %w", err)
+		return nil, fmt.Errorf("invalid address: %w", err)
 	}
 
 	if len(bytes) != addrLen {
-		return Endpoint{}, errors.New("invalid length")
+		return nil, errors.New("invalid length")
 	}
 
-	addr := Endpoint{
+	e := &Endpoint{
 		digest: bytes,
 		port:   uint16(port),
 	}
 
-	return addr, nil
+	return e, nil
 }

@@ -2,29 +2,30 @@ package tcp
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	_net "net"
 	"strconv"
 )
 
-func (mod *Module) Parse(network string, address string) (net.Endpoint, error) {
+func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error) {
 	switch network {
 	case "tcp", "inet":
 	default:
-		return nil, core.ErrUnsupportedNetwork
+		return nil, exonet.ErrUnsupportedNetwork
 	}
 
 	return Parse(address)
 }
 
-func Parse(s string) (endpoint Endpoint, err error) {
+func Parse(s string) (endpoint *Endpoint, err error) {
 	var host, port string
 
 	host, port, err = _net.SplitHostPort(s)
 	if err != nil {
 		return
 	}
+
+	endpoint = &Endpoint{}
 
 	endpoint.ip = _net.ParseIP(host)
 	if endpoint.ip == nil {

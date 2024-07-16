@@ -2,7 +2,8 @@ package nodes
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/net"
 	"time"
 )
@@ -11,38 +12,29 @@ const ModuleName = "nodes"
 const DBPrefix = "nodes__"
 
 type Module interface {
-	Resolver
+	exonet.Resolver
 	Link(context.Context, id.Identity, LinkOpts) (net.Link, error)
-	AcceptLink(ctx context.Context, conn net.Conn) (net.Link, error)
-	InitLink(ctx context.Context, conn net.Conn, remoteID id.Identity) (net.Link, error)
+	AcceptLink(ctx context.Context, conn exonet.Conn) (net.Link, error)
+	InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (net.Link, error)
 
 	ParseInfo(s string) (*NodeInfo, error)
 
-	AddEndpoint(id.Identity, ...net.Endpoint) error
-	RemoveEndpoint(id.Identity, ...net.Endpoint) error
+	AddEndpoint(id.Identity, ...exonet.Endpoint) error
+	RemoveEndpoint(id.Identity, ...exonet.Endpoint) error
 
-	Endpoints(id.Identity) []net.Endpoint
-}
-
-type Resolver interface {
-	Resolve(context.Context, id.Identity, *ResolveOpts) ([]net.Endpoint, error)
+	Endpoints(id.Identity) []exonet.Endpoint
 }
 
 type NodeInfo struct {
-	Identity  id.Identity
-	Alias     string
-	Endpoints []net.Endpoint
+	Identity id.Identity
+	Alias    string
+	Endpoints []exonet.Endpoint
 }
 
 type Info struct {
 	Linked      bool
 	LastLinked  time.Time
 	FirstLinked time.Time
-}
-
-type ResolveOpts struct {
-	Network bool
-	Filter  id.Filter
 }
 
 type Endpoint struct {
@@ -59,6 +51,6 @@ func (Desc) Type() string {
 }
 
 type LinkOpts struct {
-	Endpoints []net.Endpoint
+	Endpoints []exonet.Endpoint
 	Workers   int
 }

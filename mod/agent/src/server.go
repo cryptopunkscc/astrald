@@ -36,7 +36,7 @@ var (
 type Server struct {
 	mod  *Module
 	log  *log.Logger
-	conn net.SecureConn
+	conn net.Conn
 	auth bool
 }
 

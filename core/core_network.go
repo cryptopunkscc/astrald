@@ -3,10 +3,11 @@ package core
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/events"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -159,7 +160,7 @@ func (n *Network) AddLink(l net.Link) error {
 		n.events.Emit(EventLinkRemoved{Link: active})
 	}()
 
-	n.log.Logv(1, "added link %v with %v (%s)", active.ID(), l.RemoteIdentity(), net.Network(l))
+	n.log.Logv(1, "added link %v with %v (%s)", active.ID(), l.RemoteIdentity(), exonet.Network(l))
 	n.events.Emit(EventLinkAdded{Link: active})
 
 	return nil

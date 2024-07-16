@@ -2,7 +2,7 @@ package proto
 
 import (
 	"github.com/akutz/memconn"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"math/rand"
 	"net"
 	"os"

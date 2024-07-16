@@ -2,12 +2,12 @@ package gateway
 
 import (
 	"bytes"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
-var _ net.Endpoint = Endpoint{}
+var _ exonet.Endpoint = &Endpoint{}
 
 type Endpoint struct {
 	gate   id.Identity
@@ -15,8 +15,8 @@ type Endpoint struct {
 }
 
 // NewEndpoint insatntiates and returns a new Endpoint
-func NewEndpoint(gate id.Identity, target id.Identity) Endpoint {
-	return Endpoint{gate: gate, target: target}
+func NewEndpoint(gate id.Identity, target id.Identity) *Endpoint {
+	return &Endpoint{gate: gate, target: target}
 }
 
 // Pack returns a binary representation of the address
@@ -30,8 +30,8 @@ func (endpoint Endpoint) Pack() []byte {
 	return buf.Bytes()
 }
 
-// String returns a text representation of the address
-func (endpoint Endpoint) String() string {
+// Address returns a text representation of the address
+func (endpoint Endpoint) Address() string {
 	if endpoint.IsZero() {
 		return "unknown"
 	}

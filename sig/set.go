@@ -8,20 +8,25 @@ import (
 
 type Set[T comparable] struct {
 	items []T
+	dup   map[T]struct{}
 	mu    sync.RWMutex
 }
 
-func (set *Set[T]) Add(item T) error {
+func (set *Set[T]) Add(items ...T) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
-	for _, i := range set.items {
-		if i == item {
-			return errors.New("already added")
-		}
+	if set.dup == nil {
+		set.dup = make(map[T]struct{})
 	}
 
-	set.items = append(set.items, item)
+	for _, item := range items {
+		if _, found := set.dup[item]; found {
+			continue
+		}
+		set.items = append(set.items, item)
+		set.dup[item] = struct{}{}
+	}
 
 	return nil
 }
@@ -30,14 +35,24 @@ func (set *Set[T]) Remove(item T) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 
+	if set.dup == nil {
+		return errors.New("not found")
+	}
+
+	if _, found := set.dup[item]; !found {
+		return errors.New("not found")
+	}
+
+	delete(set.dup, item)
+
 	for idx, i := range set.items {
 		if i == item {
 			set.items = append(set.items[:idx], set.items[idx+1:]...)
-			return nil
+			break
 		}
 	}
 
-	return errors.New("not found")
+	return nil
 }
 
 func (set *Set[T]) Clear() error {
@@ -45,6 +60,7 @@ func (set *Set[T]) Clear() error {
 	defer set.mu.Unlock()
 
 	set.items = nil
+	set.dup = make(map[T]struct{})
 
 	return nil
 }
@@ -53,13 +69,8 @@ func (set *Set[T]) Contains(item T) bool {
 	set.mu.RLock()
 	defer set.mu.RUnlock()
 
-	for _, i := range set.items {
-		if i == item {
-			return true
-		}
-	}
-
-	return false
+	_, found := set.dup[item]
+	return found
 }
 
 func (set *Set[T]) Clone() []T {

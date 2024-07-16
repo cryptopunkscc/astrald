@@ -3,7 +3,8 @@ package nodes
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
@@ -36,7 +37,7 @@ func (linker *Linker) LinkOpts(ctx context.Context, remoteIdentity id.Identity, 
 		return nil, errors.New("no endpoints provided")
 	}
 
-	var endpointsCh = make(chan net.Endpoint, len(endpoints))
+	var endpointsCh = make(chan exonet.Endpoint, len(endpoints))
 	for _, e := range endpoints {
 		endpointsCh <- e
 	}
@@ -58,7 +59,7 @@ func (linker *Linker) LinkOpts(ctx context.Context, remoteIdentity id.Identity, 
 		go func() {
 			defer wg.Done()
 			for {
-				var e net.Endpoint
+				var e exonet.Endpoint
 				var ok bool
 
 				select {
@@ -71,7 +72,7 @@ func (linker *Linker) LinkOpts(ctx context.Context, remoteIdentity id.Identity, 
 					return
 				}
 
-				conn, err := linker.node.Infra().Dial(workerCtx, e)
+				conn, err := linker.exonet.Dial(workerCtx, e)
 				if err != nil {
 					break
 				}

@@ -3,7 +3,7 @@ package apphost
 import (
 	"errors"
 	"flag"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"os"
 	"path/filepath"

@@ -3,8 +3,8 @@ package profile
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/events"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 	"github.com/cryptopunkscc/astrald/net"
@@ -46,7 +46,7 @@ func (h *EventHandler) updateIdentityProfile(target id.Identity, serviceName str
 	}
 
 	for _, pep := range profile.Endpoints {
-		ep, err := h.node.Infra().Parse(pep.Network, pep.Address)
+		ep, err := h.exonet.Parse(pep.Network, pep.Address)
 		if err != nil {
 			continue
 		}

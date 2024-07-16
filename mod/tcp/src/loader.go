@@ -31,16 +31,8 @@ func (Loader) Load(node node.Node, assets assets.Assets, l *log.Logger) (node.Mo
 		mod.publicEndpoints = append(mod.publicEndpoints, endpoint)
 	}
 
-	node.Infra().SetDialer("tcp", mod)
-	node.Infra().SetParser("tcp", mod)
-	node.Infra().SetUnpacker("tcp", mod)
-	node.Infra().SetDialer("inet", mod)
-	node.Infra().SetParser("inet", mod)
-	node.Infra().SetUnpacker("inet", mod)
-	node.Infra().AddEndpoints(mod)
-
 	l.Root().PushFormatFunc(func(v any) ([]log.Op, bool) {
-		ep, ok := v.(Endpoint)
+		ep, ok := v.(*Endpoint)
 		if !ok {
 			return nil, false
 		}

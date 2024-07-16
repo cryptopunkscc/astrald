@@ -1,23 +1,21 @@
 package tcp
 
 import (
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	_net "net"
 )
 
 const ModuleName = "tcp"
 
 type Module interface {
-	node.Dialer
-	node.Unpacker
-	node.Parser
-	node.EndpointLister
+	exonet.Dialer
+	exonet.Unpacker
+	exonet.Parser
 	ListenPort() int
 }
 
 type Endpoint interface {
-	net.Endpoint
+	exonet.Endpoint
 	IP() _net.IP
 	Port() int
 }

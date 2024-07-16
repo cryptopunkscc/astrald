@@ -5,8 +5,8 @@ import (
 	"errors"
 	"flag"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/net"
 	"time"
 )
 
@@ -71,7 +71,7 @@ func (adm *Admin) link(term admin.Terminal, args []string) error {
 		return nil
 	}
 
-	var endpoints []net.Endpoint
+	var endpoints []exonet.Endpoint
 
 	remoteID, err := adm.mod.node.Resolver().Resolve(args[0])
 	if err != nil {
@@ -82,16 +82,16 @@ func (adm *Admin) link(term admin.Terminal, args []string) error {
 		if *network == "" {
 			return errors.New("linking via address requires specifying the network")
 		}
-		e, err := adm.mod.node.Infra().Parse(*network, *addr)
+		e, err := adm.mod.exonet.Parse(*network, *addr)
 		if err != nil {
 			return err
 		}
-		endpoints = []net.Endpoint{e}
+		endpoints = []exonet.Endpoint{e}
 	} else {
 		endpoints = adm.mod.Endpoints(remoteID)
 
 		if *network != "" {
-			endpoints = selectEndpoints(endpoints, func(e net.Endpoint) bool {
+			endpoints = selectEndpoints(endpoints, func(e exonet.Endpoint) bool {
 				return e.Network() == *network
 			})
 		}
@@ -109,7 +109,7 @@ func (adm *Admin) link(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("linked via %s\n", net.Network(lnk))
+	term.Printf("linked via %s\n", exonet.Network(lnk))
 
 	return nil
 }
@@ -163,7 +163,7 @@ func (adm *Admin) parse(term admin.Terminal, args []string) error {
 	var f = "%-10s %-40s\n"
 	term.Printf(f, admin.Header("Network"), admin.Header("Address"))
 	for _, ep := range info.Endpoints {
-		ep, err := adm.mod.node.Infra().Unpack(ep.Network(), ep.Pack())
+		ep, err := adm.mod.exonet.Unpack(ep.Network(), ep.Pack())
 		if err != nil {
 			continue
 		}
@@ -199,10 +199,10 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 	term.Println()
 
 	// print endpoints
-	var endpoints []net.Endpoint
+	var endpoints []exonet.Endpoint
 
 	if identity.IsEqual(adm.mod.node.Identity()) {
-		endpoints = adm.mod.node.Infra().Endpoints()
+		endpoints, _ = adm.mod.exonet.Resolve(context.Background(), adm.mod.node.Identity())
 	} else {
 		endpoints = adm.mod.Endpoints(identity)
 	}
@@ -240,10 +240,10 @@ func (adm *Admin) endpoints(term admin.Terminal, args []string) error {
 	}
 
 	// print endpoints
-	var endpoints []net.Endpoint
+	var endpoints []exonet.Endpoint
 
 	if identity.IsEqual(adm.mod.node.Identity()) {
-		endpoints = adm.mod.node.Infra().Endpoints()
+		endpoints, _ = adm.mod.exonet.Resolve(context.Background(), adm.mod.node.Identity())
 	} else {
 		endpoints = adm.mod.Endpoints(identity)
 	}
@@ -273,7 +273,7 @@ func (adm *Admin) addEndpoint(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	ep, err := adm.mod.node.Infra().Parse(args[1], args[2])
+	ep, err := adm.mod.exonet.Parse(args[1], args[2])
 	if err != nil {
 		return err
 	}
@@ -299,7 +299,7 @@ func (adm *Admin) removeEndpoint(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	ep, err := adm.mod.node.Infra().Parse(args[1], args[2])
+	ep, err := adm.mod.exonet.Parse(args[1], args[2])
 	if err != nil {
 		return err
 	}
@@ -331,8 +331,8 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	return nil
 }
 
-func selectEndpoints(list []net.Endpoint, selector func(net.Endpoint) bool) []net.Endpoint {
-	var filtered = make([]net.Endpoint, 0)
+func selectEndpoints(list []exonet.Endpoint, selector func(exonet.Endpoint) bool) []exonet.Endpoint {
+	var filtered = make([]exonet.Endpoint, 0)
 	for _, e := range list {
 		if selector(e) {
 			filtered = append(filtered, e)

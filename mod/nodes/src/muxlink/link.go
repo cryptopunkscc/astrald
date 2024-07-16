@@ -2,7 +2,7 @@ package muxlink
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -20,7 +20,7 @@ const controlPort = 0
 
 type Link struct {
 	sig.Activity
-	transport     net.SecureConn
+	transport     net.Conn
 	localRouter   net.Router
 	mux           *mux.FrameMux
 	control       *Control
@@ -33,7 +33,7 @@ type Link struct {
 	running       chan struct{}
 }
 
-func NewLink(transport net.SecureConn, localRouter net.Router) *Link {
+func NewLink(transport net.Conn, localRouter net.Router) *Link {
 	link := &Link{
 		transport:   transport,
 		running:     make(chan struct{}),
@@ -134,7 +134,7 @@ func (link *Link) SetLocalRouter(uplink net.Router) {
 	link.localRouter = uplink
 }
 
-func (link *Link) Transport() net.SecureConn {
+func (link *Link) Transport() net.Conn {
 	return link.transport
 }
 

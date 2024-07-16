@@ -3,25 +3,25 @@ package tcp
 import (
 	"bytes"
 	"errors"
-	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
-var _ node.Unpacker = &Module{}
+var _ exonet.Unpacker = &Module{}
 
-func (mod *Module) Unpack(network string, data []byte) (net.Endpoint, error) {
+func (mod *Module) Unpack(network string, data []byte) (exonet.Endpoint, error) {
 	switch network {
 	case "tcp", "inet":
 	default:
-		return nil, core.ErrUnsupportedNetwork
+		return nil, exonet.ErrUnsupportedNetwork
 	}
 	return Unpack(data)
 }
 
-func Unpack(buf []byte) (addr Endpoint, err error) {
+func Unpack(buf []byte) (addr *Endpoint, err error) {
 	var r = bytes.NewReader(buf)
+
+	addr = &Endpoint{}
 
 	if err = cslq.Decode(r, "c", &addr.ver); err != nil {
 		return

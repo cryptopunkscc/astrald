@@ -3,8 +3,8 @@ package policy
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
-	node2 "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/node"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -111,14 +111,14 @@ func (policy *AlwaysLinkedPolicy) Name() string {
 }
 
 type alwaysLinkedWorker struct {
-	node     node2.Node
+	node     node.Node
 	target   id.Identity
 	errCount int
 	cancel   context.CancelFunc
 	counter  atomic.Int32
 }
 
-func newAlwaysLinkedWorker(node node2.Node, target id.Identity) *alwaysLinkedWorker {
+func newAlwaysLinkedWorker(node node.Node, target id.Identity) *alwaysLinkedWorker {
 	w := &alwaysLinkedWorker{
 		node:   node,
 		target: target,

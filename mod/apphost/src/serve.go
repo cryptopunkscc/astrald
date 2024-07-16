@@ -43,7 +43,7 @@ func (s *Session) Serve(ctx context.Context) error {
 
 func (s *Session) query(params proto.QueryParams) error {
 	var err error
-	var conn net.SecureConn
+	var conn net.Conn
 
 	if params.Identity.IsZero() {
 		params.Identity = s.remoteID

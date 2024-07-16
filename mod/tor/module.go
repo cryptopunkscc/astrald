@@ -1,14 +1,13 @@
 package tor
 
 import (
-	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
 const ModuleName = "tor"
 
 type Module interface {
-	node.Dialer
-	node.Unpacker
-	node.Parser
-	node.EndpointLister
+	exonet.Dialer
+	exonet.Unpacker
+	exonet.Parser
 }

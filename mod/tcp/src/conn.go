@@ -1,17 +1,17 @@
 package tcp
 
 import (
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	_net "net"
 )
 
-var _ net.Conn = Conn{}
+var _ exonet.Conn = Conn{}
 
 type Conn struct {
 	_net.Conn
 	outbound       bool
-	localEndpoint  Endpoint
-	remoteEndpoint Endpoint
+	localEndpoint  *Endpoint
+	remoteEndpoint *Endpoint
 }
 
 // wrapTCPConn wraps a standard net.Conn into a astral's net.Conn with the addition of boundness
@@ -27,11 +27,11 @@ func wrapTCPConn(conn _net.Conn, outbound bool) *Conn {
 	return c
 }
 
-func (conn Conn) LocalEndpoint() net.Endpoint {
+func (conn Conn) LocalEndpoint() exonet.Endpoint {
 	return conn.localEndpoint
 }
 
-func (conn Conn) RemoteEndpoint() net.Endpoint {
+func (conn Conn) RemoteEndpoint() exonet.Endpoint {
 	return conn.remoteEndpoint
 }
 

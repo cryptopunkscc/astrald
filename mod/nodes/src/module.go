@@ -2,9 +2,10 @@ package nodes
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
@@ -32,9 +33,10 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	dir  dir.Module
-	keys keys.Module
-	db   *gorm.DB
+	exonet exonet.Module
+	dir    dir.Module
+	keys   keys.Module
+	db     *gorm.DB
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -67,7 +69,7 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 	return infoPrefix + base62.EncodeToString(packed)
 }
 
-func (mod *Module) AcceptLink(ctx context.Context, conn net.Conn) (net.Link, error) {
+func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (net.Link, error) {
 	l, err := muxlink.Accept(ctx, conn, mod.node.Identity(), mod.node.LocalRouter())
 	if err != nil {
 		return nil, err
@@ -81,7 +83,7 @@ func (mod *Module) AcceptLink(ctx context.Context, conn net.Conn) (net.Link, err
 	return l, err
 }
 
-func (mod *Module) InitLink(ctx context.Context, conn net.Conn, remoteID id.Identity) (net.Link, error) {
+func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (net.Link, error) {
 	l, err := muxlink.Open(ctx, conn, remoteID, mod.node.Identity(), mod.node.LocalRouter())
 	if err != nil {
 		return nil, err
@@ -109,7 +111,7 @@ func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts no
 	return l, err
 }
 
-func (mod *Module) Resolve(ctx context.Context, identity id.Identity, opts *nodes.ResolveOpts) ([]net.Endpoint, error) {
+func (mod *Module) Resolve(ctx context.Context, identity id.Identity) ([]exonet.Endpoint, error) {
 	return mod.Endpoints(identity), nil
 }
 

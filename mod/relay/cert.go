@@ -5,8 +5,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"time"
 )

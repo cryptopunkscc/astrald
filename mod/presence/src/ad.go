@@ -1,8 +1,8 @@
 package presence
 
 import (
-	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	_net "net"
 	"slices"
 	"time"
@@ -11,7 +11,7 @@ import (
 type Ad struct {
 	Identity  id.Identity
 	Alias     string
-	Endpoint  net.Endpoint
+	Endpoint  exonet.Endpoint
 	ExpiresAt time.Time
 	Flags     []string
 	UDPAddr   *_net.UDPAddr

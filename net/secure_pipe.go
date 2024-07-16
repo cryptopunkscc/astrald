@@ -1,7 +1,7 @@
 package net
 
 import (
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"io"
 )
 
@@ -40,8 +40,8 @@ func (w *SecurePipeWriter) Identity() id.Identity {
 	return w.identity
 }
 
-// Insecure returns the underlying writer without an identity attached to it
-func (w *SecurePipeWriter) Insecure() io.WriteCloser {
+// Transport returns the underlying writer without an identity attached to it
+func (w *SecurePipeWriter) Transport() any {
 	return w.WriteCloser
 }
 

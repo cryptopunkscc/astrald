@@ -5,13 +5,13 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 )
 
 const serviceName = "sys.agent"
 
 type Module struct {
-	node node2.Node
+	node node.Node
 	log  *log.Logger
 	ctx  context.Context
 
@@ -26,7 +26,7 @@ func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.S
 	return net.Accept(query, caller, mod.serve)
 }
 
-func (mod *Module) serve(conn net.SecureConn) {
+func (mod *Module) serve(conn net.Conn) {
 	s := &Server{
 		mod:  mod,
 		conn: conn,

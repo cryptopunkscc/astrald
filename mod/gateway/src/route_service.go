@@ -2,7 +2,7 @@ package gateway
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/net"
 	"strings"
@@ -48,7 +48,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 
 	// check if the target is us
 	if targetKey == srv.node.Identity().PublicKeyHex() {
-		return net.Accept(query, caller, func(conn net.SecureConn) {
+		return net.Accept(query, caller, func(conn net.Conn) {
 			gwConn := newConn(
 				conn,
 				NewEndpoint(query.Target(), query.Target()),

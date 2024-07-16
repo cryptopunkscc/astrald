@@ -2,19 +2,20 @@ package gateway
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 )
 
 type Dialer struct {
-	node node2.Node
+	node node.Node
 }
 
-func NewDialer(node node2.Node) *Dialer {
+func NewDialer(node node.Node) *Dialer {
 	return &Dialer{node: node}
 }
 
-func (dialer *Dialer) Dial(ctx context.Context, endpoint net.Endpoint) (net.Conn, error) {
+func (dialer *Dialer) Dial(ctx context.Context, endpoint exonet.Endpoint) (exonet.Conn, error) {
 	e, err := Unpack(endpoint.Pack())
 	if err != nil {
 		return nil, err

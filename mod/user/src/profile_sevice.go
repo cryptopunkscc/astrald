@@ -3,7 +3,7 @@ package user
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/net"
 )
 
@@ -19,7 +19,7 @@ type ProfileData struct {
 }
 
 func (srv *ProfileService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		defer conn.Close()
 
 		enc := json.NewEncoder(conn)

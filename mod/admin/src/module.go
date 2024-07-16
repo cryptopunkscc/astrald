@@ -4,28 +4,28 @@ import (
 	"bitbucket.org/creachadair/shell"
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
 )
 
-var _ node2.Module = &Module{}
+var _ node.Module = &Module{}
 var _ admin.Module = &Module{}
-var _ node2.Authorizer = &Module{}
+var _ node.Authorizer = &Module{}
 
 const ServiceName = "admin"
 
 type Module struct {
 	config   Config
-	node     node2.Node
+	node     node.Node
 	assets   assets.Assets
 	admins   sig.Set[string]
 	commands map[string]admin.Command
@@ -76,7 +76,7 @@ func (mod *Module) hasAccess(identity id.Identity) bool {
 	return mod.admins.Contains(identity.PublicKeyHex())
 }
 
-func (mod *Module) serve(conn net.SecureConn) {
+func (mod *Module) serve(conn net.Conn) {
 	defer debug.SaveLog(func(p any) {
 		mod.log.Error("admin session panicked: %v", p)
 	})

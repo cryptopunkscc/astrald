@@ -1,10 +1,10 @@
 package net
 
 import (
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 )
 
-var _ SecureConn = &secureConn{}
+var _ Conn = &secureConn{}
 var _ SourceGetter = &secureConn{}
 var _ OutputGetter = &secureConn{}
 
@@ -14,7 +14,7 @@ type secureConn struct {
 	outbound bool
 }
 
-func NewSecureConn(w SecureWriteCloser, r SecureReader, outbound bool) SecureConn {
+func NewSecureConn(w SecureWriteCloser, r SecureReader, outbound bool) Conn {
 	return &secureConn{
 		SecureWriteCloser: NewConnOutput(w),
 		SecureReader:      r,
@@ -32,14 +32,6 @@ func (s *secureConn) Read(p []byte) (n int, err error) {
 
 func (s *secureConn) Outbound() bool {
 	return true
-}
-
-func (s *secureConn) LocalEndpoint() Endpoint {
-	return nil
-}
-
-func (s *secureConn) RemoteEndpoint() Endpoint {
-	return nil
 }
 
 func (s *secureConn) RemoteIdentity() id.Identity {

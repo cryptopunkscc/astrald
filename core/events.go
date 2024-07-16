@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/node"
@@ -46,5 +45,3 @@ type EventConnAdded struct {
 type EventConnRemoved struct {
 	Conn *MonitoredConn
 }
-
-var ErrUnsupportedNetwork = errors.New("unsupported network")

@@ -34,7 +34,7 @@ func (srv *Service) RouteQuery(ctx context.Context, query net.Query, caller net.
 	return net.Accept(query, caller, srv.Serve)
 }
 
-func (srv *Service) Serve(conn net.SecureConn) {
+func (srv *Service) Serve(conn net.Conn) {
 	defer conn.Close()
 
 	var seconds int

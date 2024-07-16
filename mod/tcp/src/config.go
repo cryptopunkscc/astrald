@@ -3,9 +3,9 @@ package tcp
 import "time"
 
 type Config struct {
-	DialTimeout     time.Duration
-	PublicEndpoints []string
-	ListenPort      int
+	DialTimeout     time.Duration `yaml:"dial_timeout"`
+	PublicEndpoints []string      `yaml:"public_endpoints"`
+	ListenPort      int           `yaml:"listen_port"`
 }
 
 var defaultConfig = Config{

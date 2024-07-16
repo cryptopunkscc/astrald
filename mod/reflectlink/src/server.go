@@ -3,6 +3,7 @@ package reflectlink
 import (
 	"context"
 	"encoding/json"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/reflectlink/proto"
 	"github.com/cryptopunkscc/astrald/net"
 	"reflect"
@@ -32,7 +33,7 @@ func (server *Server) Run(ctx context.Context) error {
 func (server *Server) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	// Reject queries coming from sources without transport
 	var output = net.FinalOutput(caller)
-	var t, ok = output.(net.Transporter)
+	var t, ok = output.(exonet.Transporter)
 	if !ok {
 		return net.Reject()
 	}
@@ -43,16 +44,20 @@ func (server *Server) RouteQuery(ctx context.Context, query net.Query, caller ne
 	return net.Accept(query, caller, server.reflect)
 }
 
-func (server *Server) reflect(conn net.SecureConn) {
+func (server *Server) reflect(conn net.Conn) {
 	defer conn.Close()
 
-	var output, _ = net.FinalOutput(conn).(net.Transporter)
-	var endpoint = output.Transport().RemoteEndpoint()
+	var t, _ = net.FinalOutput(conn).(exonet.Transporter)
+	var output, ok = t.Transport().(exonet.Conn)
+	if !ok {
+		return
+	}
+	var endpoint = output.RemoteEndpoint()
 
 	if endpoint == nil {
 		server.log.Errorv(2, "link with %v has no remote endpoint (transport type %v)",
 			conn.RemoteIdentity(),
-			reflect.TypeOf(output.Transport()),
+			reflect.TypeOf(t.Transport()),
 		)
 		return
 	}
@@ -62,7 +67,7 @@ func (server *Server) reflect(conn net.SecureConn) {
 	if endpoint != nil {
 		reflection.RemoteEndpoint = proto.Endpoint{
 			Network: endpoint.Network(),
-			Address: endpoint.String(),
+			Address: endpoint.Address(),
 		}
 	}
 

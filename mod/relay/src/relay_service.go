@@ -27,14 +27,14 @@ func (srv *RelayService) Run(ctx context.Context) error {
 }
 
 func (srv *RelayService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.SecureConn) {
+	return net.Accept(query, caller, func(conn net.Conn) {
 		if err := srv.serve(ctx, conn); err != nil {
 			srv.log.Errorv(2, "error serving %s: %s", query.Caller(), err)
 		}
 	})
 }
 
-func (srv *RelayService) serve(ctx context.Context, conn net.SecureConn) error {
+func (srv *RelayService) serve(ctx context.Context, conn net.Conn) error {
 	defer conn.Close()
 
 	var err error

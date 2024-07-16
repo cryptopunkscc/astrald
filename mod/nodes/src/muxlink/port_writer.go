@@ -2,7 +2,7 @@ package muxlink
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/net"
 	"sync"
@@ -118,7 +118,7 @@ func (w *PortWriter) Close() error {
 	return w.link.mux.Write(mux.Frame{Port: w.port})
 }
 
-func (w *PortWriter) Transport() net.SecureConn {
+func (w *PortWriter) Transport() any {
 	return w.link.Transport()
 }
 
