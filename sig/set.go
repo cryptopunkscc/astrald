@@ -86,3 +86,10 @@ func (set *Set[T]) Count() int {
 
 	return len(set.items)
 }
+
+func (set *Set[T]) Sort(cmp func(a, b T) int) {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+
+	slices.SortFunc(set.items, cmp)
+}
