@@ -12,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
+	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"github.com/jxskiss/base62"
 	"gorm.io/gorm"
@@ -37,6 +38,22 @@ type Module struct {
 	dir    dir.Module
 	keys   keys.Module
 	db     *gorm.DB
+
+	links sig.Set[net.Link]
+}
+
+func (mod *Module) Peers() (peers []id.Identity) {
+	var r map[string]struct{}
+
+	for _, link := range mod.links.Clone() {
+		if _, found := r[link.RemoteIdentity().PublicKeyHex()]; found {
+			continue
+		}
+		r[link.RemoteIdentity().PublicKeyHex()] = struct{}{}
+		peers = append(peers, link.RemoteIdentity())
+	}
+
+	return
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -75,7 +92,7 @@ func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (net.Link, 
 		return nil, err
 	}
 
-	err = mod.node.Network().AddLink(l)
+	err = mod.addLink(l)
 	if err != nil {
 		l.Close()
 	}
@@ -89,7 +106,7 @@ func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.I
 		return nil, err
 	}
 
-	err = mod.node.Network().AddLink(l)
+	err = mod.addLink(l)
 	if err != nil {
 		l.Close()
 	}
@@ -103,12 +120,29 @@ func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts no
 		return nil, err
 	}
 
-	err = mod.node.Network().AddLink(l)
+	err = mod.addLink(l)
 	if err != nil {
 		l.Close()
 	}
 
 	return l, err
+}
+
+func (mod *Module) addLink(link net.Link) error {
+	err := mod.links.Add(link)
+	if err != nil {
+		return err
+	}
+
+	mod.log.Logv(1, "added link with %v (%s)", link.RemoteIdentity(), exonet.Network(link))
+
+	go func() {
+		link.Run(context.Background())
+		mod.links.Remove(link)
+		mod.log.Logv(1, "removed link with %v (%s)", link.RemoteIdentity(), exonet.Network(link))
+	}()
+
+	return nil
 }
 
 func (mod *Module) Resolve(ctx context.Context, identity id.Identity) ([]exonet.Endpoint, error) {

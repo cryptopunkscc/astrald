@@ -2,7 +2,6 @@ package relay
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -33,8 +32,6 @@ func (mod *Module) LoadDependencies() error {
 	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
 		adm.AddCommand(relay.ModuleName, NewAdmin(mod))
 	}
-
-	mod.node.Router().AddRoute(id.Anyone, id.Anyone, mod, 20)
 
 	mod.objects.AddPrototypes(relay.CertDesc{})
 

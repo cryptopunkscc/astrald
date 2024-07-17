@@ -12,9 +12,5 @@ type LinkedFinder struct {
 }
 
 func (finder *LinkedFinder) Find(ctx context.Context, objectID object.ID, scope *net.Scope) (sources []id.Identity) {
-	links := finder.mod.node.Network().Links().All()
-	for _, link := range links {
-		sources = append(sources, link.RemoteIdentity())
-	}
-	return
+	return finder.mod.nodes.Peers()
 }

@@ -116,7 +116,6 @@ func (mod *Module) addGuestRoute(identity id.Identity, name string, target strin
 		guest = g
 	} else {
 		guest = NewGuest(identity)
-		mod.node.Router().AddRoute(id.Anyone, identity, guest, 90)
 		mod.guests[key] = guest
 	}
 
@@ -146,28 +145,9 @@ func (mod *Module) removeGuestRoute(identity id.Identity, name string) error {
 
 	if guest.RouteCount() == 0 {
 		delete(mod.guests, key)
-		mod.node.Router().RemoveRoute(id.Anyone, identity, guest)
 	}
 
 	return nil
-}
-
-func (mod *Module) addNodeRoute(name string, target string) error {
-	if len(name) == 0 {
-		return errors.New("invalid name")
-	}
-
-	relay := &RelayRouter{
-		log:      mod.log,
-		target:   target,
-		identity: mod.node.Identity(),
-	}
-
-	return mod.node.LocalRouter().AddRoute(name, relay)
-}
-
-func (mod *Module) removeNodeRoute(name string) error {
-	return mod.node.LocalRouter().RemoveRoute(name)
 }
 
 func (mod *Module) getGuest(id id.Identity) *Guest {

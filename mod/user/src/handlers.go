@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -37,14 +36,6 @@ func (mod *Module) DiscoverServices(ctx context.Context, caller id.Identity, ori
 		Type:     userProfileServiceType,
 		Extra:    nil,
 	}}, nil
-}
-
-func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	if !query.Target().IsEqual(mod.UserID()) {
-		return net.RouteNotFound(mod)
-	}
-
-	return mod.routes.RouteQuery(ctx, query, caller, hints)
 }
 
 func (mod *Module) discoverUsers(ctx context.Context) {

@@ -39,18 +39,20 @@ type Module struct {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	err := mod.node.LocalRouter().AddRoute(ServiceName, mod)
-	if err != nil {
-		return err
-	}
-	defer mod.node.LocalRouter().RemoveRoute(ServiceName)
-
 	<-ctx.Done()
 
 	return nil
 }
 
 func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+	if !query.Target().IsEqual(mod.node.Identity()) {
+		return net.RouteNotFound(mod)
+	}
+
+	if query.Query() != "admin" {
+		return net.RouteNotFound(mod)
+	}
+
 	// check if the caller has access to the admin panel
 	if !mod.node.Auth().Authorize(caller.Identity(), admin.ActionAccess) {
 		return net.Reject()

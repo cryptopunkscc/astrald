@@ -18,7 +18,6 @@ const (
 )
 
 type Module interface {
-	Reroute(nonce net.Nonce, router net.Router) error
 	MakeCert(targetID id.Identity, relayID id.Identity, direction Direction, duration time.Duration) (object.ID, error)
 	FindCerts(opts *FindOpts) ([]object.ID, error)
 	Index(cert *Cert) error

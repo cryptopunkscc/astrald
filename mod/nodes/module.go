@@ -23,11 +23,13 @@ type Module interface {
 	RemoveEndpoint(id.Identity, ...exonet.Endpoint) error
 
 	Endpoints(id.Identity) []exonet.Endpoint
+
+	Peers() []id.Identity
 }
 
 type NodeInfo struct {
-	Identity id.Identity
-	Alias    string
+	Identity  id.Identity
+	Alias     string
 	Endpoints []exonet.Endpoint
 }
 

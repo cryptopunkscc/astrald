@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
@@ -45,7 +44,6 @@ func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
 		&IndexerService{Module: mod},
 		&RelayService{Module: mod},
-		&RerouteService{Module: mod},
 	).Run(ctx)
 }
 
@@ -76,60 +74,6 @@ func (mod *Module) Save(cert *relay.Cert) (objectID object.ID, err error) {
 
 	err = mod.index(cert)
 	return
-}
-
-func (mod *Module) Reroute(nonce net.Nonce, router net.Router) error {
-	conn := mod.findConnByNonce(nonce)
-	if conn == nil {
-		return errors.New("conn not found")
-	}
-
-	routerIdentity := mod.getRouter(conn.Target())
-	if routerIdentity.IsZero() {
-		return errors.New("cannot establish router identity")
-	}
-
-	serviceQuery := net.NewQuery(mod.node.Identity(), routerIdentity, relay.RerouteServiceName)
-	serviceConn, err := net.Route(mod.ctx, router, serviceQuery)
-	if err != nil {
-		return err
-	}
-
-	if err := cslq.Encode(serviceConn, "q", nonce); err != nil {
-		return err
-	}
-
-	var errCode int
-	cslq.Decode(serviceConn, "c", &errCode)
-	if errCode != 0 {
-		return fmt.Errorf("error code %d", errCode)
-	}
-
-	switcher, err := mod.insertSwitcherAfter(net.RootSource(conn.Caller()))
-	if err != nil {
-		return err
-	}
-
-	newRoot, ok := net.RootSource(serviceConn).(net.OutputGetSetter)
-	if !ok {
-		return errors.New("newroot not an OutputGetSetter")
-	}
-
-	debris := newRoot.Output()
-	newRoot.SetOutput(switcher.NextWriter)
-
-	newOutput := mod.yankFinalOutput(serviceConn)
-	oldOutput := net.FinalOutput(conn.Target())
-	if err := mod.replaceOutput(oldOutput, newOutput); err != nil {
-		return err
-	}
-
-	switcher.AfterSwitch = func() {
-		debris.Close()
-		serviceConn.Close()
-	}
-
-	return oldOutput.Close()
 }
 
 func (mod *Module) yankFinalOutput(chain any) net.SecureWriteCloser {
@@ -187,20 +131,6 @@ func (mod *Module) insertSwitcherAfter(item any) (*SwitchWriter, error) {
 	}
 
 	return switcher, nil
-}
-
-func (mod *Module) findConnByNonce(nonce net.Nonce) *core.MonitoredConn {
-	coreRouter, ok := mod.node.Router().(*core.CoreRouter)
-	if !ok {
-		return nil
-	}
-
-	for _, c := range coreRouter.Conns().All() {
-		if c.Query().Nonce() == nonce {
-			return c
-		}
-	}
-	return nil
 }
 
 func (mod *Module) isLocal(identity id.Identity) bool {

@@ -3,6 +3,7 @@ package node
 import (
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/net"
 	"time"
 )
@@ -11,12 +12,12 @@ import (
 type Node interface {
 	Identity() id.Identity
 	Events() *events.Queue
-	Network() NetworkEngine
 	Auth() AuthEngine
 	Modules() ModuleEngine
 	Resolver() ResolverEngine
-	Router() Router
-	LocalRouter() LocalRouter
+	Router() net.Router
+
+	LocalRouter() routers.LocalRouter
 }
 
 type ActiveLink interface {
@@ -51,22 +52,8 @@ type Router interface {
 }
 
 type Route struct {
-	Caller id.Identity
-	Target id.Identity
-	Router net.Router
+	Caller   id.Identity
+	Target   id.Identity
+	Router   net.Router
 	Priority int
-}
-
-// LocalRouter is a router that routes queries for a single local identity
-type LocalRouter interface {
-	net.Router
-	AddRoute(name string, target net.Router) error
-	RemoveRoute(name string) error
-	Routes() []LocalRoute
-	Match(query string) net.Router
-}
-
-type LocalRoute struct {
-	Name   string
-	Target net.Router
 }

@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/lib/routers"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"time"
@@ -21,17 +23,22 @@ type CoreNode struct {
 
 	assets   *assets.CoreAssets
 	router   *CoreRouter
-	network  *Network
 	modules  *CoreModules
 	resolver *CoreResolver
 	auth     *CoreAuthorizer
 	events   events.Queue
-	routes   *PrefixRouter
+	routes   *routers.PrefixRouter
 
 	startedAt time.Time
 
 	logConfig LogConfig
 	logFields
+
+	newRouter *routers.PriorityRouter
+}
+
+func (node *CoreNode) Router() net.Router {
+	return node.newRouter
 }
 
 // NewCoreNode instantiates a new node
@@ -49,7 +56,7 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 	var node = &CoreNode{
 		identity: nodeID,
 		config:   defaultConfig,
-		routes:   NewPrefixRouter(true),
+		routes:   routers.NewPrefixRouter(true),
 	}
 	node.routes.EnableParams = true
 
@@ -83,12 +90,6 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 	// resolver
 	node.resolver = NewCoreResolver(node)
 
-	// network
-	node.network, err = NewNetwork(node, &node.events, node.log)
-	if err != nil {
-		return nil, fmt.Errorf("error setting up peer manager: %w", err)
-	}
-
 	// modules
 	var enabled = node.config.Modules
 	if enabled == nil {
@@ -104,15 +105,14 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 
 	node.router.SetLogRouteTrace(node.config.LogRouteTrace)
 
+	node.newRouter = routers.NewPriorityRouter()
+	node.newRouter.Add(node.router, 10)
+
 	return node, nil
 }
 
 func (node *CoreNode) Conns() *ConnSet {
 	return node.router.Conns()
-}
-
-func (node *CoreNode) Network() node.NetworkEngine {
-	return node.network
 }
 
 func (node *CoreNode) Auth() node.AuthEngine {
@@ -132,11 +132,7 @@ func (node *CoreNode) Identity() id.Identity {
 	return node.identity
 }
 
-func (node *CoreNode) Router() node.Router {
-	return node.router
-}
-
-func (node *CoreNode) LocalRouter() node.LocalRouter {
+func (node *CoreNode) LocalRouter() routers.LocalRouter {
 	return node.routes
 }
 

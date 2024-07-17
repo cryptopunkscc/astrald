@@ -2,9 +2,9 @@ package user
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
@@ -18,7 +18,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"time"
@@ -28,7 +28,7 @@ var _ user.Module = &Module{}
 
 type Module struct {
 	config  Config
-	node    node2.Node
+	node    node.Node
 	log     *log.Logger
 	assets  assets.Assets
 	db      *gorm.DB
@@ -43,9 +43,9 @@ type Module struct {
 	sets    sets.Module
 	dir     dir.Module
 
+	*routers.PathRouter
 	userID         id.Identity
 	userCert       []byte
-	routes         *core.PrefixRouter
 	profileService *ProfileService
 }
 

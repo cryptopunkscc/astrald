@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"cmp"
 	"errors"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/log"
@@ -9,10 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
-	"github.com/cryptopunkscc/astrald/sig"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -34,32 +30,11 @@ func (cmd *CmdNet) Exec(term admin.Terminal, args []string) error {
 	}
 
 	switch args[1] {
-	case "unlink":
-		return cmd.unlink(term, args[2:])
-
-	case "links":
-		return cmd.links(term, args[2:])
-
-	case "show":
-		return cmd.show(term, args[2:])
-
-	case "close":
-		return cmd.close(term, args[2:])
-
 	case "conns":
 		return cmd.conns(term, args[2:])
 
-	case "routes":
-		return cmd.routes(term, args[2:])
-
 	case "conn":
 		return cmd.conn(term, args[2:])
-
-	case "check":
-		return cmd.check(term, args[2:])
-
-	case "reroute":
-		return cmd.reroute(term, args[2:])
 
 	case "help":
 		return cmd.help(term)
@@ -67,30 +42,6 @@ func (cmd *CmdNet) Exec(term admin.Terminal, args []string) error {
 	default:
 		return errors.New("invalid command")
 	}
-}
-
-func (cmd *CmdNet) unlink(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return cmd.unlinkHelp(term)
-	}
-
-	identity, err := cmd.mod.node.Resolver().Resolve(args[0])
-	if err != nil {
-		return err
-	}
-
-	links := cmd.mod.node.Network().Links().ByRemoteIdentity(identity).All()
-	if len(links) == 0 {
-		return errors.New("peer not linked")
-	}
-
-	for _, l := range links {
-		l.Close()
-	}
-
-	term.Printf("unlinked\n")
-
-	return nil
 }
 
 func (cmd *CmdNet) unlinkHelp(term admin.Terminal) error {
@@ -255,159 +206,6 @@ func (cmd *CmdNet) printChainInfo(term admin.Terminal, element any) {
 			break
 		}
 	}
-}
-
-func (cmd *CmdNet) show(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		term.Printf("usage: net show <linkID>")
-		return nil
-	}
-
-	lid, err := strconv.Atoi(args[0])
-	if err != nil {
-		return err
-	}
-
-	l, err := cmd.mod.node.Network().Links().Find(lid)
-	if err != nil {
-		return err
-	}
-
-	term.Printf("ID:               %v (%v)\n", l.ID(), getLinkType(l))
-	term.Printf("Local identity:   %v (%v)\n", l.LocalIdentity(), admin.Faded(l.LocalIdentity().PublicKeyHex()))
-	term.Printf("Remote identity:  %v (%v)\n", l.RemoteIdentity(), admin.Faded(l.RemoteIdentity().PublicKeyHex()))
-	if t := l.Transport().(exonet.Conn); t != nil {
-		term.Printf("Network:          %v\n", exonet.Network(l))
-		term.Printf("Local endpoint:   %v\n", t.LocalEndpoint())
-		term.Printf("Remote endpoint:  %v\n", t.RemoteEndpoint())
-		term.Printf("Outbound:         %v\n", t.Outbound())
-	}
-	if l, ok := l.(checkLatency); ok {
-		term.Printf("Latency:          %v\n", l.Latency().Round(time.Millisecond))
-	}
-	term.Printf("Age:              %v (%v)\n",
-		time.Since(l.AddedAt()).Round(time.Second),
-		l.AddedAt(),
-	)
-	if idler, ok := l.(sig.Idler); ok {
-		term.Printf("Idle:             %v\n", idler.Idle().Round(time.Second))
-	}
-	return nil
-}
-
-func (cmd *CmdNet) close(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		term.Printf("usage: net close <linkID>")
-		return nil
-	}
-
-	lid, err := strconv.Atoi(args[0])
-	if err != nil {
-		return err
-	}
-
-	l, err := cmd.mod.node.Network().Links().Find(lid)
-	if err != nil {
-		return err
-	}
-
-	return l.Close()
-}
-
-func (cmd *CmdNet) links(term admin.Terminal, _ []string) error {
-	var f = "%-8d %-24s %-8s %10s %10s %10s\n"
-
-	links := cmd.mod.node.Network().Links().All()
-	slices.SortFunc(links, func(a, b node.ActiveLink) int {
-		return cmp.Compare(a.ID(), b.ID())
-	})
-
-	term.Printf(f,
-		admin.Header("ID"),
-		admin.Header("Remote"),
-		admin.Header("Net"),
-		admin.Header("Idle"),
-		admin.Header("Age"),
-		admin.Header("Ping"),
-	)
-	for _, l := range links {
-		if l == nil {
-			term.Printf("[nil link]\n")
-			continue
-		}
-		var idle time.Duration = -1
-		var lat time.Duration = -1
-
-		if i, ok := l.(sig.Idler); ok {
-			idle = i.Idle().Round(time.Second)
-		}
-
-		if l, ok := l.(checkLatency); ok {
-			lat = l.Latency()
-		}
-
-		term.Printf(f,
-			l.ID(),
-			l.RemoteIdentity(),
-			admin.Keyword(exonet.Network(l)),
-			idle,
-			time.Since(l.AddedAt()).Round(time.Second),
-			lat.Round(time.Millisecond),
-		)
-	}
-
-	return nil
-}
-
-func (cmd *CmdNet) check(_ admin.Terminal, _ []string) error {
-	type checker interface {
-		Check()
-	}
-
-	for _, l := range cmd.mod.node.Network().Links().All() {
-		if c, ok := l.(checker); ok {
-			c.Check()
-		}
-	}
-	return nil
-}
-
-func (cmd *CmdNet) reroute(term admin.Terminal, args []string) error {
-	if cmd.mod.relay == nil {
-		return errModuleNotLoaded{"relay"}
-	}
-
-	corenode, ok := cmd.mod.node.(*core.CoreNode)
-	if !ok {
-		return errors.New("unsupported node type")
-	}
-
-	if len(args) < 2 {
-		term.Printf("usage: net conn <ConnID> <LinkID>\n")
-		return nil
-	}
-
-	cid, err := strconv.Atoi(args[0])
-	if err != nil {
-		return err
-	}
-
-	conn := corenode.Conns().Find(cid)
-	if conn == nil {
-		return errors.New("no such connection")
-	}
-
-	lid, err := strconv.Atoi(args[1])
-	if err != nil {
-		return err
-	}
-
-	lnk, err := corenode.Network().Links().Find(lid)
-	if err != nil {
-		return err
-	}
-
-	return cmd.mod.relay.Reroute(conn.Query().Nonce(), lnk)
 }
 
 func (cmd *CmdNet) help(term admin.Terminal) error {

@@ -20,15 +20,6 @@ func (node *CoreNode) Run(ctx context.Context) (err error) {
 	var wg sync.WaitGroup
 	var errCh = make(chan error, 32)
 
-	// run the peer manager
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := node.network.Run(ctx); err != nil {
-			errCh <- fmt.Errorf("peer manager: %w", err)
-		}
-	}()
-
 	// run the module manager
 	wg.Add(1)
 	go func() {

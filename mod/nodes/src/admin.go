@@ -22,6 +22,7 @@ func NewAdmin(mod *Module) *Admin {
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"link":      adm.link,
 		"list":      adm.list,
+		"links":     adm.links,
 		"ep_add":    adm.addEndpoint,
 		"ep_rm":     adm.removeEndpoint,
 		"add":       adm.add,
@@ -121,6 +122,14 @@ func (adm *Admin) list(term admin.Terminal, args []string) error {
 	term.Printf(f, admin.Header("Alias"), admin.Header("PubKey"))
 	for _, nodeID := range nodes {
 		term.Printf(f, nodeID, admin.Faded(nodeID.String()))
+	}
+
+	return nil
+}
+
+func (adm *Admin) links(term admin.Terminal, args []string) error {
+	for _, link := range adm.mod.links.Clone() {
+		term.Printf("%v\n", link.RemoteIdentity())
 	}
 
 	return nil

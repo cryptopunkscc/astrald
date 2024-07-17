@@ -118,25 +118,8 @@ func (s *Session) register(p proto.RegisterParams) error {
 	s.mod.log.Logv(2, "%s register %s -> %s", s.remoteID, p.Service, p.Target)
 	defer s.Close()
 
-	// if the session is coming from node's identity, register under node's router
-	if s.remoteID.IsEqual(s.mod.node.Identity()) {
-		return s.registerNode(p)
-	}
-
 	// ...otherwise register under guest's router
 	return s.registerGuest(p)
-}
-
-func (s *Session) registerNode(p proto.RegisterParams) error {
-	err := s.mod.addNodeRoute(p.Service, p.Target)
-	if err != nil {
-		return err
-	}
-	s.WriteErr(nil)
-
-	io.Copy(streams.NilWriter{}, s)
-
-	return s.mod.removeNodeRoute(p.Service)
 }
 
 func (s *Session) registerGuest(p proto.RegisterParams) error {

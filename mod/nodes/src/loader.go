@@ -26,7 +26,6 @@ func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (node.
 		return nil, err
 	}
 
-	err = node.Network().AddLinker(&Linker{mod})
 	if err != nil {
 		return nil, err
 	}

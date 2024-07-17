@@ -3,7 +3,7 @@ package shares
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/sets/sync"
 	"github.com/cryptopunkscc/astrald/net"
 )
@@ -18,7 +18,7 @@ type JSONDescriptor struct {
 
 type Provider struct {
 	*Module
-	router *core.PrefixRouter
+	router *routers.PrefixRouter
 }
 
 func (srv *Provider) Run(ctx context.Context) error {
@@ -28,7 +28,7 @@ func (srv *Provider) Run(ctx context.Context) error {
 func NewProvider(mod *Module) *Provider {
 	var srv = &Provider{
 		Module: mod,
-		router: core.NewPrefixRouter(true),
+		router: routers.NewPrefixRouter(true),
 	}
 
 	srv.router.EnableParams = true

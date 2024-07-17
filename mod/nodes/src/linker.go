@@ -8,12 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 	"sync"
 	"sync/atomic"
 )
-
-var _ node.Linker = &Linker{}
 
 type Linker struct {
 	*Module
@@ -100,6 +97,7 @@ func (linker *Linker) LinkOpts(ctx context.Context, remoteIdentity id.Identity, 
 
 	l := <-res
 	if l == nil {
+		//TODO: return context error if there was a context error
 		return nil, errors.New("no endpoint could be reached")
 	}
 

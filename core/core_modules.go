@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"slices"
@@ -18,12 +19,12 @@ var _ node.ModuleEngine = &CoreModules{}
 type CoreModules struct {
 	loaded  map[string]node.Module
 	enabled []string
-	node    node.Node
+	node    *CoreNode
 	assets  assets.Assets
 	log     *log.Logger
 }
 
-func NewCoreModules(n node.Node, mods []string, assets assets.Assets, log *log.Logger) (*CoreModules, error) {
+func NewCoreModules(n *CoreNode, mods []string, assets assets.Assets, log *log.Logger) (*CoreModules, error) {
 	m := &CoreModules{
 		log:     log.Tag("modules"),
 		assets:  assets,
@@ -167,6 +168,11 @@ func (m *CoreModules) loadModule(name string) error {
 	}
 
 	m.loaded[name] = mod
+
+	if r, ok := mod.(net.Router); ok {
+		m.node.newRouter.Add(r, 0)
+		m.log.Info("module %s is a router", name)
+	}
 
 	return nil
 }

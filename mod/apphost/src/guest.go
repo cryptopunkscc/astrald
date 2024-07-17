@@ -2,8 +2,8 @@ package apphost
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/net"
 	"sync/atomic"
 )
@@ -11,7 +11,7 @@ import (
 type Guest struct {
 	Identity id.Identity
 
-	router *core.PrefixRouter
+	router *routers.PrefixRouter
 	count  atomic.Int32
 }
 
@@ -22,7 +22,7 @@ func (guest *Guest) RouteQuery(ctx context.Context, query net.Query, caller net.
 func NewGuest(identity id.Identity) *Guest {
 	return &Guest{
 		Identity: identity,
-		router:   core.NewPrefixRouter(false),
+		router:   routers.NewPrefixRouter(false),
 	}
 }
 

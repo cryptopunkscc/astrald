@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/net"
 	"io"
@@ -19,13 +20,13 @@ type JSONDescriptor struct {
 
 type Provider struct {
 	mod    *Module
-	router *core.PrefixRouter
+	router *routers.PrefixRouter
 }
 
 func NewProvider(mod *Module) *Provider {
 	var srv = &Provider{
 		mod:    mod,
-		router: core.NewPrefixRouter(true),
+		router: routers.NewPrefixRouter(true),
 	}
 
 	srv.router.EnableParams = true

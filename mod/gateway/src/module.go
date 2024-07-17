@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/policy"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
@@ -26,7 +25,6 @@ type Module struct {
 	subscribers map[string]*Subscriber
 	mu          sync.Mutex
 	sdp         discovery.Module
-	policy      policy.Module
 	nodes       nodes.Module
 	exonet      exonet.Module
 	dir         dir.Module
@@ -49,7 +47,6 @@ func (mod *Module) Prepare(ctx context.Context) (err error) {
 	}
 
 	mod.sdp, _ = core.Load[discovery.Module](mod.node, discovery.ModuleName)
-	mod.policy, _ = core.Load[policy.Module](mod.node, policy.ModuleName)
 
 	mod.exonet.SetDialer("gw", mod.dialer)
 	mod.exonet.SetUnpacker("gw", mod)
@@ -112,10 +109,6 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 	var s = NewSubscriber(gateway, mod.node, mod.log)
 	mod.subscribers[hex] = s
 
-	if mod.policy != nil {
-		mod.policy.AddAlwaysLinkedIdentity(gateway)
-	}
-
 	go func() {
 		err := s.Run(mod.ctx)
 		if err != nil {
@@ -125,9 +118,6 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 		defer mod.mu.Unlock()
 
 		delete(mod.subscribers, hex)
-		if mod.policy != nil {
-			mod.policy.RemoveAlwaysLinkedIdentity(gateway)
-		}
 	}()
 
 	return nil
