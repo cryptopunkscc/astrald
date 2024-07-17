@@ -13,6 +13,7 @@ import (
 
 // Redirect is a service that redirects a query to a different target
 type Redirect struct {
+	*Module
 	ServiceName string
 	Node        node.Node
 	Allow       id.Identity
@@ -21,19 +22,20 @@ type Redirect struct {
 
 // NewRedirect creates a new redirection service on the node. Only `allow` can route to the service and the request
 // will be translated to `query`.
-func NewRedirect(ctx context.Context, query net.Query, allow id.Identity, node node.Node) (*Redirect, error) {
+func NewRedirect(ctx context.Context, query net.Query, allow id.Identity, mod *Module) (*Redirect, error) {
 	var err error
 	var r = &Redirect{
-		Node:  node,
-		Allow: allow,
-		Query: query,
+		Module: mod,
+		Node:   mod.node,
+		Allow:  allow,
+		Query:  query,
 	}
 
 	var randBytes = make([]byte, 16)
 	rand.Read(randBytes)
 	r.ServiceName = relay.ServiceName + "." + hex.EncodeToString(randBytes)
 
-	err = node.LocalRouter().AddRoute(r.ServiceName, r)
+	err = mod.AddRoute(r.ServiceName, r)
 
 	return r, err
 }
@@ -44,7 +46,7 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 		return net.Reject()
 	}
 
-	defer r.Node.LocalRouter().RemoveRoute(r.ServiceName)
+	defer r.RemoveRoute(r.ServiceName)
 
 	finalQuery := r.Query
 

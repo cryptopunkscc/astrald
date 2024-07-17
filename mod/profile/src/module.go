@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -14,6 +15,7 @@ const serviceName = ".profile"
 const serviceType = "node.profile"
 
 type Module struct {
+	*routers.PathRouter
 	node   node2.Node
 	log    *log.Logger
 	ctx    context.Context

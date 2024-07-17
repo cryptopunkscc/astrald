@@ -20,11 +20,11 @@ type RouteService struct {
 }
 
 func (srv *RouteService) Run(ctx context.Context) error {
-	err := srv.node.LocalRouter().AddRoute(RouteServiceName+".*", srv)
+	err := srv.AddRoute(RouteServiceName+".*", srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.LocalRouter().RemoveRoute(RouteServiceName + ".*")
+	defer srv.RemoveRoute(RouteServiceName + ".*")
 
 	if srv.sdp != nil {
 		srv.sdp.AddServiceDiscoverer(srv)

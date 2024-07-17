@@ -31,8 +31,8 @@ func NewPathRouter(identity id.Identity, authority bool) *PathRouter {
 
 func (router *PathRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	if !router.identity.IsZero() {
-		if query.Target().IsEqual(router.identity) {
-
+		if !query.Target().IsEqual(router.identity) {
+			return net.RouteNotFound(router)
 		}
 	}
 

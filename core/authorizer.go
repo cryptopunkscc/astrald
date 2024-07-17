@@ -10,18 +10,18 @@ import (
 	"strings"
 )
 
-var _ node.AuthEngine = &CoreAuthorizer{}
+var _ node.AuthEngine = &Authorizer{}
 
-type CoreAuthorizer struct {
+type Authorizer struct {
 	authorizers sig.Set[node.Authorizer]
 	log         *log.Logger
 }
 
-func NewCoreAuthorizer(log *log.Logger) (*CoreAuthorizer, error) {
-	return &CoreAuthorizer{log: log}, nil
+func NewAuthorizer(log *log.Logger) (*Authorizer, error) {
+	return &Authorizer{log: log}, nil
 }
 
-func (auth *CoreAuthorizer) Authorize(identity id.Identity, action string, args ...any) bool {
+func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...any) bool {
 	for _, a := range auth.authorizers.Clone() {
 		if a.Authorize(identity, action, args...) {
 			name := reflect.TypeOf(a).String()
@@ -44,10 +44,10 @@ func (auth *CoreAuthorizer) Authorize(identity id.Identity, action string, args 
 	return false
 }
 
-func (auth *CoreAuthorizer) Add(authorizer node.Authorizer) error {
+func (auth *Authorizer) Add(authorizer node.Authorizer) error {
 	return auth.authorizers.Add(authorizer)
 }
 
-func (auth *CoreAuthorizer) Remove(authorizer node.Authorizer) error {
+func (auth *Authorizer) Remove(authorizer node.Authorizer) error {
 	return auth.authorizers.Remove(authorizer)
 }

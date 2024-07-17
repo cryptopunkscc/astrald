@@ -20,7 +20,7 @@ func NewAPIService(mod *Module) *APIService {
 }
 
 func (srv *APIService) Run(ctx context.Context) error {
-	srv.mod.node.LocalRouter().AddRoute(scanServiceName, srv)
+	srv.mod.AddRoute(scanServiceName, srv)
 	<-ctx.Done()
 	return nil
 }

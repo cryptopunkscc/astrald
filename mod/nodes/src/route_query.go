@@ -15,12 +15,14 @@ func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.S
 	}
 
 	// if not, try to establish a new link with the target
-	link, err := mod.Link(ctx, query.Target(), nodes.LinkOpts{})
-	if err == nil {
-		return link.RouteQuery(ctx, query, caller, hints)
+	if !query.Target().IsEqual(mod.node.Identity()) {
+		link, err := mod.Link(ctx, query.Target(), nodes.LinkOpts{})
+		if err == nil {
+			return link.RouteQuery(ctx, query, caller, hints)
+		}
+
+		mod.log.Errorv(2, "error linking with %v: %v", query.Target(), err)
 	}
 
-	mod.log.Errorv(2, "error linking with %v: %v", query.Target(), err)
-
-	return net.RouteNotFound(mod, err)
+	return net.RouteNotFound(mod)
 }

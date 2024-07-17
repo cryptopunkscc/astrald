@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
@@ -18,6 +19,7 @@ import (
 var _ discovery.Module = &Module{}
 
 type Module struct {
+	*routers.PathRouter
 	node     node2.Node
 	events   events.Queue
 	config   Config

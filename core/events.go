@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/net"
 	"reflect"
 )
 
-func (node *CoreNode) handleEvents(ctx context.Context) error {
+func (node *Node) handleEvents(ctx context.Context) error {
 	for e := range node.events.Subscribe(ctx) {
 		node.logEvent(e)
 	}
@@ -16,7 +16,7 @@ func (node *CoreNode) handleEvents(ctx context.Context) error {
 	return nil
 }
 
-func (node *CoreNode) logEvent(e events.Event) {
+func (node *Node) logEvent(e events.Event) {
 	var eventName = reflect.TypeOf(e).String()
 
 	if !node.logConfig.IsEventLoggable(eventName) {
@@ -31,11 +31,11 @@ func (node *CoreNode) logEvent(e events.Event) {
 }
 
 type EventLinkAdded struct {
-	Link node.ActiveLink
+	Link net.Link
 }
 
 type EventLinkRemoved struct {
-	Link node.ActiveLink
+	Link net.Link
 }
 
 type EventConnAdded struct {

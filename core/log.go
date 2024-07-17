@@ -20,7 +20,7 @@ type logFields struct {
 	log          *log.Logger
 }
 
-func (node *CoreNode) setupLogs() {
+func (node *Node) setupLogs() {
 	//TODO: output to our native log
 	_log.SetOutput(io.Discard)
 
@@ -178,7 +178,7 @@ func (node *CoreNode) setupLogs() {
 	})
 }
 
-func (node *CoreNode) loadLogConfig() error {
+func (node *Node) loadLogConfig() error {
 	node.logConfig = defaultLogConfig
 
 	if err := node.assets.LoadYAML("log", &node.logConfig); err != nil {

@@ -15,11 +15,11 @@ type RelayService struct {
 }
 
 func (srv *RelayService) Run(ctx context.Context) error {
-	err := srv.node.LocalRouter().AddRoute(relay.ServiceName, srv)
+	err := srv.AddRoute(relay.ServiceName, srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.LocalRouter().RemoveRoute(relay.ServiceName)
+	defer srv.RemoveRoute(relay.ServiceName)
 
 	<-ctx.Done()
 
@@ -76,7 +76,7 @@ func (srv *RelayService) serve(ctx context.Context, conn net.Conn) error {
 	redirectCtx, _ := context.WithTimeout(ctx, time.Minute)
 	var realQuery = net.NewQueryNonce(callerIM.identity, params.Target, params.Query, net.Nonce(params.Nonce))
 
-	redirect, err := NewRedirect(redirectCtx, realQuery, conn.RemoteIdentity(), srv.node)
+	redirect, err := NewRedirect(redirectCtx, realQuery, conn.RemoteIdentity(), srv.Module)
 	if err != nil {
 		session.EncodeErr(proto.ErrInternalError)
 		return err

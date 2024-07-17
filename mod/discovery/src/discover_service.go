@@ -17,11 +17,11 @@ type DiscoveryService struct {
 }
 
 func (service *DiscoveryService) Run(ctx context.Context) error {
-	err := service.node.LocalRouter().AddRoute(discovery.DiscoverServiceName, service)
+	err := service.AddRoute(discovery.DiscoverServiceName, service)
 	if err != nil {
 		return err
 	}
-	defer service.node.LocalRouter().RemoveRoute(discovery.DiscoverServiceName)
+	defer service.RemoveRoute(discovery.DiscoverServiceName)
 
 	<-ctx.Done()
 

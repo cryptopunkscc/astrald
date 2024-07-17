@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
@@ -15,34 +14,27 @@ import (
 
 const logTag = "node"
 
-var _ node.Node = &CoreNode{}
+var _ node.Node = &Node{}
 
-type CoreNode struct {
+type Node struct {
 	identity id.Identity
 	config   Config
 
 	assets   *assets.CoreAssets
-	router   *CoreRouter
-	modules  *CoreModules
-	resolver *CoreResolver
-	auth     *CoreAuthorizer
+	router   *Router
+	modules  *Modules
+	resolver *Resolver
+	auth     *Authorizer
 	events   events.Queue
-	routes   *routers.PrefixRouter
 
 	startedAt time.Time
 
 	logConfig LogConfig
 	logFields
-
-	newRouter *routers.PriorityRouter
 }
 
-func (node *CoreNode) Router() net.Router {
-	return node.newRouter
-}
-
-// NewCoreNode instantiates a new node
-func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error) {
+// NewNode instantiates a new node
+func NewNode(nodeID id.Identity, res resources.Resources) (*Node, error) {
 	var err error
 
 	if nodeID.PrivateKey() == nil {
@@ -53,12 +45,10 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 		res = resources.NewMemResources()
 	}
 
-	var node = &CoreNode{
+	var node = &Node{
 		identity: nodeID,
 		config:   defaultConfig,
-		routes:   routers.NewPrefixRouter(true),
 	}
-	node.routes.EnableParams = true
 
 	// basic logs
 	node.setupLogs()
@@ -82,65 +72,57 @@ func NewCoreNode(nodeID id.Identity, res resources.Resources) (*CoreNode, error)
 	}
 
 	// authorizer
-	node.auth, err = NewCoreAuthorizer(node.log.Tag("auth"))
+	node.auth, err = NewAuthorizer(node.log.Tag("auth"))
 	if err != nil {
 		return nil, fmt.Errorf("error setting up authorizer: %w", err)
 	}
 
 	// resolver
-	node.resolver = NewCoreResolver(node)
+	node.resolver = NewResolver(node)
 
 	// modules
 	var enabled = node.config.Modules
 	if enabled == nil {
 		enabled = RegisteredModules()
 	}
-	node.modules, err = NewCoreModules(node, enabled, node.assets, node.log)
+	node.modules, err = NewModules(node, enabled, node.assets, node.log)
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
 
-	node.router = NewCoreRouter(node.log, &node.events)
-	node.router.AddRoute(id.Anyone, node.Identity(), node, 100)
-
+	// router
+	node.router = NewRouter(node.log, &node.events)
 	node.router.SetLogRouteTrace(node.config.LogRouteTrace)
-
-	node.newRouter = routers.NewPriorityRouter()
-	node.newRouter.Add(node.router, 10)
 
 	return node, nil
 }
 
-func (node *CoreNode) Conns() *ConnSet {
-	return node.router.Conns()
+func (node *Node) Router() net.Router {
+	return node.router
 }
 
-func (node *CoreNode) Auth() node.AuthEngine {
+func (node *Node) Auth() node.AuthEngine {
 	return node.auth
 }
 
-func (node *CoreNode) Modules() node.ModuleEngine {
+func (node *Node) Modules() node.ModuleEngine {
 	return node.modules
 }
 
-func (node *CoreNode) Resolver() node.ResolverEngine {
+func (node *Node) Resolver() node.ResolverEngine {
 	return node.resolver
 }
 
 // Identity returns node's identity
-func (node *CoreNode) Identity() id.Identity {
+func (node *Node) Identity() id.Identity {
 	return node.identity
 }
 
-func (node *CoreNode) LocalRouter() routers.LocalRouter {
-	return node.routes
-}
-
 // Events returns the event queue for the node
-func (node *CoreNode) Events() *events.Queue {
+func (node *Node) Events() *events.Queue {
 	return &node.events
 }
 
-func (node *CoreNode) StartedAt() time.Time {
+func (node *Node) StartedAt() time.Time {
 	return node.startedAt
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -26,6 +27,7 @@ import (
 var _ objects.Module = &Module{}
 
 type Module struct {
+	*routers.PathRouter
 	node   node2.Node
 	config Config
 	db     *gorm.DB
@@ -52,7 +54,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
 	mod.provider = NewProvider(mod)
-	err := mod.node.LocalRouter().AddRoute("objects.*", mod.provider)
+	err := mod.AddRoute("objects.*", mod.provider)
 	if err != nil {
 		return err
 	}

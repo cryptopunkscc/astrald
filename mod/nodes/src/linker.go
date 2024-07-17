@@ -74,7 +74,7 @@ func (linker *Linker) LinkOpts(ctx context.Context, remoteIdentity id.Identity, 
 					break
 				}
 
-				l, err := muxlink.Open(workerCtx, conn, remoteIdentity, linker.node.Identity(), linker.node.LocalRouter())
+				l, err := muxlink.Open(workerCtx, conn, remoteIdentity, linker.node.Identity(), linker.node.Router())
 				if err != nil {
 					break
 				}

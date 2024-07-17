@@ -15,11 +15,11 @@ type ProfileService struct {
 }
 
 func (service *ProfileService) Run(ctx context.Context) error {
-	var err = service.node.LocalRouter().AddRoute(serviceName, service)
+	var err = service.AddRoute(serviceName, service)
 	if err != nil {
 		return err
 	}
-	defer service.node.LocalRouter().RemoveRoute(serviceName)
+	defer service.RemoveRoute(serviceName)
 
 	if service.sdp != nil {
 		service.sdp.AddServiceDiscoverer(service)

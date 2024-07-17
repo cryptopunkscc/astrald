@@ -8,7 +8,7 @@ import (
 )
 
 // Run starts the node, waits for it to finish and returns an error if any
-func (node *CoreNode) Run(ctx context.Context) (err error) {
+func (node *Node) Run(ctx context.Context) (err error) {
 	ctx, shutdown := context.WithCancel(ctx)
 
 	// Say hello

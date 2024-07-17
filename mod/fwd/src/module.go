@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tor"
@@ -14,6 +15,7 @@ import (
 )
 
 type Module struct {
+	*routers.PathRouter
 	node    node2.Node
 	config  Config
 	log     *log.Logger

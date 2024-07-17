@@ -87,7 +87,7 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 }
 
 func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (net.Link, error) {
-	l, err := muxlink.Accept(ctx, conn, mod.node.Identity(), mod.node.LocalRouter())
+	l, err := muxlink.Accept(ctx, conn, mod.node.Identity(), mod.node.Router())
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (net.Link, 
 }
 
 func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (net.Link, error) {
-	l, err := muxlink.Open(ctx, conn, remoteID, mod.node.Identity(), mod.node.LocalRouter())
+	l, err := muxlink.Open(ctx, conn, remoteID, mod.node.Identity(), mod.node.Router())
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +129,7 @@ func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts no
 }
 
 func (mod *Module) addLink(link net.Link) error {
+	link.SetLocalRouter(mod.node.Router())
 	err := mod.links.Add(link)
 	if err != nil {
 		return err

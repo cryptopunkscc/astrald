@@ -32,7 +32,7 @@ func (cmd *CmdNode) Exec(term admin.Terminal, args []string) error {
 	}
 	sort.Strings(names)
 	term.Printf("%s: %s\n", admin.Header("Modules"), strings.Join(names, " "))
-	if coreNode, ok := cmd.mod.node.(*core.CoreNode); ok {
+	if coreNode, ok := cmd.mod.node.(*core.Node); ok {
 		term.Printf("%s: %v\n", admin.Header("Uptime"), time.Since(coreNode.StartedAt()).Round(time.Second))
 	}
 

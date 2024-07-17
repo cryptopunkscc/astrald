@@ -41,11 +41,11 @@ func NewAstralServer(mod *Module, serviceName string, target net.Router) (*Astra
 }
 
 func (srv *AstralServer) Run(ctx context.Context) error {
-	var err = srv.node.LocalRouter().AddRoute(srv.serviceName, srv)
+	var err = srv.AddRoute(srv.serviceName, srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.LocalRouter().RemoveRoute(srv.serviceName)
+	defer srv.RemoveRoute(srv.serviceName)
 
 	<-ctx.Done()
 

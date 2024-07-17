@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
@@ -17,6 +18,7 @@ import (
 const NetworkName = "gw"
 
 type Module struct {
+	*routers.PathRouter
 	config      Config
 	node        node.Node
 	log         *log.Logger

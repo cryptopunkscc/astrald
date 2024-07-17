@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
@@ -27,6 +28,7 @@ var _ shares.Module = &Module{}
 var _ objects.Describer = &Module{}
 
 type Module struct {
+	*routers.PathRouter
 	config      Config
 	node        node2.Node
 	log         *log.Logger
@@ -75,7 +77,7 @@ func (mod *Module) Run(ctx context.Context) error {
 
 	mod.shares = NewProvider(mod)
 
-	err := mod.node.LocalRouter().AddRoute("shares.*", mod.shares)
+	err := mod.AddRoute("shares.*", mod.shares)
 	if err != nil {
 		return err
 	}

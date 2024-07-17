@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/adc"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -25,6 +26,7 @@ import (
 var _ relay.Module = &Module{}
 
 type Module struct {
+	*routers.PathRouter
 	node     node2.Node
 	assets   assets.Assets
 	log      *log.Logger

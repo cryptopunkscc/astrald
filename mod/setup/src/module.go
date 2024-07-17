@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -18,6 +19,7 @@ import (
 var _ setup.Module = &Module{}
 
 type Module struct {
+	*routers.PathRouter
 	config Config
 	node   node2.Node
 	log    *log.Logger

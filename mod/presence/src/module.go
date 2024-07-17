@@ -3,6 +3,7 @@ package presence
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/events"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -21,6 +22,7 @@ import (
 var _ presence.Module = &Module{}
 
 type Module struct {
+	*routers.PathRouter
 	node   node2.Node
 	config Config
 	log    *log.Logger

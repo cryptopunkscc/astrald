@@ -20,11 +20,11 @@ func NewInviteService(module *Module, accept id2.Filter) *InviteService {
 }
 
 func (srv *InviteService) Run(ctx context.Context) error {
-	err := srv.node.LocalRouter().AddRoute("setup.invite", srv)
+	err := srv.AddRoute("setup.invite", srv)
 	if err != nil {
 		return err
 	}
-	defer srv.node.LocalRouter().RemoveRoute("setup.invite")
+	defer srv.RemoveRoute("setup.invite")
 
 	<-ctx.Done()
 	return nil

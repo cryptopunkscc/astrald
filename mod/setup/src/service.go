@@ -12,8 +12,8 @@ type SetupService struct {
 }
 
 func (srv *SetupService) Run(ctx context.Context) error {
-	srv.node.LocalRouter().AddRoute(setup.ModuleName, srv)
-	defer srv.node.LocalRouter().RemoveRoute(setup.ModuleName)
+	srv.AddRoute(setup.ModuleName, srv)
+	defer srv.RemoveRoute(setup.ModuleName)
 
 	srv.setDefaultIdentity()
 

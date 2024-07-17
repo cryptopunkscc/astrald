@@ -3,6 +3,7 @@ package gateway
 import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	_log "github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/node"
 )
@@ -15,6 +16,7 @@ func (Loader) Load(node node.Node, assets assets.Assets, log *_log.Logger) (node
 	mod := &Module{
 		node:        node,
 		log:         log,
+		PathRouter:  routers.NewPathRouter(node.Identity(), false),
 		config:      defaultConfig,
 		dialer:      NewDialer(node),
 		subscribers: make(map[string]*Subscriber),

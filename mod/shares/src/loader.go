@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/node"
@@ -16,11 +17,12 @@ const taskQueueSize = 4096
 func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (node.Module, error) {
 	var err error
 	var mod = &Module{
-		node:   node,
-		config: defaultConfig,
-		log:    log,
-		assets: assets,
-		tasks:  make(chan func(ctx context.Context), taskQueueSize),
+		node:       node,
+		config:     defaultConfig,
+		log:        log,
+		assets:     assets,
+		tasks:      make(chan func(ctx context.Context), taskQueueSize),
+		PathRouter: routers.NewPathRouter(node.Identity(), false),
 	}
 
 	_ = assets.LoadYAML(shares.ModuleName, &mod.config)

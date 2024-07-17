@@ -8,25 +8,21 @@ import (
 
 const ZeroIdentity = "<anyone>"
 
-var _ node.ResolverEngine = &CoreResolver{}
+var _ node.ResolverEngine = &Resolver{}
 
-type Node interface {
-	Identity() id.Identity
-}
-
-type CoreResolver struct {
-	node      Node
+type Resolver struct {
+	node      node.Node
 	resolvers []node.Resolver
 }
 
-func NewCoreResolver(n Node) *CoreResolver {
-	return &CoreResolver{
+func NewResolver(n node.Node) *Resolver {
+	return &Resolver{
 		node:      n,
 		resolvers: make([]node.Resolver, 0),
 	}
 }
 
-func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
+func (c *Resolver) Resolve(s string) (id.Identity, error) {
 	if s == "" || s == "anyone" {
 		return id.Identity{}, nil
 	}
@@ -48,7 +44,7 @@ func (c *CoreResolver) Resolve(s string) (id.Identity, error) {
 	return id.Identity{}, fmt.Errorf("unknown identity: %s", s)
 }
 
-func (c *CoreResolver) DisplayName(identity id.Identity) string {
+func (c *Resolver) DisplayName(identity id.Identity) string {
 	if identity.IsZero() {
 		return ZeroIdentity
 	}
@@ -62,7 +58,7 @@ func (c *CoreResolver) DisplayName(identity id.Identity) string {
 	return identity.Fingerprint()
 }
 
-func (c *CoreResolver) AddResolver(r node.Resolver) error {
+func (c *Resolver) AddResolver(r node.Resolver) error {
 	c.resolvers = append(c.resolvers, r)
 	return nil
 }

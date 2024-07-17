@@ -29,7 +29,7 @@ func run(ctx context.Context, args *Args) error {
 	}
 
 	// run the node
-	coreNode, err := core.NewCoreNode(nodeID, nodeRes)
+	coreNode, err := core.NewNode(nodeID, nodeRes)
 	if err != nil {
 		return err
 	}
