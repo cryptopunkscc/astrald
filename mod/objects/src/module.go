@@ -12,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -48,6 +49,7 @@ type Module struct {
 
 	content content.Module
 	nodes   nodes.Module
+	auth    auth.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {

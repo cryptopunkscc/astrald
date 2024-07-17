@@ -30,11 +30,6 @@ func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (core.
 		return nil, err
 	}
 
-	err = mod.node.Auth().Add(mod)
-	if err != nil {
-		panic(err)
-	}
-
 	mod.AddFinder(&LinkedFinder{mod: mod})
 
 	return mod, nil

@@ -2,6 +2,7 @@ package presence
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -27,6 +28,11 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.nodes, err = core.Load[nodes.Module](mod.node, nodes.ModuleName)
+	if err != nil {
+		return err
+	}
+
+	mod.auth, err = core.Load[auth.Module](mod.node, auth.ModuleName)
 	if err != nil {
 		return err
 	}

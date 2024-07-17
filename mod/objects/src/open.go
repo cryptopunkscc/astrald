@@ -69,7 +69,7 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 }
 
 func (mod *Module) OpenAs(ctx context.Context, consumer id.Identity, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !mod.node.Auth().Authorize(consumer, objects.ActionRead, objectID) {
+	if !mod.auth.Authorize(consumer, objects.ActionRead, objectID) {
 		return nil, objects.ErrAccessDenied
 	}
 

@@ -2,12 +2,12 @@ package shares
 
 import (
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-var _ node.Authorizer = &Authorizer{}
+var _ auth.Authorizer = &Authorizer{}
 
 type Authorizer struct {
 	mod *Module

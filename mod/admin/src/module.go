@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/net"
@@ -20,7 +21,7 @@ import (
 
 var _ core.Module = &Module{}
 var _ admin.Module = &Module{}
-var _ node.Authorizer = &Module{}
+var _ auth.Authorizer = &Module{}
 
 const ServiceName = "admin"
 
@@ -35,6 +36,7 @@ type Module struct {
 	ctx      context.Context
 	relay    relay.Module
 	keys     keys.Module
+	auth     auth.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -55,7 +57,7 @@ func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.S
 	}
 
 	// check if the caller has access to the admin panel
-	if !mod.node.Auth().Authorize(caller.Identity(), admin.ActionAccess) {
+	if !mod.auth.Authorize(caller.Identity(), admin.ActionAccess) {
 		return net.Reject()
 	}
 

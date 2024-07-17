@@ -212,7 +212,7 @@ func Load[M any](node node.Node, name string) (M, error) {
 	}
 	mod, ok := cnode.Modules().Find(name).(M)
 	if !ok {
-		return mod, ModuleUnavailable(name)
+		return mod, errModuleUnavailable(name)
 	}
 	return mod, nil
 }

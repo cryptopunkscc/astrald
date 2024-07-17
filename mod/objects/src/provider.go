@@ -105,7 +105,7 @@ func (srv *Provider) Hold(ctx context.Context, query net.Query, caller net.Secur
 		return net.Reject()
 	}
 
-	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionRead, objectID) {
+	if !srv.mod.auth.Authorize(query.Caller(), objects.ActionRead, objectID) {
 		return net.Reject()
 	}
 
@@ -125,7 +125,7 @@ func (srv *Provider) Describe(ctx context.Context, query net.Query, caller net.S
 		return net.Reject()
 	}
 
-	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionRead, objectID) {
+	if !srv.mod.auth.Authorize(query.Caller(), objects.ActionRead, objectID) {
 		return net.Reject()
 	}
 
@@ -157,7 +157,7 @@ func (srv *Provider) Describe(ctx context.Context, query net.Query, caller net.S
 func (srv *Provider) Put(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
 	_, params := core.ParseQuery(query.Query())
 
-	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionWrite) {
+	if !srv.mod.auth.Authorize(query.Caller(), objects.ActionWrite) {
 		return net.Reject()
 	}
 
@@ -193,7 +193,7 @@ func (srv *Provider) Put(ctx context.Context, query net.Query, caller net.Secure
 }
 
 func (srv *Provider) Search(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	if !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionSearch) {
+	if !srv.mod.auth.Authorize(query.Caller(), objects.ActionSearch) {
 		return net.Reject()
 	}
 
@@ -210,7 +210,7 @@ func (srv *Provider) Search(ctx context.Context, query net.Query, caller net.Sec
 	}
 
 	matches = slices.DeleteFunc(matches, func(match objects.Match) bool {
-		return !srv.mod.node.Auth().Authorize(query.Caller(), objects.ActionRead, match.ObjectID)
+		return !srv.mod.auth.Authorize(query.Caller(), objects.ActionRead, match.ObjectID)
 	})
 
 	return net.Accept(query, caller, func(conn net.Conn) {

@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -35,6 +36,7 @@ type Module struct {
 	visible    atomic.Bool
 	outFilters sig.Set[presence.AdOutHook]
 
+	auth  auth.Module
 	dir   dir.Module
 	nodes nodes.Module
 

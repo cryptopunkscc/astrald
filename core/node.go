@@ -24,7 +24,6 @@ type Node struct {
 	router   *Router
 	modules  *Modules
 	resolver *Resolver
-	auth     *Authorizer
 	events   events.Queue
 
 	startedAt time.Time
@@ -71,12 +70,6 @@ func NewNode(nodeID id.Identity, res resources.Resources) (*Node, error) {
 		}
 	}
 
-	// authorizer
-	node.auth, err = NewAuthorizer(node.log.Tag("auth"))
-	if err != nil {
-		return nil, fmt.Errorf("error setting up authorizer: %w", err)
-	}
-
 	// resolver
 	node.resolver = NewResolver(node)
 
@@ -99,10 +92,6 @@ func NewNode(nodeID id.Identity, res resources.Resources) (*Node, error) {
 
 func (node *Node) Router() net.Router {
 	return node.router
-}
-
-func (node *Node) Auth() node.AuthEngine {
-	return node.auth
 }
 
 func (node *Node) Modules() *Modules {

@@ -2,12 +2,12 @@ package archives
 
 import (
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-var _ node.Authorizer = &Authorizer{}
+var _ auth.Authorizer = &Authorizer{}
 
 type Authorizer struct {
 	mod *Module
@@ -48,7 +48,7 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 				continue
 			}
 
-			return auth.mod.node.Auth().Authorize(identity, objects.ActionRead, zipID)
+			return auth.mod.auth.Authorize(identity, objects.ActionRead, zipID)
 		}
 	}
 

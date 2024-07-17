@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
@@ -37,6 +38,7 @@ type Module struct {
 	authorizers sig.Set[DataAuthorizer]
 	objects     objects.Module
 	sets        sets.Module
+	auth        auth.Module
 	notify      sig.Map[string, *Notification]
 	tasks       chan func(ctx context.Context)
 

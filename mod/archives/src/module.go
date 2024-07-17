@@ -6,6 +6,7 @@ import (
 	events2 "github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/archives"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shares"
@@ -30,6 +31,7 @@ type Module struct {
 	content content.Module
 	objects objects.Module
 	shares  shares.Module
+	auth    auth.Module
 
 	mu            sync.Mutex
 	autoIndexZone net.Zone

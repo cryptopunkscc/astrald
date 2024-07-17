@@ -26,7 +26,7 @@ func (srv *APIService) Run(ctx context.Context) error {
 }
 
 func (srv *APIService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	if !srv.mod.node.Auth().Authorize(query.Caller(), presence.ScanAction) {
+	if !srv.mod.auth.Authorize(query.Caller(), presence.ScanAction) {
 		return net.Reject()
 	}
 

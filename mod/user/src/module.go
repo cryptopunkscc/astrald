@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
@@ -42,6 +43,7 @@ type Module struct {
 	apphost apphost.Module
 	sets    sets.Module
 	dir     dir.Module
+	auth    auth.Module
 
 	*routers.PathRouter
 	userID         id.Identity

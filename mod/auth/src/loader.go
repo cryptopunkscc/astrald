@@ -1,10 +1,10 @@
-package archives
+package auth
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/archives"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/node"
 )
 
@@ -14,26 +14,17 @@ func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (core.
 	var err error
 	var mod = &Module{
 		node:   node,
-		config: defaultConfig,
 		log:    log,
+		assets: assets,
 	}
 
-	mod.events.SetParent(node.Events())
-
-	_ = assets.LoadYAML(archives.ModuleName, &mod.config)
-
-	mod.db = assets.Database()
-
-	err = mod.db.AutoMigrate(&dbArchive{}, &dbEntry{})
-	if err != nil {
-		return nil, err
-	}
+	_ = assets.LoadYAML(auth.ModuleName, &mod.config)
 
 	return mod, err
 }
 
 func init() {
-	if err := core.RegisterModule(archives.ModuleName, Loader{}); err != nil {
+	if err := core.RegisterModule(auth.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }
