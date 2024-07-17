@@ -21,19 +21,19 @@ func (cmd *CmdNode) Exec(term admin.Terminal, args []string) error {
 	term.Printf("%v (%v)\n\n", nodeID, admin.Faded(nodeID.PublicKeyHex()))
 
 	// Show modules
-	var names []string
-	for _, m := range cmd.mod.node.Modules().Loaded() {
-		var t = reflect.TypeOf(m)
-		for t.Kind() == reflect.Ptr {
-			t = t.Elem()
+	if cnode, ok := cmd.mod.node.(*core.Node); ok {
+		var names []string
+		for _, m := range cnode.Modules().Loaded() {
+			var t = reflect.TypeOf(m)
+			for t.Kind() == reflect.Ptr {
+				t = t.Elem()
+			}
+			n := strings.SplitN(t.String(), ".", 2)
+			names = append(names, n[0])
 		}
-		n := strings.SplitN(t.String(), ".", 2)
-		names = append(names, n[0])
-	}
-	sort.Strings(names)
-	term.Printf("%s: %s\n", admin.Header("Modules"), strings.Join(names, " "))
-	if coreNode, ok := cmd.mod.node.(*core.Node); ok {
-		term.Printf("%s: %v\n", admin.Header("Uptime"), time.Since(coreNode.StartedAt()).Round(time.Second))
+		sort.Strings(names)
+		term.Printf("%s: %s\n", admin.Header("Modules"), strings.Join(names, " "))
+		term.Printf("%s: %v\n", admin.Header("Uptime"), time.Since(cnode.StartedAt()).Round(time.Second))
 	}
 
 	return nil

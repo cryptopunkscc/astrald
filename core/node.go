@@ -83,7 +83,7 @@ func NewNode(nodeID id.Identity, res resources.Resources) (*Node, error) {
 	// modules
 	var enabled = node.config.Modules
 	if enabled == nil {
-		enabled = RegisteredModules()
+		enabled = modules.Keys()
 	}
 	node.modules, err = NewModules(node, enabled, node.assets, node.log)
 	if err != nil {
@@ -105,7 +105,7 @@ func (node *Node) Auth() node.AuthEngine {
 	return node.auth
 }
 
-func (node *Node) Modules() node.ModuleEngine {
+func (node *Node) Modules() *Modules {
 	return node.modules
 }
 

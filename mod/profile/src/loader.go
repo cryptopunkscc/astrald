@@ -12,7 +12,7 @@ const ModuleName = "profile"
 
 type Loader struct{}
 
-func (Loader) Load(node node.Node, _ assets.Assets, log *log.Logger) (node.Module, error) {
+func (Loader) Load(node node.Node, _ assets.Assets, log *log.Logger) (core.Module, error) {
 	mod := &Module{
 		node:       node,
 		log:        log,

@@ -4,6 +4,7 @@ import (
 	"bitbucket.org/creachadair/shell"
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/id"
@@ -17,7 +18,7 @@ import (
 	"sync"
 )
 
-var _ node.Module = &Module{}
+var _ core.Module = &Module{}
 var _ admin.Module = &Module{}
 var _ node.Authorizer = &Module{}
 

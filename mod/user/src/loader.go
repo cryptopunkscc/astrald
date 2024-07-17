@@ -12,7 +12,7 @@ import (
 
 type Loader struct{}
 
-func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (node.Module, error) {
+func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	var err error
 	var mod = &Module{
 		node:       node,

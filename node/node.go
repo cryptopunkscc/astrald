@@ -12,8 +12,17 @@ type Node interface {
 	Router() net.Router
 	Events() *events.Queue
 	Auth() AuthEngine
-	Modules() ModuleEngine
 	Resolver() ResolverEngine
+}
+
+type AuthEngine interface {
+	Authorize(id id.Identity, action string, args ...any) bool
+	Add(Authorizer) error
+	Remove(Authorizer) error
+}
+
+type Authorizer interface {
+	Authorize(id id.Identity, action string, args ...any) bool
 }
 
 type Resolver interface {

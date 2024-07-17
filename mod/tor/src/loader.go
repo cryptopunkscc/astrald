@@ -14,7 +14,7 @@ const ModuleName = "tor"
 
 type Loader struct{}
 
-func (Loader) Load(node node.Node, assets assets.Assets, logger *log.Logger) (node.Module, error) {
+func (Loader) Load(node node.Node, assets assets.Assets, logger *log.Logger) (core.Module, error) {
 	mod := &Module{
 		node:   node,
 		log:    logger,

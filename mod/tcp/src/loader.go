@@ -11,7 +11,7 @@ import (
 
 type Loader struct{}
 
-func (Loader) Load(node node.Node, assets assets.Assets, l *log.Logger) (node.Module, error) {
+func (Loader) Load(node node.Node, assets assets.Assets, l *log.Logger) (core.Module, error) {
 	mod := &Module{
 		node:   node,
 		log:    l,

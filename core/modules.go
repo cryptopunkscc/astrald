@@ -14,21 +14,29 @@ import (
 	"sync"
 )
 
-var _ node.ModuleEngine = &Modules{}
-
 type Modules struct {
-	loaded  map[string]node.Module
+	loaded  map[string]Module
 	enabled []string
 	node    *Node
 	assets  assets.Assets
 	log     *log.Logger
 }
 
+type Module interface {
+	Run(context.Context) error
+}
+
+type ModuleLoader interface {
+	Load(node.Node, assets.Assets, *log.Logger) (Module, error)
+}
+
+var modules = sig.Map[string, ModuleLoader]{}
+
 func NewModules(n *Node, mods []string, assets assets.Assets, log *log.Logger) (*Modules, error) {
 	m := &Modules{
 		log:     log.Tag("modules"),
 		assets:  assets,
-		loaded:  make(map[string]node.Module),
+		loaded:  make(map[string]Module),
 		node:    n,
 		enabled: mods,
 	}
@@ -157,7 +165,7 @@ func (m *Modules) runModules(ctx context.Context, modules []string) error {
 }
 
 func (m *Modules) loadModule(name string) error {
-	loader, found := moduleLoaders[name]
+	loader, found := modules.Get(name)
 	if !found {
 		return errors.New("module not found")
 	}
@@ -176,22 +184,43 @@ func (m *Modules) loadModule(name string) error {
 	return nil
 }
 
-func (m *Modules) Find(name string) node.Module {
+func (m *Modules) Find(name string) Module {
 	return m.loaded[name]
 }
 
-func (m *Modules) Loaded() []node.Module {
-	var mods = make([]node.Module, 0, len(m.loaded))
+func (m *Modules) Loaded() []Module {
+	var mods = make([]Module, 0, len(m.loaded))
 	for _, mod := range m.loaded {
 		mods = append(mods, mod)
 	}
 	return mods
 }
 
+func RegisterModule(name string, loader ModuleLoader) error {
+	if _, ok := modules.Set(name, loader); !ok {
+		return errors.New("module already added")
+	}
+
+	return nil
+}
+
 func Load[M any](node node.Node, name string) (M, error) {
-	mod, ok := node.Modules().Find(name).(M)
+	cnode, ok := node.(*Node)
+	if !ok {
+		var m M
+		return m, errors.New("unsupported node type")
+	}
+	mod, ok := cnode.Modules().Find(name).(M)
 	if !ok {
 		return mod, ModuleUnavailable(name)
 	}
 	return mod, nil
+}
+
+type DependencyLoader interface {
+	LoadDependencies() error
+}
+
+type Preparer interface {
+	Prepare(context.Context) error
 }
