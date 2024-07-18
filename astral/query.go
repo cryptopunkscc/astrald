@@ -29,9 +29,12 @@ type basicQuery struct {
 }
 
 func NewQuery(caller id.Identity, target id.Identity, query string) Query {
-	var nonce Nonce
+	return NewQueryNonce(caller, target, query, NewNonce())
+}
+
+func NewNonce() (nonce Nonce) {
 	binary.Read(rand.Reader, binary.BigEndian, &nonce)
-	return NewQueryNonce(caller, target, query, nonce)
+	return
 }
 
 func NewQueryNonce(caller id.Identity, target id.Identity, query string, nonce Nonce) Query {
