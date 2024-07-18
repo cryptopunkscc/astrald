@@ -38,7 +38,7 @@ type Module struct {
 	keys   keys.Module
 	db     *gorm.DB
 
-	links sig.Set[astral.Link]
+	links sig.Set[nodes.Link]
 }
 
 func (mod *Module) Peers() (peers []id.Identity) {
@@ -85,7 +85,7 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 	return infoPrefix + base62.EncodeToString(packed)
 }
 
-func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (astral.Link, error) {
+func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (nodes.Link, error) {
 	l, err := muxlink.Accept(ctx, conn, mod.node.Identity(), mod.node.Router())
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (astral.Lin
 	return l, err
 }
 
-func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (astral.Link, error) {
+func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (nodes.Link, error) {
 	l, err := muxlink.Open(ctx, conn, remoteID, mod.node.Identity(), mod.node.Router())
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.I
 	return l, err
 }
 
-func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts nodes.LinkOpts) (astral.Link, error) {
+func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts nodes.LinkOpts) (nodes.Link, error) {
 	l, err := (&Linker{mod}).LinkOpts(ctx, remoteIdentity, opts)
 	if err != nil {
 		return nil, err
@@ -127,19 +127,19 @@ func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts no
 	return l, err
 }
 
-func (mod *Module) addLink(link astral.Link) error {
+func (mod *Module) addLink(link nodes.Link) error {
 	link.SetLocalRouter(mod.node.Router())
 	err := mod.links.Add(link)
 	if err != nil {
 		return err
 	}
 
-	mod.log.Logv(1, "added link with %v (%s)", link.RemoteIdentity(), exonet.Network(link))
+	mod.log.Logv(1, "added link with %v (%s)", link.RemoteIdentity(), Network(link))
 
 	go func() {
 		link.Run(context.Background())
 		mod.links.Remove(link)
-		mod.log.Logv(1, "removed link with %v (%s)", link.RemoteIdentity(), exonet.Network(link))
+		mod.log.Logv(1, "removed link with %v (%s)", link.RemoteIdentity(), Network(link))
 	}()
 
 	return nil

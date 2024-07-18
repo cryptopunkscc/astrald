@@ -2,16 +2,17 @@ package muxlink
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mux"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 	"time"
 )
 
-var _ astral.Link = &Link{}
+var _ nodes.Link = &Link{}
 
 var DefaultMuxHandler = func(event mux.Event) {}
 
@@ -20,9 +21,9 @@ const controlPort = 0
 
 type Link struct {
 	sig.Activity
-	transport   astral.Conn
-	localRouter astral.Router
-	mux         *mux.FrameMux
+	transport     astral.Conn
+	localRouter   astral.Router
+	mux           *mux.FrameMux
 	control       *Control
 	remoteBuffers *remoteBuffers
 	ctx           context.Context

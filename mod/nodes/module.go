@@ -2,9 +2,10 @@ package nodes
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/tasks"
 	"time"
 )
 
@@ -13,9 +14,9 @@ const DBPrefix = "nodes__"
 
 type Module interface {
 	exonet.Resolver
-	Link(context.Context, id.Identity, LinkOpts) (astral.Link, error)
-	AcceptLink(ctx context.Context, conn exonet.Conn) (astral.Link, error)
-	InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (astral.Link, error)
+	Link(context.Context, id.Identity, LinkOpts) (Link, error)
+	AcceptLink(ctx context.Context, conn exonet.Conn) (Link, error)
+	InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (Link, error)
 
 	ParseInfo(s string) (*NodeInfo, error)
 
@@ -55,4 +56,16 @@ func (Desc) Type() string {
 type LinkOpts struct {
 	Endpoints []exonet.Endpoint
 	Workers   int
+}
+
+// Link is an encrypted communication channel between two identities that can route queries
+type Link interface {
+	tasks.Runner
+	astral.Router
+	SetLocalRouter(astral.Router)
+	LocalIdentity() id.Identity
+	RemoteIdentity() id.Identity
+	Transport() astral.Conn
+	Close() error
+	Done() <-chan struct{}
 }

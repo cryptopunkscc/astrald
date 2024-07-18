@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"gorm.io/gorm/clause"
 )
 
@@ -66,4 +67,21 @@ func (mod *Module) removeEndpoint(nodeID id.Identity, endpoint exonet.Endpoint) 
 		Network:  endpoint.Network(),
 		Address:  endpoint.Address(),
 	}).Error
+}
+
+// Network returns link's network name or unknown if network could not be determined
+func Network(link nodes.Link) string {
+	var t = link.Transport().(exonet.Conn)
+	if t == nil {
+		return "unknown"
+	}
+
+	if e := t.RemoteEndpoint(); e != nil {
+		return e.Network()
+	}
+	if e := t.LocalEndpoint(); e != nil {
+		return e.Network()
+	}
+
+	return "unknown"
 }

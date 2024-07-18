@@ -9,3 +9,11 @@ type EventNewEndpoint struct {
 	Identity id.Identity
 	Endpoint exonet.Endpoint
 }
+
+type EventLinkAdded struct {
+	Link Link
+}
+
+type EventLinkRemoved struct {
+	Link Link
+}

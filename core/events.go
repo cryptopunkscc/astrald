@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/astral"
 	"reflect"
 )
 
@@ -28,14 +27,6 @@ func (node *Node) logEvent(e events.Event) {
 	} else {
 		node.log.Log("<%s>", reflect.TypeOf(e).String())
 	}
-}
-
-type EventLinkAdded struct {
-	Link astral.Link
-}
-
-type EventLinkRemoved struct {
-	Link astral.Link
 }
 
 type EventConnAdded struct {

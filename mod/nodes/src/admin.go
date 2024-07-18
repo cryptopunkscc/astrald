@@ -110,7 +110,7 @@ func (adm *Admin) link(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("linked via %s\n", exonet.Network(lnk))
+	term.Printf("linked via %s\n", Network(lnk))
 
 	return nil
 }
