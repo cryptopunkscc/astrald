@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 )
@@ -24,9 +25,14 @@ func (mod *Module) Prepare(ctx context.Context) (err error) {
 		return err
 	}
 
+	mod.dir, err = core.Load[dir.Module](mod.node, dir.ModuleName)
+	if err != nil {
+		return err
+	}
+
 	// load admins from config
 	for _, name := range mod.config.Admins {
-		adminID, err := mod.node.Resolver().Resolve(name)
+		adminID, err := mod.dir.Resolve(name)
 		if err != nil {
 			continue
 		}

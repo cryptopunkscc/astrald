@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
 	"github.com/cryptopunkscc/astrald/net"
@@ -28,6 +29,7 @@ type Module struct {
 	services sig.Set[discovery.ServiceDiscoverer]
 	data     sig.Set[discovery.DataDiscoverer]
 	ctx      context.Context
+	dir      dir.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {

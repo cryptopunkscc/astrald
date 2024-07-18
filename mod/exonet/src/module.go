@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
@@ -23,6 +24,8 @@ type Module struct {
 	unpackers sig.Map[string, exonet.Unpacker]
 	parser    sig.Map[string, exonet.Parser]
 	resolvers sig.Set[exonet.Resolver]
+
+	dir dir.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {

@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/relay"
@@ -30,6 +31,7 @@ type Module struct {
 	relay    relay.Module
 	apphost  apphost.Module
 	presence presence.Module
+	dir      dir.Module
 
 	inviteService *InviteService
 }

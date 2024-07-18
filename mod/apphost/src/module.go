@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	node2 "github.com/cryptopunkscc/astrald/node"
 	"gorm.io/gorm"
@@ -24,6 +25,7 @@ type Module struct {
 	node    node2.Node
 	content content.Module
 	sdp     discovery.Module
+	dir     dir.Module
 	log     *log.Logger
 	db      *gorm.DB
 
@@ -62,7 +64,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	for _, run := range mod.config.Autorun {
 		run := run
 		go func() {
-			identity, err := mod.node.Resolver().Resolve(run.Identity)
+			identity, err := mod.dir.Resolve(run.Identity)
 			if err != nil {
 				mod.log.Error("unknown identity: %s", run.Identity)
 				return

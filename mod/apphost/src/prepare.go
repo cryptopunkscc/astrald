@@ -8,7 +8,7 @@ import (
 )
 
 func (mod *Module) Prepare(ctx context.Context) error {
-	if i, err := mod.node.Resolver().Resolve(mod.config.DefaultIdentity); err != nil {
+	if i, err := mod.dir.Resolve(mod.config.DefaultIdentity); err != nil {
 		mod.log.Errorv(1,
 			"config: error resolving default identity %v: %v",
 			mod.config.DefaultIdentity,
@@ -25,7 +25,7 @@ func (mod *Module) Prepare(ctx context.Context) error {
 
 	// load fixed access tokens from the config
 	for token, name := range mod.config.Tokens {
-		identity, err := mod.node.Resolver().Resolve(name)
+		identity, err := mod.dir.Resolve(name)
 		if err != nil {
 			mod.log.Error("config: cannot resolve identity '%v': %v", name, err)
 			continue

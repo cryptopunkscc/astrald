@@ -3,6 +3,7 @@ package dir
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
@@ -10,12 +11,13 @@ import (
 	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
-	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
 	"os"
 )
 
 var _ dir.Module = &Module{}
+
+const ZeroIdentity = "<anyone>"
 
 type Module struct {
 	config Config
@@ -24,28 +26,68 @@ type Module struct {
 	assets resources.Resources
 	db     *gorm.DB
 
+	resolvers  sig.Set[dir.Resolver]
 	describers sig.Set[dir.Describer]
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	return tasks.Group(
-		&Service{Module: mod},
-	).Run(ctx)
+	<-ctx.Done()
+	return nil
+}
+
+func (mod *Module) AddResolver(resolver dir.Resolver) error {
+	return mod.resolvers.Add(resolver)
 }
 
 func (mod *Module) Resolve(s string) (identity id.Identity, err error) {
+	if s == "" || s == "anyone" {
+		return id.Identity{}, nil
+	}
+
+	if s == "localnode" {
+		return mod.node.Identity(), nil
+	}
+
+	if identity, err := id.ParsePublicKeyHex(s); err == nil {
+		return identity, nil
+	}
+
 	err = mod.db.
 		Model(&dbAlias{}).
 		Where("alias = ?", s).
 		Select("identity").
 		First(&identity).
 		Error
-	return
+	if err == nil {
+		return
+	}
+
+	for _, r := range mod.resolvers.Clone() {
+		if i, err := r.Resolve(s); err == nil {
+			return i, nil
+		}
+	}
+
+	return id.Identity{}, fmt.Errorf("unknown identity: %s", s)
 }
 
 func (mod *Module) DisplayName(identity id.Identity) string {
-	a, _ := mod.GetAlias(identity)
-	return a
+	if identity.IsZero() {
+		return ZeroIdentity
+	}
+
+	a, err := mod.GetAlias(identity)
+	if err == nil {
+		return a
+	}
+
+	for _, r := range mod.resolvers.Clone() {
+		if s := r.DisplayName(identity); len(s) > 0 {
+			return s
+		}
+	}
+
+	return identity.Fingerprint()
 }
 
 func (mod *Module) Describe(ctx context.Context, identity id.Identity, opts *desc.Opts) []*desc.Desc {

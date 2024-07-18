@@ -11,6 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/net"
@@ -37,6 +38,7 @@ type Module struct {
 	relay    relay.Module
 	keys     keys.Module
 	auth     auth.Module
+	dir      dir.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {

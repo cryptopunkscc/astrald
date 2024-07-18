@@ -42,7 +42,7 @@ func (adm *Admin) nodes(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	userID, err := adm.mod.node.Resolver().Resolve(args[0])
+	userID, err := adm.mod.dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (adm *Admin) owner(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	nodeID, err := adm.mod.node.Resolver().Resolve(args[0])
+	nodeID, err := adm.mod.dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (adm *Admin) set(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	identity, err := adm.mod.node.Resolver().Resolve(args[0])
+	identity, err := adm.mod.dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}

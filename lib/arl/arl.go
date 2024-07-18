@@ -2,7 +2,7 @@ package arl
 
 import (
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/node"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"regexp"
 	"strings"
 )
@@ -38,7 +38,7 @@ func Split(s string) (caller, target, query string) {
 	return
 }
 
-func Parse(s string, resolver node.Resolver) (arl *ARL, err error) {
+func Parse(s string, resolver dir.Resolver) (arl *ARL, err error) {
 	if after, found := strings.CutPrefix(s, "astral://"); found {
 		s = after
 	}

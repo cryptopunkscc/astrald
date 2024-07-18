@@ -18,7 +18,7 @@ func (mod *Module) fetch(addr string) (objectID object.ID, err error) {
 	case isARL(addr):
 		var a *arl.ARL
 
-		a, err = arl.Parse(addr, mod.node.Resolver())
+		a, err = arl.Parse(addr, mod.dir)
 		if err != nil {
 			return
 		}

@@ -212,7 +212,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	var descs []*desc.Desc
 
 	if len(provider) > 0 {
-		providerID, err := adm.mod.node.Resolver().Resolve(provider)
+		providerID, err := adm.mod.dir.Resolve(provider)
 		if err != nil {
 			return err
 		}
@@ -280,7 +280,7 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 	if len(provider) > 0 {
 		var providerID id.Identity
 
-		providerID, err = adm.mod.node.Resolver().Resolve(provider)
+		providerID, err = adm.mod.dir.Resolve(provider)
 		if err != nil {
 			return err
 		}
@@ -355,7 +355,7 @@ func (adm *Admin) inv(term admin.Terminal, args []string) (err error) {
 	holderID := term.UserIdentity()
 
 	if len(args) > 0 {
-		holderID, err = adm.mod.node.Resolver().Resolve(args[0])
+		holderID, err = adm.mod.dir.Resolve(args[0])
 		if err != nil {
 			return
 		}
@@ -374,7 +374,7 @@ func (adm *Admin) hold(term admin.Terminal, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	holderID, err := adm.mod.node.Resolver().Resolve(args[0])
+	holderID, err := adm.mod.dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
@@ -397,7 +397,7 @@ func (adm *Admin) release(term admin.Terminal, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	holderID, err := adm.mod.node.Resolver().Resolve(args[0])
+	holderID, err := adm.mod.dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}

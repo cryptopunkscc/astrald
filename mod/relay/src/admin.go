@@ -89,13 +89,13 @@ func (adm *Admin) mkcert(term admin.Terminal, args []string) error {
 		return errors.New("missing arguments")
 	}
 
-	targetID, err := adm.mod.node.Resolver().Resolve(args[0])
+	targetID, err := adm.mod.dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
 
 	if len(args) >= 2 {
-		relayID, err = adm.mod.node.Resolver().Resolve(args[1])
+		relayID, err = adm.mod.dir.Resolve(args[1])
 		if err != nil {
 			return err
 		}

@@ -28,7 +28,7 @@ func (srv *ProfileService) RouteQuery(ctx context.Context, query net.Query, call
 }
 
 func (srv *ProfileService) getProfile(identity id.Identity) (p ProfileData) {
-	p.Alias = srv.node.Resolver().DisplayName(identity)
+	p.Alias = srv.dir.DisplayName(identity)
 
 	return
 }

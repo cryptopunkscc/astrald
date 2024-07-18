@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
@@ -39,6 +40,7 @@ type Module struct {
 	objects     objects.Module
 	sets        sets.Module
 	auth        auth.Module
+	dir         dir.Module
 	notify      sig.Map[string, *Notification]
 	tasks       chan func(ctx context.Context)
 

@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
@@ -23,6 +24,11 @@ func (mod *Module) LoadDependencies() error {
 	}
 
 	mod.auth, err = core.Load[auth.Module](mod.node, auth.ModuleName)
+	if err != nil {
+		return err
+	}
+
+	mod.dir, err = core.Load[dir.Module](mod.node, dir.ModuleName)
 	if err != nil {
 		return err
 	}

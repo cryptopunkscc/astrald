@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -22,6 +23,7 @@ type Module struct {
 	sdp    discovery.Module
 	nodes  nodes.Module
 	exonet exonet.Module
+	dir    dir.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {

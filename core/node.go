@@ -20,11 +20,10 @@ type Node struct {
 	identity id.Identity
 	config   Config
 
-	assets   *assets.CoreAssets
-	router   *Router
-	modules  *Modules
-	resolver *Resolver
-	events   events.Queue
+	assets  *assets.CoreAssets
+	router  *Router
+	modules *Modules
+	events  events.Queue
 
 	startedAt time.Time
 
@@ -70,9 +69,6 @@ func NewNode(nodeID id.Identity, res resources.Resources) (*Node, error) {
 		}
 	}
 
-	// resolver
-	node.resolver = NewResolver(node)
-
 	// modules
 	var enabled = node.config.Modules
 	if enabled == nil {
@@ -96,10 +92,6 @@ func (node *Node) Router() net.Router {
 
 func (node *Node) Modules() *Modules {
 	return node.modules
-}
-
-func (node *Node) Resolver() node.ResolverEngine {
-	return node.resolver
 }
 
 // Identity returns node's identity

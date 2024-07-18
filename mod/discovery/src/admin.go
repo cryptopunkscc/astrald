@@ -56,14 +56,14 @@ func (adm *Admin) query(term admin.Terminal, args []string) error {
 	args = f.Args()
 
 	if callerArg != "" {
-		caller, err = adm.mod.node.Resolver().Resolve(callerArg)
+		caller, err = adm.mod.dir.Resolve(callerArg)
 		if err != nil {
 			return err
 		}
 	}
 
 	if targetArg != "" {
-		target, err = adm.mod.node.Resolver().Resolve(targetArg)
+		target, err = adm.mod.dir.Resolve(targetArg)
 		if err != nil {
 			return err
 		}

@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
@@ -25,6 +26,11 @@ func (mod *Module) LoadDependencies() error {
 	mod.objects.AddDescriber(mod)
 
 	mod.keys, err = core.Load[keys.Module](mod.node, keys.ModuleName)
+	if err != nil {
+		return err
+	}
+
+	mod.dir, err = core.Load[dir.Module](mod.node, dir.ModuleName)
 	if err != nil {
 		return err
 	}

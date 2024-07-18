@@ -1,7 +1,6 @@
 package core
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/net"
@@ -18,6 +17,10 @@ type logFields struct {
 	screenFilter *log.PrinterFilter
 	logOutput    *log.PrinterSplitter
 	log          *log.Logger
+}
+
+func (node *Node) PushFormatFunc(fn log.FormatFunc) {
+	node.log.PushFormatFunc(fn)
 }
 
 func (node *Node) setupLogs() {
@@ -64,28 +67,6 @@ func (node *Node) setupLogs() {
 		return []log.Op{
 			log.OpColor{Color: log.Magenta},
 			log.OpText{Text: s.String()},
-			log.OpReset{},
-		}, true
-	})
-
-	// id.Identity format
-	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		identity, ok := v.(id.Identity)
-		if !ok {
-			return nil, false
-		}
-
-		var color = log.Cyan
-
-		if node.identity.IsEqual(identity) {
-			color = log.BrightGreen
-		}
-
-		var name = node.Resolver().DisplayName(identity)
-
-		return []log.Op{
-			log.OpColor{Color: color},
-			log.OpText{Text: name},
 			log.OpReset{},
 		}, true
 	})

@@ -60,7 +60,7 @@ func (service *ProfileService) getLocalProfile() *proto.Profile {
 		Endpoints: []proto.Endpoint{},
 	}
 
-	p.Alias = service.node.Resolver().DisplayName(service.node.Identity())
+	p.Alias = service.dir.DisplayName(service.node.Identity())
 
 	endpoints, _ := service.exonet.Resolve(context.Background(), service.node.Identity())
 
