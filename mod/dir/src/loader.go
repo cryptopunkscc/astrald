@@ -56,6 +56,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 		})
 	}
 
+	mod.resolvers.Add(&DNS{Module: mod})
+
 	return mod, nil
 }
 
