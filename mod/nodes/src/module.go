@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -22,6 +21,7 @@ import (
 const DefaultWorkerCount = 8
 const DefaultTimeout = time.Minute
 const infoPrefix = "node1"
+const featureMux = "mux"
 
 type NodeInfo nodes.NodeInfo
 
@@ -83,66 +83,6 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 	}
 
 	return infoPrefix + base62.EncodeToString(packed)
-}
-
-func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (nodes.Link, error) {
-	l, err := muxlink.Accept(ctx, conn, mod.node.Identity(), mod.node.Router())
-	if err != nil {
-		return nil, err
-	}
-
-	err = mod.addLink(l)
-	if err != nil {
-		l.Close()
-	}
-
-	return l, err
-}
-
-func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (nodes.Link, error) {
-	l, err := muxlink.Open(ctx, conn, remoteID, mod.node.Identity(), mod.node.Router())
-	if err != nil {
-		return nil, err
-	}
-
-	err = mod.addLink(l)
-	if err != nil {
-		l.Close()
-	}
-
-	return l, err
-}
-
-func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts nodes.LinkOpts) (nodes.Link, error) {
-	l, err := (&Linker{mod}).LinkOpts(ctx, remoteIdentity, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	err = mod.addLink(l)
-	if err != nil {
-		l.Close()
-	}
-
-	return l, err
-}
-
-func (mod *Module) addLink(link nodes.Link) error {
-	link.SetLocalRouter(mod.node.Router())
-	err := mod.links.Add(link)
-	if err != nil {
-		return err
-	}
-
-	mod.log.Logv(1, "added link with %v (%s)", link.RemoteIdentity(), Network(link))
-
-	go func() {
-		link.Run(context.Background())
-		mod.links.Remove(link)
-		mod.log.Logv(1, "removed link with %v (%s)", link.RemoteIdentity(), Network(link))
-	}()
-
-	return nil
 }
 
 func (mod *Module) Resolve(ctx context.Context, identity id.Identity) ([]exonet.Endpoint, error) {

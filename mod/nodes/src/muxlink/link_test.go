@@ -5,9 +5,9 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"sync"
@@ -157,41 +157,4 @@ func TestLink(t *testing.T) {
 	if !errors.Is(id2link.Err(), ErrLinkClosed) {
 		t.Fatalf("link2 closed with %s, expected %s", id1link.Err(), ErrLinkClosed)
 	}
-}
-
-func TestOpenAccept(t *testing.T) {
-	var wg sync.WaitGroup
-	var left, right = streams.Pipe()
-	var leftID, _ = id.GenerateIdentity()
-	var rightID, _ = id.GenerateIdentity()
-	var ctx = context.Background()
-
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-
-		conn := &FakeConn{ReadWriteCloser: left}
-
-		link, err := Accept(ctx, conn, leftID, nil)
-		if err != nil {
-			t.Fatal(err)
-			return
-		}
-		link.Close()
-	}()
-
-	go func() {
-		defer wg.Done()
-
-		conn := &FakeConn{ReadWriteCloser: right}
-
-		link, err := Open(ctx, conn, leftID, rightID, nil)
-		if err != nil {
-			t.Fatal(err)
-			return
-		}
-		link.Close()
-	}()
-
-	wg.Wait()
 }
