@@ -52,6 +52,8 @@ func NewLink(transport astral.Conn, localRouter astral.Router) *Link {
 		panic(err)
 	}
 
+	go link.Run(context.Background())
+
 	return link
 }
 

@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -71,16 +72,22 @@ func (mod *Module) removeEndpoint(nodeID id.Identity, endpoint exonet.Endpoint) 
 
 // Network returns link's network name or unknown if network could not be determined
 func Network(link nodes.Link) string {
-	var t = link.Transport().(exonet.Conn)
-	if t == nil {
-		return "unknown"
+	type Transporter interface {
+		Transport() astral.Conn
 	}
 
-	if e := t.RemoteEndpoint(); e != nil {
-		return e.Network()
-	}
-	if e := t.LocalEndpoint(); e != nil {
-		return e.Network()
+	if l, ok := link.(Transporter); ok {
+		var t = l.Transport().(exonet.Conn)
+		if t == nil {
+			return "unknown"
+		}
+
+		if e := t.RemoteEndpoint(); e != nil {
+			return e.Network()
+		}
+		if e := t.LocalEndpoint(); e != nil {
+			return e.Network()
+		}
 	}
 
 	return "unknown"

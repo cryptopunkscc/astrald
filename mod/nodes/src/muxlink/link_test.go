@@ -105,13 +105,13 @@ func TestLink(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		id1link.Run(ctx)
+		<-id1link.Done()
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		id2link.Run(ctx)
+		<-id2link.Done()
 	}()
 
 	wg.Add(1)

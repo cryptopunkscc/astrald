@@ -11,7 +11,3 @@ type Conn interface {
 	LocalEndpoint() Endpoint  // Returns local network address if known, nil otherwise
 	RemoteEndpoint() Endpoint // Returns the other party's network address if known, nil otherwise
 }
-
-type Transporter interface {
-	Transport() any
-}

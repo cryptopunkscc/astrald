@@ -198,7 +198,6 @@ func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts no
 }
 
 func (mod *Module) addLink(link nodes.Link) error {
-	link.SetLocalRouter(mod.node.Router())
 	err := mod.links.Add(link)
 	if err != nil {
 		return err
@@ -207,7 +206,7 @@ func (mod *Module) addLink(link nodes.Link) error {
 	mod.log.Logv(1, "added link with %v (%s)", link.RemoteIdentity(), Network(link))
 
 	go func() {
-		link.Run(context.Background())
+		<-link.Done()
 		mod.links.Remove(link)
 		mod.log.Logv(1, "removed link with %v (%s)", link.RemoteIdentity(), Network(link))
 	}()

@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/tasks"
 	"time"
 )
 
@@ -26,6 +25,15 @@ type Module interface {
 	Endpoints(id.Identity) []exonet.Endpoint
 
 	Peers() []id.Identity
+}
+
+// Link is an encrypted communication channel between two identities that is capable of routing queries
+type Link interface {
+	astral.Router
+	LocalIdentity() id.Identity
+	RemoteIdentity() id.Identity
+	Close() error
+	Done() <-chan struct{}
 }
 
 type NodeInfo struct {
@@ -56,16 +64,4 @@ func (Desc) Type() string {
 type LinkOpts struct {
 	Endpoints []exonet.Endpoint
 	Workers   int
-}
-
-// Link is an encrypted communication channel between two identities that can route queries
-type Link interface {
-	tasks.Runner
-	astral.Router
-	SetLocalRouter(astral.Router)
-	LocalIdentity() id.Identity
-	RemoteIdentity() id.Identity
-	Transport() astral.Conn
-	Close() error
-	Done() <-chan struct{}
 }
