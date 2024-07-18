@@ -3,7 +3,7 @@ package fwd
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"time"
 )
@@ -11,7 +11,7 @@ import (
 type Server interface {
 	tasks.Runner
 	fmt.Stringer
-	Target() net.Router
+	Target() astral.Router
 }
 
 type ServerRunner struct {

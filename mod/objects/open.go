@@ -3,13 +3,13 @@ package objects
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
 func DefaultOpenOpts() *OpenOpts {
 	return &OpenOpts{
-		Zone: net.DefaultZones,
+		Zone: astral.DefaultZones,
 	}
 }
 
@@ -20,7 +20,7 @@ type Opener interface {
 
 type OpenOpts struct {
 	// Limit query to these zones (0 = DefaultZones)
-	net.Zone
+	astral.Zone
 
 	// Open the data at an offset
 	Offset uint64

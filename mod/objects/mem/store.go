@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync/atomic"
@@ -33,8 +33,8 @@ func NewMemStore(events *events.Queue, size int64) *Store {
 }
 
 func (mem *Store) Open(_ context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !opts.Zone.Is(net.ZoneDevice) {
-		return nil, net.ErrZoneExcluded
+	if !opts.Zone.Is(astral.ZoneDevice) {
+		return nil, astral.ErrZoneExcluded
 	}
 
 	bytes, found := mem.objects.Get(objectID.String())

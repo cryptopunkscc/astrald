@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	"strings"
 	"time"
@@ -25,7 +25,7 @@ type ColorTerminal struct {
 	io.ReadWriter
 }
 
-func NewColorTerminal(rw net.Conn, logger *log.Logger) *ColorTerminal {
+func NewColorTerminal(rw astral.Conn, logger *log.Logger) *ColorTerminal {
 	l := logger.Tag("")
 	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
 		s, ok := v.(string)

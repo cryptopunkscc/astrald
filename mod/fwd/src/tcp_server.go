@@ -3,7 +3,7 @@ package fwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	_net "net"
 	"strings"
@@ -14,11 +14,11 @@ var _ Server = &TCPServer{}
 type TCPServer struct {
 	*Module
 	bind     string
-	target   net.Router
+	target   astral.Router
 	listener _net.Listener
 }
 
-func NewTCPServer(mod *Module, bind string, target net.Router) (*TCPServer, error) {
+func NewTCPServer(mod *Module, bind string, target astral.Router) (*TCPServer, error) {
 	var err error
 	var srv = &TCPServer{
 		Module: mod,
@@ -52,10 +52,10 @@ func (srv *TCPServer) Run(ctx context.Context) error {
 		}
 
 		go func() {
-			var query = net.NewQuery(id.Identity{}, id.Identity{}, "")
-			var src = net.NewSecurePipeWriter(client, srv.node.Identity())
+			var query = astral.NewQuery(id.Identity{}, id.Identity{}, "")
+			var src = astral.NewSecurePipeWriter(client, srv.node.Identity())
 
-			dst, err := srv.target.RouteQuery(ctx, query, src, net.DefaultHints())
+			dst, err := srv.target.RouteQuery(ctx, query, src, astral.DefaultHints())
 			if err != nil {
 				client.Close()
 				return
@@ -67,7 +67,7 @@ func (srv *TCPServer) Run(ctx context.Context) error {
 	}
 }
 
-func (srv *TCPServer) Target() net.Router {
+func (srv *TCPServer) Target() astral.Router {
 	return srv.target
 }
 

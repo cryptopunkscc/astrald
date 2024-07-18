@@ -4,11 +4,11 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/mod/relay/proto"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
-var _ net.Router = &RelayService{}
+var _ astral.Router = &RelayService{}
 
 type RelayService struct {
 	*Module
@@ -26,15 +26,15 @@ func (srv *RelayService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *RelayService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.Conn) {
+func (srv *RelayService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+	return astral.Accept(query, caller, func(conn astral.Conn) {
 		if err := srv.serve(ctx, conn); err != nil {
 			srv.log.Errorv(2, "error serving %s: %s", query.Caller(), err)
 		}
 	})
 }
 
-func (srv *RelayService) serve(ctx context.Context, conn net.Conn) error {
+func (srv *RelayService) serve(ctx context.Context, conn astral.Conn) error {
 	defer conn.Close()
 
 	var err error
@@ -74,7 +74,7 @@ func (srv *RelayService) serve(ctx context.Context, conn net.Conn) error {
 
 	// create a proxy service
 	redirectCtx, _ := context.WithTimeout(ctx, time.Minute)
-	var realQuery = net.NewQueryNonce(callerIM.identity, params.Target, params.Query, net.Nonce(params.Nonce))
+	var realQuery = astral.NewQueryNonce(callerIM.identity, params.Target, params.Query, astral.Nonce(params.Nonce))
 
 	redirect, err := NewRedirect(redirectCtx, realQuery, conn.RemoteIdentity(), srv.Module)
 	if err != nil {

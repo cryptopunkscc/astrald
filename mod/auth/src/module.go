@@ -3,10 +3,10 @@ package auth
 import (
 	"context"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"reflect"
@@ -15,7 +15,7 @@ import (
 
 type Module struct {
 	config      Config
-	node        node2.Node
+	node        astral.Node
 	log         *log.Logger
 	assets      resources.Resources
 	authorizers sig.Set[auth.Authorizer]

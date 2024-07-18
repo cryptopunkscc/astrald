@@ -13,7 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
@@ -113,7 +113,7 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 	}
 
 	if len(zones) > 0 {
-		opts.Zone = net.Zones(zones)
+		opts.Zone = astral.Zones(zones)
 	}
 
 	for _, arg := range flags.Args() {
@@ -135,7 +135,7 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 
 func (adm *Admin) show(term admin.Terminal, args []string) error {
 	var err error
-	var scope = net.DefaultScope()
+	var scope = astral.DefaultScope()
 	var zones string
 
 	var flags = flag.NewFlagSet("show", flag.ContinueOnError)
@@ -151,7 +151,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 	}
 
 	if len(zones) > 0 {
-		scope.Zone = net.Zones(zones)
+		scope.Zone = astral.Zones(zones)
 	}
 
 	for _, arg := range flags.Args() {
@@ -206,7 +206,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	}
 
 	if zonesArg != "" {
-		opts.Zone = net.Zones(zonesArg)
+		opts.Zone = astral.Zones(zonesArg)
 	}
 
 	var descs []*desc.Desc
@@ -270,7 +270,7 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 	}
 
 	if zonesArg != "" {
-		opts.Zone = net.Zones(zonesArg)
+		opts.Zone = astral.Zones(zonesArg)
 	}
 
 	args = flags.Args()

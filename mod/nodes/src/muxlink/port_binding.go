@@ -2,24 +2,24 @@ package muxlink
 
 import (
 	"github.com/cryptopunkscc/astrald/mux"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
 	"sync/atomic"
 )
 
 type PortBinding struct {
-	*net.OutputField
+	*astral.OutputField
 	async *streams.AsyncWriter
 	link  *Link
 	port  atomic.Int32
 }
 
-func NewPortBinding(output net.SecureWriteCloser, link *Link) *PortBinding {
+func NewPortBinding(output astral.SecureWriteCloser, link *Link) *PortBinding {
 	binding := &PortBinding{
 		link:  link,
 		async: streams.NewAsyncWriter(output, portBufferSize),
 	}
-	binding.OutputField = net.NewOutputField(binding, output)
+	binding.OutputField = astral.NewOutputField(binding, output)
 
 	binding.async.SetAfterFlush(func(bytes []byte) {
 		if p := binding.port.Load(); p != 0 {
@@ -48,7 +48,7 @@ func (binding *PortBinding) Link() *Link {
 	return binding.link
 }
 
-func (binding *PortBinding) Transport() net.Conn {
+func (binding *PortBinding) Transport() astral.Conn {
 	return binding.link.Transport()
 }
 
@@ -64,7 +64,7 @@ func (binding *PortBinding) BufferSize() int {
 	return binding.async.BufferSize()
 }
 
-func (binding *PortBinding) SetOutput(output net.SecureWriteCloser) error {
+func (binding *PortBinding) SetOutput(output astral.SecureWriteCloser) error {
 	binding.async.SetWriter(output)
 	return binding.OutputField.SetOutput(output)
 }

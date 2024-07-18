@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/mux"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	"math/rand"
 	"time"
@@ -174,7 +174,7 @@ func (c *Control) handleQuery(msg Query) error {
 
 // executeQuery executes an incoming query
 func (c *Control) executeQuery(msg Query) error {
-	var query = net.NewQueryNonce(c.RemoteIdentity(), c.LocalIdentity(), msg.Query, net.Nonce(msg.Nonce))
+	var query = astral.NewQueryNonce(c.RemoteIdentity(), c.LocalIdentity(), msg.Query, astral.Nonce(msg.Nonce))
 
 	var caller = NewPortWriter(c.Link, msg.Port)
 
@@ -183,7 +183,7 @@ func (c *Control) executeQuery(msg Query) error {
 	defer caller.Unlock()
 
 	// route the query upstream
-	target, err := c.localRouter.RouteQuery(c.ctx, query, caller, net.DefaultHints().WithOrigin(net.OriginNetwork))
+	target, err := c.localRouter.RouteQuery(c.ctx, query, caller, astral.DefaultHints().WithOrigin(astral.OriginNetwork))
 	if err != nil {
 		return c.WriteResponse(msg.Port, &Response{Error: errRejected})
 	}

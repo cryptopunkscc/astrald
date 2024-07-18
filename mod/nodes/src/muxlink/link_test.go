@@ -7,7 +7,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"sync"
@@ -79,8 +79,8 @@ type TestRouter struct {
 	t *testing.T
 }
 
-func (l *TestRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.Conn) {
+func (l *TestRouter) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+	return astral.Accept(query, caller, func(conn astral.Conn) {
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
 			l.t.Fatal(err)
@@ -129,7 +129,7 @@ func TestLink(t *testing.T) {
 			return
 		}
 
-		conn, err := net.Route(ctx, id2link, net.NewQuery(id2, id1, "testing"))
+		conn, err := astral.Route(ctx, id2link, astral.NewQuery(id2, id1, "testing"))
 		if err != nil {
 			t.Fatal(err)
 			return

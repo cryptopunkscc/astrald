@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
@@ -11,8 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -30,7 +29,7 @@ const updatesLen = 1024
 
 type Module struct {
 	config Config
-	node   node2.Node
+	node   astral.Node
 	assets assets.Assets
 	log    *log.Logger
 	events events.Queue
@@ -64,8 +63,8 @@ func (mod *Module) Open(_ context.Context, objectID object.ID, opts *objects.Ope
 		opts = defaultOpenOpts
 	}
 
-	if !opts.Zone.Is(net.ZoneDevice) {
-		return nil, net.ErrZoneExcluded
+	if !opts.Zone.Is(astral.ZoneDevice) {
+		return nil, astral.ErrZoneExcluded
 	}
 
 	paths := mod.path(objectID)
@@ -285,7 +284,7 @@ func (mod *Module) update(path string) (object.ID, error) {
 	if err == nil {
 		mod.events.Emit(objects.EventDiscovered{
 			ObjectID: updated.DataID,
-			Zone:     net.ZoneDevice,
+			Zone:     astral.ZoneDevice,
 		})
 	}
 

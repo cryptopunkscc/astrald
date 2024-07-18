@@ -3,6 +3,7 @@ package apphost
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
@@ -10,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"gorm.io/gorm"
 	"net"
 	"os"
@@ -22,7 +22,7 @@ var _ apphost.Module = &Module{}
 
 type Module struct {
 	config  Config
-	node    node2.Node
+	node    astral.Node
 	content content.Module
 	sdp     discovery.Module
 	dir     dir.Module

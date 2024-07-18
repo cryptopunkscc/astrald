@@ -4,14 +4,14 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mux"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 	"time"
 )
 
-var _ net.Link = &Link{}
+var _ astral.Link = &Link{}
 
 var DefaultMuxHandler = func(event mux.Event) {}
 
@@ -20,9 +20,9 @@ const controlPort = 0
 
 type Link struct {
 	sig.Activity
-	transport     net.Conn
-	localRouter   net.Router
-	mux           *mux.FrameMux
+	transport   astral.Conn
+	localRouter astral.Router
+	mux         *mux.FrameMux
 	control       *Control
 	remoteBuffers *remoteBuffers
 	ctx           context.Context
@@ -33,14 +33,14 @@ type Link struct {
 	running       chan struct{}
 }
 
-func NewLink(transport net.Conn, localRouter net.Router) *Link {
+func NewLink(transport astral.Conn, localRouter astral.Router) *Link {
 	link := &Link{
 		transport:   transport,
 		running:     make(chan struct{}),
 		localRouter: localRouter,
 	}
 	if link.localRouter == nil {
-		link.localRouter = &net.NilRouter{}
+		link.localRouter = &astral.NilRouter{}
 	}
 
 	link.remoteBuffers = newRemoteBuffers(link)
@@ -83,7 +83,7 @@ func (link *Link) CloseWithError(e error) error {
 }
 
 // Bind binds a specific port on the link's multiplexer to a WriteCloser.
-func (link *Link) Bind(localPort int, output net.SecureWriteCloser) (binding *PortBinding, err error) {
+func (link *Link) Bind(localPort int, output astral.SecureWriteCloser) (binding *PortBinding, err error) {
 	binding = NewPortBinding(output, link)
 	err = link.mux.Bind(localPort, binding.HandleMux)
 
@@ -91,7 +91,7 @@ func (link *Link) Bind(localPort int, output net.SecureWriteCloser) (binding *Po
 }
 
 // BindAny binds any port on the link's multiplexer to a WriteCloser.
-func (link *Link) BindAny(output net.SecureWriteCloser) (binding *PortBinding, err error) {
+func (link *Link) BindAny(output astral.SecureWriteCloser) (binding *PortBinding, err error) {
 	binding = NewPortBinding(output, link)
 	_, err = link.mux.BindAny(binding.HandleMux)
 
@@ -125,16 +125,16 @@ func (link *Link) Check() {
 }
 
 // LocalRouter returns the upstream router to which incoming queries will be sent
-func (link *Link) LocalRouter() net.Router {
+func (link *Link) LocalRouter() astral.Router {
 	return link.localRouter
 }
 
 // SetLocalRouter sets the upstream router to which incoming queries will ne sent
-func (link *Link) SetLocalRouter(uplink net.Router) {
+func (link *Link) SetLocalRouter(uplink astral.Router) {
 	link.localRouter = uplink
 }
 
-func (link *Link) Transport() net.Conn {
+func (link *Link) Transport() astral.Conn {
 	return link.transport
 }
 

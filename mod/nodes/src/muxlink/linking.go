@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
@@ -23,7 +23,7 @@ func Open(
 	conn exonet.Conn,
 	remoteID id.Identity,
 	localID id.Identity,
-	localRouter net.Router,
+	localRouter astral.Router,
 ) (link *Link, err error) {
 	defer func() {
 		if err != nil {
@@ -68,7 +68,7 @@ func Open(
 }
 
 // Accept negotiaties a link over the provided conn as the passive party
-func Accept(ctx context.Context, conn exonet.Conn, localID id.Identity, localRouter net.Router) (link *Link, err error) {
+func Accept(ctx context.Context, conn exonet.Conn, localID id.Identity, localRouter astral.Router) (link *Link, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()

@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
@@ -41,13 +41,13 @@ func (service *ProfileService) DiscoverServices(ctx context.Context, caller id.I
 	}, nil
 }
 
-func (service *ProfileService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.Conn) {
+func (service *ProfileService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+	return astral.Accept(query, caller, func(conn astral.Conn) {
 		service.serve(conn)
 	})
 }
 
-func (service *ProfileService) serve(conn net.Conn) {
+func (service *ProfileService) serve(conn astral.Conn) {
 	defer conn.Close()
 
 	service.log.Infov(2, "%s asked for profile", conn.RemoteIdentity())

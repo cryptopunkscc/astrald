@@ -3,6 +3,7 @@ package shares
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
@@ -13,8 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -32,7 +31,7 @@ var _ objects.Describer = &Module{}
 type Module struct {
 	*routers.PathRouter
 	config      Config
-	node        node2.Node
+	node        astral.Node
 	log         *log.Logger
 	assets      assets.Assets
 	db          *gorm.DB
@@ -92,8 +91,8 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !opts.Zone.Is(net.ZoneNetwork) {
-		return nil, net.ErrZoneExcluded
+	if !opts.Zone.Is(astral.ZoneNetwork) {
+		return nil, astral.ErrZoneExcluded
 	}
 
 	var rows []dbRemoteData

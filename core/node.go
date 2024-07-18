@@ -3,18 +3,17 @@ package core
 import (
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"time"
 )
 
 const logTag = "node"
 
-var _ node.Node = &Node{}
+var _ astral.Node = &Node{}
 
 type Node struct {
 	identity id.Identity
@@ -86,7 +85,7 @@ func NewNode(nodeID id.Identity, res resources.Resources) (*Node, error) {
 	return node, nil
 }
 
-func (node *Node) Router() net.Router {
+func (node *Node) Router() astral.Router {
 	return node.router
 }
 

@@ -3,7 +3,7 @@ package core
 import (
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	_log "log"
@@ -108,7 +108,7 @@ func (node *Node) setupLogs() {
 	})
 
 	node.log.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		s, ok := v.(net.Nonce)
+		s, ok := v.(astral.Nonce)
 		if !ok {
 			return nil, false
 		}

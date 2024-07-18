@@ -3,13 +3,13 @@ package archives
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"strings"
 )
 
 func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (matches []objects.Match, err error) {
-	if !opts.Zone.Is(net.ZoneVirtual) {
-		return nil, net.ErrZoneExcluded
+	if !opts.Zone.Is(astral.ZoneVirtual) {
+		return nil, astral.ErrZoneExcluded
 	}
 
 	var rows []*dbEntry

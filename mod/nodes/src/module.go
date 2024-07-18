@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -9,8 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -30,7 +29,7 @@ var _ nodes.Module = &Module{}
 
 type Module struct {
 	config Config
-	node   node2.Node
+	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
 
@@ -39,7 +38,7 @@ type Module struct {
 	keys   keys.Module
 	db     *gorm.DB
 
-	links sig.Set[net.Link]
+	links sig.Set[astral.Link]
 }
 
 func (mod *Module) Peers() (peers []id.Identity) {
@@ -86,7 +85,7 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 	return infoPrefix + base62.EncodeToString(packed)
 }
 
-func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (net.Link, error) {
+func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (astral.Link, error) {
 	l, err := muxlink.Accept(ctx, conn, mod.node.Identity(), mod.node.Router())
 	if err != nil {
 		return nil, err
@@ -100,7 +99,7 @@ func (mod *Module) AcceptLink(ctx context.Context, conn exonet.Conn) (net.Link, 
 	return l, err
 }
 
-func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (net.Link, error) {
+func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (astral.Link, error) {
 	l, err := muxlink.Open(ctx, conn, remoteID, mod.node.Identity(), mod.node.Router())
 	if err != nil {
 		return nil, err
@@ -114,7 +113,7 @@ func (mod *Module) InitLink(ctx context.Context, conn exonet.Conn, remoteID id.I
 	return l, err
 }
 
-func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts nodes.LinkOpts) (net.Link, error) {
+func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts nodes.LinkOpts) (astral.Link, error) {
 	l, err := (&Linker{mod}).LinkOpts(ctx, remoteIdentity, opts)
 	if err != nil {
 		return nil, err
@@ -128,7 +127,7 @@ func (mod *Module) Link(ctx context.Context, remoteIdentity id.Identity, opts no
 	return l, err
 }
 
-func (mod *Module) addLink(link net.Link) error {
+func (mod *Module) addLink(link astral.Link) error {
 	link.SetLocalRouter(mod.node.Router())
 	err := mod.links.Add(link)
 	if err != nil {

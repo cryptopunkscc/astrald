@@ -2,16 +2,16 @@ package core
 
 import (
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-var _ net.SecureWriteCloser = &MonitoredWriter{}
-var _ net.OutputGetter = &MonitoredWriter{}
+var _ astral.SecureWriteCloser = &MonitoredWriter{}
+var _ astral.OutputGetter = &MonitoredWriter{}
 
 type MonitoredWriter struct {
-	*net.SourceField
-	*net.OutputField
+	*astral.SourceField
+	*astral.OutputField
 	sig.Activity
 	bytes      int
 	AfterWrite func(int, error)
@@ -22,11 +22,11 @@ func (w *MonitoredWriter) Identity() id.Identity {
 	return w.Output().Identity()
 }
 
-func NewMonitoredWriter(w net.SecureWriteCloser) *MonitoredWriter {
+func NewMonitoredWriter(w astral.SecureWriteCloser) *MonitoredWriter {
 	m := &MonitoredWriter{
-		SourceField: net.NewSourceField(nil),
+		SourceField: astral.NewSourceField(nil),
 	}
-	m.OutputField = net.NewOutputField(m, w)
+	m.OutputField = astral.NewOutputField(m, w)
 
 	return m
 }

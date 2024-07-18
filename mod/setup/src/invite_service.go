@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	id2 "github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
@@ -30,12 +30,12 @@ func (srv *InviteService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *InviteService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *InviteService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	if !srv.needsSetup() {
-		return net.Reject()
+		return astral.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.Conn) {
+	return astral.Accept(query, caller, func(conn astral.Conn) {
 		defer conn.Close()
 		var err error
 		var cert relay.Cert
@@ -115,8 +115,8 @@ func (srv *InviteService) Invite(ctx context.Context, userID id2.Identity, nodeI
 	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
-	var query = net.NewQuery(userID, nodeID, "setup.invite")
-	conn, err := net.Route(ctx, srv.node.Router(), query)
+	var query = astral.NewQuery(userID, nodeID, "setup.invite")
+	conn, err := astral.Route(ctx, srv.node.Router(), query)
 	if err != nil {
 		return err
 	}

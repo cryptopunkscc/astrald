@@ -1,18 +1,18 @@
 package fwd
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/node"
 )
 
 const ModuleName = "fwd"
 
 type Loader struct{}
 
-func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
+func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	mod := &Module{
 		node:       node,
 		config:     defaultConfig,

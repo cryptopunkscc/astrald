@@ -5,17 +5,17 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/arl"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
 
 type Consumer struct {
-	router net.Router
+	router astral.Router
 	arl    *arl.ARL
 }
 
-func NewConsumer(arl *arl.ARL, router net.Router) *Consumer {
+func NewConsumer(arl *arl.ARL, router astral.Router) *Consumer {
 	return &Consumer{router: router, arl: arl}
 }
 
@@ -26,13 +26,13 @@ func (c *Consumer) Sync(ctx context.Context, since time.Time) (diff Diff, err er
 		params.SetUnixNano("since", since)
 	}
 
-	var query = net.NewQuery(
+	var query = astral.NewQuery(
 		c.arl.Caller,
 		c.arl.Target,
 		core.Query(c.arl.Query, params),
 	)
 
-	conn, err := net.Route(ctx, c.router, query)
+	conn, err := astral.Route(ctx, c.router, query)
 	if err != nil {
 		return
 	}

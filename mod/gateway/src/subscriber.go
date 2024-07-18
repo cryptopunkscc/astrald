@@ -4,10 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 	"time"
 )
 
@@ -15,7 +14,7 @@ const minimumSubscriptionDuration = 15 * time.Minute
 const subscribeRetryInterval = 60 * time.Second
 
 type Subscriber struct {
-	node    node.Node
+	node    astral.Node
 	log     *log.Logger
 	gateway id.Identity
 	cancel  context.CancelFunc
@@ -25,7 +24,7 @@ func (s *Subscriber) Gateway() id.Identity {
 	return s.gateway
 }
 
-func NewSubscriber(gateway id.Identity, node node.Node, log *log.Logger) *Subscriber {
+func NewSubscriber(gateway id.Identity, node astral.Node, log *log.Logger) *Subscriber {
 	return &Subscriber{node: node, log: log, gateway: gateway}
 }
 
@@ -35,7 +34,7 @@ func (s *Subscriber) Run(ctx context.Context) error {
 
 	var expiresAt time.Time
 	for {
-		conn, err := net.Route(ctx, s.node.Router(), net.NewQuery(s.node.Identity(), s.gateway, SubscribeServiceName))
+		conn, err := astral.Route(ctx, s.node.Router(), astral.NewQuery(s.node.Identity(), s.gateway, SubscribeServiceName))
 		if err != nil {
 			select {
 			case <-ctx.Done():

@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
@@ -18,8 +19,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/user"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"time"
@@ -29,7 +28,7 @@ var _ user.Module = &Module{}
 
 type Module struct {
 	config  Config
-	node    node.Node
+	node    astral.Node
 	log     *log.Logger
 	assets  assets.Assets
 	db      *gorm.DB
@@ -110,7 +109,7 @@ func (mod *Module) rescanContracts(ctx context.Context) error {
 	}
 
 	for info := range mod.content.Scan(ctx, opts) {
-		object, err := mod.objects.Load(ctx, info.ObjectID, net.DefaultScope())
+		object, err := mod.objects.Load(ctx, info.ObjectID, astral.DefaultScope())
 		if err != nil {
 			continue
 		}

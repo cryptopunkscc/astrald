@@ -3,11 +3,10 @@ package core
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"slices"
 	"strings"
@@ -27,7 +26,7 @@ type Module interface {
 }
 
 type ModuleLoader interface {
-	Load(node.Node, assets.Assets, *log.Logger) (Module, error)
+	Load(astral.Node, assets.Assets, *log.Logger) (Module, error)
 }
 
 var modules = sig.Map[string, ModuleLoader]{}
@@ -177,7 +176,7 @@ func (m *Modules) loadModule(name string) error {
 
 	m.loaded[name] = mod
 
-	if r, ok := mod.(net.Router); ok {
+	if r, ok := mod.(astral.Router); ok {
 		m.node.router.Add(r, 0)
 	}
 
@@ -204,7 +203,7 @@ func RegisterModule(name string, loader ModuleLoader) error {
 	return nil
 }
 
-func Load[M any](node node.Node, name string) (M, error) {
+func Load[M any](node astral.Node, name string) (M, error) {
 	cnode, ok := node.(*Node)
 	if !ok {
 		var m M

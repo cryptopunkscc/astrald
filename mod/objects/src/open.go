@@ -5,7 +5,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"slices"
 	"sync"
@@ -40,8 +40,8 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	defer cancel()
 
 	// limit first attempt to local zone
-	if zone.Is(net.ZoneDevice) {
-		opts.Zone = zone & net.ZoneDevice
+	if zone.Is(astral.ZoneDevice) {
+		opts.Zone = zone & astral.ZoneDevice
 		r, err := openers.OpenFirst(ctx, objectID, opts)
 		if err == nil {
 			return r, nil
@@ -49,8 +49,8 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	}
 
 	// then include the virtual zone
-	if zone.Is(net.ZoneVirtual) {
-		opts.Zone = zone & (net.ZoneDevice | net.ZoneVirtual)
+	if zone.Is(astral.ZoneVirtual) {
+		opts.Zone = zone & (astral.ZoneDevice | astral.ZoneVirtual)
 		r, err := openers.OpenFirst(ctx, objectID, opts)
 		if err == nil {
 			return r, nil
@@ -58,7 +58,7 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	}
 
 	// then try the network
-	if zone.Is(net.ZoneNetwork) {
+	if zone.Is(astral.ZoneNetwork) {
 		r, err := mod.openNetwork(ctx, objectID, opts)
 		if err == nil {
 			return r, nil
@@ -84,11 +84,11 @@ func (mod *Module) AddOpener(opener objects.Opener, priority int) error {
 }
 
 func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !opts.Zone.Is(net.ZoneNetwork) {
-		return nil, net.ErrZoneExcluded
+	if !opts.Zone.Is(astral.ZoneNetwork) {
+		return nil, astral.ErrZoneExcluded
 	}
 
-	providers := mod.Find(ctx, objectID, &net.Scope{Zone: opts.Zone})
+	providers := mod.Find(ctx, objectID, &astral.Scope{Zone: opts.Zone})
 
 	if opts.QueryFilter != nil {
 		providers = slices.DeleteFunc(providers, func(identity id.Identity) bool {

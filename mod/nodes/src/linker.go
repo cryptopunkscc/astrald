@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/muxlink"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"sync"
 	"sync/atomic"
 )
@@ -16,11 +16,11 @@ type Linker struct {
 	*Module
 }
 
-func (linker *Linker) Link(ctx context.Context, remoteIdentity id.Identity) (net.Link, error) {
+func (linker *Linker) Link(ctx context.Context, remoteIdentity id.Identity) (astral.Link, error) {
 	return linker.LinkOpts(ctx, remoteIdentity, nodes.LinkOpts{})
 }
 
-func (linker *Linker) LinkOpts(ctx context.Context, remoteIdentity id.Identity, opts nodes.LinkOpts) (net.Link, error) {
+func (linker *Linker) LinkOpts(ctx context.Context, remoteIdentity id.Identity, opts nodes.LinkOpts) (astral.Link, error) {
 	if linker.node.Identity().IsEqual(remoteIdentity) {
 		return nil, errors.New("cannot link to self")
 	}
@@ -42,7 +42,7 @@ func (linker *Linker) LinkOpts(ctx context.Context, remoteIdentity id.Identity, 
 
 	var wg sync.WaitGroup
 	var linked atomic.Bool
-	var res = make(chan net.Link)
+	var res = make(chan astral.Link)
 	var workers = opts.Workers
 	if workers == 0 {
 		workers = DefaultWorkerCount

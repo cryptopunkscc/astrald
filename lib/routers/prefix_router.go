@@ -3,7 +3,7 @@ package routers
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"strings"
 	"sync"
 )
@@ -20,8 +20,8 @@ var _ LocalRouter = &PrefixRouter{}
 type PrefixRouter struct {
 	Exclusive    bool
 	EnableParams bool
-	exact        map[string]net.Router
-	prefix       map[string]net.Router
+	exact        map[string]astral.Router
+	prefix       map[string]astral.Router
 	mu           sync.RWMutex
 }
 
@@ -29,13 +29,13 @@ type PrefixRouter struct {
 // will return the RouteNotFound error.
 func NewPrefixRouter(exclusive bool) *PrefixRouter {
 	return &PrefixRouter{
-		exact:     make(map[string]net.Router),
-		prefix:    make(map[string]net.Router),
+		exact:     make(map[string]astral.Router),
+		prefix:    make(map[string]astral.Router),
 		Exclusive: exclusive,
 	}
 }
 
-func (router *PrefixRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (router *PrefixRouter) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	var baseQuery = query.Query()
 	if router.EnableParams {
 		if i := strings.IndexByte(baseQuery, '?'); i != -1 {
@@ -47,9 +47,9 @@ func (router *PrefixRouter) RouteQuery(ctx context.Context, query net.Query, cal
 
 	if route == nil {
 		if router.Exclusive == true {
-			return net.Reject()
+			return astral.Reject()
 		} else {
-			return net.RouteNotFound(router)
+			return astral.RouteNotFound(router)
 		}
 	}
 
@@ -57,7 +57,7 @@ func (router *PrefixRouter) RouteQuery(ctx context.Context, query net.Query, cal
 }
 
 // AddRoute adds a route to the router
-func (router *PrefixRouter) AddRoute(name string, target net.Router) error {
+func (router *PrefixRouter) AddRoute(name string, target astral.Router) error {
 	router.mu.Lock()
 	defer router.mu.Unlock()
 
@@ -85,7 +85,7 @@ func (router *PrefixRouter) AddRoute(name string, target net.Router) error {
 }
 
 // AddRouteFunc adds a route handler function to the router
-func (router *PrefixRouter) AddRouteFunc(name string, fn net.RouteQueryFunc) error {
+func (router *PrefixRouter) AddRouteFunc(name string, fn astral.RouteQueryFunc) error {
 	return router.AddRoute(name, Func(fn))
 }
 
@@ -137,7 +137,7 @@ func (router *PrefixRouter) Routes() []PathRoute {
 }
 
 // Match finds the best match for the query and returns the router
-func (router *PrefixRouter) Match(query string) net.Router {
+func (router *PrefixRouter) Match(query string) astral.Router {
 	router.mu.RLock()
 	defer router.mu.RUnlock()
 
@@ -147,7 +147,7 @@ func (router *PrefixRouter) Match(query string) net.Router {
 	}
 
 	// find the best (longest) matching prefix route
-	var best net.Router
+	var best astral.Router
 	var bestLen int
 	for prefix, route := range router.prefix {
 		if strings.HasPrefix(query, prefix) {
@@ -163,9 +163,9 @@ func (router *PrefixRouter) Match(query string) net.Router {
 
 // LocalRouter is a router that routes queries for a single local identity
 type LocalRouter interface {
-	net.Router
-	AddRoute(name string, target net.Router) error
+	astral.Router
+	AddRoute(name string, target astral.Router) error
 	RemoveRoute(name string) error
 	Routes() []PathRoute
-	Match(query string) net.Router
+	Match(query string) astral.Router
 }

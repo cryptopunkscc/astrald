@@ -3,7 +3,7 @@ package fwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"strings"
 )
 
@@ -12,11 +12,11 @@ var _ Server = &AstralServer{}
 type AstralServer struct {
 	*Module
 	serviceName string
-	identity    id.Identity
-	target      net.Router
+	identity id.Identity
+	target   astral.Router
 }
 
-func NewAstralServer(mod *Module, serviceName string, target net.Router) (*AstralServer, error) {
+func NewAstralServer(mod *Module, serviceName string, target astral.Router) (*AstralServer, error) {
 	var err error
 	var identity = mod.node.Identity()
 	var srv = &AstralServer{
@@ -52,16 +52,16 @@ func (srv *AstralServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *AstralServer) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *AstralServer) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	dst, err := srv.target.RouteQuery(ctx, query, caller, hints)
 	if err != nil {
 		return nil, err
 	}
 
-	return net.NewSecurePipeWriter(dst, srv.identity), nil
+	return astral.NewSecurePipeWriter(dst, srv.identity), nil
 }
 
-func (srv *AstralServer) Target() net.Router {
+func (srv *AstralServer) Target() astral.Router {
 	return srv.target
 }
 

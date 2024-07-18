@@ -3,7 +3,7 @@ package desc
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type Describer[T any] interface {
@@ -22,12 +22,12 @@ type Data interface {
 }
 
 type Opts struct {
-	net.Scope
+	astral.Scope
 }
 
 func DefaultOpts() *Opts {
 	return &Opts{
-		Scope: *net.DefaultScope(),
+		Scope: *astral.DefaultScope(),
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type Admin struct {
@@ -105,7 +105,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	}
 
 	if zonesArg != "" {
-		opts.Zone = net.Zones(zonesArg)
+		opts.Zone = astral.Zones(zonesArg)
 	}
 
 	var descs = adm.mod.Describe(context.Background(), identity, opts)

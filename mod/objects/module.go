@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -40,7 +40,7 @@ type Module interface {
 	SetDecoder(string, Decoder) error
 
 	// Load decodes the object into memory and returns it
-	Load(context.Context, object.ID, *net.Scope) (Object, error)
+	Load(context.Context, object.ID, *astral.Scope) (Object, error)
 
 	// Store encodes the object to local storage
 	Store(context.Context, Object) (object.ID, error)

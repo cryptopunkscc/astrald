@@ -2,16 +2,15 @@ package gateway
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 )
 
 type Dialer struct {
-	node node.Node
+	node astral.Node
 }
 
-func NewDialer(node node.Node) *Dialer {
+func NewDialer(node astral.Node) *Dialer {
 	return &Dialer{node: node}
 }
 
@@ -25,9 +24,9 @@ func (dialer *Dialer) Dial(ctx context.Context, endpoint exonet.Endpoint) (exone
 		return nil, ErrSelfGateway
 	}
 
-	var query = net.NewQuery(dialer.node.Identity(), e.Gate(), RouteServiceName+"."+e.Target().PublicKeyHex())
+	var query = astral.NewQuery(dialer.node.Identity(), e.Gate(), RouteServiceName+"."+e.Target().PublicKeyHex())
 
-	conn, err := net.Route(ctx, dialer.node.Router(), query)
+	conn, err := astral.Route(ctx, dialer.node.Router(), query)
 	if err != nil {
 		return nil, err
 	}

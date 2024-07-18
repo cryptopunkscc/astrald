@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
@@ -15,8 +16,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -28,7 +27,7 @@ var _ relay.Module = &Module{}
 
 type Module struct {
 	*routers.PathRouter
-	node     node2.Node
+	node     astral.Node
 	assets   assets.Assets
 	log      *log.Logger
 	config   Config
@@ -80,27 +79,27 @@ func (mod *Module) Save(cert *relay.Cert) (objectID object.ID, err error) {
 	return
 }
 
-func (mod *Module) yankFinalOutput(chain any) net.SecureWriteCloser {
-	final := net.FinalOutput(chain)
+func (mod *Module) yankFinalOutput(chain any) astral.SecureWriteCloser {
+	final := astral.FinalOutput(chain)
 
-	s, ok := final.(net.SourceGetSetter)
+	s, ok := final.(astral.SourceGetSetter)
 	if !ok {
 		return nil
 	}
 
-	prev, ok := s.Source().(net.OutputGetSetter)
+	prev, ok := s.Source().(astral.OutputGetSetter)
 	if !ok {
 		return nil
 	}
 
-	prev.SetOutput(net.NewSecurePipeWriter(streams.NilWriteCloser{}, id.Identity{}))
+	prev.SetOutput(astral.NewSecurePipeWriter(streams.NilWriteCloser{}, id.Identity{}))
 	s.SetSource(nil)
 
 	return final
 }
 
-func (mod *Module) replaceOutput(old, new net.SecureWriteCloser) error {
-	var prev net.OutputSetter
+func (mod *Module) replaceOutput(old, new astral.SecureWriteCloser) error {
+	var prev astral.OutputSetter
 
 	if old == nil {
 		panic("old is nil")
@@ -109,12 +108,12 @@ func (mod *Module) replaceOutput(old, new net.SecureWriteCloser) error {
 		panic("new is nil")
 	}
 
-	s, ok := old.(net.SourceGetter)
+	s, ok := old.(astral.SourceGetter)
 	if !ok {
 		return errors.New("old output is not a SourceGetter")
 	}
 
-	prev, ok = s.Source().(net.OutputSetter)
+	prev, ok = s.Source().(astral.OutputSetter)
 	if !ok {
 		return errors.New("source is not an OutputSetter")
 	}
@@ -123,14 +122,14 @@ func (mod *Module) replaceOutput(old, new net.SecureWriteCloser) error {
 }
 
 func (mod *Module) insertSwitcherAfter(item any) (*SwitchWriter, error) {
-	i, ok := item.(net.OutputGetSetter)
+	i, ok := item.(astral.OutputGetSetter)
 	if !ok {
 		return nil, fmt.Errorf("argument not an OutputGetSetter")
 	}
 
 	switcher := NewSwitchWriter(i.Output())
 	i.SetOutput(switcher)
-	if s, ok := switcher.Output().(net.SourceSetter); ok {
+	if s, ok := switcher.Output().(astral.SourceSetter); ok {
 		s.SetSource(switcher)
 	}
 
@@ -141,8 +140,8 @@ func (mod *Module) isLocal(identity id.Identity) bool {
 	return mod.node.Identity().IsEqual(identity)
 }
 
-func (mod *Module) getRouter(w net.SecureWriteCloser) id.Identity {
-	if final := net.FinalOutput(w); final != nil {
+func (mod *Module) getRouter(w astral.SecureWriteCloser) id.Identity {
+	if final := astral.FinalOutput(w); final != nil {
 		return final.Identity()
 	}
 	return id.Identity{}

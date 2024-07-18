@@ -4,25 +4,24 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 )
 
 // Redirect is a service that redirects a query to a different target
 type Redirect struct {
 	*Module
 	ServiceName string
-	Node        node.Node
+	Node        astral.Node
 	Allow       id.Identity
-	Query       net.Query
+	Query       astral.Query
 }
 
 // NewRedirect creates a new redirection service on the node. Only `allow` can route to the service and the request
 // will be translated to `query`.
-func NewRedirect(ctx context.Context, query net.Query, allow id.Identity, mod *Module) (*Redirect, error) {
+func NewRedirect(ctx context.Context, query astral.Query, allow id.Identity, mod *Module) (*Redirect, error) {
 	var err error
 	var r = &Redirect{
 		Module: mod,
@@ -40,10 +39,10 @@ func NewRedirect(ctx context.Context, query net.Query, allow id.Identity, mod *M
 	return r, err
 }
 
-func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (r *Redirect) RouteQuery(ctx context.Context, query astral.Query, proxyCaller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	// the redirected query is locked to the caller and query nonce
 	if !(query.Caller().IsEqual(r.Allow) && (query.Nonce() == r.Query.Nonce())) {
-		return net.Reject()
+		return astral.Reject()
 	}
 
 	defer r.RemoveRoute(r.ServiceName)
@@ -54,13 +53,13 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 	mon, ok := proxyCaller.(*core.MonitoredWriter)
 	if ok {
 		next := mon.Output()
-		var t = net.NewIdentityTranslation(next, finalQuery.Caller())
+		var t = astral.NewIdentityTranslation(next, finalQuery.Caller())
 		mon.SetOutput(t)
-		if s, ok := next.(net.SourceSetter); ok {
+		if s, ok := next.(astral.SourceSetter); ok {
 			s.SetSource(t)
 		}
 	} else {
-		proxyCaller = net.NewIdentityTranslation(proxyCaller, finalQuery.Caller())
+		proxyCaller = astral.NewIdentityTranslation(proxyCaller, finalQuery.Caller())
 	}
 
 	// reroute the query to its final destination
@@ -70,7 +69,7 @@ func (r *Redirect) RouteQuery(ctx context.Context, query net.Query, proxyCaller 
 	}
 
 	if !target.Identity().IsEqual(r.Node.Identity()) {
-		target = net.NewIdentityTranslation(target, r.Node.Identity())
+		target = astral.NewIdentityTranslation(target, r.Node.Identity())
 	}
 
 	return target, nil

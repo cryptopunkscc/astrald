@@ -4,6 +4,7 @@ import (
 	"bitbucket.org/creachadair/shell"
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
@@ -14,8 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/net"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
 )
@@ -28,7 +27,7 @@ const ServiceName = "admin"
 
 type Module struct {
 	config   Config
-	node     node.Node
+	node     astral.Node
 	assets   assets.Assets
 	admins   sig.Set[string]
 	commands map[string]admin.Command
@@ -49,21 +48,21 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	if !query.Target().IsEqual(mod.node.Identity()) {
-		return net.RouteNotFound(mod)
+		return astral.RouteNotFound(mod)
 	}
 
 	if query.Query() != "admin" {
-		return net.RouteNotFound(mod)
+		return astral.RouteNotFound(mod)
 	}
 
 	// check if the caller has access to the admin panel
 	if !mod.auth.Authorize(caller.Identity(), admin.ActionAccess) {
-		return net.Reject()
+		return astral.Reject()
 	}
 
-	return net.Accept(query, caller, mod.serve)
+	return astral.Accept(query, caller, mod.serve)
 }
 
 func (mod *Module) AddAdmin(identity id.Identity) error {
@@ -83,7 +82,7 @@ func (mod *Module) hasAccess(identity id.Identity) bool {
 	return mod.admins.Contains(identity.PublicKeyHex())
 }
 
-func (mod *Module) serve(conn net.Conn) {
+func (mod *Module) serve(conn astral.Conn) {
 	defer debug.SaveLog(func(p any) {
 		mod.log.Error("admin session panicked: %v", p)
 	})

@@ -2,22 +2,22 @@ package relay
 
 import (
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"sync"
 )
 
 type LockableWriter struct {
-	*net.OutputField
-	*net.SourceField
+	*astral.OutputField
+	*astral.SourceField
 	sync.Mutex
 	removed bool
 }
 
-func NewLockableWriter(output net.SecureWriteCloser) *LockableWriter {
+func NewLockableWriter(output astral.SecureWriteCloser) *LockableWriter {
 	w := &LockableWriter{
-		SourceField: net.NewSourceField(nil),
+		SourceField: astral.NewSourceField(nil),
 	}
-	w.OutputField = net.NewOutputField(w, output)
+	w.OutputField = astral.NewOutputField(w, output)
 	return w
 }
 
@@ -40,12 +40,12 @@ func (w *LockableWriter) Write(p []byte) (n int, err error) {
 	}
 
 	if !w.removed {
-		s, ok := w.Source().(net.OutputSetter)
+		s, ok := w.Source().(astral.OutputSetter)
 		if !ok {
 			panic("not good")
 		}
 		s.SetOutput(w.Output())
-		if o, ok := w.Output().(net.SourceSetter); ok {
+		if o, ok := w.Output().(astral.SourceSetter); ok {
 			o.SetSource(s)
 		}
 

@@ -2,6 +2,7 @@ package setup
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
@@ -13,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/mod/setup"
 	"github.com/cryptopunkscc/astrald/mod/user"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -22,7 +22,7 @@ var _ setup.Module = &Module{}
 type Module struct {
 	*routers.PathRouter
 	config Config
-	node   node2.Node
+	node   astral.Node
 	log    *log.Logger
 	assets assets.Assets
 

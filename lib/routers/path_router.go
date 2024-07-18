@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"strings"
 	"sync"
 )
@@ -12,8 +12,8 @@ import (
 type PathRouter struct {
 	identity  id.Identity
 	Authority bool
-	exact     map[string]net.Router
-	prefix    map[string]net.Router
+	exact     map[string]astral.Router
+	prefix    map[string]astral.Router
 	mu        sync.RWMutex
 }
 
@@ -23,16 +23,16 @@ type PathRouter struct {
 func NewPathRouter(identity id.Identity, authority bool) *PathRouter {
 	return &PathRouter{
 		identity:  identity,
-		exact:     make(map[string]net.Router),
-		prefix:    make(map[string]net.Router),
+		exact:     make(map[string]astral.Router),
+		prefix:    make(map[string]astral.Router),
 		Authority: authority,
 	}
 }
 
-func (router *PathRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (router *PathRouter) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	if !router.identity.IsZero() {
 		if !query.Target().IsEqual(router.identity) {
-			return net.RouteNotFound(router)
+			return astral.RouteNotFound(router)
 		}
 	}
 
@@ -46,9 +46,9 @@ func (router *PathRouter) RouteQuery(ctx context.Context, query net.Query, calle
 
 	if route == nil {
 		if router.Authority == true {
-			return net.Reject()
+			return astral.Reject()
 		} else {
-			return net.RouteNotFound(router)
+			return astral.RouteNotFound(router)
 		}
 	}
 
@@ -56,7 +56,7 @@ func (router *PathRouter) RouteQuery(ctx context.Context, query net.Query, calle
 }
 
 // AddRoute adds a route to the router
-func (router *PathRouter) AddRoute(name string, target net.Router) error {
+func (router *PathRouter) AddRoute(name string, target astral.Router) error {
 	router.mu.Lock()
 	defer router.mu.Unlock()
 
@@ -84,7 +84,7 @@ func (router *PathRouter) AddRoute(name string, target net.Router) error {
 }
 
 // AddRouteFunc adds a route handler function to the router
-func (router *PathRouter) AddRouteFunc(name string, fn net.RouteQueryFunc) error {
+func (router *PathRouter) AddRouteFunc(name string, fn astral.RouteQueryFunc) error {
 	return router.AddRoute(name, Func(fn))
 }
 
@@ -136,7 +136,7 @@ func (router *PathRouter) Routes() []PathRoute {
 }
 
 // Match finds the best match for the query and returns the router
-func (router *PathRouter) Match(query string) net.Router {
+func (router *PathRouter) Match(query string) astral.Router {
 	router.mu.RLock()
 	defer router.mu.RUnlock()
 
@@ -146,7 +146,7 @@ func (router *PathRouter) Match(query string) net.Router {
 	}
 
 	// find the best (longest) matching prefix route
-	var best net.Router
+	var best astral.Router
 	var bestLen int
 	for prefix, route := range router.prefix {
 		if strings.HasPrefix(query, prefix) {
@@ -162,5 +162,5 @@ func (router *PathRouter) Match(query string) net.Router {
 
 type PathRoute struct {
 	Name   string
-	Target net.Router
+	Target astral.Router
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type EventHandler struct {
@@ -33,7 +33,7 @@ func (h *EventHandler) handleDiscovered(e discovery.EventDiscovered) error {
 func (h *EventHandler) updateIdentityProfile(target id.Identity, serviceName string) error {
 	h.log.Infov(2, "updating profile for %s", target)
 
-	conn, err := net.Route(h.ctx, h.node.Router(), net.NewQuery(h.node.Identity(), target, serviceName))
+	conn, err := astral.Route(h.ctx, h.node.Router(), astral.NewQuery(h.node.Identity(), target, serviceName))
 	if err != nil {
 		return err
 	}

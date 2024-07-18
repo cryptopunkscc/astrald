@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/id"
@@ -17,8 +18,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -30,7 +29,7 @@ var _ objects.Module = &Module{}
 
 type Module struct {
 	*routers.PathRouter
-	node   node2.Node
+	node   astral.Node
 	config Config
 	db     *gorm.DB
 	log    *log.Logger
@@ -78,7 +77,7 @@ func (mod *Module) Store(ctx context.Context, obj objects.Object) (objectID obje
 	return mod.Put(buf.Bytes(), nil)
 }
 
-func (mod *Module) Load(ctx context.Context, objectID object.ID, scope *net.Scope) (objects.Object, error) {
+func (mod *Module) Load(ctx context.Context, objectID object.ID, scope *astral.Scope) (objects.Object, error) {
 	if objectID.Size > objects.ReadAllMaxSize {
 		return nil, objects.ErrObjectTooLarge
 	}

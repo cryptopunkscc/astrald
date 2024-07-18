@@ -2,6 +2,7 @@ package presence
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
@@ -11,7 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"net"
@@ -24,7 +24,7 @@ var _ presence.Module = &Module{}
 
 type Module struct {
 	*routers.PathRouter
-	node   node2.Node
+	node   astral.Node
 	config Config
 	log    *log.Logger
 	socket *net.UDPConn

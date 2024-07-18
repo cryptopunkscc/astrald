@@ -2,13 +2,12 @@ package media
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/resources"
 	"gorm.io/gorm"
@@ -17,7 +16,7 @@ import (
 
 type Module struct {
 	config Config
-	node   node2.Node
+	node   astral.Node
 	db     *gorm.DB
 	log    *log.Logger
 	assets resources.Resources
@@ -45,7 +44,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		opts := desc.DefaultOpts()
 
 		if slices.Contains(mod.config.AutoIndexNet, event.Type) {
-			opts.Zone |= net.ZoneNetwork
+			opts.Zone |= astral.ZoneNetwork
 		}
 
 		mod.Describe(ctx, event.ObjectID, opts)

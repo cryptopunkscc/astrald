@@ -2,12 +2,12 @@ package tcp
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 	_net "net"
 )
@@ -16,7 +16,7 @@ var _ tcp.Module = &Module{}
 
 type Module struct {
 	config          Config
-	node            node.Node
+	node            astral.Node
 	log             *log.Logger
 	ctx             context.Context
 	nodes           nodes.Module

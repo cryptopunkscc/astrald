@@ -6,13 +6,13 @@ import (
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"strings"
 	"sync"
 	"time"
 )
 
-var _ net.Router = &Router{}
+var _ astral.Router = &Router{}
 
 const routingTimeout = time.Minute
 const ViaRouterHintKey = "via"
@@ -40,12 +40,12 @@ func NewRouter(log *log.Logger, eventParent *events.Queue) *Router {
 	return router
 }
 
-func (r *Router) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
+func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (target astral.SecureWriteCloser, err error) {
 	var silent = hints.Silent
 
 	if !r.lockNonce(query.Nonce()) {
 		if !hints.Reroute {
-			return net.RouteNotFound(r, errors.New("routing cycle not allowed"))
+			return astral.RouteNotFound(r, errors.New("routing cycle not allowed"))
 		}
 		silent = true
 	}
@@ -98,7 +98,7 @@ func (r *Router) RouteQuery(ctx context.Context, query net.Query, caller net.Sec
 			)
 
 			if r.logRouteTrace {
-				if rnf, ok := err.(*net.ErrRouteNotFound); ok {
+				if rnf, ok := err.(*astral.ErrRouteNotFound); ok {
 					for _, line := range strings.Split(rnf.Trace(), "\n") {
 						if len(line) > 0 {
 							r.log.Logv(2, "[%v] %v", query.Nonce(), line)
@@ -120,7 +120,7 @@ func (r *Router) RouteQuery(ctx context.Context, query net.Query, caller net.Sec
 	return target, err
 }
 
-func (r *Router) routeMonitored(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
+func (r *Router) routeMonitored(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (target astral.SecureWriteCloser, err error) {
 	// monitor the caller
 	var callerMonitor = NewMonitoredWriter(caller)
 
@@ -151,15 +151,15 @@ func (r *Router) routeMonitored(ctx context.Context, query net.Query, caller net
 	return targetMonitor, err
 }
 
-func (r *Router) routeQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (target net.SecureWriteCloser, err error) {
+func (r *Router) routeQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (target astral.SecureWriteCloser, err error) {
 	if via, found := hints.Value(ViaRouterHintKey); found {
 		switch typed := via.(type) {
-		case net.RouteQueryFunc:
+		case astral.RouteQueryFunc:
 			return typed(ctx, query, caller, hints)
-		case net.Router:
+		case astral.Router:
 			return typed.RouteQuery(ctx, query, caller, hints)
 		default:
-			return net.RouteNotFound(r, errors.New("via: unknown router type"))
+			return astral.RouteNotFound(r, errors.New("via: unknown router type"))
 		}
 	}
 
@@ -174,7 +174,7 @@ func (r *Router) SetLogRouteTrace(logRouteTrace bool) {
 	r.logRouteTrace = logRouteTrace
 }
 
-func (r *Router) lockNonce(nonce net.Nonce) bool {
+func (r *Router) lockNonce(nonce astral.Nonce) bool {
 	r.enrouteMu.Lock()
 	defer r.enrouteMu.Unlock()
 
@@ -186,7 +186,7 @@ func (r *Router) lockNonce(nonce net.Nonce) bool {
 	return true
 }
 
-func (r *Router) unlockNonce(nonce net.Nonce) bool {
+func (r *Router) unlockNonce(nonce astral.Nonce) bool {
 	r.enrouteMu.Lock()
 	defer r.enrouteMu.Unlock()
 

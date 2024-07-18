@@ -2,13 +2,13 @@ package profile
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -17,7 +17,7 @@ const serviceType = "node.profile"
 
 type Module struct {
 	*routers.PathRouter
-	node   node2.Node
+	node   astral.Node
 	log    *log.Logger
 	ctx    context.Context
 	sdp    discovery.Module

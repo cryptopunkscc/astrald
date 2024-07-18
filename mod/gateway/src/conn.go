@@ -2,19 +2,19 @@ package gateway
 
 import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ exonet.Conn = &Conn{}
 
 type Conn struct {
-	net.Conn
+	astral.Conn
 	localEndpoint  *Endpoint
 	remoteEndpoint *Endpoint
 	outbound       bool
 }
 
-func newConn(conn net.Conn, localEndpoint *Endpoint, remoteEndpoint *Endpoint, outbound bool) *Conn {
+func newConn(conn astral.Conn, localEndpoint *Endpoint, remoteEndpoint *Endpoint, outbound bool) *Conn {
 	c := &Conn{
 		Conn:           conn,
 		localEndpoint:  localEndpoint,

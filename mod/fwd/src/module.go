@@ -4,20 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tor"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"strings"
 	"sync"
 )
 
 type Module struct {
 	*routers.PathRouter
-	node    node2.Node
+	node    astral.Node
 	config  Config
 	log     *log.Logger
 	ctx     context.Context
@@ -108,7 +107,7 @@ func (mod *Module) runServer(s *ServerRunner) error {
 	return nil
 }
 
-func (mod *Module) parseTarget(uri string) (net.Router, error) {
+func (mod *Module) parseTarget(uri string) (astral.Router, error) {
 	var err error
 	var idx = strings.Index(uri, "://")
 	if idx == -1 {
@@ -150,7 +149,7 @@ func (mod *Module) parseTarget(uri string) (net.Router, error) {
 			return nil, errors.New("missing query")
 		}
 
-		var query = net.NewQuery(caller, target, uri)
+		var query = astral.NewQuery(caller, target, uri)
 
 		var label = fmt.Sprintf("%s@%s:%s",
 			mod.dir.DisplayName(caller),
@@ -172,7 +171,7 @@ func (mod *Module) parseTarget(uri string) (net.Router, error) {
 	}
 }
 
-func (mod *Module) createServer(uri string, target net.Router) (*ServerRunner, error) {
+func (mod *Module) createServer(uri string, target astral.Router) (*ServerRunner, error) {
 	var idx = strings.Index(uri, "://")
 	if idx == -1 {
 		return nil, errors.New("missing protocol")

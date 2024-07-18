@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/dhowden/tag"
 	"strings"
@@ -23,11 +23,11 @@ func NewAudioIndexer(mod *Module) *AudioIndexer {
 
 func (mod *AudioIndexer) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) (descs []*desc.Desc) {
 	openOpts := &objects.OpenOpts{
-		Zone: net.ZoneDevice | net.ZoneVirtual,
+		Zone: astral.ZoneDevice | astral.ZoneVirtual,
 	}
 
-	if opts.Zone.Is(net.ZoneNetwork) {
-		openOpts.Zone |= net.ZoneNetwork
+	if opts.Zone.Is(astral.ZoneNetwork) {
+		openOpts.Zone |= astral.ZoneNetwork
 	}
 
 	audio, _ := mod.Index(ctx, objectID, openOpts)

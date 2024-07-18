@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
@@ -38,8 +38,8 @@ func (srv *SubscribeService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *SubscribeService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.Conn) {
+func (srv *SubscribeService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+	return astral.Accept(query, caller, func(conn astral.Conn) {
 		defer conn.Close()
 
 		s := &Subscription{

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"strings"
 	"time"
 )
@@ -16,7 +16,7 @@ const acceptTimeout = 15 * time.Second
 
 type RouteService struct {
 	*Module
-	router net.Router
+	router astral.Router
 }
 
 func (srv *RouteService) Run(ctx context.Context) error {
@@ -35,7 +35,7 @@ func (srv *RouteService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	var targetKey string
 
 	switch {
@@ -43,12 +43,12 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 		targetKey, _ = strings.CutPrefix(query.Query(), RouteServiceName+".")
 
 	default:
-		return net.Reject()
+		return astral.Reject()
 	}
 
 	// check if the target is us
 	if targetKey == srv.node.Identity().PublicKeyHex() {
-		return net.Accept(query, caller, func(conn net.Conn) {
+		return astral.Accept(query, caller, func(conn astral.Conn) {
 			gwConn := newConn(
 				conn,
 				NewEndpoint(query.Target(), query.Target()),
@@ -68,17 +68,17 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 
 	targetIdentity, err := id.ParsePublicKeyHex(targetKey)
 	if err != nil {
-		return net.Reject()
+		return astral.Reject()
 	}
 
-	maskedQuery := net.NewQueryNonce(
+	maskedQuery := astral.NewQueryNonce(
 		srv.node.Identity(),
 		targetIdentity,
 		query.Query(),
 		query.Nonce(),
 	)
 
-	maskedCaller := net.NewIdentityTranslation(caller, srv.node.Identity())
+	maskedCaller := astral.NewIdentityTranslation(caller, srv.node.Identity())
 
 	srv.log.Logv(2, "forwarding %v to %v", query.Caller(), targetIdentity)
 
@@ -87,7 +87,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query net.Query, caller
 		return nil, err
 	}
 
-	var maskedTarget = net.NewIdentityTranslation(dst, srv.node.Identity())
+	var maskedTarget = astral.NewIdentityTranslation(dst, srv.node.Identity())
 
 	return maskedTarget, nil
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"strings"
 	"time"
@@ -123,7 +123,7 @@ func (share *Import) Sync(ctx context.Context) (err error) {
 			// add a task to cache descriptors
 			share.mod.tasks <- func(ctx context.Context) {
 				opts := desc.DefaultOpts()
-				opts.Zone |= net.ZoneNetwork
+				opts.Zone |= astral.ZoneNetwork
 				_, err := share.Describe(ctx, update.ObjectID, opts)
 				if err != nil {
 					share.mod.log.Errorv(2, "describe %v: %v", update.ObjectID, err)
@@ -192,7 +192,7 @@ func (share *Import) Describe(ctx context.Context, objectID object.ID, opts *des
 	}
 
 	// check conditions
-	if !opts.Zone.Is(net.ZoneNetwork) {
+	if !opts.Zone.Is(astral.ZoneNetwork) {
 		return nil, nil
 	}
 

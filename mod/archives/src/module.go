@@ -3,6 +3,7 @@ package archives
 import (
 	_zip "archive/zip"
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	events2 "github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/archives"
@@ -10,8 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"sync"
@@ -23,7 +22,7 @@ var _ archives.Module = &Module{}
 
 type Module struct {
 	config Config
-	node   node2.Node
+	node   astral.Node
 	events events2.Queue
 	log    *log.Logger
 
@@ -34,11 +33,11 @@ type Module struct {
 	auth    auth.Module
 
 	mu            sync.Mutex
-	autoIndexZone net.Zone
+	autoIndexZone astral.Zone
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	mod.autoIndexZone = net.Zones(mod.config.AutoIndexZones)
+	mod.autoIndexZone = astral.Zones(mod.config.AutoIndexZones)
 
 	go events2.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
 		return mod.onObjectDiscovered(ctx, event)
@@ -67,7 +66,7 @@ func (mod *Module) onObjectDiscovered(ctx context.Context, event objects.EventDi
 		for _, entry := range archive.Entries {
 			mod.events.Emit(objects.EventDiscovered{
 				ObjectID: entry.ObjectID,
-				Zone:     net.ZoneVirtual | event.Zone,
+				Zone:     astral.ZoneVirtual | event.Zone,
 			})
 		}
 	}
@@ -79,8 +78,8 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 		opts = &objects.OpenOpts{}
 	}
 
-	if !opts.Zone.Is(net.ZoneVirtual) {
-		return nil, net.ErrZoneExcluded
+	if !opts.Zone.Is(astral.ZoneVirtual) {
+		return nil, astral.ErrZoneExcluded
 	}
 
 	if opts.Offset > objectID.Size {

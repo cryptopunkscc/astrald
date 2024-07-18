@@ -1,4 +1,4 @@
-package net
+package astral
 
 type SelectFunc func(current Link, next Link) Link
 

@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/mod/presence"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"slices"
 )
 
@@ -25,12 +25,12 @@ func (srv *APIService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *APIService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *APIService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	if !srv.mod.auth.Authorize(query.Caller(), presence.ScanAction) {
-		return net.Reject()
+		return astral.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.Conn) {
+	return astral.Accept(query, caller, func(conn astral.Conn) {
 		defer conn.Close()
 
 		list := srv.mod.List()

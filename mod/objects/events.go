@@ -2,7 +2,7 @@ package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -16,7 +16,7 @@ type EventPurged struct {
 
 type EventDiscovered struct {
 	ObjectID object.ID
-	Zone     net.Zone
+	Zone     astral.Zone
 }
 
 type EventHeld struct {

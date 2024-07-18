@@ -2,7 +2,7 @@ package core
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"sync"
 )
 
@@ -76,7 +76,7 @@ func (set *ConnSet) Find(id int) *MonitoredConn {
 	return nil
 }
 
-func (set *ConnSet) FindByNonce(nonce net.Nonce) *MonitoredConn {
+func (set *ConnSet) FindByNonce(nonce astral.Nonce) *MonitoredConn {
 	set.mu.Lock()
 	defer set.mu.Unlock()
 

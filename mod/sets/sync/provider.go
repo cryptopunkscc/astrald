@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/sets"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
@@ -17,16 +17,16 @@ func NewProvider(set sets.Set) *Provider {
 	return &Provider{set: set}
 }
 
-func (srv *Provider) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *Provider) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	_, params := core.ParseQuery(query.Query())
 
 	since, _ := params.GetUnixNano("since")
 
 	if since.After(time.Now()) {
-		return net.Reject()
+		return astral.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.Conn) {
+	return astral.Accept(query, caller, func(conn astral.Conn) {
 		defer conn.Close()
 
 		var before = time.Now()

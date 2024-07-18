@@ -2,13 +2,13 @@ package apphost
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
-func (mod *Module) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	if guest := mod.getGuest(query.Target()); guest != nil {
 		return guest.RouteQuery(ctx, query, caller, hints)
 	}
 
-	return net.RouteNotFound(mod)
+	return astral.RouteNotFound(mod)
 }

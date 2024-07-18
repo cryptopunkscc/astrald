@@ -2,7 +2,7 @@ package objects
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -12,7 +12,7 @@ type Searcher interface {
 }
 
 type SearchOpts struct {
-	*net.Scope
+	*astral.Scope
 }
 
 type Match struct {
@@ -23,6 +23,6 @@ type Match struct {
 
 func DefaultSearchOpts() *SearchOpts {
 	return &SearchOpts{
-		Scope: net.DefaultScope(),
+		Scope: astral.DefaultScope(),
 	}
 }

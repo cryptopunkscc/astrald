@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
@@ -10,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"sync"
 )
@@ -20,7 +20,7 @@ const NetworkName = "gw"
 type Module struct {
 	*routers.PathRouter
 	config      Config
-	node        node.Node
+	node        astral.Node
 	log         *log.Logger
 	ctx         context.Context
 	dialer      *Dialer

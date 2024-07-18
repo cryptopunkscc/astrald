@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"reflect"
 	"time"
 )
@@ -42,7 +42,7 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 
 func (adm *Admin) query(term admin.Terminal, args []string) error {
 	var err error
-	var origin = net.OriginLocal
+	var origin = astral.OriginLocal
 	var caller = adm.mod.node.Identity()
 	var callerArg string
 	var target = adm.mod.node.Identity()
@@ -51,7 +51,7 @@ func (adm *Admin) query(term admin.Terminal, args []string) error {
 	f.SetOutput(term)
 	f.StringVar(&callerArg, "c", "", "set caller identity")
 	f.StringVar(&targetArg, "t", "", "set target identity")
-	f.StringVar(&origin, "o", net.OriginLocal, "set origin for the query (local/network)")
+	f.StringVar(&origin, "o", astral.OriginLocal, "set origin for the query (local/network)")
 	f.Parse(args)
 	args = f.Args()
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"sync/atomic"
 )
 
@@ -15,7 +15,7 @@ type Guest struct {
 	count  atomic.Int32
 }
 
-func (guest *Guest) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (guest *Guest) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	return guest.router.RouteQuery(ctx, query, caller, hints)
 }
 
@@ -26,7 +26,7 @@ func NewGuest(identity id.Identity) *Guest {
 	}
 }
 
-func (guest *Guest) AddRoute(name string, target net.Router) error {
+func (guest *Guest) AddRoute(name string, target astral.Router) error {
 	if err := guest.router.AddRoute(name, target); err != nil {
 		return err
 	}

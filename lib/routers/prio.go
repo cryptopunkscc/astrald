@@ -4,24 +4,24 @@ import (
 	"cmp"
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-var _ net.Router = &PriorityRouter{}
+var _ astral.Router = &PriorityRouter{}
 
 type PriorityRouter struct {
 	entries sig.Set[*Entry]
 }
 
 type PriorityAdder interface {
-	Add(r net.Router, prio int) error
+	Add(r astral.Router, prio int) error
 }
 
 var _ PriorityAdder = &PriorityRouter{}
 
 type Entry struct {
-	Router net.Router
+	Router astral.Router
 	Prio   int
 }
 
@@ -29,7 +29,7 @@ func NewPriorityRouter() *PriorityRouter {
 	return &PriorityRouter{}
 }
 
-func (router *PriorityRouter) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (w net.SecureWriteCloser, err error) {
+func (router *PriorityRouter) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (w astral.SecureWriteCloser, err error) {
 	var errs []error
 
 	for _, r := range router.entries.Clone() {
@@ -37,17 +37,17 @@ func (router *PriorityRouter) RouteQuery(ctx context.Context, query net.Query, c
 		switch {
 		case err == nil:
 			return
-		case errors.Is(err, net.ErrRejected):
+		case errors.Is(err, astral.ErrRejected):
 			return
 		default:
 			errs = append(errs, err)
 		}
 	}
 
-	return net.RouteNotFound(router, errs...)
+	return astral.RouteNotFound(router, errs...)
 }
 
-func (router *PriorityRouter) Add(r net.Router, prio int) error {
+func (router *PriorityRouter) Add(r astral.Router, prio int) error {
 	router.entries.Add(&Entry{Router: r, Prio: prio})
 
 	router.entries.Sort(func(a, b *Entry) int {

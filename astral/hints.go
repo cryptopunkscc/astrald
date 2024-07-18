@@ -1,4 +1,4 @@
-package net
+package astral
 
 type Hints struct {
 	Origin  string // Origin denotes the where the query originated (OriginLocal or OriginNetwork)

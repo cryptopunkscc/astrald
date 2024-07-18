@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
@@ -24,8 +24,8 @@ type Module interface {
 	Save(cert *Cert) (object.ID, error)
 	ReadCert(opts *FindOpts) ([]byte, error)
 	FindExternalRelays(targetID id.Identity) ([]id.Identity, error)
-	RouteVia(ctx context.Context, relayID id.Identity, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error)
-	RouterFuncVia(relay id.Identity) net.RouteQueryFunc
+	RouteVia(ctx context.Context, relayID id.Identity, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error)
+	RouterFuncVia(relay id.Identity) astral.RouteQueryFunc
 }
 
 type FindOpts struct {

@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/mod/sets/sync"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
@@ -27,8 +27,8 @@ func (c *Consumer) Sync(ctx context.Context, since time.Time) (diff sync.Diff, e
 }
 
 func (c *Consumer) Notify(ctx context.Context) error {
-	var query = net.NewQuery(c.caller, c.target, notifyServiceName)
-	conn, err := net.Route(ctx, c.mod.node.Router(), query)
+	var query = astral.NewQuery(c.caller, c.target, notifyServiceName)
+	conn, err := astral.Route(ctx, c.mod.node.Router(), query)
 	if err != nil {
 		return err
 	}

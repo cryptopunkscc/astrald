@@ -2,11 +2,11 @@ package exonet
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
@@ -16,7 +16,7 @@ var _ exonet.Module = &Module{}
 
 type Module struct {
 	config Config
-	node   node.Node
+	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
 

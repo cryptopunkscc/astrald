@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"net/http"
@@ -61,9 +61,9 @@ func (mod *Module) fetchARL(a *arl.ARL) (objectID object.ID, err error) {
 		a.Caller = mod.node.Identity()
 	}
 
-	var query = net.NewQuery(a.Caller, a.Target, a.Query)
+	var query = astral.NewQuery(a.Caller, a.Target, a.Query)
 
-	conn, err := net.Route(mod.ctx, mod.node.Router(), query)
+	conn, err := astral.Route(mod.ctx, mod.node.Router(), query)
 	if err != nil {
 		return
 	}

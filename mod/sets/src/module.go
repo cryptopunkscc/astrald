@@ -2,11 +2,11 @@ package sets
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/sets"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 )
@@ -15,7 +15,7 @@ var _ sets.Module = &Module{}
 
 type Module struct {
 	config Config
-	node   node2.Node
+	node   astral.Node
 	log    *log.Logger
 	assets assets.Assets
 	events events.Queue

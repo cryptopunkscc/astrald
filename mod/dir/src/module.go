@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -21,7 +21,7 @@ const ZeroIdentity = "<anyone>"
 
 type Module struct {
 	config Config
-	node   node.Node
+	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
 	db     *gorm.DB

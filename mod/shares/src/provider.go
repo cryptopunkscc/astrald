@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/sets/sync"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 const readServiceName = "shares.read"
@@ -39,14 +39,14 @@ func NewProvider(mod *Module) *Provider {
 	return srv
 }
 
-func (srv *Provider) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *Provider) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	return srv.router.RouteQuery(ctx, query, caller, hints)
 }
 
-func (srv *Provider) Sync(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *Provider) Sync(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	set, err := srv.openExportSet(caller.Identity())
 	if err != nil {
-		return net.Reject()
+		return astral.Reject()
 	}
 
 	p := sync.NewProvider(set)
@@ -54,13 +54,13 @@ func (srv *Provider) Sync(ctx context.Context, query net.Query, caller net.Secur
 	return p.RouteQuery(ctx, query, caller, hints)
 }
 
-func (srv *Provider) Notify(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
+func (srv *Provider) Notify(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
 	remoteShare, err := srv.FindRemoteShare(query.Target(), query.Caller())
 	if err != nil {
-		return net.Reject()
+		return astral.Reject()
 	}
 
-	return net.Accept(query, caller, func(conn net.Conn) {
+	return astral.Accept(query, caller, func(conn astral.Conn) {
 		conn.Close()
 		srv.tasks <- func(ctx context.Context) {
 			remoteShare.Sync(ctx)

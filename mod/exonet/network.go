@@ -1,9 +1,9 @@
 package exonet
 
-import "github.com/cryptopunkscc/astrald/net"
+import "github.com/cryptopunkscc/astrald/astral"
 
 // Network returns link's network name or unknown if network could not be determined
-func Network(link net.Link) string {
+func Network(link astral.Link) string {
 	var t = link.Transport().(Conn)
 	if t == nil {
 		return "unknown"

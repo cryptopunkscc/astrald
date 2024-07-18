@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -28,8 +28,8 @@ func (service *DiscoveryService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (service *DiscoveryService) RouteQuery(ctx context.Context, query net.Query, caller net.SecureWriteCloser, hints net.Hints) (net.SecureWriteCloser, error) {
-	return net.Accept(query, caller, func(conn net.Conn) {
+func (service *DiscoveryService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+	return astral.Accept(query, caller, func(conn astral.Conn) {
 		defer debug.SaveLog(func(p any) {
 			service.log.Error("discovery panicked: %v", p)
 		})
@@ -41,7 +41,7 @@ func (service *DiscoveryService) RouteQuery(ctx context.Context, query net.Query
 	})
 }
 
-func (service *DiscoveryService) serve(conn net.Conn, origin string) error {
+func (service *DiscoveryService) serve(conn astral.Conn, origin string) error {
 	defer conn.Close()
 
 	service.log.Logv(1, "discovery request from %v (%s)", conn.RemoteIdentity(), origin)

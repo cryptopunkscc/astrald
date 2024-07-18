@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mux"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"sync"
 	"time"
 )
 
-var _ net.SecureWriteCloser = &PortWriter{}
+var _ astral.SecureWriteCloser = &PortWriter{}
 
 const defaultMaxFrameSize = 1024 * 8
 const debugBufferUnderruns = false
 
 type PortWriter struct {
-	*net.SourceField
+	*astral.SourceField
 	sync.Mutex
 	link         *Link
 	port         int
@@ -28,7 +28,7 @@ func NewPortWriter(link *Link, port int) *PortWriter {
 		link:         link,
 		port:         port,
 		maxFrameSize: defaultMaxFrameSize,
-		SourceField:  net.NewSourceField(nil),
+		SourceField:  astral.NewSourceField(nil),
 	}
 }
 

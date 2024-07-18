@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,8 +21,8 @@ type MonitoredConn struct {
 	id            int64
 	target        *MonitoredWriter
 	caller        *MonitoredWriter
-	query         net.Query
-	hints         net.Hints
+	query         astral.Query
+	hints         astral.Hints
 	establishedAt time.Time
 
 	closeMu      sync.Mutex
@@ -31,7 +31,7 @@ type MonitoredConn struct {
 	done         chan struct{}
 }
 
-func NewMonitoredConn(caller *MonitoredWriter, target *MonitoredWriter, query net.Query, hints net.Hints) *MonitoredConn {
+func NewMonitoredConn(caller *MonitoredWriter, target *MonitoredWriter, query astral.Query, hints astral.Hints) *MonitoredConn {
 	conn := &MonitoredConn{
 		id:            nextConnID.Add(1),
 		query:         query,
@@ -76,15 +76,15 @@ func (conn *MonitoredConn) Caller() *MonitoredWriter {
 	return conn.caller
 }
 
-func (conn *MonitoredConn) Query() net.Query {
+func (conn *MonitoredConn) Query() astral.Query {
 	return conn.query
 }
 
-func (conn *MonitoredConn) SetQuery(query net.Query) {
+func (conn *MonitoredConn) SetQuery(query astral.Query) {
 	conn.query = query
 }
 
-func (conn *MonitoredConn) Hints() net.Hints {
+func (conn *MonitoredConn) Hints() astral.Hints {
 	return conn.hints
 }
 

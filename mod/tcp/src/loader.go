@@ -1,17 +1,17 @@
 package tcp
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"github.com/cryptopunkscc/astrald/node"
 	"strconv"
 )
 
 type Loader struct{}
 
-func (Loader) Load(node node.Node, assets assets.Assets, l *log.Logger) (core.Module, error) {
+func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.Module, error) {
 	mod := &Module{
 		node:   node,
 		log:    l,

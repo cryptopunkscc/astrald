@@ -2,19 +2,19 @@ package shares
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/node"
 )
 
 type Loader struct{}
 
 const taskQueueSize = 4096
 
-func (Loader) Load(node node.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
+func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	var err error
 	var mod = &Module{
 		node:       node,

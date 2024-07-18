@@ -1,11 +1,11 @@
 package archives
 
-import "github.com/cryptopunkscc/astrald/net"
+import "github.com/cryptopunkscc/astrald/astral"
 
 type Config struct {
 	AutoIndexZones string
 }
 
 var defaultConfig = Config{
-	AutoIndexZones: (net.ZoneDevice | net.ZoneVirtual).String(),
+	AutoIndexZones: (astral.ZoneDevice | astral.ZoneVirtual).String(),
 }

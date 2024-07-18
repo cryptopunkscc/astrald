@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 )
@@ -43,14 +43,14 @@ func (s *Session) Serve(ctx context.Context) error {
 
 func (s *Session) query(params proto.QueryParams) error {
 	var err error
-	var conn net.Conn
+	var conn astral.Conn
 
 	if params.Identity.IsZero() {
 		params.Identity = s.remoteID
 	}
 
-	var query = net.NewQuery(s.remoteID, params.Identity, params.Query)
-	conn, err = net.Route(s.ctx, s.mod.node.Router(), query)
+	var query = astral.NewQuery(s.remoteID, params.Identity, params.Query)
+	conn, err = astral.Route(s.ctx, s.mod.node.Router(), query)
 
 	if err == nil {
 		s.WriteErr(nil)
@@ -59,10 +59,10 @@ func (s *Session) query(params proto.QueryParams) error {
 	}
 
 	switch {
-	case errors.Is(err, net.ErrRejected):
+	case errors.Is(err, astral.ErrRejected):
 		return s.WriteErr(proto.ErrRejected)
 
-	case errors.Is(err, &net.ErrRouteNotFound{}):
+	case errors.Is(err, &astral.ErrRouteNotFound{}):
 		return s.WriteErr(proto.ErrRouteNotFound)
 
 	default:

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/net"
+	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
@@ -13,9 +13,9 @@ const DBPrefix = "nodes__"
 
 type Module interface {
 	exonet.Resolver
-	Link(context.Context, id.Identity, LinkOpts) (net.Link, error)
-	AcceptLink(ctx context.Context, conn exonet.Conn) (net.Link, error)
-	InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (net.Link, error)
+	Link(context.Context, id.Identity, LinkOpts) (astral.Link, error)
+	AcceptLink(ctx context.Context, conn exonet.Conn) (astral.Link, error)
+	InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (astral.Link, error)
 
 	ParseInfo(s string) (*NodeInfo, error)
 

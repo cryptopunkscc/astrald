@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/events"
@@ -11,8 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/discovery/proto"
-	"github.com/cryptopunkscc/astrald/net"
-	node2 "github.com/cryptopunkscc/astrald/node"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
@@ -21,7 +20,7 @@ var _ discovery.Module = &Module{}
 
 type Module struct {
 	*routers.PathRouter
-	node     node2.Node
+	node     astral.Node
 	events   events.Queue
 	config   Config
 	assets   assets.Assets
@@ -88,9 +87,9 @@ func (mod *Module) DiscoverRemote(ctx context.Context, remoteID id.Identity, cal
 		callerID = mod.node.Identity()
 	}
 
-	conn, err := net.Route(ctx,
+	conn, err := astral.Route(ctx,
 		mod.node.Router(),
-		net.NewQuery(callerID, remoteID, discovery.DiscoverServiceName),
+		astral.NewQuery(callerID, remoteID, discovery.DiscoverServiceName),
 	)
 	if err != nil {
 		return nil, err
