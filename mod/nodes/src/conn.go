@@ -92,6 +92,7 @@ func (c *conn) Write(p []byte) (n int, err error) {
 		if err != nil {
 			return
 		}
+		c.stream.check()
 
 		c.wsize -= l
 		n = n + l

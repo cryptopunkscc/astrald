@@ -22,6 +22,7 @@ func NewAdmin(mod *Module) *Admin {
 		"link":      adm.link,
 		"ping":      adm.ping,
 		"conns":     adm.conns,
+		"check":     adm.check,
 		"list":      adm.list,
 		"links":     adm.links,
 		"ep_add":    adm.addEndpoint,
@@ -151,6 +152,25 @@ func (adm *Admin) parse(term admin.Terminal, args []string) error {
 		term.Printf(f, ep.Network(), ep)
 	}
 	term.Printf("%d %s\n", len(info.Endpoints), admin.Faded("endpoint(s)."))
+
+	return nil
+}
+
+func (adm *Admin) check(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("not enough arguments")
+	}
+
+	identity, err := adm.mod.dir.Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	for _, s := range adm.mod.streams.Select(func(s *Stream) bool {
+		return s.RemoteIdentity().IsEqual(identity)
+	}) {
+		s.check()
+	}
 
 	return nil
 }

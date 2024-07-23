@@ -6,13 +6,15 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/sig"
+	"sync/atomic"
 	"time"
 )
 
 type Stream struct {
+	*frames.Stream
 	conn   astral.Conn
-	stream *frames.Stream
 	pings  sig.Map[astral.Nonce, *Ping]
+	checks atomic.Int32
 }
 
 type Ping struct {
@@ -23,7 +25,7 @@ type Ping struct {
 func NewStream(conn astral.Conn) *Stream {
 	link := &Stream{
 		conn:   conn,
-		stream: frames.NewStream(conn),
+		Stream: frames.NewStream(conn),
 	}
 
 	return link
@@ -39,22 +41,21 @@ func (s *Stream) RemoteIdentity() id.Identity {
 
 func (s *Stream) CloseWithError(err error) error {
 	if err != nil {
-		return s.stream.CloseWithError(err)
+		return s.Stream.CloseWithError(err)
 	}
 
-	return s.stream.CloseWithError(errors.New("link closed"))
-}
-
-func (s *Stream) Read() <-chan frames.Frame {
-	return s.stream.Read()
-}
-
-func (s *Stream) Write(frame frames.Frame) (err error) {
-	return s.stream.Write(frame)
+	return s.Stream.CloseWithError(errors.New("link closed"))
 }
 
 func (s *Stream) String() string {
 	return "stream"
+}
+
+func (s *Stream) Write(frame frames.Frame) (err error) {
+	if _, ok := frame.(*frames.Ping); !ok {
+		s.check()
+	}
+	return s.Stream.Write(frame)
 }
 
 func (s *Stream) Ping() time.Duration {
@@ -92,4 +93,28 @@ func (s *Stream) pong(nonce astral.Nonce) error {
 	}
 	close(p.pong)
 	return nil
+}
+
+func (s *Stream) check() {
+	if s.checks.Swap(2) != 0 {
+		return
+	}
+
+	go func() {
+		for {
+			if s.Err() != nil {
+				return
+			}
+
+			if s.Ping() == -1 {
+				s.CloseWithError(errors.New("ping timeout"))
+				return
+			}
+
+			time.Sleep(1 * time.Second)
+			if s.checks.Add(-1) == 0 {
+				return
+			}
+		}
+	}()
 }

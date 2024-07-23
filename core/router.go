@@ -3,10 +3,10 @@ package core
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/astral"
 	"strings"
 	"sync"
 	"time"
@@ -14,7 +14,7 @@ import (
 
 var _ astral.Router = &Router{}
 
-const routingTimeout = time.Minute
+const routingTimeout = 30 * time.Second
 const ViaRouterHintKey = "via"
 
 type Router struct {

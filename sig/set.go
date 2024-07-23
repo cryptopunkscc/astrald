@@ -93,3 +93,16 @@ func (set *Set[T]) Sort(cmp func(a, b T) int) {
 
 	slices.SortFunc(set.items, cmp)
 }
+
+func (set *Set[T]) Select(fn func(a T) bool) (s []T) {
+	set.mu.RLock()
+	defer set.mu.RUnlock()
+
+	for _, item := range set.items {
+		if fn(item) {
+			s = append(s, item)
+		}
+	}
+
+	return
+}

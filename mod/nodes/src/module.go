@@ -22,7 +22,7 @@ import (
 const DefaultWorkerCount = 8
 const infoPrefix = "node1"
 const featureMux2 = "mux2"
-const pingTimeout = time.Second * 30
+const pingTimeout = time.Second * 15
 
 type NodeInfo nodes.NodeInfo
 
@@ -250,20 +250,16 @@ func (mod *Module) addStream(s *Stream) (err error) {
 					Source: s,
 				}
 			}
-			mod.log.Errorv(1, "stream with %v removed: %v", s.RemoteIdentity(), s.stream.Err())
+			mod.log.Errorv(1, "stream with %v removed: %v", s.RemoteIdentity(), s.Err())
 			mod.streams.Remove(s)
+			for _, c := range mod.conns.Select(func(k astral.Nonce, v *conn) (ok bool) {
+				return v.stream == s
+			}) {
+				c.Close()
+			}
 		}()
 	}
 
-	return
-}
-
-func (mod *Module) streamsWith(remoteID id.Identity) (streams []*Stream) {
-	for _, s := range mod.streams.Clone() {
-		if s.RemoteIdentity().IsEqual(remoteID) {
-			streams = append(streams, s)
-		}
-	}
 	return
 }
 

@@ -122,3 +122,17 @@ func (m *Map[K, V]) Values() (vals []V) {
 
 	return
 }
+
+func (m *Map[K, V]) Select(fn func(k K, v V) (ok bool)) (vals map[K]V) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	vals = map[K]V{}
+
+	for k, v := range m.m {
+		if fn(k, v) {
+			vals[k] = v
+		}
+	}
+
+	return
+}

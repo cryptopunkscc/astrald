@@ -37,8 +37,10 @@ func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller as
 	}
 
 	// send the query via all streams
-	for _, link := range mod.streamsWith(query.Target()) {
-		go link.Write(frame)
+	for _, s := range mod.streams.Select(func(s *Stream) bool {
+		return s.RemoteIdentity().IsEqual(query.Target())
+	}) {
+		go s.Write(frame)
 	}
 
 	// wait for the response
