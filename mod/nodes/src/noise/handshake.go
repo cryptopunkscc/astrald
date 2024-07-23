@@ -2,6 +2,7 @@ package noise
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/brontide"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -40,6 +41,10 @@ func HandshakeInbound(ctx context.Context, conn exonet.Conn, localID id.Identity
 
 // HandshakeOutbound performs a handshake as the active party.
 func HandshakeOutbound(ctx context.Context, conn exonet.Conn, expectedRemoteID id.Identity, localID id.Identity) (*Conn, error) {
+	if localID.IsEqual(expectedRemoteID) {
+		return nil, errors.New("local and remote identities cannot be equal")
+	}
+
 	//TODO: is there a better way to handle ctx here?
 	var done = make(chan struct{})
 	var errCh = make(chan error, 1)
