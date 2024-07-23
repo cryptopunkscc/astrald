@@ -16,11 +16,13 @@ import (
 	"gorm.io/gorm"
 	"io"
 	"strings"
+	"time"
 )
 
 const DefaultWorkerCount = 8
 const infoPrefix = "node1"
 const featureMux2 = "mux2"
+const pingTimeout = time.Second * 30
 
 type NodeInfo nodes.NodeInfo
 
@@ -39,7 +41,6 @@ type Module struct {
 
 	streams sig.Set[*Stream]
 	conns   sig.Map[astral.Nonce, *conn]
-	pings   sig.Map[astral.Nonce, *Ping]
 
 	in chan *Frame
 }
@@ -123,23 +124,67 @@ func (mod *Module) frameReader(ctx context.Context) {
 	}
 }
 
-func (mod *Module) handleRead(s *Stream, f *frames.Read) {
-	conn, ok := mod.conns.Get(f.Nonce)
+func (mod *Module) handleQuery(s *Stream, f *frames.Query) {
+	conn, ok := mod.conns.Set(f.Nonce, newConn(f.Nonce))
 	if !ok {
-		s.Write(&frames.Reset{Nonce: f.Nonce})
+		return // ignore duplicates
+	}
+
+	conn.RemoteIdentity = s.RemoteIdentity()
+	conn.Query = f.Query
+	conn.stream = s
+	conn.wsize = int(f.Buffer)
+
+	var q = astral.NewQueryNonce(s.RemoteIdentity(), s.LocalIdentity(), f.Query, f.Nonce)
+
+	w, err := mod.node.Router().RouteQuery(
+		context.Background(),
+		q,
+		astral.NewSecurePipeWriter(conn, s.RemoteIdentity()),
+		astral.Hints{Origin: astral.OriginNetwork},
+	)
+
+	if err != nil {
+		conn.swapState(stateRouting, stateClosed)
+		s.Write(&frames.Response{Nonce: f.Nonce, ErrCode: frames.CodeRejected})
 		return
 	}
 
-	conn.growRemoteBuffer(int(f.Len))
+	s.Write(&frames.Response{Nonce: f.Nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
+	conn.swapState(stateRouting, stateOpen)
+
+	go func() {
+		io.Copy(w, conn)
+		w.Close()
+	}()
 }
 
-func (mod *Module) handleReset(s *Stream, f *frames.Reset) {
+func (mod *Module) handleResponse(s *Stream, f *frames.Response) {
+	// find the connection
 	conn, ok := mod.conns.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	conn.swapState(stateOpen, stateClosed)
+	// make sure we sent the query to the identity that sent the response
+	if !conn.RemoteIdentity.IsEqual(s.RemoteIdentity()) {
+		return
+	}
+
+	// if rejected
+	if f.ErrCode != 0 {
+		if !conn.swapState(stateRouting, stateClosed) {
+			return
+		}
+		conn.res <- false
+	}
+
+	if !conn.swapState(stateRouting, stateOpen) {
+		return
+	}
+	conn.stream = s
+	conn.wsize = int(f.Buffer)
+	conn.res <- true
 }
 
 func (mod *Module) handleData(s *Stream, f *frames.Data) {
@@ -161,67 +206,37 @@ func (mod *Module) handleData(s *Stream, f *frames.Data) {
 	}
 }
 
-func (mod *Module) handleQuery(source *Stream, frame *frames.Query) {
-	conn, ok := mod.conns.Set(frame.Nonce, newConn(frame.Nonce))
+func (mod *Module) handleRead(s *Stream, f *frames.Read) {
+	conn, ok := mod.conns.Get(f.Nonce)
 	if !ok {
-		return // ignore duplicates
-	}
-
-	conn.RemoteIdentity = source.RemoteIdentity()
-	conn.Query = frame.Query
-	conn.stream = source
-	conn.wsize = int(frame.Buffer)
-
-	var q = astral.NewQueryNonce(source.RemoteIdentity(), source.LocalIdentity(), frame.Query, frame.Nonce)
-
-	w, err := mod.node.Router().RouteQuery(
-		context.Background(),
-		q,
-		astral.NewSecurePipeWriter(conn, source.RemoteIdentity()),
-		astral.Hints{Origin: astral.OriginNetwork},
-	)
-
-	if err != nil {
-		conn.swapState(stateRouting, stateClosed)
-		source.Write(&frames.Response{Nonce: frame.Nonce, ErrCode: frames.CodeRejected})
+		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
-	source.Write(&frames.Response{Nonce: frame.Nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
-	conn.swapState(stateRouting, stateOpen)
-
-	go func() {
-		io.Copy(w, conn)
-		w.Close()
-	}()
+	conn.growRemoteBuffer(int(f.Len))
 }
 
-func (mod *Module) handleResponse(source *Stream, frame *frames.Response) {
-	// find the connection
-	conn, ok := mod.conns.Get(frame.Nonce)
+func (mod *Module) handleReset(s *Stream, f *frames.Reset) {
+	conn, ok := mod.conns.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	// make sure we sent the query to the identity that sent the response
-	if !conn.RemoteIdentity.IsEqual(source.RemoteIdentity()) {
-		return
-	}
+	conn.swapState(stateOpen, stateClosed)
+}
 
-	// if rejected
-	if frame.ErrCode != 0 {
-		if !conn.swapState(stateRouting, stateClosed) {
-			return
+func (mod *Module) handlePing(s *Stream, f *frames.Ping) {
+	if f.Pong {
+		var err = s.pong(f.Nonce)
+		if err != nil {
+			mod.log.Errorv(1, "invalid pong nonce from %v", s.RemoteIdentity())
 		}
-		conn.res <- false
+	} else {
+		s.Write(&frames.Ping{
+			Nonce: f.Nonce,
+			Pong:  true,
+		})
 	}
-
-	if !conn.swapState(stateRouting, stateOpen) {
-		return
-	}
-	conn.stream = source
-	conn.wsize = int(frame.Buffer)
-	conn.res <- true
 }
 
 func (mod *Module) addStream(s *Stream) (err error) {

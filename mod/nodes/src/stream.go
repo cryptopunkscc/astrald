@@ -5,18 +5,18 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
+	"github.com/cryptopunkscc/astrald/sig"
 	"time"
 )
 
 type Stream struct {
-	RTT    time.Duration
 	conn   astral.Conn
 	stream *frames.Stream
+	pings  sig.Map[astral.Nonce, *Ping]
 }
 
 type Ping struct {
 	sentAt time.Time
-	stream *Stream
 	pong   chan struct{}
 }
 
@@ -55,4 +55,41 @@ func (s *Stream) Write(frame frames.Frame) (err error) {
 
 func (s *Stream) String() string {
 	return "stream"
+}
+
+func (s *Stream) Ping() time.Duration {
+	var nonce = astral.NewNonce()
+
+	p, ok := s.pings.Set(nonce, &Ping{
+		sentAt: time.Now(),
+		pong:   make(chan struct{}),
+	})
+	if !ok {
+		return -1
+	}
+	defer s.pings.Delete(nonce)
+
+	err := s.Write(&frames.Ping{
+		Nonce: nonce,
+	})
+	if err != nil {
+		return -1
+	}
+	p.sentAt = time.Now()
+
+	select {
+	case <-p.pong:
+		return time.Since(p.sentAt)
+	case <-time.After(pingTimeout):
+		return -1
+	}
+}
+
+func (s *Stream) pong(nonce astral.Nonce) error {
+	p, ok := s.pings.Delete(nonce)
+	if !ok {
+		return errors.New("invalid nonce")
+	}
+	close(p.pong)
+	return nil
 }

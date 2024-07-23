@@ -100,7 +100,7 @@ func (adm *Admin) links(term admin.Terminal, args []string) error {
 	term.Printf("Streams:\n")
 
 	for _, stream := range adm.mod.streams.Clone() {
-		term.Printf("%v %v\n", stream.RemoteIdentity(), stream.RTT)
+		term.Printf("%v\n", stream.RemoteIdentity())
 	}
 
 	return nil
@@ -212,8 +212,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 func (adm *Admin) ping(term admin.Terminal, args []string) error {
 	for _, s := range adm.mod.streams.Clone() {
 		term.Printf("%v... ", s.RemoteIdentity())
-		rtt := adm.mod.pingStream(s)
-		s.RTT = rtt
+		rtt := s.Ping()
 		term.Printf("%v\n", rtt)
 	}
 
