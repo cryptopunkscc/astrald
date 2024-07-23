@@ -2,27 +2,65 @@ package nodes
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
+	"io"
 )
 
-func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
-	// see if we already have a link with the target
-	for _, link := range mod.links.Clone() {
-		if link.RemoteIdentity().IsEqual(query.Target()) {
-			return link.RouteQuery(ctx, query, caller, hints)
-		}
+func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (w astral.SecureWriteCloser, err error) {
+	if !mod.isRoutable(query.Target()) {
+		return astral.RouteNotFound(mod)
 	}
 
-	// if not, try to establish a new link with the target
-	if !query.Target().IsEqual(mod.node.Identity()) {
-		link, err := mod.Link(ctx, query.Target(), nodes.LinkOpts{})
-		if err == nil {
-			return link.RouteQuery(ctx, query, caller, hints)
-		}
-
-		mod.log.Errorv(2, "error linking with %v: %v", query.Target(), err)
+	conn, ok := mod.conns.Set(query.Nonce(), newConn(query.Nonce()))
+	if !ok {
+		return astral.RouteNotFound(mod, errors.New("nonce already exists"))
 	}
 
-	return astral.RouteNotFound(mod)
+	conn.RemoteIdentity = query.Target()
+	conn.Query = query.Query()
+	conn.Outbound = true
+
+	// make sure we're linked with the target node
+	if err := mod.ensureConnected(ctx, query.Target()); err != nil {
+		conn.swapState(stateRouting, stateClosed)
+		return astral.RouteNotFound(mod, err)
+	}
+
+	// prepare the protocol frame
+	frame := &frames.Query{
+		Nonce:  query.Nonce(),
+		Query:  query.Query(),
+		Buffer: uint32(conn.rsize),
+	}
+
+	// send the query via all streams
+	for _, link := range mod.streamsWith(query.Target()) {
+		go link.Write(frame)
+	}
+
+	// wait for the response
+	select {
+	case accepted := <-conn.res:
+		if !accepted {
+			return astral.Reject()
+		}
+
+		go func() {
+			io.Copy(caller, conn)
+			caller.Close()
+		}()
+
+		return conn, nil
+
+	case <-ctx.Done():
+		conn.swapState(stateRouting, stateClosed)
+		return astral.RouteNotFound(mod, ctx.Err())
+	}
+}
+
+func (mod *Module) isRoutable(identity id.Identity) bool {
+	return mod.hasStream(identity) || mod.hasEndpoints(identity)
 }

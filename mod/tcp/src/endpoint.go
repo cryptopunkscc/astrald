@@ -78,3 +78,7 @@ func (e *Endpoint) IsZero() bool {
 	}
 	return false
 }
+
+func (e *Endpoint) String() string {
+	return e.Network() + ":" + e.Address()
+}

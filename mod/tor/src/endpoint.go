@@ -32,7 +32,7 @@ func (addr *Endpoint) Network() string {
 
 // Address returns a human-readable representation of the address
 func (addr *Endpoint) Address() string {
-	if addr.IsZero() {
+	if addr == nil || addr.IsZero() {
 		return "none"
 	}
 
@@ -53,5 +53,9 @@ func (addr *Endpoint) Pack() []byte {
 
 // IsZero returns true if the address has zero-value
 func (addr *Endpoint) IsZero() bool {
-	return (addr.digest == nil) || (len(addr.digest) == 0)
+	return (addr == nil) || (addr.digest == nil) || (len(addr.digest) == 0)
+}
+
+func (addr *Endpoint) String() string {
+	return addr.Network() + ":" + addr.Address()
 }

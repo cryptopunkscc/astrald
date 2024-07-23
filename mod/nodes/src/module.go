@@ -9,19 +9,18 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
-	"github.com/cryptopunkscc/astrald/tasks"
 	"github.com/jxskiss/base62"
 	"gorm.io/gorm"
+	"io"
 	"strings"
-	"time"
 )
 
 const DefaultWorkerCount = 8
-const DefaultTimeout = time.Minute
 const infoPrefix = "node1"
-const featureMux = "mux"
+const featureMux2 = "mux2"
 
 type NodeInfo nodes.NodeInfo
 
@@ -38,27 +37,31 @@ type Module struct {
 	keys   keys.Module
 	db     *gorm.DB
 
-	links sig.Set[nodes.Link]
+	streams sig.Set[*Stream]
+	conns   sig.Map[astral.Nonce, *conn]
+	pings   sig.Map[astral.Nonce, *Ping]
+
+	in chan *Frame
+}
+
+func (mod *Module) Run(ctx context.Context) error {
+	go mod.frameReader(ctx)
+	<-ctx.Done()
+	return nil
 }
 
 func (mod *Module) Peers() (peers []id.Identity) {
 	var r map[string]struct{}
 
-	for _, link := range mod.links.Clone() {
-		if _, found := r[link.RemoteIdentity().PublicKeyHex()]; found {
+	for _, s := range mod.streams.Clone() {
+		if _, found := r[s.RemoteIdentity().PublicKeyHex()]; found {
 			continue
 		}
-		r[link.RemoteIdentity().PublicKeyHex()] = struct{}{}
-		peers = append(peers, link.RemoteIdentity())
+		r[s.RemoteIdentity().PublicKeyHex()] = struct{}{}
+		peers = append(peers, s.RemoteIdentity())
 	}
 
 	return
-}
-
-func (mod *Module) Run(ctx context.Context) error {
-	return tasks.Group(
-		&Service{Module: mod},
-	).Run(ctx)
 }
 
 func (mod *Module) ParseInfo(s string) (*nodes.NodeInfo, error) {
@@ -92,4 +95,168 @@ func (mod *Module) Resolve(ctx context.Context, identity id.Identity) ([]exonet.
 func (mod *Module) Nodes() (nodes []id.Identity) {
 	mod.db.Model(&dbEndpoint{}).Distinct("identity").Find(&nodes)
 	return
+}
+
+func (mod *Module) frameReader(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case frame := <-mod.in:
+			switch f := frame.Frame.(type) {
+			case *frames.Query:
+				mod.handleQuery(frame.Source, f)
+			case *frames.Response:
+				go mod.handleResponse(frame.Source, f)
+			case *frames.Ping:
+				mod.handlePing(frame.Source, f)
+			case *frames.Data:
+				mod.handleData(frame.Source, f)
+			case *frames.Reset:
+				mod.handleReset(frame.Source, f)
+			case *frames.Read:
+				mod.handleRead(frame.Source, f)
+			default:
+				mod.log.Errorv(2, "unknown frame: %v", frame.Frame)
+			}
+		}
+	}
+}
+
+func (mod *Module) handleRead(s *Stream, f *frames.Read) {
+	conn, ok := mod.conns.Get(f.Nonce)
+	if !ok {
+		s.Write(&frames.Reset{Nonce: f.Nonce})
+		return
+	}
+
+	conn.growRemoteBuffer(int(f.Len))
+}
+
+func (mod *Module) handleReset(s *Stream, f *frames.Reset) {
+	conn, ok := mod.conns.Get(f.Nonce)
+	if !ok {
+		return
+	}
+
+	conn.swapState(stateOpen, stateClosed)
+}
+
+func (mod *Module) handleData(s *Stream, f *frames.Data) {
+	conn, ok := mod.conns.Get(f.Nonce)
+	if !ok {
+		s.Write(&frames.Reset{Nonce: f.Nonce})
+		return
+	}
+
+	if conn.state.Load() != stateOpen {
+		s.Write(&frames.Reset{Nonce: f.Nonce})
+		return
+	}
+
+	err := conn.pushRead(f.Payload)
+	if err != nil {
+		conn.Close()
+		return
+	}
+}
+
+func (mod *Module) handleQuery(source *Stream, frame *frames.Query) {
+	conn, ok := mod.conns.Set(frame.Nonce, newConn(frame.Nonce))
+	if !ok {
+		return // ignore duplicates
+	}
+
+	conn.RemoteIdentity = source.RemoteIdentity()
+	conn.Query = frame.Query
+	conn.stream = source
+	conn.wsize = int(frame.Buffer)
+
+	var q = astral.NewQueryNonce(source.RemoteIdentity(), source.LocalIdentity(), frame.Query, frame.Nonce)
+
+	w, err := mod.node.Router().RouteQuery(
+		context.Background(),
+		q,
+		astral.NewSecurePipeWriter(conn, source.RemoteIdentity()),
+		astral.Hints{Origin: astral.OriginNetwork},
+	)
+
+	if err != nil {
+		conn.swapState(stateRouting, stateClosed)
+		source.Write(&frames.Response{Nonce: frame.Nonce, ErrCode: frames.CodeRejected})
+		return
+	}
+
+	source.Write(&frames.Response{Nonce: frame.Nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
+	conn.swapState(stateRouting, stateOpen)
+
+	go func() {
+		io.Copy(w, conn)
+		w.Close()
+	}()
+}
+
+func (mod *Module) handleResponse(source *Stream, frame *frames.Response) {
+	// find the connection
+	conn, ok := mod.conns.Get(frame.Nonce)
+	if !ok {
+		return
+	}
+
+	// make sure we sent the query to the identity that sent the response
+	if !conn.RemoteIdentity.IsEqual(source.RemoteIdentity()) {
+		return
+	}
+
+	// if rejected
+	if frame.ErrCode != 0 {
+		if !conn.swapState(stateRouting, stateClosed) {
+			return
+		}
+		conn.res <- false
+	}
+
+	if !conn.swapState(stateRouting, stateOpen) {
+		return
+	}
+	conn.stream = source
+	conn.wsize = int(frame.Buffer)
+	conn.res <- true
+}
+
+func (mod *Module) addStream(s *Stream) (err error) {
+	err = mod.streams.Add(s)
+	if err == nil {
+		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
+		go func() {
+			for frame := range s.Read() {
+				mod.in <- &Frame{
+					Frame:  frame,
+					Source: s,
+				}
+			}
+			mod.log.Errorv(1, "stream with %v removed: %v", s.RemoteIdentity(), s.stream.Err())
+			mod.streams.Remove(s)
+		}()
+	}
+
+	return
+}
+
+func (mod *Module) streamsWith(remoteID id.Identity) (streams []*Stream) {
+	for _, s := range mod.streams.Clone() {
+		if s.RemoteIdentity().IsEqual(remoteID) {
+			streams = append(streams, s)
+		}
+	}
+	return
+}
+
+func (mod *Module) hasStream(remoteID id.Identity) bool {
+	for _, s := range mod.streams.Clone() {
+		if s.RemoteIdentity().IsEqual(remoteID) {
+			return true
+		}
+	}
+	return false
 }

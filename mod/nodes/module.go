@@ -13,9 +13,7 @@ const DBPrefix = "nodes__"
 
 type Module interface {
 	exonet.Resolver
-	Link(context.Context, id.Identity, LinkOpts) (Link, error)
-	AcceptLink(ctx context.Context, conn exonet.Conn) (Link, error)
-	InitLink(ctx context.Context, conn exonet.Conn, remoteID id.Identity) (Link, error)
+	Accept(ctx context.Context, conn exonet.Conn) error
 
 	ParseInfo(s string) (*NodeInfo, error)
 

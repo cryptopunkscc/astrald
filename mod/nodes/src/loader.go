@@ -16,16 +16,13 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		node:   node,
 		log:    log,
 		assets: assets,
+		in:     make(chan *Frame),
 	}
 
 	_ = assets.LoadYAML(nodes.ModuleName, &mod.config)
 
 	mod.db = assets.Database()
 	err = mod.db.AutoMigrate(&dbEndpoint{})
-	if err != nil {
-		return nil, err
-	}
-
 	if err != nil {
 		return nil, err
 	}

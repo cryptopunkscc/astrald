@@ -3,7 +3,6 @@ package nodes
 import (
 	"context"
 	"errors"
-	"flag"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -21,6 +20,8 @@ func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"link":      adm.link,
+		"ping":      adm.ping,
+		"conns":     adm.conns,
 		"list":      adm.list,
 		"links":     adm.links,
 		"ep_add":    adm.addEndpoint,
@@ -49,70 +50,19 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) link(term admin.Terminal, args []string) error {
-	flags := flag.NewFlagSet("net link <nodeID>", flag.ContinueOnError)
-	flags.SetOutput(term)
-	flags.Usage = func() {
-		term.Printf("Usage:\n\n  net link [options] <nodeID>\n\nOptions:\n")
-		flags.PrintDefaults()
-	}
-	var network = flags.String("n", "", "link via this network only")
-	var timeout = flags.Duration("t", defaultLinkTimeout, "set timeout")
-	var addr = flags.String("a", "", "link via this address (requires -n)")
-	err := flags.Parse(args)
-	if err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return nil
-		}
-		return err
-	}
-	args = flags.Args()
-
 	if len(args) < 1 {
-		flags.Usage()
-		return nil
+		return errors.New("missing argument")
 	}
-
-	var endpoints []exonet.Endpoint
 
 	remoteID, err := adm.mod.dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
 
-	if *addr != "" {
-		if *network == "" {
-			return errors.New("linking via address requires specifying the network")
-		}
-		e, err := adm.mod.exonet.Parse(*network, *addr)
-		if err != nil {
-			return err
-		}
-		endpoints = []exonet.Endpoint{e}
-	} else {
-		endpoints = adm.mod.Endpoints(remoteID)
-
-		if *network != "" {
-			endpoints = selectEndpoints(endpoints, func(e exonet.Endpoint) bool {
-				return e.Network() == *network
-			})
-		}
-	}
-
-	if len(endpoints) == 0 {
-		return errors.New("no usable endpoints")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	lnk, err := adm.mod.Link(ctx, remoteID, nodes.LinkOpts{Endpoints: endpoints})
-	if err != nil {
-		return err
-	}
-
-	term.Printf("linked via %s\n", Network(lnk))
-
-	return nil
+	return adm.mod.ensureConnected(ctx, remoteID)
 }
 
 func (adm *Admin) list(term admin.Terminal, args []string) error {
@@ -127,9 +77,30 @@ func (adm *Admin) list(term admin.Terminal, args []string) error {
 	return nil
 }
 
+func (adm *Admin) conns(term admin.Terminal, args []string) error {
+	term.Printf("Connections:\n")
+
+	for _, stream := range adm.mod.conns.Clone() {
+		term.Printf(
+			"%v %v %v %v %v/%v %v\n",
+			stream.Nonce,
+			stream.RemoteIdentity,
+			stream.state.Load(),
+			stream.Query,
+			stream.rused,
+			stream.rsize,
+			stream.wsize,
+		)
+	}
+
+	return nil
+}
+
 func (adm *Admin) links(term admin.Terminal, args []string) error {
-	for _, link := range adm.mod.links.Clone() {
-		term.Printf("%v\n", link.RemoteIdentity())
+	term.Printf("Streams:\n")
+
+	for _, stream := range adm.mod.streams.Clone() {
+		term.Printf("%v %v\n", stream.RemoteIdentity(), stream.RTT)
 	}
 
 	return nil
@@ -238,6 +209,17 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 	return nil
 }
 
+func (adm *Admin) ping(term admin.Terminal, args []string) error {
+	for _, s := range adm.mod.streams.Clone() {
+		term.Printf("%v... ", s.RemoteIdentity())
+		rtt := adm.mod.pingStream(s)
+		s.RTT = rtt
+		term.Printf("%v\n", rtt)
+	}
+
+	return nil
+}
+
 func (adm *Admin) endpoints(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("not enough arguments")
@@ -338,14 +320,4 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("  endpoints           show all endpoints of a node\n")
 	term.Printf("  help                show help\n")
 	return nil
-}
-
-func selectEndpoints(list []exonet.Endpoint, selector func(exonet.Endpoint) bool) []exonet.Endpoint {
-	var filtered = make([]exonet.Endpoint, 0)
-	for _, e := range list {
-		if selector(e) {
-			filtered = append(filtered, e)
-		}
-	}
-	return filtered
 }

@@ -2,9 +2,9 @@ package gateway
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/discovery"
-	"github.com/cryptopunkscc/astrald/astral"
 	"strings"
 	"time"
 )
@@ -59,7 +59,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, cal
 			actx, cancel := context.WithTimeout(context.Background(), acceptTimeout)
 			defer cancel()
 
-			_, err := srv.nodes.AcceptLink(actx, gwConn)
+			err := srv.nodes.Accept(actx, gwConn)
 			if err != nil {
 				return
 			}

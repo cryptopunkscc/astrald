@@ -53,3 +53,7 @@ func (endpoint Endpoint) Target() id.Identity {
 func (endpoint Endpoint) Network() string {
 	return NetworkName
 }
+
+func (endpoint Endpoint) String() string {
+	return endpoint.Network() + ":" + endpoint.Address()
+}

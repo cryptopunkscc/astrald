@@ -29,6 +29,15 @@ func (mod *Module) Endpoints(nodeID id.Identity) (endpoints []exonet.Endpoint) {
 	return
 }
 
+func (mod *Module) hasEndpoints(nodeID id.Identity) (has bool) {
+	mod.db.
+		Model(&dbEndpoint{}).
+		Where("identity = ?", nodeID).
+		Select("count(*) > 0").
+		First(&has)
+	return
+}
+
 func (mod *Module) AddEndpoint(nodeID id.Identity, endpoint ...exonet.Endpoint) error {
 	var errs []error
 	var err error
