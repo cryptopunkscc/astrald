@@ -6,3 +6,12 @@ func ChanToArray[T any](ch chan T) (arr []T) {
 	}
 	return
 }
+
+func ArrayToChan[T any](arr []T) chan T {
+	var ch = make(chan T, len(arr))
+	for _, i := range arr {
+		ch <- i
+	}
+	close(ch)
+	return ch
+}
