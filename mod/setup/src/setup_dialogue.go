@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 type SetupDialogue struct {
@@ -102,7 +102,7 @@ func (d *SetupDialogue) createNewUser() error {
 			return err
 		}
 
-		profilePath := path.Join(homeDir, ".profile")
+		profilePath := filepath.Join(homeDir, ".profile")
 
 		file, err := os.OpenFile(profilePath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 		if err != nil {

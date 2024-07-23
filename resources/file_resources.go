@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -35,7 +35,7 @@ func NewFileResources(root string, mkdir bool) (*FileResources, error) {
 }
 
 func (res *FileResources) Read(name string) ([]byte, error) {
-	bytes, err := os.ReadFile(path.Join(res.root, name))
+	bytes, err := os.ReadFile(filepath.Join(res.root, name))
 
 	switch {
 	case err == nil:
@@ -54,7 +54,7 @@ func (res *FileResources) Write(name string, data []byte) error {
 		}
 	}
 
-	return os.WriteFile(path.Join(res.root, name), data, 0600)
+	return os.WriteFile(filepath.Join(res.root, name), data, 0600)
 }
 
 func (res *FileResources) Root() string {

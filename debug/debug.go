@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
-	"syscall"
 	"time"
 )
 
@@ -43,12 +42,4 @@ func SaveLog(after func(p any)) {
 	}
 
 	panic(p)
-}
-
-func SigInt(p any) {
-	syscall.Kill(os.Getpid(), syscall.SIGINT)
-	go func() {
-		time.Sleep(3 * time.Second) // wait for clean exit
-		syscall.Kill(os.Getpid(), syscall.SIGKILL)
-	}()
 }
