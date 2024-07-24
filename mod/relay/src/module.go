@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
@@ -64,7 +63,7 @@ func (mod *Module) Save(cert *relay.Cert) (objectID object.ID, err error) {
 	}
 
 	// encode the header and the cert
-	err = cslq.Encode(w, "vv", adc.Header(relay.CertType), cert)
+	err = cslq.Encode(w, "vv", astral.ObjectHeader(relay.CertType), cert)
 	if err != nil {
 		return
 	}

@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/object"
@@ -25,7 +25,8 @@ func (mod *Module) indexData(objectID object.ID) error {
 	}
 	defer r.Close()
 
-	dataType, err := adc.ReadHeader(r)
+	var dataType astral.ObjectHeader
+	_, err = dataType.ReadFrom(r)
 	if err != nil {
 		return err
 	}
@@ -54,7 +55,7 @@ func (mod *Module) Index(cert *relay.Cert) error {
 
 func (mod *Module) index(cert *relay.Cert) error {
 	var w = object.NewWriteResolver(nil)
-	cslq.Encode(w, "vv", adc.Header(relay.CertType), cert)
+	cslq.Encode(w, "vv", astral.ObjectHeader(relay.CertType), cert)
 	objectID := w.Resolve()
 
 	return mod.db.Create(&dbCert{
@@ -80,7 +81,7 @@ func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction
 	}
 
 	// write data type
-	err = adc.WriteHeader(w, relay.CertType)
+	_, err = astral.ObjectHeader(relay.CertType).WriteTo(w)
 	if err != nil {
 		return object.ID{}, err
 	}
@@ -176,7 +177,8 @@ func (mod *Module) LoadCert(objectID object.ID) (*relay.Cert, error) {
 	}
 	defer r.Close()
 
-	dataType, err := adc.ReadHeader(r)
+	var dataType astral.ObjectHeader
+	_, err = dataType.ReadFrom(r)
 	if err != nil {
 		return nil, err
 	}

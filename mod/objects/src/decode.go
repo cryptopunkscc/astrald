@@ -3,8 +3,8 @@ package objects
 import (
 	"bytes"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
@@ -29,13 +29,13 @@ func (mod *Module) SetDecoder(s string, decoder objects.Decoder) error {
 
 func (mod *Module) Encode(obj objects.Object) ([]byte, error) {
 	var buf = &bytes.Buffer{}
-	err := cslq.Encode(buf, "vv", adc.Header(obj.ObjectType()), obj)
+	err := cslq.Encode(buf, "vv", astral.ObjectHeader(obj.ObjectType()), obj)
 	return buf.Bytes(), err
 }
 
 func (mod *Module) decodeStream(r io.Reader) (object.ID, objects.Object, error) {
 	var err error
-	var header adc.Header
+	var header astral.ObjectHeader
 
 	rr := object.NewReadResolver(r)
 

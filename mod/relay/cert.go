@@ -5,9 +5,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"time"
 )
 
@@ -126,7 +126,7 @@ func (cert *Cert) UnmarshalCSLQ(dec *cslq.Decoder) error {
 func UnmarshalCert(p []byte) (*Cert, error) {
 	var r = bytes.NewReader(p)
 
-	var t adc.Header
+	var t astral.ObjectHeader
 	var cert Cert
 
 	var err = cslq.Decode(r, "vv", &t, &cert)

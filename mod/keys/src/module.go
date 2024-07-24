@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -35,7 +34,7 @@ type Module struct {
 }
 
 var ErrAlreadyIndexed = errors.New("already indexed")
-var privateKeyHeader = adc.Header(keys.PrivateKeyDataType)
+var privateKeyHeader = astral.ObjectHeader(keys.PrivateKeyDataType)
 
 func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
@@ -79,7 +78,7 @@ func (mod *Module) SaveKey(key id.Identity) (object.ID, error) {
 		return object.ID{}, err
 	}
 
-	err = adc.WriteHeader(w, privateKeyHeader)
+	_, err = privateKeyHeader.WriteTo(w)
 	if err != nil {
 		return object.ID{}, nil
 	}
@@ -110,7 +109,7 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 	}
 	defer r.Close()
 
-	err = adc.ExpectHeader(r, keys.PrivateKeyDataType)
+	err = astral.ExpectHeader(r, keys.PrivateKeyDataType)
 	if err != nil {
 		return err
 	}
@@ -152,7 +151,7 @@ func (mod *Module) LoadPrivateKey(objectID object.ID) (*keys.PrivateKey, error) 
 	}
 	defer r.Close()
 
-	err = adc.ExpectHeader(r, keys.PrivateKeyDataType)
+	err = astral.ExpectHeader(r, keys.PrivateKeyDataType)
 	if err != nil {
 		return nil, err
 	}

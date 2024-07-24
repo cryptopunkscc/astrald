@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
@@ -69,7 +68,7 @@ func (mod *Module) Run(ctx context.Context) error {
 
 func (mod *Module) Store(ctx context.Context, obj objects.Object) (objectID object.ID, err error) {
 	var buf = &bytes.Buffer{}
-	err = cslq.Encode(buf, "vv", adc.Header(obj.ObjectType()), obj)
+	err = cslq.Encode(buf, "vv", astral.ObjectHeader(obj.ObjectType()), obj)
 	if err != nil {
 		return
 	}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/lib/adc"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -49,7 +49,8 @@ func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 	var method, dataType string
 
 	// detect type either via adc or mime
-	adcHeader, err := adc.ReadHeader(reader)
+	var adcHeader astral.ObjectHeader
+	_, err = adcHeader.ReadFrom(reader)
 	if err == nil {
 		method, dataType = adcMethod, string(adcHeader)
 	} else {

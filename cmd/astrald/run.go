@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/resources"
 	"os"
@@ -74,7 +74,7 @@ func setupNodeIdentity(resources resources.Resources) (id.Identity, error) {
 		}
 
 		var r = bytes.NewReader(keyBytes)
-		err = adc.ExpectHeader(r, keys.PrivateKeyDataType)
+		err = astral.ExpectHeader(r, keys.PrivateKeyDataType)
 		if err != nil {
 			return id.Identity{}, err
 		}
@@ -93,7 +93,7 @@ func setupNodeIdentity(resources resources.Resources) (id.Identity, error) {
 
 	var buf = &bytes.Buffer{}
 
-	err = cslq.Encode(buf, "vv", adc.Header(keys.PrivateKeyDataType), keys.PrivateKey{
+	err = cslq.Encode(buf, "vv", astral.ObjectHeader(keys.PrivateKeyDataType), keys.PrivateKey{
 		Type:  keys.KeyTypeIdentity,
 		Bytes: nodeID.PrivateKey().Serialize(),
 	})

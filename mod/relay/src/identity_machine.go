@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 )
 
@@ -23,7 +23,7 @@ func NewIdentityMachine(identity id.Identity) *IdentityMachine {
 // Apply applies a certificate to the current identity
 func (m *IdentityMachine) Apply(certBytes []byte) error {
 	var r = bytes.NewReader(certBytes)
-	var dataType adc.Header
+	var dataType astral.ObjectHeader
 
 	err := cslq.Decode(r, "v", &dataType)
 	if err != nil {

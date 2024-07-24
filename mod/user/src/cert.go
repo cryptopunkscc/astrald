@@ -3,9 +3,9 @@ package user
 import (
 	"bytes"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/lib/adc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
 )
@@ -39,7 +39,7 @@ func (mod *Module) makeCert(userID id.Identity, nodeID id.Identity) (cert []byte
 func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
 	var r = bytes.NewReader(certBytes)
 
-	var dataType adc.Header
+	var dataType astral.ObjectHeader
 	err := cslq.Decode(r, "v", &dataType)
 	if err != nil {
 		return err
