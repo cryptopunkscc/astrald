@@ -93,11 +93,6 @@ func (mod *Module) Resolve(ctx context.Context, identity id.Identity) ([]exonet.
 	return mod.Endpoints(identity), nil
 }
 
-func (mod *Module) Nodes() (nodes []id.Identity) {
-	mod.db.Model(&dbEndpoint{}).Distinct("identity").Find(&nodes)
-	return
-}
-
 func (mod *Module) frameReader(ctx context.Context) {
 	for {
 		select {

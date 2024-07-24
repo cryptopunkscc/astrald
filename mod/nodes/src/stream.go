@@ -4,17 +4,22 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync/atomic"
 	"time"
 )
 
+var lastStreamID atomic.Int32
+
 type Stream struct {
 	*frames.Stream
-	conn   astral.Conn
-	pings  sig.Map[astral.Nonce, *Ping]
-	checks atomic.Int32
+	id        int
+	createdAt time.Time
+	conn      astral.Conn
+	pings     sig.Map[astral.Nonce, *Ping]
+	checks    atomic.Int32
 }
 
 type Ping struct {
@@ -22,10 +27,12 @@ type Ping struct {
 	pong   chan struct{}
 }
 
-func NewStream(conn astral.Conn) *Stream {
+func newStream(conn astral.Conn) *Stream {
 	link := &Stream{
-		conn:   conn,
-		Stream: frames.NewStream(conn),
+		id:        int(lastStreamID.Add(1)),
+		conn:      conn,
+		createdAt: time.Now(),
+		Stream:    frames.NewStream(conn),
 	}
 
 	return link
@@ -47,7 +54,27 @@ func (s *Stream) CloseWithError(err error) error {
 	return s.Stream.CloseWithError(errors.New("link closed"))
 }
 
+func (s *Stream) Network() string {
+	if c, ok := s.conn.(exonet.Conn); ok {
+		if e := c.RemoteEndpoint(); e != nil {
+			return e.Network()
+		}
+		if e := c.LocalEndpoint(); e != nil {
+			return e.Network()
+		}
+	}
+	return "unknown"
+}
+
 func (s *Stream) String() string {
+	if c, ok := s.conn.(exonet.Conn); ok {
+		if e := c.RemoteEndpoint(); e != nil {
+			return e.Network() + ":" + e.Address()
+		}
+		if e := c.LocalEndpoint(); e != nil {
+			return e.Network() + ":" + e.Address()
+		}
+	}
 	return "stream"
 }
 

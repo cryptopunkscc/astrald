@@ -46,7 +46,7 @@ func (mod *Module) Connect(ctx context.Context, remoteID id.Identity, conn exone
 			return nil, errors.New("link feature negotation error")
 		}
 
-		mod.addStream(NewStream(aconn))
+		mod.addStream(newStream(aconn))
 
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (mod *Module) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 		case featureMux2:
 			err = cslq.Encode(aconn, "c", 0)
 			if err == nil {
-				mod.addStream(NewStream(aconn))
+				mod.addStream(newStream(aconn))
 			}
 
 			return

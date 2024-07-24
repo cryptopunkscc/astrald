@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const maxPayloadSize = 8192
@@ -25,6 +26,7 @@ type conn struct {
 	RemoteIdentity id.Identity
 	Outbound       bool
 	Query          string
+	createdAt      time.Time
 	res            chan bool
 
 	state  atomic.Int32 // connection state
@@ -49,11 +51,12 @@ func newConn(n astral.Nonce) *conn {
 	}
 
 	return &conn{
-		Nonce: n,
-		res:   make(chan bool, 1),
-		wcond: sync.NewCond(&sync.Mutex{}),
-		rcond: sync.NewCond(&sync.Mutex{}),
-		rsize: defaultBufferSize,
+		Nonce:     n,
+		createdAt: time.Now(),
+		res:       make(chan bool, 1),
+		wcond:     sync.NewCond(&sync.Mutex{}),
+		rcond:     sync.NewCond(&sync.Mutex{}),
+		rsize:     defaultBufferSize,
 	}
 }
 

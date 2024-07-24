@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"slices"
 	"time"
 )
 
@@ -23,8 +24,7 @@ func NewAdmin(mod *Module) *Admin {
 		"ping":      adm.ping,
 		"conns":     adm.conns,
 		"check":     adm.check,
-		"list":      adm.list,
-		"links":     adm.links,
+		"streams":   adm.streams,
 		"ep_add":    adm.addEndpoint,
 		"ep_rm":     adm.removeEndpoint,
 		"add":       adm.add,
@@ -50,6 +50,20 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	return errors.New("unknown command")
 }
 
+func (adm *Admin) streams(term admin.Terminal, args []string) error {
+	streams := adm.mod.streams.Clone()
+
+	slices.SortFunc(streams, func(a, b *Stream) int {
+		return a.createdAt.Compare(b.createdAt)
+	})
+
+	for _, s := range streams {
+		term.Printf("%-4d %-20s %v\n", s.id, s.RemoteIdentity(), s)
+	}
+
+	return nil
+}
+
 func (adm *Admin) link(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
@@ -66,42 +80,32 @@ func (adm *Admin) link(term admin.Terminal, args []string) error {
 	return adm.mod.ensureConnected(ctx, remoteID)
 }
 
-func (adm *Admin) list(term admin.Terminal, args []string) error {
-	nodes := adm.mod.Nodes()
-
-	var f = "%-30s %s\n"
-	term.Printf(f, admin.Header("Alias"), admin.Header("PubKey"))
-	for _, nodeID := range nodes {
-		term.Printf(f, nodeID, admin.Faded(nodeID.String()))
-	}
-
-	return nil
-}
-
 func (adm *Admin) conns(term admin.Terminal, args []string) error {
-	term.Printf("Connections:\n")
+	conns := adm.mod.conns.Values()
 
-	for _, stream := range adm.mod.conns.Clone() {
+	slices.SortFunc(conns, func(a, b *conn) int {
+		return a.createdAt.Compare(b.createdAt)
+	})
+
+	for _, c := range conns {
+		var state = "?"
+		switch c.state.Load() {
+		case 0:
+			state = "routing"
+		case 1:
+			state = "open"
+		case 2:
+			state = "closed"
+			continue
+		}
+
 		term.Printf(
-			"%v %v %v %v %v/%v %v\n",
-			stream.Nonce,
-			stream.RemoteIdentity,
-			stream.state.Load(),
-			stream.Query,
-			stream.rused,
-			stream.rsize,
-			stream.wsize,
+			"%v %-20s %-8s %v\n",
+			c.Nonce,
+			c.RemoteIdentity,
+			state,
+			c.Query,
 		)
-	}
-
-	return nil
-}
-
-func (adm *Admin) links(term admin.Terminal, args []string) error {
-	term.Printf("Streams:\n")
-
-	for _, stream := range adm.mod.streams.Clone() {
-		term.Printf("%v\n", stream.RemoteIdentity())
 	}
 
 	return nil
@@ -331,8 +335,9 @@ func (adm *Admin) ShortDescription() string {
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %s <command>\n\n", nodes.ModuleName)
 	term.Printf("commands:\n")
-	term.Printf("  link                establish a link to a node\n")
-	term.Printf("  list                list known nodes\n")
+	term.Printf("  link                link to a node\n")
+	term.Printf("  streams             show streams\n")
+	term.Printf("  conns               list connections\n")
 	term.Printf("  ep_add              add an endpoint to a node\n")
 	term.Printf("  ep_rm               remove an endpoint from a node\n")
 	term.Printf("  show                show all node info\n")
