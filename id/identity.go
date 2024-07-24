@@ -4,12 +4,45 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"io"
 )
 
 // Identity is an eliptic-curve-based identity
 type Identity struct {
 	privateKey *btcec.PrivateKey
 	publicKey  *btcec.PublicKey
+}
+
+func (id Identity) ObjectType() string {
+	return "astral.identity.secp256k1"
+}
+
+func (id Identity) WriteTo(w io.Writer) (n int64, err error) {
+	if id.IsZero() {
+		_, err = w.Write(make([]byte, btcec.PubKeyBytesLenCompressed))
+	} else {
+		_, err = w.Write(id.PublicKey().SerializeCompressed())
+	}
+
+	return
+}
+
+func (id *Identity) ReadFrom(r io.Reader) (n int64, err error) {
+	var buf [btcec.PubKeyBytesLenCompressed]byte
+
+	_, err = io.ReadFull(r, buf[:])
+	if err != nil {
+		return
+	}
+
+	p, err := ParsePublicKey(buf[:])
+	if err != nil {
+		return
+	}
+
+	*id = p
+
+	return
 }
 
 var Anyone = Identity{}

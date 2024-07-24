@@ -5,6 +5,7 @@ import (
 	"encoding/base32"
 	"encoding/binary"
 	"errors"
+	"io"
 	"strings"
 )
 
@@ -16,6 +17,36 @@ var zBase32Encoding = base32.NewEncoding(zBase32CharSet)
 type ID struct {
 	Size uint64
 	Hash [32]byte
+}
+
+func (id ID) WriteTo(w io.Writer) (n int64, err error) {
+	err = binary.Write(w, binary.BigEndian, id.Size)
+	if err != nil {
+		return
+	}
+	n += 8
+
+	n2, err := w.Write(id.Hash[:])
+	n += int64(n2)
+
+	return
+}
+
+func (id *ID) ReadFrom(r io.Reader) (n int64, err error) {
+	err = binary.Read(r, binary.BigEndian, &id.Size)
+	if err != nil {
+		return
+	}
+	n += 8
+
+	n2, err := io.ReadFull(r, id.Hash[:])
+	n += int64(n2)
+
+	return
+}
+
+func (ID) ObjectType() string {
+	return "astral.object_id.sha256"
 }
 
 func (id ID) Pack() [40]byte {

@@ -1,16 +1,11 @@
 package astral
 
 import (
-	"crypto/rand"
-	"encoding/binary"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/id"
 )
 
 const OriginNetwork = "network"
 const OriginLocal = "local"
-
-type Nonce uint64
 
 type Query interface {
 	Nonce() Nonce
@@ -30,11 +25,6 @@ type basicQuery struct {
 
 func NewQuery(caller id.Identity, target id.Identity, query string) Query {
 	return NewQueryNonce(caller, target, query, NewNonce())
-}
-
-func NewNonce() (nonce Nonce) {
-	binary.Read(rand.Reader, binary.BigEndian, &nonce)
-	return
 }
 
 func NewQueryNonce(caller id.Identity, target id.Identity, query string, nonce Nonce) Query {
@@ -60,8 +50,4 @@ func (q *basicQuery) Target() id.Identity {
 
 func (q *basicQuery) Query() string {
 	return q.query
-}
-
-func (n Nonce) String() string {
-	return fmt.Sprintf("%016x", uint64(n))
 }
