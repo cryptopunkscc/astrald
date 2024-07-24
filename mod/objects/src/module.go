@@ -1,12 +1,10 @@
 package objects
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
@@ -42,7 +40,7 @@ type Module struct {
 	searchers  sig.Set[objects.Searcher]
 	purgers    sig.Set[objects.Purger]
 	finders    sig.Set[objects.Finder]
-	decoders   sig.Map[string, objects.Decoder]
+	objects    sig.Map[string, astral.Object]
 
 	provider *Provider
 
@@ -50,6 +48,32 @@ type Module struct {
 	nodes   nodes.Module
 	auth    auth.Module
 	dir     dir.Module
+}
+
+func (mod *Module) AddObject(a astral.Object) error {
+	_, ok := mod.objects.Set(a.ObjectType(), a)
+	if !ok {
+		return errors.New("object already added")
+	}
+	return nil
+}
+
+func (mod *Module) ReadObject(r io.Reader) (o astral.Object, err error) {
+	var h astral.ObjectHeader
+	_, err = h.ReadFrom(r)
+	if err != nil {
+		return
+	}
+
+	o = mod.getObject(h.String())
+	if o == nil {
+		err = errors.New("unknown object type")
+		return
+	}
+
+	_, err = o.ReadFrom(r)
+
+	return
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -66,39 +90,21 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Store(ctx context.Context, obj objects.Object) (objectID object.ID, err error) {
-	var buf = &bytes.Buffer{}
-	err = cslq.Encode(buf, "vv", astral.ObjectHeader(obj.ObjectType()), obj)
+func (mod *Module) Store(ctx context.Context, obj astral.Object) (objectID object.ID, err error) {
+	w, err := mod.Create(nil)
+	if err != nil {
+		return
+	}
+	defer w.Discard()
+
+	_, err = astral.ObjectHeader(obj.ObjectType()).WriteTo(w)
 	if err != nil {
 		return
 	}
 
-	return mod.Put(buf.Bytes(), nil)
-}
+	_, err = obj.WriteTo(w)
 
-func (mod *Module) Load(ctx context.Context, objectID object.ID, scope *astral.Scope) (objects.Object, error) {
-	if objectID.Size > objects.ReadAllMaxSize {
-		return nil, objects.ErrObjectTooLarge
-	}
-
-	r, err := mod.Open(ctx, objectID, &objects.OpenOpts{
-		Zone:        scope.Zone,
-		QueryFilter: scope.QueryFilter,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-
-	realID, obj, err := mod.decodeStream(r)
-	if err != nil {
-		return nil, err
-	}
-	if !realID.IsEqual(objectID) {
-		return nil, objects.ErrHashMismatch
-	}
-
-	return obj, err
+	return w.Commit()
 }
 
 func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {
@@ -185,4 +191,15 @@ func (mod *Module) UnmarshalDescriptor(name string, buf []byte) desc.Data {
 	}
 
 	return c.Elem().Interface().(desc.Data)
+}
+
+func (mod *Module) getObject(name string) astral.Object {
+	p, ok := mod.objects.Get(name)
+	if !ok {
+		return nil
+	}
+	var v = reflect.ValueOf(p)
+	var c = reflect.New(v.Elem().Type())
+
+	return c.Interface().(astral.Object)
 }

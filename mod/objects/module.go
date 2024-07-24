@@ -2,10 +2,11 @@ package objects
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
+	"io"
 )
 
 const ModuleName = "objects"
@@ -35,15 +36,11 @@ type Module interface {
 	AddFinder(Finder) error
 	Finder
 
-	Encode(obj Object) ([]byte, error)
-	Decode(data []byte) (Object, error)
-	SetDecoder(string, Decoder) error
-
-	// Load decodes the object into memory and returns it
-	Load(context.Context, object.ID, *astral.Scope) (Object, error)
+	AddObject(astral.Object) error
+	ReadObject(r io.Reader) (o astral.Object, err error)
 
 	// Store encodes the object to local storage
-	Store(context.Context, Object) (object.ID, error)
+	Store(context.Context, astral.Object) (object.ID, error)
 
 	AddPrototypes(protos ...desc.Data) error
 	UnmarshalDescriptor(name string, buf []byte) desc.Data

@@ -8,12 +8,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
@@ -42,6 +42,7 @@ func NewAdmin(mod *Module) *Admin {
 		"holders":  adm.holders,
 		"inv":      adm.inv,
 		"show":     adm.show,
+		"types":    adm.types,
 		"info":     adm.info,
 		"help":     adm.help,
 	}
@@ -60,6 +61,20 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	}
 
 	return errors.New("unknown command")
+}
+
+func (adm *Admin) types(term admin.Terminal, args []string) error {
+	types := adm.mod.objects.Keys()
+
+	slices.Sort(types)
+
+	term.Printf("%d known object types:\n", len(types))
+
+	for _, t := range types {
+		term.Printf(" %s\n", t)
+	}
+
+	return nil
 }
 
 func (adm *Admin) purge(term admin.Terminal, args []string) error {
@@ -160,7 +175,14 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 			return err
 		}
 
-		obj, err := adm.mod.Load(context.Background(), objectID, scope)
+		r, err := adm.mod.Open(context.Background(), objectID, &objects.OpenOpts{
+			Zone: astral.Zones(zones),
+		})
+		if err != nil {
+			return err
+		}
+
+		obj, err := adm.mod.ReadObject(r)
 		if err != nil {
 			return err
 		}

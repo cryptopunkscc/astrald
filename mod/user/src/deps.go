@@ -2,7 +2,6 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -67,10 +66,7 @@ func (mod *Module) LoadDependencies() error {
 
 	mod.dir.AddDescriber(mod)
 
-	mod.objects.SetDecoder((&user.NodeContract{}).ObjectType(), func(bytes []byte) (objects.Object, error) {
-		var contract user.NodeContract
-		return &contract, cslq.Unmarshal(bytes, &contract)
-	})
+	mod.objects.AddObject(&user.NodeContract{})
 
 	return nil
 }

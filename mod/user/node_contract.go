@@ -1,13 +1,19 @@
 package user
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/streams"
+	"io"
 	"time"
 )
+
+var _ astral.Object = &NodeContract{}
 
 type NodeContract struct {
 	UserID        id.Identity
@@ -17,7 +23,7 @@ type NodeContract struct {
 	NodeSignature []byte
 }
 
-func (*NodeContract) ObjectType() string {
+func (NodeContract) ObjectType() string {
 	return "mod.users.node_contract"
 }
 
@@ -99,25 +105,38 @@ func (contract *NodeContract) VerifyNodeSignature() error {
 	return nil
 }
 
-func (contract NodeContract) MarshalCSLQ(enc *cslq.Encoder) error {
-	return enc.Encodef("vvv[c]c[c]c",
+func (contract NodeContract) WriteTo(w io.Writer) (n int64, err error) {
+	var buf = &bytes.Buffer{}
+	err = cslq.Encode(buf, "vvv[c]c[c]c",
 		contract.UserID,
 		contract.NodeID,
 		cslq.Time(contract.ExpiresAt),
 		contract.UserSignature,
 		contract.NodeSignature,
 	)
+	if err != nil {
+		return
+	}
+	n2, err := w.Write(buf.Bytes())
+	return int64(n2), err
 }
 
-func (contract *NodeContract) UnmarshalCSLQ(dec *cslq.Decoder) error {
+func (contract *NodeContract) ReadFrom(r io.Reader) (n int64, err error) {
 	var expiresAt cslq.Time
-	err := dec.Decodef("vvv[c]c[c]c",
+
+	var c = streams.NewReadCounter(r)
+
+	err = cslq.Decode(c, "vvv[c]c[c]c",
 		&contract.UserID,
 		&contract.NodeID,
 		&expiresAt,
 		&contract.UserSignature,
 		&contract.NodeSignature,
 	)
+
 	contract.ExpiresAt = expiresAt.Time()
-	return err
+
+	n = c.Total()
+
+	return
 }

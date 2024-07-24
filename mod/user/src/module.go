@@ -109,13 +109,8 @@ func (mod *Module) rescanContracts(ctx context.Context) error {
 	}
 
 	for info := range mod.content.Scan(ctx, opts) {
-		object, err := mod.objects.Load(ctx, info.ObjectID, astral.DefaultScope())
+		contract, err := objects.Load[*user.NodeContract](ctx, mod.objects, info.ObjectID, astral.DefaultScope())
 		if err != nil {
-			continue
-		}
-
-		contract, ok := object.(*user.NodeContract)
-		if !ok {
 			continue
 		}
 
