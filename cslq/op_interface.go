@@ -32,6 +32,11 @@ func (op OpInterface) Encode(w io.Writer, data *Fifo) error {
 		return Encode(w, m.FormatCSLQ(), v)
 	}
 
+	if m, ok := v.(io.WriterTo); ok {
+		_, err := m.WriteTo(w)
+		return err
+	}
+
 	if f, err := ScanStructFormat(v); err == nil {
 		return Encode(w, "{"+f+"}", v)
 	}
@@ -60,6 +65,11 @@ func (op OpInterface) Decode(r io.Reader, data *Fifo) error {
 			f = "{" + f + "}"
 		}
 		return Decode(r, f, v)
+	}
+
+	if m, ok := v.(io.ReaderFrom); ok {
+		_, err := m.ReadFrom(r)
+		return err
 	}
 
 	if f, err := ScanStructFormat(v); err == nil {
