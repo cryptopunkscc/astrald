@@ -128,14 +128,17 @@ func (c *conn) Read(p []byte) (n int, err error) {
 			return
 		}
 
-		if c.state.Load() != stateOpen {
-			err = errors.New("invalid state")
-			return
-		}
-
 		if len(c.rbuf) == 0 {
-			c.rcond.Wait()
-			continue
+			switch c.state.Load() {
+			case stateOpen:
+				c.rcond.Wait()
+				continue
+			case stateClosed:
+				err = errors.New("connection closed")
+			default:
+				err = errors.New("invalid state")
+			}
+			return
 		}
 
 		b := c.rbuf[0]
@@ -149,10 +152,12 @@ func (c *conn) Read(p []byte) (n int, err error) {
 			c.rbuf = c.rbuf[1:]
 		}
 
-		c.stream.Write(&frames.Read{
-			Nonce: c.Nonce,
-			Len:   uint32(n),
-		})
+		if c.state.Load() == stateOpen {
+			c.stream.Write(&frames.Read{
+				Nonce: c.Nonce,
+				Len:   uint32(n),
+			})
+		}
 
 		return
 	}
