@@ -29,8 +29,5 @@ func (mod *Module) Prepare(ctx context.Context) error {
 		}
 	}
 
-	// look for user profiles in discovered services
-	go mod.discoverUsers(ctx)
-
 	return nil
 }

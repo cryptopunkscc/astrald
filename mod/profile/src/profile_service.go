@@ -3,10 +3,8 @@ package profile
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
-	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 	"time"
 )
 
@@ -21,24 +19,8 @@ func (service *ProfileService) Run(ctx context.Context) error {
 	}
 	defer service.RemoveRoute(serviceName)
 
-	if service.sdp != nil {
-		service.sdp.AddServiceDiscoverer(service)
-		defer service.sdp.RemoveServiceDiscoverer(service)
-	}
-
 	<-ctx.Done()
 	return err
-}
-
-func (service *ProfileService) DiscoverServices(ctx context.Context, caller id.Identity, origin string) ([]discovery.Service, error) {
-	return []discovery.Service{
-		{
-			Identity: service.node.Identity(),
-			Name:     serviceName,
-			Type:     serviceType,
-			Extra:    nil,
-		},
-	}, nil
 }
 
 func (service *ProfileService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {

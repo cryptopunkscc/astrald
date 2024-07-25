@@ -9,7 +9,6 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/auth/src"
 	_ "github.com/cryptopunkscc/astrald/mod/content/src"
 	_ "github.com/cryptopunkscc/astrald/mod/dir/src"
-	_ "github.com/cryptopunkscc/astrald/mod/discovery/src"
 	_ "github.com/cryptopunkscc/astrald/mod/exonet/src"
 	_ "github.com/cryptopunkscc/astrald/mod/fs/src"
 	_ "github.com/cryptopunkscc/astrald/mod/fwd/src"

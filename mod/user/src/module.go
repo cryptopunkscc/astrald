@@ -12,7 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
@@ -35,7 +34,6 @@ type Module struct {
 	objects objects.Module
 	shares  shares.Module
 	content content.Module
-	sdp     discovery.Module
 	relay   relay.Module
 	keys    keys.Module
 	admin   admin.Module

@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -20,7 +19,6 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	ctx    context.Context
-	sdp    discovery.Module
 	nodes  nodes.Module
 	exonet exonet.Module
 	dir    dir.Module

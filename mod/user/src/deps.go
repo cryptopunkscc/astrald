@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/relay"
@@ -52,20 +51,12 @@ func (mod *Module) LoadDependencies() error {
 
 	// load optional dependencies
 	mod.content, _ = core.Load[content.Module](mod.node, content.ModuleName)
-	mod.sdp, _ = core.Load[discovery.Module](mod.node, discovery.ModuleName)
 	mod.keys, _ = core.Load[keys.Module](mod.node, keys.ModuleName)
 	mod.admin, _ = core.Load[admin.Module](mod.node, admin.ModuleName)
 	mod.apphost, _ = core.Load[apphost.Module](mod.node, apphost.ModuleName)
 
 	mod.auth.AddAuthorizer(&Authorizer{mod: mod})
-
-	if mod.sdp != nil {
-		mod.sdp.AddServiceDiscoverer(mod)
-		mod.sdp.AddDataDiscoverer(mod)
-	}
-
 	mod.dir.AddDescriber(mod)
-
 	mod.objects.AddObject(&user.NodeContract{})
 
 	return nil

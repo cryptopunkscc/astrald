@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -26,7 +25,6 @@ type Module struct {
 	dialer      *Dialer
 	subscribers map[string]*Subscriber
 	mu          sync.Mutex
-	sdp         discovery.Module
 	nodes       nodes.Module
 	exonet      exonet.Module
 	dir         dir.Module
@@ -47,8 +45,6 @@ func (mod *Module) Prepare(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-
-	mod.sdp, _ = core.Load[discovery.Module](mod.node, discovery.ModuleName)
 
 	mod.exonet.SetDialer("gw", mod.dialer)
 	mod.exonet.SetUnpacker("gw", mod)

@@ -10,7 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"gorm.io/gorm"
 	"net"
 	"os"
@@ -24,7 +23,6 @@ type Module struct {
 	config  Config
 	node    astral.Node
 	content content.Module
-	sdp     discovery.Module
 	dir     dir.Module
 	log     *log.Logger
 	db      *gorm.DB

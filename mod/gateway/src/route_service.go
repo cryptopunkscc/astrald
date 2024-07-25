@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
 	"strings"
 	"time"
 )
@@ -25,11 +24,6 @@ func (srv *RouteService) Run(ctx context.Context) error {
 		return err
 	}
 	defer srv.RemoveRoute(RouteServiceName + ".*")
-
-	if srv.sdp != nil {
-		srv.sdp.AddServiceDiscoverer(srv)
-		defer srv.sdp.RemoveServiceDiscoverer(srv)
-	}
 
 	<-ctx.Done()
 	return nil
@@ -90,14 +84,4 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, cal
 	var maskedTarget = astral.NewIdentityTranslation(dst, srv.node.Identity())
 
 	return maskedTarget, nil
-}
-
-func (srv *RouteService) DiscoverServices(ctx context.Context, caller id.Identity, origin string) ([]discovery.Service, error) {
-	return []discovery.Service{
-		{
-			Identity: srv.node.Identity(),
-			Name:     RouteServiceName,
-			Type:     RouteServiceType,
-		},
-	}, nil
 }

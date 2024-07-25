@@ -3,11 +3,9 @@ package profile
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/mod/discovery"
-	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 )
 
 type EventHandler struct {
@@ -15,18 +13,7 @@ type EventHandler struct {
 }
 
 func (h *EventHandler) Run(ctx context.Context) error {
-	return events.Handle(ctx, h.node.Events(), h.handleDiscovered)
-}
-
-func (h *EventHandler) handleDiscovered(e discovery.EventDiscovered) error {
-	for _, srv := range e.Info.Services {
-		if srv.Identity.IsEqual(h.node.Identity()) {
-			continue
-		}
-		if srv.Type == serviceType {
-			return h.updateIdentityProfile(e.Identity, srv.Name)
-		}
-	}
+	<-ctx.Done()
 	return nil
 }
 
