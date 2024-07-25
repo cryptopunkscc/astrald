@@ -164,50 +164,6 @@ func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Matc
 	return
 }
 
-func (c *Consumer) Hold(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) bool {
-	params := core.Params{
-		"id": objectID.String(),
-	}
-
-	if opts.QueryFilter != nil {
-		if !opts.QueryFilter(c.providerID) {
-			return false
-		}
-	}
-
-	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodHold, params))
-
-	conn, err := astral.Route(ctx, c.mod.node.Router(), query)
-	if err == nil {
-		conn.Close()
-		return true
-	}
-
-	return false
-}
-
-func (c *Consumer) Release(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) bool {
-	params := core.Params{
-		"id": objectID.String(),
-	}
-
-	if opts.QueryFilter != nil {
-		if !opts.QueryFilter(c.providerID) {
-			return false
-		}
-	}
-
-	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodRelease, params))
-
-	conn, err := astral.Route(ctx, c.mod.node.Router(), query)
-	if err == nil {
-		conn.Close()
-		return true
-	}
-
-	return false
-}
-
 func (c *Consumer) Push(ctx context.Context, o astral.Object) (err error) {
 	var buf = &bytes.Buffer{}
 

@@ -12,9 +12,7 @@ const (
 	methodPut      = "objects.put"
 	methodRead     = "objects.read"
 	methodDescribe = "objects.describe"
-	methodRelease  = "objects.release"
 	methodSearch   = "objects.search"
-	methodHold     = "objects.hold"
 	methodPush     = "objects.push"
 )
 

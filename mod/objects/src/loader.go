@@ -27,11 +27,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	mod.db = assets.Database()
 
-	err := mod.db.AutoMigrate(&dbHolding{})
-	if err != nil {
-		return nil, err
-	}
-
 	mod.AddFinder(&LinkedFinder{mod: mod})
 
 	// add core object prototypes

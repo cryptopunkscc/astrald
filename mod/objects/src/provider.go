@@ -39,8 +39,6 @@ func NewProvider(mod *Module) *Provider {
 	srv.router.AddRouteFunc(methodRead, srv.Read)
 	srv.router.AddRouteFunc(methodDescribe, srv.Describe)
 	srv.router.AddRouteFunc(methodPut, srv.Put)
-	srv.router.AddRouteFunc(methodHold, srv.Hold)
-	srv.router.AddRouteFunc(methodRelease, srv.Release)
 	srv.router.AddRouteFunc(methodSearch, srv.Search)
 	srv.router.AddRouteFunc(methodPush, srv.Push)
 
@@ -83,42 +81,6 @@ func (srv *Provider) Read(ctx context.Context, query astral.Query, caller astral
 		defer conn.Close()
 
 		io.Copy(conn, r)
-	})
-}
-
-func (srv *Provider) Release(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
-	_, params := core.ParseQuery(query.Query())
-
-	objectID, err := params.GetObjectID("id")
-	if err != nil {
-		srv.mod.log.Errorv(2, "invalid id: %v", err)
-		return astral.Reject()
-	}
-
-	return astral.Accept(query, caller, func(conn astral.Conn) {
-		defer conn.Close()
-
-		srv.mod.Release(query.Caller(), objectID)
-	})
-}
-
-func (srv *Provider) Hold(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
-	_, params := core.ParseQuery(query.Query())
-
-	objectID, err := params.GetObjectID("id")
-	if err != nil {
-		srv.mod.log.Errorv(2, "invalid id: %v", err)
-		return astral.Reject()
-	}
-
-	if !srv.mod.auth.Authorize(query.Caller(), objects.ActionRead, objectID) {
-		return astral.Reject()
-	}
-
-	return astral.Accept(query, caller, func(conn astral.Conn) {
-		defer conn.Close()
-
-		srv.mod.Hold(query.Caller(), objectID)
 	})
 }
 
@@ -191,8 +153,6 @@ func (srv *Provider) Put(ctx context.Context, query astral.Query, caller astral.
 			cslq.Encode(conn, "c", 1)
 			return
 		}
-
-		srv.mod.Hold(query.Caller(), objectID)
 
 		cslq.Encode(conn, "cv", 0, objectID)
 	})

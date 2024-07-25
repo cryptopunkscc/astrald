@@ -34,14 +34,10 @@ func NewAdmin(mod *Module) *Admin {
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"describe": adm.describe,
 		"fetch":    adm.fetch,
-		"hold":     adm.hold,
-		"holders":  adm.holders,
 		"info":     adm.info,
-		"inv":      adm.inv,
 		"purge":    adm.purge,
 		"push":     adm.push,
 		"read":     adm.read,
-		"release":  adm.release,
 		"search":   adm.search,
 		"show":     adm.show,
 		"types":    adm.types,
@@ -87,15 +83,6 @@ func (adm *Admin) purge(term admin.Terminal, args []string) error {
 		objectID, err := object.ParseID(arg)
 		if err != nil {
 			term.Printf("parse '%v': %v\n", arg, err)
-		}
-
-		if holders := adm.mod.Holders(objectID); len(holders) > 0 {
-			term.Printf("%v: held by", objectID)
-			for _, h := range holders {
-				term.Printf(" %v", h)
-			}
-			term.Printf("\n")
-			continue
 		}
 
 		n, err := adm.mod.Purge(objectID, nil)
@@ -351,91 +338,7 @@ func (adm *Admin) fetch(term admin.Terminal, args []string) error {
 
 	term.Printf("stored as %v (%s)\n", objectID, log.DataSize(objectID.Size))
 
-	adm.mod.Hold(term.UserIdentity(), objectID)
-
 	return nil
-}
-
-func (adm *Admin) holders(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("argument missing")
-	}
-
-	objectID, err := object.ParseID(args[0])
-	if err != nil {
-		return err
-	}
-
-	holderIDs := adm.mod.Holders(objectID)
-	for _, holderID := range holderIDs {
-		term.Printf("%v\n", holderID)
-	}
-
-	return nil
-}
-
-func (adm *Admin) inv(term admin.Terminal, args []string) (err error) {
-	holderID := term.UserIdentity()
-
-	if len(args) > 0 {
-		holderID, err = adm.mod.dir.Resolve(args[0])
-		if err != nil {
-			return
-		}
-	}
-
-	objectIDs := adm.mod.Holdings(holderID)
-	for _, objectID := range objectIDs {
-		term.Printf("%v\n", objectID)
-	}
-
-	return nil
-}
-
-func (adm *Admin) hold(term admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		return errors.New("argument missing")
-	}
-
-	holderID, err := adm.mod.dir.Resolve(args[0])
-	if err != nil {
-		return err
-	}
-
-	var objectsIDs []object.ID
-
-	for _, arg := range args[1:] {
-		objectID, err := object.ParseID(arg)
-		if err != nil {
-			return fmt.Errorf("invalid object id: %v", arg)
-		}
-		objectsIDs = append(objectsIDs, objectID)
-	}
-
-	return adm.mod.Hold(holderID, objectsIDs...)
-}
-
-func (adm *Admin) release(term admin.Terminal, args []string) error {
-	if len(args) < 2 {
-		return errors.New("argument missing")
-	}
-
-	holderID, err := adm.mod.dir.Resolve(args[0])
-	if err != nil {
-		return err
-	}
-
-	var objectsIDs []object.ID
-
-	for _, arg := range args[1:] {
-		objectID, err := object.ParseID(arg)
-		if err != nil {
-			return fmt.Errorf("invalid object id: %v", arg)
-		}
-		objectsIDs = append(objectsIDs, objectID)
-	}
-
-	return adm.mod.Release(holderID, objectsIDs...)
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {

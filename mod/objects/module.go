@@ -10,7 +10,6 @@ import (
 )
 
 const ModuleName = "objects"
-const DBPrefix = "objects__"
 
 // ReadAllMaxSize is the size limit for loading objects into memory
 const ReadAllMaxSize = 64 * 1024 * 1024 // 64 MB
@@ -52,18 +51,6 @@ type Module interface {
 
 	// Put commits the object to storage and returns its ID
 	Put(object []byte, opts *CreateOpts) (object.ID, error)
-
-	// Hold marks the identity as a holder of the objects
-	Hold(id.Identity, ...object.ID) error
-
-	// Release clears the identity as a holder of the objects
-	Release(id.Identity, ...object.ID) error
-
-	// Holders returns a list of holders of an object
-	Holders(object.ID) []id.Identity
-
-	// Holdings returns a list of objects held by an identity
-	Holdings(id.Identity) []object.ID
 
 	Connect(caller id.Identity, target id.Identity) (Consumer, error)
 }
