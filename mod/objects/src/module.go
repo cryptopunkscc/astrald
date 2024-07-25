@@ -41,6 +41,7 @@ type Module struct {
 	purgers    sig.Set[objects.Purger]
 	finders    sig.Set[objects.Finder]
 	objects    sig.Map[string, astral.Object]
+	receivers  sig.Set[objects.Receiver]
 
 	provider *Provider
 
@@ -48,6 +49,23 @@ type Module struct {
 	nodes   nodes.Module
 	auth    auth.Module
 	dir     dir.Module
+}
+
+func (mod *Module) Push(ctx context.Context, identity id.Identity, obj astral.Object) error {
+	c, err := mod.Connect(mod.node.Identity(), identity)
+	if err != nil {
+		return err
+	}
+
+	return c.Push(context.Background(), obj)
+}
+
+func (mod *Module) AddReceiver(receiver objects.Receiver) error {
+	if receiver == nil {
+		return errors.New("receiver is nil")
+	}
+
+	return mod.receivers.Add(receiver)
 }
 
 func (mod *Module) AddObject(a astral.Object) error {

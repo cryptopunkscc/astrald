@@ -32,18 +32,19 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"read":     adm.read,
-		"purge":    adm.purge,
 		"describe": adm.describe,
-		"search":   adm.search,
 		"fetch":    adm.fetch,
 		"hold":     adm.hold,
-		"release":  adm.release,
 		"holders":  adm.holders,
+		"info":     adm.info,
 		"inv":      adm.inv,
+		"purge":    adm.purge,
+		"push":     adm.push,
+		"read":     adm.read,
+		"release":  adm.release,
+		"search":   adm.search,
 		"show":     adm.show,
 		"types":    adm.types,
-		"info":     adm.info,
 		"help":     adm.help,
 	}
 
@@ -194,7 +195,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 			continue
 		}
 
-		term.Printf("%s\n", string(j))
+		term.Printf("  %s\n", string(j))
 	}
 
 	return nil
@@ -501,6 +502,29 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	}
 
 	return nil
+}
+
+func (adm *Admin) push(term admin.Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("missing arguments")
+	}
+
+	target, err := adm.mod.dir.Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	objectID, err := object.ParseID(args[1])
+	if err != nil {
+		return err
+	}
+
+	obj, err := objects.Load[astral.Object](context.Background(), adm.mod, objectID, astral.DefaultScope())
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.Push(context.Background(), target, obj)
 }
 
 func (adm *Admin) ShortDescription() string {

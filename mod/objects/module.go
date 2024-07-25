@@ -38,6 +38,8 @@ type Module interface {
 
 	AddObject(astral.Object) error
 	ReadObject(r io.Reader) (o astral.Object, err error)
+	AddReceiver(Receiver) error
+	Push(context.Context, id.Identity, astral.Object) error
 
 	// Store encodes the object to local storage
 	Store(context.Context, astral.Object) (object.ID, error)
@@ -71,6 +73,17 @@ type Consumer interface {
 	Open(context.Context, object.ID, *OpenOpts) (Reader, error)
 	Put(context.Context, []byte) (object.ID, error)
 	Search(context.Context, string) ([]Match, error)
+	Push(context.Context, astral.Object) (err error)
+}
+
+type Receiver interface {
+	Push(*Push) error
+}
+
+type Push struct {
+	Source   id.Identity
+	ObjectID object.ID
+	Object   astral.Object
 }
 
 type Describer interface {

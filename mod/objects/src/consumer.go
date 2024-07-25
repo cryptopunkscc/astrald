@@ -1,15 +1,17 @@
 package objects
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"strconv"
@@ -204,4 +206,51 @@ func (c *Consumer) Release(ctx context.Context, objectID object.ID, opts *object
 	}
 
 	return false
+}
+
+func (c *Consumer) Push(ctx context.Context, o astral.Object) (err error) {
+	var buf = &bytes.Buffer{}
+
+	_, err = astral.ObjectHeader(o.ObjectType()).WriteTo(buf)
+	if err != nil {
+		return
+	}
+
+	_, err = o.WriteTo(buf)
+	if err != nil {
+		return
+	}
+
+	var b = buf.Bytes()
+	if len(b) > maxPushSize {
+		return errors.New("object too large")
+	}
+
+	params := core.Params{
+		"size": strconv.FormatInt(int64(len(b)), 10),
+	}
+
+	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodPush, params))
+
+	conn, err := astral.Route(ctx, c.mod.node.Router(), query)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	_, err = conn.Write(b)
+	if err != nil {
+		return
+	}
+
+	var ok bool
+	err = binary.Read(conn, binary.BigEndian, &ok)
+	if err != nil {
+		return
+	}
+	if !ok {
+		return errors.New("object rejected")
+	}
+
+	return nil
 }

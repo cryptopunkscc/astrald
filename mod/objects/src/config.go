@@ -15,6 +15,7 @@ const (
 	methodRelease  = "objects.release"
 	methodSearch   = "objects.search"
 	methodHold     = "objects.hold"
+	methodPush     = "objects.push"
 )
 
 type Config struct {

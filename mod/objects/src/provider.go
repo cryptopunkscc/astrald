@@ -1,17 +1,22 @@
 package objects
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"slices"
 )
+
+const maxPushSize = 4096
 
 type JSONDescriptor struct {
 	Type string
@@ -37,6 +42,7 @@ func NewProvider(mod *Module) *Provider {
 	srv.router.AddRouteFunc(methodHold, srv.Hold)
 	srv.router.AddRouteFunc(methodRelease, srv.Release)
 	srv.router.AddRouteFunc(methodSearch, srv.Search)
+	srv.router.AddRouteFunc(methodPush, srv.Push)
 
 	return srv
 }
@@ -217,6 +223,64 @@ func (srv *Provider) Search(ctx context.Context, query astral.Query, caller astr
 		defer conn.Close()
 
 		json.NewEncoder(conn).Encode(matches)
+
+		return
+	})
+}
+
+func (srv *Provider) Push(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+	_, params := core.ParseQuery(query.Query())
+
+	size, err := params.GetInt("size")
+	if err != nil {
+		srv.mod.log.Errorv(2, "invalid id: %v", err)
+		return astral.Reject()
+	}
+
+	if size > maxPushSize {
+		return astral.Reject()
+	}
+
+	return astral.Accept(query, caller, func(conn astral.Conn) {
+		defer conn.Close()
+
+		var buf = make([]byte, size)
+		_, err := io.ReadFull(conn, buf)
+		if err != nil {
+			srv.mod.log.Errorv(1, "%v push read error: %v", caller.Identity(), err)
+			binary.Write(conn, binary.BigEndian, false)
+			return
+		}
+
+		obj, err := srv.mod.ReadObject(bytes.NewReader(buf))
+		if err != nil {
+			srv.mod.log.Errorv(1, "%v push read object error: %v", caller.Identity(), err)
+			binary.Write(conn, binary.BigEndian, false)
+			return
+		}
+
+		var push = &objects.Push{
+			Source:   caller.Identity(),
+			ObjectID: object.Resolve(buf),
+			Object:   obj,
+		}
+
+		var ok = false
+		for _, r := range srv.mod.receivers.Clone() {
+			if r.Push(push) == nil {
+				ok = true
+			}
+		}
+
+		if !ok {
+			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), caller.Identity(), push.ObjectID)
+			binary.Write(conn, binary.BigEndian, false)
+			return
+		}
+
+		binary.Write(conn, binary.BigEndian, true)
+
+		srv.mod.log.Infov(1, "received %s from %v (%v)", obj.ObjectType(), caller.Identity(), push.ObjectID)
 
 		return
 	})
