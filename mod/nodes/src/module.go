@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -29,17 +30,21 @@ type NodeInfo nodes.NodeInfo
 
 var _ nodes.Module = &Module{}
 
+type Deps struct {
+	Admin   admin.Module
+	Dir     dir.Module
+	Exonet  exonet.Module
+	Keys    keys.Module
+	Objects objects.Module
+}
+
 type Module struct {
+	Deps
 	config Config
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
-
-	exonet  exonet.Module
-	dir     dir.Module
-	keys    keys.Module
-	objects objects.Module
-	db      *gorm.DB
+	db     *gorm.DB
 
 	streams sig.Set[*Stream]
 	conns   sig.Map[astral.Nonce, *conn]
@@ -242,7 +247,7 @@ func (mod *Module) addStream(s *Stream) (err error) {
 	err = mod.streams.Add(s)
 	if err == nil {
 		if !linked {
-			mod.objects.PushLocal(&nodes.EventLinked{NodeID: s.RemoteIdentity()})
+			mod.Objects.PushLocal(&nodes.EventLinked{NodeID: s.RemoteIdentity()})
 		}
 
 		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
@@ -262,7 +267,7 @@ func (mod *Module) addStream(s *Stream) (err error) {
 			}
 
 			if !mod.isLinked(s.RemoteIdentity()) {
-				mod.objects.PushLocal(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()})
+				mod.Objects.PushLocal(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()})
 			}
 		}()
 	}

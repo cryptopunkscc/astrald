@@ -3,10 +3,10 @@ package setup
 import (
 	"context"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	id2 "github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/relay"
-	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
@@ -68,7 +68,7 @@ func (srv *InviteService) RouteQuery(ctx context.Context, query astral.Query, ca
 		}
 		srv.log.Info("invitation from %v accepted", cert.TargetID)
 
-		cert.RelaySig, err = srv.keys.Sign(srv.node.Identity(), cert.Hash())
+		cert.RelaySig, err = srv.Keys.Sign(srv.node.Identity(), cert.Hash())
 		if err != nil {
 			srv.log.Error("invite: error signing certificate: %v", err)
 			return
@@ -87,7 +87,7 @@ func (srv *InviteService) RouteQuery(ctx context.Context, query astral.Query, ca
 
 		cslq.Encode(conn, "v", cert)
 
-		srv.presence.Broadcast() // broadcast our presence to remove the setup flag
+		srv.Presence.Broadcast() // broadcast our presence to remove the setup flag
 
 		return
 	})
@@ -102,7 +102,7 @@ func (srv *InviteService) Invite(ctx context.Context, userID id2.Identity, nodeI
 		ExpiresAt: time.Now().Add(relay.DefaultCertDuration),
 	}
 
-	cert.TargetSig, err = srv.keys.Sign(cert.TargetID, cert.Hash())
+	cert.TargetSig, err = srv.Keys.Sign(cert.TargetID, cert.Hash())
 	if err != nil {
 		return fmt.Errorf("error signing invite certificate: %w", err)
 	}
@@ -146,12 +146,12 @@ func (srv *InviteService) joinByCert(cert *relay.Cert) error {
 		return err
 	}
 
-	_, err = srv.relay.Save(cert)
+	_, err = srv.Relay.Save(cert)
 	if err != nil {
 		return err
 	}
 
-	srv.user.SetUserID(cert.TargetID)
+	srv.User.SetUserID(cert.TargetID)
 
 	return err
 }

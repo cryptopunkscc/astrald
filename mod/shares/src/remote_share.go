@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"strings"
 	"time"
@@ -44,7 +44,7 @@ func (mod *Module) CreateRemoteShare(caller id.Identity, target id.Identity) (*I
 		return nil, err
 	}
 
-	share.set, err = mod.sets.Create(row.SetName)
+	share.set, err = mod.Sets.Create(row.SetName)
 	if err != nil {
 		mod.db.Delete(&row)
 		return nil, fmt.Errorf("cannot create set: %w", err)
@@ -73,7 +73,7 @@ func (mod *Module) findRemoteShare(caller id.Identity, target id.Identity) (*Imp
 		row:    &row,
 	}
 
-	share.set, err = mod.sets.Open(share.row.SetName, false)
+	share.set, err = mod.Sets.Open(share.row.SetName, false)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (share *Import) Describe(ctx context.Context, objectID object.ID, opts *des
 		}
 	}
 
-	remoteObjects, err := share.mod.objects.Connect(share.caller, share.target)
+	remoteObjects, err := share.mod.Objects.Connect(share.caller, share.target)
 	if err != nil {
 		return
 	}

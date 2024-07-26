@@ -11,7 +11,7 @@ func (mod *Module) Describe(ctx context.Context, identity id.Identity, opts *des
 	if identity.IsEqual(mod.UserID()) {
 		return []*desc.Desc{{
 			Source: mod.node.Identity(),
-			Data:   user.UserDesc{Name: mod.dir.DisplayName(identity)},
+			Data:   user.UserDesc{Name: mod.Dir.DisplayName(identity)},
 		}}
 	}
 

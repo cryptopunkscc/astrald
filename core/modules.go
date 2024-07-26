@@ -3,11 +3,13 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/sig"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -85,6 +87,7 @@ func (m *Modules) loadDependecies(modules []string) []string {
 				err := p.LoadDependencies()
 				if err != nil {
 					m.log.Error("module %s load dependencies: %v", name, err)
+					panic(err) // TODO: handle this cleanly instead of panicking
 					return
 				}
 			}
@@ -214,6 +217,47 @@ func Load[M any](node astral.Node, name string) (M, error) {
 		return mod, errModuleUnavailable(name)
 	}
 	return mod, nil
+}
+
+// Inject injects modules into a struct
+func Inject(node astral.Node, target any) (err error) {
+	cnode, ok := node.(*Node)
+	if !ok {
+		return errors.New("unsupported node type")
+	}
+
+	v := reflect.ValueOf(target)
+	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("expected a pointer to a struct")
+	}
+
+	v = v.Elem()
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+
+		modName := strings.ToLower(fieldType.Name)
+		if tag := fieldType.Tag.Get("mod"); tag != "" {
+			modName = tag
+		}
+
+		if field.CanSet() {
+			mod := cnode.Modules().Find(modName)
+			if mod == nil {
+				return fmt.Errorf("cannot find module %s", modName)
+			}
+
+			modVal := reflect.ValueOf(mod)
+			if modVal.Type().AssignableTo(field.Type()) {
+				field.Set(modVal)
+			} else {
+				return fmt.Errorf("cannot inject field %s", fieldType.Name)
+			}
+		}
+	}
+	return
 }
 
 type DependencyLoader interface {

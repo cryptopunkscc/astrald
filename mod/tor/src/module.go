@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -14,17 +15,21 @@ import (
 
 const defaultListenPort = 1791
 
+type Deps struct {
+	Admin  admin.Module
+	Nodes  nodes.Module
+	Exonet exonet.Module
+}
+
 type Module struct {
+	Deps
 	config Config
 	node   astral.Node
-	nodes  nodes.Module
 	assets assets.Assets
 	log    *log.Logger
 	ctx    context.Context
 	proxy  proxy.ContextDialer
 	server *Server
-
-	exonet exonet.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {

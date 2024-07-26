@@ -2,9 +2,9 @@ package setup
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/setup"
-	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type SetupService struct {
@@ -18,7 +18,7 @@ func (srv *SetupService) Run(ctx context.Context) error {
 	srv.setDefaultIdentity()
 
 	if srv.needsSetup() {
-		srv.presence.SetVisible(true)
+		srv.Presence.SetVisible(true)
 	}
 
 	<-ctx.Done()
@@ -36,7 +36,7 @@ func (srv *SetupService) Serve(conn astral.Conn) {
 	}
 
 	srv.setDefaultIdentity()
-	srv.presence.Broadcast() // update our setup flag
+	srv.Presence.Broadcast() // update our setup flag
 }
 
 func (srv *SetupService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
@@ -52,9 +52,9 @@ func (srv *SetupService) RouteQuery(ctx context.Context, query astral.Query, cal
 }
 
 func (srv *SetupService) setDefaultIdentity() {
-	if srv.user.UserID().IsZero() {
-		srv.apphost.SetDefaultIdentity(srv.node.Identity())
+	if srv.User.UserID().IsZero() {
+		srv.Apphost.SetDefaultIdentity(srv.node.Identity())
 	} else {
-		srv.apphost.SetDefaultIdentity(id.Identity{})
+		srv.Apphost.SetDefaultIdentity(id.Identity{})
 	}
 }

@@ -16,7 +16,7 @@ func (mod *Module) Endpoints(nodeID id.Identity) (endpoints []exonet.Endpoint) {
 	}
 
 	for _, row := range rows {
-		e, err := mod.exonet.Parse(row.Network, row.Address)
+		e, err := mod.Exonet.Parse(row.Network, row.Address)
 		if err != nil {
 			mod.log.Errorv(1, "Endpoints(): error parsing db row: %v", err)
 			continue

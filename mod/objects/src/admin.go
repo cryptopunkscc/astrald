@@ -222,7 +222,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	var descs []*desc.Desc
 
 	if len(provider) > 0 {
-		providerID, err := adm.mod.dir.Resolve(provider)
+		providerID, err := adm.mod.Dir.Resolve(provider)
 		if err != nil {
 			return err
 		}
@@ -290,7 +290,7 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 	if len(provider) > 0 {
 		var providerID id.Identity
 
-		providerID, err = adm.mod.dir.Resolve(provider)
+		providerID, err = adm.mod.Dir.Resolve(provider)
 		if err != nil {
 			return err
 		}
@@ -309,8 +309,8 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 	for _, match := range matches {
 		var name string
 
-		if adm.mod.content != nil {
-			name = adm.mod.content.BestTitle(match.ObjectID)
+		if adm.mod.Content != nil {
+			name = adm.mod.Content.BestTitle(match.ObjectID)
 		}
 
 		term.Printf("%-64s %v; %v\n",
@@ -412,7 +412,7 @@ func (adm *Admin) push(term admin.Terminal, args []string) error {
 		return errors.New("missing arguments")
 	}
 
-	target, err := adm.mod.dir.Resolve(args[0])
+	target, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}

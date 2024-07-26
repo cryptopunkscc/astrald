@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -19,19 +20,23 @@ import (
 
 var _ setup.Module = &Module{}
 
+type Deps struct {
+	Admin    admin.Module
+	Apphost  apphost.Module
+	Dir      dir.Module
+	Keys     keys.Module
+	Presence presence.Module
+	Relay    relay.Module
+	User     user.Module
+}
+
 type Module struct {
+	Deps
 	*routers.PathRouter
 	config Config
 	node   astral.Node
 	log    *log.Logger
 	assets assets.Assets
-
-	user     user.Module
-	keys     keys.Module
-	relay    relay.Module
-	apphost  apphost.Module
-	presence presence.Module
-	dir      dir.Module
 
 	inviteService *InviteService
 }
@@ -58,5 +63,5 @@ func (mod *Module) OnPendingAd(ad presence.PendingAd) {
 }
 
 func (mod *Module) needsSetup() bool {
-	return mod.user.UserID().IsZero()
+	return mod.User.UserID().IsZero()
 }

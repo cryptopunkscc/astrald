@@ -14,15 +14,19 @@ import (
 
 const serviceName = ".profile"
 
+type Deps struct {
+	Dir     dir.Module
+	Exonet  exonet.Module
+	Nodes   nodes.Module
+	Objects objects.Module
+}
+
 type Module struct {
+	Deps
 	*routers.PathRouter
-	node    astral.Node
-	log     *log.Logger
-	ctx     context.Context
-	nodes   nodes.Module
-	exonet  exonet.Module
-	dir     dir.Module
-	objects objects.Module
+	node astral.Node
+	log  *log.Logger
+	ctx  context.Context
 }
 
 func (mod *Module) Run(ctx context.Context) error {

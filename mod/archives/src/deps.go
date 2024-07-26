@@ -2,48 +2,23 @@ package archives
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/archives"
-	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shares"
 )
 
-func (mod *Module) LoadDependencies() error {
-	var err error
-
-	mod.content, err = core.Load[content.Module](mod.node, content.ModuleName)
+func (mod *Module) LoadDependencies() (err error) {
+	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
-		return err
+		return
 	}
 
-	mod.objects, err = core.Load[objects.Module](mod.node, objects.ModuleName)
-	if err != nil {
-		return err
-	}
+	mod.Admin.AddCommand(archives.ModuleName, NewAdmin(mod))
 
-	mod.shares, err = core.Load[shares.Module](mod.node, shares.ModuleName)
-	if err != nil {
-		return err
-	}
+	mod.Auth.AddAuthorizer(&Authorizer{mod: mod})
 
-	mod.auth, err = core.Load[auth.Module](mod.node, auth.ModuleName)
-	if err != nil {
-		return err
-	}
-
-	// inject admin command
-	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(archives.ModuleName, NewAdmin(mod))
-	}
-
-	mod.auth.AddAuthorizer(&Authorizer{mod: mod})
-
-	mod.objects.AddPrototypes(archives.ArchiveDesc{}, archives.EntryDesc{})
-	mod.objects.AddOpener(mod, 20)
-	mod.objects.AddDescriber(mod)
-	mod.objects.AddSearcher(mod)
+	mod.Objects.AddPrototypes(archives.ArchiveDesc{}, archives.EntryDesc{})
+	mod.Objects.AddOpener(mod, 20)
+	mod.Objects.AddDescriber(mod)
+	mod.Objects.AddSearcher(mod)
 
 	return nil
 }

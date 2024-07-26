@@ -3,9 +3,9 @@ package apphost
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 )
@@ -74,7 +74,7 @@ func (s *Session) query(params proto.QueryParams) error {
 func (s *Session) resolve(p proto.ResolveParams) error {
 	s.mod.log.Logv(2, "%s resolve %s", s.remoteID, p.Name)
 
-	remoteID, err := s.mod.dir.Resolve(p.Name)
+	remoteID, err := s.mod.Dir.Resolve(p.Name)
 	if err == nil {
 		s.WriteErr(nil)
 		return s.WriteMsg(proto.ResolveData{Identity: remoteID})
@@ -94,7 +94,7 @@ func (s *Session) nodeInfo(p proto.NodeInfoParams) error {
 	if !p.Identity.IsZero() {
 		data.Identity = p.Identity
 	}
-	data.Name = s.mod.dir.DisplayName(data.Identity)
+	data.Name = s.mod.Dir.DisplayName(data.Identity)
 
 	return s.WriteMsg(data)
 }

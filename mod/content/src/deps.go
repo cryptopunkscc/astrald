@@ -2,33 +2,20 @@ package content
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) LoadDependencies() error {
-	var err error
-
-	// required
-	mod.objects, err = core.Load[objects.Module](mod.node, objects.ModuleName)
+func (mod *Module) LoadDependencies() (err error) {
+	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
-		return err
+		return
 	}
 
-	mod.objects.AddDescriber(mod)
-	mod.objects.AddPrototypes(content.LabelDesc{}, content.TypeDesc{})
-
-	// optional
-	mod.fs, _ = core.Load[fs.Module](mod.node, fs.ModuleName)
-
-	// inject admin command
-	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(content.ModuleName, NewAdmin(mod))
-	}
+	mod.Admin.AddCommand(content.ModuleName, NewAdmin(mod))
+	mod.Objects.AddDescriber(mod)
+	mod.Objects.AddPrototypes(content.LabelDesc{}, content.TypeDesc{})
 
 	mod.setReady()
 
-	return nil
+	return
 }

@@ -84,7 +84,7 @@ func (cache *DescriptorCache) Load(caller id.Identity, target id.Identity, objec
 	}
 
 	for _, i := range j {
-		var d = cache.mod.objects.UnmarshalDescriptor(i.Type, i.Data)
+		var d = cache.mod.Objects.UnmarshalDescriptor(i.Type, i.Data)
 		if d == nil {
 			continue
 		}

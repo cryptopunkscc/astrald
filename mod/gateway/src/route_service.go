@@ -53,7 +53,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, cal
 			actx, cancel := context.WithTimeout(context.Background(), acceptTimeout)
 			defer cancel()
 
-			err := srv.nodes.Accept(actx, gwConn)
+			err := srv.Nodes.Accept(actx, gwConn)
 			if err != nil {
 				return
 			}

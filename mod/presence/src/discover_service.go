@@ -52,20 +52,20 @@ func (srv *DiscoverService) Run(ctx context.Context) error {
 		}
 
 		if srv.config.AutoAdd {
-			_ = srv.nodes.AddEndpoint(ad.Identity, ad.Endpoint)
+			_ = srv.Nodes.AddEndpoint(ad.Identity, ad.Endpoint)
 		}
 
 		if !srv.config.TrustAliases || ad.Alias == "" {
 			continue
 		}
-		if _, err := srv.dir.GetAlias(ad.Identity); err == nil {
+		if _, err := srv.Dir.GetAlias(ad.Identity); err == nil {
 			continue
 		}
-		if _, err := srv.dir.Resolve(ad.Alias); err == nil {
+		if _, err := srv.Dir.Resolve(ad.Alias); err == nil {
 			continue
 		}
 
-		err = srv.dir.SetAlias(ad.Identity, ad.Alias)
+		err = srv.Dir.SetAlias(ad.Identity, ad.Alias)
 		if err != nil {
 			srv.log.Error("error setting alias '%v' for %v: %v", ad.Alias, ad.Identity.Fingerprint(), err)
 		} else {
@@ -112,7 +112,7 @@ func (srv *DiscoverService) readAd() (*Ad, error) {
 
 		hostPort := net.JoinHostPort(srcAddr.IP.String(), strconv.Itoa(msg.Port))
 
-		endpoint, err := srv.tcp.Parse("tcp", hostPort)
+		endpoint, err := srv.TCP.Parse("tcp", hostPort)
 		if err != nil {
 			panic(err)
 		}

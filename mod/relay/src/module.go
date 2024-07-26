@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -24,7 +25,16 @@ import (
 
 var _ relay.Module = &Module{}
 
+type Deps struct {
+	Admin   admin.Module
+	Content content.Module
+	Dir     dir.Module
+	Keys    keys.Module
+	Objects objects.Module
+}
+
 type Module struct {
+	Deps
 	*routers.PathRouter
 	node     astral.Node
 	assets   assets.Assets
@@ -34,10 +44,6 @@ type Module struct {
 	routes   map[string]id.Identity
 	routesMu sync.Mutex
 	db       *gorm.DB
-	objects  objects.Module
-	content  content.Module
-	keys     keys.Module
-	dir      dir.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -57,7 +63,7 @@ func (mod *Module) Save(cert *relay.Cert) (objectID object.ID, err error) {
 	}
 
 	// create storage writer
-	w, err := mod.objects.Create(nil)
+	w, err := mod.Objects.Create(nil)
 	if err != nil {
 		return
 	}
@@ -155,7 +161,7 @@ func (mod *Module) verifyIndex(objectID object.ID) error {
 		return nil
 	}
 
-	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
+	r, err := mod.Objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err == nil {
 		r.Close()
 		return nil

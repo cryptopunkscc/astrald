@@ -2,14 +2,16 @@ package apphost
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
 func (mod *Module) LoadDependencies() (err error) {
-	mod.content, _ = core.Load[content.Module](mod.node, content.ModuleName)
+	err = core.Inject(mod.node, &mod.Deps)
+	if err != nil {
+		return
+	}
 
-	mod.dir, err = core.Load[dir.Module](mod.node, dir.ModuleName)
+	mod.Admin.AddCommand(apphost.ModuleName, &Admin{mod: mod})
 
 	return
 }

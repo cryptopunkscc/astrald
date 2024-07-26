@@ -39,12 +39,12 @@ func (mod *Module) updateIdentityProfile(target id.Identity) error {
 	}
 
 	for _, pep := range profile.Endpoints {
-		ep, err := mod.exonet.Parse(pep.Network, pep.Address)
+		ep, err := mod.Exonet.Parse(pep.Network, pep.Address)
 		if err != nil {
 			continue
 		}
 
-		_ = mod.nodes.AddEndpoint(target, ep)
+		_ = mod.Nodes.AddEndpoint(target, ep)
 	}
 
 	mod.log.Info("%s profile updated.", target)

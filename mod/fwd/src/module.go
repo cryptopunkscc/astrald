@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tor"
@@ -14,7 +15,15 @@ import (
 	"sync"
 )
 
+type Deps struct {
+	Admin admin.Module
+	Dir   dir.Module
+	TCP   tcp.Module
+	Tor   tor.Module
+}
+
 type Module struct {
+	Deps
 	*routers.PathRouter
 	node    astral.Node
 	config  Config
@@ -22,9 +31,6 @@ type Module struct {
 	ctx     context.Context
 	servers map[*ServerRunner]struct{}
 	mu      sync.Mutex
-	tcp     tcp.Module
-	tor     tor.Module
-	dir     dir.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -129,7 +135,7 @@ func (mod *Module) parseTarget(uri string) (astral.Router, error) {
 			callerName := uri[:idx]
 			uri = uri[idx+1:]
 
-			caller, err = mod.dir.Resolve(callerName)
+			caller, err = mod.Dir.Resolve(callerName)
 			if err != nil {
 				return nil, err
 			}
@@ -139,7 +145,7 @@ func (mod *Module) parseTarget(uri string) (astral.Router, error) {
 			name := uri[:idx]
 			uri = uri[idx+1:]
 
-			target, err = mod.dir.Resolve(name)
+			target, err = mod.Dir.Resolve(name)
 			if err != nil {
 				return nil, err
 			}
@@ -152,19 +158,19 @@ func (mod *Module) parseTarget(uri string) (astral.Router, error) {
 		var query = astral.NewQuery(caller, target, uri)
 
 		var label = fmt.Sprintf("%s@%s:%s",
-			mod.dir.DisplayName(caller),
-			mod.dir.DisplayName(target),
+			mod.Dir.DisplayName(caller),
+			mod.Dir.DisplayName(target),
 			uri,
 		)
 
 		return NewAstralTarget(query, mod.node.Router(), label)
 
 	case "tor":
-		if mod.tor == nil {
+		if mod.Tor == nil {
 			return nil, errors.New("tor driver not found")
 		}
 
-		return NewTorTarget(mod.tor, uri, mod.node.Identity())
+		return NewTorTarget(mod.Tor, uri, mod.node.Identity())
 
 	default:
 		return nil, errors.New("unsupported protocol")

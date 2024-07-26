@@ -42,9 +42,9 @@ func (service *ProfileService) getLocalProfile() *proto.Profile {
 		Endpoints: []proto.Endpoint{},
 	}
 
-	p.Alias = service.dir.DisplayName(service.node.Identity())
+	p.Alias = service.Dir.DisplayName(service.node.Identity())
 
-	endpoints, _ := service.exonet.Resolve(context.Background(), service.node.Identity())
+	endpoints, _ := service.Exonet.Resolve(context.Background(), service.node.Identity())
 
 	for _, a := range endpoints {
 		p.Endpoints = append(p.Endpoints, proto.Endpoint{

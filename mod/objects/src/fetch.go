@@ -2,9 +2,9 @@ package objects
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"net/http"
@@ -18,7 +18,7 @@ func (mod *Module) fetch(addr string) (objectID object.ID, err error) {
 	case isARL(addr):
 		var a *arl.ARL
 
-		a, err = arl.Parse(addr, mod.dir)
+		a, err = arl.Parse(addr, mod.Dir)
 		if err != nil {
 			return
 		}

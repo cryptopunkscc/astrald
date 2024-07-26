@@ -101,7 +101,7 @@ func (mod *Module) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 }
 
 func (mod *Module) connectAt(ctx context.Context, remoteIdentity id.Identity, e exonet.Endpoint) error {
-	conn, err := mod.exonet.Dial(ctx, e)
+	conn, err := mod.Exonet.Dial(ctx, e)
 	if err != nil {
 		return err
 	}

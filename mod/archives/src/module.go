@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	events2 "github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
@@ -20,17 +21,21 @@ const zipMimeType = "application/zip"
 
 var _ archives.Module = &Module{}
 
+type Deps struct {
+	Admin   admin.Module
+	Auth    auth.Module
+	Content content.Module
+	Objects objects.Module
+	Shares  shares.Module
+}
+
 type Module struct {
+	Deps
 	config Config
 	node   astral.Node
 	events events2.Queue
 	log    *log.Logger
-
-	db      *gorm.DB
-	content content.Module
-	objects objects.Module
-	shares  shares.Module
-	auth    auth.Module
+	db     *gorm.DB
 
 	mu            sync.Mutex
 	autoIndexZone astral.Zone
@@ -43,7 +48,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		return mod.onObjectDiscovered(ctx, event)
 	})
 
-	for event := range mod.content.Scan(ctx, &content.ScanOpts{Type: zipMimeType}) {
+	for event := range mod.Content.Scan(ctx, &content.ScanOpts{Type: zipMimeType}) {
 		mod.Index(ctx, event.ObjectID, &objects.OpenOpts{Zone: mod.autoIndexZone})
 	}
 
@@ -51,7 +56,7 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) onObjectDiscovered(ctx context.Context, event objects.EventDiscovered) error {
-	info, _ := mod.content.Identify(event.ObjectID)
+	info, _ := mod.Content.Identify(event.ObjectID)
 	if info != nil && info.Type == zipMimeType {
 		archive, _ := mod.Index(
 			ctx,
@@ -126,7 +131,7 @@ func (mod *Module) open(zipID object.ID, path string, fileID object.ID, opts *ob
 
 func (mod *Module) openZip(objectID object.ID, opts *objects.OpenOpts) (*_zip.Reader, error) {
 	var r = &readerAt{
-		objects:  mod.objects,
+		objects:  mod.Objects,
 		objectID: objectID,
 		opts:     opts,
 	}

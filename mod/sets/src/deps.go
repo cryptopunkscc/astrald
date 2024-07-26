@@ -2,14 +2,16 @@ package sets
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 )
 
-func (mod *Module) LoadDependencies() error {
-	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(sets.ModuleName, NewAdmin(mod))
+func (mod *Module) LoadDependencies() (err error) {
+	err = core.Inject(mod.node, &mod.Deps)
+	if err != nil {
+		return
 	}
 
-	return nil
+	mod.Admin.AddCommand(sets.ModuleName, NewAdmin(mod))
+
+	return
 }

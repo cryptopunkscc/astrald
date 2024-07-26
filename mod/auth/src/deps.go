@@ -2,14 +2,16 @@ package auth
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
-func (mod *Module) LoadDependencies() error {
-	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(auth.ModuleName, NewAdmin(mod))
+func (mod *Module) LoadDependencies() (err error) {
+	err = core.Inject(mod.node, &mod.Deps)
+	if err != nil {
+		return
 	}
 
-	return nil
+	mod.Admin.AddCommand(auth.ModuleName, NewAdmin(mod))
+
+	return
 }

@@ -22,11 +22,11 @@ func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error
 	var err error
 	var endpoint Endpoint
 
-	endpoint.gate, err = mod.dir.Resolve(ids[0])
+	endpoint.gate, err = mod.Dir.Resolve(ids[0])
 	if err != nil {
 		return nil, err
 	}
-	endpoint.target, err = mod.dir.Resolve(ids[1])
+	endpoint.target, err = mod.Dir.Resolve(ids[1])
 	if err != nil {
 		return nil, err
 	}

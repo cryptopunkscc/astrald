@@ -48,7 +48,7 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 				continue
 			}
 
-			return auth.mod.auth.Authorize(identity, objects.ActionRead, zipID)
+			return auth.mod.Auth.Authorize(identity, objects.ActionRead, zipID)
 		}
 	}
 

@@ -5,7 +5,7 @@ import (
 )
 
 func (mod *Module) Prepare(ctx context.Context) error {
-	mod.exonet.AddResolver(mod)
+	mod.Exonet.AddResolver(mod)
 
 	return nil
 }

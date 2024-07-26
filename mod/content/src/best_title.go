@@ -12,7 +12,7 @@ import (
 )
 
 func (mod *Module) BestTitle(objectID object.ID) string {
-	descs := mod.objects.Describe(context.Background(), objectID, desc.DefaultOpts())
+	descs := mod.Objects.Describe(context.Background(), objectID, desc.DefaultOpts())
 
 	var m = map[string]*desc.Desc{}
 	for _, d := range descs {

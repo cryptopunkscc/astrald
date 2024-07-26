@@ -100,7 +100,7 @@ func (srv *AnnounceService) signedAdWithFlags(flags ...string) (*proto.Ad, error
 		}
 	}
 
-	ad.Sig, err = srv.keys.Sign(srv.node.Identity(), ad.Hash())
+	ad.Sig, err = srv.Keys.Sign(srv.node.Identity(), ad.Hash())
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (srv *AnnounceService) newAd() *proto.Ad {
 		Identity:  srv.node.Identity(),
 		Alias:     srv.myAlias(),
 		ExpiresAt: time.Now().Add(announceInterval),
-		Port:      srv.tcp.ListenPort(),
+		Port:      srv.TCP.ListenPort(),
 		Flags:     pad.flags.Clone(),
 	}
 }

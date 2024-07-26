@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
@@ -13,7 +14,12 @@ import (
 
 var _ sets.Module = &Module{}
 
+type Deps struct {
+	Admin admin.Module
+}
+
 type Module struct {
+	Deps
 	config Config
 	node   astral.Node
 	log    *log.Logger

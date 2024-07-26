@@ -54,7 +54,7 @@ func (adm *Admin) certs(term admin.Terminal, args []string) error {
 	)
 
 	for _, objectID := range objectIDs {
-		object, err := adm.mod.objects.Get(objectID, nil)
+		object, err := adm.mod.Objects.Get(objectID, nil)
 		if err != nil {
 			term.Printf("%v error: %v\n", objectID, err)
 			continue
@@ -89,13 +89,13 @@ func (adm *Admin) mkcert(term admin.Terminal, args []string) error {
 		return errors.New("missing arguments")
 	}
 
-	targetID, err := adm.mod.dir.Resolve(args[0])
+	targetID, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
 
 	if len(args) >= 2 {
-		relayID, err = adm.mod.dir.Resolve(args[1])
+		relayID, err = adm.mod.Dir.Resolve(args[1])
 		if err != nil {
 			return err
 		}

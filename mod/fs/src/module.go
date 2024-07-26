@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -27,7 +28,15 @@ var defaultOpenOpts = &objects.OpenOpts{}
 const workers = 1
 const updatesLen = 1024
 
+type Deps struct {
+	Admin   admin.Module
+	Content content.Module
+	Objects objects.Module
+	Sets    sets.Module
+}
+
 type Module struct {
+	Deps
 	config Config
 	node   astral.Node
 	assets assets.Assets
@@ -35,10 +44,6 @@ type Module struct {
 	events events.Queue
 	db     *gorm.DB
 	ctx    context.Context
-
-	objects objects.Module
-	content content.Module
-	sets    sets.Module
 
 	watcher *Watcher
 	updates chan sig.Task

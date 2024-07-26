@@ -25,7 +25,15 @@ var _ auth.Authorizer = &Module{}
 
 const ServiceName = "admin"
 
+type Deps struct {
+	Auth  auth.Module
+	Dir   dir.Module
+	Keys  keys.Module
+	Relay relay.Module
+}
+
 type Module struct {
+	Deps
 	config   Config
 	node     astral.Node
 	assets   assets.Assets
@@ -34,10 +42,6 @@ type Module struct {
 	log      *log.Logger
 	mu       sync.Mutex
 	ctx      context.Context
-	relay    relay.Module
-	keys     keys.Module
-	auth     auth.Module
-	dir      dir.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -58,7 +62,7 @@ func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller as
 	}
 
 	// check if the caller has access to the admin panel
-	if !mod.auth.Authorize(caller.Identity(), admin.ActionAccess) {
+	if !mod.Auth.Authorize(caller.Identity(), admin.ActionAccess) {
 		return astral.Reject()
 	}
 

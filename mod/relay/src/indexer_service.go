@@ -23,7 +23,7 @@ func (srv *IndexerService) Run(ctx context.Context) error {
 }
 
 func (srv *IndexerService) watchNewCerts(ctx context.Context) {
-	for event := range srv.content.Scan(ctx, &content.ScanOpts{Type: relay.CertType}) {
+	for event := range srv.Content.Scan(ctx, &content.ScanOpts{Type: relay.CertType}) {
 		err := srv.indexData(event.ObjectID)
 		switch {
 		case err == nil:

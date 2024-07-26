@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -13,7 +14,12 @@ import (
 	"strings"
 )
 
+type Deps struct {
+	Admin admin.Module
+}
+
 type Module struct {
+	Deps
 	config      Config
 	node        astral.Node
 	log         *log.Logger

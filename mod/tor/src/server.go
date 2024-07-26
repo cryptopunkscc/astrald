@@ -54,7 +54,7 @@ func (srv *Server) Run(ctx context.Context) error {
 		var conn = newConn(rawConn, nil, false)
 
 		go func() {
-			err := srv.nodes.Accept(ctx, conn)
+			err := srv.Nodes.Accept(ctx, conn)
 			if err != nil {
 				srv.log.Errorv(1, "handshake failed from %v: %v", conn.RemoteEndpoint(), err)
 			}

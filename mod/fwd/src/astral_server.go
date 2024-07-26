@@ -2,8 +2,8 @@ package fwd
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/id"
 	"strings"
 )
 
@@ -12,8 +12,8 @@ var _ Server = &AstralServer{}
 type AstralServer struct {
 	*Module
 	serviceName string
-	identity id.Identity
-	target   astral.Router
+	identity    id.Identity
+	target      astral.Router
 }
 
 func NewAstralServer(mod *Module, serviceName string, target astral.Router) (*AstralServer, error) {
@@ -26,7 +26,7 @@ func NewAstralServer(mod *Module, serviceName string, target astral.Router) (*As
 
 	if idx := strings.Index(serviceName, "@"); idx != -1 {
 		name := serviceName[:idx]
-		identity, err = mod.dir.Resolve(name)
+		identity, err = mod.Dir.Resolve(name)
 		if err != nil {
 			return nil, err
 		}

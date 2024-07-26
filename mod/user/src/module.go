@@ -25,22 +25,26 @@ import (
 
 var _ user.Module = &Module{}
 
+type Deps struct {
+	Admin   admin.Module
+	Apphost apphost.Module
+	Auth    auth.Module
+	Content content.Module
+	Dir     dir.Module
+	Objects objects.Module
+	Keys    keys.Module
+	Relay   relay.Module
+	Sets    sets.Module
+	Shares  shares.Module
+}
+
 type Module struct {
-	config  Config
-	node    astral.Node
-	log     *log.Logger
-	assets  assets.Assets
-	db      *gorm.DB
-	objects objects.Module
-	shares  shares.Module
-	content content.Module
-	relay   relay.Module
-	keys    keys.Module
-	admin   admin.Module
-	apphost apphost.Module
-	sets    sets.Module
-	dir     dir.Module
-	auth    auth.Module
+	Deps
+	config Config
+	node   astral.Node
+	log    *log.Logger
+	assets assets.Assets
+	db     *gorm.DB
 
 	*routers.PathRouter
 	userID         id.Identity
@@ -106,8 +110,8 @@ func (mod *Module) rescanContracts(ctx context.Context) error {
 		Type: (&user.NodeContract{}).ObjectType(),
 	}
 
-	for info := range mod.content.Scan(ctx, opts) {
-		contract, err := objects.Load[*user.NodeContract](ctx, mod.objects, info.ObjectID, astral.DefaultScope())
+	for info := range mod.Content.Scan(ctx, opts) {
+		contract, err := objects.Load[*user.NodeContract](ctx, mod.Objects, info.ObjectID, astral.DefaultScope())
 		if err != nil {
 			continue
 		}

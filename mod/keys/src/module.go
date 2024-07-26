@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -22,15 +23,20 @@ import (
 
 var _ keys.Module = &Module{}
 
+type Deps struct {
+	Admin   admin.Module
+	Content content.Module
+	Dir     dir.Module
+	Objects objects.Module
+}
+
 type Module struct {
-	config  Config
-	node    astral.Node
-	log     *log.Logger
-	assets  assets.Assets
-	objects objects.Module
-	content content.Module
-	db      *gorm.DB
-	dir     dir.Module
+	Deps
+	config Config
+	node   astral.Node
+	log    *log.Logger
+	assets assets.Assets
+	db     *gorm.DB
 }
 
 var ErrAlreadyIndexed = errors.New("already indexed")
@@ -43,7 +49,7 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) CreateKey(alias string) (identity id.Identity, objectID object.ID, err error) {
-	_, err = mod.dir.Resolve(alias)
+	_, err = mod.Dir.Resolve(alias)
 	if err == nil {
 		return identity, objectID, errors.New("alias already in use")
 	}
@@ -58,7 +64,7 @@ func (mod *Module) CreateKey(alias string) (identity id.Identity, objectID objec
 		return
 	}
 
-	err = mod.dir.SetAlias(identity, alias)
+	err = mod.Dir.SetAlias(identity, alias)
 
 	return
 }
@@ -73,7 +79,7 @@ func (mod *Module) SaveKey(key id.Identity) (object.ID, error) {
 		Bytes: key.PrivateKey().Serialize(),
 	}
 
-	w, err := mod.objects.Create(&objects.CreateOpts{Alloc: 70})
+	w, err := mod.Objects.Create(&objects.CreateOpts{Alloc: 70})
 	if err != nil {
 		return object.ID{}, err
 	}
@@ -103,7 +109,7 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 		return ErrAlreadyIndexed
 	}
 
-	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
+	r, err := mod.Objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return err
 	}
@@ -145,7 +151,7 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 }
 
 func (mod *Module) LoadPrivateKey(objectID object.ID) (*keys.PrivateKey, error) {
-	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
+	r, err := mod.Objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return nil, err
 	}

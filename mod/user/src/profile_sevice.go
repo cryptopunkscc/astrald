@@ -3,8 +3,8 @@ package user
 import (
 	"context"
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/id"
 )
 
 const userProfileServiceType = "user.profile"
@@ -28,7 +28,7 @@ func (srv *ProfileService) RouteQuery(ctx context.Context, query astral.Query, c
 }
 
 func (srv *ProfileService) getProfile(identity id.Identity) (p ProfileData) {
-	p.Alias = srv.dir.DisplayName(identity)
+	p.Alias = srv.Dir.DisplayName(identity)
 
 	return
 }

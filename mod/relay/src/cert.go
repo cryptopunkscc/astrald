@@ -19,7 +19,7 @@ func (mod *Module) indexData(objectID object.ID) error {
 		return relay.ErrCertAlreadyIndexed
 	}
 
-	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
+	r, err := mod.Objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (mod *Module) MakeCert(targetID id.Identity, relayID id.Identity, direction
 	}
 
 	// create a data writer
-	w, err := mod.objects.Create(nil)
+	w, err := mod.Objects.Create(nil)
 	if err != nil {
 		return object.ID{}, err
 	}
@@ -159,7 +159,7 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 	}
 
 	for _, certID := range certIDs {
-		bytes, err := mod.objects.Get(certID, nil)
+		bytes, err := mod.Objects.Get(certID, nil)
 		if err != nil {
 			mod.log.Errorv(2, "error reading %v: %v", certID, err)
 			continue
@@ -171,7 +171,7 @@ func (mod *Module) ReadCert(opts *relay.FindOpts) ([]byte, error) {
 }
 
 func (mod *Module) LoadCert(objectID object.ID) (*relay.Cert, error) {
-	r, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
+	r, err := mod.Objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return nil, err
 	}
@@ -239,13 +239,13 @@ func (mod *Module) makeCert(
 	}
 
 	// sign with target identity
-	cert.TargetSig, err = mod.keys.Sign(cert.TargetID, cert.Hash())
+	cert.TargetSig, err = mod.Keys.Sign(cert.TargetID, cert.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("error signing certificate with target key: %w", err)
 	}
 
 	// sign with relay identity
-	cert.RelaySig, err = mod.keys.Sign(relayID, cert.Hash())
+	cert.RelaySig, err = mod.Keys.Sign(relayID, cert.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("error signing certificate with relay key: %w", err)
 	}

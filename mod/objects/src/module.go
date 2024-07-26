@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -24,7 +25,16 @@ import (
 
 var _ objects.Module = &Module{}
 
+type Deps struct {
+	Admin   admin.Module
+	Auth    auth.Module
+	Content content.Module
+	Dir     dir.Module
+	Nodes   nodes.Module
+}
+
 type Module struct {
+	Deps
 	*routers.PathRouter
 	node   astral.Node
 	config Config
@@ -44,11 +54,6 @@ type Module struct {
 	receivers  sig.Set[objects.Receiver]
 
 	provider *Provider
-
-	content content.Module
-	nodes   nodes.Module
-	auth    auth.Module
-	dir     dir.Module
 }
 
 func (mod *Module) AddObject(a astral.Object) error {

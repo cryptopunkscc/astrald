@@ -3,9 +3,9 @@ package objects
 import (
 	"cmp"
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"slices"
 	"sync"
@@ -69,7 +69,7 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 }
 
 func (mod *Module) OpenAs(ctx context.Context, consumer id.Identity, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !mod.auth.Authorize(consumer, objects.ActionRead, objectID) {
+	if !mod.Auth.Authorize(consumer, objects.ActionRead, objectID) {
 		return nil, objects.ErrAccessDenied
 	}
 

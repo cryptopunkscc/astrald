@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -28,7 +29,16 @@ const workers = 8
 var _ shares.Module = &Module{}
 var _ objects.Describer = &Module{}
 
+type Deps struct {
+	Admin   admin.Module
+	Auth    auth.Module
+	Dir     dir.Module
+	Objects objects.Module
+	Sets    sets.Module
+}
+
 type Module struct {
+	Deps
 	*routers.PathRouter
 	config      Config
 	node        astral.Node
@@ -36,14 +46,9 @@ type Module struct {
 	assets      assets.Assets
 	db          *gorm.DB
 	authorizers sig.Set[DataAuthorizer]
-	objects     objects.Module
-	sets        sets.Module
-	auth        auth.Module
-	dir         dir.Module
 	notify      sig.Map[string, *Notification]
 	tasks       chan func(ctx context.Context)
-
-	shares *Provider
+	shares      *Provider
 }
 
 type Notification struct {
@@ -103,7 +108,7 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	}
 
 	for _, row := range rows {
-		remoteObjects, err := mod.objects.Connect(row.Caller, row.Target)
+		remoteObjects, err := mod.Objects.Connect(row.Caller, row.Target)
 		if err != nil {
 			continue
 		}
@@ -161,7 +166,7 @@ func (mod *Module) Authorize(identity id.Identity, objectID object.ID) error {
 }
 
 func (mod *Module) openExportSet(identity id.Identity) (sets.Set, error) {
-	return mod.sets.Open("export:"+identity.PublicKeyHex(), false)
+	return mod.Sets.Open("export:"+identity.PublicKeyHex(), false)
 }
 
 func (mod *Module) addAuthorizer(authorizer DataAuthorizer) error {

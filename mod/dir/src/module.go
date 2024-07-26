@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -19,7 +20,12 @@ var _ dir.Module = &Module{}
 
 const ZeroIdentity = "<anyone>"
 
+type Deps struct {
+	Admin admin.Module
+}
+
 type Module struct {
+	Deps
 	config Config
 	node   astral.Node
 	log    *log.Logger

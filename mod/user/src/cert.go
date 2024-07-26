@@ -12,7 +12,7 @@ import (
 
 func (mod *Module) loadCert(userID id.Identity, nodeID id.Identity, autoCreate bool) (cert []byte, err error) {
 	// get user certificate for local relay
-	cert, err = mod.relay.ReadCert(&relay.FindOpts{
+	cert, err = mod.Relay.ReadCert(&relay.FindOpts{
 		TargetID:  userID,
 		RelayID:   nodeID,
 		Direction: relay.Both,
@@ -27,13 +27,13 @@ func (mod *Module) loadCert(userID id.Identity, nodeID id.Identity, autoCreate b
 
 func (mod *Module) makeCert(userID id.Identity, nodeID id.Identity) (cert []byte, err error) {
 	mod.log.Info("generating certificate for %v@%v...", userID, nodeID)
-	certID, err := mod.relay.MakeCert(userID, nodeID, relay.Both, 0)
+	certID, err := mod.Relay.MakeCert(userID, nodeID, relay.Both, 0)
 	if err != nil {
 		mod.log.Info("error generating certificate for %v@%v: %v", userID, nodeID, err)
 		return
 	}
 
-	return mod.objects.Get(certID, objects.DefaultOpenOpts())
+	return mod.Objects.Get(certID, objects.DefaultOpenOpts())
 }
 
 func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
@@ -65,7 +65,7 @@ func (mod *Module) checkCert(relayID id.Identity, certBytes []byte) error {
 		return errors.New("relay mismatch")
 	}
 
-	mod.objects.Put(certBytes, nil)
+	mod.Objects.Put(certBytes, nil)
 
 	return nil
 }

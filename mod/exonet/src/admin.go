@@ -27,7 +27,7 @@ func (adm *Admin) resolve(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	identity, err := adm.mod.dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}

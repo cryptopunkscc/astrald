@@ -2,45 +2,21 @@ package shares
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 )
 
-func (mod *Module) LoadDependencies() error {
-	var err error
-
-	mod.objects, err = core.Load[objects.Module](mod.node, objects.ModuleName)
+func (mod *Module) LoadDependencies() (err error) {
+	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
-		return err
+		return
 	}
 
-	mod.sets, err = core.Load[sets.Module](mod.node, sets.ModuleName)
-	if err != nil {
-		return err
-	}
+	mod.Admin.AddCommand(shares.ModuleName, NewAdmin(mod))
 
-	mod.auth, err = core.Load[auth.Module](mod.node, auth.ModuleName)
-	if err != nil {
-		return err
-	}
+	mod.Auth.AddAuthorizer(&Authorizer{mod: mod})
 
-	mod.dir, err = core.Load[dir.Module](mod.node, dir.ModuleName)
-	if err != nil {
-		return err
-	}
+	mod.Objects.AddOpener(mod, 10)
+	mod.Objects.AddDescriber(mod)
 
-	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(shares.ModuleName, NewAdmin(mod))
-	}
-
-	mod.auth.AddAuthorizer(&Authorizer{mod: mod})
-
-	mod.objects.AddOpener(mod, 10)
-	mod.objects.AddDescriber(mod)
-
-	return err
+	return
 }

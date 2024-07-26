@@ -36,7 +36,7 @@ func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 	}
 
 	// read first bytes for type identification
-	dataReader, err := mod.objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
+	dataReader, err := mod.Objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +99,11 @@ func (mod *Module) getCache(objectID object.ID) *content.TypeInfo {
 }
 
 func (mod *Module) identifyFS() {
-	if mod.fs == nil {
+	if mod.FS == nil {
 		return
 	}
 
-	for _, file := range mod.fs.Find(nil) {
+	for _, file := range mod.FS.Find(nil) {
 		mod.Identify(file.ObjectID)
 	}
 }

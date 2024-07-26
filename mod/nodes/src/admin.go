@@ -69,7 +69,7 @@ func (adm *Admin) link(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	remoteID, err := adm.mod.dir.Resolve(args[0])
+	remoteID, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (adm *Admin) add(_ admin.Terminal, args []string) error {
 		return err
 	}
 
-	return adm.mod.dir.SetAlias(info.Identity, info.Alias)
+	return adm.mod.Dir.SetAlias(info.Identity, info.Alias)
 }
 
 func (adm *Admin) parse(term admin.Terminal, args []string) error {
@@ -148,7 +148,7 @@ func (adm *Admin) parse(term admin.Terminal, args []string) error {
 	var f = "%-10s %-40s\n"
 	term.Printf(f, admin.Header("Network"), admin.Header("Address"))
 	for _, ep := range info.Endpoints {
-		ep, err := adm.mod.exonet.Unpack(ep.Network(), ep.Pack())
+		ep, err := adm.mod.Exonet.Unpack(ep.Network(), ep.Pack())
 		if err != nil {
 			continue
 		}
@@ -165,7 +165,7 @@ func (adm *Admin) check(term admin.Terminal, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	identity, err := adm.mod.dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
@@ -184,18 +184,18 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	identity, err := adm.mod.dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
 
-	alias, _ := adm.mod.dir.GetAlias(identity)
+	alias, _ := adm.mod.Dir.GetAlias(identity)
 
 	term.Printf("%s (%s)\n", identity, admin.Faded(identity.String()))
 
 	// check private key
-	if adm.mod.keys != nil {
-		if _, err := adm.mod.keys.FindIdentity(identity.PublicKeyHex()); err == nil {
+	if adm.mod.Keys != nil {
+		if _, err := adm.mod.Keys.FindIdentity(identity.PublicKeyHex()); err == nil {
 			term.Printf("%s\n", admin.Important("private key available"))
 		}
 	}
@@ -206,7 +206,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 	var endpoints []exonet.Endpoint
 
 	if identity.IsEqual(adm.mod.node.Identity()) {
-		endpoints, _ = adm.mod.exonet.Resolve(context.Background(), adm.mod.node.Identity())
+		endpoints, _ = adm.mod.Exonet.Resolve(context.Background(), adm.mod.node.Identity())
 	} else {
 		endpoints = adm.mod.Endpoints(identity)
 	}
@@ -248,7 +248,7 @@ func (adm *Admin) endpoints(term admin.Terminal, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	identity, err := adm.mod.dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
@@ -257,7 +257,7 @@ func (adm *Admin) endpoints(term admin.Terminal, args []string) error {
 	var endpoints []exonet.Endpoint
 
 	if identity.IsEqual(adm.mod.node.Identity()) {
-		endpoints, _ = adm.mod.exonet.Resolve(context.Background(), adm.mod.node.Identity())
+		endpoints, _ = adm.mod.Exonet.Resolve(context.Background(), adm.mod.node.Identity())
 	} else {
 		endpoints = adm.mod.Endpoints(identity)
 	}
@@ -282,12 +282,12 @@ func (adm *Admin) addEndpoint(term admin.Terminal, args []string) error {
 		return errors.New("misisng arguments")
 	}
 
-	identity, err := adm.mod.dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
 
-	ep, err := adm.mod.exonet.Parse(args[1], args[2])
+	ep, err := adm.mod.Exonet.Parse(args[1], args[2])
 	if err != nil {
 		return err
 	}
@@ -308,12 +308,12 @@ func (adm *Admin) removeEndpoint(term admin.Terminal, args []string) error {
 		return errors.New("misisng arguments")
 	}
 
-	identity, err := adm.mod.dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
 
-	ep, err := adm.mod.exonet.Parse(args[1], args[2])
+	ep, err := adm.mod.Exonet.Parse(args[1], args[2])
 	if err != nil {
 		return err
 	}

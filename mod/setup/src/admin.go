@@ -31,7 +31,7 @@ func (adm *Admin) invite(term admin.Terminal, args []string) error {
 		return errors.New("cannot invite as node")
 	}
 
-	nodeID, err := adm.mod.dir.Resolve(args[0])
+	nodeID, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}

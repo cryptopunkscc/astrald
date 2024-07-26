@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -14,15 +15,19 @@ import (
 	"slices"
 )
 
+type Deps struct {
+	Admin   admin.Module
+	Content content.Module
+	Objects objects.Module
+}
+
 type Module struct {
+	Deps
 	config Config
 	node   astral.Node
 	db     *gorm.DB
 	log    *log.Logger
 	assets resources.Resources
-
-	content content.Module
-	objects objects.Module
 
 	audio *AudioIndexer
 
@@ -40,7 +45,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		return nil
 	})
 
-	for event := range mod.content.Scan(ctx, nil) {
+	for event := range mod.Content.Scan(ctx, nil) {
 		opts := desc.DefaultOpts()
 
 		if slices.Contains(mod.config.AutoIndexNet, event.Type) {
@@ -54,7 +59,7 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) []*desc.Desc {
-	info, err := mod.content.Identify(objectID)
+	info, err := mod.Content.Identify(objectID)
 	if err != nil {
 		return nil
 	}

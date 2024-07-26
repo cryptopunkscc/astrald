@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -19,13 +20,18 @@ import (
 
 var _ apphost.Module = &Module{}
 
+type Deps struct {
+	Admin   admin.Module
+	Content content.Module
+	Dir     dir.Module
+}
+
 type Module struct {
-	config  Config
-	node    astral.Node
-	content content.Module
-	dir     dir.Module
-	log     *log.Logger
-	db      *gorm.DB
+	Deps
+	config Config
+	node   astral.Node
+	log    *log.Logger
+	db     *gorm.DB
 
 	listeners []net.Listener
 	conns     <-chan net.Conn
@@ -62,7 +68,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	for _, run := range mod.config.Autorun {
 		run := run
 		go func() {
-			identity, err := mod.dir.Resolve(run.Identity)
+			identity, err := mod.Dir.Resolve(run.Identity)
 			if err != nil {
 				mod.log.Error("unknown identity: %s", run.Identity)
 				return

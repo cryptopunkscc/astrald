@@ -2,39 +2,17 @@ package nodes
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) LoadDependencies() error {
-	var err error
-
-	mod.exonet, err = core.Load[exonet.Module](mod.node, exonet.ModuleName)
+func (mod *Module) LoadDependencies() (err error) {
+	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
-		return err
+		return
 	}
 
-	mod.dir, err = core.Load[dir.Module](mod.node, dir.ModuleName)
-	if err != nil {
-		return err
-	}
+	mod.Admin.AddCommand(nodes.ModuleName, NewAdmin(mod))
+	mod.Dir.AddDescriber(mod)
 
-	mod.objects, err = core.Load[objects.Module](mod.node, objects.ModuleName)
-	if err != nil {
-		return err
-	}
-
-	if adm, err := core.Load[admin.Module](mod.node, admin.ModuleName); err == nil {
-		adm.AddCommand(nodes.ModuleName, NewAdmin(mod))
-	}
-
-	mod.keys, _ = core.Load[keys.Module](mod.node, keys.ModuleName)
-
-	mod.dir.AddDescriber(mod)
-
-	return nil
+	return
 }

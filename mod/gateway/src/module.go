@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
@@ -16,7 +15,14 @@ import (
 
 const NetworkName = "gw"
 
+type Deps struct {
+	Dir    dir.Module
+	Exonet exonet.Module
+	Nodes  nodes.Module
+}
+
 type Module struct {
+	Deps
 	*routers.PathRouter
 	config      Config
 	node        astral.Node
@@ -25,32 +31,6 @@ type Module struct {
 	dialer      *Dialer
 	subscribers map[string]*Subscriber
 	mu          sync.Mutex
-	nodes       nodes.Module
-	exonet      exonet.Module
-	dir         dir.Module
-}
-
-func (mod *Module) Prepare(ctx context.Context) (err error) {
-	mod.dir, err = core.Load[dir.Module](mod.node, dir.ModuleName)
-	if err != nil {
-		return
-	}
-
-	mod.nodes, err = core.Load[nodes.Module](mod.node, nodes.ModuleName)
-	if err != nil {
-		return
-	}
-
-	mod.exonet, err = core.Load[exonet.Module](mod.node, exonet.ModuleName)
-	if err != nil {
-		return
-	}
-
-	mod.exonet.SetDialer("gw", mod.dialer)
-	mod.exonet.SetUnpacker("gw", mod)
-	mod.exonet.SetParser("gw", mod)
-
-	return
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -59,20 +39,20 @@ func (mod *Module) Run(ctx context.Context) error {
 	for _, gateName := range mod.config.Subscribe {
 		var gateID id.Identity
 
-		if info, err := mod.nodes.ParseInfo(gateName); err == nil {
-			err = mod.nodes.AddEndpoint(info.Identity, info.Endpoints...)
+		if info, err := mod.Nodes.ParseInfo(gateName); err == nil {
+			err = mod.Nodes.AddEndpoint(info.Identity, info.Endpoints...)
 			if err != nil {
 				mod.log.Error("config error: endpoints: %v", err)
 				continue
 			}
-			err = mod.dir.SetAlias(info.Identity, info.Alias)
+			err = mod.Dir.SetAlias(info.Identity, info.Alias)
 			if err != nil {
 				mod.log.Error("config error: set alias: %v", err)
 				continue
 			}
 			gateID = info.Identity
 		} else {
-			gateID, err = mod.dir.Resolve(gateName)
+			gateID, err = mod.Dir.Resolve(gateName)
 			if err != nil {
 				mod.log.Error("config error: cannot resolve %s: %v", gateName, err)
 				continue

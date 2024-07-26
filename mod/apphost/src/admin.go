@@ -48,7 +48,7 @@ func (adm *Admin) newtoken(term admin.Terminal, args []string) error {
 		return errors.New("argument missing: identity")
 	}
 
-	identity, err := adm.mod.dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (adm *Admin) run(term admin.Terminal, args []string) error {
 	}
 
 	if name != "" {
-		identity, err = adm.mod.dir.Resolve(name)
+		identity, err = adm.mod.Dir.Resolve(name)
 		if err != nil {
 			return err
 		}
@@ -118,7 +118,7 @@ func (adm *Admin) ps(out admin.Terminal, args []string) error {
 	out.Printf("%-6s %-10s %-30s %s\n", "ID", "STATE", "NAME", "IDENTITY")
 
 	for i, e := range adm.mod.execs {
-		var identity = adm.mod.dir.DisplayName(e.identity)
+		var identity = adm.mod.Dir.DisplayName(e.identity)
 		var name = filepath.Base(e.path)
 
 		out.Printf("%-6d %-10s %-30s %s\n", i, e.State(), name, identity)

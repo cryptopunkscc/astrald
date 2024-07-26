@@ -16,12 +16,12 @@ func (cmd *CmdSudo) Exec(term admin.Terminal, args []string) error {
 		return cmd.help(term, nil)
 	}
 
-	targetID, err := cmd.mod.dir.Resolve(args[1])
+	targetID, err := cmd.mod.Dir.Resolve(args[1])
 	if err != nil {
 		return err
 	}
 
-	if !cmd.mod.auth.Authorize(term.UserIdentity(), admin.ActionSudo, targetID) {
+	if !cmd.mod.Auth.Authorize(term.UserIdentity(), admin.ActionSudo, targetID) {
 		return errors.New("unauthorized")
 	}
 

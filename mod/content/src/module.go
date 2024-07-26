@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -21,7 +22,14 @@ const identifySize = 4096
 const adcMethod = "adc"
 const mimetypeMethod = "mimetype"
 
+type Deps struct {
+	Admin   admin.Module
+	FS      fs.Module
+	Objects objects.Module
+}
+
 type Module struct {
+	Deps
 	node   astral.Node
 	config Config
 	log    *log.Logger
@@ -30,8 +38,6 @@ type Module struct {
 
 	prototypes sig.Map[string, desc.Data]
 	ongoing    sig.Map[string, chan struct{}]
-	objects    objects.Module
-	fs         fs.Module
 
 	ready chan struct{}
 }

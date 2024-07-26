@@ -70,19 +70,19 @@ func (d *SetupDialogue) createNewUser() error {
 	}
 
 	d.Say("Creating a new identity...")
-	identity, _, err := d.keys.CreateKey(alias)
+	identity, _, err := d.Keys.CreateKey(alias)
 	if err != nil {
 		return err
 	}
 
 	d.Say("Setting local user identity...")
-	err = d.user.SetUserID(identity)
+	err = d.User.SetUserID(identity)
 	if err != nil {
 		return err
 	}
 
 	d.Say("Generating access token...")
-	token, err := d.apphost.CreateAccessToken(identity)
+	token, err := d.Apphost.CreateAccessToken(identity)
 	if err != nil {
 		return err
 	}

@@ -2,10 +2,10 @@ package media
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/dhowden/tag"
 	"strings"
@@ -88,7 +88,7 @@ func (mod *AudioIndexer) Index(ctx context.Context, objectID object.ID, opts *ob
 }
 
 func (mod *AudioIndexer) scanObject(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (*media.Audio, error) {
-	r, err := mod.objects.Open(ctx, objectID, opts)
+	r, err := mod.Objects.Open(ctx, objectID, opts)
 	if err != nil {
 		return nil, err
 	}

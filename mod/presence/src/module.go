@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
@@ -22,7 +23,17 @@ import (
 
 var _ presence.Module = &Module{}
 
+type Deps struct {
+	Admin admin.Module
+	Auth  auth.Module
+	Dir   dir.Module
+	Keys  keys.Module
+	Nodes nodes.Module
+	TCP   tcp.Module
+}
+
 type Module struct {
+	Deps
 	*routers.PathRouter
 	node   astral.Node
 	config Config
@@ -30,15 +41,8 @@ type Module struct {
 	socket *net.UDPConn
 	events events.Queue
 
-	tcp  tcp.Module
-	keys keys.Module
-
 	visible    atomic.Bool
 	outFilters sig.Set[presence.AdOutHook]
-
-	auth  auth.Module
-	dir   dir.Module
-	nodes nodes.Module
 
 	discover *DiscoverService
 	announce *AnnounceService
@@ -122,7 +126,7 @@ func (mod *Module) RemoveHookAdOut(filterFunc presence.AdOutHook) error {
 }
 
 func (mod *Module) myAlias() string {
-	a, _ := mod.dir.GetAlias(mod.node.Identity())
+	a, _ := mod.Dir.GetAlias(mod.node.Identity())
 	return a
 }
 

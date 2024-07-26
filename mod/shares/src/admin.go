@@ -107,7 +107,7 @@ func (adm *Admin) rawsync(term admin.Terminal, args []string) error {
 		return errors.New("argument missing")
 	}
 
-	a, err := arl.Parse(args[0], adm.mod.dir)
+	a, err := arl.Parse(args[0], adm.mod.Dir)
 	if err != nil {
 		return err
 	}
@@ -237,7 +237,7 @@ func (adm *Admin) parseCallerAndTarget(targetName string, defaultCaller id.Ident
 	err error,
 ) {
 	if i := strings.IndexByte(targetName, '@'); i != -1 {
-		caller, err = adm.mod.dir.Resolve(targetName[:i])
+		caller, err = adm.mod.Dir.Resolve(targetName[:i])
 		if err != nil {
 			return
 		}
@@ -246,7 +246,7 @@ func (adm *Admin) parseCallerAndTarget(targetName string, defaultCaller id.Ident
 		caller = defaultCaller
 	}
 
-	target, err = adm.mod.dir.Resolve(targetName)
+	target, err = adm.mod.Dir.Resolve(targetName)
 
 	return
 }

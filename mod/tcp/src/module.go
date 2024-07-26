@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
@@ -14,13 +15,18 @@ import (
 
 var _ tcp.Module = &Module{}
 
+type Deps struct {
+	Admin  admin.Module
+	Nodes  nodes.Module
+	Exonet exonet.Module
+}
+
 type Module struct {
+	Deps
 	config          Config
 	node            astral.Node
 	log             *log.Logger
 	ctx             context.Context
-	nodes           nodes.Module
-	exonet          exonet.Module
 	publicEndpoints []exonet.Endpoint
 }
 

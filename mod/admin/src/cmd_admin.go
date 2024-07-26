@@ -63,7 +63,7 @@ func (cmd *CmdAdmin) add(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	identity, err := cmd.mod.dir.Resolve(args[0])
+	identity, err := cmd.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (cmd *CmdAdmin) remove(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	identity, err := cmd.mod.dir.Resolve(args[0])
+	identity, err := cmd.mod.Dir.Resolve(args[0])
 	if err != nil {
 		return err
 	}

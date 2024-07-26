@@ -10,7 +10,7 @@ import (
 
 func (mod *Module) Exec(identity id.Identity, path string, args []string, env []string) (*Exec, error) {
 	var token, _ = mod.CreateAccessToken(identity)
-	var log = mod.log.Tag(mod.dir.DisplayName(identity))
+	var log = mod.log.Tag(mod.Dir.DisplayName(identity))
 
 	e := &Exec{
 		identity: identity,
