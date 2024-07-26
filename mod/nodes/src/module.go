@@ -235,8 +235,14 @@ func (mod *Module) handlePing(s *Stream, f *frames.Ping) {
 }
 
 func (mod *Module) addStream(s *Stream) (err error) {
+	linked := mod.isLinked(s.RemoteIdentity())
+
 	err = mod.streams.Add(s)
 	if err == nil {
+		if !linked {
+			mod.node.Events().Emit(nodes.EventLinked{NodeID: s.RemoteIdentity()})
+		}
+
 		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
 		go func() {
 			for frame := range s.Read() {
@@ -252,17 +258,27 @@ func (mod *Module) addStream(s *Stream) (err error) {
 			}) {
 				c.Close()
 			}
+
+			if !mod.isLinked(s.RemoteIdentity()) {
+				mod.node.Events().Emit(nodes.EventUnlinked{NodeID: s.RemoteIdentity()})
+			}
 		}()
 	}
 
 	return
 }
 
-func (mod *Module) hasStream(remoteID id.Identity) bool {
+func (mod *Module) isLinked(remoteID id.Identity) bool {
 	for _, s := range mod.streams.Clone() {
 		if s.RemoteIdentity().IsEqual(remoteID) {
 			return true
 		}
 	}
 	return false
+}
+
+func byRemoteID(remoteID id.Identity) func(s *Stream) bool {
+	return func(s *Stream) bool {
+		return s.RemoteIdentity().IsEqual(remoteID)
+	}
 }

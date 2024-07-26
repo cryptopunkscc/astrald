@@ -64,5 +64,5 @@ func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller as
 }
 
 func (mod *Module) isRoutable(identity id.Identity) bool {
-	return mod.hasStream(identity) || mod.hasEndpoints(identity)
+	return mod.isLinked(identity) || mod.hasEndpoints(identity)
 }

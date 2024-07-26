@@ -169,7 +169,7 @@ func (mod *Module) connectAny(ctx context.Context, remoteIdentity id.Identity) e
 }
 
 func (mod *Module) ensureConnected(ctx context.Context, remoteIdentity id.Identity) error {
-	if mod.hasStream(remoteIdentity) {
+	if mod.isLinked(remoteIdentity) {
 		return nil
 	}
 
