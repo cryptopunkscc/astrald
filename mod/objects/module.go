@@ -39,6 +39,7 @@ type Module interface {
 	ReadObject(r io.Reader) (o astral.Object, err error)
 	AddReceiver(Receiver) error
 	Push(context.Context, id.Identity, astral.Object) error
+	PushLocal(astral.Object) error
 
 	// Store encodes the object to local storage
 	Store(context.Context, astral.Object) (object.ID, error)

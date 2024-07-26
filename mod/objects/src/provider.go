@@ -225,14 +225,7 @@ func (srv *Provider) Push(ctx context.Context, query astral.Query, caller astral
 			Object:   obj,
 		}
 
-		var ok = false
-		for _, r := range srv.mod.receivers.Clone() {
-			if r.Push(push) == nil {
-				ok = true
-			}
-		}
-
-		if !ok {
+		if !srv.mod.pushLocal(push) {
 			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), caller.Identity(), push.ObjectID)
 			binary.Write(conn, binary.BigEndian, false)
 			return

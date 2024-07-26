@@ -3,6 +3,7 @@ package astral
 import (
 	"encoding/binary"
 	"errors"
+	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
@@ -84,4 +85,19 @@ func ExpectHeader(reader io.Reader, header ObjectHeader) error {
 		return errors.New("header mismatch")
 	}
 	return nil
+}
+
+func ResolveObjectID(obj Object) (objectID object.ID, err error) {
+	w := object.NewWriteResolver(nil)
+	_, err = ObjectHeader(obj.ObjectType()).WriteTo(w)
+	if err != nil {
+		return
+	}
+
+	_, err = obj.WriteTo(w)
+	if err != nil {
+		return
+	}
+
+	return w.Resolve(), nil
 }
