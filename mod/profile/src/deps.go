@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (mod *Module) LoadDependencies() (err error) {
@@ -22,6 +23,13 @@ func (mod *Module) LoadDependencies() (err error) {
 	if err != nil {
 		return err
 	}
+
+	mod.objects, err = core.Load[objects.Module](mod.node, objects.ModuleName)
+	if err != nil {
+		return err
+	}
+
+	mod.objects.AddReceiver(mod)
 
 	return
 }

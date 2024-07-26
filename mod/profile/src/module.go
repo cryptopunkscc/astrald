@@ -8,20 +8,21 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
 const serviceName = ".profile"
-const serviceType = "node.profile"
 
 type Module struct {
 	*routers.PathRouter
-	node   astral.Node
-	log    *log.Logger
-	ctx    context.Context
-	nodes  nodes.Module
-	exonet exonet.Module
-	dir    dir.Module
+	node    astral.Node
+	log     *log.Logger
+	ctx     context.Context
+	nodes   nodes.Module
+	exonet  exonet.Module
+	dir     dir.Module
+	objects objects.Module
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -29,6 +30,5 @@ func (mod *Module) Run(ctx context.Context) error {
 
 	return tasks.Group(
 		&ProfileService{Module: mod},
-		&EventHandler{Module: mod},
 	).Run(ctx)
 }

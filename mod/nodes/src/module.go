@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/jxskiss/base62"
@@ -34,10 +35,11 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	exonet exonet.Module
-	dir    dir.Module
-	keys   keys.Module
-	db     *gorm.DB
+	exonet  exonet.Module
+	dir     dir.Module
+	keys    keys.Module
+	objects objects.Module
+	db      *gorm.DB
 
 	streams sig.Set[*Stream]
 	conns   sig.Map[astral.Nonce, *conn]
@@ -240,7 +242,7 @@ func (mod *Module) addStream(s *Stream) (err error) {
 	err = mod.streams.Add(s)
 	if err == nil {
 		if !linked {
-			mod.node.Events().Emit(nodes.EventLinked{NodeID: s.RemoteIdentity()})
+			mod.objects.PushLocal(&nodes.EventLinked{NodeID: s.RemoteIdentity()})
 		}
 
 		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
@@ -260,7 +262,7 @@ func (mod *Module) addStream(s *Stream) (err error) {
 			}
 
 			if !mod.isLinked(s.RemoteIdentity()) {
-				mod.node.Events().Emit(nodes.EventUnlinked{NodeID: s.RemoteIdentity()})
+				mod.objects.PushLocal(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()})
 			}
 		}()
 	}

@@ -1,26 +1,32 @@
 package profile
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 )
 
-type EventHandler struct {
-	*Module
+func (mod *Module) Push(push *objects.Push) error {
+	if !push.Source.IsEqual(mod.node.Identity()) {
+		return errors.New("rejected")
+	}
+
+	switch obj := push.Object.(type) {
+	case *nodes.EventLinked:
+		go mod.updateIdentityProfile(obj.NodeID)
+		return nil
+	}
+	return errors.New("rejected")
 }
 
-func (h *EventHandler) Run(ctx context.Context) error {
-	<-ctx.Done()
-	return nil
-}
+func (mod *Module) updateIdentityProfile(target id.Identity) error {
+	mod.log.Infov(2, "updating profile for %s", target)
 
-func (h *EventHandler) updateIdentityProfile(target id.Identity, serviceName string) error {
-	h.log.Infov(2, "updating profile for %s", target)
-
-	conn, err := astral.Route(h.ctx, h.node.Router(), astral.NewQuery(h.node.Identity(), target, serviceName))
+	conn, err := astral.Route(mod.ctx, mod.node.Router(), astral.NewQuery(mod.node.Identity(), target, serviceName))
 	if err != nil {
 		return err
 	}
@@ -33,15 +39,15 @@ func (h *EventHandler) updateIdentityProfile(target id.Identity, serviceName str
 	}
 
 	for _, pep := range profile.Endpoints {
-		ep, err := h.exonet.Parse(pep.Network, pep.Address)
+		ep, err := mod.exonet.Parse(pep.Network, pep.Address)
 		if err != nil {
 			continue
 		}
 
-		_ = h.nodes.AddEndpoint(target, ep)
+		_ = mod.nodes.AddEndpoint(target, ep)
 	}
 
-	h.log.Info("%s profile updated.", target)
+	mod.log.Info("%s profile updated.", target)
 
 	return nil
 }
