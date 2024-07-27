@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/media"
-	"github.com/cryptopunkscc/astrald/mod/relay"
 )
 
 const (
@@ -26,6 +25,5 @@ var defaultConfig = Config{
 		keys.KeyDesc{}.Type(),
 		(&media.Audio{}).Type(),
 		archives.ArchiveDesc{}.Type(),
-		relay.CertDesc{}.Type(),
 	},
 }

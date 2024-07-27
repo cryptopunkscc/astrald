@@ -15,7 +15,6 @@ They should only be used for extending low-level functionality of the node.
 | presence                         | discover other nodes in local networks                   |
 | profile                          | allows nodes to exchange their profiles                  |
 | reflectlink                      | provides link information to other nodes                 |
-| relay                            | lets identites relay queries for other identities        |
 | objects                          | provides objects APIs                                    |
 | tcp                              | TCP driver                                               |
 | tor                              | Tor driver                                               |

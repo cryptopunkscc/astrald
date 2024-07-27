@@ -14,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
-	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync"
 )
@@ -26,10 +25,9 @@ var _ auth.Authorizer = &Module{}
 const ServiceName = "admin"
 
 type Deps struct {
-	Auth  auth.Module
-	Dir   dir.Module
-	Keys  keys.Module
-	Relay relay.Module
+	Auth auth.Module
+	Dir  dir.Module
+	Keys keys.Module
 }
 
 type Module struct {

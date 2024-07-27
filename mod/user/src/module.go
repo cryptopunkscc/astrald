@@ -14,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/relay"
 	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -33,7 +32,6 @@ type Deps struct {
 	Dir     dir.Module
 	Objects objects.Module
 	Keys    keys.Module
-	Relay   relay.Module
 	Sets    sets.Module
 	Shares  shares.Module
 }
@@ -122,13 +120,7 @@ func (mod *Module) rescanContracts(ctx context.Context) error {
 }
 
 func (mod *Module) setUserID(userID id.Identity) error {
-	cert, err := mod.loadCert(userID, mod.node.Identity(), true)
-	if err != nil {
-		return err
-	}
-
 	mod.userID = userID
-	mod.userCert = cert
 
 	mod.log.Info("user identity set to %v", mod.userID)
 
