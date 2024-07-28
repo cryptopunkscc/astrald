@@ -45,12 +45,12 @@ func NewProvider(mod *Module) *Provider {
 	return srv
 }
 
-func (srv *Provider) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *Provider) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	return srv.router.RouteQuery(ctx, query, caller, hints)
 }
 
-func (srv *Provider) Read(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(query.Query())
+func (srv *Provider) Read(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+	_, params := core.ParseQuery(query.Query)
 
 	objectID, err := params.GetObjectID("id")
 	if err != nil {
@@ -70,7 +70,7 @@ func (srv *Provider) Read(ctx context.Context, query astral.Query, caller io.Wri
 		return astral.Reject()
 	}
 
-	r, err := srv.mod.OpenAs(ctx, query.Caller(), objectID, opts)
+	r, err := srv.mod.OpenAs(ctx, query.Caller, objectID, opts)
 	if err != nil {
 		srv.mod.log.Errorv(2, "open %v error: %v", objectID, err)
 		return astral.Reject()
@@ -84,8 +84,8 @@ func (srv *Provider) Read(ctx context.Context, query astral.Query, caller io.Wri
 	})
 }
 
-func (srv *Provider) Describe(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(query.Query())
+func (srv *Provider) Describe(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+	_, params := core.ParseQuery(query.Query)
 
 	objectID, err := params.GetObjectID("id")
 	if err != nil {
@@ -93,7 +93,7 @@ func (srv *Provider) Describe(ctx context.Context, query astral.Query, caller io
 		return astral.Reject()
 	}
 
-	if !srv.mod.Auth.Authorize(query.Caller(), objects.ActionRead, objectID) {
+	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionRead, objectID) {
 		return astral.Reject()
 	}
 
@@ -122,10 +122,10 @@ func (srv *Provider) Describe(ctx context.Context, query astral.Query, caller io
 	})
 }
 
-func (srv *Provider) Put(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(query.Query())
+func (srv *Provider) Put(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+	_, params := core.ParseQuery(query.Query)
 
-	if !srv.mod.Auth.Authorize(query.Caller(), objects.ActionWrite) {
+	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionWrite) {
 		return astral.Reject()
 	}
 
@@ -158,12 +158,12 @@ func (srv *Provider) Put(ctx context.Context, query astral.Query, caller io.Writ
 	})
 }
 
-func (srv *Provider) Search(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	if !srv.mod.Auth.Authorize(query.Caller(), objects.ActionSearch) {
+func (srv *Provider) Search(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionSearch) {
 		return astral.Reject()
 	}
 
-	_, params := core.ParseQuery(query.Query())
+	_, params := core.ParseQuery(query.Query)
 
 	q, ok := params["q"]
 	if !ok {
@@ -176,7 +176,7 @@ func (srv *Provider) Search(ctx context.Context, query astral.Query, caller io.W
 	}
 
 	matches = slices.DeleteFunc(matches, func(match objects.Match) bool {
-		return !srv.mod.Auth.Authorize(query.Caller(), objects.ActionRead, match.ObjectID)
+		return !srv.mod.Auth.Authorize(query.Caller, objects.ActionRead, match.ObjectID)
 	})
 
 	return astral.Accept(query, caller, func(conn astral.Conn) {
@@ -188,8 +188,8 @@ func (srv *Provider) Search(ctx context.Context, query astral.Query, caller io.W
 	})
 }
 
-func (srv *Provider) Push(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(query.Query())
+func (srv *Provider) Push(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+	_, params := core.ParseQuery(query.Query)
 
 	size, err := params.GetInt("size")
 	if err != nil {
@@ -207,33 +207,33 @@ func (srv *Provider) Push(ctx context.Context, query astral.Query, caller io.Wri
 		var buf = make([]byte, size)
 		_, err := io.ReadFull(conn, buf)
 		if err != nil {
-			srv.mod.log.Errorv(1, "%v push read error: %v", query.Caller(), err)
+			srv.mod.log.Errorv(1, "%v push read error: %v", query.Caller, err)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		obj, err := srv.mod.ReadObject(bytes.NewReader(buf))
 		if err != nil {
-			srv.mod.log.Errorv(1, "%v push read object error: %v", query.Caller(), err)
+			srv.mod.log.Errorv(1, "%v push read object error: %v", query.Caller, err)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		var push = &objects.Push{
-			Source:   query.Caller(),
+			Source:   query.Caller,
 			ObjectID: object.Resolve(buf),
 			Object:   obj,
 		}
 
 		if !srv.mod.pushLocal(push) {
-			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), query.Caller(), push.ObjectID)
+			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), query.Caller, push.ObjectID)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		binary.Write(conn, binary.BigEndian, true)
 
-		srv.mod.log.Infov(1, "received %s from %v (%v)", obj.ObjectType(), query.Caller(), push.ObjectID)
+		srv.mod.log.Infov(1, "received %s from %v (%v)", obj.ObjectType(), query.Caller, push.ObjectID)
 
 		return
 	})

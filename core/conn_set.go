@@ -81,7 +81,7 @@ func (set *ConnSet) FindByNonce(nonce astral.Nonce) *MonitoredConn {
 	defer set.mu.Unlock()
 
 	for _, conn := range set.items {
-		if conn.query.Nonce() == nonce {
+		if conn.query.Nonce == nonce {
 			return conn
 		}
 	}

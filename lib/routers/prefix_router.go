@@ -36,8 +36,8 @@ func NewPrefixRouter(exclusive bool) *PrefixRouter {
 	}
 }
 
-func (router *PrefixRouter) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	var baseQuery = query.Query()
+func (router *PrefixRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+	var baseQuery = query.Query
 	if router.EnableParams {
 		if i := strings.IndexByte(baseQuery, '?'); i != -1 {
 			baseQuery = baseQuery[:i]

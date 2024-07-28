@@ -30,12 +30,12 @@ func (srv *RouteService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *RouteService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	var targetKey string
 
 	switch {
-	case strings.HasPrefix(query.Query(), RouteServiceName+"."):
-		targetKey, _ = strings.CutPrefix(query.Query(), RouteServiceName+".")
+	case strings.HasPrefix(query.Query, RouteServiceName+"."):
+		targetKey, _ = strings.CutPrefix(query.Query, RouteServiceName+".")
 
 	default:
 		return astral.Reject()
@@ -46,8 +46,8 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, cal
 		return astral.Accept(query, caller, func(conn astral.Conn) {
 			gwConn := newConn(
 				conn,
-				NewEndpoint(query.Target(), query.Target()),
-				NewEndpoint(query.Caller(), query.Target()),
+				NewEndpoint(query.Target, query.Target),
+				NewEndpoint(query.Caller, query.Target),
 				false,
 			)
 
@@ -66,14 +66,14 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, cal
 		return astral.Reject()
 	}
 
-	nextQuery := astral.NewQueryNonce(
-		srv.node.Identity(),
-		targetIdentity,
-		query.Query(),
-		astral.NewNonce(),
-	)
+	nextQuery := &astral.Query{
+		Nonce:  astral.NewNonce(),
+		Caller: srv.node.Identity(),
+		Target: targetIdentity,
+		Query:  query.Query,
+	}
 
-	srv.log.Logv(2, "forwarding %v to %v", query.Caller(), targetIdentity)
+	srv.log.Logv(2, "forwarding %v to %v", query.Caller, targetIdentity)
 
 	return srv.router.RouteQuery(ctx, nextQuery, caller, astral.DefaultHints())
 }

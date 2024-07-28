@@ -51,17 +51,17 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	if !query.Target().IsEqual(mod.node.Identity()) {
+func (mod *Module) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+	if !query.Target.IsEqual(mod.node.Identity()) {
 		return astral.RouteNotFound(mod)
 	}
 
-	if query.Query() != "admin" {
+	if query.Query != "admin" {
 		return astral.RouteNotFound(mod)
 	}
 
 	// check if the caller has access to the admin panel
-	if !mod.Auth.Authorize(query.Caller(), admin.ActionAccess) {
+	if !mod.Auth.Authorize(query.Caller, admin.ActionAccess) {
 		return astral.Reject()
 	}
 

@@ -25,7 +25,7 @@ func NewTCPTarget(addr string, identiy id.Identity) (*TCPTarget, error) {
 	return tcp, nil
 }
 
-func (t *TCPTarget) RouteQuery(ctx context.Context, query astral.Query, src io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (t *TCPTarget) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	var dialer = _net.Dialer{}
 
 	conn, err := dialer.DialContext(ctx, "tcp", t.addr.String())
@@ -34,8 +34,8 @@ func (t *TCPTarget) RouteQuery(ctx context.Context, query astral.Query, src io.W
 	}
 
 	go func() {
-		io.Copy(src, conn)
-		src.Close()
+		io.Copy(caller, conn)
+		caller.Close()
 	}()
 
 	return conn, nil

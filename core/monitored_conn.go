@@ -21,7 +21,7 @@ type MonitoredConn struct {
 	id            int64
 	target        *MonitoredWriter
 	caller        *MonitoredWriter
-	query         astral.Query
+	query         *astral.Query
 	hints         astral.Hints
 	establishedAt time.Time
 
@@ -31,7 +31,7 @@ type MonitoredConn struct {
 	done         chan struct{}
 }
 
-func NewMonitoredConn(caller *MonitoredWriter, target *MonitoredWriter, query astral.Query, hints astral.Hints) *MonitoredConn {
+func NewMonitoredConn(caller *MonitoredWriter, target *MonitoredWriter, query *astral.Query, hints astral.Hints) *MonitoredConn {
 	conn := &MonitoredConn{
 		id:            nextConnID.Add(1),
 		query:         query,
@@ -76,11 +76,11 @@ func (conn *MonitoredConn) Caller() *MonitoredWriter {
 	return conn.caller
 }
 
-func (conn *MonitoredConn) Query() astral.Query {
+func (conn *MonitoredConn) Query() *astral.Query {
 	return conn.query
 }
 
-func (conn *MonitoredConn) SetQuery(query astral.Query) {
+func (conn *MonitoredConn) SetQuery(query *astral.Query) {
 	conn.query = query
 }
 

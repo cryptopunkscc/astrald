@@ -41,24 +41,24 @@ func NewRouter(log *log.Logger, eventParent *events.Queue) *Router {
 	return router
 }
 
-func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (target io.WriteCloser, err error) {
+func (r *Router) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (target io.WriteCloser, err error) {
 	var silent = hints.Silent
 
-	if !r.lockNonce(query.Nonce()) {
+	if !r.lockNonce(query.Nonce) {
 		if !hints.Reroute {
 			return astral.RouteNotFound(r, errors.New("routing cycle not allowed"))
 		}
 		silent = true
 	}
-	defer r.unlockNonce(query.Nonce())
+	defer r.unlockNonce(query.Nonce)
 
 	// log the start of routing
 	if !silent {
 		r.log.Logv(2, "[%v] %v -> %v:%v routing...",
-			query.Nonce(),
-			query.Caller(),
-			query.Target(),
-			query.Query(),
+			query.Nonce,
+			query.Caller,
+			query.Target,
+			query.Query,
 		)
 	}
 
@@ -66,7 +66,7 @@ func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller io.W
 
 	if hints.Reroute {
 		hints.Reroute = false
-		var conn = r.conns.FindByNonce(query.Nonce())
+		var conn = r.conns.FindByNonce(query.Nonce)
 		if conn == nil {
 			return nil, errors.New("rerouted nonce does not exist")
 		}
@@ -90,10 +90,10 @@ func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller io.W
 	if !silent {
 		if err != nil {
 			r.log.Infov(0, "[%v] %v -> %v:%v error (%v): %v",
-				query.Nonce(),
-				query.Caller(),
-				query.Target(),
-				query.Query(),
+				query.Nonce,
+				query.Caller,
+				query.Target,
+				query.Query,
 				d,
 				err,
 			)
@@ -102,17 +102,17 @@ func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller io.W
 				if rnf, ok := err.(*astral.ErrRouteNotFound); ok {
 					for _, line := range strings.Split(rnf.Trace(), "\n") {
 						if len(line) > 0 {
-							r.log.Logv(2, "[%v] %v", query.Nonce(), line)
+							r.log.Logv(2, "[%v] %v", query.Nonce, line)
 						}
 					}
 				}
 			}
 		} else {
 			r.log.Infov(0, "[%v] %v -> %v:%v routed in %v",
-				query.Nonce(),
-				query.Caller(),
-				query.Target(),
-				query.Query(),
+				query.Nonce,
+				query.Caller,
+				query.Target,
+				query.Query,
 				d,
 			)
 		}
@@ -121,9 +121,9 @@ func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller io.W
 	return target, err
 }
 
-func (r *Router) routeMonitored(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (target io.WriteCloser, err error) {
+func (r *Router) routeMonitored(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (target io.WriteCloser, err error) {
 	// monitor the caller
-	var callerMonitor = NewMonitoredWriter(caller, query.Caller())
+	var callerMonitor = NewMonitoredWriter(caller, query.Caller)
 
 	// prepare the en route connection
 	var conn = NewMonitoredConn(callerMonitor, nil, query, hints)
@@ -137,7 +137,7 @@ func (r *Router) routeMonitored(ctx context.Context, query astral.Query, caller 
 	}
 
 	// monitor the target
-	var targetMonitor = NewMonitoredWriter(target, query.Target())
+	var targetMonitor = NewMonitoredWriter(target, query.Target)
 	conn.SetTarget(targetMonitor)
 
 	r.events.Emit(EventConnAdded{Conn: conn})
@@ -152,7 +152,7 @@ func (r *Router) routeMonitored(ctx context.Context, query astral.Query, caller 
 	return targetMonitor, err
 }
 
-func (r *Router) routeQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (target io.WriteCloser, err error) {
+func (r *Router) routeQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (target io.WriteCloser, err error) {
 	if via, found := hints.Value(ViaRouterHintKey); found {
 		switch typed := via.(type) {
 		case astral.RouteQueryFunc:

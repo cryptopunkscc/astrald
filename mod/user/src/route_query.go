@@ -6,8 +6,8 @@ import (
 	"io"
 )
 
-func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	if !query.Target().IsEqual(mod.UserID()) {
+func (mod *Module) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+	if !query.Target.IsEqual(mod.UserID()) {
 		return astral.RouteNotFound(mod)
 	}
 

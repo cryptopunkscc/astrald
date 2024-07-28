@@ -30,15 +30,15 @@ func NewTorTarget(drv tor.Module, addr string, identiy id.Identity) (*TorTarget,
 	return t, nil
 }
 
-func (t *TorTarget) RouteQuery(ctx context.Context, query astral.Query, src io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (t *TorTarget) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	conn, err := t.tor.Dial(ctx, t.endpoint)
 	if err != nil {
 		return astral.Reject()
 	}
 
 	go func() {
-		io.Copy(src, conn)
-		src.Close()
+		io.Copy(caller, conn)
+		caller.Close()
 	}()
 
 	return conn, nil

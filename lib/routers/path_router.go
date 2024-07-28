@@ -30,14 +30,14 @@ func NewPathRouter(identity id.Identity, authority bool) *PathRouter {
 	}
 }
 
-func (router *PathRouter) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (router *PathRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	if !router.identity.IsZero() {
-		if !query.Target().IsEqual(router.identity) {
+		if !query.Target.IsEqual(router.identity) {
 			return astral.RouteNotFound(router)
 		}
 	}
 
-	var baseQuery = query.Query()
+	var baseQuery = query.Query
 
 	if i := strings.IndexByte(baseQuery, '?'); i != -1 {
 		baseQuery = baseQuery[:i]

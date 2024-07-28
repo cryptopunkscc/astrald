@@ -137,7 +137,12 @@ func (mod *Module) handleQuery(s *Stream, f *frames.Query) {
 	conn.stream = s
 	conn.wsize = int(f.Buffer)
 
-	var q = astral.NewQueryNonce(s.RemoteIdentity(), s.LocalIdentity(), f.Query, f.Nonce)
+	var q = &astral.Query{
+		Nonce:  f.Nonce,
+		Caller: s.RemoteIdentity(),
+		Target: s.LocalIdentity(),
+		Query:  f.Query,
+	}
 
 	w, err := mod.node.Router().RouteQuery(
 		context.Background(),

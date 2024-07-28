@@ -15,18 +15,18 @@ type RelayRouter struct {
 	identity id.Identity
 }
 
-func (fwd *RelayRouter) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (fwd *RelayRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	target, err := proto.Dial(fwd.target)
 	if err != nil {
-		fwd.log.Errorv(2, "%s:%s forward to %s: %s", query.Target(), query.Query(), fwd.target, err)
+		fwd.log.Errorv(2, "%s:%s forward to %s: %s", query.Target, query.Query, fwd.target, err)
 		return astral.Reject()
 	}
 
 	conn := proto.NewConn(target)
 
 	err = conn.WriteMsg(proto.InQueryParams{
-		Identity: query.Caller(),
-		Query:    query.Query(),
+		Identity: query.Caller,
+		Query:    query.Query,
 	})
 	if err != nil {
 		target.Close()

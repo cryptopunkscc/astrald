@@ -32,7 +32,7 @@ func (srv *SubscribeService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *SubscribeService) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *SubscribeService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	return astral.Accept(query, caller, func(conn astral.Conn) {
 		defer conn.Close()
 

@@ -16,7 +16,7 @@ type Guest struct {
 	count  atomic.Int32
 }
 
-func (guest *Guest) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (guest *Guest) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	return guest.router.RouteQuery(ctx, query, caller, hints)
 }
 

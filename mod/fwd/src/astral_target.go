@@ -7,12 +7,12 @@ import (
 )
 
 type AstralTarget struct {
-	query  astral.Query
+	query  *astral.Query
 	router astral.Router
 	label  string
 }
 
-func NewAstralTarget(query astral.Query, router astral.Router, label string) (*AstralTarget, error) {
+func NewAstralTarget(query *astral.Query, router astral.Router, label string) (*AstralTarget, error) {
 	return &AstralTarget{
 		query:  query,
 		router: router,
@@ -20,11 +20,11 @@ func NewAstralTarget(query astral.Query, router astral.Router, label string) (*A
 	}, nil
 }
 
-func (t *AstralTarget) RouteQuery(ctx context.Context, query astral.Query, src io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (t *AstralTarget) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	return t.router.RouteQuery(
 		ctx,
-		astral.NewQuery(t.query.Caller(), t.query.Target(), t.query.Query()),
-		src,
+		astral.NewQuery(t.query.Caller, t.query.Target, t.query.Query),
+		caller,
 		astral.DefaultHints(),
 	)
 }
