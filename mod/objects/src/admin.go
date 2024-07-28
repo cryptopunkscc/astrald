@@ -307,16 +307,9 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 	}
 
 	for _, match := range matches {
-		var name string
-
-		if adm.mod.Content != nil {
-			name = adm.mod.Content.BestTitle(match.ObjectID)
-		}
-
-		term.Printf("%-64s %v; %v\n",
+		term.Printf("%-64s %v\n",
 			match.ObjectID,
 			match.Exp,
-			name,
 		)
 	}
 
