@@ -87,7 +87,7 @@ func (s *Stream) Write(frame frames.Frame) (err error) {
 	return s.Stream.Write(frame)
 }
 
-func (s *Stream) Ping() time.Duration {
+func (s *Stream) Ping() (time.Duration, error) {
 	var nonce = astral.NewNonce()
 
 	p, ok := s.pings.Set(nonce, &Ping{
@@ -95,7 +95,7 @@ func (s *Stream) Ping() time.Duration {
 		pong:   make(chan struct{}),
 	})
 	if !ok {
-		return -1
+		return -1, errors.New("duplicate nonce")
 	}
 	defer s.pings.Delete(nonce)
 
@@ -103,15 +103,15 @@ func (s *Stream) Ping() time.Duration {
 		Nonce: nonce,
 	})
 	if err != nil {
-		return -1
+		return -1, err
 	}
 	p.sentAt = time.Now()
 
 	select {
 	case <-p.pong:
-		return time.Since(p.sentAt)
+		return time.Since(p.sentAt), nil
 	case <-time.After(pingTimeout):
-		return -1
+		return -1, errors.New("ping timeout")
 	}
 }
 
@@ -135,8 +135,8 @@ func (s *Stream) check() {
 				return
 			}
 
-			if s.Ping() == -1 {
-				s.CloseWithError(errors.New("ping timeout"))
+			if _, err := s.Ping(); err != nil {
+				s.CloseWithError(err)
 				return
 			}
 

@@ -249,8 +249,12 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 func (adm *Admin) ping(term admin.Terminal, args []string) error {
 	for _, s := range adm.mod.streams.Clone() {
 		term.Printf("%v... ", s.RemoteIdentity())
-		rtt := s.Ping()
-		term.Printf("%v\n", rtt)
+		rtt, err := s.Ping()
+		if err != nil {
+			term.Printf("%v\n", err)
+		} else {
+			term.Printf("%v\n", rtt)
+		}
 	}
 
 	return nil
