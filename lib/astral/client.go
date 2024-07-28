@@ -16,10 +16,6 @@ type ApphostClient struct {
 	token string
 }
 
-func (c *ApphostClient) Discovery() *Discovery {
-	return NewDiscovery(c)
-}
-
 var Client ApphostClient
 
 func NewClient(addr string, token string) *ApphostClient {
