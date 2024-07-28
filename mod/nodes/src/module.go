@@ -24,7 +24,7 @@ import (
 const DefaultWorkerCount = 8
 const infoPrefix = "node1"
 const featureMux2 = "mux2"
-const pingTimeout = time.Second * 15
+const pingTimeout = time.Second * 30
 
 type NodeInfo nodes.NodeInfo
 
@@ -110,7 +110,7 @@ func (mod *Module) frameReader(ctx context.Context) {
 			case *frames.Query:
 				go mod.handleQuery(frame.Source, f)
 			case *frames.Response:
-				go mod.handleResponse(frame.Source, f)
+				mod.handleResponse(frame.Source, f)
 			case *frames.Ping:
 				mod.handlePing(frame.Source, f)
 			case *frames.Data:

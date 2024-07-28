@@ -78,8 +78,14 @@ func (c *conn) Write(p []byte) (n int, err error) {
 			return
 		}
 
-		if c.state.Load() != stateOpen {
+		switch c.state.Load() {
+		case stateOpen:
+		case stateRouting:
+			c.wcond.Wait()
+			continue
+		default:
 			err = errors.New("invalid state")
+			return
 		}
 
 		if c.wsize == 0 {
