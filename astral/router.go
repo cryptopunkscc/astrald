@@ -3,13 +3,14 @@ package astral
 import (
 	"context"
 	"errors"
+	"io"
 )
 
 type Router interface {
-	RouteQuery(ctx context.Context, query Query, caller SecureWriteCloser, hints Hints) (SecureWriteCloser, error)
+	RouteQuery(ctx context.Context, query Query, caller io.WriteCloser, hints Hints) (io.WriteCloser, error)
 }
 
-type RouteQueryFunc func(context.Context, Query, SecureWriteCloser, Hints) (SecureWriteCloser, error)
+type RouteQueryFunc func(context.Context, Query, io.WriteCloser, Hints) (io.WriteCloser, error)
 
 var _ Router = NilRouter{}
 
@@ -17,7 +18,7 @@ type NilRouter struct {
 	Soft bool // return ErrRouteNotFound instead of ErrRejected
 }
 
-func (r NilRouter) RouteQuery(ctx context.Context, query Query, caller SecureWriteCloser, hints Hints) (SecureWriteCloser, error) {
+func (r NilRouter) RouteQuery(ctx context.Context, query Query, caller io.WriteCloser, hints Hints) (io.WriteCloser, error) {
 	if r.Soft {
 		return RouteNotFound(r, errors.New("nil router"))
 	}
@@ -25,19 +26,19 @@ func (r NilRouter) RouteQuery(ctx context.Context, query Query, caller SecureWri
 }
 
 // Accept accepts the query and runs the handler in a new goroutine.
-func Accept(query Query, src SecureWriteCloser, handler func(conn Conn)) (SecureWriteCloser, error) {
-	pipeReader, pipeWriter := SecurePipe(query.Target())
+func Accept(query Query, src io.WriteCloser, handler func(Conn)) (io.WriteCloser, error) {
+	pipeReader, pipeWriter := io.Pipe()
 
-	go handler(NewSecureConn(src, pipeReader, false))
+	go handler(newConn(query.Target(), query.Caller(), src, pipeReader, false))
 
 	return pipeWriter, nil
 }
 
-func Reject() (SecureWriteCloser, error) {
+func Reject() (io.WriteCloser, error) {
 	return nil, ErrRejected
 }
 
-func Abort() (SecureWriteCloser, error) {
+func Abort() (io.WriteCloser, error) {
 	return nil, ErrAborted
 }
 
@@ -49,17 +50,12 @@ func Route(ctx context.Context, router Router, query Query) (Conn, error) {
 }
 
 func RouteWithHints(ctx context.Context, router Router, query Query, hints Hints) (Conn, error) {
-	pipeReader, pipeWriter := SecurePipe(query.Caller())
+	pipeReader, pipeWriter := io.Pipe()
 
 	target, err := router.RouteQuery(ctx, query, pipeWriter, hints)
 	if err != nil {
 		return nil, err
 	}
 
-	if !query.Target().IsEqual(target.Identity()) {
-		target.Close()
-		return nil, errors.New("response identity mismatch")
-	}
-
-	return NewSecureConn(target, pipeReader, true), err
+	return newConn(query.Caller(), query.Target(), target, pipeReader, true), err
 }

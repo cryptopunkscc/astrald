@@ -45,11 +45,11 @@ func NewProvider(mod *Module) *Provider {
 	return srv
 }
 
-func (srv *Provider) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (srv *Provider) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	return srv.router.RouteQuery(ctx, query, caller, hints)
 }
 
-func (srv *Provider) Read(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (srv *Provider) Read(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query())
 
 	objectID, err := params.GetObjectID("id")
@@ -84,7 +84,7 @@ func (srv *Provider) Read(ctx context.Context, query astral.Query, caller astral
 	})
 }
 
-func (srv *Provider) Describe(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (srv *Provider) Describe(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query())
 
 	objectID, err := params.GetObjectID("id")
@@ -122,7 +122,7 @@ func (srv *Provider) Describe(ctx context.Context, query astral.Query, caller as
 	})
 }
 
-func (srv *Provider) Put(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (srv *Provider) Put(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query())
 
 	if !srv.mod.Auth.Authorize(query.Caller(), objects.ActionWrite) {
@@ -158,7 +158,7 @@ func (srv *Provider) Put(ctx context.Context, query astral.Query, caller astral.
 	})
 }
 
-func (srv *Provider) Search(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (srv *Provider) Search(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	if !srv.mod.Auth.Authorize(query.Caller(), objects.ActionSearch) {
 		return astral.Reject()
 	}
@@ -188,7 +188,7 @@ func (srv *Provider) Search(ctx context.Context, query astral.Query, caller astr
 	})
 }
 
-func (srv *Provider) Push(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (srv *Provider) Push(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query())
 
 	size, err := params.GetInt("size")
@@ -207,33 +207,33 @@ func (srv *Provider) Push(ctx context.Context, query astral.Query, caller astral
 		var buf = make([]byte, size)
 		_, err := io.ReadFull(conn, buf)
 		if err != nil {
-			srv.mod.log.Errorv(1, "%v push read error: %v", caller.Identity(), err)
+			srv.mod.log.Errorv(1, "%v push read error: %v", query.Caller(), err)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		obj, err := srv.mod.ReadObject(bytes.NewReader(buf))
 		if err != nil {
-			srv.mod.log.Errorv(1, "%v push read object error: %v", caller.Identity(), err)
+			srv.mod.log.Errorv(1, "%v push read object error: %v", query.Caller(), err)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		var push = &objects.Push{
-			Source:   caller.Identity(),
+			Source:   query.Caller(),
 			ObjectID: object.Resolve(buf),
 			Object:   obj,
 		}
 
 		if !srv.mod.pushLocal(push) {
-			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), caller.Identity(), push.ObjectID)
+			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), query.Caller(), push.ObjectID)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		binary.Write(conn, binary.BigEndian, true)
 
-		srv.mod.log.Infov(1, "received %s from %v (%v)", obj.ObjectType(), caller.Identity(), push.ObjectID)
+		srv.mod.log.Infov(1, "received %s from %v (%v)", obj.ObjectType(), query.Caller(), push.ObjectID)
 
 		return
 	})

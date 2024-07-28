@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,7 +20,7 @@ const (
 	stateClosed
 )
 
-var _ astral.SecureWriteCloser = &conn{}
+var _ io.WriteCloser = &conn{}
 
 type conn struct {
 	Nonce          astral.Nonce

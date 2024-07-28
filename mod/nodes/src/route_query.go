@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (w astral.SecureWriteCloser, err error) {
+func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (w io.WriteCloser, err error) {
 	if !mod.isRoutable(query.Target()) {
 		return astral.RouteNotFound(mod)
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -40,7 +41,7 @@ func NewRouter(log *log.Logger, eventParent *events.Queue) *Router {
 	return router
 }
 
-func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (target astral.SecureWriteCloser, err error) {
+func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (target io.WriteCloser, err error) {
 	var silent = hints.Silent
 
 	if !r.lockNonce(query.Nonce()) {
@@ -110,7 +111,7 @@ func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller astr
 			r.log.Infov(0, "[%v] %v -> %v:%v routed in %v",
 				query.Nonce(),
 				query.Caller(),
-				target.Identity(),
+				query.Target(),
 				query.Query(),
 				d,
 			)
@@ -120,9 +121,9 @@ func (r *Router) RouteQuery(ctx context.Context, query astral.Query, caller astr
 	return target, err
 }
 
-func (r *Router) routeMonitored(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (target astral.SecureWriteCloser, err error) {
+func (r *Router) routeMonitored(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (target io.WriteCloser, err error) {
 	// monitor the caller
-	var callerMonitor = NewMonitoredWriter(caller)
+	var callerMonitor = NewMonitoredWriter(caller, query.Caller())
 
 	// prepare the en route connection
 	var conn = NewMonitoredConn(callerMonitor, nil, query, hints)
@@ -136,7 +137,7 @@ func (r *Router) routeMonitored(ctx context.Context, query astral.Query, caller 
 	}
 
 	// monitor the target
-	var targetMonitor = NewMonitoredWriter(target)
+	var targetMonitor = NewMonitoredWriter(target, query.Target())
 	conn.SetTarget(targetMonitor)
 
 	r.events.Emit(EventConnAdded{Conn: conn})
@@ -151,7 +152,7 @@ func (r *Router) routeMonitored(ctx context.Context, query astral.Query, caller 
 	return targetMonitor, err
 }
 
-func (r *Router) routeQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (target astral.SecureWriteCloser, err error) {
+func (r *Router) routeQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (target io.WriteCloser, err error) {
 	if via, found := hints.Value(ViaRouterHintKey); found {
 		switch typed := via.(type) {
 		case astral.RouteQueryFunc:

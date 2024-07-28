@@ -108,7 +108,7 @@ func (mod *Module) frameReader(ctx context.Context) {
 		case frame := <-mod.in:
 			switch f := frame.Frame.(type) {
 			case *frames.Query:
-				mod.handleQuery(frame.Source, f)
+				go mod.handleQuery(frame.Source, f)
 			case *frames.Response:
 				go mod.handleResponse(frame.Source, f)
 			case *frames.Ping:
@@ -142,7 +142,7 @@ func (mod *Module) handleQuery(s *Stream, f *frames.Query) {
 	w, err := mod.node.Router().RouteQuery(
 		context.Background(),
 		q,
-		astral.NewSecurePipeWriter(conn, s.RemoteIdentity()),
+		conn,
 		astral.Hints{Origin: astral.OriginNetwork},
 	)
 

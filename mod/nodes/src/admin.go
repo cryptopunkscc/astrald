@@ -58,7 +58,12 @@ func (adm *Admin) streams(term admin.Terminal, args []string) error {
 	})
 
 	for _, s := range streams {
-		term.Printf("%-4d %-20s %v\n", s.id, s.RemoteIdentity(), s)
+		var d = "<"
+		if s.outbound {
+			d = ">"
+		}
+
+		term.Printf("%-4d %s %-20s %v\n", s.id, d, s.RemoteIdentity(), s)
 	}
 
 	return nil
@@ -99,11 +104,19 @@ func (adm *Admin) conns(term admin.Terminal, args []string) error {
 			continue
 		}
 
+		var d = "<"
+		if c.Outbound {
+			d = ">"
+		}
+
 		term.Printf(
-			"%v %-20s %-8s %v\n",
+			"%v %s %-20s %-8s %8d/%d %v\n",
 			c.Nonce,
+			d,
 			c.RemoteIdentity,
 			state,
+			c.rused,
+			c.rsize,
 			c.Query,
 		)
 	}

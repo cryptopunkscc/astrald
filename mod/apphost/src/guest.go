@@ -2,9 +2,10 @@ package apphost
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
-	"github.com/cryptopunkscc/astrald/astral"
+	"io"
 	"sync/atomic"
 )
 
@@ -15,7 +16,7 @@ type Guest struct {
 	count  atomic.Int32
 }
 
-func (guest *Guest) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (guest *Guest) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	return guest.router.RouteQuery(ctx, query, caller, hints)
 }
 

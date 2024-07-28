@@ -3,6 +3,7 @@ package fwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
+	"io"
 )
 
 type AstralTarget struct {
@@ -19,11 +20,11 @@ func NewAstralTarget(query astral.Query, router astral.Router, label string) (*A
 	}, nil
 }
 
-func (t *AstralTarget) RouteQuery(ctx context.Context, query astral.Query, src astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (t *AstralTarget) RouteQuery(ctx context.Context, query astral.Query, src io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	return t.router.RouteQuery(
 		ctx,
 		astral.NewQuery(t.query.Caller(), t.query.Target(), t.query.Query()),
-		astral.NewIdentityTranslation(src, t.query.Caller()),
+		src,
 		astral.DefaultHints(),
 	)
 }

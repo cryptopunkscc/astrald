@@ -2,39 +2,35 @@ package core
 
 import (
 	"github.com/cryptopunkscc/astrald/id"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 )
 
-var _ astral.SecureWriteCloser = &MonitoredWriter{}
-var _ astral.OutputGetter = &MonitoredWriter{}
-
 type MonitoredWriter struct {
-	*astral.SourceField
-	*astral.OutputField
+	io.WriteCloser
+	io.Reader
 	sig.Activity
+	identity   id.Identity
 	bytes      int
 	AfterWrite func(int, error)
 	AfterClose func(error)
 }
 
 func (w *MonitoredWriter) Identity() id.Identity {
-	return w.Output().Identity()
+	return w.identity
 }
 
-func NewMonitoredWriter(w astral.SecureWriteCloser) *MonitoredWriter {
-	m := &MonitoredWriter{
-		SourceField: astral.NewSourceField(nil),
+func NewMonitoredWriter(w io.WriteCloser, identity id.Identity) *MonitoredWriter {
+	return &MonitoredWriter{
+		WriteCloser: w,
+		identity:    identity,
 	}
-	m.OutputField = astral.NewOutputField(m, w)
-
-	return m
 }
 
 func (w *MonitoredWriter) Write(p []byte) (n int, err error) {
 	defer w.Touch()
 
-	n, err = w.Output().Write(p)
+	n, err = w.WriteCloser.Write(p)
 	w.bytes += n
 
 	if w.AfterWrite != nil {
@@ -46,7 +42,7 @@ func (w *MonitoredWriter) Write(p []byte) (n int, err error) {
 func (w *MonitoredWriter) Close() (err error) {
 	defer w.Touch()
 
-	err = w.Output().Close()
+	err = w.WriteCloser.Close()
 	if w.AfterClose != nil {
 		w.AfterClose(err)
 	}

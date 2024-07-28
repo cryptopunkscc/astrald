@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
+	"io"
 )
-
-const userProfileServiceType = "user.profile"
-const userProfileServiceName = "profile"
 
 type ProfileService struct {
 	*Module
@@ -18,7 +16,7 @@ type ProfileData struct {
 	Alias string `json:"alias"`
 }
 
-func (srv *ProfileService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (srv *ProfileService) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	return astral.Accept(query, caller, func(conn astral.Conn) {
 		defer conn.Close()
 

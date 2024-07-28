@@ -15,7 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
-	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
@@ -33,7 +32,6 @@ type Deps struct {
 	Objects objects.Module
 	Keys    keys.Module
 	Sets    sets.Module
-	Shares  shares.Module
 }
 
 type Module struct {

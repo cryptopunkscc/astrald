@@ -3,8 +3,9 @@ package routers
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/id"
+	"io"
 	"strings"
 	"sync"
 )
@@ -29,7 +30,7 @@ func NewPathRouter(identity id.Identity, authority bool) *PathRouter {
 	}
 }
 
-func (router *PathRouter) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (router *PathRouter) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	if !router.identity.IsZero() {
 		if !query.Target().IsEqual(router.identity) {
 			return astral.RouteNotFound(router)

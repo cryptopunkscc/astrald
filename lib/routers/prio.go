@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 )
 
 var _ astral.Router = &PriorityRouter{}
@@ -29,7 +30,7 @@ func NewPriorityRouter() *PriorityRouter {
 	return &PriorityRouter{}
 }
 
-func (router *PriorityRouter) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (w astral.SecureWriteCloser, err error) {
+func (router *PriorityRouter) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (w io.WriteCloser, err error) {
 	var errs []error
 
 	for _, r := range router.entries.Clone() {

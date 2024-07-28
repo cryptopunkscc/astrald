@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 )
@@ -26,7 +27,7 @@ type ErrRouteNotFound struct {
 	Fails  []error
 }
 
-func RouteNotFound(r Router, errors ...error) (SecureWriteCloser, error) {
+func RouteNotFound(r Router, errors ...error) (io.WriteCloser, error) {
 	return nil, &ErrRouteNotFound{
 		Router: r,
 		Fails:  errors,

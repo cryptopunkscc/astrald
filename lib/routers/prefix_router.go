@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"io"
 	"strings"
 	"sync"
 )
@@ -35,7 +36,7 @@ func NewPrefixRouter(exclusive bool) *PrefixRouter {
 	}
 }
 
-func (router *PrefixRouter) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (router *PrefixRouter) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	var baseQuery = query.Query()
 	if router.EnableParams {
 		if i := strings.IndexByte(baseQuery, '?'); i != -1 {

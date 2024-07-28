@@ -11,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"sync"
@@ -26,7 +25,6 @@ type Deps struct {
 	Auth    auth.Module
 	Content content.Module
 	Objects objects.Module
-	Shares  shares.Module
 }
 
 type Module struct {

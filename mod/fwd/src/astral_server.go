@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
+	"io"
 	"strings"
 )
 
@@ -52,13 +53,13 @@ func (srv *AstralServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *AstralServer) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (srv *AstralServer) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	dst, err := srv.target.RouteQuery(ctx, query, caller, hints)
 	if err != nil {
 		return nil, err
 	}
 
-	return astral.NewSecurePipeWriter(dst, srv.identity), nil
+	return dst, nil
 }
 
 func (srv *AstralServer) Target() astral.Router {

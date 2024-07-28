@@ -2,8 +2,8 @@ package fwd
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/id"
 	"io"
 	_net "net"
 )
@@ -25,7 +25,7 @@ func NewTCPTarget(addr string, identiy id.Identity) (*TCPTarget, error) {
 	return tcp, nil
 }
 
-func (t *TCPTarget) RouteQuery(ctx context.Context, query astral.Query, src astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (t *TCPTarget) RouteQuery(ctx context.Context, query astral.Query, src io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	var dialer = _net.Dialer{}
 
 	conn, err := dialer.DialContext(ctx, "tcp", t.addr.String())
@@ -38,7 +38,7 @@ func (t *TCPTarget) RouteQuery(ctx context.Context, query astral.Query, src astr
 		src.Close()
 	}()
 
-	return astral.NewSecurePipeWriter(conn, t.identity), nil
+	return conn, nil
 }
 
 func (t *TCPTarget) String() string {

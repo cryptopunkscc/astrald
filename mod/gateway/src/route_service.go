@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
+	"io"
 	"strings"
 	"time"
 )
@@ -29,7 +30,7 @@ func (srv *RouteService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	var targetKey string
 
 	switch {
@@ -65,23 +66,14 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query astral.Query, cal
 		return astral.Reject()
 	}
 
-	maskedQuery := astral.NewQueryNonce(
+	nextQuery := astral.NewQueryNonce(
 		srv.node.Identity(),
 		targetIdentity,
 		query.Query(),
-		query.Nonce(),
+		astral.NewNonce(),
 	)
-
-	maskedCaller := astral.NewIdentityTranslation(caller, srv.node.Identity())
 
 	srv.log.Logv(2, "forwarding %v to %v", query.Caller(), targetIdentity)
 
-	dst, err := srv.router.RouteQuery(ctx, maskedQuery, maskedCaller, hints.SetReroute())
-	if err != nil {
-		return nil, err
-	}
-
-	var maskedTarget = astral.NewIdentityTranslation(dst, srv.node.Identity())
-
-	return maskedTarget, nil
+	return srv.router.RouteQuery(ctx, nextQuery, caller, astral.DefaultHints())
 }

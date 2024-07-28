@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/presence"
-	"github.com/cryptopunkscc/astrald/mod/shares"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/object"
 )
@@ -45,7 +44,6 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 			objects.ActionWrite,
 			objects.ActionPurge,
 			objects.ActionSearch,
-			shares.DescribeAction,
 			presence.ScanAction:
 			return true
 		}

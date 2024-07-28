@@ -2,8 +2,8 @@ package fwd
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/id"
 	"io"
 	_net "net"
 	"strings"
@@ -53,9 +53,8 @@ func (srv *TCPServer) Run(ctx context.Context) error {
 
 		go func() {
 			var query = astral.NewQuery(id.Identity{}, id.Identity{}, "")
-			var src = astral.NewSecurePipeWriter(client, srv.node.Identity())
 
-			dst, err := srv.target.RouteQuery(ctx, query, src, astral.DefaultHints())
+			dst, err := srv.target.RouteQuery(ctx, query, client, astral.DefaultHints())
 			if err != nil {
 				client.Close()
 				return

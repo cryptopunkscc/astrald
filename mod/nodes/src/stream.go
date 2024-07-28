@@ -20,6 +20,7 @@ type Stream struct {
 	conn      astral.Conn
 	pings     sig.Map[astral.Nonce, *Ping]
 	checks    atomic.Int32
+	outbound  bool
 }
 
 type Ping struct {
@@ -27,12 +28,13 @@ type Ping struct {
 	pong   chan struct{}
 }
 
-func newStream(conn astral.Conn) *Stream {
+func newStream(conn astral.Conn, outbound bool) *Stream {
 	link := &Stream{
 		id:        int(lastStreamID.Add(1)),
 		conn:      conn,
 		createdAt: time.Now(),
 		Stream:    frames.NewStream(conn),
+		outbound:  outbound,
 	}
 
 	return link

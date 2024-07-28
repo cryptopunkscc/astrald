@@ -2,10 +2,10 @@ package fwd
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tor"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 )
 
@@ -30,7 +30,7 @@ func NewTorTarget(drv tor.Module, addr string, identiy id.Identity) (*TorTarget,
 	return t, nil
 }
 
-func (t *TorTarget) RouteQuery(ctx context.Context, query astral.Query, src astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (t *TorTarget) RouteQuery(ctx context.Context, query astral.Query, src io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	conn, err := t.tor.Dial(ctx, t.endpoint)
 	if err != nil {
 		return astral.Reject()
@@ -41,7 +41,7 @@ func (t *TorTarget) RouteQuery(ctx context.Context, query astral.Query, src astr
 		src.Close()
 	}()
 
-	return astral.NewSecurePipeWriter(conn, t.identity), nil
+	return conn, nil
 }
 
 func (t *TorTarget) String() string {

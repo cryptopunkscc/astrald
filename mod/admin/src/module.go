@@ -15,6 +15,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 	"sync"
 )
 
@@ -50,7 +51,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller astral.SecureWriteCloser, hints astral.Hints) (astral.SecureWriteCloser, error) {
+func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
 	if !query.Target().IsEqual(mod.node.Identity()) {
 		return astral.RouteNotFound(mod)
 	}
@@ -60,7 +61,7 @@ func (mod *Module) RouteQuery(ctx context.Context, query astral.Query, caller as
 	}
 
 	// check if the caller has access to the admin panel
-	if !mod.Auth.Authorize(caller.Identity(), admin.ActionAccess) {
+	if !mod.Auth.Authorize(query.Caller(), admin.ActionAccess) {
 		return astral.Reject()
 	}
 
