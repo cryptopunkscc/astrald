@@ -8,6 +8,6 @@ type Config struct {
 
 var defaultConfig = Config{
 	Subscribe: []string{
-		//defaultGateway,
+		defaultGateway,
 	},
 }
