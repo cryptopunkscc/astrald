@@ -14,7 +14,6 @@ type Module interface {
 	Forget(object.ID) error
 	Scan(ctx context.Context, opts *ScanOpts) <-chan *TypeInfo
 
-	BestTitle(object.ID) string
 	Ready(ctx context.Context) error
 }
 
