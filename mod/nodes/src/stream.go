@@ -15,12 +15,13 @@ var lastStreamID atomic.Int32
 
 type Stream struct {
 	*frames.Stream
-	id        int
-	createdAt time.Time
-	conn      astral.Conn
-	pings     sig.Map[astral.Nonce, *Ping]
-	checks    atomic.Int32
-	outbound  bool
+	id          int
+	createdAt   time.Time
+	conn        astral.Conn
+	pings       sig.Map[astral.Nonce, *Ping]
+	checks      atomic.Int32
+	outbound    bool
+	pingTimeout time.Duration
 }
 
 type Ping struct {
@@ -30,11 +31,12 @@ type Ping struct {
 
 func newStream(conn astral.Conn, outbound bool) *Stream {
 	link := &Stream{
-		id:        int(lastStreamID.Add(1)),
-		conn:      conn,
-		createdAt: time.Now(),
-		Stream:    frames.NewStream(conn),
-		outbound:  outbound,
+		id:          int(lastStreamID.Add(1)),
+		conn:        conn,
+		createdAt:   time.Now(),
+		Stream:      frames.NewStream(conn),
+		outbound:    outbound,
+		pingTimeout: defaultPingTimeout,
 	}
 
 	return link
@@ -110,18 +112,19 @@ func (s *Stream) Ping() (time.Duration, error) {
 	select {
 	case <-p.pong:
 		return time.Since(p.sentAt), nil
-	case <-time.After(pingTimeout):
+	case <-time.After(s.pingTimeout):
 		return -1, errors.New("ping timeout")
 	}
 }
 
-func (s *Stream) pong(nonce astral.Nonce) error {
+func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
 	p, ok := s.pings.Delete(nonce)
 	if !ok {
-		return errors.New("invalid nonce")
+		return -1, errors.New("invalid nonce")
 	}
+	d := time.Since(p.sentAt)
 	close(p.pong)
-	return nil
+	return d, nil
 }
 
 func (s *Stream) check() {

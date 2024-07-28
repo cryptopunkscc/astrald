@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"errors"
+	"flag"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -69,10 +70,21 @@ func (adm *Admin) streams(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) link(term admin.Terminal, args []string) error {
+func (adm *Admin) link(term admin.Terminal, args []string) (err error) {
 	if len(args) < 1 {
 		return errors.New("missing argument")
 	}
+
+	var onlyNet string
+
+	var f = flag.NewFlagSet("link", flag.ContinueOnError)
+	f.StringVar(&onlyNet, "n", "", "connect via this network only")
+	err = f.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	args = f.Args()
 
 	remoteID, err := adm.mod.Dir.Resolve(args[0])
 	if err != nil {
@@ -82,7 +94,14 @@ func (adm *Admin) link(term admin.Terminal, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	return adm.mod.ensureConnected(ctx, remoteID)
+	endpoints := adm.mod.Endpoints(remoteID)
+	if len(onlyNet) > 0 {
+		endpoints = slices.DeleteFunc(endpoints, func(e exonet.Endpoint) bool {
+			return e.Network() != onlyNet
+		})
+	}
+
+	return adm.mod.connectAny(ctx, remoteID, endpoints)
 }
 
 func (adm *Admin) conns(term admin.Terminal, args []string) error {
@@ -110,13 +129,14 @@ func (adm *Admin) conns(term admin.Terminal, args []string) error {
 		}
 
 		term.Printf(
-			"%v %s %-20s %-8s %8d/%d %v\n",
+			"%v %s %-20s %-8s %8d/%d %d %v\n",
 			c.Nonce,
 			d,
 			c.RemoteIdentity,
 			state,
 			c.rused,
 			c.rsize,
+			c.wsize,
 			c.Query,
 		)
 	}

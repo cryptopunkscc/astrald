@@ -12,7 +12,7 @@ import (
 )
 
 const maxPayloadSize = 8192
-const defaultBufferSize = 1024 * 1024
+const defaultBufferSize = 4 * 1024 * 1024
 
 const (
 	stateRouting = iota
@@ -95,14 +95,15 @@ func (c *conn) Write(p []byte) (n int, err error) {
 
 		var l = min(c.wsize, len(p), maxPayloadSize)
 
+		c.wcond.L.Unlock()
 		err = c.stream.Write(&frames.Data{
 			Nonce:   c.Nonce,
 			Payload: p[0:l],
 		})
+		c.wcond.L.Lock()
 		if err != nil {
 			return
 		}
-		c.stream.check()
 
 		c.wsize -= l
 		n = n + l

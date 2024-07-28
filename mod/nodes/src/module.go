@@ -24,7 +24,7 @@ import (
 const DefaultWorkerCount = 8
 const infoPrefix = "node1"
 const featureMux2 = "mux2"
-const pingTimeout = time.Second * 30
+const defaultPingTimeout = time.Second * 30
 
 type NodeInfo nodes.NodeInfo
 
@@ -229,9 +229,13 @@ func (mod *Module) handleReset(s *Stream, f *frames.Reset) {
 
 func (mod *Module) handlePing(s *Stream, f *frames.Ping) {
 	if f.Pong {
-		var err = s.pong(f.Nonce)
+		rtt, err := s.pong(f.Nonce)
 		if err != nil {
 			mod.log.Errorv(1, "invalid pong nonce from %v", s.RemoteIdentity())
+		} else {
+			if mod.config.LogPings {
+				mod.log.Logv(1, "ping with %v: %v", s.RemoteIdentity(), rtt)
+			}
 		}
 	} else {
 		s.Write(&frames.Ping{

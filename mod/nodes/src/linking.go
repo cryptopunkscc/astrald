@@ -114,11 +114,11 @@ func (mod *Module) connectAt(ctx context.Context, remoteIdentity id.Identity, e 
 	return nil
 }
 
-func (mod *Module) connectAny(ctx context.Context, remoteIdentity id.Identity) error {
-	var endpoints = sig.ArrayToChan(mod.Endpoints(remoteIdentity))
+func (mod *Module) connectAny(ctx context.Context, remoteIdentity id.Identity, endpoints []exonet.Endpoint) error {
+	var queue = sig.ArrayToChan(endpoints)
 
-	if len(endpoints) == 0 {
-		return errors.New("no known endpoints")
+	if len(queue) == 0 {
+		return errors.New("no endpoints provided")
 	}
 
 	var wg sync.WaitGroup
@@ -139,7 +139,7 @@ func (mod *Module) connectAny(ctx context.Context, remoteIdentity id.Identity) e
 				select {
 				case <-wctx.Done():
 					return
-				case e, ok = <-endpoints:
+				case e, ok = <-queue:
 					if !ok {
 						return
 					}
@@ -173,5 +173,5 @@ func (mod *Module) ensureConnected(ctx context.Context, remoteIdentity id.Identi
 		return nil
 	}
 
-	return mod.connectAny(ctx, remoteIdentity)
+	return mod.connectAny(ctx, remoteIdentity, mod.Endpoints(remoteIdentity))
 }
