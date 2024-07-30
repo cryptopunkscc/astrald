@@ -20,3 +20,25 @@ func (r *ReadCounter) Read(p []byte) (n int, err error) {
 func (r *ReadCounter) Total() int64 {
 	return r.n
 }
+
+type WriteCounter struct {
+	w io.Writer
+	n int64
+}
+
+func NewWriteCounter(w io.Writer) *WriteCounter {
+	if w == nil {
+		w = NilWriter{}
+	}
+	return &WriteCounter{w: w}
+}
+
+func (w *WriteCounter) Write(p []byte) (n int, err error) {
+	n, err = w.w.Write(p)
+	w.n += int64(n)
+	return
+}
+
+func (w *WriteCounter) Total() int64 {
+	return w.n
+}
