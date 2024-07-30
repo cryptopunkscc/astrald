@@ -28,11 +28,3 @@ func (node *Node) logEvent(e events.Event) {
 		node.log.Log("<%s>", reflect.TypeOf(e).String())
 	}
 }
-
-type EventConnAdded struct {
-	Conn *MonitoredConn
-}
-
-type EventConnRemoved struct {
-	Conn *MonitoredConn
-}

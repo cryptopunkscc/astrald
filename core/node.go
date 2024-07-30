@@ -79,7 +79,7 @@ func NewNode(nodeID id.Identity, res resources.Resources) (*Node, error) {
 	}
 
 	// router
-	node.router = NewRouter(node.log, &node.events)
+	node.router = NewRouter(node.log)
 	node.router.SetLogRouteTrace(node.config.LogRouteTrace)
 
 	return node, nil
