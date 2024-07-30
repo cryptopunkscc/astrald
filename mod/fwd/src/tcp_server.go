@@ -54,7 +54,7 @@ func (srv *TCPServer) Run(ctx context.Context) error {
 		go func() {
 			var query = astral.NewQuery(id.Identity{}, id.Identity{}, "")
 
-			dst, err := srv.target.RouteQuery(ctx, query, client, astral.DefaultHints())
+			dst, err := srv.target.RouteQuery(ctx, query, client)
 			if err != nil {
 				client.Close()
 				return

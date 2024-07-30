@@ -144,12 +144,9 @@ func (mod *Module) handleQuery(s *Stream, f *frames.Query) {
 		Query:  f.Query,
 	}
 
-	w, err := mod.node.Router().RouteQuery(
-		context.Background(),
-		q,
-		conn,
-		astral.Hints{Origin: astral.OriginNetwork},
-	)
+	q.Extra.Set("origin", astral.OriginNetwork)
+
+	w, err := mod.node.Router().RouteQuery(context.Background(), q, conn)
 
 	if err != nil {
 		conn.swapState(stateRouting, stateClosed)

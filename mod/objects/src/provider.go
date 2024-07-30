@@ -45,11 +45,11 @@ func NewProvider(mod *Module) *Provider {
 	return srv
 }
 
-func (srv *Provider) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	return srv.router.RouteQuery(ctx, query, caller, hints)
+func (srv *Provider) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
+	return srv.router.RouteQuery(ctx, query, caller)
 }
 
-func (srv *Provider) Read(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *Provider) Read(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query)
 
 	objectID, err := params.GetObjectID("id")
@@ -60,7 +60,7 @@ func (srv *Provider) Read(ctx context.Context, query *astral.Query, caller io.Wr
 
 	var opts = objects.DefaultOpenOpts()
 
-	if hints.Origin == astral.OriginLocal {
+	if o, ok := query.Extra.Get("origin"); ok && (o == astral.OriginLocal) {
 		opts.Zone |= astral.ZoneNetwork
 	}
 
@@ -84,7 +84,7 @@ func (srv *Provider) Read(ctx context.Context, query *astral.Query, caller io.Wr
 	})
 }
 
-func (srv *Provider) Describe(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *Provider) Describe(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query)
 
 	objectID, err := params.GetObjectID("id")
@@ -122,7 +122,7 @@ func (srv *Provider) Describe(ctx context.Context, query *astral.Query, caller i
 	})
 }
 
-func (srv *Provider) Put(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *Provider) Put(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query)
 
 	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionWrite) {
@@ -158,7 +158,7 @@ func (srv *Provider) Put(ctx context.Context, query *astral.Query, caller io.Wri
 	})
 }
 
-func (srv *Provider) Search(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *Provider) Search(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionSearch) {
 		return astral.Reject()
 	}
@@ -188,7 +188,7 @@ func (srv *Provider) Search(ctx context.Context, query *astral.Query, caller io.
 	})
 }
 
-func (srv *Provider) Push(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *Provider) Push(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query)
 
 	size, err := params.GetInt("size")

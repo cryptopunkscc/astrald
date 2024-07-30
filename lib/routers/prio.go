@@ -30,11 +30,11 @@ func NewPriorityRouter() *PriorityRouter {
 	return &PriorityRouter{}
 }
 
-func (router *PriorityRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (w io.WriteCloser, err error) {
+func (router *PriorityRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (w io.WriteCloser, err error) {
 	var errs []error
 
 	for _, r := range router.entries.Clone() {
-		w, err = r.Router.RouteQuery(ctx, query, caller, hints)
+		w, err = r.Router.RouteQuery(ctx, query, caller)
 		switch {
 		case err == nil:
 			return

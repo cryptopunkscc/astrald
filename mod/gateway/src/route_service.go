@@ -30,7 +30,7 @@ func (srv *RouteService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *RouteService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *RouteService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	var targetKey string
 
 	switch {
@@ -75,5 +75,5 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query *astral.Query, ca
 
 	srv.log.Logv(2, "forwarding %v to %v", query.Caller, targetIdentity)
 
-	return srv.router.RouteQuery(ctx, nextQuery, caller, astral.DefaultHints())
+	return srv.router.RouteQuery(ctx, nextQuery, caller)
 }

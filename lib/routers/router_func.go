@@ -12,8 +12,8 @@ type routerFunc struct {
 	fn astral.RouteQueryFunc
 }
 
-func (r *routerFunc) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	return r.fn(ctx, query, caller, hints)
+func (r *routerFunc) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
+	return r.fn(ctx, query, caller)
 }
 
 func Func(fn astral.RouteQueryFunc) astral.Router {

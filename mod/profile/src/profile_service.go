@@ -24,7 +24,7 @@ func (service *ProfileService) Run(ctx context.Context) error {
 	return err
 }
 
-func (service *ProfileService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (service *ProfileService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	return astral.Accept(query, caller, func(conn astral.Conn) {
 		service.serve(conn)
 	})

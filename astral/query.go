@@ -2,6 +2,7 @@ package astral
 
 import (
 	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 const OriginNetwork = "network"
@@ -12,6 +13,7 @@ type Query struct {
 	Caller id.Identity
 	Target id.Identity
 	Query  string
+	Extra  sig.Map[string, any]
 }
 
 // NewQuery returns a Query instance with a random Nonce.
@@ -22,4 +24,11 @@ func NewQuery(caller id.Identity, target id.Identity, query string) *Query {
 		Target: target,
 		Query:  query,
 	}
+}
+
+func GetExtra[T any](q *Query, key string) (v T, ok bool) {
+	if a, ok := q.Extra.Get(key); ok {
+		v, ok = a.(T)
+	}
+	return
 }

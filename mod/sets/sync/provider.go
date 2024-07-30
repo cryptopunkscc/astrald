@@ -18,7 +18,7 @@ func NewProvider(set sets.Set) *Provider {
 	return &Provider{set: set}
 }
 
-func (srv *Provider) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (srv *Provider) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query)
 
 	since, _ := params.GetUnixNano("since")

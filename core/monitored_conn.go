@@ -22,7 +22,6 @@ type MonitoredConn struct {
 	target        *MonitoredWriter
 	caller        *MonitoredWriter
 	query         *astral.Query
-	hints         astral.Hints
 	establishedAt time.Time
 
 	closeMu      sync.Mutex
@@ -31,11 +30,10 @@ type MonitoredConn struct {
 	done         chan struct{}
 }
 
-func NewMonitoredConn(caller *MonitoredWriter, target *MonitoredWriter, query *astral.Query, hints astral.Hints) *MonitoredConn {
+func NewMonitoredConn(caller *MonitoredWriter, target *MonitoredWriter, query *astral.Query) *MonitoredConn {
 	conn := &MonitoredConn{
 		id:            nextConnID.Add(1),
 		query:         query,
-		hints:         hints,
 		done:          make(chan struct{}),
 		establishedAt: time.Now(),
 	}
@@ -82,10 +80,6 @@ func (conn *MonitoredConn) Query() *astral.Query {
 
 func (conn *MonitoredConn) SetQuery(query *astral.Query) {
 	conn.query = query
-}
-
-func (conn *MonitoredConn) Hints() astral.Hints {
-	return conn.hints
 }
 
 func (conn *MonitoredConn) BytesOut() int {

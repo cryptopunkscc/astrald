@@ -53,8 +53,8 @@ func (srv *AstralServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *AstralServer) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
-	dst, err := srv.target.RouteQuery(ctx, query, caller, hints)
+func (srv *AstralServer) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
+	dst, err := srv.target.RouteQuery(ctx, query, caller)
 	if err != nil {
 		return nil, err
 	}

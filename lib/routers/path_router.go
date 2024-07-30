@@ -30,7 +30,7 @@ func NewPathRouter(identity id.Identity, authority bool) *PathRouter {
 	}
 }
 
-func (router *PathRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (router *PathRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	if !router.identity.IsZero() {
 		if !query.Target.IsEqual(router.identity) {
 			return astral.RouteNotFound(router)
@@ -53,7 +53,7 @@ func (router *PathRouter) RouteQuery(ctx context.Context, query *astral.Query, c
 		}
 	}
 
-	return route.RouteQuery(ctx, query, caller, hints)
+	return route.RouteQuery(ctx, query, caller)
 }
 
 // AddRoute adds a route to the router

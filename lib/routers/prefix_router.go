@@ -36,7 +36,7 @@ func NewPrefixRouter(exclusive bool) *PrefixRouter {
 	}
 }
 
-func (router *PrefixRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (router *PrefixRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	var baseQuery = query.Query
 	if router.EnableParams {
 		if i := strings.IndexByte(baseQuery, '?'); i != -1 {
@@ -54,7 +54,7 @@ func (router *PrefixRouter) RouteQuery(ctx context.Context, query *astral.Query,
 		}
 	}
 
-	return route.RouteQuery(ctx, query, caller, hints)
+	return route.RouteQuery(ctx, query, caller)
 }
 
 // AddRoute adds a route to the router

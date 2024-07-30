@@ -7,10 +7,10 @@ import (
 )
 
 type Router interface {
-	RouteQuery(ctx context.Context, query *Query, caller io.WriteCloser, hints Hints) (io.WriteCloser, error)
+	RouteQuery(ctx context.Context, query *Query, caller io.WriteCloser) (io.WriteCloser, error)
 }
 
-type RouteQueryFunc func(context.Context, *Query, io.WriteCloser, Hints) (io.WriteCloser, error)
+type RouteQueryFunc func(context.Context, *Query, io.WriteCloser) (io.WriteCloser, error)
 
 var _ Router = NilRouter{}
 
@@ -18,7 +18,7 @@ type NilRouter struct {
 	Soft bool // return ErrRouteNotFound instead of ErrRejected
 }
 
-func (r NilRouter) RouteQuery(ctx context.Context, query *Query, caller io.WriteCloser, hints Hints) (io.WriteCloser, error) {
+func (r NilRouter) RouteQuery(ctx context.Context, query *Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	if r.Soft {
 		return RouteNotFound(r, errors.New("nil router"))
 	}
@@ -46,13 +46,9 @@ func Abort() (io.WriteCloser, error) {
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...
 func Route(ctx context.Context, router Router, query *Query) (Conn, error) {
-	return RouteWithHints(ctx, router, query, DefaultHints())
-}
-
-func RouteWithHints(ctx context.Context, router Router, query *Query, hints Hints) (Conn, error) {
 	pipeReader, pipeWriter := io.Pipe()
 
-	target, err := router.RouteQuery(ctx, query, pipeWriter, hints)
+	target, err := router.RouteQuery(ctx, query, pipeWriter)
 	if err != nil {
 		return nil, err
 	}

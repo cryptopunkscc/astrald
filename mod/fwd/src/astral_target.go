@@ -20,12 +20,11 @@ func NewAstralTarget(query *astral.Query, router astral.Router, label string) (*
 	}, nil
 }
 
-func (t *AstralTarget) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser, hints astral.Hints) (io.WriteCloser, error) {
+func (t *AstralTarget) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	return t.router.RouteQuery(
 		ctx,
 		astral.NewQuery(t.query.Caller, t.query.Target, t.query.Query),
 		caller,
-		astral.DefaultHints(),
 	)
 }
 
