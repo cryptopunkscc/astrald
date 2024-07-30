@@ -84,7 +84,7 @@ type aligner struct {
 	post string
 }
 
-func (a aligner) PrintTo(printer *Printer) {
+func (a aligner) PrintTo(printer *Printer, renderer Renderer) {
 	wcount := streams.NewWriteCounter(nil)
 	printer.print(NewBasicTerminal(wcount), a.v)
 
@@ -100,24 +100,24 @@ func (a aligner) PrintTo(printer *Printer) {
 	if l <= m {
 		p = m - l
 	}
-	rnd := &cutRenderer{Renderer: printer.Renderer}
+	rnd := &cutRenderer{Renderer: renderer}
 	rnd.Limit = m
 	if (l > m) && r {
 		rnd.Skip = l - m
 	}
 	if r {
 		if len(a.pre) == 0 {
-			printer.Renderer.Text(strings.Repeat(" ", p))
+			renderer.Text(strings.Repeat(" ", p))
 		} else {
-			printer.Renderer.Text(strings.Repeat(a.pre, p))
+			renderer.Text(strings.Repeat(a.pre, p))
 		}
 	}
 	printer.PrintTo(rnd, a.v)
 	if !r {
 		if len(a.post) == 0 {
-			printer.Renderer.Text(strings.Repeat(" ", p))
+			renderer.Text(strings.Repeat(" ", p))
 		} else {
-			printer.Renderer.Text(strings.Repeat(a.post, p))
+			renderer.Text(strings.Repeat(a.post, p))
 		}
 	}
 }

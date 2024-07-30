@@ -26,7 +26,7 @@ type Printer struct {
 }
 
 type printerTo interface {
-	PrintTo(*Printer)
+	PrintTo(*Printer, Renderer)
 }
 
 func NewPrinter(r Renderer) *Printer {
@@ -55,7 +55,7 @@ func (p *Printer) PrintTo(r Renderer, v ...interface{}) {
 
 func (p *Printer) print(r Renderer, v any) {
 	if pto, ok := v.(printerTo); ok {
-		pto.PrintTo(p)
+		pto.PrintTo(p, r)
 		return
 	}
 
