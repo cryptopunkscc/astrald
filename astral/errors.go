@@ -1,11 +1,9 @@
 package astral
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
 )
 
@@ -35,29 +33,42 @@ func RouteNotFound(r Router, errors ...error) (io.WriteCloser, error) {
 }
 
 func (e *ErrRouteNotFound) Error() string {
-	return "route not found"
+	errs := e.SubErrs()
+	if len(errs) == 0 {
+		return "route not found"
+	}
+	var s []string
+	for _, err := range errs {
+		s = append(s, err.Error())
+	}
+
+	return fmt.Sprintf("route not found: %v", strings.Join(s, ", "))
 }
 
-func (e *ErrRouteNotFound) Trace() string {
-	var buf = &bytes.Buffer{}
+func (e *ErrRouteNotFound) SubErrs() (errs []error) {
+	e.Walk(func(_ Router, err error) error {
+		errs = append(errs, err)
+		return nil
+	})
+	return
+}
 
-	var p func(indent int, e *ErrRouteNotFound)
-
-	p = func(indent int, e *ErrRouteNotFound) {
-		in := strings.Repeat("  ", indent)
-		fmt.Fprintf(buf, "%s%s: %s (%d suberrors)\n", in, reflect.TypeOf(e.Router), e.Error(), len(e.Fails))
-		for _, sub := range e.Fails {
-			if rnf, ok := sub.(*ErrRouteNotFound); ok {
-				p(indent+1, rnf)
-			} else {
-				fmt.Fprintf(buf, "%s  %s\n", in, sub.Error())
+func (e *ErrRouteNotFound) Walk(fn func(Router, error) error) (err error) {
+	for _, sub := range e.Fails {
+		if rnf, ok := sub.(*ErrRouteNotFound); ok {
+			err = rnf.Walk(fn)
+			if err != nil {
+				return
 			}
+			continue
+		}
+		err = fn(e.Router, sub)
+		if err != nil {
+			return
 		}
 	}
 
-	p(0, e)
-
-	return string(buf.Bytes())
+	return nil
 }
 
 func (e *ErrRouteNotFound) Is(other error) bool {

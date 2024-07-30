@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
-	"strings"
 	"time"
 )
 
@@ -17,16 +16,17 @@ var _ astral.Router = &Router{}
 const routingTimeout = 60 * time.Second
 
 type Router struct {
+	node *Node
 	*routers.PriorityRouter
-	log           *log.Logger
-	conns         sig.Map[astral.Nonce, *conn]
-	logRouteTrace bool
+	log   *log.Logger
+	conns sig.Map[astral.Nonce, *conn]
 }
 
-func NewRouter(log *log.Logger) *Router {
+func NewRouter(node *Node) *Router {
 	var router = &Router{
+		node:           node,
+		log:            node.log,
 		PriorityRouter: routers.NewPriorityRouter(),
-		log:            log,
 	}
 
 	return router
@@ -34,33 +34,26 @@ func NewRouter(log *log.Logger) *Router {
 
 func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, caller io.WriteCloser) (target io.WriteCloser, err error) {
 	// log the start of routing
-	r.log.Logv(2, "[%v] %v -> %v:%v routing...",
-		q.Nonce, q.Caller, q.Target, q.Query,
-	)
+	if r.node.config.LogRoutingStart {
+		r.log.Logv(2, "[%v] %v -> %v:%v routing...",
+			q.Nonce, q.Caller, q.Target, q.Query,
+		)
+	}
 
 	var startedAt = time.Now()
 	target, err = r.routeQuery(ctx, q, caller)
 	var d = time.Since(startedAt).Round(1 * time.Microsecond)
 
 	// log routing results
-	if err != nil {
-		r.log.Infov(0, "[%v] %v -> %v:%v error (%v): %v",
-			q.Nonce, q.Caller, q.Target, q.Query, d, err,
-		)
-
-		if r.logRouteTrace {
-			if rnf, ok := err.(*astral.ErrRouteNotFound); ok {
-				for _, line := range strings.Split(rnf.Trace(), "\n") {
-					if len(line) > 0 {
-						r.log.Logv(2, "[%v] %v", q.Nonce, line)
-					}
-				}
-			}
-		}
-	} else {
+	if err == nil {
 		r.log.Infov(0, "[%v] %v -> %v:%v routed in %v",
 			q.Nonce, q.Caller, q.Target, q.Query, d,
 		)
+	} else {
+		r.log.Errorv(0, "[%v] %v -> %v:%v error (%v): %v",
+			q.Nonce, q.Caller, q.Target, q.Query, d, err,
+		)
+
 	}
 
 	return target, err
@@ -85,8 +78,4 @@ func (r *Router) routeQuery(ctx context.Context, q *astral.Query, src io.WriteCl
 	c.dst = newWriter(c, w)
 
 	return c.dst, nil
-}
-
-func (r *Router) SetLogRouteTrace(logRouteTrace bool) {
-	r.logRouteTrace = logRouteTrace
 }
