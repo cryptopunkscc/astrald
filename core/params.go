@@ -25,7 +25,6 @@ func (params Params) GetInt(key string) (int, error) {
 	}
 
 	return int(i), nil
-
 }
 
 func (params Params) GetUint64(key string) (uint64, error) {

@@ -20,6 +20,11 @@ type Router struct {
 	*routers.PriorityRouter
 	log   *log.Logger
 	conns sig.Map[astral.Nonce, *conn]
+	pre   sig.Set[QueryFilter]
+}
+
+type QueryFilter interface {
+	FilterQuery(*astral.Query) error
 }
 
 func NewRouter(node *Node) *Router {
@@ -32,7 +37,19 @@ func NewRouter(node *Node) *Router {
 	return router
 }
 
+func (r *Router) AddPreFilter(f QueryFilter) error {
+	return r.pre.Add(f)
+}
+
 func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, caller io.WriteCloser) (target io.WriteCloser, err error) {
+	// prefilter the query
+	for _, pf := range r.pre.Clone() {
+		err = pf.FilterQuery(q)
+		if err != nil {
+			return
+		}
+	}
+
 	// log the start of routing
 	if r.node.config.LogRoutingStart {
 		r.log.Logv(2, "[%v] %v -> %v:%v routing...",
