@@ -61,7 +61,7 @@ func (mod *Module) RouteQuery(ctx context.Context, query *astral.Query, caller i
 	}
 
 	// check if the caller has access to the admin panel
-	if !mod.Auth.Authorize(query.Caller, admin.ActionAccess) {
+	if !mod.Auth.Authorize(query.Caller, admin.ActionAccess, nil) {
 		return astral.Reject()
 	}
 

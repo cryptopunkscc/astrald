@@ -93,7 +93,7 @@ func (srv *Provider) Describe(ctx context.Context, query *astral.Query, caller i
 		return astral.Reject()
 	}
 
-	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionRead, objectID) {
+	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionRead, &objectID) {
 		return astral.Reject()
 	}
 
@@ -125,7 +125,7 @@ func (srv *Provider) Describe(ctx context.Context, query *astral.Query, caller i
 func (srv *Provider) Put(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(query.Query)
 
-	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionWrite) {
+	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionWrite, nil) {
 		return astral.Reject()
 	}
 
@@ -159,7 +159,7 @@ func (srv *Provider) Put(ctx context.Context, query *astral.Query, caller io.Wri
 }
 
 func (srv *Provider) Search(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionSearch) {
+	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionSearch, nil) {
 		return astral.Reject()
 	}
 
@@ -176,7 +176,7 @@ func (srv *Provider) Search(ctx context.Context, query *astral.Query, caller io.
 	}
 
 	matches = slices.DeleteFunc(matches, func(match objects.Match) bool {
-		return !srv.mod.Auth.Authorize(query.Caller, objects.ActionRead, match.ObjectID)
+		return !srv.mod.Auth.Authorize(query.Caller, objects.ActionRead, &match.ObjectID)
 	})
 
 	return astral.Accept(query, caller, func(conn astral.Conn) {

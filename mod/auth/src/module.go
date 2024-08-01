@@ -11,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"reflect"
-	"strings"
 )
 
 type Deps struct {
@@ -31,18 +30,20 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Authorize(identity id.Identity, action string, args ...any) bool {
+func (mod *Module) Authorize(identity id.Identity, action string, target astral.Object) bool {
 	for _, a := range mod.authorizers.Clone() {
-		if a.Authorize(identity, action, args...) {
+		if a.Authorize(identity, action, target) {
 			name := reflect.TypeOf(a).String()
 			if s, ok := a.(fmt.Stringer); ok {
 				name = s.String()
 			}
 
-			var fmt = "allowed %v to %v" + strings.Repeat(" %v", len(args)) + " by %v"
-			var vals = []any{identity, action}
-			vals = append(vals, args...)
-			vals = append(vals, name)
+			var fmt = "%v allowed %v to %v"
+			var vals = []any{name, identity, action}
+			if target != nil {
+				fmt += " on %v"
+				vals = append(vals, target.ObjectType())
+			}
 
 			mod.log.Infov(2, fmt, vals...)
 			return true

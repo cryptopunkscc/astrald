@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -8,7 +9,7 @@ import (
 
 var _ auth.Authorizer = &Module{}
 
-func (mod *Module) Authorize(identity id.Identity, action string, args ...any) bool {
+func (mod *Module) Authorize(identity id.Identity, action string, target astral.Object) bool {
 	switch action {
 	case admin.ActionAccess:
 		return mod.hasAccess(identity)

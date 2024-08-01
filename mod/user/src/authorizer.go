@@ -1,6 +1,7 @@
 package user
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -15,7 +16,7 @@ type Authorizer struct {
 	mod *Module
 }
 
-func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...any) bool {
+func (auth *Authorizer) Authorize(identity id.Identity, action string, target astral.Object) bool {
 	if identity.IsZero() {
 		return false
 	}
@@ -41,7 +42,7 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...a
 			objects.ActionWrite,
 			objects.ActionPurge,
 			objects.ActionSearch:
-			if auth.Authorize(owner, action, args...) {
+			if auth.Authorize(owner, action, target) {
 				return true
 			}
 		}

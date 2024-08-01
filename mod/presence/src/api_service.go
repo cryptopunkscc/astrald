@@ -27,7 +27,7 @@ func (srv *APIService) Run(ctx context.Context) error {
 }
 
 func (srv *APIService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	if !srv.mod.Auth.Authorize(query.Caller, presence.ScanAction) {
+	if !srv.mod.Auth.Authorize(query.Caller, presence.ScanAction, nil) {
 		return astral.Reject()
 	}
 
