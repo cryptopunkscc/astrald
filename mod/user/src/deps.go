@@ -16,6 +16,8 @@ func (mod *Module) LoadDependencies() (err error) {
 	mod.Auth.AddAuthorizer(&Authorizer{mod: mod})
 	mod.Dir.AddDescriber(mod)
 	mod.Objects.AddObject(&user.NodeContract{})
+	mod.Objects.AddObject(&user.SignedNodeContract{})
+	mod.Objects.AddReceiver(mod)
 
 	return
 }

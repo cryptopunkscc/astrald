@@ -1,7 +1,9 @@
 package user
 
 import (
+	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -14,11 +16,15 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"set":   adm.set,
-		"nodes": adm.nodes,
-		"owner": adm.owner,
-		"info":  adm.info,
-		"help":  adm.help,
+		"set":            adm.set,
+		"nodes":          adm.nodes,
+		"owner":          adm.owner,
+		"info":           adm.info,
+		"contacts":       adm.contacts,
+		"add_contact":    adm.addContact,
+		"rm_contact":     adm.rmContact,
+		"local_contract": adm.localContract,
+		"help":           adm.help,
 	}
 
 	return adm
@@ -52,6 +58,58 @@ func (adm *Admin) nodes(term admin.Terminal, args []string) error {
 	for _, node := range nodes {
 		term.Printf("%v\n", node)
 	}
+
+	return nil
+}
+
+func (adm *Admin) addContact(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	userID, err := adm.mod.Dir.Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.AddContact(userID)
+}
+
+func (adm *Admin) rmContact(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	userID, err := adm.mod.Dir.Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.RemoveContact(userID)
+}
+
+func (adm *Admin) contacts(term admin.Terminal, args []string) error {
+	for _, userID := range adm.mod.Contacts() {
+		term.Printf("%v\n", userID)
+	}
+	return nil
+}
+
+func (adm *Admin) localContract(term admin.Terminal, args []string) error {
+	c, err := adm.mod.LocalContract()
+	if err != nil {
+		return err
+	}
+
+	contractID, err := astral.ResolveObjectID(c)
+	if err != nil {
+		return err
+	}
+
+	j, _ := json.MarshalIndent(c, "", "  ")
+
+	term.Printf("%v\n", contractID)
+	term.Printf("%s\n", string(j))
 
 	return nil
 }

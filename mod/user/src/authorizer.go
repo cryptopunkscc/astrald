@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/user"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 var _ auth.Authorizer = &Authorizer{}
@@ -19,20 +18,6 @@ type Authorizer struct {
 func (auth *Authorizer) Authorize(identity id.Identity, action string, args ...any) bool {
 	if identity.IsZero() {
 		return false
-	}
-
-	// make our node contracts publicly available
-	if action == objects.ActionRead {
-		if len(args) > 0 {
-			if objectID, ok := args[0].(object.ID); ok {
-				cache := auth.mod.getCache(objectID)
-				if cache != nil {
-					if cache.UserID.IsEqual(auth.mod.UserID()) {
-						return true
-					}
-				}
-			}
-		}
 	}
 
 	// allow the user to perform whitelisted actions

@@ -1,7 +1,10 @@
 package user
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/id"
@@ -18,8 +21,11 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"time"
 )
+
+const assetLocalContract = "mod.user.local_contract"
 
 var _ user.Module = &Module{}
 
@@ -49,10 +55,7 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	go mod.rescanContracts(ctx)
-
 	<-ctx.Done()
-
 	return nil
 }
 
@@ -101,22 +104,6 @@ func (mod *Module) SetUserID(userID id.Identity) error {
 	return mod.storeUserID(userID)
 }
 
-func (mod *Module) rescanContracts(ctx context.Context) error {
-	opts := &content.ScanOpts{
-		Type: (&user.NodeContract{}).ObjectType(),
-	}
-
-	for info := range mod.Content.Scan(ctx, opts) {
-		contract, err := objects.Load[*user.NodeContract](ctx, mod.Objects, info.ObjectID, astral.DefaultScope())
-		if err != nil {
-			continue
-		}
-
-		mod.setCache(info.ObjectID, contract)
-	}
-	return nil
-}
-
 func (mod *Module) setUserID(userID id.Identity) error {
 	mod.userID = userID
 
@@ -125,31 +112,119 @@ func (mod *Module) setUserID(userID id.Identity) error {
 	return nil
 }
 
-func (mod *Module) setCache(objectID object.ID, contract *user.NodeContract) error {
-	if err := contract.Validate(); err != nil {
-		return err
-	}
-	return mod.db.Create(&dbNodeContract{
-		ObjectID:  objectID,
-		UserID:    contract.UserID,
-		NodeID:    contract.NodeID,
-		ExpiresAt: contract.ExpiresAt,
+func (mod *Module) AddContact(userID id.Identity) error {
+	return mod.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&dbContact{
+		UserID: userID,
 	}).Error
 }
 
-func (mod *Module) clearCache(objectID object.ID) error {
-	return mod.db.Where("object_id = ?", objectID).Delete(&dbNodeContract{}).Error
+func (mod *Module) RemoveContact(userID id.Identity) error {
+	return mod.db.Delete(&dbContact{UserID: userID}).Error
 }
 
-func (mod *Module) getCache(objectID object.ID) *user.NodeContract {
-	var row dbNodeContract
-	err := mod.db.First(&row, "object_id = ?", objectID).Error
+func (mod *Module) IsContact(userID id.Identity) (b bool) {
+	if userID.IsZero() {
+		return
+	}
+	mod.db.
+		Model(&dbContact{}).
+		Where("user_id = ?", userID).
+		Select("count(*) > 0").
+		First(&b)
+	return
+}
+
+func (mod *Module) Contacts() (contacts []id.Identity) {
+	mod.db.
+		Model(&dbContact{}).
+		Select("user_id").
+		Find(&contacts)
+	return
+}
+
+func (mod *Module) ContractExists(contractID object.ID) (b bool) {
+	mod.db.
+		Model(&dbNodeContract{}).
+		Where("object_id = ?", contractID).
+		Select("count(*) > 0").
+		First(&b)
+	return
+}
+
+func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error) {
+	contractID, err := astral.ResolveObjectID(c)
 	if err != nil {
+		return
+	}
+
+	// check if already saved
+	if mod.ContractExists(contractID) {
 		return nil
 	}
-	return &user.NodeContract{
-		UserID:    row.UserID,
-		NodeID:    row.NodeID,
-		ExpiresAt: row.ExpiresAt,
+
+	if c.IsExpired() {
+		return errors.New("contract expired")
 	}
+
+	if err = c.VerifySigs(); err != nil {
+		return fmt.Errorf("verify: %v", err)
+	}
+
+	return mod.db.Create(&dbNodeContract{
+		ObjectID:  contractID,
+		UserID:    c.UserID,
+		NodeID:    c.NodeID,
+		ExpiresAt: time.Time(c.ExpiresAt),
+	}).Error
+}
+
+func (mod *Module) LocalContract() (c *user.SignedNodeContract, err error) {
+	if b, err := mod.assets.Read(assetLocalContract); err == nil {
+		c = &user.SignedNodeContract{}
+		_, err = c.ReadFrom(bytes.NewReader(b))
+		if err == nil {
+			if !c.IsExpired() {
+				return c, nil
+			}
+		}
+	}
+
+	c = &user.SignedNodeContract{
+		NodeContract: &user.NodeContract{
+			UserID:    mod.UserID(),
+			NodeID:    mod.node.Identity(),
+			ExpiresAt: astral.Time(time.Now().Add(24 * time.Hour)),
+		},
+	}
+
+	// sign with node key
+	c.NodeSig, err = mod.Keys.Sign(c.NodeID, c.Hash())
+	if err != nil {
+		return
+	}
+
+	// sign with user key
+	c.UserSig, err = mod.Keys.Sign(c.UserID, c.Hash())
+	if err != nil {
+		return
+	}
+
+	var b = &bytes.Buffer{}
+	_, err = c.WriteTo(b)
+	if err != nil {
+		return
+	}
+
+	err = mod.SaveSignedNodeContract(c)
+	if err != nil {
+		return
+	}
+
+	_, err = mod.Objects.Store(context.Background(), c)
+	if err != nil {
+		return
+	}
+
+	err = mod.assets.Write(assetLocalContract, b.Bytes())
+	return
 }

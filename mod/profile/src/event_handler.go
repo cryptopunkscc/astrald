@@ -18,7 +18,6 @@ func (mod *Module) Push(push *objects.Push) error {
 	switch obj := push.Object.(type) {
 	case *nodes.EventLinked:
 		go mod.updateIdentityProfile(obj.NodeID)
-		return nil
 	}
 	return errors.New("rejected")
 }
