@@ -54,5 +54,8 @@ func (mod *Module) pushLocal(push *objects.Push) (ok bool) {
 			ok = true
 		}
 	}
+	if ok {
+		mod.Store(context.Background(), push.Object)
+	}
 	return
 }
