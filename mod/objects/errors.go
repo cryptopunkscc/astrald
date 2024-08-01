@@ -13,4 +13,5 @@ var (
 	ErrClosedPipe         = errors.New("pipe closed")
 	ErrAccessDenied       = errors.New("access denied")
 	ErrHashMismatch       = errors.New("hash mismatch (data corrupted?)")
+	ErrPushRejected       = errors.New("push rejected")
 )
