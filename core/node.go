@@ -88,6 +88,10 @@ func (node *Node) Router() astral.Router {
 	return node.router
 }
 
+func (node *Node) CoreRouter() *Router {
+	return node.router
+}
+
 func (node *Node) Modules() *Modules {
 	return node.modules
 }

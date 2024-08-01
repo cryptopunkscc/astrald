@@ -3,6 +3,8 @@ package core
 import (
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/object"
 	"strconv"
 	"strings"
@@ -27,6 +29,10 @@ func (params Params) GetInt(key string) (int, error) {
 	return int(i), nil
 }
 
+func (params Params) SetInt(key string, value int) {
+	params[key] = strconv.FormatInt(int64(value), 10)
+}
+
 func (params Params) GetUint64(key string) (uint64, error) {
 	v, found := params[key]
 	if !found {
@@ -41,8 +47,33 @@ func (params Params) GetUint64(key string) (uint64, error) {
 	return i, nil
 }
 
-func (params Params) SetInt(key string, value int) {
-	params[key] = strconv.FormatInt(int64(value), 10)
+func (params Params) GetNonce(key string) (astral.Nonce, error) {
+	v, found := params[key]
+	if !found {
+		return 0, ErrKeyNotFound
+	}
+
+	if len(v) != 16 {
+		return 0, errors.New("invalid nonce length")
+	}
+
+	i, err := strconv.ParseUint(v, 16, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse error: %w", err)
+	}
+
+	return astral.Nonce(i), nil
+}
+
+func (params Params) SetNonce(key string, n astral.Nonce) {
+	s := strconv.FormatUint(uint64(n), 16)
+
+	// add padding
+	if len(s) < 16 {
+		s = strings.Repeat("0", 16-len(s)) + s
+	}
+
+	params[key] = s
 }
 
 func (params Params) GetObjectID(key string) (object.ID, error) {
@@ -57,6 +88,19 @@ func (params Params) GetObjectID(key string) (object.ID, error) {
 	}
 
 	return id, nil
+}
+
+func (params Params) GetIdentity(key string) (i id.Identity, err error) {
+	v, found := params[key]
+	if !found {
+		return i, ErrKeyNotFound
+	}
+
+	return id.ParsePublicKeyHex(v)
+}
+
+func (params Params) SetIdentity(key string, i id.Identity) {
+	params[key] = i.PublicKeyHex()
 }
 
 func (params Params) GetUnixNano(key string) (time.Time, error) {
