@@ -278,11 +278,13 @@ func (mod *Module) update(path string) (object.ID, error) {
 			Save(updated).
 			Error
 		if err == nil {
-			mod.events.Emit(fs.EventFileChanged{
-				Path:  updated.Path,
-				OldID: row.DataID,
-				NewID: updated.DataID,
-			})
+			if !row.DataID.IsEqual(updated.DataID) {
+				mod.events.Emit(fs.EventFileChanged{
+					Path:  updated.Path,
+					OldID: row.DataID,
+					NewID: updated.DataID,
+				})
+			}
 		}
 	}
 
