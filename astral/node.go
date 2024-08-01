@@ -7,7 +7,7 @@ import (
 
 // Node defines the basic interface of an astral node
 type Node interface {
+	Router
 	Identity() id.Identity
-	Router() Router
 	Events() *events.Queue
 }

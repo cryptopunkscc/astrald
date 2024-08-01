@@ -180,7 +180,7 @@ func (m *Modules) loadModule(name string) error {
 	m.loaded[name] = mod
 
 	if r, ok := mod.(astral.Router); ok {
-		m.node.router.Add(r, 0)
+		m.node.Add(r, 0)
 	}
 
 	return nil

@@ -45,7 +45,7 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opt
 		),
 	)
 
-	conn, err := astral.Route(ctx, c.mod.node.Router(), query)
+	conn, err := astral.Route(ctx, c.mod.node, query)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 
 	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodRead, params))
 
-	conn, err := astral.Route(ctx, c.mod.node.Router(), query)
+	conn, err := astral.Route(ctx, c.mod.node, query)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
 
 	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodPut, params))
 
-	conn, err := astral.Route(ctx, c.mod.node.Router(), query)
+	conn, err := astral.Route(ctx, c.mod.node, query)
 	if err != nil {
 		return object.ID{}, err
 	}
@@ -153,7 +153,7 @@ func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Matc
 
 	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodSearch, params))
 
-	conn, err := astral.Route(ctx, c.mod.node.Router(), query)
+	conn, err := astral.Route(ctx, c.mod.node, query)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (c *Consumer) Push(ctx context.Context, o astral.Object) (err error) {
 
 	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodPush, params))
 
-	conn, err := astral.Route(ctx, c.mod.node.Router(), query)
+	conn, err := astral.Route(ctx, c.mod.node, query)
 	if err != nil {
 		return
 	}

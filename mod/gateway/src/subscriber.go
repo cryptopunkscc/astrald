@@ -34,7 +34,7 @@ func (s *Subscriber) Run(ctx context.Context) error {
 
 	var expiresAt time.Time
 	for {
-		conn, err := astral.Route(ctx, s.node.Router(), astral.NewQuery(s.node.Identity(), s.gateway, SubscribeServiceName))
+		conn, err := astral.Route(ctx, s.node, astral.NewQuery(s.node.Identity(), s.gateway, SubscribeServiceName))
 		if err != nil {
 			select {
 			case <-ctx.Done():

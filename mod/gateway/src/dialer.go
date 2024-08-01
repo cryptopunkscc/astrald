@@ -26,7 +26,7 @@ func (dialer *Dialer) Dial(ctx context.Context, endpoint exonet.Endpoint) (exone
 
 	var query = astral.NewQuery(dialer.node.Identity(), e.Gate(), RouteServiceName+"."+e.Target().PublicKeyHex())
 
-	conn, err := astral.Route(ctx, dialer.node.Router(), query)
+	conn, err := astral.Route(ctx, dialer.node, query)
 	if err != nil {
 		return nil, err
 	}

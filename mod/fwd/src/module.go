@@ -163,7 +163,7 @@ func (mod *Module) parseTarget(uri string) (astral.Router, error) {
 			uri,
 		)
 
-		return NewAstralTarget(query, mod.node.Router(), label)
+		return NewAstralTarget(query, mod.node, label)
 
 	case "tor":
 		if mod.Tor == nil {

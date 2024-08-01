@@ -16,11 +16,11 @@ const logTag = "node"
 var _ astral.Node = &Node{}
 
 type Node struct {
+	*Router
 	identity id.Identity
 	config   Config
 
 	assets  *assets.CoreAssets
-	router  *Router
 	modules *Modules
 	events  events.Queue
 
@@ -79,17 +79,9 @@ func NewNode(nodeID id.Identity, res resources.Resources) (*Node, error) {
 	}
 
 	// router
-	node.router = NewRouter(node)
+	node.Router = NewRouter(node)
 
 	return node, nil
-}
-
-func (node *Node) Router() astral.Router {
-	return node.router
-}
-
-func (node *Node) CoreRouter() *Router {
-	return node.router
 }
 
 func (node *Node) Modules() *Modules {

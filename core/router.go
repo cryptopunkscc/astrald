@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/routers"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"time"
@@ -18,7 +17,6 @@ const routingTimeout = 60 * time.Second
 type Router struct {
 	node *Node
 	*routers.PriorityRouter
-	log   *log.Logger
 	conns sig.Map[astral.Nonce, *conn]
 	pre   sig.Set[QueryFilter]
 }
@@ -30,7 +28,6 @@ type QueryFilter interface {
 func NewRouter(node *Node) *Router {
 	var router = &Router{
 		node:           node,
-		log:            node.log,
 		PriorityRouter: routers.NewPriorityRouter(),
 	}
 
@@ -52,7 +49,7 @@ func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, caller io.Writ
 
 	// log the start of routing
 	if r.node.config.LogRoutingStart {
-		r.log.Logv(2, "[%v] %v -> %v:%v routing...",
+		r.node.log.Logv(2, "[%v] %v -> %v:%v routing...",
 			q.Nonce, q.Caller, q.Target, q.Query,
 		)
 	}
@@ -63,11 +60,11 @@ func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, caller io.Writ
 
 	// log routing results
 	if err == nil {
-		r.log.Infov(0, "[%v] %v -> %v:%v routed in %v",
+		r.node.log.Infov(0, "[%v] %v -> %v:%v routed in %v",
 			q.Nonce, q.Caller, q.Target, q.Query, d,
 		)
 	} else {
-		r.log.Errorv(0, "[%v] %v -> %v:%v error (%v): %v",
+		r.node.log.Errorv(0, "[%v] %v -> %v:%v error (%v): %v",
 			q.Nonce, q.Caller, q.Target, q.Query, d, err,
 		)
 

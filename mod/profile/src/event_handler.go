@@ -25,7 +25,7 @@ func (mod *Module) Push(push *objects.Push) error {
 func (mod *Module) updateIdentityProfile(target id.Identity) error {
 	mod.log.Infov(2, "updating profile for %s", target)
 
-	conn, err := astral.Route(mod.ctx, mod.node.Router(), astral.NewQuery(mod.node.Identity(), target, serviceName))
+	conn, err := astral.Route(mod.ctx, mod.node, astral.NewQuery(mod.node.Identity(), target, serviceName))
 	if err != nil {
 		return err
 	}

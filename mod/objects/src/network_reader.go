@@ -2,10 +2,10 @@ package objects
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"time"
@@ -59,7 +59,7 @@ func (r *NetworkReader) Seek(offset int64, whence int) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	conn, err := astral.Route(ctx, r.mod.node.Router(), q)
+	conn, err := astral.Route(ctx, r.mod.node, q)
 	if err != nil {
 		return 0, err
 	}

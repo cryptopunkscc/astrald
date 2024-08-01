@@ -66,7 +66,7 @@ func (mod *Module) Run(ctx context.Context) error {
 
 	return tasks.Group(
 		&SubscribeService{Module: mod},
-		&RouteService{Module: mod, router: mod.node.Router()},
+		&RouteService{Module: mod, router: mod.node},
 	).Run(ctx)
 }
 

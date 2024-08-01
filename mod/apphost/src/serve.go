@@ -50,7 +50,7 @@ func (s *Session) query(params proto.QueryParams) error {
 	}
 
 	var query = astral.NewQuery(s.remoteID, params.Identity, params.Query)
-	conn, err = astral.Route(s.ctx, s.mod.node.Router(), query)
+	conn, err = astral.Route(s.ctx, s.mod.node, query)
 
 	if err == nil {
 		s.WriteErr(nil)
