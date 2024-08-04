@@ -78,7 +78,7 @@ func (mod *Module) Nodes(userID id.Identity) (nodes []id.Identity) {
 func (mod *Module) Owner(nodeID id.Identity) (userID id.Identity) {
 	err := mod.db.
 		Model(&dbNodeContract{}).
-		Where("expires_at > ?", time.Now()).
+		Where("expires_at > ?", time.Now().UTC()).
 		Where("node_id = ?", nodeID).
 		Select("user_id").
 		Find(&userID).
@@ -154,7 +154,7 @@ func (mod *Module) ContractExists(contractID object.ID) (b bool) {
 func (mod *Module) findContractID(userID id.Identity, nodeID id.Identity) (contractID object.ID, err error) {
 	err = mod.db.
 		Model(&dbNodeContract{}).
-		Where("user_id = ? AND node_id = ? AND expires_at > ?", userID, nodeID, time.Now()).
+		Where("user_id = ? AND node_id = ? AND expires_at > ?", userID, nodeID, time.Now().UTC()).
 		Order("expires_at DESC").
 		Select("object_id").
 		First(&contractID).Error
