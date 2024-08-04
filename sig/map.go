@@ -99,6 +99,22 @@ func (m *Map[K, V]) Clone() (c map[K]V) {
 	return
 }
 
+// Copy returns a copy of the Map
+func (m *Map[K, V]) Copy() (c *Map[K, V]) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	c = &Map[K, V]{
+		m: map[K]V{},
+	}
+
+	for k, v := range m.m {
+		c.m[k] = v
+	}
+
+	return
+}
+
 // Keys returns a list of the keys in the map
 func (m *Map[K, V]) Keys() (keys []K) {
 	m.mu.RLock()
