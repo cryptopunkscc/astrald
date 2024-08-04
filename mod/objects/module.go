@@ -42,7 +42,8 @@ type Module interface {
 	PushLocal(astral.Object) error
 
 	// Store encodes the object to local storage
-	Store(context.Context, astral.Object) (object.ID, error)
+	Store(astral.Object) (object.ID, error)
+	Load(object.ID) (astral.Object, error)
 
 	AddPrototypes(protos ...desc.Data) error
 	UnmarshalDescriptor(name string, buf []byte) desc.Data

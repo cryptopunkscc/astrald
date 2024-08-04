@@ -151,6 +151,16 @@ func (mod *Module) ContractExists(contractID object.ID) (b bool) {
 	return
 }
 
+func (mod *Module) findContractID(userID id.Identity, nodeID id.Identity) (contractID object.ID, err error) {
+	err = mod.db.
+		Model(&dbNodeContract{}).
+		Where("user_id = ? AND node_id = ? AND expires_at > ?", userID, nodeID, time.Now()).
+		Order("expires_at DESC").
+		Select("object_id").
+		First(&contractID).Error
+	return
+}
+
 func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error) {
 	contractID, err := astral.ResolveObjectID(c)
 	if err != nil {
@@ -179,16 +189,17 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 }
 
 func (mod *Module) LocalContract() (c *user.SignedNodeContract, err error) {
-	if b, err := mod.assets.Read(assetLocalContract); err == nil {
-		c = &user.SignedNodeContract{}
-		_, err = c.ReadFrom(bytes.NewReader(b))
+	var cid object.ID
+
+	// first try loading an existing contract
+	if cid, err = mod.findContractID(mod.userID, mod.node.Identity()); err == nil {
+		c, err = objects.Load[*user.SignedNodeContract](context.Background(), mod.Objects, cid, astral.DefaultScope())
 		if err == nil {
-			if !c.IsExpired() {
-				return c, nil
-			}
+			return
 		}
 	}
 
+	// then create and sign a new contract
 	c = &user.SignedNodeContract{
 		NodeContract: &user.NodeContract{
 			UserID:    mod.UserID(),
@@ -220,7 +231,7 @@ func (mod *Module) LocalContract() (c *user.SignedNodeContract, err error) {
 		return
 	}
 
-	_, err = mod.Objects.Store(context.Background(), c)
+	_, err = mod.Objects.Store(c)
 	if err != nil {
 		return
 	}

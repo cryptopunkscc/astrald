@@ -9,7 +9,6 @@ import (
 )
 
 const ModuleName = "nodes"
-const DBPrefix = "nodes__"
 
 type Module interface {
 	exonet.Resolver

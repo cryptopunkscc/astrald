@@ -6,14 +6,13 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/resources"
-	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/jxskiss/base62"
 	"gorm.io/gorm"
 	"io"
@@ -32,6 +31,7 @@ var _ nodes.Module = &Module{}
 
 type Deps struct {
 	Admin   admin.Module
+	Auth    auth.Module
 	Dir     dir.Module
 	Exonet  exonet.Module
 	Keys    keys.Module
@@ -46,30 +46,24 @@ type Module struct {
 	assets resources.Resources
 	db     *gorm.DB
 
-	streams sig.Set[*Stream]
-	conns   sig.Map[astral.Nonce, *conn]
+	peers    *Peers
+	provider *Provider
 
 	in chan *Frame
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	go mod.frameReader(ctx)
+	go mod.peers.frameReader(ctx)
 	<-ctx.Done()
 	return nil
 }
 
 func (mod *Module) Peers() (peers []id.Identity) {
-	var r map[string]struct{}
+	return mod.peers.peers()
+}
 
-	for _, s := range mod.streams.Clone() {
-		if _, found := r[s.RemoteIdentity().PublicKeyHex()]; found {
-			continue
-		}
-		r[s.RemoteIdentity().PublicKeyHex()] = struct{}{}
-		peers = append(peers, s.RemoteIdentity())
-	}
-
-	return
+func (mod *Module) Accept(ctx context.Context, conn exonet.Conn) (err error) {
+	return mod.peers.Accept(ctx, conn)
 }
 
 func (mod *Module) ParseInfo(s string) (*nodes.NodeInfo, error) {
@@ -100,198 +94,55 @@ func (mod *Module) Resolve(ctx context.Context, identity id.Identity) ([]exonet.
 	return mod.Endpoints(identity), nil
 }
 
-func (mod *Module) frameReader(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case frame := <-mod.in:
-			switch f := frame.Frame.(type) {
-			case *frames.Query:
-				go mod.handleQuery(frame.Source, f)
-			case *frames.Response:
-				mod.handleResponse(frame.Source, f)
-			case *frames.Ping:
-				mod.handlePing(frame.Source, f)
-			case *frames.Data:
-				mod.handleData(frame.Source, f)
-			case *frames.Reset:
-				mod.handleReset(frame.Source, f)
-			case *frames.Read:
-				mod.handleRead(frame.Source, f)
-			default:
-				mod.log.Errorv(2, "unknown frame: %v", frame.Frame)
+func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, caller io.WriteCloser) (w io.WriteCloser, err error) {
+	if s, ok := q.Extra.Get("origin"); ok && s == "network" {
+		return astral.RouteNotFound(mod)
+	}
+
+	var relayID = q.Target
+	var callerProof astral.Object
+
+	useRelay := false
+
+	if !q.Caller.IsEqual(mod.node.Identity()) {
+		useRelay = true
+		if v, ok := q.Extra.Get(nodes.ExtraCallerProof); ok {
+			callerProof = v.(astral.Object)
+		}
+	}
+
+	if v, ok := q.Extra.Get(nodes.ExtraRelayVia); ok {
+		relayID = v.(id.Identity)
+		useRelay = true
+	}
+
+	if useRelay {
+		if callerProof != nil {
+			err = mod.Objects.Push(ctx, relayID, callerProof)
+			if err != nil {
+				mod.log.Errorv(1, "cannot push proof: %v", err)
 			}
 		}
-	}
-}
 
-func (mod *Module) handleQuery(s *Stream, f *frames.Query) {
-	conn, ok := mod.conns.Set(f.Nonce, newConn(f.Nonce))
-	if !ok {
-		return // ignore duplicates
-	}
-
-	conn.RemoteIdentity = s.RemoteIdentity()
-	conn.Query = f.Query
-	conn.stream = s
-	conn.wsize = int(f.Buffer)
-
-	var q = &astral.Query{
-		Nonce:  f.Nonce,
-		Caller: s.RemoteIdentity(),
-		Target: s.LocalIdentity(),
-		Query:  f.Query,
-	}
-
-	q.Extra.Set("origin", astral.OriginNetwork)
-
-	w, err := mod.node.RouteQuery(context.Background(), q, conn)
-
-	if err != nil {
-		conn.swapState(stateRouting, stateClosed)
-		s.Write(&frames.Response{Nonce: f.Nonce, ErrCode: frames.CodeRejected})
-		return
-	}
-
-	s.Write(&frames.Response{Nonce: f.Nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
-	conn.swapState(stateRouting, stateOpen)
-
-	go func() {
-		io.Copy(w, conn)
-		w.Close()
-	}()
-}
-
-func (mod *Module) handleResponse(s *Stream, f *frames.Response) {
-	// find the connection
-	conn, ok := mod.conns.Get(f.Nonce)
-	if !ok {
-		return
-	}
-
-	// make sure we sent the query to the identity that sent the response
-	if !conn.RemoteIdentity.IsEqual(s.RemoteIdentity()) {
-		return
-	}
-
-	// if rejected
-	if f.ErrCode != 0 {
-		if !conn.swapState(stateRouting, stateClosed) {
-			return
-		}
-		conn.res <- false
-	}
-
-	if !conn.swapState(stateRouting, stateOpen) {
-		return
-	}
-	conn.stream = s
-	conn.wsize = int(f.Buffer)
-	conn.res <- true
-}
-
-func (mod *Module) handleData(s *Stream, f *frames.Data) {
-	conn, ok := mod.conns.Get(f.Nonce)
-	if !ok {
-		s.Write(&frames.Reset{Nonce: f.Nonce})
-		return
-	}
-
-	if conn.state.Load() != stateOpen {
-		s.Write(&frames.Reset{Nonce: f.Nonce})
-		return
-	}
-
-	err := conn.pushRead(f.Payload)
-	if err != nil {
-		conn.Close()
-		return
-	}
-}
-
-func (mod *Module) handleRead(s *Stream, f *frames.Read) {
-	conn, ok := mod.conns.Get(f.Nonce)
-	if !ok {
-		s.Write(&frames.Reset{Nonce: f.Nonce})
-		return
-	}
-
-	conn.growRemoteBuffer(int(f.Len))
-}
-
-func (mod *Module) handleReset(s *Stream, f *frames.Reset) {
-	conn, ok := mod.conns.Get(f.Nonce)
-	if !ok {
-		return
-	}
-
-	conn.swapState(stateOpen, stateClosed)
-}
-
-func (mod *Module) handlePing(s *Stream, f *frames.Ping) {
-	if f.Pong {
-		rtt, err := s.pong(f.Nonce)
+		err = mod.on(relayID).Relay(ctx, q.Nonce, q.Caller, q.Target)
 		if err != nil {
-			mod.log.Errorv(1, "invalid pong nonce from %v", s.RemoteIdentity())
-		} else {
-			if mod.config.LogPings {
-				mod.log.Logv(1, "ping with %v: %v", s.RemoteIdentity(), rtt)
-			}
-		}
-	} else {
-		s.Write(&frames.Ping{
-			Nonce: f.Nonce,
-			Pong:  true,
-		})
-	}
-}
-
-func (mod *Module) addStream(s *Stream) (err error) {
-	linked := mod.isLinked(s.RemoteIdentity())
-
-	err = mod.streams.Add(s)
-	if err == nil {
-		if !linked {
-			mod.Objects.PushLocal(&nodes.EventLinked{NodeID: s.RemoteIdentity()})
+			return astral.RouteNotFound(mod, err)
 		}
 
-		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
-		go func() {
-			for frame := range s.Read() {
-				mod.in <- &Frame{
-					Frame:  frame,
-					Source: s,
-				}
+		if !q.Target.IsEqual(relayID) {
+			q = &astral.Query{
+				Nonce:  q.Nonce,
+				Caller: q.Caller,
+				Target: relayID,
+				Query:  q.Query,
+				Extra:  *q.Extra.Copy(),
 			}
-			mod.log.Errorv(1, "stream with %v removed: %v", s.RemoteIdentity(), s.Err())
-			mod.streams.Remove(s)
-			for _, c := range mod.conns.Select(func(k astral.Nonce, v *conn) (ok bool) {
-				return v.stream == s
-			}) {
-				c.Close()
-			}
-
-			if !mod.isLinked(s.RemoteIdentity()) {
-				mod.Objects.PushLocal(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()})
-			}
-		}()
-	}
-
-	return
-}
-
-func (mod *Module) isLinked(remoteID id.Identity) bool {
-	for _, s := range mod.streams.Clone() {
-		if s.RemoteIdentity().IsEqual(remoteID) {
-			return true
 		}
 	}
-	return false
+
+	return mod.peers.RouteQuery(ctx, q, caller)
 }
 
-func byRemoteID(remoteID id.Identity) func(s *Stream) bool {
-	return func(s *Stream) bool {
-		return s.RemoteIdentity().IsEqual(remoteID)
-	}
+func (mod *Module) on(providerID id.Identity) *Consumer {
+	return NewConsumer(mod, providerID)
 }

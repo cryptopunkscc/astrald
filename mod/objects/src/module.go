@@ -96,7 +96,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Store(ctx context.Context, obj astral.Object) (objectID object.ID, err error) {
+func (mod *Module) Store(obj astral.Object) (objectID object.ID, err error) {
 	w, err := mod.Create(nil)
 	if err != nil {
 		return
@@ -111,6 +111,18 @@ func (mod *Module) Store(ctx context.Context, obj astral.Object) (objectID objec
 	_, err = obj.WriteTo(w)
 
 	return w.Commit()
+}
+
+func (mod *Module) Load(objectID object.ID) (astral.Object, error) {
+	r, err := mod.Open(context.Background(), objectID, &objects.OpenOpts{
+		Zone: astral.ZoneDevice | astral.ZoneVirtual,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+
+	return mod.ReadObject(r)
 }
 
 func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {

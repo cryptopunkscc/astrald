@@ -17,12 +17,12 @@ const routingTimeout = 60 * time.Second
 type Router struct {
 	node *Node
 	*routers.PriorityRouter
-	conns sig.Map[astral.Nonce, *conn]
-	pre   sig.Set[QueryFilter]
+	conns         sig.Map[astral.Nonce, *conn]
+	preprocessors sig.Set[QueryPreprocessor]
 }
 
-type QueryFilter interface {
-	FilterQuery(*astral.Query) error
+type QueryPreprocessor interface {
+	PreprocessQuery(*astral.Query) error
 }
 
 func NewRouter(node *Node) *Router {
@@ -31,19 +31,25 @@ func NewRouter(node *Node) *Router {
 		PriorityRouter: routers.NewPriorityRouter(),
 	}
 
+	for _, m := range node.modules.loaded {
+		if p, ok := m.(QueryPreprocessor); ok {
+			router.AddQueryPreprocessor(p)
+		}
+	}
+
 	return router
 }
 
-func (r *Router) AddPreFilter(f QueryFilter) error {
-	return r.pre.Add(f)
+func (r *Router) AddQueryPreprocessor(f QueryPreprocessor) error {
+	return r.preprocessors.Add(f)
 }
 
 func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, caller io.WriteCloser) (target io.WriteCloser, err error) {
-	// prefilter the query
-	for _, pf := range r.pre.Clone() {
-		err = pf.FilterQuery(q)
+	// preprocess the query
+	for _, p := range r.preprocessors.Clone() {
+		err = p.PreprocessQuery(q)
 		if err != nil {
-			return
+			return astral.RouteNotFound(r, err)
 		}
 	}
 

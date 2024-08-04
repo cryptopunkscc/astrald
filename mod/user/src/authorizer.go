@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -45,6 +46,17 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, target as
 			if auth.Authorize(owner, action, target) {
 				return true
 			}
+
+		case nodes.ActionRelayFor:
+			t, ok := target.(*id.Identity)
+			if !ok {
+				break
+			}
+
+			if _, err := auth.mod.findContractID(*t, identity); err == nil {
+				return true
+			}
+
 		}
 
 	}

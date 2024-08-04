@@ -52,7 +52,7 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) streams(term admin.Terminal, args []string) error {
-	streams := adm.mod.streams.Clone()
+	streams := adm.mod.peers.streams.Clone()
 
 	slices.SortFunc(streams, func(a, b *Stream) int {
 		return a.createdAt.Compare(b.createdAt)
@@ -101,11 +101,11 @@ func (adm *Admin) link(term admin.Terminal, args []string) (err error) {
 		})
 	}
 
-	return adm.mod.connectAny(ctx, remoteID, endpoints)
+	return adm.mod.peers.connectAny(ctx, remoteID, endpoints)
 }
 
 func (adm *Admin) conns(term admin.Terminal, args []string) error {
-	conns := adm.mod.conns.Values()
+	conns := adm.mod.peers.conns.Values()
 
 	slices.SortFunc(conns, func(a, b *conn) int {
 		return a.createdAt.Compare(b.createdAt)
@@ -203,7 +203,7 @@ func (adm *Admin) check(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	for _, s := range adm.mod.streams.Select(func(s *Stream) bool {
+	for _, s := range adm.mod.peers.streams.Select(func(s *Stream) bool {
 		return s.RemoteIdentity().IsEqual(identity)
 	}) {
 		s.check()
@@ -267,7 +267,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) ping(term admin.Terminal, args []string) error {
-	for _, s := range adm.mod.streams.Clone() {
+	for _, s := range adm.mod.peers.streams.Clone() {
 		term.Printf("%v... ", s.RemoteIdentity())
 		rtt, err := s.Ping()
 		if err != nil {
