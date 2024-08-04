@@ -7,7 +7,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -40,7 +39,6 @@ type Module struct {
 }
 
 var ErrAlreadyIndexed = errors.New("already indexed")
-var privateKeyHeader = astral.ObjectHeader(keys.PrivateKeyDataType)
 
 func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
@@ -74,7 +72,7 @@ func (mod *Module) SaveKey(key id.Identity) (object.ID, error) {
 		return object.ID{}, errors.New("private key is nil")
 	}
 
-	pk := keys.PrivateKey{
+	pk := &keys.PrivateKey{
 		Type:  keys.KeyTypeIdentity,
 		Bytes: key.PrivateKey().Serialize(),
 	}
@@ -84,14 +82,9 @@ func (mod *Module) SaveKey(key id.Identity) (object.ID, error) {
 		return object.ID{}, err
 	}
 
-	_, err = privateKeyHeader.WriteTo(w)
+	err = astral.EncodeObject(w, pk)
 	if err != nil {
 		return object.ID{}, nil
-	}
-
-	err = cslq.Encode(w, "v", &pk)
-	if err != nil {
-		return object.ID{}, err
 	}
 
 	objectID, err := w.Commit()
@@ -115,13 +108,10 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 	}
 	defer r.Close()
 
-	err = astral.ExpectHeader(r, keys.PrivateKeyDataType)
-	if err != nil {
-		return err
-	}
-
 	var pk keys.PrivateKey
-	if err = cslq.Decode(r, "v", &pk); err != nil {
+
+	err = astral.DecodeObject(r, &pk)
+	if err != nil {
 		return err
 	}
 
@@ -157,15 +147,8 @@ func (mod *Module) LoadPrivateKey(objectID object.ID) (*keys.PrivateKey, error) 
 	}
 	defer r.Close()
 
-	err = astral.ExpectHeader(r, keys.PrivateKeyDataType)
-	if err != nil {
-		return nil, err
-	}
-
 	var pk keys.PrivateKey
-	if err = cslq.Decode(r, "v", &pk); err != nil {
-		return nil, err
-	}
+	err = astral.DecodeObject(r, &pk)
 
 	return &pk, nil
 }

@@ -15,6 +15,7 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	mod.Objects.AddDescriber(mod)
 	mod.Objects.AddPrototypes(keys.KeyDesc{})
+	mod.Objects.AddObject(&keys.PrivateKey{})
 
 	return
 }

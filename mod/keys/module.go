@@ -16,14 +16,6 @@ type Module interface {
 	Sign(identity id.Identity, hash []byte) ([]byte, error)
 }
 
-const PrivateKeyDataType = "keys.private_key"
-const KeyTypeIdentity = "ecdsa-secp256k1"
-
-type PrivateKey struct {
-	Type  string `cslq:"[c]c"`
-	Bytes []byte `cslq:"[c]c"`
-}
-
 type KeyDesc struct {
 	KeyType   string
 	PublicKey id.Identity

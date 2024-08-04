@@ -75,16 +75,26 @@ func (h *ObjectHeader) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (h ObjectHeader) String() string { return string(h) }
 
-func ExpectHeader(reader io.Reader, header ObjectHeader) error {
-	var h ObjectHeader
-	_, err := h.ReadFrom(reader)
+func DecodeObject(r io.Reader, o Object) (err error) {
+	var head ObjectHeader
+	_, err = head.ReadFrom(r)
 	if err != nil {
-		return err
+		return
 	}
-	if h != header {
-		return errors.New("header mismatch")
+	if head.String() != o.ObjectType() {
+		return errors.New("object type mismatch")
 	}
-	return nil
+	_, err = o.ReadFrom(r)
+	return err
+}
+
+func EncodeObject(w io.Writer, o Object) (err error) {
+	_, err = ObjectHeader(o.ObjectType()).WriteTo(w)
+	if err != nil {
+		return
+	}
+	_, err = o.WriteTo(w)
+	return
 }
 
 func ResolveObjectID(obj Object) (objectID object.ID, err error) {

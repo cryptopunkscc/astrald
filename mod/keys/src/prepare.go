@@ -3,7 +3,6 @@ package keys
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
@@ -33,9 +32,7 @@ func (mod *Module) importNodeIdentity() error {
 		return err
 	}
 
-	astral.ObjectHeader(keys.PrivateKeyDataType).WriteTo(w)
-
-	err = cslq.Encode(w, "v", &pk)
+	err = astral.EncodeObject(w, &pk)
 	if err != nil {
 		return err
 	}
