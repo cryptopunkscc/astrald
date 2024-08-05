@@ -233,7 +233,7 @@ func (srv *Provider) Push(ctx context.Context, query *astral.Query, caller io.Wr
 
 		binary.Write(conn, binary.BigEndian, true)
 
-		srv.mod.log.Infov(1, "received %s from %v (%v)", obj.ObjectType(), query.Caller, push.ObjectID)
+		srv.mod.log.Infov(1, "accepted %s from %v (%v)", obj.ObjectType(), query.Caller, push.ObjectID)
 
 		return
 	})

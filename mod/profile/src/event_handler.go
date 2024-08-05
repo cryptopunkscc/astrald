@@ -10,7 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 )
 
-func (mod *Module) Push(push *objects.Push) error {
+func (mod *Module) ReceiveObject(push *objects.Push) error {
 	if !push.Source.IsEqual(mod.node.Identity()) {
 		return errors.New("rejected")
 	}

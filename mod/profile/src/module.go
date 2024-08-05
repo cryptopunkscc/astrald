@@ -5,21 +5,13 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
 const serviceName = ".profile"
 
-type Deps struct {
-	Dir     dir.Module
-	Exonet  exonet.Module
-	Nodes   nodes.Module
-	Objects objects.Module
-}
+var _ objects.Receiver = &Module{}
 
 type Module struct {
 	Deps
@@ -35,4 +27,8 @@ func (mod *Module) Run(ctx context.Context) error {
 	return tasks.Group(
 		&ProfileService{Module: mod},
 	).Run(ctx)
+}
+
+func (mod *Module) String() string {
+	return ModuleName
 }

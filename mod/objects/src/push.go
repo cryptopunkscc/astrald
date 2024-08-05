@@ -50,7 +50,7 @@ func (mod *Module) PushLocal(obj astral.Object) (err error) {
 
 func (mod *Module) pushLocal(push *objects.Push) (ok bool) {
 	for _, r := range mod.receivers.Clone() {
-		if r.Push(push) == nil {
+		if r.ReceiveObject(push) == nil {
 			ok = true
 		}
 	}

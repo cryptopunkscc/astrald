@@ -66,7 +66,7 @@ type Consumer interface {
 }
 
 type Receiver interface {
-	Push(*Push) error
+	ReceiveObject(*Push) error
 }
 
 type Push struct {

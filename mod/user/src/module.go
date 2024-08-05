@@ -10,14 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
@@ -28,17 +21,7 @@ import (
 const assetLocalContract = "mod.user.local_contract"
 
 var _ user.Module = &Module{}
-
-type Deps struct {
-	Admin   admin.Module
-	Apphost apphost.Module
-	Auth    auth.Module
-	Content content.Module
-	Dir     dir.Module
-	Objects objects.Module
-	Keys    keys.Module
-	Sets    sets.Module
-}
+var _ objects.Receiver = &Module{}
 
 type Module struct {
 	Deps
@@ -238,4 +221,8 @@ func (mod *Module) LocalContract() (c *user.SignedNodeContract, err error) {
 
 	err = mod.assets.Write(assetLocalContract, b.Bytes())
 	return
+}
+
+func (mod *Module) String() string {
+	return user.ModuleName
 }

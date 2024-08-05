@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-func (mod *Module) Push(push *objects.Push) error {
+func (mod *Module) ReceiveObject(push *objects.Push) error {
 	switch o := push.Object.(type) {
 	case *user.SignedNodeContract:
 		return mod.pushSignedNodeContract(push.Source, o)
