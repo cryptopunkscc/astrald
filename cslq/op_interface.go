@@ -55,6 +55,12 @@ func (op OpInterface) Encode(w io.Writer, data *Fifo) error {
 func (op OpInterface) Decode(r io.Reader, data *Fifo) error {
 	v := data.Pop()
 
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Ptr && rv.Elem().IsZero() {
+		rv.Elem().Set(reflect.New(rv.Type().Elem().Elem()))
+		v = rv.Elem().Interface()
+	}
+
 	if u, ok := v.(Unmarshaler); ok {
 		return u.UnmarshalCSLQ(NewDecoder(r))
 	}
