@@ -20,6 +20,11 @@ type Formatter interface {
 func (op OpInterface) Encode(w io.Writer, data *Fifo) error {
 	v := data.Pop()
 
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Ptr && !rv.IsZero() && rv.Elem().Kind() == reflect.Ptr {
+		v = rv.Elem().Interface()
+	}
+
 	if m, ok := v.(Marshaler); ok {
 		return m.MarshalCSLQ(NewEncoder(w))
 	}
@@ -56,8 +61,10 @@ func (op OpInterface) Decode(r io.Reader, data *Fifo) error {
 	v := data.Pop()
 
 	rv := reflect.ValueOf(v)
-	if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Ptr && rv.Elem().IsZero() {
-		rv.Elem().Set(reflect.New(rv.Type().Elem().Elem()))
+	if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Ptr {
+		if rv.Elem().IsZero() {
+			rv.Elem().Set(reflect.New(rv.Type().Elem().Elem()))
+		}
 		v = rv.Elem().Interface()
 	}
 

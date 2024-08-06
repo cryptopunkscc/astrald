@@ -51,7 +51,7 @@ func (enc *InfoEncoder) Unpack(data []byte) (*NodeInfo, error) {
 	var info NodeInfo
 	var r = bytes.NewReader(data)
 
-	if err := cslq.Decode(r, "[c]c v c", &info.Alias, info.Identity, &count); err != nil {
+	if err := cslq.Decode(r, "[c]c v c", &info.Alias, &info.Identity, &count); err != nil {
 		return nil, err
 	}
 

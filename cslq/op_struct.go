@@ -10,6 +10,11 @@ type OpStruct []Op
 
 func (op OpStruct) Encode(w io.Writer, data *Fifo) error {
 	rv := reflect.ValueOf(data.Pop())
+
+	if rv.Kind() == reflect.Ptr && !rv.IsZero() && rv.Elem().Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+
 	if rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
 	}
@@ -36,8 +41,10 @@ func (op OpStruct) Encode(w io.Writer, data *Fifo) error {
 func (op OpStruct) Decode(r io.Reader, data *Fifo) error {
 	var rv = reflect.ValueOf(data.Pop())
 
-	if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Ptr && rv.Elem().IsZero() {
-		rv.Elem().Set(reflect.New(rv.Type().Elem().Elem()))
+	if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Ptr {
+		if rv.Elem().IsZero() {
+			rv.Elem().Set(reflect.New(rv.Type().Elem().Elem()))
+		}
 		rv = rv.Elem()
 	}
 
