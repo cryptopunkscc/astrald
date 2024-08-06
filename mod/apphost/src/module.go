@@ -163,3 +163,7 @@ func (mod *Module) getGuest(id *astral.Identity) *Guest {
 
 	return mod.guests[key]
 }
+
+func (mod *Module) String() string {
+	return apphost.ModuleName
+}

@@ -148,3 +148,7 @@ func isInterfaceEnabled(iface net.Interface) bool {
 		(iface.Flags&net.FlagBroadcast != 0) &&
 		(iface.Flags&net.FlagLoopback == 0)
 }
+
+func (mod *Module) String() string {
+	return presence.ModuleName
+}

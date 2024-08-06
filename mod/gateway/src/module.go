@@ -122,3 +122,7 @@ func (mod *Module) Endpoints() []exonet.Endpoint {
 
 	return list
 }
+
+func (mod *Module) String() string {
+	return ModuleName
+}

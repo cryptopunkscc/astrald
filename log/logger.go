@@ -3,6 +3,7 @@ package log
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -161,7 +162,7 @@ func (l *Logger) Renderf(f string, v ...any) []Op {
 				continue
 			}
 
-			ops = append(ops, OpText{Text: fmt.Sprintf("%v", nv)})
+			ops = append(ops, OpText{Text: anyToString(nv)})
 
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.':
 			var orig = "%"
@@ -265,4 +266,16 @@ func (l *Logger) getTag() string {
 		}
 	}
 	return prefix + l.tag
+}
+
+func anyToString(a any) string {
+	if s, ok := a.(string); ok {
+		return s
+	}
+
+	if s, ok := a.(fmt.Stringer); ok {
+		return s.String()
+	}
+
+	return reflect.TypeOf(a).String()
 }

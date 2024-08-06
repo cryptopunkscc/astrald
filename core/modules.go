@@ -50,6 +50,8 @@ func (m *Modules) Run(ctx context.Context) error {
 	// to access other modules, as the order of loading is undefined.
 	var loaded = m.loadEnabled()
 
+	m.injectLoaded()
+
 	// Dependencies - in this stage modules load their deps and injects its handlers.
 	var deps = m.loadDependecies(loaded)
 
@@ -71,6 +73,24 @@ func (m *Modules) loadEnabled() []string {
 		}
 	}
 	return loaded
+}
+
+func (m *Modules) injectLoaded() {
+	var routers []any
+	for _, mod := range m.loaded {
+		if p, ok := mod.(QueryPreprocessor); ok {
+			m.node.AddQueryPreprocessor(p)
+		}
+
+		if r, ok := mod.(astral.Router); ok {
+			m.node.Add(r, 0)
+			routers = append(routers, r)
+		}
+	}
+
+	if len(routers) > 0 {
+		m.log.Logv(2, "routers: %v"+strings.Repeat(", %s", len(routers)-1), routers...)
+	}
 }
 
 func (m *Modules) loadDependecies(modules []string) []string {
@@ -178,10 +198,6 @@ func (m *Modules) loadModule(name string) error {
 	}
 
 	m.loaded[name] = mod
-
-	if r, ok := mod.(astral.Router); ok {
-		m.node.Add(r, 0)
-	}
 
 	return nil
 }

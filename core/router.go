@@ -31,12 +31,6 @@ func NewRouter(node *Node) *Router {
 		PriorityRouter: routers.NewPriorityRouter(),
 	}
 
-	for _, m := range node.modules.loaded {
-		if p, ok := m.(QueryPreprocessor); ok {
-			router.AddQueryPreprocessor(p)
-		}
-	}
-
 	return router
 }
 

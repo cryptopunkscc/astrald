@@ -145,3 +145,7 @@ func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, caller io.Wr
 func (mod *Module) on(providerID *astral.Identity) *Consumer {
 	return NewConsumer(mod, providerID)
 }
+
+func (mod *Module) String() string {
+	return nodes.ModuleName
+}

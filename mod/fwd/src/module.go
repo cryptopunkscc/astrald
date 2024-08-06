@@ -207,3 +207,7 @@ func (mod *Module) createServer(uri string, target astral.Router) (*ServerRunner
 		return nil, errors.New("unsupported protocol")
 	}
 }
+
+func (mod *Module) String() string {
+	return ModuleName
+}

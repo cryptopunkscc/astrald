@@ -46,6 +46,9 @@ func NewNode(nodeID *astral.Identity, res resources.Resources) (*Node, error) {
 		config:   defaultConfig,
 	}
 
+	// router
+	node.Router = NewRouter(node)
+
 	// basic logs
 	node.setupLogs()
 
@@ -76,9 +79,6 @@ func NewNode(nodeID *astral.Identity, res resources.Resources) (*Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating module manager: %w", err)
 	}
-
-	// router
-	node.Router = NewRouter(node)
 
 	return node, nil
 }
