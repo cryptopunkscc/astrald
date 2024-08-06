@@ -133,14 +133,14 @@ func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {
 		return nil, err
 	}
 
-	data, err := io.ReadAll(r)
+	res := object.NewReadResolver(r)
+
+	data, err := io.ReadAll(res)
 	if err != nil {
 		return nil, err
 	}
 
-	realID := object.Resolve(data)
-
-	if !realID.IsEqual(id) {
+	if !res.Resolve().IsEqual(id) {
 		return nil, objects.ErrHashMismatch
 	}
 

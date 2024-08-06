@@ -1,11 +1,9 @@
 package object
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"hash"
 	"io"
-	"os"
 )
 
 // WriteResolver is an io.Writer that calculates the ID of the data written to it.
@@ -73,34 +71,14 @@ func (r *ReadResolver) Resolve() ID {
 	return r.resolver.Resolve()
 }
 
-func Resolve(data []byte) ID {
-	r := NewWriteResolver(nil)
-	b := bytes.NewReader(data)
-	_, _ = io.Copy(r, b)
-	return r.Resolve()
-}
-
-func ResolveAll(reader io.Reader) (ID, error) {
-	r := NewWriteResolver(nil)
-
-	if _, err := io.Copy(r, reader); err != nil {
-		return ID{}, err
+func Resolve(r io.Reader) (id ID, err error) {
+	var p [8192]byte
+	rr := NewReadResolver(r)
+	for err == nil {
+		_, err = rr.Read(p[:])
 	}
-
-	return r.Resolve(), nil
-}
-
-func ResolveFile(path string) (ID, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return ID{}, err
+	if err == io.EOF {
+		return rr.Resolve(), nil
 	}
-	defer file.Close()
-
-	fileID, err := ResolveAll(file)
-	if err != nil {
-		return ID{}, err
-	}
-
-	return fileID, nil
+	return
 }

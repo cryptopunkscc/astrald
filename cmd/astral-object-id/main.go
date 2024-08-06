@@ -35,7 +35,7 @@ func main() {
 		}
 	}
 
-	objectID, err := object.ResolveAll(input)
+	objectID, err := object.Resolve(input)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(3)

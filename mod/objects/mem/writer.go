@@ -40,7 +40,7 @@ func (w *Writer) Commit() (object.ID, error) {
 	}
 
 	var buf = w.buf.Bytes()
-	var objectID = object.Resolve(buf)
+	var objectID, _ = object.Resolve(bytes.NewReader(buf))
 
 	if _, ok := w.objects.Set(objectID.String(), buf); ok {
 		w.events.Emit(objects.EventCommitted{ObjectID: objectID})

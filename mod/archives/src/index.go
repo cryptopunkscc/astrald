@@ -3,9 +3,9 @@ package archives
 import (
 	"context"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -62,7 +62,7 @@ func (mod *Module) scan(ctx context.Context, objectID object.ID, opts *objects.O
 			continue
 		}
 
-		fileID, err := object.ResolveAll(f)
+		fileID, err := object.Resolve(f)
 		f.Close()
 		if err != nil {
 			mod.log.Errorv(1, "resolve %v: %v", file.Name, err)

@@ -219,9 +219,15 @@ func (srv *Provider) Push(ctx context.Context, query *astral.Query, caller io.Wr
 			return
 		}
 
+		var objectID object.ID
+		objectID, err = astral.ResolveObjectID(obj)
+		if err != nil {
+			return
+		}
+
 		var push = &objects.Push{
 			Source:   query.Caller,
-			ObjectID: object.Resolve(buf),
+			ObjectID: objectID,
 			Object:   obj,
 		}
 

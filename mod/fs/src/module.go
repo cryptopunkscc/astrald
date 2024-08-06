@@ -253,7 +253,7 @@ func (mod *Module) update(path string) (object.ID, error) {
 		}
 	}
 
-	objectID, err := object.ResolveFile(path)
+	objectID, err := resolveFileID(path)
 	if err != nil {
 		return object.ID{}, err
 	}
@@ -410,4 +410,19 @@ func (mod *Module) verifyIndex(ctx context.Context) {
 	}
 
 	mod.log.Log("done scanning index for changes")
+}
+
+func resolveFileID(path string) (object.ID, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return object.ID{}, err
+	}
+	defer file.Close()
+
+	fileID, err := object.Resolve(file)
+	if err != nil {
+		return object.ID{}, err
+	}
+
+	return fileID, nil
 }
