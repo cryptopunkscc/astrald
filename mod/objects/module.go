@@ -34,6 +34,9 @@ type Module interface {
 	AddFinder(Finder) error
 	Finder
 
+	AddHolder(Holder) error
+	Holders(objectID object.ID) []Holder
+
 	AddObject(astral.Object) error
 	ReadObject(r io.Reader) (o astral.Object, err error)
 	AddReceiver(Receiver) error
@@ -84,4 +87,8 @@ type Purger interface {
 
 type PurgeOpts struct {
 	// for future use
+}
+
+type Holder interface {
+	HoldObject(object.ID) bool
 }

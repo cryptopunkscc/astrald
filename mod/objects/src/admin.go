@@ -40,6 +40,7 @@ func NewAdmin(mod *Module) *Admin {
 		"search":   adm.search,
 		"show":     adm.show,
 		"types":    adm.types,
+		"holders":  adm.holders,
 		"help":     adm.help,
 	}
 
@@ -68,6 +69,23 @@ func (adm *Admin) types(term admin.Terminal, args []string) error {
 
 	for _, t := range types {
 		term.Printf(" %s\n", t)
+	}
+
+	return nil
+}
+
+func (adm *Admin) holders(term admin.Terminal, args []string) error {
+	if len(args) < 1 {
+		return adm.help(term, []string{})
+	}
+
+	objectID, err := object.ParseID(args[0])
+	if err != nil {
+		return err
+	}
+
+	for _, h := range adm.mod.Holders(objectID) {
+		term.Printf("%s\n", h)
 	}
 
 	return nil

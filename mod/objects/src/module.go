@@ -51,6 +51,7 @@ type Module struct {
 	finders    sig.Set[objects.Finder]
 	objects    sig.Map[string, astral.Object]
 	receivers  sig.Set[objects.Receiver]
+	holders    sig.Set[objects.Holder]
 
 	provider *Provider
 }

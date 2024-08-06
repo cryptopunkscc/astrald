@@ -21,6 +21,7 @@ const assetLocalContract = "mod.user.local_contract"
 
 var _ user.Module = &Module{}
 var _ objects.Receiver = &Module{}
+var _ objects.Holder = &Module{}
 
 type Module struct {
 	Deps
