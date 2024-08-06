@@ -73,8 +73,7 @@ func (mod *Module) ReadObject(r io.Reader) (o astral.Object, err error) {
 
 	o = mod.getObject(h.String())
 	if o == nil {
-		err = errors.New("unknown object type")
-		return
+		o = &objects.ForeignObject{Type: h.String()}
 	}
 
 	_, err = o.ReadFrom(r)
