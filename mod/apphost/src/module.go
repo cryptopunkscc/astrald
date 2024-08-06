@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/debug"
+	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
@@ -38,6 +39,7 @@ type Module struct {
 	guests    map[string]*Guest
 	guestsMu  sync.Mutex
 	execs     []*Exec
+	router    *routers.PathRouter
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -162,6 +164,68 @@ func (mod *Module) getGuest(id *astral.Identity) *Guest {
 	var key = id.String()
 
 	return mod.guests[key]
+}
+
+func (mod *Module) RegisterApp(appID string) (id *astral.Identity, err error) {
+	err = mod.db.
+		Model(&dbApp{}).
+		Where("app_id = ?", appID).
+		Select("identity").
+		First(&id).Error
+
+	if err == nil {
+		return
+	}
+
+	id, err = astral.GenerateIdentity()
+	if err != nil {
+		return
+	}
+
+	err = mod.db.Create(&dbApp{
+		AppID:    appID,
+		Identity: id,
+	}).Error
+
+	return
+}
+
+func (mod *Module) UnregisterApp(appID string) (err error) {
+	var found bool
+	err = mod.db.
+		Model(&dbApp{}).
+		Where("app_id = ?", appID).
+		Select("count(*)>0").
+		First(&found).Error
+
+	if err != nil {
+		return err
+	}
+	if !found {
+		return errors.New("app not found")
+	}
+
+	err = mod.db.Delete(&dbApp{AppID: appID}).Error
+
+	return
+}
+
+func (mod *Module) ListApps() (list []string) {
+	mod.db.
+		Model(&dbApp{}).
+		Select("app_id").
+		Find(&list)
+	return
+}
+
+func (mod *Module) AppToken(appID string) (token string, err error) {
+	var row dbApp
+	err = mod.db.Where("app_id = ?", appID).First(&row).Error
+	if err != nil {
+		return
+	}
+
+	return mod.FindOrCreateAccessToken(row.Identity)
 }
 
 func (mod *Module) String() string {

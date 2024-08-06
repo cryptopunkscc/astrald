@@ -3,7 +3,6 @@ package apphost
 import (
 	"errors"
 	"flag"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"os"
 	"path/filepath"
@@ -73,12 +72,7 @@ func (adm *Admin) tokens(term admin.Terminal, args []string) error {
 	term.Printf(f, admin.Header("Token"), admin.Header("Identity"))
 
 	for _, row := range rows {
-		identity, err := astral.IdentityFromString(row.Identity)
-		if err != nil {
-			continue
-		}
-
-		term.Printf(f, admin.Keyword(row.Token), identity)
+		term.Printf(f, admin.Keyword(row.Token), row.Identity)
 	}
 
 	return nil

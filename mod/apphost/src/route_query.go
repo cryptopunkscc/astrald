@@ -6,9 +6,13 @@ import (
 	"io"
 )
 
-func (mod *Module) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	if guest := mod.getGuest(query.Target); guest != nil {
-		return guest.RouteQuery(ctx, query, caller)
+func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	if r, err := mod.router.RouteQuery(ctx, q, w); err == nil {
+		return r, nil
+	}
+
+	if guest := mod.getGuest(q.Target); guest != nil {
+		return guest.RouteQuery(ctx, q, w)
 	}
 
 	return astral.RouteNotFound(mod)

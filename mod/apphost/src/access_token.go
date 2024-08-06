@@ -7,8 +7,8 @@ import (
 )
 
 type dbAccessToken struct {
-	Identity string `gorm:"index"`
-	Token    string `gorm:"uniqueIndex"`
+	Identity *astral.Identity `gorm:"index"`
+	Token    string           `gorm:"uniqueIndex"`
 }
 
 func (dbAccessToken) TableName() string {
@@ -19,22 +19,36 @@ func (mod *Module) CreateAccessToken(identity *astral.Identity) (string, error) 
 	var token = randomString(32)
 
 	var tx = mod.db.Create(&dbAccessToken{
-		Identity: identity.String(),
+		Identity: identity,
 		Token:    token,
 	})
 
 	return token, tx.Error
 }
 
-func (mod *Module) authToken(token string) (identity *astral.Identity) {
-	var row dbAccessToken
+func (mod *Module) FindAccessToken(identity *astral.Identity) (token string, err error) {
+	err = mod.db.
+		Model(&dbAccessToken{}).
+		Where("identity = ?", identity).
+		Select("token").
+		First(&token).Error
+	return
+}
 
-	var tx = mod.db.Where("token = ?", token).First(&row)
-	if tx.Error != nil {
+func (mod *Module) FindOrCreateAccessToken(identity *astral.Identity) (token string, err error) {
+	token, err = mod.FindAccessToken(identity)
+	if err == nil {
 		return
 	}
+	return mod.CreateAccessToken(identity)
+}
 
-	identity, _ = astral.IdentityFromString(row.Identity)
+func (mod *Module) authToken(token string) (identity *astral.Identity) {
+	mod.db.
+		Model(&dbAccessToken{}).
+		Where("token = ?", token).
+		Select("identity").
+		First(&identity)
 
 	return
 }
