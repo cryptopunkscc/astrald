@@ -3,7 +3,6 @@ package user
 import (
 	"crypto/sha256"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"time"
@@ -12,8 +11,8 @@ import (
 var _ astral.Object = &NodeContract{}
 
 type NodeContract struct {
-	UserID    id.Identity
-	NodeID    id.Identity
+	UserID    *astral.Identity
+	NodeID    *astral.Identity
 	ExpiresAt astral.Time
 }
 
@@ -39,5 +38,7 @@ func (c NodeContract) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (c *NodeContract) ReadFrom(r io.Reader) (n int64, err error) {
-	return streams.ReadAllFrom(r, &c.UserID, &c.NodeID, &c.ExpiresAt)
+	c.UserID = &astral.Identity{}
+	c.NodeID = &astral.Identity{}
+	return streams.ReadAllFrom(r, c.UserID, c.NodeID, &c.ExpiresAt)
 }

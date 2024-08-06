@@ -6,19 +6,18 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/id"
 )
 
 type Consumer struct {
 	*Module
-	ProviderID id.Identity
+	ProviderID *astral.Identity
 }
 
-func NewConsumer(module *Module, providerID id.Identity) *Consumer {
+func NewConsumer(module *Module, providerID *astral.Identity) *Consumer {
 	return &Consumer{Module: module, ProviderID: providerID}
 }
 
-func (mod *Consumer) Relay(ctx context.Context, nonce astral.Nonce, caller id.Identity, target id.Identity) (err error) {
+func (mod *Consumer) Relay(ctx context.Context, nonce astral.Nonce, caller *astral.Identity, target *astral.Identity) (err error) {
 	params := core.Params{}
 	params.SetNonce(pNonce, nonce)
 	if !caller.IsZero() {

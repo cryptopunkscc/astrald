@@ -3,7 +3,6 @@ package fwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"io"
 	"strings"
 )
@@ -13,7 +12,7 @@ var _ Server = &AstralServer{}
 type AstralServer struct {
 	*Module
 	serviceName string
-	identity    id.Identity
+	identity    *astral.Identity
 	target      astral.Router
 }
 

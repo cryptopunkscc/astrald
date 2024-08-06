@@ -2,7 +2,7 @@ package gateway
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"strings"
 )
@@ -47,11 +47,11 @@ func Parse(str string) (endpoint *Endpoint, err error) {
 	if len(ids) != 2 {
 		return nil, ErrParseError{msg: "invalid address string"}
 	}
-	endpoint.gate, err = id.ParsePublicKeyHex(ids[0])
+	endpoint.gate, err = astral.IdentityFromString(ids[0])
 	if err != nil {
 		return nil, err
 	}
-	endpoint.target, err = id.ParsePublicKeyHex(ids[1])
+	endpoint.target, err = astral.IdentityFromString(ids[1])
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/object"
 	"strconv"
 	"strings"
@@ -90,17 +89,17 @@ func (params Params) GetObjectID(key string) (object.ID, error) {
 	return id, nil
 }
 
-func (params Params) GetIdentity(key string) (i id.Identity, err error) {
+func (params Params) GetIdentity(key string) (i *astral.Identity, err error) {
 	v, found := params[key]
 	if !found {
 		return i, ErrKeyNotFound
 	}
 
-	return id.ParsePublicKeyHex(v)
+	return astral.IdentityFromString(v)
 }
 
-func (params Params) SetIdentity(key string, i id.Identity) {
-	params[key] = i.PublicKeyHex()
+func (params Params) SetIdentity(key string, i *astral.Identity) {
+	params[key] = i.String()
 }
 
 func (params Params) GetUnixNano(key string) (time.Time, error) {

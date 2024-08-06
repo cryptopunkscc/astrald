@@ -3,8 +3,8 @@ package apphost
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"net"
@@ -15,7 +15,7 @@ type Session struct {
 	*proto.Conn
 	ctx      context.Context
 	mod      *Module
-	remoteID id.Identity
+	remoteID *astral.Identity
 	log      *log.Logger
 }
 

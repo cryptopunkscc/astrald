@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/debug"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
@@ -35,7 +34,7 @@ type Module struct {
 
 	listeners []net.Listener
 	conns     <-chan net.Conn
-	defaultID id.Identity
+	defaultID *astral.Identity
 	guests    map[string]*Guest
 	guestsMu  sync.Mutex
 	execs     []*Exec
@@ -98,16 +97,16 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) SetDefaultIdentity(identity id.Identity) error {
+func (mod *Module) SetDefaultIdentity(identity *astral.Identity) error {
 	mod.defaultID = identity
 	return nil
 }
 
-func (mod *Module) DefaultIdentity() id.Identity {
+func (mod *Module) DefaultIdentity() *astral.Identity {
 	return mod.defaultID
 }
 
-func (mod *Module) addGuestRoute(identity id.Identity, name string, target string) error {
+func (mod *Module) addGuestRoute(identity *astral.Identity, name string, target string) error {
 	mod.guestsMu.Lock()
 	defer mod.guestsMu.Unlock()
 
@@ -115,7 +114,7 @@ func (mod *Module) addGuestRoute(identity id.Identity, name string, target strin
 		return errors.New("invalid name")
 	}
 
-	var key = identity.PublicKeyHex()
+	var key = identity.String()
 
 	var guest *Guest
 	if g, found := mod.guests[key]; found {
@@ -134,11 +133,11 @@ func (mod *Module) addGuestRoute(identity id.Identity, name string, target strin
 	return guest.AddRoute(name, relay)
 }
 
-func (mod *Module) removeGuestRoute(identity id.Identity, name string) error {
+func (mod *Module) removeGuestRoute(identity *astral.Identity, name string) error {
 	mod.guestsMu.Lock()
 	defer mod.guestsMu.Unlock()
 
-	var key = identity.PublicKeyHex()
+	var key = identity.String()
 
 	var guest = mod.guests[key]
 	if guest == nil {
@@ -156,11 +155,11 @@ func (mod *Module) removeGuestRoute(identity id.Identity, name string) error {
 	return nil
 }
 
-func (mod *Module) getGuest(id id.Identity) *Guest {
+func (mod *Module) getGuest(id *astral.Identity) *Guest {
 	mod.guestsMu.Lock()
 	defer mod.guestsMu.Unlock()
 
-	var key = id.PublicKeyHex()
+	var key = id.String()
 
 	return mod.guests[key]
 }

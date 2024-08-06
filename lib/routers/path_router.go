@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"io"
 	"strings"
 	"sync"
 )
 
 type PathRouter struct {
-	identity  id.Identity
+	identity  *astral.Identity
 	Authority bool
 	exact     map[string]astral.Router
 	prefix    map[string]astral.Router
@@ -21,7 +20,7 @@ type PathRouter struct {
 // NewPathRouter makes a new PathRouter.
 // If identity is not zero only queries to this identity will be routed, other queries will end with ErrRouteNotFound.
 // If authority is true, ErrRejected will be returned in case of routing failure (instead of ErrRouteNotFound).
-func NewPathRouter(identity id.Identity, authority bool) *PathRouter {
+func NewPathRouter(identity *astral.Identity, authority bool) *PathRouter {
 	return &PathRouter{
 		identity:  identity,
 		exact:     make(map[string]astral.Router),

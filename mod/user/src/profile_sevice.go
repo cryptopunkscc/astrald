@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"io"
 )
 
@@ -25,7 +24,7 @@ func (srv *ProfileService) RouteQuery(ctx context.Context, query *astral.Query, 
 	})
 }
 
-func (srv *ProfileService) getProfile(identity id.Identity) (p ProfileData) {
+func (srv *ProfileService) getProfile(identity *astral.Identity) (p ProfileData) {
 	p.Alias = srv.Dir.DisplayName(identity)
 
 	return

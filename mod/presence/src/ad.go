@@ -1,7 +1,7 @@
 package presence
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	_net "net"
 	"slices"
@@ -9,7 +9,7 @@ import (
 )
 
 type Ad struct {
-	Identity  id.Identity
+	Identity  *astral.Identity
 	Alias     string
 	Endpoint  exonet.Endpoint
 	ExpiresAt time.Time

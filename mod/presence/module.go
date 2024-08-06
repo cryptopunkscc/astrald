@@ -1,7 +1,7 @@
 package presence
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 const ModuleName = "presence"
@@ -25,7 +25,7 @@ type AdOutHook interface {
 }
 
 type Presence struct {
-	Identity id.Identity
+	Identity *astral.Identity
 	Alias    string
 	Flags    []string
 }

@@ -4,7 +4,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -17,7 +16,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	var mod = &Module{
 		node:       node,
 		config:     defaultConfig,
-		PathRouter: routers.NewPathRouter(id.Anyone, false),
+		PathRouter: routers.NewPathRouter(astral.Anyone, false),
 		log:        log,
 		assets:     assets,
 	}

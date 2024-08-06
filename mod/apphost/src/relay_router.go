@@ -3,7 +3,6 @@ package apphost
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"io"
@@ -12,7 +11,7 @@ import (
 type RelayRouter struct {
 	log      *log.Logger
 	target   string
-	identity id.Identity
+	identity *astral.Identity
 }
 
 func (fwd *RelayRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {

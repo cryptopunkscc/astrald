@@ -3,17 +3,16 @@ package fwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"io"
 	_net "net"
 )
 
 type TCPTarget struct {
-	identity id.Identity
+	identity *astral.Identity
 	addr     *_net.TCPAddr
 }
 
-func NewTCPTarget(addr string, identiy id.Identity) (*TCPTarget, error) {
+func NewTCPTarget(addr string, identiy *astral.Identity) (*TCPTarget, error) {
 	var err error
 	var tcp = &TCPTarget{identity: identiy}
 

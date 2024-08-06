@@ -9,7 +9,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -288,7 +287,7 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 	var matches []objects.Match
 
 	if len(provider) > 0 {
-		var providerID id.Identity
+		var providerID *astral.Identity
 
 		providerID, err = adm.mod.Dir.Resolve(provider)
 		if err != nil {

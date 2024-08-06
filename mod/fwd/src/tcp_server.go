@@ -3,7 +3,6 @@ package fwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"io"
 	_net "net"
 	"strings"
@@ -52,7 +51,7 @@ func (srv *TCPServer) Run(ctx context.Context) error {
 		}
 
 		go func() {
-			var query = astral.NewQuery(id.Identity{}, id.Identity{}, "")
+			var query = astral.NewQuery(nil, nil, "")
 
 			dst, err := srv.target.RouteQuery(ctx, query, client)
 			if err != nil {

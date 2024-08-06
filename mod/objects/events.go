@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 )
@@ -20,11 +19,11 @@ type EventDiscovered struct {
 }
 
 type EventHeld struct {
-	HolderID  id.Identity
+	HolderID  *astral.Identity
 	ObjectIDs []object.ID
 }
 
 type EventReleased struct {
-	HolderID  id.Identity
+	HolderID  *astral.Identity
 	ObjectIDs []object.ID
 }

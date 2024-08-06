@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"bytes"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
@@ -15,7 +16,7 @@ func (mod *Module) Unpack(network string, data []byte) (exonet.Endpoint, error) 
 
 // Unpack converts a binary representation of the address to a struct
 func Unpack(data []byte) (addr *Endpoint, err error) {
-	addr = &Endpoint{}
+	addr = &Endpoint{target: &astral.Identity{}, gate: &astral.Identity{}}
 
-	return addr, cslq.Decode(bytes.NewReader(data), "vv", &addr.gate, &addr.target)
+	return addr, cslq.Decode(bytes.NewReader(data), "vv", addr.gate, addr.target)
 }

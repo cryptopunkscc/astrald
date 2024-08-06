@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"time"
 )
@@ -16,15 +15,15 @@ const subscribeRetryInterval = 60 * time.Second
 type Subscriber struct {
 	node    astral.Node
 	log     *log.Logger
-	gateway id.Identity
+	gateway *astral.Identity
 	cancel  context.CancelFunc
 }
 
-func (s *Subscriber) Gateway() id.Identity {
+func (s *Subscriber) Gateway() *astral.Identity {
 	return s.gateway
 }
 
-func NewSubscriber(gateway id.Identity, node astral.Node, log *log.Logger) *Subscriber {
+func NewSubscriber(gateway *astral.Identity, node astral.Node, log *log.Logger) *Subscriber {
 	return &Subscriber{node: node, log: log, gateway: gateway}
 }
 

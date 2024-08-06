@@ -21,7 +21,7 @@ func (cmd *CmdSudo) Exec(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	if !cmd.mod.Auth.Authorize(term.UserIdentity(), admin.ActionSudo, &targetID) {
+	if !cmd.mod.Auth.Authorize(term.UserIdentity(), admin.ActionSudo, targetID) {
 		return errors.New("unauthorized")
 	}
 

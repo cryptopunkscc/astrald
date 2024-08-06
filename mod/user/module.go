@@ -1,7 +1,7 @@
 package user
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -9,15 +9,15 @@ const ModuleName = "user"
 const DBPrefix = "users__"
 
 type Module interface {
-	UserID() id.Identity
-	SetUserID(userID id.Identity) error
+	UserID() *astral.Identity
+	SetUserID(userID *astral.Identity) error
 
-	Nodes(userID id.Identity) []id.Identity
-	Owner(nodeID id.Identity) id.Identity
+	Nodes(userID *astral.Identity) []*astral.Identity
+	Owner(nodeID *astral.Identity) *astral.Identity
 }
 
 type Profile struct {
-	Identity id.Identity
+	Identity *astral.Identity
 	Name     string
 	Avatar   object.ID
 }

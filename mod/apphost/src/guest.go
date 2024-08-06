@@ -3,14 +3,13 @@ package apphost
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"io"
 	"sync/atomic"
 )
 
 type Guest struct {
-	Identity id.Identity
+	Identity *astral.Identity
 
 	router *routers.PrefixRouter
 	count  atomic.Int32
@@ -20,7 +19,7 @@ func (guest *Guest) RouteQuery(ctx context.Context, query *astral.Query, caller 
 	return guest.router.RouteQuery(ctx, query, caller)
 }
 
-func NewGuest(identity id.Identity) *Guest {
+func NewGuest(identity *astral.Identity) *Guest {
 	return &Guest{
 		Identity: identity,
 		router:   routers.NewPrefixRouter(false),

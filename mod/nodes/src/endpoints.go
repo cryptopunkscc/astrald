@@ -2,12 +2,12 @@ package nodes
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"gorm.io/gorm/clause"
 )
 
-func (mod *Module) Endpoints(nodeID id.Identity) (endpoints []exonet.Endpoint) {
+func (mod *Module) Endpoints(nodeID *astral.Identity) (endpoints []exonet.Endpoint) {
 	var rows []dbEndpoint
 
 	err := mod.db.Find(&rows, "identity = ?", nodeID).Error
@@ -27,7 +27,7 @@ func (mod *Module) Endpoints(nodeID id.Identity) (endpoints []exonet.Endpoint) {
 	return
 }
 
-func (mod *Module) hasEndpoints(nodeID id.Identity) (has bool) {
+func (mod *Module) hasEndpoints(nodeID *astral.Identity) (has bool) {
 	mod.db.
 		Model(&dbEndpoint{}).
 		Where("identity = ?", nodeID).
@@ -36,7 +36,7 @@ func (mod *Module) hasEndpoints(nodeID id.Identity) (has bool) {
 	return
 }
 
-func (mod *Module) AddEndpoint(nodeID id.Identity, endpoint ...exonet.Endpoint) error {
+func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint ...exonet.Endpoint) error {
 	var errs []error
 	var err error
 	for _, e := range endpoint {
@@ -48,7 +48,7 @@ func (mod *Module) AddEndpoint(nodeID id.Identity, endpoint ...exonet.Endpoint) 
 	return errors.Join(errs...)
 }
 
-func (mod *Module) addEndpoint(nodeID id.Identity, endpoint exonet.Endpoint) error {
+func (mod *Module) addEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint) error {
 	return mod.db.Clauses(clause.OnConflict{DoNothing: true}).
 		Create(&dbEndpoint{
 			Identity: nodeID,
@@ -57,7 +57,7 @@ func (mod *Module) addEndpoint(nodeID id.Identity, endpoint exonet.Endpoint) err
 		}).Error
 }
 
-func (mod *Module) RemoveEndpoint(nodeID id.Identity, endpoint ...exonet.Endpoint) error {
+func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint ...exonet.Endpoint) error {
 	var errs []error
 	var err error
 	for _, e := range endpoint {
@@ -69,7 +69,7 @@ func (mod *Module) RemoveEndpoint(nodeID id.Identity, endpoint ...exonet.Endpoin
 	return errors.Join(errs...)
 }
 
-func (mod *Module) removeEndpoint(nodeID id.Identity, endpoint exonet.Endpoint) error {
+func (mod *Module) removeEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint) error {
 	return mod.db.Delete(&dbEndpoint{
 		Identity: nodeID,
 		Network:  endpoint.Network(),

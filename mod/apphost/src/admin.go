@@ -3,7 +3,7 @@ package apphost
 import (
 	"errors"
 	"flag"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"os"
 	"path/filepath"
@@ -73,7 +73,7 @@ func (adm *Admin) tokens(term admin.Terminal, args []string) error {
 	term.Printf(f, admin.Header("Token"), admin.Header("Identity"))
 
 	for _, row := range rows {
-		identity, err := id.ParsePublicKeyHex(row.Identity)
+		identity, err := astral.IdentityFromString(row.Identity)
 		if err != nil {
 			continue
 		}

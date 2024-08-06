@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -42,7 +41,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Resolve(ctx context.Context, identity id.Identity) (endpoints []exonet.Endpoint, err error) {
+func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) (endpoints []exonet.Endpoint, err error) {
 	if mod.server == nil {
 		return
 	}

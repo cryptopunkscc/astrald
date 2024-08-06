@@ -18,7 +18,7 @@ func (mod *Module) Prepare(ctx context.Context) (err error) {
 			continue
 		}
 
-		mod.admins.Add(adminID.PublicKeyHex())
+		mod.admins.Add(adminID.String())
 	}
 
 	mod.Auth.AddAuthorizer(mod)

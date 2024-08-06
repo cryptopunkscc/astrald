@@ -3,13 +3,13 @@ package noise
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/brontide"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
 // HandshakeInbound performs a handshake as the passive party.
-func HandshakeInbound(ctx context.Context, conn exonet.Conn, localID id.Identity) (*Conn, error) {
+func HandshakeInbound(ctx context.Context, conn exonet.Conn, localID *astral.Identity) (*Conn, error) {
 	//TODO: is there a better way to handle ctx here?
 	var done = make(chan struct{})
 	var errCh = make(chan error, 1)
@@ -40,7 +40,7 @@ func HandshakeInbound(ctx context.Context, conn exonet.Conn, localID id.Identity
 }
 
 // HandshakeOutbound performs a handshake as the active party.
-func HandshakeOutbound(ctx context.Context, conn exonet.Conn, expectedRemoteID id.Identity, localID id.Identity) (*Conn, error) {
+func HandshakeOutbound(ctx context.Context, conn exonet.Conn, expectedRemoteID *astral.Identity, localID *astral.Identity) (*Conn, error) {
 	if localID.IsEqual(expectedRemoteID) {
 		return nil, errors.New("local and remote identities cannot be equal")
 	}

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
@@ -46,13 +45,13 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) CreateKey(alias string) (identity id.Identity, objectID object.ID, err error) {
+func (mod *Module) CreateKey(alias string) (identity *astral.Identity, objectID object.ID, err error) {
 	_, err = mod.Dir.Resolve(alias)
 	if err == nil {
 		return identity, objectID, errors.New("alias already in use")
 	}
 
-	identity, err = id.GenerateIdentity()
+	identity, err = astral.GenerateIdentity()
 	if err != nil {
 		return
 	}
@@ -67,7 +66,7 @@ func (mod *Module) CreateKey(alias string) (identity id.Identity, objectID objec
 	return
 }
 
-func (mod *Module) SaveKey(key id.Identity) (object.ID, error) {
+func (mod *Module) SaveKey(key *astral.Identity) (object.ID, error) {
 	if key.PrivateKey() == nil {
 		return object.ID{}, errors.New("private key is nil")
 	}
@@ -119,7 +118,7 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 		return errors.New("unsupported key type")
 	}
 
-	identity, err := id.ParsePrivateKey(pk.Bytes)
+	identity, err := astral.IdentityFromPrivKeyBytes(pk.Bytes)
 	if err != nil {
 		return err
 	}
@@ -153,27 +152,27 @@ func (mod *Module) LoadPrivateKey(objectID object.ID) (*keys.PrivateKey, error) 
 	return &pk, nil
 }
 
-func (mod *Module) FindIdentity(hex string) (id.Identity, error) {
+func (mod *Module) FindIdentity(hex string) (*astral.Identity, error) {
 	var row dbPrivateKey
 
 	tx := mod.db.Where("type = ? and public_key = ?", keys.KeyTypeIdentity, hex).First(&row)
 	if tx.Error != nil {
-		return id.Identity{}, tx.Error
+		return &astral.Identity{}, tx.Error
 	}
 
 	pk, err := mod.LoadPrivateKey(row.DataID)
 	if err != nil {
-		return id.Identity{}, err
+		return &astral.Identity{}, err
 	}
 
-	return id.ParsePrivateKey(pk.Bytes)
+	return astral.IdentityFromPrivKeyBytes(pk.Bytes)
 }
 
-func (mod *Module) Sign(identity id.Identity, hash []byte) ([]byte, error) {
+func (mod *Module) Sign(identity *astral.Identity, hash []byte) ([]byte, error) {
 	var err error
 
 	if identity.PrivateKey() == nil {
-		identity, err = mod.FindIdentity(identity.PublicKeyHex())
+		identity, err = mod.FindIdentity(identity.String())
 		if err != nil {
 			return nil, err
 		}

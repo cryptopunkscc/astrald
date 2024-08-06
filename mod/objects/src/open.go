@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"slices"
@@ -68,7 +67,7 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	return nil, objects.ErrNotFound
 }
 
-func (mod *Module) OpenAs(ctx context.Context, consumer id.Identity, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mod *Module) OpenAs(ctx context.Context, consumer *astral.Identity, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if !mod.Auth.Authorize(consumer, objects.ActionRead, &objectID) {
 		return nil, objects.ErrAccessDenied
 	}
@@ -91,7 +90,7 @@ func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *ob
 	providers := mod.Find(ctx, objectID, &astral.Scope{Zone: opts.Zone})
 
 	if opts.QueryFilter != nil {
-		providers = slices.DeleteFunc(providers, func(identity id.Identity) bool {
+		providers = slices.DeleteFunc(providers, func(identity *astral.Identity) bool {
 			return !opts.QueryFilter(identity)
 		})
 	}

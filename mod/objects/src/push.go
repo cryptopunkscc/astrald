@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
@@ -16,7 +15,7 @@ func (mod *Module) AddReceiver(receiver objects.Receiver) error {
 	return mod.receivers.Add(receiver)
 }
 
-func (mod *Module) Push(ctx context.Context, target id.Identity, obj astral.Object) (err error) {
+func (mod *Module) Push(ctx context.Context, target *astral.Identity, obj astral.Object) (err error) {
 	if target.IsEqual(mod.node.Identity()) {
 		return mod.PushLocal(obj)
 	}

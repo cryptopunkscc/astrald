@@ -4,7 +4,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 )
@@ -35,7 +34,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 
 	if cnode, ok := node.(*core.Node); ok {
 		cnode.PushFormatFunc(func(v any) ([]log.Op, bool) {
-			identity, ok := v.(id.Identity)
+			identity, ok := v.(*astral.Identity)
 			if !ok {
 				return nil, false
 			}

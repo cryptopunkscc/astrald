@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -32,7 +31,7 @@ type Module struct {
 	db     *gorm.DB
 
 	*routers.PathRouter
-	userID         id.Identity
+	userID         *astral.Identity
 	userCert       []byte
 	profileService *ProfileService
 }
@@ -42,7 +41,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Nodes(userID id.Identity) (nodes []id.Identity) {
+func (mod *Module) Nodes(userID *astral.Identity) (nodes []*astral.Identity) {
 	err := mod.db.
 		Model(&dbNodeContract{}).
 		Where("expires_at > ?", time.Now()).
@@ -58,7 +57,7 @@ func (mod *Module) Nodes(userID id.Identity) (nodes []id.Identity) {
 	return
 }
 
-func (mod *Module) Owner(nodeID id.Identity) (userID id.Identity) {
+func (mod *Module) Owner(nodeID *astral.Identity) (userID *astral.Identity) {
 	err := mod.db.
 		Model(&dbNodeContract{}).
 		Where("expires_at > ?", time.Now().UTC()).
@@ -74,11 +73,11 @@ func (mod *Module) Owner(nodeID id.Identity) (userID id.Identity) {
 	return
 }
 
-func (mod *Module) UserID() id.Identity {
+func (mod *Module) UserID() *astral.Identity {
 	return mod.userID
 }
 
-func (mod *Module) SetUserID(userID id.Identity) error {
+func (mod *Module) SetUserID(userID *astral.Identity) error {
 	err := mod.setUserID(userID)
 	if err != nil {
 		return err
@@ -87,7 +86,7 @@ func (mod *Module) SetUserID(userID id.Identity) error {
 	return mod.storeUserID(userID)
 }
 
-func (mod *Module) setUserID(userID id.Identity) error {
+func (mod *Module) setUserID(userID *astral.Identity) error {
 	mod.userID = userID
 
 	mod.log.Info("user identity set to %v", mod.userID)
@@ -95,17 +94,17 @@ func (mod *Module) setUserID(userID id.Identity) error {
 	return nil
 }
 
-func (mod *Module) AddContact(userID id.Identity) error {
+func (mod *Module) AddContact(userID *astral.Identity) error {
 	return mod.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&dbContact{
 		UserID: userID,
 	}).Error
 }
 
-func (mod *Module) RemoveContact(userID id.Identity) error {
+func (mod *Module) RemoveContact(userID *astral.Identity) error {
 	return mod.db.Delete(&dbContact{UserID: userID}).Error
 }
 
-func (mod *Module) IsContact(userID id.Identity) (b bool) {
+func (mod *Module) IsContact(userID *astral.Identity) (b bool) {
 	if userID.IsZero() {
 		return
 	}
@@ -117,7 +116,7 @@ func (mod *Module) IsContact(userID id.Identity) (b bool) {
 	return
 }
 
-func (mod *Module) Contacts() (contacts []id.Identity) {
+func (mod *Module) Contacts() (contacts []*astral.Identity) {
 	mod.db.
 		Model(&dbContact{}).
 		Select("user_id").
@@ -134,7 +133,7 @@ func (mod *Module) ContractExists(contractID object.ID) (b bool) {
 	return
 }
 
-func (mod *Module) findContractID(userID id.Identity, nodeID id.Identity) (contractID object.ID, err error) {
+func (mod *Module) findContractID(userID *astral.Identity, nodeID *astral.Identity) (contractID object.ID, err error) {
 	err = mod.db.
 		Model(&dbNodeContract{}).
 		Where("user_id = ? AND node_id = ? AND expires_at > ?", userID, nodeID, time.Now().UTC()).

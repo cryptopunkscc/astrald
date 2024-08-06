@@ -3,7 +3,6 @@ package exonet
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -39,7 +38,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Resolve(ctx context.Context, identity id.Identity) ([]exonet.Endpoint, error) {
+func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) ([]exonet.Endpoint, error) {
 	var res sig.Set[exonet.Endpoint]
 
 	var wg sync.WaitGroup

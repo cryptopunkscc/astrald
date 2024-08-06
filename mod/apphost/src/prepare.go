@@ -25,7 +25,7 @@ func (mod *Module) Prepare(ctx context.Context) error {
 
 		mod.db.Model(&dbAccessToken{}).Delete("token = ?", token)
 		mod.db.Create(&dbAccessToken{
-			Identity: identity.PublicKeyHex(),
+			Identity: identity.String(),
 			Token:    token,
 		})
 	}

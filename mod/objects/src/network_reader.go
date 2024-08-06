@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
@@ -16,8 +15,8 @@ var _ objects.Reader = &NetworkReader{}
 type NetworkReader struct {
 	mod      *Module
 	objectID object.ID
-	consumer id.Identity
-	provider id.Identity
+	consumer *astral.Identity
+	provider *astral.Identity
 
 	pos int64
 	io.ReadCloser

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
@@ -82,14 +81,14 @@ func (mod *Peers) RouteQuery(ctx context.Context, query *astral.Query, caller io
 	}
 }
 
-func (mod *Peers) peers() (peers []id.Identity) {
+func (mod *Peers) peers() (peers []*astral.Identity) {
 	var r map[string]struct{}
 
 	for _, s := range mod.streams.Clone() {
-		if _, found := r[s.RemoteIdentity().PublicKeyHex()]; found {
+		if _, found := r[s.RemoteIdentity().String()]; found {
 			continue
 		}
-		r[s.RemoteIdentity().PublicKeyHex()] = struct{}{}
+		r[s.RemoteIdentity().String()] = struct{}{}
 		peers = append(peers, s.RemoteIdentity())
 	}
 
@@ -285,7 +284,7 @@ func (mod *Peers) addStream(s *Stream) (err error) {
 	return
 }
 
-func (mod *Peers) isLinked(remoteID id.Identity) bool {
+func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	for _, s := range mod.streams.Clone() {
 		if s.RemoteIdentity().IsEqual(remoteID) {
 			return true
@@ -294,11 +293,11 @@ func (mod *Peers) isLinked(remoteID id.Identity) bool {
 	return false
 }
 
-func (mod *Peers) isRoutable(identity id.Identity) bool {
+func (mod *Peers) isRoutable(identity *astral.Identity) bool {
 	return mod.isLinked(identity) || mod.hasEndpoints(identity)
 }
 
-func (mod *Peers) Connect(ctx context.Context, remoteID id.Identity, conn exonet.Conn) (link io.Closer, err error) {
+func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (link io.Closer, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
@@ -383,7 +382,7 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 	}
 }
 
-func (mod *Peers) connectAt(ctx context.Context, remoteIdentity id.Identity, e exonet.Endpoint) error {
+func (mod *Peers) connectAt(ctx context.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) error {
 	conn, err := mod.Exonet.Dial(ctx, e)
 	if err != nil {
 		return err
@@ -397,7 +396,7 @@ func (mod *Peers) connectAt(ctx context.Context, remoteIdentity id.Identity, e e
 	return nil
 }
 
-func (mod *Peers) connectAny(ctx context.Context, remoteIdentity id.Identity, endpoints []exonet.Endpoint) error {
+func (mod *Peers) connectAny(ctx context.Context, remoteIdentity *astral.Identity, endpoints []exonet.Endpoint) error {
 	var queue = sig.ArrayToChan(endpoints)
 
 	if len(queue) == 0 {
@@ -451,7 +450,7 @@ func (mod *Peers) connectAny(ctx context.Context, remoteIdentity id.Identity, en
 	return errors.New("no endpoint could be reached")
 }
 
-func (mod *Peers) ensureConnected(ctx context.Context, remoteIdentity id.Identity) error {
+func (mod *Peers) ensureConnected(ctx context.Context, remoteIdentity *astral.Identity) error {
 	if mod.isLinked(remoteIdentity) {
 		return nil
 	}

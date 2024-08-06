@@ -1,7 +1,6 @@
 package astral
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
 	"io"
 )
 
@@ -10,21 +9,21 @@ type Conn interface {
 	Read(b []byte) (n int, err error)
 	Write(b []byte) (n int, err error)
 	Close() error
-	LocalIdentity() id.Identity
-	RemoteIdentity() id.Identity
+	LocalIdentity() *Identity
+	RemoteIdentity() *Identity
 }
 
 var _ Conn = &conn{}
 
 type conn struct {
-	localID  id.Identity
-	remoteID id.Identity
+	localID  *Identity
+	remoteID *Identity
 	io.WriteCloser
 	io.Reader
 	outbound bool
 }
 
-func newConn(localID id.Identity, remoteID id.Identity, w io.WriteCloser, r io.Reader, outbound bool) Conn {
+func newConn(localID *Identity, remoteID *Identity, w io.WriteCloser, r io.Reader, outbound bool) Conn {
 	return &conn{
 		localID:     localID,
 		remoteID:    remoteID,
@@ -46,10 +45,10 @@ func (s *conn) Outbound() bool {
 	return s.outbound
 }
 
-func (s *conn) RemoteIdentity() id.Identity {
+func (s *conn) RemoteIdentity() *Identity {
 	return s.remoteID
 }
 
-func (s *conn) LocalIdentity() id.Identity {
+func (s *conn) LocalIdentity() *Identity {
 	return s.localID
 }

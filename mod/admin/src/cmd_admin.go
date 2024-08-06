@@ -2,7 +2,7 @@ package admin
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 )
 
@@ -48,7 +48,7 @@ func (cmd *CmdAdmin) list(term admin.Terminal, _ []string) error {
 	term.Printf("%d admin(s):\n", len(list))
 
 	for _, hex := range list {
-		adminID, err := id.ParsePublicKeyHex(hex)
+		adminID, err := astral.IdentityFromString(hex)
 		if err != nil {
 			return err
 		}

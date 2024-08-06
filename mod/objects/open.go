@@ -2,7 +2,6 @@ package objects
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 )
@@ -26,7 +25,7 @@ type OpenOpts struct {
 	Offset uint64
 
 	// Allow opening only from identities accepted by the filter
-	QueryFilter id.Filter
+	QueryFilter astral.IdentityFilter
 }
 
 // Reader is an interface for reading data objects

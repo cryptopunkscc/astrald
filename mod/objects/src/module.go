@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
@@ -167,7 +166,7 @@ func (mod *Module) Put(bytes []byte, opts *objects.CreateOpts) (object.ID, error
 	return w.Commit()
 }
 
-func (mod *Module) Connect(caller id.Identity, target id.Identity) (objects.Consumer, error) {
+func (mod *Module) Connect(caller *astral.Identity, target *astral.Identity) (objects.Consumer, error) {
 	if target.IsZero() {
 		return nil, errors.New("target cannot be zero")
 	}

@@ -3,7 +3,6 @@ package fwd
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tor"
 	"io"
@@ -11,11 +10,11 @@ import (
 
 type TorTarget struct {
 	tor      tor.Module
-	identity id.Identity
+	identity *astral.Identity
 	endpoint exonet.Endpoint
 }
 
-func NewTorTarget(drv tor.Module, addr string, identiy id.Identity) (*TorTarget, error) {
+func NewTorTarget(drv tor.Module, addr string, identiy *astral.Identity) (*TorTarget, error) {
 	var err error
 	var t = &TorTarget{
 		identity: identiy,

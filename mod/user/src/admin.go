@@ -154,7 +154,7 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	}
 
 	term.Printf("Identity: %v\n", userID)
-	term.Printf("PubKey:   %v\n", userID.PublicKeyHex())
+	term.Printf("PubKey:   %v\n", userID.String())
 
 	return nil
 }

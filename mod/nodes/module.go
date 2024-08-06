@@ -3,7 +3,6 @@ package nodes
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"time"
 )
@@ -16,25 +15,25 @@ type Module interface {
 
 	ParseInfo(s string) (*NodeInfo, error)
 
-	AddEndpoint(id.Identity, ...exonet.Endpoint) error
-	RemoveEndpoint(id.Identity, ...exonet.Endpoint) error
+	AddEndpoint(*astral.Identity, ...exonet.Endpoint) error
+	RemoveEndpoint(*astral.Identity, ...exonet.Endpoint) error
 
-	Endpoints(id.Identity) []exonet.Endpoint
+	Endpoints(*astral.Identity) []exonet.Endpoint
 
-	Peers() []id.Identity
+	Peers() []*astral.Identity
 }
 
 // Link is an encrypted communication channel between two identities that is capable of routing queries
 type Link interface {
 	astral.Router
-	LocalIdentity() id.Identity
-	RemoteIdentity() id.Identity
+	LocalIdentity() *astral.Identity
+	RemoteIdentity() *astral.Identity
 	Close() error
 	Done() <-chan struct{}
 }
 
 type NodeInfo struct {
-	Identity  id.Identity
+	Identity  *astral.Identity
 	Alias     string
 	Endpoints []exonet.Endpoint
 }

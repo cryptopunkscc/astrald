@@ -2,7 +2,7 @@ package proto
 
 import (
 	"github.com/akutz/memconn"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"math/rand"
 	"net"
 	"os"
@@ -98,7 +98,7 @@ func ListenAny(protocol string) (net.Listener, error) {
 		)
 
 	case "memu", "memb":
-		identity, err := id.GenerateIdentity()
+		identity, err := astral.GenerateIdentity()
 		if err != nil {
 			return nil, err
 		}

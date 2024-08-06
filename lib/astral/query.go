@@ -1,8 +1,8 @@
 package astral
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"net"
 )
@@ -10,14 +10,14 @@ import (
 type QueryData struct {
 	conn     net.Conn
 	query    string
-	remoteID id.Identity
+	remoteID *astral.Identity
 }
 
 func (q *QueryData) Query() string {
 	return q.query
 }
 
-func (q *QueryData) RemoteIdentity() id.Identity {
+func (q *QueryData) RemoteIdentity() *astral.Identity {
 	return q.remoteID
 }
 

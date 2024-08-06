@@ -1,7 +1,7 @@
 package admin
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 )
 
@@ -18,8 +18,8 @@ type Command interface {
 }
 
 type Terminal interface {
-	UserIdentity() id.Identity
-	SetUserIdentity(id.Identity)
+	UserIdentity() *astral.Identity
+	SetUserIdentity(*astral.Identity)
 	Sprintf(f string, v ...any) string
 	Printf(f string, v ...any)
 	Println(v ...any)

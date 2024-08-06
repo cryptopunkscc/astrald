@@ -1,11 +1,11 @@
 package dir
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 // SetAlias sets the alias for the identity. Set an empty alias to unset.
-func (mod *Module) SetAlias(identity id.Identity, alias string) error {
+func (mod *Module) SetAlias(identity *astral.Identity, alias string) error {
 	if alias == "" {
 		return mod.db.Delete(&dbAlias{}, "identity = ?", identity).Error
 	}
@@ -17,7 +17,7 @@ func (mod *Module) SetAlias(identity id.Identity, alias string) error {
 }
 
 // GetAlias returns the alias for the identity. Returns an empty string if no alias is set.
-func (mod *Module) GetAlias(identity id.Identity) (string, error) {
+func (mod *Module) GetAlias(identity *astral.Identity) (string, error) {
 	var row dbAlias
 	if err := mod.db.First(&row, "identity = ?", identity).Error; err != nil {
 		return "", err

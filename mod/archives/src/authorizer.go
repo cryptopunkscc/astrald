@@ -2,7 +2,6 @@ package archives
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -14,7 +13,7 @@ type Authorizer struct {
 	mod *Module
 }
 
-func (auth *Authorizer) Authorize(identity id.Identity, action string, target astral.Object) bool {
+func (auth *Authorizer) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
 	switch action {
 	case objects.ActionRead:
 		if target == nil {

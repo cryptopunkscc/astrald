@@ -1,14 +1,14 @@
 package apphost
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 const ModuleName = "apphost"
 const DBPrefix = "apphost__"
 
 type Module interface {
-	SetDefaultIdentity(id.Identity) error
-	DefaultIdentity() id.Identity
-	CreateAccessToken(identity id.Identity) (string, error)
+	SetDefaultIdentity(*astral.Identity) error
+	DefaultIdentity() *astral.Identity
+	CreateAccessToken(identity *astral.Identity) (string, error)
 }

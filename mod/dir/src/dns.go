@@ -2,7 +2,7 @@ package dir
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"net"
 	"strings"
@@ -14,7 +14,7 @@ type DNS struct {
 	*Module
 }
 
-func (dns DNS) Resolve(s string) (identity id.Identity, err error) {
+func (dns DNS) Resolve(s string) (identity *astral.Identity, err error) {
 	if strings.Contains(s, ".") {
 		domain := "_astral." + s
 		txtRecords, err := net.LookupTXT(domain)
@@ -28,16 +28,16 @@ func (dns DNS) Resolve(s string) (identity id.Identity, err error) {
 				continue
 			}
 
-			identity, err = id.ParsePublicKeyHex(record[3:])
+			identity, err = astral.IdentityFromString(record[3:])
 			if err == nil {
 				return identity, nil
 			}
 		}
 	}
 
-	return id.Identity{}, fmt.Errorf("cannot resolve")
+	return &astral.Identity{}, fmt.Errorf("cannot resolve")
 }
 
-func (dns DNS) DisplayName(identity id.Identity) string {
+func (dns DNS) DisplayName(identity *astral.Identity) string {
 	return ""
 }

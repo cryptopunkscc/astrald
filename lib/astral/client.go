@@ -2,7 +2,7 @@ package astral
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"math/rand"
 	"os"
@@ -38,7 +38,7 @@ func (c *ApphostClient) Session() (*Session, error) {
 	return nil, errors.New("apphost unrachable")
 }
 
-func (c *ApphostClient) Query(remoteID id.Identity, query string) (conn *Conn, err error) {
+func (c *ApphostClient) Query(remoteID *astral.Identity, query string) (conn *Conn, err error) {
 	s, err := c.Session()
 	if err != nil {
 		return nil, err
@@ -56,16 +56,16 @@ func (c *ApphostClient) QueryName(name string, query string) (conn *Conn, err er
 	return c.Query(identity, query)
 }
 
-func (c *ApphostClient) Resolve(name string) (id.Identity, error) {
+func (c *ApphostClient) Resolve(name string) (*astral.Identity, error) {
 	s, err := c.Session()
 	if err != nil {
-		return id.Identity{}, err
+		return *astral.Identity{}, err
 	}
 
 	return s.Resolve(name)
 }
 
-func (c *ApphostClient) NodeInfo(identity id.Identity) (info proto.NodeInfoData, err error) {
+func (c *ApphostClient) NodeInfo(identity *astral.Identity) (info proto.NodeInfoData, err error) {
 	s, err := c.Session()
 	if err != nil {
 		return
@@ -108,7 +108,7 @@ func (c *ApphostClient) Register(service string) (l *Listener, err error) {
 	return
 }
 
-func (c *ApphostClient) Exec(identity id.Identity, app string, args []string, env []string) error {
+func (c *ApphostClient) Exec(identity *astral.Identity, app string, args []string, env []string) error {
 	s, err := c.Session()
 	if err != nil {
 		return err
@@ -117,11 +117,11 @@ func (c *ApphostClient) Exec(identity id.Identity, app string, args []string, en
 	return s.Exec(identity, app, args, env)
 }
 
-func Exec(identity id.Identity, app string, args []string, env []string) error {
+func Exec(identity *astral.Identity, app string, args []string, env []string) error {
 	return Client.Exec(identity, app, args, env)
 }
 
-func Query(remoteID id.Identity, query string) (*Conn, error) {
+func Query(remoteID *astral.Identity, query string) (*Conn, error) {
 	return Client.Query(remoteID, query)
 }
 
@@ -129,11 +129,11 @@ func QueryName(name string, query string) (conn *Conn, err error) {
 	return Client.QueryName(name, query)
 }
 
-func Resolve(name string) (id.Identity, error) {
+func Resolve(name string) (*astral.Identity, error) {
 	return Client.Resolve(name)
 }
 
-func GetNodeInfo(identity id.Identity) (info proto.NodeInfoData, err error) {
+func GetNodeInfo(identity *astral.Identity) (info proto.NodeInfoData, err error) {
 	return Client.NodeInfo(identity)
 }
 

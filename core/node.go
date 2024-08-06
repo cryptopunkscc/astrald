@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/resources"
 	"time"
 )
@@ -17,7 +16,7 @@ var _ astral.Node = &Node{}
 
 type Node struct {
 	*Router
-	identity id.Identity
+	identity *astral.Identity
 	config   Config
 
 	assets  *assets.CoreAssets
@@ -31,7 +30,7 @@ type Node struct {
 }
 
 // NewNode instantiates a new node
-func NewNode(nodeID id.Identity, res resources.Resources) (*Node, error) {
+func NewNode(nodeID *astral.Identity, res resources.Resources) (*Node, error) {
 	var err error
 
 	if nodeID.PrivateKey() == nil {
@@ -89,7 +88,7 @@ func (node *Node) Modules() *Modules {
 }
 
 // Identity returns node's identity
-func (node *Node) Identity() id.Identity {
+func (node *Node) Identity() *astral.Identity {
 	return node.identity
 }
 

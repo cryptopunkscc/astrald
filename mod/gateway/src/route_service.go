@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"io"
 	"strings"
 	"time"
@@ -42,7 +41,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query *astral.Query, ca
 	}
 
 	// check if the target is us
-	if targetKey == srv.node.Identity().PublicKeyHex() {
+	if targetKey == srv.node.Identity().String() {
 		return astral.Accept(query, caller, func(conn astral.Conn) {
 			gwConn := newConn(
 				conn,
@@ -61,7 +60,7 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query *astral.Query, ca
 		})
 	}
 
-	targetIdentity, err := id.ParsePublicKeyHex(targetKey)
+	targetIdentity, err := astral.IdentityFromString(targetKey)
 	if err != nil {
 		return astral.Reject()
 	}

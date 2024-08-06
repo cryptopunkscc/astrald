@@ -2,7 +2,7 @@ package keys
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/object"
@@ -26,7 +26,7 @@ func NewAdmin(mod *Module) *Admin {
 }
 
 func (adm *Admin) new(term admin.Terminal, args []string) error {
-	key, err := id.GenerateIdentity()
+	key, err := astral.GenerateIdentity()
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -45,16 +44,16 @@ func (mod *Module) AddResolver(resolver dir.Resolver) error {
 	return mod.resolvers.Add(resolver)
 }
 
-func (mod *Module) Resolve(s string) (identity id.Identity, err error) {
+func (mod *Module) Resolve(s string) (identity *astral.Identity, err error) {
 	if s == "" || s == "anyone" {
-		return id.Identity{}, nil
+		return &astral.Identity{}, nil
 	}
 
 	if s == "localnode" {
 		return mod.node.Identity(), nil
 	}
 
-	if identity, err := id.ParsePublicKeyHex(s); err == nil {
+	if identity, err := astral.IdentityFromString(s); err == nil {
 		return identity, nil
 	}
 
@@ -74,10 +73,10 @@ func (mod *Module) Resolve(s string) (identity id.Identity, err error) {
 		}
 	}
 
-	return id.Identity{}, fmt.Errorf("unknown identity: %s", s)
+	return nil, fmt.Errorf("unknown identity: %s", s)
 }
 
-func (mod *Module) DisplayName(identity id.Identity) string {
+func (mod *Module) DisplayName(identity *astral.Identity) string {
 	if identity.IsZero() {
 		return ZeroIdentity
 	}
@@ -96,8 +95,8 @@ func (mod *Module) DisplayName(identity id.Identity) string {
 	return identity.Fingerprint()
 }
 
-func (mod *Module) Describe(ctx context.Context, identity id.Identity, opts *desc.Opts) []*desc.Desc {
-	var list []desc.Describer[id.Identity]
+func (mod *Module) Describe(ctx context.Context, identity *astral.Identity, opts *desc.Opts) []*desc.Desc {
+	var list []desc.Describer[*astral.Identity]
 
 	for _, d := range mod.describers.Clone() {
 		list = append(list, d)

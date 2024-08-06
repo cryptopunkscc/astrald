@@ -176,7 +176,7 @@ func (adm *Admin) parse(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("%s %s (%s)\n\n", admin.Header("Identity"), info.Identity, admin.Faded(info.Identity.PublicKeyHex()))
+	term.Printf("%s %s (%s)\n\n", admin.Header("Identity"), info.Identity, admin.Faded(info.Identity.String()))
 
 	var f = "%-10s %-40s\n"
 	term.Printf(f, admin.Header("Network"), admin.Header("Address"))
@@ -228,7 +228,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 
 	// check private key
 	if adm.mod.Keys != nil {
-		if _, err := adm.mod.Keys.FindIdentity(identity.PublicKeyHex()); err == nil {
+		if _, err := adm.mod.Keys.FindIdentity(identity.String()); err == nil {
 			term.Printf("%s\n", admin.Important("private key available"))
 		}
 	}

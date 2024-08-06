@@ -1,20 +1,20 @@
 package user
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"gorm.io/gorm"
 )
 
 type dbIdentity struct {
-	Identity id.Identity `gorm:"primaryKey"`
+	Identity *astral.Identity `gorm:"primaryKey"`
 }
 
 func (dbIdentity) TableName() string {
 	return user.DBPrefix + "identities"
 }
 
-func (mod *Module) loadUserID() (id.Identity, error) {
+func (mod *Module) loadUserID() (*astral.Identity, error) {
 	var row dbIdentity
 
 	err := mod.db.First(&row).Error
@@ -22,7 +22,7 @@ func (mod *Module) loadUserID() (id.Identity, error) {
 	return row.Identity, err
 }
 
-func (mod *Module) storeUserID(userID id.Identity) error {
+func (mod *Module) storeUserID(userID *astral.Identity) error {
 	var err = mod.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbIdentity{}).Error
 	if err != nil {
 		return err

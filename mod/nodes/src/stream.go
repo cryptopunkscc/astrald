@@ -3,7 +3,6 @@ package nodes
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -42,11 +41,11 @@ func newStream(conn astral.Conn, outbound bool) *Stream {
 	return link
 }
 
-func (s *Stream) LocalIdentity() id.Identity {
+func (s *Stream) LocalIdentity() *astral.Identity {
 	return s.conn.LocalIdentity()
 }
 
-func (s *Stream) RemoteIdentity() id.Identity {
+func (s *Stream) RemoteIdentity() *astral.Identity {
 	return s.conn.RemoteIdentity()
 }
 

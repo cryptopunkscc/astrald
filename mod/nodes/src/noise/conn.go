@@ -1,8 +1,8 @@
 package noise
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/brontide"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
@@ -38,10 +38,10 @@ func (conn *Conn) RemoteEndpoint() exonet.Endpoint {
 	return conn.conn.RemoteEndpoint()
 }
 
-func (conn *Conn) LocalIdentity() id.Identity {
-	return id.PublicKey(conn.brontide.LocalPub())
+func (conn *Conn) LocalIdentity() *astral.Identity {
+	return astral.IdentityFromPubKey(conn.brontide.LocalPub())
 }
 
-func (conn *Conn) RemoteIdentity() id.Identity {
-	return id.PublicKey(conn.brontide.RemotePub())
+func (conn *Conn) RemoteIdentity() *astral.Identity {
+	return astral.IdentityFromPubKey(conn.brontide.RemotePub())
 }

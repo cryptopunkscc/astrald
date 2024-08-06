@@ -1,7 +1,7 @@
 package arl
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"regexp"
 	"strings"
@@ -12,12 +12,12 @@ var queryExp = regexp.MustCompile(`^[a-zA-Z0-9_.-]+:(.*)$`)
 
 // ARL - Astral Resource Locator
 type ARL struct {
-	Caller id.Identity
-	Target id.Identity
+	Caller *astral.Identity
+	Target *astral.Identity
 	Query  string
 }
 
-func New(caller id.Identity, target id.Identity, query string) *ARL {
+func New(caller *astral.Identity, target *astral.Identity, query string) *ARL {
 	return &ARL{Caller: caller, Target: target, Query: query}
 }
 
@@ -54,7 +54,7 @@ func Parse(s string, resolver dir.Resolver) (arl *ARL, err error) {
 				return
 			}
 		} else {
-			arl.Caller, err = id.ParsePublicKeyHex(c)
+			arl.Caller, err = astral.IdentityFromString(c)
 			if err != nil {
 				return
 			}
@@ -68,7 +68,7 @@ func Parse(s string, resolver dir.Resolver) (arl *ARL, err error) {
 				return
 			}
 		} else {
-			arl.Target, err = id.ParsePublicKeyHex(t)
+			arl.Target, err = astral.IdentityFromString(t)
 			if err != nil {
 				return
 			}
@@ -80,10 +80,10 @@ func Parse(s string, resolver dir.Resolver) (arl *ARL, err error) {
 
 func (arl *ARL) String() (s string) {
 	if !arl.Caller.IsZero() {
-		s = arl.Caller.PublicKeyHex() + "@"
+		s = arl.Caller.String() + "@"
 	}
 	if !arl.Target.IsZero() {
-		s = s + arl.Target.PublicKeyHex() + ":"
+		s = s + arl.Target.String() + ":"
 	}
 	if len(arl.Query) > 0 {
 		s = s + arl.Query

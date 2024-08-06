@@ -2,7 +2,7 @@ package user
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -19,7 +19,7 @@ func (mod *Module) ReceiveObject(push *objects.Push) error {
 	return objects.ErrPushRejected
 }
 
-func (mod *Module) pushSignedNodeContract(s id.Identity, c *user.SignedNodeContract) error {
+func (mod *Module) pushSignedNodeContract(s *astral.Identity, c *user.SignedNodeContract) error {
 	// reject contracts it they're not ours or our contacts'
 	if !(mod.IsContact(c.UserID) || mod.userID.IsEqual(c.UserID)) {
 		return objects.ErrPushRejected

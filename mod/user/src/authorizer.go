@@ -2,7 +2,6 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -17,7 +16,7 @@ type Authorizer struct {
 	mod *Module
 }
 
-func (auth *Authorizer) Authorize(identity id.Identity, action string, target astral.Object) bool {
+func (auth *Authorizer) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
 	if identity.IsZero() {
 		return false
 	}
@@ -48,12 +47,12 @@ func (auth *Authorizer) Authorize(identity id.Identity, action string, target as
 			}
 
 		case nodes.ActionRelayFor:
-			t, ok := target.(*id.Identity)
+			t, ok := target.(*astral.Identity)
 			if !ok {
 				break
 			}
 
-			if _, err := auth.mod.findContractID(*t, identity); err == nil {
+			if _, err := auth.mod.findContractID(t, identity); err == nil {
 				return true
 			}
 

@@ -1,14 +1,10 @@
 package astral
 
-import (
-	"github.com/cryptopunkscc/astrald/id"
-)
-
 type Zone int
 
 type Scope struct {
 	Zone
-	QueryFilter id.Filter
+	QueryFilter IdentityFilter
 }
 
 const (

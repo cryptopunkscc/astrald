@@ -1,14 +1,14 @@
 package apphost
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"os/exec"
 	"strconv"
 	"strings"
 )
 
-func (mod *Module) Exec(identity id.Identity, path string, args []string, env []string) (*Exec, error) {
+func (mod *Module) Exec(identity *astral.Identity, path string, args []string, env []string) (*Exec, error) {
 	var token, _ = mod.CreateAccessToken(identity)
 	var log = mod.log.Tag(mod.Dir.DisplayName(identity))
 
@@ -60,7 +60,7 @@ func (mod *Module) Exec(identity id.Identity, path string, args []string, env []
 }
 
 type Exec struct {
-	identity id.Identity
+	identity *astral.Identity
 	path     string
 	args     []string
 	env      []string
@@ -80,7 +80,7 @@ func (e *Exec) State() string {
 	return e.state
 }
 
-func (e *Exec) Identity() id.Identity {
+func (e *Exec) Identity() *astral.Identity {
 	return e.identity
 }
 

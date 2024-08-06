@@ -3,7 +3,6 @@ package nodes
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -58,7 +57,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Peers() (peers []id.Identity) {
+func (mod *Module) Peers() (peers []*astral.Identity) {
 	return mod.peers.peers()
 }
 
@@ -90,7 +89,7 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 	return infoPrefix + base62.EncodeToString(packed)
 }
 
-func (mod *Module) Resolve(ctx context.Context, identity id.Identity) ([]exonet.Endpoint, error) {
+func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) ([]exonet.Endpoint, error) {
 	return mod.Endpoints(identity), nil
 }
 
@@ -112,7 +111,7 @@ func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, caller io.Wr
 	}
 
 	if v, ok := q.Extra.Get(nodes.ExtraRelayVia); ok {
-		relayID = v.(id.Identity)
+		relayID = v.(*astral.Identity)
 		useRelay = true
 	}
 
@@ -143,6 +142,6 @@ func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, caller io.Wr
 	return mod.peers.RouteQuery(ctx, q, caller)
 }
 
-func (mod *Module) on(providerID id.Identity) *Consumer {
+func (mod *Module) on(providerID *astral.Identity) *Consumer {
 	return NewConsumer(mod, providerID)
 }

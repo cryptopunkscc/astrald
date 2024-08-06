@@ -2,20 +2,20 @@ package gateway
 
 import (
 	"bytes"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
 var _ exonet.Endpoint = &Endpoint{}
 
 type Endpoint struct {
-	gate   id.Identity
-	target id.Identity
+	gate   *astral.Identity
+	target *astral.Identity
 }
 
 // NewEndpoint insatntiates and returns a new Endpoint
-func NewEndpoint(gate id.Identity, target id.Identity) *Endpoint {
+func NewEndpoint(gate *astral.Identity, target *astral.Identity) *Endpoint {
 	return &Endpoint{gate: gate, target: target}
 }
 
@@ -35,18 +35,18 @@ func (endpoint Endpoint) Address() string {
 	if endpoint.IsZero() {
 		return "unknown"
 	}
-	return endpoint.gate.PublicKeyHex() + ":" + endpoint.target.PublicKeyHex()
+	return endpoint.gate.String() + ":" + endpoint.target.String()
 }
 
 func (endpoint Endpoint) IsZero() bool {
 	return endpoint.gate.IsZero()
 }
 
-func (endpoint Endpoint) Gate() id.Identity {
+func (endpoint Endpoint) Gate() *astral.Identity {
 	return endpoint.gate
 }
 
-func (endpoint Endpoint) Target() id.Identity {
+func (endpoint Endpoint) Target() *astral.Identity {
 	return endpoint.target
 }
 

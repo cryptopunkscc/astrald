@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/id"
+	astral2 "github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -411,7 +411,7 @@ func main() {
 	}
 }
 
-func displayName(identity id.Identity) string {
+func displayName(identity *astral2.Identity) string {
 	if info, err := astral.GetNodeInfo(identity); err == nil {
 		return info.Name
 	}

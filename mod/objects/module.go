@@ -3,7 +3,6 @@ package objects
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
@@ -38,7 +37,7 @@ type Module interface {
 	AddObject(astral.Object) error
 	ReadObject(r io.Reader) (o astral.Object, err error)
 	AddReceiver(Receiver) error
-	Push(context.Context, id.Identity, astral.Object) error
+	Push(context.Context, *astral.Identity, astral.Object) error
 	PushLocal(astral.Object) error
 
 	// Store encodes the object to local storage
@@ -54,7 +53,7 @@ type Module interface {
 	// Put commits the object to storage and returns its ID
 	Put(object []byte, opts *CreateOpts) (object.ID, error)
 
-	Connect(caller id.Identity, target id.Identity) (Consumer, error)
+	Connect(caller *astral.Identity, target *astral.Identity) (Consumer, error)
 }
 
 type Consumer interface {
@@ -70,7 +69,7 @@ type Receiver interface {
 }
 
 type Push struct {
-	Source   id.Identity
+	Source   *astral.Identity
 	ObjectID object.ID
 	Object   astral.Object
 }

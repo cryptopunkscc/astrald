@@ -11,7 +11,7 @@ func (mod *Module) Prepare(ctx context.Context) error {
 	// import node's private key
 	var nodeID = mod.node.Identity()
 
-	if _, err := mod.FindIdentity(nodeID.PublicKeyHex()); err != nil {
+	if _, err := mod.FindIdentity(nodeID.String()); err != nil {
 		err = mod.importNodeIdentity()
 		if err != nil {
 			mod.log.Errorv(0, "error importing node identity: %v", err)

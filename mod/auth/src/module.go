@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -30,7 +29,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Authorize(identity id.Identity, action string, target astral.Object) bool {
+func (mod *Module) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
 	for _, a := range mod.authorizers.Clone() {
 		if a.Authorize(identity, action, target) {
 			name := reflect.TypeOf(a).String()

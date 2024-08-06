@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/presence/proto"
@@ -97,6 +98,7 @@ func (srv *DiscoverService) readAd() (*Ad, error) {
 		err = cslq.Decode(bytes.NewReader(buf[:n]), "v", &msg)
 		if err != nil {
 			srv.log.Errorv(1, "error decoding ad from %v: %v", srcAddr, err)
+			fmt.Println(buf[:n])
 			continue
 		}
 

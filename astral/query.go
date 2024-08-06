@@ -1,7 +1,6 @@
 package astral
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -10,14 +9,14 @@ const OriginLocal = "local"
 
 type Query struct {
 	Nonce  Nonce
-	Caller id.Identity
-	Target id.Identity
+	Caller *Identity
+	Target *Identity
 	Query  string
 	Extra  sig.Map[string, any]
 }
 
 // NewQuery returns a Query instance with a random Nonce.
-func NewQuery(caller id.Identity, target id.Identity, query string) *Query {
+func NewQuery(caller *Identity, target *Identity, query string) *Query {
 	return &Query{
 		Nonce:  NewNonce(),
 		Caller: caller,

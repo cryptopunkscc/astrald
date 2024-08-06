@@ -14,7 +14,7 @@ func (node *Node) Run(ctx context.Context) (err error) {
 	// Say hello
 	node.log.Log("astral node %s (%s) statrting...",
 		node.identity,
-		node.identity.PublicKeyHex(),
+		node.identity.String(),
 	)
 
 	var wg sync.WaitGroup

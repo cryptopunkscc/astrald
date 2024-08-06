@@ -1,7 +1,7 @@
 package apphost
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"math/rand"
 )
@@ -15,18 +15,18 @@ func (dbAccessToken) TableName() string {
 	return apphost.DBPrefix + "access_tokens"
 }
 
-func (mod *Module) CreateAccessToken(identity id.Identity) (string, error) {
+func (mod *Module) CreateAccessToken(identity *astral.Identity) (string, error) {
 	var token = randomString(32)
 
 	var tx = mod.db.Create(&dbAccessToken{
-		Identity: identity.PublicKeyHex(),
+		Identity: identity.String(),
 		Token:    token,
 	})
 
 	return token, tx.Error
 }
 
-func (mod *Module) authToken(token string) (identity id.Identity) {
+func (mod *Module) authToken(token string) (identity *astral.Identity) {
 	var row dbAccessToken
 
 	var tx = mod.db.Where("token = ?", token).First(&row)
@@ -34,7 +34,7 @@ func (mod *Module) authToken(token string) (identity id.Identity) {
 		return
 	}
 
-	identity, _ = id.ParsePublicKeyHex(row.Identity)
+	identity, _ = astral.IdentityFromString(row.Identity)
 
 	return
 }

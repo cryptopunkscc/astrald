@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -21,11 +20,11 @@ var _ objects.Consumer = &Consumer{}
 
 type Consumer struct {
 	mod        *Module
-	consumerID id.Identity
-	providerID id.Identity
+	consumerID *astral.Identity
+	providerID *astral.Identity
 }
 
-func NewConsumer(mod *Module, consumerID id.Identity, providerID id.Identity) *Consumer {
+func NewConsumer(mod *Module, consumerID *astral.Identity, providerID *astral.Identity) *Consumer {
 	return &Consumer{
 		mod:        mod,
 		consumerID: consumerID,

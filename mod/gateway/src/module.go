@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -37,7 +36,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
 	for _, gateName := range mod.config.Subscribe {
-		var gateID id.Identity
+		var gateID *astral.Identity
 
 		if info, err := mod.Nodes.ParseInfo(gateName); err == nil {
 			err = mod.Nodes.AddEndpoint(info.Identity, info.Endpoints...)
@@ -70,7 +69,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) Subscribe(gateway id.Identity) error {
+func (mod *Module) Subscribe(gateway *astral.Identity) error {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()
 
@@ -78,7 +77,7 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 		return ErrSelfGateway
 	}
 
-	var hex = gateway.PublicKeyHex()
+	var hex = gateway.String()
 
 	if _, found := mod.subscribers[hex]; found {
 		return ErrAlreadySubscribed
@@ -101,11 +100,11 @@ func (mod *Module) Subscribe(gateway id.Identity) error {
 	return nil
 }
 
-func (mod *Module) Unsubscribe(gateway id.Identity) error {
+func (mod *Module) Unsubscribe(gateway *astral.Identity) error {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()
 
-	s, found := mod.subscribers[gateway.PublicKeyHex()]
+	s, found := mod.subscribers[gateway.String()]
 	if !found {
 		return ErrNotSubscribed
 	}

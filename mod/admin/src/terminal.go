@@ -4,10 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	"strings"
 	"time"
@@ -18,7 +17,7 @@ const useColorTerminal = true
 var _ admin.Terminal = &ColorTerminal{}
 
 type ColorTerminal struct {
-	userIdentity id.Identity
+	userIdentity *astral.Identity
 	color        bool
 	log          *log.Logger
 	output       log.Output
@@ -160,10 +159,10 @@ func (t *ColorTerminal) SetColor(Color bool) {
 	t.color = Color
 }
 
-func (t *ColorTerminal) UserIdentity() id.Identity {
+func (t *ColorTerminal) UserIdentity() *astral.Identity {
 	return t.userIdentity
 }
 
-func (t *ColorTerminal) SetUserIdentity(identity id.Identity) {
+func (t *ColorTerminal) SetUserIdentity(identity *astral.Identity) {
 	t.userIdentity = identity
 }

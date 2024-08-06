@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
@@ -22,7 +21,7 @@ func (mod *Module) ReceiveObject(push *objects.Push) error {
 	return errors.New("rejected")
 }
 
-func (mod *Module) updateIdentityProfile(target id.Identity) error {
+func (mod *Module) updateIdentityProfile(target *astral.Identity) error {
 	mod.log.Infov(2, "updating profile for %s", target)
 
 	conn, err := astral.Route(mod.ctx, mod.node, astral.NewQuery(mod.node.Identity(), target, serviceName))

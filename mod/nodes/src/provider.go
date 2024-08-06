@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -27,8 +26,8 @@ type Provider struct {
 }
 
 type Relay struct {
-	Caller id.Identity
-	Target id.Identity
+	Caller *astral.Identity
+	Target *astral.Identity
 }
 
 func NewProvider(m *Module) *Provider {
@@ -71,14 +70,14 @@ func (mod *Provider) relay(ctx context.Context, q *astral.Query, w io.WriteClose
 		r, _ := mod.relays.Set(nonce, &Relay{})
 
 		if realCallerHex, ok := params[pSetCaller]; ok {
-			realCaller, err := id.ParsePublicKeyHex(realCallerHex)
+			realCaller, err := astral.IdentityFromString(realCallerHex)
 			if err != nil {
 				binary.Write(conn, binary.BigEndian, uint8(1))
 				return
 			}
 
 			if !realCaller.IsEqual(q.Caller) {
-				if !mod.Auth.Authorize(q.Caller, nodes.ActionRelayFor, &realCaller) {
+				if !mod.Auth.Authorize(q.Caller, nodes.ActionRelayFor, realCaller) {
 					binary.Write(conn, binary.BigEndian, uint8(1))
 					return
 				}
@@ -87,7 +86,7 @@ func (mod *Provider) relay(ctx context.Context, q *astral.Query, w io.WriteClose
 		}
 
 		if realTargetHex, ok := params[pSetTarget]; ok {
-			realTarget, err := id.ParsePublicKeyHex(realTargetHex)
+			realTarget, err := astral.IdentityFromString(realTargetHex)
 			if err != nil {
 				binary.Write(conn, binary.BigEndian, uint8(1))
 				return

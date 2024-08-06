@@ -2,7 +2,6 @@ package desc
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
@@ -13,7 +12,7 @@ type Describer[T any] interface {
 type DescribeFunc[T any] func(ctx context.Context, object T, opts *Opts) []*Desc
 
 type Desc struct {
-	Source id.Identity
+	Source *astral.Identity
 	Data   Data
 }
 

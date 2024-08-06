@@ -3,7 +3,6 @@ package nodes
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"io"
 	"sync"
@@ -24,7 +23,7 @@ var _ io.WriteCloser = &conn{}
 
 type conn struct {
 	Nonce          astral.Nonce
-	RemoteIdentity id.Identity
+	RemoteIdentity *astral.Identity
 	Outbound       bool
 	Query          string
 	createdAt      time.Time
@@ -42,7 +41,7 @@ type conn struct {
 	wsize int        // remote buffer left
 }
 
-func (c *conn) Identity() id.Identity {
+func (c *conn) Identity() *astral.Identity {
 	return c.RemoteIdentity
 }
 

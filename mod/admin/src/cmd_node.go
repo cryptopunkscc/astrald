@@ -18,7 +18,7 @@ type CmdNode struct {
 func (cmd *CmdNode) Exec(term admin.Terminal, args []string) error {
 	var nodeID = cmd.mod.node.Identity()
 
-	term.Printf("%v (%v)\n\n", nodeID, admin.Faded(nodeID.PublicKeyHex()))
+	term.Printf("%v (%v)\n\n", nodeID, admin.Faded(nodeID.String()))
 
 	// Show modules
 	if cnode, ok := cmd.mod.node.(*core.Node); ok {

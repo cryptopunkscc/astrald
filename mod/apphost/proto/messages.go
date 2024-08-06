@@ -1,7 +1,7 @@
 package proto
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 const (
@@ -21,8 +21,8 @@ type AuthParams struct {
 }
 
 type QueryParams struct {
-	Identity id.Identity `cslq:"v"`
-	Query    string      `cslq:"[c]c"`
+	Identity *astral.Identity `cslq:"v"`
+	Query    string           `cslq:"[c]c"`
 }
 
 type RegisterParams struct {
@@ -31,24 +31,24 @@ type RegisterParams struct {
 }
 
 type NodeInfoParams struct {
-	Identity id.Identity `cslq:"v"`
+	Identity *astral.Identity `cslq:"v"`
 }
 
 type NodeInfoData struct {
-	Identity id.Identity `cslq:"v"`
-	Name     string      `cslq:"[c]c"`
+	Identity *astral.Identity `cslq:"v"`
+	Name     string           `cslq:"[c]c"`
 }
 
 type ExecParams struct {
-	Identity id.Identity `cslq:"v"`
-	Exec     string      `cslq:"[c]c"`
-	Args     []string    `cslq:"[s][s]c"`
-	Env      []string    `cslq:"[s][s]c"`
+	Identity *astral.Identity `cslq:"v"`
+	Exec     string           `cslq:"[c]c"`
+	Args     []string     `cslq:"[s][s]c"`
+	Env      []string     `cslq:"[s][s]c"`
 }
 
 type InQueryParams struct {
-	Identity id.Identity `cslq:"v"`
-	Query    string      `cslq:"[c]c"`
+	Identity *astral.Identity `cslq:"v"`
+	Query    string           `cslq:"[c]c"`
 }
 
 type ResolveParams struct {
@@ -56,5 +56,5 @@ type ResolveParams struct {
 }
 
 type ResolveData struct {
-	Identity id.Identity `cslq:"v"`
+	Identity *astral.Identity `cslq:"v"`
 }

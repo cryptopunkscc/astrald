@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -68,21 +67,21 @@ func (mod *Module) RouteQuery(ctx context.Context, query *astral.Query, caller i
 	return astral.Accept(query, caller, mod.serve)
 }
 
-func (mod *Module) AddAdmin(identity id.Identity) error {
-	return mod.admins.Add(identity.PublicKeyHex())
+func (mod *Module) AddAdmin(identity *astral.Identity) error {
+	return mod.admins.Add(identity.String())
 }
 
-func (mod *Module) RemoveAdmin(identity id.Identity) error {
-	return mod.admins.Remove(identity.PublicKeyHex())
+func (mod *Module) RemoveAdmin(identity *astral.Identity) error {
+	return mod.admins.Remove(identity.String())
 }
 
-func (mod *Module) hasAccess(identity id.Identity) bool {
+func (mod *Module) hasAccess(identity *astral.Identity) bool {
 	// Node's identity always has access to itself
 	if identity.IsEqual(mod.node.Identity()) {
 		return true
 	}
 
-	return mod.admins.Contains(identity.PublicKeyHex())
+	return mod.admins.Contains(identity.String())
 }
 
 func (mod *Module) serve(conn astral.Conn) {

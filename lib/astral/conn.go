@@ -1,7 +1,7 @@
 package astral
 
 import (
-	"github.com/cryptopunkscc/astrald/id"
+	"github.com/cryptopunkscc/astrald/astral"
 	"net"
 )
 
@@ -9,11 +9,11 @@ var _ net.Conn = &Conn{}
 
 type Conn struct {
 	net.Conn
-	remoteID id.Identity
+	remoteID *astral.Identity
 	query    string
 }
 
-func (conn Conn) RemoteIdentity() id.Identity {
+func (conn Conn) RemoteIdentity() *astral.Identity {
 	return conn.remoteID
 }
 

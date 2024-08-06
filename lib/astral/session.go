@@ -1,8 +1,8 @@
 package astral
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"net"
 	"strings"
@@ -24,7 +24,7 @@ func NewSession(conn net.Conn, token string, addr string) *Session {
 	}
 }
 
-func (s *Session) Query(remoteID id.Identity, query string) (conn *Conn, err error) {
+func (s *Session) Query(remoteID *astral.Identity, query string) (conn *Conn, err error) {
 	if err = s.auth(); err != nil {
 		s.Close()
 		return
@@ -46,7 +46,7 @@ func (s *Session) Query(remoteID id.Identity, query string) (conn *Conn, err err
 	}, nil
 }
 
-func (s *Session) Resolve(name string) (identity id.Identity, err error) {
+func (s *Session) Resolve(name string) (identity *astral.Identity, err error) {
 	if err = s.auth(); err != nil {
 		return
 	}
@@ -64,7 +64,7 @@ func (s *Session) Resolve(name string) (identity id.Identity, err error) {
 	return data.Identity, err
 }
 
-func (s *Session) NodeInfo(identity id.Identity) (info proto.NodeInfoData, err error) {
+func (s *Session) NodeInfo(identity *astral.Identity) (info proto.NodeInfoData, err error) {
 	if err = s.auth(); err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (s *Session) Register(service string, target string) (err error) {
 	return
 }
 
-func (s *Session) Exec(identity id.Identity, app string, args []string, env []string) (err error) {
+func (s *Session) Exec(identity *astral.Identity, app string, args []string, env []string) (err error) {
 	if err = s.auth(); err != nil {
 		return
 	}

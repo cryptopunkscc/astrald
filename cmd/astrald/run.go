@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/debug"
-	"github.com/cryptopunkscc/astrald/id"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/resources"
 	"os"
@@ -65,26 +64,26 @@ func setupResources(args *Args) (resources.Resources, error) {
 }
 
 // setupNodeIdentity reads node's identity from resources or generates one if needed
-func setupNodeIdentity(resources resources.Resources) (id.Identity, error) {
+func setupNodeIdentity(resources resources.Resources) (*astral.Identity, error) {
 	keyBytes, err := resources.Read(resNodeIdentity)
 	if err == nil {
 		if len(keyBytes) == 32 {
-			return id.ParsePrivateKey(keyBytes)
+			return astral.IdentityFromPrivKeyBytes(keyBytes)
 		}
 
 		var pk keys.PrivateKey
 
 		err = astral.DecodeObject(bytes.NewReader(keyBytes), &pk)
 		if err != nil {
-			return id.Identity{}, err
+			return nil, err
 		}
 
-		return id.ParsePrivateKey(pk.Bytes)
+		return astral.IdentityFromPrivKeyBytes(pk.Bytes)
 	}
 
-	nodeID, err := id.GenerateIdentity()
+	nodeID, err := astral.GenerateIdentity()
 	if err != nil {
-		return id.Identity{}, err
+		return nil, err
 	}
 
 	var buf = &bytes.Buffer{}
@@ -96,12 +95,12 @@ func setupNodeIdentity(resources resources.Resources) (id.Identity, error) {
 
 	err = astral.EncodeObject(buf, pk)
 	if err != nil {
-		return id.Identity{}, err
+		return nil, err
 	}
 
 	err = resources.Write(resNodeIdentity, buf.Bytes())
 	if err != nil {
-		return id.Identity{}, err
+		return nil, err
 	}
 
 	return nodeID, nil
