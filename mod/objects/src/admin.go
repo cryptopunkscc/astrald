@@ -437,7 +437,7 @@ func (adm *Admin) push(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	return adm.mod.Push(context.Background(), target, obj)
+	return adm.mod.Push(context.Background(), nil, target, obj)
 }
 
 func (adm *Admin) ShortDescription() string {

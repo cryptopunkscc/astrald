@@ -225,21 +225,20 @@ func (srv *Provider) Push(ctx context.Context, query *astral.Query, caller io.Wr
 			return
 		}
 
-		var push = &objects.Push{
-			Source:   query.Caller,
-			ObjectID: objectID,
-			Object:   obj,
+		var push = &objects.SourcedObject{
+			Source: query.Caller,
+			Object: obj,
 		}
 
 		if !srv.mod.pushLocal(push) {
-			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), query.Caller, push.ObjectID)
+			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), query.Caller, objectID)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		binary.Write(conn, binary.BigEndian, true)
 
-		srv.mod.log.Infov(1, "accepted %s from %v (%v)", obj.ObjectType(), query.Caller, push.ObjectID)
+		srv.mod.log.Infov(1, "accepted %s from %v (%v)", obj.ObjectType(), query.Caller, objectID)
 
 		return
 	})

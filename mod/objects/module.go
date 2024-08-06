@@ -40,8 +40,8 @@ type Module interface {
 	AddObject(astral.Object) error
 	ReadObject(r io.Reader) (o astral.Object, err error)
 	AddReceiver(Receiver) error
-	Push(context.Context, *astral.Identity, astral.Object) error
-	PushLocal(astral.Object) error
+	Push(ctx context.Context, src *astral.Identity, dst *astral.Identity, obj astral.Object) error
+	PushLocal(*astral.Identity, astral.Object) error
 
 	// Store encodes the object to local storage
 	Store(astral.Object) (object.ID, error)
@@ -68,13 +68,12 @@ type Consumer interface {
 }
 
 type Receiver interface {
-	ReceiveObject(*Push) error
+	ReceiveObject(*SourcedObject) error
 }
 
-type Push struct {
-	Source   *astral.Identity
-	ObjectID object.ID
-	Object   astral.Object
+type SourcedObject struct {
+	Source *astral.Identity
+	Object astral.Object
 }
 
 type Describer interface {

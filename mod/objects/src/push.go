@@ -15,12 +15,16 @@ func (mod *Module) AddReceiver(receiver objects.Receiver) error {
 	return mod.receivers.Add(receiver)
 }
 
-func (mod *Module) Push(ctx context.Context, target *astral.Identity, obj astral.Object) (err error) {
-	if target.IsEqual(mod.node.Identity()) {
-		return mod.PushLocal(obj)
+func (mod *Module) Push(ctx context.Context, source *astral.Identity, target *astral.Identity, obj astral.Object) (err error) {
+	if source.IsZero() {
+		source = mod.node.Identity()
 	}
 
-	c, err := mod.Connect(mod.node.Identity(), target)
+	if target.IsEqual(mod.node.Identity()) {
+		return mod.PushLocal(source, obj)
+	}
+
+	c, err := mod.Connect(source, target)
 	if err != nil {
 		return err
 	}
@@ -28,16 +32,14 @@ func (mod *Module) Push(ctx context.Context, target *astral.Identity, obj astral
 	return c.Push(ctx, obj)
 }
 
-func (mod *Module) PushLocal(obj astral.Object) (err error) {
-	objectID, err := astral.ResolveObjectID(obj)
-	if err != nil {
-		return err
+func (mod *Module) PushLocal(source *astral.Identity, obj astral.Object) (err error) {
+	if source.IsZero() {
+		source = mod.node.Identity()
 	}
 
-	ok := mod.pushLocal(&objects.Push{
-		Source:   mod.node.Identity(),
-		ObjectID: objectID,
-		Object:   obj,
+	ok := mod.pushLocal(&objects.SourcedObject{
+		Source: mod.node.Identity(),
+		Object: obj,
 	})
 
 	if !ok {
@@ -47,7 +49,7 @@ func (mod *Module) PushLocal(obj astral.Object) (err error) {
 	return
 }
 
-func (mod *Module) pushLocal(push *objects.Push) (ok bool) {
+func (mod *Module) pushLocal(push *objects.SourcedObject) (ok bool) {
 	for _, r := range mod.receivers.Clone() {
 		if r.ReceiveObject(push) == nil {
 			ok = true

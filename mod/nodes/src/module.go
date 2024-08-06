@@ -117,7 +117,7 @@ func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, caller io.Wr
 
 	if useRelay {
 		if callerProof != nil {
-			err = mod.Objects.Push(ctx, relayID, callerProof)
+			err = mod.Objects.Push(ctx, nil, relayID, callerProof)
 			if err != nil {
 				mod.log.Errorv(1, "cannot push proof: %v", err)
 			}

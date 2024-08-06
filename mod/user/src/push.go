@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-func (mod *Module) ReceiveObject(push *objects.Push) error {
+func (mod *Module) ReceiveObject(push *objects.SourcedObject) error {
 	switch o := push.Object.(type) {
 	case *user.SignedNodeContract:
 		return mod.pushSignedNodeContract(push.Source, o)
@@ -44,5 +44,5 @@ func (mod *Module) onNodeLinked(event *nodes.EventLinked) {
 	if err != nil {
 		return
 	}
-	mod.Objects.Push(context.Background(), event.NodeID, localContract)
+	mod.Objects.Push(context.Background(), nil, event.NodeID, localContract)
 }
