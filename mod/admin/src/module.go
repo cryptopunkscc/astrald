@@ -124,3 +124,7 @@ func (mod *Module) exec(line string, term admin.Terminal) error {
 		return errors.New("command not found")
 	}
 }
+
+func (mod *Module) String() string {
+	return admin.ModuleName
+}

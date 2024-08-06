@@ -220,3 +220,7 @@ func (mod *Module) getObject(name string) astral.Object {
 
 	return c.Interface().(astral.Object)
 }
+
+func (mod *Module) String() string {
+	return objects.ModuleName
+}

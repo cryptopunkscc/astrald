@@ -137,3 +137,7 @@ func (mod *Module) openZip(objectID object.ID, opts *objects.OpenOpts) (*_zip.Re
 	zipFile, err := _zip.NewReader(r, int64(objectID.Size))
 	return zipFile, err
 }
+
+func (mod *Module) String() string {
+	return archives.ModuleName
+}

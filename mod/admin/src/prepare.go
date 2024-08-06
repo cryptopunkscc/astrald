@@ -21,7 +21,5 @@ func (mod *Module) Prepare(ctx context.Context) (err error) {
 		mod.admins.Add(adminID.String())
 	}
 
-	mod.Auth.AddAuthorizer(mod)
-
 	return nil
 }

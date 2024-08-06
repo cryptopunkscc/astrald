@@ -13,8 +13,6 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	mod.Admin.AddCommand(archives.ModuleName, NewAdmin(mod))
 
-	mod.Auth.AddAuthorizer(&Authorizer{mod: mod})
-
 	mod.Objects.AddPrototypes(archives.ArchiveDesc{}, archives.EntryDesc{})
 	mod.Objects.AddOpener(mod, 20)
 	mod.Objects.AddDescriber(mod)

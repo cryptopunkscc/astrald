@@ -2,18 +2,11 @@ package archives
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-var _ auth.Authorizer = &Authorizer{}
-
-type Authorizer struct {
-	mod *Module
-}
-
-func (auth *Authorizer) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
+func (mod *Module) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
 	switch action {
 	case objects.ActionRead:
 		if target == nil {
@@ -26,7 +19,7 @@ func (auth *Authorizer) Authorize(identity *astral.Identity, action string, targ
 
 		var rows []*dbEntry
 
-		var err = auth.mod.db.
+		var err = mod.db.
 			Unscoped().
 			Preload("Parent").
 			Where("object_id = ?", objectID).
@@ -37,7 +30,7 @@ func (auth *Authorizer) Authorize(identity *astral.Identity, action string, targ
 
 		for _, row := range rows {
 			if row.Parent == nil {
-				auth.mod.log.Errorv(1, "db: entry for %v references an invalid parent", objectID)
+				mod.log.Errorv(1, "db: entry for %v references an invalid parent", objectID)
 				continue
 			}
 
@@ -48,13 +41,9 @@ func (auth *Authorizer) Authorize(identity *astral.Identity, action string, targ
 				continue
 			}
 
-			return auth.mod.Auth.Authorize(identity, objects.ActionRead, &zipID)
+			return mod.Auth.Authorize(identity, objects.ActionRead, &zipID)
 		}
 	}
 
 	return false
-}
-
-func (auth *Authorizer) String() string {
-	return "mod.archives"
 }

@@ -32,7 +32,6 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	mod.Admin.AddCommand(user.ModuleName, NewAdmin(mod))
 
-	mod.Auth.AddAuthorizer(&Authorizer{mod: mod})
 	mod.Dir.AddDescriber(mod)
 	mod.Objects.AddObject(&user.NodeContract{})
 	mod.Objects.AddObject(&user.SignedNodeContract{})

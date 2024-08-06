@@ -3,26 +3,18 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/presence"
-	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-var _ auth.Authorizer = &Authorizer{}
-
-type Authorizer struct {
-	mod *Module
-}
-
-func (auth *Authorizer) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
+func (mod *Module) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
 	if identity.IsZero() {
 		return false
 	}
 
 	// allow the user to perform whitelisted actions
-	if identity.IsEqual(auth.mod.UserID()) {
+	if identity.IsEqual(mod.UserID()) {
 		switch action {
 		case admin.ActionAccess,
 			admin.ActionSudo,
@@ -36,13 +28,13 @@ func (auth *Authorizer) Authorize(identity *astral.Identity, action string, targ
 	}
 
 	// nodes inherit some permissions from their owner
-	if owner := auth.mod.Owner(identity); !owner.IsZero() {
+	if owner := mod.Owner(identity); !owner.IsZero() {
 		switch action {
 		case objects.ActionRead,
 			objects.ActionWrite,
 			objects.ActionPurge,
 			objects.ActionSearch:
-			if auth.Authorize(owner, action, target) {
+			if mod.Authorize(owner, action, target) {
 				return true
 			}
 
@@ -52,7 +44,7 @@ func (auth *Authorizer) Authorize(identity *astral.Identity, action string, targ
 				break
 			}
 
-			if _, err := auth.mod.findContractID(t, identity); err == nil {
+			if _, err := mod.findContractID(t, identity); err == nil {
 				return true
 			}
 
@@ -61,8 +53,4 @@ func (auth *Authorizer) Authorize(identity *astral.Identity, action string, targ
 	}
 
 	return false
-}
-
-func (auth *Authorizer) String() string {
-	return "mod." + user.ModuleName
 }
