@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strconv"
 )
 
 type Nonce uint64
@@ -34,4 +35,14 @@ func (nonce *Nonce) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (nonce Nonce) String() string {
 	return fmt.Sprintf("%016x", uint64(nonce))
+}
+
+func (nonce Nonce) MarshalText() (text []byte, err error) {
+	return []byte(nonce.String()), nil
+}
+
+func (nonce *Nonce) UnmarshalText(text []byte) (err error) {
+	u, err := strconv.ParseUint(string(text), 16, 64)
+	*nonce = Nonce(u)
+	return
 }

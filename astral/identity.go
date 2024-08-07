@@ -195,3 +195,16 @@ func (id *Identity) MarshalJSON() ([]byte, error) {
 func (id *Identity) ObjectType() string {
 	return "astral.identity.secp256k1"
 }
+
+func (id *Identity) MarshalText() (text []byte, err error) {
+	return []byte(id.String()), nil
+}
+
+func (id *Identity) UnmarshalText(text []byte) (err error) {
+	i, err := IdentityFromString(string(text))
+	if err != nil {
+		return
+	}
+	*id = *i
+	return
+}
