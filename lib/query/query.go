@@ -1,6 +1,8 @@
 package query
 
 import (
+	"encoding"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/url"
@@ -79,6 +81,35 @@ func Populate(m map[string]string, s any) error {
 			return fmt.Errorf("required field %s not found in the map", name)
 		}
 
+		if fv.Kind() == reflect.Ptr && fv.IsZero() {
+			fv.Set(reflect.New(fv.Type().Elem()))
+		}
+
+		if fv.CanInterface() {
+			if u, ok := fv.Interface().(encoding.TextUnmarshaler); ok {
+				err := u.UnmarshalText([]byte(mv))
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
+		if fv.CanAddr() {
+			fva := fv.Addr()
+			if u, ok := fva.Interface().(encoding.TextUnmarshaler); ok {
+				err := u.UnmarshalText([]byte(mv))
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
+		if fv.Kind() == reflect.Ptr {
+			fv = fv.Elem()
+		}
+
 		switch fv.Kind() {
 		case reflect.String:
 			fv.SetString(mv)
@@ -114,6 +145,15 @@ func Populate(m map[string]string, s any) error {
 				return err
 			}
 			fv.SetBool(n)
+
+		case reflect.Slice:
+			if fv.Type().Elem().Kind() == reflect.Uint8 {
+				b, err := base64.StdEncoding.DecodeString(mv)
+				if err != nil {
+					return err
+				}
+				fv.Set(reflect.ValueOf(b))
+			}
 
 		default:
 			return fmt.Errorf("field %s is not a supported type", ft.Name)
