@@ -2,7 +2,6 @@ package apphost
 
 import (
 	"context"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
@@ -24,7 +23,6 @@ func (mod *Module) regsiterApp(ctx context.Context, q *astral.Query, w io.WriteC
 
 	return astral.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
-
 		id.WriteTo(w)
 	})
 }
@@ -39,7 +37,6 @@ func (mod *Module) unregsiterApp(ctx context.Context, q *astral.Query, w io.Writ
 
 	err := mod.UnregisterApp(appID)
 	if err != nil {
-		fmt.Println(err)
 		return astral.Reject()
 	}
 
@@ -63,7 +60,6 @@ func (mod *Module) getAccessToken(ctx context.Context, q *astral.Query, w io.Wri
 
 	return astral.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
-
 		cslq.Encode(conn, "[c]c", token)
 	})
 }

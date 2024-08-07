@@ -59,7 +59,7 @@ func (c *ApphostClient) QueryName(name string, query string) (conn *Conn, err er
 func (c *ApphostClient) Resolve(name string) (*astral.Identity, error) {
 	s, err := c.Session()
 	if err != nil {
-		return *astral.Identity{}, err
+		return nil, err
 	}
 
 	return s.Resolve(name)
