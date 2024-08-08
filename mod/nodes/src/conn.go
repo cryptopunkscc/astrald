@@ -27,7 +27,7 @@ type conn struct {
 	Outbound       bool
 	Query          string
 	createdAt      time.Time
-	res            chan bool
+	res            chan uint8
 
 	state  atomic.Int32 // connection state
 	stream *Stream      // stream the connection is attached to
@@ -53,7 +53,7 @@ func newConn(n astral.Nonce) *conn {
 	return &conn{
 		Nonce:     n,
 		createdAt: time.Now(),
-		res:       make(chan bool, 1),
+		res:       make(chan uint8, 1),
 		wcond:     sync.NewCond(&sync.Mutex{}),
 		rcond:     sync.NewCond(&sync.Mutex{}),
 		rsize:     defaultBufferSize,

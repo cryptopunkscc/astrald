@@ -38,7 +38,7 @@ func (router *PriorityRouter) RouteQuery(ctx context.Context, query *astral.Quer
 		switch {
 		case err == nil:
 			return
-		case errors.Is(err, astral.ErrRejected):
+		case errors.Is(err, &astral.ErrRejected{}):
 			return
 		default:
 			errs = append(errs, err)

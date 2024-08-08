@@ -35,7 +35,14 @@ func Accept(query *Query, src io.WriteCloser, handler func(Conn)) (io.WriteClose
 }
 
 func Reject() (io.WriteCloser, error) {
-	return nil, ErrRejected
+	return RejectWithCode(1)
+}
+
+func RejectWithCode(code uint8) (io.WriteCloser, error) {
+	if code == 0 {
+		panic("code cannot be 0")
+	}
+	return nil, &ErrRejected{Code: code}
 }
 
 func Abort() (io.WriteCloser, error) {

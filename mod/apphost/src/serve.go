@@ -59,7 +59,7 @@ func (s *Session) query(params proto.QueryParams) error {
 	}
 
 	switch {
-	case errors.Is(err, astral.ErrRejected):
+	case errors.Is(err, &astral.ErrRejected{}):
 		return s.WriteErr(proto.ErrRejected)
 
 	case errors.Is(err, &astral.ErrRouteNotFound{}):

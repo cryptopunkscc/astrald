@@ -63,9 +63,9 @@ func (mod *Peers) RouteQuery(ctx context.Context, query *astral.Query, caller io
 
 	// wait for the response
 	select {
-	case accepted := <-conn.res:
-		if !accepted {
-			return astral.Reject()
+	case errCode := <-conn.res:
+		if errCode != 0 {
+			return astral.RejectWithCode(errCode)
 		}
 
 		go func() {
@@ -153,7 +153,12 @@ func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
 
 	if err != nil {
 		conn.swapState(stateRouting, stateClosed)
-		s.Write(&frames.Response{Nonce: f.Nonce, ErrCode: frames.CodeRejected})
+		var code = uint8(frames.CodeRejected)
+		var reject *astral.ErrRejected
+		if errors.As(err, &reject) {
+			code = reject.Code
+		}
+		s.Write(&frames.Response{Nonce: f.Nonce, ErrCode: code})
 		return
 	}
 
@@ -183,7 +188,7 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 		if !conn.swapState(stateRouting, stateClosed) {
 			return
 		}
-		conn.res <- false
+		conn.res <- f.ErrCode
 	}
 
 	if !conn.swapState(stateRouting, stateOpen) {
@@ -191,7 +196,7 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 	}
 	conn.stream = s
 	conn.wsize = int(f.Buffer)
-	conn.res <- true
+	conn.res <- 0
 }
 
 func (mod *Peers) handleData(s *Stream, f *frames.Data) {
