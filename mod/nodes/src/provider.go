@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -56,43 +56,35 @@ func (mod *Provider) PreprocessQuery(q *astral.Query) error {
 }
 
 func (mod *Provider) relay(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(q.Query)
+	var args struct {
+		Nonce     astral.Nonce
+		SetCaller *astral.Identity `query:"optional"`
+		SetTarget *astral.Identity `query:"optional"`
+	}
 
-	nonce, err := params.GetNonce(pNonce)
+	_, err := query.ParseTo(q.Query, &args)
 	if err != nil {
-		mod.log.Errorv(2, "invalid relay query from %v: nonce not found", q.Caller)
+		mod.log.Errorv(2, "%v -> relay: invalid arguments: %v", q.Caller, err)
 		return astral.Reject()
 	}
 
 	return astral.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 
-		r, _ := mod.relays.Set(nonce, &Relay{})
+		r, _ := mod.relays.Set(args.Nonce, &Relay{})
 
-		if realCallerHex, ok := params[pSetCaller]; ok {
-			realCaller, err := astral.IdentityFromString(realCallerHex)
-			if err != nil {
-				binary.Write(conn, binary.BigEndian, uint8(1))
-				return
-			}
-
-			if !realCaller.IsEqual(q.Caller) {
-				if !mod.Auth.Authorize(q.Caller, nodes.ActionRelayFor, realCaller) {
+		if !args.SetCaller.IsZero() {
+			if !args.SetCaller.IsEqual(q.Caller) {
+				if !mod.Auth.Authorize(q.Caller, nodes.ActionRelayFor, args.SetCaller) {
 					binary.Write(conn, binary.BigEndian, uint8(1))
 					return
 				}
-				r.Caller = realCaller
+				r.Caller = args.SetCaller
 			}
 		}
 
-		if realTargetHex, ok := params[pSetTarget]; ok {
-			realTarget, err := astral.IdentityFromString(realTargetHex)
-			if err != nil {
-				binary.Write(conn, binary.BigEndian, uint8(1))
-				return
-			}
-
-			r.Target = realTarget
+		if !args.SetTarget.IsZero() {
+			r.Target = args.SetTarget
 		}
 
 		binary.Write(conn, binary.BigEndian, uint8(0))
