@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
 type Consumer struct {
@@ -18,22 +18,11 @@ func NewConsumer(module *Module, providerID *astral.Identity) *Consumer {
 }
 
 func (mod *Consumer) Relay(ctx context.Context, nonce astral.Nonce, caller *astral.Identity, target *astral.Identity) (err error) {
-	params := core.Params{}
-	params.SetNonce(pNonce, nonce)
-	if !caller.IsZero() {
-		params.SetIdentity(pSetCaller, caller)
-	}
-	if !target.IsZero() && !target.IsEqual(mod.ProviderID) {
-		params.SetIdentity(pSetTarget, target)
-	}
-	q := &astral.Query{
-		Nonce:  astral.NewNonce(),
-		Caller: mod.node.Identity(),
-		Target: mod.ProviderID,
-		Query:  core.Query(mRelay, params),
-	}
-
-	conn, err := astral.Route(ctx, mod.node, q)
+	conn, err := query.Run(mod.node, target, mRelay, relayArgs{
+		Nonce:     nonce,
+		SetCaller: caller,
+		SetTarget: target,
+	})
 	if err != nil {
 		return
 	}

@@ -18,6 +18,7 @@ import (
 )
 
 const assetLocalContract = "mod.user.local_contract"
+const defaultContractValidity = 24 * time.Hour
 
 var _ user.Module = &Module{}
 var _ objects.Receiver = &Module{}
@@ -167,7 +168,7 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 		ObjectID:  contractID,
 		UserID:    c.UserID,
 		NodeID:    c.NodeID,
-		ExpiresAt: time.Time(c.ExpiresAt),
+		ExpiresAt: c.ExpiresAt.Time().UTC(),
 	}).Error
 }
 
@@ -187,7 +188,7 @@ func (mod *Module) LocalContract() (c *user.SignedNodeContract, err error) {
 		NodeContract: &user.NodeContract{
 			UserID:    mod.UserID(),
 			NodeID:    mod.node.Identity(),
-			ExpiresAt: astral.Time(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: astral.Time(time.Now().Add(defaultContractValidity).UTC()),
 		},
 	}
 

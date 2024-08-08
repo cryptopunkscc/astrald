@@ -30,6 +30,12 @@ type Relay struct {
 	Target *astral.Identity
 }
 
+type relayArgs struct {
+	Nonce     astral.Nonce
+	SetCaller *astral.Identity `query:"optional"`
+	SetTarget *astral.Identity `query:"optional"`
+}
+
 func NewProvider(m *Module) *Provider {
 	p := &Provider{
 		Module:     m,
@@ -56,11 +62,7 @@ func (mod *Provider) PreprocessQuery(q *astral.Query) error {
 }
 
 func (mod *Provider) relay(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	var args struct {
-		Nonce     astral.Nonce
-		SetCaller *astral.Identity `query:"optional"`
-		SetTarget *astral.Identity `query:"optional"`
-	}
+	var args relayArgs
 
 	_, err := query.ParseTo(q.Query, &args)
 	if err != nil {
