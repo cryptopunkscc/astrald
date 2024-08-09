@@ -30,12 +30,12 @@ func NewPeers(m *Module) *Peers {
 
 func (mod *Peers) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (_ io.WriteCloser, err error) {
 	if !mod.isRoutable(q.Target) {
-		return astral.RouteNotFound(mod)
+		return query.RouteNotFound(mod)
 	}
 
 	conn, ok := mod.conns.Set(q.Nonce, newConn(q.Nonce))
 	if !ok {
-		return astral.RouteNotFound(mod, errors.New("nonce already exists"))
+		return query.RouteNotFound(mod, errors.New("nonce already exists"))
 	}
 
 	conn.RemoteIdentity = q.Target
@@ -45,7 +45,7 @@ func (mod *Peers) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteClo
 	// make sure we're linked with the target node
 	if err := mod.ensureConnected(ctx, q.Target); err != nil {
 		conn.swapState(stateRouting, stateClosed)
-		return astral.RouteNotFound(mod, err)
+		return query.RouteNotFound(mod, err)
 	}
 
 	// prepare the protocol frame
@@ -78,7 +78,7 @@ func (mod *Peers) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteClo
 
 	case <-ctx.Done():
 		conn.swapState(stateRouting, stateClosed)
-		return astral.RouteNotFound(mod, ctx.Err())
+		return query.RouteNotFound(mod, ctx.Err())
 	}
 }
 

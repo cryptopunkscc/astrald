@@ -3,6 +3,7 @@ package apphost
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"io"
 )
 
@@ -15,5 +16,5 @@ func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCl
 		return guest.RouteQuery(ctx, q, w)
 	}
 
-	return astral.RouteNotFound(mod)
+	return query.RouteNotFound(mod)
 }

@@ -39,3 +39,10 @@ func RejectWithCode(code uint8) (io.WriteCloser, error) {
 	}
 	return nil, &astral.ErrRejected{Code: code}
 }
+
+func RouteNotFound(r astral.Router, errors ...error) (io.WriteCloser, error) {
+	return nil, &astral.ErrRouteNotFound{
+		Router: r,
+		Fails:  errors,
+	}
+}

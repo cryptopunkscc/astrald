@@ -3,7 +3,6 @@ package astral
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 )
 
@@ -33,13 +32,6 @@ var ErrZoneExcluded = errors.New("zone excluded")
 type ErrRouteNotFound struct {
 	Router Router
 	Fails  []error
-}
-
-func RouteNotFound(r Router, errors ...error) (io.WriteCloser, error) {
-	return nil, &ErrRouteNotFound{
-		Router: r,
-		Fails:  errors,
-	}
 }
 
 func (e *ErrRouteNotFound) Error() string {

@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
+var _ objects.Receiver = &Module{}
+
 func (mod *Module) ReceiveObject(push *objects.SourcedObject) error {
 	switch o := push.Object.(type) {
 	case *user.SignedNodeContract:

@@ -51,7 +51,7 @@ func (router *PrefixRouter) RouteQuery(ctx context.Context, q *astral.Query, w i
 		if router.Exclusive == true {
 			return query.Reject()
 		} else {
-			return astral.RouteNotFound(router)
+			return query.RouteNotFound(router)
 		}
 	}
 

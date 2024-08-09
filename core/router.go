@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
@@ -43,7 +44,7 @@ func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteClos
 	for _, p := range r.preprocessors.Clone() {
 		err = p.PreprocessQuery(q)
 		if err != nil {
-			return astral.RouteNotFound(r, err)
+			return query.RouteNotFound(r, err)
 		}
 	}
 
@@ -76,7 +77,7 @@ func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteClos
 func (r *Router) routeQuery(ctx context.Context, q *astral.Query, src io.WriteCloser) (w io.WriteCloser, err error) {
 	c, ok := r.conns.Set(q.Nonce, newConn(r, q))
 	if !ok {
-		return astral.RouteNotFound(r, errors.New("routing cycle not allowed"))
+		return query.RouteNotFound(r, errors.New("routing cycle not allowed"))
 	}
 	c.src = newWriter(c, src)
 

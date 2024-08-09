@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -95,7 +96,7 @@ func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) ([]ex
 
 func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (rw io.WriteCloser, err error) {
 	if s, ok := q.Extra.Get("origin"); ok && s == "network" {
-		return astral.RouteNotFound(mod)
+		return query.RouteNotFound(mod)
 	}
 
 	var relayID = q.Target
@@ -125,7 +126,7 @@ func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCl
 
 		err = mod.on(relayID).Relay(ctx, q.Nonce, q.Caller, q.Target)
 		if err != nil {
-			return astral.RouteNotFound(mod, err)
+			return query.RouteNotFound(mod, err)
 		}
 
 		if !q.Target.IsEqual(relayID) {

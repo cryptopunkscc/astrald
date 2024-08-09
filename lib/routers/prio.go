@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 )
@@ -45,7 +46,7 @@ func (router *PriorityRouter) RouteQuery(ctx context.Context, q *astral.Query, w
 		}
 	}
 
-	return astral.RouteNotFound(router, errs...)
+	return query.RouteNotFound(router, errs...)
 }
 
 func (router *PriorityRouter) Add(r astral.Router, prio int) error {

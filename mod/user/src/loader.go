@@ -21,8 +21,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		assets:     assets,
 	}
 
-	mod.profileService = &ProfileService{Module: mod}
-
 	err = assets.LoadYAML(user.ModuleName, &mod.config)
 	if err != nil {
 

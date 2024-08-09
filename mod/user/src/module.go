@@ -21,21 +21,16 @@ const assetLocalContract = "mod.user.local_contract"
 const defaultContractValidity = 24 * time.Hour
 
 var _ user.Module = &Module{}
-var _ objects.Receiver = &Module{}
-var _ objects.Holder = &Module{}
 
 type Module struct {
 	Deps
+	*routers.PathRouter
 	config Config
 	node   astral.Node
 	log    *log.Logger
 	assets assets.Assets
 	db     *gorm.DB
-
-	*routers.PathRouter
-	userID         *astral.Identity
-	userCert       []byte
-	profileService *ProfileService
+	userID *astral.Identity
 }
 
 func (mod *Module) Run(ctx context.Context) error {

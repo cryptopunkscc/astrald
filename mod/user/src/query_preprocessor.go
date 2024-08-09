@@ -2,8 +2,11 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
+
+var _ core.QueryPreprocessor = &Module{}
 
 func (mod *Module) PreprocessQuery(q *astral.Query) error {
 	mod.attachCallerProof(q)
