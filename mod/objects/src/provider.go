@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -45,38 +46,38 @@ func NewProvider(mod *Module) *Provider {
 	return srv
 }
 
-func (srv *Provider) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	return srv.router.RouteQuery(ctx, query, caller)
+func (srv *Provider) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	return srv.router.RouteQuery(ctx, q, w)
 }
 
-func (srv *Provider) Read(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(query.Query)
+func (srv *Provider) Read(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	_, params := core.ParseQuery(q.Query)
 
 	objectID, err := params.GetObjectID("id")
 	if err != nil {
 		srv.mod.log.Errorv(2, "invalid id: %v", err)
-		return astral.Reject()
+		return query.Reject()
 	}
 
 	var opts = objects.DefaultOpenOpts()
 
-	if o, ok := query.Extra.Get("origin"); ok && (o == astral.OriginLocal) {
+	if o, ok := q.Extra.Get("origin"); ok && (o == astral.OriginLocal) {
 		opts.Zone |= astral.ZoneNetwork
 	}
 
 	opts.Offset, err = params.GetUint64("offset")
 	if err != nil && !errors.Is(err, core.ErrKeyNotFound) {
 		srv.mod.log.Errorv(2, "offset: invalid argument: %v", err)
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	r, err := srv.mod.OpenAs(ctx, query.Caller, objectID, opts)
+	r, err := srv.mod.OpenAs(ctx, q.Caller, objectID, opts)
 	if err != nil {
 		srv.mod.log.Errorv(2, "open %v error: %v", objectID, err)
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	return astral.Accept(query, caller, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer r.Close()
 		defer conn.Close()
 
@@ -84,20 +85,20 @@ func (srv *Provider) Read(ctx context.Context, query *astral.Query, caller io.Wr
 	})
 }
 
-func (srv *Provider) Describe(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(query.Query)
+func (srv *Provider) Describe(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	_, params := core.ParseQuery(q.Query)
 
 	objectID, err := params.GetObjectID("id")
 	if err != nil {
 		srv.mod.log.Errorv(2, "invalid id: %v", err)
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionRead, &objectID) {
-		return astral.Reject()
+	if !srv.mod.Auth.Authorize(q.Caller, objects.ActionRead, &objectID) {
+		return query.Reject()
 	}
 
-	return astral.Accept(query, caller, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 
 		var list []JSONDescriptor
@@ -122,33 +123,33 @@ func (srv *Provider) Describe(ctx context.Context, query *astral.Query, caller i
 	})
 }
 
-func (srv *Provider) Put(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(query.Query)
+func (srv *Provider) Put(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	_, params := core.ParseQuery(q.Query)
 
-	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionWrite, nil) {
-		return astral.Reject()
+	if !srv.mod.Auth.Authorize(q.Caller, objects.ActionWrite, nil) {
+		return query.Reject()
 	}
 
 	size, err := params.GetUint64("size")
 	if err != nil {
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	w, err := srv.mod.Create(&objects.CreateOpts{Alloc: int(size)})
+	create, err := srv.mod.Create(&objects.CreateOpts{Alloc: int(size)})
 	if err != nil {
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	return astral.Accept(query, caller, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 
-		_, err := io.CopyN(w, conn, int64(size))
+		_, err := io.CopyN(create, conn, int64(size))
 		if err != nil {
 			cslq.Encode(conn, "c", 1)
 			return
 		}
 
-		objectID, err := w.Commit()
+		objectID, err := create.Commit()
 		if err != nil {
 			cslq.Encode(conn, "c", 1)
 			return
@@ -158,28 +159,28 @@ func (srv *Provider) Put(ctx context.Context, query *astral.Query, caller io.Wri
 	})
 }
 
-func (srv *Provider) Search(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	if !srv.mod.Auth.Authorize(query.Caller, objects.ActionSearch, nil) {
-		return astral.Reject()
+func (srv *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	if !srv.mod.Auth.Authorize(q.Caller, objects.ActionSearch, nil) {
+		return query.Reject()
 	}
 
-	_, params := core.ParseQuery(query.Query)
+	_, params := core.ParseQuery(q.Query)
 
-	q, ok := params["q"]
+	sq, ok := params["q"]
 	if !ok {
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	matches, err := srv.mod.Search(ctx, q, objects.DefaultSearchOpts())
+	matches, err := srv.mod.Search(ctx, sq, objects.DefaultSearchOpts())
 	if err != nil {
-		return astral.Reject()
+		return query.Reject()
 	}
 
 	matches = slices.DeleteFunc(matches, func(match objects.Match) bool {
-		return !srv.mod.Auth.Authorize(query.Caller, objects.ActionRead, &match.ObjectID)
+		return !srv.mod.Auth.Authorize(q.Caller, objects.ActionRead, &match.ObjectID)
 	})
 
-	return astral.Accept(query, caller, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 
 		json.NewEncoder(conn).Encode(matches)
@@ -188,33 +189,33 @@ func (srv *Provider) Search(ctx context.Context, query *astral.Query, caller io.
 	})
 }
 
-func (srv *Provider) Push(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(query.Query)
+func (srv *Provider) Push(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	_, params := core.ParseQuery(q.Query)
 
 	size, err := params.GetInt("size")
 	if err != nil {
 		srv.mod.log.Errorv(2, "invalid id: %v", err)
-		return astral.Reject()
+		return query.Reject()
 	}
 
 	if size > maxPushSize {
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	return astral.Accept(query, caller, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 
 		var buf = make([]byte, size)
 		_, err := io.ReadFull(conn, buf)
 		if err != nil {
-			srv.mod.log.Errorv(1, "%v push read error: %v", query.Caller, err)
+			srv.mod.log.Errorv(1, "%v push read error: %v", q.Caller, err)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		obj, err := srv.mod.ReadObject(bytes.NewReader(buf))
 		if err != nil {
-			srv.mod.log.Errorv(1, "%v push read object error: %v", query.Caller, err)
+			srv.mod.log.Errorv(1, "%v push read object error: %v", q.Caller, err)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
@@ -226,19 +227,19 @@ func (srv *Provider) Push(ctx context.Context, query *astral.Query, caller io.Wr
 		}
 
 		var push = &objects.SourcedObject{
-			Source: query.Caller,
+			Source: q.Caller,
 			Object: obj,
 		}
 
 		if !srv.mod.pushLocal(push) {
-			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), query.Caller, objectID)
+			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), q.Caller, objectID)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		binary.Write(conn, binary.BigEndian, true)
 
-		srv.mod.log.Infov(1, "accepted %s from %v (%v)", obj.ObjectType(), query.Caller, objectID)
+		srv.mod.log.Infov(1, "accepted %s from %v (%v)", obj.ObjectType(), q.Caller, objectID)
 
 		return
 	})

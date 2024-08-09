@@ -2,10 +2,11 @@ package sync
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/arl"
-	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
@@ -26,13 +27,13 @@ func (c *Consumer) Sync(ctx context.Context, since time.Time) (diff Diff, err er
 		params.SetUnixNano("since", since)
 	}
 
-	var query = astral.NewQuery(
+	var q = astral.NewQuery(
 		c.arl.Caller,
 		c.arl.Target,
 		core.Query(c.arl.Query, params),
 	)
 
-	conn, err := astral.Route(ctx, c.router, query)
+	conn, err := query.Route(ctx, c.router, q)
 	if err != nil {
 		return
 	}

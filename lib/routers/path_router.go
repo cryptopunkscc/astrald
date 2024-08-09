@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"io"
 	"strings"
 	"sync"
@@ -29,14 +30,14 @@ func NewPathRouter(identity *astral.Identity, authority bool) *PathRouter {
 	}
 }
 
-func (router *PathRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
+func (router *PathRouter) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	if !router.identity.IsZero() {
-		if !query.Target.IsEqual(router.identity) {
+		if !q.Target.IsEqual(router.identity) {
 			return astral.RouteNotFound(router)
 		}
 	}
 
-	var baseQuery = query.Query
+	var baseQuery = q.Query
 
 	if i := strings.IndexByte(baseQuery, '?'); i != -1 {
 		baseQuery = baseQuery[:i]
@@ -46,13 +47,13 @@ func (router *PathRouter) RouteQuery(ctx context.Context, query *astral.Query, c
 
 	if route == nil {
 		if router.Authority == true {
-			return astral.Reject()
+			return query.Reject()
 		} else {
 			return astral.RouteNotFound(router)
 		}
 	}
 
-	return route.RouteQuery(ctx, query, caller)
+	return route.RouteQuery(ctx, q, w)
 }
 
 // AddRoute adds a route to the router

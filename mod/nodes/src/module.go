@@ -93,7 +93,7 @@ func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) ([]ex
 	return mod.Endpoints(identity), nil
 }
 
-func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, caller io.WriteCloser) (w io.WriteCloser, err error) {
+func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (rw io.WriteCloser, err error) {
 	if s, ok := q.Extra.Get("origin"); ok && s == "network" {
 		return astral.RouteNotFound(mod)
 	}
@@ -139,7 +139,7 @@ func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, caller io.Wr
 		}
 	}
 
-	return mod.peers.RouteQuery(ctx, q, caller)
+	return mod.peers.RouteQuery(ctx, q, w)
 }
 
 func (mod *Module) on(providerID *astral.Identity) *Consumer {

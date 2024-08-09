@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
@@ -33,7 +34,7 @@ func NewConsumer(mod *Module, consumerID *astral.Identity, providerID *astral.Id
 }
 
 func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opts) (descs []*desc.Desc, err error) {
-	var query = astral.NewQuery(
+	var q = astral.NewQuery(
 		c.consumerID,
 		c.providerID,
 		core.Query(
@@ -44,7 +45,7 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opt
 		),
 	)
 
-	conn, err := astral.Route(ctx, c.mod.node, query)
+	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {
 		return nil, err
 	}
@@ -91,9 +92,9 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 		params.SetInt("offset", int(opts.Offset))
 	}
 
-	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodRead, params))
+	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodRead, params))
 
-	conn, err := astral.Route(ctx, c.mod.node, query)
+	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {
 		return nil, err
 	}
@@ -115,9 +116,9 @@ func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
 		"size": strconv.FormatInt(int64(len(p)), 10),
 	}
 
-	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodPut, params))
+	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodPut, params))
 
-	conn, err := astral.Route(ctx, c.mod.node, query)
+	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {
 		return object.ID{}, err
 	}
@@ -145,14 +146,14 @@ func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
 	return objectID, nil
 }
 
-func (c *Consumer) Search(ctx context.Context, q string) (matches []objects.Match, err error) {
+func (c *Consumer) Search(ctx context.Context, s string) (matches []objects.Match, err error) {
 	params := core.Params{
-		"q": q,
+		"q": s,
 	}
 
-	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodSearch, params))
+	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodSearch, params))
 
-	conn, err := astral.Route(ctx, c.mod.node, query)
+	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {
 		return nil, err
 	}
@@ -185,9 +186,9 @@ func (c *Consumer) Push(ctx context.Context, o astral.Object) (err error) {
 		"size": strconv.FormatInt(int64(len(b)), 10),
 	}
 
-	var query = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodPush, params))
+	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodPush, params))
 
-	conn, err := astral.Route(ctx, c.mod.node, query)
+	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {
 		return
 	}

@@ -58,6 +58,7 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 
 	// then try the network
 	if zone.Is(astral.ZoneNetwork) {
+		opts.Zone = zone & astral.AllZones
 		r, err := mod.openNetwork(ctx, objectID, opts)
 		if err == nil {
 			return r, nil

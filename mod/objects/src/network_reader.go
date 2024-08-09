@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
@@ -47,18 +48,16 @@ func (r *NetworkReader) Seek(offset int64, whence int) (int64, error) {
 	}
 	params.SetInt("offset", int(o))
 
-	var query = core.Query(methodRead, params)
-
 	var q = astral.NewQuery(
 		r.consumer,
 		r.provider,
-		query,
+		core.Query(methodRead, params),
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	conn, err := astral.Route(ctx, r.mod.node, q)
+	conn, err := query.Route(ctx, r.mod.node, q)
 	if err != nil {
 		return 0, err
 	}

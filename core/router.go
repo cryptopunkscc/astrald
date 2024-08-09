@@ -38,7 +38,7 @@ func (r *Router) AddQueryPreprocessor(f QueryPreprocessor) error {
 	return r.preprocessors.Add(f)
 }
 
-func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, caller io.WriteCloser) (target io.WriteCloser, err error) {
+func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (target io.WriteCloser, err error) {
 	// preprocess the query
 	for _, p := range r.preprocessors.Clone() {
 		err = p.PreprocessQuery(q)
@@ -55,7 +55,7 @@ func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, caller io.Writ
 	}
 
 	var startedAt = time.Now()
-	target, err = r.routeQuery(ctx, q, caller)
+	target, err = r.routeQuery(ctx, q, w)
 	var d = time.Since(startedAt).Round(1 * time.Microsecond)
 
 	// log routing results

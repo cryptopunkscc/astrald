@@ -6,10 +6,10 @@ import (
 	"io"
 )
 
-func (mod *Module) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	if !query.Target.IsEqual(mod.UserID()) {
+func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	if !q.Target.IsEqual(mod.UserID()) {
 		return astral.RouteNotFound(mod)
 	}
 
-	return mod.PathRouter.RouteQuery(ctx, query, caller)
+	return mod.PathRouter.RouteQuery(ctx, q, w)
 }

@@ -23,9 +23,6 @@ func (e *ErrRejected) Is(other error) bool {
 	return ok
 }
 
-// ErrAborted - query was aborted and routing did not finish
-var ErrAborted = errors.New("query aborted")
-
 // ErrTimeout - query timed out
 var ErrTimeout = errors.New("query timeout")
 

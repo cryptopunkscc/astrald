@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
@@ -24,9 +25,9 @@ func (dialer *Dialer) Dial(ctx context.Context, endpoint exonet.Endpoint) (exone
 		return nil, ErrSelfGateway
 	}
 
-	var query = astral.NewQuery(dialer.node.Identity(), e.Gate(), RouteServiceName+"."+e.Target().String())
+	var q = astral.NewQuery(dialer.node.Identity(), e.Gate(), RouteServiceName+"."+e.Target().String())
 
-	conn, err := astral.Route(ctx, dialer.node, query)
+	conn, err := query.Route(ctx, dialer.node, q)
 	if err != nil {
 		return nil, err
 	}

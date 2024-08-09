@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"io"
 )
 
@@ -13,15 +14,15 @@ func (mod *Module) regsiterApp(ctx context.Context, q *astral.Query, w io.WriteC
 
 	appID, ok := params["app_id"]
 	if !ok {
-		return astral.Reject()
+		return query.Reject()
 	}
 
 	id, err := mod.RegisterApp(appID)
 	if err != nil {
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	return astral.Accept(q, w, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 		id.WriteTo(w)
 	})
@@ -32,15 +33,15 @@ func (mod *Module) unregsiterApp(ctx context.Context, q *astral.Query, w io.Writ
 
 	appID, ok := params["app_id"]
 	if !ok {
-		return astral.Reject()
+		return query.Reject()
 	}
 
 	err := mod.UnregisterApp(appID)
 	if err != nil {
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	return astral.Accept(q, w, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 	})
 }
@@ -50,22 +51,22 @@ func (mod *Module) getAccessToken(ctx context.Context, q *astral.Query, w io.Wri
 
 	appID, ok := params["app_id"]
 	if !ok {
-		return astral.Reject()
+		return query.Reject()
 	}
 
 	token, err := mod.AppToken(appID)
 	if err != nil {
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	return astral.Accept(q, w, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 		cslq.Encode(conn, "[c]c", token)
 	})
 }
 
 func (mod *Module) list(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	return astral.Accept(q, w, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 		cslq.Encode(conn, "[s][c]c", mod.ListApps())
 	})

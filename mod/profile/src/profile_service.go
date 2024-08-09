@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 	"io"
 	"time"
@@ -24,8 +25,8 @@ func (service *ProfileService) Run(ctx context.Context) error {
 	return err
 }
 
-func (service *ProfileService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	return astral.Accept(query, caller, func(conn astral.Conn) {
+func (service *ProfileService) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		service.serve(conn)
 	})
 }

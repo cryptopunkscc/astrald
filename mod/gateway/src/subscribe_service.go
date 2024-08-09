@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"io"
 	"time"
 )
@@ -32,8 +33,8 @@ func (srv *SubscribeService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *SubscribeService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	return astral.Accept(query, caller, func(conn astral.Conn) {
+func (srv *SubscribeService) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 
 		s := &Subscription{

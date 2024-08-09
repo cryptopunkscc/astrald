@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/log"
 	"time"
 )
@@ -33,7 +34,7 @@ func (s *Subscriber) Run(ctx context.Context) error {
 
 	var expiresAt time.Time
 	for {
-		conn, err := astral.Route(ctx, s.node, astral.NewQuery(s.node.Identity(), s.gateway, SubscribeServiceName))
+		conn, err := query.Route(ctx, s.node, astral.NewQuery(s.node.Identity(), s.gateway, SubscribeServiceName))
 		if err != nil {
 			select {
 			case <-ctx.Done():

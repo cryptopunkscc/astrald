@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
@@ -24,7 +25,7 @@ func (mod *Module) ReceiveObject(push *objects.SourcedObject) error {
 func (mod *Module) updateIdentityProfile(target *astral.Identity) error {
 	mod.log.Infov(2, "updating profile for %s", target)
 
-	conn, err := astral.Route(mod.ctx, mod.node, astral.NewQuery(mod.node.Identity(), target, serviceName))
+	conn, err := query.Route(mod.ctx, mod.node, astral.NewQuery(mod.node.Identity(), target, serviceName))
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -49,8 +50,8 @@ func (s *Session) query(params proto.QueryParams) error {
 		params.Identity = s.remoteID
 	}
 
-	var query = astral.NewQuery(s.remoteID, params.Identity, params.Query)
-	conn, err = astral.Route(s.ctx, s.mod.node, query)
+	var q = astral.NewQuery(s.remoteID, params.Identity, params.Query)
+	conn, err = query.Route(s.ctx, s.mod.node, q)
 
 	if err == nil {
 		s.WriteErr(nil)

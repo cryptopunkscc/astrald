@@ -24,10 +24,3 @@ func NewQuery(caller *Identity, target *Identity, query string) *Query {
 		Query:  query,
 	}
 }
-
-func GetExtra[T any](q *Query, key string) (v T, ok bool) {
-	if a, ok := q.Extra.Get(key); ok {
-		v, ok = a.(T)
-	}
-	return
-}

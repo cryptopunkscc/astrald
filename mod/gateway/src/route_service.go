@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"io"
 	"strings"
 	"time"
@@ -29,24 +30,24 @@ func (srv *RouteService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srv *RouteService) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
+func (srv *RouteService) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	var targetKey string
 
 	switch {
-	case strings.HasPrefix(query.Query, RouteServiceName+"."):
-		targetKey, _ = strings.CutPrefix(query.Query, RouteServiceName+".")
+	case strings.HasPrefix(q.Query, RouteServiceName+"."):
+		targetKey, _ = strings.CutPrefix(q.Query, RouteServiceName+".")
 
 	default:
-		return astral.Reject()
+		return query.Reject()
 	}
 
 	// check if the target is us
 	if targetKey == srv.node.Identity().String() {
-		return astral.Accept(query, caller, func(conn astral.Conn) {
+		return query.Accept(q, w, func(conn astral.Conn) {
 			gwConn := newConn(
 				conn,
-				NewEndpoint(query.Target, query.Target),
-				NewEndpoint(query.Caller, query.Target),
+				NewEndpoint(q.Target, q.Target),
+				NewEndpoint(q.Caller, q.Target),
 				false,
 			)
 
@@ -62,17 +63,17 @@ func (srv *RouteService) RouteQuery(ctx context.Context, query *astral.Query, ca
 
 	targetIdentity, err := astral.IdentityFromString(targetKey)
 	if err != nil {
-		return astral.Reject()
+		return query.Reject()
 	}
 
 	nextQuery := &astral.Query{
 		Nonce:  astral.NewNonce(),
 		Caller: srv.node.Identity(),
 		Target: targetIdentity,
-		Query:  query.Query,
+		Query:  q.Query,
 	}
 
-	srv.log.Logv(2, "forwarding %v to %v", query.Caller, targetIdentity)
+	srv.log.Logv(2, "forwarding %v to %v", q.Caller, targetIdentity)
 
-	return srv.router.RouteQuery(ctx, nextQuery, caller)
+	return srv.router.RouteQuery(ctx, nextQuery, w)
 }

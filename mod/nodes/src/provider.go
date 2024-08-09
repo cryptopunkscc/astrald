@@ -45,8 +45,8 @@ func NewProvider(m *Module) *Provider {
 	return p
 }
 
-func (mod *Provider) RouteQuery(ctx context.Context, q *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	return mod.PathRouter.RouteQuery(ctx, q, caller)
+func (mod *Provider) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	return mod.PathRouter.RouteQuery(ctx, q, w)
 }
 
 func (mod *Provider) PreprocessQuery(q *astral.Query) error {
@@ -67,10 +67,10 @@ func (mod *Provider) relay(ctx context.Context, q *astral.Query, w io.WriteClose
 	_, err := query.ParseTo(q.Query, &args)
 	if err != nil {
 		mod.log.Errorv(2, "%v -> relay: invalid arguments: %v", q.Caller, err)
-		return astral.Reject()
+		return query.Reject()
 	}
 
-	return astral.Accept(q, w, func(conn astral.Conn) {
+	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 
 		r, _ := mod.relays.Set(args.Nonce, &Relay{})

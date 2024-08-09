@@ -35,8 +35,7 @@ func Run(n astral.Node, target *astral.Identity, path string, args any) (astral.
 func RunCtx(ctx context.Context, n astral.Node, target *astral.Identity, path string, args any) (astral.Conn, error) {
 	q := New(n.Identity(), target, path, args)
 
-	return astral.Route(ctx, n, q)
-
+	return Route(ctx, n, q)
 }
 
 func Parse(q string) (path string, params map[string]string) {

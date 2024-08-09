@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
@@ -27,36 +28,36 @@ func NewPeers(m *Module) *Peers {
 	return &Peers{Module: m}
 }
 
-func (mod *Peers) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (w io.WriteCloser, err error) {
-	if !mod.isRoutable(query.Target) {
+func (mod *Peers) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (_ io.WriteCloser, err error) {
+	if !mod.isRoutable(q.Target) {
 		return astral.RouteNotFound(mod)
 	}
 
-	conn, ok := mod.conns.Set(query.Nonce, newConn(query.Nonce))
+	conn, ok := mod.conns.Set(q.Nonce, newConn(q.Nonce))
 	if !ok {
 		return astral.RouteNotFound(mod, errors.New("nonce already exists"))
 	}
 
-	conn.RemoteIdentity = query.Target
-	conn.Query = query.Query
+	conn.RemoteIdentity = q.Target
+	conn.Query = q.Query
 	conn.Outbound = true
 
 	// make sure we're linked with the target node
-	if err := mod.ensureConnected(ctx, query.Target); err != nil {
+	if err := mod.ensureConnected(ctx, q.Target); err != nil {
 		conn.swapState(stateRouting, stateClosed)
 		return astral.RouteNotFound(mod, err)
 	}
 
 	// prepare the protocol frame
 	frame := &frames.Query{
-		Nonce:  query.Nonce,
-		Query:  query.Query,
+		Nonce:  q.Nonce,
+		Query:  q.Query,
 		Buffer: uint32(conn.rsize),
 	}
 
 	// send the query via all streams
 	for _, s := range mod.streams.Select(func(s *Stream) bool {
-		return s.RemoteIdentity().IsEqual(query.Target)
+		return s.RemoteIdentity().IsEqual(q.Target)
 	}) {
 		go s.Write(frame)
 	}
@@ -65,12 +66,12 @@ func (mod *Peers) RouteQuery(ctx context.Context, query *astral.Query, caller io
 	select {
 	case errCode := <-conn.res:
 		if errCode != 0 {
-			return astral.RejectWithCode(errCode)
+			return query.RejectWithCode(errCode)
 		}
 
 		go func() {
-			io.Copy(caller, conn)
-			caller.Close()
+			io.Copy(w, conn)
+			w.Close()
 		}()
 
 		return conn, nil
@@ -82,7 +83,7 @@ func (mod *Peers) RouteQuery(ctx context.Context, query *astral.Query, caller io
 }
 
 func (mod *Peers) peers() (peers []*astral.Identity) {
-	var r map[string]struct{}
+	var r = map[string]struct{}{}
 
 	for _, s := range mod.streams.Clone() {
 		if _, found := r[s.RemoteIdentity().String()]; found {

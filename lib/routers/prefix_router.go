@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"io"
 	"strings"
 	"sync"
@@ -36,8 +37,8 @@ func NewPrefixRouter(exclusive bool) *PrefixRouter {
 	}
 }
 
-func (router *PrefixRouter) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	var baseQuery = query.Query
+func (router *PrefixRouter) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	var baseQuery = q.Query
 	if router.EnableParams {
 		if i := strings.IndexByte(baseQuery, '?'); i != -1 {
 			baseQuery = baseQuery[:i]
@@ -48,13 +49,13 @@ func (router *PrefixRouter) RouteQuery(ctx context.Context, query *astral.Query,
 
 	if route == nil {
 		if router.Exclusive == true {
-			return astral.Reject()
+			return query.Reject()
 		} else {
 			return astral.RouteNotFound(router)
 		}
 	}
 
-	return route.RouteQuery(ctx, query, caller)
+	return route.RouteQuery(ctx, q, w)
 }
 
 // AddRoute adds a route to the router

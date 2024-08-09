@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -50,21 +51,21 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) RouteQuery(ctx context.Context, query *astral.Query, caller io.WriteCloser) (io.WriteCloser, error) {
-	if !query.Target.IsEqual(mod.node.Identity()) {
+func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	if !q.Target.IsEqual(mod.node.Identity()) {
 		return astral.RouteNotFound(mod)
 	}
 
-	if query.Query != "admin" {
+	if q.Query != "admin" {
 		return astral.RouteNotFound(mod)
 	}
 
 	// check if the caller has access to the admin panel
-	if !mod.Auth.Authorize(query.Caller, admin.ActionAccess, nil) {
-		return astral.Reject()
+	if !mod.Auth.Authorize(q.Caller, admin.ActionAccess, nil) {
+		return query.Reject()
 	}
 
-	return astral.Accept(query, caller, mod.serve)
+	return query.Accept(q, w, mod.serve)
 }
 
 func (mod *Module) AddAdmin(identity *astral.Identity) error {
