@@ -25,6 +25,7 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	mod.Objects.AddDescriber(mod)
 	mod.Objects.AddSearcher(mod)
+	mod.Objects.AddOpener(mod, 20)
 	mod.Objects.AddPrototypes(&media.Audio{})
 
 	return

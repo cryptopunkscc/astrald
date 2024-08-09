@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -17,6 +18,7 @@ import (
 
 type Deps struct {
 	Admin   admin.Module
+	Auth    auth.Module
 	Content content.Module
 	Objects objects.Module
 }
@@ -75,5 +77,15 @@ func (mod *Module) Search(ctx context.Context, query string, opts *objects.Searc
 	if s, _ := mod.audio.Search(ctx, query, opts); len(s) > 0 {
 		matches = append(matches, s...)
 	}
+	return
+}
+
+func (mod *Module) getParentID(objectID object.ID) (parentID object.ID) {
+	mod.db.
+		Model(&dbAudio{}).
+		Where("picture_id = ?", objectID).
+		Select("object_id").
+		First(&parentID)
+
 	return
 }

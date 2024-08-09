@@ -1,6 +1,7 @@
 package media
 
 import (
+	"bytes"
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/desc"
@@ -99,26 +100,34 @@ func (mod *AudioIndexer) scanObject(ctx context.Context, objectID object.ID, opt
 		return nil, err
 	}
 
+	var pictureID object.ID
+
+	if p := meta.Picture(); p != nil {
+		pictureID, err = object.Resolve(bytes.NewReader(p.Data))
+	}
+
 	return &media.Audio{
-		Format: string(meta.FileType()),
-		Title:  meta.Title(),
-		Artist: meta.Artist(),
-		Album:  meta.Album(),
-		Genre:  meta.Genre(),
-		Year:   meta.Year(),
+		Format:  string(meta.FileType()),
+		Title:   meta.Title(),
+		Artist:  meta.Artist(),
+		Album:   meta.Album(),
+		Genre:   meta.Genre(),
+		Year:    meta.Year(),
+		Picture: pictureID,
 	}, err
 }
 
 func (mod *AudioIndexer) setCache(objectID object.ID, audio *media.Audio) error {
 	return mod.db.Create(&dbAudio{
-		ObjectID: objectID,
-		Format:   audio.Format,
-		Duration: audio.Duration,
-		Title:    audio.Title,
-		Artist:   audio.Artist,
-		Album:    audio.Album,
-		Genre:    audio.Genre,
-		Year:     audio.Year,
+		ObjectID:  objectID,
+		Format:    audio.Format,
+		Duration:  audio.Duration,
+		Title:     audio.Title,
+		Artist:    audio.Artist,
+		Album:     audio.Album,
+		Genre:     audio.Genre,
+		Year:      audio.Year,
+		PictureID: audio.Picture,
 	}).Error
 }
 
@@ -145,5 +154,6 @@ func (mod *AudioIndexer) getCache(objectID object.ID) (audio *media.Audio) {
 		Album:    row.Album,
 		Genre:    row.Genre,
 		Year:     row.Year,
+		Picture:  row.PictureID,
 	}
 }

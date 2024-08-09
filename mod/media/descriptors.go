@@ -2,6 +2,7 @@ package media
 
 import (
 	"github.com/cryptopunkscc/astrald/lib/desc"
+	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
 
@@ -14,6 +15,7 @@ type Audio struct {
 	Album    string
 	Genre    string
 	Year     int
+	Picture  object.ID
 }
 
 var _ desc.Data = &Audio{}
