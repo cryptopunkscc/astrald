@@ -10,14 +10,12 @@ func (mod *Module) Authorize(id *astral.Identity, action string, target astral.O
 	switch action {
 	case objects.ActionRead,
 		objects.ActionWrite,
+		objects.ActionSearch,
+		objects.ActionAccessDescriptor,
 		objects.ActionPurge:
 	default:
 		return false
 	}
 
-	if id.IsEqual(mod.node.Identity()) {
-		return true
-	}
-
-	return false
+	return id.IsEqual(mod.node.Identity())
 }

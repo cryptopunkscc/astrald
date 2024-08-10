@@ -269,8 +269,9 @@ func (l *Logger) getTag() string {
 }
 
 func anyToString(a any) string {
-	if s, ok := a.(string); ok {
-		return s
+	switch a.(type) {
+	case string, bool, uint8, uint16, uint32, uint64, uint, int8, int16, int32, int64, int:
+		return fmt.Sprintf("%v", a)
 	}
 
 	if s, ok := a.(fmt.Stringer); ok {

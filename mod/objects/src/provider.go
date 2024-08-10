@@ -46,16 +46,16 @@ func NewProvider(mod *Module) *Provider {
 	return srv
 }
 
-func (srv *Provider) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	return srv.router.RouteQuery(ctx, q, w)
+func (p *Provider) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	return p.router.RouteQuery(ctx, q, w)
 }
 
-func (srv *Provider) Read(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (p *Provider) Read(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(q.Query)
 
 	objectID, err := params.GetObjectID("id")
 	if err != nil {
-		srv.mod.log.Errorv(2, "invalid id: %v", err)
+		p.mod.log.Errorv(2, "invalid id: %v", err)
 		return query.Reject()
 	}
 
@@ -67,13 +67,13 @@ func (srv *Provider) Read(ctx context.Context, q *astral.Query, w io.WriteCloser
 
 	opts.Offset, err = params.GetUint64("offset")
 	if err != nil && !errors.Is(err, core.ErrKeyNotFound) {
-		srv.mod.log.Errorv(2, "offset: invalid argument: %v", err)
+		p.mod.log.Errorv(2, "offset: invalid argument: %v", err)
 		return query.Reject()
 	}
 
-	r, err := srv.mod.OpenAs(ctx, q.Caller, objectID, opts)
+	r, err := p.mod.OpenAs(ctx, q.Caller, objectID, opts)
 	if err != nil {
-		srv.mod.log.Errorv(2, "open %v error: %v", objectID, err)
+		p.mod.log.Errorv(2, "open %v error: %v", objectID, err)
 		return query.Reject()
 	}
 
@@ -85,48 +85,10 @@ func (srv *Provider) Read(ctx context.Context, q *astral.Query, w io.WriteCloser
 	})
 }
 
-func (srv *Provider) Describe(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (p *Provider) Put(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(q.Query)
 
-	objectID, err := params.GetObjectID("id")
-	if err != nil {
-		srv.mod.log.Errorv(2, "invalid id: %v", err)
-		return query.Reject()
-	}
-
-	if !srv.mod.Auth.Authorize(q.Caller, objects.ActionRead, &objectID) {
-		return query.Reject()
-	}
-
-	return query.Accept(q, w, func(conn astral.Conn) {
-		defer conn.Close()
-
-		var list []JSONDescriptor
-
-		for _, d := range srv.mod.Describe(ctx, objectID, nil) {
-			if !slices.Contains(srv.mod.config.DescriptorWhitelist, d.Data.Type()) {
-				continue
-			}
-
-			b, err := json.Marshal(d.Data)
-			if err != nil {
-				continue
-			}
-
-			list = append(list, JSONDescriptor{
-				Type: d.Data.Type(),
-				Data: b,
-			})
-		}
-
-		json.NewEncoder(conn).Encode(list)
-	})
-}
-
-func (srv *Provider) Put(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	_, params := core.ParseQuery(q.Query)
-
-	if !srv.mod.Auth.Authorize(q.Caller, objects.ActionWrite, nil) {
+	if !p.mod.Auth.Authorize(q.Caller, objects.ActionWrite, nil) {
 		return query.Reject()
 	}
 
@@ -135,7 +97,7 @@ func (srv *Provider) Put(ctx context.Context, q *astral.Query, w io.WriteCloser)
 		return query.Reject()
 	}
 
-	create, err := srv.mod.Create(&objects.CreateOpts{Alloc: int(size)})
+	create, err := p.mod.Create(&objects.CreateOpts{Alloc: int(size)})
 	if err != nil {
 		return query.Reject()
 	}
@@ -159,8 +121,8 @@ func (srv *Provider) Put(ctx context.Context, q *astral.Query, w io.WriteCloser)
 	})
 }
 
-func (srv *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	if !srv.mod.Auth.Authorize(q.Caller, objects.ActionSearch, nil) {
+func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	if !p.mod.Auth.Authorize(q.Caller, objects.ActionSearch, nil) {
 		return query.Reject()
 	}
 
@@ -171,13 +133,13 @@ func (srv *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteClos
 		return query.Reject()
 	}
 
-	matches, err := srv.mod.Search(ctx, sq, objects.DefaultSearchOpts())
+	matches, err := p.mod.Search(ctx, sq, objects.DefaultSearchOpts())
 	if err != nil {
 		return query.Reject()
 	}
 
 	matches = slices.DeleteFunc(matches, func(match objects.Match) bool {
-		return !srv.mod.Auth.Authorize(q.Caller, objects.ActionRead, &match.ObjectID)
+		return !p.mod.Auth.Authorize(q.Caller, objects.ActionRead, &match.ObjectID)
 	})
 
 	return query.Accept(q, w, func(conn astral.Conn) {
@@ -189,12 +151,12 @@ func (srv *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteClos
 	})
 }
 
-func (srv *Provider) Push(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (p *Provider) Push(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	_, params := core.ParseQuery(q.Query)
 
 	size, err := params.GetInt("size")
 	if err != nil {
-		srv.mod.log.Errorv(2, "invalid id: %v", err)
+		p.mod.log.Errorv(2, "invalid id: %v", err)
 		return query.Reject()
 	}
 
@@ -208,14 +170,14 @@ func (srv *Provider) Push(ctx context.Context, q *astral.Query, w io.WriteCloser
 		var buf = make([]byte, size)
 		_, err := io.ReadFull(conn, buf)
 		if err != nil {
-			srv.mod.log.Errorv(1, "%v push read error: %v", q.Caller, err)
+			p.mod.log.Errorv(1, "%v push read error: %v", q.Caller, err)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
-		obj, err := srv.mod.ReadObject(bytes.NewReader(buf))
+		obj, err := p.mod.ReadObject(bytes.NewReader(buf))
 		if err != nil {
-			srv.mod.log.Errorv(1, "%v push read object error: %v", q.Caller, err)
+			p.mod.log.Errorv(1, "%v push read object error: %v", q.Caller, err)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
@@ -231,15 +193,15 @@ func (srv *Provider) Push(ctx context.Context, q *astral.Query, w io.WriteCloser
 			Object: obj,
 		}
 
-		if !srv.mod.pushLocal(push) {
-			srv.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), q.Caller, objectID)
+		if !p.mod.pushLocal(push) {
+			p.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), q.Caller, objectID)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		binary.Write(conn, binary.BigEndian, true)
 
-		srv.mod.log.Infov(1, "accepted %s from %v (%v)", obj.ObjectType(), q.Caller, objectID)
+		p.mod.log.Infov(1, "accepted %s from %v (%v)", obj.ObjectType(), q.Caller, objectID)
 
 		return
 	})

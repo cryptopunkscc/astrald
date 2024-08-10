@@ -2,7 +2,6 @@ package fs
 
 import (
 	"github.com/cryptopunkscc/astrald/object"
-	"path/filepath"
 	"time"
 )
 
@@ -24,18 +23,4 @@ type File struct {
 
 type FindOpts struct {
 	UpdatedAfter time.Time
-}
-
-type FileDesc struct {
-	Paths []string
-}
-
-func (FileDesc) Type() string {
-	return "mod.fs.file"
-}
-func (d FileDesc) String() string {
-	if len(d.Paths) == 0 {
-		return ""
-	}
-	return filepath.Base(d.Paths[0])
 }

@@ -19,10 +19,8 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	mod.Objects.AddOpener(mod, 30)
 	mod.Objects.AddCreator(mod, 30)
-	mod.Objects.AddDescriber(mod)
 	mod.Objects.AddPurger(mod)
 	mod.Objects.AddSearcher(NewFinder(mod))
-	mod.Objects.AddPrototypes(fs.FileDesc{})
 
 	mod.Admin.AddCommand(fs.ModuleName, NewAdmin(mod))
 

@@ -4,24 +4,14 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/resources"
 	"gorm.io/gorm"
 	"slices"
 )
-
-type Deps struct {
-	Admin   admin.Module
-	Auth    auth.Module
-	Content content.Module
-	Objects objects.Module
-}
 
 type Module struct {
 	Deps
@@ -43,31 +33,18 @@ type Indexer interface {
 
 func (mod *Module) Run(ctx context.Context) error {
 	go events.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
-		mod.Describe(ctx, event.ObjectID, &desc.Opts{})
+		mod.DescribeObject(ctx, event.ObjectID, astral.DefaultScope())
 		return nil
 	})
 
 	for event := range mod.Content.Scan(ctx, nil) {
-		opts := desc.DefaultOpts()
+		scope := astral.DefaultScope()
 
 		if slices.Contains(mod.config.AutoIndexNet, event.Type) {
-			opts.Zone |= astral.ZoneNetwork
+			scope.Zone |= astral.ZoneNetwork
 		}
 
-		mod.Describe(ctx, event.ObjectID, opts)
-	}
-
-	return nil
-}
-
-func (mod *Module) Describe(ctx context.Context, objectID object.ID, opts *desc.Opts) []*desc.Desc {
-	info, err := mod.Content.Identify(objectID)
-	if err != nil {
-		return nil
-	}
-
-	if indexer, ok := mod.indexers[info.Type]; ok {
-		return indexer.Describe(ctx, objectID, opts)
+		mod.DescribeObject(ctx, event.ObjectID, scope)
 	}
 
 	return nil
@@ -88,4 +65,8 @@ func (mod *Module) getParentID(objectID object.ID) (parentID object.ID) {
 		First(&parentID)
 
 	return
+}
+
+func (mod *Module) String() string {
+	return media.ModuleName
 }

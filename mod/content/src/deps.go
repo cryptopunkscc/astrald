@@ -2,8 +2,17 @@ package content
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/fs"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
+
+type Deps struct {
+	Admin   admin.Module
+	FS      fs.Module
+	Objects objects.Module
+}
 
 func (mod *Module) LoadDependencies() (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
@@ -13,7 +22,7 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	mod.Admin.AddCommand(content.ModuleName, NewAdmin(mod))
 	mod.Objects.AddDescriber(mod)
-	mod.Objects.AddPrototypes(content.LabelDesc{}, content.TypeDesc{})
+	mod.Objects.AddObject(&content.ObjectDescriptor{})
 
 	mod.setReady()
 

@@ -4,11 +4,9 @@ import (
 	_zip "archive/zip"
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	events2 "github.com/cryptopunkscc/astrald/events"
+	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/archives"
-	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -20,18 +18,11 @@ const zipMimeType = "application/zip"
 
 var _ archives.Module = &Module{}
 
-type Deps struct {
-	Admin   admin.Module
-	Auth    auth.Module
-	Content content.Module
-	Objects objects.Module
-}
-
 type Module struct {
 	Deps
 	config Config
 	node   astral.Node
-	events events2.Queue
+	events events.Queue
 	log    *log.Logger
 	db     *gorm.DB
 
@@ -42,7 +33,7 @@ type Module struct {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.autoIndexZone = astral.Zones(mod.config.AutoIndexZones)
 
-	go events2.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
+	go events.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
 		return mod.onObjectDiscovered(ctx, event)
 	})
 

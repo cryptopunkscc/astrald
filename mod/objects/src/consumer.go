@@ -9,11 +9,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
-	"io"
 	"strconv"
 )
 
@@ -31,50 +29,6 @@ func NewConsumer(mod *Module, consumerID *astral.Identity, providerID *astral.Id
 		consumerID: consumerID,
 		providerID: providerID,
 	}
-}
-
-func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *desc.Opts) (descs []*desc.Desc, err error) {
-	var q = astral.NewQuery(
-		c.consumerID,
-		c.providerID,
-		core.Query(
-			methodDescribe,
-			core.Params{
-				"id": objectID.String(),
-			},
-		),
-	)
-
-	conn, err := query.Route(ctx, c.mod.node, q)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	jbytes, err := io.ReadAll(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	var j []JSONDescriptor
-	err = json.Unmarshal(jbytes, &j)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, i := range j {
-		var d = c.mod.UnmarshalDescriptor(i.Type, i.Data)
-		if d == nil {
-			continue
-		}
-
-		descs = append(descs, &desc.Desc{
-			Source: c.providerID,
-			Data:   d,
-		})
-	}
-
-	return descs, nil
 }
 
 func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (r objects.Reader, err error) {

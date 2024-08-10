@@ -27,7 +27,7 @@ func ParseID(s string) (id ID, err error) {
 	s = strings.TrimPrefix(s, idPrefix)
 
 	// Pad with missing leading zeros
-	z := 64 - len(s)
+	z := max(64-len(s), 0)
 	padded := strings.Repeat(zBase32CharSet[0:1], z) + s
 
 	var data [40]byte
@@ -99,4 +99,13 @@ func (id *ID) IsZero() bool {
 
 func (ID) ObjectType() string {
 	return "astral.object_id.sha256"
+}
+
+func (id *ID) UnmarshalText(text []byte) (err error) {
+	*id, err = ParseID(string(text))
+	return
+}
+
+func (id ID) MarshalText() (text []byte, err error) {
+	return []byte(id.String()), nil
 }

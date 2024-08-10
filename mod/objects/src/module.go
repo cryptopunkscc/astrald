@@ -2,11 +2,9 @@ package objects
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -42,7 +40,6 @@ type Module struct {
 	events events.Queue
 	ctx    context.Context
 
-	prototypes sig.Map[string, desc.Data]
 	openers    sig.Set[*Opener]
 	creators   sig.Set[*Creator]
 	describers sig.Set[objects.Describer]
@@ -184,30 +181,6 @@ func (mod *Module) Connect(caller *astral.Identity, target *astral.Identity) (ob
 
 func (mod *Module) Events() *events.Queue {
 	return &mod.events
-}
-
-func (mod *Module) AddPrototypes(protos ...desc.Data) error {
-	for _, proto := range protos {
-		mod.prototypes.Set(proto.Type(), proto)
-	}
-	return nil
-}
-
-func (mod *Module) UnmarshalDescriptor(name string, buf []byte) desc.Data {
-	p, ok := mod.prototypes.Get(name)
-	if !ok {
-		return nil
-	}
-	var v = reflect.ValueOf(p)
-
-	c := reflect.New(v.Type())
-
-	err := json.Unmarshal(buf, c.Interface())
-	if err != nil {
-		panic(err)
-	}
-
-	return c.Elem().Interface().(desc.Data)
 }
 
 func (mod *Module) getObject(name string) astral.Object {

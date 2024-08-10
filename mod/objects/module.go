@@ -3,7 +3,6 @@ package objects
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
@@ -47,9 +46,6 @@ type Module interface {
 	Store(astral.Object) (object.ID, error)
 	Load(object.ID) (astral.Object, error)
 
-	AddPrototypes(protos ...desc.Data) error
-	UnmarshalDescriptor(name string, buf []byte) desc.Data
-
 	// Get reads the whole object into memory and returns the buffer
 	Get(id object.ID, opts *OpenOpts) ([]byte, error)
 
@@ -60,7 +56,7 @@ type Module interface {
 }
 
 type Consumer interface {
-	Describe(context.Context, object.ID, *desc.Opts) ([]*desc.Desc, error)
+	Describe(context.Context, object.ID, *astral.Scope) ([]*SourcedObject, error)
 	Open(context.Context, object.ID, *OpenOpts) (Reader, error)
 	Put(context.Context, []byte) (object.ID, error)
 	Search(context.Context, string) ([]Match, error)
@@ -71,13 +67,8 @@ type Receiver interface {
 	ReceiveObject(*SourcedObject) error
 }
 
-type SourcedObject struct {
-	Source *astral.Identity
-	Object astral.Object
-}
-
 type Describer interface {
-	Describe(ctx context.Context, object object.ID, opts *desc.Opts) []*desc.Desc
+	DescribeObject(context.Context, object.ID, *astral.Scope) []*SourcedObject
 }
 
 type Purger interface {

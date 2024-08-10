@@ -12,9 +12,6 @@ func (mod *Module) LoadDependencies() (err error) {
 	}
 
 	mod.Admin.AddCommand(keys.ModuleName, NewAdmin(mod))
-
-	mod.Objects.AddDescriber(mod)
-	mod.Objects.AddPrototypes(keys.KeyDesc{})
 	mod.Objects.AddObject(&keys.PrivateKey{})
 
 	return

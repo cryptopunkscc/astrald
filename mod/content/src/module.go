@@ -4,11 +4,8 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -22,12 +19,6 @@ const identifySize = 4096
 const adcMethod = "adc"
 const mimetypeMethod = "mimetype"
 
-type Deps struct {
-	Admin   admin.Module
-	FS      fs.Module
-	Objects objects.Module
-}
-
 type Module struct {
 	Deps
 	node   astral.Node
@@ -36,8 +27,7 @@ type Module struct {
 	events events.Queue
 	db     *gorm.DB
 
-	prototypes sig.Map[string, desc.Data]
-	ongoing    sig.Map[string, chan struct{}]
+	ongoing sig.Map[string, chan struct{}]
 
 	ready chan struct{}
 }
@@ -162,4 +152,8 @@ func (mod *Module) scan(opts *content.ScanOpts) ([]*content.TypeInfo, error) {
 
 func (mod *Module) setReady() {
 	close(mod.ready)
+}
+
+func (mod *Module) String() string {
+	return content.ModuleName
 }

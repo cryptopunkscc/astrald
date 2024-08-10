@@ -1,12 +1,5 @@
 package objects
 
-import (
-	"github.com/cryptopunkscc/astrald/mod/archives"
-	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/keys"
-	"github.com/cryptopunkscc/astrald/mod/media"
-)
-
 const (
 	methodPut      = "objects.put"
 	methodRead     = "objects.read"
@@ -15,15 +8,6 @@ const (
 	methodPush     = "objects.push"
 )
 
-type Config struct {
-	DescriptorWhitelist []string
-}
+type Config struct{}
 
-var defaultConfig = Config{
-	DescriptorWhitelist: []string{
-		content.TypeDesc{}.Type(),
-		keys.KeyDesc{}.Type(),
-		(&media.Audio{}).Type(),
-		archives.ArchiveDesc{}.Type(),
-	},
-}
+var defaultConfig = Config{}

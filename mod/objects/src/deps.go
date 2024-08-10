@@ -17,6 +17,7 @@ func (mod *Module) LoadDependencies() (err error) {
 	if cnode, ok := mod.node.(*core.Node); ok {
 		var receivers []any
 		var holders []any
+		var describers []any
 
 		for _, m := range cnode.Modules().Loaded() {
 			if m == mod {
@@ -32,14 +33,23 @@ func (mod *Module) LoadDependencies() (err error) {
 				mod.AddHolder(h)
 				holders = append(holders, h)
 			}
+
+			if d, ok := m.(objects.Describer); ok {
+				mod.AddDescriber(d)
+				describers = append(describers, d)
+			}
 		}
 
 		if len(receivers) > 0 {
-			mod.log.Logv(2, "object receivers: %v"+strings.Repeat(", %s", len(receivers)-1), receivers...)
+			mod.log.Logv(2, "receivers: %v"+strings.Repeat(", %s", len(receivers)-1), receivers...)
 		}
 
 		if len(holders) > 0 {
-			mod.log.Logv(2, "object holders: %v"+strings.Repeat(", %s", len(holders)-1), holders...)
+			mod.log.Logv(2, "holders: %v"+strings.Repeat(", %s", len(holders)-1), holders...)
+		}
+
+		if len(describers) > 0 {
+			mod.log.Logv(2, "describers: %v"+strings.Repeat(", %s", len(describers)-1), describers...)
 		}
 	}
 

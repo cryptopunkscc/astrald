@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"time"
 )
 
 const ModuleName = "nodes"
@@ -36,28 +35,4 @@ type NodeInfo struct {
 	Identity  *astral.Identity
 	Alias     string
 	Endpoints []exonet.Endpoint
-}
-
-type Info struct {
-	Linked      bool
-	LastLinked  time.Time
-	FirstLinked time.Time
-}
-
-type Endpoint struct {
-	Network string
-	Address string
-}
-
-type Desc struct {
-	Endpoints []Endpoint
-}
-
-func (Desc) Type() string {
-	return "node"
-}
-
-type LinkOpts struct {
-	Endpoints []exonet.Endpoint
-	Workers   int
 }

@@ -4,9 +4,20 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/media"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"time"
 )
+
+type Deps struct {
+	Admin   admin.Module
+	Auth    auth.Module
+	Content content.Module
+	Objects objects.Module
+}
 
 func (mod *Module) LoadDependencies() (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
@@ -23,10 +34,9 @@ func (mod *Module) LoadDependencies() (err error) {
 		return err
 	}
 
-	mod.Objects.AddDescriber(mod)
 	mod.Objects.AddSearcher(mod)
 	mod.Objects.AddOpener(mod, 20)
-	mod.Objects.AddPrototypes(&media.Audio{})
+	mod.Objects.AddObject(&media.AudioDescriptor{})
 
 	return
 }

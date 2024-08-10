@@ -4,12 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/object"
-	"github.com/cryptopunkscc/astrald/sig"
-	"slices"
 	"time"
 )
 
@@ -24,7 +21,6 @@ func NewAdmin(mod *Module) *Admin {
 		"scan":      cmd.scan,
 		"identify":  cmd.identify,
 		"forget":    cmd.forget,
-		"info":      cmd.info,
 		"set_label": cmd.setLabel,
 		"get_label": cmd.getLabel,
 	}
@@ -107,20 +103,6 @@ func (cmd *Admin) forget(term admin.Terminal, args []string) error {
 	}
 
 	return cmd.mod.Forget(objectID)
-}
-
-func (cmd *Admin) info(term admin.Terminal, args []string) error {
-	term.Printf("%v\n\n", admin.Header("Prototypes"))
-	list, _ := sig.MapSlice(cmd.mod.prototypes.Values(), func(i desc.Data) (string, error) {
-		return i.Type(), nil
-	})
-	slices.Sort(list)
-
-	for _, p := range list {
-		term.Printf("%s\n", p)
-	}
-
-	return nil
 }
 
 func (cmd *Admin) setLabel(term admin.Terminal, args []string) error {

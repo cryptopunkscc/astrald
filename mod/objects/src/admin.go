@@ -9,7 +9,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -209,11 +208,11 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	var err error
 	var zonesArg string
 	var provider string
-	var opts = desc.DefaultOpts()
+	var scope = astral.DefaultScope()
 
 	// parse args
 	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
-	flags.StringVar(&zonesArg, "z", opts.Zone.String(), "set zones to use")
+	flags.StringVar(&zonesArg, "z", scope.Zone.String(), "set zones to use")
 	flags.StringVar(&provider, "p", "", "query this provider")
 	flags.SetOutput(term)
 	err = flags.Parse(args)
@@ -233,10 +232,10 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	}
 
 	if zonesArg != "" {
-		opts.Zone = astral.Zones(zonesArg)
+		scope.Zone = astral.Zones(zonesArg)
 	}
 
-	var descs []*desc.Desc
+	var descs []*objects.SourcedObject
 
 	if len(provider) > 0 {
 		providerID, err := adm.mod.Dir.Resolve(provider)
@@ -246,12 +245,12 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 
 		c := NewConsumer(adm.mod, term.UserIdentity(), providerID)
 
-		descs, err = c.Describe(context.Background(), objectID, desc.DefaultOpts())
+		descs, err = c.Describe(context.Background(), objectID, scope)
 		if err != nil {
 			return err
 		}
 	} else {
-		descs = adm.mod.Describe(context.Background(), objectID, opts)
+		descs = adm.mod.DescribeObject(context.Background(), objectID, scope)
 	}
 
 	term.Printf("%-6s %v\n", admin.Header("SHA256"), admin.Keyword(hex.EncodeToString(objectID.Hash[:])))
@@ -265,9 +264,9 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 
 	// print descriptors
 	for _, d := range descs {
-		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Data.Type()))
+		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Object.ObjectType()))
 
-		j, err := json.MarshalIndent(d.Data, "  ", "  ")
+		j, err := json.MarshalIndent(d.Object, "  ", "  ")
 		if err != nil {
 			term.Printf("marshal error: %v\n", err)
 		}
@@ -361,7 +360,7 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	})
 
 	term.Printf("Openers:\n")
-	term.Printf(f, admin.Header("Prio"), admin.Header("Type"))
+	term.Printf(f, admin.Header("Prio"), admin.Header("ObjectType"))
 	for _, opener := range openers {
 		term.Printf(
 			f,
@@ -378,7 +377,7 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	})
 
 	term.Printf("Creators:\n")
-	term.Printf(f, admin.Header("Prio"), admin.Header("Type"))
+	term.Printf(f, admin.Header("Prio"), admin.Header("ObjectType"))
 	for _, creator := range creators {
 		term.Printf(
 			f,

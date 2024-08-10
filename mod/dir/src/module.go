@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/desc"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -31,8 +30,7 @@ type Module struct {
 	assets resources.Resources
 	db     *gorm.DB
 
-	resolvers  sig.Set[dir.Resolver]
-	describers sig.Set[dir.Describer]
+	resolvers sig.Set[dir.Resolver]
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -93,24 +91,6 @@ func (mod *Module) DisplayName(identity *astral.Identity) string {
 	}
 
 	return identity.Fingerprint()
-}
-
-func (mod *Module) Describe(ctx context.Context, identity *astral.Identity, opts *desc.Opts) []*desc.Desc {
-	var list []desc.Describer[*astral.Identity]
-
-	for _, d := range mod.describers.Clone() {
-		list = append(list, d)
-	}
-
-	return desc.Collect(ctx, identity, opts, list...)
-}
-
-func (mod *Module) AddDescriber(describer dir.Describer) error {
-	return mod.describers.Add(describer)
-}
-
-func (mod *Module) RemoveDescriber(describer dir.Describer) error {
-	return mod.describers.Remove(describer)
 }
 
 func (mod *Module) setDefaultAlias() error {
