@@ -168,6 +168,9 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 }
 
 func (mod *Module) LocalContract() (c *user.SignedNodeContract, err error) {
+	if mod.userID.IsZero() {
+		return nil, errors.New("local user not set")
+	}
 	var cid object.ID
 
 	// first try loading an existing contract
