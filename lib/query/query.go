@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"net/url"
 	"strings"
@@ -11,6 +12,10 @@ import (
 
 const queryTag = "query"
 const defaultQueryTimeout = 60 * time.Second
+
+type Validator interface {
+	Validate() error
+}
 
 func New(caller *astral.Identity, target *astral.Identity, path string, args any) *astral.Query {
 	q, err := Marshal(args)
@@ -62,6 +67,15 @@ func Parse(q string) (path string, params map[string]string) {
 func ParseTo(q string, args any) (path string, err error) {
 	path, params := Parse(q)
 	err = populate(params, args)
+	if err != nil {
+		return path, fmt.Errorf("populate: %w", err)
+	}
+	if v, ok := args.(Validator); ok {
+		err = v.Validate()
+	}
+	if err != nil {
+		return path, fmt.Errorf("validate: %w", err)
+	}
 	return
 }
 
