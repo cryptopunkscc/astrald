@@ -2,16 +2,24 @@ package objects
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
+	"slices"
 )
 
 type describeArgs struct {
-	ObjectID object.ID
+	ID     object.ID
+	Format string `query:"optional"`
+}
+
+type jsonDescriptor struct {
+	Type string
+	Data any
 }
 
 func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope *astral.Scope) (list []*objects.SourcedObject) {
@@ -34,21 +42,39 @@ func (p *Provider) Describe(ctx context.Context, q *astral.Query, w io.WriteClos
 		return query.Reject()
 	}
 
-	if !p.mod.Auth.Authorize(q.Caller, objects.ActionRead, &args.ObjectID) {
+	if !p.mod.Auth.Authorize(q.Caller, objects.ActionRead, &args.ID) {
 		return query.Reject()
 	}
 
 	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 
-		for _, so := range p.mod.DescribeObject(ctx, args.ObjectID, astral.DefaultScope()) {
-			if !p.mod.Auth.Authorize(q.Caller, objects.ActionAccessDescriptor, so.Object) {
-				continue
+		list := p.mod.DescribeObject(ctx, args.ID, astral.DefaultScope())
+		list = slices.DeleteFunc(list, func(so *objects.SourcedObject) bool {
+			return !p.mod.Auth.Authorize(q.Caller, objects.ActionAccessDescriptor, so.Object)
+		})
+
+		switch args.Format {
+		case "":
+			for _, so := range list {
+				err = objects.WriteObject(conn, so.Object)
+				if err != nil {
+					p.mod.log.Errorv(1, "describe: error writing object: %v", err)
+					return
+				}
 			}
 
-			err = objects.WriteObject(conn, so.Object)
+		case "json":
+			var d []jsonDescriptor
+			for _, so := range list {
+				d = append(d, jsonDescriptor{
+					Type: so.Object.ObjectType(),
+					Data: so.Object,
+				})
+			}
+			err = json.NewEncoder(conn).Encode(d)
 			if err != nil {
-				p.mod.log.Errorv(1, "describe: error writing object: %v", err)
+				p.mod.log.Errorv(1, "describe.json: error encoding json: %v", err)
 				return
 			}
 		}
@@ -60,7 +86,7 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *astral.S
 		c.consumerID,
 		c.providerID,
 		methodDescribe,
-		&describeArgs{ObjectID: objectID})
+		&describeArgs{ID: objectID})
 
 	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {
@@ -84,4 +110,16 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *astral.S
 	}
 
 	return
+}
+
+func (a *describeArgs) Validate() error {
+	if a.ID.IsZero() {
+		return errors.New("object ID is required")
+	}
+	switch a.Format {
+	case "", "json":
+	default:
+		return errors.New("invlid format: " + a.Format)
+	}
+	return nil
 }

@@ -19,11 +19,6 @@ import (
 
 const maxPushSize = 4096
 
-type JSONDescriptor struct {
-	Type string
-	Data json.RawMessage
-}
-
 type Provider struct {
 	mod    *Module
 	router *routers.PrefixRouter
