@@ -128,15 +128,27 @@ func (id *Identity) WriteTo(w io.Writer) (n int64, err error) {
 func (id *Identity) ReadFrom(r io.Reader) (n int64, err error) {
 	var buf [btcec.PubKeyBytesLenCompressed]byte
 
-	_, err = io.ReadFull(r, buf[:])
+	nn, err := io.ReadFull(r, buf[:])
+	n = int64(nn)
 	if err != nil {
 		return
 	}
 
-	id.publicKey, err = btcec.ParsePubKey(buf[:])
-	if err != nil {
+	// if all bytes are null set zero value
+	var allNull = true
+	for i := 0; i < len(buf); i++ {
+		if buf[i] != 0 {
+			allNull = false
+			break
+		}
+	}
+	if allNull {
+		id.privateKey = nil
+		id.publicKey = nil
 		return
 	}
+
+	id.publicKey, err = btcec.ParsePubKey(buf[:])
 
 	return
 }
