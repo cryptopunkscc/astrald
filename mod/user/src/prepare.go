@@ -18,7 +18,7 @@ func (mod *Module) Prepare(ctx context.Context) error {
 	} else {
 		userID, _ := mod.loadUserID()
 		if !userID.IsZero() {
-			mod.setUserID(userID)
+			mod.SetUserID(userID)
 		}
 	}
 

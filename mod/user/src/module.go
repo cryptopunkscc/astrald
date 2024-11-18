@@ -14,6 +14,7 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"sync"
 	"time"
 )
 
@@ -31,6 +32,8 @@ type Module struct {
 	assets assets.Assets
 	db     *gorm.DB
 	userID *astral.Identity
+	user   *user.SignedNodeContract
+	mu     sync.Mutex
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -75,6 +78,9 @@ func (mod *Module) UserID() *astral.Identity {
 }
 
 func (mod *Module) SetUserID(userID *astral.Identity) error {
+	mod.mu.Lock()
+	defer mod.mu.Unlock()
+
 	err := mod.setUserID(userID)
 	if err != nil {
 		return err
@@ -84,7 +90,12 @@ func (mod *Module) SetUserID(userID *astral.Identity) error {
 }
 
 func (mod *Module) setUserID(userID *astral.Identity) error {
+	if mod.userID.IsEqual(userID) {
+		return nil
+	}
+
 	mod.userID = userID
+	mod.user = nil
 
 	mod.log.Info("user identity set to %v", mod.userID)
 
@@ -168,6 +179,18 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 }
 
 func (mod *Module) LocalContract() (c *user.SignedNodeContract, err error) {
+	mod.mu.Lock()
+	defer mod.mu.Unlock()
+
+	if mod.user != nil {
+		if !mod.user.IsExpired() {
+			return mod.user, nil
+		}
+
+		mod.log.Log("user contract has expired")
+		mod.user = nil
+	}
+
 	if mod.userID.IsZero() {
 		return nil, errors.New("local user not set")
 	}
@@ -175,11 +198,15 @@ func (mod *Module) LocalContract() (c *user.SignedNodeContract, err error) {
 
 	// first try loading an existing contract
 	if cid, err = mod.findContractID(mod.userID, mod.node.Identity()); err == nil {
-		c, err = objects.Load[*user.SignedNodeContract](context.Background(), mod.Objects, cid, astral.DefaultScope())
+		mod.user, err = objects.Load[*user.SignedNodeContract](context.Background(), mod.Objects, cid, astral.DefaultScope())
 		if err == nil {
-			return
+			mod.log.Infov(1, "loaded user contract %v", cid)
+			return mod.user, nil
 		}
+		mod.log.Errorv(2, "error loading contract %v: %v", cid, err)
 	}
+
+	mod.log.Info("signing new user contract since no local contract was found (%v)", err)
 
 	// then create and sign a new contract
 	c = &user.SignedNodeContract{

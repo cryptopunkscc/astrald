@@ -412,6 +412,10 @@ func (mod *Module) verifyIndex(ctx context.Context) {
 	mod.log.Log("done scanning index for changes")
 }
 
+func (mod *Module) String() string {
+	return fs.ModuleName
+}
+
 func resolveFileID(path string) (object.ID, error) {
 	file, err := os.Open(path)
 	if err != nil {

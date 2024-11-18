@@ -9,12 +9,12 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"gorm.io/gorm"
 	"net"
-	"os"
-	"path/filepath"
 	"sync"
 )
 
@@ -22,8 +22,10 @@ var _ apphost.Module = &Module{}
 
 type Deps struct {
 	Admin   admin.Module
+	Auth    auth.Module
 	Content content.Module
 	Dir     dir.Module
+	Objects objects.Module
 }
 
 type Module struct {
@@ -48,8 +50,8 @@ func (mod *Module) Run(ctx context.Context) error {
 
 	mod.conns = mod.listen(ctx)
 
-	mod.log.Infov(2, "running %d workers", workerCount)
-
+	// spawn workers
+	mod.log.Logv(2, "spawning %d workers", workerCount)
 	wg.Add(workerCount)
 	for i := 0; i < workerCount; i++ {
 		go func(i int) {
@@ -62,37 +64,9 @@ func (mod *Module) Run(ctx context.Context) error {
 		}(i)
 	}
 
-	if len(mod.config.Autorun) > 0 {
-		mod.log.Infov(1, "%d autorun entries", len(mod.config.Autorun))
-	}
-
-	for _, run := range mod.config.Autorun {
-		run := run
-		go func() {
-			identity, err := mod.Dir.Resolve(run.Identity)
-			if err != nil {
-				mod.log.Error("unknown identity: %s", run.Identity)
-				return
-			}
-
-			var basename = filepath.Base(run.Exec)
-
-			mod.log.Infov(1, "starting %s as %s...", basename, identity)
-
-			exec, err := mod.Exec(identity, run.Exec, run.Args, os.Environ())
-			if err != nil {
-				mod.log.Errorv(0, "%s (%s) failed to start: %s", basename, identity, err)
-				return
-			}
-
-			<-exec.Done()
-
-			err = exec.err
-			if err != nil {
-				mod.log.Errorv(1, "%s (%s) exited with error: %s", basename, identity, err)
-			}
-		}()
-	}
+	// start the object server
+	objectServer := NewObjectServer(mod)
+	objectServer.Run(ctx)
 
 	wg.Wait()
 

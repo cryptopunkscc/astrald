@@ -1,5 +1,9 @@
 package apphost
 
+type ObjectServerConfig struct {
+	Bind []string `yaml:"bind"`
+}
+
 type Config struct {
 	// Listen on these adresses
 	Listen []string `yaml:"listen"`
@@ -10,16 +14,9 @@ type Config struct {
 	// Identity to use for anonymous connections
 	DefaultIdentity string `yaml:"default_identity"`
 
-	Tokens  map[string]string `yaml:"tokens"`
-	Autorun []configRun       `yaml:"autorun"`
+	Tokens map[string]string `yaml:"tokens"`
 
-	RoutePriority int `yaml:"route_priority"`
-}
-
-type configRun struct {
-	Exec     string   `yaml:"exec"`
-	Args     []string `yaml:"args"`
-	Identity string   `yaml:"identity"`
+	ObjectServer ObjectServerConfig `yaml:"object_server"`
 }
 
 var defaultConfig = Config{
@@ -29,7 +26,11 @@ var defaultConfig = Config{
 		"memu:apphost",
 		"memb:apphost",
 	},
-	Tokens:        map[string]string{},
-	Workers:       256,
-	RoutePriority: 90,
+	ObjectServer: ObjectServerConfig{
+		Bind: []string{
+			"tcp:127.0.0.1:8624",
+		},
+	},
+	Tokens:  map[string]string{},
+	Workers: 32,
 }

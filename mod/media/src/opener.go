@@ -19,7 +19,7 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 		return nil, objects.ErrNotFound
 	}
 
-	r, err := mod.Objects.Open(ctx, objectID, opts)
+	r, err := mod.Objects.Open(ctx, parentID, opts)
 	if err != nil {
 		return nil, err
 	}

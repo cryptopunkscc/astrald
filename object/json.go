@@ -7,6 +7,10 @@ import (
 )
 
 func (id ID) MarshalJSON() ([]byte, error) {
+	if id.IsZero() {
+		return []byte("\"\""), nil
+	}
+
 	return []byte(fmt.Sprintf("\"%s\"", id.String())), nil
 }
 
