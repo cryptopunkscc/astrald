@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/resources"
+	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/jxskiss/base62"
 	"gorm.io/gorm"
 	"io"
@@ -50,6 +51,8 @@ type Module struct {
 	provider *Provider
 
 	in chan *Frame
+
+	searchCache sig.Map[string, *astral.Identity]
 }
 
 func (mod *Module) Run(ctx context.Context) error {

@@ -14,6 +14,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
+	"strings"
+	"time"
 )
 
 const maxPushSize = 4096
@@ -55,7 +57,7 @@ func (p *Provider) Read(ctx context.Context, q *astral.Query, w io.WriteCloser) 
 
 	var opts = objects.DefaultOpenOpts()
 
-	if o, ok := q.Extra.Get("origin"); ok && (o == astral.OriginLocal) {
+	if q.IsLocal() {
 		opts.Zone |= astral.ZoneNetwork
 	}
 
@@ -124,6 +126,7 @@ func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser
 		Query  string `query:"key:q"`
 		Zones  string `query:"optional"`
 		Format string `query:"optional"`
+		Ext    string `query:"optional"`
 	}
 	_, err := query.ParseTo(q.Query, &args)
 	if err != nil {
@@ -131,18 +134,35 @@ func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser
 	}
 
 	opts := objects.DefaultSearchOpts()
+	opts.ClientID = q.Caller
 
 	if len(args.Zones) > 0 {
 		opts.Zone = astral.Zones(args.Zones)
 	}
 
-	matches, err := p.mod.Search(ctx, args.Query, opts)
+	if len(args.Ext) > 0 {
+		var ids []*astral.Identity
+		targets := strings.Split(args.Ext, ",")
+		for _, target := range targets {
+			id, err := p.mod.Dir.Resolve(target)
+			if err != nil {
+				return query.Reject()
+			}
+			ids = append(ids, id)
+		}
+		opts.Extra.Set("ext", ids)
+	}
+
+	sctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	matches, err := p.mod.Search(sctx, args.Query, opts)
 	if err != nil {
+		cancel()
 		return query.Reject()
 	}
 
 	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
+		defer cancel()
 
 		var dup = make(map[string]struct{})
 
@@ -159,10 +179,13 @@ func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser
 
 			switch args.Format {
 			case "json":
-				json.NewEncoder(conn).Encode(match)
-
+				err = json.NewEncoder(conn).Encode(match)
 			default:
-				match.WriteTo(conn)
+				_, err = match.WriteTo(conn)
+			}
+
+			if err != nil {
+				return
 			}
 		}
 	})

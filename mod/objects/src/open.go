@@ -88,7 +88,7 @@ func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *ob
 		return nil, astral.ErrZoneExcluded
 	}
 
-	providers := mod.Find(ctx, objectID, &astral.Scope{Zone: opts.Zone})
+	providers := mod.FindObject(ctx, objectID, &astral.Scope{Zone: opts.Zone})
 
 	if opts.QueryFilter != nil {
 		providers = slices.DeleteFunc(providers, func(identity *astral.Identity) bool {

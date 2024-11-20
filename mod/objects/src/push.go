@@ -24,7 +24,7 @@ func (mod *Module) Push(ctx context.Context, source *astral.Identity, target *as
 		return mod.PushLocal(source, obj)
 	}
 
-	c, err := mod.Connect(source, target)
+	c, err := mod.Connect(target, source)
 	if err != nil {
 		return err
 	}

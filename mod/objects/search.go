@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/object"
+	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 )
@@ -16,6 +17,8 @@ type Searcher interface {
 
 type SearchOpts struct {
 	*astral.Scope
+	ClientID *astral.Identity
+	Extra    sig.Map[string, any]
 }
 
 type SearchResult struct {

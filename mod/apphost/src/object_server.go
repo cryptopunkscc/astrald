@@ -35,6 +35,7 @@ func NewObjectServer(mod *Module) *ObjectServer {
 
 func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	var authToken string
+	var opts = objects.DefaultOpenOpts()
 
 	authToken = request.URL.Query().Get(HTTPAuthTokenParam)
 
@@ -48,11 +49,14 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 	}
 
 	filename := filepath.Base(request.URL.Path)
+
 	objectID, err := object.ParseID(filename)
 	if err != nil {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	opts.Zone |= astral.ZoneNetwork
 
 	if !srv.Deps.Auth.Authorize(clientID, objects.ActionRead, &objectID) {
 		writer.WriteHeader(http.StatusForbidden)
@@ -61,7 +65,9 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 
 	writer.Header().Set("Content-Disposition", "inline; filename="+objectID.String())
 
-	srv.fileServer.ServeHTTP(writer, request)
+	fserve := http.FileServer(http.FS(fs.NewFS(srv.Objects, opts)))
+
+	fserve.ServeHTTP(writer, request)
 }
 
 func (srv *ObjectServer) Run(ctx context.Context) error {

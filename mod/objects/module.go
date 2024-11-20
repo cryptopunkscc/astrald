@@ -52,7 +52,7 @@ type Module interface {
 	// Put commits the object to storage and returns its ID
 	Put(object []byte, opts *CreateOpts) (object.ID, error)
 
-	Connect(caller *astral.Identity, target *astral.Identity) (Consumer, error)
+	Connect(target *astral.Identity, caller *astral.Identity) (Consumer, error)
 }
 
 type Consumer interface {

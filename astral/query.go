@@ -32,5 +32,5 @@ func (q *Query) IsNetwork() bool {
 
 func (q *Query) IsLocal() bool {
 	o, _ := q.Extra.Get("origin")
-	return o == "" || o == OriginLocal
+	return o == nil || o == "" || o == OriginLocal
 }

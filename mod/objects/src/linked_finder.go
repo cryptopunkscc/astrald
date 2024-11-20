@@ -10,6 +10,6 @@ type LinkedFinder struct {
 	mod *Module
 }
 
-func (finder *LinkedFinder) Find(ctx context.Context, objectID object.ID, scope *astral.Scope) (sources []*astral.Identity) {
+func (finder *LinkedFinder) FindObject(ctx context.Context, objectID object.ID, scope *astral.Scope) (sources []*astral.Identity) {
 	return finder.mod.Nodes.Peers()
 }
