@@ -14,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
-	"slices"
 )
 
 const maxPushSize = 4096
@@ -122,8 +121,9 @@ func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser
 	}
 
 	var args struct {
-		Query string `query:"key:q"`
-		Zones string `query:"optional"`
+		Query  string `query:"key:q"`
+		Zones  string `query:"optional"`
+		Format string `query:"optional"`
 	}
 	_, err := query.ParseTo(q.Query, &args)
 	if err != nil {
@@ -141,16 +141,30 @@ func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser
 		return query.Reject()
 	}
 
-	matches = slices.DeleteFunc(matches, func(match objects.Match) bool {
-		return !p.mod.Auth.Authorize(q.Caller, objects.ActionRead, &match.ObjectID)
-	})
-
 	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 
-		json.NewEncoder(conn).Encode(matches)
+		var dup = make(map[string]struct{})
 
-		return
+		for match := range matches {
+			if !p.mod.Auth.Authorize(q.Caller, objects.ActionRead, &match.ObjectID) {
+				continue
+			}
+
+			if _, found := dup[match.ObjectID.String()]; found {
+				continue
+			}
+
+			dup[match.ObjectID.String()] = struct{}{}
+
+			switch args.Format {
+			case "json":
+				json.NewEncoder(conn).Encode(match)
+
+			default:
+				match.WriteTo(conn)
+			}
+		}
 	})
 }
 

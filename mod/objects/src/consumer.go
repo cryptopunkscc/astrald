@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
@@ -100,7 +99,7 @@ func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
 	return objectID, nil
 }
 
-func (c *Consumer) Search(ctx context.Context, s string) (matches []objects.Match, err error) {
+func (c *Consumer) Search(ctx context.Context, s string) (<-chan *objects.SearchResult, error) {
 	params := core.Params{
 		"q": s,
 	}
@@ -111,11 +110,29 @@ func (c *Consumer) Search(ctx context.Context, s string) (matches []objects.Matc
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
-	err = json.NewDecoder(conn).Decode(&matches)
+	var results = make(chan *objects.SearchResult)
 
-	return
+	go func() {
+		<-ctx.Done()
+		conn.Close()
+	}()
+
+	go func() {
+		defer conn.Close()
+		defer close(results)
+
+		for {
+			var sr = &objects.SearchResult{}
+			_, err := sr.ReadFrom(conn)
+			if err != nil {
+				return
+			}
+			results <- sr
+		}
+	}()
+
+	return results, nil
 }
 
 func (c *Consumer) Push(ctx context.Context, o astral.Object) (err error) {

@@ -301,7 +301,7 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 
 	args = flags.Args()
 
-	var matches []objects.Match
+	var matches <-chan *objects.SearchResult
 
 	if len(provider) > 0 {
 		var providerID *astral.Identity
@@ -322,10 +322,9 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	for _, match := range matches {
-		term.Printf("%-64s %v\n",
+	for match := range matches {
+		term.Printf("%-64s\n",
 			match.ObjectID,
-			match.Exp,
 		)
 	}
 

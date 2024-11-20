@@ -44,29 +44,36 @@ func (mod *AudioIndexer) DescribeObject(ctx context.Context, objectID object.ID,
 	return
 }
 
-func (mod *AudioIndexer) Search(ctx context.Context, query string, opts *objects.SearchOpts) (matches []objects.Match, err error) {
-	var rows []*dbAudio
-
-	query = "%" + strings.ToLower(query) + "%"
-
-	err = mod.db.
-		Where("LOWER(artist) LIKE ? OR LOWER(title) LIKE ? OR LOWER(album) LIKE ?", query, query, query).
-		Find(&rows).
-		Error
-	if err != nil {
-		mod.log.Error("db error: %v", err)
-		return
+func (mod *AudioIndexer) Search(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+	if !opts.Zone.Is(astral.ZoneDevice) {
+		return nil, astral.ErrZoneExcluded
 	}
+	var results = make(chan *objects.SearchResult)
 
-	for _, row := range rows {
-		matches = append(matches, objects.Match{
-			ObjectID: row.ObjectID,
-			Score:    100,
-			Exp:      "audio tags match query",
-		})
-	}
+	go func() {
+		defer close(results)
 
-	return
+		var rows []*dbAudio
+
+		query = "%" + strings.ToLower(query) + "%"
+
+		err := mod.db.
+			Where("LOWER(artist) LIKE ? OR LOWER(title) LIKE ? OR LOWER(album) LIKE ?", query, query, query).
+			Find(&rows).
+			Error
+		if err != nil {
+			mod.log.Error("search: db : %v", err)
+			return
+		}
+
+		for _, row := range rows {
+			results <- &objects.SearchResult{
+				ObjectID: row.ObjectID,
+			}
+		}
+	}()
+
+	return results, nil
 }
 
 func (mod *AudioIndexer) Forget(objectID object.ID) error {

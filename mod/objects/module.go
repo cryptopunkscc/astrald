@@ -59,7 +59,7 @@ type Consumer interface {
 	Describe(context.Context, object.ID, *astral.Scope) ([]*SourcedObject, error)
 	Open(context.Context, object.ID, *OpenOpts) (Reader, error)
 	Put(context.Context, []byte) (object.ID, error)
-	Search(context.Context, string) ([]Match, error)
+	Search(context.Context, string) (<-chan *SearchResult, error)
 	Push(context.Context, astral.Object) (err error)
 }
 

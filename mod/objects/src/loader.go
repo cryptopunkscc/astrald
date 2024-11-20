@@ -34,6 +34,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	mod.AddObject(&astral.Identity{})
 	mod.AddObject(&object.ID{})
 	mod.AddObject(&objects.SourcedObject{})
+	mod.AddObject(&objects.SearchResult{})
 
 	return mod, nil
 }

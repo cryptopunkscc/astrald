@@ -50,11 +50,8 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (matches []objects.Match, err error) {
-	if s, _ := mod.audio.Search(ctx, query, opts); len(s) > 0 {
-		matches = append(matches, s...)
-	}
-	return
+func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+	return mod.audio.Search(ctx, query, opts)
 }
 
 func (mod *Module) getParentID(objectID object.ID) (parentID object.ID) {
