@@ -24,3 +24,13 @@ func NewQuery(caller *Identity, target *Identity, query string) *Query {
 		Query:  query,
 	}
 }
+
+func (q *Query) IsNetwork() bool {
+	o, ok := q.Extra.Get("origin")
+	return ok && (o == OriginNetwork)
+}
+
+func (q *Query) IsLocal() bool {
+	o, _ := q.Extra.Get("origin")
+	return o == "" || o == OriginLocal
+}
