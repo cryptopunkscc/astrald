@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -25,15 +24,15 @@ var _ user.Module = &Module{}
 
 type Module struct {
 	Deps
-	*routers.PathRouter
-	config Config
-	node   astral.Node
-	log    *log.Logger
-	assets assets.Assets
-	db     *gorm.DB
-	userID *astral.Identity
-	user   *user.SignedNodeContract
-	mu     sync.Mutex
+	provider *Provider
+	config   Config
+	node     astral.Node
+	log      *log.Logger
+	assets   assets.Assets
+	db       *gorm.DB
+	userID   *astral.Identity
+	user     *user.SignedNodeContract
+	mu       sync.Mutex
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -46,7 +45,8 @@ func (mod *Module) Nodes(userID *astral.Identity) (nodes []*astral.Identity) {
 		Model(&dbNodeContract{}).
 		Where("expires_at > ?", time.Now()).
 		Where("user_id = ?", userID).
-		Select("node_id").
+		Where("node_id != ?", mod.node.Identity()).
+		Distinct("node_id").
 		Find(&nodes).
 		Error
 

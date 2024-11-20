@@ -14,9 +14,9 @@ func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCl
 		return query.RouteNotFound(mod)
 	}
 
-	if !q.Target.IsEqual(mod.UserID()) {
+	if !(q.Target.IsEqual(mod.UserID()) || q.Target.IsEqual(mod.node.Identity())) {
 		return query.RouteNotFound(mod)
 	}
 
-	return mod.PathRouter.RouteQuery(ctx, q, w)
+	return mod.provider.router.RouteQuery(ctx, q, w)
 }
