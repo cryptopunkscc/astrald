@@ -54,6 +54,14 @@ func (mod *Module) Run(ctx context.Context) error {
 
 	updatesDone := sig.Workers(ctx, mod.updates, workers)
 
+	for _, path := range mod.config.Watch {
+		mod.Watch(path)
+	}
+
+	for _, path := range mod.config.Store {
+		mod.Watch(path)
+	}
+
 	go mod.verifyIndex(ctx)
 
 	<-ctx.Done()

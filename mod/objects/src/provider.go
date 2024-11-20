@@ -121,14 +121,22 @@ func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser
 		return query.Reject()
 	}
 
-	_, params := core.ParseQuery(q.Query)
-
-	sq, ok := params["q"]
-	if !ok {
+	var args struct {
+		Query string `query:"key:q"`
+		Zones string `query:"optional"`
+	}
+	_, err := query.ParseTo(q.Query, &args)
+	if err != nil {
 		return query.Reject()
 	}
 
-	matches, err := p.mod.Search(ctx, sq, objects.DefaultSearchOpts())
+	opts := objects.DefaultSearchOpts()
+
+	if len(args.Zones) > 0 {
+		opts.Zone = astral.Zones(args.Zones)
+	}
+
+	matches, err := p.mod.Search(ctx, args.Query, opts)
 	if err != nil {
 		return query.Reject()
 	}

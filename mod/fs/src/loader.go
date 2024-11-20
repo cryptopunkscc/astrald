@@ -46,14 +46,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		mod.watcher.Add(s, true)
 	}
 
-	for _, path := range mod.config.Watch {
-		mod.Watch(path)
-	}
-
-	for _, path := range mod.config.Store {
-		mod.Watch(path)
-	}
-
 	return mod, nil
 }
 
