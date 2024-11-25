@@ -10,19 +10,23 @@ import (
 
 var _ objects.Describer = &Module{}
 
-func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope *astral.Scope) (list []*objects.SourcedObject) {
+func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	var err error
 	var row dbDataType
+	var results = make(chan *objects.SourcedObject, 1)
+	defer close(results)
 
 	err = mod.db.Where("data_id = ?", objectID).First(&row).Error
-	if err == nil {
-		if row.Method == "adc" {
-			list = append(list, &objects.SourcedObject{
-				Source: mod.node.Identity(),
-				Object: &content.ObjectDescriptor{Type: row.Type},
-			})
+	if err != nil {
+		return nil, err
+	}
+
+	if row.Method == "adc" {
+		results <- &objects.SourcedObject{
+			Source: mod.node.Identity(),
+			Object: &content.ObjectDescriptor{Type: row.Type},
 		}
 	}
 
-	return
+	return results, nil
 }

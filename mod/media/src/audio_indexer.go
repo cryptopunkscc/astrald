@@ -3,6 +3,7 @@ package media
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -21,7 +22,7 @@ func NewAudioIndexer(mod *Module) *AudioIndexer {
 	return &AudioIndexer{Module: mod}
 }
 
-func (mod *AudioIndexer) DescribeObject(ctx context.Context, objectID object.ID, opts *astral.Scope) (list []*objects.SourcedObject) {
+func (mod *AudioIndexer) DescribeObject(ctx context.Context, objectID object.ID, opts *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	openOpts := &objects.OpenOpts{
 		Zone: astral.ZoneDevice | astral.ZoneVirtual,
 	}
@@ -30,18 +31,21 @@ func (mod *AudioIndexer) DescribeObject(ctx context.Context, objectID object.ID,
 		openOpts.Zone |= astral.ZoneNetwork
 	}
 
-	audio, _ := mod.Index(ctx, objectID, openOpts)
+	audio, err := mod.Index(ctx, objectID, openOpts)
 
 	if audio == nil {
-		return
+		return nil, fmt.Errorf("index error: %w", err)
 	}
 
-	list = append(list, &objects.SourcedObject{
+	var results = make(chan *objects.SourcedObject, 1)
+	defer close(results)
+
+	results <- &objects.SourcedObject{
 		Source: mod.node.Identity(),
 		Object: audio,
-	})
+	}
 
-	return
+	return results, nil
 }
 
 func (mod *AudioIndexer) Search(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {

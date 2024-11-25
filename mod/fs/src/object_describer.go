@@ -10,9 +10,9 @@ import (
 
 var _ objects.Describer = &Module{}
 
-func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope *astral.Scope) (list []*objects.SourcedObject) {
+func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	if !scope.Is(astral.ZoneDevice) {
-		return
+		return nil, astral.ErrZoneExcluded
 	}
 
 	var rows []dbLocalFile
@@ -24,18 +24,21 @@ func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope
 		Find(&rows).
 		Error
 	if err != nil {
-		return
+		return nil, err
 	}
 
+	var results = make(chan *objects.SourcedObject, len(rows))
+	defer close(results)
+
 	for _, row := range rows {
-		list = append(list, &objects.SourcedObject{
+		results <- &objects.SourcedObject{
 			Source: mod.node.Identity(),
 			Object: &fs.FileDescriptor{
 				Path:    row.Path,
 				ModTime: row.ModTime,
 			},
-		})
+		}
 	}
 
-	return
+	return results, nil
 }

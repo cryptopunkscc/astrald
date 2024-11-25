@@ -235,10 +235,11 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 		scope.Zone = astral.Zones(zonesArg)
 	}
 
-	var descs []*objects.SourcedObject
+	var descs <-chan *objects.SourcedObject
 
 	if len(provider) > 0 {
-		providerID, err := adm.mod.Dir.Resolve(provider)
+		var providerID *astral.Identity
+		providerID, err = adm.mod.Dir.Resolve(provider)
 		if err != nil {
 			return err
 		}
@@ -246,11 +247,11 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 		c := NewConsumer(adm.mod, term.UserIdentity(), providerID)
 
 		descs, err = c.Describe(context.Background(), objectID, scope)
-		if err != nil {
-			return err
-		}
 	} else {
-		descs = adm.mod.DescribeObject(context.Background(), objectID, scope)
+		descs, err = adm.mod.DescribeObject(context.Background(), objectID, scope)
+	}
+	if err != nil {
+		return err
 	}
 
 	term.Printf("%-6s %v\n", admin.Header("SHA256"), admin.Keyword(hex.EncodeToString(objectID.Hash[:])))
@@ -263,7 +264,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 	term.Printf("\n\n")
 
 	// print descriptors
-	for _, d := range descs {
+	for d := range descs {
 		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Object.ObjectType()))
 
 		j, err := json.MarshalIndent(d.Object, "  ", "  ")

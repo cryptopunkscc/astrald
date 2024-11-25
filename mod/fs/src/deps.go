@@ -17,6 +17,8 @@ func (mod *Module) LoadDependencies() (err error) {
 		return
 	}
 
+	mod.Objects.AddObject(&fs.FileDescriptor{})
+
 	mod.Objects.AddOpener(mod, 30)
 	mod.Objects.AddCreator(mod, 30)
 	mod.Objects.AddPurger(mod)

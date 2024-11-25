@@ -18,7 +18,7 @@ import (
 )
 
 const assetLocalContract = "mod.user.local_contract"
-const defaultContractValidity = 24 * time.Hour
+const defaultContractValidity = 365 * 24 * time.Hour
 
 var _ user.Module = &Module{}
 
@@ -43,7 +43,7 @@ func (mod *Module) Run(ctx context.Context) error {
 func (mod *Module) Nodes(userID *astral.Identity) (nodes []*astral.Identity) {
 	err := mod.db.
 		Model(&dbNodeContract{}).
-		Where("expires_at > ?", time.Now()).
+		Where("expires_at > ?", time.Now().UTC()).
 		Where("user_id = ?", userID).
 		Where("node_id != ?", mod.node.Identity()).
 		Distinct("node_id").

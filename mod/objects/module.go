@@ -56,7 +56,7 @@ type Module interface {
 }
 
 type Consumer interface {
-	Describe(context.Context, object.ID, *astral.Scope) ([]*SourcedObject, error)
+	Describe(context.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
 	Open(context.Context, object.ID, *OpenOpts) (Reader, error)
 	Put(context.Context, []byte) (object.ID, error)
 	Search(context.Context, string) (<-chan *SearchResult, error)
@@ -68,7 +68,7 @@ type Receiver interface {
 }
 
 type Describer interface {
-	DescribeObject(context.Context, object.ID, *astral.Scope) []*SourcedObject
+	DescribeObject(context.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
 }
 
 type Purger interface {
