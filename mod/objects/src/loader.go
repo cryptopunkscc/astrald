@@ -26,8 +26,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	mod.db = assets.Database()
 
-	mod.AddFinder(&LinkedFinder{mod: mod})
-
 	// add core object prototypes
 	var h astral.ObjectHeader
 	mod.AddObject(&h)
