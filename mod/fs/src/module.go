@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/sets"
@@ -33,6 +34,7 @@ type Deps struct {
 	Content content.Module
 	Objects objects.Module
 	Sets    sets.Module
+	Dir     dir.Module
 }
 
 type Module struct {
@@ -47,10 +49,26 @@ type Module struct {
 
 	watcher *Watcher
 	updates chan sig.Task
+	shares  sig.Map[string, *sig.Set[string]]
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
+
+	for _, s := range mod.config.Shares {
+		mod.shares.Set(s.Path, &sig.Set[string]{})
+		share, _ := mod.shares.Get(s.Path)
+
+		for _, name := range s.Allow {
+			id, err := mod.Dir.Resolve(name)
+			if err != nil {
+				mod.log.Error("config: cannot resolve identity %v: %v", name, err)
+			}
+			share.Add(id.String())
+		}
+
+		mod.log.Infov(1, "%v shared with %v", s.Path, share.Clone())
+	}
 
 	updatesDone := sig.Workers(ctx, mod.updates, workers)
 
