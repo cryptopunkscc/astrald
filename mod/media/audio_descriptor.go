@@ -36,7 +36,7 @@ func (d *AudioDescriptor) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-func (*AudioDescriptor) ObjectType() string { return "astrald.mod.media.audio_descriptor" }
+func (AudioDescriptor) ObjectType() string { return "astrald.mod.media.audio_descriptor" }
 
 func (d *AudioDescriptor) String() string {
 	s := d.Title

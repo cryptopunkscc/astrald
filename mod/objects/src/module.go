@@ -61,6 +61,16 @@ func (mod *Module) AddObject(a astral.Object) error {
 	return nil
 }
 
+func (mod *Module) addObjects(a ...astral.Object) error {
+	for _, obj := range a {
+		err := mod.AddObject(obj)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (mod *Module) ReadObject(r io.Reader) (o astral.Object, err error) {
 	var h astral.ObjectHeader
 	_, err = h.ReadFrom(r)

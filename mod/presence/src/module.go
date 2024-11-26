@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/presence"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -23,12 +24,13 @@ import (
 var _ presence.Module = &Module{}
 
 type Deps struct {
-	Admin admin.Module
-	Auth  auth.Module
-	Dir   dir.Module
-	Keys  keys.Module
-	Nodes nodes.Module
-	TCP   tcp.Module
+	Admin   admin.Module
+	Auth    auth.Module
+	Dir     dir.Module
+	Keys    keys.Module
+	Nodes   nodes.Module
+	TCP     tcp.Module
+	Objects objects.Module
 }
 
 type Module struct {

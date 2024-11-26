@@ -52,7 +52,7 @@ func (p *Provider) Describe(ctx context.Context, q *astral.Query, w io.WriteClos
 		}
 
 		for so := range descs {
-			if !p.mod.Auth.Authorize(q.Caller, objects.ActionAccessDescriptor, so.Object) {
+			if !p.mod.Auth.Authorize(q.Caller, objects.ActionReadDescriptor, so.Object) {
 				continue
 			}
 

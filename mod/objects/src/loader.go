@@ -28,11 +28,15 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	// add core object prototypes
 	var h astral.ObjectHeader
-	mod.AddObject(&h)
-	mod.AddObject(&astral.Identity{})
-	mod.AddObject(&object.ID{})
-	mod.AddObject(&objects.SourcedObject{})
-	mod.AddObject(&objects.SearchResult{})
+	var n astral.Nonce
+	mod.addObjects(
+		&h, &n,
+		&astral.Identity{},
+		&astral.Time{},
+		&object.ID{},
+		&objects.SourcedObject{},
+		&objects.SearchResult{},
+	)
 
 	return mod, nil
 }

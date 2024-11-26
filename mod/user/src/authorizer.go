@@ -22,7 +22,7 @@ func (mod *Module) Authorize(identity *astral.Identity, action string, target as
 			objects.ActionWrite,
 			objects.ActionPurge,
 			objects.ActionSearch,
-			objects.ActionAccessDescriptor,
+			objects.ActionReadDescriptor,
 			presence.ActionList:
 			return true
 		}
@@ -35,7 +35,7 @@ func (mod *Module) Authorize(identity *astral.Identity, action string, target as
 			objects.ActionWrite,
 			objects.ActionPurge,
 			objects.ActionSearch,
-			objects.ActionAccessDescriptor:
+			objects.ActionReadDescriptor:
 			if mod.Authorize(owner, action, target) {
 				return true
 			}
