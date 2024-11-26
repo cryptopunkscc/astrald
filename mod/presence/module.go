@@ -2,6 +2,9 @@ package presence
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/streams"
+	"io"
 )
 
 const ModuleName = "presence"
@@ -30,8 +33,26 @@ type Presence struct {
 	Flags    []string
 }
 
+func (p *Presence) ObjectType() string {
+	return "mod.presence.presence_info"
+}
+
+func (p *Presence) WriteTo(w io.Writer) (n int64, err error) {
+	c := streams.NewWriteCounter(w)
+	err = cslq.Encode(c, "v [c]c [c][c]c", p.Identity, p.Alias, p.Flags)
+	n = c.Total()
+	return
+}
+
+func (p *Presence) ReadFrom(r io.Reader) (n int64, err error) {
+	c := streams.NewReadCounter(r)
+	err = cslq.Decode(c, "v [c]c [c][c]c", &p.Identity, &p.Alias, &p.Flags)
+	n = c.Total()
+	return
+}
+
 const (
 	DiscoverFlag = "discover"
 	SetupFlag    = "setup"
-	ScanAction   = "mod.presence.scan"
+	ActionList   = "mod.presence.list"
 )

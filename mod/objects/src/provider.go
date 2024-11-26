@@ -118,10 +118,6 @@ func (p *Provider) Put(ctx context.Context, q *astral.Query, w io.WriteCloser) (
 }
 
 func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	if !p.mod.Auth.Authorize(q.Caller, objects.ActionSearch, nil) {
-		return query.Reject()
-	}
-
 	var args struct {
 		Query  string `query:"key:q"`
 		Zones  string `query:"optional"`
@@ -130,27 +126,31 @@ func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser
 	}
 	_, err := query.ParseTo(q.Query, &args)
 	if err != nil {
+		p.mod.log.Errorv(2, "Search(): parse args: %v", err)
 		return query.Reject()
 	}
 
 	opts := objects.DefaultSearchOpts()
 	opts.ClientID = q.Caller
 
-	if len(args.Zones) > 0 {
-		opts.Zone = astral.Zones(args.Zones)
-	}
-
-	if len(args.Ext) > 0 {
-		var ids []*astral.Identity
-		targets := strings.Split(args.Ext, ",")
-		for _, target := range targets {
-			id, err := p.mod.Dir.Resolve(target)
-			if err != nil {
-				return query.Reject()
-			}
-			ids = append(ids, id)
+	// only local queries can modify the scope of the search
+	if q.IsLocal() {
+		if len(args.Zones) > 0 {
+			opts.Zone = astral.Zones(args.Zones)
 		}
-		opts.Extra.Set("ext", ids)
+
+		if len(args.Ext) > 0 {
+			var ids []*astral.Identity
+			targets := strings.Split(args.Ext, ",")
+			for _, target := range targets {
+				id, err := p.mod.Dir.Resolve(target)
+				if err != nil {
+					return query.Reject()
+				}
+				ids = append(ids, id)
+			}
+			opts.Extra.Set("ext", ids)
+		}
 	}
 
 	sctx, cancel := context.WithTimeout(context.Background(), time.Minute)

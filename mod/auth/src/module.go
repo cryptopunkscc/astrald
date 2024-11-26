@@ -30,6 +30,10 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
+	if identity.IsEqual(mod.node.Identity()) {
+		return true
+	}
+
 	for _, a := range mod.authorizers.Clone() {
 		if a.Authorize(identity, action, target) {
 			name := reflect.TypeOf(a).String()

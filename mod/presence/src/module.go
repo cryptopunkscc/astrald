@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -34,7 +33,7 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	*routers.PathRouter
+	*Provider
 	node   astral.Node
 	config Config
 	log    *log.Logger
@@ -76,7 +75,6 @@ func (mod *Module) Run(ctx context.Context) (err error) {
 	return tasks.Group(
 		mod.discover,
 		mod.announce,
-		NewAPIService(mod),
 	).Run(ctx)
 }
 

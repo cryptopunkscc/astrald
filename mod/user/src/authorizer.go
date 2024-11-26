@@ -23,7 +23,7 @@ func (mod *Module) Authorize(identity *astral.Identity, action string, target as
 			objects.ActionPurge,
 			objects.ActionSearch,
 			objects.ActionAccessDescriptor,
-			presence.ScanAction:
+			presence.ActionList:
 			return true
 		}
 	}
