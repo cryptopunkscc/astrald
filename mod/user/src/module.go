@@ -24,15 +24,15 @@ var _ user.Module = &Module{}
 
 type Module struct {
 	Deps
-	provider *Provider
-	config   Config
-	node     astral.Node
-	log      *log.Logger
-	assets   assets.Assets
-	db       *gorm.DB
-	userID   *astral.Identity
-	user     *user.SignedNodeContract
-	mu       sync.Mutex
+	*Provider
+	config Config
+	node   astral.Node
+	log    *log.Logger
+	assets assets.Assets
+	db     *gorm.DB
+	userID *astral.Identity
+	user   *user.SignedNodeContract
+	mu     sync.Mutex
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -132,6 +132,14 @@ func (mod *Module) Contacts() (contacts []*astral.Identity) {
 	return
 }
 
+func (mod *Module) Remote(nodeID *astral.Identity, callerID *astral.Identity) (user.Consumer, error) {
+	if callerID.IsZero() {
+		callerID = mod.node.Identity()
+	}
+
+	return NewConsumer(mod, callerID, nodeID), nil
+}
+
 func (mod *Module) ContractExists(contractID object.ID) (b bool) {
 	mod.db.
 		Model(&dbNodeContract{}).
@@ -169,6 +177,8 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 	if err = c.VerifySigs(); err != nil {
 		return fmt.Errorf("verify: %v", err)
 	}
+
+	mod.Objects.Store(c)
 
 	return mod.db.Create(&dbNodeContract{
 		ObjectID:  contractID,

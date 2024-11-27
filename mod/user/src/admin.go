@@ -1,11 +1,13 @@
 package user
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/user"
+	"time"
 )
 
 type Admin struct {
@@ -19,6 +21,7 @@ func NewAdmin(mod *Module) *Admin {
 		"set":            adm.set,
 		"nodes":          adm.nodes,
 		"owner":          adm.owner,
+		"claim":          adm.claim,
 		"info":           adm.info,
 		"contacts":       adm.contacts,
 		"add_contact":    adm.addContact,
@@ -134,6 +137,26 @@ func (adm *Admin) owner(term admin.Terminal, args []string) error {
 	return nil
 }
 
+func (adm *Admin) claim(term admin.Terminal, args []string) error {
+	var d time.Duration
+
+	if len(args) < 1 {
+		return errors.New("missing argument")
+	}
+
+	nodeID, err := adm.mod.Dir.Resolve(args[0])
+	if err != nil {
+		return err
+	}
+
+	con, _ := adm.mod.Remote(nodeID, term.UserIdentity())
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	return con.Claim(ctx, d)
+}
+
 func (adm *Admin) set(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
@@ -155,6 +178,16 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 
 	term.Printf("Identity: %v\n", userID)
 	term.Printf("PubKey:   %v\n", userID.String())
+
+	contract, err := adm.mod.LocalContract()
+	if err != nil {
+		return err
+	}
+	contractID, err := astral.ResolveObjectID(contract)
+	if err != nil {
+		return err
+	}
+	term.Printf("Contract: %v\n", contractID)
 
 	return nil
 }
