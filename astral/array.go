@@ -5,6 +5,30 @@ import (
 	"reflect"
 )
 
+// Array8 returns an untyped pseudo-object that wraps an array. Its WriteTo/ReadFrom methods invoke the respective
+// method on each element of the array. Array's length is encoded as an 8-bit prefix.
+func Array8[T ObjectTyper](a *[]T) Object {
+	return &arr[T]{a: a, bits: 8}
+}
+
+// Array16 returns an untyped pseudo-object that wraps an array. Its WriteTo/ReadFrom methods invoke the respective
+// method on each element of the array. Array's length is encoded as a 16-bit prefix.
+func Array16[T ObjectTyper](a *[]T) Object {
+	return &arr[T]{a: a, bits: 16}
+}
+
+// Array32 returns an untyped pseudo-object that wraps an array. Its WriteTo/ReadFrom methods invoke the respective
+// method on each element of the array. Array's length is encoded as a 32-bit prefix.
+func Array32[T ObjectTyper](a *[]T) Object {
+	return &arr[T]{a: a, bits: 32}
+}
+
+// Array64 returns an untyped pseudo-object that wraps an array. Its WriteTo/ReadFrom methods invoke the respective
+// method on each element of the array. Array's length is encoded as a 64-bit prefix.
+func Array64[T ObjectTyper](a *[]T) Object {
+	return &arr[T]{a: a, bits: 64}
+}
+
 var _ Object = &arr[Object]{}
 
 type arr[T ObjectTyper] struct {
@@ -128,20 +152,4 @@ func (a arr[T]) readLen(r io.Reader, l *int) (n int64, err error) {
 	}
 
 	return
-}
-
-func Array8[T ObjectTyper](a *[]T) Object {
-	return &arr[T]{a: a, bits: 8}
-}
-
-func Array16[T ObjectTyper](a *[]T) Object {
-	return &arr[T]{a: a, bits: 16}
-}
-
-func Array32[T ObjectTyper](a *[]T) Object {
-	return &arr[T]{a: a, bits: 32}
-}
-
-func Array64[T ObjectTyper](a *[]T) Object {
-	return &arr[T]{a: a, bits: 64}
 }
