@@ -116,11 +116,13 @@ func (id *Identity) Fingerprint() string {
 }
 
 func (id *Identity) WriteTo(w io.Writer) (n int64, err error) {
+	var m int
 	if id.IsZero() {
-		_, err = w.Write(make([]byte, btcec.PubKeyBytesLenCompressed))
+		m, err = w.Write(make([]byte, btcec.PubKeyBytesLenCompressed))
 	} else {
-		_, err = w.Write(id.PublicKey().SerializeCompressed())
+		m, err = w.Write(id.PublicKey().SerializeCompressed())
 	}
+	n = int64(m)
 
 	return
 }
