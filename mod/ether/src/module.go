@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/ether"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/resources"
 	"net"
 	"strconv"
@@ -39,13 +40,19 @@ func (mod *Module) Run(ctx context.Context) (err error) {
 		default:
 		}
 
-		b, err := mod.readBroadcast()
+		b, addr, err := mod.readBroadcast()
 		if err != nil {
 			mod.log.Errorv(2, "read broadcast: %v", err)
 			continue
 		}
 
-		err = mod.Objects.PushLocal(b.Source, b.Object)
+		mod.Objects.Receive(&ether.EventBroadcastReceived{
+			SourceID: b.Source,
+			SourceIP: tcp.IP(addr.IP),
+			Object:   b.Object,
+		}, mod.node.Identity())
+
+		err = mod.Objects.Receive(b.Object, b.Source)
 		if err == nil {
 			mod.log.Logv(2, "accepted object %v from %v", b.Object.ObjectType(), b.Source)
 		} else {
@@ -88,13 +95,13 @@ func (mod *Module) Push(object astral.Object, source *astral.Identity) (err erro
 }
 
 // readBroadcast reads the next broadcast from the UDP socket
-func (mod *Module) readBroadcast() (*ether.SignedBroadcast, error) {
+func (mod *Module) readBroadcast() (*ether.SignedBroadcast, *net.UDPAddr, error) {
 	for {
 		buf := make([]byte, maxBroadcastSize)
 
 		n, srcAddr, err := mod.socket.ReadFromUDP(buf)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		var r = objectReader{
@@ -105,7 +112,7 @@ func (mod *Module) readBroadcast() (*ether.SignedBroadcast, error) {
 		var b ether.SignedBroadcast
 		_, err = b.ReadFrom(r)
 		if err != nil {
-			return nil, fmt.Errorf("invalid broadcast object from %s: %w", srcAddr, err)
+			return nil, nil, fmt.Errorf("invalid broadcast object from %s: %w", srcAddr, err)
 		}
 
 		// ignore our own broadcasts
@@ -115,10 +122,10 @@ func (mod *Module) readBroadcast() (*ether.SignedBroadcast, error) {
 
 		// verify signature
 		if !ecdsa.VerifyASN1(b.Source.PublicKey().ToECDSA(), b.Hash(), b.Signature) {
-			return nil, fmt.Errorf("invalid object signature from %s", srcAddr)
+			return nil, nil, fmt.Errorf("invalid object signature from %s", srcAddr)
 		}
 
-		return &b, nil
+		return &b, srcAddr, nil
 	}
 }
 

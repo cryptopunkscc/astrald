@@ -233,7 +233,7 @@ func (p *Provider) Push(ctx context.Context, q *astral.Query, w io.WriteCloser) 
 			Object: obj,
 		}
 
-		if !p.mod.pushLocal(push) {
+		if !p.mod.receive(push) {
 			p.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), q.Caller, objectID)
 			binary.Write(conn, binary.BigEndian, false)
 			return

@@ -262,7 +262,7 @@ func (mod *Peers) addStream(s *Stream) (err error) {
 	err = mod.streams.Add(s)
 	if err == nil {
 		if !linked {
-			mod.Objects.PushLocal(nil, &nodes.EventLinked{NodeID: s.RemoteIdentity()})
+			mod.Objects.Receive(&nodes.EventLinked{NodeID: s.RemoteIdentity()}, nil)
 		}
 
 		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
@@ -282,7 +282,7 @@ func (mod *Peers) addStream(s *Stream) (err error) {
 			}
 
 			if !mod.isLinked(s.RemoteIdentity()) {
-				mod.Objects.PushLocal(nil, &nodes.EventUnlinked{NodeID: s.RemoteIdentity()})
+				mod.Objects.Receive(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()}, nil)
 			}
 		}()
 	}
