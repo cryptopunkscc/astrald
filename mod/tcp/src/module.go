@@ -4,21 +4,13 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/tasks"
-	_net "net"
+	"net"
 )
 
 var _ tcp.Module = &Module{}
-
-type Deps struct {
-	Admin  admin.Module
-	Nodes  nodes.Module
-	Exonet exonet.Module
-}
 
 type Module struct {
 	Deps
@@ -57,13 +49,13 @@ func (mod *Module) ListenPort() int {
 func (mod *Module) scanLocalEndpoints() []exonet.Endpoint {
 	list := make([]exonet.Endpoint, 0)
 
-	ifaceAddrs, err := _net.InterfaceAddrs()
+	ifaceAddrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return nil
 	}
 
 	for _, a := range ifaceAddrs {
-		ipnet, ok := a.(*_net.IPNet)
+		ipnet, ok := a.(*net.IPNet)
 		if !ok {
 			continue
 		}
@@ -78,7 +70,7 @@ func (mod *Module) scanLocalEndpoints() []exonet.Endpoint {
 		}
 
 		if ipv4.IsGlobalUnicast() || ipv4.IsPrivate() {
-			list = append(list, &Endpoint{ip: ipv4, port: uint16(mod.config.ListenPort)})
+			list = append(list, &Endpoint{ip: tcp.IP(ipv4), port: astral.Uint16(mod.config.ListenPort)})
 		}
 	}
 

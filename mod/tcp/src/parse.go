@@ -2,8 +2,10 @@ package tcp
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	_net "net"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"net"
 	"strconv"
 )
 
@@ -17,34 +19,29 @@ func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error
 	return Parse(address)
 }
 
-func Parse(s string) (endpoint *Endpoint, err error) {
-	var host, port string
-
-	host, port, err = _net.SplitHostPort(s)
+func Parse(s string) (*Endpoint, error) {
+	hostStr, portStr, err := net.SplitHostPort(s)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	endpoint = &Endpoint{}
-
-	endpoint.ip = _net.ParseIP(host)
-	if endpoint.ip == nil {
-		return endpoint, errors.New("invalid ip")
+	ip, err := tcp.ParseIP(hostStr)
+	if err != nil {
+		return nil, err
 	}
 
-	if endpoint.ip.To4() == nil {
-		endpoint.ver = ipv6
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return nil, err
 	}
 
-	var p int
-	if p, err = strconv.Atoi(port); err != nil {
-		return
-	} else {
-		if (p < 0) || (p > 65535) {
-			return endpoint, errors.New("port out of range")
-		}
-		endpoint.port = uint16(p)
+	// check if port fits in 16 bits
+	if (port >> 16) > 0 {
+		return nil, errors.New("port out of range")
 	}
 
-	return
+	return &Endpoint{
+		ip:   ip,
+		port: astral.Uint16(port),
+	}, nil
 }

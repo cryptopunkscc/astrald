@@ -2,83 +2,55 @@ package tcp
 
 import (
 	"bytes"
-	"github.com/cryptopunkscc/astrald/cslq"
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"github.com/cryptopunkscc/astrald/streams"
+	"io"
 	"net"
 	"strconv"
 )
 
-const (
-	ipv4 = iota // IPv4 (32 bit)
-	ipv6        // IPv6 (128 bit)
-)
-
-var _ tcp.Endpoint = &Endpoint{}
+var _ exonet.Endpoint = &Endpoint{}
+var _ astral.Object = &Endpoint{}
 
 type Endpoint struct {
-	ver  int
-	ip   net.IP
-	port uint16
+	ip   tcp.IP
+	port astral.Uint16
 }
 
-func (e *Endpoint) Pack() []byte {
-	var b = &bytes.Buffer{}
-
-	switch e.ver {
-	case ipv4:
-		cslq.Encode(b, "x00 [4]c s", e.ip[len(e.ip)-4:], e.port)
-	case ipv6:
-		cslq.Encode(b, "x01 [16]c s", e.ip, e.port)
-	}
-
-	return b.Bytes()
+func (e *Endpoint) ObjectType() string {
+	return "astral.net.tcp.endpoint"
 }
 
 func (e *Endpoint) Address() string {
-	ip := e.ip.String()
-
-	if e.ver == ipv6 {
-		ip = "[" + ip + "]"
-	}
-
-	if e.port != 0 {
-		ip = ip + ":" + strconv.Itoa(int(e.port))
-	}
-	return ip
+	return net.JoinHostPort(e.ip.String(), strconv.Itoa(int(e.port)))
 }
 
 func (e *Endpoint) Network() string {
 	return "tcp"
 }
 
-func (e *Endpoint) Port() int {
-	return int(e.port)
+func (e Endpoint) WriteTo(w io.Writer) (n int64, err error) {
+	return streams.WriteAllTo(w, e.ip, e.port)
 }
 
-func (e *Endpoint) IP() net.IP {
-	return e.ip
+func (e *Endpoint) ReadFrom(r io.Reader) (n int64, err error) {
+	return streams.ReadAllFrom(r, &e.ip, &e.port)
 }
 
-func (e *Endpoint) IsGlobalUnicast() bool {
-	return e.ip.IsGlobalUnicast()
-}
-
-// IsPrivate returns true if the endpoint belongs to a private network (like LAN)
-func (e *Endpoint) IsPrivate() bool {
-	return e.ip.IsPrivate()
-}
-
-func (e *Endpoint) IsPublicUnicast() bool {
-	return !e.IsPrivate() && e.IsGlobalUnicast()
-}
-
-func (e *Endpoint) IsZero() bool {
-	if e.ip == nil {
-		return true
+func (e *Endpoint) Pack() []byte {
+	var b = &bytes.Buffer{}
+	if _, err := e.WriteTo(b); err != nil {
+		return nil
 	}
-	return false
+	return b.Bytes()
 }
 
 func (e *Endpoint) String() string {
-	return e.Network() + ":" + e.Address()
+	return e.Address()
+}
+
+func (e *Endpoint) IsZero() bool {
+	return e == nil || e.ip == nil
 }

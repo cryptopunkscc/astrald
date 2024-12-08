@@ -40,7 +40,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 		var ops = make([]log.Op, 0)
 
 		ip := ep.ip.String()
-		if ep.ver == ipv6 {
+		if ep.ip.IsIPv6() {
 			ip = "[" + ip + "]"
 		}
 
