@@ -16,6 +16,30 @@ type Bytes16 []byte
 
 type Bytes8 []byte
 
+// Bytes is an unconstrained byte buffer. WriteTo will simply write the entire
+// slice, ReadFrom will read until io.EOF.
+type Bytes []byte
+
+func (b Bytes) ObjectType() string {
+	return ""
+}
+
+func (b Bytes) WriteTo(w io.Writer) (_ int64, err error) {
+	var m int
+	m, err = w.Write(b)
+	return int64(m), err
+}
+
+func (b *Bytes) ReadFrom(r io.Reader) (n int64, err error) {
+	var buf []byte
+	buf, err = io.ReadAll(r)
+	n = int64(len(buf))
+	if err == nil {
+		*b = buf
+	}
+	return
+}
+
 type String64 string
 
 type String32 string
