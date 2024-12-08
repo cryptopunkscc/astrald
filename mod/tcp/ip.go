@@ -82,6 +82,12 @@ func (ip IP) IsIPv6() bool {
 	return net.IP(ip).To16() != nil
 }
 
+func (ip IP) IsLoopback() bool { return net.IP(ip).IsLoopback() }
+
+func (ip IP) IsGlobalUnicast() bool { return net.IP(ip).IsGlobalUnicast() }
+
+func (ip IP) IsPrivate() bool { return net.IP(ip).IsPrivate() }
+
 func ParseIP(s string) (IP, error) {
 	return IP(net.ParseIP(s)), nil
 }

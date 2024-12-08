@@ -2,7 +2,7 @@ package tor
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"github.com/cryptopunkscc/astrald/mod/tor"
 )
 
 func (mod *Module) LoadDependencies() (err error) {
@@ -11,7 +11,7 @@ func (mod *Module) LoadDependencies() (err error) {
 		return
 	}
 
-	mod.Admin.AddCommand(tcp.ModuleName, NewAdmin(mod))
+	mod.Admin.AddCommand(tor.ModuleName, NewAdmin(mod))
 
 	mod.Exonet.SetDialer("tor", mod)
 	mod.Exonet.SetParser("tor", mod)

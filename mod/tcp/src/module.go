@@ -37,7 +37,7 @@ func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) (endp
 	}
 
 	endpoints = append(endpoints, mod.publicEndpoints...)
-	endpoints = append(endpoints, mod.scanLocalEndpoints()...)
+	endpoints = append(endpoints, mod.localEndpoints()...)
 
 	return
 }
@@ -46,12 +46,12 @@ func (mod *Module) ListenPort() int {
 	return mod.config.ListenPort
 }
 
-func (mod *Module) scanLocalEndpoints() []exonet.Endpoint {
-	list := make([]exonet.Endpoint, 0)
+func (mod *Module) localIPs() ([]tcp.IP, error) {
+	list := make([]tcp.IP, 0)
 
 	ifaceAddrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	for _, a := range ifaceAddrs {
@@ -59,20 +59,29 @@ func (mod *Module) scanLocalEndpoints() []exonet.Endpoint {
 		if !ok {
 			continue
 		}
-
-		ipv4 := ipnet.IP.To4()
-		if ipv4 == nil {
-			continue
-		}
-
-		if ipv4.IsLoopback() {
-			continue
-		}
-
-		if ipv4.IsGlobalUnicast() || ipv4.IsPrivate() {
-			list = append(list, &Endpoint{ip: tcp.IP(ipv4), port: astral.Uint16(mod.config.ListenPort)})
-		}
+		ip := tcp.IP(ipnet.IP)
+		list = append(list, ip)
 	}
 
-	return list
+	return list, nil
+}
+
+func (mod *Module) localEndpoints() (list []exonet.Endpoint) {
+	ips, err := mod.localIPs()
+	if err != nil {
+		return
+	}
+
+	for _, ip := range ips {
+		if ip.IsLoopback() {
+			continue
+		}
+		if ip.IsGlobalUnicast() || ip.IsPrivate() {
+			list = append(list, &Endpoint{
+				ip:   ip,
+				port: astral.Uint16(mod.ListenPort()),
+			})
+		}
+	}
+	return
 }
