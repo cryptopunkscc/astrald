@@ -15,6 +15,10 @@ type Object interface {
 	io.ReaderFrom
 }
 
+type ObjectReader interface {
+	ReadObject(io.Reader) (Object, error)
+}
+
 // magic is a const number at the very beginning of the object header
 const magic = uint32(0x41444330)
 
