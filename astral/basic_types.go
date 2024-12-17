@@ -513,3 +513,8 @@ func (i *Int8) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 	return
 }
+
+func (s String8) String() string  { return string(s) }
+func (s String16) String() string { return string(s) }
+func (s String32) String() string { return string(s) }
+func (s String64) String() string { return string(s) }
