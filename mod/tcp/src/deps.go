@@ -29,8 +29,11 @@ func (mod *Module) LoadDependencies() (err error) {
 	mod.Exonet.SetUnpacker("tcp", mod)
 	mod.Exonet.AddResolver(mod)
 
-	mod.Objects.AddObject(&tcp.IP{})
-	mod.Objects.AddObject(&Endpoint{})
+	mod.Objects.Blueprints().Add(
+		&tcp.IP{},
+		&tcp.Endpoint{},
+		&tcp.EventNetworkAddressChanged{},
+	)
 
 	return
 }

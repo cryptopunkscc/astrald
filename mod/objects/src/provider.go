@@ -143,7 +143,7 @@ func (p *Provider) Search(ctx context.Context, q *astral.Query, w io.WriteCloser
 			var ids []*astral.Identity
 			targets := strings.Split(args.Ext, ",")
 			for _, target := range targets {
-				id, err := p.mod.Dir.Resolve(target)
+				id, err := p.mod.Dir.ResolveIdentity(target)
 				if err != nil {
 					return query.Reject()
 				}
@@ -215,7 +215,7 @@ func (p *Provider) Push(ctx context.Context, q *astral.Query, w io.WriteCloser) 
 			return
 		}
 
-		obj, err := p.mod.ReadObject(bytes.NewReader(buf))
+		obj, _, err := p.mod.Blueprints().Read(bytes.NewReader(buf), true)
 		if err != nil {
 			p.mod.log.Errorv(1, "%v push read object error: %v", q.Caller, err)
 			binary.Write(conn, binary.BigEndian, false)

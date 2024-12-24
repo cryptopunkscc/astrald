@@ -93,7 +93,7 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 	return infoPrefix + base62.EncodeToString(packed)
 }
 
-func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) ([]exonet.Endpoint, error) {
+func (mod *Module) ResolveEndpoints(ctx context.Context, identity *astral.Identity) ([]exonet.Endpoint, error) {
 	return mod.Endpoints(identity), nil
 }
 

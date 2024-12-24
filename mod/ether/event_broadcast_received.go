@@ -3,7 +3,6 @@ package ether
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 )
 
@@ -16,14 +15,13 @@ type EventBroadcastReceived struct {
 }
 
 func (EventBroadcastReceived) ObjectType() string {
-	return "astrald.mod.ether.event_broadcast_received"
+	return "astrald.mod.ether.events.broadcast_received"
 }
 
 func (e EventBroadcastReceived) WriteTo(w io.Writer) (n int64, err error) {
-	return streams.WriteAllTo(w, e.SourceID, e.SourceIP, e.Object)
+	return astral.Struct(e).WriteTo(w)
 }
 
 func (e *EventBroadcastReceived) ReadFrom(r io.Reader) (n int64, err error) {
-	e.SourceID = &astral.Identity{}
-	return streams.ReadAllFrom(r, e.SourceID, &e.SourceIP, e.Object)
+	return astral.Struct(e).ReadFrom(r)
 }

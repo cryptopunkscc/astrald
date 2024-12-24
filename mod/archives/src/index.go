@@ -28,13 +28,13 @@ func (mod *Module) Index(ctx context.Context, objectID object.ID, opts *objects.
 	}
 
 	err = mod.setCache(objectID, archive)
-
-	mod.events.Emit(archives.EventArchiveIndexed{ObjectID: objectID, Archive: archive})
+	
+	mod.Objects.Receive(&archives.EventArchiveIndexed{ObjectID: objectID, Archive: archive}, nil)
 	for _, entry := range archive.Entries {
-		mod.events.Emit(objects.EventDiscovered{
+		mod.Objects.Receive(&objects.EventDiscovered{
 			ObjectID: entry.ObjectID,
 			Zone:     astral.ZoneVirtual,
-		})
+		}, nil)
 	}
 
 	return

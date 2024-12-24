@@ -11,12 +11,12 @@ type Module interface {
 	Dial(context.Context, Endpoint) (conn Conn, err error)
 	Unpack(network string, data []byte) (Endpoint, error)
 	Parse(network string, address string) (Endpoint, error)
-	Resolve(context.Context, *astral.Identity) ([]Endpoint, error)
+	ResolveEndpoints(context.Context, *astral.Identity) ([]Endpoint, error)
 
 	SetDialer(network string, dialer Dialer)
 	SetUnpacker(network string, unpacker Unpacker)
 	SetParser(network string, parser Parser)
-	AddResolver(Resolver)
+	AddResolver(EndpointResolver)
 }
 
 // Endpoint represents a dialable address on a network (such as an IP address with port number)
@@ -38,6 +38,6 @@ type Parser interface {
 	Parse(network string, address string) (Endpoint, error)
 }
 
-type Resolver interface {
-	Resolve(context.Context, *astral.Identity) ([]Endpoint, error)
+type EndpointResolver interface {
+	ResolveEndpoints(context.Context, *astral.Identity) ([]Endpoint, error)
 }

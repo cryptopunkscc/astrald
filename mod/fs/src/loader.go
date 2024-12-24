@@ -21,8 +21,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		updates: make(chan sig.Task, updatesLen),
 	}
 
-	mod.events.SetParent(node.Events())
-
 	_ = assets.LoadYAML(fs.ModuleName, &mod.config)
 
 	// set up database

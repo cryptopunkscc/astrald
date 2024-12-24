@@ -222,3 +222,7 @@ func (id *Identity) UnmarshalText(text []byte) (err error) {
 	*id = *i
 	return
 }
+
+func init() {
+	DefaultBlueprints.Add(&Identity{})
+}

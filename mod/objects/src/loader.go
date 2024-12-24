@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 type Loader struct{}
@@ -20,20 +19,14 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		PathRouter: routers.NewPathRouter(node.Identity(), false),
 	}
 
-	mod.events.SetParent(node.Events())
-
 	_ = assets.LoadYAML(objects.ModuleName, &mod.config)
 
 	mod.db = assets.Database()
 
-	// add core object prototypes
-	var h astral.ObjectHeader
-	var n astral.Nonce
-	mod.addObjects(
-		&h, &n,
-		&astral.Identity{},
-		&astral.Time{},
-		&object.ID{},
+	mod.blueprints.Parent = astral.DefaultBlueprints
+	mod.blueprints.Add(
+		&objects.EventDiscovered{},
+		&objects.EventCommitted{},
 		&objects.SourcedObject{},
 		&objects.SearchResult{},
 	)

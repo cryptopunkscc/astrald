@@ -2,7 +2,8 @@ package tcp
 
 import (
 	"context"
-	_net "net"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"net"
 	"strconv"
 )
 
@@ -18,13 +19,13 @@ func (srv *Server) Run(ctx context.Context) error {
 	// start the listener
 	var addrStr = ":" + strconv.Itoa(srv.config.ListenPort)
 
-	listener, err := _net.Listen("tcp", addrStr)
+	listener, err := net.Listen("tcp", addrStr)
 	if err != nil {
 		srv.log.Errorv(0, "failed to start server: %v", err)
 		return err
 	}
 
-	endpoint, _ := Parse(listener.Addr().String())
+	endpoint, _ := tcp.ParseEndpoint(listener.Addr().String())
 
 	srv.log.Info("started server at %v", endpoint)
 	defer srv.log.Info("stopped server at %v", endpoint)

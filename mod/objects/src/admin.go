@@ -30,17 +30,17 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"describe": adm.describe,
-		"fetch":    adm.fetch,
-		"info":     adm.info,
-		"purge":    adm.purge,
-		"push":     adm.push,
-		"read":     adm.read,
-		"search":   adm.search,
-		"show":     adm.show,
-		"types":    adm.types,
-		"holders":  adm.holders,
-		"help":     adm.help,
+		"describe":   adm.describe,
+		"fetch":      adm.fetch,
+		"info":       adm.info,
+		"purge":      adm.purge,
+		"push":       adm.push,
+		"read":       adm.read,
+		"search":     adm.search,
+		"show":       adm.show,
+		"blueprints": adm.blueprints,
+		"holders":    adm.holders,
+		"help":       adm.help,
 	}
 
 	return adm
@@ -59,15 +59,15 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 	return errors.New("unknown command")
 }
 
-func (adm *Admin) types(term admin.Terminal, args []string) error {
-	types := adm.mod.objects.Keys()
+func (adm *Admin) blueprints(term admin.Terminal, args []string) error {
+	types := adm.mod.blueprints.Names()
 
 	slices.Sort(types)
 
-	term.Printf("%d known object types:\n", len(types))
+	term.Printf("%d blueprints:\n", len(types))
 
 	for _, t := range types {
-		term.Printf(" %s\n", t)
+		term.Printf("- %s\n", t)
 	}
 
 	return nil
@@ -186,7 +186,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 			return err
 		}
 
-		obj, err := adm.mod.ReadObject(r)
+		obj, _, err := adm.mod.Blueprints().Read(r, true)
 		if err != nil {
 			return err
 		}
@@ -239,7 +239,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 
 	if len(provider) > 0 {
 		var providerID *astral.Identity
-		providerID, err = adm.mod.Dir.Resolve(provider)
+		providerID, err = adm.mod.Dir.ResolveIdentity(provider)
 		if err != nil {
 			return err
 		}
@@ -307,7 +307,7 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 	if len(provider) > 0 {
 		var providerID *astral.Identity
 
-		providerID, err = adm.mod.Dir.Resolve(provider)
+		providerID, err = adm.mod.Dir.ResolveIdentity(provider)
 		if err != nil {
 			return err
 		}
@@ -421,7 +421,7 @@ func (adm *Admin) push(term admin.Terminal, args []string) error {
 		return errors.New("missing arguments")
 	}
 
-	target, err := adm.mod.Dir.Resolve(args[0])
+	target, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -448,6 +448,7 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("commands:\n")
 	term.Printf("  read [objectID]                           read an object (caution - may print binary data)\n")
 	term.Printf("  fetch <url>                               download an object to storage\n")
+	term.Printf("  blueprints                                list all registered blueprints\n")
 	term.Printf("  info                                      show info\n")
 	term.Printf("  help                                      show help\n")
 	return nil

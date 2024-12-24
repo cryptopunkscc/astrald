@@ -1,6 +1,7 @@
 package astral
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"github.com/cryptopunkscc/astrald/object"
@@ -16,7 +17,7 @@ type Object interface {
 }
 
 type ObjectReader interface {
-	ReadObject(io.Reader) (Object, error)
+	ReadObject() (Object, int64, error)
 }
 
 // magic is a const number at the very beginning of the object header
@@ -114,4 +115,36 @@ func ResolveObjectID(obj Object) (objectID object.ID, err error) {
 	}
 
 	return w.Resolve(), nil
+}
+
+// Write writes an object to the writer. If canonical is true, the object will be written in its
+// canonical form, i.e. incluing the standard header, otherwise short form (no magic bytes) is written.
+// If the object's WriteTo errs, no data will be written to w.
+func Write(w io.Writer, obj Object, canonical bool) (_ int64, err error) {
+	var buf = &bytes.Buffer{}
+
+	if obj.ObjectType() != "" {
+		if canonical {
+			// write object type
+			_, err = ObjectHeader(obj.ObjectType()).WriteTo(buf)
+		} else {
+			_, err = String8(obj.ObjectType()).WriteTo(buf)
+		}
+		if err != nil {
+			return
+		}
+	}
+
+	// write object payload
+	_, err = obj.WriteTo(buf)
+	if err != nil {
+		return
+	}
+
+	return buf.WriteTo(w)
+}
+
+func init() {
+	var h ObjectHeader
+	DefaultBlueprints.Add(&h, &object.ID{})
 }

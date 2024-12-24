@@ -46,3 +46,8 @@ func (nonce *Nonce) UnmarshalText(text []byte) (err error) {
 	*nonce = Nonce(u)
 	return
 }
+
+func init() {
+	var n Nonce
+	DefaultBlueprints.Add(&n)
+}

@@ -2,9 +2,8 @@ package mem
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/events"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"sync/atomic"
@@ -18,17 +17,16 @@ const DefaultSize = 64 * 1024 * 1024 // 64MB
 
 type Store struct {
 	objects sig.Map[string, []byte]
-	events  events.Queue
+	mod     objects.Module
 	used    atomic.Int64
 	size    int64
 }
 
-func NewMemStore(events *events.Queue, size int64) *Store {
-	var mem = &Store{size: DefaultSize}
+func NewMemStore(mod objects.Module, size int64) *Store {
+	var mem = &Store{mod: mod, size: DefaultSize}
 	if size != 0 {
 		mem.size = size
 	}
-	mem.events.SetParent(events)
 	return mem
 }
 

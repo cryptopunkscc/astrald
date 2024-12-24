@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/presence"
+	"github.com/cryptopunkscc/astrald/mod/status"
 )
 
 func (mod *Module) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
@@ -23,7 +23,7 @@ func (mod *Module) Authorize(identity *astral.Identity, action string, target as
 			objects.ActionPurge,
 			objects.ActionSearch,
 			objects.ActionReadDescriptor,
-			presence.ActionList:
+			status.ActionList:
 			return true
 		}
 	}

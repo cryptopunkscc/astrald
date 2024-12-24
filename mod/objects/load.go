@@ -25,7 +25,7 @@ func Load[T astral.Object](ctx context.Context, mod Module, objectID object.ID, 
 	var a astral.Object
 	var ok bool
 
-	a, err = mod.ReadObject(r)
+	a, _, err = mod.Blueprints().Read(r, true)
 	if err != nil {
 		return
 	}

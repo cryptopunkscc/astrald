@@ -27,12 +27,12 @@ func (adm *Admin) resolve(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	identity, err := adm.mod.Dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
 
-	list, err := adm.mod.Resolve(context.Background(), identity)
+	list, err := adm.mod.ResolveEndpoints(context.Background(), identity)
 	if err != nil {
 		return err
 	}

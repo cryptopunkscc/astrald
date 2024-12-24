@@ -16,7 +16,7 @@ func (cmd *CmdSudo) Exec(term admin.Terminal, args []string) error {
 		return cmd.help(term, nil)
 	}
 
-	targetID, err := cmd.mod.Dir.Resolve(args[1])
+	targetID, err := cmd.mod.Dir.ResolveIdentity(args[1])
 	if err != nil {
 		return err
 	}

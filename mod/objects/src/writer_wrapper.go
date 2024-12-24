@@ -26,7 +26,7 @@ func (w *WriterWrapper) Discard() error {
 func (w *WriterWrapper) Commit() (object.ID, error) {
 	objectID, err := w.Writer.Commit()
 	if err != nil {
-		w.mod.events.Emit(objects.EventCommitted{ObjectID: objectID})
+		w.mod.Objects.Receive(&objects.EventCommitted{ObjectID: objectID}, nil)
 	}
 
 	return objectID, err

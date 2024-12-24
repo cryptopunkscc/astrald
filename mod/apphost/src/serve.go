@@ -75,7 +75,7 @@ func (s *Session) query(params proto.QueryParams) error {
 func (s *Session) resolve(p proto.ResolveParams) error {
 	s.mod.log.Logv(2, "%s resolve %s", s.remoteID, p.Name)
 
-	remoteID, err := s.mod.Dir.Resolve(p.Name)
+	remoteID, err := s.mod.Dir.ResolveIdentity(p.Name)
 	if err == nil {
 		s.WriteErr(nil)
 		return s.WriteMsg(proto.ResolveData{Identity: remoteID})

@@ -4,9 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"os"
 	"path/filepath"
@@ -86,14 +86,14 @@ func (w *Writer) Commit() (object.ID, error) {
 		ModTime: stat.ModTime(),
 	}).Error
 	if err == nil {
-		w.mod.events.Emit(fs.EventFileAdded{
-			Path:     newPath,
+		w.mod.Objects.Receive(&fs.EventFileAdded{
+			Path:     astral.String16(newPath),
 			ObjectID: objectID,
-		})
-		w.mod.events.Emit(objects.EventDiscovered{
+		}, nil)
+		w.mod.Objects.Receive(&objects.EventDiscovered{
 			ObjectID: objectID,
 			Zone:     astral.ZoneDevice,
-		})
+		}, nil)
 	}
 
 	return objectID, err

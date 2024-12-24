@@ -21,6 +21,11 @@ func (mod *Module) LoadDependencies() (err error) {
 	}
 
 	mod.Admin.AddCommand(ether.ModuleName, NewAdmin(mod))
+	mod.Objects.Blueprints().Add(
+		&ether.Broadcast{},
+		&ether.SignedBroadcast{},
+		&ether.EventBroadcastReceived{},
+	)
 
 	return
 }

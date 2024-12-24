@@ -10,12 +10,12 @@ const DBPrefix = "dir__"
 type Module interface {
 	SetAlias(*astral.Identity, string) error
 	GetAlias(*astral.Identity) (string, error)
-	Resolve(string) (*astral.Identity, error)
+	ResolveIdentity(string) (*astral.Identity, error)
 	DisplayName(*astral.Identity) string
 	AddResolver(Resolver) error
 }
 
 type Resolver interface {
-	Resolve(string) (*astral.Identity, error)
+	ResolveIdentity(string) (*astral.Identity, error)
 	DisplayName(*astral.Identity) string
 }

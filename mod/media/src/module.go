@@ -3,7 +3,6 @@ package media
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -32,15 +31,10 @@ type Indexer interface {
 }
 
 func (mod *Module) Run(ctx context.Context) error {
-	go events.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
-		mod.DescribeObject(ctx, event.ObjectID, astral.DefaultScope())
-		return nil
-	})
-
 	for event := range mod.Content.Scan(ctx, nil) {
 		scope := astral.DefaultScope()
 
-		if slices.Contains(mod.config.AutoIndexNet, event.Type) {
+		if slices.Contains(mod.config.AutoIndexNet, string(event.Type)) {
 			scope.Zone |= astral.ZoneNetwork
 		}
 

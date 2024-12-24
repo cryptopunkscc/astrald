@@ -9,7 +9,7 @@ import (
 var _ astral.Object = &SourcedObject{}
 
 type SourcedObject struct {
-	ObjectReader
+	astral.ObjectReader
 	Source *astral.Identity
 	Object astral.Object
 }
@@ -37,6 +37,6 @@ func (o *SourcedObject) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 
-	o.Object, err = o.ObjectReader.ReadObject(c)
+	o.Object, _, err = o.ObjectReader.ReadObject()
 	return
 }

@@ -29,7 +29,7 @@ type Module struct {
 	dialers   sig.Map[string, exonet.Dialer]
 	unpackers sig.Map[string, exonet.Unpacker]
 	parser    sig.Map[string, exonet.Parser]
-	resolvers sig.Set[exonet.Resolver]
+	resolvers sig.Set[exonet.EndpointResolver]
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -38,7 +38,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) ([]exonet.Endpoint, error) {
+func (mod *Module) ResolveEndpoints(ctx context.Context, identity *astral.Identity) ([]exonet.Endpoint, error) {
 	var res sig.Set[exonet.Endpoint]
 
 	var wg sync.WaitGroup
@@ -47,7 +47,7 @@ func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) ([]ex
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			v, err := r.Resolve(ctx, identity)
+			v, err := r.ResolveEndpoints(ctx, identity)
 			if err != nil {
 				return
 			}
@@ -59,7 +59,7 @@ func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) ([]ex
 	return res.Clone(), nil
 }
 
-func (mod *Module) AddResolver(resolver exonet.Resolver) {
+func (mod *Module) AddResolver(resolver exonet.EndpointResolver) {
 	if resolver != nil {
 		mod.resolvers.Add(resolver)
 	}

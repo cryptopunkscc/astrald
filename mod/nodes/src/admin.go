@@ -86,7 +86,7 @@ func (adm *Admin) link(term admin.Terminal, args []string) (err error) {
 
 	args = f.Args()
 
-	remoteID, err := adm.mod.Dir.Resolve(args[0])
+	remoteID, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (adm *Admin) check(term admin.Terminal, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	identity, err := adm.mod.Dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	identity, err := adm.mod.Dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -239,7 +239,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 	var endpoints []exonet.Endpoint
 
 	if identity.IsEqual(adm.mod.node.Identity()) {
-		endpoints, _ = adm.mod.Exonet.Resolve(context.Background(), adm.mod.node.Identity())
+		endpoints, _ = adm.mod.Exonet.ResolveEndpoints(context.Background(), adm.mod.node.Identity())
 	} else {
 		endpoints = adm.mod.Endpoints(identity)
 	}
@@ -285,7 +285,7 @@ func (adm *Admin) endpoints(term admin.Terminal, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	identity, err := adm.mod.Dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -294,7 +294,7 @@ func (adm *Admin) endpoints(term admin.Terminal, args []string) error {
 	var endpoints []exonet.Endpoint
 
 	if identity.IsEqual(adm.mod.node.Identity()) {
-		endpoints, _ = adm.mod.Exonet.Resolve(context.Background(), adm.mod.node.Identity())
+		endpoints, _ = adm.mod.Exonet.ResolveEndpoints(context.Background(), adm.mod.node.Identity())
 	} else {
 		endpoints = adm.mod.Endpoints(identity)
 	}
@@ -319,7 +319,7 @@ func (adm *Admin) addEndpoint(term admin.Terminal, args []string) error {
 		return errors.New("misisng arguments")
 	}
 
-	identity, err := adm.mod.Dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -345,7 +345,7 @@ func (adm *Admin) removeEndpoint(term admin.Terminal, args []string) error {
 		return errors.New("misisng arguments")
 	}
 
-	identity, err := adm.mod.Dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}

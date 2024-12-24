@@ -42,7 +42,7 @@ func (mod *Module) AddResolver(resolver dir.Resolver) error {
 	return mod.resolvers.Add(resolver)
 }
 
-func (mod *Module) Resolve(s string) (identity *astral.Identity, err error) {
+func (mod *Module) ResolveIdentity(s string) (identity *astral.Identity, err error) {
 	if s == "" || s == "anyone" {
 		return &astral.Identity{}, nil
 	}
@@ -66,7 +66,7 @@ func (mod *Module) Resolve(s string) (identity *astral.Identity, err error) {
 	}
 
 	for _, r := range mod.resolvers.Clone() {
-		if i, err := r.Resolve(s); err == nil {
+		if i, err := r.ResolveIdentity(s); err == nil {
 			return i, nil
 		}
 	}

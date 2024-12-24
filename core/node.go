@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/resources"
 	"time"
 )
@@ -21,7 +20,6 @@ type Node struct {
 
 	assets  *assets.CoreAssets
 	modules *Modules
-	events  events.Queue
 
 	startedAt time.Time
 
@@ -90,11 +88,6 @@ func (node *Node) Modules() *Modules {
 // Identity returns node's identity
 func (node *Node) Identity() *astral.Identity {
 	return node.identity
-}
-
-// Events returns the event queue for the node
-func (node *Node) Events() *events.Queue {
-	return &node.events
 }
 
 func (node *Node) StartedAt() time.Time {

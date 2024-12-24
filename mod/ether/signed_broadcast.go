@@ -8,12 +8,12 @@ import (
 	"io"
 )
 
+var _ astral.Object = &SignedBroadcast{}
+
 type SignedBroadcast struct {
 	Broadcast
 	Signature astral.Bytes16
 }
-
-var _ astral.Object = &SignedBroadcast{}
 
 func (SignedBroadcast) ObjectType() string {
 	return "astrald.mod.ether.signed_broadcast"

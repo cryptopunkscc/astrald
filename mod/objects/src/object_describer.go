@@ -67,7 +67,7 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *astral.S
 		defer conn.Close()
 
 		for {
-			obj, err := c.mod.ReadObject(conn)
+			obj, _, err := c.mod.Blueprints().Read(conn, true)
 			if err != nil {
 				return
 			}

@@ -72,12 +72,12 @@ func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 
 	info := &content.TypeInfo{
 		ObjectID:     objectID,
-		IdentifiedAt: indexedAt,
-		Method:       method,
-		Type:         dataType,
+		IdentifiedAt: astral.Time(indexedAt),
+		Method:       astral.String8(method),
+		Type:         astral.String8(dataType),
 	}
 
-	mod.events.Emit(content.EventObjectIdentified{TypeInfo: info})
+	mod.Objects.Receive(&content.EventObjectIdentified{TypeInfo: info}, nil)
 
 	return info, nil
 }
@@ -92,9 +92,9 @@ func (mod *Module) getCache(objectID object.ID) *content.TypeInfo {
 
 	return &content.TypeInfo{
 		ObjectID:     row.DataID,
-		IdentifiedAt: row.IdentifiedAt,
-		Method:       row.Method,
-		Type:         row.Type,
+		IdentifiedAt: astral.Time(row.IdentifiedAt),
+		Method:       astral.String8(row.Method),
+		Type:         astral.String8(row.Type),
 	}
 }
 

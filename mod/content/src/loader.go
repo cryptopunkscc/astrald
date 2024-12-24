@@ -20,8 +20,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(content.ModuleName, &mod.config)
 
-	mod.events.SetParent(node.Events())
-
 	mod.db = assets.Database()
 
 	err = mod.db.AutoMigrate(&dbDataType{}, &dbLabel{})

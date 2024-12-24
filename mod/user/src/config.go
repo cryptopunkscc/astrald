@@ -7,6 +7,9 @@ const (
 
 type Config struct {
 	Identity string `yaml:"identity"`
+	Public   bool   `yaml:"public"`
 }
 
-var defaultConfig = Config{}
+var defaultConfig = Config{
+	Public: true,
+}

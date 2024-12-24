@@ -49,7 +49,7 @@ func Parse(s string, resolver dir.Resolver) (arl *ARL, err error) {
 
 	if len(c) != 0 {
 		if resolver != nil {
-			arl.Caller, err = resolver.Resolve(c)
+			arl.Caller, err = resolver.ResolveIdentity(c)
 			if err != nil {
 				return
 			}
@@ -63,7 +63,7 @@ func Parse(s string, resolver dir.Resolver) (arl *ARL, err error) {
 
 	if len(t) != 0 {
 		if resolver != nil {
-			arl.Target, err = resolver.Resolve(t)
+			arl.Target, err = resolver.ResolveIdentity(t)
 			if err != nil {
 				return
 			}

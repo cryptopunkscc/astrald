@@ -22,7 +22,7 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	mod.Admin.AddCommand(content.ModuleName, NewAdmin(mod))
 	mod.Objects.AddDescriber(mod)
-	mod.Objects.AddObject(&content.ObjectDescriptor{})
+	mod.Objects.Blueprints().Add(&content.ObjectDescriptor{})
 
 	mod.setReady()
 

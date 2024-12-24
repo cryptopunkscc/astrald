@@ -29,16 +29,6 @@ func (node *Node) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	// event handling
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		if err := node.handleEvents(ctx); err != nil {
-			errCh <- fmt.Errorf("event handler: %w", err)
-		}
-	}()
-
 	// wait for the context to end or a node error
 	go func() {
 		select {

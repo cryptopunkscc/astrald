@@ -22,7 +22,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 
 	// Parse public endpoints
 	for _, pe := range mod.config.PublicEndpoints {
-		endpoint, err := Parse(pe)
+		endpoint, err := tcp.ParseEndpoint(pe)
 		if err != nil {
 			l.Error("error parsing public endpoint \"%s\": %s", pe, err)
 			continue
@@ -32,15 +32,15 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 	}
 
 	l.Root().PushFormatFunc(func(v any) ([]log.Op, bool) {
-		ep, ok := v.(*Endpoint)
+		ep, ok := v.(*tcp.Endpoint)
 		if !ok {
 			return nil, false
 		}
 
 		var ops = make([]log.Op, 0)
 
-		ip := ep.ip.String()
-		if ep.ip.IsIPv6() {
+		ip := ep.IP.String()
+		if ep.IP.IsIPv6() {
 			ip = "[" + ip + "]"
 		}
 
@@ -50,13 +50,13 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 			log.OpReset{},
 		)
 
-		if ep.port != 0 {
+		if ep.Port != 0 {
 			ops = append(ops,
 				log.OpColor{Color: log.White},
 				log.OpText{Text: ":"},
 				log.OpReset{},
 				log.OpColor{Color: log.Cyan},
-				log.OpText{Text: strconv.Itoa(int(ep.port))},
+				log.OpText{Text: strconv.Itoa(int(ep.Port))},
 				log.OpReset{},
 			)
 		}

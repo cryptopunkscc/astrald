@@ -47,3 +47,7 @@ func (t *Time) UnmarshalJSON(bytes []byte) (err error) {
 	*t = Time(tt)
 	return
 }
+
+func init() {
+	DefaultBlueprints.Add(&Time{})
+}

@@ -2,17 +2,14 @@ package fs
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/streams"
 	"io"
-	"time"
 )
 
 var _ astral.Object = &FileDescriptor{}
 
 type FileDescriptor struct {
-	Path    string
-	ModTime time.Time
+	Path    astral.String16
+	ModTime astral.Time
 }
 
 func (d *FileDescriptor) ObjectType() string {
@@ -20,19 +17,13 @@ func (d *FileDescriptor) ObjectType() string {
 }
 
 func (d *FileDescriptor) WriteTo(w io.Writer) (n int64, err error) {
-	c := streams.NewWriteCounter(w)
-	err = cslq.Encode(c, "[s]c v", d.Path, d.ModTime)
-	n = c.Total()
-	return
+	return astral.Struct(d).WriteTo(w)
 }
 
 func (d *FileDescriptor) ReadFrom(r io.Reader) (n int64, err error) {
-	c := streams.NewReadCounter(r)
-	err = cslq.Decode(c, "[s]c v", &d.Path, &d.ModTime)
-	n = c.Total()
-	return
+	return astral.Struct(d).ReadFrom(r)
 }
 
 func (d *FileDescriptor) String() string {
-	return d.Path
+	return d.Path.String()
 }

@@ -34,8 +34,8 @@ func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope
 		results <- &objects.SourcedObject{
 			Source: mod.node.Identity(),
 			Object: &fs.FileDescriptor{
-				Path:    row.Path,
-				ModTime: row.ModTime,
+				Path:    astral.String16(row.Path),
+				ModTime: astral.Time(row.ModTime),
 			},
 		}
 	}

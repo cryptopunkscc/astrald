@@ -1,6 +1,23 @@
 package astral
 
+import "io"
+
 type Zone int
+
+func (zone Zone) ObjectType() string {
+	return "astral.zone"
+}
+
+func (zone Zone) WriteTo(w io.Writer) (n int64, err error) {
+	return Uint64(zone).WriteTo(w)
+}
+
+func (zone *Zone) ReadFrom(r io.Reader) (n int64, err error) {
+	var u64 Uint64
+	n, err = u64.ReadFrom(r)
+	*zone = Zone(u64)
+	return
+}
 
 type Scope struct {
 	Zone
@@ -52,4 +69,9 @@ func (zone Zone) String() (s string) {
 		s += "n"
 	}
 	return
+}
+
+func init() {
+	var zone Zone
+	DefaultBlueprints.Add(&zone)
 }

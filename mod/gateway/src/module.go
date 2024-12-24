@@ -51,7 +51,7 @@ func (mod *Module) Run(ctx context.Context) error {
 			}
 			gateID = info.Identity
 		} else {
-			gateID, err = mod.Dir.Resolve(gateName)
+			gateID, err = mod.Dir.ResolveIdentity(gateName)
 			if err != nil {
 				mod.log.Error("config error: cannot resolve %s: %v", gateName, err)
 				continue

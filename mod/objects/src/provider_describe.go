@@ -68,7 +68,7 @@ func (p *Provider) Describe(ctx context.Context, q *astral.Query, w io.WriteClos
 				}
 
 			case "":
-				err = objects.WriteObject(conn, so.Object)
+				_, err = astral.Write(conn, so.Object, false)
 				if err != nil {
 					p.mod.log.Errorv(1, "describe: error writing object: %v", err)
 					return

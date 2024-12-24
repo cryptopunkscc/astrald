@@ -47,7 +47,7 @@ func (adm *Admin) newtoken(term admin.Terminal, args []string) error {
 		return errors.New("argument missing: identity")
 	}
 
-	identity, err := adm.mod.Dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (adm *Admin) run(term admin.Terminal, args []string) error {
 	}
 
 	if name != "" {
-		identity, err = adm.mod.Dir.Resolve(name)
+		identity, err = adm.mod.Dir.ResolveIdentity(name)
 		if err != nil {
 			return err
 		}

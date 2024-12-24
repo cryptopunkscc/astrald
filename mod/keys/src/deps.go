@@ -12,7 +12,7 @@ func (mod *Module) LoadDependencies() (err error) {
 	}
 
 	mod.Admin.AddCommand(keys.ModuleName, NewAdmin(mod))
-	mod.Objects.AddObject(&keys.PrivateKey{})
+	mod.Objects.Blueprints().Add(&keys.PrivateKey{})
 
 	return
 }

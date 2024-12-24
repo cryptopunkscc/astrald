@@ -16,7 +16,7 @@ func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope
 		return nil, err
 	}
 
-	if indexer, ok := mod.indexers[info.Type]; ok {
+	if indexer, ok := mod.indexers[string(info.Type)]; ok {
 		return indexer.DescribeObject(ctx, objectID, scope)
 	}
 

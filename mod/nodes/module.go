@@ -9,7 +9,7 @@ import (
 const ModuleName = "nodes"
 
 type Module interface {
-	exonet.Resolver
+	exonet.EndpointResolver
 	Accept(ctx context.Context, conn exonet.Conn) error
 
 	ParseInfo(s string) (*NodeInfo, error)

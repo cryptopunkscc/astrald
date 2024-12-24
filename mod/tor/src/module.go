@@ -41,7 +41,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Resolve(ctx context.Context, identity *astral.Identity) (endpoints []exonet.Endpoint, err error) {
+func (mod *Module) ResolveEndpoints(ctx context.Context, identity *astral.Identity) (endpoints []exonet.Endpoint, err error) {
 	if mod.server == nil {
 		return
 	}

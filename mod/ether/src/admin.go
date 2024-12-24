@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/ether"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -15,8 +16,9 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"push": adm.push,
-		"help": adm.help,
+		"push":   adm.push,
+		"puship": adm.pushIP,
+		"help":   adm.help,
 	}
 
 	return adm
@@ -38,6 +40,29 @@ func (adm *Admin) push(term admin.Terminal, args []string) error {
 	}
 
 	return adm.mod.Push(obj, nil)
+}
+
+func (adm *Admin) pushIP(term admin.Terminal, args []string) error {
+	if len(args) < 2 {
+		return errors.New("missing argument")
+	}
+
+	ip, err := tcp.ParseIP(args[0])
+	if err != nil {
+		return err
+	}
+
+	objectID, err := object.ParseID(args[1])
+	if err != nil {
+		return err
+	}
+
+	obj, err := adm.mod.Objects.Load(objectID)
+	if err != nil {
+		return err
+	}
+
+	return adm.mod.PushToIP(ip, obj, nil)
 }
 
 func (adm *Admin) Exec(term admin.Terminal, args []string) error {

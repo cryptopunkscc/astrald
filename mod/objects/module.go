@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
-	"io"
 )
 
 const ModuleName = "objects"
@@ -36,8 +35,7 @@ type Module interface {
 	AddHolder(Holder) error
 	Holders(objectID object.ID) []Holder
 
-	AddObject(astral.Object) error
-	ReadObject(r io.Reader) (o astral.Object, err error)
+	Blueprints() *astral.Blueprints
 	AddReceiver(Receiver) error
 	Receive(astral.Object, *astral.Identity) error
 	Push(ctx context.Context, src *astral.Identity, dst *astral.Identity, obj astral.Object) error

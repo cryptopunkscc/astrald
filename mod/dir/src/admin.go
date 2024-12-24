@@ -28,7 +28,7 @@ func (adm *Admin) setAlias(term admin.Terminal, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	identity, err := adm.mod.Resolve(args[0])
+	identity, err := adm.mod.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func (adm *Admin) getAlias(term admin.Terminal, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	identity, err := adm.mod.Resolve(args[0])
+	identity, err := adm.mod.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (adm *Admin) resolve(term admin.Terminal, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	identity, err := adm.mod.Resolve(args[0])
+	identity, err := adm.mod.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}

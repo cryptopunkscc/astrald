@@ -54,44 +54,33 @@ func (mod *Module) Run(ctx context.Context) (err error) {
 
 		err = mod.Objects.Receive(b.Object, b.Source)
 		if err == nil {
-			mod.log.Logv(2, "accepted object %v from %v", b.Object.ObjectType(), b.Source)
-		} else {
-			mod.log.Logv(2, "rejected object %v from %v", b.Object.ObjectType(), b.Source)
+			objectID, err := astral.ResolveObjectID(b.Object)
+			if err == nil {
+				mod.log.Logv(2, "received from %v object %v (%v)", b.Source, b.Object.ObjectType(), objectID)
+			}
 		}
 	}
 }
 
+// Push pushes an object to everyone (broadcast)
 func (mod *Module) Push(object astral.Object, source *astral.Identity) (err error) {
-	if source == nil {
-		source = mod.node.Identity()
-	}
-
-	b := &ether.SignedBroadcast{
-		Broadcast: ether.Broadcast{
-			Object:    object,
-			Timestamp: astral.Time(time.Now()),
-			Source:    source,
-		},
-	}
-
-	b.Signature, err = mod.Keys.Sign(source, b.Hash())
+	packet, err := mod.makePacket(object, source)
 	if err != nil {
-		return
+		return err
 	}
 
-	if err = b.VerifySig(); err != nil {
-		return
-	}
+	return mod.broadcast(packet)
+}
 
-	packet := &bytes.Buffer{}
-	_, err = b.WriteTo(packet)
+// PushToIP pushes an object to a specific IP address (unicast)
+func (mod *Module) PushToIP(ip tcp.IP, object astral.Object, source *astral.Identity) error {
+	packet, err := mod.makePacket(object, source)
 	if err != nil {
-		return
+		return err
 	}
 
-	err = mod.broadcast(packet.Bytes())
-
-	return
+	_, err = mod.writeToIP(ip, packet)
+	return err
 }
 
 // readBroadcast reads the next broadcast from the UDP socket
@@ -104,51 +93,26 @@ func (mod *Module) readBroadcast() (*ether.SignedBroadcast, *net.UDPAddr, error)
 			return nil, nil, err
 		}
 
-		var r = objectReader{
-			Reader:  bytes.NewReader(buf[:n]),
-			objects: mod.Objects,
-		}
+		var r = mod.Objects.Blueprints().Inject(bytes.NewReader(buf[:n]))
 
-		var b ether.SignedBroadcast
-		_, err = b.ReadFrom(r)
+		var signed ether.SignedBroadcast
+		_, err = signed.ReadFrom(r)
 		if err != nil {
 			return nil, nil, fmt.Errorf("invalid broadcast object from %s: %w", srcAddr, err)
 		}
 
 		// ignore our own broadcasts
-		if b.Source.IsEqual(mod.node.Identity()) {
+		if signed.Source.IsEqual(mod.node.Identity()) {
 			continue
 		}
 
 		// verify signature
-		if !ecdsa.VerifyASN1(b.Source.PublicKey().ToECDSA(), b.Hash(), b.Signature) {
+		if !ecdsa.VerifyASN1(signed.Source.PublicKey().ToECDSA(), signed.Hash(), signed.Signature) {
 			return nil, nil, fmt.Errorf("invalid object signature from %s", srcAddr)
 		}
 
-		return &b, srcAddr, nil
+		return &signed, srcAddr, nil
 	}
-}
-
-// setupSocket sets up the UDP socket for broadcasts. If ctx is not nil, the socket will close when the context gets canceled.
-func (mod *Module) setupSocket(ctx context.Context) (err error) {
-	// resolve local address
-	var localAddr *net.UDPAddr
-	localAddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(etherUDPPort))
-	if err != nil {
-		return
-	}
-
-	// bind the udp socket
-	mod.socket, err = net.ListenUDP("udp", localAddr)
-
-	// close the socket when the context is done
-	if err == nil && ctx != nil {
-		go func() {
-			<-ctx.Done()
-			mod.socket.Close()
-		}()
-	}
-	return
 }
 
 func (mod *Module) broadcast(data []byte) error {
@@ -179,12 +143,7 @@ func (mod *Module) broadcast(data []byte) error {
 				continue
 			}
 
-			var broadcastAddr = net.UDPAddr{
-				IP:   broadcastIP,
-				Port: etherUDPPort,
-			}
-
-			_, err = mod.socket.WriteTo(data, &broadcastAddr)
+			_, err = mod.writeToIP(tcp.IP(broadcastIP), data)
 			if err != nil {
 				return err
 			}
@@ -192,6 +151,66 @@ func (mod *Module) broadcast(data []byte) error {
 	}
 
 	return nil
+}
+
+func (mod *Module) writeToIP(ip tcp.IP, data []byte) (n int, err error) {
+	return mod.socket.WriteTo(data, &net.UDPAddr{
+		IP:   net.IP(ip),
+		Port: etherUDPPort,
+	})
+}
+
+func (mod *Module) makePacket(object astral.Object, source *astral.Identity) (data []byte, err error) {
+	if source == nil {
+		source = mod.node.Identity()
+	}
+
+	signed := &ether.SignedBroadcast{
+		Broadcast: ether.Broadcast{
+			Object:    object,
+			Timestamp: astral.Time(time.Now()),
+			Source:    source,
+		},
+	}
+
+	signed.Signature, err = mod.Keys.Sign(source, signed.Hash())
+	if err != nil {
+		return
+	}
+
+	if err = signed.VerifySig(); err != nil {
+		return
+	}
+
+	packet := &bytes.Buffer{}
+	_, err = signed.WriteTo(packet)
+	if err != nil {
+		return
+	}
+
+	return packet.Bytes(), nil
+}
+
+// setupSocket sets up the UDP socket for broadcasts. If ctx is not nil, the socket will close when the context gets canceled.
+func (mod *Module) setupSocket(ctx context.Context) (err error) {
+	// resolve local address
+	var localAddr *net.UDPAddr
+	localAddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(etherUDPPort))
+	if err != nil {
+		return
+	}
+
+	// bind the udp socket
+	mod.socket, err = net.ListenUDP("udp", localAddr)
+
+	// close the socket when the context is done
+	if err == nil && ctx != nil {
+		go func() {
+			<-ctx.Done()
+			mod.socket.Close()
+		}()
+	}
+	return
 }
 
 func isInterfaceEnabled(iface net.Interface) bool {

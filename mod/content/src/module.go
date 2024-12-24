@@ -3,10 +3,8 @@ package content
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -24,7 +22,6 @@ type Module struct {
 	node   astral.Node
 	config Config
 	log    *log.Logger
-	events events.Queue
 	db     *gorm.DB
 
 	ongoing sig.Map[string, chan struct{}]
@@ -34,15 +31,6 @@ type Module struct {
 
 func (mod *Module) Run(ctx context.Context) error {
 	go mod.identifyFS()
-
-	go func() {
-		for event := range mod.node.Events().Subscribe(ctx) {
-			switch e := event.(type) {
-			case objects.EventDiscovered:
-				mod.Identify(e.ObjectID)
-			}
-		}
-	}()
 
 	<-ctx.Done()
 
@@ -62,7 +50,6 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 	}
 
 	var ch = make(chan *content.TypeInfo)
-	var subscription = mod.events.Subscribe(ctx)
 
 	go func() {
 		defer close(ch)
@@ -78,18 +65,6 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 			case <-ctx.Done():
 				return
 			}
-		}
-
-		// subscribe to new items
-		for event := range subscription {
-			e, ok := event.(content.EventObjectIdentified)
-			if !ok {
-				continue
-			}
-			if opts.Type != "" && e.TypeInfo.Type != opts.Type {
-				continue
-			}
-			ch <- e.TypeInfo
 		}
 	}()
 
@@ -141,9 +116,9 @@ func (mod *Module) scan(opts *content.ScanOpts) ([]*content.TypeInfo, error) {
 	for _, row := range rows {
 		list = append(list, &content.TypeInfo{
 			ObjectID:     row.DataID,
-			IdentifiedAt: row.IdentifiedAt,
-			Method:       row.Method,
-			Type:         row.Type,
+			IdentifiedAt: astral.Time(row.IdentifiedAt),
+			Method:       astral.String8(row.Method),
+			Type:         astral.String8(row.Type),
 		})
 	}
 

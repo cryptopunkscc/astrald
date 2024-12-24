@@ -18,8 +18,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		log:    log,
 	}
 
-	mod.events.SetParent(node.Events())
-
 	_ = assets.LoadYAML(archives.ModuleName, &mod.config)
 
 	mod.db = assets.Database()

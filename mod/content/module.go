@@ -2,6 +2,7 @@ package content
 
 import (
 	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 	"time"
 )
@@ -24,11 +25,7 @@ type ScanOpts struct {
 
 type TypeInfo struct {
 	ObjectID     object.ID
-	Type         string // detected data type
-	Method       string // method used to detect type (adc | mimetype)
-	IdentifiedAt time.Time
-}
-
-type EventObjectIdentified struct {
-	TypeInfo *TypeInfo
+	Type         astral.String8 // detected data type
+	Method       astral.String8 // method used to detect type (adc | mimetype)
+	IdentifiedAt astral.Time
 }

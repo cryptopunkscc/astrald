@@ -13,7 +13,7 @@ func (mod *Module) Prepare(ctx context.Context) (err error) {
 
 	// load admins from config
 	for _, name := range mod.config.Admins {
-		adminID, err := mod.Dir.Resolve(name)
+		adminID, err := mod.Dir.ResolveIdentity(name)
 		if err != nil {
 			continue
 		}

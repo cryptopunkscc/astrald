@@ -4,7 +4,6 @@ import (
 	_zip "archive/zip"
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/mod/content"
@@ -22,7 +21,6 @@ type Module struct {
 	Deps
 	config Config
 	node   astral.Node
-	events events.Queue
 	log    *log.Logger
 	db     *gorm.DB
 
@@ -33,37 +31,10 @@ type Module struct {
 func (mod *Module) Run(ctx context.Context) error {
 	mod.autoIndexZone = astral.Zones(mod.config.AutoIndexZones)
 
-	go events.Handle(ctx, mod.node.Events(), func(event objects.EventDiscovered) error {
-		return mod.onObjectDiscovered(ctx, event)
-	})
-
 	for event := range mod.Content.Scan(ctx, &content.ScanOpts{Type: zipMimeType}) {
 		mod.Index(ctx, event.ObjectID, &objects.OpenOpts{Zone: mod.autoIndexZone})
 	}
 
-	return nil
-}
-
-func (mod *Module) onObjectDiscovered(ctx context.Context, event objects.EventDiscovered) error {
-	info, _ := mod.Content.Identify(event.ObjectID)
-	if info != nil && info.Type == zipMimeType {
-		archive, _ := mod.Index(
-			ctx,
-			event.ObjectID,
-			&objects.OpenOpts{Zone: mod.autoIndexZone},
-		)
-
-		if archive == nil {
-			return nil
-		}
-
-		for _, entry := range archive.Entries {
-			mod.events.Emit(objects.EventDiscovered{
-				ObjectID: entry.ObjectID,
-				Zone:     astral.ZoneVirtual | event.Zone,
-			})
-		}
-	}
 	return nil
 }
 

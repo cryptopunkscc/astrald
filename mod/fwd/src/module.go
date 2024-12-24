@@ -135,7 +135,7 @@ func (mod *Module) parseTarget(uri string) (astral.Router, error) {
 			callerName := uri[:idx]
 			uri = uri[idx+1:]
 
-			caller, err = mod.Dir.Resolve(callerName)
+			caller, err = mod.Dir.ResolveIdentity(callerName)
 			if err != nil {
 				return nil, err
 			}
@@ -145,7 +145,7 @@ func (mod *Module) parseTarget(uri string) (astral.Router, error) {
 			name := uri[:idx]
 			uri = uri[idx+1:]
 
-			target, err = mod.Dir.Resolve(name)
+			target, err = mod.Dir.ResolveIdentity(name)
 			if err != nil {
 				return nil, err
 			}

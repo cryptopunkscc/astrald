@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/sets"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -33,7 +31,6 @@ type Deps struct {
 	Admin   admin.Module
 	Content content.Module
 	Objects objects.Module
-	Sets    sets.Module
 	Dir     dir.Module
 }
 
@@ -43,7 +40,6 @@ type Module struct {
 	node   astral.Node
 	assets assets.Assets
 	log    *log.Logger
-	events events.Queue
 	db     *gorm.DB
 	ctx    context.Context
 
@@ -60,7 +56,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		share, _ := mod.shares.Get(s.Path)
 
 		for _, name := range s.Allow {
-			id, err := mod.Dir.Resolve(name)
+			id, err := mod.Dir.ResolveIdentity(name)
 			if err != nil {
 				mod.log.Error("config: cannot resolve identity %v: %v", name, err)
 			}
@@ -293,10 +289,10 @@ func (mod *Module) update(path string) (object.ID, error) {
 	if row.Path == "" {
 		err = mod.db.Create(updated).Error
 		if err == nil {
-			mod.events.Emit(fs.EventFileAdded{
-				Path:     updated.Path,
+			mod.Objects.Receive(&fs.EventFileAdded{
+				Path:     astral.String16(updated.Path),
 				ObjectID: updated.DataID,
-			})
+			}, nil)
 		}
 	} else {
 		err = mod.db.
@@ -305,20 +301,20 @@ func (mod *Module) update(path string) (object.ID, error) {
 			Error
 		if err == nil {
 			if !row.DataID.IsEqual(updated.DataID) {
-				mod.events.Emit(fs.EventFileChanged{
-					Path:  updated.Path,
+				mod.Objects.Receive(&fs.EventFileChanged{
+					Path:  astral.String16(updated.Path),
 					OldID: row.DataID,
 					NewID: updated.DataID,
-				})
+				}, nil)
 			}
 		}
 	}
 
 	if err == nil {
-		mod.events.Emit(objects.EventDiscovered{
+		mod.Objects.Receive(&objects.EventDiscovered{
 			ObjectID: updated.DataID,
 			Zone:     astral.ZoneDevice,
-		})
+		}, nil)
 	}
 
 	return updated.DataID, err
@@ -337,10 +333,10 @@ func (mod *Module) deletePath(path string) error {
 		return err
 	}
 
-	mod.events.Emit(fs.EventFileRemoved{
-		Path:     path,
+	mod.Objects.Receive(&fs.EventFileRemoved{
+		Path:     astral.String16(path),
 		ObjectID: row.DataID,
-	})
+	}, nil)
 
 	return nil
 }

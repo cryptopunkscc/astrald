@@ -46,7 +46,7 @@ func (mod *Module) Run(ctx context.Context) error {
 }
 
 func (mod *Module) CreateKey(alias string) (identity *astral.Identity, objectID object.ID, err error) {
-	_, err = mod.Dir.Resolve(alias)
+	_, err = mod.Dir.ResolveIdentity(alias)
 	if err == nil {
 		return identity, objectID, errors.New("alias already in use")
 	}

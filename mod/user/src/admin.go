@@ -51,7 +51,7 @@ func (adm *Admin) nodes(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	userID, err := adm.mod.Dir.Resolve(args[0])
+	userID, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (adm *Admin) addContact(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	userID, err := adm.mod.Dir.Resolve(args[0])
+	userID, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (adm *Admin) rmContact(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	userID, err := adm.mod.Dir.Resolve(args[0])
+	userID, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (adm *Admin) owner(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	nodeID, err := adm.mod.Dir.Resolve(args[0])
+	nodeID, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (adm *Admin) claim(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	nodeID, err := adm.mod.Dir.Resolve(args[0])
+	nodeID, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (adm *Admin) set(term admin.Terminal, args []string) error {
 		return errors.New("missing argument")
 	}
 
-	identity, err := adm.mod.Dir.Resolve(args[0])
+	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
 	if err != nil {
 		return err
 	}

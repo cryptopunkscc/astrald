@@ -26,7 +26,7 @@ func NewAstralServer(mod *Module, serviceName string, target astral.Router) (*As
 
 	if idx := strings.Index(serviceName, "@"); idx != -1 {
 		name := serviceName[:idx]
-		identity, err = mod.Dir.Resolve(name)
+		identity, err = mod.Dir.ResolveIdentity(name)
 		if err != nil {
 			return nil, err
 		}

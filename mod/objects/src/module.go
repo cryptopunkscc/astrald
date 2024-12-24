@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/events"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -17,7 +16,6 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"io"
-	"reflect"
 )
 
 var _ objects.Module = &Module{}
@@ -28,17 +26,18 @@ type Deps struct {
 	Content content.Module
 	Dir     dir.Module
 	Nodes   nodes.Module
+	Objects objects.Module
 }
 
 type Module struct {
 	Deps
 	*routers.PathRouter
-	node   astral.Node
-	config Config
-	db     *gorm.DB
-	log    *log.Logger
-	events events.Queue
-	ctx    context.Context
+	blueprints astral.Blueprints
+	node       astral.Node
+	config     Config
+	db         *gorm.DB
+	log        *log.Logger
+	ctx        context.Context
 
 	openers    sig.Set[*Opener]
 	creators   sig.Set[*Creator]
@@ -46,46 +45,10 @@ type Module struct {
 	searchers  sig.Set[objects.Searcher]
 	purgers    sig.Set[objects.Purger]
 	finders    sig.Set[objects.Finder]
-	objects    sig.Map[string, astral.Object]
 	receivers  sig.Set[objects.Receiver]
 	holders    sig.Set[objects.Holder]
 
 	provider *Provider
-}
-
-func (mod *Module) AddObject(a astral.Object) error {
-	_, ok := mod.objects.Set(a.ObjectType(), a)
-	if !ok {
-		return errors.New("object already added")
-	}
-	return nil
-}
-
-func (mod *Module) addObjects(a ...astral.Object) error {
-	for _, obj := range a {
-		err := mod.AddObject(obj)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (mod *Module) ReadObject(r io.Reader) (o astral.Object, err error) {
-	var h astral.ObjectHeader
-	_, err = h.ReadFrom(r)
-	if err != nil {
-		return
-	}
-
-	o = mod.getObject(h.String())
-	if o == nil {
-		o = &objects.ForeignObject{Type: h.String()}
-	}
-
-	_, err = o.ReadFrom(r)
-
-	return
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -100,6 +63,10 @@ func (mod *Module) Run(ctx context.Context) error {
 	<-ctx.Done()
 
 	return nil
+}
+
+func (mod *Module) Blueprints() *astral.Blueprints {
+	return &mod.blueprints
 }
 
 func (mod *Module) Store(obj astral.Object) (objectID object.ID, err error) {
@@ -119,7 +86,7 @@ func (mod *Module) Store(obj astral.Object) (objectID object.ID, err error) {
 	return w.Commit()
 }
 
-func (mod *Module) Load(objectID object.ID) (astral.Object, error) {
+func (mod *Module) Load(objectID object.ID) (o astral.Object, err error) {
 	r, err := mod.Open(context.Background(), objectID, &objects.OpenOpts{
 		Zone: astral.ZoneDevice | astral.ZoneVirtual,
 	})
@@ -128,7 +95,9 @@ func (mod *Module) Load(objectID object.ID) (astral.Object, error) {
 	}
 	defer r.Close()
 
-	return mod.ReadObject(r)
+	o, _, err = mod.Blueprints().Read(r, true)
+
+	return
 }
 
 func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {
@@ -187,21 +156,6 @@ func (mod *Module) Connect(target *astral.Identity, caller *astral.Identity) (ob
 	}
 
 	return NewConsumer(mod, caller, target), nil
-}
-
-func (mod *Module) Events() *events.Queue {
-	return &mod.events
-}
-
-func (mod *Module) getObject(name string) astral.Object {
-	p, ok := mod.objects.Get(name)
-	if !ok {
-		return nil
-	}
-	var v = reflect.ValueOf(p)
-	var c = reflect.New(v.Elem().Type())
-
-	return c.Interface().(astral.Object)
 }
 
 func (mod *Module) String() string {
