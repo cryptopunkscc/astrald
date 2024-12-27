@@ -44,8 +44,8 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
-	return mod.audio.Search(ctx, query, opts)
+func (mod *Module) SearchObject(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+	return mod.audio.SearchObject(ctx, query, opts)
 }
 
 func (mod *Module) getParentID(objectID object.ID) (parentID object.ID) {

@@ -7,15 +7,7 @@ import (
 	"strings"
 )
 
-type Finder struct {
-	mod *Module
-}
-
-func NewFinder(module *Module) *Finder {
-	return &Finder{mod: module}
-}
-
-func (finder *Finder) Search(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+func (mod *Module) SearchObject(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
 	if !opts.Zone.Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -27,12 +19,12 @@ func (finder *Finder) Search(ctx context.Context, query string, opts *objects.Se
 
 		var rows []*dbLocalFile
 
-		err := finder.mod.db.
+		err := mod.db.
 			Where("LOWER(PATH) like ?", "%"+strings.ToLower(query)+"%").
 			Find(&rows).
 			Error
 		if err != nil {
-			finder.mod.log.Error("search: db: %v", err)
+			mod.log.Error("search: db: %v", err)
 			return
 		}
 

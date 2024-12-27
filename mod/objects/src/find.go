@@ -11,7 +11,7 @@ func (mod *Module) AddFinder(finder objects.Finder) error {
 	return mod.finders.Add(finder)
 }
 
-func (mod *Module) FindObject(ctx context.Context, objectID object.ID, scope *astral.Scope) (providers []*astral.Identity) {
+func (mod *Module) Find(ctx context.Context, objectID object.ID, scope *astral.Scope) (providers []*astral.Identity) {
 	var unique = map[string]struct{}{}
 
 	if scope == nil {

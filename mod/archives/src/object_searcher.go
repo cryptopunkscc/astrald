@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+func (mod *Module) SearchObject(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
 	if !opts.Zone.Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}

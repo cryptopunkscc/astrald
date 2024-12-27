@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) Describe(ctx context.Context, objectID object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	if scope == nil {
 		scope = astral.DefaultScope()
 	}

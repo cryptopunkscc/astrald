@@ -88,7 +88,7 @@ func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *ob
 		return nil, astral.ErrZoneExcluded
 	}
 
-	providers := mod.FindObject(ctx, objectID, &astral.Scope{Zone: opts.Zone})
+	providers := mod.Find(ctx, objectID, &astral.Scope{Zone: opts.Zone})
 
 	if opts.QueryFilter != nil {
 		providers = slices.DeleteFunc(providers, func(identity *astral.Identity) bool {
@@ -111,7 +111,7 @@ func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *ob
 
 			c := NewConsumer(mod, mod.node.Identity(), providerID)
 
-			r, err := c.Open(ctx, objectID, opts)
+			r, err := c.OpenObject(ctx, objectID, opts)
 			if err != nil {
 				return
 			}
@@ -138,7 +138,7 @@ func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *ob
 
 func (set OpenerSet) OpenFirst(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	for _, opener := range set {
-		r, err := opener.Open(ctx, objectID, opts)
+		r, err := opener.OpenObject(ctx, objectID, opts)
 		if err == nil {
 			return r, nil
 		}

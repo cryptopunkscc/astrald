@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+func (mod *Module) SearchObject(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
 	if !opts.Zone.Is(astral.ZoneNetwork) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -41,7 +41,7 @@ func (mod *Module) Search(ctx context.Context, query string, opts *objects.Searc
 			go func() {
 				defer wg.Done()
 
-				c, err := mod.Objects.Connect(nodeID, opts.ClientID)
+				c, err := mod.Objects.On(nodeID, opts.ClientID)
 				if err != nil {
 					mod.log.Errorv(1, "objects.connect %v: %v", nodeID, err)
 					return

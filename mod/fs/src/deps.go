@@ -17,14 +17,8 @@ func (mod *Module) LoadDependencies() (err error) {
 		return
 	}
 
-	mod.Objects.Blueprints().Add(&fs.FileDescriptor{})
-
-	mod.Objects.AddOpener(mod, 30)
-	mod.Objects.AddCreator(mod, 30)
-	mod.Objects.AddPurger(mod)
-	mod.Objects.AddSearcher(NewFinder(mod))
-
 	mod.Admin.AddCommand(fs.ModuleName, NewAdmin(mod))
+	mod.Objects.Blueprints().Add(&fs.FileDescriptor{})
 
 	// wait for data module to finish preparing
 	ctx, cancel := context.WithTimeoutCause(context.Background(), 15*time.Second, errors.New("data module timed out"))

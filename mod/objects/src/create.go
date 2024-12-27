@@ -28,7 +28,7 @@ func (mod *Module) Create(opts *objects.CreateOpts) (objects.Writer, error) {
 	})
 
 	for _, creator := range creators {
-		w, err := creator.Create(opts)
+		w, err := creator.CreateObject(opts)
 		if err == nil {
 			return NewWriterWrapper(mod, w), err
 		}

@@ -34,8 +34,6 @@ func (mod *Module) LoadDependencies() (err error) {
 		return err
 	}
 
-	mod.Objects.AddSearcher(mod)
-	mod.Objects.AddOpener(mod, 20)
 	mod.Objects.Blueprints().Add(&media.AudioDescriptor{})
 
 	return

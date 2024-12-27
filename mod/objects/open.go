@@ -14,7 +14,7 @@ func DefaultOpenOpts() *OpenOpts {
 
 // Opener is an interface opening data from storage
 type Opener interface {
-	Open(ctx context.Context, objectID object.ID, opts *OpenOpts) (Reader, error)
+	OpenObject(ctx context.Context, objectID object.ID, opts *OpenOpts) (Reader, error)
 }
 
 type OpenOpts struct {

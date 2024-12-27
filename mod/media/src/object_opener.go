@@ -10,7 +10,7 @@ import (
 	"github.com/dhowden/tag"
 )
 
-func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mod *Module) OpenObject(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if !opts.Zone.Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}

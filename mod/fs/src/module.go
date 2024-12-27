@@ -15,7 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,74 +81,6 @@ func (mod *Module) Run(ctx context.Context) error {
 	<-updatesDone
 
 	return nil
-}
-
-// Open an object from the local filesystem
-func (mod *Module) Open(_ context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if opts == nil {
-		opts = defaultOpenOpts
-	}
-
-	if !opts.Zone.Is(astral.ZoneDevice) {
-		return nil, astral.ErrZoneExcluded
-	}
-
-	paths := mod.path(objectID)
-	for _, path := range paths {
-		// check if the index for the path is valid
-		if mod.validate(path) != nil {
-			mod.enqueueUpdate(path)
-			continue
-		}
-
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-
-		n, err := f.Seek(int64(opts.Offset), io.SeekStart)
-		if err != nil {
-			f.Close()
-			continue
-		}
-
-		if uint64(n) != opts.Offset {
-			f.Close()
-			continue
-		}
-
-		return &Reader{
-			ReadSeekCloser: f,
-			name:           path,
-		}, nil
-	}
-
-	return nil, objects.ErrNotFound
-}
-
-func (mod *Module) Create(opts *objects.CreateOpts) (objects.Writer, error) {
-	for _, dir := range mod.config.Store {
-		r, err := mod.createObjectAt(dir, opts.Alloc)
-		if err == nil {
-			return r, err
-		}
-	}
-
-	return nil, errors.New("no space available")
-}
-
-func (mod *Module) Purge(objectID object.ID, opts *objects.PurgeOpts) (count int, err error) {
-	var id = objectID.String()
-
-	for _, dir := range mod.config.Store {
-		var path = filepath.Join(dir, id)
-
-		if os.Remove(path) == nil {
-			count++
-		}
-	}
-
-	return
 }
 
 func (mod *Module) Find(opts *fs.FindOpts) (files []*fs.File) {
@@ -395,21 +326,6 @@ func (mod *Module) isPathIgnored(path string) bool {
 	}
 
 	return false
-}
-
-func (mod *Module) createObjectAt(path string, alloc int) (objects.Writer, error) {
-	usage, err := DiskUsage(path)
-	if err != nil {
-		return nil, err
-	}
-
-	if usage.Free < uint64(alloc) {
-		return nil, errors.New("not enough space left")
-	}
-
-	w, err := NewWriter(mod, path)
-
-	return w, err
 }
 
 func (mod *Module) verifyIndex(ctx context.Context) {

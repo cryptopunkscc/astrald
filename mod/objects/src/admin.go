@@ -7,13 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
-	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"reflect"
 	"regexp"
@@ -248,7 +246,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 
 		descs, err = c.Describe(context.Background(), objectID, scope)
 	} else {
-		descs, err = adm.mod.DescribeObject(context.Background(), objectID, scope)
+		descs, err = adm.mod.Describe(context.Background(), objectID, scope)
 	}
 	if err != nil {
 		return err
@@ -387,33 +385,20 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	}
 	term.Println()
 
-	term.Printf("\n%v\n\n", admin.Header("Describers"))
-	list, _ := sig.MapSlice(adm.mod.describers.Clone(), func(i objects.Describer) (string, error) {
-		if s, ok := i.(fmt.Stringer); ok {
-			return s.String(), nil
-		}
-		return reflect.TypeOf(i).String(), nil
-	})
-	slices.Sort(list)
-
-	for _, p := range list {
-		term.Printf("%s\n", p)
-	}
-
-	term.Printf("\n%v\n\n", admin.Header("Searchers"))
-	list, _ = sig.MapSlice(adm.mod.searchers.Clone(), func(i objects.Searcher) (string, error) {
-		if s, ok := i.(fmt.Stringer); ok {
-			return s.String(), nil
-		}
-		return reflect.TypeOf(i).String(), nil
-	})
-	slices.Sort(list)
-
-	for _, p := range list {
-		term.Printf("%s\n", p)
-	}
+	term.Printf("Describers: %s\n", strings.Join(strSort(adm.mod.describers.Clone()), ", "))
+	term.Printf("Purger:     %s\n", strings.Join(strSort(adm.mod.purgers.Clone()), ", "))
+	term.Printf("Searcher:   %s\n", strings.Join(strSort(adm.mod.searchers.Clone()), ", "))
+	term.Printf("Finder:     %s\n", strings.Join(strSort(adm.mod.finders.Clone()), ", "))
+	term.Printf("Holder:     %s\n", strings.Join(strSort(adm.mod.holders.Clone()), ", "))
+	term.Printf("Receiver:   %s\n", strings.Join(strSort(adm.mod.receivers.Clone()), ", "))
 
 	return nil
+}
+
+func strSort[T any](a []T) (s []string) {
+	s = log.StringifySlice(a)
+	slices.Sort(s)
+	return
 }
 
 func (adm *Admin) push(term admin.Terminal, args []string) error {

@@ -23,8 +23,6 @@ func (mod *Module) LoadDependencies() (err error) {
 	}
 
 	mod.Admin.AddCommand(archives.ModuleName, NewAdmin(mod))
-	mod.Objects.AddOpener(mod, 20)
-	mod.Objects.AddSearcher(mod)
 	mod.Objects.Blueprints().Add(&archives.ArchiveDescriptor{})
 
 	return

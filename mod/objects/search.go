@@ -8,7 +8,7 @@ import (
 
 // Searcher is used to search for objects matching a query
 type Searcher interface {
-	Search(ctx context.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
+	SearchObject(ctx context.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
 }
 
 type SearchOpts struct {

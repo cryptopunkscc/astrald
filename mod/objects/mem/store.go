@@ -30,7 +30,7 @@ func NewMemStore(mod objects.Module, size int64) *Store {
 	return mem
 }
 
-func (mem *Store) Open(_ context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mem *Store) OpenObject(_ context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if !opts.Zone.Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -43,7 +43,7 @@ func (mem *Store) Open(_ context.Context, objectID object.ID, opts *objects.Open
 	return NewMemDataReader(bytes), nil
 }
 
-func (mem *Store) Purge(objectID object.ID, opts *objects.PurgeOpts) (int, error) {
+func (mem *Store) PurgeObject(objectID object.ID, opts *objects.PurgeOpts) (int, error) {
 	_, ok := mem.objects.Delete(objectID.String())
 	if ok {
 		return 1, nil
@@ -51,7 +51,7 @@ func (mem *Store) Purge(objectID object.ID, opts *objects.PurgeOpts) (int, error
 	return 0, nil
 }
 
-func (mem *Store) Create(opts *objects.CreateOpts) (objects.Writer, error) {
+func (mem *Store) CreateObject(opts *objects.CreateOpts) (objects.Writer, error) {
 	return NewMemDataWriter(mem), nil
 }
 

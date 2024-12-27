@@ -15,7 +15,7 @@ func (mod *Module) Purge(objectID object.ID, opts *objects.PurgeOpts) (int, erro
 	}
 
 	for _, purger := range mod.purgers.Clone() {
-		n, err := purger.Purge(objectID, opts)
+		n, err := purger.PurgeObject(objectID, opts)
 		if err != nil {
 			errs = append(errs, err)
 		}

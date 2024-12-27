@@ -4,7 +4,7 @@ import "github.com/cryptopunkscc/astrald/object"
 
 // Creator is an interface for creating new data objects in storage
 type Creator interface {
-	Create(opts *CreateOpts) (Writer, error)
+	CreateObject(opts *CreateOpts) (Writer, error)
 }
 
 // Writer is an interface to write the actual data to objects created by Creators.

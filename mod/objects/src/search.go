@@ -23,7 +23,7 @@ func (mod *Module) Search(ctx context.Context, query string, opts *objects.Searc
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_res, _err := searcher.Search(ctx, query, opts)
+				_res, _err := searcher.SearchObject(ctx, query, opts)
 				if _err != nil {
 					return
 				}

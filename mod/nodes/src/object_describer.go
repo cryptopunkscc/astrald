@@ -36,7 +36,7 @@ func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope
 			go func() {
 				defer wg.Done()
 
-				c, err := mod.Objects.Connect(providerID, nil)
+				c, err := mod.Objects.On(providerID, nil)
 				if err != nil {
 					return
 				}

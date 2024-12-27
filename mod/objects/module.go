@@ -14,30 +14,31 @@ const ReadAllMaxSize = 64 * 1024 * 1024 // 64 MB
 type Module interface {
 	// AddOpener registers an Opener. Openers are queried from highest to lowest priority.
 	AddOpener(opener Opener, priority int) error
-	Opener
+	Open(ctx context.Context, objectID object.ID, opts *OpenOpts) (Reader, error)
 
 	// AddCreator registers a Creator. Creators are queried from highest to lowest priority.
 	AddCreator(creator Creator, priority int) error
-	Creator
+	Create(opts *CreateOpts) (Writer, error)
 
 	AddDescriber(Describer) error
-	Describer
+	Describe(context.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
 
 	AddPurger(purger Purger) error
-	Purger
+	Purge(object.ID, *PurgeOpts) (int, error)
 
 	AddSearcher(Searcher) error
-	Searcher
+	Search(ctx context.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
 
 	AddFinder(Finder) error
-	Finder
+	Find(context.Context, object.ID, *astral.Scope) []*astral.Identity
 
 	AddHolder(Holder) error
 	Holders(objectID object.ID) []Holder
 
-	Blueprints() *astral.Blueprints
 	AddReceiver(Receiver) error
 	Receive(astral.Object, *astral.Identity) error
+
+	Blueprints() *astral.Blueprints
 	Push(ctx context.Context, src *astral.Identity, dst *astral.Identity, obj astral.Object) error
 
 	// Store encodes the object to local storage
@@ -50,12 +51,13 @@ type Module interface {
 	// Put commits the object to storage and returns its ID
 	Put(object []byte, opts *CreateOpts) (object.ID, error)
 
-	Connect(target *astral.Identity, caller *astral.Identity) (Consumer, error)
+	// On returns a client for remote calls
+	On(target *astral.Identity, caller *astral.Identity) (Consumer, error)
 }
 
 type Consumer interface {
 	Describe(context.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
-	Open(context.Context, object.ID, *OpenOpts) (Reader, error)
+	OpenObject(context.Context, object.ID, *OpenOpts) (Reader, error)
 	Put(context.Context, []byte) (object.ID, error)
 	Search(context.Context, string) (<-chan *SearchResult, error)
 	Push(context.Context, astral.Object) (err error)
@@ -70,7 +72,7 @@ type Describer interface {
 }
 
 type Purger interface {
-	Purge(object.ID, *PurgeOpts) (int, error)
+	PurgeObject(object.ID, *PurgeOpts) (int, error)
 }
 
 type PurgeOpts struct {

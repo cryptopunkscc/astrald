@@ -48,7 +48,7 @@ func (mod *AudioIndexer) DescribeObject(ctx context.Context, objectID object.ID,
 	return results, nil
 }
 
-func (mod *AudioIndexer) Search(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+func (mod *AudioIndexer) SearchObject(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
 	if !opts.Zone.Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}

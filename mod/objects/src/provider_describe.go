@@ -46,7 +46,7 @@ func (p *Provider) Describe(ctx context.Context, q *astral.Query, w io.WriteClos
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 
-		descs, err := p.mod.DescribeObject(ctx, args.ID, scope)
+		descs, err := p.mod.Describe(ctx, args.ID, scope)
 		if err != nil {
 			return
 		}
