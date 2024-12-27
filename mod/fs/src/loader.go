@@ -6,7 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/fs"
+	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
+	"os"
+	"path/filepath"
 )
 
 type Loader struct{}
@@ -42,6 +45,24 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	mod.watcher.OnChmod = mod.enqueueUpdate
 	mod.watcher.OnDirCreated = func(s string) {
 		mod.watcher.Add(s, true)
+	}
+
+	for name, path := range mod.config.Repos {
+		mod.repos.Set(name, NewRepository(mod, name, path))
+	}
+
+	res, ok := mod.assets.Res().(*resources.FileResources)
+	if ok {
+		mod.Watch(filepath.Join(res.Root(), "static_data"))
+
+		// create default repository if neeeded
+		if _, ok := mod.repos.Get("default"); !ok {
+			dataPath := filepath.Join(res.Root(), "data")
+			if os.MkdirAll(dataPath, 0700) == nil {
+				mod.repos.Set("default", NewRepository(mod, "default", dataPath))
+				mod.Watch(dataPath)
+			}
+		}
 	}
 
 	return mod, nil

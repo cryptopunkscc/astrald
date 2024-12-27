@@ -5,9 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/resources"
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -18,7 +15,6 @@ func (mod *Module) LoadDependencies() (err error) {
 	}
 
 	mod.Admin.AddCommand(fs.ModuleName, NewAdmin(mod))
-	mod.Objects.Blueprints().Add(&fs.FileDescriptor{})
 
 	// wait for data module to finish preparing
 	ctx, cancel := context.WithTimeoutCause(context.Background(), 15*time.Second, errors.New("data module timed out"))
@@ -27,16 +23,12 @@ func (mod *Module) LoadDependencies() (err error) {
 		return err
 	}
 
-	// if we have file-based resources, use that as writable storage
-	fileRes, ok := mod.assets.Res().(*resources.FileResources)
-	if ok {
-		mod.Watch(filepath.Join(fileRes.Root(), "static_data"))
+	// add object blueprints
+	mod.Objects.Blueprints().Add(&fs.FileDescriptor{})
 
-		dataPath := filepath.Join(fileRes.Root(), "data")
-		if os.MkdirAll(dataPath, 0700) == nil {
-			mod.config.Store = append(mod.config.Store, dataPath)
-			mod.Watch(dataPath)
-		}
+	// add preconfigured repos
+	for _, repo := range mod.repos.Clone() {
+		mod.Objects.AddRepository(repo)
 	}
 
 	return

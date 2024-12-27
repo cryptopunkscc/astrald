@@ -1,45 +1,58 @@
 package objects
 
 import (
-	"cmp"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"slices"
 )
 
+const MaxAlloc = 1 * 1024 * 1024 * 1024 * 1024 //1TB
+
 type Creator struct {
-	objects.Creator
+	objects.Repository
 	Priority int
 }
 
-func (mod *Module) Create(opts *objects.CreateOpts) (objects.Writer, error) {
-	if opts == nil {
-		opts = &objects.CreateOpts{}
+func (mod *Module) Create(o *objects.CreateOpts) (objects.Writer, error) {
+	var opts objects.CreateOpts
+	if o != nil {
+		opts = *o
 	}
 
 	if opts.Alloc < 0 {
 		return nil, errors.New("alloc cannot be less than 0")
 	}
 
-	creators := mod.creators.Clone()
-
-	slices.SortFunc(creators, func(a, b *Creator) int {
-		return cmp.Compare(a.Priority, b.Priority) * -1 // from high to low
-	})
-
-	for _, creator := range creators {
-		w, err := creator.CreateObject(opts)
-		if err == nil {
-			return NewWriterWrapper(mod, w), err
-		}
+	if opts.Alloc > MaxAlloc {
+		return nil, errors.New("alloc exceeds limit")
 	}
 
-	return nil, objects.ErrStorageUnavailable
+	if opts.As.IsZero() {
+		opts.As = mod.node.Identity()
+	}
+
+	if opts.Repo == "" {
+		opts.Repo = "default"
+	}
+
+	repo, ok := mod.repos.Get(opts.Repo)
+	if !ok {
+		return nil, fmt.Errorf("repo %s not found", opts.Repo)
+	}
+
+	w, err := repo.Create(&opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewWriterWrapper(mod, w), err
 }
 
-func (mod *Module) AddCreator(creator objects.Creator, priority int) error {
-	return mod.creators.Add(&Creator{
-		Creator:  creator,
-		Priority: priority,
-	})
+func (mod *Module) AddRepository(repo objects.Repository) error {
+	_, ok := mod.repos.Set(repo.Name(), repo)
+	if !ok {
+		return fmt.Errorf("repo %s already added", repo.Name())
+	}
+
+	return nil
 }

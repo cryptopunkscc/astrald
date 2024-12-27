@@ -111,7 +111,7 @@ func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *ob
 
 			c := NewConsumer(mod, mod.node.Identity(), providerID)
 
-			r, err := c.OpenObject(ctx, objectID, opts)
+			r, err := c.Open(ctx, objectID, opts)
 			if err != nil {
 				return
 			}

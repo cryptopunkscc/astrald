@@ -42,6 +42,8 @@ type Module struct {
 	db     *gorm.DB
 	ctx    context.Context
 
+	repos sig.Map[string, *Repository]
+
 	watcher *Watcher
 	updates chan sig.Task
 	shares  sig.Map[string, *sig.Set[string]]
@@ -71,7 +73,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		mod.Watch(path)
 	}
 
-	for _, path := range mod.config.Store {
+	for _, path := range mod.config.Repos {
 		mod.Watch(path)
 	}
 

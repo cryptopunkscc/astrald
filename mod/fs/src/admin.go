@@ -2,7 +2,6 @@ package fs
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/object"
 	"slices"
@@ -113,19 +112,6 @@ func (adm *Admin) path(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	f := "%-64s %s\n"
-
-	term.Printf(f, admin.Header("Store Path"), admin.Header("Free"))
-	for _, path := range adm.mod.config.Store {
-		var free int
-		usage, _ := DiskUsage(path)
-		if usage != nil {
-			free = int(usage.Free)
-		}
-
-		term.Printf(f, path, log.DataSize(free))
-	}
-
 	term.Printf("\n%s\n", admin.Header("Watch Path"))
 	paths := adm.mod.watcher.List()
 

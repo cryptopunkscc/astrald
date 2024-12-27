@@ -10,7 +10,7 @@ import (
 )
 
 var _ objects.Opener = &Store{}
-var _ objects.Creator = &Store{}
+var _ objects.Repository = &Store{}
 var _ objects.Purger = &Store{}
 
 const DefaultSize = 64 * 1024 * 1024 // 64MB
@@ -20,10 +20,29 @@ type Store struct {
 	mod     objects.Module
 	used    atomic.Int64
 	size    int64
+	name    string
 }
 
-func NewMemStore(mod objects.Module, size int64) *Store {
-	var mem = &Store{mod: mod, size: DefaultSize}
+func (mem *Store) Scan() (<-chan *object.ID, error) {
+	ch := make(chan *object.ID)
+
+	go func() {
+		defer close(ch)
+
+		for _, s := range mem.objects.Keys() {
+			id, err := object.ParseID(s)
+			if err != nil {
+				continue
+			}
+			ch <- &id
+		}
+	}()
+
+	return ch, nil
+}
+
+func NewMemStore(mod objects.Module, name string, size int64) *Store {
+	var mem = &Store{mod: mod, size: DefaultSize, name: name}
 	if size != 0 {
 		mem.size = size
 	}
@@ -51,7 +70,7 @@ func (mem *Store) PurgeObject(objectID object.ID, opts *objects.PurgeOpts) (int,
 	return 0, nil
 }
 
-func (mem *Store) CreateObject(opts *objects.CreateOpts) (objects.Writer, error) {
+func (mem *Store) Create(opts *objects.CreateOpts) (objects.Writer, error) {
 	return NewMemDataWriter(mem), nil
 }
 
@@ -61,4 +80,8 @@ func (mem *Store) Used() int64 {
 
 func (mem *Store) Free() int64 {
 	return mem.size - mem.used.Load()
+}
+
+func (mem *Store) Name() string {
+	return mem.name
 }

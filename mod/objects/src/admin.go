@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -28,16 +29,17 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
+		"blueprints": adm.blueprints,
 		"describe":   adm.describe,
 		"fetch":      adm.fetch,
+		"holders":    adm.holders,
 		"info":       adm.info,
 		"purge":      adm.purge,
 		"push":       adm.push,
 		"read":       adm.read,
+		"scan":       adm.scan,
 		"search":     adm.search,
 		"show":       adm.show,
-		"blueprints": adm.blueprints,
-		"holders":    adm.holders,
 		"help":       adm.help,
 	}
 
@@ -147,6 +149,30 @@ func (adm *Admin) read(term admin.Terminal, args []string) error {
 		io.Copy(term, r)
 	}
 
+	return nil
+}
+
+func (adm *Admin) scan(term admin.Terminal, args []string) error {
+	var repoName = "default"
+
+	if len(args) > 0 {
+		repoName = args[0]
+	}
+
+	repo, ok := adm.mod.repos.Get(repoName)
+	if !ok {
+		return fmt.Errorf("no such repository: %s", repoName)
+	}
+
+	scan, err := repo.Scan()
+	if err != nil {
+		return err
+	}
+
+	for id := range scan {
+		term.Printf("%s\n", id)
+	}
+	
 	return nil
 }
 
@@ -368,29 +394,17 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	}
 	term.Println()
 
-	// list creators
-	creators := adm.mod.creators.Clone()
-	slices.SortFunc(creators, func(a, b *Creator) int {
-		return cmp.Compare(a.Priority, b.Priority) * -1
-	})
-
-	term.Printf("Creators:\n")
-	term.Printf(f, admin.Header("Prio"), admin.Header("ObjectType"))
-	for _, creator := range creators {
-		term.Printf(
-			f,
-			strconv.FormatInt(int64(creator.Priority), 10),
-			reflect.TypeOf(creator.Creator),
-		)
-	}
-	term.Println()
-
 	term.Printf("Describers: %s\n", strings.Join(strSort(adm.mod.describers.Clone()), ", "))
 	term.Printf("Purger:     %s\n", strings.Join(strSort(adm.mod.purgers.Clone()), ", "))
 	term.Printf("Searcher:   %s\n", strings.Join(strSort(adm.mod.searchers.Clone()), ", "))
 	term.Printf("Finder:     %s\n", strings.Join(strSort(adm.mod.finders.Clone()), ", "))
 	term.Printf("Holder:     %s\n", strings.Join(strSort(adm.mod.holders.Clone()), ", "))
 	term.Printf("Receiver:   %s\n", strings.Join(strSort(adm.mod.receivers.Clone()), ", "))
+
+	term.Printf("\nRepositories:\n")
+	for _, repo := range adm.mod.repos.Clone() {
+		term.Printf("%v (%v free)\n", repo.Name(), log.DataSize(repo.Free()))
+	}
 
 	return nil
 }

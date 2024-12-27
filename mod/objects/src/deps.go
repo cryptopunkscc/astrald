@@ -18,13 +18,13 @@ func (mod *Module) LoadDependencies() (err error) {
 			if m == mod {
 				continue
 			}
-			
+
 			if r, ok := m.(objects.Opener); ok {
 				mod.AddOpener(r, 0)
 			}
 
-			if r, ok := m.(objects.Creator); ok {
-				mod.AddCreator(r, 0)
+			if r, ok := m.(objects.Repository); ok {
+				mod.AddRepository(r)
 			}
 
 			if d, ok := m.(objects.Describer); ok {

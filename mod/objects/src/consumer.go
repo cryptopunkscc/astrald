@@ -30,7 +30,7 @@ func NewConsumer(mod *Module, consumerID *astral.Identity, providerID *astral.Id
 	}
 }
 
-func (c *Consumer) OpenObject(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (r objects.Reader, err error) {
+func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (r objects.Reader, err error) {
 	params := core.Params{
 		"id": objectID.String(),
 	}

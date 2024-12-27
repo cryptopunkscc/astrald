@@ -40,7 +40,7 @@ type Module struct {
 	ctx        context.Context
 
 	openers    sig.Set[*Opener]
-	creators   sig.Set[*Creator]
+	repos      sig.Map[string, objects.Repository]
 	describers sig.Set[objects.Describer]
 	searchers  sig.Set[objects.Searcher]
 	purgers    sig.Set[objects.Purger]
@@ -140,6 +140,10 @@ func (mod *Module) Put(bytes []byte, opts *objects.CreateOpts) (object.ID, error
 	}
 
 	return w.Commit()
+}
+
+func (mod *Module) Repositories() []objects.Repository {
+	return mod.repos.Values()
 }
 
 func (mod *Module) On(target *astral.Identity, caller *astral.Identity) (objects.Consumer, error) {

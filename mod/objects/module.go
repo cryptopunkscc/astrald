@@ -16,8 +16,9 @@ type Module interface {
 	AddOpener(opener Opener, priority int) error
 	Open(ctx context.Context, objectID object.ID, opts *OpenOpts) (Reader, error)
 
-	// AddCreator registers a Creator. Creators are queried from highest to lowest priority.
-	AddCreator(creator Creator, priority int) error
+	// AddRepository registers a Repository
+	AddRepository(repo Repository) error
+	Repositories() []Repository
 	Create(opts *CreateOpts) (Writer, error)
 
 	AddDescriber(Describer) error
@@ -57,7 +58,7 @@ type Module interface {
 
 type Consumer interface {
 	Describe(context.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
-	OpenObject(context.Context, object.ID, *OpenOpts) (Reader, error)
+	Open(context.Context, object.ID, *OpenOpts) (Reader, error)
 	Put(context.Context, []byte) (object.ID, error)
 	Search(context.Context, string) (<-chan *SearchResult, error)
 	Push(context.Context, astral.Object) (err error)
