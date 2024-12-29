@@ -44,6 +44,15 @@ func (s structWrapper) WriteTo(w io.Writer) (n int64, err error) {
 			continue
 		}
 
+		if a, ok := field.Interface().([]Object); ok {
+			m, err = WrapSlice(&a, 32, 32).WriteTo(w)
+			n += m
+			if err != nil {
+				return
+			}
+			continue
+		}
+
 		if writerTo, ok := field.Interface().(io.WriterTo); ok {
 			m, err = writerTo.WriteTo(w)
 			n += m
@@ -83,6 +92,16 @@ func (s *structWrapper) ReadFrom(r io.Reader) (n int64, err error) {
 
 		if field.Kind() == reflect.Pointer {
 			field.Set(reflect.New(field.Type().Elem()))
+		}
+
+		if a, ok := field.Interface().([]Object); ok {
+			m, err = WrapSlice(&a, 32, 32).ReadFrom(r)
+			n += m
+			if err != nil {
+				return
+			}
+			field.Set(reflect.ValueOf(a))
+			continue
 		}
 
 		rf, ok := field.Interface().(io.ReaderFrom)

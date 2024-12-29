@@ -50,7 +50,7 @@ func (adm *Admin) index(term admin.Terminal, args []string) error {
 	archive, err := adm.mod.Index(context.Background(), objectID, &objects.OpenOpts{})
 	if archive != nil {
 		for _, entry := range archive.Entries {
-			term.Printf("%-64s %s\n", entry.ObjectID, entry.Path)
+			term.Printf("%v %v\n", entry.ObjectID, entry.Path)
 		}
 	}
 

@@ -9,7 +9,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -64,10 +65,10 @@ func (adm *Admin) blueprints(term admin.Terminal, args []string) error {
 
 	slices.Sort(types)
 
-	term.Printf("%d blueprints:\n", len(types))
+	term.Printf("%v blueprints:\n", len(types))
 
 	for _, t := range types {
-		term.Printf("- %s\n", t)
+		term.Printf("- %v\n", t)
 	}
 
 	return nil
@@ -84,7 +85,7 @@ func (adm *Admin) holders(term admin.Terminal, args []string) error {
 	}
 
 	for _, h := range adm.mod.Holders(objectID) {
-		term.Printf("%s\n", h)
+		term.Printf("%v\n", h)
 	}
 
 	return nil
@@ -170,9 +171,9 @@ func (adm *Admin) scan(term admin.Terminal, args []string) error {
 	}
 
 	for id := range scan {
-		term.Printf("%s\n", id)
+		term.Printf("%v\n", id)
 	}
-	
+
 	return nil
 }
 
@@ -215,14 +216,14 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 			return err
 		}
 
-		term.Printf("%v %s\n\n", objectID, obj.ObjectType())
+		term.Printf("%v %v\n\n", objectID, obj.ObjectType())
 		j, err := json.MarshalIndent(obj, "  ", "  ")
 		if err != nil {
 			term.Printf("error encoding to JSON: %v\n", err)
 			continue
 		}
 
-		term.Printf("  %s\n", string(j))
+		term.Printf("  %v\n", string(j))
 	}
 
 	return nil
@@ -278,8 +279,8 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("%-6s %v\n", admin.Header("SHA256"), admin.Keyword(hex.EncodeToString(objectID.Hash[:])))
-	term.Printf("%-6s %v", admin.Header("SIZE"), admin.Keyword(log.DataSize(objectID.Size).HumanReadable()))
+	term.Printf("%v %v\n", admin.Header("SHA256"), admin.Keyword(hex.EncodeToString(objectID.Hash[:])))
+	term.Printf("%v %v", admin.Header("SIZE"), admin.Keyword(log.DataSize(objectID.Size).HumanReadable()))
 
 	if objectID.Size > 1023 {
 		term.Printf(" (%v bytes)", objectID.Size)
@@ -295,7 +296,7 @@ func (adm *Admin) describe(term admin.Terminal, args []string) error {
 		if err != nil {
 			term.Printf("marshal error: %v\n", err)
 		}
-		term.Printf("%s\n\n", string(j))
+		term.Printf("%v\n\n", string(j))
 	}
 
 	return nil
@@ -348,7 +349,7 @@ func (adm *Admin) search(term admin.Terminal, args []string) error {
 	}
 
 	for match := range matches {
-		term.Printf("%-64s\n",
+		term.Printf("%v\n",
 			match.ObjectID,
 		)
 	}
@@ -369,13 +370,13 @@ func (adm *Admin) fetch(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("stored as %v (%s)\n", objectID, log.DataSize(objectID.Size))
+	term.Printf("stored as %v (%v)\n", objectID, log.DataSize(objectID.Size))
 
 	return nil
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	var f = "%6s %s\n"
+	var f = "%v %v\n"
 
 	// list openers
 	openers := adm.mod.openers.Clone()
@@ -394,12 +395,12 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 	}
 	term.Println()
 
-	term.Printf("Describers: %s\n", strings.Join(strSort(adm.mod.describers.Clone()), ", "))
-	term.Printf("Purger:     %s\n", strings.Join(strSort(adm.mod.purgers.Clone()), ", "))
-	term.Printf("Searcher:   %s\n", strings.Join(strSort(adm.mod.searchers.Clone()), ", "))
-	term.Printf("Finder:     %s\n", strings.Join(strSort(adm.mod.finders.Clone()), ", "))
-	term.Printf("Holder:     %s\n", strings.Join(strSort(adm.mod.holders.Clone()), ", "))
-	term.Printf("Receiver:   %s\n", strings.Join(strSort(adm.mod.receivers.Clone()), ", "))
+	term.Printf("Describers: %v\n", strings.Join(strSort(adm.mod.describers.Clone()), ", "))
+	term.Printf("Purger:     %v\n", strings.Join(strSort(adm.mod.purgers.Clone()), ", "))
+	term.Printf("Searcher:   %v\n", strings.Join(strSort(adm.mod.searchers.Clone()), ", "))
+	term.Printf("Finder:     %v\n", strings.Join(strSort(adm.mod.finders.Clone()), ", "))
+	term.Printf("Holder:     %v\n", strings.Join(strSort(adm.mod.holders.Clone()), ", "))
+	term.Printf("Receiver:   %v\n", strings.Join(strSort(adm.mod.receivers.Clone()), ", "))
 
 	term.Printf("\nRepositories:\n")
 	for _, repo := range adm.mod.repos.Clone() {
@@ -410,7 +411,7 @@ func (adm *Admin) info(term admin.Terminal, args []string) error {
 }
 
 func strSort[T any](a []T) (s []string) {
-	s = log.StringifySlice(a)
+	s = term.StringifySlice(a)
 	slices.Sort(s)
 	return
 }

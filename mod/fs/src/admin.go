@@ -67,7 +67,7 @@ func (adm *Admin) update(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("id: %s\n", objectID)
+	term.Printf("id: %v\n", objectID)
 
 	return nil
 }
@@ -83,7 +83,7 @@ func (adm *Admin) rename(term admin.Terminal, args []string) error {
 func (adm *Admin) find(term admin.Terminal, args []string) error {
 	files := adm.mod.Find(nil)
 
-	var f = "%-64s %s\n"
+	var f = "%v %v\n"
 	term.Printf(f, admin.Header("ID"), admin.Header("Path"))
 	for _, file := range files {
 		term.Printf(f, file.ObjectID, file.Path)
@@ -103,22 +103,22 @@ func (adm *Admin) path(term admin.Terminal, args []string) error {
 	}
 
 	paths := adm.mod.path(objectID)
-	term.Printf("found %d path(s)\n", len(paths))
+	term.Printf("found %v path(s)\n", len(paths))
 	for _, path := range paths {
-		term.Printf("%s\n", path)
+		term.Printf("%v\n", path)
 	}
 
 	return nil
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	term.Printf("\n%s\n", admin.Header("Watch Path"))
+	term.Printf("\n%v\n", admin.Header("Watch Path"))
 	paths := adm.mod.watcher.List()
 
 	slices.Sort(paths)
 
 	for _, path := range paths {
-		term.Printf("%s\n", path)
+		term.Printf("%v\n", path)
 	}
 	return nil
 }

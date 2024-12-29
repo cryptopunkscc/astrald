@@ -20,6 +20,7 @@ type Consumer struct {
 	mod        *Module
 	consumerID *astral.Identity
 	providerID *astral.Identity
+	*query.Point
 }
 
 func NewConsumer(mod *Module, consumerID *astral.Identity, providerID *astral.Identity) *Consumer {
@@ -27,6 +28,7 @@ func NewConsumer(mod *Module, consumerID *astral.Identity, providerID *astral.Id
 		mod:        mod,
 		consumerID: consumerID,
 		providerID: providerID,
+		Point:      query.NewPoint(mod, consumerID, providerID),
 	}
 }
 
@@ -46,6 +48,8 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	}
 
 	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodRead, params))
+
+	c.Query(ctx, methodRead, params)
 
 	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {

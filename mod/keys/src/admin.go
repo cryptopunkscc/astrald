@@ -43,7 +43,7 @@ func (adm *Admin) new(term admin.Terminal, args []string) error {
 		}
 	}
 
-	term.Printf("created key %s (%s) objectID %v\n",
+	term.Printf("created key %v (%v) objectID %v\n",
 		key,
 		admin.Faded(key.String()),
 		objectID,
@@ -59,9 +59,9 @@ func (adm *Admin) list(term admin.Terminal, args []string) error {
 		return tx.Error
 	}
 
-	term.Printf("Found %d key(s)\n", len(rows))
+	term.Printf("Found %v key(s)\n", len(rows))
 	for _, row := range rows {
-		term.Printf("%-24s %-64s %v\n", admin.Keyword(row.Type), row.DataID, row.PublicKey)
+		term.Printf("%v %v %v\n", admin.Keyword(row.Type), row.DataID, row.PublicKey)
 	}
 
 	return nil
@@ -98,7 +98,7 @@ func (adm *Admin) ShortDescription() string {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", keys.ModuleName)
+	term.Printf("usage: %v <command>\n\n", keys.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  new <alias>     create new key with provided alias\n")
 	term.Printf("  list            list all keys\n")

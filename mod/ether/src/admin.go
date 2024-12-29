@@ -83,7 +83,7 @@ func (adm *Admin) ShortDescription() string {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", ether.ModuleName)
+	term.Printf("usage: %v <command>\n\n", ether.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  push [objectID]   push an object to the ether\n")
 	term.Printf("  help              show help\n")

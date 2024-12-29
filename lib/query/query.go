@@ -66,7 +66,7 @@ func Parse(q string) (path string, params map[string]string) {
 
 func ParseTo(q string, args any) (path string, err error) {
 	path, params := Parse(q)
-	err = populate(params, args)
+	err = Populate(params, args)
 	if err != nil {
 		return path, fmt.Errorf("populate: %w", err)
 	}

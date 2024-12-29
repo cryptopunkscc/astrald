@@ -3,8 +3,8 @@ package gateway
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/routers"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -53,7 +53,7 @@ func (mod *Module) Run(ctx context.Context) error {
 		} else {
 			gateID, err = mod.Dir.ResolveIdentity(gateName)
 			if err != nil {
-				mod.log.Error("config error: cannot resolve %s: %v", gateName, err)
+				mod.log.Error("config error: cannot resolve %v: %v", gateName, err)
 				continue
 			}
 		}

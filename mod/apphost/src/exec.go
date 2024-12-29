@@ -2,6 +2,7 @@ package apphost
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"os/exec"
 	"strconv"
@@ -10,7 +11,7 @@ import (
 
 func (mod *Module) Exec(identity *astral.Identity, path string, args []string, env []string) (*Exec, error) {
 	var token, _ = mod.CreateAccessToken(identity)
-	var log = mod.log.Tag(mod.Dir.DisplayName(identity))
+	var log = mod.log.Tag(log.Tag(mod.Dir.DisplayName(identity)))
 
 	e := &Exec{
 		identity: identity,

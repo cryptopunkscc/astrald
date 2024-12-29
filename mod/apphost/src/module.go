@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/lib/routers"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -51,7 +51,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	mod.conns = mod.listen(ctx)
 
 	// spawn workers
-	mod.log.Logv(2, "spawning %d workers", workerCount)
+	mod.log.Logv(2, "spawning %v workers", workerCount)
 	wg.Add(workerCount)
 	for i := 0; i < workerCount; i++ {
 		go func(i int) {
@@ -59,7 +59,7 @@ func (mod *Module) Run(ctx context.Context) error {
 
 			defer wg.Done()
 			if err := mod.worker(ctx); err != nil {
-				mod.log.Error("[%d] error: %s", i, err)
+				mod.log.Error("[%v] error: %v", i, err)
 			}
 		}(i)
 	}

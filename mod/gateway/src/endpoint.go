@@ -5,13 +5,20 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/streams"
+	"io"
 )
 
 var _ exonet.Endpoint = &Endpoint{}
+var _ astral.Object = &Endpoint{}
 
 type Endpoint struct {
 	gate   *astral.Identity
 	target *astral.Identity
+}
+
+func (Endpoint) ObjectType() string {
+	return "astrald.mod.gateway.endpoint"
 }
 
 // NewEndpoint insatntiates and returns a new Endpoint
@@ -56,4 +63,14 @@ func (endpoint Endpoint) Network() string {
 
 func (endpoint Endpoint) String() string {
 	return endpoint.Network() + ":" + endpoint.Address()
+}
+
+func (endpoint Endpoint) ReadFrom(r io.Reader) (n int64, err error) {
+	endpoint.gate = &astral.Identity{}
+	endpoint.target = &astral.Identity{}
+	return streams.ReadAllFrom(r, endpoint.gate, endpoint.target)
+}
+
+func (endpoint Endpoint) WriteTo(w io.Writer) (n int64, err error) {
+	return streams.WriteAllTo(w, endpoint.gate, endpoint.target)
 }

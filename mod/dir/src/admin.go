@@ -53,7 +53,7 @@ func (adm *Admin) getAlias(term admin.Terminal, args []string) error {
 	if alias == "" {
 		term.Printf("no alias set\n")
 	} else {
-		term.Printf("%s\n", alias)
+		term.Printf("%v\n", alias)
 	}
 
 	return nil
@@ -69,7 +69,7 @@ func (adm *Admin) resolve(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("%s\n", identity.String())
+	term.Printf("%v\n", identity.String())
 
 	return nil
 }
@@ -92,7 +92,7 @@ func (adm *Admin) ShortDescription() string {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", dir.ModuleName)
+	term.Printf("usage: %v <command>\n\n", dir.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  help            show help\n")
 	return nil

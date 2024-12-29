@@ -34,7 +34,7 @@ func (service *ProfileService) RouteQuery(ctx context.Context, q *astral.Query, 
 func (service *ProfileService) serve(conn astral.Conn) {
 	defer conn.Close()
 
-	service.log.Infov(2, "%s asked for profile", conn.RemoteIdentity())
+	service.log.Infov(2, "%v asked for profile", conn.RemoteIdentity())
 
 	json.NewEncoder(conn).Encode(service.getLocalProfile())
 }

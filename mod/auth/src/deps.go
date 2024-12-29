@@ -27,7 +27,7 @@ func (mod *Module) LoadDependencies() (err error) {
 			}
 		}
 		if len(added) > 0 {
-			mod.log.Logv(2, "authorizers: %v"+strings.Repeat(", %s", len(added)-1), added...)
+			mod.log.Logv(2, "authorizers: %v"+strings.Repeat(", %v", len(added)-1), added...)
 		}
 	}
 

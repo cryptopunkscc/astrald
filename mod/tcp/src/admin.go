@@ -73,7 +73,7 @@ func (adm *Admin) info(term admin.Terminal, _ []string) error {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", tcp.ModuleName)
+	term.Printf("usage: %v <command>\n\n", tcp.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  info            show tcp driver info\n")
 	term.Printf("  help            show help\n")

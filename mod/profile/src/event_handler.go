@@ -23,7 +23,7 @@ func (mod *Module) ReceiveObject(push *objects.SourcedObject) error {
 }
 
 func (mod *Module) updateIdentityProfile(target *astral.Identity) error {
-	mod.log.Infov(2, "updating profile for %s", target)
+	mod.log.Infov(2, "updating profile for %v", target)
 
 	conn, err := query.Route(mod.ctx, mod.node, astral.NewQuery(mod.node.Identity(), target, serviceName))
 	if err != nil {
@@ -46,7 +46,7 @@ func (mod *Module) updateIdentityProfile(target *astral.Identity) error {
 		_ = mod.Nodes.AddEndpoint(target, ep)
 	}
 
-	mod.log.Info("%s profile updated.", target)
+	mod.log.Info("%v profile updated.", target)
 
 	return nil
 }

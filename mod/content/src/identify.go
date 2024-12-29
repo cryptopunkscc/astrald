@@ -68,7 +68,7 @@ func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 		return nil, tx.Error
 	}
 
-	mod.log.Logv(1, "%v identified as %s via %s", objectID, dataType, method)
+	mod.log.Logv(1, "%v identified as %v via %v", objectID, dataType, method)
 
 	info := &content.TypeInfo{
 		ObjectID:     objectID,

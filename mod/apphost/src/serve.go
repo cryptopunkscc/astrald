@@ -67,13 +67,13 @@ func (s *Session) query(params proto.QueryParams) error {
 		return s.WriteErr(proto.ErrRouteNotFound)
 
 	default:
-		s.mod.log.Error("unexpected error processing query: %s", err)
+		s.mod.log.Error("unexpected error processing query: %v", err)
 		return s.WriteErr(proto.ErrUnexpected)
 	}
 }
 
 func (s *Session) resolve(p proto.ResolveParams) error {
-	s.mod.log.Logv(2, "%s resolve %s", s.remoteID, p.Name)
+	s.mod.log.Logv(2, "%v resolve %v", s.remoteID, p.Name)
 
 	remoteID, err := s.mod.Dir.ResolveIdentity(p.Name)
 	if err == nil {
@@ -85,7 +85,7 @@ func (s *Session) resolve(p proto.ResolveParams) error {
 }
 
 func (s *Session) nodeInfo(p proto.NodeInfoParams) error {
-	s.mod.log.Logv(2, "%s nodeInfo %s", s.remoteID, p.Identity)
+	s.mod.log.Logv(2, "%v nodeInfo %v", s.remoteID, p.Identity)
 
 	s.WriteErr(nil)
 
@@ -116,7 +116,7 @@ func (s *Session) exec(params proto.ExecParams) error {
 }
 
 func (s *Session) register(p proto.RegisterParams) error {
-	s.mod.log.Logv(2, "%s register %s -> %s", s.remoteID, p.Service, p.Target)
+	s.mod.log.Logv(2, "%v register %v -> %v", s.remoteID, p.Service, p.Target)
 	defer s.Close()
 
 	// ...otherwise register under guest's router

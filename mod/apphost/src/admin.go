@@ -67,7 +67,7 @@ func (adm *Admin) tokens(term admin.Terminal, args []string) error {
 
 	adm.mod.db.Find(&rows)
 
-	const f = "%-34s %v\n"
+	const f = "%v %v\n"
 
 	term.Printf(f, admin.Header("Token"), admin.Header("Identity"))
 
@@ -109,13 +109,13 @@ func (adm *Admin) run(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) ps(out admin.Terminal, args []string) error {
-	out.Printf("%-6s %-10s %-30s %s\n", "ID", "STATE", "NAME", "IDENTITY")
+	out.Printf("%v %v %v %v\n", "ID", "STATE", "NAME", "IDENTITY")
 
 	for i, e := range adm.mod.execs {
 		var identity = adm.mod.Dir.DisplayName(e.identity)
 		var name = filepath.Base(e.path)
 
-		out.Printf("%-6d %-10s %-30s %s\n", i, e.State(), name, identity)
+		out.Printf("%v %v %v %v\n", i, e.State(), name, identity)
 	}
 	return nil
 }

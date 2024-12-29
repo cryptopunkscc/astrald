@@ -25,7 +25,7 @@ func (cmd *CmdUse) Exec(term admin.Terminal, args []string) error {
 	term.Printf("type exit to go back\n")
 
 	for {
-		term.Printf("%s@%s:%s%s", term.UserIdentity(), cmd.mod.node.Identity(), admin.Keyword(enterCmd), cmd.mod.config.Prompt)
+		term.Printf("%v@%v:%v%v", term.UserIdentity(), cmd.mod.node.Identity(), admin.Keyword(enterCmd), cmd.mod.config.Prompt)
 
 		line, err := term.ScanLine()
 		if err != nil {

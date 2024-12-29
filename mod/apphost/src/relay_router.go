@@ -3,8 +3,8 @@ package apphost
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"io"
 )
@@ -18,7 +18,7 @@ type RelayRouter struct {
 func (fwd *RelayRouter) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	target, err := proto.Dial(fwd.target)
 	if err != nil {
-		fwd.log.Errorv(2, "%s:%s forward to %s: %s", q.Target, q.Query, fwd.target, err)
+		fwd.log.Errorv(2, "%v:%v forward to %v: %v", q.Target, q.Query, fwd.target, err)
 		return query.Reject()
 	}
 

@@ -5,11 +5,12 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -92,20 +93,20 @@ func (mod *Module) serve(conn astral.Conn) {
 
 	defer conn.Close()
 
-	var term = NewColorTerminal(conn, mod.log)
+	var t = NewColorTerminal(conn, mod.log)
 
 	for {
-		term.Printf("%s@%s%s", term.UserIdentity(), mod.node.Identity(), mod.config.Prompt)
+		t.Printf("%v@%v%v%v", t.UserIdentity(), mod.node.Identity(), mod.config.Prompt, &term.SetColor{"default"})
 
-		line, err := term.ScanLine()
+		line, err := t.ScanLine()
 		if err != nil {
 			return
 		}
 
-		if err := mod.exec(line, term); err != nil {
-			term.Printf("error: %v\n", err)
+		if err := mod.exec(line, t); err != nil {
+			t.Printf("error: %v\n", err)
 		} else {
-			term.Printf("ok\n")
+			t.Printf("ok\n")
 		}
 	}
 }

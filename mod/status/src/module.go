@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/status"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -104,7 +104,7 @@ func (mod *Module) periodicUpdater(ctx context.Context) {
 	for {
 		if mod.visible.Get() {
 			if err := mod.Broadcast(); err != nil {
-				mod.log.Error("push error: %s", err)
+				mod.log.Error("push error: %v", err)
 			} else {
 				mod.log.Logv(3, "pushed status")
 			}

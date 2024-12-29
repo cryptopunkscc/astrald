@@ -21,14 +21,14 @@ func (mod *Module) Index(ctx context.Context, objectID object.ID, opts *objects.
 
 	mod.log.Logv(1, "indexing zip %v", objectID)
 	archive, err = mod.scan(ctx, objectID, opts, func(entry *archives.Entry) {
-		mod.log.Infov(1, "scanned %v (%s)", entry.ObjectID, entry.Path)
+		mod.log.Infov(1, "scanned %v (%v)", entry.ObjectID, entry.Path)
 	})
 	if err != nil {
 		return
 	}
 
 	err = mod.setCache(objectID, archive)
-	
+
 	mod.Objects.Receive(&archives.EventArchiveIndexed{ObjectID: objectID, Archive: archive}, nil)
 	for _, entry := range archive.Entries {
 		mod.Objects.Receive(&objects.EventDiscovered{

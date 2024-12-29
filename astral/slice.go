@@ -2,27 +2,30 @@ package astral
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"reflect"
 )
 
 var _ Object = &Slice[Object]{}
 
-type Slice[T ObjectTyper] struct {
+type Slice[T Object] struct {
 	Elem     *[]T
 	LenBits  int
 	ElemBits int
+	Typed    bool
 }
 
 type ObjectTyper interface {
 	ObjectType() string
 }
 
-func WrapSlice[T ObjectTyper](elem *[]T, lenBits int, elemBits int) *Slice[T] {
+func WrapSlice[T Object](elem *[]T, lenBits int, elemBits int) *Slice[T] {
 	return &Slice[T]{
 		Elem:     elem,
 		LenBits:  lenBits,
 		ElemBits: elemBits,
+		Typed:    reflect.TypeOf((*T)(nil)).Elem().Kind() == reflect.Interface,
 	}
 }
 
@@ -33,6 +36,7 @@ func (Slice[T]) ObjectType() string {
 func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 	v := *a.Elem
 
+	// write length
 	n, err = writeInt(w, len(v), a.LenBits)
 	if err != nil {
 		return
@@ -40,14 +44,13 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 
 	var m int64
 	for _, v := range v {
-		wto, ok := any(v).(io.WriterTo)
-		if !ok {
-			panic("not an io.WriterTo")
-		}
-
 		var buf = &bytes.Buffer{}
 
-		_, err = wto.WriteTo(buf)
+		if a.Typed {
+			_, err = Write(buf, v, false)
+		} else {
+			_, err = v.WriteTo(buf)
+		}
 		if err != nil {
 			return
 		}
@@ -82,7 +85,8 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 	var m int64
 	for i := 0; i < l; i++ {
 		var e T
-		if reflect.TypeOf(e).Kind() == reflect.Pointer {
+		typ := reflect.TypeOf((*T)(nil)).Elem()
+		if typ.Kind() == reflect.Pointer {
 			e = reflect.New(reflect.TypeOf(e).Elem()).Interface().(T)
 		}
 
@@ -103,16 +107,18 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		var rf io.ReaderFrom
-		var ok bool
+		if a.Typed {
+			var o Object
+			var ok bool
 
-		if rf, ok = any(e).(io.ReaderFrom); !ok {
-			if rf, ok = any(&e).(io.ReaderFrom); !ok {
-				panic("slice element is not an io.ReaderFrom")
+			o, _, err = ExtractBlueprints(r).Read(bytes.NewReader(buf), false)
+			e, ok = o.(T)
+			if !ok {
+				err = errors.New("typecast failed")
 			}
+		} else {
+			_, err = e.ReadFrom(bytes.NewReader(buf))
 		}
-
-		_, err = rf.ReadFrom(bytes.NewReader(buf))
 		if err != nil {
 			return
 		}

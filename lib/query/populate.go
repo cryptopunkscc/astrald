@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-func populate(m map[string]string, s any) error {
+func Populate(m map[string]string, s any) error {
 	v := reflect.ValueOf(s)
 
 	if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Ptr {

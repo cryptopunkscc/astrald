@@ -41,7 +41,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 	for k, v := range adm.mod.Cache().Clone() {
 		attachments := v.Status.Attachments.Objects()
 
-		term.Printf("%v:%v - %v (%v), %d objects\n",
+		term.Printf("%v:%v - %v (%v), %v objects\n",
 			k,
 			uint16(v.Status.Port),
 			v.Status.Alias,
@@ -90,7 +90,7 @@ func (adm *Admin) visible(term admin.Terminal, args []string) (err error) {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", status.ModuleName)
+	term.Printf("usage: %v <command>\n\n", status.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  scan                          broadcast a scan message to collect statuses\n")
 	term.Printf("  show                          show cached statuses\n")

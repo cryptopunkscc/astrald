@@ -35,7 +35,7 @@ func (adm *Admin) Exec(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) list(term admin.Terminal, args []string) error {
-	var f = "%-39s %-39s\n"
+	var f = "%v %v\n"
 	term.Printf(f, admin.Header("Server"), admin.Header("Target"))
 	for _, server := range adm.mod.Servers() {
 		term.Printf(
@@ -85,9 +85,9 @@ func (adm *Admin) start(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", ModuleName)
+	term.Printf("usage: %v <command>\n\n", ModuleName)
 	term.Printf("commands:\n")
-	var f = "  %-26s %s\n"
+	var f = "  %v - %v\n"
 	term.Printf(f, "list", "list running servers")
 	term.Printf(f, "start <server> <target>", "start a new forward")
 	term.Printf(f, "stop <server>", "stop a forward")

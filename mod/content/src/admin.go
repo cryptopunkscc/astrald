@@ -52,7 +52,7 @@ func (cmd *Admin) scan(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	var format = "%-64s %-8s %-32s %s\n"
+	var format = "%v %v %v %v\n"
 	term.Printf(format, admin.Header("ID"), admin.Header("Method"), admin.Header("Type"), admin.Header("Label"))
 	for _, item := range list {
 		term.Printf(format,
@@ -132,7 +132,7 @@ func (cmd *Admin) getLabel(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("%s\n", cmd.mod.GetLabel(objectID))
+	term.Printf("%v\n", cmd.mod.GetLabel(objectID))
 	return nil
 }
 
@@ -150,7 +150,7 @@ func (cmd *Admin) Exec(term admin.Terminal, args []string) error {
 }
 
 func (cmd *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", content.ModuleName)
+	term.Printf("usage: %v <command>\n\n", content.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  scan [args]                    list identified objects\n")
 	term.Printf("  identify <objectID>            identify an object\n")

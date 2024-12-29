@@ -2,9 +2,10 @@ package dir
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
@@ -32,28 +33,20 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 		mod.log.Errorv(1, "error setting default alias: %v", err)
 	}
 
-	if cnode, ok := node.(*core.Node); ok {
-		cnode.PushFormatFunc(func(v any) ([]log.Op, bool) {
-			identity, ok := v.(*astral.Identity)
-			if !ok {
-				return nil, false
-			}
+	term.SetTranslateFunc(func(identity *astral.Identity) astral.Object {
+		var color = "cyan"
 
-			var color = log.Cyan
+		if node.Identity().IsEqual(identity) {
+			color = "brightgreen"
+		}
 
-			if node.Identity().IsEqual(identity) {
-				color = log.BrightGreen
-			}
+		var name = mod.DisplayName(identity)
 
-			var name = mod.DisplayName(identity)
-
-			return []log.Op{
-				log.OpColor{Color: color},
-				log.OpText{Text: name},
-				log.OpReset{},
-			}, true
-		})
-	}
+		return &term.ColorString{
+			Color: astral.String8(color),
+			Text:  astral.String32(name),
+		}
+	})
 
 	mod.resolvers.Add(&DNS{Module: mod})
 

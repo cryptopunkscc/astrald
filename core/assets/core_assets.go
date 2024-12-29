@@ -2,7 +2,7 @@ package assets
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/log"
+	log2 "github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/resources"
 	"gopkg.in/yaml.v2"
 	"gorm.io/gorm"
@@ -20,11 +20,11 @@ const defaultDatabaseName = "astrald"
 
 type CoreAssets struct {
 	res resources.Resources
-	log *log.Logger
+	log *log2.Logger
 	db  *gorm.DB
 }
 
-func NewCoreAssets(res resources.Resources, log *log.Logger) (*CoreAssets, error) {
+func NewCoreAssets(res resources.Resources, log *log2.Logger) (*CoreAssets, error) {
 	var err error
 	var a = &CoreAssets{
 		res: res,
@@ -129,7 +129,7 @@ func (assets *CoreAssets) OpenDatabase(name string) (*gorm.DB, error) {
 }
 
 type logWriter struct {
-	*log.Logger
+	*log2.Logger
 	level int
 }
 

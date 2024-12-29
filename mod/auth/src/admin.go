@@ -38,7 +38,7 @@ func (adm *Admin) ShortDescription() string {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", auth.ModuleName)
+	term.Printf("usage: %v <command>\n\n", auth.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  help            show help\n")
 	return nil

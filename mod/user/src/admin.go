@@ -112,7 +112,7 @@ func (adm *Admin) localContract(term admin.Terminal, args []string) error {
 	j, _ := json.MarshalIndent(c, "", "  ")
 
 	term.Printf("%v\n", contractID)
-	term.Printf("%s\n", string(j))
+	term.Printf("%v\n", string(j))
 
 	return nil
 }
@@ -197,7 +197,7 @@ func (adm *Admin) ShortDescription() string {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", user.ModuleName)
+	term.Printf("usage: %v <command>\n\n", user.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  set <identity>       set local user identity\n")
 	term.Printf("  info                 show user info\n")

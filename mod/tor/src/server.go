@@ -22,13 +22,13 @@ func NewServer(module *Module) *Server {
 func (srv *Server) Run(ctx context.Context) error {
 	key, err := srv.getPrivateKey()
 	if err != nil {
-		srv.log.Error("getPrivateKey: %s", err)
+		srv.log.Error("getPrivateKey: %v", err)
 		return err
 	}
 
 	l, err := srv.listen(ctx, key)
 	if err != nil {
-		srv.log.Error("listen: %s", err)
+		srv.log.Error("listen: %v", err)
 		return err
 	}
 	defer l.Close()
@@ -38,7 +38,7 @@ func (srv *Server) Run(ctx context.Context) error {
 		srv.log.Errorv(1, "error parsing tor key: %v", err)
 	}
 
-	srv.log.Log("listen %s", srv.endpoint)
+	srv.log.Log("listen %v", srv.endpoint)
 
 	for {
 		rawConn, err := l.Accept()
@@ -47,7 +47,7 @@ func (srv *Server) Run(ctx context.Context) error {
 		case strings.Contains(err.Error(), "use of closed network connection"):
 			return err
 		default:
-			srv.log.Error("accept: %s", err)
+			srv.log.Error("accept: %v", err)
 			return err
 		}
 
@@ -126,7 +126,7 @@ func (l listener) Addr() string {
 func (l listener) PrivateKey() Key {
 	s := l.onion.PrivateKey
 
-	// force v3 as v2 is now considered insecure
+	// force v3 as log is now considered insecure
 	if !strings.HasPrefix(s, "ED25519-V3:") {
 		return nil
 	}

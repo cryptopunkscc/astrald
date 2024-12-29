@@ -2,7 +2,9 @@ package admin
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/term"
 	"io"
+	"strings"
 )
 
 const ModuleName = "admin"
@@ -31,9 +33,44 @@ type Terminal interface {
 }
 
 // Format types are used to format output text on the terminal. Example:
-// term.Println("normal %s %s", Keyword("keyword"), Faded("faded"))
+// term.Println("normal %v %v", Keyword("keyword"), Faded("faded"))
 
 type Header string
+
+func (h Header) PrintTo(printer term.Printer) error {
+	var s = astral.String(strings.ToUpper(string(h)))
+	return printer.Print(&s)
+}
+
 type Keyword string
+
+func (h Keyword) PrintTo(printer term.Printer) error {
+	var s = astral.String(h)
+	return printer.Print(
+		&term.SetColor{term.HighlightColor},
+		&s,
+		&term.SetColor{term.DefaultColor},
+	)
+}
+
 type Faded string
+
+func (h Faded) PrintTo(printer term.Printer) error {
+	var s = astral.String(h)
+	return printer.Print(
+		&term.SetColor{"white"},
+		&s,
+		&term.SetColor{term.DefaultColor},
+	)
+}
+
 type Important string
+
+func (h Important) PrintTo(printer term.Printer) error {
+	var s = astral.String(h)
+	return printer.Print(
+		&term.SetColor{term.HighlightColor},
+		&s,
+		&term.SetColor{term.DefaultColor},
+	)
+}

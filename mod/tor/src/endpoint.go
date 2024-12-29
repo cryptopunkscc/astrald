@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"encoding/base32"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/streams"
+	"io"
 	"strings"
 )
 
@@ -19,10 +23,16 @@ const (
 	packPattern = "c [35]c s"
 )
 
+var _ astral.Object = &Endpoint{}
+
 // Endpoint holds information about a Driver address
 type Endpoint struct {
 	digest []byte
 	port   uint16
+}
+
+func (addr *Endpoint) ObjectType() string {
+	return "astrald.mod.tor.endpoint"
 }
 
 // Network returns the name of the network the address belongs to
@@ -58,4 +68,27 @@ func (addr *Endpoint) IsZero() bool {
 
 func (addr *Endpoint) String() string {
 	return addr.Network() + ":" + addr.Address()
+}
+
+func (addr *Endpoint) WriteTo(w io.Writer) (n int64, err error) {
+	return streams.WriteAllTo(w,
+		astral.Bytes8(addr.digest),
+		astral.Uint16(addr.port),
+	)
+}
+
+func (addr *Endpoint) ReadFrom(r io.Reader) (n int64, err error) {
+	return streams.ReadAllFrom(r,
+		(*astral.Bytes8)(&addr.digest),
+		(*astral.Uint16)(&addr.port),
+	)
+}
+
+func init() {
+	term.SetTranslateFunc(func(o *Endpoint) astral.Object {
+		return &term.ColorString{
+			Color: term.HighlightColor,
+			Text:  astral.String32(o.String()),
+		}
+	})
 }

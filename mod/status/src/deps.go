@@ -52,7 +52,7 @@ func (mod *Module) LoadDependencies() (err error) {
 		}
 
 		if mod.composers.Count() > 0 {
-			mod.log.Logv(2, "composers: %v"+strings.Repeat(", %s", len(composers)-1), composers...)
+			mod.log.Logv(2, "composers: %v"+strings.Repeat(", %v", len(composers)-1), composers...)
 		}
 	}
 

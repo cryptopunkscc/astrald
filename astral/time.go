@@ -8,6 +8,10 @@ import (
 
 type Time time.Time
 
+func Now() Time {
+	return Time(time.Now())
+}
+
 func (t Time) ObjectType() string { return "astral.time" }
 
 func (t Time) WriteTo(w io.Writer) (n int64, err error) {
@@ -44,6 +48,15 @@ func (t Time) MarshalJSON() ([]byte, error) {
 func (t *Time) UnmarshalJSON(bytes []byte) (err error) {
 	var tt time.Time
 	err = tt.UnmarshalJSON(bytes)
+	*t = Time(tt)
+	return
+}
+
+func (t Time) MarshalText() (text []byte, err error) { return t.Time().MarshalText() }
+
+func (t *Time) UnmarshalText(text []byte) (err error) {
+	var tt time.Time
+	err = tt.UnmarshalText(text)
 	*t = Time(tt)
 	return
 }

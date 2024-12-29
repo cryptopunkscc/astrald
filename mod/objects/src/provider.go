@@ -234,14 +234,14 @@ func (p *Provider) Push(ctx context.Context, q *astral.Query, w io.WriteCloser) 
 		}
 
 		if !p.mod.receive(push) {
-			p.mod.log.Errorv(1, "rejected %s from %v (%v)", obj.ObjectType(), q.Caller, objectID)
+			p.mod.log.Errorv(1, "rejected %v from %v (%v)", obj.ObjectType(), q.Caller, objectID)
 			binary.Write(conn, binary.BigEndian, false)
 			return
 		}
 
 		binary.Write(conn, binary.BigEndian, true)
 
-		p.mod.log.Infov(1, "accepted %s from %v (%v)", obj.ObjectType(), q.Caller, objectID)
+		p.mod.log.Infov(1, "accepted %v from %v (%v)", obj.ObjectType(), q.Caller, objectID)
 
 		return
 	})

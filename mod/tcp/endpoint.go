@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -80,4 +81,13 @@ func ParseEndpoint(s string) (*Endpoint, error) {
 		IP:   ip,
 		Port: astral.Uint16(port),
 	}, nil
+}
+
+func init() {
+	term.SetTranslateFunc(func(o *Endpoint) astral.Object {
+		return &term.ColorString{
+			Color: term.HighlightColor,
+			Text:  astral.String32(o.String()),
+		}
+	})
 }

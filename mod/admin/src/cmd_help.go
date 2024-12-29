@@ -3,6 +3,7 @@ package admin
 import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"sort"
+	"strings"
 )
 
 var _ admin.Command = &CmdHelp{}
@@ -32,7 +33,8 @@ func (cmd *CmdHelp) Exec(term admin.Terminal, _ []string) error {
 		if d, ok := c.(ShortDescriber); ok {
 			desc = d.ShortDescription()
 		}
-		term.Printf("  %-12s %s\n", admin.Keyword(name), desc)
+
+		term.Printf("  %v%v%v\n", admin.Keyword(name), strings.Repeat(" ", 15-len(name)), desc)
 	}
 
 	return nil

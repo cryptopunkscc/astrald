@@ -5,11 +5,10 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"io"
-	"strings"
-	"time"
 )
 
 const useColorTerminal = true
@@ -20,120 +19,45 @@ type ColorTerminal struct {
 	userIdentity *astral.Identity
 	color        bool
 	log          *log.Logger
-	output       log.Output
+	printer      term.Printer
 	io.ReadWriter
 }
 
 func NewColorTerminal(rw astral.Conn, logger *log.Logger) *ColorTerminal {
 	l := logger.Tag("")
-	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		s, ok := v.(string)
-		if !ok {
-			return nil, false
-		}
-		return []log.Op{log.OpText{Text: s}}, true
-	})
 
-	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		s, ok := v.(admin.Header)
-		if !ok {
-			return nil, false
-		}
-		return []log.Op{
-			log.OpColor{Color: log.White},
-			log.OpText{Text: strings.ToUpper(string(s))},
-			log.OpReset{},
-		}, true
-	})
+	p := term.NewBasicPrinter(rw, &term.DefaultTypeMap)
+	p.Mono = !useColorTerminal
 
-	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		s, ok := v.(admin.Keyword)
-		if !ok {
-			return nil, false
-		}
-		return []log.Op{
-			log.OpColor{Color: log.Yellow},
-			log.OpText{Text: string(s)},
-			log.OpReset{},
-		}, true
-	})
-
-	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		s, ok := v.(admin.Faded)
-		if !ok {
-			return nil, false
-		}
-		return []log.Op{
-			log.OpColor{Color: log.BrightBlack},
-			log.OpText{Text: string(s)},
-			log.OpReset{},
-		}, true
-	})
-
-	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		s, ok := v.(admin.Important)
-		if !ok {
-			return nil, false
-		}
-		return []log.Op{
-			log.OpColor{Color: log.BrightRed},
-			log.OpText{Text: string(s)},
-			log.OpReset{},
-		}, true
-	})
-
-	l.PushFormatFunc(func(v any) ([]log.Op, bool) {
-		t, ok := v.(time.Time)
-		if !ok {
-			return nil, false
-		}
-		return []log.Op{
-			log.OpText{Text: t.Format(timestampFormat)},
-		}, true
-	})
 	return &ColorTerminal{
 		color:        useColorTerminal,
 		userIdentity: rw.RemoteIdentity(),
 		ReadWriter:   rw,
-		output:       log.NewColorOutput(rw),
+		printer:      p,
 		log:          l,
 	}
 }
 
 func (t *ColorTerminal) Sprintf(f string, v ...any) string {
 	var buf = &bytes.Buffer{}
-	var out log.Output
-
-	if t.color {
-		out = log.NewColorOutput(buf)
-	} else {
-		out = log.NewMonoOutput(buf)
-	}
-
-	out.Do(t.log.Renderf(f, v...)...)
+	var p = term.NewBasicPrinter(buf, &term.DefaultTypeMap)
+	p.Mono = !useColorTerminal
+	term.Printf(p, f, v...)
 
 	return buf.String()
 }
 
 func (t *ColorTerminal) Printf(f string, v ...any) {
-	if t.color {
-		t.output.Do(t.log.Renderf(f, v...)...)
-		return
-	}
-	fmt.Fprintf(t, f, v...)
+	term.Printf(t.printer, f, v...)
 }
 
 func (t *ColorTerminal) Println(v ...any) {
 	if t.color {
 		for _, i := range v {
-			ops, b := t.log.Render(i)
-			if b {
-				t.output.Do(ops...)
-			} else {
-				fmt.Fprintln(t, i)
-			}
+			var o = term.Objectify(i)
+			txt := term.Render(o, &term.DefaultTypeMap, false)
+			fmt.Fprintln(t, txt)
 		}
-		t.output.Do(log.OpText{Text: "\n"})
 		return
 	}
 	fmt.Fprintln(t, v...)

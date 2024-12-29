@@ -41,11 +41,11 @@ func (cmd *CmdAdmin) list(term admin.Terminal, _ []string) error {
 	var list = cmd.mod.admins.Clone()
 
 	if len(list) == 0 {
-		term.Printf("no admins added")
+		term.Printf("no admins added\n")
 		return nil
 	}
 
-	term.Printf("%d admin(s):\n", len(list))
+	term.Printf("%v admin(s):\n", len(list))
 
 	for _, hex := range list {
 		adminID, err := astral.IdentityFromString(hex)
@@ -85,7 +85,7 @@ func (cmd *CmdAdmin) remove(term admin.Terminal, args []string) error {
 }
 
 func (cmd *CmdAdmin) help(term admin.Terminal, _ []string) error {
-	term.Printf("help: %s <command> [options]\n\n", admin.ModuleName)
+	term.Printf("help: %v <command> [options]\n\n", admin.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  list                         list all identities with admin privileges\n")
 	term.Printf("  add <identity>               add an admin")

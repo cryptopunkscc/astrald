@@ -17,13 +17,13 @@ func (mod *Module) listen(ctx context.Context) <-chan net.Conn {
 		listener, err := proto.Listen(endpoint)
 
 		if err != nil {
-			mod.log.Error("listener %s error: %s", endpoint, err)
+			mod.log.Error("listener %v error: %v", endpoint, err)
 			continue
 		}
 
 		mod.listeners = append(mod.listeners, listener)
 
-		mod.log.Infov(1, "listening on: %s %s", listener.Addr().Network(), listener.Addr().String())
+		mod.log.Infov(1, "listening on: %v %v", listener.Addr().Network(), listener.Addr().String())
 
 		wg.Add(1)
 		go func() {

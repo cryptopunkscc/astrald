@@ -64,7 +64,7 @@ func (adm *Admin) streams(term admin.Terminal, args []string) error {
 			d = ">"
 		}
 
-		term.Printf("%-4d %s %-20s %v\n", s.id, d, s.RemoteIdentity(), s)
+		term.Printf("%v %v %v %v\n", s.id, d, s.RemoteIdentity(), s)
 	}
 
 	return nil
@@ -129,7 +129,7 @@ func (adm *Admin) conns(term admin.Terminal, args []string) error {
 		}
 
 		term.Printf(
-			"%v %s %-20s %-8s %8d/%d %d %v\n",
+			"%v %v %v %v %v/%v %v %v\n",
 			c.Nonce,
 			d,
 			c.RemoteIdentity,
@@ -176,9 +176,9 @@ func (adm *Admin) parse(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("%s %s (%s)\n\n", admin.Header("Identity"), info.Identity, admin.Faded(info.Identity.String()))
+	term.Printf("%v %v (%v)\n\n", admin.Header("Identity"), info.Identity, admin.Faded(info.Identity.String()))
 
-	var f = "%-10s %-40s\n"
+	var f = "%v %v\n"
 	term.Printf(f, admin.Header("Network"), admin.Header("Address"))
 	for _, ep := range info.Endpoints {
 		ep, err := adm.mod.Exonet.Unpack(ep.Network(), ep.Pack())
@@ -188,7 +188,7 @@ func (adm *Admin) parse(term admin.Terminal, args []string) error {
 
 		term.Printf(f, ep.Network(), ep)
 	}
-	term.Printf("%d %s\n", len(info.Endpoints), admin.Faded("endpoint(s)."))
+	term.Printf("%v %v\n", len(info.Endpoints), admin.Faded("endpoint(s)."))
 
 	return nil
 }
@@ -224,12 +224,12 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 
 	alias, _ := adm.mod.Dir.GetAlias(identity)
 
-	term.Printf("%s (%s)\n", identity, admin.Faded(identity.String()))
+	term.Printf("%v (%v)\n", identity, admin.Faded(identity.String()))
 
 	// check private key
 	if adm.mod.Keys != nil {
 		if _, err := adm.mod.Keys.FindIdentity(identity.String()); err == nil {
-			term.Printf("%s\n", admin.Important("private key available"))
+			term.Printf("%v\n", admin.Important("private key available"))
 		}
 	}
 
@@ -247,12 +247,12 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 	if len(endpoints) == 0 {
 		term.Printf("no known endpoints.\n")
 	} else {
-		var f = "%-10s %-40s\n"
+		var f = "%v %v\n"
 		term.Printf(f, admin.Header("Network"), admin.Header("Address"))
 		for _, ep := range endpoints {
 			term.Printf(f, ep.Network(), ep)
 		}
-		term.Printf("%d %s\n\n", len(endpoints), admin.Faded("endpoint(s)."))
+		term.Printf("%v %v\n\n", len(endpoints), admin.Faded("endpoint(s)."))
 
 		info := nodes.NodeInfo{
 			Identity:  identity,
@@ -260,7 +260,7 @@ func (adm *Admin) show(term admin.Terminal, args []string) error {
 			Endpoints: endpoints,
 		}
 
-		term.Printf("%s %s\n", admin.Header("nodelink"), adm.mod.InfoString(&info))
+		term.Printf("%v %v\n", admin.Header("nodelink"), adm.mod.InfoString(&info))
 	}
 
 	return nil
@@ -307,7 +307,7 @@ func (adm *Admin) endpoints(term admin.Terminal, args []string) error {
 		for _, ep := range endpoints {
 			term.Printf(f, ep.Network(), ep)
 		}
-		term.Printf("%d %s\n\n", len(endpoints), admin.Faded("endpoint(s)."))
+		term.Printf("%v %v\n\n", len(endpoints), admin.Faded("endpoint(s)."))
 	}
 
 	return nil
@@ -334,7 +334,7 @@ func (adm *Admin) addEndpoint(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("%s %v added to %s\n", ep.Network(), ep, identity)
+	term.Printf("%v %v added to %v\n", ep.Network(), ep, identity)
 
 	return nil
 }
@@ -360,7 +360,7 @@ func (adm *Admin) removeEndpoint(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	term.Printf("%s %v removed from %s\n", ep.Network(), ep, identity)
+	term.Printf("%v %v removed from %v\n", ep.Network(), ep, identity)
 
 	return nil
 }
@@ -370,7 +370,7 @@ func (adm *Admin) ShortDescription() string {
 }
 
 func (adm *Admin) help(term admin.Terminal, _ []string) error {
-	term.Printf("usage: %s <command>\n\n", nodes.ModuleName)
+	term.Printf("usage: %v <command>\n\n", nodes.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  link                link to a node\n")
 	term.Printf("  streams             show streams\n")
