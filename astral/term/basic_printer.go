@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"io"
-	"strconv"
 	"strings"
 )
 
@@ -42,20 +41,9 @@ func (printer BasicPrinter) print(object astral.Object) (err error) {
 		object = printer.Translator.Translate(object)
 	}
 
-	switch object.ObjectType() {
-	case "string", "string8", "string16", "string32", "string64":
-		s := object.(fmt.Stringer)
-		_, err = printer.w.Write([]byte(s.String()))
-		return
-
-	case "uint8":
-		u, _ := (object).(*astral.Uint8)
-		_, err = printer.w.Write([]byte(strconv.Itoa(int(*u))))
-		return
-
-	case "astrald.mod.shell.ops.set_color":
-		op, _ := object.(*SetColor)
-		printer.setColor(op.Color.String())
+	switch object := object.(type) {
+	case *SetColor:
+		printer.setColor(object.Color.String())
 		return
 	}
 
@@ -88,8 +76,8 @@ func (printer BasicPrinter) print(object astral.Object) (err error) {
 	return nil
 }
 
-func (printer BasicPrinter) Write(object astral.Object) error {
-	return printer.Print(object)
+func (printer BasicPrinter) WriteObject(object astral.Object) (int64, error) {
+	return 0, printer.Print(object)
 }
 
 func (printer BasicPrinter) setColor(color string) {

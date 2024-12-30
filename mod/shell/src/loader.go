@@ -6,8 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/shell"
+	"slices"
 )
 
 type Loader struct{}
@@ -15,26 +15,27 @@ type Loader struct{}
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	var err error
 	var mod = &Module{
-		node:       node,
-		config:     defaultConfig,
-		log:        log,
-		assets:     assets,
-		PathRouter: routers.NewPathRouter(node.Identity(), false),
+		node:   node,
+		config: defaultConfig,
+		log:    log,
+		assets: assets,
 	}
+	mod.Router = shell.NewRouter(&mod.root, mod.log)
 
 	_ = assets.LoadYAML(shell.ModuleName, &mod.config)
 
-	type args struct {
-		Name   astral.String    `query:"optional"`
-		Target *astral.Identity `query:"optional"`
-	}
+	mod.root.AddOp("help", func(ctx astral.Context, env *shell.Env) error {
+		ops := mod.root.Ops()
+		slices.Sort(ops)
+		for _, o := range ops {
+			env.WriteObject((*astral.String8)(&o))
+			env.WriteObject(term.Newline{})
+		}
 
-	mod.root.AddOp("help", func(ctx astral.Context, stream shell.Stream, args args) error {
-		stream.Write(term.Format("cool\n")[0])
 		return nil
 	})
 
-	mod.AddRouteFunc("shell", mod.serve)
+	mod.root.AddOp("shell", mod.opShell)
 
 	return mod, err
 }

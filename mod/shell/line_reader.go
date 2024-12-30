@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-var _ Input = &LineReader{}
+var _ astral.ObjectReader = &LineReader{}
 
 // LineReader reads lines of text from an io.Reader as astral.String
 type LineReader struct {
@@ -19,11 +19,11 @@ func NewLineReader(r io.Reader) *LineReader {
 	}
 }
 
-func (r LineReader) Read() (astral.Object, error) {
+func (r LineReader) ReadObject() (astral.Object, int64, error) {
 	if r.s.Scan() {
 		line := astral.String(r.s.Text())
-		return &line, nil
+		return &line, int64(len(line)), nil
 	}
 
-	return nil, r.s.Err()
+	return nil, 0, r.s.Err()
 }

@@ -7,11 +7,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -25,13 +23,6 @@ var defaultOpenOpts = &objects.OpenOpts{}
 
 const workers = 1
 const updatesLen = 1024
-
-type Deps struct {
-	Admin   admin.Module
-	Content content.Module
-	Objects objects.Module
-	Dir     dir.Module
-}
 
 type Module struct {
 	Deps
@@ -47,6 +38,8 @@ type Module struct {
 	watcher *Watcher
 	updates chan sig.Task
 	shares  sig.Map[string, *sig.Set[string]]
+
+	ops shell.Scope
 }
 
 func (mod *Module) Run(ctx context.Context) error {

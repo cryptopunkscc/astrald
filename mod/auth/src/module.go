@@ -29,7 +29,7 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
+func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, target astral.Object) bool {
 	if identity.IsEqual(mod.node.Identity()) {
 		return true
 	}

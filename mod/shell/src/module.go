@@ -5,16 +5,12 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/lib/routers"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"io"
 )
 
-type Deps struct {
-	Admin admin.Module
-}
+var _ shell.Module = &Module{}
 
 type Module struct {
 	Deps
@@ -22,13 +18,17 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
-	*routers.PathRouter
+	*shell.Router
 	root shell.Scope
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	<-ctx.Done()
 	return nil
+}
+
+func (mod *Module) Root() *shell.Scope {
+	return &mod.root
 }
 
 func (mod *Module) serve(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
@@ -45,8 +45,8 @@ func (mod *Module) serve(ctx context.Context, q *astral.Query, w io.WriteCloser)
 }
 
 type rw struct {
-	shell.Input
-	shell.Output
+	astral.ObjectReader
+	astral.ObjectWriter
 }
 
 func (mod *Module) String() string {

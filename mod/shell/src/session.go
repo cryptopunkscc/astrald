@@ -13,16 +13,14 @@ import (
 type Session struct {
 	mod  *Module
 	conn io.ReadWriter
-	r    shell.Input
-	w    shell.Output
+	env  *shell.Env
 }
 
 func NewSession(mod *Module, conn io.ReadWriter) *Session {
 	return &Session{
 		mod:  mod,
 		conn: conn,
-		r:    shell.NewLineReader(conn),
-		w:    shell.NewStringWriter(conn),
+		env:  shell.NewTextEnv(conn, conn),
 	}
 }
 
@@ -35,7 +33,7 @@ func (s *Session) Run(ctx astral.Context) error {
 			hostID:  s.mod.node.Identity(),
 		})
 
-		obj, err := s.r.Read()
+		obj, _, err := s.env.ReadObject()
 		if err != nil {
 			return err
 		}
@@ -61,10 +59,15 @@ func (s *Session) Run(ctx astral.Context) error {
 			continue
 		}
 
-		err = s.mod.root.CallArgs(ctx, shell.Join{s.r, s.w}, args[0], args[1:])
+		if args[0] == "exit" {
+			return nil
+		}
+
+		err = s.mod.root.CallArgs(ctx, s.env, args[0], args[1:])
 		if err != nil {
-			term.Printf(p, "error: %v\n", err.Error())
-			continue
+			term.Printf(p, "error: %v\n", err)
+		} else {
+			term.Printf(p, "ok\n")
 		}
 	}
 }

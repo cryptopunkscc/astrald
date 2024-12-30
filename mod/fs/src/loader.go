@@ -65,6 +65,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		}
 	}
 
+	mod.ops.AddOp("info", mod.opInfo)
+
 	return mod, nil
 }
 

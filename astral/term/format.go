@@ -83,6 +83,46 @@ func Objectify(v any) astral.Object {
 		var s = astral.String(strconv.FormatFloat(v, 'f', -1, 64))
 		return &s
 
+	case uint:
+		var s = astral.String(strconv.FormatUint(uint64(v), 10))
+		return &s
+
+	case uint8:
+		var s = astral.String(strconv.FormatUint(uint64(v), 10))
+		return &s
+
+	case uint16:
+		var s = astral.String(strconv.FormatUint(uint64(v), 10))
+		return &s
+
+	case uint32:
+		var s = astral.String(strconv.FormatUint(uint64(v), 10))
+		return &s
+
+	case uint64:
+		var s = astral.String(strconv.FormatUint(v, 10))
+		return &s
+
+	case int:
+		var s = astral.String(strconv.FormatInt(int64(v), 10))
+		return &s
+
+	case int8:
+		var s = astral.String(strconv.FormatInt(int64(v), 10))
+		return &s
+
+	case int16:
+		var s = astral.String(strconv.FormatInt(int64(v), 10))
+		return &s
+
+	case int32:
+		var s = astral.String(strconv.FormatInt(int64(v), 10))
+		return &s
+
+	case int64:
+		var s = astral.String(strconv.FormatInt(v, 10))
+		return &s
+
 	case time.Time:
 		t := astral.Time(v)
 		return &t

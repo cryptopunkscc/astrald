@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 const ModuleName = "status"
@@ -18,9 +19,17 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		log:        log,
 		setVisible: make(chan bool, 1),
 	}
+
+	mod.Router = shell.NewRouter(&mod.ops, log)
 	mod.Provider = NewProvider(mod)
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
+
+	mod.ops.AddOp("show", mod.opShow)
+	mod.ops.AddOp("scan", mod.opScan)
+	mod.ops.AddOp("update", mod.opUpdate)
+	mod.ops.AddOp("visible", mod.opVisible)
+	mod.ops.AddOp("help", mod.opHelp)
 
 	return mod, nil
 }

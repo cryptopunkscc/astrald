@@ -7,10 +7,10 @@ import (
 const ModuleName = "auth"
 
 type Module interface {
-	Authorize(identity *astral.Identity, action string, target astral.Object) bool
+	Authorize(identity *astral.Identity, action Action, target astral.Object) bool
 	AddAuthorizer(Authorizer) error
 }
 
 type Authorizer interface {
-	Authorize(identity *astral.Identity, action string, target astral.Object) bool
+	Authorize(identity *astral.Identity, action Action, target astral.Object) bool
 }

@@ -112,14 +112,13 @@ func (adm *Admin) path(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	term.Printf("\n%v\n", admin.Header("Watch Path"))
-	paths := adm.mod.watcher.List()
-
+	var paths = adm.mod.watcher.List()
 	slices.Sort(paths)
 
 	for _, path := range paths {
 		term.Printf("%v\n", path)
 	}
+	
 	return nil
 }
 

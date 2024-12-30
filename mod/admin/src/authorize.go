@@ -8,7 +8,7 @@ import (
 
 var _ auth.Authorizer = &Module{}
 
-func (mod *Module) Authorize(identity *astral.Identity, action string, target astral.Object) bool {
+func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, target astral.Object) bool {
 	switch action {
 	case admin.ActionAccess:
 		return mod.hasAccess(identity)

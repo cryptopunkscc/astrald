@@ -148,3 +148,7 @@ func init() {
 	var h ObjectHeader
 	DefaultBlueprints.Add(&h, &object.ID{})
 }
+
+type ObjectWriter interface {
+	WriteObject(Object) (n int64, err error)
+}

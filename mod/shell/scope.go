@@ -10,6 +10,13 @@ import (
 	"strings"
 )
 
+// Scope is a collection of operations and subscopes.
+//
+// Add an operation to the scope:
+//
+//	scope.AddOp("hi", func(ctx astral.Context, env *shell.Env) error {
+//	    return env.Printf("hello, %v!\n", ctx.Identitiy())
+//	})
 type Scope struct {
 	ops  sig.Map[string, any]
 	subs sig.Map[string, *Scope]
@@ -28,7 +35,8 @@ func (scope *Scope) AddOp(name string, op any) error {
 	if !typ.In(0).Implements(reflect.TypeOf((*astral.Context)(nil)).Elem()) {
 		return errors.New("op must be an op function")
 	}
-	if !typ.In(1).Implements(reflect.TypeOf((*Stream)(nil)).Elem()) {
+
+	if !(reflect.TypeOf((*Env)(nil))).AssignableTo(typ.In(1)) {
 		return errors.New("op must be an op function")
 	}
 
@@ -67,10 +75,10 @@ func (scope *Scope) AddScope(name string, s *Scope) error {
 	return nil
 }
 
-func (scope *Scope) Call(ctx astral.Context, rw Stream, name string, args map[string]string) (err error) {
+func (scope *Scope) Call(ctx astral.Context, env *Env, name string, args map[string]string) (err error) {
 	if idx := strings.IndexByte(name, '.'); idx != -1 {
 		if sub, ok := scope.subs.Get(name[:idx]); ok {
-			return sub.Call(ctx, rw, name[idx+1:], args)
+			return sub.Call(ctx, env, name[idx+1:], args)
 		}
 	}
 	v, ok := scope.ops.Get(name)
@@ -80,7 +88,7 @@ func (scope *Scope) Call(ctx astral.Context, rw Stream, name string, args map[st
 
 	var fnArgs = []reflect.Value{
 		reflect.ValueOf(ctx),
-		reflect.ValueOf(rw),
+		reflect.ValueOf(env),
 	}
 
 	var fn = reflect.ValueOf(v)
@@ -119,12 +127,30 @@ func (scope *Scope) Call(ctx astral.Context, rw Stream, name string, args map[st
 	return ret.Interface().(error)
 }
 
-func (scope *Scope) CallQuery(ctx astral.Context, rw Stream, name string, query string) (err error) {
-	return scope.Call(ctx, rw, name, parseQuery(query))
+func (scope *Scope) CallQuery(ctx astral.Context, env *Env, name string, query string) (err error) {
+	return scope.Call(ctx, env, name, parseQuery(query))
 }
 
-func (scope *Scope) CallArgs(ctx astral.Context, rw Stream, name string, args []string) (err error) {
-	return scope.Call(ctx, rw, name, parseArgs(args))
+func (scope *Scope) CallArgs(ctx astral.Context, env *Env, name string, args []string) (err error) {
+	return scope.Call(ctx, env, name, parseArgs(args))
+}
+
+func (scope *Scope) Ops() []string {
+	return scope.ops.Keys()
+}
+
+func (scope *Scope) Subs() []string {
+	return scope.subs.Keys()
+}
+
+func (scope *Scope) Exists(name string) (found bool) {
+	if idx := strings.IndexByte(name, '.'); idx != -1 {
+		if sub, ok := scope.subs.Get(name[:idx]); ok {
+			return sub.Exists(name[idx+1:])
+		}
+	}
+	_, found = scope.ops.Get(name)
+	return
 }
 
 func parseQuery(q string) (params map[string]string) {

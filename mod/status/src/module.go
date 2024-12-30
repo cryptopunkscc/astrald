@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/status"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -26,6 +27,8 @@ type Module struct {
 	cache      sig.Map[string, *cache]
 	setVisible chan bool
 	visible    sig.Value[bool]
+	ops        shell.Scope
+	*shell.Router
 }
 
 type cache struct {
