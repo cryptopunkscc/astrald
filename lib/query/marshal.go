@@ -13,10 +13,14 @@ import (
 func Marshal(a any) (string, error) {
 	var vals = url.Values{}
 
-	//TODO: Check if a is a map[string]string
+	if m, ok := a.(map[string]string); ok {
+		for k, v := range m {
+			vals.Set(k, v)
+		}
+		return vals.Encode(), nil
+	}
 
-	v := reflect.ValueOf(a)
-	
+	var v = reflect.ValueOf(a)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
