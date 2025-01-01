@@ -142,5 +142,8 @@ func ExtractBlueprints(v any) (bp *Blueprints) {
 	if bp == nil {
 		bp = DefaultBlueprints
 	}
+	if bp == nil {
+		bp = NewBlueprints(nil)
+	}
 	return
 }
