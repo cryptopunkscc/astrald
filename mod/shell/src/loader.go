@@ -20,16 +20,20 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		log:    log,
 		assets: assets,
 	}
-	mod.Router = shell.NewRouter(&mod.root, mod.log)
 
 	_ = assets.LoadYAML(shell.ModuleName, &mod.config)
 
-	mod.root.AddOp("help", func(ctx astral.Context, env *shell.Env) error {
+	mod.root.AddOp("help", func(ctx astral.Context, q shell.Query) error {
+		t, err := shell.AcceptTerminal(q)
+		if err != nil {
+			return err
+		}
+		defer t.Close()
+
 		ops := mod.root.Ops()
 		slices.Sort(ops)
 		for _, o := range ops {
-			env.WriteObject((*astral.String8)(&o))
-			env.WriteObject(term.Newline{})
+			t.Print((*astral.String8)(&o), term.Newline{})
 		}
 
 		return nil

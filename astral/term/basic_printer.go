@@ -76,10 +76,6 @@ func (printer BasicPrinter) print(object astral.Object) (err error) {
 	return nil
 }
 
-func (printer BasicPrinter) WriteObject(object astral.Object) (int64, error) {
-	return 0, printer.Print(object)
-}
-
 func (printer BasicPrinter) setColor(color string) {
 	if printer.Mono {
 		return

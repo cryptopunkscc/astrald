@@ -5,11 +5,17 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-func (mod *Module) opShow(ctx astral.Context, env *shell.Env) (err error) {
+func (mod *Module) opShow(ctx astral.Context, q shell.Query) (err error) {
+	t, err := shell.AcceptTerminal(q)
+	if err != nil {
+		return err
+	}
+	defer t.Close()
+
 	for k, v := range mod.Cache().Clone() {
 		attachments := v.Status.Attachments.Objects()
 
-		env.Printf("%v:%v - %v (%v), %v objects\n",
+		t.Printf("%v:%v - %v (%v), %v objects\n",
 			k,
 			uint16(v.Status.Port),
 			v.Status.Alias,
@@ -22,9 +28,9 @@ func (mod *Module) opShow(ctx astral.Context, env *shell.Env) (err error) {
 			if err != nil {
 				return err
 			}
-			env.Printf("- %v (%v)\n", a.ObjectType(), id)
+			t.Printf("- %v (%v)\n", a.ObjectType(), id)
 		}
 	}
 
-	return nil
+	return
 }

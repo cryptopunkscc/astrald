@@ -4,7 +4,7 @@ import "context"
 
 type Context interface {
 	context.Context
-	Identitiy() *Identity
+	Identity() *Identity
 }
 
 var _ Context = &wrappedContext{}
@@ -18,6 +18,6 @@ func WrapContext(context context.Context, identitiy *Identity) Context {
 	return &wrappedContext{Context: context, identitiy: identitiy}
 }
 
-func (ctx wrappedContext) Identitiy() *Identity {
+func (ctx wrappedContext) Identity() *Identity {
 	return ctx.identitiy
 }

@@ -5,6 +5,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-func (mod *Module) opUpdate(ctx astral.Context, env *shell.Env) (err error) {
+func (mod *Module) opUpdate(ctx astral.Context, q shell.Query) (err error) {
+	t, err := shell.AcceptTerminal(q)
+	if err != nil {
+		return err
+	}
+	defer t.Close()
+
 	return mod.Broadcast()
 }

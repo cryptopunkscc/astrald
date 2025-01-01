@@ -6,14 +6,20 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/status"
 )
 
-func (mod *Module) opHelp(ctx astral.Context, env *shell.Env, args opVisibleArgs) (err error) {
-	env.Printf("usage: %v <command>\n\n", status.ModuleName)
-	env.Printf("commands:\n")
-	env.Printf("  scan                          broadcast a scan message to collect statuses\n")
-	env.Printf("  show                          show cached statuses\n")
-	env.Printf("  update                        broadcast a status update\n")
-	env.Printf("  visible [bool]                show or set visibility\n")
-	env.Printf("  help                          show help\n")
-	
-	return nil
+func (mod *Module) opHelp(ctx astral.Context, q shell.Query) (err error) {
+	t, err := shell.AcceptTerminal(q)
+	if err != nil {
+		return err
+	}
+	defer t.Close()
+
+	t.Printf("usage: %v <command>\n\n", status.ModuleName)
+	t.Printf("commands:\n")
+	t.Printf("  scan                          broadcast a scan message to collect statuses\n")
+	t.Printf("  show                          show cached statuses\n")
+	t.Printf("  update                        broadcast a status update\n")
+	t.Printf("  visible [bool]                show or set visibility\n")
+	t.Printf("  help                          show help\n")
+
+	return
 }

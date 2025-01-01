@@ -1,10 +1,13 @@
 package shell
 
 import (
+	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 	"net/url"
 	"reflect"
 	"strings"
@@ -14,12 +17,18 @@ import (
 //
 // Add an operation to the scope:
 //
-//	scope.AddOp("hi", func(ctx astral.Context, env *shell.Env) error {
-//	    return env.Printf("hello, %v!\n", ctx.Identitiy())
+//	scope.AddOp("hi", func(ctx astral.Context, query shell.Query) error {
+//		conn, _ := query.Accept()
+//	    return conn.Printf("hello, %v!\n", ctx.Identity())
 //	})
 type Scope struct {
 	ops  sig.Map[string, any]
 	subs sig.Map[string, *Scope]
+	log  *log.Logger
+}
+
+func NewScope(log *log.Logger) *Scope {
+	return &Scope{log: log}
 }
 
 func (scope *Scope) AddOp(name string, op any) error {
@@ -36,7 +45,7 @@ func (scope *Scope) AddOp(name string, op any) error {
 		return errors.New("op must be an op function")
 	}
 
-	if !(reflect.TypeOf((*Env)(nil))).AssignableTo(typ.In(1)) {
+	if !typ.In(1).Implements(reflect.TypeOf((*Query)(nil)).Elem()) {
 		return errors.New("op must be an op function")
 	}
 
@@ -75,23 +84,18 @@ func (scope *Scope) AddScope(name string, s *Scope) error {
 	return nil
 }
 
-func (scope *Scope) Call(ctx astral.Context, env *Env, name string, args map[string]string) (err error) {
-	if idx := strings.IndexByte(name, '.'); idx != -1 {
-		if sub, ok := scope.subs.Get(name[:idx]); ok {
-			return sub.Call(ctx, env, name[idx+1:], args)
-		}
-	}
-	v, ok := scope.ops.Get(name)
-	if !ok {
+func (scope *Scope) Call(ctx astral.Context, q Query, name string, args map[string]string) (err error) {
+	var op = scope.getOp(name)
+	if op == nil {
 		return errors.New("op not found")
 	}
 
 	var fnArgs = []reflect.Value{
 		reflect.ValueOf(ctx),
-		reflect.ValueOf(env),
+		reflect.ValueOf(q),
 	}
 
-	var fn = reflect.ValueOf(v)
+	var fn = reflect.ValueOf(op)
 
 	if fn.Type().NumIn() == 3 {
 		var argType = fn.Type().In(2)
@@ -127,12 +131,12 @@ func (scope *Scope) Call(ctx astral.Context, env *Env, name string, args map[str
 	return ret.Interface().(error)
 }
 
-func (scope *Scope) CallQuery(ctx astral.Context, env *Env, name string, query string) (err error) {
-	return scope.Call(ctx, env, name, parseQuery(query))
+func (scope *Scope) CallQuery(ctx astral.Context, q Query, name string, query string) (err error) {
+	return scope.Call(ctx, q, name, ParseQuery(query))
 }
 
-func (scope *Scope) CallArgs(ctx astral.Context, env *Env, name string, args []string) (err error) {
-	return scope.Call(ctx, env, name, parseArgs(args))
+func (scope *Scope) CallArgs(ctx astral.Context, q Query, name string, args []string) (err error) {
+	return scope.Call(ctx, q, name, ParseArgs(args))
 }
 
 func (scope *Scope) Ops() []string {
@@ -144,16 +148,42 @@ func (scope *Scope) Subs() []string {
 }
 
 func (scope *Scope) Exists(name string) (found bool) {
-	if idx := strings.IndexByte(name, '.'); idx != -1 {
-		if sub, ok := scope.subs.Get(name[:idx]); ok {
-			return sub.Exists(name[idx+1:])
-		}
-	}
-	_, found = scope.ops.Get(name)
-	return
+	return scope.getOp(name) != nil
 }
 
-func parseQuery(q string) (params map[string]string) {
+func (scope *Scope) getOp(name string) any {
+	if idx := strings.IndexByte(name, '.'); idx != -1 {
+		if sub, ok := scope.subs.Get(name[:idx]); ok {
+			return sub.getOp(name[idx+1:])
+		}
+	}
+	op, _ := scope.ops.Get(name)
+	return op
+}
+
+func (scope *Scope) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	path, params := query.Parse(q.Query)
+
+	if !scope.Exists(path) {
+		return query.RouteNotFound(scope)
+	}
+
+	var query = NewNetworkQuery(w, q)
+	defer query.Reject()
+
+	var actx = astral.WrapContext(ctx, q.Caller)
+
+	go func() {
+		err := scope.Call(actx, query, path, params)
+		if err != nil {
+			scope.log.Errorv(1, "failed to call query %v: %v", path, err)
+		}
+	}()
+
+	return query.Resolve()
+}
+
+func ParseQuery(q string) (params map[string]string) {
 	vals, err := url.ParseQuery(q)
 	if err != nil {
 		return
@@ -171,7 +201,7 @@ func parseQuery(q string) (params map[string]string) {
 	return
 }
 
-func parseArgs(args []string) (params map[string]string) {
+func ParseArgs(args []string) (params map[string]string) {
 	params = make(map[string]string)
 
 	for len(args) > 0 {
