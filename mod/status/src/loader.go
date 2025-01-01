@@ -21,11 +21,11 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
 
-	mod.AddOp("show", mod.opShow)
-	mod.AddOp("scan", mod.opScan)
-	mod.AddOp("update", mod.opUpdate)
-	mod.AddOp("visible", mod.opVisible)
-	mod.AddOp("help", mod.opHelp)
+	mod.ops.AddOp("show", mod.opShow)
+	mod.ops.AddOp("scan", mod.opScan)
+	mod.ops.AddOp("update", mod.opUpdate)
+	mod.ops.AddOp("visible", mod.opVisible)
+	mod.ops.AddOp("help", mod.opHelp)
 
 	return mod, nil
 }

@@ -111,6 +111,10 @@ func (mod *Module) Path(objectID object.ID) []string {
 	return mod.path(objectID)
 }
 
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.ops
+}
+
 // Watch a directory tree for updates
 func (mod *Module) Watch(path string) (added []string, err error) {
 	mod.watcher.Add(path, false)

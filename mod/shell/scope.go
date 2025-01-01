@@ -27,6 +27,10 @@ type Scope struct {
 	log  *log.Logger
 }
 
+type HasScope interface {
+	Scope() *Scope
+}
+
 func NewScope(log *log.Logger) *Scope {
 	return &Scope{log: log}
 }

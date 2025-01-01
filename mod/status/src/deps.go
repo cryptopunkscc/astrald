@@ -38,8 +38,6 @@ func (mod *Module) LoadDependencies() (err error) {
 		&ScanMessage{},
 	)
 
-	mod.Shell.Root().AddScope(status.ModuleName, &mod.Scope)
-
 	if cnode, ok := mod.node.(*core.Node); ok {
 		var composers []any
 		for _, m := range cnode.Modules().Loaded() {

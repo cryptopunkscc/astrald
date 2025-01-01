@@ -46,7 +46,5 @@ func (mod *Module) LoadDependencies() (err error) {
 		mod.Objects.AddRepository(repo)
 	}
 
-	mod.Shell.Root().AddScope(fs.ModuleName, &mod.ops)
-
 	return
 }
