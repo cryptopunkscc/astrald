@@ -63,3 +63,7 @@ func (e Entry) PrintTo(p term.Printer) error {
 	}
 	return nil
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&Entry{})
+}

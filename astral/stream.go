@@ -63,6 +63,18 @@ func (stream *Stream) WriteObject(object Object) (n int64, err error) {
 	return Bytes32(buf.Bytes()).WriteTo(stream.rw) // write the buffer
 }
 
+func (stream *Stream) WriteObjects(objects ...Object) (n int64, err error) {
+	var m int64
+	for _, object := range objects {
+		m, err = stream.WriteObject(object)
+		n += m
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
 // Blueprints returns Stream's blueprints. Streams have their own blueprints that inherit from the provided parent.
 func (stream *Stream) Blueprints() *Blueprints {
 	return &stream.blueprints
