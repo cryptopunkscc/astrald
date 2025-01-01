@@ -20,6 +20,10 @@ type String32 string
 // String64 represents a string with an 64-bit length
 type String64 string
 
+func NewString(s string) *String {
+	return (*String)(&s)
+}
+
 func (String) ObjectType() string {
 	return "string"
 }
