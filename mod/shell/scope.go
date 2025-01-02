@@ -236,7 +236,7 @@ func ParseQuery(q string) (params map[string]string) {
 		if len(v) > 0 {
 			params[k] = v[0]
 		} else {
-			params[k] = ""
+			params[query.DefaultArgKey] = k
 		}
 	}
 
@@ -250,7 +250,7 @@ func ParseArgs(args []string) (params map[string]string) {
 		key := args[0]
 
 		if !strings.HasPrefix(key, "-") {
-			params["default"] = key
+			params[query.DefaultArgKey] = key
 			args = args[1:]
 			continue
 		}

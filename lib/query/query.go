@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+const DefaultArgKey = "arg"
 const queryTag = "query"
 const defaultQueryTimeout = 60 * time.Second
 
@@ -56,7 +57,7 @@ func Parse(q string) (path string, params map[string]string) {
 		if len(v) > 0 {
 			params[k] = v[0]
 		} else {
-			params[k] = ""
+			params[DefaultArgKey] = k
 		}
 	}
 

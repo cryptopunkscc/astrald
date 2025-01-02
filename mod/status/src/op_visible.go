@@ -6,7 +6,7 @@ import (
 )
 
 type opVisibleArgs struct {
-	Default *bool `query:"optional"`
+	Arg *bool `query:"optional"`
 }
 
 func (ops *Ops) Visible(ctx astral.Context, q shell.Query, args opVisibleArgs) (err error) {
@@ -16,9 +16,9 @@ func (ops *Ops) Visible(ctx astral.Context, q shell.Query, args opVisibleArgs) (
 	}
 	defer t.Close()
 
-	if args.Default == nil {
+	if args.Arg == nil {
 		return t.Printf("%v\n", ops.mod.visible.Get())
 	}
 
-	return ops.mod.SetVisible(*args.Default)
+	return ops.mod.SetVisible(*args.Arg)
 }
