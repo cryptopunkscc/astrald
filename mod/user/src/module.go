@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
@@ -33,6 +34,7 @@ type Module struct {
 	userID *astral.Identity
 	user   *user.SignedNodeContract
 	mu     sync.Mutex
+	ops    shell.Scope
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -147,6 +149,10 @@ func (mod *Module) ContractExists(contractID object.ID) (b bool) {
 		Select("count(*) > 0").
 		First(&b)
 	return
+}
+
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.ops
 }
 
 func (mod *Module) findContractID(userID *astral.Identity, nodeID *astral.Identity) (contractID object.ID, err error) {

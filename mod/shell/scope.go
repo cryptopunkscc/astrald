@@ -3,9 +3,11 @@ package shell
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/lib/term"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"net/url"
@@ -80,6 +82,30 @@ func (scope *Scope) AddOp(name string, op any) error {
 	return nil
 }
 
+func (scope *Scope) AddStruct(s any) (err error) {
+	var errs []error
+	v := reflect.ValueOf(s)
+
+	if (v.Kind() != reflect.Pointer) || (v.Elem().Kind() != reflect.Struct) {
+		return errors.New("argument must be a pointer to a struct")
+	}
+
+	for i := 0; i < v.NumMethod(); i++ {
+		if !v.Method(i).CanInterface() {
+			continue
+		}
+
+		m := v.Method(i).Interface()
+		n := term.ToSnakeCase(v.Type().Method(i).Name)
+		fmt.Println(n, m)
+		if e := scope.AddOp(n, m); e != nil {
+			errs = append(errs, e)
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
 func (scope *Scope) AddScope(name string, s *Scope) error {
 	_, ok := scope.subs.Set(name, s)
 	if !ok {
@@ -149,6 +175,18 @@ func (scope *Scope) Ops() []string {
 
 func (scope *Scope) Subs() []string {
 	return scope.subs.Keys()
+}
+
+func (scope *Scope) Tree() (tree []string) {
+	for subName, sub := range scope.subs.Clone() {
+		for _, n := range sub.Tree() {
+			tree = append(tree, subName+"."+n)
+		}
+	}
+
+	tree = append(tree, scope.ops.Keys()...)
+
+	return
 }
 
 func (scope *Scope) Exists(name string) (found bool) {

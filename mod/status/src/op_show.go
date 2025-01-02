@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-func (mod *Module) opShow(ctx astral.Context, q shell.Query) (err error) {
+func (ops *Ops) Show(ctx astral.Context, q shell.Query) (err error) {
 	if v, _ := q.Extra().Get("interface"); v != "terminal" {
 		return q.Reject()
 	}
@@ -16,7 +16,7 @@ func (mod *Module) opShow(ctx astral.Context, q shell.Query) (err error) {
 	}
 	defer t.Close()
 
-	for k, v := range mod.Cache().Clone() {
+	for k, v := range ops.mod.Cache().Clone() {
 		attachments := v.Status.Attachments.Objects()
 
 		t.Printf("%v:%v - %v (%v), %v objects\n",

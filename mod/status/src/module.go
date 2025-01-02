@@ -18,7 +18,7 @@ const statusExpiration = 5 * time.Minute
 
 type Module struct {
 	Deps
-	ops    shell.Scope
+	ops    Ops
 	node   astral.Node
 	config Config
 	log    *log.Logger
@@ -27,6 +27,11 @@ type Module struct {
 	cache      sig.Map[string, *cache]
 	setVisible chan bool
 	visible    sig.Value[bool]
+}
+
+type Ops struct {
+	mod   *Module
+	scope shell.Scope
 }
 
 type cache struct {
@@ -93,7 +98,7 @@ func (mod *Module) Cache() *sig.Map[string, *cache] {
 }
 
 func (mod *Module) Scope() *shell.Scope {
-	return &mod.ops
+	return &mod.ops.scope
 }
 
 func (mod *Module) String() string {

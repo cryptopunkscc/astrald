@@ -23,14 +23,14 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(shell.ModuleName, &mod.config)
 
-	mod.root.AddOp("help", func(ctx astral.Context, q shell.Query) error {
+	mod.root.AddOp("ops", func(ctx astral.Context, q shell.Query) error {
 		t, err := shell.AcceptTerminal(q)
 		if err != nil {
 			return err
 		}
 		defer t.Close()
 
-		ops := mod.root.Ops()
+		ops := mod.root.Tree()
 		slices.Sort(ops)
 		for _, o := range ops {
 			t.Print((*astral.String8)(&o), term.Newline{})

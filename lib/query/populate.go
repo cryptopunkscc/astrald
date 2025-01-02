@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/lib/term"
 	"reflect"
 	"strconv"
 )
@@ -37,7 +38,7 @@ func Populate(m map[string]string, s any) error {
 			continue
 		}
 
-		name := toSnakeCase(ft.Name)
+		name := term.ToSnakeCase(ft.Name)
 		if n, ok := tags["key"]; ok {
 			name = n
 		}

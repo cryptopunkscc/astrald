@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-	"unicode"
 )
 
 const queryTag = "query"
@@ -77,24 +76,6 @@ func ParseTo(q string, args any) (path string, err error) {
 		return path, fmt.Errorf("validate: %w", err)
 	}
 	return
-}
-
-func toSnakeCase(str string) string {
-	var result []rune
-	var lastUpper bool
-	for i, r := range str {
-		if unicode.IsUpper(r) {
-			if i > 0 && !lastUpper {
-				result = append(result, '_')
-			}
-			result = append(result, unicode.ToLower(r))
-			lastUpper = true
-		} else {
-			result = append(result, r)
-			lastUpper = false
-		}
-	}
-	return string(result)
 }
 
 func splitTag(tag string) (m map[string]string) {

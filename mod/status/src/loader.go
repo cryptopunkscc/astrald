@@ -18,14 +18,14 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		log:        log,
 		setVisible: make(chan bool, 1),
 	}
+	mod.ops.mod = mod
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
 
-	mod.ops.AddOp("show", mod.opShow)
-	mod.ops.AddOp("scan", mod.opScan)
-	mod.ops.AddOp("update", mod.opUpdate)
-	mod.ops.AddOp("visible", mod.opVisible)
-	mod.ops.AddOp("help", mod.opHelp)
+	err := mod.ops.scope.AddStruct(&mod.ops)
+	if err != nil {
+		return nil, err
+	}
 
 	return mod, nil
 }

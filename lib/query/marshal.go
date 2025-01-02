@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/lib/term"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -41,7 +42,7 @@ func Marshal(a any) (string, error) {
 			continue
 		}
 
-		name := toSnakeCase(ft.Name)
+		name := term.ToSnakeCase(ft.Name)
 		if n, ok := tags["key"]; ok {
 			name = n
 		}

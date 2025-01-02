@@ -6,11 +6,11 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/status"
 )
 
-func (mod *Module) opHelp(ctx astral.Context, q shell.Query) (err error) {
+func (ops *Ops) Help(ctx astral.Context, q shell.Query) (err error) {
 	if v, _ := q.Extra().Get("interface"); v != "terminal" {
 		return q.Reject()
 	}
-	
+
 	t, err := shell.AcceptTerminal(q)
 	if err != nil {
 		return err
