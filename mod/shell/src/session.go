@@ -22,7 +22,7 @@ func NewSession(mod *Module, conn io.ReadWriteCloser) *Session {
 
 func (s *Session) Run(ctx astral.Context) (err error) {
 	var t = shell.NewTerminal(s.conn)
-	
+
 	for {
 		// print the prompt
 		t.Print(&Prompt{
@@ -55,6 +55,8 @@ func (s *Session) Run(ctx astral.Context) (err error) {
 		params := shell.ParseArgs(args[1:])
 
 		var q = query.New(ctx.Identity(), s.mod.node.Identity(), op, params)
+
+		q.Extra.Set("interface", "terminal")
 
 		conn, err := query.Route(ctx, s.mod.node, q)
 		if err != nil {
