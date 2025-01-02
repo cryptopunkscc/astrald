@@ -213,7 +213,7 @@ func (scope *Scope) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteC
 	var query = NewNetworkQuery(w, q)
 	defer query.Reject()
 
-	var actx = astral.WrapContext(ctx, q.Caller)
+	var actx = astral.WrapContext(context.Background(), q.Caller)
 
 	go func() {
 		err := scope.Call(actx, query, path, params)

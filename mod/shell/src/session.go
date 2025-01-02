@@ -2,26 +2,37 @@ package shell
 
 import (
 	shell2 "bitbucket.org/creachadair/shell"
+	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 )
 
 type Session struct {
-	mod  *Module
-	conn io.ReadWriteCloser
+	mod *Module
+	rwc io.ReadWriteCloser
+	cr  *streams.ContextReader
 }
 
 func NewSession(mod *Module, conn io.ReadWriteCloser) *Session {
+	cr := streams.NewContextReader(conn)
+	rwc := streams.ReadWriteCloseSplit{
+		Reader: cr.WithContext(context.Background()),
+		Writer: conn,
+		Closer: conn,
+	}
+
 	return &Session{
-		mod:  mod,
-		conn: conn,
+		mod: mod,
+		rwc: rwc,
+		cr:  cr,
 	}
 }
 
 func (s *Session) Run(ctx astral.Context) (err error) {
-	var t = shell.NewTerminal(s.conn)
+	var t = shell.NewTerminal(s.rwc)
 
 	for {
 		// print the prompt
@@ -64,10 +75,14 @@ func (s *Session) Run(ctx astral.Context) (err error) {
 			continue
 		}
 
-		//TODO: forward input from the user to conn
+		opCtx, cancelOp := context.WithCancel(ctx)
+		r := s.cr.WithContext(opCtx)
 
-		io.Copy(s.conn, conn)
+		go io.Copy(conn, r)
+
+		io.Copy(s.rwc, conn)
 		conn.Close()
+		cancelOp()
 
 		t.Printf("ok\n")
 	}
