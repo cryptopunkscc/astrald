@@ -6,14 +6,16 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"strings"
 )
 
 type Deps struct {
-	Admin admin.Module
-	Auth  auth.Module
-	Dir   dir.Module
+	Admin   admin.Module
+	Auth    auth.Module
+	Dir     dir.Module
+	Objects objects.Module
 }
 
 func (mod *Module) LoadDependencies() (err error) {

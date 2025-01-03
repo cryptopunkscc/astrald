@@ -3,7 +3,6 @@ package shell
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -26,7 +25,7 @@ import (
 type Scope struct {
 	ops  sig.Map[string, any]
 	subs sig.Map[string, *Scope]
-	log  *log.Logger
+	Log  *log.Logger
 }
 
 type HasScope interface {
@@ -34,7 +33,7 @@ type HasScope interface {
 }
 
 func NewScope(log *log.Logger) *Scope {
-	return &Scope{log: log}
+	return &Scope{Log: log}
 }
 
 func (scope *Scope) AddOp(name string, op any) error {
@@ -82,7 +81,7 @@ func (scope *Scope) AddOp(name string, op any) error {
 	return nil
 }
 
-func (scope *Scope) AddStruct(s any) (err error) {
+func (scope *Scope) AddStruct(s any, prefix string) (err error) {
 	var errs []error
 	v := reflect.ValueOf(s)
 
@@ -96,8 +95,13 @@ func (scope *Scope) AddStruct(s any) (err error) {
 		}
 
 		m := v.Method(i).Interface()
-		n := term.ToSnakeCase(v.Type().Method(i).Name)
-		fmt.Println(n, m)
+
+		n, ok := strings.CutPrefix(v.Type().Method(i).Name, prefix)
+		if !ok {
+			continue
+		}
+		n = term.ToSnakeCase(n)
+
 		if e := scope.AddOp(n, m); e != nil {
 			errs = append(errs, e)
 		}
@@ -218,7 +222,8 @@ func (scope *Scope) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteC
 	go func() {
 		err := scope.Call(actx, query, path, params)
 		if err != nil {
-			scope.log.Errorv(1, "failed to call query %v: %v", path, err)
+			scope.Log.Errorv(1, "failed to call query %v: %v", path, err)
+			query.Reject()
 		}
 	}()
 

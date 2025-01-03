@@ -32,6 +32,10 @@ func (e *Terminal) ReadLine() (line string, err error) {
 	return "", e.scanner.Err()
 }
 
+func (e *Terminal) Read(p []byte) (n int, err error) {
+	return e.rw.Read(p)
+}
+
 func (e *Terminal) Write(p []byte) (n int, err error) {
 	return e.rw.Write(p)
 }
