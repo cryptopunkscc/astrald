@@ -8,6 +8,7 @@ import (
 )
 
 type Logger struct {
+	Level  int
 	tag    Tag
 	id     *astral.Identity
 	p      term.Printer
@@ -27,6 +28,10 @@ func (l *Logger) Logf(t Type, level Level, ts time.Time, tag Tag, f string, v ..
 }
 
 func (l *Logger) log(e *Entry) {
+	if e.Level > Level(l.Level) {
+		return
+	}
+	
 	term.Printf(l.p, "%v\n", e)
 }
 
