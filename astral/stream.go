@@ -80,6 +80,14 @@ func (stream *Stream) Blueprints() *Blueprints {
 	return &stream.blueprints
 }
 
+func (stream *Stream) Read(p []byte) (n int, err error) {
+	return stream.rw.Read(p)
+}
+
+func (stream *Stream) Write(p []byte) (n int, err error) {
+	return stream.rw.Write(p)
+}
+
 // Close tries to invoke rw's Close
 func (stream *Stream) Close() error {
 	if c, ok := stream.rw.(io.Closer); ok {
