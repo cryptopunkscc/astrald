@@ -19,6 +19,15 @@ func (zone *Zone) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
+func (zone Zone) MarshalText() (text []byte, err error) {
+	return []byte(zone.String()), nil
+}
+
+func (zone *Zone) UnmarshalText(text []byte) error {
+	*zone = Zones(string(text))
+	return nil
+}
+
 type Scope struct {
 	Zone
 	QueryFilter IdentityFilter
