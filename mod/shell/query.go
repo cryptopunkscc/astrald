@@ -14,6 +14,7 @@ type Query interface {
 	Reject() (err error)
 	Caller() *astral.Identity
 	Extra() *sig.Map[string, any]
+	Origin() string
 }
 
 var _ Query = &NetworkQuery{}
@@ -23,6 +24,13 @@ type NetworkQuery struct {
 	*astral.Query
 	r        chan queryResponse
 	resolved atomic.Bool
+}
+
+func (e *NetworkQuery) Origin() string {
+	if v, ok := e.Extra().Get("origin"); ok && v != nil {
+		return v.(string)
+	}
+	return ""
 }
 
 func NewNetworkQuery(w io.WriteCloser, query *astral.Query) *NetworkQuery {

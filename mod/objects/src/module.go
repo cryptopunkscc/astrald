@@ -5,13 +5,13 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -31,14 +31,14 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	*routers.PathRouter
 	blueprints astral.Blueprints
 	node       astral.Node
 	config     Config
 	db         *gorm.DB
 	log        *log.Logger
-	ctx        context.Context
+	ops        shell.Scope
 
+	ctx        context.Context
 	openers    sig.Set[*Opener]
 	repos      sig.Map[string, objects.Repository]
 	describers sig.Set[objects.Describer]
@@ -46,23 +46,20 @@ type Module struct {
 	purgers    sig.Set[objects.Purger]
 	finders    sig.Set[objects.Finder]
 	receivers  sig.Set[objects.Receiver]
-	holders    sig.Set[objects.Holder]
 
-	provider *Provider
+	holders sig.Set[objects.Holder]
 }
 
 func (mod *Module) Run(ctx context.Context) error {
 	mod.ctx = ctx
 
-	mod.provider = NewProvider(mod)
-	err := mod.AddRoute("objects.*", mod.provider)
-	if err != nil {
-		return err
-	}
-
 	<-ctx.Done()
 
 	return nil
+}
+
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.ops
 }
 
 func (mod *Module) Blueprints() *astral.Blueprints {

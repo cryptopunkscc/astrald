@@ -28,7 +28,7 @@ func NewConsumer(mod *Module, consumerID *astral.Identity, providerID *astral.Id
 		mod:        mod,
 		consumerID: consumerID,
 		providerID: providerID,
-		Point:      query.NewPoint(mod, consumerID, providerID),
+		Point:      query.NewPoint(mod.node, consumerID, providerID),
 	}
 }
 

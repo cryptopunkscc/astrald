@@ -20,6 +20,7 @@ func (node *Node) setupLogs() {
 	_log.SetOutput(io.Discard)
 
 	node.log = log.NewLogger(node.printer, node.identity, logTag)
+	node.log.Level = 2
 }
 
 func (node *Node) loadLogConfig() error {

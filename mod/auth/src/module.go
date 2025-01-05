@@ -48,15 +48,15 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 				vals = append(vals, target, target.ObjectType())
 			}
 
-			mod.log.Infov(2, fmt, vals...)
+			mod.log.Infov(3, fmt, vals...)
 			return true
 		}
 	}
 
 	if target == nil {
-		mod.log.Logv(2, "denied %v to %v", identity, action)
+		mod.log.Logv(3, "denied %v to %v", identity, action)
 	} else {
-		mod.log.Logv(2, "denied %v to %v on %v [%v]", identity, action, target, target.ObjectType())
+		mod.log.Logv(3, "denied %v to %v on %v [%v]", identity, action, target, target.ObjectType())
 	}
 
 	return false

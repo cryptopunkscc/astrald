@@ -1,0 +1,80 @@
+package objects
+
+import (
+	"context"
+	"encoding/json"
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
+	"strings"
+	"time"
+)
+
+type opSearchArgs struct {
+	Query  string      `query:"key:q"`
+	Zone   astral.Zone `query:"optional"`
+	Format string      `query:"optional"`
+	Ext    string      `query:"optional"`
+}
+
+func (mod *Module) OpSearch(ctx astral.Context, q shell.Query, args opSearchArgs) (err error) {
+	opts := objects.DefaultSearchOpts()
+	opts.ClientID = q.Caller()
+
+	// handle args for local queries
+	if q.Origin() == "" {
+		opts.Zone = args.Zone
+
+		if len(args.Ext) > 0 {
+			var ids []*astral.Identity
+			targets := strings.Split(args.Ext, ",")
+			for _, target := range targets {
+				id, err := mod.Dir.ResolveIdentity(target)
+				if err != nil {
+					return q.Reject()
+				}
+				ids = append(ids, id)
+			}
+			opts.Extra.Set("ext", ids)
+		}
+	}
+
+	sctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	matches, err := mod.Search(sctx, args.Query, opts)
+	if err != nil {
+		cancel()
+		return q.Reject()
+	}
+
+	stream, err := shell.AcceptStream(q)
+	defer stream.Close()
+
+	var dup = make(map[string]struct{})
+
+	for match := range matches {
+		if !mod.Auth.Authorize(q.Caller(), objects.ActionRead, &match.ObjectID) {
+			continue
+		}
+
+		if _, found := dup[match.ObjectID.String()]; found {
+			continue
+		}
+
+		dup[match.ObjectID.String()] = struct{}{}
+
+		switch args.Format {
+		case "json":
+			err = json.NewEncoder(stream).Encode(match)
+		default:
+			_, err = stream.WriteObject(match)
+		}
+
+		if err != nil {
+			return
+		}
+	}
+
+	return nil
+}
