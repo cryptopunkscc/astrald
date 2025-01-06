@@ -1,98 +1,182 @@
 # apphost protocol
 
-apphost is a protocol that lets apps interact with the node.
+Version 1.0
 
 ## Overview
 
-The client sends a command name (encoded as an 8-bit length-encoded string) followed by its arguments.
+The `apphost` protocol is a client-server multiple request-response protocol
+used by apps (guests) to access the astral network via the local node (host).
 
-List of methods:
+The guest connects to the host via any of the supported [IPC](#ipc) methods.
+After the connection is established, the host sends a `version` message to the
+guest. At this point the session is established, and it ends whenever the
+connection is closed. Over the duration of the sesssion the guest can at any
+point send a request to the host, after which the guest must wait for the host's
+response. If the request did not result in session termination or state change,
+the guest can use the same connection to send further requests.
 
-| name     | desc                              |
-|----------|-----------------------------------|
-| register | register a port on the local node |
-| query    | send a query to a node by id      |
-| resolve  | resolve node id from name         |
-| nodeInfo | get info about a node             |
+## Table of contents
 
-## Commands
+* [Methods](#methods)
+  * [token](#token)
+  * [register](#register) 
+  * [query](#query)
+* [Messages](#messages)
+  * [version](#version)
+  * [queryInfo](#queryinfo)
+* [Types](#types)
+  * [Basic types](#basic-types)
+  * [Identity](#identity)
+* [IPC](#ipc)
+  * [TCP](#tcp)
+  * [Unix sockets](#unix-sockets)
+
+## Methods
+
+### token
+
+`(token String8) -> (code Uint8)`
+
+The `token` request authenticates the session with an auth token.
+
+#### Arguments
+
+| name  | type    | desc           |
+|-------|---------|----------------|
+| token | String8 | the auth token |
+
+#### Return values
+
+| name     | type     | desc                                             |
+|----------|----------|--------------------------------------------------|
+| code     | Uint8    | return code                                      |
+| identity | Identity | on success, the identity assigned to the session | 
+
+#### Return codes
+
+| code | desc        |
+|------|-------------|
+| 0x00 | success     |
+| 0x01 | auth failed |
 
 ### register
 
-Arguments
+`(endpoint String8) -> (code Uint8, token String8)`
 
-| type   | name   | desc                                              |
-|--------|--------|---------------------------------------------------|
-| []byte | port   | port to register (8-bit LE string)                |
-| []byte | target | where to forward connections to (8-bit LE string) |
+Register sets the query handler address for the guest's identity. The host
+will forward all queries directed to the guest to this port.
 
-`target` is in format `<proto>:<address>` where proto can be unix or tcp. 
+If the registration succeeds, return code 0 will be returned and the connection
+will go into keep-alive mode with no data sent. Once either side closes the
+conenction the registration expires.
 
-Return values
+After the query handler accepts the callback connection and the endpoint,
+it must read the `queryInfo` message and respond with a single Uint8 value
+representing the response code. If the code sent is 0, the connection becomes
+the transport for the accepted query. In any other case, the connection is
+terminated.
 
-| type | name  | desc       |
-|------|-------|------------|
-| byte | error | error code |
+#### Arguments
 
-Error codes
+| name     | type    | desc                   |
+|----------|---------|------------------------|
+| endpoint | String8 | query handler endpoint |
+| flags    | Uint8   | always 0. reserved.    |
 
-| code | desc                |
-|------|---------------------|
-| 0x00 | no error            |
-| 0x02 | registration failed |
+`endpoint` is in format `<proto>:<address>` where proto can be Unix or TCP.
+
+#### Return values
+
+| name  | type    | desc                                           |
+|-------|---------|------------------------------------------------|
+| code  | Uint8   | return code                                    |
+| token | String8 | auth token for callbacks, sent only on success |
+
+#### Return codes
+
+| code | desc               |
+|------|--------------------|
+| 0x00 | success            |
+| 0x01 | unauthorized       |
+| 0x02 | already registered |
 
 ### query
 
-Arguments
+`(target Identity, query String16) -> (code Uint8, ...)`
 
-| type     | name     | desc                   |
-|----------|----------|------------------------|
-| [33]byte | identity | remote node's identity |
-| []byte   | query    | 8-bit LE query string  |
+The `query` method routes a query through the node. If the query is rejected,
+the session continues. If the query is accepted, the session ends and the
+connection becomes the transport for the accepted query.
 
-Return values
+#### Arguments
 
-| type | name  | desc       |
-|------|-------|------------|
-| byte | error | error code |
+| name     | type     | desc             |
+|----------|----------|------------------|
+| identity | Identity | target identity  |
+| query    | String16 | the query string |
 
-Error codes
+#### Return values
 
-| code | desc           |
-|------|----------------|
-| 0x00 | no error       |
-| 0x01 | query rejected |
+| name | type | desc        |
+|------|------|-------------|
+| code | byte | return code |
+
+#### Return codes
+
+| code      | desc                  |
+|-----------|-----------------------|
+| 0x00      | accepted              |
+| 0x01      | query rejected        |
+| 0x02-0xff | query-specific errors |
 
 If there was no error, the protocol ends and the connection is replaced with
 the query connection.
 
-### resolve
+## Messages
 
-Arguments
+### version
 
-| type   | name   | desc                              |
-|--------|--------|-----------------------------------|
-| []byte | port   | name to resolve (8-bit LE string) |
+Version is a single Uint8 value. Currently, it's always 1.
 
-Return values
+### queryInfo
 
-| type     | name     | desc              |
-|----------|----------|-------------------|
-| [33]byte | identity | resolved identity |
-| byte     | error    | error code        |
+The query message is the first message sent to the query handler registered
+with the `register` method.
 
-### nodeInfo
+#### Fields
 
-Arguments
+| name    | type      | desc                                          |
+|:--------|:----------|:----------------------------------------------|
+| token   | String8   | auth token obtained via the `register` call   |
+| caller  | Identity  | identity of the caller                        |
+| query   | String16  | the query string                              |Info
 
-| type     | name     | desc                   |
-|----------|----------|------------------------|
-| [33]byte | identity | node's identity        |
+## Types
 
-Return values
+Numeric types use big endian encoding.
 
-| type     | name     | desc                          |
-|----------|----------|-------------------------------|
-| [33]byte | identity | node's identity               |
-| []byte   | name     | node's name (8-bit LE string) |
+### Basic types
 
+The basic integer types are Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32,
+Int64.
+
+String types (String8, String16, String32, String64) represent a length encoded
+string using 8/16/32/64-bit unsigned integers.
+
+### Identity
+
+Identity is a fixed-length buffer of 33 bytes and contains the public key of the
+identity.
+
+## IPC
+
+Guests can use various IPC methods to establish a connection to the host.
+Currently supported methods are TCP and Unix sockets.
+
+### TCP
+
+TBD
+
+### Unix sockets
+
+TBD
