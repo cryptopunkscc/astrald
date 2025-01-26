@@ -31,7 +31,7 @@ func (l *Logger) log(e *Entry) {
 	if e.Level > Level(l.Level) {
 		return
 	}
-	
+
 	term.Printf(l.p, "%v\n", e)
 }
 
@@ -79,5 +79,6 @@ func (l *Logger) Tag(tag Tag) *Logger {
 		tag:    tag,
 		id:     l.id,
 		p:      l.p,
+		Level:  l.Level,
 	}
 }
