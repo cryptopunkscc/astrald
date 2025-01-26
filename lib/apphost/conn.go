@@ -1,4 +1,4 @@
-package astral
+package apphost
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"

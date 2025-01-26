@@ -3,6 +3,7 @@ package apphost
 import (
 	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	"strings"
 )
@@ -19,8 +20,7 @@ func (mod *Module) worker(ctx context.Context) error {
 			}
 		}()
 
-		session := NewSession(mod, conn, mod.log)
-		err := session.Serve(ctx)
+		err := NewSession(mod, conn, mod.log).Serve(astral.WrapContext(ctx, mod.node.Identity()))
 
 		switch {
 		case err == nil:
@@ -28,6 +28,7 @@ func (mod *Module) worker(ctx context.Context) error {
 		case strings.Contains(err.Error(), "connection closed"):
 		case strings.Contains(err.Error(), "use of closed network connection"):
 		case strings.Contains(err.Error(), "read/write on closed pipe"):
+		case strings.Contains(err.Error(), "session ended"):
 		default:
 			mod.log.Error("serve error: %v", err)
 		}

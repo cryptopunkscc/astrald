@@ -1,51 +1,213 @@
 package apphost
 
 import (
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/cslq"
-	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
+	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/streams"
+	"io"
 	"net"
 )
 
 type Session struct {
-	*cslq.Endec
-	*proto.Conn
-	ctx      context.Context
-	mod      *Module
-	remoteID *astral.Identity
-	log      *log.Logger
+	mod     *Module
+	guestID *astral.Identity
+	conn    io.ReadWriteCloser
+	log     *log.Logger
+	bp      *astral.Blueprints
 }
 
 func NewSession(mod *Module, conn net.Conn, log *log.Logger) *Session {
 	return &Session{
-		mod:   mod,
-		Conn:  proto.NewConn(conn),
-		Endec: cslq.NewEndec(conn),
-		log:   log,
+		mod:  mod,
+		log:  log,
+		conn: conn,
 	}
 }
 
-func (s *Session) auth(_ context.Context) error {
-	var p proto.AuthParams
-	if err := s.ReadMsg(&p); err != nil {
-		return err
+func (s *Session) Serve(ctx astral.Context) (err error) {
+	var cmd astral.String8
+
+	for {
+		_, err = cmd.ReadFrom(s.conn)
+		if err != nil {
+			return
+		}
+
+		switch cmd {
+		case "token":
+			err = s.Token(ctx)
+
+		case "register":
+			err = s.Register(ctx)
+
+		case "query":
+			err = s.Query(ctx)
+
+		default:
+			err = errors.New("invalid command")
+		}
+
+		if err != nil {
+			return
+		}
+	}
+}
+
+func (s *Session) Token(ctx astral.Context) (err error) {
+	var (
+		arg apphost.TokenArgs
+		res apphost.TokenResponse
+	)
+
+	_, err = arg.ReadFrom(s.conn)
+	if err != nil {
+		return
 	}
 
-	if len(p.Token) > 0 {
-		s.remoteID = s.mod.authToken(p.Token)
+	var guestID = s.mod.identityByToken(string(arg.Token))
+
+	if guestID == nil {
+		s.log.Errorv(1, "token authentication failed")
+
+		res = apphost.TokenResponse{
+			Code:    apphost.Rejected,
+			GuestID: nil,
+			HostID:  nil,
+		}
+	} else {
+		s.log.Infov(3, "authenticated as %v using a token", guestID)
+
+		s.guestID = guestID
+
+		res = apphost.TokenResponse{
+			Code:    0,
+			GuestID: guestID,
+			HostID:  ctx.Identity(),
+		}
 	}
 
-	if s.remoteID.IsZero() {
-		s.remoteID = s.mod.DefaultIdentity()
+	_, err = res.WriteTo(s.conn)
+	return
+}
+
+func (s *Session) Register(ctx astral.Context) (err error) {
+	var (
+		arg apphost.RegisterArgs
+	)
+
+	_, err = arg.ReadFrom(s.conn)
+	if err != nil {
+		return
 	}
 
-	if s.remoteID.IsZero() {
-		s.WriteErr(proto.ErrUnauthorized)
-		return errors.New("unauthorized")
+	guestID := s.guestID
+	if !arg.Identity.IsZero() {
+		if s.mod.Auth.Authorize(guestID, admin.ActionSudo, arg.Identity) {
+			guestID = s.guestID
+		}
 	}
 
-	return s.WriteErr(nil)
+	guest := &Guest{
+		Token:    randomString(32),
+		Identity: guestID,
+		Endpoint: string(arg.Endpoint),
+	}
+
+	guestIDHex := guestID.String()
+
+	_, ok := s.mod.guests.Set(guestIDHex, guest)
+	if !ok {
+		_, err = apphost.RegisterResponse{
+			Code:  apphost.AlreadyRegistered,
+			Token: "",
+		}.WriteTo(s.conn)
+		return
+	}
+
+	_, err = apphost.RegisterResponse{
+		Code:  0,
+		Token: astral.String8(guest.Token),
+	}.WriteTo(s.conn)
+
+	var done = make(chan struct{})
+	defer s.conn.Close()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.conn.Close()
+		case <-done:
+		}
+	}()
+
+	s.log.Infov(1, "%v registered query handler %v", guest.Identity, guest.Endpoint)
+
+	// wait for the connection to close (any data is a protocol violation)
+	var p [1]byte
+	s.conn.Read(p[:])
+
+	s.mod.guests.Delete(guestIDHex)
+
+	close(done)
+	return errors.New("session ended")
+}
+
+func (s *Session) Query(ctx astral.Context) (err error) {
+	var (
+		arg apphost.QueryArgs
+	)
+
+	_, err = arg.ReadFrom(s.conn)
+	if err != nil {
+		return
+	}
+
+	caller := s.guestID
+
+	if caller.IsZero() {
+		_, err = apphost.QueryResponse{
+			Code: apphost.Rejected,
+		}.WriteTo(s.conn)
+		return
+	}
+
+	if !arg.Caller.IsZero() {
+		if !s.mod.Auth.Authorize(caller, admin.ActionSudo, arg.Caller) {
+			_, err = apphost.QueryResponse{
+				Code: apphost.Rejected,
+			}.WriteTo(s.conn)
+			return
+		}
+		caller = arg.Caller
+	}
+
+	var q = astral.NewQuery(caller, arg.Target, string(arg.Query))
+
+	conn, err := query.Route(ctx, s.mod.node, q)
+
+	if err != nil {
+		var code = apphost.Rejected
+
+		var r *astral.ErrRejected
+		if errors.As(err, &r) {
+			code = int(r.Code)
+		}
+
+		// write error response
+		_, err = apphost.QueryResponse{Code: astral.Uint8(code)}.WriteTo(s.conn)
+		return
+	}
+
+	// write success response
+	_, err = apphost.QueryResponse{Code: apphost.Success}.WriteTo(s.conn)
+	if err != nil {
+		return
+	}
+
+	_, _, err = streams.Join(s.conn, conn)
+	return
 }

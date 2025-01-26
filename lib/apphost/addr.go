@@ -1,4 +1,4 @@
-package astral
+package apphost
 
 import (
 	"net"

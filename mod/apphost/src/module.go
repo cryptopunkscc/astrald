@@ -6,13 +6,13 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/debug"
-	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"net"
 	"sync"
@@ -38,10 +38,7 @@ type Module struct {
 	listeners []net.Listener
 	conns     <-chan net.Conn
 	defaultID *astral.Identity
-	guests    map[string]*Guest
-	guestsMu  sync.Mutex
-	execs     []*Exec
-	router    *routers.PathRouter
+	guests    sig.Map[string, *Guest]
 }
 
 func (mod *Module) Run(ctx context.Context) error {
@@ -80,64 +77,6 @@ func (mod *Module) SetDefaultIdentity(identity *astral.Identity) error {
 
 func (mod *Module) DefaultIdentity() *astral.Identity {
 	return mod.defaultID
-}
-
-func (mod *Module) addGuestRoute(identity *astral.Identity, name string, target string) error {
-	mod.guestsMu.Lock()
-	defer mod.guestsMu.Unlock()
-
-	if len(name) == 0 {
-		return errors.New("invalid name")
-	}
-
-	var key = identity.String()
-
-	var guest *Guest
-	if g, found := mod.guests[key]; found {
-		guest = g
-	} else {
-		guest = NewGuest(identity)
-		mod.guests[key] = guest
-	}
-
-	relay := &RelayRouter{
-		log:      mod.log,
-		target:   target,
-		identity: identity,
-	}
-
-	return guest.AddRoute(name, relay)
-}
-
-func (mod *Module) removeGuestRoute(identity *astral.Identity, name string) error {
-	mod.guestsMu.Lock()
-	defer mod.guestsMu.Unlock()
-
-	var key = identity.String()
-
-	var guest = mod.guests[key]
-	if guest == nil {
-		return errors.New("route not found")
-	}
-
-	if err := guest.RemoveRoute(name); err != nil {
-		return err
-	}
-
-	if guest.RouteCount() == 0 {
-		delete(mod.guests, key)
-	}
-
-	return nil
-}
-
-func (mod *Module) getGuest(id *astral.Identity) *Guest {
-	mod.guestsMu.Lock()
-	defer mod.guestsMu.Unlock()
-
-	var key = id.String()
-
-	return mod.guests[key]
 }
 
 func (mod *Module) RegisterApp(appID string) (id *astral.Identity, err error) {

@@ -2,7 +2,7 @@ package apphost
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
+	"github.com/cryptopunkscc/astrald/lib/ipc"
 	"net"
 	"strings"
 	"sync"
@@ -14,7 +14,7 @@ func (mod *Module) listen(ctx context.Context) <-chan net.Conn {
 	mod.listeners = make([]net.Listener, 0)
 
 	for _, endpoint := range mod.config.Listen {
-		listener, err := proto.Listen(endpoint)
+		listener, err := ipc.Listen(endpoint)
 
 		if err != nil {
 			mod.log.Error("listener %v error: %v", endpoint, err)

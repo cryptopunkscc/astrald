@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -16,7 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/jxskiss/base62"
 	"gorm.io/gorm"
-	"io"
 	"strings"
 	"time"
 )
@@ -65,6 +63,15 @@ func (mod *Module) Peers() (peers []*astral.Identity) {
 	return mod.peers.peers()
 }
 
+func (mod *Module) IsPeer(id *astral.Identity) bool {
+	for _, peer := range mod.peers.peers() {
+		if peer.IsEqual(id) {
+			return true
+		}
+	}
+	return false
+}
+
 func (mod *Module) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 	return mod.peers.Accept(ctx, conn)
 }
@@ -95,55 +102,6 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 
 func (mod *Module) ResolveEndpoints(ctx context.Context, identity *astral.Identity) ([]exonet.Endpoint, error) {
 	return mod.Endpoints(identity), nil
-}
-
-func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (rw io.WriteCloser, err error) {
-	if s, ok := q.Extra.Get("origin"); ok && s == "network" {
-		return query.RouteNotFound(mod)
-	}
-
-	var relayID = q.Target
-	var callerProof astral.Object
-
-	useRelay := false
-
-	if !q.Caller.IsEqual(mod.node.Identity()) {
-		useRelay = true
-		if v, ok := q.Extra.Get(nodes.ExtraCallerProof); ok {
-			callerProof = v.(astral.Object)
-		}
-	}
-
-	if v, ok := q.Extra.Get(nodes.ExtraRelayVia); ok {
-		relayID = v.(*astral.Identity)
-		useRelay = true
-	}
-
-	if useRelay {
-		if callerProof != nil {
-			err = mod.Objects.Push(ctx, nil, relayID, callerProof)
-			if err != nil {
-				mod.log.Errorv(1, "cannot push proof: %v", err)
-			}
-		}
-
-		err = mod.on(relayID).Relay(ctx, q.Nonce, q.Caller, q.Target)
-		if err != nil {
-			return query.RouteNotFound(mod, err)
-		}
-
-		if !q.Target.IsEqual(relayID) {
-			q = &astral.Query{
-				Nonce:  q.Nonce,
-				Caller: q.Caller,
-				Target: relayID,
-				Query:  q.Query,
-				Extra:  *q.Extra.Copy(),
-			}
-		}
-	}
-
-	return mod.peers.RouteQuery(ctx, q, w)
 }
 
 func (mod *Module) on(providerID *astral.Identity) *Consumer {

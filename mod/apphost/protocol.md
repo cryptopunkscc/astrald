@@ -14,6 +14,8 @@ point send a request to the host, after which the guest must wait for the host's
 response. If the request did not result in session termination or state change,
 the guest can use the same connection to send further requests.
 
+Requests are encoded as String8 followed by their argumets.
+
 ## Table of contents
 
 * [Methods](#methods)
@@ -45,11 +47,11 @@ The `token` request authenticates the session with an auth token.
 
 #### Return values
 
-| name     | type      | desc                                         |
-|:---------|:----------|:---------------------------------------------|
-| code     | Uint8     | return code                                  |
-| guestID  | Identity  | only on success, the identity of the guest   | 
-| hostID   | Identity  | only on success, the identity of the host    | 
+| name     | type      | desc                                           |
+|:---------|:----------|:-----------------------------------------------|
+| code     | Uint8     | return code                                    |
+| guestID  | Identity  | only if code is 0, the identity of the guest   | 
+| hostID   | Identity  | only if code is 0, the identity of the host    | 
 
 #### Return codes
 

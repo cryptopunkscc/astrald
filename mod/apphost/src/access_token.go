@@ -43,7 +43,11 @@ func (mod *Module) FindOrCreateAccessToken(identity *astral.Identity) (token str
 	return mod.CreateAccessToken(identity)
 }
 
-func (mod *Module) authToken(token string) (identity *astral.Identity) {
+func (mod *Module) identityByToken(token string) (identity *astral.Identity) {
+	if len(token) == 0 {
+		return
+	}
+
 	mod.db.
 		Model(&dbAccessToken{}).
 		Where("token = ?", token).

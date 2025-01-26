@@ -22,7 +22,7 @@ var _ fs.Module = &Module{}
 var defaultOpenOpts = &objects.OpenOpts{}
 
 const workers = 1
-const updatesLen = 1024
+const updatesLen = 4096
 
 type Module struct {
 	Deps

@@ -1,6 +1,7 @@
-package proto
+package ipc
 
 import (
+	"errors"
 	"github.com/akutz/memconn"
 	"github.com/cryptopunkscc/astrald/astral"
 	"math/rand"
@@ -9,6 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+)
+
+// local errors
+var (
+	ErrUnsupportedProtocol = errors.New("unsupported protocol")
+	ErrInvalidIPCAddress   = errors.New("invalid ipc address")
 )
 
 // EnvKeyAddr is the name of the environment variable which contains a semicolon-separated list of apphost addresses.

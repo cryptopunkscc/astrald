@@ -3,7 +3,7 @@ package apphost
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
+	"github.com/cryptopunkscc/astrald/lib/ipc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/objects/fs"
 	"github.com/cryptopunkscc/astrald/object"
@@ -43,7 +43,7 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 		authToken = request.Header.Get(HTTPAuthTokenHeader)
 	}
 
-	var clientID = srv.authToken(authToken)
+	var clientID = srv.identityByToken(authToken)
 	if clientID == nil {
 		clientID = &astral.Identity{}
 	}
@@ -76,7 +76,7 @@ func (srv *ObjectServer) Run(ctx context.Context) error {
 	for _, bind := range srv.config.ObjectServer.Bind {
 		bind := bind
 
-		l, err := proto.Listen(bind)
+		l, err := ipc.Listen(bind)
 		if err != nil {
 			srv.log.Error("object server failed to bind to %v: %v", bind, err)
 			continue

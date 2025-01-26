@@ -19,12 +19,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		assets: assets,
 	}
 
-	mod.Provider = NewProvider(mod)
-
-	err = assets.LoadYAML(user.ModuleName, &mod.config)
-	if err != nil {
-
-	}
+	_ = assets.LoadYAML(user.ModuleName, &mod.config)
 
 	mod.db = assets.Database()
 

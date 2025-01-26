@@ -8,13 +8,10 @@ import (
 )
 
 func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	if r, err := mod.router.RouteQuery(ctx, q, w); err == nil {
-		return r, nil
+	guest, ok := mod.guests.Get(q.Target.String())
+	if !ok {
+		return query.RouteNotFound(mod)
 	}
 
-	if guest := mod.getGuest(q.Target); guest != nil {
-		return guest.RouteQuery(ctx, q, w)
-	}
-
-	return query.RouteNotFound(mod)
+	return NewRelay(guest.Endpoint, guest.Token, mod.log).RouteQuery(ctx, q, w)
 }

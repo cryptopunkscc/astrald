@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -29,6 +30,8 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 	db     *gorm.DB
+
+	ops shell.Scope
 
 	resolvers sig.Set[dir.Resolver]
 }
@@ -91,6 +94,14 @@ func (mod *Module) DisplayName(identity *astral.Identity) string {
 	}
 
 	return identity.Fingerprint()
+}
+
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.ops
+}
+
+func (mod *Module) String() string {
+	return dir.ModuleName
 }
 
 func (mod *Module) setDefaultAlias() error {

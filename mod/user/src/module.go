@@ -25,7 +25,6 @@ var _ user.Module = &Module{}
 
 type Module struct {
 	Deps
-	*Provider
 	config Config
 	node   astral.Node
 	log    *log.Logger
