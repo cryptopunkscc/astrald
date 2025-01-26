@@ -61,7 +61,16 @@ func (bp *Blueprints) Add(object ...Object) error {
 	return errors.Join(errs...)
 }
 
-// Refine takes a RawObject and reparses it into a concrete object if a prototype for the type is added
+// AddAs adds a new object prototype as provided type name, ignoring object's own ObjectType()
+func (bp *Blueprints) AddAs(typeName string, object Object) error {
+	_, ok := bp.Blueprints.Set(typeName, object)
+	if !ok {
+		return fmt.Errorf("blueprint for %s already added", typeName)
+	}
+	return nil
+}
+
+// Refine takes a RawObject and reparses it into a concrete object if a prototype for the type is found
 func (bp *Blueprints) Refine(raw *RawObject) (Object, error) {
 	b := bp.Make(raw.ObjectType())
 	if b == nil {
@@ -78,7 +87,7 @@ func (bp *Blueprints) Refine(raw *RawObject) (Object, error) {
 	return b, err
 }
 
-// Names returns names of all registered object types
+// Names returns type names of all registered prototypes
 func (bp *Blueprints) Names() (names []string) {
 	if bp.Parent != nil {
 		names = bp.Parent.Names()
@@ -113,6 +122,7 @@ func (bp *Blueprints) Read(r io.Reader, canonical bool) (o Object, n int64, err 
 	return o, n, err
 }
 
+// Inject wraps an io.Reader in a wrapper that HasBlueprints
 func (bp *Blueprints) Inject(r io.Reader) io.Reader {
 	return NewReaderWithBlueprints(r, bp)
 }
