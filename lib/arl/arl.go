@@ -8,6 +8,7 @@ import (
 )
 
 var callerExp = regexp.MustCompile(`^([a-zA-Z0-9_.-]+)@`)
+var targetExp = regexp.MustCompile(`^([a-zA-Z0-9_.-]+):`)
 var queryExp = regexp.MustCompile(`^[a-zA-Z0-9_.-]+:(.*)$`)
 
 // ARL - Astral Resource Locator
@@ -28,13 +29,14 @@ func Split(s string) (caller, target, query string) {
 		caller = matches[1]
 	}
 
-	matches = queryExp.FindStringSubmatch(s)
+	matches = targetExp.FindStringSubmatch(s)
 	if len(matches) > 0 {
-		s, _ = strings.CutSuffix(s, ":"+matches[1])
-		query = matches[1]
+		s, _ = strings.CutPrefix(s, matches[0])
+		target = matches[1]
 	}
 
-	target = s
+	query = s
+
 	return
 }
 
