@@ -38,3 +38,12 @@ func (d Duration) Duration() time.Duration {
 func (d Duration) String() string {
 	return time.Duration(d).String()
 }
+
+func (d *Duration) UnmarshalText(text []byte) (err error) {
+	*(*time.Duration)(d), err = time.ParseDuration(string(text))
+	return
+}
+
+func (d Duration) MarshalText() (text []byte, err error) {
+	return []byte(d.String()), nil
+}

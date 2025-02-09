@@ -43,9 +43,11 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 		authToken = request.Header.Get(HTTPAuthTokenHeader)
 	}
 
-	var clientID = srv.identityByToken(authToken)
-	if clientID == nil {
-		clientID = &astral.Identity{}
+	clientID := &astral.Identity{}
+	token, err := srv.db.FindAccessToken(authToken)
+
+	if token != nil {
+		clientID = token.Identity
 	}
 
 	filename := filepath.Base(request.URL.Path)

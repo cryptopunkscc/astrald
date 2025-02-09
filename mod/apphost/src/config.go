@@ -11,9 +11,6 @@ type Config struct {
 	// Number of apphost workers
 	Workers int `yaml:"workers"`
 
-	// Identity to use for anonymous connections
-	DefaultIdentity string `yaml:"default_identity"`
-
 	Tokens map[string]string `yaml:"tokens"`
 
 	ObjectServer ObjectServerConfig `yaml:"object_server"`

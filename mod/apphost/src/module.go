@@ -2,7 +2,6 @@ package apphost
 
 import (
 	"context"
-	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/debug"
@@ -12,8 +11,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
-	"gorm.io/gorm"
+	"math/rand"
 	"net"
 	"sync"
 )
@@ -33,13 +33,15 @@ type Module struct {
 	config Config
 	node   astral.Node
 	log    *log.Logger
-	db     *gorm.DB
+	db     *DB
+	scope  shell.Scope
 
 	listeners []net.Listener
 	conns     <-chan net.Conn
-	defaultID *astral.Identity
 	guests    sig.Map[string, *Guest]
 }
+
+var _ shell.HasScope = &Module{}
 
 func (mod *Module) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
@@ -70,77 +72,47 @@ func (mod *Module) Run(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) SetDefaultIdentity(identity *astral.Identity) error {
-	mod.defaultID = identity
-	return nil
-}
-
-func (mod *Module) DefaultIdentity() *astral.Identity {
-	return mod.defaultID
-}
-
-func (mod *Module) RegisterApp(appID string) (id *astral.Identity, err error) {
-	err = mod.db.
-		Model(&dbApp{}).
-		Where("app_id = ?", appID).
-		Select("identity").
-		First(&id).Error
-
-	if err == nil {
-		return
-	}
-
-	id, err = astral.GenerateIdentity()
+func (mod *Module) ListAccessTokens() ([]*apphost.AccessToken, error) {
+	rows, err := mod.db.ListAccessTokens()
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	err = mod.db.Create(&dbApp{
-		AppID:    appID,
-		Identity: id,
-	}).Error
-
-	return
+	return sig.MapSlice(rows, func(a dbAccessToken) (*apphost.AccessToken, error) {
+		return &apphost.AccessToken{
+			Identity:  a.Identity,
+			Token:     astral.String8(a.Token),
+			ExpiresAt: astral.Time(a.ExpiresAt),
+		}, nil
+	})
 }
 
-func (mod *Module) UnregisterApp(appID string) (err error) {
-	var found bool
-	err = mod.db.
-		Model(&dbApp{}).
-		Where("app_id = ?", appID).
-		Select("count(*)>0").
-		First(&found).Error
-
+func (mod *Module) CreateAccessToken(identity *astral.Identity, d astral.Duration) (*apphost.AccessToken, error) {
+	token, err := mod.db.CreateAccessToken(identity, d)
 	if err != nil {
-		return err
-	}
-	if !found {
-		return errors.New("app not found")
+		return nil, err
 	}
 
-	err = mod.db.Delete(&dbApp{AppID: appID}).Error
-
-	return
+	return &apphost.AccessToken{
+		Identity:  token.Identity,
+		Token:     astral.String8(token.Token),
+		ExpiresAt: astral.Time(token.ExpiresAt),
+	}, nil
 }
 
-func (mod *Module) ListApps() (list []string) {
-	mod.db.
-		Model(&dbApp{}).
-		Select("app_id").
-		Find(&list)
-	return
-}
-
-func (mod *Module) AppToken(appID string) (token string, err error) {
-	var row dbApp
-	err = mod.db.Where("app_id = ?", appID).First(&row).Error
-	if err != nil {
-		return
-	}
-
-	return mod.FindOrCreateAccessToken(row.Identity)
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.scope
 }
 
 func (mod *Module) String() string {
 	return apphost.ModuleName
+}
+
+func randomString(length int) (s string) {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+	var name = make([]byte, length)
+	for i := 0; i < len(name); i++ {
+		name[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(name[:])
 }

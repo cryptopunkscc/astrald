@@ -23,8 +23,10 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(apphost.ModuleName, &mod.config)
 
+	mod.scope.AddStruct(mod, "Op")
+
 	// set up database
-	mod.db = assets.Database()
+	mod.db = &DB{assets.Database()}
 
 	err = mod.db.AutoMigrate(&dbAccessToken{}, &dbApp{})
 	if err != nil {

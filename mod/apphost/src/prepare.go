@@ -2,19 +2,10 @@ package apphost
 
 import (
 	"context"
+	"time"
 )
 
 func (mod *Module) Prepare(ctx context.Context) error {
-	if i, err := mod.Dir.ResolveIdentity(mod.config.DefaultIdentity); err != nil {
-		mod.log.Errorv(1,
-			"config: error resolving default identity %v: %v",
-			mod.config.DefaultIdentity,
-			err,
-		)
-	} else {
-		mod.defaultID = i
-	}
-
 	// load fixed access tokens from the config
 	for token, name := range mod.config.Tokens {
 		identity, err := mod.Dir.ResolveIdentity(name)
@@ -25,8 +16,9 @@ func (mod *Module) Prepare(ctx context.Context) error {
 
 		mod.db.Model(&dbAccessToken{}).Delete("token = ?", token)
 		mod.db.Create(&dbAccessToken{
-			Identity: identity,
-			Token:    token,
+			Identity:  identity,
+			Token:     token,
+			ExpiresAt: time.Now().Add(time.Hour * 24 * 365 * 100),
 		})
 	}
 

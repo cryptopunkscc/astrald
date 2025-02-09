@@ -68,9 +68,9 @@ func (s *Session) Token(ctx astral.Context) (err error) {
 		return
 	}
 
-	var guestID = s.mod.identityByToken(string(arg.Token))
+	at, err := s.mod.db.FindAccessToken(string(arg.Token))
 
-	if guestID == nil {
+	if at == nil {
 		s.log.Errorv(1, "token authentication failed")
 
 		res = apphost.TokenResponse{
@@ -79,13 +79,13 @@ func (s *Session) Token(ctx astral.Context) (err error) {
 			HostID:  nil,
 		}
 	} else {
-		s.log.Infov(3, "authenticated as %v using a token", guestID)
+		s.log.Infov(3, "authenticated as %v using a token", at.Identity)
 
-		s.guestID = guestID
+		s.guestID = at.Identity
 
 		res = apphost.TokenResponse{
 			Code:    0,
-			GuestID: guestID,
+			GuestID: at.Identity,
 			HostID:  ctx.Identity(),
 		}
 	}
