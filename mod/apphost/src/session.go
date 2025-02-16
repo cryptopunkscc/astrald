@@ -175,7 +175,7 @@ func (s *Session) Query(ctx astral.Context) (err error) {
 		return
 	}
 
-	if !arg.Caller.IsZero() {
+	if !arg.Caller.IsZero() && !arg.Caller.IsEqual(caller) {
 		if !s.mod.Auth.Authorize(caller, admin.ActionSudo, arg.Caller) {
 			_, err = apphost.QueryResponse{
 				Code: apphost.Rejected,
