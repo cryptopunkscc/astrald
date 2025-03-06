@@ -64,7 +64,7 @@ func (mod *Module) OpDescribe(ctx astral.Context, q shell.Query, args opDescribe
 			}
 
 		case "":
-			_, err = astral.Write(stream, so.Object, false)
+			_, err = stream.WriteObject(so.Object)
 			if err != nil {
 				mod.log.Errorv(1, "describe: error writing object: %v", err)
 				return

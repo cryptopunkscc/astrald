@@ -10,14 +10,7 @@ import (
 	"time"
 )
 
-type opSearchArgs struct {
-	Query  string      `query:"key:q"`
-	Zone   astral.Zone `query:"optional"`
-	Format string      `query:"optional"`
-	Ext    string      `query:"optional"`
-}
-
-func (mod *Module) OpSearch(ctx astral.Context, q shell.Query, args opSearchArgs) (err error) {
+func (mod *Module) OpSearch(ctx astral.Context, q shell.Query, args objects.SearchArgs) (err error) {
 	opts := objects.DefaultSearchOpts()
 	opts.ClientID = q.Caller()
 

@@ -74,15 +74,24 @@ func (c *Client) Session() (*Session, error) {
 func (c *Client) Query(target string, method string, args any) (*Conn, error) {
 	id, err := astral.IdentityFromString(target)
 	if err != nil {
-		return nil, err
+		id, err = c.ResolveIdentity(target)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var q = method
 
 	if args != nil {
-		params, err := query.Marshal(args)
-		if err != nil {
-			return nil, err
+		var params string
+
+		if s, ok := args.(string); ok {
+			params = s
+		} else {
+			params, err = query.Marshal(args)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if len(params) > 0 {
