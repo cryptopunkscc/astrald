@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
@@ -35,6 +36,7 @@ type Module struct {
 	log    *log.Logger
 	assets assets.Assets
 	db     *gorm.DB
+	scope  shell.Scope
 }
 
 var ErrAlreadyIndexed = errors.New("already indexed")
@@ -179,4 +181,12 @@ func (mod *Module) Sign(identity *astral.Identity, hash []byte) ([]byte, error) 
 	}
 
 	return ecdsa.SignASN1(rand.Reader, identity.PrivateKey().ToECDSA(), hash)
+}
+
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.scope
+}
+
+func (mod *Module) String() string {
+	return keys.ModuleName
 }
