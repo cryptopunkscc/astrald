@@ -1,10 +1,10 @@
 package keys
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/goccy/go-json"
 )
 
 type opCreateKeyArgs struct {
