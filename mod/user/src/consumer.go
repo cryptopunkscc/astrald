@@ -38,7 +38,7 @@ func (con *Consumer) Claim(ctx context.Context, d time.Duration) (err error) {
 		},
 	}
 
-	contract.UserSig, err = con.mod.Keys.Sign(contract.UserID, contract.Hash())
+	contract.UserSig, err = con.mod.Keys.SignASN1(contract.UserID, contract.Hash())
 	if err != nil {
 		return fmt.Errorf("sign contract: %w", err)
 	}
@@ -66,7 +66,7 @@ func (con *Consumer) Claim(ctx context.Context, d time.Duration) (err error) {
 		return fmt.Errorf("read signature: %w", err)
 	}
 
-	err = contract.VerifyNodeSig()
+	err = con.mod.Keys.VerifyASN1(contract.NodeID, contract.Hash(), contract.NodeSig)
 	if err != nil {
 		return fmt.Errorf("received invalid signature: %w", err)
 	}

@@ -179,8 +179,16 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 		return errors.New("contract expired")
 	}
 
-	if err = c.VerifySigs(); err != nil {
-		return fmt.Errorf("verify: %v", err)
+	// verify user signature
+	err = mod.Keys.VerifyASN1(c.UserID, c.Hash(), c.UserSig)
+	if err != nil {
+		return fmt.Errorf("user signature: %v", err)
+	}
+
+	// verify node signature
+	err = mod.Keys.VerifyASN1(c.NodeID, c.Hash(), c.NodeSig)
+	if err != nil {
+		return fmt.Errorf("node signature: %v", err)
 	}
 
 	mod.Objects.Store(c)
@@ -233,13 +241,13 @@ func (mod *Module) LocalContract() (c *user.SignedNodeContract, err error) {
 	}
 
 	// sign with node key
-	c.NodeSig, err = mod.Keys.Sign(c.NodeID, c.Hash())
+	c.NodeSig, err = mod.Keys.SignASN1(c.NodeID, c.Hash())
 	if err != nil {
 		return
 	}
 
 	// sign with user key
-	c.UserSig, err = mod.Keys.Sign(c.UserID, c.Hash())
+	c.UserSig, err = mod.Keys.SignASN1(c.UserID, c.Hash())
 	if err != nil {
 		return
 	}

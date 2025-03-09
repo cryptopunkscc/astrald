@@ -3,7 +3,6 @@ package term
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
-	"os"
 )
 
 const HighlightColor = "yellow"
@@ -13,9 +12,6 @@ const DefaultColor = "default"
 const maxTranslateDepth = 3
 
 var DefaultTypeMap = TypeMap{}
-
-var Stdout = NewBasicPrinter(os.Stdout, &DefaultTypeMap)
-var Stderr = NewBasicPrinter(os.Stderr, &DefaultTypeMap)
 
 func init() {
 	// astral.Identity

@@ -16,7 +16,6 @@ func NewLinuxTerminal(output io.Writer) *LinuxTerminal {
 		output:           output,
 		defaultTextColor: defaultTextColor,
 	}
-	c.SetColor(c.defaultTextColor)
 	return c
 }
 

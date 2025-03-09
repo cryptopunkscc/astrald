@@ -12,5 +12,6 @@ type Module interface {
 	CreateKey(alias string) (*astral.Identity, object.ID, error)
 	LoadPrivateKey(object.ID) (*PrivateKey, error)
 	FindIdentity(hex string) (*astral.Identity, error)
-	Sign(identity *astral.Identity, hash []byte) ([]byte, error)
+	SignASN1(signer *astral.Identity, hash []byte) ([]byte, error)
+	VerifyASN1(signer *astral.Identity, hash []byte, sig []byte) error
 }

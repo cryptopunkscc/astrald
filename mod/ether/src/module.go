@@ -173,12 +173,15 @@ func (mod *Module) makePacket(object astral.Object, source *astral.Identity) (da
 		},
 	}
 
-	signed.Signature, err = mod.Keys.Sign(source, signed.Hash())
+	var hash = signed.Hash()
+
+	signed.Signature, err = mod.Keys.SignASN1(source, hash)
 	if err != nil {
 		return
 	}
 
-	if err = signed.VerifySig(); err != nil {
+	err = mod.Keys.VerifyASN1(source, hash, signed.Signature)
+	if err != nil {
 		return
 	}
 

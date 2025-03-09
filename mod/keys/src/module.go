@@ -170,7 +170,7 @@ func (mod *Module) FindIdentity(hex string) (*astral.Identity, error) {
 	return astral.IdentityFromPrivKeyBytes(pk.Bytes)
 }
 
-func (mod *Module) Sign(identity *astral.Identity, hash []byte) ([]byte, error) {
+func (mod *Module) SignASN1(identity *astral.Identity, hash []byte) ([]byte, error) {
 	var err error
 
 	if identity.PrivateKey() == nil {
@@ -181,6 +181,25 @@ func (mod *Module) Sign(identity *astral.Identity, hash []byte) ([]byte, error) 
 	}
 
 	return ecdsa.SignASN1(rand.Reader, identity.PrivateKey().ToECDSA(), hash)
+}
+
+func (mod *Module) VerifyASN1(signer *astral.Identity, hash []byte, sig []byte) error {
+	// check args
+	switch {
+	case signer.IsZero():
+		return errors.New("signer missing")
+	case len(sig) == 0:
+		return errors.New("signature missing")
+	case len(hash) == 0:
+		return errors.New("hash missing")
+	}
+
+	// verify sig
+	if ecdsa.VerifyASN1(signer.PublicKey().ToECDSA(), hash, sig) {
+		return nil
+	}
+
+	return errors.New("verification failed")
 }
 
 func (mod *Module) Scope() *shell.Scope {

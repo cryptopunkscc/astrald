@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-var _ astral.Object = &NodeContract{}
-
 type NodeContract struct {
 	UserID    *astral.Identity
 	NodeID    *astral.Identity
 	ExpiresAt astral.Time
 }
+
+var _ astral.Object = &NodeContract{}
 
 func (NodeContract) ObjectType() string {
 	return "mod.users.node_contract"

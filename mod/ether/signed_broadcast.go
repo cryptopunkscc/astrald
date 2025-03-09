@@ -1,8 +1,6 @@
 package ether
 
 import (
-	"crypto/ecdsa"
-	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -39,20 +37,4 @@ func (b SignedBroadcast) Hash() []byte {
 		return nil
 	}
 	return objectID.Hash[:]
-}
-
-func (b SignedBroadcast) VerifySig() error {
-	switch {
-	case b.Source.IsZero():
-		return errors.New("source identity missing")
-	case b.Signature == nil:
-		return errors.New("signature missing")
-	case !ecdsa.VerifyASN1(
-		b.Source.PublicKey().ToECDSA(),
-		b.Hash(),
-		b.Signature,
-	):
-		return errors.New("signature is invalid")
-	}
-	return nil
 }
