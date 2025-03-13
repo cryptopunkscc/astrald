@@ -28,7 +28,7 @@ func (l *Logger) Logf(t Type, level Level, ts time.Time, tag Tag, f string, v ..
 }
 
 func (l *Logger) log(e *Entry) {
-	if e.Level > Level(l.Level) {
+	if int(e.Level) > l.Level {
 		return
 	}
 

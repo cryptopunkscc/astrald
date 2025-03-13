@@ -23,7 +23,6 @@ type Node struct {
 
 	startedAt time.Time
 
-	logConfig LogConfig
 	logFields
 }
 
@@ -47,17 +46,12 @@ func NewNode(nodeID *astral.Identity, res resources.Resources) (*Node, error) {
 	// router
 	node.Router = NewRouter(node)
 
-	// basic logs
-	node.setupLogs()
+	// initialize basic logger
+	node.initLogger()
 
 	node.assets, err = assets.NewCoreAssets(res, nil)
 	if err != nil {
 		return nil, fmt.Errorf("database error: %w", err)
-	}
-
-	// log config
-	if err := node.loadLogConfig(); err != nil {
-		return nil, fmt.Errorf("logger error: %w", err)
 	}
 
 	// node config
@@ -67,6 +61,9 @@ func NewNode(nodeID *astral.Identity, res resources.Resources) (*Node, error) {
 			return nil, fmt.Errorf("error loading config: %w", err)
 		}
 	}
+
+	// confiugure the logger
+	node.configureLogger()
 
 	// modules
 	var enabled = node.config.Modules
