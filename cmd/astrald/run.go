@@ -47,6 +47,10 @@ func setupResources(args *Args) (resources.Resources, error) {
 		return nil, err
 	}
 
+	if len(args.DBRoot) > 0 {
+		nodeRes.SetDatabaseRoot(args.DBRoot)
+	}
+
 	// make sure root directory exists
 	err = os.MkdirAll(args.NodeRoot, 0700)
 	if err != nil {

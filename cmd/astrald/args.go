@@ -11,6 +11,7 @@ const nodeDirName = "astrald"
 
 type Args struct {
 	NodeRoot string
+	DBRoot   string
 	Ghost    bool
 	Version  bool
 }
@@ -21,6 +22,7 @@ func parseArgs() *Args {
 	}
 
 	flag.StringVar(&args.NodeRoot, "root", args.NodeRoot, "set node's root directory")
+	flag.StringVar(&args.DBRoot, "dbroot", args.NodeRoot, "set database root directory")
 	flag.BoolVar(&args.Ghost, "g", false, "enable ghost mode")
 	flag.BoolVar(&args.Version, "v", false, "show version")
 	flag.Parse()

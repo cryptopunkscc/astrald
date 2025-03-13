@@ -109,7 +109,7 @@ func (assets *CoreAssets) OpenDatabase(name string) (*gorm.DB, error) {
 
 	switch res := assets.res.(type) {
 	case *resources.FileResources:
-		var dbPath = filepath.Join(res.Root(), name)
+		var dbPath = filepath.Join(res.DatabaseRoot(), name)
 
 		return gorm.Open(
 			dbOpen(dbPath),

@@ -12,7 +12,8 @@ import (
 var _ Resources = &FileResources{}
 
 type FileResources struct {
-	root string
+	root   string
+	dbRoot string
 }
 
 func NewFileResources(root string, mkdir bool) (*FileResources, error) {
@@ -32,6 +33,10 @@ func NewFileResources(root string, mkdir bool) (*FileResources, error) {
 	return &FileResources{
 		root: root,
 	}, nil
+}
+
+func (res *FileResources) SetDatabaseRoot(rootDb string) {
+	res.dbRoot = rootDb
 }
 
 func (res *FileResources) Read(name string) ([]byte, error) {
@@ -59,4 +64,12 @@ func (res *FileResources) Write(name string, data []byte) error {
 
 func (res *FileResources) Root() string {
 	return res.root
+}
+
+func (res *FileResources) DatabaseRoot() string {
+	if len(res.dbRoot) > 0 {
+		return res.dbRoot
+	}
+
+	return res.Root()
 }
