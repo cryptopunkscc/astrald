@@ -53,7 +53,7 @@ func (mod *Module) ListenPort() int {
 func (mod *Module) localIPs() ([]tcp.IP, error) {
 	list := make([]tcp.IP, 0)
 
-	ifaceAddrs, err := net.InterfaceAddrs()
+	ifaceAddrs, err := InterfaceAddrs()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (mod *Module) localEndpoints() (list []exonet.Endpoint) {
 }
 
 func (mod *Module) watchAddresses(ctx context.Context) {
-	_, err := net.InterfaceAddrs()
+	_, err := InterfaceAddrs()
 	if err != nil {
 		mod.log.Errorv(0, "network interface monitoring disabled: %v", err)
 		return
@@ -123,7 +123,7 @@ func (mod *Module) watchAddresses(ctx context.Context) {
 }
 
 func (mod *Module) getAddresses() (s []string) {
-	addrs, _ := net.InterfaceAddrs()
+	addrs, _ := InterfaceAddrs()
 	for _, addr := range addrs {
 		s = append(s, addr.String())
 	}
