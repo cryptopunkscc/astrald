@@ -1,21 +1,21 @@
 package apphost
 
 type ObjectServerConfig struct {
-	Bind []string `yaml:"bind"`
+	Bind []string `yaml:"bind,omitempty"`
 }
 
 type Config struct {
 	// Listen on these adresses
-	Listen []string `yaml:"listen"`
+	Listen []string `yaml:"listen,omitempty"`
 
 	// Number of apphost workers
-	Workers int `yaml:"workers"`
+	Workers int `yaml:"workers,omitempty"`
 
-	Tokens map[string]string `yaml:"tokens"`
+	Tokens map[string]string `yaml:"tokens,omitempty"`
 
-	ObjectServer ObjectServerConfig `yaml:"object_server"`
+	ObjectServer ObjectServerConfig `yaml:"object_server,omitempty"`
 
-	AllowAnonymous bool `yaml:"allow_anonymous"`
+	AllowAnonymous bool `yaml:"allow_anonymous,omitempty"`
 }
 
 var defaultConfig = Config{
