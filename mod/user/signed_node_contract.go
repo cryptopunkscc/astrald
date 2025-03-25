@@ -1,6 +1,7 @@
 package user
 
 import (
+	"crypto/sha256"
 	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 )
@@ -23,4 +24,13 @@ func (c *SignedNodeContract) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (c SignedNodeContract) WriteTo(w io.Writer) (n int64, err error) {
 	return astral.Struct(c).WriteTo(w)
+}
+
+func (c *SignedNodeContract) Hash() []byte {
+	var hash = sha256.New()
+	_, err := c.NodeContract.WriteTo(hash)
+	if err != nil {
+		return nil
+	}
+	return hash.Sum(nil)
 }

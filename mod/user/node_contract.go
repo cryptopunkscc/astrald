@@ -1,7 +1,6 @@
 package user
 
 import (
-	"crypto/sha256"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -18,15 +17,6 @@ var _ astral.Object = &NodeContract{}
 
 func (NodeContract) ObjectType() string {
 	return "mod.users.node_contract"
-}
-
-func (c *NodeContract) Hash() []byte {
-	var hash = sha256.New()
-	_, err := c.WriteTo(hash)
-	if err != nil {
-		return nil
-	}
-	return hash.Sum(nil)
 }
 
 func (c *NodeContract) IsExpired() bool {
