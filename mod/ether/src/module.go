@@ -156,7 +156,7 @@ func (mod *Module) broadcast(data []byte) error {
 func (mod *Module) writeToIP(ip tcp.IP, data []byte) (n int, err error) {
 	return mod.socket.WriteTo(data, &net.UDPAddr{
 		IP:   net.IP(ip),
-		Port: etherUDPPort,
+		Port: mod.config.UDPPort,
 	})
 }
 
@@ -198,7 +198,7 @@ func (mod *Module) makePacket(object astral.Object, source *astral.Identity) (da
 func (mod *Module) setupSocket(ctx context.Context) (err error) {
 	// resolve local address
 	var localAddr *net.UDPAddr
-	localAddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(etherUDPPort))
+	localAddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(mod.config.UDPPort))
 	if err != nil {
 		return
 	}
