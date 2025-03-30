@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-var _ Server = &AstralServer{}
-
 type AstralServer struct {
 	*Module
 	serviceName string
@@ -40,7 +38,7 @@ func NewAstralServer(mod *Module, serviceName string, target astral.Router) (*As
 	return srv, nil
 }
 
-func (srv *AstralServer) Run(ctx context.Context) error {
+func (srv *AstralServer) Run(ctx *astral.Context) error {
 	var err = srv.AddRoute(srv.serviceName, srv)
 	if err != nil {
 		return err

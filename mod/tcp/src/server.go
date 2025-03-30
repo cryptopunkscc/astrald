@@ -1,7 +1,7 @@
 package tcp
 
 import (
-	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"net"
 	"strconv"
@@ -15,7 +15,7 @@ func NewServer(module *Module) *Server {
 	return &Server{Module: module}
 }
 
-func (srv *Server) Run(ctx context.Context) error {
+func (srv *Server) Run(ctx *astral.Context) error {
 	// start the listener
 	var addrStr = ":" + strconv.Itoa(srv.config.ListenPort)
 

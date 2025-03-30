@@ -42,7 +42,7 @@ type Module struct {
 	ops shell.Scope
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
 	for _, s := range mod.config.Shares {

@@ -44,7 +44,7 @@ type Module struct {
 	ctx      context.Context
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
 	<-ctx.Done()

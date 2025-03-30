@@ -20,7 +20,7 @@ type Module struct {
 	root   shell.Scope
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 	return nil
 }

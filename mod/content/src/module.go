@@ -29,7 +29,7 @@ type Module struct {
 	ready chan struct{}
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	go mod.identifyFS()
 
 	<-ctx.Done()

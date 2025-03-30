@@ -72,7 +72,7 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 	fserve.ServeHTTP(writer, request)
 }
 
-func (srv *ObjectServer) Run(ctx context.Context) error {
+func (srv *ObjectServer) Run(ctx *astral.Context) error {
 	var wg sync.WaitGroup
 
 	for _, bind := range srv.config.ObjectServer.Bind {

@@ -1,7 +1,7 @@
 package tasks
 
 import (
-	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type GroupRunner struct {
@@ -12,7 +12,7 @@ func Group(runners ...Runner) *GroupRunner {
 	return &GroupRunner{runners: runners}
 }
 
-func (g *GroupRunner) Run(ctx context.Context) (err error) {
+func (g *GroupRunner) Run(ctx *astral.Context) (err error) {
 	var fns = make([]RunFunc, 0, len(g.runners))
 	for _, r := range g.runners {
 		fns = append(fns, r.Run)

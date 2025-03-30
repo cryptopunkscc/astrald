@@ -41,7 +41,7 @@ type Module struct {
 
 var ErrAlreadyIndexed = errors.New("already indexed")
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	return tasks.Group(
 		&IndexerService{Module: mod},
 	).Run(ctx)

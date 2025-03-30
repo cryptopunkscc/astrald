@@ -14,7 +14,7 @@ type ProfileService struct {
 	*Module
 }
 
-func (service *ProfileService) Run(ctx context.Context) error {
+func (service *ProfileService) Run(ctx *astral.Context) error {
 	var err = service.AddRoute(serviceName, service)
 	if err != nil {
 		return err

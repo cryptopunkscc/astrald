@@ -30,7 +30,7 @@ type Indexer interface {
 	objects.Searcher
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	for event := range mod.Content.Scan(ctx, nil) {
 		scope := astral.DefaultScope()
 

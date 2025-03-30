@@ -1,7 +1,6 @@
 package fwd
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	_net "net"
@@ -33,7 +32,7 @@ func NewTCPServer(mod *Module, bind string, target astral.Router) (*TCPServer, e
 	return srv, nil
 }
 
-func (srv *TCPServer) Run(ctx context.Context) error {
+func (srv *TCPServer) Run(ctx *astral.Context) error {
 	go func() {
 		<-ctx.Done()
 		srv.listener.Close()

@@ -50,7 +50,7 @@ type Module struct {
 	holders sig.Set[objects.Holder]
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
 	<-ctx.Done()

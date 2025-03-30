@@ -1,24 +1,24 @@
 package tasks
 
 import (
-	"context"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"sync"
 )
 
 // Runner is an interface that wraps the basic Run method.
 // Run runs a task within the provided context and returns an error.
 type Runner interface {
-	Run(context.Context) error
+	Run(*astral.Context) error
 }
 
-type RunFunc func(context.Context) error
+type RunFunc func(*astral.Context) error
 
 func Func(fn RunFunc) *FuncRunner {
 	return &FuncRunner{Func: fn}
 }
 
-func Run(ctx context.Context, runners ...RunFunc) error {
+func Run(ctx *astral.Context, runners ...RunFunc) error {
 	if len(runners) == 0 {
 		return nil
 	}
@@ -52,7 +52,7 @@ type FuncRunner struct {
 	Func RunFunc
 }
 
-func (r FuncRunner) Run(ctx context.Context) error {
+func (r FuncRunner) Run(ctx *astral.Context) error {
 	if r.Func == nil {
 		panic("func is nil")
 	}

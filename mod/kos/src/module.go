@@ -2,7 +2,6 @@ package kos
 
 import (
 	"bytes"
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/kos"
@@ -22,7 +21,7 @@ type Module struct {
 
 var _ kos.Module = &Module{}
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 	return nil
 }

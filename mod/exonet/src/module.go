@@ -32,7 +32,7 @@ type Module struct {
 	resolvers sig.Set[exonet.EndpointResolver]
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 
 	return nil

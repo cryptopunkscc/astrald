@@ -53,7 +53,7 @@ type Module struct {
 	searchCache sig.Map[string, *astral.Identity]
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	go mod.peers.frameReader(ctx)
 	<-ctx.Done()
 	return nil

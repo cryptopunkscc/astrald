@@ -1,7 +1,6 @@
 package fwd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
@@ -28,12 +27,12 @@ type Module struct {
 	node    astral.Node
 	config  Config
 	log     *log.Logger
-	ctx     context.Context
+	ctx     *astral.Context
 	servers map[*ServerRunner]struct{}
 	mu      sync.Mutex
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
 	for server, target := range mod.config.Forwards {

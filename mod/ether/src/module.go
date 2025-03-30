@@ -28,7 +28,7 @@ type Module struct {
 	socket *net.UDPConn
 }
 
-func (mod *Module) Run(ctx context.Context) (err error) {
+func (mod *Module) Run(ctx *astral.Context) (err error) {
 	if err = mod.setupSocket(ctx); err != nil {
 		return
 	}

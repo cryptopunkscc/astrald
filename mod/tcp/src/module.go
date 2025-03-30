@@ -23,7 +23,7 @@ type Module struct {
 	publicEndpoints []exonet.Endpoint
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
 	go mod.watchAddresses(ctx)

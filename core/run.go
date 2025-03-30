@@ -3,13 +3,16 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"sync"
 	"time"
 )
 
 // Run starts the node, waits for it to finish and returns an error if any
-func (node *Node) Run(ctx context.Context) (err error) {
-	ctx, shutdown := context.WithCancel(ctx)
+func (node *Node) Run(nctx context.Context) (err error) {
+	nctx, shutdown := context.WithCancel(nctx)
+
+	ctx := astral.NewContext(nctx).WithIdentity(node.identity)
 
 	// Say hello
 	node.log.Log("astral node %v (%v) statrting...",

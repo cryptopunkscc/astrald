@@ -24,7 +24,7 @@ type Modules struct {
 }
 
 type Module interface {
-	Run(context.Context) error
+	Run(*astral.Context) error
 }
 
 type ModuleLoader interface {
@@ -45,7 +45,7 @@ func NewModules(n *Node, mods []string, assets assets.Assets, log *log2.Logger) 
 	return m, nil
 }
 
-func (m *Modules) Run(ctx context.Context) error {
+func (m *Modules) Run(ctx *astral.Context) error {
 	// Load enabled modules. Loaders should only return a new instance of the module and must not try
 	// to access other modules, as the order of loading is undefined.
 	var loaded = m.loadEnabled()
@@ -146,7 +146,7 @@ func (m *Modules) prepareModules(ctx context.Context, modules []string) []string
 	return prepared.Clone()
 }
 
-func (m *Modules) runModules(ctx context.Context, modules []string) error {
+func (m *Modules) runModules(ctx *astral.Context, modules []string) error {
 	var wg sync.WaitGroup
 
 	var started = make([]string, 0, len(modules))

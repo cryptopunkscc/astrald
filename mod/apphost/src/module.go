@@ -1,7 +1,6 @@
 package apphost
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/debug"
@@ -43,7 +42,7 @@ type Module struct {
 
 var _ shell.HasScope = &Module{}
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	var wg sync.WaitGroup
 	var workerCount = mod.config.Workers
 

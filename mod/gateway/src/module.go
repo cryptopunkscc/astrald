@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/routers"
@@ -26,13 +25,13 @@ type Module struct {
 	config      Config
 	node        astral.Node
 	log         *log.Logger
-	ctx         context.Context
+	ctx         *astral.Context
 	dialer      *Dialer
 	subscribers map[string]*Subscriber
 	mu          sync.Mutex
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
 	for _, gateName := range mod.config.Subscribe {

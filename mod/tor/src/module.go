@@ -31,7 +31,7 @@ type Module struct {
 	server *Server
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
 	tasks.Group(mod.server).Run(ctx)

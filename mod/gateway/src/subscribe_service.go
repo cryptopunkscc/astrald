@@ -22,7 +22,7 @@ type Subscription struct {
 	ExpiresAt time.Time `json:"expires_at,omitempty"`
 }
 
-func (srv *SubscribeService) Run(ctx context.Context) error {
+func (srv *SubscribeService) Run(ctx *astral.Context) error {
 	var err = srv.AddRoute(SubscribeServiceName, srv)
 	if err != nil {
 		return err

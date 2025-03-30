@@ -28,8 +28,8 @@ func NewSubscriber(gateway *astral.Identity, node astral.Node, log *log.Logger) 
 	return &Subscriber{node: node, log: log, gateway: gateway}
 }
 
-func (s *Subscriber) Run(ctx context.Context) error {
-	ctx, s.cancel = context.WithCancel(ctx)
+func (s *Subscriber) Run(ctx *astral.Context) error {
+	ctx, s.cancel = ctx.WithCancel()
 	defer s.cancel()
 
 	var expiresAt time.Time

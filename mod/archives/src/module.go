@@ -1,7 +1,6 @@
 package archives
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/archives"
@@ -26,7 +25,7 @@ type Module struct {
 	autoIndexZone astral.Zone
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	mod.autoIndexZone = astral.Zones(mod.config.AutoIndexZones)
 
 	for event := range mod.Content.Scan(ctx, &content.ScanOpts{Type: zipMimeType}) {

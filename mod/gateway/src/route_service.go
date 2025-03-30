@@ -19,7 +19,7 @@ type RouteService struct {
 	router astral.Router
 }
 
-func (srv *RouteService) Run(ctx context.Context) error {
+func (srv *RouteService) Run(ctx *astral.Context) error {
 	err := srv.AddRoute(RouteServiceName+".*", srv)
 	if err != nil {
 		return err

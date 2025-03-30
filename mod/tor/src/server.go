@@ -3,6 +3,7 @@ package tor
 import (
 	"context"
 	"encoding/base64"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/tor/tc"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
@@ -19,7 +20,7 @@ func NewServer(module *Module) *Server {
 	return &Server{Module: module}
 }
 
-func (srv *Server) Run(ctx context.Context) error {
+func (srv *Server) Run(ctx *astral.Context) error {
 	key, err := srv.getPrivateKey()
 	if err != nil {
 		srv.log.Error("getPrivateKey: %v", err)

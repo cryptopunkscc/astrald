@@ -1,7 +1,6 @@
 package dir
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
@@ -36,7 +35,7 @@ type Module struct {
 	resolvers sig.Set[dir.Resolver]
 }
 
-func (mod *Module) Run(ctx context.Context) error {
+func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 	return nil
 }

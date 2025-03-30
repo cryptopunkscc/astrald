@@ -17,14 +17,14 @@ type Server interface {
 type ServerRunner struct {
 	Server
 	startedAt time.Time
-	ctx       context.Context
+	ctx       *astral.Context
 	cancel    context.CancelFunc
 	err       error
 	done      chan struct{}
 }
 
-func NewServerRunner(ctx context.Context, s Server) *ServerRunner {
-	ctx, cancel := context.WithCancel(ctx)
+func NewServerRunner(ctx *astral.Context, s Server) *ServerRunner {
+	ctx, cancel := ctx.WithCancel()
 
 	return &ServerRunner{
 		Server:    s,
@@ -34,7 +34,7 @@ func NewServerRunner(ctx context.Context, s Server) *ServerRunner {
 	}
 }
 
-func (srv *ServerRunner) Run(ctx context.Context) error {
+func (srv *ServerRunner) Run(ctx *astral.Context) error {
 	srv.done = make(chan struct{})
 	defer close(srv.done)
 	srv.ctx = ctx
