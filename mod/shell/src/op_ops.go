@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-func (mod *Module) OpOps(ctx astral.Context, q shell.Query) error {
+func (mod *Module) OpOps(ctx *astral.Context, q shell.Query) error {
 	t, err := shell.AcceptTerminal(q)
 	if err != nil {
 		return err

@@ -21,7 +21,7 @@ type jsonDescriptor struct {
 	Data any
 }
 
-func (mod *Module) OpDescribe(ctx astral.Context, q shell.Query, args opDescribeArgs) (err error) {
+func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescribeArgs) (err error) {
 	if !mod.Auth.Authorize(q.Caller(), objects.ActionRead, &args.ID) {
 		return q.Reject()
 	}

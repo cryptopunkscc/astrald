@@ -11,7 +11,7 @@ type opResolveArgs struct {
 	Format astral.String `query:"optional"`
 }
 
-func (mod *Module) OpResolve(ctx astral.Context, q shell.Query, args opResolveArgs) (err error) {
+func (mod *Module) OpResolve(ctx *astral.Context, q shell.Query, args opResolveArgs) (err error) {
 	if len(args.Name) == 0 {
 		return q.Reject()
 	}

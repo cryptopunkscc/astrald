@@ -9,7 +9,7 @@ type opVisibleArgs struct {
 	Arg *bool `query:"optional"`
 }
 
-func (ops *Ops) Visible(ctx astral.Context, q shell.Query, args opVisibleArgs) (err error) {
+func (ops *Ops) Visible(ctx *astral.Context, q shell.Query, args opVisibleArgs) (err error) {
 	t, err := shell.AcceptTerminal(q)
 	if err != nil {
 		return err

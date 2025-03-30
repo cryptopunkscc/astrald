@@ -9,7 +9,7 @@ type opDeleteObjectArgs struct {
 	Key string
 }
 
-func (mod *Module) OpDeleteObject(ctx astral.Context, q shell.Query, args opDeleteObjectArgs) error {
+func (mod *Module) OpDeleteObject(ctx *astral.Context, q shell.Query, args opDeleteObjectArgs) error {
 	conn, err := q.Accept()
 	if err != nil {
 		return err

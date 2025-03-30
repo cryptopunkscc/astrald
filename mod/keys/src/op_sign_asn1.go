@@ -12,7 +12,7 @@ type opSignASN1Args struct {
 	Format astral.String `query:"optional"`
 }
 
-func (mod *Module) OpSignASN1(_ astral.Context, q shell.Query, args opSignASN1Args) (err error) {
+func (mod *Module) OpSignASN1(_ *astral.Context, q shell.Query, args opSignASN1Args) (err error) {
 	hash, err := hex.DecodeString(args.Hash.String())
 	if err != nil {
 		return q.Reject()

@@ -18,7 +18,7 @@ import (
 //
 // Add an operation to the scope:
 //
-//	scope.AddOp("hi", func(ctx astral.Context, query shell.Query) error {
+//	scope.AddOp("hi", func(ctx *astral.Context, query shell.Query) error {
 //		conn, _ := query.Accept()
 //	    return conn.Printf("hello, %v!\n", ctx.Identity())
 //	})
@@ -46,7 +46,7 @@ func (scope *Scope) AddOp(name string, op any) error {
 	if typ.NumIn() != 2 && typ.NumIn() != 3 {
 		return errors.New("op must be an op function")
 	}
-	if !typ.In(0).Implements(reflect.TypeOf((*astral.Context)(nil)).Elem()) {
+	if !(typ.In(0) == reflect.TypeOf(&astral.Context{})) {
 		return errors.New("op must be an op function")
 	}
 
@@ -118,7 +118,7 @@ func (scope *Scope) AddScope(name string, s *Scope) error {
 	return nil
 }
 
-func (scope *Scope) Call(ctx astral.Context, q Query, name string, args map[string]string) (err error) {
+func (scope *Scope) Call(ctx *astral.Context, q Query, name string, args map[string]string) (err error) {
 	var op = scope.getOp(name)
 	if op == nil {
 		return errors.New("op not found")
@@ -165,11 +165,11 @@ func (scope *Scope) Call(ctx astral.Context, q Query, name string, args map[stri
 	return ret.Interface().(error)
 }
 
-func (scope *Scope) CallQuery(ctx astral.Context, q Query, name string, query string) (err error) {
+func (scope *Scope) CallQuery(ctx *astral.Context, q Query, name string, query string) (err error) {
 	return scope.Call(ctx, q, name, ParseQuery(query))
 }
 
-func (scope *Scope) CallArgs(ctx astral.Context, q Query, name string, args []string) (err error) {
+func (scope *Scope) CallArgs(ctx *astral.Context, q Query, name string, args []string) (err error) {
 	return scope.Call(ctx, q, name, ParseArgs(args))
 }
 
@@ -217,7 +217,7 @@ func (scope *Scope) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteC
 	var query = NewNetworkQuery(w, q)
 	defer query.Reject()
 
-	var actx = astral.WrapContext(context.Background(), q.Caller)
+	var actx = astral.NewContext(nil).WithIdentity(q.Caller)
 
 	go func() {
 		err := scope.Call(actx, query, path, params)

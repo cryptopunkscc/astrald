@@ -12,7 +12,7 @@ type opSetObjectArgs struct {
 	Payload string //base64 encoded payload
 }
 
-func (mod *Module) OpSetObject(ctx astral.Context, q shell.Query, args opSetObjectArgs) error {
+func (mod *Module) OpSetObject(ctx *astral.Context, q shell.Query, args opSetObjectArgs) error {
 	payload, err := base64.StdEncoding.DecodeString(args.Payload)
 	if err != nil {
 		q.Reject()

@@ -2,22 +2,32 @@ package astral
 
 import "context"
 
-type Context interface {
+type Context struct {
 	context.Context
-	Identity() *Identity
+	identity *Identity
 }
 
-var _ Context = &wrappedContext{}
-
-type wrappedContext struct {
-	context.Context
-	identitiy *Identity
+func NewContext(ctx context.Context) *Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	
+	return &Context{Context: ctx}
 }
 
-func WrapContext(context context.Context, identitiy *Identity) Context {
-	return &wrappedContext{Context: context, identitiy: identitiy}
+func (ctx *Context) Identity() *Identity {
+	return ctx.identity
 }
 
-func (ctx wrappedContext) Identity() *Identity {
-	return ctx.identitiy
+func (ctx *Context) WithIdentity(id *Identity) *Context {
+	c := ctx.clone()
+	c.identity = id
+	return c
+}
+
+func (ctx *Context) clone() *Context {
+	return &Context{
+		Context:  ctx.Context,
+		identity: ctx.identity,
+	}
 }

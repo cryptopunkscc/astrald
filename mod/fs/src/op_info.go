@@ -11,7 +11,7 @@ type opInfoArgs struct {
 	Format string `query:"optional"`
 }
 
-func (mod *Module) opInfo(ctx astral.Context, q shell.Query, args opInfoArgs) (err error) {
+func (mod *Module) opInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (err error) {
 	// authorize
 	if !mod.Auth.Authorize(ctx.Identity(), fs.ActionManage, nil) {
 		return q.Reject()

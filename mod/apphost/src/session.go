@@ -28,7 +28,7 @@ func NewSession(mod *Module, conn net.Conn, log *log.Logger) *Session {
 	}
 }
 
-func (s *Session) Serve(ctx astral.Context) (err error) {
+func (s *Session) Serve(ctx *astral.Context) (err error) {
 	var cmd astral.String8
 
 	for {
@@ -57,7 +57,7 @@ func (s *Session) Serve(ctx astral.Context) (err error) {
 	}
 }
 
-func (s *Session) Token(ctx astral.Context) (err error) {
+func (s *Session) Token(ctx *astral.Context) (err error) {
 	var (
 		arg apphost.TokenArgs
 		res apphost.TokenResponse
@@ -94,7 +94,7 @@ func (s *Session) Token(ctx astral.Context) (err error) {
 	return
 }
 
-func (s *Session) Register(ctx astral.Context) (err error) {
+func (s *Session) Register(ctx *astral.Context) (err error) {
 	var (
 		arg apphost.RegisterArgs
 	)
@@ -156,7 +156,7 @@ func (s *Session) Register(ctx astral.Context) (err error) {
 	return errors.New("session ended")
 }
 
-func (s *Session) Query(ctx astral.Context) (err error) {
+func (s *Session) Query(ctx *astral.Context) (err error) {
 	var (
 		arg apphost.QueryArgs
 	)

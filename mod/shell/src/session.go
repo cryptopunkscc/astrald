@@ -31,7 +31,7 @@ func NewSession(mod *Module, conn io.ReadWriteCloser) *Session {
 	}
 }
 
-func (s *Session) Run(ctx astral.Context) (err error) {
+func (s *Session) Run(ctx *astral.Context) (err error) {
 	var t = shell.NewTerminal(s.rwc)
 
 	for {

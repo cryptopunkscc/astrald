@@ -14,7 +14,7 @@ type opListTokensArgs struct {
 	Format string           `query:"optional"`
 }
 
-func (mod *Module) OpListTokens(ctx astral.Context, q shell.Query, args opListTokensArgs) (err error) {
+func (mod *Module) OpListTokens(ctx *astral.Context, q shell.Query, args opListTokensArgs) (err error) {
 	tokens, err := mod.ListAccessTokens()
 	if err != nil {
 		mod.log.Errorv(1, "ListAccessTokens: %v", err)

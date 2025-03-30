@@ -20,7 +20,7 @@ func (mod *Module) worker(ctx context.Context) error {
 			}
 		}()
 
-		err := NewSession(mod, conn, mod.log).Serve(astral.WrapContext(ctx, mod.node.Identity()))
+		err := NewSession(mod, conn, mod.log).Serve(astral.NewContext(ctx).WithIdentity(mod.node.Identity()))
 
 		switch {
 		case err == nil:

@@ -14,7 +14,7 @@ type opReadArgs struct {
 	Zone   astral.Zone   `query:"optional"`
 }
 
-func (mod *Module) OpRead(ctx astral.Context, q shell.Query, args opReadArgs) (err error) {
+func (mod *Module) OpRead(ctx *astral.Context, q shell.Query, args opReadArgs) (err error) {
 	if !mod.Auth.Authorize(q.Caller(), objects.ActionRead, &args.ID) {
 		return q.Reject()
 	}

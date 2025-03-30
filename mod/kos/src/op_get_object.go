@@ -9,7 +9,7 @@ type opGetObjectArgs struct {
 	Key string
 }
 
-func (mod *Module) OpGetObject(ctx astral.Context, q shell.Query, args opGetObjectArgs) error {
+func (mod *Module) OpGetObject(ctx *astral.Context, q shell.Query, args opGetObjectArgs) error {
 	typ, payload, err := mod.db.Get(ctx.Identity(), args.Key)
 	if err != nil {
 		q.Reject()

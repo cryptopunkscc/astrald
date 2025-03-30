@@ -11,7 +11,7 @@ type opPutArgs struct {
 	Size int
 }
 
-func (mod *Module) OpPut(ctx astral.Context, q shell.Query, args opPutArgs) (err error) {
+func (mod *Module) OpPut(ctx *astral.Context, q shell.Query, args opPutArgs) (err error) {
 	if !mod.Auth.Authorize(q.Caller(), objects.ActionWrite, nil) {
 		return q.Reject()
 	}

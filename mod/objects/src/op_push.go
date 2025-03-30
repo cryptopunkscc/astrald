@@ -16,7 +16,7 @@ type opPushArgs struct {
 	Size int
 }
 
-func (mod *Module) OpPush(ctx astral.Context, q shell.Query, args opPushArgs) (err error) {
+func (mod *Module) OpPush(ctx *astral.Context, q shell.Query, args opPushArgs) (err error) {
 	if args.Size > maxPushSize {
 		return q.Reject()
 	}

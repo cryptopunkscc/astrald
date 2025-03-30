@@ -10,7 +10,7 @@ type opMakeObjectArgs struct {
 	Type string
 }
 
-func (mod *Module) OpMakeObject(ctx astral.Context, q shell.Query, args opMakeObjectArgs) (err error) {
+func (mod *Module) OpMakeObject(ctx *astral.Context, q shell.Query, args opMakeObjectArgs) (err error) {
 	object := mod.Blueprints().Make(args.Type)
 	if object == nil {
 		mod.log.Errorv(2, "objects.make_object: unknown type %v", args.Type)

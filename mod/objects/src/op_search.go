@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (mod *Module) OpSearch(ctx astral.Context, q shell.Query, args objects.SearchArgs) (err error) {
+func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.SearchArgs) (err error) {
 	opts := objects.DefaultSearchOpts()
 	opts.ClientID = q.Caller()
 

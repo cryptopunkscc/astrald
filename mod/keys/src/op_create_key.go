@@ -12,7 +12,7 @@ type opCreateKeyArgs struct {
 	Format astral.String
 }
 
-func (mod *Module) OpCreateKey(_ astral.Context, q shell.Query, args opCreateKeyArgs) (err error) {
+func (mod *Module) OpCreateKey(_ *astral.Context, q shell.Query, args opCreateKeyArgs) (err error) {
 	if args.Alias == "" {
 		return q.Reject()
 	}

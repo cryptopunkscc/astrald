@@ -16,7 +16,7 @@ type opCreateTokenArgs struct {
 	Format   astral.String   `query:"optional"`
 }
 
-func (mod *Module) OpCreateToken(ctx astral.Context, q shell.Query, args opCreateTokenArgs) (err error) {
+func (mod *Module) OpCreateToken(ctx *astral.Context, q shell.Query, args opCreateTokenArgs) (err error) {
 	if args.ID.IsZero() {
 		return q.Reject()
 	}

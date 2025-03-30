@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-func (mod *Module) OpenObject(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mod *Module) OpenObject(ctx *context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if opts == nil {
 		opts = &objects.OpenOpts{}
 	}

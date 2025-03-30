@@ -11,7 +11,7 @@ type opShellArgs struct {
 	As astral.String `query:"optional"`
 }
 
-func (mod *Module) OpShell(ctx astral.Context, query shell.Query, args opShellArgs) (err error) {
+func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellArgs) (err error) {
 	// handle args
 	if len(args.As) > 0 {
 		asID, err := mod.Dir.ResolveIdentity(string(args.As))
@@ -23,7 +23,7 @@ func (mod *Module) OpShell(ctx astral.Context, query shell.Query, args opShellAr
 			return astral.NewError("access denied")
 		}
 
-		ctx = astral.WrapContext(ctx, asID)
+		ctx = astral.NewContext(ctx).WithIdentity(asID)
 	}
 
 	// accept
