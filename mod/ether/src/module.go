@@ -116,7 +116,7 @@ func (mod *Module) readBroadcast() (*ether.SignedBroadcast, *net.UDPAddr, error)
 }
 
 func (mod *Module) broadcast(data []byte) error {
-	ifaces, err := net.Interfaces()
+	ifaces, err := NetInterfaces()
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (mod *Module) setupSocket(ctx context.Context) (err error) {
 	return
 }
 
-func isInterfaceEnabled(iface net.Interface) bool {
+func isInterfaceEnabled(iface NetInterface) bool {
 	return (iface.Flags&net.FlagUp != 0) &&
 		(iface.Flags&net.FlagBroadcast != 0) &&
 		(iface.Flags&net.FlagLoopback == 0)

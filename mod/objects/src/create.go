@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-const MaxAlloc = 1 * 1024 * 1024 * 1024 * 1024 //1TB
+const MaxAlloc int64 = 1 * 1024 * 1024 * 1024 * 1024 //1TB; gomobile requires explicit int64 type.
 
 type Creator struct {
 	objects.Repository
@@ -23,7 +23,7 @@ func (mod *Module) Create(o *objects.CreateOpts) (objects.Writer, error) {
 		return nil, errors.New("alloc cannot be less than 0")
 	}
 
-	if opts.Alloc > MaxAlloc {
+	if int64(opts.Alloc) > MaxAlloc {
 		return nil, errors.New("alloc exceeds limit")
 	}
 
