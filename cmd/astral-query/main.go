@@ -5,8 +5,10 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/apphost"
 	"github.com/cryptopunkscc/astrald/lib/arl"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"io"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -23,7 +25,7 @@ func main() {
 
 	var caller, target *astral.Identity
 
-	c, t, query := arl.Split(os.Args[1])
+	c, t, q := arl.Split(os.Args[1])
 	if len(c) > 0 {
 		caller, err = client.ResolveIdentity(c)
 		if err != nil {
@@ -44,13 +46,35 @@ func main() {
 		target = client.GuestID
 	}
 
+	var args = os.Args[2:]
+	var params = map[string]string{}
+	for len(args) >= 2 {
+		key := args[0]
+		val := args[1]
+		if !strings.HasPrefix(key, "-") || len(key) < 2 {
+			fmt.Fprintf(os.Stderr, "error: unexpected argument %s\n", key)
+			os.Exit(2)
+		}
+		params[key[1:]] = val
+		args = args[2:]
+	}
+
+	if len(params) > 0 {
+		s, err := query.Marshal(params)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		q = q + "?" + s
+	}
+
 	s, err := client.Session()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	conn, err := s.Query(caller, target, query)
+	conn, err := s.Query(caller, target, q)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
