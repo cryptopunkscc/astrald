@@ -30,14 +30,14 @@ func (mod *Module) OpPush(ctx *astral.Context, q shell.Query, args opPushArgs) (
 	var buf = make([]byte, args.Size)
 	_, err = io.ReadFull(stream, buf)
 	if err != nil {
-		mod.log.Errorv(1, "%v push read error: %v", q.Caller, err)
+		mod.log.Errorv(1, "%v push read error: %v", q.Caller(), err)
 		binary.Write(stream, binary.BigEndian, false)
 		return
 	}
 
 	obj, _, err := mod.Blueprints().Read(bytes.NewReader(buf), true)
 	if err != nil {
-		mod.log.Errorv(1, "%v push read object error: %v", q.Caller, err)
+		mod.log.Errorv(1, "%v push read object error: %v", q.Caller(), err)
 		binary.Write(stream, binary.BigEndian, false)
 		return
 	}
@@ -54,14 +54,14 @@ func (mod *Module) OpPush(ctx *astral.Context, q shell.Query, args opPushArgs) (
 	}
 
 	if !mod.receive(push) {
-		mod.log.Errorv(1, "rejected %v from %v (%v)", obj.ObjectType(), q.Caller, objectID)
+		mod.log.Errorv(1, "rejected %v from %v (%v)", obj.ObjectType(), q.Caller(), objectID)
 		binary.Write(stream, binary.BigEndian, false)
 		return
 	}
 
 	binary.Write(stream, binary.BigEndian, true)
 
-	mod.log.Infov(1, "accepted %v from %v (%v)", obj.ObjectType(), q.Caller, objectID)
+	mod.log.Infov(1, "accepted %v from %v (%v)", obj.ObjectType(), q.Caller(), objectID)
 
 	return
 }
