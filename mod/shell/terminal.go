@@ -29,6 +29,11 @@ func (e *Terminal) ReadLine() (line string, err error) {
 		line = e.scanner.Text()
 		return
 	}
+
+	if e.scanner.Err() == nil {
+		return "", io.EOF
+	}
+
 	return "", e.scanner.Err()
 }
 

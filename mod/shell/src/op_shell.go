@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -36,8 +37,12 @@ func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellA
 
 	// handle session
 	err = NewSession(mod, conn).Run(ctx)
-	if err != nil {
-		mod.log.Errorv(2, "session with %v ended in error: %v", ctx.Identity(), err)
+	switch {
+	case err == nil, errors.Is(err, io.EOF):
+		mod.log.Logv(1, "shell session with %v ended", ctx.Identity())
+		err = nil
+	default:
+		mod.log.Errorv(1, "shell session with %v ended in error: %v", ctx.Identity(), err)
 	}
 
 	return
