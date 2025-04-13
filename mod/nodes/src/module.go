@@ -44,6 +44,7 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 	db     *gorm.DB
+	ctx    *astral.Context
 
 	peers    *Peers
 	provider *Provider
@@ -98,10 +99,6 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 	}
 
 	return infoPrefix + base62.EncodeToString(packed)
-}
-
-func (mod *Module) ResolveEndpoints(ctx context.Context, identity *astral.Identity) ([]exonet.Endpoint, error) {
-	return mod.Endpoints(identity), nil
 }
 
 func (mod *Module) on(providerID *astral.Identity) *Consumer {

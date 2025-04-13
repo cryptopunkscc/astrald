@@ -8,32 +8,12 @@ import (
 )
 
 func (mod *Module) Endpoints(nodeID *astral.Identity) (endpoints []exonet.Endpoint) {
-	var rows []dbEndpoint
-
-	err := mod.db.Find(&rows, "identity = ?", nodeID).Error
-	if err != nil {
-		return
-	}
-
-	for _, row := range rows {
-		e, err := mod.Exonet.Parse(row.Network, row.Address)
-		if err != nil {
-			mod.log.Errorv(1, "Endpoints(): error parsing db row: %v", err)
-			continue
-		}
-		endpoints = append(endpoints, e)
-	}
-
+	endpoints, _ = mod.Exonet.ResolveEndpoints(mod.ctx, nodeID)
 	return
 }
 
 func (mod *Module) hasEndpoints(nodeID *astral.Identity) (has bool) {
-	mod.db.
-		Model(&dbEndpoint{}).
-		Where("identity = ?", nodeID).
-		Select("count(*) > 0").
-		First(&has)
-	return
+	return len(mod.Endpoints(nodeID)) > 0
 }
 
 func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint ...exonet.Endpoint) error {
