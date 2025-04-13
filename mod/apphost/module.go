@@ -9,6 +9,7 @@ const ModuleName = "apphost"
 const DBPrefix = "apphost__"
 
 type Module interface {
+	CreateAccessToken(*astral.Identity, astral.Duration) (*AccessToken, error)
 }
 
 type AccessToken struct {
