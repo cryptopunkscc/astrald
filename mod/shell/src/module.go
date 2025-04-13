@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"io"
@@ -26,6 +27,10 @@ func (mod *Module) Run(ctx *astral.Context) error {
 }
 
 func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	if !q.Target.IsEqual(mod.node.Identity()) {
+		return query.RouteNotFound(mod)
+	}
+
 	return mod.root.RouteQuery(ctx, q, w)
 }
 
