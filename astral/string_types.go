@@ -196,6 +196,15 @@ func (s String32) String() string { return string(s) }
 
 func (s String64) String() string { return string(s) }
 
+func (s String) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+func (s *String) UnmarshalText(text []byte) error {
+	*s = String(text)
+	return nil
+}
+
 func init() {
 	var (
 		s   String
