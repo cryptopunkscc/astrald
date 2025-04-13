@@ -12,6 +12,10 @@ import (
 )
 
 func Marshal(a any) (string, error) {
+	if a == nil {
+		return "", nil
+	}
+	
 	var vals = url.Values{}
 
 	if m, ok := a.(map[string]string); ok {
