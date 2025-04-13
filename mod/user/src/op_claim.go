@@ -11,7 +11,6 @@ import (
 
 type opClaimArgs struct {
 	Target string
-	Format string `query:"optional"`
 }
 
 // OpClaim invites the target node to sign a contract with the current user
