@@ -16,12 +16,12 @@ func (mod *Module) PreprocessQuery(q *astral.Query) error {
 }
 
 func (mod *Module) attachCallerProof(q *astral.Query) {
-	if !q.Caller.IsEqual(mod.userID) {
+	proof := mod.ActiveContract()
+	if proof == nil {
 		return
 	}
 
-	proof, err := mod.LocalContract()
-	if err != nil {
+	if !q.Caller.IsEqual(proof.UserID) {
 		return
 	}
 
@@ -29,7 +29,7 @@ func (mod *Module) attachCallerProof(q *astral.Query) {
 }
 
 func (mod *Module) attachRelays(q *astral.Query) {
-	for _, relay := range mod.Nodes(q.Target) {
+	for _, relay := range mod.ActiveNodes(q.Target) {
 		if relay.IsEqual(mod.node.Identity()) {
 			continue
 		}

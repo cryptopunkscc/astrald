@@ -1,13 +1,11 @@
 package user
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/user"
-	"time"
 )
 
 type Admin struct {
@@ -18,16 +16,10 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"set":            adm.set,
-		"nodes":          adm.nodes,
-		"owner":          adm.owner,
-		"claim":          adm.claim,
-		"info":           adm.info,
-		"contacts":       adm.contacts,
-		"add_contact":    adm.addContact,
-		"rm_contact":     adm.rmContact,
-		"local_contract": adm.localContract,
-		"help":           adm.help,
+		"nodes":           adm.nodes,
+		"active":          adm.active,
+		"active_contract": adm.activeContract,
+		"help":            adm.help,
 	}
 
 	return adm
@@ -56,7 +48,7 @@ func (adm *Admin) nodes(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	nodes := adm.mod.Nodes(userID)
+	nodes := adm.mod.ActiveNodes(userID)
 
 	for _, node := range nodes {
 		term.Printf("%v\n", node)
@@ -65,51 +57,19 @@ func (adm *Admin) nodes(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) addContact(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("missing argument")
+func (adm *Admin) activeContract(term admin.Terminal, args []string) error {
+	contract := adm.mod.ActiveContract()
+	if contract == nil {
+		term.Printf("no active contract\n")
+		return nil
 	}
 
-	userID, err := adm.mod.Dir.ResolveIdentity(args[0])
+	contractID, err := astral.ResolveObjectID(contract)
 	if err != nil {
 		return err
 	}
 
-	return adm.mod.AddContact(userID)
-}
-
-func (adm *Admin) rmContact(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("missing argument")
-	}
-
-	userID, err := adm.mod.Dir.ResolveIdentity(args[0])
-	if err != nil {
-		return err
-	}
-
-	return adm.mod.RemoveContact(userID)
-}
-
-func (adm *Admin) contacts(term admin.Terminal, args []string) error {
-	for _, userID := range adm.mod.Contacts() {
-		term.Printf("%v\n", userID)
-	}
-	return nil
-}
-
-func (adm *Admin) localContract(term admin.Terminal, args []string) error {
-	c, err := adm.mod.LocalContract()
-	if err != nil {
-		return err
-	}
-
-	contractID, err := astral.ResolveObjectID(c)
-	if err != nil {
-		return err
-	}
-
-	j, _ := json.MarshalIndent(c, "", "  ")
+	j, _ := json.MarshalIndent(contract, "", "  ")
 
 	term.Printf("%v\n", contractID)
 	term.Printf("%v\n", string(j))
@@ -117,7 +77,7 @@ func (adm *Admin) localContract(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) owner(term admin.Terminal, args []string) error {
+func (adm *Admin) active(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("missing argument")
 	}
@@ -127,67 +87,10 @@ func (adm *Admin) owner(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	userID := adm.mod.Owner(nodeID)
-
-	if userID.IsZero() {
-		return errors.New("user unknown")
+	term.Printf("users on %v:\n", nodeID)
+	for _, userID := range adm.mod.ActiveUsers(nodeID) {
+		term.Printf("%v\n", userID)
 	}
-	term.Printf("%v\n", userID)
-
-	return nil
-}
-
-func (adm *Admin) claim(term admin.Terminal, args []string) error {
-	var d time.Duration
-
-	if len(args) < 1 {
-		return errors.New("missing argument")
-	}
-
-	nodeID, err := adm.mod.Dir.ResolveIdentity(args[0])
-	if err != nil {
-		return err
-	}
-
-	con, _ := adm.mod.Remote(nodeID, term.UserIdentity())
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	return con.Claim(ctx, d)
-}
-
-func (adm *Admin) set(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("missing argument")
-	}
-
-	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
-	if err != nil {
-		return err
-	}
-
-	return adm.mod.SetUserID(identity)
-}
-
-func (adm *Admin) info(term admin.Terminal, args []string) error {
-	userID := adm.mod.UserID()
-	if userID.IsZero() {
-		return errors.New("no user identity set")
-	}
-
-	term.Printf("Identity: %v\n", userID)
-	term.Printf("PubKey:   %v\n", userID.String())
-
-	contract, err := adm.mod.LocalContract()
-	if err != nil {
-		return err
-	}
-	contractID, err := astral.ResolveObjectID(contract)
-	if err != nil {
-		return err
-	}
-	term.Printf("Contract: %v\n", contractID)
 
 	return nil
 }
@@ -200,7 +103,6 @@ func (adm *Admin) help(term admin.Terminal, _ []string) error {
 	term.Printf("usage: %v <command>\n\n", user.ModuleName)
 	term.Printf("commands:\n")
 	term.Printf("  set <identity>       set local user identity\n")
-	term.Printf("  info                 show user info\n")
 	term.Printf("  help                 show help\n")
 	return nil
 }

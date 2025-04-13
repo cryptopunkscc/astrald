@@ -22,11 +22,6 @@ func (mod *Module) ReceiveObject(push *objects.SourcedObject) error {
 }
 
 func (mod *Module) pushSignedNodeContract(s *astral.Identity, c *user.SignedNodeContract) error {
-	// reject contracts it they're not ours or our contacts'
-	if !(mod.IsContact(c.UserID) || mod.userID.IsEqual(c.UserID)) {
-		return objects.ErrPushRejected
-	}
-
 	// reject contracts coming from neither the signing node nor local node
 	if !(s.IsEqual(c.NodeID) || s.IsEqual(mod.node.Identity())) {
 		return objects.ErrPushRejected
@@ -42,9 +37,9 @@ func (mod *Module) pushSignedNodeContract(s *astral.Identity, c *user.SignedNode
 }
 
 func (mod *Module) onNodeLinked(event *nodes.EventLinked) {
-	localContract, err := mod.LocalContract()
-	if err != nil {
+	contract := mod.ActiveContract()
+	if contract == nil {
 		return
 	}
-	mod.Objects.Push(context.Background(), nil, event.NodeID, localContract)
+	mod.Objects.Push(context.Background(), nil, event.NodeID, contract)
 }

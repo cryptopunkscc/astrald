@@ -15,8 +15,10 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 		return false
 	}
 
+	var contract = mod.ActiveContract()
+
 	// allow the user to perform whitelisted actions
-	if identity.IsEqual(mod.UserID()) {
+	if contract != nil && identity.IsEqual(contract.UserID) {
 		switch action {
 		case admin.ActionAccess,
 			admin.ActionSudo,
@@ -31,30 +33,30 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 		}
 	}
 
-	// nodes inherit some permissions from their owner
-	if owner := mod.Owner(identity); !owner.IsZero() {
+	// nodes inherit some permissions from their users
+	for _, userID := range mod.ActiveUsers(identity) {
 		switch action {
 		case objects.ActionRead,
 			objects.ActionWrite,
 			objects.ActionPurge,
 			objects.ActionSearch,
 			objects.ActionReadDescriptor:
-			if mod.Authorize(owner, action, target) {
+			if mod.Authorize(userID, action, target) {
 				return true
 			}
 
 		case nodes.ActionRelayFor:
-			t, ok := target.(*astral.Identity)
+			userID, ok := target.(*astral.Identity)
 			if !ok {
 				break
 			}
 
-			if _, err := mod.findContractID(t, identity); err == nil {
-				return true
+			for _, u := range mod.ActiveUsers(identity) {
+				if u.IsEqual(userID) {
+					return true
+				}
 			}
-
 		}
-
 	}
 
 	return false

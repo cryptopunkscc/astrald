@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/mod/kos"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -20,6 +21,7 @@ type Deps struct {
 	Dir     dir.Module
 	Objects objects.Module
 	Keys    keys.Module
+	KOS     kos.Module
 }
 
 func (mod *Module) LoadDependencies() (err error) {

@@ -13,12 +13,7 @@ func (mod *Module) Prepare(ctx context.Context) error {
 
 		err = mod.SetUserID(userID)
 		if err != nil {
-			mod.log.Error("SetLocalUser: %v", err)
-		}
-	} else {
-		userID, _ := mod.loadUserID()
-		if !userID.IsZero() {
-			mod.SetUserID(userID)
+			mod.log.Error("SetUserID(): %v", err)
 		}
 	}
 

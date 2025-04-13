@@ -1,8 +1,11 @@
 package user
 
+import "time"
+
 const (
-	methodClaim = "user.claim"
-	methodNodes = "user.nodes"
+	keyActiveContract       = "mod.user.active_contract"
+	minimalContractLength   = time.Hour
+	defaultContractValidity = 365 * 24 * time.Hour
 )
 
 type Config struct {
