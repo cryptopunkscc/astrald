@@ -49,8 +49,6 @@ func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.O
 
 	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodRead, params))
 
-	c.Query(ctx, methodRead, params)
-
 	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {
 		return nil, err
