@@ -17,17 +17,28 @@ type Validator interface {
 	Validate() error
 }
 
-func New(caller *astral.Identity, target *astral.Identity, path string, args any) *astral.Query {
-	q, err := Marshal(args)
-	if err != nil {
-		return nil
-	}
-	return &astral.Query{
+func New(caller *astral.Identity, target *astral.Identity, path string, args any) (query *astral.Query) {
+	query = &astral.Query{
 		Nonce:  astral.NewNonce(),
 		Caller: caller,
 		Target: target,
-		Query:  path + "?" + q,
+		Query:  path,
 	}
+
+	if args == nil {
+		return
+	}
+
+	str, err := Marshal(args)
+	if err != nil {
+		return
+	}
+
+	if len(str) > 0 {
+		query.Query += "?" + str
+	}
+
+	return
 }
 
 func Run(n astral.Node, target *astral.Identity, path string, args any) (astral.Conn, error) {
