@@ -16,6 +16,8 @@ func (mod *Module) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCl
 	switch {
 	case mod.IsPeer(q.Target):
 	case len(mod.Endpoints(q.Target)) > 0:
+	case q.Target.IsEqual(mod.node.Identity()):
+		return query.RouteNotFound(mod)
 	default:
 		return query.RouteNotFound(mod)
 	}
