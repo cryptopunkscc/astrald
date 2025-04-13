@@ -36,10 +36,7 @@ func (mod *Module) OpRead(ctx *astral.Context, q shell.Query, args opReadArgs) (
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	_, err = io.Copy(conn, r)

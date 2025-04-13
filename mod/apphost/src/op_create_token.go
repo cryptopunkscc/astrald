@@ -33,10 +33,7 @@ func (mod *Module) OpCreateToken(ctx *astral.Context, q shell.Query, args opCrea
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	switch args.Format {

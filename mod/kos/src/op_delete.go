@@ -9,19 +9,16 @@ type opDeleteArgs struct {
 	Key string
 }
 
-func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArgs) error {
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArgs) (err error) {
+	conn := q.Accept()
 	defer conn.Close()
 
 	err = mod.db.Delete(ctx.Identity(), args.Key)
 	if err != nil {
 		_, err = astral.Write(conn, astral.NewError(err.Error()), false)
-		return err
+		return
 	}
 
 	_, err = astral.Write(conn, &astral.Ack{}, false)
-	return err
+	return
 }

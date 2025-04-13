@@ -21,10 +21,7 @@ func (mod *Module) OpPush(ctx *astral.Context, q shell.Query, args opPushArgs) (
 		return q.Reject()
 	}
 
-	stream, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	stream := q.Accept()
 	defer stream.Close()
 
 	var buf = make([]byte, args.Size)

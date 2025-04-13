@@ -25,10 +25,7 @@ func (mod *Module) OpListTokens(ctx *astral.Context, q shell.Query, args opListT
 		return token.Identity.IsEqual(args.ID)
 	})
 
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	switch args.Format {

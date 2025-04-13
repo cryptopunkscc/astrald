@@ -18,10 +18,7 @@ func (mod *Module) opInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (
 	}
 
 	// accept
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	// prepare data

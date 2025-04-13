@@ -17,10 +17,7 @@ func (mod *Module) OpGet(ctx *astral.Context, q shell.Query, args opGetArgs) err
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	raw := &astral.RawObject{Type: typ, Payload: payload}

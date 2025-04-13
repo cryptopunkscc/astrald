@@ -53,10 +53,7 @@ func (mod *Module) OpSet(ctx *astral.Context, q shell.Query, args opSetArgs) (er
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	err = mod.db.Set(ctx.Identity(), args.Key, args.Type, payload)

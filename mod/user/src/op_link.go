@@ -20,10 +20,7 @@ func (mod *Module) OpLink(ctx *astral.Context, q shell.Query, args opLinkArgs) (
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	var done = make(chan struct{})

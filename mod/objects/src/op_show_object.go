@@ -27,10 +27,7 @@ func (mod *Module) OpShowObject(ctx *astral.Context, q shell.Query, args opShowO
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	return json.NewEncoder(conn).Encode(obj)

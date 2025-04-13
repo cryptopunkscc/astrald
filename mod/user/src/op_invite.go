@@ -18,16 +18,13 @@ func (mod *Module) OpInvite(ctx *astral.Context, q shell.Query, args opInviteArg
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	// read a NodeContract
 	obj, _, err := mod.Objects.Blueprints().Read(conn, false)
 	if err != nil {
-		return err
+		return
 	}
 
 	contract, ok := obj.(*user.NodeContract)

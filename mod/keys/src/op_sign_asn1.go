@@ -24,7 +24,7 @@ func (mod *Module) OpSignASN1(_ *astral.Context, q shell.Query, args opSignASN1A
 		return q.Reject()
 	}
 
-	c, _ := q.Accept()
+	c := q.Accept()
 	defer c.Close()
 
 	switch args.Format {

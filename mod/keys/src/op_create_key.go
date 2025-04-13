@@ -25,10 +25,7 @@ func (mod *Module) OpCreateKey(_ *astral.Context, q shell.Query, args opCreateKe
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return err
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	switch args.Format {

@@ -29,10 +29,7 @@ func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellA
 
 	// accept
 	var conn io.ReadWriteCloser
-	conn, err = query.Accept()
-	if err != nil {
-		return err
-	}
+	conn = query.Accept()
 	defer conn.Close()
 
 	// handle session

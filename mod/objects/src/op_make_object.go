@@ -17,10 +17,7 @@ func (mod *Module) OpMakeObject(ctx *astral.Context, q shell.Query, args opMakeO
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return
-	}
+	conn := q.Accept()
 	defer conn.Close()
 
 	err = json.NewDecoder(conn).Decode(&object)

@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -10,7 +11,7 @@ import (
 )
 
 type Query interface {
-	Accept() (conn io.ReadWriteCloser, err error)
+	Accept() io.ReadWriteCloser
 	Reject() (err error)
 	Caller() *astral.Identity
 	Extra() *sig.Map[string, any]
@@ -41,28 +42,28 @@ func NewNetworkQuery(w io.WriteCloser, query *astral.Query) *NetworkQuery {
 	}
 }
 
-func (e *NetworkQuery) Accept() (conn io.ReadWriteCloser, err error) {
+func (e *NetworkQuery) Accept() (conn io.ReadWriteCloser) {
 	if !e.resolved.CompareAndSwap(false, true) {
-		return nil, astral.NewError("already resolved")
+		return ErrorConn{Err: errors.New("query already resolved")}
 	}
 
 	var w io.WriteCloser
 	var ch = make(chan io.ReadWriteCloser, 1)
 
-	w, err = query.Accept(e.Query, e.w, func(c astral.Conn) {
+	w, err := query.Accept(e.Query, e.w, func(c astral.Conn) {
 		ch <- c
 	})
 	e.r <- queryResponse{w, err}
 	if err != nil {
-		return
+		return ErrorConn{Err: err}
 	}
 
-	return <-ch, nil
+	return <-ch
 }
 
 func (e *NetworkQuery) Reject() (err error) {
 	if !e.resolved.CompareAndSwap(false, true) {
-		return astral.NewError("already resolved")
+		return errors.New("query already resolved")
 	}
 
 	_, err = query.Reject()
@@ -96,7 +97,7 @@ type queryResponse struct {
 
 func AcceptStream(q Query) (stream *astral.Stream, err error) {
 	var rw io.ReadWriteCloser
-	rw, err = q.Accept()
+	rw = q.Accept()
 	if err != nil {
 		return
 	}
@@ -106,10 +107,25 @@ func AcceptStream(q Query) (stream *astral.Stream, err error) {
 
 func AcceptTerminal(q Query) (t *Terminal, err error) {
 	var rw io.ReadWriteCloser
-	rw, err = q.Accept()
-	if err != nil {
-		return
-	}
+	rw = q.Accept()
 
 	return NewTerminal(rw), err
+}
+
+type ErrorConn struct {
+	Err error
+}
+
+var _ io.ReadWriteCloser = &ErrorConn{}
+
+func (e ErrorConn) Read(p []byte) (n int, err error) {
+	return 0, e.Err
+}
+
+func (e ErrorConn) Write(p []byte) (n int, err error) {
+	return 0, e.Err
+}
+
+func (e ErrorConn) Close() error {
+	return nil
 }

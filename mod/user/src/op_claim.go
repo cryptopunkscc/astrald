@@ -26,10 +26,7 @@ func (mod *Module) OpClaim(ctx *astral.Context, q shell.Query, args opClaimArgs)
 		return q.Reject()
 	}
 
-	conn, err := q.Accept()
-	if err != nil {
-		return
-	}
+	conn := q.Accept()
 	defer conn.Close()
 	enc := json.NewEncoder(conn)
 	enc.SetIndent("", "  ")
