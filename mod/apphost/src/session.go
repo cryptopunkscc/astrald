@@ -41,6 +41,9 @@ func (s *Session) Serve(ctx *astral.Context) (err error) {
 		case "token":
 			err = s.Token(ctx)
 
+		case "anon":
+			err = s.Anon(ctx)
+
 		case "register":
 			err = s.Register(ctx)
 
@@ -57,10 +60,34 @@ func (s *Session) Serve(ctx *astral.Context) (err error) {
 	}
 }
 
+// Anon starts an anonymous session
+func (s *Session) Anon(ctx *astral.Context) (err error) {
+	var res apphost.AuthResponse
+
+	if !s.mod.config.AllowAnonymous {
+		res = apphost.AuthResponse{
+			Code:    apphost.Rejected,
+			GuestID: nil,
+			HostID:  nil,
+		}
+	} else {
+		s.guestID = astral.Anyone
+
+		res = apphost.AuthResponse{
+			Code:    0,
+			GuestID: astral.Anyone,
+			HostID:  ctx.Identity(),
+		}
+	}
+
+	_, err = res.WriteTo(s.conn)
+	return
+}
+
 func (s *Session) Token(ctx *astral.Context) (err error) {
 	var (
 		arg apphost.TokenArgs
-		res apphost.TokenResponse
+		res apphost.AuthResponse
 	)
 
 	_, err = arg.ReadFrom(s.conn)
@@ -73,7 +100,7 @@ func (s *Session) Token(ctx *astral.Context) (err error) {
 	if at == nil {
 		s.log.Errorv(1, "token authentication failed")
 
-		res = apphost.TokenResponse{
+		res = apphost.AuthResponse{
 			Code:    apphost.Rejected,
 			GuestID: nil,
 			HostID:  nil,
@@ -83,7 +110,7 @@ func (s *Session) Token(ctx *astral.Context) (err error) {
 
 		s.guestID = at.Identity
 
-		res = apphost.TokenResponse{
+		res = apphost.AuthResponse{
 			Code:    0,
 			GuestID: at.Identity,
 			HostID:  ctx.Identity(),
@@ -109,6 +136,14 @@ func (s *Session) Register(ctx *astral.Context) (err error) {
 		if s.mod.Auth.Authorize(guestID, admin.ActionSudo, arg.Identity) {
 			guestID = s.guestID
 		}
+	}
+
+	if guestID.IsZero() {
+		_, err = apphost.RegisterResponse{
+			Code:  apphost.Rejected,
+			Token: "",
+		}.WriteTo(s.conn)
+		return
 	}
 
 	guest := &Guest{
@@ -168,7 +203,7 @@ func (s *Session) Query(ctx *astral.Context) (err error) {
 
 	caller := s.guestID
 
-	if caller.IsZero() {
+	if caller.IsZero() && !s.mod.config.AllowAnonymous {
 		_, err = apphost.QueryResponse{
 			Code: apphost.Rejected,
 		}.WriteTo(s.conn)

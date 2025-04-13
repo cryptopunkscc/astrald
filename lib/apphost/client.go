@@ -31,13 +31,18 @@ func NewClient(endpoint string, token string) (*Client, error) {
 	}
 	defer s.Close()
 
-	res, err := s.Token(token)
+	var res apphost.AuthResponse
+	if len(token) == 0 {
+		res, err = s.Anon()
+	} else {
+		res, err = s.Token(token)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	if res.Code != apphost.Success {
-		return nil, errors.New("token authentication failed")
+		return nil, errors.New("authentication failed")
 	}
 
 	return &Client{
@@ -58,14 +63,19 @@ func (c *Client) Session() (*Session, error) {
 		return nil, err
 	}
 
-	res, err := s.Token(c.AuthToken)
+	var res apphost.AuthResponse
+	if len(c.AuthToken) == 0 {
+		res, err = s.Anon()
+	} else {
+		res, err = s.Token(c.AuthToken)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	if res.Code != apphost.Success {
 		s.Close()
-		return nil, errors.New("token authentication failed")
+		return nil, errors.New("authentication failed")
 	}
 
 	return s, nil

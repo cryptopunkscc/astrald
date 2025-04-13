@@ -14,6 +14,8 @@ type Config struct {
 	Tokens map[string]string `yaml:"tokens"`
 
 	ObjectServer ObjectServerConfig `yaml:"object_server"`
+
+	AllowAnonymous bool `yaml:"allow_anonymous"`
 }
 
 var defaultConfig = Config{
@@ -28,6 +30,7 @@ var defaultConfig = Config{
 			"tcp:127.0.0.1:8624",
 		},
 	},
-	Tokens:  map[string]string{},
-	Workers: 32,
+	Tokens:         map[string]string{},
+	Workers:        32,
+	AllowAnonymous: true,
 }

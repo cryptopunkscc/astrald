@@ -32,22 +32,22 @@ func (t *TokenArgs) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Struct(t).ReadFrom(r)
 }
 
-// TokenResponse contains response values for the token method
-type TokenResponse struct {
+// AuthResponse contains response values for the token and anon methods
+type AuthResponse struct {
 	Code    astral.Uint8
 	GuestID *astral.Identity
 	HostID  *astral.Identity
 }
 
-var _ astral.Object = &TokenResponse{}
+var _ astral.Object = &AuthResponse{}
 
-func (TokenResponse) ObjectType() string { return "astrald.mod.apphost.token_response" }
+func (AuthResponse) ObjectType() string { return "astrald.mod.apphost.token_response" }
 
-func (t TokenResponse) WriteTo(w io.Writer) (n int64, err error) {
+func (t AuthResponse) WriteTo(w io.Writer) (n int64, err error) {
 	return astral.Struct(t).WriteTo(w)
 }
 
-func (t *TokenResponse) ReadFrom(r io.Reader) (n int64, err error) {
+func (t *AuthResponse) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Struct(t).ReadFrom(r)
 }
 

@@ -25,7 +25,19 @@ func Connect(addr string) (*Session, error) {
 	}, nil
 }
 
-func (s *Session) Token(token string) (res apphost.TokenResponse, err error) {
+func (s *Session) Anon() (res apphost.AuthResponse, err error) {
+	// write method name
+	_, err = (*astral.String8)(astral.NewString("anon")).WriteTo(s.conn)
+	if err != nil {
+		return
+	}
+
+	// read response
+	_, err = res.ReadFrom(s.conn)
+	return
+}
+
+func (s *Session) Token(token string) (res apphost.AuthResponse, err error) {
 	// write method name
 	_, err = (*astral.String8)(astral.NewString("token")).WriteTo(s.conn)
 	if err != nil {
