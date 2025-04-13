@@ -88,7 +88,7 @@ func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err err
 	}
 
 	// store the contract
-	err = mod.KOS.SetObject(mod.ctx, keyActiveContract, contract)
+	err = mod.KOS.Set(mod.ctx, keyActiveContract, contract)
 	if err != nil {
 		return
 	}
@@ -139,7 +139,7 @@ func (mod *Module) ActiveContract() *user.SignedNodeContract {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()
 
-	contract, err := kos.GetObject[*user.SignedNodeContract](mod.ctx, mod.KOS, keyActiveContract)
+	contract, err := kos.Get[*user.SignedNodeContract](mod.ctx, mod.KOS, keyActiveContract)
 	if err != nil {
 		return nil
 	}
