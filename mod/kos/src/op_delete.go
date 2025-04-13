@@ -5,11 +5,11 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-type opDeleteObjectArgs struct {
+type opDeleteArgs struct {
 	Key string
 }
 
-func (mod *Module) OpDeleteObject(ctx *astral.Context, q shell.Query, args opDeleteObjectArgs) error {
+func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArgs) error {
 	conn, err := q.Accept()
 	if err != nil {
 		return err

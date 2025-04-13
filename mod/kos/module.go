@@ -9,13 +9,13 @@ const ModuleName = "kos"
 const DBPrefix = "kos__"
 
 type Module interface {
-	SetObject(ctx *astral.Context, key string, object astral.Object) error
-	GetObject(ctx *astral.Context, key string) (astral.Object, error)
-	DeleteObject(ctx *astral.Context, key string) error
+	Set(ctx *astral.Context, key string, object astral.Object) error
+	Get(ctx *astral.Context, key string) (astral.Object, error)
+	Delete(ctx *astral.Context, key string) error
 }
 
-func GetObject[T astral.Object](ctx *astral.Context, mod Module, key string) (t T, err error) {
-	obj, err := mod.GetObject(ctx, key)
+func Get[T astral.Object](ctx *astral.Context, mod Module, key string) (t T, err error) {
+	obj, err := mod.Get(ctx, key)
 	if err != nil {
 		return t, err
 	}

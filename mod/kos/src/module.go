@@ -26,7 +26,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) SetObject(ctx *astral.Context, key string, object astral.Object) (err error) {
+func (mod *Module) Set(ctx *astral.Context, key string, object astral.Object) (err error) {
 	var buf = &bytes.Buffer{}
 
 	_, err = object.WriteTo(buf)
@@ -37,7 +37,7 @@ func (mod *Module) SetObject(ctx *astral.Context, key string, object astral.Obje
 	return mod.db.Set(ctx.Identity(), key, object.ObjectType(), buf.Bytes())
 }
 
-func (mod *Module) GetObject(ctx *astral.Context, key string) (astral.Object, error) {
+func (mod *Module) Get(ctx *astral.Context, key string) (astral.Object, error) {
 	typ, payload, err := mod.db.Get(ctx.Identity(), key)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (mod *Module) GetObject(ctx *astral.Context, key string) (astral.Object, er
 	return object, err
 }
 
-func (mod *Module) DeleteObject(ctx *astral.Context, key string) error {
+func (mod *Module) Delete(ctx *astral.Context, key string) error {
 	return mod.db.Delete(ctx.Identity(), key)
 }
 
