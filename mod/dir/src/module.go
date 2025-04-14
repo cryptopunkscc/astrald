@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/aliasgen"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -103,17 +104,21 @@ func (mod *Module) String() string {
 	return dir.ModuleName
 }
 
+// setDefaultAlias sets a default node alias if no alias is set. It uses hostname if set, or a random name.
 func (mod *Module) setDefaultAlias() error {
+	// check the current alias
 	alias, err := mod.GetAlias(mod.node.Identity())
-	if (err != nil) && (!errors.Is(err, gorm.ErrRecordNotFound)) {
-		return err
-	}
-	if alias != "" {
-		return nil
+	switch {
+	case (err != nil) && (!errors.Is(err, gorm.ErrRecordNotFound)):
+		return err // error other than not found
+	case alias != "":
+		return nil // there's an alias already
 	}
 
-	alias = "localnode"
+	// generate a random alias
+	alias = aliasgen.New()
 
+	// check for custom name for the local device
 	hostname, err := os.Hostname()
 	if err == nil {
 		if hostname != "" && hostname != "localhost" {
