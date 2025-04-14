@@ -23,11 +23,11 @@ func (mod *Module) OpMakeObject(ctx *astral.Context, q shell.Query, args opMakeO
 	err = json.NewDecoder(conn).Decode(&object)
 
 	if err != nil {
-		astral.Write(conn, astral.NewError(err.Error()), true)
+		astral.WriteCanonical(conn, astral.NewError(err.Error()))
 		return
 	}
 
-	astral.Write(conn, object, true)
+	astral.WriteCanonical(conn, object)
 
 	return
 }

@@ -77,7 +77,15 @@ func setupNodeIdentity(resources resources.Resources) (*astral.Identity, error) 
 
 		var pk keys.PrivateKey
 
-		err = astral.DecodeObject(bytes.NewReader(keyBytes), &pk)
+		objType, payload, err := astral.OpenCanonical(bytes.NewReader(keyBytes))
+		switch {
+		case err != nil:
+			return nil, err
+		case objType != pk.ObjectType():
+			return nil, fmt.Errorf("invalid object type: %s", objType)
+		}
+
+		_, err = pk.ReadFrom(payload)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +105,7 @@ func setupNodeIdentity(resources resources.Resources) (*astral.Identity, error) 
 		Bytes: nodeID.PrivateKey().Serialize(),
 	}
 
-	err = astral.EncodeObject(buf, pk)
+	_, err = astral.WriteCanonical(buf, pk)
 	if err != nil {
 		return nil, err
 	}

@@ -21,7 +21,7 @@ func (Broadcast) ObjectType() string { return "astrald.mod.ether.broadcast" }
 
 func (b Broadcast) WriteTo(w io.Writer) (n int64, err error) {
 	var buf = &bytes.Buffer{}
-	astral.Write(buf, b.Object, false)
+	astral.Write(buf, b.Object)
 
 	return streams.WriteAllTo(w,
 		b.Timestamp,

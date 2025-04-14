@@ -15,10 +15,10 @@ func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArg
 
 	err = mod.db.Delete(ctx.Identity(), args.Key)
 	if err != nil {
-		_, err = astral.Write(conn, astral.NewError(err.Error()), false)
+		_, err = astral.Write(conn, astral.NewError(err.Error()))
 		return
 	}
 
-	_, err = astral.Write(conn, &astral.Ack{}, false)
+	_, err = astral.Write(conn, &astral.Ack{})
 	return
 }

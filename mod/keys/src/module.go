@@ -83,7 +83,7 @@ func (mod *Module) SaveKey(key *astral.Identity) (object.ID, error) {
 		return object.ID{}, err
 	}
 
-	err = astral.EncodeObject(w, pk)
+	_, err = astral.WriteCanonical(w, pk)
 	if err != nil {
 		return object.ID{}, nil
 	}
@@ -103,18 +103,7 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 		return ErrAlreadyIndexed
 	}
 
-	r, err := mod.Objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-
-	var pk keys.PrivateKey
-
-	err = astral.DecodeObject(r, &pk)
-	if err != nil {
-		return err
-	}
+	pk, err := objects.Load[*keys.PrivateKey](context.Background(), mod.Objects, objectID, astral.DefaultScope())
 
 	if pk.Type != keys.KeyTypeIdentity {
 		return errors.New("unsupported key type")
@@ -141,19 +130,6 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 	}
 }
 
-func (mod *Module) LoadPrivateKey(objectID object.ID) (*keys.PrivateKey, error) {
-	r, err := mod.Objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-
-	var pk keys.PrivateKey
-	err = astral.DecodeObject(r, &pk)
-
-	return &pk, nil
-}
-
 func (mod *Module) FindIdentity(hex string) (*astral.Identity, error) {
 	var row dbPrivateKey
 
@@ -162,7 +138,7 @@ func (mod *Module) FindIdentity(hex string) (*astral.Identity, error) {
 		return &astral.Identity{}, tx.Error
 	}
 
-	pk, err := mod.LoadPrivateKey(row.DataID)
+	pk, err := objects.Load[*keys.PrivateKey](context.Background(), mod.Objects, row.DataID, astral.DefaultScope())
 	if err != nil {
 		return &astral.Identity{}, err
 	}

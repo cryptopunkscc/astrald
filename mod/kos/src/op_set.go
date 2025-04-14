@@ -59,10 +59,10 @@ func (mod *Module) OpSet(ctx *astral.Context, q shell.Query, args opSetArgs) (er
 	err = mod.db.Set(ctx.Identity(), args.Key, args.Type, payload)
 	if err != nil {
 		mod.log.Errorv(2, "errors setting %v:%v: %v", ctx.Identity(), args.Key, err)
-		_, err = astral.Write(conn, astral.NewError(err.Error()), false)
+		_, err = astral.Write(conn, astral.NewError(err.Error()))
 		return err
 	}
 
-	_, err = astral.Write(conn, &astral.Ack{}, false)
+	_, err = astral.Write(conn, &astral.Ack{})
 	return err
 }

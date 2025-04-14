@@ -47,7 +47,7 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 		var buf = &bytes.Buffer{}
 
 		if a.Typed {
-			_, err = Write(buf, v, false)
+			_, err = Write(buf, v)
 		} else {
 			_, err = v.WriteTo(buf)
 		}

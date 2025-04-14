@@ -24,7 +24,7 @@ func (mod *Module) OpGet(ctx *astral.Context, q shell.Query, args opGetArgs) err
 
 	switch args.Format {
 	case "", "bin":
-		_, err = astral.Write(conn, raw, false)
+		_, err = astral.Write(conn, raw)
 
 	case "json":
 		var obj astral.Object

@@ -32,7 +32,7 @@ func (mod *Module) importNodeIdentity() error {
 		return err
 	}
 
-	err = astral.EncodeObject(w, &pk)
+	_, err = astral.WriteCanonical(w, &pk)
 	if err != nil {
 		return err
 	}

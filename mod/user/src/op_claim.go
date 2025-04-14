@@ -56,7 +56,7 @@ func (mod *Module) OpClaim(ctx *astral.Context, q shell.Query, args opClaimArgs)
 	}
 
 	// write a proposed *NodeContract
-	_, err = astral.Write(invite, signed.NodeContract, false)
+	_, err = astral.Write(invite, signed.NodeContract)
 	if err != nil {
 		return enc.Encode(map[string]interface{}{
 			"error": err.Error(),

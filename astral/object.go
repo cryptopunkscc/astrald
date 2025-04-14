@@ -1,6 +1,7 @@
 package astral
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
@@ -80,28 +81,7 @@ func (h *ObjectHeader) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (h ObjectHeader) String() string { return string(h) }
 
-func DecodeObject(r io.Reader, o Object) (err error) {
-	var head ObjectHeader
-	_, err = head.ReadFrom(r)
-	if err != nil {
-		return
-	}
-	if head.String() != o.ObjectType() {
-		return errors.New("object type mismatch")
-	}
-	_, err = o.ReadFrom(r)
-	return err
-}
-
-func EncodeObject(w io.Writer, o Object) (err error) {
-	_, err = ObjectHeader(o.ObjectType()).WriteTo(w)
-	if err != nil {
-		return
-	}
-	_, err = o.WriteTo(w)
-	return
-}
-
+// ResolveObjectID calculates the id of the object
 func ResolveObjectID(obj Object) (objectID object.ID, err error) {
 	w := object.NewWriteResolver(nil)
 	_, err = ObjectHeader(obj.ObjectType()).WriteTo(w)
@@ -117,19 +97,32 @@ func ResolveObjectID(obj Object) (objectID object.ID, err error) {
 	return w.Resolve(), nil
 }
 
-// Write writes an object to the writer. If canonical is true, the object will be written in its
-// canonical form, i.e. incluing the standard header, otherwise short form (no magic bytes) is written.
-// If the object's WriteTo errs, no data will be written to w.
-func Write(w io.Writer, obj Object, canonical bool) (_ int64, err error) {
+// Write writes the object in its short form to the writer
+func Write(w io.Writer, obj Object) (_ int64, err error) {
 	var buf = &bytes.Buffer{}
 
+	// write object type
+	_, err = String8(obj.ObjectType()).WriteTo(buf)
+	if err != nil {
+		return
+	}
+
+	// write object payload
+	_, err = obj.WriteTo(buf)
+	if err != nil {
+		return
+	}
+
+	return buf.WriteTo(w)
+}
+
+// WriteCanonical writes the object in its canonical form to the writer
+func WriteCanonical(w io.Writer, obj Object) (_ int64, err error) {
+	var buf = &bytes.Buffer{}
+
+	// write object header if the object has a type
 	if obj.ObjectType() != "" {
-		if canonical {
-			// write object type
-			_, err = ObjectHeader(obj.ObjectType()).WriteTo(buf)
-		} else {
-			_, err = String8(obj.ObjectType()).WriteTo(buf)
-		}
+		_, err = ObjectHeader(obj.ObjectType()).WriteTo(buf)
 		if err != nil {
 			return
 		}
@@ -142,6 +135,37 @@ func Write(w io.Writer, obj Object, canonical bool) (_ int64, err error) {
 	}
 
 	return buf.WriteTo(w)
+}
+
+// OpenCanonical reads an object in its canonical form from the reader
+func OpenCanonical(r io.Reader) (objType string, payload io.Reader, err error) {
+	var buf = bufio.NewReader(r)
+	firstBytes, err := buf.Peek(4)
+
+	switch {
+	case errors.Is(err, io.EOF):
+		return "", bytes.NewReader(firstBytes), nil
+	case err != nil:
+		return "", nil, err
+	}
+
+	var m uint32
+	err = binary.Read(bytes.NewReader(firstBytes), binary.BigEndian, &m)
+	if err != nil {
+		return
+	}
+
+	if m != magic {
+		return "", buf, nil
+	}
+
+	var header ObjectHeader
+	_, err = header.ReadFrom(buf)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return header.String(), buf, nil
 }
 
 func init() {
