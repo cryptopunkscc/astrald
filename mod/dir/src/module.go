@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/lib/aliasgen"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -122,9 +123,21 @@ func (mod *Module) setDefaultAlias() error {
 	hostname, err := os.Hostname()
 	if err == nil {
 		if hostname != "" && hostname != "localhost" {
-			alias = hostname
+			//alias = hostname
 		}
 	}
 
-	return mod.SetAlias(mod.node.Identity(), alias)
+	err = mod.SetAlias(mod.node.Identity(), alias)
+	if err != nil {
+		return err
+	}
+
+	cs := term.ColorString{
+		Text:  astral.String32(alias),
+		Color: "brightgreen",
+	}
+
+	mod.log.Info("call me %v", cs)
+
+	return nil
 }
