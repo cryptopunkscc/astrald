@@ -116,6 +116,13 @@ func Write(w io.Writer, obj Object) (_ int64, err error) {
 	return buf.WriteTo(w)
 }
 
+// Pack writes the object in its short form to a buffer and returns the buffer
+func Pack(obj Object) (_ []byte, err error) {
+	var buf = &bytes.Buffer{}
+	_, err = Write(buf, obj)
+	return buf.Bytes(), err
+}
+
 // WriteCanonical writes the object in its canonical form to the writer
 func WriteCanonical(w io.Writer, obj Object) (_ int64, err error) {
 	var buf = &bytes.Buffer{}
