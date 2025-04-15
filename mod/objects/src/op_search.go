@@ -2,7 +2,6 @@ package objects
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -41,8 +40,8 @@ func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.Sea
 		return q.Reject()
 	}
 
-	stream, err := shell.AcceptStream(q)
-	defer stream.Close()
+	ch := astral.NewChannel(q.Accept(), args.Format)
+	defer ch.Close()
 
 	var dup = make(map[string]struct{})
 
@@ -57,13 +56,7 @@ func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.Sea
 
 		dup[match.ObjectID.String()] = struct{}{}
 
-		switch args.Format {
-		case "json":
-			err = json.NewEncoder(stream).Encode(match)
-		default:
-			_, err = stream.WriteObject(match)
-		}
-
+		err = ch.Write(match)
 		if err != nil {
 			return
 		}

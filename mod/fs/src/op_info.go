@@ -13,35 +13,23 @@ type opInfoArgs struct {
 
 func (mod *Module) opInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (err error) {
 	// authorize
-	if !mod.Auth.Authorize(ctx.Identity(), fs.ActionManage, nil) {
+	if !mod.Auth.Authorize(q.Caller(), fs.ActionManage, nil) {
 		return q.Reject()
 	}
 
-	// accept
-	conn := q.Accept()
-	defer conn.Close()
+	// accept the connection
+	ch := astral.NewChannel(q.Accept(), args.Format)
+	defer ch.Close()
 
 	// prepare data
 	paths := mod.watcher.List()
 	slices.Sort(paths)
 
-	switch args.Format {
-	case "json":
-		stream := shell.NewJSONStream(conn)
-		for _, path := range paths {
-			_, err = stream.WriteObject((*fs.Path)(&path))
-			if err != nil {
-				return
-			}
-		}
-
-	default:
-		stream := astral.NewStream(conn, mod.Objects.Blueprints())
-		for _, path := range paths {
-			_, err = stream.WriteObject((*fs.Path)(&path))
-			if err != nil {
-				return
-			}
+	// write results
+	for _, path := range paths {
+		err = ch.Write((*fs.Path)(&path))
+		if err != nil {
+			return
 		}
 	}
 

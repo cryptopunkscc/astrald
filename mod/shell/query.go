@@ -111,23 +111,6 @@ type queryResponse struct {
 	Error error
 }
 
-func AcceptStream(q Query) (stream *astral.Stream, err error) {
-	var rw io.ReadWriteCloser
-	rw = q.Accept()
-	if err != nil {
-		return
-	}
-
-	return astral.NewStream(rw, astral.ExtractBlueprints(rw)), err
-}
-
-func AcceptTerminal(q Query) (t *Terminal, err error) {
-	var rw io.ReadWriteCloser
-	rw = q.Accept()
-
-	return NewTerminal(rw), err
-}
-
 type ErrorConn struct {
 	Err error
 }

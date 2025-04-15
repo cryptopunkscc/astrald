@@ -10,10 +10,7 @@ type opVisibleArgs struct {
 }
 
 func (ops *Ops) Visible(ctx *astral.Context, q shell.Query, args opVisibleArgs) (err error) {
-	t, err := shell.AcceptTerminal(q)
-	if err != nil {
-		return err
-	}
+	t := shell.NewTerminal(q.Accept())
 	defer t.Close()
 
 	if args.Arg == nil {

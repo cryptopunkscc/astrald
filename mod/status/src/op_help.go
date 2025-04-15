@@ -11,10 +11,7 @@ func (ops *Ops) Help(ctx *astral.Context, q shell.Query) (err error) {
 		return q.Reject()
 	}
 
-	t, err := shell.AcceptTerminal(q)
-	if err != nil {
-		return err
-	}
+	t := shell.NewTerminal(q.Accept())
 	defer t.Close()
 
 	t.Printf("usage: %v <command>\n\n", status.ModuleName)

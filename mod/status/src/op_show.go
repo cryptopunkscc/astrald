@@ -10,10 +10,7 @@ func (ops *Ops) Show(ctx *astral.Context, q shell.Query) (err error) {
 		return q.Reject()
 	}
 
-	t, err := shell.AcceptTerminal(q)
-	if err != nil {
-		return err
-	}
+	t := shell.NewTerminal(q.Accept())
 	defer t.Close()
 
 	for k, v := range ops.mod.Cache().Clone() {

@@ -2,7 +2,6 @@ package objects
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -14,11 +13,6 @@ type opDescribeArgs struct {
 	ID     object.ID
 	Format string      `query:"optional"`
 	Zones  astral.Zone `query:"optional"`
-}
-
-type jsonDescriptor struct {
-	Type string
-	Data any
 }
 
 func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescribeArgs) (err error) {
@@ -33,16 +27,13 @@ func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescrib
 	scope := astral.DefaultScope()
 	scope.Zone = args.Zones
 
-	stream, err := shell.AcceptStream(q)
-	if err != nil {
-		return
-	}
-	defer stream.Close()
+	ch := astral.NewChannel(q.Accept(), args.Format)
+	defer ch.Close()
 
-	tctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	opCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	descs, err := mod.Describe(tctx, args.ID, scope)
+	descs, err := mod.Describe(opCtx, args.ID, scope)
 	if err != nil {
 		return
 	}
@@ -52,24 +43,7 @@ func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescrib
 			continue
 		}
 
-		switch args.Format {
-		case "json":
-			err = json.NewEncoder(stream).Encode(jsonDescriptor{
-				Type: so.Object.ObjectType(),
-				Data: so.Object,
-			})
-			if err != nil {
-				mod.log.Errorv(1, "describe.json: error encoding json: %v", err)
-				return
-			}
-
-		case "":
-			_, err = stream.WriteObject(so.Object)
-			if err != nil {
-				mod.log.Errorv(1, "describe: error writing object: %v", err)
-				return
-			}
-		}
+		ch.Write(so.Object)
 	}
 
 	return
