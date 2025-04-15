@@ -13,6 +13,7 @@ import (
 type Query interface {
 	Accept() io.ReadWriteCloser
 	Reject() (err error)
+	RejectWithCode(code uint8) (err error)
 	Caller() *astral.Identity
 	Extra() *sig.Map[string, any]
 	Origin() string
@@ -67,6 +68,21 @@ func (e *NetworkQuery) Reject() (err error) {
 	}
 
 	_, err = query.Reject()
+	e.r <- queryResponse{nil, err}
+
+	return nil
+}
+
+func (e *NetworkQuery) RejectWithCode(code uint8) (err error) {
+	if !e.resolved.CompareAndSwap(false, true) {
+		return errors.New("query already resolved")
+	}
+
+	if code == 0 {
+		code = 1
+	}
+
+	_, err = query.RejectWithCode(code)
 	e.r <- queryResponse{nil, err}
 
 	return nil
