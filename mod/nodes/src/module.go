@@ -11,6 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/jxskiss/base62"
@@ -45,6 +46,7 @@ type Module struct {
 	assets resources.Resources
 	db     *gorm.DB
 	ctx    *astral.Context
+	ops    shell.Scope
 
 	peers    *Peers
 	provider *Provider
@@ -103,6 +105,10 @@ func (mod *Module) InfoString(info *nodes.NodeInfo) string {
 
 func (mod *Module) on(providerID *astral.Identity) *Consumer {
 	return NewConsumer(mod, providerID)
+}
+
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.ops
 }
 
 func (mod *Module) String() string {

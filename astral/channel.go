@@ -1,10 +1,13 @@
 package astral
 
 import (
+	"bufio"
 	"bytes"
+	encoding2 "encoding"
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 )
 
 type Channel struct {
@@ -59,6 +62,33 @@ func (ch *Channel) Read() (obj Object, err error) {
 
 		err = json.Unmarshal(jsonObj.Payload, &obj)
 		return
+
+	case "text":
+		var r = bufio.NewReader(ch.rw)
+		line, err := r.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+
+		if strings.HasPrefix(line, "^{") && strings.HasSuffix(line, "}") {
+			line = line[2 : len(line)-1]
+			typ, text, found := strings.Cut(line, ":")
+			if !found {
+				return nil, errors.New("invalid format")
+			}
+
+			obj = ch.Blueprints.Make(typ)
+			u, ok := obj.(encoding2.TextUnmarshaler)
+			if !ok {
+				return nil, errors.New("object does not implement text decoding")
+			}
+
+			err = u.UnmarshalText([]byte(text))
+
+			return obj, err
+		}
+
+		return (*String)(&line), nil
 	}
 
 	return nil, errors.New("unsupported channel format: " + ch.Format)
@@ -84,6 +114,20 @@ func (ch *Channel) Write(obj Object) (err error) {
 			Payload: obj,
 		})
 		return
+
+	case "text":
+		m, ok := obj.(encoding2.TextMarshaler)
+		if !ok {
+			return errors.New("object does not implement text encoding")
+		}
+
+		text, err := m.MarshalText()
+		if err != nil {
+			return err
+		}
+
+		_, err = ch.rw.Write(append(text, '\n'))
+		return err
 	}
 
 	return errors.New("unsupported channel format: " + ch.Format)

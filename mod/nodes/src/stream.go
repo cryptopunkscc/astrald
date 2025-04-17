@@ -81,6 +81,24 @@ func (s *Stream) String() string {
 	return "stream"
 }
 
+func (s *Stream) LocalAddr() string {
+	if c, ok := s.conn.(exonet.Conn); ok {
+		if e := c.LocalEndpoint(); e != nil {
+			return e.Network() + ":" + e.Address()
+		}
+	}
+	return ""
+}
+
+func (s *Stream) RemoteAddr() string {
+	if c, ok := s.conn.(exonet.Conn); ok {
+		if e := c.RemoteEndpoint(); e != nil {
+			return e.Network() + ":" + e.Address()
+		}
+	}
+	return ""
+}
+
 func (s *Stream) Write(frame frames.Frame) (err error) {
 	if _, ok := frame.(*frames.Ping); !ok {
 		s.check()

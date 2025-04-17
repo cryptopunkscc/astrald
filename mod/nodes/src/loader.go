@@ -29,6 +29,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	if err != nil {
 		return nil, err
 	}
+	
+	mod.ops.AddStruct(mod, "Op")
 
 	return mod, err
 }
