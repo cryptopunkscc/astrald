@@ -64,7 +64,7 @@ func (adm *Admin) streams(term admin.Terminal, args []string) error {
 			d = ">"
 		}
 
-		term.Printf("%v %v %v %v\n", s.id, d, s.RemoteIdentity(), s)
+		term.Printf("%v %v %v %v\n", s.id, d, s.RemoteIdentity(), s.RemoteAddr())
 	}
 
 	return nil

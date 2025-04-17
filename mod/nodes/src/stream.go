@@ -69,18 +69,6 @@ func (s *Stream) Network() string {
 	return "unknown"
 }
 
-func (s *Stream) String() string {
-	if c, ok := s.conn.(exonet.Conn); ok {
-		if e := c.RemoteEndpoint(); e != nil {
-			return e.Network() + ":" + e.Address()
-		}
-		if e := c.LocalEndpoint(); e != nil {
-			return e.Network() + ":" + e.Address()
-		}
-	}
-	return "stream"
-}
-
 func (s *Stream) LocalAddr() string {
 	if c, ok := s.conn.(exonet.Conn); ok {
 		if e := c.LocalEndpoint(); e != nil {

@@ -3,6 +3,7 @@ package nodes
 import (
 	"bytes"
 	"encoding"
+	"encoding/json"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"io"
@@ -18,8 +19,8 @@ type StreamInfo struct {
 }
 
 var _ astral.Object = &StreamInfo{}
-
 var _ encoding.TextMarshaler = &StreamInfo{}
+var _ json.Marshaler = &StreamInfo{}
 
 func (s StreamInfo) ObjectType() string {
 	return "mod.nodes.stream_info"
@@ -44,4 +45,11 @@ func (s StreamInfo) MarshalText() (text []byte, err error) {
 	_, err = fmt.Fprintf(b, "%v %v %v %v", s.ID, d, s.RemoteIdentity, s.RemoteAddr)
 
 	return b.Bytes(), err
+}
+
+// MarshalJSON is needed, because json marshaller will use MarshalText if this is absent
+func (s StreamInfo) MarshalJSON() ([]byte, error) {
+	type Alias StreamInfo
+	a := Alias(s)
+	return json.Marshal(a)
 }
