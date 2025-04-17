@@ -36,6 +36,10 @@ func main() {
 		caller = client.GuestID
 	}
 
+	if len(t) == 0 {
+		t = os.Getenv("ASTRAL_DEFAULT_TARGET")
+	}
+
 	if len(t) > 0 {
 		target, err = client.ResolveIdentity(t)
 		if err != nil {
