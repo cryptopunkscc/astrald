@@ -2,7 +2,9 @@ package astral
 
 import (
 	"crypto/rand"
+	"database/sql/driver"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -45,6 +47,25 @@ func (nonce *Nonce) UnmarshalText(text []byte) (err error) {
 	u, err := strconv.ParseUint(string(text), 16, 64)
 	*nonce = Nonce(u)
 	return
+}
+
+func (nonce Nonce) Value() (driver.Value, error) {
+	return fmt.Sprintf("%016x", uint64(nonce)), nil
+}
+
+func (nonce *Nonce) Scan(src any) error {
+	v, ok := src.(string)
+	if !ok {
+		return errors.New("typcast failed")
+	}
+
+	u, err := strconv.ParseUint(v, 16, 64)
+	if err != nil {
+		return err
+	}
+
+	*nonce = Nonce(u)
+	return nil
 }
 
 func init() {

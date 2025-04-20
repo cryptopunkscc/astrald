@@ -12,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
+	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"slices"
@@ -275,6 +276,31 @@ func (mod *Module) SignLocalContract(userID *astral.Identity) (contract *user.Si
 	err = mod.SaveSignedNodeContract(contract)
 
 	return
+}
+
+// AddAsset adds an object to user's assets
+func (mod *Module) AddAsset(objectID *object.ID) (err error) {
+	_, err = mod.db.AddAsset(objectID, false)
+	return
+}
+
+// RemoveAsset removes an object from user's assets
+func (mod *Module) RemoveAsset(objectID *object.ID) (err error) {
+	return mod.db.RemoveAsset(objectID)
+}
+
+// AssetsContain returns true if user's assets contain the object
+func (mod *Module) AssetsContain(objectID *object.ID) bool {
+	return mod.db.AssetsContain(objectID)
+}
+
+func (mod *Module) Assets() []*object.ID {
+	assets, err := mod.db.Assets()
+	if err != nil {
+		mod.log.Error("error getting assets: %v", err)
+	}
+
+	return assets
 }
 
 func (mod *Module) String() string {
