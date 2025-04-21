@@ -34,6 +34,7 @@ func (mod *Module) LoadDependencies() (err error) {
 	mod.Objects.Blueprints().Add(
 		&user.NodeContract{},
 		&user.SignedNodeContract{},
+		&user.Notification{},
 	)
 
 	return

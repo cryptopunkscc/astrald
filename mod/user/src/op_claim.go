@@ -40,7 +40,7 @@ func (mod *Module) OpClaim(ctx *astral.Context, q shell.Query, args opClaimArgs)
 	}
 
 	// send an invite to the target node
-	invite, err := query.Run(mod.node, targetID, "user.invite", nil)
+	invite, err := query.Run(mod.node, targetID, user.OpInvite, nil)
 	if err != nil {
 		return enc.Encode(map[string]interface{}{
 			"error": err.Error(),

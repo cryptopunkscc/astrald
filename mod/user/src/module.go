@@ -281,12 +281,31 @@ func (mod *Module) SignLocalContract(userID *astral.Identity) (contract *user.Si
 // AddAsset adds an object to user's assets
 func (mod *Module) AddAsset(objectID *object.ID) (err error) {
 	_, err = mod.db.AddAsset(objectID, false)
+	if err == nil {
+		mod.notifyLinked("assets")
+	}
 	return
+}
+
+func (mod *Module) notifyLinked(event string) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return
+	}
+
+	for _, sib := range mod.listSibs() {
+		sib := sib
+		go mod.Objects.Push(mod.ctx, sib, &user.Notification{Event: astral.String8(event)})
+	}
 }
 
 // RemoveAsset removes an object from user's assets
 func (mod *Module) RemoveAsset(objectID *object.ID) (err error) {
-	return mod.db.RemoveAsset(objectID)
+	err = mod.db.RemoveAsset(objectID)
+	if err == nil {
+		mod.notifyLinked("assets")
+	}
+	return err
 }
 
 // AssetsContain returns true if user's assets contain the object
@@ -311,6 +330,60 @@ func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
 }
 
+func (mod *Module) SyncAssets(ctx *astral.Context, nodeID *astral.Identity) (err error) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return errors.New("no active contract")
+	}
+
+	key := fmt.Sprintf("mod.user.sync.%v.next_height", nodeID.String())
+	var args any
+	height, _ := kos.Get[*astral.Uint64](ctx, mod.KOS, key)
+	if height != nil {
+		args = opSyncAssetsArgs{Start: int(*height)}
+	}
+
+	var q = query.New(ac.UserID, nodeID, user.OpSyncAssets, args)
+
+	conn, err := query.Route(ctx, mod.node, q)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	ch := astral.NewChannel(conn, "")
+	ch.Blueprints = astral.NewBlueprints(ch.Blueprints)
+	ch.Blueprints.Add(&OpUpdate{})
+
+	for {
+		msg, err := ch.Read()
+		if err != nil {
+			mod.log.Error("SyncAssets: error reading from channel: %v", err)
+			return err
+		}
+
+		switch m := msg.(type) {
+		case *OpUpdate:
+			if m.Removed {
+				err = mod.db.RemoveAssetByNonce(m.Nonce, m.ObjectID)
+			} else {
+				err = mod.db.AddAssetWithNonce(m.ObjectID, m.Nonce)
+			}
+			if err != nil {
+				mod.log.Error("SyncAssets: error syncing asset: %v", err)
+				return err
+			}
+
+		case *astral.Uint64:
+			return mod.KOS.Set(ctx, key, m)
+
+		default:
+			mod.log.Error("SyncAssets: protocol error: unknown msg: %v", m.ObjectType())
+			return err
+		}
+	}
+}
+
 // siblings (other nodes of the same user)
 
 func (mod *Module) addSib(nodeID *astral.Identity) error {
@@ -326,7 +399,7 @@ func (mod *Module) addSib(nodeID *astral.Identity) error {
 	}
 
 	go func() {
-		mod.linkSib(ctx, nodeID)
+		mod.linkSib(astral.NewContext(ctx), nodeID)
 		mod.removeSib(nodeID)
 	}()
 
@@ -373,7 +446,7 @@ func (mod *Module) linkSib(ctx context.Context, nodeID *astral.Identity) {
 		conn, err := query.Route(ctx, mod.node, query.New(
 			ac.UserID,
 			nodeID,
-			"user.link",
+			user.OpLink,
 			nil,
 		))
 
@@ -402,6 +475,9 @@ func (mod *Module) linkSib(ctx context.Context, nodeID *astral.Identity) {
 		}()
 
 		mod.log.Info("linked with %v", nodeID)
+
+		mod.SyncAssets(astral.NewContext(ctx), nodeID)
+
 		io.Copy(io.Discard, conn)
 		mod.log.Log("link with %v lost", nodeID)
 

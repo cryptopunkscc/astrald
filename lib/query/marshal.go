@@ -15,10 +15,17 @@ func Marshal(a any) (string, error) {
 	if a == nil {
 		return "", nil
 	}
-	
+
 	var vals = url.Values{}
 
 	if m, ok := a.(map[string]string); ok {
+		for k, v := range m {
+			vals.Set(k, v)
+		}
+		return vals.Encode(), nil
+	}
+
+	if m, ok := a.(Args); ok {
 		for k, v := range m {
 			vals.Set(k, v)
 		}

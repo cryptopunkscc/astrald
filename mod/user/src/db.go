@@ -112,6 +112,15 @@ func (db *DB) AssetsContain(objectID *object.ID) (exists bool) {
 	return
 }
 
+func (db *DB) NonceExists(nonce astral.Nonce) (exists bool) {
+	db.Model(&dbAsset{}).
+		Select("1").
+		Where("nonce", nonce).
+		Limit(1).
+		Scan(&exists)
+	return
+}
+
 func (db *DB) AddAsset(objectID *object.ID, force bool) (nonce astral.Nonce, err error) {
 	if !force && db.AssetsContain(objectID) {
 		return nonce, errors.New("asset already exists")
@@ -120,6 +129,18 @@ func (db *DB) AddAsset(objectID *object.ID, force bool) (nonce astral.Nonce, err
 	nonce = astral.NewNonce()
 
 	return nonce, db.Save(&dbAsset{
+		Nonce:    nonce,
+		ObjectID: objectID,
+		Height:   uint64(db.AssetHeight() + 1),
+	}).Error
+}
+
+func (db *DB) AddAssetWithNonce(objectID *object.ID, nonce astral.Nonce) error {
+	if db.NonceExists(nonce) {
+		return nil
+	}
+
+	return db.Create(&dbAsset{
 		Nonce:    nonce,
 		ObjectID: objectID,
 		Height:   uint64(db.AssetHeight() + 1),
@@ -144,6 +165,34 @@ func (db *DB) RemoveAsset(objectID *object.ID) (err error) {
 	}
 
 	return
+}
+
+func (db *DB) RemoveAssetByNonce(nonce astral.Nonce, objectID *object.ID) (err error) {
+	var row dbAsset
+
+	err = db.Where("nonce = ?", nonce).First(&row).Error
+
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return db.Create(&dbAsset{
+			Nonce:    nonce,
+			Removed:  true,
+			ObjectID: objectID,
+			Height:   uint64(db.AssetHeight() + 1),
+		}).Error
+
+	case err != nil:
+		return
+	}
+
+	if row.Removed {
+		return nil
+	}
+
+	row.Removed = true
+	row.Height = uint64(db.AssetHeight() + 1)
+
+	return db.Save(row).Error
 }
 
 func (db *DB) Assets() (assets []*object.ID, err error) {

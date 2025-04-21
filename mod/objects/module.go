@@ -40,7 +40,7 @@ type Module interface {
 	Receive(astral.Object, *astral.Identity) error
 
 	Blueprints() *astral.Blueprints
-	Push(ctx context.Context, src *astral.Identity, dst *astral.Identity, obj astral.Object) error
+	Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error
 
 	// Store encodes the object to local storage
 	Store(astral.Object) (object.ID, error)

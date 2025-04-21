@@ -28,7 +28,7 @@ func (nonce Nonce) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (nonce *Nonce) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, binary.BigEndian, &nonce)
+	err = binary.Read(r, binary.BigEndian, nonce)
 	if err == nil {
 		n = 8
 	}

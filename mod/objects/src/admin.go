@@ -436,7 +436,9 @@ func (adm *Admin) push(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	return adm.mod.Push(context.Background(), nil, target, obj)
+	ctx := astral.NewContext(nil).WithIdentity(adm.mod.node.Identity())
+
+	return adm.mod.Push(ctx, target, obj)
 }
 
 func (adm *Admin) ShortDescription() string {

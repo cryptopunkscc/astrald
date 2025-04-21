@@ -1,20 +1,16 @@
 package objects
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-func (mod *Module) Push(ctx context.Context, source *astral.Identity, target *astral.Identity, obj astral.Object) (err error) {
-	if source.IsZero() {
-		source = mod.node.Identity()
+// Push pushes the object to the target node. The sender node is derived from the context.
+func (mod *Module) Push(ctx *astral.Context, nodeID *astral.Identity, obj astral.Object) (err error) {
+	if nodeID.IsEqual(mod.node.Identity()) {
+		return mod.Receive(obj, ctx.Identity())
 	}
 
-	if target.IsEqual(mod.node.Identity()) {
-		return mod.Receive(obj, source)
-	}
-
-	c, err := mod.On(target, source)
+	c, err := mod.On(nodeID, ctx.Identity())
 	if err != nil {
 		return err
 	}

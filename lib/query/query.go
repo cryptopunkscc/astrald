@@ -17,6 +17,8 @@ type Validator interface {
 	Validate() error
 }
 
+type Args map[string]string
+
 func New(caller *astral.Identity, target *astral.Identity, path string, args any) (query *astral.Query) {
 	query = &astral.Query{
 		Nonce:  astral.NewNonce(),
