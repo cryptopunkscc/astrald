@@ -384,6 +384,45 @@ func (mod *Module) SyncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 	}
 }
 
+func (mod *Module) SyncAlias(ctx *astral.Context, nodeID *astral.Identity) (err error) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return errors.New("no active contract")
+	}
+
+	var q = query.New(ac.UserID, nodeID, user.OpInfo, nil)
+
+	conn, err := query.Route(ctx, mod.node, q)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	ch := astral.NewChannel(conn, "")
+	ch.Blueprints.Add(&user.Info{})
+
+	obj, err := ch.Read()
+	if err != nil {
+		return err
+	}
+
+	info, ok := obj.(*user.Info)
+	if !ok {
+		return fmt.Errorf("protocol error: invalid object type %s", obj.ObjectType())
+	}
+
+	if len(info.NodeAlias) == 0 {
+		return nil
+	}
+
+	if mod.Dir.DisplayName(ac.UserID) == "" {
+		mod.Dir.SetAlias(ac.UserID, string(info.UserAlias))
+	}
+
+	mod.log.Info("SyncAlias: updating %v alias %v", nodeID, info.NodeAlias)
+
+	return mod.Dir.SetAlias(nodeID, string(info.NodeAlias))
+}
+
 // siblings (other nodes of the same user)
 
 func (mod *Module) addSib(nodeID *astral.Identity) error {
@@ -476,7 +515,17 @@ func (mod *Module) linkSib(ctx context.Context, nodeID *astral.Identity) {
 
 		mod.log.Info("linked with %v", nodeID)
 
-		mod.SyncAssets(astral.NewContext(ctx), nodeID)
+		ctx := astral.NewContext(ctx).WithIdentity(mod.node.Identity())
+
+		err = mod.SyncAlias(ctx, nodeID)
+		if err != nil {
+			mod.log.Error("error syncing alias of %v: %v", nodeID, err)
+		}
+
+		err = mod.SyncAssets(ctx, nodeID)
+		if err != nil {
+			mod.log.Error("error syncing assets of %v: %v", nodeID, err)
+		}
 
 		io.Copy(io.Discard, conn)
 		mod.log.Log("link with %v lost", nodeID)

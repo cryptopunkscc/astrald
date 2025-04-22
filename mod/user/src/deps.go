@@ -35,6 +35,7 @@ func (mod *Module) LoadDependencies() (err error) {
 		&user.NodeContract{},
 		&user.SignedNodeContract{},
 		&user.Notification{},
+		&user.Info{},
 	)
 
 	return
