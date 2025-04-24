@@ -12,7 +12,6 @@ func (mod *Module) LoadDependencies() (err error) {
 	}
 
 	mod.Admin.AddCommand(nodes.ModuleName, NewAdmin(mod))
-	mod.Exonet.AddResolver(mod)
 
 	return
 }

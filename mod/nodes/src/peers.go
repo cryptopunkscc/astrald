@@ -300,7 +300,7 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 }
 
 func (mod *Peers) isRoutable(identity *astral.Identity) bool {
-	return mod.isLinked(identity) || mod.hasEndpoints(identity)
+	return mod.isLinked(identity) || mod.HasEndpoints(identity)
 }
 
 func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (link io.Closer, err error) {
@@ -461,5 +461,10 @@ func (mod *Peers) ensureConnected(ctx context.Context, remoteIdentity *astral.Id
 		return nil
 	}
 
-	return mod.connectAny(ctx, remoteIdentity, mod.Endpoints(remoteIdentity))
+	ch, err := mod.ResolveEndpoints(astral.NewContext(ctx), remoteIdentity)
+	if err != nil {
+		return err
+	}
+
+	return mod.connectAny(ctx, remoteIdentity, sig.ChanToArray(ch))
 }

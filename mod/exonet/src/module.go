@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
-	"sync"
 )
 
 var _ exonet.Module = &Module{}
@@ -29,40 +28,12 @@ type Module struct {
 	dialers   sig.Map[string, exonet.Dialer]
 	unpackers sig.Map[string, exonet.Unpacker]
 	parser    sig.Map[string, exonet.Parser]
-	resolvers sig.Set[exonet.EndpointResolver]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 
 	return nil
-}
-
-func (mod *Module) ResolveEndpoints(ctx context.Context, identity *astral.Identity) ([]exonet.Endpoint, error) {
-	var res sig.Set[exonet.Endpoint]
-
-	var wg sync.WaitGroup
-	for _, r := range mod.resolvers.Clone() {
-		r := r
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			v, err := r.ResolveEndpoints(ctx, identity)
-			if err != nil {
-				return
-			}
-			res.Add(v...)
-		}()
-	}
-	wg.Wait()
-
-	return res.Clone(), nil
-}
-
-func (mod *Module) AddResolver(resolver exonet.EndpointResolver) {
-	if resolver != nil {
-		mod.resolvers.Add(resolver)
-	}
 }
 
 func (mod *Module) Dial(ctx context.Context, endpoint exonet.Endpoint) (conn exonet.Conn, err error) {

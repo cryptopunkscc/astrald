@@ -1,16 +1,18 @@
 package status
 
 import (
-	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
-func (mod *Module) ResolveEndpoints(ctx context.Context, identity *astral.Identity) (list []exonet.Endpoint, err error) {
+func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (_ <-chan exonet.Endpoint, err error) {
+	var list []exonet.Endpoint
+
 	for _, v := range mod.Cache().Clone() {
-		if !v.Identity.IsEqual(identity) {
+		if !v.Identity.IsEqual(nodeID) {
 			continue
 		}
 
@@ -24,5 +26,5 @@ func (mod *Module) ResolveEndpoints(ctx context.Context, identity *astral.Identi
 		list = append(list, ep)
 	}
 
-	return
+	return sig.ArrayToChan(list), nil
 }

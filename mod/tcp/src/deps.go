@@ -27,7 +27,7 @@ func (mod *Module) LoadDependencies() (err error) {
 	mod.Exonet.SetDialer("tcp", mod)
 	mod.Exonet.SetParser("tcp", mod)
 	mod.Exonet.SetUnpacker("tcp", mod)
-	mod.Exonet.AddResolver(mod)
+	mod.Nodes.AddResolver(mod)
 
 	mod.Objects.Blueprints().Add(
 		&tcp.IP{},

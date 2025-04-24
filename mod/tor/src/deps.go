@@ -16,7 +16,7 @@ func (mod *Module) LoadDependencies() (err error) {
 	mod.Exonet.SetDialer("tor", mod)
 	mod.Exonet.SetParser("tor", mod)
 	mod.Exonet.SetUnpacker("tor", mod)
-	mod.Exonet.AddResolver(mod)
+	mod.Nodes.AddResolver(mod)
 
 	return nil
 }

@@ -32,7 +32,7 @@ func (mod *Module) LoadDependencies() (err error) {
 	}
 
 	mod.Dir.AddResolver(mod)
-	mod.Exonet.AddResolver(mod)
+	mod.Nodes.AddResolver(mod)
 	mod.Objects.Blueprints().Add(
 		&status.Status{},
 		&ScanMessage{},

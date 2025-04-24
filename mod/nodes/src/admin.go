@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/sig"
 	"slices"
 	"time"
 )
@@ -21,18 +23,15 @@ type Admin struct {
 func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
-		"link":      adm.link,
-		"ping":      adm.ping,
-		"conns":     adm.conns,
-		"check":     adm.check,
-		"streams":   adm.streams,
-		"ep_add":    adm.addEndpoint,
-		"ep_rm":     adm.removeEndpoint,
-		"add":       adm.add,
-		"parse":     adm.parse,
-		"show":      adm.show,
-		"endpoints": adm.endpoints,
-		"help":      adm.help,
+		"link":    adm.link,
+		"ping":    adm.ping,
+		"conns":   adm.conns,
+		"check":   adm.check,
+		"streams": adm.streams,
+		"ep_add":  adm.addEndpoint,
+		"ep_rm":   adm.removeEndpoint,
+		"parse":   adm.parse,
+		"help":    adm.help,
 	}
 
 	return adm
@@ -94,7 +93,13 @@ func (adm *Admin) link(term admin.Terminal, args []string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	endpoints := adm.mod.Endpoints(remoteID)
+	epCh, err := adm.mod.ResolveEndpoints(astral.NewContext(nil), remoteID)
+	if err != nil {
+		return err
+	}
+
+	endpoints := sig.ChanToArray(epCh)
+
 	if len(onlyNet) > 0 {
 		endpoints = slices.DeleteFunc(endpoints, func(e exonet.Endpoint) bool {
 			return e.Network() != onlyNet
@@ -144,28 +149,6 @@ func (adm *Admin) conns(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) add(_ admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("argument missing")
-	}
-
-	info, err := adm.mod.ParseInfo(args[0])
-	if err != nil {
-		return err
-	}
-
-	if info.Identity.IsEqual(adm.mod.node.Identity()) {
-		return errors.New("cannot add self")
-	}
-
-	err = adm.mod.AddEndpoint(info.Identity, info.Endpoints...)
-	if err != nil {
-		return err
-	}
-
-	return adm.mod.Dir.SetAlias(info.Identity, info.Alias)
-}
-
 func (adm *Admin) parse(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
@@ -212,60 +195,6 @@ func (adm *Admin) check(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) show(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("not enough arguments")
-	}
-
-	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
-	if err != nil {
-		return err
-	}
-
-	alias, _ := adm.mod.Dir.GetAlias(identity)
-
-	term.Printf("%v (%v)\n", identity, admin.Faded(identity.String()))
-
-	// check private key
-	if adm.mod.Keys != nil {
-		if _, err := adm.mod.Keys.FindIdentity(identity.String()); err == nil {
-			term.Printf("%v\n", admin.Important("private key available"))
-		}
-	}
-
-	term.Println()
-
-	// print endpoints
-	var endpoints []exonet.Endpoint
-
-	if identity.IsEqual(adm.mod.node.Identity()) {
-		endpoints, _ = adm.mod.Exonet.ResolveEndpoints(context.Background(), adm.mod.node.Identity())
-	} else {
-		endpoints = adm.mod.Endpoints(identity)
-	}
-
-	if len(endpoints) == 0 {
-		term.Printf("no known endpoints.\n")
-	} else {
-		var f = "%v %v\n"
-		term.Printf(f, admin.Header("Network"), admin.Header("Address"))
-		for _, ep := range endpoints {
-			term.Printf(f, ep.Network(), ep)
-		}
-		term.Printf("%v %v\n\n", len(endpoints), admin.Faded("endpoint(s)."))
-
-		info := nodes.NodeInfo{
-			Identity:  identity,
-			Alias:     alias,
-			Endpoints: endpoints,
-		}
-
-		term.Printf("%v %v\n", admin.Header("nodelink"), adm.mod.InfoString(&info))
-	}
-
-	return nil
-}
-
 func (adm *Admin) ping(term admin.Terminal, args []string) error {
 	for _, s := range adm.mod.peers.streams.Clone() {
 		term.Printf("%v... ", s.RemoteIdentity())
@@ -275,39 +204,6 @@ func (adm *Admin) ping(term admin.Terminal, args []string) error {
 		} else {
 			term.Printf("%v\n", rtt)
 		}
-	}
-
-	return nil
-}
-
-func (adm *Admin) endpoints(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("not enough arguments")
-	}
-
-	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
-	if err != nil {
-		return err
-	}
-
-	// print endpoints
-	var endpoints []exonet.Endpoint
-
-	if identity.IsEqual(adm.mod.node.Identity()) {
-		endpoints, _ = adm.mod.Exonet.ResolveEndpoints(context.Background(), adm.mod.node.Identity())
-	} else {
-		endpoints = adm.mod.Endpoints(identity)
-	}
-
-	if len(endpoints) == 0 {
-		term.Printf("no known endpoints.\n")
-	} else {
-		var f = "%-10s %-40s\n"
-		term.Printf(f, admin.Header("Network"), admin.Header("Address"))
-		for _, ep := range endpoints {
-			term.Printf(f, ep.Network(), ep)
-		}
-		term.Printf("%v %v\n\n", len(endpoints), admin.Faded("endpoint(s)."))
 	}
 
 	return nil

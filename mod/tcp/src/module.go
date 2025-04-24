@@ -35,17 +35,6 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) ResolveEndpoints(ctx context.Context, identity *astral.Identity) (endpoints []exonet.Endpoint, err error) {
-	if !identity.IsEqual(mod.node.Identity()) {
-		return
-	}
-
-	endpoints = append(endpoints, mod.publicEndpoints...)
-	endpoints = append(endpoints, mod.localEndpoints()...)
-
-	return
-}
-
 func (mod *Module) ListenPort() int {
 	return mod.config.ListenPort
 }

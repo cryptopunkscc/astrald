@@ -38,11 +38,14 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		var gateID *astral.Identity
 
 		if info, err := mod.Nodes.ParseInfo(gateName); err == nil {
-			err = mod.Nodes.AddEndpoint(info.Identity, info.Endpoints...)
-			if err != nil {
-				mod.log.Error("config error: endpoints: %v", err)
-				continue
+			for _, ep := range info.Endpoints {
+				err = mod.Nodes.AddEndpoint(info.Identity, ep)
+				if err != nil {
+					mod.log.Error("config error: endpoints: %v", err)
+					continue
+				}
 			}
+
 			err = mod.Dir.SetAlias(info.Identity, info.Alias)
 			if err != nil {
 				mod.log.Error("config error: set alias: %v", err)

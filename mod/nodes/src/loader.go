@@ -24,12 +24,15 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	mod.provider = NewProvider(mod)
 	mod.peers = NewPeers(mod)
 
-	mod.db = assets.Database()
+	mod.db = &DB{assets.Database()}
+	mod.dbResolver = &DBEndpointResolver{mod: mod}
+	mod.resolvers.Add(mod.dbResolver)
+
 	err = mod.db.AutoMigrate(&dbEndpoint{})
 	if err != nil {
 		return nil, err
 	}
-	
+
 	mod.ops.AddStruct(mod, "Op")
 
 	return mod, err
