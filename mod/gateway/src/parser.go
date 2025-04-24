@@ -22,20 +22,20 @@ func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error
 	var err error
 	var endpoint Endpoint
 
-	endpoint.gate, err = mod.Dir.ResolveIdentity(ids[0])
+	endpoint.GatewayID, err = mod.Dir.ResolveIdentity(ids[0])
 	if err != nil {
 		return nil, err
 	}
-	endpoint.target, err = mod.Dir.ResolveIdentity(ids[1])
+	endpoint.TargetID, err = mod.Dir.ResolveIdentity(ids[1])
 	if err != nil {
 		return nil, err
 	}
 
-	if endpoint.gate.IsEqual(endpoint.target) {
+	if endpoint.GatewayID.IsEqual(endpoint.TargetID) {
 		return nil, errors.New("invalid endpoint")
 	}
 
-	return endpoint, nil
+	return &endpoint, nil
 }
 
 // Parse converts a text representation of a gateway address to an Endpoint struct
@@ -47,15 +47,15 @@ func Parse(str string) (endpoint *Endpoint, err error) {
 	if len(ids) != 2 {
 		return nil, ErrParseError{msg: "invalid address string"}
 	}
-	endpoint.gate, err = astral.IdentityFromString(ids[0])
+	endpoint.GatewayID, err = astral.IdentityFromString(ids[0])
 	if err != nil {
 		return nil, err
 	}
-	endpoint.target, err = astral.IdentityFromString(ids[1])
+	endpoint.TargetID, err = astral.IdentityFromString(ids[1])
 	if err != nil {
 		return nil, err
 	}
-	if endpoint.gate.IsEqual(endpoint.target) {
+	if endpoint.GatewayID.IsEqual(endpoint.TargetID) {
 		return nil, errors.New("invalid endpoint")
 	}
 

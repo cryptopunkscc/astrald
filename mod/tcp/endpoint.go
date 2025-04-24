@@ -21,7 +21,7 @@ type Endpoint struct {
 }
 
 func (e *Endpoint) ObjectType() string {
-	return "astral.net.tcp.endpoint"
+	return "mod.tcp.endpoint"
 }
 
 func (e *Endpoint) Address() string {

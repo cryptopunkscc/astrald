@@ -21,11 +21,11 @@ func (dialer *Dialer) Dial(ctx context.Context, endpoint exonet.Endpoint) (exone
 		return nil, err
 	}
 
-	if e.Gate().IsEqual(dialer.node.Identity()) {
+	if e.GatewayID.IsEqual(dialer.node.Identity()) {
 		return nil, ErrSelfGateway
 	}
 
-	var q = astral.NewQuery(dialer.node.Identity(), e.Gate(), RouteServiceName+"."+e.Target().String())
+	var q = astral.NewQuery(dialer.node.Identity(), e.GatewayID, RouteServiceName+"."+e.TargetID.String())
 
 	conn, err := query.Route(ctx, dialer.node, q)
 	if err != nil {

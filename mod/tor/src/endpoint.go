@@ -3,6 +3,7 @@ package tor
 import (
 	"bytes"
 	"encoding/base32"
+	"encoding/json"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/term"
@@ -32,7 +33,7 @@ type Endpoint struct {
 }
 
 func (addr *Endpoint) ObjectType() string {
-	return "astrald.mod.tor.endpoint"
+	return "mod.tor.endpoint"
 }
 
 // Network returns the name of the network the address belongs to
@@ -82,6 +83,27 @@ func (addr *Endpoint) ReadFrom(r io.Reader) (n int64, err error) {
 		(*astral.Bytes8)(&addr.digest),
 		(*astral.Uint16)(&addr.port),
 	)
+}
+
+func (addr *Endpoint) MarshalJSON() ([]byte, error) {
+	return json.Marshal(addr.Address())
+}
+
+func (addr *Endpoint) UnmarshalJSON(b []byte) error {
+	var str string
+	err := json.Unmarshal(b, &str)
+	if err != nil {
+		return err
+	}
+
+	parsed, err := Parse(str)
+	if err != nil {
+		return err
+	}
+
+	*addr = *parsed
+
+	return nil
 }
 
 func init() {

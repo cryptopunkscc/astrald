@@ -16,7 +16,7 @@ func (mod *Module) Unpack(network string, data []byte) (exonet.Endpoint, error) 
 
 // Unpack converts a binary representation of the address to a struct
 func Unpack(data []byte) (addr *Endpoint, err error) {
-	addr = &Endpoint{target: &astral.Identity{}, gate: &astral.Identity{}}
+	addr = &Endpoint{TargetID: &astral.Identity{}, GatewayID: &astral.Identity{}}
 
-	return addr, cslq.Decode(bytes.NewReader(data), "vv", addr.gate, addr.target)
+	return addr, cslq.Decode(bytes.NewReader(data), "vv", addr.GatewayID, addr.TargetID)
 }

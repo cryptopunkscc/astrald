@@ -8,11 +8,13 @@ import (
 	"errors"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"io"
+	"strings"
 )
 
 const anonymous = "anyone"
 
 var Anyone = &Identity{}
+var anyoneKey = strings.Repeat("00", 33)
 var ErrInvalidKeyLength = errors.New("invalid key length")
 
 // Identity is an eliptic-curve-based identity
@@ -35,11 +37,10 @@ func GenerateIdentity() (*Identity, error) {
 }
 
 func IdentityFromString(s string) (*Identity, error) {
-	if s == anonymous {
+	switch {
+	case s == anyoneKey, s == anonymous:
 		return Anyone, nil
-	}
-
-	if len(s) != 66 {
+	case len(s) != 66:
 		return nil, ErrInvalidKeyLength
 	}
 
@@ -105,7 +106,7 @@ func (id *Identity) IsZero() bool {
 // String returns a string representation of this identity
 func (id *Identity) String() string {
 	if id.IsZero() {
-		return anonymous
+		return anyoneKey
 	}
 	return hex.EncodeToString(id.PublicKey().SerializeCompressed())
 }

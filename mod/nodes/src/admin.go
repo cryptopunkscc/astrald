@@ -28,9 +28,7 @@ func NewAdmin(mod *Module) *Admin {
 		"conns":   adm.conns,
 		"check":   adm.check,
 		"streams": adm.streams,
-		"ep_add":  adm.addEndpoint,
 		"ep_rm":   adm.removeEndpoint,
-		"parse":   adm.parse,
 		"help":    adm.help,
 	}
 
@@ -149,33 +147,6 @@ func (adm *Admin) conns(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) parse(term admin.Terminal, args []string) error {
-	if len(args) < 1 {
-		return errors.New("argument missing")
-	}
-
-	info, err := adm.mod.ParseInfo(args[0])
-	if err != nil {
-		return err
-	}
-
-	term.Printf("%v %v (%v)\n\n", admin.Header("Identity"), info.Identity, admin.Faded(info.Identity.String()))
-
-	var f = "%v %v\n"
-	term.Printf(f, admin.Header("Network"), admin.Header("Address"))
-	for _, ep := range info.Endpoints {
-		ep, err := adm.mod.Exonet.Unpack(ep.Network(), ep.Pack())
-		if err != nil {
-			continue
-		}
-
-		term.Printf(f, ep.Network(), ep)
-	}
-	term.Printf("%v %v\n", len(info.Endpoints), admin.Faded("endpoint(s)."))
-
-	return nil
-}
-
 func (adm *Admin) check(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("not enough arguments")
@@ -205,32 +176,6 @@ func (adm *Admin) ping(term admin.Terminal, args []string) error {
 			term.Printf("%v\n", rtt)
 		}
 	}
-
-	return nil
-}
-
-func (adm *Admin) addEndpoint(term admin.Terminal, args []string) error {
-	if len(args) < 3 {
-		term.Println("usage: nodes ep_add <node> <network> <address>")
-		return errors.New("misisng arguments")
-	}
-
-	identity, err := adm.mod.Dir.ResolveIdentity(args[0])
-	if err != nil {
-		return err
-	}
-
-	ep, err := adm.mod.Exonet.Parse(args[1], args[2])
-	if err != nil {
-		return err
-	}
-
-	err = adm.mod.AddEndpoint(identity, ep)
-	if err != nil {
-		return err
-	}
-
-	term.Printf("%v %v added to %v\n", ep.Network(), ep, identity)
 
 	return nil
 }
