@@ -7,7 +7,9 @@ import (
 )
 
 type opMakeObjectArgs struct {
-	Type string
+	Type      string
+	Format    string `query:"optional"`
+	Canonical bool   `query:"optional"`
 }
 
 func (mod *Module) OpMakeObject(ctx *astral.Context, q shell.Query, args opMakeObjectArgs) (err error) {
@@ -17,17 +19,22 @@ func (mod *Module) OpMakeObject(ctx *astral.Context, q shell.Query, args opMakeO
 		return q.Reject()
 	}
 
-	conn := q.Accept()
-	defer conn.Close()
+	ch := astral.NewChannel(q.Accept(), args.Format)
+	defer ch.Close()
 
-	err = json.NewDecoder(conn).Decode(&object)
-
+	err = json.NewDecoder(ch.Transport()).Decode(object)
 	if err != nil {
-		astral.WriteCanonical(conn, astral.NewError(err.Error()))
-		return
+		var e = astral.NewError(err.Error())
+		if args.Canonical {
+			_, err = astral.WriteCanonical(ch.Transport(), e)
+			return
+		}
+		return ch.Write(e)
 	}
 
-	astral.WriteCanonical(conn, object)
-
-	return
+	if args.Canonical {
+		_, err = astral.WriteCanonical(ch.Transport(), object)
+		return
+	}
+	return ch.Write(object)
 }
