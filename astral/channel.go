@@ -139,3 +139,7 @@ func (ch *Channel) Close() error {
 	}
 	return errors.New("transport doesn't support closing")
 }
+
+func (ch *Channel) Transport() io.ReadWriter {
+	return ch.rw
+}
