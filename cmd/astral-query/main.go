@@ -85,7 +85,6 @@ func main() {
 	}
 
 	go func() {
-		defer conn.Close()
 		io.Copy(conn, os.Stdin)
 	}()
 
