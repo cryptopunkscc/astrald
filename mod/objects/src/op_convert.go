@@ -21,9 +21,9 @@ func (mod *Module) OpConvert(ctx *astral.Context, q shell.Query, args opConvertA
 		object, err := chIn.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return err
+				return nil
 			}
-			object = astral.NewError(err.Error())
+			return err
 		}
 
 		err = chOut.Write(object)
