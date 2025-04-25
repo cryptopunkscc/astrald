@@ -3,7 +3,8 @@ package tor
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	_net "net"
+	"github.com/cryptopunkscc/astrald/mod/tor"
+	"net"
 )
 
 var _ exonet.Dialer = &Module{}
@@ -15,12 +16,12 @@ func (mod *Module) Dial(ctx context.Context, endpoint exonet.Endpoint) (conn exo
 		return nil, err
 	}
 
-	var e = endpoint.(*Endpoint)
+	var e = endpoint.(*tor.Endpoint)
 
 	ctx, cancel := context.WithTimeout(ctx, mod.config.DialTimeout)
 	defer cancel()
 
-	var connCh = make(chan _net.Conn, 1)
+	var connCh = make(chan net.Conn, 1)
 	var errCh = make(chan error, 1)
 
 	// Attempt a connection in the background

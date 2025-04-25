@@ -6,11 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/mod/tor"
 	"golang.org/x/net/proxy"
 	"net"
 )
-
-const ModuleName = "tor"
 
 type Loader struct{}
 
@@ -22,7 +21,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, logger *log.Logger) (
 		config: defaultConfig,
 	}
 
-	_ = assets.LoadYAML(ModuleName, &mod.config)
+	_ = assets.LoadYAML(tor.ModuleName, &mod.config)
 
 	mod.server = NewServer(mod)
 
@@ -43,7 +42,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, logger *log.Logger) (
 }
 
 func init() {
-	if err := core.RegisterModule(ModuleName, Loader{}); err != nil {
+	if err := core.RegisterModule(tor.ModuleName, Loader{}); err != nil {
 		panic(err)
 	}
 }

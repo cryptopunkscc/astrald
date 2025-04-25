@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/base64"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/tor"
 	"github.com/cryptopunkscc/astrald/mod/tor/tc"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
-	_net "net"
+	"net"
 	"strings"
 )
 
 type Server struct {
 	*Module
-	endpoint *Endpoint
+	endpoint *tor.Endpoint
 }
 
 func NewServer(module *Module) *Server {
@@ -66,7 +67,7 @@ func (srv *Server) Run(ctx *astral.Context) error {
 
 func (srv *Server) listen(ctx context.Context, key Key) (*listener, error) {
 	// Set up the listener for incoming tor connections
-	tcpListener, err := _net.Listen("tcp", "127.0.0.1:0")
+	tcpListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
 	}
@@ -111,11 +112,11 @@ func (srv *Server) control() (*tc.Control, error) {
 }
 
 func (srv *Server) connect() (io.ReadWriteCloser, error) {
-	return _net.Dial("tcp", srv.config.ControlAddr)
+	return net.Dial("tcp", srv.config.ControlAddr)
 }
 
 type listener struct {
-	tcp   _net.Listener
+	tcp   net.Listener
 	onion tc.Onion
 	ctl   *tc.Control
 }
@@ -146,7 +147,7 @@ func (l listener) PrivateKey() Key {
 	return key
 }
 
-func (l listener) Accept() (_net.Conn, error) {
+func (l listener) Accept() (net.Conn, error) {
 	return l.tcp.Accept()
 }
 
