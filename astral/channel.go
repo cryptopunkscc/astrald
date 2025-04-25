@@ -12,8 +12,11 @@ import (
 
 type Channel struct {
 	*Blueprints
-	Format string
+	format string
 	rw     io.ReadWriter
+	jenc   *json.Encoder
+	jdec   *json.Decoder
+	bufr   *bufio.Reader
 }
 
 type jsonDecodeAdapter struct {
@@ -27,19 +30,30 @@ type jsonEncodeAdapter struct {
 }
 
 func NewChannel(rw io.ReadWriter, format string) *Channel {
-	return &Channel{
+	ch := &Channel{
 		rw:         rw,
 		Blueprints: ExtractBlueprints(rw),
-		Format:     format,
+		format:     format,
 	}
+
+	switch format {
+	case "json":
+		ch.jenc = json.NewEncoder(rw)
+		ch.jdec = json.NewDecoder(rw)
+		
+	case "text", "astral", "":
+		ch.bufr = bufio.NewReader(rw)
+	}
+
+	return ch
 }
 
 func (ch *Channel) Read() (obj Object, err error) {
-	switch ch.Format {
+	switch ch.format {
 	case "", "bin":
 		var frame Bytes16
 
-		_, err = frame.ReadFrom(ch.rw)
+		_, err = frame.ReadFrom(ch.bufr)
 		if err != nil {
 			return
 		}
@@ -50,7 +64,7 @@ func (ch *Channel) Read() (obj Object, err error) {
 	case "json":
 		var jsonObj jsonDecodeAdapter
 
-		err = json.NewDecoder(ch.rw).Decode(&jsonObj)
+		err = ch.jdec.Decode(&jsonObj)
 		if err != nil {
 			return
 		}
@@ -64,11 +78,11 @@ func (ch *Channel) Read() (obj Object, err error) {
 		return
 
 	case "text":
-		var r = bufio.NewReader(ch.rw)
-		line, err := r.ReadString('\n')
+		line, err := ch.bufr.ReadString('\n')
 		if err != nil {
 			return nil, err
 		}
+		line, _ = strings.CutSuffix(line, "\n")
 
 		if strings.HasPrefix(line, "^{") && strings.HasSuffix(line, "}") {
 			line = line[2 : len(line)-1]
@@ -91,11 +105,11 @@ func (ch *Channel) Read() (obj Object, err error) {
 		return (*String)(&line), nil
 	}
 
-	return nil, errors.New("unsupported channel format: " + ch.Format)
+	return nil, errors.New("unsupported channel format: " + ch.format)
 }
 
 func (ch *Channel) Write(obj Object) (err error) {
-	switch ch.Format {
+	switch ch.format {
 	case "", "bin":
 		var frame = &bytes.Buffer{}
 		_, _ = String8(obj.ObjectType()).WriteTo(frame)
@@ -109,7 +123,7 @@ func (ch *Channel) Write(obj Object) (err error) {
 		return
 
 	case "json":
-		err = json.NewEncoder(ch.rw).Encode(&jsonEncodeAdapter{
+		err = ch.jenc.Encode(&jsonEncodeAdapter{
 			Type:    obj.ObjectType(),
 			Payload: obj,
 		})
@@ -130,7 +144,7 @@ func (ch *Channel) Write(obj Object) (err error) {
 		return err
 	}
 
-	return errors.New("unsupported channel format: " + ch.Format)
+	return errors.New("unsupported channel format: " + ch.format)
 }
 
 func (ch *Channel) Close() error {
