@@ -6,6 +6,7 @@ import (
 	encoding2 "encoding"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 )
@@ -40,8 +41,8 @@ func NewChannel(rw io.ReadWriter, format string) *Channel {
 	case "json":
 		ch.jenc = json.NewEncoder(rw)
 		ch.jdec = json.NewDecoder(rw)
-		
-	case "text", "astral", "":
+
+	case "text", "textp", "astral", "":
 		ch.bufr = bufio.NewReader(rw)
 	}
 
@@ -77,32 +78,27 @@ func (ch *Channel) Read() (obj Object, err error) {
 		err = json.Unmarshal(jsonObj.Payload, &obj)
 		return
 
-	case "text":
+	case "text", "textp":
 		line, err := ch.bufr.ReadString('\n')
 		if err != nil {
 			return nil, err
 		}
 		line, _ = strings.CutSuffix(line, "\n")
 
-		if strings.HasPrefix(line, "^{") && strings.HasSuffix(line, "}") {
-			line = line[2 : len(line)-1]
-			typ, text, found := strings.Cut(line, ":")
-			if !found {
-				return nil, errors.New("invalid format")
-			}
-
-			obj = ch.Blueprints.Make(typ)
-			u, ok := obj.(encoding2.TextUnmarshaler)
-			if !ok {
-				return nil, errors.New("object does not implement text decoding")
-			}
-
-			err = u.UnmarshalText([]byte(text))
-
-			return obj, err
+		typ, text, err := splitTypeAndPayload(line)
+		if err != nil {
+			return nil, fmt.Errorf("invalid text format: %w", err)
 		}
 
-		return (*String)(&line), nil
+		obj = ch.Blueprints.Make(typ)
+		u, ok := obj.(encoding2.TextUnmarshaler)
+		if !ok {
+			return nil, errors.New("object does not implement text decoding")
+		}
+
+		err = u.UnmarshalText([]byte(text))
+
+		return obj, err
 	}
 
 	return nil, errors.New("unsupported channel format: " + ch.format)
@@ -129,7 +125,7 @@ func (ch *Channel) Write(obj Object) (err error) {
 		})
 		return
 
-	case "text":
+	case "text", "textp":
 		m, ok := obj.(encoding2.TextMarshaler)
 		if !ok {
 			return errors.New("object does not implement text encoding")
@@ -140,7 +136,13 @@ func (ch *Channel) Write(obj Object) (err error) {
 			return err
 		}
 
-		_, err = ch.rw.Write(append(text, '\n'))
+		switch ch.format {
+		case "text":
+			_, err = fmt.Fprintf(ch.rw, "#[%s] %s\n", obj.ObjectType(), string(text))
+		case "textp":
+			_, err = fmt.Fprintf(ch.rw, "%s\n", string(text))
+		}
+
 		return err
 	}
 
@@ -156,4 +158,24 @@ func (ch *Channel) Close() error {
 
 func (ch *Channel) Transport() io.ReadWriter {
 	return ch.rw
+}
+
+func splitTypeAndPayload(line string) (string, string, error) {
+	endIdx := strings.Index(line, "]")
+	if endIdx == -1 {
+		return "", "", fmt.Errorf("invalid format: missing closing bracket")
+	}
+
+	if !strings.HasPrefix(line, "#[") {
+		return "", "", fmt.Errorf("invalid format: must start with '#['")
+	}
+
+	typeName := line[2:endIdx]
+	if typeName == "" {
+		return "", "", fmt.Errorf("invalid format: type name is empty")
+	}
+
+	payload := strings.TrimSpace(line[endIdx+1:])
+
+	return typeName, payload, nil
 }
