@@ -2,6 +2,7 @@ package ether
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/ether"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
@@ -34,7 +35,7 @@ func (adm *Admin) push(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	obj, err := adm.mod.Objects.Load(objectID)
+	obj, err := adm.mod.Objects.Load(astral.NewContext(nil), &objectID)
 	if err != nil {
 		return err
 	}
@@ -57,7 +58,7 @@ func (adm *Admin) pushIP(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	obj, err := adm.mod.Objects.Load(objectID)
+	obj, err := adm.mod.Objects.Load(astral.NewContext(nil), &objectID)
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,35 @@
+package objects
+
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/object"
+)
+
+type opLoadArgs struct {
+	ID     *object.ID
+	Format string `query:"optional"`
+}
+
+// OpLoad loads an object into memory and writes it to the output. OpLoad verifies the object hash.
+func (mod *Module) OpLoad(ctx *astral.Context, q shell.Query, args opLoadArgs) (err error) {
+	if args.ID.Size > uint64(MaxObjectSize) {
+		return q.Reject()
+	}
+
+	if !mod.Auth.Authorize(q.Caller(), objects.ActionRead, args.ID) {
+		return q.Reject()
+	}
+
+	object, err := mod.Load(ctx.WithIdentity(q.Caller()), args.ID)
+	if err != nil {
+		mod.log.Errorv(2, "error loading object: %v", err)
+		return q.Reject()
+	}
+
+	ch := astral.NewChannel(q.Accept(), args.Format)
+	defer ch.Close()
+
+	return ch.Write(object)
+}

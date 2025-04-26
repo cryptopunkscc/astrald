@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 )
 
@@ -67,15 +68,22 @@ func (w *Writer) Commit() (object.ID, error) {
 
 	objectID := w.resolver.Resolve()
 
+	var err error
 	var oldPath = filepath.Join(w.path, w.tempID)
 	var newPath = filepath.Join(w.path, objectID.String())
 
-	err := os.Rename(oldPath, newPath)
+	stat, err := os.Stat(newPath)
 	if err != nil {
+		err = os.Rename(oldPath, newPath)
+		if err != nil {
+			os.Remove(oldPath)
+		}
+	} else {
+		// we already have this object
 		os.Remove(oldPath)
 	}
 
-	stat, err := os.Stat(newPath)
+	stat, err = os.Stat(newPath)
 	if err != nil {
 		return objectID, err
 	}
@@ -85,7 +93,9 @@ func (w *Writer) Commit() (object.ID, error) {
 		DataID:  objectID,
 		ModTime: stat.ModTime(),
 	}).Error
-	if err == nil {
+
+	switch {
+	case err == nil:
 		w.mod.Objects.Receive(&fs.EventFileAdded{
 			Path:     astral.String16(newPath),
 			ObjectID: objectID,
@@ -94,6 +104,9 @@ func (w *Writer) Commit() (object.ID, error) {
 			ObjectID: objectID,
 			Zone:     astral.ZoneDevice,
 		}, nil)
+
+	case strings.Contains(err.Error(), "UNIQUE constraint failed"):
+		err = objects.ErrAlreadyExists
 	}
 
 	return objectID, err

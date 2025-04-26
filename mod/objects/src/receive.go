@@ -38,7 +38,7 @@ func (mod *Module) receive(push *objects.SourcedObject) (ok bool) {
 		}
 	}
 	if ok {
-		mod.Store(push.Object)
+		mod.Save(push.Object)
 	}
 	return
 }

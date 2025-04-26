@@ -6,7 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-const ModuleName = "objects"
+const (
+	ModuleName = "objects"
+	DBPrefix   = "objects__"
+)
 
 // ReadAllMaxSize is the size limit for loading objects into memory
 const ReadAllMaxSize = 64 * 1024 * 1024 // 64 MB
@@ -43,8 +46,8 @@ type Module interface {
 	Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error
 
 	// Store encodes the object to local storage
-	Store(astral.Object) (object.ID, error)
-	Load(object.ID) (astral.Object, error)
+	Save(astral.Object) (*object.ID, error)
+	Load(*astral.Context, *object.ID) (astral.Object, error)
 
 	// Get reads the whole object into memory and returns the buffer
 	Get(id object.ID, opts *OpenOpts) ([]byte, error)

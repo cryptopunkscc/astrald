@@ -189,8 +189,11 @@ func (mod *Module) update(path string) (object.ID, error) {
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		if err := mod.deletePath(path); err != nil {
-			mod.log.Errorv(2, "deletePath: %v", err)
+		err = mod.deletePath(path)
+		switch {
+		case errors.Is(err, gorm.ErrRecordNotFound):
+		case err != nil:
+			mod.log.Errorv(2, "deletePath(%v): %v", path, err)
 		}
 		return object.ID{}, err
 	}

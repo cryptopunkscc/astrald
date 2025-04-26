@@ -35,7 +35,7 @@ func (mod *Module) OpRead(ctx *astral.Context, q shell.Query, args opReadArgs) (
 		mod.log.Errorv(2, "open %v error: %v", args.ID, err)
 		return q.Reject()
 	}
-
+	
 	conn := q.Accept()
 	defer conn.Close()
 

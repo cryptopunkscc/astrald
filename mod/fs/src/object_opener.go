@@ -22,8 +22,9 @@ func (mod *Module) OpenObject(_ context.Context, objectID object.ID, opts *objec
 	paths := mod.path(objectID)
 	for _, path := range paths {
 		// check if the index for the path is valid
-		if mod.validate(path) != nil {
-			mod.enqueueUpdate(path)
+		err := mod.validate(path)
+		if err != nil {
+			mod.enqueueUpdate(path) //TODO: immediade update & retry?
 			continue
 		}
 

@@ -1,6 +1,7 @@
 package astral
 
 import (
+	"encoding/json"
 	"io"
 )
 
@@ -13,6 +14,14 @@ var _ Error = &ErrorMessage{}
 
 type ErrorMessage struct {
 	err string
+}
+
+func (b *ErrorMessage) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, &b)
+}
+
+func (b ErrorMessage) MarshalJSON() ([]byte, error) {
+	return json.Marshal(b.err)
 }
 
 func (b ErrorMessage) ObjectType() string {

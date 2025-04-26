@@ -21,7 +21,12 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	mod.ops.AddStruct(mod, "Op")
 
-	mod.db = assets.Database()
+	mod.db = &DB{assets.Database()}
+
+	err := mod.db.Migrate()
+	if err != nil {
+		return nil, err
+	}
 
 	mod.blueprints.Parent = astral.DefaultBlueprints
 	mod.blueprints.Add(

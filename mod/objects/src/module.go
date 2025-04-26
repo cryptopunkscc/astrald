@@ -14,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
-	"gorm.io/gorm"
 	"io"
 )
 
@@ -34,7 +33,7 @@ type Module struct {
 	blueprints astral.Blueprints
 	node       astral.Node
 	config     Config
-	db         *gorm.DB
+	db         *DB
 	log        *log.Logger
 	ops        shell.Scope
 
@@ -66,26 +65,87 @@ func (mod *Module) Blueprints() *astral.Blueprints {
 	return &mod.blueprints
 }
 
-func (mod *Module) Store(obj astral.Object) (objectID object.ID, err error) {
+func (mod *Module) Save(obj astral.Object) (_ *object.ID, err error) {
+	realID, err := astral.ResolveObjectID(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	if has, _ := mod.db.Contains(&realID); has {
+		return &realID, nil
+	}
+
 	w, err := mod.Create(nil)
 	if err != nil {
 		return
 	}
 	defer w.Discard()
 
-	_, err = astral.ObjectHeader(obj.ObjectType()).WriteTo(w)
+	_, err = astral.WriteCanonical(w, obj)
+
 	if err != nil {
 		return
 	}
 
-	_, err = obj.WriteTo(w)
+	emit := func(n bool) {
+		mod.Objects.Receive(&objects.EventSaved{
+			ObjectID: &realID,
+			New:      astral.Bool(n),
+		}, nil)
+	}
 
-	return w.Commit()
+	realID, err = w.Commit()
+	switch {
+	case err == nil:
+		mod.onSave(&realID)
+		emit(true)
+		return &realID, nil
+
+	case errors.Is(err, objects.ErrAlreadyExists):
+		mod.onSave(&realID)
+		emit(false)
+		return &realID, nil
+	}
+
+	return
 }
 
-func (mod *Module) Load(objectID object.ID) (o astral.Object, err error) {
-	r, err := mod.Open(context.Background(), objectID, &objects.OpenOpts{
-		Zone: astral.ZoneDevice | astral.ZoneVirtual,
+func (mod *Module) onSave(objectID *object.ID) {
+	has, err := mod.db.Contains(objectID)
+	switch {
+	case err != nil:
+		mod.log.Error("onSave: db error: %v", err)
+		return
+	case has:
+		return
+	}
+
+	var ctx = astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
+	r, err := mod.Open(ctx, *objectID, nil)
+	if err != nil {
+		mod.log.Error("onSave: open %v error: %v", objectID, err)
+		return
+	}
+	defer r.Close()
+
+	var header astral.ObjectHeader
+	_, err = header.ReadFrom(r)
+
+	err = mod.db.Create(objectID, header.String())
+	if err != nil {
+		mod.log.Error("onSave: db error: %v", err)
+	}
+}
+
+// Load loads and returns a typed object. Load verifies the hash of the loaded object.
+func (mod *Module) Load(ctx *astral.Context, objectID *object.ID) (o astral.Object, err error) {
+	if objectID.Size > uint64(MaxObjectSize) {
+		return nil, errors.New("object too large")
+	}
+
+	r, err := mod.Open(ctx, *objectID, &objects.OpenOpts{
+		Zone: astral.AllZones,
 	})
 	if err != nil {
 		return nil, err
@@ -93,6 +153,15 @@ func (mod *Module) Load(objectID object.ID) (o astral.Object, err error) {
 	defer r.Close()
 
 	o, _, err = mod.Blueprints().Read(r, true)
+
+	realID, err := astral.ResolveObjectID(o)
+	if err != nil {
+		return nil, errors.New("failed to load object")
+	}
+
+	if !realID.IsEqual(*objectID) {
+		return nil, errors.New("failed to load object")
+	}
 
 	return
 }

@@ -232,7 +232,7 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 		return err
 	}
 
-	mod.Objects.Store(c)
+	mod.Objects.Save(c)
 
 	err = mod.db.Create(&dbNodeContract{
 		ObjectID:  contractID,
