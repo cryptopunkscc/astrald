@@ -13,7 +13,8 @@ import (
 
 type Channel struct {
 	*Blueprints
-	format string
+	fmtIn  string
+	fmtOut string
 	rw     io.ReadWriter
 	jenc   *json.Encoder
 	jdec   *json.Decoder
@@ -31,27 +32,36 @@ type jsonEncodeAdapter struct {
 }
 
 func NewChannel(rw io.ReadWriter, format string) *Channel {
+	return NewChannelAsym(rw, format, format)
+}
+
+// NewChannelAsym makes an asymmetrical channel
+func NewChannelAsym(rw io.ReadWriter, fmtIn, fmtOut string) *Channel {
 	ch := &Channel{
 		rw:         rw,
 		Blueprints: ExtractBlueprints(rw),
-		format:     format,
+		fmtIn:      fmtIn,
+		fmtOut:     fmtOut,
 	}
 
-	switch format {
+	switch ch.fmtIn {
+	case "json":
+		ch.jdec = json.NewDecoder(rw)
+	case "text", "text+", "astral", "":
+		ch.bufr = bufio.NewReader(rw)
+	}
+
+	switch ch.fmtOut {
 	case "json":
 		ch.jenc = json.NewEncoder(rw)
-		ch.jdec = json.NewDecoder(rw)
-
-	case "text", "textp", "astral", "":
-		ch.bufr = bufio.NewReader(rw)
 	}
 
 	return ch
 }
 
 func (ch *Channel) Read() (obj Object, err error) {
-	switch ch.format {
-	case "", "bin":
+	switch ch.fmtIn {
+	case "", "astral":
 		var frame Bytes16
 
 		_, err = frame.ReadFrom(ch.bufr)
@@ -78,7 +88,7 @@ func (ch *Channel) Read() (obj Object, err error) {
 		err = json.Unmarshal(jsonObj.Payload, &obj)
 		return
 
-	case "text", "textp":
+	case "text", "text+":
 		line, err := ch.bufr.ReadString('\n')
 		if err != nil {
 			return nil, err
@@ -101,12 +111,12 @@ func (ch *Channel) Read() (obj Object, err error) {
 		return obj, err
 	}
 
-	return nil, errors.New("unsupported channel format: " + ch.format)
+	return nil, errors.New("unsupported channel format: " + ch.fmtIn)
 }
 
 func (ch *Channel) Write(obj Object) (err error) {
-	switch ch.format {
-	case "", "bin":
+	switch ch.fmtOut {
+	case "", "astral":
 		var frame = &bytes.Buffer{}
 		_, _ = String8(obj.ObjectType()).WriteTo(frame)
 
@@ -125,7 +135,7 @@ func (ch *Channel) Write(obj Object) (err error) {
 		})
 		return
 
-	case "text", "textp":
+	case "text", "text+":
 		m, ok := obj.(encoding2.TextMarshaler)
 		if !ok {
 			return errors.New("object does not implement text encoding")
@@ -136,17 +146,17 @@ func (ch *Channel) Write(obj Object) (err error) {
 			return err
 		}
 
-		switch ch.format {
-		case "text":
+		switch ch.fmtOut {
+		case "text+":
 			_, err = fmt.Fprintf(ch.rw, "#[%s] %s\n", obj.ObjectType(), string(text))
-		case "textp":
+		case "text":
 			_, err = fmt.Fprintf(ch.rw, "%s\n", string(text))
 		}
 
 		return err
 	}
 
-	return errors.New("unsupported channel format: " + ch.format)
+	return errors.New("unsupported channel format: " + ch.fmtOut)
 }
 
 func (ch *Channel) Close() error {

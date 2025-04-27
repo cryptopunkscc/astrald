@@ -9,9 +9,9 @@ import (
 )
 
 type opDeleteAllArgs struct {
-	Format string `query:"optional"`
-	From   string `query:"optional"`
-	Repo   string `query:"optional"`
+	Out  string `query:"optional"`
+	In   string `query:"optional"`
+	Repo string `query:"optional"`
 }
 
 func (mod *Module) OpDeleteAll(ctx *astral.Context, q shell.Query, args opDeleteAllArgs) (err error) {
@@ -20,12 +20,11 @@ func (mod *Module) OpDeleteAll(ctx *astral.Context, q shell.Query, args opDelete
 		return q.Reject()
 	}
 
-	chOut := astral.NewChannel(q.Accept(), args.Format)
-	chIn := astral.NewChannel(chOut.Transport(), args.From)
-	defer chOut.Close()
+	ch := astral.NewChannelAsym(q.Accept(), args.In, args.Out)
+	defer ch.Close()
 
 	for {
-		o, err := chIn.Read()
+		o, err := ch.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
@@ -35,16 +34,16 @@ func (mod *Module) OpDeleteAll(ctx *astral.Context, q shell.Query, args opDelete
 
 		objectID, ok := o.(*object.ID)
 		if !ok {
-			chOut.Write(astral.NewError("not an object ID"))
+			ch.Write(astral.NewError("not an object ID"))
 			continue
 		}
 
 		err = repo.Delete(ctx.WithIdentity(q.Caller()), objectID)
 		if err != nil {
-			chOut.Write(astral.NewError(err.Error()))
+			ch.Write(astral.NewError(err.Error()))
 			continue
 		}
 
-		chOut.Write(&astral.Ack{})
+		ch.Write(&astral.Ack{})
 	}
 }
