@@ -2,6 +2,7 @@ package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 )
@@ -16,7 +17,7 @@ type opLoadArgs struct {
 func (mod *Module) OpLoad(ctx *astral.Context, q shell.Query, args opLoadArgs) (err error) {
 	ctx = ctx.IncludeZone(args.Zone)
 
-	object, err := mod.Load(ctx.WithIdentity(q.Caller()), args.ID)
+	object, err := objects.Load[astral.Object](ctx, mod.Root(), args.ID, mod.Blueprints())
 	if err != nil {
 		mod.log.Errorv(2, "error loading object: %v", err)
 		return q.Reject()

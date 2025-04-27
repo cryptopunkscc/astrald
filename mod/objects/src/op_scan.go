@@ -6,11 +6,16 @@ import (
 )
 
 type opScanArgs struct {
-	Repo   string `query:"optional"`
-	Format string `query:"optional"`
+	Type   string      `query:"optional"`
+	Repo   string      `query:"optional"`
+	Format string      `query:"optional"`
+	Zone   astral.Zone `query:"optional"`
 }
 
+// OpScan sends a list of object ids in a repository
 func (mod *Module) OpScan(ctx *astral.Context, q shell.Query, args opScanArgs) (err error) {
+	ctx = ctx.IncludeZone(args.Zone)
+
 	repo, err := mod.GetRepository(args.Repo)
 	if err != nil || repo == nil {
 		return q.Reject()
@@ -25,6 +30,16 @@ func (mod *Module) OpScan(ctx *astral.Context, q shell.Query, args opScanArgs) (
 	defer ch.Close()
 
 	for id := range scanCh {
+		if len(args.Type) > 0 {
+			t, err := mod.GetType(ctx, id)
+			if err != nil {
+				continue
+			}
+			if args.Type != t {
+				continue
+			}
+		}
+
 		err = ch.Write(id)
 		if err != nil {
 			return

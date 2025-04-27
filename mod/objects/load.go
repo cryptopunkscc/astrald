@@ -2,9 +2,10 @@ package objects
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
+	"reflect"
 )
 
 func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *object.ID, bp *astral.Blueprints) (o T, err error) {
@@ -37,7 +38,7 @@ func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *objec
 
 	o, ok = a.(T)
 	if !ok {
-		err = errors.New("typecast failed")
+		err = fmt.Errorf("cannot cast %s into %s", reflect.TypeOf(a), reflect.TypeOf(o))
 	}
 
 	return

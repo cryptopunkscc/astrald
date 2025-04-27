@@ -64,22 +64,15 @@ func (mod *Module) Blueprints() *astral.Blueprints {
 	return &mod.blueprints
 }
 
-func (mod *Module) onSave(objectID *object.ID) {
-	has, err := mod.db.Contains(objectID)
-	switch {
-	case err != nil:
-		mod.log.Error("onSave: db error: %v", err)
-		return
-	case has:
-		return
+func (mod *Module) GetType(ctx *astral.Context, objectID *object.ID) (objectType string, err error) {
+	row, err := mod.db.Find(objectID)
+	if err == nil {
+		return row.Type, nil
 	}
 
-	var ctx = astral.NewContext(nil).WithIdentity(mod.node.Identity())
-
-	r, err := mod.Root().Read(ctx, objectID, 0, 0)
+	r, err := mod.Root().Read(ctx, objectID, 0, 260) // max header size: 4 magic bytes + 1 len + 255 type
 	if err != nil {
-		mod.log.Error("onSave: open %v error: %v", objectID, err)
-		return
+		return "", objects.ErrNotFound
 	}
 	defer r.Close()
 
@@ -90,35 +83,8 @@ func (mod *Module) onSave(objectID *object.ID) {
 	if err != nil {
 		mod.log.Error("onSave: db error: %v", err)
 	}
-}
 
-// Load loads and returns a typed object. Load verifies the hash of the loaded object.
-func (mod *Module) Load(ctx *astral.Context, objectID *object.ID) (o astral.Object, err error) {
-	if objectID.Size > uint64(objects.MaxObjectSize) {
-		return nil, errors.New("object too large")
-	}
-
-	r, err := mod.Root().Read(ctx, objectID, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-
-	o, _, err = mod.Blueprints().Read(r, true)
-	if err != nil {
-		return nil, err
-	}
-
-	realID, err := astral.ResolveObjectID(o)
-	if err != nil {
-		return nil, errors.New("failed to load object")
-	}
-
-	if !realID.IsEqual(objectID) {
-		return nil, errors.New("failed to load object")
-	}
-
-	return
+	return header.String(), nil
 }
 
 func (mod *Module) On(target *astral.Identity, caller *astral.Identity) (objects.Consumer, error) {
