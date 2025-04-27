@@ -1,7 +1,7 @@
 package fs
 
 import (
-	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"io/fs"
@@ -10,15 +10,21 @@ import (
 
 const openTimeout = time.Second * 30
 
-var _ fs.FS = &FS{}
-
 type FS struct {
-	mod objects.Module
+	ctx      *astral.Context
+	identity *astral.Identity
+	mod      objects.Module
 	*objects.OpenOpts
 }
 
-func NewFS(mod objects.Module, openOpts *objects.OpenOpts) *FS {
-	return &FS{mod: mod, OpenOpts: openOpts}
+var _ fs.FS = &FS{}
+
+func NewFS(ctx *astral.Context, mod objects.Module, openOpts *objects.OpenOpts) *FS {
+	return &FS{
+		ctx:      ctx,
+		mod:      mod,
+		OpenOpts: openOpts,
+	}
 }
 
 func (f *FS) Open(name string) (fs.File, error) {
@@ -27,7 +33,7 @@ func (f *FS) Open(name string) (fs.File, error) {
 		return nil, fs.ErrNotExist
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), openTimeout)
+	ctx, cancel := f.ctx.WithTimeout(openTimeout)
 	defer cancel()
 
 	r, err := f.mod.Open(ctx, objectID, f.OpenOpts)

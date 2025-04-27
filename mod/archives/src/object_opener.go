@@ -2,18 +2,17 @@ package archives
 
 import (
 	_zip "archive/zip"
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-func (mod *Module) OpenObject(ctx *context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mod *Module) OpenObject(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if opts == nil {
 		opts = &objects.OpenOpts{}
 	}
 
-	if !opts.Zone.Is(astral.ZoneVirtual) {
+	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}
 
@@ -61,6 +60,7 @@ func (mod *Module) open(zipID object.ID, path string, fileID object.ID, opts *ob
 
 func (mod *Module) openZip(objectID object.ID, opts *objects.OpenOpts) (*_zip.Reader, error) {
 	var r = &readerAt{
+		identity: mod.node.Identity(),
 		objects:  mod.Objects,
 		objectID: objectID,
 		opts:     opts,

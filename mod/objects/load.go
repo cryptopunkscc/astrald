@@ -7,13 +7,16 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-func Load[T astral.Object](ctx context.Context, mod Module, objectID object.ID, scope *astral.Scope) (o T, err error) {
+func Load[T astral.Object](ctx *astral.Context, mod Module, objectID object.ID, scope *astral.Scope) (o T, err error) {
 	if objectID.Size > ReadAllMaxSize {
 		return o, ErrObjectTooLarge
 	}
 
+	if ctx == nil {
+		ctx = astral.NewContext(context.Background())
+	}
+
 	r, err := mod.Open(ctx, objectID, &OpenOpts{
-		Zone:        scope.Zone,
 		QueryFilter: scope.QueryFilter,
 	})
 

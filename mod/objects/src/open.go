@@ -2,7 +2,6 @@ package objects
 
 import (
 	"cmp"
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -20,45 +19,44 @@ type Opener struct {
 
 type OpenerSet []*Opener
 
-func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mod *Module) Open(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if opts == nil {
 		opts = objects.DefaultOpenOpts()
 	}
 
-	zone := opts.Zone
-	defer func() {
-		opts.Zone = zone
-	}()
+	// authorize if necessary
+	if !ctx.Identity().IsEqual(mod.node.Identity()) {
+		if !mod.Auth.Authorize(ctx.Identity(), objects.ActionRead, &objectID) {
+			return nil, objects.ErrAccessDenied
+		}
+	}
 
 	openers := OpenerSet(mod.openers.Clone())
 	slices.SortFunc(openers, func(a, b *Opener) int {
 		return cmp.Compare(a.Priority, b.Priority) * -1 // from high to low
 	})
 
-	ctx, cancel := context.WithTimeout(ctx, openTimeout)
+	ctx, cancel := ctx.WithTimeout(openTimeout)
 	defer cancel()
 
 	// limit first attempt to local zone
-	if zone.Is(astral.ZoneDevice) {
-		opts.Zone = zone & astral.ZoneDevice
-		r, err := openers.OpenFirst(ctx, objectID, opts)
+	if ctx.Zone().Is(astral.ZoneDevice) {
+		r, err := openers.OpenFirst(ctx.LimitZones(astral.ZoneDevice), objectID, opts)
 		if err == nil {
 			return r, nil
 		}
 	}
 
 	// then include the virtual zone
-	if zone.Is(astral.ZoneVirtual) {
-		opts.Zone = zone & (astral.ZoneDevice | astral.ZoneVirtual)
-		r, err := openers.OpenFirst(ctx, objectID, opts)
+	if ctx.Zone().Is(astral.ZoneVirtual) {
+		r, err := openers.OpenFirst(ctx.LimitZones(astral.ZoneDevice|astral.ZoneVirtual), objectID, opts)
 		if err == nil {
 			return r, nil
 		}
 	}
 
 	// then try the network
-	if zone.Is(astral.ZoneNetwork) {
-		opts.Zone = zone & astral.AllZones
+	if ctx.Zone().Is(astral.ZoneNetwork) {
 		r, err := mod.openNetwork(ctx, objectID, opts)
 		if err == nil {
 			return r, nil
@@ -68,14 +66,6 @@ func (mod *Module) Open(ctx context.Context, objectID object.ID, opts *objects.O
 	return nil, objects.ErrNotFound
 }
 
-func (mod *Module) OpenAs(ctx context.Context, consumer *astral.Identity, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !mod.Auth.Authorize(consumer, objects.ActionRead, &objectID) {
-		return nil, objects.ErrAccessDenied
-	}
-
-	return mod.Open(ctx, objectID, opts)
-}
-
 func (mod *Module) AddOpener(opener objects.Opener, priority int) error {
 	return mod.openers.Add(&Opener{
 		Opener:   opener,
@@ -83,12 +73,8 @@ func (mod *Module) AddOpener(opener objects.Opener, priority int) error {
 	})
 }
 
-func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !opts.Zone.Is(astral.ZoneNetwork) {
-		return nil, astral.ErrZoneExcluded
-	}
-
-	providers := mod.Find(ctx, objectID, &astral.Scope{Zone: opts.Zone})
+func (mod *Module) openNetwork(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+	providers := mod.Find(ctx, objectID, &astral.Scope{Zone: ctx.Zone()})
 
 	if opts.QueryFilter != nil {
 		providers = slices.DeleteFunc(providers, func(identity *astral.Identity) bool {
@@ -99,7 +85,7 @@ func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *ob
 	var conns = make(chan objects.Reader, 1)
 	var wg sync.WaitGroup
 
-	ctx, done := context.WithCancel(ctx)
+	ctx, done := ctx.WithCancel()
 	defer done()
 
 	for _, providerID := range providers {
@@ -136,7 +122,7 @@ func (mod *Module) openNetwork(ctx context.Context, objectID object.ID, opts *ob
 	return r, nil
 }
 
-func (set OpenerSet) OpenFirst(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (set OpenerSet) OpenFirst(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	for _, opener := range set {
 		r, err := opener.OpenObject(ctx, objectID, opts)
 		if err == nil {

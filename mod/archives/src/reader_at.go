@@ -1,7 +1,7 @@
 package archives
 
 import (
-	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"time"
@@ -10,6 +10,7 @@ import (
 const openTimeout = 15 * time.Second
 
 type readerAt struct {
+	identity *astral.Identity
 	objects  objects.Module
 	objectID object.ID
 	opts     *objects.OpenOpts
@@ -21,7 +22,7 @@ func (r *readerAt) ReadAt(p []byte, off int64) (n int, err error) {
 	*opts = *r.opts
 	opts.Offset = uint64(off)
 
-	ctx, cancel := context.WithTimeout(context.Background(), openTimeout)
+	ctx, cancel := astral.NewContext(nil).WithIdentity(r.identity).WithTimeout(openTimeout)
 	defer cancel()
 
 	f, err := r.objects.Open(ctx, r.objectID, opts)

@@ -1,7 +1,6 @@
 package mem
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -49,8 +48,8 @@ func NewMemStore(mod objects.Module, name string, size int64) *Store {
 	return mem
 }
 
-func (mem *Store) OpenObject(_ context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !opts.Zone.Is(astral.ZoneDevice) {
+func (mem *Store) OpenObject(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
 

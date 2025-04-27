@@ -1,7 +1,6 @@
 package archives
 
 import (
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -15,21 +14,23 @@ func (mod *Module) ReceiveObject(object *objects.SourcedObject) error {
 		return errors.New("object rejected")
 	}
 
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
 	switch object := object.Object.(type) {
 	case *objects.EventDiscovered:
-		mod.onObjectDiscovered(context.Background(), object)
+		mod.onObjectDiscovered(ctx, object)
 	}
 
 	return errors.New("object rejected")
 }
 
-func (mod *Module) onObjectDiscovered(ctx context.Context, event *objects.EventDiscovered) {
+func (mod *Module) onObjectDiscovered(ctx *astral.Context, event *objects.EventDiscovered) {
 	info, _ := mod.Content.Identify(event.ObjectID)
 	if info != nil && info.Type == zipMimeType {
 		archive, _ := mod.Index(
-			ctx,
+			ctx.WithZones(mod.autoIndexZone),
 			event.ObjectID,
-			&objects.OpenOpts{Zone: mod.autoIndexZone},
+			nil,
 		)
 
 		if archive == nil {

@@ -14,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
 )
 
 var _ objects.Module = &Module{}
@@ -144,9 +143,7 @@ func (mod *Module) Load(ctx *astral.Context, objectID *object.ID) (o astral.Obje
 		return nil, errors.New("object too large")
 	}
 
-	r, err := mod.Open(ctx, *objectID, &objects.OpenOpts{
-		Zone: astral.AllZones,
-	})
+	r, err := mod.Open(ctx, *objectID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -164,48 +161,6 @@ func (mod *Module) Load(ctx *astral.Context, objectID *object.ID) (o astral.Obje
 	}
 
 	return
-}
-
-func (mod *Module) Get(id object.ID, opts *objects.OpenOpts) ([]byte, error) {
-	if id.Size > objects.ReadAllMaxSize {
-		return nil, errors.New("data too big")
-	}
-	r, err := mod.Open(context.Background(), id, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	res := object.NewReadResolver(r)
-
-	data, err := io.ReadAll(res)
-	if err != nil {
-		return nil, err
-	}
-
-	if !res.Resolve().IsEqual(id) {
-		return nil, objects.ErrHashMismatch
-	}
-
-	return data, err
-}
-
-func (mod *Module) Put(bytes []byte, opts *objects.CreateOpts) (object.ID, error) {
-	if opts == nil {
-		opts = &objects.CreateOpts{Alloc: len(bytes)}
-	}
-
-	w, err := mod.Create(opts)
-	if err != nil {
-		return object.ID{}, err
-	}
-	defer w.Discard()
-
-	_, err = w.Write(bytes)
-	if err != nil {
-		return object.ID{}, err
-	}
-
-	return w.Commit()
 }
 
 func (mod *Module) Repositories() []objects.Repository {

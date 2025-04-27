@@ -2,7 +2,6 @@ package media
 
 import (
 	"bytes"
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/objects/mem"
@@ -10,8 +9,8 @@ import (
 	"github.com/dhowden/tag"
 )
 
-func (mod *Module) OpenObject(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if !opts.Zone.Is(astral.ZoneVirtual) {
+func (mod *Module) OpenObject(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}
 	var parentID = mod.getParentID(objectID)

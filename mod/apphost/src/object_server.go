@@ -20,12 +20,12 @@ type ObjectServer struct {
 	*Module
 	fileSystem *fs.FS
 	fileServer http.Handler
+	ctx        *astral.Context
 }
 
 func NewObjectServer(mod *Module) *ObjectServer {
 	srv := &ObjectServer{
-		Module:     mod,
-		fileSystem: fs.NewFS(mod.Deps.Objects, nil),
+		Module: mod,
 	}
 
 	srv.fileServer = http.FileServer(http.FS(srv.fileSystem))
@@ -33,46 +33,14 @@ func NewObjectServer(mod *Module) *ObjectServer {
 	return srv
 }
 
-func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	var authToken string
-	var opts = objects.DefaultOpenOpts()
-
-	authToken = request.URL.Query().Get(HTTPAuthTokenParam)
-
-	if authToken == "" {
-		authToken = request.Header.Get(HTTPAuthTokenHeader)
-	}
-
-	clientID := &astral.Identity{}
-	token, err := srv.db.FindAccessToken(authToken)
-
-	if token != nil {
-		clientID = token.Identity
-	}
-
-	filename := filepath.Base(request.URL.Path)
-
-	objectID, err := object.ParseID(filename)
-	if err != nil {
-		writer.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	opts.Zone |= astral.ZoneNetwork
-
-	if !srv.Deps.Auth.Authorize(clientID, objects.ActionRead, &objectID) {
-		writer.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	writer.Header().Set("Content-Disposition", "inline; filename="+objectID.String())
-
-	fserve := http.FileServer(http.FS(fs.NewFS(srv.Objects, opts)))
-
-	fserve.ServeHTTP(writer, request)
-}
-
 func (srv *ObjectServer) Run(ctx *astral.Context) error {
+	srv.ctx = ctx
+	defer func() {
+		srv.ctx = nil
+	}()
+
+	srv.fileSystem = fs.NewFS(ctx, srv.Deps.Objects, nil)
+
 	var wg sync.WaitGroup
 
 	for _, bind := range srv.config.ObjectServer.Bind {
@@ -110,4 +78,42 @@ func (srv *ObjectServer) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 	wg.Wait()
 	return nil
+}
+
+func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	var authToken string
+
+	authToken = request.URL.Query().Get(HTTPAuthTokenParam)
+
+	if authToken == "" {
+		authToken = request.Header.Get(HTTPAuthTokenHeader)
+	}
+
+	clientID := &astral.Identity{}
+	token, err := srv.db.FindAccessToken(authToken)
+
+	if token != nil {
+		clientID = token.Identity
+	}
+
+	filename := filepath.Base(request.URL.Path)
+
+	objectID, err := object.ParseID(filename)
+	if err != nil {
+		writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	if !srv.Deps.Auth.Authorize(clientID, objects.ActionRead, &objectID) {
+		writer.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	writer.Header().Set("Content-Disposition", "inline; filename="+objectID.String())
+
+	ctx := srv.ctx.IncludeZones(astral.ZoneNetwork)
+	
+	fserve := http.FileServer(http.FS(fs.NewFS(ctx, srv.Objects, nil)))
+
+	fserve.ServeHTTP(writer, request)
 }

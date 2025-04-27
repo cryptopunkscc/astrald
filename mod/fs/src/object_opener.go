@@ -1,7 +1,6 @@
 package fs
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -10,12 +9,12 @@ import (
 )
 
 // OpenObject opens an object from the local filesystem
-func (mod *Module) OpenObject(_ context.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mod *Module) OpenObject(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
 	if opts == nil {
 		opts = defaultOpenOpts
 	}
 
-	if !opts.Zone.Is(astral.ZoneDevice) {
+	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
 

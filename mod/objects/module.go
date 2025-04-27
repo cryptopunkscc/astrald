@@ -17,7 +17,7 @@ const ReadAllMaxSize = 64 * 1024 * 1024 // 64 MB
 type Module interface {
 	// AddOpener registers an Opener. Openers are queried from highest to lowest priority.
 	AddOpener(opener Opener, priority int) error
-	Open(ctx context.Context, objectID object.ID, opts *OpenOpts) (Reader, error)
+	Open(ctx *astral.Context, objectID object.ID, opts *OpenOpts) (Reader, error)
 
 	// AddRepository registers a Repository
 	AddRepository(repo Repository) error
@@ -45,15 +45,9 @@ type Module interface {
 	Blueprints() *astral.Blueprints
 	Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error
 
-	// Store encodes the object to local storage
+	// Save saves the object to the local storage
 	Save(astral.Object) (*object.ID, error)
 	Load(*astral.Context, *object.ID) (astral.Object, error)
-
-	// Get reads the whole object into memory and returns the buffer
-	Get(id object.ID, opts *OpenOpts) ([]byte, error)
-
-	// Put commits the object to storage and returns its ID
-	Put(object []byte, opts *CreateOpts) (object.ID, error)
 
 	// On returns a client for remote calls
 	On(target *astral.Identity, caller *astral.Identity) (Consumer, error)

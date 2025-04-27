@@ -2,7 +2,6 @@ package content
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/content"
@@ -35,8 +34,10 @@ func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 		return c, nil
 	}
 
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
 	// read first bytes for type identification
-	dataReader, err := mod.Objects.Open(context.Background(), objectID, objects.DefaultOpenOpts())
+	dataReader, err := mod.Objects.Open(ctx, objectID, objects.DefaultOpenOpts())
 	if err != nil {
 		return nil, err
 	}

@@ -14,7 +14,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
-	"io"
 	"reflect"
 	"regexp"
 	"slices"
@@ -37,10 +36,8 @@ func NewAdmin(mod *Module) *Admin {
 		"info":       adm.info,
 		"purge":      adm.purge,
 		"push":       adm.push,
-		"read":       adm.read,
 		"scan":       adm.scan,
 		"search":     adm.search,
-		"show":       adm.show,
 		"help":       adm.help,
 	}
 
@@ -115,44 +112,6 @@ func (adm *Admin) purge(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) read(term admin.Terminal, args []string) error {
-	var err error
-	var opts = objects.DefaultOpenOpts()
-	var zones string
-
-	var flags = flag.NewFlagSet("read", flag.ContinueOnError)
-	flags.StringVar(&zones, "z", opts.Zone.String(), "enabled zones")
-	flags.SetOutput(term)
-	err = flags.Parse(args)
-	if err != nil {
-		return err
-	}
-
-	if len(flags.Args()) == 0 {
-		return errors.New("missing data id")
-	}
-
-	if len(zones) > 0 {
-		opts.Zone = astral.Zones(zones)
-	}
-
-	for _, arg := range flags.Args() {
-		objectID, err := object.ParseID(arg)
-		if err != nil {
-			return err
-		}
-
-		r, err := adm.mod.OpenAs(context.Background(), term.UserIdentity(), objectID, opts)
-		if err != nil {
-			return err
-		}
-
-		io.Copy(term, r)
-	}
-
-	return nil
-}
-
 func (adm *Admin) scan(term admin.Terminal, args []string) error {
 	var repoName = "default"
 
@@ -172,58 +131,6 @@ func (adm *Admin) scan(term admin.Terminal, args []string) error {
 
 	for id := range scan {
 		term.Printf("%v\n", id)
-	}
-
-	return nil
-}
-
-func (adm *Admin) show(term admin.Terminal, args []string) error {
-	var err error
-	var scope = astral.DefaultScope()
-	var zones string
-
-	var flags = flag.NewFlagSet("show", flag.ContinueOnError)
-	flags.StringVar(&zones, "z", scope.Zone.String(), "enabled zones")
-	flags.SetOutput(term)
-	err = flags.Parse(args)
-	if err != nil {
-		return err
-	}
-
-	if len(flags.Args()) == 0 {
-		return errors.New("missing data id")
-	}
-
-	if len(zones) > 0 {
-		scope.Zone = astral.Zones(zones)
-	}
-
-	for _, arg := range flags.Args() {
-		objectID, err := object.ParseID(arg)
-		if err != nil {
-			return err
-		}
-
-		r, err := adm.mod.Open(context.Background(), objectID, &objects.OpenOpts{
-			Zone: astral.Zones(zones),
-		})
-		if err != nil {
-			return err
-		}
-
-		obj, _, err := adm.mod.Blueprints().Read(r, true)
-		if err != nil {
-			return err
-		}
-
-		term.Printf("%v %v\n\n", objectID, obj.ObjectType())
-		j, err := json.MarshalIndent(obj, "  ", "  ")
-		if err != nil {
-			term.Printf("error encoding to JSON: %v\n", err)
-			continue
-		}
-
-		term.Printf("  %v\n", string(j))
 	}
 
 	return nil
@@ -431,7 +338,9 @@ func (adm *Admin) push(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	obj, err := objects.Load[astral.Object](context.Background(), adm.mod, objectID, astral.DefaultScope())
+	lctx := astral.NewContext(nil).WithIdentity(term.UserIdentity())
+
+	obj, err := objects.Load[astral.Object](lctx, adm.mod, objectID, astral.DefaultScope())
 	if err != nil {
 		return err
 	}

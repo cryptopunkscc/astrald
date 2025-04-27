@@ -1,7 +1,6 @@
 package keys
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"errors"
@@ -103,7 +102,9 @@ func (mod *Module) IndexKey(objectID object.ID) error {
 		return ErrAlreadyIndexed
 	}
 
-	pk, err := objects.Load[*keys.PrivateKey](context.Background(), mod.Objects, objectID, astral.DefaultScope())
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
+	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects, objectID, astral.DefaultScope())
 
 	if pk.Type != keys.KeyTypeIdentity {
 		return errors.New("unsupported key type")
@@ -138,7 +139,9 @@ func (mod *Module) FindIdentity(hex string) (*astral.Identity, error) {
 		return &astral.Identity{}, tx.Error
 	}
 
-	pk, err := objects.Load[*keys.PrivateKey](context.Background(), mod.Objects, row.DataID, astral.DefaultScope())
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
+	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects, row.DataID, astral.DefaultScope())
 	if err != nil {
 		return &astral.Identity{}, err
 	}

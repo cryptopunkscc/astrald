@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"gorm.io/gorm"
 	"sync"
 )
@@ -29,7 +28,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	mod.autoIndexZone = astral.Zones(mod.config.AutoIndexZones)
 
 	for event := range mod.Content.Scan(ctx, &content.ScanOpts{Type: zipMimeType}) {
-		mod.Index(ctx, event.ObjectID, &objects.OpenOpts{Zone: mod.autoIndexZone})
+		mod.Index(ctx.WithZones(mod.autoIndexZone), event.ObjectID, nil)
 	}
 
 	return nil

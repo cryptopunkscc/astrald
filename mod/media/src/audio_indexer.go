@@ -22,16 +22,10 @@ func NewAudioIndexer(mod *Module) *AudioIndexer {
 	return &AudioIndexer{Module: mod}
 }
 
-func (mod *AudioIndexer) DescribeObject(ctx context.Context, objectID object.ID, opts *astral.Scope) (<-chan *objects.SourcedObject, error) {
-	openOpts := &objects.OpenOpts{
-		Zone: astral.ZoneDevice | astral.ZoneVirtual,
-	}
+func (mod *AudioIndexer) DescribeObject(actx context.Context, objectID object.ID, opts *astral.Scope) (<-chan *objects.SourcedObject, error) {
+	ctx := astral.NewContext(actx).WithIdentity(mod.node.Identity())
 
-	if opts.Zone.Is(astral.ZoneNetwork) {
-		openOpts.Zone |= astral.ZoneNetwork
-	}
-
-	audio, err := mod.Index(ctx, objectID, openOpts)
+	audio, err := mod.Index(ctx, objectID, nil)
 
 	if audio == nil {
 		return nil, fmt.Errorf("index error: %w", err)
@@ -101,7 +95,9 @@ func (mod *AudioIndexer) Index(ctx context.Context, objectID object.ID, opts *ob
 }
 
 func (mod *AudioIndexer) scanObject(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (*media.AudioDescriptor, error) {
-	r, err := mod.Objects.Open(ctx, objectID, opts)
+	actx := astral.NewContext(ctx).WithIdentity(mod.node.Identity())
+
+	r, err := mod.Objects.Open(actx, objectID, opts)
 	if err != nil {
 		return nil, err
 	}
