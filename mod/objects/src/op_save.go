@@ -22,7 +22,7 @@ func (mod *Module) OpSave(ctx *astral.Context, q shell.Query, args opSaveArgs) (
 
 	ch := astral.NewChannel(q.Accept(), args.Format)
 	defer ch.Close()
-
+	
 	var payload = make([]byte, args.Size)
 	_, err = io.ReadFull(ch.Transport(), payload)
 	if err != nil {
@@ -35,7 +35,7 @@ func (mod *Module) OpSave(ctx *astral.Context, q shell.Query, args opSaveArgs) (
 		Payload: payload,
 	}
 
-	objID, err := mod.Save(raw)
+	objID, err := mod.Save(ctx.WithIdentity(q.Caller()), raw)
 	if err != nil {
 		ch.Write(astral.NewError("internal error"))
 		mod.log.Errorv(1, "op_save: error writing object: %v", err)

@@ -46,7 +46,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) CreateKey(alias string) (identity *astral.Identity, objectID object.ID, err error) {
+func (mod *Module) CreateKey(alias string) (identity *astral.Identity, objectID *object.ID, err error) {
 	_, err = mod.Dir.ResolveIdentity(alias)
 	if err == nil {
 		return identity, objectID, errors.New("alias already in use")
@@ -67,9 +67,9 @@ func (mod *Module) CreateKey(alias string) (identity *astral.Identity, objectID 
 	return
 }
 
-func (mod *Module) SaveKey(key *astral.Identity) (object.ID, error) {
+func (mod *Module) SaveKey(key *astral.Identity) (*object.ID, error) {
 	if key.PrivateKey() == nil {
-		return object.ID{}, errors.New("private key is nil")
+		return nil, errors.New("private key is nil")
 	}
 
 	pk := &keys.PrivateKey{
@@ -77,22 +77,15 @@ func (mod *Module) SaveKey(key *astral.Identity) (object.ID, error) {
 		Bytes: key.PrivateKey().Serialize(),
 	}
 
-	w, err := mod.Objects.Create(&objects.CreateOpts{Alloc: 70})
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
+	objectID, err := mod.Objects.Save(ctx, pk)
+
 	if err != nil {
-		return object.ID{}, err
+		mod.log.Errorv(1, "error saving private key %v: %v", key, err)
 	}
 
-	_, err = astral.WriteCanonical(w, pk)
-	if err != nil {
-		return object.ID{}, nil
-	}
-
-	objectID, err := w.Commit()
-	if err != nil {
-		mod.log.Errorv(1, "error importing private key %v: %v", key, err)
-	}
-
-	return objectID, mod.IndexKey(objectID)
+	return objectID, mod.IndexKey(*objectID)
 }
 
 func (mod *Module) IndexKey(objectID object.ID) error {

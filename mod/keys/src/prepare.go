@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/keys"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (mod *Module) Prepare(ctx context.Context) error {
@@ -21,23 +20,15 @@ func (mod *Module) Prepare(ctx context.Context) error {
 	return nil
 }
 
-func (mod *Module) importNodeIdentity() error {
-	pk := keys.PrivateKey{
+func (mod *Module) importNodeIdentity() (err error) {
+	pk := &keys.PrivateKey{
 		Type:  keys.KeyTypeIdentity,
 		Bytes: mod.node.Identity().PrivateKey().Serialize(),
 	}
 
-	w, err := mod.Objects.Create(&objects.CreateOpts{Alloc: 70})
-	if err != nil {
-		return err
-	}
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	_, err = astral.WriteCanonical(w, &pk)
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Commit()
+	_, err = mod.Objects.Save(ctx, pk)
 
 	return err
 }

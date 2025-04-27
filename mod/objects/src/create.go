@@ -3,6 +3,7 @@ package objects
 import (
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
@@ -11,7 +12,7 @@ type Creator struct {
 	Priority int
 }
 
-func (mod *Module) Create(o *objects.CreateOpts) (objects.Writer, error) {
+func (mod *Module) Create(ctx *astral.Context, o *objects.CreateOpts) (objects.Writer, error) {
 	var opts objects.CreateOpts
 	if o != nil {
 		opts = *o
@@ -25,8 +26,8 @@ func (mod *Module) Create(o *objects.CreateOpts) (objects.Writer, error) {
 		return nil, errors.New("alloc exceeds limit")
 	}
 
-	if opts.As.IsZero() {
-		opts.As = mod.node.Identity()
+	if !mod.Auth.Authorize(ctx.Identity(), objects.ActionWrite, nil) {
+		return nil, objects.ErrAccessDenied
 	}
 
 	if opts.Repo == "" {

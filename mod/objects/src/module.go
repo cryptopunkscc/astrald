@@ -64,7 +64,7 @@ func (mod *Module) Blueprints() *astral.Blueprints {
 	return &mod.blueprints
 }
 
-func (mod *Module) Save(obj astral.Object) (_ *object.ID, err error) {
+func (mod *Module) Save(ctx *astral.Context, obj astral.Object) (_ *object.ID, err error) {
 	realID, err := astral.ResolveObjectID(obj)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (mod *Module) Save(obj astral.Object) (_ *object.ID, err error) {
 		return &realID, nil
 	}
 
-	w, err := mod.Create(nil)
+	w, err := mod.Create(ctx, nil)
 	if err != nil {
 		return
 	}
@@ -88,6 +88,7 @@ func (mod *Module) Save(obj astral.Object) (_ *object.ID, err error) {
 
 	emit := func(n bool) {
 		mod.Objects.Receive(&objects.EventSaved{
+			Identity: ctx.Identity(),
 			ObjectID: &realID,
 			New:      astral.Bool(n),
 		}, nil)

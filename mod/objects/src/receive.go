@@ -38,7 +38,8 @@ func (mod *Module) receive(push *objects.SourcedObject) (ok bool) {
 		}
 	}
 	if ok {
-		mod.Save(push.Object)
+		ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+		mod.Save(ctx, push.Object)
 	}
 	return
 }

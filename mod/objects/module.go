@@ -22,7 +22,7 @@ type Module interface {
 	// AddRepository registers a Repository
 	AddRepository(repo Repository) error
 	Repositories() []Repository
-	Create(opts *CreateOpts) (Writer, error)
+	Create(ctx *astral.Context, opts *CreateOpts) (Writer, error)
 
 	AddDescriber(Describer) error
 	Describe(*astral.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
@@ -46,7 +46,7 @@ type Module interface {
 	Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error
 
 	// Save saves the object to the local storage
-	Save(astral.Object) (*object.ID, error)
+	Save(*astral.Context, astral.Object) (*object.ID, error)
 	Load(*astral.Context, *object.ID) (astral.Object, error)
 
 	// On returns a client for remote calls

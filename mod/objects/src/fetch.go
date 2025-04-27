@@ -39,11 +39,11 @@ func (mod *Module) fetchURL(url string) (objectID object.ID, err error) {
 
 	var alloc = max(response.ContentLength, 0)
 
-	w, err := mod.Create(
-		&objects.CreateOpts{
-			Alloc: int(alloc),
-		},
-	)
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
+	w, err := mod.Create(ctx, &objects.CreateOpts{
+		Alloc: int(alloc),
+	})
 	if err != nil {
 		return
 	}
@@ -69,7 +69,9 @@ func (mod *Module) fetchARL(a *arl.ARL) (objectID object.ID, err error) {
 		return
 	}
 
-	w, err := mod.Create(nil)
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
+	w, err := mod.Create(ctx, nil)
 	if err != nil {
 		return
 	}

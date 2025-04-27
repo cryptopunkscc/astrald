@@ -7,6 +7,7 @@ import (
 )
 
 type EventSaved struct {
+	Identity *astral.Identity
 	ObjectID *object.ID
 	New      astral.Bool
 }
