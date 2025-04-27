@@ -1,7 +1,6 @@
 package fs
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -10,8 +9,8 @@ import (
 
 var _ objects.Describer = &Module{}
 
-func (mod *Module) DescribeObject(ctx context.Context, objectID object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
-	if !scope.Is(astral.ZoneDevice) {
+func (mod *Module) DescribeObject(ctx *astral.Context, objectID object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
+	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
 

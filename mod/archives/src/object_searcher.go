@@ -1,14 +1,13 @@
 package archives
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"strings"
 )
 
-func (mod *Module) SearchObject(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
-	if !opts.Zone.Is(astral.ZoneVirtual) {
+func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}
 

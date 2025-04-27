@@ -1,12 +1,12 @@
 package objects
 
 import (
-	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"sync"
 )
 
-func (mod *Module) Search(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+func (mod *Module) Search(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
 	if opts == nil {
 		opts = objects.DefaultSearchOpts()
 	}

@@ -10,12 +10,10 @@ import (
 
 // Run starts the node, waits for it to finish and returns an error if any
 func (node *Node) Run(nctx context.Context) (err error) {
-	nctx, shutdown := context.WithCancel(nctx)
-
-	ctx := astral.NewContext(nctx).WithIdentity(node.identity)
+	ctx, shutdown := astral.NewContext(nctx).WithIdentity(node.identity).WithCancel()
 
 	// Say hello
-	node.log.Log("astral node %v (%v) statrting...",
+	node.log.Log("astral node %v (%v) starting...",
 		node.identity,
 		node.identity.String(),
 	)

@@ -28,7 +28,7 @@ func (mod *Module) onObjectDiscovered(ctx *astral.Context, event *objects.EventD
 	info, _ := mod.Content.Identify(event.ObjectID)
 	if info != nil && info.Type == zipMimeType {
 		archive, _ := mod.Index(
-			ctx.WithZones(mod.autoIndexZone),
+			ctx.WithZone(mod.autoIndexZone),
 			event.ObjectID,
 			nil,
 		)

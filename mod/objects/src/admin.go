@@ -2,11 +2,7 @@ package objects
 
 import (
 	"cmp"
-	"context"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -30,14 +26,12 @@ func NewAdmin(mod *Module) *Admin {
 	var adm = &Admin{mod: mod}
 	adm.cmds = map[string]func(admin.Terminal, []string) error{
 		"blueprints": adm.blueprints,
-		"describe":   adm.describe,
 		"fetch":      adm.fetch,
 		"holders":    adm.holders,
 		"info":       adm.info,
 		"purge":      adm.purge,
 		"push":       adm.push,
 		"scan":       adm.scan,
-		"search":     adm.search,
 		"help":       adm.help,
 	}
 
@@ -134,134 +128,6 @@ func (adm *Admin) scan(term admin.Terminal, args []string) error {
 	}
 
 	return nil
-}
-
-func (adm *Admin) describe(term admin.Terminal, args []string) error {
-	var err error
-	var zonesArg string
-	var provider string
-	var scope = astral.DefaultScope()
-
-	// parse args
-	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
-	flags.StringVar(&zonesArg, "z", scope.Zone.String(), "set zones to use")
-	flags.StringVar(&provider, "p", "", "query this provider")
-	flags.SetOutput(term)
-	err = flags.Parse(args)
-	if err != nil {
-		return err
-	}
-
-	args = flags.Args()
-
-	if len(args) == 0 {
-		return errors.New("missing object id")
-	}
-
-	objectID, err := object.ParseID(args[0])
-	if err != nil {
-		return err
-	}
-
-	if zonesArg != "" {
-		scope.Zone = astral.Zones(zonesArg)
-	}
-
-	var descs <-chan *objects.SourcedObject
-
-	if len(provider) > 0 {
-		var providerID *astral.Identity
-		providerID, err = adm.mod.Dir.ResolveIdentity(provider)
-		if err != nil {
-			return err
-		}
-
-		c := NewConsumer(adm.mod, term.UserIdentity(), providerID)
-
-		descs, err = c.Describe(context.Background(), objectID, scope)
-	} else {
-		descs, err = adm.mod.Describe(context.Background(), objectID, scope)
-	}
-	if err != nil {
-		return err
-	}
-
-	term.Printf("%v %v\n", admin.Header("SHA256"), admin.Keyword(hex.EncodeToString(objectID.Hash[:])))
-	term.Printf("%v %v", admin.Header("SIZE"), admin.Keyword(log.DataSize(objectID.Size).HumanReadable()))
-
-	if objectID.Size > 1023 {
-		term.Printf(" (%v bytes)", objectID.Size)
-	}
-
-	term.Printf("\n\n")
-
-	// print descriptors
-	for d := range descs {
-		term.Printf("%v: %v\n  ", d.Source, admin.Keyword(d.Object.ObjectType()))
-
-		j, err := json.MarshalIndent(d.Object, "  ", "  ")
-		if err != nil {
-			term.Printf("marshal error: %v\n", err)
-		}
-		term.Printf("%v\n\n", string(j))
-	}
-
-	return nil
-}
-
-func (adm *Admin) search(term admin.Terminal, args []string) error {
-	if len(args) == 0 {
-		return errors.New("missing argument")
-	}
-
-	var opts = objects.DefaultSearchOpts()
-	var zonesArg string
-	var provider string
-	var err error
-
-	var flags = flag.NewFlagSet("describe", flag.ContinueOnError)
-	flags.StringVar(&zonesArg, "z", opts.Zone.String(), "set zones to use")
-	flags.StringVar(&provider, "p", "", "query this provider")
-	flags.SetOutput(term)
-	err = flags.Parse(args)
-	if err != nil {
-		return err
-	}
-
-	if zonesArg != "" {
-		opts.Zone = astral.Zones(zonesArg)
-	}
-
-	args = flags.Args()
-
-	var matches <-chan *objects.SearchResult
-
-	if len(provider) > 0 {
-		var providerID *astral.Identity
-
-		providerID, err = adm.mod.Dir.ResolveIdentity(provider)
-		if err != nil {
-			return err
-		}
-
-		c := NewConsumer(adm.mod, term.UserIdentity(), providerID)
-
-		matches, err = c.Search(context.Background(), args[0])
-	} else {
-		matches, err = adm.mod.Search(context.Background(), args[0], opts)
-	}
-
-	if err != nil {
-		return err
-	}
-
-	for match := range matches {
-		term.Printf("%v\n",
-			match.ObjectID,
-		)
-	}
-
-	return err
 }
 
 func (adm *Admin) fetch(term admin.Terminal, args []string) error {

@@ -1,7 +1,6 @@
 package media
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/media"
@@ -35,7 +34,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		scope := astral.DefaultScope()
 
 		if slices.Contains(mod.config.AutoIndexNet, string(event.Type)) {
-			scope.Zone |= astral.ZoneNetwork
+			ctx = ctx.WithZone(astral.ZoneNetwork)
 		}
 
 		mod.DescribeObject(ctx, event.ObjectID, scope)
@@ -44,7 +43,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) SearchObject(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
 	return mod.audio.SearchObject(ctx, query, opts)
 }
 

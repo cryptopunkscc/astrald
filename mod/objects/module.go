@@ -25,16 +25,16 @@ type Module interface {
 	Create(opts *CreateOpts) (Writer, error)
 
 	AddDescriber(Describer) error
-	Describe(context.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
+	Describe(*astral.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
 
 	AddPurger(purger Purger) error
 	Purge(object.ID, *PurgeOpts) (int, error)
 
 	AddSearcher(Searcher) error
-	Search(ctx context.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
+	Search(ctx *astral.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
 
 	AddFinder(Finder) error
-	Find(context.Context, object.ID, *astral.Scope) []*astral.Identity
+	Find(*astral.Context, object.ID, *astral.Scope) []*astral.Identity
 
 	AddHolder(Holder) error
 	Holders(objectID object.ID) []Holder
@@ -66,7 +66,7 @@ type Receiver interface {
 }
 
 type Describer interface {
-	DescribeObject(context.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
+	DescribeObject(*astral.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
 }
 
 type Purger interface {

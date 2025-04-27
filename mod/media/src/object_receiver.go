@@ -1,7 +1,6 @@
 package media
 
 import (
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -24,5 +23,5 @@ func (mod *Module) ReceiveObject(object *objects.SourcedObject) error {
 }
 
 func (mod *Module) receiveObjectDiscovered(event *objects.EventDiscovered) {
-	mod.DescribeObject(context.Background(), event.ObjectID, astral.DefaultScope())
+	mod.DescribeObject(astral.NewContext(nil).WithIdentity(mod.node.Identity()), event.ObjectID, astral.DefaultScope())
 }

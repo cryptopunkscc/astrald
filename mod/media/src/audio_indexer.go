@@ -22,9 +22,7 @@ func NewAudioIndexer(mod *Module) *AudioIndexer {
 	return &AudioIndexer{Module: mod}
 }
 
-func (mod *AudioIndexer) DescribeObject(actx context.Context, objectID object.ID, opts *astral.Scope) (<-chan *objects.SourcedObject, error) {
-	ctx := astral.NewContext(actx).WithIdentity(mod.node.Identity())
-
+func (mod *AudioIndexer) DescribeObject(ctx *astral.Context, objectID object.ID, opts *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	audio, err := mod.Index(ctx, objectID, nil)
 
 	if audio == nil {
@@ -42,8 +40,8 @@ func (mod *AudioIndexer) DescribeObject(actx context.Context, objectID object.ID
 	return results, nil
 }
 
-func (mod *AudioIndexer) SearchObject(ctx context.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
-	if !opts.Zone.Is(astral.ZoneDevice) {
+func (mod *AudioIndexer) SearchObject(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
 	var results = make(chan *objects.SearchResult)

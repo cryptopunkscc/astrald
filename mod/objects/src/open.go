@@ -41,7 +41,7 @@ func (mod *Module) Open(ctx *astral.Context, objectID object.ID, opts *objects.O
 
 	// limit first attempt to local zone
 	if ctx.Zone().Is(astral.ZoneDevice) {
-		r, err := openers.OpenFirst(ctx.LimitZones(astral.ZoneDevice), objectID, opts)
+		r, err := openers.OpenFirst(ctx.LimitZone(astral.ZoneDevice), objectID, opts)
 		if err == nil {
 			return r, nil
 		}
@@ -49,7 +49,7 @@ func (mod *Module) Open(ctx *astral.Context, objectID object.ID, opts *objects.O
 
 	// then include the virtual zone
 	if ctx.Zone().Is(astral.ZoneVirtual) {
-		r, err := openers.OpenFirst(ctx.LimitZones(astral.ZoneDevice|astral.ZoneVirtual), objectID, opts)
+		r, err := openers.OpenFirst(ctx.LimitZone(astral.ZoneDevice|astral.ZoneVirtual), objectID, opts)
 		if err == nil {
 			return r, nil
 		}
@@ -74,7 +74,7 @@ func (mod *Module) AddOpener(opener objects.Opener, priority int) error {
 }
 
 func (mod *Module) openNetwork(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	providers := mod.Find(ctx, objectID, &astral.Scope{Zone: ctx.Zone()})
+	providers := mod.Find(ctx, objectID, nil)
 
 	if opts.QueryFilter != nil {
 		providers = slices.DeleteFunc(providers, func(identity *astral.Identity) bool {

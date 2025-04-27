@@ -20,7 +20,7 @@ func (mod *Module) OpRead(ctx *astral.Context, q shell.Query, args opReadArgs) (
 		args.Zone &= ^astral.ZoneVirtual
 	}
 
-	ctx = ctx.IncludeZones(args.Zone).WithIdentity(q.Caller())
+	ctx = ctx.IncludeZone(args.Zone).WithIdentity(q.Caller())
 
 	r, err := mod.Open(ctx, args.ID, &objects.OpenOpts{
 		Offset: uint64(args.Offset),

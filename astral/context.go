@@ -34,29 +34,29 @@ func (ctx *Context) WithIdentity(id *Identity) *Context {
 	return c
 }
 
-// WithZones returns a new context with zones set to z
-func (ctx *Context) WithZones(z Zone) *Context {
+// WithZone returns a new context with zone set to z
+func (ctx *Context) WithZone(z Zone) *Context {
 	c := ctx.clone()
 	c.zone = z
 	return c
 }
 
-// IncludeZones returns a new context with additional zones
-func (ctx *Context) IncludeZones(z Zone) *Context {
+// IncludeZone returns a new context with additional zone
+func (ctx *Context) IncludeZone(z Zone) *Context {
 	c := ctx.clone()
 	c.zone = c.zone | z
 	return c
 }
 
-// ExcludeZones returns a new context with zones z removed
-func (ctx *Context) ExcludeZones(z Zone) *Context {
+// ExcludeZone returns a new context with zone z removed
+func (ctx *Context) ExcludeZone(z Zone) *Context {
 	c := ctx.clone()
 	c.zone = c.zone & ^z
 	return c
 }
 
-// LimitZones returns a new context with zones limited to z
-func (ctx *Context) LimitZones(z Zone) *Context {
+// LimitZone returns a new context with zone limited to z
+func (ctx *Context) LimitZone(z Zone) *Context {
 	c := ctx.clone()
 	c.zone = c.zone & z
 	return c

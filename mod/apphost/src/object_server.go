@@ -111,8 +111,8 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 
 	writer.Header().Set("Content-Disposition", "inline; filename="+objectID.String())
 
-	ctx := srv.ctx.IncludeZones(astral.ZoneNetwork)
-	
+	ctx := srv.ctx.IncludeZone(astral.ZoneNetwork)
+
 	fserve := http.FileServer(http.FS(fs.NewFS(ctx, srv.Objects, nil)))
 
 	fserve.ServeHTTP(writer, request)

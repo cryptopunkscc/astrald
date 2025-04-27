@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -24,16 +23,13 @@ func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescrib
 		args.Zones &= ^astral.ZoneVirtual
 	}
 
-	scope := astral.DefaultScope()
-	scope.Zone = args.Zones
-
 	ch := astral.NewChannel(q.Accept(), args.Format)
 	defer ch.Close()
 
-	opCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	opCtx, cancel := ctx.IncludeZone(args.Zones).WithTimeout(time.Minute)
 	defer cancel()
 
-	descs, err := mod.Describe(opCtx, args.ID, scope)
+	descs, err := mod.Describe(opCtx, args.ID, nil)
 	if err != nil {
 		return
 	}
