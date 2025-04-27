@@ -15,7 +15,7 @@ var _ objects.Reader = &NetworkReader{}
 
 type NetworkReader struct {
 	mod      *Module
-	objectID object.ID
+	objectID *object.ID
 	consumer *astral.Identity
 	provider *astral.Identity
 

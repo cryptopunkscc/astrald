@@ -11,7 +11,7 @@ import (
 
 type entryFunc func(*archives.Entry)
 
-func (mod *Module) Index(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (archive *archives.Archive, err error) {
+func (mod *Module) Index(ctx context.Context, objectID *object.ID) (archive *archives.Archive, err error) {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()
 
@@ -20,7 +20,7 @@ func (mod *Module) Index(ctx context.Context, objectID object.ID, opts *objects.
 	}
 
 	mod.log.Logv(1, "indexing zip %v", objectID)
-	archive, err = mod.scan(ctx, objectID, opts, func(entry *archives.Entry) {
+	archive, err = mod.scan(ctx, objectID, func(entry *archives.Entry) {
 		mod.log.Infov(1, "scanned %v (%v)", entry.ObjectID, entry.Path)
 	})
 	if err != nil {
@@ -40,8 +40,8 @@ func (mod *Module) Index(ctx context.Context, objectID object.ID, opts *objects.
 	return
 }
 
-func (mod *Module) scan(ctx context.Context, objectID object.ID, opts *objects.OpenOpts, postScan entryFunc) (archive *archives.Archive, err error) {
-	reader, err := mod.openZip(objectID, opts)
+func (mod *Module) scan(ctx context.Context, objectID *object.ID, postScan entryFunc) (archive *archives.Archive, err error) {
+	reader, err := mod.openZip(objectID)
 	if err != nil {
 		return nil, fmt.Errorf("error reading zip file: %w", err)
 	}
@@ -92,11 +92,11 @@ func (mod *Module) scan(ctx context.Context, objectID object.ID, opts *objects.O
 	return
 }
 
-func (mod *Module) Forget(objectID object.ID) error {
+func (mod *Module) Forget(objectID *object.ID) error {
 	return mod.clearCache(objectID)
 }
 
-func (mod *Module) getCache(objectID object.ID) (archive *archives.Archive) {
+func (mod *Module) getCache(objectID *object.ID) (archive *archives.Archive) {
 	var row dbArchive
 
 	err := mod.db.
@@ -125,7 +125,7 @@ func (mod *Module) getCache(objectID object.ID) (archive *archives.Archive) {
 	return
 }
 
-func (mod *Module) clearCache(objectID object.ID) (err error) {
+func (mod *Module) clearCache(objectID *object.ID) (err error) {
 	var id int
 	err = mod.db.
 		Model(&dbArchive{}).
@@ -149,7 +149,7 @@ func (mod *Module) clearCache(objectID object.ID) (err error) {
 		Error
 }
 
-func (mod *Module) setCache(objectID object.ID, archive *archives.Archive) error {
+func (mod *Module) setCache(objectID *object.ID, archive *archives.Archive) error {
 	mod.clearCache(objectID)
 
 	row := dbArchive{

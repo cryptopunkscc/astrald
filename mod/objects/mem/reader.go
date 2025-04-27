@@ -1,63 +1,38 @@
 package mem
 
 import (
+	"bytes"
+	"errors"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"io"
+	"os"
 	"sync/atomic"
 )
 
 var _ objects.Reader = &Reader{}
 
 type Reader struct {
+	r      *bytes.Reader
 	bytes  []byte
-	offset int64
 	closed atomic.Bool
 }
 
-func NewMemDataReader(bytes []byte) *Reader {
-	return &Reader{bytes: bytes}
+func NewReader(buf []byte) *Reader {
+	return &Reader{
+		r:     bytes.NewReader(buf),
+		bytes: buf,
+	}
 }
 
 func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.closed.Load() {
-		return 0, objects.ErrClosedPipe
+		return 0, os.ErrClosed
 	}
-
-	if len(p) == 0 {
-		return 0, nil
-	}
-	if len(r.bytes)-int(r.offset) == 0 {
-		return 0, io.EOF
-	}
-
-	var end = min(int(r.offset)+len(p), len(r.bytes))
-	n = copy(p, r.bytes[r.offset:end])
-
-	r.offset += int64(n)
-
-	return n, nil
+	
+	return r.r.Read(p)
 }
 
 func (r *Reader) Seek(offset int64, whence int) (int64, error) {
-	if r.closed.Load() {
-		return 0, objects.ErrClosedPipe
-	}
-
-	var l = int64(len(r.bytes))
-	var o = r.offset
-
-	switch whence {
-	case io.SeekStart:
-		o = offset
-	case io.SeekCurrent:
-		o = o + offset
-	case io.SeekEnd:
-		o = l + offset
-	}
-
-	r.offset = max(min(o, l), 0)
-
-	return r.offset, nil
+	return 0, errors.ErrUnsupported
 }
 
 func (r *Reader) Close() error {

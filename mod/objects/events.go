@@ -9,7 +9,7 @@ import (
 var _ astral.Object = &EventCommitted{}
 
 type EventCommitted struct {
-	ObjectID object.ID
+	ObjectID *object.ID
 }
 
 func (EventCommitted) ObjectType() string {
@@ -27,7 +27,7 @@ func (e *EventCommitted) ReadFrom(r io.Reader) (n int64, err error) {
 var _ astral.Object = &EventDiscovered{}
 
 type EventDiscovered struct {
-	ObjectID object.ID
+	ObjectID *object.ID
 	Zone     astral.Zone
 }
 

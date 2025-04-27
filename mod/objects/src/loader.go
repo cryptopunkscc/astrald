@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/objects/mem"
 )
 
 type Loader struct{}
@@ -23,6 +24,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	mod.db = &DB{assets.Database()}
 
+	mod.root = NewRootRepository(mod)
+
 	err := mod.db.Migrate()
 	if err != nil {
 		return nil, err
@@ -35,6 +38,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		&objects.SourcedObject{},
 		&objects.SearchResult{},
 	)
+
+	mod.repos.Set("mem0", mem.NewRepository("", 0))
 
 	return mod, nil
 }

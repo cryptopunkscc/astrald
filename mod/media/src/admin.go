@@ -48,7 +48,7 @@ func (adm *Admin) index(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	audio, err := adm.mod.audio.Index(context.Background(), objectID, nil)
+	audio, err := adm.mod.audio.Index(context.Background(), objectID)
 	if audio != nil {
 		json.NewEncoder(term).Encode(audio)
 	}

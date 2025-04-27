@@ -7,8 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-func Load[T astral.Object](ctx *astral.Context, mod Module, objectID object.ID, scope *astral.Scope) (o T, err error) {
-	if objectID.Size > ReadAllMaxSize {
+func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *object.ID, bp *astral.Blueprints) (o T, err error) {
+	if int64(objectID.Size) > MaxObjectSize {
 		return o, ErrObjectTooLarge
 	}
 
@@ -16,9 +16,7 @@ func Load[T astral.Object](ctx *astral.Context, mod Module, objectID object.ID, 
 		ctx = astral.NewContext(context.Background())
 	}
 
-	r, err := mod.Open(ctx, objectID, &OpenOpts{
-		QueryFilter: scope.QueryFilter,
-	})
+	r, err := repo.Read(ctx, objectID, 0, 0)
 
 	if err != nil {
 		return o, err
@@ -28,7 +26,11 @@ func Load[T astral.Object](ctx *astral.Context, mod Module, objectID object.ID, 
 	var a astral.Object
 	var ok bool
 
-	a, _, err = mod.Blueprints().Read(r, true)
+	if bp == nil {
+		bp = astral.DefaultBlueprints
+	}
+
+	a, _, err = bp.Read(r, true)
 	if err != nil {
 		return
 	}

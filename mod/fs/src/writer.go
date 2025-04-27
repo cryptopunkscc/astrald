@@ -59,9 +59,9 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (w *Writer) Commit() (object.ID, error) {
+func (w *Writer) Commit() (*object.ID, error) {
 	if !w.finalized.CompareAndSwap(false, true) {
-		return object.ID{}, errors.New("writer closed")
+		return nil, errors.New("writer closed")
 	}
 
 	w.file.Close()

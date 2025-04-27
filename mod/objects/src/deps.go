@@ -19,14 +19,6 @@ func (mod *Module) LoadDependencies() (err error) {
 				continue
 			}
 
-			if r, ok := m.(objects.Opener); ok {
-				mod.AddOpener(r, 0)
-			}
-
-			if r, ok := m.(objects.Repository); ok {
-				mod.AddRepository(r)
-			}
-
 			if d, ok := m.(objects.Describer); ok {
 				mod.AddDescriber(d)
 			}

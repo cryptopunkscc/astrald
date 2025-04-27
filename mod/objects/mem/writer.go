@@ -10,15 +10,15 @@ import (
 var _ objects.Writer = &Writer{}
 
 type Writer struct {
-	*Store
+	*Repository
 	buf    *bytes.Buffer
 	closed atomic.Bool
 }
 
-func NewMemDataWriter(memStore *Store) *Writer {
+func NewWriter(memStore *Repository) *Writer {
 	return &Writer{
-		Store: memStore,
-		buf:   &bytes.Buffer{},
+		Repository: memStore,
+		buf:        &bytes.Buffer{},
 	}
 }
 
@@ -26,7 +26,8 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.closed.Load() {
 		return 0, objects.ErrClosedPipe
 	}
-	if int64(len(p)) > w.Free() {
+
+	if int64(len(p)) > w.free() {
 		return 0, objects.ErrNoSpaceLeft
 	}
 	n, err = w.buf.Write(p)
@@ -34,17 +35,15 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (w *Writer) Commit() (object.ID, error) {
+func (w *Writer) Commit() (*object.ID, error) {
 	if !w.closed.CompareAndSwap(false, true) {
-		return object.ID{}, objects.ErrClosedPipe
+		return nil, objects.ErrClosedPipe
 	}
 
 	var buf = w.buf.Bytes()
 	var objectID, _ = object.Resolve(bytes.NewReader(buf))
 
-	if _, ok := w.objects.Set(objectID.String(), buf); ok {
-		w.mod.Receive(&objects.EventCommitted{ObjectID: objectID}, nil)
-	}
+	w.objects.Set(objectID.String(), buf)
 
 	return objectID, nil
 }

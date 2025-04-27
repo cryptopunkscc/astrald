@@ -7,8 +7,8 @@ import (
 )
 
 type dbLocalFile struct {
-	Path      string    `gorm:"primaryKey"`
-	DataID    object.ID `gorm:"index"`
+	Path      string     `gorm:"primaryKey"`
+	DataID    *object.ID `gorm:"index"`
 	ModTime   time.Time
 	UpdatedAt time.Time
 }

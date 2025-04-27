@@ -17,7 +17,7 @@ type AudioDescriptor struct {
 	Album   string
 	Genre   string
 	Year    int
-	Picture object.ID
+	Picture *object.ID
 }
 
 func (d *AudioDescriptor) WriteTo(w io.Writer) (n int64, err error) {

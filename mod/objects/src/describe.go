@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-func (mod *Module) Describe(ctx *astral.Context, objectID object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) Describe(ctx *astral.Context, objectID *object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	if scope == nil {
 		scope = astral.DefaultScope()
 	}
@@ -48,7 +48,7 @@ func (mod *Module) AddDescriber(describer objects.Describer) error {
 	return mod.describers.Add(describer)
 }
 
-func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *astral.Scope) (<-chan *objects.SourcedObject, error) {
+func (c *Consumer) Describe(ctx context.Context, objectID *object.ID, _ *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	var results = make(chan *objects.SourcedObject, 1)
 
 	var q = query.New(
@@ -83,7 +83,7 @@ func (c *Consumer) Describe(ctx context.Context, objectID object.ID, _ *astral.S
 }
 
 type describeArgs struct {
-	ID     object.ID
+	ID     *object.ID
 	Format string `query:"optional"`
 	Zones  string `query:"optional"`
 }

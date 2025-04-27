@@ -71,7 +71,7 @@ func (mod *Module) Scan(ctx context.Context, opts *content.ScanOpts) <-chan *con
 	return ch
 }
 
-func (mod *Module) Forget(objectID object.ID) error {
+func (mod *Module) Forget(objectID *object.ID) error {
 	return mod.db.Delete(&dbDataType{}, objectID).Error
 }
 

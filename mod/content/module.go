@@ -11,8 +11,8 @@ const ModuleName = "content"
 const DBPrefix = "content__"
 
 type Module interface {
-	Identify(object.ID) (*TypeInfo, error)
-	Forget(object.ID) error
+	Identify(*object.ID) (*TypeInfo, error)
+	Forget(*object.ID) error
 	Scan(ctx context.Context, opts *ScanOpts) <-chan *TypeInfo
 
 	Ready(ctx context.Context) error
@@ -24,7 +24,7 @@ type ScanOpts struct {
 }
 
 type TypeInfo struct {
-	ObjectID     object.ID
+	ObjectID     *object.ID
 	Type         astral.String8 // detected data type
 	Method       astral.String8 // method used to detect type (adc | mimetype)
 	IdentifiedAt astral.Time

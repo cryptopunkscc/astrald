@@ -26,12 +26,12 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 			return false
 		}
 
-		parentID := mod.getParentID(*objectID)
+		parentID := mod.getParentID(objectID)
 		if parentID.IsZero() {
 			return false
 		}
 
-		return mod.Auth.Authorize(identity, action, &parentID)
+		return mod.Auth.Authorize(identity, action, parentID)
 	}
 
 	return false

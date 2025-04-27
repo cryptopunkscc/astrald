@@ -19,7 +19,6 @@ import (
 )
 
 var _ fs.Module = &Module{}
-var defaultOpenOpts = &objects.OpenOpts{}
 
 const workers = 1
 const updatesLen = 4096
@@ -30,7 +29,7 @@ type Module struct {
 	node   astral.Node
 	assets assets.Assets
 	log    *log.Logger
-	db     *gorm.DB
+	db     *DB
 	ctx    context.Context
 
 	repos sig.Map[string, *Repository]
@@ -107,7 +106,7 @@ func (mod *Module) Find(opts *fs.FindOpts) (files []*fs.File) {
 	return
 }
 
-func (mod *Module) Path(objectID object.ID) []string {
+func (mod *Module) Path(objectID *object.ID) []string {
 	return mod.path(objectID)
 }
 
@@ -140,7 +139,7 @@ func (mod *Module) Watch(path string) (added []string, err error) {
 }
 
 // path retruns a list of known paths to an object in the filesystem
-func (mod *Module) path(objectID object.ID) []string {
+func (mod *Module) path(objectID *object.ID) []string {
 	var list []string
 
 	var err = mod.db.
@@ -182,9 +181,9 @@ func (mod *Module) validate(path string) error {
 }
 
 // update updates the index entry for the path. path must be absolute.
-func (mod *Module) update(path string) (object.ID, error) {
+func (mod *Module) update(path string) (*object.ID, error) {
 	if len(path) == 0 || path[0] != '/' {
-		return object.ID{}, errors.New("invalid path")
+		return nil, errors.New("invalid path")
 	}
 
 	stat, err := os.Stat(path)
@@ -195,7 +194,7 @@ func (mod *Module) update(path string) (object.ID, error) {
 		case err != nil:
 			mod.log.Errorv(2, "deletePath(%v): %v", path, err)
 		}
-		return object.ID{}, err
+		return nil, err
 	}
 
 	var row dbLocalFile
@@ -210,7 +209,7 @@ func (mod *Module) update(path string) (object.ID, error) {
 
 	objectID, err := resolveFileID(path)
 	if err != nil {
-		return object.ID{}, err
+		return nil, err
 	}
 
 	updated := &dbLocalFile{
@@ -356,16 +355,16 @@ func (mod *Module) String() string {
 	return fs.ModuleName
 }
 
-func resolveFileID(path string) (object.ID, error) {
+func resolveFileID(path string) (*object.ID, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return object.ID{}, err
+		return nil, err
 	}
 	defer file.Close()
 
 	fileID, err := object.Resolve(file)
 	if err != nil {
-		return object.ID{}, err
+		return nil, err
 	}
 
 	return fileID, nil

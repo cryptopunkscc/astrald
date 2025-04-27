@@ -14,30 +14,28 @@ const (
 // ReadAllMaxSize is the size limit for loading objects into memory
 const ReadAllMaxSize = 64 * 1024 * 1024 // 64 MB
 
-type Module interface {
-	// AddOpener registers an Opener. Openers are queried from highest to lowest priority.
-	AddOpener(opener Opener, priority int) error
-	Open(ctx *astral.Context, objectID object.ID, opts *OpenOpts) (Reader, error)
+// MaxObjectSize is the maximum size of an object that can be loaded into memory
+const MaxObjectSize int64 = 64 << 20 // 32 MB
 
+type Module interface {
 	// AddRepository registers a Repository
-	AddRepository(repo Repository) error
-	Repositories() []Repository
-	Create(ctx *astral.Context, opts *CreateOpts) (Writer, error)
+	AddRepository(id string, repo Repository) error
+	Root() (repo Repository)
 
 	AddDescriber(Describer) error
-	Describe(*astral.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
+	Describe(*astral.Context, *object.ID, *astral.Scope) (<-chan *SourcedObject, error)
 
 	AddPurger(purger Purger) error
-	Purge(object.ID, *PurgeOpts) (int, error)
+	Purge(*object.ID, *PurgeOpts) (int, error)
 
 	AddSearcher(Searcher) error
 	Search(ctx *astral.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
 
 	AddFinder(Finder) error
-	Find(*astral.Context, object.ID, *astral.Scope) []*astral.Identity
+	Find(*astral.Context, *object.ID) []*astral.Identity
 
 	AddHolder(Holder) error
-	Holders(objectID object.ID) []Holder
+	Holders(objectID *object.ID) []Holder
 
 	AddReceiver(Receiver) error
 	Receive(astral.Object, *astral.Identity) error
@@ -45,18 +43,12 @@ type Module interface {
 	Blueprints() *astral.Blueprints
 	Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error
 
-	// Save saves the object to the local storage
-	Save(*astral.Context, astral.Object) (*object.ID, error)
-	Load(*astral.Context, *object.ID) (astral.Object, error)
-
 	// On returns a client for remote calls
 	On(target *astral.Identity, caller *astral.Identity) (Consumer, error)
 }
 
 type Consumer interface {
-	Describe(context.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
-	Open(context.Context, object.ID, *OpenOpts) (Reader, error)
-	Put(context.Context, []byte) (object.ID, error)
+	Describe(context.Context, *object.ID, *astral.Scope) (<-chan *SourcedObject, error)
 	Search(context.Context, string) (<-chan *SearchResult, error)
 	Push(context.Context, astral.Object) (err error)
 }
@@ -66,11 +58,23 @@ type Receiver interface {
 }
 
 type Describer interface {
-	DescribeObject(*astral.Context, object.ID, *astral.Scope) (<-chan *SourcedObject, error)
+	DescribeObject(*astral.Context, *object.ID, *astral.Scope) (<-chan *SourcedObject, error)
 }
 
 type Purger interface {
-	PurgeObject(object.ID, *PurgeOpts) (int, error)
+	PurgeObject(*object.ID, *PurgeOpts) (int, error)
+}
+
+// Reader is an interface for reading data objects
+type Reader interface {
+	Read(p []byte) (n int, err error)
+	Seek(offset int64, whence int) (int64, error)
+	Close() error
+	Info() *ReaderInfo
+}
+
+type ReaderInfo struct {
+	Name string
 }
 
 type PurgeOpts struct {
@@ -78,5 +82,34 @@ type PurgeOpts struct {
 }
 
 type Holder interface {
-	HoldObject(object.ID) bool
+	HoldObject(*object.ID) bool
+}
+
+func IsOffsetLimitValid(objectID *object.ID, offset int64, limit int64) bool {
+	// offset has to be non-negative and cannot be larger than the object
+	if offset < 0 || offset > int64(objectID.Size) {
+		return false
+	}
+
+	// limit has to be non-negative and exceed the size of the object
+	if limit < 0 || offset+limit > int64(objectID.Size) {
+		return false
+	}
+
+	return true
+}
+
+func Save(ctx *astral.Context, object astral.Object, repo Repository) (objectID *object.ID, err error) {
+	w, err := repo.Create(ctx, nil)
+	if err != nil {
+		return
+	}
+	defer w.Discard()
+
+	_, err = astral.WriteCanonical(w, object)
+	if err != nil {
+		return
+	}
+
+	return w.Commit()
 }

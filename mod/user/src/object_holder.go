@@ -7,11 +7,11 @@ import (
 
 var _ objects.Holder = &Module{}
 
-func (mod *Module) HoldObject(objectID object.ID) (hold bool) {
+func (mod *Module) HoldObject(objectID *object.ID) (hold bool) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return false
 	}
 
-	return mod.db.AssetsContain(&objectID)
+	return mod.db.AssetsContain(objectID)
 }

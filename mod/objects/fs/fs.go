@@ -14,16 +14,14 @@ type FS struct {
 	ctx      *astral.Context
 	identity *astral.Identity
 	mod      objects.Module
-	*objects.OpenOpts
 }
 
 var _ fs.FS = &FS{}
 
-func NewFS(ctx *astral.Context, mod objects.Module, openOpts *objects.OpenOpts) *FS {
+func NewFS(ctx *astral.Context, mod objects.Module) *FS {
 	return &FS{
-		ctx:      ctx,
-		mod:      mod,
-		OpenOpts: openOpts,
+		ctx: ctx,
+		mod: mod,
 	}
 }
 
@@ -36,7 +34,7 @@ func (f *FS) Open(name string) (fs.File, error) {
 	ctx, cancel := f.ctx.WithTimeout(openTimeout)
 	defer cancel()
 
-	r, err := f.mod.Open(ctx, objectID, f.OpenOpts)
+	r, err := f.mod.Root().Read(ctx, objectID, 0, 0)
 	if err != nil {
 		return nil, err
 	}

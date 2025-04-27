@@ -27,11 +27,7 @@ func (mod *Module) ReceiveObject(object *objects.SourcedObject) error {
 func (mod *Module) onObjectDiscovered(ctx *astral.Context, event *objects.EventDiscovered) {
 	info, _ := mod.Content.Identify(event.ObjectID)
 	if info != nil && info.Type == zipMimeType {
-		archive, _ := mod.Index(
-			ctx.WithZone(mod.autoIndexZone),
-			event.ObjectID,
-			nil,
-		)
+		archive, _ := mod.Index(ctx.WithZone(mod.autoIndexZone), event.ObjectID)
 
 		if archive == nil {
 			return

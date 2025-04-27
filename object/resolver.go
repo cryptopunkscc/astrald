@@ -45,8 +45,10 @@ func (r *WriteResolver) Write(p []byte) (n int, err error) {
 	return
 }
 
-func (r *WriteResolver) Resolve() (id ID) {
-	id.Size = r.size
+func (r *WriteResolver) Resolve() (id *ID) {
+	id = &ID{
+		Size: r.size,
+	}
 	h := r.hash.Sum(nil)
 	copy(id.Hash[0:32], h[0:32])
 	return
@@ -67,11 +69,11 @@ func (r *ReadResolver) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (r *ReadResolver) Resolve() ID {
+func (r *ReadResolver) Resolve() *ID {
 	return r.resolver.Resolve()
 }
 
-func Resolve(r io.Reader) (id ID, err error) {
+func Resolve(r io.Reader) (id *ID, err error) {
 	var p [8192]byte
 	rr := NewReadResolver(r)
 	for err == nil {

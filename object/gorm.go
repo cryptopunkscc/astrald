@@ -20,7 +20,7 @@ func (id *ID) Scan(src any) error {
 		return err
 	}
 
-	*id = parsed
+	*id = *parsed
 
 	return nil
 }

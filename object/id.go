@@ -19,10 +19,10 @@ type ID struct {
 	Hash [32]byte
 }
 
-func ParseID(s string) (id ID, err error) {
+func ParseID(s string) (id *ID, err error) {
 	// Check and trim the prefix
 	if !strings.HasPrefix(s, idPrefix) {
-		return ID{}, errors.New("invalid prefix")
+		return nil, errors.New("invalid prefix")
 	}
 	s = strings.TrimPrefix(s, idPrefix)
 
@@ -33,12 +33,13 @@ func ParseID(s string) (id ID, err error) {
 	var data [40]byte
 	n, err := zBase32Encoding.Decode(data[:], []byte(padded))
 	if err != nil {
-		return ID{}, err
+		return nil, err
 	}
 	if n != 40 {
-		return ID{}, errors.New("invalid data length")
+		return nil, errors.New("invalid data length")
 	}
 
+	id = &ID{}
 	id.Size = binary.BigEndian.Uint64(data[0:8])
 	copy(id.Hash[:], data[8:40])
 
@@ -80,7 +81,11 @@ func (id ID) String() string {
 	return idPrefix + enc
 }
 
-func (id ID) IsEqual(other ID) bool {
+func (id *ID) IsEqual(other *ID) bool {
+	if id.IsZero() {
+		return other.IsZero()
+	}
+	
 	if id.Size != other.Size {
 		return false
 	}
@@ -89,6 +94,10 @@ func (id ID) IsEqual(other ID) bool {
 }
 
 func (id *ID) IsZero() bool {
+	if id == nil {
+		return true
+	}
+
 	for _, b := range id.Hash {
 		if b != 0 {
 			return false
@@ -102,7 +111,11 @@ func (ID) ObjectType() string {
 }
 
 func (id *ID) UnmarshalText(text []byte) (err error) {
-	*id, err = ParseID(string(text))
+	parsed, err := ParseID(string(text))
+	if err != nil {
+		return err
+	}
+	*id = *parsed
 	return
 }
 

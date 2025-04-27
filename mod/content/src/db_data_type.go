@@ -7,10 +7,10 @@ import (
 )
 
 type dbDataType struct {
-	DataID       object.ID `gorm:"primaryKey"`
-	Type         string    `gorm:"index"`
-	Method       string    `gorm:"index"`
-	IdentifiedAt time.Time `gorm:"index"`
+	DataID       *object.ID `gorm:"primaryKey"`
+	Type         string     `gorm:"index"`
+	Method       string     `gorm:"index"`
+	IdentifiedAt time.Time  `gorm:"index"`
 }
 
 func (dbDataType) TableName() string {

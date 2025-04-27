@@ -9,7 +9,7 @@ import (
 var _ astral.Object = &EventArchiveIndexed{}
 
 type EventArchiveIndexed struct {
-	ObjectID object.ID
+	ObjectID *object.ID
 	Archive  *Archive
 }
 

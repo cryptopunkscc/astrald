@@ -38,11 +38,11 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 			zipID := row.Parent.ObjectID
 
 			// sanity check
-			if zipID.IsEqual(*objectID) {
+			if zipID.IsEqual(objectID) {
 				continue
 			}
 
-			return mod.Auth.Authorize(identity, objects.ActionRead, &zipID)
+			return mod.Auth.Authorize(identity, objects.ActionRead, zipID)
 		}
 	}
 

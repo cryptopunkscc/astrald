@@ -47,7 +47,7 @@ func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects
 	return mod.audio.SearchObject(ctx, query, opts)
 }
 
-func (mod *Module) getParentID(objectID object.ID) (parentID object.ID) {
+func (mod *Module) getParentID(objectID *object.ID) (parentID *object.ID) {
 	mod.db.
 		Model(&dbAudio{}).
 		Where("picture_id = ?", objectID).

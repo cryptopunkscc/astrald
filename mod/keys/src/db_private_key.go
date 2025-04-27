@@ -7,7 +7,7 @@ import (
 )
 
 type dbPrivateKey struct {
-	DataID    object.ID    `gorm:"uniqueIndex"`
+	DataID    *object.ID       `gorm:"uniqueIndex"`
 	Type      string           `gorm:"index"`
 	PublicKey *astral.Identity `gorm:"index"`
 }

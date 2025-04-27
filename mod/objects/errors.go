@@ -6,7 +6,7 @@ var (
 	ErrNotFound           = errors.New("object not found")
 	ErrObjectTooLarge     = errors.New("object too large")
 	ErrSeekUnavailable    = errors.New("seek unavailable")
-	ErrInvalidOffset      = errors.New("invalid offset")
+	ErrOutOfBounds        = errors.New("offset or limit out of bounds")
 	ErrStorageUnavailable = errors.New("storage unavailable")
 	ErrAlreadyExists      = errors.New("already exists")
 	ErrNoSpaceLeft        = errors.New("no space left on device")

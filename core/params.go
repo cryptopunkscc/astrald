@@ -75,15 +75,15 @@ func (params Params) SetNonce(key string, n astral.Nonce) {
 	params[key] = s
 }
 
-func (params Params) GetObjectID(key string) (object.ID, error) {
+func (params Params) GetObjectID(key string) (*object.ID, error) {
 	v, found := params[key]
 	if !found {
-		return object.ID{}, ErrKeyNotFound
+		return nil, ErrKeyNotFound
 	}
 
 	id, err := object.ParseID(v)
 	if err != nil {
-		return object.ID{}, err
+		return nil, err
 	}
 
 	return id, nil

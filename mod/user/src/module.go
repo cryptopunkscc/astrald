@@ -163,9 +163,9 @@ func (mod *Module) ActiveContractsOf(userID *astral.Identity) (contracts []*user
 	for _, row := range rows {
 		contract, err := objects.Load[*user.SignedNodeContract](
 			mod.ctx,
-			mod.Objects,
+			mod.Objects.Root(),
 			row.ObjectID,
-			astral.DefaultScope(),
+			mod.Objects.Blueprints(),
 		)
 
 		if err != nil {
@@ -234,7 +234,7 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	mod.Objects.Save(ctx, c)
+	objects.Save(ctx, c, mod.Objects.Root())
 
 	err = mod.db.Create(&dbNodeContract{
 		ObjectID:  contractID,

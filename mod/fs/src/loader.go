@@ -27,7 +27,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	_ = assets.LoadYAML(fs.ModuleName, &mod.config)
 
 	// set up database
-	mod.db = assets.Database()
+	mod.db = &DB{assets.Database()}
 
 	err = mod.db.AutoMigrate(&dbLocalFile{})
 	if err != nil {
@@ -50,12 +50,12 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	for name, path := range mod.config.Repos {
 		mod.repos.Set(name, NewRepository(mod, name, path))
 	}
-
+	
 	res, ok := mod.assets.Res().(*resources.FileResources)
 	if ok {
 		mod.Watch(filepath.Join(res.Root(), "static_data"))
 
-		// create default repository if neeeded
+		// create default repository if needed
 		if _, ok := mod.repos.Get("default"); !ok {
 			dataPath := filepath.Join(res.Root(), "data")
 			if os.MkdirAll(dataPath, 0700) == nil {

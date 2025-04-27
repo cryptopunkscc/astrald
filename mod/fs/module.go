@@ -12,12 +12,12 @@ const (
 
 type Module interface {
 	Find(opts *FindOpts) []*File
-	Path(objectID object.ID) []string
+	Path(objectID *object.ID) []string
 }
 
 type File struct {
 	Path     string
-	ObjectID object.ID
+	ObjectID *object.ID
 	ModTime  time.Time
 }
 

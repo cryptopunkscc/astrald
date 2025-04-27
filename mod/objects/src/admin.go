@@ -1,19 +1,15 @@
 package objects
 
 import (
-	"cmp"
 	"errors"
-	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
-	"reflect"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -31,7 +27,6 @@ func NewAdmin(mod *Module) *Admin {
 		"info":       adm.info,
 		"purge":      adm.purge,
 		"push":       adm.push,
-		"scan":       adm.scan,
 		"help":       adm.help,
 	}
 
@@ -106,30 +101,6 @@ func (adm *Admin) purge(term admin.Terminal, args []string) error {
 	return nil
 }
 
-func (adm *Admin) scan(term admin.Terminal, args []string) error {
-	var repoName = "default"
-
-	if len(args) > 0 {
-		repoName = args[0]
-	}
-
-	repo, ok := adm.mod.repos.Get(repoName)
-	if !ok {
-		return fmt.Errorf("no such repository: %s", repoName)
-	}
-
-	scan, err := repo.Scan()
-	if err != nil {
-		return err
-	}
-
-	for id := range scan {
-		term.Printf("%v\n", id)
-	}
-
-	return nil
-}
-
 func (adm *Admin) fetch(term admin.Terminal, args []string) error {
 	if len(args) < 1 {
 		return errors.New("argument missing")
@@ -149,36 +120,12 @@ func (adm *Admin) fetch(term admin.Terminal, args []string) error {
 }
 
 func (adm *Admin) info(term admin.Terminal, args []string) error {
-	var f = "%v %v\n"
-
-	// list openers
-	openers := adm.mod.openers.Clone()
-	slices.SortFunc(openers, func(a, b *Opener) int {
-		return cmp.Compare(a.Priority, b.Priority) * -1
-	})
-
-	term.Printf("Openers:\n")
-	term.Printf(f, admin.Header("Prio"), admin.Header("ObjectType"))
-	for _, opener := range openers {
-		term.Printf(
-			f,
-			strconv.FormatInt(int64(opener.Priority), 10),
-			reflect.TypeOf(opener.Opener),
-		)
-	}
-	term.Println()
-
 	term.Printf("Describers: %v\n", strings.Join(strSort(adm.mod.describers.Clone()), ", "))
 	term.Printf("Purger:     %v\n", strings.Join(strSort(adm.mod.purgers.Clone()), ", "))
 	term.Printf("Searcher:   %v\n", strings.Join(strSort(adm.mod.searchers.Clone()), ", "))
 	term.Printf("Finder:     %v\n", strings.Join(strSort(adm.mod.finders.Clone()), ", "))
 	term.Printf("Holder:     %v\n", strings.Join(strSort(adm.mod.holders.Clone()), ", "))
 	term.Printf("Receiver:   %v\n", strings.Join(strSort(adm.mod.receivers.Clone()), ", "))
-
-	term.Printf("\nRepositories:\n")
-	for _, repo := range adm.mod.repos.Clone() {
-		term.Printf("%v (%v free)\n", repo.Name(), log.DataSize(repo.Free()))
-	}
 
 	return nil
 }
@@ -206,7 +153,7 @@ func (adm *Admin) push(term admin.Terminal, args []string) error {
 
 	lctx := astral.NewContext(nil).WithIdentity(term.UserIdentity())
 
-	obj, err := objects.Load[astral.Object](lctx, adm.mod, objectID, astral.DefaultScope())
+	obj, err := objects.Load[astral.Object](lctx, adm.mod.Root(), objectID, adm.mod.Blueprints())
 	if err != nil {
 		return err
 	}

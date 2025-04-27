@@ -23,7 +23,7 @@ func (w *WriterWrapper) Discard() error {
 	return w.Writer.Discard()
 }
 
-func (w *WriterWrapper) Commit() (object.ID, error) {
+func (w *WriterWrapper) Commit() (*object.ID, error) {
 	objectID, err := w.Writer.Commit()
 	if err != nil {
 		w.mod.Objects.Receive(&objects.EventCommitted{ObjectID: objectID}, nil)

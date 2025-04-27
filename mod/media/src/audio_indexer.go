@@ -22,8 +22,8 @@ func NewAudioIndexer(mod *Module) *AudioIndexer {
 	return &AudioIndexer{Module: mod}
 }
 
-func (mod *AudioIndexer) DescribeObject(ctx *astral.Context, objectID object.ID, opts *astral.Scope) (<-chan *objects.SourcedObject, error) {
-	audio, err := mod.Index(ctx, objectID, nil)
+func (mod *AudioIndexer) DescribeObject(ctx *astral.Context, objectID *object.ID, opts *astral.Scope) (<-chan *objects.SourcedObject, error) {
+	audio, err := mod.Index(ctx, objectID)
 
 	if audio == nil {
 		return nil, fmt.Errorf("index error: %w", err)
@@ -72,18 +72,18 @@ func (mod *AudioIndexer) SearchObject(ctx *astral.Context, query string, opts *o
 	return results, nil
 }
 
-func (mod *AudioIndexer) Forget(objectID object.ID) error {
+func (mod *AudioIndexer) Forget(objectID *object.ID) error {
 	return mod.clearCache(objectID)
 }
 
-func (mod *AudioIndexer) Index(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (*media.AudioDescriptor, error) {
+func (mod *AudioIndexer) Index(ctx context.Context, objectID *object.ID) (*media.AudioDescriptor, error) {
 	// check cache
 	if c := mod.getCache(objectID); c != nil {
 		return c, nil
 	}
 
 	// scan the object
-	info, err := mod.scanObject(ctx, objectID, opts)
+	info, err := mod.scanObject(ctx, objectID)
 	if err != nil {
 		return nil, err
 	}
@@ -92,10 +92,10 @@ func (mod *AudioIndexer) Index(ctx context.Context, objectID object.ID, opts *ob
 	return info, mod.setCache(objectID, info)
 }
 
-func (mod *AudioIndexer) scanObject(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (*media.AudioDescriptor, error) {
+func (mod *AudioIndexer) scanObject(ctx context.Context, objectID *object.ID) (*media.AudioDescriptor, error) {
 	actx := astral.NewContext(ctx).WithIdentity(mod.node.Identity())
 
-	r, err := mod.Objects.Open(actx, objectID, opts)
+	r, err := mod.Objects.Root().Read(actx, objectID, 0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (mod *AudioIndexer) scanObject(ctx context.Context, objectID object.ID, opt
 		return nil, err
 	}
 
-	var pictureID object.ID
+	var pictureID *object.ID
 
 	if p := meta.Picture(); p != nil {
 		pictureID, err = object.Resolve(bytes.NewReader(p.Data))
@@ -123,7 +123,7 @@ func (mod *AudioIndexer) scanObject(ctx context.Context, objectID object.ID, opt
 	}, err
 }
 
-func (mod *AudioIndexer) setCache(objectID object.ID, audio *media.AudioDescriptor) error {
+func (mod *AudioIndexer) setCache(objectID *object.ID, audio *media.AudioDescriptor) error {
 	return mod.db.Create(&dbAudio{
 		ObjectID:  objectID,
 		Format:    audio.Format,
@@ -136,14 +136,14 @@ func (mod *AudioIndexer) setCache(objectID object.ID, audio *media.AudioDescript
 	}).Error
 }
 
-func (mod *AudioIndexer) clearCache(objectID object.ID) error {
+func (mod *AudioIndexer) clearCache(objectID *object.ID) error {
 	return mod.db.
 		Where("object_id = ?", objectID).
 		Delete(&dbAudio{}).
 		Error
 }
 
-func (mod *AudioIndexer) getCache(objectID object.ID) (audio *media.AudioDescriptor) {
+func (mod *AudioIndexer) getCache(objectID *object.ID) (audio *media.AudioDescriptor) {
 	var row dbAudio
 
 	err := mod.db.Where("object_id = ?", objectID).First(&row).Error

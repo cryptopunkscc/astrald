@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (mod *Module) Prepare(ctx context.Context) error {
@@ -28,7 +29,7 @@ func (mod *Module) importNodeIdentity() (err error) {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	_, err = mod.Objects.Save(ctx, pk)
+	_, err = objects.Save(ctx, pk, mod.Objects.Root())
 
 	return err
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-func (mod *Module) Purge(objectID object.ID, opts *objects.PurgeOpts) (int, error) {
+func (mod *Module) Purge(objectID *object.ID, opts *objects.PurgeOpts) (int, error) {
 	var total int
 	var errs []error
 

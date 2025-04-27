@@ -9,7 +9,7 @@ import (
 var _ astral.Object = &SearchResult{}
 
 type SearchResult struct {
-	ObjectID object.ID
+	ObjectID *object.ID
 }
 
 func (*SearchResult) ObjectType() string { return "astrald.mod.objects.search_result" }

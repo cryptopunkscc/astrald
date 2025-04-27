@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-func (mod *Module) fetch(addr string) (objectID object.ID, err error) {
+func (mod *Module) fetch(addr string) (objectID *object.ID, err error) {
 	switch {
 	case isURL(addr):
 		return mod.fetchURL(addr)
@@ -29,7 +29,7 @@ func (mod *Module) fetch(addr string) (objectID object.ID, err error) {
 	return objectID, errors.New("scheme not supported")
 }
 
-func (mod *Module) fetchURL(url string) (objectID object.ID, err error) {
+func (mod *Module) fetchURL(url string) (objectID *object.ID, err error) {
 	// Make a GET request to the URL
 	response, err := http.Get(url)
 	if err != nil {
@@ -41,7 +41,7 @@ func (mod *Module) fetchURL(url string) (objectID object.ID, err error) {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	w, err := mod.Create(ctx, &objects.CreateOpts{
+	w, err := mod.Root().Create(ctx, &objects.CreateOpts{
 		Alloc: int(alloc),
 	})
 	if err != nil {
@@ -57,7 +57,7 @@ func (mod *Module) fetchURL(url string) (objectID object.ID, err error) {
 	return w.Commit()
 }
 
-func (mod *Module) fetchARL(a *arl.ARL) (objectID object.ID, err error) {
+func (mod *Module) fetchARL(a *arl.ARL) (objectID *object.ID, err error) {
 	if a.Caller.IsZero() {
 		a.Caller = mod.node.Identity()
 	}
@@ -71,7 +71,7 @@ func (mod *Module) fetchARL(a *arl.ARL) (objectID object.ID, err error) {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	w, err := mod.Create(ctx, nil)
+	w, err := mod.Root().Create(ctx, nil)
 	if err != nil {
 		return
 	}

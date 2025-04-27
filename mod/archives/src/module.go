@@ -28,7 +28,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	mod.autoIndexZone = astral.Zones(mod.config.AutoIndexZones)
 
 	for event := range mod.Content.Scan(ctx, &content.ScanOpts{Type: zipMimeType}) {
-		mod.Index(ctx.WithZone(mod.autoIndexZone), event.ObjectID, nil)
+		mod.Index(ctx.WithZone(mod.autoIndexZone), event.ObjectID)
 	}
 
 	return nil

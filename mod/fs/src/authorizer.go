@@ -22,7 +22,7 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 }
 
 func (mod *Module) authorizeRead(identity *astral.Identity, objectID *object.ID) bool {
-	for _, path := range mod.Path(*objectID) {
+	for _, path := range mod.Path(objectID) {
 		for _, p := range mod.shares.Keys() {
 			if strings.HasPrefix(path, p) {
 				a, _ := mod.shares.Get(p)

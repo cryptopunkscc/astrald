@@ -9,7 +9,7 @@ import (
 var _ fs.File = &File{}
 
 type File struct {
-	ID object.ID
+	ID *object.ID
 	objects.Reader
 }
 

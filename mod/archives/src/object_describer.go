@@ -10,7 +10,7 @@ import (
 
 var _ objects.Describer = &Module{}
 
-func (mod *Module) DescribeObject(ctx *astral.Context, objectID object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) DescribeObject(ctx *astral.Context, objectID *object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -18,7 +18,7 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID object.ID, scope
 	return mod.describeArchive(objectID)
 }
 
-func (mod *Module) describeArchive(objectID object.ID) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) describeArchive(objectID *object.ID) (<-chan *objects.SourcedObject, error) {
 	var archive = mod.getCache(objectID)
 	if archive == nil {
 		return nil, errors.New("description unavailable")

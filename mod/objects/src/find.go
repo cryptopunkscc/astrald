@@ -10,15 +10,11 @@ func (mod *Module) AddFinder(finder objects.Finder) error {
 	return mod.finders.Add(finder)
 }
 
-func (mod *Module) Find(ctx *astral.Context, objectID object.ID, scope *astral.Scope) (providers []*astral.Identity) {
+func (mod *Module) Find(ctx *astral.Context, objectID *object.ID) (providers []*astral.Identity) {
 	var unique = map[string]struct{}{}
 
-	if scope == nil {
-		scope = astral.DefaultScope()
-	}
-
 	for _, finder := range mod.finders.Clone() {
-		for _, i := range finder.FindObject(ctx, objectID, scope) {
+		for _, i := range finder.FindObject(ctx, objectID, astral.DefaultScope()) {
 			if _, found := unique[i.String()]; found {
 				continue
 			}

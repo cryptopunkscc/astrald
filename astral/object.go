@@ -82,7 +82,7 @@ func (h *ObjectHeader) ReadFrom(r io.Reader) (n int64, err error) {
 func (h ObjectHeader) String() string { return string(h) }
 
 // ResolveObjectID calculates the id of the object
-func ResolveObjectID(obj Object) (objectID object.ID, err error) {
+func ResolveObjectID(obj Object) (objectID *object.ID, err error) {
 	w := object.NewWriteResolver(nil)
 	_, err = ObjectHeader(obj.ObjectType()).WriteTo(w)
 	if err != nil {

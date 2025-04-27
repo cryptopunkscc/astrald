@@ -39,7 +39,7 @@ func (mod *Module) OpPush(ctx *astral.Context, q shell.Query, args opPushArgs) (
 		return
 	}
 
-	var objectID object.ID
+	var objectID *object.ID
 	objectID, err = astral.ResolveObjectID(obj)
 	if err != nil {
 		return

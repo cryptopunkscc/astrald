@@ -9,13 +9,13 @@ import (
 )
 
 type opDescribeArgs struct {
-	ID     object.ID
+	ID     *object.ID
 	Format string      `query:"optional"`
 	Zones  astral.Zone `query:"optional"`
 }
 
 func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescribeArgs) (err error) {
-	if !mod.Auth.Authorize(q.Caller(), objects.ActionRead, &args.ID) {
+	if !mod.Auth.Authorize(q.Caller(), objects.ActionRead, args.ID) {
 		return q.Reject()
 	}
 

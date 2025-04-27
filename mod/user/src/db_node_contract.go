@@ -8,7 +8,7 @@ import (
 )
 
 type dbNodeContract struct {
-	ObjectID  object.ID        `gorm:"primaryKey"`
+	ObjectID  *object.ID       `gorm:"primaryKey"`
 	UserID    *astral.Identity `gorm:"index"`
 	NodeID    *astral.Identity `gorm:"index"`
 	ExpiresAt time.Time        `gorm:"index"`

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/content"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/wailsapp/mimetype"
@@ -13,7 +12,7 @@ import (
 )
 
 // Identify returns info about data type.
-func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
+func (mod *Module) Identify(objectID *object.ID) (*content.TypeInfo, error) {
 	var err error
 
 	ch, ok := mod.ongoing.Set(objectID.String(), sig.New())
@@ -37,7 +36,7 @@ func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
 	// read first bytes for type identification
-	dataReader, err := mod.Objects.Open(ctx, objectID, objects.DefaultOpenOpts())
+	dataReader, err := mod.Objects.Root().Read(ctx, objectID, 0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +82,7 @@ func (mod *Module) Identify(objectID object.ID) (*content.TypeInfo, error) {
 	return info, nil
 }
 
-func (mod *Module) getCache(objectID object.ID) *content.TypeInfo {
+func (mod *Module) getCache(objectID *object.ID) *content.TypeInfo {
 	var row dbDataType
 
 	err := mod.db.Where("data_id = ?", objectID).First(&row).Error

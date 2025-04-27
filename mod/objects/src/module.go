@@ -3,6 +3,7 @@ package objects
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/admin"
@@ -37,15 +38,14 @@ type Module struct {
 	ops        shell.Scope
 
 	ctx        context.Context
-	openers    sig.Set[*Opener]
-	repos      sig.Map[string, objects.Repository]
 	describers sig.Set[objects.Describer]
 	searchers  sig.Set[objects.Searcher]
 	purgers    sig.Set[objects.Purger]
 	finders    sig.Set[objects.Finder]
 	receivers  sig.Set[objects.Receiver]
-
-	holders sig.Set[objects.Holder]
+	holders    sig.Set[objects.Holder]
+	repos      sig.Map[string, objects.Repository]
+	root       *RootRepository
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -64,52 +64,6 @@ func (mod *Module) Blueprints() *astral.Blueprints {
 	return &mod.blueprints
 }
 
-func (mod *Module) Save(ctx *astral.Context, obj astral.Object) (_ *object.ID, err error) {
-	realID, err := astral.ResolveObjectID(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	if has, _ := mod.db.Contains(&realID); has {
-		return &realID, nil
-	}
-
-	w, err := mod.Create(ctx, nil)
-	if err != nil {
-		return
-	}
-	defer w.Discard()
-
-	_, err = astral.WriteCanonical(w, obj)
-
-	if err != nil {
-		return
-	}
-
-	emit := func(n bool) {
-		mod.Objects.Receive(&objects.EventSaved{
-			Identity: ctx.Identity(),
-			ObjectID: &realID,
-			New:      astral.Bool(n),
-		}, nil)
-	}
-
-	realID, err = w.Commit()
-	switch {
-	case err == nil:
-		mod.onSave(&realID)
-		emit(true)
-		return &realID, nil
-
-	case errors.Is(err, objects.ErrAlreadyExists):
-		mod.onSave(&realID)
-		emit(false)
-		return &realID, nil
-	}
-
-	return
-}
-
 func (mod *Module) onSave(objectID *object.ID) {
 	has, err := mod.db.Contains(objectID)
 	switch {
@@ -122,7 +76,7 @@ func (mod *Module) onSave(objectID *object.ID) {
 
 	var ctx = astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	r, err := mod.Open(ctx, *objectID, nil)
+	r, err := mod.Root().Read(ctx, objectID, 0, 0)
 	if err != nil {
 		mod.log.Error("onSave: open %v error: %v", objectID, err)
 		return
@@ -140,32 +94,31 @@ func (mod *Module) onSave(objectID *object.ID) {
 
 // Load loads and returns a typed object. Load verifies the hash of the loaded object.
 func (mod *Module) Load(ctx *astral.Context, objectID *object.ID) (o astral.Object, err error) {
-	if objectID.Size > uint64(MaxObjectSize) {
+	if objectID.Size > uint64(objects.MaxObjectSize) {
 		return nil, errors.New("object too large")
 	}
 
-	r, err := mod.Open(ctx, *objectID, nil)
+	r, err := mod.Root().Read(ctx, objectID, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
 	o, _, err = mod.Blueprints().Read(r, true)
+	if err != nil {
+		return nil, err
+	}
 
 	realID, err := astral.ResolveObjectID(o)
 	if err != nil {
 		return nil, errors.New("failed to load object")
 	}
 
-	if !realID.IsEqual(*objectID) {
+	if !realID.IsEqual(objectID) {
 		return nil, errors.New("failed to load object")
 	}
 
 	return
-}
-
-func (mod *Module) Repositories() []objects.Repository {
-	return mod.repos.Values()
 }
 
 func (mod *Module) On(target *astral.Identity, caller *astral.Identity) (objects.Consumer, error) {
@@ -182,6 +135,30 @@ func (mod *Module) On(target *astral.Identity, caller *astral.Identity) (objects
 	}
 
 	return NewConsumer(mod, caller, target), nil
+}
+
+func (mod *Module) AddRepository(id string, repo objects.Repository) error {
+	_, ok := mod.repos.Set(id, repo)
+	if !ok {
+		return fmt.Errorf("repo %s already added", repo.Label())
+	}
+	return nil
+}
+
+func (mod *Module) GetRepository(id string) (repo objects.Repository, err error) {
+	if id == "" {
+		return mod.Root(), nil
+	}
+
+	repo, ok := mod.repos.Get(id)
+	if !ok {
+		err = errors.New("repository not found")
+	}
+	return
+}
+
+func (mod *Module) Root() (repo objects.Repository) {
+	return mod.root
 }
 
 func (mod *Module) String() string {

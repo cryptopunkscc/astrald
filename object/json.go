@@ -28,7 +28,7 @@ func (id *ID) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	*id = parsed
+	*id = *parsed
 
 	return nil
 }

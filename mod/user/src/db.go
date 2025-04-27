@@ -49,7 +49,7 @@ func (db *DB) ActiveContractsOf(userID *astral.Identity) (contracts []*dbNodeCon
 	return
 }
 
-func (db *DB) ContractExists(contractID object.ID) (b bool) {
+func (db *DB) ContractExists(contractID *object.ID) (b bool) {
 	db.
 		Model(&dbNodeContract{}).
 		Where("object_id = ?", contractID).

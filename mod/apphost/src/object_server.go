@@ -39,7 +39,7 @@ func (srv *ObjectServer) Run(ctx *astral.Context) error {
 		srv.ctx = nil
 	}()
 
-	srv.fileSystem = fs.NewFS(ctx, srv.Deps.Objects, nil)
+	srv.fileSystem = fs.NewFS(ctx, srv.Deps.Objects)
 
 	var wg sync.WaitGroup
 
@@ -104,7 +104,7 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
-	if !srv.Deps.Auth.Authorize(clientID, objects.ActionRead, &objectID) {
+	if !srv.Deps.Auth.Authorize(clientID, objects.ActionRead, objectID) {
 		writer.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -113,7 +113,7 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 
 	ctx := srv.ctx.IncludeZone(astral.ZoneNetwork)
 
-	fserve := http.FileServer(http.FS(fs.NewFS(ctx, srv.Objects, nil)))
+	fserve := http.FileServer(http.FS(fs.NewFS(ctx, srv.Objects)))
 
 	fserve.ServeHTTP(writer, request)
 }

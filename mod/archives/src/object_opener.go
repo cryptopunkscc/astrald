@@ -7,17 +7,13 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 )
 
-func (mod *Module) OpenObject(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	if opts == nil {
-		opts = &objects.OpenOpts{}
-	}
-
+func (mod *Module) OpenObject(ctx *astral.Context, objectID *object.ID) (objects.Reader, error) {
 	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}
 
-	if opts.Offset > objectID.Size {
-		return nil, objects.ErrInvalidOffset
+	if objects.IsOffsetLimitValid(objectID, 0, 0) {
+		return nil, objects.ErrOutOfBounds
 	}
 
 	var rows []dbEntry
@@ -31,7 +27,7 @@ func (mod *Module) OpenObject(ctx *astral.Context, objectID object.ID, opts *obj
 	}
 
 	for _, row := range rows {
-		r, err := mod.open(row.Parent.ObjectID, row.Path, row.ObjectID, opts)
+		r, err := mod.open(row.Parent.ObjectID, row.Path, row.ObjectID)
 		if err == nil {
 			mod.log.Logv(2, "opened %v from %v/%v", objectID, row.Parent.ObjectID, row.Path)
 			return r, nil
@@ -41,8 +37,8 @@ func (mod *Module) OpenObject(ctx *astral.Context, objectID object.ID, opts *obj
 	return nil, objects.ErrNotFound
 }
 
-func (mod *Module) open(zipID object.ID, path string, fileID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
-	zipFile, err := mod.openZip(zipID, opts)
+func (mod *Module) open(zipID *object.ID, path string, fileID *object.ID) (objects.Reader, error) {
+	zipFile, err := mod.openZip(zipID)
 	if err != nil {
 		return nil, objects.ErrNotFound
 	}
@@ -58,12 +54,11 @@ func (mod *Module) open(zipID object.ID, path string, fileID object.ID, opts *ob
 	return r, err
 }
 
-func (mod *Module) openZip(objectID object.ID, opts *objects.OpenOpts) (*_zip.Reader, error) {
+func (mod *Module) openZip(objectID *object.ID) (*_zip.Reader, error) {
 	var r = &readerAt{
 		identity: mod.node.Identity(),
 		objects:  mod.Objects,
 		objectID: objectID,
-		opts:     opts,
 	}
 
 	zipFile, err := _zip.NewReader(r, int64(objectID.Size))

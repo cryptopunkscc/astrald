@@ -45,7 +45,7 @@ func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.Sea
 	var dup = make(map[string]struct{})
 
 	for match := range matches {
-		if !mod.Auth.Authorize(q.Caller(), objects.ActionRead, &match.ObjectID) {
+		if !mod.Auth.Authorize(q.Caller(), objects.ActionRead, match.ObjectID) {
 			continue
 		}
 

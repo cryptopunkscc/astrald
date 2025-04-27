@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/mod/admin"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 )
 
@@ -47,7 +46,7 @@ func (adm *Admin) index(term admin.Terminal, args []string) error {
 		return err
 	}
 
-	archive, err := adm.mod.Index(context.Background(), objectID, &objects.OpenOpts{})
+	archive, err := adm.mod.Index(context.Background(), objectID)
 	if archive != nil {
 		for _, entry := range archive.Entries {
 			term.Printf("%v %v\n", entry.ObjectID, entry.Path)

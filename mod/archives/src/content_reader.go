@@ -15,7 +15,7 @@ var _ objects.Reader = &contentReader{}
 type contentReader struct {
 	zip      *zip.Reader
 	path     string
-	objectID object.ID
+	objectID *object.ID
 
 	file fs.File
 	pos  int64

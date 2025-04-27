@@ -9,7 +9,7 @@ import (
 	"github.com/dhowden/tag"
 )
 
-func (mod *Module) OpenObject(ctx *astral.Context, objectID object.ID, opts *objects.OpenOpts) (objects.Reader, error) {
+func (mod *Module) OpenObject(ctx *astral.Context, objectID *object.ID) (objects.Reader, error) {
 	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -18,7 +18,7 @@ func (mod *Module) OpenObject(ctx *astral.Context, objectID object.ID, opts *obj
 		return nil, objects.ErrNotFound
 	}
 
-	r, err := mod.Objects.Open(ctx, parentID, opts)
+	r, err := mod.Objects.Root().Read(ctx, parentID, 0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -40,5 +40,5 @@ func (mod *Module) OpenObject(ctx *astral.Context, objectID object.ID, opts *obj
 		return nil, objects.ErrNotFound
 	}
 
-	return mem.NewMemDataReader(pic), nil
+	return mem.NewReader(pic[:]), nil
 }

@@ -43,7 +43,7 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	// add preconfigured repos
 	for _, repo := range mod.repos.Clone() {
-		mod.Objects.AddRepository(repo)
+		mod.Objects.AddRepository(repo.Label(), repo)
 	}
 
 	return

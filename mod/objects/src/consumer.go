@@ -7,7 +7,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -32,73 +31,28 @@ func NewConsumer(mod *Module, consumerID *astral.Identity, providerID *astral.Id
 	}
 }
 
-func (c *Consumer) Open(ctx context.Context, objectID object.ID, opts *objects.OpenOpts) (r objects.Reader, err error) {
-	params := core.Params{
-		"id": objectID.String(),
-	}
-
-	if opts.QueryFilter != nil {
-		if !opts.QueryFilter(c.providerID) {
-			return
-		}
-	}
-
-	if opts.Offset != 0 {
-		params.SetInt("offset", int(opts.Offset))
-	}
-
-	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodRead, params))
+func (c *Consumer) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
+	var q = query.New(ctx.Identity(), c.providerID, methodRead, &opReadArgs{
+		ID:     objectID,
+		Offset: astral.Uint64(offset),
+		Limit:  astral.Uint64(limit),
+	})
 
 	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {
 		return nil, err
 	}
 
-	r = &NetworkReader{
+	r := &NetworkReader{
 		mod:        c.mod,
 		objectID:   objectID,
 		consumer:   c.consumerID,
 		provider:   c.providerID,
-		pos:        int64(opts.Offset),
+		pos:        offset,
 		ReadCloser: conn,
 	}
 
-	return
-}
-
-func (c *Consumer) Put(ctx context.Context, p []byte) (object.ID, error) {
-	params := core.Params{
-		"size": strconv.FormatInt(int64(len(p)), 10),
-	}
-
-	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodPut, params))
-
-	conn, err := query.Route(ctx, c.mod.node, q)
-	if err != nil {
-		return object.ID{}, err
-	}
-	defer conn.Close()
-
-	n, err := conn.Write(p)
-	if err != nil {
-		return object.ID{}, err
-	}
-	if n != len(p) {
-		return object.ID{}, errors.New("write failed")
-	}
-
-	var status int
-	var objectID object.ID
-
-	err = cslq.Decode(conn, "cv", &status, &objectID)
-	if err != nil {
-		return object.ID{}, err
-	}
-	if status != 0 {
-		return object.ID{}, errors.New("remote error")
-	}
-
-	return objectID, nil
+	return r, nil
 }
 
 func (c *Consumer) Search(ctx context.Context, s string) (<-chan *objects.SearchResult, error) {
