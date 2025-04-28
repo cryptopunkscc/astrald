@@ -109,7 +109,7 @@ func (mod *Module) IndexKey(objectID *object.ID) error {
 
 	err = mod.db.Create(&dbPrivateKey{
 		DataID:    objectID,
-		Type:      pk.Type,
+		Type:      string(pk.Type),
 		PublicKey: identity,
 	}).Error
 
