@@ -8,6 +8,8 @@ import (
 
 type Bool bool
 
+// astral
+
 func (Bool) ObjectType() string {
 	return "bool"
 }
@@ -28,13 +30,9 @@ func (b *Bool) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-func (b Bool) String() string {
-	if b {
-		return "true"
-	} else {
-		return "false"
-	}
-}
+// json works correctly via text marshalling
+
+// text
 
 func (b Bool) MarshalText() (text []byte, err error) {
 	return []byte(b.String()), nil
@@ -50,4 +48,19 @@ func (b *Bool) UnmarshalText(text []byte) error {
 		return NewError("parse error")
 	}
 	return nil
+}
+
+// other
+
+func (b Bool) String() string {
+	if b {
+		return "true"
+	} else {
+		return "false"
+	}
+}
+
+func init() {
+	var b Bool
+	DefaultBlueprints.Add(&b)
 }
