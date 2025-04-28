@@ -16,36 +16,53 @@ type ErrorMessage struct {
 	err string
 }
 
-func (b *ErrorMessage) UnmarshalJSON(bytes []byte) error {
-	return json.Unmarshal(bytes, &b)
-}
-
-func (b ErrorMessage) MarshalJSON() ([]byte, error) {
-	return json.Marshal(b.err)
-}
-
-func (b ErrorMessage) ObjectType() string {
-	return "astral.errors.error_message"
-}
-
-func (b ErrorMessage) WriteTo(w io.Writer) (n int64, err error) {
-	return String16(b.err).WriteTo(w)
-}
-
-func (b *ErrorMessage) ReadFrom(r io.Reader) (n int64, err error) {
-	return (*String16)(&b.err).ReadFrom(r)
-}
-
-func (b ErrorMessage) Error() string {
-	return b.err
-}
-
-func (b ErrorMessage) String() string {
-	return b.err
-}
-
 func NewError(s string) Error {
 	return &ErrorMessage{
 		err: s,
 	}
+}
+
+// astral
+
+func (msg ErrorMessage) ObjectType() string {
+	return "error.message"
+}
+
+func (msg ErrorMessage) WriteTo(w io.Writer) (n int64, err error) {
+	return String16(msg.err).WriteTo(w)
+}
+
+func (msg *ErrorMessage) ReadFrom(r io.Reader) (n int64, err error) {
+	return (*String16)(&msg.err).ReadFrom(r)
+}
+
+// json
+
+func (msg ErrorMessage) MarshalJSON() ([]byte, error) {
+	return json.Marshal(msg.err)
+}
+
+func (msg *ErrorMessage) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, &msg)
+}
+
+// text
+
+func (msg ErrorMessage) MarshalText() (text []byte, err error) {
+	return []byte(msg.err), nil
+}
+
+func (msg *ErrorMessage) UnmarshalText(text []byte) error {
+	msg.err = string(text)
+	return nil
+}
+
+// other
+
+func (msg ErrorMessage) Error() string {
+	return msg.err
+}
+
+func (msg ErrorMessage) String() string {
+	return msg.err
 }
