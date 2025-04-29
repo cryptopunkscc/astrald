@@ -50,7 +50,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	for name, path := range mod.config.Repos {
 		mod.repos.Set(name, NewRepository(mod, name, path))
 	}
-	
+
 	res, ok := mod.assets.Res().(*resources.FileResources)
 	if ok {
 		mod.Watch(filepath.Join(res.Root(), "static_data"))
@@ -65,7 +65,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		}
 	}
 
-	mod.ops.AddOp("info", mod.opInfo)
+	mod.ops.AddStruct(mod, "Op")
 
 	return mod, nil
 }

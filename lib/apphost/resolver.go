@@ -1,6 +1,7 @@
 package apphost
 
 import (
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -27,11 +28,18 @@ func (c *Client) ResolveIdentity(name string) (*astral.Identity, error) {
 		return nil, err
 	}
 
-	var id astral.Identity
-	_, err = id.ReadFrom(conn)
+	ch := astral.NewChannel(conn)
+	defer ch.Close()
+
+	obj, err := ch.Read()
 	if err != nil {
 		return nil, err
 	}
 
-	return &id, nil
+	id, ok := obj.(*astral.Identity)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type: %s", obj.ObjectType())
+	}
+
+	return id, nil
 }

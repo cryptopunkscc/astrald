@@ -14,7 +14,7 @@ type opSaveAllArgs struct {
 }
 
 func (mod *Module) OpSaveAll(ctx *astral.Context, q shell.Query, args opSaveAllArgs) (err error) {
-	ch := astral.NewChannelAsym(q.Accept(), args.In, args.Out)
+	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
 	for {

@@ -9,10 +9,10 @@ import (
 )
 
 type opSaveArgs struct {
-	Size   int
-	Type   string `query:"optional"`
-	Format string `query:"optional"`
-	Repo   string `query:"optional"`
+	Size int
+	Type string `query:"optional"`
+	Out  string `query:"optional"`
+	Repo string `query:"optional"`
 }
 
 // OpSave saves an object to local storage and returns its ID. The caller must provide the exact size
@@ -28,7 +28,7 @@ func (mod *Module) OpSave(ctx *astral.Context, q shell.Query, args opSaveArgs) (
 		return q.Reject()
 	}
 
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	var payload = make([]byte, args.Size)
@@ -47,6 +47,7 @@ func (mod *Module) OpSave(ctx *astral.Context, q shell.Query, args opSaveArgs) (
 	switch {
 	case err == nil:
 		return ch.Write(objectID)
+		
 	case errors.Is(err, objects.ErrAlreadyExists):
 		return ch.Write(objectID)
 	}

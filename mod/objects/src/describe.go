@@ -83,19 +83,19 @@ func (c *Consumer) Describe(ctx context.Context, objectID *object.ID, _ *astral.
 }
 
 type describeArgs struct {
-	ID     *object.ID
-	Format string `query:"optional"`
-	Zones  string `query:"optional"`
+	ID   *object.ID
+	Out  string `query:"optional"`
+	Zone string `query:"optional"`
 }
 
 func (a *describeArgs) Validate() error {
 	if a.ID.IsZero() {
 		return errors.New("object ID is required")
 	}
-	switch a.Format {
+	switch a.Out {
 	case "", "json":
 	default:
-		return errors.New("invlid format: " + a.Format)
+		return errors.New("invlid format: " + a.Out)
 	}
 	return nil
 }

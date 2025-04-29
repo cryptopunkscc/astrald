@@ -8,11 +8,11 @@ import (
 )
 
 type opStreamsArgs struct {
-	Format string `query:"optional"`
+	Out string `query:"optional"`
 }
 
 func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsArgs) (err error) {
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	streams := mod.peers.streams.Clone()

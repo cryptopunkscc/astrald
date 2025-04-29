@@ -20,7 +20,7 @@ func (mod *Module) OpDeleteAll(ctx *astral.Context, q shell.Query, args opDelete
 		return q.Reject()
 	}
 
-	ch := astral.NewChannelAsym(q.Accept(), args.In, args.Out)
+	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
 	for {
@@ -34,16 +34,25 @@ func (mod *Module) OpDeleteAll(ctx *astral.Context, q shell.Query, args opDelete
 
 		objectID, ok := o.(*object.ID)
 		if !ok {
-			ch.Write(astral.NewError("not an object ID"))
+			err = ch.Write(astral.NewError("not an object ID"))
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
 		err = repo.Delete(ctx.WithIdentity(q.Caller()), objectID)
 		if err != nil {
-			ch.Write(astral.NewError(err.Error()))
+			err = ch.Write(astral.NewError(err.Error()))
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
-		ch.Write(&astral.Ack{})
+		err = ch.Write(&astral.Ack{})
+		if err != nil {
+			return err
+		}
 	}
 }

@@ -8,17 +8,12 @@ import (
 )
 
 type opInfoArgs struct {
-	Format string `query:"optional"`
+	Out string `query:"optional"`
 }
 
-func (mod *Module) opInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (err error) {
-	// authorize
-	if !mod.Auth.Authorize(q.Caller(), fs.ActionManage, nil) {
-		return q.Reject()
-	}
-
+func (mod *Module) OpInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (err error) {
 	// accept the connection
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	// prepare data

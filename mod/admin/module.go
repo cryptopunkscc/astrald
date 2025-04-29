@@ -32,7 +32,7 @@ type Terminal interface {
 	io.Writer
 }
 
-// Format types are used to format output text on the terminal. Example:
+// Formatting types are used to format output text on the terminal. Example:
 // term.Println("normal %v %v", Keyword("keyword"), Faded("faded"))
 
 type Header string

@@ -9,6 +9,8 @@ import (
 
 type Path string
 
+// astral
+
 func (Path) ObjectType() string {
 	return "astrald.mod.fs.path"
 }
@@ -20,6 +22,21 @@ func (p Path) WriteTo(w io.Writer) (n int64, err error) {
 func (p *Path) ReadFrom(r io.Reader) (n int64, err error) {
 	return (*astral.String16)(p).ReadFrom(r)
 }
+
+// json
+
+// text
+
+func (b Path) MarshalText() (text []byte, err error) {
+	return []byte(b), nil
+}
+
+func (b *Path) UnmarshalText(text []byte) error {
+	*b = Path(text)
+	return nil
+}
+
+// other
 
 func (p Path) String() string {
 	return string(p)

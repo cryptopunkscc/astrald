@@ -6,13 +6,13 @@ import (
 )
 
 type opSyncWithArgs struct {
-	Node   *astral.Identity
-	Start  astral.Uint64 `query:"optional"`
-	Format string        `query:"optional"`
+	Node  *astral.Identity
+	Start astral.Uint64 `query:"optional"`
+	Out   string        `query:"optional"`
 }
 
 func (mod *Module) OpSyncWith(ctx *astral.Context, q shell.Query, args opSyncWithArgs) (err error) {
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	err = mod.SyncAssets(ctx, args.Node)

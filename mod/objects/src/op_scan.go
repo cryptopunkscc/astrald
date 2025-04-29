@@ -6,10 +6,10 @@ import (
 )
 
 type opScanArgs struct {
-	Type   string      `query:"optional"`
-	Repo   string      `query:"optional"`
-	Format string      `query:"optional"`
-	Zone   astral.Zone `query:"optional"`
+	Type string      `query:"optional"`
+	Repo string      `query:"optional"`
+	Out  string      `query:"optional"`
+	Zone astral.Zone `query:"optional"`
 }
 
 // OpScan sends a list of object ids in a repository
@@ -26,7 +26,7 @@ func (mod *Module) OpScan(ctx *astral.Context, q shell.Query, args opScanArgs) (
 		return q.Reject()
 	}
 
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	for id := range scanCh {

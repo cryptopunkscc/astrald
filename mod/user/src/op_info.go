@@ -7,7 +7,7 @@ import (
 )
 
 type opInfoArgs struct {
-	Format string `query:"optional"`
+	Out string `query:"optional"`
 }
 
 func (mod *Module) OpInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (err error) {
@@ -20,7 +20,7 @@ func (mod *Module) OpInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (
 		return q.Reject()
 	}
 
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	return ch.Write(&user.Info{

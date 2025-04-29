@@ -24,8 +24,8 @@ func DefaultSearchOpts() *SearchOpts {
 
 // SearchArgs contains arguments to the objects.search call
 type SearchArgs struct {
-	Query  string      `query:"key:q"`
-	Zone   astral.Zone `query:"optional"`
-	Format string      `query:"optional"`
-	Ext    string      `query:"optional"`
+	Query string      `query:"key:q"`
+	Zone  astral.Zone `query:"optional"`
+	Out   string      `query:"optional"`
+	Ext   string      `query:"optional"`
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"strings"
 )
@@ -31,12 +32,13 @@ type jsonEncodeAdapter struct {
 	Payload any    `json:"payload"`
 }
 
-func NewChannel(rw io.ReadWriter, format string) *Channel {
-	return NewChannelAsym(rw, format, format)
+// NewChannel creates a new channel
+func NewChannel(rw io.ReadWriter) *Channel {
+	return NewChannelFmt(rw, "", "")
 }
 
-// NewChannelAsym makes an asymmetrical channel
-func NewChannelAsym(rw io.ReadWriter, fmtIn, fmtOut string) *Channel {
+// NewChannelFmt creates a channel with custom input/output formats
+func NewChannelFmt(rw io.ReadWriter, fmtIn, fmtOut string) *Channel {
 	ch := &Channel{
 		rw:         rw,
 		Blueprints: ExtractBlueprints(rw),
@@ -70,7 +72,6 @@ func (ch *Channel) Read() (obj Object, err error) {
 		}
 
 		obj, _, err = ch.Blueprints.Read(bytes.NewReader(frame), false)
-		return
 
 	case "json":
 		var jsonObj jsonDecodeAdapter
@@ -86,21 +87,28 @@ func (ch *Channel) Read() (obj Object, err error) {
 		}
 
 		err = json.Unmarshal(jsonObj.Payload, &obj)
-		return
 
 	case "text", "text+":
-		line, err := ch.bufr.ReadString('\n')
+		var line, objectType, text string
+
+		// read the line
+		line, err = ch.bufr.ReadString('\n')
 		if err != nil {
 			return nil, err
 		}
 		line, _ = strings.CutSuffix(line, "\n")
 
-		typ, text, err := splitTypeAndPayload(line)
+		// parse type and text
+		objectType, text, err = splitTypeAndPayload(line)
 		if err != nil {
 			return nil, fmt.Errorf("invalid text format: %w", err)
 		}
 
-		obj = ch.Blueprints.Make(typ)
+		obj = ch.Blueprints.Make(objectType)
+		if obj == nil {
+			return nil, fmt.Errorf("unknown object type: %s", objectType)
+		}
+
 		u, ok := obj.(encoding2.TextUnmarshaler)
 		if !ok {
 			return nil, errors.New("object does not implement text decoding")
@@ -108,15 +116,95 @@ func (ch *Channel) Read() (obj Object, err error) {
 
 		err = u.UnmarshalText([]byte(text))
 
-		return obj, err
+	default:
+		err = errors.New("unsupported input format: " + ch.fmtIn)
 	}
 
-	return nil, errors.New("unsupported channel format: " + ch.fmtIn)
+	return
+}
+
+func (ch *Channel) ReadPayload(objectType string) (obj Object, err error) {
+	obj = ch.Blueprints.Make(objectType)
+	if obj == nil {
+		return nil, errors.New("unknown object type")
+	}
+
+	switch ch.fmtIn {
+	case "astral", "":
+		var frame Bytes16
+
+		_, err = frame.ReadFrom(ch.bufr)
+		if err != nil {
+			return
+		}
+
+		_, err = obj.ReadFrom(bytes.NewReader(frame))
+
+	case "json":
+		err = ch.jdec.Decode(&obj)
+
+	case "text", "text+":
+		u, ok := obj.(encoding2.TextUnmarshaler)
+		if !ok {
+			return nil, errors.New("object does not implement text decoding")
+		}
+
+		var line string
+
+		line, err = ch.bufr.ReadString('\n')
+		if err != nil {
+			return
+		}
+
+		err = u.UnmarshalText([]byte(line))
+
+	default:
+		err = errors.New("unsupported input format: " + ch.fmtIn)
+	}
+
+	return
+}
+
+func (ch *Channel) WritePayload(obj Object) (err error) {
+	switch ch.fmtOut {
+	case "astral", "":
+		var frame = &bytes.Buffer{}
+
+		_, err = obj.WriteTo(frame)
+		if err != nil {
+			return
+		}
+
+		_, err = Bytes16(frame.Bytes()).WriteTo(ch.rw)
+
+	case "json":
+		err = ch.jenc.Encode(obj)
+
+	case "text", "text+":
+		m, ok := obj.(encoding2.TextMarshaler)
+		if !ok {
+			return errors.New("object does not implement text encoding")
+		}
+
+		var text []byte
+
+		text, err = m.MarshalText()
+		if err != nil {
+			return err
+		}
+
+		_, err = fmt.Fprintf(ch.rw, "%s\n", string(text))
+
+	default:
+		err = errors.New("unsupported output format: " + ch.fmtOut)
+	}
+
+	return
 }
 
 func (ch *Channel) Write(obj Object) (err error) {
 	switch ch.fmtOut {
-	case "", "astral":
+	case "astral", "":
 		var frame = &bytes.Buffer{}
 		_, _ = String8(obj.ObjectType()).WriteTo(frame)
 
@@ -167,7 +255,11 @@ func (ch *Channel) Close() error {
 }
 
 func (ch *Channel) Transport() io.ReadWriter {
-	return ch.rw
+	return &streams.ReadWriteCloseSplit{
+		Reader: ch.bufr,
+		Writer: ch.rw,
+		Closer: ch,
+	}
 }
 
 func splitTypeAndPayload(line string) (string, string, error) {

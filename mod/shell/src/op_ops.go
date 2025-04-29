@@ -6,15 +6,23 @@ import (
 	"slices"
 )
 
-func (mod *Module) OpOps(ctx *astral.Context, q shell.Query) error {
-	term := shell.NewTerminal(q.Accept())
-	defer term.Close()
+type opOpsArgs struct {
+	Out string `query:"optional"`
+}
+
+func (mod *Module) OpOps(ctx *astral.Context, q shell.Query, args opOpsArgs) (err error) {
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	defer ch.Close()
 
 	ops := mod.root.Tree()
 	slices.Sort(ops)
+
 	for _, o := range ops {
-		term.Printf("%v\n", o)
+		err = ch.Write((*astral.String8)(&o))
+		if err != nil {
+			return
+		}
 	}
 
-	return nil
+	return
 }

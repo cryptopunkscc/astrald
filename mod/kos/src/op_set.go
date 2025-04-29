@@ -13,6 +13,7 @@ type opSetArgs struct {
 	Type  string `query:"optional"`
 	Raw   string `query:"optional"` // base64 encoded raw data
 	Value string `query:"optional"` // text to unmarshal, must provide type
+	Out   string `query:"optional"`
 }
 
 func (mod *Module) OpSet(ctx *astral.Context, q shell.Query, args opSetArgs) (err error) {
@@ -22,17 +23,17 @@ func (mod *Module) OpSet(ctx *astral.Context, q shell.Query, args opSetArgs) (er
 	case len(args.Value) > 0:
 		obj := mod.Objects.Blueprints().Make(args.Type)
 		if obj == nil {
-			return q.Reject()
+			return q.RejectWithCode(8)
 		}
 
 		m, ok := obj.(encoding.TextUnmarshaler)
 		if !ok {
-			return q.Reject()
+			return q.RejectWithCode(astral.CodeInternalError)
 		}
 
 		err = m.UnmarshalText([]byte(args.Value))
 		if err != nil {
-			return q.Reject()
+			return q.RejectWithCode(astral.CodeInternalError)
 		}
 
 		var buf = &bytes.Buffer{}
@@ -53,16 +54,13 @@ func (mod *Module) OpSet(ctx *astral.Context, q shell.Query, args opSetArgs) (er
 		return q.Reject()
 	}
 
-	conn := q.Accept()
-	defer conn.Close()
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	defer ch.Close()
 
 	err = mod.db.Set(ctx.Identity(), args.Key, args.Type, payload)
 	if err != nil {
-		mod.log.Errorv(2, "errors setting %v:%v: %v", ctx.Identity(), args.Key, err)
-		_, err = astral.Write(conn, astral.NewError(err.Error()))
-		return err
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	_, err = astral.Write(conn, &astral.Ack{})
-	return err
+	return ch.Write(&astral.Ack{})
 }

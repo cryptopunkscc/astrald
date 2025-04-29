@@ -9,9 +9,9 @@ import (
 )
 
 type opDescribeArgs struct {
-	ID     *object.ID
-	Format string      `query:"optional"`
-	Zones  astral.Zone `query:"optional"`
+	ID   *object.ID
+	Out  string      `query:"optional"`
+	Zone astral.Zone `query:"optional"`
 }
 
 func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescribeArgs) (err error) {
@@ -19,17 +19,13 @@ func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescrib
 		return q.Reject()
 	}
 
-	if q.Origin() == "network" {
-		args.Zones &= ^astral.ZoneVirtual
-	}
-
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	opCtx, cancel := ctx.IncludeZone(args.Zones).WithTimeout(time.Minute)
+	ctx, cancel := ctx.IncludeZone(args.Zone).WithIdentity(q.Caller()).WithTimeout(time.Minute)
 	defer cancel()
 
-	descs, err := mod.Describe(opCtx, args.ID, nil)
+	descs, err := mod.Describe(ctx, args.ID, nil)
 	if err != nil {
 		return
 	}

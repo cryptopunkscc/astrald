@@ -1,46 +1,29 @@
 package kos
 
 import (
-	"encoding/json"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opGetArgs struct {
-	Key    string
-	Format string `query:"optional"`
+	Key string
+	Out string `query:"optional"`
 }
 
 func (mod *Module) OpGet(ctx *astral.Context, q shell.Query, args opGetArgs) error {
 	typ, payload, err := mod.db.Get(ctx.Identity(), args.Key)
 	if err != nil {
-		return q.Reject()
+		return q.RejectWithCode(8)
 	}
 
-	conn := q.Accept()
-	defer conn.Close()
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	defer ch.Close()
 
 	raw := &astral.RawObject{Type: typ, Payload: payload}
-
-	switch args.Format {
-	case "", "bin":
-		_, err = astral.Write(conn, raw)
-
-	case "json":
-		var obj astral.Object
-		obj, err = mod.Objects.Blueprints().Refine(raw)
-		if err == nil {
-			err = json.NewEncoder(conn).Encode(map[string]interface{}{
-				"type": obj.ObjectType(),
-				"data": obj,
-			})
-		} else {
-			err = json.NewEncoder(conn).Encode(map[string]interface{}{
-				"type":    raw.Type,
-				"payload": raw.Payload,
-			})
-		}
+	object, err := mod.Objects.Blueprints().Refine(raw)
+	if err != nil {
+		object = raw
 	}
 
-	return err
+	return ch.Write(object)
 }

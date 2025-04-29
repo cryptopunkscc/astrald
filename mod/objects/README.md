@@ -19,6 +19,6 @@ Params:
 
 Example:
 
-`objects.search?q=annual+report&zones=dvn&format=json&ext=alias1,key1`
+`objects.search?q=annual+report&zone=dvn&format=json&ext=alias1,key1`
 
 Response is a stream of [SearchResult](search_result.go) objects ended with an EOF.

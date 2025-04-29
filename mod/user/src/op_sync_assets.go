@@ -8,8 +8,8 @@ import (
 )
 
 type opSyncAssetsArgs struct {
-	Start  int    `query:"optional"`
-	Format string `query:"optional"`
+	Start int    `query:"optional"`
+	Out   string `query:"optional"`
 }
 
 func (mod *Module) OpSyncAssets(ctx *astral.Context, q shell.Query, args opSyncAssetsArgs) (err error) {
@@ -21,7 +21,7 @@ func (mod *Module) OpSyncAssets(ctx *astral.Context, q shell.Query, args opSyncA
 		return q.RejectWithCode(2)
 	}
 
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	var height astral.Uint64

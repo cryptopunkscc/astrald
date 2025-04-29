@@ -8,9 +8,9 @@ import (
 )
 
 type opLoadArgs struct {
-	ID     *object.ID
-	Format string      `query:"optional"`
-	Zone   astral.Zone `query:"optional"`
+	ID   *object.ID
+	Out  string      `query:"optional"`
+	Zone astral.Zone `query:"optional"`
 }
 
 // OpLoad loads an object into memory and writes it to the output. OpLoad verifies the object hash.
@@ -20,10 +20,10 @@ func (mod *Module) OpLoad(ctx *astral.Context, q shell.Query, args opLoadArgs) (
 	object, err := objects.Load[astral.Object](ctx, mod.Root(), args.ID, mod.Blueprints())
 	if err != nil {
 		mod.log.Errorv(2, "error loading object: %v", err)
-		return q.Reject()
+		return q.RejectWithCode(astral.CodeInternalError)
 	}
 
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	return ch.Write(object)

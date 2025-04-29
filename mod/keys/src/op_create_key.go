@@ -1,40 +1,26 @@
 package keys
 
 import (
-	"encoding/json"
-	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opCreateKeyArgs struct {
-	Alias  astral.String
-	Format astral.String
+	Alias string
+	Out   string `query:"optional"`
 }
 
 func (mod *Module) OpCreateKey(_ *astral.Context, q shell.Query, args opCreateKeyArgs) (err error) {
-	if args.Alias == "" {
-		return q.Reject()
-	}
-
 	mod.log.Infov(1, "creating key for %v", args.Alias)
 
-	key, _, err := mod.CreateKey(args.Alias.String())
+	key, _, err := mod.CreateKey(args.Alias)
 	if err != nil {
 		mod.log.Errorv(1, "error creating key for %v: %v", args.Alias, err)
-		return q.Reject()
+		return q.RejectWithCode(astral.CodeInternalError)
 	}
 
-	conn := q.Accept()
-	defer conn.Close()
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	defer ch.Close()
 
-	switch args.Format {
-	case "json":
-		err = json.NewEncoder(conn).Encode(key)
-	case "bin", "":
-		_, err = key.WriteTo(conn)
-	default:
-		return errors.New("unsupported format")
-	}
-	return
+	return ch.Write(key)
 }

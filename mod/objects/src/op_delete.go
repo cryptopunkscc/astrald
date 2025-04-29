@@ -7,18 +7,18 @@ import (
 )
 
 type opDeleteArgs struct {
-	ID     *object.ID
-	Format string `query:"optional"`
-	Repo   string `query:"optional"`
+	ID   *object.ID
+	Out  string `query:"optional"`
+	Repo string `query:"optional"`
 }
 
 func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArgs) (err error) {
 	repo, err := mod.GetRepository(args.Repo)
 	if err != nil || repo == nil {
-		return q.Reject()
+		return q.RejectWithCode(8)
 	}
 
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	err = repo.Delete(ctx.WithIdentity(q.Caller()), args.ID)

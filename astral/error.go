@@ -66,3 +66,7 @@ func (msg ErrorMessage) Error() string {
 func (msg ErrorMessage) String() string {
 	return msg.err
 }
+
+func init() {
+	DefaultBlueprints.Add(&ErrorMessage{})
+}

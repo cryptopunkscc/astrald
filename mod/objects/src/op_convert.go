@@ -13,7 +13,7 @@ type opConvertArgs struct {
 }
 
 func (mod *Module) OpConvert(ctx *astral.Context, q shell.Query, args opConvertArgs) (err error) {
-	ch := astral.NewChannelAsym(q.Accept(), args.In, args.Out)
+	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
 	for {

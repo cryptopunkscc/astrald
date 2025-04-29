@@ -353,7 +353,7 @@ func (mod *Module) SyncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 	}
 	defer conn.Close()
 
-	ch := astral.NewChannel(conn, "")
+	ch := astral.NewChannel(conn)
 	ch.Blueprints = astral.NewBlueprints(ch.Blueprints)
 	ch.Blueprints.Add(&OpUpdate{})
 
@@ -399,7 +399,7 @@ func (mod *Module) SyncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 		return err
 	}
 	defer conn.Close()
-	ch := astral.NewChannel(conn, "")
+	ch := astral.NewChannel(conn)
 	ch.Blueprints.Add(&user.Info{})
 
 	obj, err := ch.Read()

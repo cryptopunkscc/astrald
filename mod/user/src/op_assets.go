@@ -6,11 +6,11 @@ import (
 )
 
 type opAssetsArgs struct {
-	Format string `query:"optional"`
+	Out string `query:"optional"`
 }
 
 func (mod *Module) OpAssets(ctx *astral.Context, q shell.Query, args opAssetsArgs) (err error) {
-	ch := astral.NewChannel(q.Accept(), args.Format)
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
 	for _, asset := range mod.Assets() {
