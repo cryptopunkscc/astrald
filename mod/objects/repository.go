@@ -17,7 +17,7 @@ type Repository interface {
 	Contains(ctx *astral.Context, objectID *object.ID) (bool, error)
 
 	// Scan returns a channel of objects stored in the repository
-	Scan(ctx *astral.Context) (<-chan *object.ID, error)
+	Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error)
 
 	// Delete deletes an object
 	Delete(ctx *astral.Context, objectID *object.ID) error

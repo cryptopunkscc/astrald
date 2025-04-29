@@ -45,6 +45,8 @@ func (w *Writer) Commit() (*object.ID, error) {
 
 	w.objects.Set(objectID.String(), buf)
 
+	w.Repository.pushAdded(objectID)
+
 	return objectID, nil
 }
 

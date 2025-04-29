@@ -14,18 +14,23 @@ var _ objects.Repository = &Repository{}
 const DefaultSize = 64 * 1024 * 1024 // 64MB
 
 type Repository struct {
-	objects sig.Map[string, []byte]
-	mod     objects.Module
-	used    atomic.Int64
-	size    int64
-	name    string
+	objects  sig.Map[string, []byte]
+	mod      objects.Module
+	used     atomic.Int64
+	size     int64
+	name     string
+	addQueue *sig.Queue[*object.ID]
 }
 
 var _ objects.Repository = &Repository{}
 
 func NewRepository(name string, size int64) *Repository {
-	var repo = &Repository{name: name, size: size}
-
+	var repo = &Repository{
+		name:     name,
+		size:     size,
+		addQueue: &sig.Queue[*object.ID]{},
+	}
+	
 	if len(repo.name) == 0 {
 		repo.name = "Memory"
 	}
@@ -71,11 +76,17 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 	return NewReader(bytes[s:e]), nil
 }
 
-func (repo *Repository) Scan(ctx *astral.Context) (<-chan *object.ID, error) {
+func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
 	ch := make(chan *object.ID)
+
+	var s <-chan *object.ID
 
 	go func() {
 		defer close(ch)
+
+		if follow {
+			s = repo.addQueue.Subscribe(ctx)
+		}
 
 		for _, s := range repo.objects.Keys() {
 			id, err := object.ParseID(s)
@@ -86,6 +97,12 @@ func (repo *Repository) Scan(ctx *astral.Context) (<-chan *object.ID, error) {
 			case <-ctx.Done():
 				return
 			case ch <- id:
+			}
+		}
+
+		if s != nil {
+			for i := range s {
+				ch <- i
 			}
 		}
 	}()
@@ -111,6 +128,10 @@ func (repo *Repository) Free(ctx *astral.Context) (int64, error) {
 
 func (repo *Repository) free() int64 {
 	return repo.size - repo.used.Load()
+}
+
+func (repo *Repository) pushAdded(id *object.ID) {
+	repo.addQueue = repo.addQueue.Push(id)
 }
 
 func getSliceBounds(objectID *object.ID, offset int64, limit int64) (s int, e int, err error) {

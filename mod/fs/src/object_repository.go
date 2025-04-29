@@ -5,35 +5,48 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
+	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"os"
 	"path/filepath"
 )
 
 type Repository struct {
-	mod  *Module
-	name string
-	path string
+	mod      *Module
+	name     string
+	path     string
+	addQueue *sig.Queue[*object.ID]
 }
 
 var _ objects.Repository = &Repository{}
 
 func NewRepository(mod *Module, name string, path string) *Repository {
-	return &Repository{mod: mod, name: name, path: path}
+	return &Repository{
+		mod:      mod,
+		name:     name,
+		path:     path,
+		addQueue: &sig.Queue[*object.ID]{},
+	}
 }
 
-func (r Repository) Scan(_ *astral.Context) (<-chan *object.ID, error) {
+func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
 	ch := make(chan *object.ID)
+
+	var s <-chan *object.ID
 
 	go func() {
 		defer close(ch)
 
+		if follow {
+			s = repo.addQueue.Subscribe(ctx)
+		}
+
 		var ids []*object.ID
 
-		tx := r.mod.db.
+		tx := repo.mod.db.
 			Model(&dbLocalFile{}).
 			Select("data_id").
-			Where("path like ?", r.path+"%").
+			Where("path like ?", repo.path+"%").
 			Find(&ids)
 
 		if tx.Error != nil {
@@ -43,12 +56,18 @@ func (r Repository) Scan(_ *astral.Context) (<-chan *object.ID, error) {
 		for _, id := range ids {
 			ch <- id
 		}
+
+		if s != nil {
+			for i := range s {
+				ch <- i
+			}
+		}
 	}()
 
 	return ch, nil
 }
 
-func (r Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
+func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -57,12 +76,12 @@ func (r Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64,
 		limit = int64(objectID.Size)
 	}
 
-	paths := r.mod.path(objectID)
+	paths := repo.mod.path(objectID)
 	for _, path := range paths {
 		// check if the index for the path is valid
-		err := r.mod.validate(path)
+		err := repo.mod.validate(path)
 		if err != nil {
-			r.mod.enqueueUpdate(path) //TODO: immediade update & retry?
+			repo.mod.enqueueUpdate(path) //TODO: immediade update & retry?
 			continue
 		}
 
@@ -88,28 +107,28 @@ func (r Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64,
 	return nil, objects.ErrNotFound
 }
 
-func (r Repository) Contains(ctx *astral.Context, objectID *object.ID) (bool, error) {
-	return r.mod.db.ObjectExists(objectID)
+func (repo *Repository) Contains(ctx *astral.Context, objectID *object.ID) (bool, error) {
+	return repo.mod.db.ObjectExists(objectID)
 }
 
-func (r Repository) Label() string {
-	return r.name
+func (repo *Repository) Label() string {
+	return repo.name
 }
 
-func (r Repository) Create(ctx *astral.Context, opts *objects.CreateOpts) (objects.Writer, error) {
-	if free, err := r.Free(nil); err == nil {
+func (repo *Repository) Create(ctx *astral.Context, opts *objects.CreateOpts) (objects.Writer, error) {
+	if free, err := repo.Free(nil); err == nil {
 		if opts != nil && free < int64(opts.Alloc) {
 			return nil, objects.ErrNoSpaceLeft
 		}
 	}
 
-	w, err := NewWriter(r.mod, r.path)
+	w, err := NewWriter(repo, repo.path)
 
 	return w, err
 }
 
-func (r Repository) Free(ctx *astral.Context) (int64, error) {
-	usage, err := DiskUsage(r.path)
+func (repo *Repository) Free(ctx *astral.Context) (int64, error) {
+	usage, err := DiskUsage(repo.path)
 	if err != nil {
 		return -1, errors.ErrUnsupported
 	}
@@ -117,7 +136,11 @@ func (r Repository) Free(ctx *astral.Context) (int64, error) {
 	return int64(usage.Free), nil
 }
 
-func (r Repository) Delete(ctx *astral.Context, objectID *object.ID) error {
-	path := filepath.Join(r.path, objectID.String())
+func (repo *Repository) Delete(ctx *astral.Context, objectID *object.ID) error {
+	path := filepath.Join(repo.path, objectID.String())
 	return os.Remove(path)
+}
+
+func (repo *Repository) pushAdded(id *object.ID) {
+	repo.addQueue = repo.addQueue.Push(id)
 }

@@ -19,7 +19,7 @@ var _ objects.Writer = &Writer{}
 const tempFilePrefix = ".tmp."
 
 type Writer struct {
-	mod       *Module
+	repo      *Repository
 	path      string
 	tempID    string
 	file      *os.File
@@ -27,7 +27,7 @@ type Writer struct {
 	finalized atomic.Bool
 }
 
-func NewWriter(mod *Module, path string) (*Writer, error) {
+func NewWriter(repo *Repository, path string) (*Writer, error) {
 	var rbytes = make([]byte, 8)
 	rand.Read(rbytes)
 
@@ -41,7 +41,7 @@ func NewWriter(mod *Module, path string) (*Writer, error) {
 	resolver := object.NewWriteResolver(nil)
 
 	return &Writer{
-		mod:      mod,
+		repo:     repo,
 		path:     path,
 		tempID:   tempID,
 		file:     file,
@@ -88,7 +88,7 @@ func (w *Writer) Commit() (*object.ID, error) {
 		return objectID, err
 	}
 
-	err = w.mod.db.Create(&dbLocalFile{
+	err = w.repo.mod.db.Create(&dbLocalFile{
 		Path:    newPath,
 		DataID:  objectID,
 		ModTime: stat.ModTime(),
@@ -96,17 +96,21 @@ func (w *Writer) Commit() (*object.ID, error) {
 
 	switch {
 	case err == nil:
-		w.mod.Objects.Receive(&fs.EventFileAdded{
+		w.repo.mod.Objects.Receive(&fs.EventFileAdded{
 			Path:     astral.String16(newPath),
 			ObjectID: objectID,
 		}, nil)
-		w.mod.Objects.Receive(&objects.EventDiscovered{
+		w.repo.mod.Objects.Receive(&objects.EventDiscovered{
 			ObjectID: objectID,
 			Zone:     astral.ZoneDevice,
 		}, nil)
 
 	case strings.Contains(err.Error(), "UNIQUE constraint failed"):
 		err = objects.ErrAlreadyExists
+	}
+
+	if objectID != nil {
+		w.repo.pushAdded(objectID)
 	}
 
 	return objectID, err

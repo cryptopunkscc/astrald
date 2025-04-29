@@ -29,8 +29,8 @@ func (repo RootRepository) Contains(ctx *astral.Context, objectID *object.ID) (b
 	return repo.Default().Contains(ctx, objectID)
 }
 
-func (repo RootRepository) Scan(ctx *astral.Context) (<-chan *object.ID, error) {
-	return repo.Default().Scan(ctx)
+func (repo RootRepository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
+	return repo.Default().Scan(ctx, follow)
 }
 
 func (repo RootRepository) Delete(ctx *astral.Context, objectID *object.ID) error {
