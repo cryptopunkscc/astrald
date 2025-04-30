@@ -52,6 +52,7 @@ func (repo RootRepository) Scan(ctx *astral.Context, follow bool) (<-chan *objec
 				}
 
 				var id *object.ID
+				var ok bool
 
 				// copy all scanned ids
 				for {
@@ -59,7 +60,10 @@ func (repo RootRepository) Scan(ctx *astral.Context, follow bool) (<-chan *objec
 					select {
 					case <-ctx.Done():
 						return
-					case id = <-sub:
+					case id, ok = <-sub:
+						if !ok {
+							return
+						}
 					}
 					// write
 					select {
