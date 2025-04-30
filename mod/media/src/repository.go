@@ -62,7 +62,7 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 		return nil, objects.ErrNotFound
 	}
 
-	return mem.NewReader(pic[:]), nil
+	return mem.NewReader(pic[offset:limit]), nil
 }
 
 func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
