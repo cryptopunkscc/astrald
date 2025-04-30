@@ -27,3 +27,7 @@ func (d *FileDescriptor) ReadFrom(r io.Reader) (n int64, err error) {
 func (d *FileDescriptor) String() string {
 	return d.Path.String()
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&FileDescriptor{})
+}

@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/kos"
@@ -17,7 +16,6 @@ type Deps struct {
 	Admin   admin.Module
 	Apphost apphost.Module
 	Auth    auth.Module
-	Content content.Module
 	Dir     dir.Module
 	Objects objects.Module
 	Keys    keys.Module

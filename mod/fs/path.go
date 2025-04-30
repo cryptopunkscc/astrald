@@ -12,7 +12,7 @@ type Path string
 // astral
 
 func (Path) ObjectType() string {
-	return "astrald.mod.fs.path"
+	return "mod.fs.path"
 }
 
 func (p Path) WriteTo(w io.Writer) (n int64, err error) {
@@ -27,12 +27,12 @@ func (p *Path) ReadFrom(r io.Reader) (n int64, err error) {
 
 // text
 
-func (b Path) MarshalText() (text []byte, err error) {
-	return []byte(b), nil
+func (p Path) MarshalText() (text []byte, err error) {
+	return []byte(p), nil
 }
 
-func (b *Path) UnmarshalText(text []byte) error {
-	*b = Path(text)
+func (p *Path) UnmarshalText(text []byte) error {
+	*p = Path(text)
 	return nil
 }
 
@@ -63,4 +63,9 @@ func (p Path) PrintTo(printer term.Printer) error {
 	printer.Print(list...)
 
 	return nil
+}
+
+func init() {
+	var p Path
+	astral.DefaultBlueprints.Add(&p)
 }

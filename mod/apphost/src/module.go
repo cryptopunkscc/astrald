@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/content"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -22,7 +21,6 @@ var _ apphost.Module = &Module{}
 type Deps struct {
 	Admin   admin.Module
 	Auth    auth.Module
-	Content content.Module
 	Dir     dir.Module
 	Objects objects.Module
 }

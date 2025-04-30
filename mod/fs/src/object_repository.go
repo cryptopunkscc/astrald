@@ -41,20 +41,18 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.I
 			s = repo.addQueue.Subscribe(ctx)
 		}
 
-		var ids []*object.ID
-
-		tx := repo.mod.db.
-			Model(&dbLocalFile{}).
-			Select("data_id").
-			Where("path like ?", repo.path+"%").
-			Find(&ids)
-
-		if tx.Error != nil {
+		ids, err := repo.mod.db.UniqueObjectIDs(repo.path)
+		if err != nil {
+			repo.mod.log.Error("db error: %v", err)
 			return
 		}
 
 		for _, id := range ids {
-			ch <- id
+			select {
+			case ch <- id:
+			case <-ctx.Done():
+				return
+			}
 		}
 
 		if s != nil {
@@ -76,7 +74,7 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 		limit = int64(objectID.Size)
 	}
 
-	paths := repo.mod.path(objectID)
+	paths := repo.mod.localPaths(objectID)
 	for _, path := range paths {
 		// check if the index for the path is valid
 		err := repo.mod.validate(path)

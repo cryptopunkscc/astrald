@@ -107,7 +107,7 @@ func (mod *Module) Find(opts *fs.FindOpts) (files []*fs.File) {
 }
 
 func (mod *Module) Path(objectID *object.ID) []string {
-	return mod.path(objectID)
+	return mod.localPaths(objectID)
 }
 
 func (mod *Module) Scope() *shell.Scope {
@@ -138,22 +138,18 @@ func (mod *Module) Watch(path string) (added []string, err error) {
 	return
 }
 
-// path retruns a list of known paths to an object in the filesystem
-func (mod *Module) path(objectID *object.ID) []string {
-	var list []string
-
-	var err = mod.db.
-		Model(&dbLocalFile{}).
-		Where("data_id = ?", objectID).
-		Select("path").
-		Find(&list).
-		Error
-
+// localPaths returns a list of filesystem paths of the object
+func (mod *Module) localPaths(objectID *object.ID) (list []string) {
+	rows, err := mod.db.FindByObjectID(objectID)
 	if err != nil {
-		mod.log.Error("path: database error: %v", err)
+		return nil
 	}
 
-	return list
+	for _, row := range rows {
+		list = append(list, row.Path)
+	}
+
+	return
 }
 
 // validate checks if the index is up-to-date for the given path
@@ -167,8 +163,7 @@ func (mod *Module) validate(path string) error {
 		return fmt.Errorf("cannot access file: %v", err)
 	}
 
-	var row dbLocalFile
-	err = mod.db.Where("path = ?", path).First(&row).Error
+	row, err := mod.db.FindByPath(path)
 	if err != nil {
 		return errors.New("not indexed")
 	}
