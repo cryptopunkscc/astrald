@@ -12,7 +12,7 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 	switch action {
 	case objects.ActionReadDescriptor:
 		switch target.ObjectType() {
-		case media.AudioDescriptor{}.ObjectType():
+		case media.AudioFile{}.ObjectType():
 			return true
 		}
 
@@ -26,8 +26,8 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 			return false
 		}
 
-		parentID := mod.getParentID(objectID)
-		if parentID.IsZero() {
+		parentID, err := mod.db.FindAudioContainerID(objectID)
+		if err != nil || parentID.IsZero() {
 			return false
 		}
 

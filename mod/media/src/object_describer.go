@@ -1,7 +1,6 @@
 package media
 
 import (
-	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -10,14 +9,22 @@ import (
 var _ objects.Describer = &Module{}
 
 func (mod *Module) DescribeObject(ctx *astral.Context, objectID *object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
-	info, err := mod.Content.Identify(objectID)
+	return mod.audio.DescribeObject(ctx, objectID, scope)
+}
+
+func (mod *AudioIndexer) DescribeObject(ctx *astral.Context, objectID *object.ID, opts *astral.Scope) (_ <-chan *objects.SourcedObject, err error) {
+	ch := make(chan *objects.SourcedObject, 1)
+	defer close(ch)
+
+	audio, err := mod.Index(ctx, objectID)
 	if err != nil {
-		return nil, err
+		return ch, err
 	}
 
-	if indexer, ok := mod.indexers[string(info.Type)]; ok {
-		return indexer.DescribeObject(ctx, objectID, scope)
+	ch <- &objects.SourcedObject{
+		Source: mod.node.Identity(),
+		Object: audio,
 	}
 
-	return nil, errors.New("description unavailable")
+	return ch, err
 }

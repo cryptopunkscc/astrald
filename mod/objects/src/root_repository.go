@@ -26,7 +26,13 @@ func (repo RootRepository) Create(ctx *astral.Context, opts *objects.CreateOpts)
 }
 
 func (repo RootRepository) Contains(ctx *astral.Context, objectID *object.ID) (bool, error) {
-	return repo.Default().Contains(ctx, objectID)
+	for _, repo := range repo.mod.repos.Clone() {
+		if has, err := repo.Contains(ctx, objectID); err == nil && has {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (repo RootRepository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {

@@ -44,7 +44,4 @@ type Writer interface {
 type CreateOpts struct {
 	// Optional. Pre-allocate this much storage.
 	Alloc int
-
-	// Optional. Create in this specific repo.
-	Repo string
 }

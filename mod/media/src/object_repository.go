@@ -9,34 +9,46 @@ import (
 	"github.com/dhowden/tag"
 )
 
-func (mod *Module) OpenObject(ctx *astral.Context, objectID *object.ID) (r objects.Reader, err error) {
+type Repository struct {
+	mod *Module
+	objects.NilRepository
+}
+
+var _ objects.Repository = &Repository{}
+
+func (repo *Repository) Label() string {
+	return "Media covers"
+}
+
+func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
 	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}
-	parentID, err := mod.db.FindAudioContainerID(objectID)
+
+	containerID, err := repo.mod.db.FindAudioContainerID(objectID)
 	if err != nil {
 		return nil, err
 	}
-	if parentID.IsZero() {
+	if containerID.IsZero() {
 		return nil, objects.ErrNotFound
 	}
 
-	r, err = mod.Objects.Root().Read(ctx, parentID, 0, 0)
+	r, err := repo.mod.Objects.Root().Read(ctx, containerID, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	meta, err := tag.ReadFrom(r)
+	audioTag, err := tag.ReadFrom(r)
 	if err != nil {
 		return nil, err
 	}
 
-	if meta.Picture() == nil {
+	if audioTag.Picture() == nil {
 		return nil, objects.ErrNotFound
 	}
 
-	pic := meta.Picture().Data
+	pic := audioTag.Picture().Data
 
 	actualID, _ := object.Resolve(bytes.NewReader(pic))
 	if !actualID.IsEqual(objectID) {

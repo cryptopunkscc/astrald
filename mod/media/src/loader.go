@@ -13,6 +13,7 @@ type Loader struct{}
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	var err error
 	var mod = &Module{
+		config: defaultConfig,
 		node:   node,
 		log:    log,
 		assets: assets,
@@ -20,22 +21,16 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(media.ModuleName, &mod.config)
 
-	mod.db = assets.Database()
+	mod.db = &DB{assets.Database()}
 
-	err = mod.db.AutoMigrate(&dbAudio{})
+	err = mod.db.AutoMigrate(&dbAudio{}, &dbObject{})
 	if err != nil {
 		return nil, err
 	}
 
 	mod.audio = NewAudioIndexer(mod)
 
-	mod.indexers = map[string]Indexer{
-		"audio/mpeg": mod.audio,
-		"audio/flac": mod.audio,
-		"audio/ogg":  mod.audio,
-		"audio/aac":  mod.audio,
-		"audio/mp4":  mod.audio,
-	}
+	mod.ops.AddStruct(mod, "Op")
 
 	return mod, err
 }

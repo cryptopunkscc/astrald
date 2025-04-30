@@ -9,6 +9,9 @@ import (
 )
 
 func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.SearchArgs) (err error) {
+	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
+	defer cancel()
+
 	opts := objects.DefaultSearchOpts()
 	opts.ClientID = q.Caller()
 
@@ -30,10 +33,7 @@ func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.Sea
 		}
 	}
 
-	sctx, cancel := ctx.WithTimeout(time.Minute)
-	defer cancel()
-
-	matches, err := mod.Search(sctx, args.Query, opts)
+	matches, err := mod.Search(ctx, args.Query, opts)
 	if err != nil {
 		cancel()
 		return q.Reject()
@@ -51,6 +51,12 @@ func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.Sea
 
 		if _, found := dup[match.ObjectID.String()]; found {
 			continue
+		}
+
+		if args.Access {
+			if has, _ := mod.root.Contains(ctx, match.ObjectID); !has {
+				continue
+			}
 		}
 
 		dup[match.ObjectID.String()] = struct{}{}
