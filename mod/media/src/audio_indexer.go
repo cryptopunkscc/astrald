@@ -21,7 +21,7 @@ func NewAudioIndexer(mod *Module) *AudioIndexer {
 func (mod *AudioIndexer) Index(ctx *astral.Context, objectID *object.ID) (f *media.AudioFile, err error) {
 	// check if already indexed
 	if row, err := mod.db.FindAudio(objectID); err == nil {
-		return row.ToAudioFile(), err
+		return row.ToAudioFile(), nil
 	}
 
 	// inspect the object

@@ -9,6 +9,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/resources"
+	"io"
+	"reflect"
+	"strings"
 )
 
 type Module struct {
@@ -43,17 +46,20 @@ func (mod *Module) Index(ctx *astral.Context, objectID *object.ID) (err error) {
 		return nil
 	}
 
+	// mark as indexed
+	defer mod.db.SaveObject(objectID)
+
 	_, err = mod.audio.Index(ctx, objectID)
 	switch {
 	case err == nil:
+	case strings.Contains(err.Error(), "no tags found"): // ignore non-audio files
+	case strings.HasPrefix(err.Error(), "seek"): // ignore "seek unsupported" errors
+	case errors.Is(err, io.EOF):
 	case errors.Is(err, objects.ErrNotFound):
 		return err
 	default:
-		mod.log.Error("Error indexing audio file: %v", err)
+		mod.log.Errorv(2, "index audio: %v: %v", reflect.TypeOf(err), err)
 	}
-
-	// mark as indexed
-	mod.db.SaveObject(objectID)
 
 	return nil
 }
