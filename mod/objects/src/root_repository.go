@@ -36,7 +36,46 @@ func (repo RootRepository) Contains(ctx *astral.Context, objectID *object.ID) (b
 }
 
 func (repo RootRepository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
-	return repo.Default().Scan(ctx, follow)
+	ch := make(chan *object.ID)
+
+	go func() {
+		var wg sync.WaitGroup
+
+		for _, repo := range repo.mod.repos.Clone() {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				sub, err := repo.Scan(ctx, follow)
+				if err != nil {
+					return
+				}
+
+				var id *object.ID
+
+				// copy all scanned ids
+				for {
+					// read
+					select {
+					case <-ctx.Done():
+						return
+					case id = <-sub:
+					}
+					// write
+					select {
+					case <-ctx.Done():
+						return
+					case ch <- id:
+					}
+				}
+			}()
+		}
+
+		wg.Wait()
+		close(ch)
+	}()
+
+	return ch, nil
 }
 
 func (repo RootRepository) Delete(ctx *astral.Context, objectID *object.ID) error {
