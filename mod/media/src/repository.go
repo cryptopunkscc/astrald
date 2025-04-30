@@ -32,10 +32,6 @@ func (repo *Repository) Label() string {
 }
 
 func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
-	if !ctx.Zone().Is(astral.ZoneVirtual) {
-		return nil, astral.ErrZoneExcluded
-	}
-
 	containerID, err := repo.mod.db.FindAudioContainerID(objectID)
 	if err != nil {
 		return nil, err
