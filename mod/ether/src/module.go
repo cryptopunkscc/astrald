@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ether"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/resources"
+	"github.com/cryptopunkscc/astrald/sig"
 	"net"
 	"strconv"
 	"time"
@@ -25,7 +26,7 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
-	socket *net.UDPConn
+	socket sig.Value[*net.UDPConn]
 }
 
 func (mod *Module) Run(ctx *astral.Context) (err error) {
@@ -88,7 +89,12 @@ func (mod *Module) readBroadcast() (*ether.SignedBroadcast, *net.UDPAddr, error)
 	for {
 		buf := make([]byte, maxBroadcastSize)
 
-		n, srcAddr, err := mod.socket.ReadFromUDP(buf)
+		socket := mod.socket.Get()
+		if socket == nil {
+			return nil, nil, fmt.Errorf("socket not initialized")
+		}
+
+		n, srcAddr, err := socket.ReadFromUDP(buf)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -154,7 +160,11 @@ func (mod *Module) broadcast(data []byte) error {
 }
 
 func (mod *Module) writeToIP(ip tcp.IP, data []byte) (n int, err error) {
-	return mod.socket.WriteTo(data, &net.UDPAddr{
+	socket := mod.socket.Get()
+	if socket == nil {
+		return 0, fmt.Errorf("socket not initialized")
+	}
+	return socket.WriteTo(data, &net.UDPAddr{
 		IP:   net.IP(ip),
 		Port: mod.config.UDPPort,
 	})
@@ -204,13 +214,19 @@ func (mod *Module) setupSocket(ctx context.Context) (err error) {
 	}
 
 	// bind the udp socket
-	mod.socket, err = net.ListenUDP("udp", localAddr)
+	socket, err := net.ListenUDP("udp", localAddr)
+	if err != nil {
+		mod.log.Errorv(2, "cannot listen for broadcasts: %v", err)
+		return err
+	}
+
+	mod.socket.Set(socket)
 
 	// close the socket when the context is done
-	if err == nil && ctx != nil {
+	if ctx != nil {
 		go func() {
 			<-ctx.Done()
-			mod.socket.Close()
+			socket.Close()
 		}()
 	}
 	return

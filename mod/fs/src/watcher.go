@@ -19,7 +19,7 @@ type Watcher struct {
 	OnWriteDone   func(string) // called WriteTimeout after last write
 	OnFileCreated func(string)
 	OnDirCreated  func(string)
-	OnRenamed     func(string)
+	OnRenamed     func(string) // path was renamed to something else
 	OnRemoved     func(string)
 	OnChmod       func(string)
 	OnError       func(error)
@@ -47,6 +47,7 @@ func NewWatcher() (*Watcher, error) {
 	return w, nil
 }
 
+// Add adds a path to the watcher
 func (w *Watcher) Add(path string, tree bool) (added []string, err error) {
 	if slices.Contains(w.watcher.WatchList(), path) {
 		return nil, errors.New("already added")
@@ -83,6 +84,7 @@ func (w *Watcher) Add(path string, tree bool) (added []string, err error) {
 	return nil, nil
 }
 
+// Remove removes a path from the watcher
 func (w *Watcher) Remove(path string, tree bool) error {
 	err := w.watcher.Remove(path)
 	if err != nil {
@@ -102,7 +104,8 @@ func (w *Watcher) Remove(path string, tree bool) error {
 	return nil
 }
 
-func (w *Watcher) List() []string {
+// Paths returns all paths being watched for events
+func (w *Watcher) Paths() []string {
 	return w.watcher.WatchList()
 }
 

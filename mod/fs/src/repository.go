@@ -14,7 +14,7 @@ import (
 type Repository struct {
 	mod      *Module
 	name     string
-	path     string
+	root     string
 	addQueue *sig.Queue[*object.ID]
 }
 
@@ -24,7 +24,7 @@ func NewRepository(mod *Module, name string, path string) *Repository {
 	return &Repository{
 		mod:      mod,
 		name:     name,
-		path:     path,
+		root:     path,
 		addQueue: &sig.Queue[*object.ID]{},
 	}
 }
@@ -32,32 +32,47 @@ func NewRepository(mod *Module, name string, path string) *Repository {
 func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
 	ch := make(chan *object.ID)
 
-	var s <-chan *object.ID
+	var subsribe <-chan *object.ID
 
 	go func() {
 		defer close(ch)
 
 		if follow {
-			s = repo.addQueue.Subscribe(ctx)
+			subsribe = repo.addQueue.Subscribe(ctx)
 		}
 
-		ids, err := repo.mod.db.UniqueObjectIDs(repo.path)
+		entries, err := os.ReadDir(repo.root)
 		if err != nil {
-			repo.mod.log.Error("db error: %v", err)
+			repo.mod.log.Error("cannot read dir %v: %v", repo.root, err)
 			return
 		}
 
-		for _, id := range ids {
+		for _, entry := range entries {
+			if !entry.Type().IsRegular() {
+				continue
+			}
+
+			objectID, err := object.ParseID(entry.Name())
+			if err != nil {
+				continue
+			}
+
 			select {
-			case ch <- id:
+			case ch <- objectID:
 			case <-ctx.Done():
 				return
 			}
+
 		}
 
-		if s != nil {
-			for i := range s {
-				ch <- i
+		// handle subscription
+		if subsribe != nil {
+			for id := range subsribe {
+				select {
+				case ch <- id:
+				case <-ctx.Done():
+					return
+				}
 			}
 		}
 	}()
@@ -74,39 +89,44 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 		limit = int64(objectID.Size)
 	}
 
-	paths := repo.mod.localPaths(objectID)
-	for _, path := range paths {
-		// check if the index for the path is valid
-		err := repo.mod.validate(path)
-		if err != nil {
-			repo.mod.enqueueUpdate(path) //TODO: immediade update & retry?
-			continue
-		}
+	path := filepath.Join(repo.root, objectID.String())
 
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, objects.ErrNotFound
+	}
 
+	if offset != 0 {
 		pos, err := f.Seek(offset, io.SeekStart)
 		if err != nil {
 			f.Close()
-			continue
+			return nil, objects.ErrNotFound
 		}
 
 		if pos != offset {
 			f.Close()
-			continue
+			return nil, objects.ErrNotFound
 		}
-
-		return NewReader(f, path, limit), nil
 	}
 
-	return nil, objects.ErrNotFound
+	return NewReader(f, path, limit), nil
+
 }
 
 func (repo *Repository) Contains(ctx *astral.Context, objectID *object.ID) (bool, error) {
-	return repo.mod.db.ObjectExists(objectID)
+	path := filepath.Join(repo.root, objectID.String())
+
+	// check if we have the file
+	f, err := os.Stat(path)
+	if err != nil {
+		return false, nil
+	}
+
+	// and it's a regular file
+	if f.Mode().IsRegular() {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (repo *Repository) Label() string {
@@ -120,13 +140,13 @@ func (repo *Repository) Create(ctx *astral.Context, opts *objects.CreateOpts) (o
 		}
 	}
 
-	w, err := NewWriter(repo, repo.path)
+	w, err := NewWriter(repo, repo.root)
 
 	return w, err
 }
 
 func (repo *Repository) Free(ctx *astral.Context) (int64, error) {
-	usage, err := DiskUsage(repo.path)
+	usage, err := DiskUsage(repo.root)
 	if err != nil {
 		return -1, errors.ErrUnsupported
 	}
@@ -135,7 +155,7 @@ func (repo *Repository) Free(ctx *astral.Context) (int64, error) {
 }
 
 func (repo *Repository) Delete(ctx *astral.Context, objectID *object.ID) error {
-	path := filepath.Join(repo.path, objectID.String())
+	path := filepath.Join(repo.root, objectID.String())
 	return os.Remove(path)
 }
 

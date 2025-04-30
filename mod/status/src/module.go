@@ -47,9 +47,7 @@ func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.SetVisible(mod.config.Visible)
 
 	go func() {
-		// wait for ether to be ready
-		// TODO: remove this delay
-		<-time.After(50 * time.Millisecond)
+		<-time.After(time.Second)
 		mod.Scan()
 	}()
 
@@ -79,8 +77,8 @@ func (mod *Module) Broadcasters() []*status.Broadcaster {
 	return list
 }
 
-func (mod *Module) AddStatusComposer(augmenter status.Composer) {
-	mod.composers.Add(augmenter)
+func (mod *Module) AddStatusComposer(composer status.Composer) {
+	mod.composers.Add(composer)
 }
 
 func (mod *Module) SetVisible(b bool) error {

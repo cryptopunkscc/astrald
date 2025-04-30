@@ -13,9 +13,8 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"os"
-	"path/filepath"
-	"strings"
 )
 
 var _ fs.Module = &Module{}
@@ -32,147 +31,21 @@ type Module struct {
 	db     *DB
 	ctx    context.Context
 
-	repos sig.Map[string, *Repository]
-
-	watcher *Watcher
-	updates chan sig.Task
-	shares  sig.Map[string, *sig.Set[string]]
-
-	ops shell.Scope
+	repos sig.Map[string, objects.Repository]
+	ops   shell.Scope
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
-	for _, s := range mod.config.Shares {
-		mod.shares.Set(s.Path, &sig.Set[string]{})
-		share, _ := mod.shares.Get(s.Path)
-
-		for _, name := range s.Allow {
-			id, err := mod.Dir.ResolveIdentity(name)
-			if err != nil {
-				mod.log.Error("config: cannot resolve identity %v: %v", name, err)
-			}
-			share.Add(id.String())
-		}
-
-		mod.log.Infov(1, "%v shared with %v", s.Path, share.Clone())
-	}
-
-	updatesDone := sig.Workers(ctx, mod.updates, workers)
-
-	for _, path := range mod.config.Watch {
-		mod.Watch(path)
-	}
-
-	for _, path := range mod.config.Repos {
-		mod.Watch(path)
-	}
-
-	go mod.verifyIndex(ctx)
+	mod.verifyIndex(ctx)
 
 	<-ctx.Done()
-	<-updatesDone
-
 	return nil
-}
-
-func (mod *Module) Find(opts *fs.FindOpts) (files []*fs.File) {
-	if opts == nil {
-		opts = &fs.FindOpts{}
-	}
-
-	var rows []*dbLocalFile
-
-	var q = mod.db.Order("updated_at asc")
-
-	if !opts.UpdatedAfter.IsZero() {
-		q = q.Where("updated_at > ?", opts.UpdatedAfter)
-	}
-
-	err := q.Find(&rows).Error
-	if err != nil {
-		return
-	}
-
-	for _, row := range rows {
-		files = append(files, &fs.File{
-			Path:     row.Path,
-			ObjectID: row.DataID,
-			ModTime:  row.ModTime,
-		})
-	}
-
-	return
-}
-
-func (mod *Module) Path(objectID *object.ID) []string {
-	return mod.localPaths(objectID)
 }
 
 func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
-}
-
-// Watch a directory tree for updates
-func (mod *Module) Watch(path string) (added []string, err error) {
-	mod.watcher.Add(path, false)
-
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return
-	}
-
-	added = append(added, path)
-
-	for _, entry := range entries {
-		entryPath := filepath.Join(path, entry.Name())
-		if entry.IsDir() {
-			sub, _ := mod.Watch(entryPath)
-			added = append(added, sub...)
-		} else {
-			mod.enqueueUpdate(entryPath)
-		}
-	}
-
-	return
-}
-
-// localPaths returns a list of filesystem paths of the object
-func (mod *Module) localPaths(objectID *object.ID) (list []string) {
-	rows, err := mod.db.FindByObjectID(objectID)
-	if err != nil {
-		return nil
-	}
-
-	for _, row := range rows {
-		list = append(list, row.Path)
-	}
-
-	return
-}
-
-// validate checks if the index is up-to-date for the given path
-func (mod *Module) validate(path string) error {
-	if len(path) == 0 || path[0] != '/' {
-		return errors.New("invalid path")
-	}
-
-	stat, err := os.Stat(path)
-	if err != nil {
-		return fmt.Errorf("cannot access file: %v", err)
-	}
-
-	row, err := mod.db.FindByPath(path)
-	if err != nil {
-		return errors.New("not indexed")
-	}
-
-	if stat.ModTime().After(row.ModTime) {
-		return errors.New("file modified")
-	}
-
-	return nil
 }
 
 // update updates the index entry for the path. path must be absolute.
@@ -183,23 +56,13 @@ func (mod *Module) update(path string) (*object.ID, error) {
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		err = mod.deletePath(path)
+		err = mod.db.DeleteByPath(path)
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 		case err != nil:
-			mod.log.Errorv(2, "deletePath(%v): %v", path, err)
+			mod.log.Errorv(2, "db error: %v", err)
 		}
-		return nil, err
-	}
-
-	var row dbLocalFile
-	err = mod.db.Where("path = ?", path).First(&row).Error
-	if err == nil {
-		var modtime = stat.ModTime()
-		// if file hasn't changed, just return nil
-		if !modtime.After(row.ModTime) {
-			return row.DataID, nil
-		}
+		return nil, nil
 	}
 
 	objectID, err := resolveFileID(path)
@@ -213,137 +76,71 @@ func (mod *Module) update(path string) (*object.ID, error) {
 		ModTime: stat.ModTime(),
 	}
 
-	if row.Path == "" {
-		err = mod.db.Create(updated).Error
-		if err == nil {
-			mod.Objects.Receive(&fs.EventFileAdded{
-				Path:     astral.String16(updated.Path),
-				ObjectID: updated.DataID,
-			}, nil)
-		}
-	} else {
-		err = mod.db.
-			Where("path = ?", path).
-			Save(updated).
-			Error
-		if err == nil {
-			if !row.DataID.IsEqual(updated.DataID) {
-				mod.Objects.Receive(&fs.EventFileChanged{
-					Path:  astral.String16(updated.Path),
-					OldID: row.DataID,
-					NewID: updated.DataID,
-				}, nil)
-			}
-		}
-	}
-
-	if err == nil {
-		mod.Objects.Receive(&objects.EventDiscovered{
-			ObjectID: updated.DataID,
-			Zone:     astral.ZoneDevice,
-		}, nil)
-	}
+	err = mod.db.
+		Clauses(
+			clause.OnConflict{
+				DoUpdates: clause.AssignmentColumns([]string{"data_id", "mod_time"}),
+			}).
+		Save(updated).
+		Error
 
 	return updated.DataID, err
 }
 
-func (mod *Module) deletePath(path string) error {
-	var row *dbLocalFile
+func (mod *Module) verifyIndex(ctx *astral.Context) {
+	mod.log.Log("verifying index...")
 
-	err := mod.db.Where("path = ?", path).First(&row).Error
-	if err != nil {
-		return err
-	}
+	var updated, total int
 
-	err = mod.db.Where("path = ?", path).Delete(&row).Error
-	if err != nil {
-		return err
-	}
-
-	mod.Objects.Receive(&fs.EventFileRemoved{
-		Path:     astral.String16(path),
-		ObjectID: row.DataID,
-	}, nil)
-
-	return nil
-}
-
-// rename renames a file and updates the index without rescanning the file
-func (mod *Module) rename(oldPath, newPath string) error {
-	if len(oldPath) == 0 || oldPath[0] != '/' {
-		return errors.New("invalid old path")
-	}
-
-	if len(newPath) == 0 || newPath[0] != '/' {
-		return errors.New("invalid new path")
-	}
-
-	var row dbLocalFile
-	err := mod.db.Where("path = ?", oldPath).First(&row).Error
-	if err != nil {
-		return errors.New("path not indexed")
-	}
-
-	if _, err := os.Stat(newPath); !os.IsNotExist(err) {
-		return errors.New("new path already exists")
-	}
-
-	err = os.Rename(oldPath, newPath)
-	if err != nil {
-		return err
-	}
-
-	return mod.db.
-		Model(&dbLocalFile{}).
-		Where("path = ?", oldPath).
-		Update("path", newPath).
-		Error
-}
-
-func (mod *Module) onWriteDone(path string) {
-	if mod.isPathIgnored(path) {
-		return
-	}
-
-	mod.enqueueUpdate(path)
-}
-
-func (mod *Module) enqueueUpdate(path string) {
-	mod.updates <- func(_ context.Context) {
-		_, _ = mod.update(path)
-	}
-}
-
-func (mod *Module) isPathIgnored(path string) bool {
-	var filename = filepath.Base(path)
-
-	if strings.HasPrefix(filename, tempFilePrefix) {
-		return true
-	}
-
-	return false
-}
-
-func (mod *Module) verifyIndex(ctx context.Context) {
-	var rows []*dbLocalFile
-
-	err := mod.db.Find(&rows).Error
-	if err != nil {
-		mod.log.Error("error scanning index: %v", err)
-	}
-	for _, row := range rows {
-		if mod.validate(row.Path) != nil {
-			mod.log.Log("updating %v", row.Path)
-			mod.enqueueUpdate(row.Path)
+	err := mod.db.EachPath(func(path string) error {
+		total++
+		// update if necessary
+		err := mod.validate(path)
+		if err != nil {
+			mod.update(path)
+			updated++
 		}
+
+		// check context
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		default:
 		}
+
+		return nil
+	})
+
+	// log
+	if err != nil {
+		mod.log.Error("index verification finished with error (updated %v/%v): %v", updated, total, err)
+	} else {
+		mod.log.Info("index verification finished (updated %v/%v)", updated, total)
+	}
+}
+
+// validate checks if the index is up-to-date for the given path
+func (mod *Module) validate(path string) error {
+	if len(path) == 0 || path[0] != '/' {
+		return errors.New("invalid path")
 	}
 
-	mod.log.Log("done scanning index for changes")
+	stat, err := os.Stat(path)
+	switch {
+	case err != nil:
+		return fmt.Errorf("cannot access file: %w", err)
+	}
+
+	row, err := mod.db.FindByPath(path)
+	if err != nil {
+		return errors.New("not indexed")
+	}
+
+	if stat.ModTime().After(row.ModTime) {
+		return errors.New("file modified")
+	}
+
+	return nil
 }
 
 func (mod *Module) String() string {
