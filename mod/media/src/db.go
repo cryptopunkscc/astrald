@@ -65,3 +65,13 @@ func (db *DB) FindAudioContainerID(objectID *object.ID) (containerID *object.ID,
 
 	return
 }
+
+func (db *DB) UniquePictureIDs() (ids []*object.ID, err error) {
+	err = db.
+		Model(&dbAudio{}).
+		Distinct("picture_id").
+		Find(&ids).
+		Error
+
+	return
+}

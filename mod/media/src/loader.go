@@ -29,6 +29,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	}
 
 	mod.audio = NewAudioIndexer(mod)
+	mod.repo = NewRepository(mod)
 
 	mod.ops.AddStruct(mod, "Op")
 

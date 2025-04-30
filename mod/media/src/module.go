@@ -9,9 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/resources"
-	"io"
-	"reflect"
-	"strings"
 )
 
 type Module struct {
@@ -24,6 +21,7 @@ type Module struct {
 	ops    shell.Scope
 
 	audio *AudioIndexer
+	repo  *Repository
 }
 
 type Indexer interface {
@@ -34,7 +32,7 @@ type Indexer interface {
 func (mod *Module) Run(ctx *astral.Context) error {
 	go mod.indexer(ctx)
 
-	mod.Objects.AddRepository("media-covers", &Repository{mod: mod})
+	mod.Objects.AddRepository("media-covers", mod.repo)
 
 	<-ctx.Done()
 	return nil
@@ -51,14 +49,8 @@ func (mod *Module) Index(ctx *astral.Context, objectID *object.ID) (err error) {
 
 	_, err = mod.audio.Index(ctx, objectID)
 	switch {
-	case err == nil:
-	case strings.Contains(err.Error(), "no tags found"): // ignore non-audio files
-	case strings.HasPrefix(err.Error(), "seek"): // ignore "seek unsupported" errors
-	case errors.Is(err, io.EOF):
 	case errors.Is(err, objects.ErrNotFound):
 		return err
-	default:
-		mod.log.Errorv(2, "index audio: %v: %v", reflect.TypeOf(err), err)
 	}
 
 	return nil
@@ -79,10 +71,7 @@ func (mod *Module) indexer(ctx *astral.Context) {
 	}
 
 	for objectID := range ch {
-		err = mod.Index(ctx, objectID)
-		if err != nil {
-			mod.log.Error("index %v: %v", objectID, err)
-		}
+		_ = mod.Index(ctx, objectID)
 	}
 
 	mod.log.Logv(1, "media indexer finished")

@@ -45,7 +45,6 @@ func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepo
 	}
 
 	repo.watcher.OnWriteDone = repo.onChange
-	repo.watcher.OnChmod = repo.onChange
 	repo.watcher.OnRemoved = repo.onRemove
 	repo.watcher.OnRenamed = repo.onRemove
 	repo.watcher.OnDirCreated = func(s string) {

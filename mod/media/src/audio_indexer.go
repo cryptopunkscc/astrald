@@ -30,6 +30,10 @@ func (mod *AudioIndexer) Index(ctx *astral.Context, objectID *object.ID) (f *med
 		return nil, err
 	}
 
+	if !audio.PictureID.IsZero() {
+		mod.repo.push(audio.PictureID)
+	}
+
 	mod.log.Infov(1, "indexed %v by %v", audio.Title, audio.Artist)
 
 	// save to cache
