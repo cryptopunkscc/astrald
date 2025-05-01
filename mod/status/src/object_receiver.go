@@ -13,7 +13,7 @@ import (
 func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	// only receive objects from the local node
 	if !drop.SenderID().IsEqual(mod.node.Identity()) {
-		return errors.New("object rejected")
+		return nil
 	}
 
 	switch object := drop.Object().(type) {
