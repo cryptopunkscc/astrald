@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
+	"path/filepath"
 )
 
 var _ objects.Describer = &Module{}
@@ -14,14 +15,7 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID *object.ID, scop
 		return nil, astral.ErrZoneExcluded
 	}
 
-	var rows []dbLocalFile
-
-	err := mod.db.
-		Model(&dbLocalFile{}).
-		Where("data_id = ?", objectID).
-		Select("path", "mod_time").
-		Find(&rows).
-		Error
+	rows, err := mod.db.FindByObjectID(objectID)
 	if err != nil {
 		return nil, err
 	}
@@ -30,12 +24,11 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID *object.ID, scop
 	defer close(results)
 
 	for _, row := range rows {
+		base := filepath.Base(row.Path)
+
 		results <- &objects.SourcedObject{
 			Source: mod.node.Identity(),
-			Object: &fs.FileDescriptor{
-				Path:    astral.String16(row.Path),
-				ModTime: astral.Time(row.ModTime),
-			},
+			Object: (*fs.FileName)(&base),
 		}
 	}
 
