@@ -2,7 +2,6 @@ package profile
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -12,13 +11,14 @@ import (
 
 func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	if !drop.SenderID().IsEqual(mod.node.Identity()) {
-		return errors.New("rejected")
+		return nil
 	}
 
 	switch obj := (drop.Object()).(type) {
 	case *nodes.EventLinked:
 		go mod.updateIdentityProfile(obj.NodeID)
 	}
+
 	return drop.Accept(false)
 }
 
