@@ -29,6 +29,16 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx *astral.Context) (err error) {
+	go mod.broadcastReceiver(ctx)
+
+	<-ctx.Done()
+
+	mod.socket.Close()
+
+	return nil
+}
+
+func (mod *Module) broadcastReceiver(ctx *astral.Context) (err error) {
 	for {
 		select {
 		case <-ctx.Done():
