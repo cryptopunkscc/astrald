@@ -1,12 +1,9 @@
 package fs
 
 import (
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"io"
 	"os"
 )
-
-var _ objects.Reader = &Reader{}
 
 type Reader struct {
 	io.ReadSeekCloser

@@ -2,7 +2,6 @@ package archives
 
 import (
 	"archive/zip"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
@@ -10,7 +9,6 @@ import (
 )
 
 var _ io.ReadSeeker = &contentReader{}
-var _ objects.Reader = &contentReader{}
 
 type contentReader struct {
 	zip      *zip.Reader

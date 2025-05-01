@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
+	"io"
 	"strconv"
 )
 
@@ -31,7 +32,7 @@ func NewConsumer(mod *Module, consumerID *astral.Identity, providerID *astral.Id
 	}
 }
 
-func (c *Consumer) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
+func (c *Consumer) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
 	var q = query.New(ctx.Identity(), c.providerID, methodRead, &opReadArgs{
 		ID:     objectID,
 		Offset: astral.Uint64(offset),

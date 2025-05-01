@@ -5,9 +5,10 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
+	"io"
 )
 
-func (mod *Module) OpenObject(ctx *astral.Context, objectID *object.ID) (objects.Reader, error) {
+func (mod *Module) OpenObject(ctx *astral.Context, objectID *object.ID) (io.ReadCloser, error) {
 	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -37,7 +38,7 @@ func (mod *Module) OpenObject(ctx *astral.Context, objectID *object.ID) (objects
 	return nil, objects.ErrNotFound
 }
 
-func (mod *Module) open(zipID *object.ID, path string, fileID *object.ID) (objects.Reader, error) {
+func (mod *Module) open(zipID *object.ID, path string, fileID *object.ID) (io.ReadCloser, error) {
 	zipFile, err := mod.openZip(zipID)
 	if err != nil {
 		return nil, objects.ErrNotFound

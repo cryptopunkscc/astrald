@@ -80,7 +80,7 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.I
 	return ch, nil
 }
 
-func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
+func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}

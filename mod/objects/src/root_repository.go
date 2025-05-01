@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
+	"io"
 	"sync"
 )
 
@@ -86,7 +87,7 @@ func (repo RootRepository) Delete(ctx *astral.Context, objectID *object.ID) erro
 	return repo.Default().Delete(ctx, objectID)
 }
 
-func (repo RootRepository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
+func (repo RootRepository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
 	// try memory cache first
 	if mem, err := repo.mod.GetRepository("mem0"); err == nil {
 		if r, err := mem.Read(ctx, objectID, offset, limit); err == nil {
@@ -120,14 +121,14 @@ func (repo RootRepository) Read(ctx *astral.Context, objectID *object.ID, offset
 	return nil, objects.ErrNotFound
 }
 
-func (repo *RootRepository) readNetwork(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
+func (repo *RootRepository) readNetwork(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
 	if !ctx.Zone().Is(astral.ZoneNetwork) {
 		return nil, astral.ErrZoneExcluded
 	}
 
 	providers := repo.mod.Find(ctx, objectID)
 
-	var conns = make(chan objects.Reader, 1)
+	var conns = make(chan io.ReadCloser, 1)
 	var wg sync.WaitGroup
 
 	ctx, done := ctx.WithCancel()

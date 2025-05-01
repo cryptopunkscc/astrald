@@ -3,12 +3,9 @@ package mem
 import (
 	"bytes"
 	"errors"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"os"
 	"sync/atomic"
 )
-
-var _ objects.Reader = &Reader{}
 
 type Reader struct {
 	r      *bytes.Reader

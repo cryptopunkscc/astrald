@@ -5,13 +5,10 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"time"
 )
-
-var _ objects.Reader = &NetworkReader{}
 
 type NetworkReader struct {
 	mod      *Module

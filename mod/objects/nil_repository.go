@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
+	"io"
 )
 
 type NilRepository struct {
@@ -25,7 +26,7 @@ func (n NilRepository) Delete(ctx *astral.Context, objectID *object.ID) error {
 	return errors.ErrUnsupported
 }
 
-func (n NilRepository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (Reader, error) {
+func (n NilRepository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
 	return nil, errors.ErrUnsupported
 }
 

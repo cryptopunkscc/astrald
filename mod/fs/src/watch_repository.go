@@ -120,7 +120,7 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *obj
 	return ch, nil
 }
 
-func (repo *WatchRepository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
+func (repo *WatchRepository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
 	rows, err := repo.mod.db.FindObject(repo.root, objectID)
 	if err != nil {
 		return nil, err

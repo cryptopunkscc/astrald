@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
+	"io"
 	"slices"
 	"sync/atomic"
 )
@@ -30,7 +31,7 @@ func NewRepository(name string, size int64) *Repository {
 		size:     size,
 		addQueue: &sig.Queue[*object.ID]{},
 	}
-	
+
 	if len(repo.name) == 0 {
 		repo.name = "Memory"
 	}
@@ -58,7 +59,7 @@ func (repo *Repository) Contains(ctx *astral.Context, objectID *object.ID) (bool
 	return slices.Contains(repo.objects.Keys(), objectID.String()), nil
 }
 
-func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
+func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}

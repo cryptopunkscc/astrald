@@ -65,12 +65,6 @@ type Purger interface {
 	PurgeObject(*object.ID, *PurgeOpts) (int, error)
 }
 
-// Reader is an interface for reading data objects
-type Reader interface {
-	Read(p []byte) (n int, err error)
-	Close() error
-}
-
 type PurgeOpts struct {
 	// for future use
 }

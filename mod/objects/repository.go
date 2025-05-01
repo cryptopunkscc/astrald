@@ -3,6 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
+	"io"
 )
 
 // Repository is an interface for creating new data objects in storage
@@ -23,7 +24,7 @@ type Repository interface {
 	Delete(ctx *astral.Context, objectID *object.ID) error
 
 	// Read reads raw object data
-	Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (Reader, error)
+	Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error)
 
 	// Free returns available free space in the repository. -1 if unknown.
 	Free(ctx *astral.Context) (int64, error)

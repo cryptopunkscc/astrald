@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/dhowden/tag"
+	"io"
 	"sync"
 )
 
@@ -31,7 +32,7 @@ func (repo *Repository) Label() string {
 	return "Media covers"
 }
 
-func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (objects.Reader, error) {
+func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
 	containerID, err := repo.mod.db.FindAudioContainerID(objectID)
 	if err != nil {
 		return nil, err
