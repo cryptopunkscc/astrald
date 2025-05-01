@@ -21,6 +21,10 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(ether.ModuleName, &mod.config)
 
+	if err = mod.setupSocket(); err != nil {
+		return nil, err
+	}
+
 	return mod, err
 }
 

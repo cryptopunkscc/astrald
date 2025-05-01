@@ -2,15 +2,14 @@ package ether
 
 import (
 	"bytes"
-	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/ether"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/resources"
-	"github.com/cryptopunkscc/astrald/sig"
 	"net"
 	"strconv"
 	"time"
@@ -26,14 +25,10 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
-	socket sig.Value[*net.UDPConn]
+	socket *net.UDPConn
 }
 
 func (mod *Module) Run(ctx *astral.Context) (err error) {
-	if err = mod.setupSocket(ctx); err != nil {
-		return
-	}
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -86,15 +81,14 @@ func (mod *Module) PushToIP(ip tcp.IP, object astral.Object, source *astral.Iden
 
 // readBroadcast reads the next broadcast from the UDP socket
 func (mod *Module) readBroadcast() (*ether.SignedBroadcast, *net.UDPAddr, error) {
+	if mod.socket == nil {
+		return nil, nil, errors.New("socket not initialized")
+	}
+
 	for {
 		buf := make([]byte, maxBroadcastSize)
 
-		socket := mod.socket.Get()
-		if socket == nil {
-			return nil, nil, fmt.Errorf("socket not initialized")
-		}
-
-		n, srcAddr, err := socket.ReadFromUDP(buf)
+		n, srcAddr, err := mod.socket.ReadFromUDP(buf)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -160,11 +154,11 @@ func (mod *Module) broadcast(data []byte) error {
 }
 
 func (mod *Module) writeToIP(ip tcp.IP, data []byte) (n int, err error) {
-	socket := mod.socket.Get()
-	if socket == nil {
-		return 0, fmt.Errorf("socket not initialized")
+	if mod.socket == nil {
+		return 0, errors.New("socket not initialized")
 	}
-	return socket.WriteTo(data, &net.UDPAddr{
+
+	return mod.socket.WriteTo(data, &net.UDPAddr{
 		IP:   net.IP(ip),
 		Port: mod.config.UDPPort,
 	})
@@ -205,7 +199,7 @@ func (mod *Module) makePacket(object astral.Object, source *astral.Identity) (da
 }
 
 // setupSocket sets up the UDP socket for broadcasts. If ctx is not nil, the socket will close when the context gets canceled.
-func (mod *Module) setupSocket(ctx context.Context) (err error) {
+func (mod *Module) setupSocket() (err error) {
 	// resolve local address
 	var localAddr *net.UDPAddr
 	localAddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(mod.config.UDPPort))
@@ -220,15 +214,8 @@ func (mod *Module) setupSocket(ctx context.Context) (err error) {
 		return err
 	}
 
-	mod.socket.Set(socket)
+	mod.socket = socket
 
-	// close the socket when the context is done
-	if ctx != nil {
-		go func() {
-			<-ctx.Done()
-			socket.Close()
-		}()
-	}
 	return
 }
 
