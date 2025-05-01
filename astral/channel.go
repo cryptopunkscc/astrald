@@ -23,13 +23,15 @@ type Channel struct {
 }
 
 type jsonDecodeAdapter struct {
-	Type    string          `json:"type"`
-	Payload json.RawMessage `json:"payload"`
+	Type    string
+	Object  json.RawMessage `json:",omitempty"`
+	Payload []byte          `json:",omitempty"`
 }
 
 type jsonEncodeAdapter struct {
-	Type    string `json:"type"`
-	Payload any    `json:"payload"`
+	Type    string
+	Object  any    `json:",omitempty"`
+	Payload []byte `json:",omitempty"`
 }
 
 // NewChannel creates a new channel
@@ -86,7 +88,20 @@ func (ch *Channel) Read() (obj Object, err error) {
 			obj = &RawObject{}
 		}
 
-		err = json.Unmarshal(jsonObj.Payload, &obj)
+		switch {
+		case jsonObj.Object != nil:
+			err = json.Unmarshal(jsonObj.Object, &obj)
+
+		case jsonObj.Payload != nil:
+			raw := &RawObject{
+				Type:    jsonObj.Type,
+				Payload: jsonObj.Payload,
+			}
+			obj, err = ch.Blueprints.Refine(raw)
+			if err != nil {
+				obj = raw
+			}
+		}
 
 	case "text", "text+":
 		var line, objectType, text string
@@ -217,10 +232,19 @@ func (ch *Channel) Write(obj Object) (err error) {
 		return
 
 	case "json":
-		err = ch.jenc.Encode(&jsonEncodeAdapter{
-			Type:    obj.ObjectType(),
-			Payload: obj,
-		})
+		switch obj := obj.(type) {
+		case *RawObject:
+			err = ch.jenc.Encode(&jsonEncodeAdapter{
+				Type:    obj.ObjectType(),
+				Payload: obj.Payload,
+			})
+			
+		default:
+			err = ch.jenc.Encode(&jsonEncodeAdapter{
+				Type:   obj.ObjectType(),
+				Object: obj,
+			})
+		}
 		return
 
 	case "text", "text+":
