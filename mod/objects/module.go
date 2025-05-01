@@ -68,13 +68,7 @@ type Purger interface {
 // Reader is an interface for reading data objects
 type Reader interface {
 	Read(p []byte) (n int, err error)
-	Seek(offset int64, whence int) (int64, error)
 	Close() error
-	Info() *ReaderInfo
-}
-
-type ReaderInfo struct {
-	Name string
 }
 
 type PurgeOpts struct {

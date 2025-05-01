@@ -46,7 +46,7 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 	}
 	defer r.Close()
 
-	audioTag, err := tag.ReadFrom(r)
+	audioTag, err := tag.ReadFrom(objects.NewReadSeeker(ctx, containerID, repo.mod.Objects.Root(), r))
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,12 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 		return nil, objects.ErrNotFound
 	}
 
-	return mem.NewReader(pic[offset:limit]), nil
+	if limit == 0 {
+		limit = int64(len(pic))
+	}
+	end := min(offset+limit, int64(len(pic)))
+
+	return mem.NewReader(pic[offset:end]), nil
 }
 
 func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {

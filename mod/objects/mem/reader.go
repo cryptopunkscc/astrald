@@ -27,7 +27,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.closed.Load() {
 		return 0, os.ErrClosed
 	}
-	
+
 	return r.r.Read(p)
 }
 
@@ -38,8 +38,4 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 func (r *Reader) Close() error {
 	r.closed.Store(true)
 	return nil
-}
-
-func (r *Reader) Info() *objects.ReaderInfo {
-	return &objects.ReaderInfo{Name: "memory"}
 }

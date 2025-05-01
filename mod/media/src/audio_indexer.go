@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/media"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/dhowden/tag"
 )
@@ -49,7 +50,7 @@ func (mod *AudioIndexer) Inspect(ctx *astral.Context, objectID *object.ID) (*med
 	defer r.Close()
 
 	// read id3 tag data
-	audioTag, err := tag.ReadFrom(r)
+	audioTag, err := tag.ReadFrom(objects.NewReadSeeker(ctx, objectID, mod.Objects.Root(), r))
 	if err != nil {
 		return nil, err
 	}

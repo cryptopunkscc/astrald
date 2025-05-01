@@ -45,7 +45,3 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 func (r *Reader) Close() error {
 	return r.ReadSeekCloser.Close()
 }
-
-func (r *Reader) Info() *objects.ReaderInfo {
-	return &objects.ReaderInfo{Name: r.name}
-}

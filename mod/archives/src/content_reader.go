@@ -76,7 +76,3 @@ func (r *contentReader) open() (err error) {
 
 	return
 }
-
-func (r *contentReader) Info() *objects.ReaderInfo {
-	return &objects.ReaderInfo{Name: "mod.archives"}
-}

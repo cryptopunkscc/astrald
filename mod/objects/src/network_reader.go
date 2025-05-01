@@ -67,7 +67,3 @@ func (r *NetworkReader) Seek(offset int64, whence int) (int64, error) {
 
 	return 0, nil
 }
-
-func (r *NetworkReader) Info() *objects.ReaderInfo {
-	return &objects.ReaderInfo{Name: r.provider.String()}
-}

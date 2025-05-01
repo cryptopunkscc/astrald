@@ -39,8 +39,10 @@ func (f *FS) Open(name string) (fs.File, error) {
 		return nil, err
 	}
 
+	rs := objects.NewReadSeeker(f.ctx, objectID, f.mod.Root(), r)
+
 	return &File{
 		ID:     objectID,
-		Reader: r,
+		Reader: rs,
 	}, nil
 }
