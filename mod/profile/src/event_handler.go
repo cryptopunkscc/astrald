@@ -10,16 +10,16 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
 )
 
-func (mod *Module) ReceiveObject(push *objects.SourcedObject) error {
-	if !push.Source.IsEqual(mod.node.Identity()) {
+func (mod *Module) ReceiveObject(drop objects.Drop) error {
+	if !drop.SenderID().IsEqual(mod.node.Identity()) {
 		return errors.New("rejected")
 	}
 
-	switch obj := push.Object.(type) {
+	switch obj := (drop.Object()).(type) {
 	case *nodes.EventLinked:
 		go mod.updateIdentityProfile(obj.NodeID)
 	}
-	return errors.New("rejected")
+	return drop.Accept(false)
 }
 
 func (mod *Module) updateIdentityProfile(target *astral.Identity) error {

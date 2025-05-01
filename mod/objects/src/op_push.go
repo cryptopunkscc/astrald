@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
@@ -45,12 +44,7 @@ func (mod *Module) OpPush(ctx *astral.Context, q shell.Query, args opPushArgs) (
 		return
 	}
 
-	var push = &objects.SourcedObject{
-		Source: q.Caller(),
-		Object: obj,
-	}
-
-	if !mod.receive(push) {
+	if !mod.receive(q.Caller(), obj) {
 		mod.log.Errorv(1, "rejected %v from %v (%v)", obj.ObjectType(), q.Caller(), objectID)
 		binary.Write(stream, binary.BigEndian, false)
 		return

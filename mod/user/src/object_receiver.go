@@ -10,17 +10,26 @@ import (
 
 var _ objects.Receiver = &Module{}
 
-func (mod *Module) ReceiveObject(push *objects.SourcedObject) error {
-	switch o := push.Object.(type) {
+func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
+	switch o := drop.Object().(type) {
 	case *user.SignedNodeContract:
-		return mod.pushSignedNodeContract(push.Source, o)
+		err = mod.pushSignedNodeContract(drop.SenderID(), o)
+		if err == nil {
+			drop.Accept(true)
+		}
+
 	case *nodes.EventLinked:
 		go mod.onNodeLinked(o)
+		drop.Accept(false)
+
 	case *user.Notification:
-		return mod.onNotification(push.Source, o)
+		err = mod.onNotification(drop.SenderID(), o)
+		if err == nil {
+			drop.Accept(false)
+		}
 	}
 
-	return objects.ErrPushRejected
+	return nil
 }
 
 func (mod *Module) pushSignedNodeContract(s *astral.Identity, c *user.SignedNodeContract) error {

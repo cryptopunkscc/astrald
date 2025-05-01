@@ -10,21 +10,25 @@ import (
 	"time"
 )
 
-func (mod *Module) ReceiveObject(object *objects.SourcedObject) error {
+func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	// only receive objects from the local node
-	if !object.Source.IsEqual(mod.node.Identity()) {
+	if !drop.SenderID().IsEqual(mod.node.Identity()) {
 		return errors.New("object rejected")
 	}
 
-	switch object := object.Object.(type) {
+	switch object := drop.Object().(type) {
 	case *ether.EventBroadcastReceived:
-		mod.receiveBroadcastEvent(object)
+		err := mod.receiveBroadcastEvent(object)
+		if err == nil {
+			return drop.Accept(false)
+		}
 
 	case *tcp.EventNetworkAddressChanged:
 		mod.receiveNetworkAddressChanged(object)
+		return drop.Accept(false)
 	}
 
-	return errors.New("object rejected")
+	return nil
 }
 
 func (mod *Module) receiveBroadcastEvent(event *ether.EventBroadcastReceived) error {

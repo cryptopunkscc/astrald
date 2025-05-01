@@ -19,10 +19,7 @@ func (mod *Module) Receive(obj astral.Object, source *astral.Identity) (err erro
 		source = mod.node.Identity()
 	}
 
-	ok := mod.receive(&objects.SourcedObject{
-		Source: mod.node.Identity(),
-		Object: obj,
-	})
+	ok := mod.receive(mod.node.Identity(), obj)
 
 	if !ok {
 		err = errors.New("rejected")
@@ -31,15 +28,18 @@ func (mod *Module) Receive(obj astral.Object, source *astral.Identity) (err erro
 	return
 }
 
-func (mod *Module) receive(push *objects.SourcedObject) (ok bool) {
+func (mod *Module) receive(senderID *astral.Identity, object astral.Object) (ok bool) {
+	drop := &Drop{
+		senderID: senderID,
+		object:   object,
+		repo:     mod.Objects.Root(),
+	}
 	for _, r := range mod.receivers.Clone() {
-		if r.ReceiveObject(push) == nil {
-			ok = true
+		err := r.ReceiveObject(drop)
+		if err != nil {
+			mod.log.Errorv(1, "receiver %v errored: %v", r, err)
 		}
 	}
-	if ok {
-		ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
-		objects.Save(ctx, push.Object, mod.Objects.Root())
-	}
-	return
+
+	return drop.accepted.Get()
 }

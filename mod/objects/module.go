@@ -54,7 +54,13 @@ type Consumer interface {
 }
 
 type Receiver interface {
-	ReceiveObject(*SourcedObject) error
+	ReceiveObject(Drop) error
+}
+
+type Drop interface {
+	SenderID() *astral.Identity
+	Object() astral.Object
+	Accept(save bool) error
 }
 
 type Describer interface {
