@@ -1,6 +1,7 @@
 package media
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
@@ -18,28 +19,46 @@ type AudioFile struct {
 	PictureID *object.ID
 }
 
-// astral
-
 var _ astral.Object = &AudioFile{}
+
+// astral
 
 func (AudioFile) ObjectType() string { return "mod.media.audio_file" }
 
-func (d AudioFile) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(d).WriteTo(w)
+func (f AudioFile) WriteTo(w io.Writer) (n int64, err error) {
+	return astral.Struct(f).WriteTo(w)
 }
 
-func (d *AudioFile) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(d).ReadFrom(r)
+func (f *AudioFile) ReadFrom(r io.Reader) (n int64, err error) {
+	return astral.Struct(f).ReadFrom(r)
 }
 
-// json works by default
-
-// text
-
-func (d AudioFile) MarshalText() (text []byte, err error) {
-	s := fmt.Sprintf("%s by %s", d.Title, d.Artist)
+func (f AudioFile) MarshalText() (text []byte, err error) {
+	s := fmt.Sprintf("%s by %s", f.Title, f.Artist)
 	return []byte(s), nil
 }
+
+// json
+
+func (f AudioFile) MarshalJSON() ([]byte, error) {
+	type alias AudioFile
+	return json.Marshal(alias(f))
+}
+
+func (f *AudioFile) UnmarshalJSON(bytes []byte) error {
+	type alias AudioFile
+	var a alias
+
+	err := json.Unmarshal(bytes, &a)
+	if err != nil {
+		return err
+	}
+
+	*f = AudioFile(a)
+	return nil
+}
+
+// text
 
 func init() {
 	astral.DefaultBlueprints.Add(&AudioFile{})
