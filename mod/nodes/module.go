@@ -6,7 +6,13 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
-const ModuleName = "nodes"
+const (
+	ModuleName       = "nodes"
+	DBPrefix         = "nodes__"
+	ActionRelayFor   = "mod.nodes.relay_for"
+	ExtraCallerProof = "caller_proof"
+	ExtraRelayVia    = "relay_via"
+)
 
 type Module interface {
 	Accept(ctx context.Context, conn exonet.Conn) error

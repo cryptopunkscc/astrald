@@ -10,28 +10,23 @@ import (
 
 func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, target astral.Object) bool {
 	switch action {
-	case objects.ActionReadDescriptor:
-		switch target.ObjectType() {
-		case media.AudioFile{}.ObjectType():
-			return true
-		}
-
 	case objects.ActionRead:
 		if target == nil {
 			return false
 		}
 
-		objectID, ok := target.(*object.ID)
-		if !ok {
-			return false
-		}
+		switch target := target.(type) {
+		case *media.AudioFile:
+			return mod.Auth.Authorize(identity, action, target.ObjectID)
 
-		parentID, err := mod.db.FindAudioContainerID(objectID)
-		if err != nil || parentID.IsZero() {
-			return false
-		}
+		case *object.ID:
+			parentID, err := mod.db.FindAudioContainerID(target)
+			if err != nil || parentID.IsZero() {
+				return false
+			}
 
-		return mod.Auth.Authorize(identity, action, parentID)
+			return mod.Auth.Authorize(identity, action, parentID)
+		}
 	}
 
 	return false

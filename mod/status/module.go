@@ -6,7 +6,6 @@ import (
 
 const (
 	ModuleName = "status"
-	ActionList = "mod.status.list"
 )
 
 type Module interface {

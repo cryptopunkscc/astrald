@@ -7,12 +7,11 @@ import (
 )
 
 const (
-	ModuleName = "objects"
-	DBPrefix   = "objects__"
+	ModuleName   = "objects"
+	DBPrefix     = "objects__"
+	ActionRead   = "objects.read"
+	ActionCreate = "objects.create"
 )
-
-// ReadAllMaxSize is the size limit for loading objects into memory
-const ReadAllMaxSize = 64 * 1024 * 1024 // 64 MB
 
 // MaxObjectSize is the maximum size of an object that can be loaded into memory
 const MaxObjectSize int64 = 64 << 20 // 32 MB

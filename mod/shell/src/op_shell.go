@@ -24,7 +24,9 @@ func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellA
 			return astral.NewError("access denied")
 		}
 
-		ctx = astral.NewContext(ctx).WithIdentity(asID)
+		ctx = ctx.WithIdentity(asID)
+	} else {
+		ctx = ctx.WithIdentity(query.Caller())
 	}
 
 	// accept
@@ -33,7 +35,7 @@ func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellA
 	defer conn.Close()
 
 	// handle session
-	err = NewSession(mod, conn).Run(ctx.WithIdentity(query.Caller()))
+	err = NewSession(mod, conn).Run(ctx)
 	switch {
 	case err == nil, errors.Is(err, io.EOF):
 		mod.log.Logv(1, "shell session with %v ended", ctx.Identity())
