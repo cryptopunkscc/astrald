@@ -37,3 +37,7 @@ func (d *ArchiveDescriptor) ReadFrom(r io.Reader) (n int64, err error) {
 func (d *ArchiveDescriptor) String() string {
 	return d.ObjectType()
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&ArchiveDescriptor{})
+}

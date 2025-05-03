@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/routers"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tor"
@@ -15,10 +14,9 @@ import (
 )
 
 type Deps struct {
-	Admin admin.Module
-	Dir   dir.Module
-	TCP   tcp.Module
-	Tor   tor.Module
+	Dir dir.Module
+	TCP tcp.Module
+	Tor tor.Module
 }
 
 type Module struct {

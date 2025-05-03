@@ -5,8 +5,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"net"
@@ -133,7 +133,7 @@ func (s *Session) Register(ctx *astral.Context) (err error) {
 
 	guestID := s.guestID
 	if !arg.Identity.IsZero() {
-		if s.mod.Auth.Authorize(guestID, admin.ActionSudo, arg.Identity) {
+		if s.mod.Auth.Authorize(guestID, auth.ActionSudo, arg.Identity) {
 			guestID = s.guestID
 		}
 	}
@@ -211,7 +211,7 @@ func (s *Session) Query(ctx *astral.Context) (err error) {
 	}
 
 	if !arg.Caller.IsZero() && !arg.Caller.IsEqual(caller) {
-		if !s.mod.Auth.Authorize(caller, admin.ActionSudo, arg.Caller) {
+		if !s.mod.Auth.Authorize(caller, auth.ActionSudo, arg.Caller) {
 			_, err = apphost.QueryResponse{
 				Code: apphost.Rejected,
 			}.WriteTo(s.conn)

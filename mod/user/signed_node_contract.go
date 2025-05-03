@@ -34,3 +34,7 @@ func (c *SignedNodeContract) Hash() []byte {
 	}
 	return hash.Sum(nil)
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&SignedNodeContract{})
+}

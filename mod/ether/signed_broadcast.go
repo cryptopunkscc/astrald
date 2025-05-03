@@ -38,3 +38,7 @@ func (b SignedBroadcast) Hash() []byte {
 	}
 	return objectID.Hash[:]
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&SignedBroadcast{})
+}

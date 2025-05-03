@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -12,7 +11,6 @@ import (
 )
 
 type Deps struct {
-	Admin admin.Module
 }
 
 type Module struct {

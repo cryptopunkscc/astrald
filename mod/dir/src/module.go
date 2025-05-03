@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/lib/aliasgen"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
@@ -21,7 +20,6 @@ var _ dir.Module = &Module{}
 const ZeroIdentity = "<anyone>"
 
 type Deps struct {
-	Admin admin.Module
 }
 
 type Module struct {

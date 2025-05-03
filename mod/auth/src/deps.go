@@ -12,8 +12,6 @@ func (mod *Module) LoadDependencies() (err error) {
 		return
 	}
 
-	mod.Admin.AddCommand(auth.ModuleName, NewAdmin(mod))
-
 	if cnode, ok := mod.node.(*core.Node); ok {
 		var added []any
 		for _, m := range cnode.Modules().Loaded() {

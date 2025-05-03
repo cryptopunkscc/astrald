@@ -47,3 +47,7 @@ func (b *Broadcast) ReadFrom(r io.Reader) (n int64, err error) {
 
 	return
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&Broadcast{})
+}

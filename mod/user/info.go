@@ -20,3 +20,7 @@ func (i Info) WriteTo(w io.Writer) (n int64, err error) {
 func (i *Info) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Struct(i).ReadFrom(r)
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&Info{})
+}

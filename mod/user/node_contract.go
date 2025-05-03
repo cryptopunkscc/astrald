@@ -32,3 +32,7 @@ func (c *NodeContract) ReadFrom(r io.Reader) (n int64, err error) {
 	c.NodeID = &astral.Identity{}
 	return streams.ReadAllFrom(r, c.UserID, c.NodeID, &c.ExpiresAt)
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&NodeContract{})
+}

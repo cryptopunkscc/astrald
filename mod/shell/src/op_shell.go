@@ -3,7 +3,7 @@ package shell
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/admin"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"io"
 )
@@ -20,7 +20,7 @@ func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellA
 			return err
 		}
 
-		if !mod.Auth.Authorize(query.Caller(), admin.ActionSudo, asID) {
+		if !mod.Auth.Authorize(query.Caller(), auth.ActionSudo, asID) {
 			return astral.NewError("access denied")
 		}
 

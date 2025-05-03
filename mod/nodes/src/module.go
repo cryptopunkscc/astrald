@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -29,7 +28,6 @@ type NodeInfo nodes.NodeInfo
 var _ nodes.Module = &Module{}
 
 type Deps struct {
-	Admin   admin.Module
 	Auth    auth.Module
 	Dir     dir.Module
 	Exonet  exonet.Module

@@ -2,7 +2,6 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -18,8 +17,7 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 	// allow the user to perform whitelisted actions
 	if contract != nil && identity.IsEqual(contract.UserID) {
 		switch action {
-		case admin.ActionAccess,
-			admin.ActionSudo,
+		case auth.ActionSudo,
 			objects.ActionRead,
 			objects.ActionCreate:
 			return true

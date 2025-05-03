@@ -9,6 +9,8 @@ import (
 	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"net/http"
+	"regexp"
+	"strings"
 )
 
 func (mod *Module) fetch(addr string) (objectID *object.ID, err error) {
@@ -80,4 +82,13 @@ func (mod *Module) fetchARL(a *arl.ARL) (objectID *object.ID, err error) {
 	io.Copy(w, conn)
 
 	return w.Commit()
+}
+
+func isURL(url string) bool {
+	matched, _ := regexp.Match("^https?://", []byte(url))
+	return matched
+}
+
+func isARL(s string) bool {
+	return strings.HasPrefix(s, "astral://")
 }

@@ -14,3 +14,5 @@ type Module interface {
 type Authorizer interface {
 	Authorize(identity *astral.Identity, action Action, target astral.Object) bool
 }
+
+const ActionSudo = "mod.admin.sudo"

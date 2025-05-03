@@ -22,3 +22,7 @@ func (n Notification) WriteTo(w io.Writer) (int64, error) {
 func (n *Notification) ReadFrom(r io.Reader) (int64, error) {
 	return astral.Struct(n).ReadFrom(r)
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&Notification{})
+}

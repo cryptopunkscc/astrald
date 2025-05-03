@@ -3,7 +3,6 @@ package shell
 import (
 	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -12,7 +11,6 @@ import (
 )
 
 type Deps struct {
-	Admin   admin.Module
 	Auth    auth.Module
 	Dir     dir.Module
 	Objects objects.Module
@@ -23,8 +21,6 @@ func (mod *Module) LoadDependencies() (err error) {
 	if err != nil {
 		return
 	}
-
-	mod.Admin.AddCommand(shell.ModuleName, NewAdmin(mod))
 
 	if cnode, ok := mod.node.(*core.Node); ok {
 		var added []any

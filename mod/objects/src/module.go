@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -19,7 +18,6 @@ import (
 var _ objects.Module = &Module{}
 
 type Deps struct {
-	Admin   admin.Module
 	Auth    auth.Module
 	Dir     dir.Module
 	Nodes   nodes.Module

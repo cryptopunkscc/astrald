@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -21,7 +20,6 @@ import (
 var _ keys.Module = &Module{}
 
 type Deps struct {
-	Admin   admin.Module
 	Dir     dir.Module
 	Objects objects.Module
 }

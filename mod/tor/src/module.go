@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/mod/admin"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/tasks"
@@ -15,7 +14,6 @@ import (
 const defaultListenPort = 1791
 
 type Deps struct {
-	Admin  admin.Module
 	Nodes  nodes.Module
 	Exonet exonet.Module
 }
