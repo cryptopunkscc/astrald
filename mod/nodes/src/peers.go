@@ -38,11 +38,6 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClo
 		return query.RouteNotFound(mod)
 	}
 
-	err = mod.configureRelay(ctx, q, q.Target)
-	if err != nil {
-		return query.RouteNotFound(mod, err)
-	}
-
 	// prepare the connection info
 	conn, ok := mod.conns.Set(q.Nonce, newConn(q.Nonce))
 	if !ok {
@@ -69,6 +64,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClo
 	select {
 	case errCode := <-conn.res:
 		if errCode != 0 {
+			mod.conns.Delete(q.Nonce)
 			return query.RejectWithCode(errCode)
 		}
 
@@ -81,6 +77,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClo
 
 	case <-ctx.Done():
 		conn.swapState(stateRouting, stateClosed)
+		mod.conns.Delete(q.Nonce)
 		return query.RouteNotFound(mod, ctx.Err())
 	}
 }

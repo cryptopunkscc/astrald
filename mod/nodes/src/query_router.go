@@ -22,6 +22,10 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 
 	// are we linked already?
 	if mod.IsPeer(q.Target) {
+		err = mod.configureRelay(ctx, q, q.Target)
+		if err != nil {
+			return query.RouteNotFound(mod, err)
+		}
 		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
@@ -30,6 +34,10 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 	if err == nil {
 		err = mod.peers.connectAtAny(ctx, q.Target, ch)
 		if err == nil {
+			err = mod.configureRelay(ctx, q, q.Target)
+			if err != nil {
+				return query.RouteNotFound(mod, err)
+			}
 			return mod.peers.RouteQuery(ctx, q, w)
 		}
 	}
@@ -61,7 +69,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 		// relay the query
 		var rq = &astral.Query{
 			Nonce:  q.Nonce,
-			Caller: q.Caller,
+			Caller: mod.node.Identity(),
 			Target: relayID,
 			Query:  q.Query,
 			Extra:  *q.Extra.Copy(),

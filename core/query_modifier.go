@@ -26,7 +26,8 @@ func (q *QueryModifier) Attach(object astral.Object) {
 func (q *QueryModifier) AddRelay(identity *astral.Identity) {
 	if l, ok := q.query.Extra.Get(nodes.ExtraRelayVia); ok {
 		if l, ok := l.([]*astral.Identity); ok {
-			q.query.Extra.Set(nodes.ExtraRelayVia, append(l, identity))
+			q.query.Extra.Replace(nodes.ExtraRelayVia, append(l, identity))
+			return
 		}
 	}
 

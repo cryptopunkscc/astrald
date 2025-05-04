@@ -24,15 +24,16 @@ var _ user.Module = &Module{}
 
 type Module struct {
 	Deps
-	ctx    *astral.Context
-	config Config
-	node   astral.Node
-	log    *log.Logger
-	assets assets.Assets
-	db     *DB
-	mu     sync.Mutex
-	ops    shell.Scope
-	sibs   sig.Map[string, context.CancelFunc]
+	ctx        *astral.Context
+	config     Config
+	node       astral.Node
+	log        *log.Logger
+	assets     assets.Assets
+	db         *DB
+	mu         sync.Mutex
+	ops        shell.Scope
+	sibs       sig.Map[string, context.CancelFunc]
+	linkedSibs sig.Map[string, *astral.Identity]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -458,6 +459,10 @@ func (mod *Module) removeSib(nodeID *astral.Identity) error {
 	return nil
 }
 
+func (mod *Module) getLinkedSibs() (list []*astral.Identity) {
+	return mod.linkedSibs.Values()
+}
+
 func (mod *Module) listSibs() (list []*astral.Identity) {
 	for _, idStr := range mod.sibs.Keys() {
 		if id, err := astral.IdentityFromString(idStr); err == nil {
@@ -517,6 +522,7 @@ func (mod *Module) linkSib(ctx *astral.Context, nodeID *astral.Identity) {
 
 		mod.log.Info("linked with %v", nodeID)
 
+		mod.linkedSibs.Set(nodeID.String(), nodeID)
 		ctx := ctx.WithIdentity(mod.node.Identity())
 
 		err = mod.SyncAlias(ctx, nodeID)
@@ -530,6 +536,9 @@ func (mod *Module) linkSib(ctx *astral.Context, nodeID *astral.Identity) {
 		}
 
 		io.Copy(io.Discard, conn)
+
+		mod.linkedSibs.Delete(nodeID.String())
+
 		mod.log.Log("link with %v lost", nodeID)
 
 		close(done)
