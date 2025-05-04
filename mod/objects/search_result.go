@@ -15,25 +15,26 @@ type SearchResult struct {
 
 var _ astral.Object = &SearchResult{}
 
-func (SearchResult) ObjectType() string { return "astrald.mod.objects.search_result" }
+func (SearchResult) ObjectType() string { return "mod.objects.search_result" }
 
 func (sr SearchResult) WriteTo(w io.Writer) (n int64, err error) {
-	return sr.ObjectID.WriteTo(w)
+	return astral.Struct(sr).WriteTo(w)
 }
 
 func (sr *SearchResult) ReadFrom(r io.Reader) (n int64, err error) {
-	return sr.ObjectID.ReadFrom(r)
+	return astral.Struct(sr).ReadFrom(r)
 }
 
 // json
 
 func (sr SearchResult) MarshalJSON() ([]byte, error) {
-	return json.Marshal(sr.ObjectID)
+	type alias SearchResult
+	return json.Marshal(alias(sr))
 }
 
 func (sr *SearchResult) UnmarshalJSON(bytes []byte) error {
-	sr.ObjectID = &object.ID{}
-	return json.Unmarshal(bytes, sr.ObjectID)
+	type alias SearchResult
+	return json.Unmarshal(bytes, (*alias)(sr))
 }
 
 // text

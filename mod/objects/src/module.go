@@ -17,10 +17,9 @@ import (
 var _ objects.Module = &Module{}
 
 type Deps struct {
-	Auth    auth.Module
-	Dir     dir.Module
-	Nodes   nodes.Module
-	Objects objects.Module
+	Auth  auth.Module
+	Dir   dir.Module
+	Nodes nodes.Module
 }
 
 type Module struct {
@@ -35,6 +34,7 @@ type Module struct {
 	ctx        *astral.Context
 	describers sig.Set[objects.Describer]
 	searchers  sig.Set[objects.Searcher]
+	searchPre  sig.Set[objects.SearchPreprocessor]
 	purgers    sig.Set[objects.Purger]
 	finders    sig.Set[objects.Finder]
 	receivers  sig.Set[objects.Receiver]
@@ -96,6 +96,10 @@ func (mod *Module) On(target *astral.Identity, caller *astral.Identity) (objects
 	}
 
 	return NewConsumer(mod, caller, target), nil
+}
+
+func (mod *Module) AddSearchPreprocessor(pre objects.SearchPreprocessor) error {
+	return mod.searchPre.Add(pre)
 }
 
 func (mod *Module) AddRepository(id string, repo objects.Repository) error {

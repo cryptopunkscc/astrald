@@ -10,10 +10,20 @@ type Searcher interface {
 	SearchObject(ctx *astral.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
 }
 
+type SearchPreprocessor interface {
+	PreprocessSearch(*Search)
+}
+
 type SearchOpts struct {
 	*astral.Scope
 	ClientID *astral.Identity
 	Extra    sig.Map[string, any]
+}
+
+type Search struct {
+	CallerID *astral.Identity
+	Query    string
+	Sources  []*astral.Identity
 }
 
 func DefaultSearchOpts() *SearchOpts {

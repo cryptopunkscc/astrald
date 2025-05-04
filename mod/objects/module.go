@@ -26,8 +26,9 @@ type Module interface {
 	AddPurger(purger Purger) error
 	Purge(*object.ID, *PurgeOpts) (int, error)
 
-	AddSearcher(Searcher) error
 	Search(ctx *astral.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
+	AddSearcher(Searcher) error
+	AddSearchPreprocessor(SearchPreprocessor) error
 
 	AddFinder(Finder) error
 	Find(*astral.Context, *object.ID) []*astral.Identity

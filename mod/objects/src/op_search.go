@@ -4,7 +4,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"strings"
 	"time"
 )
 
@@ -14,24 +13,6 @@ func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.Sea
 
 	opts := objects.DefaultSearchOpts()
 	opts.ClientID = q.Caller()
-
-	// handle args for local queries
-	if q.Origin() == "" {
-		ctx = ctx.IncludeZone(args.Zone)
-
-		if len(args.Ext) > 0 {
-			var ids []*astral.Identity
-			targets := strings.Split(args.Ext, ",")
-			for _, target := range targets {
-				id, err := mod.Dir.ResolveIdentity(target)
-				if err != nil {
-					return q.Reject()
-				}
-				ids = append(ids, id)
-			}
-			opts.Extra.Set("ext", ids)
-		}
-	}
 
 	matches, err := mod.Search(ctx, args.Query, opts)
 	if err != nil {

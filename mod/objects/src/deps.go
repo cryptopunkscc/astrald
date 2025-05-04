@@ -29,6 +29,10 @@ func (mod *Module) LoadDependencies() (err error) {
 				mod.AddSearcher(d)
 			}
 
+			if d, ok := m.(objects.SearchPreprocessor); ok {
+				mod.AddSearchPreprocessor(d)
+			}
+
 			if d, ok := m.(objects.Finder); ok {
 				mod.AddFinder(d)
 			}

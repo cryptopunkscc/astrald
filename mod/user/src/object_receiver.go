@@ -13,7 +13,7 @@ var _ objects.Receiver = &Module{}
 func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 	switch o := drop.Object().(type) {
 	case *user.SignedNodeContract:
-		err = mod.pushSignedNodeContract(drop.SenderID(), o)
+		err = mod.receiveSignedNodeContract(drop.SenderID(), o)
 		if err == nil {
 			drop.Accept(true)
 		}
@@ -32,7 +32,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 	return nil
 }
 
-func (mod *Module) pushSignedNodeContract(s *astral.Identity, c *user.SignedNodeContract) error {
+func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedNodeContract) error {
 	// reject contracts coming from neither the signing node nor local node
 	if !(s.IsEqual(c.NodeID) || s.IsEqual(mod.node.Identity())) {
 		return objects.ErrPushRejected

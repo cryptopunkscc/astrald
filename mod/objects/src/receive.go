@@ -32,7 +32,7 @@ func (mod *Module) receive(senderID *astral.Identity, object astral.Object) (ok 
 	drop := &Drop{
 		senderID: senderID,
 		object:   object,
-		repo:     mod.Objects.Root(),
+		repo:     mod.Root(),
 	}
 	for _, r := range mod.receivers.Clone() {
 		err := r.ReceiveObject(drop)
