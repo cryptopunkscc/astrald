@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/object"
 )
@@ -47,9 +46,9 @@ type Module interface {
 }
 
 type Consumer interface {
-	Describe(context.Context, *object.ID, *astral.Scope) (<-chan *SourcedObject, error)
-	Search(context.Context, string) (<-chan *SearchResult, error)
-	Push(context.Context, astral.Object) (err error)
+	Describe(*astral.Context, *object.ID, *astral.Scope) (<-chan *SourcedObject, error)
+	Search(*astral.Context, string) (<-chan *SearchResult, error)
+	Push(*astral.Context, astral.Object) (err error)
 }
 
 type Receiver interface {

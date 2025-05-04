@@ -1,7 +1,6 @@
 package query
 
 import (
-	"context"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"net/url"
@@ -44,13 +43,16 @@ func New(caller *astral.Identity, target *astral.Identity, path string, args any
 }
 
 func Run(n astral.Node, target *astral.Identity, path string, args any) (astral.Conn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultQueryTimeout)
+	ctx, cancel := astral.
+		NewContext(nil).
+		WithIdentity(n.Identity()).
+		WithTimeout(defaultQueryTimeout)
 	defer cancel()
 
 	return RunCtx(ctx, n, target, path, args)
 }
 
-func RunCtx(ctx context.Context, n astral.Node, target *astral.Identity, path string, args any) (astral.Conn, error) {
+func RunCtx(ctx *astral.Context, n astral.Node, target *astral.Identity, path string, args any) (astral.Conn, error) {
 	q := New(n.Identity(), target, path, args)
 
 	return Route(ctx, n, q)

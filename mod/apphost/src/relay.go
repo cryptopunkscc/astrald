@@ -1,7 +1,6 @@
 package apphost
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/ipc"
@@ -24,7 +23,7 @@ func NewRelay(endpoint string, token string, log *log.Logger) *Relay {
 	}
 }
 
-func (fwd *Relay) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (fwd *Relay) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	conn, err := ipc.Dial(fwd.endpoint)
 	if err != nil {
 		if fwd.log != nil {

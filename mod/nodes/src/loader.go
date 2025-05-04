@@ -21,7 +21,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(nodes.ModuleName, &mod.config)
 
-	mod.provider = NewProvider(mod)
 	mod.peers = NewPeers(mod)
 
 	mod.db = &DB{assets.Database()}

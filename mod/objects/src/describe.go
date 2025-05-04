@@ -1,10 +1,8 @@
 package objects
 
 import (
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
 	"sync"
@@ -46,40 +44,6 @@ func (mod *Module) Describe(ctx *astral.Context, objectID *object.ID, scope *ast
 
 func (mod *Module) AddDescriber(describer objects.Describer) error {
 	return mod.describers.Add(describer)
-}
-
-func (c *Consumer) Describe(ctx context.Context, objectID *object.ID, _ *astral.Scope) (<-chan *objects.SourcedObject, error) {
-	var results = make(chan *objects.SourcedObject, 1)
-
-	var q = query.New(
-		c.consumerID,
-		c.providerID,
-		methodDescribe,
-		&describeArgs{ID: objectID})
-
-	go func() {
-		defer close(results)
-
-		conn, err := query.Route(ctx, c.mod.node, q)
-		if err != nil {
-			return
-		}
-		defer conn.Close()
-
-		for {
-			obj, _, err := c.mod.Blueprints().Read(conn, true)
-			if err != nil {
-				return
-			}
-
-			results <- &objects.SourcedObject{
-				Source: c.providerID,
-				Object: obj,
-			}
-		}
-	}()
-
-	return results, nil
 }
 
 type describeArgs struct {

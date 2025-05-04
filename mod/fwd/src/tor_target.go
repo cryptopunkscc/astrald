@@ -1,7 +1,6 @@
 package fwd
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -30,7 +29,7 @@ func NewTorTarget(drv tor.Module, addr string, identiy *astral.Identity) (*TorTa
 	return t, nil
 }
 
-func (t *TorTarget) RouteQuery(ctx context.Context, _ *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (t *TorTarget) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	conn, err := t.tor.Dial(ctx, t.endpoint)
 	if err != nil {
 		return query.Reject()

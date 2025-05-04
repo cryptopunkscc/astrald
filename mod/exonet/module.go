@@ -1,14 +1,13 @@
 package exonet
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
 const ModuleName = "exonet"
 
 type Module interface {
-	Dial(context.Context, Endpoint) (conn Conn, err error)
+	Dial(*astral.Context, Endpoint) (conn Conn, err error)
 	Unpack(network string, data []byte) (Endpoint, error)
 	Parse(network string, address string) (Endpoint, error)
 
@@ -26,7 +25,7 @@ type Endpoint interface {
 }
 
 type Dialer interface {
-	Dial(context.Context, Endpoint) (Conn, error)
+	Dial(*astral.Context, Endpoint) (Conn, error)
 }
 
 type Unpacker interface {

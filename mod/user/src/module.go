@@ -36,7 +36,7 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
-	mod.ctx = ctx
+	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
 	ac := mod.ActiveContract()
 	if ac != nil {
@@ -432,7 +432,7 @@ func (mod *Module) addSib(nodeID *astral.Identity) error {
 		return errors.New("cannot add self")
 	}
 
-	ctx, cancel := context.WithCancel(mod.ctx)
+	ctx, cancel := mod.ctx.WithCancel()
 
 	cancel, ok := mod.sibs.Set(nodeID.String(), cancel)
 	if !ok {
@@ -440,7 +440,7 @@ func (mod *Module) addSib(nodeID *astral.Identity) error {
 	}
 
 	go func() {
-		mod.linkSib(astral.NewContext(ctx), nodeID)
+		mod.linkSib(ctx, nodeID)
 		mod.removeSib(nodeID)
 	}()
 
@@ -467,7 +467,7 @@ func (mod *Module) listSibs() (list []*astral.Identity) {
 	return
 }
 
-func (mod *Module) linkSib(ctx context.Context, nodeID *astral.Identity) {
+func (mod *Module) linkSib(ctx *astral.Context, nodeID *astral.Identity) {
 	mod.log.Info("added sibling %v", nodeID)
 	defer mod.log.Info("removed sibling %v", nodeID)
 	var count = 0
@@ -517,7 +517,7 @@ func (mod *Module) linkSib(ctx context.Context, nodeID *astral.Identity) {
 
 		mod.log.Info("linked with %v", nodeID)
 
-		ctx := astral.NewContext(ctx).WithIdentity(mod.node.Identity())
+		ctx := ctx.WithIdentity(mod.node.Identity())
 
 		err = mod.SyncAlias(ctx, nodeID)
 		if err != nil {

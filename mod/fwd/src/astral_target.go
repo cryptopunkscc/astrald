@@ -1,7 +1,6 @@
 package fwd
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 )
@@ -20,7 +19,7 @@ func NewAstralTarget(query *astral.Query, router astral.Router, label string) (*
 	}, nil
 }
 
-func (t *AstralTarget) RouteQuery(ctx context.Context, _ *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (t *AstralTarget) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	return t.router.RouteQuery(
 		ctx,
 		astral.NewQuery(t.query.Caller, t.query.Target, t.query.Query),

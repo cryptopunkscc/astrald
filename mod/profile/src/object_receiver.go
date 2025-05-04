@@ -25,7 +25,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 func (mod *Module) updateIdentityProfile(target *astral.Identity) error {
 	mod.log.Infov(2, "updating profile for %v", target)
 
-	conn, err := query.Route(mod.ctx, mod.node, astral.NewQuery(mod.node.Identity(), target, serviceName))
+	conn, err := query.Route(mod.ctx.IncludeZone(astral.ZoneNetwork), mod.node, astral.NewQuery(mod.node.Identity(), target, serviceName))
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,6 @@
 package profile
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/routers"
@@ -18,7 +17,7 @@ type Module struct {
 	*routers.PathRouter
 	node astral.Node
 	log  *log.Logger
-	ctx  context.Context
+	ctx  *astral.Context
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {

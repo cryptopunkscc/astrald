@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
@@ -33,7 +32,7 @@ type Module struct {
 	log        *log.Logger
 	ops        shell.Scope
 
-	ctx        context.Context
+	ctx        *astral.Context
 	describers sig.Set[objects.Describer]
 	searchers  sig.Set[objects.Searcher]
 	purgers    sig.Set[objects.Purger]

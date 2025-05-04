@@ -32,7 +32,7 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
-	mod.ctx = ctx
+	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
 	for _, gateName := range mod.config.Subscribe {
 		var gateID *astral.Identity

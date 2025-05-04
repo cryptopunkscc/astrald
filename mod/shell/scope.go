@@ -1,7 +1,6 @@
 package shell
 
 import (
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -207,7 +206,7 @@ func (scope *Scope) getOp(name string) any {
 	return op
 }
 
-func (scope *Scope) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (scope *Scope) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	path, params := query.Parse(q.Query)
 
 	if !scope.Exists(path) {

@@ -1,12 +1,12 @@
 package tcp
 
 import (
-	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	_net "net"
 )
 
-func (mod *Module) Dial(ctx context.Context, endpoint exonet.Endpoint) (exonet.Conn, error) {
+func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.Conn, error) {
 	switch endpoint.Network() {
 	case "tcp", "inet":
 	default:

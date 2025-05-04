@@ -48,12 +48,11 @@ func (mod *Module) pushSignedNodeContract(s *astral.Identity, c *user.SignedNode
 }
 
 func (mod *Module) onNodeLinked(event *nodes.EventLinked) {
-	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 	contract := mod.ActiveContract()
 	if contract == nil {
 		return
 	}
-	mod.Objects.Push(ctx, event.NodeID, contract)
+	mod.Objects.Push(mod.ctx, event.NodeID, contract)
 }
 
 func (mod *Module) onNotification(src *astral.Identity, n *user.Notification) error {

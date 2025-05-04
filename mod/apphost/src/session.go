@@ -222,6 +222,8 @@ func (s *Session) Query(ctx *astral.Context) (err error) {
 
 	var q = astral.NewQuery(caller, arg.Target, string(arg.Query))
 
+	ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
 	conn, err := query.Route(ctx, s.mod.node, q)
 
 	if err != nil {

@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -33,7 +32,7 @@ func (srv *SubscribeService) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (srv *SubscribeService) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (srv *SubscribeService) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	return query.Accept(q, w, func(conn astral.Conn) {
 		defer conn.Close()
 

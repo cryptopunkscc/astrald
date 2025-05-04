@@ -47,13 +47,18 @@ type Module struct {
 
 	dbResolver *DBEndpointResolver
 	resolvers  sig.Set[nodes.EndpointResolver]
+	relays     sig.Map[astral.Nonce, *Relay]
 
-	peers    *Peers
-	provider *Provider
+	peers *Peers
 
 	in chan *Frame
 
 	searchCache sig.Map[string, *astral.Identity]
+}
+
+type Relay struct {
+	Caller *astral.Identity
+	Target *astral.Identity
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {

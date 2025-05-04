@@ -28,11 +28,22 @@ func NewPeers(m *Module) *Peers {
 	return &Peers{Module: m}
 }
 
-func (mod *Peers) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (_ io.WriteCloser, err error) {
-	if !mod.isRoutable(q.Target) {
+func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (_ io.WriteCloser, err error) {
+	streams := mod.streams.Select(func(s *Stream) bool {
+		return s.RemoteIdentity().IsEqual(q.Target)
+	})
+
+	// are we linked?
+	if len(streams) == 0 {
 		return query.RouteNotFound(mod)
 	}
 
+	err = mod.configureRelay(ctx, q, q.Target)
+	if err != nil {
+		return query.RouteNotFound(mod, err)
+	}
+
+	// prepare the connection info
 	conn, ok := mod.conns.Set(q.Nonce, newConn(q.Nonce))
 	if !ok {
 		return query.RouteNotFound(mod, errors.New("nonce already exists"))
@@ -42,13 +53,7 @@ func (mod *Peers) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteClo
 	conn.Query = q.Query
 	conn.Outbound = true
 
-	// make sure we're linked with the target node
-	if err := mod.ensureConnected(ctx, q.Target); err != nil {
-		conn.swapState(stateRouting, stateClosed)
-		return query.RouteNotFound(mod, err)
-	}
-
-	// prepare the protocol frame
+	// prepare the query frame
 	frame := &frames.Query{
 		Nonce:  q.Nonce,
 		Query:  q.Query,
@@ -56,9 +61,7 @@ func (mod *Peers) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteClo
 	}
 
 	// send the query via all streams
-	for _, s := range mod.streams.Select(func(s *Stream) bool {
-		return s.RemoteIdentity().IsEqual(q.Target)
-	}) {
+	for _, s := range streams {
 		go s.Write(frame)
 	}
 
@@ -142,16 +145,9 @@ func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
 
 	q.Extra.Set("origin", astral.OriginNetwork)
 
-	err := mod.provider.PreprocessQuery(q)
-	if err != nil {
-		panic(err)
-	}
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	w, err := mod.provider.RouteQuery(context.Background(), q, conn)
-	if err != nil {
-		w, err = mod.node.RouteQuery(context.Background(), q, conn)
-	}
-
+	w, err := mod.node.RouteQuery(ctx, q, conn)
 	if err != nil {
 		conn.swapState(stateRouting, stateClosed)
 		var code = uint8(frames.CodeRejected)
@@ -388,7 +384,7 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 	}
 }
 
-func (mod *Peers) connectAt(ctx context.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) error {
+func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) error {
 	conn, err := mod.Exonet.Dial(ctx, e)
 	if err != nil {
 		return err
@@ -402,18 +398,12 @@ func (mod *Peers) connectAt(ctx context.Context, remoteIdentity *astral.Identity
 	return nil
 }
 
-func (mod *Peers) connectAny(ctx context.Context, remoteIdentity *astral.Identity, endpoints []exonet.Endpoint) error {
-	var queue = sig.ArrayToChan(endpoints)
-
-	if len(queue) == 0 {
-		return errors.New("no endpoints provided")
-	}
-
+func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Identity, endpoints <-chan exonet.Endpoint) error {
 	var wg sync.WaitGroup
 	var success atomic.Bool
 	var workers = DefaultWorkerCount
 
-	wctx, cancel := context.WithCancel(ctx)
+	wctx, cancel := ctx.WithCancel()
 	defer cancel()
 
 	wg.Add(workers)
@@ -427,7 +417,7 @@ func (mod *Peers) connectAny(ctx context.Context, remoteIdentity *astral.Identit
 				select {
 				case <-wctx.Done():
 					return
-				case e, ok = <-queue:
+				case e, ok = <-endpoints:
 					if !ok {
 						return
 					}
@@ -456,15 +446,11 @@ func (mod *Peers) connectAny(ctx context.Context, remoteIdentity *astral.Identit
 	return errors.New("no endpoint could be reached")
 }
 
-func (mod *Peers) ensureConnected(ctx context.Context, remoteIdentity *astral.Identity) error {
-	if mod.isLinked(remoteIdentity) {
-		return nil
-	}
-
+func (mod *Peers) connect(ctx *astral.Context, remoteIdentity *astral.Identity) error {
 	ch, err := mod.ResolveEndpoints(astral.NewContext(ctx), remoteIdentity)
 	if err != nil {
 		return err
 	}
 
-	return mod.connectAny(ctx, remoteIdentity, sig.ChanToArray(ch))
+	return mod.connectAtAny(ctx, remoteIdentity, ch)
 }

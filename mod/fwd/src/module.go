@@ -31,7 +31,7 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
-	mod.ctx = ctx
+	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
 	for server, target := range mod.config.Forwards {
 		err := mod.CreateForward(server, target)

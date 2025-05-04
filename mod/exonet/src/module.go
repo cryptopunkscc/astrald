@@ -1,7 +1,6 @@
 package exonet
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -34,7 +33,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) Dial(ctx context.Context, endpoint exonet.Endpoint) (conn exonet.Conn, err error) {
+func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (conn exonet.Conn, err error) {
 	d, found := mod.dialers.Get(endpoint.Network())
 	if found {
 		return d.Dial(ctx, endpoint)

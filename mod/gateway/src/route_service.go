@@ -30,7 +30,7 @@ func (srv *RouteService) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (srv *RouteService) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (srv *RouteService) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	var targetKey string
 
 	switch {

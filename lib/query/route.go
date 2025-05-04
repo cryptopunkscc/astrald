@@ -1,7 +1,6 @@
 package query
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 )
@@ -9,7 +8,7 @@ import (
 // Route routes a query through the provided Router. It returns a conn if query was successfully routed
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...
-func Route(ctx context.Context, r astral.Router, q *astral.Query) (astral.Conn, error) {
+func Route(ctx *astral.Context, r astral.Router, q *astral.Query) (astral.Conn, error) {
 	pipeReader, pipeWriter := io.Pipe()
 
 	target, err := r.RouteQuery(ctx, q, pipeWriter)

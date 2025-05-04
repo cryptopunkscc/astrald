@@ -1,7 +1,6 @@
 package routers
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 )
@@ -12,7 +11,7 @@ type routerFunc struct {
 	fn astral.RouteQueryFunc
 }
 
-func (r *routerFunc) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (r *routerFunc) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	return r.fn(ctx, q, w)
 }
 

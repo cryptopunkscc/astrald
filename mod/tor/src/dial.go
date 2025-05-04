@@ -1,7 +1,7 @@
 package tor
 
 import (
-	"context"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tor"
 	"net"
@@ -10,7 +10,7 @@ import (
 var _ exonet.Dialer = &Module{}
 
 // Dial tries to establish a Driver connection to the provided address
-func (mod *Module) Dial(ctx context.Context, endpoint exonet.Endpoint) (conn exonet.Conn, err error) {
+func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (conn exonet.Conn, err error) {
 	endpoint, err = mod.Unpack(endpoint.Network(), endpoint.Pack())
 	if err != nil {
 		return nil, err
@@ -18,7 +18,7 @@ func (mod *Module) Dial(ctx context.Context, endpoint exonet.Endpoint) (conn exo
 
 	var e = endpoint.(*tor.Endpoint)
 
-	ctx, cancel := context.WithTimeout(ctx, mod.config.DialTimeout)
+	ctx, cancel := ctx.WithTimeout(mod.config.DialTimeout)
 	defer cancel()
 
 	var connCh = make(chan net.Conn, 1)

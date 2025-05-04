@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -23,7 +22,7 @@ type Router struct {
 }
 
 type QueryPreprocessor interface {
-	PreprocessQuery(*astral.Query) error
+	PreprocessQuery(*QueryModifier) error
 }
 
 func NewRouter(node *Node) *Router {
@@ -39,11 +38,17 @@ func (r *Router) AddQueryPreprocessor(f QueryPreprocessor) error {
 	return r.preprocessors.Add(f)
 }
 
-func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteCloser) (target io.WriteCloser, err error) {
+func (r *Router) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (target io.WriteCloser, err error) {
+	qm := &QueryModifier{query: q}
 	// preprocess the query
 	for _, p := range r.preprocessors.Clone() {
-		err = p.PreprocessQuery(q)
+		err = p.PreprocessQuery(qm)
 		if err != nil {
+			return query.RouteNotFound(r, err)
+		}
+
+		// check if the query was blocked
+		if err := qm.blocked.Get(); err != nil {
 			return query.RouteNotFound(r, err)
 		}
 	}
@@ -74,17 +79,17 @@ func (r *Router) RouteQuery(ctx context.Context, q *astral.Query, w io.WriteClos
 	return target, err
 }
 
-func (r *Router) routeQuery(ctx context.Context, q *astral.Query, src io.WriteCloser) (w io.WriteCloser, err error) {
+func (r *Router) routeQuery(ctx *astral.Context, q *astral.Query, src io.WriteCloser) (w io.WriteCloser, err error) {
 	c, ok := r.conns.Set(q.Nonce, newConn(r, q))
 	if !ok {
 		return query.RouteNotFound(r, errors.New("routing cycle not allowed"))
 	}
 	c.src = newWriter(c, src)
 
-	ctx, cancel := context.WithTimeout(ctx, routingTimeout)
+	actx, cancel := ctx.WithTimeout(routingTimeout)
 	defer cancel()
 
-	w, err = r.PriorityRouter.RouteQuery(ctx, q, c.src)
+	w, err = r.PriorityRouter.RouteQuery(actx, q, c.src)
 	if err != nil {
 		r.conns.Delete(q.Nonce)
 		return nil, err
