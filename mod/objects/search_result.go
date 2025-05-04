@@ -53,3 +53,7 @@ func (sr *SearchResult) UnmarshalText(text []byte) error {
 func (sr SearchResult) String() string {
 	return sr.ObjectID.String()
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&SearchResult{})
+}

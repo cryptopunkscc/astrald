@@ -1,6 +1,7 @@
 package objects
 
 import (
+	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -16,7 +17,6 @@ func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.Sea
 
 	matches, err := mod.Search(ctx, args.Query, opts)
 	if err != nil {
-		cancel()
 		return q.Reject()
 	}
 
@@ -44,7 +44,7 @@ func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.Sea
 
 		err = ch.Write(match)
 		if err != nil {
-			return
+			return fmt.Errorf("error writing match: %w", err)
 		}
 	}
 

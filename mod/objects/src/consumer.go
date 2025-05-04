@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
@@ -56,35 +55,43 @@ func (c *Consumer) Read(ctx *astral.Context, objectID *object.ID, offset int64, 
 }
 
 func (c *Consumer) Search(ctx *astral.Context, s string) (<-chan *objects.SearchResult, error) {
-	params := core.Params{
+	params := query.Args{
 		"q": s,
 	}
 
-	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodSearch, params))
-
-	conn, err := query.Route(ctx, c.mod.node, q)
+	conn, err := query.Route(ctx,
+		c.mod.node,
+		query.New(c.consumerID, c.providerID, methodSearch, params),
+	)
 	if err != nil {
 		return nil, err
 	}
+	ch := astral.NewChannel(conn)
 
 	var results = make(chan *objects.SearchResult)
 
 	go func() {
 		<-ctx.Done()
-		conn.Close()
+		ch.Close()
 	}()
 
 	go func() {
-		defer conn.Close()
+		defer ch.Close()
 		defer close(results)
 
 		for {
-			var sr = &objects.SearchResult{}
-			_, err := sr.ReadFrom(conn)
+			obj, err := ch.Read()
 			if err != nil {
 				return
 			}
-			results <- sr
+			switch obj := obj.(type) {
+			case *objects.SearchResult:
+				results <- obj
+
+			default:
+				c.mod.log.Errorv(2, "unexpected object type: %v", obj.ObjectType())
+				return
+			}
 		}
 	}()
 
@@ -109,11 +116,11 @@ func (c *Consumer) Push(ctx *astral.Context, o astral.Object) (err error) {
 		return errors.New("object too large")
 	}
 
-	params := core.Params{
+	params := query.Args{
 		"size": strconv.FormatInt(int64(len(b)), 10),
 	}
 
-	var q = astral.NewQuery(c.consumerID, c.providerID, core.Query(methodPush, params))
+	var q = query.New(c.consumerID, c.providerID, methodPush, params)
 
 	conn, err := query.Route(ctx, c.mod.node, q)
 	if err != nil {
