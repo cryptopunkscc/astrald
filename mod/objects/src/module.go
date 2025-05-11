@@ -12,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
+	"strings"
 )
 
 var _ objects.Module = &Module{}
@@ -75,7 +76,10 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *object.ID) (objectType
 	_, err = header.ReadFrom(r)
 
 	err = mod.db.Create(objectID, header.String())
-	if err != nil {
+	switch {
+	case err == nil:
+	case strings.Contains(err.Error(), "UNIQUE constraint failed"):
+	default:
 		mod.log.Error("onSave: db error: %v", err)
 	}
 

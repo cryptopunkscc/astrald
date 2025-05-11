@@ -8,6 +8,7 @@ import (
 )
 
 type Drop struct {
+	mod      *Module
 	senderID *astral.Identity
 	object   astral.Object
 	repo     objects.Repository
@@ -40,9 +41,11 @@ func (drop *Drop) Accept(save bool) error {
 	ctx := astral.NewContext(nil)
 
 	_, err := objects.Save(ctx, drop.object, drop.repo)
-	if err == nil {
+	if err != nil {
+		drop.mod.log.Error("error saving received object: %v", err)
+	} else {
 		drop.saved = true
 	}
-	
+
 	return err
 }

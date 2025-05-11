@@ -30,6 +30,7 @@ func (mod *Module) Receive(obj astral.Object, source *astral.Identity) (err erro
 
 func (mod *Module) receive(senderID *astral.Identity, object astral.Object) (ok bool) {
 	drop := &Drop{
+		mod:      mod,
 		senderID: senderID,
 		object:   object,
 		repo:     mod.Root(),
