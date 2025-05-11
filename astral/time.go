@@ -1,7 +1,6 @@
 package astral
 
 import (
-	"encoding/binary"
 	"io"
 	"time"
 )
@@ -15,21 +14,17 @@ func Now() Time {
 func (t Time) ObjectType() string { return "astral.time" }
 
 func (t Time) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, binary.BigEndian, int64(t.Time().UTC().UnixNano()))
-	if err == nil {
-		n += 8
-	}
-	return
+	return Uint64(t.Time().UTC().UnixNano()).WriteTo(w)
 }
 
 func (t *Time) ReadFrom(r io.Reader) (n int64, err error) {
-	var i int64
-	err = binary.Read(r, binary.BigEndian, &i)
-	if err != nil {
-		return
+	var nsec Uint64
+	n, err = (&nsec).ReadFrom(r)
+
+	if err == nil {
+		*t = Time(time.Unix(0, int64(nsec)))
 	}
-	n += 8
-	*t = Time(time.Unix(0, i).UTC())
+
 	return
 }
 
@@ -55,10 +50,7 @@ func (t *Time) UnmarshalJSON(bytes []byte) (err error) {
 func (t Time) MarshalText() (text []byte, err error) { return t.Time().MarshalText() }
 
 func (t *Time) UnmarshalText(text []byte) (err error) {
-	var tt time.Time
-	err = tt.UnmarshalText(text)
-	*t = Time(tt)
-	return
+	return (*time.Time)(t).UnmarshalText(text)
 }
 
 func init() {
