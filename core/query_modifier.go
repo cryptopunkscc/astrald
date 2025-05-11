@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
+	"slices"
 )
 
 type QueryModifier struct {
@@ -26,6 +27,10 @@ func (q *QueryModifier) Attach(object astral.Object) {
 func (q *QueryModifier) AddRelay(identity *astral.Identity) {
 	if l, ok := q.query.Extra.Get(nodes.ExtraRelayVia); ok {
 		if l, ok := l.([]*astral.Identity); ok {
+			if slices.ContainsFunc(l, identity.IsEqual) {
+				return // avoid duplicates
+			}
+
 			q.query.Extra.Replace(nodes.ExtraRelayVia, append(l, identity))
 			return
 		}
