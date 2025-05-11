@@ -71,6 +71,15 @@ func (mod *Module) indexer(ctx *astral.Context) {
 	}
 
 	for objectID := range ch {
+		objectType, err := mod.Objects.GetType(ctx, objectID)
+
+		switch {
+		case err != nil:
+			continue
+		case objectType != "": // raw media formats have no object type
+			continue
+		}
+
 		_ = mod.Index(ctx, objectID)
 	}
 
