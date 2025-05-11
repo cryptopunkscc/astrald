@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -18,9 +19,27 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 			drop.Accept(true)
 		}
 
+	case *apphost.AppContract:
+		if !slices.ContainsFunc(mod.LocalSwarm(), o.HostID.IsEqual) {
+			break
+		}
+
+		drop.Accept(true)
+
 	case *nodes.EventLinked:
 		go mod.onNodeLinked(o)
+
 		drop.Accept(false)
+
+	case *apphost.EventNewAppContract:
+		switch {
+		case !drop.SenderID().IsEqual(mod.node.Identity()):
+			break
+		case !o.Contract.HostID.IsEqual(mod.node.Identity()):
+			break
+		}
+
+		mod.pushToLinkedSibs(o.Contract)
 
 	case *user.Notification:
 		err = mod.onNotification(drop.SenderID(), o)

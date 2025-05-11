@@ -60,6 +60,16 @@ func (mod *Module) ActiveNodes(userID *astral.Identity) (nodes []*astral.Identit
 	return
 }
 
+// LocalSwarm returns a list of node identities with an active contract with the current user
+func (mod *Module) LocalSwarm() (list []*astral.Identity) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return
+	}
+
+	return mod.ActiveNodes(ac.UserID)
+}
+
 // ActiveUsers returns a list of known active users of the specified node
 func (mod *Module) ActiveUsers(nodeID *astral.Identity) (users []*astral.Identity) {
 	users, err := mod.db.UniqueActiveUsersOnNode(nodeID)
@@ -302,6 +312,18 @@ func (mod *Module) notifyLinked(event string) {
 	}
 }
 
+func (mod *Module) pushToLinkedSibs(object astral.Object) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return
+	}
+
+	for _, sib := range mod.listSibs() {
+		sib := sib
+		go mod.Objects.Push(mod.ctx, sib, object)
+	}
+}
+
 // RemoveAsset removes an object from user's assets
 func (mod *Module) RemoveAsset(objectID *object.ID) (err error) {
 	err = mod.db.RemoveAsset(objectID)
@@ -426,6 +448,24 @@ func (mod *Module) SyncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 	return mod.Dir.SetAlias(nodeID, string(info.NodeAlias))
 }
 
+func (mod *Module) SyncApps(ctx *astral.Context, nodeID *astral.Identity) (err error) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return errors.New("no active contract")
+	}
+
+	contracts, err := mod.Apphost.ActiveLocalAppContracts()
+	if err != nil {
+		return err
+	}
+
+	for _, contract := range contracts {
+		mod.Objects.Push(ctx, nodeID, contract)
+	}
+
+	return
+}
+
 // siblings (other nodes of the same user)
 
 func (mod *Module) addSib(nodeID *astral.Identity) error {
@@ -524,6 +564,11 @@ func (mod *Module) linkSib(ctx *astral.Context, nodeID *astral.Identity) {
 
 		mod.linkedSibs.Set(nodeID.String(), nodeID)
 		ctx := ctx.WithIdentity(mod.node.Identity())
+
+		err = mod.SyncApps(ctx, nodeID)
+		if err != nil {
+			mod.log.Error("error syncing apps with %v: %v", nodeID, err)
+		}
 
 		err = mod.SyncAlias(ctx, nodeID)
 		if err != nil {

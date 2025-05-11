@@ -14,6 +14,7 @@ const DBPrefix = "apphost__"
 
 type Module interface {
 	CreateAccessToken(*astral.Identity, astral.Duration) (*AccessToken, error)
+	ActiveLocalAppContracts() ([]*AppContract, error)
 }
 
 type AccessToken struct {
