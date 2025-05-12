@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/cslq"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -308,21 +307,31 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 		return nil, fmt.Errorf("outbound handshake: %w", err)
 	}
 
-	var linkFeatures []string
+	var linkFeatures []astral.String
+	var featCount astral.Uint16
 
-	err = cslq.Decode(aconn, "[s][c]c", &linkFeatures)
+	_, err = featCount.ReadFrom(aconn)
 	if err != nil {
 		return nil, fmt.Errorf("read features: %w", err)
 	}
 
+	for i := 0; i < int(featCount); i++ {
+		var feat astral.String8
+		_, err = feat.ReadFrom(aconn)
+		if err != nil {
+			return nil, fmt.Errorf("read features: %w", err)
+		}
+		linkFeatures = append(linkFeatures, astral.String(feat))
+	}
+
 	if slices.Contains(linkFeatures, featureMux2) {
-		err = cslq.Encode(aconn, "[c]c", featureMux2)
+		_, err = astral.String8(featureMux2).WriteTo(aconn)
 		if err != nil {
 			return nil, fmt.Errorf("write: %w", err)
 		}
 
-		var errCode int
-		err = cslq.Decode(aconn, "c", &errCode)
+		var errCode astral.Int8
+		_, err = errCode.ReadFrom(aconn)
 		if errCode != 0 {
 			return nil, errors.New("link feature negotation error")
 		}
@@ -349,21 +358,28 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 
 	var linkFeatures = []string{featureMux2}
 
-	err = cslq.Encode(aconn, "[s][c]c", linkFeatures)
+	_, err = astral.Uint16(len(linkFeatures)).WriteTo(aconn)
 	if err != nil {
 		return
 	}
 
+	for _, feature := range linkFeatures {
+		_, err = astral.String8(feature).WriteTo(aconn)
+		if err != nil {
+			return
+		}
+	}
+
 	for {
 		var feature string
-		err = cslq.Decode(aconn, "[c]c", &feature)
+		_, err = (*astral.String8)(&feature).ReadFrom(aconn)
 		if err != nil {
 			return
 		}
 
 		switch feature {
 		case featureMux2:
-			err = cslq.Encode(aconn, "c", 0)
+			_, err = astral.Uint8(0).WriteTo(aconn)
 			if err == nil {
 				mod.addStream(newStream(aconn, false))
 			}
@@ -371,7 +387,7 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 			return
 
 		default:
-			cslq.Encode(aconn, "c", 1)
+			_, err = astral.Uint8(1).WriteTo(aconn)
 			return fmt.Errorf("remote party (%s from %s) requested an invalid feature: %s",
 				aconn.RemoteIdentity(),
 				aconn.RemoteEndpoint(),
