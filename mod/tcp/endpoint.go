@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"net"
 	"strconv"
@@ -27,11 +26,11 @@ func (e *Endpoint) ObjectType() string {
 }
 
 func (e Endpoint) WriteTo(w io.Writer) (n int64, err error) {
-	return streams.WriteAllTo(w, e.IP, e.Port)
+	return astral.Struct(e).WriteTo(w)
 }
 
 func (e *Endpoint) ReadFrom(r io.Reader) (n int64, err error) {
-	return streams.ReadAllFrom(r, &e.IP, &e.Port)
+	return astral.Struct(e).ReadFrom(r)
 }
 
 // exonet.Endpoint
