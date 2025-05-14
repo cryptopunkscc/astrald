@@ -205,6 +205,42 @@ func (s *String) UnmarshalText(text []byte) error {
 	return nil
 }
 
+func (s String8) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+func (s *String8) UnmarshalText(text []byte) error {
+	*s = String8(text)
+	return nil
+}
+
+func (s String16) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+func (s *String16) UnmarshalText(text []byte) error {
+	*s = String16(text)
+	return nil
+}
+
+func (s String32) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+func (s *String32) UnmarshalText(text []byte) error {
+	*s = String32(text)
+	return nil
+}
+
+func (s String64) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+func (s *String64) UnmarshalText(text []byte) error {
+	*s = String64(text)
+	return nil
+}
+
 func init() {
 	var (
 		s   String
