@@ -15,6 +15,8 @@ type opClaimArgs struct {
 
 // OpClaim invites the target node to sign a contract with the current user
 func (mod *Module) OpClaim(ctx *astral.Context, q shell.Query, args opClaimArgs) (err error) {
+	ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
 	// we need an active contract to claim other nodes
 	ac := mod.ActiveContract()
 	if ac == nil {
@@ -39,8 +41,10 @@ func (mod *Module) OpClaim(ctx *astral.Context, q shell.Query, args opClaimArgs)
 		})
 	}
 
+	var qInvite = query.New(mod.node.Identity(), targetID, user.OpInvite, nil)
+
 	// send an invite to the target node
-	invite, err := query.Run(mod.node, targetID, user.OpInvite, nil)
+	invite, err := query.Route(ctx, mod.node, qInvite)
 	if err != nil {
 		return enc.Encode(map[string]interface{}{
 			"error": err.Error(),

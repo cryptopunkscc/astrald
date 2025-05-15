@@ -216,10 +216,9 @@ func (scope *Scope) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteC
 	var query = NewNetworkQuery(w, q)
 	defer query.Reject()
 
-	var actx = astral.NewContext(nil).WithIdentity(q.Caller)
-
 	go func() {
-		err := scope.Call(actx, query, path, params)
+		ctx := astral.NewContext(nil).WithIdentity(ctx.Identity())
+		err := scope.Call(ctx, query, path, params)
 		if err != nil {
 			scope.Log.Errorv(1, "failed to call query %v: %v", path, err)
 			query.Reject()
