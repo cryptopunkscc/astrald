@@ -6,8 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	gateway2 "github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/tasks"
+	"strings"
 	"sync"
 )
 
@@ -34,36 +36,7 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
-	for _, gateName := range mod.config.Subscribe {
-		var gateID *astral.Identity
-
-		if info, err := mod.Nodes.ParseInfo(gateName); err == nil {
-			for _, ep := range info.Endpoints {
-				err = mod.Nodes.AddEndpoint(info.Identity, ep)
-				if err != nil {
-					mod.log.Error("config error: endpoints: %v", err)
-					continue
-				}
-			}
-
-			err = mod.Dir.SetAlias(info.Identity, info.Alias)
-			if err != nil {
-				mod.log.Error("config error: set alias: %v", err)
-				continue
-			}
-			gateID = info.Identity
-		} else {
-			gateID, err = mod.Dir.ResolveIdentity(gateName)
-			if err != nil {
-				mod.log.Error("config error: cannot resolve %v: %v", gateName, err)
-				continue
-			}
-		}
-
-		if !gateID.IsZero() {
-			mod.Subscribe(gateID)
-		}
-	}
+	mod.subscribeToGateways()
 
 	return tasks.Group(
 		&SubscribeService{Module: mod},
@@ -71,12 +44,64 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	).Run(ctx)
 }
 
+func (mod *Module) subscribeToGateways() {
+	for _, gateName := range mod.config.Subscribe {
+		var gateID *astral.Identity
+
+		if after, found := strings.CutPrefix(gateName, "node1"); found && len(after) > 32 {
+			var info nodes.NodeInfo
+
+			err := info.UnmarshalText([]byte(after))
+			if err != nil {
+				mod.log.Error("parse node info: %v", err)
+				continue
+			}
+
+			// try to set alias
+			err = mod.Dir.SetAlias(info.Identity, string(info.Alias))
+			if err != nil {
+				mod.log.Error("set alias: %v", err)
+			}
+
+			// save endpoints
+			for _, ep := range info.Endpoints {
+				err = mod.Nodes.AddEndpoint(info.Identity, ep)
+				if err != nil {
+					mod.log.Error("add endpoint: %v", err)
+					continue
+				}
+			}
+
+			// subscribe
+			err = mod.Subscribe(info.Identity)
+			if err != nil {
+				mod.log.Error("subscribe: %v", err)
+			}
+			continue
+		}
+
+		gateID, err := mod.Dir.ResolveIdentity(gateName)
+		if err != nil {
+			mod.log.Error("resolve identity %v: %v", gateName, err)
+			continue
+		}
+
+		err = mod.Subscribe(gateID)
+		if err != nil {
+			mod.log.Error("subscribe: %v", err)
+		}
+	}
+}
+
 func (mod *Module) Subscribe(gateway *astral.Identity) error {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()
 
-	if gateway.IsEqual(mod.node.Identity()) {
-		return ErrSelfGateway
+	switch {
+	case gateway.IsZero():
+		return ErrInvalidGateway
+	case gateway.IsEqual(mod.node.Identity()):
+		return ErrInvalidGateway
 	}
 
 	var hex = gateway.String()
@@ -119,7 +144,7 @@ func (mod *Module) Endpoints() []exonet.Endpoint {
 	var list = make([]exonet.Endpoint, 0)
 
 	for _, s := range mod.subscribers {
-		list = append(list, NewEndpoint(s.Gateway(), mod.node.Identity()))
+		list = append(list, gateway2.NewEndpoint(s.Gateway(), mod.node.Identity()))
 	}
 
 	return list

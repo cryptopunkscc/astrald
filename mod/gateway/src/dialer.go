@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
 type Dialer struct {
@@ -21,7 +22,7 @@ func (dialer *Dialer) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exone
 	}
 
 	if e.GatewayID.IsEqual(dialer.node.Identity()) {
-		return nil, ErrSelfGateway
+		return nil, ErrInvalidGateway
 	}
 
 	var q = astral.NewQuery(dialer.node.Identity(), e.GatewayID, RouteServiceName+"."+e.TargetID.String())
@@ -33,7 +34,7 @@ func (dialer *Dialer) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exone
 
 	return newConn(
 		conn,
-		NewEndpoint(dialer.node.Identity(), dialer.node.Identity()),
+		gateway.NewEndpoint(dialer.node.Identity(), dialer.node.Identity()),
 		e,
 		true,
 	), err

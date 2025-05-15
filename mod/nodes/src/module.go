@@ -13,8 +13,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
-	"github.com/jxskiss/base62"
-	"strings"
 	"time"
 )
 
@@ -82,34 +80,6 @@ func (mod *Module) IsPeer(id *astral.Identity) bool {
 
 func (mod *Module) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 	return mod.peers.Accept(ctx, conn)
-}
-
-func (mod *Module) ParseInfo(s string) (*nodes.NodeInfo, error) {
-	trimmed := strings.TrimPrefix(s, infoPrefix)
-	data, err := base62.DecodeString(trimmed)
-	if err != nil {
-		return nil, err
-	}
-
-	info, err := (&InfoEncoder{mod}).Unpack(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return (*nodes.NodeInfo)(info), nil
-}
-
-func (mod *Module) InfoString(info *nodes.NodeInfo) string {
-	packed, err := (&InfoEncoder{mod}).Pack((*NodeInfo)(info))
-	if err != nil {
-		return ""
-	}
-
-	return infoPrefix + base62.EncodeToString(packed)
-}
-
-func (mod *Module) HasEndpoints(nodeID *astral.Identity) (has bool) {
-	return mod.db.HasEndpoints(nodeID)
 }
 
 func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint) error {

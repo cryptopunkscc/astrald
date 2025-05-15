@@ -1,7 +1,6 @@
 package query
 
 import (
-	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"net/url"
 	"strings"
@@ -10,7 +9,7 @@ import (
 
 const DefaultArgKey = "arg"
 const queryTag = "query"
-const defaultQueryTimeout = 60 * time.Second
+const maxQueryTimeout = 60 * time.Second
 
 type Validator interface {
 	Validate() error
@@ -42,22 +41,6 @@ func New(caller *astral.Identity, target *astral.Identity, path string, args any
 	return
 }
 
-func Run(n astral.Node, target *astral.Identity, path string, args any) (astral.Conn, error) {
-	ctx, cancel := astral.
-		NewContext(nil).
-		WithIdentity(n.Identity()).
-		WithTimeout(defaultQueryTimeout)
-	defer cancel()
-
-	return RunCtx(ctx, n, target, path, args)
-}
-
-func RunCtx(ctx *astral.Context, n astral.Node, target *astral.Identity, path string, args any) (astral.Conn, error) {
-	q := New(n.Identity(), target, path, args)
-
-	return Route(ctx, n, q)
-}
-
 func Parse(q string) (path string, params map[string]string) {
 	var s string
 	path, s = splitPathParams(q)
@@ -76,21 +59,6 @@ func Parse(q string) (path string, params map[string]string) {
 		}
 	}
 
-	return
-}
-
-func ParseTo(q string, args any) (path string, err error) {
-	path, params := Parse(q)
-	err = Populate(params, args)
-	if err != nil {
-		return path, fmt.Errorf("populate: %w", err)
-	}
-	if v, ok := args.(Validator); ok {
-		err = v.Validate()
-	}
-	if err != nil {
-		return path, fmt.Errorf("validate: %w", err)
-	}
 	return
 }
 

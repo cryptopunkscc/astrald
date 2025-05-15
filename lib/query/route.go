@@ -9,6 +9,9 @@ import (
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...
 func Route(ctx *astral.Context, r astral.Router, q *astral.Query) (astral.Conn, error) {
+	ctx, cancel := ctx.WithTimeout(maxQueryTimeout)
+	defer cancel()
+
 	pipeReader, pipeWriter := io.Pipe()
 
 	target, err := r.RouteQuery(ctx, q, pipeWriter)

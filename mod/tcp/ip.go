@@ -21,6 +21,10 @@ func (IP) ObjectType() string {
 }
 
 func (ip IP) WriteTo(w io.Writer) (n int64, err error) {
+	if ip.IsIPv4() {
+		return astral.Bytes8(net.IP(ip).To4()).WriteTo(w)
+	}
+
 	return astral.Bytes8(ip).WriteTo(w)
 }
 

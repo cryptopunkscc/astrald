@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"strings"
 )
 
@@ -20,7 +21,7 @@ func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error
 	}
 
 	var err error
-	var endpoint Endpoint
+	var endpoint gateway.Endpoint
 
 	endpoint.GatewayID, err = mod.Dir.ResolveIdentity(ids[0])
 	if err != nil {
@@ -39,7 +40,7 @@ func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error
 }
 
 // Parse converts a text representation of a gateway address to an Endpoint struct
-func Parse(str string) (endpoint *Endpoint, err error) {
+func Parse(str string) (endpoint *gateway.Endpoint, err error) {
 	if len(str) != (2*66)+1 { // two public key hex strings and a separator ":"
 		return endpoint, ErrParseError{msg: "invalid address length"}
 	}

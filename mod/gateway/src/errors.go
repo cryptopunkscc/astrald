@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-var ErrSelfGateway = errors.New("cannot use self as gateway")
+var ErrInvalidGateway = errors.New("invalid gateway")
 var ErrAlreadySubscribed = errors.New("already subscribed")
 var ErrNotSubscribed = errors.New("subscription not found")
 

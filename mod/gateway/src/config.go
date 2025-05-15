@@ -1,6 +1,6 @@
 package gateway
 
-const defaultGateway = "node1f3AwbE1gB4AACoSE3zXwImiSypR0nplikGOPQRCw5J2fYCzDGaWUV3DpIAM5F2dlRXYnhA"
+const defaultGateway = "node1f3AwbE1gJAgAqEx98FMipokcaE9ZapIphzDUkAceE7Pmw8ghmFV19QKCATeC7uyoLszQA"
 
 type Config struct {
 	Subscribe []string `yaml:"subscribe"`

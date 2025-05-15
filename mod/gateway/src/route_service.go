@@ -4,14 +4,13 @@ import (
 	"context"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"io"
 	"strings"
 	"time"
 )
 
 const RouteServiceName = ".gateway"
-const RouteServiceType = "mod.gateway.route"
-
 const acceptTimeout = 15 * time.Second
 
 type RouteService struct {
@@ -46,8 +45,8 @@ func (srv *RouteService) RouteQuery(ctx *astral.Context, q *astral.Query, w io.W
 		return query.Accept(q, w, func(conn astral.Conn) {
 			gwConn := newConn(
 				conn,
-				NewEndpoint(q.Target, q.Target),
-				NewEndpoint(q.Caller, q.Target),
+				gateway.NewEndpoint(q.Target, q.Target),
+				gateway.NewEndpoint(q.Caller, q.Target),
 				false,
 			)
 

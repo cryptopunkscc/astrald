@@ -35,7 +35,7 @@ func NewEndpoint(gateway *astral.Identity, target *astral.Identity) *Endpoint {
 // exonet.Endpoint
 
 func (e Endpoint) Network() string {
-	return NetworkName
+	return "gw"
 }
 
 // Address returns a text representation of the address

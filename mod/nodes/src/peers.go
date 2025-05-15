@@ -291,10 +291,6 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	return false
 }
 
-func (mod *Peers) isRoutable(identity *astral.Identity) bool {
-	return mod.isLinked(identity) || mod.HasEndpoints(identity)
-}
-
 func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (link io.Closer, err error) {
 	defer func() {
 		if err != nil {
@@ -457,13 +453,4 @@ func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Ident
 	}
 
 	return errors.New("no endpoint could be reached")
-}
-
-func (mod *Peers) connect(ctx *astral.Context, remoteIdentity *astral.Identity) error {
-	ch, err := mod.ResolveEndpoints(astral.NewContext(ctx), remoteIdentity)
-	if err != nil {
-		return err
-	}
-
-	return mod.connectAtAny(ctx, remoteIdentity, ch)
 }
