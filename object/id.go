@@ -46,7 +46,12 @@ func ParseID(s string) (id *ID, err error) {
 	return
 }
 
-func (id ID) WriteTo(w io.Writer) (n int64, err error) {
+func (id *ID) WriteTo(w io.Writer) (n int64, err error) {
+	if id.IsZero() {
+		m, err := w.Write(make([]byte, 40))
+		return int64(m), err
+	}
+
 	err = binary.Write(w, binary.BigEndian, id.Size)
 	if err != nil {
 		return
@@ -85,7 +90,7 @@ func (id *ID) IsEqual(other *ID) bool {
 	if id.IsZero() {
 		return other.IsZero()
 	}
-	
+
 	if id.Size != other.Size {
 		return false
 	}

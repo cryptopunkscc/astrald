@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/object"
-	"path/filepath"
 )
 
 var _ objects.Describer = &Module{}
@@ -24,11 +23,12 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID *object.ID, scop
 	defer close(results)
 
 	for _, row := range rows {
-		base := filepath.Base(row.Path)
-
 		results <- &objects.SourcedObject{
 			Source: mod.node.Identity(),
-			Object: (*fs.FileName)(&base),
+			Object: &fs.FileLocation{
+				NodeID: mod.node.Identity(),
+				Path:   astral.String16(row.Path),
+			},
 		}
 	}
 
