@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"os"
@@ -18,7 +17,7 @@ type WatchRepository struct {
 	root     string
 	watcher  *Watcher
 	token    chan struct{}
-	addQueue *sig.Queue[*object.ID]
+	addQueue *sig.Queue[*astral.ObjectID]
 }
 
 func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepository, err error) {
@@ -34,7 +33,7 @@ func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepo
 		mod:      mod,
 		label:    label,
 		root:     root,
-		addQueue: &sig.Queue[*object.ID]{},
+		addQueue: &sig.Queue[*astral.ObjectID]{},
 		token:    make(chan struct{}, 1),
 	}
 
@@ -60,7 +59,7 @@ func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepo
 
 var _ objects.Repository = &WatchRepository{}
 
-func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *object.ID) (bool, error) {
+func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *astral.ObjectID) (bool, error) {
 	return repo.mod.db.ObjectExists(repo.root, objectID)
 }
 
@@ -79,10 +78,10 @@ func (repo *WatchRepository) onRemove(path string) {
 	repo.mod.update(path)
 }
 
-func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
-	ch := make(chan *object.ID)
+func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
+	ch := make(chan *astral.ObjectID)
 
-	var subscribe <-chan *object.ID
+	var subscribe <-chan *astral.ObjectID
 
 	go func() {
 		defer close(ch)
@@ -120,7 +119,7 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *obj
 	return ch, nil
 }
 
-func (repo *WatchRepository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
+func (repo *WatchRepository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
 	rows, err := repo.mod.db.FindObject(repo.root, objectID)
 	if err != nil {
 		return nil, err
@@ -160,7 +159,7 @@ func (repo *WatchRepository) Label() string {
 	return repo.label
 }
 
-func (repo *WatchRepository) Delete(ctx *astral.Context, objectID *object.ID) error {
+func (repo *WatchRepository) Delete(ctx *astral.Context, objectID *astral.ObjectID) error {
 	return errors.ErrUnsupported
 }
 
@@ -190,6 +189,6 @@ func (repo *WatchRepository) rescan(ctx *astral.Context) error {
 	return nil
 }
 
-func (repo *WatchRepository) pushAdded(id *object.ID) {
+func (repo *WatchRepository) pushAdded(id *astral.ObjectID) {
 	repo.addQueue = repo.addQueue.Push(id)
 }

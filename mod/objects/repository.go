@@ -2,7 +2,6 @@ package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
@@ -15,16 +14,16 @@ type Repository interface {
 	Create(ctx *astral.Context, opts *CreateOpts) (Writer, error)
 
 	// Contains checks if the repository contains the specified object.
-	Contains(ctx *astral.Context, objectID *object.ID) (bool, error)
+	Contains(ctx *astral.Context, objectID *astral.ObjectID) (bool, error)
 
 	// Scan returns a channel of objects stored in the repository
-	Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error)
+	Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error)
 
 	// Delete deletes an object
-	Delete(ctx *astral.Context, objectID *object.ID) error
+	Delete(ctx *astral.Context, objectID *astral.ObjectID) error
 
 	// Read reads raw object data
-	Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error)
+	Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error)
 
 	// Free returns available free space in the repository. -1 if unknown.
 	Free(ctx *astral.Context) (int64, error)
@@ -36,7 +35,7 @@ type Writer interface {
 	Write(p []byte) (n int, err error)
 
 	// Commit commits the written data to storage and returns its ID. Closes the Writer.
-	Commit() (*object.ID, error)
+	Commit() (*astral.ObjectID, error)
 
 	// Discard the data written so far and close the Writer.
 	Discard() error

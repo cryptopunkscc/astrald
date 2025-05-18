@@ -6,12 +6,27 @@ const (
 	ZoneDevice = Zone(1 << iota)
 	ZoneVirtual
 	ZoneNetwork
+	ZoneDefault = ZoneDevice | ZoneVirtual
+	ZoneAll     = ZoneDevice | ZoneVirtual | ZoneNetwork
 )
 
-const AllZones = ZoneDevice | ZoneVirtual | ZoneNetwork
-const DefaultZones = ZoneDevice | ZoneVirtual
-
 type Zone uint8
+
+func Zones(s string) (zone Zone) {
+	for _, c := range s {
+		switch c {
+		case 'd':
+			zone |= ZoneDevice
+		case 'v':
+			zone |= ZoneVirtual
+		case 'n':
+			zone |= ZoneNetwork
+		}
+	}
+	return
+}
+
+// astral
 
 func (zone Zone) ObjectType() string {
 	return "zone"
@@ -39,19 +54,7 @@ func (zone *Zone) UnmarshalText(text []byte) error {
 	return nil
 }
 
-func Zones(s string) (zone Zone) {
-	for _, c := range s {
-		switch c {
-		case 'd':
-			zone |= ZoneDevice
-		case 'v':
-			zone |= ZoneVirtual
-		case 'n':
-			zone |= ZoneNetwork
-		}
-	}
-	return
-}
+// ...
 
 func (zone Zone) Is(check Zone) bool {
 	return zone&check == check
@@ -72,5 +75,5 @@ func (zone Zone) String() (s string) {
 
 func init() {
 	var zone Zone
-	DefaultBlueprints.Add(&zone)
+	_ = DefaultBlueprints.Add(&zone)
 }

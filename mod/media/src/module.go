@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
@@ -38,7 +37,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) Index(ctx *astral.Context, objectID *object.ID) (err error) {
+func (mod *Module) Index(ctx *astral.Context, objectID *astral.ObjectID) (err error) {
 	// check if already indexed
 	if _, e := mod.db.FindObject(objectID); e == nil {
 		return nil
@@ -56,7 +55,7 @@ func (mod *Module) Index(ctx *astral.Context, objectID *object.ID) (err error) {
 	return nil
 }
 
-func (mod *Module) Forget(ctx *astral.Context, objectID *object.ID) (err error) {
+func (mod *Module) Forget(ctx *astral.Context, objectID *astral.ObjectID) (err error) {
 	mod.db.DeleteAudio(objectID)
 	mod.db.DeleteObject(objectID)
 

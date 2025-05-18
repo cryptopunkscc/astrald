@@ -33,11 +33,7 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	mod.Dir.AddResolver(mod)
 	mod.Nodes.AddResolver(mod)
-	mod.Objects.Blueprints().Add(
-		&status.Status{},
-		&ScanMessage{},
-	)
-
+	
 	if cnode, ok := mod.node.(*core.Node); ok {
 		var composers []any
 		for _, m := range cnode.Modules().Loaded() {

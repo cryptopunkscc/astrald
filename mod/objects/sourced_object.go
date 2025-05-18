@@ -6,16 +6,16 @@ import (
 	"io"
 )
 
-var _ astral.Object = &SourcedObject{}
-
 type SourcedObject struct {
 	astral.ObjectReader
 	Source *astral.Identity
 	Object astral.Object
 }
 
+// astral
+
 func (o *SourcedObject) ObjectType() string {
-	return "astrald.mod.objects.sourced_object"
+	return "mod.objects.sourced_object"
 }
 
 func (o *SourcedObject) WriteTo(w io.Writer) (n int64, err error) {
@@ -39,4 +39,10 @@ func (o *SourcedObject) ReadFrom(r io.Reader) (n int64, err error) {
 
 	o.Object, _, err = o.ObjectReader.ReadObject()
 	return
+}
+
+// ...
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&SourcedObject{})
 }

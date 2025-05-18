@@ -2,7 +2,6 @@ package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 const (
@@ -21,34 +20,34 @@ type Module interface {
 	Root() (repo Repository)
 
 	AddDescriber(Describer) error
-	Describe(*astral.Context, *object.ID, *astral.Scope) (<-chan *SourcedObject, error)
+	Describe(*astral.Context, *astral.ObjectID, *astral.Scope) (<-chan *SourcedObject, error)
 
 	AddPurger(purger Purger) error
-	Purge(*object.ID, *PurgeOpts) (int, error)
+	Purge(*astral.ObjectID, *PurgeOpts) (int, error)
 
 	Search(ctx *astral.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
 	AddSearcher(Searcher) error
 	AddSearchPreprocessor(SearchPreprocessor) error
 
 	AddFinder(Finder) error
-	Find(*astral.Context, *object.ID) []*astral.Identity
+	Find(*astral.Context, *astral.ObjectID) []*astral.Identity
 
 	AddHolder(Holder) error
-	Holders(objectID *object.ID) []Holder
+	Holders(objectID *astral.ObjectID) []Holder
 
 	AddReceiver(Receiver) error
 	Receive(astral.Object, *astral.Identity) error
 
 	Blueprints() *astral.Blueprints
 	Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error
-	GetType(ctx *astral.Context, objectID *object.ID) (objectType string, err error)
+	GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error)
 
 	// On returns a client for remote calls
 	On(target *astral.Identity, caller *astral.Identity) (Consumer, error)
 }
 
 type Consumer interface {
-	Describe(*astral.Context, *object.ID, *astral.Scope) (<-chan *SourcedObject, error)
+	Describe(*astral.Context, *astral.ObjectID, *astral.Scope) (<-chan *SourcedObject, error)
 	Search(*astral.Context, string) (<-chan *SearchResult, error)
 	Push(*astral.Context, astral.Object) (err error)
 }
@@ -64,11 +63,11 @@ type Drop interface {
 }
 
 type Describer interface {
-	DescribeObject(*astral.Context, *object.ID, *astral.Scope) (<-chan *SourcedObject, error)
+	DescribeObject(*astral.Context, *astral.ObjectID, *astral.Scope) (<-chan *SourcedObject, error)
 }
 
 type Purger interface {
-	PurgeObject(*object.ID, *PurgeOpts) (int, error)
+	PurgeObject(*astral.ObjectID, *PurgeOpts) (int, error)
 }
 
 type PurgeOpts struct {
@@ -76,10 +75,10 @@ type PurgeOpts struct {
 }
 
 type Holder interface {
-	HoldObject(*object.ID) bool
+	HoldObject(*astral.ObjectID) bool
 }
 
-func IsOffsetLimitValid(objectID *object.ID, offset int64, limit int64) bool {
+func IsOffsetLimitValid(objectID *astral.ObjectID, offset int64, limit int64) bool {
 	// offset has to be non-negative and cannot be larger than the object
 	if offset < 0 || offset > int64(objectID.Size) {
 		return false
@@ -93,7 +92,7 @@ func IsOffsetLimitValid(objectID *object.ID, offset int64, limit int64) bool {
 	return true
 }
 
-func Save(ctx *astral.Context, object astral.Object, repo Repository) (objectID *object.ID, err error) {
+func Save(ctx *astral.Context, object astral.Object, repo Repository) (objectID *astral.ObjectID, err error) {
 	w, err := repo.Create(ctx, nil)
 	if err != nil {
 		return

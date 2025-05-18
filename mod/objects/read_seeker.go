@@ -3,14 +3,13 @@ package objects
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"sync"
 )
 
 type ReadSeeker struct {
 	readerID *astral.Identity
-	objectID *object.ID
+	objectID *astral.ObjectID
 	repo     Repository
 	r        io.ReadCloser
 	mu       sync.Mutex
@@ -18,7 +17,7 @@ type ReadSeeker struct {
 	pos      int64
 }
 
-func NewReadSeeker(ctx *astral.Context, objectID *object.ID, repo Repository, r io.ReadCloser) *ReadSeeker {
+func NewReadSeeker(ctx *astral.Context, objectID *astral.ObjectID, repo Repository, r io.ReadCloser) *ReadSeeker {
 	return &ReadSeeker{
 		readerID: ctx.Identity(),
 		zone:     ctx.Zone(),

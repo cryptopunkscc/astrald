@@ -10,7 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -49,7 +48,7 @@ func (mod *Module) Scope() *shell.Scope {
 }
 
 // update updates the index entry for the path. path must be absolute.
-func (mod *Module) update(path string) (*object.ID, error) {
+func (mod *Module) update(path string) (*astral.ObjectID, error) {
 	if len(path) == 0 || path[0] != '/' {
 		return nil, errors.New("invalid path")
 	}
@@ -147,14 +146,14 @@ func (mod *Module) String() string {
 	return fs.ModuleName
 }
 
-func resolveFileID(path string) (*object.ID, error) {
+func resolveFileID(path string) (*astral.ObjectID, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	fileID, err := object.Resolve(file)
+	fileID, err := astral.Resolve(file)
 	if err != nil {
 		return nil, err
 	}

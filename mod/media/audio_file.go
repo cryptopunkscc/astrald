@@ -4,19 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
 type AudioFile struct {
-	ObjectID  *object.ID
+	ObjectID  *astral.ObjectID
 	Format    astral.String8
 	Title     astral.String8
 	Artist    astral.String8
 	Album     astral.String8
 	Genre     astral.String8
 	Year      astral.Uint16
-	PictureID *object.ID
+	PictureID *astral.ObjectID
 }
 
 var _ astral.Object = &AudioFile{}

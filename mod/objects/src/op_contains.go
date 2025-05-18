@@ -3,11 +3,10 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 type opContainsArgs struct {
-	ID   *object.ID
+	ID   *astral.ObjectID
 	Out  string        `query:"optional"`
 	Zone astral.Zone   `query:"optional"`
 	Repo astral.String `query:"optional"`

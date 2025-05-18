@@ -3,7 +3,6 @@ package fs
 import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
@@ -11,8 +10,8 @@ var _ astral.Object = &EventFileChanged{}
 
 type EventFileChanged struct {
 	Path  astral.String16
-	OldID *object.ID
-	NewID *object.ID
+	OldID *astral.ObjectID
+	NewID *astral.ObjectID
 }
 
 func (EventFileChanged) ObjectType() string { return "astrald.mod.fs.events.file_changed" }
@@ -33,7 +32,7 @@ var _ astral.Object = &EventFileAdded{}
 
 type EventFileAdded struct {
 	Path     astral.String16
-	ObjectID *object.ID
+	ObjectID *astral.ObjectID
 }
 
 func (EventFileAdded) ObjectType() string { return "astrald.mod.fs.events.file_added" }
@@ -54,7 +53,7 @@ var _ astral.Object = &EventFileRemoved{}
 
 type EventFileRemoved struct {
 	Path     astral.String16
-	ObjectID *object.ID
+	ObjectID *astral.ObjectID
 }
 
 func (EventFileRemoved) ObjectType() string { return "astrald.mod.fs.events.file_removed" }

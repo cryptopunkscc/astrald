@@ -2,8 +2,8 @@ package mem
 
 import (
 	"bytes"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"sync/atomic"
 )
 
@@ -35,13 +35,13 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (w *Writer) Commit() (*object.ID, error) {
+func (w *Writer) Commit() (*astral.ObjectID, error) {
 	if !w.closed.CompareAndSwap(false, true) {
 		return nil, objects.ErrClosedPipe
 	}
 
 	var buf = w.buf.Bytes()
-	var objectID, _ = object.Resolve(bytes.NewReader(buf))
+	var objectID, _ = astral.Resolve(bytes.NewReader(buf))
 
 	w.objects.Set(objectID.String(), buf)
 

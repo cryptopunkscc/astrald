@@ -2,7 +2,7 @@ package fs
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/object"
+	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	"io/fs"
 )
@@ -10,7 +10,7 @@ import (
 var _ fs.File = &File{}
 
 type File struct {
-	ID *object.ID
+	ID *astral.ObjectID
 	io.ReadCloser
 }
 

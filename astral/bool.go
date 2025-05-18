@@ -30,8 +30,6 @@ func (b *Bool) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-// json works correctly via text marshalling
-
 // text
 
 func (b Bool) MarshalText() (text []byte, err error) {
@@ -62,5 +60,5 @@ func (b Bool) String() string {
 
 func init() {
 	var b Bool
-	DefaultBlueprints.Add(&b)
+	_ = DefaultBlueprints.Add(&b)
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"os"
@@ -15,7 +14,7 @@ type Repository struct {
 	mod      *Module
 	name     string
 	root     string
-	addQueue *sig.Queue[*object.ID]
+	addQueue *sig.Queue[*astral.ObjectID]
 }
 
 var _ objects.Repository = &Repository{}
@@ -25,14 +24,14 @@ func NewRepository(mod *Module, name string, path string) *Repository {
 		mod:      mod,
 		name:     name,
 		root:     path,
-		addQueue: &sig.Queue[*object.ID]{},
+		addQueue: &sig.Queue[*astral.ObjectID]{},
 	}
 }
 
-func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
-	ch := make(chan *object.ID)
+func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
+	ch := make(chan *astral.ObjectID)
 
-	var subsribe <-chan *object.ID
+	var subsribe <-chan *astral.ObjectID
 
 	go func() {
 		defer close(ch)
@@ -52,7 +51,7 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.I
 				continue
 			}
 
-			objectID, err := object.ParseID(entry.Name())
+			objectID, err := astral.ParseID(entry.Name())
 			if err != nil {
 				continue
 			}
@@ -80,7 +79,7 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.I
 	return ch, nil
 }
 
-func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
+func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -113,7 +112,7 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 
 }
 
-func (repo *Repository) Contains(ctx *astral.Context, objectID *object.ID) (bool, error) {
+func (repo *Repository) Contains(ctx *astral.Context, objectID *astral.ObjectID) (bool, error) {
 	path := filepath.Join(repo.root, objectID.String())
 
 	// check if we have the file
@@ -154,11 +153,11 @@ func (repo *Repository) Free(ctx *astral.Context) (int64, error) {
 	return int64(usage.Free), nil
 }
 
-func (repo *Repository) Delete(ctx *astral.Context, objectID *object.ID) error {
+func (repo *Repository) Delete(ctx *astral.Context, objectID *astral.ObjectID) error {
 	path := filepath.Join(repo.root, objectID.String())
 	return os.Remove(path)
 }
 
-func (repo *Repository) pushAdded(id *object.ID) {
+func (repo *Repository) pushAdded(id *astral.ObjectID) {
 	repo.addQueue = repo.addQueue.Push(id)
 }

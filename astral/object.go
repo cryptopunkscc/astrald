@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
@@ -27,7 +26,7 @@ const magic = uint32(0x41444330)
 // ObjectHeader is the standard object header cotaining the object type. ObjectHeader is an Object itself.
 type ObjectHeader string
 
-func (ObjectHeader) ObjectType() string { return "astral.object_header" }
+func (ObjectHeader) ObjectType() string { return "object_header" }
 
 func (h ObjectHeader) WriteTo(w io.Writer) (n int64, err error) {
 	err = binary.Write(w, binary.BigEndian, magic)
@@ -82,8 +81,8 @@ func (h *ObjectHeader) ReadFrom(r io.Reader) (n int64, err error) {
 func (h ObjectHeader) String() string { return string(h) }
 
 // ResolveObjectID calculates the id of the object
-func ResolveObjectID(obj Object) (objectID *object.ID, err error) {
-	w := object.NewWriteResolver(nil)
+func ResolveObjectID(obj Object) (objectID *ObjectID, err error) {
+	w := NewWriteResolver(nil)
 	_, err = ObjectHeader(obj.ObjectType()).WriteTo(w)
 	if err != nil {
 		return
@@ -177,7 +176,7 @@ func OpenCanonical(r io.Reader) (objType string, payload io.Reader, err error) {
 
 func init() {
 	var h ObjectHeader
-	DefaultBlueprints.Add(&h, &object.ID{})
+	DefaultBlueprints.Add(&h, &ObjectID{})
 }
 
 type ObjectWriter interface {

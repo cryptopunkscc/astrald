@@ -17,7 +17,9 @@ func NewNonce() (nonce Nonce) {
 	return
 }
 
-func (Nonce) ObjectType() string { return "astral.nonce64" }
+// astral
+
+func (Nonce) ObjectType() string { return "nonce64" }
 
 func (nonce Nonce) WriteTo(w io.Writer) (n int64, err error) {
 	err = binary.Write(w, binary.BigEndian, uint64(nonce))
@@ -35,9 +37,7 @@ func (nonce *Nonce) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-func (nonce Nonce) String() string {
-	return fmt.Sprintf("%016x", uint64(nonce))
-}
+// text
 
 func (nonce Nonce) MarshalText() (text []byte, err error) {
 	return []byte(nonce.String()), nil
@@ -48,6 +48,8 @@ func (nonce *Nonce) UnmarshalText(text []byte) (err error) {
 	*nonce = Nonce(u)
 	return
 }
+
+// sql
 
 func (nonce Nonce) Value() (driver.Value, error) {
 	return fmt.Sprintf("%016x", uint64(nonce)), nil
@@ -68,7 +70,13 @@ func (nonce *Nonce) Scan(src any) error {
 	return nil
 }
 
+// ...
+
+func (nonce Nonce) String() string {
+	return fmt.Sprintf("%016x", uint64(nonce))
+}
+
 func init() {
 	var n Nonce
-	DefaultBlueprints.Add(&n)
+	_ = DefaultBlueprints.Add(&n)
 }

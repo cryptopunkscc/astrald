@@ -2,7 +2,6 @@ package apphost
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"time"
@@ -37,7 +36,7 @@ func (db *DB) FindAccessToken(token string) (at *dbAccessToken, err error) {
 	return
 }
 
-func (db *DB) FindAppContract(id *object.ID) (ac *dbAppContract, err error) {
+func (db *DB) FindAppContract(id *astral.ObjectID) (ac *dbAppContract, err error) {
 	err = db.
 		Where("object_id = ?", id).
 		First(&ac).Error

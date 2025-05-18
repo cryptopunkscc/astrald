@@ -36,7 +36,7 @@ func (mod *Module) receiveBroadcastEvent(event *ether.EventBroadcastReceived) er
 	case *status.Status:
 		return mod.receiveStatus(event.SourceID, event.SourceIP, object)
 
-	case *ScanMessage:
+	case *status.ScanMessage:
 		mod.Ether.PushToIP(event.SourceIP, mod.Status(astral.Anyone), nil)
 		return errors.New("object rejected")
 	}

@@ -17,7 +17,7 @@ func NewContext(ctx context.Context) *Context {
 		ctx = context.Background()
 	}
 
-	return &Context{Context: ctx, zone: DefaultZones}
+	return &Context{Context: ctx, zone: ZoneDefault}
 }
 
 func (ctx *Context) Identity() *Identity {

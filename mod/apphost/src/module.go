@@ -12,7 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"math/rand"
 	"net"
@@ -146,7 +145,7 @@ func (mod *Module) ActiveLocalAppContracts() (list []*apphost.AppContract, err e
 	return
 }
 
-func (mod *Module) Index(ctx *astral.Context, objectID *object.ID) (err error) {
+func (mod *Module) Index(ctx *astral.Context, objectID *astral.ObjectID) (err error) {
 	mod.indexMu.Lock()
 	defer mod.indexMu.Unlock()
 

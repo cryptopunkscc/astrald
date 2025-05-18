@@ -1,10 +1,13 @@
-package object
+package astral
 
 import (
 	"bytes"
+	"database/sql/driver"
 	"encoding/base32"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 )
@@ -14,12 +17,12 @@ const zBase32CharSet = "ybndrfg8ejkmcpqxot1uwisza345h769"
 
 var zBase32Encoding = base32.NewEncoding(zBase32CharSet)
 
-type ID struct {
+type ObjectID struct {
 	Size uint64
 	Hash [32]byte
 }
 
-func ParseID(s string) (id *ID, err error) {
+func ParseID(s string) (id *ObjectID, err error) {
 	// Check and trim the prefix
 	if !strings.HasPrefix(s, idPrefix) {
 		return nil, errors.New("invalid prefix")
@@ -39,14 +42,20 @@ func ParseID(s string) (id *ID, err error) {
 		return nil, errors.New("invalid data length")
 	}
 
-	id = &ID{}
+	id = &ObjectID{}
 	id.Size = binary.BigEndian.Uint64(data[0:8])
 	copy(id.Hash[:], data[8:40])
 
 	return
 }
 
-func (id *ID) WriteTo(w io.Writer) (n int64, err error) {
+// astral
+
+func (ObjectID) ObjectType() string {
+	return "object_id.sha256"
+}
+
+func (id *ObjectID) WriteTo(w io.Writer) (n int64, err error) {
 	if id.IsZero() {
 		m, err := w.Write(make([]byte, 40))
 		return int64(m), err
@@ -64,7 +73,7 @@ func (id *ID) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (id *ID) ReadFrom(r io.Reader) (n int64, err error) {
+func (id *ObjectID) ReadFrom(r io.Reader) (n int64, err error) {
 	err = binary.Read(r, binary.BigEndian, &id.Size)
 	if err != nil {
 		return
@@ -77,7 +86,80 @@ func (id *ID) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-func (id ID) String() string {
+// json
+
+func (id ObjectID) MarshalJSON() ([]byte, error) {
+	if id.IsZero() {
+		return []byte("\"\""), nil
+	}
+
+	return []byte(fmt.Sprintf("\"%s\"", id.String())), nil
+}
+
+func (id *ObjectID) UnmarshalJSON(b []byte) error {
+	var s string
+	var jsonDec = json.NewDecoder(bytes.NewReader(b))
+
+	var err = jsonDec.Decode(&s)
+	if err != nil {
+		return err
+	}
+
+	parsed, err := ParseID(s)
+	if err != nil {
+		return err
+	}
+
+	*id = *parsed
+
+	return nil
+}
+
+// text
+
+func (id ObjectID) MarshalText() (text []byte, err error) {
+	return []byte(id.String()), nil
+}
+
+func (id *ObjectID) UnmarshalText(text []byte) (err error) {
+	parsed, err := ParseID(string(text))
+	if err != nil {
+		return err
+	}
+	*id = *parsed
+	return
+}
+
+// sql
+
+func (id ObjectID) Value() (driver.Value, error) {
+	return id.String(), nil
+}
+
+func (id *ObjectID) Scan(src any) error {
+	if src == nil {
+		*id = ObjectID{}
+		return nil
+	}
+
+	str, ok := src.(string)
+	if !ok {
+		return errors.New("typecast failed")
+	}
+
+	parsed, err := ParseID(str)
+	if err != nil {
+		return err
+	}
+
+	*id = *parsed
+
+	return nil
+}
+
+// ...
+
+func (id ObjectID) String() string {
 	var b [40]byte
 	binary.BigEndian.PutUint64(b[0:8], id.Size)
 	copy(b[8:], id.Hash[0:32])
@@ -86,7 +168,7 @@ func (id ID) String() string {
 	return idPrefix + enc
 }
 
-func (id *ID) IsEqual(other *ID) bool {
+func (id *ObjectID) IsEqual(other *ObjectID) bool {
 	if id.IsZero() {
 		return other.IsZero()
 	}
@@ -98,7 +180,7 @@ func (id *ID) IsEqual(other *ID) bool {
 	return bytes.Compare(id.Hash[:], other.Hash[:]) == 0
 }
 
-func (id *ID) IsZero() bool {
+func (id *ObjectID) IsZero() bool {
 	if id == nil {
 		return true
 	}
@@ -111,19 +193,6 @@ func (id *ID) IsZero() bool {
 	return true
 }
 
-func (ID) ObjectType() string {
-	return "astral.object_id.sha256"
-}
-
-func (id *ID) UnmarshalText(text []byte) (err error) {
-	parsed, err := ParseID(string(text))
-	if err != nil {
-		return err
-	}
-	*id = *parsed
-	return
-}
-
-func (id ID) MarshalText() (text []byte, err error) {
-	return []byte(id.String()), nil
+func init() {
+	_ = DefaultBlueprints.Add(&ObjectID{})
 }

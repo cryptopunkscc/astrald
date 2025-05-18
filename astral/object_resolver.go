@@ -1,4 +1,4 @@
-package object
+package astral
 
 import (
 	"crypto/sha256"
@@ -45,8 +45,8 @@ func (r *WriteResolver) Write(p []byte) (n int, err error) {
 	return
 }
 
-func (r *WriteResolver) Resolve() (id *ID) {
-	id = &ID{
+func (r *WriteResolver) Resolve() (id *ObjectID) {
+	id = &ObjectID{
 		Size: r.size,
 	}
 	h := r.hash.Sum(nil)
@@ -69,11 +69,11 @@ func (r *ReadResolver) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (r *ReadResolver) Resolve() *ID {
+func (r *ReadResolver) Resolve() *ObjectID {
 	return r.resolver.Resolve()
 }
 
-func Resolve(r io.Reader) (id *ID, err error) {
+func Resolve(r io.Reader) (id *ObjectID, err error) {
 	var p [8192]byte
 	rr := NewReadResolver(r)
 	for err == nil {

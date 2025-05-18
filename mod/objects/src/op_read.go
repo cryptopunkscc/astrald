@@ -3,12 +3,11 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
 type opReadArgs struct {
-	ID     *object.ID
+	ID     *astral.ObjectID
 	Offset astral.Uint64 `query:"optional"`
 	Limit  astral.Uint64 `query:"optional"`
 	Zone   astral.Zone   `query:"optional"`

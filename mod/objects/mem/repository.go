@@ -3,7 +3,6 @@ package mem
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"slices"
@@ -20,7 +19,7 @@ type Repository struct {
 	used     atomic.Int64
 	size     int64
 	name     string
-	addQueue *sig.Queue[*object.ID]
+	addQueue *sig.Queue[*astral.ObjectID]
 }
 
 var _ objects.Repository = &Repository{}
@@ -29,7 +28,7 @@ func NewRepository(name string, size int64) *Repository {
 	var repo = &Repository{
 		name:     name,
 		size:     size,
-		addQueue: &sig.Queue[*object.ID]{},
+		addQueue: &sig.Queue[*astral.ObjectID]{},
 	}
 
 	if len(repo.name) == 0 {
@@ -55,11 +54,11 @@ func (repo *Repository) Create(ctx *astral.Context, opts *objects.CreateOpts) (o
 	return NewWriter(repo), nil
 }
 
-func (repo *Repository) Contains(ctx *astral.Context, objectID *object.ID) (bool, error) {
+func (repo *Repository) Contains(ctx *astral.Context, objectID *astral.ObjectID) (bool, error) {
 	return slices.Contains(repo.objects.Keys(), objectID.String()), nil
 }
 
-func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
+func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -77,10 +76,10 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 	return NewReader(bytes[s:e]), nil
 }
 
-func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
-	ch := make(chan *object.ID)
+func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
+	ch := make(chan *astral.ObjectID)
 
-	var s <-chan *object.ID
+	var s <-chan *astral.ObjectID
 
 	go func() {
 		defer close(ch)
@@ -90,7 +89,7 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.I
 		}
 
 		for _, s := range repo.objects.Keys() {
-			id, err := object.ParseID(s)
+			id, err := astral.ParseID(s)
 			if err != nil {
 				continue
 			}
@@ -111,7 +110,7 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.I
 	return ch, nil
 }
 
-func (repo *Repository) Delete(ctx *astral.Context, objectID *object.ID) error {
+func (repo *Repository) Delete(ctx *astral.Context, objectID *astral.ObjectID) error {
 	_, ok := repo.objects.Delete(objectID.String())
 	if !ok {
 		return objects.ErrNotFound
@@ -131,11 +130,11 @@ func (repo *Repository) free() int64 {
 	return repo.size - repo.used.Load()
 }
 
-func (repo *Repository) pushAdded(id *object.ID) {
+func (repo *Repository) pushAdded(id *astral.ObjectID) {
 	repo.addQueue = repo.addQueue.Push(id)
 }
 
-func getSliceBounds(objectID *object.ID, offset int64, limit int64) (s int, e int, err error) {
+func getSliceBounds(objectID *astral.ObjectID, offset int64, limit int64) (s int, e int, err error) {
 	switch {
 	case offset < 0 || offset > int64(objectID.Size):
 		return 0, 0, objects.ErrOutOfBounds

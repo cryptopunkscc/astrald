@@ -116,6 +116,12 @@ func (id *Identity) Fingerprint() string {
 	return hex[0:8] + ":" + hex[len(hex)-8:]
 }
 
+// astral
+
+func (id *Identity) ObjectType() string {
+	return "identity.secp256k1"
+}
+
 func (id *Identity) WriteTo(w io.Writer) (n int64, err error) {
 	var m int
 	if id.IsZero() {
@@ -156,25 +162,7 @@ func (id *Identity) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-func (id *Identity) Value() (driver.Value, error) {
-	return id.String(), nil
-}
-
-func (id *Identity) Scan(src any) error {
-	str, ok := src.(string)
-	if !ok {
-		return errors.New("typcast failed")
-	}
-
-	n, err := IdentityFromString(str)
-	if err != nil {
-		return err
-	}
-
-	*id = *n
-
-	return nil
-}
+// json
 
 func (id *Identity) UnmarshalJSON(b []byte) error {
 	var s string
@@ -207,9 +195,7 @@ func (id *Identity) MarshalJSON() ([]byte, error) {
 	return []byte("\"" + id.String() + "\""), nil
 }
 
-func (id *Identity) ObjectType() string {
-	return "astral.identity.secp256k1"
-}
+// text
 
 func (id *Identity) MarshalText() (text []byte, err error) {
 	return []byte(id.String()), nil
@@ -224,6 +210,28 @@ func (id *Identity) UnmarshalText(text []byte) (err error) {
 	return
 }
 
+// sql
+
+func (id *Identity) Value() (driver.Value, error) {
+	return id.String(), nil
+}
+
+func (id *Identity) Scan(src any) error {
+	str, ok := src.(string)
+	if !ok {
+		return errors.New("typcast failed")
+	}
+
+	n, err := IdentityFromString(str)
+	if err != nil {
+		return err
+	}
+
+	*id = *n
+
+	return nil
+}
+
 func init() {
-	DefaultBlueprints.Add(&Identity{})
+	_ = DefaultBlueprints.Add(&Identity{})
 }

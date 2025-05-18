@@ -4,8 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -20,7 +20,7 @@ type Writer struct {
 	path      string
 	tempID    string
 	file      *os.File
-	resolver  *object.WriteResolver
+	resolver  *astral.WriteResolver
 	finalized atomic.Bool
 }
 
@@ -35,7 +35,7 @@ func NewWriter(repo *Repository, path string) (*Writer, error) {
 		return nil, err
 	}
 
-	resolver := object.NewWriteResolver(nil)
+	resolver := astral.NewWriteResolver(nil)
 
 	return &Writer{
 		repo:     repo,
@@ -56,7 +56,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (w *Writer) Commit() (*object.ID, error) {
+func (w *Writer) Commit() (*astral.ObjectID, error) {
 	if !w.finalized.CompareAndSwap(false, true) {
 		return nil, errors.New("writer closed")
 	}

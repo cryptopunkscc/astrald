@@ -17,7 +17,9 @@ type Broadcast struct {
 
 var _ astral.Object = &Broadcast{}
 
-func (Broadcast) ObjectType() string { return "astrald.mod.ether.broadcast" }
+// astral
+
+func (Broadcast) ObjectType() string { return "mod.ether.broadcast" }
 
 func (b Broadcast) WriteTo(w io.Writer) (n int64, err error) {
 	var buf = &bytes.Buffer{}
@@ -49,5 +51,5 @@ func (b *Broadcast) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&Broadcast{})
+	_ = astral.DefaultBlueprints.Add(&Broadcast{})
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
@@ -81,7 +80,7 @@ func (mod *Module) opPushSingle(ctx *astral.Context, q shell.Query, args opPushA
 		return
 	}
 
-	var objectID *object.ID
+	var objectID *astral.ObjectID
 	objectID, err = astral.ResolveObjectID(obj)
 	if err != nil {
 		return

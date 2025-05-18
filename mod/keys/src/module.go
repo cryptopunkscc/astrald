@@ -11,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
 	"strings"
@@ -42,7 +41,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	).Run(ctx)
 }
 
-func (mod *Module) CreateKey(alias string) (identity *astral.Identity, objectID *object.ID, err error) {
+func (mod *Module) CreateKey(alias string) (identity *astral.Identity, objectID *astral.ObjectID, err error) {
 	_, err = mod.Dir.ResolveIdentity(alias)
 	if err == nil {
 		return identity, objectID, errors.New("alias already in use")
@@ -63,7 +62,7 @@ func (mod *Module) CreateKey(alias string) (identity *astral.Identity, objectID 
 	return
 }
 
-func (mod *Module) SaveKey(key *astral.Identity) (*object.ID, error) {
+func (mod *Module) SaveKey(key *astral.Identity) (*astral.ObjectID, error) {
 	if key.PrivateKey() == nil {
 		return nil, errors.New("private key is nil")
 	}
@@ -83,7 +82,7 @@ func (mod *Module) SaveKey(key *astral.Identity) (*object.ID, error) {
 	return objectID, mod.IndexKey(objectID)
 }
 
-func (mod *Module) IndexKey(objectID *object.ID) error {
+func (mod *Module) IndexKey(objectID *astral.ObjectID) error {
 	var row dbPrivateKey
 	var err = mod.db.Where("data_id = ?", objectID).First(&row).Error
 	if err == nil {

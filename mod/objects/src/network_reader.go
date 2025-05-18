@@ -4,14 +4,13 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"time"
 )
 
 type NetworkReader struct {
 	mod      *Module
-	objectID *object.ID
+	objectID *astral.ObjectID
 	consumer *astral.Identity
 	provider *astral.Identity
 

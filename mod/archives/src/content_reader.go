@@ -2,7 +2,7 @@ package archives
 
 import (
 	"archive/zip"
-	"github.com/cryptopunkscc/astrald/object"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"io/fs"
@@ -13,7 +13,7 @@ var _ io.ReadSeeker = &contentReader{}
 type contentReader struct {
 	zip      *zip.Reader
 	path     string
-	objectID *object.ID
+	objectID *astral.ObjectID
 
 	file fs.File
 	pos  int64

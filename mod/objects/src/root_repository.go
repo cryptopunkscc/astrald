@@ -3,7 +3,6 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"sync"
 )
@@ -26,7 +25,7 @@ func (repo RootRepository) Create(ctx *astral.Context, opts *objects.CreateOpts)
 	return repo.Default().Create(ctx, opts)
 }
 
-func (repo RootRepository) Contains(ctx *astral.Context, objectID *object.ID) (bool, error) {
+func (repo RootRepository) Contains(ctx *astral.Context, objectID *astral.ObjectID) (bool, error) {
 	for _, repo := range repo.mod.repos.Clone() {
 		if has, err := repo.Contains(ctx, objectID); err == nil && has {
 			return true, nil
@@ -36,8 +35,8 @@ func (repo RootRepository) Contains(ctx *astral.Context, objectID *object.ID) (b
 	return false, nil
 }
 
-func (repo RootRepository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
-	ch := make(chan *object.ID)
+func (repo RootRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
+	ch := make(chan *astral.ObjectID)
 
 	go func() {
 		var wg sync.WaitGroup
@@ -52,7 +51,7 @@ func (repo RootRepository) Scan(ctx *astral.Context, follow bool) (<-chan *objec
 					return
 				}
 
-				var id *object.ID
+				var id *astral.ObjectID
 				var ok bool
 
 				// copy all scanned ids
@@ -83,11 +82,11 @@ func (repo RootRepository) Scan(ctx *astral.Context, follow bool) (<-chan *objec
 	return ch, nil
 }
 
-func (repo RootRepository) Delete(ctx *astral.Context, objectID *object.ID) error {
+func (repo RootRepository) Delete(ctx *astral.Context, objectID *astral.ObjectID) error {
 	return repo.Default().Delete(ctx, objectID)
 }
 
-func (repo RootRepository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
+func (repo RootRepository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
 	// try memory cache first
 	if mem, err := repo.mod.GetRepository("mem0"); err == nil {
 		if r, err := mem.Read(ctx, objectID, offset, limit); err == nil {
@@ -121,7 +120,7 @@ func (repo RootRepository) Read(ctx *astral.Context, objectID *object.ID, offset
 	return nil, objects.ErrNotFound
 }
 
-func (repo *RootRepository) readNetwork(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
+func (repo *RootRepository) readNetwork(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
 	if !ctx.Zone().Is(astral.ZoneNetwork) {
 		return nil, astral.ErrZoneExcluded
 	}

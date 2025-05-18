@@ -68,5 +68,5 @@ func (msg ErrorMessage) String() string {
 }
 
 func init() {
-	DefaultBlueprints.Add(&ErrorMessage{})
+	_ = DefaultBlueprints.Add(&ErrorMessage{})
 }

@@ -1,7 +1,7 @@
 package objects
 
 import (
-	"github.com/cryptopunkscc/astrald/object"
+	"github.com/cryptopunkscc/astrald/astral"
 	"gorm.io/gorm"
 )
 
@@ -13,7 +13,7 @@ func (db *DB) Migrate() error {
 	return db.AutoMigrate(&dbObject{})
 }
 
-func (db *DB) Contains(id *object.ID) (b bool, err error) {
+func (db *DB) Contains(id *astral.ObjectID) (b bool, err error) {
 	err = db.
 		Model(&dbObject{}).
 		Where("id = ?", id).
@@ -22,14 +22,14 @@ func (db *DB) Contains(id *object.ID) (b bool, err error) {
 	return
 }
 
-func (db *DB) Find(id *object.ID) (row *dbObject, err error) {
+func (db *DB) Find(id *astral.ObjectID) (row *dbObject, err error) {
 	err = db.
 		Where("id = ?", id).
 		First(&row).Error
 	return
 }
 
-func (db *DB) Create(id *object.ID, objectType string) (err error) {
+func (db *DB) Create(id *astral.ObjectID, objectType string) (err error) {
 	err = db.DB.Create(&dbObject{
 		ID:   id,
 		Type: objectType,

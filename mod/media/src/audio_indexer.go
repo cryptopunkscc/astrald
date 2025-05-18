@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/dhowden/tag"
 )
 
@@ -19,7 +18,7 @@ func NewAudioIndexer(mod *Module) *AudioIndexer {
 	return &AudioIndexer{Module: mod}
 }
 
-func (mod *AudioIndexer) Index(ctx *astral.Context, objectID *object.ID) (f *media.AudioFile, err error) {
+func (mod *AudioIndexer) Index(ctx *astral.Context, objectID *astral.ObjectID) (f *media.AudioFile, err error) {
 	// check if already indexed
 	if row, err := mod.db.FindAudio(objectID); err == nil {
 		return row.ToAudioFile(), nil
@@ -41,7 +40,7 @@ func (mod *AudioIndexer) Index(ctx *astral.Context, objectID *object.ID) (f *med
 	return audio, mod.db.SaveAudio(audio)
 }
 
-func (mod *AudioIndexer) Inspect(ctx *astral.Context, objectID *object.ID) (*media.AudioFile, error) {
+func (mod *AudioIndexer) Inspect(ctx *astral.Context, objectID *astral.ObjectID) (*media.AudioFile, error) {
 	// open the object
 	r, err := mod.Objects.Root().Read(ctx, objectID, 0, 0)
 	if err != nil {
@@ -56,9 +55,9 @@ func (mod *AudioIndexer) Inspect(ctx *astral.Context, objectID *object.ID) (*med
 	}
 
 	// read the cover image
-	var pictureID *object.ID
+	var pictureID *astral.ObjectID
 	if p := audioTag.Picture(); p != nil {
-		pictureID, err = object.Resolve(bytes.NewReader(p.Data))
+		pictureID, err = astral.Resolve(bytes.NewReader(p.Data))
 	}
 
 	// return info

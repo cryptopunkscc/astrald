@@ -14,8 +14,10 @@ type EventBroadcastReceived struct {
 	Object   astral.Object
 }
 
+// astral
+
 func (EventBroadcastReceived) ObjectType() string {
-	return "astrald.mod.ether.events.broadcast_received"
+	return "mod.ether.events.broadcast_received"
 }
 
 func (e EventBroadcastReceived) WriteTo(w io.Writer) (n int64, err error) {
@@ -27,5 +29,5 @@ func (e *EventBroadcastReceived) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&EventBroadcastReceived{})
+	_ = astral.DefaultBlueprints.Add(&EventBroadcastReceived{})
 }

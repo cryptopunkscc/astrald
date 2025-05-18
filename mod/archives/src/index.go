@@ -6,12 +6,11 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/archives"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 type entryFunc func(*archives.Entry)
 
-func (mod *Module) Index(ctx context.Context, objectID *object.ID) (archive *archives.Archive, err error) {
+func (mod *Module) Index(ctx context.Context, objectID *astral.ObjectID) (archive *archives.Archive, err error) {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()
 
@@ -40,7 +39,7 @@ func (mod *Module) Index(ctx context.Context, objectID *object.ID) (archive *arc
 	return
 }
 
-func (mod *Module) scan(ctx context.Context, objectID *object.ID, postScan entryFunc) (archive *archives.Archive, err error) {
+func (mod *Module) scan(ctx context.Context, objectID *astral.ObjectID, postScan entryFunc) (archive *archives.Archive, err error) {
 	reader, err := mod.openZip(objectID)
 	if err != nil {
 		return nil, fmt.Errorf("error reading zip file: %w", err)
@@ -62,7 +61,7 @@ func (mod *Module) scan(ctx context.Context, objectID *object.ID, postScan entry
 			continue
 		}
 
-		fileID, err := object.Resolve(f)
+		fileID, err := astral.Resolve(f)
 		f.Close()
 		if err != nil {
 			mod.log.Errorv(1, "resolve %v: %v", file.Name, err)
@@ -92,11 +91,11 @@ func (mod *Module) scan(ctx context.Context, objectID *object.ID, postScan entry
 	return
 }
 
-func (mod *Module) Forget(objectID *object.ID) error {
+func (mod *Module) Forget(objectID *astral.ObjectID) error {
 	return mod.clearCache(objectID)
 }
 
-func (mod *Module) getCache(objectID *object.ID) (archive *archives.Archive) {
+func (mod *Module) getCache(objectID *astral.ObjectID) (archive *archives.Archive) {
 	var row dbArchive
 
 	err := mod.db.
@@ -125,7 +124,7 @@ func (mod *Module) getCache(objectID *object.ID) (archive *archives.Archive) {
 	return
 }
 
-func (mod *Module) clearCache(objectID *object.ID) (err error) {
+func (mod *Module) clearCache(objectID *astral.ObjectID) (err error) {
 	var id int
 	err = mod.db.
 		Model(&dbArchive{}).
@@ -149,7 +148,7 @@ func (mod *Module) clearCache(objectID *object.ID) (err error) {
 		Error
 }
 
-func (mod *Module) setCache(objectID *object.ID, archive *archives.Archive) error {
+func (mod *Module) setCache(objectID *astral.ObjectID, archive *archives.Archive) error {
 	mod.clearCache(objectID)
 
 	row := dbArchive{

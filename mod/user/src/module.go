@@ -12,7 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"slices"
@@ -292,7 +291,7 @@ func (mod *Module) SignLocalContract(userID *astral.Identity) (contract *user.Si
 }
 
 // AddAsset adds an object to user's assets
-func (mod *Module) AddAsset(objectID *object.ID) (err error) {
+func (mod *Module) AddAsset(objectID *astral.ObjectID) (err error) {
 	_, err = mod.db.AddAsset(objectID, false)
 	if err == nil {
 		mod.notifyLinked("assets")
@@ -325,7 +324,7 @@ func (mod *Module) pushToLinkedSibs(object astral.Object) {
 }
 
 // RemoveAsset removes an object from user's assets
-func (mod *Module) RemoveAsset(objectID *object.ID) (err error) {
+func (mod *Module) RemoveAsset(objectID *astral.ObjectID) (err error) {
 	err = mod.db.RemoveAsset(objectID)
 	if err == nil {
 		mod.notifyLinked("assets")
@@ -334,11 +333,11 @@ func (mod *Module) RemoveAsset(objectID *object.ID) (err error) {
 }
 
 // AssetsContain returns true if user's assets contain the object
-func (mod *Module) AssetsContain(objectID *object.ID) bool {
+func (mod *Module) AssetsContain(objectID *astral.ObjectID) bool {
 	return mod.db.AssetsContain(objectID)
 }
 
-func (mod *Module) Assets() []*object.ID {
+func (mod *Module) Assets() []*astral.ObjectID {
 	assets, err := mod.db.Assets()
 	if err != nil {
 		mod.log.Error("error getting assets: %v", err)

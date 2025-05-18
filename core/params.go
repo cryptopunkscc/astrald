@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 	"strconv"
 	"strings"
 	"time"
@@ -75,13 +74,13 @@ func (params Params) SetNonce(key string, n astral.Nonce) {
 	params[key] = s
 }
 
-func (params Params) GetObjectID(key string) (*object.ID, error) {
+func (params Params) GetObjectID(key string) (*astral.ObjectID, error) {
 	v, found := params[key]
 	if !found {
 		return nil, ErrKeyNotFound
 	}
 
-	id, err := object.ParseID(v)
+	id, err := astral.ParseID(v)
 	if err != nil {
 		return nil, err
 	}

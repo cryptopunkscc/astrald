@@ -4,11 +4,10 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"sync"
 )
 
-func (mod *Module) Describe(ctx *astral.Context, objectID *object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	if scope == nil {
 		scope = astral.DefaultScope()
 	}
@@ -47,7 +46,7 @@ func (mod *Module) AddDescriber(describer objects.Describer) error {
 }
 
 type describeArgs struct {
-	ID   *object.ID
+	ID   *astral.ObjectID
 	Out  string `query:"optional"`
 	Zone string `query:"optional"`
 }

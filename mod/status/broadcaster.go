@@ -5,8 +5,6 @@ import (
 	"io"
 )
 
-var _ astral.Object = &Broadcaster{}
-
 type Broadcaster struct {
 	Identity    *astral.Identity
 	Alias       astral.String8
@@ -14,8 +12,10 @@ type Broadcaster struct {
 	Attachments *astral.Bundle
 }
 
+// astral
+
 func (Broadcaster) ObjectType() string {
-	return "astrald.mod.status.broadcaster"
+	return "mod.status.broadcaster"
 }
 
 func (b Broadcaster) WriteTo(w io.Writer) (n int64, err error) {
@@ -24,4 +24,8 @@ func (b Broadcaster) WriteTo(w io.Writer) (n int64, err error) {
 
 func (b *Broadcaster) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Struct(b).ReadFrom(r)
+}
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&Broadcaster{})
 }

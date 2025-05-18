@@ -3,7 +3,6 @@ package fs
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"io/fs"
 	"time"
 )
@@ -26,7 +25,7 @@ func NewFS(ctx *astral.Context, mod objects.Module) *FS {
 }
 
 func (f *FS) Open(name string) (fs.File, error) {
-	objectID, err := object.ParseID(name)
+	objectID, err := astral.ParseID(name)
 	if err != nil {
 		return nil, fs.ErrNotExist
 	}

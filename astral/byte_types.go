@@ -191,5 +191,5 @@ func init() {
 		b64 Bytes64
 	)
 
-	DefaultBlueprints.Add(&b, &b8, &b16, &b32, &b64)
+	_ = DefaultBlueprints.Add(&b, &b8, &b16, &b32, &b64)
 }

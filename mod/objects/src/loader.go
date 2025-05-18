@@ -32,12 +32,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	}
 
 	mod.blueprints.Parent = astral.DefaultBlueprints
-	mod.blueprints.Add(
-		&objects.EventDiscovered{},
-		&objects.EventCommitted{},
-		&objects.SourcedObject{},
-		&objects.SearchResult{},
-	)
 
 	mod.repos.Set("mem0", mem.NewRepository("", 0))
 

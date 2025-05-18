@@ -56,7 +56,7 @@ func (mod *Module) Run(ctx *astral.Context) (err error) {
 }
 
 func (mod *Module) Scan() error {
-	return mod.Ether.Push(&ScanMessage{}, nil)
+	return mod.Ether.Push(&status.ScanMessage{}, nil)
 }
 
 func (mod *Module) Broadcasters() []*status.Broadcaster {

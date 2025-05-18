@@ -3,7 +3,6 @@ package user
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"time"
@@ -49,7 +48,7 @@ func (db *DB) ActiveContractsOf(userID *astral.Identity) (contracts []*dbNodeCon
 	return
 }
 
-func (db *DB) ContractExists(contractID *object.ID) (b bool) {
+func (db *DB) ContractExists(contractID *astral.ObjectID) (b bool) {
 	db.
 		Model(&dbNodeContract{}).
 		Where("object_id = ?", contractID).
@@ -103,7 +102,7 @@ func (db *DB) AssetHeight() int {
 	return int(height)
 }
 
-func (db *DB) AssetsContain(objectID *object.ID) (exists bool) {
+func (db *DB) AssetsContain(objectID *astral.ObjectID) (exists bool) {
 	db.Model(&dbAsset{}).
 		Select("1").
 		Where("object_id = ? and removed = false", objectID).
@@ -121,7 +120,7 @@ func (db *DB) NonceExists(nonce astral.Nonce) (exists bool) {
 	return
 }
 
-func (db *DB) AddAsset(objectID *object.ID, force bool) (nonce astral.Nonce, err error) {
+func (db *DB) AddAsset(objectID *astral.ObjectID, force bool) (nonce astral.Nonce, err error) {
 	if !force && db.AssetsContain(objectID) {
 		return nonce, errors.New("asset already exists")
 	}
@@ -135,7 +134,7 @@ func (db *DB) AddAsset(objectID *object.ID, force bool) (nonce astral.Nonce, err
 	}).Error
 }
 
-func (db *DB) AddAssetWithNonce(objectID *object.ID, nonce astral.Nonce) error {
+func (db *DB) AddAssetWithNonce(objectID *astral.ObjectID, nonce astral.Nonce) error {
 	if db.NonceExists(nonce) {
 		return nil
 	}
@@ -147,7 +146,7 @@ func (db *DB) AddAssetWithNonce(objectID *object.ID, nonce astral.Nonce) error {
 	}).Error
 }
 
-func (db *DB) RemoveAsset(objectID *object.ID) (err error) {
+func (db *DB) RemoveAsset(objectID *astral.ObjectID) (err error) {
 	var rows []dbAsset
 
 	err = db.Where("object_id = ? and removed = false", objectID).Find(&rows).Error
@@ -167,7 +166,7 @@ func (db *DB) RemoveAsset(objectID *object.ID) (err error) {
 	return
 }
 
-func (db *DB) RemoveAssetByNonce(nonce astral.Nonce, objectID *object.ID) (err error) {
+func (db *DB) RemoveAssetByNonce(nonce astral.Nonce, objectID *astral.ObjectID) (err error) {
 	var row dbAsset
 
 	err = db.Where("nonce = ?", nonce).First(&row).Error
@@ -195,7 +194,7 @@ func (db *DB) RemoveAssetByNonce(nonce astral.Nonce, objectID *object.ID) (err e
 	return db.Save(row).Error
 }
 
-func (db *DB) Assets() (assets []*object.ID, err error) {
+func (db *DB) Assets() (assets []*astral.ObjectID, err error) {
 	err = db.
 		Model(&dbAsset{}).
 		Where("removed = false").

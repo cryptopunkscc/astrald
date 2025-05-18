@@ -1,7 +1,7 @@
 package fs
 
 import (
-	"github.com/cryptopunkscc/astrald/object"
+	"github.com/cryptopunkscc/astrald/astral"
 	"gorm.io/gorm"
 )
 
@@ -9,7 +9,7 @@ type DB struct {
 	*gorm.DB
 }
 
-func (db *DB) ObjectExists(pathPrefix string, objectID *object.ID) (b bool, err error) {
+func (db *DB) ObjectExists(pathPrefix string, objectID *astral.ObjectID) (b bool, err error) {
 	err = db.
 		Model(&dbLocalFile{}).
 		Where("data_id = ?", objectID).
@@ -19,7 +19,7 @@ func (db *DB) ObjectExists(pathPrefix string, objectID *object.ID) (b bool, err 
 	return
 }
 
-func (db *DB) FindObject(pathPrefix string, objectID *object.ID) (rows []*dbLocalFile, err error) {
+func (db *DB) FindObject(pathPrefix string, objectID *astral.ObjectID) (rows []*dbLocalFile, err error) {
 	err = db.
 		Model(&dbLocalFile{}).
 		Where("data_id = ?", objectID).
@@ -30,7 +30,7 @@ func (db *DB) FindObject(pathPrefix string, objectID *object.ID) (rows []*dbLoca
 	return
 }
 
-func (db *DB) UniqueObjectIDs(pathPrefix string) (ids []*object.ID, err error) {
+func (db *DB) UniqueObjectIDs(pathPrefix string) (ids []*astral.ObjectID, err error) {
 	err = db.
 		Model(&dbLocalFile{}).
 		Distinct("data_id").
@@ -57,7 +57,7 @@ func (db *DB) DeleteByPath(path string) (err error) {
 		Error
 }
 
-func (db *DB) FindByObjectID(objectID *object.ID) (rows []*dbLocalFile, err error) {
+func (db *DB) FindByObjectID(objectID *astral.ObjectID) (rows []*dbLocalFile, err error) {
 	err = db.
 		Model(&dbLocalFile{}).
 		Where("data_id = ?", objectID).

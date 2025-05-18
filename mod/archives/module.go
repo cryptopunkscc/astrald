@@ -2,7 +2,7 @@ package archives
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/object"
+	"github.com/cryptopunkscc/astrald/astral"
 	"time"
 )
 
@@ -10,12 +10,12 @@ const ModuleName = "archives"
 const DBPrefix = "archives__"
 
 type Module interface {
-	Index(context.Context, *object.ID) (*Archive, error)
-	Forget(objectID *object.ID) error
+	Index(context.Context, *astral.ObjectID) (*Archive, error)
+	Forget(objectID *astral.ObjectID) error
 }
 
 type Entry struct {
-	ObjectID *object.ID
+	ObjectID *astral.ObjectID
 	Path     string
 	Comment  string
 	Modified time.Time

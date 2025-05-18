@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/objects/mem"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/dhowden/tag"
 	"io"
@@ -15,14 +14,14 @@ import (
 type Repository struct {
 	objects.NilRepository
 	mod       *Module
-	scanQueue *sig.Queue[*object.ID]
+	scanQueue *sig.Queue[*astral.ObjectID]
 	mu        sync.Mutex
 }
 
 func NewRepository(mod *Module) *Repository {
 	return &Repository{
 		mod:       mod,
-		scanQueue: &sig.Queue[*object.ID]{},
+		scanQueue: &sig.Queue[*astral.ObjectID]{},
 	}
 }
 
@@ -32,7 +31,7 @@ func (repo *Repository) Label() string {
 	return "Media covers"
 }
 
-func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset int64, limit int64) (io.ReadCloser, error) {
+func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
 	containerID, err := repo.mod.db.FindAudioContainerID(objectID)
 	if err != nil {
 		return nil, err
@@ -58,7 +57,7 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 
 	pic := audioTag.Picture().Data
 
-	actualID, _ := object.Resolve(bytes.NewReader(pic))
+	actualID, _ := astral.Resolve(bytes.NewReader(pic))
 	if !actualID.IsEqual(objectID) {
 		return nil, objects.ErrNotFound
 	}
@@ -71,10 +70,10 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *object.ID, offset in
 	return mem.NewReader(pic[offset:end]), nil
 }
 
-func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.ID, error) {
-	ch := make(chan *object.ID)
+func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
+	ch := make(chan *astral.ObjectID)
 
-	var subscribe <-chan *object.ID
+	var subscribe <-chan *astral.ObjectID
 
 	go func() {
 		defer close(ch)
@@ -112,7 +111,7 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *object.I
 	return ch, nil
 }
 
-func (repo *Repository) push(id *object.ID) {
+func (repo *Repository) push(id *astral.ObjectID) {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 

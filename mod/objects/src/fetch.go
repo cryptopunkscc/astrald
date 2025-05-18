@@ -6,14 +6,13 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
 )
 
-func (mod *Module) fetch(addr string) (objectID *object.ID, err error) {
+func (mod *Module) fetch(addr string) (objectID *astral.ObjectID, err error) {
 	switch {
 	case isURL(addr):
 		return mod.fetchURL(addr)
@@ -31,7 +30,7 @@ func (mod *Module) fetch(addr string) (objectID *object.ID, err error) {
 	return objectID, errors.New("scheme not supported")
 }
 
-func (mod *Module) fetchURL(url string) (objectID *object.ID, err error) {
+func (mod *Module) fetchURL(url string) (objectID *astral.ObjectID, err error) {
 	// Make a GET request to the URL
 	response, err := http.Get(url)
 	if err != nil {
@@ -59,7 +58,7 @@ func (mod *Module) fetchURL(url string) (objectID *object.ID, err error) {
 	return w.Commit()
 }
 
-func (mod *Module) fetchARL(a *arl.ARL) (objectID *object.ID, err error) {
+func (mod *Module) fetchARL(a *arl.ARL) (objectID *astral.ObjectID, err error) {
 	if a.Caller.IsZero() {
 		a.Caller = mod.node.Identity()
 	}

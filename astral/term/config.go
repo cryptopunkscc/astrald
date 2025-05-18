@@ -2,7 +2,6 @@ package term
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 const HighlightColor = "yellow"
@@ -39,7 +38,7 @@ func init() {
 	})
 
 	// object.ID
-	SetTranslateFunc(func(object *object.ID) astral.Object {
+	SetTranslateFunc(func(object *astral.ObjectID) astral.Object {
 		return &ColorString{
 			Color: "blue",
 			Text:  astral.String32(Render(object, nil, true)),

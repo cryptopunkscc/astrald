@@ -122,7 +122,7 @@ func ParseEndpoint(s string) (*Endpoint, error) {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&Endpoint{})
+	_ = astral.DefaultBlueprints.Add(&Endpoint{})
 
 	term.SetTranslateFunc(func(o *Endpoint) astral.Object {
 		return &term.ColorString{

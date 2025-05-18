@@ -3,16 +3,15 @@ package media
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 var _ objects.Describer = &Module{}
 
-func (mod *Module) DescribeObject(ctx *astral.Context, objectID *object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	return mod.audio.DescribeObject(ctx, objectID, scope)
 }
 
-func (mod *AudioIndexer) DescribeObject(ctx *astral.Context, objectID *object.ID, opts *astral.Scope) (_ <-chan *objects.SourcedObject, err error) {
+func (mod *AudioIndexer) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID, opts *astral.Scope) (_ <-chan *objects.SourcedObject, err error) {
 	ch := make(chan *objects.SourcedObject, 1)
 	defer close(ch)
 

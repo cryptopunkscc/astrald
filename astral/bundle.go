@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 	"slices"
 	"sync"
@@ -19,7 +18,7 @@ type Bundle struct {
 	mu      sync.Mutex
 }
 
-func (*Bundle) ObjectType() string { return "astral.bundle" }
+func (*Bundle) ObjectType() string { return "bundle" }
 
 // NewBundle returns a new Bundle instance. objects can be nil.
 func NewBundle() *Bundle {
@@ -46,7 +45,7 @@ func (b *Bundle) Append(objects ...Object) error {
 }
 
 // Fetch fetches the object from the Bundle. Returns nil if the object is not in the Bundle.
-func (b *Bundle) Fetch(objectID object.ID) Object {
+func (b *Bundle) Fetch(objectID ObjectID) Object {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -210,11 +209,11 @@ func First[T Object](objects []Object) (object T, found bool) {
 }
 
 // Fetch fetches a type-cast object from the bundle
-func Fetch[T Object](bundle *Bundle, objectID object.ID) (object T, found bool) {
+func Fetch[T Object](bundle *Bundle, objectID ObjectID) (object T, found bool) {
 	object, found = bundle.Fetch(objectID).(T)
 	return
 }
 
 func init() {
-	DefaultBlueprints.Add(&Bundle{})
+	_ = DefaultBlueprints.Add(&Bundle{})
 }

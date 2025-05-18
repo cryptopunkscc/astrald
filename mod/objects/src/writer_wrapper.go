@@ -1,8 +1,8 @@
 package objects
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 type WriterWrapper struct {
@@ -23,7 +23,7 @@ func (w *WriterWrapper) Discard() error {
 	return w.Writer.Discard()
 }
 
-func (w *WriterWrapper) Commit() (*object.ID, error) {
+func (w *WriterWrapper) Commit() (*astral.ObjectID, error) {
 	objectID, err := w.Writer.Commit()
 	if err != nil {
 		w.mod.Receive(&objects.EventCommitted{ObjectID: objectID}, nil)

@@ -5,11 +5,11 @@ import (
 	"io"
 )
 
-var _ astral.Object = &ScanMessage{}
-
 type ScanMessage struct{}
 
-func (ScanMessage) ObjectType() string { return "astrald.mod.presence.scan_message" }
+// astral
+
+func (ScanMessage) ObjectType() string { return "mod.status.scan_message" }
 
 func (s ScanMessage) WriteTo(w io.Writer) (n int64, err error) {
 	return 0, nil
@@ -17,4 +17,8 @@ func (s ScanMessage) WriteTo(w io.Writer) (n int64, err error) {
 
 func (s *ScanMessage) ReadFrom(r io.Reader) (n int64, err error) {
 	return 0, nil
+}
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&ScanMessage{})
 }

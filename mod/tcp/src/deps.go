@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
 )
 
 type Deps struct {
@@ -24,12 +23,6 @@ func (mod *Module) LoadDependencies() (err error) {
 	mod.Exonet.SetParser("tcp", mod)
 	mod.Exonet.SetUnpacker("tcp", mod)
 	mod.Nodes.AddResolver(mod)
-
-	mod.Objects.Blueprints().Add(
-		&tcp.IP{},
-		&tcp.Endpoint{},
-		&tcp.EventNetworkAddressChanged{},
-	)
 
 	return
 }

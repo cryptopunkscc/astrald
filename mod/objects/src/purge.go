@@ -2,11 +2,11 @@ package objects
 
 import (
 	"errors"
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
-func (mod *Module) Purge(objectID *object.ID, opts *objects.PurgeOpts) (int, error) {
+func (mod *Module) Purge(objectID *astral.ObjectID, opts *objects.PurgeOpts) (int, error) {
 	var total int
 	var errs []error
 

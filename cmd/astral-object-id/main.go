@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/object"
+	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	"os"
 )
@@ -35,7 +35,7 @@ func main() {
 		}
 	}
 
-	objectID, err := object.Resolve(input)
+	objectID, err := astral.Resolve(input)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(3)

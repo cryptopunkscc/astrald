@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
@@ -32,7 +31,7 @@ func (mod *Module) OpDeleteAll(ctx *astral.Context, q shell.Query, args opDelete
 			return err
 		}
 
-		objectID, ok := o.(*object.ID)
+		objectID, ok := o.(*astral.ObjectID)
 		if !ok {
 			err = ch.Write(astral.NewError("not an object ID"))
 			if err != nil {

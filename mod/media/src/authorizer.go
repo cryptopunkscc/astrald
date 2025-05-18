@@ -5,7 +5,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, target astral.Object) bool {
@@ -19,7 +18,7 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 		case *media.AudioFile:
 			return mod.Auth.Authorize(identity, action, target.ObjectID)
 
-		case *object.ID:
+		case *astral.ObjectID:
 			parentID, err := mod.db.FindAudioContainerID(target)
 			if err != nil || parentID.IsZero() {
 				return false

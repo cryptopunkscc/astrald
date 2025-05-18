@@ -10,7 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 	"github.com/cryptopunkscc/astrald/sig"
 	"strings"
 )
@@ -60,7 +59,7 @@ func (mod *Module) Blueprints() *astral.Blueprints {
 	return &mod.blueprints
 }
 
-func (mod *Module) GetType(ctx *astral.Context, objectID *object.ID) (objectType string, err error) {
+func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error) {
 	row, err := mod.db.Find(objectID)
 	if err == nil {
 		return row.Type, nil

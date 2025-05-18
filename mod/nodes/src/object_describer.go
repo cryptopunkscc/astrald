@@ -3,12 +3,11 @@ package nodes
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/object"
 	"slices"
 	"sync"
 )
 
-func (mod *Module) DescribeObject(ctx *astral.Context, objectID *object.ID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
 	if !ctx.Zone().Is(astral.ZoneNetwork) {
 		return nil, astral.ErrZoneExcluded
 	}

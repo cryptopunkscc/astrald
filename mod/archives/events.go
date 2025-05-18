@@ -2,14 +2,13 @@ package archives
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
 var _ astral.Object = &EventArchiveIndexed{}
 
 type EventArchiveIndexed struct {
-	ObjectID *object.ID
+	ObjectID *astral.ObjectID
 	Archive  *Archive
 }
 

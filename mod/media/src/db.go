@@ -1,8 +1,8 @@
 package media
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/media"
-	"github.com/cryptopunkscc/astrald/object"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -11,12 +11,12 @@ type DB struct {
 	*gorm.DB
 }
 
-func (db *DB) FindObject(objectID *object.ID) (row *dbObject, err error) {
+func (db *DB) FindObject(objectID *astral.ObjectID) (row *dbObject, err error) {
 	err = db.Where("object_id = ?", objectID).First(&row).Error
 	return
 }
 
-func (db *DB) SaveObject(objectID *object.ID) error {
+func (db *DB) SaveObject(objectID *astral.ObjectID) error {
 	return db.
 		Clauses(clause.OnConflict{DoNothing: true}).
 		Create(&dbObject{
@@ -24,13 +24,13 @@ func (db *DB) SaveObject(objectID *object.ID) error {
 		}).Error
 }
 
-func (db *DB) DeleteObject(objectID *object.ID) (err error) {
+func (db *DB) DeleteObject(objectID *astral.ObjectID) (err error) {
 	return db.
 		Delete(&dbObject{ObjectID: objectID}).
 		Error
 }
 
-func (db *DB) FindAudio(objectID *object.ID) (row *dbAudio, err error) {
+func (db *DB) FindAudio(objectID *astral.ObjectID) (row *dbAudio, err error) {
 	err = db.Where("object_id = ?", objectID).First(&row).Error
 	return
 }
@@ -50,13 +50,13 @@ func (db *DB) SaveAudio(audio *media.AudioFile) error {
 		}).Error
 }
 
-func (db *DB) DeleteAudio(objectID *object.ID) (err error) {
+func (db *DB) DeleteAudio(objectID *astral.ObjectID) (err error) {
 	return db.
 		Delete(&dbAudio{ObjectID: objectID}).
 		Error
 }
 
-func (db *DB) FindAudioContainerID(objectID *object.ID) (containerID *object.ID, err error) {
+func (db *DB) FindAudioContainerID(objectID *astral.ObjectID) (containerID *astral.ObjectID, err error) {
 	err = db.
 		Model(&dbAudio{}).
 		Where("picture_id = ?", objectID).
@@ -66,7 +66,7 @@ func (db *DB) FindAudioContainerID(objectID *object.ID) (containerID *object.ID,
 	return
 }
 
-func (db *DB) UniquePictureIDs() (ids []*object.ID, err error) {
+func (db *DB) UniquePictureIDs() (ids []*astral.ObjectID, err error) {
 	err = db.
 		Model(&dbAudio{}).
 		Distinct("picture_id").

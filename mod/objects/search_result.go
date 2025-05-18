@@ -3,17 +3,14 @@ package objects
 import (
 	"encoding/json"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
 type SearchResult struct {
-	ObjectID *object.ID
+	ObjectID *astral.ObjectID
 }
 
 // astral
-
-var _ astral.Object = &SearchResult{}
 
 func (SearchResult) ObjectType() string { return "mod.objects.search_result" }
 
@@ -44,7 +41,7 @@ func (sr SearchResult) MarshalText() (text []byte, err error) {
 }
 
 func (sr *SearchResult) UnmarshalText(text []byte) error {
-	sr.ObjectID = &object.ID{}
+	sr.ObjectID = &astral.ObjectID{}
 	return sr.ObjectID.UnmarshalText(text)
 }
 
@@ -55,5 +52,5 @@ func (sr SearchResult) String() string {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&SearchResult{})
+	_ = astral.DefaultBlueprints.Add(&SearchResult{})
 }

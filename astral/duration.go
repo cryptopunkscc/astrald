@@ -8,8 +8,10 @@ import (
 
 type Duration time.Duration
 
+// astral
+
 func (Duration) ObjectType() string {
-	return "astral.duration"
+	return "duration"
 }
 
 func (d Duration) WriteTo(w io.Writer) (n int64, err error) {
@@ -31,6 +33,19 @@ func (d *Duration) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
+// text
+
+func (d Duration) MarshalText() (text []byte, err error) {
+	return []byte(d.String()), nil
+}
+
+func (d *Duration) UnmarshalText(text []byte) (err error) {
+	*(*time.Duration)(d), err = time.ParseDuration(string(text))
+	return
+}
+
+// ...
+
 func (d Duration) Duration() time.Duration {
 	return time.Duration(d)
 }
@@ -39,11 +54,7 @@ func (d Duration) String() string {
 	return time.Duration(d).String()
 }
 
-func (d *Duration) UnmarshalText(text []byte) (err error) {
-	*(*time.Duration)(d), err = time.ParseDuration(string(text))
-	return
-}
-
-func (d Duration) MarshalText() (text []byte, err error) {
-	return []byte(d.String()), nil
+func init() {
+	var d Duration
+	_ = DefaultBlueprints.Add(&d)
 }

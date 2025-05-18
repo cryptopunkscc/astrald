@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ipc"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/objects/fs"
-	"github.com/cryptopunkscc/astrald/object"
 	"net/http"
 	"path/filepath"
 	"sync"
@@ -98,7 +97,7 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 
 	filename := filepath.Base(request.URL.Path)
 
-	objectID, err := object.ParseID(filename)
+	objectID, err := astral.ParseID(filename)
 	if err != nil {
 		writer.WriteHeader(http.StatusNotFound)
 		return

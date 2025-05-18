@@ -3,17 +3,16 @@ package media
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 )
 
 type opForgetArgs struct {
-	ID  *object.ID
+	ID  *astral.ObjectID
 	Out string `query:"optional"`
 }
 
 func (mod *Module) OpForget(ctx *astral.Context, q shell.Query, args opForgetArgs) (err error) {
 	ctx = ctx.WithIdentity(q.Caller())
-	
+
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 

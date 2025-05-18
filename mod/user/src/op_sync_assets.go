@@ -3,7 +3,6 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/object"
 	"io"
 )
 
@@ -46,7 +45,7 @@ func (mod *Module) OpSyncAssets(ctx *astral.Context, q shell.Query, args opSyncA
 
 type OpUpdate struct {
 	Nonce    astral.Nonce
-	ObjectID *object.ID
+	ObjectID *astral.ObjectID
 	Removed  astral.Bool
 }
 

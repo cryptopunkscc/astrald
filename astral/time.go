@@ -11,7 +11,7 @@ func Now() Time {
 	return Time(time.Now())
 }
 
-func (t Time) ObjectType() string { return "astral.time" }
+func (t Time) ObjectType() string { return "time" }
 
 func (t Time) WriteTo(w io.Writer) (n int64, err error) {
 	return Uint64(t.Time().UTC().UnixNano()).WriteTo(w)
@@ -54,5 +54,5 @@ func (t *Time) UnmarshalText(text []byte) (err error) {
 }
 
 func init() {
-	DefaultBlueprints.Add(&Time{})
+	_ = DefaultBlueprints.Add(&Time{})
 }

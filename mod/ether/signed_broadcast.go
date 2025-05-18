@@ -14,7 +14,7 @@ type SignedBroadcast struct {
 }
 
 func (SignedBroadcast) ObjectType() string {
-	return "astrald.mod.ether.signed_broadcast"
+	return "mod.ether.signed_broadcast"
 }
 
 func (b SignedBroadcast) WriteTo(w io.Writer) (n int64, err error) {
@@ -40,5 +40,5 @@ func (b SignedBroadcast) Hash() []byte {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&SignedBroadcast{})
+	_ = astral.DefaultBlueprints.Add(&SignedBroadcast{})
 }
