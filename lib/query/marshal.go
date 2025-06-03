@@ -18,18 +18,45 @@ func Marshal(a any) (string, error) {
 
 	var vals = url.Values{}
 
-	if m, ok := a.(map[string]string); ok {
-		for k, v := range m {
-			vals.Set(k, v)
-		}
-		return vals.Encode(), nil
-	}
+	switch a := a.(type) {
+	case string:
+		return a, nil
 
-	if m, ok := a.(Args); ok {
-		for k, v := range m {
+	case map[string]string:
+		for k, v := range a {
 			vals.Set(k, v)
 		}
 		return vals.Encode(), nil
+
+	case map[string]any:
+		for k, v := range a {
+			s := ""
+
+			switch v := v.(type) {
+			case string:
+				s = v
+
+			case fmt.Stringer:
+				s = v.String()
+
+			case encoding.TextMarshaler:
+				text, err := v.MarshalText()
+				if err != nil {
+					return "", err
+				}
+				s = string(text)
+
+			default:
+				return fmt.Sprintf("%v", v), nil
+			}
+
+			vals.Set(k, s)
+		}
+
+		return vals.Encode(), nil
+
+	case Args:
+		return Marshal(map[string]any(a))
 	}
 
 	var v = reflect.ValueOf(a)

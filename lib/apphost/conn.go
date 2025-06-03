@@ -10,11 +10,16 @@ var _ net.Conn = &Conn{}
 type Conn struct {
 	net.Conn
 	remoteID *astral.Identity
+	localID  *astral.Identity
 	query    string
 }
 
 func (conn Conn) RemoteIdentity() *astral.Identity {
 	return conn.remoteID
+}
+
+func (conn Conn) LocalIdentity() *astral.Identity {
+	return conn.localID
 }
 
 func (conn Conn) RemoteAddr() net.Addr {

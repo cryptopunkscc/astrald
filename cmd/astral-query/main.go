@@ -27,7 +27,7 @@ func main() {
 
 	c, t, q := arl.Split(os.Args[1])
 	if len(c) > 0 {
-		caller, err = client.ResolveIdentity(c)
+		caller, err = client.LocalNode().ResolveIdentity(c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -41,7 +41,7 @@ func main() {
 	}
 
 	if len(t) > 0 {
-		target, err = client.ResolveIdentity(t)
+		target, err = client.LocalNode().ResolveIdentity(t)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)

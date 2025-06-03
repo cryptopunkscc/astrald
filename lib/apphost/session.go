@@ -84,6 +84,7 @@ func (s *Session) Query(callerID *astral.Identity, targetID *astral.Identity, qu
 
 	return &Conn{
 		Conn:     s.conn,
+		localID:  callerID,
 		remoteID: targetID,
 		query:    query,
 	}, nil

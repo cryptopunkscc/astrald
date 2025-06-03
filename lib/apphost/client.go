@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/sig"
 	"os"
 	"strings"
 )
@@ -13,15 +14,11 @@ const DefaultEndpoint = "tcp:127.0.0.1:8625"
 const AuthTokenEnv = "ASTRALD_APPHOST_TOKEN"
 
 type Client struct {
-	Endpoint  string
-	AuthToken string
-	GuestID   *astral.Identity
-	HostID    *astral.Identity
-}
-
-func (c *Client) DisplayName(identity *astral.Identity) string {
-	//TODO implement me
-	panic("implement me")
+	Endpoint      string
+	AuthToken     string
+	GuestID       *astral.Identity
+	HostID        *astral.Identity
+	resolverCache sig.Map[string, *astral.Identity]
 }
 
 func NewClient(endpoint string, token string) (*Client, error) {
@@ -82,26 +79,17 @@ func (c *Client) Session() (*Session, error) {
 }
 
 func (c *Client) Query(target string, method string, args any) (*Conn, error) {
-	id, err := astral.IdentityFromString(target)
+	targetID, err := c.resolveIdentityCached(target)
 	if err != nil {
-		id, err = c.ResolveIdentity(target)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	var q = method
 
 	if args != nil {
-		var params string
-
-		if s, ok := args.(string); ok {
-			params = s
-		} else {
-			params, err = query.Marshal(args)
-			if err != nil {
-				return nil, err
-			}
+		params, err := query.Marshal(args)
+		if err != nil {
+			return nil, err
 		}
 
 		if len(params) > 0 {
@@ -114,7 +102,7 @@ func (c *Client) Query(target string, method string, args any) (*Conn, error) {
 		return nil, err
 	}
 
-	return s.Query(c.GuestID, id, q)
+	return s.Query(c.GuestID, targetID, q)
 }
 
 func (c *Client) Listen() (*Listener, error) {
@@ -153,4 +141,35 @@ func (c *Client) Listen() (*Listener, error) {
 
 func (c *Client) Protocol() string {
 	return strings.SplitN(c.Endpoint, ":", 2)[0]
+}
+
+func (c *Client) Target(identity *astral.Identity) *Target {
+	return &Target{targetID: identity, client: c}
+}
+
+func (c *Client) LocalNode() *Target {
+	return c.Target(c.HostID)
+}
+
+func (c *Client) resolveIdentityCached(name string) (*astral.Identity, error) {
+	// try to parse the public key first
+	if id, err := astral.IdentityFromString(name); err == nil {
+		return id, nil
+	}
+
+	// check cache
+	if id, ok := c.resolverCache.Get(name); ok {
+		return id, nil
+	}
+
+	// resolve the identity using the local node's resolver
+	id, err := c.LocalNode().ResolveIdentity(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// cache results
+	c.resolverCache.Set(name, id)
+
+	return id, nil
 }

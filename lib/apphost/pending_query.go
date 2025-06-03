@@ -31,10 +31,11 @@ func (q *PendingQuery) Accept() (conn *Conn, err error) {
 	if err != nil {
 		return
 	}
-
+	
 	conn = &Conn{
 		Conn:     q.conn,
 		remoteID: q.info.Caller,
+		localID:  q.info.Target,
 		query:    string(q.info.Query),
 	}
 
