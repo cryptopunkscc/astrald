@@ -1,4 +1,4 @@
-package status
+package nearby
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
@@ -15,7 +15,7 @@ type Broadcaster struct {
 // astral
 
 func (Broadcaster) ObjectType() string {
-	return "mod.status.broadcaster"
+	return "mod.nearby.broadcaster"
 }
 
 func (b Broadcaster) WriteTo(w io.Writer) (n int64, err error) {

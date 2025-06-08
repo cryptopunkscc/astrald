@@ -178,3 +178,29 @@ func (target *Target) Read(objectID *astral.ObjectID, offset, limit uint64) (io.
 	}
 	return conn, nil
 }
+
+func (target *Target) GetType(objectID *astral.ObjectID) (string, error) {
+	ch, err := target.QueryChannel("objects.get_type", query.Args{
+		"id": objectID,
+	})
+	if err != nil {
+		return "", err
+	}
+	defer ch.Close()
+
+	res, err := ch.Read()
+	if err != nil {
+		return "", err
+	}
+
+	switch res := res.(type) {
+	case *astral.String8:
+		return string(*res), nil
+
+	case *astral.ErrorMessage:
+		return "", res
+
+	default:
+		return "", errors.New("protocol error: unexpected object type")
+	}
+}

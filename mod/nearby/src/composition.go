@@ -1,18 +1,18 @@
-package status
+package nearby
 
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/status"
+	"github.com/cryptopunkscc/astrald/mod/nearby"
 )
 
 const MaxAttachmentSize = 4 * 1024 //4kb
 
-var _ status.Composition = &Composition{}
+var _ nearby.Composition = &Composition{}
 
 type Composition struct {
 	receiver *astral.Identity
-	s        *status.Status
+	s        *nearby.StatusMessage
 }
 
 func (c *Composition) Receiver() *astral.Identity {

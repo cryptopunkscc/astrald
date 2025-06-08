@@ -1,4 +1,4 @@
-package status
+package nearby
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
@@ -6,10 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/ether"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/mod/status"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"strings"
 )
@@ -33,14 +33,14 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	mod.Dir.AddResolver(mod)
 	mod.Nodes.AddResolver(mod)
-	
+
 	if cnode, ok := mod.node.(*core.Node); ok {
 		var composers []any
 		for _, m := range cnode.Modules().Loaded() {
 			if m == mod {
 				continue
 			}
-			if a, ok := m.(status.Composer); ok {
+			if a, ok := m.(nearby.Composer); ok {
 				mod.AddStatusComposer(a)
 				composers = append(composers, a)
 			}

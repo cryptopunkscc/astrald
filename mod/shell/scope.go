@@ -220,7 +220,9 @@ func (scope *Scope) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteC
 		ctx := astral.NewContext(nil).WithIdentity(ctx.Identity())
 		err := scope.Call(ctx, query, path, params)
 		if err != nil {
-			scope.Log.Errorv(1, "failed to call query %v: %v", path, err)
+			if scope.Log != nil {
+				scope.Log.Errorv(1, "failed to call query %v: %v", path, err)
+			}
 			query.Reject()
 		}
 	}()

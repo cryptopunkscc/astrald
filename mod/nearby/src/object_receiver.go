@@ -1,11 +1,11 @@
-package status
+package nearby
 
 import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/ether"
+	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/status"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"time"
 )
@@ -33,10 +33,10 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 
 func (mod *Module) receiveBroadcastEvent(event *ether.EventBroadcastReceived) error {
 	switch object := event.Object.(type) {
-	case *status.Status:
+	case *nearby.StatusMessage:
 		return mod.receiveStatus(event.SourceID, event.SourceIP, object)
 
-	case *status.ScanMessage:
+	case *nearby.ScanMessage:
 		mod.Ether.PushToIP(event.SourceIP, mod.Status(astral.Anyone), nil)
 		return errors.New("object rejected")
 	}
@@ -44,7 +44,7 @@ func (mod *Module) receiveBroadcastEvent(event *ether.EventBroadcastReceived) er
 	return errors.New("object rejected")
 }
 
-func (mod *Module) receiveStatus(sourceID *astral.Identity, addr tcp.IP, status *status.Status) error {
+func (mod *Module) receiveStatus(sourceID *astral.Identity, addr tcp.IP, status *nearby.StatusMessage) error {
 	mod.log.Infov(3, "update from %v %v", sourceID, addr)
 	mod.cache.Replace(addr.String(), &cache{
 		Identity:  sourceID,

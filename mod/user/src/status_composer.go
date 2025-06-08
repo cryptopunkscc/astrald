@@ -1,15 +1,16 @@
 package user
 
-import "github.com/cryptopunkscc/astrald/mod/status"
+import "github.com/cryptopunkscc/astrald/mod/nearby"
 
-var _ status.Composer = &Module{}
+var _ nearby.Composer = &Module{}
 
-func (mod *Module) ComposeStatus(a status.Composition) {
+func (mod *Module) ComposeStatus(a nearby.Composition) {
 	if mod.config.Public {
 		c := mod.ActiveContract()
-		if c == nil {
-			return
+		if c != nil {
+			a.Attach(c)
+		} else {
+			a.Attach(nearby.NewFlag("claimable"))
 		}
-		a.Attach(c)
 	}
 }

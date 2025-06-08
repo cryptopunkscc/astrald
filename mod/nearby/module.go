@@ -1,11 +1,11 @@
-package status
+package nearby
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
 const (
-	ModuleName = "status"
+	ModuleName = "nearby"
 )
 
 type Module interface {

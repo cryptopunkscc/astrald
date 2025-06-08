@@ -1,4 +1,4 @@
-package status
+package nearby
 
 import (
 	"fmt"
