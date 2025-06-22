@@ -73,6 +73,9 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 
 	var header astral.ObjectHeader
 	_, err = header.ReadFrom(r)
+	if err != nil {
+		return "", err
+	}
 
 	err = mod.db.Create(objectID, header.String())
 	switch {
