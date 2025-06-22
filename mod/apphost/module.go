@@ -87,3 +87,7 @@ func (at *AccessToken) UnmarshalText(text []byte) (err error) {
 
 	return nil
 }
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&AccessToken{})
+}
