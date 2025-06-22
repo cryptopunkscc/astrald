@@ -22,6 +22,15 @@ func Route(ctx *astral.Context, r astral.Router, q *astral.Query) (astral.Conn, 
 	return newConn(q.Caller, q.Target, target, pipeReader, true), err
 }
 
+func RouteChan(ctx *astral.Context, r astral.Router, q *astral.Query) (*astral.Channel, error) {
+	conn, err := Route(ctx, r, q)
+	if err != nil {
+		return nil, err
+	}
+
+	return astral.NewChannel(conn), nil
+}
+
 // Accept accepts the query and runs the handler in a new goroutine.
 func Accept(query *astral.Query, src io.WriteCloser, handler func(astral.Conn)) (io.WriteCloser, error) {
 	pipeReader, pipeWriter := io.Pipe()
