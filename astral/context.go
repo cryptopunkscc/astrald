@@ -8,6 +8,7 @@ import (
 type Context struct {
 	context.Context
 	identity *Identity
+	filter   IdentityFilter
 	zone     Zone
 }
 
@@ -62,12 +63,10 @@ func (ctx *Context) LimitZone(z Zone) *Context {
 	return c
 }
 
-func (ctx *Context) WithCancel() (*Context, context.CancelFunc) {
-	clone := ctx.clone()
-
-	cctx, cancel := context.WithCancel(ctx.Context)
-	clone.Context = cctx
-	return clone, cancel
+func (ctx *Context) WithCancel() (clone *Context, cancel context.CancelFunc) {
+	clone = ctx.clone()
+	clone.Context, cancel = context.WithCancel(ctx.Context)
+	return
 }
 
 func (ctx *Context) WithTimeout(d time.Duration) (clone *Context, cancel context.CancelFunc) {
@@ -76,10 +75,24 @@ func (ctx *Context) WithTimeout(d time.Duration) (clone *Context, cancel context
 	return
 }
 
+func (ctx *Context) WithFilter(filter IdentityFilter) *Context {
+	clone := ctx.clone()
+	clone.filter = filter
+	return clone
+}
+
+func (ctx *Context) Filter(identity *Identity) bool {
+	if ctx.filter == nil {
+		return true
+	}
+	return ctx.filter(identity)
+}
+
 func (ctx *Context) clone() *Context {
 	return &Context{
 		Context:  ctx.Context,
 		identity: ctx.identity,
+		filter:   ctx.filter,
 		zone:     ctx.zone,
 	}
 }
