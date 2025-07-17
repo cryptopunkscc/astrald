@@ -16,9 +16,10 @@ func (mod *Module) OpInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (
 		return q.Reject()
 	}
 
-	if !q.Caller().IsEqual(ac.UserID) {
-		return q.Reject()
-	}
+	// FIXME: user.info is needed by portald for verifying if the local node is owned by the user (has been claimed). However the condition below makes user.info inaccessible for the portald identity. Commenting validation seems the easiest workaround.
+	//if !q.Caller().IsEqual(ac.UserID) {
+	//	return q.Reject()
+	//}
 
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
