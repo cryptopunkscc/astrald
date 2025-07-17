@@ -16,6 +16,8 @@ type Logger struct {
 	parent *Logger
 }
 
+var Mu *sync.Mutex
+
 func NewLogger(p term.Printer, id *astral.Identity, tag Tag) *Logger {
 	return &Logger{tag: tag, id: id, p: p}
 }
@@ -31,7 +33,10 @@ func (l *Logger) log(e *Entry) {
 	if int(e.Level) > l.Level {
 		return
 	}
-
+	if Mu != nil {
+		Mu.Lock()
+		defer Mu.Unlock()
+	}
 	term.Printf(l.p, "%v\n", e)
 }
 
