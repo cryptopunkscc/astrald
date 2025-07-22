@@ -13,7 +13,7 @@ type opInfoArgs struct {
 func (mod *Module) OpInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
-		return q.Reject()
+		return q.RejectWithCode(2)
 	}
 
 	if !q.Caller().IsEqual(ac.UserID) {
