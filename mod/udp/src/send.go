@@ -180,6 +180,7 @@ func (c *Conn) onRTOTimeout() {
 		Len:     uint16(meta.length),
 		Payload: meta.data,
 	}
+
 	raw, err := pkt.Marshal()
 	c.sendMu.Unlock()
 	if err != nil {

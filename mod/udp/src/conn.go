@@ -43,7 +43,6 @@ type Conn struct {
 	ooo        map[uint32][]byte // out-of-order segments by seqStart
 	appBuf     *ringBuffer       // ordered bytes for Read()
 	ackPending atomic.Bool       // (reserved) if you add explicit flags later
-
 	// timers
 	rtoMu    sync.Mutex
 	rto      time.Duration

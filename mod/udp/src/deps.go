@@ -20,9 +20,9 @@ func (mod *Module) LoadDependencies() (err error) {
 		return
 	}
 
-	mod.Exonet.SetDialer("tcp", mod)
-	mod.Exonet.SetParser("tcp", mod)
-	mod.Exonet.SetUnpacker("tcp", mod)
+	mod.Exonet.SetDialer("udp", mod)
+	mod.Exonet.SetParser("udp", mod)
+	mod.Exonet.SetUnpacker("udp", mod)
 	mod.Nodes.AddResolver(mod)
 
 	return
