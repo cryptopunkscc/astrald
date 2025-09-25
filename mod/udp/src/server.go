@@ -5,14 +5,7 @@ import (
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
-)
-
-// Connection states
-const (
-	StateClosed      = iota // Connection is closed
-	StateSynSent            // SYN sent, waiting for SYN-ACK
-	StateSynReceived        // SYN received, waiting for ACK
-	StateEstablished        // Connection established
+	"github.com/cryptopunkscc/astrald/mod/udp"
 )
 
 // Server implements src UDP listener with connection demultiplexing
@@ -48,8 +41,15 @@ func (s *Server) Run(ctx *astral.Context) error {
 	s.log.Info("started server at %v", listener.LocalAddr())
 	defer s.log.Info("stopped server at %v", listener.LocalAddr())
 
+	localEndpoint, err := udp.ParseEndpoint(listener.LocalAddr().
+		String())
+	if err != nil {
+		s.log.Errorv(1, "error parsing local endpoint: %v", err)
+		return err
+	}
+
 	s.wg.Add(1)
-	go s.readLoop()
+	go s.readLoop(ctx, localEndpoint)
 
 	<-ctx.Done()
 	s.Close()
@@ -70,11 +70,10 @@ func (s *Server) Close() error {
 	return nil
 }
 
-// readLoop handles incoming datagrams and routes them to connections
-func (s *Server) readLoop() {
+func (s *Server) readLoop(ctx *astral.Context, localEndpoint *udp.Endpoint) {
 	defer s.wg.Done()
-	buf := make([]byte, 64*1024) // Large buffer for high throughput
 
+	buf := make([]byte, 64*1024) // TODO: Max packet size?
 	for {
 		n, addr, err := s.listener.ReadFromUDP(buf)
 		if err != nil {
@@ -87,10 +86,47 @@ func (s *Server) readLoop() {
 			}
 		}
 
-		s.handlePacket(buf[:n], addr)
-	}
-}
+		pkt := &Packet{}
+		if err := pkt.Unmarshal(buf[:n]); err != nil {
+			s.log.Errorv(1, "packet unmarshal error from %v: %v", addr, err)
+			continue // drop malformed
+		}
 
-// handlePacket processes an incoming packet and routes it to the appropriate connection
-func (s *Server) handlePacket(data []byte, addr *net.UDPAddr) {
+		remoteKey := addr.String()
+		s.mutex.Lock()
+		conn, foundConn := s.conns[remoteKey]
+		if !foundConn && pkt.Flags&FlagSYN != 0 {
+			remoteEndpoint, err := udp.ParseEndpoint(addr.String())
+			if err != nil {
+				s.log.Errorv(1, "ParseEndpoint error for %v: %v", addr, err)
+				continue
+			}
+
+			conn, err = NewConn(s.listener, localEndpoint, remoteEndpoint, s.Module.config.FlowControl)
+			if err != nil {
+				s.log.Errorv(1, "NewConn error for %v: %v", addr, err)
+				s.mutex.Unlock()
+				continue
+			}
+
+			conn.inCh = make(chan *Packet, 128)
+			s.conns[remoteKey] = conn
+			go func() {
+				err := conn.startServerHandshake(ctx, pkt)
+				if err != nil {
+					s.log.Errorv(1, "handshake error for %v: %v", addr, err)
+				}
+			}()
+		}
+		s.mutex.Unlock()
+
+		if conn != nil {
+			select {
+			case conn.inCh <- pkt:
+				// success
+			default:
+				s.log.Errorv(1, "inCh full for %v, dropping packet", addr)
+			}
+		}
+	}
 }

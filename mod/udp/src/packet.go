@@ -3,6 +3,7 @@ package udp
 import (
 	"bytes"
 	"encoding/binary"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/mod/udp"
 )
@@ -14,6 +15,13 @@ const (
 )
 
 // Packet represents a src UDP packet with TCP-like header
+// Handshake usage:
+//
+//	ConnID: carried in Seq (ISN)
+//	Seq: initial sequence number (ISN)
+//	Ack: cumulative acknowledgment of peer's ISN+1
+//	Flags: SYN, ACK, FIN (DATA if Len > 0)
+//	Len: 0 for control packets (SYN, SYN|ACK, ACK, FIN)
 type Packet struct {
 	Seq     uint32 // Sequence number (first byte seq of this segment)
 	Ack     uint32 // Acknowledgment number (cumulative ack: all bytes < Ack received)
@@ -103,4 +111,9 @@ func UnmarshalPacket(data []byte) (*Packet, error) {
 	}
 
 	return pkt, nil
+}
+
+type SentPacket struct {
+	pkt      *Packet
+	sentTime time.Time
 }

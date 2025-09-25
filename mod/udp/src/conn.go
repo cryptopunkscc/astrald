@@ -2,66 +2,89 @@
 package udp
 
 import (
-	"bytes"
-	"context"
-	"io"
 	"net"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/udp"
 )
 
-// Conn implements src, ordered communication over a connected UDP socket.
+// DatagramWriter is how Conn sends bytes to its peer.
+type DatagramWriter interface {
+	WriteDatagram(b []byte) error
+}
+
+// DatagramReceiver is how Conn *receives* parsed packets when it does not own a socket read loop.
+// (For active conns, the recvLoop calls HandleDatagram itself.)
+type DatagramReceiver interface {
+	HandleDatagram(raw []byte) // fast path: parse + process (ACK/data)
+}
+
+type Handshaker interface {
+	Handshake() error
+}
+
+type Fragmenter interface {
+}
+
+// Conn represents a reliable UDP connection
 // Handshake/FIN are out of scope for this MVP; stream semantics only.
 type Conn struct {
 	// socket / addressing
 	udpConn        *net.UDPConn
 	localEndpoint  *udp.Endpoint
 	remoteEndpoint *udp.Endpoint
-
 	// config
 	cfg FlowControlConfig
-	mss int
 
-	// send side (guarded by sendMu unless noted)
-	sendMu        sync.Mutex
-	sendBase      uint32 // first unacked byte
-	nextSeq       uint32 // next byte sequence to assign
-	nextSendSeq   uint32
-	sendQ         *bytes.Buffer // queued app data (bounded by cfg.SendBufBytes)
-	sendCond      *sync.Cond    // signals space available / data added
-	bytesInFlight int
-	unacked       map[uint32]segMeta // seqStart -> meta
-	order         []uint32           // seqStarts in send order (oldest first)
+	state      ConnState
+	inCh       chan *Packet
+	closedFlag bool
 
-	// recv side
-	rcvMu      sync.Mutex
-	rcvNext    uint32
-	ooo        map[uint32][]byte // out-of-order segments by seqStart
-	appBuf     *ringBuffer       // ordered bytes for Read()
-	ackPending atomic.Bool       // (reserved) if you add explicit flags later
-	// timers
-	rtoMu    sync.Mutex
-	rto      time.Duration
-	rtoTimer *time.Timer
-	ackTimer *time.Timer // set on-demand in recv.go
+	//
+	initialSeqNumLocal  uint32
+	initialSeqNumRemote uint32
+	// send state
+	nextSeqNum  uint32
+	connID      uint32
+	sendBase    uint32 // oldest unacked sequence (i.e., cumulative ACK floor).
+	ackedSeqNum uint32 // highest cumulative ACK seen (often == sendBase).
+	expected    uint32
+	//
+	unacked map[uint32]*Packet // seq -> packet
+	// receive state
+}
 
-	// control/lifecycle
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+func (c *Conn) setState(state ConnState) {
+	c.state = state
+}
 
-	closed    atomic.Bool
-	closeOnce sync.Once
-	closeErr  atomic.Value // error
+func (c *Conn) inState(state ConnState) bool {
+	return c.state == state
+}
 
-	// write serialization (shared per UDP socket if you ever share it)
-	writeMu *sync.Mutex
-	// Add a mutex field for synchronization
-	mutex sync.Mutex
+func (c *Conn) Read(p []byte) (n int, err error) {
+	if !c.inState(StateEstablished) {
+		return 0, udp.ErrConnectionNotEstablished
+	}
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Conn) Write(p []byte) (n int, err error) {
+	if !c.inState(StateEstablished) {
+		return 0, udp.ErrConnectionNotEstablished
+	}
+
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Conn) Close() error {
+	c.closedFlag = true
+	c.udpConn.SetReadDeadline(time.Now())
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewConn constructs a connection around an already-connected UDP socket.
@@ -76,70 +99,9 @@ func NewConn(c *net.UDPConn, l, r *udp.Endpoint, cfg FlowControlConfig) (*Conn, 
 		localEndpoint:  l,
 		remoteEndpoint: r,
 		cfg:            cfg,
-		mss:            cfg.MSS,
-
-		sendBase: 1, // start at 1 so 0 can be a sentinel in traces
-		nextSeq:  1,
-		sendQ:    &bytes.Buffer{},
-		unacked:  make(map[uint32]segMeta),
-		order:    make([]uint32, 0, 128),
-
-		rcvNext: 1,
-		ooo:     make(map[uint32][]byte),
-		appBuf:  newRingBuffer(cfg.RecvBufBytes),
-
-		rto:     cfg.RTO,
-		writeMu: &sync.Mutex{},
 	}
-	rc.sendCond = sync.NewCond(&rc.sendMu)
-
-	// Start receiver loop (defined in recv.go)
-	rc.wg.Add(1)
-	go rc.recvLoop()
 
 	return rc, nil
-}
-
-// Read implements stream semantics. It blocks until data is available or the
-// connection is closed and drained. On close, it returns any stored terminal error
-// or io.EOF when the buffer is empty.
-func (c *Conn) Read(p []byte) (int, error) {
-	n, err := c.appBuf.Read(p)
-	if n > 0 {
-		return n, nil
-	}
-	if c.closed.Load() {
-		if errv := c.closeErr.Load(); errv != nil {
-			return 0, errv.(error)
-		}
-		return 0, io.EOF
-	}
-	return n, err
-}
-
-// Close terminates the connection and waits for the recv loop to exit.
-func (c *Conn) Close() error {
-	c.closeOnce.Do(func() {
-		c.closed.Store(true)
-		c.cancel()
-
-		// stop timers
-		c.stopRTO() // defined in send.go
-		c.rtoMu.Lock()
-		if c.ackTimer != nil {
-			c.ackTimer.Stop()
-			c.ackTimer = nil
-		}
-		c.rtoMu.Unlock()
-
-		// wake blocked goroutines
-		c.sendCond.Broadcast()
-		c.appBuf.Close()
-
-		_ = c.udpConn.Close()
-	})
-	c.wg.Wait()
-	return nil
 }
 
 // Outbound reports whether this connection was dialed out.
@@ -156,35 +118,90 @@ func (c *Conn) RemoteEndpoint() exonet.Endpoint {
 	return c.remoteEndpoint
 }
 
-// NOTE: Flagged for check (might be ai overcomplexity)
-// closeWithError records the error and closes the connection.
-func (c *Conn) closeWithError(err error) {
-	if err != nil {
-		c.closeErr.Store(err)
+func (c *Conn) receivingLoop() {
+	const maxPayloadSize = 64 * 1024
+	buf := make([]byte, maxPayloadSize)
+	for {
+		c.udpConn.SetReadDeadline(time.Now().Add(1 * time.Second))
+		n, addr, err := c.udpConn.ReadFromUDP(buf)
+		if err != nil {
+			if c.closedFlag {
+				return
+			}
+			continue
+		}
+
+		// NOTE: test it
+		if addr.String() != c.remoteEndpoint.IP.String() {
+			continue // not for this Conn
+		}
+
+		pktData := make([]byte, n)
+		copy(pktData, buf[:n])
+		pkt := &Packet{}
+		if err := pkt.Unmarshal(pktData); err != nil {
+			continue // drop malformed
+		}
+		if int(pkt.Len) > maxPayloadSize {
+			continue // invalid length
+		}
+		isControl := pkt.Flags&(FlagSYN|FlagACK|FlagFIN) != 0 && pkt.Len == 0
+		if isControl {
+			// Block until enqueued
+			c.inCh <- pkt
+		} else {
+			// Drop data if channel full
+			select {
+			case c.inCh <- pkt:
+			default:
+				// drop data
+			}
+		}
 	}
-	_ = c.Close()
 }
 
-// seqLT compares sequence numbers with wrap-around semantics.
-func seqLT(a, b uint32) bool { return int32(a-b) < 0 }
+// Go
+func (c *Conn) InboundPacketHandler() {
+	for pkt := range c.inCh {
+		if pkt.Flags&FlagACK != 0 {
+			c.handleAckPacket(pkt)
+			continue
+		}
 
-// sendPacket sends a packet over the UDP connection.
-func (c *Conn) sendPacket(pkt *Packet) error {
-	raw, err := pkt.Marshal()
-	if err != nil {
-		return err
+		if pkt.Flags&(FlagSYN|FlagFIN) != 0 {
+			c.handleControlPacket(pkt)
+			continue
+		}
+
+		c.handleDataPacket(pkt)
 	}
-
-	c.writeMu.Lock()
-	defer c.writeMu.Unlock()
-
-	_, err = c.udpConn.Write(raw)
-	return err
 }
 
-// handleRTO handles retransmission timeouts by retransmitting the earliest unacked segment.
-func (c *Conn) handleRTO() {
-	// Implementation for retransmission timeout handling
-	// This will involve retransmitting the earliest unacked segment
-	// and applying exponential backoff to the retransmission timer.
+// handleAckPacket processes ACK packets
+func (c *Conn) handleAckPacket(pkt *Packet) {
+	ack := pkt.Ack
+	for seq := range c.unacked {
+		if seq <= ack {
+			delete(c.unacked, seq)
+		}
+	}
+	c.sendBase = ack + 1
+}
+
+// handleControlPacket processes SYN, FIN, and other control packets
+func (c *Conn) handleControlPacket(pkt *Packet) {
+	// Example: handle SYN, FIN, or other control logic
+	if pkt.Flags&FlagSYN != 0 {
+		// ...handle SYN logic...
+	}
+	if pkt.Flags&FlagFIN != 0 {
+		// ...handle FIN logic...
+	}
+	// ...handle other control flags as needed...
+}
+
+// handleDataPacket processes data packets
+func (c *Conn) handleDataPacket(pkt *Packet) {
+	// Example: deliver to receive buffer, update expected, send ACK, etc.
+	// ...implement data delivery and ACK logic...
 }
