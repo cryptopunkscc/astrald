@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/udp"
 	"github.com/smallnest/ringbuffer"
 )
@@ -28,11 +29,10 @@ type Handshaker interface {
 }
 
 type Unacked struct {
-	pkt         *Packet   // Packet metadata (seq, len, ring offsets)
+	pkt         *Packet   // Packet metadata (seq, len)
 	sentTime    time.Time // Last sent time
 	rtxCount    int       // Retransmit count
-	offset      int       // Offset in sendRB (handshake: -1)
-	length      int       // Length in sendRB / payload length (handshake: 0)
+	length      int       // Payload length
 	isHandshake bool      // True if this entry is for a handshake control packet
 }
 
@@ -50,6 +50,7 @@ type Conn struct {
 	udpConn        *net.UDPConn // Underlying UDP socket
 	localEndpoint  *udp.Endpoint
 	remoteEndpoint *udp.Endpoint
+	outbound       bool // true if we initiated the connection
 
 	// Configuration (reliability, flow control, etc.)
 	cfg ReliableTransportConfig // All protocol parameters
@@ -71,9 +72,9 @@ type Conn struct {
 	inflight uint32 // Number of unacked packets
 
 	// Send buffer and reliability
-	sendRB  *ringbuffer.RingBuffer // Persistent send ring buffer
+	sendRB  *ringbuffer.RingBuffer // Persistent send ring buffer (FIFO; bytes consumed at packetization)
 	frag    *BasicFragmenter       // Fragmenter for packetization
-	unacked map[uint32]*Unacked    // Map of unacked packets (seq -> Unacked)
+	unacked map[uint32]*Unacked    // Map of unacked packets (seq -> Unacked); stores full packet copies for retransmission
 
 	// Concurrency and coordination
 	sendMu   sync.Mutex // Protects all shared state
@@ -198,10 +199,25 @@ func NewConn(cn *net.UDPConn, l, r *udp.Endpoint, cfg ReliableTransportConfig) (
 	rc.recvCond = sync.NewCond(&rc.recvMu)
 	rc.recvOO = make(map[uint32]*Packet)
 
-	// start fused receive loop
+	// start fused receive loop immediately so handshake packets can be processed
+	// NOTE: senderLoop is started only after handshake succeeds (see onEstablished())
 	go rc.recvLoop()
 
 	return rc, nil
+}
+
+func (c *Conn) onEstablished() {
+	// Idempotent: only transition once
+	if c.inState(StateEstablished) || c.isClosed() {
+		return
+	}
+	// Initialize receive-side expected sequence to remote initial seq + 1 (account for SYN consuming one seq)
+	if c.initialSeqNumRemote != 0 && c.expected == 0 {
+		c.expected = c.initialSeqNumRemote + 1
+	}
+	c.setState(StateEstablished)
+	// Future established-only initializations (keepalives, metrics, etc.) go here.
+	go c.senderLoop()
 }
 
 // HandleAckPacket processes ACK packets
@@ -249,4 +265,19 @@ func (c *Conn) HandleControlPacket(packet *Packet) {
 		// TODO: ...handle FIN logic...
 	}
 	// ...handle other control flags as needed...
+}
+
+// Interface compliance for exonet.Conn
+func (c *Conn) Outbound() bool { return c.outbound }
+func (c *Conn) LocalEndpoint() exonet.Endpoint {
+	if c == nil {
+		return nil
+	}
+	return c.localEndpoint
+}
+func (c *Conn) RemoteEndpoint() exonet.Endpoint {
+	if c == nil {
+		return nil
+	}
+	return c.remoteEndpoint
 }

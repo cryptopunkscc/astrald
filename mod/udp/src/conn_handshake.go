@@ -60,7 +60,8 @@ func (c *Conn) StartClientHandshake(ctx context.Context) error {
 				if err := c.SendControlPacket(FlagACK, c.initialSeqNumLocal+1, c.initialSeqNumRemote+1); err != nil {
 					return err
 				}
-				c.setState(StateEstablished)
+				// Transition to established (state change + sender loop) via helper
+				c.onEstablished()
 				// fused receive loop will now dispatch directly
 				return nil
 			}
@@ -100,7 +101,7 @@ func (c *Conn) StartServerHandshake(ctx context.Context, synPkt *Packet) error {
 				c.sendBase = c.initialSeqNumLocal + 1
 				c.nextSeqNum = c.initialSeqNumLocal + 1
 				c.sendMu.Unlock()
-				c.setState(StateEstablished)
+				c.onEstablished()
 				// fused receive loop will now dispatch directly
 				return nil
 			}
@@ -118,7 +119,11 @@ func (c *Conn) sendHandshakeControl(flags uint8, seq, ack uint32) error {
 	if c.udpConn == nil {
 		return udp.ErrConnClosed
 	}
-	if _, err := c.udpConn.Write(b); err != nil {
+	// Use WriteToUDP to support server-side unconnected sockets and client connected sockets uniformly.
+	if c.remoteEndpoint == nil {
+		return fmt.Errorf("remote endpoint nil")
+	}
+	if _, err := c.udpConn.WriteToUDP(b, c.remoteEndpoint.UDPAddr()); err != nil {
 		return err
 	}
 	c.sendMu.Lock()
@@ -127,7 +132,6 @@ func (c *Conn) sendHandshakeControl(flags uint8, seq, ack uint32) error {
 			pkt:         pkt,
 			sentTime:    time.Now(),
 			rtxCount:    0,
-			offset:      -1,
 			length:      0,
 			isHandshake: true,
 		}
@@ -149,7 +153,10 @@ func (c *Conn) SendControlPacket(flags uint8, seq, ack uint32) error {
 	if c.udpConn == nil {
 		return udp.ErrConnClosed
 	}
-	_, err = c.udpConn.Write(data)
+	if c.remoteEndpoint == nil {
+		return fmt.Errorf("remote endpoint nil")
+	}
+	_, err = c.udpConn.WriteToUDP(data, c.remoteEndpoint.UDPAddr())
 	if err != nil {
 		return fmt.Errorf(`SendControlPacket failed to send control packet: %w`, err)
 	}

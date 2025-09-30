@@ -59,7 +59,7 @@ type Config struct {
 	PublicEndpoints []string      `yaml:"public_endpoints,omitempty"`
 	DialTimeout     time.Duration `yaml:"dial_timeout,omitempty"` // Timeout for dialing connections (default 1 minute)
 
-	FlowControl ReliableTransportConfig `yaml:"flow_control,omitempty"` // Flow control settings for UDP connections
+	TransportConfig ReliableTransportConfig `yaml:"transport_config,omitempty"` // Flow control settings for UDP connections
 }
 
 // ReliableTransportConfig holds configuration for individual UDP connections.
@@ -157,7 +157,7 @@ func clampDur(v, lo, hi time.Duration) time.Duration {
 var defaultConfig = Config{
 	ListenPort:  ListenPort,
 	DialTimeout: time.Minute,
-	FlowControl: ReliableTransportConfig{
+	TransportConfig: ReliableTransportConfig{
 		MaxSegmentSize:            DefaultMSS,
 		MaxWindowBytes:            DefaultWindowBytes,
 		RetransmissionInterval:    DefaultRTO,

@@ -27,29 +27,12 @@ func (c *Conn) windowFull() bool {
 	return len(c.unacked) >= c.cfg.MaxWindowPackets
 }
 
-// nextSendOffset returns the offset in sendRB for the next fragment to send.
-// If no packets are unacked, starts at sendBase. Otherwise, finds the highest offset of unacked packets.
-func (c *Conn) nextSendOffset() int {
-	if len(c.unacked) == 0 {
-		return int(c.sendBase)
-	}
-
-	maxOff := 0
-	for _, u := range c.unacked {
-		if u.offset+u.length > maxOff {
-			maxOff = u.offset + u.length
-		}
-	}
-	return maxOff
-}
-
-// fillFragBuf fills buf with ask bytes from sendRB at offset off.
-// Returns an error if the buffer is too small or the read fails.
-func (c *Conn) fillFragBuf(buf []byte, _ int, ask int) error {
+// fillFragBuf reads exactly ask bytes from the head of sendRB into buf.
+func (c *Conn) fillFragBuf(buf []byte, ask int) error {
 	if ask > len(buf) {
 		return fmt.Errorf("fragBuf too small: ask=%d, buf=%d", ask, len(buf))
 	}
-	readN, err := c.sendRB.Read(buf[:ask])
+	readN, err := c.sendRB.Read(buf[:ask]) // destructive read (FIFO)
 	if err != nil {
 		return err
 	}
@@ -59,13 +42,21 @@ func (c *Conn) fillFragBuf(buf []byte, _ int, ask int) error {
 	return nil
 }
 
-// sendFragment fragments, marshals, and sends a packet from sendRB at offset off, up to ask bytes.
-// Updates unacked and nextSeqNum. Returns true if a packet was sent, false otherwise.
-func (c *Conn) sendFragment(off int, ask int) (bool, error) {
+// sendFragment consumes up to ask bytes from the send ring buffer, builds a packet and sends it.
+// Returns true if a packet was sent.
+func (c *Conn) sendFragment(ask int) (bool, error) {
 	c.sendMu.Lock()
 
+	if ask <= 0 || c.sendRB.Length() == 0 {
+		c.sendMu.Unlock()
+		return false, nil
+	}
+	if ask > int(c.sendRB.Length()) { // clamp to available
+		ask = int(c.sendRB.Length())
+	}
+
 	fragBuf := make([]byte, ask)
-	if err := c.fillFragBuf(fragBuf, off, ask); err != nil {
+	if err := c.fillFragBuf(fragBuf, ask); err != nil {
 		c.sendMu.Unlock()
 		return false, err
 	}
@@ -88,7 +79,6 @@ func (c *Conn) sendFragment(off int, ask int) (bool, error) {
 		pkt:      pkt,
 		sentTime: time.Now(),
 		rtxCount: 0,
-		offset:   off,
 		length:   pktLen,
 	}
 	c.nextSeqNum += uint32(pktLen)
@@ -144,10 +134,8 @@ func (c *Conn) startRtxTimer() {
 }
 
 // senderLoop runs as a goroutine and is responsible for sending packets from the send buffer.
-// It enforces flow control (packet window), fragments data, and sends packets.
-// The loop blocks when the window is full or the buffer is empty, and wakes up on sendCond.
-// Exits cleanly on connection close or state change, and notifies waiters.
-// For PoC, does not implement advanced pacing, batching, or prioritization.
+// FIFO model: bytes are consumed from sendRB as soon as they are packetized. Retransmissions
+// use copies stored in unacked map. No random access over the ring is performed.
 func (c *Conn) senderLoop() {
 	defer func() { c.sendCond.Broadcast() }()
 	for {
@@ -163,20 +151,13 @@ func (c *Conn) senderLoop() {
 				return
 			}
 		}
-		off := c.nextSendOffset()
-		end := int(c.sendRB.Length())
-		if off >= end { // nothing to send after all
-			c.sendMu.Unlock()
-			continue
-		}
-		rem := end - off
-		ask := rem
+		ask := int(c.sendRB.Length())
 		if ask > c.cfg.MaxSegmentSize {
 			ask = c.cfg.MaxSegmentSize
 		}
 		c.sendMu.Unlock()
 
-		sent, err := c.sendFragment(off, ask)
+		sent, err := c.sendFragment(ask)
 		if err != nil {
 			fmt.Printf("sendFragment error: %v\n", err)
 			continue

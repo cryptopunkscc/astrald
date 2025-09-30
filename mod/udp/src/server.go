@@ -102,12 +102,14 @@ func (s *Server) readLoop(ctx *astral.Context, localEndpoint *udp.Endpoint) {
 				continue
 			}
 
-			conn, err = NewConn(s.listener, localEndpoint, remoteEndpoint, s.Module.config.FlowControl)
+			conn, err = NewConn(s.listener, localEndpoint, remoteEndpoint, s.Module.config.TransportConfig)
 			if err != nil {
 				s.log.Errorv(1, "NewConn error for %v: %v", addr, err)
 				s.mutex.Unlock()
 				continue
 			}
+
+			conn.outbound = false // mark as inbound connection
 
 			conn.inCh = make(chan *Packet, 128)
 			s.conns[remoteKey] = conn

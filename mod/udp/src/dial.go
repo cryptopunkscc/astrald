@@ -34,10 +34,12 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 	}
 
 	reliableConn, err := NewConn(udpConn, localEndpoint, remoteEndpoint,
-		mod.config.FlowControl)
+		mod.config.TransportConfig)
 	if err != nil {
 		return nil, err
 	}
+
+	reliableConn.outbound = true // mark as outbound connection
 
 	return reliableConn, nil
 }

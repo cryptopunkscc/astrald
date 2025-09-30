@@ -28,10 +28,14 @@ func (c *Conn) recvLoop() {
 			}
 			continue
 		}
-		// address filter
-		if addr.String() != c.remoteEndpoint.IP.String() {
+		// address filter (compare only IP; optional port check commented for NAT flexibility)
+		if !addr.IP.Equal(net.IP(c.remoteEndpoint.IP)) {
+			// TODO: debug log for unexpected source (guarded by verbosity flag)
 			continue
 		}
+		// If strict port matching is desired and stable, uncomment:
+		// if addr.Port != int(c.remoteEndpoint.Port) { continue }
+
 		if n < 13 { // minimum header size
 			continue
 		}

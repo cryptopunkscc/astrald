@@ -6,9 +6,9 @@ import (
 )
 
 func TestFlowControlConfigDefaults(t *testing.T) {
-	def := defaultConfig.FlowControl
+	def := defaultConfig.TransportConfig
 	if def.MSS != DefaultMSS || def.WindowBytes != DefaultWindowBytes || def.RTO != DefaultRTO || def.RTOMax != DefaultRTOMax || def.RetryLimit != DefaultRetries || def.AckDelay != DefaultAckDelay || def.RecvBufBytes != DefaultRecvBufBytes || def.SendBufBytes != DefaultSendBufBytes {
-		t.Errorf("defaultConfig.FlowControl does not match expected defaults: %+v", def)
+		t.Errorf("defaultConfig.TransportConfig does not match expected defaults: %+v", def)
 	}
 }
 
