@@ -47,51 +47,61 @@ const (
 	MaxSendBufBytes     = 8 << 20
 )
 
+const (
+	DefaultWndPkts = 32
+	MinWndPkts     = 1
+	MaxWndPkts     = 256
+)
+
 // Config holds general settings for the UDP module.
 type Config struct {
 	ListenPort      int           `yaml:"listen_port,omitempty"` // Port to listen on for incoming connections (default 1791)
 	PublicEndpoints []string      `yaml:"public_endpoints,omitempty"`
 	DialTimeout     time.Duration `yaml:"dial_timeout,omitempty"` // Timeout for dialing connections (default 1 minute)
 
-	FlowControl FlowControlConfig `yaml:"flow_control,omitempty"` // Flow control settings for UDP connections
+	FlowControl ReliableTransportConfig `yaml:"flow_control,omitempty"` // Flow control settings for UDP connections
 }
 
-// FlowControlConfig holds configuration for individual UDP connections.
-type FlowControlConfig struct {
-	MSS          int           // Maximum Segment Size (default 1187)
-	WindowBytes  int           // Send window size in bytes (default 16 * MSS)
-	RTO          time.Duration // Initial retransmission timeout (default 500ms)
-	RTOMax       time.Duration // Maximum retransmission timeout (default 4s)
-	RetryLimit   int           // Maximum retransmission attempts (default 8)
-	IdleTimeout  time.Duration // Connection idle timeout (default 60s)
-	AckDelay     time.Duration // Delayed ACK timer (default 25ms)
-	RecvBufBytes int           // Receive buffer size (default 1MB)
-	SendBufBytes int           // Send buffer size (default 1MB)
+// ReliableTransportConfig holds configuration for individual UDP connections.
+type ReliableTransportConfig struct {
+	MaxSegmentSize            int           // Maximum Segment Size (default 1187)
+	MaxWindowBytes            int           // Send window size in bytes (default 16 * MaxSegmentSize)
+	MaxWindowPackets          int           // Max in-flight packets (packet-count window, default 32)
+	RetransmissionInterval    time.Duration // Initial retransmission timeout (default 500ms)
+	MaxRetransmissionInterval time.Duration // Maximum retransmission timeout (default 4s)
+	RetransmissionLimit       int           // Maximum retransmission attempts (default 8)
+	IdleTimeout               time.Duration // Connection idle timeout (default 60s)
+	AckDelay                  time.Duration // Delayed ACK timer (default 25ms)
+	RecvBufBytes              int           // Receive buffer size (default 1MB)
+	SendBufBytes              int           // Send buffer size (default 1MB)
 }
 
 // Normalize sets sensible defaults for zero-values, clamps to safe ranges, and enforces invariants.
 // See RFC 9000, RFC 8085, RFC 6298 for rationale.
-func (c *FlowControlConfig) Normalize() {
-	c.setDefaults()
+func (c *ReliableTransportConfig) Normalize() {
+	c.SetDefaults()
 	c.clampValues()
 }
 
-// setDefaults initializes zero-values with sensible defaults.
-func (c *FlowControlConfig) setDefaults() {
-	if c.MSS == 0 {
-		c.MSS = DefaultMSS
+// SetDefaults initializes zero-values with sensible defaults.
+func (c *ReliableTransportConfig) SetDefaults() {
+	if c.MaxSegmentSize == 0 {
+		c.MaxSegmentSize = DefaultMSS
 	}
-	if c.WindowBytes == 0 {
-		c.WindowBytes = DefaultWindowBytes
+	if c.MaxWindowBytes == 0 {
+		c.MaxWindowBytes = DefaultWindowBytes
 	}
-	if c.RTO == 0 {
-		c.RTO = DefaultRTO
+	if c.MaxWindowPackets == 0 {
+		c.MaxWindowPackets = DefaultWndPkts
 	}
-	if c.RTOMax == 0 {
-		c.RTOMax = DefaultRTOMax
+	if c.RetransmissionInterval == 0 {
+		c.RetransmissionInterval = DefaultRTO
 	}
-	if c.RetryLimit == 0 {
-		c.RetryLimit = DefaultRetries
+	if c.MaxRetransmissionInterval == 0 {
+		c.MaxRetransmissionInterval = DefaultRTOMax
+	}
+	if c.RetransmissionLimit == 0 {
+		c.RetransmissionLimit = DefaultRetries
 	}
 	if c.AckDelay == 0 {
 		c.AckDelay = DefaultAckDelay
@@ -110,13 +120,14 @@ func (c *FlowControlConfig) setDefaults() {
 // all of which are stated at the top of this file)
 
 // clampValues ensures all fields are within safe ranges and enforces invariants.
-func (c *FlowControlConfig) clampValues() {
-	c.MSS = clampInt(c.MSS, MinMSS, MaxMSS)
-	c.WindowBytes = clampInt(c.WindowBytes, c.MSS, MaxWindowBytes)
-	c.RTO = clampDur(c.RTO, MinRTO, MaxRTOCeiling)
-	c.RTOMax = clampDur(c.RTOMax, c.RTO, MaxRTOCeiling)
-	c.RetryLimit = clampInt(c.RetryLimit, MinRetries, MaxRetries)
-	c.AckDelay = clampDur(c.AckDelay, MinAckDelay, c.RTO/2)
+func (c *ReliableTransportConfig) clampValues() {
+	c.MaxSegmentSize = clampInt(c.MaxSegmentSize, MinMSS, MaxMSS)
+	c.MaxWindowBytes = clampInt(c.MaxWindowBytes, c.MaxSegmentSize, MaxWindowBytes)
+	c.MaxWindowPackets = clampInt(c.MaxWindowPackets, MinWndPkts, MaxWndPkts)
+	c.RetransmissionInterval = clampDur(c.RetransmissionInterval, MinRTO, MaxRTOCeiling)
+	c.MaxRetransmissionInterval = clampDur(c.MaxRetransmissionInterval, c.RetransmissionInterval, MaxRTOCeiling)
+	c.RetransmissionLimit = clampInt(c.RetransmissionLimit, MinRetries, MaxRetries)
+	c.AckDelay = clampDur(c.AckDelay, MinAckDelay, c.RetransmissionInterval/2)
 	c.RecvBufBytes = clampInt(c.RecvBufBytes, MinRecvBufBytes, MaxRecvBufBytes)
 	c.SendBufBytes = clampInt(c.SendBufBytes, MinSendBufBytes, MaxSendBufBytes)
 }
@@ -146,16 +157,16 @@ func clampDur(v, lo, hi time.Duration) time.Duration {
 var defaultConfig = Config{
 	ListenPort:  ListenPort,
 	DialTimeout: time.Minute,
-	FlowControl: FlowControlConfig{
-		MSS:          DefaultMSS,
-		WindowBytes:  DefaultWindowBytes,
-		RTO:          DefaultRTO,
-		RTOMax:       DefaultRTOMax,
-		RetryLimit:   DefaultRetries,
-		IdleTimeout:  60 * time.Second, // Default idle timeout of 1 minute
-		AckDelay:     DefaultAckDelay,
-		RecvBufBytes: DefaultRecvBufBytes,
-		SendBufBytes: DefaultSendBufBytes,
+	FlowControl: ReliableTransportConfig{
+		MaxSegmentSize:            DefaultMSS,
+		MaxWindowBytes:            DefaultWindowBytes,
+		RetransmissionInterval:    DefaultRTO,
+		MaxRetransmissionInterval: DefaultRTOMax,
+		RetransmissionLimit:       DefaultRetries,
+		IdleTimeout:               60 * time.Second, // Default idle timeout of 1 minute
+		AckDelay:                  DefaultAckDelay,
+		RecvBufBytes:              DefaultRecvBufBytes,
+		SendBufBytes:              DefaultSendBufBytes,
 	},
 }
 

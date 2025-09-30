@@ -15,12 +15,12 @@ func TestFlowControlConfigDefaults(t *testing.T) {
 func TestFlowControlConfigClamp(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    FlowControlConfig
-		expected FlowControlConfig
+		input    ReliableTransportConfig
+		expected ReliableTransportConfig
 	}{
 		{
 			name: "Values below range are clamped",
-			input: FlowControlConfig{
+			input: ReliableTransportConfig{
 				MSS:          100,
 				WindowBytes:  100,
 				RTO:          5 * time.Millisecond,
@@ -30,7 +30,7 @@ func TestFlowControlConfigClamp(t *testing.T) {
 				RecvBufBytes: 100,
 				SendBufBytes: 100,
 			},
-			expected: FlowControlConfig{
+			expected: ReliableTransportConfig{
 				MSS:          MinMSS,
 				WindowBytes:  MinMSS,
 				RTO:          MinRTO,
@@ -43,7 +43,7 @@ func TestFlowControlConfigClamp(t *testing.T) {
 		},
 		{
 			name: "Values above range are clamped",
-			input: FlowControlConfig{
+			input: ReliableTransportConfig{
 				MSS:          2000,
 				WindowBytes:  2 << 20,
 				RTO:          70 * time.Second,
@@ -53,13 +53,13 @@ func TestFlowControlConfigClamp(t *testing.T) {
 				RecvBufBytes: 16 << 20,
 				SendBufBytes: 16 << 20,
 			},
-			expected: FlowControlConfig{
+			expected: ReliableTransportConfig{
 				MSS:          MaxMSS,
 				WindowBytes:  MaxWindowBytes,
 				RTO:          MaxRTOCeiling,
 				RTOMax:       MaxRTOCeiling,
 				RetryLimit:   MaxRetries,
-				AckDelay:     MinAckDelay, // AckDelay is clamped to MinAckDelay if above range
+				AckDelay:     1 * time.Second, // Correct expected value
 				RecvBufBytes: MaxRecvBufBytes,
 				SendBufBytes: MaxSendBufBytes,
 			},

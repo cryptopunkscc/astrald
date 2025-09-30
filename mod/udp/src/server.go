@@ -112,7 +112,7 @@ func (s *Server) readLoop(ctx *astral.Context, localEndpoint *udp.Endpoint) {
 			conn.inCh = make(chan *Packet, 128)
 			s.conns[remoteKey] = conn
 			go func() {
-				err := conn.startServerHandshake(ctx, pkt)
+				err := conn.StartServerHandshake(ctx, pkt)
 				if err != nil {
 					s.log.Errorv(1, "handshake error for %v: %v", addr, err)
 				}

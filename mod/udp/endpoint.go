@@ -135,6 +135,13 @@ func ParseEndpoint(s string) (*Endpoint, error) {
 	}, nil
 }
 
+func (e *Endpoint) UDPAddr() *net.UDPAddr {
+	return &net.UDPAddr{
+		IP:   net.ParseIP(e.IP.String()),
+		Port: int(e.Port),
+	}
+}
+
 func init() {
 	_ = astral.DefaultBlueprints.Add(&Endpoint{})
 
