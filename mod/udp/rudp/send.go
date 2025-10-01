@@ -1,7 +1,6 @@
 package rudp
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -27,88 +26,90 @@ func (c *Conn) windowFull() bool {
 	return len(c.unacked) >= c.cfg.MaxWindowPackets
 }
 
-// fillFragBuf reads exactly ask bytes from the head of sendRB into buf.
-func (c *Conn) fillFragBuf(buf []byte, ask int) error {
-	if ask > len(buf) {
-		return fmt.Errorf("fragBuf too small: ask=%d, buf=%d", ask, len(buf))
-	}
-	readN, err := c.sendRB.Read(buf[:ask]) // destructive read (FIFO)
-	if err != nil {
-		return err
-	}
-	if readN != ask {
-		return fmt.Errorf("partial read from sendRB: expected %d, got %d", ask, readN)
-	}
-	return nil
-}
-
-// sendFragment consumes up to ask bytes from the send ring buffer, builds a packet and sends it.
-// Returns true if a packet was sent.
-func (c *Conn) sendFragment(ask int) (bool, error) {
-	c.sendMu.Lock()
-
+// planFragmentLocked decides how many bytes to send (<= ask) and drains them into a fresh buffer.
+// Caller MUST hold sendMu. Returns nil buffer if nothing to send.
+func (c *Conn) planFragmentLocked(ask int) (seq uint32, buf []byte, n int) {
 	if ask <= 0 || c.sendRB.Length() == 0 {
-		c.sendMu.Unlock()
-		return false, nil
+		return 0, nil, 0
 	}
-	if ask > int(c.sendRB.Length()) { // clamp to available
+	if ask > int(c.sendRB.Length()) {
 		ask = int(c.sendRB.Length())
 	}
-
-	fragBuf := make([]byte, ask)
-	if err := c.fillFragBuf(fragBuf, ask); err != nil {
-		c.sendMu.Unlock()
-		return false, err
+	if ask > c.cfg.MaxSegmentSize {
+		ask = c.cfg.MaxSegmentSize
 	}
+	fragBuf := make([]byte, ask)
+	readN, _ := c.sendRB.Read(fragBuf)
+	if readN == 0 {
+		return 0, nil, 0
+	}
+	return c.nextSeqNum, fragBuf[:readN], readN
+}
 
-	pkt, pktLen, ok := c.frag.MakeNew(c.nextSeqNum, ask, &ByteStreamBuffer{data: fragBuf[:ask]})
-	if !ok || pktLen == 0 {
+// buildPacket converts raw payload into a Packet and marshals it.
+func (c *Conn) buildPacket(seq uint32, payload []byte) (*Packet, []byte, error) {
+	pkt := &Packet{Seq: seq, Ack: c.ackedSeqNum, Flags: FlagACK, Len: uint16(len(payload)), Payload: payload}
+	b, err := pkt.Marshal()
+	if err != nil {
+		return nil, nil, err
+	}
+	return pkt, b, nil
+}
+
+// commitPacketLocked registers the packet as unacked and advances sequence numbers. Caller holds sendMu.
+func (c *Conn) commitPacketLocked(pkt *Packet) (startTimer bool) {
+	seq := pkt.Seq
+	c.unacked[seq] = &Unacked{pkt: pkt, sentTime: time.Now(), rtxCount: 0, length: int(pkt.Len)}
+	c.nextSeqNum += uint32(pkt.Len)
+	return len(c.unacked) == 1
+}
+
+// armRetransmitTimer starts retransmission timer if needed (no lock held).
+func (c *Conn) armRetransmitTimer(need bool) {
+	if need {
+		c.startRtxTimer()
+	}
+}
+
+// rollbackPacketLocked removes an unacked packet on send failure. Caller does NOT hold lock upon entry.
+func (c *Conn) rollbackPacketLocked(seq uint32, length int) {
+	c.sendMu.Lock()
+	if u, ok := c.unacked[seq]; ok && u.length == length {
+		delete(c.unacked, seq)
+		if c.nextSeqNum == seq+uint32(length) {
+			c.nextSeqNum = seq
+		}
+		if len(c.unacked) == 0 && c.rtxTimer != nil {
+			c.rtxTimer.Stop()
+			c.rtxTimer = nil
+		}
+		c.sendCond.Broadcast()
+	}
+	c.sendMu.Unlock()
+}
+
+// sendFragment consumes up to ask bytes, builds a packet and sends it.
+func (c *Conn) sendFragment(ask int) (bool, error) {
+	c.sendMu.Lock()
+	seq, payload, plen := c.planFragmentLocked(ask)
+	if plen == 0 {
 		c.sendMu.Unlock()
 		return false, nil
 	}
-	pkt.Ack = c.ackedSeqNum
-
-	b, err := pkt.Marshal()
+	pkt, raw, err := c.buildPacket(seq, payload)
 	if err != nil {
 		c.sendMu.Unlock()
 		return false, err
 	}
-
-	seq := c.nextSeqNum
-	c.unacked[seq] = &Unacked{
-		pkt:      pkt,
-		sentTime: time.Now(),
-		rtxCount: 0,
-		length:   pktLen,
-	}
-	c.nextSeqNum += uint32(pktLen)
-	startTimer := len(c.unacked) == 1
-	c.sendCond.Broadcast() // wake writers: space freed by consumption
+	startTimer := c.commitPacketLocked(pkt)
+	c.sendCond.Broadcast()
 	c.sendMu.Unlock()
 
-	if startTimer {
-		c.startRtxTimer()
-	}
-
-	// Network I/O outside lock
-	_, err = c.sendDatagram(b)
-	if err != nil {
-		c.sendMu.Lock()
-		if u, ok2 := c.unacked[seq]; ok2 && u.length == pktLen {
-			delete(c.unacked, seq)
-			if c.nextSeqNum == seq+uint32(pktLen) { // rewind if no later sends
-				c.nextSeqNum = seq
-			}
-			if len(c.unacked) == 0 && c.rtxTimer != nil {
-				c.rtxTimer.Stop()
-				c.rtxTimer = nil
-			}
-			c.sendCond.Broadcast() // notify writers rollback restored space
-		}
-		c.sendMu.Unlock()
+	c.armRetransmitTimer(startTimer)
+	if _, err := c.sendDatagram(raw); err != nil {
+		c.rollbackPacketLocked(seq, int(pkt.Len))
 		return false, err
 	}
-
 	return true, nil
 }
 
@@ -117,7 +118,7 @@ func (c *Conn) startRtxTimer() {
 	c.sendMu.Lock()
 	if c.rtxTimer != nil {
 		c.sendMu.Unlock()
-		return // already running
+		return
 	}
 	interval := c.cfg.RetransmissionInterval
 	c.rtxTimer = time.AfterFunc(interval, func() {
@@ -157,11 +158,7 @@ func (c *Conn) senderLoop() {
 		}
 		c.sendMu.Unlock()
 
-		sent, err := c.sendFragment(ask)
-		if err != nil {
-			continue
-		}
-		if !sent {
+		if sent, _ := c.sendFragment(ask); !sent {
 			continue
 		}
 	}
