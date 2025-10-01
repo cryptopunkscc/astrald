@@ -1,4 +1,4 @@
-package udp
+package rudp
 
 import (
 	"sort"
@@ -80,8 +80,8 @@ func (c *Conn) sendPureACK() {
 	if err != nil {
 		return
 	}
-	// best-effort send (no tracking)
-	_, _ = c.udpConn.Write(b)
+	// best-effort send via unified path
+	_, _ = c.sendDatagram(b)
 }
 
 // handleRetransmissionTimeoutLocked assumes sendMu is held and performs retransmissions.
@@ -103,11 +103,12 @@ func (c *Conn) handleRetransmissionTimeoutLocked() (limitExceeded bool) {
 			limitExceeded = true
 			break
 		}
+
 		// Update ACK field to latest cumulative ACK and retransmit
 		u.pkt.Ack = c.ackedSeqNum
 		b, err := u.pkt.Marshal()
 		if err == nil {
-			_, _ = c.udpConn.WriteToUDP(b, c.remoteEndpoint.UDPAddr())
+			_, _ = c.sendDatagram(b)
 		}
 		u.rtxCount++
 		u.sentTime = time.Now()

@@ -1,4 +1,4 @@
-package udp
+package rudp
 
 import (
 	"fmt"
@@ -91,7 +91,7 @@ func (c *Conn) sendFragment(ask int) (bool, error) {
 	}
 
 	// Network I/O outside lock
-	_, err = c.udpConn.WriteToUDP(b, c.remoteEndpoint.UDPAddr())
+	_, err = c.sendDatagram(b)
 	if err != nil {
 		c.sendMu.Lock()
 		if u, ok2 := c.unacked[seq]; ok2 && u.length == pktLen {
@@ -159,11 +159,9 @@ func (c *Conn) senderLoop() {
 
 		sent, err := c.sendFragment(ask)
 		if err != nil {
-			fmt.Printf("sendFragment error: %v\n", err)
 			continue
 		}
 		if !sent {
-			fmt.Println("sendFragment did not send packet (sent=false)")
 			continue
 		}
 	}

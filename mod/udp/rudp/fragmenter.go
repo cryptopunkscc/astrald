@@ -1,4 +1,4 @@
-package udp
+package rudp
 
 // Fragmenter turns buffered bytes into wire packets and reproduces the exact
 // same boundaries for retransmission.

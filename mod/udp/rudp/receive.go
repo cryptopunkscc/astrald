@@ -1,4 +1,4 @@
-package udp
+package rudp
 
 import (
 	"net"
@@ -30,11 +30,8 @@ func (c *Conn) recvLoop() {
 		}
 		// address filter (compare only IP; optional port check commented for NAT flexibility)
 		if !addr.IP.Equal(net.IP(c.remoteEndpoint.IP)) {
-			// TODO: debug log for unexpected source (guarded by verbosity flag)
 			continue
 		}
-		// If strict port matching is desired and stable, uncomment:
-		// if addr.Port != int(c.remoteEndpoint.Port) { continue }
 
 		if n < 13 { // minimum header size
 			continue
@@ -59,15 +56,28 @@ func (c *Conn) recvLoop() {
 		}
 
 		// Established: direct dispatch
+		// Handle data packets first (they may have ACK piggybacked)
+		if pkt.Len > 0 {
+			// Process piggyback ACK if present
+			if pkt.Flags&FlagACK != 0 {
+				c.HandleAckPacket(pkt)
+			}
+			// Process data payload
+			c.handleDataPacket(pkt)
+			continue
+		}
+
+		// Pure ACK packets (no data payload)
 		if pkt.Flags&FlagACK != 0 {
 			c.HandleAckPacket(pkt)
 			continue
 		}
+
+		// Pure control packets (SYN, FIN, etc.)
 		if pkt.Flags&(FlagSYN|FlagFIN) != 0 {
 			c.HandleControlPacket(pkt)
 			continue
 		}
-		c.handleDataPacket(pkt)
 	}
 }
 

@@ -1,32 +1,20 @@
 // conn.go
-package udp
+package rudp
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/udp"
 	"github.com/smallnest/ringbuffer"
 )
-
-// DatagramWriter is how Conn sends bytes to its peer.
-type DatagramWriter interface {
-	WriteDatagram(b []byte) error
-}
-
-// DatagramReceiver is how Conn *receives* parsed packets when it does not own a socket read loop.
-// (For active conns, the recvLoop calls HandleDatagram itself.)
-type DatagramReceiver interface {
-	HandleDatagram(raw []byte) // fast path: parse + process (ACK/data)
-}
-
-type Handshaker interface {
-	Handshake() error
-}
 
 type Unacked struct {
 	pkt         *Packet   // Packet metadata (seq, len)
@@ -47,13 +35,15 @@ type Unacked struct {
 //   - PoC limitations: no congestion control, no SACK, no adaptive pacing
 type Conn struct {
 	// UDP socket and addressing
-	udpConn        *net.UDPConn // Underlying UDP socket
-	localEndpoint  *udp.Endpoint
-	remoteEndpoint *udp.Endpoint
-	outbound       bool // true if we initiated the connection
+	udpConn         *net.UDPConn // Underlying UDP socket
+	localEndpoint   *udp.Endpoint
+	remoteEndpoint  *udp.Endpoint
+	outbound        bool // true if we initiated the connection
+	onEstablishedCb func(*Conn)
+	onClosedCb      func(*Conn)
 
 	// Configuration (reliability, flow control, etc.)
-	cfg ReliableTransportConfig // All protocol parameters
+	cfg Config // All protocol parameters
 
 	// Connection state (atomic for lock-free reads)
 	state      uint32       // Current connection state (stores ConnState)
@@ -95,6 +85,88 @@ type Conn struct {
 	lastAckSent uint32
 	// Out-of-order buffer (keyed by sequence number of first byte)
 	recvOO map[uint32]*Packet // stored packets with Seq > expected awaiting in-order delivery
+}
+
+// unified handshake channel capacity (applies to inbound & outbound)
+const handshakeQueueCap = 64
+
+// NewConn constructs a connection around a UDP socket.
+// Parameters:
+//
+//	outbound   - true for client initiated connection (owns socket & recv loop)
+//	firstPacket / ctx - required only for inbound (outbound=false) to drive server handshake
+func NewConn(cn *net.UDPConn, l, r *udp.Endpoint, cfg Config, outbound bool, firstPacket *Packet, ctx *astral.Context) (*Conn, error) {
+	cfg.Normalize()
+	if cfg.MaxSegmentSize <= 0 {
+		return nil, udp.ErrZeroMSS
+	}
+
+	if !outbound {
+		if firstPacket == nil || ctx == nil {
+			return nil, errors.New("inbound connection requires firstPacket and ctx")
+		}
+	}
+
+	sendRBSize := cfg.MaxWindowBytes * 2 // allow for some retransmit slack
+	rb := ringbuffer.New(sendRBSize)
+	frag := NewBasicFragmenter(cfg.MaxSegmentSize)
+
+	rc := &Conn{
+		udpConn:        cn,
+		localEndpoint:  l,
+		remoteEndpoint: r,
+		cfg:            cfg,
+		sendRB:         rb,
+		frag:           frag,
+		unacked:        make(map[uint32]*Unacked),
+		ErrChan:        make(chan error, 1),                   // Buffered to avoid blocking
+		inCh:           make(chan *Packet, handshakeQueueCap), // handshake delivery channel
+		outbound:       outbound,
+	}
+	rc.sendCond = sync.NewCond(&rc.sendMu)
+	rc.recvRB = ringbuffer.New(cfg.RecvBufBytes)
+	rc.recvCond = sync.NewCond(&rc.recvMu)
+	rc.recvOO = make(map[uint32]*Packet)
+
+	if outbound {
+		// Do not start recvLoop here; StartClientHandshake will start it after handshake completes
+	} else {
+		go rc.recvLoop()
+	}
+
+	if !outbound {
+		// Start server handshake asynchronously for inbound connections
+		go func() {
+			if err := rc.StartServerHandshake(ctx, firstPacket); err != nil {
+				rc.Close()
+			}
+		}()
+	}
+
+	return rc, nil
+}
+
+// OnEstablished registers a callback invoked exactly once when the connection transitions to Established.
+func (c *Conn) OnEstablished(cb func(*Conn)) {
+	c.sendMu.Lock()
+	c.onEstablishedCb = cb
+	c.sendMu.Unlock()
+	// Fast path: if already established, invoke asynchronously
+	if c.inState(StateEstablished) && cb != nil {
+		go cb(c)
+	}
+}
+
+// OnClosed registers a callback invoked exactly once after Close() releases resources.
+// If the connection is already closed when registering, the callback is invoked asynchronously.
+func (c *Conn) OnClosed(cb func(*Conn)) {
+	c.sendMu.Lock()
+	c.onClosedCb = cb
+	closed := c.isClosed()
+	c.sendMu.Unlock()
+	if closed && cb != nil {
+		go cb(c)
+	}
 }
 
 func (c *Conn) setState(state ConnState) {
@@ -154,12 +226,15 @@ func (c *Conn) Close() error {
 	c.sendCond.Broadcast()
 	ch := c.inCh
 	c.inCh = nil // detach channel to prevent further sends
+	closedCb := c.onClosedCb
 	c.sendMu.Unlock()
 
 	if ch != nil {
 		close(ch)
 	}
-	_ = c.udpConn.SetReadDeadline(time.Now())
+	if c.outbound { // only needed to unblock recvLoop for outbound
+		_ = c.udpConn.SetReadDeadline(time.Now())
+	}
 	c.recvMu.Lock()
 	if c.ackTimer != nil {
 		c.ackTimer.Stop()
@@ -169,41 +244,16 @@ func (c *Conn) Close() error {
 		c.recvCond.Broadcast()
 	}
 	c.recvMu.Unlock()
-	return c.udpConn.Close()
-}
-
-// NewConn constructs a connection around an already-connected UDP socket.
-func NewConn(cn *net.UDPConn, l, r *udp.Endpoint, cfg ReliableTransportConfig) (*Conn, error) {
-	cfg.Normalize()
-	if cfg.MaxSegmentSize <= 0 {
-		return nil, udp.ErrZeroMSS
+	var err error
+	if c.outbound {
+		err = c.udpConn.Close()
+	}
+	// Invoke close callback after resources released
+	if closedCb != nil {
+		closedCb(c)
 	}
 
-	sendRBSize := cfg.MaxWindowBytes * 2 // allow for some retransmit slack
-	rb := ringbuffer.New(sendRBSize)
-	frag := NewBasicFragmenter(cfg.MaxSegmentSize)
-
-	rc := &Conn{
-		udpConn:        cn,
-		localEndpoint:  l,
-		remoteEndpoint: r,
-		cfg:            cfg,
-		sendRB:         rb,
-		frag:           frag,
-		unacked:        make(map[uint32]*Unacked),
-		ErrChan:        make(chan error, 1),    // Buffered to avoid blocking
-		inCh:           make(chan *Packet, 32), // handshake delivery channel
-	}
-	rc.sendCond = sync.NewCond(&rc.sendMu)
-	rc.recvRB = ringbuffer.New(cfg.RecvBufBytes)
-	rc.recvCond = sync.NewCond(&rc.recvMu)
-	rc.recvOO = make(map[uint32]*Packet)
-
-	// start fused receive loop immediately so handshake packets can be processed
-	// NOTE: senderLoop is started only after handshake succeeds (see onEstablished())
-	go rc.recvLoop()
-
-	return rc, nil
+	return err
 }
 
 func (c *Conn) onEstablished() {
@@ -218,6 +268,11 @@ func (c *Conn) onEstablished() {
 	c.setState(StateEstablished)
 	// Future established-only initializations (keepalives, metrics, etc.) go here.
 	go c.senderLoop()
+	// Invoke callback (outside locks) if set
+	cb := func() func(*Conn) { c.sendMu.Lock(); defer c.sendMu.Unlock(); return c.onEstablishedCb }()
+	if cb != nil {
+		cb(c)
+	}
 }
 
 // HandleAckPacket processes ACK packets
@@ -280,4 +335,48 @@ func (c *Conn) RemoteEndpoint() exonet.Endpoint {
 		return nil
 	}
 	return c.remoteEndpoint
+}
+
+// ProcessPacket feeds a received packet into the connection (server-side demux path).
+// If the connection is not yet established, the packet is queued for handshake processing.
+func (c *Conn) ProcessPacket(pkt *Packet) {
+	if !c.inState(StateEstablished) {
+		c.sendMu.Lock()
+		ch := c.inCh
+		c.sendMu.Unlock()
+		if ch != nil {
+			select {
+			case ch <- pkt:
+			default:
+			}
+		}
+		return
+	}
+	if pkt.Flags&FlagACK != 0 {
+		c.HandleAckPacket(pkt)
+		return
+	}
+	if pkt.Flags&(FlagSYN|FlagFIN) != 0 {
+		c.HandleControlPacket(pkt)
+		return
+	}
+	c.handleDataPacket(pkt)
+}
+
+// sendDatagram sends a raw packet buffer choosing the correct syscall based on
+// connection role (outbound connections use Write on a connected socket;
+// inbound connections use WriteToUDP specifying the remote endpoint).
+func (c *Conn) sendDatagram(b []byte) (n int, err error) {
+	if c.udpConn == nil {
+		return n, udp.ErrConnClosed
+	}
+	if c.outbound {
+		_, err := c.udpConn.Write(b)
+		return n, err
+	}
+	if c.remoteEndpoint == nil {
+		return n, fmt.Errorf("remote endpoint nil")
+	}
+	written, err := c.udpConn.WriteToUDP(b, c.remoteEndpoint.UDPAddr())
+	return written, err
 }

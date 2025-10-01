@@ -3,6 +3,7 @@ package udp
 import "errors"
 
 var (
+	ErrListenerClosed              = errors.New("listener closed")
 	ErrRetransmissionLimitExceeded = errors.New(
 		"retransmissions limit exceeded")
 	ErrPacketTooShort           = errors.New("packet too short")
