@@ -71,23 +71,6 @@ func (c *Conn) armRetransmitTimer(need bool) {
 	}
 }
 
-// rollbackPacketLocked removes an unacked packet on send failure. Caller does NOT hold lock upon entry.
-func (c *Conn) rollbackPacketLocked(seq uint32, length int) {
-	c.sendMu.Lock()
-	if u, ok := c.unacked[seq]; ok && u.length == length {
-		delete(c.unacked, seq)
-		if c.nextSeqNum == seq+uint32(length) {
-			c.nextSeqNum = seq
-		}
-		if len(c.unacked) == 0 && c.rtxTimer != nil {
-			c.rtxTimer.Stop()
-			c.rtxTimer = nil
-		}
-		c.sendCond.Broadcast()
-	}
-	c.sendMu.Unlock()
-}
-
 // sendFragment consumes up to ask bytes, builds a packet and sends it.
 func (c *Conn) sendFragment(ask int) (bool, error) {
 	c.sendMu.Lock()
@@ -107,8 +90,8 @@ func (c *Conn) sendFragment(ask int) (bool, error) {
 
 	c.armRetransmitTimer(startTimer)
 	if _, err := c.sendDatagram(raw); err != nil {
-		c.rollbackPacketLocked(seq, int(pkt.Len))
-		return false, err
+		// Keep packet in unacked for normal retransmission (no fast retransmit tweak).
+		return true, nil
 	}
 	return true, nil
 }
