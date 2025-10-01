@@ -90,31 +90,31 @@ func (c *Conn) sendFragment(ask int) (bool, error) {
 
 	c.armRetransmitTimer(startTimer)
 	if _, err := c.sendDatagram(raw); err != nil {
-		// Keep packet in unacked for normal retransmission (no fast retransmit tweak).
-		return true, nil
+		return true, nil // retained for retransmission
 	}
 	return true, nil
 }
 
-// startRtxTimer arms the retransmission timer if not already running
-func (c *Conn) startRtxTimer() {
+// acquireNextSendSize blocks until there is data to send and window is not full,
+// or returns (0,false) if the connection is closed or not established anymore.
+// It releases the lock before returning.
+func (c *Conn) acquireNextSendSize() (int, bool) {
 	c.sendMu.Lock()
-	if c.rtxTimer != nil {
-		c.sendMu.Unlock()
-		return
-	}
-	interval := c.cfg.RetransmissionInterval
-	c.rtxTimer = time.AfterFunc(interval, func() {
-		c.handleRetransmissionTimeout()
-		c.sendMu.Lock()
-		if len(c.unacked) > 0 && !c.isClosed() {
-			c.rtxTimer.Reset(interval)
-		} else {
-			c.rtxTimer = nil
+	for {
+		if c.isClosed() || !c.inState(StateEstablished) {
+			c.sendMu.Unlock()
+			return 0, false
 		}
-		c.sendMu.Unlock()
-	})
-	c.sendMu.Unlock()
+		if c.sendRB.Length() > 0 && !c.windowFull() {
+			ask := int(c.sendRB.Length())
+			if ask > c.cfg.MaxSegmentSize {
+				ask = c.cfg.MaxSegmentSize
+			}
+			c.sendMu.Unlock()
+			return ask, true
+		}
+		c.sendCond.Wait()
+	}
 }
 
 // senderLoop runs as a goroutine and is responsible for sending packets from the send buffer.
@@ -123,26 +123,18 @@ func (c *Conn) startRtxTimer() {
 func (c *Conn) senderLoop() {
 	defer func() { c.sendCond.Broadcast() }()
 	for {
-		c.sendMu.Lock()
-		if c.isClosed() || !c.inState(StateEstablished) {
-			c.sendMu.Unlock()
+		ask, ok := c.acquireNextSendSize()
+		if !ok { // closed or not established
 			return
 		}
-		for c.sendRB.Length() == 0 || c.windowFull() {
-			c.sendCond.Wait()
-			if c.isClosed() || !c.inState(StateEstablished) {
-				c.sendMu.Unlock()
-				return
+		_, err := c.sendFragment(ask)
+		if err != nil {
+			select {
+			case c.ErrChan <- err:
+			default:
 			}
-		}
-		ask := int(c.sendRB.Length())
-		if ask > c.cfg.MaxSegmentSize {
-			ask = c.cfg.MaxSegmentSize
-		}
-		c.sendMu.Unlock()
-
-		if sent, _ := c.sendFragment(ask); !sent {
-			continue
+			c.Close()
+			return
 		}
 	}
 }

@@ -7,6 +7,27 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/udp"
 )
 
+// startRtxTimer arms the retransmission timer if not already running
+func (c *Conn) startRtxTimer() {
+	c.sendMu.Lock()
+	if c.rtxTimer != nil {
+		c.sendMu.Unlock()
+		return
+	}
+	interval := c.cfg.RetransmissionInterval
+	c.rtxTimer = time.AfterFunc(interval, func() {
+		c.handleRetransmissionTimeout()
+		c.sendMu.Lock()
+		if len(c.unacked) > 0 && !c.isClosed() {
+			c.rtxTimer.Reset(interval)
+		} else {
+			c.rtxTimer = nil
+		}
+		c.sendMu.Unlock()
+	})
+	c.sendMu.Unlock()
+}
+
 // queueAckLocked marks that an ACK should be (re)sent. Caller must hold recvMu.
 func (c *Conn) queueAckLocked() { c.ackPending = true }
 

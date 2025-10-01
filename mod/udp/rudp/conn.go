@@ -207,6 +207,14 @@ func (c *Conn) Read(p []byte) (n int, err error) {
 
 // Write enqueues data into the send ring buffer. Implementation in send.go.
 func (c *Conn) Write(p []byte) (n int, err error) {
+	if c.isClosed() {
+		return 0, udp.ErrConnClosed
+	}
+
+	if !c.inState(StateEstablished) {
+		return 0, udp.ErrConnectionNotEstablished
+	}
+
 	return c.writeSend(p)
 }
 
@@ -216,19 +224,25 @@ func (c *Conn) Close() error {
 		c.sendMu.Unlock()
 		return nil
 	}
+	pendingData := c.sendRB != nil && c.sendRB.Length() > 0
+	pendingUnacked := len(c.unacked) > 0
 	atomic.StoreUint32(&c.closedFlag, 1)
-	// stop retransmission timer if running
 	if c.rtxTimer != nil {
 		c.rtxTimer.Stop()
 		c.rtxTimer = nil
 	}
-	// wake any waiters (writers, senderLoop)
 	c.sendCond.Broadcast()
 	ch := c.inCh
-	c.inCh = nil // detach channel to prevent further sends
+	c.inCh = nil
 	closedCb := c.onClosedCb
 	c.sendMu.Unlock()
 
+	if pendingData || pendingUnacked {
+		select {
+		case c.ErrChan <- udp.ErrDataLost:
+		default:
+		}
+	}
 	if ch != nil {
 		close(ch)
 	}
