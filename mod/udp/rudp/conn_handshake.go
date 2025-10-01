@@ -72,10 +72,9 @@ func (c *Conn) startClientHandshakeDirect(ctx context.Context) error {
 		// Expect SYN|ACK
 		if pkt.Flags&(FlagSYN|FlagACK) == (FlagSYN|FlagACK) && pkt.Ack == seq+1 && pkt.Seq != 0 {
 			c.initialSeqNumRemote = pkt.Seq
-			// finalize local send base
+			// finalize local cumulative ack/next sequence
 			c.sendMu.Lock()
 			c.ackedSeqNum = seq + 1
-			c.sendBase = seq + 1
 			c.nextSeqNum = seq + 1
 			c.sendMu.Unlock()
 			// Send final ACK
@@ -121,7 +120,6 @@ func (c *Conn) StartServerHandshake(ctx context.Context, synPkt *Packet) error {
 					c.rtxTimer = nil
 				}
 				c.ackedSeqNum = c.initialSeqNumLocal + 1
-				c.sendBase = c.initialSeqNumLocal + 1
 				c.nextSeqNum = c.initialSeqNumLocal + 1
 				c.sendMu.Unlock()
 				c.onEstablished()

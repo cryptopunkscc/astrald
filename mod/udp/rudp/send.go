@@ -17,43 +17,14 @@ func (c *Conn) writeSend(p []byte) (n int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	c.sendCond.Broadcast()
+	// Only the senderLoop needs to be awakened; writers waiting for space are not helped by a write.
+	c.sendCond.Signal()
 	return writeLen, nil
 }
 
 // windowFull returns true if the packet window is full (no more packets can be sent).
 func (c *Conn) windowFull() bool {
 	return len(c.unacked) >= c.cfg.MaxWindowPackets
-}
-
-// planFragmentLocked decides how many bytes to send (<= ask) and drains them into a fresh buffer.
-// Caller MUST hold sendMu. Returns nil buffer if nothing to send.
-func (c *Conn) planFragmentLocked(ask int) (seq uint32, buf []byte, n int) {
-	if ask <= 0 || c.sendRB.Length() == 0 {
-		return 0, nil, 0
-	}
-	if ask > int(c.sendRB.Length()) {
-		ask = int(c.sendRB.Length())
-	}
-	if ask > c.cfg.MaxSegmentSize {
-		ask = c.cfg.MaxSegmentSize
-	}
-	fragBuf := make([]byte, ask)
-	readN, _ := c.sendRB.Read(fragBuf)
-	if readN == 0 {
-		return 0, nil, 0
-	}
-	return c.nextSeqNum, fragBuf[:readN], readN
-}
-
-// buildPacket converts raw payload into a Packet and marshals it.
-func (c *Conn) buildPacket(seq uint32, payload []byte) (*Packet, []byte, error) {
-	pkt := &Packet{Seq: seq, Ack: c.ackedSeqNum, Flags: FlagACK, Len: uint16(len(payload)), Payload: payload}
-	b, err := pkt.Marshal()
-	if err != nil {
-		return nil, nil, err
-	}
-	return pkt, b, nil
 }
 
 // commitPacketLocked registers the packet as unacked and advances sequence numbers. Caller holds sendMu.
@@ -71,63 +42,55 @@ func (c *Conn) armRetransmitTimer(need bool) {
 	}
 }
 
-// sendFragment consumes up to ask bytes, builds a packet and sends it.
-func (c *Conn) sendFragment(ask int) (bool, error) {
-	c.sendMu.Lock()
-	seq, payload, plen := c.planFragmentLocked(ask)
-	if plen == 0 {
-		c.sendMu.Unlock()
-		return false, nil
-	}
-	pkt, raw, err := c.buildPacket(seq, payload)
-	if err != nil {
-		c.sendMu.Unlock()
-		return false, err
-	}
-	startTimer := c.commitPacketLocked(pkt)
-	c.sendCond.Broadcast()
-	c.sendMu.Unlock()
-
-	c.armRetransmitTimer(startTimer)
-	if _, err := c.sendDatagram(raw); err != nil {
-		return true, nil // retained for retransmission
-	}
-	return true, nil
-}
-
-// acquireNextSendSize blocks until there is data to send and window is not full,
-// or returns (0,false) if the connection is closed or not established anymore.
-// It releases the lock before returning.
-func (c *Conn) acquireNextSendSize() (int, bool) {
-	c.sendMu.Lock()
-	for {
-		if c.isClosed() || !c.inState(StateEstablished) {
-			c.sendMu.Unlock()
-			return 0, false
-		}
-		if c.sendRB.Length() > 0 && !c.windowFull() {
-			ask := int(c.sendRB.Length())
-			if ask > c.cfg.MaxSegmentSize {
-				ask = c.cfg.MaxSegmentSize
-			}
-			c.sendMu.Unlock()
-			return ask, true
-		}
-		c.sendCond.Wait()
-	}
-}
-
 // senderLoop runs as a goroutine and is responsible for sending packets from the send buffer.
+// Inlined fragmentation & packet build: we avoid an extra lock/unlock by performing
+// (select bytes -> copy -> build packet -> commit) under one critical section, then
+// releasing the lock before marshaling and sending.
 // FIFO model: bytes are consumed from sendRB as soon as they are packetized. Retransmissions
 // use copies stored in unacked map. No random access over the ring is performed.
 func (c *Conn) senderLoop() {
 	defer func() { c.sendCond.Broadcast() }()
 	for {
-		ask, ok := c.acquireNextSendSize()
-		if !ok { // closed or not established
-			return
+		c.sendMu.Lock()
+		for {
+			if c.isClosed() || !c.inState(StateEstablished) {
+				c.sendMu.Unlock()
+				return
+			}
+			if c.sendRB.Length() > 0 && !c.windowFull() {
+				break
+			}
+			c.sendCond.Wait()
 		}
-		_, err := c.sendFragment(ask)
+
+		// Decide fragment size and drain payload while still holding the lock.
+		ask := int(c.sendRB.Length())
+		if ask > c.cfg.MaxSegmentSize {
+			ask = c.cfg.MaxSegmentSize
+		}
+		// Allocate buffer and read from ring (destructive read).
+		payload := make([]byte, ask)
+		readN, _ := c.sendRB.Read(payload)
+		if readN == 0 { // nothing actually read; loop and re-evaluate predicates
+			c.sendMu.Unlock()
+			continue
+		}
+		if readN != ask { // shrink payload if ring gave us fewer bytes
+			payload = payload[:readN]
+		}
+
+		seq := c.nextSeqNum
+		pkt := &Packet{Seq: seq, Ack: c.ackedSeqNum, Flags: FlagACK, Len: uint16(len(payload)), Payload: payload}
+		startTimer := c.commitPacketLocked(pkt)
+		// We freed ring space; signal at least one waiting writer or (rarely) another waiter.
+		c.sendCond.Signal()
+		c.sendMu.Unlock()
+
+		// Manage retransmission timer outside lock
+		c.armRetransmitTimer(startTimer)
+
+		// Marshal & send outside lock to minimize critical section time.
+		raw, err := pkt.Marshal()
 		if err != nil {
 			select {
 			case c.ErrChan <- err:
@@ -136,5 +99,10 @@ func (c *Conn) senderLoop() {
 			c.Close()
 			return
 		}
+		if _, err := c.sendDatagram(raw); err != nil {
+			// Suppress error (packet retained in unacked for retransmission). Continue loop.
+			continue
+		}
+		// next iteration
 	}
 }

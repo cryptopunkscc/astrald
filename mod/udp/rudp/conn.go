@@ -55,12 +55,8 @@ type Conn struct {
 	initialSeqNumRemote uint32
 	nextSeqNum          uint32
 	connID              uint32 // Connection ID
-	sendBase            uint32 // Oldest unacked sequence (ACK floor)
-	ackedSeqNum         uint32 // Highest cumulative ACK seen
+	ackedSeqNum         uint32 // Highest cumulative ACK observed for our sent data (also piggybacked when sending)
 	expected            uint32 // Next expected sequence number (receive side)
-
-	inflight uint32 // Number of unacked packets
-
 	// Send buffer and reliability
 	sendRB  *ringbuffer.RingBuffer // Persistent send ring buffer (FIFO; bytes consumed at packetization)
 	frag    *BasicFragmenter       // Fragmenter for packetization
@@ -77,12 +73,11 @@ type Conn struct {
 	ErrChan chan error // Channel for connection-level errors (e.g., retransmission failure)
 
 	// Inbound buffering & ACK state
-	recvRB      *ringbuffer.RingBuffer
-	recvMu      sync.Mutex
-	recvCond    *sync.Cond
-	ackTimer    *time.Timer
-	ackPending  bool
-	lastAckSent uint32
+	recvRB     *ringbuffer.RingBuffer
+	recvMu     sync.Mutex
+	recvCond   *sync.Cond
+	ackTimer   *time.Timer
+	ackPending bool
 	// Out-of-order buffer (keyed by sequence number of first byte)
 	recvOO map[uint32]*Packet // stored packets with Seq > expected awaiting in-order delivery
 }
@@ -297,26 +292,19 @@ func (c *Conn) HandleAckPacket(packet *Packet) {
 	if ack > c.ackedSeqNum {
 		c.ackedSeqNum = ack
 	}
-	if ack > c.sendBase {
-		c.sendBase = ack
-	}
+	// cumulative ACK floor implicitly reflected by ackedSeqNum
 	// Remove fully acked packets (keyed by seq)
 	for s, u := range c.unacked {
 		if u.isHandshake {
-			// Handshake control (SYN / SYN|ACK) conceptually consumes 1 sequence number.
-			// Require ack > s (i.e., ack == s+1) to delete, avoiding premature removal
-			// if an unexpected ack echo with ack==s arrives.
 			if ack > s { // expected ack == s+1
 				delete(c.unacked, s)
 			}
 			continue
 		}
-		// Data packet: remove when cumulative ack covers entire payload.
 		if s+uint32(u.length) <= ack {
 			delete(c.unacked, s)
 		}
 	}
-	// Stop retransmission timer if no unacked packets remain
 	if len(c.unacked) == 0 && c.rtxTimer != nil {
 		c.rtxTimer.Stop()
 		c.rtxTimer = nil
