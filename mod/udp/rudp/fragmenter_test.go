@@ -1,6 +1,7 @@
 package rudp
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -11,8 +12,7 @@ func TestBasicFragmenter_SingleFragment(t *testing.T) {
 	for i := range data {
 		data[i] = byte(i)
 	}
-	buf := &ByteStreamBuffer{data: data}
-	packet, packetLen, ok := frag.MakeNew(0, mss, buf)
+	packet, packetLen, ok := frag.MakeNew(0, mss, bytes.NewBuffer(data))
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
 	}
@@ -42,7 +42,7 @@ func TestBasicFragmenter_MultipleFragments(t *testing.T) {
 	for i := range data {
 		data[i] = byte(i)
 	}
-	buf := &ByteStreamBuffer{data: data}
+	buf := bytes.NewBuffer(data)
 
 	nextSeq := uint32(0)
 	total := 0
@@ -63,7 +63,12 @@ func TestBasicFragmenter_MultipleFragments(t *testing.T) {
 				t.Errorf("payload mismatch at %d: got %d, want %d", int(nextSeq)+i, packet.Payload[i], byte(int(nextSeq)+i))
 			}
 		}
-		buf.Advance(packetLength)
+		n := packetLength
+		if n > buf.Len() {
+			n = buf.Len()
+		} // clamp for safety
+		_ = buf.Next(n)
+
 		nextSeq += uint32(packetLength)
 		total += packetLength
 		fragments++
@@ -79,7 +84,7 @@ func TestBasicFragmenter_MultipleFragments(t *testing.T) {
 func TestBasicFragmenter_ZeroLen(t *testing.T) {
 	mss := 50
 	frag := NewBasicFragmenter(mss)
-	buf := &ByteStreamBuffer{data: nil}
+	buf := bytes.NewBuffer(nil)
 	packet, packetLength, ok := frag.MakeNew(0, mss, buf)
 	if ok {
 		t.Errorf("expected ok=false for zero-len buffer")
@@ -100,7 +105,7 @@ func TestBasicFragmenter_AllowedLessThanMSS(t *testing.T) {
 	for i := range data {
 		data[i] = byte(i)
 	}
-	buf := &ByteStreamBuffer{data: data}
+	buf := bytes.NewBuffer(data)
 	packet, packetLength, ok := frag.MakeNew(0, allowed, buf)
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
@@ -121,7 +126,7 @@ func TestBasicFragmenter_AllowedLessThanBuffer(t *testing.T) {
 	for i := range data {
 		data[i] = byte(i)
 	}
-	buf := &ByteStreamBuffer{data: data}
+	buf := bytes.NewBuffer(data)
 	packet, packetLength, ok := frag.MakeNew(0, allowed, buf)
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
@@ -142,7 +147,7 @@ func TestBasicFragmenter_BufferSmallerThanAllowedAndMSS(t *testing.T) {
 	for i := range data {
 		data[i] = byte(i)
 	}
-	buf := &ByteStreamBuffer{data: data}
+	buf := bytes.NewBuffer(data)
 	packet, packetLength, ok := frag.MakeNew(0, allowed, buf)
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
@@ -159,7 +164,7 @@ func TestBasicFragmenter_NegativeOrZeroAllowed(t *testing.T) {
 	mss := 100
 	frag := NewBasicFragmenter(mss)
 	data := make([]byte, 50)
-	buf := &ByteStreamBuffer{data: data}
+	buf := bytes.NewBuffer(data)
 	packet, packetLength, ok := frag.MakeNew(0, 0, buf)
 	if ok || packet != nil || packetLength != 0 {
 		t.Errorf("expected no packet for allowed=0")
@@ -174,7 +179,7 @@ func TestBasicFragmenter_ZeroMSS(t *testing.T) {
 	mss := 0
 	frag := NewBasicFragmenter(mss)
 	data := make([]byte, 50)
-	buf := &ByteStreamBuffer{data: data}
+	buf := bytes.NewBuffer(data)
 	packet, packetLength, ok := frag.MakeNew(0, 100, buf)
 	if ok || packet != nil || packetLength != 0 {
 		t.Errorf("expected no packet for MSS=0")
@@ -185,7 +190,7 @@ func TestBasicFragmenter_FlagsSet(t *testing.T) {
 	mss := 100
 	frag := NewBasicFragmenter(mss)
 	data := make([]byte, 50)
-	buf := &ByteStreamBuffer{data: data}
+	buf := bytes.NewBuffer(data)
 	packet, _, ok := frag.MakeNew(0, 100, buf)
 	if !ok || packet == nil {
 		t.Fatalf("expected valid packet")

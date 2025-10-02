@@ -16,14 +16,6 @@ import (
 	"github.com/smallnest/ringbuffer"
 )
 
-type Unacked struct {
-	pkt         *Packet   // Packet metadata (seq, len)
-	sentTime    time.Time // Last sent time
-	rtxCount    int       // Retransmit count
-	length      int       // Payload length
-	isHandshake bool      // True if this entry is for a handshake control packet
-}
-
 // Conn represents a reliable UDP connection.
 // Implements reliability, flow control, retransmissions, and error notification.
 // Key mechanisms:
@@ -80,6 +72,7 @@ type Conn struct {
 	ackPending bool
 	// Out-of-order buffer (keyed by sequence number of first byte)
 	recvOO map[uint32]*Packet // stored packets with Seq > expected awaiting in-order delivery
+
 }
 
 // unified handshake channel capacity (applies to inbound & outbound)
@@ -102,7 +95,8 @@ func NewConn(cn *net.UDPConn, l, r *udp.Endpoint, cfg Config, outbound bool, fir
 		}
 	}
 
-	sendRBSize := cfg.MaxWindowBytes * 2 // allow for some retransmit slack
+	// sendRBSize in BYTES: MaxWindowPackets * MaxSegmentSize * 2 for retransmit slack
+	sendRBSize := cfg.MaxWindowPackets * cfg.MaxSegmentSize * 2
 	rb := ringbuffer.New(sendRBSize)
 	frag := NewBasicFragmenter(cfg.MaxSegmentSize)
 
@@ -324,14 +318,18 @@ func (c *Conn) HandleControlPacket(packet *Packet) {
 	// ...handle other control flags as needed...
 }
 
-// Interface compliance for exonet.Conn
+// Outbound interface compliance for exonet.Conn
 func (c *Conn) Outbound() bool { return c.outbound }
+
+// LocalEndpoint returns the local UDP endpoint of the connection.
 func (c *Conn) LocalEndpoint() exonet.Endpoint {
 	if c == nil {
 		return nil
 	}
 	return c.localEndpoint
 }
+
+// RemoteEndpoint returns the remote UDP endpoint of the connection.
 func (c *Conn) RemoteEndpoint() exonet.Endpoint {
 	if c == nil {
 		return nil
@@ -354,15 +352,29 @@ func (c *Conn) ProcessPacket(pkt *Packet) {
 		}
 		return
 	}
+
+	// Data packet (may include piggyback ACK)
+	if pkt.Len > 0 {
+		if pkt.Flags&FlagACK != 0 {
+			c.HandleAckPacket(pkt)
+		}
+
+		c.handleDataPacket(pkt)
+		return
+	}
+
+	// Pure ACK
 	if pkt.Flags&FlagACK != 0 {
 		c.HandleAckPacket(pkt)
 		return
 	}
+	// Control (SYN/FIN/etc.)
 	if pkt.Flags&(FlagSYN|FlagFIN) != 0 {
 		c.HandleControlPacket(pkt)
 		return
 	}
-	c.handleDataPacket(pkt)
+
+	// Ignore anything else
 }
 
 // sendDatagram sends a raw packet buffer choosing the correct syscall based on

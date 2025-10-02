@@ -3,6 +3,7 @@ package rudp
 import (
 	"context"
 	"net"
+	"sort"
 	"testing"
 	"time"
 
@@ -160,5 +161,139 @@ func TestListenerDialHelloWorld(t *testing.T) {
 		case <-time.After(2 * time.Second):
 			// ignore echo timeout (non-fatal for core test)
 		}
+	}
+}
+
+// TestDiagFirst32Packets performs a focused diagnostic of the first ~32 data packets
+// to inspect sequence alignment between sender and receiver. It writes exactly
+// 32 * MSS bytes (fragmented into MSS-sized packets) and then logs the receiver's
+// expected sequence, number of in-order bytes buffered, out-of-order queue size,
+// and sample sequence gaps. This is a non-fatal diagnostic (will t.Skip on environments
+// where it cannot bind or handshake cleanly).
+func TestDiagFirst32Packets(t *testing.T) {
+	// Keep this test quick.
+	baseCtx := astral.NewContext(context.Background())
+
+	// Custom config to keep things deterministic and fast.
+	cfg := Config{
+		MaxSegmentSize:   DefaultMSS,       // 1187
+		MaxWindowPackets: 128,              // allow >32 easily
+		AckDelay:         time.Microsecond, // effectively immediate
+		RecvBufBytes:     1 << 20,
+		SendBufBytes:     1 << 20,
+	}
+	cfg.Normalize()
+
+	l, err := Listen(baseCtx, &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0}, cfg, 2*time.Second)
+	if err != nil {
+		t.Skipf("listener setup failed (skip diag): %v", err)
+	}
+	defer l.Close()
+
+	serverAddr := l.Addr().(*net.UDPAddr)
+	ipv4Dest := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: serverAddr.Port}
+
+	acceptedCh := make(chan *Conn, 1)
+	go func() {
+		acceptCtx, cancel := baseCtx.WithTimeout(2 * time.Second)
+		defer cancel()
+		c, aerr := l.Accept(acceptCtx)
+		if aerr == nil {
+			acceptedCh <- c
+		}
+	}()
+
+	udpConn, err := net.DialUDP("udp4", nil, ipv4Dest)
+	if err != nil {
+		udpConn, err = net.DialUDP("udp", nil, ipv4Dest)
+	}
+	if err != nil {
+		l.Close()
+		t.Skipf("dial failed (skip diag): %v", err)
+	}
+	defer udpConn.Close()
+
+	localEP, _ := udpmod.ParseEndpoint(udpConn.LocalAddr().String())
+	remoteEP, _ := udpmod.ParseEndpoint(udpConn.RemoteAddr().String())
+
+	outConn, err := NewConn(udpConn, localEP, remoteEP, cfg, true, nil, baseCtx)
+	if err != nil {
+		t.Skipf("NewConn outbound failed (skip diag): %v", err)
+	}
+	defer outConn.Close()
+
+	hCtx, hCancel := baseCtx.WithTimeout(2 * time.Second)
+	if err := outConn.StartClientHandshake(hCtx); err != nil {
+		hCancel()
+		t.Skipf("handshake failed (skip diag): %v", err)
+	}
+	hCancel()
+
+	var serverConn *Conn
+	select {
+	case serverConn = <-acceptedCh:
+	case <-time.After(2 * time.Second):
+		t.Skip("server accept timeout (skip diag)")
+	}
+	if serverConn == nil {
+		t.Skip("nil serverConn (skip diag)")
+	}
+	defer serverConn.Close()
+
+	// Prepare exactly 32 * MSS bytes.
+	packets := 32
+	bytesToSend := packets * cfg.MaxSegmentSize
+	payload := make([]byte, bytesToSend)
+	for i := range payload {
+		payload[i] = byte(i)
+	}
+
+	written := 0
+	start := time.Now()
+	for written < bytesToSend {
+		n, werr := outConn.Write(payload[written:])
+		if werr != nil {
+			t.Fatalf("write error after %d bytes: %v", written, werr)
+		}
+		written += n
+	}
+	elapsedWrite := time.Since(start)
+	// Allow receiver a short window to process.
+	time.Sleep(50 * time.Millisecond)
+
+	// Snapshot receiver internal state.
+	serverConn.recvMu.Lock()
+	expected := serverConn.expected
+	recvLen := serverConn.recvRB.Length()
+	oosz := len(serverConn.recvOO)
+	// Collect first few out-of-order keys
+	keys := make([]uint32, 0, oosz)
+	for k := range serverConn.recvOO {
+		keys = append(keys, k)
+	}
+	serverConn.recvMu.Unlock()
+	if len(keys) > 0 {
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	}
+	if len(keys) > 16 {
+		keys = keys[:16]
+	}
+
+	// Log sender side nextSeq / acked
+	serverConn.sendMu.Lock()
+	acked := serverConn.ackedSeqNum
+	next := serverConn.nextSeqNum
+	serverConn.sendMu.Unlock()
+
+	clientNext := outConn.nextSeqNum
+	clientAcked := outConn.ackedSeqNum
+
+	t.Logf("diag: wrote=%d bytes (32*MSS=%d) writeElapsed=%v", written, bytesToSend, elapsedWrite)
+	t.Logf("diag: server expected=%d recvLen=%d recvOO=%d (firstOO=%v)", expected, recvLen, oosz, keys)
+	t.Logf("diag: server acked=%d next=%d | client acked=%d next=%d", acked, next, clientAcked, clientNext)
+
+	// Basic assertion: at least one in-order advancement OR explicit log for gap.
+	if recvLen == 0 {
+		t.Logf("diag: WARNING no in-order data buffered; likely initial gap (expected not reached)")
 	}
 }

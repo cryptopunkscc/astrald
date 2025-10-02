@@ -7,6 +7,14 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/udp"
 )
 
+type Unacked struct {
+	pkt         *Packet   // Packet metadata (seq, len)
+	sentTime    time.Time // Last sent time
+	rtxCount    int       // Retransmit count
+	length      int       // Payload length
+	isHandshake bool      // True if this entry is for a handshake control packet
+}
+
 // startRtxTimer arms the retransmission timer if not already running
 func (c *Conn) startRtxTimer() {
 	c.sendMu.Lock()

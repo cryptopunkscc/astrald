@@ -5,20 +5,18 @@ import "time"
 // Transport default constants (exported for visibility in tests & integration)
 const (
 	DefaultMSS          = 1200 - 13 // 1187 (1200 minus header)
-	DefaultWindowBytes  = 16 * DefaultMSS
-	DefaultWndPkts      = 32
-	DefaultRTO          = 500 * time.Millisecond
+	DefaultWndPkts      = 1024
+	DefaultRTO          = 200 * time.Millisecond
 	DefaultRTOMax       = 4 * time.Second
 	DefaultRetries      = 8
-	DefaultAckDelay     = 25 * time.Millisecond
-	DefaultRecvBufBytes = 1 << 20
-	DefaultSendBufBytes = 1 << 20
+	DefaultAckDelay     = 5 * time.Millisecond
+	DefaultRecvBufBytes = 16 << 20
+	DefaultSendBufBytes = 16 << 20
 )
 
 // Config holds reliability / buffering parameters for the rudp transport.
 type Config struct {
 	MaxSegmentSize            int           `yaml:"max_segment_size"`
-	MaxWindowBytes            int           `yaml:"max_window_bytes"`
 	MaxWindowPackets          int           `yaml:"max_window_packets"`
 	RetransmissionInterval    time.Duration `yaml:"retransmission_interval"`
 	MaxRetransmissionInterval time.Duration `yaml:"max_retransmission_interval"`
@@ -32,9 +30,6 @@ type Config struct {
 func (c *Config) Normalize() {
 	if c.MaxSegmentSize == 0 {
 		c.MaxSegmentSize = DefaultMSS
-	}
-	if c.MaxWindowBytes == 0 {
-		c.MaxWindowBytes = DefaultWindowBytes
 	}
 	if c.MaxWindowPackets == 0 {
 		c.MaxWindowPackets = DefaultWndPkts
@@ -60,5 +55,5 @@ func (c *Config) Normalize() {
 }
 
 // - AckDelay: mirrors QUIC MAX_ACK_DELAY (RFC 9000 §13.2.1).
-// - Buffer sizes: 1 MiB default, capped for safety, must be >= window.
-// - All invariants enforced for safety and interoperability.
+// - Buffer sizes: 1 MiB default, capped for safety, must be >= aggregate window.
+// - Aggregate window bytes can be derived as MaxWindowPackets * MaxSegmentSize.

@@ -13,9 +13,7 @@ func TestNormalizeAppliesDefaults(t *testing.T) {
 	if c.MaxSegmentSize != DefaultMSS {
 		f(t, "MaxSegmentSize", c.MaxSegmentSize, DefaultMSS)
 	}
-	if c.MaxWindowBytes != DefaultWindowBytes {
-		f(t, "MaxWindowBytes", c.MaxWindowBytes, DefaultWindowBytes)
-	}
+
 	if c.MaxWindowPackets != DefaultWndPkts {
 		f(t, "MaxWindowPackets", c.MaxWindowPackets, DefaultWndPkts)
 	}
@@ -43,7 +41,6 @@ func TestNormalizeAppliesDefaults(t *testing.T) {
 func TestNormalizePreservesNonZero(t *testing.T) {
 	orig := Config{
 		MaxSegmentSize:            999,
-		MaxWindowBytes:            123456,
 		MaxWindowPackets:          77,
 		RetransmissionInterval:    321 * time.Millisecond,
 		MaxRetransmissionInterval: 987 * time.Millisecond,
@@ -60,9 +57,7 @@ func TestNormalizePreservesNonZero(t *testing.T) {
 		if c.MaxSegmentSize != orig.MaxSegmentSize {
 			g(t, "MaxSegmentSize", c.MaxSegmentSize, orig.MaxSegmentSize)
 		}
-		if c.MaxWindowBytes != orig.MaxWindowBytes {
-			g(t, "MaxWindowBytes", c.MaxWindowBytes, orig.MaxWindowBytes)
-		}
+
 		if c.MaxWindowPackets != orig.MaxWindowPackets {
 			g(t, "MaxWindowPackets", c.MaxWindowPackets, orig.MaxWindowPackets)
 		}
@@ -107,9 +102,6 @@ func TestNormalizePartial(t *testing.T) {
 		g(t, "AckDelay", c.AckDelay, 5*time.Millisecond)
 	}
 
-	if c.MaxWindowBytes != DefaultWindowBytes {
-		f(t, "MaxWindowBytes", c.MaxWindowBytes, DefaultWindowBytes)
-	}
 	if c.MaxWindowPackets != DefaultWndPkts {
 		f(t, "MaxWindowPackets", c.MaxWindowPackets, DefaultWndPkts)
 	}
@@ -145,7 +137,6 @@ func TestNormalizeIdempotent(t *testing.T) {
 func TestNormalizeNegativeValues(t *testing.T) {
 	c := Config{
 		MaxSegmentSize:      -1,
-		MaxWindowBytes:      -2,
 		MaxWindowPackets:    -3,
 		RetransmissionLimit: -4,
 		RecvBufBytes:        -5,
@@ -161,9 +152,7 @@ func TestNormalizeNegativeValues(t *testing.T) {
 	if c.MaxSegmentSize != -1 {
 		g(t, "MaxSegmentSize", c.MaxSegmentSize, -1)
 	}
-	if c.MaxWindowBytes != -2 {
-		g(t, "MaxWindowBytes", c.MaxWindowBytes, -2)
-	}
+
 	if c.MaxWindowPackets != -3 {
 		g(t, "MaxWindowPackets", c.MaxWindowPackets, -3)
 	}
