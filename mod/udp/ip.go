@@ -19,7 +19,7 @@ func ParseIP(s string) (IP, error) {
 // astral
 
 func (IP) ObjectType() string {
-	return "mod.tcp.ip_address"
+	return "mod.udp.ip_address"
 }
 
 func (ip IP) WriteTo(w io.Writer) (n int64, err error) {
