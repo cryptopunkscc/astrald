@@ -7,7 +7,7 @@ import (
 
 func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error) {
 	switch network {
-	case "udp":
+	case "utp":
 	default:
 		return nil, exonet.ErrUnsupportedNetwork
 	}

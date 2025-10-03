@@ -26,7 +26,7 @@ type Endpoint struct {
 }
 
 func (e *Endpoint) ObjectType() string {
-	return "mod.udp.endpoint"
+	return "mod.utp.endpoint"
 }
 
 func (e Endpoint) WriteTo(w io.Writer) (n int64, err error) {
@@ -44,7 +44,7 @@ func (e *Endpoint) Address() string {
 }
 
 func (e *Endpoint) Network() string {
-	return "udp"
+	return "utp"
 }
 
 // HostString returns the IP address as a string
