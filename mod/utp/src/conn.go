@@ -33,5 +33,7 @@ func WrapUtpConn(
 	return WrappedConn{
 		outbound: outbound,
 		Conn:     conn,
+		renote:   remote,
+		local:    local,
 	}
 }
