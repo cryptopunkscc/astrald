@@ -1,8 +1,8 @@
 module github.com/cryptopunkscc/astrald
 
-go 1.23.0
+go 1.24.1
 
-toolchain go1.24.1
+toolchain go1.24.6
 
 require (
 	bitbucket.org/creachadair/shell v0.0.7
@@ -21,6 +21,7 @@ require (
 )
 
 require (
+	github.com/cryptopunkscc/utp v0.0.0-20250929223734-4ef793c409c2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
