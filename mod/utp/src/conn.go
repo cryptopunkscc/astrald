@@ -6,11 +6,10 @@ import (
 )
 
 type WrappedConn struct {
-	outbound bool
-	renote   exonet.Endpoint
-	local    exonet.Endpoint
-
 	*utp.Conn
+	remote   exonet.Endpoint
+	local    exonet.Endpoint
+	outbound bool
 }
 
 func (w WrappedConn) Outbound() bool {
@@ -22,7 +21,7 @@ func (w WrappedConn) LocalEndpoint() exonet.Endpoint {
 }
 
 func (w WrappedConn) RemoteEndpoint() exonet.Endpoint {
-	return w.renote
+	return w.remote
 }
 
 func WrapUtpConn(
@@ -33,7 +32,7 @@ func WrapUtpConn(
 	return WrappedConn{
 		outbound: outbound,
 		Conn:     conn,
-		renote:   remote,
+		remote:   remote,
 		local:    local,
 	}
 }

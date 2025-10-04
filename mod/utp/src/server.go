@@ -2,7 +2,6 @@ package utp
 
 import (
 	"net"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	utpmod "github.com/cryptopunkscc/astrald/mod/utp"
@@ -12,8 +11,8 @@ import (
 // Server implements UDP listening with connection acceptance via rudp.Listener
 type Server struct {
 	*Module
-	rListener *utp.Listener
-	acceptCh  chan *utp.Conn
+	listener *utp.Listener
+	acceptCh chan *utp.Conn
 }
 
 // NewServer creates a new src UDP server
@@ -27,25 +26,23 @@ func NewServer(module *Module) *Server {
 // Run starts the server and listens for incoming connections
 func (s *Server) Run(ctx *astral.Context) error {
 	addr := &net.UDPAddr{Port: s.config.ListenPort}
-	hto := s.config.DialTimeout
-	if hto <= 0 {
-		hto = 5 * time.Second
-	}
-
-	laddr, err := utp.ResolveAddr("utp", addr.String())
+	listenerAddr, err := utp.ResolveAddr("utp", addr.String())
 	if err != nil {
 		return err
 	}
 
-	utpListener, err := utp.Listen("utp", laddr)
+	utpListener, err := utp.Listen("utp", listenerAddr)
 	if err != nil {
 		return err
 	}
 
-	s.rListener = utpListener
-	localEndpoint, _ := utpmod.ParseEndpoint(utpListener.Addr().String())
+	s.listener = utpListener
+	localEndpoint, err := utpmod.ParseEndpoint(utpListener.Addr().String())
+	if err != nil {
+		return err
+	}
+
 	s.log.Info("started server at %v", utpListener.Addr())
-
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -81,8 +78,8 @@ func (s *Server) Run(ctx *astral.Context) error {
 
 // Close gracefully shuts down the server
 func (s *Server) Close() error {
-	if s.rListener != nil {
-		_ = s.rListener.Close()
+	if s.listener != nil {
+		_ = s.listener.Close()
 	}
 	return nil
 }
