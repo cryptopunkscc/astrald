@@ -1,6 +1,7 @@
 package utp
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -28,18 +29,18 @@ func (s *Server) Run(ctx *astral.Context) error {
 	addr := &net.UDPAddr{Port: s.config.ListenPort}
 	listenerAddr, err := utp.ResolveAddr("utp", addr.String())
 	if err != nil {
-		return err
+		return fmt.Errorf(`utp server/run: resolve address %v: %w`, addr, err)
 	}
 
 	utpListener, err := utp.Listen("utp", listenerAddr)
 	if err != nil {
-		return err
+		return fmt.Errorf(`utp server/run: failed to start utp listener at %v: %w`, addr, err)
 	}
 
 	s.listener = utpListener
 	localEndpoint, err := utpmod.ParseEndpoint(utpListener.Addr().String())
 	if err != nil {
-		return err
+		return fmt.Errorf(`utp server/run: failed to parse local endpoint %v: %w`, utpListener.Addr(), err)
 	}
 
 	s.log.Info("started server at %v", utpListener.Addr())
@@ -56,8 +57,7 @@ func (s *Server) Run(ctx *astral.Context) error {
 	for {
 		utpConn, err := utpListener.AcceptUTP()
 		if err != nil {
-			s.log.Errorv(1, "accept error: %v", err)
-			continue
+			return fmt.Errorf(`utp server/run: failed to accept utp connection: %w`, err)
 		}
 
 		remoteEndpoint, _ := utpmod.ParseEndpoint(utpConn.RemoteAddr().String())
@@ -68,7 +68,7 @@ func (s *Server) Run(ctx *astral.Context) error {
 		go func() {
 			err := s.Nodes.Accept(ctx, conn)
 			if err != nil {
-				s.log.Errorv(1, "handshake failed from %v: %v",
+				s.log.Errorv(1, "utp server/run: handshake failed from %v: %v",
 					conn.RemoteEndpoint(), err)
 				return
 			}
