@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"github.com/cryptopunkscc/astrald/mod/utp"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -51,7 +51,7 @@ func (mod *Module) localEndpoints() (list []exonet.Endpoint) {
 		}
 
 		if tip.IsGlobalUnicast() || tip.IsPrivate() {
-			e := tcp.Endpoint{
+			e := utp.Endpoint{
 				IP:   tip,
 				Port: astral.Uint16(uint16(mod.config.ListenPort)),
 			}
