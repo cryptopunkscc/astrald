@@ -11,6 +11,7 @@ type opStreamsArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpStreams lists all streams.
 func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsArgs) (err error) {
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()

@@ -14,7 +14,6 @@ import (
 	"io"
 	"slices"
 	"sync"
-	"sync/atomic"
 )
 
 type Peers struct {
@@ -291,7 +290,7 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	return false
 }
 
-func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (link io.Closer, err error) {
+func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Stream, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
@@ -328,13 +327,18 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 
 		var errCode astral.Int8
 		_, err = errCode.ReadFrom(aconn)
-		if errCode != 0 {
+		switch {
+		case err != nil:
+			return nil, fmt.Errorf("read: %w", err)
+		case errCode != 0:
 			return nil, errors.New("link feature negotation error")
 		}
 
-		mod.addStream(newStream(aconn, true))
+		stream := newStream(aconn, true)
 
-		return nil, err
+		err = mod.addStream(stream)
+
+		return stream, err
 	}
 
 	return nil, errors.New("no supported link types found")
@@ -393,23 +397,18 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 	}
 }
 
-func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) error {
+func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) (*Stream, error) {
 	conn, err := mod.Exonet.Dial(ctx, e)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = mod.Connect(ctx, remoteIdentity, conn)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return mod.Connect(ctx, remoteIdentity, conn)
 }
 
-func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Identity, endpoints <-chan exonet.Endpoint) error {
+func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Identity, endpoints <-chan exonet.Endpoint) (*Stream, error) {
 	var wg sync.WaitGroup
-	var success atomic.Bool
+	var out sig.Value[*Stream]
 	var workers = DefaultWorkerCount
 
 	wctx, cancel := ctx.WithCancel()
@@ -432,12 +431,18 @@ func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Ident
 					}
 				}
 
-				err := mod.connectAt(wctx, remoteIdentity, e)
-				if err == nil {
-					success.Store(true)
-					cancel()
-					return
+				stream, err := mod.connectAt(wctx, remoteIdentity, e)
+				if err != nil {
+					continue
 				}
+
+				if _, ok := out.Swap(nil, stream); ok {
+					cancel()
+				} else {
+					stream.CloseWithError(errors.New("duplicate stream"))
+				}
+
+				return
 			}
 		}()
 	}
@@ -448,9 +453,11 @@ func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Ident
 	}()
 
 	<-wctx.Done()
-	if success.Load() {
-		return nil
+
+	stream := out.Get()
+	if stream != nil {
+		return stream, nil
 	}
 
-	return errors.New("no endpoint could be reached")
+	return nil, errors.New("no endpoint could be reached")
 }

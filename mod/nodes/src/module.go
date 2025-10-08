@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"context"
+	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -88,6 +89,18 @@ func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint
 
 func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint) error {
 	return mod.db.RemoveEndpoint(nodeID, endpoint.Network(), endpoint.Address())
+}
+
+// CloseStream closes a stream with the given id.
+func (mod *Module) CloseStream(id int) error {
+	streams := mod.peers.streams.Clone()
+	for _, s := range streams {
+		if s.id == id {
+			return s.CloseWithError(errors.New("stream closed"))
+		}
+	}
+
+	return errors.New("stream not found")
 }
 
 func (mod *Module) on(providerID *astral.Identity) *Consumer {
