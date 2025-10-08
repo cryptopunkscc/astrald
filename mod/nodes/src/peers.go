@@ -15,6 +15,7 @@ import (
 	"slices"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type Peers struct {
@@ -252,34 +253,78 @@ func (mod *Peers) addStream(s *Stream) (err error) {
 	linked := mod.isLinked(s.RemoteIdentity())
 
 	err = mod.streams.Add(s)
-	if err == nil {
-		if !linked {
-			mod.Objects.Receive(&nodes.EventLinked{NodeID: s.RemoteIdentity()}, nil)
-		}
-
-		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
-		go func() {
-			for frame := range s.Read() {
-				mod.in <- &Frame{
-					Frame:  frame,
-					Source: s,
-				}
-			}
-			mod.log.Errorv(1, "stream with %v removed: %v", s.RemoteIdentity(), s.Err())
-			mod.streams.Remove(s)
-			for _, c := range mod.conns.Select(func(k astral.Nonce, v *conn) (ok bool) {
-				return v.stream == s
-			}) {
-				c.Close()
-			}
-
-			if !mod.isLinked(s.RemoteIdentity()) {
-				mod.Objects.Receive(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()}, nil)
-			}
-		}()
+	if err != nil {
+		return
 	}
 
+	mod.log.Infov(3, "stream with %v added", s.RemoteIdentity()) // this can get spammy
+
+	go func() {
+		for frame := range s.Read() {
+			mod.in <- &Frame{
+				Frame:  frame,
+				Source: s,
+			}
+		}
+		mod.log.Errorv(1, "stream with %v removed: %v", s.RemoteIdentity(), s.Err())
+		mod.streams.Remove(s)
+		for _, c := range mod.conns.Select(func(k astral.Nonce, v *conn) (ok bool) {
+			return v.stream == s
+		}) {
+			c.Close()
+		}
+
+		if !mod.isLinked(s.RemoteIdentity()) {
+			mod.Objects.Receive(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()}, nil)
+		}
+	}()
+
+	if !linked {
+		mod.log.Infov(2, "linked with %v", s.RemoteIdentity()) // this can get spammy
+		mod.onNodeLinked(s.RemoteIdentity())
+	}
 	return
+}
+
+func (mod *Peers) onNodeLinked(nodeID *astral.Identity) {
+	mod.Objects.Receive(&nodes.EventLinked{NodeID: nodeID}, nil)
+
+	services := mod.ResolveServices(mod.ctx, nodeID)
+	if len(services) == 0 {
+		return
+	}
+
+	qctx, cancel := mod.ctx.WithTimeout(30 * time.Second)
+	defer cancel()
+
+	ch, err := query.RouteChan(qctx,
+		mod.node,
+		query.New(
+			mod.node.Identity(),
+			nodeID,
+			"objects.push",
+			nil,
+		),
+	)
+	if err != nil {
+		return
+	}
+	defer ch.Close()
+
+	// push local services; TODO: push all at once, not individually
+	for _, service := range services {
+		err := ch.Write(service)
+		if err != nil {
+			return
+		}
+		obj, err := ch.Read()
+		if err != nil {
+			return
+		}
+		if _, ok := obj.(*astral.Ack); !ok {
+			return
+		}
+	}
 }
 
 func (mod *Peers) isLinked(remoteID *astral.Identity) bool {

@@ -23,7 +23,11 @@ type Module interface {
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan exonet.Endpoint, error)
 	AddResolver(resolver EndpointResolver)
 
+	ResolveServices(*astral.Context, *astral.Identity) []*ServiceTTL
+	AddServiceResolver(resolver ServiceResolver)
+
 	Peers() []*astral.Identity
+	Services() ServiceQuery
 }
 
 // Link is an encrypted communication channel between two identities that is capable of routing queries
@@ -37,4 +41,15 @@ type Link interface {
 
 type EndpointResolver interface {
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan exonet.Endpoint, error)
+}
+
+// ServiceResolver returns a list of services provided to the identity
+type ServiceResolver interface {
+	ResolveServices(context *astral.Context, identity *astral.Identity) []*ServiceTTL
+}
+
+type ServiceQuery interface {
+	Find() []*Service
+	ByName(name ...string) ServiceQuery
+	ByNodeID(id ...*astral.Identity) ServiceQuery
 }

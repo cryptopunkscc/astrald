@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/kos"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -290,7 +291,19 @@ func (mod *Module) SignLocalContract(userID *astral.Identity) (contract *user.Si
 	return
 }
 
-// AddAsset adds an object to user's assets
+// ResolveServices implements nodes.ServiceResolver
+func (mod *Module) ResolveServices(context *astral.Context, identity *astral.Identity) []*nodes.ServiceTTL {
+	return []*nodes.ServiceTTL{
+		{
+			ProviderID: mod.node.Identity(),
+			Name:       "user",
+			Priority:   0,
+			TTL:        astral.Duration(24 * time.Hour),
+		},
+	}
+}
+
+// AddAsset adds an object to the current user's assets
 func (mod *Module) AddAsset(objectID *astral.ObjectID) (err error) {
 	_, err = mod.db.AddAsset(objectID, false)
 	if err == nil {
@@ -323,7 +336,7 @@ func (mod *Module) pushToLinkedSibs(object astral.Object) {
 	}
 }
 
-// RemoveAsset removes an object from user's assets
+// RemoveAsset removes an object from the current user's assets
 func (mod *Module) RemoveAsset(objectID *astral.ObjectID) (err error) {
 	err = mod.db.RemoveAsset(objectID)
 	if err == nil {
@@ -332,7 +345,7 @@ func (mod *Module) RemoveAsset(objectID *astral.ObjectID) (err error) {
 	return err
 }
 
-// AssetsContain returns true if user's assets contain the object
+// AssetsContain returns true if the current user's assets contain the object
 func (mod *Module) AssetsContain(objectID *astral.ObjectID) bool {
 	return mod.db.AssetsContain(objectID)
 }

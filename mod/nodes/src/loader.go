@@ -27,10 +27,12 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	mod.dbResolver = &DBEndpointResolver{mod: mod}
 	mod.resolvers.Add(mod.dbResolver)
 
-	err = mod.db.AutoMigrate(&dbEndpoint{})
+	err = mod.db.AutoMigrate(&dbEndpoint{}, &dbService{})
 	if err != nil {
 		return nil, err
 	}
+
+	mod.db.DeleteExpiredServices()
 
 	mod.ops.AddStruct(mod, "Op")
 

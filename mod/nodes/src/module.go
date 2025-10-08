@@ -43,9 +43,10 @@ type Module struct {
 	ctx    *astral.Context
 	ops    shell.Scope
 
-	dbResolver *DBEndpointResolver
-	resolvers  sig.Set[nodes.EndpointResolver]
-	relays     sig.Map[astral.Nonce, *Relay]
+	dbResolver       *DBEndpointResolver
+	resolvers        sig.Set[nodes.EndpointResolver]
+	relays           sig.Map[astral.Nonce, *Relay]
+	serviceResolvers sig.Set[nodes.ServiceResolver]
 
 	peers *Peers
 
@@ -60,6 +61,8 @@ type Relay struct {
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
+	mod.ctx = ctx.WithZone(astral.ZoneNetwork)
+
 	go mod.peers.frameReader(ctx)
 	<-ctx.Done()
 	return nil
@@ -90,6 +93,17 @@ func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpo
 	return mod.db.RemoveEndpoint(nodeID, endpoint.Network(), endpoint.Address())
 }
 
+func (mod *Module) ResolveServices(ctx *astral.Context, identity *astral.Identity) (info []*nodes.ServiceTTL) {
+	for _, s := range mod.serviceResolvers.Clone() {
+		info = append(info, s.ResolveServices(ctx, identity)...)
+	}
+	return
+}
+
+func (mod *Module) AddServiceResolver(resolver nodes.ServiceResolver) {
+	mod.serviceResolvers.Add(resolver)
+}
+
 func (mod *Module) on(providerID *astral.Identity) *Consumer {
 	return NewConsumer(mod, providerID)
 }
@@ -106,4 +120,8 @@ func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 	if resolver != nil {
 		mod.resolvers.Add(resolver)
 	}
+}
+
+func (mod *Module) Services() nodes.ServiceQuery {
+	return &ServiceQuery{db: mod.db.DB}
 }

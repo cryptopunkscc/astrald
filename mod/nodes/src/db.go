@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"time"
 )
 
 type DB struct {
@@ -40,4 +41,20 @@ func (db *DB) HasEndpoints(nodeID *astral.Identity) (has bool) {
 		Select("count(*) > 0").
 		First(&has)
 	return
+}
+
+func (db *DB) SaveService(providerID *astral.Identity, name string, priority int, expiresAt time.Time) error {
+	defer db.DeleteExpiredServices()
+
+	return db.Clauses(clause.OnConflict{UpdateAll: true}).
+		Create(&dbService{
+			ProviderID: providerID,
+			Name:       name,
+			Priority:   priority,
+			ExpiresAt:  expiresAt.UTC(),
+		}).Error
+}
+
+func (db *DB) DeleteExpiredServices() error {
+	return db.Where("expires_at < ?", time.Now()).Delete(&dbService{}).Error
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"sync"
+	"time"
 )
 
 func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
@@ -23,14 +24,59 @@ func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID, scop
 			d := d
 			wg.Add(1)
 			go func() {
+				done := make(chan struct{})
 				defer wg.Done()
+				defer close(done)
+
+				go func() {
+					select {
+					case <-done:
+						return
+					case <-ctx.Done():
+					}
+
+					var doneAt = time.Now()
+
+					select {
+					case <-done:
+						return
+					case <-time.After(time.Second):
+					}
+
+					mod.log.Logv(2, "describer %v is unresponsive", d)
+
+					for {
+						select {
+						case <-done:
+							mod.log.Logv(
+								2,
+								"describer %v finished %v after context was canceled",
+								d,
+								time.Since(doneAt),
+							)
+							return
+
+						case <-time.After(10 * time.Second):
+							mod.log.Logv(2, "describer %v is still unresponsive (%v)", d, time.Since(doneAt))
+						}
+					}
+				}()
+
 				_res, _err := d.DescribeObject(ctx, objectID, scope)
 				if _err != nil {
 					return
 				}
 
 				for i := range _res {
-					results <- i
+					for {
+						select {
+						case results <- i:
+							goto breakFor
+						case <-time.After(1 * time.Second):
+							mod.log.Logv(1, "describer %v: results channel blocked", d)
+						}
+					}
+				breakFor:
 				}
 			}()
 		}
@@ -58,7 +104,7 @@ func (a *describeArgs) Validate() error {
 	switch a.Out {
 	case "", "json":
 	default:
-		return errors.New("invlid format: " + a.Out)
+		return errors.New("invalid format: " + a.Out)
 	}
 	return nil
 }
