@@ -23,7 +23,7 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	//	config Config
+	config Config
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
