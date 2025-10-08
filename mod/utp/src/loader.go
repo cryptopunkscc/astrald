@@ -19,17 +19,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 
 	_ = assets.LoadYAML(utp.ModuleName, &mod.config)
 
-	// Parse public endpoints
-	for _, pe := range mod.config.PublicEndpoints {
-		endpoint, err := utp.ParseEndpoint(pe)
-		if err != nil {
-			l.Error("error parsing public endpoint \"%v\": %v", pe, err)
-			continue
-		}
-
-		mod.publicEndpoints = append(mod.publicEndpoints, endpoint)
-	}
-
 	return mod, nil
 }
 

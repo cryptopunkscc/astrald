@@ -18,6 +18,16 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 		config: Config{},
 	}
 
+	for _, addr := range mod.config.PublicEndpoints {
+		ip, err := ip.ParseIP(addr)
+		if err != nil {
+			mod.log.Errorv(0,
+				"ip module/Load invalid public endpoint IP: %v", addr)
+			continue
+		}
+		mod.publicIPs = append(mod.publicIPs, ip)
+	}
+
 	_ = assets.LoadYAML(tcp.ModuleName, &mod.config)
 
 	return mod, nil

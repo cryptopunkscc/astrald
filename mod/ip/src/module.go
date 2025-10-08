@@ -28,7 +28,7 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	addresses []ip.IP
+	publicIPs []ip.IP
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -55,6 +55,10 @@ func (mod *Module) LocalIPs() ([]ip.IP, error) {
 	}
 
 	return list, nil
+}
+
+func (mod *Module) PublicIPs() []ip.IP {
+	return mod.publicIPs
 }
 
 func (mod *Module) watchAddresses(ctx context.Context) {
