@@ -32,6 +32,10 @@ func (m *TypeMap) SetTranslateFunc(typeName string, t TranslateFunc) error {
 }
 
 func (m *TypeMap) Translate(object astral.Object) astral.Object {
+	if object == nil {
+		return nil
+	}
+
 	for i := maxTranslateDepth; i > 0; i-- {
 		if t, found := m.t.Get(object.ObjectType()); found {
 			object = t.Translate(object)
