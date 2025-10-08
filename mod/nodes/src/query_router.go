@@ -32,7 +32,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 	// try to link
 	ch, err := mod.ResolveEndpoints(ctx, q.Target)
 	if err == nil {
-		err = mod.peers.connectAtAny(ctx, q.Target, ch)
+		_, err = mod.peers.connectAtAny(ctx, q.Target, ch)
 		if err == nil {
 			err = mod.configureRelay(ctx, q, q.Target)
 			if err != nil {
