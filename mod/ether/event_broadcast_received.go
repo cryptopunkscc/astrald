@@ -1,16 +1,17 @@
 package ether
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
 var _ astral.Object = &EventBroadcastReceived{}
 
 type EventBroadcastReceived struct {
 	SourceID *astral.Identity
-	SourceIP tcp.IP
+	SourceIP ip.IP
 	Object   astral.Object
 }
 
