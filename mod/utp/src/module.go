@@ -2,13 +2,12 @@ package utp
 
 import (
 	"context"
-	"net"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/utp"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
@@ -40,42 +39,26 @@ func (mod *Module) ListenPort() int {
 	return mod.config.ListenPort
 }
 
-func (mod *Module) localIPs() ([]utp.IP, error) {
-	list := make([]utp.IP, 0)
-
-	ifaceAddrs, err := InterfaceAddrs()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, a := range ifaceAddrs {
-		ipnet, ok := a.(*net.IPNet)
-		if !ok {
-			continue
-		}
-		ip := utp.IP(ipnet.IP)
-		list = append(list, ip)
-	}
-
-	return list, nil
-}
-
 func (mod *Module) localEndpoints() (list []exonet.Endpoint) {
-	ips, err := mod.localIPs()
+	ips, err := mod.IP.LocalIPs()
 	if err != nil {
 		return
 	}
 
-	for _, ip := range ips {
-		if ip.IsLoopback() {
+	for _, tip := range ips {
+		if tip.IsLoopback() {
 			continue
 		}
-		if ip.IsGlobalUnicast() || ip.IsPrivate() {
-			list = append(list, &utp.Endpoint{
-				IP:   ip,
-				Port: astral.Uint16(mod.ListenPort()),
-			})
+
+		if tip.IsGlobalUnicast() || tip.IsPrivate() {
+			e := tcp.Endpoint{
+				IP:   tip,
+				Port: astral.Uint16(uint16(mod.config.ListenPort)),
+			}
+
+			list = append(list, &e)
 		}
+
 	}
 	return
 }
