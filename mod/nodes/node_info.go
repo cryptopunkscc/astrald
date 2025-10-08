@@ -3,14 +3,16 @@ package nodes
 import (
 	"bytes"
 	"errors"
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tor"
+	"github.com/cryptopunkscc/astrald/mod/utp"
 	"github.com/cryptopunkscc/astrald/streams"
 	"github.com/jxskiss/base62"
-	"io"
 )
 
 type NodeInfo struct {
@@ -51,6 +53,8 @@ func (info NodeInfo) WriteTo(w io.Writer) (n int64, err error) {
 			t = 1
 		case *gateway.Endpoint:
 			t = 2
+		case *utp.Endpoint:
+			t = 3
 		default:
 			return n, errors.New("unknown endpoint type")
 		}
