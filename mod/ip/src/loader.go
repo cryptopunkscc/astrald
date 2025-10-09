@@ -18,7 +18,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 		config: Config{},
 	}
 
-	for _, addr := range mod.config.PublicEndpoints {
+	for _, addr := range mod.config.PublicIPs {
 		ip, err := ip.ParseIP(addr)
 		if err != nil {
 			mod.log.Errorv(0,

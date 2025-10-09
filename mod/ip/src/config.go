@@ -1,5 +1,5 @@
 package ip
 
 type Config struct {
-	PublicEndpoints []string `yaml:"public_endpoints,omitempty"`
+	PublicIPs []string `yaml:"public_ips,omitempty"`
 }
