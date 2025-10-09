@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"slices"
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -11,9 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
-	"slices"
-	"sync"
 )
 
 type Peers struct {
@@ -344,7 +345,7 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 	return nil, errors.New("no supported link types found")
 }
 
-func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
+func (mod *Peers) Accept(ctx *astral.Context, conn exonet.Conn) (err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
@@ -382,6 +383,10 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 			_, err = astral.Uint8(0).WriteTo(aconn)
 			if err == nil {
 				mod.addStream(newStream(aconn, false))
+				err = mod.pushObservedEndpoint(ctx, aconn)
+				if err != nil {
+					return err
+				}
 			}
 
 			return
@@ -395,6 +400,24 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 			)
 		}
 	}
+}
+
+func (mod *Peers) pushObservedEndpoint(
+	ctx *astral.Context,
+	conn *noise.Conn,
+) (err error) {
+	var endpoint = conn.RemoteEndpoint()
+
+	var remoteIdentity = conn.RemoteIdentity()
+
+	err = mod.Objects.Push(ctx, remoteIdentity, &nodes.ObservedEndpointEvent{
+		Endpoint: endpoint,
+	})
+	if err != nil {
+		return fmt.Errorf("nodes peers/push failed: %w", err)
+	}
+
+	return nil
 }
 
 func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) (*Stream, error) {
