@@ -6,12 +6,17 @@ import (
 )
 
 type opResolveEndpointsArgs struct {
-	ID  *astral.Identity
+	ID  string
 	Out string `query:"optional"`
 }
 
 func (mod *Module) OpResolveEndpoints(ctx *astral.Context, q shell.Query, args opResolveEndpointsArgs) (err error) {
-	endpoints, err := mod.ResolveEndpoints(ctx.WithIdentity(q.Caller()), args.ID)
+	targetID, err := mod.Dir.ResolveIdentity(args.ID)
+	if err != nil {
+		return q.RejectWithCode(2)
+	}
+
+	endpoints, err := mod.ResolveEndpoints(ctx.WithIdentity(q.Caller()), targetID)
 	if err != nil {
 		mod.log.Error("resolve endpoints: %v", err)
 		return q.RejectWithCode(astral.CodeInternalError)
