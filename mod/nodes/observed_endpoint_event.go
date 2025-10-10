@@ -9,23 +9,23 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
-type ObservedEndpointEvent struct {
+type ObservedEndpointMessage struct {
 	Endpoint exonet.Endpoint
 }
 
-func (ObservedEndpointEvent) ObjectType() string {
+func (ObservedEndpointMessage) ObjectType() string {
 	return `mod.nodes.
-observed_endpoint_event`
+observed_endpoint_message`
 }
 
-func (e ObservedEndpointEvent) WriteTo(w io.Writer) (n int64, err error) {
+func (e ObservedEndpointMessage) WriteTo(w io.Writer) (n int64, err error) {
 	if e.Endpoint == nil {
 		return 0, errors.New("nil endpoint")
 	}
 	return astral.Write(w, e.Endpoint)
 }
 
-func (e *ObservedEndpointEvent) ReadFrom(r io.Reader) (n int64, err error) {
+func (e *ObservedEndpointMessage) ReadFrom(r io.Reader) (n int64, err error) {
 	bp := astral.ExtractBlueprints(r)
 
 	obj, m, err := bp.Read(r, false)
@@ -53,5 +53,5 @@ func (e *ObservedEndpointEvent) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&ObservedEndpointEvent{})
+	_ = astral.DefaultBlueprints.Add(&ObservedEndpointMessage{})
 }

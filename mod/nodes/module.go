@@ -1,6 +1,8 @@
 package nodes
 
 import (
+	"context"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
@@ -14,7 +16,7 @@ const (
 )
 
 type Module interface {
-	Accept(ctx *astral.Context, conn exonet.Conn) error
+	Accept(ctx context.Context, conn exonet.Conn) error
 
 	AddEndpoint(*astral.Identity, exonet.Endpoint) error
 	RemoveEndpoint(*astral.Identity, exonet.Endpoint) error

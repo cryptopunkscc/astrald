@@ -5,6 +5,7 @@ import (
 )
 
 type Config struct {
+	Endpoints   []string      `yaml:"configEndpoints,omitempty"`
 	ListenPort  int           `yaml:"listen_port,omitempty"`  // Port to listen on for incoming connections (default 1791)
 	DialTimeout time.Duration `yaml:"dial_timeout,omitempty"` // Timeout for dialing connections (default 1 minute)
 }

@@ -18,6 +18,8 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	ctx    context.Context
+
+	configEndpoints []exonet.Endpoint
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -34,42 +36,16 @@ func (mod *Module) ListenPort() int {
 	return mod.config.ListenPort
 }
 
-func (mod *Module) localEndpoints() (list []exonet.Endpoint) {
-	ips, err := mod.IP.LocalIPs()
-	if err != nil {
-		return
-	}
-
+func (mod *Module) endpoints() (list []exonet.Endpoint) {
+	ips, _ := mod.IP.LocalIPs()
 	for _, tip := range ips {
-		if tip.IsLoopback() {
-			continue
-		}
-
-		if tip.IsGlobalUnicast() || tip.IsPrivate() {
-			e := tcp.Endpoint{
-				IP:   tip,
-				Port: astral.Uint16(uint16(mod.config.ListenPort)),
-			}
-
-			list = append(list, &e)
-		}
-
-	}
-	return
-}
-
-func (mod *Module) publicEndpoints() (list []exonet.Endpoint) {
-	ps := mod.IP.PublicIPs()
-
-	for _, tip := range ps {
 		e := tcp.Endpoint{
 			IP:   tip,
-			Port: astral.Uint16(uint16(mod.config.ListenPort)),
+			Port: astral.Uint16(mod.config.ListenPort),
 		}
 
 		list = append(list, &e)
 	}
 
 	return list
-
 }

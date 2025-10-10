@@ -3,18 +3,20 @@ package nodes
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
-	"time"
 )
 
 const DefaultWorkerCount = 8
@@ -48,6 +50,9 @@ type Module struct {
 	resolvers  sig.Set[nodes.EndpointResolver]
 	relays     sig.Map[astral.Nonce, *Relay]
 
+	// FIXME: add caching with scoring (bigger issue due to invalidation)
+	lastObservedIP ip.IP
+
 	peers *Peers
 
 	in chan *Frame
@@ -61,6 +66,8 @@ type Relay struct {
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
+	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
 	go mod.peers.frameReader(ctx)
 	<-ctx.Done()
 	return nil

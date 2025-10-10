@@ -248,7 +248,10 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 	}
 }
 
-func (mod *Peers) addStream(s *Stream) (err error) {
+func (mod *Peers) addStream(
+	s *Stream,
+) (
+	err error) {
 	linked := mod.isLinked(s.RemoteIdentity())
 
 	err = mod.streams.Add(s)
@@ -257,11 +260,18 @@ func (mod *Peers) addStream(s *Stream) (err error) {
 			mod.Objects.Receive(&nodes.EventLinked{NodeID: s.RemoteIdentity()}, nil)
 		}
 
+		defer func() {
+			err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
+			if err != nil {
+				mod.log.Errorv(1, "push observed endpoint failed: %v", err)
+			}
+		}()
+
 		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
 		go func() {
 			for frame := range s.Read() {
 				mod.in <- &Frame{
-					Frame:  frame,
+					Frame:  frame, // NOTE: add timeout handling?
 					Source: s,
 				}
 			}
@@ -345,7 +355,7 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 	return nil, errors.New("no supported link types found")
 }
 
-func (mod *Peers) Accept(ctx *astral.Context, conn exonet.Conn) (err error) {
+func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
@@ -383,10 +393,6 @@ func (mod *Peers) Accept(ctx *astral.Context, conn exonet.Conn) (err error) {
 			_, err = astral.Uint8(0).WriteTo(aconn)
 			if err == nil {
 				mod.addStream(newStream(aconn, false))
-				err = mod.pushObservedEndpoint(ctx, aconn)
-				if err != nil {
-					return err
-				}
 			}
 
 			return
@@ -403,16 +409,13 @@ func (mod *Peers) Accept(ctx *astral.Context, conn exonet.Conn) (err error) {
 }
 
 func (mod *Peers) pushObservedEndpoint(
-	ctx *astral.Context,
-	conn *noise.Conn,
+	remoteEndpoint exonet.Endpoint,
+	remoteIdentity *astral.Identity,
 ) (err error) {
-	var endpoint = conn.RemoteEndpoint()
-
-	var remoteIdentity = conn.RemoteIdentity()
-
-	err = mod.Objects.Push(ctx, remoteIdentity, &nodes.ObservedEndpointEvent{
-		Endpoint: endpoint,
-	})
+	err = mod.Objects.Push(mod.ctx, remoteIdentity,
+		&nodes.ObservedEndpointMessage{
+			Endpoint: remoteEndpoint,
+		})
 	if err != nil {
 		return fmt.Errorf("nodes peers/push failed: %w", err)
 	}
