@@ -3,13 +3,14 @@ package nearby
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/sig"
-	"time"
 )
 
 var _ nearby.Module = &Module{}
@@ -31,7 +32,7 @@ type Module struct {
 
 type cache struct {
 	Identity  *astral.Identity
-	IP        tcp.IP
+	IP        ip.IP
 	Timestamp time.Time
 	Status    *nearby.StatusMessage
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
 var _ exonet.Endpoint = &Endpoint{}
@@ -21,7 +22,7 @@ var _ astral.Object = &Endpoint{}
 // i.e. an IP address and a port.
 // Supports JSON and text.
 type Endpoint struct {
-	IP   IP
+	IP   ip.IP
 	Port astral.Uint16
 }
 
@@ -77,7 +78,7 @@ func (e *Endpoint) UnmarshalText(text []byte) error {
 		return err
 	}
 
-	ip, err := ParseIP(h)
+	ip, err := ip.ParseIP(h)
 	if err != nil {
 		return err
 	}
@@ -114,7 +115,7 @@ func ParseEndpoint(s string) (*Endpoint, error) {
 		return nil, err
 	}
 
-	ip, err := ParseIP(hostStr)
+	ip, err := ip.ParseIP(hostStr)
 	if err != nil {
 		return nil, err
 	}

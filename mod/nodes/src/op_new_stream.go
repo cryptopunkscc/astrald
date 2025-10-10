@@ -1,11 +1,12 @@
 package nodes
 
 import (
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"strings"
 )
 
 type opNewStreamArgs struct {
@@ -72,7 +73,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 		LocalIdentity:  s.LocalIdentity(),
 		RemoteIdentity: s.RemoteIdentity(),
 		LocalAddr:      astral.String(s.LocalAddr()),
-		RemoteAddr:     astral.String(s.RemoteAddr()),
+		RemoteAddr:     astral.String(s.RemoteEndpoint().Address()),
 		Outbound:       astral.Bool(s.outbound),
 	})
 }

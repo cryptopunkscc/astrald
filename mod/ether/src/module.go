@@ -5,14 +5,15 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/ether"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"github.com/cryptopunkscc/astrald/resources"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/ether"
+	"github.com/cryptopunkscc/astrald/mod/ip"
+	"github.com/cryptopunkscc/astrald/resources"
 )
 
 const maxBroadcastSize = 1<<16 - 1
@@ -54,7 +55,7 @@ func (mod *Module) broadcastReceiver(ctx *astral.Context) (err error) {
 
 		mod.Objects.Receive(&ether.EventBroadcastReceived{
 			SourceID: b.Source,
-			SourceIP: tcp.IP(addr.IP),
+			SourceIP: ip.IP(addr.IP),
 			Object:   b.Object,
 		}, mod.node.Identity())
 
@@ -79,7 +80,7 @@ func (mod *Module) Push(object astral.Object, source *astral.Identity) (err erro
 }
 
 // PushToIP pushes an object to a specific IP address (unicast)
-func (mod *Module) PushToIP(ip tcp.IP, object astral.Object, source *astral.Identity) error {
+func (mod *Module) PushToIP(ip ip.IP, object astral.Object, source *astral.Identity) error {
 	packet, err := mod.makePacket(object, source)
 	if err != nil {
 		return err
@@ -153,7 +154,7 @@ func (mod *Module) broadcast(data []byte) error {
 				continue
 			}
 
-			_, err = mod.writeToIP(tcp.IP(broadcastIP), data)
+			_, err = mod.writeToIP(ip.IP(broadcastIP), data)
 			if err != nil {
 				return err
 			}
@@ -163,7 +164,7 @@ func (mod *Module) broadcast(data []byte) error {
 	return nil
 }
 
-func (mod *Module) writeToIP(ip tcp.IP, data []byte) (n int, err error) {
+func (mod *Module) writeToIP(ip ip.IP, data []byte) (n int, err error) {
 	if mod.socket == nil {
 		return 0, errors.New("socket not initialized")
 	}

@@ -1,20 +1,21 @@
-package tcp
+package ip
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type EventNetworkAddressChanged struct {
-	Removed []string
-	Added   []string
-	All     []string
+	Removed []IP
+	Added   []IP
+	All     []IP
 }
 
 // astral
 
 func (EventNetworkAddressChanged) ObjectType() string {
-	return "mod.tcp.events.network_address_changed"
+	return "mod.ip.events.network_address_changed"
 }
 
 func (e EventNetworkAddressChanged) WriteTo(w io.Writer) (n int64, err error) {

@@ -2,12 +2,13 @@ package nearby
 
 import (
 	"errors"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/ether"
+	ip "github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"time"
 )
 
 func (mod *Module) ReceiveObject(drop objects.Drop) error {
@@ -23,7 +24,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 			return drop.Accept(false)
 		}
 
-	case *tcp.EventNetworkAddressChanged:
+	case *ip.EventNetworkAddressChanged:
 		mod.receiveNetworkAddressChanged(object)
 		return drop.Accept(false)
 	}
@@ -44,7 +45,8 @@ func (mod *Module) receiveBroadcastEvent(event *ether.EventBroadcastReceived) er
 	return errors.New("object rejected")
 }
 
-func (mod *Module) receiveStatus(sourceID *astral.Identity, addr tcp.IP, status *nearby.StatusMessage) error {
+func (mod *Module) receiveStatus(sourceID *astral.Identity, addr ip.IP,
+	status *nearby.StatusMessage) error {
 	mod.log.Infov(3, "update from %v %v", sourceID, addr)
 	mod.cache.Replace(addr.String(), &cache{
 		Identity:  sourceID,
@@ -56,7 +58,8 @@ func (mod *Module) receiveStatus(sourceID *astral.Identity, addr tcp.IP, status 
 	return errors.New("object rejected")
 }
 
-func (mod *Module) receiveNetworkAddressChanged(event *tcp.EventNetworkAddressChanged) {
+func (mod *Module) receiveNetworkAddressChanged(event *ip.
+	EventNetworkAddressChanged) {
 	if len(event.Added) == 0 {
 		return // do nothing if there are no new network addresses
 	}

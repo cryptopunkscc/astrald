@@ -1,9 +1,10 @@
 package tcp
 
 import (
+	"net"
+
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"net"
 )
 
 var _ exonet.Conn = Conn{}

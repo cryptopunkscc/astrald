@@ -3,6 +3,7 @@ package utp
 import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
@@ -12,6 +13,7 @@ type Deps struct {
 	Exonet  exonet.Module
 	Nodes   nodes.Module
 	Objects objects.Module
+	IP      ip.Module
 }
 
 func (mod *Module) LoadDependencies() (err error) {

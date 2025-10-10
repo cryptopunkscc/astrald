@@ -2,12 +2,13 @@ package nodes
 
 import (
 	"errors"
+	"sync/atomic"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/sig"
-	"sync/atomic"
-	"time"
 )
 
 var lastStreamID atomic.Int32
@@ -78,13 +79,12 @@ func (s *Stream) LocalAddr() string {
 	return ""
 }
 
-func (s *Stream) RemoteAddr() string {
+func (s *Stream) RemoteEndpoint() exonet.Endpoint {
 	if c, ok := s.conn.(exonet.Conn); ok {
-		if e := c.RemoteEndpoint(); e != nil {
-			return e.Network() + ":" + e.Address()
-		}
+		return c.RemoteEndpoint()
 	}
-	return ""
+
+	return nil
 }
 
 func (s *Stream) Write(frame frames.Frame) (err error) {

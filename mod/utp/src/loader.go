@@ -1,6 +1,9 @@
 package utp
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
@@ -19,15 +22,15 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 
 	_ = assets.LoadYAML(utp.ModuleName, &mod.config)
 
-	// Parse public endpoints
-	for _, pe := range mod.config.PublicEndpoints {
-		endpoint, err := utp.ParseEndpoint(pe)
+	for _, addr := range mod.config.Endpoints {
+		addr, _ = strings.CutPrefix(addr, fmt.Sprintf("%s:", utp.ModuleName))
+
+		endpoint, err := utp.ParseEndpoint(addr)
 		if err != nil {
-			l.Error("error parsing public endpoint \"%v\": %v", pe, err)
-			continue
+			mod.log.Errorv(0, "tcp module/Load invalid endpoint: %v", addr)
 		}
 
-		mod.publicEndpoints = append(mod.publicEndpoints, endpoint)
+		mod.configEndpoints = append(mod.configEndpoints, endpoint)
 	}
 
 	return mod, nil

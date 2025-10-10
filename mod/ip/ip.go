@@ -1,11 +1,12 @@
-package tcp
+package ip
 
 import (
 	"encoding/json"
-	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
+	"fmt"
 	"io"
 	"net"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type IP net.IP
@@ -17,7 +18,7 @@ func ParseIP(s string) (IP, error) {
 // astral
 
 func (IP) ObjectType() string {
-	return "mod.tcp.ip_address"
+	return "mod.ip.ip_address"
 }
 
 func (ip IP) WriteTo(w io.Writer) (n int64, err error) {
@@ -40,15 +41,14 @@ func (ip IP) MarshalJSON() ([]byte, error) {
 
 func (ip *IP) UnmarshalJSON(b []byte) error {
 	var str string
-	err := json.Unmarshal(b, &str)
-	if err != nil {
-		return nil
+	if err := json.Unmarshal(b, &str); err != nil {
+		return err
 	}
 
 	parsed := IP(net.ParseIP(str))
 
 	if parsed == nil {
-		return errors.New("invalid IP")
+		return fmt.Errorf("invalid IP")
 	}
 
 	*ip = parsed
@@ -64,7 +64,7 @@ func (ip IP) MarshalText() (text []byte, err error) {
 func (ip *IP) UnmarshalText(text []byte) error {
 	parsed := IP(net.ParseIP(string(text)))
 	if parsed == nil {
-		return errors.New("invalid IP")
+		return fmt.Errorf("invalid IP")
 	}
 	*ip = parsed
 	return nil
