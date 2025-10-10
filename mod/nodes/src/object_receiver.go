@@ -21,8 +21,10 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 }
 
 func (mod *Module) receiveObservedEndpointMessage(event *nodes.ObservedEndpointMessage) error {
+	endpoint := event.Endpoint
+
 	var i ip.IP
-	switch e := event.Endpoint.(type) {
+	switch e := endpoint.(type) {
 	case *tcp.Endpoint:
 		i = e.IP
 	case *utp.Endpoint:
@@ -33,8 +35,9 @@ func (mod *Module) receiveObservedEndpointMessage(event *nodes.ObservedEndpointM
 	}
 
 	if i.IsGlobalUnicast() {
-		mod.log.Log(`nodes module/receiveObservedIP observed new public IP: %v`, i)
-		mod.AddObservedIP(i)
+		mod.log.Log(`nodes module/receiveObservedEndpointMessage observed new
+public ip: %v`, i)
+		mod.AddObservedEndpoint(endpoint, i)
 	}
 
 	return nil

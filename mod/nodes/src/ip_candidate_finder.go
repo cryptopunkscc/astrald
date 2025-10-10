@@ -3,18 +3,20 @@ package nodes
 import (
 	"time"
 
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
 const ipCacheSize = 8
 
-type ObservedIP struct {
-	IP       ip.IP
+type ObservedEndpoint struct {
+	Endpoint exonet.Endpoint
+	IP       ip.IP // NOTE: to not parse from endpoint
 	Observed int64
 }
 
 func (mod *Module) FindIPCandidates() (list []ip.IP) {
-	cache := mod.observedIPs.Clone()
+	cache := mod.observedEndpoints.Clone()
 	list = make([]ip.IP, 0, len(cache))
 	for _, entry := range cache {
 		list = append(list, entry.IP)
@@ -22,15 +24,16 @@ func (mod *Module) FindIPCandidates() (list []ip.IP) {
 	return list
 }
 
-// AddObservedIP adds or updates an IP in the cache, evicting the oldest if over size.
-func (mod *Module) AddObservedIP(candidate ip.IP) {
-	key := candidate.String()
-	mod.observedIPs.Set(key, ObservedIP{
-		IP:       candidate,
+// AddObservedEndpoint adds or updates an IP in the cache, evicting the oldest if over size.
+func (mod *Module) AddObservedEndpoint(endpoint exonet.Endpoint, ip ip.IP) {
+	key := endpoint.Address() // TODO: shouldnt be this with protocol (?)
+	mod.observedEndpoints.Set(key, ObservedEndpoint{
+		Endpoint: endpoint,
+		IP:       ip,
 		Observed: time.Now().Unix(),
 	})
 
-	cache := mod.observedIPs.Clone()
+	cache := mod.observedEndpoints.Clone()
 	if len(cache) > ipCacheSize {
 		// Find the oldest entry
 		var oldestKey string
@@ -44,7 +47,7 @@ func (mod *Module) AddObservedIP(candidate ip.IP) {
 			}
 		}
 		if oldestKey != "" {
-			mod.observedIPs.Delete(oldestKey)
+			mod.observedEndpoints.Delete(oldestKey)
 		}
 	}
 }

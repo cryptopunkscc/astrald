@@ -49,7 +49,7 @@ type Module struct {
 	resolvers  sig.Set[nodes.EndpointResolver]
 	relays     sig.Map[astral.Nonce, *Relay]
 
-	observedIPs sig.Map[string, ObservedIP] // key is IP string
+	observedEndpoints sig.Map[string, ObservedEndpoint] // key is IP string
 
 	peers *Peers
 
