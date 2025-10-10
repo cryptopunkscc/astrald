@@ -11,10 +11,5 @@ func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity
 		return sig.ArrayToChan([]exonet.Endpoint{}), nil
 	}
 
-	var all []exonet.Endpoint
-
-	all = append(all, mod.publicEndpoints()...)
-	all = append(all, mod.localEndpoints()...)
-
-	return sig.ArrayToChan(all), nil
+	return sig.ArrayToChan(mod.endpoints()), nil
 }

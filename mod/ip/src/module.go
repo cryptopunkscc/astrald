@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/resources"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var _ ip.Module = &Module{}
@@ -23,12 +24,14 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	config Config
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
 
-	publicIPs []ip.IP
+	// NOTE: rename
+	configIPs []ip.IP
+
+	finders sig.Set[ip.CandidateFinder]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -51,14 +54,19 @@ func (mod *Module) LocalIPs() ([]ip.IP, error) {
 			continue
 		}
 		ip := ip.IP(ipnet.IP)
+
+		if ip.IsLoopback() {
+			continue
+		}
+
 		list = append(list, ip)
 	}
 
 	return list, nil
 }
 
-func (mod *Module) PublicIPs() []ip.IP {
-	return mod.publicIPs
+func (mod *Module) ConfigIPs() []ip.IP {
+	return mod.configIPs
 }
 
 func (mod *Module) watchAddresses(ctx context.Context) {

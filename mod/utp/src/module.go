@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/utp"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
@@ -15,11 +14,12 @@ import (
 // Module represents the UDP module and implements the exonet.Dialer interface.
 type Module struct {
 	Deps
-	config Config // Configuration for the module
-	node   astral.Node
-	assets assets.Assets
-	log    *log.Logger
-	ctx    context.Context
+	config          Config // Configuration for the module
+	node            astral.Node
+	assets          assets.Assets
+	log             *log.Logger
+	ctx             context.Context
+	configEndpoints []exonet.Endpoint
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -39,42 +39,16 @@ func (mod *Module) ListenPort() int {
 	return mod.config.ListenPort
 }
 
-func (mod *Module) localEndpoints() (list []exonet.Endpoint) {
-	ips, err := mod.IP.LocalIPs()
-	if err != nil {
-		return
-	}
-
+func (mod *Module) endpoints() (list []exonet.Endpoint) {
+	ips, _ := mod.IP.LocalIPs()
 	for _, tip := range ips {
-		if tip.IsLoopback() {
-			continue
-		}
-
-		if tip.IsGlobalUnicast() || tip.IsPrivate() {
-			e := utp.Endpoint{
-				IP:   tip,
-				Port: astral.Uint16(uint16(mod.config.ListenPort)),
-			}
-
-			list = append(list, &e)
-		}
-
-	}
-	return
-}
-
-func (mod *Module) publicEndpoints() (list []exonet.Endpoint) {
-	ps := mod.IP.PublicIPs()
-
-	for _, tip := range ps {
-		e := tcp.Endpoint{
+		e := utp.Endpoint{
 			IP:   tip,
-			Port: astral.Uint16(uint16(mod.config.ListenPort)),
+			Port: astral.Uint16(mod.config.ListenPort),
 		}
 
 		list = append(list, &e)
 	}
 
 	return list
-
 }

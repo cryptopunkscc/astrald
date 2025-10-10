@@ -1,6 +1,9 @@
 package tcp
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
@@ -18,6 +21,17 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 	}
 
 	_ = assets.LoadYAML(tcp.ModuleName, &mod.config)
+
+	for _, addr := range mod.config.Endpoints {
+		addr, _ = strings.CutPrefix(addr, fmt.Sprintf("%s:", tcp.ModuleName))
+
+		endpoint, err := tcp.ParseEndpoint(addr)
+		if err != nil {
+			mod.log.Errorv(0, "tcp module/Load invalid endpoint: %v", addr)
+		}
+
+		mod.configEndpoints = append(mod.configEndpoints, endpoint)
+	}
 
 	return mod, nil
 }
