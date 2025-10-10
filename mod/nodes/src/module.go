@@ -10,7 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -50,8 +49,7 @@ type Module struct {
 	resolvers  sig.Set[nodes.EndpointResolver]
 	relays     sig.Map[astral.Nonce, *Relay]
 
-	// FIXME: add caching with scoring (bigger issue due to invalidation)
-	lastObservedIP ip.IP
+	observedIPs sig.Map[string, ObservedIP] // key is IP string
 
 	peers *Peers
 
