@@ -28,10 +28,8 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	// NOTE: rename
-	configIPs []ip.IP
-
-	finders sig.Set[ip.CandidateFinder]
+	configuredIPs []ip.IP
+	finders       sig.Set[ip.CandidateFinder]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -65,8 +63,8 @@ func (mod *Module) LocalIPs() ([]ip.IP, error) {
 	return list, nil
 }
 
-func (mod *Module) ConfigIPs() []ip.IP {
-	return mod.configIPs
+func (mod *Module) ConfiguredIPs() []ip.IP {
+	return mod.configuredIPs
 }
 
 func (mod *Module) watchAddresses(ctx context.Context) {

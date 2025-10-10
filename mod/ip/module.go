@@ -3,8 +3,7 @@ package ip
 const ModuleName = "ip"
 
 type Module interface {
-	// FIXME: renmame "config"
-	ConfigIPs() (ips []IP)
+	ConfiguredIPs() (ips []IP)
 	LocalIPs() (ips []IP, err error)
 	FindIPCandidates() (ips []IP)
 }
