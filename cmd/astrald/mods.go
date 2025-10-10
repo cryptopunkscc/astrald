@@ -22,6 +22,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/shell/src"
 	_ "github.com/cryptopunkscc/astrald/mod/tcp/src"
 	_ "github.com/cryptopunkscc/astrald/mod/tor/src"
+	_ "github.com/cryptopunkscc/astrald/mod/udp/src"
 	_ "github.com/cryptopunkscc/astrald/mod/user/src"
 	_ "github.com/cryptopunkscc/astrald/mod/utp/src"
 )
