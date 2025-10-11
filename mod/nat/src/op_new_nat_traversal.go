@@ -81,5 +81,7 @@ func (mod *Module) OpNewNatTraversal(ctx *astral.Context, q shell.Query,
 	shellCh := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer shellCh.Close()
 
+	// FIXME: return result of NAT traversal
+
 	return nil
 }
