@@ -19,6 +19,8 @@ type opStartNatTraversal struct {
 	Session []byte `query:"optional"`
 }
 
+// FIXME: adjust error handling to standard
+
 func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query,
 	args opStartNatTraversal) error {
 	ips := mod.IP.FindIPCandidates()
@@ -80,6 +82,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query,
 			return err
 		}
 
+		// FIXME: return pair <{IP, Port>
 		return nil
 	}
 
