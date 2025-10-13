@@ -28,26 +28,21 @@ const (
 
 // conePuncher is a minimal cone NAT puncher using fixed defaults and a provided peer listen port.
 type conePuncher struct {
-	listenPort int    // peer private listen port hint; if 0, fallback to local port as center
-	session    []byte // required session identifier
+	session []byte // required session identifier
 }
 
 // newConePuncher creates a cone NAT puncher that targets the given peer listen port.
 // Session is required and must be non-empty.
-func newConePuncher(listenPort int, session []byte) nat.Puncher {
-	if len(session) == 0 {
-		panic("nat: session is required for cone puncher")
-	}
-	return &conePuncher{listenPort: listenPort, session: append([]byte(nil), session...)}
+func newConePuncher(session []byte) nat.Puncher {
+
+	return &conePuncher{session: append([]byte(nil), session...)}
 }
 
 func (p *conePuncher) HolePunch(ctx context.Context, peer ip.IP) (*nat.PunchResult, error) {
 	if peer == nil || peer.String() == "" {
 		return nil, errors.New("nat: empty peer IP")
 	}
-	if p.listenPort < 0 || p.listenPort > 65535 {
-		return nil, errors.New("nat: invalid listenPort")
-	}
+
 	if len(p.session) == 0 {
 		return nil, errors.New("nat: session is required")
 	}
@@ -69,14 +64,10 @@ func (p *conePuncher) HolePunch(ctx context.Context, peer ip.IP) (*nat.PunchResu
 	if ua, ok := conn.LocalAddr().(*net.UDPAddr); ok {
 		localPort = ua.Port
 	}
-	base := p.listenPort
-	if base == 0 {
-		base = localPort // fallback: use our local port as the probing center
-	}
 
 	// Prepare candidate remote addresses around the base port.
 	var raddrs []net.Addr
-	for _, rp := range candidatePorts(base, portGuessRange) {
+	for _, rp := range candidatePorts(localPort, portGuessRange) {
 		ra, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", peer.String(), rp))
 		if err == nil && ra != nil {
 			raddrs = append(raddrs, ra)
