@@ -261,7 +261,9 @@ func (mod *Peers) addStream(
 		}
 
 		defer func() {
-			if s.outbound {
+
+			// outbound connection can still not have endpoint (e.g virtual one)
+			if s.outbound && s.RemoteEndpoint() != nil {
 				err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
 				if err != nil {
 					mod.log.Errorv(1, "push observed endpoint failed: %v", err)
