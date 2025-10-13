@@ -261,9 +261,11 @@ func (mod *Peers) addStream(
 		}
 
 		defer func() {
-			err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
-			if err != nil {
-				mod.log.Errorv(1, "push observed endpoint failed: %v", err)
+			if s.outbound {
+				err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
+				if err != nil {
+					mod.log.Errorv(1, "push observed endpoint failed: %v", err)
+				}
 			}
 		}()
 
