@@ -6,13 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
+	"sync"
 	"time"
 
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
-
-// NOTE: Mostly AI will be polished
 
 // Ensure conePuncher implements the public Puncher interface from the root package.
 var _ nat.Puncher = (*conePuncher)(nil)
@@ -25,8 +26,11 @@ const (
 )
 
 // conePuncher is a minimal cone NAT puncher using fixed defaults and a provided peer listen port.
+// its simplest form of punching as it only punches port and few ports around
+// it. Which wont work on most of home NAT's because they are asymmetric.
 type conePuncher struct {
-	session   []byte         // required session identifier
+	mu        sync.Mutex
+	session   []byte         // required session identifier (copied)
 	conn      net.PacketConn // bound UDP socket
 	localPort int            // cached local port of conn
 	opened    bool           // whether conn is opened
@@ -35,9 +39,9 @@ type conePuncher struct {
 // newConePuncher creates a cone NAT puncher that targets the given peer listen port.
 // Session is required and must be non-empty.
 func newConePuncher(session []byte) nat.Puncher {
-	return &conePuncher{
-		session: session,
-	}
+	// defensive copy of session
+	s := append(make([]byte, 0), session...)
+	return &conePuncher{session: s}
 }
 
 // Open binds a UDP socket and stores it for later HolePunch use.
@@ -45,9 +49,16 @@ func (p *conePuncher) Open(ctx context.Context) (int, error) {
 	if len(p.session) == 0 {
 		return 0, errors.New("nat: session is required")
 	}
+	// Fast path: check under lock
+	p.mu.Lock()
 	if p.opened && p.conn != nil {
-		return p.localPort, nil
+		lp := p.localPort
+		p.mu.Unlock()
+		return lp, nil
 	}
+	p.mu.Unlock()
+
+	// Not opened yet — create socket without holding lock to avoid blocking others.
 	conn, err := net.ListenPacket("udp", ":0")
 	if err != nil {
 		return 0, fmt.Errorf("nat: listen udp: %w", err)
@@ -56,38 +67,67 @@ func (p *conePuncher) Open(ctx context.Context) (int, error) {
 	if ua, ok := conn.LocalAddr().(*net.UDPAddr); ok {
 		lp = ua.Port
 	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.opened && p.conn != nil {
+		// another goroutine opened; use existing and close ours
+		_ = conn.Close()
+		return p.localPort, nil
+	}
 	p.conn = conn
 	p.localPort = lp
 	p.opened = true
 	return lp, nil
 }
 
+// Close releases any resources held by the puncher (open sockets).
+func (p *conePuncher) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.conn != nil {
+		err := p.conn.Close()
+		p.conn = nil
+		p.opened = false
+		p.localPort = 0
+		return err
+	}
+	p.opened = false
+	p.localPort = 0
+	return nil
+}
+
 func (p *conePuncher) HolePunch(
 	ctx context.Context,
-	localIP ip.IP,
-	peerIP ip.IP,
+	peer ip.IP,
 	peerPort int,
 ) (*nat.PunchResult, error) {
-	if peerIP == nil || peerIP.String() == "" {
-		return nil, errors.New("nat: empty peerIP IP")
+	if peer == nil || peer.String() == "" {
+		return nil, errors.New("nat: empty peer IP")
 	}
 	if len(p.session) == 0 {
 		return nil, errors.New("nat: session is required")
 	}
-	// Ensure socket is opened
-	if !p.opened || p.conn == nil {
-		if _, err := p.Open(ctx); err != nil {
-			return nil, err
-		}
+	// Ensure socket is opened (Open is thread-safe)
+	if _, err := p.Open(ctx); err != nil {
+		return nil, err
 	}
 
+	// Snapshot conn and localPort under lock
+	p.mu.Lock()
 	conn := p.conn
 	localPort := p.localPort
+	p.mu.Unlock()
 
-	// Prepare candidate remote addresses around the peerIP's reported port.
+	if conn == nil {
+		return nil, errors.New("nat: no UDP connection available")
+	}
+
+	// Prepare candidate remote addresses around the peer's reported port.
 	var raddrs []net.Addr
 	for _, rp := range candidatePorts(peerPort, portGuessRange) {
-		ra, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", peerIP.String(), rp))
+		addr := net.JoinHostPort(peer.String(), strconv.Itoa(rp))
+		ra, err := net.ResolveUDPAddr("udp", addr)
 		if err == nil && ra != nil {
 			raddrs = append(raddrs, ra)
 		}
@@ -103,7 +143,7 @@ func (p *conePuncher) HolePunch(
 	// Channel delivers the first observed remote UDP address (reveals external port).
 	recvAddrCh := make(chan *net.UDPAddr, 1)
 
-	// Launch sender and receiver.
+	// Launch sender and receiver using the snapshot conn.
 	go p.receive(ctx, conn, burstInterval, recvAddrCh)
 	go p.sendBursts(ctx, conn, raddrs, burstInterval, packetSpacing)
 
@@ -111,17 +151,20 @@ func (p *conePuncher) HolePunch(
 	select {
 	case ra := <-recvAddrCh:
 		return &nat.PunchResult{
-			LocalIP:    localIP,
-			LocalPort:  localPort,
-			RemoteIP:   peerIP,
-			RemotePort: ra.Port,
+			LocalPort:  astral.Uint16(localPort),
+			RemoteIP:   peer,
+			RemotePort: astral.Uint16(ra.Port),
 		}, nil
 	case <-ctx.Done():
 		// Close and reset on failure to avoid leaking the socket
-		_ = conn.Close()
-		p.conn = nil
+		p.mu.Lock()
+		if p.conn != nil {
+			_ = p.conn.Close()
+			p.conn = nil
+		}
 		p.opened = false
 		p.localPort = 0
+		p.mu.Unlock()
 		return nil, ctx.Err()
 	}
 }

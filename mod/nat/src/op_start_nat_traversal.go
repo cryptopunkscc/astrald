@@ -37,8 +37,8 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query,
 	return mod.respondNatTraversal(ctx, args, ch)
 }
 
-func (mod *Module) initiateNatTraversal(ctx *astral.Context, q shell.Query,
-	args opStartNatTraversal, ch *astral.Channel) error {
+// initiateNatTraversal runs the active side of NAT traversal coordination.
+func (mod *Module) initiateNatTraversal(ctx *astral.Context, q shell.Query, args opStartNatTraversal, ch *astral.Channel) error {
 	target, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
 		return q.RejectWithCode(4)
@@ -48,97 +48,126 @@ func (mod *Module) initiateNatTraversal(ctx *astral.Context, q shell.Query,
 	if len(ips) == 0 {
 		return fmt.Errorf("no IP candidates available")
 	}
+	localIP := ips[0]
 
-	// generate random session id
 	session := make([]byte, 16)
-	if _, err := rand.Read(session); err != nil {
+	_, err = rand.Read(session)
+	if err != nil {
 		return err
 	}
 
-	// prepare puncher and open UDP socket (puncher owns it)
 	p := newConePuncher(session)
 	lp, err := p.Open(ctx)
 	if err != nil {
 		return err
 	}
 
-	// Call peer with the same method
 	routedQuery := query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartNatTraversal{})
-
-	// Route to passive side
 	peerCh, err := query.RouteChan(ctx, mod.node, routedQuery)
 	if err != nil {
 		return err
 	}
 	defer peerCh.Close()
 
-	if err := peerCh.Write(&nat.NatSignal{
+	signal := &nat.NatSignal{
 		Type:    nat.NatSignalTypeOffer,
 		Session: session,
-		IP:      ips[0],
+		IP:      localIP,
 		Port:    astral.Uint16(lp),
-	}); err != nil {
+	}
+	err = peerCh.Write(signal)
+	if err != nil {
 		return err
 	}
 
-	// wait for answer
 	ansObj, err := peerCh.ReadPayload(nat.NatSignal{}.ObjectType())
 	if err != nil {
 		return err
 	}
-
 	answer, _ := ansObj.(*nat.NatSignal)
-	if answer == nil || string(answer.Type) != nat.NatSignalTypeAnswer {
+	if answer == nil || answer.Type != nat.NatSignalTypeAnswer {
 		return errors.New("invalid answer")
 	}
+
 	peerIP := answer.IP
 	peerPort := int(answer.Port)
 
-	// send ready
 	ready := nat.NatSignal{Type: astral.String(nat.NatSignalTypeReady)}
-	if err := peerCh.Write(&ready); err != nil {
-		return err
-	}
-
-	// wait for go
-	natSignalObj, err := peerCh.ReadPayload(nat.NatSignal{}.ObjectType())
+	err = peerCh.Write(&ready)
 	if err != nil {
 		return err
 	}
 
-	goSig, _ := natSignalObj.(*nat.NatSignal)
-	if goSig == nil || string(goSig.Type) != nat.NatSignalTypeGo {
-		return fmt.Errorf(`invalid go signal`)
+	goObj, err := peerCh.ReadPayload(nat.NatSignal{}.ObjectType())
+	if err != nil {
+		return err
+	}
+	goSig, _ := goObj.(*nat.NatSignal)
+	if goSig == nil || goSig.Type != nat.NatSignalTypeGo {
+		return fmt.Errorf("invalid go signal")
 	}
 
-	// small random delay
 	time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond)
 
-	// start punching (reuse the already opened socket)
-	if _, err := p.HolePunch(ctx, peerIP, peerPort); err != nil {
+	punchResult, err := p.HolePunch(ctx, peerIP, peerPort)
+	if err != nil {
 		mod.log.Error("hole punch failed: %v", err)
 		return err
 	}
 
-	return nil
-}
-
-func (mod *Module) respondNatTraversal(ctx *astral.Context,
-	args opStartNatTraversal, ch *astral.Channel) error {
-
-	ips := mod.IP.FindIPCandidates()
-	if len(ips) == 0 {
-		return fmt.Errorf("no IP candidates available")
+	resultSignal := &nat.NatSignal{
+		Type: astral.String(nat.NatSignalTypeResult),
+		IP:   peerIP,
+		Port: punchResult.RemotePort,
 	}
-
-	// read offer
-	obj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
+	err = peerCh.Write(resultSignal)
 	if err != nil {
 		return err
 	}
 
+	resObj, err := peerCh.ReadPayload(nat.NatSignal{}.ObjectType())
+	if err != nil {
+		return err
+	}
+	result, ok := resObj.(*nat.NatSignal)
+	if !ok || result.Type != nat.NatSignalTypeResult {
+		return fmt.Errorf("invalid result signal")
+	}
+
+	selfObserved := result.IP
+	selfObservedPort := result.Port
+	peerObserved := punchResult.RemoteIP
+	peerObservedPort := punchResult.RemotePort
+
+	mod.log.Info("NAT traversal success:")
+	mod.log.Info("Our external address as seen by peer: %v:%v",
+		selfObserved, selfObservedPort)
+	mod.log.Info("Peer external address as seen by us: %v:%v",
+		peerObserved, peerObservedPort)
+
+	ch.Write(&nat.TraversalResult{
+		PeerObservedIP:   peerObserved,
+		PeerObservedPort: peerObservedPort,
+		ObservedIP:       selfObserved,
+		ObservedPort:     selfObservedPort,
+	})
+	return nil
+}
+
+// respondNatTraversal runs the passive side of NAT traversal coordination.
+func (mod *Module) respondNatTraversal(ctx *astral.Context, args opStartNatTraversal, ch *astral.Channel) error {
+	ips := mod.IP.FindIPCandidates()
+	if len(ips) == 0 {
+		return fmt.Errorf("no IP candidates available")
+	}
+	localIP := ips[0]
+
+	obj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
+	if err != nil {
+		return err
+	}
 	offer, _ := obj.(*nat.NatSignal)
-	if offer == nil || string(offer.Type) != nat.NatSignalTypeOffer {
+	if offer == nil || offer.Type != nat.NatSignalTypeOffer {
 		return errors.New("invalid offer")
 	}
 
@@ -146,48 +175,65 @@ func (mod *Module) respondNatTraversal(ctx *astral.Context,
 	peerIP := offer.IP
 	peerPort := int(offer.Port)
 
-	// prepare puncher and open UDP socket (puncher owns it)
 	p := newConePuncher(session)
 	lp, err := p.Open(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = ch.Write(&nat.NatSignal{
+	answer := &nat.NatSignal{
 		Type:    nat.NatSignalTypeAnswer,
 		Session: session,
-		IP:      ips[0],
+		IP:      localIP,
 		Port:    astral.Uint16(lp),
-	})
+	}
+	err = ch.Write(answer)
 	if err != nil {
 		return err
 	}
 
-	// wait for ready
 	readyObj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
 	if err != nil {
 		return err
 	}
-
 	ready, _ := readyObj.(*nat.NatSignal)
-	if ready == nil || string(ready.Type) != nat.NatSignalTypeReady {
-		return fmt.Errorf(`invalid ready signal`)
+	if ready == nil || ready.Type != nat.NatSignalTypeReady {
+		return fmt.Errorf("invalid ready signal")
 	}
 
-	// send go
 	goSig := nat.NatSignal{Type: astral.String(nat.NatSignalTypeGo)}
-	if err := ch.Write(&goSig); err != nil {
+	err = ch.Write(&goSig)
+	if err != nil {
 		return err
 	}
 
-	// small random delay
 	time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond)
 
-	// start punching (reuse the already opened socket)
-	if _, err := p.HolePunch(ctx, peerIP, peerPort); err != nil {
+	punchResult, err := p.HolePunch(ctx, peerIP, peerPort)
+	if err != nil {
 		mod.log.Error("hole punch failed: %v", err)
 		return err
 	}
 
+	resObj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
+	if err != nil {
+		return err
+	}
+	result, ok := resObj.(*nat.NatSignal)
+	if !ok || result.Type != nat.NatSignalTypeResult {
+		return fmt.Errorf("invalid result signal")
+	}
+
+	response := &nat.NatSignal{
+		Type: nat.NatSignalTypeResult,
+		IP:   peerIP,
+		Port: punchResult.RemotePort,
+	}
+	err = ch.Write(response)
+	if err != nil {
+		return err
+	}
+
+	mod.log.Info("NAT traversal result sent: observed peer at %s:%d", peerIP, int(punchResult.RemotePort))
 	return nil
 }

@@ -3,6 +3,7 @@ package nat
 import (
 	"context"
 
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
@@ -13,20 +14,21 @@ type Puncher interface {
 	// The socket is kept by the puncher and reused by HolePunch.
 	Open(ctx context.Context) (localPort int, err error)
 	// HolePunch attempts a UDP punch towards the given peer IP and port.
-	// Returns a PunchResult with an open UDP socket on success.
-	HolePunch(ctx context.Context, localIP ip.IP, peer ip.IP, peerPort int) (*PunchResult,
-		error)
+	// Returns a PunchResult with information about the punch outcome.
+	HolePunch(ctx context.Context, peerIP ip.IP,
+		peerPort int) (*PunchResult, error)
+	// Close releases any resources held by the puncher (open sockets).
+	Close() error
 }
 
-// PunchResult contains the outcome of a successful punch.
+// PunchResult contains the outcome of a successful UDP hole punch.
+//
+// It reports only what *this side* observed for the peer (the remote
+// IP and port that responded with the same session payload).
+// The peer’s observation of our own external port, if needed,
+// must be exchanged separately via signaling.
 type PunchResult struct {
-	// NOTE: for now the only supported protocol on top of UDP is UTP (
-	// in future we probably will introduce mod/udp package)
-	LocalIP   ip.IP
-	LocalPort int
-
+	LocalPort  astral.Uint16
 	RemoteIP   ip.IP
-	RemotePort int
-	//
-	//	Conn net.PacketConn // open UDP socket ready for I/O
+	RemotePort astral.Uint16
 }

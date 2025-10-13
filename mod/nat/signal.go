@@ -21,6 +21,7 @@ const (
 	NatSignalTypeAnswer = "answer"
 	NatSignalTypeReady  = "ready"
 	NatSignalTypeGo     = "go"
+	NatSignalTypeResult = "result"
 )
 
 func (n NatSignal) ObjectType() string {
