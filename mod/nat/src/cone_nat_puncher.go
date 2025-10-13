@@ -38,7 +38,7 @@ func newConePuncher(session []byte) nat.Puncher {
 	return &conePuncher{session: append([]byte(nil), session...)}
 }
 
-func (p *conePuncher) HolePunch(ctx context.Context, peer ip.IP) (*nat.PunchResult, error) {
+func (p *conePuncher) HolePunch(ctx context.Context, peer ip.IP, peerPort int) (*nat.PunchResult, error) {
 	if peer == nil || peer.String() == "" {
 		return nil, errors.New("nat: empty peer IP")
 	}
@@ -59,15 +59,15 @@ func (p *conePuncher) HolePunch(ctx context.Context, peer ip.IP) (*nat.PunchResu
 		}
 	}()
 
-	// Determine local port and select base remote port center.
+	// Determine local port
 	localPort := 0
 	if ua, ok := conn.LocalAddr().(*net.UDPAddr); ok {
 		localPort = ua.Port
 	}
 
-	// Prepare candidate remote addresses around the base port.
+	// Prepare candidate remote addresses around the peer's reported port.
 	var raddrs []net.Addr
-	for _, rp := range candidatePorts(localPort, portGuessRange) {
+	for _, rp := range candidatePorts(peerPort, portGuessRange) {
 		ra, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", peer.String(), rp))
 		if err == nil && ra != nil {
 			raddrs = append(raddrs, ra)

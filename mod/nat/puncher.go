@@ -11,9 +11,9 @@ import (
 // Puncher is a minimal abstraction for UDP NAT hole punching.
 // Implementations supply configuration (e.g., ports, timeouts) outside this interface.
 type Puncher interface {
-	// HolePunch attempts a UDP punch towards the given peer IP.
+	// HolePunch attempts a UDP punch towards the given peer IP and port.
 	// Returns a PunchResult with an open UDP socket on success.
-	HolePunch(ctx context.Context, peer ip.IP) (*PunchResult, error)
+	HolePunch(ctx context.Context, peer ip.IP, peerPort int) (*PunchResult, error)
 }
 
 // PunchResult contains the outcome of a successful punch.

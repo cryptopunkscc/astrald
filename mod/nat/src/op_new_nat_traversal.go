@@ -2,8 +2,6 @@ package nat
 
 // NOTE: might  move to mod/nat
 import (
-	"crypto/rand"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
@@ -26,13 +24,8 @@ func (mod *Module) OpNewNatTraversal(ctx *astral.Context, q shell.Query,
 	shellCh := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer shellCh.Close()
 
-	// generate a random session id for this traversal
-	session := make([]byte, 16)
-	if _, err := rand.Read(session); err != nil {
-		return err
-	}
-
-	queryArgs := &opStartNatTraversal{Session: session}
+	// Start traversal by invoking the start op on the target.
+	queryArgs := &opStartNatTraversal{}
 
 	routedQuery := query.New(ctx.Identity(), target,
 		nat.MethodStartNatTraversal,
