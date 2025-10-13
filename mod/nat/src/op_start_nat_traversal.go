@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 	mrand "math/rand"
-	"net"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
@@ -22,7 +20,6 @@ type opStartNatTraversal struct {
 	Out string `query:"optional"`
 }
 
-// FIXME: adjust error handling to standard
 func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query,
 	args opStartNatTraversal) error {
 	ips := mod.IP.FindIPCandidates()
@@ -52,20 +49,16 @@ func (mod *Module) initiateNatTraversal(ctx *astral.Context, q shell.Query,
 		return fmt.Errorf("no IP candidates available")
 	}
 
-	// Bind UDP socket to get local port (close after signaling)
-	udp, err := net.ListenPacket("udp", ":0")
-	if err != nil {
-		return fmt.Errorf("udp listen: %w", err)
-	}
-	lp := 0
-	if ua, ok := udp.LocalAddr().(*net.UDPAddr); ok {
-		lp = ua.Port
-	}
-	udp.Close()
-
 	// generate random session id
 	session := make([]byte, 16)
 	if _, err := rand.Read(session); err != nil {
+		return err
+	}
+
+	// prepare puncher and open UDP socket (puncher owns it)
+	p := newConePuncher(session)
+	lp, err := p.Open(ctx)
+	if err != nil {
 		return err
 	}
 
@@ -79,9 +72,12 @@ func (mod *Module) initiateNatTraversal(ctx *astral.Context, q shell.Query,
 	}
 	defer peerCh.Close()
 
-	// send offer
-	offer := nat.NatSignal{Type: astral.String("offer"), Session: astral.Bytes(session), IP: ip.IP(ips[0]), Port: astral.Uint16(lp)}
-	if err := peerCh.Write(&offer); err != nil {
+	if err := peerCh.Write(&nat.NatSignal{
+		Type:    nat.NatSignalTypeOffer,
+		Session: session,
+		IP:      ips[0],
+		Port:    astral.Uint16(lp),
+	}); err != nil {
 		return err
 	}
 
@@ -90,34 +86,35 @@ func (mod *Module) initiateNatTraversal(ctx *astral.Context, q shell.Query,
 	if err != nil {
 		return err
 	}
+
 	answer, _ := ansObj.(*nat.NatSignal)
-	if answer == nil || string(answer.Type) != "answer" {
+	if answer == nil || string(answer.Type) != nat.NatSignalTypeAnswer {
 		return errors.New("invalid answer")
 	}
 	peerIP := answer.IP
 	peerPort := int(answer.Port)
 
 	// send ready
-	ready := nat.NatSignal{Type: astral.String("ready")}
+	ready := nat.NatSignal{Type: astral.String(nat.NatSignalTypeReady)}
 	if err := peerCh.Write(&ready); err != nil {
 		return err
 	}
 
 	// wait for go
-	goObj, err := peerCh.ReadPayload(nat.NatSignal{}.ObjectType())
+	natSignalObj, err := peerCh.ReadPayload(nat.NatSignal{}.ObjectType())
 	if err != nil {
 		return err
 	}
-	goSig, _ := goObj.(*nat.NatSignal)
-	if goSig == nil || string(goSig.Type) != "go" {
-		return errors.New("invalid go")
+
+	goSig, _ := natSignalObj.(*nat.NatSignal)
+	if goSig == nil || string(goSig.Type) != nat.NatSignalTypeGo {
+		return fmt.Errorf(`invalid go signal`)
 	}
 
 	// small random delay
 	time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond)
 
-	// start punching
-	p := newConePuncher(session)
+	// start punching (reuse the already opened socket)
 	if _, err := p.HolePunch(ctx, peerIP, peerPort); err != nil {
 		mod.log.Error("hole punch failed: %v", err)
 		return err
@@ -139,28 +136,30 @@ func (mod *Module) respondNatTraversal(ctx *astral.Context,
 	if err != nil {
 		return err
 	}
+
 	offer, _ := obj.(*nat.NatSignal)
-	if offer == nil || string(offer.Type) != "offer" {
+	if offer == nil || string(offer.Type) != nat.NatSignalTypeOffer {
 		return errors.New("invalid offer")
 	}
-	session := []byte(offer.Session)
+
+	session := offer.Session
 	peerIP := offer.IP
 	peerPort := int(offer.Port)
 
-	// Bind UDP socket to get local port (close after signaling)
-	udp, err := net.ListenPacket("udp", ":0")
+	// prepare puncher and open UDP socket (puncher owns it)
+	p := newConePuncher(session)
+	lp, err := p.Open(ctx)
 	if err != nil {
-		return fmt.Errorf("udp listen: %w", err)
+		return err
 	}
-	lp := 0
-	if ua, ok := udp.LocalAddr().(*net.UDPAddr); ok {
-		lp = ua.Port
-	}
-	udp.Close()
 
-	// send answer
-	answer := nat.NatSignal{Type: astral.String("answer"), Session: astral.Bytes(session), IP: ip.IP(ips[0]), Port: astral.Uint16(lp)}
-	if err := ch.Write(&answer); err != nil {
+	err = ch.Write(&nat.NatSignal{
+		Type:    nat.NatSignalTypeAnswer,
+		Session: session,
+		IP:      ips[0],
+		Port:    astral.Uint16(lp),
+	})
+	if err != nil {
 		return err
 	}
 
@@ -169,13 +168,14 @@ func (mod *Module) respondNatTraversal(ctx *astral.Context,
 	if err != nil {
 		return err
 	}
+
 	ready, _ := readyObj.(*nat.NatSignal)
-	if ready == nil || string(ready.Type) != "ready" {
-		return errors.New("invalid ready")
+	if ready == nil || string(ready.Type) != nat.NatSignalTypeReady {
+		return fmt.Errorf(`invalid ready signal`)
 	}
 
 	// send go
-	goSig := nat.NatSignal{Type: astral.String("go")}
+	goSig := nat.NatSignal{Type: astral.String(nat.NatSignalTypeGo)}
 	if err := ch.Write(&goSig); err != nil {
 		return err
 	}
@@ -183,8 +183,7 @@ func (mod *Module) respondNatTraversal(ctx *astral.Context,
 	// small random delay
 	time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond)
 
-	// start punching
-	p := newConePuncher(session)
+	// start punching (reuse the already opened socket)
 	if _, err := p.HolePunch(ctx, peerIP, peerPort); err != nil {
 		mod.log.Error("hole punch failed: %v", err)
 		return err

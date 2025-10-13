@@ -8,10 +8,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
-	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
 // NOTE: Mostly AI will be polished
@@ -28,47 +26,68 @@ const (
 
 // conePuncher is a minimal cone NAT puncher using fixed defaults and a provided peer listen port.
 type conePuncher struct {
-	session []byte // required session identifier
+	session   []byte         // required session identifier
+	conn      net.PacketConn // bound UDP socket
+	localPort int            // cached local port of conn
+	opened    bool           // whether conn is opened
 }
 
 // newConePuncher creates a cone NAT puncher that targets the given peer listen port.
 // Session is required and must be non-empty.
 func newConePuncher(session []byte) nat.Puncher {
-
-	return &conePuncher{session: append([]byte(nil), session...)}
+	return &conePuncher{
+		session: session,
+	}
 }
 
-func (p *conePuncher) HolePunch(ctx context.Context, peer ip.IP, peerPort int) (*nat.PunchResult, error) {
-	if peer == nil || peer.String() == "" {
-		return nil, errors.New("nat: empty peer IP")
+// Open binds a UDP socket and stores it for later HolePunch use.
+func (p *conePuncher) Open(ctx context.Context) (int, error) {
+	if len(p.session) == 0 {
+		return 0, errors.New("nat: session is required")
 	}
+	if p.opened && p.conn != nil {
+		return p.localPort, nil
+	}
+	conn, err := net.ListenPacket("udp", ":0")
+	if err != nil {
+		return 0, fmt.Errorf("nat: listen udp: %w", err)
+	}
+	lp := 0
+	if ua, ok := conn.LocalAddr().(*net.UDPAddr); ok {
+		lp = ua.Port
+	}
+	p.conn = conn
+	p.localPort = lp
+	p.opened = true
+	return lp, nil
+}
 
+func (p *conePuncher) HolePunch(
+	ctx context.Context,
+	localIP ip.IP,
+	peerIP ip.IP,
+	peerPort int,
+) (*nat.PunchResult, error) {
+	if peerIP == nil || peerIP.String() == "" {
+		return nil, errors.New("nat: empty peerIP IP")
+	}
 	if len(p.session) == 0 {
 		return nil, errors.New("nat: session is required")
 	}
-
-	// Bind local UDP socket on random port (Option B allows arbitrary L; could be configured later).
-	conn, err := net.ListenPacket("udp", ":0")
-	if err != nil {
-		return nil, fmt.Errorf("nat: listen udp: %w", err)
-	}
-	success := false
-	defer func() {
-		if !success {
-			_ = conn.Close()
+	// Ensure socket is opened
+	if !p.opened || p.conn == nil {
+		if _, err := p.Open(ctx); err != nil {
+			return nil, err
 		}
-	}()
-
-	// Determine local port
-	localPort := 0
-	if ua, ok := conn.LocalAddr().(*net.UDPAddr); ok {
-		localPort = ua.Port
 	}
 
-	// Prepare candidate remote addresses around the peer's reported port.
+	conn := p.conn
+	localPort := p.localPort
+
+	// Prepare candidate remote addresses around the peerIP's reported port.
 	var raddrs []net.Addr
 	for _, rp := range candidatePorts(peerPort, portGuessRange) {
-		ra, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", peer.String(), rp))
+		ra, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", peerIP.String(), rp))
 		if err == nil && ra != nil {
 			raddrs = append(raddrs, ra)
 		}
@@ -76,8 +95,6 @@ func (p *conePuncher) HolePunch(ctx context.Context, peer ip.IP, peerPort int) (
 	if len(raddrs) == 0 {
 		return nil, errors.New("nat: no remote addresses to probe")
 	}
-
-	localEP := utp.Endpoint{IP: ip.IP(nil), Port: astral.Uint16(localPort)}
 
 	// Create a cancellable context to stop send/receive on success or timeout.
 	ctx, cancel := context.WithTimeout(ctx, punchTimeout)
@@ -93,12 +110,18 @@ func (p *conePuncher) HolePunch(ctx context.Context, peer ip.IP, peerPort int) (
 	// Wait for success or timeout/cancel.
 	select {
 	case ra := <-recvAddrCh:
-		success = true
-		// stop background goroutines
-		cancel()
-		remoteEP := utp.Endpoint{IP: peer, Port: astral.Uint16(ra.Port)}
-		return &nat.PunchResult{Local: localEP, Remote: remoteEP, Conn: conn}, nil
+		return &nat.PunchResult{
+			LocalIP:    localIP,
+			LocalPort:  localPort,
+			RemoteIP:   peerIP,
+			RemotePort: ra.Port,
+		}, nil
 	case <-ctx.Done():
+		// Close and reset on failure to avoid leaking the socket
+		_ = conn.Close()
+		p.conn = nil
+		p.opened = false
+		p.localPort = 0
 		return nil, ctx.Err()
 	}
 }
