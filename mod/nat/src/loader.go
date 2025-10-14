@@ -22,7 +22,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 }
 
 func init() {
-	if err := core.RegisterModule(nat.ModuleName, Loader{}); err != nil {
+	err := core.RegisterModule(nat.ModuleName, Loader{})
+	if err != nil {
 		panic(err)
 	}
 }

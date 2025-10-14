@@ -6,7 +6,8 @@ import (
 
 // LoadDependencies injects required dependencies via the core injector.
 func (mod *Module) LoadDependencies() (err error) {
-	if err = core.Inject(mod.node, &mod.Deps); err != nil {
+	err = core.Inject(mod.node, &mod.Deps)
+	if err != nil {
 		return err
 	}
 
