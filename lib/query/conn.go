@@ -5,8 +5,7 @@ import (
 	"io"
 )
 
-var _ astral.Conn = &conn{}
-
+// conn is a basic implementation of an astral.Conn over a Reader and a WriteCloser.
 type conn struct {
 	localID  *astral.Identity
 	remoteID *astral.Identity
@@ -14,6 +13,8 @@ type conn struct {
 	io.Reader
 	outbound bool
 }
+
+var _ astral.Conn = &conn{}
 
 func newConn(localID *astral.Identity, remoteID *astral.Identity, w io.WriteCloser, r io.Reader, outbound bool) astral.Conn {
 	return &conn{

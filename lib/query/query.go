@@ -8,7 +8,6 @@ import (
 )
 
 const DefaultArgKey = "arg"
-const queryTag = "query"
 const maxQueryTimeout = 60 * time.Second
 
 type Validator interface {
@@ -17,6 +16,9 @@ type Validator interface {
 
 type Args map[string]any
 
+// New returns a new instance of astral.Query. Args can be:
+// - a string - http-formatted arguments like "a=1&b=2"
+// - a map[string]any - as long as all values are convertible to a string (string, Stringer, TextMarshaler)
 func New(caller *astral.Identity, target *astral.Identity, path string, args any) (query *astral.Query) {
 	query = &astral.Query{
 		Nonce:  astral.NewNonce(),
@@ -41,6 +43,7 @@ func New(caller *astral.Identity, target *astral.Identity, path string, args any
 	return
 }
 
+// Parse parses a query string (like "method?a=1&a=2") into a path and params
 func Parse(q string) (path string, params map[string]string) {
 	var s string
 	path, s = splitPathParams(q)

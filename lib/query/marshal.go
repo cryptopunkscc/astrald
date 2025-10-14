@@ -11,14 +11,21 @@ import (
 	"strconv"
 )
 
-func Marshal(a any) (string, error) {
-	if a == nil {
+const queryTag = "query"
+const skipTag = "skip"
+const keyTag = "key"
+const optionalTag = "optional"
+
+// Marshal marshals params provided in the argument to a string. params can be a string, a map[string]string,
+// a map[string]any or a struct
+func Marshal(params any) (string, error) {
+	if params == nil {
 		return "", nil
 	}
 
 	var vals = url.Values{}
 
-	switch a := a.(type) {
+	switch a := params.(type) {
 	case string:
 		return a, nil
 
@@ -36,15 +43,15 @@ func Marshal(a any) (string, error) {
 			case string:
 				s = v
 
-			case fmt.Stringer:
-				s = v.String()
-
 			case encoding.TextMarshaler:
 				text, err := v.MarshalText()
 				if err != nil {
 					return "", err
 				}
 				s = string(text)
+
+			case fmt.Stringer:
+				s = v.String()
 
 			default:
 				return fmt.Sprintf("%v", v), nil
@@ -59,7 +66,7 @@ func Marshal(a any) (string, error) {
 		return Marshal(map[string]any(a))
 	}
 
-	var v = reflect.ValueOf(a)
+	var v = reflect.ValueOf(params)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -76,12 +83,12 @@ func Marshal(a any) (string, error) {
 		lookup, _ := ft.Tag.Lookup(queryTag)
 		tags = splitTag(lookup)
 
-		if _, skip := tags["skip"]; skip {
+		if _, skip := tags[skipTag]; skip {
 			continue
 		}
 
 		name := term.ToSnakeCase(ft.Name)
-		if n, ok := tags["key"]; ok {
+		if n, ok := tags[keyTag]; ok {
 			name = n
 		}
 

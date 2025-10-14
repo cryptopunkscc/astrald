@@ -10,6 +10,7 @@ import (
 	"strconv"
 )
 
+// Populate sets field values of struct s to the respective values from the map m.
 func Populate(m map[string]string, s any) error {
 	v := reflect.ValueOf(s)
 
@@ -44,7 +45,7 @@ func Populate(m map[string]string, s any) error {
 		}
 		mv, ok := m[name]
 		if !ok {
-			if _, optional := tags["optional"]; optional {
+			if _, optional := tags[optionalTag]; optional {
 				continue
 			}
 			return fmt.Errorf("required field %s not found in the map", name)
