@@ -9,7 +9,6 @@ import (
 
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/mod/utp"
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
@@ -21,7 +20,6 @@ type Deps struct {
 	Dir     dir.Module
 	Objects objects.Module
 	IP      ip.Module
-	UTP     utp.Module
 }
 
 // Module is the concrete implementation of the NAT module.
