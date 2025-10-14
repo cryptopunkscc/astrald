@@ -2,7 +2,7 @@ package ether
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
 const ModuleName = "ether"
@@ -11,5 +11,5 @@ const ModuleName = "ether"
 type Module interface {
 	// Push an object to the ether
 	Push(astral.Object, *astral.Identity) error
-	PushToIP(tcp.IP, astral.Object, *astral.Identity) error
+	PushToIP(ip.IP, astral.Object, *astral.Identity) error
 }

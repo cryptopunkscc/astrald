@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"slices"
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -11,9 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
-	"slices"
-	"sync"
 )
 
 type Peers struct {
@@ -247,7 +248,10 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 	}
 }
 
-func (mod *Peers) addStream(s *Stream) (err error) {
+func (mod *Peers) addStream(
+	s *Stream,
+) (
+	err error) {
 	linked := mod.isLinked(s.RemoteIdentity())
 
 	err = mod.streams.Add(s)
@@ -256,11 +260,22 @@ func (mod *Peers) addStream(s *Stream) (err error) {
 			mod.Objects.Receive(&nodes.EventLinked{NodeID: s.RemoteIdentity()}, nil)
 		}
 
+		defer func() {
+
+			// outbound connection can still not have endpoint (e.g virtual one)
+			if s.outbound && s.RemoteEndpoint() != nil {
+				err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
+				if err != nil {
+					mod.log.Errorv(1, "push observed endpoint failed: %v", err)
+				}
+			}
+		}()
+
 		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
 		go func() {
 			for frame := range s.Read() {
 				mod.in <- &Frame{
-					Frame:  frame,
+					Frame:  frame, // NOTE: add timeout handling?
 					Source: s,
 				}
 			}
@@ -395,6 +410,21 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 			)
 		}
 	}
+}
+
+func (mod *Peers) pushObservedEndpoint(
+	remoteEndpoint exonet.Endpoint,
+	remoteIdentity *astral.Identity,
+) (err error) {
+	err = mod.Objects.Push(mod.ctx, remoteIdentity,
+		&nodes.ObservedEndpointMessage{
+			Endpoint: remoteEndpoint,
+		})
+	if err != nil {
+		return fmt.Errorf("nodes peers/push failed: %w", err)
+	}
+
+	return nil
 }
 
 func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) (*Stream, error) {

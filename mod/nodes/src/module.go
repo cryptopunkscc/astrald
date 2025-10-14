@@ -3,6 +3,8 @@ package nodes
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -14,7 +16,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
-	"time"
 )
 
 const DefaultWorkerCount = 8
@@ -48,6 +49,8 @@ type Module struct {
 	resolvers  sig.Set[nodes.EndpointResolver]
 	relays     sig.Map[astral.Nonce, *Relay]
 
+	observedEndpoints sig.Map[string, ObservedEndpoint] // key is IP string
+
 	peers *Peers
 
 	in chan *Frame
@@ -61,6 +64,8 @@ type Relay struct {
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
+	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
 	go mod.peers.frameReader(ctx)
 	<-ctx.Done()
 	return nil
