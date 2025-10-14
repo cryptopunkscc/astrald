@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
 	mrand "math/rand"
@@ -35,6 +36,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		}
 
 		localIP := ips[0]
+
 		session := make([]byte, 16)
 		_, err = rand.Read(session)
 		if err != nil {
@@ -69,15 +71,19 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
+
 		answer, ok := ansObj.(*nat.NatSignal)
 		if !ok || answer == nil || answer.Type != astral.String(nat.NatSignalTypeAnswer) {
 			return ch.Write(astral.NewError("invalid answer"))
+		}
+		if !bytes.Equal(answer.Session, session) {
+			return ch.Write(astral.NewError("session mismatch in answer"))
 		}
 
 		peerIP := answer.IP
 		peerPort := int(answer.Port)
 
-		err = peerCh.Write(&nat.NatSignal{Type: astral.String(nat.NatSignalTypeReady)})
+		err = peerCh.Write(&nat.NatSignal{Type: astral.String(nat.NatSignalTypeReady), Session: session})
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
@@ -86,9 +92,13 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
+
 		goSig, ok := goObj.(*nat.NatSignal)
 		if !ok || goSig == nil || goSig.Type != astral.String(nat.NatSignalTypeGo) {
 			return ch.Write(astral.NewError("invalid go signal"))
+		}
+		if !bytes.Equal(goSig.Session, session) {
+			return ch.Write(astral.NewError("session mismatch in go signal"))
 		}
 
 		time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond)
@@ -100,9 +110,10 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		}
 
 		err = peerCh.Write(&nat.NatSignal{
-			Type: nat.NatSignalTypeResult,
-			IP:   peerIP,
-			Port: punchResult.RemotePort,
+			Type:    nat.NatSignalTypeResult,
+			Session: session,
+			IP:      punchResult.RemoteIP,   // FIX: use observed IP
+			Port:    punchResult.RemotePort, // FIX: use observed Port
 		})
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
@@ -112,9 +123,13 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
+
 		result, ok := resObj.(*nat.NatSignal)
 		if !ok || result == nil || result.Type != nat.NatSignalTypeResult {
 			return ch.Write(astral.NewError("invalid result signal"))
+		}
+		if !bytes.Equal(result.Session, session) {
+			return ch.Write(astral.NewError("session mismatch in result signal"))
 		}
 
 		selfObserved := result.IP
@@ -146,9 +161,13 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}
+
 	offer, ok := obj.(*nat.NatSignal)
 	if !ok || offer == nil || offer.Type != nat.NatSignalTypeOffer {
 		return ch.Write(astral.NewError("invalid offer"))
+	}
+	if len(offer.Session) == 0 {
+		return ch.Write(astral.NewError("missing session in offer"))
 	}
 
 	session := offer.Session
@@ -176,12 +195,16 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}
+
 	ready, ok := readyObj.(*nat.NatSignal)
 	if !ok || ready == nil || ready.Type != nat.NatSignalTypeReady {
 		return ch.Write(astral.NewError("invalid ready signal"))
 	}
+	if !bytes.Equal(ready.Session, session) {
+		return ch.Write(astral.NewError("session mismatch in ready signal"))
+	}
 
-	err = ch.Write(&nat.NatSignal{Type: nat.NatSignalTypeGo})
+	err = ch.Write(&nat.NatSignal{Type: nat.NatSignalTypeGo, Session: session})
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}
@@ -198,15 +221,20 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}
+
 	result, ok := resObj.(*nat.NatSignal)
 	if !ok || result == nil || result.Type != nat.NatSignalTypeResult {
 		return ch.Write(astral.NewError("invalid result signal"))
 	}
+	if !bytes.Equal(result.Session, session) {
+		return ch.Write(astral.NewError("session mismatch in result signal"))
+	}
 
 	err = ch.Write(&nat.NatSignal{
-		Type: nat.NatSignalTypeResult,
-		IP:   peerIP,
-		Port: punchResult.RemotePort,
+		Type:    nat.NatSignalTypeResult,
+		Session: session,
+		IP:      punchResult.RemoteIP,   // FIX: use observed IP
+		Port:    punchResult.RemotePort, // FIX: use observed Port
 	})
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
