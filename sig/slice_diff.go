@@ -1,10 +1,12 @@
 package sig
 
+import "slices"
+
 type Ordered interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 |
-	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |
-	~float32 | ~float64 |
-	~string
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |
+		~float32 | ~float64 |
+		~string
 }
 
 // SliceDiff returns two slices: one containing elements found only in a,
@@ -55,6 +57,45 @@ func SliceDiffOrdered[T Ordered](a, b []T) ([]T, []T) {
 			onlyInA = append(onlyInA, a[i])
 			i++
 		case a[i] > b[j]:
+			// 'b[j]' is not in 'a'
+			onlyInB = append(onlyInB, b[j])
+			j++
+		}
+	}
+
+	// append any remaining elements from a
+	for i < len(a) {
+		onlyInA = append(onlyInA, a[i])
+		i++
+	}
+
+	// append any remaining elements from b
+	for j < len(b) {
+		onlyInB = append(onlyInB, b[j])
+		j++
+	}
+
+	return onlyInA, onlyInB
+}
+
+// SliceDiffFunc does the same thing as SliceDiff but uses a custom comparison function.
+func SliceDiffFunc[T any](a, b []T, cmp func(a, b T) int) ([]T, []T) {
+	var onlyInA, onlyInB []T
+	i, j := 0, 0
+
+	slices.SortFunc(a, cmp)
+	slices.SortFunc(b, cmp)
+
+	for i < len(a) && j < len(b) {
+		switch cmp(a[i], b[j]) {
+		case 0:
+			i++
+			j++
+		case -1:
+			// 'a[i]' is not in 'b'
+			onlyInA = append(onlyInA, a[i])
+			i++
+		case 1:
 			// 'b[j]' is not in 'a'
 			onlyInB = append(onlyInB, b[j])
 			j++
