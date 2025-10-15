@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -11,7 +12,7 @@ import (
 func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	switch object := drop.Object().(type) {
 	case *nodes.ObservedEndpointMessage:
-		err := mod.receiveObservedEndpointMessage(object)
+		err := mod.receiveObservedEndpointMessage(drop.SenderID(), object)
 		if err == nil {
 			return drop.Accept(false)
 		}
@@ -20,7 +21,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	return nil
 }
 
-func (mod *Module) receiveObservedEndpointMessage(event *nodes.ObservedEndpointMessage) error {
+func (mod *Module) receiveObservedEndpointMessage(source *astral.Identity, event *nodes.ObservedEndpointMessage) error {
 	endpoint := event.Endpoint
 
 	var i ip.IP
@@ -35,7 +36,7 @@ func (mod *Module) receiveObservedEndpointMessage(event *nodes.ObservedEndpointM
 	}
 
 	if i.IsPublic() {
-		mod.log.Log(`nodes module/receiveObservedEndpointMessage observed new public ip: %v`, i)
+		mod.log.Log(`public ip %v reflected from %v`, i, source)
 		mod.AddObservedEndpoint(endpoint, i)
 	}
 

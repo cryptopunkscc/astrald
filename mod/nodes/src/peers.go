@@ -303,16 +303,30 @@ func (mod *Peers) addStream(
 		}
 	}()
 
+	// reflect the stream
+	go mod.reflectStream(s)
+
+	return
+}
+
+// reflectStream reflects the observed remote endpoint on inbound streams
+func (mod *Peers) reflectStream(s *Stream) (err error) {
 	// reflect only on inbound streams with a known remote endpoint
-	if !s.outbound && s.RemoteEndpoint() != nil {
-		go func() {
-			err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
-			if err != nil {
-				mod.log.Errorv(2, "Peers.pushObservedEndpoint(%v, %v): %v", s.RemoteEndpoint(), s.RemoteIdentity(), err)
-			} else {
-				mod.log.Logv(2, "reflected endpoint %v to %v", s.RemoteEndpoint(), s.RemoteIdentity())
-			}
-		}()
+	if s.outbound || s.RemoteEndpoint() == nil {
+		return
+	}
+
+	// reflect the endpoint
+	err = mod.Objects.Push(mod.ctx, s.RemoteIdentity(),
+		&nodes.ObservedEndpointMessage{
+			Endpoint: s.RemoteEndpoint(),
+		})
+
+	// log the result
+	if err != nil {
+		mod.log.Errorv(2, "Objects.Push(%v, %v): %v", s.RemoteIdentity(), s.RemoteEndpoint(), err)
+	} else {
+		mod.log.Logv(2, "reflected endpoint %v to %v", s.RemoteEndpoint(), s.RemoteIdentity())
 	}
 
 	return
@@ -329,6 +343,7 @@ func (mod *Peers) readStreamFrames(s *Stream) {
 	}
 }
 
+// isLinked returns true if there's at least one stream with the given remote identity
 func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	for _, s := range mod.streams.Clone() {
 		if s.RemoteIdentity().IsEqual(remoteID) {
@@ -443,21 +458,6 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 			)
 		}
 	}
-}
-
-func (mod *Peers) pushObservedEndpoint(
-	remoteEndpoint exonet.Endpoint,
-	remoteIdentity *astral.Identity,
-) (err error) {
-	err = mod.Objects.Push(mod.ctx, remoteIdentity,
-		&nodes.ObservedEndpointMessage{
-			Endpoint: remoteEndpoint,
-		})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) (*Stream, error) {
