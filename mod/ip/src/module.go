@@ -2,9 +2,7 @@ package ip
 
 import (
 	"context"
-	"fmt"
 	"net"
-	"sort"
 	"strings"
 	"time"
 
@@ -28,65 +26,65 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	configuredIPs []ip.IP
-	finders       sig.Set[ip.CandidateFinder]
+	providers sig.Set[ip.PublicIPCandidateProvider]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
-	<-ctx.Done()
+	go mod.watchAddresses(ctx)
 
+	<-ctx.Done()
 	return nil
 }
 
 func (mod *Module) LocalIPs() ([]ip.IP, error) {
-	list := make([]ip.IP, 0)
+	return mod.localIPAddresses(false)
+}
 
+func (mod *Module) localIPAddresses(includeLoopback bool) (out []ip.IP, err error) {
 	ifaceAddrs, err := InterfaceAddrs()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, a := range ifaceAddrs {
-		ipnet, ok := a.(*net.IPNet)
-		if !ok {
+	for _, addr := range ifaceAddrs {
+		ipnet, ok := addr.(*net.IPNet)
+		switch {
+		case !ok:
+			continue
+		case ipnet.IP == nil:
+			continue
+		case ipnet.IP.IsLoopback() && !includeLoopback:
 			continue
 		}
-		ip := ip.IP(ipnet.IP)
 
-		if ip.IsLoopback() {
-			continue
-		}
-
-		list = append(list, ip)
+		out = append(out, ip.IP(ipnet.IP))
 	}
 
-	return list, nil
-}
-
-func (mod *Module) ConfiguredIPs() []ip.IP {
-	return mod.configuredIPs
+	return
 }
 
 func (mod *Module) watchAddresses(ctx context.Context) {
-	addrs, err := mod.getAddresses()
+	addrs, err := mod.localIPAddresses(false)
 	if err != nil {
 		mod.log.Errorv(0,
-			`ip module/watchAddresses network interface monitoring disabled
-%v`, err)
+			"network interface monitoring disabled, because fetching addresses failed: %v", err)
 		return
 	}
 
 	for {
 		select {
 		case <-time.After(3 * time.Second):
-			newAddrs, err := mod.getAddresses()
+			newAddrs, err := mod.localIPAddresses(false)
 			if err != nil {
 				mod.log.Errorv(0,
-					"ip module/watchAddresses failed to get network addresses"+
-						": %v", err)
+					"get network addresses: %v",
+					err)
 			}
 
-			removed, added := diff(addrs, newAddrs)
+			removed, added := sig.SliceDiffFunc(addrs, newAddrs, func(a, b ip.IP) int {
+				return strings.Compare(a.String(), b.String())
+			})
+
 			addrs = newAddrs
 
 			if len(removed) > 0 || len(added) > 0 {
@@ -107,32 +105,6 @@ func (mod *Module) watchAddresses(ctx context.Context) {
 	}
 }
 
-func (mod *Module) getAddresses() (out []ip.IP, err error) {
-	ifaceAddrs, err := InterfaceAddrs()
-	if err != nil {
-		return out, fmt.Errorf(`ip module/getAddresses: %w`, err)
-	}
-
-	for _, a := range ifaceAddrs {
-		switch v := a.(type) {
-		case *net.IPNet:
-			if v.IP == nil {
-				continue
-			}
-
-			addr := ip.IP(v.IP)
-
-			out = append(out, addr)
-		}
-	}
-
-	// Ensure deterministic order for diff by sorting by IP string
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].String() < out[j].String()
-	})
-	return
-}
-
 func joinIPs(xs []ip.IP) string {
 	if len(xs) == 0 {
 		return ""
@@ -142,37 +114,4 @@ func joinIPs(xs []ip.IP) string {
 		s[i] = a.String()
 	}
 	return strings.Join(s, ", ")
-}
-
-func diff(a, b []ip.IP) ([]ip.IP, []ip.IP) {
-	var onlyInA, onlyInB []ip.IP
-	i, j := 0, 0
-
-	for i < len(a) && j < len(b) {
-		ka := a[i].String()
-		kb := b[j].String()
-		switch {
-		case ka == kb:
-			i++
-			j++
-		case ka < kb:
-			onlyInA = append(onlyInA, a[i])
-			i++
-		default: // ka > kb
-			onlyInB = append(onlyInB, b[j])
-			j++
-		}
-	}
-
-	for i < len(a) {
-		onlyInA = append(onlyInA, a[i])
-		i++
-	}
-
-	for j < len(b) {
-		onlyInB = append(onlyInB, b[j])
-		j++
-	}
-
-	return onlyInA, onlyInB
 }

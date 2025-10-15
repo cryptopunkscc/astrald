@@ -3,11 +3,10 @@ package ip
 const ModuleName = "ip"
 
 type Module interface {
-	ConfiguredIPs() (ips []IP)
-	LocalIPs() (ips []IP, err error)
-	FindIPCandidates() (ips []IP)
+	LocalIPs() ([]IP, error)
+	PublicIPCandidates() []IP
 }
 
-type CandidateFinder interface {
-	FindIPCandidate() []IP // sorted
+type PublicIPCandidateProvider interface {
+	PublicIPCandidates() []IP // sorted
 }
