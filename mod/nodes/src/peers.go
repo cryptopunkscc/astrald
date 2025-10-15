@@ -261,12 +261,11 @@ func (mod *Peers) addStream(
 		}
 
 		defer func() {
-
-			// outbound connection can still not have endpoint (e.g virtual one)
+			// outbound connection can still not have an endpoint (e.g., a virtual one)
 			if s.outbound && s.RemoteEndpoint() != nil {
 				err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
 				if err != nil {
-					mod.log.Errorv(1, "push observed endpoint failed: %v", err)
+					mod.log.Errorv(1, "Peers.pushObservedEndpoint(%v, %v): %v", s.RemoteEndpoint(), s.RemoteIdentity(), err)
 				}
 			}
 		}()
@@ -421,7 +420,7 @@ func (mod *Peers) pushObservedEndpoint(
 			Endpoint: remoteEndpoint,
 		})
 	if err != nil {
-		return fmt.Errorf("nodes peers/push failed: %w", err)
+		return err
 	}
 
 	return nil

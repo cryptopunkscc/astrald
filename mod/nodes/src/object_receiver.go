@@ -34,9 +34,8 @@ func (mod *Module) receiveObservedEndpointMessage(event *nodes.ObservedEndpointM
 		return nil
 	}
 
-	if i.IsGlobalUnicast() {
-		mod.log.Log(`nodes module/receiveObservedEndpointMessage observed new
-public ip: %v`, i)
+	if i.IsPublic() {
+		mod.log.Log(`nodes module/receiveObservedEndpointMessage observed new public ip: %v`, i)
 		mod.AddObservedEndpoint(endpoint, i)
 	}
 

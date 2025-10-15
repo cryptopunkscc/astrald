@@ -14,8 +14,7 @@ type ObservedEndpointMessage struct {
 }
 
 func (ObservedEndpointMessage) ObjectType() string {
-	return `mod.nodes.
-observed_endpoint_message`
+	return "mod.nodes.observed_endpoint_message"
 }
 
 func (e ObservedEndpointMessage) WriteTo(w io.Writer) (n int64, err error) {
