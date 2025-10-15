@@ -263,9 +263,9 @@ func (mod *Peers) addStream(
 
 	// try to figure out the network name
 	switch {
-	case any(s.LocalEndpoint()) != nil:
+	case s.LocalEndpoint() != nil:
 		netName = s.LocalEndpoint().Network()
-	case any(s.RemoteEndpoint()) != nil:
+	case s.RemoteEndpoint() != nil:
 		netName = s.RemoteEndpoint().Network()
 	}
 
@@ -304,7 +304,7 @@ func (mod *Peers) addStream(
 	}()
 
 	// reflect only on inbound streams with a known remote endpoint
-	if !s.outbound && any(s.RemoteEndpoint()) != nil {
+	if !s.outbound && s.RemoteEndpoint() != nil {
 		go func() {
 			err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
 			if err != nil {

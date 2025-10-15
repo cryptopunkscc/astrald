@@ -18,7 +18,7 @@ func (ObservedEndpointMessage) ObjectType() string {
 }
 
 func (e ObservedEndpointMessage) WriteTo(w io.Writer) (n int64, err error) {
-	if any(e.Endpoint) == nil {
+	if e.Endpoint == nil {
 		return 0, errors.New("nil endpoint")
 	}
 	return astral.Write(w, e.Endpoint)

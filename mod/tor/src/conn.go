@@ -23,6 +23,9 @@ func (conn *Conn) LocalEndpoint() exonet.Endpoint {
 
 // RemoteEndpoint returns the address of the remote party
 func (conn *Conn) RemoteEndpoint() exonet.Endpoint {
+	if conn.remoteEndpoint == nil {
+		return nil // return a generic nil instead of (*tor.Endpoint)(nil)
+	}
 	return conn.remoteEndpoint
 }
 
