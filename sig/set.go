@@ -12,6 +12,12 @@ type Set[T comparable] struct {
 	mu    sync.RWMutex
 }
 
+type ErrDuplicateItem struct {
+	Index int
+}
+
+func (e ErrDuplicateItem) Error() string { return "duplicate item" }
+
 func (set *Set[T]) Add(items ...T) error {
 	set.mu.Lock()
 	defer set.mu.Unlock()
@@ -20,15 +26,18 @@ func (set *Set[T]) Add(items ...T) error {
 		set.dup = make(map[T]struct{})
 	}
 
-	for _, item := range items {
+	var errs []error
+
+	for idx, item := range items {
 		if _, found := set.dup[item]; found {
+			errs = append(errs, ErrDuplicateItem{Index: idx})
 			continue
 		}
 		set.items = append(set.items, item)
 		set.dup[item] = struct{}{}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func (set *Set[T]) Remove(item T) error {
