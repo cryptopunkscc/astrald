@@ -72,8 +72,8 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 		ID:             astral.Int64(s.id),
 		LocalIdentity:  s.LocalIdentity(),
 		RemoteIdentity: s.RemoteIdentity(),
-		LocalAddr:      astral.String(s.LocalEndpoint().Address()),
-		RemoteAddr:     astral.String(s.RemoteEndpoint().Address()),
+		LocalEndpoint:  s.LocalEndpoint(),
+		RemoteEndpoint: s.RemoteEndpoint(),
 		Outbound:       astral.Bool(s.outbound),
 	})
 }

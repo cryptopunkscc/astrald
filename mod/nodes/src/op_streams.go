@@ -28,8 +28,8 @@ func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsA
 			ID:             astral.Int64(s.id),
 			LocalIdentity:  s.LocalIdentity(),
 			RemoteIdentity: s.RemoteIdentity(),
-			LocalAddr:      astral.String(s.LocalEndpoint().Address()),
-			RemoteAddr:     astral.String(s.RemoteEndpoint().Address()),
+			LocalEndpoint:  s.LocalEndpoint(),
+			RemoteEndpoint: s.RemoteEndpoint(),
 			Outbound:       astral.Bool(s.outbound),
 		})
 		if err != nil {

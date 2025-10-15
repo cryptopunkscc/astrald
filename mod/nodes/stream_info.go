@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"io"
 )
 
@@ -13,8 +14,8 @@ type StreamInfo struct {
 	ID             astral.Int64
 	LocalIdentity  *astral.Identity
 	RemoteIdentity *astral.Identity
-	LocalAddr      astral.String
-	RemoteAddr     astral.String
+	LocalEndpoint  exonet.Endpoint
+	RemoteEndpoint exonet.Endpoint
 	Outbound       astral.Bool
 }
 
@@ -42,7 +43,7 @@ func (s StreamInfo) MarshalText() (text []byte, err error) {
 		d = ">"
 	}
 
-	_, err = fmt.Fprintf(b, "%v %v %v %v", s.ID, d, s.RemoteIdentity, s.RemoteAddr)
+	_, err = fmt.Fprintf(b, "%v %v %v %v", s.ID, d, s.RemoteIdentity, s.RemoteEndpoint)
 
 	return b.Bytes(), err
 }
