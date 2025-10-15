@@ -250,49 +250,83 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 
 func (mod *Peers) addStream(
 	s *Stream,
-) (
-	err error) {
-	linked := mod.isLinked(s.RemoteIdentity())
+) (err error) {
+	var (
+		alreadyLinked = mod.isLinked(s.RemoteIdentity())
+		dir           = "in"
+		netName       = "unknown network"
+	)
+
+	if s.outbound {
+		dir = "out"
+	}
+
+	// try to figure out the network name
+	switch {
+	case any(s.LocalEndpoint()) != nil:
+		netName = s.LocalEndpoint().Network()
+	case any(s.RemoteEndpoint()) != nil:
+		netName = s.RemoteEndpoint().Network()
+	}
 
 	err = mod.streams.Add(s)
-	if err == nil {
-		if !linked {
-			mod.Objects.Receive(&nodes.EventLinked{NodeID: s.RemoteIdentity()}, nil)
+	if err != nil {
+		return
+	}
+
+	// log stream addition
+	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, s.RemoteIdentity(), netName)
+
+	// emit an event if linked
+	if !alreadyLinked {
+		mod.Objects.Receive(&nodes.EventLinked{NodeID: s.RemoteIdentity()}, nil)
+	}
+
+	// handle the stream
+	go func() {
+		mod.readStreamFrames(s)
+
+		// remove the stream and its connections
+		mod.streams.Remove(s)
+		for _, c := range mod.conns.Select(func(k astral.Nonce, v *conn) (ok bool) {
+			return v.stream == s
+		}) {
+			c.Close()
 		}
 
-		defer func() {
-			// outbound connection can still not have an endpoint (e.g., a virtual one)
-			if s.outbound && s.RemoteEndpoint() != nil {
-				err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
-				if err != nil {
-					mod.log.Errorv(1, "Peers.pushObservedEndpoint(%v, %v): %v", s.RemoteEndpoint(), s.RemoteIdentity(), err)
-				}
-			}
-		}()
+		// log stream removal
+		mod.log.Errorv(1, "removed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
 
-		mod.log.Infov(1, "stream with %v added", s.RemoteIdentity())
+		// emit an event if unlinked
+		if !mod.isLinked(s.RemoteIdentity()) {
+			mod.Objects.Receive(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()}, nil)
+		}
+	}()
+
+	// reflect only on inbound streams with a known remote endpoint
+	if !s.outbound && any(s.RemoteEndpoint()) != nil {
 		go func() {
-			for frame := range s.Read() {
-				mod.in <- &Frame{
-					Frame:  frame, // NOTE: add timeout handling?
-					Source: s,
-				}
-			}
-			mod.log.Errorv(1, "stream with %v removed: %v", s.RemoteIdentity(), s.Err())
-			mod.streams.Remove(s)
-			for _, c := range mod.conns.Select(func(k astral.Nonce, v *conn) (ok bool) {
-				return v.stream == s
-			}) {
-				c.Close()
-			}
-
-			if !mod.isLinked(s.RemoteIdentity()) {
-				mod.Objects.Receive(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()}, nil)
+			err = mod.pushObservedEndpoint(s.RemoteEndpoint(), s.RemoteIdentity())
+			if err != nil {
+				mod.log.Errorv(2, "Peers.pushObservedEndpoint(%v, %v): %v", s.RemoteEndpoint(), s.RemoteIdentity(), err)
+			} else {
+				mod.log.Logv(2, "reflected endpoint %v to %v", s.RemoteEndpoint(), s.RemoteIdentity())
 			}
 		}()
 	}
 
 	return
+}
+
+// readStreamFrames reads frames from the stream until it closes
+func (mod *Peers) readStreamFrames(s *Stream) {
+	// read frames
+	for frame := range s.Read() {
+		mod.in <- &Frame{
+			Frame:  frame, // NOTE: add timeout handling?
+			Source: s,
+		}
+	}
 }
 
 func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
@@ -468,7 +502,7 @@ func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Ident
 				if _, ok := out.Swap(nil, stream); ok {
 					cancel()
 				} else {
-					stream.CloseWithError(errors.New("duplicate stream"))
+					stream.CloseWithError(errors.New("excess stream"))
 				}
 
 				return

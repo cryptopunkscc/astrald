@@ -70,13 +70,11 @@ func (s *Stream) Network() string {
 	return "unknown"
 }
 
-func (s *Stream) LocalAddr() string {
+func (s *Stream) LocalEndpoint() exonet.Endpoint {
 	if c, ok := s.conn.(exonet.Conn); ok {
-		if e := c.LocalEndpoint(); e != nil {
-			return e.Network() + ":" + e.Address()
-		}
+		return c.LocalEndpoint()
 	}
-	return ""
+	return nil
 }
 
 func (s *Stream) RemoteEndpoint() exonet.Endpoint {
