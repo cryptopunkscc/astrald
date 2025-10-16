@@ -3,7 +3,6 @@ package nat
 import (
 	"bytes"
 	"crypto/rand"
-	"fmt"
 	mrand "math/rand"
 	"time"
 
@@ -20,13 +19,14 @@ type opStartNatTraversal struct {
 }
 
 func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args opStartNatTraversal) error {
-	ips := mod.IP.FindIPCandidates()
-	if len(ips) == 0 {
-		return fmt.Errorf("no IP candidates available")
-	}
 
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer func() { _ = ch.Close() }()
+
+	ips := mod.IP.FindIPCandidates()
+	if len(ips) == 0 {
+		return ch.Write(astral.NewError("no suitable IP addresses found"))
+	}
 
 	if args.Target != "" {
 		// Initiator logic
