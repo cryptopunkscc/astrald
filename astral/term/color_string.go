@@ -2,8 +2,9 @@ package term
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ astral.Object = &ColorString{}
@@ -30,6 +31,6 @@ func (c *ColorString) PrintTo(printer Printer) error {
 	return errors.Join(
 		printer.Print(&SetColor{c.Color}),
 		printer.Print(&c.Text),
-		printer.Print(&SetColor{DefaultColor}),
+		printer.Print(&SetColor{ColorDefault}),
 	)
 }

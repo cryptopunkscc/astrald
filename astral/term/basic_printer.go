@@ -2,9 +2,10 @@ package term
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	"strings"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ Printer = &BasicPrinter{}
@@ -83,40 +84,40 @@ func (printer BasicPrinter) setColor(color string) {
 
 	var s string
 	switch color {
-	case "default":
+	case ColorDefault:
 		s = "\033[0m"
-	case "black":
+	case ColorBlack:
 		s = "\033[30m"
-	case "red":
+	case ColorRed:
 		s = "\033[31m"
-	case "green":
+	case ColorGreen:
 		s = "\033[32m"
-	case "yellow":
+	case ColorYellow:
 		s = "\033[33m"
-	case "blue":
+	case ColorBlue:
 		s = "\033[34m"
-	case "magenta":
+	case ColorMagenta:
 		s = "\033[35m"
-	case "cyan":
+	case ColorCyan:
 		s = "\033[36m"
-	case "white":
+	case ColorWhite:
 		s = "\033[37m"
 
-	case "brightblack":
+	case ColorBrightBlack:
 		s = "\033[90m"
-	case "brightred":
+	case ColorBrightRed:
 		s = "\033[91m"
-	case "brightgreen":
+	case ColorBrightGreen:
 		s = "\033[92m"
-	case "brightyellow":
+	case ColorBrightYellow:
 		s = "\033[93m"
-	case "brightblue":
+	case ColorBrightBlue:
 		s = "\033[94m"
-	case "brightmagenta":
+	case ColorBrightMagenta:
 		s = "\033[95m"
-	case "brightcyan":
+	case ColorBrightCyan:
 		s = "\033[96m"
-	case "brightwhite":
+	case ColorBrightWhite:
 		s = "\033[97m"
 	}
 

@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/term"
 )
 
 type IP net.IP
@@ -95,6 +97,34 @@ func (ip IP) IsPublic() bool { return ip.IsGlobalUnicast() && !ip.IsPrivate() }
 // String returns a string representation of the IP address.
 func (ip IP) String() string {
 	return net.IP(ip).String()
+}
+
+func (ip IP) PrintTo(printer term.Printer) error {
+	s := ip.String()
+	switch {
+	case ip.IsIPv4():
+		parts := strings.Split(s, ".")
+		for idx, part := range parts {
+			printer.Print(&term.ColorString{Color: term.ColorYellow, Text: astral.String32(part)})
+			if idx < len(parts)-1 {
+				printer.Print(&term.ColorString{Color: term.ColorBrightYellow, Text: "."})
+			}
+		}
+
+	case ip.IsIPv6():
+		parts := strings.Split(s, ":")
+		for idx, part := range parts {
+			printer.Print(&term.ColorString{Color: term.ColorYellow, Text: astral.String32(part)})
+			if idx < len(parts)-1 {
+				printer.Print(&term.ColorString{Color: term.ColorBrightYellow, Text: ":"})
+			}
+		}
+
+	default:
+		printer.Print((*astral.String)(&s))
+	}
+
+	return nil
 }
 
 func init() {

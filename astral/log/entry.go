@@ -1,10 +1,11 @@
 package log
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/term"
 	"io"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/term"
 )
 
 var _ astral.Object = &Entry{}
@@ -58,7 +59,7 @@ func (e Entry) PrintTo(p term.Printer) error {
 
 	// print entry objects
 	for _, o := range e.Objects {
-		p.Print(&term.SetColor{term.DefaultColor})
+		p.Print(&term.SetColor{term.ColorDefault})
 		p.Print(o)
 	}
 	return nil

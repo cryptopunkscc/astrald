@@ -4,9 +4,28 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-const HighlightColor = "yellow"
-const ErrorColor = "red"
-const DefaultColor = "default"
+const HighlightColor = ColorYellow
+const ErrorColor = ColorRed
+
+const (
+	ColorDefault       = "default"
+	ColorBlack         = "black"
+	ColorRed           = "red"
+	ColorGreen         = "green"
+	ColorYellow        = "yellow"
+	ColorBlue          = "blue"
+	ColorMagenta       = "magenta"
+	ColorCyan          = "cyan"
+	ColorWhite         = "white"
+	ColorBrightBlack   = "brightblack"
+	ColorBrightRed     = "brightred"
+	ColorBrightGreen   = "brightgreen"
+	ColorBrightYellow  = "brightyellow"
+	ColorBrightBlue    = "brightblue"
+	ColorBrightMagenta = "brightmagenta"
+	ColorBrightCyan    = "brightcyan"
+	ColorBrightWhite   = "brightwhite"
+)
 
 const maxTranslateDepth = 3
 
