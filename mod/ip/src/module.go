@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -25,6 +26,7 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
+	ops    shell.Scope
 
 	providers sig.Set[ip.PublicIPCandidateProvider]
 }
@@ -103,6 +105,14 @@ func (mod *Module) watchAddresses(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.ops
+}
+
+func (mod *Module) String() string {
+	return ip.ModuleName
 }
 
 func joinIPs(xs []ip.IP) string {

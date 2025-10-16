@@ -15,7 +15,7 @@ type ObservedEndpoint struct {
 	Observed int64
 }
 
-func (mod *Module) FindIPCandidates() (list []ip.IP) {
+func (mod *Module) PublicIPCandidates() (list []ip.IP) {
 	cache := mod.observedEndpoints.Clone()
 	list = make([]ip.IP, 0, len(cache))
 	for _, entry := range cache {
