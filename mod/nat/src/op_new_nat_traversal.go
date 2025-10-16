@@ -15,7 +15,7 @@ type opNewNatTraversal struct {
 
 func (mod *Module) OpNewNatTraversal(ctx *astral.Context, q shell.Query,
 	args opNewNatTraversal) (err error) {
-	target, err := mod.Dir.ResolveIdentity(args.Target)
+	_, err = mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
 		return q.RejectWithCode(4)
 	}
