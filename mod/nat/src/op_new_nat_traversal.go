@@ -21,8 +21,8 @@ func (mod *Module) OpNewNatTraversal(ctx *astral.Context, q shell.Query,
 	}
 
 	// acknowledge the shell query for UX completeness
-	shellCh := astral.NewChannelFmt(q.Accept(), "", args.Out)
-	defer shellCh.Close()
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	defer ch.Close()
 
 	// Start traversal by invoking the start op on the target.
 	queryArgs := &opStartNatTraversal{
@@ -37,7 +37,7 @@ func (mod *Module) OpNewNatTraversal(ctx *astral.Context, q shell.Query,
 	// route and get a bidirectional channel for payload exchange
 	routeCh, err := query.RouteChan(ctx, mod.node, routedQuery)
 	if err != nil {
-		return err
+		return ch.Write(astral.NewError(err.Error()))
 	}
 	defer routeCh.Close()
 
