@@ -1,6 +1,7 @@
-package main
+package mod
 
-// this file includes all modules that should be compiled into the node
+// This file includes all modules that should be compiled into the node.
+// Do not move this file to another package as it is exposed for https://github.com/cryptopunkscc/portal.
 
 import (
 	_ "github.com/cryptopunkscc/astrald/mod/apphost/src"
