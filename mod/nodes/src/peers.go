@@ -445,10 +445,6 @@ func (mod *Peers) Accept(ctx *astral.Context, conn exonet.Conn) (err error) {
 			_, err = astral.Uint8(0).WriteTo(aconn)
 			if err == nil {
 				mod.addStream(newStream(aconn, false))
-				err = mod.pushObservedEndpoint(ctx, aconn)
-				if err != nil {
-					return err
-				}
 			}
 
 			return
@@ -462,24 +458,6 @@ func (mod *Peers) Accept(ctx *astral.Context, conn exonet.Conn) (err error) {
 			)
 		}
 	}
-}
-
-func (mod *Peers) pushObservedEndpoint(
-	ctx *astral.Context,
-	conn *noise.Conn,
-) (err error) {
-	var endpoint = conn.RemoteEndpoint()
-
-	var remoteIdentity = conn.RemoteIdentity()
-
-	err = mod.Objects.Push(ctx, remoteIdentity, &nodes.ObservedEndpointEvent{
-		Endpoint: endpoint,
-	})
-	if err != nil {
-		return fmt.Errorf("nodes peers/push failed: %w", err)
-	}
-
-	return nil
 }
 
 func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) (*Stream, error) {
