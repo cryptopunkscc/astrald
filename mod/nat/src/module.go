@@ -41,3 +41,11 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 	return nil
 }
+
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.ops
+}
+
+func (mod *Module) String() string {
+	return nat.ModuleName
+}
