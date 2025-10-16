@@ -17,8 +17,8 @@ func (mod *Module) LoadDependencies() (err error) {
 				continue
 			}
 
-			if d, ok := m.(ip.CandidateFinder); ok {
-				mod.AddFinder(d)
+			if d, ok := m.(ip.PublicIPCandidateProvider); ok {
+				mod.AddPublicIPCandidateProvider(d)
 			}
 
 		}
