@@ -16,11 +16,16 @@ type opStartNatTraversal struct {
 	// Active side fields
 	Target string `query:"optional"` // if not empty act as initiator
 	Out    string `query:"optional"`
+	In     string `query:"optional"`
 }
 
 func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args opStartNatTraversal) error {
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	if args.In == "" {
+		args.In = args.Out
+	}
+
+	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer func() { _ = ch.Close() }()
 
 	ips := mod.IP.PublicIPCandidates()
