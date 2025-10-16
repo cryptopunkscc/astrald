@@ -60,8 +60,12 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		defer func() { _ = p.Close() }()
 
 		routedQuery := query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartNatTraversal{})
-		peerCh, err := query.RouteChan(ctx.IncludeZone(astral.ZoneNetwork), mod.node,
-			routedQuery)
+
+		peerCh, err := query.RouteChan(
+			ctx.IncludeZone(astral.ZoneNetwork),
+			mod.node,
+			routedQuery,
+		)
 		if err != nil {
 			mod.log.Info("RouteChan error: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
@@ -179,121 +183,131 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	}
 
 	// Responder logic
-	localIP := ips[0]
 
-	obj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
+	obj, err := ch.Read()
 	if err != nil {
-		mod.log.Info("ch.ReadPayload offer error: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
+		mod.log.Info("ch.Read error: %v", err)
 	}
 
-	offer, ok := obj.(*nat.NatSignal)
-	if !ok || offer == nil || offer.Type != nat.NatSignalTypeOffer {
-		mod.log.Info("invalid offer: %v", offer)
-		return ch.Write(astral.NewError("invalid offer"))
-	}
-	if len(offer.Session) == 0 {
-		mod.log.Info("missing session in offer: %v", offer)
-		return ch.Write(astral.NewError("missing session in offer"))
-	}
+	mod.log.Info(`%v`, obj)
+	/*
+			localIP := ips[0]
 
-	session := offer.Session
-	peerIP := offer.IP
-	peerPort := int(offer.Port)
+			obj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
+			if err != nil {
+				mod.log.Info("ch.ReadPayload offer error: %v", err)
+				return ch.Write(astral.NewError(err.Error()))
+			}
 
-	p := newConePuncher(session)
-	lp, err := p.Open(ctx)
-	if err != nil {
-		mod.log.Info("p.Open error: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
-	}
-	defer func() { _ = p.Close() }()
 
-	err = ch.Write(&nat.NatSignal{
-		Type:    nat.NatSignalTypeAnswer,
-		Session: session,
-		IP:      localIP,
-		Port:    astral.Uint16(lp),
-	})
-	if err != nil {
-		mod.log.Info("ch.Write answer error: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
-	}
+			offer, ok := obj.(*nat.NatSignal)
+		if !ok || offer == nil || offer.Type != nat.NatSignalTypeOffer {
+			mod.log.Info("invalid offer: %v", offer)
+			return ch.Write(astral.NewError("invalid offer"))
+		}
+		if len(offer.Session) == 0 {
+			mod.log.Info("missing session in offer: %v", offer)
+			return ch.Write(astral.NewError("missing session in offer"))
+		}
 
-	readyObj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
-	if err != nil {
-		mod.log.Info("ch.ReadPayload ready error: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
-	}
+		session := offer.Session
+		peerIP := offer.IP
+		peerPort := int(offer.Port)
 
-	ready, ok := readyObj.(*nat.NatSignal)
-	if !ok || ready == nil || ready.Type != nat.NatSignalTypeReady {
-		mod.log.Info("invalid ready signal: %v", ready)
-		return ch.Write(astral.NewError("invalid ready signal"))
-	}
-	if !bytes.Equal(ready.Session, session) {
-		mod.log.Info("session mismatch in ready signal: %v", ready.Session)
-		return ch.Write(astral.NewError("session mismatch in ready signal"))
-	}
+		p := newConePuncher(session)
+		lp, err := p.Open(ctx)
+		if err != nil {
+			mod.log.Info("p.Open error: %v", err)
+			return ch.Write(astral.NewError(err.Error()))
+		}
+		defer func() { _ = p.Close() }()
 
-	err = ch.Write(&nat.NatSignal{Type: nat.NatSignalTypeGo, Session: session})
-	if err != nil {
-		mod.log.Info("ch.Write go error: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
-	}
+		err = ch.Write(&nat.NatSignal{
+			Type:    nat.NatSignalTypeAnswer,
+			Session: session,
+			IP:      localIP,
+			Port:    astral.Uint16(lp),
+		})
+		if err != nil {
+			mod.log.Info("ch.Write answer error: %v", err)
+			return ch.Write(astral.NewError(err.Error()))
+		}
 
-	time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond)
+		readyObj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
+		if err != nil {
+			mod.log.Info("ch.ReadPayload ready error: %v", err)
+			return ch.Write(astral.NewError(err.Error()))
+		}
 
-	punchResult, err := p.HolePunch(ctx, peerIP, peerPort)
-	if err != nil {
-		mod.log.Info("hole punch failed: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
-	}
+		ready, ok := readyObj.(*nat.NatSignal)
+		if !ok || ready == nil || ready.Type != nat.NatSignalTypeReady {
+			mod.log.Info("invalid ready signal: %v", ready)
+			return ch.Write(astral.NewError("invalid ready signal"))
+		}
+		if !bytes.Equal(ready.Session, session) {
+			mod.log.Info("session mismatch in ready signal: %v", ready.Session)
+			return ch.Write(astral.NewError("session mismatch in ready signal"))
+		}
 
-	resObj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
-	if err != nil {
-		mod.log.Info("ch.ReadPayload result error: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
-	}
+		err = ch.Write(&nat.NatSignal{Type: nat.NatSignalTypeGo, Session: session})
+		if err != nil {
+			mod.log.Info("ch.Write go error: %v", err)
+			return ch.Write(astral.NewError(err.Error()))
+		}
 
-	result, ok := resObj.(*nat.NatSignal)
-	if !ok || result == nil || result.Type != nat.NatSignalTypeResult {
-		mod.log.Info("invalid result signal: %v", result)
-		return ch.Write(astral.NewError("invalid result signal"))
-	}
-	if !bytes.Equal(result.Session, session) {
-		mod.log.Info("session mismatch in result signal: %v", result.Session)
-		return ch.Write(astral.NewError("session mismatch in result signal"))
-	}
+		time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond)
 
-	err = ch.Write(&nat.NatSignal{
-		Type:    nat.NatSignalTypeResult,
-		Session: session,
-		IP:      punchResult.RemoteIP,   // FIX: use observed IP
-		Port:    punchResult.RemotePort, // FIX: use observed Port
-	})
-	if err != nil {
-		mod.log.Info("ch.Write result error: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
-	}
+		punchResult, err := p.HolePunch(ctx, peerIP, peerPort)
+		if err != nil {
+			mod.log.Info("hole punch failed: %v", err)
+			return ch.Write(astral.NewError(err.Error()))
+		}
 
-	selfObserved := result.IP
-	selfObservedPort := result.Port
-	peerObserved := punchResult.RemoteIP
-	peerObservedPort := punchResult.RemotePort
+		resObj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
+		if err != nil {
+			mod.log.Info("ch.ReadPayload result error: %v", err)
+			return ch.Write(astral.NewError(err.Error()))
+		}
 
-	mod.log.Info("NAT traversal result sent: observed peer at %v:%v", peerIP, int(punchResult.RemotePort))
+		result, ok := resObj.(*nat.NatSignal)
+		if !ok || result == nil || result.Type != nat.NatSignalTypeResult {
+			mod.log.Info("invalid result signal: %v", result)
+			return ch.Write(astral.NewError("invalid result signal"))
+		}
+		if !bytes.Equal(result.Session, session) {
+			mod.log.Info("session mismatch in result signal: %v", result.Session)
+			return ch.Write(astral.NewError("session mismatch in result signal"))
+		}
 
-	err = ch.Write(&nat.TraversalResult{
-		PeerObservedIP:   peerObserved,
-		PeerObservedPort: peerObservedPort,
-		ObservedIP:       selfObserved,
-		ObservedPort:     selfObservedPort,
-	})
-	if err != nil {
-		mod.log.Info("ch.Write traversal result error: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
-	}
+		err = ch.Write(&nat.NatSignal{
+			Type:    nat.NatSignalTypeResult,
+			Session: session,
+			IP:      punchResult.RemoteIP,   // FIX: use observed IP
+			Port:    punchResult.RemotePort, // FIX: use observed Port
+		})
+		if err != nil {
+			mod.log.Info("ch.Write result error: %v", err)
+			return ch.Write(astral.NewError(err.Error()))
+		}
 
+		selfObserved := result.IP
+		selfObservedPort := result.Port
+		peerObserved := punchResult.RemoteIP
+		peerObservedPort := punchResult.RemotePort
+
+		mod.log.Info("NAT traversal result sent: observed peer at %v:%v", peerIP, int(punchResult.RemotePort))
+
+		err = ch.Write(&nat.TraversalResult{
+			PeerObservedIP:   peerObserved,
+			PeerObservedPort: peerObservedPort,
+			ObservedIP:       selfObserved,
+			ObservedPort:     selfObservedPort,
+		})
+		if err != nil {
+			mod.log.Info("ch.Write traversal result error: %v", err)
+			return ch.Write(astral.NewError(err.Error()))
+		}
+
+	*/
 	return nil
 }
