@@ -23,7 +23,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer func() { _ = ch.Close() }()
 
-	ips := mod.IP.FindIPCandidates()
+	ips := mod.IP.PublicIPCandidates()
 	if len(ips) == 0 {
 		return ch.Write(astral.NewError("no suitable IP addresses found"))
 	}
