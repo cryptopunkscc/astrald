@@ -55,7 +55,8 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		defer func() { _ = p.Close() }()
 
 		routedQuery := query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartNatTraversal{})
-		peerCh, err := query.RouteChan(ctx, mod.node, routedQuery)
+		peerCh, err := query.RouteChan(ctx.IncludeZone(astral.ZoneNetwork), mod.node,
+			routedQuery)
 		if err != nil {
 			mod.log.Info("RouteChan error: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
