@@ -2,10 +2,11 @@ package objects
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"time"
 )
 
 func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.SearchArgs) (err error) {
@@ -26,10 +27,6 @@ func (mod *Module) OpSearch(ctx *astral.Context, q shell.Query, args objects.Sea
 	var dup = make(map[string]struct{})
 
 	for match := range matches {
-		if !mod.Auth.Authorize(q.Caller(), objects.ActionRead, match.ObjectID) {
-			continue
-		}
-
 		if _, found := dup[match.ObjectID.String()]; found {
 			continue
 		}
