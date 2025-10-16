@@ -39,10 +39,10 @@ func (mod *Module) Run(ctx *astral.Context) error {
 }
 
 func (mod *Module) LocalIPs() ([]ip.IP, error) {
-	return mod.localIPAddresses(false)
+	return mod.localAddresses(false)
 }
 
-func (mod *Module) localIPAddresses(includeLoopback bool) (out []ip.IP, err error) {
+func (mod *Module) localAddresses(includeLoopback bool) (out []ip.IP, err error) {
 	ifaceAddrs, err := InterfaceAddrs()
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func (mod *Module) localIPAddresses(includeLoopback bool) (out []ip.IP, err erro
 }
 
 func (mod *Module) watchAddresses(ctx context.Context) {
-	addrs, err := mod.localIPAddresses(false)
+	addrs, err := mod.localAddresses(false)
 	if err != nil {
 		mod.log.Errorv(0,
 			"network interface monitoring disabled, because fetching addresses failed: %v", err)
@@ -76,7 +76,7 @@ func (mod *Module) watchAddresses(ctx context.Context) {
 	for {
 		select {
 		case <-time.After(3 * time.Second):
-			newAddrs, err := mod.localIPAddresses(false)
+			newAddrs, err := mod.localAddresses(false)
 			if err != nil {
 				mod.log.Errorv(0,
 					"get network addresses: %v",
