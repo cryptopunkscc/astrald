@@ -407,7 +407,7 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 	return nil, errors.New("no supported link types found")
 }
 
-func (mod *Peers) Accept(ctx *astral.Context, conn exonet.Conn) (err error) {
+func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
