@@ -25,9 +25,12 @@ func (mod *Module) OpNewNatTraversal(ctx *astral.Context, q shell.Query,
 	defer shellCh.Close()
 
 	// Start traversal by invoking the start op on the target.
-	queryArgs := &opStartNatTraversal{}
+	queryArgs := &opStartNatTraversal{
+		Target: args.Target,
+	}
 
-	routedQuery := query.New(ctx.Identity(), target,
+	// We route the query to ourselves, which will then be forwarded to the target.
+	routedQuery := query.New(ctx.Identity(), ctx.Identity(),
 		nat.MethodStartNatTraversal,
 		queryArgs)
 
