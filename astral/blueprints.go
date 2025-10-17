@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"reflect"
+
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var DefaultBlueprints = &Blueprints{}
@@ -120,6 +121,12 @@ func (bp *Blueprints) Read(r io.Reader, canonical bool) (o Object, n int64, err 
 	})
 	n += m
 	return o, n, err
+}
+
+// Unpack unpacks a short form object from a buffer
+func (bp *Blueprints) Unpack(data []byte) (object Object, err error) {
+	object, _, err = bp.Read(bytes.NewReader(data), false)
+	return
 }
 
 // Inject wraps an io.Reader in a wrapper that HasBlueprints
