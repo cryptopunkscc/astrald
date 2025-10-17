@@ -9,9 +9,9 @@ import (
 )
 
 // NatSignal represents control messages exchanged over the signalling channel.
-// Type field values are defined as constants below for readability and reuse.
+// Signal field values are defined as constants below for readability and reuse.
 type NatSignal struct {
-	Type    astral.String8 `json:"type"`
+	Signal  astral.String8 `json:"signal"`
 	Session astral.Bytes8  `json:"session"`
 	IP      ip.IP          `json:"ip"`
 	Port    astral.Uint16  `json:"port"`
