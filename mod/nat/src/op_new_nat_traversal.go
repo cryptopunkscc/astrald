@@ -8,13 +8,13 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-type opNewNatTraversal struct {
+type opNewTraversal struct {
 	Target string
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpNewNatTraversal(ctx *astral.Context, q shell.Query,
-	args opNewNatTraversal) (err error) {
+func (mod *Module) OpNewTraversal(ctx *astral.Context, q shell.Query,
+	args opNewTraversal) (err error) {
 	_, err = mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
 		return q.RejectWithCode(4)
@@ -25,7 +25,7 @@ func (mod *Module) OpNewNatTraversal(ctx *astral.Context, q shell.Query,
 	defer ch.Close()
 
 	// Start traversal by invoking the start op on the target.
-	queryArgs := &opStartNatTraversal{
+	queryArgs := &opStartTraversal{
 		Target: args.Target,
 	}
 

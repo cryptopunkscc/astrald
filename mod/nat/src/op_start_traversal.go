@@ -12,13 +12,13 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
-type opStartNatTraversal struct {
+type opStartTraversal struct {
 	// Active side fields
 	Target string `query:"optional"` // if not empty act as initiator
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args opStartNatTraversal) error {
+func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opStartTraversal) error {
 	mod.log.Info("Starting NAT traversal operation")
 	ch := astral.NewChannelFmt(q.Accept(), args.Out, args.Out)
 	defer ch.Close()
@@ -59,7 +59,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 
 		defer p.Close()
 
-		routedQuery := query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartNatTraversal{
+		routedQuery := query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartTraversal{
 			Out: args.Out,
 		})
 		mod.log.Info("Created routed query to target")
