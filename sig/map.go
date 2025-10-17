@@ -152,3 +152,17 @@ func (m *Map[K, V]) Select(fn func(k K, v V) (ok bool)) (vals map[K]V) {
 
 	return
 }
+
+// Each calls the function for each key-value pair in the map. The map is locked during the call.
+func (m *Map[K, V]) Each(fn func(k K, v V) error) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for k, v := range m.m {
+		if err := fn(k, v); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
