@@ -108,7 +108,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 
 		peerIP := answer.IP
 		peerPort := int(answer.Port)
-		mod.log.Info("Peer IP and port: %v:%d", peerIP, peerPort)
+		mod.log.Info("Peer IP and port: %v:%v", peerIP, peerPort)
 
 		err = peerCh.Write(&nat.NatSignal{Signal: nat.NatSignalTypeReady,
 			Session: p.Session()})
