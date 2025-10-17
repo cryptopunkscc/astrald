@@ -21,10 +21,11 @@ var _ nat.Puncher = (*conePuncher)(nil)
 
 const (
 	punchTimeout  = 10 * time.Second // ~1.5s total per attempt
-	burstInterval = 250 * time.
+	burstInterval = 50 * time.
 			Millisecond // time between bursts over the whole range
-	packetSpacing  = 50 * time.Millisecond // 20–80ms between packets
-	portGuessRange = 10                    // try [-5..+5] around base port (including itself)
+	packetSpacing   = 25 * time.Millisecond // 20–80ms between packets
+	portGuessRange  = 10                    // try [-5..+5] around base port (including itself)
+	packetsPerBurst = 5                     // number of packets sent to each address per burst
 )
 
 // conePuncher is a minimal cone NAT puncher using fixed defaults and a provided peer listen port.
@@ -203,7 +204,7 @@ func (p *conePuncher) receive(ctx context.Context, conn net.PacketConn, interval
 	}
 }
 
-// sendBursts sends the session payload to all candidate raddrs, spacing packets slightly, and repeats in bursts until ctx is done.
+// sendBursts sends the session payload to all candidate raddrs simultaneously in each burst, and repeats until ctx is done.
 func (p *conePuncher) sendBursts(ctx context.Context, conn net.PacketConn, raddrs []net.Addr, burstEvery, spacing time.Duration) {
 	for {
 		select {
@@ -211,16 +212,9 @@ func (p *conePuncher) sendBursts(ctx context.Context, conn net.PacketConn, raddr
 			return
 		default:
 		}
-		for _, ra := range raddrs {
-			_, _ = conn.WriteTo(p.session, ra)
-			t := time.NewTimer(spacing)
-			select {
-			case <-ctx.Done():
-				if !t.Stop() {
-					<-t.C
-				}
-				return
-			case <-t.C:
+		for i := 0; i < packetsPerBurst; i++ {
+			for _, ra := range raddrs {
+				_, _ = conn.WriteTo(p.session, ra)
 			}
 		}
 		// wait until next burst
