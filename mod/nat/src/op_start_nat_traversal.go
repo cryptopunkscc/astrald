@@ -20,12 +20,7 @@ type opStartNatTraversal struct {
 }
 
 func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args opStartNatTraversal) error {
-
-	if args.In == "" {
-		args.In = args.Out
-	}
-
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := astral.NewChannelFmt(q.Accept(), args.Out, args.Out)
 	defer func() { _ = ch.Close() }()
 
 	ips := mod.IP.PublicIPCandidates()
