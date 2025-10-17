@@ -27,11 +27,6 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		return ch.Write(astral.NewError("no suitable IP addresses found"))
 	}
 
-	go func() {
-		<-ctx.Done()
-		mod.log.Info("NAT Traversal session closed")
-	}()
-
 	if args.Target != "" {
 		// Initiator logic
 		target, err := mod.Dir.ResolveIdentity(args.Target)
