@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"io"
 )
@@ -115,10 +116,38 @@ func Write(w io.Writer, obj Object) (_ int64, err error) {
 	return buf.WriteTo(w)
 }
 
+// WriteJSON writes the object in its JSON form to the writer
+func WriteJSON(w io.Writer, obj Object) (err error) {
+	enc := json.NewEncoder(w)
+
+	switch obj := obj.(type) {
+	case *RawObject:
+		err = enc.Encode(&JSONEncodeAdapter{
+			Type:    obj.ObjectType(),
+			Payload: obj.Payload,
+		})
+
+	default:
+		err = enc.Encode(&JSONEncodeAdapter{
+			Type:   obj.ObjectType(),
+			Object: obj,
+		})
+	}
+
+	return
+}
+
 // Pack writes the object in its short form to a buffer and returns the buffer
 func Pack(obj Object) (_ []byte, err error) {
 	var buf = &bytes.Buffer{}
 	_, err = Write(buf, obj)
+	return buf.Bytes(), err
+}
+
+// PackJSON writes the object in its JSON form to a buffer and returns the buffer
+func PackJSON(obj Object) (_ []byte, err error) {
+	var buf = &bytes.Buffer{}
+	err = WriteJSON(buf, obj)
 	return buf.Bytes(), err
 }
 

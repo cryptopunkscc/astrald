@@ -155,9 +155,9 @@ func (b *Bundle) String() string {
 }
 
 func (b *Bundle) MarshalJSON() ([]byte, error) {
-	var list []jsonEncodeAdapter
+	var list []JSONEncodeAdapter
 	for _, o := range b.objects {
-		list = append(list, jsonEncodeAdapter{
+		list = append(list, JSONEncodeAdapter{
 			Type:   o.ObjectType(),
 			Object: o,
 		})

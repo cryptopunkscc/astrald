@@ -2,6 +2,7 @@ package astral
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -88,6 +89,31 @@ func (bp *Blueprints) Refine(raw *RawObject) (Object, error) {
 	return b, err
 }
 
+func (bp *Blueprints) RefineJSON(jsonObj *JSONDecodeAdapter) (obj Object, err error) {
+	obj = bp.Make(jsonObj.Type)
+	if obj == nil {
+		obj = &RawObject{}
+	}
+
+	switch {
+	case jsonObj.Object != nil:
+		err = json.Unmarshal(jsonObj.Object, &obj)
+
+	case jsonObj.Payload != nil:
+		raw := &RawObject{
+			Type:    jsonObj.Type,
+			Payload: jsonObj.Payload,
+		}
+		obj, err = bp.Refine(raw)
+		if err != nil {
+			obj = raw
+			err = nil
+		}
+	}
+
+	return
+}
+
 // Names returns type names of all registered prototypes
 func (bp *Blueprints) Names() (names []string) {
 	if bp.Parent != nil {
@@ -127,6 +153,13 @@ func (bp *Blueprints) Read(r io.Reader, canonical bool) (o Object, n int64, err 
 func (bp *Blueprints) Unpack(data []byte) (object Object, err error) {
 	object, _, err = bp.Read(bytes.NewReader(data), false)
 	return
+}
+
+// UnpackJSON unpacks an object from its JSON form
+func (bp *Blueprints) UnpackJSON(data []byte) (object Object, err error) {
+	var j JSONDecodeAdapter
+	err = json.Unmarshal(data, &j)
+	return bp.RefineJSON(&j)
 }
 
 // Inject wraps an io.Reader in a wrapper that HasBlueprints

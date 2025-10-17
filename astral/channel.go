@@ -7,9 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"strings"
+
+	"github.com/cryptopunkscc/astrald/streams"
 )
 
 type Channel struct {
@@ -20,18 +21,6 @@ type Channel struct {
 	jenc   *json.Encoder
 	jdec   *json.Decoder
 	bufr   *bufio.Reader
-}
-
-type jsonDecodeAdapter struct {
-	Type    string
-	Object  json.RawMessage `json:",omitempty"`
-	Payload []byte          `json:",omitempty"`
-}
-
-type jsonEncodeAdapter struct {
-	Type    string
-	Object  any    `json:",omitempty"`
-	Payload []byte `json:",omitempty"`
 }
 
 // NewChannel creates a new channel
@@ -76,32 +65,14 @@ func (ch *Channel) Read() (obj Object, err error) {
 		obj, _, err = ch.Blueprints.Read(bytes.NewReader(frame), false)
 
 	case "json":
-		var jsonObj jsonDecodeAdapter
+		var jsonObj JSONDecodeAdapter
 
 		err = ch.jdec.Decode(&jsonObj)
 		if err != nil {
 			return
 		}
 
-		obj = ch.Blueprints.Make(jsonObj.Type)
-		if obj == nil {
-			obj = &RawObject{}
-		}
-
-		switch {
-		case jsonObj.Object != nil:
-			err = json.Unmarshal(jsonObj.Object, &obj)
-
-		case jsonObj.Payload != nil:
-			raw := &RawObject{
-				Type:    jsonObj.Type,
-				Payload: jsonObj.Payload,
-			}
-			obj, err = ch.Blueprints.Refine(raw)
-			if err != nil {
-				obj = raw
-			}
-		}
+		obj, err = ch.Blueprints.RefineJSON(&jsonObj)
 
 	case "text", "text+":
 		var line, objectType, text string
@@ -220,32 +191,17 @@ func (ch *Channel) WritePayload(obj Object) (err error) {
 func (ch *Channel) Write(obj Object) (err error) {
 	switch ch.fmtOut {
 	case "astral", "":
-		var frame = &bytes.Buffer{}
-		_, _ = String8(obj.ObjectType()).WriteTo(frame)
+		var frame []byte
 
-		_, err = obj.WriteTo(frame)
+		frame, err = Pack(obj)
 		if err != nil {
 			return
 		}
-
-		_, err = Bytes16(frame.Bytes()).WriteTo(ch.rw)
+		_, err = Bytes16(frame).WriteTo(ch.rw)
 		return
 
 	case "json":
-		switch obj := obj.(type) {
-		case *RawObject:
-			err = ch.jenc.Encode(&jsonEncodeAdapter{
-				Type:    obj.ObjectType(),
-				Payload: obj.Payload,
-			})
-			
-		default:
-			err = ch.jenc.Encode(&jsonEncodeAdapter{
-				Type:   obj.ObjectType(),
-				Object: obj,
-			})
-		}
-		return
+		return WriteJSON(ch.rw, obj)
 
 	case "text", "text+":
 		m, ok := obj.(encoding2.TextMarshaler)
