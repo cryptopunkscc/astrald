@@ -2,7 +2,9 @@ package astral
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
+	"strconv"
 )
 
 var encoding = binary.BigEndian
@@ -181,6 +183,20 @@ func (i *Int64) ReadFrom(r io.Reader) (n int64, err error) {
 		n = 8
 	}
 	return
+}
+
+func (i Uint16) MarshalText() (text []byte, err error) {
+	return []byte(fmt.Sprintf(`%d`, i)), nil
+}
+
+func (i *Uint16) UnmarshalText(text []byte) error {
+	i64, err := strconv.ParseInt(string(text), 10, 16)
+	if err != nil {
+		return err
+	}
+
+	*i = Uint16(i64)
+	return nil
 }
 
 func init() {
