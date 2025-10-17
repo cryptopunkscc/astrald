@@ -194,6 +194,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	peerIP := offer.IP
 	peerPort := int(offer.Port)
 
+	mod.log.Info(`local IP candidates: %v`, localIP)
 	mod.log.Info(`Received NAT traversal offer: %v:%v %v`, peerIP, peerPort,
 		session)
 
