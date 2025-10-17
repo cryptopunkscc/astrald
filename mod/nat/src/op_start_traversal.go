@@ -253,7 +253,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	peerPort := int(offer.Port)
 	mod.log.Info("Peer IP and port from offer: %v:%v", peerIP, peerPort)
 
-	p, err := newConePuncher()
+	p, err := newConePuncher(offer.Session)
 	if err != nil {
 		mod.log.Info("Failed to create cone puncher: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
