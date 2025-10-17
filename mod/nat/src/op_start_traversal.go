@@ -2,6 +2,7 @@ package nat
 
 import (
 	"bytes"
+	"crypto/rand"
 	mrand "math/rand"
 	"time"
 
@@ -43,7 +44,13 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		localIP := ips[0]
 		mod.log.Info("Using local IP: %v", localIP)
 
-		p, err := newConePuncher()
+		session := make([]byte, 16)
+		_, err = rand.Read(session)
+		if err != nil {
+			return ch.Write(astral.NewError(err.Error()))
+		}
+
+		p, err := newConePuncher(session)
 		if err != nil {
 			mod.log.Info("Failed to create cone puncher: %v", err)
 			return ch.Write(astral.NewError(err.Error()))

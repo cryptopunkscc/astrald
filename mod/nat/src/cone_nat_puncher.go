@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
 	"strconv"
 	"sync"
@@ -42,15 +41,10 @@ type conePuncher struct {
 
 // newConePuncher creates a cone NAT puncher that targets the given peer listen port.
 // Session is required and must be non-empty.
-func newConePuncher() (puncher nat.Puncher, err error) {
-	session := make([]byte, 16)
-
-	_, err = rand.Read(session)
-	if err != nil {
-		return nil, fmt.Errorf("nat: generate session: %w", err)
-	}
-
-	return &conePuncher{session: session}, nil
+func newConePuncher(session []byte) (puncher nat.Puncher, err error) {
+	// defensive copy of session
+	s := append(make([]byte, 0), session...)
+	return &conePuncher{session: s}, nil
 }
 
 // Open binds a UDP socket and stores it for later HolePunch use.
