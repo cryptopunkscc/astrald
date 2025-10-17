@@ -41,7 +41,10 @@ func (mod *Module) OpNewTraversal(ctx *astral.Context, q shell.Query,
 	}
 	defer routeCh.Close()
 
-	// FIXME: return result of NAT traversal
+	obj, err := routeCh.Read()
+	if err != nil {
+		return ch.Write(astral.NewError(err.Error()))
+	}
 
-	return nil
+	return ch.Write(obj)
 }
