@@ -23,9 +23,10 @@ const (
 	punchTimeout  = 10 * time.Second // ~1.5s total per attempt
 	burstInterval = 50 * time.
 			Millisecond // time between bursts over the whole range
-	packetSpacing   = 25 * time.Millisecond // 20–80ms between packets
-	portGuessRange  = 10                    // try [-5..+5] around base port (including itself)
-	packetsPerBurst = 5                     // number of packets sent to each address per burst
+	packetSpacing  = 25 * time.Millisecond // 20–80ms between packets
+	portGuessRange = 2                     // try [-5..+5] around base port (
+	// including itself)
+	packetsPerBurst = 5 // number of packets sent to each address per burst
 )
 
 // conePuncher is a minimal cone NAT puncher using fixed defaults and a provided peer listen port.
