@@ -63,4 +63,13 @@ func init() {
 			Text:  astral.String32(Render(object, nil, true)),
 		}
 	})
+
+	// astral.Nonce
+	SetTranslateFunc(func(object *astral.Nil) astral.Object {
+		return &ColorString{
+			Color: ColorRed,
+			Text:  "nil",
+		}
+	})
+
 }

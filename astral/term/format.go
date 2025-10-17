@@ -2,10 +2,11 @@ package term
 
 import (
 	"bytes"
-	"github.com/cryptopunkscc/astrald/astral"
 	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 // Format replaces %v occurances in fmt with respective values
@@ -41,7 +42,7 @@ func Format(fmt string, v ...interface{}) (list []astral.Object) {
 
 func Objectify(v any) astral.Object {
 	if v == nil {
-		return &Nil{}
+		return &astral.Nil{}
 	}
 
 	// check if v is already an astral.Object
