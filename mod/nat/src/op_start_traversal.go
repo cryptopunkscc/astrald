@@ -187,13 +187,17 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		traversedPair := nat.EndpointPair{
 			PeerA: nat.PeerEndpoint{
 				Identity: ctx.Identity(),
-				Endpoint: &utp.Endpoint{IP: selfObserved,
-					Port: selfObservedPort},
+				Endpoint: utp.Endpoint{
+					IP:   selfObserved,
+					Port: selfObservedPort,
+				},
 			},
 			PeerB: nat.PeerEndpoint{
 				Identity: target,
-				Endpoint: &utp.Endpoint{IP: peerObserved,
-					Port: peerObservedPort},
+				Endpoint: utp.Endpoint{
+					IP:   peerObserved,
+					Port: peerObservedPort,
+				},
 			},
 			CreatedAt: astral.Time(time.Now()),
 		}
@@ -349,14 +353,14 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	traversedPair := nat.EndpointPair{
 		PeerA: nat.PeerEndpoint{
 			Identity: ctx.Identity(),
-			Endpoint: &utp.Endpoint{
+			Endpoint: utp.Endpoint{
 				IP:   selfObserved,
 				Port: selfObservedPort,
 			},
 		},
 		PeerB: nat.PeerEndpoint{
 			Identity: q.Caller(),
-			Endpoint: &utp.Endpoint{
+			Endpoint: utp.Endpoint{
 				IP:   peerObserved,
 				Port: peerObservedPort,
 			},

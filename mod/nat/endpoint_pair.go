@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
 // EndpointPair represents two peers that established a NAT-traversed
@@ -52,7 +52,7 @@ func (e *EndpointPair) UnmarshalJSON(bytes []byte) error {
 // It can be serialized via astral.Struct and registered in blueprints.
 type PeerEndpoint struct {
 	Identity *astral.Identity
-	Endpoint exonet.Endpoint
+	Endpoint utp.Endpoint
 }
 
 // ObjectType implements astral.Object.
