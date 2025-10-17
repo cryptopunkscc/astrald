@@ -159,8 +159,10 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		peerObservedPort := punchResult.RemotePort
 
 		mod.log.Info("NAT traversal success:")
-		mod.log.Info("Our external address as seen by peer: %v:%v", selfObserved, selfObservedPort)
-		mod.log.Info("Peer external address as seen by us: %v:%v", peerObserved, peerObservedPort)
+		mod.log.Info("Our external address as seen by peer: %v:%v",
+			selfObserved, int(selfObservedPort))
+		mod.log.Info("Peer external address as seen by us: %v:%v",
+			peerObserved, int(peerObservedPort))
 
 		err = ch.Write(&nat.TraversalResult{
 			PeerObservedIP:   peerObserved,
@@ -201,8 +203,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	peerPort := int(offer.Port)
 
 	mod.log.Info(`local IP candidates: %v`, localIP)
-	mod.log.Info(`Received NAT traversal offer: %v:%v %v`, peerIP, peerPort,
-		session)
+	mod.log.Info(`Received NAT traversal offer: %v:%v`, peerIP, peerPort)
 
 	p := newConePuncher(session)
 	lp, err := p.Open(ctx)
@@ -285,8 +286,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	peerObserved := punchResult.RemoteIP
 	peerObservedPort := punchResult.RemotePort
 
-	mod.log.Info("NAT traversal result sent: observed peer at %v:%v", peerIP, int(punchResult.RemotePort))
-
+	mod.log.Info("NAT traversal result sent: observed peer at %v:%v", peerIP, punchResult.RemotePort)
 	err = ch.Write(&nat.TraversalResult{
 		PeerObservedIP:   peerObserved,
 		PeerObservedPort: peerObservedPort,
