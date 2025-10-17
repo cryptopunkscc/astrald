@@ -185,6 +185,12 @@ func (i *Int64) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
+func (i Uint16) String() string {
+	b, _ := i.MarshalText()
+
+	return string(b)
+}
+
 func (i Uint16) MarshalText() (text []byte, err error) {
 	return []byte(fmt.Sprintf(`%d`, i)), nil
 }
