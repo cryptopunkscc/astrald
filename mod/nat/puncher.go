@@ -19,6 +19,8 @@ type Puncher interface {
 		peerPort int) (*PunchResult, error)
 	// Close releases any resources held by the puncher (open sockets).
 	Close() error
+
+	Session() []byte
 }
 
 // PunchResult contains the outcome of a successful UDP hole punch.

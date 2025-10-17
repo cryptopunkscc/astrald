@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
+	"github.com/cryptopunkscc/astrald/sig"
 
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -31,6 +32,10 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
+	// NOTE: it is slice rather than
+	// but EndpointPair hold CreatedAt so it is not a problem for now.
+	traversedPairs sig.Set[nat.EndpointPair]
+
 	ops shell.Scope
 }
 
@@ -48,4 +53,9 @@ func (mod *Module) Scope() *shell.Scope {
 
 func (mod *Module) String() string {
 	return nat.ModuleName
+}
+
+func (mod *Module) addTraversedPair(pair nat.EndpointPair) (err error) {
+	mod.log.Info("added NAT travesed pair: %v", pair)
+	return mod.traversedPairs.Add(pair)
 }

@@ -2,8 +2,6 @@ package nat
 
 import (
 	"bytes"
-	"crypto/rand"
-	"fmt"
 	mrand "math/rand"
 	"time"
 
@@ -11,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
 type opStartNatTraversal struct {
@@ -37,18 +36,17 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 
 		localIP := ips[0]
 
-		session := make([]byte, 16)
-		_, err = rand.Read(session)
+		p, err := newConePuncher()
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
-		p := newConePuncher(session)
 		lp, err := p.Open(ctx)
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
-		defer func() { _ = p.Close() }()
+
+		defer p.Close()
 
 		routedQuery := query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartNatTraversal{
 			Out: args.Out,
@@ -59,15 +57,12 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
-		defer func() {
-			if err := peerCh.Close(); err != nil {
-				mod.log.Info("peerCh.Close error: %v", err)
-			}
-		}()
+
+		defer peerCh.Close()
 
 		err = peerCh.Write(&nat.NatSignal{
 			Signal:  nat.NatSignalTypeOffer,
-			Session: session,
+			Session: p.Session(),
 			IP:      localIP,
 			Port:    astral.Uint16(lp),
 		})
@@ -88,7 +83,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 			return ch.Write(astral.NewError("invalid answer"))
 		}
 
-		if !bytes.Equal(answer.Session, session) {
+		if !bytes.Equal(answer.Session, p.Session()) {
 			mod.log.Info("session mismatch in answer: %v", answer.Session)
 			return ch.Write(astral.NewError("session mismatch in answer"))
 		}
@@ -96,7 +91,8 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		peerIP := answer.IP
 		peerPort := int(answer.Port)
 
-		err = peerCh.Write(&nat.NatSignal{Signal: nat.NatSignalTypeReady, Session: session})
+		err = peerCh.Write(&nat.NatSignal{Signal: nat.NatSignalTypeReady,
+			Session: p.Session()})
 		if err != nil {
 			mod.log.Info("peerCh.Write ready error: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
@@ -113,7 +109,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 			mod.log.Info("invalid go signal: %v", goSig)
 			return ch.Write(astral.NewError("invalid go signal"))
 		}
-		if !bytes.Equal(goSig.Session, session) {
+		if !bytes.Equal(goSig.Session, p.Session()) {
 			mod.log.Info("session mismatch in go signal: %v", goSig.Session)
 			return ch.Write(astral.NewError("session mismatch in go signal"))
 		}
@@ -128,18 +124,16 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 
 		err = peerCh.Write(&nat.NatSignal{
 			Signal:  nat.NatSignalTypeResult,
-			Session: session,
+			Session: p.Session(),
 			IP:      punchResult.RemoteIP,
 			Port:    punchResult.RemotePort,
 		})
 		if err != nil {
-			mod.log.Info("peerCh.Write result error: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
 		resObj, err := peerCh.Read()
 		if err != nil {
-			mod.log.Info("peerCh.ReadPayload result error: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
@@ -147,8 +141,8 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		if !ok || result == nil || result.Signal != nat.NatSignalTypeResult {
 			return ch.Write(astral.NewError("invalid result signal"))
 		}
-		if !bytes.Equal(result.Session, session) {
-			mod.log.Info("session mismatch in result signal: %v", result.Session)
+
+		if !bytes.Equal(result.Session, p.Session()) {
 			return ch.Write(astral.NewError("session mismatch in result signal"))
 		}
 
@@ -160,14 +154,27 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		mod.log.Info("NAT Traversal punch success: peer at %v:%v us at %v:%v"+
 			"", peerIP, peerPort, selfObserved, selfObservedPort)
 
-		err = ch.Write(&nat.TraversalResult{
-			PeerObservedIP:   peerObserved,
-			PeerObservedPort: peerObservedPort,
-			ObservedIP:       selfObserved,
-			ObservedPort:     selfObservedPort,
-		})
+		traversedPair := nat.EndpointPair{
+			PeerA: nat.PeerEndpoint{
+				Identity: ctx.Identity(),
+				Endpoint: &utp.Endpoint{IP: selfObserved,
+					Port: selfObservedPort},
+			},
+			PeerB: nat.PeerEndpoint{
+				Identity: target,
+				Endpoint: &utp.Endpoint{IP: peerObserved,
+					Port: peerObservedPort},
+			},
+			CreatedAt: astral.Time(time.Now()),
+		}
+
+		err = mod.addTraversedPair(traversedPair)
 		if err != nil {
-			mod.log.Info("ch.Write traversal result error: %v", err)
+			return ch.Write(astral.NewError(err.Error()))
+		}
+
+		err = ch.Write(&traversedPair)
+		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
@@ -179,18 +186,14 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 
 	obj, err := ch.Read()
 	if err != nil {
-		mod.log.Info("ch.ReadPayload offer error: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	offer, ok := obj.(*nat.NatSignal)
 	if !ok || offer == nil || offer.Signal != nat.NatSignalTypeOffer {
-		fmt.Println("SIGNAL: ", offer)
-		mod.log.Info("invalid offer")
 		return ch.Write(astral.NewError("invalid offer"))
 	}
 	if len(offer.Session) == 0 {
-		mod.log.Info("missing session in offer: %v", offer)
 		return ch.Write(astral.NewError("missing session in offer"))
 	}
 
@@ -198,11 +201,13 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	peerIP := offer.IP
 	peerPort := int(offer.Port)
 
-	mod.log.Info(`Received NAT traversal offer: %v:%v`, peerIP, peerPort)
-	p := newConePuncher(session)
+	p, err := newConePuncher()
+	if err != nil {
+		return ch.Write(astral.NewError(err.Error()))
+	}
+
 	lp, err := p.Open(ctx)
 	if err != nil {
-		mod.log.Info("p.Open error: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 	defer p.Close()
@@ -214,29 +219,24 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		Port:    astral.Uint16(lp),
 	})
 	if err != nil {
-		mod.log.Info("ch.Write answer error: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	readyObj, err := ch.Read()
 	if err != nil {
-		mod.log.Info("ch.ReadPayload ready error: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	ready, ok := readyObj.(*nat.NatSignal)
 	if !ok || ready == nil || ready.Signal != nat.NatSignalTypeReady {
-		mod.log.Info("invalid ready signal: %v", ready)
 		return ch.Write(astral.NewError("invalid ready signal"))
 	}
 	if !bytes.Equal(ready.Session, session) {
-		mod.log.Info("session mismatch in ready signal: %v", ready.Session)
 		return ch.Write(astral.NewError("session mismatch in ready signal"))
 	}
 
 	err = ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeGo, Session: session})
 	if err != nil {
-		mod.log.Info("ch.Write go error: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
@@ -244,23 +244,19 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 
 	punchResult, err := p.HolePunch(ctx, peerIP, peerPort)
 	if err != nil {
-		mod.log.Info("hole punch failed: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	resObj, err := ch.Read()
 	if err != nil {
-		mod.log.Info("ch.ReadPayload result error: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	result, ok := resObj.(*nat.NatSignal)
 	if !ok || result == nil || result.Signal != nat.NatSignalTypeResult {
-		mod.log.Info("invalid result signal: %v", result)
 		return ch.Write(astral.NewError("invalid result signal"))
 	}
 	if !bytes.Equal(result.Session, session) {
-		mod.log.Info("session mismatch in result signal: %v", result.Session)
 		return ch.Write(astral.NewError("session mismatch in result signal"))
 	}
 
@@ -271,7 +267,6 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		Port:    punchResult.RemotePort, // FIX: use observed Port
 	})
 	if err != nil {
-		mod.log.Info("ch.Write result error: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
@@ -280,15 +275,25 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	peerObserved := punchResult.RemoteIP
 	peerObservedPort := punchResult.RemotePort
 
-	mod.log.Info("NAT traversal result sent: observed peer at %v:%v", peerIP, punchResult.RemotePort)
-	err = ch.Write(&nat.TraversalResult{
-		PeerObservedIP:   peerObserved,
-		PeerObservedPort: peerObservedPort,
-		ObservedIP:       selfObserved,
-		ObservedPort:     selfObservedPort,
-	})
+	traversedPair := nat.EndpointPair{
+		PeerA: nat.PeerEndpoint{
+			Identity: ctx.Identity(),
+			Endpoint: &utp.Endpoint{
+				IP:   selfObserved,
+				Port: selfObservedPort,
+			},
+		},
+		PeerB: nat.PeerEndpoint{
+			Identity: q.Caller(),
+			Endpoint: &utp.Endpoint{
+				IP:   peerObserved,
+				Port: peerObservedPort,
+			},
+		},
+		CreatedAt: astral.Time(time.Now()),
+	}
+	err = mod.addTraversedPair(traversedPair)
 	if err != nil {
-		mod.log.Info("ch.Write traversal result error: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
