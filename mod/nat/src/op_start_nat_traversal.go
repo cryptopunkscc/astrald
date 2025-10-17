@@ -248,7 +248,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	session := offer.Session
 	peerIP := offer.IP
 	peerPort := int(offer.Port)
-	mod.log.Info("Peer IP and port from offer: %v:%d", peerIP, peerPort)
+	mod.log.Info("Peer IP and port from offer: %v:%v", peerIP, peerPort)
 
 	p, err := newConePuncher()
 	if err != nil {
