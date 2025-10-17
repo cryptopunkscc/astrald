@@ -203,11 +203,8 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		}
 		mod.log.Info("Created traversed pair: %+v", traversedPair)
 
-		err = mod.addTraversedPair(traversedPair)
-		if err != nil {
-			mod.log.Info("Failed to add traversed pair: %v", err)
-			return ch.Write(astral.NewError(err.Error()))
-		}
+		mod.addTraversedPair(traversedPair)
+
 		mod.log.Info("Added traversed pair")
 
 		err = ch.Write(&traversedPair)
@@ -368,11 +365,8 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		CreatedAt: astral.Time(time.Now()),
 	}
 	mod.log.Info("Created traversed pair: %+v", traversedPair)
-	err = mod.addTraversedPair(traversedPair)
-	if err != nil {
-		mod.log.Info("Failed to add traversed pair: %v", err)
-		return ch.Write(astral.NewError(err.Error()))
-	}
+	mod.addTraversedPair(traversedPair)
+
 	mod.log.Info("Added traversed pair")
 
 	return nil
