@@ -17,16 +17,14 @@ type opStartNatTraversal struct {
 	// Active side fields
 	Target string `query:"optional"` // if not empty act as initiator
 	Out    string `query:"optional"`
-	In     string `query:"optional"`
 }
 
 func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args opStartNatTraversal) error {
 	ch := astral.NewChannelFmt(q.Accept(), args.Out, args.Out)
-	defer func() { _ = ch.Close() }()
+	defer ch.Close()
 
 	ips := mod.IP.PublicIPCandidates()
 	if len(ips) == 0 {
-		mod.log.Info("no suitable IP addresses found: %v", "no suitable IP addresses found")
 		return ch.Write(astral.NewError("no suitable IP addresses found"))
 	}
 
@@ -34,7 +32,6 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		// Initiator logic
 		target, err := mod.Dir.ResolveIdentity(args.Target)
 		if err != nil {
-			mod.log.Info("ResolveIdentity error: %v", err)
 			return q.RejectWithCode(4)
 		}
 
@@ -43,30 +40,27 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		session := make([]byte, 16)
 		_, err = rand.Read(session)
 		if err != nil {
-			mod.log.Info("rand.Read error: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
 		p := newConePuncher(session)
 		lp, err := p.Open(ctx)
 		if err != nil {
-			mod.log.Info("p.Open error: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
 		}
 		defer func() { _ = p.Close() }()
 
-		routedQuery := query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartNatTraversal{})
+		routedQuery := query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartNatTraversal{
+			Out: args.Out,
+		})
 
-		peerCh, err := query.RouteChan(
-			ctx.IncludeZone(astral.ZoneNetwork),
-			mod.node,
-			routedQuery,
-		)
+		routedQueryCtx := ctx.IncludeZone(astral.ZoneNetwork)
+		peerCh, err := query.RouteChan(routedQueryCtx, mod.node, routedQuery)
 		if err != nil {
-			mod.log.Info("RouteChan error: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
 		}
-		defer func() { _ = peerCh.Close() }()
+
+		defer peerCh.Close()
 
 		err = peerCh.Write(&nat.NatSignal{
 			Signal:  nat.NatSignalTypeOffer,
@@ -90,6 +84,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 			mod.log.Info("invalid answer: %v", answer)
 			return ch.Write(astral.NewError("invalid answer"))
 		}
+
 		if !bytes.Equal(answer.Session, session) {
 			mod.log.Info("session mismatch in answer: %v", answer.Session)
 			return ch.Write(astral.NewError("session mismatch in answer"))
@@ -189,7 +184,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 
 	offer, ok := obj.(*nat.NatSignal)
 	if !ok || offer == nil || offer.Signal != nat.NatSignalTypeOffer {
-		fmt.Println("SIGNAL: ", offer.Signal, " ", offer.Signal != nat.NatSignalTypeOffer)
+		fmt.Println("SIGNAL: ", offer.Signal)
 		mod.log.Info("invalid offer")
 		return ch.Write(astral.NewError("invalid offer"))
 	}
