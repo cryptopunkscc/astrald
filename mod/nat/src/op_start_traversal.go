@@ -2,7 +2,6 @@ package nat
 
 import (
 	"bytes"
-	"crypto/rand"
 	mrand "math/rand"
 	"time"
 
@@ -44,13 +43,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		localIP := ips[0]
 		mod.log.Info("Using local IP: %v", localIP)
 
-		session := make([]byte, 16)
-		_, err = rand.Read(session)
-		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
-		}
-
-		p, err := newConePuncher(session)
+		p, err := newConePuncher()
 		if err != nil {
 			mod.log.Info("Failed to create cone puncher: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
@@ -248,12 +241,11 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	}
 	mod.log.Info("Session present in offer: %x", offer.Session)
 
-	session := offer.Session
 	peerIP := offer.IP
 	peerPort := int(offer.Port)
 	mod.log.Info("Peer IP and port from offer: %v:%v", peerIP, peerPort)
 
-	p, err := newConePuncher(offer.Session)
+	p, err := newConePuncherWithSession(offer.Session)
 	if err != nil {
 		mod.log.Info("Failed to create cone puncher: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
@@ -270,7 +262,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 
 	err = ch.Write(&nat.NatSignal{
 		Signal:  nat.NatSignalTypeAnswer,
-		Session: session,
+		Session: p.Session(),
 		IP:      localIP,
 		Port:    astral.Uint16(lp),
 	})
@@ -294,13 +286,13 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	}
 	mod.log.Info("Ready signal is valid")
 
-	if !bytes.Equal(ready.Session, session) {
-		mod.log.Info("Session mismatch in ready signal: %x vs %x", ready.Session, session)
+	if !bytes.Equal(ready.Session, p.Session()) {
+		mod.log.Info("Session mismatch in ready signal: %x vs %x", ready.Session, p.Session())
 		return ch.Write(astral.NewError("session mismatch in ready signal"))
 	}
 	mod.log.Info("Session matches in ready signal")
 
-	err = ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeGo, Session: session})
+	err = ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeGo, Session: p.Session()})
 	if err != nil {
 		mod.log.Info("Failed to write go: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
@@ -331,15 +323,15 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	}
 	mod.log.Info("Result signal is valid")
 
-	if !bytes.Equal(result.Session, session) {
-		mod.log.Info("Session mismatch in result signal: %x vs %x", result.Session, session)
+	if !bytes.Equal(result.Session, p.Session()) {
+		mod.log.Info("Session mismatch in result signal: %x vs %x", result.Session, p.Session())
 		return ch.Write(astral.NewError("session mismatch in result signal"))
 	}
 	mod.log.Info("Session matches in result signal")
 
 	err = ch.Write(&nat.NatSignal{
 		Signal:  nat.NatSignalTypeResult,
-		Session: session,
+		Session: p.Session(),
 		IP:      punchResult.RemoteIP,   // FIX: use observed IP
 		Port:    punchResult.RemotePort, // FIX: use observed Port
 	})

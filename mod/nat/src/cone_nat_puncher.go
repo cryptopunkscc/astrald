@@ -3,6 +3,7 @@ package nat
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"net"
@@ -39,11 +40,25 @@ type conePuncher struct {
 	opened    bool           // whether conn is opened
 }
 
-// newConePuncher creates a cone NAT puncher that targets the given peer listen port.
-// Session is required and must be non-empty.
-func newConePuncher(session []byte) (puncher nat.Puncher, err error) {
+// newConePuncher creates a cone NAT puncher with a new randomly generated session.
+func newConePuncher() (puncher nat.Puncher, err error) {
+	session := make([]byte, 16)
+	_, err = rand.Read(session)
+	if err != nil {
+		return nil, fmt.Errorf("nat: generate session: %w", err)
+	}
+	return &conePuncher{session: session}, nil
+}
+
+// newConePuncherWithSession creates a cone NAT puncher that adopts the provided session.
+// Session must be exactly 16 bytes.
+func newConePuncherWithSession(session []byte) (puncher nat.Puncher, err error) {
+	if len(session) != 16 {
+		return nil, errors.New("nat: session must be 16 bytes")
+	}
 	// defensive copy of session
-	s := append(make([]byte, 0), session...)
+	s := make([]byte, 16)
+	copy(s, session)
 	return &conePuncher{session: s}, nil
 }
 
