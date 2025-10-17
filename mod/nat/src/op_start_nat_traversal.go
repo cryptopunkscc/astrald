@@ -184,7 +184,7 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 
 	offer, ok := obj.(*nat.NatSignal)
 	if !ok || offer == nil || offer.Signal != nat.NatSignalTypeOffer {
-		fmt.Println("SIGNAL: ", offer.Signal)
+		fmt.Println("SIGNAL: ", offer)
 		mod.log.Info("invalid offer")
 		return ch.Write(astral.NewError("invalid offer"))
 	}
