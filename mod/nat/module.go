@@ -13,5 +13,5 @@ type Module interface {
 // and they can only import this package
 
 const (
-	MethodStartNatTraversal = "nat.start_nat_traversal"
+	MethodStartNatTraversal = "nat.start_traversal"
 )
