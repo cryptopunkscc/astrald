@@ -137,10 +137,6 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 			return ch.Write(astral.NewError("session mismatch in go signal"))
 		}
 		mod.log.Info("Session matches in go signal")
-
-		time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond)
-		mod.log.Info("Slept for random duration")
-
 		punchResult, err := p.HolePunch(ctx, peerIP, peerPort)
 		if err != nil {
 			mod.log.Info("Hole punch failed: %v", err)
