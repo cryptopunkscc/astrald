@@ -173,11 +173,16 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 	// Responder logic
 	localIP := ips[0]
 
-	obj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
+	obj, err := ch.Read()
+	if err != nil {
+		mod.log.Info("ch.Read offer error: %v", err)
+	}
+
+	/* obj, err := ch.ReadPayload(nat.NatSignal{}.ObjectType())
 	if err != nil {
 		mod.log.Info("ch.ReadPayload offer error: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
-	}
+	} */
 
 	offer, ok := obj.(*nat.NatSignal)
 	if !ok || offer == nil || offer.Signal != nat.NatSignalTypeOffer {
