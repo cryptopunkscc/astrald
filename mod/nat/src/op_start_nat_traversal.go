@@ -129,8 +129,8 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		err = peerCh.Write(&nat.NatSignal{
 			Signal:  nat.NatSignalTypeResult,
 			Session: session,
-			IP:      punchResult.RemoteIP,   // FIX: use observed IP
-			Port:    punchResult.RemotePort, // FIX: use observed Port
+			IP:      punchResult.RemoteIP,
+			Port:    punchResult.RemotePort,
 		})
 		if err != nil {
 			mod.log.Info("peerCh.Write result error: %v", err)
@@ -145,7 +145,6 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 
 		result, ok := resObj.(*nat.NatSignal)
 		if !ok || result == nil || result.Signal != nat.NatSignalTypeResult {
-			mod.log.Info("invalid result signal: %v", result)
 			return ch.Write(astral.NewError("invalid result signal"))
 		}
 		if !bytes.Equal(result.Session, session) {
@@ -158,11 +157,8 @@ func (mod *Module) OpStartNatTraversal(ctx *astral.Context, q shell.Query, args 
 		peerObserved := punchResult.RemoteIP
 		peerObservedPort := punchResult.RemotePort
 
-		mod.log.Info("NAT traversal success:")
-		mod.log.Info("Our external address as seen by peer: %v:%v",
-			selfObserved, int(selfObservedPort))
-		mod.log.Info("Peer external address as seen by us: %v:%v",
-			peerObserved, int(peerObservedPort))
+		mod.log.Info("NAT Traversal punch success: peer at %v:%v us at %v:%v"+
+			"", peerIP, peerPort, selfObserved, selfObservedPort)
 
 		err = ch.Write(&nat.TraversalResult{
 			PeerObservedIP:   peerObserved,
