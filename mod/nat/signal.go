@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"encoding/json"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -10,10 +11,10 @@ import (
 // NatSignal represents control messages exchanged over the signalling channel.
 // Type field values are defined as constants below for readability and reuse.
 type NatSignal struct {
-	Type    astral.String `json:"type"`
-	Session astral.Bytes  `json:"session"`
-	IP      ip.IP         `json:"ip"`
-	Port    astral.Uint16 `json:"port"`
+	Type    astral.String8 `json:"type"`
+	Session astral.Bytes8  `json:"session"`
+	IP      ip.IP          `json:"ip"`
+	Port    astral.Uint16  `json:"port"`
 }
 
 const (
@@ -34,6 +35,24 @@ func (n NatSignal) WriteTo(w io.Writer) (int64, error) {
 
 func (n *NatSignal) ReadFrom(r io.Reader) (int64, error) {
 	return astral.Struct(n).ReadFrom(r)
+}
+
+func (f NatSignal) MarshalJSON() ([]byte, error) {
+	type alias NatSignal
+	return json.Marshal(alias(f))
+}
+
+func (f *NatSignal) UnmarshalJSON(bytes []byte) error {
+	type alias NatSignal
+	var a alias
+
+	err := json.Unmarshal(bytes, &a)
+	if err != nil {
+		return err
+	}
+
+	*f = NatSignal(a)
+	return nil
 }
 
 func init() {
