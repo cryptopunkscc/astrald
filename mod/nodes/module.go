@@ -17,6 +17,7 @@ const (
 
 type Module interface {
 	Accept(ctx context.Context, conn exonet.Conn) error
+	Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
 
 	AddEndpoint(*astral.Identity, exonet.Endpoint) error
 	RemoveEndpoint(*astral.Identity, exonet.Endpoint) error

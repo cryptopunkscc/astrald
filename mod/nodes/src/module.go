@@ -88,6 +88,11 @@ func (mod *Module) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 	return mod.peers.Accept(ctx, conn)
 }
 
+func (mod *Module) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (err error) {
+	_, err = mod.peers.Connect(ctx, remoteID, conn)
+	return
+}
+
 func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint) error {
 	return mod.db.AddEndpoint(nodeID, endpoint.Network(), endpoint.Address())
 }
