@@ -11,24 +11,10 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
-type Role int
-
-const (
-	RoleInitiator Role = iota
-	RoleResponder
-)
-
-type State int
-
-const (
-	StateOfferExchange State = iota
-	StateReadyPhase
-	StatePunch
-	StateResultExchange
-	StateDone
-)
-
-type stateFn func(*astral.Context) (state State, err error)
+// NOTE: Implementation of this exchange as state machine is dictated by
+// future need to support more NAT traversal methods, retry logic,
+// etc. Also serves as neat abstraction to be used in OpStartTraversal,
+// also allowing test cases to be written.
 
 // traversal is a tiny state machine driving NatSignal exchange.
 type traversal struct {
@@ -47,6 +33,25 @@ type traversal struct {
 
 	pair nat.EndpointPair
 }
+
+type Role int
+
+const (
+	RoleInitiator Role = iota
+	RoleResponder
+)
+
+type State int
+
+const (
+	StateOfferExchange State = iota
+	StateReadyPhase
+	StatePunch
+	StateResultExchange
+	StateDone
+)
+
+type stateFn func(*astral.Context) (state State, err error)
 
 func (t *traversal) Run(ctx *astral.Context) (pair nat.EndpointPair, err error) {
 	var handlers = map[State]stateFn{

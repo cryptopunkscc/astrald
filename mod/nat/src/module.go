@@ -30,8 +30,7 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	// NOTE: it is slice rather than
-	// but EndpointPair hold CreatedAt so it is not a problem for now.
+	// NOTE: it could be astral.Slice?
 	traversedPairs []nat.EndpointPair
 
 	ops shell.Scope

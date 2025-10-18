@@ -32,7 +32,10 @@ const (
 // conePuncher is a minimal cone NAT puncher using fixed defaults and a provided peer listen port.
 // its simplest form of punching as it only punches port and few ports around
 // it. Which wont work on most of home NAT's because they are asymmetric.
+// TODO: research statistics about how many NAT's are cone (with and without port preservation) and how many of them are assymmetric.
 type conePuncher struct {
+
+	// NOTE: i dont know if this mutex is really needed
 	mu        sync.Mutex
 	session   []byte         // required session identifier (copied)
 	conn      net.PacketConn // bound UDP socket
@@ -66,7 +69,7 @@ func (p *conePuncher) Open() (int, error) {
 	if len(p.session) == 0 {
 		return 0, errors.New("session is required")
 	}
-	// Fast path: check under lock
+
 	p.mu.Lock()
 	if p.conn != nil {
 		lp := p.localPort
@@ -75,7 +78,6 @@ func (p *conePuncher) Open() (int, error) {
 	}
 	p.mu.Unlock()
 
-	// Not opened yet — create socket without holding lock to avoid blocking others.
 	conn, err := net.ListenPacket("udp", ":0")
 	if err != nil {
 		return 0, fmt.Errorf("listen udp: %w", err)
@@ -88,7 +90,6 @@ func (p *conePuncher) Open() (int, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.conn != nil {
-		// another goroutine opened; use existing and close ours
 		_ = conn.Close()
 		return p.localPort, nil
 	}
