@@ -50,7 +50,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		}
 		mod.log.Info("Created cone puncher with session: %x", p.Session())
 
-		lp, err := p.Open(ctx)
+		lp, err := p.Open()
 		if err != nil {
 			mod.log.Info("Failed to open cone puncher: %v", err)
 			return ch.Write(astral.NewError(err.Error()))
@@ -253,7 +253,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	}
 	mod.log.Info("Created cone puncher with session: %x", p.Session())
 
-	lp, err := p.Open(ctx)
+	lp, err := p.Open()
 	if err != nil {
 		mod.log.Info("Failed to open cone puncher: %v", err)
 		return ch.Write(astral.NewError(err.Error()))
