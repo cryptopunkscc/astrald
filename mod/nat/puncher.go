@@ -12,7 +12,7 @@ import (
 type Puncher interface {
 	// Open binds a local UDP socket and returns the chosen local port.
 	// The socket is kept by the puncher and reused by HolePunch.
-	Open(ctx context.Context) (localPort int, err error)
+	Open() (localPort int, err error)
 	// HolePunch attempts a UDP punch towards the given peer IP and port.
 	// Returns a PunchResult with information about the punch outcome.
 	HolePunch(ctx context.Context, peerIP ip.IP,
