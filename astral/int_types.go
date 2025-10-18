@@ -2,7 +2,6 @@ package astral
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
 	"strconv"
 )
@@ -185,23 +184,121 @@ func (i *Int64) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-func (i Uint16) String() string {
-	b, _ := i.MarshalText()
-
-	return string(b)
+// String methods
+func (u Uint8) String() string {
+	return strconv.FormatUint(uint64(u), 10)
+}
+func (u Uint16) String() string {
+	return strconv.FormatUint(uint64(u), 10)
+}
+func (u Uint32) String() string {
+	return strconv.FormatUint(uint64(u), 10)
+}
+func (u Uint64) String() string {
+	return strconv.FormatUint(uint64(u), 10)
+}
+func (i Int8) String() string {
+	return strconv.FormatInt(int64(i), 10)
+}
+func (i Int16) String() string {
+	return strconv.FormatInt(int64(i), 10)
+}
+func (i Int32) String() string {
+	return strconv.FormatInt(int64(i), 10)
+}
+func (i Int64) String() string {
+	return strconv.FormatInt(int64(i), 10)
 }
 
-func (i Uint16) MarshalText() (text []byte, err error) {
-	return []byte(fmt.Sprintf(`%d`, i)), nil
+// MarshalText methods
+func (u Uint8) MarshalText() ([]byte, error) {
+	return []byte(u.String()), nil
+}
+func (u Uint16) MarshalText() ([]byte, error) {
+	return []byte(u.String()), nil
+}
+func (u Uint32) MarshalText() ([]byte, error) {
+	return []byte(u.String()), nil
+}
+func (u Uint64) MarshalText() ([]byte, error) {
+	return []byte(u.String()), nil
+}
+func (i Int8) MarshalText() ([]byte, error) {
+	return []byte(i.String()), nil
+}
+func (i Int16) MarshalText() ([]byte, error) {
+	return []byte(i.String()), nil
+}
+func (i Int32) MarshalText() ([]byte, error) {
+	return []byte(i.String()), nil
+}
+func (i Int64) MarshalText() ([]byte, error) {
+	return []byte(i.String()), nil
 }
 
-func (i *Uint16) UnmarshalText(text []byte) error {
-	i64, err := strconv.ParseInt(string(text), 10, 16)
+// UnmarshalText methods
+func (u *Uint8) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseUint(string(text), 10, 8)
 	if err != nil {
 		return err
 	}
-
-	*i = Uint16(i64)
+	*u = Uint8(v)
+	return nil
+}
+func (u *Uint16) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseUint(string(text), 10, 16)
+	if err != nil {
+		return err
+	}
+	*u = Uint16(v)
+	return nil
+}
+func (u *Uint32) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseUint(string(text), 10, 32)
+	if err != nil {
+		return err
+	}
+	*u = Uint32(v)
+	return nil
+}
+func (u *Uint64) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseUint(string(text), 10, 64)
+	if err != nil {
+		return err
+	}
+	*u = Uint64(v)
+	return nil
+}
+func (i *Int8) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseInt(string(text), 10, 8)
+	if err != nil {
+		return err
+	}
+	*i = Int8(v)
+	return nil
+}
+func (i *Int16) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseInt(string(text), 10, 16)
+	if err != nil {
+		return err
+	}
+	*i = Int16(v)
+	return nil
+}
+func (i *Int32) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseInt(string(text), 10, 32)
+	if err != nil {
+		return err
+	}
+	*i = Int32(v)
+	return nil
+}
+func (i *Int64) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseInt(string(text), 10, 64)
+	if err != nil {
+		return err
+	}
+	*i = Int64(v)
 	return nil
 }
 
