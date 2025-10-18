@@ -54,6 +54,11 @@ func (mod *Module) String() string {
 }
 
 func (mod *Module) addTraversedPair(pair nat.EndpointPair) {
-	mod.log.Info("added NAT travesed pair: %v", pair)
+	mod.log.Info("added NAT travesed pair: %v () <-> %v ()",
+		pair.PeerA.Identity,
+		pair.PeerA.Endpoint,
+		pair.PeerB.Identity,
+		pair.PeerB.Endpoint,
+	)
 	mod.traversedPairs = append(mod.traversedPairs, pair)
 }
