@@ -11,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
-// Role defines which side of the traversal we are.
 type Role int
 
 const (
@@ -19,14 +18,13 @@ const (
 	RoleResponder
 )
 
-// State defines coarse phases of the handshake.
 type State int
 
 const (
-	StateOfferExchange  State = iota // Offer/Answer
-	StateReadyPhase                  // Ready/Go
-	StatePunch                       // Hole punching
-	StateResultExchange              // Result exchange
+	StateOfferExchange State = iota
+	StateReadyPhase
+	StatePunch
+	StateResultExchange
 	StateDone
 )
 
@@ -34,26 +32,22 @@ type stateFn func(*astral.Context) (state State, err error)
 
 // traversal is a tiny state machine driving NatSignal exchange.
 type traversal struct {
-	ch            *astral.Channel
-	role          Role
-	localPublicIP ip.IP
+	role Role
+	ch   *astral.Channel // channel to exchange NatSignal
+
 	localIdentity *astral.Identity
 	peerIdentity  *astral.Identity
-
-	// runtime
-	puncher nat.Puncher
-
-	// cached signals/data
+	localPublicIP ip.IP
+	puncher       nat.Puncher
+	// received signals
 	offer      *nat.NatSignal
 	answer     *nat.NatSignal
 	goSignal   *nat.NatSignal
 	peerResult *nat.NatSignal
 
-	// final
 	pair nat.EndpointPair
 }
 
-// Run executes the FSM and returns the resulting traversed endpoint pair.
 func (t *traversal) Run(ctx *astral.Context) (pair nat.EndpointPair, err error) {
 	var handlers = map[State]stateFn{
 		StateOfferExchange:  t.handleOfferExchange,
@@ -86,13 +80,17 @@ func (t *traversal) Run(ctx *astral.Context) (pair nat.EndpointPair, err error) 
 
 func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err error) {
 	if t.role == RoleInitiator {
+		// as an initiator, setup puncher and send offer
 		err = t.setupPuncher(nil)
 		if err != nil {
 			return state, err
 		}
-		err = t.ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeOffer,
-			Session: t.puncher.Session(), IP: t.localPublicIP,
-			Port: astral.Uint16(t.puncher.LocalPort())})
+		err = t.ch.Write(&nat.NatSignal{
+			Signal:  nat.NatSignalTypeOffer,
+			Session: t.puncher.Session(),
+			IP:      t.localPublicIP,
+			Port:    astral.Uint16(t.puncher.LocalPort()),
+		})
 		if err != nil {
 			return state, err
 		}
@@ -108,7 +106,6 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 		return state, err
 	}
 
-	// responder
 	off, err := t.recv()
 	if err != nil {
 		return state, err
@@ -133,7 +130,10 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 
 func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err error) {
 	if t.role == RoleInitiator {
-		err = t.ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeReady, Session: t.puncher.Session()})
+		err = t.ch.Write(&nat.NatSignal{
+			Signal:  nat.NatSignalTypeReady,
+			Session: t.puncher.Session(),
+		})
 		if err != nil {
 			return state, err
 		}
@@ -148,7 +148,6 @@ func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err erro
 		state = StatePunch
 		return state, err
 	}
-	// responder
 	ready, err := t.recv()
 	if err != nil {
 		return state, err
@@ -156,7 +155,8 @@ func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err erro
 	if err = t.verify(ready, nat.NatSignalTypeReady); err != nil {
 		return 0, err
 	}
-	err = t.ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeGo, Session: t.puncher.Session()})
+	err = t.ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeGo,
+		Session: t.puncher.Session()})
 	if err != nil {
 		return state, err
 	}
@@ -174,9 +174,8 @@ func (t *traversal) handlePunch(ctx *astral.Context) (state State, err error) {
 	if err != nil {
 		return state, err
 	}
-	// our observation of peer endpoint
+	// assign the observed endpoint to the pair
 	observedPeer := utp.Endpoint{IP: res.RemoteIP, Port: res.RemotePort}
-	// build base pair with identities; fill endpoints accordingly
 	pair := nat.EndpointPair{
 		PeerA: nat.PeerEndpoint{Identity: t.localIdentity},
 		PeerB: nat.PeerEndpoint{Identity: t.peerIdentity, Endpoint: observedPeer},
@@ -188,12 +187,15 @@ func (t *traversal) handlePunch(ctx *astral.Context) (state State, err error) {
 
 func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err error) {
 	if t.role == RoleInitiator {
-		// send our observation of peer (PeerB)
-		err = t.ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeResult, Session: t.puncher.Session(), IP: t.pair.PeerB.Endpoint.IP, Port: t.pair.PeerB.Endpoint.Port})
+		err = t.ch.Write(&nat.NatSignal{
+			Signal:  nat.NatSignalTypeResult,
+			Session: t.puncher.Session(),
+			IP:      t.pair.PeerB.Endpoint.IP,
+			Port:    t.pair.PeerB.Endpoint.Port,
+		})
 		if err != nil {
 			return state, err
 		}
-		// receive peer's reported view of us
 		res, err := t.recv()
 		if err != nil {
 			return state, err
@@ -201,13 +203,11 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 		if err = t.verify(res, nat.NatSignalTypeResult); err != nil {
 			return 0, err
 		}
-		// complete pair: our endpoint as seen by peer goes to PeerA
 		t.pair.PeerA.Endpoint = utp.Endpoint{IP: res.IP, Port: res.Port}
 		state = StateDone
 		return state, err
 	}
 
-	// responder: receive first, then send
 	res, err := t.recv()
 	if err != nil {
 		return state, err
@@ -217,9 +217,8 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 	if err != nil {
 		return 0, err
 	}
-	// complete pair from responder perspective: PeerA is self (our endpoint as reported by peer)
 	t.pair.PeerA.Endpoint = utp.Endpoint{IP: res.IP, Port: res.Port}
-	// Now send our observation of peer (PeerB)
+	// responder sends result back to initiator
 	err = t.ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeResult, Session: t.puncher.Session(), IP: t.pair.PeerB.Endpoint.IP, Port: t.pair.PeerB.Endpoint.Port})
 	if err != nil {
 		return state, err
