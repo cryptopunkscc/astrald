@@ -15,7 +15,7 @@ type opStartTraversal struct {
 
 func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opStartTraversal) error {
 	ch := astral.NewChannelFmt(q.Accept(), args.Out, args.Out)
-	defer func() { _ = ch.Close() }()
+	defer ch.Close()
 
 	ips := mod.IP.PublicIPCandidates()
 	if len(ips) == 0 {
@@ -35,10 +35,16 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
-		defer func() { _ = peerCh.Close() }()
 
-		// run minimal state machine as initiator over peerCh
-		var sm = traversal{role: RoleInitiator, ch: peerCh, ips: ips, localIdentity: ctx.Identity(), peerIdentity: target}
+		defer peerCh.Close()
+
+		var sm = traversal{
+			role:          RoleInitiator,
+			ch:            peerCh,
+			localPublicIP: ips[0],
+			localIdentity: ctx.Identity(),
+			peerIdentity:  target,
+		}
 		pair, err := sm.Run(ctx)
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
@@ -54,13 +60,18 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	}
 
 	// Responder logic via state machine on ch
-	var sm = traversal{role: RoleResponder, ch: ch, ips: ips, localIdentity: ctx.Identity(), peerIdentity: q.Caller()}
+	var sm = traversal{
+		role:          RoleResponder,
+		ch:            ch,
+		localPublicIP: ips[0],
+		localIdentity: ctx.Identity(),
+		peerIdentity:  q.Caller(),
+	}
 	pair, err := sm.Run(ctx)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	mod.addTraversedPair(pair)
-
 	return nil
 }
