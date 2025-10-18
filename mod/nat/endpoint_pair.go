@@ -52,6 +52,10 @@ func (e *EndpointPair) UnmarshalJSON(bytes []byte) error {
 // It can be serialized via astral.Struct and registered in blueprints.
 type PeerEndpoint struct {
 	Identity *astral.Identity
+
+	// NOTE: cannot use exonet.Endpoint for serialization reasons,
+	// and there is lack of package/struct describing (
+	//transport layer) addr. (for now utp is only supported UDP protocol)
 	Endpoint utp.Endpoint
 }
 
