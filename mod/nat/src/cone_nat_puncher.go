@@ -22,7 +22,7 @@ import (
 var _ nat.Puncher = (*conePuncher)(nil)
 
 const (
-	punchTimeout    = 10 * time.Second      // total timeout per attempt
+	punchTimeout    = 5 * time.Second       // total timeout per attempt
 	burstInterval   = 50 * time.Millisecond // time between bursts over the whole range
 	portGuessRange  = 5                     // number of additional ports to probe around the base port (total ports = 2*portGuessRange + 1)
 	packetsPerBurst = 5                     // number of packets sent to each address per burst
@@ -53,7 +53,7 @@ func newConePuncher() (puncher nat.Puncher, err error) {
 // Session must be exactly 16 bytes.
 func newConePuncherWithSession(session []byte) (puncher nat.Puncher, err error) {
 	if len(session) != 16 {
-		return nil, errors.New("session must be 16 bytes")
+		return nil, fmt.Errorf("session must be 16 bytes")
 	}
 	// defensive copy of session
 	s := make([]byte, 16)

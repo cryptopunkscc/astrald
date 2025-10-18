@@ -9,7 +9,7 @@ import (
 
 type opStartTraversal struct {
 	// Active side fields
-	Target string `query:"optional"` // if not empty act as initiator
+	Target string `query:"optional"` // if not empty, act as initiator
 	Out    string `query:"optional"`
 }
 
