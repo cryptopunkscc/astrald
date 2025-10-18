@@ -5,11 +5,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-type opDefaultGatewayArgs struct {
+type opListPairsArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpDefaultGateway(ctx *astral.Context, q shell.Query, args opDefaultGatewayArgs) (err error) {
+func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,
+	args opListPairsArgs) (err error) {
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
