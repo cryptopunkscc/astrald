@@ -45,34 +45,63 @@ func (s *Server) Run(ctx *astral.Context) error {
 
 	s.log.Info("started server at %v", utpListener.Addr())
 	go func() {
-		select {
-		case <-ctx.Done():
-			// will cancel listener
-			s.log.Info("stopped server at %v", utpListener.Addr())
-			_ = utpListener.Close()
-			return
+		<-ctx.Done()
+		// will cancel listener
+		s.log.Info("stopped server at %v", utpListener.Addr())
+		_ = utpListener.Close()
+	}()
+
+	// acceptor goroutine: accepts and forwards results via channels
+	connCh := make(chan *utp.Conn, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		for {
+			// utpListener does not follow context cancellation (
+			//so it needs to be run inside of goroutine
+			c, err := utpListener.AcceptUTP()
+			if err != nil {
+				// propagate error and exit accept loop
+				select {
+				case errCh <- err:
+				default:
+				}
+				return
+			}
+			select {
+			case connCh <- c:
+			case <-ctx.Done():
+				_ = c.Close()
+				return
+			}
 		}
 	}()
 
 	for {
-		utpConn, err := utpListener.AcceptUTP()
-		if err != nil {
-			return fmt.Errorf(`utp server/run: failed to accept utp connection: %w`, err)
-		}
-
-		remoteEndpoint, _ := utpmod.ParseEndpoint(utpConn.RemoteAddr().String())
-		s.log.Info("accepted connection from %v", remoteEndpoint)
-
-		var conn = WrapUtpConn(utpConn, localEndpoint, remoteEndpoint, false)
-
-		go func() {
-			err := s.Nodes.Accept(ctx, conn)
-			if err != nil {
-				s.log.Errorv(1, "utp server/run: handshake failed from %v: %v",
-					conn.RemoteEndpoint(), err)
-				return
+		select {
+		case <-ctx.Done():
+			// listener close already triggered above; exit Run without hanging
+			return nil
+		case err := <-errCh:
+			// if context cancelled, treat as graceful shutdown
+			if ctx.Err() != nil {
+				return nil
 			}
-		}()
+			return fmt.Errorf(`utp server/run: failed to accept utp connection: %w`, err)
+		case utpConn := <-connCh:
+			remoteEndpoint, _ := utpmod.ParseEndpoint(utpConn.RemoteAddr().String())
+			s.log.Info("accepted connection from %v", remoteEndpoint)
+
+			var conn = WrapUtpConn(utpConn, localEndpoint, remoteEndpoint, false)
+
+			go func() {
+				err := s.Nodes.Accept(ctx, conn)
+				if err != nil {
+					s.log.Errorv(1, "utp server/run: handshake failed from %v: %v",
+						conn.RemoteEndpoint(), err)
+					return
+				}
+			}()
+		}
 	}
 }
 
