@@ -14,6 +14,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ether"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/resources"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 const maxBroadcastSize = 1<<16 - 1
@@ -132,6 +133,7 @@ func (mod *Module) broadcast(data []byte) error {
 		return err
 	}
 
+	var broadcastedAddrs = sig.Set[string]{}
 	// go over all network interfaces
 	for _, iface := range ifaces {
 		if !isInterfaceEnabled(iface) {
@@ -149,6 +151,10 @@ func (mod *Module) broadcast(data []byte) error {
 			if err != nil {
 				return err
 			}
+			if broadcastedAddrs.Contains(broadcastIP.String()) {
+				// already broadcasted this address from another interface
+				continue
+			}
 
 			if IsLinkLocal(broadcastIP) {
 				continue
@@ -158,6 +164,8 @@ func (mod *Module) broadcast(data []byte) error {
 			if err != nil {
 				return err
 			}
+
+			broadcastedAddrs.Add(broadcastIP.String())
 		}
 	}
 
