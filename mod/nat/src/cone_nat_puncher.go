@@ -186,6 +186,10 @@ func (p *conePuncher) Session() []byte {
 	return append([]byte(nil), p.session...)
 }
 
+func (p *conePuncher) LocalPort() int {
+	return p.localPort
+}
+
 // receive listens for any incoming UDP probe and reports the sender address if payload matches our session.
 func (p *conePuncher) receive(ctx context.Context, conn net.PacketConn, interval time.Duration, allowed *sig.Set[string], got chan<- *net.UDPAddr) {
 	buf := make([]byte, 1500)

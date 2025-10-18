@@ -38,7 +38,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		defer func() { _ = peerCh.Close() }()
 
 		// run minimal state machine as initiator over peerCh
-		var sm = traversal{role: RoleInitiator, ch: peerCh, ips: ips, selfID: ctx.Identity(), peerID: target}
+		var sm = traversal{role: RoleInitiator, ch: peerCh, ips: ips, localIdentity: ctx.Identity(), peerIdentity: target}
 		pair, err := sm.Run(ctx)
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
@@ -54,7 +54,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	}
 
 	// Responder logic via state machine on ch
-	var sm = traversal{role: RoleResponder, ch: ch, ips: ips, selfID: ctx.Identity(), peerID: q.Caller()}
+	var sm = traversal{role: RoleResponder, ch: ch, ips: ips, localIdentity: ctx.Identity(), peerIdentity: q.Caller()}
 	pair, err := sm.Run(ctx)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))

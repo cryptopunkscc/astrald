@@ -21,6 +21,7 @@ type Puncher interface {
 	Close() error
 
 	Session() []byte
+	LocalPort() int
 }
 
 // PunchResult contains the outcome of a successful UDP hole punch.
