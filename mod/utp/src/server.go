@@ -56,8 +56,7 @@ func (s *Server) Run(ctx *astral.Context) error {
 	errCh := make(chan error, 1)
 	go func() {
 		for {
-			// utpListener does not follow context cancellation (
-			//so it needs to be run inside of goroutine
+			// utpListener does not support context cancellation, so AcceptUTP must run in its own goroutine.
 			c, err := utpListener.AcceptUTP()
 			if err != nil {
 				// propagate error and exit accept loop
