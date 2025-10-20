@@ -14,6 +14,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/fwd/src"
 	_ "github.com/cryptopunkscc/astrald/mod/gateway/src"
 	_ "github.com/cryptopunkscc/astrald/mod/ip/src"
+	_ "github.com/cryptopunkscc/astrald/mod/kcp/src"
 	_ "github.com/cryptopunkscc/astrald/mod/keys/src"
 	_ "github.com/cryptopunkscc/astrald/mod/kos/src"
 	_ "github.com/cryptopunkscc/astrald/mod/media/src"
