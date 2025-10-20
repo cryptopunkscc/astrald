@@ -1,0 +1,54 @@
+package kcp
+
+import (
+	"context"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
+	kcpmod "github.com/cryptopunkscc/astrald/mod/kcp"
+	"github.com/cryptopunkscc/astrald/tasks"
+)
+
+// Module represents the KCP module and implements the exonet.Dialer interface.
+type Module struct {
+	Deps
+	config          Config
+	node            astral.Node
+	assets          assets.Assets
+	log             *log.Logger
+	ctx             context.Context
+	configEndpoints []exonet.Endpoint
+}
+
+func (mod *Module) Run(ctx *astral.Context) error {
+	mod.ctx = ctx
+
+	err := tasks.Group(NewServer(mod)).Run(ctx)
+	if err != nil {
+		return err
+	}
+
+	<-ctx.Done()
+
+	return nil
+}
+
+func (mod *Module) ListenPort() int {
+	return mod.config.ListenPort
+}
+
+func (mod *Module) endpoints() (list []exonet.Endpoint) {
+	ips, _ := mod.IP.LocalIPs()
+	for _, tip := range ips {
+		e := kcpmod.Endpoint{
+			IP:   tip,
+			Port: astral.Uint16(mod.config.ListenPort),
+		}
+
+		list = append(list, &e)
+	}
+
+	return list
+}
