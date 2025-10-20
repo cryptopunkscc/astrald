@@ -336,8 +336,12 @@ func (mod *Peers) reflectStream(s *Stream) (err error) {
 func (mod *Peers) readStreamFrames(s *Stream) {
 	// read frames
 	for frame := range s.Read() {
+		// StreamPolicy: OnActivity (inbound)
+		for _, p := range mod.policies.Clone() {
+			go p.OnActivity(s, "in")
+		}
 		mod.in <- &Frame{
-			Frame:  frame, // NOTE: add timeout handling?
+			Frame:  frame,
 			Source: s,
 		}
 	}
@@ -353,7 +357,124 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	return false
 }
 
-func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Stream, err error) {
+func (mod *Peers) linksTo(remoteID *astral.Identity) (links []*Stream) {
+	for _, s := range mod.streams.Clone() {
+		if s.RemoteIdentity().IsEqual(remoteID) {
+			links = append(links, s)
+		}
+	}
+
+	return
+}
+
+func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint, bypass bool) (*Stream, error) {
+	conn, err := mod.Exonet.Dial(ctx, e)
+	if err != nil {
+		return nil, err
+	}
+
+	return mod.Connect(ctx, remoteIdentity, conn, bypass)
+}
+
+func (mod *Peers) checkDialPolicies(remoteIdentity *astral.Identity, e exonet.Endpoint, bypass bool) bool {
+	if bypass {
+		return true
+	}
+	for _, p := range mod.policies.Clone() {
+		decision := p.OnBeforeDial(remoteIdentity, e)
+		if decision.Action == DecisionSkip || decision.Action == DecisionReject {
+			mod.log.Logv(2, "policy denied dial: %v (remote=%v net=%v addr=%v)", decision.Reason, remoteIdentity, e.Network(), e.Address())
+			return false
+		}
+	}
+	return true
+}
+
+// checkAdmitPolicies runs OnBeforeAdmit policies and returns error if admission is rejected.
+func (mod *Peers) checkAdmitPolicies(stream *Stream, bypass bool) error {
+	if bypass {
+		return nil
+	}
+	for _, p := range mod.policies.Clone() {
+		decision := p.OnBeforeAdmit(stream)
+		if decision.Action == DecisionReject {
+			mod.log.Errorv(2, "stream admission rejected by policy: %v (remote=%v net=%v)", decision.Reason, stream.RemoteIdentity(), stream.Network())
+			stream.CloseWithError(errors.New("stream rejected by policy"))
+			return errors.New("stream rejected by policy")
+		}
+		if decision.Action == DecisionEvict {
+			for _, v := range decision.Victims {
+				if v == nil || v == stream {
+					continue
+				}
+				_ = v.CloseWithError(errors.New("evicted by policy"))
+			}
+		}
+	}
+	return nil
+}
+
+func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Identity, endpoints <-chan exonet.Endpoint, bypass bool) (*Stream, error) {
+	var wg sync.WaitGroup
+	var out sig.Value[*Stream]
+	var workers = DefaultWorkerCount
+
+	wctx, cancel := ctx.WithCancel()
+	defer cancel()
+
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			for {
+				var e exonet.Endpoint
+				var ok bool
+
+				select {
+				case <-wctx.Done():
+					return
+				case e, ok = <-endpoints:
+					if !ok {
+						return
+					}
+				}
+
+				if !mod.checkDialPolicies(remoteIdentity, e, bypass) {
+					continue
+				}
+
+				stream, err := mod.connectAt(wctx, remoteIdentity, e, bypass)
+				if err != nil {
+					continue
+				}
+
+				if _, ok := out.Swap(nil, stream); ok {
+					cancel()
+				} else {
+					stream.CloseWithError(errors.New("excess stream"))
+				}
+
+				return
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		cancel()
+	}()
+
+	<-wctx.Done()
+
+	stream := out.Get()
+	if stream != nil {
+		return stream, nil
+	}
+
+	return nil, errors.New("no endpoint could be reached")
+}
+
+func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn, bypass bool) (_ *Stream, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
@@ -399,128 +520,15 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 
 		stream := newStream(aconn, true)
 
+		err = mod.checkAdmitPolicies(stream, bypass)
+		if err != nil {
+			return nil, err
+		}
+
 		err = mod.addStream(stream)
 
 		return stream, err
 	}
 
 	return nil, errors.New("no supported link types found")
-}
-
-func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
-	defer func() {
-		if err != nil {
-			conn.Close()
-		}
-	}()
-
-	aconn, err := noise.HandshakeInbound(ctx, conn, mod.node.Identity())
-	if err != nil {
-		return
-	}
-
-	var linkFeatures = []string{featureMux2}
-
-	_, err = astral.Uint16(len(linkFeatures)).WriteTo(aconn)
-	if err != nil {
-		return
-	}
-
-	for _, feature := range linkFeatures {
-		_, err = astral.String8(feature).WriteTo(aconn)
-		if err != nil {
-			return
-		}
-	}
-
-	for {
-		var feature string
-		_, err = (*astral.String8)(&feature).ReadFrom(aconn)
-		if err != nil {
-			return
-		}
-
-		switch feature {
-		case featureMux2:
-			_, err = astral.Uint8(0).WriteTo(aconn)
-			if err == nil {
-				mod.addStream(newStream(aconn, false))
-			}
-
-			return
-
-		default:
-			_, err = astral.Uint8(1).WriteTo(aconn)
-			return fmt.Errorf("remote party (%s from %s) requested an invalid feature: %s",
-				aconn.RemoteIdentity(),
-				aconn.RemoteEndpoint(),
-				feature,
-			)
-		}
-	}
-}
-
-func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) (*Stream, error) {
-	conn, err := mod.Exonet.Dial(ctx, e)
-	if err != nil {
-		return nil, err
-	}
-
-	return mod.Connect(ctx, remoteIdentity, conn)
-}
-
-func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Identity, endpoints <-chan exonet.Endpoint) (*Stream, error) {
-	var wg sync.WaitGroup
-	var out sig.Value[*Stream]
-	var workers = DefaultWorkerCount
-
-	wctx, cancel := ctx.WithCancel()
-	defer cancel()
-
-	wg.Add(workers)
-	for i := 0; i < workers; i++ {
-		go func() {
-			defer wg.Done()
-			for {
-				var e exonet.Endpoint
-				var ok bool
-
-				select {
-				case <-wctx.Done():
-					return
-				case e, ok = <-endpoints:
-					if !ok {
-						return
-					}
-				}
-
-				stream, err := mod.connectAt(wctx, remoteIdentity, e)
-				if err != nil {
-					continue
-				}
-
-				if _, ok := out.Swap(nil, stream); ok {
-					cancel()
-				} else {
-					stream.CloseWithError(errors.New("excess stream"))
-				}
-
-				return
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		cancel()
-	}()
-
-	<-wctx.Done()
-
-	stream := out.Get()
-	if stream != nil {
-		return stream, nil
-	}
-
-	return nil, errors.New("no endpoint could be reached")
 }

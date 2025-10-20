@@ -13,6 +13,7 @@ type opNewStreamArgs struct {
 	Target   string
 	Net      string `query:"optional"`
 	Endpoint string `query:"optional"`
+	Force    bool   `query:"optional"` // Added Force flag to bypass stream policies for this operation
 	Out      string `query:"optional"`
 }
 
@@ -63,7 +64,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	s, err := mod.peers.connectAtAny(ctx, target, endpoints)
+	s, err := mod.peers.connectAtAny(ctx, target, endpoints, args.Force)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}

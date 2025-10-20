@@ -22,6 +22,7 @@ const DefaultWorkerCount = 8
 const infoPrefix = "node1"
 const featureMux2 = "mux2"
 const defaultPingTimeout = time.Second * 30
+const ActiveLinkRecentWindow = 5 * time.Minute // Added constant for activity window in stream policies
 
 type NodeInfo nodes.NodeInfo
 
@@ -56,6 +57,8 @@ type Module struct {
 	in chan *Frame
 
 	searchCache sig.Map[string, *astral.Identity]
+
+	policies sig.Set[StreamPolicy]
 }
 
 type Relay struct {
@@ -89,7 +92,7 @@ func (mod *Module) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 }
 
 func (mod *Module) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (err error) {
-	_, err = mod.peers.Connect(ctx, remoteID, conn)
+	_, err = mod.peers.Connect(ctx, remoteID, conn, false)
 	return
 }
 
@@ -128,5 +131,19 @@ func (mod *Module) String() string {
 func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 	if resolver != nil {
 		mod.resolvers.Add(resolver)
+	}
+}
+
+// AddPolicy registers a StreamPolicy to influence stream lifecycle.
+func (mod *Module) AddPolicy(policy StreamPolicy) {
+	if policy != nil {
+		mod.policies.Add(policy)
+	}
+}
+
+// Call OnRebalance on all registered policies.
+func (mod *Module) RebalancePolicies() {
+	for _, p := range mod.policies.Clone() {
+		go p.OnRebalance()
 	}
 }
