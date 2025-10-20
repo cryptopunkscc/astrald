@@ -15,13 +15,14 @@ var lastStreamID atomic.Int32
 
 type Stream struct {
 	*frames.Stream
-	id          int
-	createdAt   time.Time
-	conn        astral.Conn
-	pings       sig.Map[astral.Nonce, *Ping]
-	checks      atomic.Int32
-	outbound    bool
-	pingTimeout time.Duration
+	id           int
+	createdAt    time.Time
+	lastActivity time.Time
+	conn         astral.Conn
+	pings        sig.Map[astral.Nonce, *Ping]
+	checks       atomic.Int32
+	outbound     bool
+	pingTimeout  time.Duration
 }
 
 type Ping struct {
@@ -31,12 +32,13 @@ type Ping struct {
 
 func newStream(conn astral.Conn, outbound bool) *Stream {
 	link := &Stream{
-		id:          int(lastStreamID.Add(1)),
-		conn:        conn,
-		createdAt:   time.Now(),
-		Stream:      frames.NewStream(conn),
-		outbound:    outbound,
-		pingTimeout: defaultPingTimeout,
+		id:           int(lastStreamID.Add(1)),
+		conn:         conn,
+		createdAt:    time.Now(),
+		lastActivity: time.Now(),
+		Stream:       frames.NewStream(conn),
+		outbound:     outbound,
+		pingTimeout:  defaultPingTimeout,
 	}
 
 	return link
@@ -87,6 +89,8 @@ func (s *Stream) RemoteEndpoint() exonet.Endpoint {
 
 func (s *Stream) Write(frame frames.Frame) (err error) {
 	if _, ok := frame.(*frames.Ping); !ok {
+		// FIXME: use store (?)
+		s.lastActivity = time.Now()
 		s.check()
 	}
 	return s.Stream.Write(frame)
