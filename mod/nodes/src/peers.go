@@ -336,6 +336,10 @@ func (mod *Peers) reflectStream(s *Stream) (err error) {
 func (mod *Peers) readStreamFrames(s *Stream) {
 	// read frames
 	for frame := range s.Read() {
+		// notify policies about inbound activity
+		for _, p := range mod.policies.Clone() {
+			go p.OnActivity(s, "in")
+		}
 		mod.in <- &Frame{
 			Frame:  frame, // NOTE: add timeout handling?
 			Source: s,
@@ -351,6 +355,16 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 		}
 	}
 	return false
+}
+
+// streamsTo returns all streams with the given remote identity
+func (mod *Peers) streamsTo(remoteID *astral.Identity) (streams []*Stream) {
+	for _, s := range mod.streams.Clone() {
+		if s.RemoteIdentity().IsEqual(remoteID) {
+			streams = append(streams, s)
+		}
+	}
+	return
 }
 
 func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Stream, err error) {
@@ -523,42 +537,4 @@ func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Ident
 	}
 
 	return nil, errors.New("no endpoint could be reached")
-}
-
-func (mod *Peers) checkDialPolicies(remoteIdentity *astral.Identity, e exonet.Endpoint, bypass bool) bool {
-	if bypass {
-		return true
-	}
-	for _, p := range mod.policies.Clone() {
-		decision := p.OnBeforeDial(remoteIdentity, e)
-		if decision.Action == DecisionSkip || decision.Action == DecisionReject {
-			mod.log.Logv(2, "policy denied dial: %v (remote=%v net=%v addr=%v)", decision.Reason, remoteIdentity, e.Network(), e.Address())
-			return false
-		}
-	}
-	return true
-}
-
-// checkAdmitPolicies runs OnBeforeAdmit policies and returns error if admission is rejected.
-func (mod *Peers) checkAdmitPolicies(stream *Stream, bypass bool) error {
-	if bypass {
-		return nil
-	}
-	for _, p := range mod.policies.Clone() {
-		decision := p.OnBeforeAdmit(stream)
-		if decision.Action == DecisionReject {
-			mod.log.Errorv(2, "stream admission rejected by policy: %v (remote=%v net=%v)", decision.Reason, stream.RemoteIdentity(), stream.Network())
-			stream.CloseWithError(errors.New("stream rejected by policy"))
-			return errors.New("stream rejected by policy")
-		}
-		if decision.Action == DecisionEvict {
-			for _, v := range decision.Victims {
-				if v == nil || v == stream {
-					continue
-				}
-				_ = v.CloseWithError(errors.New("evicted by policy"))
-			}
-		}
-	}
-	return nil
 }
