@@ -64,7 +64,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	s, err := mod.peers.connectAtAny(ctx, target, endpoints, args.Force)
+	s, err := mod.peers.connectAtAny(ctx, target, endpoints)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}

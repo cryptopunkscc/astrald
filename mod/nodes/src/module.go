@@ -78,6 +78,22 @@ func (mod *Module) Peers() (peers []*astral.Identity) {
 	return mod.peers.peers()
 }
 
+// Streams returns a snapshot of current streams for policy decisions or introspection.
+func (mod *Module) Streams() []*Stream {
+	return mod.peers.streams.Clone()
+}
+
+// StreamsTo returns all active streams connected to the given remote identity.
+func (mod *Module) StreamsTo(remote *astral.Identity) []*Stream {
+	var out []*Stream
+	for _, s := range mod.peers.streams.Clone() {
+		if s.RemoteIdentity().IsEqual(remote) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func (mod *Module) IsPeer(id *astral.Identity) bool {
 	for _, peer := range mod.peers.peers() {
 		if peer.IsEqual(id) {
@@ -92,7 +108,7 @@ func (mod *Module) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 }
 
 func (mod *Module) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (err error) {
-	_, err = mod.peers.Connect(ctx, remoteID, conn, false)
+	_, err = mod.peers.Connect(ctx, remoteID, conn)
 	return
 }
 
