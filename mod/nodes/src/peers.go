@@ -7,6 +7,7 @@ import (
 	"io"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -336,6 +337,8 @@ func (mod *Peers) reflectStream(s *Stream) (err error) {
 func (mod *Peers) readStreamFrames(s *Stream) {
 	// read frames
 	for frame := range s.Read() {
+		// FIMXE: ugly
+		s.lastActivity = time.Now()
 		mod.in <- &Frame{
 			Frame:  frame, // NOTE: add timeout handling?
 			Source: s,
@@ -351,6 +354,16 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 		}
 	}
 	return false
+}
+
+// streamsTo returns all streams with the given remote identity
+func (mod *Peers) streamsTo(remoteID *astral.Identity) (streams []*Stream) {
+	for _, s := range mod.streams.Clone() {
+		if s.RemoteIdentity().IsEqual(remoteID) {
+			streams = append(streams, s)
+		}
+	}
+	return
 }
 
 func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Stream, err error) {
