@@ -54,6 +54,9 @@ type Module struct {
 	in chan *Frame
 
 	searchCache sig.Map[string, *astral.Identity]
+
+	// streamManager orchestrates post-admission stream policies
+	streamManager *StreamManager
 }
 
 type Relay struct {
