@@ -11,6 +11,8 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+const defaultPingTimeout = time.Second * 30
+
 var lastStreamID atomic.Int32
 
 type Stream struct {
@@ -89,7 +91,6 @@ func (s *Stream) RemoteEndpoint() exonet.Endpoint {
 
 func (s *Stream) Write(frame frames.Frame) (err error) {
 	if _, ok := frame.(*frames.Ping); !ok {
-		// FIXME: use store (?)
 		s.lastActivity = time.Now()
 		s.check()
 	}

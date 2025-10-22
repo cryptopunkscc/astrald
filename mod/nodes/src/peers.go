@@ -7,6 +7,7 @@ import (
 	"io"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -336,10 +337,8 @@ func (mod *Peers) reflectStream(s *Stream) (err error) {
 func (mod *Peers) readStreamFrames(s *Stream) {
 	// read frames
 	for frame := range s.Read() {
-		// notify policies about inbound activity
-		for _, p := range mod.policies.Clone() {
-			go p.OnActivity(s, "in")
-		}
+		// FIMXE: ugly
+		s.lastActivity = time.Now()
 		mod.in <- &Frame{
 			Frame:  frame, // NOTE: add timeout handling?
 			Source: s,
