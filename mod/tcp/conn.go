@@ -4,27 +4,27 @@ import (
 	"net"
 
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
 )
 
 var _ exonet.Conn = Conn{}
 
+// Conn is an exonet.Conn that wraps a net.Conn.
 type Conn struct {
 	net.Conn
 	outbound       bool
-	localEndpoint  *tcp.Endpoint
-	remoteEndpoint *tcp.Endpoint
+	localEndpoint  *Endpoint
+	remoteEndpoint *Endpoint
 }
 
-// wrapTCPConn wraps a standard net.Conn into a astral's net.Conn with the addition of boundness
-func wrapTCPConn(conn net.Conn, outbound bool) *Conn {
+// WrapConn returns an instance of Conn that wraps the given net.Conn.
+func WrapConn(conn net.Conn, outbound bool) *Conn {
 	c := &Conn{
 		Conn:     conn,
 		outbound: outbound,
 	}
 
-	c.localEndpoint, _ = tcp.ParseEndpoint(conn.LocalAddr().String())
-	c.remoteEndpoint, _ = tcp.ParseEndpoint(conn.RemoteAddr().String())
+	c.localEndpoint, _ = ParseEndpoint(conn.LocalAddr().String())
+	c.remoteEndpoint, _ = ParseEndpoint(conn.RemoteAddr().String())
 
 	return c
 }

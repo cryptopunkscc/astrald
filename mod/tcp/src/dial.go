@@ -3,6 +3,8 @@ package tcp
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
+
 	_net "net"
 )
 
@@ -20,5 +22,5 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 		return nil, err
 	}
 
-	return wrapTCPConn(tcpConn, true), nil
+	return tcp.WrapConn(tcpConn, true), nil
 }

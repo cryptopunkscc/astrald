@@ -1,10 +1,11 @@
 package tcp
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"net"
 	"strconv"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
 )
 
 type Server struct {
@@ -42,7 +43,7 @@ func (srv *Server) Run(ctx *astral.Context) error {
 			return err
 		}
 
-		var conn = wrapTCPConn(rawConn, false)
+		var conn = tcp.WrapConn(rawConn, false)
 
 		go func() {
 			err := srv.Nodes.Accept(ctx, conn)
