@@ -2,12 +2,13 @@ package nodes
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"io"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 )
 
 const maxPayloadSize = 8192
@@ -19,9 +20,9 @@ const (
 	stateClosed
 )
 
-var _ io.WriteCloser = &conn{}
+var _ io.WriteCloser = &session{}
 
-type conn struct {
+type session struct {
 	Nonce          astral.Nonce
 	RemoteIdentity *astral.Identity
 	Outbound       bool
@@ -39,18 +40,22 @@ type conn struct {
 
 	wcond *sync.Cond // sync for write functions
 	wsize int        // remote buffer left
+
+	// FIXME: add sync
+	migratingFlag bool
+	migratingTo   *Stream
 }
 
-func (c *conn) Identity() *astral.Identity {
+func (c *session) Identity() *astral.Identity {
 	return c.RemoteIdentity
 }
 
-func newConn(n astral.Nonce) *conn {
+func newSession(n astral.Nonce) *session {
 	if n == 0 {
 		n = astral.NewNonce()
 	}
 
-	return &conn{
+	return &session{
 		Nonce:     n,
 		createdAt: time.Now(),
 		res:       make(chan uint8, 1),
@@ -60,7 +65,7 @@ func newConn(n astral.Nonce) *conn {
 	}
 }
 
-func (c *conn) growRemoteBuffer(s int) {
+func (c *session) growRemoteBuffer(s int) {
 	c.wcond.L.Lock()
 	defer c.wcond.L.Unlock()
 
@@ -68,7 +73,7 @@ func (c *conn) growRemoteBuffer(s int) {
 	c.wcond.Broadcast()
 }
 
-func (c *conn) Write(p []byte) (n int, err error) {
+func (c *session) Write(p []byte) (n int, err error) {
 	c.wcond.L.Lock()
 	defer c.wcond.L.Unlock()
 
@@ -110,7 +115,7 @@ func (c *conn) Write(p []byte) (n int, err error) {
 	}
 }
 
-func (c *conn) pushRead(b []byte) error {
+func (c *session) pushRead(b []byte) error {
 	c.rcond.L.Lock()
 	defer c.rcond.L.Unlock()
 
@@ -126,7 +131,7 @@ func (c *conn) pushRead(b []byte) error {
 	return nil
 }
 
-func (c *conn) Read(p []byte) (n int, err error) {
+func (c *session) Read(p []byte) (n int, err error) {
 	c.rcond.L.Lock()
 	defer c.rcond.L.Unlock()
 
@@ -170,7 +175,7 @@ func (c *conn) Read(p []byte) (n int, err error) {
 	}
 }
 
-func (c *conn) Close() error {
+func (c *session) Close() error {
 	if !c.swapState(stateOpen, stateClosed) {
 		return errors.New("invalid state")
 	}
@@ -180,11 +185,35 @@ func (c *conn) Close() error {
 	return nil
 }
 
-func (c *conn) swapState(old, new int) bool {
+func (c *session) swapState(old, new int) bool {
 	if !c.state.CompareAndSwap(int32(old), int32(new)) {
 		return false
 	}
 	c.rcond.Broadcast()
 	c.wcond.Broadcast()
 	return true
+}
+
+func (c *session) Migrate(s *Stream) error {
+	c.wcond.L.Lock()
+	defer c.wcond.L.Unlock()
+
+	if c.state.Load() != stateOpen {
+		// cannot migrate non-open session
+		return errors.New("invalid state")
+	}
+
+	// Cannot suddenly change identity that we sent to
+	if c.stream.RemoteIdentity() != s.RemoteIdentity() {
+		return errors.New("invalid stream")
+	}
+
+	// If active side (we are not sending on old stream no-more)
+
+	if !s.outbound {
+		c.migratingFlag = true
+		c.migratingTo = s
+	}
+
+	return nil
 }

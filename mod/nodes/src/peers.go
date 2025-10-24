@@ -19,8 +19,8 @@ import (
 
 type Peers struct {
 	*Module
-	streams sig.Set[*Stream]
-	conns   sig.Map[astral.Nonce, *conn]
+	streams  sig.Set[*Stream]
+	sessions sig.Map[astral.Nonce, *session]
 }
 
 func NewPeers(m *Module) *Peers {
@@ -38,7 +38,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClo
 	}
 
 	// prepare the connection info
-	conn, ok := mod.conns.Set(q.Nonce, newConn(q.Nonce))
+	conn, ok := mod.sessions.Set(q.Nonce, newSession(q.Nonce))
 	if !ok {
 		return query.RouteNotFound(mod, errors.New("nonce already exists"))
 	}
@@ -63,7 +63,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClo
 	select {
 	case errCode := <-conn.res:
 		if errCode != 0 {
-			mod.conns.Delete(q.Nonce)
+			mod.sessions.Delete(q.Nonce)
 			return query.RejectWithCode(errCode)
 		}
 
@@ -76,7 +76,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClo
 
 	case <-ctx.Done():
 		conn.swapState(stateRouting, stateClosed)
-		mod.conns.Delete(q.Nonce)
+		mod.sessions.Delete(q.Nonce)
 		return query.RouteNotFound(mod, ctx.Err())
 	}
 }
@@ -122,7 +122,7 @@ func (mod *Peers) frameReader(ctx context.Context) {
 }
 
 func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
-	conn, ok := mod.conns.Set(f.Nonce, newConn(f.Nonce))
+	conn, ok := mod.sessions.Set(f.Nonce, newSession(f.Nonce))
 	if !ok {
 		return // ignore duplicates
 	}
@@ -166,7 +166,7 @@ func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
 
 func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 	// find the connection
-	conn, ok := mod.conns.Get(f.Nonce)
+	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
@@ -193,7 +193,7 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 }
 
 func (mod *Peers) handleData(s *Stream, f *frames.Data) {
-	conn, ok := mod.conns.Get(f.Nonce)
+	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
@@ -212,7 +212,7 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 }
 
 func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
-	conn, ok := mod.conns.Get(f.Nonce)
+	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
@@ -222,7 +222,7 @@ func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
 }
 
 func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
-	conn, ok := mod.conns.Get(f.Nonce)
+	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
@@ -288,7 +288,7 @@ func (mod *Peers) addStream(
 
 		// remove the stream and its connections
 		mod.streams.Remove(s)
-		for _, c := range mod.conns.Select(func(k astral.Nonce, v *conn) (ok bool) {
+		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
 			return v.stream == s
 		}) {
 			c.Close()
