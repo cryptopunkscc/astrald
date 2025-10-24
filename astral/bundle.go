@@ -128,7 +128,7 @@ func (b *Bundle) ReadFrom(r io.Reader) (n int64, err error) {
 		}
 
 		// read the object in the buffer
-		o, _, err = ExtractBlueprints(r).Read(bytes.NewReader(buf), false)
+		o, _, err = ExtractBlueprints(r).Read(bytes.NewReader(buf))
 		if err != nil {
 			return
 		}

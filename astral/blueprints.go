@@ -122,8 +122,17 @@ func (bp *Blueprints) Names() (names []string) {
 	return append(names, bp.Blueprints.Keys()...)
 }
 
-// Read reads an object from a reader and use blueprints to make an instance.
-func (bp *Blueprints) Read(r io.Reader, canonical bool) (o Object, n int64, err error) {
+// Read reads a short-form object from the reader.
+func (bp *Blueprints) Read(r io.Reader) (o Object, n int64, err error) {
+	return bp.read(r, false)
+}
+
+// ReadCanonical reads a canonical-form object from the reader.
+func (bp *Blueprints) ReadCanonical(r io.Reader) (o Object, n int64, err error) {
+	return bp.read(r, true)
+}
+
+func (bp *Blueprints) read(r io.Reader, canonical bool) (o Object, n int64, err error) {
 	var typeName String8
 	if canonical {
 		var h ObjectHeader
@@ -151,7 +160,7 @@ func (bp *Blueprints) Read(r io.Reader, canonical bool) (o Object, n int64, err 
 
 // Unpack unpacks a short form object from a buffer
 func (bp *Blueprints) Unpack(data []byte) (object Object, err error) {
-	object, _, err = bp.Read(bytes.NewReader(data), false)
+	object, _, err = bp.Read(bytes.NewReader(data))
 	return
 }
 
@@ -165,6 +174,21 @@ func (bp *Blueprints) UnpackJSON(data []byte) (object Object, err error) {
 // Inject wraps an io.Reader in a wrapper that HasBlueprints
 func (bp *Blueprints) Inject(r io.Reader) io.Reader {
 	return NewReaderWithBlueprints(r, bp)
+}
+
+// Unpack unpacks a short-form object from the buffer using DefaultBlueprints.
+func Unpack(data []byte) (object Object, err error) {
+	return DefaultBlueprints.Unpack(data)
+}
+
+// Read reads a short-form object from the reader using DefaultBlueprints.
+func Read(r io.Reader) (o Object, n int64, err error) {
+	return DefaultBlueprints.Read(r)
+}
+
+// ReadCanonical reads a canonical-form object from the reader using DefaultBlueprints.
+func ReadCanonical(r io.Reader) (o Object, n int64, err error) {
+	return DefaultBlueprints.ReadCanonical(r)
 }
 
 var _ HasBlueprints = &ReaderWithBlueprints{}

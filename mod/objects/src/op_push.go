@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"io"
 )
 
 const maxPushSize = 32 * 1024
@@ -73,7 +74,7 @@ func (mod *Module) opPushSingle(ctx *astral.Context, q shell.Query, args opPushA
 		return
 	}
 
-	obj, _, err := mod.Blueprints().Read(bytes.NewReader(buf), true)
+	obj, _, err := mod.Blueprints().ReadCanonical(bytes.NewReader(buf))
 	if err != nil {
 		mod.log.Errorv(1, "%v push read object error: %v", q.Caller(), err)
 		binary.Write(stream, binary.BigEndian, false)

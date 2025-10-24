@@ -3,8 +3,9 @@ package objects
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
 	"reflect"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *astral.ObjectID, bp *astral.Blueprints) (o T, err error) {
@@ -30,7 +31,7 @@ func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *astra
 		bp = astral.DefaultBlueprints
 	}
 
-	a, _, err = bp.Read(r, true)
+	a, _, err = bp.ReadCanonical(r)
 	if err != nil {
 		return
 	}

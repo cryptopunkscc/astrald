@@ -27,7 +27,7 @@ func (r ObjectReader) ReadObject() (object astral.Object, n int64, err error) {
 		return
 	}
 
-	object, _, err = astral.ExtractBlueprints(r.r).Read(bytes.NewReader(b), false)
+	object, _, err = astral.ExtractBlueprints(r.r).Read(bytes.NewReader(b))
 
 	return
 }

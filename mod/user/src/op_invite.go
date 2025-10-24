@@ -22,7 +22,7 @@ func (mod *Module) OpInvite(ctx *astral.Context, q shell.Query, args opInviteArg
 	defer conn.Close()
 
 	// read a NodeContract
-	obj, _, err := mod.Objects.Blueprints().Read(conn, false)
+	obj, _, err := mod.Objects.Blueprints().Read(conn)
 	if err != nil {
 		return
 	}

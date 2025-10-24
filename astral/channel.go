@@ -62,7 +62,7 @@ func (ch *Channel) Read() (obj Object, err error) {
 			return
 		}
 
-		obj, _, err = ch.Blueprints.Read(bytes.NewReader(frame), false)
+		obj, _, err = ch.Blueprints.Read(bytes.NewReader(frame))
 
 	case "json":
 		var jsonObj JSONDecodeAdapter

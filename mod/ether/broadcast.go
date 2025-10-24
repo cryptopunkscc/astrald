@@ -42,7 +42,7 @@ func (b *Broadcast) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	bp := astral.ExtractBlueprints(r)
-	b.Object, _, err = bp.Read(bytes.NewReader(buf), false)
+	b.Object, _, err = bp.Read(bytes.NewReader(buf))
 	if err != nil {
 		return
 	}

@@ -111,7 +111,7 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 			var o Object
 			var ok bool
 
-			o, _, err = ExtractBlueprints(r).Read(bytes.NewReader(buf), false)
+			o, _, err = ExtractBlueprints(r).Read(bytes.NewReader(buf))
 			e, ok = o.(T)
 			if !ok {
 				err = errors.New("typecast failed")

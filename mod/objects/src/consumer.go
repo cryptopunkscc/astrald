@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
+	"strconv"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"io"
-	"strconv"
 )
 
 var _ objects.Consumer = &Consumer{}
@@ -163,7 +164,7 @@ func (c *Consumer) Describe(ctx *astral.Context, objectID *astral.ObjectID, _ *a
 		defer conn.Close()
 
 		for {
-			obj, _, err := c.mod.Blueprints().Read(conn, true)
+			obj, _, err := c.mod.Blueprints().ReadCanonical(conn)
 			if err != nil {
 				return
 			}

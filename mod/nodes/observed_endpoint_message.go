@@ -27,7 +27,7 @@ func (e ObservedEndpointMessage) WriteTo(w io.Writer) (n int64, err error) {
 func (e *ObservedEndpointMessage) ReadFrom(r io.Reader) (n int64, err error) {
 	bp := astral.ExtractBlueprints(r)
 
-	obj, m, err := bp.Read(r, false)
+	obj, m, err := bp.Read(r)
 	n += m
 	if err != nil {
 		return
