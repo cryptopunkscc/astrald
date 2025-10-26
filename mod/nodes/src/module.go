@@ -3,8 +3,6 @@ package nodes
 import (
 	"context"
 	"errors"
-	"time"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -16,6 +14,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
+	"time"
 )
 
 const DefaultWorkerCount = 8
@@ -129,4 +128,14 @@ func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 	if resolver != nil {
 		mod.resolvers.Add(resolver)
 	}
+}
+
+// findStreamByID returns a stream with the given local id or nil if not found.
+func (mod *Module) findStreamByID(id int) *Stream {
+	for _, s := range mod.peers.streams.Clone() {
+		if s.id == id {
+			return s
+		}
+	}
+	return nil
 }

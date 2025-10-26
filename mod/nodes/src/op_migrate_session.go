@@ -8,16 +8,11 @@ import (
 )
 
 type opMigrateSessionArgs struct {
-	// Nonce identifies the session for migration signaling.
-	Nonce astral.Nonce
-	// Start indicates if this node is the initiator of the migration.
-	Start astral.Bool `query:"optional"`
-	// StreamID is this node's target stream id (local, optional).
-	StreamID astral.Int64 `query:"optional"`
-	// PeerStreamID is the last known peer's target stream id (optional, for tracing).
-	PeerStreamID astral.Int64 `query:"optional"`
-	// Out selects the output format for this op.
-	Out string `query:"optional"`
+	Nonce        astral.Nonce
+	Start        astral.Bool `query:"optional"`
+	StreamID     astral.Int64
+	PeerStreamID astral.Int64
+	Out          string `query:"optional"`
 }
 
 func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opMigrateSessionArgs) (err error) {
@@ -26,6 +21,9 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 
 	if args.Nonce == 0 {
 		return ch.Write(astral.NewError("missing nonce"))
+	}
+	if args.StreamID == 0 || args.PeerStreamID == 0 {
+		return ch.Write(astral.NewError("missing stream ids"))
 	}
 
 	isInitiator := q.Origin() != astral.OriginNetwork
@@ -38,28 +36,15 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 		}
 		target := sess.RemoteIdentity
 
-		if args.StreamID == 0 {
-			return ch.Write(astral.NewError("missing stream_id"))
-		}
-		tgt := mod.findStreamByID(int(args.StreamID))
-		if tgt == nil {
-			return ch.Write(astral.NewError("target stream not found"))
-		}
-
-		// Prepare session to migrate to the selected target stream
-		if err := sess.Migrate(tgt); err != nil {
-			return ch.Write(astral.NewError(err.Error()))
-		}
-
-		// Route a channel to the remote OpMigrateSession, passing only the nonce.
+		// Route a channel to the remote OpMigrateSession with both IDs swapped for the peer
 		peerCh, err := query.RouteChan(
 			ctx.IncludeZone(astral.ZoneNetwork),
 			mod.node,
 			query.New(ctx.Identity(), target, modnodes.MethodMigrateSession, &opMigrateSessionArgs{
 				Out:          args.Out,
 				Nonce:        args.Nonce,
-				StreamID:     args.PeerStreamID, // pass peer's local target id, if provided
-				PeerStreamID: args.StreamID,
+				StreamID:     args.PeerStreamID, // peer's local id
+				PeerStreamID: args.StreamID,     // our local id as their peer id
 			}),
 		)
 		if err != nil {
@@ -76,6 +61,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 			peer:          target,
 			nonce:         args.Nonce,
 			localTargetID: args.StreamID,
+			peerTargetID:  args.PeerStreamID,
 		}
 
 		if err := ms.Run(ctx); err != nil {
@@ -84,7 +70,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 		return ch.Write(&astral.Ack{})
 	}
 
-	// Responder: must receive local StreamID (its own) or error
+	// Responder: both IDs must be present; attach local session and pass IDs to FSM
 	sess, ok := mod.peers.sessions.Get(args.Nonce)
 	if !ok || sess == nil {
 		return ch.Write(astral.NewError("session not found"))
@@ -99,6 +85,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 		peer:          q.Caller(),
 		nonce:         args.Nonce,
 		localTargetID: args.StreamID,
+		peerTargetID:  args.PeerStreamID,
 	}
 
 	if err := ms.Run(ctx); err != nil {
@@ -106,14 +93,4 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 	}
 
 	return ch.Write(&astral.Ack{})
-}
-
-// findStreamByID scans local streams and returns the stream with given id.
-func (mod *Module) findStreamByID(id int) *Stream {
-	for _, s := range mod.peers.streams.Clone() {
-		if s.id == id {
-			return s
-		}
-	}
-	return nil
 }
