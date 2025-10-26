@@ -256,12 +256,8 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 		return
 	}
 
-	err := conn.CompleteMigration()
-	if err != nil {
-		s.Write(&frames.Reset{Nonce: f.Nonce})
-		return
-	}
-
+	// Apply migration locally by switching to target stream and reopening.
+	_ = conn.CompleteMigration()
 }
 
 func (mod *Peers) addStream(

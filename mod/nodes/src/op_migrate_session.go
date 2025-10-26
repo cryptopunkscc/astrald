@@ -10,6 +10,12 @@ import (
 type opMigrateSessionArgs struct {
 	// Nonce identifies the session for migration signaling.
 	Nonce astral.Nonce
+	// Start indicates if this node is the initiator of the migration.
+	Start bool `query:"optional"`
+	// StreamID is this node's target stream id (local, optional).
+	StreamID astral.Int64 `query:"optional"`
+	// PeerStreamID is the last known peer's target stream id (optional, for tracing).
+	PeerStreamID astral.Int64 `query:"optional"`
 	// Out selects the output format for this op.
 	Out string `query:"optional"`
 }
@@ -22,8 +28,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 		return ch.Write(astral.NewError("missing nonce"))
 	}
 
-	// Initiator if this call did not come from the network; otherwise responder.
-	isInitiator := q.Origin() != astral.OriginNetwork
+	isInitiator := args.Start
 
 	if isInitiator {
 		// Find the session locally to determine the remote identity.
@@ -32,6 +37,22 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 			return ch.Write(astral.NewError("session not found"))
 		}
 		target := sess.RemoteIdentity
+
+		// Resolve local target stream
+		var tgt *Stream
+		if args.StreamID != 0 {
+			tgt = mod.findStreamByID(int(args.StreamID))
+		} else {
+			tgt = mod.pickAltStream(sess.stream)
+		}
+		if tgt == nil {
+			return ch.Write(astral.NewError("no target stream available"))
+		}
+
+		// Prepare session to migrate to the selected target stream
+		if err := sess.Migrate(tgt); err != nil {
+			return ch.Write(astral.NewError(err.Error()))
+		}
 
 		// Route a channel to the remote OpMigrateSession, passing only the nonce.
 		peerCh, err := query.RouteChan(
@@ -47,20 +68,15 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 		}
 		defer peerCh.Close()
 
-		// Capture local stream id if available
-		var localStreamID astral.Int64
-		if sess.stream != nil {
-			localStreamID = astral.Int64(sess.stream.id)
-		}
-
 		ms := &sessionMigrator{
 			mod:   mod,
+			sess:  sess,
 			role:  RoleInitiator,
 			ch:    peerCh,
 			local: ctx.Identity(),
 			peer:  target,
 			nonce: args.Nonce,
-			link:  modnodes.LinkSelector{Identity: target, StreamId: localStreamID},
+			link:  modnodes.LinkSelector{Identity: target, StreamId: astral.Int64(tgt.id)},
 		}
 
 		if err := ms.Run(ctx); err != nil {
@@ -69,9 +85,15 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 		return ch.Write(&astral.Ack{})
 	}
 
-	// Responder branch: use accepted channel directly.
+	// Responder branch: use accepted channel directly and attach local session
+	sess, ok := mod.peers.sessions.Get(args.Nonce)
+	if !ok || sess == nil {
+		return ch.Write(astral.NewError("session not found"))
+	}
+
 	ms := &sessionMigrator{
 		mod:   mod,
+		sess:  sess,
 		role:  RoleResponder,
 		ch:    ch,
 		local: ctx.Identity(),
@@ -84,4 +106,30 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 	}
 
 	return ch.Write(&astral.Ack{})
+}
+
+// findStreamByID scans local streams and returns the stream with given id.
+func (mod *Module) findStreamByID(id int) *Stream {
+	for _, s := range mod.peers.streams.Clone() {
+		if s.id == id {
+			return s
+		}
+	}
+	return nil
+}
+
+// pickAltStream returns a different stream to the same remote identity as current.
+func (mod *Module) pickAltStream(current *Stream) *Stream {
+	if current == nil {
+		return nil
+	}
+	for _, s := range mod.peers.streams.Clone() {
+		if s == current {
+			continue
+		}
+		if s.RemoteIdentity().IsEqual(current.RemoteIdentity()) {
+			return s
+		}
+	}
+	return nil
 }

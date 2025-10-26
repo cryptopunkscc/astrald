@@ -203,57 +203,50 @@ func (c *session) Migrate(s *Stream) error {
 		return fmt.Errorf(`cannot migrate non-open session`)
 	}
 
+	// Cannot suddenly change identity that we sent to
 	if c.stream.RemoteIdentity() != s.RemoteIdentity() {
 		return fmt.Errorf(`cannot migrate to different identity`)
 	}
 
+	// Record target stream for both roles
 	c.migratingTo = s
 
-	ok := c.swapState(stateOpen, stateMigrating)
-	if !ok {
-		return fmt.Errorf(`cannot migrate non-open session`)
+	// Enter migrating to pause writes until migration completes
+	if !c.swapState(stateOpen, stateMigrating) {
+		return errors.New("cannot migrate non-open session")
 	}
 
 	return nil
 }
 
+// writeMigrateFrame sends a migration marker over the current (old) stream.
+func (c *session) writeMigrateFrame() error {
+	if c.stream == nil {
+		return fmt.Errorf("no current stream")
+	}
+	return c.stream.Write(&frames.Migrate{Nonce: c.Nonce})
+}
+
+// CompleteMigration finishes the migration by switching to the target stream and reopening the session.
 func (c *session) CompleteMigration() error {
 	c.wcond.L.Lock()
 	defer c.wcond.L.Unlock()
 
-	if c.state.Load() != stateMigrating {
-		// cannot migrate non-open session
-		return fmt.Errorf(`cannot complete migration of non-migrating session`)
-	}
-
 	if c.migratingTo == nil {
-		return fmt.Errorf("cannot complete migration: no target stream")
+		return errors.New("no target stream")
 	}
 
+	// Switch the underlying stream
 	c.stream = c.migratingTo
 	c.migratingTo = nil
 
-	ok := c.swapState(stateMigrating, stateOpen)
-	if !ok {
-		return fmt.Errorf(`cannot complete migration of non-migrating session`)
+	// Re-open the session
+	if !c.swapState(stateMigrating, stateOpen) {
+		// If state is already open, treat as idempotent
+		if c.state.Load() != stateOpen {
+			return errors.New("invalid migration state")
+		}
 	}
 
-	return nil
-}
-
-func (c *session) writeMigrateFrame() error {
-	if c.state.Load() != stateMigrating {
-		return fmt.Errorf("cannot send migrate frame: session not migrating")
-	}
-
-	err := c.stream.Write(&frames.Migrate{
-		Nonce: c.Nonce,
-	})
-	if err != nil {
-		return err
-	}
-
-	c.wcond.Broadcast()
-	c.rcond.Broadcast()
 	return nil
 }

@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -29,6 +30,7 @@ const (
 
 type sessionMigrator struct {
 	mod   *Module
+	sess  *session
 	role  migrateRole
 	ch    *astral.Channel
 	local *astral.Identity
@@ -79,15 +81,21 @@ func (m *sessionMigrator) handleMigrating(ctx *astral.Context) (migrateState, er
 		return StateFailed, err
 	}
 
-	// Include local stream id on responder side for auditing/selection.
-	var localStreamID astral.Int64
-	if m.mod != nil {
-		if sess, ok := m.mod.peers.sessions.Get(m.nonce); ok && sess != nil && sess.stream != nil {
-			localStreamID = astral.Int64(sess.stream.id)
-		}
+	// Pick local target stream and migrate
+	var localTarget *Stream
+	if m.mod != nil && m.sess != nil {
+		localTarget = m.mod.peers.pickAltStream(m.sess.stream)
+	}
+	if localTarget == nil {
+		return StateFailed, fmt.Errorf("no local target stream available")
 	}
 
-	if err = m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeReady, Nonce: m.nonce, Link: nodes.LinkSelector{Identity: m.peer, StreamId: localStreamID}}); err != nil {
+	if err := m.sess.Migrate(localTarget); err != nil {
+		return StateFailed, err
+	}
+
+	// Send ready with responder local stream id
+	if err = m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeReady, Nonce: m.nonce, Link: nodes.LinkSelector{Identity: m.peer, StreamId: astral.Int64(localTarget.id)}}); err != nil {
 		return StateFailed, err
 	}
 	return StateWaitingMarker, nil
@@ -106,6 +114,10 @@ func (m *sessionMigrator) handleWaitingAck(ctx *astral.Context) (migrateState, e
 		if err := m.verify(sig, nodes.MigrateSignalTypeReady); err != nil {
 			return StateFailed, err
 		}
+		// Send migration marker on old stream
+		if err := m.sess.writeMigrateFrame(); err != nil {
+			return StateFailed, err
+		}
 		return StateWaitingMarker, nil
 	}
 	// Responder shouldn't typically be here in Phase 0; proceed to marker wait.
@@ -118,20 +130,36 @@ func (m *sessionMigrator) handleWaitingAck(ctx *astral.Context) (migrateState, e
 func (m *sessionMigrator) handleWaitingMarker(ctx *astral.Context) (migrateState, error) {
 	_ = ctx // reserved for future timeouts
 	if m.role == RoleInitiator {
-		if err := m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeCompleted, Nonce: m.nonce}); err != nil {
+		sig, err := m.recv()
+		if err != nil {
+			return StateFailed, err
+		}
+		if err = m.verify(sig, nodes.MigrateSignalTypeCompleted); err != nil {
+			return StateFailed, err
+		}
+		if err := m.sess.CompleteMigration(); err != nil {
 			return StateFailed, err
 		}
 		return StateCompleted, nil
 	}
 
-	sig, err := m.recv()
-	if err != nil {
-		return StateFailed, err
+	// Responder: wait until session returns to open (marker applied via peers.handleMigrate), then send completed
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return StateFailed, ctx.Err()
+		case <-ticker.C:
+			if m.sess != nil && m.sess.state.Load() == int32(stateOpen) {
+				if err := m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeCompleted, Nonce: m.nonce}); err != nil {
+					return StateFailed, err
+				}
+				return StateCompleted, nil
+			}
+		}
 	}
-	if err = m.verify(sig, nodes.MigrateSignalTypeCompleted); err != nil {
-		return StateFailed, err
-	}
-	return StateCompleted, nil
 }
 
 func (m *sessionMigrator) recv() (*nodes.SessionMigrateSignal, error) {
