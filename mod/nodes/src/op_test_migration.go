@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -27,10 +28,11 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 		ch := astral.NewChannel(q.Accept())
 		defer ch.Close()
 
+		peerQuery := query.New(ctx.Identity(), target, "nodes.test_migration", &opTestMigrationArgs{})
 		peerCh, err := query.RouteChan(
 			ctx.IncludeZone(astral.ZoneNetwork),
 			mod.node,
-			query.New(ctx.Identity(), target, "nodes.test_migration", &opTestMigrationArgs{}),
+			peerQuery,
 		)
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
@@ -40,7 +42,8 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
-		msg := astral.String8("Hello World")
+		msg := astral.String8(fmt.Sprintf("Hello World %s",
+			peerQuery.Nonce))
 
 		// Send immediately, then on ticks
 		if err := peerCh.Write(&msg); err != nil {
@@ -72,6 +75,7 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 			if err != nil {
 				return nil
 			}
+
 			if s, ok := obj.(*astral.String8); ok {
 				mod.log.Logv(0, "[test_migration] from %v: %s", q.Caller(), string(*s))
 			}
