@@ -13,6 +13,9 @@ const (
 	ActionRelayFor   = "mod.nodes.relay_for"
 	ExtraCallerProof = "caller_proof"
 	ExtraRelayVia    = "relay_via"
+
+	// MethodMigrateSession is the query route for Phase 0 migration signaling.
+	MethodMigrateSession = "nodes.migrate_session"
 )
 
 type Module interface {

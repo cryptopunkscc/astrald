@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -17,6 +18,7 @@ const defaultBufferSize = 4 * 1024 * 1024
 const (
 	stateRouting = iota
 	stateOpen
+	stateMigrating
 	stateClosed
 )
 
@@ -42,8 +44,7 @@ type session struct {
 	wsize int        // remote buffer left
 
 	// FIXME: add sync
-	migratingFlag bool
-	migratingTo   *Stream
+	migratingTo *Stream
 }
 
 func (c *session) Identity() *astral.Identity {
@@ -84,7 +85,7 @@ func (c *session) Write(p []byte) (n int, err error) {
 
 		switch c.state.Load() {
 		case stateOpen:
-		case stateRouting:
+		case stateRouting, stateMigrating:
 			c.wcond.Wait()
 			continue
 		default:
@@ -142,7 +143,7 @@ func (c *session) Read(p []byte) (n int, err error) {
 
 		if len(c.rbuf) == 0 {
 			switch c.state.Load() {
-			case stateOpen:
+			case stateOpen, stateMigrating:
 				c.rcond.Wait()
 				continue
 			case stateClosed:
@@ -199,21 +200,60 @@ func (c *session) Migrate(s *Stream) error {
 	defer c.wcond.L.Unlock()
 
 	if c.state.Load() != stateOpen {
-		// cannot migrate non-open session
-		return errors.New("invalid state")
+		return fmt.Errorf(`cannot migrate non-open session`)
 	}
 
-	// Cannot suddenly change identity that we sent to
 	if c.stream.RemoteIdentity() != s.RemoteIdentity() {
-		return errors.New("invalid stream")
+		return fmt.Errorf(`cannot migrate to different identity`)
 	}
 
-	// If active side (we are not sending on old stream no-more)
+	c.migratingTo = s
 
-	if !s.outbound {
-		c.migratingFlag = true
-		c.migratingTo = s
+	ok := c.swapState(stateOpen, stateMigrating)
+	if !ok {
+		return fmt.Errorf(`cannot migrate non-open session`)
 	}
 
+	return nil
+}
+
+func (c *session) CompleteMigration() error {
+	c.wcond.L.Lock()
+	defer c.wcond.L.Unlock()
+
+	if c.state.Load() != stateMigrating {
+		// cannot migrate non-open session
+		return fmt.Errorf(`cannot complete migration of non-migrating session`)
+	}
+
+	if c.migratingTo == nil {
+		return fmt.Errorf("cannot complete migration: no target stream")
+	}
+
+	c.stream = c.migratingTo
+	c.migratingTo = nil
+
+	ok := c.swapState(stateMigrating, stateOpen)
+	if !ok {
+		return fmt.Errorf(`cannot complete migration of non-migrating session`)
+	}
+
+	return nil
+}
+
+func (c *session) writeMigrateFrame() error {
+	if c.state.Load() != stateMigrating {
+		return fmt.Errorf("cannot send migrate frame: session not migrating")
+	}
+
+	err := c.stream.Write(&frames.Migrate{
+		Nonce: c.Nonce,
+	})
+	if err != nil {
+		return err
+	}
+
+	c.wcond.Broadcast()
+	c.rcond.Broadcast()
 	return nil
 }

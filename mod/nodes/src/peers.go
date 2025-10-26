@@ -114,6 +114,8 @@ func (mod *Peers) frameReader(ctx context.Context) {
 				mod.handleReset(frame.Source, f)
 			case *frames.Read:
 				mod.handleRead(frame.Source, f)
+			case *frames.Migrate:
+				mod.handleMigrate(frame.Source, f)
 			default:
 				mod.log.Errorv(2, "unknown frame: %v", frame.Frame)
 			}
@@ -246,6 +248,20 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 			Pong:  true,
 		})
 	}
+}
+
+func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
+	conn, ok := mod.sessions.Get(f.Nonce)
+	if !ok {
+		return
+	}
+
+	err := conn.CompleteMigration()
+	if err != nil {
+		s.Write(&frames.Reset{Nonce: f.Nonce})
+		return
+	}
+
 }
 
 func (mod *Peers) addStream(
