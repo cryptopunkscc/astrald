@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -42,8 +41,7 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
-		msg := astral.String8(fmt.Sprintf("Hello World %s",
-			peerQuery.Nonce))
+		msg := peerQuery.Nonce
 
 		// Send immediately, then on ticks
 		if err := peerCh.Write(&msg); err != nil {
@@ -76,8 +74,14 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 				return nil
 			}
 
-			if s, ok := obj.(*astral.String8); ok {
-				mod.log.Logv(0, "[test_migration] from %v: %s", q.Caller(), string(*s))
+			if s, ok := obj.(*astral.Nonce); ok {
+				session, ok := mod.peers.sessions.Get(*s)
+				if ok {
+					mod.log.Logv(0,
+						"[test_migration] from %v: session network",
+						q.Caller(), session.stream.Network())
+				}
+				mod.log.Logv(0, "[test_migration] from %v: %s", q.Caller(), s.String())
 			}
 		}
 	}
