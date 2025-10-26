@@ -11,7 +11,7 @@ type opMigrateSessionArgs struct {
 	// Nonce identifies the session for migration signaling.
 	Nonce astral.Nonce
 	// Start indicates if this node is the initiator of the migration.
-	Start bool `query:"optional"`
+	Start astral.Bool `query:"optional"`
 	// StreamID is this node's target stream id (local, optional).
 	StreamID astral.Int64 `query:"optional"`
 	// PeerStreamID is the last known peer's target stream id (optional, for tracing).
