@@ -394,6 +394,8 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 		linkFeatures = append(linkFeatures, astral.String(feat))
 	}
 
+	// FIXME: Negotiate link astral.Nonce
+
 	if slices.Contains(linkFeatures, featureMux2) {
 		_, err = astral.String8(featureMux2).WriteTo(aconn)
 		if err != nil {
@@ -444,6 +446,8 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 			return
 		}
 	}
+
+	// FIXME: Negotiate link astral.Nonce
 
 	for {
 		var feature string
