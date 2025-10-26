@@ -11,6 +11,8 @@ import (
 // Args: only Target; if empty, act as responder.
 type opTestMigrationArgs struct {
 	Target string
+
+	Out string `query:"optional"`
 }
 
 // OpTestMigration: single-op sender/receiver.
@@ -24,10 +26,12 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 			return q.RejectWithCode(4)
 		}
 
-		ch := astral.NewChannel(q.Accept())
+		ch := astral.NewChannelFmt(q.Accept(), args.Out, args.Out)
 		defer ch.Close()
 
-		peerQuery := query.New(ctx.Identity(), target, "nodes.test_migration", &opTestMigrationArgs{})
+		peerQuery := query.New(ctx.Identity(), target, "nodes.test_migration", &opTestMigrationArgs{
+			Out: args.Out,
+		})
 		peerCh, err := query.RouteChan(
 			ctx.IncludeZone(astral.ZoneNetwork),
 			mod.node,
@@ -61,7 +65,7 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 	}
 
 	// Responder branch: no Target provided
-	ch := astral.NewChannel(q.Accept())
+	ch := astral.NewChannelFmt(q.Accept(), args.Out, args.Out)
 	defer ch.Close()
 
 	for {
