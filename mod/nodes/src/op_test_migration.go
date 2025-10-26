@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -10,15 +11,15 @@ import (
 
 // Args: only Target; if empty, act as responder.
 type opTestMigrationArgs struct {
-	Target string
-
-	Out string `query:"optional"`
+	Target string `query:"optional"`
+	Out    string `query:"optional"`
 }
 
 // OpTestMigration: single-op sender/receiver.
 // - If Target is provided: initiator. Connects to peer's nodes.test_migration and sends "Hello World" every 5s.
 // - If Target is empty: responder. Accepts messages and logs them.
 func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTestMigrationArgs) error {
+	fmt.Println("HELLO WHY ARE YOU HERE")
 	// Initiator branch: Target provided
 	if args.Target != "" {
 		target, err := mod.Dir.ResolveIdentity(args.Target)
@@ -42,7 +43,7 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 		}
 		defer peerCh.Close()
 
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
 		msg := peerQuery.Nonce
@@ -82,10 +83,9 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 				session, ok := mod.peers.sessions.Get(*s)
 				if ok {
 					mod.log.Logv(0,
-						"[test_migration] from %v: session network",
+						"[test_migration] from %v: session network %v",
 						q.Caller(), session.stream.Network())
 				}
-				mod.log.Logv(0, "[test_migration] from %v: %s", q.Caller(), s.String())
 			}
 		}
 	}
