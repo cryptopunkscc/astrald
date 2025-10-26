@@ -31,6 +31,7 @@ func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsA
 			LocalEndpoint:  s.LocalEndpoint(),
 			RemoteEndpoint: s.RemoteEndpoint(),
 			Outbound:       astral.Bool(s.outbound),
+			Network:        astral.String8(s.Network()),
 		})
 		if err != nil {
 			return err

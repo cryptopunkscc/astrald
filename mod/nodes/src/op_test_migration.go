@@ -83,8 +83,8 @@ func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTe
 				session, ok := mod.peers.sessions.Get(*s)
 				if ok {
 					mod.log.Logv(0,
-						"[test_migration] from %v: session network %v",
-						q.Caller(), session.stream.Network())
+						"[test_migration] from %v: %v session network %v",
+						q.Caller(), s, session.stream.Network())
 				}
 			}
 		}
