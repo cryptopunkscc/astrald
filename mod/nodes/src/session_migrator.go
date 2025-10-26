@@ -36,7 +36,10 @@ type sessionMigrator struct {
 	local *astral.Identity
 	peer  *astral.Identity
 	nonce astral.Nonce
-	link  nodes.LinkSelector
+
+	// explicit local/peer target stream ids (node-local per side)
+	localTargetID astral.Int64
+	peerTargetID  astral.Int64
 }
 
 func (m *sessionMigrator) Run(ctx *astral.Context) error {
@@ -65,9 +68,9 @@ func (m *sessionMigrator) Run(ctx *astral.Context) error {
 // - Initiator: send migrate_begin, go to WaitingAck
 // - Responder: recv migrate_begin, send migrate_ready, go to WaitingMarker
 func (m *sessionMigrator) handleMigrating(ctx *astral.Context) (migrateState, error) {
-	_ = ctx // reserved for future timeouts
 	if m.role == RoleInitiator {
-		if err := m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeBegin, Nonce: m.nonce, Link: m.link}); err != nil {
+		if err := m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.
+			MigrateSignalTypeBegin, Nonce: m.nonce}); err != nil {
 			return StateFailed, err
 		}
 		return StateWaitingAck, nil
@@ -81,21 +84,21 @@ func (m *sessionMigrator) handleMigrating(ctx *astral.Context) (migrateState, er
 		return StateFailed, err
 	}
 
-	// Pick local target stream and migrate
-	var localTarget *Stream
-	if m.mod != nil && m.sess != nil {
-		localTarget = m.mod.peers.pickAltStream(m.sess.stream)
+	// Use provided localTargetID to resolve stream and migrate
+	if m.localTargetID == 0 {
+		return StateFailed, fmt.Errorf("missing stream_id on responder")
 	}
+	localTarget := m.mod.findStreamByID(int(m.localTargetID))
 	if localTarget == nil {
-		return StateFailed, fmt.Errorf("no local target stream available")
+		return StateFailed, fmt.Errorf("target stream not found")
 	}
 
 	if err := m.sess.Migrate(localTarget); err != nil {
 		return StateFailed, err
 	}
 
-	// Send ready with responder local stream id
-	if err = m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeReady, Nonce: m.nonce, Link: nodes.LinkSelector{Identity: m.peer, StreamId: astral.Int64(localTarget.id)}}); err != nil {
+	// Send ready (no link info)
+	if err = m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeReady, Nonce: m.nonce}); err != nil {
 		return StateFailed, err
 	}
 	return StateWaitingMarker, nil
@@ -105,7 +108,6 @@ func (m *sessionMigrator) handleMigrating(ctx *astral.Context) (migrateState, er
 // - Initiator: wait for migrate_ready, then go to WaitingMarker
 // - Responder: not used; fall through to WaitingMarker if reached
 func (m *sessionMigrator) handleWaitingAck(ctx *astral.Context) (migrateState, error) {
-	_ = ctx // reserved for future timeouts
 	if m.role == RoleInitiator {
 		sig, err := m.recv()
 		if err != nil {

@@ -18,7 +18,6 @@ type LinkSelector struct {
 type SessionMigrateSignal struct {
 	Signal astral.String8
 	Nonce  astral.Nonce
-	Link   LinkSelector
 }
 
 const (
