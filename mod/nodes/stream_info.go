@@ -5,9 +5,10 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"io"
 )
 
 type StreamInfo struct {
@@ -17,6 +18,7 @@ type StreamInfo struct {
 	LocalEndpoint  exonet.Endpoint
 	RemoteEndpoint exonet.Endpoint
 	Outbound       astral.Bool
+	Network        astral.String8
 }
 
 var _ astral.Object = &StreamInfo{}
