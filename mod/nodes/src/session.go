@@ -201,8 +201,8 @@ func (c *session) Migrate(s *Stream) error {
 		return fmt.Errorf(`cannot migrate non-open session`)
 	}
 
-	// Cannot suddenly change identity that we sent to
-	if c.stream.RemoteIdentity() != s.RemoteIdentity() {
+	// Cannot change identity that we sent to
+	if !c.stream.RemoteIdentity().IsEqual(s.RemoteIdentity()) {
 		return fmt.Errorf(`cannot migrate to different identity`)
 	}
 
