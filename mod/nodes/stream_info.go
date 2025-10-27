@@ -12,7 +12,7 @@ import (
 )
 
 type StreamInfo struct {
-	ID             astral.Int64
+	ID             astral.Nonce
 	LocalIdentity  *astral.Identity
 	RemoteIdentity *astral.Identity
 	LocalEndpoint  exonet.Endpoint

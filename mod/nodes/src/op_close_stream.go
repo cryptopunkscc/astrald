@@ -6,7 +6,7 @@ import (
 )
 
 type opCloseStreamArgs struct {
-	ID  astral.Uint64
+	ID  astral.Nonce
 	Out string `query:"optional"`
 }
 
@@ -15,7 +15,7 @@ func (mod *Module) OpCloseStream(ctx *astral.Context, q shell.Query, args opClos
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	err = mod.CloseStream(int(args.ID))
+	err = mod.CloseStream(args.ID)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}

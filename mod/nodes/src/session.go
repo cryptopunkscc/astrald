@@ -40,10 +40,8 @@ type session struct {
 	rused int        // used read buffer
 	rbuf  [][]byte   // read buffer
 
-	wcond *sync.Cond // sync for write functions
-	wsize int        // remote buffer left
-
-	// FIXME: add sync
+	wcond       *sync.Cond // sync for write functions
+	wsize       int        // remote buffer left
 	migratingTo *Stream
 }
 

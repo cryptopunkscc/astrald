@@ -11,11 +11,9 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-var lastStreamID atomic.Int32
-
 type Stream struct {
 	*frames.Stream
-	id          int
+	id          astral.Nonce
 	createdAt   time.Time
 	conn        astral.Conn
 	pings       sig.Map[astral.Nonce, *Ping]
@@ -29,9 +27,9 @@ type Ping struct {
 	pong   chan struct{}
 }
 
-func newStream(conn astral.Conn, outbound bool) *Stream {
+func newStream(conn astral.Conn, id astral.Nonce, outbound bool) *Stream {
 	link := &Stream{
-		id:          int(lastStreamID.Add(1)),
+		id:          id,
 		conn:        conn,
 		createdAt:   time.Now(),
 		Stream:      frames.NewStream(conn),

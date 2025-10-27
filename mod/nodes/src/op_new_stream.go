@@ -69,7 +69,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 	}
 
 	return ch.Write(&nodes.StreamInfo{
-		ID:             astral.Int64(s.id),
+		ID:             s.id,
 		LocalIdentity:  s.LocalIdentity(),
 		RemoteIdentity: s.RemoteIdentity(),
 		LocalEndpoint:  s.LocalEndpoint(),

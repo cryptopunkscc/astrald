@@ -3,6 +3,8 @@ package nodes
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -14,7 +16,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
-	"time"
 )
 
 const DefaultWorkerCount = 8
@@ -101,7 +102,7 @@ func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpo
 }
 
 // CloseStream closes a stream with the given id.
-func (mod *Module) CloseStream(id int) error {
+func (mod *Module) CloseStream(id astral.Nonce) error {
 	streams := mod.peers.streams.Clone()
 	for _, s := range streams {
 		if s.id == id {
@@ -131,7 +132,7 @@ func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 }
 
 // findStreamByID returns a stream with the given local id or nil if not found.
-func (mod *Module) findStreamByID(id int) *Stream {
+func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
 	for _, s := range mod.peers.streams.Clone() {
 		if s.id == id {
 			return s
