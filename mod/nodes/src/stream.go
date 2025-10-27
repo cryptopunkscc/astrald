@@ -98,7 +98,7 @@ func (s *Stream) Ping() (time.Duration, error) {
 		pong:   make(chan struct{}),
 	})
 	if !ok {
-		return -1, errors.New("duplicate nonce")
+		return -1, errors.New("duplicate sessionId")
 	}
 	defer s.pings.Delete(nonce)
 
@@ -121,7 +121,7 @@ func (s *Stream) Ping() (time.Duration, error) {
 func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
 	p, ok := s.pings.Delete(nonce)
 	if !ok {
-		return -1, errors.New("invalid nonce")
+		return -1, errors.New("invalid sessionId")
 	}
 	d := time.Since(p.sentAt)
 	close(p.pong)

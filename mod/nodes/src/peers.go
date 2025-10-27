@@ -40,7 +40,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClo
 	// prepare the connection info
 	conn, ok := mod.sessions.Set(q.Nonce, newSession(q.Nonce))
 	if !ok {
-		return query.RouteNotFound(mod, errors.New("nonce already exists"))
+		return query.RouteNotFound(mod, errors.New("sessionId already exists"))
 	}
 
 	conn.RemoteIdentity = q.Target
@@ -236,7 +236,7 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 	if f.Pong {
 		rtt, err := s.pong(f.Nonce)
 		if err != nil {
-			mod.log.Errorv(1, "invalid pong nonce from %v", s.RemoteIdentity())
+			mod.log.Errorv(1, "invalid pong sessionId from %v", s.RemoteIdentity())
 		} else {
 			if mod.config.LogPings {
 				mod.log.Logv(1, "ping with %v: %v", s.RemoteIdentity(), rtt)
@@ -365,7 +365,7 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	return false
 }
 
-// negotiateOutboundLink reads peer's supported features and the session nonce.
+// negotiateOutboundLink reads peer's supported features and the session sessionId.
 func (mod *Peers) negotiateOutboundLink(aconn astral.Conn) (features []astral.String, nonce astral.Nonce, err error) {
 	var featCount astral.Uint16
 	if _, err = featCount.ReadFrom(aconn); err != nil {
@@ -379,12 +379,12 @@ func (mod *Peers) negotiateOutboundLink(aconn astral.Conn) (features []astral.St
 		features = append(features, astral.String(feat))
 	}
 	if _, err = nonce.ReadFrom(aconn); err != nil {
-		return nil, 0, fmt.Errorf("read nonce: %w", err)
+		return nil, 0, fmt.Errorf("read sessionId: %w", err)
 	}
 	return features, nonce, nil
 }
 
-// negotiateInboundLink sends our supported features and a fresh session nonce.
+// negotiateInboundLink sends our supported features and a fresh session sessionId.
 func (mod *Peers) negotiateInboundLink(aconn astral.Conn) (nonce astral.Nonce, err error) {
 	var linkFeatures = []string{featureMux2}
 	if _, err = astral.Uint16(len(linkFeatures)).WriteTo(aconn); err != nil {
@@ -414,7 +414,7 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 		return nil, fmt.Errorf("outbound handshake: %w", err)
 	}
 
-	// Read peer features and session nonce
+	// Read peer features and session sessionId
 	linkFeatures, nonce, err := mod.negotiateOutboundLink(aconn)
 	if err != nil {
 		return nil, err
@@ -456,7 +456,7 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 		return
 	}
 
-	// Send our features and session nonce
+	// Send our features and session sessionId
 	nonce, err := mod.negotiateInboundLink(aconn)
 	if err != nil {
 		return err
