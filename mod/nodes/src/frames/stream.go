@@ -97,6 +97,8 @@ func (s *Stream) reader() {
 			frame = &Read{}
 		case opData:
 			frame = &Data{}
+		case opMigrate:
+			frame = &Migrate{}
 		case opReset:
 			frame = &Reset{}
 		default:
