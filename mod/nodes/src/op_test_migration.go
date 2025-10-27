@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -19,7 +18,6 @@ type opTestMigrationArgs struct {
 // - If Target is provided: initiator. Connects to peer's nodes.test_migration and sends "Hello World" every 5s.
 // - If Target is empty: responder. Accepts messages and logs them.
 func (mod *Module) OpTestMigration(ctx *astral.Context, q shell.Query, args opTestMigrationArgs) error {
-	fmt.Println("HELLO WHY ARE YOU HERE")
 	// Initiator branch: Target provided
 	if args.Target != "" {
 		target, err := mod.Dir.ResolveIdentity(args.Target)
