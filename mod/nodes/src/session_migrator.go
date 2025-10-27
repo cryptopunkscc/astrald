@@ -176,6 +176,7 @@ func (m *sessionMigrator) handleWaitingMarker(ctx *astral.Context) (migrateState
 		case <-ctx.Done():
 			return StateFailed, ctx.Err()
 		case <-ticker.C:
+			m.mod.log.Log("session_migrator waiting marker application")
 			if m.sess != nil && m.sess.state.Load() == int32(stateOpen) {
 				m.mod.log.Log("session_migrator responder sending COMPLETED %v %v", m.sessionId, m.streamId)
 				if err := m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeCompleted, Nonce: m.sessionId}); err != nil {

@@ -202,12 +202,14 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 	}
 
 	if conn.state.Load() != stateOpen {
+		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), conn.state.Load())
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
 	err := conn.pushRead(f.Payload)
 	if err != nil {
+		mod.log.Errorv(1, "failed to push read frame: %v", err)
 		conn.Close()
 		return
 	}
@@ -251,6 +253,7 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 }
 
 func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
+	mod.log.Log("received migrate frame")
 	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
