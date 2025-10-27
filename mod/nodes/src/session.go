@@ -222,6 +222,7 @@ func (c *session) writeMigrateFrame() error {
 	if c.stream == nil {
 		return fmt.Errorf("no current stream")
 	}
+
 	return c.stream.Write(&frames.Migrate{Nonce: c.Nonce})
 }
 

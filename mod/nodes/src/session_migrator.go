@@ -138,6 +138,8 @@ func (m *sessionMigrator) handleWaitingAck(ctx *astral.Context) (migrateState, e
 		// Send migration marker on old stream
 		m.mod.log.Log("session_migrator initiator sending MARKER %v %v", m.sessionId, m.streamId)
 		if err := m.sess.writeMigrateFrame(); err != nil {
+			m.mod.log.Log("session_migrator initiator failed to send marker"+
+				" %v %v %v", m.sessionId, m.streamId, err.Error())
 			return StateFailed, err
 		}
 		return StateWaitingMarker, nil
@@ -167,7 +169,7 @@ func (m *sessionMigrator) handleWaitingMarker(ctx *astral.Context) (migrateState
 		return StateCompleted, nil
 	}
 
-	ticker := time.NewTicker(50 * time.Millisecond)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	m.mod.log.Log("session_migrator responder waiting marker application %v %v", m.sessionId, m.streamId)
 

@@ -2,10 +2,11 @@ package frames
 
 import (
 	"bufio"
-	"github.com/cryptopunkscc/astrald/sig"
-	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"sync"
+
+	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/cryptopunkscc/astrald/streams"
 )
 
 const inChanSize = 32
@@ -58,7 +59,6 @@ func (s *Stream) Write(frame Frame) (err error) {
 	defer s.mu.Unlock()
 
 	_, err = frame.WriteTo(s.conn)
-
 	if err != nil {
 		s.err.Swap(nil, err)
 		s.conn.Close()
