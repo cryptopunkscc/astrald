@@ -3,7 +3,6 @@ package nodes
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -21,7 +20,6 @@ import (
 const DefaultWorkerCount = 8
 const infoPrefix = "node1"
 const featureMux2 = "mux2"
-const defaultPingTimeout = time.Second * 30
 
 type NodeInfo nodes.NodeInfo
 
@@ -56,6 +54,9 @@ type Module struct {
 	in chan *Frame
 
 	searchCache sig.Map[string, *astral.Identity]
+
+	// streamManager orchestrates post-admission stream policies
+	streamManager *StreamManager
 }
 
 type Relay struct {
@@ -73,6 +74,22 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 func (mod *Module) Peers() (peers []*astral.Identity) {
 	return mod.peers.peers()
+}
+
+// Streams returns a snapshot of current streams for policy decisions or introspection.
+func (mod *Module) Streams() []*Stream {
+	return mod.peers.streams.Clone()
+}
+
+// StreamsTo returns all active streams connected to the given remote identity.
+func (mod *Module) StreamsTo(remote *astral.Identity) []*Stream {
+	var out []*Stream
+	for _, s := range mod.peers.streams.Clone() {
+		if s.RemoteIdentity().IsEqual(remote) {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func (mod *Module) IsPeer(id *astral.Identity) bool {

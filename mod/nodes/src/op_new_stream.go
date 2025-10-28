@@ -13,6 +13,7 @@ type opNewStreamArgs struct {
 	Target   string
 	Net      string `query:"optional"`
 	Endpoint string `query:"optional"`
+	Force    bool   `query:"optional"` // Added Force flag to bypass stream policies for this operation
 	Out      string `query:"optional"`
 }
 
