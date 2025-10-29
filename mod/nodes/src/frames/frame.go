@@ -20,4 +20,5 @@ const (
 	opRead
 	opData
 	opReset
+	opMigrate
 )

@@ -25,12 +25,13 @@ func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsA
 
 	for _, s := range streams {
 		err = ch.Write(&nodes.StreamInfo{
-			ID:             astral.Int64(s.id),
+			ID:             s.id,
 			LocalIdentity:  s.LocalIdentity(),
 			RemoteIdentity: s.RemoteIdentity(),
 			LocalEndpoint:  s.LocalEndpoint(),
 			RemoteEndpoint: s.RemoteEndpoint(),
 			Outbound:       astral.Bool(s.outbound),
+			Network:        astral.String8(s.Network()),
 		})
 		if err != nil {
 			return err
