@@ -3,7 +3,7 @@ package nodes
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	modnodes "github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -27,38 +27,33 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 
 	isInitiator := args.Start
 	if isInitiator {
-		// Find the session locally to determine the remote identity.
-		sess, ok := mod.peers.sessions.Get(args.SessionID)
-		if !ok || sess == nil || sess.RemoteIdentity == nil || sess.RemoteIdentity.IsZero() {
+		sessionToMigrate, ok := mod.peers.sessions.Get(args.SessionID)
+		if !ok {
 			return ch.Write(astral.NewError("session not found"))
 		}
-		target := sess.RemoteIdentity
+
+		target := sessionToMigrate.RemoteIdentity
+		args := &opMigrateSessionArgs{
+			SessionID: args.SessionID,
+			StreamID:  args.StreamID,
+			Start:     false,
+			Out:       args.Out,
+		}
 
 		// Route a channel to the remote OpMigrateSession
 		peerCh, err := query.RouteChan(
 			ctx.IncludeZone(astral.ZoneNetwork),
 			mod.node,
-			query.New(ctx.Identity(), target, modnodes.MethodMigrateSession, &opMigrateSessionArgs{
-				SessionID: args.SessionID,
-				StreamID:  args.StreamID,
-				Start:     false,
-				Out:       args.Out,
-			}),
+			query.New(ctx.Identity(), target, nodes.MethodMigrateSession, &args),
 		)
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
 		defer peerCh.Close()
 
-		ms := &sessionMigrator{
-			mod:       mod,
-			sess:      sess,
-			role:      RoleInitiator,
-			ch:        peerCh,
-			local:     ctx.Identity(),
-			peer:      target,
-			sessionId: args.SessionID,
-			streamId:  args.StreamID,
+		ms, err := mod.createSessionMigrator(ctx, RoleInitiator, peerCh, target, args.SessionID, args.StreamID)
+		if err != nil {
+			return ch.Write(astral.NewError(err.Error()))
 		}
 
 		if err := ms.Run(ctx); err != nil {
@@ -67,24 +62,14 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 		return ch.Write(&astral.Ack{})
 	}
 
-	// Responder: attach local session and pass local streamId to FSM
-	sess, ok := mod.peers.sessions.Get(args.SessionID)
-	if !ok || sess == nil {
-		return ch.Write(astral.NewError("session not found"))
+	ms, err := mod.createSessionMigrator(ctx, RoleResponder, ch, q.Caller(),
+		args.SessionID, args.StreamID)
+	if err != nil {
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	ms := &sessionMigrator{
-		mod:       mod,
-		sess:      sess,
-		role:      RoleResponder,
-		ch:        ch,
-		local:     ctx.Identity(),
-		peer:      q.Caller(),
-		sessionId: args.SessionID,
-		streamId:  args.StreamID,
-	}
-
-	if err := ms.Run(ctx); err != nil {
+	err = ms.Run(ctx)
+	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
