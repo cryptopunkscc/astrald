@@ -25,8 +25,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q shell.Query, args opM
 		return ch.Write(astral.NewError("missing stream ids"))
 	}
 
-	isInitiator := q.Origin() != astral.OriginNetwork
-
+	isInitiator := args.Start
 	if isInitiator {
 		// Find the session locally to determine the remote identity.
 		sess, ok := mod.peers.sessions.Get(args.SessionID)

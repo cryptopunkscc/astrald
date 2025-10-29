@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -12,20 +13,25 @@ type migrateRole int
 
 type migrateState int
 
-type stateFn func(*astral.Context) (migrateState, error)
+type stateFn func(context.Context) (migrateState, error)
 
 const (
 	RoleInitiator migrateRole = iota
 	RoleResponder
 )
 
-// Unified signaling FSM states
 const (
 	StateMigrating migrateState = iota
-	StateWaitingAck
 	StateWaitingMarker
 	StateCompleted
 	StateFailed
+)
+
+const (
+	// NOTE: not sure of the exact values
+	migrationTotalTimeout    = 10 * time.Second
+	migrateSignalTimeout     = 5 * time.Second
+	markerApplicationTimeout = 5 * time.Second
 )
 
 type sessionMigrator struct {
@@ -41,97 +47,116 @@ type sessionMigrator struct {
 	streamId  astral.Nonce
 }
 
-func (m *sessionMigrator) Run(ctx *astral.Context) error {
+func (m *sessionMigrator) Run(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, migrationTotalTimeout)
+	defer cancel()
+
 	handlers := map[migrateState]stateFn{
 		StateMigrating:     m.handleMigrating,
-		StateWaitingAck:    m.handleWaitingAck,
 		StateWaitingMarker: m.handleWaitingMarker,
 	}
 
 	state := StateMigrating
+	var runErr error
 	for state != StateCompleted && state != StateFailed {
 		h, ok := handlers[state]
 		if !ok {
-			return fmt.Errorf("invalid state")
+			runErr = fmt.Errorf("invalid state")
+			state = StateFailed
+			break
 		}
+
 		next, err := h(ctx)
 		if err != nil {
-			return err
+			runErr = err
+			state = StateFailed
+			break
 		}
 		state = next
 	}
-	return nil
+	if state == StateFailed {
+		m.mod.log.Log("migration: migration cancelled for session %v", m.sessionId)
+		m.sess.CancelMigration()
+	}
+	return runErr
 }
 
 // handleMigrating:
-// - Initiator: send migrate_begin, go to WaitingAck
+// - Initiator: send migrate_begin, wait for migrate_ready, migrate locally, send marker, go to WaitingMarker
 // - Responder: recv migrate_begin, send migrate_ready, go to WaitingMarker
-func (m *sessionMigrator) handleMigrating(ctx *astral.Context) (migrateState, error) {
+func (m *sessionMigrator) handleMigrating(ctx context.Context) (migrateState,
+	error) {
 	if m.role == RoleInitiator {
-		if err := m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.
-			MigrateSignalTypeBegin, Nonce: m.sessionId}); err != nil {
-			return StateFailed, err
+		// Send BEGIN
+		err := m.writeSignal(ctx, &nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeBegin, Nonce: m.sessionId}, migrateSignalTimeout)
+		if err != nil {
+			return m.fail(err)
 		}
-		return StateWaitingAck, nil
+		// Wait READY
+		sig, err := m.readSignal(ctx, migrateSignalTimeout)
+		if err != nil {
+			return m.fail(err)
+		}
+		err = m.verify(sig, nodes.MigrateSignalTypeReady)
+		if err != nil {
+			return m.fail(err)
+		}
+		// Resolve target stream and enter migrating
+		if m.streamId == 0 {
+			return m.fail(fmt.Errorf("missing stream ID"))
+		}
+		targetStream := m.mod.findStreamByID(m.streamId)
+		if targetStream == nil {
+			return m.fail(fmt.Errorf("target stream not found"))
+		}
+
+		if !m.sess.stream.RemoteIdentity().IsEqual(targetStream.RemoteIdentity()) {
+			return m.fail(fmt.Errorf("identity mismatch"))
+		}
+
+		err = m.sess.Migrate(targetStream)
+		if err != nil {
+			return m.fail(err)
+		}
+		// Send migration marker on old stream
+		err = m.sess.writeMigrateFrame()
+		if err != nil {
+			return m.fail(err)
+		}
+		return StateWaitingMarker, nil
 	}
 
-	sig, err := m.recv()
+	// Responder branch
+	sig, err := m.readSignal(ctx, migrateSignalTimeout)
 	if err != nil {
-		return StateFailed, err
+		return m.fail(err)
 	}
-	if err = m.verify(sig, nodes.MigrateSignalTypeBegin); err != nil {
-		return StateFailed, err
+	err = m.verify(sig, nodes.MigrateSignalTypeBegin)
+	if err != nil {
+		return m.fail(err)
 	}
 
 	// Resolve local target stream and enter migrating
 	if m.streamId == 0 {
-		return StateFailed, fmt.Errorf("missing streamId on responder")
+		return m.fail(fmt.Errorf("missing stream ID"))
 	}
-	localTarget := m.mod.findStreamByID(m.streamId)
-	if localTarget == nil {
-		return StateFailed, fmt.Errorf("target stream not found")
+	targetStream := m.mod.findStreamByID(m.streamId)
+	if targetStream == nil {
+		return m.fail(fmt.Errorf("target stream not found"))
 	}
-	if err := m.sess.Migrate(localTarget); err != nil {
-		return StateFailed, err
+	// Cannot change identity that we sent to
+	if !m.sess.stream.RemoteIdentity().IsEqual(targetStream.RemoteIdentity()) {
+		return m.fail(fmt.Errorf("identity mismatch"))
+	}
+	err = m.sess.Migrate(targetStream)
+	if err != nil {
+		return m.fail(err)
 	}
 
-	// Send ready
-	if err = m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeReady, Nonce: m.sessionId}); err != nil {
-		return StateFailed, err
-	}
-	return StateWaitingMarker, nil
-}
-
-// handleWaitingAck:
-// - Initiator: wait for migrate_ready, then go to WaitingMarker
-// - Responder: not used; fall through to WaitingMarker if reached
-func (m *sessionMigrator) handleWaitingAck(ctx *astral.Context) (migrateState, error) {
-	if m.role == RoleInitiator {
-		sig, err := m.recv()
-		if err != nil {
-			return StateFailed, err
-		}
-		if err := m.verify(sig, nodes.MigrateSignalTypeReady); err != nil {
-			return StateFailed, err
-		}
-
-		// Resolve our local target stream and enter migrating
-		if m.streamId == 0 {
-			return StateFailed, fmt.Errorf("missing streamId on initiator")
-		}
-		localTarget := m.mod.findStreamByID(m.streamId)
-		if localTarget == nil {
-			return StateFailed, fmt.Errorf("target stream not found")
-		}
-		if err := m.sess.Migrate(localTarget); err != nil {
-			return StateFailed, err
-		}
-
-		// Send migration marker on old stream
-		if err := m.sess.writeMigrateFrame(); err != nil {
-			return StateFailed, err
-		}
-		return StateWaitingMarker, nil
+	// Send READY
+	err = m.writeSignal(ctx, &nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeReady, Nonce: m.sessionId}, migrateSignalTimeout)
+	if err != nil {
+		return m.fail(err)
 	}
 	return StateWaitingMarker, nil
 }
@@ -139,35 +164,48 @@ func (m *sessionMigrator) handleWaitingAck(ctx *astral.Context) (migrateState, e
 // handleWaitingMarker:
 // - Initiator: wait for migrate_completed from responder and complete migration
 // - Responder: wait for session to reopen, then send completed
-func (m *sessionMigrator) handleWaitingMarker(ctx *astral.Context) (migrateState, error) {
-	_ = ctx
+func (m *sessionMigrator) handleWaitingMarker(ctx context.Context) (migrateState,
+	error) {
 	if m.role == RoleInitiator {
-		sig, err := m.recv()
+		sig, err := m.readSignal(ctx, migrateSignalTimeout)
 		if err != nil {
-			return StateFailed, err
+			return m.fail(err)
 		}
-		if err = m.verify(sig, nodes.MigrateSignalTypeCompleted); err != nil {
-			return StateFailed, err
+
+		err = m.verify(sig, nodes.MigrateSignalTypeCompleted)
+		if err != nil {
+			return m.fail(err)
 		}
-		if err := m.sess.CompleteMigration(); err != nil {
-			return StateFailed, err
+
+		err = m.sess.CompleteMigration()
+		if err != nil {
+			return m.fail(err)
 		}
-		m.mod.log.Log("session migrated %v %v", m.sessionId, m.streamId)
+
+		m.mod.log.Log("migration: session migrated %v %v", m.sessionId, m.streamId)
 		return StateCompleted, nil
 	}
 
-	ticker := time.NewTicker(5 * time.Second)
+	// Responder: wait for session reopen, then send completed
+	ctx, cancel := context.WithTimeout(ctx, markerApplicationTimeout)
+	defer cancel()
+
+	ticker := time.NewTicker(50 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			return StateFailed, ctx.Err()
+			return m.fail(ctx.Err())
 		case <-ticker.C:
-			if m.sess != nil && m.sess.state.Load() == int32(stateOpen) {
-				m.mod.log.Log("session migrated %v %v", m.sessionId, m.streamId)
-				if err := m.ch.Write(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeCompleted, Nonce: m.sessionId}); err != nil {
-					return StateFailed, err
+			if m.sess != nil && m.sess.IsOpen() {
+				m.mod.log.Log("migration: session migrated %v %v", m.sessionId, m.streamId)
+				err := m.writeSignal(ctx, &nodes.SessionMigrateSignal{
+					Signal: nodes.MigrateSignalTypeCompleted,
+					Nonce:  m.sessionId,
+				}, migrateSignalTimeout)
+				if err != nil {
+					return m.fail(err)
 				}
 				return StateCompleted, nil
 			}
@@ -175,16 +213,56 @@ func (m *sessionMigrator) handleWaitingMarker(ctx *astral.Context) (migrateState
 	}
 }
 
-func (m *sessionMigrator) recv() (*nodes.SessionMigrateSignal, error) {
-	obj, err := m.ch.Read()
-	if err != nil {
-		return nil, err
+// readSignal reads a migrate signal with a timeout and respects context cancel.
+func (m *sessionMigrator) readSignal(ctx context.Context,
+	timeout time.Duration) (*nodes.SessionMigrateSignal, error) {
+	type result struct {
+		sig *nodes.SessionMigrateSignal
+		err error
 	}
-	sig, ok := obj.(*nodes.SessionMigrateSignal)
-	if !ok {
-		return nil, fmt.Errorf("unexpected object type: %T", obj)
+	resCh := make(chan result, 1)
+
+	// TODO: create ReadContext method on Channel to avoid goroutine leak risk
+	go func() {
+		obj, err := m.ch.Read()
+		if err != nil {
+			resCh <- result{nil, err}
+			return
+		}
+		sig, ok := obj.(*nodes.SessionMigrateSignal)
+		if !ok {
+			resCh <- result{nil, fmt.Errorf("unexpected object type: %T", obj)}
+			return
+		}
+		resCh <- result{sig, nil}
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-time.After(timeout):
+	case r := <-resCh:
+		return r.sig, r.err
 	}
-	return sig, nil
+
+	return nil, context.DeadlineExceeded
+}
+
+// writeSignal sends a SessionMigrateSignal and returns early on timeout or context cancel.
+func (m *sessionMigrator) writeSignal(ctx context.Context,
+	obj *nodes.SessionMigrateSignal, timeout time.Duration) error {
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- m.ch.Write(obj)
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-time.After(timeout):
+	case err := <-errCh:
+		return err
+	}
+
+	return context.DeadlineExceeded
 }
 
 func (m *sessionMigrator) verify(sig *nodes.SessionMigrateSignal, expected string) error {
@@ -195,4 +273,9 @@ func (m *sessionMigrator) verify(sig *nodes.SessionMigrateSignal, expected strin
 		return fmt.Errorf("sessionId mismatch in %v", expected)
 	}
 	return nil
+}
+
+func (m *sessionMigrator) fail(reason error) (migrateState, error) {
+	_ = m.writeSignal(context.Background(), &nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeAbort, Nonce: m.sessionId}, 1*time.Second)
+	return StateFailed, reason
 }

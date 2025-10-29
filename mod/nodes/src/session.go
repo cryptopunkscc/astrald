@@ -193,17 +193,16 @@ func (c *session) swapState(old, new int) bool {
 	return true
 }
 
+func (s *session) IsOpen() bool {
+	return s.state.Load() == stateOpen
+}
+
 func (c *session) Migrate(s *Stream) error {
 	c.wcond.L.Lock()
 	defer c.wcond.L.Unlock()
 
 	if c.state.Load() != stateOpen {
 		return fmt.Errorf(`cannot migrate non-open session`)
-	}
-
-	// Cannot change identity that we sent to
-	if !c.stream.RemoteIdentity().IsEqual(s.RemoteIdentity()) {
-		return fmt.Errorf(`cannot migrate to different identity`)
 	}
 
 	// Record target stream for both roles
@@ -248,4 +247,16 @@ func (c *session) CompleteMigration() error {
 	}
 
 	return nil
+}
+
+func (c *session) CancelMigration() {
+	c.wcond.L.Lock()
+	defer c.wcond.L.Unlock()
+
+	if c.state.Load() != stateMigrating {
+		return
+	}
+
+	c.migratingTo = nil
+	c.swapState(stateMigrating, stateOpen)
 }
