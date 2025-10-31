@@ -14,6 +14,7 @@ type EndpointPair struct {
 	PeerA     PeerEndpoint
 	PeerB     PeerEndpoint
 	CreatedAt astral.Time
+	Nonce     astral.Nonce
 }
 
 // ObjectType implements astral.Object.
