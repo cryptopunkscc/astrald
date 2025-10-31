@@ -16,20 +16,20 @@ import (
 // etc. Also serves as neat abstraction to be used in OpStartTraversal,
 // also allowing test cases to be written.
 
-// traversal is a tiny state machine driving NatSignal exchange.
+// traversal is a tiny state machine driving PunchSignal exchange.
 type traversal struct {
 	role Role
-	ch   *astral.Channel // channel to exchange NatSignal
+	ch   *astral.Channel // channel to exchange PunchSignal
 
 	localIdentity *astral.Identity
 	peerIdentity  *astral.Identity
 	localPublicIP ip.IP
 	puncher       nat.Puncher
 	// received signals
-	offer      *nat.NatSignal
-	answer     *nat.NatSignal
-	goSignal   *nat.NatSignal
-	peerResult *nat.NatSignal
+	offer      *nat.PunchSignal
+	answer     *nat.PunchSignal
+	goSignal   *nat.PunchSignal
+	peerResult *nat.PunchSignal
 
 	pair nat.EndpointPair
 }
@@ -90,8 +90,8 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 		if err != nil {
 			return state, err
 		}
-		err = t.ch.Write(&nat.NatSignal{
-			Signal:  nat.NatSignalTypeOffer,
+		err = t.ch.Write(&nat.PunchSignal{
+			Signal:  nat.PunchSignalTypeOffer,
 			Session: t.puncher.Session(),
 			IP:      t.localPublicIP,
 			Port:    astral.Uint16(t.puncher.LocalPort()),
@@ -103,7 +103,7 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 		if err != nil {
 			return state, err
 		}
-		if err = t.verify(ans, nat.NatSignalTypeAnswer); err != nil {
+		if err = t.verify(ans, nat.PunchSignalTypeAnswer); err != nil {
 			return 0, err
 		}
 		t.answer = ans
@@ -123,7 +123,7 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 	if err != nil {
 		return state, err
 	}
-	err = t.ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeAnswer,
+	err = t.ch.Write(&nat.PunchSignal{Signal: nat.PunchSignalTypeAnswer,
 		Session: t.puncher.Session(), IP: t.localPublicIP,
 		Port: astral.Uint16(t.puncher.LocalPort())})
 	if err != nil {
@@ -135,8 +135,8 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 
 func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err error) {
 	if t.role == RoleInitiator {
-		err = t.ch.Write(&nat.NatSignal{
-			Signal:  nat.NatSignalTypeReady,
+		err = t.ch.Write(&nat.PunchSignal{
+			Signal:  nat.PunchSignalTypeReady,
 			Session: t.puncher.Session(),
 		})
 		if err != nil {
@@ -146,7 +146,7 @@ func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err erro
 		if err != nil {
 			return state, err
 		}
-		if err = t.verify(goSig, nat.NatSignalTypeGo); err != nil {
+		if err = t.verify(goSig, nat.PunchSignalTypeGo); err != nil {
 			return 0, err
 		}
 		t.goSignal = goSig
@@ -157,10 +157,10 @@ func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err erro
 	if err != nil {
 		return state, err
 	}
-	if err = t.verify(ready, nat.NatSignalTypeReady); err != nil {
+	if err = t.verify(ready, nat.PunchSignalTypeReady); err != nil {
 		return 0, err
 	}
-	err = t.ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeGo,
+	err = t.ch.Write(&nat.PunchSignal{Signal: nat.PunchSignalTypeGo,
 		Session: t.puncher.Session()})
 	if err != nil {
 		return state, err
@@ -192,11 +192,14 @@ func (t *traversal) handlePunch(ctx *astral.Context) (state State, err error) {
 
 func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err error) {
 	if t.role == RoleInitiator {
-		err = t.ch.Write(&nat.NatSignal{
-			Signal:  nat.NatSignalTypeResult,
-			Session: t.puncher.Session(),
-			IP:      t.pair.PeerB.Endpoint.IP,
-			Port:    t.pair.PeerB.Endpoint.Port,
+		// Generate shared PairNonce
+		t.pair.Nonce = astral.NewNonce()
+		err = t.ch.Write(&nat.PunchSignal{
+			Signal:    nat.PunchSignalTypeResult,
+			Session:   t.puncher.Session(),
+			IP:        t.pair.PeerB.Endpoint.IP,
+			Port:      t.pair.PeerB.Endpoint.Port,
+			PairNonce: t.pair.Nonce,
 		})
 		if err != nil {
 			return state, err
@@ -205,7 +208,7 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 		if err != nil {
 			return state, err
 		}
-		if err = t.verify(res, nat.NatSignalTypeResult); err != nil {
+		if err = t.verify(res, nat.PunchSignalTypeResult); err != nil {
 			return 0, err
 		}
 		t.pair.PeerA.Endpoint = utp.Endpoint{IP: res.IP, Port: res.Port}
@@ -218,13 +221,21 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 		return state, err
 	}
 
-	err = t.verify(res, nat.NatSignalTypeResult)
+	err = t.verify(res, nat.PunchSignalTypeResult)
 	if err != nil {
 		return 0, err
 	}
+	// Set PairNonce from initiator's Result
+	t.pair.Nonce = res.PairNonce
 	t.pair.PeerA.Endpoint = utp.Endpoint{IP: res.IP, Port: res.Port}
 	// responder sends result back to initiator
-	err = t.ch.Write(&nat.NatSignal{Signal: nat.NatSignalTypeResult, Session: t.puncher.Session(), IP: t.pair.PeerB.Endpoint.IP, Port: t.pair.PeerB.Endpoint.Port})
+	err = t.ch.Write(&nat.PunchSignal{
+		Signal:    nat.PunchSignalTypeResult,
+		Session:   t.puncher.Session(),
+		IP:        t.pair.PeerB.Endpoint.IP,
+		Port:      t.pair.PeerB.Endpoint.Port,
+		PairNonce: t.pair.Nonce,
+	})
 	if err != nil {
 		return state, err
 	}
@@ -257,19 +268,19 @@ func (t *traversal) closePuncher() {
 	}
 }
 
-func (t *traversal) recv() (*nat.NatSignal, error) {
+func (t *traversal) recv() (*nat.PunchSignal, error) {
 	obj, err := t.ch.Read()
 	if err != nil {
 		return nil, err
 	}
-	sig, ok := obj.(*nat.NatSignal)
+	sig, ok := obj.(*nat.PunchSignal)
 	if !ok {
 		return nil, fmt.Errorf("unexpected object type")
 	}
 	return sig, nil
 }
 
-func (t *traversal) verify(sig *nat.NatSignal, expected string) error {
+func (t *traversal) verify(sig *nat.PunchSignal, expected string) error {
 	if sig == nil || sig.Signal != astral.String8(expected) {
 		return fmt.Errorf("invalid %s signal", expected)
 	}
