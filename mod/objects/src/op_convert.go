@@ -2,9 +2,10 @@ package objects
 
 import (
 	"errors"
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"io"
 )
 
 type opConvertArgs struct {

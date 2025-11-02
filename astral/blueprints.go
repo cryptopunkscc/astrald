@@ -11,18 +11,17 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-var DefaultBlueprints = &Blueprints{}
+var DefaultBlueprints = &Blueprints{
+	TypeReader: ReadShortType,
+	TypeWriter: WriteShortType,
+}
 
 // Blueprints is a structure that holds prototypes of astral objects.
 type Blueprints struct {
 	Blueprints sig.Map[string, Object]
 	Parent     *Blueprints
-}
-
-// NewBlueprints returns a new instance of Blueprints. If parent is not nil, it will be used by Make() to look up
-// prototypes if not found in this instance.
-func NewBlueprints(parent *Blueprints) *Blueprints {
-	return &Blueprints{Parent: parent}
+	TypeReader TypeReader
+	TypeWriter TypeWriter
 }
 
 // HasBlueprints is used to check if a variable holds blueprints
@@ -30,7 +29,73 @@ type HasBlueprints interface {
 	Blueprints() *Blueprints
 }
 
-// Make returns a zero-value instance of an object of the specified type
+// NewBlueprints returns a new instance of Blueprints. If parent is not nil, it will be used by Make() to look up
+// prototypes if not found in this instance.
+func NewBlueprints(parent *Blueprints) *Blueprints {
+	return &Blueprints{
+		Parent:     parent,
+		TypeReader: ReadShortType,
+		TypeWriter: WriteShortType,
+	}
+}
+
+// Canonical returns a child Blueprints object that uses canonical type encoding
+func (bp *Blueprints) Canonical() *Blueprints {
+	return &Blueprints{
+		Parent:     bp,
+		TypeReader: ReadCanonicalType,
+		TypeWriter: WriteCanonicalType,
+	}
+}
+
+// Short returns a child Blueprints object that uses short type encoding
+func (bp *Blueprints) Short() *Blueprints {
+	return &Blueprints{
+		Parent:     bp,
+		TypeReader: ReadShortType,
+		TypeWriter: WriteShortType,
+	}
+}
+
+// Indexed returns a child Blueprints object that encodes types as uint8 indicating the index of the type
+func (bp *Blueprints) Indexed(types []string) *Blueprints {
+	var rev = map[string]Uint8{}
+	for idx, v := range types {
+		rev[v] = Uint8(idx)
+	}
+
+	rbp := &Blueprints{Parent: bp}
+	rbp.TypeReader = func(r io.Reader) (t ObjectType, n int64, err error) {
+		var code Uint8
+		n, err = code.ReadFrom(r)
+		if err != nil {
+			return
+		}
+
+		if int(code) >= len(types) {
+			err = fmt.Errorf("invalid type code %d", code)
+			return
+		}
+
+		return ObjectType(types[code]), n, nil
+	}
+
+	rbp.TypeWriter = func(w io.Writer, t ObjectType) (n int64, err error) {
+		var code Uint8
+		var ok bool
+
+		code, ok = rev[string(t)]
+		if !ok {
+			return 0, errors.New("invalid type")
+		}
+
+		return code.WriteTo(w)
+	}
+
+	return rbp
+}
+
+// Make returns a zero-value object of the specified type or nil if no blueprint is found.
 func (bp *Blueprints) Make(typeName string) Object {
 	p, ok := bp.Blueprints.Get(typeName)
 	if !ok {
@@ -63,15 +128,6 @@ func (bp *Blueprints) Add(object ...Object) error {
 	return errors.Join(errs...)
 }
 
-// AddAs adds a new object prototype as provided type name, ignoring object's own ObjectType()
-func (bp *Blueprints) AddAs(typeName string, object Object) error {
-	_, ok := bp.Blueprints.Set(typeName, object)
-	if !ok {
-		return fmt.Errorf("blueprint for %s already added", typeName)
-	}
-	return nil
-}
-
 // Refine takes a RawObject and reparses it into a concrete object if a prototype for the type is found
 func (bp *Blueprints) Refine(raw *RawObject) (Object, error) {
 	b := bp.Make(raw.ObjectType())
@@ -89,6 +145,7 @@ func (bp *Blueprints) Refine(raw *RawObject) (Object, error) {
 	return b, err
 }
 
+// RefineJSON takes a JSONDecodeAdapter and tries to convert it into an Object.
 func (bp *Blueprints) RefineJSON(jsonObj *JSONDecodeAdapter) (obj Object, err error) {
 	obj = bp.Make(jsonObj.Type)
 	if obj == nil {
@@ -114,54 +171,81 @@ func (bp *Blueprints) RefineJSON(jsonObj *JSONDecodeAdapter) (obj Object, err er
 	return
 }
 
-// Names returns type names of all registered prototypes
-func (bp *Blueprints) Names() (names []string) {
+// Types returns type names of all registered object types
+func (bp *Blueprints) Types() (names []string) {
 	if bp.Parent != nil {
-		names = bp.Parent.Names()
+		names = bp.Parent.Types()
 	}
 	return append(names, bp.Blueprints.Keys()...)
 }
 
-// Read reads a short-form object from the reader.
+// Read reads an object from the reader.
 func (bp *Blueprints) Read(r io.Reader) (o Object, n int64, err error) {
-	return bp.read(r, false)
+	return bp.read(r, bp.TypeReader)
 }
 
-// ReadCanonical reads a canonical-form object from the reader.
-func (bp *Blueprints) ReadCanonical(r io.Reader) (o Object, n int64, err error) {
-	return bp.read(r, true)
-}
+// read reads an object from the reader using the provided type reader to read the type.
+func (bp *Blueprints) read(r io.Reader, read TypeReader) (object Object, n int64, err error) {
+	var objectType ObjectType
+	var m int64
 
-func (bp *Blueprints) read(r io.Reader, canonical bool) (o Object, n int64, err error) {
-	var typeName String8
-	if canonical {
-		var h ObjectHeader
-		n, err = h.ReadFrom(r)
-		typeName = String8(h)
-	} else {
-		n, err = typeName.ReadFrom(r)
-	}
+	objectType, n, err = read(r)
 	if err != nil {
 		return
 	}
+
 	if bp != nil {
-		o = bp.Make(string(typeName))
+		// try to make a new object of the type
+		object = bp.Make(string(objectType))
+
+		// inject blueprints into the reader with default (short) type encoding
+		r = &ReaderWithBlueprints{
+			bp:     bp.Short(),
+			Reader: r,
+		}
 	}
-	if o == nil {
-		o = &RawObject{Type: string(typeName)}
+
+	// if no blueprint is found, create a raw object
+	if object == nil {
+		object = &RawObject{Type: string(objectType)}
 	}
-	m, err := o.ReadFrom(&ReaderWithBlueprints{
-		bp:     bp,
-		Reader: r,
-	})
+
+	// read the object payload
+	m, err = object.ReadFrom(r)
 	n += m
-	return o, n, err
+	return object, n, err
 }
 
-// Unpack unpacks a short form object from a buffer
+// Write writes an object to the writer.
+func (bp *Blueprints) Write(w io.Writer, object Object) (n int64, err error) {
+	return bp.write(w, object, bp.TypeWriter)
+}
+
+// write writes an object to the writer using the provided type writer to write the type.
+func (bp *Blueprints) write(w io.Writer, object Object, write TypeWriter) (n int64, err error) {
+	var m int64
+
+	n, err = write(w, ObjectType(object.ObjectType()))
+	if err != nil {
+		return
+	}
+
+	m, err = object.WriteTo(w)
+	n += m
+	return
+}
+
+// Unpack unpacks an object from a buffer
 func (bp *Blueprints) Unpack(data []byte) (object Object, err error) {
 	object, _, err = bp.Read(bytes.NewReader(data))
 	return
+}
+
+// Pack packs an object into a buffer
+func (bp *Blueprints) Pack(object Object) (data []byte, err error) {
+	var buf = &bytes.Buffer{}
+	_, err = bp.Write(buf, object)
+	return buf.Bytes(), err
 }
 
 // UnpackJSON unpacks an object from its JSON form
@@ -176,19 +260,14 @@ func (bp *Blueprints) Inject(r io.Reader) io.Reader {
 	return NewReaderWithBlueprints(r, bp)
 }
 
-// Unpack unpacks a short-form object from the buffer using DefaultBlueprints.
+// Unpack unpacks an object from the buffer using DefaultBlueprints.
 func Unpack(data []byte) (object Object, err error) {
 	return DefaultBlueprints.Unpack(data)
 }
 
-// Read reads a short-form object from the reader using DefaultBlueprints.
+// Read reads an object from the reader using DefaultBlueprints.
 func Read(r io.Reader) (o Object, n int64, err error) {
 	return DefaultBlueprints.Read(r)
-}
-
-// ReadCanonical reads a canonical-form object from the reader using DefaultBlueprints.
-func ReadCanonical(r io.Reader) (o Object, n int64, err error) {
-	return DefaultBlueprints.ReadCanonical(r)
 }
 
 var _ HasBlueprints = &ReaderWithBlueprints{}

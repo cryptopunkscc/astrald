@@ -31,7 +31,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		return nil, err
 	}
 
-	mod.blueprints.Parent = astral.DefaultBlueprints
+	mod.blueprints = astral.NewBlueprints(astral.DefaultBlueprints)
 
 	mod.repos.Set("mem0", mem.NewRepository("", 0))
 

@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -74,7 +73,7 @@ func (mod *Module) opPushSingle(ctx *astral.Context, q shell.Query, args opPushA
 		return
 	}
 
-	obj, _, err := mod.Blueprints().ReadCanonical(bytes.NewReader(buf))
+	obj, err := mod.Blueprints().Canonical().Unpack(buf)
 	if err != nil {
 		mod.log.Errorv(1, "%v push read object error: %v", q.Caller(), err)
 		binary.Write(stream, binary.BigEndian, false)

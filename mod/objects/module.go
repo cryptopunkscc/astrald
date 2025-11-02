@@ -99,7 +99,7 @@ func Save(ctx *astral.Context, object astral.Object, repo Repository) (objectID 
 	}
 	defer w.Discard()
 
-	_, err = astral.WriteCanonical(w, object)
+	_, err = astral.DefaultBlueprints.Canonical().Write(w, object)
 	if err != nil {
 		return
 	}

@@ -1,9 +1,10 @@
 package objects
 
 import (
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
-	"io"
 )
 
 type SourcedObject struct {
@@ -21,7 +22,7 @@ func (o *SourcedObject) ObjectType() string {
 func (o *SourcedObject) WriteTo(w io.Writer) (n int64, err error) {
 	return streams.WriteAllTo(w,
 		o.Source,
-		astral.ObjectHeader(o.Object.ObjectType()),
+		astral.ObjectType(o.Object.ObjectType()),
 		o.Object)
 }
 

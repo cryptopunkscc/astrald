@@ -3,6 +3,8 @@ package objects
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -11,7 +13,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
-	"strings"
 )
 
 var _ objects.Module = &Module{}
@@ -24,7 +25,7 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	blueprints astral.Blueprints
+	blueprints *astral.Blueprints
 	node       astral.Node
 	config     Config
 	db         *DB
@@ -56,7 +57,7 @@ func (mod *Module) Scope() *shell.Scope {
 }
 
 func (mod *Module) Blueprints() *astral.Blueprints {
-	return &mod.blueprints
+	return mod.blueprints
 }
 
 func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error) {
@@ -71,7 +72,7 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 	}
 	defer r.Close()
 
-	var header astral.ObjectHeader
+	var header astral.ObjectType
 	_, err = header.ReadFrom(r)
 	if err != nil {
 		return "", err

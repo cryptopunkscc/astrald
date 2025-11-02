@@ -54,7 +54,7 @@ func (r *WriteResolver) Resolve() (id *ObjectID) {
 	return
 }
 
-// NewReadResolver returns a new instance of a Read
+// NewReadResolver returns a new instance of a ReadResolver
 func NewReadResolver(r io.Reader) *ReadResolver {
 	return &ReadResolver{r: r, resolver: NewWriteResolver(nil)}
 }

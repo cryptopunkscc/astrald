@@ -31,7 +31,7 @@ func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *astra
 		bp = astral.DefaultBlueprints
 	}
 
-	a, _, err = bp.ReadCanonical(r)
+	a, _, err = bp.Canonical().Read(r)
 	if err != nil {
 		return
 	}

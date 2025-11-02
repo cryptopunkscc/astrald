@@ -1,16 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/debug"
-	"github.com/cryptopunkscc/astrald/mod/keys"
-	"github.com/cryptopunkscc/astrald/resources"
 	"os"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/debug"
+	"github.com/cryptopunkscc/astrald/resources"
 )
 
 const resNodeIdentity = "node_identity"
@@ -21,7 +19,7 @@ func run(ctx context.Context, args *Args) error {
 		return err
 	}
 
-	nodeID, err := setupNodeIdentity(nodeRes)
+	nodeID, err := loadNodeIdentity(nodeRes)
 	if err != nil {
 		return err
 	}
@@ -65,55 +63,4 @@ func setupResources(args *Args) (resources.Resources, error) {
 	})
 
 	return nodeRes, err
-}
-
-// setupNodeIdentity reads node's identity from resources or generates one if needed
-func setupNodeIdentity(resources resources.Resources) (*astral.Identity, error) {
-	keyBytes, err := resources.Read(resNodeIdentity)
-	if err == nil {
-		if len(keyBytes) == 32 {
-			return astral.IdentityFromPrivKeyBytes(keyBytes)
-		}
-
-		var pk keys.PrivateKey
-
-		objType, payload, err := astral.OpenCanonical(bytes.NewReader(keyBytes))
-		switch {
-		case err != nil:
-			return nil, err
-		case objType != pk.ObjectType():
-			return nil, fmt.Errorf("invalid object type: %s", objType)
-		}
-
-		_, err = pk.ReadFrom(payload)
-		if err != nil {
-			return nil, err
-		}
-
-		return astral.IdentityFromPrivKeyBytes(pk.Bytes)
-	}
-
-	nodeID, err := astral.GenerateIdentity()
-	if err != nil {
-		return nil, err
-	}
-
-	var buf = &bytes.Buffer{}
-
-	pk := &keys.PrivateKey{
-		Type:  keys.KeyTypeIdentity,
-		Bytes: nodeID.PrivateKey().Serialize(),
-	}
-
-	_, err = astral.WriteCanonical(buf, pk)
-	if err != nil {
-		return nil, err
-	}
-
-	err = resources.Write(resNodeIdentity, buf.Bytes())
-	if err != nil {
-		return nil, err
-	}
-
-	return nodeID, nil
 }

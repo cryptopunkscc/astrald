@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -99,25 +98,19 @@ func (c *Consumer) Search(ctx *astral.Context, s string) (<-chan *objects.Search
 }
 
 func (c *Consumer) Push(ctx *astral.Context, o astral.Object) (err error) {
-	var buf = &bytes.Buffer{}
+	var data []byte
 
-	_, err = astral.ObjectHeader(o.ObjectType()).WriteTo(buf)
+	data, err = c.mod.Blueprints().Canonical().Pack(o)
 	if err != nil {
 		return
 	}
 
-	_, err = o.WriteTo(buf)
-	if err != nil {
-		return
-	}
-
-	var b = buf.Bytes()
-	if len(b) > maxPushSize {
+	if len(data) > maxPushSize {
 		return errors.New("object too large")
 	}
 
 	params := query.Args{
-		"size": strconv.FormatInt(int64(len(b)), 10),
+		"size": strconv.FormatInt(int64(len(data)), 10),
 	}
 
 	var q = query.New(c.consumerID, c.providerID, methodPush, params)
@@ -128,7 +121,7 @@ func (c *Consumer) Push(ctx *astral.Context, o astral.Object) (err error) {
 	}
 	defer conn.Close()
 
-	_, err = conn.Write(b)
+	_, err = conn.Write(data)
 	if err != nil {
 		return
 	}
@@ -164,7 +157,7 @@ func (c *Consumer) Describe(ctx *astral.Context, objectID *astral.ObjectID, _ *a
 		defer conn.Close()
 
 		for {
-			obj, _, err := c.mod.Blueprints().ReadCanonical(conn)
+			obj, _, err := c.mod.Blueprints().Canonical().Read(conn)
 			if err != nil {
 				return
 			}

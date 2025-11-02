@@ -38,16 +38,6 @@ func (e *ObservedEndpointMessage) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 
-	if raw, ok := obj.(*astral.RawObject); ok {
-		// Try to refine raw into a concrete type using blueprints
-		if refined, refineErr := bp.Refine(raw); refineErr == nil {
-			if ep, ok := refined.(exonet.Endpoint); ok {
-				e.Endpoint = ep
-				return n, nil
-			}
-		}
-	}
-
 	return n, fmt.Errorf("object is not an exonet.Endpoint")
 }
 
