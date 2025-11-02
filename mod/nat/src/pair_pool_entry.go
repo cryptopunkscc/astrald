@@ -2,6 +2,7 @@ package nat
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"io"
 	"net"
@@ -14,11 +15,10 @@ import (
 )
 
 const (
-	stateIdle      = iota // actively pinging (if pinger)
-	stateInLocking        // stop sending pings, waiting for drain
-	stateLocked           // fully drained, silent
-
-	stateExpired // dead
+	stateIdle = iota
+	stateInLocking
+	stateLocked
+	stateExpired
 )
 
 const (
@@ -132,6 +132,7 @@ func (e *pairEntry) keepaliveLoop() {
 				_ = e.finalizeLock() // CAS-safe
 				return
 			}
+
 			if e.lockTimedOut() {
 				e.expire()
 				return
@@ -149,34 +150,35 @@ func (e *pairEntry) sendPing() error {
 	nonce := astral.NewNonce()
 	e.pings.Set(nonce, time.Now().UnixNano())
 
-	ping := &pingFrame{
-		Nonce: nonce,
-		Pong:  false,
-	}
-
+	ping := &pingFrame{Nonce: nonce}
 	var buf bytes.Buffer
 	if _, err := ping.WriteTo(&buf); err != nil {
 		return err
 	}
 
+	c := e.conn
+	if c == nil {
+		return io.ErrClosedPipe
+	}
 	remoteAddr := e.getRemoteAddr()
-	_, err := e.conn.WriteToUDP(buf.Bytes(), remoteAddr)
+	_, err := c.WriteToUDP(buf.Bytes(), remoteAddr)
 	return err
 }
 
 func (e *pairEntry) sendPong(nonce astral.Nonce) error {
-	pong := &pingFrame{
-		Nonce: nonce,
-		Pong:  true,
-	}
+	pong := &pingFrame{Nonce: nonce, Pong: true}
 
 	var buf bytes.Buffer
 	if _, err := pong.WriteTo(&buf); err != nil {
 		return err
 	}
 
+	c := e.conn
+	if c == nil {
+		return io.ErrClosedPipe
+	}
 	remoteAddr := e.getRemoteAddr()
-	_, err := e.conn.WriteToUDP(buf.Bytes(), remoteAddr)
+	_, err := c.WriteToUDP(buf.Bytes(), remoteAddr)
 	return err
 }
 
@@ -289,6 +291,40 @@ func (e *pairEntry) recvLoop() {
 			continue
 		}
 		e.handlePing(f.Nonce, f.Pong)
+	}
+}
+
+// waitLocked blocks until the entry reaches stateLocked or the context is done.
+// It also actively finalizes the lock when possible to avoid relying on keepalive.
+func (e *pairEntry) waitLocked(ctx context.Context) error {
+	// fast path
+	if e.isLocked() {
+		return nil
+	}
+
+	backoff := 10 * time.Millisecond
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// If we're in locking and the ping buffer is drained, finalize now.
+		if e.state.Load() == stateInLocking && e.isDrained() {
+			_ = e.finalizeLock()
+		}
+		if e.isLocked() {
+			return nil
+		}
+		if e.lockTimedOut() {
+			e.expire()
+			return context.DeadlineExceeded
+		}
+		time.Sleep(backoff)
+		if backoff < 100*time.Millisecond {
+			backoff += 10 * time.Millisecond
+		}
 	}
 }
 

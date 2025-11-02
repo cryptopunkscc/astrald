@@ -44,26 +44,26 @@ const (
 type State int
 
 const (
-	StateOfferExchange State = iota
-	StateReadyPhase
-	StatePunch
-	StateResultExchange
-	StateDone
+	TraversalStateOfferExchange State = iota
+	TraversalStateReadyPhase
+	TraversalStatePunch
+	TraversalStateResultExchange
+	TraversalStateDone
 )
 
 type stateFn func(*astral.Context) (state State, err error)
 
 func (t *traversal) Run(ctx *astral.Context) (pair nat.EndpointPair, err error) {
 	var handlers = map[State]stateFn{
-		StateOfferExchange:  t.handleOfferExchange,
-		StateReadyPhase:     t.handleReadyPhase,
-		StatePunch:          t.handlePunch,
-		StateResultExchange: t.handleResultExchange,
+		TraversalStateOfferExchange:  t.handleOfferExchange,
+		TraversalStateReadyPhase:     t.handleReadyPhase,
+		TraversalStatePunch:          t.handlePunch,
+		TraversalStateResultExchange: t.handleResultExchange,
 	}
 
 	defer t.closePuncher()
-	state := StateOfferExchange
-	for state != StateDone {
+	state := TraversalStateOfferExchange
+	for state != TraversalStateDone {
 		h, ok := handlers[state]
 		if !ok {
 			return pair, fmt.Errorf("invalid state")
@@ -107,7 +107,7 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 			return 0, err
 		}
 		t.answer = ans
-		state = StateReadyPhase
+		state = TraversalStateReadyPhase
 		return state, err
 	}
 
@@ -129,7 +129,7 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 	if err != nil {
 		return state, err
 	}
-	state = StateReadyPhase
+	state = TraversalStateReadyPhase
 	return state, err
 }
 
@@ -150,7 +150,7 @@ func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err erro
 			return 0, err
 		}
 		t.goSignal = goSig
-		state = StatePunch
+		state = TraversalStatePunch
 		return state, err
 	}
 	ready, err := t.recv()
@@ -165,7 +165,7 @@ func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err erro
 	if err != nil {
 		return state, err
 	}
-	state = StatePunch
+	state = TraversalStatePunch
 	return state, err
 }
 
@@ -186,7 +186,7 @@ func (t *traversal) handlePunch(ctx *astral.Context) (state State, err error) {
 		PeerB: nat.PeerEndpoint{Identity: t.peerIdentity, Endpoint: observedPeer},
 	}
 	t.pair = pair
-	state = StateResultExchange
+	state = TraversalStateResultExchange
 	return state, err
 }
 
@@ -212,7 +212,7 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 			return 0, err
 		}
 		t.pair.PeerA.Endpoint = utp.Endpoint{IP: res.IP, Port: res.Port}
-		state = StateDone
+		state = TraversalStateDone
 		return state, err
 	}
 
@@ -239,7 +239,7 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 	if err != nil {
 		return state, err
 	}
-	state = StateDone
+	state = TraversalStateDone
 	return state, err
 }
 

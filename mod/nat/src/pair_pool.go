@@ -48,8 +48,7 @@ func (p *PairPool) Take(peer *astral.Identity) *nat.EndpointPair {
 	for _, n := range p.pairs.Keys() {
 		if e, ok := p.pairs.Get(n); ok && e.isIdle() && e.matchesPeer(peer) && e.beginLock() {
 			// TODO: start coordination with peer about lock
-
-			return e
+			return &e.EndpointPair
 		}
 	}
 	return nil
