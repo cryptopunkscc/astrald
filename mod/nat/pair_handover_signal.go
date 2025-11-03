@@ -13,6 +13,7 @@ const (
 	PairHandoverSignalTypeLockBusy = "lock_busy"
 	PairHandoverSignalTypeTake     = "take"
 	PairHandoverSignalTypeTakeOk   = "take_ok"
+	PairHandoverSignalTypeTakeErr  = "take_err"
 )
 
 type PairHandoverSignal struct {

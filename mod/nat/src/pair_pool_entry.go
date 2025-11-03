@@ -328,6 +328,15 @@ func (e *pairEntry) waitLocked(ctx context.Context) error {
 	}
 }
 
+func (e *pairEntry) unlock() {
+	if e.state.CompareAndSwap(stateLocked, stateIdle) {
+		// Resume keepalive if this peer was the original pinger
+		if e.isPinger {
+			e.startKeepalive()
+		}
+	}
+}
+
 type pingFrame struct {
 	Nonce astral.Nonce
 	Pong  bool
