@@ -16,6 +16,7 @@ type Module interface {
 
 const (
 	MethodStartNatTraversal = "nat.start_traversal"
+	MethodPairTake          = "nat.pair_take"
 )
 
 func init() {

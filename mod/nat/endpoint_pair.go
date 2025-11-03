@@ -49,6 +49,18 @@ func (e *EndpointPair) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
+// RemoteEndpoint returns the endpoint of the other peer in the pair.
+func (e *EndpointPair) RemoteEndpoint(self *astral.Identity) (PeerEndpoint, bool) {
+	switch {
+	case e.PeerA.Identity != nil && e.PeerA.Identity.IsEqual(self):
+		return e.PeerB, true
+	case e.PeerB.Identity != nil && e.PeerB.Identity.IsEqual(self):
+		return e.PeerA, true
+	default:
+		return PeerEndpoint{}, false
+	}
+}
+
 // PeerEndpoint represents a single peer's identity and endpoint.
 // It can be serialized via astral.Struct and registered in blueprints.
 type PeerEndpoint struct {

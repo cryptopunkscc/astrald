@@ -1,18 +1,20 @@
 package nat
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/ip"
-	"github.com/cryptopunkscc/astrald/mod/nat"
+	modnat "github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
 // Ensure Module struct implements the public nat.Module interface
-var _ nat.Module = &Module{}
+var _ modnat.Module = &Module{}
 
 // Deps are injected by the core injector.
 type Deps struct {
@@ -31,7 +33,10 @@ type Module struct {
 	assets resources.Resources
 
 	// NOTE: it could be astral.Slice?
-	traversedPairs []nat.EndpointPair
+	traversedPairs []modnat.EndpointPair
+
+	// PairPool for runtime pair management and handover
+	pool *PairPool
 
 	ops shell.Scope
 }
@@ -39,6 +44,13 @@ type Module struct {
 // Run blocks until the context is done.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
+	// initialize PairPool on module start
+	if mod.pool == nil {
+		mod.pool = NewPairPool()
+		mod.pool.Module = mod
+		mod.pool.RunCleanupLoop(30 * time.Second)
+	}
 
 	<-ctx.Done()
 	return nil
@@ -49,10 +61,10 @@ func (mod *Module) Scope() *shell.Scope {
 }
 
 func (mod *Module) String() string {
-	return nat.ModuleName
+	return modnat.ModuleName
 }
 
-func (mod *Module) addTraversedPair(pair nat.EndpointPair) {
+func (mod *Module) addTraversedPair(pair modnat.EndpointPair) {
 	mod.log.Info("added NAT traversed pair: %v (%v) <-> %v (%v) nonce=%v",
 		pair.PeerA.Identity,
 		pair.PeerA.Endpoint,

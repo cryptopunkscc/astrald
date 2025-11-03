@@ -4,6 +4,6 @@ import "github.com/cryptopunkscc/astrald/astral"
 
 type PairPool interface {
 	Add(pair *EndpointPair, local *astral.Identity, isPinger bool) error
-	Take(peer *astral.Identity) *EndpointPair
+	Take(ctx *astral.Context, peer *astral.Identity) (pair *EndpointPair, err error)
 	Size() int
 }

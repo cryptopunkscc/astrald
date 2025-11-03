@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -39,19 +40,59 @@ func (p *PairPool) Add(pair *nat.EndpointPair, local *astral.Identity, isPinger 
 	return nil
 }
 
-func (p *PairPool) Get(nonce astral.Nonce) *pairEntry {
-	e, _ := p.pairs.Get(nonce)
-	return e
+func (p *PairPool) get(nonce astral.Nonce) (*pairEntry, bool) {
+	return p.pairs.Get(nonce)
 }
 
-func (p *PairPool) Take(peer *astral.Identity) *nat.EndpointPair {
+// Take returns an idle pair that matches the given peer identity and locks on both sides.
+func (p *PairPool) Take(ctx *astral.Context, peer *astral.Identity) (pair *nat.
+	EndpointPair, err error) {
 	for _, n := range p.pairs.Keys() {
-		if e, ok := p.pairs.Get(n); ok && e.isIdle() && e.matchesPeer(peer) && e.beginLock() {
-			// TODO: start coordination with peer about lock
-			return &e.EndpointPair
+		if pair, ok := p.pairs.Get(n); ok && pair.isIdle() && pair.matchesPeer(peer) {
+			locking := pair.beginLock()
+			if !locking {
+				return nil, fmt.Errorf("cannot begin to lock pair")
+			}
+
+			remoteEndpoint, ok := pair.RemoteEndpoint(ctx.Identity())
+			if !ok {
+				return nil, fmt.Errorf("cannot find remote endpoint")
+			}
+
+			args := opPairTakeArgs{
+				Pair: pair.Nonce,
+			}
+
+			takeQuery := query.New(
+				ctx.Identity(),
+				remoteEndpoint.Identity,
+				nat.MethodPairTake,
+				&args,
+			)
+
+			peerCh, err := query.RouteChan(
+				ctx.IncludeZone(astral.ZoneNetwork),
+				p.node,
+				takeQuery,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("cannot route to peer: %w", err)
+			}
+
+			pairTaker := NewPairTaker(rolePairTaker, peerCh, pair, remoteEndpoint.Identity)
+
+			err = pairTaker.Run(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			// Pair is now locked on both sides, we can remove it from the pool.
+			p.pairs.Delete(n)
+
+			return &pair.EndpointPair, nil
 		}
 	}
-	return nil
+	return nil, fmt.Errorf("no idle pair found")
 }
 
 func (p *PairPool) Remove(nonce astral.Nonce) {
