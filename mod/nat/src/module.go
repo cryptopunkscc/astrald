@@ -7,14 +7,14 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/ip"
-	modnat "github.com/cryptopunkscc/astrald/mod/nat"
+	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
 // Ensure Module struct implements the public nat.Module interface
-var _ modnat.Module = &Module{}
+var _ nat.Module = &Module{}
 
 // Deps are injected by the core injector.
 type Deps struct {
@@ -50,11 +50,11 @@ func (mod *Module) Scope() *shell.Scope {
 }
 
 func (mod *Module) String() string {
-	return modnat.ModuleName
+	return nat.ModuleName
 }
 
 func (mod *Module) addTraversedPair(
-	pair modnat.EndpointPair,
+	pair nat.EndpointPair,
 	initiatedByLocal bool,
 ) {
 	mod.log.Info("added NAT traversed pair: %v (%v) <-> %v (%v) nonce=%v",
