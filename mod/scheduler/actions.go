@@ -1,26 +1,17 @@
 package scheduler
 
-import (
-	"fmt"
-
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/events"
-)
+import "github.com/cryptopunkscc/astrald/astral"
 
 // Action represents a unit of work to be executed by the scheduler.
 type Action interface {
-	fmt.Stringer
 	Run(*astral.Context) error
 }
 
-type Doner interface {
+type Waitable interface {
 	Done() <-chan struct{}
 }
 
-type ResourceReleaser interface {
-	Release()
-}
-
-type EventReceiver interface {
-	ReceiveEvent(e *events.Event)
+// NOTE: just demonstration purposes
+type Preparable interface {
+	Prepare(ctx *astral.Context) error
 }
