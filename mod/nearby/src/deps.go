@@ -1,6 +1,8 @@
 package nearby
 
 import (
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -11,7 +13,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"strings"
 )
 
 type Deps struct {
