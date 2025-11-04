@@ -84,9 +84,8 @@ func (p *PairPool) Take(ctx *astral.Context, peer *astral.Identity) (pair *nat.E
 				return nil, err
 			}
 
-			// Pair handover succeeded; remove it from the pool now.
+			// Pair take succeeded; remove it from the pool now.
 			p.pairs.Delete(n)
-
 			return &pair.EndpointPair, nil
 		}
 	}
