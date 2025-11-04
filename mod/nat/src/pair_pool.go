@@ -18,8 +18,11 @@ type PairPool struct {
 
 var _ nat.PairPool = &PairPool{}
 
-func NewPairPool() *PairPool {
-	return &PairPool{stop: make(chan struct{})}
+func NewPairPool(mod *Module) *PairPool {
+	return &PairPool{
+		Module: mod,
+		stop:   make(chan struct{}),
+	}
 }
 
 func (p *PairPool) Add(pair *nat.EndpointPair, local *astral.Identity, isPinger bool) error {
@@ -44,16 +47,10 @@ func (p *PairPool) get(nonce astral.Nonce) (*pairEntry, bool) {
 	return p.pairs.Get(nonce)
 }
 
-// Take returns an idle pair that matches the given peer identity and locks on both sides.
-func (p *PairPool) Take(ctx *astral.Context, peer *astral.Identity) (pair *nat.
-	EndpointPair, err error) {
+// Take returns an idle pair that matches the given peer identity and performs a coordinated handover.
+func (p *PairPool) Take(ctx *astral.Context, peer *astral.Identity) (pair *nat.EndpointPair, err error) {
 	for _, n := range p.pairs.Keys() {
 		if pair, ok := p.pairs.Get(n); ok && pair.isIdle() && pair.matchesPeer(peer) {
-			locking := pair.beginLock()
-			if !locking {
-				return nil, fmt.Errorf("cannot begin to lock pair")
-			}
-
 			remoteEndpoint, ok := pair.RemoteEndpoint(ctx.Identity())
 			if !ok {
 				return nil, fmt.Errorf("cannot find remote endpoint")
@@ -79,14 +76,15 @@ func (p *PairPool) Take(ctx *astral.Context, peer *astral.Identity) (pair *nat.
 				return nil, fmt.Errorf("cannot route to peer: %w", err)
 			}
 
-			pairTaker := NewPairTaker(rolePairTaker, peerCh, pair, remoteEndpoint.Identity)
+			defer peerCh.Close()
+			pairTaker := NewPairTaker(roleTakePairInitiator, peerCh, pair)
 
 			err = pairTaker.Run(ctx)
 			if err != nil {
 				return nil, err
 			}
 
-			// Pair is now locked on both sides, we can remove it from the pool.
+			// Pair handover succeeded; remove it from the pool now.
 			p.pairs.Delete(n)
 
 			return &pair.EndpointPair, nil

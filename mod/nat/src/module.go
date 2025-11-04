@@ -32,27 +32,16 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	// NOTE: it could be astral.Slice?
-	traversedPairs []modnat.EndpointPair
-
-	// PairPool for runtime pair management and handover
 	pool *PairPool
-
-	ops shell.Scope
+	ops  shell.Scope
 }
 
-// Run blocks until the context is done.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
-
-	// initialize PairPool on module start
-	if mod.pool == nil {
-		mod.pool = NewPairPool()
-		mod.pool.Module = mod
-		mod.pool.RunCleanupLoop(30 * time.Second)
-	}
+	mod.pool.RunCleanupLoop(30 * time.Second)
 
 	<-ctx.Done()
+	mod.pool.Stop()
 	return nil
 }
 
@@ -64,7 +53,10 @@ func (mod *Module) String() string {
 	return modnat.ModuleName
 }
 
-func (mod *Module) addTraversedPair(pair modnat.EndpointPair) {
+func (mod *Module) addTraversedPair(
+	pair modnat.EndpointPair,
+	initiatedByLocal bool,
+) {
 	mod.log.Info("added NAT traversed pair: %v (%v) <-> %v (%v) nonce=%v",
 		pair.PeerA.Identity,
 		pair.PeerA.Endpoint,
@@ -72,5 +64,9 @@ func (mod *Module) addTraversedPair(pair modnat.EndpointPair) {
 		pair.PeerB.Endpoint,
 		pair.Nonce,
 	)
-	mod.traversedPairs = append(mod.traversedPairs, pair)
+
+	err := mod.pool.Add(&pair, mod.ctx.Identity(), initiatedByLocal)
+	if err != nil {
+		mod.log.Errorv(1, "error adding pair to pool: %v", err)
+	}
 }

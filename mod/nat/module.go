@@ -21,5 +21,5 @@ const (
 
 func init() {
 	_ = astral.DefaultBlueprints.Add(&PunchSignal{})
-	_ = astral.DefaultBlueprints.Add(&PairHandoverSignal{})
+	_ = astral.DefaultBlueprints.Add(&PairTakeSignal{})
 }

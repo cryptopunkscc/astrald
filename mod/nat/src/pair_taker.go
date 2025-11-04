@@ -11,248 +11,196 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
-type handoverRole int32
+type pairTakerRole int32
 
-type handoverState int32
+type takeState int32
 
 const (
-	rolePairTaker handoverRole = iota
-	rolePairGiver
+	roleTakePairInitiator pairTakerRole = iota
+	roleTakePairResponder
 )
 
 const (
-	HandoverStateInit handoverState = iota
-	HandoverStateLockExchange
-	HandoverStateTakeExchange
-	HandoverStateDone
-	HandoverStateFailed
+	TakeStateLockExchange takeState = iota
+	TakeStateTakeExchange
+	TakeStateDone
+	TakeStateFailed
 )
 
 const (
-	// lockTimeout is defined in pair_pool_entry.go (same package)
-	initLockTimeout = 5 * time.Second
-	takeTimeout     = 5 * time.Second
+	takeTimeout = 5 * time.Second
 )
 
-// PairTaker controls the local handover lifecycle.
+// PairTaker synchronizes port pairs
 type PairTaker struct {
-	role  handoverRole
-	ch    *astral.Channel
-	pair  *pairEntry
-	peer  *astral.Identity
-	err   atomic.Value // error
-	state atomic.Int32 // current state
+	role        pairTakerRole
+	ch          *astral.Channel
+	pair        *pairEntry
+	err         atomic.Value // error
+	state       atomic.Int32 // current state
+	lockStarted bool         // tracks if beginLock was called for rollback
 }
 
-func NewPairTaker(role handoverRole, ch *astral.Channel, pair *pairEntry,
-	peer *astral.Identity) *PairTaker {
+func NewPairTaker(role pairTakerRole, ch *astral.Channel, pair *pairEntry) *PairTaker {
 	f := &PairTaker{
 		role: role,
 		ch:   ch,
 		pair: pair,
-		peer: peer,
 	}
-	f.state.Store(int32(HandoverStateInit))
 	return f
 }
 
 func (f *PairTaker) Run(ctx context.Context) error {
-	state := HandoverStateInit
-	var err error
+	f.state.Store(int32(TakeStateLockExchange))
+	f.lockStarted = false
 
-	lockedStarted := false // true iff we successfully called beginLock()
-
-	for state != HandoverStateDone {
-		if ctx.Err() != nil {
-			return f.failErr(ctx.Err())
+	if f.role == roleTakePairInitiator {
+		if !f.pair.beginLock() {
+			return f.fail(fmt.Errorf("beginLock failed: pair busy"))
 		}
-
-		switch state {
-		case HandoverStateInit, HandoverStateLockExchange:
-			// merge Init into LockExchange for initiator
-			if f.role == rolePairTaker && state == HandoverStateInit {
-				if !f.pair.beginLock() {
-					return f.failf("beginLock failed: pair busy")
-				}
-				lockedStarted = true
-
-				if err = f.writeSignal(ctx, nat.PairHandoverSignalTypeLock, initLockTimeout); err != nil {
-					f.rollbackLock(lockedStarted)
-					return f.failErr(err)
-				}
-				f.state.Store(int32(HandoverStateLockExchange))
-			}
-
-			// enter LockExchange (both roles)
-			next, e := f.doLockExchange(ctx, &lockedStarted)
-			f.state.Store(int32(next))
-			if e != nil {
-				f.rollbackLock(lockedStarted)
-				return f.failErr(e)
-			}
-			state = next
-
-		case HandoverStateTakeExchange:
-			next, e := f.doTakeExchange(ctx)
-			f.state.Store(int32(next))
-			if e != nil {
-				f.rollbackLock(lockedStarted)
-				return f.failErr(e)
-			}
-			state = next
-
-		case HandoverStateFailed:
-			f.rollbackLock(lockedStarted)
-			f.finish(nil)
-			return nil
-
-		default: // includes HandoverStateDone
-			f.finish(nil)
-			return nil
+		f.lockStarted = true
+		if err := f.writeSignal(ctx, nat.PairHandoverSignalTypeLock, lockTimeout); err != nil {
+			return f.fail(err)
 		}
 	}
 
-	f.finish(nil)
+	if err := f.doLockExchange(ctx); err != nil {
+		return f.fail(err)
+	}
+
+	f.state.Store(int32(TakeStateTakeExchange))
+	if err := f.doTakeExchange(ctx); err != nil {
+		return f.fail(err)
+	}
+
+	f.state.Store(int32(TakeStateDone))
 	return nil
 }
 
-func (f *PairTaker) doLockExchange(ctx context.Context, lockedStarted *bool) (handoverState, error) {
-	if f.role == rolePairTaker {
-		sig, err := f.readPairSignal(ctx, lockTimeout)
-		if err != nil {
-			return HandoverStateFailed, err
-		}
-		switch sig.Signal {
-		case nat.PairHandoverSignalTypeLockOk:
-			if err := f.pair.waitLocked(ctx); err != nil {
-				return HandoverStateFailed, err
+func (f *PairTaker) doLockExchange(ctx context.Context) error {
+	if f.role == roleTakePairInitiator {
+		action := func(sig *nat.PairTakeSignal) error {
+			switch sig.Signal {
+			case nat.PairHandoverSignalTypeLockOk:
+				return f.pair.waitLocked(ctx)
+			case nat.PairHandoverSignalTypeLockBusy:
+				return errors.New("remote busy during lock")
+			default:
+				return fmt.Errorf("unexpected signal in lock exchange: %s", sig.Signal)
 			}
-			return HandoverStateTakeExchange, nil
-		case nat.PairHandoverSignalTypeLockBusy:
-			return HandoverStateFailed, errors.New("remote busy during lock")
-		default:
-			return HandoverStateFailed, fmt.Errorf("unexpected signal in lock exchange: %s", sig.Signal)
 		}
-	} else if f.role != rolePairGiver {
-		return HandoverStateFailed, fmt.Errorf("invalid role: %d", f.role)
+		return f.exchange(ctx, lockTimeout, nil, nil, action)
 	}
 
-	// responder
-	sig, err := f.readPairSignal(ctx, lockTimeout)
-	if err != nil {
-		return HandoverStateFailed, err
-	}
-	if sig.Signal != nat.PairHandoverSignalTypeLock {
-		return HandoverStateFailed, fmt.Errorf("expected %s, got %s", nat.PairHandoverSignalTypeLock, sig.Signal)
-	}
-
-	if !*lockedStarted { // beginLock only once
-		if !f.pair.beginLock() {
-			_ = f.writeSignal(ctx, nat.PairHandoverSignalTypeLockBusy, lockTimeout)
-			return HandoverStateFailed, errors.New("local busy: beginLock failed")
+	action := func(sig *nat.PairTakeSignal) error {
+		if !f.lockStarted {
+			if !f.pair.beginLock() {
+				_ = f.writeSignal(ctx, nat.PairHandoverSignalTypeLockBusy, lockTimeout)
+				return errors.New("local busy: beginLock failed")
+			}
+			f.lockStarted = true
 		}
-		*lockedStarted = true
+		if err := f.pair.waitLocked(ctx); err != nil {
+			return err
+		}
+		return f.writeSignal(ctx, nat.PairHandoverSignalTypeLockOk, lockTimeout)
 	}
-	if err := f.pair.waitLocked(ctx); err != nil {
-		return HandoverStateFailed, err
-	}
-	if err := f.writeSignal(ctx, nat.PairHandoverSignalTypeLockOk, lockTimeout); err != nil {
-		return HandoverStateFailed, err
-	}
-	return HandoverStateTakeExchange, nil
+	expectedLock := astral.String8(nat.PairHandoverSignalTypeLock)
+	return f.exchange(ctx, lockTimeout, nil, &expectedLock, action)
 }
 
-func (f *PairTaker) doTakeExchange(ctx context.Context) (handoverState, error) {
-	if f.role == rolePairTaker {
-		if err := f.writeSignal(ctx, nat.PairHandoverSignalTypeTake, takeTimeout); err != nil {
-			return HandoverStateFailed, err
+func (f *PairTaker) doTakeExchange(ctx context.Context) error {
+	if f.role == roleTakePairInitiator {
+		action := func(sig *nat.PairTakeSignal) error {
+			if sig.Signal == nat.PairHandoverSignalTypeTakeErr {
+				return errors.New("responder failed to take over")
+			}
+			f.pair.unlock()
+			return nil
 		}
-		sig, err := f.readPairSignal(ctx, takeTimeout)
-		if err != nil {
-			return HandoverStateFailed, err
-		}
-		switch sig.Signal {
-		case nat.PairHandoverSignalTypeTakeOk:
-			f.pair.unlock() // return to pool / resume keepalives
-			return HandoverStateDone, nil
-		case nat.PairHandoverSignalTypeTakeErr:
-			return HandoverStateFailed, errors.New("responder failed to take over")
-		default:
-			return HandoverStateFailed, fmt.Errorf("expected %s or %s, got %s",
-				nat.PairHandoverSignalTypeTakeOk, nat.PairHandoverSignalTypeTakeErr, sig.Signal)
-		}
-	} else if f.role != rolePairGiver {
-		return HandoverStateFailed, fmt.Errorf("invalid role: %d", f.role)
+		sendTake := astral.String8(nat.PairHandoverSignalTypeTake)
+		expectTakeOk := astral.String8(nat.PairHandoverSignalTypeTakeOk)
+		return f.exchange(ctx, takeTimeout, &sendTake, &expectTakeOk, action)
 	}
 
-	// responder
-	sig, err := f.readPairSignal(ctx, takeTimeout)
-	if err != nil {
-		return HandoverStateFailed, err
+	action := func(sig *nat.PairTakeSignal) error {
+		f.pair.unlock()
+		return f.writeSignal(ctx, nat.PairHandoverSignalTypeTakeOk, takeTimeout)
 	}
-	if sig.Signal != nat.PairHandoverSignalTypeTake {
-		return HandoverStateFailed, fmt.Errorf("expected %s, got %s", nat.PairHandoverSignalTypeTake, sig.Signal)
-	}
-
-	f.pair.unlock()
-	if err := f.writeSignal(ctx, nat.PairHandoverSignalTypeTakeOk, takeTimeout); err != nil {
-		return HandoverStateFailed, err
-	}
-	return HandoverStateDone, nil
+	expectedTake := astral.String8(nat.PairHandoverSignalTypeTake)
+	return f.exchange(ctx, takeTimeout, nil, &expectedTake, action)
 }
 
-// --- helpers
-
-// readPairSignal filters by PairID, looping until a matching frame is received or an error occurs.
-func (f *PairTaker) readPairSignal(ctx context.Context, timeout time.Duration) (*nat.PairHandoverSignal, error) {
+// readSignal reads PairTakeSignal frames until one for this f.pair.Nonce arrives,
+// honoring context and per-attempt timeout for each read.
+func (f *PairTaker) readSignal(ctx context.Context, timeout time.Duration) (*nat.PairTakeSignal, error) {
 	for {
-		sig, err := f.readSignal(ctx, timeout)
-		if err != nil {
-			return nil, err
+		type result struct {
+			sig *nat.PairTakeSignal
+			err error
 		}
-		if sig.PairID == f.pair.Nonce {
-			return sig, nil
+		resCh := make(chan result, 1)
+
+		go func() {
+			obj, err := f.ch.Read()
+			if err != nil {
+				resCh <- result{nil, err}
+				return
+			}
+			sig, ok := obj.(*nat.PairTakeSignal)
+			if !ok {
+				resCh <- result{nil, fmt.Errorf("unexpected object type: %T", obj)}
+				return
+			}
+			resCh <- result{sig, nil}
+		}()
+
+		select {
+		case r := <-resCh:
+			if r.err != nil {
+				return nil, r.err
+			}
+
+			if r.sig.Pair != f.pair.Nonce {
+				return nil, fmt.Errorf("mismatched pair id  %v (expected %v)",
+					r.sig.Pair, f.pair.Nonce)
+			}
+
+			return r.sig, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(timeout):
+			return nil, context.DeadlineExceeded
 		}
 	}
 }
 
-// readSignal reads a PairHandoverSignal with a timeout and respects context.
-func (f *PairTaker) readSignal(ctx context.Context, timeout time.Duration) (*nat.PairHandoverSignal, error) {
-	type result struct {
-		sig *nat.PairHandoverSignal
-		err error
-	}
-	resCh := make(chan result, 1)
-
-	go func() {
-		obj, err := f.ch.Read()
-		if err != nil {
-			resCh <- result{nil, err}
-			return
+func (f *PairTaker) exchange(
+	ctx context.Context,
+	timeout time.Duration,
+	send, expect *astral.String8,
+	action func(*nat.PairTakeSignal) error,
+) error {
+	if send != nil {
+		if err := f.writeSignal(ctx, *send, timeout); err != nil {
+			return err
 		}
-		sig, ok := obj.(*nat.PairHandoverSignal)
-		if !ok {
-			resCh <- result{nil, fmt.Errorf("unexpected object type: %T", obj)}
-			return
-		}
-		resCh <- result{sig, nil}
-	}()
-
-	select {
-	case r := <-resCh:
-		return r.sig, r.err
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-time.After(timeout):
-		return nil, context.DeadlineExceeded
 	}
+	sig, err := f.readSignal(ctx, timeout)
+	if err != nil {
+		return err
+	}
+	if expect != nil && sig.Signal != *expect {
+		return fmt.Errorf("expected %s, got %s", *expect, sig.Signal)
+	}
+	return action(sig)
 }
 
-// writeSignal sends a PairHandoverSignal and returns early on timeout or context cancel.
+// writeSignal sends a PairTakeSignal and returns early on timeout or context cancel.
 func (f *PairTaker) writeSignal(ctx context.Context, s astral.String8, timeout time.Duration) error {
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- f.ch.Write(&nat.PairHandoverSignal{Signal: s, PairID: f.pair.Nonce})
+		errCh <- f.ch.Write(&nat.PairTakeSignal{Signal: s, Pair: f.pair.Nonce})
 	}()
 
 	select {
@@ -265,29 +213,21 @@ func (f *PairTaker) writeSignal(ctx context.Context, s astral.String8, timeout t
 	}
 }
 
-func (f *PairTaker) rollbackLock(started bool) {
-	if started {
+// fail handles error recording, state marking, and cleanup in one place.
+func (f *PairTaker) fail(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	f.state.Store(int32(TakeStateFailed))
+	f.err.Store(err)
+
+	if f.lockStarted {
 		f.pair.unlock()
+		f.lockStarted = false
 	}
-}
 
-func (f *PairTaker) failf(format string, a ...any) error {
-	return f.failErr(fmt.Errorf(format, a...))
-}
-func (f *PairTaker) failErr(err error) error {
-	if err != nil {
-		f.err.Store(err)
-	}
-	f.finish(err)
 	return err
-}
-
-// --- lifecycle ---
-
-func (f *PairTaker) finish(err error) {
-	if err != nil {
-		f.err.Store(err)
-	}
 }
 
 func (f *PairTaker) Error() error {
@@ -298,6 +238,3 @@ func (f *PairTaker) Error() error {
 	}
 	return nil
 }
-
-// State returns the current FSM state as int32 (internal enum value).
-func (f *PairTaker) State() int32 { return f.state.Load() }

@@ -26,6 +26,7 @@ const (
 	pongTimeout  = 3 * time.Second
 	pingLifespan = 6 * time.Second  // remove old ping if not ponged
 	lockTimeout  = 10 * time.Second // safety bound for InLocking
+	maxPingFails = 10
 )
 
 // pairEntry represents a NAT pair runtime wrapper with keepalive and state.
@@ -86,7 +87,6 @@ func (e *pairEntry) expire() {
 		e.state.Store(stateExpired)
 		e.stopKeepalive()
 		if c := e.conn; c != nil {
-			e.conn = nil
 			_ = c.Close()
 		}
 
@@ -111,6 +111,7 @@ func (e *pairEntry) keepaliveLoop() {
 	defer e.keepaliveRunning.Store(false)
 	ticker := time.NewTicker(pingInterval)
 	defer ticker.Stop()
+	failCount := 0
 
 	for e.keepaliveRunning.Load() {
 		switch e.state.Load() {
@@ -121,9 +122,17 @@ func (e *pairEntry) keepaliveLoop() {
 				e.expire()
 				return
 			}
-			if e.isPinger && e.sendPing() != nil {
-				e.expire()
-				return
+
+			if e.isPinger {
+				if err := e.sendPing(); err != nil {
+					failCount++
+					if failCount >= maxPingFails {
+						e.expire()
+						return
+					}
+				} else {
+					failCount = 0
+				}
 			}
 
 		case stateInLocking:
@@ -217,7 +226,6 @@ func (e *pairEntry) beginLock() bool {
 	if !e.state.CompareAndSwap(stateIdle, stateInLocking) {
 		return false
 	}
-	e.isPinger = false
 	e.lockStarted.Store(time.Now().UnixNano())
 	return true
 }
@@ -231,7 +239,6 @@ func (e *pairEntry) finalizeLock() bool {
 	}
 	// close UDP socket to enforce strict silence and unblock receiver
 	if c := e.conn; c != nil {
-		e.conn = nil
 		_ = c.Close()
 	}
 	return true
@@ -329,10 +336,17 @@ func (e *pairEntry) waitLocked(ctx context.Context) error {
 }
 
 func (e *pairEntry) unlock() {
-	if e.state.CompareAndSwap(stateLocked, stateIdle) {
-		// Resume keepalive if this peer was the original pinger
-		if e.isPinger {
-			e.startKeepalive()
+	for {
+		s := e.state.Load()
+		if s == stateLocked || s == stateInLocking {
+			if e.state.CompareAndSwap(s, stateIdle) {
+				if e.isPinger {
+					e.startKeepalive()
+				}
+				return
+			}
+		} else {
+			return
 		}
 	}
 }
@@ -343,27 +357,33 @@ type pingFrame struct {
 }
 
 func (f *pingFrame) WriteTo(w io.Writer) (n int64, err error) {
+	var written int64
 	if err := binary.Write(w, binary.BigEndian, f.Nonce); err != nil {
-		return 0, err
+		return written, err
 	}
+	written += 8
 	var pongByte byte
 	if f.Pong {
 		pongByte = 1
 	}
 	if err := binary.Write(w, binary.BigEndian, pongByte); err != nil {
-		return 0, err
+		return written, err
 	}
-	return 10, nil
+	written++
+	return written, nil
 }
 
 func (f *pingFrame) ReadFrom(r io.Reader) (n int64, err error) {
+	var read int64
 	if err := binary.Read(r, binary.BigEndian, &f.Nonce); err != nil {
-		return 0, err
+		return read, err
 	}
+	read += 8
 	var pongByte byte
 	if err := binary.Read(r, binary.BigEndian, &pongByte); err != nil {
-		return 0, err
+		return read, err
 	}
 	f.Pong = pongByte == 1
-	return 10, nil
+	read++
+	return read, nil
 }

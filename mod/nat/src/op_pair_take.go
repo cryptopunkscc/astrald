@@ -25,11 +25,14 @@ func (mod *Module) OpPairHandover(ctx *astral.Context, q shell.Query, args opPai
 		return ch.Write(astral.NewError("peer identity does not match"))
 	}
 
-	fsm := NewPairTaker(rolePairGiver, ch, pairEntry, q.Caller())
+	fsm := NewPairTaker(roleTakePairResponder, ch, pairEntry)
 	err = fsm.Run(ctx)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}
+
+	// pair is now taken; remove it on our side from the pool.
+	mod.pool.Remove(pairEntry.Nonce)
 
 	return ch.Write(&pairEntry.EndpointPair)
 }
