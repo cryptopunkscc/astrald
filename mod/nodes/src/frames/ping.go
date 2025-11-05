@@ -3,8 +3,9 @@ package frames
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ Frame = &Ping{}
@@ -14,20 +15,12 @@ type Ping struct {
 	Pong  bool
 }
 
+func (frame *Ping) ObjectType() string {
+	return "nodes.frames.ping"
+}
+
 func (frame *Ping) ReadFrom(r io.Reader) (n int64, err error) {
-	var opcode uint8
-
-	err = binary.Read(r, binary.BigEndian, &opcode)
-	if err != nil {
-		return
-	}
-	n += 1
-
-	if opcode != opPing {
-		err = ErrInvalidOpcode
-		return
-	}
-
+	// opcode is handled by Blueprints; just read the payload
 	err = binary.Read(r, binary.BigEndian, &frame.Nonce)
 	if err != nil {
 		return
@@ -44,12 +37,7 @@ func (frame *Ping) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (frame *Ping) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, binary.BigEndian, uint8(opPing))
-	if err != nil {
-		return
-	}
-	n += 1
-
+	// Blueprints.Write writes the type; just write the payload
 	err = binary.Write(w, binary.BigEndian, frame.Nonce)
 	if err != nil {
 		return

@@ -3,8 +3,9 @@ package frames
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ Frame = &Query{}
@@ -15,20 +16,12 @@ type Query struct {
 	Query  string
 }
 
+func (frame *Query) ObjectType() string {
+	return "nodes.frames.query"
+}
+
 func (frame *Query) ReadFrom(r io.Reader) (n int64, err error) {
-	var opcode uint8
-
-	err = binary.Read(r, binary.BigEndian, &opcode)
-	if err != nil {
-		return
-	}
-	n += 1
-
-	if opcode != opQuery {
-		err = ErrInvalidOpcode
-		return
-	}
-
+	// opcode is handled by Blueprints; just read payload
 	err = binary.Read(r, binary.BigEndian, &frame.Nonce)
 	if err != nil {
 		return
@@ -59,12 +52,7 @@ func (frame *Query) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (frame *Query) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, binary.BigEndian, uint8(opQuery))
-	if err != nil {
-		return
-	}
-	n += 1
-
+	// Blueprints.Write writes the type; just write the payload
 	err = binary.Write(w, binary.BigEndian, frame.Nonce)
 	if err != nil {
 		return
