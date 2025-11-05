@@ -15,7 +15,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 	mod := &Module{
 		node: node,
 		log:  l,
-		q:    &sig.Queue[scheduler.Action]{},
+		q:    &sig.Queue[scheduler.ScheduledAction]{},
 	}
 
 	return mod, nil
