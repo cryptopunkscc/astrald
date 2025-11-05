@@ -22,7 +22,7 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	q  *sig.Queue[scheduler.Action]
+	q  *sig.Queue[scheduler.ScheduledAction]
 	wg sync.WaitGroup
 }
 
@@ -48,9 +48,4 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 func (mod *Module) String() string {
 	return scheduler.ModuleName
-}
-
-// NewWaitable wraps an action and returns a waitable wrapper.
-func (mod *Module) NewWaitable(a scheduler.Action) scheduler.WaitableAction {
-	return NewWaitable(a)
 }
