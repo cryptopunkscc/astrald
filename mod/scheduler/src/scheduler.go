@@ -9,14 +9,24 @@ import (
 func (mod *Module) runWorker(ctx *astral.Context) {
 	mod.log.Info("worker started")
 	for scheduledAction := range mod.q.Subscribe(ctx) {
-		mod.log.Log("start %T", scheduledAction)
-		if err := scheduledAction.Action.Run(ctx); err != nil {
-			mod.log.Error("fail %T: %v", scheduledAction, err)
-		} else {
-			mod.log.Log("done %T", scheduledAction)
+		err := mod.runAction(scheduledAction)
+		if err != nil {
+			mod.log.Error(`worker error: %v`, err.Error())
 		}
 	}
+
 	mod.log.Info("worker stopped")
+}
+
+func (mod *Module) runAction(scheduledAction scheduler.ScheduledAction) error {
+	defer close(scheduledAction.Done)
+
+	err := scheduledAction.Action.Run(mod.ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Schedule enqueues an action for processing. It is safe for concurrent use.
