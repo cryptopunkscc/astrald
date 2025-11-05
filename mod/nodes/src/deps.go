@@ -2,7 +2,23 @@ package nodes
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/mod/scheduler"
+
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
+
+type Deps struct {
+	Auth      auth.Module
+	Dir       dir.Module
+	Exonet    exonet.Module
+	Keys      keys.Module
+	Objects   objects.Module
+	Scheduler scheduler.Module
+}
 
 func (mod *Module) LoadDependencies() (err error) {
 	return core.Inject(mod.node, &mod.Deps)

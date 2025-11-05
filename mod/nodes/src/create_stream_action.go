@@ -20,23 +20,35 @@ type CreateStreamAction struct {
 	Info *nodes.StreamInfo // set on success
 }
 
+func (m *Module) NewCreateStreamAction(target string, net string, endpoint string) *CreateStreamAction {
+	return &CreateStreamAction{
+		Mod:      m,
+		Target:   target,
+		Net:      net,
+		Endpoint: endpoint,
+
+		//
+		Info: nil,
+	}
+}
+
 func (c *CreateStreamAction) Run(ctx *astral.Context) error {
 	var endpoints chan exonet.Endpoint
 
 	target, err := c.Mod.Dir.ResolveIdentity(c.Target)
 	if err != nil {
-		return err
+		return nodes.ErrIdentityResolve
 	}
 
 	switch {
 	case c.Endpoint != "":
 		split := strings.SplitN(c.Endpoint, ":", 2)
 		if len(split) != 2 {
-			return astral.NewError("invalid endpoint format")
+			return nodes.ErrInvalidEndpointFormat
 		}
 		endpoint, err := c.Mod.Exonet.Parse(split[0], split[1])
 		if err != nil {
-			return err
+			return nodes.ErrEndpointParse
 		}
 
 		endpoints = make(chan exonet.Endpoint, 1)
@@ -48,7 +60,7 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) error {
 		resolve, err := c.Mod.ResolveEndpoints(ctx, target)
 		if err != nil {
 			c.Mod.log.Error("resolve endpoints: %v", err)
-			return err
+			return nodes.ErrEndpointResolve
 		}
 
 		go func() {

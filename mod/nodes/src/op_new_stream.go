@@ -1,11 +1,8 @@
 package nodes
 
 import (
-	"strings"
-
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
+	nodes2 "github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -16,65 +13,35 @@ type opNewStreamArgs struct {
 	Out      string `query:"optional"`
 }
 
-// OpNewStream initiates a new stream with the given target. If an endpoint is given, it will be used.
-// If no endpoint is given, any endpoint of the given network will be used. If no network is given,
-// any endpoint will be used.
+// OpNewStream now delegates to a scheduled action and waits for completion.
 func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStreamArgs) (err error) {
-	var endpoints chan exonet.Endpoint
+	createStreamAction := mod.NewCreateStreamAction(args.Target, args.Net, args.Endpoint)
+	w := mod.Scheduler.Schedule(ctx, createStreamAction)
 
-	target, err := mod.Dir.ResolveIdentity(args.Target)
-	if err != nil {
+	// Wait for action or context cancellation
+	select {
+	case <-ctx.Done():
 		return q.RejectWithCode(4)
+	case <-w.Done():
 	}
 
-	switch {
-	case args.Endpoint != "":
-		split := strings.SplitN(args.Endpoint, ":", 2)
-		if len(split) != 2 {
+	if err := w.Error(); err != nil {
+		switch err {
+		case nodes2.ErrInvalidEndpointFormat:
 			return q.RejectWithCode(2)
-		}
-		endpoint, err := mod.Exonet.Parse(split[0], split[1])
-		if err != nil {
+		case nodes2.ErrEndpointParse:
 			return q.RejectWithCode(3)
-		}
-
-		endpoints = make(chan exonet.Endpoint, 1)
-		endpoints <- endpoint
-		close(endpoints)
-
-	case args.Net != "":
-		endpoints = make(chan exonet.Endpoint, 8)
-		resolve, err := mod.ResolveEndpoints(ctx, target)
-		if err != nil {
-			mod.log.Error("resolve endpoints: %v", err)
+		case nodes2.ErrIdentityResolve, nodes2.ErrEndpointResolve:
 			return q.RejectWithCode(4)
+		default:
+			ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+			defer ch.Close()
+			return ch.Write(astral.NewError(err.Error()))
 		}
-
-		go func() {
-			defer close(endpoints)
-			for i := range resolve {
-				if i.Network() == args.Net {
-					endpoints <- i
-				}
-			}
-		}()
 	}
 
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	s, err := mod.peers.connectAtAny(ctx, target, endpoints)
-	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
-	}
-
-	return ch.Write(&nodes.StreamInfo{
-		ID:             s.id,
-		LocalIdentity:  s.LocalIdentity(),
-		RemoteIdentity: s.RemoteIdentity(),
-		LocalEndpoint:  s.LocalEndpoint(),
-		RemoteEndpoint: s.RemoteEndpoint(),
-		Outbound:       astral.Bool(s.outbound),
-		Network:        astral.String8(s.Network()),
-	})
+	return ch.Write(createStreamAction.Info)
 }
