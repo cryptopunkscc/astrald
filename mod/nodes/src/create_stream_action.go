@@ -17,7 +17,9 @@ type CreateStreamAction struct {
 	Net      string // optional
 	Endpoint string // optional in format "net:address"
 
+	//
 	Info *nodes.StreamInfo // set on success
+	Err  error
 }
 
 func (m *Module) NewCreateStreamAction(target string, net string,
@@ -30,12 +32,18 @@ func (m *Module) NewCreateStreamAction(target string, net string,
 
 		//
 		Info: nil,
+		Err:  nil,
 	}
 }
 
-func (c *CreateStreamAction) Run(ctx *astral.Context) error {
-	var endpoints chan exonet.Endpoint
+func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
+	defer func() {
+		if err != nil {
+			c.Err = err
+		}
+	}()
 
+	var endpoints chan exonet.Endpoint
 	target, err := c.Mod.Dir.ResolveIdentity(c.Target)
 	if err != nil {
 		return nodes.ErrIdentityResolve
@@ -88,9 +96,14 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) error {
 		Outbound:       astral.Bool(s.outbound),
 		Network:        astral.String8(s.Network()),
 	}
+
 	return nil
 }
 
-func (c *CreateStreamAction) Result() *nodes.StreamInfo {
-	return c.Info
+func (c *CreateStreamAction) Result() (info *nodes.StreamInfo, err error) {
+	return c.Info, c.Err
+}
+
+func (c *CreateStreamAction) String() string {
+	return "nodes.create_stream_action"
 }
