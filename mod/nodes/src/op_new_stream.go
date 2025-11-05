@@ -1,8 +1,10 @@
 package nodes
 
 import (
+	"errors"
+
 	"github.com/cryptopunkscc/astrald/astral"
-	nodes2 "github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -23,22 +25,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 	select {
 	case <-ctx.Done():
 		return q.RejectWithCode(4)
-	case <-w.done():
-	}
-
-	if err := w.Error(); err != nil {
-		switch err {
-		case nodes2.ErrInvalidEndpointFormat:
-			return q.RejectWithCode(2)
-		case nodes2.ErrEndpointParse:
-			return q.RejectWithCode(3)
-		case nodes2.ErrIdentityResolve, nodes2.ErrEndpointResolve:
-			return q.RejectWithCode(4)
-		default:
-			ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
-			defer ch.Close()
-			return ch.Write(astral.NewError(err.Error()))
-		}
+	case <-w.Wait():
 	}
 
 	createStreamAction := mod.NewCreateStreamAction(target, sig.ChanToArray(endpoints))
@@ -56,5 +43,18 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
-	return ch.Write(createStreamAction.Result())
+
+	info, err := createStreamAction.Result()
+	switch {
+	case err == nil:
+		return ch.Write(info)
+	case errors.Is(err, nodes.ErrInvalidEndpointFormat):
+		return q.RejectWithCode(2)
+	case errors.Is(err, nodes.ErrEndpointParse):
+		return q.RejectWithCode(3)
+	case errors.Is(err, nodes.ErrIdentityResolve), errors.Is(err, nodes.ErrEndpointResolve):
+		return q.RejectWithCode(4)
+	default:
+		return err
+	}
 }
