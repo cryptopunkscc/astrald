@@ -15,3 +15,8 @@ type Action interface {
 type Waitable interface {
 	Wait() <-chan struct{}
 }
+
+type ResourceHolder interface {
+	Waitable
+	Release()
+}
