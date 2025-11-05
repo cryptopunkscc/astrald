@@ -100,8 +100,8 @@ func (s *Stream) reader() {
 var FrameBlueprints = astral.NewBlueprints(nil).Indexed([]string{
 	"nodes.frames.ping",
 	"nodes.frames.query",
-	"nodes.frames.response",
 	"nodes.frames.read",
+	"nodes.frames.response",
 	"nodes.frames.data",
 	"nodes.frames.migrate",
 	"nodes.frames.reset",
