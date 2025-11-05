@@ -6,10 +6,5 @@ const ModuleName = "scheduler"
 
 // Module is the public interface other modules depend on.
 type Module interface {
-	Schedule(ctx *astral.Context, action Action) ScheduledAction
-}
-
-type ScheduledAction struct {
-	Waitable
-	Action Action
+	Schedule(ctx *astral.Context, action Action) WaitableAction
 }
