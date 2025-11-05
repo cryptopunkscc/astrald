@@ -12,13 +12,3 @@ type Frame interface {
 	io.WriterTo
 	fmt.Stringer
 }
-
-const (
-	opPing = iota
-	opQuery
-	opResponse
-	opRead
-	opData
-	opReset
-	opMigrate
-)

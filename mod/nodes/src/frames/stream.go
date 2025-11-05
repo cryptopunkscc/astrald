@@ -1,10 +1,12 @@
+// Update stream reader/writer to use FrameBlueprints for (de)serialization.
 package frames
 
 import (
-	"bufio"
+	"fmt"
 	"io"
 	"sync"
 
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/streams"
 )
@@ -12,9 +14,7 @@ import (
 const inChanSize = 32
 
 type Stream struct {
-	conn   io.ReadWriteCloser
-	peeker *bufio.Reader
-
+	conn io.ReadWriteCloser
 	err  sig.Value[error]
 	done chan struct{}
 	read chan Frame
@@ -22,12 +22,9 @@ type Stream struct {
 }
 
 func NewStream(conn io.ReadWriteCloser) *Stream {
-	peeker := bufio.NewReader(conn)
-
 	link := &Stream{
-		peeker: peeker,
 		conn: streams.ReadWriteCloseSplit{
-			Reader: peeker,
+			Reader: conn,
 			Writer: conn,
 			Closer: conn,
 		},
@@ -45,8 +42,8 @@ func (s *Stream) Err() error {
 }
 
 func (s *Stream) CloseWithError(err error) error {
-	s.err.Swap(nil, err)
-	s.conn.Close()
+	_, _ = s.err.Swap(nil, err)
+	_ = s.conn.Close()
 	return nil
 }
 
@@ -58,10 +55,17 @@ func (s *Stream) Write(frame Frame) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, err = frame.WriteTo(s.conn)
+	// FrameBlueprints.Write expects an astral.Object; assert the Frame to that interface
+	obj, ok := frame.(astral.Object)
+	if !ok {
+		return fmt.Errorf("frame does not implement astral.Object")
+	}
+
+	// Use FrameBlueprints to write the type header + payload
+	_, err = FrameBlueprints.Write(s.conn, obj)
 	if err != nil {
-		s.err.Swap(nil, err)
-		s.conn.Close()
+		_, _ = s.err.Swap(nil, err)
+		_ = s.conn.Close()
 		return
 	}
 	return
@@ -70,47 +74,47 @@ func (s *Stream) Write(frame Frame) (err error) {
 func (s *Stream) reader() {
 	var err error
 	defer func() {
-		s.err.Swap(nil, err)
-		s.conn.Close()
+		_, _ = s.err.Swap(nil, err)
+		_ = s.conn.Close()
 		close(s.read)
 		close(s.done)
 	}()
 
 	for {
-		var opCode []byte
-
-		opCode, err = s.peeker.Peek(1)
-		if err != nil {
+		obj, _, derr := FrameBlueprints.Read(s.conn)
+		if derr != nil {
+			err = derr
 			return
 		}
 
-		var frame Frame
-
-		switch opCode[0] {
-		case opPing:
-			frame = &Ping{}
-		case opQuery:
-			frame = &Query{}
-		case opResponse:
-			frame = &Response{}
-		case opRead:
-			frame = &Read{}
-		case opData:
-			frame = &Data{}
-		case opMigrate:
-			frame = &Migrate{}
-		case opReset:
-			frame = &Reset{}
-		default:
-			err = ErrInvalidOpcode
-			return
-		}
-
-		_, err = frame.ReadFrom(s.conn)
-		if err != nil {
+		frame, ok := obj.(Frame)
+		if !ok {
+			err = fmt.Errorf("decoded object is not a Frame")
 			return
 		}
 
 		s.read <- frame
 	}
+}
+
+var FrameBlueprints = astral.DefaultBlueprints.Indexed([]string{
+	"nodes.frames.ping",
+	"nodes.frames.query",
+	"nodes.frames.read",
+	"nodes.frames.response",
+	"nodes.frames.data",
+	"nodes.frames.migrate",
+	"nodes.frames.reset",
+})
+
+func init() {
+	_ = FrameBlueprints.Add(
+		&Ping{},
+		&Query{},
+		&Response{},
+		&Read{},
+		&Data{},
+		&Migrate{},
+		&Reset{},
+	)
 }
