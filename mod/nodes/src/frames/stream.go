@@ -2,7 +2,6 @@
 package frames
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"sync"
@@ -15,9 +14,7 @@ import (
 const inChanSize = 32
 
 type Stream struct {
-	conn   io.ReadWriteCloser
-	peeker *bufio.Reader
-
+	conn io.ReadWriteCloser
 	err  sig.Value[error]
 	done chan struct{}
 	read chan Frame
@@ -25,12 +22,9 @@ type Stream struct {
 }
 
 func NewStream(conn io.ReadWriteCloser) *Stream {
-	peeker := bufio.NewReader(conn)
-
 	link := &Stream{
-		peeker: peeker,
 		conn: streams.ReadWriteCloseSplit{
-			Reader: peeker,
+			Reader: conn,
 			Writer: conn,
 			Closer: conn,
 		},
@@ -87,7 +81,7 @@ func (s *Stream) reader() {
 	}()
 
 	for {
-		obj, _, derr := FrameBlueprints.Read(s.peeker)
+		obj, _, derr := FrameBlueprints.Read(s.conn)
 		if derr != nil {
 			err = derr
 			return
@@ -104,7 +98,13 @@ func (s *Stream) reader() {
 }
 
 var FrameBlueprints = astral.NewBlueprints(nil).Indexed([]string{
-	"nodes.frames.ping", "nodes.frames.query", "nodes.frames.response", "nodes.frames.read", "nodes.frames.data", "nodes.frames.migrate", "nodes.frames.reset",
+	"nodes.frames.ping",
+	"nodes.frames.query",
+	"nodes.frames.response",
+	"nodes.frames.read",
+	"nodes.frames.data",
+	"nodes.frames.migrate",
+	"nodes.frames.reset",
 })
 
 func init() {
