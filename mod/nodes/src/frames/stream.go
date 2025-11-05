@@ -97,7 +97,7 @@ func (s *Stream) reader() {
 	}
 }
 
-var FrameBlueprints = astral.NewBlueprints(nil).Indexed([]string{
+var FrameBlueprints = astral.DefaultBlueprints.Indexed([]string{
 	"nodes.frames.ping",
 	"nodes.frames.query",
 	"nodes.frames.read",
