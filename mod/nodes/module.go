@@ -5,6 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
 const (
@@ -30,9 +31,7 @@ type Module interface {
 
 	Peers() []*astral.Identity
 
-	IsLinked(*astral.Identity) bool
-
-	NewCreateStreamAction(target *astral.Identity, endpoints []exonet.Endpoint) CreateStreamAction
+	NewCreateStreamAction() scheduler.Action
 }
 
 // Link is an encrypted communication channel between two identities that is capable of routing queries

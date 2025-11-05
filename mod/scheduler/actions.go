@@ -9,6 +9,13 @@ type Action interface {
 
 type Waitable interface {
 	Done() <-chan struct{}
+	Error() error
+}
+
+// WaitableAction is an Action that also provides completion signaling.
+type WaitableAction interface {
+	Action
+	Waitable
 }
 
 // NOTE: just demonstration purposes

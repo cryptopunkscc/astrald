@@ -23,19 +23,26 @@ func (mod *Module) runWorker(ctx *astral.Context) {
 }
 
 // Schedule enqueues an action for processing. It is safe for concurrent use.
-func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action) {
+func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action) *scheduler.ScheduledAction {
 	if a == nil {
-		return
+		return nil
+	}
+
+	w := NewWaitable(a)
+
+	sa := &scheduler.ScheduledAction{
+		Action: a,
 	}
 	// avoid pushes after shutdown
 	if mod.ctx != nil {
 		select {
 		case <-mod.ctx.Done():
 			mod.log.Log("drop %T: module shutting down", a)
-			return
+			return w
 		default:
 		}
 	}
 
-	_ = mod.q.Push(a)
+	_ = mod.q.Push(w)
+	return w
 }

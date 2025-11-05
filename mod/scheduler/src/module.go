@@ -50,6 +50,7 @@ func (mod *Module) String() string {
 	return scheduler.ModuleName
 }
 
-func (mod *Module) WaitableAction(a scheduler.Action) scheduler.Action {
+// NewWaitable wraps an action and returns a waitable wrapper.
+func (mod *Module) NewWaitable(a scheduler.Action) scheduler.WaitableAction {
 	return NewWaitable(a)
 }
