@@ -13,17 +13,17 @@ type ScheduledAction struct {
 	Waitable
 	ScheduledAt astral.Time
 	Action      Action
-	done        chan struct{}
+	Done        chan struct{}
 }
 
 func (h ScheduledAction) Wait() <-chan struct{} {
-	return h.done
+	return h.Done
 }
 
 func NewScheduledAction(action Action) ScheduledAction {
 	return ScheduledAction{
 		Action:      action,
 		ScheduledAt: astral.Now(),
-		done:        make(chan struct{}),
+		Done:        make(chan struct{}),
 	}
 }
