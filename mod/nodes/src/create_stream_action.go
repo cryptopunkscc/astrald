@@ -20,7 +20,8 @@ type CreateStreamAction struct {
 	Info *nodes.StreamInfo // set on success
 }
 
-func (m *Module) NewCreateStreamAction(target string, net string, endpoint string) *CreateStreamAction {
+func (m *Module) NewCreateStreamAction(target string, net string,
+	endpoint string) nodes.CreateStreamAction {
 	return &CreateStreamAction{
 		Mod:      m,
 		Target:   target,
@@ -88,4 +89,8 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) error {
 		Network:        astral.String8(s.Network()),
 	}
 	return nil
+}
+
+func (c *CreateStreamAction) Result() *nodes.StreamInfo {
+	return c.Info
 }

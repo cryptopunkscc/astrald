@@ -42,6 +42,5 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
-
-	return ch.Write(createStreamAction.Info)
+	return ch.Write(createStreamAction.Result())
 }
