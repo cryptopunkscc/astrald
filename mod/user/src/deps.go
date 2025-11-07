@@ -10,7 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type Deps struct {
@@ -22,7 +21,6 @@ type Deps struct {
 	KOS       kos.Module
 	Nodes     nodes.Module
 	Scheduler scheduler.Module
-	Shell     shell.Module
 }
 
 func (mod *Module) LoadDependencies() (err error) {

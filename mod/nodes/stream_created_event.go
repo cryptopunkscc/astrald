@@ -8,9 +8,8 @@ import (
 )
 
 type StreamCreatedEvent struct {
-	RemoteIdentity *astral.Identity
-	StreamId       astral.Nonce
-	StreamCount    int
+	StreamId astral.Nonce
+	IsLink   astral.Bool
 }
 
 func (m StreamCreatedEvent) ObjectType() string { return "mod.nodes.stream_created_event" }

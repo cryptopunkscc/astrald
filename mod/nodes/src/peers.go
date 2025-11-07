@@ -299,6 +299,11 @@ func (mod *Peers) addStream(
 		StreamCount:    len(streamsWithSameIdentity),
 	})
 
+	mod.Events.Emit(&nodes.StreamCreatedEvent{
+		StreamId: s.id,
+		IsLink:   astral.Bool(!alreadyLinked),
+	})
+
 	// handle the stream
 	go func() {
 		mod.readStreamFrames(s)
@@ -311,9 +316,11 @@ func (mod *Peers) addStream(
 			c.Close()
 		}
 
-		streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {
-			return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
-		})
+		mod.Events.Emit(&nodes.StreamClosedEvent{
+			With:   s.RemoteIdentity(),
+			Forced: false,
+		}) // log stream removal
+		mod.log.Errorv(1, "removed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
 
 		mod.Events.Emit(&nodes.StreamClosedEvent{
 			RemoteIdentity: s.RemoteIdentity(),

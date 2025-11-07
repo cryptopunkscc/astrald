@@ -26,6 +26,11 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		}
 
 		drop.Accept(true)
+
+	case *nodes.EventLinked:
+		go mod.onNodeLinked(o)
+
+		drop.Accept(false)
 	case *apphost.EventNewAppContract:
 		switch {
 		case !drop.SenderID().IsEqual(mod.node.Identity()):
@@ -42,10 +47,9 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		}
 	case *events.Event:
 		switch e := o.Data.(type) {
-		case *nodes.StreamCreatedEvent:
-			if e.StreamCount == 1 && slices.ContainsFunc(mod.LocalSwarm(), e.RemoteIdentity.IsEqual) {
-				go mod.pushActiveContract(e.RemoteIdentity)
-				mod.Scheduler.Schedule(mod.ctx, mod.NewSyncNodesAction(e.RemoteIdentity))
+		case *nodes.StreamClosedEvent:
+			if slices.ContainsFunc(mod.LocalSwarm(), e.With.IsEqual) {
+				mod.Scheduler.Schedule(mod.ctx, mod.NewEnsureConnectivityAction())
 				drop.Accept(false)
 			}
 		}

@@ -3,7 +3,10 @@ package user
 import (
 	"errors"
 	"fmt"
+	"io"
+	"slices"
 	"sync"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -28,7 +31,8 @@ type Module struct {
 	mu     sync.Mutex
 	ops    shell.Scope
 
-	sibs sig.Map[string, Sibling]
+	sibs       sig.Map[string, context.CancelFunc]
+	linkedSibs sig.Map[string, *astral.Identity]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -49,6 +53,8 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 		mod.addSibling(node, scheduledAction.Cancel)
 	}
+
+	mod.Scheduler.Schedule(ctx, mod.NewEnsureConnectivityAction())
 
 	<-ctx.Done()
 

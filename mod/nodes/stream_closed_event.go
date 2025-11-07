@@ -8,9 +8,8 @@ import (
 )
 
 type StreamClosedEvent struct {
-	RemoteIdentity *astral.Identity // Identity of the other party
-	Forced         astral.Bool
-	StreamCount    astral.Int8
+	With   *astral.Identity // Identity of the other party
+	Forced astral.Bool
 }
 
 func (StreamClosedEvent) ObjectType() string {
