@@ -30,6 +30,8 @@ type Module interface {
 
 	Peers() []*astral.Identity
 
+	IsLinked(*astral.Identity) bool
+
 	NewCreateStreamAction(target string, net string, endpoint string) CreateStreamAction
 }
 

@@ -297,6 +297,11 @@ func (mod *Peers) addStream(
 		mod.Objects.Receive(&nodes.EventLinked{NodeID: s.RemoteIdentity()}, nil)
 	}
 
+	mod.Events.Emit(&nodes.StreamCreatedEvent{
+		StreamId: s.id,
+		IsLink:   astral.Bool(!alreadyLinked),
+	})
+
 	// handle the stream
 	go func() {
 		mod.readStreamFrames(s)
@@ -309,7 +314,10 @@ func (mod *Peers) addStream(
 			c.Close()
 		}
 
-		// log stream removal
+		mod.Events.Emit(&nodes.StreamClosedEvent{
+			With:   s.RemoteIdentity(),
+			Forced: false,
+		}) // log stream removal
 		mod.log.Errorv(1, "removed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
 
 		// emit an event if unlinked
@@ -368,8 +376,8 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	return false
 }
 
-// negotiateOutboundLink reads peer's supported features and the session sessionId.
-func (mod *Peers) negotiateOutboundLink(aconn astral.Conn) (features []astral.String, err error) {
+// negotiateOutboundStream reads peer's supported features and the session sessionId.
+func (mod *Peers) negotiateOutboundStream(aconn astral.Conn) (features []astral.String, err error) {
 	var featCount astral.Uint16
 	if _, err = featCount.ReadFrom(aconn); err != nil {
 		return nil, fmt.Errorf("read features: %w", err)
@@ -385,8 +393,8 @@ func (mod *Peers) negotiateOutboundLink(aconn astral.Conn) (features []astral.St
 	return features, nil
 }
 
-// negotiateInboundLink sends our supported features and a fresh session sessionId.
-func (mod *Peers) negotiateInboundLink(aconn astral.Conn) (err error) {
+// negotiateInboundStream sends our supported features and a fresh session sessionId.
+func (mod *Peers) negotiateInboundStream(aconn astral.Conn) (err error) {
 	var linkFeatures = []string{featureMux2}
 	if _, err = astral.Uint16(len(linkFeatures)).WriteTo(aconn); err != nil {
 		return err
@@ -430,7 +438,7 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 	}
 
 	// Read peer features and session sessionId
-	linkFeatures, err := mod.negotiateOutboundLink(aconn)
+	linkFeatures, err := mod.negotiateOutboundStream(aconn)
 	if err != nil {
 		return nil, err
 	}
@@ -477,7 +485,7 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 	}
 
 	// Send our features and session sessionId
-	err = mod.negotiateInboundLink(aconn)
+	err = mod.negotiateInboundStream(aconn)
 	if err != nil {
 		return err
 	}

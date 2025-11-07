@@ -1,12 +1,14 @@
 package user
 
 import (
+	"slices"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/events"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
-	"slices"
 )
 
 var _ objects.Receiver = &Module{}
@@ -18,7 +20,6 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		if err == nil {
 			drop.Accept(true)
 		}
-
 	case *apphost.AppContract:
 		if !slices.ContainsFunc(mod.LocalSwarm(), o.HostID.IsEqual) {
 			break
@@ -30,7 +31,6 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		go mod.onNodeLinked(o)
 
 		drop.Accept(false)
-
 	case *apphost.EventNewAppContract:
 		switch {
 		case !drop.SenderID().IsEqual(mod.node.Identity()):
@@ -40,11 +40,18 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		}
 
 		mod.pushToLinkedSibs(o.Contract)
-
 	case *user.Notification:
 		err = mod.onNotification(drop.SenderID(), o)
 		if err == nil {
 			drop.Accept(false)
+		}
+	case *events.Event:
+		switch e := o.Data.(type) {
+		case *nodes.StreamClosedEvent:
+			if slices.ContainsFunc(mod.LocalSwarm(), e.With.IsEqual) {
+				mod.Scheduler.Schedule(mod.ctx, mod.NewEnsureConnectivityAction())
+				drop.Accept(false)
+			}
 		}
 	}
 

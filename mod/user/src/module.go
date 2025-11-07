@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"slices"
+	"sync"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
@@ -13,24 +18,21 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
-	"slices"
-	"sync"
-	"time"
 )
 
 var _ user.Module = &Module{}
 
 type Module struct {
 	Deps
-	ctx        *astral.Context
-	config     Config
-	node       astral.Node
-	log        *log.Logger
-	assets     assets.Assets
-	db         *DB
-	mu         sync.Mutex
-	ops        shell.Scope
+	ctx    *astral.Context
+	config Config
+	node   astral.Node
+	log    *log.Logger
+	assets assets.Assets
+	db     *DB
+	mu     sync.Mutex
+	ops    shell.Scope
+
 	sibs       sig.Map[string, context.CancelFunc]
 	linkedSibs sig.Map[string, *astral.Identity]
 }
@@ -44,6 +46,8 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	}
 
 	mod.syncSibs()
+
+	mod.Scheduler.Schedule(ctx, mod.NewEnsureConnectivityAction())
 
 	<-ctx.Done()
 	return nil
@@ -368,7 +372,6 @@ func (mod *Module) SyncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 	}
 
 	var q = query.New(ac.UserID, nodeID, user.OpSyncAssets, args)
-
 	conn, err := query.Route(ctx, mod.node, q)
 	if err != nil {
 		return err
@@ -415,7 +418,6 @@ func (mod *Module) SyncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 	}
 
 	var q = query.New(ac.UserID, nodeID, user.OpInfo, nil)
-
 	conn, err := query.Route(ctx, mod.node, q)
 	if err != nil {
 		return err

@@ -14,4 +14,5 @@ const (
 )
 
 type Module interface {
+	NewEnsureConnectivityAction() EnsureConnectivityAction
 }

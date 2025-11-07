@@ -119,6 +119,10 @@ func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 	}
 }
 
+func (mod *Module) IsLinked(identity *astral.Identity) bool {
+	return mod.peers.isLinked(identity)
+}
+
 // findStreamByID returns a stream with the given local id or nil if not found.
 func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
 	for _, s := range mod.peers.streams.Clone() {
