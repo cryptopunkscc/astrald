@@ -3,10 +3,7 @@ package user
 import (
 	"errors"
 	"fmt"
-	"io"
-	"slices"
 	"sync"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -31,7 +28,6 @@ type Module struct {
 	mu     sync.Mutex
 	ops    shell.Scope
 
-	sibs       sig.Map[string, context.CancelFunc]
 	linkedSibs sig.Map[string, *astral.Identity]
 }
 
@@ -42,23 +38,64 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		mod.log.Info("hello, %v!", ac.UserID)
 	}
 
-	// We are missing connection with certain nodes.
-	for _, node := range mod.LocalSwarm() {
-		maintainLinkAction := mod.NewMaintainLinkAction(node)
-		scheduledAction, err := mod.Scheduler.Schedule(ctx, maintainLinkAction)
-		if err != nil {
-			mod.log.Error("error scheduling maintain link action: %v for node %v", err, node)
-			continue
-		}
-
-		mod.addSibling(node, scheduledAction.Cancel)
-	}
-
 	mod.Scheduler.Schedule(ctx, mod.NewEnsureConnectivityAction())
 
 	<-ctx.Done()
-
 	return nil
+}
+
+// ActiveUsers returns a list of known active users of the specified node
+func (mod *Module) ActiveUsers(nodeID *astral.Identity) (users []*astral.Identity) {
+	users, err := mod.db.UniqueActiveUsersOnNode(nodeID)
+	if err != nil {
+		mod.log.Error("db error: %v", err)
+	}
+
+	return
+}
+
+// ActiveNodes returns a list of known active nodes of the specified user
+func (mod *Module) ActiveNodes(userID *astral.Identity) (nodes []*astral.Identity) {
+	nodes, err := mod.db.UniqueActiveNodesOfUser(userID)
+	if err != nil {
+		mod.log.Error("db error: %v", err)
+	}
+
+	return
+}
+
+// LocalSwarm returns a list of node identities with an active contract with the current user
+func (mod *Module) LocalSwarm() (list []*astral.Identity) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return
+	}
+
+	return mod.ActiveNodes(ac.UserID)
+}
+
+func (mod *Module) notifyLinkedSibs(event string) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return
+	}
+
+	for _, sib := range mod.getLinkedSibs() {
+		sib := sib
+		go mod.Objects.Push(mod.ctx, sib, &user.Notification{Event: astral.String8(event)})
+	}
+}
+
+func (mod *Module) pushToLinkedSibs(object astral.Object) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return
+	}
+
+	for _, sib := range mod.linkedSibs.Values() {
+		sib := sib
+		go mod.Objects.Push(mod.ctx, sib, object)
+	}
 }
 
 func (mod *Module) String() string {
@@ -67,6 +104,10 @@ func (mod *Module) String() string {
 
 func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
+}
+
+func (mod *Module) getLinkedSibs() (list []*astral.Identity) {
+	return mod.linkedSibs.Values()
 }
 
 // NOTE: Legacy methods below are result of lack of universal solution to
