@@ -1,5 +1,10 @@
 package user
 
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+	user "github.com/cryptopunkscc/astrald/mod/user/src"
+)
+
 const ModuleName = "user"
 const DBPrefix = "users__"
 
@@ -14,5 +19,6 @@ const (
 )
 
 type Module interface {
+	NewMaintainLinkAction(target *astral.Identity) user.MaintainLinkAction
 	NewEnsureConnectivityAction() EnsureConnectivityAction
 }
