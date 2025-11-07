@@ -214,3 +214,33 @@ func (mod *Module) SetUserID(userID *astral.Identity) error {
 	mod.log.Log("using contract %v for user %v", bestID, userID)
 	return mod.SetActiveContract(best)
 }
+
+// ActiveUsers returns a list of known active users of the specified node
+func (mod *Module) ActiveUsers(nodeID *astral.Identity) (users []*astral.Identity) {
+	users, err := mod.db.UniqueActiveUsersOnNode(nodeID)
+	if err != nil {
+		mod.log.Error("db error: %v", err)
+	}
+
+	return
+}
+
+// ActiveNodes returns a list of known active nodes of the specified user
+func (mod *Module) ActiveNodes(userID *astral.Identity) (nodes []*astral.Identity) {
+	nodes, err := mod.db.UniqueActiveNodesOfUser(userID)
+	if err != nil {
+		mod.log.Error("db error: %v", err)
+	}
+
+	return
+}
+
+// LocalSwarm returns a list of node identities with an active contract with the current user
+func (mod *Module) LocalSwarm() (list []*astral.Identity) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return
+	}
+
+	return mod.ActiveNodes(ac.UserID)
+}

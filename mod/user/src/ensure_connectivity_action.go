@@ -29,27 +29,10 @@ func (a *EnsureConnectivityAction) Run(ctx *astral.Context) error {
 			continue
 		}
 
-		createStreamAction := a.mod.Nodes.NewCreateStreamAction(node.String(), "", "")
-		scheduledAction := a.mod.Scheduler.Schedule(ctx, createStreamAction)
-		go func() {
-			<-scheduledAction.Wait()
-			a.mod.linkedSibs.Set(node.String(), node)
+		maintainLinkAction := a.mod.NewMaintainLinkAction(node)
 
-			err := a.mod.SyncApps(ctx, node)
-			if err != nil {
-				a.mod.log.Error("error syncing apps with %v: %v", node, err)
-			}
-
-			err = a.mod.SyncAlias(ctx, node)
-			if err != nil {
-				a.mod.log.Error("error syncing alias of %v: %v", node, err)
-			}
-
-			err = a.mod.SyncAssets(ctx, node)
-			if err != nil {
-				a.mod.log.Error("error syncing assets of %v: %v", node, err)
-			}
-		}()
+		scheduledAction := a.mod.Scheduler.Schedule(ctx, maintainLinkAction)
+		a.mod.addSibling(node, *scheduledAction)
 	}
 
 	return nil

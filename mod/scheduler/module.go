@@ -1,6 +1,10 @@
 package scheduler
 
-import "github.com/cryptopunkscc/astrald/astral"
+import (
+	"context"
+
+	"github.com/cryptopunkscc/astrald/astral"
+)
 
 const ModuleName = "scheduler"
 
@@ -14,6 +18,7 @@ type ScheduledAction struct {
 	ScheduledAt astral.Time
 	Action      Action
 	done        chan struct{}
+	cancel      context.CancelFunc
 }
 
 func (h ScheduledAction) Wait() <-chan struct{} {
@@ -25,10 +30,15 @@ func (h ScheduledAction) Close() {
 	close(h.done)
 }
 
-func NewScheduledAction(action Action) ScheduledAction {
+func (h ScheduledAction) Cancel() {
+	h.cancel()
+}
+
+func NewScheduledAction(action Action, cancel context.CancelFunc) ScheduledAction {
 	return ScheduledAction{
 		Action:      action,
 		ScheduledAt: astral.Now(),
 		done:        make(chan struct{}),
+		cancel:      cancel,
 	}
 }

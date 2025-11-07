@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/kos"
+	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -28,7 +29,7 @@ type Module struct {
 	mu     sync.Mutex
 	ops    shell.Scope
 
-	linkedSibs sig.Map[string, *astral.Identity]
+	linkedSibs sig.Map[string, Sibling]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -39,63 +40,8 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	}
 
 	mod.Scheduler.Schedule(ctx, mod.NewEnsureConnectivityAction())
-
 	<-ctx.Done()
 	return nil
-}
-
-// ActiveUsers returns a list of known active users of the specified node
-func (mod *Module) ActiveUsers(nodeID *astral.Identity) (users []*astral.Identity) {
-	users, err := mod.db.UniqueActiveUsersOnNode(nodeID)
-	if err != nil {
-		mod.log.Error("db error: %v", err)
-	}
-
-	return
-}
-
-// ActiveNodes returns a list of known active nodes of the specified user
-func (mod *Module) ActiveNodes(userID *astral.Identity) (nodes []*astral.Identity) {
-	nodes, err := mod.db.UniqueActiveNodesOfUser(userID)
-	if err != nil {
-		mod.log.Error("db error: %v", err)
-	}
-
-	return
-}
-
-// LocalSwarm returns a list of node identities with an active contract with the current user
-func (mod *Module) LocalSwarm() (list []*astral.Identity) {
-	ac := mod.ActiveContract()
-	if ac == nil {
-		return
-	}
-
-	return mod.ActiveNodes(ac.UserID)
-}
-
-func (mod *Module) notifyLinkedSibs(event string) {
-	ac := mod.ActiveContract()
-	if ac == nil {
-		return
-	}
-
-	for _, sib := range mod.getLinkedSibs() {
-		sib := sib
-		go mod.Objects.Push(mod.ctx, sib, &user.Notification{Event: astral.String8(event)})
-	}
-}
-
-func (mod *Module) pushToLinkedSibs(object astral.Object) {
-	ac := mod.ActiveContract()
-	if ac == nil {
-		return
-	}
-
-	for _, sib := range mod.linkedSibs.Values() {
-		sib := sib
-		go mod.Objects.Push(mod.ctx, sib, object)
-	}
 }
 
 func (mod *Module) String() string {
@@ -104,10 +50,6 @@ func (mod *Module) String() string {
 
 func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
-}
-
-func (mod *Module) getLinkedSibs() (list []*astral.Identity) {
-	return mod.linkedSibs.Values()
 }
 
 // NOTE: Legacy methods below are result of lack of universal solution to

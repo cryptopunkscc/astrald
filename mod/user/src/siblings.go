@@ -1,15 +1,17 @@
 package user
 
 import (
-	"context"
-
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
 type Sibling struct {
-	Id     *astral.Identity
-	Cancel context.CancelFunc
+	Id *astral.Identity
+
+	// NOTE: maybe could be scheduler.
+	// Canellable if we have scheduler.Waitable
+	MaintainLinkAction scheduler.ScheduledAction
 }
 
 func (mod *Module) notifyLinkedSibs(event string) {
@@ -37,7 +39,7 @@ func (mod *Module) pushToLinkedSibs(object astral.Object) {
 }
 
 func (mod *Module) getLinkedSibs() (list []*astral.Identity) {
-	for _, sib := range mod.sibs.Values() {
+	for _, sib := range mod.linkedSibs.Values() {
 		list = append(list, sib.Id)
 	}
 
@@ -45,9 +47,9 @@ func (mod *Module) getLinkedSibs() (list []*astral.Identity) {
 }
 
 func (mod *Module) addSibling(id *astral.Identity,
-	cancel context.CancelFunc) {
-	mod.sibs.Set(id.String(), Sibling{
-		Id:     id,
-		Cancel: cancel,
+	action scheduler.ScheduledAction) {
+	mod.linkedSibs.Set(id.String(), Sibling{
+		Id:                 id,
+		MaintainLinkAction: action,
 	})
 }

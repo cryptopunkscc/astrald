@@ -80,6 +80,20 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 				}
 			}
 		}()
+	default:
+		endpoints = make(chan exonet.Endpoint, 8)
+		resolve, err := c.Mod.ResolveEndpoints(ctx, target)
+		if err != nil {
+			c.Mod.log.Error("resolve endpoints: %v", err)
+			return nodes.ErrEndpointResolve
+		}
+
+		go func() {
+			defer close(endpoints)
+			for i := range resolve {
+				endpoints <- i
+			}
+		}()
 	}
 
 	s, err := c.Mod.peers.connectAtAny(ctx, target, endpoints)

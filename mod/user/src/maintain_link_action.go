@@ -1,114 +1,75 @@
 package user
 
 import (
-	"sync/atomic"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/events"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
-	"github.com/cryptopunkscc/astrald/mod/user"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
-var _ scheduler.EventReceiver = &MaintainLinkAction{}
 var _ scheduler.Action = &MaintainLinkAction{}
 
 // MaintainLinkAction attempts to maintain a link to a target node indefinitely.
 // triggers:
 // - ensure_connectivity_action
 type MaintainLinkAction struct {
-	mod            *Module
-	Target         *astral.Identity
-	wake           chan struct{}
-	actionRequired atomic.Bool
+	mod    *Module
+	Target *astral.Identity
 }
 
-func (mod *Module) NewMaintainLinkAction(target *astral.
-	Identity) user.MaintainLinkAction {
+func (mod *Module) NewMaintainLinkAction(target *astral.Identity) *MaintainLinkAction {
 	return &MaintainLinkAction{
 		mod:    mod,
 		Target: target,
-		wake:   make(chan struct{}, 1),
 	}
 }
 
 func (a *MaintainLinkAction) String() string { return "nodes.maintain_link" }
 
 func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
-	// check if we are already linked
-
-	count := -1
-	a.actionRequired.Store(!a.mod.Nodes.IsLinked(a.Target))
+	backoff := 0
 	for {
-		for !a.actionRequired.Load() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// spawn one CreateStreamAction attempt
+		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target.String(), "", "")
+		scheduled := a.mod.Scheduler.Schedule(ctx, createStreamAction)
+		<-scheduled.Wait()
+
+		info, err := createStreamAction.Result()
+		if err != nil {
+			delay := min((1<<backoff)*time.Second, 15*time.Minute)
+			backoff = min(backoff+1, 32)
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-a.wake:
+			case <-time.After(delay):
+				continue
 			}
 		}
 
-		if count == 0 {
-			a.mod.log.Log("link to %v is broken, trying to reconnect", a.Target)
-		}
+		a.mod.log.Log("maintain_link_action for %v", a.Target)
 
-		if count > 0 && count%5 == 0 {
-			a.mod.log.Log("still trying to reconnect to %v (attempt %v)",
-				a.Target, count)
-		}
-
-		resolve, err := a.mod.Nodes.ResolveEndpoints(ctx, a.Target)
+		// NOTE: could be part of stream created event handler
+		err = a.mod.SyncApps(ctx, info.RemoteIdentity)
 		if err != nil {
-			return nodes.ErrEndpointResolve
+			a.mod.log.Error("error syncing apps with %v: %v", info.RemoteIdentity, err)
 		}
 
-		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target, sig.ChanToArray(resolve))
-		scheduled, err := a.mod.Scheduler.Schedule(ctx, createStreamAction)
+		err = a.mod.SyncAlias(ctx, info.RemoteIdentity)
 		if err != nil {
-			return err
+			a.mod.log.Error("error syncing alias of %v: %v", info.RemoteIdentity, err)
 		}
 
-		<-scheduled.Done()
-		if scheduled.Err() != nil {
-			if count < 0 {
-				count = 0
-			}
-
-			count++
-			time.Sleep(5 * time.Second)
-			continue
-			// FIXME: backoff struct (sig.Backoff)
+		err = a.mod.SyncAssets(ctx, info.RemoteIdentity)
+		if err != nil {
+			a.mod.log.Error("error syncing assets of %v: %v", info.RemoteIdentity, err)
 		}
 
-		// Success path
-		if count > 0 {
-			a.mod.log.Log("link to %v restored after %v attempts", a.Target,
-				count)
-		} else if count < 0 {
-			a.mod.log.Log("link to %v established", a.Target)
-		}
-
-		count = 0 // reset for future real outages
-		a.actionRequired.Store(false)
-	}
-}
-
-func (a *MaintainLinkAction) ReceiveEvent(e *events.Event) {
-	switch typed := e.Data.(type) {
-	case *nodes.StreamClosedEvent:
-		if !typed.RemoteIdentity.IsEqual(a.Target) {
-			return
-		}
-
-		if typed.StreamCount == 0 {
-			a.actionRequired.Store(true)
-			select {
-			case a.wake <- struct{}{}:
-			default:
-			}
-		}
-
+		return nil
 	}
 }

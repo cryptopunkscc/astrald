@@ -13,7 +13,8 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action, deps ...sch
 		return nil
 	}
 
-	scheduled := scheduler.NewScheduledAction(a)
+	ctx, cancel := mod.ctx.WithCancel()
+	scheduled := scheduler.NewScheduledAction(a, cancel)
 
 	// If module is shutting down, drop scheduling to avoid starting new work.
 	if mod.ctx != nil {
@@ -32,7 +33,7 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action, deps ...sch
 
 		// FIXME: wait for deps to be ready
 
-		err := a.Run(mod.ctx)
+		err := a.Run(ctx)
 		if err != nil {
 			mod.log.Errorv(1, "failed to run action %v: %v", a.String(), err)
 		}
