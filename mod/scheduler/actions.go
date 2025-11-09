@@ -12,11 +12,11 @@ type Action interface {
 	Run(*astral.Context) error
 }
 
-type Waitable interface {
-	Wait() <-chan struct{}
+type Doner interface {
+	Done() <-chan struct{}
 }
 
 type ResourceHolder interface {
-	Waitable
+	Doner
 	Release()
 }

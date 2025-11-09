@@ -17,17 +17,9 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 		return nil
 	}
 
-	switch o := (drop.Object()).(type) {
-	case *events.Event:
-		switch e := o.Data.(type) {
-		case *nodes.StreamCreatedEvent:
-			if e.StreamCount == 1 && slices.ContainsFunc(mod.User.LocalSwarm(),
-				e.RemoteIdentity.IsEqual) {
-				go mod.updateIdentityProfile(e.RemoteIdentity)
-				drop.Accept(false)
-			}
-
-		}
+	switch obj := (drop.Object()).(type) {
+	case *nodes.NodeLinkedEvent:
+		go mod.updateIdentityProfile(obj.NodeID)
 	}
 
 	return drop.Accept(false)

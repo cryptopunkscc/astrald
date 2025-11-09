@@ -26,11 +26,6 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		}
 
 		drop.Accept(true)
-
-	case *nodes.EventLinked:
-		go mod.onNodeLinked(o)
-
-		drop.Accept(false)
 	case *apphost.EventNewAppContract:
 		switch {
 		case !drop.SenderID().IsEqual(mod.node.Identity()):
@@ -52,6 +47,10 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 				mod.Scheduler.Schedule(mod.ctx, mod.NewEnsureConnectivityAction())
 				drop.Accept(false)
 			}
+		case *nodes.NodeLinkedEvent:
+			// FIXME: could be same with StreamCreatedEvent tbh
+			go mod.onNodeLinked(e)
+			drop.Accept(false)
 		}
 	}
 
@@ -73,7 +72,7 @@ func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedN
 	return nil
 }
 
-func (mod *Module) pushActiveContract(remoteIdentity *astral.Identity) {
+func (mod *Module) onNodeLinked(event *nodes.NodeLinkedEvent) {
 	contract := mod.ActiveContract()
 	if contract == nil {
 		return

@@ -293,11 +293,11 @@ func (mod *Peers) addStream(
 		return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
 	})
 
-	mod.Events.Emit(&nodes.StreamCreatedEvent{
-		RemoteIdentity: s.RemoteIdentity(),
-		StreamId:       s.id,
-		StreamCount:    len(streamsWithSameIdentity),
-	})
+	// emit an event if linked
+	if !alreadyLinked {
+		mod.Events.Emit(&nodes.NodeLinkedEvent{NodeID: s.RemoteIdentity()})
+		mod.Objects.Receive(&nodes.NodeLinkedEvent{NodeID: s.RemoteIdentity()}, nil)
+	}
 
 	mod.Events.Emit(&nodes.StreamCreatedEvent{
 		StreamId: s.id,
@@ -319,13 +319,6 @@ func (mod *Peers) addStream(
 		mod.Events.Emit(&nodes.StreamClosedEvent{
 			With:   s.RemoteIdentity(),
 			Forced: false,
-		}) // log stream removal
-		mod.log.Errorv(1, "removed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
-
-		mod.Events.Emit(&nodes.StreamClosedEvent{
-			RemoteIdentity: s.RemoteIdentity(),
-			Forced:         false,
-			StreamCount:    astral.Int8(len(streamsWithSameIdentity)),
 		})
 
 		mod.log.Errorv(1, "removed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())

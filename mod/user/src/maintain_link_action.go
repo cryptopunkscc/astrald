@@ -5,6 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
+	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
 var _ scheduler.Action = &MaintainLinkAction{}
@@ -17,7 +18,8 @@ type MaintainLinkAction struct {
 	Target *astral.Identity
 }
 
-func (mod *Module) NewMaintainLinkAction(target *astral.Identity) *MaintainLinkAction {
+func (mod *Module) NewMaintainLinkAction(target *astral.
+	Identity) user.MaintainLinkAction {
 	return &MaintainLinkAction{
 		mod:    mod,
 		Target: target,
@@ -38,7 +40,7 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 		// spawn one CreateStreamAction attempt
 		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target.String(), "", "")
 		scheduled := a.mod.Scheduler.Schedule(ctx, createStreamAction)
-		<-scheduled.Wait()
+		<-scheduled.Done()
 
 		info, err := createStreamAction.Result()
 		if err != nil {
@@ -53,7 +55,6 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 		}
 
 		a.mod.log.Log("maintain_link_action for %v", a.Target)
-
 		// NOTE: could be part of stream created event handler
 		err = a.mod.SyncApps(ctx, info.RemoteIdentity)
 		if err != nil {
