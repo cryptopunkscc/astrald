@@ -33,20 +33,21 @@ type Module struct {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
-	ctx, cancel := ctx.WithCancel()
-
 	ac := mod.ActiveContract()
 	if ac != nil {
 		mod.log.Info("hello, %v!", ac.UserID)
 	}
 
-	s := mod.Scheduler.Schedule(ctx, mod.Deps.Shell.NewLogAction("hello world"))
-	cancel()
-	s.Cancel()
-	fmt.Println("TEST: ", s.Err())
-	// mod.Scheduler.Schedule(ctx, mod.NewEnsureConnectivityAction())
+	// We are missing connection with certain nodes.
+	for _, node := range mod.LocalSwarm() {
+		fmt.Println("scheduling maintain link for", node)
+		maintainLinkAction := mod.NewMaintainLinkAction(node)
+		mod.Scheduler.Schedule(ctx, maintainLinkAction)
+		// mod.addSibling(node, scheduledAction.Cancel)
+	}
 
 	<-ctx.Done()
+
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -23,6 +24,7 @@ func (l LogAction) Run(ctx *astral.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-time.After(time.Second * 5):
+		return fmt.Errorf("debug")
 	}
 
 	l.mod.log.Log(l.message)

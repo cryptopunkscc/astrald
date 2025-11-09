@@ -3,6 +3,8 @@ package scheduler
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/events"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -23,6 +25,20 @@ type Module struct {
 	queue sig.Set[scheduler.ScheduledAction]
 }
 
+func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
+	switch o := drop.Object().(type) {
+	case *events.Event:
+		for _, a := range mod.queue.Clone() {
+			if a.State() == scheduler.ScheduledActionStateRunning {
+				if a, ok := a.(scheduler.EventReceiver); ok {
+					a.ReceiveEvent(o)
+				}
+			}
+		}
+	}
+
+	return nil
+}
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 

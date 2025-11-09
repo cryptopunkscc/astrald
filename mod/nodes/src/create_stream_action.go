@@ -12,7 +12,7 @@ import (
 var _ scheduler.Action = &CreateStreamAction{}
 
 type CreateStreamAction struct {
-	Mod      *Module
+	mod      *Module
 	Target   string
 	Net      string // optional
 	Endpoint string // optional in format "net:address"
@@ -25,7 +25,7 @@ type CreateStreamAction struct {
 func (m *Module) NewCreateStreamAction(target string, net string,
 	endpoint string) nodes.CreateStreamAction {
 	return &CreateStreamAction{
-		Mod:      m,
+		mod:      m,
 		Target:   target,
 		Net:      net,
 		Endpoint: endpoint,
@@ -44,7 +44,7 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 	}()
 
 	var endpoints chan exonet.Endpoint
-	target, err := c.Mod.Dir.ResolveIdentity(c.Target)
+	target, err := c.mod.Dir.ResolveIdentity(c.Target)
 	if err != nil {
 		return nodes.ErrIdentityResolve
 	}
@@ -55,7 +55,7 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 		if len(split) != 2 {
 			return nodes.ErrInvalidEndpointFormat
 		}
-		endpoint, err := c.Mod.Exonet.Parse(split[0], split[1])
+		endpoint, err := c.mod.Exonet.Parse(split[0], split[1])
 		if err != nil {
 			return nodes.ErrEndpointParse
 		}
@@ -66,9 +66,9 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 
 	case c.Net != "":
 		endpoints = make(chan exonet.Endpoint, 8)
-		resolve, err := c.Mod.ResolveEndpoints(ctx, target)
+		resolve, err := c.mod.ResolveEndpoints(ctx, target)
 		if err != nil {
-			c.Mod.log.Error("resolve endpoints: %v", err)
+			c.mod.log.Error("resolve endpoints: %v", err)
 			return nodes.ErrEndpointResolve
 		}
 
@@ -82,9 +82,9 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 		}()
 	default:
 		endpoints = make(chan exonet.Endpoint, 8)
-		resolve, err := c.Mod.ResolveEndpoints(ctx, target)
+		resolve, err := c.mod.ResolveEndpoints(ctx, target)
 		if err != nil {
-			c.Mod.log.Error("resolve endpoints: %v", err)
+			c.mod.log.Error("resolve endpoints: %v", err)
 			return nodes.ErrEndpointResolve
 		}
 
@@ -96,7 +96,9 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 		}()
 	}
 
-	s, err := c.Mod.peers.connectAtAny(ctx, target, endpoints)
+	c.mod.log.Log("connect to %v %v", target)
+	s, err := c.mod.peers.connectAtAny(ctx, target, endpoints)
+	c.mod.log.Log("connect to err %v %v", target, err)
 	if err != nil {
 		return err
 	}

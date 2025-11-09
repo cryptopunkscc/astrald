@@ -402,7 +402,7 @@ func NewBrontideMachine(initiator bool, localKey SingleKeyECDH,
 		ephemeralGen:   ephemeralGen,
 	}
 
-	// With the default options established, we'll now process all the
+	// RemoteIdentity the default options established, we'll now process all the
 	// options passed in as parameters.
 	for _, option := range options {
 		option(m)
@@ -621,7 +621,7 @@ func (b *Machine) GenActThree() ([ActThreeSize]byte, error) {
 	copy(actThree[1:50], ciphertext)
 	copy(actThree[50:], authPayload)
 
-	// With the final ECDH operation complete, derive the session sending
+	// RemoteIdentity the final ECDH operation complete, derive the session sending
 	// and receiving keys.
 	b.split()
 
@@ -671,7 +671,7 @@ func (b *Machine) RecvActThree(actThree [ActThreeSize]byte) error {
 		return err
 	}
 
-	// With the final ECDH operation complete, derive the session sending
+	// RemoteIdentity the final ECDH operation complete, derive the session sending
 	// and receiving keys.
 	b.split()
 
