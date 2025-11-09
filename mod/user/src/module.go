@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -34,17 +33,18 @@ type Module struct {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
+	ctx, cancel := ctx.WithCancel()
+
 	ac := mod.ActiveContract()
 	if ac != nil {
 		mod.log.Info("hello, %v!", ac.UserID)
 	}
 
 	s := mod.Scheduler.Schedule(ctx, mod.Deps.Shell.NewLogAction("hello world"))
-	time.Sleep(1 * time.Second)
+	cancel()
 	s.Cancel()
 	fmt.Println("TEST: ", s.Err())
-
-	mod.Scheduler.Schedule(ctx, mod.NewEnsureConnectivityAction())
+	// mod.Scheduler.Schedule(ctx, mod.NewEnsureConnectivityAction())
 
 	<-ctx.Done()
 	return nil
