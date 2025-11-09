@@ -15,7 +15,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	}
 
 	switch obj := (drop.Object()).(type) {
-	case *nodes.EventLinked:
+	case *nodes.NodeLinkedEvent:
 		go mod.updateIdentityProfile(obj.NodeID)
 	}
 

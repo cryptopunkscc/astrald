@@ -24,7 +24,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 	select {
 	case <-ctx.Done():
 		return q.RejectWithCode(4)
-	case <-w.Wait():
+	case <-w.Done():
 	}
 
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)

@@ -294,7 +294,8 @@ func (mod *Peers) addStream(
 
 	// emit an event if linked
 	if !alreadyLinked {
-		mod.Objects.Receive(&nodes.EventLinked{NodeID: s.RemoteIdentity()}, nil)
+		mod.Events.Emit(&nodes.NodeLinkedEvent{NodeID: s.RemoteIdentity()})
+		mod.Objects.Receive(&nodes.NodeLinkedEvent{NodeID: s.RemoteIdentity()}, nil)
 	}
 
 	mod.Events.Emit(&nodes.StreamCreatedEvent{
@@ -317,13 +318,9 @@ func (mod *Peers) addStream(
 		mod.Events.Emit(&nodes.StreamClosedEvent{
 			With:   s.RemoteIdentity(),
 			Forced: false,
-		}) // log stream removal
-		mod.log.Errorv(1, "removed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
+		})
 
-		// emit an event if unlinked
-		if !mod.isLinked(s.RemoteIdentity()) {
-			mod.Objects.Receive(&nodes.EventUnlinked{NodeID: s.RemoteIdentity()}, nil)
-		}
+		mod.log.Errorv(1, "removed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
 	}()
 
 	// reflect the stream

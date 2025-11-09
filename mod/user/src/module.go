@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/kos"
-	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -29,7 +29,7 @@ type Module struct {
 	mu     sync.Mutex
 	ops    shell.Scope
 
-	linkedSibs sig.Map[string, Sibling]
+	sibs sig.Map[string, Sibling]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -40,7 +40,13 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		mod.log.Info("hello, %v!", ac.UserID)
 	}
 
+	s := mod.Scheduler.Schedule(ctx, mod.Deps.Shell.NewLogAction("hello world"))
+	time.Sleep(1 * time.Second)
+	s.Cancel()
+	fmt.Println("TEST: ", s.Err())
+
 	mod.Scheduler.Schedule(ctx, mod.NewEnsureConnectivityAction())
+
 	<-ctx.Done()
 	return nil
 }

@@ -32,7 +32,7 @@ func (a *EnsureConnectivityAction) Run(ctx *astral.Context) error {
 		maintainLinkAction := a.mod.NewMaintainLinkAction(node)
 
 		scheduledAction := a.mod.Scheduler.Schedule(ctx, maintainLinkAction)
-		a.mod.addSibling(node, *scheduledAction)
+		a.mod.addSibling(node, scheduledAction.Cancel)
 	}
 
 	return nil
