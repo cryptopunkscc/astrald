@@ -11,9 +11,18 @@ type Module interface {
 	Schedule(ctx *astral.Context, action Action, deps ...Doner) ScheduledAction
 }
 
+type ScheduledActionState int64
+
+const (
+	ScheduledActionStateScheduled ScheduledActionState = iota
+	ScheduledActionStateRunning
+	ScheduledActionStateDone
+)
+
 type ScheduledAction interface {
 	Doner
 	Action() Action
+	State() ScheduledActionState
 	ScheduledAt() astral.Time
 	CancelWithError(error)
 	Cancel()

@@ -2,12 +2,14 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
+
+// FIXME: write tests
 
 // Schedule enqueues an action for processing by launching a goroutine that
 // waits for dependencies, runs the action, and then releases resources.
@@ -57,9 +59,11 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action,
 			break
 		}
 
-		scheduled.err = a.Run(actionCtx)
-		if scheduled.err != nil {
-			fmt.Println("JESTEM CANCELLED")
+		scheduled.state.Store(int64(scheduler.ScheduledActionStateRunning))
+		err := a.Run(actionCtx)
+		scheduled.state.Store(int64(scheduler.ScheduledActionStateDone))
+		if err != nil {
+			scheduled.err = err
 			mod.log.Errorv(1, "failed to run action %v: %v", a.String(), scheduled.err)
 		}
 
@@ -81,6 +85,7 @@ type ScheduledAction struct {
 	cancel      context.CancelCauseFunc
 	cancelOnce  *sync.Once
 	err         error
+	state       atomic.Int64
 }
 
 func (h *ScheduledAction) Err() error {
@@ -130,4 +135,8 @@ func NewScheduledAction(action scheduler.Action,
 		cancel:      cancelCauseFunc,
 		cancelOnce:  &sync.Once{},
 	}
+}
+
+func (h *ScheduledAction) State() scheduler.ScheduledActionState {
+	return scheduler.ScheduledActionState(h.state.Load())
 }

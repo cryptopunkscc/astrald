@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/events"
 )
 
 // Action represents a unit of work to be executed by the scheduler.
@@ -19,4 +20,8 @@ type Doner interface {
 type ResourceHolder interface {
 	Doner
 	Release()
+}
+
+type EventReceiver interface {
+	ReceiveEvent(e *events.Event)
 }

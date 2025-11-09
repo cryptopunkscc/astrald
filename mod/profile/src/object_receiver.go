@@ -2,8 +2,11 @@ package profile
 
 import (
 	"encoding/json"
+	"slices"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/events"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
@@ -14,9 +17,17 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 		return nil
 	}
 
-	switch obj := (drop.Object()).(type) {
-	case *nodes.NodeLinkedEvent:
-		go mod.updateIdentityProfile(obj.NodeID)
+	switch o := (drop.Object()).(type) {
+	case *events.Event:
+		switch e := o.Data.(type) {
+		case *nodes.StreamCreatedEvent:
+			if e.StreamCount == 1 && slices.ContainsFunc(mod.User.LocalSwarm(),
+				e.RemoteIdentity.IsEqual) {
+				go mod.updateIdentityProfile(e.RemoteIdentity)
+				drop.Accept(false)
+			}
+
+		}
 	}
 
 	return drop.Accept(false)

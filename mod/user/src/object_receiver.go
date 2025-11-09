@@ -42,15 +42,12 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		}
 	case *events.Event:
 		switch e := o.Data.(type) {
-		case *nodes.StreamClosedEvent:
-			if slices.ContainsFunc(mod.LocalSwarm(), e.With.IsEqual) {
-				mod.Scheduler.Schedule(mod.ctx, mod.NewEnsureConnectivityAction())
+		case *nodes.StreamCreatedEvent:
+			if e.StreamCount == 1 && slices.ContainsFunc(mod.LocalSwarm(), e.RemoteIdentity.IsEqual) {
+				go mod.pushActiveContract(e.RemoteIdentity)
+				mod.Scheduler.Schedule(mod.ctx, mod.NewSyncNodesAction(e.RemoteIdentity))
 				drop.Accept(false)
 			}
-		case *nodes.NodeLinkedEvent:
-			// FIXME: could be same with StreamCreatedEvent tbh
-			go mod.onNodeLinked(e)
-			drop.Accept(false)
 		}
 	}
 
@@ -72,12 +69,12 @@ func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedN
 	return nil
 }
 
-func (mod *Module) onNodeLinked(event *nodes.NodeLinkedEvent) {
+func (mod *Module) pushActiveContract(remoteIdentity *astral.Identity) {
 	contract := mod.ActiveContract()
 	if contract == nil {
 		return
 	}
-	mod.Objects.Push(mod.ctx, event.NodeID, contract)
+	mod.Objects.Push(mod.ctx, remoteIdentity, contract)
 }
 
 func (mod *Module) onNotification(src *astral.Identity, n *user.Notification) error {

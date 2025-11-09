@@ -11,6 +11,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
+// FIXME: react on contract (spawn maintain)
+
 // SetActiveContract sets the contract under which the node operates
 func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err error) {
 	mod.mu.Lock()
@@ -37,8 +39,6 @@ func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err err
 	}
 
 	mod.log.Info("hello, %v!", contract.UserID)
-	mod.Scheduler.Schedule(mod.ctx, mod.NewEnsureConnectivityAction())
-
 	return
 }
 
@@ -153,7 +153,6 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 		return
 	}
 
-	mod.Scheduler.Schedule(ctx, mod.NewEnsureConnectivityAction())
 	return
 }
 
