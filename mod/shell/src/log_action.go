@@ -18,11 +18,10 @@ func (l LogAction) String() string {
 	return "shell.log_action"
 }
 
-func (l LogAction) Run(context *astral.Context) error {
-
+func (l LogAction) Run(ctx *astral.Context) error {
 	select {
-	case <-context.Done():
-		return context.Err()
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-time.After(time.Second * 5):
 	}
 

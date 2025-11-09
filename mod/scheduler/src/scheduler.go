@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -11,7 +12,8 @@ import (
 // Schedule enqueues an action for processing by launching a goroutine that
 // waits for dependencies, runs the action, and then releases resources.
 // It is safe for concurrent use.
-func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action, deps ...scheduler.Doner) scheduler.ScheduledAction {
+func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action,
+	deps ...scheduler.Doner) scheduler.ScheduledAction {
 	if a == nil {
 		return nil
 	}
@@ -24,23 +26,20 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action, deps ...sch
 		select {
 		case <-mod.ctx.Done():
 			mod.log.Log("drop %v: module shutting down", a.String())
-			return &scheduled
+			return scheduled
 		default:
 		}
 	}
 
-	err := mod.queue.Add(&scheduled)
+	err := mod.queue.Add(scheduled)
 	if err != nil {
 		mod.log.Errorv(1, "failed to add action %v to queue: %v", a.String(), err)
-		return &scheduled
+		return scheduled
 	}
 
 	go func() {
 		defer scheduled.close()
-		defer mod.queue.Remove(&scheduled)
-
-		// FIXME: wait for deps to be ready
-
+		defer mod.queue.Remove(scheduled)
 		for _, d := range deps {
 			select {
 			case <-actionCtx.Done():
@@ -60,6 +59,7 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action, deps ...sch
 
 		scheduled.err = a.Run(actionCtx)
 		if scheduled.err != nil {
+			fmt.Println("JESTEM CANCELLED")
 			mod.log.Errorv(1, "failed to run action %v: %v", a.String(), scheduled.err)
 		}
 
@@ -71,7 +71,7 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action, deps ...sch
 		}
 	}()
 
-	return &scheduled
+	return scheduled
 }
 
 type ScheduledAction struct {
@@ -83,23 +83,23 @@ type ScheduledAction struct {
 	err         error
 }
 
-func (h ScheduledAction) Err() error {
+func (h *ScheduledAction) Err() error {
 	return h.err
 }
 
-func (h ScheduledAction) CancelWithError(err error) {
+func (h *ScheduledAction) CancelWithError(err error) {
 	h.err = err
 	h.cancel(err)
 	return
 }
 
-func (h ScheduledAction) Done() <-chan struct{} {
+func (h *ScheduledAction) Done() <-chan struct{} {
 	return h.done
 }
 
 // called externally
-func (h ScheduledAction) Cancel() {
-	h.cancel(context.Canceled)
+func (h *ScheduledAction) Cancel() {
+	h.CancelWithError(context.Canceled)
 	h.close()
 	return
 }
@@ -122,8 +122,8 @@ func (h ScheduledAction) ScheduledAt() astral.Time {
 }
 
 func NewScheduledAction(action scheduler.Action,
-	cancelCauseFunc context.CancelCauseFunc) ScheduledAction {
-	return ScheduledAction{
+	cancelCauseFunc context.CancelCauseFunc) *ScheduledAction {
+	return &ScheduledAction{
 		action:      action,
 		scheduledAt: astral.Now(),
 		done:        make(chan struct{}),
