@@ -23,7 +23,7 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 
 	sess, err := kcpgo.DialWithOptions(endpoint.Address(), nil, 0, 0)
 	if err != nil {
-		return nil, fmt.Errorf("kcp module/dial dialing session failed: %w", err)
+		return nil, fmt.Errorf("kcp module/dial dialing endpoint failed: %w", err)
 	}
 
 	// NOTE: without this deadline, dialing KCP hangs (causes problems with re-attempts at establishing links)
