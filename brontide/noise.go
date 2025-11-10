@@ -402,7 +402,7 @@ func NewBrontideMachine(initiator bool, localKey SingleKeyECDH,
 		ephemeralGen:   ephemeralGen,
 	}
 
-	// RemoteIdentity the default options established, we'll now process all the
+	// With the default options established, we'll now process all the
 	// options passed in as parameters.
 	for _, option := range options {
 		option(m)
