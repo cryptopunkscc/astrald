@@ -96,9 +96,8 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 		}()
 	}
 
-	c.mod.log.Log("connect to %v %v", target)
-	s, err := c.mod.peers.connectAtAny(ctx, target, endpoints)
-	c.mod.log.Log("connect to err %v %v", target, err)
+	s, err := c.mod.peers.connectAtAny(ctx, target,
+		endpoints)
 	if err != nil {
 		return err
 	}

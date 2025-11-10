@@ -253,7 +253,6 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 }
 
 func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
-	mod.log.Log("received migrate frame")
 	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
@@ -316,7 +315,6 @@ func (mod *Peers) addStream(
 			return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
 		})
 
-		// FIXME: check emitting
 		mod.Events.Emit(&nodes.StreamClosedEvent{
 			RemoteIdentity: s.RemoteIdentity(),
 			Forced:         false,
