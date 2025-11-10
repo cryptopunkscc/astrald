@@ -83,7 +83,6 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 		count = 0 // reset for future real outages
 		a.actionRequired.Store(false)
 	}
-
 }
 
 func (a *MaintainLinkAction) ReceiveEvent(e *events.Event) {
