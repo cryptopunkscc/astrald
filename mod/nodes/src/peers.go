@@ -315,7 +315,6 @@ func (mod *Peers) addStream(
 			return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
 		})
 
-		// FIXME: check emitting
 		mod.Events.Emit(&nodes.StreamClosedEvent{
 			RemoteIdentity: s.RemoteIdentity(),
 			Forced:         false,

@@ -30,7 +30,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 	case *events.Event:
 		for _, a := range mod.queue.Clone() {
 			if a.State() == scheduler.ScheduledActionStateRunning {
-				if a, ok := a.(scheduler.EventReceiver); ok {
+				if a, ok := a.Action().(scheduler.EventReceiver); ok {
 					a.ReceiveEvent(o)
 				}
 			}
