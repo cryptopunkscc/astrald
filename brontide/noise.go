@@ -621,7 +621,7 @@ func (b *Machine) GenActThree() ([ActThreeSize]byte, error) {
 	copy(actThree[1:50], ciphertext)
 	copy(actThree[50:], authPayload)
 
-	// RemoteIdentity the final ECDH operation complete, derive the session sending
+	// With the final ECDH operation complete, derive the session sending
 	// and receiving keys.
 	b.split()
 
@@ -671,7 +671,7 @@ func (b *Machine) RecvActThree(actThree [ActThreeSize]byte) error {
 		return err
 	}
 
-	// RemoteIdentity the final ECDH operation complete, derive the session sending
+	// With the final ECDH operation complete, derive the session sending
 	// and receiving keys.
 	b.split()
 

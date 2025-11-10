@@ -45,7 +45,7 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action,
 		for _, d := range deps {
 			select {
 			case <-actionCtx.Done():
-				scheduled.err = ctx.Err()
+				scheduled.err = actionCtx.Err()
 				return
 			case <-d.Done():
 			}
@@ -53,7 +53,7 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action,
 
 		select {
 		case <-actionCtx.Done():
-			scheduled.err = ctx.Err()
+			scheduled.err = actionCtx.Err()
 			return
 		default:
 			break

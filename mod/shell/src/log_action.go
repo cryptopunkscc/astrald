@@ -1,9 +1,6 @@
 package shell
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
@@ -23,8 +20,8 @@ func (l LogAction) Run(ctx *astral.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(time.Second * 5):
-		return fmt.Errorf("debug")
+	default:
+
 	}
 
 	l.mod.log.Log(l.message)
