@@ -65,7 +65,11 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 		}
 
 		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target, sig.ChanToArray(resolve))
-		scheduled := a.mod.Scheduler.Schedule(ctx, createStreamAction)
+		scheduled, err := a.mod.Scheduler.Schedule(ctx, createStreamAction)
+		if err != nil {
+			return err
+		}
+
 		<-scheduled.Done()
 		if scheduled.Err() != nil {
 			if count < 0 {
