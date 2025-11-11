@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -15,9 +16,9 @@ import (
 // waits for dependencies, runs the action, and then releases resources.
 // It is safe for concurrent use.
 func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action,
-	deps ...scheduler.Doner) scheduler.ScheduledAction {
+	deps ...scheduler.Doner) (scheduledAction scheduler.ScheduledAction, err error) {
 	if a == nil {
-		return nil
+		return nil, fmt.Errorf(`action is nil`)
 	}
 
 	actionCtx, cancel := ctx.WithCancelCause()
@@ -28,15 +29,15 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action,
 		select {
 		case <-mod.ctx.Done():
 			mod.log.Log("drop %v: module shutting down", a.String())
-			return scheduled
+			return scheduled, fmt.Errorf("module shutting down")
 		default:
 		}
 	}
 
-	err := mod.queue.Add(scheduled)
+	err = mod.queue.Add(scheduled)
 	if err != nil {
 		mod.log.Errorv(1, "failed to add action %v to queue: %v", a.String(), err)
-		return scheduled
+		return scheduled, fmt.Errorf("failed to add action to queue: %w", err)
 	}
 
 	go func() {
@@ -69,13 +70,13 @@ func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action,
 
 		// After execution, release resources if deps are ResourceHolders
 		for _, d := range deps {
-			if rh, ok := d.(scheduler.ResourceHolder); ok && rh != nil {
+			if rh, ok := d.(scheduler.ResourceReleaser); ok && rh != nil {
 				rh.Release()
 			}
 		}
 	}()
 
-	return scheduled
+	return scheduled, nil
 }
 
 type ScheduledAction struct {

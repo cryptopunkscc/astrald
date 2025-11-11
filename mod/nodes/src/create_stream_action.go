@@ -13,7 +13,7 @@ var _ scheduler.Action = &CreateStreamAction{}
 
 type CreateStreamAction struct {
 	mod      *Module
-	Target   string
+	Target   *astral.Identity
 	Net      string // optional
 	Endpoint string // optional in format "net:address"
 
@@ -22,7 +22,7 @@ type CreateStreamAction struct {
 	Err  error
 }
 
-func (m *Module) NewCreateStreamAction(target string, net string,
+func (m *Module) NewCreateStreamAction(target *astral.Identity, net string,
 	endpoint string) nodes.CreateStreamAction {
 	return &CreateStreamAction{
 		mod:      m,
@@ -44,10 +44,6 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 	}()
 
 	var endpoints chan exonet.Endpoint
-	target, err := c.mod.Dir.ResolveIdentity(c.Target)
-	if err != nil {
-		return nodes.ErrIdentityResolve
-	}
 
 	switch {
 	case c.Endpoint != "":
@@ -66,7 +62,7 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 
 	case c.Net != "":
 		endpoints = make(chan exonet.Endpoint, 8)
-		resolve, err := c.mod.ResolveEndpoints(ctx, target)
+		resolve, err := c.mod.ResolveEndpoints(ctx, c.Target)
 		if err != nil {
 			c.mod.log.Error("resolve endpoints: %v", err)
 			return nodes.ErrEndpointResolve
@@ -82,7 +78,7 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 		}()
 	default:
 		endpoints = make(chan exonet.Endpoint, 8)
-		resolve, err := c.mod.ResolveEndpoints(ctx, target)
+		resolve, err := c.mod.ResolveEndpoints(ctx, c.Target)
 		if err != nil {
 			c.mod.log.Error("resolve endpoints: %v", err)
 			return nodes.ErrEndpointResolve
@@ -96,7 +92,7 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 		}()
 	}
 
-	s, err := c.mod.peers.connectAtAny(ctx, target,
+	s, err := c.mod.peers.connectAtAny(ctx, c.Target,
 		endpoints)
 	if err != nil {
 		return err

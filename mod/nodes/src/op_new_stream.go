@@ -18,7 +18,13 @@ type opNewStreamArgs struct {
 
 // OpNewStream now delegates to a scheduled action and waits for completion.
 func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStreamArgs) (err error) {
-	createStreamAction := mod.NewCreateStreamAction(args.Target, args.Net, args.Endpoint)
+
+	target, err := mod.Dir.ResolveIdentity(args.Target)
+	if err != nil {
+		return q.RejectWithCode(2)
+	}
+
+	createStreamAction := mod.NewCreateStreamAction(target, args.Net, args.Endpoint)
 	scheduledAction := mod.Scheduler.Schedule(ctx, createStreamAction)
 
 	// Wait for action or context cancellation

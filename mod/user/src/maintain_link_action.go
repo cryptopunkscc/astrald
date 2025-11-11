@@ -58,7 +58,7 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 				a.Target, count)
 		}
 
-		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target.String(), "", "")
+		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target, "", "")
 		scheduled := a.mod.Scheduler.Schedule(ctx, createStreamAction)
 		<-scheduled.Done()
 		if scheduled.Err() != nil {
@@ -94,7 +94,10 @@ func (a *MaintainLinkAction) ReceiveEvent(e *events.Event) {
 
 		if typed.StreamCount == 0 {
 			a.actionRequired.Store(true)
-			a.wake <- struct{}{}
+			select {
+			case a.wake <- struct{}{}:
+			default:
+			}
 		}
 
 	}
