@@ -11,15 +11,19 @@ import (
 // Server implements KCP listening with connection acceptance via kcp.Listener
 type Server struct {
 	*Module
-	listener *kcpgo.Listener
+	listener   *kcpgo.Listener
+	listenPort int
 }
 
-func NewServer(module *Module) *Server {
-	return &Server{Module: module}
+func NewServer(module *Module, listenPort int) *Server {
+	return &Server{
+		Module:     module,
+		listenPort: listenPort,
+	}
 }
 
 func (s *Server) Run(ctx *astral.Context) error {
-	addr := fmt.Sprintf(":%d", s.config.ListenPort)
+	addr := fmt.Sprintf(":%d", s.listenPort)
 	kcpListener, err := kcpgo.ListenWithOptions(addr, nil, 0, 0)
 	if err != nil {
 		return fmt.Errorf(`kcp server/run: failed to start kcp listener at %v: %w`, addr, err)

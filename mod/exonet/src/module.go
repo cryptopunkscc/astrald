@@ -22,9 +22,10 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	dialers   sig.Map[string, exonet.Dialer]
-	unpackers sig.Map[string, exonet.Unpacker]
-	parser    sig.Map[string, exonet.Parser]
+	dialers    sig.Map[string, exonet.Dialer]
+	unpackers  sig.Map[string, exonet.Unpacker]
+	parser     sig.Map[string, exonet.Parser]
+	ephemerals sig.Map[string, exonet.Endpoint]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -71,4 +72,14 @@ func (mod *Module) SetUnpacker(network string, unpacker exonet.Unpacker) {
 
 func (mod *Module) SetParser(network string, parser exonet.Parser) {
 	mod.parser.Replace(network, parser)
+}
+
+func (mod *Module) ListenEphemeral(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.Endpoint, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (mod *Module) StopEphemeral(endpoint exonet.Endpoint) (err error) {
+	//TODO implement me
+	panic("implement me")
 }
