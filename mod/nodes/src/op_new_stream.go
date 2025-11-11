@@ -32,11 +32,11 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 	case args.Endpoint != "":
 		split := strings.SplitN(args.Endpoint, ":", 2)
 		if len(split) != 2 {
-			return nodes.ErrInvalidEndpointFormat
+			return q.RejectWithCode(2)
 		}
 		endpoint, err := mod.Exonet.Parse(split[0], split[1])
 		if err != nil {
-			return nodes.ErrEndpointParse
+			return q.RejectWithCode(3)
 		}
 
 		endpoints = make(chan exonet.Endpoint, 1)
@@ -47,7 +47,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 		endpoints = make(chan exonet.Endpoint, 8)
 		resolve, err := mod.ResolveEndpoints(ctx, target)
 		if err != nil {
-			return nodes.ErrEndpointResolve
+			return q.RejectWithCode(4)
 		}
 
 		go func() {
