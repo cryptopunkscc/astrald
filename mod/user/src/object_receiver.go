@@ -1,12 +1,14 @@
 package user
 
 import (
+	"slices"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/events"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
-	"slices"
 )
 
 var _ objects.Receiver = &Module{}
@@ -18,19 +20,12 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		if err == nil {
 			drop.Accept(true)
 		}
-
 	case *apphost.AppContract:
 		if !slices.ContainsFunc(mod.LocalSwarm(), o.HostID.IsEqual) {
 			break
 		}
 
 		drop.Accept(true)
-
-	case *nodes.EventLinked:
-		go mod.onNodeLinked(o)
-
-		drop.Accept(false)
-
 	case *apphost.EventNewAppContract:
 		switch {
 		case !drop.SenderID().IsEqual(mod.node.Identity()):
@@ -40,11 +35,19 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		}
 
 		mod.pushToLinkedSibs(o.Contract)
-
 	case *user.Notification:
 		err = mod.onNotification(drop.SenderID(), o)
 		if err == nil {
 			drop.Accept(false)
+		}
+	case *events.Event:
+		switch e := o.Data.(type) {
+		case *nodes.StreamCreatedEvent:
+			if e.StreamCount == 1 && slices.ContainsFunc(mod.LocalSwarm(), e.RemoteIdentity.IsEqual) {
+				go mod.pushActiveContract(e.RemoteIdentity)
+				mod.Scheduler.Schedule(mod.ctx, mod.NewSyncNodesAction(e.RemoteIdentity))
+				drop.Accept(false)
+			}
 		}
 	}
 
@@ -66,12 +69,12 @@ func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedN
 	return nil
 }
 
-func (mod *Module) onNodeLinked(event *nodes.EventLinked) {
+func (mod *Module) pushActiveContract(remoteIdentity *astral.Identity) {
 	contract := mod.ActiveContract()
 	if contract == nil {
 		return
 	}
-	mod.Objects.Push(mod.ctx, event.NodeID, contract)
+	mod.Objects.Push(mod.ctx, remoteIdentity, contract)
 }
 
 func (mod *Module) onNotification(src *astral.Identity, n *user.Notification) error {

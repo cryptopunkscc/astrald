@@ -69,6 +69,12 @@ func (ctx *Context) WithCancel() (clone *Context, cancel context.CancelFunc) {
 	return
 }
 
+func (ctx *Context) WithCancelCause() (clone *Context, cancel context.CancelCauseFunc) {
+	clone = ctx.clone()
+	clone.Context, cancel = context.WithCancelCause(ctx.Context)
+	return
+}
+
 func (ctx *Context) WithTimeout(d time.Duration) (clone *Context, cancel context.CancelFunc) {
 	clone = ctx.clone()
 	clone.Context, cancel = context.WithTimeout(ctx.Context, d)

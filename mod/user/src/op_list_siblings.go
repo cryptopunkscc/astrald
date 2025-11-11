@@ -17,7 +17,7 @@ func (mod *Module) OpListSiblings(ctx *astral.Context, q shell.Query, args opLis
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	for _, id := range mod.listSibs() {
+	for _, id := range mod.getLinkedSibs() {
 		err = ch.Write(id)
 		if err != nil {
 			return

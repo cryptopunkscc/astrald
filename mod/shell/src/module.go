@@ -1,12 +1,13 @@
 package shell
 
 import (
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
-	"io"
 )
 
 var _ shell.Module = &Module{}
@@ -39,4 +40,11 @@ func (mod *Module) Root() *shell.Scope {
 
 func (mod *Module) String() string {
 	return shell.ModuleName
+}
+
+func (mod *Module) NewLogAction(message string) shell.LogAction {
+	return LogAction{
+		mod:     mod,
+		message: message,
+	}
 }

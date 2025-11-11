@@ -7,12 +7,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -26,14 +22,6 @@ const defaultPingTimeout = time.Second * 30
 type NodeInfo nodes.NodeInfo
 
 var _ nodes.Module = &Module{}
-
-type Deps struct {
-	Auth    auth.Module
-	Dir     dir.Module
-	Exonet  exonet.Module
-	Keys    keys.Module
-	Objects objects.Module
-}
 
 type Module struct {
 	Deps
@@ -129,6 +117,10 @@ func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 	if resolver != nil {
 		mod.resolvers.Add(resolver)
 	}
+}
+
+func (mod *Module) IsLinked(identity *astral.Identity) bool {
+	return mod.peers.isLinked(identity)
 }
 
 // findStreamByID returns a stream with the given local id or nil if not found.
