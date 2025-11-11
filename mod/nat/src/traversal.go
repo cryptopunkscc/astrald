@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
-	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
 // NOTE: Implementation of this exchange as state machine is dictated by
@@ -180,7 +179,7 @@ func (t *traversal) handlePunch(ctx *astral.Context) (state State, err error) {
 		return state, err
 	}
 	// assign the observed endpoint to the pair
-	observedPeer := utp.Endpoint{IP: res.RemoteIP, Port: res.RemotePort}
+	observedPeer := nat.UDPEndpoint{IP: res.RemoteIP, Port: res.RemotePort}
 	pair := nat.EndpointPair{
 		PeerA: nat.PeerEndpoint{Identity: t.localIdentity},
 		PeerB: nat.PeerEndpoint{Identity: t.peerIdentity, Endpoint: observedPeer},
@@ -211,7 +210,7 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 		if err = t.verify(res, nat.PunchSignalTypeResult); err != nil {
 			return 0, err
 		}
-		t.pair.PeerA.Endpoint = utp.Endpoint{IP: res.IP, Port: res.Port}
+		t.pair.PeerA.Endpoint = nat.UDPEndpoint{IP: res.IP, Port: res.Port}
 		state = TraversalStateDone
 		return state, err
 	}
@@ -227,8 +226,8 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 	}
 	// Set PairNonce from initiator's Result
 	t.pair.Nonce = res.PairNonce
-	t.pair.PeerA.Endpoint = utp.Endpoint{IP: res.IP, Port: res.Port}
-	// responder sends result back to initiator
+	t.pair.PeerA.Endpoint = nat.UDPEndpoint{IP: res.IP, Port: res.Port}
+
 	err = t.ch.Write(&nat.PunchSignal{
 		Signal:    nat.PunchSignalTypeResult,
 		Session:   t.puncher.Session(),

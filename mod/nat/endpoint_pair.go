@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
 // EndpointPair represents two peers that established a NAT-traversed
@@ -69,7 +68,7 @@ type PeerEndpoint struct {
 	// NOTE: cannot use exonet.Endpoint for serialization reasons,
 	// and there is lack of package/struct describing (
 	//transport layer) addr. (for now utp is only supported UDP protocol)
-	Endpoint utp.Endpoint
+	Endpoint UDPEndpoint
 }
 
 // ObjectType implements astral.Object.
