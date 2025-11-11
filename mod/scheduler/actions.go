@@ -17,8 +17,7 @@ type Doner interface {
 	Done() <-chan struct{}
 }
 
-type ResourceHolder interface {
-	Doner
+type ResourceReleaser interface {
 	Release()
 }
 
