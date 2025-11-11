@@ -2,10 +2,13 @@ package nodes
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type opNewStreamArgs struct {
@@ -23,7 +26,41 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 		return q.RejectWithCode(2)
 	}
 
-	createStreamAction := mod.NewCreateStreamAction(target, args.Net, args.Endpoint)
+	var endpoints chan exonet.Endpoint
+
+	switch {
+	case args.Endpoint != "":
+		split := strings.SplitN(args.Endpoint, ":", 2)
+		if len(split) != 2 {
+			return nodes.ErrInvalidEndpointFormat
+		}
+		endpoint, err := mod.Exonet.Parse(split[0], split[1])
+		if err != nil {
+			return nodes.ErrEndpointParse
+		}
+
+		endpoints = make(chan exonet.Endpoint, 1)
+		endpoints <- endpoint
+		close(endpoints)
+
+	case args.Net != "":
+		endpoints = make(chan exonet.Endpoint, 8)
+		resolve, err := mod.ResolveEndpoints(ctx, target)
+		if err != nil {
+			return nodes.ErrEndpointResolve
+		}
+
+		go func() {
+			defer close(endpoints)
+			for i := range resolve {
+				if i.Network() == args.Net {
+					endpoints <- i
+				}
+			}
+		}()
+	}
+
+	createStreamAction := mod.NewCreateStreamAction(target, sig.ChanToArray(endpoints))
 	scheduledAction := mod.Scheduler.Schedule(ctx, createStreamAction)
 
 	// Wait for action or context cancellation

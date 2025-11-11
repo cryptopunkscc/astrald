@@ -32,7 +32,7 @@ type Module interface {
 
 	IsLinked(*astral.Identity) bool
 
-	NewCreateStreamAction(target *astral.Identity, net string, endpoint string) CreateStreamAction
+	NewCreateStreamAction(target *astral.Identity, endpoints []exonet.Endpoint) CreateStreamAction
 }
 
 // Link is an encrypted communication channel between two identities that is capable of routing queries

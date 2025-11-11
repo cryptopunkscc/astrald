@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/user"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var _ scheduler.EventReceiver = &MaintainLinkAction{}
@@ -58,7 +59,12 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 				a.Target, count)
 		}
 
-		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target, "", "")
+		resolve, err := a.mod.Nodes.ResolveEndpoints(ctx, a.Target)
+		if err != nil {
+			return nodes.ErrEndpointResolve
+		}
+
+		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target, sig.ChanToArray(resolve))
 		scheduled := a.mod.Scheduler.Schedule(ctx, createStreamAction)
 		<-scheduled.Done()
 		if scheduled.Err() != nil {
