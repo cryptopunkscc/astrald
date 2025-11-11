@@ -14,6 +14,9 @@ type Module interface {
 	SetDialer(network string, dialer Dialer)
 	SetUnpacker(network string, unpacker Unpacker)
 	SetParser(network string, parser Parser)
+
+	ListenEphemeral(ctx *astral.Context, endpoint Endpoint) (Endpoint, error)
+	StopEphemeral(endpoint Endpoint) (err error)
 }
 
 // Endpoint represents a dialable address on a network (such as an IP address with port number)

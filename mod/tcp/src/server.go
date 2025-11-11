@@ -10,26 +10,30 @@ import (
 
 type Server struct {
 	*Module
+	listenPort int
 }
 
-func NewServer(module *Module) *Server {
-	return &Server{Module: module}
+func NewServer(module *Module, listenPort int) *Server {
+	return &Server{
+		Module:     module,
+		listenPort: listenPort,
+	}
 }
 
-func (srv *Server) Run(ctx *astral.Context) error {
+func (s *Server) Run(ctx *astral.Context) error {
 	// start the listener
-	var addrStr = ":" + strconv.Itoa(srv.config.ListenPort)
+	var addrStr = ":" + strconv.Itoa(s.listenPort)
 
 	listener, err := net.Listen("tcp", addrStr)
 	if err != nil {
-		srv.log.Errorv(0, "failed to start server: %v", err)
+		s.log.Errorv(0, "failed to start server: %v", err)
 		return err
 	}
 
 	endpoint, _ := tcp.ParseEndpoint(listener.Addr().String())
 
-	srv.log.Info("started server at %v", endpoint)
-	defer srv.log.Info("stopped server at %v", endpoint)
+	s.log.Info("started server at %v", endpoint)
+	defer s.log.Info("stopped server at %v", endpoint)
 
 	go func() {
 		<-ctx.Done()
@@ -46,9 +50,9 @@ func (srv *Server) Run(ctx *astral.Context) error {
 		var conn = tcp.WrapConn(rawConn, false)
 
 		go func() {
-			err := srv.Nodes.Accept(ctx, conn)
+			err := s.Nodes.Accept(ctx, conn)
 			if err != nil {
-				srv.log.Errorv(1, "handshake failed from %v: %v", conn.RemoteEndpoint(), err)
+				s.log.Errorv(1, "handshake failed from %v: %v", conn.RemoteEndpoint(), err)
 				return
 			}
 		}()

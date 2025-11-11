@@ -12,21 +12,23 @@ import (
 // Server implements UDP listening with connection acceptance via rudp.Listener
 type Server struct {
 	*Module
-	listener *utp.Listener
-	acceptCh chan *utp.Conn
+	listenPort int
+	listener   *utp.Listener
+	acceptCh   chan *utp.Conn
 }
 
 // NewServer creates a new src UDP server
-func NewServer(module *Module) *Server {
+func NewServer(module *Module, listenPort int) *Server {
 	return &Server{
-		Module:   module,
-		acceptCh: make(chan *utp.Conn, 16),
+		Module:     module,
+		listenPort: listenPort,
+		acceptCh:   make(chan *utp.Conn, 16),
 	}
 }
 
 // Run starts the server and listens for incoming connections
 func (s *Server) Run(ctx *astral.Context) error {
-	addr := &net.UDPAddr{Port: s.config.ListenPort}
+	addr := &net.UDPAddr{Port: s.listenPort}
 	listenerAddr, err := utp.ResolveAddr("utp", addr.String())
 	if err != nil {
 		return fmt.Errorf(`utp server/run: resolve address %v: %w`, addr, err)
