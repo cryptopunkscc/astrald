@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
@@ -15,13 +16,15 @@ import (
 // Module represents the KCP module and implements the exonet.Dialer interface.
 type Module struct {
 	Deps
-	config                Config
-	node                  astral.Node
-	assets                assets.Assets
-	log                   *log.Logger
-	ctx                   *astral.Context
+	config Config
+	node   astral.Node
+	assets assets.Assets
+	log    *log.Logger
+	ctx    *astral.Context
+	ops    shell.Scope
+
 	configEndpoints       []exonet.Endpoint
-	ephemeralEndpoints    sig.Map[string, exonet.EphemeralListener]
+	ephemeralListeners    sig.Map[string, exonet.EphemeralListener]
 	ephemeralPortMappings sig.Map[string, astral.Uint16]
 }
 
@@ -32,7 +35,6 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	if err != nil {
 		return err
 	}
-
 	<-ctx.Done()
 
 	return nil
@@ -53,7 +55,7 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 		list = append(list, &e)
 	}
 
-	for endpointStr, _ := range mod.ephemeralEndpoints.Clone() {
+	for endpointStr, _ := range mod.ephemeralListeners.Clone() {
 		e, err := kcp.ParseEndpoint(endpointStr)
 		if err != nil {
 			continue
@@ -69,12 +71,19 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 // and push the endpoint to the ephemeralListeners set.
 func (mod *Module) CreateEphemeralListener(local kcp.Endpoint) (err error) {
 	kcpServer := NewServer(mod, local.UDPAddr().Port, mod.Nodes.Accept)
-	err = tasks.Group(kcpServer).Run(mod.ctx)
-	if err != nil {
-		return err
-	}
 
-	_, ok := mod.ephemeralEndpoints.Set(local.Address(), kcpServer)
+	// Run server asynchronously (non-blocking)
+	go func() {
+		if err := tasks.Group(kcpServer).Run(mod.ctx); err != nil {
+			mod.log.Error("ephemeral listener error: %v", err)
+		}
+
+		// cleanup after it exits
+		mod.ephemeralListeners.Delete(local.Address())
+		<-mod.ctx.Done()
+	}()
+
+	_, ok := mod.ephemeralListeners.Set(local.Address(), kcpServer)
 	if !ok {
 		// NOTE: such server should never start in first place, if we could not add it to map
 		kcpServer.Close()
@@ -92,4 +101,12 @@ func (mod *Module) SetEndpointLocalSocket(e kcp.Endpoint, localSocket astral.Uin
 
 	mod.ephemeralPortMappings.Set(e.Address(), localSocket)
 	return nil
+}
+
+func (mod *Module) Scope() *shell.Scope {
+	return &mod.ops
+}
+
+func (mod *Module) String() string {
+	return kcp.ModuleName
 }

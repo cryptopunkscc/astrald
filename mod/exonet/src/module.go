@@ -38,10 +38,6 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (conn exo
 		return d.Dial(ctx, endpoint)
 	}
 
-	// NOTE: if we are dialing from ephemeral endpoints
-	// we should check if endpoint is already associated with a ephemeral listener
-	// then dial should go through the listener
-
 	return nil, exonet.ErrUnsupportedNetwork
 }
 

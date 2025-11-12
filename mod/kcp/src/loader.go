@@ -33,6 +33,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 		mod.configEndpoints = append(mod.configEndpoints, endpoint)
 	}
 
+	mod.ops.AddStruct(mod, "Op")
+
 	return mod, nil
 }
 
