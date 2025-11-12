@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	utpmod "github.com/cryptopunkscc/astrald/mod/utp"
 	"github.com/cryptopunkscc/utp"
 )
@@ -15,14 +16,16 @@ type Server struct {
 	listenPort int
 	listener   *utp.Listener
 	acceptCh   chan *utp.Conn
+	onAccept   exonet.AcceptHandler
 }
 
 // NewServer creates a new src UDP server
-func NewServer(module *Module, listenPort int) *Server {
+func NewServer(module *Module, listenPort int, onAccept exonet.AcceptHandler) *Server {
 	return &Server{
 		Module:     module,
 		listenPort: listenPort,
 		acceptCh:   make(chan *utp.Conn, 16),
+		onAccept:   onAccept,
 	}
 }
 
@@ -95,9 +98,9 @@ func (s *Server) Run(ctx *astral.Context) error {
 			var conn = WrapUtpConn(utpConn, localEndpoint, remoteEndpoint, false)
 
 			go func() {
-				err := s.Nodes.Accept(ctx, conn)
+				err := s.onAccept(ctx, conn)
 				if err != nil {
-					s.log.Errorv(1, "utp server/run: handshake failed from %v: %v",
+					s.log.Errorv(1, "utp server/run: accepting failed from %v: %v",
 						conn.RemoteEndpoint(), err)
 					return
 				}

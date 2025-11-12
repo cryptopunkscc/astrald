@@ -22,15 +22,13 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	dialers    sig.Map[string, exonet.Dialer]
-	unpackers  sig.Map[string, exonet.Unpacker]
-	parser     sig.Map[string, exonet.Parser]
-	ephemerals sig.Map[string, exonet.Endpoint]
+	dialers   sig.Map[string, exonet.Dialer]
+	unpackers sig.Map[string, exonet.Unpacker]
+	parser    sig.Map[string, exonet.Parser]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
-
 	return nil
 }
 
@@ -39,6 +37,10 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (conn exo
 	if found {
 		return d.Dial(ctx, endpoint)
 	}
+
+	// NOTE: if we are dialing from ephemeral endpoints
+	// we should check if endpoint is already associated with a ephemeral listener
+	// then dial should go through the listener
 
 	return nil, exonet.ErrUnsupportedNetwork
 }
@@ -72,14 +74,4 @@ func (mod *Module) SetUnpacker(network string, unpacker exonet.Unpacker) {
 
 func (mod *Module) SetParser(network string, parser exonet.Parser) {
 	mod.parser.Replace(network, parser)
-}
-
-func (mod *Module) ListenEphemeral(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.Endpoint, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (mod *Module) StopEphemeral(endpoint exonet.Endpoint) (err error) {
-	//TODO implement me
-	panic("implement me")
 }

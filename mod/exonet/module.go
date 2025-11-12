@@ -1,6 +1,8 @@
 package exonet
 
 import (
+	"context"
+
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
@@ -14,9 +16,6 @@ type Module interface {
 	SetDialer(network string, dialer Dialer)
 	SetUnpacker(network string, unpacker Unpacker)
 	SetParser(network string, parser Parser)
-
-	ListenEphemeral(ctx *astral.Context, endpoint Endpoint) (Endpoint, error)
-	StopEphemeral(endpoint Endpoint) (err error)
 }
 
 // Endpoint represents a dialable address on a network (such as an IP address with port number)
@@ -37,4 +36,11 @@ type Unpacker interface {
 
 type Parser interface {
 	Parse(network string, address string) (Endpoint, error)
+}
+
+// FIXME: rename
+type AcceptHandler func(ctx context.Context, conn Conn) error
+
+type EphemeralListener interface {
+	Close() error
 }
