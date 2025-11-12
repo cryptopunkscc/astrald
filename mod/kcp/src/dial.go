@@ -39,6 +39,7 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 	if err != nil {
 		return nil, fmt.Errorf("kcp/dial: creating KCP conn failed: %w", err)
 	}
+
 	defer func() {
 		if err != nil {
 			_ = kcpConn.Close()
@@ -59,21 +60,14 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 // prepareUDPConn creates a UDP connection, binding to an ephemeral local port if mapped.
 func (mod *Module) prepareUDPConn(endpoint *kcp.Endpoint) (*net.UDPConn, error) {
 	raddr := endpoint.UDPAddr()
+	laddr := &net.UDPAddr{Port: 0}
 
 	// Use mapped local port if available
 	if port, ok := mod.ephemeralPortMappings.Get(endpoint.Address()); ok {
-		laddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", port))
-		if err != nil {
-			return nil, fmt.Errorf("kcp/dial: resolve local port %d failed: %w", port, err)
-		}
-		conn, err := net.DialUDP("udp", laddr, raddr)
-		if err != nil {
-			return nil, fmt.Errorf("kcp/dial: dial with local port %d failed: %w", port, err)
-		}
-		return conn, nil
+		laddr.Port = int(port)
 	}
 
-	conn, err := net.DialUDP("udp", nil, raddr)
+	conn, err := net.DialUDP("udp", laddr, raddr)
 	if err != nil {
 		return nil, fmt.Errorf("kcp/dial: default UDP dial failed: %w", err)
 	}

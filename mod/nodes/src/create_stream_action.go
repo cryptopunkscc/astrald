@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var _ scheduler.Action = &CreateStreamAction{}
@@ -37,15 +38,7 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 		}
 	}()
 
-	endpoints := make(chan exonet.Endpoint, len(c.Endpoints))
-	for _, e := range c.Endpoints {
-		endpoints <- e
-	}
-
-	close(endpoints)
-
-	s, err := c.mod.peers.connectAtAny(ctx, c.Target,
-		endpoints)
+	s, err := c.mod.peers.connectAtAny(ctx, c.Target, sig.ArrayToChan(c.Endpoints))
 	if err != nil {
 		return err
 	}
