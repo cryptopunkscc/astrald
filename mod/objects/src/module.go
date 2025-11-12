@@ -72,13 +72,12 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 	}
 	defer r.Close()
 
-	var header astral.ObjectType
-	_, err = header.ReadFrom(r)
+	object, _, err := mod.blueprints.Canonical().Read(r)
 	if err != nil {
 		return "", err
 	}
 
-	err = mod.db.Create(objectID, header.String())
+	err = mod.db.Create(objectID, object.ObjectType())
 	switch {
 	case err == nil:
 	case strings.Contains(err.Error(), "UNIQUE constraint failed"):
@@ -86,7 +85,7 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 		mod.log.Error("onSave: db error: %v", err)
 	}
 
-	return header.String(), nil
+	return object.ObjectType(), nil
 }
 
 func (mod *Module) On(target *astral.Identity, caller *astral.Identity) (objects.Consumer, error) {
