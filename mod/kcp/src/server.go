@@ -15,10 +15,10 @@ type Server struct {
 	*Module
 	listener   *kcpgo.Listener
 	listenPort int
-	onAccept   exonet.AcceptHandler
+	onAccept   exonet.EphemeralHandler
 }
 
-func NewServer(module *Module, listenPort int, onAccept exonet.AcceptHandler) *Server {
+func NewServer(module *Module, listenPort int, onAccept exonet.EphemeralHandler) *Server {
 	return &Server{
 		Module:     module,
 		listenPort: listenPort,
@@ -69,13 +69,19 @@ func (s *Server) Run(ctx *astral.Context) error {
 		s.log.Info("accepted connection from %v", remoteEndpoint)
 
 		var conn = WrapKCPConn(sess, localEndpoint, remoteEndpoint, false)
-
 		go func() {
-			err := s.onAccept(ctx, conn)
+			shouldClose, err := s.onAccept(ctx, conn)
 			if err != nil {
 				s.log.Errorv(1, "kcp server/run: onAccept failed from %v: %v",
 					conn.RemoteEndpoint(), err)
 				return
+			}
+
+			if shouldClose {
+				err = s.Close()
+				if err != nil {
+					s.log.Errorv(1, "kcp server/run: failed to close listener: %v", err)
+				}
 			}
 		}()
 	}

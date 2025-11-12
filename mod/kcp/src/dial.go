@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
+	"github.com/pkg/errors"
 	kcpgo "github.com/xtaci/kcp-go/v5"
 )
 
@@ -59,7 +60,6 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 
 // prepareUDPConn creates a UDP connection, binding to an ephemeral local port if mapped.
 func (mod *Module) prepareUDPConn(endpoint *kcp.Endpoint) (*net.UDPConn, error) {
-	raddr := endpoint.UDPAddr()
 	laddr := &net.UDPAddr{Port: 0}
 
 	// Use mapped local port if available
@@ -67,9 +67,10 @@ func (mod *Module) prepareUDPConn(endpoint *kcp.Endpoint) (*net.UDPConn, error) 
 		laddr.Port = int(port)
 	}
 
-	conn, err := net.DialUDP("udp", laddr, raddr)
+	conn, err := net.ListenUDP("udp", laddr)
 	if err != nil {
-		return nil, fmt.Errorf("kcp/dial: default UDP dial failed: %w", err)
+		return nil, errors.Wrap(err, "kcp/dial: listening on ephemeral port failed")
 	}
+
 	return conn, nil
 }

@@ -6,25 +6,25 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	utpmod "github.com/cryptopunkscc/astrald/mod/utp"
-	"github.com/cryptopunkscc/utp"
+	"github.com/cryptopunkscc/astrald/mod/utp"
+	utpgo "github.com/cryptopunkscc/utp"
 )
 
 // Server implements UDP listening with connection acceptance via rudp.Listener
 type Server struct {
 	*Module
 	listenPort int
-	listener   *utp.Listener
-	acceptCh   chan *utp.Conn
-	onAccept   exonet.AcceptHandler
+	listener   *utpgo.Listener
+	acceptCh   chan *utpgo.Conn
+	onAccept   exonet.EphemeralHandler
 }
 
 // NewServer creates a new src UDP server
-func NewServer(module *Module, listenPort int, onAccept exonet.AcceptHandler) *Server {
+func NewServer(module *Module, listenPort int, onAccept exonet.EphemeralHandler) *Server {
 	return &Server{
 		Module:     module,
 		listenPort: listenPort,
-		acceptCh:   make(chan *utp.Conn, 16),
+		acceptCh:   make(chan *utpgo.Conn, 16),
 		onAccept:   onAccept,
 	}
 }
@@ -32,18 +32,18 @@ func NewServer(module *Module, listenPort int, onAccept exonet.AcceptHandler) *S
 // Run starts the server and listens for incoming connections
 func (s *Server) Run(ctx *astral.Context) error {
 	addr := &net.UDPAddr{Port: s.listenPort}
-	listenerAddr, err := utp.ResolveAddr("utp", addr.String())
+	listenerAddr, err := utpgo.ResolveAddr("utp", addr.String())
 	if err != nil {
 		return fmt.Errorf(`utp server/run: resolve address %v: %w`, addr, err)
 	}
 
-	utpListener, err := utp.Listen("utp", listenerAddr)
+	utpListener, err := utpgo.Listen("utp", listenerAddr)
 	if err != nil {
 		return fmt.Errorf(`utp server/run: failed to start utp listener at %v: %w`, addr, err)
 	}
 
 	s.listener = utpListener
-	localEndpoint, err := utpmod.ParseEndpoint(utpListener.Addr().String())
+	localEndpoint, err := utp.ParseEndpoint(utpListener.Addr().String())
 	if err != nil {
 		return fmt.Errorf(`utp server/run: failed to parse local endpoint %v: %w`, utpListener.Addr(), err)
 	}
@@ -57,7 +57,7 @@ func (s *Server) Run(ctx *astral.Context) error {
 	}()
 
 	// acceptor goroutine: accepts and forwards results via channels
-	connCh := make(chan *utp.Conn, 1)
+	connCh := make(chan *utpgo.Conn, 1)
 	errCh := make(chan error, 1)
 	go func() {
 		for {
@@ -92,18 +92,26 @@ func (s *Server) Run(ctx *astral.Context) error {
 			}
 			return fmt.Errorf(`utp server/run: failed to accept utp connection: %w`, err)
 		case utpConn := <-connCh:
-			remoteEndpoint, _ := utpmod.ParseEndpoint(utpConn.RemoteAddr().String())
+			remoteEndpoint, _ := utp.ParseEndpoint(utpConn.RemoteAddr().String())
 			s.log.Info("accepted connection from %v", remoteEndpoint)
 
 			var conn = WrapUtpConn(utpConn, localEndpoint, remoteEndpoint, false)
 
 			go func() {
-				err := s.onAccept(ctx, conn)
+				shouldClose, err := s.onAccept(ctx, conn)
 				if err != nil {
 					s.log.Errorv(1, "utp server/run: accepting failed from %v: %v",
 						conn.RemoteEndpoint(), err)
 					return
 				}
+
+				if shouldClose {
+					err = s.Close()
+					if err != nil {
+						s.log.Errorv(1, "utp server/run: failed to close listener: %v", err)
+					}
+				}
+
 			}()
 		}
 	}

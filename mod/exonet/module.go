@@ -39,7 +39,7 @@ type Parser interface {
 }
 
 // FIXME: rename
-type AcceptHandler func(ctx context.Context, conn Conn) error
+type EphemeralHandler func(ctx context.Context, conn Conn) (shouldStop bool, err error)
 
 type EphemeralListener interface {
 	Close() error
