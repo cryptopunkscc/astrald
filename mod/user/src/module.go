@@ -40,13 +40,13 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		mod.log.Info("hello, %v!", ac.UserID)
 	}
 
-	mod.runSiblingLiner()
+	mod.runSiblingLinker()
 	<-ctx.Done()
 
 	return nil
 }
 
-func (mod *Module) runSiblingLiner() {
+func (mod *Module) runSiblingLinker() {
 	for _, node := range mod.LocalSwarm() {
 		if node.IsEqual(mod.node.Identity()) {
 			continue
