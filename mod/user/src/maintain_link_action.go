@@ -37,8 +37,12 @@ func (mod *Module) NewMaintainLinkAction(target *astral.
 func (a *MaintainLinkAction) String() string { return "nodes.maintain_link" }
 
 func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
-	// check if we are already linked
+	retry, err := sig.NewRetry(time.Second, 15*time.Minute, 2)
+	if err != nil {
+		return err
+	}
 
+	a.mod.log.Log("starting to maintain link with %v", a.Target)
 	count := -1
 	a.actionRequired.Store(!a.mod.Nodes.IsLinked(a.Target))
 	for {
@@ -50,13 +54,11 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 			}
 		}
 
-		if count == 0 {
+		switch {
+		case count == 0:
 			a.mod.log.Log("link to %v is broken, trying to reconnect", a.Target)
-		}
-
-		if count > 0 && count%5 == 0 {
-			a.mod.log.Log("still trying to reconnect to %v (attempt %v)",
-				a.Target, count)
+		case count > 0 && count%5 == 0:
+			a.mod.log.Log("still trying to reconnect to %v (attempt %v)", a.Target, count)
 		}
 
 		resolve, err := a.mod.Nodes.ResolveEndpoints(ctx, a.Target)
@@ -72,17 +74,15 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 
 		<-scheduled.Done()
 		if scheduled.Err() != nil {
-			if count < 0 {
-				count = 0
+			count = <-retry.Retry()
+			if count == 0 && a.actionRequired.Load() {
+				count = 1
 			}
 
-			count++
-			time.Sleep(5 * time.Second)
 			continue
-			// FIXME: backoff struct (sig.Backoff)
 		}
 
-		// Success path
+		retry.Reset()
 		if count > 0 {
 			a.mod.log.Log("link to %v restored after %v attempts", a.Target,
 				count)
@@ -90,7 +90,7 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 			a.mod.log.Log("link to %v established", a.Target)
 		}
 
-		count = 0 // reset for future real outages
+		count = 0
 		a.actionRequired.Store(false)
 	}
 }
@@ -98,17 +98,15 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 func (a *MaintainLinkAction) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
 	case *nodes.StreamClosedEvent:
-		if !typed.RemoteIdentity.IsEqual(a.Target) {
+		if !typed.RemoteIdentity.IsEqual(a.Target) || typed.StreamCount != 0 {
 			return
 		}
 
-		if typed.StreamCount == 0 {
-			a.actionRequired.Store(true)
+		if !a.actionRequired.Swap(true) {
 			select {
 			case a.wake <- struct{}{}:
 			default:
 			}
 		}
-
 	}
 }
