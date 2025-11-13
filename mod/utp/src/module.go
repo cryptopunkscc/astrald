@@ -25,7 +25,14 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
-	err := tasks.Group(NewServer(mod, mod.config.ListenPort, mod.Nodes.Accept)).Run(ctx)
+	err := tasks.Group(NewServer(mod, mod.config.ListenPort, func(ctx context.Context, conn exonet.Conn) (shouldStop bool, err error) {
+		err = mod.Nodes.Accept(ctx, conn)
+		if err != nil {
+			return true, err
+		}
+
+		return false, nil
+	})).Run(ctx)
 	if err != nil {
 		return err
 	}

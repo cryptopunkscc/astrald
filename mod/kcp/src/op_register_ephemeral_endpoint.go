@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
+// NOTE: name alternatives: setEphemeralEndpointRoute, addEphemeralEndpointMapping, addEndpointPortMapping
 type opRegisterEphemeralEndpointArgs struct {
 	Endpoint  string
 	LocalPort uint16

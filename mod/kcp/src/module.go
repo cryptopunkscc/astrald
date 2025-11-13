@@ -1,6 +1,7 @@
 package kcp
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -31,7 +32,14 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
-	err := tasks.Group(NewServer(mod, mod.config.ListenPort, mod.Nodes.Accept)).Run(ctx)
+	err := tasks.Group(NewServer(mod, mod.config.ListenPort, func(ctx context.Context, conn exonet.Conn) (shouldStop bool, err error) {
+		err = mod.Nodes.Accept(ctx, conn)
+		if err != nil {
+			return true, err
+		}
+
+		return false, nil
+	})).Run(ctx)
 	if err != nil {
 		return err
 	}
@@ -67,18 +75,27 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 	return list
 }
 
-// CreateEphemeralListener creates an ephemeral KCP endpoint which will start server that listens on the specified local endpoint.
-// and push the endpoint to the ephemeralListeners set.
+// CreateEphemeralListener creates an ephemeral KCP endpoint which will start a server that listens on the specified local endpoint and adds it to the ephemeralListeners set.
 func (mod *Module) CreateEphemeralListener(local kcp.Endpoint) (err error) {
-	kcpServer := NewServer(mod, local.UDPAddr().Port, mod.Nodes.Accept)
+	kcpServer := NewServer(mod, local.UDPAddr().Port, func(ctx context.Context, conn exonet.Conn) (shouldStop bool, err error) {
+		err = mod.Nodes.Accept(ctx, conn)
+		if err != nil {
+			return true, err
+		}
+
+		return false, nil
+	})
 
 	// Run server asynchronously (non-blocking)
 	go func() {
+
+		// FIXME: tasks.Group seems overcomplication here
 		if err := tasks.Group(kcpServer).Run(mod.ctx); err != nil {
 			mod.log.Error("ephemeral listener error: %v", err)
 		}
 
-		// cleanup after it exits
+		// Run is blocking
+
 		mod.ephemeralListeners.Delete(local.Address())
 		<-mod.ctx.Done()
 	}()
@@ -87,6 +104,7 @@ func (mod *Module) CreateEphemeralListener(local kcp.Endpoint) (err error) {
 	if !ok {
 		// NOTE: such server should never start in first place, if we could not add it to map
 		kcpServer.Close()
+		return fmt.Errorf("failed to add ephemeral listener for %s", local.Address())
 	}
 
 	return nil
