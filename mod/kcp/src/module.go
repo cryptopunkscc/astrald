@@ -77,15 +77,16 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 
 // CreateEphemeralListener creates an ephemeral KCP endpoint which will start a server that listens on the specified local endpoint and adds it to the ephemeralListeners set.
 func (mod *Module) CreateEphemeralListener(local kcp.Endpoint) (err error) {
-	kcpServer := NewServer(mod, local.UDPAddr().Port, func(ctx context.Context, conn exonet.Conn) (shouldStop bool, err error) {
+	acceptAll := func(ctx context.Context, conn exonet.Conn) (shouldStop bool, err error) {
 		err = mod.Nodes.Accept(ctx, conn)
 		if err != nil {
 			return true, err
 		}
 
 		return false, nil
-	})
+	}
 
+	kcpServer := NewServer(mod, local.UDPAddr().Port, acceptAll)
 	go func() {
 		err := kcpServer.Run(mod.ctx)
 		if err != nil {
