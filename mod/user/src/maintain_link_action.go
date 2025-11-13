@@ -37,7 +37,10 @@ func (mod *Module) NewMaintainLinkAction(target *astral.
 func (a *MaintainLinkAction) String() string { return "nodes.maintain_link" }
 
 func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
-	// check if we are already linked
+	retry, err := sig.NewRetry(time.Second, 15*time.Minute, 2)
+	if err != nil {
+		return err
+	}
 
 	count := -1
 	a.actionRequired.Store(!a.mod.Nodes.IsLinked(a.Target))
@@ -50,13 +53,11 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 			}
 		}
 
-		if count == 0 {
+		switch {
+		case count == 0:
 			a.mod.log.Log("link to %v is broken, trying to reconnect", a.Target)
-		}
-
-		if count > 0 && count%5 == 0 {
-			a.mod.log.Log("still trying to reconnect to %v (attempt %v)",
-				a.Target, count)
+		case count > 0 && count%5 == 0:
+			a.mod.log.Log("still trying to reconnect to %v (attempt %v)", a.Target, count)
 		}
 
 		resolve, err := a.mod.Nodes.ResolveEndpoints(ctx, a.Target)
@@ -77,12 +78,11 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 			}
 
 			count++
-			time.Sleep(5 * time.Second)
+			time.Sleep(retry.NextDelay())
 			continue
-			// FIXME: backoff struct (sig.Backoff)
 		}
 
-		// Success path
+		retry.Reset()
 		if count > 0 {
 			a.mod.log.Log("link to %v restored after %v attempts", a.Target,
 				count)
@@ -90,7 +90,7 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 			a.mod.log.Log("link to %v established", a.Target)
 		}
 
-		count = 0 // reset for future real outages
+		count = 0
 		a.actionRequired.Store(false)
 	}
 }
