@@ -14,8 +14,8 @@ import (
 // Server implements KCP listening with connection acceptance via kcp.Listener
 type Server struct {
 	*Module
-	listener   *kcpgo.Listener
 	listenPort int
+	listener   *kcpgo.Listener
 	onAccept   exonet.EphemeralHandler
 	closed     atomic.Bool
 }
@@ -47,11 +47,9 @@ func (s *Server) Run(ctx *astral.Context) error {
 	}
 
 	s.log.Info("started server at %v", kcpListener.Addr())
-
-	// Shutdown goroutine
 	go func() {
 		<-ctx.Done()
-		s.Close() // triggers clean shutdown
+		s.Close()
 	}()
 
 	for {
@@ -64,7 +62,6 @@ func (s *Server) Run(ctx *astral.Context) error {
 				return nil
 			}
 
-			// Unexpected accept error
 			return fmt.Errorf("kcp server/run: accept failed: %w", err)
 		}
 
@@ -77,8 +74,7 @@ func (s *Server) Run(ctx *astral.Context) error {
 		go func() {
 			shouldClose, err := s.onAccept(ctx, conn)
 			if err != nil {
-				s.log.Errorv(1, "kcp server/onAccept error from %v: %v",
-					conn.RemoteEndpoint(), err)
+				s.log.Errorv(1, "kcp server/onAccept error from %v: %v", conn.RemoteEndpoint(), err)
 				return
 			}
 
@@ -91,11 +87,11 @@ func (s *Server) Run(ctx *astral.Context) error {
 
 func (s *Server) Close() error {
 	if s.closed.Swap(true) {
-		return nil // already closed
+		return nil
 	}
 
 	if s.listener != nil {
-		_ = s.listener.Close() // this unblocks AcceptKCP()
+		_ = s.listener.Close()
 	}
 
 	return nil
