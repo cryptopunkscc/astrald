@@ -1,6 +1,9 @@
 package scheduler
 
 import (
+	"sync"
+	"sync/atomic"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
@@ -52,15 +55,44 @@ func (mod *Module) Schedule(task scheduler.Task, deps ...scheduler.Done) (_ sche
 
 	// spawn the task runner goroutine
 	go func() {
-		defer mod.queue.Remove(sTask)
+		var releasers sig.Set[scheduler.Releaser] // releasable deps
+		var canceled atomic.Bool
 
-		// wait for all dependencies
-		for _, d := range deps {
-			select {
-			case <-sTask.Done():
-				return
-			case <-d.Done():
+		// make sure to clean up at the end
+		defer func() {
+			// remove from queue
+			mod.queue.Remove(sTask)
+
+			// release all releasable dependencies
+			for _, dep := range releasers.Clone() {
+				dep.Release()
 			}
+		}()
+
+		// wait for all dependencies asynchronously
+		var wg sync.WaitGroup
+		for _, dep := range deps {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				select {
+				case <-sTask.Done():
+					canceled.Store(true)
+					
+				case <-dep.Done():
+					// store for release if needed
+					if r, ok := dep.(scheduler.Releaser); ok {
+						releasers.Add(r)
+					}
+				}
+			}()
+		}
+		wg.Wait()
+
+		// bail if the context was canceled
+		if canceled.Load() {
+			return
 		}
 
 		// run the task within the context of the scheduler module
@@ -69,13 +101,6 @@ func (mod *Module) Schedule(task scheduler.Task, deps ...scheduler.Done) (_ sche
 		// log on error
 		if err != nil {
 			mod.log.Errorv(2, "task %v: %v", task, err)
-		}
-
-		// release all releasable dependencies
-		for _, d := range deps {
-			if rh, ok := d.(scheduler.Releaser); ok && rh != nil {
-				rh.Release()
-			}
 		}
 	}()
 
