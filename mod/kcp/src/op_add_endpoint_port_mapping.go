@@ -6,8 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-// NOTE: name alternatives: setEphemeralEndpointRoute, addEphemeralEndpointMapping, addEndpointPortMapping
-type opRegisterEphemeralEndpointArgs struct {
+type opAddEndpointPortMapping struct {
 	Endpoint  string
 	LocalPort uint16
 
@@ -15,7 +14,7 @@ type opRegisterEphemeralEndpointArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRegisterEphemeralEndpoint(ctx *astral.Context, q shell.Query, args opRegisterEphemeralEndpointArgs) (err error) {
+func (mod *Module) OpAddEndpointPortMapping(ctx *astral.Context, q shell.Query, args opAddEndpointPortMapping) (err error) {
 	endpoint, err := kcp.ParseEndpoint(args.Endpoint)
 	if err != nil {
 		return q.RejectWithCode(4)
