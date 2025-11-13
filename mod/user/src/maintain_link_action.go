@@ -13,7 +13,7 @@ import (
 )
 
 var _ scheduler.EventReceiver = &MaintainLinkAction{}
-var _ scheduler.Action = &MaintainLinkAction{}
+var _ scheduler.Task = &MaintainLinkAction{}
 
 // MaintainLinkAction attempts to maintain a link to a target node indefinitely.
 // triggers:

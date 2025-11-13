@@ -1,143 +1,84 @@
 package scheduler
 
 import (
-	"context"
-	"fmt"
-	"sync"
-	"sync/atomic"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
 // FIXME: write tests
 
-// Schedule enqueues an action for processing by launching a goroutine that
-// waits for dependencies, runs the action, and then releases resources.
+// Schedule enqueues an task for processing by launching a goroutine that
+// waits for dependencies, runs the task, and then releases resources.
 // It is safe for concurrent use.
-func (mod *Module) Schedule(ctx *astral.Context, a scheduler.Action,
-	deps ...scheduler.Doner) (scheduledAction scheduler.ScheduledAction, err error) {
-	if a == nil {
-		return nil, fmt.Errorf(`action is nil`)
+func (mod *Module) Schedule(
+	ctx *astral.Context,
+	task scheduler.Task,
+	deps ...scheduler.Done,
+) (scheduledAction scheduler.ScheduledTask, err error) {
+	// check if the scheduler is running
+	if !mod.isRunning() {
+		err = scheduler.ErrNotRunning
+		mod.log.Errorv(2, "dropped %v (%v)", task, err)
+		return
 	}
 
-	actionCtx, cancel := ctx.WithCancelCause()
-	scheduled := NewScheduledAction(a, cancel)
-
-	// If module is shutting down, drop scheduling to avoid starting new work.
-	if mod.ctx != nil {
-		select {
-		case <-mod.ctx.Done():
-			mod.log.Log("drop %v: module shutting down", a.String())
-			return scheduled, fmt.Errorf("module shutting down")
-		default:
-		}
+	// check if the task is valid
+	if task == nil {
+		return nil, scheduler.ErrTaskIsNil
 	}
 
-	err = mod.queue.Add(scheduled)
-	if err != nil {
-		mod.log.Errorv(1, "failed to add action %v to queue: %v", a.String(), err)
-		return scheduled, fmt.Errorf("failed to add action to queue: %w", err)
-	}
+	// create a subcontext for the task
+	taskCtx, cancel := ctx.WithCancelCause()
+	sTask := NewScheduledTask(task, cancel)
+
+	// add the task to the queue
+	// err is always nil, because duplicates are impossible here
+	_ = mod.queue.Add(sTask)
 
 	go func() {
-		defer scheduled.close()
-		defer mod.queue.Remove(scheduled)
+		defer sTask.close()
+		defer mod.queue.Remove(sTask)
+
+		// wait for all dependencies
 		for _, d := range deps {
 			select {
-			case <-actionCtx.Done():
-				scheduled.err = actionCtx.Err()
+			case <-taskCtx.Done():
+				sTask.err = taskCtx.Err()
 				return
 			case <-d.Done():
 			}
 		}
 
-		select {
-		case <-actionCtx.Done():
-			scheduled.err = actionCtx.Err()
-			return
-		default:
-			break
+		// run the task
+		sTask.setState(scheduler.StateRunning)
+		sTask.err = sTask.task.Run(taskCtx)
+		sTask.setState(scheduler.StateDone)
+
+		// log on error
+		if sTask.err != nil {
+			mod.log.Errorv(2, "task %v: %v", task, sTask.err)
 		}
 
-		scheduled.state.Store(int64(scheduler.ScheduledActionStateRunning))
-		err := a.Run(actionCtx)
-		scheduled.state.Store(int64(scheduler.ScheduledActionStateDone))
-		if err != nil {
-			scheduled.err = err
-			mod.log.Errorv(1, "failed to run action %v: %v", a.String(), scheduled.err)
-		}
-
-		// After execution, release resources if deps are ResourceHolders
+		// release all releasable dependencies
 		for _, d := range deps {
-			if rh, ok := d.(scheduler.ResourceReleaser); ok && rh != nil {
+			if rh, ok := d.(scheduler.Releaser); ok && rh != nil {
 				rh.Release()
 			}
 		}
 	}()
 
-	return scheduled, nil
+	return sTask, nil
 }
 
-type ScheduledAction struct {
-	scheduledAt astral.Time
-	action      scheduler.Action
-	done        chan struct{}
-	cancel      context.CancelCauseFunc
-	cancelOnce  *sync.Once
-	err         error
-	state       atomic.Int64
-}
-
-func (h *ScheduledAction) Err() error {
-	return h.err
-}
-
-func (h *ScheduledAction) CancelWithError(err error) {
-	h.err = err
-	h.cancel(err)
-	return
-}
-
-func (h *ScheduledAction) Done() <-chan struct{} {
-	return h.done
-}
-
-// called externally
-func (h *ScheduledAction) Cancel() {
-	h.CancelWithError(context.Canceled)
-	h.close()
-	return
-}
-
-// called by scheduler
-func (h ScheduledAction) close() {
-	h.cancelOnce.Do(func() {
-		close(h.done)
-	})
-
-	return
-}
-
-func (h ScheduledAction) Action() scheduler.Action {
-	return h.action
-}
-
-func (h ScheduledAction) ScheduledAt() astral.Time {
-	return h.scheduledAt
-}
-
-func NewScheduledAction(action scheduler.Action,
-	cancelCauseFunc context.CancelCauseFunc) *ScheduledAction {
-	return &ScheduledAction{
-		action:      action,
-		scheduledAt: astral.Now(),
-		done:        make(chan struct{}),
-		cancel:      cancelCauseFunc,
-		cancelOnce:  &sync.Once{},
+// isRunning returns true if the scheduler module is running.
+func (mod *Module) isRunning() bool {
+	if mod.ctx == nil {
+		return false
 	}
-}
-
-func (h *ScheduledAction) State() scheduler.ScheduledActionState {
-	return scheduler.ScheduledActionState(h.state.Load())
+	select {
+	case <-mod.ctx.Done():
+		return false
+	default:
+	}
+	return true
 }

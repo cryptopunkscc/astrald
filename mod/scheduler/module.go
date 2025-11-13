@@ -1,30 +1,37 @@
 package scheduler
 
 import (
+	"fmt"
+
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/events"
 )
 
 const ModuleName = "scheduler"
 
-// Module is the public interface other modules depend on.
+// Module defines the public interface of the task scheduler.
 type Module interface {
-	Schedule(ctx *astral.Context, action Action, deps ...Doner) (ScheduledAction, error)
+	// Schedule schedules a task for execution once all dependencies are done
+	Schedule(ctx *astral.Context, task Task, deps ...Done) (ScheduledTask, error)
 }
 
-type ScheduledActionState int64
+// Task represents a unit of work to be executed by the scheduler.
+type Task interface {
+	fmt.Stringer
+	Run(*astral.Context) error
+}
 
-const (
-	ScheduledActionStateScheduled ScheduledActionState = iota
-	ScheduledActionStateRunning
-	ScheduledActionStateDone
-)
+// Done is an interface used for waiting for the task to finish.
+type Done interface {
+	Done() <-chan struct{}
+}
 
-type ScheduledAction interface {
-	Doner
-	Action() Action
-	State() ScheduledActionState
-	ScheduledAt() astral.Time
-	CancelWithError(error)
-	Cancel()
-	Err() error
+// Releaser is an interface used for releasing lockable dependencies
+type Releaser interface {
+	Release()
+}
+
+// EventReceiver is an interface used to propagate events to running tasks
+type EventReceiver interface {
+	ReceiveEvent(e *events.Event)
 }

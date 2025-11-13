@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
-var _ scheduler.Action = &LogAction{}
+var _ scheduler.Task = &LogAction{}
 
 type LogAction struct {
 	mod     *Module
