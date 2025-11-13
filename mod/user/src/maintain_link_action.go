@@ -42,6 +42,7 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 		return err
 	}
 
+	a.mod.log.Log("starting to maintain link with %v", a.Target)
 	count := -1
 	a.actionRequired.Store(!a.mod.Nodes.IsLinked(a.Target))
 	for {
@@ -73,12 +74,11 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 
 		<-scheduled.Done()
 		if scheduled.Err() != nil {
-			if count < 0 {
-				count = 0
+			count = <-retry.Retry()
+			if count == 0 && a.actionRequired.Load() {
+				count = 1
 			}
 
-			count++
-			<-retry.Retry()
 			continue
 		}
 
@@ -98,17 +98,15 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 func (a *MaintainLinkAction) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
 	case *nodes.StreamClosedEvent:
-		if !typed.RemoteIdentity.IsEqual(a.Target) {
+		if !typed.RemoteIdentity.IsEqual(a.Target) || typed.StreamCount != 0 {
 			return
 		}
 
-		if typed.StreamCount == 0 {
-			a.actionRequired.Store(true)
+		if !a.actionRequired.Swap(true) {
 			select {
 			case a.wake <- struct{}{}:
 			default:
 			}
 		}
-
 	}
 }
