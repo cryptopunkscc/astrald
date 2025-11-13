@@ -22,12 +22,13 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
-
-	queue sig.Set[scheduler.ScheduledTask]
+	queue  sig.Set[scheduler.ScheduledTask]
+	ready  chan struct{}
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
+	close(mod.ready)
 
 	<-ctx.Done()
 	return nil
@@ -79,7 +80,7 @@ func (mod *Module) Schedule(task scheduler.Task, deps ...scheduler.Done) (_ sche
 				select {
 				case <-sTask.Done():
 					canceled.Store(true)
-					
+
 				case <-dep.Done():
 					// store for release if needed
 					if r, ok := dep.(scheduler.Releaser); ok {
@@ -118,6 +119,10 @@ func (mod *Module) isRunning() bool {
 	default:
 	}
 	return true
+}
+
+func (mod *Module) Ready() <-chan struct{} {
+	return mod.ready
 }
 
 func (mod *Module) String() string {
