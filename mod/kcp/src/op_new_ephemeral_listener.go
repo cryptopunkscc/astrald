@@ -7,13 +7,13 @@ import (
 )
 
 type opNewEphemeralListenerArgs struct {
-	Address string
-	In      string `query:"optional"`
-	Out     string `query:"optional"`
+	Endpoint string
+	In       string `query:"optional"`
+	Out      string `query:"optional"`
 }
 
 func (mod *Module) OpNewEphemeralListener(ctx *astral.Context, q shell.Query, args opNewEphemeralListenerArgs) (err error) {
-	ep, err := kcp.ParseEndpoint(args.Address)
+	ep, err := kcp.ParseEndpoint(args.Endpoint)
 	if err != nil {
 		return q.RejectWithCode(4)
 	}
