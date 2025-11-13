@@ -61,24 +61,34 @@ func (mod *Module) Blueprints() *astral.Blueprints {
 }
 
 func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error) {
+	// check the cache
 	row, err := mod.db.Find(objectID)
 	if err == nil {
 		return row.Type, nil
 	}
 
+	// read first bytes of the object
 	r, err := mod.Root().Read(ctx, objectID, 0, 260) // max header size: 4 magic bytes + 1 len + 255 type
 	if err != nil {
 		return "", objects.ErrNotFound
 	}
 	defer r.Close()
 
-	var header astral.ObjectType
-	_, err = header.ReadFrom(r)
+	// read the stamp
+	_, err = (&astral.Stamp{}).ReadFrom(r)
+	if err != nil {
+		return "", errors.New("missing astral stamp")
+	}
+
+	// read the type
+	var t astral.ObjectType
+	_, err = t.ReadFrom(r)
 	if err != nil {
 		return "", err
 	}
 
-	err = mod.db.Create(objectID, header.String())
+	// write to cache
+	err = mod.db.Create(objectID, t.String())
 	switch {
 	case err == nil:
 	case strings.Contains(err.Error(), "UNIQUE constraint failed"):
@@ -86,7 +96,7 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 		mod.log.Error("onSave: db error: %v", err)
 	}
 
-	return header.String(), nil
+	return t.String(), nil
 }
 
 func (mod *Module) On(target *astral.Identity, caller *astral.Identity) (objects.Consumer, error) {
