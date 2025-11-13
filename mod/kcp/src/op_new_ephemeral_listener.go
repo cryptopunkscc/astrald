@@ -7,17 +7,12 @@ import (
 )
 
 type opNewEphemeralListenerArgs struct {
-	Endpoint string
-	In       string `query:"optional"`
-	Out      string `query:"optional"`
+	Port int
+	In   string `query:"optional"`
+	Out  string `query:"optional"`
 }
 
 func (mod *Module) OpNewEphemeralListener(ctx *astral.Context, q shell.Query, args opNewEphemeralListenerArgs) (err error) {
-	ep, err := kcp.ParseEndpoint(args.Endpoint)
-	if err != nil {
-		return q.RejectWithCode(4)
-	}
-
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 

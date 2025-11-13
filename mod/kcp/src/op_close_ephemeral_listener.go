@@ -6,13 +6,13 @@ import (
 )
 
 type opCloseEphemeralListenerArgs struct {
-	Endpoint string
-	In       string `query:"optional"`
-	Out      string `query:"optional"`
+	Port int
+	In   string `query:"optional"`
+	Out  string `query:"optional"`
 }
 
 func (mod *Module) OpCloseEphemeralListener(ctx *astral.Context, q shell.Query, args opCloseEphemeralListenerArgs) (err error) {
-	listener, ok := mod.ephemeralListeners.Get(args.Endpoint)
+	listener, ok := mod.ephemeralListeners.Get(args.Port)
 	if !ok {
 		return q.RejectWithCode(4)
 	}

@@ -25,8 +25,8 @@ type Module struct {
 	ops    shell.Scope
 
 	configEndpoints       []exonet.Endpoint
-	ephemeralListeners    sig.Map[string, exonet.EphemeralListener]
-	ephemeralPortMappings sig.Map[string, astral.Uint16]
+	ephemeralListeners    sig.Map[int, exonet.EphemeralListener]
+	ephemeralPortMappings sig.Map[int, astral.Uint16]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -63,20 +63,22 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 		list = append(list, &e)
 	}
 
-	for endpointStr, _ := range mod.ephemeralListeners.Clone() {
-		e, err := kcp.ParseEndpoint(endpointStr)
-		if err != nil {
-			continue
-		}
+	for port, _ := range mod.ephemeralListeners.Clone() {
+		for _, tip := range ips {
+			e := kcp.Endpoint{
+				IP:   tip,
+				Port: astral.Uint16(port),
+			}
 
-		list = append(list, e)
+			list = append(list, &e)
+		}
 	}
 
 	return list
 }
 
 // CreateEphemeralListener creates an ephemeral KCP endpoint which will start a server that listens on the specified local endpoint and adds it to the ephemeralListeners set.
-func (mod *Module) CreateEphemeralListener(local kcp.Endpoint) (err error) {
+func (mod *Module) CreateEphemeralListener(port int) (err error) {
 	acceptAll := func(ctx context.Context, conn exonet.Conn) (shouldStop bool, err error) {
 		err = mod.Nodes.Accept(ctx, conn)
 		if err != nil {
@@ -86,21 +88,21 @@ func (mod *Module) CreateEphemeralListener(local kcp.Endpoint) (err error) {
 		return false, nil
 	}
 
-	kcpServer := NewServer(mod, local.UDPAddr().Port, acceptAll)
+	kcpServer := NewServer(mod, port, acceptAll)
 	go func() {
 		err := kcpServer.Run(mod.ctx)
 		if err != nil {
 			mod.log.Error("ephemeral listener error: %v", err)
 		}
 
-		mod.ephemeralListeners.Delete(local.Address())
+		mod.ephemeralListeners.Delete(port)
 	}()
 
-	_, ok := mod.ephemeralListeners.Set(local.Address(), kcpServer)
+	_, ok := mod.ephemeralListeners.Set(port, kcpServer)
 	if !ok {
 		// NOTE: such server should never start in first place, if we could not add it to map
 		kcpServer.Close()
-		return fmt.Errorf("failed to add ephemeral listener for %s", local.Address())
+		return fmt.Errorf("failed to add ephemeral listener for %d", port)
 	}
 
 	return nil
