@@ -74,3 +74,13 @@ func (mod *Module) prepareUDPConn(endpoint *kcp.Endpoint) (*net.UDPConn, error) 
 
 	return conn, nil
 }
+
+func (mod *Module) SetEndpointLocalSocket(e kcp.Endpoint, localSocket astral.Uint16) error {
+	_, ok := mod.ephemeralPortMappings.Get(e.Address())
+	if ok {
+		return fmt.Errorf("mapping for endpoint %s already exists", e.Address())
+	}
+
+	mod.ephemeralPortMappings.Set(e.Address(), localSocket)
+	return nil
+}

@@ -86,18 +86,13 @@ func (mod *Module) CreateEphemeralListener(local kcp.Endpoint) (err error) {
 		return false, nil
 	})
 
-	// Run server asynchronously (non-blocking)
 	go func() {
-
-		// FIXME: tasks.Group seems overcomplication here
-		if err := tasks.Group(kcpServer).Run(mod.ctx); err != nil {
+		err := kcpServer.Run(mod.ctx)
+		if err != nil {
 			mod.log.Error("ephemeral listener error: %v", err)
 		}
 
-		// Run is blocking
-
 		mod.ephemeralListeners.Delete(local.Address())
-		<-mod.ctx.Done()
 	}()
 
 	_, ok := mod.ephemeralListeners.Set(local.Address(), kcpServer)
@@ -107,17 +102,6 @@ func (mod *Module) CreateEphemeralListener(local kcp.Endpoint) (err error) {
 		return fmt.Errorf("failed to add ephemeral listener for %s", local.Address())
 	}
 
-	return nil
-}
-
-func (mod *Module) SetEndpointLocalSocket(e kcp.Endpoint, localSocket astral.Uint16) error {
-	_, ok := mod.ephemeralPortMappings.Get(e.Address())
-	if ok {
-		// mapping already exists (?) for now treat as error
-		return fmt.Errorf("mapping for endpoint %s already exists", e.Address())
-	}
-
-	mod.ephemeralPortMappings.Set(e.Address(), localSocket)
 	return nil
 }
 
