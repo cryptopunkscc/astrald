@@ -82,9 +82,6 @@ func (task *ScheduledTask) CancelWithError(err error) {
 	task.mu.Lock()
 	defer task.mu.Unlock()
 
-	// make sure the done channel is closed at the end
-	defer task.closeDone()
-
 	// handle cancel depending on the current state
 	switch task.state {
 	case scheduler.StateDone:
@@ -93,6 +90,7 @@ func (task *ScheduledTask) CancelWithError(err error) {
 	case scheduler.StateScheduled:
 		task.err = err
 		task.state = scheduler.StateDone
+		task.closeDone()
 
 	case scheduler.StateRunning:
 		task.cancel(err)
