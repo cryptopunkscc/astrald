@@ -61,7 +61,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 	}
 
 	createStreamAction := mod.NewCreateStreamAction(target, sig.ChanToArray(endpoints))
-	scheduledAction, err := mod.Scheduler.Schedule(ctx, createStreamAction)
+	scheduledAction, err := mod.Scheduler.Schedule(createStreamAction)
 	if err != nil {
 		return q.RejectWithCode(5)
 	}

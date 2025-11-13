@@ -12,7 +12,7 @@ const ModuleName = "scheduler"
 // Module defines the public interface of the task scheduler.
 type Module interface {
 	// Schedule schedules a task for execution once all dependencies are done
-	Schedule(ctx *astral.Context, task Task, deps ...Done) (ScheduledTask, error)
+	Schedule(task Task, deps ...Done) (ScheduledTask, error)
 }
 
 // Task represents a unit of work to be executed by the scheduler.

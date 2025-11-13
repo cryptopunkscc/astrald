@@ -3,76 +3,147 @@ package scheduler
 import (
 	"context"
 	"sync"
-	"sync/atomic"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
 type ScheduledTask struct {
-	scheduledAt astral.Time
-	task        scheduler.Task
-	done        chan struct{}
-	cancel      context.CancelCauseFunc
-	cancelOnce  *sync.Once
-	err         error
-	state       atomic.Int64
+	task     scheduler.Task
+	state    scheduler.State
+	done     chan struct{}
+	ctx      *astral.Context
+	cancel   context.CancelCauseFunc
+	doneOnce *sync.Once
+	err      error
+	mu       sync.RWMutex
+
+	// timestamps
+	scheduledAt time.Time
+	runAt       time.Time
+	doneAt      time.Time
 }
 
-func NewScheduledTask(task scheduler.Task, cancelCauseFunc context.CancelCauseFunc) *ScheduledTask {
+func NewScheduledTask(task scheduler.Task) *ScheduledTask {
 	return &ScheduledTask{
 		task:        task,
-		scheduledAt: astral.Now(),
+		scheduledAt: time.Now(),
 		done:        make(chan struct{}),
-		cancel:      cancelCauseFunc,
-		cancelOnce:  &sync.Once{},
+		doneOnce:    &sync.Once{},
 	}
 }
 
+func (task *ScheduledTask) Run(ctx *astral.Context) (err error) {
+	// prepare the execution
+	err = task.prepare(ctx)
+	if err != nil {
+		return err
+	}
+
+	// run the task
+	err = task.task.Run(task.ctx)
+
+	// store results
+	task.mu.Lock()
+	defer task.mu.Unlock()
+
+	defer task.closeDone()
+
+	task.err = err
+	task.doneAt = time.Now()
+	task.state = scheduler.StateDone
+
+	return err
+}
+
+// prepare prepares the task for running by creating its context and setting its state
+func (task *ScheduledTask) prepare(ctx *astral.Context) error {
+	task.mu.Lock()
+	defer task.mu.Unlock()
+
+	if task.state != scheduler.StateScheduled {
+		return scheduler.ErrInvalidState
+	}
+
+	if ctx == nil {
+		return scheduler.ErrContextIsNil
+	}
+
+	task.ctx, task.cancel = ctx.WithCancelCause()
+	task.runAt = time.Now()
+	task.state = scheduler.StateRunning
+
+	return nil
+}
+
+// CancelWithError cancels the task with the given error.
+func (task *ScheduledTask) CancelWithError(err error) {
+	task.mu.Lock()
+	defer task.mu.Unlock()
+
+	// make sure the done channel is closed at the end
+	defer task.closeDone()
+
+	// handle cancel depending on the current state
+	switch task.state {
+	case scheduler.StateDone:
+		// ignore
+
+	case scheduler.StateScheduled:
+		task.err = err
+		task.state = scheduler.StateDone
+
+	case scheduler.StateRunning:
+		task.cancel(err)
+
+	default:
+		panic("invalid state")
+	}
+}
+
+// Cancel cancels the task with context.Canceled.
+func (task *ScheduledTask) Cancel() {
+	task.CancelWithError(context.Canceled)
+}
+
+// closeDone closes the done channel
+func (task *ScheduledTask) closeDone() {
+	task.doneOnce.Do(func() {
+		close(task.done)
+	})
+}
+
 // Task returns the scheduled task
-func (h *ScheduledTask) Task() scheduler.Task {
-	return h.task
+func (task *ScheduledTask) Task() scheduler.Task {
+	return task.task
+}
+
+func (task *ScheduledTask) Done() <-chan struct{} {
+	return task.done
 }
 
 // Err returns the error returned by the task. Should only be called after the task is done.
-func (h *ScheduledTask) Err() error {
-	return h.err
+func (task *ScheduledTask) Err() error {
+	return task.err
 }
 
-func (h *ScheduledTask) CancelWithError(err error) {
-	h.err = err
-	h.cancel(err)
-	return
+func (task ScheduledTask) ScheduledAt() time.Time {
+	return task.scheduledAt
 }
 
-func (h *ScheduledTask) Done() <-chan struct{} {
-	return h.done
+func (task *ScheduledTask) State() scheduler.State {
+	return task.state
 }
 
-// called externally
-func (h *ScheduledTask) Cancel() {
-	h.CancelWithError(context.Canceled)
-	h.close()
-	return
+func (task *ScheduledTask) String() string {
+	return task.task.String()
 }
 
-// called by scheduler
-func (h *ScheduledTask) close() {
-	h.cancelOnce.Do(func() {
-		close(h.done)
-	})
-
-	return
+func (task *ScheduledTask) setState(state scheduler.State) {
+	task.state = state
 }
 
-func (h ScheduledTask) ScheduledAt() astral.Time {
-	return h.scheduledAt
-}
-
-func (h *ScheduledTask) State() scheduler.State {
-	return scheduler.State(h.state.Load())
-}
-
-func (h *ScheduledTask) setState(state scheduler.State) {
-	h.state.Store(int64(state))
+func (task *ScheduledTask) runTime() time.Duration {
+	return task.doneAt.Sub(task.runAt)
 }

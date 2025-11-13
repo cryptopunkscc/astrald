@@ -41,7 +41,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	// We are missing connection with certain nodes.
 	for _, node := range mod.LocalSwarm() {
 		maintainLinkAction := mod.NewMaintainLinkAction(node)
-		scheduledAction, err := mod.Scheduler.Schedule(ctx, maintainLinkAction)
+		scheduledAction, err := mod.Scheduler.Schedule(maintainLinkAction)
 		if err != nil {
 			mod.log.Error("error scheduling maintain link action: %v for node %v", err, node)
 			continue
