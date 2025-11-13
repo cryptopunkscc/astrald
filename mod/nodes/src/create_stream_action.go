@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
-var _ scheduler.Action = &CreateStreamAction{}
+var _ scheduler.Task = &CreateStreamAction{}
 
 type CreateStreamAction struct {
 	mod       *Module

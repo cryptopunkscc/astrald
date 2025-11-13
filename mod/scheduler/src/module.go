@@ -1,10 +1,11 @@
 package scheduler
 
 import (
+	"sync"
+	"sync/atomic"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/events"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -22,29 +23,101 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	queue sig.Set[scheduler.ScheduledAction]
+	queue sig.Set[scheduler.ScheduledTask]
 }
 
-func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
-	switch o := drop.Object().(type) {
-	case *events.Event:
-		for _, a := range mod.queue.Clone() {
-			if a.State() == scheduler.ScheduledActionStateRunning {
-				if a, ok := a.Action().(scheduler.EventReceiver); ok {
-					a.ReceiveEvent(o)
-				}
-			}
-		}
-	}
-
-	return nil
-}
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
-	// Block until module context is done, then wait for in-flight actions to finish
 	<-ctx.Done()
 	return nil
+}
+
+// Schedule schedules a task to be executed once all dependencies are done.
+func (mod *Module) Schedule(task scheduler.Task, deps ...scheduler.Done) (_ scheduler.ScheduledTask, err error) {
+	// check if the scheduler is running
+	if !mod.isRunning() {
+		mod.log.Errorv(2, "cannot schedule (not running): %v", task)
+		return nil, scheduler.ErrNotRunning
+	}
+
+	// check if the task is nil
+	if task == nil {
+		return nil, scheduler.ErrTaskIsNil
+	}
+
+	// create a scheduled task
+	sTask := NewScheduledTask(task)
+
+	// add the task to the queue
+	// err is always nil, because duplicates are impossible here
+	_ = mod.queue.Add(sTask)
+
+	// spawn the task runner goroutine
+	go func() {
+		var releasers sig.Set[scheduler.Releaser] // releasable deps
+		var canceled atomic.Bool
+
+		// make sure to clean up at the end
+		defer func() {
+			// remove from queue
+			mod.queue.Remove(sTask)
+
+			// release all releasable dependencies
+			for _, dep := range releasers.Clone() {
+				dep.Release()
+			}
+		}()
+
+		// wait for all dependencies asynchronously
+		var wg sync.WaitGroup
+		for _, dep := range deps {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				select {
+				case <-sTask.Done():
+					canceled.Store(true)
+					
+				case <-dep.Done():
+					// store for release if needed
+					if r, ok := dep.(scheduler.Releaser); ok {
+						releasers.Add(r)
+					}
+				}
+			}()
+		}
+		wg.Wait()
+
+		// bail if the context was canceled
+		if canceled.Load() {
+			return
+		}
+
+		// run the task within the context of the scheduler module
+		err = sTask.Run(mod.ctx)
+
+		// log on error
+		if err != nil {
+			mod.log.Errorv(2, "task %v: %v", task, err)
+		}
+	}()
+
+	return sTask, nil
+}
+
+// isRunning returns true if the scheduler module is running.
+func (mod *Module) isRunning() bool {
+	if mod.ctx == nil {
+		return false
+	}
+	select {
+	case <-mod.ctx.Done():
+		return false
+	default:
+	}
+	return true
 }
 
 func (mod *Module) String() string {

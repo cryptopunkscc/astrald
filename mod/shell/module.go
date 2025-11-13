@@ -10,5 +10,5 @@ type Module interface {
 }
 
 type LogAction interface {
-	scheduler.Action
+	scheduler.Task
 }
