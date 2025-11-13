@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -24,7 +25,13 @@ func (mod *Module) OpCloseEphemeralListener(ctx *astral.Context, q shell.Query, 
 		return q.RejectWithCode(2)
 	}
 
-	listener, ok := mod.ephemeralListeners.Get(args.Endpoint)
+	mod.ephemeralListeners.Each(func(k string, v exonet.EphemeralListener) error {
+		mod.log.Log(`%v`, k)
+
+		return nil
+	})
+
+	listener, ok := mod.ephemeralListeners.Get(chunks[1])
 	if !ok {
 		return q.RejectWithCode(4)
 	}
