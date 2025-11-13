@@ -12,8 +12,9 @@ type Loader struct{}
 
 func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.Module, error) {
 	mod := &Module{
-		node: node,
-		log:  l,
+		node:  node,
+		log:   l,
+		ready: make(chan struct{}),
 	}
 
 	return mod, nil

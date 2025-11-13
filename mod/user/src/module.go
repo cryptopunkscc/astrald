@@ -33,12 +33,20 @@ type Module struct {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
+	<-mod.Scheduler.Ready()
+
 	ac := mod.ActiveContract()
 	if ac != nil {
 		mod.log.Info("hello, %v!", ac.UserID)
 	}
 
-	// We are missing connection with certain nodes.
+	mod.runSiblingLinker()
+	<-ctx.Done()
+
+	return nil
+}
+
+func (mod *Module) runSiblingLinker() {
 	for _, node := range mod.LocalSwarm() {
 		if node.IsEqual(mod.node.Identity()) {
 			continue
@@ -53,10 +61,6 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 		mod.addSibling(node, scheduledAction.Cancel)
 	}
-
-	<-ctx.Done()
-
-	return nil
 }
 
 func (mod *Module) String() string {

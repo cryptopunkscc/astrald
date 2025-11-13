@@ -11,6 +11,7 @@ const ModuleName = "scheduler"
 
 // Module defines the public interface of the task scheduler.
 type Module interface {
+	Ready() <-chan struct{}
 	// Schedule schedules a task for execution once all dependencies are done
 	Schedule(task Task, deps ...Done) (ScheduledTask, error)
 }

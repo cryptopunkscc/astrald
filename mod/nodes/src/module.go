@@ -53,7 +53,7 @@ type Relay struct {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
-
+	<-mod.Deps.Scheduler.Ready()
 	go mod.peers.frameReader(ctx)
 	<-ctx.Done()
 	return nil
