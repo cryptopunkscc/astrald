@@ -3,12 +3,11 @@ package nat
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	modnat "github.com/cryptopunkscc/astrald/mod/nat"
+	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opStartTraversal struct {
-	// Active side fields
 	Target string `query:"optional"` // if not empty, act as initiator
 	Out    string `query:"optional"`
 }
@@ -29,7 +28,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 			return q.RejectWithCode(4)
 		}
 
-		peerCh, err := query.RouteChan(ctx.IncludeZone(astral.ZoneNetwork), mod.node, query.New(ctx.Identity(), target, modnat.MethodStartNatTraversal, &opStartTraversal{
+		peerCh, err := query.RouteChan(ctx.IncludeZone(astral.ZoneNetwork), mod.node, query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartTraversal{
 			Out: args.Out,
 		}))
 		if err != nil {
@@ -50,12 +49,11 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
-		mod.addTraversedPair(pair)
-
 		if err = ch.Write(&pair); err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
+		mod.addTraversedPair(pair, true)
 		return nil
 	}
 
@@ -72,6 +70,6 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	mod.addTraversedPair(pair)
+	mod.addTraversedPair(pair, false)
 	return nil
 }

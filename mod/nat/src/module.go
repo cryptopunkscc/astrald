@@ -1,6 +1,8 @@
 package nat
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -30,17 +32,16 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 
-	// NOTE: it could be astral.Slice?
-	traversedPairs []nat.EndpointPair
-
-	ops shell.Scope
+	pool *PairPool
+	ops  shell.Scope
 }
 
-// Run blocks until the context is done.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
+	mod.pool.RunCleanupLoop(30 * time.Second)
 
 	<-ctx.Done()
+	mod.pool.Stop()
 	return nil
 }
 
@@ -52,12 +53,20 @@ func (mod *Module) String() string {
 	return nat.ModuleName
 }
 
-func (mod *Module) addTraversedPair(pair nat.EndpointPair) {
-	mod.log.Info("added NAT traversed pair: %v (%v) <-> %v (%v)",
+func (mod *Module) addTraversedPair(
+	pair nat.EndpointPair,
+	initiatedByLocal bool,
+) {
+	mod.log.Info("added NAT traversed pair: %v (%v) <-> %v (%v) nonce=%v",
 		pair.PeerA.Identity,
 		pair.PeerA.Endpoint,
 		pair.PeerB.Identity,
 		pair.PeerB.Endpoint,
+		pair.Nonce,
 	)
-	mod.traversedPairs = append(mod.traversedPairs, pair)
+
+	err := mod.pool.Add(&pair, mod.ctx.Identity(), initiatedByLocal)
+	if err != nil {
+		mod.log.Errorv(1, "error adding pair to pool: %v", err)
+	}
 }

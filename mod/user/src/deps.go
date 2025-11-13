@@ -7,16 +7,22 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/kos"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/scheduler"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type Deps struct {
-	Apphost apphost.Module
-	Auth    auth.Module
-	Dir     dir.Module
-	Objects objects.Module
-	Keys    keys.Module
-	KOS     kos.Module
+	Apphost   apphost.Module
+	Auth      auth.Module
+	Dir       dir.Module
+	Objects   objects.Module
+	Keys      keys.Module
+	KOS       kos.Module
+	Nodes     nodes.Module
+	Scheduler scheduler.Module
+	Shell     shell.Module
 }
 
 func (mod *Module) LoadDependencies() (err error) {

@@ -2,6 +2,7 @@ package kcp
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -24,6 +25,9 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 	if err != nil {
 		return nil, fmt.Errorf(`kcp module/dial dialing endpoint failed: %w`, err)
 	}
+
+	// NOTE: without this deadline, dialing KCP hangs (causes problems with re-attempts at establishing links)
+	sess.SetDeadline(time.Now().Add(mod.config.DialTimeout))
 
 	// Close raw session on any subsequent error; noop on success.
 	defer func() {

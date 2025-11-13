@@ -1,5 +1,9 @@
 package user
 
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+)
+
 const ModuleName = "user"
 const DBPrefix = "users__"
 
@@ -14,4 +18,7 @@ const (
 )
 
 type Module interface {
+	LocalSwarm() (list []*astral.Identity)
+	NewMaintainLinkAction(target *astral.Identity) MaintainLinkAction
+	NewSyncNodesAction(remoteIdentity *astral.Identity) SyncNodesAction
 }

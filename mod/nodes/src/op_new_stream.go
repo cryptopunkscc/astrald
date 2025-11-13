@@ -1,12 +1,14 @@
 package nodes
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type opNewStreamArgs struct {
@@ -16,16 +18,15 @@ type opNewStreamArgs struct {
 	Out      string `query:"optional"`
 }
 
-// OpNewStream initiates a new stream with the given target. If an endpoint is given, it will be used.
-// If no endpoint is given, any endpoint of the given network will be used. If no network is given,
-// any endpoint will be used.
+// OpNewStream now delegates to a scheduled action and waits for completion.
 func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStreamArgs) (err error) {
-	var endpoints chan exonet.Endpoint
 
 	target, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
-		return q.RejectWithCode(4)
+		return q.RejectWithCode(2)
 	}
+
+	var endpoints chan exonet.Endpoint
 
 	switch {
 	case args.Endpoint != "":
@@ -46,7 +47,6 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 		endpoints = make(chan exonet.Endpoint, 8)
 		resolve, err := mod.ResolveEndpoints(ctx, target)
 		if err != nil {
-			mod.log.Error("resolve endpoints: %v", err)
 			return q.RejectWithCode(4)
 		}
 
@@ -60,21 +60,33 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 		}()
 	}
 
+	createStreamAction := mod.NewCreateStreamAction(target, sig.ChanToArray(endpoints))
+	scheduledAction, err := mod.Scheduler.Schedule(ctx, createStreamAction)
+	if err != nil {
+		return q.RejectWithCode(5)
+	}
+
+	// Wait for action or context cancellation
+	select {
+	case <-ctx.Done():
+		return q.RejectWithCode(4)
+	case <-scheduledAction.Done():
+	}
+
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	s, err := mod.peers.connectAtAny(ctx, target, endpoints)
-	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+	info, err := createStreamAction.Result()
+	switch {
+	case err == nil:
+		return ch.Write(info)
+	case errors.Is(err, nodes.ErrInvalidEndpointFormat):
+		return q.RejectWithCode(2)
+	case errors.Is(err, nodes.ErrEndpointParse):
+		return q.RejectWithCode(3)
+	case errors.Is(err, nodes.ErrIdentityResolve), errors.Is(err, nodes.ErrEndpointResolve):
+		return q.RejectWithCode(4)
+	default:
+		return err
 	}
-
-	return ch.Write(&nodes.StreamInfo{
-		ID:             s.id,
-		LocalIdentity:  s.LocalIdentity(),
-		RemoteIdentity: s.RemoteIdentity(),
-		LocalEndpoint:  s.LocalEndpoint(),
-		RemoteEndpoint: s.RemoteEndpoint(),
-		Outbound:       astral.Bool(s.outbound),
-		Network:        astral.String8(s.Network()),
-	})
 }

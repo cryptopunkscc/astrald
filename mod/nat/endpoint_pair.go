@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
 // EndpointPair represents two peers that established a NAT-traversed
@@ -14,6 +13,7 @@ type EndpointPair struct {
 	PeerA     PeerEndpoint
 	PeerB     PeerEndpoint
 	CreatedAt astral.Time
+	Nonce     astral.Nonce
 }
 
 // ObjectType implements astral.Object.
@@ -48,6 +48,18 @@ func (e *EndpointPair) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
+// RemoteEndpoint returns the endpoint of the other peer in the pair.
+func (e *EndpointPair) RemoteEndpoint(self *astral.Identity) (PeerEndpoint, bool) {
+	switch {
+	case e.PeerA.Identity != nil && e.PeerA.Identity.IsEqual(self):
+		return e.PeerB, true
+	case e.PeerB.Identity != nil && e.PeerB.Identity.IsEqual(self):
+		return e.PeerA, true
+	default:
+		return PeerEndpoint{}, false
+	}
+}
+
 // PeerEndpoint represents a single peer's identity and endpoint.
 // It can be serialized via astral.Struct and registered in blueprints.
 type PeerEndpoint struct {
@@ -56,7 +68,7 @@ type PeerEndpoint struct {
 	// NOTE: cannot use exonet.Endpoint for serialization reasons,
 	// and there is lack of package/struct describing (
 	//transport layer) addr. (for now utp is only supported UDP protocol)
-	Endpoint utp.Endpoint
+	Endpoint UDPEndpoint
 }
 
 // ObjectType implements astral.Object.

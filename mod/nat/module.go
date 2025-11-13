@@ -1,5 +1,7 @@
 package nat
 
+import "github.com/cryptopunkscc/astrald/astral"
+
 const ModuleName = "nat"
 
 // Module defines the NAT traversal module public API.
@@ -14,4 +16,10 @@ type Module interface {
 
 const (
 	MethodStartNatTraversal = "nat.start_traversal"
+	MethodPairTake          = "nat.pair_take"
 )
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&PunchSignal{})
+	_ = astral.DefaultBlueprints.Add(&PairTakeSignal{})
+}
