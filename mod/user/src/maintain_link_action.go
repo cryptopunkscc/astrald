@@ -78,7 +78,7 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 			}
 
 			count++
-			time.Sleep(retry.NextDelay())
+			<-retry.Retry()
 			continue
 		}
 
