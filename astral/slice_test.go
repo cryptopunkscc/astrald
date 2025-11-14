@@ -228,8 +228,8 @@ func TestSlice_MarshalJSON_Int8Only(t *testing.T) {
 func TestSlice_UnmarshalJSON_Int8Only(t *testing.T) {
 	// JSON matching what Slice.MarshalJSON emits for two Int8 values.
 	jsonData := `[
-		{"Type":"int8","Object":11},
-		{"Type":"int8","Object":99}
+		{"Type":"int8","Object":"11"},
+		{"Type":"int8","Object":"99"}
 	]`
 
 	// backing slice for the result
