@@ -10,22 +10,18 @@ import (
 var _ Object = &Slice[Object]{}
 
 type Slice[T Object] struct {
-	Elem     *[]T
-	LenBits  int
-	ElemBits int
-	Typed    bool
+	Elem  *[]T
+	Typed bool
 }
 
 type ObjectTyper interface {
 	ObjectType() string
 }
 
-func WrapSlice[T Object](elem *[]T, lenBits int, elemBits int) *Slice[T] {
+func WrapSlice[T Object](elem *[]T) *Slice[T] {
 	return &Slice[T]{
-		Elem:     elem,
-		LenBits:  lenBits,
-		ElemBits: elemBits,
-		Typed:    reflect.TypeOf((*T)(nil)).Elem().Kind() == reflect.Interface,
+		Elem:  elem,
+		Typed: reflect.TypeOf((*T)(nil)).Elem().Kind() == reflect.Interface,
 	}
 }
 
@@ -37,7 +33,7 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 	v := *a.Elem
 
 	// write length
-	n, err = writeInt(w, len(v), a.LenBits)
+	n, err = Uint32(len(v)).WriteTo(w)
 	if err != nil {
 		return
 	}
@@ -55,7 +51,7 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 			return
 		}
 
-		m, err = writeInt(w, len(buf.Bytes()), a.ElemBits)
+		m, err = Uint32(buf.Len()).WriteTo(w)
 		n += m
 		if err != nil {
 			return
@@ -73,9 +69,8 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
-	var l int
-
-	n, err = loadInt(r, &l, a.LenBits)
+	var l Uint32
+	n, err = l.ReadFrom(r)
 	if err != nil {
 		return
 	}
@@ -83,7 +78,7 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 	v := make([]T, l)
 
 	var m int64
-	for i := 0; i < l; i++ {
+	for i := 0; i < int(l); i++ {
 		var e T
 		typ := reflect.TypeOf((*T)(nil)).Elem()
 		if typ.Kind() == reflect.Pointer {
@@ -91,15 +86,15 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 		}
 
 		// read element length
-		var el int
-		m, err = loadInt(r, &el, a.ElemBits)
+		var elementLen Uint32
+		m, err = elementLen.ReadFrom(r)
 		n += m
 		if err != nil {
 			return
 		}
 
 		// read element bytes
-		var buf = make([]byte, el)
+		var buf = make([]byte, elementLen)
 		var j int
 		j, err = io.ReadFull(r, buf)
 		n += int64(j)
@@ -125,55 +120,6 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 		v[i] = e
 	}
 	*a.Elem = v
-
-	return
-}
-
-func writeInt(w io.Writer, l int, bits int) (n int64, err error) {
-	if l > (1<<bits)-1 {
-		panic("array too long for the bit width")
-	}
-	switch bits {
-	case 8:
-		n, err = Uint8(l).WriteTo(w)
-	case 16:
-		n, err = Uint16(l).WriteTo(w)
-	case 32:
-		n, err = Uint32(l).WriteTo(w)
-	case 64:
-		n, err = Uint64(l).WriteTo(w)
-	default:
-		panic("unsupported bit width")
-	}
-
-	return
-}
-
-func loadInt(r io.Reader, l *int, bits int) (n int64, err error) {
-	switch bits {
-	case 8:
-		var k Uint8
-		n, err = k.ReadFrom(r)
-		*l = int(k)
-
-	case 16:
-		var k Uint16
-		n, err = k.ReadFrom(r)
-		*l = int(k)
-
-	case 32:
-		var k Uint32
-		n, err = k.ReadFrom(r)
-		*l = int(k)
-
-	case 64:
-		var k Uint64
-		n, err = k.ReadFrom(r)
-		*l = int(k)
-
-	default:
-		panic("unsupported bit width")
-	}
 
 	return
 }
