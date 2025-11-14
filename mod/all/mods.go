@@ -1,4 +1,4 @@
-package mod
+package all
 
 // This file includes all modules that should be compiled into the node.
 // Do not move this file to another package as it is exposed for https://github.com/cryptopunkscc/portal.
