@@ -30,14 +30,10 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err != nil {
-			_ = udpConn.Close()
-		}
-	}()
 
 	kcpConn, err := kcpgo.NewConn(endpoint.Address(), nil, 0, 0, udpConn)
 	if err != nil {
+		_ = udpConn.Close()
 		return nil, fmt.Errorf("kcp/dial: creating KCP conn failed: %w", err)
 	}
 
@@ -58,15 +54,25 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 	return WrapKCPConn(kcpConn, remoteEndpoint, localEndpoint, true), nil
 }
 
-func (mod *Module) SetEndpointLocalSocket(endpoint kcp.Endpoint, localSocket astral.Uint16) error {
+func (mod *Module) SetEndpointLocalSocket(endpoint kcp.Endpoint, localSocket astral.Uint16, replace astral.Bool) error {
 	address := astral.String(endpoint.Address())
 
-	_, ok := mod.ephemeralPortMappings.Get(address)
-	if ok {
-		return fmt.Errorf("mapping for endpoint %s already exists", endpoint.Address())
+	if replace {
+		mod.ephemeralPortMappings.Replace(address, localSocket)
 	}
 
-	mod.ephemeralPortMappings.Set(address, localSocket)
+	_, ok := mod.ephemeralPortMappings.Set(address, localSocket)
+	if !ok {
+		return fmt.Errorf("%w: address %s", kcp.ErrEndpointLocalSocketExists, address)
+	}
+
+	return nil
+}
+
+func (mod *Module) RemoveEndpointLocalSocket(endpoint kcp.Endpoint) error {
+	address := astral.String(endpoint.Address())
+
+	mod.ephemeralPortMappings.Delete(address)
 	return nil
 }
 

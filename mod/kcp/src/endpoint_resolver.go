@@ -26,7 +26,7 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 		list = append(list, &e)
 	}
 
-	for port, _ := range mod.ephemeralListeners.Clone() {
+	for port := range mod.ephemeralListeners.Clone() {
 		for _, tip := range ips {
 			e := kcp.Endpoint{
 				IP:   tip,

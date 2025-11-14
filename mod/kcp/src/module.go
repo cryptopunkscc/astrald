@@ -57,7 +57,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-// CreateEphemeralListener creates an ephemeral KCP endpoint which will start a server that listens on the specified local endpoint and adds it to the ephemeralListeners set.
+// CreateEphemeralListener creates an ephemeral KCP endpoint which will start a server that listens on the specified port and adds it to the ephemeralListeners set.
 func (mod *Module) CreateEphemeralListener(port astral.Uint16) error {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()
@@ -67,6 +67,8 @@ func (mod *Module) CreateEphemeralListener(port astral.Uint16) error {
 	}
 
 	kcpServer := NewServer(mod, port, mod.acceptAll)
+	mod.ephemeralListeners.Set(port, kcpServer)
+
 	go func() {
 		err := kcpServer.Run(mod.ctx)
 		if err != nil {
@@ -76,7 +78,18 @@ func (mod *Module) CreateEphemeralListener(port astral.Uint16) error {
 		mod.ephemeralListeners.Delete(port)
 	}()
 
-	mod.ephemeralListeners.Set(port, kcpServer)
+	return nil
+}
+
+func (mod *Module) CloseEphemeralListener(port astral.Uint16) error {
+	listener, ok := mod.ephemeralListeners.Get(port)
+	if !ok {
+		return kcp.ErrEphemeralListenerNotExist
+	}
+
+	listener.Close()
+	mod.ephemeralListeners.Delete(port)
+
 	return nil
 }
 
