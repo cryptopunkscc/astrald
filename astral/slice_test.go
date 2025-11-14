@@ -8,117 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-func P[T any](v T) *T {
-	return &v
-}
-
-func TestSlice_MarshalJSON_Empty(t *testing.T) {
-	elems := []astral.Object{}
-	s := astral.WrapSlice(&elems)
-
-	b, err := s.MarshalJSON()
-	if err != nil {
-		t.Fatalf("MarshalJSON returned error: %v", err)
-	}
-
-	var out []any
-	if err := json.Unmarshal(b, &out); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
-
-	if len(out) != 0 {
-		t.Fatalf("expected empty array, got %v", out)
-	}
-}
-
-func TestSlice_MarshalJSON_PrimitivesOnly(t *testing.T) {
-	objects := []astral.Object{
-		P(astral.String("hello")),
-		P(astral.String("world")),
-	}
-	slice := astral.WrapSlice(&objects)
-
-	data, err := slice.MarshalJSON()
-	if err != nil {
-		t.Fatalf("MarshalJSON returned error: %v", err)
-	}
-
-	var adapters []astral.JSONEncodeAdapter
-	if err := json.Unmarshal(data, &adapters); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
-
-	if len(adapters) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(adapters))
-	}
-
-	for i, adapter := range adapters {
-		if adapter.Type != "string" {
-			t.Fatalf("expected type string, got %s", adapter.Type)
-		}
-
-		expectedStr, ok := objects[i].(*astral.String)
-		if !ok {
-			t.Fatalf("expected string, got %T", adapter.Object)
-		}
-
-		if adapter.Object == expectedStr {
-			t.Fatalf("expected object %v, got %v", objects[i], adapter.Object)
-		}
-	}
-}
-
-func TestSlice_MarshalJSON_MixedTypes(t *testing.T) {
-	objects := []astral.Object{
-		P(astral.String("hello")),
-		P(astral.Int8(42)),
-	}
-
-	slice := astral.WrapSlice(&objects)
-
-	data, err := slice.MarshalJSON()
-	if err != nil {
-		t.Fatalf("MarshalJSON returned error: %v", err)
-	}
-
-	var adapters []astral.JSONEncodeAdapter
-	if err := json.Unmarshal(data, &adapters); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
-
-	if len(adapters) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(adapters))
-	}
-
-	for i, adapter := range adapters {
-		expectedType := ""
-		var expectedPtr astral.Object
-
-		switch obj := objects[i].(type) {
-		case *astral.String:
-			expectedType = "string"
-			expectedPtr = obj
-
-		case *astral.Int8:
-			expectedType = "int8"
-			expectedPtr = obj
-
-		default:
-			t.Fatalf("unexpected object type in test at index %d: %T", i, objects[i])
-		}
-
-		// type check
-		if adapter.Type != expectedType {
-			t.Fatalf("expected type %s, got %s", expectedType, adapter.Type)
-		}
-
-		// never return original pointer in JSON
-		if adapter.Object == expectedPtr {
-			t.Fatalf("expected JSON-mapped object, got original pointer at index %d", i)
-		}
-	}
-}
-
 // --- test-only custom object A ---
 type TestObjectA struct {
 	Value astral.String
@@ -149,6 +38,29 @@ func (t *TestObjectB) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Struct(t).ReadFrom(r)
 }
 
+func P[T any](v T) *T {
+	return &v
+}
+
+func TestSlice_MarshalJSON_Empty(t *testing.T) {
+	elems := []astral.Object{}
+	s := astral.WrapSlice(&elems)
+
+	b, err := s.MarshalJSON()
+	if err != nil {
+		t.Fatalf("MarshalJSON returned error: %v", err)
+	}
+
+	var out []any
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	if len(out) != 0 {
+		t.Fatalf("expected empty array, got %v", out)
+	}
+}
+
 func TestSlice_MarshalJSON_CustomMixed(t *testing.T) {
 	astral.DefaultBlueprints.Add(&TestObjectA{})
 	astral.DefaultBlueprints.Add(&TestObjectB{})
@@ -165,6 +77,7 @@ func TestSlice_MarshalJSON_CustomMixed(t *testing.T) {
 		t.Fatalf("MarshalJSON returned error: %v", err)
 	}
 
+	// Decode encoded objects → adapters
 	var adapters []astral.JSONEncodeAdapter
 	if err := json.Unmarshal(data, &adapters); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
@@ -176,146 +89,218 @@ func TestSlice_MarshalJSON_CustomMixed(t *testing.T) {
 
 	for i, adapter := range adapters {
 		switch orig := objects[i].(type) {
+
 		case *TestObjectA:
 			if adapter.Type != "test.object.a" {
 				t.Fatalf("expected type test.object.a, got %s", adapter.Type)
 			}
+
+			// adapter.Object must be a *decoded object*, not same pointer
+			objBytes, _ := json.Marshal(adapter.Object)
+			if string(objBytes) == "" {
+				t.Fatalf("expected Object field, got empty")
+			}
+
+			// decode into new struct to compare values
+			var decoded TestObjectA
+			decodedBytes, _ := json.Marshal(adapter.Object)
+			_ = json.Unmarshal(decodedBytes, &decoded)
+
+			if decoded.Value != orig.Value {
+				t.Fatalf("expected Value=%q, got %q", orig.Value, decoded.Value)
+			}
+
 			if adapter.Object == orig {
-				t.Fatalf("expected JSON object, got original pointer")
+				t.Fatalf("expected new JSON-mapped object, got original pointer")
 			}
 
 		case *TestObjectB:
 			if adapter.Type != "test.object.b" {
 				t.Fatalf("expected type test.object.b, got %s", adapter.Type)
 			}
+
+			objBytes, _ := json.Marshal(adapter.Object)
+			if string(objBytes) == "" {
+				t.Fatalf("expected Object field, got empty")
+			}
+
+			var decoded TestObjectB
+			decodedBytes, _ := json.Marshal(adapter.Object)
+			_ = json.Unmarshal(decodedBytes, &decoded)
+
+			if decoded.Number != orig.Number {
+				t.Fatalf("expected Number=%d, got %d", orig.Number, decoded.Number)
+			}
+
 			if adapter.Object == orig {
-				t.Fatalf("expected JSON object, got original pointer")
+				t.Fatalf("expected new JSON-mapped object, got original pointer")
 			}
 
 		default:
 			t.Fatalf("unexpected object type at index %d: %T", i, objects[i])
 		}
 	}
+
+	var decodedSlice astral.Slice[astral.Object]
+	if err := decodedSlice.UnmarshalJSON(data); err != nil {
+		t.Fatalf("round-trip Unmarshal failed: %v", err)
+	}
+
+	if len(*decodedSlice.Elem) != 2 {
+		t.Fatalf("round-trip len mismatch: expected 2, got %d", len(*decodedSlice.Elem))
+	}
+
+	// deep semantic equality
+	if (*decodedSlice.Elem)[0].(*TestObjectA).Value != "hello" ||
+		(*decodedSlice.Elem)[1].(*TestObjectB).Number != 99 {
+		t.Fatalf("round-trip values mismatch: %#v", *decodedSlice.Elem)
+	}
 }
 
-func TestSlice_UnmarshalJSON_PrimitivesOnly(t *testing.T) {
-	// Prepare JSON that matches output of MarshalJSON for two strings
-	jsonData := `[
-		{"type":"string","object":"hello"},
-		{"type":"string","object":"world"}
-	]`
+func TestSlice_MarshalJSON_Int8Only(t *testing.T) {
+	objects := []astral.Object{
+		P(astral.Int8(11)),
+		P(astral.Int8(99)),
+	}
 
-	// Prepare target slice
-	var objects []astral.Object
 	slice := astral.WrapSlice(&objects)
 
-	// Decode
-	err := slice.UnmarshalJSON([]byte(jsonData))
+	data, err := slice.MarshalJSON()
 	if err != nil {
-		t.Fatalf("UnmarshalJSON returned error: %v", err)
+		t.Fatalf("MarshalJSON returned error: %v", err)
 	}
 
-	// Validate slice length
-	if len(objects) != 2 {
-		t.Fatalf("expected 2 elements, got %d", len(objects))
+	// Decode encoded objects → adapters
+	var adapters []astral.JSONEncodeAdapter
+	if err := json.Unmarshal(data, &adapters); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
 	}
 
-	// Validate elements
-	tests := []string{"hello", "world"}
+	if len(adapters) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(adapters))
+	}
 
-	for i, expected := range tests {
-		strObj, ok := objects[i].(*astral.String)
-		if !ok {
-			t.Fatalf("element %d: expected *astral.String, got %T", i, objects[i])
+	for i, adapter := range adapters {
+		orig := objects[i].(*astral.Int8)
+
+		if adapter.Type != "int8" {
+			t.Fatalf("expected Type=int8, got %s", adapter.Type)
 		}
 
-		if string(*strObj) != expected {
-			t.Fatalf("element %d: expected %q, got %q", i, expected, string(*strObj))
+		// Ensure adapter.Object contains JSON, not pointer reuse
+		objBytes, _ := json.Marshal(adapter.Object)
+		if len(objBytes) == 0 {
+			t.Fatalf("expected Object field, got empty")
+		}
+
+		// decode into new primitive
+		var decoded astral.Int8
+		decodedBytes, _ := json.Marshal(adapter.Object)
+		_ = json.Unmarshal(decodedBytes, &decoded)
+
+		if decoded != *orig {
+			t.Fatalf("expected %d, got %d", *orig, decoded)
+		}
+
+		if adapter.Object == orig {
+			t.Fatalf("expected JSON-mapped value, got original pointer")
 		}
 	}
-}
-func TestSlice_UnmarshalJSON_MixedTypes(t *testing.T) {
-	original := []astral.Object{
-		P(astral.String("hello")),
-		P(astral.Int8(42)),
+
+	var decodedSlice astral.Slice[astral.Object]
+	if err := decodedSlice.UnmarshalJSON(data); err != nil {
+		t.Fatalf("round-trip Unmarshal failed: %v", err)
 	}
 
-	src := astral.WrapSlice(&original)
-	jsonData, err := src.MarshalJSON()
-	if err != nil {
-		t.Fatalf("MarshalJSON error: %v", err)
+	if len(*decodedSlice.Elem) != 2 {
+		t.Fatalf("round-trip len mismatch: expected 2, got %d", len(*decodedSlice.Elem))
 	}
 
-	var decoded []astral.Object
-	dst := astral.WrapSlice(&decoded)
-
-	err = dst.UnmarshalJSON(jsonData)
-	if err != nil {
-		t.Fatalf("UnmarshalJSON returned error: %v", err)
+	if int8(*(*decodedSlice.Elem)[0].(*astral.Int8)) != 11 {
+		t.Fatalf("round-trip mismatch: got %d at index 0", *(*decodedSlice.Elem)[0].(*astral.Int8))
 	}
 
-	if len(decoded) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(decoded))
-	}
-
-	str, ok := decoded[0].(*astral.String)
-	if !ok {
-		t.Fatalf("index 0: expected *astral.String, got %T", decoded[0])
-	}
-	if string(*str) != "hello" {
-		t.Fatalf("expected \"hello\", got %q", string(*str))
-	}
-
-	i8, ok := decoded[1].(*astral.Int8)
-	if !ok {
-		t.Fatalf("index 1: expected *astral.Int8, got %T", decoded[1])
-	}
-	if int8(*i8) != 42 {
-		t.Fatalf("expected 42, got %d", *i8)
+	if int8(*(*decodedSlice.Elem)[1].(*astral.Int8)) != 99 {
+		t.Fatalf("round-trip mismatch: got %d at index 1", *(*decodedSlice.Elem)[1].(*astral.Int8))
 	}
 }
 
-func TestSlice_UnmarshalJSON_CustomMixed(t *testing.T) {
-	astral.DefaultBlueprints.Add(&TestObjectA{})
-	astral.DefaultBlueprints.Add(&TestObjectB{})
+func TestSlice_UnmarshalJSON_Int8Only(t *testing.T) {
+	// JSON matching what Slice.MarshalJSON emits for two Int8 values.
+	jsonData := `[
+		{"Type":"int8","Object":11},
+		{"Type":"int8","Object":99}
+	]`
 
-	original := []astral.Object{
-		&TestObjectA{Value: "hello"},
-		&TestObjectB{Number: 99},
-	}
+	// backing slice for the result
+	var out []astral.Object
+	slice := astral.WrapSlice(&out)
 
-	src := astral.WrapSlice(&original)
-	jsonData, err := src.MarshalJSON()
-	if err != nil {
-		t.Fatalf("MarshalJSON failed: %v", err)
-	}
-
-	var decoded []astral.Object
-	dst := astral.WrapSlice(&decoded)
-
-	if err := dst.UnmarshalJSON(jsonData); err != nil {
+	// decode
+	if err := slice.UnmarshalJSON([]byte(jsonData)); err != nil {
 		t.Fatalf("UnmarshalJSON failed: %v", err)
 	}
 
-	if len(decoded) != len(original) {
-		t.Fatalf("expected %d items, got %d", len(original), len(decoded))
+	// basic length check
+	if len(out) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(out))
 	}
 
-	for i := range decoded {
-		switch orig := decoded[i].(type) {
+	// check element 0
+	i0, ok := out[0].(*astral.Int8)
+	if !ok {
+		t.Fatalf("index 0: expected *astral.Int8, got %T", out[0])
+	}
+	if *i0 != astral.Int8(11) {
+		t.Fatalf("index 0: expected 11, got %d", *i0)
+	}
 
-		case *TestObjectA:
-			if orig.Value != "hello" {
-				t.Fatalf("index %d: expected Value=hello, got %s", i, orig.Value)
-			}
+	// check element 1
+	i1, ok := out[1].(*astral.Int8)
+	if !ok {
+		t.Fatalf("index 1: expected *astral.Int8, got %T", out[1])
+	}
+	if *i1 != astral.Int8(99) {
+		t.Fatalf("index 1: expected 99, got %d", *i1)
+	}
+}
 
-		case *TestObjectB:
-			if orig.Number != 99 {
-				t.Fatalf("index %d: expected Number=99, got %d", i, orig.Number)
-			}
+func TestSlice_UnmarshalJSON_TestA_TestB(t *testing.T) {
+	astral.DefaultBlueprints.Add(&TestObjectA{})
+	astral.DefaultBlueprints.Add(&TestObjectB{})
 
-		default:
-			t.Fatalf("unexpected type at index %d: %T", i, decoded[i])
-		}
+	// This JSON matches what MarshalJSON produces for TestObjectA/TestObjectB
+	jsonData := `[
+        {"Type":"test.object.a","Object":{"Value":"hello"}},
+        {"Type":"test.object.b","Object":{"Number":"99"}}
+    ]`
+
+	var out []astral.Object
+	slice := astral.WrapSlice(&out)
+
+	if err := slice.UnmarshalJSON([]byte(jsonData)); err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(out) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(out))
+	}
+
+	// ----- TestObjectA -----
+	a, ok := out[0].(*TestObjectA)
+	if !ok {
+		t.Fatalf("index 0: expected *TestObjectA, got %T", out[0])
+	}
+	if a.Value != astral.String("hello") {
+		t.Fatalf("index 0: expected Value='hello', got '%s'", a.Value)
+	}
+
+	// ----- TestObjectB -----
+	b, ok := out[1].(*TestObjectB)
+	if !ok {
+		t.Fatalf("index 1: expected *TestObjectB, got %T", out[1])
+	}
+	if b.Number != astral.Int8(99) {
+		t.Fatalf("index 1: expected Number=99, got %d", b.Number)
 	}
 }

@@ -140,6 +140,10 @@ func (a *Slice[T]) MarshalJSON() ([]byte, error) {
 }
 
 func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
+	if a.Elem == nil {
+		a.Elem = new([]T)
+	}
+
 	var jlist []JSONDecodeAdapter
 	if err := json.Unmarshal(bytes, &jlist); err != nil {
 		return err
@@ -156,7 +160,7 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 		var err error
 		switch {
 		case j.Object != nil:
-			err = json.Unmarshal(j.Object, &obj)
+			err = json.Unmarshal(j.Object, obj)
 			if err != nil {
 				return err
 			}
@@ -179,7 +183,6 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 		result[i] = casted
 	}
 
-	// 5. Store result
 	*a.Elem = result
 	return nil
 }
