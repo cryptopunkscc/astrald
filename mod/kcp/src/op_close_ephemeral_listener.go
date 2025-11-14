@@ -15,7 +15,7 @@ func (mod *Module) OpCloseEphemeralListener(ctx *astral.Context, q shell.Query, 
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
-	err = mod.CreateEphemeralListener(args.Port)
+	err = mod.CloseEphemeralListener(args.Port)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}
