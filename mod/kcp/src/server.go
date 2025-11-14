@@ -19,6 +19,7 @@ type Server struct {
 	listener   *kcpgo.Listener
 	onAccept   exonet.EphemeralHandler
 	closed     atomic.Bool
+	closedCh   chan struct{}
 }
 
 func NewServer(module *Module, listenPort astral.Uint16, onAccept exonet.EphemeralHandler) *Server {
@@ -26,6 +27,7 @@ func NewServer(module *Module, listenPort astral.Uint16, onAccept exonet.Ephemer
 		Module:     module,
 		listenPort: listenPort,
 		onAccept:   onAccept,
+		closedCh:   make(chan struct{}),
 	}
 }
 
@@ -46,8 +48,11 @@ func (s *Server) Run(ctx *astral.Context) error {
 
 	s.log.Info("started server at %v", kcpListener.Addr())
 	go func() {
-		<-ctx.Done()
-		s.Close()
+		select {
+		case <-ctx.Done():
+			s.Close()
+		case <-s.Done():
+		}
 	}()
 
 	for {
@@ -79,6 +84,10 @@ func (s *Server) Run(ctx *astral.Context) error {
 	}
 }
 
+func (s *Server) Done() <-chan struct{} {
+	return s.closedCh
+}
+
 func (s *Server) Close() error {
 	if !s.closed.CompareAndSwap(false, true) {
 		return nil
@@ -88,5 +97,6 @@ func (s *Server) Close() error {
 		return s.listener.Close()
 	}
 
+	close(s.closedCh)
 	return nil
 }
