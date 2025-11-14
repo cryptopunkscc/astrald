@@ -1,6 +1,8 @@
 package exonet
 
 import (
+	"context"
+
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
@@ -34,4 +36,11 @@ type Unpacker interface {
 
 type Parser interface {
 	Parse(network string, address string) (Endpoint, error)
+}
+
+type EphemeralHandler func(ctx context.Context, conn Conn) (stopListener bool, err error)
+
+type EphemeralListener interface {
+	Run(ctx *astral.Context) error
+	Close() error
 }

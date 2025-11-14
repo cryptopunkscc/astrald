@@ -2,11 +2,13 @@ package kcp
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	kcpmod "github.com/cryptopunkscc/astrald/mod/kcp"
+	"github.com/cryptopunkscc/astrald/mod/kcp"
+	"github.com/pkg/errors"
 	kcpgo "github.com/xtaci/kcp-go/v5"
 )
 
@@ -15,36 +17,79 @@ var _ exonet.Dialer = &Module{}
 // Dial establishes a KCP session and wraps it as an exonet.Conn.
 func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 	c exonet.Conn, err error) {
-	switch endpoint.Network() {
-	case "kcp":
-	default:
+	if endpoint.Network() != "kcp" {
 		return nil, exonet.ErrUnsupportedNetwork
 	}
 
-	sess, err := kcpgo.DialWithOptions(endpoint.Address(), nil, 0, 0)
-	if err != nil {
-		return nil, fmt.Errorf(`kcp module/dial dialing endpoint failed: %w`, err)
+	remoteEndpoint, ok := endpoint.(*kcp.Endpoint)
+	if !ok {
+		return nil, fmt.Errorf("kcp/dial: endpoint is not a kcp endpoint")
 	}
 
-	// NOTE: without this deadline, dialing KCP hangs (causes problems with re-attempts at establishing links)
-	sess.SetDeadline(time.Now().Add(mod.config.DialTimeout))
+	udpConn, err := mod.prepareUDPConn(remoteEndpoint)
+	if err != nil {
+		return nil, err
+	}
 
-	// Close raw session on any subsequent error; noop on success.
+	kcpConn, err := kcpgo.NewConn(endpoint.Address(), nil, 0, 0, udpConn)
+	if err != nil {
+		_ = udpConn.Close()
+		return nil, fmt.Errorf("kcp/dial: creating KCP conn failed: %w", err)
+	}
+
 	defer func() {
 		if err != nil {
-			_ = sess.Close()
+			_ = kcpConn.Close()
 		}
 	}()
 
-	localEndpoint, err := kcpmod.ParseEndpoint(sess.LocalAddr().String())
+	// Without this deadline, dialing KCP can hang
+	kcpConn.SetDeadline(time.Now().Add(mod.config.DialTimeout))
+
+	localEndpoint, err := kcp.ParseEndpoint(kcpConn.LocalAddr().String())
 	if err != nil {
-		return nil, fmt.Errorf(`kcp module/dial parsing local endpoint failed: %w`, err)
+		return nil, fmt.Errorf("kcp/dial: parsing local endpoint failed: %w", err)
 	}
 
-	remoteEndpoint, err := kcpmod.ParseEndpoint(sess.RemoteAddr().String())
-	if err != nil {
-		return nil, fmt.Errorf(`kcp module/dial parsing remote endpoint failed: %w`, err)
+	return WrapKCPConn(kcpConn, remoteEndpoint, localEndpoint, true), nil
+}
+
+func (mod *Module) SetEndpointLocalSocket(endpoint kcp.Endpoint, localSocket astral.Uint16, replace astral.Bool) error {
+	address := astral.String(endpoint.Address())
+
+	if replace {
+		mod.ephemeralPortMappings.Replace(address, localSocket)
 	}
 
-	return WrapKCPConn(sess, remoteEndpoint, localEndpoint, true), nil
+	_, ok := mod.ephemeralPortMappings.Set(address, localSocket)
+	if !ok {
+		return fmt.Errorf("%w: address %s", kcp.ErrEndpointLocalSocketExists, address)
+	}
+
+	return nil
+}
+
+func (mod *Module) RemoveEndpointLocalSocket(endpoint kcp.Endpoint) error {
+	address := astral.String(endpoint.Address())
+
+	mod.ephemeralPortMappings.Delete(address)
+	return nil
+}
+
+// prepareUDPConn creates a UDP connection, binding to an ephemeral local port if mapped.
+func (mod *Module) prepareUDPConn(endpoint *kcp.Endpoint) (*net.UDPConn, error) {
+	laddr := &net.UDPAddr{Port: 0}
+	address := astral.String(endpoint.Address())
+
+	// Use mapped local port if available
+	if port, ok := mod.ephemeralPortMappings.Get(address); ok {
+		laddr.Port = int(port)
+	}
+
+	conn, err := net.ListenUDP("udp", laddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "kcp/dial: binding to local UDP address")
+	}
+
+	return conn, nil
 }

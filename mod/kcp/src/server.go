@@ -2,76 +2,101 @@ package kcp
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	kcpmod "github.com/cryptopunkscc/astrald/mod/kcp"
 	kcpgo "github.com/xtaci/kcp-go/v5"
 )
 
+var _ exonet.EphemeralListener = &Server{}
+
 // Server implements KCP listening with connection acceptance via kcp.Listener
 type Server struct {
 	*Module
-	listener *kcpgo.Listener
+	listenPort astral.Uint16
+	listener   *kcpgo.Listener
+	onAccept   exonet.EphemeralHandler
+	closed     atomic.Bool
+	closedCh   chan struct{}
 }
 
-func NewServer(module *Module) *Server {
-	return &Server{Module: module}
+func NewServer(module *Module, listenPort astral.Uint16, onAccept exonet.EphemeralHandler) *Server {
+	return &Server{
+		Module:     module,
+		listenPort: listenPort,
+		onAccept:   onAccept,
+		closedCh:   make(chan struct{}),
+	}
 }
 
 func (s *Server) Run(ctx *astral.Context) error {
-	addr := fmt.Sprintf(":%d", s.config.ListenPort)
+	addr := fmt.Sprintf(":%d", s.listenPort)
 	kcpListener, err := kcpgo.ListenWithOptions(addr, nil, 0, 0)
 	if err != nil {
-		return fmt.Errorf(`kcp server/run: failed to start kcp listener at %v: %w`, addr, err)
+		return fmt.Errorf("kcp server/run: failed to listen on %v: %w", addr, err)
 	}
 
 	s.listener = kcpListener
+
 	localEndpoint, err := kcpmod.ParseEndpoint(kcpListener.Addr().String())
 	if err != nil {
-		return fmt.Errorf(`kcp server/run: failed to parse local endpoint %v: %w`, kcpListener.Addr(), err)
+		return fmt.Errorf(`kcp server/run: failed to parse local endpoint %v: %w`,
+			kcpListener.Addr(), err)
 	}
 
 	s.log.Info("started server at %v", kcpListener.Addr())
 	go func() {
-		<-ctx.Done()
-		s.log.Info("stopped server at %v", kcpListener.Addr())
-		_ = kcpListener.Close()
+		select {
+		case <-ctx.Done():
+			s.Close()
+		case <-s.Done():
+		}
 	}()
 
 	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-		}
-
 		sess, err := kcpListener.AcceptKCP()
 		if err != nil {
-			if ctx.Err() != nil {
+			if s.closed.Load() || ctx.Err() != nil {
+				s.log.Info("stopped server at %v", kcpListener.Addr())
 				return nil
 			}
-			return fmt.Errorf(`kcp server/run: failed to accept kcp connection: %w`, err)
+
+			return fmt.Errorf("kcp server/run: accept failed: %w", err)
 		}
 
 		remoteEndpoint, _ := kcpmod.ParseEndpoint(sess.RemoteAddr().String())
 		s.log.Info("accepted connection from %v", remoteEndpoint)
 
-		var conn = WrapKCPConn(sess, localEndpoint, remoteEndpoint, false)
-
+		conn := WrapKCPConn(sess, localEndpoint, remoteEndpoint, false)
 		go func() {
-			err := s.Nodes.Accept(ctx, conn)
+			shouldClose, err := s.onAccept(ctx, conn)
 			if err != nil {
-				s.log.Errorv(1, "kcp server/run: handshake failed from %v: %v",
-					conn.RemoteEndpoint(), err)
+				s.log.Errorv(1, "kcp server/onAccept error from %v: %v", conn.RemoteEndpoint(), err)
 				return
+			}
+
+			if shouldClose {
+				s.Close()
 			}
 		}()
 	}
 }
 
+func (s *Server) Done() <-chan struct{} {
+	return s.closedCh
+}
+
 func (s *Server) Close() error {
-	if s.listener != nil {
-		_ = s.listener.Close()
+	if !s.closed.CompareAndSwap(false, true) {
+		return nil
 	}
+
+	if s.listener != nil {
+		return s.listener.Close()
+	}
+
+	close(s.closedCh)
 	return nil
 }
