@@ -155,15 +155,15 @@ func (b *Bundle) String() string {
 }
 
 func (b *Bundle) MarshalJSON() ([]byte, error) {
-	var jlist []JSONEncodeAdapter
+	var list []JSONEncodeAdapter
 	for _, o := range b.objects {
-		jlist = append(jlist, JSONEncodeAdapter{
+		list = append(list, JSONEncodeAdapter{
 			Type:   o.ObjectType(),
 			Object: o,
 		})
 	}
 
-	return json.Marshal(jlist)
+	return json.Marshal(list)
 }
 
 func (a *Bundle) UnmarshalJSON(bytes []byte) error {
