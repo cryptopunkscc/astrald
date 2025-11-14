@@ -155,15 +155,56 @@ func (b *Bundle) String() string {
 }
 
 func (b *Bundle) MarshalJSON() ([]byte, error) {
-	var list []JSONEncodeAdapter
+	var jlist []JSONEncodeAdapter
 	for _, o := range b.objects {
-		list = append(list, JSONEncodeAdapter{
+		jlist = append(jlist, JSONEncodeAdapter{
 			Type:   o.ObjectType(),
 			Object: o,
 		})
 	}
 
-	return json.Marshal(list)
+	return json.Marshal(jlist)
+}
+
+func (a *Bundle) UnmarshalJSON(bytes []byte) error {
+	var jlist []JSONDecodeAdapter
+	if err := json.Unmarshal(bytes, &jlist); err != nil {
+		return err
+	}
+
+	for _, j := range jlist {
+		obj := DefaultBlueprints.Make(j.Type)
+		if obj == nil {
+			// Not recognized object -> RawObject
+			obj = &RawObject{}
+		}
+
+		var err error
+		switch {
+		case j.Object != nil:
+			err = json.Unmarshal(j.Object, &obj)
+			if err != nil {
+				return err
+			}
+		case j.Payload != nil:
+			raw := &RawObject{
+				Type:    j.Type,
+				Payload: j.Payload,
+			}
+			obj, err = DefaultBlueprints.Refine(raw)
+			if err != nil {
+				obj = raw
+			}
+		}
+
+		// append object will also handle index
+		err = a.append(obj)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (b *Bundle) append(object Object) error {
