@@ -2,6 +2,7 @@ package astral
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"reflect"
@@ -122,4 +123,63 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 	*a.Elem = v
 
 	return
+}
+
+func (a *Slice[T]) MarshalJSON() ([]byte, error) {
+	v := *a.Elem
+
+	var list []JSONEncodeAdapter
+	for _, o := range v {
+		list = append(list, JSONEncodeAdapter{
+			Type:   o.ObjectType(),
+			Object: o,
+		})
+	}
+
+	return json.Marshal(list)
+}
+
+func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
+	var jlist []JSONDecodeAdapter
+	if err := json.Unmarshal(bytes, &jlist); err != nil {
+		return err
+	}
+
+	result := make([]T, len(jlist))
+	for i, j := range jlist {
+		obj := DefaultBlueprints.Make(j.Type)
+		if obj == nil {
+			// Not recognized object -> RawObject
+			obj = &RawObject{}
+		}
+
+		var err error
+		switch {
+		case j.Object != nil:
+			err = json.Unmarshal(j.Object, &obj)
+			if err != nil {
+				return err
+			}
+		case j.Payload != nil:
+			raw := &RawObject{
+				Type:    j.Type,
+				Payload: j.Payload,
+			}
+			obj, err = DefaultBlueprints.Refine(raw)
+			if err != nil {
+				obj = raw
+			}
+		}
+
+		casted, ok := obj.(T)
+		if !ok {
+			return errors.New("Slice.UnmarshalJSON: typecast failed")
+		}
+
+		result[i] = casted
+	}
+
+	// 5. Store result
+	*a.Elem = result
+	return nil
 }
