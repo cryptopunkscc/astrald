@@ -2,15 +2,16 @@ package shell
 
 import (
 	"errors"
+	"io"
+	"net/url"
+	"reflect"
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/lib/term"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
-	"net/url"
-	"reflect"
-	"strings"
 )
 
 // Scope is a collection of operations and subscopes.
@@ -219,12 +220,12 @@ func (scope *Scope) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteC
 	go func() {
 		ctx := astral.NewContext(nil).WithIdentity(ctx.Identity())
 		err := scope.Call(ctx, query, path, params)
-		if err != nil {
-			if scope.Log != nil {
-				scope.Log.Errorv(1, "failed to call query %v: %v", path, err)
-			}
-			query.Reject()
+		if err != nil && scope.Log != nil {
+			scope.Log.Errorv(1, "call %v: %v", path, err)
 		}
+
+		// reject the query in case the op did not respond to it, will do nothing if it did.
+		_ = query.Reject()
 	}()
 
 	return query.Resolve()
