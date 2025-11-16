@@ -39,6 +39,11 @@ func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err err
 	}
 
 	mod.log.Info("hello, %v!", contract.UserID)
+
+	// synchronize siblings
+	mod.mu.Unlock()
+	mod.runSiblingLinker()
+	mod.mu.Lock()
 	return
 }
 
@@ -152,6 +157,8 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 	if err != nil {
 		return
 	}
+
+	mod.runSiblingLinker()
 
 	return
 }
