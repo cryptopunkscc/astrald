@@ -11,7 +11,7 @@ type opPairTakeArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpPairHandover(ctx *astral.Context, q shell.Query, args opPairTakeArgs) (err error) {
+func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTakeArgs) (err error) {
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 

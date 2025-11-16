@@ -71,6 +71,10 @@ func (mod *Module) addTraversedPair(
 	}
 }
 
+func (mod *Module) traversedPairs() []*pairEntry {
+	return mod.pool.pairs.Values()
+}
+
 func (mod *Module) newTraversal(role TraversalRole, ch *astral.Channel, localPublicIp ip.IP, peerIdentity *astral.Identity) (sm traversal) {
 	return traversal{
 		log:           mod.log,

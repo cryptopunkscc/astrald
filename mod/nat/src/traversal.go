@@ -258,12 +258,9 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 func (t *traversal) setupPuncher(session []byte) error {
 	var err error
 
-	cb := &ConePuncherCallbacks{
-		OnProbe: func(peer ip.IP, peerPort int, ports []int) {
-			t.log.Log("Hole punch attempts peer %v:%v", peer, peerPort)
-		},
-		OnSend: func(to *net.UDPAddr, burst int, packet int) {
-			t.log.Log("Hole punch packet sent to %v", to)
+	cb := &nat.ConePuncherCallbacks{
+		OnAttempt: func(peer ip.IP, peerPort int, remoteAddrs []*net.UDPAddr) {
+			t.log.Log("Hole punch attempts peer %v:%v through %v", peer, peerPort)
 		},
 		OnProbeReceived: func(from *net.UDPAddr) {
 			t.log.Log("Hole punch probe received from %v", from)
