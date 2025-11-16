@@ -28,6 +28,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 			return q.RejectWithCode(4)
 		}
 
+		mod.log.Log("starting traversal as initiator to %v", target)
 		peerCh, err := query.RouteChan(ctx.IncludeZone(astral.ZoneNetwork), mod.node, query.New(ctx.Identity(), target, nat.MethodStartNatTraversal, &opStartTraversal{
 			Out: args.Out,
 		}))
@@ -37,13 +38,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 
 		defer peerCh.Close()
 
-		var sm = traversal{
-			role:          RoleInitiator,
-			ch:            peerCh,
-			localPublicIP: ips[0],
-			localIdentity: ctx.Identity(),
-			peerIdentity:  target,
-		}
+		var sm = mod.newTraversal(RoleInitiator, peerCh, ips[0], target)
 		pair, err := sm.Run(ctx)
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
@@ -57,14 +52,9 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		return nil
 	}
 
+	mod.log.Log("starting traversal as responder with %v", q.Caller())
 	// Responder logic via state machine on ch
-	var sm = traversal{
-		role:          RoleResponder,
-		ch:            ch,
-		localPublicIP: ips[0],
-		localIdentity: ctx.Identity(),
-		peerIdentity:  q.Caller(),
-	}
+	var sm = mod.newTraversal(RoleResponder, ch, ips[0], q.Caller())
 	pair, err := sm.Run(ctx)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))

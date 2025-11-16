@@ -3,9 +3,11 @@ package nat
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
@@ -17,7 +19,8 @@ import (
 
 // traversal is a tiny state machine driving PunchSignal exchange.
 type traversal struct {
-	role Role
+	log  *log.Logger
+	role TraversalRole
 	ch   *astral.Channel // channel to exchange PunchSignal
 
 	localIdentity *astral.Identity
@@ -33,10 +36,10 @@ type traversal struct {
 	pair nat.EndpointPair
 }
 
-type Role int
+type TraversalRole int
 
 const (
-	RoleInitiator Role = iota
+	RoleInitiator TraversalRole = iota
 	RoleResponder
 )
 
@@ -62,12 +65,14 @@ func (t *traversal) Run(ctx *astral.Context) (pair nat.EndpointPair, err error) 
 
 	defer t.closePuncher()
 	state := TraversalStateOfferExchange
+
+	t.log.Log("Traversal start role %v local %v peer %v", t.role, t.localIdentity, t.peerIdentity)
+
 	for state != TraversalStateDone {
 		h, ok := handlers[state]
 		if !ok {
 			return pair, fmt.Errorf("invalid state")
 		}
-
 		next, hErr := h(ctx)
 		if hErr != nil {
 			err = hErr
@@ -79,6 +84,7 @@ func (t *traversal) Run(ctx *astral.Context) (pair nat.EndpointPair, err error) 
 	pair = t.pair
 	pair.CreatedAt = astral.Time(time.Now())
 
+	t.log.Log("Traversal done pair %v", pair)
 	return pair, err
 }
 
@@ -89,6 +95,7 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 		if err != nil {
 			return state, err
 		}
+		t.log.Log("Initiator puncher opened local public IP %v local port %v", t.localPublicIP, t.puncher.LocalPort())
 		err = t.ch.Write(&nat.PunchSignal{
 			Signal:  nat.PunchSignalTypeOffer,
 			Session: t.puncher.Session(),
@@ -122,6 +129,7 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 	if err != nil {
 		return state, err
 	}
+	t.log.Log("Responder puncher opened local public IP %v local port %v", t.localPublicIP, t.puncher.LocalPort())
 	err = t.ch.Write(&nat.PunchSignal{Signal: nat.PunchSignalTypeAnswer,
 		Session: t.puncher.Session(), IP: t.localPublicIP,
 		Port: astral.Uint16(t.puncher.LocalPort())})
@@ -145,6 +153,7 @@ func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err erro
 		if err != nil {
 			return state, err
 		}
+
 		if err = t.verify(goSig, nat.PunchSignalTypeGo); err != nil {
 			return 0, err
 		}
@@ -156,9 +165,11 @@ func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err erro
 	if err != nil {
 		return state, err
 	}
+
 	if err = t.verify(ready, nat.PunchSignalTypeReady); err != nil {
 		return 0, err
 	}
+
 	err = t.ch.Write(&nat.PunchSignal{Signal: nat.PunchSignalTypeGo,
 		Session: t.puncher.Session()})
 	if err != nil {
@@ -180,6 +191,7 @@ func (t *traversal) handlePunch(ctx *astral.Context) (state State, err error) {
 	}
 	// assign the observed endpoint to the pair
 	observedPeer := nat.UDPEndpoint{IP: res.RemoteIP, Port: res.RemotePort}
+	t.log.Log("Hole punch observed remote ip %v port %v", res.RemoteIP, res.RemotePort)
 	pair := nat.EndpointPair{
 		PeerA: nat.PeerEndpoint{Identity: t.localIdentity},
 		PeerB: nat.PeerEndpoint{Identity: t.peerIdentity, Endpoint: observedPeer},
@@ -207,6 +219,7 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 		if err != nil {
 			return state, err
 		}
+
 		if err = t.verify(res, nat.PunchSignalTypeResult); err != nil {
 			return 0, err
 		}
@@ -244,10 +257,25 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 
 func (t *traversal) setupPuncher(session []byte) error {
 	var err error
+
+	cb := &ConePuncherCallbacks{
+		OnProbe: func(peer ip.IP, peerPort int, ports []int) {
+			t.log.Log("Hole punch attempts peer %v:%v", peer, peerPort)
+		},
+		OnSend: func(to *net.UDPAddr, burst int, packet int) {
+			t.log.Log("Hole punch packet sent to %v", to)
+		},
+		OnProbeReceived: func(from *net.UDPAddr) {
+			t.log.Log("Hole punch probe received from %v", from)
+		},
+	}
+
 	if len(session) > 0 {
-		t.puncher, err = newConePuncherWithSession(session)
+		// use session-aware constructor with callbacks
+		t.puncher, err = newConePuncherWithSession(session, cb)
 	} else {
-		t.puncher, err = newConePuncher()
+		// use random-session constructor with callbacks
+		t.puncher, err = newConePuncher(cb)
 	}
 	if err != nil {
 		return err

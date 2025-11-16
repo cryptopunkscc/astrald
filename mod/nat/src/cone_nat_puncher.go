@@ -24,9 +24,9 @@ var _ nat.Puncher = (*conePuncher)(nil)
 const (
 	punchTimeout    = 5 * time.Second       // total timeout per attempt
 	burstInterval   = 50 * time.Millisecond // time between bursts over the whole range
-	portGuessRange  = 5                     // number of additional ports to probe around the base port (total ports = 2*portGuessRange + 1)
+	portGuessRange  = 10                    // number of additional ports to probe around the base port (total ports = 2*portGuessRange + 1)
 	packetsPerBurst = 5                     // number of packets sent to each address per burst
-	jitterMax       = 3                     // max jitter in milliseconds between rounds
+	jitterMax       = 5                     // max jitter in milliseconds between rounds
 )
 
 // conePuncher is a minimal cone NAT puncher using fixed defaults and a provided peer listen port.
@@ -40,28 +40,50 @@ type conePuncher struct {
 	session   []byte         // required session identifier (copied)
 	conn      net.PacketConn // bound UDP socket
 	localPort int            // cached local port of conn
+
+	// callbacks
+	onProbe         func(peer ip.IP, peerPort int, ports []int)
+	onSend          func(to *net.UDPAddr, burst int, packets int)
+	onProbeReceived func(from *net.UDPAddr)
 }
 
-// newConePuncher creates a cone NAT puncher with a new randomly generated session.
-func newConePuncher() (puncher nat.Puncher, err error) {
+// ConePuncherCallbacks ...
+type ConePuncherCallbacks struct {
+	OnProbe         func(peer ip.IP, peerPort int, ports []int)
+	OnSend          func(to *net.UDPAddr, burst int, packet int)
+	OnProbeReceived func(from *net.UDPAddr)
+}
+
+// newConePuncherWithSession creates a cone NAT puncher that adopts the provided session.
+// Session must be exactly 16 bytes.
+func newConePuncherWithSession(session []byte, cb *ConePuncherCallbacks) (puncher nat.Puncher, err error) {
+	if len(session) != 16 {
+		return nil, fmt.Errorf("session must be 16 bytes")
+	}
+	s := make([]byte, 16)
+	copy(s, session)
+	p := &conePuncher{session: s}
+	if cb != nil {
+		p.onProbe = cb.OnProbe
+		p.onSend = cb.OnSend
+		p.onProbeReceived = cb.OnProbeReceived
+	}
+	return p, nil
+}
+
+func newConePuncher(cb *ConePuncherCallbacks) (puncher nat.Puncher, err error) {
 	session := make([]byte, 16)
 	_, err = crand.Read(session)
 	if err != nil {
 		return nil, fmt.Errorf("generate session: %w", err)
 	}
-	return &conePuncher{session: session}, nil
-}
-
-// newConePuncherWithSession creates a cone NAT puncher that adopts the provided session.
-// Session must be exactly 16 bytes.
-func newConePuncherWithSession(session []byte) (puncher nat.Puncher, err error) {
-	if len(session) != 16 {
-		return nil, fmt.Errorf("session must be 16 bytes")
+	p := &conePuncher{session: session}
+	if cb != nil {
+		p.onProbe = cb.OnProbe
+		p.onSend = cb.OnSend
+		p.onProbeReceived = cb.OnProbeReceived
 	}
-	// defensive copy of session
-	s := make([]byte, 16)
-	copy(s, session)
-	return &conePuncher{session: s}, nil
+	return p, nil
 }
 
 // Open binds a UDP socket and stores it for later HolePunch use.
@@ -141,22 +163,13 @@ func (p *conePuncher) HolePunch(
 	}
 
 	// Prepare candidate remote addresses around the peer's reported port.
-	var remoteAddrs []*net.UDPAddr
-	for _, rp := range candidatePorts(peerPort, portGuessRange) {
-		addr := net.JoinHostPort(peer.String(), strconv.Itoa(rp))
-		remoteAddr, err := net.ResolveUDPAddr("udp", addr)
-		if err == nil && remoteAddr != nil {
-			remoteAddrs = append(remoteAddrs, remoteAddr)
-		}
+	ports, remoteAddrs, allowed, err := preparePunchTargets(peer, peerPort)
+	if err != nil {
+		return nil, err
 	}
-	if len(remoteAddrs) == 0 {
-		return nil, errors.New("no remote addresses to probe")
-	}
-
-	// Build set of allowed remote endpoints for validation.
-	var allowed sig.Set[string]
-	for _, remoteAddr := range remoteAddrs {
-		_ = allowed.Add(remoteAddr.String())
+	// callback: plan
+	if p.onProbe != nil {
+		p.onProbe(peer, peerPort, append([]int(nil), ports...))
 	}
 
 	// Create a cancellable context to stop send/receive on success or timeout.
@@ -167,7 +180,7 @@ func (p *conePuncher) HolePunch(
 	recvAddrCh := make(chan *net.UDPAddr, 1)
 
 	// Launch sender and receiver using the snapshot conn.
-	go p.receive(ctx, conn, burstInterval, &allowed, recvAddrCh)
+	go p.receive(ctx, conn, burstInterval, allowed, recvAddrCh)
 	go p.sendBursts(ctx, conn, remoteAddrs, burstInterval)
 
 	// Wait for success or timeout/cancel.
@@ -220,6 +233,9 @@ func (p *conePuncher) receive(ctx context.Context, conn net.PacketConn, interval
 			continue
 		}
 		if n == len(p.session) && bytes.Equal(buf[:n], p.session) {
+			if p.onProbeReceived != nil {
+				p.onProbeReceived(ua)
+			}
 			select {
 			case got <- ua:
 			default:
@@ -230,52 +246,89 @@ func (p *conePuncher) receive(ctx context.Context, conn net.PacketConn, interval
 }
 
 // sendBursts sends the session payload to all candidate remoteAddrs simultaneously in each burst, and repeats until ctx is done.
-func (p *conePuncher) sendBursts(ctx context.Context, conn net.PacketConn, remoteAddrs []*net.UDPAddr, burstEvery time.Duration) {
+func (p *conePuncher) sendBursts(
+	ctx context.Context,
+	conn net.PacketConn,
+	remoteAddrs []*net.UDPAddr,
+	burstEvery time.Duration,
+) {
 	ticker := time.NewTicker(burstEvery)
 	defer ticker.Stop()
+
+	burstIndex := 0
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 		}
-		for i := 0; i < packetsPerBurst; i++ {
-			for _, remoteAddr := range remoteAddrs {
+
+		for _, remoteAddr := range remoteAddrs {
+			if p.onSend != nil {
+				p.onSend(remoteAddr, burstIndex, packetsPerBurst)
+			}
+
+			for i := 0; i < packetsPerBurst; i++ {
 				_, _ = conn.WriteTo(p.session, remoteAddr)
 			}
-			// add micro-jitter between rounds
-			jitter := time.Duration(rand.Intn(jitterMax*2+1)-jitterMax) * time.Millisecond
-			time.Sleep(jitter)
 		}
+
+		burstIndex++
+		if jitterMax > 0 {
+			time.Sleep(jitter(burstEvery, burstEvery*time.Duration(jitterMax)))
+		}
+
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 		}
+
 	}
 }
 
-// candidatePorts returns [center, center-1, center+1, center-2, center+2, ...] within [1..65535].
-func candidatePorts(center, spread int) []int {
-	if spread < 0 {
-		spread = 0
+func candidatePorts(center, spread int) (ports []int) {
+	spread = max(spread, 0)
+	for i := max(center-spread, 1); i < min(center+spread+1, 65536); i++ {
+		ports = append(ports, i)
 	}
-	res := make([]int, 0, 1+2*spread)
-	add := func(p int) {
-		if p >= 1 && p <= 65535 {
-			res = append(res, p)
+	return
+}
+
+// preparePunchTargets computes candidate ports, resolves remote addresses, and builds the allowed set.
+// Returns ports, remoteAddrs, allowed set, and error.
+func preparePunchTargets(peer ip.IP, peerPort int) ([]int, []*net.UDPAddr, *sig.Set[string], error) {
+	ports := candidatePorts(peerPort, portGuessRange)
+	var remoteAddrs []*net.UDPAddr
+	for _, rp := range ports {
+		addr := net.JoinHostPort(peer.String(), strconv.Itoa(rp))
+		remoteAddr, err := net.ResolveUDPAddr("udp", addr)
+		if err == nil && remoteAddr != nil {
+			remoteAddrs = append(remoteAddrs, remoteAddr)
 		}
 	}
-	add(center)
-	for d := 1; d <= spread/2; d++ {
-		add(center - d)
-		add(center + d)
+	if len(remoteAddrs) == 0 {
+		return nil, nil, nil, errors.New("no remote addresses to probe")
 	}
-	// If spread is odd, include the last side
-	if spread%2 == 1 {
-		d := spread/2 + 1
-		add(center - d)
-		add(center + d)
+
+	// Build set of allowed remote endpoints for validation.
+	var allowed sig.Set[string]
+	for _, remoteAddr := range remoteAddrs {
+		allowed.Add(remoteAddr.String())
 	}
-	return res
+
+	return ports, remoteAddrs, &allowed, nil
+}
+
+// Jitter adds uniform jitter: [-spread .. +spread]
+func jitter(base, spread time.Duration) time.Duration {
+	if spread <= 0 {
+		return base
+	}
+	delta := rand.Int63n(int64(spread)*2+1) - int64(spread)
+	out := int64(base) + delta
+	if out < 0 {
+		return 0
+	}
+	return time.Duration(out)
 }

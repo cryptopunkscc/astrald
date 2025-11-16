@@ -15,8 +15,7 @@ type Puncher interface {
 	Open() (localPort int, err error)
 	// HolePunch attempts a UDP punch towards the given peer IP and port.
 	// Returns a PunchResult with information about the punch outcome.
-	HolePunch(ctx context.Context, peerIP ip.IP,
-		peerPort int) (*PunchResult, error)
+	HolePunch(ctx context.Context, peerIP ip.IP, peerPort int) (*PunchResult, error)
 	// Close releases any resources held by the puncher (open sockets).
 	Close() error
 
