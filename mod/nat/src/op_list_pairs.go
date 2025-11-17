@@ -6,8 +6,8 @@ import (
 )
 
 type opListPairsArgs struct {
-	With *astral.Identity `query:"optional"`
-	Out  string           `query:"optional"`
+	With astral.String `query:"optional"`
+	Out  string        `query:"optional"`
 }
 
 func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,
@@ -16,15 +16,19 @@ func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,
 	defer ch.Close()
 
 	pairs := mod.pool.GetAll()
-
 	for _, pair := range pairs {
-		if args.With != nil {
-			if !pair.MatchesPeer(args.With) {
+		if args.With != "" {
+			target, err := mod.Dir.ResolveIdentity(string(args.With))
+			if err != nil {
+				return ch.Write(astral.NewError(err.Error()))
+			}
+
+			if !pair.MatchesPeer(target) {
 				continue
 			}
 		}
 
-		err = ch.Write(&pair.TraversedEndpoints)
+		err = ch.Write(&pair.TraversedPortPair)
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}

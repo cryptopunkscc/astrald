@@ -7,9 +7,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-// TraversedEndpoints represents two peers that established a NAT-traversed
+// TraversedPortPair represents two peers that established a NAT-traversed
 // connection.
-type TraversedEndpoints struct {
+type TraversedPortPair struct {
 	PeerA     PeerEndpoint
 	PeerB     PeerEndpoint
 	CreatedAt astral.Time
@@ -17,39 +17,39 @@ type TraversedEndpoints struct {
 }
 
 // ObjectType implements astral.Object.
-func (e TraversedEndpoints) ObjectType() string {
-	return "mod.nat.traversed_endpoints"
+func (e TraversedPortPair) ObjectType() string {
+	return "mod.nat.traversed_port_pair"
 }
 
 // WriteTo implements astral.Object (binary serialization).
-func (e TraversedEndpoints) WriteTo(w io.Writer) (int64, error) {
+func (e TraversedPortPair) WriteTo(w io.Writer) (int64, error) {
 	return astral.Struct(e).WriteTo(w)
 }
 
 // ReadFrom implements astral.Object (binary deserialization).
-func (e *TraversedEndpoints) ReadFrom(r io.Reader) (int64, error) {
+func (e *TraversedPortPair) ReadFrom(r io.Reader) (int64, error) {
 	return astral.Struct(e).ReadFrom(r)
 }
 
-// MarshalJSON encodes TraversedEndpoints into JSON.
-func (e TraversedEndpoints) MarshalJSON() ([]byte, error) {
-	type alias TraversedEndpoints
+// MarshalJSON encodes TraversedPortPair into JSON.
+func (e TraversedPortPair) MarshalJSON() ([]byte, error) {
+	type alias TraversedPortPair
 	return json.Marshal(alias(e))
 }
 
-// UnmarshalJSON decodes TraversedEndpoints from JSON.
-func (e *TraversedEndpoints) UnmarshalJSON(bytes []byte) error {
-	type alias TraversedEndpoints
+// UnmarshalJSON decodes TraversedPortPair from JSON.
+func (e *TraversedPortPair) UnmarshalJSON(bytes []byte) error {
+	type alias TraversedPortPair
 	var a alias
 	if err := json.Unmarshal(bytes, &a); err != nil {
 		return err
 	}
-	*e = TraversedEndpoints(a)
+	*e = TraversedPortPair(a)
 	return nil
 }
 
 // RemoteEndpoint returns the endpoint of the other peer in the pair.
-func (e *TraversedEndpoints) RemoteEndpoint(self *astral.Identity) (PeerEndpoint, bool) {
+func (e *TraversedPortPair) RemoteEndpoint(self *astral.Identity) (PeerEndpoint, bool) {
 	switch {
 	case e.PeerA.Identity != nil && e.PeerA.Identity.IsEqual(self):
 		return e.PeerB, true
@@ -104,5 +104,5 @@ func (p *PeerEndpoint) UnmarshalJSON(bytes []byte) error {
 
 func init() {
 	_ = astral.DefaultBlueprints.Add(&PeerEndpoint{})
-	_ = astral.DefaultBlueprints.Add(&TraversedEndpoints{})
+	_ = astral.DefaultBlueprints.Add(&TraversedPortPair{})
 }

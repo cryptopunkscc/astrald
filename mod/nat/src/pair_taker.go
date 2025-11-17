@@ -115,7 +115,7 @@ func (f *PairTaker) doTakeExchange(ctx context.Context) error {
 			if sig.Signal == nat.PairHandoverSignalTypeTakeErr {
 				return errors.New("responder failed to take over")
 			}
-			f.pair.Unlock()
+
 			return nil
 		}
 		sendTake := astral.String8(nat.PairHandoverSignalTypeTake)
@@ -124,7 +124,6 @@ func (f *PairTaker) doTakeExchange(ctx context.Context) error {
 	}
 
 	action := func(sig *nat.PairTakeSignal) error {
-		f.pair.Unlock()
 		return f.writeSignal(ctx, nat.PairHandoverSignalTypeTakeOk, takeTimeout)
 	}
 	expectedTake := astral.String8(nat.PairHandoverSignalTypeTake)
@@ -219,14 +218,8 @@ func (f *PairTaker) fail(err error) error {
 	if err == nil {
 		return nil
 	}
-
 	f.state.Store(int32(TakeStateFailed))
 	f.err.Store(err)
-
-	if f.lockStarted {
-		f.pair.Unlock()
-		f.lockStarted = false
-	}
 
 	return err
 }

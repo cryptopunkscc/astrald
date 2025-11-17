@@ -3,7 +3,6 @@ package nat
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net"
 	"sync/atomic"
@@ -31,7 +30,7 @@ const (
 
 // Pair represents a NAT Pair runtime wrapper with keepalive and state.
 type Pair struct {
-	nat.TraversedEndpoints
+	nat.TraversedPortPair
 	state            atomic.Int32
 	isPinger         bool
 	lastPong         atomic.Int64
@@ -56,23 +55,6 @@ func (e *Pair) Lock() bool {
 
 	e.stopKeepAlive()
 	return true
-}
-
-func (e *Pair) Unlock() error {
-	s := e.state.Load()
-	if s != stateLocked && s != stateInLocking {
-		return nat.ErrPairNotLocked
-	}
-
-	if e.state.CompareAndSwap(s, stateIdle) {
-		if e.isPinger {
-			e.startKeepAlive()
-		}
-
-		return nil
-	}
-
-	return fmt.Errorf("unexpected state change: %d", s)
 }
 
 func (e *Pair) Expire() {
@@ -303,8 +285,8 @@ func (e *Pair) pingReceiver() {
 		}
 
 		n, _, err := c.ReadFromUDP(buf)
-		// exit on socket error
 		if err != nil {
+			// FIXME:
 			return
 		}
 
@@ -334,7 +316,11 @@ func (e *Pair) WaitLocked(ctx context.Context) error {
 
 		// If we're in locking and the ping buffer is drained, finalize now.
 		if e.state.Load() == stateInLocking && e.IsDrained() {
-			_ = e.FinalizeLock()
+			ok := e.FinalizeLock()
+			if !ok {
+				return nat.ErrPairCantLock
+			}
+
 		}
 		if e.IsLocked() {
 			return nil

@@ -46,7 +46,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
-		return ch.Write(&pair.TraversedEndpoints)
+		return ch.Write(&pair.TraversedPortPair)
 	}
 
 	fsm := NewPairTaker(roleTakePairResponder, ch, pair)
@@ -55,7 +55,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(&pair.TraversedEndpoints)
+	return ch.Write(&pair.TraversedPortPair)
 }
 
 func (mod *Module) takePairQuery(ctx *astral.Context, target *astral.Identity, nonce astral.Nonce) (ch *astral.Channel, err error) {

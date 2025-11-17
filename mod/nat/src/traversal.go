@@ -28,7 +28,7 @@ type traversal struct {
 	goSignal   *nat.PunchSignal
 	peerResult *nat.PunchSignal
 
-	pair nat.TraversedEndpoints
+	pair nat.TraversedPortPair
 }
 
 type TraversalRole int
@@ -50,7 +50,7 @@ const (
 
 type stateFn func(*astral.Context) (state TraversalState, err error)
 
-func (t *traversal) Run(ctx *astral.Context) (pair nat.TraversedEndpoints, err error) {
+func (t *traversal) Run(ctx *astral.Context) (pair nat.TraversedPortPair, err error) {
 	var handlers = map[TraversalState]stateFn{
 		TraversalStateOfferExchange:  t.handleOfferExchange,
 		TraversalStateReadyPhase:     t.handleReadyPhase,
@@ -187,7 +187,7 @@ func (t *traversal) handlePunch(ctx *astral.Context) (state TraversalState, err 
 	// assign the observed endpoint to the Pair
 	observedPeer := nat.UDPEndpoint{IP: res.RemoteIP, Port: res.RemotePort}
 	t.log.Log("Hole punch observed remote ip %v port %v", res.RemoteIP, res.RemotePort)
-	pair := nat.TraversedEndpoints{
+	pair := nat.TraversedPortPair{
 		PeerA: nat.PeerEndpoint{Identity: t.localIdentity},
 		PeerB: nat.PeerEndpoint{Identity: t.peerIdentity, Endpoint: observedPeer},
 	}

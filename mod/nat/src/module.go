@@ -54,7 +54,7 @@ func (mod *Module) String() string {
 }
 
 func (mod *Module) addTraversedPair(
-	traversedEndpointPair nat.TraversedEndpoints,
+	traversedEndpointPair nat.TraversedPortPair,
 	initiatedByLocal bool,
 ) {
 	mod.log.Info("added NAT traversed Pair: %v (%v) <-> %v (%v) nonce=%v",
@@ -66,7 +66,7 @@ func (mod *Module) addTraversedPair(
 	)
 
 	pair := Pair{
-		TraversedEndpoints: traversedEndpointPair,
+		TraversedPortPair: traversedEndpointPair,
 	}
 
 	err := pair.StartKeepAlive(mod.ctx.Identity(), initiatedByLocal)
