@@ -11,8 +11,9 @@ import (
 var _ Object = &Slice[Object]{}
 
 type Slice[T Object] struct {
-	Elem  *[]T
-	Typed bool
+	Elem     *[]T
+	ElemType string
+	Typed    bool
 }
 
 type ObjectTyper interface {
@@ -20,14 +21,25 @@ type ObjectTyper interface {
 }
 
 func WrapSlice[T Object](elem *[]T) *Slice[T] {
+	var elemType string
+	// if slice is non-empty, use first element
+	if elem != nil && len(*elem) > 0 {
+		elemType = (*elem)[0].ObjectType()
+	} else {
+		// fallback: get type from T itself
+		typ := reflect.TypeOf((*T)(nil)).Elem()
+		elemType = typ.Name()
+	}
+
 	return &Slice[T]{
-		Elem:  elem,
-		Typed: reflect.TypeOf((*T)(nil)).Elem().Kind() == reflect.Interface,
+		Elem:     elem,
+		Typed:    reflect.TypeOf((*T)(nil)).Elem().Kind() == reflect.Interface,
+		ElemType: elemType,
 	}
 }
 
 func (Slice[T]) ObjectType() string {
-	return ""
+	return "slice"
 }
 
 func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
@@ -40,6 +52,20 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 	}
 
 	var m int64
+	// write element type name once
+	tn := []byte(a.ElemType)
+	m, err = Uint32(len(tn)).WriteTo(w)
+	n += m
+	if err != nil {
+		return
+	}
+
+	j, err := w.Write(tn)
+	n += int64(j)
+	if err != nil {
+		return
+	}
+
 	for _, v := range v {
 		var buf = &bytes.Buffer{}
 
@@ -70,15 +96,37 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
+	a.Elem = new([]T)
+
 	var l Uint32
 	n, err = l.ReadFrom(r)
 	if err != nil {
 		return
 	}
 
+	var m int64
+	var tnLen Uint32
+	m, err = tnLen.ReadFrom(r)
+	n += m
+	if err != nil {
+		return
+	}
+
+	tn := make([]byte, tnLen)
+	var j int
+	j, err = io.ReadFull(r, tn)
+	n += int64(j)
+	if err != nil {
+		return
+	}
+
+	a.ElemType = string(tn)
+	if a.ElemType != "" {
+		a.Typed = true
+	}
+
 	v := make([]T, l)
 
-	var m int64
 	for i := 0; i < int(l); i++ {
 		var e T
 		typ := reflect.TypeOf((*T)(nil)).Elem()
@@ -86,7 +134,6 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 			e = reflect.New(reflect.TypeOf(e).Elem()).Interface().(T)
 		}
 
-		// read element length
 		var elementLen Uint32
 		m, err = elementLen.ReadFrom(r)
 		n += m
@@ -103,23 +150,28 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		if a.Typed {
-			var o Object
-			var ok bool
-
-			o, _, err = ExtractBlueprints(r).Read(bytes.NewReader(buf))
-			e, ok = o.(T)
-			if !ok {
-				err = errors.New("typecast failed")
-			}
-		} else {
-			_, err = e.ReadFrom(bytes.NewReader(buf))
+		obj := DefaultBlueprints.Make(a.ElemType)
+		if obj == nil {
+			obj = &RawObject{Type: a.ElemType}
 		}
+
+		// read inner element from buffer
+		_, err = obj.ReadFrom(bytes.NewReader(buf))
 		if err != nil {
 			return
 		}
+
+		// cast into T
+		casted, ok := obj.(T)
+		if !ok {
+			return n, errors.New("Slice.ReadFrom: typecast failed")
+		}
+
+		e = casted
+
 		v[i] = e
 	}
+
 	*a.Elem = v
 
 	return
@@ -154,7 +206,9 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 		obj := DefaultBlueprints.Make(j.Type)
 		if obj == nil {
 			// Not recognized object -> RawObject
-			obj = &RawObject{}
+			obj = &RawObject{
+				Type: j.Type,
+			}
 		}
 
 		var err error
@@ -175,6 +229,11 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 			}
 		}
 
+		// important: track ElemType
+		if i == 0 {
+			a.ElemType = j.Type
+		}
+
 		casted, ok := obj.(T)
 		if !ok {
 			return errors.New("Slice.UnmarshalJSON: typecast failed")
@@ -185,4 +244,9 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 
 	*a.Elem = result
 	return nil
+}
+
+func init() {
+
+	_ = DefaultBlueprints.Add(&Slice[Object]{})
 }
