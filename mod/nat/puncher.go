@@ -2,7 +2,6 @@ package nat
 
 import (
 	"context"
-	"net"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/ip"
@@ -22,12 +21,6 @@ type Puncher interface {
 
 	Session() []byte
 	LocalPort() int
-}
-
-// ConePuncherCallbacks ...
-type ConePuncherCallbacks struct {
-	OnAttempt       func(peer ip.IP, peerPort int, remoteAddrs []*net.UDPAddr)
-	OnProbeReceived func(from *net.UDPAddr)
 }
 
 // PunchResult contains the outcome of a successful UDP hole punch.

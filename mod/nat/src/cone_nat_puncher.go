@@ -28,6 +28,11 @@ const (
 	jitterMax       = 5                     // max jitter in milliseconds between rounds
 )
 
+type ConePuncherCallbacks struct {
+	OnAttempt       func(peer ip.IP, peerPort int, remoteAddrs []*net.UDPAddr)
+	OnProbeReceived func(from *net.UDPAddr)
+}
+
 // conePuncher is a minimal cone NAT puncher using fixed defaults and a provided peer listen port.
 // its simplest form of punching as it only punches port and few ports around
 // it. Which wont work on most of home NAT's because they are asymmetric.
@@ -38,30 +43,44 @@ type conePuncher struct {
 	localPort int            // cached local port of conn
 
 	// callbacks
-	callbacks *nat.ConePuncherCallbacks
+	callbacks *ConePuncherCallbacks
 }
 
-// newConePuncherWithSession creates a cone NAT puncher that adopts the provided session.
+// newConePuncher creates a cone NAT puncher that adopts the provided session.
 // Session must be exactly 16 bytes.
-func newConePuncherWithSession(session []byte, cb *nat.ConePuncherCallbacks) (puncher nat.Puncher, err error) {
+func newConePuncher(session []byte, cb *ConePuncherCallbacks) (puncher nat.Puncher, err error) {
 	if len(session) != 16 {
 		return nil, fmt.Errorf("session must be 16 bytes")
 	}
+
+	if len(session) != 0 && len(session) != 16 {
+		return nil, fmt.Errorf("session must be 16 bytes")
+	}
+
 	s := make([]byte, 16)
-	copy(s, session)
+
+	if len(session) == 0 {
+		_, err = crand.Read(s)
+		if err != nil {
+			return nil, fmt.Errorf("generate session: %w", err)
+		}
+	}
+
+	if len(session) == 16 {
+		s := make([]byte, 16)
+		copy(s, session)
+	}
+
 	p := &conePuncher{session: s, callbacks: cb}
 	return p, nil
 }
 
-func newConePuncher(cb *nat.ConePuncherCallbacks) (puncher nat.Puncher, err error) {
-	session := make([]byte, 16)
-	_, err = crand.Read(session)
-	if err != nil {
-		return nil, fmt.Errorf("generate session: %w", err)
-	}
+func (p *conePuncher) Session() []byte {
+	return append([]byte(nil), p.session...)
+}
 
-	p := &conePuncher{session: session, callbacks: cb}
-	return p, nil
+func (p *conePuncher) LocalPort() int {
+	return p.localPort
 }
 
 // Open binds a UDP socket and stores it for later HolePunch use.
@@ -120,7 +139,7 @@ func (p *conePuncher) HolePunch(
 		return nil, fmt.Errorf("invalid peer port: %d", peerPort)
 	}
 
-	// Snapshot conn and localPort under lock
+	// Snapshot conn and localPort under Lock
 	conn := p.conn
 	localPort := p.localPort
 
@@ -159,14 +178,6 @@ func (p *conePuncher) HolePunch(
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-}
-
-func (p *conePuncher) Session() []byte {
-	return append([]byte(nil), p.session...)
-}
-
-func (p *conePuncher) LocalPort() int {
-	return p.localPort
 }
 
 // receive listens for any incoming UDP probe and reports the sender address if payload matches our session.

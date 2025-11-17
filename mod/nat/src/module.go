@@ -54,24 +54,33 @@ func (mod *Module) String() string {
 }
 
 func (mod *Module) addTraversedPair(
-	pair nat.EndpointPair,
+	traversedEndpointPair nat.TraversedEndpoints,
 	initiatedByLocal bool,
 ) {
-	mod.log.Info("added NAT traversed pair: %v (%v) <-> %v (%v) nonce=%v",
-		pair.PeerA.Identity,
-		pair.PeerA.Endpoint,
-		pair.PeerB.Identity,
-		pair.PeerB.Endpoint,
-		pair.Nonce,
+	mod.log.Info("added NAT traversed Pair: %v (%v) <-> %v (%v) nonce=%v",
+		traversedEndpointPair.PeerA.Identity,
+		traversedEndpointPair.PeerA.Endpoint,
+		traversedEndpointPair.PeerB.Identity,
+		traversedEndpointPair.PeerB.Endpoint,
+		traversedEndpointPair.Nonce,
 	)
 
-	err := mod.pool.Add(&pair, mod.ctx.Identity(), initiatedByLocal)
+	pair := Pair{
+		TraversedEndpoints: traversedEndpointPair,
+	}
+
+	err := pair.StartKeepAlive(mod.ctx.Identity(), initiatedByLocal)
 	if err != nil {
-		mod.log.Errorv(1, "error adding pair to pool: %v", err)
+		mod.log.Errorv(1, "error starting pair keep-alive: %v", err)
+	}
+
+	err = mod.pool.Add(&pair)
+	if err != nil {
+		mod.log.Errorv(1, "error adding Pair to pool: %v", err)
 	}
 }
 
-func (mod *Module) traversedPairs() []*pairEntry {
+func (mod *Module) traversedPairs() []*Pair {
 	return mod.pool.pairs.Values()
 }
 

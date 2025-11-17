@@ -7,9 +7,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-// EndpointPair represents two peers that established a NAT-traversed
+// TraversedEndpoints represents two peers that established a NAT-traversed
 // connection.
-type EndpointPair struct {
+type TraversedEndpoints struct {
 	PeerA     PeerEndpoint
 	PeerB     PeerEndpoint
 	CreatedAt astral.Time
@@ -17,39 +17,39 @@ type EndpointPair struct {
 }
 
 // ObjectType implements astral.Object.
-func (e EndpointPair) ObjectType() string {
-	return "mod.nat.endpoint_pair"
+func (e TraversedEndpoints) ObjectType() string {
+	return "mod.nat.traversed_endpoints"
 }
 
 // WriteTo implements astral.Object (binary serialization).
-func (e EndpointPair) WriteTo(w io.Writer) (int64, error) {
+func (e TraversedEndpoints) WriteTo(w io.Writer) (int64, error) {
 	return astral.Struct(e).WriteTo(w)
 }
 
 // ReadFrom implements astral.Object (binary deserialization).
-func (e *EndpointPair) ReadFrom(r io.Reader) (int64, error) {
+func (e *TraversedEndpoints) ReadFrom(r io.Reader) (int64, error) {
 	return astral.Struct(e).ReadFrom(r)
 }
 
-// MarshalJSON encodes EndpointPair into JSON.
-func (e EndpointPair) MarshalJSON() ([]byte, error) {
-	type alias EndpointPair
+// MarshalJSON encodes TraversedEndpoints into JSON.
+func (e TraversedEndpoints) MarshalJSON() ([]byte, error) {
+	type alias TraversedEndpoints
 	return json.Marshal(alias(e))
 }
 
-// UnmarshalJSON decodes EndpointPair from JSON.
-func (e *EndpointPair) UnmarshalJSON(bytes []byte) error {
-	type alias EndpointPair
+// UnmarshalJSON decodes TraversedEndpoints from JSON.
+func (e *TraversedEndpoints) UnmarshalJSON(bytes []byte) error {
+	type alias TraversedEndpoints
 	var a alias
 	if err := json.Unmarshal(bytes, &a); err != nil {
 		return err
 	}
-	*e = EndpointPair(a)
+	*e = TraversedEndpoints(a)
 	return nil
 }
 
 // RemoteEndpoint returns the endpoint of the other peer in the pair.
-func (e *EndpointPair) RemoteEndpoint(self *astral.Identity) (PeerEndpoint, bool) {
+func (e *TraversedEndpoints) RemoteEndpoint(self *astral.Identity) (PeerEndpoint, bool) {
 	switch {
 	case e.PeerA.Identity != nil && e.PeerA.Identity.IsEqual(self):
 		return e.PeerB, true
@@ -64,7 +64,6 @@ func (e *EndpointPair) RemoteEndpoint(self *astral.Identity) (PeerEndpoint, bool
 // It can be serialized via astral.Struct and registered in blueprints.
 type PeerEndpoint struct {
 	Identity *astral.Identity
-
 	// NOTE: cannot use exonet.Endpoint for serialization reasons,
 	// and there is lack of package/struct describing (
 	//transport layer) addr. (for now utp is only supported UDP protocol)
@@ -105,5 +104,5 @@ func (p *PeerEndpoint) UnmarshalJSON(bytes []byte) error {
 
 func init() {
 	_ = astral.DefaultBlueprints.Add(&PeerEndpoint{})
-	_ = astral.DefaultBlueprints.Add(&EndpointPair{})
+	_ = astral.DefaultBlueprints.Add(&TraversedEndpoints{})
 }

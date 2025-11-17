@@ -12,11 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
-// NOTE: Implementation of this exchange as state machine is dictated by
-// future need to support more NAT traversal methods, retry logic,
-// etc. Also serves as neat abstraction to be used in OpStartTraversal,
-// also allowing test cases to be written.
-
 // traversal is a tiny state machine driving PunchSignal exchange.
 type traversal struct {
 	log  *log.Logger
@@ -33,30 +28,30 @@ type traversal struct {
 	goSignal   *nat.PunchSignal
 	peerResult *nat.PunchSignal
 
-	pair nat.EndpointPair
+	pair nat.TraversedEndpoints
 }
 
 type TraversalRole int
 
 const (
-	RoleInitiator TraversalRole = iota
-	RoleResponder
+	TraversalRoleInitiator TraversalRole = iota
+	TraversalRoleResponder
 )
 
-type State int
+type TraversalState int
 
 const (
-	TraversalStateOfferExchange State = iota
+	TraversalStateOfferExchange TraversalState = iota
 	TraversalStateReadyPhase
 	TraversalStatePunch
 	TraversalStateResultExchange
 	TraversalStateDone
 )
 
-type stateFn func(*astral.Context) (state State, err error)
+type stateFn func(*astral.Context) (state TraversalState, err error)
 
-func (t *traversal) Run(ctx *astral.Context) (pair nat.EndpointPair, err error) {
-	var handlers = map[State]stateFn{
+func (t *traversal) Run(ctx *astral.Context) (pair nat.TraversedEndpoints, err error) {
+	var handlers = map[TraversalState]stateFn{
 		TraversalStateOfferExchange:  t.handleOfferExchange,
 		TraversalStateReadyPhase:     t.handleReadyPhase,
 		TraversalStatePunch:          t.handlePunch,
@@ -84,12 +79,12 @@ func (t *traversal) Run(ctx *astral.Context) (pair nat.EndpointPair, err error) 
 	pair = t.pair
 	pair.CreatedAt = astral.Time(time.Now())
 
-	t.log.Log("Traversal done pair %v", pair)
+	t.log.Log("Traversal done Pair %v", pair)
 	return pair, err
 }
 
-func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err error) {
-	if t.role == RoleInitiator {
+func (t *traversal) handleOfferExchange(ctx *astral.Context) (state TraversalState, err error) {
+	if t.role == TraversalRoleInitiator {
 		// as an initiator, setup puncher and send offer
 		err = t.setupPuncher(nil)
 		if err != nil {
@@ -140,8 +135,8 @@ func (t *traversal) handleOfferExchange(ctx *astral.Context) (state State, err e
 	return state, err
 }
 
-func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err error) {
-	if t.role == RoleInitiator {
+func (t *traversal) handleReadyPhase(ctx *astral.Context) (state TraversalState, err error) {
+	if t.role == TraversalRoleInitiator {
 		err = t.ch.Write(&nat.PunchSignal{
 			Signal:  nat.PunchSignalTypeReady,
 			Session: t.puncher.Session(),
@@ -179,9 +174,9 @@ func (t *traversal) handleReadyPhase(ctx *astral.Context) (state State, err erro
 	return state, err
 }
 
-func (t *traversal) handlePunch(ctx *astral.Context) (state State, err error) {
+func (t *traversal) handlePunch(ctx *astral.Context) (state TraversalState, err error) {
 	var res *nat.PunchResult
-	if t.role == RoleInitiator {
+	if t.role == TraversalRoleInitiator {
 		res, err = t.puncher.HolePunch(ctx, t.answer.IP, int(t.answer.Port))
 	} else {
 		res, err = t.puncher.HolePunch(ctx, t.offer.IP, int(t.offer.Port))
@@ -189,10 +184,10 @@ func (t *traversal) handlePunch(ctx *astral.Context) (state State, err error) {
 	if err != nil {
 		return state, err
 	}
-	// assign the observed endpoint to the pair
+	// assign the observed endpoint to the Pair
 	observedPeer := nat.UDPEndpoint{IP: res.RemoteIP, Port: res.RemotePort}
 	t.log.Log("Hole punch observed remote ip %v port %v", res.RemoteIP, res.RemotePort)
-	pair := nat.EndpointPair{
+	pair := nat.TraversedEndpoints{
 		PeerA: nat.PeerEndpoint{Identity: t.localIdentity},
 		PeerB: nat.PeerEndpoint{Identity: t.peerIdentity, Endpoint: observedPeer},
 	}
@@ -201,8 +196,8 @@ func (t *traversal) handlePunch(ctx *astral.Context) (state State, err error) {
 	return state, err
 }
 
-func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err error) {
-	if t.role == RoleInitiator {
+func (t *traversal) handleResultExchange(ctx *astral.Context) (state TraversalState, err error) {
+	if t.role == TraversalRoleInitiator {
 		// Generate shared PairNonce
 		t.pair.Nonce = astral.NewNonce()
 		err = t.ch.Write(&nat.PunchSignal{
@@ -258,7 +253,7 @@ func (t *traversal) handleResultExchange(ctx *astral.Context) (state State, err 
 func (t *traversal) setupPuncher(session []byte) error {
 	var err error
 
-	cb := &nat.ConePuncherCallbacks{
+	cb := &ConePuncherCallbacks{
 		OnAttempt: func(peer ip.IP, peerPort int, remoteAddrs []*net.UDPAddr) {
 			t.log.Log("Hole punch attempts peer %v:%v through %v", peer, peerPort)
 		},
@@ -267,13 +262,7 @@ func (t *traversal) setupPuncher(session []byte) error {
 		},
 	}
 
-	if len(session) > 0 {
-		// use session-aware constructor with callbacks
-		t.puncher, err = newConePuncherWithSession(session, cb)
-	} else {
-		// use random-session constructor with callbacks
-		t.puncher, err = newConePuncher(cb)
-	}
+	t.puncher, err = newConePuncher(session, cb)
 	if err != nil {
 		return err
 	}

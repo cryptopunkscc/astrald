@@ -24,7 +24,7 @@ func (mod *Module) OpNewTraversal(ctx *astral.Context, q shell.Query,
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	// Start traversal by invoking the start op on the target.
+	// StartKeepAlive traversal by invoking the start op on the target.
 	queryArgs := &opStartTraversal{
 		Target: args.Target,
 	}
@@ -34,7 +34,7 @@ func (mod *Module) OpNewTraversal(ctx *astral.Context, q shell.Query,
 		nat.MethodStartNatTraversal,
 		queryArgs)
 
-	// route and get a bidirectional channel for payload exchange
+	// route and Get a bidirectional channel for payload exchange
 	routeCh, err := query.RouteChan(ctx, mod.node, routedQuery)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
