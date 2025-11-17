@@ -168,6 +168,8 @@ func (b *Bundle) MarshalJSON() ([]byte, error) {
 
 func (a *Bundle) UnmarshalJSON(bytes []byte) error {
 	var jlist []JSONDecodeAdapter
+	a.index = make(map[string]int)
+
 	if err := json.Unmarshal(bytes, &jlist); err != nil {
 		return err
 	}
