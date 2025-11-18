@@ -69,10 +69,8 @@ func (p *TraversedPortPair) GetLocalAddr(self *astral.Identity) *net.UDPAddr {
 	} else {
 		local = p.PeerB
 	}
-	return &net.UDPAddr{
-		IP:   net.ParseIP(local.Endpoint.HostString()),
-		Port: int(local.Endpoint.Port),
-	}
+
+	return local.Endpoint.UDPAddr()
 }
 
 // GetRemoteAddr returns the remote UDP address for this pair
@@ -83,10 +81,8 @@ func (p *TraversedPortPair) GetRemoteAddr(self *astral.Identity) *net.UDPAddr {
 	} else {
 		remote = p.PeerA
 	}
-	return &net.UDPAddr{
-		IP:   net.ParseIP(remote.Endpoint.HostString()),
-		Port: int(remote.Endpoint.Port),
-	}
+
+	return remote.Endpoint.UDPAddr()
 }
 
 func (p *TraversedPortPair) MatchesPeer(peer *astral.Identity) bool {
