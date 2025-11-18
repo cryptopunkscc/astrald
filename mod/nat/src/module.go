@@ -66,7 +66,7 @@ func (mod *Module) addTraversedPair(
 
 	pair, err := NewPair(traversedEndpointPair, mod.ctx.Identity(), initiatedByLocal, WithOnPairExpire(func(p *Pair) {
 		mod.log.Info("expired NAT traversed Pair: %v (%v) <-> %v (%v) nonce=%v")
-		mod.pool.Remove(p.Nonce)
+		//	mod.pool.Remove(p.Nonce)
 	}))
 	if err != nil {
 		mod.log.Errorv(1, "error creating Pair: %v", err)
