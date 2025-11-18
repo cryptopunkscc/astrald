@@ -17,6 +17,7 @@ func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,
 
 	pairs := mod.pool.GetAll()
 	for _, pair := range pairs {
+		mod.log.Info("pair: %v", pair)
 		if args.With != "" {
 			target, err := mod.Dir.ResolveIdentity(string(args.With))
 			if err != nil {
