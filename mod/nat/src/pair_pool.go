@@ -37,7 +37,7 @@ func (p *PairPool) Get(nonce astral.Nonce) (*Pair, bool) {
 func (p *PairPool) GetAll() []*Pair {
 	var pairs []*Pair
 	for _, pair := range p.pairs.Values() {
-		if pair.IsIdle() {
+		if !pair.IsIdle() {
 			continue
 		}
 
