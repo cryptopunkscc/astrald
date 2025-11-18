@@ -25,7 +25,7 @@ func (mod *Module) OpNewTraversal(ctx *astral.Context, q shell.Query,
 	defer ch.Close()
 
 	// StartKeepAlive traversal by invoking the start op on the target.
-	queryArgs := &opStartTraversal{
+	queryArgs := &opNewTraversal{
 		Target: args.Target,
 	}
 
