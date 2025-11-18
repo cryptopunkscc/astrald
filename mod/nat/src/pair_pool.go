@@ -10,7 +10,7 @@ import (
 
 type PairPool struct {
 	*Module
-	pairs sig.Map[astral.Nonce, *Pair]
+	pairs *sig.Map[astral.Nonce, *Pair]
 	stop  chan struct{}
 }
 
