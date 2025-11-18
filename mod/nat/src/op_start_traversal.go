@@ -20,14 +20,15 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	defer ch.Close()
 
 	ips := mod.IP.PublicIPCandidates()
-	if len(ips) == 0 {
-		return ch.Write(astral.NewError("no suitable IP addresses found"))
-	}
 
 	// NOTE: problems with punching IPv6 addresses
 	ips = slices.DeleteFunc(ips, func(ip ip.IP) bool {
 		return ip.IsIPv6()
 	})
+
+	if len(ips) == 0 {
+		return ch.Write(astral.NewError("no suitable IP addresses found"))
+	}
 
 	if args.Target != "" {
 		// Initiator logic
