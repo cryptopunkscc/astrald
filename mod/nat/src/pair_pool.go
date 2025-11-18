@@ -45,6 +45,7 @@ func (p *PairPool) GetAll() []*Pair {
 
 		pairs = append(pairs, pair)
 	}
+
 	return pairs
 }
 
