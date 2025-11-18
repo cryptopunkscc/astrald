@@ -10,16 +10,15 @@ import (
 
 type PairPool struct {
 	*Module
-	pairs *sig.Map[astral.Nonce, *Pair]
+	pairs sig.Map[astral.Nonce, *Pair]
 	stop  chan struct{}
 }
 
 func NewPairPool(mod *Module) *PairPool {
-	pairs := sig.Map[astral.Nonce, *Pair]{}
 	return &PairPool{
 		Module: mod,
 		stop:   make(chan struct{}),
-		pairs:  &pairs,
+		pairs:  sig.Map[astral.Nonce, *Pair]{},
 	}
 }
 
@@ -76,11 +75,8 @@ func (p *PairPool) Take(nonce astral.Nonce) (*Pair, error) {
 	return pair, nil
 }
 
-func (p *PairPool) Remove(nonce astral.Nonce) {
-	fmt.Println("remove pair?")
-	if e, ok := p.pairs.Delete(nonce); ok {
-		e.Expire()
-	}
+func (p *PairPool) Remove(nonce astral.Nonce) (pair *Pair, ok bool) {
+	return p.pairs.Delete(nonce)
 }
 
 func (p *PairPool) Stop() { close(p.stop) }

@@ -14,7 +14,7 @@ import (
 
 const (
 	defaultPingInterval  = 1 * time.Second
-	defaultNoPingTimeout = 3 * time.Second  // if pinger doesn't get pong → expire
+	defaultNoPingTimeout = 3 * time.Second  // if pinger doesn't get pong → Expire
 	defaultPingLifespan  = 6 * time.Second  // drop stuck pings
 	defaultLockTimeout   = 10 * time.Second // bound for locking handshake
 	defaultMaxPingFails  = 10               // max writes before expiring
@@ -157,7 +157,7 @@ func (p *Pair) run(ctx context.Context) {
 			p.expirePings()
 
 			if time.Since(time.Unix(0, p.lastPing.Load())) > p.noPingTimeout {
-				p.expire()
+				p.Expire()
 				return
 			}
 
@@ -165,7 +165,7 @@ func (p *Pair) run(ctx context.Context) {
 				if err := p.sendPing(); err != nil {
 					failCount++
 					if failCount >= p.maxPingFails {
-						p.expire()
+						p.Expire()
 						return
 					}
 				} else {
@@ -181,7 +181,7 @@ func (p *Pair) run(ctx context.Context) {
 			}
 
 			if p.lockTimedOut() {
-				p.expire()
+				p.Expire()
 				return
 			}
 
@@ -191,7 +191,7 @@ func (p *Pair) run(ctx context.Context) {
 
 		select {
 		case <-ctx.Done():
-			p.expire()
+			p.Expire()
 			return
 		case <-ticker.C:
 		case <-p.wakeCh:
@@ -303,16 +303,8 @@ func (p *Pair) finalizeLock() bool {
 	return true
 }
 
-// Expire forces expiration if the pair is not locked
+// Expire transitions to expired state, cleans up resources, and notifies
 func (p *Pair) Expire() {
-	if p.state.Load() == int32(nat.StateLocked) {
-		return
-	}
-	p.expire()
-}
-
-// expire transitions to expired state, cleans up resources, and notifies
-func (p *Pair) expire() {
 	p.state.Store(int32(nat.StateExpired))
 	_ = p.conn.Close()
 
@@ -325,6 +317,10 @@ func (p *Pair) expire() {
 	case <-p.lockedCh:
 	default:
 		close(p.lockedCh)
+	}
+
+	if p.onPairExpire != nil {
+		p.onPairExpire(p)
 	}
 
 	p.wake()
