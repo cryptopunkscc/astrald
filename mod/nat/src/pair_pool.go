@@ -15,9 +15,11 @@ type PairPool struct {
 }
 
 func NewPairPool(mod *Module) *PairPool {
+	pairs := sig.Map[astral.Nonce, *Pair]{}
 	return &PairPool{
 		Module: mod,
 		stop:   make(chan struct{}),
+		pairs:  &pairs,
 	}
 }
 
