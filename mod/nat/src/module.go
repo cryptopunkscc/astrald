@@ -1,8 +1,6 @@
 package nat
 
 import (
-	"time"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -38,7 +36,6 @@ type Module struct {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
-	mod.pool.RunCleanupLoop(30 * time.Second)
 
 	<-ctx.Done()
 	mod.pool.Stop()

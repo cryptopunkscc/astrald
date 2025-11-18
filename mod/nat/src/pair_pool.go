@@ -1,8 +1,6 @@
 package nat
 
 import (
-	"time"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -76,25 +74,6 @@ func (p *PairPool) Remove(nonce astral.Nonce) {
 	if e, ok := p.pairs.Delete(nonce); ok {
 		e.Expire()
 	}
-}
-
-func (p *PairPool) RunCleanupLoop(interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				for _, n := range p.pairs.Keys() {
-					if e, ok := p.pairs.Get(n); ok && e.IsExpired() {
-						p.pairs.Delete(n)
-					}
-				}
-			case <-p.stop:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
 }
 
 func (p *PairPool) Stop() { close(p.stop) }
