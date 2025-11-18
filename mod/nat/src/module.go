@@ -65,16 +65,20 @@ func (mod *Module) addTraversedPair(
 		traversedEndpointPair.Nonce,
 	)
 
-	pair := Pair{
-		TraversedPortPair: traversedEndpointPair,
+	pair, err := NewPair(traversedEndpointPair, mod.ctx.Identity(), initiatedByLocal, WithOnPairExpire(func(p *Pair) {
+		mod.pool.Remove(p.Nonce)
+	}))
+	if err != nil {
+		mod.log.Errorv(1, "error creating Pair: %v", err)
+		return
 	}
 
-	err := pair.StartKeepAlive(mod.ctx)
+	err = pair.StartKeepAlive(mod.ctx)
 	if err != nil {
 		mod.log.Errorv(1, "error starting pair keep-alive: %v", err)
 	}
 
-	err = mod.pool.Add(&pair)
+	err = mod.pool.Add(pair)
 	if err != nil {
 		mod.log.Errorv(1, "error adding Pair to pool: %v", err)
 	}

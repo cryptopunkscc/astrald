@@ -13,22 +13,14 @@ import (
 )
 
 const (
-	pingInterval  = 1 * time.Second
-	noPingTimeout = 3 * time.Second  // if pinger doesn't get pong → expire
-	pingLifespan  = 6 * time.Second  // drop stuck pings
-	lockTimeout   = 10 * time.Second // bound for locking handshake
-	maxPingFails  = 10               // max writes before expiring
+	defaultPingInterval  = 1 * time.Second
+	defaultNoPingTimeout = 3 * time.Second  // if pinger doesn't get pong → expire
+	defaultPingLifespan  = 6 * time.Second  // drop stuck pings
+	defaultLockTimeout   = 10 * time.Second // bound for locking handshake
+	defaultMaxPingFails  = 10               // max writes before expiring
 )
 
 // State Machine Values
-type PairState int32
-
-const (
-	StateIdle      PairState = iota // normal keepalive
-	StateInLocking                  // lock requested, waiting for drain
-	StateLocked                     // socket silent, no traffic
-	StateExpired                    // permanently closed
-)
 
 type Pair struct {
 	nat.TraversedPortPair
@@ -36,11 +28,12 @@ type Pair struct {
 	localIdentity *astral.Identity
 	isPinger      bool
 
+	onPairExpire OnPairExpire
 	// socket (owned by runLoop)
 	conn net.PacketConn
 
 	// State machine
-	state     atomic.Int32 // PairState
+	state     atomic.Int32 // nat.PairState
 	lockStart atomic.Int64 // unix nano
 	lastPing  atomic.Int64 // unix nano (pinger only)
 	pings     sig.Map[astral.Nonce, int64]
@@ -49,6 +42,13 @@ type Pair struct {
 	pingEvents chan pingEvent // receiver → runLoop
 	wakeCh     chan struct{}  // wakes runLoop for state transitions
 	lockedCh   chan struct{}  // closes when locked/expired
+
+	// configuration options
+	pingInterval  time.Duration
+	noPingTimeout time.Duration
+	pingLifespan  time.Duration
+	lockTimeout   time.Duration
+	maxPingFails  int
 }
 
 // Event Type from Receiver → runLoop
@@ -57,23 +57,23 @@ type pingEvent struct {
 	pong  bool
 }
 
-// NewPair creates a pair that auto-binds a UDP socket
-func NewPair(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool) (*Pair, error) {
+// NewPair creates a new NAT pair with a bound UDP socket and applies the given options.
+func NewPair(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool, opts ...PairOption) (*Pair, error) {
 	conn, err := net.ListenUDP("udp", pair.GetLocalAddr(localID))
 	if err != nil {
 		return nil, err
 	}
 
-	return newPair(pair, localID, isPinger, conn), nil
+	return newPair(pair, localID, isPinger, conn, opts...), nil
 }
 
 // NewPairWithConn creates a pair with an injected PacketConn (for testing)
-func NewPairWithConn(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool, conn net.PacketConn) *Pair {
-	return newPair(pair, localID, isPinger, conn)
+func NewPairWithConn(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool, conn net.PacketConn, opts ...PairOption) *Pair {
+	return newPair(pair, localID, isPinger, conn, opts...)
 }
 
-// newPair is the internal constructor that sets up all fields
-func newPair(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool, conn net.PacketConn) *Pair {
+// newPair initializes a new Pair with the given parameters and applies options.
+func newPair(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool, conn net.PacketConn, opts ...PairOption) *Pair {
 	p := &Pair{
 		TraversedPortPair: pair,
 		localIdentity:     localID,
@@ -83,9 +83,20 @@ func newPair(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool
 		wakeCh:            make(chan struct{}, 1),
 		lockedCh:          make(chan struct{}),
 		pings:             sig.Map[astral.Nonce, int64]{},
+
+		// default configuration options
+		pingInterval:  defaultPingInterval,
+		noPingTimeout: defaultNoPingTimeout,
+		pingLifespan:  defaultPingLifespan,
+		lockTimeout:   defaultLockTimeout,
+		maxPingFails:  defaultMaxPingFails,
 	}
 
-	p.state.Store(int32(StateIdle))
+	for _, opt := range opts {
+		opt(p)
+	}
+
+	p.state.Store(int32(nat.StateIdle))
 	p.lastPing.Store(time.Now().UnixNano())
 
 	return p
@@ -97,6 +108,7 @@ func (p *Pair) isExpectedAddr(addr *net.UDPAddr) bool {
 	return addr.IP.Equal(expected.IP) && addr.Port == expected.Port
 }
 
+// StartKeepAlive starts the receiver and run goroutines for keepalive management
 func (p *Pair) StartKeepAlive(ctx context.Context) error {
 	go p.receiver()
 	go p.run(ctx)
@@ -104,6 +116,7 @@ func (p *Pair) StartKeepAlive(ctx context.Context) error {
 	return nil
 }
 
+// receiver listens for UDP packets, validates addresses, parses frames, and queues events
 func (p *Pair) receiver() {
 	buf := make([]byte, 512)
 
@@ -127,8 +140,10 @@ func (p *Pair) receiver() {
 		p.wake()
 	}
 }
+
+// run executes the state machine loop, managing keepalive, locking, and expiration
 func (p *Pair) run(ctx context.Context) {
-	ticker := time.NewTicker(pingInterval)
+	ticker := time.NewTicker(p.pingInterval)
 	defer ticker.Stop()
 
 	failCount := 0
@@ -136,11 +151,11 @@ func (p *Pair) run(ctx context.Context) {
 	for {
 		p.drainEvents()
 
-		switch PairState(p.state.Load()) {
-		case StateIdle:
+		switch nat.PairState(p.state.Load()) {
+		case nat.StateIdle:
 			p.expirePings()
 
-			if time.Since(time.Unix(0, p.lastPing.Load())) > noPingTimeout {
+			if time.Since(time.Unix(0, p.lastPing.Load())) > p.noPingTimeout {
 				p.expire()
 				return
 			}
@@ -148,7 +163,7 @@ func (p *Pair) run(ctx context.Context) {
 			if p.isPinger {
 				if err := p.sendPing(); err != nil {
 					failCount++
-					if failCount >= maxPingFails {
+					if failCount >= p.maxPingFails {
 						p.expire()
 						return
 					}
@@ -156,7 +171,7 @@ func (p *Pair) run(ctx context.Context) {
 					failCount = 0
 				}
 			}
-		case StateInLocking:
+		case nat.StateInLocking:
 			p.expirePings()
 
 			if p.pings.Len() == 0 {
@@ -169,7 +184,7 @@ func (p *Pair) run(ctx context.Context) {
 				return
 			}
 
-		case StateLocked, StateExpired:
+		case nat.StateLocked, nat.StateExpired:
 			return
 		}
 
@@ -183,6 +198,7 @@ func (p *Pair) run(ctx context.Context) {
 	}
 }
 
+// drainEvents processes all queued ping events synchronously
 func (p *Pair) drainEvents() {
 	for {
 		select {
@@ -194,8 +210,9 @@ func (p *Pair) drainEvents() {
 	}
 }
 
+// handlePing processes a ping event, updating timestamps and responding to pings
 func (p *Pair) handlePing(ev pingEvent) {
-	if PairState(p.state.Load()) >= StateLocked { // Locked or Expired
+	if nat.PairState(p.state.Load()) >= nat.StateLocked { // Locked or Expired
 		return
 	}
 
@@ -210,6 +227,7 @@ func (p *Pair) handlePing(ev pingEvent) {
 	}
 }
 
+// sendPing sends a ping frame to the remote peer and tracks it
 func (p *Pair) sendPing() error {
 	nonce := astral.NewNonce()
 	p.pings.Set(nonce, time.Now().UnixNano())
@@ -222,6 +240,7 @@ func (p *Pair) sendPing() error {
 	return err
 }
 
+// sendPong sends a pong frame in response to a received ping
 func (p *Pair) sendPong(nonce astral.Nonce) error {
 	f := pingFrame{Nonce: nonce, Pong: true}
 	var buf bytes.Buffer
@@ -232,22 +251,25 @@ func (p *Pair) sendPong(nonce astral.Nonce) error {
 	return err
 }
 
+// expirePings removes pings that have exceeded their configured lifespan
 func (p *Pair) expirePings() {
 	now := time.Now().UnixNano()
 	clone := p.pings.Clone()
 	for nonce, ts := range clone {
-		if now-ts > pingLifespan.Nanoseconds() {
+		if now-ts > p.pingLifespan.Nanoseconds() {
 			p.pings.Delete(nonce)
 		}
 	}
 }
 
+// lockTimedOut checks if the locking process has exceeded the timeout
 func (p *Pair) lockTimedOut() bool {
-	return time.Since(time.Unix(0, p.lockStart.Load())) > lockTimeout
+	return time.Since(time.Unix(0, p.lockStart.Load())) > p.lockTimeout
 }
 
+// BeginLock initiates locking if the pair is idle, returning success status
 func (p *Pair) BeginLock() bool {
-	if !p.state.CompareAndSwap(int32(StateIdle), int32(StateInLocking)) {
+	if !p.state.CompareAndSwap(int32(nat.StateIdle), int32(nat.StateInLocking)) {
 		return false
 	}
 
@@ -256,8 +278,9 @@ func (p *Pair) BeginLock() bool {
 	return true
 }
 
+// finalizeLock completes locking by closing the connection and notifying waiters
 func (p *Pair) finalizeLock() bool {
-	if !p.state.CompareAndSwap(int32(StateInLocking), int32(StateLocked)) {
+	if !p.state.CompareAndSwap(int32(nat.StateInLocking), int32(nat.StateLocked)) {
 		return false
 	}
 
@@ -279,19 +302,19 @@ func (p *Pair) finalizeLock() bool {
 	return true
 }
 
+// Expire forces expiration if the pair is not locked
 func (p *Pair) Expire() {
-	if p.state.Load() == int32(StateLocked) {
+	if p.state.Load() == int32(nat.StateLocked) {
 		return
 	}
-	p.state.Store(int32(StateExpired))
-	p.wake()
+	p.expire()
 }
 
+// expire transitions to expired state, cleans up resources, and notifies
 func (p *Pair) expire() {
-	p.state.Store(int32(StateExpired))
-	if p.conn != nil {
-		_ = p.conn.Close()
-	}
+	p.state.Store(int32(nat.StateExpired))
+	_ = p.conn.Close()
+
 	clone := p.pings.Clone()
 	for n := range clone {
 		p.pings.Delete(n)
@@ -302,11 +325,13 @@ func (p *Pair) expire() {
 	default:
 		close(p.lockedCh)
 	}
+
+	p.wake()
 }
 
-// WaitLocked()
+// WaitLocked waits for the pair to lock or the context to cancel
 func (p *Pair) WaitLocked(ctx context.Context) error {
-	if PairState(p.state.Load()) == StateLocked {
+	if nat.PairState(p.state.Load()) == nat.StateLocked {
 		return nil
 	}
 
@@ -316,36 +341,71 @@ func (p *Pair) WaitLocked(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-p.lockedCh:
-		if PairState(p.state.Load()) == StateLocked {
+		if nat.PairState(p.state.Load()) == nat.StateLocked {
 			return nil
 		}
 		return nat.ErrPairCantLock
 	}
 }
 
-func (p *Pair) State() PairState {
-	return PairState(p.state.Load())
+// State returns the current state of the pair
+func (p *Pair) State() nat.PairState {
+	return nat.PairState(p.state.Load())
 }
 
+// IsIdle returns true if the pair is in idle state
 func (p *Pair) IsIdle() bool {
-	return PairState(p.state.Load()) == StateIdle
+	return nat.PairState(p.state.Load()) == nat.StateIdle
 }
 
+// IsExpired returns true if the pair is expired
 func (p *Pair) IsExpired() bool {
-	return PairState(p.state.Load()) == StateExpired
+	return nat.PairState(p.state.Load()) == nat.StateExpired
 }
 
+// IsLocked returns true if the pair is locked
 func (p *Pair) IsLocked() bool {
-	return PairState(p.state.Load()) == StateLocked
+	return nat.PairState(p.state.Load()) == nat.StateLocked
 }
 
+// LastPing returns the timestamp of the last received ping
 func (p *Pair) LastPing() time.Time {
 	return time.Unix(0, p.lastPing.Load())
 }
 
+// wake sends a non-blocking wake signal to the run loop
 func (p *Pair) wake() {
 	select {
 	case p.wakeCh <- struct{}{}:
 	default:
 	}
+}
+
+// Options
+type OnPairExpire func(p *Pair)
+
+type PairOption func(*Pair)
+
+func WithPingInterval(d time.Duration) PairOption {
+	return func(p *Pair) { p.pingInterval = d }
+}
+
+func WithNoPingTimeout(d time.Duration) PairOption {
+	return func(p *Pair) { p.noPingTimeout = d }
+}
+
+func WithPingLifespan(d time.Duration) PairOption {
+	return func(p *Pair) { p.pingLifespan = d }
+}
+
+func WithLockTimeout(d time.Duration) PairOption {
+	return func(p *Pair) { p.lockTimeout = d }
+}
+
+func WithMaxPingFails(n int) PairOption {
+	return func(p *Pair) { p.maxPingFails = n }
+}
+
+func WithOnPairExpire(f OnPairExpire) PairOption {
+	return func(p *Pair) { p.onPairExpire = f }
 }
