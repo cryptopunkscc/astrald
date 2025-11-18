@@ -1,6 +1,8 @@
 package nat
 
 import (
+	"fmt"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -65,12 +67,12 @@ func (p *PairPool) Take(nonce astral.Nonce) (*Pair, error) {
 		return nil, nat.ErrPairBusy
 	}
 
-	p.pairs.Delete(nonce)
-
+	p.Remove(nonce)
 	return pair, nil
 }
 
 func (p *PairPool) Remove(nonce astral.Nonce) {
+	fmt.Println("remove pair?")
 	if e, ok := p.pairs.Delete(nonce); ok {
 		e.Expire()
 	}
