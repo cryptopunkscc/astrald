@@ -53,7 +53,8 @@ func newConePuncher(session []byte, cb *ConePuncherCallbacks) (puncher nat.Punch
 		return nil, fmt.Errorf("session must be 16 bytes")
 	}
 
-	if len(session) == 0 {
+	if len(session) == 0 || session == nil {
+		session = make([]byte, 16)
 		_, err = crand.Read(session)
 		if err != nil {
 			return nil, fmt.Errorf("generate session: %w", err)
