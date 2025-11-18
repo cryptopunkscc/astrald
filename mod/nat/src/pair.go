@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	pingInterval = 1 * time.Second
-	pongTimeout  = 15 * time.Second // if pinger doesn't get pong → expire
-	pingLifespan = 6 * time.Second  // drop stuck pings
-	lockTimeout  = 10 * time.Second // bound for locking handshake
-	maxPingFails = 10               // max writes before expiring
+	pingInterval  = 1 * time.Second
+	noPingTimeout = 3 * time.Second  // if pinger doesn't get pong → expire
+	pingLifespan  = 6 * time.Second  // drop stuck pings
+	lockTimeout   = 10 * time.Second // bound for locking handshake
+	maxPingFails  = 10               // max writes before expiring
 )
 
 // State Machine Values
@@ -42,7 +42,7 @@ type Pair struct {
 	// State machine
 	state     atomic.Int32 // PairState
 	lockStart atomic.Int64 // unix nano
-	lastPong  atomic.Int64 // unix nano (pinger only)
+	lastPing  atomic.Int64 // unix nano (pinger only)
 	pings     sig.Map[astral.Nonce, int64]
 
 	// Channels (safe goroutine communication)
@@ -86,7 +86,7 @@ func newPair(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool
 	}
 
 	p.state.Store(int32(StateIdle))
-	p.lastPong.Store(time.Now().UnixNano())
+	p.lastPing.Store(time.Now().UnixNano())
 
 	return p
 }
@@ -140,7 +140,7 @@ func (p *Pair) run(ctx context.Context) {
 		case StateIdle:
 			p.expirePings()
 
-			if p.isPinger && time.Since(time.Unix(0, p.lastPong.Load())) > pongTimeout {
+			if time.Since(time.Unix(0, p.lastPing.Load())) > noPingTimeout {
 				p.expire()
 				return
 			}
@@ -156,7 +156,6 @@ func (p *Pair) run(ctx context.Context) {
 					failCount = 0
 				}
 			}
-
 		case StateInLocking:
 			p.expirePings()
 
@@ -200,9 +199,10 @@ func (p *Pair) handlePing(ev pingEvent) {
 		return
 	}
 
+	p.lastPing.Store(time.Now().UnixNano())
+
 	if ev.pong {
 		if _, ok := p.pings.Delete(ev.nonce); ok {
-			p.lastPong.Store(time.Now().UnixNano())
 			p.wake()
 		}
 	} else {
@@ -339,8 +339,8 @@ func (p *Pair) IsLocked() bool {
 	return PairState(p.state.Load()) == StateLocked
 }
 
-func (p *Pair) LastPong() time.Time {
-	return time.Unix(0, p.lastPong.Load())
+func (p *Pair) LastPing() time.Time {
+	return time.Unix(0, p.lastPing.Load())
 }
 
 func (p *Pair) wake() {
