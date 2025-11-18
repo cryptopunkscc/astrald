@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// NOTE: instead of sleeps which run slowly we could use https://github.com/coder/quartz
+// NOTE: instead of real time sleeps which make tests run slowly we could use https://github.com/coder/quartz
 func TestPair_Keepalive_Basic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -85,8 +85,8 @@ func TestPair_Keepalive_Basic(t *testing.T) {
 	require.NotEqual(t, startingPong.Unix(), pairA.LastPing().Unix(), "pairA.LastPing() should have changed")
 	require.NotEqual(t, startingPong.Unix(), pairB.LastPing().Unix(), "pairB.LastPing() should have changed")
 
-	require.Equal(t, natmod.StateIdle, pairA.State())
-	require.Equal(t, natmod.StateIdle, pairB.State())
+	require.Equal(t, nat.StateIdle, pairA.State())
+	require.Equal(t, nat.StateIdle, pairB.State())
 }
 
 func TestPair_NoPong(t *testing.T) {
@@ -221,18 +221,18 @@ func TestPair_LockCausesRemoteExpiration(t *testing.T) {
 
 	// Let keepalive stabilize
 	time.Sleep(2 * time.Second)
-	require.Equal(t, natmod.StateIdle, pairA.State())
-	require.Equal(t, natmod.StateIdle, pairB.State())
+	require.Equal(t, nat.StateIdle, pairA.State())
+	require.Equal(t, nat.StateIdle, pairB.State())
 
 	require.True(t, pairA.BeginLock())
 	require.NoError(t, pairA.WaitLocked(ctx))
-	require.Equal(t, natmod.StateLocked, pairA.State())
+	require.Equal(t, nat.StateLocked, pairA.State())
 
 	// After locking, pairA stops sending pings forever.
 	// pairB will wait for pongTimeout without receiving anything and eventually expires.
 
 	time.Sleep(8 * time.Second)
 
-	require.Equal(t, natmod.StateExpired, pairB.State())
-	require.Equal(t, natmod.StateLocked, pairA.State())
+	require.Equal(t, nat.StateExpired, pairB.State())
+	require.Equal(t, nat.StateLocked, pairA.State())
 }

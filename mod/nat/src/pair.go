@@ -20,22 +20,23 @@ const (
 	defaultMaxPingFails  = 10               // max writes before expiring
 )
 
-// State Machine Values
-
+// Pair represents a NAT-traversed UDP port pair with keepalive and locking mechanisms.
+// pair while being Idle makes sure to keep the NAT mapping alive by sending periodic pings.
+// If the pair is inLocking state, it waits for pongs from the remote peer before completing the lock.
+// Once locked, the pair closes its socket.
 type Pair struct {
 	nat.TraversedPortPair
 	// configuration
 	localIdentity *astral.Identity
 	isPinger      bool
+	onPairExpire  OnPairExpire // called when the pair expires
 
-	onPairExpire OnPairExpire
-	// socket (owned by runLoop)
-	conn net.PacketConn
+	conn net.PacketConn // usage of net.PacketConn interface allows us to write unit tests
 
 	// State machine
 	state     atomic.Int32 // nat.PairState
 	lockStart atomic.Int64 // unix nano
-	lastPing  atomic.Int64 // unix nano (pinger only)
+	lastPing  atomic.Int64 // unix nano
 	pings     sig.Map[astral.Nonce, int64]
 
 	// Channels (safe goroutine communication)
@@ -368,9 +369,14 @@ func (p *Pair) IsLocked() bool {
 	return nat.PairState(p.state.Load()) == nat.StateLocked
 }
 
-// LastPing returns the timestamp of the last received ping
+// LastPing returns the timestamp of the last received ping/pong
 func (p *Pair) LastPing() time.Time {
 	return time.Unix(0, p.lastPing.Load())
+}
+
+// LockTimeout returns the maximum duration for locking handshake
+func (p *Pair) LockTimeout() time.Duration {
+	return p.lockTimeout
 }
 
 // wake sends a non-blocking wake signal to the run loop
