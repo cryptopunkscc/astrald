@@ -27,6 +27,8 @@ func (p *PairPool) Add(pair *Pair) error {
 		return nat.ErrDuplicatePair
 	}
 
+	fmt.Println("add pair")
+
 	return nil
 }
 
