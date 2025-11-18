@@ -1,8 +1,11 @@
 package nat
 
 import (
+	"slices"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
@@ -20,6 +23,11 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	if len(ips) == 0 {
 		return ch.Write(astral.NewError("no suitable IP addresses found"))
 	}
+
+	// NOTE: problems with punching IPv6 addresses
+	ips = slices.DeleteFunc(ips, func(ip ip.IP) bool {
+		return ip.IsIPv6()
+	})
 
 	if args.Target != "" {
 		// Initiator logic
