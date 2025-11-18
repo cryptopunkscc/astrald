@@ -14,7 +14,7 @@ import (
 
 const (
 	pingInterval = 1 * time.Second
-	pongTimeout  = 3 * time.Second  // if pinger doesn't get pong → expire
+	pongTimeout  = 15 * time.Second // if pinger doesn't get pong → expire
 	pingLifespan = 6 * time.Second  // drop stuck pings
 	lockTimeout  = 10 * time.Second // bound for locking handshake
 	maxPingFails = 10               // max writes before expiring
@@ -32,7 +32,6 @@ const (
 
 type Pair struct {
 	nat.TraversedPortPair
-
 	// configuration
 	localIdentity *astral.Identity
 	isPinger      bool
@@ -88,6 +87,7 @@ func newPair(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool
 
 	p.state.Store(int32(StateIdle))
 	p.lastPong.Store(time.Now().UnixNano())
+
 	return p
 }
 
@@ -114,13 +114,10 @@ func (p *Pair) receiver() {
 		}
 
 		remoteAddr, ok := addr.(*net.UDPAddr)
-		if ok {
-			if !p.isExpectedAddr(remoteAddr) {
-				continue
-			}
+		if !ok || !p.isExpectedAddr(remoteAddr) {
+			continue
 		}
 
-		// … parse and send event
 		var f pingFrame
 		if _, err := f.ReadFrom(bytes.NewReader(buf[:n])); err != nil {
 			continue
@@ -130,7 +127,6 @@ func (p *Pair) receiver() {
 		p.wake()
 	}
 }
-
 func (p *Pair) run(ctx context.Context) {
 	ticker := time.NewTicker(pingInterval)
 	defer ticker.Stop()
@@ -254,6 +250,7 @@ func (p *Pair) BeginLock() bool {
 	if !p.state.CompareAndSwap(int32(StateIdle), int32(StateInLocking)) {
 		return false
 	}
+
 	p.lockStart.Store(time.Now().UnixNano())
 	p.wake()
 	return true
@@ -271,7 +268,6 @@ func (p *Pair) finalizeLock() bool {
 
 	if p.conn != nil {
 		_ = p.conn.Close()
-		p.conn = nil
 	}
 
 	select {
@@ -295,7 +291,6 @@ func (p *Pair) expire() {
 	p.state.Store(int32(StateExpired))
 	if p.conn != nil {
 		_ = p.conn.Close()
-		p.conn = nil
 	}
 	clone := p.pings.Clone()
 	for n := range clone {
