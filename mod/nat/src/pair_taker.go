@@ -59,7 +59,7 @@ func (f *PairTaker) Run(ctx context.Context) error {
 			return f.fail(fmt.Errorf("BeginLock failed: Pair busy"))
 		}
 		f.lockStarted = true
-		if err := f.writeSignal(ctx, nat.PairHandoverSignalTypeLock, lockTimeout); err != nil {
+		if err := f.writeSignal(ctx, nat.PairHandoverSignalTypeLock, f.pair.LockTimeout()); err != nil {
 			return f.fail(err)
 		}
 	}
@@ -89,13 +89,13 @@ func (f *PairTaker) doLockExchange(ctx context.Context) error {
 				return fmt.Errorf("unexpected signal in Lock exchange: %s", sig.Signal)
 			}
 		}
-		return f.exchange(ctx, lockTimeout, nil, nil, action)
+		return f.exchange(ctx, f.pair.LockTimeout(), nil, nil, action)
 	}
 
 	action := func(sig *nat.PairTakeSignal) error {
 		if !f.lockStarted {
 			if !f.pair.BeginLock() {
-				_ = f.writeSignal(ctx, nat.PairHandoverSignalTypeLockBusy, lockTimeout)
+				_ = f.writeSignal(ctx, nat.PairHandoverSignalTypeLockBusy, f.pair.LockTimeout())
 				return nat.ErrPairBusy
 			}
 			f.lockStarted = true
@@ -103,17 +103,17 @@ func (f *PairTaker) doLockExchange(ctx context.Context) error {
 		if err := f.pair.WaitLocked(ctx); err != nil {
 			return err
 		}
-		return f.writeSignal(ctx, nat.PairHandoverSignalTypeLockOk, lockTimeout)
+		return f.writeSignal(ctx, nat.PairHandoverSignalTypeLockOk, f.pair.LockTimeout())
 	}
 	expectedLock := astral.String8(nat.PairHandoverSignalTypeLock)
-	return f.exchange(ctx, lockTimeout, nil, &expectedLock, action)
+	return f.exchange(ctx, f.pair.LockTimeout(), nil, &expectedLock, action)
 }
 
 func (f *PairTaker) doTakeExchange(ctx context.Context) error {
 	if f.role == roleTakePairInitiator {
 		action := func(sig *nat.PairTakeSignal) error {
 			if sig.Signal == nat.PairHandoverSignalTypeTakeErr {
-				return errors.New("responder failed to take over")
+				return errors.New("responder failed to exchange")
 			}
 
 			return nil
