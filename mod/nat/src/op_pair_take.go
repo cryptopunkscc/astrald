@@ -30,12 +30,12 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 	if args.Initiate {
 		remoteEndpoint, ok := pair.RemoteEndpoint(ctx.Identity())
 		if !ok {
-			return
+			return ch.Write(astral.NewError("remote endpoint not found"))
 		}
 
 		peerCh, err := mod.takePairQuery(ctx, remoteEndpoint.Identity, pair.Nonce)
 		if err != nil {
-			return
+			return ch.Write(astral.NewError(err.Error()))
 		}
 
 		defer peerCh.Close()

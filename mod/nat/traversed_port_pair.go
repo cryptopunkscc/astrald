@@ -3,6 +3,7 @@ package nat
 import (
 	"encoding/json"
 	"io"
+	"net"
 
 	"github.com/cryptopunkscc/astrald/astral"
 )
@@ -58,6 +59,38 @@ func (e *TraversedPortPair) RemoteEndpoint(self *astral.Identity) (PeerEndpoint,
 	default:
 		return PeerEndpoint{}, false
 	}
+}
+
+// GetLocalAddr returns the local UDP address for this pair
+func (p *TraversedPortPair) GetLocalAddr(self *astral.Identity) *net.UDPAddr {
+	var local PeerEndpoint
+	if p.PeerA.Identity.IsEqual(self) {
+		local = p.PeerA
+	} else {
+		local = p.PeerB
+	}
+	return &net.UDPAddr{
+		IP:   net.ParseIP(local.Endpoint.HostString()),
+		Port: int(local.Endpoint.Port),
+	}
+}
+
+// GetRemoteAddr returns the remote UDP address for this pair
+func (p *TraversedPortPair) GetRemoteAddr(self *astral.Identity) *net.UDPAddr {
+	var remote PeerEndpoint
+	if p.PeerA.Identity.IsEqual(self) {
+		remote = p.PeerB
+	} else {
+		remote = p.PeerA
+	}
+	return &net.UDPAddr{
+		IP:   net.ParseIP(remote.Endpoint.HostString()),
+		Port: int(remote.Endpoint.Port),
+	}
+}
+
+func (p *TraversedPortPair) MatchesPeer(peer *astral.Identity) bool {
+	return p.PeerA.Identity.IsEqual(peer) || p.PeerB.Identity.IsEqual(peer)
 }
 
 // PeerEndpoint represents a single peer's identity and endpoint.

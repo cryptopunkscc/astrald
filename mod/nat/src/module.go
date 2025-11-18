@@ -69,7 +69,7 @@ func (mod *Module) addTraversedPair(
 		TraversedPortPair: traversedEndpointPair,
 	}
 
-	err := pair.StartKeepAlive(mod.ctx.Identity(), initiatedByLocal)
+	err := pair.StartKeepAlive(mod.ctx)
 	if err != nil {
 		mod.log.Errorv(1, "error starting pair keep-alive: %v", err)
 	}
