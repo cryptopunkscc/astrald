@@ -1,8 +1,6 @@
 package nat
 
 import (
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -27,8 +25,6 @@ func (p *PairPool) Add(pair *Pair) error {
 	if !ok {
 		return nat.ErrDuplicatePair
 	}
-
-	fmt.Println("add pair")
 
 	return nil
 }

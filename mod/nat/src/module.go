@@ -1,8 +1,6 @@
 package nat
 
 import (
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -83,8 +81,6 @@ func (mod *Module) addTraversedPair(
 	if err != nil {
 		mod.log.Errorv(1, "error adding Pair to pool: %v", err)
 	}
-
-	fmt.Println("pairs length: ", mod.pool.pairs.Len())
 }
 
 func (mod *Module) traversedPairs() []*Pair {

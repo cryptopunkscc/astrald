@@ -1,8 +1,6 @@
 package nat
 
 import (
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
@@ -18,9 +16,7 @@ func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,
 	defer ch.Close()
 
 	pairs := mod.pool.GetAll()
-	fmt.Println("pairs length listing: ", len(pairs))
 	for _, pair := range pairs {
-		mod.log.Info("pair: %v", pair)
 		if args.With != "" {
 			target, err := mod.Dir.ResolveIdentity(string(args.With))
 			if err != nil {
