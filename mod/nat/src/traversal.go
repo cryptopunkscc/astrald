@@ -209,28 +209,29 @@ func (t *traversal) makePair(ip ip.IP, port astral.Uint16) nat.TraversedPortPair
 }
 
 func (t *traversal) receiveSignal(expected astral.String8) (*nat.PunchSignal, error) {
-
 	obj, err := t.ch.Read()
 	if err != nil {
 		return nil, err
 	}
 
-	sig, ok := obj.(*nat.PunchSignal)
-	if !ok {
-		return nil, fmt.Errorf("expected PunchSignal, got %T", obj)
-	}
-
-	if sig.Signal != expected {
-		return nil, fmt.Errorf("expected %s, got %s", expected, sig.Signal)
-	}
-
-	// Session is not available without opened puncher
-	if t.punch != nil {
-		if !bytes.Equal(sig.Session, t.punch.Session()) {
-			return nil, fmt.Errorf("session mismatch")
+	switch sig := obj.(type) {
+	case *astral.ErrorMessage:
+		return nil, fmt.Errorf("received error message: %s", sig.Error())
+	case *nat.PunchSignal:
+		if sig.Signal != expected {
+			return nil, fmt.Errorf("expected %s, got %s", expected, sig.Signal)
 		}
+
+		if t.punch != nil {
+			if !bytes.Equal(sig.Session, t.punch.Session()) {
+				return nil, fmt.Errorf("session mismatch")
+			}
+		}
+
+		return sig, nil
+	default:
+		return nil, fmt.Errorf("unexpected message type: %T", sig)
 	}
-	return sig, nil
 }
 
 func (t *traversal) close() {

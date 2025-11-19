@@ -20,21 +20,17 @@ func (mod *Module) OpNewTraversal(ctx *astral.Context, q shell.Query,
 		return q.RejectWithCode(4)
 	}
 
-	// acknowledge the shell query for UX completeness
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	// StartKeepAlive traversal by invoking the start op on the target.
 	queryArgs := &opNewTraversal{
 		Target: args.Target,
 	}
 
-	// We route the query to ourselves, which will then be forwarded to the target.
 	routedQuery := query.New(ctx.Identity(), ctx.Identity(),
 		nat.MethodStartNatTraversal,
 		queryArgs)
 
-	// route and Get a bidirectional channel for payload exchange
 	routeCh, err := query.RouteChan(ctx, mod.node, routedQuery)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
