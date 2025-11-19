@@ -223,8 +223,12 @@ func (t *traversal) receiveSignal(expected astral.String8) (*nat.PunchSignal, er
 	if sig.Signal != expected {
 		return nil, fmt.Errorf("expected %s, got %s", expected, sig.Signal)
 	}
-	if !bytes.Equal(sig.Session, t.punch.Session()) {
-		return nil, fmt.Errorf("session mismatch")
+
+	// Session is not available without opened puncher
+	if t.punch != nil {
+		if !bytes.Equal(sig.Session, t.punch.Session()) {
+			return nil, fmt.Errorf("session mismatch")
+		}
 	}
 	return sig, nil
 }
