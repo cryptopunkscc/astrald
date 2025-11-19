@@ -15,9 +15,9 @@ import (
 
 const (
 	defaultPingInterval  = 1 * time.Second
-	defaultNoPingTimeout = 3 * time.Second  // if pinger doesn't get pong → Expire
-	defaultPingLifespan  = 6 * time.Second  // drop stuck pings
-	defaultLockTimeout   = 10 * time.Second // bound for locking handshake
+	defaultNoPingTimeout = 5 * time.Second  // if pinger doesn't get pong → Expire
+	defaultPingLifespan  = 10 * time.Second // drop stuck pings
+	defaultLockTimeout   = 15 * time.Second // bound for locking handshake
 	defaultMaxPingFails  = 10               // max writes before expiring
 )
 
