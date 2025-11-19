@@ -154,7 +154,7 @@ func (p *Pair) run(ctx context.Context) {
 	defer ticker.Stop()
 
 	failCount := 0
-
+	var lastPingSent time.Time // ← add this
 	for {
 		p.drainEvents()
 
@@ -167,7 +167,7 @@ func (p *Pair) run(ctx context.Context) {
 				return
 			}
 
-			if p.isPinger {
+			if p.isPinger && time.Since(lastPingSent) >= 1*time.Second {
 				if err := p.sendPing(); err != nil {
 					failCount++
 					if failCount >= p.maxPingFails {
@@ -176,6 +176,7 @@ func (p *Pair) run(ctx context.Context) {
 					}
 				} else {
 					failCount = 0
+					lastPingSent = time.Now()
 				}
 			}
 		case nat.StateInLocking:
