@@ -79,7 +79,7 @@ func (t *traversal) Run(ctx *astral.Context) (pair nat.TraversedPortPair, err er
 	pair = t.pair
 	pair.CreatedAt = astral.Time(time.Now())
 
-	t.log.Log("Traversal done Pair %v", pair)
+	t.log.Log("NAT traversal success %v", &pair)
 	return pair, err
 }
 

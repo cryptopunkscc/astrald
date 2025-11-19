@@ -53,7 +53,6 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	}
 
 	mod.log.Log("starting traversal as responder with %v", q.Caller())
-	// Responder logic via state machine on ch
 	var sm = mod.newTraversal(TraversalRoleResponder, ch, ips[0], q.Caller())
 	pair, err := sm.Run(ctx)
 	if err != nil {
