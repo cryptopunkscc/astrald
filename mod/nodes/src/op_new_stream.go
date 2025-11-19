@@ -20,7 +20,6 @@ type opNewStreamArgs struct {
 
 // OpNewStream now delegates to a scheduled action and waits for completion.
 func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStreamArgs) (err error) {
-
 	target, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
 		return q.RejectWithCode(2)
@@ -42,7 +41,6 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 		endpoints = make(chan exonet.Endpoint, 1)
 		endpoints <- endpoint
 		close(endpoints)
-
 	case args.Net != "":
 		endpoints = make(chan exonet.Endpoint, 8)
 		resolve, err := mod.ResolveEndpoints(ctx, target)
@@ -59,22 +57,22 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 			}
 		}()
 	}
-
 	createStreamAction := mod.NewCreateStreamAction(target, sig.ChanToArray(endpoints))
 	scheduledAction, err := mod.Scheduler.Schedule(createStreamAction)
 	if err != nil {
 		return q.RejectWithCode(5)
 	}
 
-	// Wait for action or context cancellation
+	// We need to accept query in case that creating stream takes longer than query timeout
+	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	defer ch.Close()
+
+	// Wait for action or context cancllation
 	select {
 	case <-ctx.Done():
 		return q.RejectWithCode(4)
 	case <-scheduledAction.Done():
 	}
-
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
-	defer ch.Close()
 
 	info, err := createStreamAction.Result()
 	switch {
