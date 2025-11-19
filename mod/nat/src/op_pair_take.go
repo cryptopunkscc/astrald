@@ -18,10 +18,10 @@ type opPairTakeArgs struct {
 }
 
 func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTakeArgs) (err error) {
+	fmt.Println("OpPairTake called with args:", args)
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
-	fmt.Println("TEST TEST?")
 	pair, err := mod.pool.Take(args.Pair)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
@@ -31,14 +31,14 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		return ch.Write(astral.NewError("peer identity does not match"))
 	}
 
-	mod.log.Log(`Starting pair take for pair %v (initiate=%v)`, args.Pair, args.Initiate)
 	if args.Initiate {
-		remoteEndpoint, ok := pair.RemoteEndpoint(ctx.Identity())
+		remoteIdentity, ok := pair.RemoteIdentity(ctx.Identity())
 		if !ok {
 			return ch.Write(astral.NewError("remote endpoint not found"))
 		}
-
-		peerCh, err := mod.takePairQuery(ctx, remoteEndpoint.Identity, pair.Nonce)
+		mod.log.Log("Pair %s: taking out of pool, starting sync with %s",
+			args.Pair, remoteIdentity)
+		peerCh, err := mod.takePairQuery(ctx, remoteIdentity, pair.Nonce)
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
@@ -54,6 +54,8 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		return ch.Write(&pair.TraversedPortPair)
 	}
 
+	mod.log.Log("Pair %s: taking out of pool, starting sync with %s",
+		args.Pair, q.Caller())
 	fsm := NewPairTaker(roleTakePairResponder, ch, pair)
 	err = fsm.Run(ctx)
 	if err != nil {

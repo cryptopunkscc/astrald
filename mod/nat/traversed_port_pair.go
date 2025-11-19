@@ -49,15 +49,15 @@ func (e *TraversedPortPair) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
-// RemoteEndpoint returns the endpoint of the other peer in the pair.
-func (e *TraversedPortPair) RemoteEndpoint(self *astral.Identity) (PeerEndpoint, bool) {
+// RemoteIdentity returns identity of the remote peer
+func (e *TraversedPortPair) RemoteIdentity(self *astral.Identity) (*astral.Identity, bool) {
 	switch {
 	case e.PeerA.Identity != nil && e.PeerA.Identity.IsEqual(self):
-		return e.PeerB, true
+		return e.PeerB.Identity, true
 	case e.PeerB.Identity != nil && e.PeerB.Identity.IsEqual(self):
-		return e.PeerA, true
+		return e.PeerA.Identity, true
 	default:
-		return PeerEndpoint{}, false
+		return nil, false
 	}
 }
 
