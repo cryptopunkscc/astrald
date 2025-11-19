@@ -15,10 +15,11 @@ import (
 
 const (
 	defaultPingInterval  = 1 * time.Second
-	defaultNoPingTimeout = 5 * time.Second  // if pinger doesn't get pong → Expire
-	defaultPingLifespan  = 10 * time.Second // drop stuck pings
-	defaultLockTimeout   = 15 * time.Second // bound for locking handshake
-	defaultMaxPingFails  = 10               // max writes before expiring
+	defaultNoPingTimeout = 55 * time.Second // if pinger doesn't get pong → Expire
+	defaultPingLifespan  = 60 *
+		time.Second // drop stuck pings
+	defaultLockTimeout  = 120 * time.Second // bound for locking handshake
+	defaultMaxPingFails = 60                // max writes before expiring
 )
 
 // Pair represents a NAT-traversed UDP port pair with keepalive and locking mechanisms.
