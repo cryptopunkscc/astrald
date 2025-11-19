@@ -2,6 +2,7 @@ package astral
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"reflect"
@@ -11,8 +12,7 @@ var _ Object = &Slice[Object]{}
 
 type Slice[T Object] struct {
 	Elem     *[]T
-	LenBits  int
-	ElemBits int
+	ElemType string
 	Typed    bool
 }
 
@@ -20,29 +20,52 @@ type ObjectTyper interface {
 	ObjectType() string
 }
 
-func WrapSlice[T Object](elem *[]T, lenBits int, elemBits int) *Slice[T] {
+func WrapSlice[T Object](elem *[]T) *Slice[T] {
+	var elemType string
+	// if slice is non-empty, use first element
+	if elem != nil && len(*elem) > 0 {
+		elemType = (*elem)[0].ObjectType()
+	} else {
+		// fallback: get type from T itself
+		typ := reflect.TypeOf((*T)(nil)).Elem()
+		elemType = typ.Name()
+	}
+
 	return &Slice[T]{
 		Elem:     elem,
-		LenBits:  lenBits,
-		ElemBits: elemBits,
 		Typed:    reflect.TypeOf((*T)(nil)).Elem().Kind() == reflect.Interface,
+		ElemType: elemType,
 	}
 }
 
 func (Slice[T]) ObjectType() string {
-	return ""
+	return "slice"
 }
 
 func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 	v := *a.Elem
 
 	// write length
-	n, err = writeInt(w, len(v), a.LenBits)
+	n, err = Uint32(len(v)).WriteTo(w)
 	if err != nil {
 		return
 	}
 
 	var m int64
+	// write element type name once
+	tn := []byte(a.ElemType)
+	m, err = Uint32(len(tn)).WriteTo(w)
+	n += m
+	if err != nil {
+		return
+	}
+
+	j, err := w.Write(tn)
+	n += int64(j)
+	if err != nil {
+		return
+	}
+
 	for _, v := range v {
 		var buf = &bytes.Buffer{}
 
@@ -55,7 +78,7 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 			return
 		}
 
-		m, err = writeInt(w, len(buf.Bytes()), a.ElemBits)
+		m, err = Uint32(buf.Len()).WriteTo(w)
 		n += m
 		if err != nil {
 			return
@@ -73,33 +96,53 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
-	var l int
+	a.Elem = new([]T)
 
-	n, err = loadInt(r, &l, a.LenBits)
+	var l Uint32
+	n, err = l.ReadFrom(r)
 	if err != nil {
 		return
 	}
 
+	var m int64
+	var tnLen Uint32
+	m, err = tnLen.ReadFrom(r)
+	n += m
+	if err != nil {
+		return
+	}
+
+	tn := make([]byte, tnLen)
+	var j int
+	j, err = io.ReadFull(r, tn)
+	n += int64(j)
+	if err != nil {
+		return
+	}
+
+	a.ElemType = string(tn)
+	if a.ElemType != "" {
+		a.Typed = true
+	}
+
 	v := make([]T, l)
 
-	var m int64
-	for i := 0; i < l; i++ {
+	for i := 0; i < int(l); i++ {
 		var e T
 		typ := reflect.TypeOf((*T)(nil)).Elem()
 		if typ.Kind() == reflect.Pointer {
 			e = reflect.New(reflect.TypeOf(e).Elem()).Interface().(T)
 		}
 
-		// read element length
-		var el int
-		m, err = loadInt(r, &el, a.ElemBits)
+		var elementLen Uint32
+		m, err = elementLen.ReadFrom(r)
 		n += m
 		if err != nil {
 			return
 		}
 
 		// read element bytes
-		var buf = make([]byte, el)
+		var buf = make([]byte, elementLen)
 		var j int
 		j, err = io.ReadFull(r, buf)
 		n += int64(j)
@@ -107,73 +150,103 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		if a.Typed {
-			var o Object
-			var ok bool
-
-			o, _, err = ExtractBlueprints(r).Read(bytes.NewReader(buf))
-			e, ok = o.(T)
-			if !ok {
-				err = errors.New("typecast failed")
-			}
-		} else {
-			_, err = e.ReadFrom(bytes.NewReader(buf))
+		obj := DefaultBlueprints.Make(a.ElemType)
+		if obj == nil {
+			obj = &RawObject{Type: a.ElemType}
 		}
+
+		// read inner element from buffer
+		_, err = obj.ReadFrom(bytes.NewReader(buf))
 		if err != nil {
 			return
 		}
+
+		// cast into T
+		casted, ok := obj.(T)
+		if !ok {
+			return n, errors.New("Slice.ReadFrom: typecast failed")
+		}
+
+		e = casted
+
 		v[i] = e
 	}
+
 	*a.Elem = v
 
 	return
 }
 
-func writeInt(w io.Writer, l int, bits int) (n int64, err error) {
-	if l > (1<<bits)-1 {
-		panic("array too long for the bit width")
-	}
-	switch bits {
-	case 8:
-		n, err = Uint8(l).WriteTo(w)
-	case 16:
-		n, err = Uint16(l).WriteTo(w)
-	case 32:
-		n, err = Uint32(l).WriteTo(w)
-	case 64:
-		n, err = Uint64(l).WriteTo(w)
-	default:
-		panic("unsupported bit width")
+func (a *Slice[T]) MarshalJSON() ([]byte, error) {
+	v := *a.Elem
+
+	var list []JSONEncodeAdapter
+	for _, o := range v {
+		list = append(list, JSONEncodeAdapter{
+			Type:   o.ObjectType(),
+			Object: o,
+		})
 	}
 
-	return
+	return json.Marshal(list)
 }
 
-func loadInt(r io.Reader, l *int, bits int) (n int64, err error) {
-	switch bits {
-	case 8:
-		var k Uint8
-		n, err = k.ReadFrom(r)
-		*l = int(k)
-
-	case 16:
-		var k Uint16
-		n, err = k.ReadFrom(r)
-		*l = int(k)
-
-	case 32:
-		var k Uint32
-		n, err = k.ReadFrom(r)
-		*l = int(k)
-
-	case 64:
-		var k Uint64
-		n, err = k.ReadFrom(r)
-		*l = int(k)
-
-	default:
-		panic("unsupported bit width")
+func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
+	if a.Elem == nil {
+		a.Elem = new([]T)
 	}
 
-	return
+	var jlist []JSONDecodeAdapter
+	if err := json.Unmarshal(bytes, &jlist); err != nil {
+		return err
+	}
+
+	result := make([]T, len(jlist))
+	for i, j := range jlist {
+		obj := DefaultBlueprints.Make(j.Type)
+		if obj == nil {
+			// Not recognized object -> RawObject
+			obj = &RawObject{
+				Type: j.Type,
+			}
+		}
+
+		var err error
+		switch {
+		case j.Object != nil:
+			err = json.Unmarshal(j.Object, obj)
+			if err != nil {
+				return err
+			}
+		case j.Payload != nil:
+			raw := &RawObject{
+				Type:    j.Type,
+				Payload: j.Payload,
+			}
+			obj, err = DefaultBlueprints.Refine(raw)
+			if err != nil {
+				obj = raw
+			}
+		}
+
+		// important: track ElemType
+		if i == 0 {
+			a.ElemType = j.Type
+		}
+
+		casted, ok := obj.(T)
+		if !ok {
+			return errors.New("Slice.UnmarshalJSON: typecast failed")
+		}
+
+		result[i] = casted
+	}
+
+	*a.Elem = result
+	return nil
+}
+
+func init() {
+
+	_ = DefaultBlueprints.Add(&Slice[Object]{})
 }

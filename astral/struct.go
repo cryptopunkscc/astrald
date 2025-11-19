@@ -45,7 +45,7 @@ func (s structWrapper) WriteTo(w io.Writer) (n int64, err error) {
 		}
 
 		if a, ok := field.Interface().([]Object); ok {
-			m, err = WrapSlice(&a, 32, 32).WriteTo(w)
+			m, err = WrapSlice(&a).WriteTo(w)
 			n += m
 			if err != nil {
 				return
@@ -95,7 +95,7 @@ func (s *structWrapper) ReadFrom(r io.Reader) (n int64, err error) {
 		}
 
 		if a, ok := field.Interface().([]Object); ok {
-			m, err = WrapSlice(&a, 32, 32).ReadFrom(r)
+			m, err = WrapSlice(&a).ReadFrom(r)
 			n += m
 			if err != nil {
 				return
