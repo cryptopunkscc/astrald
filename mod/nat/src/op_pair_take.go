@@ -8,7 +8,8 @@ import (
 )
 
 type opPairTakeArgs struct {
-	Pair     astral.Nonce
+	Pair astral.Nonce
+
 	Initiate bool   `query:"optional"`
 	In       string `query:"optional"`
 	Out      string `query:"optional"`
@@ -27,6 +28,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		return ch.Write(astral.NewError("peer identity does not match"))
 	}
 
+	mod.log.Log(`Starting pair take for pair %v (initiate=%v)`, args.Pair, args.Initiate)
 	if args.Initiate {
 		remoteEndpoint, ok := pair.RemoteEndpoint(ctx.Identity())
 		if !ok {
