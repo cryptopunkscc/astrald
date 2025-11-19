@@ -36,12 +36,20 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		if !ok {
 			return ch.Write(astral.NewError("remote endpoint not found"))
 		}
-		mod.log.Log("Pair %s: taking out of pool, starting sync with %s",
+		mod.log.Log("Pair %v: taking out of pool, starting sync with %v",
 			args.Pair, remoteIdentity)
-		peerCh, err := mod.takePairQuery(ctx, remoteIdentity, pair.Nonce)
-		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+
+		peerQueryArgs := &opPairTakeArgs{
+			Pair:     pair.Nonce,
+			Initiate: false,
 		}
+
+		peerQuery := query.New(ctx.Identity(), remoteIdentity, nat.MethodPairTake, &peerQueryArgs)
+		peerCh, err := query.RouteChan(
+			ctx.IncludeZone(astral.ZoneNetwork),
+			mod.node,
+			peerQuery,
+		)
 
 		defer peerCh.Close()
 
@@ -54,7 +62,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		return ch.Write(&pair.TraversedPortPair)
 	}
 
-	mod.log.Log("Pair %s: taking out of pool, starting sync with %s",
+	mod.log.Log("Pair %v: taking out of pool, starting sync with %v",
 		args.Pair, q.Caller())
 	fsm := NewPairTaker(roleTakePairResponder, ch, pair)
 	err = fsm.Run(ctx)
@@ -63,24 +71,4 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 	}
 
 	return ch.Write(&pair.TraversedPortPair)
-}
-
-func (mod *Module) takePairQuery(ctx *astral.Context, target *astral.Identity, nonce astral.Nonce) (ch *astral.Channel, err error) {
-	args := &opPairTakeArgs{
-		Pair:     nonce,
-		Initiate: false,
-	}
-
-	peerQuery := query.New(ctx.Identity(), target, nat.MethodPairTake, &args)
-
-	ch, err = query.RouteChan(
-		ctx.IncludeZone(astral.ZoneNetwork),
-		mod.node,
-		peerQuery,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return ch, nil
 }
