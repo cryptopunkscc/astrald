@@ -36,8 +36,6 @@ type Module struct {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
-	mod.pool = NewPairPool(mod)
-
 	<-ctx.Done()
 	mod.pool.Stop()
 	return nil
@@ -64,22 +62,29 @@ func (mod *Module) addTraversedPair(
 	)
 
 	pair, err := NewPair(traversedEndpointPair, mod.ctx.Identity(), initiatedByLocal, WithOnPairExpire(func(p *Pair) {
-		mod.log.Info("expired NAT traversed Pair: %v (%v) <-> %v (%v) nonce=%v")
-		//	mod.pool.Remove(p.Nonce)
+		mod.log.Info("expired NAT traversed Pair: %v (%v) <-> %v (%v) nonce=%v",
+			p.PeerA.Identity,
+			p.PeerA.Endpoint,
+			p.PeerB.Identity,
+			p.PeerB.Endpoint,
+			p.Nonce,
+		)
+
+		mod.pool.Remove(p.Nonce)
 	}))
 	if err != nil {
-		mod.log.Errorv(1, "error creating Pair: %v", err)
+		mod.log.Error("error while creating pair: %v", err)
 		return
 	}
 
 	err = pair.StartKeepAlive(mod.ctx)
 	if err != nil {
-		mod.log.Errorv(1, "error starting pair keep-alive: %v", err)
+		mod.log.Error("error starting pair keep-alive: %v", err)
 	}
 
 	err = mod.pool.Add(pair)
 	if err != nil {
-		mod.log.Errorv(1, "error adding Pair to pool: %v", err)
+		mod.log.Error("error while adding Pair to pool: %v", err)
 	}
 }
 

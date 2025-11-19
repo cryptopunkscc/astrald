@@ -34,5 +34,5 @@ func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,
 		}
 	}
 
-	return ch.Write(&astral.Ack{})
+	return nil
 }

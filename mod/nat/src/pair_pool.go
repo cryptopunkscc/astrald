@@ -49,7 +49,7 @@ func (p *PairPool) GetAll() []*Pair {
 func (p *PairPool) TakeAny(peer *astral.Identity) (*Pair, error) {
 	for _, pair := range p.pairs.Values() {
 		if pair.MatchesPeer(peer) && pair.IsIdle() {
-			//	p.pairs.Delete(pair.Nonce)
+			p.Remove(pair.Nonce)
 			return pair, nil
 		}
 	}
@@ -67,7 +67,7 @@ func (p *PairPool) Take(nonce astral.Nonce) (*Pair, error) {
 		return nil, nat.ErrPairBusy
 	}
 
-	// p.Remove(nonce)
+	p.Remove(nonce)
 	return pair, nil
 }
 
