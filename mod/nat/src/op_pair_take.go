@@ -33,7 +33,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		if !ok {
 			return ch.Write(astral.NewError("remote endpoint not found"))
 		}
-		mod.log.Log("Pair %v: taking out of pool, starting sync with %v",
+		mod.log.Log("taking out pair %v out of pool, starting sync with %v",
 			args.Pair, remoteIdentity)
 
 		peerCh, err := query.RouteChan(ctx.IncludeZone(astral.ZoneNetwork), mod.node,
@@ -60,7 +60,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		return ch.Write(&pair.TraversedPortPair)
 	}
 
-	mod.log.Log("Pair %v: taking out of pool, starting sync with %v",
+	mod.log.Log("taking out pair %v out of pool, starting sync with %v",
 		args.Pair, q.Caller())
 	fsm := NewPairTaker(roleTakePairResponder, ch, pair)
 	err = fsm.Run(ctx)
