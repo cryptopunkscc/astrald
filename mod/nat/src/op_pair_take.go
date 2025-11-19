@@ -1,8 +1,6 @@
 package nat
 
 import (
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
@@ -18,7 +16,6 @@ type opPairTakeArgs struct {
 }
 
 func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTakeArgs) (err error) {
-	fmt.Println("OpPairTake called with args:", args)
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
@@ -52,7 +49,6 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
-		fmt.Println("peerCh:", peerCh)
 		defer peerCh.Close()
 
 		fsm := NewPairTaker(roleTakePairInitiator, peerCh, pair)
