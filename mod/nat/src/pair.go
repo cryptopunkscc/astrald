@@ -3,7 +3,6 @@ package nat
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"net"
 	"sync/atomic"
 	"time"
@@ -15,11 +14,10 @@ import (
 
 const (
 	defaultPingInterval  = 1 * time.Second
-	defaultNoPingTimeout = 55 * time.Second // if pinger doesn't get pong → Expire
-	defaultPingLifespan  = 60 *
-		time.Second // drop stuck pings
-	defaultLockTimeout  = 120 * time.Second // bound for locking handshake
-	defaultMaxPingFails = 60                // max writes before expiring
+	defaultNoPingTimeout = 5 * time.Second
+	defaultPingLifespan  = 5 * time.Second
+	defaultLockTimeout   = 10 * time.Second
+	defaultMaxPingFails  = 5
 )
 
 // Pair represents a NAT-traversed UDP port pair with keepalive and locking mechanisms.
@@ -134,7 +132,6 @@ func (p *Pair) receiver() {
 
 		remoteAddr, ok := addr.(*net.UDPAddr)
 		if !ok || !p.isExpectedAddr(remoteAddr) {
-			fmt.Println("unexpected remote address:", remoteAddr)
 			continue
 		}
 
@@ -163,7 +160,7 @@ func (p *Pair) run(ctx context.Context) {
 			p.expirePings()
 
 			if time.Since(time.Unix(0, p.lastPing.Load())) > p.noPingTimeout {
-				p.Expire("no ping received for " + p.noPingTimeout.String() + "")
+				p.Expire()
 				return
 			}
 
@@ -171,7 +168,7 @@ func (p *Pair) run(ctx context.Context) {
 				if err := p.sendPing(); err != nil {
 					failCount++
 					if failCount >= p.maxPingFails {
-						p.Expire("sending ping failed too many times")
+						p.Expire()
 						return
 					}
 				} else {
@@ -188,7 +185,7 @@ func (p *Pair) run(ctx context.Context) {
 			}
 
 			if p.lockTimedOut() {
-				p.Expire("lock timed out")
+				p.Expire()
 				return
 			}
 
@@ -198,7 +195,7 @@ func (p *Pair) run(ctx context.Context) {
 
 		select {
 		case <-ctx.Done():
-			p.Expire("context canceled")
+			p.Expire()
 			return
 		case <-ticker.C:
 		case <-p.wakeCh:
@@ -237,7 +234,6 @@ func (p *Pair) handlePing(ev pingEvent) {
 
 // sendPing sends a ping frame to the remote peer and tracks it
 func (p *Pair) sendPing() error {
-	fmt.Println("SENDING PING")
 	nonce := astral.NewNonce()
 	p.pings.Set(nonce, time.Now().UnixNano())
 	f := pingFrame{Nonce: nonce, Pong: false}
@@ -312,7 +308,7 @@ func (p *Pair) finalizeLock() bool {
 }
 
 // Expire transitions to expired state, cleans up resources, and notifies
-func (p *Pair) Expire(reason string) {
+func (p *Pair) Expire() {
 	p.state.Store(int32(nat.StateExpired))
 	_ = p.conn.Close()
 
@@ -328,7 +324,6 @@ func (p *Pair) Expire(reason string) {
 	}
 
 	if p.onPairExpire != nil {
-		fmt.Println("REASON FOR PAIR EXPIRATION: ", reason)
 		p.onPairExpire(p)
 	}
 
