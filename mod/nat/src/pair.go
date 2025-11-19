@@ -62,7 +62,10 @@ type pingEvent struct {
 
 // NewPair creates a new NAT pair with a bound UDP socket and applies the given options.
 func NewPair(pair nat.TraversedPortPair, localID *astral.Identity, isPinger bool, opts ...PairOption) (*Pair, error) {
-	conn, err := net.ListenUDP("udp", pair.GetLocalAddr(localID))
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{
+		IP:   net.IPv4zero,
+		Port: pair.GetLocalAddr(localID).Port,
+	})
 	if err != nil {
 		return nil, err
 	}
