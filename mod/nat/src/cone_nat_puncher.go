@@ -40,7 +40,7 @@ type ConePuncherCallbacks struct {
 type conePuncher struct {
 	session   []byte         // required session identifier (copied)
 	conn      net.PacketConn // bound UDP socket
-	localPort int            // cached local port of conn
+	localPort int            // cached localIdentity port of conn
 
 	// callbacks
 	callbacks *ConePuncherCallbacks

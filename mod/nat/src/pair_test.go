@@ -115,7 +115,7 @@ func TestPair_NoPong(t *testing.T) {
 	pairA := natmod.NewPairWithConn(
 		nat.TraversedPortPair{
 			PeerA: nat.PeerEndpoint{
-				Identity: peerA, // local
+				Identity: peerA, // localIdentity
 				Endpoint: nat.UDPEndpoint{
 					IP:   localIP,
 					Port: 40000,

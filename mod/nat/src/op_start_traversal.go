@@ -22,7 +22,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	}
 
 	if args.Target != "" {
-		// Initiator logic
+		// TraversalRoleInitiator logic
 		target, err := mod.Dir.ResolveIdentity(args.Target)
 		if err != nil {
 			return q.RejectWithCode(4)
@@ -38,23 +38,23 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 
 		defer peerCh.Close()
 
-		var sm = mod.newTraversal(TraversalRoleInitiator, peerCh, ips[0], target)
-		pair, err := sm.Run(ctx)
+		pair, err := mod.Traverse(ctx, peerCh, TraversalRoleInitiator, target, ips[0])
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
+
+		mod.addTraversedPair(pair, true)
 
 		if err = ch.Write(&pair); err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
 
-		mod.addTraversedPair(pair, true)
 		return nil
 	}
 
 	mod.log.Log("starting traversal as responder with %v", q.Caller())
-	var sm = mod.newTraversal(TraversalRoleResponder, ch, ips[0], q.Caller())
-	pair, err := sm.Run(ctx)
+
+	pair, err := mod.Traverse(ctx, ch, TraversalRoleParticipant, q.Caller(), ips[0])
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}

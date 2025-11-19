@@ -14,51 +14,60 @@ import (
 )
 
 type traversal struct {
-	log   *log.Logger
-	role  TraversalRole
-	ch    *astral.Channel
-	local *astral.Identity
-	peer  *astral.Identity
-	pubIP ip.IP
+	log           *log.Logger
+	localIdentity *astral.Identity // localIdentity helps us select right endpoints
+	localPublicIP ip.IP
+	role          TraversalRole
+	ch            *astral.Channel
+	peer          *astral.Identity
+	//
 	punch nat.Puncher
 	pair  nat.TraversedPortPair
 }
 
-type TraversalRole bool
-
-const (
-	Initiator TraversalRole = true
-	Responder TraversalRole = false
-)
-
-func Traverse(ctx context.Context, ch *astral.Channel, local, peer *astral.Identity, role TraversalRole, pubIP ip.IP, log *log.Logger) (nat.TraversedPortPair, error) {
+func (mod *Module) Traverse(
+	ctx context.Context,
+	ch *astral.Channel,
+	role TraversalRole,
+	target *astral.Identity,
+	publicIP ip.IP,
+) (nat.TraversedPortPair, error) {
 	t := &traversal{
-		log:   log,
-		role:  role,
-		ch:    ch,
-		local: local,
-		peer:  peer,
-		pubIP: pubIP,
+		log:           mod.log,
+		localIdentity: mod.ctx.Identity(),
+		role:          role,
+		ch:            ch,
+		peer:          target,
+		localPublicIP: publicIP,
 	}
 
 	pair, err := t.run(ctx)
 	if err != nil {
-		log.Error("NAT traversal failed with %v: %v", peer, err)
-	} else {
-		log.Info("direct pair %v", &pair)
+		mod.log.Error("NAT traversal failed with %v: %v", target, err)
+		return nat.TraversedPortPair{}, err
 	}
+
+	mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", target, pair.PeerA.Endpoint, pair.PeerB.Endpoint)
 	return pair, err
 }
+
+type TraversalRole int
+
+const (
+	TraversalRoleInitiator TraversalRole = iota
+	TraversalRoleParticipant
+)
 
 func (t *traversal) run(ctx context.Context) (nat.TraversedPortPair, error) {
 	defer t.close()
 
-	if Initiator == t.role {
+	switch t.role {
+	case TraversalRoleInitiator:
 		if err := t.initiatorFlow(ctx); err != nil {
 			return nat.TraversedPortPair{}, err
 		}
-	} else {
-		if err := t.responderFlow(ctx); err != nil {
+	case TraversalRoleParticipant:
+		if err := t.participantFlow(ctx); err != nil {
 			return nat.TraversedPortPair{}, err
 		}
 	}
@@ -67,30 +76,33 @@ func (t *traversal) run(ctx context.Context) (nat.TraversedPortPair, error) {
 	return t.pair, nil
 }
 
-// ——————————————————————— Initiator ———————————————————————
 func (t *traversal) initiatorFlow(ctx context.Context) error {
 	if err := t.openPuncher(nil); err != nil {
 		return err
 	}
 
-	if err := t.send(&nat.PunchSignal{
+	if err := t.ch.Write(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeOffer,
 		Session: t.punch.Session(),
-		IP:      t.pubIP,
+		IP:      t.localPublicIP,
 		Port:    astral.Uint16(t.punch.LocalPort()),
 	}); err != nil {
 		return err
 	}
 
-	ans, err := t.recvType(nat.PunchSignalTypeAnswer)
+	ans, err := t.receiveSignal(nat.PunchSignalTypeAnswer)
 	if err != nil {
 		return err
 	}
 
-	if err := t.send(&nat.PunchSignal{Signal: nat.PunchSignalTypeReady}); err != nil {
+	if err := t.ch.Write(&nat.PunchSignal{
+		Signal:  nat.PunchSignalTypeReady,
+		Session: t.punch.Session(),
+	}); err != nil {
 		return err
 	}
-	if _, err := t.recvType(nat.PunchSignalTypeGo); err != nil {
+
+	if _, err := t.receiveSignal(nat.PunchSignalTypeGo); err != nil {
 		return err
 	}
 
@@ -101,8 +113,9 @@ func (t *traversal) initiatorFlow(ctx context.Context) error {
 	t.pair = t.makePair(res.RemoteIP, res.RemotePort)
 
 	t.pair.Nonce = astral.NewNonce()
-	if err := t.send(&nat.PunchSignal{
+	if err := t.ch.Write(&nat.PunchSignal{
 		Signal:    nat.PunchSignalTypeResult,
+		Session:   t.punch.Session(),
 		IP:        t.pair.PeerB.Endpoint.IP,
 		Port:      t.pair.PeerB.Endpoint.Port,
 		PairNonce: t.pair.Nonce,
@@ -110,7 +123,7 @@ func (t *traversal) initiatorFlow(ctx context.Context) error {
 		return err
 	}
 
-	resSig, err := t.recvType(nat.PunchSignalTypeResult)
+	resSig, err := t.receiveSignal(nat.PunchSignalTypeResult)
 	if err != nil {
 		return err
 	}
@@ -119,9 +132,8 @@ func (t *traversal) initiatorFlow(ctx context.Context) error {
 	return nil
 }
 
-// ——————————————————————— Responder ———————————————————————
-func (t *traversal) responderFlow(ctx context.Context) error {
-	offer, err := t.recvType(nat.PunchSignalTypeOffer)
+func (t *traversal) participantFlow(ctx context.Context) error {
+	offer, err := t.receiveSignal(nat.PunchSignalTypeOffer)
 	if err != nil {
 		return err
 	}
@@ -130,19 +142,23 @@ func (t *traversal) responderFlow(ctx context.Context) error {
 		return err
 	}
 
-	if err := t.send(&nat.PunchSignal{
+	if err := t.ch.Write(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeAnswer,
 		Session: t.punch.Session(),
-		IP:      t.pubIP,
+		IP:      t.localPublicIP,
 		Port:    astral.Uint16(t.punch.LocalPort()),
 	}); err != nil {
 		return err
 	}
 
-	if _, err := t.recvType(nat.PunchSignalTypeReady); err != nil {
+	if _, err := t.receiveSignal(nat.PunchSignalTypeReady); err != nil {
 		return err
 	}
-	if err := t.send(&nat.PunchSignal{Signal: nat.PunchSignalTypeGo}); err != nil {
+
+	if err := t.ch.Write(&nat.PunchSignal{
+		Signal:  nat.PunchSignalTypeGo,
+		Session: t.punch.Session(),
+	}); err != nil {
 		return err
 	}
 
@@ -152,7 +168,7 @@ func (t *traversal) responderFlow(ctx context.Context) error {
 	}
 	t.pair = t.makePair(res.RemoteIP, res.RemotePort)
 
-	resSig, err := t.recvType(nat.PunchSignalTypeResult)
+	resSig, err := t.receiveSignal(nat.PunchSignalTypeResult)
 	if err != nil {
 		return err
 	}
@@ -160,8 +176,9 @@ func (t *traversal) responderFlow(ctx context.Context) error {
 	t.pair.Nonce = resSig.PairNonce
 	t.pair.PeerA.Endpoint = nat.UDPEndpoint{IP: resSig.IP, Port: resSig.Port}
 
-	return t.send(&nat.PunchSignal{
+	return t.ch.Write(&nat.PunchSignal{
 		Signal:    nat.PunchSignalTypeResult,
+		Session:   t.punch.Session(),
 		IP:        t.pair.PeerB.Endpoint.IP,
 		Port:      t.pair.PeerB.Endpoint.Port,
 		PairNonce: t.pair.Nonce,
@@ -186,33 +203,23 @@ func (t *traversal) openPuncher(session []byte) error {
 
 func (t *traversal) makePair(ip ip.IP, port astral.Uint16) nat.TraversedPortPair {
 	return nat.TraversedPortPair{
-		PeerA: nat.PeerEndpoint{Identity: t.local},
+		PeerA: nat.PeerEndpoint{Identity: t.localIdentity},
 		PeerB: nat.PeerEndpoint{Identity: t.peer, Endpoint: nat.UDPEndpoint{IP: ip, Port: port}},
 	}
 }
 
-func (t *traversal) send(sig *nat.PunchSignal) error {
-	sig.Session = t.punch.Session()
-	return t.ch.Write(sig)
-}
+func (t *traversal) receiveSignal(expected astral.String8) (*nat.PunchSignal, error) {
 
-func (t *traversal) recv() (*nat.PunchSignal, error) {
 	obj, err := t.ch.Read()
 	if err != nil {
 		return nil, err
 	}
+
 	sig, ok := obj.(*nat.PunchSignal)
 	if !ok {
 		return nil, fmt.Errorf("expected PunchSignal, got %T", obj)
 	}
-	return sig, nil
-}
 
-func (t *traversal) recvType(expected astral.String8) (*nat.PunchSignal, error) {
-	sig, err := t.recv()
-	if err != nil {
-		return nil, err
-	}
 	if sig.Signal != expected {
 		return nil, fmt.Errorf("expected %s, got %s", expected, sig.Signal)
 	}
