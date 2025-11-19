@@ -130,6 +130,7 @@ func (p *Pair) receiver() {
 
 		remoteAddr, ok := addr.(*net.UDPAddr)
 		if !ok || !p.isExpectedAddr(remoteAddr) {
+			fmt.Println("unexpected remote address:", remoteAddr)
 			continue
 		}
 
