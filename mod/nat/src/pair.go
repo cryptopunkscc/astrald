@@ -3,6 +3,7 @@ package nat
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net"
 	"sync/atomic"
 	"time"
@@ -157,7 +158,7 @@ func (p *Pair) run(ctx context.Context) {
 			p.expirePings()
 
 			if time.Since(time.Unix(0, p.lastPing.Load())) > p.noPingTimeout {
-				p.Expire()
+				p.Expire("no ping received for " + p.noPingTimeout.String() + "")
 				return
 			}
 
@@ -165,7 +166,7 @@ func (p *Pair) run(ctx context.Context) {
 				if err := p.sendPing(); err != nil {
 					failCount++
 					if failCount >= p.maxPingFails {
-						p.Expire()
+						p.Expire("sending ping failed too many times")
 						return
 					}
 				} else {
@@ -181,7 +182,7 @@ func (p *Pair) run(ctx context.Context) {
 			}
 
 			if p.lockTimedOut() {
-				p.Expire()
+				p.Expire("lock timed out")
 				return
 			}
 
@@ -191,7 +192,7 @@ func (p *Pair) run(ctx context.Context) {
 
 		select {
 		case <-ctx.Done():
-			p.Expire()
+			p.Expire("context canceled")
 			return
 		case <-ticker.C:
 		case <-p.wakeCh:
@@ -304,7 +305,7 @@ func (p *Pair) finalizeLock() bool {
 }
 
 // Expire transitions to expired state, cleans up resources, and notifies
-func (p *Pair) Expire() {
+func (p *Pair) Expire(reason string) {
 	p.state.Store(int32(nat.StateExpired))
 	_ = p.conn.Close()
 
@@ -320,6 +321,7 @@ func (p *Pair) Expire() {
 	}
 
 	if p.onPairExpire != nil {
+		fmt.Println("REASON FOR PAIR EXPIRATION: ", reason)
 		p.onPairExpire(p)
 	}
 
