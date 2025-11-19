@@ -1,6 +1,8 @@
 package nat
 
 import (
+	"fmt"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
@@ -19,6 +21,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
+	fmt.Println("TEST TEST?")
 	pair, err := mod.pool.Take(args.Pair)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
@@ -62,7 +65,8 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 
 func (mod *Module) takePairQuery(ctx *astral.Context, target *astral.Identity, nonce astral.Nonce) (ch *astral.Channel, err error) {
 	args := &opPairTakeArgs{
-		Pair: nonce,
+		Pair:     nonce,
+		Initiate: false,
 	}
 
 	peerQuery := query.New(ctx.Identity(), target, nat.MethodPairTake, &args)
