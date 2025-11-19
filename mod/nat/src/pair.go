@@ -232,6 +232,7 @@ func (p *Pair) handlePing(ev pingEvent) {
 
 // sendPing sends a ping frame to the remote peer and tracks it
 func (p *Pair) sendPing() error {
+	fmt.Println("SENDING PING")
 	nonce := astral.NewNonce()
 	p.pings.Set(nonce, time.Now().UnixNano())
 	f := pingFrame{Nonce: nonce, Pong: false}
