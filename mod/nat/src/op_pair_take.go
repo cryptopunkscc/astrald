@@ -39,18 +39,20 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		mod.log.Log("Pair %v: taking out of pool, starting sync with %v",
 			args.Pair, remoteIdentity)
 
-		peerQueryArgs := &opPairTakeArgs{
-			Pair:     pair.Nonce,
-			Initiate: false,
+		peerCh, err := query.RouteChan(ctx.IncludeZone(astral.ZoneNetwork), mod.node,
+			query.New(ctx.Identity(),
+				remoteIdentity,
+				nat.MethodPairTake,
+				&opPairTakeArgs{
+					Pair:     pair.Nonce,
+					Initiate: false,
+				}),
+		)
+		if err != nil {
+			return ch.Write(astral.NewError(err.Error()))
 		}
 
-		peerQuery := query.New(ctx.Identity(), remoteIdentity, nat.MethodPairTake, &peerQueryArgs)
-		peerCh, err := query.RouteChan(
-			ctx.IncludeZone(astral.ZoneNetwork),
-			mod.node,
-			peerQuery,
-		)
-
+		fmt.Println("peerCh:", peerCh)
 		defer peerCh.Close()
 
 		fsm := NewPairTaker(roleTakePairInitiator, peerCh, pair)

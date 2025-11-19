@@ -46,6 +46,7 @@ func NewPairTaker(role pairTakerRole, ch *astral.Channel, pair *Pair) *PairTaker
 		role: role,
 		ch:   ch,
 		pair: pair,
+		//
 	}
 	return f
 }
