@@ -23,7 +23,7 @@ var _ nat.Puncher = (*conePuncher)(nil)
 const (
 	punchTimeout    = 10 * time.Second      // total timeout per attempt
 	burstInterval   = 25 * time.Millisecond // time between bursts over the whole range
-	portGuessRange  = 10                    // number of additional ports to probe around the base port (total ports = 2*portGuessRange + 1)
+	portGuessRange  = 1                     // number of additional ports to probe around the base port (total ports = 2*portGuessRange + 1)
 	packetsPerBurst = 5                     // number of packets sent to each address per burst
 	jitterMax       = 5                     // max jitter in milliseconds between rounds
 )
