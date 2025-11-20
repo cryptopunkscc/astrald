@@ -37,7 +37,7 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-ctx.Done()
-	mod.pool.Stop()
+
 	return nil
 }
 
