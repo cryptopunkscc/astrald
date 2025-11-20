@@ -74,7 +74,3 @@ func (p *PairPool) Take(nonce astral.Nonce) (*Pair, error) {
 func (p *PairPool) Remove(nonce astral.Nonce) (pair *Pair, ok bool) {
 	return p.pairs.Delete(nonce)
 }
-
-func (p *PairPool) Stop() { close(p.stop) }
-
-func (p *PairPool) Size() int { return p.pairs.Len() }

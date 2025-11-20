@@ -49,28 +49,18 @@ type conePuncher struct {
 // newConePuncher creates a cone NAT puncher that adopts the provided session.
 // Session must be exactly 16 bytes.
 func newConePuncher(session []byte, cb *ConePuncherCallbacks) (puncher nat.Puncher, err error) {
-	if len(session) != 16 && len(session) != 0 {
+	if len(session) != 0 && len(session) != 16 {
 		return nil, fmt.Errorf("session must be 16 bytes")
 	}
 
-	if len(session) == 0 || session == nil {
+	if len(session) == 0 {
 		session = make([]byte, 16)
-		_, err = crand.Read(session)
-		if err != nil {
+		if _, err := crand.Read(session); err != nil {
 			return nil, fmt.Errorf("generate session: %w", err)
 		}
 	}
 
-	if len(session) != 16 {
-		return nil, fmt.Errorf("session must be 16 bytes")
-	}
-
-	s := make([]byte, 16)
-
-	if len(session) == 16 {
-		s := make([]byte, 16)
-		copy(s, session)
-	}
+	s := append([]byte(nil), session...) // safe copy
 
 	p := &conePuncher{session: s, callbacks: cb}
 	return p, nil
