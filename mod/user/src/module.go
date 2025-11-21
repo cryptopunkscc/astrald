@@ -200,7 +200,7 @@ func (mod *Module) GetSwarmInvitePolicy() user.SwarmInvitePolicy {
 
 var _ user.SwarmInvitePolicy = (*Module)(nil).SwarmInviteAcceptAll
 
-func (mod *Module) SwarmInviteAcceptAll(invitee *astral.Identity, contract user.NodeContract) bool {
-	mod.log.Info("Accepting %v invitation to join swarm %v till %v", invitee, contract.NodeID, contract.ExpiresAt)
+func (mod *Module) SwarmInviteAcceptAll(inviter *astral.Identity, contract user.NodeContract) bool {
+	mod.log.Info("Accepting invitation from %v for %v join swarm till %v", inviter, contract.NodeID, contract.ExpiresAt)
 	return true
 }
