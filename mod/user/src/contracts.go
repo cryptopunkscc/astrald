@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/kos"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -249,4 +250,55 @@ func (mod *Module) LocalSwarm() (list []*astral.Identity) {
 	}
 
 	return mod.ActiveNodes(ac.UserID)
+}
+
+func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astral.Identity, userID *astral.Identity) (signedContract *user.SignedNodeContract, err error) {
+	inviteQuery := query.New(ctx.Identity(), target, user.OpInvite, &opInviteArgs{})
+	inviteCh, err := query.RouteChan(ctx, mod.node, inviteQuery)
+	if err != nil {
+		return signedContract, err
+	}
+
+	defer inviteCh.Close()
+
+	signedContract = &user.SignedNodeContract{
+		NodeContract: &user.NodeContract{
+			UserID:    userID,
+			NodeID:    target,
+			ExpiresAt: astral.Time(time.Now().Add(defaultContractValidity)),
+		},
+	}
+
+	err = inviteCh.Write(signedContract.NodeContract)
+	if err != nil {
+		return signedContract, err
+	}
+
+	obj, err := inviteCh.Read()
+	if err != nil {
+		return signedContract, err
+	}
+
+	nodeSig, ok := obj.(*astral.Bytes8)
+	if !ok || nodeSig == nil {
+		return signedContract, user.ErrInvalidSignature
+	}
+
+	signedContract.NodeSig = *nodeSig
+	err = mod.Keys.VerifyASN1(signedContract.NodeID, signedContract.Hash(), signedContract.NodeSig)
+	if err != nil {
+		return signedContract, user.ErrInvalidSignature
+	}
+
+	signedContract.UserSig, err = mod.Keys.SignASN1(signedContract.UserID, signedContract.Hash())
+	if err != nil {
+		return signedContract, err
+	}
+
+	err = inviteCh.Write(&signedContract.UserSig)
+	if err != nil {
+		return signedContract, err
+	}
+
+	return signedContract, nil
 }

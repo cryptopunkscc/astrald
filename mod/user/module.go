@@ -15,6 +15,8 @@ const (
 	OpInvite      = "user.invite"
 	OpLink        = "user.link"
 	OpClaim       = "user.claim"
+
+	OpRequestInvite = "user.request_invite"
 )
 
 type Module interface {

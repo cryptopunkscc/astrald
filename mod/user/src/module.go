@@ -182,3 +182,25 @@ func (mod *Module) SyncApps(ctx *astral.Context, nodeID *astral.Identity) (err e
 
 	return
 }
+
+func (mod *Module) GetSwarmJoinRequestPolicy() user.SwarmJoinRequestPolicy {
+	return mod.SwarmJoinRequestAcceptAll
+}
+
+var _ user.SwarmJoinRequestPolicy = (*Module)(nil).SwarmJoinRequestAcceptAll
+
+func (mod *Module) SwarmJoinRequestAcceptAll(requester *astral.Identity) bool {
+	mod.log.Info("Accepting %v join request into swarm", requester)
+	return true
+}
+
+func (mod *Module) GetSwarmInvitePolicy() user.SwarmInvitePolicy {
+	return mod.SwarmInviteAcceptAll
+}
+
+var _ user.SwarmInvitePolicy = (*Module)(nil).SwarmInviteAcceptAll
+
+func (mod *Module) SwarmInviteAcceptAll(inviter *astral.Identity, contract user.NodeContract) bool {
+	mod.log.Info("Accepting invitation from %v for %v join swarm till %v", inviter, contract.NodeID, contract.ExpiresAt)
+	return true
+}
