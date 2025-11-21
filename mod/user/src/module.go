@@ -190,7 +190,7 @@ func (mod *Module) GetSwarmJoinRequestPolicy() user.SwarmJoinRequestPolicy {
 var _ user.SwarmJoinRequestPolicy = (*Module)(nil).SwarmJoinRequestAcceptAll
 
 func (mod *Module) SwarmJoinRequestAcceptAll(requester *astral.Identity) bool {
-	mod.log.Info("Accepting %v into swarm", requester)
+	mod.log.Info("Accepting %v join request into swarm", requester)
 	return true
 }
 
@@ -201,6 +201,6 @@ func (mod *Module) GetSwarmInvitePolicy() user.SwarmInvitePolicy {
 var _ user.SwarmInvitePolicy = (*Module)(nil).SwarmInviteAcceptAll
 
 func (mod *Module) SwarmInviteAcceptAll(invitee *astral.Identity, contract user.NodeContract) bool {
-	mod.log.Info("Accepting %v invitation to join swarm till %v", invitee, contract.ExpiresAt)
+	mod.log.Info("Accepting %v invitation to join swarm %v till %v", invitee, contract.NodeID, contract.ExpiresAt)
 	return true
 }
