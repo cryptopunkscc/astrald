@@ -46,7 +46,7 @@ func (mod *Module) OpInvite(ctx *astral.Context, q shell.Query, args opInviteArg
 		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
 	}
 
-	if contract.ExpiresAt.Time().After(time.Now().Add(minimalContractLength)) {
+	if !contract.ExpiresAt.Time().After(time.Now().Add(minimalContractLength)) {
 		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
 	}
 
