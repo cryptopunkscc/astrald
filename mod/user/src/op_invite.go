@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -39,18 +40,20 @@ func (mod *Module) OpInvite(ctx *astral.Context, q shell.Query, args opInviteArg
 	}
 
 	if contract.UserID == nil {
+		fmt.Println("contract has no user id")
 		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
 	}
 
 	if !contract.NodeID.IsEqual(q.Caller()) {
+		fmt.Println("contract is not for caller")
 		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
 	}
 
 	if !contract.ExpiresAt.Time().After(time.Now().Add(minimalContractLength)) {
+		fmt.Println("contract is too short")
 		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
 	}
 
-	// sign the contract
 	signed := &user.SignedNodeContract{
 		NodeContract: contract,
 	}
