@@ -1,8 +1,6 @@
 package nat
 
 import (
-	"time"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -38,10 +36,8 @@ type Module struct {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
-	mod.pool.RunCleanupLoop(30 * time.Second)
-
 	<-ctx.Done()
-	mod.pool.Stop()
+
 	return nil
 }
 
@@ -54,19 +50,44 @@ func (mod *Module) String() string {
 }
 
 func (mod *Module) addTraversedPair(
-	pair nat.EndpointPair,
+	traversedEndpointPair nat.TraversedPortPair,
 	initiatedByLocal bool,
 ) {
-	mod.log.Info("added NAT traversed pair: %v (%v) <-> %v (%v) nonce=%v",
-		pair.PeerA.Identity,
-		pair.PeerA.Endpoint,
-		pair.PeerB.Identity,
-		pair.PeerB.Endpoint,
-		pair.Nonce,
+	mod.log.Info("added NAT traversed Pair: %v (%v) <-> %v (%v) nonce=%v",
+		traversedEndpointPair.PeerA.Identity,
+		traversedEndpointPair.PeerA.Endpoint,
+		traversedEndpointPair.PeerB.Identity,
+		traversedEndpointPair.PeerB.Endpoint,
+		traversedEndpointPair.Nonce,
 	)
 
-	err := mod.pool.Add(&pair, mod.ctx.Identity(), initiatedByLocal)
+	pair, err := NewPair(traversedEndpointPair, mod.ctx.Identity(), initiatedByLocal, WithOnPairExpire(func(p *Pair) {
+		mod.log.Info("expired NAT traversed Pair: %v (%v) <-> %v (%v) nonce=%v",
+			p.PeerA.Identity,
+			p.PeerA.Endpoint,
+			p.PeerB.Identity,
+			p.PeerB.Endpoint,
+			p.Nonce,
+		)
+
+		mod.pool.Remove(p.Nonce)
+	}))
 	if err != nil {
-		mod.log.Errorv(1, "error adding pair to pool: %v", err)
+		mod.log.Error("error while creating pair: %v", err)
+		return
 	}
+
+	err = pair.StartKeepAlive(mod.ctx)
+	if err != nil {
+		mod.log.Error("error starting pair keep-alive: %v", err)
+	}
+
+	err = mod.pool.Add(pair)
+	if err != nil {
+		mod.log.Error("error while adding Pair to pool: %v", err)
+	}
+}
+
+func (mod *Module) traversedPairs() []*Pair {
+	return mod.pool.pairs.Values()
 }

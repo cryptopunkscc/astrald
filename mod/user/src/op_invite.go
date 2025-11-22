@@ -1,10 +1,11 @@
 package user
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
-	"time"
 )
 
 type opInviteArgs struct {

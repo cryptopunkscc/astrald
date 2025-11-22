@@ -76,6 +76,10 @@ func (mod *Module) RemoveEndpointLocalSocket(endpoint kcp.Endpoint) error {
 	return nil
 }
 
+func (mod *Module) GetEndpointsMappings() map[astral.String]astral.Uint16 {
+	return mod.ephemeralPortMappings.Clone()
+}
+
 // prepareUDPConn creates a UDP connection, binding to an ephemeral local port if mapped.
 func (mod *Module) prepareUDPConn(endpoint *kcp.Endpoint) (*net.UDPConn, error) {
 	laddr := &net.UDPAddr{Port: 0}
