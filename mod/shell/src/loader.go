@@ -22,7 +22,13 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(shell.ModuleName, &mod.config)
 
-	err = mod.root.AddStruct(mod, "Op")
+	var scope shell.Scope
+	err = scope.AddStruct(mod, "Op")
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.root.AddScope(shell.ModuleName, &scope)
 
 	return mod, err
 }

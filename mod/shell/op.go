@@ -6,10 +6,13 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/lib/term"
 )
 
 type Op struct {
 	v        reflect.Value
+	at       reflect.Type
+	hasArgs  bool
 	populate func(map[string]string) (reflect.Value, error)
 }
 
@@ -34,22 +37,23 @@ func Func(fn any) (*Op, error) {
 	case t.NumOut() != 1 || !t.Out(0).Implements(reflect.TypeOf((*error)(nil)).Elem()):
 		return nil, errors.New("fn must return a single error value")
 	case t.NumIn() == 3:
-		var at = v.Type().In(2) // argument type
+		c.at = v.Type().In(2) // argument type
+		c.hasArgs = true
 
-		switch t.In(2).Kind() {
+		switch c.at.Kind() {
 		case reflect.Pointer:
-			if t.In(2).Elem().Kind() != reflect.Struct {
+			if c.at.Elem().Kind() != reflect.Struct {
 				return nil, errors.New("third argument is a non-struct pointer")
 			}
 			c.populate = func(m map[string]string) (av reflect.Value, err error) {
-				av = reflect.New(at.Elem())
+				av = reflect.New(c.at.Elem())
 				err = query.Populate(m, av.Interface())
 				return
 			}
 
 		case reflect.Struct:
 			c.populate = func(m map[string]string) (av reflect.Value, err error) {
-				av = reflect.New(at)
+				av = reflect.New(c.at)
 				err = query.Populate(m, av.Interface())
 				av = av.Elem()
 				return
@@ -86,4 +90,17 @@ func (c *Op) Call(ctx *astral.Context, q Query, args map[string]string) error {
 	}
 
 	return ret.Interface().(error)
+}
+
+func (c *Op) ArgNames() (names []string) {
+	if !c.hasArgs {
+		return
+	}
+
+	for i := range c.at.NumField() {
+		ft := c.at.Field(i)
+		names = append(names, term.ToSnakeCase(ft.Name))
+	}
+
+	return
 }
