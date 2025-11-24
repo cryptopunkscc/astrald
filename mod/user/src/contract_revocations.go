@@ -1,8 +1,6 @@
 package user
 
 import (
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -59,7 +57,7 @@ func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeCon
 	err := mod.Keys.VerifyASN1(revocation.UserID, revocation.Hash(), revocation.UserSig)
 	if err != nil {
 		// FIXME: invalid signature error (its not present on this branch currenlty)
-		return fmt.Errorf("user sig verification: %w", err)
+		return user.ErrContractInvalidSignature
 	}
 
 	return nil

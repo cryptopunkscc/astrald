@@ -17,6 +17,12 @@ type opRevokeNodeContractArgs struct {
 }
 
 func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args opRevokeNodeContractArgs) (err error) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		// cannot handle if we dont have active contract
+		return q.RejectWithCode(2)
+	}
+
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
@@ -35,15 +41,20 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
+	if !nodeContract.UserID.IsEqual(ac.UserID) {
+		return ch.Write(user.ErrNodeContractRevocationInvalid)
+	}
+
 	if startsAt.Time().After(nodeContract.ExpiresAt.Time()) {
-		return ch.Write(astral.NewError(user.ErrNodeContractRevocationForExpiredContract.Error()))
+		return ch.Write(user.ErrNodeContractRevocationForExpiredContract)
 	}
 
 	if nodeContract.IsExpired() {
-		return ch.Write(astral.NewError(user.ErrNodeContractAlreadyExpired.Error()))
+		return ch.Write(user.ErrNodeContractAlreadyExpired)
 	}
 
 	var revocation = &user.NodeContractRevocation{
+		UserID:     nodeContract.UserID,
 		ContractID: args.ContractId,
 		StartsAt:   startsAt,
 		ExpiresAt:  nodeContract.ExpiresAt,

@@ -12,8 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-// FIXME: react on contract (spawn maintain)
-
 // SetActiveContract sets the contract under which the node operates
 func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err error) {
 	mod.mu.Lock()
@@ -295,13 +293,13 @@ func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astr
 
 	nodeSig, ok := obj.(*astral.Bytes8)
 	if !ok || nodeSig == nil {
-		return signedContract, user.ErrInvalidSignature
+		return signedContract, user.ErrContractInvalidSignature
 	}
 
 	signedContract.NodeSig = *nodeSig
 	err = mod.Keys.VerifyASN1(signedContract.NodeID, signedContract.Hash(), signedContract.NodeSig)
 	if err != nil {
-		return signedContract, user.ErrInvalidSignature
+		return signedContract, user.ErrContractInvalidSignature
 	}
 
 	signedContract.UserSig, err = mod.Keys.SignASN1(signedContract.UserID, signedContract.Hash())

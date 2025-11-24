@@ -1,7 +1,6 @@
 package user
 
 import (
-	"errors"
 	"io"
 	"time"
 
@@ -41,7 +40,3 @@ func (c NodeContractRevocation) IsActive() bool {
 func init() {
 	astral.DefaultBlueprints.Add(&NodeContractRevocation{})
 }
-
-var ErrNodeContractAlreadyExpired = errors.New("node contract already expired")
-var ErrNodeContractRevocationInvalid = errors.New("node contract revocation invalid")
-var ErrNodeContractRevocationForExpiredContract = errors.New("node contract revocation is for expired contract")
