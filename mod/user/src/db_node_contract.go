@@ -1,9 +1,10 @@
 package user
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/user"
-	"time"
 )
 
 type dbNodeContract struct {
@@ -11,6 +12,7 @@ type dbNodeContract struct {
 	UserID    *astral.Identity `gorm:"index"`
 	NodeID    *astral.Identity `gorm:"index"`
 	ExpiresAt time.Time        `gorm:"index"`
+	StartsAt  time.Time        `gorm:"index"`
 }
 
 func (dbNodeContract) TableName() string { return user.DBPrefix + "node_contracts" }

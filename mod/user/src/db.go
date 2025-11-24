@@ -41,7 +41,8 @@ func (db *DB) UniqueActiveNodesOfUser(userID *astral.Identity) (nodes []*astral.
 
 	err = db.
 		Model(&dbNodeContract{}).
-		Where("expires_at > ?", time.Now().UTC()).
+		Where("starts_at < ?", now).
+		Where("expires_at > ?", now).
 		Where("user_id = ?", userID).
 		Where(`
 			NOT EXISTS (
@@ -63,7 +64,8 @@ func (db *DB) ActiveContractsOf(userID *astral.Identity) (contracts []*dbNodeCon
 
 	err = db.
 		Model(&dbNodeContract{}).
-		Where("expires_at > ?", time.Now().UTC()).
+		Where("starts_at < ?", now).
+		Where("expires_at > ?", now).
 		Where("user_id = ?", userID).
 		Where(`
 			NOT EXISTS (

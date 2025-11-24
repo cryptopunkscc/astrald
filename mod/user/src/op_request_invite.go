@@ -30,7 +30,7 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q shell.Query, args opRe
 		return ch.Write(user.ErrRequestDeclined)
 	}
 
-	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID)
+	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID, astral.Now())
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}

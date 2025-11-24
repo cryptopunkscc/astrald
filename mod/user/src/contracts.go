@@ -179,11 +179,15 @@ func (mod *Module) GetNodeContract(contractID *astral.ObjectID) (*user.SignedNod
 // SignLocalContract creates, signs and stores a new node contract with the specified user
 func (mod *Module) SignLocalContract(userID *astral.Identity) (contract *user.SignedNodeContract, err error) {
 	// then create and sign a new contract
+
+	startsAt := astral.Now()
+
 	contract = &user.SignedNodeContract{
 		NodeContract: &user.NodeContract{
 			UserID:    userID,
 			NodeID:    mod.node.Identity(),
-			ExpiresAt: astral.Time(time.Now().Add(defaultContractValidity).UTC()),
+			StartsAt:  startsAt,
+			ExpiresAt: astral.Time(startsAt.Time().Add(defaultContractValidity)),
 		},
 	}
 
@@ -264,7 +268,7 @@ func (mod *Module) LocalSwarm() (list []*astral.Identity) {
 	return mod.ActiveNodes(ac.UserID)
 }
 
-func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astral.Identity, userID *astral.Identity) (signedContract *user.SignedNodeContract, err error) {
+func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astral.Identity, userID *astral.Identity, startsAt astral.Time) (signedContract *user.SignedNodeContract, err error) {
 	inviteQuery := query.New(ctx.Identity(), target, user.OpInvite, &opInviteArgs{})
 	inviteCh, err := query.RouteChan(ctx, mod.node, inviteQuery)
 	if err != nil {
@@ -277,7 +281,8 @@ func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astr
 		NodeContract: &user.NodeContract{
 			UserID:    userID,
 			NodeID:    target,
-			ExpiresAt: astral.Time(time.Now().Add(defaultContractValidity)),
+			StartsAt:  startsAt,
+			ExpiresAt: astral.Time(startsAt.Time().Add(defaultContractValidity)),
 		},
 	}
 
