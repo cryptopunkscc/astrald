@@ -166,7 +166,7 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 
 func (mod *Module) GetNodeContract(contractID *astral.ObjectID) (*user.SignedNodeContract, error) {
 	// fast fail so we dont need to load the contract if it does not exist in db
-	if mod.db.ContractExists(contractID) {
+	if !mod.db.ContractExists(contractID) {
 		return nil, user.ErrContractNotExists
 	}
 
