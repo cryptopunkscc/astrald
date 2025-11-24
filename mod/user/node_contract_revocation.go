@@ -1,0 +1,47 @@
+package user
+
+import (
+	"errors"
+	"io"
+	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+)
+
+type NodeContractRevocation struct {
+	UserID     *astral.Identity
+	ContractID *astral.ObjectID
+	StartsAt   astral.Time
+	ExpiresAt  astral.Time
+}
+
+var _ astral.Object = &NodeContractRevocation{}
+
+func (c NodeContractRevocation) ObjectType() string {
+	return "mod.users.node_contract_revocation"
+}
+
+func (c NodeContractRevocation) WriteTo(w io.Writer) (n int64, err error) {
+	return astral.Struct(c).WriteTo(w)
+}
+
+func (c *NodeContractRevocation) ReadFrom(r io.Reader) (n int64, err error) {
+	return astral.Struct(c).ReadFrom(r)
+}
+
+func (c NodeContractRevocation) IsExpired() bool {
+	return time.Now().After(c.ExpiresAt.Time())
+}
+
+func (c NodeContractRevocation) IsActive() bool {
+	now := time.Now()
+	return now.After(c.StartsAt.Time()) && now.Before(c.ExpiresAt.Time())
+}
+
+func init() {
+	astral.DefaultBlueprints.Add(&NodeContractRevocation{})
+}
+
+var ErrNodeContractAlreadyExpired = errors.New("node contract already expired")
+var ErrNodeContractRevocationInvalid = errors.New("node contract revocation invalid")
+var ErrNodeContractRevocationForExpiredContract = errors.New("node contract revocation is for expired contract")

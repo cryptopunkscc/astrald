@@ -1,10 +1,11 @@
 package user
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/streams"
 	"io"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/streams"
 )
 
 type NodeContract struct {
@@ -24,7 +25,7 @@ func (c *NodeContract) IsExpired() bool {
 }
 
 func (c NodeContract) WriteTo(w io.Writer) (n int64, err error) {
-	return streams.WriteAllTo(w, c.UserID, c.NodeID, astral.Time(c.ExpiresAt))
+	return streams.WriteAllTo(w, c.UserID, c.NodeID, c.ExpiresAt)
 }
 
 func (c *NodeContract) ReadFrom(r io.Reader) (n int64, err error) {
@@ -36,3 +37,5 @@ func (c *NodeContract) ReadFrom(r io.Reader) (n int64, err error) {
 func init() {
 	astral.DefaultBlueprints.Add(&NodeContract{})
 }
+
+var ErrContractNotExists = astral.NewError("node contract not exists")

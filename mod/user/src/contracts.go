@@ -28,7 +28,7 @@ func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err err
 		return errors.New("contract expired")
 	}
 
-	err = mod.Validate(contract)
+	err = mod.ValidateNodeContract(contract)
 	if err != nil {
 		return
 	}
@@ -48,8 +48,8 @@ func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err err
 	return
 }
 
-// Validate checks if the contract has valid signatures from both the user and the node.
-func (mod *Module) Validate(contract *user.SignedNodeContract) error {
+// ValidateNodeContract checks if the contract has valid signatures from both the user and the node.
+func (mod *Module) ValidateNodeContract(contract *user.SignedNodeContract) error {
 	if contract.UserID.IsZero() {
 		return errors.New("invalid contract: UserID is zero")
 	}
@@ -140,7 +140,7 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 		return errors.New("contract expired")
 	}
 
-	err = mod.Validate(c)
+	err = mod.ValidateNodeContract(c)
 	if err != nil {
 		return err
 	}
@@ -162,6 +162,20 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 	mod.runSiblingLinker()
 
 	return
+}
+
+func (mod *Module) GetNodeContract(contractID *astral.ObjectID) (*user.SignedNodeContract, error) {
+	// fast fail so we dont need to load the contract if it does not exist in db
+	if mod.db.ContractExists(contractID) {
+		return nil, user.ErrContractNotExists
+	}
+
+	return objects.Load[*user.SignedNodeContract](
+		mod.ctx,
+		mod.Objects.Root(),
+		contractID,
+		mod.Objects.Blueprints(),
+	)
 }
 
 // SignLocalContract creates, signs and stores a new node contract with the specified user

@@ -20,6 +20,11 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		if err == nil {
 			drop.Accept(true)
 		}
+	case *user.SignedNodeContractRevocation:
+		err = mod.receiveSignedNodeContractRevocation(drop.SenderID(), o)
+		if err == nil {
+			drop.Accept(true)
+		}
 	case *apphost.AppContract:
 		if !slices.ContainsFunc(mod.LocalSwarm(), o.HostID.IsEqual) {
 			break
@@ -69,11 +74,27 @@ func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedN
 	return nil
 }
 
+func (mod *Module) receiveSignedNodeContractRevocation(s *astral.Identity, c *user.SignedNodeContractRevocation) error {
+	if !slices.ContainsFunc(mod.LocalSwarm(), s.IsEqual) {
+		mod.log.Errorv(1, "revoked contract from node (%v) without contract with user (%v)", s, c.UserID)
+		return objects.ErrPushRejected
+	}
+
+	err := mod.SaveSignedRevocationContract(c)
+	if err != nil {
+		mod.log.Errorv(1, "save node contract revocation: %v", err)
+		return objects.ErrPushRejected
+	}
+
+	return nil
+}
+
 func (mod *Module) pushActiveContract(remoteIdentity *astral.Identity) {
 	contract := mod.ActiveContract()
 	if contract == nil {
 		return
 	}
+
 	mod.Objects.Push(mod.ctx, remoteIdentity, contract)
 }
 
