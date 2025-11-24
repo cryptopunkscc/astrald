@@ -9,71 +9,81 @@ import (
 )
 
 type opInviteArgs struct {
+	In  string `query:"optional"`
+	Out string `query:"optional"`
 }
 
-// OpInvite reads a contract request and writes a signed contract or an error.
 func (mod *Module) OpInvite(ctx *astral.Context, q shell.Query, args opInviteArgs) (err error) {
-	// reject if we have an active contract already
 	ac := mod.ActiveContract()
 	if ac != nil {
-		return q.Reject()
+		// We already have an active contract
+		return q.RejectWithCode(2)
 	}
 
-	conn := q.Accept()
-	defer conn.Close()
+	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	defer ch.Close()
 
-	// read a NodeContract
-	obj, _, err := mod.Objects.Blueprints().Read(conn)
+	obj, err := ch.Read()
 	if err != nil {
-		return
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	contract, ok := obj.(*user.NodeContract)
-	if !ok {
-		return
+	if !ok || contract == nil {
+		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
 	}
 
-	// check user id
-	if contract.UserID.IsZero() {
-		return
+	invitationAccepted := mod.GetSwarmInvitePolicy()(q.Caller(), *contract)
+	if !invitationAccepted {
+		return ch.Write(astral.NewError(user.ErrInvitationDeclined.Error()))
 	}
 
-	// check node id
+	if contract.UserID == nil {
+		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
+	}
+
 	if !contract.NodeID.IsEqual(mod.node.Identity()) {
-		return
+		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
 	}
 
-	// don't sign contracts for less than an hour
 	if !contract.ExpiresAt.Time().After(time.Now().Add(minimalContractLength)) {
-		return
+		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
 	}
 
-	// sign the contract
 	signed := &user.SignedNodeContract{
 		NodeContract: contract,
 	}
 
-	signed.NodeSig, err = mod.Keys.SignASN1(mod.node.Identity(), signed.Hash())
+	signed.NodeSig, err = mod.Keys.SignASN1(mod.ctx.Identity(), signed.Hash())
 	if err != nil {
-		return
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	// write the node signature
-	_, err = signed.NodeSig.WriteTo(conn)
+	err = ch.Write(&signed.NodeSig)
 	if err != nil {
-		return
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	// read the user signature
-	_, err = signed.UserSig.ReadFrom(conn)
+	obj, err = ch.Read()
 	if err != nil {
-		return
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
+	userSig, ok := obj.(*astral.Bytes8)
+	if !ok || userSig == nil {
+		return ch.Write(astral.NewError(user.ErrInvalidSignature.Error()))
+	}
+
+	signed.UserSig = *userSig
 	err = mod.SaveSignedNodeContract(signed)
 	if err != nil {
-		return
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	return mod.SetActiveContract(signed)
+	err = mod.SetActiveContract(signed)
+	if err != nil {
+		return ch.Write(astral.NewError(err.Error()))
+	}
+
+	return nil
 }
