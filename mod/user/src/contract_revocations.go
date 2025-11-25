@@ -33,10 +33,9 @@ func (mod *Module) SaveSignedRevocationContract(c *user.SignedNodeContractRevoca
 
 	err = mod.db.Create(&dbNodeContractRevocation{
 		ObjectID:   revocationID,
-		UserID:     c.UserID,
 		ContractID: c.ContractID,
 		ExpiresAt:  c.ExpiresAt.Time().UTC(),
-		StartsAt:   c.StartsAt.Time().UTC(),
+		CreatedAt:  c.CreatedAt.Time().UTC(),
 	}).Error
 	if err != nil {
 		return err
@@ -49,12 +48,16 @@ func (mod *Module) SaveSignedRevocationContract(c *user.SignedNodeContractRevoca
 }
 
 func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeContractRevocation) error {
-	if revocation.UserID.IsZero() {
+	if revocation.Revoker.ID.IsZero() {
+		return user.ErrNodeContractRevocationInvalid
+	}
+
+	if len(revocation.Revoker.Sig) == 0 {
 		return user.ErrNodeContractRevocationInvalid
 	}
 
 	// verify user signature
-	err := mod.Keys.VerifyASN1(revocation.UserID, revocation.Hash(), revocation.UserSig)
+	err := mod.Keys.VerifyASN1(revocation.Revoker.ID, revocation.Hash(), revocation.Revoker.Sig)
 	if err != nil {
 		// FIXME: invalid signature error (its not present on this branch currenlty)
 		return user.ErrContractInvalidSignature

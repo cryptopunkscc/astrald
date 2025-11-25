@@ -80,6 +80,8 @@ func (mod *Module) receiveSignedNodeContractRevocation(s *astral.Identity, c *us
 		return objects.ErrPushRejected
 	}
 
+	mod.ValidateNodeContractRevocation(c)
+
 	err := mod.SaveSignedRevocationContract(c)
 	if err != nil {
 		mod.log.Errorv(1, "save node contract revocation: %v", err)

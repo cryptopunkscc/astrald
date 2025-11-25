@@ -8,8 +8,9 @@ import (
 )
 
 type SignedNodeContractRevocation struct {
+	*Revoker
 	*NodeContractRevocation
-	UserSig astral.Bytes8
+	Attachments *astral.Bundle
 }
 
 var _ astral.Object = &SignedNodeContractRevocation{}

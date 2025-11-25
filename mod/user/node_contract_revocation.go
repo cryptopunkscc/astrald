@@ -8,10 +8,9 @@ import (
 )
 
 type NodeContractRevocation struct {
-	UserID     *astral.Identity
 	ContractID *astral.ObjectID
-	StartsAt   astral.Time
-	ExpiresAt  astral.Time
+	ExpiresAt  astral.Time // Required to have as we could not posses contract anymore
+	CreatedAt  astral.Time // purely informational
 }
 
 var _ astral.Object = &NodeContractRevocation{}
@@ -30,11 +29,6 @@ func (c *NodeContractRevocation) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (c NodeContractRevocation) IsExpired() bool {
 	return time.Now().After(c.ExpiresAt.Time())
-}
-
-func (c NodeContractRevocation) IsActive() bool {
-	now := time.Now()
-	return now.After(c.StartsAt.Time()) && now.Before(c.ExpiresAt.Time())
 }
 
 func init() {

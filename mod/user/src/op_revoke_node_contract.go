@@ -1,6 +1,8 @@
 package user
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -8,12 +10,9 @@ import (
 
 type opRevokeNodeContractArgs struct {
 	ContractId *astral.ObjectID
-
-	StartsAt *astral.Time    `query:"optional"` // absolute timestamp
-	StartsIn astral.Duration `query:"optional"` // relative duration
-
-	In  string `query:"optional"`
-	Out string `query:"optional"`
+	RevokeAs   string `query:"optional"` // default points to user
+	In         string `query:"optional"`
+	Out        string `query:"optional"`
 }
 
 func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args opRevokeNodeContractArgs) (err error) {
@@ -26,16 +25,6 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
-	var startsAt astral.Time
-	switch {
-	case args.StartsAt != nil:
-		startsAt = *args.StartsAt
-	case args.StartsIn != 0:
-		startsAt = astral.Time(astral.Now().Time().Add(args.StartsIn.Duration()))
-	default:
-		startsAt = astral.Now() // default immediate start
-	}
-
 	nodeContract, err := mod.GetNodeContract(args.ContractId)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
@@ -45,30 +34,50 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 		return ch.Write(user.ErrNodeContractRevocationInvalid)
 	}
 
-	if startsAt.Time().After(nodeContract.ExpiresAt.Time()) {
-		return ch.Write(user.ErrNodeContractRevocationForExpiredContract)
-	}
-
 	if nodeContract.IsExpired() {
 		return ch.Write(user.ErrNodeContractAlreadyExpired)
 	}
 
 	var revocation = &user.NodeContractRevocation{
-		UserID:     nodeContract.UserID,
 		ContractID: args.ContractId,
-		StartsAt:   startsAt,
-		ExpiresAt:  nodeContract.ExpiresAt,
+		ExpiresAt:  astral.Time(nodeContract.ExpiresAt.Time().Add(minimalRevocationLength)),
+		CreatedAt:  astral.Time(time.Now()),
 	}
 
 	var signed = &user.SignedNodeContractRevocation{
 		NodeContractRevocation: revocation,
 	}
 
-	// contract revocation must be signed by user key
-	signed.UserSig, err = mod.Keys.SignASN1(nodeContract.UserID, signed.Hash())
-	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+	var revoker *user.Revoker
+	switch args.RevokeAs {
+	case "user":
+		userSig, err := mod.Keys.SignASN1(nodeContract.UserID, signed.Hash())
+		if err != nil {
+			return ch.Write(astral.NewError(err.Error()))
+		}
+
+		revoker = &user.Revoker{
+			ID:  ac.UserID,
+			Sig: userSig,
+		}
+	case "node":
+		nodeSig, err := mod.Keys.SignASN1(mod.ctx.Identity(), signed.Hash())
+		if err != nil {
+			return ch.Write(astral.NewError(err.Error()))
+		}
+
+		revoker = &user.Revoker{
+			ID:  nodeContract.NodeID,
+			Sig: nodeSig,
+		}
+
+		err = signed.Attachments.Append(mod.ActiveContract())
+		if err != nil {
+			return ch.Write(astral.NewError(err.Error()))
+		}
 	}
+
+	signed.Revoker = revoker
 
 	err = mod.SaveSignedRevocationContract(signed)
 	if err != nil {

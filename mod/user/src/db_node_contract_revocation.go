@@ -9,9 +9,8 @@ import (
 
 type dbNodeContractRevocation struct {
 	ObjectID   *astral.ObjectID `gorm:"primaryKey"`
-	UserID     *astral.Identity `gorm:"index"`
 	ContractID *astral.ObjectID `gorm:"index"`
-	StartsAt   time.Time        `gorm:"index"`
+	CreatedAt  time.Time        `gorm:"index"`
 	ExpiresAt  time.Time        `gorm:"index"`
 }
 
