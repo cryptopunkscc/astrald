@@ -76,13 +76,17 @@ func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedN
 
 func (mod *Module) receiveSignedNodeContractRevocation(s *astral.Identity, c *user.SignedNodeContractRevocation) error {
 	if !slices.ContainsFunc(mod.LocalSwarm(), s.IsEqual) {
-		mod.log.Errorv(1, "revoked contract from node (%v) without contract with user (%v)", s, c.UserID)
+		mod.log.Errorv(1, "revoked contract from node (%v) without contract", s)
 		return objects.ErrPushRejected
 	}
 
-	mod.ValidateNodeContractRevocation(c)
+	err := mod.ValidateNodeContractRevocation(c)
+	if err != nil {
+		mod.log.Errorv(1, "invalid node contract revocation: %v", err)
+		return objects.ErrPushRejected
+	}
 
-	err := mod.SaveSignedRevocationContract(c)
+	err = mod.SaveSignedRevocationContract(c)
 	if err != nil {
 		mod.log.Errorv(1, "save node contract revocation: %v", err)
 		return objects.ErrPushRejected
