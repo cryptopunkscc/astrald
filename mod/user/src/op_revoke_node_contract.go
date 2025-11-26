@@ -79,7 +79,7 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 
 	signed.Revoker = revoker
 
-	err = mod.SaveSignedRevocationContract(signed)
+	err = mod.SaveSignedRevocationContract(signed, nodeContract)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}

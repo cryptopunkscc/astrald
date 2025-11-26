@@ -6,8 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-func (mod *Module) SaveSignedRevocationContract(c *user.SignedNodeContractRevocation) (err error) {
-	revocationID, err := astral.ResolveObjectID(c)
+func (mod *Module) SaveSignedRevocationContract(revocation *user.SignedNodeContractRevocation, contract *user.SignedNodeContract) (err error) {
+	revocationID, err := astral.ResolveObjectID(revocation)
 	if err != nil {
 		return
 	}
@@ -16,12 +16,12 @@ func (mod *Module) SaveSignedRevocationContract(c *user.SignedNodeContractRevoca
 		return nil
 	}
 
-	nodeContract, err := mod.GetNodeContract(c.ContractID)
+	nodeContract, err := mod.GetNodeContract(revocation.ContractID)
 	if err != nil {
 		return err
 	}
 
-	err = mod.ValidateNodeContractRevocation(c)
+	err = mod.ValidateNodeContractRevocation(revocation, contract)
 	if err != nil {
 		return err
 	}
@@ -29,13 +29,16 @@ func (mod *Module) SaveSignedRevocationContract(c *user.SignedNodeContractRevoca
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
 	// NOTE: ask about error handling in objects.Save
-	objects.Save(ctx, c, mod.Objects.Root())
+	_, err = objects.Save(ctx, revocation, mod.Objects.Root())
+	if err != nil {
+		return err
+	}
 
 	err = mod.db.Create(&dbNodeContractRevocation{
 		ObjectID:   revocationID,
-		ContractID: c.ContractID,
-		ExpiresAt:  c.ExpiresAt.Time().UTC(),
-		CreatedAt:  c.CreatedAt.Time().UTC(),
+		ContractID: revocation.ContractID,
+		ExpiresAt:  revocation.ExpiresAt.Time().UTC(),
+		CreatedAt:  revocation.CreatedAt.Time().UTC(),
 	}).Error
 	if err != nil {
 		return err
@@ -47,7 +50,7 @@ func (mod *Module) SaveSignedRevocationContract(c *user.SignedNodeContractRevoca
 	return nil
 }
 
-func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeContractRevocation) error {
+func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeContractRevocation, contract *user.SignedNodeContract) error {
 	if revocation.Revoker.ID.IsZero() {
 		return user.ErrNodeContractRevocationInvalid
 	}
@@ -56,6 +59,10 @@ func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeCon
 		return user.ErrNodeContractRevocationInvalid
 	}
 
+	ok := mod.Auth.Authorize(revocation.Revoker.ID, user.ActionRevokeContract, contract)
+	if !ok {
+		return user.ErrNodeCannotRevokeContract
+	}
 	// verify user signature
 	err := mod.Keys.VerifyASN1(revocation.Revoker.ID, revocation.Hash(), revocation.Revoker.Sig)
 	if err != nil {

@@ -145,7 +145,10 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	objects.Save(ctx, c, mod.Objects.Root())
+	_, err = objects.Save(ctx, c, mod.Objects.Root())
+	if err != nil {
+		return err
+	}
 
 	err = mod.db.Create(&dbNodeContract{
 		ObjectID:  contractID,
