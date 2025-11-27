@@ -11,6 +11,7 @@ import (
 type NodeContract struct {
 	UserID    *astral.Identity
 	NodeID    *astral.Identity
+	StartsAt  astral.Time
 	ExpiresAt astral.Time
 }
 
@@ -22,6 +23,11 @@ func (NodeContract) ObjectType() string {
 
 func (c *NodeContract) IsExpired() bool {
 	return time.Now().After(c.ExpiresAt.Time())
+}
+
+func (c NodeContract) IsActive() bool {
+	now := time.Now()
+	return now.After(c.StartsAt.Time()) && now.Before(c.ExpiresAt.Time())
 }
 
 func (c NodeContract) WriteTo(w io.Writer) (n int64, err error) {
