@@ -26,6 +26,8 @@ const (
 	portGuessRange  = 10                    // number of additional ports to probe around the base port (total ports = 2*portGuessRange + 1)
 	packetsPerBurst = 5                     // number of packets sent to each address per burst
 	jitterMax       = 5                     // max jitter in milliseconds between rounds
+	minPort         = 1
+	maxPort         = 1<<16 - 1
 )
 
 type ConePuncherCallbacks struct {
@@ -152,10 +154,8 @@ func (p *conePuncher) HolePunch(
 	ctx, cancel := context.WithTimeout(ctx, punchTimeout)
 	defer cancel()
 
-	// Channel delivers the first observed remote UDP address (reveals external port).
-	recvAddrCh := make(chan *net.UDPAddr, 1)
 	// Launch sender and receiver using the snapshot conn.
-	go p.receive(ctx, conn, burstInterval, allowed, recvAddrCh)
+	recvAddrCh := p.receive(ctx, conn, burstInterval, allowed)
 	go p.sendBursts(ctx, conn, remoteAddrs, burstInterval)
 
 	// Wait for success or timeout/cancel.
@@ -171,53 +171,59 @@ func (p *conePuncher) HolePunch(
 	}
 }
 
-// receive listens for any incoming UDP probe and reports the sender address if payload matches our session.
-func (p *conePuncher) receive(ctx context.Context, conn net.PacketConn, interval time.Duration, allowed *sig.Set[string], got chan<- *net.UDPAddr) {
-	defer close(got)
+// receive listens for any incoming UDP probe matching our session and sends the sender address to the returned channel.
+func (p *conePuncher) receive(ctx context.Context, conn net.PacketConn, interval time.Duration, allowed *sig.Set[string]) <-chan *net.UDPAddr {
+	var out = make(chan *net.UDPAddr, 1)
 
-	buf := make([]byte, 1500)
-	for {
-		_ = conn.SetReadDeadline(time.Now().Add(interval))
-		n, addr, err := conn.ReadFrom(buf)
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) {
-				return
+	go func() {
+		defer close(out)
+
+		buf := make([]byte, 1500)
+		for {
+			_ = conn.SetReadDeadline(time.Now().Add(interval))
+			n, addr, err := conn.ReadFrom(buf)
+			if err != nil {
+				if errors.Is(err, net.ErrClosed) {
+					return
+				}
+
+				var ne net.Error
+				if errors.As(err, &ne) && ne.Timeout() {
+					continue
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					time.Sleep(5 * time.Millisecond)
+					continue
+				}
 			}
 
-			var ne net.Error
-			if errors.As(err, &ne) && ne.Timeout() {
+			ua, ok := addr.(*net.UDPAddr)
+			if !ok {
 				continue
 			}
 
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				time.Sleep(5 * time.Millisecond)
+			if !allowed.Contains(ua.String()) {
 				continue
 			}
-		}
 
-		ua, ok := addr.(*net.UDPAddr)
-		if !ok {
-			continue
-		}
-
-		if !allowed.Contains(ua.String()) {
-			continue
-		}
-
-		if n == len(p.session) && bytes.Equal(buf[:n], p.session) {
-			if p.callbacks.OnProbeReceived != nil {
-				p.callbacks.OnProbeReceived(ua)
+			if n == len(p.session) && bytes.Equal(buf[:n], p.session) {
+				if p.callbacks.OnProbeReceived != nil {
+					p.callbacks.OnProbeReceived(ua)
+				}
+				select {
+				case out <- ua:
+				default:
+				}
+				return
 			}
-			select {
-			case got <- ua:
-			default:
-			}
-			return
 		}
-	}
+	}()
+
+	return out
 }
 
 // sendBursts sends the session payload to all candidate remoteAddrs simultaneously in each burst, and repeats until ctx is done.
@@ -260,7 +266,8 @@ func (p *conePuncher) sendBursts(
 
 func candidatePorts(center, spread int) (ports []int) {
 	spread = max(spread, 0)
-	for i := max(center-spread, 1); i < min(center+spread+1, 65536); i++ {
+
+	for i := max(center-spread, minPort); i < min(center+spread+1, maxPort); i++ {
 		ports = append(ports, i)
 	}
 	return
