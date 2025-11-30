@@ -27,10 +27,10 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q shell.Query, args opRe
 	target := q.Caller()
 	joinAllowed := mod.GetSwarmJoinRequestPolicy()(target)
 	if !joinAllowed {
-		return ch.Write(astral.NewError(user.ErrRequestDeclined.Error()))
+		return ch.Write(user.ErrRequestDeclined)
 	}
 
-	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID)
+	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID, astral.Now())
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}

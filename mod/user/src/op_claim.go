@@ -6,13 +6,25 @@ import (
 )
 
 type opClaimArgs struct {
-	Target string
-	In     string `query:"optional"`
-	Out    string `query:"optional"`
+	Target   string
+	StartsAt *astral.Time    `query:"optional"`
+	StartsIn astral.Duration `query:"optional"`
+	In       string          `query:"optional"`
+	Out      string          `query:"optional"`
 }
 
 func (mod *Module) OpClaim(ctx *astral.Context, q shell.Query, args opClaimArgs) (err error) {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
+	var startsAt astral.Time
+	switch {
+	case args.StartsAt != nil:
+		startsAt = *args.StartsAt
+	case args.StartsIn != 0:
+		startsAt = astral.Time(astral.Now().Time().Add(args.StartsIn.Duration()))
+	default:
+		startsAt = astral.Now() // default immediate start
+	}
 
 	ac := mod.ActiveContract()
 	if ac == nil {
@@ -31,7 +43,7 @@ func (mod *Module) OpClaim(ctx *astral.Context, q shell.Query, args opClaimArgs)
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID)
+	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID, startsAt)
 	if err != nil {
 		return ch.Write(astral.NewError(err.Error()))
 	}

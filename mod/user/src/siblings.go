@@ -46,8 +46,18 @@ func (mod *Module) getLinkedSibs() (list []*astral.Identity) {
 
 func (mod *Module) addSibling(id *astral.Identity,
 	cancel context.CancelFunc) {
+
+	mod.log.Log("adding sibling %v", id)
 	mod.sibs.Set(id.String(), Sibling{
 		Id:     id,
 		Cancel: cancel,
 	})
+}
+
+func (mod *Module) removeSibling(id *astral.Identity) {
+	sib, ok := mod.sibs.Get(id.String())
+	if ok {
+		mod.log.Log("removing sibling %v", id)
+		sib.Cancel()
+	}
 }

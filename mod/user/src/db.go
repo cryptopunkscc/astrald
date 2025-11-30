@@ -2,10 +2,11 @@ package user
 
 import (
 	"errors"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 type DB struct {
@@ -14,10 +15,20 @@ type DB struct {
 }
 
 func (db *DB) UniqueActiveUsersOnNode(nodeID *astral.Identity) (users []*astral.Identity, err error) {
+	now := time.Now().UTC()
+
 	err = db.
 		Model(&dbNodeContract{}).
 		Where("expires_at > ?", time.Now().UTC()).
 		Where("node_id = ?", nodeID).
+		Where(`
+			NOT EXISTS (
+				SELECT 1 FROM users__node_contract_revocations r
+				WHERE r.contract_id = users__node_contracts.object_id
+				  AND r.starts_at <= ?
+				  AND r.expires_at > ?
+			)
+		`, now, now).
 		Distinct("user_id").
 		Find(&users).
 		Error
@@ -26,10 +37,21 @@ func (db *DB) UniqueActiveUsersOnNode(nodeID *astral.Identity) (users []*astral.
 }
 
 func (db *DB) UniqueActiveNodesOfUser(userID *astral.Identity) (nodes []*astral.Identity, err error) {
+	now := time.Now().UTC()
+
 	err = db.
 		Model(&dbNodeContract{}).
-		Where("expires_at > ?", time.Now().UTC()).
+		Where("starts_at < ?", now).
+		Where("expires_at > ?", now).
 		Where("user_id = ?", userID).
+		Where(`
+			NOT EXISTS (
+				SELECT 1 FROM users__node_contract_revocations r
+				WHERE r.contract_id = users__node_contracts.object_id
+				  AND r.starts_at <= ?
+				  AND r.expires_at > ?
+			)
+		`, now, now).
 		Distinct("node_id").
 		Find(&nodes).
 		Error
@@ -38,10 +60,21 @@ func (db *DB) UniqueActiveNodesOfUser(userID *astral.Identity) (nodes []*astral.
 }
 
 func (db *DB) ActiveContractsOf(userID *astral.Identity) (contracts []*dbNodeContract, err error) {
+	now := time.Now().UTC()
+
 	err = db.
 		Model(&dbNodeContract{}).
-		Where("expires_at > ?", time.Now().UTC()).
+		Where("starts_at < ?", now).
+		Where("expires_at > ?", now).
 		Where("user_id = ?", userID).
+		Where(`
+			NOT EXISTS (
+				SELECT 1 FROM users__node_contract_revocations r
+				WHERE r.contract_id = users__node_contracts.object_id
+				  AND r.starts_at <= ?
+				  AND r.expires_at > ?
+			)
+		`, now, now).
 		Find(&contracts).
 		Error
 
@@ -201,6 +234,16 @@ func (db *DB) Assets() (assets []*astral.ObjectID, err error) {
 		Distinct("object_id").
 		Find(&assets).
 		Error
+
+	return
+}
+
+func (db *DB) ContractRevocationExists(revocationID *astral.ObjectID) (b bool) {
+	db.
+		Model(&dbNodeContractRevocation{}).
+		Where("object_id = ?", revocationID).
+		Select("count(*) > 0").
+		First(&b)
 
 	return
 }

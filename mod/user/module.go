@@ -8,15 +8,16 @@ const ModuleName = "user"
 const DBPrefix = "users__"
 
 const (
-	OpSyncAssets  = "user.sync_assets"
-	OpInfo        = "user.info"
-	OpAddAsset    = "user.add_asset"
-	OpRemoveAsset = "user.remove_asset"
-	OpInvite      = "user.invite"
-	OpLink        = "user.link"
-	OpClaim       = "user.claim"
-
+	OpSyncAssets    = "user.sync_assets"
+	OpInfo          = "user.info"
+	OpAddAsset      = "user.add_asset"
+	OpRemoveAsset   = "user.remove_asset"
+	OpInvite        = "user.invite"
+	OpLink          = "user.link"
+	OpClaim         = "user.claim"
 	OpRequestInvite = "user.request_invite"
+
+	ActionRevokeContract = "user.revoke_contract"
 )
 
 type Module interface {

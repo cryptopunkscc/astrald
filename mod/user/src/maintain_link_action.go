@@ -42,7 +42,6 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 		return err
 	}
 
-	a.mod.log.Log("starting to maintain link with %v", a.Target)
 	count := -1
 	a.actionRequired.Store(!a.mod.Nodes.IsLinked(a.Target))
 	for {

@@ -30,24 +30,24 @@ func (mod *Module) OpInvite(ctx *astral.Context, q shell.Query, args opInviteArg
 
 	contract, ok := obj.(*user.NodeContract)
 	if !ok || contract == nil {
-		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
+		return ch.Write(user.ErrInvalidContract)
 	}
 
 	invitationAccepted := mod.GetSwarmInvitePolicy()(q.Caller(), *contract)
 	if !invitationAccepted {
-		return ch.Write(astral.NewError(user.ErrInvitationDeclined.Error()))
+		return ch.Write(user.ErrInvitationDeclined)
 	}
 
 	if contract.UserID == nil {
-		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
+		return ch.Write(user.ErrInvalidContract)
 	}
 
 	if !contract.NodeID.IsEqual(mod.node.Identity()) {
-		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
+		return ch.Write(user.ErrInvalidContract)
 	}
 
 	if !contract.ExpiresAt.Time().After(time.Now().Add(minimalContractLength)) {
-		return ch.Write(astral.NewError(user.ErrInvalidContract.Error()))
+		return ch.Write(user.ErrInvalidContract)
 	}
 
 	signed := &user.SignedNodeContract{
@@ -71,7 +71,7 @@ func (mod *Module) OpInvite(ctx *astral.Context, q shell.Query, args opInviteArg
 
 	userSig, ok := obj.(*astral.Bytes8)
 	if !ok || userSig == nil {
-		return ch.Write(astral.NewError(user.ErrInvalidSignature.Error()))
+		return ch.Write(user.ErrContractInvalidSignature)
 	}
 
 	signed.UserSig = *userSig
