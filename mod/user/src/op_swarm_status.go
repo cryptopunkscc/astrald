@@ -43,7 +43,6 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 		contract, ok := contractsByNodeID[node.String()]
 		if !ok {
 			mod.log.Error("no active contract found for node %v", node)
-			continue
 		}
 
 		swarmMap.Set(node.String(), &user.SwarmMember{
