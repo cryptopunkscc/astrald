@@ -43,5 +43,3 @@ func (c *NodeContract) ReadFrom(r io.Reader) (n int64, err error) {
 func init() {
 	astral.DefaultBlueprints.Add(&NodeContract{})
 }
-
-var ErrContractNotExists = astral.NewError("node contract not exists")

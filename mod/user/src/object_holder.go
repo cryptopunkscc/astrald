@@ -22,12 +22,7 @@ func (mod *Module) HoldObject(objectID *astral.ObjectID) (hold bool) {
 
 	switch objectType {
 	case user.SignedNodeContract{}.ObjectType():
-		c, err := objects.Load[*user.SignedNodeContract](
-			mod.ctx,
-			mod.Objects.Root(),
-			objectID,
-			mod.Objects.Blueprints(),
-		)
+		c, err := mod.FindNodeContract(objectID)
 		if err != nil {
 			mod.log.Error("failed to load node contract %v: %v", objectID, err)
 			return false
@@ -39,12 +34,7 @@ func (mod *Module) HoldObject(objectID *astral.ObjectID) (hold bool) {
 
 		return true
 	case user.SignedNodeContractRevocation{}.ObjectType():
-		c, err := objects.Load[*user.SignedNodeContractRevocation](
-			mod.ctx,
-			mod.Objects.Root(),
-			objectID,
-			mod.Objects.Blueprints(),
-		)
+		c, err := mod.FindNodeContractRevocation(objectID)
 		if err != nil {
 			mod.log.Error("failed to load node contract revocation %v: %v", objectID, err)
 			return false
