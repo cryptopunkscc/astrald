@@ -96,9 +96,10 @@ func (mod *Module) ActiveContract() *user.SignedNodeContract {
 
 // ActiveContractsOf returns a list of all active contracts of the specified user
 func (mod *Module) ActiveContractsOf(userID *astral.Identity) (contracts []*user.SignedNodeContract, err error) {
+
 	rows, err := mod.db.ActiveContractsOf(userID)
 	if err != nil {
-		return
+		return contracts, err
 	}
 
 	var errs []error
@@ -117,9 +118,10 @@ func (mod *Module) ActiveContractsOf(userID *astral.Identity) (contracts []*user
 
 		contracts = append(contracts, contract)
 	}
+
 	err = errors.Join(errs...)
 
-	return
+	return contracts, err
 }
 
 // SaveSignedNodeContract validates and persists a signed node contract

@@ -12,10 +12,24 @@ type opSwarmStatusArgs struct {
 }
 
 func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwarmStatusArgs) (err error) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return q.RejectWithCode(2)
+	}
+
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 
-	// list all nodes
+	contracts, err := mod.ActiveContractsOf(ac.UserID)
+	if err != nil {
+		return ch.Write(astral.NewError(err.Error()))
+	}
+
+	// 2. Index contracts by NodeID for O(1) lookup
+	contractsByNodeID := make(map[string]*user.SignedNodeContract)
+	for _, c := range contracts {
+		contractsByNodeID[c.NodeID.String()] = c
+	}
 
 	var swarmMap astral.Map
 	swarm := mod.LocalSwarm()
@@ -27,10 +41,16 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 
 		isLinked := mod.Nodes.IsLinked(node)
 
-		// TODO: ask what else should be part of information about swarm member
+		contract, ok := contractsByNodeID[node.String()]
+		if !ok {
+			mod.log.Error("no active contract found for node %v", node)
+			continue
+		}
+
 		swarmMap.Set(node.String(), &user.SwarmMember{
-			Alias:  astral.String(alias),
-			Linked: astral.Bool(isLinked),
+			Alias:    astral.String(alias),
+			Linked:   astral.Bool(isLinked),
+			Contract: contract.NodeContract,
 		})
 	}
 
