@@ -25,7 +25,6 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	// 2. Index contracts by NodeID for O(1) lookup
 	contractsByNodeID := make(map[string]*user.SignedNodeContract)
 	for _, c := range contracts {
 		contractsByNodeID[c.NodeID.String()] = c
