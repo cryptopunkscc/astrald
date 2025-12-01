@@ -21,7 +21,13 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 			drop.Accept(true)
 		}
 	case *user.SignedNodeContractRevocation:
-		err = mod.receiveSignedNodeContractRevocation(drop.SenderID(), o)
+		contract, err := mod.GetNodeContract(o.ContractID)
+		if err != nil {
+			mod.log.Errorv(1, "failed to get contract: %v", err)
+			drop.Accept(false)
+		}
+
+		err = mod.receiveSignedNodeContractRevocation(drop.SenderID(), o, contract)
 		if err == nil {
 			drop.Accept(true)
 		}
@@ -74,19 +80,19 @@ func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedN
 	return nil
 }
 
-func (mod *Module) receiveSignedNodeContractRevocation(s *astral.Identity, c *user.SignedNodeContractRevocation) error {
+func (mod *Module) receiveSignedNodeContractRevocation(s *astral.Identity, r *user.SignedNodeContractRevocation, c *user.SignedNodeContract) error {
 	if !slices.ContainsFunc(mod.LocalSwarm(), s.IsEqual) {
 		mod.log.Errorv(1, "revoked contract from node (%v) without contract", s)
 		return objects.ErrPushRejected
 	}
 
-	err := mod.ValidateNodeContractRevocation(c)
+	err := mod.ValidateNodeContractRevocation(r, c)
 	if err != nil {
 		mod.log.Errorv(1, "invalid node contract revocation: %v", err)
 		return objects.ErrPushRejected
 	}
 
-	err = mod.SaveSignedRevocationContract(c)
+	err = mod.SaveSignedRevocationContract(r, c)
 	if err != nil {
 		mod.log.Errorv(1, "save node contract revocation: %v", err)
 		return objects.ErrPushRejected
