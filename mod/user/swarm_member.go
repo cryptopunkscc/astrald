@@ -9,6 +9,7 @@ import (
 var _ astral.Object = &SwarmMember{}
 
 type SwarmMember struct {
+	Identity *astral.Identity
 	Alias    astral.String
 	Linked   astral.Bool
 	Contract *NodeContract

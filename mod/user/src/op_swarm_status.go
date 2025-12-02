@@ -30,7 +30,6 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 		contractsByNodeID[c.NodeID.String()] = c
 	}
 
-	var swarmMap astral.Map
 	swarm := mod.LocalSwarm()
 	for _, node := range swarm {
 		alias, err := mod.Dir.GetAlias(node)
@@ -38,19 +37,21 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 			mod.log.Error("error getting alias for node %v: %v", node, err)
 		}
 
-		isLinked := mod.Nodes.IsLinked(node)
-
 		contract, ok := contractsByNodeID[node.String()]
 		if !ok {
 			mod.log.Error("no active contract found for node %v", node)
 		}
 
-		swarmMap.Set(node.String(), &user.SwarmMember{
+		err = ch.Write(&user.SwarmMember{
+			Identity: node,
 			Alias:    astral.String(alias),
-			Linked:   astral.Bool(isLinked),
+			Linked:   astral.Bool(mod.Nodes.IsLinked(node)),
 			Contract: contract.NodeContract,
 		})
+		if err != nil {
+			return ch.Write(astral.NewError(err.Error()))
+		}
 	}
 
-	return ch.Write(&swarmMap)
+	return nil
 }
