@@ -20,8 +20,9 @@ func (mod *Module) OpListSiblings(ctx *astral.Context, q shell.Query, args opLis
 	for _, id := range mod.getLinkedSibs() {
 		err = ch.Write(id)
 		if err != nil {
-			return
+			return ch.Write(astral.NewError(err.Error()))
 		}
 	}
-	return
+
+	return ch.Write(&astral.EOS{})
 }

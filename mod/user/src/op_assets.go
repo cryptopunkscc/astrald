@@ -16,9 +16,9 @@ func (mod *Module) OpAssets(ctx *astral.Context, q shell.Query, args opAssetsArg
 	for _, asset := range mod.Assets() {
 		err = ch.Write(asset)
 		if err != nil {
-			return err
+			return ch.Write(astral.NewError(err.Error()))
 		}
 	}
 
-	return
+	return ch.Write(&astral.EOS{})
 }
