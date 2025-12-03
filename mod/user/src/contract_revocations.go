@@ -72,3 +72,30 @@ func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeCon
 
 	return nil
 }
+
+func (mod *Module) LoadNodeContractRevocation(revocationID *astral.ObjectID) (*user.SignedNodeContractRevocation, error) {
+	// fast fail so we dont need to load the contract if it does not exist in db
+	if !mod.db.ContractExists(revocationID) {
+		return nil, user.ErrContractNotExists
+	}
+
+	return objects.Load[*user.SignedNodeContractRevocation](
+		mod.ctx,
+		mod.Objects.Root(),
+		revocationID,
+		mod.Objects.Blueprints(),
+	)
+}
+
+func (mod *Module) FindNodeContractRevocation(revocationID *astral.ObjectID) (r *user.NodeContractRevocation, err error) {
+	dbRecord, err := mod.db.FindNodeContractRevocation(revocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user.NodeContractRevocation{
+		ContractID: dbRecord.ContractID,
+		CreatedAt:  astral.Time(dbRecord.CreatedAt),
+		ExpiresAt:  astral.Time(dbRecord.ExpiresAt),
+	}, nil
+}

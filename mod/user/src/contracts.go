@@ -324,3 +324,17 @@ func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astr
 
 	return signedContract, nil
 }
+
+func (mod *Module) FindNodeContract(contractID *astral.ObjectID) (*user.NodeContract, error) {
+	dbRecord, err := mod.db.FindNodeContract(contractID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user.NodeContract{
+		UserID:    dbRecord.UserID,
+		NodeID:    dbRecord.NodeID,
+		StartsAt:  astral.Time(dbRecord.StartsAt),
+		ExpiresAt: astral.Time(dbRecord.ExpiresAt),
+	}, nil
+}

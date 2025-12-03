@@ -247,3 +247,27 @@ func (db *DB) ContractRevocationExists(revocationID *astral.ObjectID) (b bool) {
 
 	return
 }
+
+func (db *DB) FindNodeContractRevocation(revocationID *astral.ObjectID) (row *dbNodeContractRevocation, err error) {
+	err = db.
+		Model(&dbNodeContractRevocation{}).
+		Where("object_id = ?", revocationID).
+		First(&row).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return row, nil
+}
+
+func (db *DB) FindNodeContract(contractID *astral.ObjectID) (row *dbNodeContract, err error) {
+	err = db.
+		Model(&dbNodeContract{}).
+		Where("object_id = ?", contractID).
+		First(&row).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return row, nil
+}
