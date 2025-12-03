@@ -25,7 +25,6 @@ func (db *DB) UniqueActiveUsersOnNode(nodeID *astral.Identity) (users []*astral.
 			NOT EXISTS (
 				SELECT 1 FROM users__node_contract_revocations r
 				WHERE r.contract_id = users__node_contracts.object_id
-				  AND r.starts_at <= ?
 				  AND r.expires_at > ?
 			)
 		`, now, now).
@@ -48,7 +47,6 @@ func (db *DB) UniqueActiveNodesOfUser(userID *astral.Identity) (nodes []*astral.
 			NOT EXISTS (
 				SELECT 1 FROM users__node_contract_revocations r
 				WHERE r.contract_id = users__node_contracts.object_id
-				  AND r.starts_at <= ?
 				  AND r.expires_at > ?
 			)
 		`, now, now).
@@ -71,7 +69,6 @@ func (db *DB) ActiveContractsOf(userID *astral.Identity) (contracts []*dbNodeCon
 			NOT EXISTS (
 				SELECT 1 FROM users__node_contract_revocations r
 				WHERE r.contract_id = users__node_contracts.object_id
-				  AND r.starts_at <= ?
 				  AND r.expires_at > ?
 			)
 		`, now, now).
