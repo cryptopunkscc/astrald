@@ -22,9 +22,9 @@ func (mod *Module) OpLocalAddrs(ctx *astral.Context, q shell.Query, args opLocal
 	for _, addr := range addrs {
 		err = ch.Write(&addr)
 		if err != nil {
-			return
+			return ch.Write(astral.NewError(err.Error()))
 		}
 	}
 
-	return
+	return ch.Write(&astral.EOS{})
 }

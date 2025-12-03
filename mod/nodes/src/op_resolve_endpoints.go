@@ -28,9 +28,9 @@ func (mod *Module) OpResolveEndpoints(ctx *astral.Context, q shell.Query, args o
 	for endpoint := range endpoints {
 		err = ch.Write(endpoint)
 		if err != nil {
-			return
+			return ch.Write(astral.NewError(err.Error()))
 		}
 	}
 
-	return
+	return ch.Write(&astral.EOS{})
 }

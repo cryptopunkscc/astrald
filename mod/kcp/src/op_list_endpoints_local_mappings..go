@@ -21,7 +21,10 @@ func (mod *Module) OpListEndpointsLocalMappings(ctx *astral.Context, q shell.Que
 			Address: k,
 			Port:    v,
 		})
+		if err != nil {
+			return ch.Write(astral.NewError(err.Error()))
+		}
 	}
 
-	return
+	return ch.Write(&astral.EOS{})
 }

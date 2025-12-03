@@ -34,9 +34,9 @@ func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsA
 			Network:        astral.String8(s.Network()),
 		})
 		if err != nil {
-			return err
+			return ch.Write(astral.NewError(err.Error()))
 		}
 	}
 
-	return
+	return ch.Write(&astral.EOS{})
 }
