@@ -26,7 +26,7 @@ func (a EOS) UnmarshalJSON(bytes []byte) error {
 }
 
 func (a EOS) MarshalJSON() ([]byte, error) {
-	return []byte("{\"_eos\":true}"), nil
+	return []byte("\"\""), nil
 }
 
 // text
@@ -40,5 +40,5 @@ func (a EOS) MarshalText() (text []byte, err error) {
 }
 
 func init() {
-	DefaultBlueprints.Add(&Ack{})
+	DefaultBlueprints.Add(&EOS{})
 }
