@@ -16,8 +16,10 @@ func (mod *Module) OpPublicIPCandidates(ctx *astral.Context, q shell.Query, args
 	for _, addr := range mod.PublicIPCandidates() {
 		err = ch.Write(&addr)
 		if err != nil {
-			return
+			return ch.Write(astral.NewError(err.Error()))
 		}
 	}
-	return
+
+	return ch.Write(&astral.EOS{})
+
 }
