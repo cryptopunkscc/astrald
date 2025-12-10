@@ -53,5 +53,5 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 		}
 	}
 
-	return nil
+	return ch.Write(&astral.EOS{})
 }

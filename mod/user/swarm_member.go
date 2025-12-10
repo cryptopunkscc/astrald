@@ -36,3 +36,7 @@ func (s SwarmMember) ReadFrom(r io.Reader) (n int64, err error) {
 
 	return o.ReadFrom(r)
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&SwarmMember{})
+}
