@@ -61,3 +61,7 @@ func (s StreamInfo) MarshalJSON() ([]byte, error) {
 	a := Alias(s)
 	return json.Marshal(a)
 }
+
+func init() {
+	astral.DefaultBlueprints.Add(&StreamInfo{})
+}
