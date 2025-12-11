@@ -14,6 +14,10 @@ func (mod *Module) HoldObject(objectID *astral.ObjectID) (hold bool) {
 		return false
 	}
 
+	if mod.db.AssetsContain(objectID) {
+		return true
+	}
+
 	objectType, err := mod.Objects.GetType(mod.ctx, objectID)
 	if err != nil {
 		mod.log.Error("failed to get object type of %v", objectID)
@@ -22,30 +26,38 @@ func (mod *Module) HoldObject(objectID *astral.ObjectID) (hold bool) {
 
 	switch objectType {
 	case user.SignedNodeContract{}.ObjectType():
-		c, err := mod.FindNodeContract(objectID)
-		if err != nil {
-			mod.log.Error("failed to load node contract %v: %v", objectID, err)
-			return false
-		}
-
-		if c.IsExpired() {
-			return false
-		}
-
-		return true
+		return mod.holdNodeContract(objectID)
 	case user.SignedNodeContractRevocation{}.ObjectType():
-		c, err := mod.FindNodeContractRevocation(objectID)
-		if err != nil {
-			mod.log.Error("failed to load node contract revocation %v: %v", objectID, err)
-			return false
-		}
-
-		if c.IsExpired() {
-			return false
-		}
-
-		return true
+		return mod.holdNodeContractRevocation(objectID)
 	default:
-		return mod.db.AssetsContain(objectID)
+		return false
 	}
+}
+
+func (mod *Module) holdNodeContract(objectID *astral.ObjectID) bool {
+	c, err := mod.FindNodeContract(objectID)
+	if err != nil {
+		mod.log.Error("failed to load node contract %v: %v", objectID, err)
+		return false
+	}
+
+	if c.IsExpired() {
+		return false
+	}
+
+	return true
+}
+
+func (mod *Module) holdNodeContractRevocation(objectID *astral.ObjectID) bool {
+	c, err := mod.FindNodeContractRevocation(objectID)
+	if err != nil {
+		mod.log.Error("failed to load node contract revocation %v: %v", objectID, err)
+		return false
+	}
+
+	if c.IsExpired() {
+		return false
+	}
+
+	return true
 }
