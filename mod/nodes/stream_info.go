@@ -39,7 +39,12 @@ func (s StreamInfo) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (s *StreamInfo) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(s).ReadFrom(r)
+	o, err := astral.Objectify(s)
+	if err != nil {
+		return 0, err
+	}
+
+	return o.ReadFrom(r)
 }
 
 func (s StreamInfo) MarshalText() (text []byte, err error) {
