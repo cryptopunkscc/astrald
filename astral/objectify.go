@@ -1,13 +1,19 @@
 package astral
 
 import (
+	"encoding/json"
 	"errors"
+	"io"
 	"reflect"
 )
 
+type Objectified struct {
+	value
+}
+
 // Objectify converts any value into an Object. If the given value is a struct with an ObjectType() method,
 // that method will be used as the returned object's type; otherwise the type is empty.
-func Objectify(a any) (Object, error) {
+func Objectify(a any) (*Objectified, error) {
 	var v = reflect.ValueOf(a)
 	if !v.IsValid() {
 		return nil, errors.New("invalid value")
@@ -17,41 +23,76 @@ func Objectify(a any) (Object, error) {
 		return nil, errors.New("cannot objectify an interface")
 	}
 
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
+	o, err := objectify(v)
+	if err != nil {
+		return nil, err
 	}
 
-	return objectify(v)
+	return &Objectified{value: o}, nil
 }
 
-func objectify(v reflect.Value) (Object, error) {
+func (o Objectified) ObjectType() string {
+	return o.value.ObjectType()
+}
+
+func (o Objectified) WriteTo(w io.Writer) (n int64, err error) {
+	return o.value.WriteTo(w)
+}
+
+func (o Objectified) ReadFrom(r io.Reader) (n int64, err error) {
+	ptrVal, ok := o.value.(ptrValue)
+	if !ok {
+		return 0, errors.New("cannot read into a non-pointer value")
+	}
+
+	ptrVal.skipNilFlag = true
+
+	return ptrVal.ReadFrom(r)
+}
+
+func (o Objectified) UnmarshalJSON(bytes []byte) error {
+	return o.value.UnmarshalJSON(bytes)
+}
+
+func (o Objectified) MarshalJSON() ([]byte, error) {
+	return o.value.MarshalJSON()
+}
+
+// value is an interface for values that can be converted to an Object.
+type value interface {
+	Object
+	json.Marshaler
+	json.Unmarshaler
+}
+
+func objectify(v reflect.Value) (value, error) {
 	switch v.Kind() {
 	case reflect.Ptr:
-		return &ptrValue{v}, nil
+		return ptrValue{Value: v}, nil
 
 	case reflect.Uint8:
-		return &uint8Value{v}, nil
+		return uint8Value{v}, nil
 
 	case reflect.Uint16:
-		return &uint16Value{v}, nil
+		return uint16Value{v}, nil
 
 	case reflect.Uint32:
-		return &uint32Value{v}, nil
+		return uint32Value{v}, nil
 
 	case reflect.Uint64, reflect.Uint:
-		return &uint64Value{v}, nil
+		return uint64Value{v}, nil
 
 	case reflect.Int8:
-		return &int8Value{v}, nil
+		return int8Value{v}, nil
 
 	case reflect.Int16:
-		return &int16Value{v}, nil
+		return int16Value{v}, nil
 
 	case reflect.Int32:
-		return &int32Value{v}, nil
+		return int32Value{v}, nil
 
 	case reflect.Int64, reflect.Int:
-		return &int64Value{v}, nil
+		return int64Value{v}, nil
 
 	case reflect.Array:
 		return arrayValue{v}, nil

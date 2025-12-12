@@ -1,8 +1,8 @@
 package astral
 
 import (
-	"bytes"
-	"errors"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -19,58 +19,104 @@ func (i interfaceValue) ObjectType() string {
 }
 
 func (i interfaceValue) WriteTo(w io.Writer) (n int64, err error) {
-	if i.IsNil() {
-		return Bytes32{}.WriteTo(w)
+	if i.IsNil() || i.IsElemNilPtr() {
+		err = binary.Write(w, encoding, uint8(0)) // zero-length type means nil
+		if err == nil {
+			return 1, nil
+		}
+		return
 	}
 
-	var buf = &bytes.Buffer{}
+	var o Object
 
-	typer, ok := i.Interface().(ObjectTyper)
-	if !ok {
-		return n, errors.New("interface type not supported")
+	if i.Elem().Kind() == reflect.Ptr {
+		o = ptrValue{Value: i.Elem(), skipNilFlag: true}
+	} else {
+		o, err = objectify(i.Elem())
+		if err != nil {
+			return
+		}
 	}
 
-	_, err = String8(typer.ObjectType()).WriteTo(buf)
+	var m int64
+	m, err = String8(o.ObjectType()).WriteTo(w)
+	n += m
 	if err != nil {
 		return
 	}
 
-	wto, ok := i.Interface().(io.WriterTo)
-	if !ok {
-		return n, errors.New("interface type not supported")
-	}
+	m, err = o.WriteTo(w)
+	n += m
 
-	_, err = wto.WriteTo(buf)
-
-	return Bytes32(buf.Bytes()).WriteTo(w)
+	return
 }
 
 func (i interfaceValue) ReadFrom(r io.Reader) (n int64, err error) {
-	var buf Bytes32
-	var o Object
-
-	n, err = buf.ReadFrom(r)
+	var objectType string
+	m, err := (*String8)(&objectType).ReadFrom(r)
+	n += m
 	if err != nil {
 		return
 	}
 
-	if len(buf) == 0 {
+	if len(objectType) == 0 {
 		i.Set(reflect.Zero(i.Type()))
 		return
 	}
 
-	o, _, err = ExtractBlueprints(r).Read(bytes.NewReader(buf))
+	o := ExtractBlueprints(r).Make(objectType)
+	if o == nil {
+		return n, fmt.Errorf("unknown object type %s", objectType)
+	}
+
+	if !reflect.ValueOf(o).CanConvert(i.Type()) {
+		err = fmt.Errorf("cannot convert %s to %s", reflect.TypeOf(o), i.Type())
+		return
+	}
+
+	m, err = o.ReadFrom(r)
+	n += m
 	if err != nil {
 		return
 	}
 
-	var ov = reflect.ValueOf(o)
-	if !ov.CanConvert(i.Type()) {
-		err = fmt.Errorf("cannot convert %s to %s", ov.Type(), i.Type())
-		return
-	}
-
-	i.Set(ov.Convert(i.Type()))
+	i.Set(reflect.ValueOf(o).Convert(i.Type()))
 
 	return
+}
+
+func (i interfaceValue) IsElemNilPtr() bool {
+	return i.Elem().Kind() == reflect.Ptr && i.Elem().IsNil()
+}
+
+func (i interfaceValue) MarshalJSON() ([]byte, error) {
+	if !i.IsValid() || i.IsNil() {
+		return json.Marshal(nil)
+	}
+
+	var j JSONEncodeAdapter
+
+	if raw, ok := i.Interface().(*RawObject); ok {
+		return json.Marshal(JSONEncodeAdapter{
+			Type:    raw.ObjectType(),
+			Payload: raw.Payload,
+		})
+	}
+
+	switch i.Elem().Kind() {
+	case reflect.Struct:
+		j = JSONEncodeAdapter{}
+
+	default:
+		j = JSONEncodeAdapter{
+			Object: i.Interface(),
+		}
+	}
+
+	return json.Marshal(j)
+}
+
+func (i interfaceValue) UnmarshalJSON(data []byte) error {
+	//TODO implement me
+	panic("implement me")
 }
