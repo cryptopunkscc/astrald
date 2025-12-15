@@ -12,6 +12,7 @@ import (
 type ptrValue struct {
 	reflect.Value
 	skipNilFlag bool
+	root        bool
 }
 
 var _ Object = &ptrValue{}
@@ -46,9 +47,13 @@ func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
 	}
 
 	var o Object
-	o, err = objectify(p.Elem())
-	if err != nil {
-		return 0, err
+	if p.Elem().Kind() == reflect.Struct {
+		o = structValue{p.Elem(), p.root}
+	} else {
+		o, err = objectify(p.Elem())
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	if !p.skipNilFlag {
@@ -92,9 +97,13 @@ func (p ptrValue) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var o Object
-	o, err = objectify(p.Elem())
-	if err != nil {
-		return 1, err
+	if p.Elem().Kind() == reflect.Struct {
+		o = structValue{p.Elem(), p.root}
+	} else {
+		o, err = objectify(p.Elem())
+		if err != nil {
+			return 1, err
+		}
 	}
 
 	var m int64

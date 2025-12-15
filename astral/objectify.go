@@ -9,26 +9,33 @@ import (
 
 type Objectified struct {
 	value
+	err error
 }
 
 // Objectify converts any value into an Object. If the given value is a struct with an ObjectType() method,
 // that method will be used as the returned object's type; otherwise the type is empty.
-func Objectify(a any) (*Objectified, error) {
+func Objectify(a any) Objectified {
 	var v = reflect.ValueOf(a)
 	if !v.IsValid() {
-		return nil, errors.New("invalid value")
+		return Objectified{err: errors.New("invalid value")}
 	}
 
-	if v.Kind() == reflect.Interface {
-		return nil, errors.New("cannot objectify an interface")
+	var o value
+	var err error
+
+	switch v.Kind() {
+	case reflect.Ptr:
+		o = ptrValue{Value: v, root: true}
+	case reflect.Struct:
+		o = structValue{Value: v, root: true}
+	default:
+		o, err = objectify(v)
+		if err != nil {
+			return Objectified{err: err}
+		}
 	}
 
-	o, err := objectify(v)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Objectified{value: o}, nil
+	return Objectified{value: o}
 }
 
 func (o Objectified) ObjectType() string {
@@ -107,7 +114,7 @@ func objectify(v reflect.Value) (value, error) {
 		return mapValue{v}, nil
 
 	case reflect.Struct:
-		return structValue{v}, nil
+		return structValue{v, false}, nil
 
 	case reflect.Interface:
 		return interfaceValue{v}, nil

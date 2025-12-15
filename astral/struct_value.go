@@ -8,6 +8,7 @@ import (
 
 type structValue struct {
 	reflect.Value
+	root bool
 }
 
 var _ Object = &structValue{}
@@ -24,15 +25,17 @@ func (s structValue) WriteTo(w io.Writer) (n int64, err error) {
 	var m int64
 	var o Object
 
-	// if the struct (or it's ptr) is already an object, use its own WriteTo
-	o, ok := s.Interface().(Object)
-	if ok {
-		return o.WriteTo(w)
-	}
-	if s.CanAddr() {
-		o, ok = s.Addr().Interface().(Object)
+	// if the struct is non-root and an object, use its own WriteTo
+	if !s.root {
+		o, ok := s.Interface().(Object)
 		if ok {
 			return o.WriteTo(w)
+		}
+		if s.CanAddr() {
+			o, ok = s.Addr().Interface().(Object)
+			if ok {
+				return o.WriteTo(w)
+			}
 		}
 	}
 
@@ -61,15 +64,16 @@ func (s structValue) ReadFrom(r io.Reader) (n int64, err error) {
 	var m int64
 	var o Object
 
-	// if the struct (or it's ptr) is already an object, use its own ReadFrom
-	if o, ok := s.Interface().(Object); ok {
-		return o.ReadFrom(r)
-	}
-
-	if s.CanAddr() {
-		o, ok := s.Addr().Interface().(Object)
-		if ok {
+	// if the struct is non-root and an object, use its own ReadFrom
+	if !s.root {
+		if o, ok := s.Interface().(Object); ok {
 			return o.ReadFrom(r)
+		}
+		if s.CanAddr() {
+			o, ok := s.Addr().Interface().(Object)
+			if ok {
+				return o.ReadFrom(r)
+			}
 		}
 	}
 
