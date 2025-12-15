@@ -20,21 +20,11 @@ func (s SwarmMember) ObjectType() string {
 }
 
 func (s SwarmMember) WriteTo(w io.Writer) (n int64, err error) {
-	o, err := astral.Objectify(s)
-	if err != nil {
-		return 0, err
-	}
-
-	return o.WriteTo(w)
+	return astral.Struct(s).WriteTo(w)
 }
 
 func (s *SwarmMember) ReadFrom(r io.Reader) (n int64, err error) {
-	o, err := astral.Objectify(s)
-	if err != nil {
-		return 0, err
-	}
-
-	return o.ReadFrom(r)
+	return astral.Struct(s).ReadFrom(r)
 }
 
 func init() {
