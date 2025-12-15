@@ -2,12 +2,15 @@ package profile
 
 import (
 	"encoding/json"
+	"io"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/profile/proto"
-	"io"
-	"time"
 )
+
+// TODO: refactor module
 
 type ProfileService struct {
 	*Module
@@ -40,7 +43,8 @@ func (service *ProfileService) serve(conn astral.Conn) {
 
 func (service *ProfileService) getLocalProfile() *proto.Profile {
 	var p = &proto.Profile{
-		Endpoints: []proto.Endpoint{},
+		Endpoints:   []proto.Endpoint{},
+		HasContract: service.User.ActiveContract() != nil,
 	}
 
 	p.Alias = service.Dir.DisplayName(service.node.Identity())

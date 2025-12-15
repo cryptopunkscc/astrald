@@ -10,6 +10,7 @@ type Endpoint struct {
 }
 
 type Profile struct {
-	Alias     string     `json:"alias,omitempty"`
-	Endpoints []Endpoint `json:"endpoints,omitempty"`
+	Alias       string     `json:"alias,omitempty"`
+	HasContract bool       `json:"has_contract"`
+	Endpoints   []Endpoint `json:"endpoints,omitempty"`
 }

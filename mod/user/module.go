@@ -22,6 +22,7 @@ const (
 
 type Module interface {
 	LocalSwarm() (list []*astral.Identity)
+	ActiveContract() *SignedNodeContract
 	NewMaintainLinkAction(target *astral.Identity) MaintainLinkAction
 	NewSyncNodesAction(remoteIdentity *astral.Identity) SyncNodesAction
 }
