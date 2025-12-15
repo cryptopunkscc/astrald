@@ -28,7 +28,7 @@ func (s SwarmMember) WriteTo(w io.Writer) (n int64, err error) {
 	return o.WriteTo(w)
 }
 
-func (s SwarmMember) ReadFrom(r io.Reader) (n int64, err error) {
+func (s *SwarmMember) ReadFrom(r io.Reader) (n int64, err error) {
 	o, err := astral.Objectify(s)
 	if err != nil {
 		return 0, err
