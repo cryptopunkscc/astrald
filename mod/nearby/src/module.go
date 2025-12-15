@@ -129,6 +129,7 @@ func (mod *Module) Broadcast() error {
 	if !mod.visible.Get() {
 		return errors.New("not visible")
 	}
+
 	return mod.pushStatus()
 }
 

@@ -9,6 +9,7 @@ const (
 )
 
 type Module interface {
+	Broadcast() error
 	Broadcasters() []*Broadcaster
 	AddStatusComposer(Composer)
 }
