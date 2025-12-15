@@ -44,7 +44,7 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 
 		err = ch.Write(&user.SwarmMember{
 			Identity: node,
-			Alias:    astral.String(alias),
+			Alias:    astral.String8(alias),
 			Linked:   astral.Bool(mod.Nodes.IsLinked(node)),
 			Contract: contract.NodeContract,
 		})

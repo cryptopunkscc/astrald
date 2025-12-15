@@ -10,7 +10,7 @@ var _ astral.Object = &SwarmMember{}
 
 type SwarmMember struct {
 	Identity *astral.Identity
-	Alias    astral.String
+	Alias    astral.String8
 	Linked   astral.Bool
 	Contract *NodeContract
 }
