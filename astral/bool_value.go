@@ -30,8 +30,8 @@ func (b boolValue) ReadFrom(r io.Reader) (n int64, err error) {
 	err = binary.Read(r, encoding, &v)
 	if err == nil {
 		n = 1
+		b.SetBool(v)
 	}
-	b.Set(reflect.ValueOf(v))
 	return
 }
 
