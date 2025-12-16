@@ -16,6 +16,8 @@ const (
 
 	// MethodMigrateSession is the query route for Phase 0 migration signaling.
 	MethodMigrateSession = "nodes.migrate_session"
+	// MethodResolveEndpoints is the query route for resolving endpoints of a node.
+	MethodResolveEndpoints = "nodes.resolve_endpoints"
 )
 
 type Module interface {

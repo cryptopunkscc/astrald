@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
+	"github.com/cryptopunkscc/astrald/mod/user"
 
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
@@ -15,6 +16,7 @@ import (
 type Deps struct {
 	Auth      auth.Module
 	Dir       dir.Module
+	User      user.Module
 	Exonet    exonet.Module
 	Keys      keys.Module
 	Objects   objects.Module
