@@ -26,5 +26,6 @@ func (mod *Module) OpInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (
 	return ch.Write(&user.Info{
 		NodeAlias: astral.String8(mod.Dir.DisplayName(ac.NodeID)),
 		UserAlias: astral.String8(mod.Dir.DisplayName(ac.UserID)),
+		Contract:  ac,
 	})
 }
