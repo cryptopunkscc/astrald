@@ -2,17 +2,18 @@ package astral
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"io"
 	"strings"
 )
 
 type Bool bool
 
-// astral
-
 func (Bool) ObjectType() string {
 	return "bool"
 }
+
+// astral
 
 func (b Bool) WriteTo(w io.Writer) (n int64, err error) {
 	err = binary.Write(w, encoding, b)
@@ -30,6 +31,16 @@ func (b *Bool) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
+// json
+
+func (b Bool) MarshalJSON() ([]byte, error) {
+	return json.Marshal(bool(b))
+}
+
+func (b *Bool) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, (*bool)(b))
+}
+
 // text
 
 func (b Bool) MarshalText() (text []byte, err error) {
@@ -38,9 +49,9 @@ func (b Bool) MarshalText() (text []byte, err error) {
 
 func (b *Bool) UnmarshalText(text []byte) error {
 	switch strings.ToLower(string(text)) {
-	case "true", "yes", "t", "y", "1":
+	case "true", "yes", "t", "y":
 		*b = true
-	case "false", "no", "f", "n", "0":
+	case "false", "no", "f", "n":
 		*b = false
 	default:
 		return NewError("parse error")
