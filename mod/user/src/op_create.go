@@ -1,23 +1,26 @@
 package user
 
 import (
-	"encoding/json"
-	"fmt"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"time"
+	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
 type opCreateArgs struct {
-	Alias string
-	Force bool `query:"optional"`
+	Alias astral.String8
+	Force astral.Bool `query:"optional"`
+
+	In  string `query:"optional"`
+	Out string `query:"optional"`
 }
 
 // OpCreate creates a new user with provided alias, signs a node contract between the new user and the local node and
 // sets that contract as active. It rejects if there's an active contract unless force is true.
 func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArgs) (err error) {
 	// reject network calls
-	if q.Origin() == "network" {
+	if q.Origin() == astral.OriginNetwork {
 		return q.Reject()
 	}
 
@@ -26,55 +29,43 @@ func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArg
 		return q.Reject()
 	}
 
-	conn := q.Accept()
-	defer conn.Close()
+	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	defer ch.Close()
 
 	// create a private key for the user
-	userID, keyID, err := mod.Keys.CreateKey(args.Alias)
-	enc := json.NewEncoder(conn)
-	enc.SetIndent("", "  ")
-
+	userID, keyID, err := mod.Keys.CreateKey(args.Alias.String())
 	if err != nil {
-		return enc.Encode(map[string]string{
-			"error": fmt.Sprintf("create user key: %s", err.Error()),
-		})
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	// create an access token
 	token, err := mod.Apphost.CreateAccessToken(userID, astral.Duration(100*365*24*time.Hour))
 	if err != nil {
-		return enc.Encode(map[string]string{
-			"error": fmt.Sprintf("create access token: %s", err.Error()),
-		})
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	// sign a node contrdct with the user
+	// sign a node contract with the user
 	contract, err := mod.SignLocalContract(userID)
 	if err != nil {
-		return enc.Encode(map[string]string{
-			"error": fmt.Sprintf("sign contract: %s", err.Error()),
-		})
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	// set the contract as active
 	err = mod.SetActiveContract(contract)
 	if err != nil {
-		if err != nil {
-			return enc.Encode(map[string]string{
-				"error": fmt.Sprintf("set active contract: %s", err.Error()),
-			})
-		}
+		return ch.Write(astral.NewError(err.Error()))
 	}
 
 	// return a summary
 	contractID, _ := astral.ResolveObjectID(contract)
+	userInfo := user.CreatedUserInfo{
+		ID:          userID,
+		Alias:       args.Alias,
+		KeyID:       keyID,
+		ContractID:  contractID,
+		AccessToken: token.Token,
+		Contract:    contract,
+	}
 
-	return enc.Encode(map[string]interface{}{
-		"user_alias":   args.Alias,
-		"user_id":      userID,
-		"key_id":       keyID,
-		"contract_id":  contractID,
-		"contract":     contract,
-		"access_token": token.Token,
-	})
+	return ch.Write(&userInfo)
 }

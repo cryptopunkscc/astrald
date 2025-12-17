@@ -1,14 +1,17 @@
 package user
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 // Info contains information about user's node configuration
 type Info struct {
 	NodeAlias astral.String8
 	UserAlias astral.String8
+
+	Contract *SignedNodeContract
 }
 
 func (i Info) ObjectType() string { return "mod.user.info" }
