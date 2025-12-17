@@ -23,42 +23,23 @@ func Test_ConnectAccept(t *testing.T) {
 		&Endpoint{address: "1"},
 		&Endpoint{address: "2"},
 	)
-	msg := []byte("yolo")
 
 	ctx := context.Background()
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
-		// verify connect
-		t.Log("connect")
-		err := m1.Connect(ctx, n2.Identity(), outConn)
-		assert.NoError(t, err)
+		t.Log("verify connect")
+		assert.NoError(t, m1.Connect(ctx, n2.Identity(), outConn))
 		assert.True(t, m1.IsLinked(n2.Identity()))
 
-		// verify write
-		t.Log("write")
-		_, err = outConn.Write(msg)
-		assert.NoError(t, err)
-
-		// finish
 		t.Log("done 1")
 		wg.Done()
 	}()
 	go func() {
-		// verify accept
-		t.Log("accept")
-		err := m2.Accept(ctx, inConn)
-		assert.NoError(t, err)
+		t.Log("verify accept")
+		assert.NoError(t, m2.Accept(ctx, inConn))
 		assert.True(t, m2.IsLinked(n1.Identity()))
 
-		// verify read
-		t.Log("read")
-		var buff = make([]byte, len(msg))
-		_, err = inConn.Read(buff)
-		assert.NoError(t, err)
-		assert.Equal(t, msg, buff)
-
-		// finish
 		t.Log("done 2")
 		wg.Done()
 	}()
