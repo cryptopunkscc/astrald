@@ -3,8 +3,8 @@ package nodes
 import (
 	"context"
 	"os"
-	"sync"
 	"testing"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -23,27 +23,20 @@ func Test_ConnectAccept(t *testing.T) {
 		&Endpoint{address: "1"},
 		&Endpoint{address: "2"},
 	)
-
-	ctx := context.Background()
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	go func() {
-		t.Log("verify connect")
+	t.Run("connect", func(t *testing.T) {
+		t.Parallel()
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
 		assert.NoError(t, m1.Connect(ctx, n2.Identity(), outConn))
 		assert.True(t, m1.IsLinked(n2.Identity()))
-
-		t.Log("done 1")
-		wg.Done()
-	}()
-	go func() {
-		t.Log("verify accept")
+	})
+	t.Run("accept", func(t *testing.T) {
+		t.Parallel()
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
 		assert.NoError(t, m2.Accept(ctx, inConn))
 		assert.True(t, m2.IsLinked(n1.Identity()))
-
-		t.Log("done 2")
-		wg.Done()
-	}()
-	wg.Wait()
+	})
 }
 
 func newTestModule(t *testing.T) (astral.Node, *nodes.Module) {
