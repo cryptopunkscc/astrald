@@ -9,10 +9,11 @@ import (
 var _ astral.Object = &SwarmMember{}
 
 type SwarmMember struct {
-	Identity *astral.Identity
-	Alias    astral.String8
-	Linked   astral.Bool
-	Contract *NodeContract
+	SignedContractID *astral.ObjectID
+	Identity         *astral.Identity
+	Alias            astral.String8
+	Linked           astral.Bool
+	Contract         *NodeContract
 }
 
 func (s SwarmMember) ObjectType() string {

@@ -42,11 +42,17 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 			mod.log.Error("no active contract found for node %v", node)
 		}
 
+		contractID, err := astral.ResolveObjectID(contract)
+		if err != nil {
+			return ch.Write(astral.NewError(err.Error()))
+		}
+
 		err = ch.Write(&user.SwarmMember{
-			Identity: node,
-			Alias:    astral.String8(alias),
-			Linked:   astral.Bool(mod.Nodes.IsLinked(node)),
-			Contract: contract.NodeContract,
+			SignedContractID: contractID,
+			Identity:         node,
+			Alias:            astral.String8(alias),
+			Linked:           astral.Bool(mod.Nodes.IsLinked(node)),
+			Contract:         contract.NodeContract,
 		})
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))

@@ -23,7 +23,6 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/nearby/src"
 	_ "github.com/cryptopunkscc/astrald/mod/nodes/src"
 	_ "github.com/cryptopunkscc/astrald/mod/objects/src"
-	_ "github.com/cryptopunkscc/astrald/mod/profile/src"
 	_ "github.com/cryptopunkscc/astrald/mod/scheduler/src"
 	_ "github.com/cryptopunkscc/astrald/mod/shell/src"
 	_ "github.com/cryptopunkscc/astrald/mod/tcp/src"
