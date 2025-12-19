@@ -38,6 +38,10 @@ func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err err
 	}
 
 	mod.log.Info("hello, %v!", contract.UserID)
+	err = mod.Nearby.Broadcast()
+	if err != nil {
+		mod.log.Error("error broadcasting presence after setting contract: %v", err)
+	}
 
 	// synchronize siblings
 	mod.mu.Unlock()
