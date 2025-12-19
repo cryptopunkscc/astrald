@@ -16,7 +16,7 @@ const (
 	OpLink               = "user.link"
 	OpClaim              = "user.claim"
 	OpRequestInvite      = "user.request_invite"
-	OpRevokeContract     = "user.revoke_contract"
+	OpRevokeNodeContract = "user.revoke_node_contract"
 	OpSwarmStatus        = "user.swarm_status"
 	OpCreate             = "user.create"
 	OpListSiblings       = "user.list_siblings"
