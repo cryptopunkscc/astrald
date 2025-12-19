@@ -2,22 +2,14 @@ package astral
 
 import (
 	"encoding/binary"
+	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
 )
 
 type sliceValue struct {
 	reflect.Value
-}
-
-func (a sliceValue) MarshalJSON() ([]byte, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a sliceValue) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
-	panic("implement me")
 }
 
 var _ Object = &sliceValue{}
@@ -74,4 +66,61 @@ func (a sliceValue) ReadFrom(r io.Reader) (n int64, err error) {
 		}
 	}
 	return
+}
+
+func (a sliceValue) MarshalJSON() (_ []byte, err error) {
+	var arr []json.RawMessage
+	var o Object
+	var raw []byte
+
+	for i := range a.Len() {
+		o, err = objectify(a.Index(i))
+		if err != nil {
+			return
+		}
+
+		m, ok := o.(json.Marshaler)
+		if !ok {
+			return nil, errors.New("object does not implement json encoding")
+		}
+
+		raw, err = m.MarshalJSON()
+		if err != nil {
+			return
+		}
+
+		arr = append(arr, raw)
+	}
+
+	return json.Marshal(arr)
+}
+
+func (a sliceValue) UnmarshalJSON(bytes []byte) error {
+	var arr []json.RawMessage
+
+	err := json.Unmarshal(bytes, &arr)
+	if err != nil {
+		return err
+	}
+
+	a.Set(reflect.MakeSlice(a.Type(), len(arr), len(arr)))
+
+	for i, raw := range arr {
+		o, err := objectify(a.Index(i))
+		if err != nil {
+			return err
+		}
+
+		m, ok := o.(json.Unmarshaler)
+		if !ok {
+			return errors.New("object does not implement json encoding")
+		}
+
+		err = m.UnmarshalJSON(raw)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
