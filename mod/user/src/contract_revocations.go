@@ -13,6 +13,7 @@ func (mod *Module) SaveSignedRevocationContract(revocation *user.SignedNodeContr
 	}
 
 	if mod.db.ContractRevocationExists(revocationID) {
+
 		return nil
 	}
 
@@ -66,7 +67,6 @@ func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeCon
 	// verify user signature
 	err := mod.Keys.VerifyASN1(revocation.Revoker.ID, revocation.Hash(), revocation.Revoker.Sig)
 	if err != nil {
-		// FIXME: invalid signature error (its not present on this branch currenlty)
 		return user.ErrContractInvalidSignature
 	}
 

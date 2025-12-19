@@ -20,7 +20,8 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 		switch action {
 		case auth.ActionSudo,
 			objects.ActionRead,
-			objects.ActionCreate:
+			objects.ActionCreate,
+			user.ActionRevokeContract:
 			return true
 		}
 	}
