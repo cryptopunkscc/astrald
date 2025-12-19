@@ -22,11 +22,11 @@ func (s CreatedUserInfo) ObjectType() string {
 }
 
 func (s CreatedUserInfo) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(s).WriteTo(w)
+	return astral.Objectify(s).WriteTo(w)
 }
 
 func (s *CreatedUserInfo) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(s).ReadFrom(r)
+	return astral.Objectify(s).ReadFrom(r)
 }
 
 func init() {
