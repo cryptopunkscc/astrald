@@ -2,6 +2,7 @@ package astral
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"io"
 	"reflect"
 )
@@ -29,7 +30,18 @@ func (b boolValue) ReadFrom(r io.Reader) (n int64, err error) {
 	err = binary.Read(r, encoding, &v)
 	if err == nil {
 		n = 1
+		b.SetBool(v)
 	}
-	b.Set(reflect.ValueOf(v))
+	return
+}
+
+func (b boolValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal(b.Bool())
+}
+
+func (b boolValue) UnmarshalJSON(bytes []byte) (err error) {
+	var v bool
+	err = json.Unmarshal(bytes, &v)
+	b.SetBool(v)
 	return
 }

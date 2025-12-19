@@ -3,92 +3,140 @@ package astral
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
 )
 
 type ptrValue struct {
 	reflect.Value
+	skipNilFlag bool
+	root        bool
 }
 
 var _ Object = &ptrValue{}
 
 func (p ptrValue) ObjectType() string {
+	if p.IsNil() {
+		return ""
+	}
+	if e, ok := p.Elem().Interface().(ObjectTyper); ok {
+		return e.ObjectType()
+	}
+	if p.Elem().CanAddr() {
+		if e, ok := p.Elem().Addr().Interface().(ObjectTyper); ok {
+			return e.ObjectType()
+		}
+	}
+
 	return ""
 }
 
 func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
-	var buf = &bytes.Buffer{}
-	var o Object
-
 	if p.IsNil() {
-		err = binary.Write(w, encoding, uint32(0))
+		if p.skipNilFlag {
+			return 0, nil
+		}
+
+		err = binary.Write(w, encoding, uint8(0)) // nil flag
 		if err == nil {
-			n += 4
+			return 1, nil
 		}
 		return
 	}
 
-	o, err = objectify(p.Elem())
-	if err != nil {
-		return 0, err
+	var o Object
+	if p.Elem().Kind() == reflect.Struct {
+		o = structValue{p.Elem(), p.root}
+	} else {
+		o, err = objectify(p.Elem())
+		if err != nil {
+			return 0, err
+		}
 	}
 
-	n, err = o.WriteTo(buf)
-	if err != nil {
-		return 0, err
+	if !p.skipNilFlag {
+		err = binary.Write(w, encoding, uint8(1)) // nil flag
+		if err != nil {
+			return 0, err
+		}
+		n += 1
 	}
 
-	err = binary.Write(w, encoding, uint32(buf.Len()))
-	if err != nil {
-		return 0, err
-	}
-	n = 4
-
-	var m int
-	m, err = w.Write(buf.Bytes())
-
-	n += int64(m)
-	return
+	var m int64
+	m, err = o.WriteTo(w)
+	n += m
+	return n, err
 }
 
 func (p ptrValue) ReadFrom(r io.Reader) (n int64, err error) {
-	// read the length
-	var l uint32
-	err = binary.Read(r, encoding, &l)
-	if err != nil {
-		return
-	}
-	n += 4
+	if !p.skipNilFlag {
+		var nilFlag uint8
+		err = binary.Read(r, encoding, &nilFlag)
+		if err != nil {
+			return
+		}
+		n += 1
 
-	// zero length means nil
-	if l == 0 {
-		p.Set(reflect.Zero(p.Type()))
-		return
-	}
-
-	// read the data
-	var buf = make([]byte, l)
-	var m int
-	m, err = io.ReadFull(r, buf)
-	n += int64(m)
-	if err != nil {
-		return
+		switch nilFlag {
+		case 0:
+			if p.CanSet() {
+				p.Set(reflect.Zero(p.Type()))
+			}
+			return 1, nil
+		case 1:
+		default:
+			return 1, errors.New("invalid nil flag")
+		}
 	}
 
 	// initialize the element
-	p.Set(reflect.New(p.Type().Elem()))
-
-	var o Object
-	o, err = objectify(p.Elem())
-	if err != nil {
-		return 0, err
+	if p.CanSet() {
+		p.Set(reflect.New(p.Type().Elem()))
 	}
 
-	// read the data
-	var k int64
-	k, err = o.ReadFrom(bytes.NewReader(buf))
-	n += k
+	var o Object
+	if p.Elem().Kind() == reflect.Struct {
+		o = structValue{p.Elem(), p.root}
+	} else {
+		o, err = objectify(p.Elem())
+		if err != nil {
+			return 1, err
+		}
+	}
 
-	return
+	var m int64
+	m, err = o.ReadFrom(r)
+	n += m
+	return n, err
+}
+
+func (p ptrValue) MarshalJSON() ([]byte, error) {
+	if p.IsNil() {
+		return json.Marshal(nil)
+	}
+
+	e, err := objectify(p.Elem())
+	if err != nil {
+		return nil, err
+	}
+
+	return e.MarshalJSON()
+}
+
+func (p ptrValue) UnmarshalJSON(i []byte) error {
+	if bytes.Equal(i, []byte("null")) {
+		p.Set(reflect.Zero(p.Type()))
+		return nil
+	}
+
+	p.Set(reflect.New(p.Type().Elem()))
+
+	e, err := objectify(p.Elem())
+	if err != nil {
+		return err
+	}
+
+	return e.UnmarshalJSON(i)
 }

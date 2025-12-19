@@ -1,6 +1,7 @@
 package astral
 
 import (
+	"encoding/json"
 	"io"
 	"reflect"
 )
@@ -25,4 +26,15 @@ func (s stringValue) ReadFrom(r io.Reader) (n int64, err error) {
 	n, err = str.ReadFrom(r)
 	s.SetString(str.String())
 	return
+}
+
+func (s stringValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
+}
+
+func (s stringValue) UnmarshalJSON(bytes []byte) error {
+	var j string
+	err := json.Unmarshal(bytes, &j)
+	s.SetString(j)
+	return err
 }

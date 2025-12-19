@@ -50,3 +50,13 @@ func (a arrayValue) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 	return
 }
+
+func (a arrayValue) MarshalJSON() ([]byte, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a arrayValue) UnmarshalJSON(bytes []byte) error {
+	//TODO implement me
+	panic("implement me")
+}

@@ -94,3 +94,13 @@ func (m mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 
 	return
 }
+
+func (m mapValue) MarshalJSON() ([]byte, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mapValue) UnmarshalJSON(bytes []byte) error {
+	//TODO implement me
+	panic("implement me")
+}

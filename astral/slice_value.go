@@ -10,6 +10,16 @@ type sliceValue struct {
 	reflect.Value
 }
 
+func (a sliceValue) MarshalJSON() ([]byte, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a sliceValue) UnmarshalJSON(bytes []byte) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 var _ Object = &sliceValue{}
 
 func (a sliceValue) ObjectType() string {
