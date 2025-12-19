@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -24,6 +25,10 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
+
+	if args.RevokeAs == "" {
+		args.RevokeAs = "user"
+	}
 
 	nodeContract, err := mod.GetNodeContract(args.ContractId)
 	if err != nil {
@@ -75,6 +80,8 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 		if err != nil {
 			return ch.Write(astral.NewError(err.Error()))
 		}
+	default:
+		return ch.Write(astral.NewError(fmt.Errorf(`invalid revoke-as "%s"`, args.RevokeAs).Error()))
 	}
 
 	signed.Revoker = revoker
