@@ -228,8 +228,8 @@ func TestSlice_MarshalJSON_Int8Only(t *testing.T) {
 func TestSlice_UnmarshalJSON_Int8Only(t *testing.T) {
 	// JSON matching what Slice.MarshalJSON emits for two Int8 values.
 	jsonData := `[
-		{"Type":"int8","Object":"11"},
-		{"Type":"int8","Object":"99"}
+		{"Type":"int8","Object":11},
+		{"Type":"int8","Object":99}
 	]`
 
 	// backing slice for the result
@@ -272,7 +272,7 @@ func TestSlice_UnmarshalJSON_TestA_TestB(t *testing.T) {
 	// This JSON matches what MarshalJSON produces for TestObjectA/TestObjectB
 	jsonData := `[
         {"Type":"test.object.a","Object":{"Value":"hello"}},
-        {"Type":"test.object.b","Object":{"Number":"99"}}
+        {"Type":"test.object.b","Object":{"Number":99}}
     ]`
 
 	var out []astral.Object

@@ -4,6 +4,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"errors"
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
@@ -13,7 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
-	"strings"
 )
 
 var _ keys.Module = &Module{}
@@ -47,10 +48,7 @@ func (mod *Module) CreateKey(alias string) (identity *astral.Identity, objectID 
 		return identity, objectID, errors.New("alias already in use")
 	}
 
-	identity, err = astral.GenerateIdentity()
-	if err != nil {
-		return
-	}
+	identity = astral.GenerateIdentity()
 
 	objectID, err = mod.SaveKey(identity)
 	if err != nil {

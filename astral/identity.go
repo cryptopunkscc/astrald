@@ -6,9 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"io"
 	"strings"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 )
 
 const anonymous = "anyone"
@@ -24,16 +25,16 @@ type Identity struct {
 }
 
 // GenerateIdentity returns a new Identity
-func GenerateIdentity() (*Identity, error) {
+func GenerateIdentity() *Identity {
 	var err error
 	id := &Identity{}
 
 	id.privateKey, err = btcec.NewPrivateKey()
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
-	return id, nil
+	return id
 }
 
 func IdentityFromString(s string) (*Identity, error) {
@@ -118,11 +119,11 @@ func (id *Identity) Fingerprint() string {
 
 // astral
 
-func (id *Identity) ObjectType() string {
+func (Identity) ObjectType() string {
 	return "identity.secp256k1"
 }
 
-func (id *Identity) WriteTo(w io.Writer) (n int64, err error) {
+func (id Identity) WriteTo(w io.Writer) (n int64, err error) {
 	var m int
 	if id.IsZero() {
 		m, err = w.Write(make([]byte, btcec.PubKeyBytesLenCompressed))

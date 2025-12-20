@@ -2,14 +2,15 @@ package ipc
 
 import (
 	"errors"
-	"github.com/akutz/memconn"
-	"github.com/cryptopunkscc/astrald/astral"
 	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/akutz/memconn"
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 // local errors
@@ -105,11 +106,7 @@ func ListenAny(protocol string) (net.Listener, error) {
 		)
 
 	case "memu", "memb":
-		identity, err := astral.GenerateIdentity()
-		if err != nil {
-			return nil, err
-		}
-		return memconn.Listen(protocol, identity.String())
+		return memconn.Listen(protocol, astral.GenerateIdentity().String())
 
 	default:
 		return nil, ErrUnsupportedProtocol

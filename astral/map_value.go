@@ -27,7 +27,8 @@ func (m mapValue) WriteTo(w io.Writer) (n int64, err error) {
 	var i int64
 
 	for _, k := range m.MapKeys() {
-		if wto, ok := k.Interface().(io.WriterTo); ok {
+		nkey := k.Kind() == reflect.Ptr || k.Kind() == reflect.Interface
+		if wto, ok := k.Interface().(io.WriterTo); ok && !nkey {
 			i, err = wto.WriteTo(w)
 		} else {
 			o, err = objectify(k)
@@ -45,7 +46,8 @@ func (m mapValue) WriteTo(w io.Writer) (n int64, err error) {
 
 		v := m.MapIndex(k)
 
-		if wto, ok := v.Interface().(io.WriterTo); ok {
+		nval := v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface
+		if wto, ok := v.Interface().(io.WriterTo); ok && !nval {
 			i, err = wto.WriteTo(w)
 		} else {
 			o, err = objectify(v)

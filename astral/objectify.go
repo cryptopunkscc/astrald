@@ -75,7 +75,7 @@ type value interface {
 }
 
 func objectify(v reflect.Value) (value, error) {
-	if v.Kind() != reflect.Interface {
+	if v.Kind() != reflect.Interface && v.Kind() != reflect.Ptr {
 		if v.CanInterface() {
 			if v, ok := v.Interface().(value); ok {
 				return v, nil

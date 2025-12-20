@@ -14,10 +14,7 @@ func loadNodeIdentity(resources resources.Resources) (*astral.Identity, error) {
 
 	// generate new identity if needed
 	if err != nil {
-		nodeID, err := astral.GenerateIdentity()
-		if err != nil {
-			return nil, err
-		}
+		nodeID := astral.GenerateIdentity()
 
 		buf, err := astral.DefaultBlueprints.Canonical().Pack((*astral.PrivateIdentity)(nodeID))
 		if err != nil {

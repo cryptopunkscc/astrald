@@ -13,7 +13,7 @@ func TestInterfaceWithIdentity(t *testing.T) {
 	var err error
 	var src, dst testInterface
 	var srcID *Identity
-	srcID, _ = GenerateIdentity()
+	srcID = GenerateIdentity()
 
 	src.Value = srcID
 
