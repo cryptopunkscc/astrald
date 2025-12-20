@@ -1,8 +1,10 @@
 package astral
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -85,12 +87,8 @@ func (i interfaceValue) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-func (i interfaceValue) IsElemNilPtr() bool {
-	return i.Elem().Kind() == reflect.Ptr && i.Elem().IsNil()
-}
-
 func (i interfaceValue) MarshalJSON() ([]byte, error) {
-	if !i.IsValid() || i.IsNil() {
+	if !i.IsValid() || i.IsNil() || i.IsElemNilPtr() {
 		return json.Marshal(nil)
 	}
 
@@ -103,20 +101,56 @@ func (i interfaceValue) MarshalJSON() ([]byte, error) {
 		})
 	}
 
-	switch i.Elem().Kind() {
-	case reflect.Struct:
-		j = JSONEncodeAdapter{}
+	o, err := objectify(i.Elem())
+	if err != nil {
+		return nil, err
+	}
 
-	default:
-		j = JSONEncodeAdapter{
-			Object: i.Interface(),
-		}
+	jdata, err := o.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	j = JSONEncodeAdapter{
+		Type:   o.ObjectType(),
+		Object: json.RawMessage(jdata),
 	}
 
 	return json.Marshal(j)
 }
 
 func (i interfaceValue) UnmarshalJSON(data []byte) error {
-	//TODO implement me
-	panic("implement me")
+	if bytes.Equal(data, []byte("null")) {
+		i.SetZero()
+		return nil
+	}
+
+	var j JSONDecodeAdapter
+	err := json.Unmarshal(data, &j)
+	if err != nil {
+		return err
+	}
+
+	o := DefaultBlueprints.Make(j.Type)
+	if o == nil {
+		return errors.New("cant make object of type " + j.Type)
+	}
+
+	switch {
+	case j.Object != nil:
+		err = json.Unmarshal(j.Object, o)
+		if err != nil {
+			return err
+		}
+	case j.Payload != nil:
+		return errors.New("payload not supported")
+	}
+
+	i.Set(reflect.ValueOf(o).Convert(i.Type()))
+
+	return nil
+}
+
+func (i interfaceValue) IsElemNilPtr() bool {
+	return i.Elem().Kind() == reflect.Ptr && i.Elem().IsNil()
 }
