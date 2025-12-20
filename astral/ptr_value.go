@@ -126,6 +126,23 @@ func (p ptrValue) MarshalJSON() ([]byte, error) {
 }
 
 func (p ptrValue) UnmarshalJSON(i []byte) error {
+	if p.root {
+		if p.IsNil() {
+			return errors.New("root object cannot be nil")
+		}
+
+		o, err := objectify(p.Elem())
+		if err != nil {
+			return err
+		}
+
+		return o.UnmarshalJSON(i)
+	}
+
+	if !p.CanSet() {
+		return errors.New("cannot set pointer value")
+	}
+
 	if bytes.Equal(i, []byte("null")) {
 		p.Set(reflect.Zero(p.Type()))
 		return nil
@@ -133,10 +150,10 @@ func (p ptrValue) UnmarshalJSON(i []byte) error {
 
 	p.Set(reflect.New(p.Type().Elem()))
 
-	e, err := objectify(p.Elem())
+	o, err := objectify(p.Elem())
 	if err != nil {
 		return err
 	}
 
-	return e.UnmarshalJSON(i)
+	return o.UnmarshalJSON(i)
 }

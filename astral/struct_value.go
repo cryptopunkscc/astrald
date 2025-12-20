@@ -2,8 +2,10 @@ package astral
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
+	"strings"
 )
 
 type structValue struct {
@@ -99,7 +101,21 @@ func (s structValue) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (s structValue) MarshalJSON() ([]byte, error) {
-	var v = map[string]any{}
+	// if the struct is non-root try to cast it to a json.Marshaler
+	if !s.root {
+		o, ok := s.Interface().(json.Marshaler)
+		if ok {
+			return o.MarshalJSON()
+		}
+		if s.CanAddr() {
+			o, ok = s.Addr().Interface().(json.Marshaler)
+			if ok {
+				return o.MarshalJSON()
+			}
+		}
+	}
+
+	var v = map[string]json.RawMessage{}
 
 	for i := range s.NumField() {
 		f := s.Field(i)
@@ -109,13 +125,87 @@ func (s structValue) MarshalJSON() ([]byte, error) {
 			continue
 		}
 
-		v[s.Type().Field(i).Name] = s.Field(i).Interface()
+		fobject, err := objectify(f)
+		if err != nil {
+			return nil, err
+		}
+
+		fname := s.Type().Field(i).Name
+
+		v[fname], err = fobject.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return json.Marshal(v)
 }
 
-func (s structValue) UnmarshalJSON(i []byte) error {
-	//TODO implement me
-	panic("implement me")
+func (s structValue) UnmarshalJSON(data []byte) error {
+	// if the struct is non-root try to cast it to a json.Unmarshaler
+	if !s.root {
+		if o, ok := s.Interface().(json.Unmarshaler); ok {
+			return o.UnmarshalJSON(data)
+		}
+		if s.CanAddr() {
+			o, ok := s.Addr().Interface().(json.Unmarshaler)
+			if ok {
+				return o.UnmarshalJSON(data)
+			}
+		}
+	}
+
+	var fields map[string]json.RawMessage
+
+	err := json.Unmarshal(data, &fields)
+	if err != nil {
+		return err
+	}
+
+	// convert all keys to lowercase
+	for k, v := range fields {
+		l := strings.ToLower(k)
+		if k == l {
+			continue
+		}
+		if _, dup := fields[l]; dup {
+			return errors.New("object has duplicate fields due to case insensitivity")
+		}
+		fields[l] = v
+		delete(fields, k)
+	}
+
+	for i := range s.NumField() {
+		f := s.Field(i)
+
+		// skip unexported fields
+		if !f.CanInterface() {
+			continue
+		}
+
+		fname := strings.ToLower(s.Type().Field(i).Name)
+
+		jdata, ok := fields[fname]
+		if !ok {
+			continue
+		}
+
+		fobject, err := objectify(f)
+		if err != nil {
+			return err
+		}
+
+		err = fobject.UnmarshalJSON(jdata)
+		if err != nil {
+			return err
+		}
+
+		delete(fields, fname)
+	}
+
+	if len(fields) > 0 {
+		return errors.New("excess fields in json object")
+	}
+
+	return nil
 }

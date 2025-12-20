@@ -58,7 +58,14 @@ func (o Objectified) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (o Objectified) UnmarshalJSON(bytes []byte) error {
-	return o.value.UnmarshalJSON(bytes)
+	ptrVal, ok := o.value.(ptrValue)
+	if !ok {
+		return errors.New("cannot read into a non-pointer value")
+	}
+
+	ptrVal.skipNilFlag = true
+
+	return ptrVal.UnmarshalJSON(bytes)
 }
 
 func (o Objectified) MarshalJSON() ([]byte, error) {
