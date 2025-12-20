@@ -17,7 +17,7 @@ func TestInterfaceWithIdentity(t *testing.T) {
 
 	src.Value = srcID
 
-	srcObject := Objectify(src)
+	srcObject := Objectify(&src)
 
 	// test binary marshaling
 	var buf = &bytes.Buffer{}
@@ -69,7 +69,7 @@ func TestInterfaceNil(t *testing.T) {
 	var src, dst testInterface
 	src.Value = nil
 
-	srcObject := Objectify(src)
+	srcObject := Objectify(&src)
 
 	// test binary marshaling
 	var buf = &bytes.Buffer{}

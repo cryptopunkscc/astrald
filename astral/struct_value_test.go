@@ -18,7 +18,7 @@ func TestStruct(t *testing.T) {
 	src.SomeNumber = 123
 	src.SomeList = []string{"hello", "world"}
 
-	srcObject := Objectify(src)
+	srcObject := Objectify(&src)
 
 	var buf = &bytes.Buffer{}
 	_, err = srcObject.WriteTo(buf)
@@ -44,7 +44,7 @@ func TestStruct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	dstObject = Objectify(&dst)
 	err = dstObject.UnmarshalJSON(jdata)
 	if err != nil {

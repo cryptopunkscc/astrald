@@ -10,7 +10,7 @@ func TestPtrString(t *testing.T) {
 	var src, dst *string
 	src = (*string)(NewString("hello world"))
 
-	srcObject := Objectify(src)
+	srcObject := Objectify(&src)
 
 	// test binary marshaling
 	var buf = &bytes.Buffer{}
@@ -51,7 +51,7 @@ func TestPtrNil(t *testing.T) {
 	var src, dst *string
 	dst = (*string)(NewString("hello world"))
 
-	srcObject := Objectify(src)
+	srcObject := Objectify(&src)
 
 	// test binary marshaling
 	var buf = &bytes.Buffer{}

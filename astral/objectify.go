@@ -14,11 +14,20 @@ type Objectified struct {
 
 // Objectify converts any value into an Object. If the given value is a struct with an ObjectType() method,
 // that method will be used as the returned object's type; otherwise the type is empty.
+// The argument must be a pointer.
 func Objectify(a any) Objectified {
 	var v = reflect.ValueOf(a)
-	if !v.IsValid() {
+
+	switch {
+	case !v.IsValid():
 		return Objectified{err: errors.New("invalid value")}
+	case v.Kind() != reflect.Ptr:
+		panic("expected a pointer")
+	case v.IsNil():
+		panic("cannot objectify nil pointer")
 	}
+
+	v = v.Elem()
 
 	var o value
 	var err error
@@ -47,25 +56,11 @@ func (o Objectified) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (o Objectified) ReadFrom(r io.Reader) (n int64, err error) {
-	ptrVal, ok := o.value.(ptrValue)
-	if !ok {
-		return 0, errors.New("cannot read into a non-pointer value")
-	}
-
-	ptrVal.skipNilFlag = true
-
-	return ptrVal.ReadFrom(r)
+	return o.value.ReadFrom(r)
 }
 
 func (o Objectified) UnmarshalJSON(bytes []byte) error {
-	ptrVal, ok := o.value.(ptrValue)
-	if !ok {
-		return errors.New("cannot read into a non-pointer value")
-	}
-
-	ptrVal.skipNilFlag = true
-
-	return ptrVal.UnmarshalJSON(bytes)
+	return o.value.UnmarshalJSON(bytes)
 }
 
 func (o Objectified) MarshalJSON() ([]byte, error) {
@@ -80,6 +75,19 @@ type value interface {
 }
 
 func objectify(v reflect.Value) (value, error) {
+	if v.Kind() != reflect.Interface {
+		if v.CanInterface() {
+			if v, ok := v.Interface().(value); ok {
+				return v, nil
+			}
+		}
+		if v.CanAddr() {
+			if v, ok := v.Addr().Interface().(value); ok {
+				return v, nil
+			}
+		}
+	}
+
 	switch v.Kind() {
 	case reflect.Ptr:
 		return ptrValue{Value: v}, nil

@@ -13,7 +13,7 @@ func TestArrayOfInts(t *testing.T) {
 		src[i] = i
 	}
 
-	srcObject := Objectify(src)
+	srcObject := Objectify(&src)
 
 	// test binary marshaling
 	var buf = &bytes.Buffer{}

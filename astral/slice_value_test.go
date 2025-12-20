@@ -13,7 +13,7 @@ func TestSliceOfInts(t *testing.T) {
 		src = append(src, i)
 	}
 
-	srcObject := Objectify(src)
+	srcObject := Objectify(&src)
 
 	// test binary marshaling
 	var buf = &bytes.Buffer{}

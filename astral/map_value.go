@@ -27,23 +27,35 @@ func (m mapValue) WriteTo(w io.Writer) (n int64, err error) {
 	var i int64
 
 	for _, k := range m.MapKeys() {
-		o, err = objectify(k)
-		if err != nil {
-			return
+		if wto, ok := k.Interface().(io.WriterTo); ok {
+			i, err = wto.WriteTo(w)
+		} else {
+			o, err = objectify(k)
+			if err != nil {
+				return
+			}
+
+			i, err = o.WriteTo(w)
 		}
 
-		i, err = objectWrapper{o}.WriteTo(w)
 		n += i
 		if err != nil {
 			return
 		}
 
-		o, err = objectify(m.MapIndex(k))
-		if err != nil {
-			return
+		v := m.MapIndex(k)
+
+		if wto, ok := v.Interface().(io.WriterTo); ok {
+			i, err = wto.WriteTo(w)
+		} else {
+			o, err = objectify(v)
+			if err != nil {
+				return
+			}
+
+			i, err = o.WriteTo(w)
 		}
 
-		i, err = objectWrapper{o}.WriteTo(w)
 		n += i
 		if err != nil {
 			return
@@ -62,7 +74,7 @@ func (m mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 	n += 4
 
 	if l == 0 {
-		reflect.Zero(m.Type())
+		m.SetZero()
 		return
 	}
 
@@ -75,7 +87,7 @@ func (m mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 		var key = reflect.New(m.Type().Key()).Elem()
 
 		o, err = objectify(key)
-		k, err = objectWrapper{o}.ReadFrom(r)
+		k, err = o.ReadFrom(r)
 		n += k
 		if err != nil {
 			return
@@ -83,7 +95,7 @@ func (m mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 
 		var value = reflect.New(m.Type().Elem()).Elem()
 		o, err = objectify(value)
-		k, err = objectWrapper{o}.ReadFrom(r)
+		k, err = o.ReadFrom(r)
 		n += k
 		if err != nil {
 			return
