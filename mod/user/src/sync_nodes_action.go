@@ -23,6 +23,8 @@ func (a *SyncNodesAction) String() string {
 }
 
 func (a *SyncNodesAction) Run(ctx *astral.Context) error {
+	ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
 	err := a.mod.SyncApps(ctx, a.remoteIdentity)
 	if err != nil {
 		a.mod.log.Error("error syncing apps with %v: %v", a.remoteIdentity, err)
