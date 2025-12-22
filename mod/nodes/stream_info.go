@@ -30,11 +30,11 @@ func (s StreamInfo) ObjectType() string {
 }
 
 func (s StreamInfo) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Objectify(s).WriteTo(w)
+	return astral.Objectify(&s).WriteTo(w)
 }
 
 func (s *StreamInfo) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Objectify(s).ReadFrom(r)
+	return astral.Objectify(&s).ReadFrom(r)
 }
 
 func (s StreamInfo) MarshalText() (text []byte, err error) {
