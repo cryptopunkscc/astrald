@@ -283,7 +283,7 @@ func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astr
 	inviteQuery := query.New(ctx.Identity(), target, user.OpInvite, &opInviteArgs{})
 	inviteCh, err := query.RouteChan(ctx, mod.node, inviteQuery)
 	if err != nil {
-		return signedContract, err
+		return signedContract, fmt.Errorf("failed to route query: %w", err)
 	}
 
 	defer inviteCh.Close()
@@ -320,7 +320,7 @@ func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astr
 
 	signedContract.UserSig, err = mod.Keys.SignASN1(signedContract.UserID, signedContract.Hash())
 	if err != nil {
-		return signedContract, err
+		return signedContract, fmt.Errorf("failed to sign contract: %w", err)
 	}
 
 	err = inviteCh.Write(&signedContract.UserSig)
