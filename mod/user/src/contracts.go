@@ -134,7 +134,7 @@ func (mod *Module) ActiveContractsOf(userID *astral.Identity) (contracts []*user
 func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error) {
 	contractID, err := astral.ResolveObjectID(c)
 	if err != nil {
-		return
+		return fmt.Errorf("failed to resolve contract ID: %w", err)
 	}
 
 	// check if already saved
@@ -143,19 +143,19 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 	}
 
 	if c.IsExpired() {
-		return errors.New("contract expired")
+		return user.ErrNodeContractAlreadyExpired
 	}
 
 	err = mod.ValidateNodeContract(c)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed while validating contract: %w", err)
 	}
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
 	_, err = objects.Save(ctx, c, mod.Objects.Root())
 	if err != nil {
-		return err
+		return fmt.Errorf(`error saving contract: %w`, err)
 	}
 
 	err = mod.db.Create(&dbNodeContract{
@@ -165,7 +165,7 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 		ExpiresAt: c.ExpiresAt.Time().UTC(),
 	}).Error
 	if err != nil {
-		return
+		return fmt.Errorf(`db error: %w`, err)
 	}
 
 	mod.runSiblingLinker()
