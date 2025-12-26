@@ -15,3 +15,5 @@ type JSONEncodeAdapter struct {
 	Object  any    `json:",omitempty"`
 	Payload []byte `json:",omitempty"`
 }
+
+var jsonNull = []byte("null")

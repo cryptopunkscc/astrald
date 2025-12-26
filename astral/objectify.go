@@ -27,24 +27,7 @@ func Objectify(a any) Objectified {
 		panic("cannot objectify nil pointer")
 	}
 
-	v = v.Elem()
-
-	var o value
-	var err error
-
-	switch v.Kind() {
-	case reflect.Ptr:
-		o = ptrValue{Value: v, root: true}
-	case reflect.Struct:
-		o = structValue{Value: v, root: true}
-	default:
-		o, err = objectify(v)
-		if err != nil {
-			return Objectified{err: err}
-		}
-	}
-
-	return Objectified{value: o}
+	return Objectified{value: ptrValue{Value: v, root: true}}
 }
 
 func (o Objectified) ObjectType() string {

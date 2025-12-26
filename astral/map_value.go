@@ -1,7 +1,10 @@
 package astral
 
 import (
+	encoding2 "encoding"
 	"encoding/binary"
+	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
 )
@@ -110,8 +113,39 @@ func (m mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (m mapValue) MarshalJSON() ([]byte, error) {
-	//TODO implement me
-	panic("implement me")
+	if m.IsNil() {
+		return jsonNull, nil
+	}
+
+	var jmap = map[string]json.RawMessage{}
+
+	for _, mapKey := range m.MapKeys() {
+		tm, ok := mapKey.Interface().(encoding2.TextMarshaler)
+		if !ok {
+			return nil, errors.New("map key does not implement text encoding")
+		}
+
+		key, err := tm.MarshalText()
+		if err != nil {
+			return nil, err
+		}
+
+		mapValue := m.MapIndex(mapKey)
+
+		o, err := objectify(mapValue)
+		if err != nil {
+			return nil, err
+		}
+
+		value, err := o.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+
+		jmap[string(key)] = value
+	}
+
+	return json.Marshal(jmap)
 }
 
 func (m mapValue) UnmarshalJSON(bytes []byte) error {

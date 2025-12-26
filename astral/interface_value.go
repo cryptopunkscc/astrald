@@ -89,7 +89,11 @@ func (i interfaceValue) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (i interfaceValue) MarshalJSON() ([]byte, error) {
 	if !i.IsValid() || i.IsNil() || i.IsElemNilPtr() {
-		return json.Marshal(nil)
+		return jsonNull, nil
+	}
+
+	if i.Elem().Type().Kind() == reflect.Map {
+		return mapValue{Value: i.Elem()}.MarshalJSON()
 	}
 
 	var j JSONEncodeAdapter
@@ -120,7 +124,7 @@ func (i interfaceValue) MarshalJSON() ([]byte, error) {
 }
 
 func (i interfaceValue) UnmarshalJSON(data []byte) error {
-	if bytes.Equal(data, []byte("null")) {
+	if bytes.Equal(data, jsonNull) {
 		i.SetZero()
 		return nil
 	}

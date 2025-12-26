@@ -34,6 +34,21 @@ func (p ptrValue) ObjectType() string {
 }
 
 func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
+	if p.root {
+		if p.Elem().Kind() == reflect.Struct {
+			return structValue{
+				Value: p.Elem(),
+				root:  p.root,
+			}.WriteTo(w)
+		}
+		
+		o, err := objectify(p.Elem())
+		if err != nil {
+			return 0, err
+		}
+		return o.WriteTo(w)
+	}
+
 	if p.IsNil() {
 		if p.skipNilFlag {
 			return 0, nil
@@ -71,6 +86,21 @@ func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (p ptrValue) ReadFrom(r io.Reader) (n int64, err error) {
+	if p.root {
+		if p.Elem().Kind() == reflect.Struct {
+			return structValue{
+				Value: p.Elem(),
+				root:  p.root,
+			}.ReadFrom(r)
+		}
+
+		o, err := objectify(p.Elem())
+		if err != nil {
+			return 0, err
+		}
+		return o.ReadFrom(r)
+	}
+
 	if !p.skipNilFlag {
 		var nilFlag uint8
 		err = binary.Read(r, encoding, &nilFlag)
@@ -113,6 +143,14 @@ func (p ptrValue) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (p ptrValue) MarshalJSON() ([]byte, error) {
+	if p.root {
+		o, err := objectify(p.Elem())
+		if err != nil {
+			return nil, err
+		}
+		return o.MarshalJSON()
+	}
+
 	if p.IsNil() {
 		return json.Marshal(nil)
 	}
@@ -126,11 +164,19 @@ func (p ptrValue) MarshalJSON() ([]byte, error) {
 }
 
 func (p ptrValue) UnmarshalJSON(i []byte) error {
+	if p.root {
+		o, err := objectify(p.Elem())
+		if err != nil {
+			return err
+		}
+		return o.UnmarshalJSON(i)
+	}
+
 	if !p.CanSet() {
 		return errors.New("cannot set pointer value")
 	}
 
-	if bytes.Equal(i, []byte("null")) {
+	if bytes.Equal(i, jsonNull) {
 		p.Set(reflect.Zero(p.Type()))
 		return nil
 	}

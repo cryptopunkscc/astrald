@@ -6,6 +6,7 @@ import (
 )
 
 type testInterface struct {
+	Nonce Nonce
 	Value Object
 }
 
@@ -15,6 +16,7 @@ func TestInterfaceWithIdentity(t *testing.T) {
 	var srcID *Identity
 	srcID = GenerateIdentity()
 
+	src.Nonce = NewNonce()
 	src.Value = srcID
 
 	srcObject := Objectify(&src)
@@ -48,6 +50,10 @@ func TestInterfaceWithIdentity(t *testing.T) {
 	err = dstObject.UnmarshalJSON(jdata)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if dst.Nonce != src.Nonce {
+		t.Fatal("nonce values differ")
 	}
 
 	if dst.Value == nil {
