@@ -29,25 +29,48 @@ func (i interfaceValue) WriteTo(w io.Writer) (n int64, err error) {
 		return
 	}
 
-	var o Object
+	var objectType string
+	var objectWriter io.WriterTo
 
-	if i.Elem().Kind() == reflect.Ptr {
-		o = ptrValue{Value: i.Elem(), skipNilFlag: true}
-	} else {
-		o, err = objectify(i.Elem())
-		if err != nil {
-			return
+	switch i.Elem().Kind() {
+	case reflect.Ptr:
+		v := ptrValue{Value: i.Elem(), skipNilFlag: true}
+		objectWriter = v
+		objectType = v.ObjectType()
+
+	case reflect.String, reflect.Slice:
+		// this is a special case needed to handle various String* and Bytes* alias types
+		ow, wok := i.Elem().Interface().(io.WriterTo)
+		ot, tok := i.Elem().Interface().(ObjectTyper)
+		if wok && tok {
+			objectWriter = ow
+			objectType = ot.ObjectType()
+			break
 		}
+
+		fallthrough
+	default:
+		o, err := objectify(i.Elem())
+		if err != nil {
+			return n, err
+		}
+
+		objectType = o.ObjectType()
+		objectWriter = o
+	}
+
+	if objectType == "" {
+		return n, errors.New("interface contains an untyped object")
 	}
 
 	var m int64
-	m, err = String8(o.ObjectType()).WriteTo(w)
+	m, err = String8(objectType).WriteTo(w)
 	n += m
 	if err != nil {
 		return
 	}
 
-	m, err = o.WriteTo(w)
+	m, err = objectWriter.WriteTo(w)
 	n += m
 
 	return
@@ -92,10 +115,6 @@ func (i interfaceValue) MarshalJSON() ([]byte, error) {
 		return jsonNull, nil
 	}
 
-	if i.Elem().Type().Kind() == reflect.Map {
-		return mapValue{Value: i.Elem()}.MarshalJSON()
-	}
-
 	var j JSONEncodeAdapter
 
 	if raw, ok := i.Interface().(*RawObject); ok {
@@ -108,6 +127,10 @@ func (i interfaceValue) MarshalJSON() ([]byte, error) {
 	o, err := objectify(i.Elem())
 	if err != nil {
 		return nil, err
+	}
+
+	if o.ObjectType() == "" {
+		return nil, errors.New("object behind interface has no type")
 	}
 
 	jdata, err := o.MarshalJSON()

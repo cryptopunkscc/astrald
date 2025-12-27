@@ -1,6 +1,7 @@
 package astral
 
 import (
+	"bytes"
 	encoding2 "encoding"
 	"encoding/binary"
 	"encoding/json"
@@ -148,7 +149,49 @@ func (m mapValue) MarshalJSON() ([]byte, error) {
 	return json.Marshal(jmap)
 }
 
-func (m mapValue) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
-	panic("implement me")
+func (m mapValue) UnmarshalJSON(data []byte) error {
+	if bytes.Compare(data, jsonNull) == 0 {
+		m.SetZero()
+		return nil
+	}
+
+	m.Set(reflect.MakeMap(m.Type()))
+
+	var fields map[string]json.RawMessage
+	err := json.Unmarshal(data, &fields)
+	if err != nil {
+		return err
+	}
+
+	keyType := m.Type().Key()
+
+	for k, v := range fields {
+		var mapKey, mapVal reflect.Value
+
+		mapKey = reflect.New(keyType).Elem()
+		o, err := objectify(mapKey)
+		if err != nil {
+			return err
+		}
+
+		err = o.UnmarshalJSON([]byte(k))
+		if err != nil {
+			return err
+		}
+
+		mapVal = reflect.New(m.Type().Elem()).Elem()
+		o, err = objectify(mapVal)
+		if err != nil {
+			return err
+		}
+
+		err = o.UnmarshalJSON(v)
+		if err != nil {
+			return err
+		}
+
+		m.SetMapIndex(mapKey, mapVal)
+	}
+
+	return nil
 }

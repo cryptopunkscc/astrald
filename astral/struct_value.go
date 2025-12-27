@@ -27,7 +27,7 @@ func (s structValue) WriteTo(w io.Writer) (n int64, err error) {
 	var m int64
 	var o Object
 
-	// if the struct is non-root and an object, use its own WriteTo
+	// use struct's own WriteTo only if it's not a root element to avoid infinite loops
 	if !s.root {
 		o, ok := s.Interface().(Object)
 		if ok {

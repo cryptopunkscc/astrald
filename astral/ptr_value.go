@@ -12,7 +12,6 @@ import (
 type ptrValue struct {
 	reflect.Value
 	skipNilFlag bool
-	root        bool
 }
 
 var _ Object = &ptrValue{}
@@ -21,34 +20,16 @@ func (p ptrValue) ObjectType() string {
 	if p.IsNil() {
 		return ""
 	}
-	if e, ok := p.Elem().Interface().(ObjectTyper); ok {
-		return e.ObjectType()
-	}
-	if p.Elem().CanAddr() {
-		if e, ok := p.Elem().Addr().Interface().(ObjectTyper); ok {
-			return e.ObjectType()
-		}
+
+	o, err := objectify(p.Elem())
+	if err != nil {
+		return ""
 	}
 
-	return ""
+	return o.ObjectType()
 }
 
 func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
-	if p.root {
-		if p.Elem().Kind() == reflect.Struct {
-			return structValue{
-				Value: p.Elem(),
-				root:  p.root,
-			}.WriteTo(w)
-		}
-		
-		o, err := objectify(p.Elem())
-		if err != nil {
-			return 0, err
-		}
-		return o.WriteTo(w)
-	}
-
 	if p.IsNil() {
 		if p.skipNilFlag {
 			return 0, nil
@@ -62,13 +43,9 @@ func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
 	}
 
 	var o Object
-	if p.Elem().Kind() == reflect.Struct {
-		o = structValue{p.Elem(), p.root}
-	} else {
-		o, err = objectify(p.Elem())
-		if err != nil {
-			return 0, err
-		}
+	o, err = objectify(p.Elem())
+	if err != nil {
+		return 0, err
 	}
 
 	if !p.skipNilFlag {
@@ -86,21 +63,6 @@ func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (p ptrValue) ReadFrom(r io.Reader) (n int64, err error) {
-	if p.root {
-		if p.Elem().Kind() == reflect.Struct {
-			return structValue{
-				Value: p.Elem(),
-				root:  p.root,
-			}.ReadFrom(r)
-		}
-
-		o, err := objectify(p.Elem())
-		if err != nil {
-			return 0, err
-		}
-		return o.ReadFrom(r)
-	}
-
 	if !p.skipNilFlag {
 		var nilFlag uint8
 		err = binary.Read(r, encoding, &nilFlag)
@@ -127,13 +89,9 @@ func (p ptrValue) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var o Object
-	if p.Elem().Kind() == reflect.Struct {
-		o = structValue{p.Elem(), p.root}
-	} else {
-		o, err = objectify(p.Elem())
-		if err != nil {
-			return 1, err
-		}
+	o, err = objectify(p.Elem())
+	if err != nil {
+		return 1, err
 	}
 
 	var m int64
@@ -143,14 +101,6 @@ func (p ptrValue) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (p ptrValue) MarshalJSON() ([]byte, error) {
-	if p.root {
-		o, err := objectify(p.Elem())
-		if err != nil {
-			return nil, err
-		}
-		return o.MarshalJSON()
-	}
-
 	if p.IsNil() {
 		return json.Marshal(nil)
 	}
@@ -164,14 +114,6 @@ func (p ptrValue) MarshalJSON() ([]byte, error) {
 }
 
 func (p ptrValue) UnmarshalJSON(i []byte) error {
-	if p.root {
-		o, err := objectify(p.Elem())
-		if err != nil {
-			return err
-		}
-		return o.UnmarshalJSON(i)
-	}
-
 	if !p.CanSet() {
 		return errors.New("cannot set pointer value")
 	}

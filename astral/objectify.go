@@ -8,49 +8,83 @@ import (
 )
 
 type Objectified struct {
-	value
-	err error
+	reflect.Value
 }
 
 // Objectify converts any value into an Object. If the given value is a struct with an ObjectType() method,
 // that method will be used as the returned object's type; otherwise the type is empty.
-// The argument must be a pointer.
+// The argument must be a pointer to a variable for both reading and writing.
 func Objectify(a any) Objectified {
 	var v = reflect.ValueOf(a)
 
 	switch {
-	case !v.IsValid():
-		return Objectified{err: errors.New("invalid value")}
 	case v.Kind() != reflect.Ptr:
-		panic("expected a pointer")
+		panic("argument must be a pointer")
 	case v.IsNil():
 		panic("cannot objectify nil pointer")
 	}
 
-	return Objectified{value: ptrValue{Value: v, root: true}}
+	return Objectified{Value: v}
 }
 
 func (o Objectified) ObjectType() string {
-	return o.value.ObjectType()
+	elem, err := objectify(o.Elem())
+	if err != nil {
+		return ""
+	}
+
+	return elem.ObjectType()
 }
 
 func (o Objectified) WriteTo(w io.Writer) (n int64, err error) {
-	return o.value.WriteTo(w)
+	if o.Elem().Kind() == reflect.Struct {
+		return structValue{
+			Value: o.Elem(),
+			root:  true,
+		}.WriteTo(w)
+	}
+
+	e, err := objectify(o.Elem())
+	if err != nil {
+		return 0, err
+	}
+
+	return e.WriteTo(w)
 }
 
 func (o Objectified) ReadFrom(r io.Reader) (n int64, err error) {
-	return o.value.ReadFrom(r)
-}
+	if o.Elem().Kind() == reflect.Struct {
+		return structValue{
+			Value: o.Elem(),
+			root:  true,
+		}.ReadFrom(r)
+	}
 
-func (o Objectified) UnmarshalJSON(bytes []byte) error {
-	return o.value.UnmarshalJSON(bytes)
+	e, err := objectify(o.Elem())
+	if err != nil {
+		return 0, err
+	}
+	return e.ReadFrom(r)
 }
 
 func (o Objectified) MarshalJSON() ([]byte, error) {
-	return o.value.MarshalJSON()
+	e, err := objectify(o.Elem())
+	if err != nil {
+		return nil, err
+	}
+
+	return e.MarshalJSON()
 }
 
-// value is an interface for values that can be converted to an Object.
+func (o Objectified) UnmarshalJSON(bytes []byte) error {
+	e, err := objectify(o.Elem())
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalJSON(bytes)
+}
+
+// value is an interface for objects that support both binary and JSON encoding.
 type value interface {
 	Object
 	json.Marshaler
