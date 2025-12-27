@@ -6,7 +6,8 @@ import (
 )
 
 type testMap struct {
-	SomeMap map[Uint8]String8
+	SomeMap   map[Uint8]String8
+	NativeMap map[int]string
 }
 
 func TestMapWithValues(t *testing.T) {
@@ -15,6 +16,8 @@ func TestMapWithValues(t *testing.T) {
 
 	src.SomeMap = make(map[Uint8]String8)
 	src.SomeMap[1] = "hello world"
+	src.NativeMap = make(map[int]string)
+	src.NativeMap[1] = "hello world"
 
 	srcObject := Objectify(&src)
 
@@ -37,6 +40,10 @@ func TestMapWithValues(t *testing.T) {
 		t.Fatal("map lengths not equal")
 	case dst.SomeMap[1] != src.SomeMap[1]:
 		t.Fatal("map values not equal")
+	case len(dst.NativeMap) != len(src.NativeMap):
+		t.Fatal("native map lengths not equal")
+	case dst.NativeMap[1] != src.NativeMap[1]:
+		t.Fatal("native map values not equal")
 	}
 
 	// test json marshaling
@@ -45,7 +52,7 @@ func TestMapWithValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst.SomeMap = nil
+	dst = testMap{}
 	dstObject = Objectify(&dst)
 
 	err = dstObject.UnmarshalJSON(jdata)
@@ -58,6 +65,10 @@ func TestMapWithValues(t *testing.T) {
 		t.Fatal("map lengths not equal")
 	case dst.SomeMap[1] != src.SomeMap[1]:
 		t.Fatal("map values not equal")
+	case len(dst.NativeMap) != len(src.NativeMap):
+		t.Fatal("native map lengths not equal")
+	case dst.NativeMap[1] != src.NativeMap[1]:
+		t.Fatal("native map values not equal")
 	}
 }
 

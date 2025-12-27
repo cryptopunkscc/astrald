@@ -6,8 +6,10 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 )
 
 type mapValue struct {
@@ -16,12 +18,12 @@ type mapValue struct {
 
 var _ Object = &mapValue{}
 
-func (m mapValue) ObjectType() string {
+func (val mapValue) ObjectType() string {
 	return ""
 }
 
-func (m mapValue) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, uint32(m.Len()))
+func (val mapValue) WriteTo(w io.Writer) (n int64, err error) {
+	err = binary.Write(w, encoding, uint32(val.Len()))
 	if err != nil {
 		return
 	}
@@ -30,7 +32,7 @@ func (m mapValue) WriteTo(w io.Writer) (n int64, err error) {
 	var o Object
 	var i int64
 
-	for _, k := range m.MapKeys() {
+	for _, k := range val.MapKeys() {
 		nkey := k.Kind() == reflect.Ptr || k.Kind() == reflect.Interface
 		if wto, ok := k.Interface().(io.WriterTo); ok && !nkey {
 			i, err = wto.WriteTo(w)
@@ -48,7 +50,7 @@ func (m mapValue) WriteTo(w io.Writer) (n int64, err error) {
 			return
 		}
 
-		v := m.MapIndex(k)
+		v := val.MapIndex(k)
 
 		nval := v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface
 		if wto, ok := v.Interface().(io.WriterTo); ok && !nval {
@@ -71,7 +73,7 @@ func (m mapValue) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
-func (m mapValue) ReadFrom(r io.Reader) (n int64, err error) {
+func (val mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 	var l uint32
 	err = binary.Read(r, encoding, &l)
 	if err != nil {
@@ -80,17 +82,17 @@ func (m mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 	n += 4
 
 	if l == 0 {
-		m.SetZero()
+		val.SetZero()
 		return
 	}
 
-	m.Set(reflect.MakeMap(m.Type()))
+	val.Set(reflect.MakeMap(val.Type()))
 
 	var o Object
 	var k int64
 
 	for range l {
-		var key = reflect.New(m.Type().Key()).Elem()
+		var key = reflect.New(val.Type().Key()).Elem()
 
 		o, err = objectify(key)
 		k, err = o.ReadFrom(r)
@@ -99,7 +101,7 @@ func (m mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		var value = reflect.New(m.Type().Elem()).Elem()
+		var value = reflect.New(val.Type().Elem()).Elem()
 		o, err = objectify(value)
 		k, err = o.ReadFrom(r)
 		n += k
@@ -107,31 +109,43 @@ func (m mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		m.SetMapIndex(key, value)
+		val.SetMapIndex(key, value)
 	}
 
 	return
 }
 
-func (m mapValue) MarshalJSON() ([]byte, error) {
-	if m.IsNil() {
+func (val mapValue) MarshalJSON() ([]byte, error) {
+	if val.IsNil() {
 		return jsonNull, nil
 	}
 
 	var jmap = map[string]json.RawMessage{}
+	var err error
 
-	for _, mapKey := range m.MapKeys() {
-		tm, ok := mapKey.Interface().(encoding2.TextMarshaler)
-		if !ok {
-			return nil, errors.New("map key does not implement text encoding")
+	for _, mapKey := range val.MapKeys() {
+		var key []byte
+
+		m, ok := mapKey.Interface().(encoding2.TextMarshaler)
+		if ok {
+			key, err = m.MarshalText()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			switch mapKey.Kind() {
+			case reflect.String:
+				key = []byte(mapKey.String())
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				key = []byte(strconv.FormatInt(mapKey.Int(), 10))
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				key = []byte(strconv.FormatUint(mapKey.Uint(), 10))
+			default:
+				return nil, errors.New("map key does not implement text encoding")
+			}
 		}
 
-		key, err := tm.MarshalText()
-		if err != nil {
-			return nil, err
-		}
-
-		mapValue := m.MapIndex(mapKey)
+		mapValue := val.MapIndex(mapKey)
 
 		o, err := objectify(mapValue)
 		if err != nil {
@@ -149,13 +163,13 @@ func (m mapValue) MarshalJSON() ([]byte, error) {
 	return json.Marshal(jmap)
 }
 
-func (m mapValue) UnmarshalJSON(data []byte) error {
+func (val mapValue) UnmarshalJSON(data []byte) error {
 	if bytes.Compare(data, jsonNull) == 0 {
-		m.SetZero()
+		val.SetZero()
 		return nil
 	}
 
-	m.Set(reflect.MakeMap(m.Type()))
+	val.Set(reflect.MakeMap(val.Type()))
 
 	var fields map[string]json.RawMessage
 	err := json.Unmarshal(data, &fields)
@@ -163,24 +177,40 @@ func (m mapValue) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	keyType := m.Type().Key()
+	keyType := val.Type().Key()
 
 	for k, v := range fields {
-		var mapKey, mapVal reflect.Value
+		var mapVal reflect.Value
+		var mapKey = reflect.New(keyType)
 
-		mapKey = reflect.New(keyType).Elem()
-		o, err := objectify(mapKey)
-		if err != nil {
-			return err
+		if u, ok := mapKey.Interface().(encoding2.TextUnmarshaler); ok {
+			err = u.UnmarshalText([]byte(k))
+		} else {
+			switch keyType.Kind() {
+			case reflect.String:
+				mapKey.Elem().SetString(k)
+
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				i, err := strconv.ParseInt(k, 10, 64)
+				if err != nil {
+					return fmt.Errorf("error parsing int key: %w", err)
+				}
+				mapKey.Elem().SetInt(i)
+
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				i, err := strconv.ParseUint(k, 10, 64)
+				if err != nil {
+					return fmt.Errorf("error parsing uint key: %w", err)
+				}
+				mapKey.Elem().SetUint(i)
+
+			default:
+				return errors.New("map key does not implement text decoding")
+			}
 		}
 
-		err = o.UnmarshalJSON([]byte(k))
-		if err != nil {
-			return err
-		}
-
-		mapVal = reflect.New(m.Type().Elem()).Elem()
-		o, err = objectify(mapVal)
+		mapVal = reflect.New(val.Type().Elem()).Elem()
+		o, err := objectify(mapVal)
 		if err != nil {
 			return err
 		}
@@ -190,7 +220,7 @@ func (m mapValue) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		m.SetMapIndex(mapKey, mapVal)
+		val.SetMapIndex(mapKey.Elem(), mapVal)
 	}
 
 	return nil
