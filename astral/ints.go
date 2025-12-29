@@ -7,8 +7,6 @@ import (
 	"strconv"
 )
 
-var encoding = binary.BigEndian
-
 type Uint8 uint8
 
 func (Uint8) ObjectType() string {
@@ -16,7 +14,7 @@ func (Uint8) ObjectType() string {
 }
 
 func (u Uint8) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, u)
+	err = binary.Write(w, ByteOrder, u)
 	if err == nil {
 		n = 1
 	}
@@ -24,7 +22,7 @@ func (u Uint8) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (u *Uint8) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, encoding, u)
+	err = binary.Read(r, ByteOrder, u)
 	if err == nil {
 		n = 1
 	}
@@ -63,7 +61,7 @@ func (Uint16) ObjectType() string {
 }
 
 func (u Uint16) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, u)
+	err = binary.Write(w, ByteOrder, u)
 	if err == nil {
 		n = 1
 	}
@@ -71,7 +69,7 @@ func (u Uint16) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (u *Uint16) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, encoding, u)
+	err = binary.Read(r, ByteOrder, u)
 	if err == nil {
 		n = 1
 	}
@@ -110,7 +108,7 @@ func (Uint32) ObjectType() string {
 }
 
 func (u Uint32) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, u)
+	err = binary.Write(w, ByteOrder, u)
 	if err == nil {
 		n = 1
 	}
@@ -118,7 +116,7 @@ func (u Uint32) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (u *Uint32) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, encoding, u)
+	err = binary.Read(r, ByteOrder, u)
 	if err == nil {
 		n = 1
 	}
@@ -157,7 +155,7 @@ func (Uint64) ObjectType() string {
 }
 
 func (u Uint64) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, u)
+	err = binary.Write(w, ByteOrder, u)
 	if err == nil {
 		n = 1
 	}
@@ -165,7 +163,7 @@ func (u Uint64) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (u *Uint64) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, encoding, u)
+	err = binary.Read(r, ByteOrder, u)
 	if err == nil {
 		n = 1
 	}
@@ -204,7 +202,7 @@ func (Int8) ObjectType() string {
 }
 
 func (i Int8) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, i)
+	err = binary.Write(w, ByteOrder, i)
 	if err == nil {
 		n = 1
 	}
@@ -212,7 +210,7 @@ func (i Int8) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (i *Int8) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, encoding, i)
+	err = binary.Read(r, ByteOrder, i)
 	if err == nil {
 		n = 1
 	}
@@ -251,7 +249,7 @@ func (Int16) ObjectType() string {
 }
 
 func (i Int16) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, i)
+	err = binary.Write(w, ByteOrder, i)
 	if err == nil {
 		n = 1
 	}
@@ -259,7 +257,7 @@ func (i Int16) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (i *Int16) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, encoding, i)
+	err = binary.Read(r, ByteOrder, i)
 	if err == nil {
 		n = 1
 	}
@@ -298,7 +296,7 @@ func (Int32) ObjectType() string {
 }
 
 func (i Int32) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, i)
+	err = binary.Write(w, ByteOrder, i)
 	if err == nil {
 		n = 1
 	}
@@ -306,7 +304,7 @@ func (i Int32) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (i *Int32) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, encoding, i)
+	err = binary.Read(r, ByteOrder, i)
 	if err == nil {
 		n = 1
 	}
@@ -345,7 +343,7 @@ func (Int64) ObjectType() string {
 }
 
 func (i Int64) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, i)
+	err = binary.Write(w, ByteOrder, i)
 	if err == nil {
 		n = 1
 	}
@@ -353,7 +351,7 @@ func (i Int64) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (i *Int64) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, encoding, i)
+	err = binary.Read(r, ByteOrder, i)
 	if err == nil {
 		n = 1
 	}

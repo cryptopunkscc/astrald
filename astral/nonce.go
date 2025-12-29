@@ -13,7 +13,7 @@ import (
 type Nonce uint64
 
 func NewNonce() (nonce Nonce) {
-	binary.Read(rand.Reader, binary.BigEndian, &nonce)
+	binary.Read(rand.Reader, ByteOrder, &nonce)
 	return
 }
 
@@ -22,7 +22,7 @@ func NewNonce() (nonce Nonce) {
 func (Nonce) ObjectType() string { return "nonce64" }
 
 func (nonce Nonce) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, binary.BigEndian, uint64(nonce))
+	err = binary.Write(w, ByteOrder, uint64(nonce))
 	if err == nil {
 		n = 8
 	}
@@ -30,7 +30,7 @@ func (nonce Nonce) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (nonce *Nonce) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, binary.BigEndian, nonce)
+	err = binary.Read(r, ByteOrder, nonce)
 	if err == nil {
 		n = 8
 	}

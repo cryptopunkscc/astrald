@@ -3,8 +3,9 @@ package frames
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ Frame = &Data{}
@@ -20,14 +21,14 @@ func (frame *Data) ObjectType() string {
 }
 
 func (frame *Data) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, binary.BigEndian, &frame.Nonce)
+	err = binary.Read(r, astral.ByteOrder, &frame.Nonce)
 	if err != nil {
 		return
 	}
 	n += 8
 
 	var plen uint16
-	err = binary.Read(r, binary.BigEndian, &plen)
+	err = binary.Read(r, astral.ByteOrder, &plen)
 	if err != nil {
 		return
 	}
@@ -42,13 +43,13 @@ func (frame *Data) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (frame *Data) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, binary.BigEndian, frame.Nonce)
+	err = binary.Write(w, astral.ByteOrder, frame.Nonce)
 	if err != nil {
 		return
 	}
 	n += 8
 
-	err = binary.Write(w, binary.BigEndian, uint16(len(frame.Payload)))
+	err = binary.Write(w, astral.ByteOrder, uint16(len(frame.Payload)))
 	if err != nil {
 		return
 	}

@@ -127,7 +127,7 @@ func (c *Consumer) Push(ctx *astral.Context, o astral.Object) (err error) {
 	}
 
 	var ok bool
-	err = binary.Read(conn, binary.BigEndian, &ok)
+	err = binary.Read(conn, astral.ByteOrder, &ok)
 	if err != nil {
 		return
 	}

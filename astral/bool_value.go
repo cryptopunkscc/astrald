@@ -18,7 +18,7 @@ func (b boolValue) ObjectType() string {
 }
 
 func (b boolValue) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, b.Bool())
+	err = binary.Write(w, ByteOrder, b.Bool())
 	if err == nil {
 		n = 1
 	}
@@ -27,7 +27,7 @@ func (b boolValue) WriteTo(w io.Writer) (n int64, err error) {
 
 func (b boolValue) ReadFrom(r io.Reader) (n int64, err error) {
 	var v bool
-	err = binary.Read(r, encoding, &v)
+	err = binary.Read(r, ByteOrder, &v)
 	if err == nil {
 		n = 1
 		b.SetBool(v)

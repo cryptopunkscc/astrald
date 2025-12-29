@@ -35,7 +35,7 @@ func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
 			return 0, nil
 		}
 
-		err = binary.Write(w, encoding, uint8(0)) // nil flag
+		err = binary.Write(w, ByteOrder, uint8(0)) // nil flag
 		if err == nil {
 			return 1, nil
 		}
@@ -49,7 +49,7 @@ func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
 	}
 
 	if !p.skipNilFlag {
-		err = binary.Write(w, encoding, uint8(1)) // nil flag
+		err = binary.Write(w, ByteOrder, uint8(1)) // nil flag
 		if err != nil {
 			return 0, err
 		}
@@ -65,7 +65,7 @@ func (p ptrValue) WriteTo(w io.Writer) (n int64, err error) {
 func (p ptrValue) ReadFrom(r io.Reader) (n int64, err error) {
 	if !p.skipNilFlag {
 		var nilFlag uint8
-		err = binary.Read(r, encoding, &nilFlag)
+		err = binary.Read(r, ByteOrder, &nilFlag)
 		if err != nil {
 			return
 		}

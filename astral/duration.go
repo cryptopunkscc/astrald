@@ -15,7 +15,7 @@ func (Duration) ObjectType() string {
 }
 
 func (d Duration) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, binary.BigEndian, int64(d))
+	err = binary.Write(w, ByteOrder, int64(d))
 	if err == nil {
 		n += 8
 	}
@@ -24,7 +24,7 @@ func (d Duration) WriteTo(w io.Writer) (n int64, err error) {
 
 func (d *Duration) ReadFrom(r io.Reader) (n int64, err error) {
 	var i int64
-	err = binary.Read(r, binary.BigEndian, &i)
+	err = binary.Read(r, ByteOrder, &i)
 	if err != nil {
 		return
 	}

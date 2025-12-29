@@ -19,7 +19,7 @@ func (frame *Migrate) ObjectType() string {
 }
 
 func (frame *Migrate) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, binary.BigEndian, &frame.Nonce)
+	err = binary.Read(r, astral.ByteOrder, &frame.Nonce)
 	if err != nil {
 		return
 	}
@@ -29,7 +29,7 @@ func (frame *Migrate) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (frame *Migrate) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, binary.BigEndian, frame.Nonce)
+	err = binary.Write(w, astral.ByteOrder, frame.Nonce)
 	if err != nil {
 		return
 	}

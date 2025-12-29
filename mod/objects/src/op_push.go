@@ -69,14 +69,14 @@ func (mod *Module) opPushSingle(ctx *astral.Context, q shell.Query, args opPushA
 	_, err = io.ReadFull(stream, buf)
 	if err != nil {
 		mod.log.Errorv(1, "%v push read error: %v", q.Caller(), err)
-		binary.Write(stream, binary.BigEndian, false)
+		binary.Write(stream, astral.ByteOrder, false)
 		return
 	}
 
 	obj, err := mod.Blueprints().Canonical().Unpack(buf)
 	if err != nil {
 		mod.log.Errorv(1, "%v push read object error: %v", q.Caller(), err)
-		binary.Write(stream, binary.BigEndian, false)
+		binary.Write(stream, astral.ByteOrder, false)
 		return
 	}
 
@@ -88,11 +88,11 @@ func (mod *Module) opPushSingle(ctx *astral.Context, q shell.Query, args opPushA
 
 	if !mod.receive(q.Caller(), obj) {
 		mod.log.Errorv(1, "rejected %v from %v (%v)", obj.ObjectType(), q.Caller(), objectID)
-		binary.Write(stream, binary.BigEndian, false)
+		binary.Write(stream, astral.ByteOrder, false)
 		return
 	}
 
-	binary.Write(stream, binary.BigEndian, true)
+	binary.Write(stream, astral.ByteOrder, true)
 
 	mod.log.Infov(1, "accepted %v from %v (%v)", obj.ObjectType(), q.Caller(), objectID)
 

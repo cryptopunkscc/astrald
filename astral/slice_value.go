@@ -22,7 +22,7 @@ func (a sliceValue) WriteTo(w io.Writer) (n int64, err error) {
 	var o Object
 	var m int64
 
-	err = binary.Write(w, encoding, uint32(a.Len()))
+	err = binary.Write(w, ByteOrder, uint32(a.Len()))
 	if err != nil {
 		return
 	}
@@ -47,7 +47,7 @@ func (a sliceValue) ReadFrom(r io.Reader) (n int64, err error) {
 	var m int64
 	var l uint32
 
-	err = binary.Read(r, encoding, &l)
+	err = binary.Read(r, ByteOrder, &l)
 	if err != nil {
 		return
 	}

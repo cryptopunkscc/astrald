@@ -23,7 +23,7 @@ func (val mapValue) ObjectType() string {
 }
 
 func (val mapValue) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, uint32(val.Len()))
+	err = binary.Write(w, ByteOrder, uint32(val.Len()))
 	if err != nil {
 		return
 	}
@@ -75,7 +75,7 @@ func (val mapValue) WriteTo(w io.Writer) (n int64, err error) {
 
 func (val mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 	var l uint32
-	err = binary.Read(r, encoding, &l)
+	err = binary.Read(r, ByteOrder, &l)
 	if err != nil {
 		return
 	}

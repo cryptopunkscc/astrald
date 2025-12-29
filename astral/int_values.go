@@ -19,7 +19,7 @@ func (u uint8Value) ObjectType() string {
 }
 
 func (u uint8Value) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, uint8(u.Uint()))
+	err = binary.Write(w, ByteOrder, uint8(u.Uint()))
 	if err == nil {
 		n = 1
 	}
@@ -32,7 +32,7 @@ func (u uint8Value) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var i uint8
-	err = binary.Read(r, encoding, &i)
+	err = binary.Read(r, ByteOrder, &i)
 
 	u.SetUint(uint64(i))
 
@@ -67,7 +67,7 @@ func (u uint16Value) ObjectType() string {
 }
 
 func (u uint16Value) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, uint16(u.Uint()))
+	err = binary.Write(w, ByteOrder, uint16(u.Uint()))
 	if err == nil {
 		n = 2
 	}
@@ -80,7 +80,7 @@ func (u uint16Value) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var v uint16
-	err = binary.Read(r, encoding, &v)
+	err = binary.Read(r, ByteOrder, &v)
 
 	u.SetUint(uint64(v))
 
@@ -115,7 +115,7 @@ func (u uint32Value) ObjectType() string {
 }
 
 func (u uint32Value) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, uint32(u.Uint()))
+	err = binary.Write(w, ByteOrder, uint32(u.Uint()))
 	if err == nil {
 		n = 4
 	}
@@ -128,7 +128,7 @@ func (u uint32Value) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var v uint32
-	err = binary.Read(r, encoding, &v)
+	err = binary.Read(r, ByteOrder, &v)
 
 	u.SetUint(uint64(v))
 
@@ -163,7 +163,7 @@ func (u uint64Value) ObjectType() string {
 }
 
 func (u uint64Value) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, u.Uint())
+	err = binary.Write(w, ByteOrder, u.Uint())
 	if err == nil {
 		n = 8
 	}
@@ -176,7 +176,7 @@ func (u uint64Value) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var v uint64
-	err = binary.Read(r, encoding, &v)
+	err = binary.Read(r, ByteOrder, &v)
 
 	u.SetUint(v)
 
@@ -211,7 +211,7 @@ func (i int8Value) ObjectType() string {
 }
 
 func (i int8Value) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, int8(i.Int()))
+	err = binary.Write(w, ByteOrder, int8(i.Int()))
 	if err == nil {
 		n = 1
 	}
@@ -224,7 +224,7 @@ func (i int8Value) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var v int8
-	err = binary.Read(r, encoding, &v)
+	err = binary.Read(r, ByteOrder, &v)
 
 	i.SetInt(int64(v))
 
@@ -259,7 +259,7 @@ func (i int16Value) ObjectType() string {
 }
 
 func (i int16Value) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, int16(i.Int()))
+	err = binary.Write(w, ByteOrder, int16(i.Int()))
 	if err == nil {
 		n = 2
 	}
@@ -272,7 +272,7 @@ func (i int16Value) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var v int16
-	err = binary.Read(r, encoding, &v)
+	err = binary.Read(r, ByteOrder, &v)
 
 	i.SetInt(int64(v))
 
@@ -307,7 +307,7 @@ func (i int32Value) ObjectType() string {
 }
 
 func (i int32Value) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, int32(i.Int()))
+	err = binary.Write(w, ByteOrder, int32(i.Int()))
 	if err == nil {
 		n = 4
 	}
@@ -320,7 +320,7 @@ func (i int32Value) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var v int32
-	err = binary.Read(r, encoding, &v)
+	err = binary.Read(r, ByteOrder, &v)
 
 	i.SetInt(int64(v))
 
@@ -355,7 +355,7 @@ func (i int64Value) ObjectType() string {
 }
 
 func (i int64Value) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, i.Int())
+	err = binary.Write(w, ByteOrder, i.Int())
 	if err == nil {
 		n = 8
 	}
@@ -368,7 +368,7 @@ func (i int64Value) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	var v int64
-	err = binary.Read(r, encoding, &v)
+	err = binary.Read(r, ByteOrder, &v)
 
 	i.SetInt(v)
 

@@ -16,7 +16,7 @@ func (Bool) ObjectType() string {
 // astral
 
 func (b Bool) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, encoding, b)
+	err = binary.Write(w, ByteOrder, b)
 	if err == nil {
 		n = 1
 	}
@@ -24,7 +24,7 @@ func (b Bool) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (b *Bool) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, encoding, b)
+	err = binary.Read(r, ByteOrder, b)
 	if err == nil {
 		n = 1
 	}

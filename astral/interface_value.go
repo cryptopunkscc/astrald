@@ -22,7 +22,7 @@ func (i interfaceValue) ObjectType() string {
 
 func (i interfaceValue) WriteTo(w io.Writer) (n int64, err error) {
 	if i.IsNil() || i.IsElemNilPtr() {
-		err = binary.Write(w, encoding, uint8(0)) // zero-length type means nil
+		err = binary.Write(w, ByteOrder, uint8(0)) // zero-length type means nil
 		if err == nil {
 			return 1, nil
 		}

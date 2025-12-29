@@ -43,7 +43,7 @@ func ParseID(s string) (id *ObjectID, err error) {
 	}
 
 	id = &ObjectID{}
-	id.Size = binary.BigEndian.Uint64(data[0:8])
+	id.Size = ByteOrder.Uint64(data[0:8])
 	copy(id.Hash[:], data[8:40])
 
 	return
@@ -61,7 +61,7 @@ func (id *ObjectID) WriteTo(w io.Writer) (n int64, err error) {
 		return int64(m), err
 	}
 
-	err = binary.Write(w, binary.BigEndian, id.Size)
+	err = binary.Write(w, ByteOrder, id.Size)
 	if err != nil {
 		return
 	}
@@ -74,7 +74,7 @@ func (id *ObjectID) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (id *ObjectID) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, binary.BigEndian, &id.Size)
+	err = binary.Read(r, ByteOrder, &id.Size)
 	if err != nil {
 		return
 	}
@@ -161,7 +161,7 @@ func (id *ObjectID) Scan(src any) error {
 
 func (id ObjectID) String() string {
 	var b [40]byte
-	binary.BigEndian.PutUint64(b[0:8], id.Size)
+	ByteOrder.PutUint64(b[0:8], id.Size)
 	copy(b[8:], id.Hash[0:32])
 	enc := zBase32Encoding.EncodeToString(b[:])
 	enc = strings.TrimLeft(enc, zBase32CharSet[0:1])

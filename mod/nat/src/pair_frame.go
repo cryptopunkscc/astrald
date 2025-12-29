@@ -16,7 +16,7 @@ type pingFrame struct {
 
 func (f *pingFrame) WriteTo(w io.Writer) (n int64, err error) {
 	var written int64
-	if err := binary.Write(w, binary.BigEndian, f.Nonce); err != nil {
+	if err := binary.Write(w, astral.ByteOrder, f.Nonce); err != nil {
 		return written, err
 	}
 	written += 8
@@ -24,7 +24,7 @@ func (f *pingFrame) WriteTo(w io.Writer) (n int64, err error) {
 	if f.Pong {
 		pongByte = 1
 	}
-	if err := binary.Write(w, binary.BigEndian, pongByte); err != nil {
+	if err := binary.Write(w, astral.ByteOrder, pongByte); err != nil {
 		return written, err
 	}
 	written++
@@ -33,12 +33,12 @@ func (f *pingFrame) WriteTo(w io.Writer) (n int64, err error) {
 
 func (f *pingFrame) ReadFrom(r io.Reader) (n int64, err error) {
 	var read int64
-	if err := binary.Read(r, binary.BigEndian, &f.Nonce); err != nil {
+	if err := binary.Read(r, astral.ByteOrder, &f.Nonce); err != nil {
 		return read, err
 	}
 	read += 8
 	var pongByte byte
-	if err := binary.Read(r, binary.BigEndian, &pongByte); err != nil {
+	if err := binary.Read(r, astral.ByteOrder, &pongByte); err != nil {
 		return read, err
 	}
 	f.Pong = pongByte == 1

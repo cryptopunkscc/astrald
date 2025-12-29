@@ -21,13 +21,13 @@ func (frame *Ping) ObjectType() string {
 
 func (frame *Ping) ReadFrom(r io.Reader) (n int64, err error) {
 	// opcode is handled by Blueprints; just read the payload
-	err = binary.Read(r, binary.BigEndian, &frame.Nonce)
+	err = binary.Read(r, astral.ByteOrder, &frame.Nonce)
 	if err != nil {
 		return
 	}
 	n += 8
 
-	err = binary.Read(r, binary.BigEndian, &frame.Pong)
+	err = binary.Read(r, astral.ByteOrder, &frame.Pong)
 	if err != nil {
 		return
 	}
@@ -38,13 +38,13 @@ func (frame *Ping) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (frame *Ping) WriteTo(w io.Writer) (n int64, err error) {
 	// Blueprints.Write writes the type; just write the payload
-	err = binary.Write(w, binary.BigEndian, frame.Nonce)
+	err = binary.Write(w, astral.ByteOrder, frame.Nonce)
 	if err != nil {
 		return
 	}
 	n += 8
 
-	err = binary.Write(w, binary.BigEndian, frame.Pong)
+	err = binary.Write(w, astral.ByteOrder, frame.Pong)
 	if err != nil {
 		return
 	}

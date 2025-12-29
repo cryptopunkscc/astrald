@@ -22,13 +22,13 @@ func (frame *Query) ObjectType() string {
 
 func (frame *Query) ReadFrom(r io.Reader) (n int64, err error) {
 	// opcode is handled by Blueprints; just read payload
-	err = binary.Read(r, binary.BigEndian, &frame.Nonce)
+	err = binary.Read(r, astral.ByteOrder, &frame.Nonce)
 	if err != nil {
 		return
 	}
 	n += 8
 
-	err = binary.Read(r, binary.BigEndian, &frame.Buffer)
+	err = binary.Read(r, astral.ByteOrder, &frame.Buffer)
 	if err != nil {
 		return
 	}
@@ -36,7 +36,7 @@ func (frame *Query) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var plen uint16
 
-	err = binary.Read(r, binary.BigEndian, &plen)
+	err = binary.Read(r, astral.ByteOrder, &plen)
 	if err != nil {
 		return
 	}
@@ -53,20 +53,20 @@ func (frame *Query) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (frame *Query) WriteTo(w io.Writer) (n int64, err error) {
 	// Blueprints.Write writes the type; just write the payload
-	err = binary.Write(w, binary.BigEndian, frame.Nonce)
+	err = binary.Write(w, astral.ByteOrder, frame.Nonce)
 	if err != nil {
 		return
 	}
 	n += 8
 
-	err = binary.Write(w, binary.BigEndian, frame.Buffer)
+	err = binary.Write(w, astral.ByteOrder, frame.Buffer)
 	if err != nil {
 		return
 	}
 	n += 4
 
 	var plen = uint16(len(frame.Query))
-	err = binary.Write(w, binary.BigEndian, plen)
+	err = binary.Write(w, astral.ByteOrder, plen)
 	if err != nil {
 		return
 	}

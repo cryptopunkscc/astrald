@@ -15,7 +15,7 @@ const magic = uint32(0x41444330)
 func (*Stamp) ObjectType() string { return "stamp" }
 
 func (s Stamp) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, binary.BigEndian, uint32(magic))
+	err = binary.Write(w, ByteOrder, uint32(magic))
 	if err == nil {
 		n = 4
 	}
@@ -24,7 +24,7 @@ func (s Stamp) WriteTo(w io.Writer) (n int64, err error) {
 
 func (s *Stamp) ReadFrom(r io.Reader) (n int64, err error) {
 	var m uint32
-	err = binary.Read(r, binary.BigEndian, &m)
+	err = binary.Read(r, ByteOrder, &m)
 	if err == nil {
 		n = 4
 	}

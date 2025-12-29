@@ -18,7 +18,7 @@ func (objectWrapper) ObjectType() string { return "" }
 
 func (o objectWrapper) WriteTo(w io.Writer) (n int64, err error) {
 	if o.o == nil {
-		err = binary.Write(w, encoding, uint32(0))
+		err = binary.Write(w, ByteOrder, uint32(0))
 		if err == nil {
 			n += 4
 		}
@@ -33,7 +33,7 @@ func (o objectWrapper) WriteTo(w io.Writer) (n int64, err error) {
 		return
 	}
 
-	err = binary.Write(w, encoding, uint32(buf.Len()))
+	err = binary.Write(w, ByteOrder, uint32(buf.Len()))
 	if err != nil {
 		return
 	}
@@ -49,7 +49,7 @@ func (o objectWrapper) ReadFrom(r io.Reader) (n int64, err error) {
 	var l uint32
 	var m int
 	var k int64
-	err = binary.Read(r, encoding, &l)
+	err = binary.Read(r, ByteOrder, &l)
 	if err != nil {
 		return
 	}
