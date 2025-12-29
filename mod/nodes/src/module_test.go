@@ -27,6 +27,9 @@ func TestModule_ConnectAccept(t *testing.T) {
 
 		assert.NoError(t, module1.Connect(ctx, module2.node.Identity(), conn1))
 		assert.True(t, module1.IsLinked(module2.node.Identity()))
+		assert.NoError(t, conn1.Close())
+		time.Sleep(1 * time.Millisecond)
+		assert.False(t, module1.IsLinked(module2.node.Identity()))
 	})
 
 	t.Run("accept", func(t *testing.T) {
@@ -36,6 +39,9 @@ func TestModule_ConnectAccept(t *testing.T) {
 
 		assert.NoError(t, module2.Accept(ctx, conn2))
 		assert.True(t, module2.IsLinked(module1.node.Identity()))
+		assert.NoError(t, conn2.Close())
+		time.Sleep(1 * time.Millisecond)
+		assert.False(t, module2.IsLinked(module1.node.Identity()))
 	})
 }
 
