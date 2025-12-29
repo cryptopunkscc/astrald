@@ -3,6 +3,7 @@ package nat
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
@@ -19,6 +20,19 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 	ips := mod.IP.PublicIPCandidates()
 	if len(ips) == 0 {
 		return ch.Write(astral.NewError("no suitable IP addresses found"))
+	}
+
+	// Filter out IPv6 addresses, keep only IPv4
+	var ipv4s []ip.IP
+	for _, addr := range ips {
+		if addr.IsIPv4() {
+			ipv4s = append(ipv4s, addr)
+		}
+	}
+
+	ips = ipv4s
+	if len(ips) == 0 {
+		return ch.Write(astral.NewError("no suitable IPv4 addresses found"))
 	}
 
 	if args.Target != "" {
