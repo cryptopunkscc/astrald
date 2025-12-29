@@ -12,13 +12,8 @@ type Node struct {
 
 var _ astral.Node = &Node{}
 
-func NewNode() (n *Node, err error) {
-	i, err := astral.GenerateIdentity()
-	if err != nil {
-		return
-	}
-	n = &Node{identity: i}
-	return
+func NewNode() (n *Node) {
+	return &Node{identity: astral.GenerateIdentity()}
 }
 
 func (t Node) Identity() *astral.Identity { return t.identity }

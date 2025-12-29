@@ -7,11 +7,11 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/events"
 )
 
-type EventsModule struct{ t *testing.T }
+type EventsModule struct{ *testing.T }
 
 var _ events.Module = &EventsModule{}
 
 func (e *EventsModule) Emit(data astral.Object) *events.Event {
-	e.t.Logf("%T.Emit(%+v)", e, data)
+	e.T.Logf("%T.Emit(%+v)", e, data)
 	return nil
 }

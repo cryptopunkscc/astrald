@@ -9,7 +9,7 @@ import (
 )
 
 type Endpoint struct {
-	address string
+	Addr string
 }
 
 var _ exonet.Endpoint = &Endpoint{}
@@ -31,7 +31,7 @@ func (t Endpoint) Network() string {
 }
 
 func (t Endpoint) Address() string {
-	return t.address
+	return t.Addr
 }
 
 func (t Endpoint) Pack() []byte {

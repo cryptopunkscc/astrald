@@ -7,12 +7,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-type ObjectsModule struct{ t *testing.T }
+type ObjectsModule struct{ *testing.T }
 
 var _ objects.Module = &ObjectsModule{}
 
 func (o *ObjectsModule) Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error {
-	o.t.Logf("%T.Push(%+v, %+v)", o, target, obj)
+	o.T.Logf("%T.Push(%+v, %+v)", o, target, obj)
 	return nil
 }
 
