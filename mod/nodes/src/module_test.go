@@ -11,11 +11,10 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	test "github.com/cryptopunkscc/astrald/mod/nodes/src/test"
 	"github.com/cryptopunkscc/astrald/resources"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestModule_ConnectAccept(t *testing.T) {
+func TestModule(t *testing.T) {
 	module1 := newTestModule(t)
 	module2 := newTestModule(t)
 	conn1, conn2 := test.PipeConn(&test.Endpoint{Addr: "1"}, &test.Endpoint{Addr: "2"})
@@ -25,11 +24,11 @@ func TestModule_ConnectAccept(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		assert.NoError(t, module1.Connect(ctx, module2.node.Identity(), conn1))
-		assert.True(t, module1.IsLinked(module2.node.Identity()))
-		assert.NoError(t, conn1.Close())
+		require.NoError(t, module1.Connect(ctx, module2.node.Identity(), conn1))
+		require.True(t, module1.IsLinked(module2.node.Identity()))
+		require.NoError(t, conn1.Close())
 		time.Sleep(1 * time.Millisecond)
-		assert.False(t, module1.IsLinked(module2.node.Identity()))
+		require.False(t, module1.IsLinked(module2.node.Identity()))
 	})
 
 	t.Run("accept", func(t *testing.T) {
@@ -37,11 +36,11 @@ func TestModule_ConnectAccept(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		assert.NoError(t, module2.Accept(ctx, conn2))
-		assert.True(t, module2.IsLinked(module1.node.Identity()))
-		assert.NoError(t, conn2.Close())
+		require.NoError(t, module2.Accept(ctx, conn2))
+		require.True(t, module2.IsLinked(module1.node.Identity()))
+		require.NoError(t, conn2.Close())
 		time.Sleep(1 * time.Millisecond)
-		assert.False(t, module2.IsLinked(module1.node.Identity()))
+		require.False(t, module2.IsLinked(module1.node.Identity()))
 	})
 }
 
