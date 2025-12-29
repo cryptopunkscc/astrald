@@ -20,7 +20,7 @@ func (SignedNodeContractRevocation) ObjectType() string {
 }
 
 func (c *SignedNodeContractRevocation) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Objectify(&c).ReadFrom(r)
+	return astral.Objectify(c).ReadFrom(r)
 }
 
 func (c SignedNodeContractRevocation) WriteTo(w io.Writer) (n int64, err error) {
