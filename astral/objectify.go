@@ -68,6 +68,13 @@ func (o Objectified) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (o Objectified) MarshalJSON() ([]byte, error) {
+	if o.Elem().Kind() == reflect.Struct {
+		return structValue{
+			Value: o.Elem(),
+			root:  true,
+		}.MarshalJSON()
+	}
+
 	e, err := objectify(o.Elem())
 	if err != nil {
 		return nil, err
@@ -77,6 +84,13 @@ func (o Objectified) MarshalJSON() ([]byte, error) {
 }
 
 func (o Objectified) UnmarshalJSON(bytes []byte) error {
+	if o.Elem().Kind() == reflect.Struct {
+		return structValue{
+			Value: o.Elem(),
+			root:  true,
+		}.UnmarshalJSON(bytes)
+	}
+
 	e, err := objectify(o.Elem())
 	if err != nil {
 		return err
