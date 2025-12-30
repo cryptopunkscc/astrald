@@ -24,10 +24,6 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		return ch.Write(astral.NewError(err.Error()))
 	}
 
-	if !pair.MatchesPeer(q.Caller()) {
-		return ch.Write(astral.NewError("peer identity does not match"))
-	}
-
 	if args.Initiate {
 		remoteIdentity, ok := pair.RemoteIdentity(ctx.Identity())
 		if !ok {
