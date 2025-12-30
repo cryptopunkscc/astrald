@@ -302,8 +302,6 @@ func (mod *Peers) addStream(
 	// handle the stream
 	go func() {
 		mod.readStreamFrames(s)
-		mod.log.Info("stream %v closed with error: %v", s.id, s.Err())
-
 		// remove the stream and its connections
 		mod.streams.Remove(s)
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
@@ -322,7 +320,7 @@ func (mod *Peers) addStream(
 			StreamCount:    astral.Int8(len(streamsWithSameIdentity)),
 		})
 
-		mod.log.Errorv(1, "removed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
+		mod.log.Info("closed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
 	}()
 
 	// reflect the stream

@@ -3,7 +3,6 @@ package kcp
 import (
 	"fmt"
 	"net"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -43,15 +42,12 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 		}
 	}()
 
-	// Without this deadline, dialing KCP can hang
-	kcpConn.SetDeadline(time.Now().Add(mod.config.DialTimeout))
-
 	localEndpoint, err := kcp.ParseEndpoint(kcpConn.LocalAddr().String())
 	if err != nil {
 		return nil, fmt.Errorf("kcp/dial: parsing local endpoint failed: %w", err)
 	}
 
-	return WrapKCPConn(kcpConn, remoteEndpoint, localEndpoint, true), nil
+	return WrapKCPConn(kcpConn, remoteEndpoint, localEndpoint, true, mod.config.DialTimeout), nil
 }
 
 func (mod *Module) SetEndpointLocalSocket(endpoint kcp.Endpoint, localSocket astral.Uint16, replace astral.Bool) error {
