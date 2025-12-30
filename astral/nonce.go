@@ -17,9 +17,9 @@ func NewNonce() (nonce Nonce) {
 	return
 }
 
-// astral
-
 func (Nonce) ObjectType() string { return "nonce64" }
+
+// binary
 
 func (nonce Nonce) WriteTo(w io.Writer) (n int64, err error) {
 	err = binary.Write(w, ByteOrder, uint64(nonce))
@@ -35,6 +35,16 @@ func (nonce *Nonce) ReadFrom(r io.Reader) (n int64, err error) {
 		n = 8
 	}
 	return
+}
+
+// json
+
+func (nonce Nonce) MarshalJSON() ([]byte, error) {
+	return Uint64(nonce).MarshalJSON()
+}
+
+func (nonce *Nonce) UnmarshalJSON(bytes []byte) error {
+	return (*Uint64)(nonce).UnmarshalJSON(bytes)
 }
 
 // text
