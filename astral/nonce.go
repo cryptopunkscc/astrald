@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"database/sql/driver"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -40,11 +41,24 @@ func (nonce *Nonce) ReadFrom(r io.Reader) (n int64, err error) {
 // json
 
 func (nonce Nonce) MarshalJSON() ([]byte, error) {
-	return Uint64(nonce).MarshalJSON()
+	return json.Marshal(strconv.FormatUint(uint64(nonce), 16))
 }
 
-func (nonce *Nonce) UnmarshalJSON(bytes []byte) error {
-	return (*Uint64)(nonce).UnmarshalJSON(bytes)
+func (nonce *Nonce) UnmarshalJSON(bytes []byte) (err error) {
+	var s string
+	var u uint64
+	err = json.Unmarshal(bytes, &s)
+	if err != nil {
+		return
+	}
+
+	u, err = strconv.ParseUint(s, 16, 64)
+	if err != nil {
+		return
+	}
+
+	*nonce = Nonce(u)
+	return
 }
 
 // text
