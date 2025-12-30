@@ -23,7 +23,7 @@ type Endpoint struct {
 	Port astral.Uint16
 }
 
-func (e *Endpoint) ObjectType() string {
+func (e Endpoint) ObjectType() string {
 	return "mod.kcp.endpoint"
 }
 
