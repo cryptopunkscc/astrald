@@ -3,6 +3,7 @@ package kcp
 import (
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -69,7 +70,7 @@ func (s *Server) Run(ctx *astral.Context) error {
 		remoteEndpoint, _ := kcpmod.ParseEndpoint(sess.RemoteAddr().String())
 		s.log.Info("accepted connection from %v", remoteEndpoint)
 
-		conn := WrapKCPConn(sess, localEndpoint, remoteEndpoint, false)
+		conn := WrapKCPConn(sess, localEndpoint, remoteEndpoint, false, 1*time.Minute)
 		go func() {
 			shouldClose, err := s.onAccept(ctx, conn)
 			if err != nil {
