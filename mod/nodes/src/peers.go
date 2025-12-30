@@ -302,7 +302,7 @@ func (mod *Peers) addStream(
 	// handle the stream
 	go func() {
 		mod.readStreamFrames(s)
-		mod.log.Info(`finished reading stream frames %v`, s.id)
+		mod.log.Info("stream %v closed with error: %v", s.id, s.Err())
 
 		// remove the stream and its connections
 		mod.streams.Remove(s)
