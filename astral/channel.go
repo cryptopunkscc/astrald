@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/streams"
 )
 
+// Channel is deprecated. Use the channel package instead.
 type Channel struct {
 	*Blueprints
 	fmtIn  string
@@ -23,12 +24,12 @@ type Channel struct {
 	bufr   *bufio.Reader
 }
 
-// NewChannel creates a new channel
+// Deprecated: use `channel.New()` instead.
 func NewChannel(rw io.ReadWriter) *Channel {
 	return NewChannelFmt(rw, "", "")
 }
 
-// NewChannelFmt creates a channel with custom input/output formats
+// Deprecated: use `channel.New()` instead.
 func NewChannelFmt(rw io.ReadWriter, fmtIn, fmtOut string) *Channel {
 	ch := &Channel{
 		rw:         rw,
