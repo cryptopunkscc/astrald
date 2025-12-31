@@ -2,6 +2,8 @@ package channel
 
 import "io"
 
+// Joined combines an io.Reader and an io.Writer into a single io.ReadWriteCloser. Its Close method tries to typecast
+// the Writer, then the Reader to an io.Closer. Returns ErrCloseUnsupported if neither implements io.Closer.
 type Joined struct {
 	io.Reader
 	io.Writer

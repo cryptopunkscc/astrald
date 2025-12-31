@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// JSONReader reads a stream of astral.Objects encoded as JSON lines from the underlying io.Reader.
 type JSONReader struct {
 	r   io.Reader
 	bp  *astral.Blueprints

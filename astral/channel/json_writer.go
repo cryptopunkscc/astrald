@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// JSONWriter writes a stream of astral.Objects encoded as JSON lines to the underlying io.Writer.
 type JSONWriter struct {
 	w   io.Writer
 	enc *json.Encoder

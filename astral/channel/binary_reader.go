@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// BinaryReader reads a stream of astral.Objects from the underlying io.Reader.
 type BinaryReader struct {
 	bp *astral.Blueprints
 	r  io.Reader

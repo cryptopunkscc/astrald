@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// BinaryWriter writes a stream of astral.Objects to the underlying io.Writer.
 type BinaryWriter struct {
 	w io.Writer
 }

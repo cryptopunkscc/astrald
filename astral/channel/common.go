@@ -2,6 +2,14 @@ package channel
 
 import "github.com/cryptopunkscc/astrald/astral"
 
+const (
+	Binary    = "bin"
+	JSON      = "json"
+	Text      = "text"
+	TextTyped = "text+"
+	Render    = "render"
+)
+
 type ReadWriter interface {
 	Reader
 	Writer

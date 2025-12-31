@@ -2,7 +2,6 @@ package channel
 
 import (
 	"encoding"
-	"errors"
 	"fmt"
 	"io"
 
@@ -24,7 +23,7 @@ func (t TextWriter) Write(obj astral.Object) error {
 	// check if the object is a TextMarshaler
 	m, ok := obj.(encoding.TextMarshaler)
 	if !ok {
-		return errors.New("object does not implement text encoding")
+		return ErrTextUnsupported
 	}
 
 	// marshal the object into text

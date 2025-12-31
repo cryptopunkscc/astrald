@@ -55,11 +55,11 @@ func NewWriter(w io.Writer, fn ...configFunc) Writer {
 func newReader(r io.Reader, cfg *channelConfig) Reader {
 	// build the channel
 	switch cfg.fmtIn {
-	case "", "bin":
+	case "", Binary:
 		return NewBinaryReader(r)
-	case "json":
+	case JSON:
 		return NewJSONReader(r)
-	case "text", "text+":
+	case Text, TextTyped:
 		return NewTextReader(r)
 	default:
 		return NewReaderError(fmt.Errorf("unsupported input format: %s", cfg.fmtIn))
@@ -68,11 +68,11 @@ func newReader(r io.Reader, cfg *channelConfig) Reader {
 
 func newWriter(w io.Writer, cfg *channelConfig) Writer {
 	switch cfg.fmtOut {
-	case "", "bin":
+	case "", Binary:
 		return NewBinaryWriter(w)
-	case "json":
+	case JSON:
 		return NewJSONWriter(w)
-	case "text", "text+":
+	case Text, TextTyped:
 		return NewTextWriter(w, strings.HasSuffix(cfg.fmtOut, "+"))
 	default:
 		return NewWriterError(fmt.Errorf("unsupported output format: %s", cfg.fmtOut))

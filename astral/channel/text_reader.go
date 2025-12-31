@@ -2,8 +2,7 @@ package channel
 
 import (
 	"bufio"
-	encoding2 "encoding"
-	"errors"
+	"encoding"
 	"fmt"
 	"io"
 	"strings"
@@ -40,7 +39,7 @@ func (r TextReader) Read() (obj astral.Object, err error) {
 	// parse type and text
 	objectType, text, err = splitTypeAndPayload(line)
 	if err != nil {
-		return nil, fmt.Errorf("invalid text format: %w", err)
+		return nil, err
 	}
 
 	obj = r.bp.Make(objectType)
@@ -48,9 +47,9 @@ func (r TextReader) Read() (obj astral.Object, err error) {
 		return nil, fmt.Errorf("unknown object type: %s", objectType)
 	}
 
-	u, ok := obj.(encoding2.TextUnmarshaler)
+	u, ok := obj.(encoding.TextUnmarshaler)
 	if !ok {
-		return nil, errors.New("object does not implement text decoding")
+		return nil, ErrTextUnsupported
 	}
 
 	err = u.UnmarshalText([]byte(text))
