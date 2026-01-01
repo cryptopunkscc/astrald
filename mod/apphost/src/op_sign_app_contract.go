@@ -1,11 +1,13 @@
 package apphost
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"time"
 )
 
 type opSignAppContractArgs struct {
@@ -15,7 +17,7 @@ type opSignAppContractArgs struct {
 }
 
 func (mod *Module) OpSignAppContract(ctx *astral.Context, q shell.Query, args opSignAppContractArgs) (err error) {
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.OutFmt(args.Out))
 	defer ch.Close()
 
 	if args.Duration == 0 {

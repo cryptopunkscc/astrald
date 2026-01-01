@@ -34,5 +34,5 @@ apps (such as anc) will use the token from ASTRALD_APPHOST_TOKEN env variable:
 
 ```shell
 $ export ASTRALD_APPHOST_TOKEN="mysecrettoken"
-$ anc r test # will register test service as 'demo' identity
+$ astral-query user.info
 ```

@@ -5,10 +5,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/lib/term"
 	"net/url"
 	"reflect"
 	"strconv"
+
+	"github.com/cryptopunkscc/astrald/lib/term"
 )
 
 const queryTag = "query"
@@ -54,7 +55,7 @@ func Marshal(params any) (string, error) {
 				s = v.String()
 
 			default:
-				return fmt.Sprintf("%v", v), nil
+				s = fmt.Sprintf("%v", v)
 			}
 
 			vals.Set(k, s)

@@ -4,6 +4,8 @@ Version 1.0
 
 ## Overview
 
+**THIS PROTOCOL DESCRIPTION IS OBSOLETE**
+
 The `apphost` protocol is a client-server multiple request-response protocol
 used by apps (guests) to access the astral network via the local node (host).
 

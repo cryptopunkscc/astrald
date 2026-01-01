@@ -3,6 +3,11 @@ package apphost
 import (
 	"errors"
 	"fmt"
+	"math/rand"
+	"net"
+	"sync"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/debug"
@@ -13,10 +18,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
-	"math/rand"
-	"net"
-	"sync"
-	"time"
 )
 
 var _ apphost.Module = &Module{}
@@ -38,7 +39,7 @@ type Module struct {
 
 	listeners []net.Listener
 	conns     <-chan net.Conn
-	guests    sig.Map[string, *Guest]
+	handlers  sig.Set[*QueryHandler]
 	indexMu   sync.Mutex
 }
 
@@ -59,7 +60,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 			defer wg.Done()
 			if err := mod.worker(ctx); err != nil {
-				mod.log.Error("[%v] error: %v", i, err)
+				mod.log.Error("[worker:%v] error: %v", i, err)
 			}
 		}(i)
 	}

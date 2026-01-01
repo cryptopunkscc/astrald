@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/lib/apphost"
 	"io"
 	"os"
+
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 )
 
 func main() {
@@ -13,13 +14,7 @@ func main() {
 	flag.StringVar(&accept, "a", "", "accept query")
 	flag.Parse()
 
-	client, err := apphost.NewDefaultClient()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-
-	l, err := client.Listen()
+	l, err := astrald.Listen()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
@@ -32,12 +27,14 @@ func main() {
 			os.Exit(1)
 		}
 
+		caller, _ := astrald.Dir().GetAlias(query.Caller())
+		if caller == "" {
+			caller = query.Caller().String()
+		}
+
 		if query.Query() == accept {
-			fmt.Fprintf(os.Stderr, "%s:%s (accepted)\n", query.Caller(), query.Query())
-			conn, err := query.Accept()
-			if err != nil {
-				panic(err)
-			}
+			fmt.Fprintf(os.Stderr, "accepted [%s] %s from %s\n", query.Nonce(), query.Query(), caller)
+			conn := query.Accept()
 
 			go func() {
 				defer conn.Close()
@@ -48,8 +45,8 @@ func main() {
 			os.Exit(0)
 		}
 
-		fmt.Fprintf(os.Stderr, "%s:%s (ignored)\n", query.Caller(), query.Query())
+		fmt.Fprintf(os.Stderr, "ignored [%s] %s from %s\n", query.Nonce(), query.Query(), caller)
 
-		query.Close()
+		query.Skip()
 	}
 }
