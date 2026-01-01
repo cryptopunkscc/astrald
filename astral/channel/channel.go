@@ -74,6 +74,8 @@ func newWriter(w io.Writer, cfg *channelConfig) Writer {
 		return NewJSONWriter(w)
 	case Text, TextTyped:
 		return NewTextWriter(w, strings.HasSuffix(cfg.fmtOut, "+"))
+	case "render":
+		return NewRenderWriter(w)
 	default:
 		return NewWriterError(fmt.Errorf("unsupported output format: %s", cfg.fmtOut))
 	}

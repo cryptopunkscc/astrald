@@ -3,10 +3,12 @@ package core
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/resources"
-	"time"
 )
 
 const logTag = "node"
@@ -22,8 +24,7 @@ type Node struct {
 	modules *Modules
 
 	startedAt time.Time
-
-	logFields
+	log       *log.Logger
 }
 
 // NewNode instantiates a new node
@@ -61,9 +62,6 @@ func NewNode(nodeID *astral.Identity, res resources.Resources) (*Node, error) {
 			return nil, fmt.Errorf("error loading config: %w", err)
 		}
 	}
-
-	// confiugure the logger
-	node.configureLogger()
 
 	// modules
 	var enabled = node.config.Modules

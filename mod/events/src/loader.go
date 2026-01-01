@@ -18,7 +18,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		log:    log,
 		assets: assets,
 	}
-	
+
 	_ = assets.LoadYAML(events.ModuleName, &mod.config)
 
 	return mod, err

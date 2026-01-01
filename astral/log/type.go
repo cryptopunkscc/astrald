@@ -1,9 +1,9 @@
 package log
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/term"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type Type astral.Uint8
@@ -24,22 +24,17 @@ func (l *Type) ReadFrom(r io.Reader) (n int64, err error) {
 	return (*astral.Uint8)(l).ReadFrom(r)
 }
 
-func (l Type) PrintTo(p term.Printer) error {
-	var s = "?"
-	var c = astral.String8("")
+func (l Type) String() string {
 	switch l {
 	case 0:
-		s, c = "-", "default"
+		return "-"
 	case 1:
-		s, c = "I", "green"
+		return "I"
 	case 2:
-		s, c = "E", "red"
+		return "E"
+	default:
+		return "?"
 	}
-	return term.Printf(p, "%v%v%v",
-		&term.SetColor{c},
-		s,
-		&term.SetColor{"default"},
-	)
 }
 
 func init() {

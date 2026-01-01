@@ -3,19 +3,13 @@ package core
 import (
 	"bytes"
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/astral/term"
 	"io"
 	_log "log"
-	"os"
+
+	"github.com/cryptopunkscc/astrald/astral/log"
 )
 
 const maxAdapterBuffer = 1 << 16 // 64kb
-
-type logFields struct {
-	log     *log.Logger
-	printer *term.BasicPrinter
-}
 
 type adapter struct {
 	*log.Logger
@@ -25,22 +19,10 @@ type adapter struct {
 var _ io.Writer = &adapter{}
 
 func (node *Node) initLogger() {
-	node.printer = term.NewBasicPrinter(os.Stdout, &term.DefaultTypeMap)
-	node.printer.Mono = true
+	node.log = log.New(node.identity, nil)
 
-	node.log = log.NewLogger(node.printer, node.identity, logTag)
-	node.log.Level = 2
-
-	_log.SetOutput(adapter{Logger: node.log.Tag("log")})
+	_log.SetOutput(adapter{Logger: node.log.Tag("stdout")})
 	_log.SetFlags(0)
-}
-
-func (node *Node) configureLogger() {
-	if !node.config.Log.DisableColors {
-		node.printer.Mono = false
-	}
-
-	node.log.Level = node.config.Log.Level
 }
 
 func (a adapter) Write(p []byte) (n int, err error) {

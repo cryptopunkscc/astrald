@@ -1,13 +1,15 @@
 package shell
 
 import (
-	"github.com/cryptopunkscc/astrald/astral/term"
+	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"strings"
 )
 
 type Deps struct {
@@ -30,7 +32,7 @@ func (mod *Module) LoadDependencies() (err error) {
 			}
 
 			if s, ok := m.(shell.HasScope); ok {
-				mod.root.AddScope(term.Stringify(s), s.Scope())
+				mod.root.AddScope(getName(s), s.Scope())
 				added = append(added, m)
 			}
 		}
@@ -40,4 +42,16 @@ func (mod *Module) LoadDependencies() (err error) {
 	}
 
 	return
+}
+
+func getName(v any) string {
+	if s, ok := v.(fmt.Stringer); ok {
+		return s.String()
+	}
+
+	if reflect.TypeOf(v).Kind() == reflect.Pointer {
+		return reflect.TypeOf(v).Elem().String()
+	}
+
+	return reflect.TypeOf(v).String()
 }

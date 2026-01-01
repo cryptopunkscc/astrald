@@ -1,9 +1,10 @@
 package shell
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/term"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 )
 
 type Prompt struct {
@@ -11,9 +12,11 @@ type Prompt struct {
 	hostID  *astral.Identity
 }
 
-func (p Prompt) PrintTo(printer term.Printer) error {
-	term.Printf(printer, "%v@%v> ", p.guestID, p.hostID)
-	return nil
+func (p Prompt) Render() string {
+	return log.DefaultViewer.Render(p.guestID) +
+		"@" +
+		log.DefaultViewer.Render(p.hostID) +
+		"> "
 }
 
 func (Prompt) ObjectType() string {

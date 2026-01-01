@@ -1,6 +1,9 @@
 package gateway
 
 import (
+	"strings"
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/routers"
@@ -9,8 +12,6 @@ import (
 	gateway2 "github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/tasks"
-	"strings"
-	"sync"
 )
 
 const NetworkName = "gw"

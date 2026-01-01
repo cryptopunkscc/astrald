@@ -14,6 +14,12 @@ type Object interface {
 	io.ReaderFrom
 }
 
+type JSONObject interface {
+	Object
+	json.Marshaler
+	json.Unmarshaler
+}
+
 // ResolveObjectID calculates the id of the object
 func ResolveObjectID(obj Object) (objectID *ObjectID, err error) {
 	w := NewWriteResolver(nil)

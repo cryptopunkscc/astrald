@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -87,6 +89,27 @@ func (client *DirClient) GetAlias(identity *astral.Identity) (string, error) {
 		return o.String(), nil
 	default:
 		return "", fmt.Errorf("unexpected type: %s", o.ObjectType())
+	}
+}
+
+func (client *DirClient) AliasMap() (*dir.AliasMap, error) {
+	// query
+	ch, err := client.astral.QueryChannel("", "dir.alias_map", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// response
+	o, err := ch.Read()
+	switch o := o.(type) {
+	case nil:
+		return nil, err
+
+	case *dir.AliasMap:
+		return o, nil
+
+	default:
+		return nil, apphost.ErrProtocolError
 	}
 }
 

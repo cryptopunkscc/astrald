@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
@@ -22,7 +21,7 @@ type UDPEndpoint struct {
 	Port astral.Uint16
 }
 
-func (e *UDPEndpoint) ObjectType() string {
+func (e UDPEndpoint) ObjectType() string {
 	return "mod.nat.udp_endpoint"
 }
 
@@ -137,14 +136,4 @@ func (e *UDPEndpoint) UDPAddr() *net.UDPAddr {
 		IP:   net.ParseIP(e.IP.String()),
 		Port: int(e.Port),
 	}
-}
-
-func init() {
-	_ = astral.DefaultBlueprints.Add(&UDPEndpoint{})
-	term.SetTranslateFunc(func(o *UDPEndpoint) astral.Object {
-		return &term.ColorString{
-			Color: term.HighlightColor,
-			Text:  astral.String32(o.String()),
-		}
-	})
 }

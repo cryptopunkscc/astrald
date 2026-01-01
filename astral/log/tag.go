@@ -1,12 +1,13 @@
 package log
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/term"
+	"encoding/json"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
-type Tag astral.String8
+type Tag string
 
 func (Tag) ObjectType() string { return "astrald.log.tag" }
 
@@ -18,11 +19,18 @@ func (l *Tag) ReadFrom(r io.Reader) (n int64, err error) {
 	return (*astral.String8)(l).ReadFrom(r)
 }
 
-func (l Tag) PrintTo(p term.Printer) error {
-	if len(l) == 0 {
-		return term.Printf(p, "[-]")
-	}
-	return term.Printf(p, "[%v]", string(l))
+func (l Tag) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(l))
+}
+
+func (l Tag) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, (*string)(&l))
+}
+
+func (l Tag) Render() string { return "[" + string(l) + "] " }
+
+func (l Tag) String() string {
+	return string(l)
 }
 
 func init() {

@@ -2,6 +2,7 @@ package dir
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
 // SetAlias sets the alias for the identity. Set an empty alias to unset.
@@ -24,4 +25,21 @@ func (mod *Module) GetAlias(identity *astral.Identity) (string, error) {
 	}
 
 	return row.Alias, nil
+}
+
+// AliasMap returns a map of all aliases to identities.
+func (mod *Module) AliasMap() *dir.AliasMap {
+	var rows []dbAlias
+	err := mod.db.Find(&rows).Error
+	if err != nil {
+		mod.log.Logv(1, "error loading alias map: %v", err)
+		return nil
+	}
+
+	m := make(map[string]*astral.Identity)
+	for _, row := range rows {
+		m[row.Alias] = row.Identity
+	}
+
+	return &dir.AliasMap{Aliases: m}
 }

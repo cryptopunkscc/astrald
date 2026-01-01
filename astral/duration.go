@@ -2,13 +2,12 @@ package astral
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"io"
 	"time"
 )
 
 type Duration time.Duration
-
-// astral
 
 func (Duration) ObjectType() string {
 	return "duration"
@@ -22,6 +21,8 @@ func (d Duration) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
+// binary
+
 func (d *Duration) ReadFrom(r io.Reader) (n int64, err error) {
 	var i int64
 	err = binary.Read(r, ByteOrder, &i)
@@ -31,6 +32,17 @@ func (d *Duration) ReadFrom(r io.Reader) (n int64, err error) {
 	n += 8
 	*d = Duration(i)
 	return
+}
+
+// json
+
+func (d Duration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.Duration())
+}
+
+func (d Duration) UnmarshalJSON(bytes []byte) error {
+	err := json.Unmarshal(bytes, (*time.Duration)(&d))
+	return err
 }
 
 // text

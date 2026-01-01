@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 
@@ -126,11 +125,4 @@ func ParseEndpoint(s string) (*Endpoint, error) {
 
 func init() {
 	_ = astral.DefaultBlueprints.Add(&Endpoint{})
-
-	term.SetTranslateFunc(func(o *Endpoint) astral.Object {
-		return &term.ColorString{
-			Color: term.HighlightColor,
-			Text:  astral.String32(o.String()),
-		}
-	})
 }

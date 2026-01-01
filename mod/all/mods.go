@@ -18,6 +18,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/kcp/src"
 	_ "github.com/cryptopunkscc/astrald/mod/keys/src"
 	_ "github.com/cryptopunkscc/astrald/mod/kos/src"
+	_ "github.com/cryptopunkscc/astrald/mod/log/src"
 	_ "github.com/cryptopunkscc/astrald/mod/media/src"
 	_ "github.com/cryptopunkscc/astrald/mod/nat/src"
 	_ "github.com/cryptopunkscc/astrald/mod/nearby/src"

@@ -3,16 +3,17 @@ package dir
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/astral/term"
 	"github.com/cryptopunkscc/astrald/lib/aliasgen"
 	"github.com/cryptopunkscc/astrald/mod/dir"
+	modlog "github.com/cryptopunkscc/astrald/mod/log"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
-	"os"
 )
 
 var _ dir.Module = &Module{}
@@ -130,12 +131,7 @@ func (mod *Module) setDefaultAlias() error {
 		return err
 	}
 
-	cs := term.ColorString{
-		Text:  astral.String32(alias),
-		Color: "brightgreen",
-	}
-
-	mod.log.Info("call me %v", cs)
+	mod.log.Info("call me %v", modlog.StyledText(alias, &modlog.BrightGreenText))
 
 	return nil
 }

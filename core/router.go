@@ -2,12 +2,13 @@ package core
 
 import (
 	"errors"
+	"io"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
-	"time"
 )
 
 var _ astral.Router = &Router{}
@@ -56,7 +57,7 @@ func (r *Router) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClos
 	// log the start of routing
 	if r.node.config.LogRoutingStart {
 		r.node.log.Logv(2, "[%v] %v -> %v:%v routing...",
-			q.Nonce, q.Caller, q.Target, q.Query,
+			&q.Nonce, q.Caller, q.Target, q.Query,
 		)
 	}
 

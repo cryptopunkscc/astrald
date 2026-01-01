@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/term"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ astral.Object = &Endpoint{}
@@ -120,11 +120,4 @@ func (e *Endpoint) String() string {
 
 func init() {
 	_ = astral.DefaultBlueprints.Add(&Endpoint{})
-
-	term.SetTranslateFunc(func(o *Endpoint) astral.Object {
-		return &term.ColorString{
-			Color: term.HighlightColor,
-			Text:  astral.String32(o.String()),
-		}
-	})
 }

@@ -3,15 +3,13 @@ package shell
 import (
 	"bufio"
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/term"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 )
 
-var _ term.Printer = &Terminal{}
-
 type Terminal struct {
-	printer term.Printer
 	scanner *bufio.Scanner
 	rw      io.ReadWriter
 }
@@ -19,7 +17,6 @@ type Terminal struct {
 func NewTerminal(rw io.ReadWriter) *Terminal {
 	return &Terminal{
 		rw:      rw,
-		printer: term.NewBasicPrinter(rw, &term.DefaultTypeMap),
 		scanner: bufio.NewScanner(rw),
 	}
 }
@@ -53,9 +50,11 @@ func (e *Terminal) Close() error {
 }
 
 func (e *Terminal) Printf(f string, v ...interface{}) error {
-	return term.Printf(e, f, v...)
+	_, err := e.rw.Write([]byte(log.DefaultViewer.Render(log.Format(f, v...)...)))
+	return err
 }
 
 func (e *Terminal) Print(objects ...astral.Object) (err error) {
-	return e.printer.Print(objects...)
+	_, err = e.rw.Write([]byte(log.DefaultViewer.Render(objects...)))
+	return
 }

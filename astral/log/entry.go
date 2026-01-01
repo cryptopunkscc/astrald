@@ -5,29 +5,23 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/term"
 )
 
 var _ astral.Object = &Entry{}
-var _ term.PrinterTo = &Entry{}
 
 type Entry struct {
 	Origin  *astral.Identity
-	Level   Level
-	Type    Type
+	Level   uint8
 	Time    astral.Time
-	Tag     Tag
 	Objects []astral.Object
 }
 
-func NewEntry(origin *astral.Identity, level Level, Type Type, tag Tag, f string, v ...any) *Entry {
+func NewEntry(origin *astral.Identity, level uint8, obj ...astral.Object) *Entry {
 	return &Entry{
 		Origin:  origin,
 		Level:   level,
-		Type:    Type,
-		Tag:     tag,
 		Time:    astral.Time(time.Now()),
-		Objects: term.Format(f, v...),
+		Objects: obj,
 	}
 }
 
@@ -36,33 +30,19 @@ func (Entry) ObjectType() string {
 }
 
 func (e Entry) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(e).WriteTo(w)
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e *Entry) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(e).ReadFrom(r)
+	return astral.Objectify(e).ReadFrom(r)
 }
 
-func (e Entry) PrintTo(p term.Printer) error {
-	// set header color
-	var c = &term.SetColor{"white"}
-	var o = &term.SetColor{"brightblack"}
+func (e Entry) MarshalJSON() ([]byte, error) {
+	return astral.Objectify(&e).MarshalJSON()
+}
 
-	// print entry header
-	term.Printf(p, "%v%v %v%v %v%v %v%v %v%v ",
-		o, &Origin{e.Origin},
-		c, e.Level,
-		c, Time(e.Time),
-		c, e.Type,
-		c, e.Tag,
-	)
-
-	// print entry objects
-	for _, o := range e.Objects {
-		p.Print(&term.SetColor{term.ColorDefault})
-		p.Print(o)
-	}
-	return nil
+func (e *Entry) UnmarshalJSON(bytes []byte) error {
+	return astral.Objectify(e).UnmarshalJSON(bytes)
 }
 
 func init() {
