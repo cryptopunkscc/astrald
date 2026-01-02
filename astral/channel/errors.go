@@ -9,6 +9,7 @@ import (
 var (
 	ErrCloseUnsupported = errors.New("transport doesn't support closing")
 	ErrTextUnsupported  = errors.New("the object does not support text marshaling")
+	ErrUnknownObject    = errors.New("unknown object type")
 )
 
 // ReceiverError implements the Receiver interface. Its Receive() method always returns the wrapped error.

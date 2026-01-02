@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -18,12 +19,21 @@ func NewBinarySender(w io.Writer) *BinarySender {
 }
 
 func (w BinarySender) Send(object astral.Object) (err error) {
-	var frame []byte
-
-	frame, err = astral.Pack(object)
+	// write the object type
+	_, err = astral.String8(object.ObjectType()).WriteTo(w.w)
 	if err != nil {
 		return
 	}
-	_, err = astral.Bytes16(frame).WriteTo(w.w)
+
+	// buffer the payload
+	var buf = bytes.NewBuffer(nil)
+	_, err = object.WriteTo(buf)
+	if err != nil {
+		return
+	}
+
+	// write the buffer with 32-bit length prefix
+	_, err = astral.Bytes32(buf.Bytes()).WriteTo(w.w)
+
 	return
 }

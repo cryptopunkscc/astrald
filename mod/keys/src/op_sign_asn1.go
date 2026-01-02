@@ -2,6 +2,7 @@ package keys
 
 import (
 	"encoding/hex"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
@@ -11,6 +12,7 @@ type opSignASN1Args struct {
 	Out  string `query:"optional"`
 }
 
+// Obsolete: this op needs to be rewritten
 func (mod *Module) OpSignASN1(_ *astral.Context, q shell.Query, args opSignASN1Args) (err error) {
 	hash, err := hex.DecodeString(args.Hash)
 	if err != nil {
@@ -26,5 +28,5 @@ func (mod *Module) OpSignASN1(_ *astral.Context, q shell.Query, args opSignASN1A
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	return ch.WritePayload((*astral.Bytes8)(&sig))
+	return ch.Write((*astral.Bytes8)(&sig))
 }

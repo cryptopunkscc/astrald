@@ -20,14 +20,31 @@ func NewBinaryReceiver(r io.Reader) *BinaryReceiver {
 }
 
 func (b BinaryReceiver) Receive() (object astral.Object, err error) {
-	var frame astral.Bytes16
-
-	_, err = frame.ReadFrom(b.r)
+	// read the object type
+	var objectType astral.ObjectType
+	_, err = objectType.ReadFrom(b.r)
 	if err != nil {
 		return
 	}
 
-	object, _, err = b.bp.Read(bytes.NewReader(frame))
+	if len(objectType) == 0 {
+		object = &astral.Blob{}
+	} else {
+		object = b.bp.Make(objectType.String())
+		if object == nil {
+			return nil, ErrUnknownObject
+		}
+	}
+
+	// read the object payload
+	var buf astral.Bytes32
+	_, err = buf.ReadFrom(b.r)
+	if err != nil {
+		return
+	}
+
+	// decode the payload
+	_, err = object.ReadFrom(bytes.NewReader(buf))
 
 	return
 }

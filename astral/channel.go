@@ -55,15 +55,32 @@ func NewChannelFmt(rw io.ReadWriter, fmtIn, fmtOut string) *Channel {
 
 func (ch *Channel) Read() (obj Object, err error) {
 	switch ch.fmtIn {
-	case "", "astral":
-		var frame Bytes16
-
-		_, err = frame.ReadFrom(ch.bufr)
+	case "bin", "astral", "":
+		// read the object type
+		var objectType ObjectType
+		_, err = objectType.ReadFrom(ch.bufr)
 		if err != nil {
 			return
 		}
 
-		obj, _, err = ch.Blueprints.Read(bytes.NewReader(frame))
+		if len(objectType) == 0 {
+			obj = &Blob{}
+		} else {
+			obj = ch.Make(objectType.String())
+			if obj == nil {
+				return nil, errors.New("unknown object type: " + string(objectType))
+			}
+		}
+
+		// read the object payload
+		var buf Bytes32
+		_, err = buf.ReadFrom(ch.bufr)
+		if err != nil {
+			return
+		}
+
+		// decode the payload
+		_, err = obj.ReadFrom(bytes.NewReader(buf))
 
 	case "json":
 		var jsonObj JSONDecodeAdapter
@@ -110,95 +127,25 @@ func (ch *Channel) Read() (obj Object, err error) {
 	return
 }
 
-func (ch *Channel) ReadPayload(objectType string) (obj Object, err error) {
-	obj = ch.Blueprints.Make(objectType)
-	if obj == nil {
-		return nil, errors.New("unknown object type")
-	}
-
-	switch ch.fmtIn {
-	case "astral", "":
-		var frame Bytes16
-
-		_, err = frame.ReadFrom(ch.bufr)
-		if err != nil {
-			return
-		}
-
-		_, err = obj.ReadFrom(bytes.NewReader(frame))
-
-	case "json":
-		err = ch.jdec.Decode(&obj)
-
-	case "text", "text+":
-		u, ok := obj.(encoding2.TextUnmarshaler)
-		if !ok {
-			return nil, errors.New("object does not implement text decoding")
-		}
-
-		var line string
-
-		line, err = ch.bufr.ReadString('\n')
-		if err != nil {
-			return
-		}
-
-		err = u.UnmarshalText([]byte(line))
-
-	default:
-		err = errors.New("unsupported input format: " + ch.fmtIn)
-	}
-
-	return
-}
-
-func (ch *Channel) WritePayload(obj Object) (err error) {
-	switch ch.fmtOut {
-	case "astral", "":
-		var frame = &bytes.Buffer{}
-
-		_, err = obj.WriteTo(frame)
-		if err != nil {
-			return
-		}
-
-		_, err = Bytes16(frame.Bytes()).WriteTo(ch.rw)
-
-	case "json":
-		err = ch.jenc.Encode(obj)
-
-	case "text", "text+":
-		m, ok := obj.(encoding2.TextMarshaler)
-		if !ok {
-			return errors.New("object does not implement text encoding")
-		}
-
-		var text []byte
-
-		text, err = m.MarshalText()
-		if err != nil {
-			return err
-		}
-
-		_, err = fmt.Fprintf(ch.rw, "%s\n", string(text))
-
-	default:
-		err = errors.New("unsupported output format: " + ch.fmtOut)
-	}
-
-	return
-}
-
 func (ch *Channel) Write(obj Object) (err error) {
 	switch ch.fmtOut {
-	case "astral", "":
-		var frame []byte
-
-		frame, err = Pack(obj)
+	case "bin", "astral", "":
+		// write the object type
+		_, err = String8(obj.ObjectType()).WriteTo(ch.rw)
 		if err != nil {
 			return
 		}
-		_, err = Bytes16(frame).WriteTo(ch.rw)
+
+		// buffer the payload
+		var buf = bytes.NewBuffer(nil)
+		_, err = obj.WriteTo(buf)
+		if err != nil {
+			return
+		}
+
+		// write the buffer with 32-bit length prefix
+		_, err = Bytes32(buf.Bytes()).WriteTo(ch.rw)
+
 		return
 
 	case "json":
