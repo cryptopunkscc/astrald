@@ -7,60 +7,6 @@ import (
 	"io"
 )
 
-// Bytes is an unconstrained byte buffer. WriteTo will simply write the entire
-// slice, ReadFrom will read until io.EOF.
-// Bytes is a byte buffer of indefinite length
-type Bytes []byte
-
-func (Bytes) ObjectType() string {
-	return "bytes"
-}
-
-func (b Bytes) WriteTo(w io.Writer) (_ int64, err error) {
-	var m int
-	m, err = w.Write(b)
-	return int64(m), err
-}
-
-func (b *Bytes) ReadFrom(r io.Reader) (n int64, err error) {
-	var buf []byte
-	buf, err = io.ReadAll(r)
-	n = int64(len(buf))
-	if err == nil {
-		*b = buf
-	}
-	return
-}
-
-func (b Bytes) MarshalJSON() ([]byte, error) {
-	return json.Marshal([]byte(b))
-}
-
-func (b *Bytes) UnmarshalJSON(bytes []byte) error {
-	return json.Unmarshal(bytes, (*[]byte)(b))
-}
-
-func (b Bytes) MarshalText() (text []byte, err error) {
-	buf := make([]byte, base64.StdEncoding.EncodedLen(len(b)))
-	base64.StdEncoding.Encode(buf, b)
-	return buf, nil
-}
-
-func (b *Bytes) UnmarshalText(text []byte) error {
-	l := base64.StdEncoding.DecodedLen(len(text))
-	*b = make(Bytes, l)
-
-	n, err := base64.StdEncoding.Decode(*b, text)
-	if err != nil {
-		return err
-	}
-
-	// trim the slice to the actual decoded length (in case of padding)
-	*b = (*b)[:n]
-
-	return nil
-}
-
 // Bytes8 is a byte buffer of 8-bit length
 type Bytes8 []byte
 
@@ -336,12 +282,11 @@ func (b *Bytes64) UnmarshalText(text []byte) error {
 
 func init() {
 	var (
-		b   Bytes
 		b8  Bytes8
 		b16 Bytes16
 		b32 Bytes32
 		b64 Bytes64
 	)
 
-	_ = DefaultBlueprints.Add(&b, &b8, &b16, &b32, &b64)
+	_ = DefaultBlueprints.Add(&b8, &b16, &b32, &b64)
 }
