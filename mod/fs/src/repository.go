@@ -2,12 +2,13 @@ package fs
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Repository struct {
@@ -156,6 +157,10 @@ func (repo *Repository) Free(ctx *astral.Context) (int64, error) {
 func (repo *Repository) Delete(ctx *astral.Context, objectID *astral.ObjectID) error {
 	path := filepath.Join(repo.root, objectID.String())
 	return os.Remove(path)
+}
+
+func (repo *Repository) String() string {
+	return repo.name
 }
 
 func (repo *Repository) pushAdded(id *astral.ObjectID) {

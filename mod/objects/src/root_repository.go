@@ -1,10 +1,11 @@
 package objects
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"io"
 	"sync"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 type RootRepository struct {
@@ -185,4 +186,8 @@ func (repo RootRepository) Default() (r objects.Repository) {
 	}
 
 	return
+}
+
+func (repo RootRepository) String() string {
+	return repo.Label()
 }

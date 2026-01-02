@@ -3,12 +3,13 @@ package fs
 import (
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type WatchRepository struct {
@@ -165,6 +166,10 @@ func (repo *WatchRepository) Delete(ctx *astral.Context, objectID *astral.Object
 
 func (repo *WatchRepository) Free(ctx *astral.Context) (int64, error) {
 	return 0, nil
+}
+
+func (repo *WatchRepository) String() string {
+	return repo.label
 }
 
 func (repo *WatchRepository) rescan(ctx *astral.Context) error {

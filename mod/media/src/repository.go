@@ -2,13 +2,14 @@ package media
 
 import (
 	"bytes"
+	"io"
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/objects/mem"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/dhowden/tag"
-	"io"
-	"sync"
 )
 
 type Repository struct {
@@ -109,6 +110,10 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.O
 	}()
 
 	return ch, nil
+}
+
+func (repo *Repository) String() string {
+	return repo.Label()
 }
 
 func (repo *Repository) push(id *astral.ObjectID) {

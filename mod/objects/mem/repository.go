@@ -1,12 +1,13 @@
 package mem
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"slices"
 	"sync/atomic"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var _ objects.Repository = &Repository{}
@@ -124,6 +125,10 @@ func (repo *Repository) Used() int64 {
 
 func (repo *Repository) Free(ctx *astral.Context) (int64, error) {
 	return repo.size - repo.used.Load(), nil
+}
+
+func (repo *Repository) String() string {
+	return repo.name
 }
 
 func (repo *Repository) free() int64 {

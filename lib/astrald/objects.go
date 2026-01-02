@@ -172,10 +172,85 @@ func (client *ObjectsClient) Push(ctx context.Context, object ...astral.Object) 
 	return errors.Join(errs...)
 }
 
+func (client *ObjectsClient) Create(repo string, alloc int) (objects.Writer, error) {
+	// prepare arguments
+	args := query.Args{}
+
+	if alloc > 0 {
+		args["alloc"] = alloc
+	}
+	if len(repo) > 0 {
+		args["repo"] = repo
+	}
+
+	// send the query
+	ch, err := client.queryCh("objects.create", args)
+	if err != nil {
+		return nil, err
+	}
+
+	// handle response
+	msg, err := ch.Receive()
+	switch msg := msg.(type) {
+	case *astral.Ack:
+		return &writer{ch: ch}, nil
+
+	case *astral.ErrorMessage:
+		return nil, msg
+
+	case nil:
+		ch.Close()
+		return nil, err
+	}
+
+	ch.Close()
+	return nil, fmt.Errorf("unexpected message type: %s", msg.ObjectType())
+}
+
 func (client *ObjectsClient) query(method string, args any) (*apphost.Conn, error) {
 	return client.c.Query(client.target, method, args)
 }
 
 func (client *ObjectsClient) queryCh(method string, args any) (*channel.Channel, error) {
 	return client.c.QueryChannel(client.target, method, args)
+}
+
+type writer struct {
+	ch *channel.Channel
+}
+
+func (w *writer) Write(p []byte) (n int, err error) {
+	err = w.ch.Send((*astral.Blob)(&p))
+	if err == nil {
+		n = len(p)
+	}
+	return
+}
+
+func (w *writer) Commit() (*astral.ObjectID, error) {
+	// close the channel after committing
+	defer w.ch.Close()
+
+	// send commit message
+	err := w.ch.Send(&objects.CommitMsg{})
+	if err != nil {
+		return nil, err
+	}
+
+	// handle response
+	o, err := w.ch.Receive()
+	switch msg := o.(type) {
+	case *astral.ObjectID:
+		return msg, nil
+	case *astral.ErrorMessage:
+		return nil, msg
+	case nil:
+		return nil, err
+	default:
+		return nil, fmt.Errorf("unexpected type: %s", msg.ObjectType())
+	}
+}
+
+func (w *writer) Discard() error {
+	return w.ch.Close() // close without committing to discard data
 }
