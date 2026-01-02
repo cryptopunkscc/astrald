@@ -14,13 +14,17 @@ const blockSize = 2 << 14
 func main() {
 	var repo string
 	var alloc int
+	var target string
 
 	flag.StringVar(&repo, "repo", "", "target repository")
 	flag.IntVar(&alloc, "alloc", 0, "allocate space upfront")
+	flag.StringVar(&target, "target", "localnode", "target node")
 
 	flag.Parse()
 
-	w, err := astrald.Objects().Create(repo, alloc)
+	objects := astrald.NewObjectsClient(astrald.DefaultClient(), target)
+
+	w, err := objects.Create(repo, alloc)
 	if err != nil {
 		fatal("create: %v", err)
 	}
