@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/services"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 )
@@ -32,6 +33,8 @@ type Module struct {
 
 	pool *PairPool
 	ops  shell.Scope
+
+	serviceFeed *services.ServiceFeed
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
