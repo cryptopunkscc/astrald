@@ -1,7 +1,10 @@
 package services
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/services"
 	"gorm.io/gorm"
 )
 
@@ -15,30 +18,58 @@ func (db *DB) Migrate() error {
 	)
 }
 
-// RemoveService marks a service as disabled
-func (db *DB) RemoveService(name astral.String8, identity *astral.Identity) error {
+// InsertService creates a new service record and expires previous ones for the same name+identity
+func (db *DB) InsertService(svc services.Service, expiresIn astral.Duration) error {
+	now := astral.Now()
+	expiresAt := astral.Time(now.Time().Add(time.Duration(expiresIn)))
+
+	if err := db.
+		Model(&dbService{}).
+		Where("name = ? AND identity = ? AND expires_at > ?", svc.Name, svc.Identity, now).
+		Update("expires_at", now).
+		Error; err != nil {
+		return err
+	}
+
+	// Insert new record with specified expiration
+	return db.Create(&dbService{
+		Name:        svc.Name,
+		Identity:    svc.Identity,
+		Composition: svc.Composition,
+		Enabled:     true,
+		ExpiresAt:   expiresAt,
+	}).Error
+}
+
+// GetIdentityServices returns all current services for a specific identity
+func (db *DB) GetIdentityServices(identity *astral.Identity) ([]dbService, error) {
+	var svcList []dbService
+	now := astral.Now()
+	err := db.
+		Where("identity = ? AND expires_at > ?", identity, now).
+		Order("created_at DESC").
+		Find(&svcList).
+		Error
+	return svcList, err
+}
+
+func (db *DB) InvalidateServices(identity *astral.Identity) error {
+	now := astral.Now()
+
 	return db.
 		Model(&dbService{}).
-		Where("name = ? AND identity = ?", name, identity).
-		Update("enabled", false).
+		Where("identity = ? AND expires_at > ?", identity, now).
+		Update("expires_at", now).
 		Error
 }
 
-// ServiceExists checks if a service exists and is enabled
-func (db *DB) ServiceExists(name astral.String8, identity *astral.Identity) (exists bool) {
-	db.
-		Model(&dbService{}).
-		Select("1").
-		Where("name = ? AND identity = ? AND enabled = ?", name, identity, true).
-		Limit(1).
-		Scan(&exists)
-	return
-}
+// InvalidateService expires a specific service for an identity
+func (db *DB) InvalidateService(name astral.String8, identity *astral.Identity) error {
+	now := astral.Now()
 
-// ClearDisabledServices removes old disabled service entries (cleanup)
-func (db *DB) ClearDisabledServices() error {
 	return db.
-		Where("enabled = ?", false).
-		Delete(&dbService{}).
+		Model(&dbService{}).
+		Where("name = ? AND identity = ? AND expires_at > ?", name, identity, now).
+		Update("expires_at", now).
 		Error
 }
