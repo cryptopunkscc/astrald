@@ -1,6 +1,8 @@
 package services
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -41,14 +43,11 @@ func (mod *Module) String() string {
 }
 
 func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Identity, subscribe bool) error {
-	// Don't cache our own services - only cache services from OTHER identities
 	if target.IsEqual(mod.node.Identity()) {
 		return nil
 	}
 
 	mod.log.Info("discovering services from %v", target)
-
-	// Create and route query to remote node's service discovery operation
 	ch, err := query.RouteChan(
 		ctx.IncludeZone(astral.ZoneNetwork),
 		mod.node,
@@ -59,7 +58,7 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 	}
 	defer ch.Close()
 
-	defaultExpiration := astral.Duration(60 * 60 * 1000000000) // 1 hour in nanoseconds
+	defaultExpiration := astral.Duration(7 * 24 * time.Hour)
 	for {
 		msg, err := ch.Read()
 		if err != nil {
