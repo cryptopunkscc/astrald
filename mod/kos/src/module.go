@@ -2,6 +2,7 @@ package kos
 
 import (
 	"bytes"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/kos"
@@ -45,7 +46,7 @@ func (mod *Module) Get(ctx *astral.Context, key string) (astral.Object, error) {
 
 	object := mod.Objects.Blueprints().Make(typ)
 	if object == nil {
-		object = &astral.RawObject{}
+		return nil, astral.ErrBlueprintNotFound{Type: typ}
 	}
 
 	_, err = object.ReadFrom(bytes.NewReader(payload))

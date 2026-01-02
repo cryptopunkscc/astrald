@@ -132,7 +132,7 @@ func (bp *Blueprints) Add(object ...Object) error {
 func (bp *Blueprints) Refine(raw *RawObject) (Object, error) {
 	b := bp.Make(raw.ObjectType())
 	if b == nil {
-		return nil, errors.New("blueprint not found")
+		return nil, newErrBlueprintNotFound(raw.ObjectType())
 	}
 
 	var buf = &bytes.Buffer{}
@@ -185,29 +185,30 @@ func (bp *Blueprints) Read(r io.Reader) (o Object, n int64, err error) {
 }
 
 // read reads an object from the reader using the provided type reader to read the type.
-func (bp *Blueprints) read(r io.Reader, read TypeReader) (object Object, n int64, err error) {
+func (bp *Blueprints) read(r io.Reader, readType TypeReader) (object Object, n int64, err error) {
+	// read the object type
 	var objectType ObjectType
 	var m int64
 
-	objectType, n, err = read(r)
+	objectType, n, err = readType(r)
 	if err != nil {
 		return
 	}
 
-	if bp != nil {
-		// try to make a new object of the type
-		object = bp.Make(string(objectType))
-
-		// inject blueprints into the reader with default (short) type encoding
-		r = &ReaderWithBlueprints{
-			bp:     bp.Short(),
-			Reader: r,
-		}
+	if len(objectType) == 0 {
+		return nil, 0, errors.New("empty object type")
 	}
 
-	// if no blueprint is found, create a raw object
+	// make a new object of the type
+	object = bp.Make(string(objectType))
 	if object == nil {
-		object = &RawObject{Type: string(objectType)}
+		return nil, 0, newErrBlueprintNotFound(string(objectType))
+	}
+
+	// inject blueprints into the reader with default (short) type encoding
+	r = &ReaderWithBlueprints{
+		bp:     bp.Short(),
+		Reader: r,
 	}
 
 	// read the object payload

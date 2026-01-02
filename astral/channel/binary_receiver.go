@@ -32,7 +32,7 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 	} else {
 		object = b.bp.Make(objectType.String())
 		if object == nil {
-			return nil, ErrUnsupportedType{Type: objectType.String()}
+			return nil, astral.ErrBlueprintNotFound{Type: objectType.String()}
 		}
 	}
 

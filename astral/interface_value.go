@@ -91,7 +91,7 @@ func (i interfaceValue) ReadFrom(r io.Reader) (n int64, err error) {
 
 	o := ExtractBlueprints(r).Make(objectType)
 	if o == nil {
-		return n, fmt.Errorf("unknown object type %s", objectType)
+		return n, newErrBlueprintNotFound(objectType)
 	}
 
 	if !reflect.ValueOf(o).CanConvert(i.Type()) {

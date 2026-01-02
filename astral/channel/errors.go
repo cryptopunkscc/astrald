@@ -2,7 +2,6 @@ package channel
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
 )
@@ -11,15 +10,6 @@ var (
 	ErrCloseUnsupported = errors.New("transport doesn't support closing")
 	ErrTextUnsupported  = errors.New("the object does not support text marshaling")
 )
-
-// ErrUnsupportedType an object of an unsupported type was received
-type ErrUnsupportedType struct {
-	Type string
-}
-
-func (e ErrUnsupportedType) Error() string {
-	return fmt.Sprint("unsupported object type: ", e.Type)
-}
 
 // ReceiverError implements the Receiver interface. Its Receive() method always returns the wrapped error.
 type ReceiverError struct {

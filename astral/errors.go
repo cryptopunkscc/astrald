@@ -77,3 +77,15 @@ func (e *ErrRouteNotFound) Is(other error) bool {
 	_, ok := other.(*ErrRouteNotFound)
 	return ok
 }
+
+type ErrBlueprintNotFound struct {
+	Type string
+}
+
+func (e ErrBlueprintNotFound) Error() string {
+	return fmt.Sprintf("blueprint not found: %s", e.Type)
+}
+
+func newErrBlueprintNotFound(t string) error {
+	return ErrBlueprintNotFound{Type: t}
+}

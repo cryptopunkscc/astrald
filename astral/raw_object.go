@@ -7,13 +7,13 @@ import (
 	"io"
 )
 
-var _ Object = &RawObject{}
-
 // RawObject is an Object that holds an unparsed payload. See Blueprints.Refine on how to parse these objects.
 type RawObject struct {
 	Type    string
 	Payload []byte
 }
+
+var _ Object = &RawObject{}
 
 func (raw *RawObject) MarshalJSON() ([]byte, error) {
 	return json.Marshal(raw.Payload)
@@ -51,16 +51,5 @@ func (raw *RawObject) UnmarshalText(text []byte) (err error) {
 
 	raw.Payload, err = base64.StdEncoding.DecodeString(string(text))
 
-	return
-}
-
-// ToRaw converts an Object to a RawObject
-func ToRaw(obj Object) (raw *RawObject, err error) {
-	var buf = &bytes.Buffer{}
-	_, err = obj.WriteTo(buf)
-	raw = &RawObject{
-		Type:    obj.ObjectType(),
-		Payload: buf.Bytes(),
-	}
 	return
 }

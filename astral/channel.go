@@ -68,7 +68,7 @@ func (ch *Channel) Read() (obj Object, err error) {
 		} else {
 			obj = ch.Make(objectType.String())
 			if obj == nil {
-				return nil, errors.New("unknown object type: " + string(objectType))
+				return nil, newErrBlueprintNotFound(string(objectType))
 			}
 		}
 
@@ -110,7 +110,7 @@ func (ch *Channel) Read() (obj Object, err error) {
 
 		obj = ch.Blueprints.Make(objectType)
 		if obj == nil {
-			return nil, fmt.Errorf("unknown object type: %s", objectType)
+			return nil, newErrBlueprintNotFound(objectType)
 		}
 
 		u, ok := obj.(encoding2.TextUnmarshaler)

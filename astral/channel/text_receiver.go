@@ -44,7 +44,7 @@ func (r TextReceiver) Receive() (obj astral.Object, err error) {
 
 	obj = r.bp.Make(objectType)
 	if obj == nil {
-		return nil, fmt.Errorf("unknown object type: %s", objectType)
+		return nil, astral.ErrBlueprintNotFound{Type: objectType}
 	}
 
 	u, ok := obj.(encoding.TextUnmarshaler)
