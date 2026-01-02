@@ -5,13 +5,11 @@ import (
 )
 
 type dbService struct {
-	ID          uint             `gorm:"primaryKey;autoIncrement"` // FIXME: remove this field
 	Name        astral.String8   `gorm:"index"`
 	Identity    *astral.Identity `gorm:"index"`
 	Composition *astral.Bundle   `gorm:"serializer:json"`
-	Enabled     bool             `gorm:"index"`
 	CreatedAt   astral.Time      `gorm:"autoCreateTime"`
-	ExpiresAt   astral.Time      `gorm:"index"` // When this record expires (earlier date = expired/invalidated)
+	ExpiresAt   astral.Time      `gorm:"index"`
 }
 
 func (dbService) TableName() string {

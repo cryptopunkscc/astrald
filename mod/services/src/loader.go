@@ -16,19 +16,15 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		log:  log,
 	}
 
-	// Initialize database
 	mod.db = &DB{assets.Database()}
 
 	if err := mod.db.Migrate(); err != nil {
 		return nil, err
 	}
-
-	// Load dependencies and register service discoverers
 	if err := mod.LoadDependencies(); err != nil {
 		return nil, err
 	}
 
-	// Register ops
 	_ = mod.ops.AddStruct(mod, "Op")
 
 	return mod, nil
