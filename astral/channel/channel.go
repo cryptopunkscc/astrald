@@ -92,7 +92,7 @@ func (ch Channel) Collect(collector func(astral.Object) error) error {
 		switch {
 		case err == nil:
 			if err = collector(o); err != nil {
-				return nil
+				return err
 			}
 
 		case errors.Is(err, io.EOF):
