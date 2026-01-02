@@ -17,7 +17,7 @@ type PendingQuery struct {
 // Accept accepts the query and returns a new connection
 func (q *PendingQuery) Accept() (conn *libapphost.Conn) {
 	// send ack
-	_ = channel.NewBinaryWriter(q.conn).Write(&astral.Ack{})
+	_ = channel.NewBinarySender(q.conn).Send(&astral.Ack{})
 
 	conn = libapphost.NewConn(
 		q.conn,
@@ -31,8 +31,8 @@ func (q *PendingQuery) Accept() (conn *libapphost.Conn) {
 }
 
 // AcceptChannel accepts the query and returns a new channel
-func (q *PendingQuery) AcceptChannel() *channel.Channel {
-	return channel.New(q.Accept())
+func (q *PendingQuery) AcceptChannel(cfg ...channel.ConfigFunc) *channel.Channel {
+	return channel.New(q.Accept(), cfg...)
 }
 
 // Reject rejects the query with the default error code
@@ -43,13 +43,13 @@ func (q *PendingQuery) Reject() (err error) {
 // RejectWithCode rejects the query with the given code
 func (q *PendingQuery) RejectWithCode(code int) (err error) {
 	defer q.conn.Close()
-	return channel.NewBinaryWriter(q.conn).Write(&apphost.QueryRejectedMsg{Code: astral.Uint8(code)})
+	return channel.NewBinarySender(q.conn).Send(&apphost.QueryRejectedMsg{Code: astral.Uint8(code)})
 }
 
 // Skip responds with a "route not found" error
 func (q *PendingQuery) Skip() error {
 	defer q.conn.Close()
-	return channel.NewBinaryWriter(q.conn).Write(&apphost.ErrorMsg{Code: apphost.ErrCodeRouteNotFound})
+	return channel.NewBinarySender(q.conn).Send(&apphost.ErrorMsg{Code: apphost.ErrCodeRouteNotFound})
 }
 
 // Close closes the connection without responding

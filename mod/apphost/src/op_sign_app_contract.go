@@ -17,7 +17,7 @@ type opSignAppContractArgs struct {
 }
 
 func (mod *Module) OpSignAppContract(ctx *astral.Context, q shell.Query, args opSignAppContractArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.OutFmt(args.Out))
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	if args.Duration == 0 {
@@ -35,20 +35,20 @@ func (mod *Module) OpSignAppContract(ctx *astral.Context, q shell.Query, args op
 	// sign the contract
 	err = mod.SignAppContract(c)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	contractID, err := objects.Save(ctx, c, mod.Objects.Root())
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	mod.log.Infov(1, "signed app contract (%v) with %v", c.AppID, contractID)
 
 	err = mod.Index(ctx, contractID)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(contractID)
+	return ch.Send(contractID)
 }

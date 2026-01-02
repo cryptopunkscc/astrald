@@ -10,23 +10,23 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-type TextReader struct {
+type TextReceiver struct {
 	r  io.Reader
 	bp *astral.Blueprints
 	br *bufio.Reader
 }
 
-var _ Reader = &TextReader{}
+var _ Receiver = &TextReceiver{}
 
-func NewTextReader(r io.Reader) *TextReader {
-	return &TextReader{
+func NewTextReceiver(r io.Reader) *TextReceiver {
+	return &TextReceiver{
 		r:  r,
 		bp: astral.ExtractBlueprints(r),
 		br: bufio.NewReader(r),
 	}
 }
 
-func (r TextReader) Read() (obj astral.Object, err error) {
+func (r TextReceiver) Receive() (obj astral.Object, err error) {
 	var line, objectType, text string
 
 	// read the line

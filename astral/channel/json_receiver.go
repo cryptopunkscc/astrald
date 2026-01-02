@@ -7,24 +7,24 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-// JSONReader reads a stream of astral.Objects encoded as JSON lines from the underlying io.Reader.
-type JSONReader struct {
+// JSONReceiver reads a stream of astral.Objects encoded as JSON lines from the underlying io.Reader.
+type JSONReceiver struct {
 	r   io.Reader
 	bp  *astral.Blueprints
 	dec *json.Decoder
 }
 
-var _ Reader = &JSONReader{}
+var _ Receiver = &JSONReceiver{}
 
-func NewJSONReader(r io.Reader) *JSONReader {
-	return &JSONReader{
+func NewJSONReceiver(r io.Reader) *JSONReceiver {
+	return &JSONReceiver{
 		r:   r,
 		bp:  astral.ExtractBlueprints(r),
 		dec: json.NewDecoder(r),
 	}
 }
 
-func (r JSONReader) Read() (object astral.Object, err error) {
+func (r JSONReceiver) Receive() (object astral.Object, err error) {
 	var jsonObj astral.JSONDecodeAdapter
 
 	err = r.dec.Decode(&jsonObj)

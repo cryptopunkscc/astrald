@@ -33,7 +33,7 @@ func NewGuest(mod *Module, conn net.Conn) *Guest {
 // Serve handles the guest connection.
 func (guest *Guest) Serve(ctx *astral.Context) (err error) {
 	// write a welcome message
-	err = guest.Write(&apphost.HostInfoMsg{
+	err = guest.Send(&apphost.HostInfoMsg{
 		Identity: ctx.Identity(),
 		Alias:    astral.String8(guest.mod.Dir.DisplayName(ctx.Identity())),
 	})
@@ -44,7 +44,7 @@ func (guest *Guest) Serve(ctx *astral.Context) (err error) {
 	// message read loop
 	var msg astral.Object
 	for {
-		msg, err = guest.Read()
+		msg, err = guest.Receive()
 
 		// check err
 		switch {
@@ -67,10 +67,10 @@ func (guest *Guest) Serve(ctx *astral.Context) (err error) {
 		case *apphost.RouteQueryMsg:
 			err = guest.onRouteQueryMsg(ctx, msg)
 		case *apphost.PingMsg:
-			err = guest.Write(&astral.Ack{})
+			err = guest.Send(&astral.Ack{})
 		default:
 			guest.mod.log.Logv(1, "protocol error: invalid message: %v", msg.ObjectType())
-			return guest.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeProtocolError})
+			return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeProtocolError})
 		}
 
 		if err != nil {
@@ -85,13 +85,13 @@ func (guest *Guest) onAuthTokenMsg(ctx *astral.Context, msg *apphost.AuthTokenMs
 
 	if dbToken == nil {
 		guest.mod.log.Errorv(3, "token authentication failed")
-		return guest.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeAuthFailed})
+		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeAuthFailed})
 	}
 
 	guest.guestID = dbToken.Identity
 	guest.mod.log.Infov(3, "%v authenticated using auth token", guest.guestID)
 
-	return guest.Write(&apphost.AuthSuccessMsg{
+	return guest.Send(&apphost.AuthSuccessMsg{
 		GuestID: guest.guestID,
 	})
 }
@@ -99,13 +99,13 @@ func (guest *Guest) onAuthTokenMsg(ctx *astral.Context, msg *apphost.AuthTokenMs
 func (guest *Guest) onRegisterHandlerMsg(ctx *astral.Context, msg *apphost.RegisterHandlerMsg) (err error) {
 	// only authenticated guests can register handlers
 	if !guest.isAuthenticated() {
-		return guest.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 	}
 
 	// if requested identity is different from the authenticated identity, check authorization
 	if !msg.Identity.IsEqual(guest.guestID) {
 		if !guest.mod.Auth.Authorize(guest.guestID, auth.ActionSudo, msg.Identity) {
-			return guest.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+			return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 		}
 	}
 
@@ -119,7 +119,7 @@ func (guest *Guest) onRegisterHandlerMsg(ctx *astral.Context, msg *apphost.Regis
 	defer guest.mod.handlers.Remove(handler) // remove handler on disconnect
 
 	// send ack to the client
-	err = guest.Write(&astral.Ack{})
+	err = guest.Send(&astral.Ack{})
 	if err != nil {
 		return
 	}
@@ -142,7 +142,7 @@ func (guest *Guest) onRegisterHandlerMsg(ctx *astral.Context, msg *apphost.Regis
 
 	// wait for the connection to end ignoring all incoming objects
 	for {
-		_, err = guest.Read()
+		_, err = guest.Receive()
 		if err != nil {
 			break
 		}
@@ -154,7 +154,7 @@ func (guest *Guest) onRegisterHandlerMsg(ctx *astral.Context, msg *apphost.Regis
 func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQueryMsg) (err error) {
 	// deny if not authenticated and anonymous queries are not allowed
 	if !guest.isAuthenticated() && !guest.mod.config.AllowAnonymous {
-		return guest.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 	}
 
 	var q = &astral.Query{
@@ -170,7 +170,7 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 	case q.Caller.IsEqual(guest.guestID):
 	default:
 		if !guest.mod.Authorize(guest.guestID, auth.ActionSudo, q.Caller) {
-			return guest.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+			return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 		}
 	}
 
@@ -189,15 +189,15 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 	switch {
 	case err == nil:
 	case errors.As(err, &rejected):
-		return guest.Write(&apphost.QueryRejectedMsg{Code: astral.Uint8(rejected.Code)})
+		return guest.Send(&apphost.QueryRejectedMsg{Code: astral.Uint8(rejected.Code)})
 	case errors.Is(err, &astral.ErrRouteNotFound{}):
-		return guest.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeRouteNotFound})
+		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeRouteNotFound})
 	default:
-		return guest.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeInternalError})
+		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeInternalError})
 	}
 
 	// write success response
-	err = guest.Write(&apphost.QueryAcceptedMsg{})
+	err = guest.Send(&apphost.QueryAcceptedMsg{})
 	if err != nil {
 		return err
 	}

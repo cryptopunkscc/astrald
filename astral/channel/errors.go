@@ -11,30 +11,32 @@ var (
 	ErrTextUnsupported  = errors.New("the object does not support text marshaling")
 )
 
-// ReaderError implements the Reader interface. Its Read() method always returns the wrapped error.
-type ReaderError struct {
+// ReceiverError implements the Receiver interface. Its Receive() method always returns the wrapped error.
+type ReceiverError struct {
 	err error
 }
 
-func NewReaderError(err error) *ReaderError {
-	return &ReaderError{err: err}
+func NewReceiverError(err error) *ReceiverError {
+	return &ReceiverError{err: err}
 }
 
-var _ Reader = &ReaderError{}
+var _ Receiver = &ReceiverError{}
 
-func (r ReaderError) Read() (astral.Object, error) {
+func (r ReceiverError) Receive() (astral.Object, error) {
 	return nil, r.err
 }
 
-// WriterError implements the Writer interface. Its Write() method always returns the wrapped error.
-type WriterError struct {
+// SenderError implements the Sender interface. Its Send() method always returns the wrapped error.
+type SenderError struct {
 	err error
 }
 
-func NewWriterError(err error) *WriterError {
-	return &WriterError{err: err}
+var _ Sender = &SenderError{}
+
+func NewSenderError(err error) *SenderError {
+	return &SenderError{err: err}
 }
 
-func (w WriterError) Write(astral.Object) error {
+func (w SenderError) Send(astral.Object) error {
 	return w.err
 }

@@ -12,8 +12,8 @@ type opAliasMapArgs struct {
 }
 
 func (mod *Module) OpAliasMap(ctx *astral.Context, q shell.Query, args opAliasMapArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.InFmt(args.In), channel.OutFmt(args.Out))
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	return ch.Write(mod.AliasMap())
+	return ch.Send(mod.AliasMap())
 }

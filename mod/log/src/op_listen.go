@@ -13,7 +13,7 @@ type opListenArgs struct {
 }
 
 func (mod *Module) OpListen(ctx *astral.Context, q shell.Query, args opListenArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.InFmt(args.In), channel.OutFmt(args.Out))
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	fwd := &logForwarder{ch}
@@ -22,7 +22,7 @@ func (mod *Module) OpListen(ctx *astral.Context, q shell.Query, args opListenArg
 	defer mod.outputs.Remove(fwd)
 
 	for {
-		_, err := ch.Read()
+		_, err := ch.Receive()
 		if err != nil {
 			return nil
 		}
@@ -30,9 +30,9 @@ func (mod *Module) OpListen(ctx *astral.Context, q shell.Query, args opListenArg
 }
 
 type logForwarder struct {
-	ch channel.Writer
+	ch channel.Sender
 }
 
 func (l logForwarder) LogEntry(entry *log.Entry) {
-	l.ch.Write(entry)
+	l.ch.Send(entry)
 }

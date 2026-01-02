@@ -10,15 +10,15 @@ const (
 	Render    = "render"
 )
 
-type ReadWriter interface {
-	Reader
-	Writer
+type ReceiveSender interface {
+	Receiver
+	Sender
 }
 
-type Reader interface {
-	Read() (astral.Object, error)
+type Receiver interface {
+	Receive() (astral.Object, error)
 }
 
-type Writer interface {
-	Write(astral.Object) error
+type Sender interface {
+	Send(astral.Object) error
 }

@@ -8,18 +8,18 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-type TextWriter struct {
+type TextSender struct {
 	WithType bool
 	w        io.Writer
 }
 
-var _ Writer = &TextWriter{}
+var _ Sender = &TextSender{}
 
-func NewTextWriter(w io.Writer, withType bool) *TextWriter {
-	return &TextWriter{w: w, WithType: withType}
+func NewTextSender(w io.Writer, withType bool) *TextSender {
+	return &TextSender{w: w, WithType: withType}
 }
 
-func (t TextWriter) Write(obj astral.Object) error {
+func (t TextSender) Send(obj astral.Object) error {
 	// check if the object is a TextMarshaler
 	m, ok := obj.(encoding.TextMarshaler)
 	if !ok {

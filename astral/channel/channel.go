@@ -1,83 +1,106 @@
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 // Channel is a bidirectional stream of astral objects.
 type Channel struct {
 	rw io.ReadWriter
-	Reader
-	Writer
+	Receiver
+	Sender
 }
 
 // New returns a new astral channel over the provided transport.
 // To configure the channel, pass optional config functions:
 //
-//	New(rw, InFmt("json"), OutFmt("text+"))
+//	New(rw, WithFormats("json", "text+"))
 //
 // See config.go for available config functions.
-func New(rw io.ReadWriter, fn ...configFunc) *Channel {
+func New(rw io.ReadWriter, fn ...ConfigFunc) *Channel {
 	var ch = &Channel{rw: rw}
-	var cfg channelConfig
+	var cfg Config
 
 	// apply config
 	for _, f := range fn {
 		f(&cfg)
 	}
 
-	ch.Reader = newReader(rw, &cfg)
-	ch.Writer = newWriter(rw, &cfg)
+	ch.Receiver = newReceiver(rw, &cfg)
+	ch.Sender = newSender(rw, &cfg)
 
 	return ch
 }
 
-// NewReader returns a new read-only channel.
-func NewReader(r io.Reader, fn ...configFunc) Reader {
-	var cfg channelConfig
+// NewReceiver returns a new receive-only channel.
+func NewReceiver(r io.Reader, fn ...ConfigFunc) Receiver {
+	var cfg Config
 	for _, f := range fn {
 		f(&cfg)
 	}
-	return newReader(r, &cfg)
+	return newReceiver(r, &cfg)
 }
 
-// NewWriter returns a new write-only channel.
-func NewWriter(w io.Writer, fn ...configFunc) Writer {
-	var cfg channelConfig
+// NewSender returns a new send-only channel.
+func NewSender(w io.Writer, fn ...ConfigFunc) Sender {
+	var cfg Config
 	for _, f := range fn {
 		f(&cfg)
 	}
-	return newWriter(w, &cfg)
+	return newSender(w, &cfg)
 }
 
-func newReader(r io.Reader, cfg *channelConfig) Reader {
+func newReceiver(r io.Reader, cfg *Config) Receiver {
 	// build the channel
 	switch cfg.fmtIn {
 	case "", Binary:
-		return NewBinaryReader(r)
+		return NewBinaryReceiver(r)
 	case JSON:
-		return NewJSONReader(r)
+		return NewJSONReceiver(r)
 	case Text, TextTyped:
-		return NewTextReader(r)
+		return NewTextReceiver(r)
 	default:
-		return NewReaderError(fmt.Errorf("unsupported input format: %s", cfg.fmtIn))
+		return NewReceiverError(fmt.Errorf("unsupported input format: %s", cfg.fmtIn))
 	}
 }
 
-func newWriter(w io.Writer, cfg *channelConfig) Writer {
+func newSender(w io.Writer, cfg *Config) Sender {
 	switch cfg.fmtOut {
 	case "", Binary:
-		return NewBinaryWriter(w)
+		return NewBinarySender(w)
 	case JSON:
-		return NewJSONWriter(w)
+		return NewJSONSender(w)
 	case Text, TextTyped:
-		return NewTextWriter(w, strings.HasSuffix(cfg.fmtOut, "+"))
+		return NewTextSender(w, strings.HasSuffix(cfg.fmtOut, "+"))
 	case "render":
-		return NewRenderWriter(w)
+		return NewRenderSender(w)
 	default:
-		return NewWriterError(fmt.Errorf("unsupported output format: %s", cfg.fmtOut))
+		return NewSenderError(fmt.Errorf("unsupported output format: %s", cfg.fmtOut))
+	}
+}
+
+// Collect receives objects from the channel until EOF and passes them to the collector. It stops when
+// the collector returns an error or when Receive() returns a non-EOF error.
+func (ch Channel) Collect(collector func(astral.Object) error) error {
+	for {
+		o, err := ch.Receive()
+		switch {
+		case err == nil:
+			if err = collector(o); err != nil {
+				return nil
+			}
+
+		case errors.Is(err, io.EOF):
+			return nil
+
+		default:
+			return err
+		}
 	}
 }
 

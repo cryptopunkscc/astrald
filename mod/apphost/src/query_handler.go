@@ -25,7 +25,7 @@ func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.Query, w 
 
 	var ch = channel.New(conn)
 
-	err = ch.Write(&apphost.HandleQueryMsg{
+	err = ch.Send(&apphost.HandleQueryMsg{
 		AuthToken: handler.AuthToken,
 		ID:        q.Nonce,
 		Caller:    q.Caller,
@@ -37,7 +37,7 @@ func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.Query, w 
 	}
 
 	// read response
-	msg, err := ch.Read()
+	msg, err := ch.Receive()
 	switch msg := msg.(type) {
 	case *astral.Ack: // success
 

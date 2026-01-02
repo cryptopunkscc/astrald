@@ -32,12 +32,12 @@ func (client *Client) Query(target string, method string, args any) (_ *apphost.
 	return client.RouteQuery(query.New(nil, targetID, method, args))
 }
 
-func (client *Client) QueryChannel(target string, method string, args any) (*channel.Channel, error) {
+func (client *Client) QueryChannel(target string, method string, args any, cfg ...channel.ConfigFunc) (*channel.Channel, error) {
 	conn, err := client.Query(target, method, args)
 	if err != nil {
 		return nil, err
 	}
-	return channel.New(conn), nil
+	return channel.New(conn, cfg...), nil
 }
 
 func (client *Client) RouteQuery(query *astral.Query) (*apphost.Conn, error) {
@@ -76,7 +76,7 @@ func (client *Client) Listen() (*Listener, error) {
 
 		// wait for the session to end
 		for {
-			_, err = host.Read()
+			_, err = host.Receive()
 			if err != nil {
 				break
 			}
@@ -127,8 +127,8 @@ func RouteQuery(query *astral.Query) (*apphost.Conn, error) {
 	return DefaultClient().RouteQuery(query)
 }
 
-func QueryChannel(target string, method string, args any) (*channel.Channel, error) {
-	return DefaultClient().QueryChannel(target, method, args)
+func QueryChannel(target string, method string, args any, cfg ...channel.ConfigFunc) (*channel.Channel, error) {
+	return DefaultClient().QueryChannel(target, method, args, cfg...)
 }
 
 func Listen() (*Listener, error) {

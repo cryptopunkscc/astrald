@@ -26,7 +26,7 @@ func Connect(endpoint string) (*Host, error) {
 	}
 	ch := channel.New(conn)
 
-	msg, err := ch.Read()
+	msg, err := ch.Receive()
 	switch msg := msg.(type) {
 	case *apphost.HostInfoMsg: // success
 		return &Host{
@@ -49,7 +49,7 @@ func Connect(endpoint string) (*Host, error) {
 // AuthToken authenticates the session with the given auth token.
 func (s *Host) AuthToken(token string) (err error) {
 	// write auth request
-	err = s.Write(&apphost.AuthTokenMsg{
+	err = s.Send(&apphost.AuthTokenMsg{
 		Token: astral.String8(token),
 	})
 	if err != nil {
@@ -57,7 +57,7 @@ func (s *Host) AuthToken(token string) (err error) {
 	}
 
 	// read response
-	msg, err := s.Read()
+	msg, err := s.Receive()
 	switch msg := msg.(type) {
 	case *apphost.AuthSuccessMsg:
 		s.guestID = msg.GuestID
@@ -96,7 +96,7 @@ func (s *Host) RouteQuery(q *astral.Query) (conn *Conn, err error) {
 	}
 
 	// send query request
-	err = s.Write(&apphost.RouteQueryMsg{
+	err = s.Send(&apphost.RouteQueryMsg{
 		Nonce:  q.Nonce,
 		Caller: q.Caller,
 		Target: q.Target,
@@ -107,7 +107,7 @@ func (s *Host) RouteQuery(q *astral.Query) (conn *Conn, err error) {
 	}
 
 	// handle response
-	msg, err := s.Read()
+	msg, err := s.Receive()
 	switch msg := msg.(type) {
 	case *apphost.QueryAcceptedMsg: // success
 		return NewConn(s.conn, q.Target, q.Caller, q.Query, q.Nonce), nil
@@ -133,7 +133,7 @@ func (s *Host) Register(identity *astral.Identity, target string, token astral.N
 		identity = s.GuestID()
 	}
 
-	err = s.Write(&apphost.RegisterHandlerMsg{
+	err = s.Send(&apphost.RegisterHandlerMsg{
 		Identity:  identity,
 		Endpoint:  astral.String8(target),
 		AuthToken: token,
@@ -143,7 +143,7 @@ func (s *Host) Register(identity *astral.Identity, target string, token astral.N
 	}
 
 	// read response
-	msg, err := s.Read()
+	msg, err := s.Receive()
 	switch msg := msg.(type) {
 	case *astral.Ack:
 		return nil

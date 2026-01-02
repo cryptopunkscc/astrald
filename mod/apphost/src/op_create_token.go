@@ -18,11 +18,11 @@ type opCreateTokenArgs struct {
 }
 
 func (mod *Module) OpCreateToken(ctx *astral.Context, q shell.Query, args opCreateTokenArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.OutFmt(args.Out))
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	if args.ID.IsZero() {
-		return ch.Write(astral.NewError("missing identity"))
+		return ch.Send(astral.NewError("missing identity"))
 	}
 
 	if args.Duration == 0 {
@@ -37,5 +37,5 @@ func (mod *Module) OpCreateToken(ctx *astral.Context, q shell.Query, args opCrea
 		return q.RejectWithCode(astral.CodeInternalError)
 	}
 
-	return ch.Write(token)
+	return ch.Send(token)
 }

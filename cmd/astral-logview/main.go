@@ -54,13 +54,13 @@ func main() {
 		}
 	}
 
-	var ch = channel.NewBinaryReader(i)
+	var ch = channel.NewBinaryReceiver(i)
 
 	printer := log.NewPrinter(os.Stdout)
 	var lastTime astral.Time
 
 	for {
-		o, err := ch.Read()
+		o, err := ch.Receive()
 		switch entry := o.(type) {
 		case *log.Entry:
 			if replay {

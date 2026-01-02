@@ -49,7 +49,7 @@ func (client *ObjectsClient) GetType(objectID *astral.ObjectID) (string, error) 
 	}
 	defer ch.Close()
 
-	res, err := ch.Read()
+	res, err := ch.Receive()
 	if err != nil {
 		return "", err
 	}
@@ -90,7 +90,7 @@ func (client *ObjectsClient) Describe(ctx context.Context, objectID *astral.Obje
 		defer close(done)
 
 		for {
-			obj, err := ch.Read()
+			obj, err := ch.Receive()
 			if err != nil {
 				return
 			}
@@ -126,7 +126,7 @@ func (client *ObjectsClient) Search(ctx context.Context, q string) (<-chan *obje
 		defer close(done)
 
 		for {
-			o, _ := ch.Read()
+			o, _ := ch.Receive()
 			switch o := o.(type) {
 			case nil:
 				return
@@ -148,13 +148,13 @@ func (client *ObjectsClient) Push(ctx context.Context, object ...astral.Object) 
 	var errs []error
 
 	for idx, obj := range object {
-		err := ch.Write(obj)
+		err := ch.Send(obj)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("write at index %d: %w", idx, err))
 			break
 		}
 
-		res, err := ch.Read()
+		res, err := ch.Receive()
 		if err != nil {
 			errs = append(errs, fmt.Errorf("read error: %w", err))
 			break

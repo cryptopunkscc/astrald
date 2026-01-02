@@ -16,13 +16,13 @@ type opListTokensArgs struct {
 
 // OpListTokens lists all access tokens of an identity
 func (mod *Module) OpListTokens(ctx *astral.Context, q shell.Query, args opListTokensArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.OutFmt(args.Out))
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	// get token list
 	tokens, err := mod.ListAccessTokens()
 	if err != nil {
-		ch.Write(astral.NewError("internal error"))
+		ch.Send(astral.NewError("internal error"))
 		return err
 	}
 
@@ -34,11 +34,11 @@ func (mod *Module) OpListTokens(ctx *astral.Context, q shell.Query, args opListT
 	}
 
 	for _, token := range tokens {
-		err = ch.Write(token)
+		err = ch.Send(token)
 		if err != nil {
 			return err
 		}
 	}
 
-	return ch.Write(&astral.EOS{})
+	return ch.Send(&astral.EOS{})
 }

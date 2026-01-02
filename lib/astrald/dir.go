@@ -52,7 +52,7 @@ func (client *DirClient) ResolveIdentity(name string) (*astral.Identity, error) 
 	ch := channel.New(conn)
 	defer ch.Close()
 
-	obj, err := ch.Read()
+	obj, err := ch.Receive()
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (client *DirClient) GetAlias(identity *astral.Identity) (string, error) {
 		return "", err
 	}
 
-	o, err := ch.Read()
+	o, err := ch.Receive()
 	switch o := o.(type) {
 	case nil:
 		return "", err
@@ -100,7 +100,7 @@ func (client *DirClient) AliasMap() (*dir.AliasMap, error) {
 	}
 
 	// response
-	o, err := ch.Read()
+	o, err := ch.Receive()
 	switch o := o.(type) {
 	case nil:
 		return nil, err

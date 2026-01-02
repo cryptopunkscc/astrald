@@ -43,12 +43,12 @@ func (l *Listener) Next() (*PendingQuery, error) {
 	ch := channel.New(conn)
 
 	// read the request
-	msg, err := ch.Read()
+	msg, err := ch.Receive()
 	switch msg := msg.(type) {
 	case *apphost.HandleQueryMsg:
 		// check auth token
 		if msg.AuthToken != l.token {
-			ch.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+			ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 			ch.Close()
 			return nil, errors.New("invalid auth token")
 		}
@@ -68,7 +68,7 @@ func (l *Listener) Next() (*PendingQuery, error) {
 		return nil, err
 
 	default:
-		ch.Write(&apphost.ErrorMsg{Code: apphost.ErrCodeProtocolError})
+		ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeProtocolError})
 		ch.Close()
 		return nil, errors.New("unexpected message type " + msg.ObjectType())
 	}
@@ -83,13 +83,13 @@ func (l *Listener) Accept() (net.Conn, error) {
 	return q.Accept(), nil
 }
 
-func (l *Listener) AcceptChannel() (*channel.Channel, error) {
+func (l *Listener) AcceptChannel(cfg ...channel.ConfigFunc) (*channel.Channel, error) {
 	q, err := l.Next()
 	if err != nil {
 		return nil, err
 	}
 
-	return channel.New(q.Accept()), nil
+	return channel.New(q.Accept(), cfg...), nil
 }
 
 func (l *Listener) Close() error {

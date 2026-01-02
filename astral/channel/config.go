@@ -1,19 +1,30 @@
 package channel
 
-type configFunc func(*channelConfig)
+type ConfigFunc func(*Config)
 
-type channelConfig struct {
+type Config struct {
 	fmtIn, fmtOut string
 }
 
-func InFmt(fmt string) func(*channelConfig) {
-	return func(config *channelConfig) {
+func WithInputFormat(fmt string) func(*Config) {
+	return func(config *Config) {
 		config.fmtIn = fmt
 	}
 }
 
-func OutFmt(fmt string) func(*channelConfig) {
-	return func(config *channelConfig) {
+func WithOutputFormat(fmt string) func(*Config) {
+	return func(config *Config) {
 		config.fmtOut = fmt
 	}
+}
+
+func WithFormats(fmtIn, fmtOut string) func(*Config) {
+	return func(config *Config) {
+		config.fmtIn = fmtIn
+		config.fmtOut = fmtOut
+	}
+}
+
+func WithFormat(fmt string) func(*Config) {
+	return WithFormats(fmt, fmt)
 }

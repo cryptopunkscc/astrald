@@ -7,19 +7,19 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-// JSONWriter writes a stream of astral.Objects encoded as JSON lines to the underlying io.Writer.
-type JSONWriter struct {
+// JSONSender writes a stream of astral.Objects encoded as JSON lines to the underlying io.Writer.
+type JSONSender struct {
 	w   io.Writer
 	enc *json.Encoder
 }
 
-var _ Writer = &JSONWriter{}
+var _ Sender = &JSONSender{}
 
-func NewJSONWriter(w io.Writer) *JSONWriter {
-	return &JSONWriter{w: w, enc: json.NewEncoder(w)}
+func NewJSONSender(w io.Writer) *JSONSender {
+	return &JSONSender{w: w, enc: json.NewEncoder(w)}
 }
 
-func (w JSONWriter) Write(object astral.Object) (err error) {
+func (w JSONSender) Send(object astral.Object) (err error) {
 	switch obj := object.(type) {
 	case *astral.RawObject:
 		err = w.enc.Encode(&astral.JSONEncodeAdapter{

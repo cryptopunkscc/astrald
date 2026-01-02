@@ -8,8 +8,8 @@ communication or to stream data to/from a file.
 * [channel](#channel)
   * [Basic usage](#basic-usage)
     * [Creating a channel](#creating-a-channel)
-    * [Writing to a channel](#writing-to-a-channel)
-    * [Reading from a channel](#reading-from-a-channel)
+    * [Sending to a channel](#sending-to-a-channel)
+    * [Receiving from a channel](#receiving-from-a-channel)
     * [Closing a channel](#closing-a-channel)
   * [One-way channels](#one-way-channels)
   * [Asymmetric channels](#asymmetric-channels)
@@ -35,37 +35,36 @@ By default, the channel will use the binary format for encoding/decoding
 objects. You can change this by passing config options to the `New` function:
 
 ```go
-ch := channel.New(transport, channel.InFmt("json"), channel.OutFmt("json"))
+ch := channel.New(transport, channel.WithFormat("json"))
 ```
 
 Channels can use different formats for reading and writing objects.
 
-### Writing to a channel
+### Sending to a channel
 
-Writing to a channel is done using the `Write` method:
+Sending to a channel is done using the `Send` method:
 
 ```go
 var obj astral.Object
-err := ch.Write(obj)
+err := ch.Send(obj)
 ```
 
 The object needs to be fully marshalable to the output format of the channel.
 
-### Reading from a channel
+### Receiving from a channel
 
-Reading from a channel is done using the `Read` method:
+Receiving from a channel is done using the `Receive` method:
 
 ```go
-obj, err := ch.Read()
-if err != nil {
-    // handle error
-}
+obj, err := ch.Receive()
 
 switch obj := obj.(type) {
 case *astral.Identity:
     // handle identity object
 case *astral.ErrorMessage:
     // handle error message 
+case nil:
+	// receive error (err != nil)
 default:
 	// unknown object type
 }
@@ -89,17 +88,17 @@ response. In this case, you can use a one-way channel:
 
 ```go
 f := os.Create("file.bin")
-ch := channel.NewWriter(f)
-ch.Write(obj)
+ch := channel.NewSender(f)
+ch.Send(obj)
 ```
 
-And similarly for reading:
+And similarly for receiving:
 
 ```go
 f := os.Open("file.bin")
-ch := channel.NewReader(f)
+ch := channel.NewReceiver(f)
 for {
-    obj, err := ch.Read()
+    obj, err := ch.Receive()
 	if err != nil {
 		break
 	}
