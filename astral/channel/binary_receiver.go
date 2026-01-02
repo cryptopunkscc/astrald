@@ -32,7 +32,7 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 	} else {
 		object = b.bp.Make(objectType.String())
 		if object == nil {
-			return nil, ErrUnknownObject
+			return nil, ErrUnsupportedType{Type: objectType.String()}
 		}
 	}
 
@@ -40,11 +40,14 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 	var buf astral.Bytes32
 	_, err = buf.ReadFrom(b.r)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	// decode the payload
 	_, err = object.ReadFrom(bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
 
 	return
 }

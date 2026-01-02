@@ -82,7 +82,7 @@ func main() {
 			if errors.Is(err, io.EOF) {
 				os.Exit(0)
 			}
-			fmt.Fprintf(os.Stderr, "read error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "receive error: %v\n", err)
 			os.Exit(1)
 
 		default:
