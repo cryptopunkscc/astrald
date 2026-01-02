@@ -77,7 +77,7 @@ func newSender(w io.Writer, cfg *Config) Sender {
 		return NewJSONSender(w)
 	case Text, TextTyped:
 		return NewTextSender(w, strings.HasSuffix(cfg.fmtOut, "+"))
-	case "render":
+	case Render:
 		return NewRenderSender(w)
 	default:
 		return NewSenderError(fmt.Errorf("unsupported output format: %s", cfg.fmtOut))

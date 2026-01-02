@@ -127,13 +127,15 @@ implements io.Closer.
 ### Binary
 
 This is the default format that's mandatory for all astral objects. It's
-fast and efficient, but it's not human-readable. It's perfect for machine-to-
-machine communication and persistent storage.
+fast and efficient, but it's not human-readable. It's designed for machine-to-
+machine communication. The objects in the channel are encoded as a String8
+(representing the object type) followed by Byte32 buffer containing the object's
+payload.
 
 ### JSON
 
 This format is optional but widely supported. It's human-readable and
-integrates well with existing technologies. Great for communication with
+integrates well with existing technologies. Designed for communication with
 front-end apps and debugging.
 
 ### Text
