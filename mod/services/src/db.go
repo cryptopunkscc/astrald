@@ -18,6 +18,8 @@ func (db *DB) Migrate() error {
 	)
 }
 
+// FIXME: upsert
+
 // InsertService creates a new service record and expires previous ones for the same name+identity
 func (db *DB) InsertService(svc services.Service, expiresIn astral.Duration) error {
 	now := astral.Now()
@@ -31,12 +33,10 @@ func (db *DB) InsertService(svc services.Service, expiresIn astral.Duration) err
 		return err
 	}
 
-	// Insert new record with specified expiration
 	return db.Create(&dbService{
 		Name:        svc.Name,
 		Identity:    svc.Identity,
 		Composition: svc.Composition,
-		Enabled:     true,
 		ExpiresAt:   expiresAt,
 	}).Error
 }
