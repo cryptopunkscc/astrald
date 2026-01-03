@@ -9,7 +9,7 @@ import (
 
 var _ objects.Describer = &Module{}
 
-func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -17,7 +17,7 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID
 	return mod.describeArchive(objectID)
 }
 
-func (mod *Module) describeArchive(objectID *astral.ObjectID) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) describeArchive(objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
 	var archive = mod.getCache(objectID)
 	if archive == nil {
 		return nil, errors.New("description unavailable")
@@ -28,12 +28,12 @@ func (mod *Module) describeArchive(objectID *astral.ObjectID) (<-chan *objects.S
 		totalSize += e.ObjectID.Size
 	}
 
-	var results = make(chan *objects.SourcedObject, 1)
+	var results = make(chan *objects.DescribeResult, 1)
 	defer close(results)
 
-	results <- &objects.SourcedObject{
-		Source: mod.node.Identity(),
-		Object: &archives.ArchiveDescriptor{
+	results <- &objects.DescribeResult{
+		OriginID: mod.node.Identity(),
+		Descriptor: &archives.ArchiveDescriptor{
 			Format:    astral.String(archive.Format),
 			Entries:   astral.Uint32(len(archive.Entries)),
 			TotalSize: astral.Uint64(totalSize),

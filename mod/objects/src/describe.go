@@ -2,17 +2,14 @@ package objects
 
 import (
 	"errors"
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"sync"
 )
 
-func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
-	if scope == nil {
-		scope = astral.DefaultScope()
-	}
-
-	var results = make(chan *objects.SourcedObject)
+func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
+	var results = make(chan *objects.DescribeResult)
 
 	go func() {
 		defer close(results)
@@ -24,7 +21,7 @@ func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID, scop
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_res, _err := d.DescribeObject(ctx, objectID, scope)
+				_res, _err := d.DescribeObject(ctx, objectID)
 				if _err != nil {
 					return
 				}

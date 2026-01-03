@@ -13,7 +13,7 @@ func (mod *Module) Find(ctx *astral.Context, objectID *astral.ObjectID) (provide
 	var unique = map[string]struct{}{}
 
 	for _, finder := range mod.finders.Clone() {
-		for _, i := range finder.FindObject(ctx, objectID, astral.DefaultScope()) {
+		for _, i := range finder.FindObject(ctx, objectID) {
 			if _, found := unique[i.String()]; found {
 				continue
 			}

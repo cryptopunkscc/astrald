@@ -9,23 +9,21 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
+func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
 	if !ctx.Zone().Is(astral.ZoneNetwork) {
 		return nil, astral.ErrZoneExcluded
 	}
 
-	var results = make(chan *objects.SourcedObject)
+	var results = make(chan *objects.DescribeResult)
 
 	go func() {
 		defer close(results)
 
-		providers := mod.FindObject(ctx, objectID, scope)
+		providers := mod.FindObject(ctx, objectID)
 
-		if scope.QueryFilter != nil {
-			providers = slices.DeleteFunc(providers, func(identity *astral.Identity) bool {
-				return !scope.QueryFilter(identity)
-			})
-		}
+		providers = slices.DeleteFunc(providers, func(identity *astral.Identity) bool {
+			return !ctx.Filter(identity)
+		})
 
 		var wg sync.WaitGroup
 

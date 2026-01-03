@@ -67,7 +67,7 @@ func (client *ObjectsClient) GetType(ctx *astral.Context, objectID *astral.Objec
 	}
 }
 
-func (client *ObjectsClient) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.SourcedObject, error) {
+func (client *ObjectsClient) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
 	ch, err := client.queryCh(ctx, "objects.describe", query.Args{
 		"id": objectID.String(),
 	})
@@ -75,7 +75,7 @@ func (client *ObjectsClient) Describe(ctx *astral.Context, objectID *astral.Obje
 		return nil, err
 	}
 
-	res := make(chan *objects.SourcedObject)
+	res := make(chan *objects.DescribeResult)
 	done := make(chan struct{})
 
 	go func() {
@@ -90,18 +90,20 @@ func (client *ObjectsClient) Describe(ctx *astral.Context, objectID *astral.Obje
 		defer close(res)
 		defer close(done)
 
-		for {
-			obj, err := ch.Receive()
-			if err != nil {
-				return
-			}
+		ch.Collect(func(o astral.Object) error {
+			switch o := o.(type) {
+			case *objects.DescribeResult:
+				res <- o
+				return nil
 
-			res <- &objects.SourcedObject{
-				ObjectReader: nil,
-				Source:       client.targetID,
-				Object:       obj,
+			case *astral.EOS:
+				return io.EOF
+
+			default:
+				return errors.New("unexpected object type")
 			}
-		}
+		})
+
 	}()
 
 	return res, nil

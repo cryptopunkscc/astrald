@@ -20,7 +20,7 @@ type Module interface {
 	Root() (repo Repository)
 
 	AddDescriber(Describer) error
-	Describe(*astral.Context, *astral.ObjectID, *astral.Scope) (<-chan *SourcedObject, error)
+	Describe(*astral.Context, *astral.ObjectID) (<-chan *DescribeResult, error)
 
 	AddPurger(purger Purger) error
 	Purge(*astral.ObjectID, *PurgeOpts) (int, error)
@@ -43,12 +43,6 @@ type Module interface {
 	GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error)
 }
 
-type Consumer interface {
-	Describe(*astral.Context, *astral.ObjectID, *astral.Scope) (<-chan *SourcedObject, error)
-	Search(*astral.Context, string) (<-chan *SearchResult, error)
-	Push(*astral.Context, astral.Object) (err error)
-}
-
 type Receiver interface {
 	ReceiveObject(Drop) error
 }
@@ -60,7 +54,7 @@ type Drop interface {
 }
 
 type Describer interface {
-	DescribeObject(*astral.Context, *astral.ObjectID, *astral.Scope) (<-chan *SourcedObject, error)
+	DescribeObject(*astral.Context, *astral.ObjectID) (<-chan *DescribeResult, error)
 }
 
 type Purger interface {

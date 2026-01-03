@@ -7,12 +7,12 @@ import (
 
 var _ objects.Describer = &Module{}
 
-func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
-	return mod.audio.DescribeObject(ctx, objectID, scope)
+func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
+	return mod.audio.DescribeObject(ctx, objectID)
 }
 
-func (mod *AudioIndexer) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID, opts *astral.Scope) (_ <-chan *objects.SourcedObject, err error) {
-	ch := make(chan *objects.SourcedObject, 1)
+func (mod *AudioIndexer) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (_ <-chan *objects.DescribeResult, err error) {
+	ch := make(chan *objects.DescribeResult, 1)
 	defer close(ch)
 
 	audio, err := mod.Index(ctx, objectID)
@@ -20,9 +20,9 @@ func (mod *AudioIndexer) DescribeObject(ctx *astral.Context, objectID *astral.Ob
 		return ch, err
 	}
 
-	ch <- &objects.SourcedObject{
-		Source: mod.node.Identity(),
-		Object: audio,
+	ch <- &objects.DescribeResult{
+		OriginID:   mod.node.Identity(),
+		Descriptor: audio,
 	}
 
 	return ch, err

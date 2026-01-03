@@ -1,9 +1,11 @@
 package objects
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opDescribeArgs struct {
@@ -16,20 +18,20 @@ func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescrib
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
 	defer cancel()
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	list, err := mod.Describe(ctx, args.ID, nil)
+	descriptors, err := mod.Describe(ctx, args.ID)
 	if err != nil {
 		return
 	}
 
-	for so := range list {
-		err = ch.Write(so.Object)
+	for descriptor := range descriptors {
+		err = ch.Send(descriptor)
 		if err != nil {
 			return
 		}
 	}
 
-	return
+	return ch.Send(&astral.EOS{})
 }
