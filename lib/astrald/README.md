@@ -48,7 +48,7 @@ package main
 func main() {
 	ctx := astrald.NewContext()
 	
-	l, err := astrald.Listen(ctx)
+	l, err := astrald.AppHost().RegisterHandler(ctx)
 	if err != nil {
 		panic(err)
 	}
