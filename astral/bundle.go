@@ -177,8 +177,7 @@ func (a *Bundle) UnmarshalJSON(bytes []byte) error {
 	for _, j := range jlist {
 		obj := DefaultBlueprints.Make(j.Type)
 		if obj == nil {
-			// Not recognized object -> RawObject
-			obj = &RawObject{}
+			return newErrBlueprintNotFound(j.Type)
 		}
 
 		var err error

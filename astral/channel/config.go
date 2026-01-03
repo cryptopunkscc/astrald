@@ -4,6 +4,7 @@ type ConfigFunc func(*Config)
 
 type Config struct {
 	fmtIn, fmtOut string
+	allowUnparsed bool
 }
 
 func WithInputFormat(fmt string) func(*Config) {
@@ -27,4 +28,10 @@ func WithFormats(fmtIn, fmtOut string) func(*Config) {
 
 func WithFormat(fmt string) func(*Config) {
 	return WithFormats(fmt, fmt)
+}
+
+func AllowUnparsed(b bool) func(*Config) {
+	return func(config *Config) {
+		config.allowUnparsed = b
+	}
 }

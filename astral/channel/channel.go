@@ -60,11 +60,16 @@ func newReceiver(r io.Reader, cfg *Config) Receiver {
 	// build the channel
 	switch cfg.fmtIn {
 	case "", Binary:
-		return NewBinaryReceiver(r)
+		br := NewBinaryReceiver(r)
+		br.AllowUnparsed = cfg.allowUnparsed
+		return br
+
 	case JSON:
 		return NewJSONReceiver(r)
+
 	case Text, TextTyped:
 		return NewTextReceiver(r)
+
 	default:
 		return NewReceiverError(fmt.Errorf("unsupported input format: %s", cfg.fmtIn))
 	}
@@ -74,12 +79,16 @@ func newSender(w io.Writer, cfg *Config) Sender {
 	switch cfg.fmtOut {
 	case "", Binary:
 		return NewBinarySender(w)
+
 	case JSON:
 		return NewJSONSender(w)
+
 	case Text, TextTyped:
 		return NewTextSender(w, strings.HasSuffix(cfg.fmtOut, "+"))
+
 	case Render:
 		return NewRenderSender(w)
+
 	default:
 		return NewSenderError(fmt.Errorf("unsupported output format: %s", cfg.fmtOut))
 	}

@@ -2,6 +2,7 @@ package channel
 
 import (
 	"bytes"
+	"errors"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -9,8 +10,9 @@ import (
 
 // BinaryReceiver reads a stream of astral.Objects from the underlying io.Reader.
 type BinaryReceiver struct {
-	bp *astral.Blueprints
-	r  io.Reader
+	bp            *astral.Blueprints
+	r             io.Reader
+	AllowUnparsed bool
 }
 
 var _ Receiver = &BinaryReceiver{}
@@ -27,15 +29,6 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 		return
 	}
 
-	if len(objectType) == 0 {
-		object = &astral.Blob{}
-	} else {
-		object = b.bp.Make(objectType.String())
-		if object == nil {
-			return nil, astral.ErrBlueprintNotFound{Type: objectType.String()}
-		}
-	}
-
 	// read the object payload
 	var buf astral.Bytes32
 	_, err = buf.ReadFrom(b.r)
@@ -43,11 +36,31 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 		return nil, err
 	}
 
+	if len(objectType) == 0 {
+		object = &astral.Blob{}
+	} else {
+		object = b.bp.Make(objectType.String())
+	}
+
+	if object == nil {
+		if b.AllowUnparsed {
+			return &astral.RawObject{Type: objectType.String(), Payload: buf}, nil
+		}
+
+		return nil, astral.ErrBlueprintNotFound{Type: objectType.String()}
+	}
+
 	// decode the payload
 	_, err = object.ReadFrom(bytes.NewReader(buf))
-	if err != nil {
+	switch {
+	case err == nil:
+		return
+
+	case errors.Is(err, astral.ErrBlueprintNotFound{}) && b.AllowUnparsed:
+		return &astral.RawObject{Type: objectType.String(), Payload: buf}, nil
+
+	default:
 		return nil, err
 	}
 
-	return
 }

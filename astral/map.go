@@ -118,7 +118,7 @@ func (m *Map) UnmarshalJSON(bytes []byte) (err error) {
 	for k, jsonObj := range jmap {
 		obj := DefaultBlueprints.Make(jsonObj.Type)
 		if obj == nil {
-			obj = &RawObject{}
+			return newErrBlueprintNotFound(jsonObj.Type)
 		}
 
 		switch {

@@ -86,6 +86,11 @@ func (e ErrBlueprintNotFound) Error() string {
 	return fmt.Sprintf("blueprint not found: %s", e.Type)
 }
 
+func (e ErrBlueprintNotFound) Is(other error) bool {
+	_, ok := other.(ErrBlueprintNotFound)
+	return ok
+}
+
 func newErrBlueprintNotFound(t string) error {
 	return ErrBlueprintNotFound{Type: t}
 }

@@ -152,7 +152,7 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 
 		obj := DefaultBlueprints.Make(a.ElemType)
 		if obj == nil {
-			obj = &RawObject{Type: a.ElemType}
+			return n, newErrBlueprintNotFound(a.ElemType)
 		}
 
 		// read inner element from buffer
@@ -205,10 +205,7 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 	for i, j := range jlist {
 		obj := DefaultBlueprints.Make(j.Type)
 		if obj == nil {
-			// Not recognized object -> RawObject
-			obj = &RawObject{
-				Type: j.Type,
-			}
+			return newErrBlueprintNotFound(j.Type)
 		}
 
 		var err error

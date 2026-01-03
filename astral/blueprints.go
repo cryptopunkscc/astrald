@@ -149,7 +149,7 @@ func (bp *Blueprints) Refine(raw *RawObject) (Object, error) {
 func (bp *Blueprints) RefineJSON(jsonObj *JSONDecodeAdapter) (obj Object, err error) {
 	obj = bp.Make(jsonObj.Type)
 	if obj == nil {
-		obj = &RawObject{}
+		return nil, newErrBlueprintNotFound(jsonObj.Type)
 	}
 
 	switch {

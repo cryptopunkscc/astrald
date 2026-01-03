@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	_ "github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
@@ -71,7 +70,7 @@ func (client *ObjectsClient) GetType(ctx *astral.Context, objectID *astral.Objec
 func (client *ObjectsClient) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
 	ch, err := client.queryCh(ctx, "objects.describe", query.Args{
 		"id": objectID.String(),
-	})
+	}, channel.AllowUnparsed(true))
 	if err != nil {
 		return nil, err
 	}
@@ -195,8 +194,8 @@ func (client *ObjectsClient) query(ctx *astral.Context, method string, args any)
 	return client.c.WithTarget(client.targetID).Query(ctx, method, args)
 }
 
-func (client *ObjectsClient) queryCh(ctx *astral.Context, method string, args any) (*channel.Channel, error) {
-	return client.c.WithTarget(client.targetID).QueryChannel(ctx, method, args)
+func (client *ObjectsClient) queryCh(ctx *astral.Context, method string, args any, cfg ...channel.ConfigFunc) (*channel.Channel, error) {
+	return client.c.WithTarget(client.targetID).QueryChannel(ctx, method, args, cfg...)
 }
 
 type writer struct {

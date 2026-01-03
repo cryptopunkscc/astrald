@@ -160,7 +160,7 @@ func (i interfaceValue) UnmarshalJSON(data []byte) error {
 
 	o := DefaultBlueprints.Make(j.Type)
 	if o == nil {
-		return errors.New("cant make object of type " + j.Type)
+		return newErrBlueprintNotFound(j.Type)
 	}
 
 	switch {
