@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 // Channel is a bidirectional stream of astral objects.
@@ -99,6 +100,39 @@ func (ch Channel) Collect(collector func(astral.Object) error) error {
 			return nil
 
 		default:
+			return err
+		}
+	}
+}
+
+// Handle receives objects from the channel until EOF and passes them to the handler. It closes the channel
+// and returns when the context is canceled.
+func (ch Channel) Handle(ctx *astral.Context, handler func(astral.Object)) error {
+	done := make(chan struct{})
+	defer close(done)
+
+	var retErr sig.Value[error]
+
+	go func() {
+		select {
+		case <-done:
+		case <-ctx.Done():
+			retErr.Swap(nil, ctx.Err())
+			ch.Close()
+		}
+	}()
+
+	for {
+		o, err := ch.Receive()
+		switch {
+		case err == nil:
+			handler(o)
+
+		case errors.Is(err, io.EOF):
+			return nil
+
+		default:
+			err, _ = retErr.Swap(nil, err)
 			return err
 		}
 	}

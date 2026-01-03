@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	_ "github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
@@ -76,34 +77,22 @@ func (client *ObjectsClient) Describe(ctx *astral.Context, objectID *astral.Obje
 	}
 
 	res := make(chan *objects.DescribeResult)
-	done := make(chan struct{})
-
-	go func() {
-		select {
-		case <-done:
-		case <-ctx.Done():
-			ch.Close()
-		}
-	}()
 
 	go func() {
 		defer close(res)
-		defer close(done)
 
-		ch.Collect(func(o astral.Object) error {
+		ch.Handle(ctx, func(o astral.Object) {
 			switch o := o.(type) {
 			case *objects.DescribeResult:
 				res <- o
-				return nil
 
 			case *astral.EOS:
-				return io.EOF
+				ch.Close()
 
 			default:
-				return errors.New("unexpected object type")
+				ch.Close()
 			}
 		})
-
 	}()
 
 	return res, nil
@@ -118,29 +107,21 @@ func (client *ObjectsClient) Search(ctx *astral.Context, q string) (<-chan *obje
 	}
 
 	res := make(chan *objects.SearchResult)
-	done := make(chan struct{})
-
-	go func() {
-		select {
-		case <-done:
-		case <-ctx.Done():
-			ch.Close()
-		}
-	}()
-
 	go func() {
 		defer close(res)
-		defer close(done)
 
-		for {
-			o, _ := ch.Receive()
+		ch.Handle(ctx, func(o astral.Object) {
 			switch o := o.(type) {
-			case nil:
-				return
 			case *objects.SearchResult:
 				res <- o
+
+			case *astral.EOS:
+				ch.Close()
+
+			default:
+				ch.Close()
 			}
-		}
+		})
 	}()
 
 	return res, nil
