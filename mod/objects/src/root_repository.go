@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
@@ -141,9 +142,7 @@ func (repo *RootRepository) readNetwork(ctx *astral.Context, objectID *astral.Ob
 		go func() {
 			defer wg.Done()
 
-			c := NewConsumer(repo.mod, repo.mod.node.Identity(), providerID)
-
-			r, err := c.Read(ctx, objectID, offset, limit)
+			r, err := astrald.NewObjectsClient(providerID, nil).Read(ctx, objectID, offset, limit)
 			if err != nil {
 				return
 			}

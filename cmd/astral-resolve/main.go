@@ -13,7 +13,9 @@ func main() {
 		return
 	}
 
-	identity, err := astrald.Dir().ResolveIdentity(os.Args[1])
+	var ctx = astrald.NewContext()
+
+	identity, err := astrald.Dir().ResolveIdentity(ctx, os.Args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return

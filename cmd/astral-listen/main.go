@@ -14,7 +14,9 @@ func main() {
 	flag.StringVar(&accept, "a", "", "accept query")
 	flag.Parse()
 
-	l, err := astrald.Listen()
+	var ctx = astrald.NewContext()
+
+	l, err := astrald.AppHost().RegisterHandler(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
@@ -27,7 +29,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		caller, _ := astrald.Dir().GetAlias(query.Caller())
+		caller, _ := astrald.Dir().GetAlias(ctx, query.Caller())
 		if caller == "" {
 			caller = query.Caller().String()
 		}

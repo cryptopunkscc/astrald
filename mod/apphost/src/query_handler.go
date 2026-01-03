@@ -1,6 +1,7 @@
 package apphost
 
 import (
+	"errors"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -17,10 +18,12 @@ type QueryHandler struct {
 	Endpoint  string           // IPC endpoint
 }
 
+var errEndpointUnavailable = errors.New("endpoint unavailable")
+
 func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	conn, err := ipc.Dial(handler.Endpoint)
 	if err != nil {
-		return query.Reject()
+		return nil, errEndpointUnavailable
 	}
 
 	var ch = channel.New(conn)
@@ -33,7 +36,7 @@ func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.Query, w 
 		Query:     astral.String16(q.Query),
 	})
 	if err != nil {
-		return query.Reject()
+		return query.RouteNotFound(handler, err)
 	}
 
 	// read response

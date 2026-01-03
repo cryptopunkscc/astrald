@@ -3,9 +3,11 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
 	"sync"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 )
 
 // Run starts the node, waits for it to finish and returns an error if any
@@ -17,6 +19,12 @@ func (node *Node) Run(nctx context.Context) (err error) {
 		node.identity,
 		node.identity.String(),
 	)
+
+	// set this node as the default router for lib/astrald
+	astrald.SetDefaultClient(astrald.NewClient(&routerAdapter{
+		Router:   node,
+		identity: node.identity,
+	}))
 
 	var wg sync.WaitGroup
 	var errCh = make(chan error, 32)

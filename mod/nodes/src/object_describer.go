@@ -1,10 +1,12 @@
 package nodes
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"slices"
 	"sync"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID, scope *astral.Scope) (<-chan *objects.SourcedObject, error) {
@@ -34,12 +36,7 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID
 			go func() {
 				defer wg.Done()
 
-				c, err := mod.Objects.On(providerID, nil)
-				if err != nil {
-					return
-				}
-
-				_results, err := c.Describe(ctx, objectID, scope)
+				_results, err := astrald.NewObjectsClient(providerID, nil).Describe(ctx, objectID)
 				if err != nil {
 					return
 				}

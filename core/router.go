@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -40,6 +41,13 @@ func (r *Router) AddQueryPreprocessor(f QueryPreprocessor) error {
 }
 
 func (r *Router) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (target io.WriteCloser, err error) {
+	if q.Caller == nil {
+		q.Caller = r.node.identity
+	}
+	if q.Target == nil {
+		q.Target = r.node.identity
+	}
+
 	qm := &QueryModifier{query: q}
 	// preprocess the query
 	for _, p := range r.preprocessors.Clone() {
@@ -99,4 +107,23 @@ func (r *Router) routeQuery(ctx *astral.Context, q *astral.Query, src io.WriteCl
 	c.dst = newWriter(c, w)
 
 	return c.dst, nil
+}
+
+type routerAdapter struct {
+	astral.Router
+	identity *astral.Identity
+}
+
+func (r *routerAdapter) GuestID() *astral.Identity {
+	return r.identity
+}
+
+func (r *routerAdapter) HostID() *astral.Identity {
+	return r.identity
+}
+
+var _ astrald.Router = &routerAdapter{}
+
+func (r *routerAdapter) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.Conn, error) {
+	return query.Route(ctx, r.Router, q)
 }

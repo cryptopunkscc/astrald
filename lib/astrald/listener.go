@@ -21,7 +21,7 @@ type Listener struct {
 	done   atomic.Bool
 }
 
-func NewListener(protocol string) (*Listener, error) {
+func NewListener(protocol string, token astral.Nonce) (*Listener, error) {
 	l, err := ipc.ListenAny(protocol)
 	if err != nil {
 		return nil, err
@@ -30,6 +30,7 @@ func NewListener(protocol string) (*Listener, error) {
 	return &Listener{
 		Listener: l,
 		doneCh:   make(chan struct{}),
+		token:    token,
 	}, nil
 }
 

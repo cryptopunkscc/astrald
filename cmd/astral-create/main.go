@@ -22,9 +22,16 @@ func main() {
 
 	flag.Parse()
 
-	objects := astrald.NewObjectsClient(astrald.DefaultClient(), target)
+	ctx := astrald.NewContext()
 
-	w, err := objects.Create(repo, alloc)
+	targetID, err := astrald.Dir().ResolveIdentity(ctx, target)
+	if err != nil {
+		fatal("resolve target: %v\n", err)
+	}
+
+	w, err := astrald.
+		NewObjectsClient(targetID, nil).
+		Create(ctx, repo, alloc)
 	if err != nil {
 		fatal("create: %v", err)
 	}

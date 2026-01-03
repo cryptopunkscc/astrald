@@ -12,10 +12,12 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
+const EnvDefaultTarget = "ASTRAL_DEFAULT_TARGET"
+
 func main() {
 	// show help
 	if len(os.Args) < 2 {
-		fmt.Printf("usage: %s <query>\n", os.Args[0])
+		fmt.Printf("usage: %s <query> [-arg <val>]...\n", os.Args[0])
 		return
 	}
 
@@ -25,21 +27,25 @@ func main() {
 	// split the argument into parts
 	caller, target, method := arl.Split(os.Args[1])
 
+	// create new astral context
+	var ctx = astrald.NewContext()
+
 	// parse the caller
 	if len(caller) > 0 {
-		callerID, err = astrald.Dir().ResolveIdentity(caller)
+		callerID, err = astrald.Dir().ResolveIdentity(ctx, caller)
 		if err != nil {
 			fatal("error: %v\n", err)
 		}
 	}
 
-	// parse the target
+	// set default target if none given
 	if len(target) == 0 {
-		target = os.Getenv("ASTRAL_DEFAULT_TARGET")
+		target = os.Getenv(EnvDefaultTarget)
 	}
 
+	// parse the target
 	if len(target) > 0 {
-		targetID, err = astrald.Dir().ResolveIdentity(target)
+		targetID, err = astrald.Dir().ResolveIdentity(ctx, target)
 		if err != nil {
 			fatal("error: %v\n", err)
 		}
@@ -63,7 +69,7 @@ func main() {
 	}
 
 	// route the query
-	conn, err := astrald.RouteQuery(query.New(callerID, targetID, method, args))
+	conn, err := astrald.RouteQuery(ctx, query.New(callerID, targetID, method, args))
 	if err != nil {
 		fatal("error: %v\n", err)
 	}

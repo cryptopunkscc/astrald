@@ -12,25 +12,33 @@ import (
 )
 
 type DirClient struct {
-	astral       *Client
+	c            *Client
+	targetID     *astral.Identity ``
 	resolveCache sig.Map[string, *astral.Identity]
 	aliasCache   sig.Map[string, string]
 }
 
 var defaultDirClient *DirClient
 
-func NewDirClient(c *Client) *DirClient {
-	return &DirClient{astral: c}
+func NewDirClient(targetID *astral.Identity, client *Client) *DirClient {
+	if client == nil {
+		client = DefaultClient()
+	}
+
+	return &DirClient{
+		c:        client,
+		targetID: targetID,
+	}
 }
 
 func Dir() *DirClient {
 	if defaultDirClient == nil {
-		defaultDirClient = NewDirClient(DefaultClient())
+		defaultDirClient = NewDirClient(nil, DefaultClient())
 	}
 	return defaultDirClient
 }
 
-func (client *DirClient) ResolveIdentity(name string) (*astral.Identity, error) {
+func (client *DirClient) ResolveIdentity(ctx *astral.Context, name string) (*astral.Identity, error) {
 	// try to parse the public key first
 	if id, err := astral.IdentityFromString(name); err == nil {
 		return id, nil
@@ -42,14 +50,7 @@ func (client *DirClient) ResolveIdentity(name string) (*astral.Identity, error) 
 	}
 
 	// then try using host's resolver
-	conn, err := client.astral.RouteQuery(query.New(nil, nil, "dir.resolve", query.Args{
-		"name": name,
-	}))
-	if err != nil {
-		return nil, err
-	}
-
-	ch := channel.New(conn)
+	ch, err := client.queryCh(ctx, "dir.resolve", query.Args{"name": name})
 	defer ch.Close()
 
 	obj, err := ch.Receive()
@@ -68,12 +69,12 @@ func (client *DirClient) ResolveIdentity(name string) (*astral.Identity, error) 
 	return id, nil
 }
 
-func (client *DirClient) GetAlias(identity *astral.Identity) (string, error) {
+func (client *DirClient) GetAlias(ctx *astral.Context, identity *astral.Identity) (string, error) {
 	if alias, ok := client.aliasCache.Get(identity.String()); ok {
 		return alias, nil
 	}
 
-	ch, err := client.astral.QueryChannel("", "dir.get_alias", query.Args{
+	ch, err := client.queryCh(ctx, "dir.get_alias", query.Args{
 		"id": identity,
 	})
 	if err != nil {
@@ -92,9 +93,9 @@ func (client *DirClient) GetAlias(identity *astral.Identity) (string, error) {
 	}
 }
 
-func (client *DirClient) AliasMap() (*dir.AliasMap, error) {
+func (client *DirClient) AliasMap(ctx *astral.Context) (*dir.AliasMap, error) {
 	// query
-	ch, err := client.astral.QueryChannel("", "dir.alias_map", nil)
+	ch, err := client.queryCh(ctx, "dir.alias_map", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -116,4 +117,8 @@ func (client *DirClient) AliasMap() (*dir.AliasMap, error) {
 func (client *DirClient) ClearCache() {
 	client.resolveCache = sig.Map[string, *astral.Identity]{}
 	client.aliasCache = sig.Map[string, string]{}
+}
+
+func (client *DirClient) queryCh(ctx *astral.Context, method string, args any) (*channel.Channel, error) {
+	return client.c.WithTarget(client.targetID).QueryChannel(ctx, method, args)
 }

@@ -1,38 +1,39 @@
 package astrald
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/apphost"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 type ObjectsClient struct {
-	c      *Client
-	target string
+	c        *Client
+	targetID *astral.Identity
 }
 
-func NewObjectsClient(c *Client, target string) *ObjectsClient {
-	return &ObjectsClient{c: c, target: target}
+func NewObjectsClient(targetID *astral.Identity, client *Client) *ObjectsClient {
+	if client == nil {
+		client = DefaultClient()
+	}
+	return &ObjectsClient{c: client, targetID: targetID}
 }
 
 var defaultObjectsClient *ObjectsClient
 
 func Objects() *ObjectsClient {
 	if defaultObjectsClient == nil {
-		defaultObjectsClient = NewObjectsClient(DefaultClient(), "")
+		defaultObjectsClient = NewObjectsClient(nil, DefaultClient())
 	}
 	return defaultObjectsClient
 }
 
-func (client *ObjectsClient) Read(objectID *astral.ObjectID, offset, limit uint64) (io.ReadCloser, error) {
-	return client.query("objects.read", query.Args{
+func (client *ObjectsClient) Read(ctx *astral.Context, objectID *astral.ObjectID, offset, limit int64) (io.ReadCloser, error) {
+	return client.query(ctx, "objects.read", query.Args{
 		"id":     objectID,
 		"offset": offset,
 		"limit":  limit,
@@ -40,8 +41,8 @@ func (client *ObjectsClient) Read(objectID *astral.ObjectID, offset, limit uint6
 	})
 }
 
-func (client *ObjectsClient) GetType(objectID *astral.ObjectID) (string, error) {
-	ch, err := client.queryCh("objects.get_type", query.Args{
+func (client *ObjectsClient) GetType(ctx *astral.Context, objectID *astral.ObjectID) (string, error) {
+	ch, err := client.queryCh(ctx, "objects.get_type", query.Args{
 		"id": objectID,
 	})
 	if err != nil {
@@ -66,15 +67,15 @@ func (client *ObjectsClient) GetType(objectID *astral.ObjectID) (string, error) 
 	}
 }
 
-func (client *ObjectsClient) Describe(ctx context.Context, objectID *astral.ObjectID) (<-chan astral.Object, error) {
-	ch, err := client.queryCh("objects.describe", query.Args{
+func (client *ObjectsClient) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.SourcedObject, error) {
+	ch, err := client.queryCh(ctx, "objects.describe", query.Args{
 		"id": objectID.String(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	res := make(chan astral.Object)
+	res := make(chan *objects.SourcedObject)
 	done := make(chan struct{})
 
 	go func() {
@@ -95,15 +96,19 @@ func (client *ObjectsClient) Describe(ctx context.Context, objectID *astral.Obje
 				return
 			}
 
-			res <- obj
+			res <- &objects.SourcedObject{
+				ObjectReader: nil,
+				Source:       client.targetID,
+				Object:       obj,
+			}
 		}
 	}()
 
 	return res, nil
 }
 
-func (client *ObjectsClient) Search(ctx context.Context, q string) (<-chan *objects.SearchResult, error) {
-	ch, err := client.queryCh("objects.search", query.Args{
+func (client *ObjectsClient) Search(ctx *astral.Context, q string) (<-chan *objects.SearchResult, error) {
+	ch, err := client.queryCh(ctx, "objects.search", query.Args{
 		"q": q,
 	})
 	if err != nil {
@@ -139,40 +144,36 @@ func (client *ObjectsClient) Search(ctx context.Context, q string) (<-chan *obje
 	return res, nil
 }
 
-func (client *ObjectsClient) Push(ctx context.Context, object ...astral.Object) error {
-	ch, err := client.queryCh("objects.push", nil)
+func (client *ObjectsClient) Push(ctx *astral.Context, object astral.Object) error {
+	ch, err := client.queryCh(ctx, "objects.push", nil)
+	if err != nil {
+		return err
+	}
+	defer ch.Close()
+
+	err = ch.Send(object)
 	if err != nil {
 		return err
 	}
 
-	var errs []error
-
-	for idx, obj := range object {
-		err := ch.Send(obj)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("write at index %d: %w", idx, err))
-			break
+	res, err := ch.Receive()
+	switch res := res.(type) {
+	case *astral.Bool:
+		if *res {
+			return nil
+		} else {
+			return errors.New("object rejected")
 		}
 
-		res, err := ch.Receive()
-		if err != nil {
-			errs = append(errs, fmt.Errorf("read error: %w", err))
-			break
-		}
+	case nil:
+		return err
 
-		switch res.(type) {
-		case *astral.Ack:
-			continue
-
-		case *astral.ErrorMessage:
-			errs = append(errs, fmt.Errorf("push at index %d: %w", idx, err))
-		}
+	default:
+		return fmt.Errorf("unexpected response type: %s", res.ObjectType())
 	}
-
-	return errors.Join(errs...)
 }
 
-func (client *ObjectsClient) Create(repo string, alloc int) (objects.Writer, error) {
+func (client *ObjectsClient) Create(ctx *astral.Context, repo string, alloc int) (objects.Writer, error) {
 	// prepare arguments
 	args := query.Args{}
 
@@ -184,7 +185,7 @@ func (client *ObjectsClient) Create(repo string, alloc int) (objects.Writer, err
 	}
 
 	// send the query
-	ch, err := client.queryCh("objects.create", args)
+	ch, err := client.queryCh(ctx, "objects.create", args)
 	if err != nil {
 		return nil, err
 	}
@@ -207,12 +208,12 @@ func (client *ObjectsClient) Create(repo string, alloc int) (objects.Writer, err
 	return nil, fmt.Errorf("unexpected message type: %s", msg.ObjectType())
 }
 
-func (client *ObjectsClient) query(method string, args any) (*apphost.Conn, error) {
-	return client.c.Query(client.target, method, args)
+func (client *ObjectsClient) query(ctx *astral.Context, method string, args any) (astral.Conn, error) {
+	return client.c.WithTarget(client.targetID).Query(ctx, method, args)
 }
 
-func (client *ObjectsClient) queryCh(method string, args any) (*channel.Channel, error) {
-	return client.c.QueryChannel(client.target, method, args)
+func (client *ObjectsClient) queryCh(ctx *astral.Context, method string, args any) (*channel.Channel, error) {
+	return client.c.WithTarget(client.targetID).QueryChannel(ctx, method, args)
 }
 
 type writer struct {

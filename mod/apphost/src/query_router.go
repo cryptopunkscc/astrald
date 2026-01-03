@@ -19,10 +19,15 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 		// check response
 		var rejected *astral.ErrRejected
 		switch {
-		case err == nil:
+		case err == nil: // accepted
 			return conn, nil
-		case errors.As(err, &rejected):
+
+		case errors.As(err, &rejected): // rejected
 			return query.RejectWithCode(rejected.Code)
+
+		case errors.Is(err, errEndpointUnavailable):
+			mod.log.Logv(3, "removing unresponsive query handler at %v", handler.Endpoint)
+			mod.handlers.Remove(handler)
 		}
 	}
 

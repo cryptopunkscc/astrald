@@ -11,6 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	_ "github.com/cryptopunkscc/astrald/mod/allpub"
 	modlog "github.com/cryptopunkscc/astrald/mod/log"
 )
@@ -39,8 +40,10 @@ func main() {
 
 	args := flag.Args()
 
+	var ctx = astrald.NewContext()
+
 	if !raw {
-		err = loadAliasMap()
+		err = loadAliasMap(ctx)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error loading alias map: %v\n", err)
 		}

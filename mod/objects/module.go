@@ -41,9 +41,6 @@ type Module interface {
 	Blueprints() *astral.Blueprints
 	Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error
 	GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error)
-
-	// On returns a client for remote calls
-	On(target *astral.Identity, caller *astral.Identity) (Consumer, error)
 }
 
 type Consumer interface {

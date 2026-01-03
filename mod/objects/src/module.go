@@ -99,22 +99,6 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 	return t.String(), nil
 }
 
-func (mod *Module) On(target *astral.Identity, caller *astral.Identity) (objects.Consumer, error) {
-	if target.IsZero() {
-		return nil, errors.New("target cannot be zero")
-	}
-
-	if caller.IsZero() {
-		caller = mod.node.Identity()
-	}
-
-	if caller.IsEqual(target) {
-		return nil, errors.New("caller cannot be the same as target")
-	}
-
-	return NewConsumer(mod, caller, target), nil
-}
-
 func (mod *Module) AddSearchPreprocessor(pre objects.SearchPreprocessor) error {
 	return mod.searchPre.Add(pre)
 }

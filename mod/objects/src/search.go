@@ -1,9 +1,11 @@
 package objects
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"sync"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (mod *Module) Search(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
@@ -54,14 +56,8 @@ func (mod *Module) Search(ctx *astral.Context, query string, opts *objects.Searc
 			go func() {
 				defer wg.Done()
 
-				// create a client
-				c, err := mod.On(nodeID, search.CallerID)
-				if err != nil {
-					return
-				}
-
 				// execute search
-				_results, err := c.Search(ctx, query)
+				_results, err := astrald.NewObjectsClient(nodeID, nil).Search(ctx, query)
 				if err != nil {
 					mod.log.Errorv(1, "search %v: %v", nodeID, err)
 					return

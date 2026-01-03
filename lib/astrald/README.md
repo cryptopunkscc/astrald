@@ -9,19 +9,26 @@ A client library for `astrald`.
 ```go
 package main
 
-import (
-	"fmt"
-
-	"github.com/cryptopunkscc/astrald/lib/astrald"
-	"github.com/cryptopunkscc/astrald/lib/query"
-)
-
 func main() {
-	ch, err := astrald.QueryChannel("target", "method", query.Args{"arg": "val"})
-	if err != nil {
-		panic(err)
-	}
-
+	// create a new context
+	ctx := astrald.NewContext()
+	
+	fmt.Printf("authenticated as %s on %s\n",
+		astrald.GuestID(),
+		astrald.HostID(),
+	)
+	
+	// query the localnode
+	conn, err := astrald.Query(ctx, "method", query.Args{"arg": "val"})
+	
+	// ... or use a helper method to get a channel 
+	ch, err := astrald.QueryChannel(ctx, "method", query.Args{"arg": "val"})
+	
+	// ... or query some other node
+	nodeID, err := astrald.Dir().ResolveIdentity(ctx, "nodealias")
+	
+	conn, err = astrald.WithTarget(nodeID).Query(ctx, "method", nil)
+	
 	o, err := ch.Read()
 	switch o.(type) {
 	case nil: // error
@@ -38,15 +45,10 @@ func main() {
 ```go
 package main
 
-import (
-	"fmt"
-
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/astrald"
-)
-
 func main() {
-	l, err := astrald.Listen()
+	ctx := astrald.NewContext()
+	
+	l, err := astrald.Listen(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -72,20 +74,15 @@ func main() {
 ```go
 package main
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/cryptopunkscc/astrald/lib/astrald"
-)
-
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("usage: astral-resolve <alias>")
 		return
 	}
+	
+	ctx := astrald.NewContext()
 
-	identity, err := astrald.Dir().ResolveIdentity(os.Args[1])
+	identity, err := astrald.Dir().ResolveIdentity(ctx, os.Args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return
