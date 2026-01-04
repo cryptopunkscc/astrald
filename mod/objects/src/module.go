@@ -56,8 +56,45 @@ func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
 }
 
-func (mod *Module) Blueprints() *astral.Blueprints {
-	return mod.blueprints
+func (mod *Module) Load(ctx *astral.Context, repoName string, objectID *astral.ObjectID) (astral.Object, error) {
+	// get the target repo
+	repo, err := mod.GetRepository(repoName)
+	if err != nil {
+		return nil, err
+	}
+
+	// read the object data
+	r, err := repo.Read(ctx, objectID, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// parse the object
+	o, _, err := mod.Blueprints().Canonical().Read(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return o, nil
+}
+
+func (mod *Module) Store(ctx *astral.Context, repoName string, object astral.Object) (*astral.ObjectID, error) {
+	repo, err := mod.GetRepository(repoName)
+	if err != nil {
+		return nil, err
+	}
+
+	w, err := repo.Create(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = mod.Blueprints().Canonical().Write(w, object)
+	if err != nil {
+		return nil, err
+	}
+
+	return w.Commit()
 }
 
 func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error) {
@@ -97,6 +134,10 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 	}
 
 	return t.String(), nil
+}
+
+func (mod *Module) Blueprints() *astral.Blueprints {
+	return mod.blueprints
 }
 
 func (mod *Module) AddSearchPreprocessor(pre objects.SearchPreprocessor) error {

@@ -2,28 +2,58 @@ package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opLoadArgs struct {
-	ID   *astral.ObjectID
-	Out  string      `query:"optional"`
-	Zone astral.Zone `query:"optional"`
+	ID   *astral.ObjectID `query:"optional"`
+	Repo string           `query:"optional"`
+	Zone *astral.Zone     `query:"optional"`
+	Out  string           `query:"optional"`
 }
 
 // OpLoad loads an object into memory and writes it to the output. OpLoad verifies the object hash.
 func (mod *Module) OpLoad(ctx *astral.Context, q shell.Query, args opLoadArgs) (err error) {
-	ctx = ctx.IncludeZone(args.Zone)
-
-	object, err := objects.Load[astral.Object](ctx, mod.Root(), args.ID, mod.Blueprints())
-	if err != nil {
-		mod.log.Errorv(2, "error loading object: %v", err)
-		return q.RejectWithCode(astral.CodeInternalError)
+	if args.Zone == nil {
+		ctx = ctx.WithZone(astral.ZoneAll)
+	} else {
+		ctx = ctx.WithZone(*args.Zone)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	return ch.Write(object)
+	// if an ID was provided, load a single object
+	if args.ID != nil {
+		o, err := mod.Load(ctx, args.Repo, args.ID)
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
+		}
+
+		return ch.Send(o)
+	}
+
+	return ch.Handle(ctx, func(object astral.Object) {
+		switch object := object.(type) {
+		case *astral.ObjectID:
+			o, err := mod.Load(ctx, args.Repo, object)
+			if err != nil {
+				ch.Send(astral.NewError(err.Error()))
+			} else {
+				ch.Send(o)
+			}
+
+		case *astral.Ack:
+			// ignore acks
+
+		case *astral.EOS:
+			ch.Close()
+
+		default:
+			// protocol error - ignored
+			ch.Send(astral.NewError("invalid object id"))
+			ch.Close()
+		}
+	})
 }
