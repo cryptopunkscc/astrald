@@ -18,11 +18,11 @@ const (
 	PB       = TB * 1000
 	EB       = PB * 1000
 	KiB      = B << 10
-	MiB      = KB << 10
-	GiB      = MB << 10
-	TiB      = GB << 10
-	PiB      = TB << 10
-	EiB      = PB << 10
+	MiB      = KiB << 10
+	GiB      = MiB << 10
+	TiB      = GiB << 10
+	PiB      = TiB << 10
+	EiB      = PiB << 10
 )
 
 func ParseSize(s string) (Size, error) {
