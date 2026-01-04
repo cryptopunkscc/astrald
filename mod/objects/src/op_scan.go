@@ -2,39 +2,50 @@ package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opScanArgs struct {
-	Type   string      `query:"optional"`
-	Repo   string      `query:"optional"`
-	Out    string      `query:"optional"`
-	Follow bool        `query:"optional"`
-	Zone   astral.Zone `query:"optional"`
+	Repo   string       `query:"optional"`
+	Follow bool         `query:"optional"`
+	Zone   *astral.Zone `query:"optional"`
+	Out    string       `query:"optional"`
 }
 
 // OpScan sends a list of object ids in a repository
 func (mod *Module) OpScan(ctx *astral.Context, q shell.Query, args opScanArgs) (err error) {
-	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithCancel()
+	// prepare the context
+	ctx = ctx.WithIdentity(q.Caller())
+	if args.Zone == nil {
+		ctx = ctx.WithZone(astral.ZoneAll)
+	} else {
+		ctx = ctx.WithZone(*args.Zone)
+	}
+
+	ctx, cancel := ctx.WithCancel()
 	defer cancel()
 
+	// accept
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	defer ch.Close()
+
+	// look up the repository
 	repo, err := mod.GetRepository(args.Repo)
 	if err != nil || repo == nil {
-		return q.Reject()
+		return ch.Send(astral.NewError("repository not found"))
 	}
 
-	scanCh, err := repo.Scan(ctx, args.Follow)
+	// start the scan
+	scan, err := repo.Scan(ctx, args.Follow)
 	if err != nil {
-		return q.Reject()
+		return ch.Send(astral.NewError(err.Error()))
 	}
-
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
-	defer ch.Close()
 
 	// if the channel closes, cancel our scan context
 	go func() {
 		for {
-			_, err := ch.Read()
+			_, err := ch.Receive()
 			if err != nil {
 				cancel()
 				return
@@ -43,22 +54,12 @@ func (mod *Module) OpScan(ctx *astral.Context, q shell.Query, args opScanArgs) (
 	}()
 
 	// forward scan results
-	for id := range scanCh {
-		if len(args.Type) > 0 {
-			t, err := mod.GetType(ctx, id)
-			if err != nil {
-				continue
-			}
-			if args.Type != t {
-				continue
-			}
-		}
-
-		err = ch.Write(id)
+	for id := range scan {
+		err = ch.Send(id)
 		if err != nil {
 			return
 		}
 	}
 
-	return
+	return ch.Send(&astral.EOS{})
 }
