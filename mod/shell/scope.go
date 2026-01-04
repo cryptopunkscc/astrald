@@ -123,7 +123,10 @@ func (scope *Scope) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteC
 	defer query.Reject()
 
 	go func() {
+		// ctx will end as soon as the query resolves, so we need a new one for the op
 		ctx := astral.NewContext(nil).WithIdentity(ctx.Identity())
+
+		// call the op
 		err := op.Call(ctx, query, params)
 		if err != nil && scope.Log != nil {
 			scope.Log.Errorv(1, "call %v: %v", path, err)
