@@ -11,6 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/objects/mem"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -143,6 +144,19 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 	}
 
 	return t.String(), nil
+}
+
+func (mod *Module) NewMem(name string, size uint64) error {
+	if len(name) == 0 {
+		return errors.New("name is empty")
+	}
+
+	_, ok := mod.repos.Set(name, mem.NewRepository("Memory ("+name+")", int64(size)))
+	if !ok {
+		return fmt.Errorf("repository %s already exists", name)
+	}
+
+	return nil
 }
 
 func (mod *Module) Blueprints() *astral.Blueprints {
