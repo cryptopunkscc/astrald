@@ -97,6 +97,15 @@ func (mod *Module) Store(ctx *astral.Context, repoName string, object astral.Obj
 	return w.Commit()
 }
 
+func (mod *Module) Delete(ctx *astral.Context, repoName string, objectsID *astral.ObjectID) error {
+	repo, err := mod.GetRepository(repoName)
+	if err != nil {
+		return err
+	}
+
+	return repo.Delete(ctx, objectsID)
+}
+
 func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error) {
 	// check the cache
 	row, err := mod.db.Find(objectID)
