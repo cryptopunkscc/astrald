@@ -159,6 +159,19 @@ func (mod *Module) NewMem(name string, size uint64) error {
 	return nil
 }
 
+func (mod *Module) RemoveRepository(name string) error {
+	if len(name) == 0 {
+		return errors.New("name is empty")
+	}
+	
+	_, ok := mod.repos.Delete(name)
+	if !ok {
+		return fmt.Errorf("repository %s not found", name)
+	}
+
+	return nil
+}
+
 func (mod *Module) Blueprints() *astral.Blueprints {
 	return mod.blueprints
 }
