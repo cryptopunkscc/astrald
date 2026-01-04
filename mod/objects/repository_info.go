@@ -3,9 +3,9 @@ package objects
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type RepositoryInfo struct {
@@ -49,7 +49,7 @@ func (info RepositoryInfo) MarshalText() (text []byte, err error) {
 		"%s: %s (%s free)",
 		info.ID,
 		info.Label,
-		log.DataSize(info.Free).HumanReadable(),
+		Size(info.Free).HumanReadable(),
 	)), nil
 }
 
