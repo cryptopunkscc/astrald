@@ -22,15 +22,15 @@ func Render(objects ...astral.Object) (s string) {
 			continue
 		}
 
-		if r, ok := o.(fmt.Stringer); ok {
-			s += r.String()
-			continue
-		}
-
 		if r, ok := o.(encoding.TextMarshaler); ok {
 			var text []byte
 			text, _ = r.MarshalText()
 			s += string(text)
+			continue
+		}
+
+		if r, ok := o.(fmt.Stringer); ok {
+			s += r.String()
 			continue
 		}
 
