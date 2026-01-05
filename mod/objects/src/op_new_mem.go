@@ -3,11 +3,10 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-const defaultMemSize = 64 * objects.MiB
+const defaultMemSize = 64 * astral.MiB
 
 type opNewMemArgs struct {
 	Name string
@@ -22,7 +21,7 @@ func (mod *Module) OpNewMem(ctx *astral.Context, q shell.Query, args opNewMemArg
 
 	size := defaultMemSize
 	if len(args.Size) > 0 {
-		size, err = objects.ParseSize(args.Size)
+		size, err = astral.ParseSize(args.Size)
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
 		}

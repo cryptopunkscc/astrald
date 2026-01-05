@@ -49,7 +49,7 @@ func (info RepositoryInfo) MarshalText() (text []byte, err error) {
 		"%s: %s (%s free)",
 		info.ID,
 		info.Label,
-		Size(info.Free).HumanReadable(),
+		astral.Size(info.Free).HumanReadable(),
 	)), nil
 }
 

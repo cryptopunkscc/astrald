@@ -1,8 +1,9 @@
-package objects
+package astral
 
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 )
@@ -83,6 +84,34 @@ func ParseSize(s string) (Size, error) {
 	return Size(bytes), nil
 }
 
+func (s Size) ObjectType() string {
+	return "size"
+}
+
+func (s Size) WriteTo(w io.Writer) (n int64, err error) {
+	return Uint64(s).WriteTo(w)
+}
+
+func (s *Size) ReadFrom(r io.Reader) (n int64, err error) {
+	return (*Uint64)(s).ReadFrom(r)
+}
+
+func (s Size) MarshalJSON() ([]byte, error) {
+	return Uint64(s).MarshalJSON()
+}
+
+func (s *Size) UnmarshalJSON(bytes []byte) error {
+	return (*Uint64)(s).UnmarshalJSON(bytes)
+}
+
+func (s Size) MarshalText() (text []byte, err error) {
+	return (Uint64)(s).MarshalText()
+}
+
+func (s *Size) UnmarshalText(text []byte) error {
+	return (*Uint64)(s).UnmarshalText(text)
+}
+
 func (s Size) Bytes() uint64 {
 	return uint64(s)
 }
@@ -160,7 +189,7 @@ func (s Size) EiBytes() float64 {
 }
 
 func (s Size) String() string {
-	return s.HumanReadable()
+	return s.HumanReadableBinary()
 }
 
 func (s Size) HumanReadable() string {
@@ -199,4 +228,9 @@ func (s Size) HumanReadableBinary() string {
 	default:
 		return fmt.Sprintf("%dB", s)
 	}
+}
+
+func init() {
+	var s Size
+	DefaultBlueprints.Add(&s)
 }
