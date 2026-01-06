@@ -56,21 +56,26 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 	}
 	defer ch.Close()
 
+	// Track snapshot state across the whole stream.
+	snapshotCompleted := false
+	snapshot := make([]services.ServiceChange, 0)
+
 	for {
 		msg, err := ch.Read()
 		if err != nil {
 			return err
 		}
 
-		var snapshotCompleted = false
-		var snapshot = make([]services.ServiceChange, 0)
-
 		switch m := msg.(type) {
 		case *astral.EOS:
-			// Use transaction to atomically replace all services
+			// End-of-snapshot marker.
+
+			// Replace services from this identity atomically based on collected snapshot.
 			var servicesList []services.Service
 			for _, svcChange := range snapshot {
-				servicesList = append(servicesList, svcChange.Service)
+				if svcChange.Enabled {
+					servicesList = append(servicesList, svcChange.Service)
+				}
 			}
 
 			err := mod.db.InTx(func(tx *DB) error {
@@ -95,6 +100,7 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 			if !subscribe {
 				return nil
 			}
+
 		case *services.ServiceChange:
 			if !m.Service.Identity.IsEqual(target) {
 				mod.log.Info("ignoring service from different identity: %v", m.Service.Identity)
@@ -102,25 +108,27 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 			}
 
 			if !snapshotCompleted {
+				// Still collecting snapshot.
 				snapshot = append(snapshot, *m)
+				continue
 			}
 
-			if snapshotCompleted {
-				err = mod.db.InTx(func(tx *DB) error {
-					if err := tx.RemoveIdentityService(m.Service.Name, target); err != nil {
-						return err
-					}
-
-					if m.Enabled {
-						return tx.InsertService(&m.Service)
-					}
-
-					return nil
-				})
-				if err != nil {
-					mod.log.Error("failed to update service %v from %v: %v", m.Service.Name, target, err)
+			// Live update after snapshot completed.
+			err = mod.db.InTx(func(tx *DB) error {
+				if err := tx.RemoveIdentityService(m.Service.Name, target); err != nil {
+					return err
 				}
+
+				if m.Enabled {
+					return tx.InsertService(&m.Service)
+				}
+
+				return nil
+			})
+			if err != nil {
+				mod.log.Error("failed to update service %v from %v: %v", m.Service.Name, target, err)
 			}
+
 		default:
 			mod.log.Info("unexpected message type: %T", msg)
 		}

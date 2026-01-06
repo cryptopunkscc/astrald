@@ -20,16 +20,62 @@ func (mod *Module) OpServiceDiscovery(ctx *astral.Context, q shell.Query, args o
 
 	caller := q.Caller()
 
-	opts := services.DiscoverOptions{
+	// Always request a snapshot. If Follow is set, we do a two-phase stream:
+	//  1) drain snapshot events from each discoverer
+	//  2) emit EOS
+	//  3) start follow streams and forward updates
+	snapshotOpts := services.DiscoverOptions{
 		Snapshot: true,
+		Follow:   false,
+	}
+	followOpts := services.DiscoverOptions{
+		Snapshot: false,
 		Follow:   args.Follow,
 	}
 
+	// Phase 1: snapshot
+	for _, discoverer := range mod.discoverers {
+		s, err := discoverer.DiscoverService(ctx, caller, snapshotOpts)
+		if err != nil {
+			mod.log.Logv(1, "discoverer snapshot failed: %v", err)
+			continue
+		}
+		if s == nil {
+			continue
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case update, ok := <-s:
+				if !ok {
+					goto nextDiscoverer
+				}
+				if err := ch.Write(&update); err != nil {
+					return err
+				}
+			}
+		}
+	nextDiscoverer:
+	}
+
+	// End-of-snapshot marker.
+	if err := ch.Write(&astral.EOS{}); err != nil {
+		return err
+	}
+
+	// No follow requested.
+	if !args.Follow {
+		return nil
+	}
+
+	// Phase 2: follow (no snapshot)
 	streams := make([]<-chan services.ServiceChange, 0, len(mod.discoverers))
 	for _, discoverer := range mod.discoverers {
-		s, err := discoverer.DiscoverService(ctx, caller, opts)
+		s, err := discoverer.DiscoverService(ctx, caller, followOpts)
 		if err != nil {
-			mod.log.Logv(1, "discoverer failed: %v", err)
+			mod.log.Logv(1, "discoverer follow failed: %v", err)
 			continue
 		}
 		if s != nil {
@@ -37,15 +83,7 @@ func (mod *Module) OpServiceDiscovery(ctx *astral.Context, q shell.Query, args o
 		}
 	}
 
-	// Fan-in all discoverer streams.
 	merged := mergeChannels(ctx, streams...)
-
-	// If the external protocol requires an explicit end-of-snapshot marker, emit it once.
-	// With Snapshot=true, every discoverer stream may start with zero or one snapshot event.
-	if err := ch.Write(&astral.EOS{}); err != nil {
-		return err
-	}
-
 	for {
 		select {
 		case <-ctx.Done():
