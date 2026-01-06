@@ -25,7 +25,7 @@ func NewError(s string) Error {
 // astral
 
 func (msg ErrorMessage) ObjectType() string {
-	return "error.message"
+	return "error_message"
 }
 
 func (msg ErrorMessage) WriteTo(w io.Writer) (n int64, err error) {

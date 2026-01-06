@@ -28,15 +28,18 @@ func (mod *Module) OpFilter(ctx *astral.Context, q shell.Query, args opFilterArg
 		except = strings.Split(*args.Except, ",")
 	}
 
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out), channel.AllowUnparsed(true))
 	defer ch.Close()
 
 	for {
 		object, err := ch.Receive()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
+		switch {
+		case err == nil:
+		case errors.Is(err, io.EOF):
+			return nil
+		case errors.Is(err, astral.ErrBlueprintNotFound{}):
+			continue
+		default:
 			return err
 		}
 

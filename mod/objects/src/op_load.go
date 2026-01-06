@@ -7,10 +7,11 @@ import (
 )
 
 type opLoadArgs struct {
-	ID   *astral.ObjectID `query:"optional"`
-	Repo string           `query:"optional"`
-	Zone *astral.Zone     `query:"optional"`
-	Out  string           `query:"optional"`
+	ID       *astral.ObjectID `query:"optional"`
+	Unparsed bool             `query:"optional"`
+	Repo     string           `query:"optional"`
+	Zone     *astral.Zone     `query:"optional"`
+	Out      string           `query:"optional"`
 }
 
 // OpLoad loads an object into memory and writes it to the output. OpLoad verifies the object hash.
@@ -21,7 +22,7 @@ func (mod *Module) OpLoad(ctx *astral.Context, q shell.Query, args opLoadArgs) (
 		ctx = ctx.WithZone(*args.Zone)
 	}
 
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out), channel.AllowUnparsed(args.Unparsed))
 	defer ch.Close()
 
 	repo := mod.ReadDefault()
@@ -52,16 +53,11 @@ func (mod *Module) OpLoad(ctx *astral.Context, q shell.Query, args opLoadArgs) (
 				ch.Send(o)
 			}
 
-		case *astral.Ack:
-			// ignore acks
-
 		case *astral.EOS:
-			ch.Close()
+			//ignore
 
 		default:
-			// protocol error - ignored
-			ch.Send(astral.NewError("invalid object id"))
-			ch.Close()
+			ch.Send(astral.NewError("unexpected object type"))
 		}
 	})
 }
