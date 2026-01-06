@@ -2,16 +2,19 @@ package shell
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/sig"
 	"io"
 	"sync/atomic"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Query interface {
 	Accept() io.ReadWriteCloser
+	AcceptChannel(cfg ...channel.ConfigFunc) *channel.Channel
 	Reject() (err error)
 	RejectWithCode(code uint8) (err error)
 	Caller() *astral.Identity
@@ -28,19 +31,19 @@ type NetworkQuery struct {
 	resolved atomic.Bool
 }
 
-func (e *NetworkQuery) Origin() string {
-	if v, ok := e.Extra().Get("origin"); ok && v != nil {
-		return v.(string)
-	}
-	return ""
-}
-
 func NewNetworkQuery(w io.WriteCloser, query *astral.Query) *NetworkQuery {
 	return &NetworkQuery{
 		w:     w,
 		Query: query,
 		r:     make(chan queryResponse, 1),
 	}
+}
+
+func (e *NetworkQuery) Origin() string {
+	if v, ok := e.Extra().Get("origin"); ok && v != nil {
+		return v.(string)
+	}
+	return ""
 }
 
 func (e *NetworkQuery) Accept() (conn io.ReadWriteCloser) {
@@ -60,6 +63,10 @@ func (e *NetworkQuery) Accept() (conn io.ReadWriteCloser) {
 	}
 
 	return <-ch
+}
+
+func (e *NetworkQuery) AcceptChannel(cfg ...channel.ConfigFunc) *channel.Channel {
+	return channel.New(e.Accept(), cfg...)
 }
 
 func (e *NetworkQuery) Reject() (err error) {
