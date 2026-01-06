@@ -20,18 +20,12 @@ func (mod *Module) OpServiceDiscovery(ctx *astral.Context, q shell.Query, args o
 
 	caller := q.Caller()
 
-	// Always request a snapshot. If Follow is set, we do a two-phase stream:
-	//  1) drain snapshot events from each discoverer
-	//  2) emit EOS
-	//  3) start follow streams and forward updates
-	snapshotOpts := services.DiscoverOptions{
-		Snapshot: true,
-		Follow:   false,
-	}
-	followOpts := services.DiscoverOptions{
-		Snapshot: false,
-		Follow:   args.Follow,
-	}
+	// Two-phase stream when Follow is set:
+	//  1) snapshot
+	//  2) EOS
+	//  3) follow stream
+	snapshotOpts := services.DiscoverOptions{Snapshot: true, Follow: false}
+	followOpts := services.DiscoverOptions{Snapshot: false, Follow: args.Follow}
 
 	// Phase 1: snapshot
 	for _, discoverer := range mod.discoverers {
@@ -65,7 +59,6 @@ func (mod *Module) OpServiceDiscovery(ctx *astral.Context, q shell.Query, args o
 		return err
 	}
 
-	// No follow requested.
 	if !args.Follow {
 		return nil
 	}

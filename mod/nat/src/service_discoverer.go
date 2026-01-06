@@ -23,22 +23,18 @@ func (mod *Module) DiscoverService(
 	go func() {
 		defer close(out)
 
-		// Optional snapshot derived from module-local current service state.
 		if opts.Snapshot {
-			// Always emit a snapshot event representing current state.
-			// (If disabled, snapshot is empty; the client learns that by absence.)
-			if mod.serviceEnabled {
-				svc := services.Service{
-					Name:        nat.ModuleName,
-					Identity:    mod.node.Identity(),
-					Composition: astral.NewBundle(),
-				}
-				change := services.ServiceChange{Enabled: true, Service: svc}
-				select {
-				case out <- change:
-				case <-ctx.Done():
-					return
-				}
+			svc := services.Service{
+				Name:        nat.ModuleName,
+				Identity:    mod.node.Identity(),
+				Composition: astral.NewBundle(),
+			}
+
+			change := services.ServiceChange{Enabled: astral.Bool(mod.serviceEnabled), Service: svc}
+			select {
+			case out <- change:
+			case <-ctx.Done():
+				return
 			}
 		}
 
@@ -57,8 +53,6 @@ func (mod *Module) DiscoverService(
 				if !ok {
 					return
 				}
-
-				// Caller-based filtering could be applied here.
 				select {
 				case out <- ev:
 				case <-ctx.Done():
