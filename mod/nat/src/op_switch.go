@@ -21,7 +21,7 @@ func (mod *Module) OpSwitch(ctx *astral.Context, q shell.Query, args opDisableAr
 	mod.serviceEnabled = !mod.serviceEnabled
 
 	// Publish change to current subscribers.
-	mod.serviceFeed.Publish(services.ServiceChange{
+	mod.serviceChangeFeed.Publish(services.ServiceChange{
 		Enabled: astral.Bool(mod.serviceEnabled),
 		Service: services.Service{
 			Name:        natmod.ModuleName,

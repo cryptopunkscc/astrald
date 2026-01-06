@@ -5,18 +5,18 @@ import (
 	"sync"
 )
 
-// ServiceFeed is a pure broadcast primitive for ServiceChange events.
+// ServiceChangeFeed is a pure broadcast primitive for ServiceChange events.
 //
 // It does NOT store or expose any current service state and provides no snapshot APIs.
 // Producers are responsible for maintaining current service state themselves.
-type ServiceFeed struct {
+type ServiceChangeFeed struct {
 	mu          sync.Mutex
 	subscribers map[chan ServiceChange]struct{}
 	closed      bool
 }
 
-func NewServiceFeed() *ServiceFeed {
-	return &ServiceFeed{
+func NewServiceFeed() *ServiceChangeFeed {
+	return &ServiceChangeFeed{
 		subscribers: make(map[chan ServiceChange]struct{}),
 	}
 }
@@ -24,7 +24,7 @@ func NewServiceFeed() *ServiceFeed {
 // Subscribe registers a new subscriber and returns a channel of ServiceChange.
 //
 // When ctx.Done() fires, the subscription is removed and the channel is closed.
-func (f *ServiceFeed) Subscribe(ctx context.Context) <-chan ServiceChange {
+func (f *ServiceChangeFeed) Subscribe(ctx context.Context) <-chan ServiceChange {
 	ch := make(chan ServiceChange, 16)
 
 	f.mu.Lock()
@@ -44,7 +44,7 @@ func (f *ServiceFeed) Subscribe(ctx context.Context) <-chan ServiceChange {
 	return ch
 }
 
-func (f *ServiceFeed) unsubscribe(ch chan ServiceChange) {
+func (f *ServiceChangeFeed) unsubscribe(ch chan ServiceChange) {
 	f.mu.Lock()
 	_, ok := f.subscribers[ch]
 	if ok {
@@ -61,7 +61,7 @@ func (f *ServiceFeed) unsubscribe(ch chan ServiceChange) {
 //
 // Non-blocking per subscriber: if a subscriber channel is full, the event may be dropped
 // for that subscriber.
-func (f *ServiceFeed) Publish(change ServiceChange) {
+func (f *ServiceChangeFeed) Publish(change ServiceChange) {
 	f.mu.Lock()
 	if f.closed {
 		f.mu.Unlock()
@@ -85,7 +85,7 @@ func (f *ServiceFeed) Publish(change ServiceChange) {
 }
 
 // Close cancels and removes all subscribers and closes their channels.
-func (f *ServiceFeed) Close() {
+func (f *ServiceChangeFeed) Close() {
 	f.mu.Lock()
 	if f.closed {
 		f.mu.Unlock()

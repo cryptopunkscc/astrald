@@ -13,6 +13,11 @@ type Module interface {
 	DiscoverRemoteServices(ctx *astral.Context, target *astral.Identity, subscribe bool) error
 }
 
+type DiscoverOptions struct {
+	Snapshot bool
+	Follow   bool
+}
+
 type ServiceDiscoverer interface {
 	DiscoverService(
 		ctx *astral.Context,

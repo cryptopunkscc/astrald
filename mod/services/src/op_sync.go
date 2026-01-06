@@ -11,7 +11,7 @@ type opServiceSyncArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpServiceSync(ctx *astral.Context, q shell.Query, args opServiceSyncArgs) (err error) {
+func (mod *Module) OpSync(ctx *astral.Context, q shell.Query, args opServiceSyncArgs) (err error) {
 	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
 	defer ch.Close()
 

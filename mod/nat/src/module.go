@@ -34,12 +34,8 @@ type Module struct {
 	pool *PairPool
 	ops  shell.Scope
 
-	// serviceEnabled is the module-local "current" discoverable service state.
-	// It is the source of truth for snapshot.
-	serviceEnabled bool
-
-	// serviceFeed is a pure broadcast primitive for future ServiceChange events.
-	serviceFeed *services.ServiceFeed
+	serviceEnabled    bool
+	serviceChangeFeed *services.ServiceChangeFeed
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {

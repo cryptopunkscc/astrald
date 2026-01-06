@@ -11,7 +11,6 @@ func (mod *Module) DiscoverService(
 	caller *astral.Identity,
 	opts services.DiscoverOptions,
 ) (<-chan services.ServiceChange, error) {
-	// Snapshot = false, Follow = false: immediately close and emit nothing.
 	if !opts.Snapshot && !opts.Follow {
 		out := make(chan services.ServiceChange)
 		close(out)
@@ -38,13 +37,11 @@ func (mod *Module) DiscoverService(
 			}
 		}
 
-		// Snapshot-only behavior.
 		if !opts.Follow {
 			return
 		}
 
-		// Follow future updates exclusively from the ServiceFeed.
-		sub := mod.serviceFeed.Subscribe(ctx)
+		sub := mod.serviceChangeFeed.Subscribe(ctx)
 		for {
 			select {
 			case <-ctx.Done():

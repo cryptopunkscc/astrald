@@ -22,7 +22,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 	mod.ops.AddStruct(mod, "Op")
 
 	// Initialize pure service feed (broadcast-only).
-	mod.serviceFeed = services.NewServiceFeed()
+	mod.serviceChangeFeed = services.NewServiceFeed()
 
 	return mod, nil
 }

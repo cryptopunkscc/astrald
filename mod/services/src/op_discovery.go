@@ -14,16 +14,12 @@ type opServiceDiscoveryArgs struct {
 	Follow bool   `query:"optional"`
 }
 
-func (mod *Module) OpServiceDiscovery(ctx *astral.Context, q shell.Query, args opServiceDiscoveryArgs) error {
+func (mod *Module) OpDiscovery(ctx *astral.Context, q shell.Query, args opServiceDiscoveryArgs) error {
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
-	defer func() { _ = ch.Close() }()
+	defer ch.Close()
 
 	caller := q.Caller()
 
-	// Two-phase stream when Follow is set:
-	//  1) snapshot
-	//  2) EOS
-	//  3) follow stream
 	snapshotOpts := services.DiscoverOptions{Snapshot: true, Follow: false}
 	followOpts := services.DiscoverOptions{Snapshot: false, Follow: args.Follow}
 
@@ -54,7 +50,6 @@ func (mod *Module) OpServiceDiscovery(ctx *astral.Context, q shell.Query, args o
 	nextDiscoverer:
 	}
 
-	// End-of-snapshot marker.
 	if err := ch.Write(&astral.EOS{}); err != nil {
 		return err
 	}
@@ -63,7 +58,6 @@ func (mod *Module) OpServiceDiscovery(ctx *astral.Context, q shell.Query, args o
 		return nil
 	}
 
-	// Phase 2: follow (no snapshot)
 	streams := make([]<-chan services.ServiceChange, 0, len(mod.discoverers))
 	for _, discoverer := range mod.discoverers {
 		s, err := discoverer.DiscoverService(ctx, caller, followOpts)
