@@ -13,17 +13,17 @@ import (
 
 type Repository struct {
 	mod      *Module
-	name     string
+	label    string
 	root     string
 	addQueue *sig.Queue[*astral.ObjectID]
 }
 
 var _ objects.Repository = &Repository{}
 
-func NewRepository(mod *Module, name string, path string) *Repository {
+func NewRepository(mod *Module, label string, path string) *Repository {
 	return &Repository{
 		mod:      mod,
-		name:     name,
+		label:    label,
 		root:     path,
 		addQueue: &sig.Queue[*astral.ObjectID]{},
 	}
@@ -130,7 +130,7 @@ func (repo *Repository) Contains(ctx *astral.Context, objectID *astral.ObjectID)
 }
 
 func (repo *Repository) Label() string {
-	return repo.name
+	return repo.label
 }
 
 func (repo *Repository) Create(ctx *astral.Context, opts *objects.CreateOpts) (objects.Writer, error) {
@@ -160,7 +160,7 @@ func (repo *Repository) Delete(ctx *astral.Context, objectID *astral.ObjectID) e
 }
 
 func (repo *Repository) String() string {
-	return repo.name
+	return repo.label
 }
 
 func (repo *Repository) pushAdded(id *astral.ObjectID) {

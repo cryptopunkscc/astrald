@@ -8,9 +8,9 @@ import (
 
 type opDeleteArgs struct {
 	ID   *astral.ObjectID `query:"optional"`
-	Repo string           `query:"optional"`
-	Out  string           `query:"optional"`
-	Zone *astral.Zone     `query:"optional"`
+	Repo string
+	Out  string       `query:"optional"`
+	Zone *astral.Zone `query:"optional"`
 }
 
 func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArgs) (err error) {
@@ -25,7 +25,7 @@ func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArg
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	// look up the repository
+	// look up the repository (no default to avoid accidental deletion)
 	repo := mod.GetRepository(args.Repo)
 	if repo == nil {
 		return ch.Send(astral.NewError("repository not found"))
@@ -33,7 +33,7 @@ func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArg
 
 	// if an ID was provided, delete a single object
 	if args.ID != nil {
-		err := mod.Delete(ctx, args.Repo, args.ID)
+		err := repo.Delete(ctx, args.ID)
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
 		}
@@ -44,7 +44,7 @@ func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArg
 	return ch.Handle(ctx, func(object astral.Object) {
 		switch object := object.(type) {
 		case *astral.ObjectID:
-			err := mod.Delete(ctx, args.Repo, object)
+			err := repo.Delete(ctx, object)
 			if err != nil {
 				ch.Send(astral.NewError(err.Error()))
 			} else {

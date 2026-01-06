@@ -2,14 +2,15 @@ package objects
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/arl"
-	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/arl"
+	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (mod *Module) fetch(addr string) (objectID *astral.ObjectID, err error) {
@@ -42,7 +43,7 @@ func (mod *Module) fetchURL(url string) (objectID *astral.ObjectID, err error) {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	w, err := mod.Root().Create(ctx, &objects.CreateOpts{
+	w, err := mod.WriteDefault().Create(ctx, &objects.CreateOpts{
 		Alloc: int(alloc),
 	})
 	if err != nil {
@@ -72,7 +73,7 @@ func (mod *Module) fetchARL(a *arl.ARL) (objectID *astral.ObjectID, err error) {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	w, err := mod.Root().Create(ctx, nil)
+	w, err := mod.WriteDefault().Create(ctx, nil)
 	if err != nil {
 		return
 	}

@@ -21,9 +21,27 @@ func (mod *Module) LoadDependencies() (err error) {
 		return
 	}
 
-	// add preconfigured repos
-	for _, repo := range mod.repos.Clone() {
-		mod.Objects.AddRepository(repo.Label(), repo)
+	// add the default repo
+	mod.addDefaultRepo()
+
+	// configure repositories from the config file
+	for name, cfg := range mod.config.Repos {
+		var repo objects.Repository
+
+		if cfg.Writable {
+			repo = NewRepository(mod, cfg.Label, cfg.Path)
+		} else {
+			repo, err = NewWatchRepository(mod, cfg.Path, cfg.Label)
+		}
+		if err != nil {
+			mod.log.Error("error adding repo %v: %v", name, err)
+			continue
+		}
+
+		mod.Objects.AddRepository(name, repo)
+		mod.Objects.AddGroup(objects.RepoLocal, name)
+
+		mod.log.Logv(1, "added repo %v (%v) at %v", name, cfg.Label, cfg.Path)
 	}
 
 	return

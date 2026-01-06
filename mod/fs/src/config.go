@@ -1,8 +1,15 @@
 package fs
 
+const DefaultRepoName = "data"
+
 type Config struct {
-	Repos map[string]string // list of paths to use for read-write storage
-	Watch map[string]string // list of paths to use for read-only storage
+	Repos map[string]RepoConfig
+}
+
+type RepoConfig struct {
+	Label    string
+	Path     string
+	Writable bool
 }
 
 var defaultConfig = Config{}

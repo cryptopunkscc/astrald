@@ -1,8 +1,9 @@
 package objects
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 // Repository is an interface for creating new data objects in storage
@@ -27,6 +28,13 @@ type Repository interface {
 
 	// Free returns available free space in the repository. -1 if unknown.
 	Free(ctx *astral.Context) (int64, error)
+}
+
+type RepoGroup interface {
+	Repository
+	Add(repo string) error
+	Remove(repo string) error
+	List() []string
 }
 
 // Writer is an interface to write the actual data to objects created by Creators.

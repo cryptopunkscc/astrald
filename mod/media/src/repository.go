@@ -41,13 +41,13 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, off
 		return nil, objects.ErrNotFound
 	}
 
-	r, err := repo.mod.Objects.Root().Read(ctx, containerID, 0, 0)
+	r, err := repo.mod.Objects.ReadDefault().Read(ctx, containerID, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	audioTag, err := tag.ReadFrom(objects.NewReadSeeker(ctx, containerID, repo.mod.Objects.Root(), r))
+	audioTag, err := tag.ReadFrom(objects.NewReadSeeker(ctx, containerID, repo.mod.Objects.ReadDefault(), r))
 	if err != nil {
 		return nil, err
 	}

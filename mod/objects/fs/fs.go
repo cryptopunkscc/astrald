@@ -1,10 +1,11 @@
 package fs
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"io/fs"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 const openTimeout = time.Second * 30
@@ -33,12 +34,12 @@ func (f *FS) Open(name string) (fs.File, error) {
 	ctx, cancel := f.ctx.WithTimeout(openTimeout)
 	defer cancel()
 
-	r, err := f.mod.Root().Read(ctx, objectID, 0, 0)
+	r, err := f.mod.ReadDefault().Read(ctx, objectID, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	rs := objects.NewReadSeeker(f.ctx, objectID, f.mod.Root(), r)
+	rs := objects.NewReadSeeker(f.ctx, objectID, f.mod.ReadDefault(), r)
 
 	return &File{
 		ID:         objectID,

@@ -30,7 +30,7 @@ func (mod *Module) SaveSignedRevocationContract(revocation *user.SignedNodeContr
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
 	// NOTE: ask about error handling in objects.Save
-	_, err = objects.Save(ctx, revocation, mod.Objects.Root())
+	_, err = objects.Save(ctx, revocation, mod.Objects.WriteDefault())
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (mod *Module) LoadNodeContractRevocation(revocationID *astral.ObjectID) (*u
 
 	return objects.Load[*user.SignedNodeContractRevocation](
 		mod.ctx,
-		mod.Objects.Root(),
+		mod.Objects.ReadDefault(),
 		revocationID,
 		mod.Objects.Blueprints(),
 	)

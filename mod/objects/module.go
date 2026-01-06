@@ -9,6 +9,14 @@ const (
 	DBPrefix     = "objects__"
 	ActionRead   = "objects.read"
 	ActionCreate = "objects.create"
+
+	RepoMain      = "main"      // everything
+	RepoDevice    = "device"    // device: memory, local, removable
+	RepoMemory    = "memory"    // memcache repos
+	RepoLocal     = "local"     // local storage
+	RepoRemovable = "removable" // removable storage
+	RepoVirtual   = "virtual"   // virtual repos (archives, encryption, chunks)
+	RepoNetwork   = "network"   // network repos
 )
 
 // MaxObjectSize is the maximum size of an object that can be loaded into memory
@@ -16,8 +24,25 @@ const MaxObjectSize int64 = 64 << 20 // 32 MB
 
 type Module interface {
 	// AddRepository registers a Repository
-	AddRepository(id string, repo Repository) error
-	Root() (repo Repository)
+	AddRepository(name string, repo Repository) error
+
+	// GetRepository returns a Repository by its name
+	GetRepository(name string) Repository
+
+	// ReadDefault returns the default repository for reading
+	ReadDefault() Repository
+
+	// WriteDefault returns the default repository for writing
+	WriteDefault() Repository
+
+	// AddGroup adds a repository to a group
+	AddGroup(groupName string, repoName string) error
+
+	// Load loads an object from a repository
+	Load(*astral.Context, Repository, *astral.ObjectID) (astral.Object, error)
+
+	// Store stores an object in a repository
+	Store(*astral.Context, Repository, astral.Object) (*astral.ObjectID, error)
 
 	AddDescriber(Describer) error
 	Describe(*astral.Context, *astral.ObjectID) (<-chan *DescribeResult, error)

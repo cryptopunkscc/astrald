@@ -38,7 +38,7 @@ func (mod *Module) OpSignAppContract(ctx *astral.Context, q shell.Query, args op
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	contractID, err := objects.Save(ctx, c, mod.Objects.Root())
+	contractID, err := objects.Save(ctx, c, mod.Objects.WriteDefault())
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}

@@ -2,6 +2,7 @@ package media
 
 import (
 	"bytes"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -42,14 +43,14 @@ func (mod *AudioIndexer) Index(ctx *astral.Context, objectID *astral.ObjectID) (
 
 func (mod *AudioIndexer) Inspect(ctx *astral.Context, objectID *astral.ObjectID) (*media.AudioFile, error) {
 	// open the object
-	r, err := mod.Objects.Root().Read(ctx, objectID, 0, 0)
+	r, err := mod.Objects.ReadDefault().Read(ctx, objectID, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
 	// read id3 tag data
-	audioTag, err := tag.ReadFrom(objects.NewReadSeeker(ctx, objectID, mod.Objects.Root(), r))
+	audioTag, err := tag.ReadFrom(objects.NewReadSeeker(ctx, objectID, mod.Objects.ReadDefault(), r))
 	if err != nil {
 		return nil, err
 	}

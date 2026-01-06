@@ -72,7 +72,7 @@ func (mod *Module) SaveKey(key *astral.Identity) (*astral.ObjectID, error) {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	objectID, err := objects.Save(ctx, pk, mod.Objects.Root())
+	objectID, err := objects.Save(ctx, pk, mod.Objects.WriteDefault())
 	if err != nil {
 		mod.log.Errorv(1, "error saving private key %v: %v", key, err)
 	}
@@ -89,7 +89,7 @@ func (mod *Module) IndexKey(objectID *astral.ObjectID) error {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects.Root(), objectID, mod.Objects.Blueprints())
+	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects.ReadDefault(), objectID, mod.Objects.Blueprints())
 
 	if pk.Type != keys.KeyTypeIdentity {
 		return errors.New("unsupported key type")
@@ -126,7 +126,7 @@ func (mod *Module) FindIdentity(hex string) (*astral.Identity, error) {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects.Root(), row.DataID, mod.Objects.Blueprints())
+	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects.ReadDefault(), row.DataID, mod.Objects.Blueprints())
 	if err != nil {
 		return &astral.Identity{}, err
 	}

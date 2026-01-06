@@ -24,7 +24,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	mod.db = &DB{assets.Database()}
 
-	mod.root = NewRootRepository(mod)
+	mod.setupDefaultRepos()
 
 	err := mod.db.Migrate()
 	if err != nil {
@@ -33,9 +33,45 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	mod.blueprints = astral.NewBlueprints(astral.DefaultBlueprints)
 
-	mod.repos.Set("mem0", mem.NewRepository("", 0))
-
 	return mod, nil
+}
+
+func (mod *Module) setupDefaultRepos() {
+	// device group
+	device := NewRepoGroup(mod, "This device", false)
+	mod.repos.Set(objects.RepoDevice, device)
+
+	// device sub-groups
+	memory := NewRepoGroup(mod, "In-memory repos", false)
+	mod.repos.Set(objects.RepoMemory, memory)
+	device.Add(objects.RepoMemory)
+
+	local := NewRepoGroup(mod, "Local storage", true)
+	mod.repos.Set(objects.RepoLocal, local)
+	device.Add(objects.RepoLocal)
+
+	removable := NewRepoGroup(mod, "Removable devices", true)
+	mod.repos.Set(objects.RepoRemovable, removable)
+	device.Add(objects.RepoRemovable)
+
+	// virtual group
+	virtual := NewRepoGroup(mod, "Virtual repositories", true)
+	mod.repos.Set(objects.RepoVirtual, virtual)
+
+	// network group
+	network := NewRepoGroup(mod, "Network repositories", true)
+	mod.repos.Set(objects.RepoNetwork, network)
+
+	main := NewRepoGroup(mod, "World", false)
+	main.Add(objects.RepoDevice)
+	main.Add(objects.RepoVirtual)
+	main.Add(objects.RepoNetwork)
+
+	mod.repos.Set(objects.RepoMain, main)
+
+	mem0 := mem.New("Default memory", mod.config.DefaultMemSize)
+	mod.repos.Set("mem0", mem0)
+	memory.Add("mem0")
 }
 
 func init() {

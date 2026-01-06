@@ -1,9 +1,10 @@
 package archives
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"time"
 )
 
 const openTimeout = 15 * time.Second
@@ -18,7 +19,7 @@ func (r *readerAt) ReadAt(p []byte, off int64) (n int, err error) {
 	ctx, cancel := astral.NewContext(nil).WithIdentity(r.identity).WithTimeout(openTimeout)
 	defer cancel()
 
-	f, err := r.objects.Root().Read(ctx, r.objectID, off, 0)
+	f, err := r.objects.ReadDefault().Read(ctx, r.objectID, off, 0)
 	if err != nil {
 		return 0, err
 	}

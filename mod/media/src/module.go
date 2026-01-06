@@ -2,6 +2,7 @@ package media
 
 import (
 	"errors"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/media"
@@ -63,7 +64,7 @@ func (mod *Module) Forget(ctx *astral.Context, objectID *astral.ObjectID) (err e
 }
 
 func (mod *Module) indexer(ctx *astral.Context) {
-	ch, err := mod.Objects.Root().Scan(ctx, true)
+	ch, err := mod.Objects.GetRepository(objects.RepoLocal).Scan(ctx, true)
 	if err != nil {
 		mod.log.Error("cannot scan objects: %v", err)
 		return

@@ -2,6 +2,7 @@ package objects
 
 import (
 	"errors"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
@@ -33,7 +34,7 @@ func (mod *Module) receive(senderID *astral.Identity, object astral.Object) (ok 
 		mod:      mod,
 		senderID: senderID,
 		object:   object,
-		repo:     mod.Root(),
+		repo:     mod.WriteDefault(),
 	}
 	for _, r := range mod.receivers.Clone() {
 		err := r.ReceiveObject(drop)

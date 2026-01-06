@@ -136,7 +136,7 @@ func (mod *Module) ActiveLocalAppContracts() (list []*apphost.AppContract, err e
 	}
 
 	for _, dbContract := range contracts {
-		contract, err := objects.Load[*apphost.AppContract](nil, mod.Objects.Root(), dbContract.ObjectID, mod.Objects.Blueprints())
+		contract, err := objects.Load[*apphost.AppContract](nil, mod.Objects.ReadDefault(), dbContract.ObjectID, mod.Objects.Blueprints())
 		if err != nil {
 			mod.log.Errorv(2, "error loading contract %v: %v", dbContract.ObjectID, err)
 			continue
@@ -157,7 +157,7 @@ func (mod *Module) Index(ctx *astral.Context, objectID *astral.ObjectID) (err er
 	}
 
 	// load the contract from node repo
-	c, err := objects.Load[*apphost.AppContract](ctx, mod.Objects.Root(), objectID, mod.Objects.Blueprints())
+	c, err := objects.Load[*apphost.AppContract](ctx, mod.Objects.ReadDefault(), objectID, mod.Objects.Blueprints())
 	if err != nil {
 		return fmt.Errorf("cannot load app contract: %w", err)
 	}
@@ -217,7 +217,7 @@ func (mod *Module) validateSignatures(c *apphost.AppContract) (err error) {
 func (mod *Module) indexer(ctx *astral.Context) {
 	ctx = ctx.ExcludeZone(astral.ZoneNetwork)
 
-	ch, err := mod.Objects.Root().Scan(ctx, true)
+	ch, err := mod.Objects.GetRepository(objects.RepoLocal).Scan(ctx, true)
 	if err != nil {
 		mod.log.Error("cannot scan objects: %v", err)
 		return

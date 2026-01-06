@@ -7,7 +7,7 @@ import (
 )
 
 type opScanArgs struct {
-	Repo   string       `query:"optional"`
+	Repo   string
 	Follow bool         `query:"optional"`
 	Zone   *astral.Zone `query:"optional"`
 	Out    string       `query:"optional"`

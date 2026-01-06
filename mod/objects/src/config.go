@@ -15,6 +15,8 @@ const (
 	MaxAlloc int64 = 1 << 40 //1TB; gomobile requires explicit int64 type.
 )
 
-type Config struct{}
+type Config struct {
+	DefaultMemSize int64
+}
 
 var defaultConfig = Config{}

@@ -3,10 +3,10 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/objects/mem"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
-
-const defaultMemSize = 64 * astral.MiB
 
 type opNewMemArgs struct {
 	Name string
@@ -19,7 +19,8 @@ func (mod *Module) OpNewMem(ctx *astral.Context, q shell.Query, args opNewMemArg
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	size := defaultMemSize
+	// parse the size
+	size := astral.Size(mem.DefaultSize)
 	if len(args.Size) > 0 {
 		size, err = astral.ParseSize(args.Size)
 		if err != nil {
@@ -27,10 +28,14 @@ func (mod *Module) OpNewMem(ctx *astral.Context, q shell.Query, args opNewMemArg
 		}
 	}
 
-	err = mod.NewMem(args.Name, uint64(size))
+	// create the repository
+	repo := mem.New("Memory ("+args.Name+")", int64(size))
+	err = mod.AddRepository(args.Name, repo)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
+
+	mod.AddGroup(objects.RepoMemory, args.Name)
 
 	return ch.Send(&astral.Ack{})
 }

@@ -1,14 +1,16 @@
 package fs
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/fs"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/resources"
-	"os"
-	"path/filepath"
 )
 
 type Loader struct{}
@@ -24,7 +26,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(fs.ModuleName, &mod.config)
 
-	// set up database
+	// set up the database
 	mod.db = &DB{assets.Database()}
 
 	err = mod.db.AutoMigrate(&dbLocalFile{})
@@ -32,34 +34,35 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		return nil, err
 	}
 
-	for name, path := range mod.config.Repos {
-		mod.repos.Set(name, NewRepository(mod, name, path))
-	}
-
-	for name, path := range mod.config.Watch {
-		repo, err := NewWatchRepository(mod, path, name)
-		if err != nil {
-			mod.log.Error("error adding watch repo %v: %v", name, err)
-			continue
-		}
-		mod.repos.Set(name, repo)
-		mod.log.Info("watching %v as %v", path, name)
-	}
-
-	res, ok := mod.assets.Res().(*resources.FileResources)
-	if ok {
-		// create default repository if needed
-		if _, ok := mod.repos.Get("default"); !ok {
-			dataPath := filepath.Join(res.Root(), "data")
-			if os.MkdirAll(dataPath, 0700) == nil {
-				mod.repos.Set("default", NewRepository(mod, "default", dataPath))
-			}
-		}
-	}
-
 	mod.ops.AddStruct(mod, "Op")
 
 	return mod, nil
+}
+
+func (mod *Module) addDefaultRepo() {
+	// create a repo for the 'data' directory in config dir
+	res, ok := mod.assets.Res().(*resources.FileResources)
+	if !ok {
+		return
+	}
+
+	// check if the default repo is already set
+	if _, ok := mod.repos.Get(DefaultRepoName); ok {
+		return
+	}
+
+	// create the directory for the default repository if needed
+	dataPath := filepath.Join(res.Root(), "data")
+
+	err := os.MkdirAll(dataPath, 0700)
+	if err != nil {
+		return
+	}
+
+	repo := NewRepository(mod, "Default", dataPath)
+
+	mod.Objects.AddRepository(DefaultRepoName, repo)
+	mod.Objects.AddGroup(objects.RepoLocal, DefaultRepoName)
 }
 
 func init() {

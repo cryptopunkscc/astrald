@@ -24,9 +24,17 @@ func (mod *Module) OpLoad(ctx *astral.Context, q shell.Query, args opLoadArgs) (
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
+	repo := mod.ReadDefault()
+	if len(args.Repo) > 0 {
+		repo = mod.GetRepository(args.Repo)
+		if repo == nil {
+			return ch.Send(astral.NewError("repository not found"))
+		}
+	}
+
 	// if an ID was provided, load a single object
 	if args.ID != nil {
-		o, err := mod.Load(ctx, args.Repo, args.ID)
+		o, err := mod.Load(ctx, repo, args.ID)
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
 		}
@@ -37,7 +45,7 @@ func (mod *Module) OpLoad(ctx *astral.Context, q shell.Query, args opLoadArgs) (
 	return ch.Handle(ctx, func(object astral.Object) {
 		switch object := object.(type) {
 		case *astral.ObjectID:
-			o, err := mod.Load(ctx, args.Repo, object)
+			o, err := mod.Load(ctx, repo, object)
 			if err != nil {
 				ch.Send(astral.NewError(err.Error()))
 			} else {

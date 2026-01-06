@@ -25,7 +25,7 @@ type Repository struct {
 
 var _ objects.Repository = &Repository{}
 
-func NewRepository(name string, size int64) *Repository {
+func New(name string, size int64) *Repository {
 	var repo = &Repository{
 		name:     name,
 		size:     size,

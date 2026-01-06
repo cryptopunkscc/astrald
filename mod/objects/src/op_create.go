@@ -23,7 +23,7 @@ func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArg
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	repo := mod.Root()
+	var repo = mod.WriteDefault()
 
 	// check repo
 	if args.Repo != "" {

@@ -20,8 +20,16 @@ func (mod *Module) OpStore(ctx *astral.Context, q shell.Query, args opStoreArgs)
 	)
 	defer ch.Close()
 
+	repo := mod.WriteDefault()
+	if len(args.Repo) > 0 {
+		repo = mod.GetRepository(args.Repo)
+		if repo == nil {
+			return ch.Send(astral.NewError("repository not found"))
+		}
+	}
+
 	return ch.Collect(func(object astral.Object) error {
-		objectID, err := mod.Store(ctx, args.Repo, object)
+		objectID, err := mod.Store(ctx, repo, object)
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
 		}
