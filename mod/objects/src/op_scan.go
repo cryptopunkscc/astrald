@@ -31,8 +31,8 @@ func (mod *Module) OpScan(ctx *astral.Context, q shell.Query, args opScanArgs) (
 	defer ch.Close()
 
 	// look up the repository
-	repo, err := mod.GetRepository(args.Repo)
-	if err != nil || repo == nil {
+	repo := mod.GetRepository(args.Repo)
+	if repo == nil {
 		return ch.Send(astral.NewError("repository not found"))
 	}
 

@@ -26,9 +26,9 @@ func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArg
 	defer ch.Close()
 
 	// look up the repository
-	repo, err := mod.GetRepository(args.Repo)
-	if err != nil || repo == nil {
-		return q.RejectWithCode(8)
+	repo := mod.GetRepository(args.Repo)
+	if repo == nil {
+		return ch.Send(astral.NewError("repository not found"))
 	}
 
 	// if an ID was provided, delete a single object

@@ -1,9 +1,11 @@
 package objects
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opReadArgs struct {
@@ -17,9 +19,9 @@ type opReadArgs struct {
 func (mod *Module) OpRead(ctx *astral.Context, q shell.Query, args opReadArgs) (err error) {
 	ctx = ctx.IncludeZone(args.Zone)
 
-	repo, err := mod.GetRepository(args.Repo.String())
-	if err != nil {
-		return
+	repo := mod.GetRepository(args.Repo.String())
+	if repo == nil {
+		return objects.ErrRepoNotFound
 	}
 
 	r, err := repo.Read(

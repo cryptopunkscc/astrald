@@ -27,8 +27,8 @@ func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArg
 
 	// check repo
 	if args.Repo != "" {
-		repo, err = mod.GetRepository(args.Repo)
-		if err != nil {
+		repo = mod.GetRepository(args.Repo)
+		if repo == nil {
 			return ch.Send(astral.NewError("repository not found"))
 		}
 	}
@@ -39,7 +39,7 @@ func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArg
 		return ch.Send(astral.NewError(err.Error()))
 	}
 	defer w.Discard() // make sure we don't leave garbage behind
-	
+
 	// send an ack
 	err = ch.Send(&astral.Ack{})
 	if err != nil {

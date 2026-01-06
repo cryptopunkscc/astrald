@@ -90,14 +90,14 @@ func (repo RootRepository) Delete(ctx *astral.Context, objectID *astral.ObjectID
 
 func (repo RootRepository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
 	// try memory cache first
-	if mem, err := repo.mod.GetRepository("mem0"); err == nil {
+	if mem := repo.mod.GetRepository("mem0"); mem != nil {
 		if r, err := mem.Read(ctx, objectID, offset, limit); err == nil {
 			return r, nil
 		}
 	}
 
 	// then default storage
-	if mem, err := repo.mod.GetRepository("default"); err == nil {
+	if mem := repo.mod.GetRepository("default"); mem != nil {
 		if r, err := mem.Read(ctx, objectID, offset, limit); err == nil {
 			return r, nil
 		}
@@ -174,14 +174,14 @@ func (repo RootRepository) Free(ctx *astral.Context) (int64, error) {
 }
 
 func (repo RootRepository) Default() (r objects.Repository) {
-	r, err := repo.mod.GetRepository("default")
-	if err == nil {
+	r = repo.mod.GetRepository(DefaultRepoName)
+	if r != nil {
 		return
 	}
 
-	r, err = repo.mod.GetRepository("mem0")
-	if err != nil {
-		panic(err)
+	r = repo.mod.GetRepository("mem0")
+	if r == nil {
+		panic("default repository not found")
 	}
 
 	return

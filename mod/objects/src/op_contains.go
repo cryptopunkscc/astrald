@@ -15,8 +15,8 @@ type opContainsArgs struct {
 func (mod *Module) OpContains(ctx *astral.Context, q shell.Query, args opContainsArgs) (err error) {
 	ctx = ctx.WithIdentity(q.Caller()).WithZone(args.Zone)
 
-	repo, err := mod.GetRepository(args.Repo.String())
-	if err != nil {
+	repo := mod.GetRepository(args.Repo.String())
+	if repo == nil {
 		return q.RejectWithCode(astral.CodeInvalidQuery)
 	}
 

@@ -59,9 +59,9 @@ func (mod *Module) Scope() *shell.Scope {
 
 func (mod *Module) Load(ctx *astral.Context, repoName string, objectID *astral.ObjectID) (astral.Object, error) {
 	// get the target repo
-	repo, err := mod.GetRepository(repoName)
-	if err != nil {
-		return nil, err
+	repo := mod.GetRepository(repoName)
+	if repo == nil {
+		return nil, objects.ErrRepoNotFound
 	}
 
 	// read the object data
@@ -80,9 +80,9 @@ func (mod *Module) Load(ctx *astral.Context, repoName string, objectID *astral.O
 }
 
 func (mod *Module) Store(ctx *astral.Context, repoName string, object astral.Object) (*astral.ObjectID, error) {
-	repo, err := mod.GetRepository(repoName)
-	if err != nil {
-		return nil, err
+	repo := mod.GetRepository(repoName)
+	if repo == nil {
+		return nil, objects.ErrRepoNotFound
 	}
 
 	w, err := repo.Create(ctx, nil)
@@ -99,9 +99,9 @@ func (mod *Module) Store(ctx *astral.Context, repoName string, object astral.Obj
 }
 
 func (mod *Module) Delete(ctx *astral.Context, repoName string, objectsID *astral.ObjectID) error {
-	repo, err := mod.GetRepository(repoName)
-	if err != nil {
-		return err
+	repo := mod.GetRepository(repoName)
+	if repo == nil {
+		return objects.ErrRepoNotFound
 	}
 
 	return repo.Delete(ctx, objectsID)
@@ -163,7 +163,7 @@ func (mod *Module) RemoveRepository(name string) error {
 	if len(name) == 0 {
 		return errors.New("name is empty")
 	}
-	
+
 	_, ok := mod.repos.Delete(name)
 	if !ok {
 		return fmt.Errorf("repository %s not found", name)
@@ -188,14 +188,14 @@ func (mod *Module) AddRepository(id string, repo objects.Repository) error {
 	return nil
 }
 
-func (mod *Module) GetRepository(id string) (repo objects.Repository, err error) {
+func (mod *Module) GetRepository(id string) (repo objects.Repository) {
 	if id == "" {
-		return mod.Root(), nil
+		return mod.Root()
 	}
 
 	repo, ok := mod.repos.Get(id)
 	if !ok {
-		err = errors.New("repository not found")
+		return nil
 	}
 	return
 }

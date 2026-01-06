@@ -14,4 +14,5 @@ var (
 	ErrAccessDenied       = errors.New("access denied")
 	ErrHashMismatch       = errors.New("hash mismatch (data corrupted?)")
 	ErrPushRejected       = errors.New("push rejected")
+	ErrRepoNotFound       = errors.New("repository not found")
 )
