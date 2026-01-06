@@ -2,8 +2,10 @@ package channel
 
 import (
 	"bufio"
+	"bytes"
 	"encoding"
-	"fmt"
+	"encoding/base64"
+	"errors"
 	"io"
 	"strings"
 
@@ -27,52 +29,52 @@ func NewTextReceiver(r io.Reader) *TextReceiver {
 }
 
 func (r TextReceiver) Receive() (obj astral.Object, err error) {
-	var line, objectType, text string
-
 	// read the line
-	line, err = r.br.ReadString('\n')
+	line, err := r.br.ReadString('\n')
 	if err != nil {
 		return nil, err
 	}
 	line, _ = strings.CutSuffix(line, "\n")
 
 	// parse type and text
-	objectType, text, err = splitTypeAndPayload(line)
+	parsed, err := ParseText(line)
 	if err != nil {
 		return nil, err
 	}
 
-	obj = r.bp.Make(objectType)
+	// make the object
+	obj = r.bp.Make(parsed.Type)
 	if obj == nil {
-		return nil, astral.ErrBlueprintNotFound{Type: objectType}
+		return nil, astral.ErrBlueprintNotFound{Type: parsed.Type}
 	}
 
-	u, ok := obj.(encoding.TextUnmarshaler)
-	if !ok {
-		return nil, ErrTextUnsupported
-	}
+	switch parsed.Enc {
+	case " ":
+		u, ok := obj.(encoding.TextUnmarshaler)
+		if !ok {
+			return nil, ErrTextUnsupported
+		}
 
-	err = u.UnmarshalText([]byte(text))
+		err = u.UnmarshalText([]byte(parsed.Text))
+		if err != nil {
+			return nil, err
+		}
+
+	case ":":
+		var payload = make([]byte, base64.StdEncoding.DecodedLen(len(parsed.Text)))
+		_, err = base64.StdEncoding.Decode(payload, []byte(parsed.Text))
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = obj.ReadFrom(bytes.NewReader(payload))
+		if err != nil {
+			return nil, err
+		}
+
+	default:
+		return nil, errors.New("invalid encoding character")
+	}
 
 	return
-}
-
-func splitTypeAndPayload(line string) (string, string, error) {
-	endIdx := strings.Index(line, "]")
-	if endIdx == -1 {
-		return "", "", fmt.Errorf("invalid format: missing closing bracket")
-	}
-
-	if !strings.HasPrefix(line, "#[") {
-		return "", "", fmt.Errorf("invalid format: must start with '#['")
-	}
-
-	typeName := line[2:endIdx]
-	if typeName == "" {
-		return "", "", fmt.Errorf("invalid format: type name is empty")
-	}
-
-	payload := strings.TrimSpace(line[endIdx+1:])
-
-	return typeName, payload, nil
 }

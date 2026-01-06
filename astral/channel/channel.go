@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -67,7 +66,7 @@ func newReceiver(r io.Reader, cfg *Config) Receiver {
 	case JSON:
 		return NewJSONReceiver(r)
 
-	case Text, TextTyped:
+	case Text:
 		return NewTextReceiver(r)
 
 	default:
@@ -83,8 +82,13 @@ func newSender(w io.Writer, cfg *Config) Sender {
 	case JSON:
 		return NewJSONSender(w)
 
-	case Text, TextTyped:
-		return NewTextSender(w, strings.HasSuffix(cfg.fmtOut, "+"))
+	case Text:
+		return NewTextSender(w)
+
+	case Base64:
+		s := NewTextSender(w)
+		s.Base64 = true
+		return s
 
 	case Render:
 		return NewRenderSender(w)
