@@ -16,7 +16,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		log:  log,
 	}
 
-	mod.db = &DB{assets.Database()}
+	mod.db = &DB{db: assets.Database()}
 
 	if err := mod.db.Migrate(); err != nil {
 		return nil, err

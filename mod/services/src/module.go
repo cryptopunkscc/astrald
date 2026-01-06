@@ -1,8 +1,6 @@
 package services
 
 import (
-	"time"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -58,7 +56,6 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 	}
 	defer ch.Close()
 
-	defaultExpiration := astral.Duration(7 * 24 * time.Hour)
 	for {
 		msg, err := ch.Read()
 		if err != nil {
@@ -70,17 +67,27 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 
 		switch m := msg.(type) {
 		case *astral.EOS:
-			// FIXME: in tx
-			err := mod.db.InvalidateServices(target)
-			if err != nil {
-				mod.log.Error("failed to invalidate services from %v: %v", target, err)
+			// Use transaction to atomically replace all services
+			var servicesList []services.Service
+			for _, svcChange := range snapshot {
+				servicesList = append(servicesList, svcChange.Service)
 			}
 
-			for _, svcChange := range snapshot {
-				err := mod.db.InsertService(svcChange.Service, defaultExpiration)
-				if err != nil {
-					mod.log.Error("failed to insert service %v from %v: %v", svcChange.Service.Name, target, err)
+			err := mod.db.InTx(func(tx *DB) error {
+				if err := tx.RemoveIdentityServices(target); err != nil {
+					return err
 				}
+
+				for _, svc := range servicesList {
+					if err := tx.InsertService(&svc); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			})
+			if err != nil {
+				mod.log.Error("failed to replace services from %v: %v", target, err)
 			}
 
 			snapshotCompleted = true
@@ -99,16 +106,19 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 			}
 
 			if snapshotCompleted {
-				err = mod.db.InvalidateService(m.Service.Name, target)
-				if err != nil {
-					mod.log.Error("failed to invalidate service %v from %v: %v", m.Service.Name, target, err)
-				}
-
-				if m.Enabled {
-					err := mod.db.InsertService(m.Service, defaultExpiration)
-					if err != nil {
-						mod.log.Error("failed to insert service %v from %v: %v", m.Service.Name, target, err)
+				err = mod.db.InTx(func(tx *DB) error {
+					if err := tx.RemoveIdentityService(m.Service.Name, target); err != nil {
+						return err
 					}
+
+					if m.Enabled {
+						return tx.InsertService(&m.Service)
+					}
+
+					return nil
+				})
+				if err != nil {
+					mod.log.Error("failed to update service %v from %v: %v", m.Service.Name, target, err)
 				}
 			}
 		default:
