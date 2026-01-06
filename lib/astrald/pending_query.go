@@ -9,6 +9,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
+var OnQueryAccepted func(conn astral.Conn, query *astral.Query)
+
 type PendingQuery struct {
 	conn  net.Conn
 	query *astral.Query
@@ -19,13 +21,11 @@ func (q *PendingQuery) Accept() (conn *libapphost.Conn) {
 	// send ack
 	_ = channel.NewBinarySender(q.conn).Send(&astral.Ack{})
 
-	conn = libapphost.NewConn(
-		q.conn,
-		q.query.Caller,
-		q.query.Target,
-		q.query.Query,
-		q.query.Nonce,
-	)
+	conn = libapphost.NewConn(q.conn, q.query, false)
+
+	if OnQueryAccepted != nil {
+		OnQueryAccepted(conn, q.query)
+	}
 
 	return conn
 }

@@ -6,36 +6,39 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-var _ net.Conn = &Conn{}
-
 type Conn struct {
 	net.Conn
-	remoteID *astral.Identity
-	localID  *astral.Identity
-	query    string
-	nonce    astral.Nonce
+	query    *astral.Query
+	outbound bool
 }
 
-func NewConn(conn net.Conn, remoteID *astral.Identity, localID *astral.Identity, query string, nonce astral.Nonce) *Conn {
-	return &Conn{Conn: conn, remoteID: remoteID, localID: localID, query: query, nonce: nonce}
+var _ net.Conn = &Conn{}
+var _ astral.Conn = &Conn{}
+
+func NewConn(conn net.Conn, query *astral.Query, outbound bool) *Conn {
+	return &Conn{Conn: conn, query: query, outbound: outbound}
 }
 
-func (conn Conn) RemoteIdentity() *astral.Identity {
-	return conn.remoteID
-}
-
-func (conn Conn) LocalIdentity() *astral.Identity {
-	return conn.localID
-}
-
-func (conn Conn) RemoteAddr() net.Addr {
-	return Addr{address: conn.remoteID.String()}
-}
-
-func (conn Conn) Query() string {
+func (conn Conn) Query() *astral.Query {
 	return conn.query
 }
 
-func (conn Conn) ID() astral.Nonce {
-	return conn.nonce
+func (conn Conn) RemoteIdentity() *astral.Identity {
+	if conn.outbound {
+		return conn.query.Target
+	} else {
+		return conn.query.Caller
+	}
+}
+
+func (conn Conn) LocalIdentity() *astral.Identity {
+	if conn.outbound {
+		return conn.query.Caller
+	} else {
+		return conn.query.Target
+	}
+}
+
+func (conn Conn) RemoteAddr() net.Addr {
+	return Addr{address: conn.RemoteIdentity().String()}
 }
