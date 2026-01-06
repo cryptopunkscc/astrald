@@ -135,10 +135,10 @@ func (mod *Module) ActiveLocalAppContracts() (list []*apphost.AppContract, err e
 		return
 	}
 
-	for _, contract := range contracts {
-		contract, err := objects.Load[*apphost.AppContract](nil, mod.Objects.Root(), contract.ObjectID, mod.Objects.Blueprints())
+	for _, dbContract := range contracts {
+		contract, err := objects.Load[*apphost.AppContract](nil, mod.Objects.Root(), dbContract.ObjectID, mod.Objects.Blueprints())
 		if err != nil {
-			mod.log.Errorv(2, "error loading contract %v: %v", contract, err)
+			mod.log.Errorv(2, "error loading contract %v: %v", dbContract.ObjectID, err)
 			continue
 		}
 		list = append(list, contract)
