@@ -4,9 +4,6 @@ const (
 	CodeSuccess = iota
 	CodeRejected
 	CodeInvalidQuery
-	CodeUnauthorized
-	CodeQuotaExceeded
-	CodeRateLimited
-	CodeBanned
+	CodeCanceled
 	CodeInternalError
 )

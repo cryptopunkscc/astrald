@@ -40,6 +40,7 @@ type Module struct {
 	listeners []net.Listener
 	conns     <-chan net.Conn
 	handlers  sig.Set[*QueryHandler]
+	enRoute   sig.Map[astral.Nonce, *queryEnRoute]
 	indexMu   sync.Mutex
 }
 

@@ -99,10 +99,15 @@ func (e *NetworkQuery) Caller() *astral.Identity {
 	return e.Query.Caller
 }
 
-func (e *NetworkQuery) Resolve() (io.WriteCloser, error) {
+func (e *NetworkQuery) Resolve(ctx *astral.Context) (io.WriteCloser, error) {
 	select {
 	case r := <-e.r:
 		return r.WriteCloser, r.Error
+
+	case <-ctx.Done():
+		e.Reject()
+		return query.RejectWithCode(astral.CodeCanceled)
+
 	case <-time.After(5 * time.Second):
 		e.Reject()
 		return query.Reject()

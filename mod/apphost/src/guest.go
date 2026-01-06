@@ -1,6 +1,7 @@
 package apphost
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -20,6 +21,11 @@ type Guest struct {
 	mod     *Module
 	guestID *astral.Identity
 	conn    io.ReadWriteCloser
+}
+
+type queryEnRoute struct {
+	query  *astral.Query
+	cancel context.CancelCauseFunc
 }
 
 func NewGuest(mod *Module, conn net.Conn) *Guest {
@@ -181,8 +187,17 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 		ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	}
 
+	// prepare query context
+	qCtx, cancelQuery := ctx.WithCancelCause()
+	defer cancelQuery(nil)
+
+	// keep track of en route queries
+	enRoute := &queryEnRoute{query: q, cancel: cancelQuery}
+
 	// route the query
-	conn, err := query.Route(ctx, guest.mod.node, q)
+	guest.mod.enRoute.Set(q.Nonce, enRoute)
+	conn, err := query.Route(qCtx, guest.mod.node, q)
+	guest.mod.enRoute.Delete(q.Nonce)
 
 	// check error
 	var rejected *astral.ErrRejected
@@ -190,10 +205,19 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 	case err == nil:
 	case errors.As(err, &rejected):
 		return guest.Send(&apphost.QueryRejectedMsg{Code: astral.Uint8(rejected.Code)})
+
 	case errors.Is(err, &astral.ErrRouteNotFound{}):
-		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeRouteNotFound})
+		return guest.sendError(apphost.ErrCodeRouteNotFound)
+
+	case errors.Is(err, context.Canceled):
+		return guest.sendError(apphost.ErrCodeCanceled)
+
+	case errors.Is(err, context.DeadlineExceeded):
+		return guest.sendError(apphost.ErrCodeTimeout)
+
 	default:
-		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeInternalError})
+		guest.mod.log.Logv(2, "unexpected error routing query %v: %v", q.Nonce, err)
+		return guest.sendError(apphost.ErrCodeInternalError)
 	}
 
 	// write success response
@@ -206,6 +230,10 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 	_, _, err = streams.Join(guest.conn, conn)
 
 	return
+}
+
+func (guest *Guest) sendError(code string) error {
+	return guest.Send(&apphost.ErrorMsg{Code: astral.String8(code)})
 }
 
 func (guest *Guest) isAuthenticated() bool {

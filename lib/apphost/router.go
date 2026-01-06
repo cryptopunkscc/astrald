@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
 type Router struct {
@@ -30,6 +31,30 @@ func (router *Router) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.C
 	if err != nil {
 		return nil, err
 	}
+
+	// cancel the query with context
+	var done = make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			// cancel the query on the host
+			host, err := router.connect()
+			if err != nil {
+				return
+			}
+			defer host.Close()
+
+			conn, err := host.RouteQuery(query.New(nil, nil, "apphost.cancel", query.Args{"id": q.Nonce}))
+			if conn != nil {
+				conn.Close()
+			}
+
+			// NOTE: we're ignoring the result of the cancel op call
+
+		case <-done:
+		}
+	}()
 
 	return host.RouteQuery(q)
 }

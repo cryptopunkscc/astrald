@@ -1,0 +1,37 @@
+package apphost
+
+/*
+	op cancel cancels an en route query
+*/
+
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/mod/shell"
+)
+
+type opCancelArgs struct {
+	ID    astral.Nonce
+	Cause *string `query:"optional"`
+	Out   string  `query:"optional"`
+}
+
+func (mod *Module) OpCancel(ctx *astral.Context, q shell.Query, args opCancelArgs) (err error) {
+	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
+	defer ch.Close()
+
+	enRoute, found := mod.enRoute.Get(args.ID)
+	if !found {
+		return ch.Send(astral.NewError("query not found"))
+	}
+
+	if args.Cause == nil || len(*args.Cause) == 0 {
+		enRoute.cancel(nil)
+	} else {
+		enRoute.cancel(astral.NewError(*args.Cause))
+	}
+
+	mod.log.Logv(2, "cancelled query %v", args.ID)
+
+	return ch.Send(&astral.Ack{})
+}

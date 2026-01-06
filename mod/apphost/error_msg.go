@@ -9,10 +9,11 @@ import (
 const (
 	ErrCodeAuthFailed    = "auth_failed"
 	ErrCodeDenied        = "denied"
-	ErrCodeRejected      = "rejected"
 	ErrCodeRouteNotFound = "route_not_found"
 	ErrCodeInternalError = "internal_error"
 	ErrCodeProtocolError = "protocol_error"
+	ErrCodeTimeout       = "timeout"
+	ErrCodeCanceled      = "canceled"
 )
 
 // ErrorMsg represents an error message.

@@ -136,7 +136,7 @@ func (scope *Scope) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteC
 		_ = query.Reject()
 	}()
 
-	return query.Resolve()
+	return query.Resolve(ctx)
 }
 
 func ParseArgs(args []string) (params map[string]string) {
