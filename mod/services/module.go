@@ -14,5 +14,9 @@ type Module interface {
 }
 
 type ServiceDiscoverer interface {
-	DiscoverService(ctx *astral.Context, collector *astral.Identity) (snapshot *Service, ch <-chan ServiceChange, err error)
+	DiscoverService(
+		ctx *astral.Context,
+		caller *astral.Identity,
+		opts DiscoverOptions,
+	) (<-chan ServiceChange, error)
 }
