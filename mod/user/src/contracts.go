@@ -295,12 +295,12 @@ func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astr
 		},
 	}
 
-	err = inviteCh.Write(signedContract.NodeContract)
+	err = inviteCh.Send(signedContract.NodeContract)
 	if err != nil {
 		return signedContract, err
 	}
 
-	obj, err := inviteCh.Read()
+	obj, err := inviteCh.Receive()
 	if err != nil {
 		return signedContract, err
 	}
@@ -321,7 +321,7 @@ func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astr
 		return signedContract, fmt.Errorf("failed to sign contract: %w", err)
 	}
 
-	err = inviteCh.Write(&signedContract.UserSig)
+	err = inviteCh.Send(&signedContract.UserSig)
 	if err != nil {
 		return signedContract, err
 	}

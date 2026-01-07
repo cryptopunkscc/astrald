@@ -2,6 +2,7 @@ package shell
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -11,16 +12,16 @@ type opArgsArgs struct {
 }
 
 func (mod *Module) OpArgs(ctx *astral.Context, q shell.Query, args opArgsArgs) (err error) {
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	op := mod.root.Find(args.Op)
 	if op == nil {
-		return ch.Write(astral.NewError("op not found"))
+		return ch.Send(astral.NewError("op not found"))
 	}
 
 	for _, name := range op.ArgNames() {
-		err = ch.Write((*astral.String8)(&name))
+		err = ch.Send((*astral.String8)(&name))
 		if err != nil {
 			return
 		}

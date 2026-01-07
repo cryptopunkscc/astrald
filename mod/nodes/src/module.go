@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -137,7 +138,7 @@ func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
 func (mod *Module) createSessionMigrator(
 	ctx *astral.Context,
 	role migrateRole,
-	ch *astral.Channel,
+	ch *channel.Channel,
 	peer *astral.Identity,
 	sessionId astral.Nonce,
 	streamId astral.Nonce,

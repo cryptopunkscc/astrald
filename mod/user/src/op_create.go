@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -29,31 +30,31 @@ func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArg
 		return q.Reject()
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	// create a private key for the user
 	userID, keyID, err := mod.Keys.CreateKey(args.Alias.String())
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	// create an access token
 	token, err := mod.Apphost.CreateAccessToken(userID, astral.Duration(100*365*24*time.Hour))
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	// sign a node contract with the user
 	contract, err := mod.SignLocalContract(userID)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	// set the contract as active
 	err = mod.SetActiveContract(contract)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	// return a summary
@@ -67,5 +68,5 @@ func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArg
 		Contract:    contract,
 	}
 
-	return ch.Write(&userInfo)
+	return ch.Send(&userInfo)
 }

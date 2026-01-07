@@ -2,6 +2,7 @@ package nat
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -12,7 +13,7 @@ type opListPairsArgs struct {
 
 func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,
 	args opListPairsArgs) (err error) {
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	pairs := mod.pool.GetAll()
@@ -20,7 +21,7 @@ func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,
 		if args.With != "" {
 			target, err := mod.Dir.ResolveIdentity(string(args.With))
 			if err != nil {
-				return ch.Write(astral.NewError(err.Error()))
+				return ch.Send(astral.NewError(err.Error()))
 			}
 
 			if !pair.MatchesPeer(target) {
@@ -28,11 +29,11 @@ func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,
 			}
 		}
 
-		err = ch.Write(&pair.TraversedPortPair)
+		err = ch.Send(&pair.TraversedPortPair)
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 	}
 
-	return ch.Write(&astral.EOS{})
+	return ch.Send(&astral.EOS{})
 }

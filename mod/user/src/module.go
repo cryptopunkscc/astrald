@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -94,12 +95,10 @@ func (mod *Module) SyncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 	}
 	defer conn.Close()
 
-	ch := astral.NewChannel(conn)
-	ch.Blueprints = astral.NewBlueprints(ch.Blueprints)
-	ch.Blueprints.Add(&OpUpdate{})
+	ch := channel.New(conn)
 
 	for {
-		msg, err := ch.Read()
+		msg, err := ch.Receive()
 		if err != nil {
 			mod.log.Error("SyncAssets: error reading from channel: %v", err)
 			return err
@@ -139,10 +138,9 @@ func (mod *Module) SyncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 		return err
 	}
 	defer conn.Close()
-	ch := astral.NewChannel(conn)
-	ch.Blueprints.Add(&user.Info{})
+	ch := channel.New(conn)
 
-	obj, err := ch.Read()
+	obj, err := ch.Receive()
 	if err != nil {
 		return err
 	}

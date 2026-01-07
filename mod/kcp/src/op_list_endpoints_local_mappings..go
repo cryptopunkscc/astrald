@@ -2,6 +2,7 @@ package kcp
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
@@ -12,19 +13,19 @@ type opListEndpointsLocalMappingsArgs struct {
 }
 
 func (mod *Module) OpListEndpointsLocalMappings(ctx *astral.Context, q shell.Query, args opListEndpointsLocalMappingsArgs) (err error) {
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	mappings := mod.GetEndpointsMappings()
 	for k, v := range mappings {
-		err = ch.Write(&kcp.EndpointLocalMapping{
+		err = ch.Send(&kcp.EndpointLocalMapping{
 			Address: k,
 			Port:    v,
 		})
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 	}
 
-	return ch.Write(&astral.EOS{})
+	return ch.Send(&astral.EOS{})
 }

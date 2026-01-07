@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding"
 	"encoding/base64"
+
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -54,13 +56,13 @@ func (mod *Module) OpSet(ctx *astral.Context, q shell.Query, args opSetArgs) (er
 		return q.Reject()
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	err = mod.db.Set(ctx.Identity(), args.Key, args.Type, payload)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(&astral.Ack{})
+	return ch.Send(&astral.Ack{})
 }

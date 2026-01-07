@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -35,23 +36,23 @@ func (mod *Module) OpClaim(ctx *astral.Context, q shell.Query, args opClaimArgs)
 		return q.RejectWithCode(3)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	target, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID, startsAt)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	err = mod.SaveSignedNodeContract(signedContract)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(signedContract)
+	return ch.Send(signedContract)
 }

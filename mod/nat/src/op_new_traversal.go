@@ -3,6 +3,7 @@ package nat
 // NOTE: might  move to mod/nat
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -20,7 +21,7 @@ func (mod *Module) OpNewTraversal(ctx *astral.Context, q shell.Query,
 		return q.RejectWithCode(4)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	queryArgs := &opNewTraversal{
@@ -33,14 +34,14 @@ func (mod *Module) OpNewTraversal(ctx *astral.Context, q shell.Query,
 
 	routeCh, err := query.RouteChan(ctx, mod.node, routedQuery)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 	defer routeCh.Close()
 
-	obj, err := routeCh.Read()
+	obj, err := routeCh.Receive()
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(obj)
+	return ch.Send(obj)
 }

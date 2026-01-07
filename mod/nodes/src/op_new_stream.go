@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -64,7 +65,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 	}
 
 	// We need to accept query in case that creating stream takes longer than query timeout
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	// Wait for action or context cancllation
@@ -77,7 +78,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q shell.Query, args opNewStr
 	info, err := createStreamAction.Result()
 	switch {
 	case err == nil:
-		return ch.Write(info)
+		return ch.Send(info)
 	case errors.Is(err, nodes.ErrInvalidEndpointFormat):
 		return q.RejectWithCode(2)
 	case errors.Is(err, nodes.ErrEndpointParse):

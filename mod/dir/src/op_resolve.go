@@ -2,6 +2,7 @@ package dir
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -16,8 +17,8 @@ func (mod *Module) OpResolve(ctx *astral.Context, q shell.Query, args opResolveA
 		return q.RejectWithCode(8)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	return ch.Write(id)
+	return ch.Send(id)
 }

@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
@@ -31,10 +32,10 @@ func (mod *Consumer) Relay(ctx *astral.Context, nonce astral.Nonce, caller *astr
 		return
 	}
 
-	ch := astral.NewChannel(conn)
+	ch := channel.New(conn)
 	defer ch.Close()
 
-	response, err := ch.Read()
+	response, err := ch.Receive()
 	if err != nil {
 		return err
 	}

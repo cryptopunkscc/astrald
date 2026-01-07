@@ -2,6 +2,7 @@ package media
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -14,13 +15,13 @@ type opIndexArgs struct {
 func (mod *Module) OpIndex(ctx *astral.Context, q shell.Query, args opIndexArgs) (err error) {
 	ctx = ctx.WithIdentity(q.Caller())
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	err = mod.Index(ctx, args.ID)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(&astral.Ack{})
+	return ch.Send(&astral.Ack{})
 }

@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -21,24 +22,24 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q shell.Query, args opRe
 		return q.RejectWithCode(2)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	target := q.Caller()
 	joinAllowed := mod.GetSwarmJoinRequestPolicy()(target)
 	if !joinAllowed {
-		return ch.Write(user.ErrRequestDeclined)
+		return ch.Send(user.ErrRequestDeclined)
 	}
 
 	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID, astral.Now())
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	err = mod.SaveSignedNodeContract(signedContract)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(signedContract)
+	return ch.Send(signedContract)
 }

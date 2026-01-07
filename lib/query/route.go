@@ -2,6 +2,8 @@ package query
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+
 	"io"
 )
 
@@ -24,13 +26,13 @@ func Route(ctx *astral.Context, r astral.Router, q *astral.Query) (astral.Conn, 
 	return newConn(q.Caller, q.Target, target, pipeReader, true), err
 }
 
-func RouteChan(ctx *astral.Context, r astral.Router, q *astral.Query) (*astral.Channel, error) {
+func RouteChan(ctx *astral.Context, r astral.Router, q *astral.Query) (*channel.Channel, error) {
 	conn, err := Route(ctx, r, q)
 	if err != nil {
 		return nil, err
 	}
 
-	return astral.NewChannel(conn), nil
+	return channel.New(conn), nil
 }
 
 // Accept accepts the query and runs the handler in a new goroutine.

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
@@ -34,14 +35,14 @@ const (
 // PairTaker synchronizes port pairs
 type PairTaker struct {
 	role        pairTakerRole
-	ch          *astral.Channel
+	ch          *channel.Channel
 	pair        *Pair
 	err         atomic.Value // error
 	state       atomic.Int32 // current state
 	lockStarted bool         // tracks if BeginLock was called for rollback
 }
 
-func NewPairTaker(role pairTakerRole, ch *astral.Channel, pair *Pair) *PairTaker {
+func NewPairTaker(role pairTakerRole, ch *channel.Channel, pair *Pair) *PairTaker {
 	f := &PairTaker{
 		role: role,
 		ch:   ch,
@@ -142,7 +143,7 @@ func (f *PairTaker) readSignal(ctx context.Context, timeout time.Duration) (*nat
 		resCh := make(chan result, 1)
 
 		go func() {
-			obj, err := f.ch.Read()
+			obj, err := f.ch.Receive()
 			if err != nil {
 				resCh <- result{nil, err}
 				return
@@ -201,7 +202,7 @@ func (f *PairTaker) exchange(
 func (f *PairTaker) writeSignal(ctx context.Context, s astral.String8, timeout time.Duration) error {
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- f.ch.Write(&nat.PairTakeSignal{Signal: s, Pair: f.pair.Nonce})
+		errCh <- f.ch.Send(&nat.PairTakeSignal{Signal: s, Pair: f.pair.Nonce})
 	}()
 
 	select {

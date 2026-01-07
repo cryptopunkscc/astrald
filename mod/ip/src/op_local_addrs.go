@@ -2,6 +2,7 @@ package ip
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -11,7 +12,7 @@ type opLocalAddrsArgs struct {
 }
 
 func (mod *Module) OpLocalAddrs(ctx *astral.Context, q shell.Query, args opLocalAddrsArgs) (err error) {
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	addrs, err := mod.localAddresses(false)
@@ -20,11 +21,11 @@ func (mod *Module) OpLocalAddrs(ctx *astral.Context, q shell.Query, args opLocal
 	}
 
 	for _, addr := range addrs {
-		err = ch.Write(&addr)
+		err = ch.Send(&addr)
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 	}
 
-	return ch.Write(&astral.EOS{})
+	return ch.Send(&astral.EOS{})
 }

@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -22,15 +23,15 @@ func (mod *Module) OpResolveEndpoints(ctx *astral.Context, q shell.Query, args o
 		return q.RejectWithCode(astral.CodeInternalError)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	for endpoint := range endpoints {
-		err = ch.Write(endpoint)
+		err = ch.Send(endpoint)
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 	}
 
-	return ch.Write(&astral.EOS{})
+	return ch.Send(&astral.EOS{})
 }

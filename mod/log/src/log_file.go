@@ -7,14 +7,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/streams"
 )
 
 type LogFile struct {
 	mu   sync.Mutex
-	ch   *astral.Channel
+	ch   *channel.Channel
 	path string
 }
 
@@ -35,7 +35,7 @@ func CreateLogFile() (*LogFile, error) {
 		return nil, err
 	}
 
-	f.ch = astral.NewChannel(streams.ReadWriteCloseSplit{
+	f.ch = channel.New(streams.ReadWriteCloseSplit{
 		Reader: nil,
 		Writer: logFile,
 		Closer: nil,
@@ -48,7 +48,7 @@ func (l LogFile) LogEntry(entry *log.Entry) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	err := l.ch.Write(entry)
+	err := l.ch.Send(entry)
 	if err != nil {
 		fmt.Println("log write error:", err)
 	}

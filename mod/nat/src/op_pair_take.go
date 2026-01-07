@@ -2,6 +2,7 @@ package nat
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -16,18 +17,18 @@ type opPairTakeArgs struct {
 }
 
 func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTakeArgs) (err error) {
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	pair, err := mod.pool.Take(args.Pair)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	if args.Initiate {
 		remoteIdentity, ok := pair.RemoteIdentity(ctx.Identity())
 		if !ok {
-			return ch.Write(astral.NewError("remote endpoint not found"))
+			return ch.Send(astral.NewError("remote endpoint not found"))
 		}
 		mod.log.Log("taking out pair %v out of pool, starting sync with %v",
 			args.Pair, remoteIdentity)
@@ -42,7 +43,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 				}),
 		)
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 
 		defer peerCh.Close()
@@ -50,10 +51,10 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		fsm := NewPairTaker(roleTakePairInitiator, peerCh, pair)
 		err = fsm.Run(ctx)
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 
-		return ch.Write(&pair.TraversedPortPair)
+		return ch.Send(&pair.TraversedPortPair)
 	}
 
 	mod.log.Log("taking out pair %v out of pool, starting sync with %v",
@@ -61,8 +62,8 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 	fsm := NewPairTaker(roleTakePairResponder, ch, pair)
 	err = fsm.Run(ctx)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(&pair.TraversedPortPair)
+	return ch.Send(&pair.TraversedPortPair)
 }

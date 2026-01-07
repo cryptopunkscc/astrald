@@ -1,9 +1,11 @@
 package objects
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"slices"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opTypesArgs struct {
@@ -11,14 +13,14 @@ type opTypesArgs struct {
 }
 
 func (mod *Module) OpTypes(ctx *astral.Context, q shell.Query, args opTypesArgs) (err error) {
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	types := mod.Blueprints().Types()
 	slices.Sort(types)
 
 	for _, name := range types {
-		err = ch.Write((*astral.String)(&name))
+		err = ch.Send((*astral.String)(&name))
 		if err != nil {
 			return
 		}

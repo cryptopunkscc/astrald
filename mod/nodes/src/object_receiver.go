@@ -79,7 +79,7 @@ func (mod *Module) updateNodeEndpoints(ctx *astral.Context, identity *astral.Ide
 	var endpoints []exonet.Endpoint
 queryReadLoop:
 	for {
-		obj, err := ch.Read()
+		obj, err := ch.Receive()
 		if err != nil {
 			return fmt.Errorf("error reading resolved endpoint: %v", err)
 		}

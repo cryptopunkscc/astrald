@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -17,12 +18,12 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 		return q.RejectWithCode(2)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	contracts, err := mod.ActiveContractsOf(ac.UserID)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	contractsByNodeID := make(map[string]*user.SignedNodeContract)
@@ -44,10 +45,10 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 
 		contractID, err := astral.ResolveObjectID(contract)
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 
-		err = ch.Write(&user.SwarmMember{
+		err = ch.Send(&user.SwarmMember{
 			SignedContractID: contractID,
 			Identity:         node,
 			Alias:            astral.String8(alias),
@@ -55,9 +56,9 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q shell.Query, args opSwar
 			Contract:         contract.NodeContract,
 		})
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 	}
 
-	return ch.Write(&astral.EOS{})
+	return ch.Send(&astral.EOS{})
 }

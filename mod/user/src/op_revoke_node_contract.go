@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -23,7 +24,7 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 		return q.RejectWithCode(2)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	if args.RevokeAs == "" {
@@ -32,15 +33,15 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 
 	nodeContract, err := mod.GetNodeContract(args.ContractId)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	if !nodeContract.UserID.IsEqual(ac.UserID) {
-		return ch.Write(user.ErrNodeContractRevocationInvalid)
+		return ch.Send(user.ErrNodeContractRevocationInvalid)
 	}
 
 	if nodeContract.IsExpired() {
-		return ch.Write(user.ErrNodeContractAlreadyExpired)
+		return ch.Send(user.ErrNodeContractAlreadyExpired)
 	}
 
 	var revocation = &user.NodeContractRevocation{
@@ -58,7 +59,7 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 	case "user":
 		userSig, err := mod.Keys.SignASN1(nodeContract.UserID, signed.Hash())
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 
 		revoker = &user.Revoker{
@@ -68,7 +69,7 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 	case "node":
 		nodeSig, err := mod.Keys.SignASN1(mod.ctx.Identity(), signed.Hash())
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 
 		revoker = &user.Revoker{
@@ -78,17 +79,17 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args
 
 		err = signed.Attachments.Append(mod.ActiveContract())
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 	default:
-		return ch.Write(astral.NewError(fmt.Errorf(`invalid revoke-as "%s"`, args.RevokeAs).Error()))
+		return ch.Send(astral.NewError(fmt.Errorf(`invalid revoke-as "%s"`, args.RevokeAs).Error()))
 	}
 
 	signed.Revoker = revoker
 
 	err = mod.SaveSignedRevocationContract(signed, nodeContract)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	return

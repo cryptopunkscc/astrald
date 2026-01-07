@@ -2,6 +2,7 @@ package kcp
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
@@ -18,13 +19,13 @@ func (mod *Module) OpRemoveRemoteEndpointLocalPort(ctx *astral.Context, q shell.
 		return q.RejectWithCode(4)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	err = mod.RemoveEndpointLocalSocket(*endpoint)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(&astral.Ack{})
+	return ch.Send(&astral.Ack{})
 }

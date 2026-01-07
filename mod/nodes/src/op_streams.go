@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
@@ -14,7 +15,7 @@ type opStreamsArgs struct {
 
 // OpStreams lists all streams.
 func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsArgs) (err error) {
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	streams := mod.peers.streams.Clone()
@@ -24,7 +25,7 @@ func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsA
 	})
 
 	for _, s := range streams {
-		err = ch.Write(&nodes.StreamInfo{
+		err = ch.Send(&nodes.StreamInfo{
 			ID:             s.id,
 			LocalIdentity:  s.LocalIdentity(),
 			RemoteIdentity: s.RemoteIdentity(),
@@ -34,9 +35,9 @@ func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsA
 			Network:        astral.String8(s.Network()),
 		})
 		if err != nil {
-			return ch.Write(astral.NewError(err.Error()))
+			return ch.Send(astral.NewError(err.Error()))
 		}
 	}
 
-	return ch.Write(&astral.EOS{})
+	return ch.Send(&astral.EOS{})
 }

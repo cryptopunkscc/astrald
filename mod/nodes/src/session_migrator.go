@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
@@ -38,7 +39,7 @@ type sessionMigrator struct {
 	mod  *Module
 	sess *session
 	role migrateRole
-	ch   *astral.Channel
+	ch   *channel.Channel
 
 	local *astral.Identity
 	peer  *astral.Identity
@@ -224,7 +225,7 @@ func (m *sessionMigrator) readSignal(ctx context.Context,
 
 	// TODO: create ReadContext method on Channel to avoid goroutine leak risk
 	go func() {
-		obj, err := m.ch.Read()
+		obj, err := m.ch.Receive()
 		if err != nil {
 			resCh <- result{nil, err}
 			return
@@ -252,7 +253,7 @@ func (m *sessionMigrator) writeSignal(ctx context.Context,
 	obj *nodes.SessionMigrateSignal, timeout time.Duration) error {
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- m.ch.Write(obj)
+		errCh <- m.ch.Send(obj)
 	}()
 
 	select {

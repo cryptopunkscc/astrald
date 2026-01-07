@@ -1,9 +1,11 @@
 package user
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opSyncAssetsArgs struct {
@@ -20,7 +22,7 @@ func (mod *Module) OpSyncAssets(ctx *astral.Context, q shell.Query, args opSyncA
 		return q.RejectWithCode(2)
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	var height astral.Uint64
@@ -31,7 +33,7 @@ func (mod *Module) OpSyncAssets(ctx *astral.Context, q shell.Query, args opSyncA
 		for _, row := range rows {
 			height = max(height, astral.Uint64(row.Height))
 
-			err = ch.Write(&OpUpdate{
+			err = ch.Send(&OpUpdate{
 				Nonce:    row.Nonce,
 				ObjectID: row.ObjectID,
 				Removed:  astral.Bool(row.Removed),
@@ -40,7 +42,7 @@ func (mod *Module) OpSyncAssets(ctx *astral.Context, q shell.Query, args opSyncA
 		height++
 	}
 
-	return ch.Write(&height)
+	return ch.Send(&height)
 }
 
 type OpUpdate struct {
@@ -59,4 +61,8 @@ func (s OpUpdate) WriteTo(w io.Writer) (n int64, err error) {
 
 func (s *OpUpdate) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Struct(s).ReadFrom(r)
+}
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&OpUpdate{})
 }

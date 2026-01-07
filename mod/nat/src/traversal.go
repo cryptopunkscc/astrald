@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
@@ -18,7 +19,7 @@ type traversal struct {
 	localIdentity *astral.Identity // localIdentity helps us select right endpoints
 	localPublicIP ip.IP
 	role          TraversalRole
-	ch            *astral.Channel
+	ch            *channel.Channel
 	peer          *astral.Identity
 	//
 	punch nat.Puncher
@@ -27,7 +28,7 @@ type traversal struct {
 
 func (mod *Module) Traverse(
 	ctx context.Context,
-	ch *astral.Channel,
+	ch *channel.Channel,
 	role TraversalRole,
 	target *astral.Identity,
 	publicIP ip.IP,
@@ -81,7 +82,7 @@ func (t *traversal) initiatorFlow(ctx context.Context) error {
 		return err
 	}
 
-	if err := t.ch.Write(&nat.PunchSignal{
+	if err := t.ch.Send(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeOffer,
 		Session: t.punch.Session(),
 		IP:      t.localPublicIP,
@@ -95,7 +96,7 @@ func (t *traversal) initiatorFlow(ctx context.Context) error {
 		return err
 	}
 
-	if err := t.ch.Write(&nat.PunchSignal{
+	if err := t.ch.Send(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeReady,
 		Session: t.punch.Session(),
 	}); err != nil {
@@ -113,7 +114,7 @@ func (t *traversal) initiatorFlow(ctx context.Context) error {
 	t.pair = t.makePair(res.RemoteIP, res.RemotePort)
 
 	t.pair.Nonce = astral.NewNonce()
-	if err := t.ch.Write(&nat.PunchSignal{
+	if err := t.ch.Send(&nat.PunchSignal{
 		Signal:    nat.PunchSignalTypeResult,
 		Session:   t.punch.Session(),
 		IP:        t.pair.PeerB.Endpoint.IP,
@@ -142,7 +143,7 @@ func (t *traversal) participantFlow(ctx context.Context) error {
 		return err
 	}
 
-	if err := t.ch.Write(&nat.PunchSignal{
+	if err := t.ch.Send(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeAnswer,
 		Session: t.punch.Session(),
 		IP:      t.localPublicIP,
@@ -155,7 +156,7 @@ func (t *traversal) participantFlow(ctx context.Context) error {
 		return err
 	}
 
-	if err := t.ch.Write(&nat.PunchSignal{
+	if err := t.ch.Send(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeGo,
 		Session: t.punch.Session(),
 	}); err != nil {
@@ -176,7 +177,7 @@ func (t *traversal) participantFlow(ctx context.Context) error {
 	t.pair.Nonce = resSig.PairNonce
 	t.pair.PeerA.Endpoint = nat.UDPEndpoint{IP: resSig.IP, Port: resSig.Port}
 
-	return t.ch.Write(&nat.PunchSignal{
+	return t.ch.Send(&nat.PunchSignal{
 		Signal:    nat.PunchSignalTypeResult,
 		Session:   t.punch.Session(),
 		IP:        t.pair.PeerB.Endpoint.IP,
@@ -209,7 +210,7 @@ func (t *traversal) makePair(ip ip.IP, port astral.Uint16) nat.TraversedPortPair
 }
 
 func (t *traversal) receiveSignal(expected astral.String8) (*nat.PunchSignal, error) {
-	obj, err := t.ch.Read()
+	obj, err := t.ch.Receive()
 	if err != nil {
 		return nil, err
 	}

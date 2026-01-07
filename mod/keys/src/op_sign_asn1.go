@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -25,8 +26,8 @@ func (mod *Module) OpSignASN1(_ *astral.Context, q shell.Query, args opSignASN1A
 		return q.Reject()
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	return ch.Write((*astral.Bytes8)(&sig))
+	return ch.Send((*astral.Bytes8)(&sig))
 }
