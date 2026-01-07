@@ -8,8 +8,9 @@ import (
 
 // Info contains information about user's node configuration
 type Info struct {
-	NodeAlias astral.String8
-	UserAlias astral.String8
+	NodeAlias  astral.String8
+	UserAlias  astral.String8
+	ContractID *astral.ObjectID
 
 	Contract *SignedNodeContract
 }

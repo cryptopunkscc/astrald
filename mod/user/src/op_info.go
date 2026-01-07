@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -20,12 +21,15 @@ func (mod *Module) OpInfo(ctx *astral.Context, q shell.Query, args opInfoArgs) (
 		return q.Reject()
 	}
 
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	return ch.Write(&user.Info{
-		NodeAlias: astral.String8(mod.Dir.DisplayName(ac.NodeID)),
-		UserAlias: astral.String8(mod.Dir.DisplayName(ac.UserID)),
-		Contract:  ac,
+	contractID, _ := astral.ResolveObjectID(ac)
+
+	return ch.Send(&user.Info{
+		NodeAlias:  astral.String8(mod.Dir.DisplayName(ac.NodeID)),
+		UserAlias:  astral.String8(mod.Dir.DisplayName(ac.UserID)),
+		ContractID: contractID,
+		Contract:   ac,
 	})
 }
