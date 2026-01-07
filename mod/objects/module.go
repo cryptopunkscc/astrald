@@ -47,9 +47,6 @@ type Module interface {
 	AddDescriber(Describer) error
 	Describe(*astral.Context, *astral.ObjectID) (<-chan *DescribeResult, error)
 
-	AddPurger(purger Purger) error
-	Purge(*astral.ObjectID, *PurgeOpts) (int, error)
-
 	Search(ctx *astral.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
 	AddSearcher(Searcher) error
 	AddSearchPreprocessor(SearchPreprocessor) error
@@ -80,14 +77,6 @@ type Drop interface {
 
 type Describer interface {
 	DescribeObject(*astral.Context, *astral.ObjectID) (<-chan *DescribeResult, error)
-}
-
-type Purger interface {
-	PurgeObject(*astral.ObjectID, *PurgeOpts) (int, error)
-}
-
-type PurgeOpts struct {
-	// for future use
 }
 
 type Holder interface {

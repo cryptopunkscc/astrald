@@ -21,10 +21,6 @@ func (mod *Module) LoadDependencies() (err error) {
 				mod.AddDescriber(d)
 			}
 
-			if d, ok := m.(objects.Purger); ok {
-				mod.AddPurger(d)
-			}
-
 			if d, ok := m.(objects.Searcher); ok {
 				mod.AddSearcher(d)
 			}
