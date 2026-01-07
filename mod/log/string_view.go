@@ -16,7 +16,7 @@ func (v StringView) Render() string {
 	return v.Style.Render(v.String.String())
 }
 
-func StyledText(text string, style *lipgloss.Style) *StringView {
+func String(text string, style *lipgloss.Style) *StringView {
 	return &StringView{
 		Style:  style,
 		String: astral.NewString(text),

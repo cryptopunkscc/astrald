@@ -9,7 +9,7 @@ var RedText = lipgloss.NewStyle().Foreground(lipgloss.Color("#dd4444"))
 var BrightRedText = lipgloss.NewStyle().Foreground(lipgloss.Color("#ff8888"))
 
 var DarkGreenText = lipgloss.NewStyle().Foreground(lipgloss.Color("#00aa00"))
-var GreenText = lipgloss.NewStyle().Foreground(lipgloss.Color("#44dd44"))
+var GreenText = lipgloss.NewStyle().Foreground(lipgloss.Color("#00dd00"))
 var BrightGreenText = lipgloss.NewStyle().Foreground(lipgloss.Color("#aaffaa"))
 
 var DarkBlueText = lipgloss.NewStyle().Foreground(lipgloss.Color("#0000cc"))

@@ -2,16 +2,15 @@ package objects
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type RepositoryInfo struct {
-	ID    astral.String8
+	Name  astral.String8
 	Label astral.String8
-	Free  astral.Uint64
+	Free  astral.Int64
 }
 
 var _ astral.Object = &RepositoryInfo{}
@@ -40,17 +39,6 @@ func (info RepositoryInfo) MarshalJSON() ([]byte, error) {
 func (info *RepositoryInfo) UnmarshalJSON(bytes []byte) error {
 	type alias RepositoryInfo
 	return json.Unmarshal(bytes, (*alias)(info))
-}
-
-// text
-
-func (info RepositoryInfo) MarshalText() (text []byte, err error) {
-	return []byte(fmt.Sprintf(
-		"%s: %s (%s free)",
-		info.ID,
-		info.Label,
-		astral.Size(info.Free).HumanReadable(),
-	)), nil
 }
 
 // ...

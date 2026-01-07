@@ -131,7 +131,7 @@ func (mod *Module) setDefaultAlias() error {
 		return err
 	}
 
-	mod.log.Info("call me %v", modlog.StyledText(alias, &modlog.BrightGreenText))
+	mod.log.Info("call me %v", modlog.String(alias, &modlog.BrightGreenText))
 
 	return nil
 }

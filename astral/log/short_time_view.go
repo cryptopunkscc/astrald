@@ -1,6 +1,8 @@
 package log
 
-import "github.com/cryptopunkscc/astrald/astral"
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+)
 
 type ShortTimeView struct {
 	*astral.Time
@@ -11,7 +13,7 @@ func (v ShortTimeView) Render() string {
 }
 
 func init() {
-	DefaultViewer.Set(astral.Time{}.ObjectType(), func(o astral.Object) astral.Object {
-		return &ShortTimeView{o.(*astral.Time)}
+	Set(func(o *astral.Time) astral.Object {
+		return &ShortTimeView{o}
 	})
 }

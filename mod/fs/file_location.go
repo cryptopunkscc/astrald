@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	"strings"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type FileLocation struct {
