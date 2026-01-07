@@ -2,6 +2,7 @@ package channel
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -21,12 +22,9 @@ func NewJSONSender(w io.Writer) *JSONSender {
 
 func (w JSONSender) Send(object astral.Object) (err error) {
 	switch obj := object.(type) {
-	case *astral.RawObject:
-		err = w.enc.Encode(&astral.JSONEncodeAdapter{
-			Type:    obj.ObjectType(),
-			Payload: obj.Payload,
-		})
-
+	case *astral.UnparsedObject:
+		return errors.New("cannot send unparsed objects over JSON")
+		
 	default:
 		err = w.enc.Encode(&astral.JSONEncodeAdapter{
 			Type:   obj.ObjectType(),

@@ -117,11 +117,8 @@ func (i interfaceValue) MarshalJSON() ([]byte, error) {
 
 	var j JSONEncodeAdapter
 
-	if raw, ok := i.Interface().(*RawObject); ok {
-		return json.Marshal(JSONEncodeAdapter{
-			Type:    raw.ObjectType(),
-			Payload: raw.Payload,
-		})
+	if _, ok := i.Interface().(*UnparsedObject); ok {
+		return nil, errors.New("interface contains an unparsed object")
 	}
 
 	o, err := objectify(i.Elem())
@@ -163,14 +160,11 @@ func (i interfaceValue) UnmarshalJSON(data []byte) error {
 		return newErrBlueprintNotFound(j.Type)
 	}
 
-	switch {
-	case j.Object != nil:
+	if j.Object != nil {
 		err = json.Unmarshal(j.Object, o)
 		if err != nil {
 			return err
 		}
-	case j.Payload != nil:
-		return errors.New("payload not supported")
 	}
 
 	i.Set(reflect.ValueOf(o).Convert(i.Type()))

@@ -29,8 +29,20 @@ func (r JSONReceiver) Receive() (object astral.Object, err error) {
 
 	err = r.dec.Decode(&jsonObj)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	return r.bp.RefineJSON(&jsonObj)
+	object = r.bp.Make(jsonObj.Type)
+	if object == nil {
+		return nil, astral.ErrBlueprintNotFound{Type: jsonObj.Type}
+	}
+
+	if jsonObj.Object != nil {
+		err = json.Unmarshal(jsonObj.Object, &object)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return
 }

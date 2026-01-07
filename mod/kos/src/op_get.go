@@ -19,10 +19,10 @@ func (mod *Module) OpGet(ctx *astral.Context, q shell.Query, args opGetArgs) err
 	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
 	defer ch.Close()
 
-	raw := &astral.RawObject{Type: typ, Payload: payload}
-	object, err := mod.Objects.Blueprints().Refine(raw)
+	unparsed := astral.NewUnparsedObject(typ, payload)
+	object, err := mod.Objects.Blueprints().Parse(unparsed)
 	if err != nil {
-		object = raw
+		object = unparsed
 	}
 
 	return ch.Write(object)

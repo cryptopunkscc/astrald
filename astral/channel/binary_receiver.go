@@ -36,15 +36,15 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 		return nil, err
 	}
 
+	// if there's no type, it's a blob
 	if len(objectType) == 0 {
-		object = &astral.Blob{}
-	} else {
-		object = b.bp.Make(objectType.String())
+		return (*astral.Blob)(&buf), nil
 	}
 
+	object = b.bp.Make(objectType.String())
 	if object == nil {
 		if b.AllowUnparsed {
-			return &astral.RawObject{Type: objectType.String(), Payload: buf}, nil
+			return astral.NewUnparsedObject(objectType.String(), buf), nil
 		}
 
 		return nil, astral.ErrBlueprintNotFound{Type: objectType.String()}
@@ -57,7 +57,8 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 		return
 
 	case errors.Is(err, astral.ErrBlueprintNotFound{}) && b.AllowUnparsed:
-		return &astral.RawObject{Type: objectType.String(), Payload: buf}, nil
+		// if we're missing a blueprint, return an unparsed object if allowed
+		return astral.NewUnparsedObject(objectType.String(), buf), nil
 
 	default:
 		return nil, err

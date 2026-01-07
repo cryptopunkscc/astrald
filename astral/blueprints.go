@@ -128,15 +128,15 @@ func (bp *Blueprints) Add(object ...Object) error {
 	return errors.Join(errs...)
 }
 
-// Refine takes a RawObject and reparses it into a concrete object if a prototype for the type is found
-func (bp *Blueprints) Refine(raw *RawObject) (Object, error) {
-	b := bp.Make(raw.ObjectType())
+// Parse takes an UnparsedObject and reparses it into a concrete object if a prototype for the type is found
+func (bp *Blueprints) Parse(unparsed *UnparsedObject) (Object, error) {
+	b := bp.Make(unparsed.ObjectType())
 	if b == nil {
-		return nil, newErrBlueprintNotFound(raw.ObjectType())
+		return nil, newErrBlueprintNotFound(unparsed.ObjectType())
 	}
 
 	var buf = &bytes.Buffer{}
-	_, err := raw.WriteTo(buf)
+	_, err := unparsed.WriteTo(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -156,16 +156,6 @@ func (bp *Blueprints) RefineJSON(jsonObj *JSONDecodeAdapter) (obj Object, err er
 	case jsonObj.Object != nil:
 		err = json.Unmarshal(jsonObj.Object, &obj)
 
-	case jsonObj.Payload != nil:
-		raw := &RawObject{
-			Type:    jsonObj.Type,
-			Payload: jsonObj.Payload,
-		}
-		obj, err = bp.Refine(raw)
-		if err != nil {
-			obj = raw
-			err = nil
-		}
 	}
 
 	return
@@ -247,13 +237,6 @@ func (bp *Blueprints) Pack(object Object) (data []byte, err error) {
 	var buf = &bytes.Buffer{}
 	_, err = bp.Write(buf, object)
 	return buf.Bytes(), err
-}
-
-// UnpackJSON unpacks an object from its JSON form
-func (bp *Blueprints) UnpackJSON(data []byte) (object Object, err error) {
-	var j JSONDecodeAdapter
-	err = json.Unmarshal(data, &j)
-	return bp.RefineJSON(&j)
 }
 
 // Inject wraps an io.Reader in a wrapper that HasBlueprints

@@ -121,21 +121,10 @@ func (m *Map) UnmarshalJSON(bytes []byte) (err error) {
 			return newErrBlueprintNotFound(jsonObj.Type)
 		}
 
-		switch {
-		case jsonObj.Object != nil:
+		if jsonObj.Object != nil {
 			err = json.Unmarshal(jsonObj.Object, &obj)
 			if err != nil {
 				return
-			}
-
-		case jsonObj.Payload != nil:
-			raw := &RawObject{
-				Type:    jsonObj.Type,
-				Payload: jsonObj.Payload,
-			}
-			obj, err = DefaultBlueprints.Refine(raw)
-			if err != nil {
-				obj = raw
 			}
 		}
 

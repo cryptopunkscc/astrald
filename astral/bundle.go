@@ -181,20 +181,10 @@ func (a *Bundle) UnmarshalJSON(bytes []byte) error {
 		}
 
 		var err error
-		switch {
-		case j.Object != nil:
+		if j.Object != nil {
 			err = json.Unmarshal(j.Object, &obj)
 			if err != nil {
 				return err
-			}
-		case j.Payload != nil:
-			raw := &RawObject{
-				Type:    j.Type,
-				Payload: j.Payload,
-			}
-			obj, err = DefaultBlueprints.Refine(raw)
-			if err != nil {
-				obj = raw
 			}
 		}
 

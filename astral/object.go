@@ -53,19 +53,10 @@ func Write(w io.Writer, obj Object) (_ int64, err error) {
 // WriteJSON writes the object in its JSON form to the writer
 func WriteJSON(w io.Writer, obj Object) (err error) {
 	enc := json.NewEncoder(w)
-	switch obj := obj.(type) {
-	case *RawObject:
-		err = enc.Encode(&JSONEncodeAdapter{
-			Type:    obj.ObjectType(),
-			Payload: obj.Payload,
-		})
-
-	default:
-		err = enc.Encode(&JSONEncodeAdapter{
-			Type:   obj.ObjectType(),
-			Object: obj,
-		})
-	}
+	err = enc.Encode(&JSONEncodeAdapter{
+		Type:   obj.ObjectType(),
+		Object: obj,
+	})
 
 	return
 }

@@ -9,9 +9,13 @@ import (
 // Blob is a raw bytes buffer with no type. Used to hold any arbitrary binary data as an Object.
 type Blob []byte
 
+var _ Object = (*Blob)(nil)
+
 func (Blob) ObjectType() string {
 	return ""
 }
+
+// binary
 
 func (b Blob) WriteTo(w io.Writer) (_ int64, err error) {
 	var m int
@@ -29,6 +33,8 @@ func (b *Blob) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
+// json
+
 func (b Blob) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]byte(b))
 }
@@ -36,6 +42,8 @@ func (b Blob) MarshalJSON() ([]byte, error) {
 func (b *Blob) UnmarshalJSON(bytes []byte) error {
 	return json.Unmarshal(bytes, (*[]byte)(b))
 }
+
+// text
 
 func (b Blob) MarshalText() (text []byte, err error) {
 	buf := make([]byte, base64.StdEncoding.EncodedLen(len(b)))
@@ -57,6 +65,8 @@ func (b *Blob) UnmarshalText(text []byte) error {
 
 	return nil
 }
+
+// ...
 
 func (b Blob) String() string {
 	return base64.StdEncoding.EncodeToString([]byte(b))
