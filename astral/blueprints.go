@@ -2,7 +2,6 @@ package astral
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -29,7 +28,7 @@ type HasBlueprints interface {
 	Blueprints() *Blueprints
 }
 
-// NewBlueprints returns a new instance of Blueprints. If parent is not nil, it will be used by Make() to look up
+// NewBlueprints returns a new instance of Blueprints. If parent is not nil, it will be used by New() to look up
 // prototypes if not found in this instance.
 func NewBlueprints(parent *Blueprints) *Blueprints {
 	return &Blueprints{
@@ -95,12 +94,12 @@ func (bp *Blueprints) Indexed(types []string) *Blueprints {
 	return rbp
 }
 
-// Make returns a zero-value object of the specified type or nil if no blueprint is found.
-func (bp *Blueprints) Make(typeName string) Object {
+// New returns a zero-value object of the specified type or nil if no blueprint is found.
+func (bp *Blueprints) New(typeName string) Object {
 	p, ok := bp.Blueprints.Get(typeName)
 	if !ok {
 		if bp.Parent != nil {
-			return bp.Parent.Make(typeName)
+			return bp.Parent.New(typeName)
 		}
 		return nil
 	}
@@ -126,39 +125,6 @@ func (bp *Blueprints) Add(object ...Object) error {
 	}
 
 	return errors.Join(errs...)
-}
-
-// Parse takes an UnparsedObject and reparses it into a concrete object if a prototype for the type is found
-func (bp *Blueprints) Parse(unparsed *UnparsedObject) (Object, error) {
-	b := bp.Make(unparsed.ObjectType())
-	if b == nil {
-		return nil, newErrBlueprintNotFound(unparsed.ObjectType())
-	}
-
-	var buf = &bytes.Buffer{}
-	_, err := unparsed.WriteTo(buf)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = b.ReadFrom(buf)
-	return b, err
-}
-
-// RefineJSON takes a JSONDecodeAdapter and tries to convert it into an Object.
-func (bp *Blueprints) RefineJSON(jsonObj *JSONDecodeAdapter) (obj Object, err error) {
-	obj = bp.Make(jsonObj.Type)
-	if obj == nil {
-		return nil, newErrBlueprintNotFound(jsonObj.Type)
-	}
-
-	switch {
-	case jsonObj.Object != nil:
-		err = json.Unmarshal(jsonObj.Object, &obj)
-
-	}
-
-	return
 }
 
 // Types returns type names of all registered object types
@@ -190,7 +156,7 @@ func (bp *Blueprints) read(r io.Reader, readType TypeReader) (object Object, n i
 	}
 
 	// make a new object of the type
-	object = bp.Make(string(objectType))
+	object = bp.New(string(objectType))
 	if object == nil {
 		return nil, 0, newErrBlueprintNotFound(string(objectType))
 	}
@@ -245,14 +211,6 @@ func (bp *Blueprints) Inject(r io.Reader) io.Reader {
 }
 
 // Unpack unpacks an object from the buffer using DefaultBlueprints.
-func Unpack(data []byte) (object Object, err error) {
-	return DefaultBlueprints.Unpack(data)
-}
-
-// Read reads an object from the reader using DefaultBlueprints.
-func Read(r io.Reader) (o Object, n int64, err error) {
-	return DefaultBlueprints.Read(r)
-}
 
 var _ HasBlueprints = &ReaderWithBlueprints{}
 var _ io.Reader = &ReaderWithBlueprints{}
@@ -283,4 +241,14 @@ func ExtractBlueprints(v any) (bp *Blueprints) {
 		bp = NewBlueprints(nil)
 	}
 	return
+}
+
+// Write writes the object to the writer using DefaultBlueprints
+func Write(w io.Writer, obj Object) (_ int64, err error) {
+	return DefaultBlueprints.Write(w, obj)
+}
+
+// Pack writes the object in its short form to a buffer and returns the buffer
+func Pack(obj Object) ([]byte, error) {
+	return DefaultBlueprints.Pack(obj)
 }

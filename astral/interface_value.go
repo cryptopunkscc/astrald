@@ -89,7 +89,7 @@ func (i interfaceValue) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 
-	o := ExtractBlueprints(r).Make(objectType)
+	o := ExtractBlueprints(r).New(objectType)
 	if o == nil {
 		return n, newErrBlueprintNotFound(objectType)
 	}
@@ -115,8 +115,6 @@ func (i interfaceValue) MarshalJSON() ([]byte, error) {
 		return jsonNull, nil
 	}
 
-	var j JSONEncodeAdapter
-
 	if _, ok := i.Interface().(*UnparsedObject); ok {
 		return nil, errors.New("interface contains an unparsed object")
 	}
@@ -130,17 +128,15 @@ func (i interfaceValue) MarshalJSON() ([]byte, error) {
 		return nil, errors.New("object behind interface has no type")
 	}
 
-	jdata, err := o.MarshalJSON()
+	jsonBytes, err := o.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
 
-	j = JSONEncodeAdapter{
+	return json.Marshal(JSONAdapter{
 		Type:   o.ObjectType(),
-		Object: json.RawMessage(jdata),
-	}
-
-	return json.Marshal(j)
+		Object: jsonBytes,
+	})
 }
 
 func (i interfaceValue) UnmarshalJSON(data []byte) error {
@@ -149,13 +145,13 @@ func (i interfaceValue) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	var j JSONDecodeAdapter
+	var j JSONAdapter
 	err := json.Unmarshal(data, &j)
 	if err != nil {
 		return err
 	}
 
-	o := DefaultBlueprints.Make(j.Type)
+	o := DefaultBlueprints.New(j.Type)
 	if o == nil {
 		return newErrBlueprintNotFound(j.Type)
 	}

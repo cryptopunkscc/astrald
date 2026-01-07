@@ -41,7 +41,7 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 		return (*astral.Blob)(&buf), nil
 	}
 
-	object = b.bp.Make(objectType.String())
+	object = b.bp.New(objectType.String())
 	if object == nil {
 		if b.AllowUnparsed {
 			return astral.NewUnparsedObject(objectType.String(), buf), nil

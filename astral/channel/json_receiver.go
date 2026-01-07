@@ -25,14 +25,14 @@ func NewJSONReceiver(r io.Reader) *JSONReceiver {
 }
 
 func (r JSONReceiver) Receive() (object astral.Object, err error) {
-	var jsonObj astral.JSONDecodeAdapter
+	var jsonObj astral.JSONAdapter
 
 	err = r.dec.Decode(&jsonObj)
 	if err != nil {
 		return nil, err
 	}
 
-	object = r.bp.Make(jsonObj.Type)
+	object = r.bp.New(jsonObj.Type)
 	if object == nil {
 		return nil, astral.ErrBlueprintNotFound{Type: jsonObj.Type}
 	}

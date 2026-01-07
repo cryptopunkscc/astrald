@@ -43,7 +43,7 @@ func (r TextReceiver) Receive() (obj astral.Object, err error) {
 	}
 
 	// make the object
-	obj = r.bp.Make(parsed.Type)
+	obj = r.bp.New(parsed.Type)
 	if obj == nil {
 		return nil, astral.ErrBlueprintNotFound{Type: parsed.Type}
 	}

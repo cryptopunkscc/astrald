@@ -1,7 +1,6 @@
 package log
 
 import (
-	"fmt"
 	"io"
 	"sync"
 
@@ -40,5 +39,5 @@ func (output *Printer) LogEntry(entry *Entry) {
 	output.mu.Lock()
 	defer output.mu.Unlock()
 
-	_, _ = fmt.Fprintf(output.w, str)
+	_, _ = output.w.Write([]byte(str))
 }

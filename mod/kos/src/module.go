@@ -44,7 +44,7 @@ func (mod *Module) Get(ctx *astral.Context, key string) (astral.Object, error) {
 		return nil, err
 	}
 
-	object := mod.Objects.Blueprints().Make(typ)
+	object := mod.Objects.Blueprints().New(typ)
 	if object == nil {
 		return nil, astral.ErrBlueprintNotFound{Type: typ}
 	}

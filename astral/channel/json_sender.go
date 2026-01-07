@@ -21,16 +21,19 @@ func NewJSONSender(w io.Writer) *JSONSender {
 }
 
 func (w JSONSender) Send(object astral.Object) (err error) {
-	switch obj := object.(type) {
+	switch object.(type) {
 	case *astral.UnparsedObject:
 		return errors.New("cannot send unparsed objects over JSON")
-		
-	default:
-		err = w.enc.Encode(&astral.JSONEncodeAdapter{
-			Type:   obj.ObjectType(),
-			Object: obj,
-		})
 	}
 
-	return
+	j := astral.JSONAdapter{
+		Type: object.ObjectType(),
+	}
+
+	j.Object, err = json.Marshal(object)
+	if err != nil {
+		return err
+	}
+
+	return w.enc.Encode(&j)
 }

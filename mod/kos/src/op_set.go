@@ -23,7 +23,7 @@ func (mod *Module) OpSet(ctx *astral.Context, q shell.Query, args opSetArgs) (er
 
 	switch {
 	case len(args.Value) > 0:
-		obj := mod.Objects.Blueprints().Make(args.Type)
+		obj := mod.Objects.Blueprints().New(args.Type)
 		if obj == nil {
 			return q.RejectWithCode(8)
 		}

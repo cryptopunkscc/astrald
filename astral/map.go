@@ -93,13 +93,19 @@ func (m *Map) ReadFrom(r io.Reader) (n int64, err error) {
 // json
 
 func (m Map) MarshalJSON() ([]byte, error) {
-	var jmap = map[string]JSONEncodeAdapter{}
+	var err error
+	var jmap = map[string]JSONAdapter{}
 
 	_ = m.Each(func(k string, v Object) error {
-		jmap[k] = JSONEncodeAdapter{
-			Type:   v.ObjectType(),
-			Object: v,
+		j := JSONAdapter{Type: v.ObjectType()}
+
+		j.Object, err = json.Marshal(v)
+		if err != nil {
+			return err
 		}
+
+		jmap[k] = j
+
 		return nil
 	})
 
@@ -107,7 +113,7 @@ func (m Map) MarshalJSON() ([]byte, error) {
 }
 
 func (m *Map) UnmarshalJSON(bytes []byte) (err error) {
-	var jmap map[string]JSONDecodeAdapter
+	var jmap map[string]JSONAdapter
 
 	err = json.Unmarshal(bytes, &jmap)
 	if err != nil {
@@ -116,7 +122,7 @@ func (m *Map) UnmarshalJSON(bytes []byte) (err error) {
 
 	m.Map = sig.Map[string, Object]{}
 	for k, jsonObj := range jmap {
-		obj := DefaultBlueprints.Make(jsonObj.Type)
+		obj := DefaultBlueprints.New(jsonObj.Type)
 		if obj == nil {
 			return newErrBlueprintNotFound(jsonObj.Type)
 		}

@@ -1,7 +1,6 @@
 package astral
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 )
@@ -19,6 +18,14 @@ type JSONObject interface {
 	json.Marshaler
 	json.Unmarshaler
 }
+
+// JSONAdapter is used as a generic container for JSON-encoded Objects.
+type JSONAdapter struct {
+	Type   string
+	Object json.RawMessage `json:",omitempty"`
+}
+
+var jsonNull = []byte("null")
 
 // ResolveObjectID calculates the id of the object
 func ResolveObjectID(obj Object) (objectID *ObjectID, err error) {
@@ -43,37 +50,4 @@ func ResolveObjectID(obj Object) (objectID *ObjectID, err error) {
 	}
 
 	return w.Resolve(), nil
-}
-
-// Write writes the object to the writer using DefaultBlueprints
-func Write(w io.Writer, obj Object) (_ int64, err error) {
-	return DefaultBlueprints.Write(w, obj)
-}
-
-// WriteJSON writes the object in its JSON form to the writer
-func WriteJSON(w io.Writer, obj Object) (err error) {
-	enc := json.NewEncoder(w)
-	err = enc.Encode(&JSONEncodeAdapter{
-		Type:   obj.ObjectType(),
-		Object: obj,
-	})
-
-	return
-}
-
-// Pack writes the object in its short form to a buffer and returns the buffer
-func Pack(obj Object) ([]byte, error) {
-	return DefaultBlueprints.Pack(obj)
-}
-
-// PackJSON writes the object in its JSON form to a buffer and returns the buffer
-func PackJSON(obj Object) (_ []byte, err error) {
-	var buf = &bytes.Buffer{}
-	err = WriteJSON(buf, obj)
-	return buf.Bytes(), err
-}
-
-// ObjectReader is obsolete.
-type ObjectReader interface {
-	ReadObject() (Object, int64, error)
 }

@@ -78,7 +78,7 @@ func TestSlice_MarshalJSON_CustomMixed(t *testing.T) {
 	}
 
 	// Decode encoded objects → adapters
-	var adapters []astral.JSONEncodeAdapter
+	var adapters []astral.JSONAdapter
 	if err := json.Unmarshal(data, &adapters); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
@@ -110,10 +110,6 @@ func TestSlice_MarshalJSON_CustomMixed(t *testing.T) {
 				t.Fatalf("expected Value=%q, got %q", orig.Value, decoded.Value)
 			}
 
-			if adapter.Object == orig {
-				t.Fatalf("expected new JSON-mapped object, got original pointer")
-			}
-
 		case *TestObjectB:
 			if adapter.Type != "test.object.b" {
 				t.Fatalf("expected type test.object.b, got %s", adapter.Type)
@@ -130,10 +126,6 @@ func TestSlice_MarshalJSON_CustomMixed(t *testing.T) {
 
 			if decoded.Number != orig.Number {
 				t.Fatalf("expected Number=%d, got %d", orig.Number, decoded.Number)
-			}
-
-			if adapter.Object == orig {
-				t.Fatalf("expected new JSON-mapped object, got original pointer")
 			}
 
 		default:
@@ -171,7 +163,7 @@ func TestSlice_MarshalJSON_Int8Only(t *testing.T) {
 	}
 
 	// Decode encoded objects → adapters
-	var adapters []astral.JSONEncodeAdapter
+	var adapters []astral.JSONAdapter
 	if err := json.Unmarshal(data, &adapters); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
@@ -200,10 +192,6 @@ func TestSlice_MarshalJSON_Int8Only(t *testing.T) {
 
 		if decoded != *orig {
 			t.Fatalf("expected %d, got %d", *orig, decoded)
-		}
-
-		if adapter.Object == orig {
-			t.Fatalf("expected JSON-mapped value, got original pointer")
 		}
 	}
 

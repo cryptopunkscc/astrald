@@ -155,19 +155,25 @@ func (b *Bundle) String() string {
 }
 
 func (b *Bundle) MarshalJSON() ([]byte, error) {
-	var list []JSONEncodeAdapter
+	var err error
+	var list []JSONAdapter
 	for _, o := range b.objects {
-		list = append(list, JSONEncodeAdapter{
-			Type:   o.ObjectType(),
-			Object: o,
-		})
+		j := JSONAdapter{
+			Type: o.ObjectType(),
+		}
+		j.Object, err = json.Marshal(o)
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, j)
 	}
 
 	return json.Marshal(list)
 }
 
 func (a *Bundle) UnmarshalJSON(bytes []byte) error {
-	var jlist []JSONDecodeAdapter
+	var jlist []JSONAdapter
 	a.index = make(map[string]int)
 
 	if err := json.Unmarshal(bytes, &jlist); err != nil {
@@ -175,7 +181,7 @@ func (a *Bundle) UnmarshalJSON(bytes []byte) error {
 	}
 
 	for _, j := range jlist {
-		obj := DefaultBlueprints.Make(j.Type)
+		obj := DefaultBlueprints.New(j.Type)
 		if obj == nil {
 			return newErrBlueprintNotFound(j.Type)
 		}

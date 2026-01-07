@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-// UnparsedObject is a struct that holds an unparsed object. Use Blueprints.Parse to parse.
+// UnparsedObject is a struct that holds an unparsed object.
 type UnparsedObject struct {
 	Type    string
 	Payload []byte

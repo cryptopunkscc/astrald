@@ -150,7 +150,7 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		obj := DefaultBlueprints.Make(a.ElemType)
+		obj := DefaultBlueprints.New(a.ElemType)
 		if obj == nil {
 			return n, newErrBlueprintNotFound(a.ElemType)
 		}
@@ -180,11 +180,16 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 func (a *Slice[T]) MarshalJSON() ([]byte, error) {
 	v := *a.Elem
 
-	var list []JSONEncodeAdapter
+	var list []JSONAdapter
 	for _, o := range v {
-		list = append(list, JSONEncodeAdapter{
+		jsonBytes, err := json.Marshal(o)
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, JSONAdapter{
 			Type:   o.ObjectType(),
-			Object: o,
+			Object: jsonBytes,
 		})
 	}
 
@@ -196,14 +201,14 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 		a.Elem = new([]T)
 	}
 
-	var jlist []JSONDecodeAdapter
+	var jlist []JSONAdapter
 	if err := json.Unmarshal(bytes, &jlist); err != nil {
 		return err
 	}
 
 	result := make([]T, len(jlist))
 	for i, j := range jlist {
-		obj := DefaultBlueprints.Make(j.Type)
+		obj := DefaultBlueprints.New(j.Type)
 		if obj == nil {
 			return newErrBlueprintNotFound(j.Type)
 		}
