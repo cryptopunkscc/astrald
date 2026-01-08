@@ -60,13 +60,8 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 	snapshotCompleted := false
 	snapshot := make([]services.ServiceChange, 0)
 
-	for {
-		msg, err := ch.Read()
-		if err != nil {
-			return err
-		}
-
-		switch m := msg.(type) {
+	err = ch.Collect(func(object astral.Object) error {
+		switch m := object.(type) {
 		case *astral.EOS:
 			// End-of-snapshot marker.
 
@@ -105,13 +100,13 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 		case *services.ServiceChange:
 			if !m.Service.Identity.IsEqual(target) {
 				mod.log.Info("ignoring service from different identity: %v", m.Service.Identity)
-				continue
+				return nil
 			}
 
 			if !snapshotCompleted {
 				// Still collecting snapshot.
 				snapshot = append(snapshot, *m)
-				continue
+				return nil
 			}
 
 			// Live update after snapshot completed.
@@ -131,7 +126,14 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 			}
 
 		default:
-			mod.log.Info("unexpected message type: %T", msg)
+			mod.log.Info("unexpected message type: %T", object)
 		}
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
+
+	return nil
 }
