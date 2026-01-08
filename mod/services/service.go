@@ -9,8 +9,8 @@ import (
 var _ astral.Object = &Service{}
 
 type Service struct {
-	Name        astral.String8   // mod.nat
-	Identity    *astral.Identity // if its module of node then idenity = NodeId, if it's service accessible beacuase of app then identity = AppId
+	Name        astral.String8
+	Identity    *astral.Identity // if its module of node then identity = NodeId, if it's of app service then identity = AppId
 	Composition *astral.Bundle
 }
 
