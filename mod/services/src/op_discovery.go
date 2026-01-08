@@ -5,17 +5,19 @@ import (
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/services"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opServiceDiscoveryArgs struct {
+	In     string `query:"optional"`
 	Out    string `query:"optional"`
 	Follow bool   `query:"optional"`
 }
 
 func (mod *Module) OpDiscovery(ctx *astral.Context, q shell.Query, args opServiceDiscoveryArgs) error {
-	ch := astral.NewChannelFmt(q.Accept(), "", args.Out)
+	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	caller := q.Caller()
@@ -42,7 +44,7 @@ func (mod *Module) OpDiscovery(ctx *astral.Context, q shell.Query, args opServic
 				if !ok {
 					goto nextDiscoverer
 				}
-				if err := ch.Write(&update); err != nil {
+				if err := ch.Send(&update); err != nil {
 					return err
 				}
 			}
@@ -50,7 +52,7 @@ func (mod *Module) OpDiscovery(ctx *astral.Context, q shell.Query, args opServic
 	nextDiscoverer:
 	}
 
-	if err := ch.Write(&astral.EOS{}); err != nil {
+	if err := ch.Send(&astral.EOS{}); err != nil {
 		return err
 	}
 
@@ -79,7 +81,7 @@ func (mod *Module) OpDiscovery(ctx *astral.Context, q shell.Query, args opServic
 			if !ok {
 				return nil
 			}
-			if err := ch.Write(&update); err != nil {
+			if err := ch.Send(&update); err != nil {
 				return err
 			}
 		}

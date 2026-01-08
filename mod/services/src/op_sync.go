@@ -2,6 +2,7 @@ package services
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -12,13 +13,13 @@ type opServiceSyncArgs struct {
 }
 
 func (mod *Module) OpSync(ctx *astral.Context, q shell.Query, args opServiceSyncArgs) (err error) {
-	ch := astral.NewChannelFmt(q.Accept(), args.In, args.Out)
+	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	err = mod.DiscoverRemoteServices(ctx, args.ID, false)
 	if err != nil {
-		return ch.Write(astral.NewError(err.Error()))
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Write(&astral.EOS{})
+	return ch.Send(&astral.EOS{})
 }
