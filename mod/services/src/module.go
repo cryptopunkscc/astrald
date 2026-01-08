@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/services"
 	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 const ModuleName = "services"
@@ -18,13 +19,13 @@ type Module struct {
 	ops  shell.Scope
 	db   *DB
 
-	discoverers []services.ServiceDiscoverer
+	discoverers sig.Set[services.ServiceDiscoverer]
 }
 
 var _ services.Module = &Module{}
 
-func (mod *Module) AddServiceDiscoverer(discoverer services.ServiceDiscoverer) {
-	mod.discoverers = append(mod.discoverers, discoverer)
+func (mod *Module) AddServiceDiscoverer(discoverer services.ServiceDiscoverer) error {
+	return mod.discoverers.Add(discoverer)
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {

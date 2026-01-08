@@ -26,7 +26,7 @@ func (mod *Module) OpDiscovery(ctx *astral.Context, q shell.Query, args opServic
 	followOpts := services.DiscoverOptions{Snapshot: false, Follow: args.Follow}
 
 	// Phase 1: snapshot
-	for _, discoverer := range mod.discoverers {
+	for _, discoverer := range mod.discoverers.Clone() {
 		s, err := discoverer.DiscoverService(ctx, caller, snapshotOpts)
 		if err != nil {
 			mod.log.Logv(1, "discoverer snapshot failed: %v", err)
@@ -60,8 +60,8 @@ func (mod *Module) OpDiscovery(ctx *astral.Context, q shell.Query, args opServic
 		return nil
 	}
 
-	streams := make([]<-chan services.ServiceChange, 0, len(mod.discoverers))
-	for _, discoverer := range mod.discoverers {
+	streams := make([]<-chan services.ServiceChange, 0, len(mod.discoverers.Clone()))
+	for _, discoverer := range mod.discoverers.Clone() {
 		s, err := discoverer.DiscoverService(ctx, caller, followOpts)
 		if err != nil {
 			mod.log.Logv(1, "discoverer follow failed: %v", err)

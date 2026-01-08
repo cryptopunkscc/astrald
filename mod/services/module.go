@@ -9,7 +9,7 @@ const (
 )
 
 type Module interface {
-	AddServiceDiscoverer(ServiceDiscoverer)
+	AddServiceDiscoverer(ServiceDiscoverer) error
 	DiscoverRemoteServices(ctx *astral.Context, target *astral.Identity, subscribe bool) error
 }
 
