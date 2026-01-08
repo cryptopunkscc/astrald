@@ -51,6 +51,9 @@ func (client *DirClient) ResolveIdentity(ctx *astral.Context, name string) (*ast
 
 	// then try using host's resolver
 	ch, err := client.queryCh(ctx, "dir.resolve", query.Args{"name": name})
+	if err != nil {
+		return nil, err
+	}
 	defer ch.Close()
 
 	obj, err := ch.Receive()
