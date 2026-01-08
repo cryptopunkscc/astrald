@@ -68,20 +68,16 @@ func (f *ServiceChangeFeed) Publish(change ServiceChange) {
 		return
 	}
 
-	// Snapshot subscriber list under lock.
-	subs := make([]chan ServiceChange, 0, len(f.subscribers))
+	// Send to all current subscribers while holding the lock so that
+	// unsubscribe/Close cannot close channels concurrently.
 	for ch := range f.subscribers {
-		subs = append(subs, ch)
-	}
-	f.mu.Unlock()
-
-	for _, ch := range subs {
 		select {
 		case ch <- change:
 		default:
 			// Drop for slow subscribers.
 		}
 	}
+	f.mu.Unlock()
 }
 
 // Close cancels and removes all subscribers and closes their channels.
