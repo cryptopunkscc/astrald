@@ -93,6 +93,7 @@ func (mod *Module) DiscoverRemoteServices(ctx *astral.Context, target *astral.Id
 			})
 			if err != nil {
 				mod.log.Error("failed to replace services from %v: %v", target, err)
+				return err
 			}
 
 			snapshotCompleted = true
