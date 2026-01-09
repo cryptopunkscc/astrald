@@ -21,7 +21,7 @@ func (mod *Module) OpDiscovery(
 	args opServiceDiscoveryArgs,
 ) error {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
-	defer func() { _ = ch.Close() }()
+	defer ch.Close()
 
 	caller := q.Caller()
 
@@ -30,7 +30,7 @@ func (mod *Module) OpDiscovery(
 
 	snapshot, err := mod.DiscoverServices(ctx, caller, snapshotOpts)
 	if err != nil {
-		return err
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	sendEOS := func() error {
@@ -47,7 +47,7 @@ func (mod *Module) OpDiscovery(
 		sendServiceChange,
 		sendEOS,
 	); err != nil {
-		return err
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	if !args.Follow {
@@ -56,7 +56,7 @@ func (mod *Module) OpDiscovery(
 
 	stream, err := mod.DiscoverServices(ctx, caller, followOpts)
 	if err != nil {
-		return err
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
 	return serveStream(
