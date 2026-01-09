@@ -252,3 +252,8 @@ func Write(w io.Writer, obj Object) (_ int64, err error) {
 func Pack(obj Object) ([]byte, error) {
 	return DefaultBlueprints.Pack(obj)
 }
+
+// Add adds the object prototypes to the default Blueprints
+func Add(object ...Object) error {
+	return DefaultBlueprints.Add(object...)
+}
