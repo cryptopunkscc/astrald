@@ -14,6 +14,7 @@ type sliceValue struct {
 
 var _ Object = &sliceValue{}
 
+// astral:blueprint-ignores
 func (a sliceValue) ObjectType() string {
 	return ""
 }

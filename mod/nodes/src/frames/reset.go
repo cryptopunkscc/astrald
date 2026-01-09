@@ -14,6 +14,7 @@ type Reset struct {
 	Nonce astral.Nonce
 }
 
+// astral:blueprint-ignore
 func (frame *Reset) ObjectType() string {
 	return "nodes.frames.reset"
 }

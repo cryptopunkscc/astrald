@@ -12,7 +12,7 @@ type Blob []byte
 var _ Object = (*Blob)(nil)
 
 func (Blob) ObjectType() string {
-	return ""
+	return "blob"
 }
 
 // binary
@@ -70,4 +70,9 @@ func (b *Blob) UnmarshalText(text []byte) error {
 
 func (b Blob) String() string {
 	return base64.StdEncoding.EncodeToString([]byte(b))
+}
+
+func init() {
+	var b Blob
+	_ = DefaultBlueprints.Add(&b)
 }

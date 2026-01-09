@@ -16,6 +16,7 @@ type ptrValue struct {
 
 var _ Object = &ptrValue{}
 
+// astral:blueprint-ignore
 func (p ptrValue) ObjectType() string {
 	if p.IsNil() {
 		return ""

@@ -21,6 +21,7 @@ type Response struct {
 	Buffer  uint32
 }
 
+// astral:blueprint-ignore
 func (frame *Response) ObjectType() string {
 	return "nodes.frames.response"
 }

@@ -13,6 +13,7 @@ type boolValue struct {
 
 var _ Object = &boolValue{}
 
+// astral:blueprint-ignore
 func (b boolValue) ObjectType() string {
 	return "bool"
 }

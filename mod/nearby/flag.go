@@ -2,16 +2,16 @@ package nearby
 
 import (
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type Flag string
 
 func NewFlag(f string) *Flag { return (*Flag)(&f) }
 
-// astral
-
+// astral:blueprint-ignore
 func (Flag) ObjectType() string { return "mod.nearby.flag" }
 
 func (f Flag) WriteTo(w io.Writer) (n int64, err error) {

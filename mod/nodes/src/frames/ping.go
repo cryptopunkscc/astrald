@@ -15,6 +15,7 @@ type Ping struct {
 	Pong  bool
 }
 
+// astral:blueprint-ignore
 func (frame *Ping) ObjectType() string {
 	return "nodes.frames.ping"
 }

@@ -27,6 +27,7 @@ func Objectify(a any) Objectified {
 	return Objectified{Value: v}
 }
 
+// astral:blueprint-ignore
 func (o Objectified) ObjectType() string {
 	elem, err := objectify(o.Elem())
 	if err != nil {

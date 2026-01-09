@@ -16,6 +16,7 @@ type Read struct {
 	Len   uint32
 }
 
+// astral:blueprint-ignore
 func (frame *Read) ObjectType() string {
 	return "nodes.frames.read"
 }

@@ -14,6 +14,7 @@ type Migrate struct {
 	Nonce astral.Nonce
 }
 
+// astral:blueprint-ignore
 func (frame *Migrate) ObjectType() string {
 	return "nodes.frames.migrate"
 }
