@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
@@ -16,43 +15,38 @@ type opServiceDiscoveryArgs struct {
 	Follow bool   `query:"optional"`
 }
 
-func (mod *Module) OpDiscovery(ctx *astral.Context, q shell.Query, args opServiceDiscoveryArgs) error {
+func (mod *Module) OpDiscovery(
+	ctx *astral.Context,
+	q shell.Query,
+	args opServiceDiscoveryArgs,
+) error {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
-	defer ch.Close()
+	defer func() { _ = ch.Close() }()
 
 	caller := q.Caller()
 
 	snapshotOpts := services.DiscoverOptions{Snapshot: true, Follow: false}
 	followOpts := services.DiscoverOptions{Snapshot: false, Follow: args.Follow}
 
-	// Phase 1: snapshot
-	for _, discoverer := range mod.discoverers.Clone() {
-		s, err := discoverer.DiscoverService(ctx, caller, snapshotOpts)
-		if err != nil {
-			mod.log.Logv(1, "discoverer snapshot failed: %v", err)
-			continue
-		}
-		if s == nil {
-			continue
-		}
-
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case update, ok := <-s:
-				if !ok {
-					goto nextDiscoverer
-				}
-				if err := ch.Send(&update); err != nil {
-					return err
-				}
-			}
-		}
-	nextDiscoverer:
+	snapshot, err := mod.DiscoverServices(ctx, caller, snapshotOpts)
+	if err != nil {
+		return err
 	}
 
-	if err := ch.Send(&astral.EOS{}); err != nil {
+	sendEOS := func() error {
+		return ch.Send(&astral.EOS{})
+	}
+
+	sendServiceChange := func(v services.ServiceChange) error {
+		return ch.Send(&v)
+	}
+
+	if err := serveStream(
+		ctx,
+		snapshot,
+		sendServiceChange,
+		sendEOS,
+	); err != nil {
 		return err
 	}
 
@@ -60,68 +54,39 @@ func (mod *Module) OpDiscovery(ctx *astral.Context, q shell.Query, args opServic
 		return nil
 	}
 
-	streams := make([]<-chan services.ServiceChange, 0, len(mod.discoverers.Clone()))
-	for _, discoverer := range mod.discoverers.Clone() {
-		s, err := discoverer.DiscoverService(ctx, caller, followOpts)
-		if err != nil {
-			mod.log.Logv(1, "discoverer follow failed: %v", err)
-			continue
-		}
-		if s != nil {
-			streams = append(streams, s)
-		}
+	stream, err := mod.DiscoverServices(ctx, caller, followOpts)
+	if err != nil {
+		return err
 	}
 
-	merged := mergeChannels(ctx, streams...)
+	return serveStream(
+		ctx,
+		stream,
+		sendServiceChange,
+		sendEOS,
+	)
+}
+
+func serveStream[T any](
+	ctx context.Context,
+	in <-chan T,
+	send func(T) error,
+	onClose func() error,
+) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case update, ok := <-merged:
+		case v, ok := <-in:
 			if !ok {
+				if onClose != nil {
+					return onClose()
+				}
 				return nil
 			}
-			if err := ch.Send(&update); err != nil {
+			if err := send(v); err != nil {
 				return err
 			}
 		}
 	}
-}
-
-// mergeChannels merges multiple ServiceChange channels into a single channel.
-func mergeChannels(ctx context.Context, channels ...<-chan services.ServiceChange) <-chan services.ServiceChange {
-	out := make(chan services.ServiceChange)
-	var wg sync.WaitGroup
-
-	for _, c := range channels {
-		if c == nil {
-			continue
-		}
-		wg.Add(1)
-		go func(ch <-chan services.ServiceChange) {
-			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case msg, ok := <-ch:
-					if !ok {
-						return
-					}
-					select {
-					case out <- msg:
-					case <-ctx.Done():
-						return
-					}
-				}
-			}
-		}(c)
-	}
-
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
-
-	return out
 }
