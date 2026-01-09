@@ -14,6 +14,7 @@ type objectWrapper struct {
 var _ Object = &objectWrapper{}
 
 // ObjectType is always implicit
+// astral:blueprint-ignore
 func (objectWrapper) ObjectType() string { return "" }
 
 func (o objectWrapper) WriteTo(w io.Writer) (n int64, err error) {

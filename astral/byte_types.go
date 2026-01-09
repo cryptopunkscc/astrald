@@ -10,6 +10,7 @@ import (
 // Bytes8 is a byte buffer of 8-bit length
 type Bytes8 []byte
 
+// astral:blueprint-ignore
 func (Bytes8) ObjectType() string {
 	return "bytes8"
 }
@@ -79,6 +80,7 @@ func (b *Bytes8) UnmarshalText(text []byte) error {
 // Bytes16 is a byte buffer of 16-bit length
 type Bytes16 []byte
 
+// astral:blueprint-ignore
 func (Bytes16) ObjectType() string {
 	return "bytes16"
 }
@@ -148,6 +150,7 @@ func (b *Bytes16) UnmarshalText(text []byte) error {
 // Bytes32 is a byte buffer of 32-bit length
 type Bytes32 []byte
 
+// astral:blueprint-ignore
 func (Bytes32) ObjectType() string {
 	return "bytes32"
 }
@@ -217,6 +220,7 @@ func (b *Bytes32) UnmarshalText(text []byte) error {
 // Bytes64 is a byte buffer of 64-bit length
 type Bytes64 []byte
 
+// astral:blueprint-ignore
 func (Bytes64) ObjectType() string {
 	return "bytes64"
 }

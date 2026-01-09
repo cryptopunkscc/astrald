@@ -2,8 +2,9 @@ package fs
 
 import (
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ astral.Object = &EventFileChanged{}
@@ -68,4 +69,10 @@ func (e *EventFileRemoved) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (e EventFileRemoved) String() string {
 	return fmt.Sprintf("removed %s (%s)", e.Path, e.ObjectID)
+}
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&EventFileAdded{})
+	_ = astral.DefaultBlueprints.Add(&EventFileChanged{})
+	_ = astral.DefaultBlueprints.Add(&EventFileRemoved{})
 }

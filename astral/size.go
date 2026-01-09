@@ -232,5 +232,5 @@ func (s Size) HumanReadableBinary() string {
 
 func init() {
 	var s Size
-	DefaultBlueprints.Add(&s)
+	_ = DefaultBlueprints.Add(&s)
 }

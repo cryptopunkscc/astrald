@@ -16,6 +16,7 @@ type Query struct {
 	Query  string
 }
 
+// astral:blueprint-ignore
 func (frame *Query) ObjectType() string {
 	return "nodes.frames.query"
 }

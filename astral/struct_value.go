@@ -15,6 +15,7 @@ type structValue struct {
 
 var _ Object = &structValue{}
 
+// astral:blueprint-ignore
 func (s structValue) ObjectType() string {
 	if t, ok := s.Interface().(ObjectTyper); ok {
 		return t.ObjectType()

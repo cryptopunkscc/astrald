@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Run astral blueprints check with an explicit repository root and ensure errors are visible.
+scripts/check-astral-blueprints.sh "$REPO_ROOT" 2>&1

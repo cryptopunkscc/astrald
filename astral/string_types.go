@@ -9,6 +9,7 @@ import (
 // String represents a string of indefinite length
 type String string
 
+// astral:blueprint-ignore
 func (String) ObjectType() string {
 	return "string"
 }
@@ -53,6 +54,7 @@ func (s String) String() string { return string(s) }
 // String8 represents a string with an 8-bit length
 type String8 string
 
+// astral:blueprint-ignore
 func (String8) ObjectType() string {
 	return "string8"
 }
@@ -113,6 +115,7 @@ func (s String8) String() string { return string(s) }
 // String16 represents a string with a 16-bit length
 type String16 string
 
+// astral:blueprint-ignore
 func (String16) ObjectType() string {
 	return "string16"
 }
@@ -172,6 +175,7 @@ func (s String16) String() string { return string(s) }
 // String32 represents a string with a 32-bit length
 type String32 string
 
+// astral:blueprint-ignore
 func (String32) ObjectType() string {
 	return "string32"
 }
@@ -231,6 +235,7 @@ func (s String32) String() string { return string(s) }
 // String64 represents a string with a 64-bit length
 type String64 string
 
+// astral:blueprint-ignore
 func (String64) ObjectType() string { return "string64" }
 
 func (s String64) WriteTo(w io.Writer) (n int64, err error) {

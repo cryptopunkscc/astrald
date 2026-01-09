@@ -19,6 +19,7 @@ type structWrapper struct {
 	s any
 }
 
+// astral:blueprint-ignore
 func (s structWrapper) ObjectType() string {
 	return ""
 }

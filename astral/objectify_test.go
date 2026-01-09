@@ -12,6 +12,7 @@ type testEntry struct {
 	Map     map[string]Object
 }
 
+// astral:blueprint-ignore
 func (e testEntry) ObjectType() string { return "entry" }
 
 func (e testEntry) WriteTo(w io.Writer) (n int64, err error) {
@@ -26,6 +27,7 @@ type testComplex struct {
 	Entries []testEntry
 }
 
+// astral:blueprint-ignore
 func (testComplex) ObjectType() string { return "list" }
 
 func (c testComplex) WriteTo(w io.Writer) (n int64, err error) {

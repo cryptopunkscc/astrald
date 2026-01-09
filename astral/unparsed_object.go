@@ -18,6 +18,7 @@ func NewUnparsedObject(typ string, payload []byte) *UnparsedObject {
 	return &UnparsedObject{Type: typ, Payload: payload}
 }
 
+// astral:blueprint-ignore
 func (unparsed *UnparsedObject) ObjectType() string {
 	return unparsed.Type
 }

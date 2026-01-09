@@ -18,6 +18,7 @@ type mapValue struct {
 
 var _ Object = &mapValue{}
 
+// astral:blueprint-ignore
 func (val mapValue) ObjectType() string {
 	return ""
 }

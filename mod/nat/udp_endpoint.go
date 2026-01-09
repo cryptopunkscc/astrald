@@ -137,3 +137,7 @@ func (e *UDPEndpoint) UDPAddr() *net.UDPAddr {
 		Port: int(e.Port),
 	}
 }
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&UDPEndpoint{})
+}

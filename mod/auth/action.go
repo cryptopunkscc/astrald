@@ -1,8 +1,9 @@
 package auth
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type Action string
@@ -21,4 +22,9 @@ func (a *Action) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (a Action) String() string {
 	return string(a)
+}
+
+func init() {
+	var a Action
+	_ = astral.DefaultBlueprints.Add(&a)
 }

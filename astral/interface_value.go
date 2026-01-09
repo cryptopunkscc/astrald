@@ -16,6 +16,7 @@ type interfaceValue struct {
 
 var _ Object = &interfaceValue{}
 
+// astral:blueprint-ignore
 func (i interfaceValue) ObjectType() string {
 	return ""
 }

@@ -13,6 +13,7 @@ type arrayValue struct {
 
 var _ Object = &arrayValue{}
 
+// astral:blueprint-ignore
 func (a arrayValue) ObjectType() string {
 	return ""
 }

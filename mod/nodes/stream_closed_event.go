@@ -39,3 +39,7 @@ func (m *StreamClosedEvent) UnmarshalJSON(b []byte) error {
 	*m = StreamClosedEvent(a)
 	return nil
 }
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&StreamClosedEvent{})
+}

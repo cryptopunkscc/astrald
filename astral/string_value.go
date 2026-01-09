@@ -13,6 +13,7 @@ type stringValue struct {
 
 var _ Object = &stringValue{}
 
+// astral:blueprint-ignore
 func (stringValue) ObjectType() string {
 	return String32("").ObjectType()
 }
