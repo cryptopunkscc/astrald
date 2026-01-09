@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/lib/term"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -66,7 +65,7 @@ func (scope *Scope) AddStruct(s any, prefix string) (err error) {
 			continue // skip methods without the prefix
 		}
 
-		name = term.ToSnakeCase(name)
+		name = log.ToSnakeCase(name)
 
 		if e := scope.AddFunc(name, fn); e != nil {
 			errs = append(errs, e)

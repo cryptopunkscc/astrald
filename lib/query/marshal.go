@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/cryptopunkscc/astrald/lib/term"
+	"github.com/cryptopunkscc/astrald/astral/log"
 )
 
 const queryTag = "query"
@@ -88,7 +88,7 @@ func Marshal(params any) (string, error) {
 			continue
 		}
 
-		name := term.ToSnakeCase(ft.Name)
+		name := log.ToSnakeCase(ft.Name)
 		if n, ok := tags[keyTag]; ok {
 			name = n
 		}

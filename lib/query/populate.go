@@ -5,9 +5,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/lib/term"
 	"reflect"
 	"strconv"
+
+	"github.com/cryptopunkscc/astrald/astral/log"
 )
 
 // Populate sets field values of struct s to the respective values from the map m.
@@ -39,7 +40,7 @@ func Populate(m map[string]string, s any) error {
 			continue
 		}
 
-		name := term.ToSnakeCase(ft.Name)
+		name := log.ToSnakeCase(ft.Name)
 		if n, ok := tags["key"]; ok {
 			name = n
 		}

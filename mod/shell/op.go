@@ -5,8 +5,8 @@ import (
 	"reflect"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/lib/term"
 )
 
 type Op struct {
@@ -99,7 +99,7 @@ func (c *Op) ArgNames() (names []string) {
 
 	for i := range c.at.NumField() {
 		ft := c.at.Field(i)
-		names = append(names, term.ToSnakeCase(ft.Name))
+		names = append(names, log.ToSnakeCase(ft.Name))
 	}
 
 	return
