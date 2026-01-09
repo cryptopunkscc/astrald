@@ -32,5 +32,5 @@ func (res *DescribeResult) UnmarshalJSON(bytes []byte) error {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&DescribeResult{})
+	astral.Add(&DescribeResult{})
 }

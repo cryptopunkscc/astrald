@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -16,15 +17,22 @@ func loadNodeIdentity(resources resources.Resources) (*astral.Identity, error) {
 	if err != nil {
 		nodeID := astral.GenerateIdentity()
 
-		buf, err := astral.DefaultBlueprints.Canonical().Pack((*astral.PrivateIdentity)(nodeID))
+		var buf = &bytes.Buffer{}
+
+		// encode the private key in canonical format
+		_, err = astral.Encode(
+			buf,
+			(*astral.PrivateIdentity)(nodeID),
+			astral.WithEncoder(astral.CanonicalTypeEncoder),
+		)
 		if err != nil {
 			return nil, err
 		}
 
-		return nodeID, resources.Write(resNodeIdentity, buf)
+		return nodeID, resources.Write(resNodeIdentity, buf.Bytes())
 	}
 
-	object, err := astral.DefaultBlueprints.Canonical().Unpack(data)
+	object, _, err := astral.Decode(bytes.NewReader(data), astral.Canonical())
 
 	switch object := object.(type) {
 	case *astral.PrivateIdentity:

@@ -89,7 +89,7 @@ func (mod *Module) IndexKey(objectID *astral.ObjectID) error {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects.ReadDefault(), objectID, mod.Objects.Blueprints())
+	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects.ReadDefault(), objectID)
 
 	if pk.Type != keys.KeyTypeIdentity {
 		return errors.New("unsupported key type")
@@ -126,7 +126,7 @@ func (mod *Module) FindIdentity(hex string) (*astral.Identity, error) {
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects.ReadDefault(), row.DataID, mod.Objects.Blueprints())
+	pk, err := objects.Load[*keys.PrivateKey](ctx, mod.Objects.ReadDefault(), row.DataID)
 	if err != nil {
 		return &astral.Identity{}, err
 	}

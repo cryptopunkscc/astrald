@@ -90,7 +90,7 @@ func (i interfaceValue) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 
-	o := ExtractBlueprints(r).New(objectType)
+	o := New(objectType)
 	if o == nil {
 		return n, newErrBlueprintNotFound(objectType)
 	}
@@ -152,7 +152,7 @@ func (i interfaceValue) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	o := DefaultBlueprints.New(j.Type)
+	o := New(j.Type)
 	if o == nil {
 		return newErrBlueprintNotFound(j.Type)
 	}

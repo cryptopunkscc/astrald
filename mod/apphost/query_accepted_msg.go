@@ -21,5 +21,5 @@ func (msg *QueryAcceptedMsg) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&QueryAcceptedMsg{})
+	_ = astral.Add(&QueryAcceptedMsg{})
 }

@@ -54,5 +54,5 @@ func (t *Time) UnmarshalText(text []byte) (err error) {
 }
 
 func init() {
-	_ = DefaultBlueprints.Add(&Time{})
+	_ = Add(&Time{})
 }

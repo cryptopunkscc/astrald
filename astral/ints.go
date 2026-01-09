@@ -402,7 +402,7 @@ func init() {
 		i32 Int32
 		i64 Int64
 	)
-	_ = DefaultBlueprints.Add(
+	_ = Add(
 		&u8, &u16, &u32, &u64,
 		&i8, &i16, &i32, &i64,
 	)

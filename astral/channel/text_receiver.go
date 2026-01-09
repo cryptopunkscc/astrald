@@ -14,7 +14,6 @@ import (
 
 type TextReceiver struct {
 	r  io.Reader
-	bp *astral.Blueprints
 	br *bufio.Reader
 }
 
@@ -23,7 +22,6 @@ var _ Receiver = &TextReceiver{}
 func NewTextReceiver(r io.Reader) *TextReceiver {
 	return &TextReceiver{
 		r:  r,
-		bp: astral.ExtractBlueprints(r),
 		br: bufio.NewReader(r),
 	}
 }
@@ -43,7 +41,7 @@ func (r TextReceiver) Receive() (obj astral.Object, err error) {
 	}
 
 	// make the object
-	obj = r.bp.New(parsed.Type)
+	obj = astral.New(parsed.Type)
 	if obj == nil {
 		return nil, astral.ErrBlueprintNotFound{Type: parsed.Type}
 	}

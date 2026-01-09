@@ -105,7 +105,7 @@ func (mod *Module) readBroadcast() (*ether.SignedBroadcast, *net.UDPAddr, error)
 			return nil, nil, err
 		}
 
-		var r = mod.Objects.Blueprints().Inject(bytes.NewReader(buf[:n]))
+		var r = bytes.NewReader(buf[:n])
 
 		var signed ether.SignedBroadcast
 		_, err = signed.ReadFrom(r)

@@ -30,5 +30,5 @@ func (s *CreatedUserInfo) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&CreatedUserInfo{})
+	_ = astral.Add(&CreatedUserInfo{})
 }

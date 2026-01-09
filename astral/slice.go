@@ -70,7 +70,7 @@ func (a Slice[T]) WriteTo(w io.Writer) (n int64, err error) {
 		var buf = &bytes.Buffer{}
 
 		if a.Typed {
-			_, err = Write(buf, v)
+			_, err = Encode(buf, v)
 		} else {
 			_, err = v.WriteTo(buf)
 		}
@@ -150,7 +150,7 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		obj := DefaultBlueprints.New(a.ElemType)
+		obj := New(a.ElemType)
 		if obj == nil {
 			return n, newErrBlueprintNotFound(a.ElemType)
 		}
@@ -208,7 +208,7 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 
 	result := make([]T, len(jlist))
 	for i, j := range jlist {
-		obj := DefaultBlueprints.New(j.Type)
+		obj := New(j.Type)
 		if obj == nil {
 			return newErrBlueprintNotFound(j.Type)
 		}
@@ -239,5 +239,5 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 }
 
 func init() {
-	_ = DefaultBlueprints.Add(&Slice[Object]{})
+	_ = Add(&Slice[Object]{})
 }

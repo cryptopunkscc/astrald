@@ -23,7 +23,7 @@ func (mod *Module) OpGet(ctx *astral.Context, q shell.Query, args opGetArgs) err
 	defer ch.Close()
 
 	// parse the object if possible, so that we can send json and text objects
-	object := astral.DefaultBlueprints.New(typ)
+	object := astral.New(typ)
 	if object != nil {
 		_, err = object.ReadFrom(bytes.NewReader(payload))
 		if err != nil {

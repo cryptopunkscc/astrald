@@ -20,5 +20,5 @@ func (s *ScanMessage) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&ScanMessage{})
+	_ = astral.Add(&ScanMessage{})
 }

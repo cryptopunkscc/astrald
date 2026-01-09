@@ -53,7 +53,7 @@ func (frame *Query) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (frame *Query) WriteTo(w io.Writer) (n int64, err error) {
-	// Blueprints.Write writes the type; just write the payload
+	// Blueprints.Encode writes the type; just write the payload
 	err = binary.Write(w, astral.ByteOrder, frame.Nonce)
 	if err != nil {
 		return

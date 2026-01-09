@@ -40,5 +40,5 @@ func (a EOS) MarshalText() (text []byte, err error) {
 }
 
 func init() {
-	DefaultBlueprints.Add(&EOS{})
+	Add(&EOS{})
 }

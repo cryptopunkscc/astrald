@@ -27,5 +27,5 @@ func (e *EventDiscovered) ReadFrom(r io.Reader) (n int64, err error) {
 // ...
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&EventDiscovered{})
+	_ = astral.Add(&EventDiscovered{})
 }

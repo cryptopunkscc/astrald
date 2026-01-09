@@ -102,5 +102,5 @@ func (nonce Nonce) String() string {
 
 func init() {
 	var n Nonce
-	_ = DefaultBlueprints.Add(&n)
+	_ = Add(&n)
 }

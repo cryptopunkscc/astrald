@@ -32,5 +32,5 @@ func (c NodeContractRevocation) IsExpired() bool {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&NodeContractRevocation{})
+	astral.Add(&NodeContractRevocation{})
 }

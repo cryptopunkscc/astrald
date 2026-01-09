@@ -79,5 +79,5 @@ func (key *PrivateKey) UnmarshalText(text []byte) error {
 // init
 
 func init() {
-	astral.DefaultBlueprints.Add(&PrivateKey{})
+	astral.Add(&PrivateKey{})
 }

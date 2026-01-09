@@ -62,8 +62,8 @@ func TestSlice_MarshalJSON_Empty(t *testing.T) {
 }
 
 func TestSlice_MarshalJSON_CustomMixed(t *testing.T) {
-	astral.DefaultBlueprints.Add(&TestObjectA{})
-	astral.DefaultBlueprints.Add(&TestObjectB{})
+	astral.Add(&TestObjectA{})
+	astral.Add(&TestObjectB{})
 
 	objects := []astral.Object{
 		&TestObjectA{Value: "hello"},
@@ -254,8 +254,8 @@ func TestSlice_UnmarshalJSON_Int8Only(t *testing.T) {
 }
 
 func TestSlice_UnmarshalJSON_TestA_TestB(t *testing.T) {
-	astral.DefaultBlueprints.Add(&TestObjectA{})
-	astral.DefaultBlueprints.Add(&TestObjectB{})
+	astral.Add(&TestObjectA{})
+	astral.Add(&TestObjectB{})
 
 	// This JSON matches what MarshalJSON produces for TestObjectA/TestObjectB
 	jsonData := `[

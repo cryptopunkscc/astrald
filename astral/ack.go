@@ -39,5 +39,5 @@ func (a Ack) MarshalText() (text []byte, err error) {
 }
 
 func init() {
-	DefaultBlueprints.Add(&Ack{})
+	Add(&Ack{})
 }

@@ -234,5 +234,5 @@ func (id *Identity) Scan(src any) error {
 }
 
 func init() {
-	_ = DefaultBlueprints.Add(&Identity{})
+	_ = Add(&Identity{})
 }

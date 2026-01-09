@@ -26,5 +26,5 @@ func (p *StatusMessage) ReadFrom(r io.Reader) (n int64, err error) {
 // ...
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&StatusMessage{})
+	_ = astral.Add(&StatusMessage{})
 }

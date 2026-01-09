@@ -194,5 +194,5 @@ func (id *ObjectID) IsZero() bool {
 }
 
 func init() {
-	_ = DefaultBlueprints.Add(&ObjectID{})
+	_ = Add(&ObjectID{})
 }

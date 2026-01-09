@@ -2,9 +2,10 @@ package ether
 
 import (
 	"bytes"
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
-	"io"
 )
 
 var _ astral.Object = &Broadcast{}
@@ -23,7 +24,7 @@ func (Broadcast) ObjectType() string { return "mod.ether.broadcast" }
 
 func (b Broadcast) WriteTo(w io.Writer) (n int64, err error) {
 	var buf = &bytes.Buffer{}
-	astral.Write(buf, b.Object)
+	astral.Encode(buf, b.Object)
 
 	return streams.WriteAllTo(w,
 		b.Timestamp,
@@ -41,8 +42,7 @@ func (b *Broadcast) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 
-	bp := astral.ExtractBlueprints(r)
-	b.Object, _, err = bp.Read(bytes.NewReader(buf))
+	b.Object, _, err = astral.Decode(bytes.NewReader(buf))
 	if err != nil {
 		return
 	}
@@ -51,5 +51,5 @@ func (b *Broadcast) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&Broadcast{})
+	_ = astral.Add(&Broadcast{})
 }

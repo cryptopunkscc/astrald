@@ -74,5 +74,5 @@ func (b Blob) String() string {
 
 func init() {
 	var b Blob
-	_ = DefaultBlueprints.Add(&b)
+	_ = Add(&b)
 }

@@ -124,5 +124,5 @@ func ParseEndpoint(s string) (*Endpoint, error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&Endpoint{})
+	_ = astral.Add(&Endpoint{})
 }

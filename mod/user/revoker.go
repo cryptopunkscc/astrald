@@ -26,5 +26,5 @@ func (s Revoker) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&Revoker{})
+	_ = astral.Add(&Revoker{})
 }

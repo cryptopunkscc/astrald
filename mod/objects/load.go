@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *astral.ObjectID, bp *astral.Blueprints) (o T, err error) {
+func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *astral.ObjectID) (o T, err error) {
 	if int64(objectID.Size) > MaxObjectSize {
 		return o, ErrObjectTooLarge
 	}
@@ -27,11 +27,7 @@ func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *astra
 	var a astral.Object
 	var ok bool
 
-	if bp == nil {
-		bp = astral.DefaultBlueprints
-	}
-
-	a, _, err = bp.Canonical().Read(r)
+	a, _, err = astral.Decode(r, astral.Canonical())
 	if err != nil {
 		return
 	}

@@ -26,5 +26,5 @@ func (e *EventCommitted) ReadFrom(r io.Reader) (n int64, err error) {
 // ...
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&EventCommitted{})
+	_ = astral.Add(&EventCommitted{})
 }

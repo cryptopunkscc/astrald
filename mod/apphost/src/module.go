@@ -136,7 +136,7 @@ func (mod *Module) ActiveLocalAppContracts() (list []*apphost.AppContract, err e
 	}
 
 	for _, dbContract := range contracts {
-		contract, err := objects.Load[*apphost.AppContract](nil, mod.Objects.ReadDefault(), dbContract.ObjectID, mod.Objects.Blueprints())
+		contract, err := objects.Load[*apphost.AppContract](nil, mod.Objects.ReadDefault(), dbContract.ObjectID)
 		if err != nil {
 			mod.log.Errorv(2, "error loading contract %v: %v", dbContract.ObjectID, err)
 			continue
@@ -157,7 +157,7 @@ func (mod *Module) Index(ctx *astral.Context, objectID *astral.ObjectID) (err er
 	}
 
 	// load the contract from node repo
-	c, err := objects.Load[*apphost.AppContract](ctx, mod.Objects.ReadDefault(), objectID, mod.Objects.Blueprints())
+	c, err := objects.Load[*apphost.AppContract](ctx, mod.Objects.ReadDefault(), objectID)
 	if err != nil {
 		return fmt.Errorf("cannot load app contract: %w", err)
 	}

@@ -89,5 +89,5 @@ func (d Digest) String() string {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&Digest{})
+	_ = astral.Add(&Digest{})
 }

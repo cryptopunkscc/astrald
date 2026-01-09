@@ -75,5 +75,5 @@ func (zone Zone) String() (s string) {
 
 func init() {
 	var zone Zone
-	_ = DefaultBlueprints.Add(&zone)
+	_ = Add(&zone)
 }

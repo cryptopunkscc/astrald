@@ -10,7 +10,6 @@ import (
 
 // BinaryReceiver reads a stream of astral.Objects from the underlying io.Reader.
 type BinaryReceiver struct {
-	bp            *astral.Blueprints
 	r             io.Reader
 	AllowUnparsed bool
 }
@@ -18,7 +17,7 @@ type BinaryReceiver struct {
 var _ Receiver = &BinaryReceiver{}
 
 func NewBinaryReceiver(r io.Reader) *BinaryReceiver {
-	return &BinaryReceiver{r: r, bp: astral.ExtractBlueprints(r)}
+	return &BinaryReceiver{r: r}
 }
 
 func (b BinaryReceiver) Receive() (object astral.Object, err error) {
@@ -41,7 +40,7 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 		return (*astral.Blob)(&buf), nil
 	}
 
-	object = b.bp.New(objectType.String())
+	object = astral.New(objectType.String())
 	if object == nil {
 		if b.AllowUnparsed {
 			return astral.NewUnparsedObject(objectType.String(), buf), nil

@@ -41,5 +41,5 @@ func (c *NodeContract) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&NodeContract{})
+	astral.Add(&NodeContract{})
 }

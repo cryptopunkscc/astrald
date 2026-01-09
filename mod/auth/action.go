@@ -26,5 +26,5 @@ func (a Action) String() string {
 
 func init() {
 	var a Action
-	_ = astral.DefaultBlueprints.Add(&a)
+	_ = astral.Add(&a)
 }

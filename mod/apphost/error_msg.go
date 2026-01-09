@@ -38,5 +38,5 @@ func (msg ErrorMsg) Error() string {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&ErrorMsg{})
+	_ = astral.Add(&ErrorMsg{})
 }

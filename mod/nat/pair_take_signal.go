@@ -45,5 +45,5 @@ func (p *PairTakeSignal) UnmarshalJSON(bytes []byte) error {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&PairTakeSignal{})
+	_ = astral.Add(&PairTakeSignal{})
 }

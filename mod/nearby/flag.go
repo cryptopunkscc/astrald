@@ -46,5 +46,5 @@ func (f Flag) MarshalText() (text []byte, err error) {
 // ...
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(NewFlag(""))
+	_ = astral.Add(NewFlag(""))
 }

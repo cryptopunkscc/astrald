@@ -50,4 +50,4 @@ func (m *SessionMigrateSignal) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func init() { _ = astral.DefaultBlueprints.Add(&SessionMigrateSignal{}) }
+func init() { _ = astral.Add(&SessionMigrateSignal{}) }

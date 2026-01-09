@@ -41,5 +41,5 @@ func (m *StreamClosedEvent) UnmarshalJSON(b []byte) error {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&StreamClosedEvent{})
+	_ = astral.Add(&StreamClosedEvent{})
 }

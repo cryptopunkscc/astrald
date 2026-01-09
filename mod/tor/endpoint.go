@@ -119,5 +119,5 @@ func (e *Endpoint) String() string {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&Endpoint{})
+	_ = astral.Add(&Endpoint{})
 }

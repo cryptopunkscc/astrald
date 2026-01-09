@@ -128,7 +128,7 @@ func (b *Bundle) ReadFrom(r io.Reader) (n int64, err error) {
 		}
 
 		// read the object in the buffer
-		o, _, err = ExtractBlueprints(r).Read(bytes.NewReader(buf))
+		o, _, err = Decode(bytes.NewReader(buf))
 		if err != nil {
 			return
 		}
@@ -181,7 +181,7 @@ func (a *Bundle) UnmarshalJSON(bytes []byte) error {
 	}
 
 	for _, j := range jlist {
-		obj := DefaultBlueprints.New(j.Type)
+		obj := New(j.Type)
 		if obj == nil {
 			return newErrBlueprintNotFound(j.Type)
 		}
@@ -248,5 +248,5 @@ func Fetch[T Object](bundle *Bundle, objectID ObjectID) (object T, found bool) {
 }
 
 func init() {
-	_ = DefaultBlueprints.Add(&Bundle{})
+	_ = Add(&Bundle{})
 }

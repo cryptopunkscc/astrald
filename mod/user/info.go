@@ -26,5 +26,5 @@ func (i *Info) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&Info{})
+	astral.Add(&Info{})
 }

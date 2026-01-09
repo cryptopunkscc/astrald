@@ -60,7 +60,7 @@ func (mod *Module) Load(ctx *astral.Context, repo objects.Repository, objectID *
 	}
 
 	// parse the object
-	o, _, err := mod.Blueprints().Canonical().Read(r)
+	o, _, err := astral.Decode(r, astral.Canonical())
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (mod *Module) Store(ctx *astral.Context, repo objects.Repository, object as
 		return nil, err
 	}
 
-	_, err = mod.Blueprints().Canonical().Write(w, object)
+	_, err = astral.Encode(w, object, astral.WithEncoder(astral.CanonicalTypeEncoder))
 	if err != nil {
 		return nil, err
 	}

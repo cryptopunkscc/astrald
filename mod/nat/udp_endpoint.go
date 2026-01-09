@@ -139,5 +139,5 @@ func (e *UDPEndpoint) UDPAddr() *net.UDPAddr {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&UDPEndpoint{})
+	_ = astral.Add(&UDPEndpoint{})
 }

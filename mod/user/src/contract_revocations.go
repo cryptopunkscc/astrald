@@ -79,12 +79,7 @@ func (mod *Module) LoadNodeContractRevocation(revocationID *astral.ObjectID) (*u
 		return nil, user.ErrContractNotExists
 	}
 
-	return objects.Load[*user.SignedNodeContractRevocation](
-		mod.ctx,
-		mod.Objects.ReadDefault(),
-		revocationID,
-		mod.Objects.Blueprints(),
-	)
+	return objects.Load[*user.SignedNodeContractRevocation](mod.ctx, mod.Objects.ReadDefault(), revocationID)
 }
 
 func (mod *Module) FindNodeContractRevocation(revocationID *astral.ObjectID) (r *user.NodeContractRevocation, err error) {

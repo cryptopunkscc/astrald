@@ -24,5 +24,5 @@ func (e *EventNewAppContract) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&EventNewAppContract{})
+	astral.Add(&EventNewAppContract{})
 }

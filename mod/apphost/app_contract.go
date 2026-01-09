@@ -44,5 +44,5 @@ func (a *AppContract) ContractHash() []byte {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&AppContract{})
+	astral.Add(&AppContract{})
 }

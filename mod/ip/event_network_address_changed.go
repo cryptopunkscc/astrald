@@ -29,5 +29,5 @@ func (e *EventNetworkAddressChanged) ReadFrom(r io.Reader) (n int64, err error) 
 // ...
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&EventNetworkAddressChanged{})
+	_ = astral.Add(&EventNetworkAddressChanged{})
 }

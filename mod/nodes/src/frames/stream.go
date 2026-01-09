@@ -55,14 +55,15 @@ func (s *Stream) Write(frame Frame) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// FrameBlueprints.Write expects an astral.Object; assert the Frame to that interface
+	// FrameBlueprints.Encode expects an astral.Object; assert the Frame to that interface
 	obj, ok := frame.(astral.Object)
 	if !ok {
 		return fmt.Errorf("frame does not implement astral.Object")
 	}
 
 	// Use FrameBlueprints to write the type header + payload
-	_, err = FrameBlueprints.Write(s.conn, obj)
+	_, err = astral.Encode(s.conn, obj, astral.WithEncoder(FrameTypeEncoder))
+
 	if err != nil {
 		_, _ = s.err.Swap(nil, err)
 		_ = s.conn.Close()
@@ -81,7 +82,7 @@ func (s *Stream) reader() {
 	}()
 
 	for {
-		obj, _, derr := FrameBlueprints.Read(s.conn)
+		obj, _, derr := astral.Decode(s.conn, astral.WithDecoder(FrameTypeDecoder))
 		if derr != nil {
 			err = derr
 			return
@@ -97,7 +98,7 @@ func (s *Stream) reader() {
 	}
 }
 
-var FrameBlueprints = astral.DefaultBlueprints.Indexed([]string{
+var FrameTypes = []string{
 	"nodes.frames.ping",
 	"nodes.frames.query",
 	"nodes.frames.read",
@@ -105,10 +106,13 @@ var FrameBlueprints = astral.DefaultBlueprints.Indexed([]string{
 	"nodes.frames.data",
 	"nodes.frames.migrate",
 	"nodes.frames.reset",
-})
+}
+
+var FrameTypeEncoder = astral.IndexedTypeEncoder(FrameTypes)
+var FrameTypeDecoder = astral.IndexedTypeDecoder(FrameTypes)
 
 func init() {
-	_ = FrameBlueprints.Add(
+	_ = astral.Add(
 		&Ping{},
 		&Query{},
 		&Response{},

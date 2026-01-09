@@ -32,5 +32,5 @@ func (p Prompt) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&Prompt{})
+	_ = astral.Add(&Prompt{})
 }

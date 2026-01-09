@@ -44,5 +44,5 @@ func (p *EndpointLocalMapping) UnmarshalJSON(bytes []byte) error {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&EndpointLocalMapping{})
+	_ = astral.Add(&EndpointLocalMapping{})
 }

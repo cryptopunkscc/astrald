@@ -52,5 +52,5 @@ func (sr SearchResult) String() string {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&SearchResult{})
+	_ = astral.Add(&SearchResult{})
 }

@@ -40,5 +40,5 @@ func (n Nil) MarshalText() (text []byte, err error) {
 }
 
 func init() {
-	DefaultBlueprints.Add(&Nil{})
+	Add(&Nil{})
 }

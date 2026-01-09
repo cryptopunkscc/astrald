@@ -146,5 +146,5 @@ func (info *NodeInfo) UnmarshalText(text []byte) (err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&NodeInfo{})
+	_ = astral.Add(&NodeInfo{})
 }

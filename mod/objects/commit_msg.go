@@ -21,5 +21,5 @@ func (c CommitMsg) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&CommitMsg{})
+	_ = astral.Add(&CommitMsg{})
 }

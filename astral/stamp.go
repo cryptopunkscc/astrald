@@ -37,5 +37,5 @@ func (s *Stamp) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = DefaultBlueprints.Add(&Stamp{})
+	_ = Add(&Stamp{})
 }

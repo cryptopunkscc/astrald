@@ -132,6 +132,6 @@ func (p *PeerEndpoint) UnmarshalJSON(bytes []byte) error {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&PeerEndpoint{})
-	_ = astral.DefaultBlueprints.Add(&TraversedPortPair{})
+	_ = astral.Add(&PeerEndpoint{})
+	_ = astral.Add(&TraversedPortPair{})
 }

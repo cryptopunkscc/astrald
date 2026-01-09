@@ -21,13 +21,11 @@ func (e ObservedEndpointMessage) WriteTo(w io.Writer) (n int64, err error) {
 	if e.Endpoint == nil {
 		return 0, errors.New("nil endpoint")
 	}
-	return astral.Write(w, e.Endpoint)
+	return astral.Encode(w, e.Endpoint)
 }
 
 func (e *ObservedEndpointMessage) ReadFrom(r io.Reader) (n int64, err error) {
-	bp := astral.ExtractBlueprints(r)
-
-	obj, m, err := bp.Read(r)
+	obj, m, err := astral.Decode(r)
 	n += m
 	if err != nil {
 		return
@@ -42,5 +40,5 @@ func (e *ObservedEndpointMessage) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&ObservedEndpointMessage{})
+	_ = astral.Add(&ObservedEndpointMessage{})
 }

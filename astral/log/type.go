@@ -39,5 +39,5 @@ func (l Type) String() string {
 
 func init() {
 	var t Type
-	astral.DefaultBlueprints.Add(&t)
+	astral.Add(&t)
 }

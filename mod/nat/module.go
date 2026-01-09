@@ -18,6 +18,6 @@ const (
 )
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&PunchSignal{})
-	_ = astral.DefaultBlueprints.Add(&PairTakeSignal{})
+	_ = astral.Add(&PunchSignal{})
+	_ = astral.Add(&PairTakeSignal{})
 }

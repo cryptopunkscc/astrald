@@ -68,5 +68,5 @@ func (d Duration) String() string {
 
 func init() {
 	var d Duration
-	_ = DefaultBlueprints.Add(&d)
+	_ = Add(&d)
 }

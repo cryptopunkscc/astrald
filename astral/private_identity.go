@@ -77,7 +77,7 @@ func (p *PrivateIdentity) String() string {
 }
 
 func init() {
-	if err := DefaultBlueprints.Add(&PrivateIdentity{}); err != nil {
+	if err := Add(&PrivateIdentity{}); err != nil {
 		panic(err)
 	}
 }

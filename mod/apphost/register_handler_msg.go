@@ -26,5 +26,5 @@ func (msg *RegisterHandlerMsg) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&RegisterHandlerMsg{})
+	_ = astral.Add(&RegisterHandlerMsg{})
 }

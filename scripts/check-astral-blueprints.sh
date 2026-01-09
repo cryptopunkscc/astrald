@@ -7,7 +7,7 @@ ROOT="${1:-.}"
 # It ensures that every Go type defining:
 #   func (T) ObjectType() string
 # is registered somewhere via:
-#   astral.DefaultBlueprints.Add(&T{})
+#   astral.Add(&T{})
 #
 # SECURITY:
 # - Never expands file lists through the shell
@@ -60,9 +60,9 @@ OBJECT_TYPES=$(
 
 # ---------- Collect Blueprint registrations ----------
 # Accept:
-#   astral.DefaultBlueprints.Add(&T{})
-#   DefaultBlueprints.Add(&T{})
-#   var v T; ... DefaultBlueprints.Add(&v)
+#   astral.Add(&T{})
+#   Add(&T{})
+#   var v T; ... Add(&v)
 # Supports multiline because perl is slurping (-0777).
 
 BLUEPRINT_TYPES=$(
@@ -94,7 +94,7 @@ FAILED=0
 # ---------- Compare ----------
 for t in $OBJECT_TYPES; do
   if ! printf '%s\n' "$BLUEPRINT_TYPES" | grep -qx "$t"; then
-    echo "ERROR: Astral object type '$t' defines ObjectType() string but is not registered via DefaultBlueprints.Add(&${t}{...})"
+    echo "ERROR: Astral object type '$t' defines ObjectType() string but is not registered via Add(&${t}{...})"
     echo "  Defined at:"
 
     # Safe file listing: NUL-delimited + xargs -0 + grep -- to prevent option injection
@@ -117,7 +117,7 @@ if [ "$FAILED" -ne 0 ]; then
   echo "Blueprint registration check FAILED."
   echo
   echo "Hint: add in an init() function:"
-  echo "  _ = astral.DefaultBlueprints.Add(&<Type>{})"
+  echo "  _ = astral.Add(&<Type>{})"
   exit 1
 fi
 

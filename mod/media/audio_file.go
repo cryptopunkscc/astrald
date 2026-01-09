@@ -60,5 +60,5 @@ func (f *AudioFile) UnmarshalJSON(bytes []byte) error {
 // text
 
 func init() {
-	astral.DefaultBlueprints.Add(&AudioFile{})
+	astral.Add(&AudioFile{})
 }

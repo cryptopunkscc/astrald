@@ -24,5 +24,5 @@ func (n *Notification) ReadFrom(r io.Reader) (int64, error) {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&Notification{})
+	astral.Add(&Notification{})
 }

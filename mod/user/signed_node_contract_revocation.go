@@ -37,5 +37,5 @@ func (c *SignedNodeContractRevocation) Hash() []byte {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&SignedNodeContractRevocation{})
+	astral.Add(&SignedNodeContractRevocation{})
 }

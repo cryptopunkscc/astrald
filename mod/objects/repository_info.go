@@ -44,5 +44,5 @@ func (info *RepositoryInfo) UnmarshalJSON(bytes []byte) error {
 // ...
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&RepositoryInfo{})
+	_ = astral.Add(&RepositoryInfo{})
 }

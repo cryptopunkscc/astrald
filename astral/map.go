@@ -1,6 +1,7 @@
 package astral
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,9 +28,9 @@ func (m Map) WriteTo(w io.Writer) (n int64, err error) {
 	}
 
 	for k, v := range clone {
-		var data []byte
+		var data = &bytes.Buffer{}
+		_, err = Encode(data, v)
 
-		data, err = Pack(v)
 		if err != nil {
 			err = fmt.Errorf("pack object at %s: %w", k, err)
 			return
@@ -41,7 +42,7 @@ func (m Map) WriteTo(w io.Writer) (n int64, err error) {
 			return
 		}
 
-		i, err = Bytes32(data).WriteTo(w)
+		i, err = Bytes32(data.Bytes()).WriteTo(w)
 		n += i
 		if err != nil {
 			return
@@ -60,8 +61,6 @@ func (m *Map) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 
-	bp := ExtractBlueprints(r)
-
 	for _ = range mapSize {
 		var key String16
 		var data Bytes32
@@ -79,7 +78,7 @@ func (m *Map) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		object, err = bp.Unpack(data)
+		object, _, err = Decode(bytes.NewReader(data))
 		if err != nil {
 			return
 		}
@@ -122,7 +121,7 @@ func (m *Map) UnmarshalJSON(bytes []byte) (err error) {
 
 	m.Map = sig.Map[string, Object]{}
 	for k, jsonObj := range jmap {
-		obj := DefaultBlueprints.New(jsonObj.Type)
+		obj := New(jsonObj.Type)
 		if obj == nil {
 			return newErrBlueprintNotFound(jsonObj.Type)
 		}
@@ -141,5 +140,5 @@ func (m *Map) UnmarshalJSON(bytes []byte) (err error) {
 }
 
 func init() {
-	DefaultBlueprints.Add(&Map{})
+	Add(&Map{})
 }

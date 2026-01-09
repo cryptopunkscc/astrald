@@ -292,5 +292,5 @@ func init() {
 		b64 Bytes64
 	)
 
-	_ = DefaultBlueprints.Add(&b8, &b16, &b32, &b64)
+	_ = Add(&b8, &b16, &b32, &b64)
 }

@@ -30,5 +30,5 @@ func (d *ArchiveDescriptor) String() string {
 }
 
 func init() {
-	astral.DefaultBlueprints.Add(&ArchiveDescriptor{})
+	astral.Add(&ArchiveDescriptor{})
 }

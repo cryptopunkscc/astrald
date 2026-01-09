@@ -71,5 +71,5 @@ func (b Bool) String() string {
 
 func init() {
 	var b Bool
-	_ = DefaultBlueprints.Add(&b)
+	_ = Add(&b)
 }

@@ -108,12 +108,7 @@ func (mod *Module) ActiveContractsOf(userID *astral.Identity) (contracts []*user
 
 	var errs []error
 	for _, row := range rows {
-		contract, err := objects.Load[*user.SignedNodeContract](
-			mod.ctx,
-			mod.Objects.ReadDefault(),
-			row.ObjectID,
-			mod.Objects.Blueprints(),
-		)
+		contract, err := objects.Load[*user.SignedNodeContract](mod.ctx, mod.Objects.ReadDefault(), row.ObjectID)
 
 		if err != nil {
 			errs = append(errs, fmt.Errorf("error loading %s: %w", row.ObjectID.String(), err))
@@ -177,12 +172,7 @@ func (mod *Module) GetNodeContract(contractID *astral.ObjectID) (*user.SignedNod
 		return nil, user.ErrContractNotExists
 	}
 
-	return objects.Load[*user.SignedNodeContract](
-		mod.ctx,
-		mod.Objects.ReadDefault(),
-		contractID,
-		mod.Objects.Blueprints(),
-	)
+	return objects.Load[*user.SignedNodeContract](mod.ctx, mod.Objects.ReadDefault(), contractID)
 }
 
 // SignLocalContract creates, signs and stores a new node contract with the specified user

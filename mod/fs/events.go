@@ -72,7 +72,7 @@ func (e EventFileRemoved) String() string {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&EventFileAdded{})
-	_ = astral.DefaultBlueprints.Add(&EventFileChanged{})
-	_ = astral.DefaultBlueprints.Add(&EventFileRemoved{})
+	_ = astral.Add(&EventFileAdded{})
+	_ = astral.Add(&EventFileChanged{})
+	_ = astral.Add(&EventFileRemoved{})
 }

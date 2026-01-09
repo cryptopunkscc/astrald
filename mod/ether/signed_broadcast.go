@@ -40,5 +40,5 @@ func (b SignedBroadcast) Hash() []byte {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&SignedBroadcast{})
+	_ = astral.Add(&SignedBroadcast{})
 }

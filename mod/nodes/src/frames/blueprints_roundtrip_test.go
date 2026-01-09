@@ -1,6 +1,7 @@
 package frames
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 
@@ -24,12 +25,13 @@ func TestFrameBlueprintsRoundtrip(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			data, err := FrameBlueprints.Pack(tc.obj)
+			var data = &bytes.Buffer{}
+			_, err := astral.Encode(data, tc.obj, astral.WithEncoder(FrameTypeEncoder))
 			if err != nil {
 				t.Fatalf("pack failed: %v", err)
 			}
 
-			obj, err := FrameBlueprints.Unpack(data)
+			obj, _, err := astral.Decode(data, astral.WithDecoder(FrameTypeDecoder))
 			if err != nil {
 				t.Fatalf("unpack failed: %v", err)
 			}

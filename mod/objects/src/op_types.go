@@ -16,7 +16,7 @@ func (mod *Module) OpTypes(ctx *astral.Context, q shell.Query, args opTypesArgs)
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	types := mod.Blueprints().Types()
+	types := astral.DefaultBlueprints().Types()
 	slices.Sort(types)
 
 	for _, name := range types {

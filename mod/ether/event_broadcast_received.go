@@ -30,5 +30,5 @@ func (e *EventBroadcastReceived) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&EventBroadcastReceived{})
+	_ = astral.Add(&EventBroadcastReceived{})
 }

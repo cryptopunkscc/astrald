@@ -35,5 +35,5 @@ func (l Tag) String() string {
 
 func init() {
 	var v Tag
-	astral.DefaultBlueprints.Add(&v)
+	astral.Add(&v)
 }

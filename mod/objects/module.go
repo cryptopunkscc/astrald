@@ -60,7 +60,6 @@ type Module interface {
 	AddReceiver(Receiver) error
 	Receive(astral.Object, *astral.Identity) error
 
-	Blueprints() *astral.Blueprints
 	Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error
 	GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error)
 }
@@ -104,7 +103,7 @@ func Save(ctx *astral.Context, object astral.Object, repo Repository) (objectID 
 	}
 	defer w.Discard()
 
-	_, err = astral.DefaultBlueprints.Canonical().Write(w, object)
+	_, err = astral.Encode(w, object, astral.WithEncoder(astral.CanonicalTypeEncoder))
 	if err != nil {
 		return
 	}

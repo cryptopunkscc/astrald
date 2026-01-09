@@ -64,5 +64,5 @@ func (s *OpUpdate) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func init() {
-	_ = astral.DefaultBlueprints.Add(&OpUpdate{})
+	_ = astral.Add(&OpUpdate{})
 }

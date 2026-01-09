@@ -10,7 +10,6 @@ import (
 // JSONReceiver reads a stream of astral.Objects encoded as JSON lines from the underlying io.Reader.
 type JSONReceiver struct {
 	r   io.Reader
-	bp  *astral.Blueprints
 	dec *json.Decoder
 }
 
@@ -19,7 +18,6 @@ var _ Receiver = &JSONReceiver{}
 func NewJSONReceiver(r io.Reader) *JSONReceiver {
 	return &JSONReceiver{
 		r:   r,
-		bp:  astral.ExtractBlueprints(r),
 		dec: json.NewDecoder(r),
 	}
 }
@@ -32,7 +30,7 @@ func (r JSONReceiver) Receive() (object astral.Object, err error) {
 		return nil, err
 	}
 
-	object = r.bp.New(jsonObj.Type)
+	object = astral.New(jsonObj.Type)
 	if object == nil {
 		return nil, astral.ErrBlueprintNotFound{Type: jsonObj.Type}
 	}
