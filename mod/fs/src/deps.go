@@ -31,7 +31,7 @@ func (mod *Module) LoadDependencies() (err error) {
 		if cfg.Writable {
 			repo = NewRepository(mod, cfg.Label, cfg.Path)
 		} else {
-			repo, err = NewWatchRepository(mod, cfg.Path, cfg.Label)
+			repo, err = NewWatchRepository(mod, cfg.Label, cfg.Path)
 		}
 		if err != nil {
 			mod.log.Error("error adding repo %v: %v", name, err)

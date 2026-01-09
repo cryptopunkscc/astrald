@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
@@ -13,7 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"os"
 )
 
 var _ fs.Module = &Module{}
@@ -90,7 +91,6 @@ func (mod *Module) verifyIndex(ctx *astral.Context) {
 	mod.log.Log("verifying index...")
 
 	var updated, total int
-
 	err := mod.db.EachPath(func(path string) error {
 		total++
 		// update if necessary

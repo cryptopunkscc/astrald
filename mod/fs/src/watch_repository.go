@@ -21,7 +21,7 @@ type WatchRepository struct {
 	addQueue *sig.Queue[*astral.ObjectID]
 }
 
-func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepository, err error) {
+func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepository, err error) {
 	stat, err := os.Stat(root)
 	switch {
 	case err != nil:
