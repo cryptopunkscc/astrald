@@ -7,6 +7,7 @@ import (
 // ObjectType is an object containing the object type. ObjectType is an Object itself.
 type ObjectType string
 
+// astral:blueprint-ignore
 func (*ObjectType) ObjectType() string { return "object_type" }
 
 func (h ObjectType) WriteTo(w io.Writer) (n int64, err error) {

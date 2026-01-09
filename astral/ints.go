@@ -9,6 +9,7 @@ import (
 
 type Uint8 uint8
 
+// astral:blueprint-ignore
 func (Uint8) ObjectType() string {
 	return "uint8"
 }
@@ -56,6 +57,7 @@ func (u Uint8) String() string {
 
 type Uint16 uint16
 
+// astral:blueprint-ignore
 func (Uint16) ObjectType() string {
 	return "uint16"
 }
@@ -103,6 +105,7 @@ func (u Uint16) String() string {
 
 type Uint32 uint32
 
+// astral:blueprint-ignore
 func (Uint32) ObjectType() string {
 	return "uint32"
 }
@@ -150,6 +153,7 @@ func (u Uint32) String() string {
 
 type Uint64 uint64
 
+// astral:blueprint-ignore
 func (Uint64) ObjectType() string {
 	return "uint64"
 }
@@ -197,6 +201,7 @@ func (u Uint64) String() string {
 
 type Int8 int8
 
+// astral:blueprint-ignore
 func (Int8) ObjectType() string {
 	return "int8"
 }
@@ -244,6 +249,7 @@ func (i Int8) String() string {
 
 type Int16 int16
 
+// astral:blueprint-ignore
 func (Int16) ObjectType() string {
 	return "int16"
 }
@@ -291,6 +297,7 @@ func (i Int16) String() string {
 
 type Int32 int32
 
+// astral:blueprint-ignore
 func (Int32) ObjectType() string {
 	return "int32"
 }
@@ -338,6 +345,7 @@ func (i Int32) String() string {
 
 type Int64 int64
 
+// astral:blueprint-ignore
 func (Int64) ObjectType() string {
 	return "int64"
 }
@@ -398,5 +406,4 @@ func init() {
 		&u8, &u16, &u32, &u64,
 		&i8, &i16, &i32, &i64,
 	)
-
 }

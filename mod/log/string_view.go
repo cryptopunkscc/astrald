@@ -10,6 +10,7 @@ type StringView struct {
 	*astral.String
 }
 
+// astral:blueprint-ignore
 func (StringView) ObjectType() string { return "" }
 
 func (v StringView) Render() string {

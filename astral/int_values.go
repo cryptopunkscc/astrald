@@ -14,6 +14,7 @@ type uint8Value struct {
 
 var _ Object = &uint8Value{}
 
+// astral:blueprint-ignore
 func (u uint8Value) ObjectType() string {
 	return "uint8"
 }
@@ -62,6 +63,7 @@ type uint16Value struct {
 
 var _ Object = &uint16Value{}
 
+// astral:blueprint-ignore
 func (u uint16Value) ObjectType() string {
 	return "uint16"
 }
@@ -110,6 +112,7 @@ type uint32Value struct {
 
 var _ Object = &uint32Value{}
 
+// astral:blueprint-ignore
 func (u uint32Value) ObjectType() string {
 	return "uint32"
 }
@@ -158,6 +161,7 @@ type uint64Value struct {
 
 var _ Object = &uint64Value{}
 
+// astral:blueprint-ignore
 func (u uint64Value) ObjectType() string {
 	return "uint64"
 }
@@ -206,6 +210,7 @@ type int8Value struct {
 
 var _ Object = &int8Value{}
 
+// astral:blueprint-ignore
 func (i int8Value) ObjectType() string {
 	return "int8"
 }
@@ -254,6 +259,7 @@ type int16Value struct {
 
 var _ Object = &int16Value{}
 
+// astral:blueprint-ignore
 func (i int16Value) ObjectType() string {
 	return "int16"
 }
@@ -302,6 +308,7 @@ type int32Value struct {
 
 var _ Object = &int32Value{}
 
+// astral:blueprint-ignore
 func (i int32Value) ObjectType() string {
 	return "int32"
 }
@@ -350,6 +357,7 @@ type int64Value struct {
 
 var _ Object = &int64Value{}
 
+// astral:blueprint-ignore
 func (i int64Value) ObjectType() string {
 	return "int64"
 }

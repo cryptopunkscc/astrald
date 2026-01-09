@@ -30,3 +30,7 @@ func (p Prompt) WriteTo(w io.Writer) (n int64, err error) {
 func (p Prompt) ReadFrom(r io.Reader) (n int64, err error) {
 	return 0, nil
 }
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&Prompt{})
+}
