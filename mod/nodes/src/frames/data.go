@@ -16,7 +16,6 @@ type Data struct {
 	Payload []byte
 }
 
-// astral:blueprint-ignore
 func (frame *Data) ObjectType() string {
 	return "nodes.frames.data"
 }
