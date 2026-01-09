@@ -24,3 +24,7 @@ func (s ServiceChange) WriteTo(w io.Writer) (n int64, err error) {
 func (s *ServiceChange) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(s).ReadFrom(r)
 }
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&ServiceChange{})
+}
