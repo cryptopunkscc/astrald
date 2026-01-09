@@ -24,3 +24,7 @@ func (s Revoker) WriteTo(w io.Writer) (n int64, err error) {
 func (s Revoker) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Struct(s).ReadFrom(r)
 }
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&Revoker{})
+}

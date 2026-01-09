@@ -24,3 +24,7 @@ func (e Event) WriteTo(w io.Writer) (n int64, err error) {
 func (e *Event) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Struct(e).ReadFrom(r)
 }
+
+func init() {
+	_ = astral.DefaultBlueprints.Add(&Event{})
+}

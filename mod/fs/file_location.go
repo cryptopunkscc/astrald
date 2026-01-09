@@ -72,6 +72,5 @@ func (fn FileLocation) String() string {
 }
 
 func init() {
-	var fn FileLocation
-	astral.DefaultBlueprints.Add(&fn)
+	_ = astral.DefaultBlueprints.Add(&FileLocation{})
 }
