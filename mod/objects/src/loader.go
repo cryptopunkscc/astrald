@@ -31,8 +31,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		return nil, err
 	}
 
-	mod.blueprints = astral.NewBlueprints(astral.DefaultBlueprints())
-
 	return mod, nil
 }
 

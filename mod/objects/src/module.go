@@ -25,12 +25,11 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	blueprints *astral.Blueprints
-	node       astral.Node
-	config     Config
-	db         *DB
-	log        *log.Logger
-	ops        shell.Scope
+	node   astral.Node
+	config Config
+	db     *DB
+	log    *log.Logger
+	ops    shell.Scope
 
 	ctx        *astral.Context
 	describers sig.Set[objects.Describer]
@@ -189,10 +188,6 @@ func (mod *Module) RemoveGroup(groupName string, repoName string) error {
 
 func (mod *Module) AddSearchPreprocessor(pre objects.SearchPreprocessor) error {
 	return mod.searchPre.Add(pre)
-}
-
-func (mod *Module) Blueprints() *astral.Blueprints {
-	return mod.blueprints
 }
 
 func (mod *Module) Scope() *shell.Scope {
