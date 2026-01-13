@@ -28,15 +28,13 @@ func (mod *Module) OpDiscovery(
 	}
 
 	for _, s := range snapshot {
-		err := ch.Send(&s)
-		if err != nil {
-			return ch.Send(astral.NewError(err.Error()))
+		if err := ch.Send(&s); err != nil {
+			return err
 		}
 	}
 
-	err = ch.Send(&astral.EOS{})
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	if err := ch.Send(&astral.EOS{}); err != nil {
+		return err
 	}
 
 	for {
@@ -48,9 +46,11 @@ func (mod *Module) OpDiscovery(
 				return nil
 			}
 
-			serviceChange := update
-			err := ch.Send(&serviceChange)
-			if err != nil {
+			if update.Kind != services.DiscoveryEventChange {
+				continue
+			}
+
+			if err := ch.Send(&update.Change); err != nil {
 				return err
 			}
 		}

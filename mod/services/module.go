@@ -23,5 +23,5 @@ type ServiceDiscoverer interface {
 		ctx *astral.Context,
 		caller *astral.Identity,
 		opts DiscoverOptions,
-	) (<-chan ServiceChange, error)
+	) (<-chan ServiceDiscoveryResult, error)
 }

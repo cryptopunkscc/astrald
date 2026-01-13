@@ -15,6 +15,7 @@ func (p *PhasedStream[T]) Boundary() <-chan struct{} { return p.boundary.Done() 
 // Done makes PhasedStream compatible with Signal / On / OnCtx utilities.
 func (p *PhasedStream[T]) Done() <-chan struct{} { return p.boundary.Done() }
 
+// NewPhasedStream splits a source stream into two phases separated by a boundary marker.
 func NewPhasedStream[T any](
 	ctx context.Context,
 	src <-chan T,
@@ -53,8 +54,7 @@ func NewPhasedStream[T any](
 		for {
 			select {
 			case <-ctx.Done():
-				// If we never crossed the boundary, signal it and close Before() so snapshot
-				// consumers don't hang forever.
+				// Ensure snapshot consumers are unblocked.
 				if inBefore {
 					signalBoundary()
 					closeBefore()
@@ -71,8 +71,8 @@ func NewPhasedStream[T any](
 				}
 
 				if inBefore && isBoundary(v) {
+					// Phase transition
 					inBefore = false
-					// Phase transition: boundary is observable and Before() is finished.
 					signalBoundary()
 					closeBefore()
 					continue
@@ -82,10 +82,8 @@ func NewPhasedStream[T any](
 					select {
 					case before <- v:
 					case <-ctx.Done():
-						if inBefore {
-							signalBoundary()
-							closeBefore()
-						}
+						signalBoundary()
+						closeBefore()
 						return
 					}
 					continue

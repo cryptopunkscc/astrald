@@ -1,6 +1,7 @@
 package services
 
 import (
+	"sync"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -14,51 +15,56 @@ func (mod *Module) DiscoverServices(
 	ctx *astral.Context,
 	caller *astral.Identity,
 	opts services.DiscoverOptions,
-) (snapshot []services.ServiceChange, updates <-chan services.ServiceChange, err error) {
-	// Snapshot should be time-bounded; follow must not be tied to this timeout.
-	snapshotCtx, cancelSnapshot := ctx.WithTimeout(30 * time.Second)
-	defer cancelSnapshot()
-
+) (snapshot []services.ServiceChange, updates <-chan services.ServiceDiscoveryResult, err error) {
 	discoverers := mod.discoverers.Clone()
 
-	phased := make([]*sig.PhasedStream[services.ServiceChange], 0, len(discoverers))
+	phasedStreamsCh := make(chan *sig.PhasedStream[services.ServiceDiscoveryResult], len(discoverers))
+	var wg = &sync.WaitGroup{}
 
-	// 1) Start discoverers and wrap streams.
 	for _, d := range discoverers {
 		discoverer := d
 
-		discoverCtx := ctx
-		if !opts.Follow {
-			// Snapshot-only requests should still be time-bounded.
-			discoverCtx = snapshotCtx
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results, err := discoverer.DiscoverService(ctx, caller, opts)
+			if err != nil {
+				mod.log.Logv(1, "discoverer failed: %v", err)
+				return
+			}
 
-		s, err := discoverer.DiscoverService(discoverCtx, caller, opts)
-		if err != nil {
-			mod.log.Logv(1, "discoverer failed: %v", err)
-			continue
-		}
+			phasedStream := sig.NewPhasedStream(
+				ctx,
+				results,
+				services.IsDiscoveryFlush,
+			)
 
-		ps := sig.NewPhasedStream(
-			discoverCtx,
-			s,
-			func(sc services.ServiceChange) bool {
-				return sc.Type == services.ServiceChangeTypeFlush
-			},
-		)
-
-		phased = append(phased, ps)
+			phasedStreamsCh <- phasedStream
+		}()
 	}
 
-	// 2) Collect snapshot phase (Before) with the snapshot timeout.
-	beforeStreams := make([]<-chan services.ServiceChange, 0, len(phased))
-	for _, ps := range phased {
+	wg.Wait()
+	close(phasedStreamsCh)
+
+	phasedStreams := sig.ChanToArray(phasedStreamsCh)
+
+	beforeStreams := make([]<-chan services.ServiceDiscoveryResult, 0, len(phasedStreams))
+	for _, ps := range phasedStreams {
 		beforeStreams = append(beforeStreams, ps.Before())
 	}
-	snapshot = sig.ChanCollectAll(snapshotCtx, beforeStreams...)
 
-	updateStreams := make([]<-chan services.ServiceChange, 0, len(phased))
-	for _, ps := range phased {
+	snapshotCtx, cancelSnapshot := ctx.WithTimeout(30 * time.Second)
+	defer cancelSnapshot()
+
+	snapshotEvents := sig.ChanCollectAll(snapshotCtx, beforeStreams...)
+	for _, ev := range snapshotEvents {
+		if ev.Kind == services.DiscoveryEventChange {
+			snapshot = append(snapshot, ev.Change)
+		}
+	}
+
+	updateStreams := make([]<-chan services.ServiceDiscoveryResult, 0, len(phasedStreams))
+	for _, ps := range phasedStreams {
 		updateStreams = append(updateStreams, ps.After())
 	}
 
