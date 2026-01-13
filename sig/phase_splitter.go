@@ -2,25 +2,25 @@ package sig
 
 import "context"
 
-type PhasedStream[T any] struct {
+type PhaseSplitter[T any] struct {
 	before   <-chan T
 	after    <-chan T
 	boundary Signal
 }
 
-func (p *PhasedStream[T]) Before() <-chan T          { return p.before }
-func (p *PhasedStream[T]) After() <-chan T           { return p.after }
-func (p *PhasedStream[T]) Boundary() <-chan struct{} { return p.boundary.Done() }
+func (p *PhaseSplitter[T]) Before() <-chan T          { return p.before }
+func (p *PhaseSplitter[T]) After() <-chan T           { return p.after }
+func (p *PhaseSplitter[T]) Boundary() <-chan struct{} { return p.boundary.Done() }
 
-// Done makes PhasedStream compatible with Signal / On / OnCtx utilities.
-func (p *PhasedStream[T]) Done() <-chan struct{} { return p.boundary.Done() }
+// Done makes PhaseSplitter compatible with Signal / On / OnCtx utilities.
+func (p *PhaseSplitter[T]) Done() <-chan struct{} { return p.boundary.Done() }
 
-// NewPhasedStream splits a source stream into two phases separated by a boundary marker.
-func NewPhasedStream[T any](
+// NewPhaseSplitter splits a source stream into two phases separated by a boundary marker.
+func NewPhaseSplitter[T any](
 	ctx context.Context,
 	src <-chan T,
 	isBoundary func(T) bool,
-) *PhasedStream[T] {
+) *PhaseSplitter[T] {
 	const buf = 64
 
 	before := make(chan T, buf)
@@ -98,7 +98,7 @@ func NewPhasedStream[T any](
 		}
 	}()
 
-	return &PhasedStream[T]{
+	return &PhaseSplitter[T]{
 		before:   before,
 		after:    after,
 		boundary: Sig(boundaryCh),

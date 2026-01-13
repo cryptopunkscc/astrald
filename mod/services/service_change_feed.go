@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"sync"
 )
 
@@ -61,15 +62,16 @@ func (f *ServiceChangeFeed) unsubscribe(ch chan ServiceChange) {
 //
 // Non-blocking per subscriber: if a subscriber channel is full, the event may be dropped
 // for that subscriber.
-func (f *ServiceChangeFeed) Publish(change ServiceChange) {
+func (f *ServiceChangeFeed) Publish(change ServiceChange) error {
 	f.mu.Lock()
 	if f.closed {
 		f.mu.Unlock()
-		return
+		return fmt.Errorf("service change feed is closed")
 	}
 
 	// Send to all current subscribers while holding the lock so that
 	// unsubscribe/Close cannot close channels concurrently.
+	// NOTE: maybe add timeout to consume instead of dropping?
 	for ch := range f.subscribers {
 		select {
 		case ch <- change:
@@ -77,7 +79,9 @@ func (f *ServiceChangeFeed) Publish(change ServiceChange) {
 			// Drop for slow subscribers.
 		}
 	}
+
 	f.mu.Unlock()
+	return nil
 }
 
 // Close cancels and removes all subscribers and closes their channels.

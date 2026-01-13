@@ -9,7 +9,6 @@ import (
 var _ astral.Object = &ServiceChange{}
 
 type ServiceChange struct {
-	Type    ServiceChangeType
 	Enabled astral.Bool
 	Service Service
 }
@@ -29,11 +28,3 @@ func (s *ServiceChange) ReadFrom(r io.Reader) (n int64, err error) {
 func init() {
 	_ = astral.DefaultBlueprints.Add(&ServiceChange{})
 }
-
-type ServiceChangeType string
-
-const (
-	ServiceChangeTypeUpdate   ServiceChangeType = "update"
-	ServiceChangeTypeSnapshot                   = "snapshot"
-	ServiceChangeTypeFlush                      = "flush"
-)

@@ -89,3 +89,35 @@ func ChanCollectAll[T any](
 ) []T {
 	return ChanToArray(ChanFanIn(ctx, streams...))
 }
+
+// MapChan transforms values from src into a new channel using fn.
+// The output channel is closed when src is closed or ctx is canceled.
+func MapChan[A any, B any](
+	ctx context.Context,
+	src <-chan A,
+	fn func(A) B,
+) <-chan B {
+	out := make(chan B, 16)
+
+	go func() {
+		defer close(out)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case v, ok := <-src:
+				if !ok {
+					return
+				}
+				select {
+				case out <- fn(v):
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return out
+}

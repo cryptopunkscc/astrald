@@ -18,7 +18,7 @@ func (mod *Module) DiscoverServices(
 ) (snapshot []services.ServiceChange, updates <-chan services.ServiceDiscoveryResult, err error) {
 	discoverers := mod.discoverers.Clone()
 
-	phasedStreamsCh := make(chan *sig.PhasedStream[services.ServiceDiscoveryResult], len(discoverers))
+	phasedStreamsCh := make(chan *sig.PhaseSplitter[services.ServiceDiscoveryResult], len(discoverers))
 	var wg = &sync.WaitGroup{}
 
 	for _, d := range discoverers {
@@ -33,7 +33,7 @@ func (mod *Module) DiscoverServices(
 				return
 			}
 
-			phasedStream := sig.NewPhasedStream(
+			phasedStream := sig.NewPhaseSplitter(
 				ctx,
 				results,
 				services.IsDiscoveryFlush,
