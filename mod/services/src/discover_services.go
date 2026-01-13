@@ -10,68 +10,71 @@ import (
 // DiscoverServices runs all registered ServiceDiscoverers with the provided options
 // and merges their returned streams into a single output channel.
 //
-// This function intentionally operates purely on channels:
-//   - Snapshot mode is represented by discoverers returning a channel that closes
-//     after emitting the snapshot.
-//   - Follow mode is represented by discoverers returning a long-lived channel.
+// Stream semantics:
+//   - If opts.Snapshot is true, discoverers should emit ServiceChangeTypeSnapshot entries.
+//   - When a discoverer has finished its snapshot phase, it should emit ServiceChangeTypeFlush.
+//     (This is treated as a control message and is not forwarded.)
+//   - If opts.Follow is true, discoverers should then emit ServiceChangeTypeUpdate entries.
+//
+// This function forwards snapshot + update entries as they arrive (discoverers run concurrently).
+// When all discoverers complete snapshotting, this function emits a single *astral.EOS to mark
+// the snapshot boundary, then continues with updates.
 func (mod *Module) DiscoverServices(
 	ctx *astral.Context,
 	caller *astral.Identity,
 	opts services.DiscoverOptions,
-) (<-chan services.ServiceChange, error) {
-	// Collect source channels.
-	streams := make([]<-chan services.ServiceChange, 0, len(mod.discoverers.Clone()))
+) (<-chan astral.Object, error) {
+	out := make(chan services.ServiceChange, 128)
+	wg := &sync.WaitGroup{}
 
-	for _, discoverer := range mod.discoverers.Clone() {
-		s, err := discoverer.DiscoverService(ctx, caller, opts)
-		if err != nil {
-			mod.log.Logv(1, "discoverer failed: %v", err)
-			continue
-		}
-		if s == nil {
-			continue
-		}
-		streams = append(streams, s)
-	}
+	var discoverers = mod.discoverers.Clone()
+	for _, discoverer := range discoverers {
 
-	return mergeChannels(ctx, streams...), nil
-}
-
-func mergeChannels(ctx *astral.Context, channels ...<-chan services.ServiceChange) <-chan services.ServiceChange {
-	out := make(chan services.ServiceChange, 16)
-
-	var wg sync.WaitGroup
-	for _, c := range channels {
-		if c == nil {
-			continue
-		}
-
-		ch := c
 		wg.Add(1)
+		// each discoverer runs at once in goroutine
 		go func() {
 			defer wg.Done()
-			for {
+			s, err := discoverer.DiscoverService(ctx, caller, opts)
+			if err != nil {
+				mod.log.Logv(1, "discoverer failed: %v", err)
+			}
+
+			streams = append(streams, s)
+
+		snapshotLoop:
+			for serviceChange := range s {
+				if serviceChange.Type == services.ServiceChangeTypeFlush {
+					break snapshotLoop
+				}
+
+				// forward serviceChanges to out channel
 				select {
 				case <-ctx.Done():
 					return
-				case msg, ok := <-ch:
-					if !ok {
-						return
-					}
-					select {
-					case out <- msg:
-					case <-ctx.Done():
-						return
-					}
+				case out <- serviceChange:
 				}
 			}
 		}()
 	}
 
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
+	wg.Wait()
+	// at this point we have collected all snapshot entries from discoverers
+	// We should send EOS and then
 
-	return out
+	for _, s := range streams {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for serviceChange := range s {
+				select {
+				case <-ctx.Done():
+					return
+				case out <- serviceChange:
+				}
+			}
+		}()
+	}
+
+	return nil
 }

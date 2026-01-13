@@ -29,9 +29,20 @@ func (mod *Module) DiscoverService(
 				Composition: astral.NewBundle(),
 			}
 
-			change := services.ServiceChange{Enabled: astral.Bool(mod.serviceEnabled), Service: svc}
+			change := services.ServiceChange{
+				Type:    services.ServiceChangeTypeSnapshot,
+				Enabled: astral.Bool(mod.serviceEnabled),
+				Service: svc,
+			}
 			select {
 			case out <- change:
+			case <-ctx.Done():
+				return
+			}
+
+			// Signal end of snapshot phase for this discoverer.
+			select {
+			case out <- services.ServiceChange{Type: services.ServiceChangeTypeFlush}:
 			case <-ctx.Done():
 				return
 			}
@@ -50,6 +61,12 @@ func (mod *Module) DiscoverService(
 				if !ok {
 					return
 				}
+
+				// Normalize to update if the producer didn't set a type.
+				if ev.Type == "" {
+					ev.Type = services.ServiceChangeTypeUpdate
+				}
+
 				select {
 				case out <- ev:
 				case <-ctx.Done():

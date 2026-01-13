@@ -25,46 +25,28 @@ func (mod *Module) OpDiscovery(
 
 	caller := q.Caller()
 
-	snapshotOpts := services.DiscoverOptions{Snapshot: true, Follow: false}
-	followOpts := services.DiscoverOptions{Snapshot: false, Follow: args.Follow}
+	// One call / one channel: DiscoverServices will emit a snapshot-boundary EOS on its own.
+	opts := services.DiscoverOptions{Snapshot: true, Follow: args.Follow}
 
-	snapshot, err := mod.DiscoverServices(ctx, caller, snapshotOpts)
+	stream, err := mod.DiscoverServices(ctx, caller, opts)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	sendEOS := func() error {
-		return ch.Send(&astral.EOS{})
-	}
-
-	sendServiceChange := func(v services.ServiceChange) error {
-		return ch.Send(&v)
+	sendObj := func(v astral.Object) error {
+		return ch.Send(v)
 	}
 
 	if err := serveStream(
 		ctx,
-		snapshot,
-		sendServiceChange,
-		sendEOS,
+		stream,
+		sendObj,
+		nil, // channel close is enough; DiscoverServices emits EOS for snapshot boundary
 	); err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	if !args.Follow {
-		return nil
-	}
-
-	stream, err := mod.DiscoverServices(ctx, caller, followOpts)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	return serveStream(
-		ctx,
-		stream,
-		sendServiceChange,
-		sendEOS,
-	)
+	return nil
 }
 
 func serveStream[T any](
