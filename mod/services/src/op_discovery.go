@@ -19,40 +19,38 @@ func (mod *Module) OpDiscovery(
 	args opServiceDiscoveryArgs,
 ) error {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
-	defer func() { _ = ch.Close() }()
-
-	caller := q.Caller()
+	defer ch.Close()
 
 	opts := services.DiscoverOptions{Snapshot: true, Follow: args.Follow}
-	snapshot, updates, err := mod.DiscoverServices(ctx, caller, opts)
+	snapshot, updates, err := mod.DiscoverServices(ctx, q.Caller(), opts)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	// Snapshot phase.
-	for i := range snapshot {
-		v := snapshot[i]
-		if err := ch.Send(&v); err != nil {
-			return err
+	for _, s := range snapshot {
+		err := ch.Send(&s)
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
 		}
 	}
 
-	// Snapshot boundary.
-	if err := ch.Send(&astral.EOS{}); err != nil {
-		return err
+	err = ch.Send(&astral.EOS{})
+	if err != nil {
+		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	// Update phase.
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case v, ok := <-updates:
+		case update, ok := <-updates:
 			if !ok {
 				return nil
 			}
-			vv := v
-			if err := ch.Send(&vv); err != nil {
+
+			serviceChange := update
+			err := ch.Send(&serviceChange)
+			if err != nil {
 				return err
 			}
 		}

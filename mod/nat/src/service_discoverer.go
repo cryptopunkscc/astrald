@@ -34,13 +34,13 @@ func (mod *Module) DiscoverService(
 				Enabled: astral.Bool(mod.serviceEnabled),
 				Service: svc,
 			}
+
 			select {
 			case out <- change:
 			case <-ctx.Done():
 				return
 			}
 
-			// Signal end of snapshot phase for this discoverer.
 			select {
 			case out <- services.ServiceChange{Type: services.ServiceChangeTypeFlush}:
 			case <-ctx.Done():
