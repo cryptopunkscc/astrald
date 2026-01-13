@@ -28,7 +28,12 @@ func SnapshotFollowStream[T any](
 			return
 		}
 
-		for updates != nil {
+		// If updates is nil, return early instead of blocking forever
+		if updates == nil {
+			return
+		}
+
+		for {
 			select {
 			case v, ok := <-updates:
 				if !ok {
