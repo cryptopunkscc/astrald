@@ -1,8 +1,6 @@
 package services
 
 import (
-	"context"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/services"
@@ -21,52 +19,40 @@ func (mod *Module) OpDiscovery(
 	args opServiceDiscoveryArgs,
 ) error {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
-	defer ch.Close()
+	defer func() { _ = ch.Close() }()
 
 	caller := q.Caller()
 
-	// One call / one channel: DiscoverServices will emit a snapshot-boundary EOS on its own.
 	opts := services.DiscoverOptions{Snapshot: true, Follow: args.Follow}
-
-	stream, err := mod.DiscoverServices(ctx, caller, opts)
+	snapshot, updates, err := mod.DiscoverServices(ctx, caller, opts)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	sendObj := func(v astral.Object) error {
-		return ch.Send(v)
+	// Snapshot phase.
+	for i := range snapshot {
+		v := snapshot[i]
+		if err := ch.Send(&v); err != nil {
+			return err
+		}
 	}
 
-	if err := serveStream(
-		ctx,
-		stream,
-		sendObj,
-		nil, // channel close is enough; DiscoverServices emits EOS for snapshot boundary
-	); err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	// Snapshot boundary.
+	if err := ch.Send(&astral.EOS{}); err != nil {
+		return err
 	}
 
-	return nil
-}
-
-func serveStream[T any](
-	ctx context.Context,
-	in <-chan T,
-	send func(T) error,
-	onClose func() error,
-) error {
+	// Update phase.
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case v, ok := <-in:
+		case v, ok := <-updates:
 			if !ok {
-				if onClose != nil {
-					return onClose()
-				}
 				return nil
 			}
-			if err := send(v); err != nil {
+			vv := v
+			if err := ch.Send(&vv); err != nil {
 				return err
 			}
 		}

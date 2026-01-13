@@ -7,74 +7,57 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/services"
 )
 
-// DiscoverServices runs all registered ServiceDiscoverers with the provided options
-// and merges their returned streams into a single output channel.
-//
-// Stream semantics:
-//   - If opts.Snapshot is true, discoverers should emit ServiceChangeTypeSnapshot entries.
-//   - When a discoverer has finished its snapshot phase, it should emit ServiceChangeTypeFlush.
-//     (This is treated as a control message and is not forwarded.)
-//   - If opts.Follow is true, discoverers should then emit ServiceChangeTypeUpdate entries.
-//
-// This function forwards snapshot + update entries as they arrive (discoverers run concurrently).
-// When all discoverers complete snapshotting, this function emits a single *astral.EOS to mark
-// the snapshot boundary, then continues with updates.
+// DiscoverServices runs all registered ServiceDiscoverers with the provided options and merges
+// their returned streams into a single output channel.
 func (mod *Module) DiscoverServices(
 	ctx *astral.Context,
 	caller *astral.Identity,
 	opts services.DiscoverOptions,
-) (<-chan astral.Object, error) {
-	out := make(chan services.ServiceChange, 128)
+) (snapshot []services.ServiceChange, updates <-chan services.ServiceChange, err error) {
 	wg := &sync.WaitGroup{}
+	streams := make([]<-chan services.ServiceChange, 0)
 
 	var discoverers = mod.discoverers.Clone()
-	for _, discoverer := range discoverers {
-
+	for _, d := range discoverers {
+		var discoverer = d
 		wg.Add(1)
 		// each discoverer runs at once in goroutine
 		go func() {
 			defer wg.Done()
 			s, err := discoverer.DiscoverService(ctx, caller, opts)
 			if err != nil {
+				// NOTE: should it fail the whole discovery if one discoverer fails?
 				mod.log.Logv(1, "discoverer failed: %v", err)
+				return
 			}
 
-			streams = append(streams, s)
-
 		snapshotLoop:
-			for serviceChange := range s {
-				if serviceChange.Type == services.ServiceChangeTypeFlush {
-					break snapshotLoop
-				}
-
-				// forward serviceChanges to out channel
+			for {
 				select {
 				case <-ctx.Done():
 					return
-				case out <- serviceChange:
+				case serviceChange, ok := <-s:
+					if !ok {
+						return
+					}
+
+					if serviceChange.Type == services.ServiceChangeTypeFlush {
+						streams = append(streams, s)
+						break snapshotLoop
+					}
+
+					snapshot = append(snapshot, serviceChange)
 				}
 			}
 		}()
 	}
 
 	wg.Wait()
-	// at this point we have collected all snapshot entries from discoverers
-	// We should send EOS and then
+	// snapshot collected
 
-	for _, s := range streams {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	return snapshot, mergeDiscoverStreams(streams), nil
+}
 
-			for serviceChange := range s {
-				select {
-				case <-ctx.Done():
-					return
-				case out <- serviceChange:
-				}
-			}
-		}()
-	}
-
+func mergeDiscoverStreams(streams []<-chan services.ServiceChange) <-chan services.ServiceChange {
 	return nil
 }
