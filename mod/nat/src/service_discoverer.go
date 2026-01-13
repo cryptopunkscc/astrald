@@ -40,12 +40,12 @@ func (mod *Module) DiscoverService(
 			case <-ctx.Done():
 				return
 			}
+		}
 
-			select {
-			case out <- services.ServiceChange{Type: services.ServiceChangeTypeFlush}:
-			case <-ctx.Done():
-				return
-			}
+		select {
+		case out <- services.ServiceChange{Type: services.ServiceChangeTypeFlush}:
+		case <-ctx.Done():
+			return
 		}
 
 		if !opts.Follow {
