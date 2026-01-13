@@ -31,6 +31,10 @@ type Module struct {
 	db     *DB
 	ctx    context.Context
 
+	pathIndexer PathIndexer
+
+	pathIndexerAdded *sig.Queue[*astral.ObjectID]
+
 	repos sig.Map[string, objects.Repository]
 	ops   shell.Scope
 }
@@ -41,6 +45,9 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	mod.verifyIndex(ctx)
 
 	<-ctx.Done()
+
+	_ = mod.pathIndexer.Close()
+	mod.pathIndexerAdded.Close()
 	return nil
 }
 
@@ -48,10 +55,12 @@ func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
 }
 
-// update updates the index entry for the path. path must be absolute.
-func (mod *Module) update(path string) (*astral.ObjectID, error) {
+// updateDbIndex updates the database index for the given absolute filesystem path.
+// operation is considered heavy due to resolution file bytes into an object ID
+// on duplicate path entries the existing entry is updated
+func (mod *Module) updateDbIndex(path string) (*astral.ObjectID, error) {
 	if len(path) == 0 || path[0] != '/' {
-		return nil, errors.New("invalid path")
+		return nil, fs.ErrInvalidPath
 	}
 
 	stat, err := os.Stat(path)
@@ -93,10 +102,10 @@ func (mod *Module) verifyIndex(ctx *astral.Context) {
 	var updated, total int
 	err := mod.db.EachPath(func(path string) error {
 		total++
-		// update if necessary
-		err := mod.validate(path)
+		// updateDbIndex if necessary
+		err := mod.checkIndexEntry(path)
 		if err != nil {
-			mod.update(path)
+			mod.updateDbIndex(path)
 			updated++
 		}
 
@@ -118,25 +127,25 @@ func (mod *Module) verifyIndex(ctx *astral.Context) {
 	}
 }
 
-// validate checks if the index is up-to-date for the given path
-func (mod *Module) validate(path string) error {
+// checkIndexEntry checks if the index is up-to-date for the given path
+func (mod *Module) checkIndexEntry(path string) error {
 	if len(path) == 0 || path[0] != '/' {
-		return errors.New("invalid path")
+		return fs.ErrInvalidPath
 	}
 
 	stat, err := os.Stat(path)
 	switch {
 	case err != nil:
-		return fmt.Errorf("cannot access file: %w", err)
+		return fmt.Errorf("%w: %w", fs.ErrNotFound, err)
 	}
 
 	row, err := mod.db.FindByPath(path)
 	if err != nil {
-		return errors.New("not indexed")
+		return fs.ErrNotIndexed
 	}
 
 	if stat.ModTime().After(row.ModTime) {
-		return errors.New("file modified")
+		return fs.ErrFileModified
 	}
 
 	return nil
@@ -159,4 +168,15 @@ func resolveFileID(path string) (*astral.ObjectID, error) {
 	}
 
 	return fileID, nil
+}
+
+func (mod *Module) subscribePathIndexed(ctx *astral.Context) <-chan *astral.ObjectID {
+	if ctx == nil {
+		ctx = astral.NewContext(nil)
+	}
+	return mod.pathIndexerAdded.Subscribe(ctx)
+}
+
+func (mod *Module) pushPathIndexed(id *astral.ObjectID) {
+	mod.pathIndexerAdded = mod.pathIndexerAdded.Push(id)
 }

@@ -2,14 +2,15 @@ package fs
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/sig"
-	"github.com/fsnotify/fsnotify"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/fsnotify/fsnotify"
 )
 
 const DefaultWriteTimeout = 3 * time.Second
@@ -28,6 +29,8 @@ type Watcher struct {
 	watcher  *fsnotify.Watcher
 	timeouts map[string]*time.Time
 	mu       sync.Mutex
+
+	closeOnce sync.Once
 }
 
 func NewWatcher() (*Watcher, error) {
@@ -45,6 +48,18 @@ func NewWatcher() (*Watcher, error) {
 	go w.worker()
 
 	return w, nil
+}
+
+// Close stops the underlying fsnotify watcher.
+// It is safe to call multiple times.
+func (w *Watcher) Close() error {
+	var err error
+	w.closeOnce.Do(func() {
+		if w.watcher != nil {
+			err = w.watcher.Close()
+		}
+	})
+	return err
 }
 
 // Add adds a path to the watcher

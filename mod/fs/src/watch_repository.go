@@ -5,20 +5,19 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type WatchRepository struct {
-	mod      *Module
-	label    string
-	root     string
-	watcher  *Watcher
-	token    chan struct{}
-	addQueue *sig.Queue[*astral.ObjectID]
+	mod     *Module
+	label   string
+	root    string
+	watcher *Watcher
+	token   chan struct{}
+
+	scan ScanHandle
 }
 
 func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepository, err error) {
@@ -31,11 +30,10 @@ func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepo
 	}
 
 	repo = &WatchRepository{
-		mod:      mod,
-		label:    label,
-		root:     root,
-		addQueue: &sig.Queue[*astral.ObjectID]{},
-		token:    make(chan struct{}, 1),
+		mod:   mod,
+		label: label,
+		root:  root,
+		token: make(chan struct{}, 1),
 	}
 
 	repo.token <- struct{}{}
@@ -53,7 +51,8 @@ func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepo
 
 	repo.watcher.Add(root, true)
 
-	go repo.rescan(astral.NewContext(nil))
+	// Run initial scan as a cancelable job.
+	repo.scan = repo.StartScan(astral.NewContext(nil))
 
 	return
 }
@@ -66,17 +65,13 @@ func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *astral.Obje
 
 func (repo *WatchRepository) onChange(path string) {
 	<-repo.token // take a token
+	defer func() { repo.token <- struct{}{} }()
 
-	objectID, err := repo.mod.update(path)
-	if err == nil {
-		repo.pushAdded(objectID)
-	}
-
-	repo.token <- struct{}{} // return a token
+	repo.mod.pathIndexer.MarkDirtyOwned(repo.label, path)
 }
 
 func (repo *WatchRepository) onRemove(path string) {
-	repo.mod.update(path)
+	repo.mod.pathIndexer.MarkDirtyOwned(repo.label, path)
 }
 
 func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
@@ -88,7 +83,7 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 		defer close(ch)
 
 		if follow {
-			subscribe = repo.addQueue.Subscribe(ctx)
+			subscribe = repo.mod.pathIndexer.Subscribe(ctx)
 		}
 
 		ids, err := repo.mod.db.UniqueObjectIDs(repo.root)
@@ -108,6 +103,11 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 		// handle subscription
 		if subscribe != nil {
 			for id := range subscribe {
+				// Filter to this repository root to avoid leaking updates from other roots.
+				ok, err := repo.mod.db.ObjectExists(repo.root, id)
+				if err != nil || !ok {
+					continue
+				}
 				select {
 				case ch <- id:
 				case <-ctx.Done():
@@ -172,28 +172,14 @@ func (repo *WatchRepository) String() string {
 	return repo.label
 }
 
-func (repo *WatchRepository) rescan(ctx *astral.Context) error {
-	filepath.WalkDir(repo.root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Check if the entry is a regular file
-		if !entry.Type().IsRegular() {
-			return nil
-		}
-
-		err = repo.mod.validate(path)
-		if err != nil {
-			repo.onChange(path)
-		}
-
-		return nil
-	})
-
+// Close stops background activity associated with the repository.
+// It is safe to call multiple times.
+func (repo *WatchRepository) Close() error {
+	if repo.scan.Cancel != nil {
+		repo.scan.Cancel()
+	}
+	if repo.watcher != nil {
+		_ = repo.watcher.Close()
+	}
 	return nil
-}
-
-func (repo *WatchRepository) pushAdded(id *astral.ObjectID) {
-	repo.addQueue = repo.addQueue.Push(id)
 }

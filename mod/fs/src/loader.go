@@ -11,6 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/resources"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Loader struct{}
@@ -33,6 +34,10 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	if err != nil {
 		return nil, err
 	}
+
+	// module-level path indexer (dedupes indexing work by absolute path)
+	mod.pathIndexerAdded = &sig.Queue[*astral.ObjectID]{}
+	mod.pathIndexer = NewPathIndexer(mod, workers, updatesLen)
 
 	mod.ops.AddStruct(mod, "Op")
 
