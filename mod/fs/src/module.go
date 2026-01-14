@@ -53,7 +53,7 @@ func (mod *Module) Scope() *shell.Scope {
 }
 
 // updateDbIndex updates the database index for the given absolute filesystem path.
-// operation is considered heavy due to resolution file bytes into an object ID
+// operation is considered heavy due to resolving file bytes into an object ID
 // on duplicate path entries the existing entry is updated
 func (mod *Module) updateDbIndex(path string) (*astral.ObjectID, error) {
 	if len(path) == 0 || path[0] != '/' {
