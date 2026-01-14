@@ -7,11 +7,13 @@ toolchain go1.24.6
 require (
 	bitbucket.org/creachadair/shell v0.0.7
 	github.com/akutz/memconn v0.1.0
+	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/cryptopunkscc/utp v0.0.0-20251010115525-2f03809eff3d
 	github.com/dhowden/tag v0.0.0-20240122214204-713ab0e94639
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/glebarez/sqlite v1.9.0
 	github.com/jxskiss/base62 v1.1.0
+	github.com/muesli/termenv v0.16.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.6.1
 	github.com/xtaci/kcp-go/v5 v5.6.24
@@ -25,7 +27,6 @@ require (
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
-	github.com/charmbracelet/lipgloss v1.1.0 // indirect
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
@@ -41,7 +42,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-sqlite3 v1.14.17 // indirect
-	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
