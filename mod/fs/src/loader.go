@@ -11,7 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/resources"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Loader struct{}
@@ -35,8 +34,10 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		return nil, err
 	}
 
-	mod.fileIndexerAdded = &sig.Queue[*astral.ObjectID]{}
-	mod.fileIndexer = NewFileIndexer(mod, workers, updatesLen)
+	mod.fileIndexer, err = NewFileIndexer(mod.updateDbIndex, workers, updatesLen)
+	if err != nil {
+		return nil, err
+	}
 
 	mod.ops.AddStruct(mod, "Op")
 

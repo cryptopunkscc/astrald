@@ -1,73 +1,14 @@
 package fs
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
-// fileIndexerEntry is a state machine for a single path's indexing state.
-// States: idle -> queued -> running -> idle (or back to queued if rerun needed)
-type fileIndexerEntry struct {
-	queued   bool
-	running  bool
-	rerun    bool
-	interest int
-}
-
-// setDirty marks this entry as needing indexing.
-// Returns true if the caller should enqueue to the work channel.
-func (e *fileIndexerEntry) setDirty() bool {
-	if e.interest == 0 {
-		return false
-	}
-	if e.running {
-		e.rerun = true
-		return false
-	}
-	if e.queued {
-		return false
-	}
-	e.queued = true
-	return true
-}
-
-// claim attempts to claim this entry for processing.
-// Returns true if indexing should proceed, false to skip (no interest).
-func (e *fileIndexerEntry) claim() bool {
-	if e.interest == 0 {
-		e.reset()
-		return false
-	}
-	e.queued = false
-	e.running = true
-	return true
-}
-
-// indexed marks indexing as complete.
-// Returns true if re-enqueue is needed (dirty while running, interest remains).
-func (e *fileIndexerEntry) indexed() bool {
-	e.running = false
-	if e.rerun && e.interest > 0 {
-		e.rerun = false
-		e.queued = true
-		return true
-	}
-	e.rerun = false
-	return false
-}
-
-// canDelete returns true if this entry can be removed from the map.
-func (e *fileIndexerEntry) canDelete() bool {
-	return e.interest == 0 && !e.running && !e.queued
-}
-
-// reset clears all flags (used when skipping due to no interest).
-func (e *fileIndexerEntry) reset() {
-	e.queued = false
-	e.running = false
-	e.rerun = false
-}
+type IndexFunc func(path string) (*astral.ObjectID, error)
 
 // FileIndexer coordinates indexing work for absolute filesystem paths.
 //
@@ -87,10 +28,11 @@ func (e *fileIndexerEntry) reset() {
 // Close stops workers and waits for them to exit.
 // Subscribe returns object IDs produced by successful indexing.
 type FileIndexer struct {
-	mod *Module
+	indexFn IndexFunc
 
-	work chan string
-	done chan struct{}
+	work    chan string
+	done    chan struct{}
+	updates *sig.Queue[*astral.ObjectID]
 
 	mu     sync.Mutex
 	states map[string]*fileIndexerEntry
@@ -99,7 +41,14 @@ type FileIndexer struct {
 	once sync.Once
 }
 
-func NewFileIndexer(mod *Module, workers int, queueLen int) *FileIndexer {
+// NewFileIndexer creates a new FileIndexer with the given indexing function.
+// indexFn is called for each path that needs indexing; it must be non-nil.
+// workers controls concurrency (min 1), queueLen sets the work channel buffer (min 1).
+func NewFileIndexer(indexFn IndexFunc, workers int, queueLen int) (f *FileIndexer, err error) {
+	if indexFn == nil {
+		return nil, fmt.Errorf("indexFn cannot be nil")
+	}
+
 	if workers <= 0 {
 		workers = 1
 	}
@@ -108,10 +57,11 @@ func NewFileIndexer(mod *Module, workers int, queueLen int) *FileIndexer {
 	}
 
 	fi := &FileIndexer{
-		mod:    mod,
-		work:   make(chan string, queueLen),
-		done:   make(chan struct{}),
-		states: map[string]*fileIndexerEntry{},
+		indexFn: indexFn,
+		work:    make(chan string, queueLen),
+		done:    make(chan struct{}),
+		updates: &sig.Queue[*astral.ObjectID]{},
+		states:  map[string]*fileIndexerEntry{},
 	}
 
 	fi.wg.Add(workers)
@@ -119,7 +69,7 @@ func NewFileIndexer(mod *Module, workers int, queueLen int) *FileIndexer {
 		go fi.worker()
 	}
 
-	return fi
+	return fi, nil
 }
 
 func (fi *FileIndexer) Acquire(path string) {
@@ -198,6 +148,7 @@ func (fi *FileIndexer) Close() error {
 	fi.once.Do(func() {
 		close(fi.done)
 		fi.wg.Wait()
+		fi.updates.Close()
 	})
 	return nil
 }
@@ -227,9 +178,9 @@ func (fi *FileIndexer) processPath(path string) {
 	}
 	fi.mu.Unlock()
 
-	objectID, err := fi.mod.updateDbIndex(path)
+	objectID, err := fi.indexFn(path)
 	if err == nil && objectID != nil {
-		fi.mod.pushFileIndexed(objectID)
+		fi.updates = fi.updates.Push(objectID)
 	}
 
 	fi.mu.Lock()
@@ -254,5 +205,71 @@ func (fi *FileIndexer) processPath(path string) {
 }
 
 func (fi *FileIndexer) Subscribe(ctx *astral.Context) <-chan *astral.ObjectID {
-	return fi.mod.subscribeFileIndexed(ctx)
+	if ctx == nil {
+		ctx = astral.NewContext(nil)
+	}
+	return fi.updates.Subscribe(ctx)
+}
+
+// fileIndexerEntry is a state machine for a single path's indexing state.
+// States: idle -> queued -> running -> idle (or back to queued if rerun needed)
+type fileIndexerEntry struct {
+	queued   bool
+	running  bool
+	rerun    bool
+	interest int
+}
+
+// setDirty marks this entry as needing indexing.
+// Returns true if the caller should enqueue to the work channel.
+func (e *fileIndexerEntry) setDirty() bool {
+	if e.interest == 0 {
+		return false
+	}
+	if e.running {
+		e.rerun = true
+		return false
+	}
+	if e.queued {
+		return false
+	}
+	e.queued = true
+	return true
+}
+
+// claim attempts to claim this entry for processing.
+// Returns true if indexing should proceed, false to skip (no interest).
+func (e *fileIndexerEntry) claim() bool {
+	if e.interest == 0 {
+		e.reset()
+		return false
+	}
+	e.queued = false
+	e.running = true
+	return true
+}
+
+// indexed marks indexing as complete.
+// Returns true if re-enqueue is needed (dirty while running, interest remains).
+func (e *fileIndexerEntry) indexed() bool {
+	e.running = false
+	if e.rerun && e.interest > 0 {
+		e.rerun = false
+		e.queued = true
+		return true
+	}
+	e.rerun = false
+	return false
+}
+
+// canDelete returns true if this entry can be removed from the map.
+func (e *fileIndexerEntry) canDelete() bool {
+	return e.interest == 0 && !e.running && !e.queued
+}
+
+// reset clears all flags (used when skipping due to no interest).
+func (e *fileIndexerEntry) reset() {
+	e.queued = false
+	e.running = false
+	e.rerun = false
 }
