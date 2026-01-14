@@ -6,6 +6,69 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// fileIndexerEntry is a state machine for a single path's indexing state.
+// States: idle -> queued -> running -> idle (or back to queued if rerun needed)
+type fileIndexerEntry struct {
+	queued   bool
+	running  bool
+	rerun    bool
+	interest int
+}
+
+// setDirty marks this entry as needing indexing.
+// Returns true if the caller should enqueue to the work channel.
+func (e *fileIndexerEntry) setDirty() bool {
+	if e.interest == 0 {
+		return false
+	}
+	if e.running {
+		e.rerun = true
+		return false
+	}
+	if e.queued {
+		return false
+	}
+	e.queued = true
+	return true
+}
+
+// claim attempts to claim this entry for processing.
+// Returns true if indexing should proceed, false to skip (no interest).
+func (e *fileIndexerEntry) claim() bool {
+	if e.interest == 0 {
+		e.reset()
+		return false
+	}
+	e.queued = false
+	e.running = true
+	return true
+}
+
+// indexed marks indexing as complete.
+// Returns true if re-enqueue is needed (dirty while running, interest remains).
+func (e *fileIndexerEntry) indexed() bool {
+	e.running = false
+	if e.rerun && e.interest > 0 {
+		e.rerun = false
+		e.queued = true
+		return true
+	}
+	e.rerun = false
+	return false
+}
+
+// canDelete returns true if this entry can be removed from the map.
+func (e *fileIndexerEntry) canDelete() bool {
+	return e.interest == 0 && !e.running && !e.queued
+}
+
+// reset clears all flags (used when skipping due to no interest).
+func (e *fileIndexerEntry) reset() {
+	e.queued = false
+	e.running = false
+	e.rerun = false
+}
+
 // FileIndexer coordinates indexing work for absolute filesystem paths.
 //
 // Callers report that a path is "dirty" based on their observation (e.g file system events).
@@ -23,42 +86,20 @@ import (
 // All methods are safe to call from multiple goroutines.
 // Close stops workers and waits for them to exit.
 // Subscribe returns object IDs produced by successful indexing.
-type FileIndexer interface {
-	// Acquire registers interest in a path. Must be called before MarkDirty.
-	// Multiple calls from different repositories increment the interest count.
-	Acquire(path string)
-	// Release removes interest in a path. Call when a repository closes.
-	// If interest drops to 0, pending indexing for this path will be skipped.
-	Release(path string)
-
-	// MarkDirty queues a path for indexing. No-op if interest == 0.
-	MarkDirty(path string)
-
-	Close() error
-	Subscribe(ctx *astral.Context) <-chan *astral.ObjectID
-}
-
-type updateState struct {
-	queued   bool
-	running  bool
-	rerun    bool
-	interest int
-}
-
-type fileIndexer struct {
+type FileIndexer struct {
 	mod *Module
 
 	work chan string
 	done chan struct{}
 
 	mu     sync.Mutex
-	states map[string]*updateState
+	states map[string]*fileIndexerEntry
 
 	wg   sync.WaitGroup
 	once sync.Once
 }
 
-func NewFileIndexer(mod *Module, workers int, queueLen int) FileIndexer {
+func NewFileIndexer(mod *Module, workers int, queueLen int) *FileIndexer {
 	if workers <= 0 {
 		workers = 1
 	}
@@ -66,11 +107,11 @@ func NewFileIndexer(mod *Module, workers int, queueLen int) FileIndexer {
 		queueLen = 1
 	}
 
-	fi := &fileIndexer{
+	fi := &FileIndexer{
 		mod:    mod,
 		work:   make(chan string, queueLen),
 		done:   make(chan struct{}),
-		states: map[string]*updateState{},
+		states: map[string]*fileIndexerEntry{},
 	}
 
 	fi.wg.Add(workers)
@@ -81,7 +122,7 @@ func NewFileIndexer(mod *Module, workers int, queueLen int) FileIndexer {
 	return fi
 }
 
-func (fi *fileIndexer) Acquire(path string) {
+func (fi *FileIndexer) Acquire(path string) {
 	if len(path) == 0 || path[0] != '/' {
 		return
 	}
@@ -95,15 +136,15 @@ func (fi *fileIndexer) Acquire(path string) {
 	default:
 	}
 
-	st := fi.states[path]
-	if st == nil {
-		st = &updateState{}
-		fi.states[path] = st
+	e := fi.states[path]
+	if e == nil {
+		e = &fileIndexerEntry{}
+		fi.states[path] = e
 	}
-	st.interest++
+	e.interest++
 }
 
-func (fi *fileIndexer) Release(path string) {
+func (fi *FileIndexer) Release(path string) {
 	if len(path) == 0 || path[0] != '/' {
 		return
 	}
@@ -111,23 +152,22 @@ func (fi *fileIndexer) Release(path string) {
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
-	st := fi.states[path]
-	if st == nil {
+	e := fi.states[path]
+	if e == nil {
 		return
 	}
 
-	st.interest--
-	if st.interest < 0 {
-		st.interest = 0
+	e.interest--
+	if e.interest < 0 {
+		e.interest = 0
 	}
 
-	// If no interest and not running/queued, clean up state
-	if st.interest == 0 && !st.running && !st.queued {
+	if e.canDelete() {
 		delete(fi.states, path)
 	}
 }
 
-func (fi *fileIndexer) MarkDirty(path string) {
+func (fi *FileIndexer) MarkDirty(path string) {
 	if len(path) == 0 || path[0] != '/' {
 		return
 	}
@@ -141,38 +181,20 @@ func (fi *fileIndexer) MarkDirty(path string) {
 	default:
 	}
 
-	st := fi.states[path]
-	// No-op if no state exists or interest is 0
-	if st == nil || st.interest == 0 {
+	e := fi.states[path]
+	if e == nil || !e.setDirty() {
 		fi.mu.Unlock()
 		return
 	}
-
-	// If processing is currently running, remember we need to rerun after it completes.
-	if st.running {
-		st.rerun = true
-		fi.mu.Unlock()
-		return
-	}
-
-	// If already queued, nothing to do.
-	if st.queued {
-		fi.mu.Unlock()
-		return
-	}
-
-	st.queued = true
 	fi.mu.Unlock()
 
-	// Enqueue outside the lock using select to handle shutdown.
 	select {
 	case <-fi.done:
-		return
 	case fi.work <- path:
 	}
 }
 
-func (fi *fileIndexer) Close() error {
+func (fi *FileIndexer) Close() error {
 	fi.once.Do(func() {
 		close(fi.done)
 		fi.wg.Wait()
@@ -180,7 +202,7 @@ func (fi *fileIndexer) Close() error {
 	return nil
 }
 
-func (fi *fileIndexer) worker() {
+func (fi *FileIndexer) worker() {
 	defer fi.wg.Done()
 
 	for {
@@ -193,26 +215,16 @@ func (fi *fileIndexer) worker() {
 	}
 }
 
-func (fi *fileIndexer) processPath(path string) {
+func (fi *FileIndexer) processPath(path string) {
 	fi.mu.Lock()
-	st := fi.states[path]
-	if st == nil {
+	e := fi.states[path]
+	if e == nil || !e.claim() {
+		if e != nil && e.canDelete() {
+			delete(fi.states, path)
+		}
 		fi.mu.Unlock()
 		return
 	}
-
-	// Skip if no interest remains
-	if st.interest == 0 {
-		st.queued = false
-		st.running = false
-		st.rerun = false
-		delete(fi.states, path)
-		fi.mu.Unlock()
-		return
-	}
-
-	st.queued = false
-	st.running = true
 	fi.mu.Unlock()
 
 	objectID, err := fi.mod.updateDbIndex(path)
@@ -221,39 +233,26 @@ func (fi *fileIndexer) processPath(path string) {
 	}
 
 	fi.mu.Lock()
-	st = fi.states[path]
-	if st == nil {
+	e = fi.states[path]
+	if e == nil {
 		fi.mu.Unlock()
 		return
 	}
-	st.running = false
 
-	// Only rerun if interest remains and rerun was requested
-	if st.rerun && st.interest > 0 {
-		st.rerun = false
-		st.queued = true
-		fi.mu.Unlock()
-
-		// Re-enqueue using select to handle shutdown
-		select {
-		case <-fi.done:
-			return
-		case fi.work <- path:
-		}
-		return
-	}
-
-	// Clear rerun flag (we're not going to rerun)
-	st.rerun = false
-
-	// Only delete state if no interest remains.
-	// If interest > 0, keep state so future MarkDirty calls work.
-	if st.interest == 0 {
+	needsRequeue := e.indexed()
+	if e.canDelete() {
 		delete(fi.states, path)
 	}
 	fi.mu.Unlock()
+
+	if needsRequeue {
+		select {
+		case <-fi.done:
+		case fi.work <- path:
+		}
+	}
 }
 
-func (fi *fileIndexer) Subscribe(ctx *astral.Context) <-chan *astral.ObjectID {
+func (fi *FileIndexer) Subscribe(ctx *astral.Context) <-chan *astral.ObjectID {
 	return fi.mod.subscribeFileIndexed(ctx)
 }
