@@ -35,9 +35,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		return nil, err
 	}
 
-	// module-level path indexer (dedupes indexing work by absolute path)
-	mod.pathIndexerAdded = &sig.Queue[*astral.ObjectID]{}
-	mod.pathIndexer = NewPathIndexer(mod, workers, updatesLen)
+	mod.fileIndexerAdded = &sig.Queue[*astral.ObjectID]{}
+	mod.fileIndexer = NewFileIndexer(mod, workers, updatesLen)
 
 	mod.ops.AddStruct(mod, "Op")
 
@@ -45,13 +44,11 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 }
 
 func (mod *Module) addDefaultRepo() {
-	// create a repo for the 'data' directory in config dir
 	res, ok := mod.assets.Res().(*resources.FileResources)
 	if !ok {
 		return
 	}
 
-	// check if the default repo is already set
 	if _, ok := mod.repos.Get(DefaultRepoName); ok {
 		return
 	}

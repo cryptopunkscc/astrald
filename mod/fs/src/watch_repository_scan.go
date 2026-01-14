@@ -72,7 +72,8 @@ func (repo *WatchRepository) rescan(ctx *astral.Context) error {
 
 		err = repo.mod.checkIndexEntry(path)
 		if err != nil {
-			repo.mod.pathIndexer.MarkDirtyOwned(repo.label, path)
+			repo.acquire(path)
+			repo.mod.fileIndexer.MarkDirty(path)
 		}
 
 		return nil

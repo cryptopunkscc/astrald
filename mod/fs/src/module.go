@@ -31,9 +31,9 @@ type Module struct {
 	db     *DB
 	ctx    context.Context
 
-	pathIndexer PathIndexer
+	fileIndexer FileIndexer
 
-	pathIndexerAdded *sig.Queue[*astral.ObjectID]
+	fileIndexerAdded *sig.Queue[*astral.ObjectID]
 
 	repos sig.Map[string, objects.Repository]
 	ops   shell.Scope
@@ -46,8 +46,8 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 	<-ctx.Done()
 
-	_ = mod.pathIndexer.Close()
-	mod.pathIndexerAdded.Close()
+	_ = mod.fileIndexer.Close()
+	mod.fileIndexerAdded.Close()
 	return nil
 }
 
@@ -170,13 +170,13 @@ func resolveFileID(path string) (*astral.ObjectID, error) {
 	return fileID, nil
 }
 
-func (mod *Module) subscribePathIndexed(ctx *astral.Context) <-chan *astral.ObjectID {
+func (mod *Module) subscribeFileIndexed(ctx *astral.Context) <-chan *astral.ObjectID {
 	if ctx == nil {
 		ctx = astral.NewContext(nil)
 	}
-	return mod.pathIndexerAdded.Subscribe(ctx)
+	return mod.fileIndexerAdded.Subscribe(ctx)
 }
 
-func (mod *Module) pushPathIndexed(id *astral.ObjectID) {
-	mod.pathIndexerAdded = mod.pathIndexerAdded.Push(id)
+func (mod *Module) pushFileIndexed(id *astral.ObjectID) {
+	mod.fileIndexerAdded = mod.fileIndexerAdded.Push(id)
 }

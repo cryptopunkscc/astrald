@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -18,6 +19,9 @@ type WatchRepository struct {
 	token   chan struct{}
 
 	scan ScanHandle
+
+	acquiredMu sync.Mutex
+	acquired   map[string]struct{}
 }
 
 func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepository, err error) {
@@ -30,10 +34,11 @@ func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepo
 	}
 
 	repo = &WatchRepository{
-		mod:   mod,
-		label: label,
-		root:  root,
-		token: make(chan struct{}, 1),
+		mod:      mod,
+		label:    label,
+		root:     root,
+		token:    make(chan struct{}, 1),
+		acquired: make(map[string]struct{}),
 	}
 
 	repo.token <- struct{}{}
@@ -63,15 +68,43 @@ func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *astral.Obje
 	return repo.mod.db.ObjectExists(repo.root, objectID)
 }
 
+// acquire registers interest in a path for this repository.
+// Idempotent: calling multiple times for the same path is safe.
+func (repo *WatchRepository) acquire(path string) {
+	repo.acquiredMu.Lock()
+	defer repo.acquiredMu.Unlock()
+
+	if _, ok := repo.acquired[path]; ok {
+		return
+	}
+	repo.acquired[path] = struct{}{}
+	repo.mod.fileIndexer.Acquire(path)
+}
+
 func (repo *WatchRepository) onChange(path string) {
 	<-repo.token // take a token
 	defer func() { repo.token <- struct{}{} }()
 
-	repo.mod.pathIndexer.MarkDirtyOwned(repo.label, path)
+	repo.acquire(path)
+	repo.mod.fileIndexer.MarkDirty(path)
 }
 
 func (repo *WatchRepository) onRemove(path string) {
-	repo.mod.pathIndexer.MarkDirtyOwned(repo.label, path)
+	repo.acquiredMu.Lock()
+	_, alreadyAcquired := repo.acquired[path]
+	repo.acquiredMu.Unlock()
+
+	if alreadyAcquired {
+		// Path was already acquired, just mark dirty
+		repo.mod.fileIndexer.MarkDirty(path)
+	} else {
+		// Temporarily acquire, mark dirty, then release
+		// This ensures updateDbIndex runs to clean up the DB row,
+		// but we don't retain long-term interest for a removed path
+		repo.mod.fileIndexer.Acquire(path)
+		repo.mod.fileIndexer.MarkDirty(path)
+		repo.mod.fileIndexer.Release(path)
+	}
 }
 
 func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
@@ -83,7 +116,7 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 		defer close(ch)
 
 		if follow {
-			subscribe = repo.mod.pathIndexer.Subscribe(ctx)
+			subscribe = repo.mod.fileIndexer.Subscribe(ctx)
 		}
 
 		ids, err := repo.mod.db.UniqueObjectIDs(repo.root)
@@ -181,5 +214,14 @@ func (repo *WatchRepository) Close() error {
 	if repo.watcher != nil {
 		_ = repo.watcher.Close()
 	}
+
+	// Release all acquired paths
+	repo.acquiredMu.Lock()
+	for path := range repo.acquired {
+		repo.mod.fileIndexer.Release(path)
+	}
+	repo.acquired = make(map[string]struct{})
+	repo.acquiredMu.Unlock()
+
 	return nil
 }
