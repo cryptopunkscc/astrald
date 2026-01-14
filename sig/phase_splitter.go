@@ -54,7 +54,6 @@ func NewPhaseSplitter[T any](
 		for {
 			select {
 			case <-ctx.Done():
-				// Ensure snapshot consumers are unblocked.
 				if inBefore {
 					signalBoundary()
 					closeBefore()
@@ -71,7 +70,6 @@ func NewPhaseSplitter[T any](
 				}
 
 				if inBefore && isBoundary(v) {
-					// Phase transition
 					inBefore = false
 					signalBoundary()
 					closeBefore()
