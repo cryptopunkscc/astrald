@@ -16,7 +16,6 @@ type WatchRepository struct {
 	label   string
 	root    string
 	watcher *Watcher
-	token   chan struct{}
 
 	scan ScanHandle
 
@@ -37,11 +36,8 @@ func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepo
 		mod:      mod,
 		label:    label,
 		root:     root,
-		token:    make(chan struct{}, 1),
 		acquired: make(map[string]struct{}),
 	}
-
-	repo.token <- struct{}{}
 	repo.watcher, err = NewWatcher()
 	if err != nil {
 		return nil, err
@@ -82,25 +78,25 @@ func (repo *WatchRepository) acquire(path string) {
 }
 
 func (repo *WatchRepository) onChange(path string) {
-	<-repo.token // take a token
-	defer func() { repo.token <- struct{}{} }()
-
 	repo.acquire(path)
 	repo.mod.fileIndexer.MarkDirty(path)
 }
 
 func (repo *WatchRepository) onRemove(path string) {
+	// Check if we already have interest in this path.
+	// Note: there's a benign race between the check and the action below,
+	// but the worst case is redundant Acquire/Release (interest stays correct)
+	// or a no-op MarkDirty (if interest dropped to 0). Holding the lock during
+	// fileIndexer calls would risk deadlock and is unnecessary.
 	repo.acquiredMu.Lock()
 	_, alreadyAcquired := repo.acquired[path]
 	repo.acquiredMu.Unlock()
 
 	if alreadyAcquired {
-		// Path was already acquired, just mark dirty
 		repo.mod.fileIndexer.MarkDirty(path)
 	} else {
-		// Temporarily acquire, mark dirty, then release
-		// This ensures updateDbIndex runs to clean up the DB row,
-		// but we don't retain long-term interest for a removed path
+		// Temporarily acquire interest so indexing runs to clean up the DB row,
+		// then release since we don't need long-term interest in a removed path.
 		repo.mod.fileIndexer.Acquire(path)
 		repo.mod.fileIndexer.MarkDirty(path)
 		repo.mod.fileIndexer.Release(path)

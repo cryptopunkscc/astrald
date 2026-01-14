@@ -32,13 +32,12 @@ func NewRepository(mod *Module, label string, path string) *Repository {
 func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
 	ch := make(chan *astral.ObjectID)
 
-	var subsribe <-chan *astral.ObjectID
-
+	var subscribe <-chan *astral.ObjectID
 	go func() {
 		defer close(ch)
 
 		if follow {
-			subsribe = repo.addQueue.Subscribe(ctx)
+			subscribe = repo.addQueue.Subscribe(ctx)
 		}
 
 		entries, err := os.ReadDir(repo.root)
@@ -66,8 +65,8 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.O
 		}
 
 		// handle subscription
-		if subsribe != nil {
-			for id := range subsribe {
+		if subscribe != nil {
+			for id := range subscribe {
 				select {
 				case ch <- id:
 				case <-ctx.Done():
