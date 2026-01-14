@@ -72,15 +72,19 @@ BLUEPRINT_TYPES=$(
     ! -path "*/.*/*" \
     -print0 \
   | xargs -0 perl -0777 -ne '
-      # &Type{} or &pkg.Type{}
-      while (/(?:^|\W)(?:[A-Za-z_][A-Za-z0-9_]*\.)?DefaultBlueprints\s*\.\s*Add\s*\(\s*&\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*(?:\{|\))/gms) {
+      # Match both old and new patterns:
+      # Old: astral.DefaultBlueprints.Add(&T{})
+      # New: astral.Add(&T{}) or Add(&T{})
+
+      # Pattern 1: astral.Add(&Type{}) or pkg.Add(&Type{})
+      while (/(?:^|\W)(?:[A-Za-z_][A-Za-z0-9_]*\.)?Add\s*\(\s*&\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*(?:\{|\))/gms) {
         my $t = $1;
         $t =~ s/.*\.//; # drop package qualifier
         print "$t\n";
       }
 
-      # var v Type; ... Add(&v)
-      while (/var\s+([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*.*?(?:[A-Za-z_][A-Za-z0-9_]*\.)?DefaultBlueprints\s*\.\s*Add\s*\(\s*&\s*\1\s*\)/gms) {
+      # Pattern 2: var v Type; ... Add(&v)
+      while (/var\s+([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*.*?(?:[A-Za-z_][A-Za-z0-9_]*\.)?Add\s*\(\s*&\s*\1\s*\)/gms) {
         my $t = $2;
         $t =~ s/.*\.//; # drop package qualifier
         print "$t\n";
