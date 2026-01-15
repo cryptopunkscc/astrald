@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -18,9 +17,6 @@ type WatchRepository struct {
 	watcher *Watcher
 
 	scan ScanHandle
-
-	acquiredMu sync.Mutex
-	acquired   map[string]struct{}
 }
 
 func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepository, err error) {
@@ -33,10 +29,9 @@ func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepo
 	}
 
 	repo = &WatchRepository{
-		mod:      mod,
-		label:    label,
-		root:     root,
-		acquired: make(map[string]struct{}),
+		mod:   mod,
+		label: label,
+		root:  root,
 	}
 	repo.watcher, err = NewWatcher()
 	if err != nil {
@@ -52,6 +47,9 @@ func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepo
 
 	repo.watcher.Add(root, true)
 
+	// Register interest in this root
+	repo.mod.fileIndexer.AcquireRoot(root)
+
 	// Run initial scan as a cancelable job.
 	repo.scan = repo.StartScan(astral.NewContext(nil))
 
@@ -64,43 +62,12 @@ func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *astral.Obje
 	return repo.mod.db.ObjectExists(repo.root, objectID)
 }
 
-// acquire registers interest in a path for this repository.
-// Idempotent: calling multiple times for the same path is safe.
-func (repo *WatchRepository) acquire(path string) {
-	repo.acquiredMu.Lock()
-	defer repo.acquiredMu.Unlock()
-
-	if _, ok := repo.acquired[path]; ok {
-		return
-	}
-	repo.acquired[path] = struct{}{}
-	repo.mod.fileIndexer.Acquire(path)
-}
-
 func (repo *WatchRepository) onChange(path string) {
-	repo.acquire(path)
 	repo.mod.fileIndexer.MarkDirty(path)
 }
 
 func (repo *WatchRepository) onRemove(path string) {
-	// Check if we already have interest in this path.
-	// Note: there's a benign race between the check and the action below,
-	// but the worst case is redundant Acquire/Release (interest stays correct)
-	// or a no-op MarkDirty (if interest dropped to 0). Holding the lock during
-	// fileIndexer calls would risk deadlock and is unnecessary.
-	repo.acquiredMu.Lock()
-	_, alreadyAcquired := repo.acquired[path]
-	repo.acquiredMu.Unlock()
-
-	if alreadyAcquired {
-		repo.mod.fileIndexer.MarkDirty(path)
-	} else {
-		// Temporarily acquire interest so indexing runs to clean up the DB row,
-		// then release since we don't need long-term interest in a removed path.
-		repo.mod.fileIndexer.Acquire(path)
-		repo.mod.fileIndexer.MarkDirty(path)
-		repo.mod.fileIndexer.Release(path)
-	}
+	repo.mod.fileIndexer.MarkDirty(path)
 }
 
 func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
@@ -211,13 +178,8 @@ func (repo *WatchRepository) Close() error {
 		_ = repo.watcher.Close()
 	}
 
-	// Release all acquired paths
-	repo.acquiredMu.Lock()
-	for path := range repo.acquired {
-		repo.mod.fileIndexer.Release(path)
-	}
-	repo.acquired = make(map[string]struct{})
-	repo.acquiredMu.Unlock()
+	// Release root interest (cleans up all file state automatically)
+	repo.mod.fileIndexer.ReleaseRoot(repo.root)
 
 	return nil
 }

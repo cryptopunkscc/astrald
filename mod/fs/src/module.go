@@ -56,6 +56,7 @@ func (mod *Module) Scope() *shell.Scope {
 // operation is considered heavy due to resolving file bytes into an object ID
 // on duplicate path entries the existing entry is updated
 func (mod *Module) updateDbIndex(path string) (*astral.ObjectID, error) {
+	mod.log.Log(`Indexing file at %v`, path)
 	if len(path) == 0 || path[0] != '/' {
 		return nil, fs.ErrInvalidPath
 	}

@@ -1,8 +1,6 @@
 package fs
 
 import (
-	"context"
-	"errors"
 	"os"
 	"path/filepath"
 
@@ -31,29 +29,14 @@ func (repo *WatchRepository) StartScan(parent *astral.Context) ScanHandle {
 
 	go func() {
 		defer close(done)
-
-		err := repo.rescan(ctx)
-		if err == nil {
-			done <- nil
-			return
-		}
-
-		// Normalize cancellation.
-		if errors.Is(err, context.Canceled) {
-			done <- context.Canceled
-			return
-		}
-
-		done <- err
+		done <- repo.rescan(ctx)
 	}()
 
 	return ScanHandle{Cancel: cancel, Done: done}
 }
 
-var errScanCanceled = errors.New("scan canceled")
-
 func (repo *WatchRepository) rescan(ctx *astral.Context) error {
-	err := filepath.WalkDir(repo.root, func(path string, entry os.DirEntry, err error) error {
+	return filepath.WalkDir(repo.root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -61,7 +44,7 @@ func (repo *WatchRepository) rescan(ctx *astral.Context) error {
 		// Check context early for prompt cancellation.
 		select {
 		case <-ctx.Done():
-			return errScanCanceled
+			return ctx.Err()
 		default:
 		}
 
@@ -72,18 +55,10 @@ func (repo *WatchRepository) rescan(ctx *astral.Context) error {
 
 		err = repo.mod.checkIndexEntry(path)
 		if err != nil {
-			repo.acquire(path)
+			repo.mod.fileIndexer.AcquireRoot(path)
 			repo.mod.fileIndexer.MarkDirty(path)
 		}
 
 		return nil
 	})
-	if err != nil {
-		if errors.Is(err, errScanCanceled) {
-			return ctx.Err()
-		}
-		return err
-	}
-
-	return nil
 }
