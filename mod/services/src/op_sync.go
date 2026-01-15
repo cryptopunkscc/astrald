@@ -6,20 +6,36 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-type opServiceSyncArgs struct {
-	ID  *astral.Identity
-	In  string `query:"optional"`
-	Out string `query:"optional"`
+type opSyncArgs struct {
+	ID     string
+	Follow bool   `query:"optional"`
+	In     string `query:"optional"`
+	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpSync(ctx *astral.Context, q shell.Query, args opServiceSyncArgs) (err error) {
+func (mod *Module) OpSync(ctx *astral.Context, q shell.Query, args opSyncArgs) (err error) {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	err = mod.DiscoverRemoteServices(ctx, args.ID, false)
+	// resolve the target identity
+	targetID, err := mod.Dir.ResolveIdentity(args.ID)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Send(&astral.EOS{})
+	ctx, cancel := ctx.WithZone(astral.ZoneNetwork).WithCancel()
+
+	// cancel the sync on any channel activity
+	go func() {
+		_, _ = ch.Receive()
+		cancel()
+	}()
+
+	// run the updater
+	err = mod.syncServices(ctx, targetID, args.Follow)
+	if err != nil {
+		return ch.Send(astral.NewError(err.Error()))
+	}
+
+	return ch.Send(&astral.Ack{})
 }

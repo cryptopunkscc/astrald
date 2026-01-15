@@ -1,13 +1,15 @@
 package nat
 
 import (
+	"sync"
+	"sync/atomic"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/services"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 )
@@ -34,8 +36,8 @@ type Module struct {
 	pool *PairPool
 	ops  shell.Scope
 
-	serviceEnabled    bool
-	serviceChangeFeed *services.ServiceChangeFeed
+	enabled atomic.Bool
+	cond    *sync.Cond
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -47,6 +49,12 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
+}
+
+func (mod *Module) SetEnabled(enabled bool) {
+	if mod.enabled.Swap(enabled) != enabled {
+		mod.cond.Broadcast()
+	}
 }
 
 func (mod *Module) String() string {

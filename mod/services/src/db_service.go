@@ -1,17 +1,20 @@
 package services
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/services"
 )
 
 // dbService represents discovered service of a specific identity cached in the database
 type dbService struct {
-	Name        astral.String8   `gorm:"uniqueIndex:idx_db_service_name_identity"`
-	Identity    *astral.Identity `gorm:"uniqueIndex:idx_db_service_name_identity"`
-	Composition *astral.Bundle   `gorm:"serializer:json"`
-	CreatedAt   astral.Time      `gorm:"autoCreateTime"`
+	Name       string           `gorm:"uniqueIndex:idx_db_service_name_provider_id"`
+	ProviderID *astral.Identity `gorm:"uniqueIndex:idx_db_service_name_provider_id"`
+	Info       *astral.Bundle   `gorm:"serializer:json"`
+	CreatedAt  time.Time
 }
 
 func (dbService) TableName() string {
-	return "services__services"
+	return services.DBPrefix + "services"
 }

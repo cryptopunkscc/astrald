@@ -2,11 +2,9 @@ package services
 
 import (
 	"sync"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/services"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 // DiscoverServices runs all registered ServiceDiscoverers with the provided options and merges
@@ -14,59 +12,70 @@ import (
 func (mod *Module) DiscoverServices(
 	ctx *astral.Context,
 	caller *astral.Identity,
-	opts services.DiscoverOptions,
-) (snapshot []services.ServiceChange, updates <-chan services.ServiceDiscoveryResult, err error) {
-	discoverers := mod.discoverers.Clone()
+	follow bool,
+) (<-chan *services.Update, error) {
+	var out = make(chan *services.Update)
+	var sources []<-chan *services.Update
 
-	phasedStreamsCh := make(chan *sig.PhaseSplitter[services.ServiceDiscoveryResult], len(discoverers))
-	var wg = &sync.WaitGroup{}
-
-	for _, d := range discoverers {
-		discoverer := d
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			results, err := discoverer.DiscoverService(ctx, caller, opts)
-			if err != nil {
-				mod.log.Logv(1, "discoverer failed: %v", err)
-				return
-			}
-
-			phasedStream := sig.NewPhaseSplitter(
-				ctx,
-				results,
-				services.IsDiscoveryFlush,
-			)
-
-			phasedStreamsCh <- phasedStream
-		}()
-	}
-
-	wg.Wait()
-	close(phasedStreamsCh)
-
-	phasedStreams := sig.ChanToArray(phasedStreamsCh)
-
-	beforeStreams := make([]<-chan services.ServiceDiscoveryResult, 0, len(phasedStreams))
-	for _, ps := range phasedStreams {
-		beforeStreams = append(beforeStreams, ps.Before())
-	}
-
-	snapshotCtx, cancelSnapshot := ctx.WithTimeout(30 * time.Second)
-	defer cancelSnapshot()
-
-	snapshotEvents := sig.ChanCollectAll(snapshotCtx, beforeStreams...)
-	for _, ev := range snapshotEvents {
-		if ev.Kind == services.DiscoveryEventChange {
-			snapshot = append(snapshot, ev.Change)
+	// collect all sources for discovery
+	for _, discoverer := range mod.discoverers.Clone() {
+		source, err := discoverer.DiscoverServices(ctx, caller, follow)
+		if err != nil {
+			mod.log.Logv(2, "%v.DiscoverServices: %v", discoverer, err)
+			continue
 		}
+		sources = append(sources, source)
 	}
 
-	updateStreams := make([]<-chan services.ServiceDiscoveryResult, 0, len(phasedStreams))
-	for _, ps := range phasedStreams {
-		updateStreams = append(updateStreams, ps.After())
-	}
+	go func() {
+		defer close(out)
 
-	return snapshot, sig.ChanFanIn(ctx, updateStreams...), nil
+		// collect snapshots and send them to the output channel
+		var wg sync.WaitGroup
+		for _, source := range sources {
+			wg.Add(1)
+			go func(source <-chan *services.Update) {
+				defer wg.Done()
+				for update := range source {
+					if update == nil {
+						return
+					}
+					select {
+					case <-ctx.Done():
+						return
+					case out <- update:
+					}
+				}
+			}(source)
+		}
+		wg.Wait()
+
+		// return if we only wanted the snapshot
+		if !follow {
+			return
+		}
+
+		// send the separator
+		out <- nil
+
+		// collect updates and send them to the output channel
+		for _, source := range sources {
+			wg.Add(1)
+			go func(source <-chan *services.Update) {
+				defer wg.Done()
+				for update := range source {
+					select {
+					case <-ctx.Done():
+						return
+					case out <- update:
+					}
+
+				}
+			}(source)
+		}
+
+		wg.Wait()
+	}()
+
+	return out, nil
 }

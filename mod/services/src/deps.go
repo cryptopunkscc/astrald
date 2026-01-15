@@ -2,10 +2,12 @@ package services
 
 import (
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/services"
 )
 
 type Deps struct {
+	Dir dir.Module
 }
 
 func (mod *Module) LoadDependencies() (err error) {
@@ -20,8 +22,8 @@ func (mod *Module) LoadDependencies() (err error) {
 				continue
 			}
 
-			if d, ok := m.(services.ServiceDiscoverer); ok {
-				mod.AddServiceDiscoverer(d)
+			if d, ok := m.(services.Discoverer); ok {
+				mod.AddDiscoverer(d)
 			}
 		}
 	}

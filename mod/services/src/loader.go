@@ -21,9 +21,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	if err := mod.db.Migrate(); err != nil {
 		return nil, err
 	}
-	if err := mod.LoadDependencies(); err != nil {
-		return nil, err
-	}
 
 	_ = mod.ops.AddStruct(mod, "Op")
 
