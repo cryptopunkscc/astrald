@@ -75,6 +75,7 @@ func (q *Queue[T]) Data() T {
 	return q.data
 }
 
+// Deprecated: this holds the pointer receiver forever preventing gc until return, use sig.Subscribe instead.
 func (q *Queue[T]) Subscribe(ctx context.Context) <-chan T {
 	ch := make(chan T)
 
@@ -94,6 +95,34 @@ func (q *Queue[T]) Subscribe(ctx context.Context) <-chan T {
 				select {
 				case ch <- f.data:
 					f = f.Next()
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return ch
+}
+
+func Subscribe[T any](ctx context.Context, q *Queue[T]) <-chan T {
+	ch := make(chan T)
+
+	go func() {
+		defer close(ch)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+
+			case <-q.Wait():
+				if q.Next() == nil {
+					return
+				}
+
+				select {
+				case ch <- q.data:
+					q = q.Next()
 				case <-ctx.Done():
 					return
 				}
