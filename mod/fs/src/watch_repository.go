@@ -44,6 +44,7 @@ func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepo
 	repo.watcher.OnWriteDone = repo.onChange
 	repo.watcher.OnRemoved = repo.onRemove
 	repo.watcher.OnRenamed = repo.onRemove
+	repo.watcher.OnFileCreated = repo.onChange
 	repo.watcher.OnDirCreated = func(s string) {
 		repo.watcher.Add(s, true)
 	}
@@ -55,7 +56,6 @@ func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepo
 
 	// Run initial scan as a cancelable job.
 	repo.startScan(astral.NewContext(nil))
-
 	return
 }
 
@@ -189,36 +189,33 @@ func (repo *WatchRepository) startScan(parent *astral.Context) {
 
 	go func() {
 		defer close(done)
-		done <- repo.rescan(ctx)
-	}()
-}
+		err := filepath.WalkDir(repo.root, func(path string, entry os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
 
-func (repo *WatchRepository) rescan(ctx *astral.Context) error {
-	return filepath.WalkDir(repo.root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+			// Check context early for prompt cancellation.
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
 
-		// Check context early for prompt cancellation.
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
+			// Check if the entry is a regular file
+			if !entry.Type().IsRegular() {
+				return nil
+			}
 
-		// Check if the entry is a regular file
-		if !entry.Type().IsRegular() {
+			err = repo.mod.checkIndexEntry(path)
+			if err != nil {
+				repo.mod.fileIndexer.MarkDirty(path)
+			}
+
 			return nil
-		}
+		})
 
-		err = repo.mod.checkIndexEntry(path)
-		if err != nil {
-
-			repo.mod.fileIndexer.MarkDirty(path)
-		}
-
-		return nil
-	})
+		done <- err
+	}()
 }
 
 // Close stops background activity associated with the repository.

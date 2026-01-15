@@ -2,6 +2,7 @@ package fs
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -120,6 +121,8 @@ func (fi *FileIndexer) CleanupRoot(root string) (deleted int, err error) {
 func (fi *FileIndexer) MarkDirty(path string) {
 	_ = fi.mod.db.DeleteByPath(path)
 	// Enqueue for re-indexing
+
+	fmt.Println("MARKS PATH DIRTY: ", path)
 	fi.workqueue.Enqueue(path)
 }
 
