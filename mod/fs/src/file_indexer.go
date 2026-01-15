@@ -116,12 +116,9 @@ func (fi *FileIndexer) CleanupRoot(root string) (deleted int, err error) {
 	return deleted, err
 }
 
-// MarkDirty marks the given path as dirty and schedules it for indexing.
+// MarkDirty marks the given path as dirty (removes stale index) and schedules it for indexing.
 func (fi *FileIndexer) MarkDirty(path string) {
-	// Delete stale DB entry immediately to prevent returning wrong content
-	// If the file doesn't exist or isn't in DB, this is a no-op
 	_ = fi.mod.db.DeleteByPath(path)
-
 	// Enqueue for re-indexing
 	fi.workqueue.Enqueue(path)
 }
