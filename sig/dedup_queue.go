@@ -1,6 +1,8 @@
 package sig
 
-import "sync"
+import (
+	"sync"
+)
 
 // DedupQueue is a FIFO queue with integrated deduplication.
 // Items are enqueued only if not already present in the queue.

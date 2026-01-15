@@ -20,7 +20,9 @@ type IndexFunc func(path string) (*astral.ObjectID, error)
 type FileIndexer struct {
 	indexFn   IndexFunc
 	workqueue *sig.DedupQueue[string] // paths to index waiting in queue (deduplicated)
-	closed    bool
+
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	activeRoots sig.Set[string] // roots currently being watched by repositories
 
@@ -30,9 +32,13 @@ type FileIndexer struct {
 
 // NewFileIndexer creates a new FileIndexer with the specified number of workers.
 func NewFileIndexer(indexFn IndexFunc, workers int) *FileIndexer {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	fi := &FileIndexer{
 		indexFn:     indexFn,
 		workqueue:   sig.NewDedupQueue[string](),
+		ctx:         ctx,
+		cancel:      cancel,
 		activeRoots: sig.Set[string]{},
 		updates:     &sig.Queue[*astral.ObjectID]{},
 	}
@@ -45,11 +51,19 @@ func NewFileIndexer(indexFn IndexFunc, workers int) *FileIndexer {
 }
 
 // worker pulls paths from the workqueue and indexes them.
+// Exits when workqueue is closed or context is canceled.
 func (fi *FileIndexer) worker() {
 	for {
 		path, ok := fi.workqueue.Dequeue()
 		if !ok {
 			return
+		}
+
+		// Check cancellation before starting expensive work
+		select {
+		case <-fi.ctx.Done():
+			return
+		default:
 		}
 
 		// Fast check: skip if path is no longer under any active root (lazy cleanup)
@@ -94,9 +108,8 @@ func (fi *FileIndexer) ReleaseRoot(root string) {
 // MarkDirty marks the given path as dirty and schedules it for indexing.
 // This is a fast O(1) operation that automatically deduplicates - if the path
 // is already queued for indexing, it won't be added again.
-func (fi *FileIndexer) MarkDirty(path string) error {
+func (fi *FileIndexer) MarkDirty(path string) {
 	fi.workqueue.Enqueue(path)
-	return nil
 }
 
 // Subscribe returns a channel that receives ObjectIDs as files are indexed.
@@ -106,7 +119,12 @@ func (fi *FileIndexer) Subscribe(ctx context.Context) <-chan *astral.ObjectID {
 	return fi.updates.Subscribe(ctx)
 }
 
+// Close gracefully shuts down the FileIndexer.
+// Workers will finish processing queued items before exiting.
+// Safe to call multiple times.
 func (fi *FileIndexer) Close() error {
-	// TODO: implement later
+	fi.cancel()
+	fi.workqueue.Close()
+	fi.updates.Close()
 	return nil
 }

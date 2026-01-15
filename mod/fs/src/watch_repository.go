@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -16,7 +17,8 @@ type WatchRepository struct {
 	root    string
 	watcher *Watcher
 
-	scan ScanHandle
+	scanCancel func()
+	scanDone   <-chan error
 }
 
 func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepository, err error) {
@@ -51,7 +53,7 @@ func NewWatchRepository(mod *Module, label string, root string) (repo *WatchRepo
 	repo.mod.fileIndexer.AcquireRoot(root)
 
 	// Run initial scan as a cancelable job.
-	repo.scan = repo.StartScan(astral.NewContext(nil))
+	repo.startScan(astral.NewContext(nil))
 
 	return
 }
@@ -168,14 +170,74 @@ func (repo *WatchRepository) String() string {
 	return repo.label
 }
 
+// startScan starts a background scan of repo.root.
+// Cancels any previous scan before starting a new one.
+func (repo *WatchRepository) startScan(parent *astral.Context) {
+	// Cancel any previous scan and wait for it
+	if repo.scanCancel != nil && repo.scanDone != nil {
+		repo.scanCancel()
+		<-repo.scanDone
+	}
+
+	// Start new scan
+	ctx, cancel := parent.WithCancel()
+	done := make(chan error, 1)
+
+	repo.scanCancel = cancel
+	repo.scanDone = done
+
+	go func() {
+		defer close(done)
+		done <- repo.rescan(ctx)
+	}()
+}
+
+func (repo *WatchRepository) rescan(ctx *astral.Context) error {
+	return filepath.WalkDir(repo.root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Check context early for prompt cancellation.
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Check if the entry is a regular file
+		if !entry.Type().IsRegular() {
+			return nil
+		}
+
+		err = repo.mod.checkIndexEntry(path)
+		if err != nil {
+
+			repo.mod.fileIndexer.MarkDirty(path)
+		}
+
+		return nil
+	})
+}
+
 // Close stops background activity associated with the repository.
 // It is safe to call multiple times.
 func (repo *WatchRepository) Close() error {
-	if repo.scan.Cancel != nil {
-		repo.scan.Cancel()
+	// Cancel scan and wait for it to actually finish
+	if repo.scanCancel != nil && repo.scanDone != nil {
+		repo.scanCancel()
+		// Block until scan goroutine exits
+		// This ensures no more MarkDirty calls after ReleaseRoot
+		<-repo.scanDone
+		// Clear to prevent double-wait on second Close()
+		repo.scanCancel = nil
+		repo.scanDone = nil
 	}
+
+	// Stop filesystem watcher
 	if repo.watcher != nil {
 		_ = repo.watcher.Close()
+		repo.watcher = nil
 	}
 
 	// Release root interest (cleans up all file state automatically)
