@@ -219,7 +219,6 @@ func (repo *WatchRepository) startScan(parent *astral.Context) {
 }
 
 // Close stops background activity associated with the repository.
-// It is safe to call multiple times.
 func (repo *WatchRepository) Close() error {
 	if repo.scanCancel != nil && repo.scanDone != nil {
 		repo.scanCancel()
@@ -235,7 +234,12 @@ func (repo *WatchRepository) Close() error {
 
 	repo.mod.fileIndexer.ReleaseRoot(repo.root)
 
-	// Cleanup orphaned DB entries for this root in background
+	return nil
+}
+
+// Cleanup removes orphaned DB entries for this repository root.
+// Should be called when explicitly removing a repository, not during shutdown.
+func (repo *WatchRepository) Cleanup() {
 	go func() {
 		defer debug.SaveLog(func(p any) {
 			repo.mod.log.Error("module %v panicked while repo %v cleanup: %v", repo.mod.node, repo.label, p)
@@ -248,6 +252,4 @@ func (repo *WatchRepository) Close() error {
 			repo.mod.log.Logv(1, "cleaned up %v orphaned paths for root %v", deleted, repo.root)
 		}
 	}()
-
-	return nil
 }

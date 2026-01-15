@@ -205,8 +205,8 @@ func (w *Watcher) worker() {
 				if w.OnChmod != nil {
 					w.OnChmod(event.Name)
 				}
-				w.onWrite(event.Name)
 
+				w.onWrite(event.Name)
 			case event.Op.Has(fsnotify.Remove):
 				w.onRemoved(event.Name)
 				if w.OnRemoved != nil {

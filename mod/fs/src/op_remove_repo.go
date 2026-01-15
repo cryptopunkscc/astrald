@@ -13,10 +13,6 @@ type opRemoveRepo struct {
 	Out  string `query:"optional"`
 }
 
-type repoCloser interface {
-	Close() error
-}
-
 func (mod *Module) OpRemoveRepo(ctx *astral.Context, q shell.Query, args opRemoveRepo) (err error) {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
@@ -26,9 +22,10 @@ func (mod *Module) OpRemoveRepo(ctx *astral.Context, q shell.Query, args opRemov
 		return ch.Send(astral.NewError("repo not found"))
 	}
 
-	// Stop repository background activity (watchers / scans), if supported.
-	if c, ok := repo.(repoCloser); ok {
-		_ = c.Close()
+	// If it's a WatchRepository, stop background activity and cleanup DB entries
+	if wr, ok := repo.(*WatchRepository); ok {
+		_ = wr.Close()
+		wr.Cleanup()
 	}
 
 	err = mod.Objects.RemoveRepository(args.Repo)
