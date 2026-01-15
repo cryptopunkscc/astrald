@@ -82,3 +82,20 @@ func (db *DB) EachPath(fn func(string) error) (err error) {
 
 	return
 }
+
+func (db *DB) EachPathWithPrefix(pathPrefix string, fn func(string) error) (err error) {
+	var batch = make([]*dbLocalFile, 1000)
+	err = db.
+		Where("path LIKE ?", pathPrefix+"%").
+		FindInBatches(&batch, 1000, func(tx *gorm.DB, n int) error {
+			for _, row := range batch {
+				err := fn(row.Path)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}).Error
+
+	return
+}

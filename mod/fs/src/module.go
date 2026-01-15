@@ -56,7 +56,6 @@ func (mod *Module) Scope() *shell.Scope {
 // operation is considered heavy due to resolving file bytes into an object ID
 // on duplicate path entries the existing entry is updated
 func (mod *Module) updateDbIndex(path string) (*astral.ObjectID, error) {
-	mod.log.Log(`Indexing file at %v`, path)
 	if len(path) == 0 || path[0] != '/' {
 		return nil, fs.ErrInvalidPath
 	}
@@ -97,14 +96,43 @@ func (mod *Module) updateDbIndex(path string) (*astral.ObjectID, error) {
 func (mod *Module) verifyIndex(ctx *astral.Context) {
 	mod.log.Log("verifying index...")
 
-	var updated, total int
+	var marked, deleted, total int
 	err := mod.db.EachPath(func(path string) error {
 		total++
-		// updateDbIndex if necessary
-		err := mod.checkIndexEntry(path)
+		// Check if path is still under an active root
+		if !mod.fileIndexer.IsUnderActiveRoot(path) {
+			// Path is orphaned (no repository watching it anymore)
+			err := mod.db.DeleteByPath(path)
+			if err != nil {
+				mod.log.Errorv(2, "failed to delete orphaned path %v: %v", path, err)
+			} else {
+				deleted++
+			}
+			return nil
+		}
+
+		// Check if file still exists
+		stat, err := os.Stat(path)
 		if err != nil {
-			mod.updateDbIndex(path)
-			updated++
+			// File deleted - mark dirty so FileIndexer removes it from DB
+			mod.fileIndexer.MarkDirty(path)
+			marked++
+			return nil
+		}
+
+		// Check if file was modified since last indexing
+		row, err := mod.db.FindByPath(path)
+		if err != nil {
+			// Not in DB or DB error - mark dirty to (re)index
+			mod.fileIndexer.MarkDirty(path)
+			marked++
+			return nil
+		}
+
+		if stat.ModTime().After(row.ModTime) {
+			// File changed - mark dirty for re-indexing
+			mod.fileIndexer.MarkDirty(path)
+			marked++
 		}
 
 		// check context
@@ -119,9 +147,9 @@ func (mod *Module) verifyIndex(ctx *astral.Context) {
 
 	// log
 	if err != nil {
-		mod.log.Error("index verification finished with error (updated %v/%v): %v", updated, total, err)
+		mod.log.Error("index verification finished with error (marked %v, deleted %v / %v): %v", marked, deleted, total, err)
 	} else {
-		mod.log.Info("index verification finished (updated %v/%v)", updated, total)
+		mod.log.Info("index verification finished (marked %v for re-indexing, deleted %v orphans / %v total)", marked, deleted, total)
 	}
 }
 

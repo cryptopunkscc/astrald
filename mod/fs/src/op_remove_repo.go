@@ -3,6 +3,7 @@ package fs
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -32,6 +33,16 @@ func (mod *Module) OpRemoveRepo(ctx *astral.Context, q shell.Query, args opRemov
 
 	// Keep local mirror map consistent if it was used.
 	_, _ = mod.repos.Delete(args.Repo)
+
+	err = mod.Objects.RemoveRepository(args.Repo)
+	if err != nil {
+		return ch.Send(astral.NewError(err.Error()))
+	}
+
+	err = mod.Objects.RemoveGroup(objects.RepoLocal, args.Repo)
+	if err != nil {
+		return ch.Send(astral.NewError(err.Error()))
+	}
 
 	return ch.Send(&astral.Ack{})
 }

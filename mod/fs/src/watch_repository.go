@@ -223,25 +223,31 @@ func (repo *WatchRepository) rescan(ctx *astral.Context) error {
 // Close stops background activity associated with the repository.
 // It is safe to call multiple times.
 func (repo *WatchRepository) Close() error {
-	// Cancel scan and wait for it to actually finish
 	if repo.scanCancel != nil && repo.scanDone != nil {
 		repo.scanCancel()
-		// Block until scan goroutine exits
-		// This ensures no more MarkDirty calls after ReleaseRoot
 		<-repo.scanDone
-		// Clear to prevent double-wait on second Close()
 		repo.scanCancel = nil
 		repo.scanDone = nil
 	}
 
-	// Stop filesystem watcher
 	if repo.watcher != nil {
 		_ = repo.watcher.Close()
 		repo.watcher = nil
 	}
 
-	// Release root interest (cleans up all file state automatically)
 	repo.mod.fileIndexer.ReleaseRoot(repo.root)
+
+	// Cleanup orphaned DB entries for this root in background
+	go func() {
+
+		fmt.Printf("cleanup root %v")
+		deleted, err := repo.mod.fileIndexer.CleanupRoot(repo.root)
+		if err != nil {
+			repo.mod.log.Errorv(2, "cleanup error for root %v: %v", repo.root, err)
+		} else if deleted > 0 {
+			repo.mod.log.Logv(1, "cleaned up %v orphaned paths for root %v", deleted, repo.root)
+		}
+	}()
 
 	return nil
 }
