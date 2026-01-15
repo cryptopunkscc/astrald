@@ -10,9 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -33,8 +31,7 @@ type Module struct {
 
 	fileIndexer *FileIndexer
 
-	repos sig.Map[string, objects.Repository]
-	ops   shell.Scope
+	ops shell.Scope
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {

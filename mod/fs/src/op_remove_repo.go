@@ -31,9 +31,6 @@ func (mod *Module) OpRemoveRepo(ctx *astral.Context, q shell.Query, args opRemov
 		_ = c.Close()
 	}
 
-	// Keep local mirror map consistent if it was used.
-	_, _ = mod.repos.Delete(args.Repo)
-
 	err = mod.Objects.RemoveRepository(args.Repo)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))

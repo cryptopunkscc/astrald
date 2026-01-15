@@ -26,6 +26,7 @@ type Module interface {
 	// AddRepository registers a Repository
 	AddRepository(name string, repo Repository) error
 	RemoveRepository(name string) error
+
 	// GetRepository returns a Repository by its name
 	GetRepository(name string) Repository
 
