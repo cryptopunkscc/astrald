@@ -1,8 +1,8 @@
 package fs
 
 import (
-	"fmt"
-	"sync"
+	"context"
+	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -10,360 +10,103 @@ import (
 
 type IndexFunc func(path string) (*astral.ObjectID, error)
 
-// FileIndexer coordinates indexing work for absolute filesystem paths with root-scoped interest.
-// All methods are safe to call from multiple goroutines.
-// Close stops workers and waits for them to exit.
-// Subscribe returns object IDs produced by successful indexing.
+// FileIndexer is responsible for indexing files in the filesystem, it only coordinates the work of indexing files.
+// Core semantics/invariants:
+// - Indexing is done by workers (goroutines)
+// - MarkDirty is method called frequently by many producers (like WatchRepository) to schedule indexing of files due to fsnotjfy changes
+// - If we mark path dirty while its already scheduled for indexing, we dont need to add it again, it will be picked up by the worker. in its time
+// - When repository is removed via ReleaseRoot, queued paths for that root become invalidated but remain in queue
+// - Workers check if path is still under an active root before indexing (fast check, lazy cleanup)
 type FileIndexer struct {
-	indexFn IndexFunc
+	indexFn   IndexFunc
+	workqueue *sig.DedupQueue[string] // paths to index waiting in queue (deduplicated)
+	closed    bool
 
-	// Worker coordination
-	pathQueue *sig.WorkQueue[string] // global path queue (workers read from this)
-	updates   *sig.Queue[*astral.ObjectID]
+	activeRoots sig.Set[string] // roots currently being watched by repositories
 
-	// Hierarchy tracking
-	rootTree *RootTree
-
-	// State
-	mu     sync.Mutex
-	closed bool
-	roots  map[string]*rootEntry        // root → interest tracking
-	files  map[string]*fileIndexerEntry // path → execution state (transient)
-
-	wg   sync.WaitGroup
-	once sync.Once
+	// After indexing published updates
+	updates *sig.Queue[*astral.ObjectID]
 }
 
-// rootEntry tracks per-root interest
-type rootEntry struct {
-	interest int // reference count from repositories
-}
-
-// NewFileIndexer creates a new FileIndexer with the given indexing function.
-// indexFn is called for each path that needs indexing; it must be non-nil.
-// workers controls concurrency (min 1).
-// pathQueueLen and rootQueueLen parameters are ignored.
-func NewFileIndexer(indexFn IndexFunc, workers int, pathQueueLen int, rootQueueLen int) (*FileIndexer, error) {
-	if indexFn == nil {
-		return nil, fmt.Errorf("indexFn cannot be nil")
-	}
-
-	if workers <= 0 {
-		workers = 1
-	}
-
+// NewFileIndexer creates a new FileIndexer with the specified number of workers.
+func NewFileIndexer(indexFn IndexFunc, workers int) *FileIndexer {
 	fi := &FileIndexer{
-		indexFn:   indexFn,
-		rootTree:  NewRootTree(),
-		pathQueue: sig.NewWorkQueue[string](),
-		updates:   &sig.Queue[*astral.ObjectID]{},
-		roots:     make(map[string]*rootEntry),
-		files:     make(map[string]*fileIndexerEntry),
+		indexFn:     indexFn,
+		workqueue:   sig.NewDedupQueue[string](),
+		activeRoots: sig.Set[string]{},
+		updates:     &sig.Queue[*astral.ObjectID]{},
 	}
 
-	// Start path workers
-	fi.wg.Add(workers)
 	for i := 0; i < workers; i++ {
-		go fi.pathWorker()
+		go fi.worker()
 	}
 
-	return fi, nil
+	return fi
 }
 
-// AcquireRoot registers interest in a repository root.
-// All files under this root are implicitly interesting.
-// This is an O(1) operation - no file iteration.
-func (fi *FileIndexer) AcquireRoot(root string) {
-	if len(root) == 0 || root[0] != '/' {
-		return
-	}
-
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
-
-	if fi.closed {
-		return
-	}
-
-	// Register in hierarchy
-	fi.rootTree.Add(root)
-
-	e := fi.roots[root]
-	if e == nil {
-		e = &rootEntry{}
-		fi.roots[root] = e
-	}
-	e.interest++
-
-	// No file iteration - lazy discovery on next MarkDirty
-}
-
-// ReleaseRoot decrements interest in a root.
-// When interest drops to 0, all file state under this root is cleaned up.
-func (fi *FileIndexer) ReleaseRoot(root string) {
-	if len(root) == 0 || root[0] != '/' {
-		return
-	}
-
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
-
-	e := fi.roots[root]
-	if e == nil {
-		return
-	}
-
-	e.interest--
-	if e.interest <= 0 {
-		// Remove from hierarchy
-		fi.rootTree.Remove(root)
-
-		// Clean up file entries that reference this root
-		for path, fileEntry := range fi.files {
-			delete(fileEntry.roots, root)
-
-			// If file has no more watching roots, delete it
-			if len(fileEntry.roots) == 0 && fileEntry.canDelete() {
-				delete(fi.files, path)
-			}
-		}
-
-		delete(fi.roots, root)
-	}
-}
-
-// MarkDirty marks a file path as needing indexing.
-// Uses lazy root discovery and global dedup via state machine.
-func (fi *FileIndexer) MarkDirty(path string) {
-	if len(path) == 0 || path[0] != '/' {
-		return
-	}
-
-	fi.mu.Lock()
-
-	if fi.closed {
-		fi.mu.Unlock()
-		return
-	}
-
-	// Find all roots containing this path
-	watchingRoots := fi.findRootsContaining(path)
-	if len(watchingRoots) == 0 {
-		fi.mu.Unlock()
-		return
-	}
-
-	// Get or create file entry
-	fileEntry := fi.files[path]
-	if fileEntry == nil {
-		fileEntry = &fileIndexerEntry{
-			roots: make(map[string]struct{}),
-		}
-		fi.files[path] = fileEntry
-	}
-
-	// Update root associations (lazy discovery)
-	fileEntry.roots = make(map[string]struct{})
-	for _, root := range watchingRoots {
-		fileEntry.roots[root] = struct{}{}
-	}
-
-	// Check if any watching root has interest
-	if !fileEntry.hasInterest(fi) {
-		fi.mu.Unlock()
-		return
-	}
-
-	// Already queued or running? State machine handles it
-	if fileEntry.queued || fileEntry.running {
-		if fileEntry.running {
-			fileEntry.rerun = true
-		}
-		fi.mu.Unlock()
-		return
-	}
-
-	// Mark as queued and enqueue directly
-	fileEntry.queued = true
-	fi.mu.Unlock()
-
-	fi.pathQueue.Enqueue(path)
-}
-
-// findRootsContaining returns all roots that contain path.
-// Must be called with fi.mu held.
-func (fi *FileIndexer) findRootsContaining(path string) []string {
-	// Use RootTree for hierarchy-aware discovery
-	allRoots := fi.rootTree.FindAll(path)
-
-	// Filter by interest
-	var result []string
-	for _, root := range allRoots {
-		if entry := fi.roots[root]; entry != nil && entry.interest > 0 {
-			result = append(result, root)
-		}
-	}
-	return result
-}
-
-func (fi *FileIndexer) Close() error {
-	fi.once.Do(func() {
-		// Mark as closed
-		fi.mu.Lock()
-		fi.closed = true
-		fi.mu.Unlock()
-
-		// Close queue (wakes all blocked goroutines)
-		fi.pathQueue.Close()
-
-		// Wait for all workers to exit
-		fi.wg.Wait()
-
-		// Close updates queue
-		fi.updates.Close()
-	})
-	return nil
-}
-
-// pathWorker pulls paths from global queue and processes them
-func (fi *FileIndexer) pathWorker() {
-	defer fi.wg.Done()
-
+// worker pulls paths from the workqueue and indexes them.
+func (fi *FileIndexer) worker() {
 	for {
-		path, ok := fi.pathQueue.Dequeue()
+		path, ok := fi.workqueue.Dequeue()
 		if !ok {
-			return // queue closed and drained
+			return
 		}
 
-		fi.processPath(path)
-	}
-}
-
-func (fi *FileIndexer) processPath(path string) {
-	fi.mu.Lock()
-
-	fileEntry := fi.files[path]
-	if fileEntry == nil || !fileEntry.claim() {
-		if fileEntry != nil && fileEntry.canDelete() {
-			delete(fi.files, path)
+		// Fast check: skip if path is no longer under any active root (lazy cleanup)
+		if !fi.isUnderActiveRoot(path) {
+			continue
 		}
-		fi.mu.Unlock()
-		return
-	}
 
-	// Claim succeeded - check interest one more time
-	if !fileEntry.hasInterest(fi) {
-		fileEntry.reset()
-		if fileEntry.canDelete() {
-			delete(fi.files, path)
+		objectID, err := fi.indexFn(path)
+		if err != nil {
+			continue
 		}
-		fi.mu.Unlock()
-		return
+
+		if objectID != nil {
+			fi.updates.Push(objectID)
+		}
 	}
-
-	fi.mu.Unlock()
-
-	// Run indexing function (outside mutex)
-	objectID, err := fi.indexFn(path)
-	if err == nil && objectID != nil {
-		fi.updates = fi.updates.Push(objectID)
-	}
-
-	fi.mu.Lock()
-
-	fileEntry = fi.files[path]
-	if fileEntry == nil {
-		fi.mu.Unlock()
-		return
-	}
-
-	needsRequeue := fileEntry.indexed()
-	if needsRequeue {
-		// Mark dirty again (will go through per-root dedup)
-		fi.mu.Unlock()
-		fi.MarkDirty(path)
-		return
-	}
-
-	if fileEntry.canDelete() {
-		delete(fi.files, path)
-	}
-
-	fi.mu.Unlock()
 }
 
-func (fi *FileIndexer) Subscribe(ctx *astral.Context) <-chan *astral.ObjectID {
-	if ctx == nil {
-		ctx = astral.NewContext(nil)
-	}
-	return fi.updates.Subscribe(ctx)
-}
-
-// fileIndexerEntry is a state machine for a single path's indexing state.
-// States: idle -> queued -> running -> idle (or back to queued if rerun needed)
-type fileIndexerEntry struct {
-	roots   map[string]struct{} // which roots watch this file
-	queued  bool
-	running bool
-	rerun   bool
-}
-
-// hasInterest returns true if any root watching this file has interest > 0
-func (e *fileIndexerEntry) hasInterest(fi *FileIndexer) bool {
-	for root := range e.roots {
-		if rootEntry := fi.roots[root]; rootEntry != nil && rootEntry.interest > 0 {
+// isUnderActiveRoot checks if path is under any active root.
+// Properly handles directory boundaries to avoid false matches like:
+// "/workspace/product-tools" being matched by root "/workspace/product"
+func (fi *FileIndexer) isUnderActiveRoot(path string) bool {
+	for _, root := range fi.activeRoots.Clone() {
+		if path == root || strings.HasPrefix(path, root+"/") {
 			return true
 		}
 	}
 	return false
 }
 
-// claim attempts to claim this entry for processing.
-// Returns true if indexing should proceed, false to skip (no roots watching).
-func (e *fileIndexerEntry) claim() bool {
-	if len(e.roots) == 0 {
-		e.reset()
-		return false
-	}
-	e.queued = false
-	e.running = true
-	return true
+// AcquireRoot registers interest in a root path.
+func (fi *FileIndexer) AcquireRoot(root string) {
+	fi.activeRoots.Add(root)
 }
 
-// indexed marks indexing as complete.
-// Returns true if re-enqueue is needed (dirty while running, roots remain).
-func (e *fileIndexerEntry) indexed() bool {
-	e.running = false
-	if e.rerun && len(e.roots) > 0 {
-		e.rerun = false
-		return true
-	}
-	e.rerun = false
-	return false
+// ReleaseRoot unregisters interest in a root path.
+// Paths under this root will be skipped during indexing.
+func (fi *FileIndexer) ReleaseRoot(root string) {
+	fi.activeRoots.Remove(root)
 }
 
-// canDelete returns true if this entry can be removed from the map.
-func (e *fileIndexerEntry) canDelete() bool {
-	return len(e.roots) == 0 && !e.running && !e.queued
+// MarkDirty marks the given path as dirty and schedules it for indexing.
+// This is a fast O(1) operation that automatically deduplicates - if the path
+// is already queued for indexing, it won't be added again.
+func (fi *FileIndexer) MarkDirty(path string) error {
+	fi.workqueue.Enqueue(path)
+	return nil
 }
 
-// reset clears all flags (used when skipping due to no interest).
-func (e *fileIndexerEntry) reset() {
-	e.queued = false
-	e.running = false
-	e.rerun = false
+// Subscribe returns a channel that receives ObjectIDs as files are indexed.
+// The channel will be closed when the context is canceled.
+// Multiple subscribers can listen concurrently.
+func (fi *FileIndexer) Subscribe(ctx context.Context) <-chan *astral.ObjectID {
+	return fi.updates.Subscribe(ctx)
 }
 
-// TopLevelRoots returns the widest roots being tracked.
-func (fi *FileIndexer) TopLevelRoots() []string {
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
-	return fi.rootTree.TopLevel()
-}
-
-// FindWidestRoot returns the widest root containing path.
-func (fi *FileIndexer) FindWidestRoot(path string) string {
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
-	return fi.rootTree.FindWidest(path)
+func (fi *FileIndexer) Close() error {
+	// TODO: implement later
+	return nil
 }

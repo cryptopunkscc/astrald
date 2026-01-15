@@ -14,6 +14,7 @@ type RootTree struct {
 
 type rootNode struct {
 	path     string
+	interest int // reference count for this specific root
 	parent   *rootNode
 	children map[string]*rootNode
 }
@@ -203,4 +204,35 @@ func Contains(root, path string) bool {
 	}
 
 	return true
+}
+
+// SetInterest sets the interest count for a specific root.
+func (t *RootTree) SetInterest(root string, interest int) {
+	node, exists := t.roots[root]
+	if exists {
+		node.interest = interest
+	}
+}
+
+// GetInterest returns the interest count for a specific root.
+func (t *RootTree) GetInterest(root string) int {
+	node, exists := t.roots[root]
+	if !exists {
+		return 0
+	}
+	return node.interest
+}
+
+// GetAggregatedInterest returns total interest for root and all its descendants.
+func (t *RootTree) GetAggregatedInterest(root string) int {
+	node, exists := t.roots[root]
+	if !exists {
+		return 0
+	}
+
+	total := node.interest
+	for _, child := range node.children {
+		total += t.GetAggregatedInterest(child.path)
+	}
+	return total
 }

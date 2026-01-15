@@ -34,10 +34,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		return nil, err
 	}
 
-	mod.fileIndexer, err = NewFileIndexer(mod.updateDbIndex, workers, updatesLen, 32)
-	if err != nil {
-		return nil, err
-	}
+	mod.fileIndexer = NewFileIndexer(mod.updateDbIndex, workers)
 
 	mod.ops.AddStruct(mod, "Op")
 
