@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
@@ -239,8 +240,10 @@ func (repo *WatchRepository) Close() error {
 
 	// Cleanup orphaned DB entries for this root in background
 	go func() {
+		defer debug.SaveLog(func(p any) {
+			repo.mod.log.Error("module %v panicked while repo %v cleanup: %v", repo.mod.node, repo.label, p)
+		})
 
-		fmt.Printf("cleanup root %v")
 		deleted, err := repo.mod.fileIndexer.CleanupRoot(repo.root)
 		if err != nil {
 			repo.mod.log.Errorv(2, "cleanup error for root %v: %v", repo.root, err)
