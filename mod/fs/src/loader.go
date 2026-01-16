@@ -49,7 +49,7 @@ func (mod *Module) addDefaultRepo() {
 	}
 
 	// check if the default repo is already set
-	if _, ok := mod.repos.Get(DefaultRepoName); ok {
+	if repo := mod.Objects.GetRepository(DefaultRepoName); repo != nil {
 		return
 	}
 

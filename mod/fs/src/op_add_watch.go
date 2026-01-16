@@ -18,7 +18,7 @@ func (mod *Module) OpNewWatch(ctx *astral.Context, q shell.Query, args opNewWatc
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	repo, err := NewWatchRepository(mod, args.Label, args.Path)
+	repo, err := NewWatchRepository(mod, args.Path, args.Label)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
