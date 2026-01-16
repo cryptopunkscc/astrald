@@ -2,7 +2,6 @@ package fs
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -108,19 +107,23 @@ func (fi *FileIndexer) ReleaseRoot(root string) {
 func (fi *FileIndexer) CleanupRoot(root string) (deleted int, err error) {
 	err = fi.mod.db.EachPathWithPrefix(root, func(path string) error {
 		if !fi.IsUnderActiveRoot(path) {
-			// Path is orphaned - delete from DB
 			_ = fi.mod.db.DeleteByPath(path)
 			deleted++
 		}
 		return nil
 	})
+
 	return deleted, err
 }
 
 // MarkDirty marks the given path as dirty (removes stale index) and schedules it for indexing.
-func (fi *FileIndexer) MarkDirty(path string) {
+// Returns true if the path was enqueued, false if already queued, not under active root, or queue closed.
+func (fi *FileIndexer) MarkDirty(path string) bool {
+	if !fi.IsUnderActiveRoot(path) {
+		return false
+	}
 	_ = fi.mod.db.DeleteByPath(path)
-	fi.workqueue.Enqueue(path)
+	return fi.workqueue.Enqueue(path)
 }
 
 // Subscribe returns a channel that receives ObjectIDs as files are indexed.
