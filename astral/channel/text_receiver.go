@@ -41,13 +41,17 @@ func (r TextReceiver) Receive() (obj astral.Object, err error) {
 	}
 
 	// make the object
-	obj = astral.New(parsed.Type)
-	if obj == nil {
-		return nil, astral.ErrBlueprintNotFound{Type: parsed.Type}
+	if parsed.Type == "" {
+		obj = &astral.Blob{}
+	} else {
+		obj = astral.New(parsed.Type)
+		if obj == nil {
+			return nil, astral.ErrBlueprintNotFound{Type: parsed.Type}
+		}
 	}
 
 	switch parsed.Enc {
-	case " ":
+	case "text":
 		u, ok := obj.(encoding.TextUnmarshaler)
 		if !ok {
 			return nil, ErrTextUnsupported
@@ -58,7 +62,7 @@ func (r TextReceiver) Receive() (obj astral.Object, err error) {
 			return nil, err
 		}
 
-	case ":":
+	case "base64":
 		var payload = make([]byte, base64.StdEncoding.DecodedLen(len(parsed.Text)))
 		_, err = base64.StdEncoding.Decode(payload, []byte(parsed.Text))
 		if err != nil {
@@ -70,8 +74,11 @@ func (r TextReceiver) Receive() (obj astral.Object, err error) {
 			return nil, err
 		}
 
+	case "none":
+		// no payload
+		
 	default:
-		return nil, errors.New("invalid encoding character")
+		return nil, errors.New("unknown encoding")
 	}
 
 	return

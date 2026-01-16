@@ -2,56 +2,44 @@ package channel
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 )
 
 type ParsedText struct {
 	Type string // the $type part
-	Enc  string // " " (space) for plain, ":" for base64
+	Enc  string // "text" or "base64" or "unknown" or "none"
 	Text string // the remaining text
 }
 
-func ParseText(input string) (ParsedText, error) {
-	var result ParsedText
+func ParseText(line string) (ParsedText, error) {
+	var parsed = ParsedText{Enc: "none"}
 
-	// Input must start with "#["
-	if len(input) < 3 || !strings.HasPrefix(input, "#[") {
-		return result, errors.New("input must start with '#['")
+	// parse the type header
+	if !strings.HasPrefix(line, "#[") {
+		return ParsedText{}, errors.New("type header missing")
 	}
 
-	// Find the closing bracket ']'
-	bracketIdx := strings.Index(input[2:], "]")
-	if bracketIdx == -1 {
-		return result, errors.New("missing closing ']' after type")
+	typeEndIdx := strings.Index(line, "]")
+	if typeEndIdx == -1 {
+		return ParsedText{}, errors.New("type header missing")
 	}
-	bracketIdx += 2 // Adjust for the starting "#[" offset
+	parsed.Type, line = line[2:typeEndIdx], line[typeEndIdx+1:]
 
-	typePart := input[2:bracketIdx]
-	if strings.ContainsAny(typePart, " \t\n\r") {
-		return result, errors.New("type cannot contain whitespace")
-	}
-
-	result.Type = typePart
-
-	// After the closing ']', we expect either ' ' or ':'
-	if bracketIdx >= len(input) {
-		return result, errors.New("unexpected end of input after type")
+	// if the line is just the type, we're done
+	if len(line) == 0 {
+		return parsed, nil
 	}
 
-	encChar := input[bracketIdx+1]
-	if encChar != ' ' && encChar != ':' {
-		return result, fmt.Errorf("expected ' ' or ':' after type, got '%c'", encChar)
+	// parse the encoding
+	parsed.Enc, parsed.Text = line[0:1], line[1:]
+	switch parsed.Enc {
+	case " ", "\t":
+		parsed.Enc = "text"
+	case "=", ":":
+		parsed.Enc = "base64"
+	default:
+		parsed.Enc = "unknown"
 	}
 
-	result.Enc = string(encChar)
-
-	// The rest is the text
-	if bracketIdx+2 <= len(input) {
-		result.Text = input[bracketIdx+2:]
-	} else {
-		result.Text = ""
-	}
-
-	return result, nil
+	return parsed, nil
 }
