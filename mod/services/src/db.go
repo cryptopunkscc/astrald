@@ -2,7 +2,6 @@ package services
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/services"
 	"gorm.io/gorm"
 )
 
@@ -24,34 +23,34 @@ func (db *DB) InTx(fn func(tx *DB) error) error {
 	})
 }
 
-// RemoveIdentityServices deletes all cached services for a specific identity
-func (db *DB) RemoveIdentityServices(identity *astral.Identity) error {
+// deleteAllProviderServices deletes all cached services for a specific identity
+func (db *DB) deleteAllProviderServices(providerID *astral.Identity) error {
 	return db.db.
-		Delete(&dbService{}, "identity = ?", identity).
+		Delete(&dbService{}, "provider_id = ?", providerID).
 		Error
 }
 
-// RemoveIdentityService deletes a specific cached service for a specific identity
-func (db *DB) RemoveIdentityService(name astral.String8, identity *astral.Identity) error {
+// deleteProviderService deletes a specific cached service for a specific identity
+func (db *DB) deleteProviderService(providerID *astral.Identity, name string) error {
 	return db.db.
-		Delete(&dbService{}, "name = ? AND identity = ?", name, identity).
+		Delete(&dbService{}, "name = ? AND provider_id = ?", name, providerID).
 		Error
 }
 
-// InsertService creates a new service record
-func (db *DB) InsertService(svc *services.Service) error {
+// createProviderService creates a new service record
+func (db *DB) createProviderService(providerID *astral.Identity, name string, info *astral.Bundle) error {
 	return db.db.Create(&dbService{
-		Name:        svc.Name,
-		Identity:    svc.Identity,
-		Composition: svc.Composition,
+		Name:       name,
+		ProviderID: providerID,
+		Info:       info,
 	}).Error
 }
 
-// GetIdentityServices returns all current services for a specific identity
-func (db *DB) GetIdentityServices(identity *astral.Identity) ([]dbService, error) {
+// findProviderServices returns all current services for a specific identity
+func (db *DB) findProviderServices(providerID *astral.Identity) ([]dbService, error) {
 	var svcList []dbService
 	err := db.db.
-		Where("identity = ?", identity).
+		Where("provider_id = ?", providerID).
 		Order("created_at DESC").
 		Find(&svcList).
 		Error

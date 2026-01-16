@@ -3,25 +3,13 @@ package services
 import "github.com/cryptopunkscc/astrald/astral"
 
 const ModuleName = "services"
-
-const (
-	MethodServiceDiscovery = "services.discovery"
-)
+const DBPrefix = "services__"
 
 type Module interface {
-	AddServiceDiscoverer(ServiceDiscoverer) error
-	DiscoverRemoteServices(ctx *astral.Context, target *astral.Identity, subscribe bool) error
+	AddDiscoverer(Discoverer) error
+	Discoverer
 }
 
-type DiscoverOptions struct {
-	Snapshot bool
-	Follow   bool
-}
-
-type ServiceDiscoverer interface {
-	DiscoverService(
-		ctx *astral.Context,
-		caller *astral.Identity,
-		opts DiscoverOptions,
-	) (<-chan ServiceDiscoveryResult, error)
+type Discoverer interface {
+	DiscoverServices(ctx *astral.Context, caller *astral.Identity, follow bool) (<-chan *Update, error)
 }
