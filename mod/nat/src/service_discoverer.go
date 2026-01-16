@@ -1,0 +1,55 @@
+package nat
+
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/nat"
+	"github.com/cryptopunkscc/astrald/mod/services"
+)
+
+func (mod *Module) DiscoverServices(
+	ctx *astral.Context,
+	caller *astral.Identity,
+	follow bool,
+) (<-chan *services.Update, error) {
+	var ch = make(chan *services.Update, 2)
+
+	if mod.enabled.Load() {
+		ch <- mod.newServiceUpdate(true)
+	}
+
+	if !follow {
+		close(ch)
+		return ch, nil
+	}
+
+	ch <- nil
+
+	go func() {
+		<-ctx.Done()
+		mod.cond.Broadcast()
+	}()
+
+	go func() {
+		mod.cond.L.Lock()
+		defer mod.cond.L.Unlock()
+		for {
+			mod.cond.Wait()
+			select {
+			case <-ctx.Done():
+				return
+			case ch <- mod.newServiceUpdate(mod.enabled.Load()):
+			}
+
+		}
+	}()
+
+	return ch, nil
+}
+
+func (mod *Module) newServiceUpdate(available bool) *services.Update {
+	return &services.Update{
+		Available:  available,
+		Name:       nat.ModuleName,
+		ProviderID: mod.node.Identity(),
+	}
+}

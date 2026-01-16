@@ -1,6 +1,8 @@
 package nat
 
 import (
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
@@ -14,6 +16,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 	mod := &Module{
 		node: node,
 		log:  l,
+		cond: sync.NewCond(&sync.Mutex{}),
 	}
 
 	mod.pool = NewPairPool(mod)

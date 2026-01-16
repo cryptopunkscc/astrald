@@ -1,5 +1,6 @@
 package sig
 
+// ChanToArray drains ch until it is closed and returns all values in arrival order.
 func ChanToArray[T any](ch <-chan T) (arr []T) {
 	for i := range ch {
 		arr = append(arr, i)
@@ -7,6 +8,7 @@ func ChanToArray[T any](ch <-chan T) (arr []T) {
 	return
 }
 
+// ArrayToChan converts arr into a closed, buffered channel containing all elements.
 func ArrayToChan[T any](arr []T) chan T {
 	var ch = make(chan T, len(arr))
 	for _, i := range arr {

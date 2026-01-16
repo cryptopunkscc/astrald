@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"slices"
+	"strings"
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	log2 "github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/debug"
 	"github.com/cryptopunkscc/astrald/sig"
-	"reflect"
-	"slices"
-	"strings"
-	"sync"
 )
 
 type Modules struct {

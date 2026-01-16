@@ -1,6 +1,9 @@
 package nat
 
 import (
+	"sync"
+	"sync/atomic"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -32,6 +35,9 @@ type Module struct {
 
 	pool *PairPool
 	ops  shell.Scope
+
+	enabled atomic.Bool
+	cond    *sync.Cond
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -43,6 +49,12 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
+}
+
+func (mod *Module) SetEnabled(enabled bool) {
+	if mod.enabled.Swap(enabled) != enabled {
+		mod.cond.Broadcast()
+	}
 }
 
 func (mod *Module) String() string {
