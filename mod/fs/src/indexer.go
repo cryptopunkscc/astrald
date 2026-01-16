@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 )
+
+type IndexEvent struct {
+	Path     string
+	ObjectID *astral.ObjectID
+}
 
 type Indexer struct {
 	mod *Module
@@ -19,16 +25,18 @@ type Indexer struct {
 	workqueue chan string
 	pending   sig.Set[string]
 
-	roots       sig.Set[string]
-	subscribers sig.Map[string, *sig.Queue[*astral.ObjectID]]
+	roots sig.Set[string]
+
+	events          *sig.Queue[IndexEvent]
+	subscriberCount atomic.Int32
 }
 
 func NewIndexer(mod *Module, workers int) *Indexer {
 	indexer := &Indexer{
-		mod:         mod,
-		log:         mod.log,
-		workqueue:   make(chan string, 1024),
-		subscribers: sig.Map[string, sig.Queue[*astral.ObjectID]]{},
+		mod:       mod,
+		log:       mod.log,
+		workqueue: make(chan string, 1024),
+		events:    &sig.Queue[IndexEvent]{},
 	}
 
 	for i := 0; i < workers; i++ {
@@ -94,7 +102,12 @@ func (indexer *Indexer) checkAndFix(path string) error {
 		return fmt.Errorf("db upsert: %w", err)
 	}
 
-	// fixme: iterate over all subscribers and send the objectID (to proper queue)
+	if indexer.subscriberCount.Load() > 0 {
+		indexer.events = indexer.events.Push(IndexEvent{
+			Path:     path,
+			ObjectID: objectID,
+		})
+	}
 
 	return nil
 }
@@ -139,10 +152,11 @@ func (indexer *Indexer) removeRoot(root string) (err error) {
 	return indexer.roots.Remove(root)
 }
 
-// fixme: method should return queue that matches will have proper notifications
-func (indexer *Indexer) subscribe(root string) *sig.Queue[*astral.ObjectID] {
-	for root, queue := range indexer.subscribers.Clone() {
-	}
+func (indexer *Indexer) subscribe() *sig.Queue[IndexEvent] {
+	indexer.subscriberCount.Add(1)
+	return indexer.events
+}
 
-	return nil
+func (indexer *Indexer) unsubscribe() {
+	indexer.subscriberCount.Add(-1)
 }

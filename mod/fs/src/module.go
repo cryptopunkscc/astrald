@@ -2,6 +2,8 @@ package fs
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -58,4 +60,16 @@ func resolveFileID(path string) (*astral.ObjectID, error) {
 	}
 
 	return fileID, nil
+}
+
+func pathUnderRoot(path string, root string) bool {
+	root = filepath.Clean(root)
+	path = filepath.Clean(path)
+
+	if path == root {
+		return true
+	}
+
+	return strings.HasPrefix(path, root+string(filepath.Separator))
+
 }

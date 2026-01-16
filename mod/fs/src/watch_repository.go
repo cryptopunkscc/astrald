@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -73,6 +71,11 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 
 	go func() {
 		defer close(ch)
+		defer func() {
+			if follow {
+				repo.mod.indexer.unsubscribe()
+			}
+		}()
 
 		ids, err := repo.mod.db.UniqueObjectIDs(repo.root)
 		if err != nil {
@@ -91,7 +94,7 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 		if follow {
 			subscribe := sig.Subscribe(ctx, repo.mod.indexer.subscribe())
 			for event := range subscribe {
-				if repo.pathUnderRoot(event.Path) {
+				if pathUnderRoot(event.Path, repo.root) {
 					select {
 					case ch <- event.ObjectID:
 					case <-ctx.Done():
@@ -155,15 +158,4 @@ func (repo *WatchRepository) Free(ctx *astral.Context) (int64, error) {
 
 func (repo *WatchRepository) String() string {
 	return repo.label
-}
-
-func (repo *WatchRepository) pathUnderRoot(path string) bool {
-	root := filepath.Clean(repo.root)
-	p := filepath.Clean(path)
-
-	if p == root {
-		return true
-	}
-
-	return strings.HasPrefix(p, root+string(filepath.Separator))
 }
