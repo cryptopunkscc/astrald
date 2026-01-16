@@ -1,8 +1,11 @@
 package fs
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type DB struct {
@@ -81,4 +84,36 @@ func (db *DB) EachPath(fn func(string) error) (err error) {
 		}).Error
 
 	return
+}
+
+func (db *DB) UpsertPath(
+	path string,
+	objectID *astral.ObjectID,
+	modTime time.Time,
+) error {
+	updated := &dbLocalFile{
+		Path:    path,
+		DataID:  objectID,
+		ModTime: modTime,
+	}
+
+	return db.
+		Clauses(clause.OnConflict{
+			DoUpdates: clause.AssignmentColumns([]string{
+				"data_id",
+				"mod_time",
+			}),
+		}).
+		Create(updated).
+		Error
+}
+
+func (db *DB) InvalidatePath(path string) (err error) {
+	return db.Model(&dbLocalFile{}).
+		Where("path = ?", path).
+		Update("mod_time", 0).Error
+}
+
+func (db *DB) InvalidateAll() (err error) {
+	return db.Model(&dbLocalFile{}).Update("mod_time", 0).Error
 }
