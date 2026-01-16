@@ -7,9 +7,10 @@ import (
 )
 
 type opServiceDiscoverArgs struct {
-	In     string `query:"optional"`
-	Out    string `query:"optional"`
-	Follow bool   `query:"optional"`
+	Follow bool `query:"optional"`
+
+	In  string `query:"optional"`
+	Out string `query:"optional"`
 }
 
 func (mod *Module) OpDiscover(
