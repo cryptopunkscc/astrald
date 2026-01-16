@@ -54,6 +54,24 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 		case path := <-indexer.workqueue:
 			indexer.pending.Remove(path)
 
+			var found bool
+			for _, root := range indexer.roots.Clone() {
+				if pathUnderRoot(path, root) {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				err := indexer.mod.db.DeleteByPath(path)
+				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+					indexer.log.Error("indexer: delete path %v: %v", path, err)
+				}
+
+				// We are no longer interested in this path, no point checking it
+				continue
+			}
+
 			if err := indexer.checkAndFix(path); err != nil {
 				indexer.log.Error("indexer: checkAndFix %v: %v", path, err)
 			}
@@ -117,22 +135,7 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 
 	// discover new files
 	for _, root := range indexer.roots.Clone() {
-		err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-			if err != nil || ctx.Err() != nil {
-				return err
-			}
-
-			if !entry.Type().IsRegular() {
-				return nil
-			}
-
-			err = indexer.invalidate(path)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
+		err := indexer.scan(root)
 		if err != nil {
 			return err
 		}
@@ -141,6 +144,25 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 	// invalidate all steps
 	return indexer.mod.db.EachPath(func(s string) error {
 		return indexer.invalidate(s)
+	})
+}
+
+func (indexer *Indexer) scan(root string) error {
+	return filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !entry.Type().IsRegular() {
+			return nil
+		}
+
+		err = indexer.invalidate(path)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	})
 }
 
