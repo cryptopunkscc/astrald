@@ -9,9 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var _ fs.Module = &Module{}
@@ -25,14 +23,13 @@ type Module struct {
 	db      *DB
 	ctx     *astral.Context
 	indexer *Indexer
-
-	repos sig.Map[string, objects.Repository]
-	ops   shell.Scope
+	ops     shell.Scope
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
+	mod.indexer.startWorkers(ctx, 1)
 	go mod.indexer.init(ctx)
 
 	<-ctx.Done()

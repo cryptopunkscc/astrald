@@ -41,13 +41,14 @@ func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepo
 	repo.watcher.OnWriteDone = repo.onChange
 	repo.watcher.OnRemoved = repo.onChange
 	repo.watcher.OnRenamed = repo.onChange
+
 	repo.watcher.OnDirCreated = func(s string) {
 		repo.watcher.Add(s, true)
 	}
 
 	repo.watcher.Add(root, true)
 
-	// indexer will know to scan this root
+	// indexer will know to scan this root while init
 	err = repo.mod.indexer.addRoot(root)
 	if err != nil {
 		return nil, err

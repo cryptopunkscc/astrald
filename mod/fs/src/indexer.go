@@ -39,13 +39,14 @@ func NewIndexer(mod *Module, workers int) *Indexer {
 		events:    &sig.Queue[IndexEvent]{},
 	}
 
-	for i := 0; i < workers; i++ {
-		go indexer.worker(mod.ctx)
-	}
-
 	return indexer
 }
 
+func (indexer *Indexer) startWorkers(ctx *astral.Context, count int) {
+	for i := 0; i < count; i++ {
+		go indexer.worker(ctx)
+	}
+}
 func (indexer *Indexer) worker(ctx *astral.Context) {
 	for {
 		select {
