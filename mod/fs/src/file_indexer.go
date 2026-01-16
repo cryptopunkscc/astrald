@@ -31,6 +31,7 @@ type FileIndexer struct {
 
 // NewFileIndexer creates a new FileIndexer with the specified number of workers.
 func NewFileIndexer(mod *Module, workers int) *FileIndexer {
+	// fixme: pass ctx
 	ctx, cancel := context.WithCancel(context.Background())
 
 	fi := &FileIndexer{
