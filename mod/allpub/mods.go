@@ -11,7 +11,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/events"
 	_ "github.com/cryptopunkscc/astrald/mod/exonet"
 	_ "github.com/cryptopunkscc/astrald/mod/fs"
-	//_ "github.com/cryptopunkscc/astrald/mod/fwd"
+	// _ "github.com/cryptopunkscc/astrald/mod/fwd" // no public symbols
 	_ "github.com/cryptopunkscc/astrald/mod/gateway"
 	_ "github.com/cryptopunkscc/astrald/mod/ip"
 	_ "github.com/cryptopunkscc/astrald/mod/kcp"
@@ -27,6 +27,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/shell"
 	_ "github.com/cryptopunkscc/astrald/mod/tcp"
 	_ "github.com/cryptopunkscc/astrald/mod/tor"
+	_ "github.com/cryptopunkscc/astrald/mod/tree"
 	_ "github.com/cryptopunkscc/astrald/mod/user"
 	_ "github.com/cryptopunkscc/astrald/mod/utp"
 )
