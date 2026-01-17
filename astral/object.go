@@ -1,6 +1,7 @@
 package astral
 
 import (
+	"encoding"
 	"encoding/json"
 	"io"
 )
@@ -19,6 +20,13 @@ type JSONObject interface {
 	Object
 	json.Marshaler
 	json.Unmarshaler
+}
+
+// TextObject is an Object that supports text encoding and decoding.
+type TextObject interface {
+	Object
+	encoding.TextMarshaler
+	encoding.TextUnmarshaler
 }
 
 // JSONAdapter is used as a generic container for JSON-encoded Objects.
