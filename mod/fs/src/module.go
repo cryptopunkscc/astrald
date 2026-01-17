@@ -30,7 +30,12 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
 	mod.indexer.startWorkers(ctx, 1)
-	go mod.indexer.init(ctx)
+	go func() {
+		err := mod.indexer.init(ctx)
+		if err != nil {
+			mod.log.Error("indexer init error: %v", err)
+		}
+	}()
 
 	<-ctx.Done()
 	return nil
