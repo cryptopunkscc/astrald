@@ -31,7 +31,7 @@ type Indexer struct {
 	subscriberCount atomic.Int32
 }
 
-func NewIndexer(mod *Module, workers int) *Indexer {
+func NewIndexer(mod *Module) *Indexer {
 	indexer := &Indexer{
 		mod:       mod,
 		log:       mod.log,
@@ -142,7 +142,7 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 		}
 	}
 
-	// invalidate all steps
+	// invalidate all step
 	return indexer.mod.db.EachPath(func(s string) error {
 		return indexer.invalidate(s)
 	})
