@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -13,12 +12,10 @@ import (
 )
 
 type WatchRepository struct {
-	mod      *Module
-	label    string
-	root     string
-	watcher  *Watcher
-	token    chan struct{}
-	addQueue *sig.Queue[*astral.ObjectID]
+	mod     *Module
+	label   string
+	root    string
+	watcher *Watcher
 }
 
 func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepository, err error) {
@@ -31,29 +28,31 @@ func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepo
 	}
 
 	repo = &WatchRepository{
-		mod:      mod,
-		label:    label,
-		root:     root,
-		addQueue: &sig.Queue[*astral.ObjectID]{},
-		token:    make(chan struct{}, 1),
+		mod:   mod,
+		label: label,
+		root:  root,
 	}
 
-	repo.token <- struct{}{}
 	repo.watcher, err = NewWatcher()
 	if err != nil {
 		return nil, err
 	}
 
 	repo.watcher.OnWriteDone = repo.onChange
-	repo.watcher.OnRemoved = repo.onRemove
-	repo.watcher.OnRenamed = repo.onRemove
+	repo.watcher.OnRemoved = repo.onChange
+	repo.watcher.OnRenamed = repo.onChange
+
 	repo.watcher.OnDirCreated = func(s string) {
 		repo.watcher.Add(s, true)
 	}
 
 	repo.watcher.Add(root, true)
 
-	go repo.rescan(astral.NewContext(nil))
+	// indexer will know to scan this root while init
+	err = repo.mod.indexer.addRoot(root)
+	if err != nil {
+		return nil, err
+	}
 
 	return
 }
@@ -65,31 +64,19 @@ func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *astral.Obje
 }
 
 func (repo *WatchRepository) onChange(path string) {
-	<-repo.token // take a token
-
-	objectID, err := repo.mod.update(path)
-	if err == nil {
-		repo.pushAdded(objectID)
-	}
-
-	repo.token <- struct{}{} // return a token
-}
-
-func (repo *WatchRepository) onRemove(path string) {
-	repo.mod.update(path)
+	repo.mod.indexer.invalidate(path)
 }
 
 func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
 	ch := make(chan *astral.ObjectID)
 
-	var subscribe <-chan *astral.ObjectID
-
 	go func() {
 		defer close(ch)
-
-		if follow {
-			subscribe = repo.addQueue.Subscribe(ctx)
-		}
+		defer func() {
+			if follow {
+				repo.mod.indexer.unsubscribe()
+			}
+		}()
 
 		ids, err := repo.mod.db.UniqueObjectIDs(repo.root)
 		if err != nil {
@@ -105,13 +92,15 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 			}
 		}
 
-		// handle subscription
-		if subscribe != nil {
-			for id := range subscribe {
-				select {
-				case ch <- id:
-				case <-ctx.Done():
-					return
+		if follow {
+			subscribe := sig.Subscribe(ctx, repo.mod.indexer.subscribe())
+			for event := range subscribe {
+				if pathUnderRoot(event.Path, repo.root) {
+					select {
+					case ch <- event.ObjectID:
+					case <-ctx.Done():
+						return
+					}
 				}
 			}
 		}
@@ -170,30 +159,4 @@ func (repo *WatchRepository) Free(ctx *astral.Context) (int64, error) {
 
 func (repo *WatchRepository) String() string {
 	return repo.label
-}
-
-func (repo *WatchRepository) rescan(ctx *astral.Context) error {
-	filepath.WalkDir(repo.root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Check if the entry is a regular file
-		if !entry.Type().IsRegular() {
-			return nil
-		}
-
-		err = repo.mod.validate(path)
-		if err != nil {
-			repo.onChange(path)
-		}
-
-		return nil
-	})
-
-	return nil
-}
-
-func (repo *WatchRepository) pushAdded(id *astral.ObjectID) {
-	repo.addQueue = repo.addQueue.Push(id)
 }
