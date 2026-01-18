@@ -2,7 +2,6 @@ package crypto
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/crypto/secp256k1"
 	"gorm.io/gorm"
 )
 
@@ -23,10 +22,7 @@ func newDB(gormDB *gorm.DB) (*DB, error) {
 
 func (db *DB) findPrivateKeyByPublicKey(pubKey string) (row dbPrivateKey, err error) {
 	err = db.
-		Where("type = ? and public_key = ?",
-			secp256k1.KeyType,
-			pubKey,
-		).First(&row).Error
+		Where("public_key = ?", pubKey).First(&row).Error
 
 	return
 }

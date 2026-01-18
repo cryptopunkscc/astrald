@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/crypto/secp256k1"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -29,7 +29,7 @@ func (mod *Module) OpSignHash(ctx *astral.Context, q shell.Query, args opSignHas
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	signer, err := mod.HashSigner(secp256k1.PublicKeyFromIdentity(q.Caller()), args.Scheme)
+	signer, err := mod.HashSigner(secp256k1.FromIdentity(q.Caller()), args.Scheme)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}

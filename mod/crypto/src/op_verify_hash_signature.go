@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
-	"github.com/cryptopunkscc/astrald/mod/crypto/secp256k1"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -40,7 +40,7 @@ func (mod *Module) OpVerifyHashSignature(ctx *astral.Context, q shell.Query, arg
 			return ch.Send(astral.NewError(err.Error()))
 		}
 	} else {
-		publicKey = secp256k1.PublicKeyFromIdentity(q.Caller())
+		publicKey = secp256k1.FromIdentity(q.Caller())
 	}
 
 	// process channel
@@ -71,7 +71,7 @@ func (mod *Module) OpVerifyHashSignature(ctx *astral.Context, q shell.Query, arg
 			publicKey = msg
 			ch.Send(&astral.Ack{})
 
-		case *crypto.Hash256:
+		case *crypto.Hash:
 			hash = *msg
 			ch.Send(&astral.Ack{})
 
