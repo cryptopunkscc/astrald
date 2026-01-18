@@ -2,11 +2,13 @@ package secp256k1
 
 import (
 	"crypto/ecdsa"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	modSecp256k1 "github.com/cryptopunkscc/astrald/mod/secp256k1"
+	"github.com/cryptopunkscc/bip-0137/verify"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
@@ -59,5 +61,27 @@ func (e Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.Mess
 }
 
 func (e Engine) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
-	return crypto.ErrUnsupported
+	switch {
+	case key.Type != modSecp256k1.KeyType:
+		return crypto.ErrUnsupportedKeyType
+	case sig.Scheme != "bip137":
+		return crypto.ErrUnsupportedScheme
+	}
+
+	publicKey, err := secp256k1.ParsePubKey(key.Key)
+	if err != nil {
+		return err
+	}
+
+	sigBase64 := base64.StdEncoding.EncodeToString(sig.Data)
+
+	ok, err := verify.VerifyWithPubKey(publicKey, msg, sigBase64)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return crypto.ErrInvalidSignature
+	}
+
+	return nil
 }
