@@ -1,8 +1,10 @@
 package objects
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -58,13 +60,23 @@ func (mod *Module) Load(ctx *astral.Context, repo objects.Repository, objectID *
 		return nil, err
 	}
 
-	// parse the object
-	o, _, err := astral.Decode(r, astral.Canonical())
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
 
-	return o, nil
+	// parse the object
+	o, _, err := astral.Decode(bytes.NewReader(data), astral.Canonical())
+	switch {
+	case err == nil:
+		return o, nil // object successfully loaded
+
+	case strings.Contains(err.Error(), "invalid magic bytes"): // the object is a blob
+		return (*astral.Blob)(&data), nil
+
+	default: // other error
+		return nil, err
+	}
 }
 
 func (mod *Module) Store(ctx *astral.Context, repo objects.Repository, object astral.Object) (*astral.ObjectID, error) {
