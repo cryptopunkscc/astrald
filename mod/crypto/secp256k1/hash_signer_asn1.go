@@ -1,0 +1,34 @@
+package secp256k1
+
+import (
+	"crypto/ecdsa"
+	"crypto/rand"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
+)
+
+type HashSignerASN1 struct {
+	key *ecdsa.PrivateKey
+}
+
+func NewHashSignerASN1(key *crypto.PrivateKey) *HashSignerASN1 {
+	signer := &HashSignerASN1{
+		key: secp256k1.PrivKeyFromBytes(key.Key).ToECDSA(),
+	}
+
+	return signer
+}
+
+func (h *HashSignerASN1) SignHash(ctx *astral.Context, hash []byte) (*crypto.Signature, error) {
+	sig, err := ecdsa.SignASN1(rand.Reader, h.key, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return &crypto.Signature{
+		Scheme: "asn1",
+		Data:   sig,
+	}, nil
+}
