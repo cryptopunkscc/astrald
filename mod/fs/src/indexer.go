@@ -9,6 +9,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
 )
@@ -47,6 +48,7 @@ func (indexer *Indexer) startWorkers(ctx *astral.Context, count int) {
 		go indexer.worker(ctx)
 	}
 }
+
 func (indexer *Indexer) worker(ctx *astral.Context) {
 	for {
 		select {
@@ -81,23 +83,34 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 
 }
 
+func (indexer *Indexer) remove(path string) (err error) {
+	err = indexer.mod.db.DeleteByPath(path)
+	if err != nil {
+		return fmt.Errorf("db delete: %w", err)
+	}
+
+	return nil
+}
+
+func (indexer *Indexer) enqueue(path string) {
+	if err := indexer.pending.Add(path); err == nil {
+		indexer.workqueue <- path
+	}
+}
+
 func (indexer *Indexer) invalidate(path string) (err error) {
 	err = indexer.mod.db.InvalidatePath(path)
 	if err != nil {
 		return fmt.Errorf("db invalidate: %w", err)
 	}
 
-	err = indexer.pending.Add(path)
-	if err == nil {
-		indexer.workqueue <- path
-	}
-
+	indexer.enqueue(path)
 	return
 }
 
 func (indexer *Indexer) checkAndFix(path string) error {
 	if len(path) == 0 || path[0] != '/' {
-		return errors.New("invalid path")
+		return fs.ErrInvalidPath
 	}
 
 	stat, err := os.Stat(path)
@@ -132,19 +145,24 @@ func (indexer *Indexer) checkAndFix(path string) error {
 }
 
 func (indexer *Indexer) init(ctx *astral.Context) error {
-	// todo: roots can overlap (we could reduce it to a set of wide roots)
-
 	// discover new files
-	for _, root := range indexer.roots.Clone() {
-		err := indexer.scan(root)
-		if err != nil {
+	for _, root := range widestRoots(indexer.roots.Clone()) {
+		if err := indexer.scan(root); err != nil {
 			return err
 		}
 	}
 
-	// invalidate all step
-	return indexer.mod.db.EachPath(func(s string) error {
-		return indexer.invalidate(s)
+	return indexer.mod.db.InTx(func(tx *DB) error {
+		err := tx.InvalidateAllPaths()
+		if err != nil {
+			return fmt.Errorf("invalidate all paths: %w", err)
+		}
+
+		return tx.EachPath("", func(s string) error {
+			fmt.Println(s)
+			indexer.enqueue(s)
+			return nil
+		})
 	})
 }
 
@@ -168,10 +186,49 @@ func (indexer *Indexer) scan(root string) error {
 }
 
 func (indexer *Indexer) addRoot(root string) error {
-	return indexer.roots.Add(root)
+	return indexer.roots.Add(filepath.Clean(root))
 }
 
-func (indexer *Indexer) removeRoot(root string) (err error) {
+func (indexer *Indexer) removeRoot(root string) error {
+	root = filepath.Clean(root)
+	roots := indexer.roots.Clone()
+
+	// no deletion needed (still covered by other roots)
+	for _, other := range roots {
+		if other != root && pathUnderRoot(root, other) {
+			return indexer.roots.Remove(root)
+		}
+	}
+
+	// Find narrower roots under the root being removed
+	var narrower []string
+	for _, other := range roots {
+		if other != root && pathUnderRoot(other, root) {
+			narrower = append(narrower, other)
+		}
+	}
+
+	// Build trie from narrower roots for O(L) coverage check
+	trie, err := newPathTrie(narrower)
+	if err != nil {
+		return fmt.Errorf("build trie: %w", err)
+	}
+
+	// Delete paths not covered by narrower roots
+	err = indexer.mod.db.EachPath(root, func(path string) error {
+		covered, err := trie.covers(path)
+		if err != nil {
+			return err
+		}
+		if !covered {
+			return indexer.mod.db.DeleteByPath(path)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("delete paths: %w", err)
+	}
+
 	return indexer.roots.Remove(root)
 }
 

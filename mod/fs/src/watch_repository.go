@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -19,6 +21,10 @@ type WatchRepository struct {
 }
 
 func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepository, err error) {
+	if !filepath.IsAbs(root) {
+		return nil, fs.ErrNotAbsolute
+	}
+
 	stat, err := os.Stat(root)
 	switch {
 	case err != nil:
@@ -38,9 +44,9 @@ func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepo
 		return nil, err
 	}
 
-	repo.watcher.OnWriteDone = repo.onChange
-	repo.watcher.OnRemoved = repo.onChange
 	repo.watcher.OnRenamed = repo.onChange
+	repo.watcher.OnWriteDone = repo.onChange
+	repo.watcher.OnRemoved = repo.onRemove
 
 	repo.watcher.OnDirCreated = func(s string) {
 		repo.watcher.Add(s, true)
@@ -65,6 +71,10 @@ func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *astral.Obje
 
 func (repo *WatchRepository) onChange(path string) {
 	repo.mod.indexer.invalidate(path)
+}
+
+func (repo *WatchRepository) onRemove(path string) {
+	repo.mod.indexer.remove(path)
 }
 
 func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
@@ -159,4 +169,9 @@ func (repo *WatchRepository) Free(ctx *astral.Context) (int64, error) {
 
 func (repo *WatchRepository) String() string {
 	return repo.label
+}
+
+func (repo *WatchRepository) Close() error {
+	repo.watcher.Close()
+	return repo.mod.indexer.removeRoot(repo.root)
 }

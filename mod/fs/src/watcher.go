@@ -109,6 +109,11 @@ func (w *Watcher) Paths() []string {
 	return w.watcher.WatchList()
 }
 
+// Close stops the watcher and releases resources
+func (w *Watcher) Close() error {
+	return w.watcher.Close()
+}
+
 func (w *Watcher) onWrite(path string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()

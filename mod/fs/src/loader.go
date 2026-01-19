@@ -34,7 +34,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		return nil, err
 	}
 
-	mod.indexer = NewIndexer(mod, 1)
+	mod.indexer = NewIndexer(mod)
 
 	mod.ops.AddStruct(mod, "Op")
 

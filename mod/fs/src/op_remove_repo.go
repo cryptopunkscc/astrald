@@ -31,7 +31,10 @@ func (mod *Module) OpRemoveRepo(ctx *astral.Context, q shell.Query, args opRemov
 	// type assert to *WatchRepository
 	watchRepo, ok := repo.(*WatchRepository)
 	if ok {
-		mod.indexer.removeRoot(watchRepo.root)
+		err = watchRepo.Close()
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
+		}
 	}
 
 	err = mod.Objects.RemoveGroup(objects.RepoLocal, args.Repo)
