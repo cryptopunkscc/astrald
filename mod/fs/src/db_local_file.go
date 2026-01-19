@@ -8,7 +8,7 @@ import (
 )
 
 type dbLocalFile struct {
-	Id        int64            `gorm:"primaryKey;autoIncrement"`
+	ID        int64            `gorm:"primaryKey;autoIncrement"`
 	Path      string           `gorm:"uniqueIndex"`
 	DataID    *astral.ObjectID `gorm:"index"`
 	ModTime   time.Time
