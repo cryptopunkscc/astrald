@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/coldcard"
 	"github.com/cryptopunkscc/astrald/mod/coldcard/ckcc"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 )
@@ -26,7 +27,7 @@ func (e *Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.Mes
 
 	device := e.mod.deviceForPublicKeyHex(pubKeyHex)
 	if device != nil {
-		return &MessageSigner{dev: device, path: ""}, nil
+		return &MessageSigner{dev: device, path: coldcard.BIP44Path}, nil
 	}
 
 	return nil, crypto.ErrUnsupported

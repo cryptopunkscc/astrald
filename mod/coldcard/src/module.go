@@ -40,7 +40,7 @@ func (mod *Module) Scan() error {
 	}
 
 	for _, dev := range devices {
-		pubKeyHex, err := dev.PubKey("")
+		pubKeyHex, err := dev.PubKey(coldcard.BIP44Path)
 		if err != nil {
 			continue
 		}
