@@ -13,6 +13,8 @@ type HashSignerASN1 struct {
 	key *ecdsa.PrivateKey
 }
 
+var _ crypto.HashSigner = &HashSignerASN1{}
+
 func NewHashSignerASN1(key *crypto.PrivateKey) *HashSignerASN1 {
 	signer := &HashSignerASN1{
 		key: secp256k1.PrivKeyFromBytes(key.Key).ToECDSA(),

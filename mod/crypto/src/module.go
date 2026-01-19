@@ -157,6 +157,7 @@ func (mod *Module) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Sig
 	return crypto.ErrUnsupported
 }
 
+// indexRepo scans and follows the given repo and attempts to index all private keys it encounters
 func (mod *Module) indexRepo(ctx *astral.Context, repo objects.Repository) error {
 	scan, err := repo.Scan(ctx, true)
 	if err != nil {
@@ -194,6 +195,7 @@ func (mod *Module) indexRepo(ctx *astral.Context, repo objects.Repository) error
 	return nil
 }
 
+// indexPrivateKey attempts to index the given private key
 func (mod *Module) indexPrivateKey(key *crypto.PrivateKey) error {
 	keyID, err := astral.ResolveObjectID(key)
 	if err != nil {

@@ -26,16 +26,12 @@ type Module interface {
 	// VerifyHashSignature verifies the signature of the given hash using the given public key
 	VerifyHashSignature(key *PublicKey, sig *Signature, hash []byte) error
 
+	// MessageSigner returns a message signer for the given public key and scheme
 	MessageSigner(key *PublicKey, scheme string) (MessageSigner, error)
+
+	// VerifyMessageSignature verifies the signature of the given message using the given public key
 	VerifyMessageSignature(key *PublicKey, sig *Signature, msg string) error
 
+	// AddEngine adds a cryptographic engine to the module
 	AddEngine(engine Engine)
-}
-
-type HashSigner interface {
-	SignHash(ctx *astral.Context, hash []byte) (*Signature, error)
-}
-
-type MessageSigner interface {
-	SignMessage(ctx *astral.Context, msg string) (*Signature, error)
 }
