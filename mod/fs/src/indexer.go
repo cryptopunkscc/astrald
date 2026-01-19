@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync/atomic"
+	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -28,8 +28,9 @@ type Indexer struct {
 
 	roots sig.Set[string]
 
+	mu              sync.Mutex
 	events          *sig.Queue[IndexEvent]
-	subscriberCount atomic.Int32
+	subscriberCount int
 }
 
 func NewIndexer(mod *Module) *Indexer {
@@ -134,12 +135,14 @@ func (indexer *Indexer) checkAndFix(path string) error {
 		return fmt.Errorf("db upsert: %w", err)
 	}
 
-	if indexer.subscriberCount.Load() > 0 {
+	indexer.mu.Lock()
+	if indexer.subscriberCount > 0 {
 		indexer.events = indexer.events.Push(IndexEvent{
 			Path:     path,
 			ObjectID: objectID,
 		})
 	}
+	indexer.mu.Unlock()
 
 	return nil
 }
@@ -232,10 +235,14 @@ func (indexer *Indexer) removeRoot(root string) error {
 }
 
 func (indexer *Indexer) subscribe() *sig.Queue[IndexEvent] {
-	indexer.subscriberCount.Add(1)
+	indexer.mu.Lock()
+	defer indexer.mu.Unlock()
+	indexer.subscriberCount++
 	return indexer.events
 }
 
 func (indexer *Indexer) unsubscribe() {
-	indexer.subscriberCount.Add(-1)
+	indexer.mu.Lock()
+	defer indexer.mu.Unlock()
+	indexer.subscriberCount--
 }

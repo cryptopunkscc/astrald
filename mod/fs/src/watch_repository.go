@@ -172,6 +172,8 @@ func (repo *WatchRepository) String() string {
 }
 
 func (repo *WatchRepository) Close() error {
-	repo.watcher.Close()
+	if err := repo.watcher.Close(); err != nil {
+		return err
+	}
 	return repo.mod.indexer.removeRoot(repo.root)
 }
