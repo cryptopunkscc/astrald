@@ -374,7 +374,7 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 }
 
 // negotiateOutboundStream reads peer's supported features and the session sessionId.
-func (mod *Peers) negotiateOutboundStream(aconn astral.Conn) (features []astral.String, err error) {
+func (mod *Peers) negotiateOutboundStream(aconn astral.Conn) (features []astral.String8, err error) {
 	var featCount astral.Uint16
 	if _, err = featCount.ReadFrom(aconn); err != nil {
 		return nil, fmt.Errorf("read features: %w", err)
@@ -384,7 +384,7 @@ func (mod *Peers) negotiateOutboundStream(aconn astral.Conn) (features []astral.
 		if _, err = feat.ReadFrom(aconn); err != nil {
 			return nil, fmt.Errorf("read features: %w", err)
 		}
-		features = append(features, astral.String(feat))
+		features = append(features, feat)
 	}
 
 	return features, nil

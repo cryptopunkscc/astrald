@@ -32,7 +32,7 @@ func (output *Printer) LogEntry(entry *Entry) {
 	)
 
 	line = append(line, entry.Objects...)
-	line = append(line, (*astral.String8)(astral.NewString("\n")))
+	line = append(line, astral.NewString8("\n"))
 
 	str := output.Viewer.Render(line...)
 

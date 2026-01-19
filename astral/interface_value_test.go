@@ -84,7 +84,7 @@ func TestInterfaceNil(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst.Value = NewString("hello world")
+	dst.Value = NewString32("hello world")
 
 	dstObject := Objectify(&dst)
 	_, err = dstObject.ReadFrom(buf)
@@ -97,7 +97,7 @@ func TestInterfaceNil(t *testing.T) {
 	}
 
 	// test json marshaling
-	dst.Value = NewString("hello world")
+	dst.Value = NewString32("hello world")
 
 	jdata, err := srcObject.MarshalJSON()
 	if err != nil {

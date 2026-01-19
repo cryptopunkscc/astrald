@@ -6,53 +6,12 @@ import (
 	"io"
 )
 
-// String represents a string of indefinite length
-type String string
-
-// astral:blueprint-ignore
-func (String) ObjectType() string {
-	return "string"
-}
-
-func NewString(s string) *String {
-	return (*String)(&s)
-}
-
-func (s String) WriteTo(w io.Writer) (int64, error) {
-	n, err := w.Write([]byte(s))
-	return int64(n), err
-}
-
-func (s *String) ReadFrom(r io.Reader) (n int64, err error) {
-	var buf []byte
-	buf, err = io.ReadAll(r)
-	n = int64(len(buf))
-	*s = String(buf)
-	return
-
-}
-
-func (s String) MarshalJSON() ([]byte, error) {
-	return json.Marshal(string(s))
-}
-
-func (s *String) UnmarshalJSON(bytes []byte) error {
-	return json.Unmarshal(bytes, (*string)(s))
-}
-
-func (s String) MarshalText() (text []byte, err error) {
-	return []byte(s), nil
-}
-
-func (s *String) UnmarshalText(text []byte) error {
-	*s = String(text)
-	return nil
-}
-
-func (s String) String() string { return string(s) }
-
 // String8 represents a string with an 8-bit length
 type String8 string
+
+func NewString8(s string) *String8 {
+	return (*String8)(&s)
+}
 
 // astral:blueprint-ignore
 func (String8) ObjectType() string {
@@ -115,6 +74,10 @@ func (s String8) String() string { return string(s) }
 // String16 represents a string with a 16-bit length
 type String16 string
 
+func NewString16(s string) *String16 {
+	return (*String16)(&s)
+}
+
 // astral:blueprint-ignore
 func (String16) ObjectType() string {
 	return "string16"
@@ -174,6 +137,10 @@ func (s String16) String() string { return string(s) }
 
 // String32 represents a string with a 32-bit length
 type String32 string
+
+func NewString32(s string) *String32 {
+	return (*String32)(&s)
+}
 
 // astral:blueprint-ignore
 func (String32) ObjectType() string {
@@ -235,6 +202,10 @@ func (s String32) String() string { return string(s) }
 // String64 represents a string with a 64-bit length
 type String64 string
 
+func NewString64(s string) *String64 {
+	return (*String64)(&s)
+}
+
 // astral:blueprint-ignore
 func (String64) ObjectType() string { return "string64" }
 
@@ -289,12 +260,11 @@ func (s String64) String() string { return string(s) }
 
 func init() {
 	var (
-		s   String
 		s8  String8
 		s16 String16
 		s32 String32
 		s64 String64
 	)
 
-	_ = Add(&s, &s8, &s16, &s32, &s64)
+	_ = Add(&s8, &s16, &s32, &s64)
 }

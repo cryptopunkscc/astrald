@@ -7,7 +7,7 @@ import (
 )
 
 type opContainsArgs struct {
-	Repo astral.String
+	Repo string
 	ID   *astral.ObjectID `query:"optional"`
 	In   string           `query:"optional"`
 	Out  string           `query:"optional"`
@@ -19,7 +19,7 @@ func (mod *Module) OpContains(ctx *astral.Context, q shell.Query, args opContain
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	repo := mod.GetRepository(args.Repo.String())
+	repo := mod.GetRepository(args.Repo)
 	if repo == nil {
 		return ch.Send(astral.NewError("repository not found"))
 	}

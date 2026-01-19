@@ -48,8 +48,8 @@ func toObject(v any) astral.Object {
 	}
 
 	if s, ok := v.(fmt.Stringer); ok {
-		return (*astral.String32)(astral.NewString(s.String()))
+		return astral.NewString32(s.String())
 	}
 
-	return (*astral.String32)(astral.NewString(reflect.TypeOf(v).String()))
+	return astral.NewString32(reflect.TypeOf(v).String())
 }

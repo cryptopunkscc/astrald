@@ -8,7 +8,7 @@ import (
 
 func TestPtrString(t *testing.T) {
 	var src, dst *string
-	src = (*string)(NewString("hello world"))
+	src = (*string)(NewString32("hello world"))
 
 	srcObject := Objectify(&src)
 
@@ -49,7 +49,7 @@ func TestPtrString(t *testing.T) {
 
 func TestPtrNil(t *testing.T) {
 	var src, dst *string
-	dst = (*string)(NewString("hello world"))
+	dst = (*string)(NewString32("hello world"))
 
 	srcObject := Objectify(&src)
 
@@ -70,7 +70,7 @@ func TestPtrNil(t *testing.T) {
 	if dst != nil {
 		t.Fatal("binary values not equal")
 	}
-	dst = (*string)(NewString("hello world"))
+	dst = (*string)(NewString32("hello world"))
 
 	dstObject = Objectify(&dst)
 

@@ -12,7 +12,7 @@ type opReadArgs struct {
 	Offset astral.Uint64 `query:"optional"`
 	Limit  astral.Uint64 `query:"optional"`
 	Zone   astral.Zone   `query:"optional"`
-	Repo   astral.String `query:"optional"`
+	Repo   string        `query:"optional"`
 }
 
 func (mod *Module) OpRead(ctx *astral.Context, q shell.Query, args opReadArgs) (err error) {
@@ -21,7 +21,7 @@ func (mod *Module) OpRead(ctx *astral.Context, q shell.Query, args opReadArgs) (
 	repo := mod.ReadDefault()
 
 	if len(args.Repo) > 0 {
-		repo = mod.GetRepository(args.Repo.String())
+		repo = mod.GetRepository(args.Repo)
 		if repo == nil {
 			return q.Reject()
 		}

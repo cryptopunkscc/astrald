@@ -8,7 +8,7 @@ import (
 )
 
 type opRemoveRemoteEndpointLocalPort struct {
-	Endpoint astral.String
+	Endpoint astral.String8
 	In       string `query:"optional"`
 	Out      string `query:"optional"`
 }

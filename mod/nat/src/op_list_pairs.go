@@ -7,8 +7,8 @@ import (
 )
 
 type opListPairsArgs struct {
-	With astral.String `query:"optional"`
-	Out  string        `query:"optional"`
+	With string `query:"optional"`
+	Out  string `query:"optional"`
 }
 
 func (mod *Module) OpListPairs(ctx *astral.Context, q shell.Query,

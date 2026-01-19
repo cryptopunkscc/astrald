@@ -8,7 +8,7 @@ import (
 )
 
 type opAddRemoteEndpointLocalPort struct {
-	Endpoint  astral.String
+	Endpoint  string
 	LocalPort astral.Uint16
 	Replace   astral.Bool `query:"optional"`
 	In        string      `query:"optional"`
@@ -16,7 +16,7 @@ type opAddRemoteEndpointLocalPort struct {
 }
 
 func (mod *Module) OpAddRemoteEndpointLocalPort(ctx *astral.Context, q shell.Query, args opAddRemoteEndpointLocalPort) (err error) {
-	endpoint, err := kcp.ParseEndpoint(string(args.Endpoint))
+	endpoint, err := kcp.ParseEndpoint(args.Endpoint)
 	if err != nil {
 		return q.RejectWithCode(4)
 	}

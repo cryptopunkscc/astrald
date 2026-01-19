@@ -6,8 +6,8 @@ import (
 )
 
 type StringView struct {
-	Style *lipgloss.Style
-	*astral.String
+	Style  *lipgloss.Style
+	String *astral.String32
 }
 
 // astral:blueprint-ignore
@@ -20,6 +20,6 @@ func (v StringView) Render() string {
 func String(text string, style *lipgloss.Style) *StringView {
 	return &StringView{
 		Style:  style,
-		String: astral.NewString(text),
+		String: astral.NewString32(text),
 	}
 }

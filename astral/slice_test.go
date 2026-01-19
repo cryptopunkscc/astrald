@@ -10,7 +10,7 @@ import (
 
 // --- test-only custom object A ---
 type TestObjectA struct {
-	Value astral.String
+	Value astral.String8
 }
 
 func (t TestObjectA) ObjectType() string { return "test.object.a" }
@@ -279,7 +279,7 @@ func TestSlice_UnmarshalJSON_TestA_TestB(t *testing.T) {
 	if !ok {
 		t.Fatalf("index 0: expected *TestObjectA, got %T", out[0])
 	}
-	if a.Value != astral.String("hello") {
+	if a.Value != astral.String8("hello") {
 		t.Fatalf("index 0: expected Value='hello', got '%s'", a.Value)
 	}
 

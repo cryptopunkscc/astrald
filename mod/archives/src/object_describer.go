@@ -34,7 +34,7 @@ func (mod *Module) describeArchive(objectID *astral.ObjectID) (<-chan *objects.D
 	results <- &objects.DescribeResult{
 		OriginID: mod.node.Identity(),
 		Descriptor: &archives.ArchiveDescriptor{
-			Format:    astral.String(archive.Format),
+			Format:    astral.String8(archive.Format),
 			Entries:   astral.Uint32(len(archive.Entries)),
 			TotalSize: astral.Uint64(totalSize),
 		},

@@ -28,7 +28,7 @@ type Module struct {
 	mu                    sync.Mutex
 	configEndpoints       []exonet.Endpoint
 	ephemeralListeners    sig.Map[astral.Uint16, exonet.EphemeralListener]
-	ephemeralPortMappings sig.Map[astral.String, astral.Uint16]
+	ephemeralPortMappings sig.Map[astral.String8, astral.Uint16]
 }
 
 func (mod *Module) Scope() *shell.Scope {

@@ -2,14 +2,15 @@ package shell
 
 import (
 	"errors"
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"io"
 )
 
 type opShellArgs struct {
-	As astral.String `query:"optional"`
+	As astral.String8 `query:"optional"`
 }
 
 func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellArgs) (err error) {

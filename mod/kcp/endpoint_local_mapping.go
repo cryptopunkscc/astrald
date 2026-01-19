@@ -10,7 +10,7 @@ import (
 var _ astral.Object = &EndpointLocalMapping{}
 
 type EndpointLocalMapping struct {
-	Address astral.String
+	Address astral.String8
 	Port    astral.Uint16
 }
 

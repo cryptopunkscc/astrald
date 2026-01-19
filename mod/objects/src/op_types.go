@@ -20,7 +20,7 @@ func (mod *Module) OpTypes(ctx *astral.Context, q shell.Query, args opTypesArgs)
 	slices.Sort(types)
 
 	for _, name := range types {
-		err = ch.Send((*astral.String)(&name))
+		err = ch.Send((*astral.String8)(&name))
 		if err != nil {
 			return
 		}

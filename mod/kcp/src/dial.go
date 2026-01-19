@@ -51,7 +51,7 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 }
 
 func (mod *Module) SetEndpointLocalSocket(endpoint kcp.Endpoint, localSocket astral.Uint16, replace astral.Bool) error {
-	address := astral.String(endpoint.Address())
+	address := astral.String8(endpoint.Address())
 
 	if replace {
 		mod.ephemeralPortMappings.Replace(address, localSocket)
@@ -66,20 +66,20 @@ func (mod *Module) SetEndpointLocalSocket(endpoint kcp.Endpoint, localSocket ast
 }
 
 func (mod *Module) RemoveEndpointLocalSocket(endpoint kcp.Endpoint) error {
-	address := astral.String(endpoint.Address())
+	address := astral.String8(endpoint.Address())
 
 	mod.ephemeralPortMappings.Delete(address)
 	return nil
 }
 
-func (mod *Module) GetEndpointsMappings() map[astral.String]astral.Uint16 {
+func (mod *Module) GetEndpointsMappings() map[astral.String8]astral.Uint16 {
 	return mod.ephemeralPortMappings.Clone()
 }
 
 // prepareUDPConn creates a UDP connection, binding to an ephemeral local port if mapped.
 func (mod *Module) prepareUDPConn(endpoint *kcp.Endpoint) (*net.UDPConn, error) {
 	laddr := &net.UDPAddr{Port: 0}
-	address := astral.String(endpoint.Address())
+	address := astral.String8(endpoint.Address())
 
 	// Use mapped local port if available
 	if port, ok := mod.ephemeralPortMappings.Get(address); ok {

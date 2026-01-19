@@ -1,14 +1,15 @@
 package archives
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ astral.Object = &ArchiveDescriptor{}
 
 type ArchiveDescriptor struct {
-	Format    astral.String
+	Format    astral.String8
 	Entries   astral.Uint32
 	TotalSize astral.Uint64
 }
