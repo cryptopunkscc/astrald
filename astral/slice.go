@@ -152,7 +152,7 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 
 		obj := New(a.ElemType)
 		if obj == nil {
-			return n, newErrBlueprintNotFound(a.ElemType)
+			return n, NewErrBlueprintNotFound(a.ElemType)
 		}
 
 		// read inner element from buffer
@@ -210,7 +210,7 @@ func (a *Slice[T]) UnmarshalJSON(bytes []byte) error {
 	for i, j := range jlist {
 		obj := New(j.Type)
 		if obj == nil {
-			return newErrBlueprintNotFound(j.Type)
+			return NewErrBlueprintNotFound(j.Type)
 		}
 
 		var err error

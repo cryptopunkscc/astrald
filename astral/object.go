@@ -71,7 +71,7 @@ func Decode(r io.Reader, config ...ConfigFunc) (object Object, n int64, err erro
 
 	object = cfg.Blueprints.New(typ)
 	if object == nil {
-		return nil, n, newErrBlueprintNotFound(typ)
+		return nil, n, NewErrBlueprintNotFound(typ)
 	}
 
 	m, err := object.ReadFrom(r)

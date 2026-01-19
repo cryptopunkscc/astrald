@@ -69,6 +69,9 @@ func newReceiver(r io.Reader, cfg *Config) Receiver {
 	case Text:
 		return NewTextReceiver(r)
 
+	case Canonical:
+		return NewCanonicalReceiver(r)
+
 	default:
 		return NewReceiverError(fmt.Errorf("unsupported input format: %s", cfg.fmtIn))
 	}
@@ -84,6 +87,9 @@ func newSender(w io.Writer, cfg *Config) Sender {
 
 	case Text:
 		return NewTextSender(w)
+
+	case Canonical:
+		return NewCanonicalSender(w)
 
 	case Base64:
 		s := NewTextSender(w)

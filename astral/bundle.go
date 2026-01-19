@@ -183,7 +183,7 @@ func (a *Bundle) UnmarshalJSON(bytes []byte) error {
 	for _, j := range jlist {
 		obj := New(j.Type)
 		if obj == nil {
-			return newErrBlueprintNotFound(j.Type)
+			return NewErrBlueprintNotFound(j.Type)
 		}
 
 		var err error

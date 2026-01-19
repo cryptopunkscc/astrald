@@ -123,7 +123,7 @@ func (m *Map) UnmarshalJSON(bytes []byte) (err error) {
 	for k, jsonObj := range jmap {
 		obj := New(jsonObj.Type)
 		if obj == nil {
-			return newErrBlueprintNotFound(jsonObj.Type)
+			return NewErrBlueprintNotFound(jsonObj.Type)
 		}
 
 		if jsonObj.Object != nil {
