@@ -7,14 +7,14 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
-type opAddIndexedArgs struct {
+type opNewRepoArgs struct {
 	Path  string
 	Label string
 	In    string `query:"optional"`
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpAddIndexedPath(ctx *astral.Context, q shell.Query, args opAddIndexedArgs) (err error) {
+func (mod *Module) OpNewRepo(ctx *astral.Context, q shell.Query, args opNewRepoArgs) (err error) {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
