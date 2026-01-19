@@ -37,6 +37,12 @@ type RepoGroup interface {
 	List() []string
 }
 
+// AfterRemovedCallback can be optionally implemented by Repositories to be notified about removal
+type AfterRemovedCallback interface {
+	// AfterRemoved is called after the repo is removed with the name it was added under
+	AfterRemoved(name string)
+}
+
 // Writer is an interface to write the actual data to objects created by Creators.
 type Writer interface {
 	// Write data to the object

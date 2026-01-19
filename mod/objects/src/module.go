@@ -150,9 +150,13 @@ func (mod *Module) RemoveRepository(name string) error {
 		return errors.New("name is empty")
 	}
 
-	_, ok := mod.repos.Delete(name)
+	removed, ok := mod.repos.Delete(name)
 	if !ok {
 		return fmt.Errorf("repository %s not found", name)
+	}
+
+	if c, ok := removed.(objects.AfterRemovedCallback); ok {
+		c.AfterRemoved(name)
 	}
 
 	return nil
