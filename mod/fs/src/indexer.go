@@ -159,7 +159,6 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 		}
 
 		return tx.EachPath("", func(s string) error {
-			fmt.Println(s)
 			indexer.enqueue(s)
 			return nil
 		})
