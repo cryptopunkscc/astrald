@@ -6,6 +6,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/apphost"
 	_ "github.com/cryptopunkscc/astrald/mod/archives"
 	_ "github.com/cryptopunkscc/astrald/mod/auth"
+	_ "github.com/cryptopunkscc/astrald/mod/coldcard"
 	_ "github.com/cryptopunkscc/astrald/mod/crypto"
 	_ "github.com/cryptopunkscc/astrald/mod/dir"
 	_ "github.com/cryptopunkscc/astrald/mod/ether"

@@ -1,6 +1,10 @@
 package crypto
 
-import "github.com/cryptopunkscc/astrald/astral"
+import (
+	"errors"
+
+	"github.com/cryptopunkscc/astrald/astral"
+)
 
 const (
 	SchemeASN1   = "asn1"
@@ -17,4 +21,26 @@ type Engine interface {
 	VerifyHashSignature(key *PublicKey, sig *Signature, hash []byte) error
 	MessageSigner(key *PublicKey, scheme string) (MessageSigner, error)
 	VerifyMessageSignature(key *PublicKey, sig *Signature, msg string) error
+}
+
+type NilEngine struct{}
+
+func (NilEngine) PublicKey(*astral.Context, *PrivateKey) (*PublicKey, error) {
+	return nil, errors.ErrUnsupported
+}
+
+func (NilEngine) HashSigner(*PublicKey, string) (HashSigner, error) {
+	return nil, errors.ErrUnsupported
+}
+
+func (NilEngine) VerifyHashSignature(*PublicKey, *Signature, []byte) error {
+	return errors.ErrUnsupported
+}
+
+func (NilEngine) MessageSigner(*PublicKey, string) (MessageSigner, error) {
+	return nil, errors.ErrUnsupported
+}
+
+func (NilEngine) VerifyMessageSignature(*PublicKey, *Signature, string) error {
+	return errors.ErrUnsupported
 }
