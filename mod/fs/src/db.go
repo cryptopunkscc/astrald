@@ -76,7 +76,10 @@ func (db *DB) FindByObjectID(objectID *astral.ObjectID) (rows []*dbLocalFile, er
 	return
 }
 
-// EachPath calls fn for each path (can be filtered by prefix), uses primary key pagination.
+// EachPath calls fn for each path, using primary key pagination.
+// If prefix is non-empty, only paths strictly under the prefix are matched (prefix+"/%"),
+// not the prefix itself. This is correct for directory roots since only regular files
+// are indexed, not directories.
 func (db *DB) EachPath(prefix string, fn func(string) error) error {
 	const batchSize = 1000
 	var lastID int64
