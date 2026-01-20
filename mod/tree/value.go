@@ -9,8 +9,9 @@ import (
 // Value is a thread-safe wrapper that holds an up-to-date value from the tree.
 // It automatically follows changes to a tree path and keeps the local value synchronized.
 type Value[T astral.Object] struct {
-	mu    sync.RWMutex
-	value T
+	mu       sync.RWMutex
+	value    T
+	onChange func(T)
 }
 
 // NewValue creates a new Value wrapper with an initial value.
@@ -28,8 +29,20 @@ func (v *Value[T]) Get() T {
 // Set updates the value.
 func (v *Value[T]) Set(value T) {
 	v.mu.Lock()
-	defer v.mu.Unlock()
 	v.value = value
+	onChange := v.onChange
+	v.mu.Unlock()
+
+	if onChange != nil {
+		onChange(value)
+	}
+}
+
+// OnChange sets a callback function that will be called whenever the value changes.
+func (v *Value[T]) OnChange(fn func(T)) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.onChange = fn
 }
 
 // Follow starts watching a tree node and updates the value when the node changes.

@@ -23,8 +23,9 @@ type Module struct {
 
 	configEndpoints []exonet.Endpoint
 
-	listen *tree.Value[*astral.Bool]
-	dial   *tree.Value[*astral.Bool]
+	listen       *tree.Value[*astral.Bool]
+	dial         *tree.Value[*astral.Bool]
+	serverCancel context.CancelFunc
 }
 
 func (mod *Module) Run(ctx *astral.Context) (err error) {
@@ -40,11 +41,58 @@ func (mod *Module) Run(ctx *astral.Context) (err error) {
 		return err
 	}
 
-	_ = tasks.Group(NewServer(mod)).Run(ctx)
+	mod.listen.OnChange(func(enabled *astral.Bool) {
+		if *enabled {
+			mod.startServer()
+		} else {
+			mod.stopServer()
+		}
+	})
+
+	if mod.listen != nil && *mod.listen.Get() == true {
+		mod.startServer()
+	}
 
 	<-ctx.Done()
+	mod.stopServer()
 
 	return nil
+}
+
+func (mod *Module) startServer() {
+	if mod.serverCancel != nil {
+		return
+	}
+
+	serverCtx, cancel := context.WithCancel(mod.ctx)
+	mod.serverCancel = cancel
+
+	go func() {
+		_ = tasks.Group(NewServer(mod)).Run(astral.NewContext(serverCtx))
+	}()
+}
+
+func (mod *Module) stopServer() {
+	if mod.serverCancel != nil {
+		mod.serverCancel()
+		mod.serverCancel = nil
+	}
+}
+
+func (mod *Module) ListenEnabled() bool {
+	if mod.listen != nil && mod.listen.Get() != nil {
+		return bool(*mod.listen.Get())
+	}
+
+	return false
+}
+
+func (mod *Module) DialEnabled() bool {
+	if mod.dial != nil && mod.dial.Get() != nil {
+		return bool(*mod.dial.Get())
+	}
+
+	return false
 }
 
 func (mod *Module) initTreeValue(ctx *astral.Context, name string, initial bool) (*tree.Value[*astral.Bool], error) {
