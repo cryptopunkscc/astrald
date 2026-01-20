@@ -210,7 +210,12 @@ func (indexer *Indexer) scan(ctx context.Context, root string) error {
 		return err
 	}
 
-	err := walkDir(ctx, root, func(path string) error {
+	err := walkDir(ctx, root, func(path string) (err error) {
+		err = indexer.statLimiter.Wait(ctx)
+		if err != nil {
+			return err
+		}
+
 		batch = append(batch, path)
 		if len(batch) >= batchSize {
 			return flush()
