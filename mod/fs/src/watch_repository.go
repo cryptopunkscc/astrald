@@ -13,6 +13,9 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+var _ objects.Repository = &WatchRepository{}
+var _ objects.AfterRemovedCallback = &WatchRepository{}
+
 type WatchRepository struct {
 	mod     *Module
 	label   string
@@ -171,9 +174,12 @@ func (repo *WatchRepository) String() string {
 	return repo.label
 }
 
-func (repo *WatchRepository) Close() error {
+func (repo *WatchRepository) AfterRemoved(name string) {
 	if err := repo.watcher.Close(); err != nil {
-		return err
+		repo.mod.log.Error("%v watcher close error: %v", name, err)
 	}
-	return repo.mod.indexer.removeRoot(repo.root)
+
+	if err := repo.mod.indexer.removeRoot(repo.root); err != nil {
+		repo.mod.log.Error("%v indexer remove root error: %v", name, err)
+	}
 }
