@@ -1,7 +1,6 @@
 package mem
 
 import (
-	"io"
 	"slices"
 	"sync/atomic"
 
@@ -59,7 +58,7 @@ func (repo *Repository) Contains(ctx *astral.Context, objectID *astral.ObjectID)
 	return slices.Contains(repo.objects.Keys(), objectID.String()), nil
 }
 
-func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
+func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (objects.Reader, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -74,7 +73,7 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, off
 		return nil, objects.ErrNotFound
 	}
 
-	return NewReader(bytes[s:e]), nil
+	return NewReader(bytes[s:e], repo), nil
 }
 
 func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {

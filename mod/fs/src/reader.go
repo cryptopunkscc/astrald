@@ -3,20 +3,24 @@ package fs
 import (
 	"io"
 	"os"
+
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 type Reader struct {
 	io.ReadSeekCloser
 	name  string
 	limit int64
+	repo  objects.Repository
 }
 
 // NewReader returns a new file reader with a limit on the amount of bytes that can be read. -1 means no limit.
-func NewReader(f *os.File, name string, limit int64) *Reader {
+func NewReader(f *os.File, name string, limit int64, repo objects.Repository) *Reader {
 	return &Reader{
 		ReadSeekCloser: f,
 		name:           name,
 		limit:          limit,
+		repo:           repo,
 	}
 }
 
@@ -41,4 +45,8 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 
 func (r *Reader) Close() error {
 	return r.ReadSeekCloser.Close()
+}
+
+func (r *Reader) Repo() objects.Repository {
+	return r.repo
 }

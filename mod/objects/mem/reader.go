@@ -5,18 +5,24 @@ import (
 	"errors"
 	"os"
 	"sync/atomic"
+
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 type Reader struct {
 	r      *bytes.Reader
 	bytes  []byte
+	repo   objects.Repository
 	closed atomic.Bool
 }
 
-func NewReader(buf []byte) *Reader {
+var _ objects.Reader = &Reader{}
+
+func NewReader(buf []byte, repo objects.Repository) *Reader {
 	return &Reader{
 		r:     bytes.NewReader(buf),
 		bytes: buf,
+		repo:  repo,
 	}
 }
 
@@ -35,4 +41,8 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 func (r *Reader) Close() error {
 	r.closed.Store(true)
 	return nil
+}
+
+func (r *Reader) Repo() objects.Repository {
+	return r.repo
 }

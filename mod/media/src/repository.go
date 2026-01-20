@@ -2,7 +2,6 @@ package media
 
 import (
 	"bytes"
-	"io"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -32,7 +31,7 @@ func (repo *Repository) Label() string {
 	return "Media covers"
 }
 
-func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
+func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (objects.Reader, error) {
 	containerID, err := repo.mod.db.FindAudioContainerID(objectID)
 	if err != nil {
 		return nil, err
@@ -68,7 +67,7 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, off
 	}
 	end := min(offset+limit, int64(len(pic)))
 
-	return mem.NewReader(pic[offset:end]), nil
+	return mem.NewReader(pic[offset:end], repo), nil
 }
 
 func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {

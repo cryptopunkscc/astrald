@@ -48,9 +48,7 @@ type Module struct {
 }
 
 func (mod *Module) Probe(ctx *astral.Context, repo objects.Repository, objectID *astral.ObjectID) (probe *objects.Probe, err error) {
-	probe = &objects.Probe{
-		Repo: astral.String8(mod.getRepoName(repo)),
-	}
+	probe = &objects.Probe{}
 
 	startAt := time.Now()
 
@@ -67,6 +65,9 @@ func (mod *Module) Probe(ctx *astral.Context, repo objects.Repository, objectID 
 
 	// store the response time
 	probe.Time = astral.Duration(time.Since(startAt))
+
+	// store the actual repo name
+	probe.Repo = astral.String8(mod.getRepoName(r.Repo()))
 
 	// check if it's an astral object
 	q := bytes.NewReader(data)

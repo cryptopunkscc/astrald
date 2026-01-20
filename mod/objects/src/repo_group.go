@@ -2,7 +2,6 @@ package objects
 
 import (
 	"errors"
-	"io"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -16,6 +15,8 @@ type RepoGroup struct {
 	label      string
 	repos      sig.Set[string]
 }
+
+var _ objects.Repository = &RepoGroup{}
 
 func NewRepoGroup(mod *Module, label string, concurrent bool) *RepoGroup {
 	return &RepoGroup{
@@ -133,7 +134,7 @@ func (group *RepoGroup) Delete(ctx *astral.Context, objectID *astral.ObjectID) e
 	return nil
 }
 
-func (group *RepoGroup) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
+func (group *RepoGroup) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (objects.Reader, error) {
 	if group.Concurrent {
 		return group.readConcurrent(ctx, objectID, offset, limit)
 	}
@@ -141,7 +142,7 @@ func (group *RepoGroup) Read(ctx *astral.Context, objectID *astral.ObjectID, off
 	return group.readSeq(ctx, objectID, offset, limit)
 }
 
-func (group *RepoGroup) readSeq(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
+func (group *RepoGroup) readSeq(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (objects.Reader, error) {
 	for _, repoName := range group.repos.Clone() {
 		repo := group.mod.GetRepository(repoName)
 		if repo == nil {
@@ -155,11 +156,11 @@ func (group *RepoGroup) readSeq(ctx *astral.Context, objectID *astral.ObjectID, 
 	return nil, objects.ErrNotFound
 }
 
-func (group *RepoGroup) readConcurrent(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (io.ReadCloser, error) {
+func (group *RepoGroup) readConcurrent(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (objects.Reader, error) {
 	ctx, cancel := ctx.WithCancel()
 	defer cancel()
 
-	var res = make(chan io.ReadCloser)
+	var res = make(chan objects.Reader)
 	var wg sync.WaitGroup
 
 	for _, repoName := range group.repos.Clone() {
