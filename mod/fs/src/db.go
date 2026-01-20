@@ -108,18 +108,6 @@ func (db *DB) EachPath(prefix string, fn func(string) error) error {
 	}
 }
 
-// InsertPath inserts a new invalidated path record, ignores if path already exists
-func (db *DB) InsertPath(path string) error {
-	return db.
-		Clauses(clause.OnConflict{DoNothing: true}).
-		Create(&dbLocalFile{
-			Path:      path,
-			ModTime:   time.Time{},
-			UpdatedAt: time.Time{}},
-		).
-		Error
-}
-
 // InsertPaths batch inserts invalidated path records
 func (db *DB) InsertPaths(paths []string) error {
 	if len(paths) == 0 {
