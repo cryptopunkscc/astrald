@@ -120,6 +120,27 @@ func (db *DB) InsertPath(path string) error {
 		Error
 }
 
+// InsertPaths batch inserts invalidated path records
+func (db *DB) InsertPaths(paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+
+	records := make([]dbLocalFile, len(paths))
+	for i, path := range paths {
+		records[i] = dbLocalFile{
+			Path:      path,
+			ModTime:   time.Time{},
+			UpdatedAt: time.Time{},
+		}
+	}
+
+	return db.
+		Clauses(clause.Insert{Modifier: "OR IGNORE"}).
+		Create(&records).
+		Error
+}
+
 // UpsertPath updates or inserts a path record (updates data_id/mod_time/updated_at)
 func (db *DB) UpsertPath(
 	path string,

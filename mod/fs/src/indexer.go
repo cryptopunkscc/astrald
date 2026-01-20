@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -175,12 +176,15 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 }
 
 func (indexer *Indexer) init(ctx *astral.Context) error {
+	now := time.Now()
 	// discover new files
 	for _, root := range widestRoots(indexer.roots.Clone()) {
 		if err := indexer.scan(ctx, root); err != nil {
 			return err
 		}
 	}
+
+	indexer.mod.log.Info(`fs indexer: scan completed in %v`, time.Since(now))
 
 	if err := indexer.mod.db.InvalidateAllPaths(); err != nil {
 		return fmt.Errorf("invalidate all paths: %w", err)
@@ -193,22 +197,55 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 }
 
 // scan walks the filesystem from root and adds all new files to the index database
+// Uses breadth-first traversal to avoid keeping many directory handles open
 func (indexer *Indexer) scan(ctx context.Context, root string) error {
-	return filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+	const batchSize = 500
+	var batch []string
 
-		if !entry.Type().IsRegular() {
+	flush := func() error {
+		if len(batch) == 0 {
 			return nil
 		}
-
-		if err := indexer.statLimiter.Wait(ctx); err != nil {
+		if err := indexer.statLimiter.WaitN(ctx, len(batch)); err != nil {
 			return err
 		}
+		err := indexer.mod.db.InsertPaths(batch)
+		batch = batch[:0]
+		return err
+	}
 
-		return indexer.mod.db.InsertPath(path)
-	})
+	queue := []string{root}
+
+	for len(queue) > 0 {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		dir := queue[0]
+		queue = queue[1:]
+
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+
+		for _, entry := range entries {
+			path := filepath.Join(dir, entry.Name())
+
+			if entry.IsDir() {
+				queue = append(queue, path)
+			} else if entry.Type().IsRegular() {
+				batch = append(batch, path)
+				if len(batch) >= batchSize {
+					if err := flush(); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+
+	return flush()
 }
 
 func (indexer *Indexer) addRoot(root string) error {
