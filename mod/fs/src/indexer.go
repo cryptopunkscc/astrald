@@ -206,9 +206,7 @@ func (indexer *Indexer) scan(ctx context.Context, root string) error {
 		if len(batch) == 0 {
 			return nil
 		}
-		if err := indexer.statLimiter.WaitN(ctx, len(batch)); err != nil {
-			return err
-		}
+
 		err := indexer.mod.db.InsertPaths(batch)
 		batch = batch[:0]
 		return err
@@ -223,6 +221,10 @@ func (indexer *Indexer) scan(ctx context.Context, root string) error {
 
 		dir := queue[0]
 		queue = queue[1:]
+
+		if err := indexer.statLimiter.Wait(ctx); err != nil {
+			return err
+		}
 
 		entries, err := os.ReadDir(dir)
 		if err != nil {
