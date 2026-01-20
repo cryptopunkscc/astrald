@@ -34,6 +34,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		return nil, err
 	}
 
+	mod.indexer = NewIndexer(mod)
+
 	mod.ops.AddStruct(mod, "Op")
 
 	return mod, nil
@@ -47,7 +49,7 @@ func (mod *Module) addDefaultRepo() {
 	}
 
 	// check if the default repo is already set
-	if _, ok := mod.repos.Get(DefaultRepoName); ok {
+	if repo := mod.Objects.GetRepository(DefaultRepoName); repo != nil {
 		return
 	}
 

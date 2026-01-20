@@ -1,13 +1,15 @@
 package fs
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"time"
 )
 
 type dbLocalFile struct {
-	Path      string           `gorm:"primaryKey"`
+	ID        int64            `gorm:"primaryKey;autoIncrement"`
+	Path      string           `gorm:"uniqueIndex"`
 	DataID    *astral.ObjectID `gorm:"index"`
 	ModTime   time.Time
 	UpdatedAt time.Time

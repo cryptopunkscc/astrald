@@ -11,6 +11,8 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+var _ objects.Repository = &Repository{}
+
 type Repository struct {
 	mod      *Module
 	label    string

@@ -26,6 +26,9 @@ type Module interface {
 	// AddRepository registers a Repository
 	AddRepository(name string, repo Repository) error
 
+	// RemoveRepository removes a Repository by its name
+	RemoveRepository(name string) error
+
 	// GetRepository returns a Repository by its name
 	GetRepository(name string) Repository
 
@@ -37,6 +40,9 @@ type Module interface {
 
 	// AddGroup adds a repository to a group
 	AddGroup(groupName string, repoName string) error
+
+	// RemoveGroup removes a repository from a group
+	RemoveGroup(groupName string, repoName string) error
 
 	// Load loads an object from a repository
 	Load(*astral.Context, Repository, *astral.ObjectID) (astral.Object, error)
