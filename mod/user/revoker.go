@@ -18,11 +18,11 @@ func (s Revoker) ObjectType() string {
 }
 
 func (s Revoker) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(s).WriteTo(w)
+	return astral.Objectify(&s).WriteTo(w)
 }
 
-func (s Revoker) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(s).ReadFrom(r)
+func (s *Revoker) ReadFrom(r io.Reader) (n int64, err error) {
+	return astral.Objectify(s).ReadFrom(r)
 }
 
 func init() {
