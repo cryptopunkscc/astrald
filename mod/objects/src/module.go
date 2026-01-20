@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -43,6 +45,43 @@ type Module struct {
 	repos      sig.Map[string, objects.Repository]
 
 	groups sig.Map[string, *RepoGroup]
+}
+
+func (mod *Module) Probe(ctx *astral.Context, repo objects.Repository, objectID *astral.ObjectID) (probe *objects.Probe, err error) {
+	probe = &objects.Probe{
+		Repo: astral.String8(mod.getRepoName(repo)),
+	}
+
+	startAt := time.Now()
+
+	// read the object data
+	r, err := repo.Read(ctx, objectID, 0, 512)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// store the response time
+	probe.Time = astral.Duration(time.Since(startAt))
+
+	// check if it's an astral object
+	q := bytes.NewReader(data)
+	if _, err := (&astral.Stamp{}).ReadFrom(q); err == nil {
+		var t astral.ObjectType
+		_, err = t.ReadFrom(q)
+		if err == nil {
+			probe.Type = astral.String8(t.String())
+		}
+	}
+
+	// check the mimeType
+	probe.Mime = astral.String8(http.DetectContentType(data))
+
+	return
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -93,6 +132,7 @@ func (mod *Module) Store(ctx *astral.Context, repo objects.Repository, object as
 	return w.Commit()
 }
 
+// Deprecated: Use Probe instead.
 func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error) {
 	// check the cache
 	row, err := mod.db.Find(objectID)
@@ -204,6 +244,16 @@ func (mod *Module) RemoveGroup(groupName string, repoName string) error {
 
 func (mod *Module) AddSearchPreprocessor(pre objects.SearchPreprocessor) error {
 	return mod.searchPre.Add(pre)
+}
+
+// getRepoName returns the name of a repository
+func (mod *Module) getRepoName(repo objects.Repository) string {
+	for name, r := range mod.repos.Clone() {
+		if r == repo {
+			return name
+		}
+	}
+	return ""
 }
 
 func (mod *Module) Scope() *shell.Scope {

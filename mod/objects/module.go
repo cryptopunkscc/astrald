@@ -61,6 +61,11 @@ type Module interface {
 	Receive(astral.Object, *astral.Identity) error
 
 	Push(ctx *astral.Context, target *astral.Identity, obj astral.Object) error
+
+	// Probe probes the object (checks type and latency)
+	Probe(ctx *astral.Context, repo Repository, objectID *astral.ObjectID) (probe *Probe, err error)
+
+	// Deprecated: Use Probe instead.
 	GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error)
 }
 
