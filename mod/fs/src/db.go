@@ -104,7 +104,7 @@ func (db *DB) EachPath(prefix string, fn func(string) error) error {
 			if err := fn(row.Path); err != nil {
 				return err
 			}
-			lastID = row.Id
+			lastID = row.ID
 		}
 	}
 }
@@ -171,7 +171,7 @@ func (db *DB) EachInvalidPath(fn func(string) error) error {
 			if err := fn(row.Path); err != nil {
 				return err
 			}
-			lastID = row.Id
+			lastID = row.ID
 		}
 	}
 }
