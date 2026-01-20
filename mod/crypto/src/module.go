@@ -180,7 +180,7 @@ func (mod *Module) indexRepo(ctx *astral.Context, repo objects.Repository) error
 				// ignore missing blueprints
 			default:
 				// log other errors
-				mod.log.Logv(2, "indexRepo: error loading object %v: %v", objectID, err)
+				mod.log.Logv(2, "indexRepo: error loading object %v from %v: %v", objectID, repo, err)
 			}
 
 		case *crypto.PrivateKey:

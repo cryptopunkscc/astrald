@@ -12,7 +12,7 @@ type Blob []byte
 var _ Object = (*Blob)(nil)
 
 func (Blob) ObjectType() string {
-	return "blob"
+	return ""
 }
 
 // binary
