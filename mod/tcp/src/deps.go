@@ -6,6 +6,7 @@ import (
 	ipmod "github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
 type Deps struct {
@@ -13,6 +14,7 @@ type Deps struct {
 	Nodes   nodes.Module
 	Objects objects.Module
 	IP      ipmod.Module
+	Tree    tree.Module
 }
 
 func (mod *Module) LoadDependencies() (err error) {

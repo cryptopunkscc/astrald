@@ -15,6 +15,9 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 		return nil, exonet.ErrUnsupportedNetwork
 	}
 
+	if !mod.DialEnabled() {
+		return nil, exonet.ErrDisabledNetwork
+	}
 	var dialer = _net.Dialer{Timeout: mod.config.DialTimeout}
 
 	tcpConn, err := dialer.DialContext(ctx, "tcp", endpoint.Address())
