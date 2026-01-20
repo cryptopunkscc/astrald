@@ -197,7 +197,6 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 }
 
 // scan walks the filesystem from root and adds all new files to the index database
-// Uses breadth-first traversal to avoid keeping many directory handles open
 func (indexer *Indexer) scan(ctx context.Context, root string) error {
 	const batchSize = 500
 	var batch []string
@@ -206,45 +205,20 @@ func (indexer *Indexer) scan(ctx context.Context, root string) error {
 		if len(batch) == 0 {
 			return nil
 		}
-
 		err := indexer.mod.db.InsertPaths(batch)
 		batch = batch[:0]
 		return err
 	}
 
-	queue := []string{root}
-
-	for len(queue) > 0 {
-		if ctx.Err() != nil {
-			return ctx.Err()
+	err := walkDir(ctx, root, func(path string) error {
+		batch = append(batch, path)
+		if len(batch) >= batchSize {
+			return flush()
 		}
-
-		dir := queue[0]
-		queue = queue[1:]
-
-		if err := indexer.statLimiter.Wait(ctx); err != nil {
-			return err
-		}
-
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			continue
-		}
-
-		for _, entry := range entries {
-			path := filepath.Join(dir, entry.Name())
-
-			if entry.IsDir() {
-				queue = append(queue, path)
-			} else if entry.Type().IsRegular() {
-				batch = append(batch, path)
-				if len(batch) >= batchSize {
-					if err := flush(); err != nil {
-						return err
-					}
-				}
-			}
-		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return flush()

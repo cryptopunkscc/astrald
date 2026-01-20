@@ -1,6 +1,8 @@
 package fs
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -121,4 +123,39 @@ func (t *pathTrie) covers(path string) (bool, error) {
 		}
 	}
 	return node.isEnd, nil
+}
+
+// walkDir walks the directory tree from root using breadth-first traversal,
+// calling fn for each regular file. Errors reading directories are skipped.
+// This avoids keeping many directory handles open, unlike filepath.WalkDir.
+func walkDir(ctx context.Context, root string, fn func(path string) error) error {
+	queue := []string{root}
+
+	for len(queue) > 0 {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		dir := queue[0]
+		queue = queue[1:]
+
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+
+		for _, entry := range entries {
+			path := filepath.Join(dir, entry.Name())
+
+			if entry.IsDir() {
+				queue = append(queue, path)
+			} else if entry.Type().IsRegular() {
+				if err := fn(path); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
