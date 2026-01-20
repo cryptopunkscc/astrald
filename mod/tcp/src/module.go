@@ -31,6 +31,7 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 
+	// fixme: hacky
 	mod.listen, err = mod.initTreeValue(ctx, "listen", mod.config.Listen)
 	if err != nil {
 		return err
@@ -41,15 +42,18 @@ func (mod *Module) Run(ctx *astral.Context) (err error) {
 		return err
 	}
 
+	// fixme: hacky
 	mod.listen.OnChange(func(enabled *astral.Bool) {
-		if *enabled {
-			mod.startServer()
-		} else {
-			mod.stopServer()
+		if enabled != nil {
+			if *enabled {
+				mod.startServer()
+			} else {
+				mod.stopServer()
+			}
 		}
 	})
 
-	if mod.listen != nil && *mod.listen.Get() == true {
+	if mod.ListenEnabled() {
 		mod.startServer()
 	}
 
@@ -95,6 +99,7 @@ func (mod *Module) DialEnabled() bool {
 	return false
 }
 
+// fixme: hacky
 func (mod *Module) initTreeValue(ctx *astral.Context, name string, initial bool) (*tree.Value[*astral.Bool], error) {
 	value := astral.Bool(initial)
 	treeValue := tree.NewValue(&value)
