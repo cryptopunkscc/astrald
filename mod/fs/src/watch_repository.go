@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/paths"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -108,7 +109,7 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 		if follow {
 			subscribe := sig.Subscribe(ctx, repo.mod.indexer.subscribe())
 			for event := range subscribe {
-				if pathUnderRoot(event.Path, repo.root) {
+				if paths.PathUnderRoot(event.Path, repo.root) {
 					select {
 					case ch <- event.ObjectID:
 					case <-ctx.Done():

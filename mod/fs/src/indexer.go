@@ -9,6 +9,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/paths"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -60,7 +61,7 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 
 			var found bool
 			for _, root := range indexer.roots.Clone() {
-				if pathUnderRoot(path, root) {
+				if paths.PathUnderRoot(path, root) {
 					found = true
 					break
 				}
@@ -149,7 +150,7 @@ func (indexer *Indexer) checkAndFix(path string) error {
 
 func (indexer *Indexer) init(ctx *astral.Context) error {
 	// discover new files
-	for _, root := range widestRoots(indexer.roots.Clone()) {
+	for _, root := range paths.WidestRoots(indexer.roots.Clone()) {
 		if err := indexer.scan(root); err != nil {
 			return err
 		}
@@ -197,7 +198,7 @@ func (indexer *Indexer) removeRoot(root string) error {
 
 	// no deletion needed (still covered by other roots)
 	for _, other := range roots {
-		if other != root && pathUnderRoot(root, other) {
+		if other != root && paths.PathUnderRoot(root, other) {
 			return indexer.roots.Remove(root)
 		}
 	}
@@ -205,21 +206,27 @@ func (indexer *Indexer) removeRoot(root string) error {
 	// Find narrower roots under the root being removed
 	var narrower []string
 	for _, other := range roots {
-		if other != root && pathUnderRoot(other, root) {
+		if other != root && paths.PathUnderRoot(other, root) {
 			narrower = append(narrower, other)
 		}
 	}
 
 	// Build trie from narrower roots for O(L) coverage check
-	trie, err := newPathTrie(narrower)
+	trie, err := paths.NewPathTrie(narrower)
 	if err != nil {
+		if errors.Is(err, paths.ErrNotAbsolute) {
+			return fs.ErrNotAbsolute
+		}
 		return fmt.Errorf("build trie: %w", err)
 	}
 
 	// Delete paths not covered by narrower roots
 	err = indexer.mod.db.EachPath(root, func(path string) error {
-		covered, err := trie.covers(path)
+		covered, err := trie.Covers(path)
 		if err != nil {
+			if errors.Is(err, paths.ErrNotAbsolute) {
+				return fs.ErrNotAbsolute
+			}
 			return err
 		}
 		if !covered {

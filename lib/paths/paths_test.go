@@ -1,10 +1,9 @@
-package fs
+package paths
 
 import (
 	"errors"
 	"testing"
 
-	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -73,9 +72,9 @@ func TestPathUnderRoot(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := pathUnderRoot(tt.path, tt.root)
+			result := PathUnderRoot(tt.path, tt.root)
 			if result != tt.expected {
-				t.Errorf("pathUnderRoot(%q, %q) = %v, expected %v", tt.path, tt.root, result, tt.expected)
+				t.Errorf("PathUnderRoot(%q, %q) = %v, expected %v", tt.path, tt.root, result, tt.expected)
 			}
 		})
 	}
@@ -121,7 +120,7 @@ func TestWidestRoots(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := widestRoots(tt.roots)
+			result := WidestRoots(tt.roots)
 
 			if len(result) != len(tt.expected) {
 				t.Errorf("got %d roots, expected %d: got %v, expected %v", len(result), len(tt.expected), result, tt.expected)
@@ -294,16 +293,16 @@ func TestPathTrie_Covers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			trie, err := newPathTrie(tt.roots)
+			trie, err := NewPathTrie(tt.roots)
 			if err != nil {
-				t.Fatalf("newPathTrie failed: %v", err)
+				t.Fatalf("NewPathTrie failed: %v", err)
 			}
-			result, err := trie.covers(tt.path)
+			result, err := trie.Covers(tt.path)
 			if err != nil {
-				t.Fatalf("covers failed: %v", err)
+				t.Fatalf("Covers failed: %v", err)
 			}
 			if result != tt.expected {
-				t.Errorf("trie.covers(%q) = %v, expected %v (roots: %v)",
+				t.Errorf("trie.Covers(%q) = %v, expected %v (roots: %v)",
 					tt.path, result, tt.expected, tt.roots)
 			}
 		})
@@ -351,17 +350,17 @@ func TestPathTrie_Insert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			trie, err := newPathTrie(tt.roots)
+			trie, err := NewPathTrie(tt.roots)
 			if err != nil {
-				t.Fatalf("newPathTrie failed: %v", err)
+				t.Fatalf("NewPathTrie failed: %v", err)
 			}
 			for path, expected := range tt.checkPaths {
-				result, err := trie.covers(path)
+				result, err := trie.Covers(path)
 				if err != nil {
-					t.Fatalf("covers failed: %v", err)
+					t.Fatalf("Covers failed: %v", err)
 				}
 				if result != expected {
-					t.Errorf("trie.covers(%q) = %v, expected %v", path, result, expected)
+					t.Errorf("trie.Covers(%q) = %v, expected %v", path, result, expected)
 				}
 			}
 		})
@@ -369,32 +368,32 @@ func TestPathTrie_Insert(t *testing.T) {
 }
 
 func TestPathTrie_ReturnsErrorOnRelativePath(t *testing.T) {
-	t.Run("newPathTrie returns error on relative path", func(t *testing.T) {
-		_, err := newPathTrie([]string{"relative/path"})
-		if !errors.Is(err, fs.ErrNotAbsolute) {
-			t.Errorf("expected fs.ErrNotAbsolute, got %v", err)
+	t.Run("NewPathTrie returns error on relative path", func(t *testing.T) {
+		_, err := NewPathTrie([]string{"relative/path"})
+		if !errors.Is(err, ErrNotAbsolute) {
+			t.Errorf("expected ErrNotAbsolute, got %v", err)
 		}
 	})
 
-	t.Run("covers returns error on relative path", func(t *testing.T) {
-		trie, _ := newPathTrie([]string{"/home/user"})
-		_, err := trie.covers("relative/path")
-		if !errors.Is(err, fs.ErrNotAbsolute) {
-			t.Errorf("expected fs.ErrNotAbsolute, got %v", err)
+	t.Run("Covers returns error on relative path", func(t *testing.T) {
+		trie, _ := NewPathTrie([]string{"/home/user"})
+		_, err := trie.Covers("relative/path")
+		if !errors.Is(err, ErrNotAbsolute) {
+			t.Errorf("expected ErrNotAbsolute, got %v", err)
 		}
 	})
 
 	t.Run("dot path is relative", func(t *testing.T) {
-		_, err := newPathTrie([]string{"./relative"})
-		if !errors.Is(err, fs.ErrNotAbsolute) {
-			t.Errorf("expected fs.ErrNotAbsolute, got %v", err)
+		_, err := NewPathTrie([]string{"./relative"})
+		if !errors.Is(err, ErrNotAbsolute) {
+			t.Errorf("expected ErrNotAbsolute, got %v", err)
 		}
 	})
 
 	t.Run("dot-dot path is relative", func(t *testing.T) {
-		_, err := newPathTrie([]string{"../relative"})
-		if !errors.Is(err, fs.ErrNotAbsolute) {
-			t.Errorf("expected fs.ErrNotAbsolute, got %v", err)
+		_, err := NewPathTrie([]string{"../relative"})
+		if !errors.Is(err, ErrNotAbsolute) {
+			t.Errorf("expected ErrNotAbsolute, got %v", err)
 		}
 	})
 }
