@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/sig"
+	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 )
 
@@ -18,6 +20,13 @@ type IndexEvent struct {
 	Path     string
 	ObjectID *astral.ObjectID
 }
+
+const (
+	statRate  = 200
+	statBurst = 800
+	hashRate  = 30
+	hashBurst = 150
+)
 
 type Indexer struct {
 	mod *Module
@@ -28,6 +37,9 @@ type Indexer struct {
 
 	roots sig.Set[string]
 
+	statLimiter *rate.Limiter
+	hashLimiter *rate.Limiter
+
 	mu              sync.Mutex
 	events          *sig.Queue[IndexEvent]
 	subscriberCount int
@@ -35,10 +47,12 @@ type Indexer struct {
 
 func NewIndexer(mod *Module) *Indexer {
 	indexer := &Indexer{
-		mod:       mod,
-		log:       mod.log,
-		workqueue: make(chan string, 1024),
-		events:    &sig.Queue[IndexEvent]{},
+		mod:         mod,
+		log:         mod.log,
+		workqueue:   make(chan string, 1024),
+		events:      &sig.Queue[IndexEvent]{},
+		statLimiter: rate.NewLimiter(rate.Limit(statRate), statBurst),
+		hashLimiter: rate.NewLimiter(rate.Limit(hashRate), hashBurst),
 	}
 
 	return indexer
@@ -76,7 +90,7 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 				continue
 			}
 
-			if err := indexer.checkAndFix(path); err != nil {
+			if err := indexer.checkAndFix(ctx, path); err != nil {
 				indexer.log.Error("indexer: checkAndFix %v: %v", path, err)
 			}
 		}
@@ -100,7 +114,7 @@ func (indexer *Indexer) enqueue(path string) {
 }
 
 func (indexer *Indexer) invalidate(path string) (err error) {
-	err = indexer.mod.db.InvalidatePath(path)
+	err = indexer.mod.db.Invalidate(path)
 	if err != nil {
 		return fmt.Errorf("db invalidate: %w", err)
 	}
@@ -109,9 +123,13 @@ func (indexer *Indexer) invalidate(path string) (err error) {
 	return
 }
 
-func (indexer *Indexer) checkAndFix(path string) error {
+func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 	if len(path) == 0 || path[0] != '/' {
 		return fs.ErrInvalidPath
+	}
+
+	if err := indexer.statLimiter.Wait(ctx); err != nil {
+		return err
 	}
 
 	stat, err := os.Stat(path)
@@ -123,6 +141,15 @@ func (indexer *Indexer) checkAndFix(path string) error {
 			return fmt.Errorf("db error: %w", err)
 		}
 		return nil
+	}
+
+	indexEntry, err := indexer.mod.db.FindByPath(path)
+	if err == nil && indexEntry.ModTime == stat.ModTime() {
+		return indexer.mod.db.ValidatePath(path)
+	}
+
+	if err := indexer.hashLimiter.Wait(ctx); err != nil {
+		return err
 	}
 
 	objectID, err := resolveFileID(path)
@@ -150,25 +177,23 @@ func (indexer *Indexer) checkAndFix(path string) error {
 func (indexer *Indexer) init(ctx *astral.Context) error {
 	// discover new files
 	for _, root := range widestRoots(indexer.roots.Clone()) {
-		if err := indexer.scan(root); err != nil {
+		if err := indexer.scan(ctx, root); err != nil {
 			return err
 		}
 	}
 
-	return indexer.mod.db.InTx(func(tx *DB) error {
-		err := tx.InvalidateAllPaths()
-		if err != nil {
-			return fmt.Errorf("invalidate all paths: %w", err)
-		}
+	if err := indexer.mod.db.InvalidateAllPaths(); err != nil {
+		return fmt.Errorf("invalidate all paths: %w", err)
+	}
 
-		return tx.EachPath("", func(s string) error {
-			indexer.enqueue(s)
-			return nil
-		})
+	return indexer.mod.db.EachInvalidPath(func(s string) error {
+		indexer.enqueue(s)
+		return nil
 	})
 }
 
-func (indexer *Indexer) scan(root string) error {
+// scan walks the filesystem from root and adds all new files to the index database
+func (indexer *Indexer) scan(ctx context.Context, root string) error {
 	return filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -178,12 +203,11 @@ func (indexer *Indexer) scan(root string) error {
 			return nil
 		}
 
-		err = indexer.invalidate(path)
-		if err != nil {
+		if err := indexer.statLimiter.Wait(ctx); err != nil {
 			return err
 		}
 
-		return nil
+		return indexer.mod.db.InsertPath(path)
 	})
 }
 

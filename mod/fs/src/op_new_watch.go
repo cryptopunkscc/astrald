@@ -23,7 +23,7 @@ func (mod *Module) OpNewWatch(ctx *astral.Context, q shell.Query, args opNewWatc
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	err = mod.indexer.scan(args.Path)
+	err = mod.indexer.scan(ctx, args.Path)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
