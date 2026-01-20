@@ -17,7 +17,7 @@ func (db *DB) ObjectExists(pathPrefix string, objectID *astral.ObjectID) (b bool
 		Model(&dbLocalFile{}).
 		Where("data_id = ?", objectID).
 		Where("path like ?", pathPrefix+"%").
-		Where("(updated_at != 0 OR mod_time != 0)").
+		Where("updated_at != 0").
 		Select("count(*)>0").
 		First(&b).Error
 	return
@@ -28,7 +28,7 @@ func (db *DB) FindObject(pathPrefix string, objectID *astral.ObjectID) (rows []*
 		Model(&dbLocalFile{}).
 		Where("data_id = ?", objectID).
 		Where("path like ?", pathPrefix+"%").
-		Where("(updated_at != 0 OR mod_time != 0)").
+		Where("updated_at != 0").
 		Find(&rows).
 		Error
 
@@ -40,7 +40,7 @@ func (db *DB) UniqueObjectIDs(pathPrefix string) (ids []*astral.ObjectID, err er
 		Model(&dbLocalFile{}).
 		Distinct("data_id").
 		Where("path like ?", pathPrefix+"%").
-		Where("(updated_at != 0 OR mod_time != 0)").
+		Where("updated_at != 0").
 		Find(&ids).
 		Error
 
@@ -50,7 +50,7 @@ func (db *DB) UniqueObjectIDs(pathPrefix string) (ids []*astral.ObjectID, err er
 func (db *DB) FindByPath(path string) (row *dbLocalFile, err error) {
 	err = db.
 		Where("path = ?", path).
-		Where("(updated_at != 0 OR mod_time != 0)").
+		Where("updated_at != 0").
 		First(&row).
 		Error
 
@@ -68,7 +68,7 @@ func (db *DB) FindByObjectID(objectID *astral.ObjectID) (rows []*dbLocalFile, er
 	err = db.
 		Model(&dbLocalFile{}).
 		Where("data_id = ?", objectID).
-		Where("(updated_at != 0 OR mod_time != 0)").
+		Where("updated_at != 0").
 		Find(&rows).
 		Error
 
@@ -116,11 +116,7 @@ func (db *DB) InsertPaths(paths []string) error {
 
 	records := make([]dbLocalFile, len(paths))
 	for i, path := range paths {
-		records[i] = dbLocalFile{
-			Path:      path,
-			ModTime:   time.Time{},
-			UpdatedAt: time.Time{},
-		}
+		records[i] = dbLocalFile{Path: path}
 	}
 
 	return db.
@@ -187,7 +183,7 @@ func (db *DB) EachInvalidPath(fn func(string) error) error {
 
 		err := db.
 			Select("id, path").
-			Where("(updated_at = 0 OR mod_time = 0)").
+			Where("updated_at = 0").
 			Where("id > ?", lastID).
 			Order("id ASC").
 			Limit(batchSize).
