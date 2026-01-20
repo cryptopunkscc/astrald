@@ -22,6 +22,10 @@ func NewError(s string) Error {
 	}
 }
 
+func Err(err error) Error {
+	return NewError(err.Error())
+}
+
 // astral
 
 func (msg ErrorMessage) ObjectType() string {
