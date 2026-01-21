@@ -48,7 +48,7 @@ type Indexer struct {
 	events          *sig.Queue[IndexEvent]
 	subscriberCount int
 
-	// rate limitters to prevent too many I/O operations
+	// rate limiters to prevent too many I/O operations
 	statLimiter    *rate.Limiter
 	hashLimiter    *rate.Limiter
 	enqueueLimiter *rate.Limiter
