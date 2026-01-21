@@ -24,9 +24,9 @@ const (
 	hashRate  = 30
 	hashBurst = 150
 
-	workqueueSize    = 50000
-	initEnqueueRate  = 800
-	initEnqueueBurst = 3000
+	workqueueSize = 50000
+	enqueueRate   = 800
+	enqueueBurst  = 3000
 )
 
 type IndexEvent struct {
@@ -62,7 +62,7 @@ func NewIndexer(mod *Module) *Indexer {
 
 		statLimiter:    rate.NewLimiter(rate.Limit(statRate), statBurst),
 		hashLimiter:    rate.NewLimiter(rate.Limit(hashRate), hashBurst),
-		enqueueLimiter: rate.NewLimiter(rate.Limit(initEnqueueRate), initEnqueueBurst),
+		enqueueLimiter: rate.NewLimiter(rate.Limit(enqueueRate), enqueueBurst),
 	}
 
 	return indexer
