@@ -14,14 +14,14 @@ type binding struct {
 	path     string
 	node     tree.Node
 	cancel   func()
-	onChange func(astral.Object)
+	onChange func(astral.Object) // immutable after construction
 
 	mu        sync.RWMutex
 	value     astral.Object
 	closeOnce sync.Once
 }
 
-func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Object, onChange *func(astral.Object)) (tree.Binding, error) {
+func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Object, onChange func(astral.Object)) (tree.Binding, error) {
 	node, err := tree.Query(ctx, mod.Root(), path, true)
 	if err != nil {
 		return nil, err
@@ -35,26 +35,27 @@ func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Ob
 	}
 
 	b := &binding{
-		mod:    mod,
-		path:   path,
-		node:   node,
-		cancel: cancel,
-	}
-
-	if onChange != nil {
-		b.SetOnChange(*onChange)
+		mod:      mod,
+		path:     path,
+		node:     node,
+		cancel:   cancel,
+		onChange: onChange,
 	}
 
 	// Get initial value
 	if initial := <-ch; initial != nil {
+		b.mu.Lock()
 		b.value = initial
+		b.mu.Unlock()
 	} else if defaultValue != nil {
 		// Set default if no value exists
-		if err := node.Set(ctx, defaultValue); err != nil {
+		if err := node.Set(subCtx, defaultValue); err != nil {
 			cancel()
 			return nil, err
 		}
+		b.mu.Lock()
 		b.value = defaultValue
+		b.mu.Unlock()
 	}
 
 	mod.registerBinding(path, b)
@@ -63,22 +64,15 @@ func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Ob
 		for obj := range ch {
 			b.mu.Lock()
 			b.value = obj
-			onChange := b.onChange
 			b.mu.Unlock()
 
-			if onChange != nil {
-				onChange(obj)
+			if b.onChange != nil {
+				b.onChange(obj)
 			}
 		}
 	}()
 
 	return b, nil
-}
-
-func (b *binding) SetOnChange(fn func(astral.Object)) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	b.onChange = fn
 }
 
 func (b *binding) Value() astral.Object {
