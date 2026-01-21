@@ -185,7 +185,7 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 	return nil
 }
 
-// init scans widest roots inserts all paths as invalid into the database, invalidates whole db state and enqueues all paths for indexing
+// init scans widest roots, inserts all paths as invalid into the database, invalidates whole db state and enqueues all paths for indexing
 func (indexer *Indexer) init(ctx *astral.Context) error {
 	now := time.Now()
 
