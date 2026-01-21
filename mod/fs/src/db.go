@@ -75,6 +75,16 @@ func (db *DB) DeleteByPath(path string) (err error) {
 		Error
 }
 
+func (db *DB) DeletePaths(paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+	return db.
+		Where("path IN ?", paths).
+		Delete(&dbLocalFile{}).
+		Error
+}
+
 // EachPath calls fn for each path, using primary key pagination.
 // If prefix is non-empty, only paths strictly under the prefix are matched (prefix+"/%"),
 // not the prefix itself. This is correct for directory roots since only regular files

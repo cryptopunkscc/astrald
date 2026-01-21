@@ -1,7 +1,5 @@
 package fs
 
-// note: seems like needed abstraction
-
 // batchProcess processes items from a yield-style iterator in batches.
 func batchProcess[T any](
 	iter func(yield func(T) error) error,

@@ -76,11 +76,48 @@ func (indexer *Indexer) startWorkers(ctx *astral.Context, count int) {
 }
 
 func (indexer *Indexer) worker(ctx *astral.Context) {
+	const (
+		deleteBatchSize  = 1000
+		deleteFlushDelay = 500 * time.Millisecond
+	)
+
+	var deleteBatch []string
+	var flushTimer *time.Timer
+
+	flushDeletes := func() {
+		if len(deleteBatch) == 0 {
+			return
+		}
+		if err := indexer.mod.db.DeletePaths(deleteBatch); err != nil {
+			indexer.log.Error("indexer: batch delete: %v", err)
+		}
+		deleteBatch = deleteBatch[:0]
+		if flushTimer != nil {
+			flushTimer.Stop()
+			flushTimer = nil
+		}
+	}
+
+	scheduleFlush := func() {
+		if flushTimer == nil {
+			flushTimer = time.AfterFunc(deleteFlushDelay, func() {
+				indexer.workqueue <- "" // trigger flush via empty path
+			})
+		}
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
+			flushDeletes()
 			return
 		case path := <-indexer.workqueue:
+			// empty path is a flush trigger
+			if path == "" {
+				flushDeletes()
+				continue
+			}
+
 			indexer.pending.Remove(path)
 
 			var found bool
@@ -92,12 +129,12 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 			}
 
 			if !found {
-				err := indexer.mod.db.DeleteByPath(path)
-				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-					indexer.log.Error("indexer: delete path %v: %v", path, err)
+				deleteBatch = append(deleteBatch, path)
+				if len(deleteBatch) >= deleteBatchSize {
+					flushDeletes()
+				} else {
+					scheduleFlush()
 				}
-
-				// We are no longer interested in this path, no point checking it
 				continue
 			}
 
@@ -106,7 +143,6 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 			}
 		}
 	}
-
 }
 
 func (indexer *Indexer) remove(path string) (err error) {
