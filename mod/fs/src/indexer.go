@@ -127,6 +127,11 @@ func (indexer *Indexer) checkAndFix(path string) error {
 		return nil
 	}
 
+	indexEntry, err := indexer.mod.db.FindByPath(path)
+	if err == nil && indexEntry.ModTime == stat.ModTime() {
+		return indexer.mod.db.ValidatePath(path)
+	}
+
 	objectID, err := resolveFileID(path)
 	if err != nil {
 		return fmt.Errorf("resolve ObjectID: %w", err)
