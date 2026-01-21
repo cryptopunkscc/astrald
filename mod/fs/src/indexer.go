@@ -195,24 +195,35 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 		return fmt.Errorf("invalidate all paths: %w", err)
 	}
 
-	// Collect all invalid paths first to avoid blocking during DB iteration
-	var pathsToEnqueue []string // fixme: this will be huge slice
+	// Batch enqueue aligned with DB's internal batching (1000 rows per batch)
+	// This ensures enqueue blocking happens BETWEEN DB transactions, not during them
+	const enqueueBatchSize = 1000
+	var batch []string
+	var totalPaths int
 
-	// note: what if we fetch in batches enqueue until workqueu full, close transaction and reopen after workqueue clears?
 	err := indexer.mod.db.EachInvalidPath(func(s string) error {
-		// note: enqueue here would cause deadlock
-		pathsToEnqueue = append(pathsToEnqueue, s)
+		batch = append(batch, s)
+		if len(batch) >= enqueueBatchSize {
+			// Enqueue this batch - DB has already closed its transaction for this batch
+			for _, path := range batch {
+				indexer.enqueue(path)
+			}
+			totalPaths += len(batch)
+			batch = batch[:0]
+		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	indexer.mod.log.Info(`fs indexer: invalidated %v paths`, len(pathsToEnqueue))
-	// Enqueue all paths after DB iteration completes
-	for _, path := range pathsToEnqueue {
+	// Enqueue remaining paths
+	for _, path := range batch {
 		indexer.enqueue(path)
 	}
+	totalPaths += len(batch)
+
+	indexer.mod.log.Info(`fs indexer: enqueued %v paths`, totalPaths)
 
 	return nil
 }
