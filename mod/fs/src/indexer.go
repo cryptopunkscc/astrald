@@ -195,10 +195,26 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 		return fmt.Errorf("invalidate all paths: %w", err)
 	}
 
-	return indexer.mod.db.EachInvalidPath(func(s string) error {
-		indexer.enqueue(s)
+	// Collect all invalid paths first to avoid blocking during DB iteration
+	var pathsToEnqueue []string // fixme: this will be huge slice
+
+	// note: what if we fetch in batches enqueue until workqueu full, close transaction and reopen after workqueue clears?
+	err := indexer.mod.db.EachInvalidPath(func(s string) error {
+		// note: enqueue here would cause deadlock
+		pathsToEnqueue = append(pathsToEnqueue, s)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	indexer.mod.log.Info(`fs indexer: invalidated %v paths`, len(pathsToEnqueue))
+	// Enqueue all paths after DB iteration completes
+	for _, path := range pathsToEnqueue {
+		indexer.enqueue(path)
+	}
+
+	return nil
 }
 
 // scan walks the filesystem from root and tries to insert all paths as invalid into the database (to be indexed later)
@@ -206,6 +222,7 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) error {
 	const batchSize = 1000
 	var batch []string
+	var pathsToEnqueue []string
 
 	flush := func() error {
 		if len(batch) == 0 {
@@ -218,13 +235,11 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 		}
 
 		if enqueue {
-			for _, s := range batch {
-				indexer.enqueue(s)
-			}
+			pathsToEnqueue = append(pathsToEnqueue, batch...)
 		}
 
 		batch = batch[:0]
-		return err
+		return nil
 	}
 
 	err := paths.WalkDir(ctx, root, func(path string) (err error) {
@@ -243,7 +258,16 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 		return err
 	}
 
-	return flush()
+	if err := flush(); err != nil {
+		return err
+	}
+
+	// Enqueue all paths after filesystem walk and DB operations complete
+	for _, path := range pathsToEnqueue {
+		indexer.enqueue(path)
+	}
+
+	return nil
 }
 
 func (indexer *Indexer) addRoot(root string) error {
