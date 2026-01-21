@@ -1,17 +1,21 @@
 package tcp
 
 import (
+	_net "net"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-
-	_net "net"
 )
 
 func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.Conn, error) {
 	switch endpoint.Network() {
 	case "tcp", "inet":
 	default:
+		return nil, exonet.ErrUnsupportedNetwork
+	}
+
+	if v, _ := mod.dial.Value(); v == nil || !*v {
 		return nil, exonet.ErrUnsupportedNetwork
 	}
 
