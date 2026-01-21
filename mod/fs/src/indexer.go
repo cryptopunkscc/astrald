@@ -23,6 +23,10 @@ const (
 	statBurst = 800
 	hashRate  = 30
 	hashBurst = 150
+
+	workqueueSize    = 50000
+	initEnqueueRate  = 800
+	initEnqueueBurst = 3000
 )
 
 type IndexEvent struct {
@@ -44,19 +48,21 @@ type Indexer struct {
 	subscriberCount int
 
 	// rate limitters to prevent too many I/O operations
-	statLimiter *rate.Limiter
-	hashLimiter *rate.Limiter
+	statLimiter        *rate.Limiter
+	hashLimiter        *rate.Limiter
+	initEnqueueLimiter *rate.Limiter
 }
 
 func NewIndexer(mod *Module) *Indexer {
 	indexer := &Indexer{
 		mod:       mod,
 		log:       mod.log,
-		workqueue: make(chan string, 1024),
+		workqueue: make(chan string, workqueueSize),
 		events:    &sig.Queue[IndexEvent]{},
 
-		statLimiter: rate.NewLimiter(rate.Limit(statRate), statBurst),
-		hashLimiter: rate.NewLimiter(rate.Limit(hashRate), hashBurst),
+		statLimiter:        rate.NewLimiter(rate.Limit(statRate), statBurst),
+		hashLimiter:        rate.NewLimiter(rate.Limit(hashRate), hashBurst),
+		initEnqueueLimiter: rate.NewLimiter(rate.Limit(initEnqueueRate), initEnqueueBurst),
 	}
 
 	return indexer
@@ -195,20 +201,22 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 		return fmt.Errorf("invalidate all paths: %w", err)
 	}
 
-	// Batch enqueue aligned with DB's internal batching (1000 rows per batch)
-	// This ensures enqueue blocking happens BETWEEN DB transactions, not during them
 	const enqueueBatchSize = 1000
 	var batch []string
-	var totalPaths int
+	var totalEnqueued int
 
 	err := indexer.mod.db.EachInvalidPath(func(s string) error {
 		batch = append(batch, s)
 		if len(batch) >= enqueueBatchSize {
-			// Enqueue this batch - DB has already closed its transaction for this batch
+			if err := indexer.initEnqueueLimiter.WaitN(ctx, len(batch)); err != nil {
+				return err
+			}
+
 			for _, path := range batch {
 				indexer.enqueue(path)
 			}
-			totalPaths += len(batch)
+			totalEnqueued += len(batch)
+
 			batch = batch[:0]
 		}
 		return nil
@@ -217,14 +225,18 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 		return err
 	}
 
-	// Enqueue remaining paths
-	for _, path := range batch {
-		indexer.enqueue(path)
+	// Flush remaining paths
+	if len(batch) > 0 {
+		if err := indexer.initEnqueueLimiter.WaitN(ctx, len(batch)); err != nil {
+			return err
+		}
+		for _, path := range batch {
+			indexer.enqueue(path)
+		}
+		totalEnqueued += len(batch)
 	}
-	totalPaths += len(batch)
 
-	indexer.mod.log.Info(`fs indexer: enqueued %v paths`, totalPaths)
-
+	indexer.mod.log.Info(`fs indexer: completed enqueuing %d paths`, totalEnqueued)
 	return nil
 }
 
