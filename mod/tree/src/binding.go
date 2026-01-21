@@ -14,7 +14,7 @@ type binding struct {
 	path     string
 	node     tree.Node
 	cancel   func()
-	onChange func(astral.Object) // immutable after construction
+	onChange func(astral.Object)
 
 	mu        sync.RWMutex
 	value     astral.Object
@@ -25,6 +25,13 @@ func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Ob
 	node, err := tree.Query(ctx, mod.Root(), path, true)
 	if err != nil {
 		return nil, err
+	}
+
+	// Set default synchronously if needed (no lock needed yet)
+	if defaultValue != nil {
+		if err := node.Set(ctx, defaultValue); err != nil {
+			return nil, err
+		}
 	}
 
 	subCtx, cancel := ctx.WithCancel()
@@ -42,24 +49,6 @@ func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Ob
 		onChange: onChange,
 	}
 
-	// Get initial value
-	if initial := <-ch; initial != nil {
-		b.mu.Lock()
-		b.value = initial
-		b.mu.Unlock()
-	} else if defaultValue != nil {
-		// Set default if no value exists
-		if err := node.Set(subCtx, defaultValue); err != nil {
-			cancel()
-			return nil, err
-		}
-		b.mu.Lock()
-		b.value = defaultValue
-		b.mu.Unlock()
-	}
-
-	mod.registerBinding(path, b)
-
 	go func() {
 		for obj := range ch {
 			b.mu.Lock()
@@ -71,6 +60,8 @@ func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Ob
 			}
 		}
 	}()
+
+	mod.registerBinding(path, b)
 
 	return b, nil
 }
