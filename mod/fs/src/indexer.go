@@ -62,7 +62,7 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 
 			var found bool
 			for _, root := range indexer.roots.Clone() {
-				if paths.PathUnderRoot(path, root) {
+				if paths.PathUnder(path, root, filepath.Separator) {
 					found = true
 					break
 				}
@@ -203,7 +203,7 @@ func (indexer *Indexer) removeRoot(root string) error {
 
 	// no deletion needed (still covered by other roots)
 	for _, other := range roots {
-		if other != root && paths.PathUnderRoot(root, other) {
+		if other != root && paths.PathUnder(root, other, filepath.Separator) {
 			return indexer.roots.Remove(root)
 		}
 	}
@@ -211,13 +211,13 @@ func (indexer *Indexer) removeRoot(root string) error {
 	// Find narrower roots under the root being removed
 	var narrower []string
 	for _, other := range roots {
-		if other != root && paths.PathUnderRoot(other, root) {
+		if other != root && paths.PathUnder(other, root, filepath.Separator) {
 			narrower = append(narrower, other)
 		}
 	}
 
 	// Build trie from narrower roots for O(L) coverage check
-	trie, err := paths.NewPathTrie(narrower)
+	trie, err := paths.NewPathTrie(narrower, filepath.Separator)
 	if err != nil {
 		if errors.Is(err, paths.ErrNotAbsolute) {
 			return fs.ErrNotAbsolute

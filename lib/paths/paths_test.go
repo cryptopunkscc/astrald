@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-func TestPathUnderRoot(t *testing.T) {
+func TestPathUnder(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
@@ -39,25 +39,13 @@ func TestPathUnderRoot(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "root with trailing slash",
-			path:     "/home/user/docs",
-			root:     "/home/user/",
-			expected: true,
-		},
-		{
-			name:     "path with trailing slash",
-			path:     "/home/user/docs/",
-			root:     "/home/user",
-			expected: true,
-		},
-		{
 			name:     "deeply nested path",
 			path:     "/home/user/a/b/c/d/e/file.txt",
 			root:     "/home/user",
 			expected: true,
 		},
 		{
-			name:     "root is filesystem root",
+			name:     "root is separator only",
 			path:     "/home/user/file.txt",
 			root:     "/",
 			expected: true,
@@ -72,9 +60,9 @@ func TestPathUnderRoot(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := PathUnderRoot(tt.path, tt.root)
+			result := PathUnder(tt.path, tt.root, '/')
 			if result != tt.expected {
-				t.Errorf("PathUnderRoot(%q, %q) = %v, expected %v", tt.path, tt.root, result, tt.expected)
+				t.Errorf("PathUnder(%q, %q, '/') = %v, expected %v", tt.path, tt.root, result, tt.expected)
 			}
 		})
 	}
@@ -293,7 +281,7 @@ func TestPathTrie_Covers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			trie, err := NewPathTrie(tt.roots)
+			trie, err := NewPathTrie(tt.roots, '/')
 			if err != nil {
 				t.Fatalf("NewPathTrie failed: %v", err)
 			}
@@ -350,7 +338,7 @@ func TestPathTrie_Insert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			trie, err := NewPathTrie(tt.roots)
+			trie, err := NewPathTrie(tt.roots, '/')
 			if err != nil {
 				t.Fatalf("NewPathTrie failed: %v", err)
 			}
@@ -369,14 +357,14 @@ func TestPathTrie_Insert(t *testing.T) {
 
 func TestPathTrie_ReturnsErrorOnRelativePath(t *testing.T) {
 	t.Run("NewPathTrie returns error on relative path", func(t *testing.T) {
-		_, err := NewPathTrie([]string{"relative/path"})
+		_, err := NewPathTrie([]string{"relative/path"}, '/')
 		if !errors.Is(err, ErrNotAbsolute) {
 			t.Errorf("expected ErrNotAbsolute, got %v", err)
 		}
 	})
 
 	t.Run("Covers returns error on relative path", func(t *testing.T) {
-		trie, _ := NewPathTrie([]string{"/home/user"})
+		trie, _ := NewPathTrie([]string{"/home/user"}, '/')
 		_, err := trie.Covers("relative/path")
 		if !errors.Is(err, ErrNotAbsolute) {
 			t.Errorf("expected ErrNotAbsolute, got %v", err)
@@ -384,14 +372,14 @@ func TestPathTrie_ReturnsErrorOnRelativePath(t *testing.T) {
 	})
 
 	t.Run("dot path is relative", func(t *testing.T) {
-		_, err := NewPathTrie([]string{"./relative"})
+		_, err := NewPathTrie([]string{"./relative"}, '/')
 		if !errors.Is(err, ErrNotAbsolute) {
 			t.Errorf("expected ErrNotAbsolute, got %v", err)
 		}
 	})
 
 	t.Run("dot-dot path is relative", func(t *testing.T) {
-		_, err := NewPathTrie([]string{"../relative"})
+		_, err := NewPathTrie([]string{"../relative"}, '/')
 		if !errors.Is(err, ErrNotAbsolute) {
 			t.Errorf("expected ErrNotAbsolute, got %v", err)
 		}

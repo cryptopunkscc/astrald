@@ -39,4 +39,8 @@ type Module interface {
 
 	// Unmount unmounts a node mounted at the given path.
 	Unmount(path string) error
+
+	// Bind creates a binding to a path that tracks value changes.
+	// If defaultValue is non-nil and no value exists, it sets the default.
+	Bind(ctx *astral.Context, path string, defaultValue astral.Object) (Binding, error)
 }

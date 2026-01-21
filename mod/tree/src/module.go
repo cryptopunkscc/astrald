@@ -8,6 +8,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/paths"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/tree"
@@ -34,6 +35,10 @@ type Module struct {
 	// node value cache
 	nodeValue   map[int]*sig.Queue[astral.Object]
 	nodeValueMu sync.Mutex
+
+	// active bindings by path
+	bindings   map[string]map[*binding]struct{}
+	bindingsMu sync.Mutex
 }
 
 var _ tree.Module = &Module{}
@@ -72,7 +77,12 @@ func (mod *Module) Delete(ctx *astral.Context, path string) error {
 		return err
 	}
 
-	return node.Delete(ctx)
+	if err := node.Delete(ctx); err != nil {
+		return err
+	}
+
+	mod.invalidateBindings(path)
+	return nil
 }
 
 func (mod *Module) Mount(path string, node tree.Node) error {
@@ -104,6 +114,7 @@ func (mod *Module) Unmount(path string) error {
 		return errors.New("mount point does not exist")
 	}
 
+	mod.invalidateBindings(path)
 	return nil
 }
 
@@ -176,4 +187,53 @@ func (mod *Module) subscribeNodeValue(ctx context.Context, nodeID int) <-chan as
 	}()
 
 	return out
+}
+
+// registerBinding adds a binding to the tracking map.
+func (mod *Module) registerBinding(path string, b *binding) {
+	mod.bindingsMu.Lock()
+	defer mod.bindingsMu.Unlock()
+
+	if mod.bindings == nil {
+		mod.bindings = make(map[string]map[*binding]struct{})
+	}
+	if mod.bindings[path] == nil {
+		mod.bindings[path] = make(map[*binding]struct{})
+	}
+	mod.bindings[path][b] = struct{}{}
+}
+
+// unregisterBinding removes a binding from the tracking map.
+func (mod *Module) unregisterBinding(path string, b *binding) {
+	mod.bindingsMu.Lock()
+	defer mod.bindingsMu.Unlock()
+
+	if mod.bindings == nil {
+		return
+	}
+	if mod.bindings[path] == nil {
+		return
+	}
+	delete(mod.bindings[path], b)
+	if len(mod.bindings[path]) == 0 {
+		delete(mod.bindings, path)
+	}
+}
+
+// invalidateBindings closes all bindings at or under the given path.
+func (mod *Module) invalidateBindings(path string) {
+	mod.bindingsMu.Lock()
+	var toClose []*binding
+	for p, bindings := range mod.bindings {
+		if paths.PathUnder(p, path, '/') {
+			for b := range bindings {
+				toClose = append(toClose, b)
+			}
+		}
+	}
+	mod.bindingsMu.Unlock()
+
+	for _, b := range toClose {
+		b.Close()
+	}
 }
