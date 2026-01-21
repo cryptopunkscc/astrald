@@ -178,6 +178,7 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 	return nil
 }
 
+// init scans widest roots inserts all paths as invalid into the database, invalidates whole db state and enqueues all paths for indexing
 func (indexer *Indexer) init(ctx *astral.Context) error {
 	now := time.Now()
 
@@ -200,7 +201,8 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 	})
 }
 
-// scan walks the filesystem from root and adds all new files to the index database
+// scan walks the filesystem from root and tries to insert all paths as invalid into the database (to be indexed later)
+// enqueue determines whether the paths should be enqueued for indexing right away
 func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) error {
 	const batchSize = 1000
 	var batch []string
