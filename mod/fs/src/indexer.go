@@ -198,28 +198,46 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 	})
 }
 
+// scan walks the filesystem from root and adds all new files to the index database
 func (indexer *Indexer) scan(ctx context.Context, root string) error {
-	return filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+	const batchSize = 1000
+	var batch []string
 
-		if !entry.Type().IsRegular() {
+	flush := func() error {
+		if len(batch) == 0 {
 			return nil
 		}
 
+		err := indexer.mod.db.InsertNewPaths(batch)
+		if err != nil {
+			return fmt.Errorf("db insert: %w", err)
+		}
+
+		for _, s := range batch {
+			indexer.enqueue(s)
+		}
+
+		batch = batch[:0]
+		return err
+	}
+
+	err := paths.WalkDir(ctx, root, func(path string) (err error) {
 		err = indexer.statLimiter.Wait(ctx)
 		if err != nil {
 			return err
 		}
 
-		err = indexer.invalidate(path)
-		if err != nil {
-			return err
+		batch = append(batch, path)
+		if len(batch) >= batchSize {
+			return flush()
 		}
-
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	return flush()
 }
 
 func (indexer *Indexer) addRoot(root string) error {
