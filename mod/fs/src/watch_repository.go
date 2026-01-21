@@ -109,7 +109,7 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 		if follow {
 			subscribe := sig.Subscribe(ctx, repo.mod.indexer.subscribe())
 			for event := range subscribe {
-				if paths.PathUnderRoot(event.Path, repo.root) {
+				if paths.PathUnder(event.Path, repo.root, filepath.Separator) {
 					select {
 					case ch <- event.ObjectID:
 					case <-ctx.Done():
