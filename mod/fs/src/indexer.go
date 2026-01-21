@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -101,7 +102,7 @@ func (indexer *Indexer) enqueue(path string) {
 }
 
 func (indexer *Indexer) invalidate(path string) (err error) {
-	err = indexer.mod.db.InvalidatePath(path)
+	err = indexer.mod.db.Invalidate(path)
 	if err != nil {
 		return fmt.Errorf("db invalidate: %w", err)
 	}
@@ -149,23 +150,22 @@ func (indexer *Indexer) checkAndFix(path string) error {
 }
 
 func (indexer *Indexer) init(ctx *astral.Context) error {
+	now := time.Now()
+
 	// discover new files
 	for _, root := range paths.WidestRoots(indexer.roots.Clone()) {
 		if err := indexer.scan(root); err != nil {
 			return err
 		}
 	}
+	indexer.mod.log.Info(`fs indexer: scan completed in %v`, time.Since(now))
+	if err := indexer.mod.db.InvalidateAllPaths(); err != nil {
+		return fmt.Errorf("invalidate all paths: %w", err)
+	}
 
-	return indexer.mod.db.InTx(func(tx *DB) error {
-		err := tx.InvalidateAllPaths()
-		if err != nil {
-			return fmt.Errorf("invalidate all paths: %w", err)
-		}
-
-		return tx.EachPath("", func(s string) error {
-			indexer.enqueue(s)
-			return nil
-		})
+	return indexer.mod.db.EachInvalidPath(func(s string) error {
+		indexer.enqueue(s)
+		return nil
 	})
 }
 
