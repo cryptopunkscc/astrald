@@ -22,14 +22,15 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	config Config
-	node   astral.Node
-	log    *log.Logger
-	assets resources.Resources
-	ops    shell.Scope
-	db     *DB
-	ctx    *astral.Context
-	repos  tree.Node
+	config  Config
+	node    astral.Node
+	log     *log.Logger
+	assets  resources.Resources
+	ops     shell.Scope
+	db      *DB
+	ctx     *astral.Context
+	repos   tree.Node
+	indexes tree.Node
 
 	mod sig.Map[string, context.CancelFunc]
 }
@@ -82,6 +83,19 @@ func (mod *Module) DisableRepo(ctx *astral.Context, repoName string) error {
 	if ok {
 		del.Delete(ctx)
 	}
+
+	return nil
+}
+
+func (mod *Module) CreateIndex(ctx *astral.Context, indexName string) error {
+	indexNode, err := mod.indexes.Create(ctx, indexName)
+	if err != nil {
+		return err
+	}
+
+	var height = astral.Uint64(0)
+
+	indexNode.Set(ctx, &height)
 
 	return nil
 }
