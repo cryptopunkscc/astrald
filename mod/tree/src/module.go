@@ -37,8 +37,7 @@ type Module struct {
 	nodeValueMu sync.Mutex
 
 	// active bindings by path
-	bindings   map[string]map[*binding]struct{}
-	bindingsMu sync.Mutex
+	bindings sig.Map[string, *sig.Set[*binding]]
 }
 
 var _ tree.Module = &Module{}
@@ -191,47 +190,50 @@ func (mod *Module) subscribeNodeValue(ctx context.Context, nodeID int) <-chan as
 
 // registerBinding adds a binding to the tracking map.
 func (mod *Module) registerBinding(path string, b *binding) {
-	mod.bindingsMu.Lock()
-	defer mod.bindingsMu.Unlock()
-
-	if mod.bindings == nil {
-		mod.bindings = make(map[string]map[*binding]struct{})
+	set, ok := mod.bindings.Get(path)
+	if !ok {
+		set = &sig.Set[*binding]{}
+		existing, added := mod.bindings.Set(path, set)
+		if !added {
+			set = existing
+		}
 	}
-	if mod.bindings[path] == nil {
-		mod.bindings[path] = make(map[*binding]struct{})
-	}
-	mod.bindings[path][b] = struct{}{}
+	set.Add(b)
 }
 
 // unregisterBinding removes a binding from the tracking map.
 func (mod *Module) unregisterBinding(path string, b *binding) {
-	mod.bindingsMu.Lock()
-	defer mod.bindingsMu.Unlock()
-
-	if mod.bindings == nil {
+	set, ok := mod.bindings.Get(path)
+	if !ok {
 		return
 	}
-	if mod.bindings[path] == nil {
-		return
-	}
-	delete(mod.bindings[path], b)
-	if len(mod.bindings[path]) == 0 {
-		delete(mod.bindings, path)
+	set.Remove(b)
+	if set.Count() == 0 {
+		mod.bindings.Delete(path)
 	}
 }
 
 // invalidateBindings closes all bindings at or under the given path.
 func (mod *Module) invalidateBindings(path string) {
-	mod.bindingsMu.Lock()
 	var toClose []*binding
-	for p, bindings := range mod.bindings {
+
+	// Close bindings at exact path
+	set, ok := mod.bindings.Delete(path)
+	if ok {
+		for _, b := range set.Clone() {
+			toClose = append(toClose, b)
+		}
+	}
+
+	// Close bindings under the path
+	mod.bindings.Each(func(p string, bindings *sig.Set[*binding]) error {
 		if paths.PathUnder(p, path, '/') {
-			for b := range bindings {
+			for _, b := range bindings.Clone() {
 				toClose = append(toClose, b)
 			}
 		}
-	}
-	mod.bindingsMu.Unlock()
+		return nil
+	})
 
 	for _, b := range toClose {
 		b.Close()

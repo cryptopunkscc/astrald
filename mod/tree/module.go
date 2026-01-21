@@ -42,5 +42,6 @@ type Module interface {
 
 	// Bind creates a binding to a path that tracks value changes.
 	// If defaultValue is non-nil and no value exists, it sets the default.
-	Bind(ctx *astral.Context, path string, defaultValue astral.Object) (Binding, error)
+	// onChange can be nil if no callback is needed.
+	Bind(ctx *astral.Context, path string, defaultValue astral.Object, onChange func(astral.Object)) (Binding, error)
 }
