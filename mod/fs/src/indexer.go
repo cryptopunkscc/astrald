@@ -183,11 +183,13 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 
 	// discover new files
 	for _, root := range paths.WidestRoots(indexer.roots.Clone()) {
-		if err := indexer.scan(ctx, root); err != nil {
+		if err := indexer.scan(ctx, root, false); err != nil {
 			return err
 		}
 	}
+
 	indexer.mod.log.Info(`fs indexer: scan completed in %v`, time.Since(now))
+
 	if err := indexer.mod.db.InvalidateAllPaths(); err != nil {
 		return fmt.Errorf("invalidate all paths: %w", err)
 	}
@@ -199,7 +201,7 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 }
 
 // scan walks the filesystem from root and adds all new files to the index database
-func (indexer *Indexer) scan(ctx context.Context, root string) error {
+func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) error {
 	const batchSize = 1000
 	var batch []string
 
@@ -213,8 +215,10 @@ func (indexer *Indexer) scan(ctx context.Context, root string) error {
 			return fmt.Errorf("db insert: %w", err)
 		}
 
-		for _, s := range batch {
-			indexer.enqueue(s)
+		if enqueue {
+			for _, s := range batch {
+				indexer.enqueue(s)
+			}
 		}
 
 		batch = batch[:0]

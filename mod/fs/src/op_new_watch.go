@@ -20,22 +20,23 @@ func (mod *Module) OpNewWatch(ctx *astral.Context, q shell.Query, args opNewWatc
 
 	repo, err := NewWatchRepository(mod, args.Path, args.Label)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
-	err = mod.indexer.scan(ctx, args.Path)
+	// fixme: start as goroutine (cancellable)
+	err = mod.indexer.scan(ctx, args.Path, true)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
 	err = mod.Objects.AddRepository(args.Label, repo)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
 	err = mod.Objects.AddGroup(objects.RepoLocal, args.Label)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
 	return ch.Send(&astral.Ack{})

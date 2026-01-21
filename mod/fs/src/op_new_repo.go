@@ -24,12 +24,12 @@ func (mod *Module) OpNewRepo(ctx *astral.Context, q shell.Query, args opNewRepoA
 
 	err = mod.Objects.AddRepository(args.Label, repo)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
 	err = mod.Objects.AddGroup(objects.RepoLocal, args.Label)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
 	return ch.Send(&astral.Ack{})
