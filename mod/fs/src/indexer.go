@@ -48,9 +48,9 @@ type Indexer struct {
 	subscriberCount int
 
 	// rate limitters to prevent too many I/O operations
-	statLimiter        *rate.Limiter
-	hashLimiter        *rate.Limiter
-	initEnqueueLimiter *rate.Limiter
+	statLimiter    *rate.Limiter
+	hashLimiter    *rate.Limiter
+	enqueueLimiter *rate.Limiter
 }
 
 func NewIndexer(mod *Module) *Indexer {
@@ -60,9 +60,9 @@ func NewIndexer(mod *Module) *Indexer {
 		workqueue: make(chan string, workqueueSize),
 		events:    &sig.Queue[IndexEvent]{},
 
-		statLimiter:        rate.NewLimiter(rate.Limit(statRate), statBurst),
-		hashLimiter:        rate.NewLimiter(rate.Limit(hashRate), hashBurst),
-		initEnqueueLimiter: rate.NewLimiter(rate.Limit(initEnqueueRate), initEnqueueBurst),
+		statLimiter:    rate.NewLimiter(rate.Limit(statRate), statBurst),
+		hashLimiter:    rate.NewLimiter(rate.Limit(hashRate), hashBurst),
+		enqueueLimiter: rate.NewLimiter(rate.Limit(initEnqueueRate), initEnqueueBurst),
 	}
 
 	return indexer
@@ -204,7 +204,7 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 	err := batchProcess(
 		indexer.mod.db.EachInvalidPath,
 		func(batch []string) error {
-			if err := indexer.initEnqueueLimiter.WaitN(ctx, len(batch)); err != nil {
+			if err := indexer.enqueueLimiter.WaitN(ctx, len(batch)); err != nil {
 				return err
 			}
 			for _, path := range batch {
@@ -238,7 +238,7 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 				return fmt.Errorf("db insert: %w", err)
 			}
 			if enqueue {
-				if err := indexer.initEnqueueLimiter.WaitN(ctx, len(batch)); err != nil {
+				if err := indexer.enqueueLimiter.WaitN(ctx, len(batch)); err != nil {
 					return err
 				}
 
