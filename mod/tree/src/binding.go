@@ -10,17 +10,18 @@ import (
 var _ tree.Binding = &binding{}
 
 type binding struct {
-	mod    *Module
-	path   string
-	node   tree.Node
-	cancel func()
+	mod      *Module
+	path     string
+	node     tree.Node
+	cancel   func()
+	onChange func(astral.Object)
 
 	mu        sync.RWMutex
 	value     astral.Object
 	closeOnce sync.Once
 }
 
-func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Object) (tree.Binding, error) {
+func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Object, onChange *func(astral.Object)) (tree.Binding, error) {
 	node, err := tree.Query(ctx, mod.Root(), path, true)
 	if err != nil {
 		return nil, err
@@ -38,6 +39,10 @@ func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Ob
 		path:   path,
 		node:   node,
 		cancel: cancel,
+	}
+
+	if onChange != nil {
+		b.SetOnChange(*onChange)
 	}
 
 	// Get initial value
@@ -58,11 +63,22 @@ func (mod *Module) Bind(ctx *astral.Context, path string, defaultValue astral.Ob
 		for obj := range ch {
 			b.mu.Lock()
 			b.value = obj
+			onChange := b.onChange
 			b.mu.Unlock()
+
+			if onChange != nil {
+				onChange(obj)
+			}
 		}
 	}()
 
 	return b, nil
+}
+
+func (b *binding) SetOnChange(fn func(astral.Object)) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	b.onChange = fn
 }
 
 func (b *binding) Value() astral.Object {
