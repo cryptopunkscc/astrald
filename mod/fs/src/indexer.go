@@ -201,96 +201,51 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 		return fmt.Errorf("invalidate all paths: %w", err)
 	}
 
-	const enqueueBatchSize = 1000
-	var batch []string
-	var totalEnqueued int
-
-	err := indexer.mod.db.EachInvalidPath(func(s string) error {
-		batch = append(batch, s)
-		if len(batch) >= enqueueBatchSize {
+	err := batchProcess(
+		indexer.mod.db.EachInvalidPath,
+		func(batch []string) error {
 			if err := indexer.initEnqueueLimiter.WaitN(ctx, len(batch)); err != nil {
 				return err
 			}
-
 			for _, path := range batch {
 				indexer.enqueue(path)
 			}
-			totalEnqueued += len(batch)
-
-			batch = batch[:0]
-		}
-		return nil
-	})
+			return nil
+		},
+		1000,
+	)
 	if err != nil {
 		return err
 	}
 
-	// Flush remaining paths
-	if len(batch) > 0 {
-		if err := indexer.initEnqueueLimiter.WaitN(ctx, len(batch)); err != nil {
-			return err
-		}
-		for _, path := range batch {
-			indexer.enqueue(path)
-		}
-		totalEnqueued += len(batch)
-	}
-
-	indexer.mod.log.Info(`fs indexer: completed enqueuing %d paths`, totalEnqueued)
 	return nil
 }
 
-// scan walks the filesystem from root and tries to insert all paths as invalid into the database (to be indexed later)
-// enqueue determines whether the paths should be enqueued for indexing right away
+// scan walks the filesystem from root and inserts all paths into the database.
+// enqueue determines whether the paths should be enqueued for indexing right away.
 func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) error {
-	const batchSize = 1000
-	var batch []string
-	var pathsToEnqueue []string
-
-	flush := func() error {
-		if len(batch) == 0 {
+	return batchProcess(
+		func(yield func(string) error) error {
+			return paths.WalkDir(ctx, root, func(path string) error {
+				if err := indexer.statLimiter.Wait(ctx); err != nil {
+					return err
+				}
+				return yield(path)
+			})
+		},
+		func(batch []string) error {
+			if err := indexer.mod.db.InsertNewPaths(batch); err != nil {
+				return fmt.Errorf("db insert: %w", err)
+			}
+			if enqueue {
+				for _, path := range batch {
+					indexer.enqueue(path)
+				}
+			}
 			return nil
-		}
-
-		err := indexer.mod.db.InsertNewPaths(batch)
-		if err != nil {
-			return fmt.Errorf("db insert: %w", err)
-		}
-
-		if enqueue {
-			pathsToEnqueue = append(pathsToEnqueue, batch...)
-		}
-
-		batch = batch[:0]
-		return nil
-	}
-
-	err := paths.WalkDir(ctx, root, func(path string) (err error) {
-		err = indexer.statLimiter.Wait(ctx)
-		if err != nil {
-			return err
-		}
-
-		batch = append(batch, path)
-		if len(batch) >= batchSize {
-			return flush()
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	if err := flush(); err != nil {
-		return err
-	}
-
-	// Enqueue all paths after filesystem walk and DB operations complete
-	for _, path := range pathsToEnqueue {
-		indexer.enqueue(path)
-	}
-
-	return nil
+		},
+		1000,
+	)
 }
 
 func (indexer *Indexer) addRoot(root string) error {
