@@ -23,11 +23,14 @@ func (mod *Module) OpNewWatch(ctx *astral.Context, q shell.Query, args opNewWatc
 		return ch.Send(astral.Err(err))
 	}
 
-	// fixme: start as goroutine (cancellable)
-	err = mod.indexer.scan(ctx, args.Path, true)
-	if err != nil {
-		return ch.Send(astral.Err(err))
-	}
+	scanCtx, cancel := mod.ctx.WithCancel()
+	repo.scanCancel = cancel
+
+	go func() {
+		if err := mod.indexer.scan(scanCtx, args.Path, true); err != nil {
+			mod.log.Error("scan %v: %v", args.Path, err)
+		}
+	}()
 
 	err = mod.Objects.AddRepository(args.Label, repo)
 	if err != nil {

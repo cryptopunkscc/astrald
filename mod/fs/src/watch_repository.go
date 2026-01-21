@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -18,10 +19,11 @@ var _ objects.Repository = &WatchRepository{}
 var _ objects.AfterRemovedCallback = &WatchRepository{}
 
 type WatchRepository struct {
-	mod     *Module
-	label   string
-	root    string
-	watcher *Watcher
+	mod        *Module
+	label      string
+	root       string
+	watcher    *Watcher
+	scanCancel context.CancelFunc
 }
 
 func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepository, err error) {
@@ -176,6 +178,10 @@ func (repo *WatchRepository) String() string {
 }
 
 func (repo *WatchRepository) AfterRemoved(name string) {
+	if repo.scanCancel != nil {
+		repo.scanCancel()
+	}
+
 	if err := repo.watcher.Close(); err != nil {
 		repo.mod.log.Error("%v watcher close error: %v", name, err)
 	}
