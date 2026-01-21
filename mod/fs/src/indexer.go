@@ -238,6 +238,10 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 				return fmt.Errorf("db insert: %w", err)
 			}
 			if enqueue {
+				if err := indexer.initEnqueueLimiter.WaitN(ctx, len(batch)); err != nil {
+					return err
+				}
+
 				for _, path := range batch {
 					indexer.enqueue(path)
 				}
