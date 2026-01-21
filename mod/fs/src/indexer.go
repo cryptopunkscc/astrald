@@ -19,14 +19,15 @@ import (
 )
 
 const (
-	statRate  = 200
-	statBurst = 800
-	hashRate  = 30
-	hashBurst = 150
+	statRate = 500
+	hashRate = 100
+
+	statBurst = 2000
+	hashBurst = 300
 
 	workqueueSize = 50000
 	enqueueRate   = 800
-	enqueueBurst  = 3000
+	enqueueBurst  = 5000
 )
 
 type IndexEvent struct {
