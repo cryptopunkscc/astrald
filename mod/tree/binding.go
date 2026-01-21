@@ -13,6 +13,7 @@ type Binding interface {
 	// Value returns the current value.
 	Value() astral.Object
 
+	SetOnChange(fn func(astral.Object))
 	// Set updates the value.
 	Set(ctx *astral.Context, v astral.Object) error
 
