@@ -15,8 +15,15 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 		return nil, exonet.ErrUnsupportedNetwork
 	}
 
-	if v, _ := mod.dial.Value(); v == nil || !*v {
-		return nil, exonet.ErrUnsupportedNetwork
+	if mod.dial != nil {
+		v, err := mod.dial.Get()
+		if err != nil {
+			return nil, err
+		}
+
+		if v != nil && !*v {
+			return nil, exonet.ErrDisabledNetwork
+		}
 	}
 
 	var dialer = _net.Dialer{Timeout: mod.config.DialTimeout}

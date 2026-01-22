@@ -11,5 +11,16 @@ func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity
 		return sig.ArrayToChan([]exonet.Endpoint{}), nil
 	}
 
+	if mod.listen != nil {
+		v, err := mod.listen.Get()
+		if err != nil {
+			return nil, err
+		}
+
+		if v != nil && !*v {
+			return sig.ArrayToChan([]exonet.Endpoint{}), nil
+		}
+	}
+
 	return sig.ArrayToChan(mod.endpoints()), nil
 }

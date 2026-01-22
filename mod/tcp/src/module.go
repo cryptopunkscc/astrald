@@ -20,17 +20,17 @@ type Module struct {
 	ctx             *astral.Context
 	configEndpoints []exonet.Endpoint
 
-	listen *tree.TypedBinding[*astral.Bool]
-	dial   *tree.TypedBinding[*astral.Bool]
+	listen *tree.Binding[*astral.Bool]
+	dial   *tree.Binding[*astral.Bool]
 
 	serverMu     sync.Mutex
 	serverCancel func()
 }
 
-func (mod *Module) Run(ctx *astral.Context) error {
+func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 
-	if v, _ := mod.listen.Value(); v != nil && *v {
+	if v, _ := mod.listen.Get(); v != nil && *v {
 		mod.startServer()
 	}
 
