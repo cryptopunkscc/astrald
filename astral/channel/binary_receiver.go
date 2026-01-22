@@ -46,7 +46,7 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 			return astral.NewUnparsedObject(objectType.String(), buf), nil
 		}
 
-		return nil, astral.ErrBlueprintNotFound{Type: objectType.String()}
+		return nil, astral.NewErrBlueprintNotFound(objectType.String())
 	}
 
 	// decode the payload
@@ -55,7 +55,7 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 	case err == nil:
 		return
 
-	case errors.Is(err, astral.ErrBlueprintNotFound{}) && b.AllowUnparsed:
+	case errors.Is(err, &astral.ErrBlueprintNotFound{}) && b.AllowUnparsed:
 		// if we're missing a blueprint, return an unparsed object if allowed
 		return astral.NewUnparsedObject(objectType.String(), buf), nil
 

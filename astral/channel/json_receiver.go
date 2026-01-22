@@ -32,7 +32,7 @@ func (r JSONReceiver) Receive() (object astral.Object, err error) {
 
 	object = astral.New(jsonObj.Type)
 	if object == nil {
-		return nil, astral.ErrBlueprintNotFound{Type: jsonObj.Type}
+		return nil, astral.NewErrBlueprintNotFound(jsonObj.Type)
 	}
 
 	if jsonObj.Object != nil {

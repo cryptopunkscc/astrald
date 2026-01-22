@@ -46,7 +46,7 @@ func (r TextReceiver) Receive() (obj astral.Object, err error) {
 	} else {
 		obj = astral.New(parsed.Type)
 		if obj == nil {
-			return nil, astral.ErrBlueprintNotFound{Type: parsed.Type}
+			return nil, astral.NewErrBlueprintNotFound(parsed.Type)
 		}
 	}
 
@@ -76,7 +76,7 @@ func (r TextReceiver) Receive() (obj astral.Object, err error) {
 
 	case "none":
 		// no payload
-		
+
 	default:
 		return nil, errors.New("unknown encoding")
 	}

@@ -176,7 +176,7 @@ func (mod *Module) indexRepo(ctx *astral.Context, repo objects.Repository) error
 		switch object := object.(type) {
 		case nil:
 			switch {
-			case errors.Is(err, astral.ErrBlueprintNotFound{}):
+			case errors.Is(err, &astral.ErrBlueprintNotFound{}):
 				// ignore missing blueprints
 			default:
 				// log other errors

@@ -40,7 +40,7 @@ func (mod *Module) OpEcho(ctx *astral.Context, q shell.Query, args opEchoArgs) (
 		case err == nil:
 		case errors.Is(err, io.EOF):
 			return nil
-		case errors.Is(err, astral.ErrBlueprintNotFound{}):
+		case errors.Is(err, &astral.ErrBlueprintNotFound{}):
 			continue
 		default:
 			return err

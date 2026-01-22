@@ -48,7 +48,7 @@ func (db *DB) getNodeValue(nodeID int) (object astral.Object, err error) {
 
 	object = astral.New(row.Type)
 	if object == nil {
-		return nil, astral.ErrBlueprintNotFound{Type: row.Type}
+		return nil, astral.NewErrBlueprintNotFound(row.Type)
 	}
 
 	_, err = object.ReadFrom(bytes.NewReader(row.Payload))

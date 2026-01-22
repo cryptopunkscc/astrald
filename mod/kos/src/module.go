@@ -46,7 +46,7 @@ func (mod *Module) Get(ctx *astral.Context, key string) (astral.Object, error) {
 
 	object := astral.New(typ)
 	if object == nil {
-		return nil, astral.ErrBlueprintNotFound{Type: typ}
+		return nil, astral.NewErrBlueprintNotFound(typ)
 	}
 
 	_, err = object.ReadFrom(bytes.NewReader(payload))
