@@ -44,6 +44,56 @@ Add a TCP endpoint for a node:
 astral-query nodes.add_endpoint -id 02abc...def -endpoint tcp:192.168.1.10:8080
 ```
 
+## Input Formats
+
+The `-in` flag specifies the input format for data sent to queries.
+
+### JSON Input (`-in json`)
+
+Pass the full JSON representation of an astral type:
+
+```shell
+astral-query tree.set -path /mod/tcp/listen -in json
+{"Type":"bool","Object":true}
+```
+
+### Text Input (`-in text`)
+
+Text format uses the syntax:
+
+```
+#[type] value
+```
+
+Where `value` is parsed by the type's `UnmarshalText` implementation.
+
+Examples:
+
+```shell
+astral-query tree.set -path /mod/tcp/listen -in text
+#[bool] true
+```
+
+```shell
+astral-query tree.set -path /mod/tcp/listen -in text
+#[bool] false
+```
+
+### Binary Payload with Base64
+
+For arbitrary binary payloads, use colon followed by base64-encoded data:
+
+```
+#[type]:base64data
+```
+
+Example:
+
+```shell
+astral-query some.method -in text
+#[bytes]:SGVsbG8gV29ybGQ=
+```
+
 ## Environment Variables
 
 - `ASTRAL_DEFAULT_TARGET` - Default target identity if not specified
