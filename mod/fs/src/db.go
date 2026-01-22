@@ -18,6 +18,7 @@ func (db *DB) ObjectExists(pathPrefix string, objectID *astral.ObjectID) (b bool
 		Where("data_id = ?", objectID).
 		Where("path like ?", pathPrefix+"%").
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		Select("count(*)>0").
 		First(&b).Error
 	return
@@ -29,6 +30,7 @@ func (db *DB) FindObject(pathPrefix string, objectID *astral.ObjectID) (rows []*
 		Where("data_id = ?", objectID).
 		Where("path like ?", pathPrefix+"%").
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		Find(&rows).
 		Error
 
@@ -41,6 +43,7 @@ func (db *DB) UniqueObjectIDs(pathPrefix string) (ids []*astral.ObjectID, err er
 		Distinct("data_id").
 		Where("path like ?", pathPrefix+"%").
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		Find(&ids).
 		Error
 
@@ -51,6 +54,7 @@ func (db *DB) FindByPath(path string) (row *dbLocalFile, err error) {
 	err = db.
 		Where("path = ?", path).
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		First(&row).
 		Error
 
@@ -62,34 +66,36 @@ func (db *DB) FindByObjectID(objectID *astral.ObjectID) (rows []*dbLocalFile, er
 		Model(&dbLocalFile{}).
 		Where("data_id = ?", objectID).
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		Find(&rows).
 		Error
 
 	return
 }
 
-func (db *DB) DeleteByPath(path string) (err error) {
+func (db *DB) HardDeletePath(path string) (err error) {
 	return db.
 		Where("path = ?", path).
 		Delete(&dbLocalFile{}).
 		Error
 }
 
-func (db *DB) DeletePaths(paths []string) error {
+// SoftDeletePaths marks paths as deleted
+func (db *DB) SoftDeletePaths(paths []string) error {
 	if len(paths) == 0 {
 		return nil
 	}
-	return db.
+
+	return db.Model(&dbLocalFile{}).
 		Where("path IN ?", paths).
-		Delete(&dbLocalFile{}).
-		Error
+		Update("deleted_at", 0).Error
 }
 
 // EachPath calls fn for each path, using primary key pagination.
 // If prefix is non-empty, only paths strictly under the prefix are matched (prefix+"/%"),
 // not the prefix itself. This is correct for directory roots since only regular files
 // are indexed, not directories.
-// note: also calls for paths that are invalid (updated_at = 0)
+// note: also calls for paths that are invalid (updated_at = 0) or soft deleted
 func (db *DB) EachPath(prefix string, fn func(string) error) error {
 	const batchSize = 1000
 	var lastID int64
@@ -97,7 +103,12 @@ func (db *DB) EachPath(prefix string, fn func(string) error) error {
 	for {
 		var rows []dbLocalFile
 
-		query := db.Select("id, path").Where("id > ?", lastID).Order("id ASC").Limit(batchSize)
+		query := db.
+			Select("id, path").
+			Where("id > ?", lastID).
+			Where("deleted_at IS NULL").
+			Order("id ASC").
+			Limit(batchSize)
 		if prefix != "" {
 			query = query.Where("path LIKE ?", prefix+"/%")
 		}
@@ -119,8 +130,9 @@ func (db *DB) EachPath(prefix string, fn func(string) error) error {
 	}
 }
 
-// InsertNewPaths batch inserts invalidated path records
-func (db *DB) InsertNewPaths(paths []string) error {
+// UpsertInvalidatePaths upserts paths with updated_at=0 (needs check).
+// If path already exists, resets deleted_at to NULL and updated_at to 0.
+func (db *DB) UpsertInvalidatePaths(paths []string) error {
 	if len(paths) == 0 {
 		return nil
 	}
@@ -131,13 +143,19 @@ func (db *DB) InsertNewPaths(paths []string) error {
 	}
 
 	return db.
-		Clauses(clause.Insert{Modifier: "OR IGNORE"}).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "path"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"deleted_at": nil,
+				"updated_at": 0,
+			}),
+		}).
 		Create(&records).
 		Error
 }
 
-// UpsertPath updates or inserts a path record (updates data_id/mod_time/updated_at)
-func (db *DB) UpsertPath(
+// UpsertCleanPath updates or inserts a path record marked as clean (it removes deleted_at, updates updated_at)
+func (db *DB) UpsertCleanPath(
 	path string,
 	objectID *astral.ObjectID,
 	modTime time.Time,
@@ -148,6 +166,7 @@ func (db *DB) UpsertPath(
 		DataID:    objectID,
 		ModTime:   modTime,
 		UpdatedAt: now,
+		DeletedAt: nil,
 	}
 
 	return db.
@@ -156,17 +175,21 @@ func (db *DB) UpsertPath(
 				"data_id",
 				"mod_time",
 				"updated_at",
+				"deleted_at",
 			}),
 		}).
 		Create(updated).
 		Error
 }
 
-// ValidatePath marks a path as valid (updates updated_at only)
+// ValidatePath marks a path as valid (updates updated_at, clears deleted_at)
 func (db *DB) ValidatePath(path string) error {
 	return db.Model(&dbLocalFile{}).
 		Where("path = ?", path).
-		Update("updated_at", time.Now()).Error
+		Updates(map[string]interface{}{
+			"deleted_at": nil,
+			"updated_at": time.Now(),
+		}).Error
 }
 
 // InvalidateAllPaths marks all all paths for re-check
@@ -184,8 +207,8 @@ func (db *DB) Invalidate(path string) (err error) {
 		Update("updated_at", 0).Error
 }
 
-// EachInvalidPath calls fn for each invalid path
-func (db *DB) EachInvalidPath(fn func(string) error) error {
+// EachInvalidatedPath calls fn for each invalidated path (does not include soft deleted paths)
+func (db *DB) EachInvalidatedPath(fn func(string) error) error {
 	const batchSize = 1000
 	var lastID int64
 
@@ -195,6 +218,7 @@ func (db *DB) EachInvalidPath(fn func(string) error) error {
 		err := db.
 			Select("id, path").
 			Where("updated_at = 0").
+			Where("deleted_at IS NULL").
 			Where("id > ?", lastID).
 			Order("id ASC").
 			Limit(batchSize).

@@ -76,48 +76,22 @@ func (indexer *Indexer) startWorkers(ctx *astral.Context, count int) {
 }
 
 func (indexer *Indexer) worker(ctx *astral.Context) {
-	const (
-		deleteBatchSize  = 1000
-		deleteFlushDelay = 500 * time.Millisecond
-	)
+	const flushDelay = 500 * time.Millisecond
 
-	var deleteBatch []string
-	var flushTimer *time.Timer
-
-	flushDeletes := func() {
-		if len(deleteBatch) == 0 {
-			return
-		}
-		if err := indexer.mod.db.DeletePaths(deleteBatch); err != nil {
-			indexer.log.Error("indexer: batch delete: %v", err)
-		}
-		deleteBatch = deleteBatch[:0]
-		if flushTimer != nil {
-			flushTimer.Stop()
-			flushTimer = nil
-		}
-	}
-
-	scheduleFlush := func() {
-		if flushTimer == nil {
-			flushTimer = time.AfterFunc(deleteFlushDelay, func() {
-				indexer.workqueue <- "" // trigger flush via empty path
-			})
-		}
-	}
+	softDeletes := NewBatchCollector(1000, indexer.mod.db.SoftDeletePaths)
+	timer := time.NewTimer(flushDelay)
+	timer.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			flushDeletes()
+			softDeletes.Flush()
 			return
-		case path := <-indexer.workqueue:
-			// empty path is a flush trigger
-			if path == "" {
-				flushDeletes()
-				continue
+		case <-timer.C:
+			if err := softDeletes.Flush(); err != nil {
+				indexer.log.Error("indexer: batch delete: %v", err)
 			}
-
+		case path := <-indexer.workqueue:
 			indexer.pending.Remove(path)
 
 			var found bool
@@ -129,12 +103,10 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 			}
 
 			if !found {
-				deleteBatch = append(deleteBatch, path)
-				if len(deleteBatch) >= deleteBatchSize {
-					flushDeletes()
-				} else {
-					scheduleFlush()
+				if err := softDeletes.Add(path); err != nil {
+					indexer.log.Error("indexer: batch delete: %v", err)
 				}
+				timer.Reset(flushDelay)
 				continue
 			}
 
@@ -145,8 +117,8 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 	}
 }
 
-func (indexer *Indexer) remove(path string) (err error) {
-	err = indexer.mod.db.DeleteByPath(path)
+func (indexer *Indexer) hardDeletePath(path string) (err error) {
+	err = indexer.mod.db.HardDeletePath(path)
 	if err != nil {
 		return fmt.Errorf("db delete: %w", err)
 	}
@@ -181,7 +153,8 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		err = indexer.mod.db.DeleteByPath(path)
+		// File was not found at filesystem -> delete from database
+		err = indexer.mod.db.HardDeletePath(path)
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 		case err != nil:
@@ -192,6 +165,7 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 
 	indexEntry, err := indexer.mod.db.FindByPath(path)
 	if err == nil && indexEntry.ModTime == stat.ModTime() {
+		// between index and filesystem nothing changed -> mark index as good
 		return indexer.mod.db.ValidatePath(path)
 	}
 
@@ -204,7 +178,8 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 		return fmt.Errorf("resolve ObjectID: %w", err)
 	}
 
-	err = indexer.mod.db.UpsertPath(path, objectID, stat.ModTime())
+	// we calculated new objectID -> update database index
+	err = indexer.mod.db.UpsertCleanPath(path, objectID, stat.ModTime())
 	if err != nil {
 		return fmt.Errorf("db upsert: %w", err)
 	}
@@ -233,60 +208,50 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 	}
 
 	indexer.mod.log.Info(`fs indexer: scan completed in %v`, time.Since(now))
-
 	if err := indexer.mod.db.InvalidateAllPaths(); err != nil {
 		return fmt.Errorf("invalidate all paths: %w", err)
 	}
 
-	err := batchProcess(
-		indexer.mod.db.EachInvalidPath,
-		func(batch []string) error {
-			if err := indexer.enqueueLimiter.WaitN(ctx, len(batch)); err != nil {
-				return err
-			}
-			for _, path := range batch {
-				indexer.enqueue(path)
-			}
-			return nil
-		},
-		1000,
-	)
-	if err != nil {
-		return err
-	}
+	enqueuer := NewBatchCollector(1000, func(batch []string) error {
+		if err := indexer.enqueueLimiter.WaitN(ctx, len(batch)); err != nil {
+			return err
+		}
+		for _, path := range batch {
+			indexer.enqueue(path)
+		}
+		return nil
+	})
 
-	return nil
+	return enqueuer.Iter(indexer.mod.db.EachInvalidatedPath)
 }
 
 // scan walks the filesystem from root and inserts all paths into the database.
 // enqueue determines whether the paths should be enqueued for indexing right away.
 func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) error {
-	return batchProcess(
-		func(yield func(string) error) error {
-			return paths.WalkDir(ctx, root, func(path string) error {
-				if err := indexer.statLimiter.Wait(ctx); err != nil {
-					return err
-				}
-				return yield(path)
-			})
-		},
-		func(batch []string) error {
-			if err := indexer.mod.db.InsertNewPaths(batch); err != nil {
-				return fmt.Errorf("db insert: %w", err)
+	collector := NewBatchCollector(1000, func(batch []string) error {
+		if err := indexer.mod.db.UpsertInvalidatePaths(batch); err != nil {
+			return fmt.Errorf("db insert: %w", err)
+		}
+		if enqueue {
+			if err := indexer.enqueueLimiter.WaitN(ctx, len(batch)); err != nil {
+				return err
 			}
-			if enqueue {
-				if err := indexer.enqueueLimiter.WaitN(ctx, len(batch)); err != nil {
-					return err
-				}
 
-				for _, path := range batch {
-					indexer.enqueue(path)
-				}
+			for _, path := range batch {
+				indexer.enqueue(path)
 			}
-			return nil
-		},
-		1000,
-	)
+		}
+		return nil
+	})
+
+	return collector.Iter(func(yield func(string) error) error {
+		return paths.WalkDir(ctx, root, func(path string) error {
+			if err := indexer.statLimiter.Wait(ctx); err != nil {
+				return err
+			}
+			return yield(path)
+		})
+	})
 }
 
 func (indexer *Indexer) addRoot(root string) error {
@@ -322,21 +287,24 @@ func (indexer *Indexer) removeRoot(root string) error {
 	}
 
 	// Delete paths not covered by narrower roots
-	err = indexer.mod.db.EachPath(root, func(path string) error {
-		covered, err := trie.Covers(path)
-		if err != nil {
-			if errors.Is(err, paths.ErrNotAbsolute) {
-				return fs.ErrNotAbsolute
+	deletes := NewBatchCollector(1000, indexer.mod.db.SoftDeletePaths)
+	err = deletes.Iter(func(yield func(string) error) error {
+		return indexer.mod.db.EachPath(root, func(path string) error {
+			covered, err := trie.Covers(path)
+			if err != nil {
+				if errors.Is(err, paths.ErrNotAbsolute) {
+					return fs.ErrNotAbsolute
+				}
+				return err
 			}
-			return err
-		}
-		if !covered {
-			return indexer.mod.db.DeleteByPath(path)
-		}
-		return nil
+			if !covered {
+				return yield(path)
+			}
+			return nil
+		})
 	})
 	if err != nil {
-		return fmt.Errorf("delete paths: %w", err)
+		return fmt.Errorf("soft delete paths: %w", err)
 	}
 
 	return indexer.roots.Remove(root)
