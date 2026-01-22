@@ -34,7 +34,7 @@ func (mod *Module) LoadDependencies() (err error) {
 	mod.listen, err = tree.Bind[*astral.Bool](
 		mod.Tree,
 		path.Join(modulePath, "listen"),
-		tree.WithOnChange(mod.SwitchServer),
+		tree.WithOnChange(mod.switchServer),
 		tree.WithDefaultValue(&listen),
 	)
 	if err != nil {
