@@ -33,21 +33,23 @@ func (mod *Module) LoadDependencies() (err error) {
 	modulePath := fmt.Sprintf(`/mod/%s`, tcp.ModuleName)
 
 	var listen = astral.Bool(mod.config.Listen)
-	mod.listen, err = tree.Bind[*astral.Bool](
-		mod.Tree,
+	mod.listen, err = tree.BindPath[*astral.Bool](
+		ctx,
+		mod.Tree.Root(),
 		path.Join(modulePath, "listen"),
-		tree.WithOnChange(mod.switchServer),
-		tree.WithDefaultValue(&listen),
+		tree.OnChange(mod.switchServer),
+		tree.DefaultValue(&listen),
 	)
 	if err != nil {
 		return err
 	}
 
 	var dial = astral.Bool(mod.config.Dial)
-	mod.dial, err = tree.Bind[*astral.Bool](
-		mod.Tree,
+	mod.dial, err = tree.BindPath[*astral.Bool](
+		ctx,
+		mod.Tree.Root(),
 		path.Join(modulePath, "dial"),
-		tree.WithDefaultValue(&dial),
+		tree.DefaultValue(&dial),
 	)
 
 	mod.Exonet.SetDialer("tcp", mod)

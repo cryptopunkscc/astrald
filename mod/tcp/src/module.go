@@ -58,6 +58,10 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 }
 
 func (mod *Module) startServer() {
+	if mod.ctx == nil {
+		return
+	}
+
 	mod.serverMu.Lock()
 	defer mod.serverMu.Unlock()
 
