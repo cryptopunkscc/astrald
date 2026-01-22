@@ -12,7 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/tree"
-	treeAPI "github.com/cryptopunkscc/astrald/mod/tree/cli"
+	treecli "github.com/cryptopunkscc/astrald/mod/tree/cli"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -117,7 +117,7 @@ func (mod *Module) Unmount(path string) error {
 }
 
 func (mod *Module) MountRemote(ctx *astral.Context, path string, targetID *astral.Identity, remotePath string) (err error) {
-	var remoteNode = treeAPI.New(targetID, nil).Root()
+	var remoteNode = treecli.New(targetID, nil).Root()
 
 	if len(remotePath) > 0 {
 		remoteNode, err = tree.Query(ctx, remoteNode, remotePath, false)
