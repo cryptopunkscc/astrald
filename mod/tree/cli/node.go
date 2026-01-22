@@ -1,4 +1,4 @@
-package astrald
+package tree
 
 import (
 	"errors"
@@ -6,43 +6,16 @@ import (
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
-type TreeClient struct {
-	c        *Client
-	targetID *astral.Identity
-}
-
 type Node struct {
-	client *TreeClient
+	client *Client
 	path   []string
 }
 
 var _ tree.Node = &Node{}
-
-var defaultTreeClient *TreeClient
-
-func NewTreeClient(c *Client, targetID *astral.Identity) *TreeClient {
-	return &TreeClient{c: c, targetID: targetID}
-}
-
-func Tree() *TreeClient {
-	if defaultTreeClient == nil {
-		defaultTreeClient = NewTreeClient(DefaultClient(), nil)
-	}
-	return defaultTreeClient
-}
-
-func (client *TreeClient) Root() tree.Node {
-	return &Node{client: client, path: []string{}}
-}
-
-func (client *TreeClient) queryCh(ctx *astral.Context, method string, args any, cfg ...channel.ConfigFunc) (*channel.Channel, error) {
-	return client.c.WithTarget(client.targetID).QueryChannel(ctx, method, args, cfg...)
-}
 
 func (node *Node) Name() string {
 	if len(node.path) == 0 {

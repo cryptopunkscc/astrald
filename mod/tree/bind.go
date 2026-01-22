@@ -12,7 +12,6 @@ var ErrTypeMismatch = errors.New("binding type mismatch")
 // Binding wraps an astral.Object type with type-safe access.
 type Binding[T astral.Object] struct {
 	node     Node
-	cancel   func()
 	onChange func(T)
 	value    sig.Value[astral.Object]
 }
@@ -22,6 +21,7 @@ func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindCon
 	var err error
 	var config = makeBindConfig(configFunc...)
 
+	// query the node if an additional path was configured
 	if config.Path != "" {
 		node, err = Query(ctx, node, config.Path, true)
 		if err != nil {
@@ -29,21 +29,25 @@ func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindCon
 		}
 	}
 
-	subCtx, cancel := ctx.WithCancel()
+	// fork our internal context
+	ctx, cancel := ctx.WithCancel()
 
-	ch, err := Follow[T](subCtx, node)
+	// try to follow the node and set the default value if necessary
+	ch, err := Follow[T](ctx, node)
 	switch {
 	case err == nil:
 	case errors.Is(err, &ErrNodeHasNoValue{}):
 		// set the default value
 		err = node.Set(ctx, config.DefaultValue)
 		if err != nil {
+			cancel()
 			return nil, err
 		}
 
 		// try to follow one more time
-		ch, err = Follow[T](subCtx, node)
+		ch, err = Follow[T](ctx, node)
 		if err != nil {
+			cancel()
 			return nil, err
 		}
 
@@ -52,29 +56,33 @@ func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindCon
 		return nil, err
 	}
 
-	b := &Binding[T]{
+	// create the binding
+	binding := &Binding[T]{
 		node:     node,
-		cancel:   cancel,
 		onChange: config.OnChange,
 	}
 
+	// wait for the initial value
 	select {
 	case v := <-ch:
-		b.value.Set(v)
-	case <-subCtx.Done():
+		binding.value.Set(v)
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 
+	// subscribe to changes
 	go func() {
+		defer cancel()
 		for obj := range ch {
-			b.value.Set(obj)
+			binding.value.Set(obj)
 
-			if b.onChange != nil {
-				b.onChange(obj)
+			if binding.onChange != nil {
+				binding.onChange(obj)
 			}
 		}
 	}()
 
-	return b, nil
+	return binding, nil
 }
 
 func BindPath[T astral.Object](ctx *astral.Context, node Node, path string, configFunc ...BindConfigFunc[T]) (*Binding[T], error) {
@@ -87,9 +95,9 @@ func BindPath[T astral.Object](ctx *astral.Context, node Node, path string, conf
 }
 
 // Get returns the current value as type T.
-func (tb *Binding[T]) Get() (T, error) {
+func (binding *Binding[T]) Get() (T, error) {
 	var zero T
-	v := tb.value.Get()
+	v := binding.value.Get()
 	if v == nil {
 		return zero, nil
 	}
@@ -100,11 +108,6 @@ func (tb *Binding[T]) Get() (T, error) {
 }
 
 // Set updates the value.
-func (tb *Binding[T]) Set(ctx *astral.Context, v T) error {
-	return tb.node.Set(ctx, v)
-}
-
-func (tb *Binding[T]) Close() error {
-	tb.cancel()
-	return nil
+func (binding *Binding[T]) Set(ctx *astral.Context, v T) error {
+	return binding.node.Set(ctx, v)
 }

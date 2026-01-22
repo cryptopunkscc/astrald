@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/tree"
+	treecli "github.com/cryptopunkscc/astrald/mod/tree/cli"
 )
 
 func walk(ctx *astral.Context, node tree.Node, depth int) error {
@@ -36,21 +37,19 @@ func walk(ctx *astral.Context, node tree.Node, depth int) error {
 
 func main() {
 	ctx := astrald.NewContext()
+	client := treecli.Default()
 
-	var tree *astrald.TreeClient
-
-	if len(os.Args) <= 1 {
-		tree = astrald.Tree()
-	} else {
+	// parse the args
+	if len(os.Args) > 1 {
 		targetID, err := astrald.Dir().ResolveIdentity(ctx, os.Args[1])
 		if err != nil {
 			fatal("resolve identity: %v\n", err)
 		}
-
-		tree = astrald.NewTreeClient(astrald.DefaultClient(), targetID)
+		client = treecli.New(targetID, nil)
 	}
 
-	err := walk(ctx, tree.Root(), 0)
+	// walk the tree
+	err := walk(ctx, client.Root(), 0)
 	if err != nil {
 		fatal("walk error: %v\n", err)
 	}
