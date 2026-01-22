@@ -103,10 +103,6 @@ func (mod *Module) CloseStream(id astral.Nonce) error {
 	return errors.New("stream not found")
 }
 
-func (mod *Module) on(providerID *astral.Identity) *Consumer {
-	return NewConsumer(mod, providerID)
-}
-
 func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
 }

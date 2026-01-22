@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	nodescli "github.com/cryptopunkscc/astrald/mod/nodes/client"
 )
 
 func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (rw io.WriteCloser, err error) {
@@ -108,7 +109,7 @@ func (mod *Module) configureRelay(ctx *astral.Context, q *astral.Query, relayID 
 	}
 
 	// configure the relay
-	err := mod.on(relayID).Relay(ctx, q.Nonce, caller, target)
+	err := nodescli.New(relayID, nil).Relay(ctx, q.Nonce, caller, target)
 	if err != nil {
 		return fmt.Errorf("relay query: %w", err)
 	}
