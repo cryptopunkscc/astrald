@@ -12,7 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/tree"
-	treecli "github.com/cryptopunkscc/astrald/mod/tree/cli"
+	treecli "github.com/cryptopunkscc/astrald/mod/tree/client"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 )

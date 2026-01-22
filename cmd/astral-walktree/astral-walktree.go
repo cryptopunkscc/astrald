@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/tree"
-	treecli "github.com/cryptopunkscc/astrald/mod/tree/cli"
+	treecli "github.com/cryptopunkscc/astrald/mod/tree/client"
 )
 
 func walk(ctx *astral.Context, node tree.Node, depth int) error {

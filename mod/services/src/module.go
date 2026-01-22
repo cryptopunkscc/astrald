@@ -3,8 +3,8 @@ package services
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/services"
+	servicescli "github.com/cryptopunkscc/astrald/mod/services/client"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -30,7 +30,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 }
 
 func (mod *Module) syncServices(ctx *astral.Context, providerID *astral.Identity, follow bool) error {
-	client := astrald.NewServicesClient(astrald.DefaultClient(), providerID)
+	client := servicescli.New(providerID, nil)
 
 	ch, err := client.Discover(ctx, follow)
 	if err != nil {
