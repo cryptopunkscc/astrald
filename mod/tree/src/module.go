@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
-	"github.com/cryptopunkscc/astrald/lib/paths"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/tree"
@@ -39,9 +37,6 @@ type Module struct {
 	// node value cache
 	nodeValue   map[int]*sig.Queue[astral.Object]
 	nodeValueMu sync.Mutex
-
-	// active bindings by path
-	bindings sig.Map[string, *sig.Set[io.Closer]]
 }
 
 var _ tree.Module = &Module{}
@@ -118,8 +113,6 @@ func (mod *Module) Unmount(path string) error {
 		return errors.New("mount point does not exist")
 	}
 
-	mod.invalidateBindings(path)
-
 	return nil
 }
 
@@ -150,10 +143,6 @@ func (mod *Module) Root() tree.Node {
 
 func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
-}
-
-func (mod *Module) Context() *astral.Context {
-	return mod.ctx
 }
 
 func (mod *Module) String() string {
@@ -209,49 +198,4 @@ func (mod *Module) subscribeNodeValue(ctx context.Context, nodeID int) <-chan as
 	}()
 
 	return out
-}
-
-// RegisterBinding adds a binding to the tracking map.
-func (mod *Module) RegisterBinding(path string, b io.Closer) {
-	set, _ := mod.bindings.Set(path, &sig.Set[io.Closer]{})
-	set.Add(b)
-}
-
-// UnregisterBinding removes a binding from the tracking map.
-func (mod *Module) UnregisterBinding(path string, b io.Closer) {
-	set, ok := mod.bindings.Get(path)
-	if !ok {
-		return
-	}
-	set.Remove(b)
-	if set.Count() == 0 {
-		mod.bindings.Delete(path)
-	}
-}
-
-// invalidateBindings closes all bindings at or under the given path.
-func (mod *Module) invalidateBindings(path string) {
-	var toClose []io.Closer
-
-	// Close bindings at exact path
-	set, ok := mod.bindings.Delete(path)
-	if ok {
-		for _, b := range set.Clone() {
-			toClose = append(toClose, b)
-		}
-	}
-
-	// Close bindings under the path
-	mod.bindings.Each(func(p string, bindings *sig.Set[io.Closer]) error {
-		if paths.PathUnder(p, path, '/') {
-			for _, b := range bindings.Clone() {
-				toClose = append(toClose, b)
-			}
-		}
-		return nil
-	})
-
-	for _, b := range toClose {
-		b.Close()
-	}
 }

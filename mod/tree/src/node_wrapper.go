@@ -9,10 +9,12 @@ import (
 
 // NodeWrapper wraps a tree.Node and replaces returned Node values with nodes mounted at those paths.
 type NodeWrapper struct {
-	path []string
 	tree.Node
-	mod *Module
+	path []string
+	mod  *Module
 }
+
+var _ tree.Node = &NodeWrapper{}
 
 func (wrap *NodeWrapper) Sub(ctx *astral.Context) (map[string]tree.Node, error) {
 	sub, err := wrap.Node.Sub(ctx)
@@ -57,10 +59,4 @@ func (wrap *NodeWrapper) Create(ctx *astral.Context, name string) (tree.Node, er
 
 func (wrap *NodeWrapper) Path() string {
 	return "/" + strings.Join(wrap.path, "/")
-}
-
-func (wrap *NodeWrapper) Delete(ctx *astral.Context) error {
-	wrap.mod.invalidateBindings(wrap.Path())
-
-	return wrap.Node.Delete(ctx)
 }

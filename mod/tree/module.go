@@ -17,8 +17,6 @@ path in the tree.
 package tree
 
 import (
-	"io"
-
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
@@ -46,10 +44,4 @@ type Module interface {
 
 	// MountRemote mounts a remote node at the given path.
 	MountRemote(ctx *astral.Context, path string, targetID *astral.Identity, remotePath string) error
-
-	RegisterBinding(path string, b io.Closer)
-	UnregisterBinding(path string, b io.Closer)
-
-	// Context returns the context of the module
-	Context() *astral.Context
 }
