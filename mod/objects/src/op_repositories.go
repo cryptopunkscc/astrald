@@ -30,5 +30,5 @@ func (mod *Module) OpRepositories(ctx *astral.Context, q shell.Query, args opRep
 		}
 	}
 
-	return
+	return ch.Send(&astral.EOS{})
 }

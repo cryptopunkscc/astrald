@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	objectscli "github.com/cryptopunkscc/astrald/mod/objects/client"
 )
 
 func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
@@ -34,7 +34,7 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID
 			go func() {
 				defer wg.Done()
 
-				_results, err := astrald.NewObjectsClient(providerID, nil).Describe(ctx, objectID)
+				_results, err := objectscli.New(providerID, nil).Describe(ctx, objectID)
 				if err != nil {
 					return
 				}

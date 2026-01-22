@@ -2,7 +2,7 @@ package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/astrald"
+	objectscli "github.com/cryptopunkscc/astrald/mod/objects/client"
 )
 
 // Push pushes the object to the target node. The sender node is derived from the context.
@@ -11,5 +11,5 @@ func (mod *Module) Push(ctx *astral.Context, targetID *astral.Identity, obj astr
 		return mod.Receive(obj, ctx.Identity())
 	}
 
-	return astrald.NewObjectsClient(targetID, nil).Push(ctx, obj)
+	return objectscli.New(targetID, nil).Push(ctx, obj)
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/cryptopunkscc/astrald/lib/astrald"
+	objectscli "github.com/cryptopunkscc/astrald/mod/objects/client"
 )
 
 const blockSize = 2 << 14
@@ -29,9 +30,7 @@ func main() {
 		fatal("resolve target: %v\n", err)
 	}
 
-	w, err := astrald.
-		NewObjectsClient(targetID, nil).
-		Create(ctx, repo, alloc)
+	w, err := objectscli.New(targetID, nil).Create(ctx, repo, alloc)
 	if err != nil {
 		fatal("create: %v", err)
 	}
