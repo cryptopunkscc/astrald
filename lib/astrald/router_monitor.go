@@ -3,8 +3,8 @@ package astrald
 /*
 How to use with the default client:
 
-	monitor := astrald.NewRouterMonitor(astrald.DefaultClient().Router)
-	astrald.DefaultClient().Router = monitor
+	monitor := astrald.NewRouterMonitor(astrald.Default().Router)
+	astrald.Default().Router = monitor
 
 	// add connections accepted by Listeners to the monitor
 

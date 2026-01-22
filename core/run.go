@@ -21,7 +21,7 @@ func (node *Node) Run(nctx context.Context) (err error) {
 	)
 
 	// set this node as the default router for lib/astrald
-	astrald.SetDefaultClient(astrald.NewClient(&routerAdapter{
+	astrald.SetDefault(astrald.New(&routerAdapter{
 		Router:   node,
 		identity: node.identity,
 	}))

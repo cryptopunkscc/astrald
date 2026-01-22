@@ -14,12 +14,27 @@ type Client struct {
 
 var defaultClient *Client
 
-func NewClient(router Router) *Client {
+func New(router Router) *Client {
 	return &Client{Router: router}
+}
+
+func Default() *Client {
+	if defaultClient == nil {
+		defaultClient = New(apphost.DefaultRouter())
+	}
+	return defaultClient
+}
+
+func SetDefault(client *Client) {
+	defaultClient = client
 }
 
 func (client *Client) Query(ctx *astral.Context, method string, args any) (_ astral.Conn, err error) {
 	return client.RouteQuery(ctx, query.New(client.GuestID(), client.targetID, method, args))
+}
+
+func Query(ctx *astral.Context, method string, args any) (astral.Conn, error) {
+	return Default().Query(ctx, method, args)
 }
 
 func (client *Client) QueryChannel(ctx *astral.Context, method string, args any, cfg ...channel.ConfigFunc) (*channel.Channel, error) {
@@ -31,45 +46,30 @@ func (client *Client) QueryChannel(ctx *astral.Context, method string, args any,
 	return channel.New(conn, cfg...), nil
 }
 
+func QueryChannel(ctx *astral.Context, method string, args any, cfg ...channel.ConfigFunc) (*channel.Channel, error) {
+	return Default().QueryChannel(ctx, method, args, cfg...)
+}
+
 func (client *Client) WithTarget(identity *astral.Identity) *Client {
 	return &Client{Router: client.Router, targetID: identity}
 }
 
-func (client *Client) protocol() string {
+func WithTarget(identity *astral.Identity) *Client {
+	return Default().WithTarget(identity)
+}
+
+func (client *Client) Protocol() string {
 	return "tcp"
 }
 
-func DefaultClient() *Client {
-	if defaultClient == nil {
-		defaultClient = NewClient(apphost.DefaultRouter())
-	}
-	return defaultClient
-}
-
-func SetDefaultClient(client *Client) {
-	defaultClient = client
-}
-
-func RouteQuery(ctx *astral.Context, query *astral.Query) (astral.Conn, error) {
-	return DefaultClient().RouteQuery(ctx, query)
-}
-
-func Query(ctx *astral.Context, method string, args any) (astral.Conn, error) {
-	return DefaultClient().Query(ctx, method, args)
-}
-
-func QueryChannel(ctx *astral.Context, method string, args any, cfg ...channel.ConfigFunc) (*channel.Channel, error) {
-	return DefaultClient().QueryChannel(ctx, method, args, cfg...)
-}
-
-func WithTarget(identity *astral.Identity) *Client {
-	return DefaultClient().WithTarget(identity)
-}
-
 func GuestID() *astral.Identity {
-	return DefaultClient().GuestID()
+	return Default().GuestID()
 }
 
 func HostID() *astral.Identity {
-	return DefaultClient().HostID()
+	return Default().HostID()
+}
+
+func RouteQuery(ctx *astral.Context, query *astral.Query) (astral.Conn, error) {
+	return Default().RouteQuery(ctx, query)
 }

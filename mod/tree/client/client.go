@@ -16,7 +16,7 @@ var defaultClient *Client
 
 func New(targetID *astral.Identity, astral *astrald.Client) *Client {
 	if astral == nil {
-		astral = astrald.DefaultClient()
+		astral = astrald.Default()
 	}
 	return &Client{astral: astral, targetID: targetID}
 }

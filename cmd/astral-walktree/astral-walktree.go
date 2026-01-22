@@ -7,6 +7,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
+	dircli "github.com/cryptopunkscc/astrald/mod/dir/client"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	treecli "github.com/cryptopunkscc/astrald/mod/tree/client"
 )
@@ -41,7 +42,7 @@ func main() {
 
 	// parse the args
 	if len(os.Args) > 1 {
-		targetID, err := astrald.Dir().ResolveIdentity(ctx, os.Args[1])
+		targetID, err := dircli.ResolveIdentity(ctx, os.Args[1])
 		if err != nil {
 			fatal("resolve identity: %v\n", err)
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/arl"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	dircli "github.com/cryptopunkscc/astrald/mod/dir/client"
 )
 
 const EnvDefaultTarget = "ASTRAL_DEFAULT_TARGET"
@@ -32,7 +33,7 @@ func main() {
 
 	// parse the caller
 	if len(caller) > 0 {
-		callerID, err = astrald.Dir().ResolveIdentity(ctx, caller)
+		callerID, err = dircli.ResolveIdentity(ctx, caller)
 		if err != nil {
 			fatal("error: %v\n", err)
 		}
@@ -45,7 +46,7 @@ func main() {
 
 	// parse the target
 	if len(target) > 0 {
-		targetID, err = astrald.Dir().ResolveIdentity(ctx, target)
+		targetID, err = dircli.ResolveIdentity(ctx, target)
 		if err != nil {
 			fatal("error: %v\n", err)
 		}

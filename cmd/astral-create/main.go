@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/cryptopunkscc/astrald/lib/astrald"
+	dircli "github.com/cryptopunkscc/astrald/mod/dir/client"
 	objectscli "github.com/cryptopunkscc/astrald/mod/objects/client"
 )
 
@@ -25,7 +26,7 @@ func main() {
 
 	ctx := astrald.NewContext()
 
-	targetID, err := astrald.Dir().ResolveIdentity(ctx, target)
+	targetID, err := dircli.ResolveIdentity(ctx, target)
 	if err != nil {
 		fatal("resolve target: %v\n", err)
 	}
