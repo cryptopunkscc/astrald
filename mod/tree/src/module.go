@@ -202,6 +202,14 @@ func (mod *Module) subscribeNodeValue(ctx context.Context, nodeID int) <-chan as
 }
 
 func (mod *Module) deleteNode(nodeID int) error {
+	sub, err := mod.db.getSubNodes(nodeID)
+	if err != nil {
+		return err
+	}
+	if len(sub) > 0 {
+		return tree.ErrNodeHasSubnodes
+	}
+
 	mod.nodeValueMu.Lock()
 	queue, found := mod.nodeValue[nodeID]
 	if found {
