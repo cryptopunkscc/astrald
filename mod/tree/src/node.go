@@ -69,7 +69,7 @@ func (node *Node) Set(ctx *astral.Context, object astral.Object) error {
 }
 
 func (node *Node) Delete(ctx *astral.Context) error {
-	return node.mod.db.deleteNode(node.id)
+	return node.mod.deleteNode(node.id)
 }
 
 func (node *Node) Sub(ctx *astral.Context) (map[string]tree.Node, error) {

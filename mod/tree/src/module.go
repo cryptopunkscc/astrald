@@ -188,6 +188,7 @@ func (mod *Module) subscribeNodeValue(ctx context.Context, nodeID int) <-chan as
 	var out = make(chan astral.Object)
 
 	go func() {
+		defer close(out)
 		for v := range sig.Subscribe(ctx, queue) {
 			select {
 			case <-ctx.Done():
@@ -198,4 +199,16 @@ func (mod *Module) subscribeNodeValue(ctx context.Context, nodeID int) <-chan as
 	}()
 
 	return out
+}
+
+func (mod *Module) deleteNode(nodeID int) error {
+	mod.nodeValueMu.Lock()
+	queue, found := mod.nodeValue[nodeID]
+	if found {
+		queue.Close()
+		delete(mod.nodeValue, nodeID)
+	}
+	mod.nodeValueMu.Unlock()
+
+	return mod.db.deleteNode(nodeID)
 }
