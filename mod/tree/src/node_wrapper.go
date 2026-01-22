@@ -58,3 +58,9 @@ func (wrap *NodeWrapper) Create(ctx *astral.Context, name string) (tree.Node, er
 func (wrap *NodeWrapper) Path() string {
 	return "/" + strings.Join(wrap.path, "/")
 }
+
+func (wrap *NodeWrapper) Delete(ctx *astral.Context) error {
+	wrap.mod.invalidateBindings(wrap.Path())
+
+	return wrap.Node.Delete(ctx)
+}

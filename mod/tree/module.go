@@ -16,7 +16,11 @@ path in the tree.
 */
 package tree
 
-import "github.com/cryptopunkscc/astrald/astral"
+import (
+	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
+)
 
 const ModuleName = "tree"
 const DBPrefix = "tree__"
@@ -40,8 +44,9 @@ type Module interface {
 	// Unmount unmounts a node mounted at the given path.
 	Unmount(path string) error
 
-	// Bind creates a binding to a path that tracks value changes.
-	// If defaultValue is non-nil and no value exists, it sets the default.
-	// onChange can be nil if no callback is needed.
-	Bind(ctx *astral.Context, path string, defaultValue astral.Object, onChange func(astral.Object)) (Binding, error)
+	RegisterBinding(path string, b io.Closer)
+	UnregisterBinding(path string, b io.Closer)
+
+	// Context returns the context of the module
+	Context() *astral.Context
 }

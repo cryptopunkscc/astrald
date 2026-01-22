@@ -3,6 +3,7 @@ package tree
 import (
 	"context"
 	"errors"
+	"io"
 	"strings"
 	"sync"
 
@@ -28,6 +29,7 @@ type Module struct {
 	assets resources.Resources
 	ops    shell.Scope
 	db     *DB
+	ctx    *astral.Context
 
 	// mounted nodes
 	mounts sig.Map[string, tree.Node]
@@ -37,12 +39,14 @@ type Module struct {
 	nodeValueMu sync.Mutex
 
 	// active bindings by path
-	bindings sig.Map[string, *sig.Set[*binding]]
+	bindings sig.Map[string, *sig.Set[io.Closer]]
 }
 
 var _ tree.Module = &Module{}
 
 func (mod *Module) Run(ctx *astral.Context) error {
+	mod.ctx = ctx
+
 	<-ctx.Done()
 	return nil
 }
@@ -80,7 +84,6 @@ func (mod *Module) Delete(ctx *astral.Context, path string) error {
 		return err
 	}
 
-	mod.invalidateBindings(path)
 	return nil
 }
 
@@ -114,6 +117,7 @@ func (mod *Module) Unmount(path string) error {
 	}
 
 	mod.invalidateBindings(path)
+
 	return nil
 }
 
@@ -131,6 +135,10 @@ func (mod *Module) Root() tree.Node {
 
 func (mod *Module) Scope() *shell.Scope {
 	return &mod.ops
+}
+
+func (mod *Module) Context() *astral.Context {
+	return mod.ctx
 }
 
 func (mod *Module) String() string {
@@ -188,21 +196,14 @@ func (mod *Module) subscribeNodeValue(ctx context.Context, nodeID int) <-chan as
 	return out
 }
 
-// registerBinding adds a binding to the tracking map.
-func (mod *Module) registerBinding(path string, b *binding) {
-	set, ok := mod.bindings.Get(path)
-	if !ok {
-		set = &sig.Set[*binding]{}
-		existing, added := mod.bindings.Set(path, set)
-		if !added {
-			set = existing
-		}
-	}
+// RegisterBinding adds a binding to the tracking map.
+func (mod *Module) RegisterBinding(path string, b io.Closer) {
+	set, _ := mod.bindings.Set(path, &sig.Set[io.Closer]{})
 	set.Add(b)
 }
 
-// unregisterBinding removes a binding from the tracking map.
-func (mod *Module) unregisterBinding(path string, b *binding) {
+// UnregisterBinding removes a binding from the tracking map.
+func (mod *Module) UnregisterBinding(path string, b io.Closer) {
 	set, ok := mod.bindings.Get(path)
 	if !ok {
 		return
@@ -215,7 +216,7 @@ func (mod *Module) unregisterBinding(path string, b *binding) {
 
 // invalidateBindings closes all bindings at or under the given path.
 func (mod *Module) invalidateBindings(path string) {
-	var toClose []*binding
+	var toClose []io.Closer
 
 	// Close bindings at exact path
 	set, ok := mod.bindings.Delete(path)
@@ -226,7 +227,7 @@ func (mod *Module) invalidateBindings(path string) {
 	}
 
 	// Close bindings under the path
-	mod.bindings.Each(func(p string, bindings *sig.Set[*binding]) error {
+	mod.bindings.Each(func(p string, bindings *sig.Set[io.Closer]) error {
 		if paths.PathUnder(p, path, '/') {
 			for _, b := range bindings.Clone() {
 				toClose = append(toClose, b)
