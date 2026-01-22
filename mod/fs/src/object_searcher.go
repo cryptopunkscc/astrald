@@ -1,9 +1,10 @@
 package fs
 
 import (
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"strings"
 )
 
 func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
@@ -16,12 +17,7 @@ func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects
 	go func() {
 		defer close(results)
 
-		var rows []*dbLocalFile
-
-		err := mod.db.
-			Where("LOWER(PATH) like ?", "%"+strings.ToLower(query)+"%").
-			Find(&rows).
-			Error
+		rows, err := mod.db.SearchByPath(strings.ToLower(query))
 		if err != nil {
 			mod.log.Error("search: db: %v", err)
 			return

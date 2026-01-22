@@ -240,3 +240,14 @@ func (db *DB) EachInvalidatedPath(fn func(string) error) error {
 		}
 	}
 }
+
+func (db *DB) SearchByPath(query string) (rows []*dbLocalFile, err error) {
+	err = db.
+		Where("LOWER(path) like ?", "%"+query+"%").
+		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
+		Find(&rows).
+		Error
+
+	return
+}

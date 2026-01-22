@@ -8,15 +8,20 @@ import (
 )
 
 type opNewRepoArgs struct {
-	Path string
-	Name string
-	In   string `query:"optional"`
-	Out  string `query:"optional"`
+	Path  string
+	Name  string
+	Label string `query:"optional"`
+	In    string `query:"optional"`
+	Out   string `query:"optional"`
 }
 
 func (mod *Module) OpNewRepo(ctx *astral.Context, q shell.Query, args opNewRepoArgs) (err error) {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
+
+	if args.Label == "" {
+		args.Label = args.Name
+	}
 
 	var repo objects.Repository
 
