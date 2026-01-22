@@ -28,13 +28,15 @@ func (mod *Module) LoadDependencies() (err error) {
 		return
 	}
 
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
 	modulePath := fmt.Sprintf(`/mod/%s`, tcp.ModuleName)
 
 	var listen = astral.Bool(mod.config.Listen)
 	mod.listen, err = tree.Bind[*astral.Bool](
 		mod.Tree,
 		path.Join(modulePath, "listen"),
-		tree.WithOnChange(mod.SwitchServer),
+		tree.WithOnChange(mod.switchServer),
 		tree.WithDefaultValue(&listen),
 	)
 	if err != nil {
