@@ -39,11 +39,13 @@ func (mod *Module) OpNewWatch(ctx *astral.Context, q shell.Query, args opNewWatc
 
 	err = mod.Objects.AddRepository(args.Name, repo)
 	if err != nil {
+		cancel()
 		return ch.Send(astral.Err(err))
 	}
 
 	err = mod.Objects.AddGroup(objects.RepoLocal, args.Name)
 	if err != nil {
+		cancel()
 		return ch.Send(astral.Err(err))
 	}
 
