@@ -44,6 +44,9 @@ type Module interface {
 	// Unmount unmounts a node mounted at the given path.
 	Unmount(path string) error
 
+	// MountRemote mounts a remote node at the given path.
+	MountRemote(ctx *astral.Context, path string, targetID *astral.Identity, remotePath string) error
+
 	RegisterBinding(path string, b io.Closer)
 	UnregisterBinding(path string, b io.Closer)
 

@@ -3,9 +3,7 @@ package tree
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/shell"
-	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
 type opMountRemoteArgs struct {
@@ -25,20 +23,9 @@ func (mod *Module) OpMountRemote(ctx *astral.Context, q shell.Query, args opMoun
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	treeClient := astrald.NewTreeClient(astrald.DefaultClient(), targetID)
-
-	root := treeClient.Root()
-
-	if len(args.Root) > 0 {
-		root, err = tree.Query(ctx, root, args.Root, false)
-		if err != nil {
-			return ch.Send(astral.NewError(err.Error()))
-		}
-	}
-
-	err = mod.Mount(args.Path, root)
+	err = mod.MountRemote(ctx, args.Path, targetID, args.Root)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
 	return ch.Send(&astral.Ack{})

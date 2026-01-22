@@ -61,7 +61,18 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 		return nil, err
 	}
 
-	var out = make(chan astral.Object)
+	var out = make(chan astral.Object, 1)
+
+	// get the initial value
+	obj, err := ch.Receive()
+	switch obj := obj.(type) {
+	case nil:
+		return nil, err
+	case *tree.ErrNodeHasNoValue:
+		return nil, obj
+	}
+
+	out <- obj
 
 	go func() {
 		defer ch.Close()
@@ -170,9 +181,11 @@ func (node *Node) Sub(ctx *astral.Context) (map[string]tree.Node, error) {
 }
 
 func (node *Node) Create(ctx *astral.Context, name string) (tree.Node, error) {
+	newPath := "/" + strings.Join(append(node.path, name), "/")
+
 	// calling set without sending any value will still create the node
 	ch, err := node.client.queryCh(ctx, "tree.set", query.Args{
-		"path": node.Path(),
+		"path": newPath,
 	})
 	if err != nil {
 		return nil, err

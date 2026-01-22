@@ -35,7 +35,7 @@ func Bind[T astral.Object](mod Module, path string, configFunc ...BindConfigFunc
 	ch, err := node.Get(subCtx, true)
 	switch {
 	case err == nil:
-	case errors.Is(err, ErrNodeHasNoValue):
+	case errors.Is(err, &ErrNodeHasNoValue{}):
 		// set the default value
 		err = node.Set(ctx, config.DefaultValue)
 		if err != nil {

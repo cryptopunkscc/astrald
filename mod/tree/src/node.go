@@ -31,7 +31,7 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 		return nil, err
 	}
 	if object == nil {
-		return nil, tree.ErrNodeHasNoValue
+		return nil, &tree.ErrNodeHasNoValue{}
 	}
 
 	ch := make(chan astral.Object, 1)

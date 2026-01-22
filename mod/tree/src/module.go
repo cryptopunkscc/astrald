@@ -3,12 +3,14 @@ package tree
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/paths"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -45,7 +47,7 @@ type Module struct {
 var _ tree.Module = &Module{}
 
 func (mod *Module) Run(ctx *astral.Context) error {
-	mod.ctx = ctx
+	mod.ctx = ctx.WithZone(astral.ZoneNetwork)
 
 	<-ctx.Done()
 	return nil
@@ -119,6 +121,19 @@ func (mod *Module) Unmount(path string) error {
 	mod.invalidateBindings(path)
 
 	return nil
+}
+
+func (mod *Module) MountRemote(ctx *astral.Context, path string, targetID *astral.Identity, remotePath string) (err error) {
+	var remoteNode = astrald.NewTreeClient(astrald.DefaultClient(), targetID).Root()
+
+	if len(remotePath) > 0 {
+		remoteNode, err = tree.Query(ctx, remoteNode, remotePath, false)
+		if err != nil {
+			return fmt.Errorf("failed to query remote path %s: %w", remotePath, err)
+		}
+	}
+
+	return mod.Mount(path, remoteNode)
 }
 
 func (mod *Module) Root() tree.Node {

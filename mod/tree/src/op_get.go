@@ -1,6 +1,8 @@
 package tree
 
 import (
+	"errors"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -32,7 +34,13 @@ func (mod *Module) OpGet(ctx *astral.Context, q shell.Query, args opGetArgs) (er
 	}()
 
 	val, err := node.Get(ctx, args.Follow)
-	if err != nil {
+	switch {
+	case err == nil:
+
+	case errors.Is(err, &tree.ErrNodeHasNoValue{}):
+		return ch.Send(&tree.ErrNodeHasNoValue{})
+
+	default:
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
