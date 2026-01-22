@@ -76,7 +76,7 @@ func (indexer *Indexer) startWorkers(ctx *astral.Context, count int) {
 }
 
 func (indexer *Indexer) worker(ctx *astral.Context) {
-	const flushDelay = 500 * time.Millisecond
+	const flushDelay = 5 * time.Second
 
 	softDeletes := NewBatchCollector(1000, indexer.mod.db.SoftDeletePaths)
 	timer := time.NewTimer(flushDelay)
@@ -85,12 +85,17 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			softDeletes.Flush()
+			if err := softDeletes.Flush(); err != nil {
+				indexer.log.Error("indexer: batch delete: %v", err)
+			}
+
 			return
 		case <-timer.C:
 			if err := softDeletes.Flush(); err != nil {
 				indexer.log.Error("indexer: batch delete: %v", err)
 			}
+
+			timer.Reset(flushDelay) // ← add thiss
 		case path := <-indexer.workqueue:
 			indexer.pending.Remove(path)
 
@@ -221,6 +226,13 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 		}
 		return nil
 	})
+
+	defer func() {
+		err := enqueuer.Flush()
+		if err != nil {
+			indexer.log.Error("indexer: batch enqueue: %v", err)
+		}
+	}()
 
 	return enqueuer.Iter(indexer.mod.db.EachInvalidatedPath)
 }
