@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	ipmod "github.com/cryptopunkscc/astrald/mod/ip"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
@@ -18,7 +18,7 @@ type Deps struct {
 	Exonet  exonet.Module
 	Nodes   nodes.Module
 	Objects objects.Module
-	IP      ipmod.Module
+	IP      ip.Module
 	Tree    tree.Module
 }
 
@@ -32,7 +32,8 @@ func (mod *Module) LoadDependencies() (err error) {
 
 	modulePath := fmt.Sprintf(`/mod/%s`, tcp.ModuleName)
 
-	var listen = astral.Bool(mod.config.Listen)
+	var listen = astral.Bool(mod.config.Listen == nil || *mod.config.Listen)
+
 	mod.listen, err = tree.BindPath[*astral.Bool](
 		ctx,
 		mod.Tree.Root(),
@@ -44,13 +45,23 @@ func (mod *Module) LoadDependencies() (err error) {
 		return err
 	}
 
-	var dial = astral.Bool(mod.config.Dial)
+	err = mod.listen.Set(ctx, &listen)
+	if err != nil {
+		return err
+	}
+
+	var dial = astral.Bool(mod.config.Dial == nil || *mod.config.Dial)
 	mod.dial, err = tree.BindPath[*astral.Bool](
 		ctx,
 		mod.Tree.Root(),
 		path.Join(modulePath, "dial"),
 		tree.DefaultValue(&dial),
 	)
+
+	err = mod.dial.Set(ctx, &dial)
+	if err != nil {
+		return err
+	}
 
 	mod.Exonet.SetDialer("tcp", mod)
 	mod.Exonet.SetParser("tcp", mod)
