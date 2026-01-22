@@ -44,3 +44,7 @@ func (e *ErrUnexpectedObject) Is(other error) bool {
 	_, ok := other.(*ErrUnexpectedObject)
 	return ok
 }
+
+func init() {
+	_ = Add(&ErrUnexpectedObject{})
+}
