@@ -1,8 +1,6 @@
 package dir
 
 import (
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
@@ -81,7 +79,7 @@ func (client *Client) GetAlias(ctx *astral.Context, identity *astral.Identity) (
 		client.aliasCache.Set(identity.String(), string(*o))
 		return o.String(), nil
 	default:
-		return "", fmt.Errorf("unexpected type: %s", o.ObjectType())
+		return "", astral.NewErrUnexpectedObject(o)
 	}
 }
 
@@ -114,7 +112,7 @@ func (client *Client) ResolveIdentity(ctx *astral.Context, name string) (*astral
 
 	id, ok := obj.(*astral.Identity)
 	if !ok {
-		return nil, fmt.Errorf("unexpected type: %s", obj.ObjectType())
+		return nil, astral.NewErrUnexpectedObject(obj)
 	}
 
 	// cache results

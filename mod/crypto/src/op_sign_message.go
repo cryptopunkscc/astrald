@@ -60,7 +60,7 @@ func (mod *Module) OpSignMessage(ctx *astral.Context, q shell.Query, args opSign
 			ch.Send(sig)
 
 		default:
-			ch.Send(astral.NewError("unexpected object type"))
+			ch.Send(astral.NewErrUnexpectedObject(object))
 			ch.Close()
 		}
 	})

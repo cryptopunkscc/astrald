@@ -2,7 +2,6 @@ package objects
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -65,7 +64,7 @@ func (client *Client) Create(ctx *astral.Context, repo string, alloc int) (objec
 	}
 
 	ch.Close()
-	return nil, fmt.Errorf("unexpected message type: %s", msg.ObjectType())
+	return nil, astral.NewErrUnexpectedObject(msg)
 }
 
 func Create(ctx *astral.Context, repo string, alloc int) (objects.Writer, error) {
@@ -88,7 +87,7 @@ func (client *Client) Delete(ctx *astral.Context, objectID *astral.ObjectID, rep
 	case *astral.Ack:
 		return nil
 	default:
-		return errors.New("unexpected message type: " + msg.ObjectType())
+		return astral.NewErrUnexpectedObject(msg)
 	}
 }
 
@@ -148,7 +147,7 @@ func (client *Client) NewMem(ctx *astral.Context, name string, size int64) error
 	case *astral.Ack:
 		return nil
 	default:
-		return errors.New("unexpected message type: " + msg.ObjectType())
+		return astral.NewErrUnexpectedObject(msg)
 	}
 }
 
@@ -170,7 +169,7 @@ func (client *Client) Probe(ctx *astral.Context, objectID *astral.ObjectID, repo
 	case *objects.Probe:
 		return msg, nil
 	default:
-		return nil, errors.New("unexpected message type: " + msg.ObjectType())
+		return nil, astral.NewErrUnexpectedObject(msg)
 	}
 }
 
@@ -195,7 +194,7 @@ func (client *Client) Repositories(ctx *astral.Context) (repos []*objects.Reposi
 			return io.EOF
 
 		default:
-			return fmt.Errorf("unexpected object type: %s", object.ObjectType())
+			return astral.NewErrUnexpectedObject(object)
 		}
 		return nil
 	})
@@ -237,7 +236,7 @@ func (client *Client) Scan(ctx *astral.Context, repo string, follow bool) (<-cha
 				return io.EOF
 
 			default:
-				return fmt.Errorf("unexpected object type: %s", o.ObjectType())
+				return astral.NewErrUnexpectedObject(o)
 			}
 		})
 
@@ -341,7 +340,7 @@ func (client *Client) Push(ctx *astral.Context, object astral.Object) error {
 		return err
 
 	default:
-		return fmt.Errorf("unexpected response type: %s", res.ObjectType())
+		return astral.NewErrUnexpectedObject(res)
 	}
 }
 
@@ -393,6 +392,6 @@ func (client *Client) GetType(ctx *astral.Context, objectID *astral.ObjectID) (s
 		return "", res
 
 	default:
-		return "", errors.New("protocol error: unexpected object type")
+		return "", astral.NewErrUnexpectedObject(res)
 	}
 }

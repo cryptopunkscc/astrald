@@ -48,7 +48,7 @@ func (client *Client) Relay(ctx *astral.Context, nonce astral.Nonce, caller *ast
 		return nil
 
 	default:
-		return astral.NewError("unexpected response")
+		return astral.NewErrUnexpectedObject(response)
 	}
 }
 

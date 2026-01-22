@@ -1,8 +1,6 @@
 package objects
 
 import (
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -40,7 +38,7 @@ func (w *writer) Commit() (*astral.ObjectID, error) {
 	case nil:
 		return nil, err
 	default:
-		return nil, fmt.Errorf("unexpected type: %s", msg.ObjectType())
+		return nil, astral.NewErrUnexpectedObject(msg)
 	}
 }
 

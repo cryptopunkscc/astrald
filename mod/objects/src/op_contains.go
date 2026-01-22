@@ -47,7 +47,7 @@ func (mod *Module) OpContains(ctx *astral.Context, q shell.Query, args opContain
 			//ignore
 
 		default:
-			ch.Send(astral.NewError("unexpected object type")) // ignore
+			ch.Send(astral.NewErrUnexpectedObject(object)) // ignore
 		}
 	})
 

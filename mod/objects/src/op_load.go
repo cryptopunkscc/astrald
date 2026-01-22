@@ -57,7 +57,7 @@ func (mod *Module) OpLoad(ctx *astral.Context, q shell.Query, args opLoadArgs) (
 			//ignore
 
 		default:
-			ch.Send(astral.NewError("unexpected object type"))
+			ch.Send(astral.NewErrUnexpectedObject(object))
 		}
 	})
 }

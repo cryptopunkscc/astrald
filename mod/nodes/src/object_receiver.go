@@ -98,7 +98,7 @@ queryReadLoop:
 		case *astral.ErrorMessage:
 			return fmt.Errorf("error resolving endpoints: %v", obj.Error())
 		default:
-			return fmt.Errorf("unexpected response type: %T", obj)
+			return astral.NewErrUnexpectedObject(obj)
 		}
 	}
 

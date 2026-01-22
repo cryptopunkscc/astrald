@@ -61,7 +61,7 @@ func (client *Client) Discover(ctx *astral.Context, follow bool) (<-chan *servic
 				return io.EOF
 
 			default:
-				return errors.New("unexpected object")
+				return astral.NewErrUnexpectedObject(object)
 			}
 		})
 		switch {

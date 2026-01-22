@@ -150,7 +150,7 @@ func (f *PairTaker) readSignal(ctx context.Context, timeout time.Duration) (*nat
 			}
 			sig, ok := obj.(*nat.PairTakeSignal)
 			if !ok {
-				resCh <- result{nil, fmt.Errorf("unexpected object type: %T", obj)}
+				resCh <- result{nil, astral.NewErrUnexpectedObject(obj)}
 				return
 			}
 			resCh <- result{sig, nil}

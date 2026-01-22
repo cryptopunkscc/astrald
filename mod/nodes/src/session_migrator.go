@@ -232,7 +232,7 @@ func (m *sessionMigrator) readSignal(ctx context.Context,
 		}
 		sig, ok := obj.(*nodes.SessionMigrateSignal)
 		if !ok {
-			resCh <- result{nil, fmt.Errorf("unexpected object type: %T", obj)}
+			resCh <- result{nil, astral.NewErrUnexpectedObject(obj)}
 			return
 		}
 		resCh <- result{sig, nil}

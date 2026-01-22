@@ -1,8 +1,6 @@
 package apphost
 
 import (
-	"errors"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
@@ -57,7 +55,7 @@ func (client *Client) RegisterHandler(ctx *astral.Context) (*astrald.Listener, e
 		return nil, err
 
 	default:
-		return nil, errors.New("unexpected response")
+		return nil, astral.NewErrUnexpectedObject(o)
 	}
 }
 

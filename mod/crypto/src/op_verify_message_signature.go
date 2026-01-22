@@ -66,7 +66,7 @@ func (mod *Module) OpVerifyMessageSignature(ctx *astral.Context, q shell.Query, 
 			ch.Send(&astral.Ack{})
 
 		default:
-			ch.Send(astral.NewError("unexpected object type"))
+			ch.Send(astral.NewErrUnexpectedObject(object))
 			ch.Close()
 		}
 	})

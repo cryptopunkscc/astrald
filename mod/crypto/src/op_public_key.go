@@ -28,7 +28,7 @@ func (mod *Module) OpPublicKey(ctx *astral.Context, q shell.Query, args opPublic
 			return io.EOF
 
 		default:
-			err = ch.Send(astral.NewError("unexpected message type"))
+			err = ch.Send(astral.NewErrUnexpectedObject(msg))
 		}
 
 		return

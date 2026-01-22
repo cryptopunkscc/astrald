@@ -88,7 +88,7 @@ func (mod *Module) PrivateKey(ctx *astral.Context, key *crypto.PublicKey) (*cryp
 		return object, nil
 
 	default:
-		return nil, errors.New("unexpected object type: " + object.ObjectType())
+		return nil, astral.NewErrUnexpectedObject(object)
 	}
 }
 

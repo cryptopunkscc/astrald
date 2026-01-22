@@ -1,8 +1,6 @@
 package objects
 
 import (
-	"errors"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -63,7 +61,7 @@ func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArg
 			return ch.Send(objectID)
 
 		default:
-			return errors.New("unexpected message type")
+			return astral.NewErrUnexpectedObject(msg)
 		}
 		return
 	})

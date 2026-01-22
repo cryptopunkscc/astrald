@@ -231,7 +231,7 @@ func (t *traversal) receiveSignal(expected astral.String8) (*nat.PunchSignal, er
 
 		return sig, nil
 	default:
-		return nil, fmt.Errorf("unexpected message type: %T", sig)
+		return nil, astral.NewErrUnexpectedObject(sig)
 	}
 }
 

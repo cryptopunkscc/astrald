@@ -93,7 +93,7 @@ func (node *Node) Set(ctx *astral.Context, object astral.Object) error {
 	case *astral.ErrorMessage:
 		return msg
 	default:
-		return errors.New("unexpected response type")
+		return astral.NewErrUnexpectedObject(msg)
 	}
 }
 
@@ -115,7 +115,7 @@ func (node *Node) Delete(ctx *astral.Context) error {
 	case *astral.ErrorMessage:
 		return msg
 	default:
-		return errors.New("unexpected response type")
+		return astral.NewErrUnexpectedObject(msg)
 	}
 }
 
@@ -139,7 +139,7 @@ func (node *Node) Sub(ctx *astral.Context) (map[string]tree.Node, error) {
 		case *astral.ErrorMessage:
 			return msg
 		default:
-			return errors.New("unexpected response type: " + msg.ObjectType())
+			return astral.NewErrUnexpectedObject(msg)
 		}
 		return nil
 	})
