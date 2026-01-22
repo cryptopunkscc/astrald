@@ -88,7 +88,7 @@ func (db *DB) SoftDeletePaths(paths []string) error {
 
 	return db.Model(&dbLocalFile{}).
 		Where("path IN ?", paths).
-		Update("deleted_at", 0).Error
+		Update("deleted_at", time.Now()).Error
 }
 
 // EachPath calls fn for each path, using primary key pagination.

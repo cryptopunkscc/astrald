@@ -8,17 +8,17 @@ import (
 )
 
 type opNewWatchArgs struct {
-	Path  string
-	Label string
-	In    string `query:"optional"`
-	Out   string `query:"optional"`
+	Path string
+	Name string
+	In   string `query:"optional"`
+	Out  string `query:"optional"`
 }
 
 func (mod *Module) OpNewWatch(ctx *astral.Context, q shell.Query, args opNewWatchArgs) (err error) {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	repo, err := NewWatchRepository(mod, args.Path, args.Label)
+	repo, err := NewWatchRepository(mod, args.Path, args.Name)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
@@ -32,12 +32,12 @@ func (mod *Module) OpNewWatch(ctx *astral.Context, q shell.Query, args opNewWatc
 		}
 	}()
 
-	err = mod.Objects.AddRepository(args.Label, repo)
+	err = mod.Objects.AddRepository(args.Name, repo)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
-	err = mod.Objects.AddGroup(objects.RepoLocal, args.Label)
+	err = mod.Objects.AddGroup(objects.RepoLocal, args.Name)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
