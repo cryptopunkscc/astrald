@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
@@ -86,8 +87,46 @@ func (client *Client) SetEnabled(ctx *astral.Context, enabled bool) error {
 	}
 }
 
+func (client *Client) StartTraversal(ctx *astral.Context, target string) (astral.Object, error) {
+	ch, err := client.queryCh(ctx, nat.MethodStartNatTraversal, query.Args{
+		"target": target,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer ch.Close()
+
+	obj, err := ch.Receive()
+	if err != nil {
+		return nil, err
+	}
+
+	if errMsg, ok := obj.(*astral.ErrorMessage); ok {
+		return nil, errMsg
+	}
+
+	return obj, nil
+}
+
+func (client *Client) StartTraversalCh(ctx *astral.Context, out string) (*channel.Channel, error) {
+	return client.queryCh(ctx.IncludeZone(astral.ZoneNetwork), nat.MethodStartNatTraversal, query.Args{
+		"out": out,
+	})
+}
+
+func (client *Client) PairTakeCh(ctx *astral.Context, pair astral.Nonce, initiate bool) (*channel.Channel, error) {
+	return client.queryCh(ctx.IncludeZone(astral.ZoneNetwork), nat.MethodPairTake, query.Args{
+		"pair":     pair,
+		"initiate": initiate,
+	})
+}
+
 func NewTraversal(ctx *astral.Context, target string) (astral.Object, error) {
 	return Default().NewTraversal(ctx, target)
+}
+
+func StartTraversal(ctx *astral.Context, target string) (astral.Object, error) {
+	return Default().StartTraversal(ctx, target)
 }
 
 func ListPairs(ctx *astral.Context, with string) ([]*nat.TraversedPortPair, error) {

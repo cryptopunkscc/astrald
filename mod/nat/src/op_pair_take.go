@@ -3,8 +3,7 @@ package nat
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/mod/nat"
+	natclient "github.com/cryptopunkscc/astrald/mod/nat/client"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -33,15 +32,8 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTak
 		mod.log.Log("taking out pair %v out of pool, starting sync with %v",
 			args.Pair, remoteIdentity)
 
-		peerCh, err := query.RouteChan(ctx.IncludeZone(astral.ZoneNetwork), mod.node,
-			query.New(ctx.Identity(),
-				remoteIdentity,
-				nat.MethodPairTake,
-				&opPairTakeArgs{
-					Pair:     pair.Nonce,
-					Initiate: false,
-				}),
-		)
+		client := natclient.NewFromNode(mod.node, remoteIdentity)
+		peerCh, err := client.PairTakeCh(ctx, pair.Nonce, false)
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
 		}
