@@ -75,36 +75,7 @@ func (q *Queue[T]) Data() T {
 	return q.data
 }
 
-// Deprecated: this holds the pointer receiver forever preventing gc until return, use sig.Subscribe instead.
-func (q *Queue[T]) Subscribe(ctx context.Context) <-chan T {
-	ch := make(chan T)
-
-	go func() {
-		f := q
-		defer close(ch)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-
-			case <-f.Wait():
-				if f.Next() == nil {
-					return
-				}
-
-				select {
-				case ch <- f.data:
-					f = f.Next()
-				case <-ctx.Done():
-					return
-				}
-			}
-		}
-	}()
-
-	return ch
-}
-
+// Subscribe returns a channel that will receive queue values until the context is canceled
 func Subscribe[T any](ctx context.Context, q *Queue[T]) <-chan T {
 	ch := make(chan T)
 
@@ -137,7 +108,7 @@ func Handle[Q any, T any](ctx context.Context, q *Queue[Q], fn func(T) error) er
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	for item := range q.Subscribe(ctx) {
+	for item := range Subscribe(ctx, q) {
 		var untyped any = item
 		if typed, ok := untyped.(T); ok {
 			if err := fn(typed); err != nil {

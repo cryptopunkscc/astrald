@@ -85,7 +85,7 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.O
 		defer close(ch)
 
 		if follow {
-			s = repo.addQueue.Subscribe(ctx)
+			s = sig.Subscribe(ctx, repo.addQueue)
 		}
 
 		for _, s := range repo.objects.Keys() {

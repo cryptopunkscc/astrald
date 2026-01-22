@@ -79,7 +79,7 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.O
 		defer close(ch)
 
 		if follow {
-			subscribe = repo.scanQueue.Subscribe(ctx)
+			subscribe = sig.Subscribe(ctx, repo.scanQueue)
 		}
 
 		ids, err := repo.mod.db.UniquePictureIDs()
