@@ -88,7 +88,7 @@ func (mod *Module) stopServer() {
 	mod.serverCancel = nil
 }
 
-func (mod *Module) SwitchServer(enable *astral.Bool) {
+func (mod *Module) switchServer(enable *astral.Bool) {
 	if enable != nil && *enable {
 		mod.startServer()
 	} else {

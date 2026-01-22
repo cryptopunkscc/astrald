@@ -28,29 +28,25 @@ func (mod *Module) LoadDependencies() (err error) {
 		return
 	}
 
-	var modulePath = fmt.Sprintf(`/mod/%s`, tcp.ModuleName)
+	modulePath := fmt.Sprintf(`/mod/%s`, tcp.ModuleName)
 
-	var defaultListen = astral.Bool(mod.config.Listen)
-	mod.listen, err = tree.Typed[*astral.Bool](mod.Tree.Bind(
-		astral.NewContext(nil).WithIdentity(mod.node.Identity()),
-		fmt.Sprintf(`%s/listen`, modulePath),
-		&defaultListen,
-		tree.TypedOnChange(mod.SwitchServer),
-	))
+	var listen = astral.Bool(mod.config.Listen)
+	mod.listen, err = tree.Bind[*astral.Bool](
+		mod.Tree,
+		path.Join(modulePath, "listen"),
+		tree.WithOnChange(mod.SwitchServer),
+		tree.WithDefaultValue(&listen),
+	)
 	if err != nil {
 		return err
 	}
 
-	var defaultDial = astral.Bool(mod.config.Dial)
-	mod.dial, err = tree.Typed[*astral.Bool](mod.Tree.Bind(
-		astral.NewContext(nil).WithIdentity(mod.node.Identity()),
-		fmt.Sprintf(`%s/dial`, modulePath),
-		&defaultDial,
-		nil,
-	))
-	if err != nil {
-		return err
-	}
+	var dial = astral.Bool(mod.config.Dial)
+	mod.dial, err = tree.Bind[*astral.Bool](
+		mod.Tree,
+		path.Join(modulePath, "dial"),
+		tree.WithDefaultValue(&dial),
+	)
 
 	mod.Exonet.SetDialer("tcp", mod)
 	mod.Exonet.SetParser("tcp", mod)
