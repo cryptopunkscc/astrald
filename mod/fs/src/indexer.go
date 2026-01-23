@@ -244,6 +244,7 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 		if err := indexer.mod.db.UpsertInvalidatePaths(batch); err != nil {
 			return fmt.Errorf("db insert: %w", err)
 		}
+
 		if enqueue {
 			if err := indexer.enqueueLimiter.WaitN(ctx, len(batch)); err != nil {
 				return err

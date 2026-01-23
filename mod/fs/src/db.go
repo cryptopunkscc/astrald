@@ -154,7 +154,7 @@ func (db *DB) UpsertInvalidatePaths(paths []string) error {
 		Error
 }
 
-// UpsertCleanPath updates or inserts a path record marked as clean (it removes deleted_at, updates updated_at)
+// UpsertCleanPath updates or inserts a path record marked as clean (it does not undelete it)
 func (db *DB) UpsertCleanPath(
 	path string,
 	objectID *astral.ObjectID,
@@ -175,7 +175,6 @@ func (db *DB) UpsertCleanPath(
 				"data_id",
 				"mod_time",
 				"updated_at",
-				"deleted_at",
 			}),
 		}).
 		Create(updated).
