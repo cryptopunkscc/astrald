@@ -18,6 +18,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// todo: add more extensive logging
+
 const (
 	statRate = 500
 	hashRate = 100
@@ -246,19 +248,16 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 // Files with unchanged modtime are validated directly, others are invalidated and optionally enqueued.
 func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) error {
 	collector := NewBatchCollector(1000, func(batch []fileEntry) error {
-		// Extract paths for bulk DB lookup
 		batchPaths := make([]string, len(batch))
 		for i, e := range batch {
 			batchPaths[i] = e.path
 		}
 
-		// Bulk fetch existing entries
 		existing, err := indexer.mod.db.FindByPaths(batchPaths)
 		if err != nil {
 			return fmt.Errorf("db find: %w", err)
 		}
 
-		// Separate into validate vs invalidate
 		var toValidate, toInvalidate []string
 		for _, e := range batch {
 			if ex, ok := existing[e.path]; ok && ex.ModTime.Equal(e.modTime) {
@@ -268,12 +267,10 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 			}
 		}
 
-		// Bulk validate unchanged files
 		if err := indexer.mod.db.ValidatePaths(toValidate); err != nil {
 			return fmt.Errorf("db validate: %w", err)
 		}
 
-		// Invalidate changed/new files
 		if err := indexer.mod.db.UpsertInvalidatePaths(toInvalidate); err != nil {
 			return fmt.Errorf("db invalidate: %w", err)
 		}
