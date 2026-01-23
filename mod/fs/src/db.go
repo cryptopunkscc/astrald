@@ -250,3 +250,40 @@ func (db *DB) SearchByPath(query string) (rows []*dbLocalFile, err error) {
 
 	return
 }
+
+// FindByPaths returns a map of path -> dbLocalFile for existing entries.
+// Includes entries regardless of updated_at or deleted_at state.
+func (db *DB) FindByPaths(paths []string) (map[string]*dbLocalFile, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+
+	var rows []*dbLocalFile
+	err := db.
+		Where("path IN ?", paths).
+		Find(&rows).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*dbLocalFile, len(rows))
+	for _, row := range rows {
+		result[row.Path] = row
+	}
+	return result, nil
+}
+
+// ValidatePaths marks paths as valid (sets updated_at=now, clears deleted_at)
+func (db *DB) ValidatePaths(paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+
+	return db.Model(&dbLocalFile{}).
+		Where("path IN ?", paths).
+		Updates(map[string]interface{}{
+			"deleted_at": nil,
+			"updated_at": time.Now(),
+		}).Error
+}

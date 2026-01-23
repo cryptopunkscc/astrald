@@ -35,6 +35,11 @@ type IndexEvent struct {
 	ObjectID *astral.ObjectID
 }
 
+type fileEntry struct {
+	path    string
+	modTime time.Time
+}
+
 type Indexer struct {
 	mod *Module
 	log *log.Logger
@@ -237,32 +242,62 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 	return enqueuer.Iter(indexer.mod.db.EachInvalidatedPath)
 }
 
-// scan walks the filesystem from root and inserts all paths into the database.
-// enqueue determines whether the paths should be enqueued for indexing right away.
+// scan walks the filesystem from root and updates the database.
+// Files with unchanged modtime are validated directly, others are invalidated and optionally enqueued.
 func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) error {
-	collector := NewBatchCollector(1000, func(batch []string) error {
-		if err := indexer.mod.db.UpsertInvalidatePaths(batch); err != nil {
-			return fmt.Errorf("db insert: %w", err)
+	collector := NewBatchCollector(1000, func(batch []fileEntry) error {
+		// Extract paths for bulk DB lookup
+		batchPaths := make([]string, len(batch))
+		for i, e := range batch {
+			batchPaths[i] = e.path
 		}
 
-		if enqueue {
-			if err := indexer.enqueueLimiter.WaitN(ctx, len(batch)); err != nil {
+		// Bulk fetch existing entries
+		existing, err := indexer.mod.db.FindByPaths(batchPaths)
+		if err != nil {
+			return fmt.Errorf("db find: %w", err)
+		}
+
+		// Separate into validate vs invalidate
+		var toValidate, toInvalidate []string
+		for _, e := range batch {
+			if ex, ok := existing[e.path]; ok && ex.ModTime.Equal(e.modTime) {
+				toValidate = append(toValidate, e.path)
+			} else {
+				toInvalidate = append(toInvalidate, e.path)
+			}
+		}
+
+		// Bulk validate unchanged files
+		if err := indexer.mod.db.ValidatePaths(toValidate); err != nil {
+			return fmt.Errorf("db validate: %w", err)
+		}
+
+		// Invalidate changed/new files
+		if err := indexer.mod.db.UpsertInvalidatePaths(toInvalidate); err != nil {
+			return fmt.Errorf("db invalidate: %w", err)
+		}
+
+		// Optionally enqueue invalidated paths for hashing
+		if enqueue && len(toInvalidate) > 0 {
+			if err := indexer.enqueueLimiter.WaitN(ctx, len(toInvalidate)); err != nil {
 				return err
 			}
-
-			for _, path := range batch {
+			for _, path := range toInvalidate {
 				indexer.enqueue(path)
 			}
 		}
+
 		return nil
 	})
 
-	return collector.Iter(func(yield func(string) error) error {
-		return paths.WalkDir(ctx, root, func(path string) error {
+	return collector.Iter(func(yield func(fileEntry) error) error {
+		return paths.WalkDir(ctx, root, func(path string, info os.FileInfo) error {
 			if err := indexer.statLimiter.Wait(ctx); err != nil {
 				return err
 			}
-			return yield(path)
+
+			return yield(fileEntry{path: path, modTime: info.ModTime()})
 		})
 	})
 }
