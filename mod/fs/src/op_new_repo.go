@@ -9,7 +9,8 @@ import (
 
 type opNewRepoArgs struct {
 	Path  string
-	Label string
+	Name  string
+	Label string `query:"optional"`
 	In    string `query:"optional"`
 	Out   string `query:"optional"`
 }
@@ -18,18 +19,22 @@ func (mod *Module) OpNewRepo(ctx *astral.Context, q shell.Query, args opNewRepoA
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	var repo objects.Repository
-
-	repo = NewRepository(mod, args.Label, args.Path)
-
-	err = mod.Objects.AddRepository(args.Label, repo)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	if args.Label == "" {
+		args.Label = args.Name
 	}
 
-	err = mod.Objects.AddGroup(objects.RepoLocal, args.Label)
+	var repo objects.Repository
+
+	repo = NewRepository(mod, args.Name, args.Path)
+
+	err = mod.Objects.AddRepository(args.Name, repo)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
+	}
+
+	err = mod.Objects.AddGroup(objects.RepoLocal, args.Name)
+	if err != nil {
+		return ch.Send(astral.Err(err))
 	}
 
 	return ch.Send(&astral.Ack{})

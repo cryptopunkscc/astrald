@@ -18,6 +18,7 @@ func (db *DB) ObjectExists(pathPrefix string, objectID *astral.ObjectID) (b bool
 		Where("data_id = ?", objectID).
 		Where("path like ?", pathPrefix+"%").
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		Select("count(*)>0").
 		First(&b).Error
 	return
@@ -29,6 +30,7 @@ func (db *DB) FindObject(pathPrefix string, objectID *astral.ObjectID) (rows []*
 		Where("data_id = ?", objectID).
 		Where("path like ?", pathPrefix+"%").
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		Find(&rows).
 		Error
 
@@ -41,6 +43,7 @@ func (db *DB) UniqueObjectIDs(pathPrefix string) (ids []*astral.ObjectID, err er
 		Distinct("data_id").
 		Where("path like ?", pathPrefix+"%").
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		Find(&ids).
 		Error
 
@@ -51,6 +54,7 @@ func (db *DB) FindByPath(path string) (row *dbLocalFile, err error) {
 	err = db.
 		Where("path = ?", path).
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		First(&row).
 		Error
 
@@ -62,17 +66,22 @@ func (db *DB) FindByObjectID(objectID *astral.ObjectID) (rows []*dbLocalFile, er
 		Model(&dbLocalFile{}).
 		Where("data_id = ?", objectID).
 		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
 		Find(&rows).
 		Error
 
 	return
 }
 
-func (db *DB) DeleteByPath(path string) (err error) {
-	return db.
-		Where("path = ?", path).
-		Delete(&dbLocalFile{}).
-		Error
+// SoftDeletePaths marks paths as deleted
+func (db *DB) SoftDeletePaths(paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+
+	return db.Model(&dbLocalFile{}).
+		Where("path IN ?", paths).
+		Update("deleted_at", time.Now()).Error
 }
 
 // EachPath calls fn for each path, using primary key pagination.
@@ -87,7 +96,12 @@ func (db *DB) EachPath(prefix string, fn func(string) error) error {
 	for {
 		var rows []dbLocalFile
 
-		query := db.Select("id, path").Where("id > ?", lastID).Order("id ASC").Limit(batchSize)
+		query := db.
+			Select("id, path").
+			Where("id > ?", lastID).
+			Where("deleted_at IS NULL").
+			Order("id ASC").
+			Limit(batchSize)
 		if prefix != "" {
 			query = query.Where("path LIKE ?", prefix+"/%")
 		}
@@ -109,8 +123,9 @@ func (db *DB) EachPath(prefix string, fn func(string) error) error {
 	}
 }
 
-// InsertNewPaths batch inserts invalidated path records
-func (db *DB) InsertNewPaths(paths []string) error {
+// InvalidatePaths upserts paths with updated_at=0 (needs check).
+// If path already exists, resets deleted_at to NULL and updated_at to 0.
+func (db *DB) InvalidatePaths(paths []string) error {
 	if len(paths) == 0 {
 		return nil
 	}
@@ -121,13 +136,19 @@ func (db *DB) InsertNewPaths(paths []string) error {
 	}
 
 	return db.
-		Clauses(clause.Insert{Modifier: "OR IGNORE"}).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "path"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"deleted_at": nil,
+				"updated_at": 0,
+			}),
+		}).
 		Create(&records).
 		Error
 }
 
-// UpsertPath updates or inserts a path record (updates data_id/mod_time/updated_at)
-func (db *DB) UpsertPath(
+// IndexPath inserts/updates index entry for path with given objectID and modTime (does not clear deleted_at)
+func (db *DB) IndexPath(
 	path string,
 	objectID *astral.ObjectID,
 	modTime time.Time,
@@ -138,10 +159,12 @@ func (db *DB) UpsertPath(
 		DataID:    objectID,
 		ModTime:   modTime,
 		UpdatedAt: now,
+		DeletedAt: nil,
 	}
 
 	return db.
 		Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "path"}},
 			DoUpdates: clause.AssignmentColumns([]string{
 				"data_id",
 				"mod_time",
@@ -152,14 +175,17 @@ func (db *DB) UpsertPath(
 		Error
 }
 
-// ValidatePath marks a path as valid (updates updated_at only)
+// ValidatePath marks a path as valid (updates updated_at, clears deleted_at)
 func (db *DB) ValidatePath(path string) error {
 	return db.Model(&dbLocalFile{}).
 		Where("path = ?", path).
-		Update("updated_at", time.Now()).Error
+		Updates(map[string]interface{}{
+			"deleted_at": nil,
+			"updated_at": time.Now(),
+		}).Error
 }
 
-// InvalidateAllPaths marks all all paths for re-check
+// InvalidateAllPaths marks all paths as invalid
 func (db *DB) InvalidateAllPaths() error {
 	return db.Model(&dbLocalFile{}).
 		Where("id > 0").
@@ -167,15 +193,15 @@ func (db *DB) InvalidateAllPaths() error {
 		Error
 }
 
-// Invalidate marks a path for re-check
-func (db *DB) Invalidate(path string) (err error) {
+// InvalidatePath marks a path for re-check
+func (db *DB) InvalidatePath(path string) (err error) {
 	return db.Model(&dbLocalFile{}).
 		Where("path = ?", path).
 		Update("updated_at", 0).Error
 }
 
-// EachInvalidPath calls fn for each invalid path
-func (db *DB) EachInvalidPath(fn func(string) error) error {
+// EachInvalidatedPath calls fn for each invalidated path (does not include soft deleted paths)
+func (db *DB) EachInvalidatedPath(fn func(string) error) error {
 	const batchSize = 1000
 	var lastID int64
 
@@ -185,6 +211,7 @@ func (db *DB) EachInvalidPath(fn func(string) error) error {
 		err := db.
 			Select("id, path").
 			Where("updated_at = 0").
+			Where("deleted_at IS NULL").
 			Where("id > ?", lastID).
 			Order("id ASC").
 			Limit(batchSize).
@@ -205,4 +232,60 @@ func (db *DB) EachInvalidPath(fn func(string) error) error {
 			lastID = row.ID
 		}
 	}
+}
+
+func (db *DB) SearchByPath(query string) (rows []*dbLocalFile, err error) {
+	err = db.
+		Where("LOWER(path) like ?", "%"+query+"%").
+		Where("updated_at != 0").
+		Where("deleted_at IS NULL").
+		Find(&rows).
+		Error
+
+	return
+}
+
+// LookupPaths returns a map of path -> dbLocalFile for existing entries.
+// Includes entries regardless of updated_at or deleted_at state.
+func (db *DB) LookupPaths(paths []string) (result map[string]*dbLocalFile, err error) {
+	if len(paths) == 0 {
+		return make(map[string]*dbLocalFile), nil
+	}
+
+	var rows []*dbLocalFile
+	err = db.
+		Where("path IN ?", paths).
+		Find(&rows).
+		Error
+	if err != nil {
+		return result, err
+	}
+
+	result = make(map[string]*dbLocalFile, len(rows))
+	for _, row := range rows {
+		result[row.Path] = row
+	}
+
+	return result, nil
+}
+
+// ValidatePaths marks paths as valid (sets updated_at=now, clears deleted_at)
+func (db *DB) ValidatePaths(paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+
+	return db.Model(&dbLocalFile{}).
+		Where("path IN ?", paths).
+		Updates(map[string]interface{}{
+			"deleted_at": nil,
+			"updated_at": time.Now(),
+		}).Error
+}
+
+func (db *DB) DeletePath(path string) (err error) {
+	return db.
+		Where("path = ?", path).
+		Delete(&dbLocalFile{}).
+		Error
 }

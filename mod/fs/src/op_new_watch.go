@@ -9,7 +9,8 @@ import (
 
 type opNewWatchArgs struct {
 	Path  string
-	Label string
+	Name  string
+	Label string `query:"optional"`
 	In    string `query:"optional"`
 	Out   string `query:"optional"`
 }
@@ -18,24 +19,34 @@ func (mod *Module) OpNewWatch(ctx *astral.Context, q shell.Query, args opNewWatc
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
+	if args.Label == "" {
+		args.Label = args.Name
+	}
+
 	repo, err := NewWatchRepository(mod, args.Path, args.Label)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
-	err = mod.indexer.scan(args.Path)
+	scanCtx, cancel := mod.ctx.WithCancel()
+	repo.scanCancel = cancel
+
+	go func() {
+		if err := mod.indexer.scan(scanCtx, args.Path, true); err != nil {
+			mod.log.Error("scan %v: %v", args.Path, err)
+		}
+	}()
+
+	err = mod.Objects.AddRepository(args.Name, repo)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		cancel()
+		return ch.Send(astral.Err(err))
 	}
 
-	err = mod.Objects.AddRepository(args.Label, repo)
+	err = mod.Objects.AddGroup(objects.RepoLocal, args.Name)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	err = mod.Objects.AddGroup(objects.RepoLocal, args.Label)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		cancel()
+		return ch.Send(astral.Err(err))
 	}
 
 	return ch.Send(&astral.Ack{})

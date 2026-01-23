@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -18,10 +19,11 @@ var _ objects.Repository = &WatchRepository{}
 var _ objects.AfterRemovedCallback = &WatchRepository{}
 
 type WatchRepository struct {
-	mod     *Module
-	label   string
-	root    string
-	watcher *Watcher
+	mod        *Module
+	label      string
+	root       string
+	watcher    *Watcher
+	scanCancel context.CancelFunc
 }
 
 func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepository, err error) {
@@ -74,11 +76,11 @@ func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *astral.Obje
 }
 
 func (repo *WatchRepository) onChange(path string) {
-	repo.mod.indexer.invalidate(path)
+	repo.mod.indexer.requeuePath(path)
 }
 
 func (repo *WatchRepository) onRemove(path string) {
-	repo.mod.indexer.remove(path)
+	repo.mod.indexer.deletePath(path)
 }
 
 func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
@@ -176,11 +178,15 @@ func (repo *WatchRepository) String() string {
 }
 
 func (repo *WatchRepository) AfterRemoved(name string) {
+	if repo.scanCancel != nil {
+		repo.scanCancel()
+	}
+
 	if err := repo.watcher.Close(); err != nil {
 		repo.mod.log.Error("%v watcher close error: %v", name, err)
 	}
 
 	if err := repo.mod.indexer.removeRoot(repo.root); err != nil {
-		repo.mod.log.Error("%v indexer remove root error: %v", name, err)
+		repo.mod.log.Error("%v indexer DeletePath root error: %v", name, err)
 	}
 }

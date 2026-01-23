@@ -147,7 +147,7 @@ func (t *PathTrie) Covers(path string) (bool, error) {
 // WalkDir walks the directory tree from root using breadth-first traversal,
 // calling fn for each regular file. Errors reading directories are skipped.
 // This avoids keeping many directory handles open, unlike filepath.WalkDir.
-func WalkDir(ctx context.Context, root string, fn func(path string) error) error {
+func WalkDir(ctx context.Context, root string, fn func(path string, info os.FileInfo) error) error {
 	queue := []string{root}
 
 	for len(queue) > 0 {
@@ -169,7 +169,11 @@ func WalkDir(ctx context.Context, root string, fn func(path string) error) error
 			if entry.IsDir() {
 				queue = append(queue, path)
 			} else if entry.Type().IsRegular() {
-				if err := fn(path); err != nil {
+				info, err := entry.Info()
+				if err != nil {
+					continue // file deleted between ReadDir and Info
+				}
+				if err := fn(path, info); err != nil {
 					return err
 				}
 			}

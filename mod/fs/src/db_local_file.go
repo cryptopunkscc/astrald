@@ -13,6 +13,7 @@ type dbLocalFile struct {
 	DataID    *astral.ObjectID `gorm:"index"`
 	ModTime   time.Time
 	UpdatedAt time.Time
+	DeletedAt *time.Time
 }
 
 func (dbLocalFile) TableName() string { return fs.DBPrefix + "local_files" }
