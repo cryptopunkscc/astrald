@@ -9,6 +9,10 @@ import (
 
 type Bool bool
 
+func NewBool(b bool) *Bool {
+	return (*Bool)(&b)
+}
+
 func (Bool) ObjectType() string {
 	return "bool"
 }
