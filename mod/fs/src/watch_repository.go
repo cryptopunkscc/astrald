@@ -76,11 +76,11 @@ func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *astral.Obje
 }
 
 func (repo *WatchRepository) onChange(path string) {
-	repo.mod.indexer.invalidate(path)
+	repo.mod.indexer.requeuePath(path)
 }
 
 func (repo *WatchRepository) onRemove(path string) {
-	repo.mod.indexer.hardDeletePath(path)
+	repo.mod.indexer.deletePath(path)
 }
 
 func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
@@ -187,6 +187,6 @@ func (repo *WatchRepository) AfterRemoved(name string) {
 	}
 
 	if err := repo.mod.indexer.removeRoot(repo.root); err != nil {
-		repo.mod.log.Error("%v indexer hardDeletePath root error: %v", name, err)
+		repo.mod.log.Error("%v indexer DeletePath root error: %v", name, err)
 	}
 }

@@ -129,8 +129,8 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 	}
 }
 
-func (indexer *Indexer) hardDeletePath(path string) (err error) {
-	err = indexer.mod.db.HardDeletePath(path)
+func (indexer *Indexer) deletePath(path string) (err error) {
+	err = indexer.mod.db.DeletePath(path)
 	if err != nil {
 		return fmt.Errorf("db delete: %w", err)
 	}
@@ -144,10 +144,10 @@ func (indexer *Indexer) enqueue(path string) {
 	}
 }
 
-func (indexer *Indexer) invalidate(path string) (err error) {
-	err = indexer.mod.db.Invalidate(path)
+func (indexer *Indexer) requeuePath(path string) (err error) {
+	err = indexer.mod.db.InvalidatePath(path)
 	if err != nil {
-		return fmt.Errorf("db invalidate: %w", err)
+		return fmt.Errorf("db requeuePath: %w", err)
 	}
 
 	indexer.enqueue(path)
@@ -166,7 +166,7 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 	stat, err := os.Stat(path)
 	if err != nil {
 		// File was not found at filesystem -> delete from database
-		err = indexer.mod.db.HardDeletePath(path)
+		err = indexer.mod.db.DeletePath(path)
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 		case err != nil:
@@ -176,7 +176,7 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 	}
 
 	indexEntry, err := indexer.mod.db.FindByPath(path)
-	if err == nil && indexEntry.ModTime == stat.ModTime() {
+	if err == nil && indexEntry.ModTime.Equal(stat.ModTime()) {
 		// between index and filesystem nothing changed -> mark index as good
 		return indexer.mod.db.ValidatePath(path)
 	}
@@ -191,7 +191,7 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 	}
 
 	// we calculated new objectID -> update database index
-	err = indexer.mod.db.UpsertCleanPath(path, objectID, stat.ModTime())
+	err = indexer.mod.db.IndexPath(path, objectID, stat.ModTime())
 	if err != nil {
 		return fmt.Errorf("db upsert: %w", err)
 	}
@@ -221,7 +221,7 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 
 	indexer.mod.log.Info(`fs indexer: scan completed in %v`, time.Since(now))
 	if err := indexer.mod.db.InvalidateAllPaths(); err != nil {
-		return fmt.Errorf("invalidate all paths: %w", err)
+		return fmt.Errorf("requeuePath all paths: %w", err)
 	}
 
 	enqueuer := NewBatchCollector(1000, func(batch []string) error {
@@ -253,7 +253,7 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 			batchPaths[i] = e.path
 		}
 
-		existing, err := indexer.mod.db.FindByPaths(batchPaths)
+		existing, err := indexer.mod.db.LookupPaths(batchPaths)
 		if err != nil {
 			return fmt.Errorf("db find: %w", err)
 		}
@@ -271,8 +271,8 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 			return fmt.Errorf("db validate: %w", err)
 		}
 
-		if err := indexer.mod.db.UpsertInvalidatePaths(toInvalidate); err != nil {
-			return fmt.Errorf("db invalidate: %w", err)
+		if err := indexer.mod.db.InvalidatePaths(toInvalidate); err != nil {
+			return fmt.Errorf("db requeuePath: %w", err)
 		}
 
 		// Optionally enqueue invalidated paths for hashing
