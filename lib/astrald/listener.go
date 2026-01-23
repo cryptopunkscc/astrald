@@ -12,14 +12,14 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-var _ net.Listener = &Listener{}
-
 type Listener struct {
 	net.Listener
 	token  astral.Nonce
 	doneCh chan struct{}
 	done   atomic.Bool
 }
+
+var _ net.Listener = &Listener{}
 
 func NewListener(protocol string, token astral.Nonce) (*Listener, error) {
 	l, err := ipc.ListenAny(protocol)
@@ -32,6 +32,24 @@ func NewListener(protocol string, token astral.Nonce) (*Listener, error) {
 		doneCh:   make(chan struct{}),
 		token:    token,
 	}, nil
+}
+
+func (l *Listener) Accept() (net.Conn, error) {
+	q, err := l.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	return q.Accept(), nil
+}
+
+func (l *Listener) AcceptChannel(cfg ...channel.ConfigFunc) (*channel.Channel, error) {
+	q, err := l.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	return channel.New(q.Accept(), cfg...), nil
 }
 
 func (l *Listener) Next() (*PendingQuery, error) {
@@ -73,24 +91,6 @@ func (l *Listener) Next() (*PendingQuery, error) {
 		ch.Close()
 		return nil, errors.New("unexpected message type " + msg.ObjectType())
 	}
-}
-
-func (l *Listener) Accept() (net.Conn, error) {
-	q, err := l.Next()
-	if err != nil {
-		return nil, err
-	}
-
-	return q.Accept(), nil
-}
-
-func (l *Listener) AcceptChannel(cfg ...channel.ConfigFunc) (*channel.Channel, error) {
-	q, err := l.Next()
-	if err != nil {
-		return nil, err
-	}
-
-	return channel.New(q.Accept(), cfg...), nil
 }
 
 func (l *Listener) Close() error {
