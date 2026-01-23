@@ -1,6 +1,8 @@
 package user
 
 import (
+	"errors"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -18,25 +20,16 @@ func (mod *Module) HoldObject(objectID *astral.ObjectID) (hold bool) {
 		return true
 	}
 
-	objectType, err := mod.Objects.GetType(mod.ctx, objectID)
-	if err != nil {
-		mod.log.Error("failed to get object type of %v", objectID)
-		return false
-	}
-
-	switch objectType {
-	case user.SignedNodeContract{}.ObjectType():
-		return mod.holdNodeContract(objectID)
-	case user.SignedNodeContractRevocation{}.ObjectType():
-		return mod.holdNodeContractRevocation(objectID)
-	default:
-		return false
-	}
+	return mod.holdNodeContract(objectID) || mod.holdNodeContractRevocation(objectID)
 }
 
 func (mod *Module) holdNodeContract(objectID *astral.ObjectID) bool {
 	c, err := mod.FindNodeContract(objectID)
 	if err != nil {
+		if errors.Is(err, user.ErrNodeContractNotFound) {
+			return false
+		}
+
 		mod.log.Error("failed to load node contract %v: %v", objectID, err)
 		return false
 	}
@@ -51,6 +44,9 @@ func (mod *Module) holdNodeContract(objectID *astral.ObjectID) bool {
 func (mod *Module) holdNodeContractRevocation(objectID *astral.ObjectID) bool {
 	c, err := mod.FindNodeContractRevocation(objectID)
 	if err != nil {
+		if errors.Is(err, user.ErrContractRevocationNotFound) {
+			return false
+		}
 		mod.log.Error("failed to load node contract revocation %v: %v", objectID, err)
 		return false
 	}
