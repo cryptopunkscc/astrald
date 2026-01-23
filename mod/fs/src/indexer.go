@@ -15,7 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/fs"
 	"github.com/cryptopunkscc/astrald/sig"
 	"golang.org/x/time/rate"
-	"gorm.io/gorm"
 )
 
 // todo: add more extensive logging
@@ -102,7 +101,7 @@ func (indexer *Indexer) worker(ctx *astral.Context) {
 				indexer.log.Error("indexer: batch delete: %v", err)
 			}
 
-			timer.Reset(flushDelay) // ← add thiss
+			timer.Reset(flushDelay)
 		case path := <-indexer.workqueue:
 			indexer.pending.Remove(path)
 
@@ -147,7 +146,7 @@ func (indexer *Indexer) enqueue(path string) {
 func (indexer *Indexer) requeuePath(path string) (err error) {
 	err = indexer.mod.db.InvalidatePath(path)
 	if err != nil {
-		return fmt.Errorf("db requeuePath: %w", err)
+		return fmt.Errorf("db invalidate path: %w", err)
 	}
 
 	indexer.enqueue(path)
@@ -167,11 +166,10 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 	if err != nil {
 		// File was not found at filesystem -> delete from database
 		err = indexer.mod.db.DeletePath(path)
-		switch {
-		case errors.Is(err, gorm.ErrRecordNotFound):
-		case err != nil:
-			return fmt.Errorf("db error: %w", err)
+		if err != nil {
+			return fmt.Errorf("db delete: %w", err)
 		}
+
 		return nil
 	}
 
@@ -221,7 +219,7 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 
 	indexer.mod.log.Info(`fs indexer: scan completed in %v`, time.Since(now))
 	if err := indexer.mod.db.InvalidateAllPaths(); err != nil {
-		return fmt.Errorf("requeuePath all paths: %w", err)
+		return fmt.Errorf("invalid all paths failed: %w", err)
 	}
 
 	enqueuer := NewBatchCollector(1000, func(batch []string) error {

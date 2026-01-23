@@ -164,6 +164,7 @@ func (db *DB) IndexPath(
 
 	return db.
 		Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "path"}},
 			DoUpdates: clause.AssignmentColumns([]string{
 				"data_id",
 				"mod_time",
@@ -184,7 +185,7 @@ func (db *DB) ValidatePath(path string) error {
 		}).Error
 }
 
-// InvalidateAllPaths marks all all paths for re-check
+// InvalidateAllPaths marks all paths as invalid
 func (db *DB) InvalidateAllPaths() error {
 	return db.Model(&dbLocalFile{}).
 		Where("id > 0").
@@ -246,24 +247,25 @@ func (db *DB) SearchByPath(query string) (rows []*dbLocalFile, err error) {
 
 // LookupPaths returns a map of path -> dbLocalFile for existing entries.
 // Includes entries regardless of updated_at or deleted_at state.
-func (db *DB) LookupPaths(paths []string) (map[string]*dbLocalFile, error) {
+func (db *DB) LookupPaths(paths []string) (result map[string]*dbLocalFile, err error) {
 	if len(paths) == 0 {
-		return nil, nil
+		return make(map[string]*dbLocalFile), nil
 	}
 
 	var rows []*dbLocalFile
-	err := db.
+	err = db.
 		Where("path IN ?", paths).
 		Find(&rows).
 		Error
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
-	result := make(map[string]*dbLocalFile, len(rows))
+	result = make(map[string]*dbLocalFile, len(rows))
 	for _, row := range rows {
 		result[row.Path] = row
 	}
+
 	return result, nil
 }
 
