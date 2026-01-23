@@ -88,7 +88,7 @@ func (db *DB) SoftDeletePaths(paths []string) error {
 // If prefix is non-empty, only paths strictly under the prefix are matched (prefix+"/%"),
 // not the prefix itself. This is correct for directory roots since only regular files
 // are indexed, not directories.
-// note: also calls for paths that are invalid (updated_at = 0) or soft deleted
+// note: also calls for paths that are invalid (updated_at = 0)
 func (db *DB) EachPath(prefix string, fn func(string) error) error {
 	const batchSize = 1000
 	var lastID int64
