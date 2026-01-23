@@ -26,7 +26,7 @@ func (mod *Module) HoldObject(objectID *astral.ObjectID) (hold bool) {
 func (mod *Module) holdNodeContract(objectID *astral.ObjectID) bool {
 	c, err := mod.FindNodeContract(objectID)
 	if err != nil {
-		if errors.Is(err, user.ErrNodeContractNotFound) {
+		if errors.Is(err, user.ErrContractNotExists) {
 			return false
 		}
 
@@ -44,7 +44,7 @@ func (mod *Module) holdNodeContract(objectID *astral.ObjectID) bool {
 func (mod *Module) holdNodeContractRevocation(objectID *astral.ObjectID) bool {
 	c, err := mod.FindNodeContractRevocation(objectID)
 	if err != nil {
-		if errors.Is(err, user.ErrContractRevocationNotFound) {
+		if errors.Is(err, user.ErrContractRevocationNotExists) {
 			return false
 		}
 		mod.log.Error("failed to load node contract revocation %v: %v", objectID, err)

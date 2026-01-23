@@ -253,7 +253,7 @@ func (db *DB) FindNodeContractRevocation(revocationID *astral.ObjectID) (row *db
 		First(&row).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, user.ErrContractRevocationNotFound
+			return nil, user.ErrContractRevocationNotExists
 		}
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func (db *DB) FindNodeContract(contractID *astral.ObjectID) (row *dbNodeContract
 		First(&row).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, user.ErrNodeContractNotFound
+			return nil, user.ErrContractNotExists
 		}
 		return nil, err
 	}

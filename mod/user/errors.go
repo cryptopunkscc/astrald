@@ -11,5 +11,3 @@ var ErrNodeContractRevocationInvalid = astral.NewError("node contract revocation
 var ErrNodeCannotRevokeContract = astral.NewError("node cannot revoke contract")
 var ErrContractNotExists = astral.NewError("node contract not exists")
 var ErrContractRevocationNotExists = astral.NewError("node contract revocation not exists")
-var ErrNodeContractNotFound = astral.NewError("contract not found")
-var ErrContractRevocationNotFound = astral.NewError("contract revocation not found")
