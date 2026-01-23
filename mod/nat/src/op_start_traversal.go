@@ -3,6 +3,7 @@ package nat
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	natclient "github.com/cryptopunkscc/astrald/mod/nat/client"
 	"github.com/cryptopunkscc/astrald/mod/shell"
@@ -43,7 +44,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q shell.Query, args opS
 		}
 
 		mod.log.Log("starting traversal as initiator to %v", target)
-		client := natclient.NewFromNode(mod.node, target)
+		client := natclient.New(target, astrald.Default())
 		peerCh, err := client.StartTraversalCh(ctx, args.Out)
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
