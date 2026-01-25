@@ -11,7 +11,7 @@ type opInfoArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpInfo(ctx *astral.Context, q ops.Query, args opInfoArgs) (err error) {
+func (mod *Module) OpInfo(ctx *astral.Context, q *ops.Query, args opInfoArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return q.RejectWithCode(2)

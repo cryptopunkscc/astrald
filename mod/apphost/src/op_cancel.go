@@ -16,7 +16,7 @@ type opCancelArgs struct {
 	Out   string  `query:"optional"`
 }
 
-func (mod *Module) OpCancel(ctx *astral.Context, q ops.Query, args opCancelArgs) (err error) {
+func (mod *Module) OpCancel(ctx *astral.Context, q *ops.Query, args opCancelArgs) (err error) {
 	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

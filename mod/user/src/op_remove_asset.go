@@ -11,7 +11,7 @@ type opRemoveAssetArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRemoveAsset(ctx *astral.Context, q ops.Query, args opRemoveAssetArgs) (err error) {
+func (mod *Module) OpRemoveAsset(ctx *astral.Context, q *ops.Query, args opRemoveAssetArgs) (err error) {
 	err = mod.RemoveAsset(args.ID)
 
 	if err != nil {

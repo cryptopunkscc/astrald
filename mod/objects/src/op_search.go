@@ -10,7 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) OpSearch(ctx *astral.Context, q ops.Query, args objects.SearchArgs) (err error) {
+func (mod *Module) OpSearch(ctx *astral.Context, q *ops.Query, args objects.SearchArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
 	defer cancel()
 

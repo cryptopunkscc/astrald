@@ -11,7 +11,7 @@ type opResolveEndpointsArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpResolveEndpoints(ctx *astral.Context, q ops.Query, args opResolveEndpointsArgs) (err error) {
+func (mod *Module) OpResolveEndpoints(ctx *astral.Context, q *ops.Query, args opResolveEndpointsArgs) (err error) {
 	targetID, err := mod.Dir.ResolveIdentity(args.ID)
 	if err != nil {
 		return q.RejectWithCode(2)

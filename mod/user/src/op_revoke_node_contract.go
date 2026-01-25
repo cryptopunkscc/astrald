@@ -17,7 +17,7 @@ type opRevokeNodeContractArgs struct {
 	Out        string `query:"optional"`
 }
 
-func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q ops.Query, args opRevokeNodeContractArgs) (err error) {
+func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q *ops.Query, args opRevokeNodeContractArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		// cannot handle if we dont have active contract

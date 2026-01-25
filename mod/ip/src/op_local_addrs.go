@@ -11,7 +11,7 @@ type opLocalAddrsArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpLocalAddrs(ctx *astral.Context, q ops.Query, args opLocalAddrsArgs) (err error) {
+func (mod *Module) OpLocalAddrs(ctx *astral.Context, q *ops.Query, args opLocalAddrsArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

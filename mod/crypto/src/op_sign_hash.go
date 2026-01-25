@@ -16,7 +16,7 @@ type opSignHashArgs struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpSignHash(ctx *astral.Context, q ops.Query, args opSignHashArgs) (err error) {
+func (mod *Module) OpSignHash(ctx *astral.Context, q *ops.Query, args opSignHashArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

@@ -15,7 +15,7 @@ type opVerifyMessageSignatureArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpVerifyMessageSignature(ctx *astral.Context, q ops.Query, args opVerifyMessageSignatureArgs) (err error) {
+func (mod *Module) OpVerifyMessageSignature(ctx *astral.Context, q *ops.Query, args opVerifyMessageSignatureArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

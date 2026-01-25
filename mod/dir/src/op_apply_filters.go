@@ -15,7 +15,7 @@ type opApplyFiltersArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpApplyFilters(ctx *astral.Context, q ops.Query, args opApplyFiltersArgs) (err error) {
+func (mod *Module) OpApplyFilters(ctx *astral.Context, q *ops.Query, args opApplyFiltersArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

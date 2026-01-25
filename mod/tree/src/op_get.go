@@ -16,7 +16,7 @@ type opGetArgs struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpGet(ctx *astral.Context, q ops.Query, args opGetArgs) (err error) {
+func (mod *Module) OpGet(ctx *astral.Context, q *ops.Query, args opGetArgs) (err error) {
 	ctx, cancel := ctx.WithCancel()
 	defer cancel()
 

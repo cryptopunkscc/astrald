@@ -16,7 +16,7 @@ type opSignAppContractArgs struct {
 	Duration astral.Duration `query:"optional"`
 }
 
-func (mod *Module) OpSignAppContract(ctx *astral.Context, q ops.Query, args opSignAppContractArgs) (err error) {
+func (mod *Module) OpSignAppContract(ctx *astral.Context, q *ops.Query, args opSignAppContractArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

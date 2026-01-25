@@ -10,7 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	libapphost "github.com/cryptopunkscc/astrald/lib/apphost"
 	"github.com/cryptopunkscc/astrald/lib/ipc"
-	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -128,7 +127,7 @@ func (l *Listener) Done() <-chan struct{} {
 	return l.doneCh
 }
 
-func (l *Listener) Serve(ctx *astral.Context, set *ops.Set) error {
+func (l *Listener) Serve(ctx *astral.Context, router astral.Router) error {
 	var errRejected *astral.ErrRejected
 
 	for {
@@ -139,7 +138,7 @@ func (l *Listener) Serve(ctx *astral.Context, set *ops.Set) error {
 
 		var conn *libapphost.Conn
 
-		w, err := set.RouteQuery(ctx, q.query, q.conn)
+		w, err := router.RouteQuery(ctx, q.query, q.conn)
 		switch {
 		case err == nil:
 			conn = q.Accept()

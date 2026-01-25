@@ -12,7 +12,7 @@ type opSetAliasArgs struct {
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpSetAlias(ctx *astral.Context, q ops.Query, args opSetAliasArgs) (err error) {
+func (mod *Module) OpSetAlias(ctx *astral.Context, q *ops.Query, args opSetAliasArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

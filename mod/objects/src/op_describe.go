@@ -14,7 +14,7 @@ type opDescribeArgs struct {
 	Zone astral.Zone `query:"optional"`
 }
 
-func (mod *Module) OpDescribe(ctx *astral.Context, q ops.Query, args opDescribeArgs) (err error) {
+func (mod *Module) OpDescribe(ctx *astral.Context, q *ops.Query, args opDescribeArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
 	defer cancel()
 

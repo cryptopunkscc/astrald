@@ -11,7 +11,7 @@ type opListPairsArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpListPairs(ctx *astral.Context, q ops.Query,
+func (mod *Module) OpListPairs(ctx *astral.Context, q *ops.Query,
 	args opListPairsArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()

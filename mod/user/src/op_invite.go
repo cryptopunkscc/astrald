@@ -14,7 +14,7 @@ type opInviteArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpInvite(ctx *astral.Context, q ops.Query, args opInviteArgs) (err error) {
+func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac != nil {
 		// We already have an active contract

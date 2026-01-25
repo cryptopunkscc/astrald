@@ -12,7 +12,7 @@ type opSetEnabledArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpSetEnabled(ctx *astral.Context, q ops.Query, args opSetEnabledArgs) (err error) {
+func (mod *Module) OpSetEnabled(ctx *astral.Context, q *ops.Query, args opSetEnabledArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

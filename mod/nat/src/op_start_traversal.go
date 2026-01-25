@@ -14,7 +14,7 @@ type opStartTraversal struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpStartTraversal(ctx *astral.Context, q ops.Query, args opStartTraversal) error {
+func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opStartTraversal) error {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

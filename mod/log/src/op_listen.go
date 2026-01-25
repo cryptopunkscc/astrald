@@ -12,7 +12,7 @@ type opListenArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpListen(ctx *astral.Context, q ops.Query, args opListenArgs) (err error) {
+func (mod *Module) OpListen(ctx *astral.Context, q *ops.Query, args opListenArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

@@ -10,7 +10,7 @@ type opPublicIPCandidatesArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpPublicIPCandidates(ctx *astral.Context, q ops.Query, args opPublicIPCandidatesArgs) (err error) {
+func (mod *Module) OpPublicIPCandidates(ctx *astral.Context, q *ops.Query, args opPublicIPCandidatesArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

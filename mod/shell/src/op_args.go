@@ -11,7 +11,7 @@ type opArgsArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpArgs(ctx *astral.Context, q ops.Query, args opArgsArgs) (err error) {
+func (mod *Module) OpArgs(ctx *astral.Context, q *ops.Query, args opArgsArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

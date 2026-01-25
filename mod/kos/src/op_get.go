@@ -13,7 +13,7 @@ type opGetArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpGet(ctx *astral.Context, q ops.Query, args opGetArgs) error {
+func (mod *Module) OpGet(ctx *astral.Context, q *ops.Query, args opGetArgs) error {
 	typ, payload, err := mod.db.Get(ctx.Identity(), args.Key)
 	if err != nil {
 		return q.RejectWithCode(8)

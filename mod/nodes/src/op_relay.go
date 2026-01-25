@@ -13,7 +13,7 @@ type opRelayArgs struct {
 	SetTarget *astral.Identity `query:"optional"`
 }
 
-func (mod *Module) OpRelay(ctx *astral.Context, q ops.Query, args opRelayArgs) (err error) {
+func (mod *Module) OpRelay(ctx *astral.Context, q *ops.Query, args opRelayArgs) (err error) {
 	ch := channel.New(q.Accept())
 	defer ch.Close()
 

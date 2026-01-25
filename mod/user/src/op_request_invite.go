@@ -12,7 +12,7 @@ type opRequestInviteArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRequestInvite(ctx *astral.Context, q ops.Query, args opRequestInviteArgs) (err error) {
+func (mod *Module) OpRequestInvite(ctx *astral.Context, q *ops.Query, args opRequestInviteArgs) (err error) {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
 	ac := mod.ActiveContract()

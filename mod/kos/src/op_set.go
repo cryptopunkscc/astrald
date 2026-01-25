@@ -18,7 +18,7 @@ type opSetArgs struct {
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpSet(ctx *astral.Context, q ops.Query, args opSetArgs) (err error) {
+func (mod *Module) OpSet(ctx *astral.Context, q *ops.Query, args opSetArgs) (err error) {
 	var payload []byte
 
 	switch {

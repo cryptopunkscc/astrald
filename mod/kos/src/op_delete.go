@@ -11,7 +11,7 @@ type opDeleteArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpDelete(ctx *astral.Context, q ops.Query, args opDeleteArgs) (err error) {
+func (mod *Module) OpDelete(ctx *astral.Context, q *ops.Query, args opDeleteArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

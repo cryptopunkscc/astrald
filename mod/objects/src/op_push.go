@@ -13,7 +13,7 @@ type opPushArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpPush(ctx *astral.Context, q ops.Query, args opPushArgs) (err error) {
+func (mod *Module) OpPush(ctx *astral.Context, q *ops.Query, args opPushArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

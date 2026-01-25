@@ -11,7 +11,7 @@ type opRepositoriesArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRepositories(ctx *astral.Context, q ops.Query, args opRepositoriesArgs) (err error) {
+func (mod *Module) OpRepositories(ctx *astral.Context, q *ops.Query, args opRepositoriesArgs) (err error) {
 	ctx = ctx.ExcludeZone(astral.ZoneNetwork)
 
 	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))

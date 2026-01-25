@@ -15,7 +15,7 @@ type opNewRepoArgs struct {
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpNewRepo(ctx *astral.Context, q ops.Query, args opNewRepoArgs) (err error) {
+func (mod *Module) OpNewRepo(ctx *astral.Context, q *ops.Query, args opNewRepoArgs) (err error) {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

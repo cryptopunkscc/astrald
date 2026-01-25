@@ -11,7 +11,7 @@ type opListSiblingsArgs struct {
 	Zone astral.Zone `query:"optional"`
 }
 
-func (mod *Module) OpListSiblings(ctx *astral.Context, q ops.Query, args opListSiblingsArgs) (err error) {
+func (mod *Module) OpListSiblings(ctx *astral.Context, q *ops.Query, args opListSiblingsArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithCancel()
 	defer cancel()
 

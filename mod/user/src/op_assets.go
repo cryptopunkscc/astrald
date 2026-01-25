@@ -10,7 +10,7 @@ type opAssetsArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpAssets(ctx *astral.Context, q ops.Query, args opAssetsArgs) (err error) {
+func (mod *Module) OpAssets(ctx *astral.Context, q *ops.Query, args opAssetsArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

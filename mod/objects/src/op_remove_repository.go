@@ -12,7 +12,7 @@ type opRemoveRepositoryArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpRemoveRepository(ctx *astral.Context, q ops.Query, args opRemoveRepositoryArgs) (err error) {
+func (mod *Module) OpRemoveRepository(ctx *astral.Context, q *ops.Query, args opRemoveRepositoryArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

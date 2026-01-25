@@ -13,7 +13,7 @@ type opRemoveRemoteEndpointLocalPort struct {
 	Out      string `query:"optional"`
 }
 
-func (mod *Module) OpRemoveRemoteEndpointLocalPort(ctx *astral.Context, q ops.Query, args opRemoveRemoteEndpointLocalPort) (err error) {
+func (mod *Module) OpRemoveRemoteEndpointLocalPort(ctx *astral.Context, q *ops.Query, args opRemoveRemoteEndpointLocalPort) (err error) {
 	endpoint, err := kcp.ParseEndpoint(string(args.Endpoint))
 	if err != nil {
 		return q.RejectWithCode(4)

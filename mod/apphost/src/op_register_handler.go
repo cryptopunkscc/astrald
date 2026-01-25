@@ -13,7 +13,7 @@ type opRegisterHandlerArgs struct {
 	Out      string `query:"optional"`
 }
 
-func (mod *Module) OpRegisterHandler(ctx *astral.Context, q ops.Query, args opRegisterHandlerArgs) (err error) {
+func (mod *Module) OpRegisterHandler(ctx *astral.Context, q *ops.Query, args opRegisterHandlerArgs) (err error) {
 	// cannot register handlers over a network
 	if q.Origin() == astral.OriginNetwork {
 		return q.Reject()

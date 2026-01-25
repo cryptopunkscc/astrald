@@ -126,7 +126,7 @@ func (set *Set) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClose
 		return query.RouteNotFound(set)
 	}
 
-	var query = NewNetworkQuery(w, q)
+	var query = newQuery(w, q)
 	defer query.Reject()
 
 	go func() {
@@ -143,5 +143,5 @@ func (set *Set) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClose
 		_ = query.Reject()
 	}()
 
-	return query.Resolve(ctx)
+	return query.resolve(ctx)
 }

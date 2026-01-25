@@ -13,7 +13,7 @@ type opProbeArgs struct {
 	Out  string           `query:"optional"`
 }
 
-func (mod *Module) OpProbe(ctx *astral.Context, q ops.Query, args opProbeArgs) (err error) {
+func (mod *Module) OpProbe(ctx *astral.Context, q *ops.Query, args opProbeArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

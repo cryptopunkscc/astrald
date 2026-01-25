@@ -15,7 +15,7 @@ type opReadArgs struct {
 	Repo   string        `query:"optional"`
 }
 
-func (mod *Module) OpRead(ctx *astral.Context, q ops.Query, args opReadArgs) (err error) {
+func (mod *Module) OpRead(ctx *astral.Context, q *ops.Query, args opReadArgs) (err error) {
 	ctx = ctx.IncludeZone(args.Zone)
 
 	repo := mod.ReadDefault()

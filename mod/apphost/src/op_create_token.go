@@ -17,7 +17,7 @@ type opCreateTokenArgs struct {
 	Out      string          `query:"optional"`
 }
 
-func (mod *Module) OpCreateToken(ctx *astral.Context, q ops.Query, args opCreateTokenArgs) (err error) {
+func (mod *Module) OpCreateToken(ctx *astral.Context, q *ops.Query, args opCreateTokenArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

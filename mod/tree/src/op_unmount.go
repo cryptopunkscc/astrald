@@ -12,7 +12,7 @@ type opUnmountArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpUnmount(ctx *astral.Context, q ops.Query, args opUnmountArgs) (err error) {
+func (mod *Module) OpUnmount(ctx *astral.Context, q *ops.Query, args opUnmountArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

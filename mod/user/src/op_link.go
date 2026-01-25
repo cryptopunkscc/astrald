@@ -10,7 +10,7 @@ import (
 type opLinkArgs struct {
 }
 
-func (mod *Module) OpLink(ctx *astral.Context, q ops.Query, args opLinkArgs) (err error) {
+func (mod *Module) OpLink(ctx *astral.Context, q *ops.Query, args opLinkArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return q.Reject()

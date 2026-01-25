@@ -15,7 +15,7 @@ type opNewMemArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpNewMem(ctx *astral.Context, q ops.Query, args opNewMemArgs) (err error) {
+func (mod *Module) OpNewMem(ctx *astral.Context, q *ops.Query, args opNewMemArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

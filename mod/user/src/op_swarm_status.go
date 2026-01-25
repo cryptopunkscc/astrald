@@ -12,7 +12,7 @@ type opSwarmStatusArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpSwarmStatus(ctx *astral.Context, q ops.Query, args opSwarmStatusArgs) (err error) {
+func (mod *Module) OpSwarmStatus(ctx *astral.Context, q *ops.Query, args opSwarmStatusArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return q.RejectWithCode(2)

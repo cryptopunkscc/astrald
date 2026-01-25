@@ -13,7 +13,7 @@ type opSyncArgs struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpSync(ctx *astral.Context, q ops.Query, args opSyncArgs) (err error) {
+func (mod *Module) OpSync(ctx *astral.Context, q *ops.Query, args opSyncArgs) (err error) {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

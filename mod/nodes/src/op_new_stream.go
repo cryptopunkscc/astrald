@@ -20,7 +20,7 @@ type opNewStreamArgs struct {
 }
 
 // OpNewStream now delegates to a scheduled action and waits for completion.
-func (mod *Module) OpNewStream(ctx *astral.Context, q ops.Query, args opNewStreamArgs) (err error) {
+func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStreamArgs) (err error) {
 	target, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
 		return q.RejectWithCode(2)

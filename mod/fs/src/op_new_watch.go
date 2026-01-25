@@ -15,7 +15,7 @@ type opNewWatchArgs struct {
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpNewWatch(ctx *astral.Context, q ops.Query, args opNewWatchArgs) (err error) {
+func (mod *Module) OpNewWatch(ctx *astral.Context, q *ops.Query, args opNewWatchArgs) (err error) {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

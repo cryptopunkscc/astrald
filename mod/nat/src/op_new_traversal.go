@@ -13,7 +13,7 @@ type opNewTraversal struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpNewTraversal(ctx *astral.Context, q ops.Query,
+func (mod *Module) OpNewTraversal(ctx *astral.Context, q *ops.Query,
 	args opNewTraversal) (err error) {
 	_, err = mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {

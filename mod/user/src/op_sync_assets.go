@@ -13,7 +13,7 @@ type opSyncAssetsArgs struct {
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpSyncAssets(ctx *astral.Context, q ops.Query, args opSyncAssetsArgs) (err error) {
+func (mod *Module) OpSyncAssets(ctx *astral.Context, q *ops.Query, args opSyncAssetsArgs) (err error) {
 	var rows []*dbAsset
 
 	err = mod.db.Where("height >= ?", args.Start).Find(&rows).Error

@@ -15,7 +15,7 @@ type opLoadArgs struct {
 }
 
 // OpLoad loads an object into memory and writes it to the output. OpLoad verifies the object hash.
-func (mod *Module) OpLoad(ctx *astral.Context, q ops.Query, args opLoadArgs) (err error) {
+func (mod *Module) OpLoad(ctx *astral.Context, q *ops.Query, args opLoadArgs) (err error) {
 	if args.Zone == nil {
 		ctx = ctx.WithZone(astral.ZoneAll)
 	} else {
