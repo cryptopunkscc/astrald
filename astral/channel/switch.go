@@ -14,7 +14,7 @@ var configType = reflect.TypeOf((*Config)(nil)).Elem()
 
 // Switch takes a list of functions with a single argument and an optional return value of an error type.
 // It then receives objects from the channel and passes them to functions with compatible argument types.
-// It stops on Receive() error or when a function returns an error. If a function returns ErrStop, Switch
+// It stops on Receive() error or when a function returns an error. If a function returns ErrBreak, Switch
 // stops end returns nil. If no function takes the object type, an ErrUnexpectedObject is returned.
 //
 // Example:
@@ -100,7 +100,7 @@ func (ch Channel) Switch(args ...any) error {
 		err = handler.call(obj)
 		switch err {
 		case nil:
-		case ErrStop:
+		case ErrBreak:
 			return nil
 		default:
 			return err
@@ -110,12 +110,12 @@ func (ch Channel) Switch(args ...any) error {
 
 // ExpectAck stops the Switch function on Ack.
 func ExpectAck(*astral.Ack) error {
-	return ErrStop
+	return ErrBreak
 }
 
 // StopOnEOS stops the Switch function on EOS.
 func StopOnEOS(*astral.EOS) error {
-	return ErrStop
+	return ErrBreak
 }
 
 func PassErrors(err error) error {
@@ -147,7 +147,28 @@ func Chan[T astral.Object](dst chan<- T) func(T) error {
 func Expect[T astral.Object](object *T) func(T) error {
 	return func(v T) error {
 		*object = v
-		return ErrStop
+		return ErrBreak
+	}
+}
+
+type stringerObject interface {
+	String() string
+	astral.Object
+}
+
+// ExpectString converts an object to a native go string and breaks the Switch()
+func ExpectString[T stringerObject](s *string) func(T) error {
+	return func(v T) error {
+		*s = v.String()
+		return ErrBreak
+	}
+}
+
+// CollectStrings appends objects to a slice of native go strings
+func CollectStrings[T stringerObject](dst *[]string) func(T) error {
+	return func(v T) error {
+		*dst = append(*dst, v.String())
+		return nil
 	}
 }
 
