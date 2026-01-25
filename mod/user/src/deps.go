@@ -28,7 +28,7 @@ type Deps struct {
 	Nearby    nearby.Module
 }
 
-func (mod *Module) LoadDependencies() (err error) {
+func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
 		return

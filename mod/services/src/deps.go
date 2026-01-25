@@ -1,6 +1,7 @@
 package services
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/services"
@@ -10,7 +11,7 @@ type Deps struct {
 	Dir dir.Module
 }
 
-func (mod *Module) LoadDependencies() (err error) {
+func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
 		return err

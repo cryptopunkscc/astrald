@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -24,6 +25,15 @@ type Deps struct {
 	Events    events.Module
 }
 
-func (mod *Module) LoadDependencies() (err error) {
-	return core.Inject(mod.node, &mod.Deps)
+func (mod *Module) LoadDependencies(*astral.Context) (err error) {
+	err = core.Inject(mod.node, &mod.Deps)
+	if err != nil {
+		return
+	}
+
+	mod.Dir.SetFilter("linked", func(identity *astral.Identity) bool {
+		return mod.IsLinked(identity)
+	})
+
+	return err
 }

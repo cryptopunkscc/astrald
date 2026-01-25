@@ -3,6 +3,7 @@ package nearby
 import (
 	"strings"
 
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
@@ -26,7 +27,7 @@ type Deps struct {
 	TCP     tcp.Module
 }
 
-func (mod *Module) LoadDependencies() (err error) {
+func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
 		return

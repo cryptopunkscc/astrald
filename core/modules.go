@@ -54,7 +54,7 @@ func (m *Modules) Run(ctx *astral.Context) error {
 	m.injectLoaded()
 
 	// Dependencies - in this stage modules load their deps and injects its handlers.
-	var deps = m.loadDependecies(loaded)
+	var deps = m.loadDependecies(ctx, loaded)
 
 	// Prepare - In this stage, modules should perform any configuration necessary before services are run.
 	var prepared = m.prepareModules(ctx, deps)
@@ -94,7 +94,7 @@ func (m *Modules) injectLoaded() {
 	}
 }
 
-func (m *Modules) loadDependecies(modules []string) []string {
+func (m *Modules) loadDependecies(ctx *astral.Context, modules []string) []string {
 	var loaded sig.Set[string]
 
 	var wg sync.WaitGroup
@@ -105,7 +105,7 @@ func (m *Modules) loadDependecies(modules []string) []string {
 		go func() {
 			defer wg.Done()
 			if p, ok := m.loaded[name].(DependencyLoader); ok {
-				err := p.LoadDependencies()
+				err := p.LoadDependencies(ctx)
 				if err != nil {
 					m.log.Error("module %v load dependencies: %v", name, err)
 					panic(err) // TODO: handle this cleanly instead of panicking
@@ -278,7 +278,7 @@ func Inject(node astral.Node, target any) (err error) {
 }
 
 type DependencyLoader interface {
-	LoadDependencies() error
+	LoadDependencies(ctx *astral.Context) error
 }
 
 type Preparer interface {
