@@ -20,7 +20,6 @@ func wrapFunc(fnValue any) (*funcWrapper, error) {
 	switch {
 	case fn.Kind() != reflect.Func:
 		return nil, errors.New("not a function")
-
 	case fn.Type().NumIn() != 1:
 		return nil, errors.New("function needs to take exactly one argument")
 	case fn.Type().NumOut() > 1:
