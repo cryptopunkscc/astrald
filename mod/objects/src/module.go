@@ -191,11 +191,19 @@ func (mod *Module) RemoveRepository(name string) error {
 		return errors.New("name is empty")
 	}
 
+	// remove the repo
 	removed, ok := mod.repos.Delete(name)
 	if !ok {
 		return fmt.Errorf("repository %s not found", name)
 	}
 
+	// remove the repo from all groups
+	mod.groups.Each(func(_ string, group *RepoGroup) error {
+		group.Remove(name)
+		return nil
+	})
+
+	// call the after removed callback
 	if c, ok := removed.(objects.AfterRemovedCallback); ok {
 		c.AfterRemoved(name)
 	}
