@@ -37,9 +37,9 @@ func NewSet() *Set {
 	return &Set{}
 }
 
-func Struct(s any) *Set {
+func Struct(s any, prefix string) *Set {
 	set := NewSet()
-	err := set.AddStruct(s, "")
+	err := set.AddStruct(s, prefix)
 	if err != nil {
 		panic(err)
 	}
