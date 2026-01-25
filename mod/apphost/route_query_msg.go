@@ -8,10 +8,12 @@ import (
 
 // RouteQueryMsg represents a request to route a query.
 type RouteQueryMsg struct {
-	Nonce  astral.Nonce
-	Caller *astral.Identity
-	Target *astral.Identity
-	Query  astral.String16
+	Nonce   astral.Nonce
+	Caller  *astral.Identity
+	Target  *astral.Identity
+	Query   astral.String16
+	Zone    astral.Zone
+	Filters []astral.String8
 }
 
 func (RouteQueryMsg) ObjectType() string { return "mod.apphost.route_query_msg" }

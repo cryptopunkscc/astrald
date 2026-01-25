@@ -7,13 +7,14 @@ import (
 )
 
 const (
-	ErrCodeAuthFailed    = "auth_failed"
-	ErrCodeDenied        = "denied"
-	ErrCodeRouteNotFound = "route_not_found"
-	ErrCodeInternalError = "internal_error"
-	ErrCodeProtocolError = "protocol_error"
-	ErrCodeTimeout       = "timeout"
-	ErrCodeCanceled      = "canceled"
+	ErrCodeAuthFailed       = "auth_failed"
+	ErrCodeDenied           = "denied"
+	ErrCodeRouteNotFound    = "route_not_found"
+	ErrCodeInternalError    = "internal_error"
+	ErrCodeProtocolError    = "protocol_error"
+	ErrCodeTimeout          = "timeout"
+	ErrCodeCanceled         = "canceled"
+	ErrCodeTargetNotAllowed = "target_not_allowed"
 )
 
 // ErrorMsg represents an error message.

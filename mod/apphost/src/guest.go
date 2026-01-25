@@ -180,11 +180,21 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 		}
 	}
 
-	// set network access depending on authentication
+	// set the zone
+	ctx = ctx.WithZone(msg.Zone)
+
+	// set the filters
+	if len(msg.Filters) > 0 {
+		var filters []string
+		for _, name := range msg.Filters {
+			filters = append(filters, string(name))
+		}
+		ctx = ctx.WithFilters(filters...)
+	}
+
+	// disable network for guests
 	if !guest.isAuthenticated() {
 		ctx = ctx.ExcludeZone(astral.ZoneNetwork)
-	} else {
-		ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	}
 
 	// prepare query context
@@ -214,6 +224,9 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 
 	case errors.Is(err, context.DeadlineExceeded):
 		return guest.sendError(apphost.ErrCodeTimeout)
+
+	case errors.Is(err, astral.ErrTargetNotAllowed):
+		return guest.sendError(apphost.ErrCodeTargetNotAllowed)
 
 	default:
 		guest.mod.log.Logv(2, "unexpected error routing query %v: %v", q.Nonce, err)

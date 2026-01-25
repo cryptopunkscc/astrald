@@ -47,11 +47,17 @@ func (r *Router) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClos
 		q.Target = r.node.identity
 	}
 
+	// copy query filters from the context
+	q.Extra.Replace("filters", ctx.Filters())
+
 	qm := &QueryModifier{query: q}
 	// preprocess the query
 	for _, p := range r.preprocessors.Clone() {
 		err = p.PreprocessQuery(qm)
 		if err != nil {
+			r.node.log.Logv(2, "[%v] %v -> %v:%v query blocked by %v: %v",
+				&q.Nonce, q.Caller, q.Target, q.Query, p, err,
+			)
 			return query.RouteNotFound(r, err)
 		}
 

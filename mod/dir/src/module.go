@@ -16,8 +16,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var _ dir.Module = &Module{}
-
 const ZeroIdentity = "<anyone>"
 
 type Deps struct {
@@ -33,8 +31,12 @@ type Module struct {
 
 	ops shell.Scope
 
-	resolvers sig.Set[dir.Resolver]
+	resolvers      sig.Set[dir.Resolver]
+	filters        sig.Map[string, astral.IdentityFilter]
+	defaultFilters []string
 }
+
+var _ dir.Module = &Module{}
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
@@ -94,6 +96,40 @@ func (mod *Module) DisplayName(identity *astral.Identity) string {
 	}
 
 	return identity.Fingerprint()
+}
+
+func (mod *Module) SetFilter(name string, filter astral.IdentityFilter) {
+	mod.filters.Replace(name, filter)
+}
+
+func (mod *Module) GetFilter(name string) (filter astral.IdentityFilter) {
+	filter, _ = mod.filters.Get(name)
+	return
+}
+
+func (mod *Module) Filters() []string {
+	return mod.filters.Keys()
+}
+
+func (mod *Module) DefaultFilters() []string {
+	return mod.defaultFilters
+}
+
+func (mod *Module) SetDefaultFilters(filters ...string) {
+	mod.defaultFilters = filters
+}
+
+func (mod *Module) ApplyFilters(identity *astral.Identity, filter ...string) bool {
+	for _, f := range filter {
+		filter := mod.GetFilter(f)
+		if filter == nil {
+			continue
+		}
+		if filter(identity) {
+			return true
+		}
+	}
+	return false
 }
 
 func (mod *Module) Scope() *shell.Scope {

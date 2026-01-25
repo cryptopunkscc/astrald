@@ -22,7 +22,7 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID
 		providers := mod.FindObject(ctx, objectID)
 
 		providers = slices.DeleteFunc(providers, func(identity *astral.Identity) bool {
-			return !ctx.Filter(identity)
+			return mod.Dir.ApplyFilters(identity, ctx.Filters()...)
 		})
 
 		var wg sync.WaitGroup

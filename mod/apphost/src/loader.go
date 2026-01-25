@@ -1,12 +1,13 @@
 package apphost
 
 import (
+	"net"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"net"
 )
 
 type Loader struct{}

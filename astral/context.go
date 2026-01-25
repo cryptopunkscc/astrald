@@ -8,7 +8,7 @@ import (
 type Context struct {
 	context.Context
 	identity *Identity
-	filter   IdentityFilter
+	filters  []string
 	zone     Zone
 }
 
@@ -81,24 +81,21 @@ func (ctx *Context) WithTimeout(d time.Duration) (clone *Context, cancel context
 	return
 }
 
-func (ctx *Context) WithFilter(filter IdentityFilter) *Context {
+func (ctx *Context) WithFilters(filter ...string) *Context {
 	clone := ctx.clone()
-	clone.filter = filter
+	clone.filters = filter
 	return clone
 }
 
-func (ctx *Context) Filter(identity *Identity) bool {
-	if ctx.filter == nil {
-		return true
-	}
-	return ctx.filter(identity)
+func (ctx *Context) Filters() []string {
+	return ctx.filters
 }
 
 func (ctx *Context) clone() *Context {
 	return &Context{
 		Context:  ctx.Context,
 		identity: ctx.identity,
-		filter:   ctx.filter,
+		filters:  ctx.filters,
 		zone:     ctx.zone,
 	}
 }

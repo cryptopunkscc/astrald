@@ -45,7 +45,11 @@ func (router *Router) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.C
 			}
 			defer host.Close()
 
-			conn, err := host.RouteQuery(query.New(nil, nil, "apphost.cancel", query.Args{"id": q.Nonce}))
+			conn, err := host.RouteQuery(
+				query.New(nil, nil, "apphost.cancel", query.Args{"id": q.Nonce}),
+				astral.ZoneDevice,
+				nil,
+			)
 			if conn != nil {
 				conn.Close()
 			}
@@ -56,7 +60,7 @@ func (router *Router) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.C
 		}
 	}()
 
-	return host.RouteQuery(q)
+	return host.RouteQuery(q, ctx.Zone(), ctx.Filters())
 }
 
 func (router *Router) GuestID() *astral.Identity {

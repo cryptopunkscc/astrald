@@ -1,6 +1,7 @@
 package user
 
 import (
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -28,5 +29,22 @@ type Deps struct {
 }
 
 func (mod *Module) LoadDependencies() (err error) {
-	return core.Inject(mod.node, &mod.Deps)
+	err = core.Inject(mod.node, &mod.Deps)
+	if err != nil {
+		return
+	}
+
+	mod.Dir.SetFilter("localswarm", func(identity *astral.Identity) bool {
+		if identity.IsZero() {
+			return false
+		}
+		for _, swarm := range mod.LocalSwarm() {
+			if identity.IsEqual(swarm) {
+				return true
+			}
+		}
+		return false
+	})
+
+	return
 }

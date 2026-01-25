@@ -36,6 +36,14 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 
 	mod.resolvers.Add(&DNS{Module: mod})
 
+	// add default filters
+	mod.filters.Set("all", astral.AllowAll)
+	mod.filters.Set("localnode", func(identity *astral.Identity) bool {
+		return identity.IsEqual(mod.node.Identity())
+	})
+
+	mod.SetDefaultFilters("all")
+
 	return mod, nil
 }
 
