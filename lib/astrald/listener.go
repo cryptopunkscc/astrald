@@ -2,12 +2,15 @@ package astrald
 
 import (
 	"errors"
+	"io"
 	"net"
 	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	libapphost "github.com/cryptopunkscc/astrald/lib/apphost"
 	"github.com/cryptopunkscc/astrald/lib/ipc"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -123,4 +126,36 @@ func (l *Listener) setDone() {
 
 func (l *Listener) Done() <-chan struct{} {
 	return l.doneCh
+}
+
+func (l *Listener) Serve(ctx *astral.Context, set *ops.Set) error {
+	var errRejected *astral.ErrRejected
+
+	for {
+		q, err := l.Next()
+		if err != nil {
+			return err
+		}
+
+		var conn *libapphost.Conn
+
+		w, err := set.RouteQuery(ctx, q.query, q.conn)
+		switch {
+		case err == nil:
+			conn = q.Accept()
+
+		case errors.As(err, &errRejected):
+			q.RejectWithCode(int(errRejected.Code))
+			continue
+
+		default:
+			q.Reject()
+			continue
+		}
+
+		go func() {
+			io.Copy(w, conn)
+			w.Close()
+		}()
+	}
 }

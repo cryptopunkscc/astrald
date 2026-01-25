@@ -3,7 +3,7 @@ package services
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opServiceDiscoverArgs struct {
@@ -15,7 +15,7 @@ type opServiceDiscoverArgs struct {
 
 func (mod *Module) OpDiscover(
 	ctx *astral.Context,
-	q shell.Query,
+	q ops.Query,
 	args opServiceDiscoverArgs,
 ) error {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))

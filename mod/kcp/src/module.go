@@ -8,9 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/cryptopunkscc/astrald/tasks"
 )
@@ -23,7 +23,7 @@ type Module struct {
 	assets assets.Assets
 	log    *log.Logger
 	ctx    *astral.Context
-	ops    shell.Scope
+	ops    ops.Set
 
 	mu                    sync.Mutex
 	configEndpoints       []exonet.Endpoint
@@ -31,7 +31,7 @@ type Module struct {
 	ephemeralPortMappings sig.Map[astral.String8, astral.Uint16]
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

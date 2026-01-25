@@ -9,8 +9,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	treecli "github.com/cryptopunkscc/astrald/mod/tree/client"
 	"github.com/cryptopunkscc/astrald/resources"
@@ -27,7 +27,7 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
-	ops    shell.Scope
+	ops    ops.Set
 	db     *DB
 	ctx    *astral.Context
 
@@ -141,7 +141,7 @@ func (mod *Module) Root() tree.Node {
 	}
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

@@ -5,15 +5,15 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opShellArgs struct {
 	As astral.String8 `query:"optional"`
 }
 
-func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellArgs) (err error) {
+func (mod *Module) OpShell(ctx *astral.Context, query ops.Query, args opShellArgs) (err error) {
 	// handle args
 	if len(args.As) > 0 {
 		asID, err := mod.Dir.ResolveIdentity(string(args.As))

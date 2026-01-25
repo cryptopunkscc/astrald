@@ -9,10 +9,10 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/tasks"
 	"gorm.io/gorm"
 )
@@ -31,7 +31,7 @@ type Module struct {
 	log    *log.Logger
 	assets assets.Assets
 	db     *gorm.DB
-	scope  shell.Scope
+	scope  ops.Set
 }
 
 var ErrAlreadyIndexed = errors.New("already indexed")
@@ -166,7 +166,7 @@ func (mod *Module) VerifyASN1(signer *astral.Identity, hash []byte, sig []byte) 
 	return errors.New("verification failed")
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.scope
 }
 

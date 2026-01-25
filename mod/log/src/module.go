@@ -3,9 +3,9 @@ package log
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	modlog "github.com/cryptopunkscc/astrald/mod/log"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -22,7 +22,7 @@ type Module struct {
 	assets      resources.Resources
 	outputs     sig.Set[log.Output]
 	logFilePath string
-	ops         shell.Scope
+	ops         ops.Set
 }
 
 func (mod *Module) LogEntry(entry *log.Entry) {
@@ -44,7 +44,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

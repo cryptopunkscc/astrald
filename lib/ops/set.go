@@ -1,4 +1,4 @@
-package shell
+package ops
 
 import (
 	"errors"
@@ -12,39 +12,51 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-// Scope is a collection of operations and subscopes.
+// Set is an astral.Router that routes queries to a set of operations.
 //
-// Add an operation to the scope:
+// Add an operation to the set:
 //
 //	scope.AddFunc("hi", func(ctx *astral.Context, query shell.Query) error {
 //		conn, _ := query.Accept()
 //	    return conn.Printf("hello, %v!\n", ctx.Identity())
 //	})
-type Scope struct {
-	ops  sig.Map[string, *Op]
-	subs sig.Map[string, *Scope]
-	Log  *log.Logger
+type Set struct {
+	ops     sig.Map[string, *Op]
+	subs    sig.Map[string, *Set]
+	Log     *log.Logger
+	OnError func(error, *astral.Query)
 }
 
-type HasScope interface {
-	Scope() *Scope
+var _ astral.Router = &Set{}
+
+type HasOps interface {
+	GetOpSet() *Set
 }
 
-func NewScope(log *log.Logger) *Scope {
-	return &Scope{Log: log}
+func NewSet() *Set {
+	return &Set{}
 }
 
-func (scope *Scope) AddFunc(name string, fn any) error {
+func Struct(s any) *Set {
+	set := NewSet()
+	err := set.AddStruct(s, "")
+	if err != nil {
+		panic(err)
+	}
+	return set
+}
+
+func (set *Set) AddFunc(name string, fn any) error {
 	op, err := Func(fn)
 	if err != nil {
 		return err
 	}
-	scope.ops.Set(name, op)
+	set.ops.Set(name, op)
 	return nil
 }
 
-// AddStruct adds all methods of a struct to the scope that start with the given prefix.
-func (scope *Scope) AddStruct(s any, prefix string) (err error) {
+// AddStruct adds to the set all methods of a struct that start with the given prefix (the prefix is removed).
+func (set *Set) AddStruct(s any, prefix string) (err error) {
 	var errs []error
 	v := reflect.ValueOf(s)
 
@@ -67,7 +79,7 @@ func (scope *Scope) AddStruct(s any, prefix string) (err error) {
 
 		name = log.ToSnakeCase(name)
 
-		if e := scope.AddFunc(name, fn); e != nil {
+		if e := set.AddFunc(name, fn); e != nil {
 			errs = append(errs, e)
 		}
 	}
@@ -75,47 +87,43 @@ func (scope *Scope) AddStruct(s any, prefix string) (err error) {
 	return errors.Join(errs...)
 }
 
-// AddScope adds a subscope to the scope.
-func (scope *Scope) AddScope(name string, s *Scope) error {
-	_, ok := scope.subs.Set(name, s)
+// AddSet adds another set as a subset.
+func (set *Set) AddSet(name string, s *Set) error {
+	_, ok := set.subs.Set(name, s)
 	if !ok {
-		return errors.New("scope already defined")
+		return errors.New("set already defined")
 	}
 	return nil
 }
 
-func (scope *Scope) Ops() []string {
-	return scope.ops.Keys()
-}
-
-func (scope *Scope) Tree() (tree []string) {
-	for subName, sub := range scope.subs.Clone() {
+func (set *Set) Tree() (tree []string) {
+	for subName, sub := range set.subs.Clone() {
 		for _, n := range sub.Tree() {
 			tree = append(tree, subName+"."+n)
 		}
 	}
 
-	tree = append(tree, scope.ops.Keys()...)
+	tree = append(tree, set.ops.Keys()...)
 
 	return
 }
 
-func (scope *Scope) Find(name string) (op *Op) {
+func (set *Set) Find(name string) (op *Op) {
 	if idx := strings.IndexByte(name, '.'); idx != -1 {
-		if sub, ok := scope.subs.Get(name[:idx]); ok {
+		if sub, ok := set.subs.Get(name[:idx]); ok {
 			return sub.Find(name[idx+1:])
 		}
 	}
-	op, _ = scope.ops.Get(name)
+	op, _ = set.ops.Get(name)
 	return
 }
 
-func (scope *Scope) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (set *Set) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	path, params := query.Parse(q.Query)
 
-	op := scope.Find(path)
+	op := set.Find(path)
 	if op == nil {
-		return query.RouteNotFound(scope)
+		return query.RouteNotFound(set)
 	}
 
 	var query = NewNetworkQuery(w, q)
@@ -127,8 +135,8 @@ func (scope *Scope) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteC
 
 		// call the op
 		err := op.Call(ctx, query, params)
-		if err != nil && scope.Log != nil {
-			scope.Log.Errorv(1, "call %v: %v", path, err)
+		if err != nil && set.OnError != nil {
+			set.OnError(err, q)
 		}
 
 		// reject the query in case the op did not respond to it, will do nothing if it did.
@@ -136,29 +144,4 @@ func (scope *Scope) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteC
 	}()
 
 	return query.Resolve(ctx)
-}
-
-func ParseArgs(args []string) (params map[string]string) {
-	params = make(map[string]string)
-
-	for len(args) > 0 {
-		key := args[0]
-
-		if !strings.HasPrefix(key, "-") {
-			params[query.DefaultArgKey] = key
-			args = args[1:]
-			continue
-		}
-
-		key = key[1:]
-
-		if len(args) < 2 {
-			params[key] = ""
-			return
-		}
-
-		params[key] = args[1]
-		args = args[2:]
-	}
-	return
 }

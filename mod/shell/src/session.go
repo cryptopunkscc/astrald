@@ -1,13 +1,14 @@
 package shell
 
 import (
-	shell2 "bitbucket.org/creachadair/shell"
 	"context"
+	"io"
+
+	shell2 "bitbucket.org/creachadair/shell"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/streams"
-	"io"
 )
 
 type Session struct {
@@ -63,7 +64,7 @@ func (s *Session) Run(ctx *astral.Context) (err error) {
 			return nil
 		}
 
-		params := shell.ParseArgs(args[1:])
+		params := query.ParseArgs(args[1:])
 
 		var q = query.New(ctx.Identity(), s.mod.node.Identity(), op, params)
 

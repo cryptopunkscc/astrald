@@ -8,9 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/aliasgen"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	modlog "github.com/cryptopunkscc/astrald/mod/log"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -29,7 +29,7 @@ type Module struct {
 	assets resources.Resources
 	db     *gorm.DB
 
-	ops shell.Scope
+	ops ops.Set
 
 	resolvers      sig.Set[dir.Resolver]
 	filters        sig.Map[string, astral.IdentityFilter]
@@ -132,7 +132,7 @@ func (mod *Module) ApplyFilters(identity *astral.Identity, filter ...string) boo
 	return false
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

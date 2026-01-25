@@ -3,9 +3,9 @@ package services
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/services"
 	servicescli "github.com/cryptopunkscc/astrald/mod/services/client"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -16,7 +16,7 @@ type Module struct {
 
 	node astral.Node
 	log  *log.Logger
-	ops  shell.Scope
+	ops  ops.Set
 	db   *DB
 
 	discoverers sig.Set[services.Discoverer]
@@ -66,7 +66,7 @@ func (mod *Module) AddDiscoverer(discoverer services.Discoverer) error {
 	return mod.discoverers.Add(discoverer)
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

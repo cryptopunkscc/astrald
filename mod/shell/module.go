@@ -1,11 +1,14 @@
 package shell
 
-import "github.com/cryptopunkscc/astrald/mod/scheduler"
+import (
+	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/scheduler"
+)
 
 const ModuleName = "shell"
 
 type Module interface {
-	Root() *Scope
+	Root() *ops.Set
 	NewLogAction(message string) LogAction
 }
 
