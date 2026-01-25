@@ -3,15 +3,15 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opRepositoriesArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRepositories(ctx *astral.Context, q shell.Query, args opRepositoriesArgs) (err error) {
+func (mod *Module) OpRepositories(ctx *astral.Context, q *ops.Query, args opRepositoriesArgs) (err error) {
 	ctx = ctx.ExcludeZone(astral.ZoneNetwork)
 
 	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))

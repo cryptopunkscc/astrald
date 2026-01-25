@@ -8,7 +8,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opEchoArgs struct {
@@ -19,7 +19,7 @@ type opEchoArgs struct {
 	Out    string  `query:"optional"`
 }
 
-func (mod *Module) OpEcho(ctx *astral.Context, q shell.Query, args opEchoArgs) (err error) {
+func (mod *Module) OpEcho(ctx *astral.Context, q *ops.Query, args opEchoArgs) (err error) {
 	// prepare lists
 	var only, except []string
 	if args.Only != nil && len(*args.Only) > 0 {

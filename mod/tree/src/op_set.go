@@ -3,7 +3,7 @@ package tree
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
@@ -13,7 +13,7 @@ type opSetArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpSet(ctx *astral.Context, q shell.Query, args opSetArgs) (err error) {
+func (mod *Module) OpSet(ctx *astral.Context, q *ops.Query, args opSetArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

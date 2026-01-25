@@ -5,8 +5,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opListTokensArgs struct {
@@ -15,7 +15,7 @@ type opListTokensArgs struct {
 }
 
 // OpListTokens lists all access tokens of an identity
-func (mod *Module) OpListTokens(ctx *astral.Context, q shell.Query, args opListTokensArgs) (err error) {
+func (mod *Module) OpListTokens(ctx *astral.Context, q *ops.Query, args opListTokensArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

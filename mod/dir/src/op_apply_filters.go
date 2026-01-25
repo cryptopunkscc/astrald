@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opApplyFiltersArgs struct {
@@ -15,7 +15,7 @@ type opApplyFiltersArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpApplyFilters(ctx *astral.Context, q shell.Query, args opApplyFiltersArgs) (err error) {
+func (mod *Module) OpApplyFilters(ctx *astral.Context, q *ops.Query, args opApplyFiltersArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

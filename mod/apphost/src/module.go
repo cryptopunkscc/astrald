@@ -11,12 +11,12 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/debug"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -35,7 +35,7 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	db     *DB
-	scope  shell.Scope
+	scope  ops.Set
 
 	listeners []net.Listener
 	conns     <-chan net.Conn
@@ -44,7 +44,7 @@ type Module struct {
 	indexMu   sync.Mutex
 }
 
-var _ shell.HasScope = &Module{}
+var _ ops.HasOps = &Module{}
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	var wg sync.WaitGroup
@@ -106,7 +106,7 @@ func (mod *Module) CreateAccessToken(identity *astral.Identity, d astral.Duratio
 	}, nil
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.scope
 }
 

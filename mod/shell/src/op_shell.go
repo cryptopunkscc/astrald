@@ -5,15 +5,15 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opShellArgs struct {
 	As astral.String8 `query:"optional"`
 }
 
-func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellArgs) (err error) {
+func (mod *Module) OpShell(ctx *astral.Context, q *ops.Query, args opShellArgs) (err error) {
 	// handle args
 	if len(args.As) > 0 {
 		asID, err := mod.Dir.ResolveIdentity(string(args.As))
@@ -21,18 +21,18 @@ func (mod *Module) OpShell(ctx *astral.Context, query shell.Query, args opShellA
 			return err
 		}
 
-		if !mod.Auth.Authorize(query.Caller(), auth.ActionSudo, asID) {
+		if !mod.Auth.Authorize(q.Caller(), auth.ActionSudo, asID) {
 			return astral.NewError("access denied")
 		}
 
 		ctx = ctx.WithIdentity(asID)
 	} else {
-		ctx = ctx.WithIdentity(query.Caller())
+		ctx = ctx.WithIdentity(q.Caller())
 	}
 
 	// accept
 	var conn io.ReadWriteCloser
-	conn = query.Accept()
+	conn = q.Accept()
 	defer conn.Close()
 
 	// handle session

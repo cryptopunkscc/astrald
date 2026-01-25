@@ -5,8 +5,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opStreamsArgs struct {
@@ -14,7 +14,7 @@ type opStreamsArgs struct {
 }
 
 // OpStreams lists all streams.
-func (mod *Module) OpStreams(ctx *astral.Context, q shell.Query, args opStreamsArgs) (err error) {
+func (mod *Module) OpStreams(ctx *astral.Context, q *ops.Query, args opStreamsArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

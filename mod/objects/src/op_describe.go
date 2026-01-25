@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opDescribeArgs struct {
@@ -14,7 +14,7 @@ type opDescribeArgs struct {
 	Zone astral.Zone `query:"optional"`
 }
 
-func (mod *Module) OpDescribe(ctx *astral.Context, q shell.Query, args opDescribeArgs) (err error) {
+func (mod *Module) OpDescribe(ctx *astral.Context, q *ops.Query, args opDescribeArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
 	defer cancel()
 

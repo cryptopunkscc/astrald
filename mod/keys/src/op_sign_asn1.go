@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opSignASN1Args struct {
@@ -14,7 +14,7 @@ type opSignASN1Args struct {
 }
 
 // Obsolete: this op needs to be rewritten
-func (mod *Module) OpSignASN1(_ *astral.Context, q shell.Query, args opSignASN1Args) (err error) {
+func (mod *Module) OpSignASN1(_ *astral.Context, q *ops.Query, args opSignASN1Args) (err error) {
 	hash, err := hex.DecodeString(args.Hash)
 	if err != nil {
 		return q.RejectWithCode(astral.CodeInvalidQuery)

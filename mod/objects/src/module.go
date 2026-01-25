@@ -11,11 +11,11 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -33,7 +33,7 @@ type Module struct {
 	config Config
 	db     *DB
 	log    *log.Logger
-	ops    shell.Scope
+	ops    ops.Set
 
 	ctx        *astral.Context
 	describers sig.Set[objects.Describer]
@@ -265,7 +265,7 @@ func (mod *Module) getRepoName(repo objects.Repository) string {
 	return ""
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

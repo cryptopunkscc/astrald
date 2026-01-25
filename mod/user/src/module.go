@@ -9,9 +9,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/kos"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -27,7 +27,7 @@ type Module struct {
 	assets assets.Assets
 	db     *DB
 	mu     sync.Mutex
-	ops    shell.Scope
+	ops    ops.Set
 
 	sibs sig.Map[string, Sibling]
 }
@@ -68,7 +68,7 @@ func (mod *Module) String() string {
 	return user.ModuleName
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

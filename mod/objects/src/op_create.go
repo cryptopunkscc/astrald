@@ -3,8 +3,8 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opCreateArgs struct {
@@ -17,7 +17,7 @@ type opCreateArgs struct {
 // OpCreate creates a new object in the repository. It expects a stream of Blob objects followed by objects.Commit.
 // On successful commit returns an ObjectID, an ErrorMessage otherwise. Closing the connection before committing
 // will discard the data.
-func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArgs) (err error) {
+func (mod *Module) OpCreate(ctx *astral.Context, q *ops.Query, args opCreateArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

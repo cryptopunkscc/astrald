@@ -3,14 +3,14 @@ package nearby
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opBroadcastArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpBroadcast(ctx *astral.Context, q shell.Query, args opBroadcastArgs) (err error) {
+func (mod *Module) OpBroadcast(ctx *astral.Context, q *ops.Query, args opBroadcastArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

@@ -3,7 +3,7 @@ package keys
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opCreateKeyArgs struct {
@@ -11,7 +11,7 @@ type opCreateKeyArgs struct {
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpCreateKey(_ *astral.Context, q shell.Query, args opCreateKeyArgs) (err error) {
+func (mod *Module) OpCreateKey(_ *astral.Context, q *ops.Query, args opCreateKeyArgs) (err error) {
 	mod.log.Infov(1, "creating key for %v", args.Alias)
 
 	key, _, err := mod.CreateKey(args.Alias)

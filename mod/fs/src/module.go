@@ -6,8 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/fs"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 var _ fs.Module = &Module{}
@@ -21,7 +21,7 @@ type Module struct {
 	db      *DB
 	ctx     *astral.Context
 	indexer *Indexer
-	ops     shell.Scope
+	ops     ops.Set
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -39,7 +39,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

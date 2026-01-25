@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/core"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type Deps struct {
@@ -31,8 +31,8 @@ func (mod *Module) LoadDependencies() (err error) {
 				continue
 			}
 
-			if s, ok := m.(shell.HasScope); ok {
-				mod.root.AddScope(getName(s), s.Scope())
+			if s, ok := m.(ops.HasOps); ok {
+				mod.root.AddSet(getName(s), s.GetOpSet())
 				added = append(added, m)
 			}
 		}

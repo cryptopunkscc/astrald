@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -19,7 +19,7 @@ type opCreateArgs struct {
 
 // OpCreate creates a new user with provided alias, signs a node contract between the new user and the local node and
 // sets that contract as active. It rejects if there's an active contract unless force is true.
-func (mod *Module) OpCreate(ctx *astral.Context, q shell.Query, args opCreateArgs) (err error) {
+func (mod *Module) OpCreate(ctx *astral.Context, q *ops.Query, args opCreateArgs) (err error) {
 	// reject network calls
 	if q.Origin() == astral.OriginNetwork {
 		return q.Reject()

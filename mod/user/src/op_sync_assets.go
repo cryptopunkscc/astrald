@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opSyncAssetsArgs struct {
@@ -13,7 +13,7 @@ type opSyncAssetsArgs struct {
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpSyncAssets(ctx *astral.Context, q shell.Query, args opSyncAssetsArgs) (err error) {
+func (mod *Module) OpSyncAssets(ctx *astral.Context, q *ops.Query, args opSyncAssetsArgs) (err error) {
 	var rows []*dbAsset
 
 	err = mod.db.Where("height >= ?", args.Start).Find(&rows).Error

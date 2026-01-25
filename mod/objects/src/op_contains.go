@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opContainsArgs struct {
@@ -13,7 +13,7 @@ type opContainsArgs struct {
 	Out  string           `query:"optional"`
 }
 
-func (mod *Module) OpContains(ctx *astral.Context, q shell.Query, args opContainsArgs) (err error) {
+func (mod *Module) OpContains(ctx *astral.Context, q *ops.Query, args opContainsArgs) (err error) {
 	ctx = ctx.WithIdentity(q.Caller())
 
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))

@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
@@ -18,17 +19,19 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		log:    log,
 		assets: assets,
 	}
-	mod.root.Log = log
+	mod.root.OnError = func(err error, query *astral.Query) {
+		mod.log.Logv(1, "[%v] error processing '%v': %v", query.Nonce, query.Query, err)
+	}
 
 	_ = assets.LoadYAML(shell.ModuleName, &mod.config)
 
-	var scope shell.Scope
+	var scope ops.Set
 	err = scope.AddStruct(mod, "Op")
 	if err != nil {
 		return nil, err
 	}
 
-	err = mod.root.AddScope(shell.ModuleName, &scope)
+	err = mod.root.AddSet(shell.ModuleName, &scope)
 
 	return mod, err
 }

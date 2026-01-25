@@ -5,9 +5,9 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
@@ -18,7 +18,7 @@ type Module struct {
 	db     *DB
 	log    *log.Logger
 	assets resources.Resources
-	ops    shell.Scope
+	ops    ops.Set
 
 	audio *AudioIndexer
 	repo  *Repository
@@ -86,7 +86,7 @@ func (mod *Module) indexer(ctx *astral.Context) {
 	mod.log.Logv(1, "media indexer finished")
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

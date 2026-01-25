@@ -3,8 +3,8 @@ package kcp
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opListEndpointsLocalMappingsArgs struct {
@@ -12,7 +12,7 @@ type opListEndpointsLocalMappingsArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpListEndpointsLocalMappings(ctx *astral.Context, q shell.Query, args opListEndpointsLocalMappingsArgs) (err error) {
+func (mod *Module) OpListEndpointsLocalMappings(ctx *astral.Context, q *ops.Query, args opListEndpointsLocalMappingsArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

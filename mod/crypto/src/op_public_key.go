@@ -5,9 +5,9 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opPublicKeyArgs struct {
@@ -15,7 +15,7 @@ type opPublicKeyArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpPublicKey(ctx *astral.Context, q shell.Query, args opPublicKeyArgs) (err error) {
+func (mod *Module) OpPublicKey(ctx *astral.Context, q *ops.Query, args opPublicKeyArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

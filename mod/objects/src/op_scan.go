@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opScanArgs struct {
@@ -14,7 +14,7 @@ type opScanArgs struct {
 }
 
 // OpScan sends a list of object ids in a repository
-func (mod *Module) OpScan(ctx *astral.Context, q shell.Query, args opScanArgs) (err error) {
+func (mod *Module) OpScan(ctx *astral.Context, q *ops.Query, args opScanArgs) (err error) {
 	// prepare the context
 	ctx = ctx.WithIdentity(q.Caller())
 	if args.Zone == nil {

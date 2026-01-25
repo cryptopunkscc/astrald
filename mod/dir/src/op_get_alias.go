@@ -3,7 +3,7 @@ package dir
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opGetAliasArgs struct {
@@ -11,7 +11,7 @@ type opGetAliasArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpGetAlias(ctx *astral.Context, q shell.Query, args opGetAliasArgs) (err error) {
+func (mod *Module) OpGetAlias(ctx *astral.Context, q *ops.Query, args opGetAliasArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

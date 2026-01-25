@@ -4,8 +4,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	natclient "github.com/cryptopunkscc/astrald/mod/nat/client"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opPairTakeArgs struct {
@@ -16,7 +16,7 @@ type opPairTakeArgs struct {
 	Out      string `query:"optional"`
 }
 
-func (mod *Module) OpPairTake(ctx *astral.Context, q shell.Query, args opPairTakeArgs) (err error) {
+func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTakeArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

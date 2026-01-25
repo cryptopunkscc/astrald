@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opSyncWithArgs struct {
@@ -12,7 +12,7 @@ type opSyncWithArgs struct {
 	Out   string        `query:"optional"`
 }
 
-func (mod *Module) OpSyncWith(ctx *astral.Context, q shell.Query, args opSyncWithArgs) (err error) {
+func (mod *Module) OpSyncWith(ctx *astral.Context, q *ops.Query, args opSyncWithArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

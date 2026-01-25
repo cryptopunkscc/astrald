@@ -3,14 +3,14 @@ package ip
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opDefaultGatewayArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpDefaultGateway(ctx *astral.Context, q shell.Query, args opDefaultGatewayArgs) (err error) {
+func (mod *Module) OpDefaultGateway(ctx *astral.Context, q *ops.Query, args opDefaultGatewayArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

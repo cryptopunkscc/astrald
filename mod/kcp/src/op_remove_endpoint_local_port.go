@@ -3,8 +3,8 @@ package kcp
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opRemoveRemoteEndpointLocalPort struct {
@@ -13,7 +13,7 @@ type opRemoveRemoteEndpointLocalPort struct {
 	Out      string `query:"optional"`
 }
 
-func (mod *Module) OpRemoveRemoteEndpointLocalPort(ctx *astral.Context, q shell.Query, args opRemoveRemoteEndpointLocalPort) (err error) {
+func (mod *Module) OpRemoveRemoteEndpointLocalPort(ctx *astral.Context, q *ops.Query, args opRemoveRemoteEndpointLocalPort) (err error) {
 	endpoint, err := kcp.ParseEndpoint(string(args.Endpoint))
 	if err != nil {
 		return q.RejectWithCode(4)

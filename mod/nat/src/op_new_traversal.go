@@ -4,8 +4,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	natclient "github.com/cryptopunkscc/astrald/mod/nat/client"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opNewTraversal struct {
@@ -13,7 +13,7 @@ type opNewTraversal struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpNewTraversal(ctx *astral.Context, q shell.Query,
+func (mod *Module) OpNewTraversal(ctx *astral.Context, q *ops.Query,
 	args opNewTraversal) (err error) {
 	_, err = mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {

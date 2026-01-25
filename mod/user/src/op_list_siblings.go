@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opListSiblingsArgs struct {
@@ -11,7 +11,7 @@ type opListSiblingsArgs struct {
 	Zone astral.Zone `query:"optional"`
 }
 
-func (mod *Module) OpListSiblings(ctx *astral.Context, q shell.Query, args opListSiblingsArgs) (err error) {
+func (mod *Module) OpListSiblings(ctx *astral.Context, q *ops.Query, args opListSiblingsArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithCancel()
 	defer cancel()
 

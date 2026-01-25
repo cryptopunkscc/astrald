@@ -3,9 +3,9 @@ package crypto
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opSignMessageArgs struct {
@@ -15,7 +15,7 @@ type opSignMessageArgs struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpSignMessage(ctx *astral.Context, q shell.Query, args opSignMessageArgs) (err error) {
+func (mod *Module) OpSignMessage(ctx *astral.Context, q *ops.Query, args opSignMessageArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

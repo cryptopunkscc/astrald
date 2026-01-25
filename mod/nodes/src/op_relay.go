@@ -3,8 +3,8 @@ package nodes
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opRelayArgs struct {
@@ -13,7 +13,7 @@ type opRelayArgs struct {
 	SetTarget *astral.Identity `query:"optional"`
 }
 
-func (mod *Module) OpRelay(ctx *astral.Context, q shell.Query, args opRelayArgs) (err error) {
+func (mod *Module) OpRelay(ctx *astral.Context, q *ops.Query, args opRelayArgs) (err error) {
 	ch := channel.New(q.Accept())
 	defer ch.Close()
 

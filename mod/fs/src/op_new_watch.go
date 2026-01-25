@@ -3,8 +3,8 @@ package fs
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opNewWatchArgs struct {
@@ -15,7 +15,7 @@ type opNewWatchArgs struct {
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpNewWatch(ctx *astral.Context, q shell.Query, args opNewWatchArgs) (err error) {
+func (mod *Module) OpNewWatch(ctx *astral.Context, q *ops.Query, args opNewWatchArgs) (err error) {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

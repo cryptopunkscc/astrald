@@ -3,7 +3,7 @@ package media
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opIndexArgs struct {
@@ -12,7 +12,7 @@ type opIndexArgs struct {
 	Zone astral.Zone `query:"optional"`
 }
 
-func (mod *Module) OpIndex(ctx *astral.Context, q shell.Query, args opIndexArgs) (err error) {
+func (mod *Module) OpIndex(ctx *astral.Context, q *ops.Query, args opIndexArgs) (err error) {
 	ctx = ctx.WithIdentity(q.Caller())
 
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))

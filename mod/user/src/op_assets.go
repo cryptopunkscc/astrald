@@ -3,14 +3,14 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opAssetsArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpAssets(ctx *astral.Context, q shell.Query, args opAssetsArgs) (err error) {
+func (mod *Module) OpAssets(ctx *astral.Context, q *ops.Query, args opAssetsArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

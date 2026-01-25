@@ -6,10 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -25,7 +25,7 @@ type Module struct {
 	log    *log.Logger
 	assets assets.Assets
 	db     *DB
-	scope  shell.Scope
+	scope  ops.Set
 	ctx    *astral.Context
 
 	engines sig.Set[crypto.Engine]
@@ -226,7 +226,7 @@ func (mod *Module) AddEngine(engine crypto.Engine) {
 	mod.engines.Add(engine)
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.scope
 }
 

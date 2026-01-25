@@ -5,8 +5,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type opSignHashArgs struct {
@@ -16,7 +16,7 @@ type opSignHashArgs struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpSignHash(ctx *astral.Context, q shell.Query, args opSignHashArgs) (err error) {
+func (mod *Module) OpSignHash(ctx *astral.Context, q *ops.Query, args opSignHashArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

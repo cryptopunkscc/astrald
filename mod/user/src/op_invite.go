@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -14,7 +14,7 @@ type opInviteArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpInvite(ctx *astral.Context, q shell.Query, args opInviteArgs) (err error) {
+func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac != nil {
 		// We already have an active contract

@@ -2,17 +2,17 @@ package astrald
 
 import (
 	"errors"
+	"io"
 	"net"
 	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	libapphost "github.com/cryptopunkscc/astrald/lib/apphost"
 	"github.com/cryptopunkscc/astrald/lib/ipc"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/sig"
 )
-
-var _ net.Listener = &Listener{}
 
 type Listener struct {
 	net.Listener
@@ -20,6 +20,8 @@ type Listener struct {
 	doneCh chan struct{}
 	done   atomic.Bool
 }
+
+var _ net.Listener = &Listener{}
 
 func NewListener(protocol string, token astral.Nonce) (*Listener, error) {
 	l, err := ipc.ListenAny(protocol)
@@ -32,6 +34,24 @@ func NewListener(protocol string, token astral.Nonce) (*Listener, error) {
 		doneCh:   make(chan struct{}),
 		token:    token,
 	}, nil
+}
+
+func (l *Listener) Accept() (net.Conn, error) {
+	q, err := l.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	return q.Accept(), nil
+}
+
+func (l *Listener) AcceptChannel(cfg ...channel.ConfigFunc) (*channel.Channel, error) {
+	q, err := l.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	return channel.New(q.Accept(), cfg...), nil
 }
 
 func (l *Listener) Next() (*PendingQuery, error) {
@@ -75,24 +95,6 @@ func (l *Listener) Next() (*PendingQuery, error) {
 	}
 }
 
-func (l *Listener) Accept() (net.Conn, error) {
-	q, err := l.Next()
-	if err != nil {
-		return nil, err
-	}
-
-	return q.Accept(), nil
-}
-
-func (l *Listener) AcceptChannel(cfg ...channel.ConfigFunc) (*channel.Channel, error) {
-	q, err := l.Next()
-	if err != nil {
-		return nil, err
-	}
-
-	return channel.New(q.Accept(), cfg...), nil
-}
-
 func (l *Listener) Close() error {
 	l.setDone()
 	return l.Listener.Close()
@@ -123,4 +125,36 @@ func (l *Listener) setDone() {
 
 func (l *Listener) Done() <-chan struct{} {
 	return l.doneCh
+}
+
+func (l *Listener) Serve(ctx *astral.Context, router astral.Router) error {
+	var errRejected *astral.ErrRejected
+
+	for {
+		q, err := l.Next()
+		if err != nil {
+			return err
+		}
+
+		var conn *libapphost.Conn
+
+		w, err := router.RouteQuery(ctx, q.query, q.conn)
+		switch {
+		case err == nil:
+			conn = q.Accept()
+
+		case errors.As(err, &errRejected):
+			q.RejectWithCode(int(errRejected.Code))
+			continue
+
+		default:
+			q.Reject()
+			continue
+		}
+
+		go func() {
+			io.Copy(w, conn)
+			w.Close()
+		}()
+	}
 }

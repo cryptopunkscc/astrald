@@ -1,10 +1,11 @@
 package query
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 const DefaultArgKey = "arg"

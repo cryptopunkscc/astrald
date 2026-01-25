@@ -4,7 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opListenArgs struct {
@@ -12,7 +12,7 @@ type opListenArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpListen(ctx *astral.Context, q shell.Query, args opListenArgs) (err error) {
+func (mod *Module) OpListen(ctx *astral.Context, q *ops.Query, args opListenArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

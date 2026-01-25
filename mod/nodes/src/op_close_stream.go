@@ -3,7 +3,7 @@ package nodes
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opCloseStreamArgs struct {
@@ -12,7 +12,7 @@ type opCloseStreamArgs struct {
 }
 
 // OpCloseStream closes a stream with the given id.
-func (mod *Module) OpCloseStream(ctx *astral.Context, q shell.Query, args opCloseStreamArgs) (err error) {
+func (mod *Module) OpCloseStream(ctx *astral.Context, q *ops.Query, args opCloseStreamArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

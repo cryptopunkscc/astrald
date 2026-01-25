@@ -5,8 +5,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/kos"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
@@ -16,7 +16,7 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	db     *DB
-	ops    shell.Scope
+	ops    ops.Set
 	assets resources.Resources
 }
 
@@ -58,7 +58,7 @@ func (mod *Module) Delete(ctx *astral.Context, key string) error {
 	return mod.db.Delete(ctx.Identity(), key)
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

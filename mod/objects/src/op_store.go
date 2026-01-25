@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opStoreArgs struct {
@@ -12,7 +12,7 @@ type opStoreArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpStore(ctx *astral.Context, q shell.Query, args opStoreArgs) error {
+func (mod *Module) OpStore(ctx *astral.Context, q *ops.Query, args opStoreArgs) error {
 	ch := channel.New(
 		q.Accept(),
 		channel.WithFormats(args.In, args.Out),

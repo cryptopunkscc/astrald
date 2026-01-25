@@ -7,9 +7,9 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -27,7 +27,7 @@ type Module struct {
 	cache      sig.Map[string, *cache]
 	setVisible chan bool
 	visible    sig.Value[bool]
-	scope      shell.Scope
+	scope      ops.Set
 }
 
 type cache struct {
@@ -91,7 +91,7 @@ func (mod *Module) Cache() *sig.Map[string, *cache] {
 	return &mod.cache
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.scope
 }
 

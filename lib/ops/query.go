@@ -1,4 +1,4 @@
-package shell
+package ops
 
 import (
 	"errors"
@@ -12,41 +12,22 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-type Query interface {
-	Accept() io.ReadWriteCloser
-	AcceptChannel(cfg ...channel.ConfigFunc) *channel.Channel
-	Reject() (err error)
-	RejectWithCode(code uint8) (err error)
-	Caller() *astral.Identity
-	Extra() *sig.Map[string, any]
-	Origin() string
-}
-
-var _ Query = &NetworkQuery{}
-
-type NetworkQuery struct {
+type Query struct {
 	w io.WriteCloser
 	*astral.Query
 	r        chan queryResponse
 	resolved atomic.Bool
 }
 
-func NewNetworkQuery(w io.WriteCloser, query *astral.Query) *NetworkQuery {
-	return &NetworkQuery{
+func newQuery(w io.WriteCloser, query *astral.Query) *Query {
+	return &Query{
 		w:     w,
 		Query: query,
 		r:     make(chan queryResponse, 1),
 	}
 }
 
-func (e *NetworkQuery) Origin() string {
-	if v, ok := e.Extra().Get("origin"); ok && v != nil {
-		return v.(string)
-	}
-	return ""
-}
-
-func (e *NetworkQuery) Accept() (conn io.ReadWriteCloser) {
+func (e *Query) Accept() (conn io.ReadWriteCloser) {
 	if !e.resolved.CompareAndSwap(false, true) {
 		return ErrorConn{Err: errors.New("query already resolved")}
 	}
@@ -65,11 +46,11 @@ func (e *NetworkQuery) Accept() (conn io.ReadWriteCloser) {
 	return <-ch
 }
 
-func (e *NetworkQuery) AcceptChannel(cfg ...channel.ConfigFunc) *channel.Channel {
+func (e *Query) AcceptChannel(cfg ...channel.ConfigFunc) *channel.Channel {
 	return channel.New(e.Accept(), cfg...)
 }
 
-func (e *NetworkQuery) Reject() (err error) {
+func (e *Query) Reject() (err error) {
 	if !e.resolved.CompareAndSwap(false, true) {
 		return errors.New("query already resolved")
 	}
@@ -80,7 +61,7 @@ func (e *NetworkQuery) Reject() (err error) {
 	return nil
 }
 
-func (e *NetworkQuery) RejectWithCode(code uint8) (err error) {
+func (e *Query) RejectWithCode(code uint8) (err error) {
 	if !e.resolved.CompareAndSwap(false, true) {
 		return errors.New("query already resolved")
 	}
@@ -95,11 +76,22 @@ func (e *NetworkQuery) RejectWithCode(code uint8) (err error) {
 	return nil
 }
 
-func (e *NetworkQuery) Caller() *astral.Identity {
+func (e *Query) Caller() *astral.Identity {
 	return e.Query.Caller
 }
 
-func (e *NetworkQuery) Resolve(ctx *astral.Context) (io.WriteCloser, error) {
+func (e *Query) Extra() *sig.Map[string, any] {
+	return &e.Query.Extra
+}
+
+func (e *Query) Origin() string {
+	if v, ok := e.Extra().Get("origin"); ok && v != nil {
+		return v.(string)
+	}
+	return ""
+}
+
+func (e *Query) resolve(ctx *astral.Context) (io.WriteCloser, error) {
 	select {
 	case r := <-e.r:
 		return r.WriteCloser, r.Error
@@ -114,29 +106,7 @@ func (e *NetworkQuery) Resolve(ctx *astral.Context) (io.WriteCloser, error) {
 	}
 }
 
-func (e *NetworkQuery) Extra() *sig.Map[string, any] {
-	return &e.Query.Extra
-}
-
 type queryResponse struct {
 	io.WriteCloser
 	Error error
-}
-
-type ErrorConn struct {
-	Err error
-}
-
-var _ io.ReadWriteCloser = &ErrorConn{}
-
-func (e ErrorConn) Read(p []byte) (n int, err error) {
-	return 0, e.Err
-}
-
-func (e ErrorConn) Write(p []byte) (n int, err error) {
-	return 0, e.Err
-}
-
-func (e ErrorConn) Close() error {
-	return nil
 }

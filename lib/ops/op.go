@@ -1,4 +1,4 @@
-package shell
+package ops
 
 import (
 	"errors"
@@ -16,6 +16,8 @@ type Op struct {
 	populate func(map[string]string) (reflect.Value, error)
 }
 
+var queryType = reflect.TypeOf((*Query)(nil)).Elem()
+
 // Func wraps a function as an Op. fn has to have one of the following signatures:
 // - func(*astral.Context, *shell.Query) error
 // - func(*astral.Context, *shell.Query, ArgType) error
@@ -32,8 +34,10 @@ func Func(fn any) (*Op, error) {
 		return nil, errors.New("invalid number of arguments")
 	case t.In(0) != reflect.TypeOf(&astral.Context{}):
 		return nil, errors.New("first argument must be a *astral.Context")
-	case !t.In(1).Implements(reflect.TypeOf((*Query)(nil)).Elem()):
-		return nil, errors.New("second argument must be a *shell.Query")
+	case t.In(1).Kind() != reflect.Ptr:
+		return nil, errors.New("second argument must be an *ops.Query")
+	case t.In(1).Elem() != queryType:
+		return nil, errors.New("second argument must be an *ops.Query")
 	case t.NumOut() != 1 || !t.Out(0).Implements(reflect.TypeOf((*error)(nil)).Elem()):
 		return nil, errors.New("fn must return a single error value")
 	case t.NumIn() == 3:
@@ -68,7 +72,7 @@ func Func(fn any) (*Op, error) {
 }
 
 // Call calls the Op
-func (c *Op) Call(ctx *astral.Context, q Query, args map[string]string) error {
+func (c *Op) Call(ctx *astral.Context, q *Query, args map[string]string) error {
 	var fnArgs = []reflect.Value{
 		reflect.ValueOf(ctx),
 		reflect.ValueOf(q),

@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opAddAssetArgs struct {
@@ -11,7 +11,7 @@ type opAddAssetArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpAddAsset(ctx *astral.Context, q shell.Query, args opAddAssetArgs) (err error) {
+func (mod *Module) OpAddAsset(ctx *astral.Context, q *ops.Query, args opAddAssetArgs) (err error) {
 	err = mod.AddAsset(args.ID)
 	if err != nil {
 		mod.log.Error("error adding asset: %v", err)

@@ -1,15 +1,16 @@
 package user
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opLinkArgs struct {
 }
 
-func (mod *Module) OpLink(ctx *astral.Context, q shell.Query, args opLinkArgs) (err error) {
+func (mod *Module) OpLink(ctx *astral.Context, q *ops.Query, args opLinkArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return q.Reject()

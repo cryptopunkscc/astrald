@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opRemoveAssetArgs struct {
@@ -11,7 +11,7 @@ type opRemoveAssetArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRemoveAsset(ctx *astral.Context, q shell.Query, args opRemoveAssetArgs) (err error) {
+func (mod *Module) OpRemoveAsset(ctx *astral.Context, q *ops.Query, args opRemoveAssetArgs) (err error) {
 	err = mod.RemoveAsset(args.ID)
 
 	if err != nil {

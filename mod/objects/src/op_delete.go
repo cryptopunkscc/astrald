@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opDeleteArgs struct {
@@ -13,7 +13,7 @@ type opDeleteArgs struct {
 	Zone *astral.Zone `query:"optional"`
 }
 
-func (mod *Module) OpDelete(ctx *astral.Context, q shell.Query, args opDeleteArgs) (err error) {
+func (mod *Module) OpDelete(ctx *astral.Context, q *ops.Query, args opDeleteArgs) (err error) {
 	// prepare the context
 	ctx = ctx.WithIdentity(q.Caller())
 	if args.Zone == nil {

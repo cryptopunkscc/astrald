@@ -6,7 +6,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -17,7 +17,7 @@ type opRevokeNodeContractArgs struct {
 	Out        string `query:"optional"`
 }
 
-func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q shell.Query, args opRevokeNodeContractArgs) (err error) {
+func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q *ops.Query, args opRevokeNodeContractArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		// cannot handle if we dont have active contract

@@ -4,9 +4,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
-	"github.com/cryptopunkscc/astrald/mod/shell"
 )
 
 type Deps struct {
@@ -19,7 +19,7 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	assets assets.Assets
-	ops    shell.Scope
+	ops    ops.Set
 	db     *DB
 }
 
@@ -28,7 +28,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) Scope() *shell.Scope {
+func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 

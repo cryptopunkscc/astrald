@@ -3,7 +3,7 @@ package dir
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
 type opResolveArgs struct {
@@ -11,7 +11,7 @@ type opResolveArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpResolve(ctx *astral.Context, q shell.Query, args opResolveArgs) (err error) {
+func (mod *Module) OpResolve(ctx *astral.Context, q *ops.Query, args opResolveArgs) (err error) {
 	id, err := mod.ResolveIdentity(args.Name)
 	if err != nil {
 		return q.RejectWithCode(8)
