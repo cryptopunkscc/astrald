@@ -144,6 +144,13 @@ func Chan[T astral.Object](dst chan<- T) func(T) error {
 	}
 }
 
+func Expect[T astral.Object](object *T) func(T) error {
+	return func(v T) error {
+		*object = v
+		return ErrStop
+	}
+}
+
 func toConfigFunc(v any) ConfigFunc {
 	var f = reflect.ValueOf(v)
 	switch {
