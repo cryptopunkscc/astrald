@@ -35,7 +35,7 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID
 				defer wg.Done()
 
 				_results, err := objectscli.New(providerID, nil).Describe(ctx, objectID)
-				if err != nil {
+				if *err != nil {
 					return
 				}
 
