@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/user"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -251,6 +252,9 @@ func (db *DB) FindNodeContractRevocation(revocationID *astral.ObjectID) (row *db
 		Where("object_id = ?", revocationID).
 		First(&row).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, user.ErrContractRevocationNotExists
+		}
 		return nil, err
 	}
 
@@ -263,6 +267,9 @@ func (db *DB) FindNodeContract(contractID *astral.ObjectID) (row *dbNodeContract
 		Where("object_id = ?", contractID).
 		First(&row).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, user.ErrContractNotExists
+		}
 		return nil, err
 	}
 
