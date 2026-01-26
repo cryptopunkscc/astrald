@@ -1,11 +1,10 @@
 package tree
 
 import (
-	"errors"
-	"io"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 )
@@ -130,26 +129,18 @@ func (node *Node) Sub(ctx *astral.Context) (map[string]tree.Node, error) {
 	}
 	defer ch.Close()
 
-	err = ch.Collect(func(msg astral.Object) error {
-		switch msg := msg.(type) {
-		case *astral.String8:
+	err = ch.Switch(
+		func(msg *astral.String8) {
 			sub[string(*msg)] = &Node{client: node.client, path: append(node.path, string(*msg))}
-		case *astral.EOS:
-			return io.EOF
-		case *astral.ErrorMessage:
-			return msg
-		default:
-			return astral.NewErrUnexpectedObject(msg)
-		}
-		return nil
-	})
-	if errors.Is(err, io.EOF) {
-		err = nil
-	}
+		},
+		channel.StopOnEOS,
+		channel.PassErrors,
+	)
+
 	if err != nil {
 		return nil, err
 	}
-
+	
 	return sub, nil
 }
 

@@ -7,3 +7,5 @@ const (
 	CodeCanceled
 	CodeInternalError
 )
+
+const DefaultRejectCode = 1

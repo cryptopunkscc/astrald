@@ -1,6 +1,8 @@
 package astral
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // ErrRejected - the query was rejected by the target
 //var ErrRejected = errors.New("query rejected")
@@ -12,6 +14,9 @@ type ErrRejected struct {
 var _ error = &ErrRejected{}
 
 func NewErrRejected(code uint8) *ErrRejected {
+	if code == 0 {
+		code = DefaultRejectCode
+	}
 	return &ErrRejected{Code: code}
 }
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/query"
+	libquery "github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -23,7 +23,6 @@ import (
 type Set struct {
 	ops     sig.Map[string, *Op]
 	subs    sig.Map[string, *Set]
-	Log     *log.Logger
 	OnError func(error, *astral.Query)
 }
 
@@ -118,30 +117,29 @@ func (set *Set) Find(name string) (op *Op) {
 	return
 }
 
-func (set *Set) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	path, params := query.Parse(q.Query)
+func (set *Set) RouteQuery(ctx *astral.Context, query *astral.Query, remoteWriter io.WriteCloser) (io.WriteCloser, error) {
+	path, params := libquery.Parse(query.Query)
 
 	op := set.Find(path)
 	if op == nil {
-		return query.RouteNotFound(set)
+		return nil, astral.NewErrRouteNotFound(set, errors.New("op not found"))
 	}
 
-	var query = newQuery(w, q)
-	defer query.Reject()
+	var opsQuery = newQuery(remoteWriter, query)
 
 	go func() {
+		// reject the query at the end in case the op did not respond to it, will noop if it did.
+		defer opsQuery.Reject()
+
 		// ctx will end as soon as the query resolves, so we need a new one for the op
 		ctx := astral.NewContext(nil).WithIdentity(ctx.Identity()).WithZone(astral.ZoneAll)
 
 		// call the op
-		err := op.Call(ctx, query, params)
+		err := op.Call(ctx, opsQuery, params)
 		if err != nil && set.OnError != nil {
-			set.OnError(err, q)
+			set.OnError(err, query) // error callback
 		}
-
-		// reject the query in case the op did not respond to it, will do nothing if it did.
-		_ = query.Reject()
 	}()
 
-	return query.resolve(ctx)
+	return opsQuery.resolve(ctx)
 }

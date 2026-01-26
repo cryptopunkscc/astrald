@@ -2,6 +2,7 @@ package apphost
 
 import (
 	"os"
+	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -22,6 +23,10 @@ func NewRouter(endpoint string, token string) *Router {
 
 func DefaultRouter() *Router {
 	return defaultRouter
+}
+
+func SetDefaultRouter(router *Router) {
+	defaultRouter = router
 }
 
 // RouteQuery routes a query via the host.
@@ -91,6 +96,15 @@ func (router *Router) HostID() *astral.Identity {
 	return router.hostID
 }
 
+func (router *Router) Endpoint() string {
+	return router.endpoint
+}
+
+func (router *Router) Protocol() string {
+	split := strings.SplitN(router.endpoint, ":", 2)
+	return split[0]
+}
+
 // Connect establishes a new authenticated connection to the host.
 func (router *Router) connect() (host *Host, err error) {
 	host, err = Connect(router.endpoint)
@@ -113,5 +127,6 @@ func (router *Router) connect() (host *Host, err error) {
 }
 
 func newDefaultRouter() *Router {
+	// TODO: find an optimal endpoint (unix, then tcp)
 	return NewRouter(DefaultEndpoint, os.Getenv(AuthTokenEnv))
 }

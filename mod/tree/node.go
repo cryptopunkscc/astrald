@@ -9,9 +9,6 @@ import (
 
 // Node defines the interface of a tree node.
 type Node interface {
-	// Name returns the name of the node.
-	Name() string
-
 	// Get returns a channel containing the Object held by the node. If follow is false the channel will also
 	// be closed. If follow is true, the channel will keep receiving updates until the context is canceled.
 	Get(ctx *astral.Context, follow bool) (<-chan astral.Object, error)

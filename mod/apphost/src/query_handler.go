@@ -2,6 +2,7 @@ package apphost
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -39,22 +40,23 @@ func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.Query, w 
 		return query.RouteNotFound(handler, err)
 	}
 
-	// read response
-	msg, err := ch.Receive()
-	switch msg := msg.(type) {
-	case *astral.Ack: // success
-
-	case *apphost.QueryRejectedMsg:
-		return query.RejectWithCode(uint8(msg.Code))
-
-	case *apphost.ErrorMsg:
-		return query.RouteNotFound(handler, msg)
-
-	case nil:
-		return query.RouteNotFound(handler, err)
-
-	default:
-		return query.RouteNotFound(handler)
+	err = ch.Switch(
+		channel.ExpectAck,
+		func(msg *apphost.QueryRejectedMsg) error {
+			return astral.NewErrRejected(uint8(msg.Code))
+		},
+		func(msg *apphost.ErrorMsg) error {
+			return astral.NewErrRouteNotFound(handler)
+		},
+		func(object astral.Object) error { // catch all
+			return astral.NewErrRouteNotFound(handler, astral.NewErrUnexpectedObject(object))
+		},
+		func(err error) error {
+			return astral.NewErrRouteNotFound(handler, fmt.Errorf("receive error: %v", err))
+		},
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	// proxy the connection traffic

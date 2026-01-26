@@ -58,10 +58,6 @@ func WithTarget(identity *astral.Identity) *Client {
 	return Default().WithTarget(identity)
 }
 
-func (client *Client) Protocol() string {
-	return "tcp"
-}
-
 func GuestID() *astral.Identity {
 	return Default().GuestID()
 }

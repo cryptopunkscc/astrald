@@ -2,7 +2,6 @@ package apphost
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
@@ -12,7 +11,7 @@ import (
 
 type Host struct {
 	*channel.Channel
-	conn      net.Conn
+	conn      *ipc.Conn
 	hostID    *astral.Identity
 	hostAlias string
 	guestID   *astral.Identity
@@ -133,7 +132,7 @@ func (s *Host) RouteQuery(q *astral.Query, zone astral.Zone, filters []string) (
 	}
 }
 
-// Register registers a query handler for the given identity. Token is an access token
+// Register registers a query handler for the given identity. AuthToken is an access token
 // the host will to authenticate IPC calls. Close the host connection to unregister the handler.
 func (s *Host) Register(identity *astral.Identity, target string, token astral.Nonce) (err error) {
 	if identity.IsZero() {
@@ -184,4 +183,14 @@ func (s *Host) HostAlias() string {
 // Close closes the connection with the host.
 func (s *Host) Close() error {
 	return s.conn.Close()
+}
+
+// Protocol returns the protocol of the connection.
+func (s *Host) Protocol() string {
+	return s.conn.Protocol()
+}
+
+// Endpoint returns the endpoint of the connection.
+func (s *Host) Endpoint() string {
+	return s.conn.Endpoint()
 }

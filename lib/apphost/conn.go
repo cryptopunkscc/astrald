@@ -26,17 +26,15 @@ func (conn Conn) Query() *astral.Query {
 func (conn Conn) RemoteIdentity() *astral.Identity {
 	if conn.outbound {
 		return conn.query.Target
-	} else {
-		return conn.query.Caller
 	}
+	return conn.query.Caller
 }
 
 func (conn Conn) LocalIdentity() *astral.Identity {
 	if conn.outbound {
 		return conn.query.Caller
-	} else {
-		return conn.query.Target
 	}
+	return conn.query.Target
 }
 
 func (conn Conn) RemoteAddr() net.Addr {

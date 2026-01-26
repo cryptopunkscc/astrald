@@ -11,7 +11,6 @@ import (
 	libapphost "github.com/cryptopunkscc/astrald/lib/apphost"
 	"github.com/cryptopunkscc/astrald/lib/ipc"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Listener struct {
@@ -23,7 +22,13 @@ type Listener struct {
 
 var _ net.Listener = &Listener{}
 
-func NewListener(protocol string, token astral.Nonce) (*Listener, error) {
+// Listen creates a new Listener using apphost's DefaultRouter() protocol and a random auth token
+func Listen() (*Listener, error) {
+	return ListenAt(libapphost.DefaultRouter().Protocol(), astral.NewNonce())
+}
+
+// ListenAt creates a new Listener for the given protocol with the provided auth token
+func ListenAt(protocol string, authToken astral.Nonce) (*Listener, error) {
 	l, err := ipc.ListenAny(protocol)
 	if err != nil {
 		return nil, err
@@ -32,12 +37,117 @@ func NewListener(protocol string, token astral.Nonce) (*Listener, error) {
 	return &Listener{
 		Listener: l,
 		doneCh:   make(chan struct{}),
-		token:    token,
+		token:    authToken,
 	}, nil
 }
 
-func (l *Listener) Accept() (net.Conn, error) {
-	q, err := l.Next()
+// Next waits for and returns the next pending query
+func (listener *Listener) Next() (*PendingQuery, error) {
+	for {
+		// accept the next network connection
+		conn, err := listener.Listener.Accept()
+		if err != nil {
+			listener.Close()
+			return nil, err
+		}
+		ch := channel.New(conn)
+
+		// read the query request
+		obj, err := ch.Receive()
+		if err != nil {
+			ch.Close()
+			return nil, err
+		}
+
+		// check message type - must be HandleQueryMsg
+		queryMsg, ok := obj.(*apphost.HandleQueryMsg)
+		if !ok {
+			ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeProtocolError})
+			ch.Close()
+			continue
+		}
+
+		// check auth token
+		if queryMsg.AuthToken != listener.token {
+			ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+			ch.Close()
+			return nil, ErrInvalidAuthToken
+		}
+
+		// return the pending query
+		return &PendingQuery{
+			conn: conn,
+			query: &astral.Query{
+				Nonce:  queryMsg.ID,
+				Caller: queryMsg.Caller,
+				Target: queryMsg.Target,
+				Query:  string(queryMsg.Query),
+			},
+		}, nil
+	}
+}
+
+// Serve forwards all incoming queries to the provided astral.Router
+func (listener *Listener) Serve(ctx *astral.Context, router astral.Router) error {
+	var errRejected *astral.ErrRejected
+
+	for {
+		// get the next pending query
+		pending, err := listener.Next()
+		if err != nil {
+			return err
+		}
+
+		// lock the writer so that we can send the query response before the target starts sending data
+		lockedWriter := NewLockableWriteCloser(pending.conn)
+		lockedWriter.Lock()
+
+		// route the query to the target
+		w, err := router.RouteQuery(ctx, pending.query, lockedWriter)
+		switch {
+		case err == nil:
+			// accepted - send an Ack and release the writer to the query target
+			conn := pending.Accept()
+			lockedWriter.Unlock()
+
+			// forward the traffic
+			go func() {
+				io.Copy(w, conn)
+				w.Close()
+			}()
+
+		case errors.As(err, &errRejected):
+			// rejected - forward the rejection code and release the writer
+			pending.RejectWithCode(int(errRejected.Code))
+			lockedWriter.Unlock()
+
+		case errors.Is(err, &astral.ErrRouteNotFound{}):
+			// route not found - send route not found and release the writer
+			pending.Skip()
+			lockedWriter.Unlock()
+
+		default:
+			// unexpected error - skip the response and release the writer
+			// TODO: should we have a different response to this than to route not found?
+			pending.Skip()
+			lockedWriter.Unlock()
+		}
+	}
+}
+
+// SetAuthToken sets the auth token expected by the Listener
+func (listener *Listener) SetAuthToken(token astral.Nonce) {
+	listener.token = token
+}
+
+// AuthToken returns the auth token expected by the Listener
+func (listener *Listener) AuthToken() astral.Nonce {
+	return listener.token
+}
+
+// Accept accepts the next pending query
+func (listener *Listener) Accept() (net.Conn, error) {
+	q, err := listener.Next()
 	if err != nil {
 		return nil, err
 	}
@@ -45,116 +155,27 @@ func (l *Listener) Accept() (net.Conn, error) {
 	return q.Accept(), nil
 }
 
-func (l *Listener) AcceptChannel(cfg ...channel.ConfigFunc) (*channel.Channel, error) {
-	q, err := l.Next()
-	if err != nil {
-		return nil, err
+func (listener *Listener) Close() error {
+	if listener.done.CompareAndSwap(false, true) {
+		close(listener.doneCh)
 	}
-
-	return channel.New(q.Accept(), cfg...), nil
+	return listener.Listener.Close()
 }
 
-func (l *Listener) Next() (*PendingQuery, error) {
-	// accent the next connection
-	conn, err := l.Listener.Accept()
-	if err != nil {
-		l.setDone()
-		return nil, err
-	}
-	ch := channel.New(conn)
-
-	// read the request
-	msg, err := ch.Receive()
-	switch msg := msg.(type) {
-	case *apphost.HandleQueryMsg:
-		// check auth token
-		if msg.AuthToken != l.token {
-			ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
-			ch.Close()
-			return nil, errors.New("invalid auth token")
-		}
-
-		return &PendingQuery{
-			conn: conn,
-			query: &astral.Query{
-				Nonce:  msg.ID,
-				Caller: msg.Caller,
-				Target: msg.Target,
-				Query:  string(msg.Query),
-				Extra:  sig.Map[string, any]{},
-			},
-		}, nil
-
-	case nil:
-		return nil, err
-
-	default:
-		ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeProtocolError})
-		ch.Close()
-		return nil, errors.New("unexpected message type " + msg.ObjectType())
-	}
+func (listener *Listener) Addr() net.Addr {
+	return listener.Listener.Addr()
 }
 
-func (l *Listener) Close() error {
-	l.setDone()
-	return l.Listener.Close()
+func (listener *Listener) String() string {
+	return listener.Endpoint()
 }
 
-func (l *Listener) Addr() net.Addr {
-	return l.Listener.Addr()
-}
-
-func (l *Listener) String() string {
-	a := l.Listener.Addr()
+func (listener *Listener) Endpoint() string {
+	a := listener.Listener.Addr()
 	return a.Network() + ":" + a.String()
 }
 
-func (l *Listener) Token() astral.Nonce {
-	return l.token
-}
-
-func (l *Listener) SetToken(token astral.Nonce) {
-	l.token = token
-}
-
-func (l *Listener) setDone() {
-	if l.done.CompareAndSwap(false, true) {
-		close(l.doneCh)
-	}
-}
-
-func (l *Listener) Done() <-chan struct{} {
-	return l.doneCh
-}
-
-func (l *Listener) Serve(ctx *astral.Context, router astral.Router) error {
-	var errRejected *astral.ErrRejected
-
-	for {
-		q, err := l.Next()
-		if err != nil {
-			return err
-		}
-
-		var conn *libapphost.Conn
-
-		w, err := router.RouteQuery(ctx, q.query, q.conn)
-		switch {
-		case err == nil:
-			conn = q.Accept()
-
-		case errors.As(err, &errRejected):
-			q.RejectWithCode(int(errRejected.Code))
-			continue
-
-		default:
-			q.Reject()
-			continue
-		}
-
-		go func() {
-			io.Copy(w, conn)
-			w.Close()
-		}()
-	}
+// Done returns a channel that will be closed when the Listener is closed
+func (listener *Listener) Done() <-chan struct{} {
+	return listener.doneCh
 }

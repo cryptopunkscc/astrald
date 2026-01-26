@@ -9,6 +9,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
+// OnQueryAccepted is called when a query is accepted. It can be used with a RouterMonitor
+// to keep track of all open connections.
 var OnQueryAccepted func(conn astral.Conn, query *astral.Query)
 
 type PendingQuery struct {
@@ -17,56 +19,56 @@ type PendingQuery struct {
 }
 
 // Accept accepts the query and returns a new connection
-func (q *PendingQuery) Accept() (conn *libapphost.Conn) {
+func (pending *PendingQuery) Accept() (conn *libapphost.Conn) {
 	// send ack
-	_ = channel.NewBinarySender(q.conn).Send(&astral.Ack{})
+	_ = channel.NewBinarySender(pending.conn).Send(&astral.Ack{})
 
-	conn = libapphost.NewConn(q.conn, q.query, false)
+	conn = libapphost.NewConn(pending.conn, pending.query, false)
 
 	if OnQueryAccepted != nil {
-		OnQueryAccepted(conn, q.query)
+		OnQueryAccepted(conn, pending.query)
 	}
 
 	return conn
 }
 
 // AcceptChannel accepts the query and returns a new channel
-func (q *PendingQuery) AcceptChannel(cfg ...channel.ConfigFunc) *channel.Channel {
-	return channel.New(q.Accept(), cfg...)
+func (pending *PendingQuery) AcceptChannel(cfg ...channel.ConfigFunc) *channel.Channel {
+	return channel.New(pending.Accept(), cfg...)
 }
 
 // Reject rejects the query with the default error code
-func (q *PendingQuery) Reject() (err error) {
-	return q.RejectWithCode(astral.CodeRejected)
+func (pending *PendingQuery) Reject() (err error) {
+	return pending.RejectWithCode(astral.CodeRejected)
 }
 
 // RejectWithCode rejects the query with the given code
-func (q *PendingQuery) RejectWithCode(code int) (err error) {
-	defer q.conn.Close()
-	return channel.NewBinarySender(q.conn).Send(&apphost.QueryRejectedMsg{Code: astral.Uint8(code)})
+func (pending *PendingQuery) RejectWithCode(code int) (err error) {
+	defer pending.conn.Close()
+	return channel.NewBinarySender(pending.conn).Send(&apphost.QueryRejectedMsg{Code: astral.Uint8(code)})
 }
 
 // Skip responds with a "route not found" error
-func (q *PendingQuery) Skip() error {
-	defer q.conn.Close()
-	return channel.NewBinarySender(q.conn).Send(&apphost.ErrorMsg{Code: apphost.ErrCodeRouteNotFound})
+func (pending *PendingQuery) Skip() error {
+	defer pending.conn.Close()
+	return channel.NewBinarySender(pending.conn).Send(&apphost.ErrorMsg{Code: apphost.ErrCodeRouteNotFound})
 }
 
 // Close closes the connection without responding
-func (q *PendingQuery) Close() error {
-	return q.conn.Close()
+func (pending *PendingQuery) Close() error {
+	return pending.conn.Close()
 }
 
-func (q *PendingQuery) Nonce() astral.Nonce { return q.query.Nonce }
+func (pending *PendingQuery) Nonce() astral.Nonce { return pending.query.Nonce }
 
-func (q *PendingQuery) Caller() *astral.Identity {
-	return q.query.Caller
+func (pending *PendingQuery) Caller() *astral.Identity {
+	return pending.query.Caller
 }
 
-func (q *PendingQuery) Target() *astral.Identity {
-	return q.query.Target
+func (pending *PendingQuery) Target() *astral.Identity {
+	return pending.query.Target
 }
 
-func (q *PendingQuery) Query() string {
-	return q.query.Query
+func (pending *PendingQuery) Query() string {
+	return pending.query.Query
 }

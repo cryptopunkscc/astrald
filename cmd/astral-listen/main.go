@@ -18,14 +18,20 @@ func main() {
 
 	var ctx = astrald.NewContext()
 
-	l, err := apphost.RegisterHandler(ctx)
+	server, err := astrald.Listen()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "listen: %v\n", err)
+		os.Exit(1)
+	}
+
+	err = apphost.RegisterHandler(ctx, server.Endpoint(), server.AuthToken())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
 	for {
-		query, err := l.Next()
+		query, err := server.Next()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)

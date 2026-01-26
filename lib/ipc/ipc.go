@@ -25,9 +25,11 @@ const EnvKeyAddr = "ASTRALD_APPHOST_ADDR"
 // EnvKeyToken is the name of the environment variable which contains the apphost access token.
 const EnvKeyToken = "ASTRALD_APPHOST_TOKEN"
 
-func Dial(target string) (c net.Conn, err error) {
+func Dial(target string) (conn *Conn, err error) {
 	parts := strings.SplitN(target, ":", 2)
 	proto, addr := parts[0], parts[1]
+
+	var c net.Conn
 
 	switch proto {
 	case "tcp":
@@ -42,6 +44,11 @@ func Dial(target string) (c net.Conn, err error) {
 	default:
 		err = ErrUnsupportedProtocol
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	conn = &Conn{Conn: c, protocol: proto, addr: addr}
 
 	return
 }

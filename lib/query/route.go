@@ -7,8 +7,6 @@ import (
 	"io"
 )
 
-const DefaultRejectCode = 1
-
 // Route routes a query through the provided Router. It returns a conn if query was successfully routed
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...
@@ -23,7 +21,7 @@ func Route(ctx *astral.Context, r astral.Router, q *astral.Query) (astral.Conn, 
 		return nil, err
 	}
 
-	return newConn(q.Caller, q.Target, target, pipeReader, true), err
+	return NewConn(q.Caller, q.Target, target, pipeReader, true), err
 }
 
 func RouteChan(ctx *astral.Context, r astral.Router, q *astral.Query) (*channel.Channel, error) {
@@ -39,14 +37,14 @@ func RouteChan(ctx *astral.Context, r astral.Router, q *astral.Query) (*channel.
 func Accept(query *astral.Query, src io.WriteCloser, handler func(astral.Conn)) (io.WriteCloser, error) {
 	pipeReader, pipeWriter := io.Pipe()
 
-	go handler(newConn(query.Target, query.Caller, src, pipeReader, false))
+	go handler(NewConn(query.Target, query.Caller, src, pipeReader, false))
 
 	return pipeWriter, nil
 }
 
 // Reject returns nil and an ErrRejected with the DefaultRejectCode.
 func Reject() (io.WriteCloser, error) {
-	return RejectWithCode(DefaultRejectCode)
+	return RejectWithCode(astral.DefaultRejectCode)
 }
 
 // RejectWithCode returns nil and an ErrRejected with the given code.
