@@ -1,0 +1,87 @@
+package bip137sig
+
+import (
+	"crypto/sha256"
+
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
+)
+
+type MessageSignerBip137 struct {
+	key        *btcec.PrivateKey
+	compressed bool
+}
+
+var _ crypto.MessageSigner = &MessageSignerBip137{}
+
+func NewMessageSignerBip137(key *crypto.PrivateKey, compressed bool) *MessageSignerBip137 {
+	privKey, _ := btcec.PrivKeyFromBytes(key.Key)
+
+	return &MessageSignerBip137{
+		key:        privKey,
+		compressed: compressed,
+	}
+}
+
+func (m MessageSignerBip137) SignMessage(ctx *astral.Context, msg string) (*crypto.Signature, error) {
+	hash := hashBitcoinMessage(msg)
+
+	sig, err := ecdsa.SignCompact(m.key, hash, m.compressed)
+	if err != nil {
+		return nil, err
+	}
+
+	return &crypto.Signature{
+		Scheme: crypto.SchemeBIP137,
+		Data:   sig,
+	}, nil
+}
+
+func hashBitcoinMessage(message string) []byte {
+	formatted := formatBitcoinMessage(message)
+
+	hash := sha256.Sum256(formatted)
+	hash = sha256.Sum256(hash[:])
+
+	return hash[:]
+}
+
+func formatBitcoinMessage(message string) []byte {
+	prefix := "Bitcoin Signed Message:\n"
+
+	var result []byte
+
+	prefixBytes := []byte(prefix)
+	result = appendCompactSize(result, uint64(len(prefixBytes)))
+	result = append(result, prefixBytes...)
+
+	messageBytes := []byte(message)
+	result = appendCompactSize(result, uint64(len(messageBytes)))
+	result = append(result, messageBytes...)
+
+	return result
+}
+
+func appendCompactSize(b []byte, n uint64) []byte {
+	switch {
+	case n < 253:
+		return append(b, byte(n))
+	case n <= 0xffff:
+		return append(b, 253, byte(n), byte(n>>8))
+	case n <= 0xffffffff:
+		return append(b, 254, byte(n), byte(n>>8), byte(n>>16), byte(n>>24))
+	default:
+		return append(b, 255,
+			byte(n),
+			byte(n>>8),
+			byte(n>>16),
+			byte(n>>24),
+			byte(n>>32),
+			byte(n>>40),
+			byte(n>>48),
+			byte(n>>56),
+		)
+	}
+}
