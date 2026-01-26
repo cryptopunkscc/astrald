@@ -9,15 +9,8 @@ import (
 
 var ErrTypeMismatch = errors.New("binding type mismatch")
 
-// Binding wraps an astral.Object type with type-safe access.
-type Binding[T astral.Object] struct {
-	node     Node
-	onChange func(T)
-	value    sig.Value[astral.Object]
-}
-
 // Bind creates a binding to a tree node.
-func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindConfigFunc[T]) (*Binding[T], error) {
+func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindConfigFunc[T]) (*Value[T], error) {
 	var err error
 	var config = makeBindConfig(configFunc...)
 
@@ -57,9 +50,10 @@ func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindCon
 	}
 
 	// create the binding
-	binding := &Binding[T]{
+	binding := &Value[T]{
 		node:     node,
 		onChange: config.OnChange,
+		value:    &sig.Value[astral.Object]{},
 	}
 
 	// wait for the initial value
@@ -85,7 +79,7 @@ func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindCon
 	return binding, nil
 }
 
-func BindPath[T astral.Object](ctx *astral.Context, node Node, path string, configFunc ...BindConfigFunc[T]) (*Binding[T], error) {
+func BindPath[T astral.Object](ctx *astral.Context, node Node, path string, configFunc ...BindConfigFunc[T]) (*Value[T], error) {
 	node, err := Query(ctx, node, path, true)
 	if err != nil {
 		return nil, err
@@ -95,7 +89,7 @@ func BindPath[T astral.Object](ctx *astral.Context, node Node, path string, conf
 }
 
 // Get returns the current value as type T.
-func (binding *Binding[T]) Get() (T, error) {
+func (binding *Value[T]) Get() (T, error) {
 	var zero T
 	v := binding.value.Get()
 	if v == nil {
@@ -108,6 +102,6 @@ func (binding *Binding[T]) Get() (T, error) {
 }
 
 // Set updates the value.
-func (binding *Binding[T]) Set(ctx *astral.Context, v T) error {
+func (binding *Value[T]) Set(ctx *astral.Context, v T) error {
 	return binding.node.Set(ctx, v)
 }
