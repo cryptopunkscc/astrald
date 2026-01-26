@@ -34,6 +34,9 @@ func (client *Client) Relay(ctx *astral.Context, nonce astral.Nonce, caller *ast
 		"set_caller": caller,
 		"set_target": target,
 	})
+	if err != nil {
+		return err
+	}
 
 	response, err := ch.Receive()
 	if err != nil {
