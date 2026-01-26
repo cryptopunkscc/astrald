@@ -23,7 +23,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(tree.ModuleName, &mod.config)
 
-	mod.ops.AddStruct(mod, "Op")
+	mod.ops.AddStructPrefix(mod, "Op")
 
 	mod.db = &DB{assets.Database()}
 

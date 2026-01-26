@@ -38,7 +38,7 @@ func NewSet() *Set {
 
 func Struct(s any, prefix string) *Set {
 	set := NewSet()
-	err := set.AddStruct(s, prefix)
+	err := set.AddStructPrefix(s, prefix)
 	if err != nil {
 		panic(err)
 	}
@@ -54,8 +54,13 @@ func (set *Set) AddFunc(name string, fn any) error {
 	return nil
 }
 
-// AddStruct adds to the set all methods of a struct that start with the given prefix (the prefix is removed).
-func (set *Set) AddStruct(s any, prefix string) (err error) {
+// AddStruct adds to the set all methods of a struct.
+func (set *Set) AddStruct(s any) (err error) {
+	return set.AddStructPrefix(s, "")
+}
+
+// AddStructPrefix adds to the set all methods of a struct that start with the given prefix (the prefix is removed).
+func (set *Set) AddStructPrefix(s any, prefix string) (err error) {
 	var errs []error
 	v := reflect.ValueOf(s)
 
@@ -86,8 +91,14 @@ func (set *Set) AddStruct(s any, prefix string) (err error) {
 	return errors.Join(errs...)
 }
 
-// AddSet adds another set as a subset.
-func (set *Set) AddSet(name string, s *Set) error {
+// AddSubStruct adds all methods of a struct as a named subset of this set.
+func (set *Set) AddSubStruct(name string, s any) error {
+	sub := Struct(s, "")
+	return set.AddSubSet(name, sub)
+}
+
+// AddSubSet adds another set as a named subset.
+func (set *Set) AddSubSet(name string, s *Set) error {
 	_, ok := set.subs.Set(name, s)
 	if !ok {
 		return errors.New("set already defined")

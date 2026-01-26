@@ -20,7 +20,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 	}
 
 	mod.pool = NewPairPool(mod)
-	mod.ops.AddStruct(mod, "Op")
+	mod.ops.AddStructPrefix(mod, "Op")
 
 	return mod, nil
 }

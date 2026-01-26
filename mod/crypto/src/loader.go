@@ -21,13 +21,13 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(crypto.ModuleName, &mod.config)
 
-	mod.scope.AddStruct(mod, "Op")
+	mod.scope.AddStructPrefix(mod, "Op")
 
 	mod.db, err = newDB(mod.assets.Database())
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return mod, err
 }
 

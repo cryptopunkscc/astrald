@@ -16,7 +16,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 		log:  l,
 	}
 
-	mod.ops.AddStruct(mod, "Op")
+	mod.ops.AddStructPrefix(mod, "Op")
 
 	return mod, nil
 }

@@ -33,7 +33,7 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 			}
 
 			if s, ok := m.(ops.HasOps); ok {
-				mod.root.AddSet(getName(s), s.GetOpSet())
+				mod.root.AddSubSet(getName(s), s.GetOpSet())
 				added = append(added, m)
 			}
 		}

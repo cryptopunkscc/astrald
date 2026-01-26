@@ -24,7 +24,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(apphost.ModuleName, &mod.config)
 
-	mod.scope.AddStruct(mod, "Op")
+	mod.scope.AddStructPrefix(mod, "Op")
 
 	// set up the database
 	mod.db = &DB{assets.Database()}
