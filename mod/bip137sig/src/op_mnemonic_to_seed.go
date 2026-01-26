@@ -10,10 +10,11 @@ import (
 )
 
 type opMnemonicToSeedArgs struct {
-	Mnemonic   string `query:"optional"`
+	Mnemonic   string
 	Passphrase string `query:"optional"`
-	In         string `query:"optional"`
-	Out        string `query:"optional"`
+
+	In  string `query:"optional"`
+	Out string `query:"optional"`
 }
 
 func (mod *Module) OpMnemonicToSeed(
@@ -23,10 +24,6 @@ func (mod *Module) OpMnemonicToSeed(
 ) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
-
-	if args.Mnemonic == "" {
-		return ch.Send(astral.NewError("missing mnemonic"))
-	}
 
 	words := strings.Fields(args.Mnemonic)
 	if len(words) == 0 {

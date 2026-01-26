@@ -22,5 +22,10 @@ func (mod *Module) OpDeriveKey(
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	return nil
+	privateKey, err := mod.DeriveKey(args.Seed, args.Path)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	return ch.Send(&privateKey)
 }

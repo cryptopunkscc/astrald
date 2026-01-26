@@ -11,7 +11,7 @@ import (
 )
 
 type opEntropyToMnemonicArgs struct {
-	Entropy string `query:"optional"`
+	Entropy string
 	In      string `query:"optional"`
 	Out     string `query:"optional"`
 }
@@ -23,10 +23,6 @@ func (mod *Module) OpEntropyToMnemonic(
 ) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
-
-	if args.Entropy == "" {
-		return ch.Send(astral.NewError("missing entropy"))
-	}
 
 	entropyBytes, err := hex.DecodeString(args.Entropy)
 	if err != nil {
