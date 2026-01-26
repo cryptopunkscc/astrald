@@ -1,4 +1,4 @@
-package bip137sig
+package src
 
 import (
 	"crypto/sha256"
@@ -28,10 +28,7 @@ func NewMessageSignerBip137(key *crypto.PrivateKey, compressed bool) *MessageSig
 func (m MessageSignerBip137) SignMessage(ctx *astral.Context, msg string) (*crypto.Signature, error) {
 	hash := hashBitcoinMessage(msg)
 
-	sig, err := ecdsa.SignCompact(m.key, hash, m.compressed)
-	if err != nil {
-		return nil, err
-	}
+	sig := ecdsa.SignCompact(m.key, hash, m.compressed)
 
 	return &crypto.Signature{
 		Scheme: crypto.SchemeBIP137,

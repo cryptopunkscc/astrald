@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/bip137sig"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/bip-0137/verify"
@@ -35,7 +34,7 @@ func (e Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.Mess
 		return nil, err
 	}
 
-	return bip137sig.NewMessageSignerBip137(privateKey, compressed), nil
+	return NewMessageSignerBip137(privateKey, compressed), nil
 }
 
 func (e Engine) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
