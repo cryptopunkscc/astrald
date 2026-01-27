@@ -1,27 +1,51 @@
 package bip137sig
 
 import (
+	"encoding/binary"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-var _ astral.Object = Entropy{}
+var _ astral.Object = &Entropy{}
 
-type Entropy struct {
-	Data []byte
-}
+type Entropy []byte
 
 func (Entropy) ObjectType() string {
 	return "bip137sig.entropy"
 }
 
 func (e Entropy) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Objectify(&e).WriteTo(w)
+	l := uint8(len(e))
+
+	if err = binary.Write(w, astral.ByteOrder, &l); err != nil {
+		return
+	}
+	n += 1
+
+	var m int
+	m, err = w.Write(e)
+	n += int64(m)
+	return
 }
 
-func (e Entropy) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Objectify(e).ReadFrom(r)
+func (e *Entropy) ReadFrom(r io.Reader) (n int64, err error) {
+	var l uint8
+	if err = binary.Read(r, astral.ByteOrder, &l); err != nil {
+		return
+	}
+	n += 1
+
+	buf := make([]byte, l)
+	var m int
+	m, err = io.ReadFull(r, buf)
+	n += int64(m)
+	if err != nil {
+		return
+	}
+
+	*e = buf
+	return
 }
 
 func init() {

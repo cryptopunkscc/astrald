@@ -8,9 +8,7 @@ import (
 
 var _ astral.Object = Seed{}
 
-type Seed struct {
-	Data []byte
-}
+type Seed []byte
 
 func (s Seed) ObjectType() string {
 	return "bip137sig.seed"

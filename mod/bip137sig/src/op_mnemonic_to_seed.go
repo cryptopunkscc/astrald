@@ -36,5 +36,5 @@ func (mod *Module) OpMnemonicToSeed(
 
 	seedBytes := bip137sig.MnemonicToSeed(words, args.Passphrase)
 
-	return ch.Send(bip137sig.Seed{Data: seedBytes})
+	return ch.Send(bip137sig.Seed(seedBytes))
 }

@@ -1,6 +1,8 @@
 package src
 
 import (
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
@@ -43,7 +45,7 @@ func (mod *Module) DeriveKey(seed bip137sig.Seed, path string) (privateKey crypt
 		return privateKey, err
 	}
 
-	key, err := bip137sig.MasterKeyFromSeed(seed)
+	key, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
 	if err != nil {
 		return privateKey, err
 	}
