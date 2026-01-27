@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/sha512"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -31,7 +30,7 @@ const (
 func EntropyToMnemonic(entropy Entropy) ([]string, error) {
 	entropyBits := len(entropy) * 8
 	if entropyBits < MinEntropyBits || entropyBits > MaxEntropyBits || entropyBits%EntropyStepBits != 0 {
-		return nil, errors.New("entropy must be 128-256 bits in 32-bit increments")
+		return nil, ErrInvalidEntropySize
 	}
 
 	// CS = ENT / 32
