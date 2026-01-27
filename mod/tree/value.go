@@ -189,6 +189,10 @@ func (value *Value[T]) ReadFrom(reader io.Reader) (n int64, err error) {
 }
 
 func (value Value[T]) MarshalJSON() ([]byte, error) {
+	if value.cached == nil {
+		return nil, errors.New("nil value")
+	}
+
 	obj := value.cached.Get()
 
 	if m, ok := obj.(json.Marshaler); ok {

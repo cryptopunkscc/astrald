@@ -1,6 +1,11 @@
 package tree
 
-import "github.com/cryptopunkscc/astrald/astral"
+import (
+	"errors"
+
+	"github.com/cryptopunkscc/astrald/astral"
+)
 
 var ErrNodeHasSubnodes = astral.NewError("node has subnodes")
 var ErrUnsupported = astral.NewError("unsupported")
+var ErrTypeMismatch = errors.New("binding type mismatch")
