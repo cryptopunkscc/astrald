@@ -2,7 +2,6 @@ package nat
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -47,6 +46,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 		if !pair.BeginLock() {
 			return ch.Send(astral.Err(nat.ErrPairBusy))
 		}
+
 		err = client.PairTake(opCtx, pair.Nonce, func() error {
 			return pair.WaitLocked(opCtx)
 		})
@@ -64,12 +64,8 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 	exchange := nat.NewPairTakeExchange(ch, pair.Nonce)
 
 	// Lock exchange
-	sig, err := exchange.Receive(opCtx)
-	if err != nil {
+	if err := exchange.Expect(opCtx, nat.PairHandoverSignalTypeLock); err != nil {
 		return ch.Send(astral.Err(err))
-	}
-	if sig.Signal != nat.PairHandoverSignalTypeLock {
-		return ch.Send(astral.Err(fmt.Errorf("unexpected signal: %s", sig.Signal)))
 	}
 	if !pair.BeginLock() {
 		_ = exchange.Send(nat.PairHandoverSignalTypeLockBusy)
@@ -83,12 +79,8 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 	}
 
 	// Take exchange
-	sig, err = exchange.Receive(opCtx)
-	if err != nil {
+	if err := exchange.Expect(opCtx, nat.PairHandoverSignalTypeTake); err != nil {
 		return ch.Send(astral.Err(err))
-	}
-	if sig.Signal != nat.PairHandoverSignalTypeTake {
-		return ch.Send(astral.Err(fmt.Errorf("unexpected signal: %s", sig.Signal)))
 	}
 	if err := exchange.Send(nat.PairHandoverSignalTypeTakeOk); err != nil {
 		return ch.Send(astral.Err(err))

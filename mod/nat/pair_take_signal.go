@@ -2,11 +2,9 @@ package nat
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/channel"
 )
 
 const (
@@ -44,44 +42,6 @@ func (p *PairTakeSignal) UnmarshalJSON(bytes []byte) error {
 	}
 	*p = PairTakeSignal(a)
 	return nil
-}
-
-// PairTakeExchange coordinates the pair take protocol over a channel.
-type PairTakeExchange struct {
-	ch   *channel.Channel
-	Pair astral.Nonce
-}
-
-func NewPairTakeExchange(ch *channel.Channel, pair astral.Nonce) *PairTakeExchange {
-	return &PairTakeExchange{ch: ch, Pair: pair}
-}
-
-func (e *PairTakeExchange) Send(signal astral.String8) error {
-	return e.ch.Send(&PairTakeSignal{Signal: signal, Pair: e.Pair})
-}
-
-func (e *PairTakeExchange) Receive(ctx *astral.Context) (*PairTakeSignal, error) {
-	var sig *PairTakeSignal
-	err := e.ch.Switch(
-		channel.WithContext(ctx),
-		func(msg *PairTakeSignal) error {
-			if msg.Pair != e.Pair {
-				return fmt.Errorf("mismatched pair id %v (expected %v)", msg.Pair, e.Pair)
-			}
-			sig = msg
-			return channel.ErrBreak
-		},
-		func(msg *astral.ErrorMessage) error {
-			return msg
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	if sig == nil {
-		return nil, fmt.Errorf("missing pair take signal")
-	}
-	return sig, nil
 }
 
 func init() {

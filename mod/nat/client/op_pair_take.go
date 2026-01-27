@@ -15,13 +15,10 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk 
 	}
 	defer ch.Close()
 
-	ex := nat.NewPairTakeExchange(ch, pair)
+	exchange := nat.NewPairTakeExchange(ch, pair)
 
 	// Lock exchange
-	if err := ex.Send(nat.PairHandoverSignalTypeLock); err != nil {
-		return err
-	}
-	sig, err := ex.Receive(ctx)
+	sig, err := exchange.SendReceive(ctx, nat.PairHandoverSignalTypeLock)
 	if err != nil {
 		return err
 	}
@@ -39,14 +36,10 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk 
 	}
 
 	// Take exchange
-	if err := ex.Send(nat.PairHandoverSignalTypeTake); err != nil {
-		return err
-	}
-	sig, err = ex.Receive(ctx)
+	sig, err = exchange.SendReceive(ctx, nat.PairHandoverSignalTypeTake)
 	if err != nil {
 		return err
 	}
-
 	switch sig.Signal {
 	case nat.PairHandoverSignalTypeTakeOk:
 		return nil
