@@ -15,7 +15,6 @@ type Module interface{}
 const (
 	MethodStartNatTraversal = "nat.start_traversal"
 	MethodPairTake          = "nat.pair_take"
-	MethodNewTraversal      = "nat.new_traversal"
 	MethodListPairs         = "nat.list_pairs"
 	MethodSetEnabled        = "nat.set_enabled"
 )
