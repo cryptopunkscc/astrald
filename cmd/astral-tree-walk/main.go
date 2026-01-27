@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -41,7 +42,13 @@ func walk(ctx *astral.Context, node tree.Node, path []string) error {
 		return err
 	}
 
-	for name := range sub {
+	keys := make([]string, 0, len(sub))
+	for k := range sub {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+
+	for _, name := range keys {
 		err = walk(ctx, sub[name], append(path, name))
 		if err != nil {
 			return err
