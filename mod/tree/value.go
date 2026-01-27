@@ -11,12 +11,11 @@ import (
 
 // Value wraps an astral.Object type with type-safe access.
 type Value[T astral.Object] struct {
-	node     Node
-	onChange func(T)
-	cached   *sig.Value[astral.Object]
-	queue    *sig.Queue[T]
-	noInit   bool
-	noLocal  bool
+	node    Node
+	cached  *sig.Value[astral.Object]
+	queue   *sig.Queue[T]
+	NoInit  bool
+	NoLocal bool
 }
 
 var _ astral.Object = &Value[astral.Object]{}
@@ -26,13 +25,14 @@ func (value *Value[T]) ObjectType() string {
 	return zero.ObjectType()
 }
 
+// Bind binds the value to the node until the context is canceled.
 func (value *Value[T]) Bind(ctx *astral.Context, node Node) error {
 	// follow the node
 	updates, errPtr := Follow[T](ctx, node)
 	switch {
 	case *errPtr == nil:
 	case errors.Is(*errPtr, &ErrNodeHasNoValue{}):
-		if value.noInit {
+		if value.NoInit {
 			return *errPtr
 		}
 
@@ -49,8 +49,15 @@ func (value *Value[T]) Bind(ctx *astral.Context, node Node) error {
 		return *errPtr
 	}
 
-	value.cached = &sig.Value[astral.Object]{}
-	value.queue = &sig.Queue[T]{}
+	if value.cached == nil {
+		value.cached = &sig.Value[astral.Object]{}
+	}
+	if value.queue == nil {
+		value.queue = &sig.Queue[T]{}
+	}
+
+	// set the initial value
+	value.update(<-updates)
 
 	// subscribe to changes
 	go func() {
@@ -63,8 +70,21 @@ func (value *Value[T]) Bind(ctx *astral.Context, node Node) error {
 	return nil
 }
 
+func (value *Value[T]) BindPath(ctx *astral.Context, node Node, path string, create bool) (err error) {
+	node, err = Query(ctx, node, path, create)
+	if err != nil {
+		return err
+	}
+
+	return value.Bind(ctx, node)
+}
+
 // Get returns the current value as type T.
 func (value *Value[T]) Get() (val T, err error) {
+	if value.cached == nil {
+		return val, &ErrNodeHasNoValue{}
+	}
+
 	// get cached value
 	v := value.cached.Get()
 	if v == nil {
@@ -88,8 +108,15 @@ func (value *Value[T]) Set(ctx *astral.Context, v T) error {
 	}
 
 	// if no local update is allowed, return the error
-	if value.noLocal {
+	if value.NoLocal {
 		return err
+	}
+
+	if value.cached == nil {
+		value.cached = &sig.Value[astral.Object]{}
+	}
+	if value.queue == nil {
+		value.queue = &sig.Queue[T]{}
 	}
 
 	// update the value locally
@@ -136,6 +163,11 @@ func (value *Value[T]) update(val T) {
 	value.queue = value.queue.Push(val)
 }
 
+func (value *Value[T]) setZero(ctx *astral.Context) error {
+	var zero T
+	return value.node.Set(ctx, zero)
+}
+
 func (value Value[T]) WriteTo(writer io.Writer) (n int64, err error) {
 	v := value.cached.Get()
 	if v == nil {
@@ -175,9 +207,4 @@ func (value *Value[T]) UnmarshalJSON(bytes []byte) error {
 	value.cached.Set(obj)
 
 	return nil
-}
-
-func (value *Value[T]) setZero(ctx *astral.Context) error {
-	var zero T
-	return value.node.Set(ctx, zero)
 }
