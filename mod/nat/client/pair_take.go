@@ -5,11 +5,15 @@ import (
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
 func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk func() error) error {
-	ch, err := client.PairTakeCh(ctx, pair, false)
+	ch, err := client.queryCh(ctx.IncludeZone(astral.ZoneNetwork), nat.MethodPairTake, query.Args{
+		"pair":     pair,
+		"initiate": false,
+	})
 	if err != nil {
 		return err
 	}
