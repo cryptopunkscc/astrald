@@ -60,6 +60,17 @@ func BindStruct(ctx *astral.Context, s any, node Node) error {
 				err := ret[0].Interface().(error)
 				return fmt.Errorf("failed to bind field %s to key %s: %w", fieldType.Name, keyName, err)
 			}
+			continue
+		}
+
+		subNode, err := Query(ctx, node, keyName, true)
+		if err != nil {
+			return err
+		}
+
+		err = BindStruct(ctx, field.Addr().Interface(), subNode)
+		if err != nil {
+			return err
 		}
 	}
 

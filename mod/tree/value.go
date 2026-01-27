@@ -13,8 +13,10 @@ import (
 type Value[T astral.Object] struct {
 	node     Node
 	onChange func(T)
-	value    *sig.Value[astral.Object]
+	cached   *sig.Value[astral.Object]
 	queue    *sig.Queue[T]
+	noInit   bool
+	noLocal  bool
 }
 
 var _ astral.Object = &Value[astral.Object]{}
@@ -24,45 +26,118 @@ func (value *Value[T]) ObjectType() string {
 	return zero.ObjectType()
 }
 
-func newValue[T astral.Object](node Node, onChange func(T)) *Value[T] {
-	return &Value[T]{
-		node:     node,
-		onChange: onChange,
-		value:    &sig.Value[astral.Object]{},
-		queue:    &sig.Queue[T]{},
-	}
-}
+func (value *Value[T]) Bind(ctx *astral.Context, node Node) error {
+	// follow the node
+	updates, errPtr := Follow[T](ctx, node)
+	switch {
+	case *errPtr == nil:
+	case errors.Is(*errPtr, &ErrNodeHasNoValue{}):
+		if value.noInit {
+			return *errPtr
+		}
 
-func (value *Value[T]) Bind(ctx *astral.Context, node Node, configFunc ...BindConfigFunc[T]) error {
-	b, err := Bind[T](ctx, node, configFunc...)
-	if err != nil {
-		*value = Value[T]{value: &sig.Value[astral.Object]{}}
-		return err
+		// set zero value
+		err := value.setZero(ctx)
+		if err != nil {
+			return err
+		}
+
+		// follow again
+		updates, errPtr = Follow[T](ctx, node)
 	}
-	*value = *b
-	return err
+	if *errPtr != nil {
+		return *errPtr
+	}
+
+	value.cached = &sig.Value[astral.Object]{}
+	value.queue = &sig.Queue[T]{}
+
+	// subscribe to changes
+	go func() {
+		for obj := range updates {
+			value.update(obj)
+		}
+		// TODO: try to reconnect on recoverable errors?
+	}()
+
+	return nil
 }
 
 // Get returns the current value as type T.
-func (value *Value[T]) Get() (T, error) {
-	var zero T
-	v := value.value.Get()
+func (value *Value[T]) Get() (val T, err error) {
+	// get cached value
+	v := value.cached.Get()
 	if v == nil {
-		return zero, nil
+		return val, &ErrNodeHasNoValue{}
 	}
+
+	// cast the value
 	if typed, ok := v.(T); ok {
 		return typed, nil
 	}
-	return zero, ErrTypeMismatch
+
+	return val, ErrTypeMismatch
 }
 
 // Set updates the value.
 func (value *Value[T]) Set(ctx *astral.Context, v T) error {
-	return value.node.Set(ctx, v)
+	// set the value remotely
+	err := value.node.Set(ctx, v)
+	if err == nil {
+		return nil
+	}
+
+	// if no local update is allowed, return the error
+	if value.noLocal {
+		return err
+	}
+
+	// update the value locally
+	value.update(v)
+
+	return err
+}
+
+// Follow returns a channel that emits the current value and all updates.
+func (value *Value[T]) Follow(ctx *astral.Context) <-chan T {
+	var out = make(chan T, 1)
+	val, err := value.Get()
+	if err != nil {
+		close(out)
+		return out
+	}
+
+	// send the initial value
+	select {
+	case <-ctx.Done():
+		close(out)
+		return out
+	case out <- val:
+	}
+
+	// subscribe to updates
+	go func() {
+		defer close(out)
+		for val := range sig.Subscribe(ctx, value.queue) {
+			select {
+			case <-ctx.Done():
+				return
+			case out <- val:
+			}
+		}
+	}()
+
+	return out
+}
+
+// update updates the cached value and pushes it to the queue
+func (value *Value[T]) update(val T) {
+	value.cached.Set(val)
+	value.queue = value.queue.Push(val)
 }
 
 func (value Value[T]) WriteTo(writer io.Writer) (n int64, err error) {
-	v := value.value.Get()
+	v := value.cached.Get()
 	if v == nil {
 		return 0, errors.New("nil value")
 	}
@@ -76,12 +151,12 @@ func (value *Value[T]) ReadFrom(reader io.Reader) (n int64, err error) {
 		return
 	}
 
-	value.value.Set(obj)
+	value.cached.Set(obj)
 	return
 }
 
 func (value Value[T]) MarshalJSON() ([]byte, error) {
-	obj := value.value.Get()
+	obj := value.cached.Get()
 
 	if m, ok := obj.(json.Marshaler); ok {
 		return m.MarshalJSON()
@@ -97,11 +172,12 @@ func (value *Value[T]) UnmarshalJSON(bytes []byte) error {
 		return err
 	}
 
-	value.value.Set(obj)
+	value.cached.Set(obj)
 
 	return nil
 }
 
-func (value *Value[T]) Subscribe(ctx *astral.Context) <-chan T {
-	return sig.Subscribe(ctx, value.queue)
+func (value *Value[T]) setZero(ctx *astral.Context) error {
+	var zero T
+	return value.node.Set(ctx, zero)
 }
