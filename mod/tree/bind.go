@@ -2,112 +2,141 @@ package tree
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/cryptopunkscc/astrald/astral/log"
 )
 
-var ErrTypeMismatch = errors.New("binding type mismatch")
+// Bind binds Value fields in struct s to the node
+func Bind(ctx *astral.Context, s any, node Node) error {
+	var v = reflect.ValueOf(s)
 
-// Binding wraps an astral.Object type with type-safe access.
-type Binding[T astral.Object] struct {
-	node     Node
-	onChange func(T)
-	value    sig.Value[astral.Object]
-}
-
-// Bind creates a binding to a tree node.
-func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindConfigFunc[T]) (*Binding[T], error) {
-	var err error
-	var config = makeBindConfig(configFunc...)
-
-	// query the node if an additional path was configured
-	if config.Path != "" {
-		node, err = Query(ctx, node, config.Path, true)
-		if err != nil {
-			return nil, err
-		}
+	if v.Kind() != reflect.Ptr {
+		return errors.New("s must be a pointer to a struct")
+	}
+	v = v.Elem()
+	if v.Kind() != reflect.Struct {
+		return errors.New("s must be a pointer to a struct")
 	}
 
-	// fork our internal context
-	ctx, cancel := ctx.WithCancel()
+	for i := range v.NumField() {
+		field := v.Field(i)
+		fieldType := v.Type().Field(i)
 
-	// try to follow the node and set the default value if necessary
-	ch, err := Follow[T](ctx, node)
-	switch {
-	case err == nil:
-	case errors.Is(err, &ErrNodeHasNoValue{}):
-		// set the default value
-		err = node.Set(ctx, config.DefaultValue)
-		if err != nil {
-			cancel()
-			return nil, err
+		if !field.CanInterface() {
+			// skip unexported fields
+			continue
 		}
 
-		// try to follow one more time
-		ch, err = Follow[T](ctx, node)
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-
-	default:
-		cancel()
-		return nil, err
-	}
-
-	// create the binding
-	binding := &Binding[T]{
-		node:     node,
-		onChange: config.OnChange,
-	}
-
-	// wait for the initial value
-	select {
-	case v := <-ch:
-		binding.value.Set(v)
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-
-	// subscribe to changes
-	go func() {
-		defer cancel()
-		for obj := range ch {
-			binding.value.Set(obj)
-
-			if binding.onChange != nil {
-				binding.onChange(obj)
+		if field.Kind() == reflect.Pointer {
+			if field.IsNil() {
+				field.Set(reflect.New(field.Type().Elem()))
 			}
+			field = field.Elem()
 		}
-	}()
 
-	return binding, nil
-}
+		if field.Kind() != reflect.Struct {
+			continue
+		}
 
-func BindPath[T astral.Object](ctx *astral.Context, node Node, path string, configFunc ...BindConfigFunc[T]) (*Binding[T], error) {
-	node, err := Query(ctx, node, path, true)
-	if err != nil {
-		return nil, err
+		// get the tag
+		tag := parseTag(fieldType.Tag.Get("tree"))
+		if tag.skip {
+			continue
+		}
+
+		// get the key name
+		keyName := log.ToSnakeCase(fieldType.Name)
+		if tag.path != "" {
+			keyName = tag.path
+		}
+
+		// find the bind method
+		bind, found := findBindMethod(field)
+		if found {
+			fieldNode, err := Query(ctx, node, keyName, true)
+			if err != nil {
+				break
+			}
+
+			ret := bind.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(fieldNode)})
+
+			if !ret[0].IsNil() {
+				err := ret[0].Interface().(error)
+				return fmt.Errorf("failed to bind field %s to key %s: %w", fieldType.Name, keyName, err)
+			}
+			continue
+		}
+
+		subNode, err := Query(ctx, node, keyName, true)
+		if err != nil {
+			return err
+		}
+
+		err = Bind(ctx, field.Addr().Interface(), subNode)
+		if err != nil {
+			return err
+		}
 	}
 
-	return Bind(ctx, node, configFunc...)
+	return nil
 }
 
-// Get returns the current value as type T.
-func (binding *Binding[T]) Get() (T, error) {
-	var zero T
-	v := binding.value.Get()
-	if v == nil {
-		return zero, nil
+func findBindMethod(field reflect.Value) (reflect.Value, bool) {
+	if field.Kind() == reflect.Struct {
+		field = field.Addr()
 	}
-	if typed, ok := v.(T); ok {
-		return typed, nil
+
+	for j := range field.NumMethod() {
+		mType := field.Type().Method(j)
+
+		// check method signature
+		switch {
+		case mType.Name != "Bind":
+			continue
+		case mType.Type.NumIn() != 3:
+			fmt.Println(mType.Type.NumIn())
+			continue
+		case mType.Type.In(1).Kind() != reflect.Pointer:
+			continue
+		case mType.Type.In(1).Elem() != reflect.TypeOf((*astral.Context)(nil)).Elem():
+			continue
+		case mType.Type.In(2) != reflect.TypeOf((*Node)(nil)).Elem():
+			continue
+		case mType.Type.NumOut() != 1:
+			continue
+		case mType.Type.Out(0) != reflect.TypeOf((*error)(nil)).Elem():
+			continue
+		}
+
+		return field.Method(j), true
 	}
-	return zero, ErrTypeMismatch
+
+	return reflect.Value{}, false
 }
 
-// Set updates the value.
-func (binding *Binding[T]) Set(ctx *astral.Context, v T) error {
-	return binding.node.Set(ctx, v)
+func parseTag(s string) (tag tag) {
+	elems := strings.Split(s, ";")
+	if len(elems) == 0 {
+		return
+	}
+
+	tag.path = elems[0]
+	elems = elems[1:]
+
+	for _, elem := range elems {
+		switch elem {
+		case "skip":
+			tag.skip = true
+		}
+	}
+	return
+}
+
+type tag struct {
+	path string
+	skip bool
 }

@@ -83,31 +83,46 @@ func Get[T astral.Object](ctx *astral.Context, node Node) (T, error) {
 	return t, nil
 }
 
-// Follow returns a channel that will receive the current value of the node and all changes to it until the
-// context is canceled.
-func Follow[T astral.Object](ctx *astral.Context, node Node) (<-chan T, error) {
-	var ch = make(chan T)
+// Follow returns a typed channel that follows the node values. it ignores values of other types.
+func Follow[T astral.Object](ctx *astral.Context, node Node) (<-chan T, *error) {
+	var ch = make(chan T, 1)
 
 	values, err := node.Get(ctx, true)
 	if err != nil {
-		return nil, err
+		return nil, &err
 	}
 
+	// read the initial value to check the type
+	first, ok := (<-values).(T)
+	if !ok {
+		close(ch)
+		return nil, &ErrTypeMismatch
+	}
+	ch <- first
+
+	// subscribe to
+	var errPtr = new(error)
 	go func() {
 		defer close(ch)
+
 		var t T
 		var ok bool
 
 		for {
+			// read the next value and cast it
 			t, ok = (<-values).(T)
-			if ok {
-				select {
-				case ch <- t:
-				case <-ctx.Done():
-				}
+			if !ok {
+				*errPtr = ErrTypeMismatch
+				return
+			}
+
+			// send the value to the channel
+			select {
+			case ch <- t:
+			case <-ctx.Done():
 			}
 		}
 	}()
 
-	return ch, nil
+	return ch, errPtr
 }

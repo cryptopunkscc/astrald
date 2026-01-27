@@ -40,7 +40,7 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 	switch obj := obj.(type) {
 	case nil:
 		return nil, err
-	case *tree.ErrNodeHasNoValue:
+	case *tree.ErrNoValue:
 		return nil, obj
 	}
 
@@ -140,7 +140,7 @@ func (node *Node) Sub(ctx *astral.Context) (map[string]tree.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return sub, nil
 }
 

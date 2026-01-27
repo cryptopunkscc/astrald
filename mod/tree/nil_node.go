@@ -15,7 +15,7 @@ type NilNode struct{}
 var _ Node = &NilNode{}
 
 func (NilNode) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, error) {
-	return nil, &ErrNodeHasNoValue{}
+	return nil, &ErrNoValue{}
 }
 
 func (NilNode) Set(ctx *astral.Context, object astral.Object) error {
