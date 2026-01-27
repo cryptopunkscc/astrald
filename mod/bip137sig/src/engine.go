@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
@@ -34,7 +35,12 @@ func (e Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.Mess
 		return nil, err
 	}
 
-	return NewMessageSigner(privateKey, compressed), nil
+	privKey, _ := btcec.PrivKeyFromBytes(privateKey.Key)
+	return &MessageSigner{
+		key:        privKey,
+		compressed: compressed,
+	}, nil
+
 }
 
 func (e Engine) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {

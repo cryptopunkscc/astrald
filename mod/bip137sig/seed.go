@@ -19,6 +19,10 @@ func (Seed) ObjectType() string {
 func (s Seed) WriteTo(w io.Writer) (n int64, err error) {
 	l := uint8(len(s))
 
+	if len(s) != 64 {
+		return 0, ErrInvalidSeedLength
+	}
+
 	if err = binary.Write(w, astral.ByteOrder, &l); err != nil {
 		return
 	}
@@ -36,6 +40,10 @@ func (s *Seed) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 	n += 1
+
+	if l != 64 {
+		return n, ErrInvalidSeedLength
+	}
 
 	buf := make([]byte, l)
 	var m int

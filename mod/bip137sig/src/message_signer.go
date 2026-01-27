@@ -16,17 +16,8 @@ type MessageSigner struct {
 
 var _ crypto.MessageSigner = &MessageSigner{}
 
-func NewMessageSigner(key *crypto.PrivateKey, compressed bool) *MessageSigner {
-	privKey, _ := btcec.PrivKeyFromBytes(key.Key)
-	return &MessageSigner{
-		key:        privKey,
-		compressed: compressed,
-	}
-}
-
 func (m MessageSigner) SignMessage(ctx *astral.Context, msg string) (*crypto.Signature, error) {
 	hash := hashBitcoinMessage(msg)
-
 	sig := ecdsa.SignCompact(m.key, hash, m.compressed)
 
 	return &crypto.Signature{

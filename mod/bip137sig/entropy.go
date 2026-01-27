@@ -19,6 +19,10 @@ func (Entropy) ObjectType() string {
 func (e Entropy) WriteTo(w io.Writer) (n int64, err error) {
 	l := uint8(len(e))
 
+	if l < 16 || l > 32 || l%4 != 0 {
+		return n, ErrInvalidEntropyLength
+	}
+
 	if err = binary.Write(w, astral.ByteOrder, &l); err != nil {
 		return
 	}
@@ -36,6 +40,10 @@ func (e *Entropy) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 	n += 1
+
+	if l < 16 || l > 32 || l%4 != 0 {
+		return 0, ErrInvalidEntropyLength
+	}
 
 	buf := make([]byte, l)
 	var m int
