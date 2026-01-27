@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var ErrTypeMismatch = errors.New("binding type mismatch")
@@ -50,11 +49,7 @@ func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindCon
 	}
 
 	// create the binding
-	binding := &Value[T]{
-		node:     node,
-		onChange: config.OnChange,
-		value:    &sig.Value[astral.Object]{},
-	}
+	binding := newValue(node, config.OnChange)
 
 	// wait for the initial value
 	select {
@@ -69,6 +64,7 @@ func Bind[T astral.Object](ctx *astral.Context, node Node, configFunc ...BindCon
 		defer cancel()
 		for obj := range ch {
 			binding.value.Set(obj)
+			binding.queue = binding.queue.Push(obj)
 
 			if binding.onChange != nil {
 				binding.onChange(obj)
@@ -86,22 +82,4 @@ func BindPath[T astral.Object](ctx *astral.Context, node Node, path string, conf
 	}
 
 	return Bind(ctx, node, configFunc...)
-}
-
-// Get returns the current value as type T.
-func (binding *Value[T]) Get() (T, error) {
-	var zero T
-	v := binding.value.Get()
-	if v == nil {
-		return zero, nil
-	}
-	if typed, ok := v.(T); ok {
-		return typed, nil
-	}
-	return zero, ErrTypeMismatch
-}
-
-// Set updates the value.
-func (binding *Value[T]) Set(ctx *astral.Context, v T) error {
-	return binding.node.Set(ctx, v)
 }
