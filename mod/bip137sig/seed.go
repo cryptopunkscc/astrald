@@ -19,7 +19,7 @@ func (Seed) ObjectType() string {
 func (s Seed) WriteTo(w io.Writer) (n int64, err error) {
 	l := uint8(len(s))
 
-	if len(s) != 64 {
+	if len(s) != SeedLengthBytes {
 		return 0, ErrInvalidSeedLength
 	}
 
@@ -41,7 +41,7 @@ func (s *Seed) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 	n += 1
 
-	if l != 64 {
+	if int(l) != SeedLengthBytes {
 		return n, ErrInvalidSeedLength
 	}
 

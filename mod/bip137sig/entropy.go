@@ -19,7 +19,7 @@ func (Entropy) ObjectType() string {
 func (e Entropy) WriteTo(w io.Writer) (n int64, err error) {
 	l := uint8(len(e))
 
-	if l < 16 || l > 32 || l%4 != 0 {
+	if int(l) < MinEntropyBytes || int(l) > MaxEntropyBytes || int(l)%EntropyStepBytes != 0 {
 		return n, ErrInvalidEntropyLength
 	}
 
@@ -41,7 +41,7 @@ func (e *Entropy) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 	n += 1
 
-	if l < 16 || l > 32 || l%4 != 0 {
+	if int(l) < MinEntropyBytes || int(l) > MaxEntropyBytes || int(l)%EntropyStepBytes != 0 {
 		return 0, ErrInvalidEntropyLength
 	}
 

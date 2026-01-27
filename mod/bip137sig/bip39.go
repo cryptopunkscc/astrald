@@ -12,7 +12,17 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-const DefaultEntropyBits = 128
+const (
+	MinEntropyBits   = 128
+	MaxEntropyBits   = 256
+	EntropyStepBits  = 32
+	MinEntropyBytes  = MinEntropyBits / 8
+	MaxEntropyBytes  = MaxEntropyBits / 8
+	EntropyStepBytes = EntropyStepBits / 8
+	SeedLengthBytes  = 64
+
+	DefaultEntropyBits = MinEntropyBits
+)
 
 // reference https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki
 
@@ -20,7 +30,7 @@ const DefaultEntropyBits = 128
 // Entropy must be 16, 20, 24, 28, or 32 bytes (128-256 bits in 32-bit increments).
 func EntropyToMnemonic(entropy Entropy) ([]string, error) {
 	entropyBits := len(entropy) * 8
-	if entropyBits < 128 || entropyBits > 256 || entropyBits%32 != 0 {
+	if entropyBits < MinEntropyBits || entropyBits > MaxEntropyBits || entropyBits%EntropyStepBits != 0 {
 		return nil, errors.New("entropy must be 128-256 bits in 32-bit increments")
 	}
 
@@ -60,7 +70,7 @@ func EntropyToMnemonic(entropy Entropy) ([]string, error) {
 func MnemonicToEntropy(words []string) (Entropy, error) {
 	wordCount := len(words)
 	if wordCount != 12 && wordCount != 15 && wordCount != 18 && wordCount != 21 && wordCount != 24 {
-		return nil, errors.New("mnemonic must be 12, 15, 18, 21, or 24 words")
+		return nil, ErrInvalidMnemonicWordCount
 	}
 
 	// Convert words to indices
@@ -113,11 +123,11 @@ func MnemonicToSeed(words []string, passphrase string) (Seed, error) {
 	}
 	mnemonic := strings.Join(words, " ")
 	salt := "mnemonic" + passphrase
-	return Seed(pbkdf2.Key([]byte(mnemonic), []byte(salt), 2048, 64, sha512.New)), nil
+	return Seed(pbkdf2.Key([]byte(mnemonic), []byte(salt), 2048, SeedLengthBytes, sha512.New)), nil
 }
 
 func NewEntropy(bits int) (Entropy, error) {
-	if bits%32 != 0 || bits < 128 || bits > 256 {
+	if bits%EntropyStepBits != 0 || bits < MinEntropyBits || bits > MaxEntropyBits {
 		return nil, fmt.Errorf("invalid entropy size: %d", bits)
 	}
 
