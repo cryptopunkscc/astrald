@@ -4,25 +4,25 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-type ErrNodeHasNoValue struct {
+type ErrNoValue struct {
 	astral.EmptyObject
 }
 
-var _ astral.Object = &ErrNodeHasNoValue{}
+var _ astral.Object = &ErrNoValue{}
 
-func (err ErrNodeHasNoValue) ObjectType() string {
-	return "mod.tree.err_node_has_no_value"
+func (err ErrNoValue) ObjectType() string {
+	return "mod.tree.err_no_value"
 }
 
-func (err *ErrNodeHasNoValue) Error() string {
-	return "node has no value"
+func (err *ErrNoValue) Error() string {
+	return "no value is set"
 }
 
-func (err *ErrNodeHasNoValue) Is(other error) bool {
-	_, ok := other.(*ErrNodeHasNoValue)
+func (err *ErrNoValue) Is(other error) bool {
+	_, ok := other.(*ErrNoValue)
 	return ok
 }
 
 func init() {
-	_ = astral.Add(&ErrNodeHasNoValue{})
+	_ = astral.Add(&ErrNoValue{})
 }

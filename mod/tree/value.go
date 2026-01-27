@@ -31,7 +31,7 @@ func (value *Value[T]) Bind(ctx *astral.Context, node Node) error {
 	updates, errPtr := Follow[T](ctx, node)
 	switch {
 	case *errPtr == nil:
-	case errors.Is(*errPtr, &ErrNodeHasNoValue{}):
+	case errors.Is(*errPtr, &ErrNoValue{}):
 		if value.NoInit {
 			return *errPtr
 		}
@@ -70,6 +70,7 @@ func (value *Value[T]) Bind(ctx *astral.Context, node Node) error {
 	return nil
 }
 
+// BindPath is a convenience function that queries the node and calls Bind.
 func (value *Value[T]) BindPath(ctx *astral.Context, node Node, path string, create bool) (err error) {
 	node, err = Query(ctx, node, path, create)
 	if err != nil {
@@ -82,13 +83,13 @@ func (value *Value[T]) BindPath(ctx *astral.Context, node Node, path string, cre
 // Get returns the current value as type T.
 func (value *Value[T]) Get() (val T, err error) {
 	if value.cached == nil {
-		return val, &ErrNodeHasNoValue{}
+		return val, &ErrNoValue{}
 	}
 
 	// get cached value
 	v := value.cached.Get()
 	if v == nil {
-		return val, &ErrNodeHasNoValue{}
+		return val, &ErrNoValue{}
 	}
 
 	// cast the value

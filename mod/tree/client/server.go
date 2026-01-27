@@ -46,8 +46,8 @@ func (ops *NodeOps) Get(ctx *astral.Context, q *ops.Query, args GetArgs) (err er
 	switch {
 	case err == nil:
 
-	case errors.Is(err, &tree.ErrNodeHasNoValue{}):
-		return ch.Send(&tree.ErrNodeHasNoValue{})
+	case errors.Is(err, &tree.ErrNoValue{}):
+		return ch.Send(&tree.ErrNoValue{})
 
 	default:
 		return ch.Send(astral.NewError(err.Error()))
