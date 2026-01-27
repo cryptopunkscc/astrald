@@ -2,7 +2,6 @@ package nat
 
 import (
 	"context"
-	"net"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
