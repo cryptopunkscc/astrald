@@ -23,20 +23,19 @@ func (mod *Module) OpSeed(
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	handle := func(mnemonic string) error {
-		words := strings.Fields(mnemonic)
+	return ch.Handle(ctx, func(object astral.Object) {
+		switch object := object.(type) {
+		case *astral.String16:
+			words := strings.Fields(string(*object))
+			seed, err := bip137sig.MnemonicToSeed(words, args.Passphrase)
+			if err != nil {
+				ch.Send(astral.Err(err))
+				return
+			}
 
-		seed, err := bip137sig.MnemonicToSeed(words, args.Passphrase)
-		if err != nil {
-			return ch.Send(astral.Err(err))
+			ch.Send(&seed)
+		default:
+			ch.Send(astral.NewErrUnexpectedObject(object))
 		}
-		return ch.Send(&seed)
-	}
-
-	return ch.Switch(
-		func(msg *astral.String16) error {
-			return handle(string(*msg))
-		},
-		channel.PassErrors,
-	)
+	})
 }

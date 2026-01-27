@@ -47,7 +47,6 @@ func (mod *Module) OpSignMessage(ctx *astral.Context, q *ops.Query, args opSignM
 		case *crypto.PublicKey:
 			publicKey = object
 			ch.Send(&astral.Ack{})
-
 		case *astral.String8:
 			msg := (string)(*object)
 
@@ -58,7 +57,6 @@ func (mod *Module) OpSignMessage(ctx *astral.Context, q *ops.Query, args opSignM
 			}
 
 			ch.Send(sig)
-
 		default:
 			ch.Send(astral.NewErrUnexpectedObject(object))
 			ch.Close()

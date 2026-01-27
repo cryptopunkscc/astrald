@@ -22,15 +22,19 @@ func (mod *Module) OpMnemonic(
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	return ch.Switch(
-		func(entropy *bip137sig.Entropy) error {
-			words, err := bip137sig.EntropyToMnemonic(*entropy)
+	return ch.Handle(ctx, func(object astral.Object) {
+		switch object := object.(type) {
+		case *bip137sig.Entropy:
+			words, err := bip137sig.EntropyToMnemonic(*object)
 			if err != nil {
-				return ch.Send(astral.Err(err))
+				ch.Send(astral.Err(err))
+				return
 			}
 			phrase := strings.Join(words, " ")
-			return ch.Send(astral.NewString16(phrase))
-		},
-		channel.PassErrors,
-	)
+			ch.Send(astral.NewString16(phrase))
+
+		default:
+			ch.Send(astral.NewErrUnexpectedObject(object))
+		}
+	})
 }
