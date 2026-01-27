@@ -2,12 +2,13 @@ package bip137sig
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-var _ astral.Object = &Entropy{}
+var _ astral.Object = (*Entropy)(nil)
 
 type Entropy []byte
 
@@ -46,6 +47,19 @@ func (e *Entropy) ReadFrom(r io.Reader) (n int64, err error) {
 
 	*e = buf
 	return
+}
+
+func (e Entropy) MarshalText() ([]byte, error) {
+	return []byte(hex.EncodeToString(e)), nil
+}
+
+func (e *Entropy) UnmarshalText(text []byte) error {
+	decoded, err := hex.DecodeString(string(text))
+	if err != nil {
+		return err
+	}
+	*e = decoded
+	return nil
 }
 
 func init() {

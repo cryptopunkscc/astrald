@@ -31,5 +31,5 @@ func (mod *Module) OpGenerateEntropy(
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Send(bip137sig.Entropy{Data: entropy})
+	return ch.Send(&entropy)
 }

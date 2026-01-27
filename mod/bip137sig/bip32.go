@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// reference: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+
 func ParseDerivationPath(path string) ([]uint32, error) {
 	const hardenedOffset uint32 = 0x80000000
 

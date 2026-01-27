@@ -8,7 +8,6 @@ import (
 )
 
 type opDeriveKeyArgs struct {
-	Seed bip137sig.Seed
 	Path string
 	In   string `query:"optional"`
 	Out  string `query:"optional"`
@@ -22,10 +21,14 @@ func (mod *Module) OpDeriveKey(
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	privateKey, err := mod.DeriveKey(args.Seed, args.Path)
-	if err != nil {
-		return ch.Send(astral.Err(err))
-	}
-
-	return ch.Send(&privateKey)
+	return ch.Switch(
+		func(seed *bip137sig.Seed) error {
+			privateKey, err := mod.DeriveKey(*seed, args.Path)
+			if err != nil {
+				return ch.Send(astral.Err(err))
+			}
+			return ch.Send(&privateKey)
+		},
+		channel.PassErrors,
+	)
 }

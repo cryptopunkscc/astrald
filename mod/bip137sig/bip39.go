@@ -16,7 +16,7 @@ import (
 
 // EntropyToMnemonic converts entropy bytes to mnemonic words.
 // Entropy must be 16, 20, 24, 28, or 32 bytes (128-256 bits in 32-bit increments).
-func EntropyToMnemonic(entropy []byte) ([]string, error) {
+func EntropyToMnemonic(entropy Entropy) ([]string, error) {
 	entropyBits := len(entropy) * 8
 	if entropyBits < 128 || entropyBits > 256 || entropyBits%32 != 0 {
 		return nil, errors.New("entropy must be 128-256 bits in 32-bit increments")
@@ -55,7 +55,7 @@ func EntropyToMnemonic(entropy []byte) ([]string, error) {
 
 // MnemonicToEntropy extracts entropy bytes from mnemonic words.
 // Also validates checksum. Returns error if invalid.
-func MnemonicToEntropy(words []string) ([]byte, error) {
+func MnemonicToEntropy(words []string) (Entropy, error) {
 	wordCount := len(words)
 	if wordCount != 12 && wordCount != 15 && wordCount != 18 && wordCount != 21 && wordCount != 24 {
 		return nil, errors.New("mnemonic must be 12, 15, 18, 21, or 24 words")
@@ -105,19 +105,19 @@ func MnemonicToEntropy(words []string) ([]byte, error) {
 
 // MnemonicToSeed converts mnemonic words to a 64-byte seed using PBKDF2.
 // Passphrase is optional (use "" for none).
-func MnemonicToSeed(words []string, passphrase string) []byte {
+func MnemonicToSeed(words []string, passphrase string) Seed {
 	mnemonic := strings.Join(words, " ")
 	salt := "mnemonic" + passphrase
-	return pbkdf2.Key([]byte(mnemonic), []byte(salt), 2048, 64, sha512.New)
+	return Seed(pbkdf2.Key([]byte(mnemonic), []byte(salt), 2048, 64, sha512.New))
 }
 
-func NewEntropy(bits int) ([]byte, error) {
+func NewEntropy(bits int) (Entropy, error) {
 	if bits%32 != 0 || bits < 128 || bits > 256 {
 		return nil, fmt.Errorf("invalid entropy size: %d", bits)
 	}
 
 	bytes := bits / 8
-	entropy := make([]byte, bytes)
+	entropy := make(Entropy, bytes)
 
 	_, err := rand.Read(entropy)
 	if err != nil {

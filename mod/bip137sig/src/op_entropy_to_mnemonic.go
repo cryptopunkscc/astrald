@@ -1,7 +1,6 @@
 package src
 
 import (
-	"encoding/hex"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -11,9 +10,8 @@ import (
 )
 
 type opEntropyToMnemonicArgs struct {
-	Entropy string
-	In      string `query:"optional"`
-	Out     string `query:"optional"`
+	In  string `query:"optional"`
+	Out string `query:"optional"`
 }
 
 func (mod *Module) OpEntropyToMnemonic(
@@ -24,17 +22,15 @@ func (mod *Module) OpEntropyToMnemonic(
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	entropyBytes, err := hex.DecodeString(args.Entropy)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	words, err := bip137sig.EntropyToMnemonic(entropyBytes)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	phrase := strings.Join(words, " ")
-
-	return ch.Send(astral.NewString16(phrase))
+	return ch.Switch(
+		func(entropy *bip137sig.Entropy) error {
+			words, err := bip137sig.EntropyToMnemonic(*entropy)
+			if err != nil {
+				return ch.Send(astral.Err(err))
+			}
+			phrase := strings.Join(words, " ")
+			return ch.Send(astral.NewString16(phrase))
+		},
+		channel.PassErrors,
+	)
 }
