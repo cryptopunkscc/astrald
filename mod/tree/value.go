@@ -80,16 +80,16 @@ func (value *Value[T]) BindPath(ctx *astral.Context, node Node, path string, cre
 	return value.Bind(ctx, node)
 }
 
-// Get returns the current value as type T.
+// Get returns the currently held object
 func (value *Value[T]) Get() (val T, err error) {
 	if value.cached == nil {
-		return val, &ErrNoValue{}
+		return val, nil
 	}
 
 	// get cached value
 	v := value.cached.Get()
 	if v == nil {
-		return val, &ErrNoValue{}
+		return val, nil
 	}
 
 	// cast the value
@@ -190,7 +190,7 @@ func (value *Value[T]) ReadFrom(reader io.Reader) (n int64, err error) {
 
 func (value Value[T]) MarshalJSON() ([]byte, error) {
 	if value.cached == nil {
-		return nil, errors.New("nil value")
+		return json.Marshal(nil)
 	}
 
 	obj := value.cached.Get()
