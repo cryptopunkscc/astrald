@@ -67,3 +67,17 @@ func (mod *Module) DeriveKey(seed bip137sig.Seed, path string) (privateKey crypt
 		Key:  ecpPrivateKey.Serialize(),
 	}, nil
 }
+
+func (mod *Module) GenerateSeed() (seed bip137sig.Seed, err error) {
+	entropy, err := bip137sig.NewEntropy(bip137sig.DefaultEntropyBits)
+	if err != nil {
+		return seed, err
+	}
+
+	words, err := bip137sig.EntropyToMnemonic(entropy)
+	if err != nil {
+		return seed, err
+	}
+
+	return bip137sig.MnemonicToSeed(words, "")
+}

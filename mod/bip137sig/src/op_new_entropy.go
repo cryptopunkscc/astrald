@@ -23,7 +23,7 @@ func (mod *Module) OpNewEntropy(
 
 	bits := args.Bits
 	if bits == 0 {
-		bits = 128
+		bits = bip137sig.DefaultEntropyBits
 	}
 
 	entropy, err := bip137sig.NewEntropy(bits)

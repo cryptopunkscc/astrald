@@ -25,15 +25,11 @@ func (mod *Module) OpSeed(
 
 	handle := func(mnemonic string) error {
 		words := strings.Fields(mnemonic)
-		if len(words) == 0 {
-			return ch.Send(astral.Err(bip137sig.ErrInvalidMnemonic))
-		}
 
-		if _, err := bip137sig.MnemonicToEntropy(words); err != nil {
+		seed, err := bip137sig.MnemonicToSeed(words, args.Passphrase)
+		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
-
-		seed := bip137sig.MnemonicToSeed(words, args.Passphrase)
 		return ch.Send(&seed)
 	}
 

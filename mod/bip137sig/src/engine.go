@@ -20,7 +20,7 @@ func (e Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.Mess
 	switch {
 	case scheme != crypto.SchemeBIP137:
 		return nil, crypto.ErrUnsupportedScheme
-	case !isBip137KeyType(key.Type):
+	case key.Type != secp256k1.KeyType:
 		return nil, crypto.ErrUnsupportedKeyType
 	}
 
@@ -39,7 +39,7 @@ func (e Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.Mess
 
 func (e Engine) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
 	switch {
-	case !isBip137KeyType(key.Type):
+	case key.Type != secp256k1.KeyType:
 		return crypto.ErrUnsupportedKeyType
 	case sig.Scheme != crypto.SchemeBIP137:
 		return crypto.ErrUnsupportedScheme
@@ -61,15 +61,6 @@ func (e Engine) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Signat
 	}
 
 	return nil
-}
-
-func isBip137KeyType(keyType astral.String8) bool {
-	switch string(keyType) {
-	case secp256k1.KeyType:
-		return true
-	default:
-		return false
-	}
 }
 
 func isCompressedPublicKey(key []byte) (bool, error) {

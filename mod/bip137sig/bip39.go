@@ -12,6 +12,8 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
+const DefaultEntropyBits = 128
+
 // reference https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki
 
 // EntropyToMnemonic converts entropy bytes to mnemonic words.
@@ -104,11 +106,14 @@ func MnemonicToEntropy(words []string) (Entropy, error) {
 }
 
 // MnemonicToSeed converts mnemonic words to a 64-byte seed using PBKDF2.
-// Passphrase is optional (use "" for none).
-func MnemonicToSeed(words []string, passphrase string) Seed {
+// Validates the mnemonic first. Passphrase is optional (use "" for none).
+func MnemonicToSeed(words []string, passphrase string) (Seed, error) {
+	if _, err := MnemonicToEntropy(words); err != nil {
+		return nil, err
+	}
 	mnemonic := strings.Join(words, " ")
 	salt := "mnemonic" + passphrase
-	return Seed(pbkdf2.Key([]byte(mnemonic), []byte(salt), 2048, 64, sha512.New))
+	return Seed(pbkdf2.Key([]byte(mnemonic), []byte(salt), 2048, 64, sha512.New)), nil
 }
 
 func NewEntropy(bits int) (Entropy, error) {
