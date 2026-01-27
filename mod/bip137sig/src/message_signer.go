@@ -18,7 +18,6 @@ var _ crypto.MessageSigner = &MessageSigner{}
 
 func NewMessageSigner(key *crypto.PrivateKey, compressed bool) *MessageSigner {
 	privKey, _ := btcec.PrivKeyFromBytes(key.Key)
-
 	return &MessageSigner{
 		key:        privKey,
 		compressed: compressed,
