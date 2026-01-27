@@ -9,23 +9,23 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 )
 
-type MessageSignerBip137 struct {
+type MessageSigner struct {
 	key        *btcec.PrivateKey
 	compressed bool
 }
 
-var _ crypto.MessageSigner = &MessageSignerBip137{}
+var _ crypto.MessageSigner = &MessageSigner{}
 
-func NewMessageSignerBip137(key *crypto.PrivateKey, compressed bool) *MessageSignerBip137 {
+func NewMessageSigner(key *crypto.PrivateKey, compressed bool) *MessageSigner {
 	privKey, _ := btcec.PrivKeyFromBytes(key.Key)
 
-	return &MessageSignerBip137{
+	return &MessageSigner{
 		key:        privKey,
 		compressed: compressed,
 	}
 }
 
-func (m MessageSignerBip137) SignMessage(ctx *astral.Context, msg string) (*crypto.Signature, error) {
+func (m MessageSigner) SignMessage(ctx *astral.Context, msg string) (*crypto.Signature, error) {
 	hash := hashBitcoinMessage(msg)
 
 	sig := ecdsa.SignCompact(m.key, hash, m.compressed)

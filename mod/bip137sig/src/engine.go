@@ -34,7 +34,7 @@ func (e Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.Mess
 		return nil, err
 	}
 
-	return NewMessageSignerBip137(privateKey, compressed), nil
+	return NewMessageSigner(privateKey, compressed), nil
 }
 
 func (e Engine) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
