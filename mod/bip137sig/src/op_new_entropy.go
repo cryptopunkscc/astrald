@@ -7,16 +7,16 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/bip137sig"
 )
 
-type opGenerateEntropyArgs struct {
+type opNewEntropyArgs struct {
 	Bits int    `query:"optional"`
 	In   string `query:"optional"`
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpGenerateEntropy(
+func (mod *Module) OpNewEntropy(
 	ctx *astral.Context,
 	q *ops.Query,
-	args opGenerateEntropyArgs,
+	args opNewEntropyArgs,
 ) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

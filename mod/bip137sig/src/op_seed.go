@@ -1,7 +1,6 @@
 package src
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -10,21 +9,19 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/bip137sig"
 )
 
-type opMnemonicToSeedArgs struct {
+type opSeedArgs struct {
 	Passphrase string `query:"optional"`
 	In         string `query:"optional"`
 	Out        string `query:"optional"`
 }
 
-func (mod *Module) OpMnemonicToSeed(
+func (mod *Module) OpSeed(
 	ctx *astral.Context,
 	q *ops.Query,
-	args opMnemonicToSeedArgs,
+	args opSeedArgs,
 ) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
-
-	fmt.Println("TEST TEST")
 
 	handle := func(mnemonic string) error {
 		words := strings.Fields(mnemonic)
