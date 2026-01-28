@@ -110,13 +110,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		return err
 	}
 
-	mod.log.Info(
-		"NAT traversal § with %v: %v <-> %v",
-		q.Caller(),
-		traversal.Pair.PeerA.Endpoint,
-		traversal.Pair.PeerB.Endpoint,
-	)
-
+	mod.log.Info("NAT traversal § with %v: %v <-> %v", q.Caller(), traversal.Pair.PeerA.Endpoint, traversal.Pair.PeerB.Endpoint)
 	mod.addTraversedPair(traversal.Pair, false)
 	return nil
 }
