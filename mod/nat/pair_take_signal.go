@@ -8,12 +8,12 @@ import (
 )
 
 const (
-	PairHandoverSignalTypeLock     = "lock"
-	PairHandoverSignalTypeLockOk   = "lock_ok"
-	PairHandoverSignalTypeLockBusy = "lock_busy"
-	PairHandoverSignalTypeTake     = "take"
-	PairHandoverSignalTypeTakeOk   = "take_ok"
-	PairHandoverSignalTypeTakeErr  = "take_err"
+	PairTakeSignalLock         = "lock"
+	PairTakeSignalTypeLockOk   = "lock_ok"
+	PairTakeSignalTypeLockBusy = "lock_busy"
+	PairTakeSignalTypeTake     = "take"
+	PairTakeSignalTypeTakeOk   = "take_ok"
+	PairTakeSignalTypeTakeErr  = "take_err"
 )
 
 type PairTakeSignal struct {

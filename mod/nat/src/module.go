@@ -119,3 +119,12 @@ func (mod *Module) openPuncher(session []byte) (nat.Puncher, error) {
 	}
 	return p, nil
 }
+
+func (mod *Module) getLocalIPv4() (ip.IP, error) {
+	for _, addr := range mod.IP.PublicIPCandidates() {
+		if addr.IsIPv4() {
+			return addr, nil
+		}
+	}
+	return nil, nat.ErrNoSuitableIP
+}

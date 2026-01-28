@@ -64,25 +64,25 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 	exchange := nat.NewPairTakeExchange(ch, pair.Nonce)
 
 	// Lock exchange
-	if err := exchange.Expect(opCtx, nat.PairHandoverSignalTypeLock); err != nil {
+	if err := exchange.Expect(opCtx, nat.PairTakeSignalLock); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 	if !pair.BeginLock() {
-		_ = exchange.Send(nat.PairHandoverSignalTypeLockBusy)
+		_ = exchange.Send(nat.PairTakeSignalTypeLockBusy)
 		return ch.Send(astral.Err(nat.ErrPairBusy))
 	}
 	if err := pair.WaitLocked(opCtx); err != nil {
 		return ch.Send(astral.Err(err))
 	}
-	if err := exchange.Send(nat.PairHandoverSignalTypeLockOk); err != nil {
+	if err := exchange.Send(nat.PairTakeSignalTypeLockOk); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
 	// Take exchange
-	if err := exchange.Expect(opCtx, nat.PairHandoverSignalTypeTake); err != nil {
+	if err := exchange.Expect(opCtx, nat.PairTakeSignalTypeTake); err != nil {
 		return ch.Send(astral.Err(err))
 	}
-	if err := exchange.Send(nat.PairHandoverSignalTypeTakeOk); err != nil {
+	if err := exchange.Send(nat.PairTakeSignalTypeTakeOk); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
