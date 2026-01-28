@@ -1,8 +1,6 @@
 package nat
 
 import (
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
@@ -33,22 +31,15 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		}
 
 		mod.log.Log("starting traversal as initiator to %v", target)
-		client := natclient.New(target, astrald.Default())
+
 		punch, err := mod.openPuncher()
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
-
-		if _, err := punch.Open(); err != nil {
-			return ch.Send(astral.Err(err))
-		}
-
 		defer punch.Close()
 
-		traversalClient, err := client.NewTraversalClient(localIP, punch.Session())
-		if err != nil {
-			return ch.Send(astral.Err(err))
-		}
+		client := natclient.New(target, astrald.Default())
+		traversalClient := client.NewTraversalClient(localIP, punch)
 
 		pair, err := traversalClient.StartTraversal(ctx, target)
 		if err != nil {
@@ -68,17 +59,13 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	if err != nil {
 		return err
 	}
+	defer puncher.Close()
 
-	traversal := nat.NewTraversal(
-		ch,
-		ctx.Identity(),
-		q.Caller(),
-		localIP,
-		puncher,
-	)
+	traversal := nat.NewTraversal(ctx.Identity(), q.Caller(), localIP)
 
+	// 1. Receive offer
 	err = ch.Switch(
-		traversal.ExpectPunchSignal(nat.PunchSignalTypeOffer, traversal.OnOffer),
+		traversal.ExpectSignal(nat.PunchSignalTypeOffer, traversal.OnOffer),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -86,15 +73,22 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		return err
 	}
 
-	if traversal.Puncher == nil {
-		return fmt.Errorf("missing puncher after offer")
+	if err := puncher.SetSession(traversal.Session); err != nil {
+		return err
 	}
 
-	defer traversal.Puncher.Close()
+	localPort, err := puncher.Open()
+	if err != nil {
+		return err
+	}
+	traversal.LocalPort = astral.Uint16(localPort)
 
-	// 2. Ready → Go → Punch → Result
+	if err := ch.Send(traversal.AnswerSignal()); err != nil {
+		return err
+	}
+
 	err = ch.Switch(
-		traversal.ExpectPunchSignal(nat.PunchSignalTypeReady, traversal.OnReady(ctx)),
+		traversal.ExpectSignal(nat.PunchSignalTypeReady, nil),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -102,9 +96,21 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		return err
 	}
 
-	// 3. Final Result
+	if err := ch.Send(traversal.GoSignal()); err != nil {
+		return err
+	}
+
+	result, err := puncher.HolePunch(ctx, traversal.PeerIP, int(traversal.PeerPort))
+	if err != nil {
+		return err
+	}
+
+	traversal.SetPunchResult(result)
+	if err := ch.Send(traversal.ResultSignal()); err != nil {
+		return err
+	}
 	err = ch.Switch(
-		traversal.ExpectPunchSignal(nat.PunchSignalTypeResult, traversal.OnResult),
+		traversal.ExpectSignal(nat.PunchSignalTypeResult, traversal.OnResult),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
