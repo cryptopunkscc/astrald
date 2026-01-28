@@ -61,28 +61,39 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 	mod.log.Log("taking out pair %v out of pool, starting sync with %v",
 		args.Pair, q.Caller())
 
-	exchange := nat.NewPairTakeExchange(ch, pair.Nonce)
+	exchange := nat.NewPairTakeExchange(pair.Nonce)
 
-	// Lock exchange
-	if err := exchange.Expect(opCtx, nat.PairTakeSignalLock); err != nil {
+	// Receive lock
+	err = ch.Switch(
+		exchange.ExpectSignal(nat.PairTakeSignalLock),
+		channel.PassErrors,
+		channel.WithContext(opCtx),
+	)
+	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
+
 	if !pair.BeginLock() {
-		_ = exchange.Send(nat.PairTakeSignalTypeLockBusy)
+		_ = ch.Send(exchange.LockBusySignal())
 		return ch.Send(astral.Err(nat.ErrPairBusy))
 	}
 	if err := pair.WaitLocked(opCtx); err != nil {
 		return ch.Send(astral.Err(err))
 	}
-	if err := exchange.Send(nat.PairTakeSignalTypeLockOk); err != nil {
+	if err := ch.Send(exchange.LockOkSignal()); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
-	// Take exchange
-	if err := exchange.Expect(opCtx, nat.PairTakeSignalTypeTake); err != nil {
+	// Receive take
+	err = ch.Switch(
+		exchange.ExpectSignal(nat.PairTakeSignalTypeTake),
+		channel.PassErrors,
+		channel.WithContext(opCtx),
+	)
+	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
-	if err := exchange.Send(nat.PairTakeSignalTypeTakeOk); err != nil {
+	if err := ch.Send(exchange.TakeOkSignal()); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 

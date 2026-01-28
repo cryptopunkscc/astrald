@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
@@ -19,13 +20,22 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk 
 	}
 	defer ch.Close()
 
-	exchange := nat.NewPairTakeExchange(ch, pair)
+	exchange := nat.NewPairTakeExchange(pair)
 
-	// Lock exchange
-	sig, err := exchange.SendReceive(ctx, nat.PairTakeSignalLock)
+	if err := ch.Send(exchange.LockSignal()); err != nil {
+		return err
+	}
+
+	var sig *nat.PairTakeSignal
+	err = ch.Switch(
+		exchange.ReceiveSignal(&sig),
+		channel.PassErrors,
+		channel.WithContext(ctx),
+	)
 	if err != nil {
 		return err
 	}
+
 	switch sig.Signal {
 	case nat.PairTakeSignalTypeLockOk:
 		if onLockOk != nil {
@@ -39,11 +49,20 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk 
 		return fmt.Errorf("unexpected signal in Lock exchange: %s", sig.Signal)
 	}
 
-	// Take exchange
-	sig, err = exchange.SendReceive(ctx, nat.PairTakeSignalTypeTake)
+	// Send take, receive response
+	if err := ch.Send(exchange.TakeSignal()); err != nil {
+		return err
+	}
+
+	err = ch.Switch(
+		exchange.ReceiveSignal(&sig),
+		channel.PassErrors,
+		channel.WithContext(ctx),
+	)
 	if err != nil {
 		return err
 	}
+
 	switch sig.Signal {
 	case nat.PairTakeSignalTypeTakeOk:
 		return nil

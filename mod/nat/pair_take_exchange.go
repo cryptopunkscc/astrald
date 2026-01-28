@@ -7,58 +7,61 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 )
 
-// PairTakeExchange coordinates the pair take protocol over a channel.
+// PairTakeExchange is a pure state machine for the pair take protocol.
+// All I/O operations are handled by callers.
 type PairTakeExchange struct {
-	ch   *channel.Channel
 	Pair astral.Nonce
 }
 
-func NewPairTakeExchange(ch *channel.Channel, pair astral.Nonce) *PairTakeExchange {
-	return &PairTakeExchange{ch: ch, Pair: pair}
+func NewPairTakeExchange(pair astral.Nonce) *PairTakeExchange {
+	return &PairTakeExchange{Pair: pair}
 }
 
-func (e *PairTakeExchange) Send(signal astral.String8) error {
-	return e.ch.Send(&PairTakeSignal{Signal: signal, Pair: e.Pair})
+// Signal builders
+func (e *PairTakeExchange) LockSignal() *PairTakeSignal {
+	return &PairTakeSignal{Signal: PairTakeSignalLock, Pair: e.Pair}
 }
 
-func (e *PairTakeExchange) Receive(ctx *astral.Context) (*PairTakeSignal, error) {
-	var sig *PairTakeSignal
-	err := e.ch.Switch(
-		channel.WithContext(ctx),
-		func(msg *PairTakeSignal) error {
-			if msg.Pair != e.Pair {
-				return fmt.Errorf("mismatched pair id %v (expected %v)", msg.Pair, e.Pair)
-			}
-			sig = msg
-			return channel.ErrBreak
-		},
-		func(msg *astral.ErrorMessage) error {
-			return msg
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	if sig == nil {
-		return nil, fmt.Errorf("missing pair take signal")
-	}
-	return sig, nil
+func (e *PairTakeExchange) LockOkSignal() *PairTakeSignal {
+	return &PairTakeSignal{Signal: PairTakeSignalTypeLockOk, Pair: e.Pair}
 }
 
-func (e *PairTakeExchange) Expect(ctx *astral.Context, expected astral.String8) error {
-	sig, err := e.Receive(ctx)
-	if err != nil {
-		return err
-	}
-	if sig.Signal != expected {
-		return fmt.Errorf("unexpected signal: got %s, expected %s", sig.Signal, expected)
-	}
-	return nil
+func (e *PairTakeExchange) LockBusySignal() *PairTakeSignal {
+	return &PairTakeSignal{Signal: PairTakeSignalTypeLockBusy, Pair: e.Pair}
 }
 
-func (e *PairTakeExchange) SendReceive(ctx *astral.Context, signal astral.String8) (*PairTakeSignal, error) {
-	if err := e.Send(signal); err != nil {
-		return nil, err
+func (e *PairTakeExchange) TakeSignal() *PairTakeSignal {
+	return &PairTakeSignal{Signal: PairTakeSignalTypeTake, Pair: e.Pair}
+}
+
+func (e *PairTakeExchange) TakeOkSignal() *PairTakeSignal {
+	return &PairTakeSignal{Signal: PairTakeSignalTypeTakeOk, Pair: e.Pair}
+}
+
+func (e *PairTakeExchange) TakeErrSignal() *PairTakeSignal {
+	return &PairTakeSignal{Signal: PairTakeSignalTypeTakeErr, Pair: e.Pair}
+}
+
+// ExpectSignal returns a handler for channel.Switch that validates the expected signal type.
+func (e *PairTakeExchange) ExpectSignal(signalType astral.String8) func(*PairTakeSignal) error {
+	return func(sig *PairTakeSignal) error {
+		if sig.Pair != e.Pair {
+			return fmt.Errorf("mismatched pair id %v (expected %v)", sig.Pair, e.Pair)
+		}
+		if sig.Signal != signalType {
+			return fmt.Errorf("expected %s, got %s", signalType, sig.Signal)
+		}
+		return channel.ErrBreak
 	}
-	return e.Receive(ctx)
+}
+
+// ReceiveSignal returns a handler that captures any valid signal for the pair.
+func (e *PairTakeExchange) ReceiveSignal(out **PairTakeSignal) func(*PairTakeSignal) error {
+	return func(sig *PairTakeSignal) error {
+		if sig.Pair != e.Pair {
+			return fmt.Errorf("mismatched pair id %v (expected %v)", sig.Pair, e.Pair)
+		}
+		*out = sig
+		return channel.ErrBreak
+	}
 }
