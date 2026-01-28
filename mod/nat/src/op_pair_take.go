@@ -65,7 +65,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 
 	// Receive lock
 	err = ch.Switch(
-		nat.ExpectPairTakeSignal(pairNonce, nat.PairTakeSignalTypeLock),
+		nat.ExpectPairTakeSignal(pairNonce, nat.PairTakeSignalTypeLock, nil),
 		channel.PassErrors,
 		channel.WithContext(opCtx),
 	)
@@ -74,26 +74,27 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 	}
 
 	if !pair.BeginLock() {
-		_ = ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeLockBusy, Pair: pairNonce})
+		_ = ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeLocked, Pair: pairNonce, Ok: false, Error: astral.String8(nat.ErrPairBusy.Error())})
 		return ch.Send(astral.Err(nat.ErrPairBusy))
 	}
+
 	if err := pair.WaitLocked(opCtx); err != nil {
 		return ch.Send(astral.Err(err))
 	}
-	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeLockOk, Pair: pairNonce}); err != nil {
+	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeLocked, Pair: pairNonce, Ok: true}); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
 	// Receive take
 	err = ch.Switch(
-		nat.ExpectPairTakeSignal(pairNonce, nat.PairTakeSignalTypeTake),
+		nat.ExpectPairTakeSignal(pairNonce, nat.PairTakeSignalTypeTake, nil),
 		channel.PassErrors,
 		channel.WithContext(opCtx),
 	)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
-	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeTakeOk, Pair: pairNonce}); err != nil {
+	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeTaken, Pair: pairNonce, Ok: true}); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 

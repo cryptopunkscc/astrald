@@ -7,8 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 )
 
-// ExpectPairTakeSignal returns a handler that validates pair and signal type.
-func ExpectPairTakeSignal(pair astral.Nonce, signalType astral.String8) func(*PairTakeSignal) error {
+// ExpectPairTakeSignal returns a handler that validates pair and signal type, capturing the signal.
+func ExpectPairTakeSignal(pair astral.Nonce, signalType astral.String8, out **PairTakeSignal) func(*PairTakeSignal) error {
 	return func(sig *PairTakeSignal) error {
 		if sig.Pair != pair {
 			return fmt.Errorf("mismatched pair id %v (expected %v)", sig.Pair, pair)
@@ -16,17 +16,9 @@ func ExpectPairTakeSignal(pair astral.Nonce, signalType astral.String8) func(*Pa
 		if sig.Signal != signalType {
 			return fmt.Errorf("expected %s, got %s", signalType, sig.Signal)
 		}
-		return channel.ErrBreak
-	}
-}
-
-// ReceivePairTakeSignal returns a handler that validates pair and captures any signal.
-func ReceivePairTakeSignal(pair astral.Nonce, out **PairTakeSignal) func(*PairTakeSignal) error {
-	return func(sig *PairTakeSignal) error {
-		if sig.Pair != pair {
-			return fmt.Errorf("mismatched pair id %v (expected %v)", sig.Pair, pair)
+		if out != nil {
+			*out = sig
 		}
-		*out = sig
 		return channel.ErrBreak
 	}
 }

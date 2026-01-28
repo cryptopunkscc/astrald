@@ -1,16 +1,13 @@
 package nat
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
-func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk func() error) error {
+func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLocked func() error) error {
 	ch, err := client.queryCh(ctx.IncludeZone(astral.ZoneNetwork), nat.MethodPairTake, query.Args{
 		"pair":     pair,
 		"initiate": false,
@@ -27,25 +24,21 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk 
 
 	var sig *nat.PairTakeSignal
 	err = ch.Switch(
-		nat.ReceivePairTakeSignal(pair, &sig),
+		nat.ExpectPairTakeSignal(pair, nat.PairTakeSignalTypeLocked, &sig),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
 	if err != nil {
 		return err
 	}
+	if !sig.Ok {
+		return sig.Err()
+	}
 
-	switch sig.Signal {
-	case nat.PairTakeSignalTypeLockOk:
-		if onLockOk != nil {
-			if err := onLockOk(); err != nil {
-				return err
-			}
+	if onLocked != nil {
+		if err := onLocked(); err != nil {
+			return err
 		}
-	case nat.PairTakeSignalTypeLockBusy:
-		return nat.ErrPairBusy
-	default:
-		return fmt.Errorf("unexpected signal in Lock exchange: %s", sig.Signal)
 	}
 
 	// Send take, receive response
@@ -54,20 +47,16 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk 
 	}
 
 	err = ch.Switch(
-		nat.ReceivePairTakeSignal(pair, &sig),
+		nat.ExpectPairTakeSignal(pair, nat.PairTakeSignalTypeTaken, &sig),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
 	if err != nil {
 		return err
 	}
-
-	switch sig.Signal {
-	case nat.PairTakeSignalTypeTakeOk:
-		return nil
-	case nat.PairTakeSignalTypeTakeErr:
-		return errors.New("responder failed to exchange")
-	default:
-		return fmt.Errorf("unexpected signal in Take exchange: %s", sig.Signal)
+	if !sig.Ok {
+		return sig.Err()
 	}
+
+	return nil
 }
