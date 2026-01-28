@@ -89,6 +89,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	if traversal.Puncher == nil {
 		return fmt.Errorf("missing puncher after offer")
 	}
+
 	defer traversal.Puncher.Close()
 
 	// 2. Ready → Go → Punch → Result
