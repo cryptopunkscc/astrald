@@ -105,16 +105,13 @@ func (mod *Module) traversedPairs() []*Pair {
 	return mod.pool.pairs.Values()
 }
 
-func (mod *Module) openPuncher(session []byte) (nat.Puncher, error) {
+func (mod *Module) openPuncher() (nat.Puncher, error) {
 	cb := &ConePuncherCallbacks{
 		OnAttempt:       func(peer ip.IP, port int, _ []*net.UDPAddr) { mod.log.Log("punching → %v:%v", peer, port) },
 		OnProbeReceived: func(from *net.UDPAddr) { mod.log.Log("probe ← %v", from) },
 	}
-	p, err := newConePuncher(session, cb)
+	p, err := newConePuncher(nil, cb)
 	if err != nil {
-		return nil, err
-	}
-	if _, err = p.Open(); err != nil {
 		return nil, err
 	}
 	return p, nil

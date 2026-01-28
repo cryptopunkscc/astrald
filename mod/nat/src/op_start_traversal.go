@@ -34,8 +34,12 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 
 		mod.log.Log("starting traversal as initiator to %v", target)
 		client := natclient.New(target, astrald.Default())
-		punch, err := mod.openPuncher(nil)
+		punch, err := mod.openPuncher()
 		if err != nil {
+			return ch.Send(astral.Err(err))
+		}
+
+		if _, err := punch.Open(); err != nil {
 			return ch.Send(astral.Err(err))
 		}
 
@@ -60,96 +64,21 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	// Participant flow
 	mod.log.Log("starting traversal as participant with %v", q.Caller())
 
-	ExpectPunchSignal := func(signalType astral.String8, on func(sig *nat.PunchSignal) (err error)) func(sig *nat.PunchSignal) (err error) {
-		return func(sig *nat.PunchSignal) (err error) {
-			if sig.Signal != signalType {
-				return fmt.Errorf("unexpected punch signal: %v", sig.Signal)
-			}
-
-			return on(sig)
-		}
+	puncher, err := mod.openPuncher()
+	if err != nil {
+		return err
 	}
 
-	// Participant flow
-	mod.log.Log("starting traversal as participant with %v", q.Caller())
-
-	tr := nat.NewTraversal(ch)
-
-	var (
-		offer   *nat.PunchSignal
-		puncher nat.Puncher
-		pair    nat.TraversedPortPair
+	traversal := nat.NewTraversal(
+		ch,
+		ctx.Identity(),
+		q.Caller(),
+		localIP,
+		puncher,
 	)
 
-	// Participant flow
-	mod.log.Log("starting traversal as participant with %v", q.Caller())
-
-	onOffer := func(sig *nat.PunchSignal) error {
-		offer = sig
-
-		var err error
-		puncher, err = mod.openPuncher(sig.Session)
-		if err != nil {
-			return err
-		}
-
-		return tr.SendAnswer(
-			localIP,
-			uint16(puncher.LocalPort()),
-			puncher.Session(),
-		)
-	}
-
-	onReady := func(_ *nat.PunchSignal) error {
-		if err := tr.SendGo(); err != nil {
-			return err
-		}
-
-		res, err := puncher.HolePunch(ctx, offer.IP, int(offer.Port))
-		if err != nil {
-			return err
-		}
-
-		pair = nat.TraversedPortPair{
-			PeerA: nat.PeerEndpoint{
-				Identity: ctx.Identity(),
-			},
-			PeerB: nat.PeerEndpoint{
-				Identity: q.Caller(),
-				Endpoint: nat.UDPEndpoint{
-					IP:   res.RemoteIP,
-					Port: res.RemotePort,
-				},
-			},
-		}
-
-		return tr.SendResult(
-			pair.PeerB.Endpoint.IP,
-			uint16(pair.PeerB.Endpoint.Port),
-			pair.Nonce,
-		)
-	}
-
-	onResult := func(sig *nat.PunchSignal) error {
-		pair.Nonce = sig.PairNonce
-		pair.PeerA.Endpoint = nat.UDPEndpoint{
-			IP:   sig.IP,
-			Port: sig.Port,
-		}
-
-		mod.log.Info(
-			"NAT traversal § with %v: %v <-> %v",
-			q.Caller(),
-			pair.PeerA.Endpoint,
-			pair.PeerB.Endpoint,
-		)
-
-		mod.addTraversedPair(pair, false)
-		return nil
-	}
-
 	err = ch.Switch(
-		ExpectPunchSignal(nat.PunchSignalTypeOffer, onOffer),
+		traversal.ExpectPunchSignal(nat.PunchSignalTypeOffer, traversal.OnOffer),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -157,11 +86,14 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		return err
 	}
 
-	defer puncher.Close()
+	if traversal.Puncher == nil {
+		return fmt.Errorf("missing puncher after offer")
+	}
+	defer traversal.Puncher.Close()
 
 	// 2. Ready → Go → Punch → Result
 	err = ch.Switch(
-		ExpectPunchSignal(nat.PunchSignalTypeReady, onReady),
+		traversal.ExpectPunchSignal(nat.PunchSignalTypeReady, traversal.OnReady(ctx)),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -171,7 +103,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 
 	// 3. Final Result
 	err = ch.Switch(
-		ExpectPunchSignal(nat.PunchSignalTypeResult, onResult),
+		traversal.ExpectPunchSignal(nat.PunchSignalTypeResult, traversal.OnResult),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -179,5 +111,13 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		return err
 	}
 
+	mod.log.Info(
+		"NAT traversal § with %v: %v <-> %v",
+		q.Caller(),
+		traversal.Pair.PeerA.Endpoint,
+		traversal.Pair.PeerB.Endpoint,
+	)
+
+	mod.addTraversedPair(traversal.Pair, false)
 	return nil
 }

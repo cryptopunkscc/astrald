@@ -39,10 +39,9 @@ func (t *TraversalClient) StartTraversal(ctx *astral.Context, target *astral.Ide
 	localIP := t.LocalIP
 	localPort := t.LocalPort
 
-	tr := nat.NewTraversal(ch)
-	tr.session = session
+	tr := nat.NewTraversal(ch, ctx.Identity(), target, localIP, nil, nil)
 
-	if err := tr.ch.Send(&nat.PunchSignal{
+	if err := ch.Send(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeOffer,
 		Session: session,
 		IP:      localIP,
@@ -56,9 +55,9 @@ func (t *TraversalClient) StartTraversal(ctx *astral.Context, target *astral.Ide
 		return nil, err
 	}
 
-	err = tr.ch.Send(&nat.PunchSignal{
+	err = ch.Send(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeReady,
-		Session: tr.session,
+		Session: signal.Session,
 	})
 	if err != nil {
 		return nil, err

@@ -19,6 +19,7 @@ type Puncher interface {
 	// Close releases any resources held by the puncher (open sockets).
 	Close() error
 
+	SetSession(session []byte) error
 	Session() []byte
 	LocalPort() int
 }
