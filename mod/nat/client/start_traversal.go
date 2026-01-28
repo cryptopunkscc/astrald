@@ -39,10 +39,10 @@ func (t *TraversalClient) StartTraversal(ctx *astral.Context, target *astral.Ide
 	localIP := t.LocalIP
 	localPort := t.LocalPort
 
-	exchange := nat.NewPunchExchange(ch)
-	exchange.Session = session
+	tr := nat.NewTraversal(ch)
+	tr.session = session
 
-	if err := exchange.Send(&nat.PunchSignal{
+	if err := tr.ch.Send(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeOffer,
 		Session: session,
 		IP:      localIP,
@@ -51,20 +51,20 @@ func (t *TraversalClient) StartTraversal(ctx *astral.Context, target *astral.Ide
 		return nil, err
 	}
 
-	signal, err := exchange.Expect(nat.PunchSignalTypeAnswer)
+	signal, err := tr.Expect(nat.PunchSignalTypeAnswer)
 	if err != nil {
 		return nil, err
 	}
 
-	err = exchange.Send(&nat.PunchSignal{
+	err = tr.ch.Send(&nat.PunchSignal{
 		Signal:  nat.PunchSignalTypeReady,
-		Session: session,
+		Session: tr.session,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := exchange.Expect(nat.PunchSignalTypeGo); err != nil {
+	if _, err := tr.Expect(nat.PunchSignalTypeGo); err != nil {
 		return nil, err
 	}
 
@@ -80,17 +80,11 @@ func (t *TraversalClient) StartTraversal(ctx *astral.Context, target *astral.Ide
 		PeerB:     nat.PeerEndpoint{Identity: target, Endpoint: nat.UDPEndpoint{IP: remoteIP, Port: astral.Uint16(remotePort)}},
 	}
 
-	if err := exchange.Send(&nat.PunchSignal{
-		Signal:    nat.PunchSignalTypeResult,
-		Session:   session,
-		IP:        pair.PeerB.Endpoint.IP,
-		Port:      pair.PeerB.Endpoint.Port,
-		PairNonce: pair.Nonce,
-	}); err != nil {
+	if err := tr.SendResult(pair.PeerB.Endpoint.IP, uint16(pair.PeerB.Endpoint.Port), pair.Nonce); err != nil {
 		return nil, err
 	}
 
-	resSig, err := exchange.Expect(nat.PunchSignalTypeResult)
+	resSig, err := tr.Expect(nat.PunchSignalTypeResult)
 	if err != nil {
 		return nil, err
 	}
