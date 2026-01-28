@@ -20,15 +20,14 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk 
 	}
 	defer ch.Close()
 
-	exchange := nat.NewPairTakeExchange(pair)
-
-	if err := ch.Send(exchange.LockSignal()); err != nil {
+	// Send lock, receive response
+	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeLock, Pair: pair}); err != nil {
 		return err
 	}
 
 	var sig *nat.PairTakeSignal
 	err = ch.Switch(
-		exchange.ReceiveSignal(&sig),
+		nat.ReceivePairTakeSignal(pair, &sig),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -50,12 +49,12 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLockOk 
 	}
 
 	// Send take, receive response
-	if err := ch.Send(exchange.TakeSignal()); err != nil {
+	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeTake, Pair: pair}); err != nil {
 		return err
 	}
 
 	err = ch.Switch(
-		exchange.ReceiveSignal(&sig),
+		nat.ReceivePairTakeSignal(pair, &sig),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
