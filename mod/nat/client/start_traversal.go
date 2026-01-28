@@ -18,7 +18,6 @@ func (t *Client) StartTraversal(ctx *astral.Context, target *astral.Identity, lo
 	defer ch.Close()
 
 	traversal := nat.NewTraversal(t.astral.GuestID(), target, localIP)
-
 	localPort, err := puncher.Open()
 	if err != nil {
 		return nil, err

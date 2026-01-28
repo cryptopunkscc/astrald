@@ -72,18 +72,6 @@ func (p *conePuncher) Session() []byte {
 	return append([]byte(nil), p.session...)
 }
 
-func (p *conePuncher) SetSession(session []byte) error {
-	if len(session) != 16 {
-		return fmt.Errorf("session must be 16 bytes")
-	}
-	p.session = append([]byte(nil), session...)
-	return nil
-}
-
-func (p *conePuncher) LocalPort() int {
-	return p.localPort
-}
-
 // Open binds a UDP socket and stores it for later HolePunch use.
 func (p *conePuncher) Open() (int, error) {
 	if len(p.session) == 0 {

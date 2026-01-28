@@ -32,7 +32,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 
 		mod.log.Log("starting traversal as initiator to %v", target)
 
-		puncher, err := mod.openPuncher()
+		puncher, err := mod.openPuncher(nil)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
@@ -53,15 +53,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	// Participant flow
 	mod.log.Log("starting traversal as participant with %v", q.Caller())
 
-	puncher, err := mod.openPuncher()
-	if err != nil {
-		return err
-	}
-	defer puncher.Close()
-
 	traversal := nat.NewTraversal(ctx.Identity(), q.Caller(), localIP)
-
-	// 1. Receive offer
 	err = ch.Switch(
 		traversal.ExpectSignal(nat.PunchSignalTypeOffer, traversal.OnOffer),
 		channel.PassErrors,
@@ -71,9 +63,11 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		return err
 	}
 
-	if err := puncher.SetSession(traversal.Session); err != nil {
+	puncher, err := mod.openPuncher(traversal.Session)
+	if err != nil {
 		return err
 	}
+	defer puncher.Close()
 
 	localPort, err := puncher.Open()
 	if err != nil {
