@@ -8,14 +8,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
-type PunchSignalType = astral.String8
-
 const (
-	PunchSignalTypeOffer  PunchSignalType = "offer"
-	PunchSignalTypeAnswer PunchSignalType = "answer"
-	PunchSignalTypeReady  PunchSignalType = "ready"
-	PunchSignalTypeGo     PunchSignalType = "go"
-	PunchSignalTypeResult PunchSignalType = "result"
+	PunchSignalTypeOffer  = "offer"
+	PunchSignalTypeAnswer = "answer"
+	PunchSignalTypeReady  = "ready"
+	PunchSignalTypeGo     = "go"
+	PunchSignalTypeResult = "result"
 )
 
 // PunchSignal represents control messages exchanged over the signalling channel.

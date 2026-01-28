@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -55,6 +56,10 @@ func (t *Traversal) ExpectSignal(signalType astral.String8, on func(*PunchSignal
 	return func(sig *PunchSignal) error {
 		if sig.Signal != signalType {
 			return fmt.Errorf("expected %s, got %s", signalType, sig.Signal)
+		}
+		// Validate session for all signals except Offer (which establishes the session)
+		if signalType != PunchSignalTypeOffer && !bytes.Equal(sig.Session, t.Session) {
+			return fmt.Errorf("session mismatch")
 		}
 		if on != nil {
 			on(sig)

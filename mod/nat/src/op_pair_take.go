@@ -65,7 +65,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 
 	// Receive lock
 	err = ch.Switch(
-		exchange.ExpectSignal(nat.PairTakeSignalLock),
+		exchange.ExpectSignal(nat.PairTakeSignalTypeLock),
 		channel.PassErrors,
 		channel.WithContext(opCtx),
 	)

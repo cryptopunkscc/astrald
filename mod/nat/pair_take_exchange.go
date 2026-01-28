@@ -19,7 +19,7 @@ func NewPairTakeExchange(pair astral.Nonce) *PairTakeExchange {
 
 // Signal builders
 func (e *PairTakeExchange) LockSignal() *PairTakeSignal {
-	return &PairTakeSignal{Signal: PairTakeSignalLock, Pair: e.Pair}
+	return &PairTakeSignal{Signal: PairTakeSignalTypeLock, Pair: e.Pair}
 }
 
 func (e *PairTakeExchange) LockOkSignal() *PairTakeSignal {

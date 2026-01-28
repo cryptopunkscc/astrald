@@ -44,7 +44,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 			return ch.Send(astral.Err(err))
 		}
 
-		mod.log.Info("NAT traversal § with %v: %v <-> %v", target, pair.PeerA.Endpoint, pair.PeerB.Endpoint)
+		mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", target, pair.PeerA.Endpoint, pair.PeerB.Endpoint)
 		mod.addTraversedPair(*pair, true)
 		return ch.Send(pair)
 	}
@@ -109,7 +109,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		return err
 	}
 
-	mod.log.Info("NAT traversal § with %v: %v <-> %v", q.Caller(), traversal.Pair.PeerA.Endpoint, traversal.Pair.PeerB.Endpoint)
+	mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", q.Caller(), traversal.Pair.PeerA.Endpoint, traversal.Pair.PeerB.Endpoint)
 	mod.addTraversedPair(traversal.Pair, false)
 	return nil
 }

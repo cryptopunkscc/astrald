@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	PairTakeSignalLock         = "lock"
+	PairTakeSignalTypeLock     = "lock"
 	PairTakeSignalTypeLockOk   = "lock_ok"
 	PairTakeSignalTypeLockBusy = "lock_busy"
 	PairTakeSignalTypeTake     = "take"
