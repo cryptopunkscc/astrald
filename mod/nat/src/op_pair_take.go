@@ -94,6 +94,7 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
+
 	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeTaken, Pair: pairNonce, Ok: true}); err != nil {
 		return ch.Send(astral.Err(err))
 	}

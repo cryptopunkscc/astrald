@@ -22,17 +22,13 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLocked 
 		return err
 	}
 
-	var sig *nat.PairTakeSignal
 	err = ch.Switch(
-		nat.ExpectPairTakeSignal(pair, nat.PairTakeSignalTypeLocked, &sig),
+		nat.ExpectPairTakeSignal(pair, nat.PairTakeSignalTypeLocked, nat.HandleFailedPairTakeSignal),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
 	if err != nil {
 		return err
-	}
-	if !sig.Ok {
-		return sig.Err()
 	}
 
 	if onLocked != nil {
@@ -47,15 +43,12 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLocked 
 	}
 
 	err = ch.Switch(
-		nat.ExpectPairTakeSignal(pair, nat.PairTakeSignalTypeTaken, &sig),
+		nat.ExpectPairTakeSignal(pair, nat.PairTakeSignalTypeTaken, nat.HandleFailedPairTakeSignal),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
 	if err != nil {
 		return err
-	}
-	if !sig.Ok {
-		return sig.Err()
 	}
 
 	return nil
