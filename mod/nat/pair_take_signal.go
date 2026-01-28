@@ -23,10 +23,12 @@ type PairTakeSignal struct {
 
 func (p PairTakeSignal) ObjectType() string { return "mod.nat.pair_take_signal" }
 
-func (p PairTakeSignal) WriteTo(w io.Writer) (int64, error) { return astral.Struct(p).WriteTo(w) }
+func (e PairTakeSignal) WriteTo(w io.Writer) (n int64, err error) {
+	return astral.Objectify(&e).WriteTo(w)
+}
 
-func (p *PairTakeSignal) ReadFrom(r io.Reader) (int64, error) {
-	return astral.Struct(p).ReadFrom(r)
+func (e *PairTakeSignal) ReadFrom(r io.Reader) (n int64, err error) {
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 func (p PairTakeSignal) MarshalJSON() ([]byte, error) {
