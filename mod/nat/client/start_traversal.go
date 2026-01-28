@@ -8,24 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
-type TraversalClient struct {
-	client  *Client
-	localID *astral.Identity
-	localIP ip.IP
-	puncher nat.Puncher
-}
-
-func (client *Client) NewTraversalClient(localIP ip.IP, puncher nat.Puncher) *TraversalClient {
-	return &TraversalClient{
-		client:  client,
-		localID: client.astral.GuestID(),
-		localIP: localIP,
-		puncher: puncher,
-	}
-}
-
-func (t *TraversalClient) StartTraversal(ctx *astral.Context, target *astral.Identity) (*nat.TraversedPortPair, error) {
-	ch, err := t.client.queryCh(ctx, nat.MethodStartNatTraversal, query.Args{
+func (t *Client) StartTraversal(ctx *astral.Context, target *astral.Identity, localIP ip.IP, puncher nat.Puncher) (*nat.TraversedPortPair, error) {
+	ch, err := t.queryCh(ctx, nat.MethodStartNatTraversal, query.Args{
 		"target": target.String(),
 	})
 	if err != nil {
@@ -33,15 +17,15 @@ func (t *TraversalClient) StartTraversal(ctx *astral.Context, target *astral.Ide
 	}
 	defer ch.Close()
 
-	traversal := nat.NewTraversal(t.localID, target, t.localIP)
+	traversal := nat.NewTraversal(t.astral.GuestID(), target, localIP)
 
-	localPort, err := t.puncher.Open()
+	localPort, err := puncher.Open()
 	if err != nil {
 		return nil, err
 	}
 
 	traversal.LocalPort = astral.Uint16(localPort)
-	traversal.Session = t.puncher.Session()
+	traversal.Session = puncher.Session()
 
 	if err := ch.Send(traversal.OfferSignal()); err != nil {
 		return nil, err
@@ -69,7 +53,7 @@ func (t *TraversalClient) StartTraversal(ctx *astral.Context, target *astral.Ide
 		return nil, err
 	}
 
-	result, err := t.puncher.HolePunch(ctx, traversal.PeerIP, int(traversal.PeerPort))
+	result, err := puncher.HolePunch(ctx, traversal.PeerIP, int(traversal.PeerPort))
 	if err != nil {
 		return nil, err
 	}
