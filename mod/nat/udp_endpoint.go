@@ -14,8 +14,6 @@ import (
 // NOTE: this is same for UDP and TCP - consider moving to a common package
 
 // UDPEndpoint is an astral.Object that holds information about a UDP endpoint,
-// i.e. an IP address and a port.
-// Supports JSON and text.
 type UDPEndpoint struct {
 	IP   ip.IP
 	Port astral.Uint16
@@ -26,14 +24,12 @@ func (e UDPEndpoint) ObjectType() string {
 }
 
 func (e UDPEndpoint) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(e).WriteTo(w)
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e *UDPEndpoint) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(e).ReadFrom(r)
+	return astral.Objectify(e).ReadFrom(r)
 }
-
-// exonet.UDPEndpoint
 
 func (e *UDPEndpoint) Address() string {
 	return net.JoinHostPort(e.IP.String(), strconv.Itoa(int(e.Port)))
@@ -43,12 +39,10 @@ func (e *UDPEndpoint) Network() string {
 	return "utp"
 }
 
-// HostString returns the IP address as a string
 func (e *UDPEndpoint) HostString() string {
 	return e.IP.String()
 }
 
-// PortNumber returns the port number as an int
 func (e *UDPEndpoint) PortNumber() int {
 	return int(e.Port)
 }
@@ -60,8 +54,6 @@ func (e *UDPEndpoint) Pack() []byte {
 	}
 	return b.Bytes()
 }
-
-// Text marshaling
 
 func (e UDPEndpoint) MarshalText() (text []byte, err error) {
 	return []byte(e.Address()), nil
@@ -94,8 +86,6 @@ func (e *UDPEndpoint) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// ...
-
 func (e *UDPEndpoint) String() string {
 	return e.Address()
 }
@@ -120,7 +110,6 @@ func ParseEndpoint(s string) (*UDPEndpoint, error) {
 		return nil, err
 	}
 
-	// check if port fits in 16 bits
 	if (port >> 16) > 0 {
 		return nil, fmt.Errorf("port out of range")
 	}

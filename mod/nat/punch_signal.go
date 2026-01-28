@@ -8,16 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
-// PunchSignal represents control messages exchanged over the signalling channel.
-// Signal field values are defined as constants below for readability and reuse.
-type PunchSignal struct {
-	Signal    astral.String8 `json:"signal"`
-	Session   astral.Bytes8  `json:"session"`
-	IP        ip.IP          `json:"ip"`
-	Port      astral.Uint16  `json:"port"`
-	PairNonce astral.Nonce   `json:"pair_nonce"`
-}
-
 const (
 	PunchSignalTypeOffer  = "offer"
 	PunchSignalTypeAnswer = "answer"
@@ -26,16 +16,25 @@ const (
 	PunchSignalTypeResult = "result"
 )
 
+// PunchSignal represents control messages exchanged over the signalling channel.
+type PunchSignal struct {
+	Signal    astral.String8 `json:"signal"`
+	Session   astral.Bytes8  `json:"session"`
+	IP        ip.IP          `json:"ip"`
+	Port      astral.Uint16  `json:"port"`
+	PairNonce astral.Nonce   `json:"pair_nonce"`
+}
+
 func (n PunchSignal) ObjectType() string {
 	return "mod.nat.punch_signal"
 }
 
-func (n PunchSignal) WriteTo(w io.Writer) (int64, error) {
-	return astral.Struct(n).WriteTo(w)
+func (e PunchSignal) WriteTo(w io.Writer) (n int64, err error) {
+	return astral.Objectify(&e).WriteTo(w)
 }
 
-func (n *PunchSignal) ReadFrom(r io.Reader) (int64, error) {
-	return astral.Struct(n).ReadFrom(r)
+func (e *PunchSignal) ReadFrom(r io.Reader) (n int64, err error) {
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 func (f PunchSignal) MarshalJSON() ([]byte, error) {

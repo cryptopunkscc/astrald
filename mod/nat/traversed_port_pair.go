@@ -22,14 +22,12 @@ func (e TraversedPortPair) ObjectType() string {
 	return "mod.nat.traversed_port_pair"
 }
 
-// WriteTo implements astral.Object (binary serialization).
-func (e TraversedPortPair) WriteTo(w io.Writer) (int64, error) {
-	return astral.Struct(e).WriteTo(w)
+func (e TraversedPortPair) WriteTo(w io.Writer) (n int64, err error) {
+	return astral.Objectify(&e).WriteTo(w)
 }
 
-// ReadFrom implements astral.Object (binary deserialization).
-func (e *TraversedPortPair) ReadFrom(r io.Reader) (int64, error) {
-	return astral.Struct(e).ReadFrom(r)
+func (e *TraversedPortPair) ReadFrom(r io.Reader) (n int64, err error) {
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 // MarshalJSON encodes TraversedPortPair into JSON.
