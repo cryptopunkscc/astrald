@@ -1,8 +1,6 @@
 package tree
 
 import (
-	"errors"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
@@ -34,23 +32,19 @@ func (ops *NodeOps) Get(ctx *astral.Context, q *ops.Query, args GetArgs) (err er
 
 	node, err := tree.Query(ctx, ops.Node, args.Path, false)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
 	go func() {
 		_, _ = ch.Receive()
 		cancel()
 	}()
-
+	
 	val, err := node.Get(ctx, args.Follow)
 	switch {
 	case err == nil:
-
-	case errors.Is(err, &tree.ErrNoValue{}):
-		return ch.Send(&tree.ErrNoValue{})
-
 	default:
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
 	for object := range val {

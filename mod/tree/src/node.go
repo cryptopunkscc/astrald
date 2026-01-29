@@ -31,7 +31,7 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 		return nil, err
 	}
 	if object == nil {
-		return nil, &tree.ErrNoValue{}
+		object = &astral.Nil{}
 	}
 
 	ch := make(chan astral.Object, 1)
@@ -61,6 +61,10 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 func (node *Node) Set(ctx *astral.Context, object astral.Object) error {
 	if node.name == "" {
 		return errors.New("root node cannot hold a value")
+	}
+
+	if object == nil {
+		object = &astral.Nil{}
 	}
 
 	defer node.mod.pushNodeValue(node.id, object)

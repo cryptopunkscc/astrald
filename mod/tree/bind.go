@@ -85,6 +85,16 @@ func Bind(ctx *astral.Context, s any, node Node) error {
 	return nil
 }
 
+// BindPath is a convenience function that queries the node and calls Bind.
+func BindPath(ctx *astral.Context, s any, node Node, path string, create bool) (err error) {
+	node, err = Query(ctx, node, path, create)
+	if err != nil {
+		return err
+	}
+
+	return Bind(ctx, s, node)
+}
+
 func findBindMethod(field reflect.Value) (reflect.Value, bool) {
 	if field.Kind() == reflect.Struct {
 		field = field.Addr()

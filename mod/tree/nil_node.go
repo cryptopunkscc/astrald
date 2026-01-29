@@ -2,6 +2,7 @@ package tree
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 // NilNode returns ErrUnsupported for all operations. Embed it in your node to
@@ -15,7 +16,7 @@ type NilNode struct{}
 var _ Node = &NilNode{}
 
 func (NilNode) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, error) {
-	return nil, &ErrNoValue{}
+	return sig.ArrayToChan([]astral.Object{&astral.Nil{}}), nil
 }
 
 func (NilNode) Set(ctx *astral.Context, object astral.Object) error {

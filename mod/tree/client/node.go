@@ -28,42 +28,39 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 		"path":   node.Path(),
 		"follow": follow,
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	var out = make(chan astral.Object, 1)
-
 	// get the initial value
 	obj, err := ch.Receive()
-	switch obj := obj.(type) {
-	case nil:
+	if err != nil {
 		return nil, err
-	case *tree.ErrNoValue:
-		return nil, obj
 	}
 
+	// make the output channel
+	var out = make(chan astral.Object, 1)
 	out <- obj
+
+	if !follow {
+		ch.Close()
+		close(out)
+		return out, nil
+	}
 
 	go func() {
 		defer ch.Close()
 		defer close(out)
-		for {
-			obj, _ := ch.Receive()
-			switch obj.(type) {
-			case nil:
-				return
-			case *astral.EOS:
-				return
-			}
-
-			select {
-			case <-ctx.Done():
-				return
-			case out <- obj:
-			}
-		}
+		ch.Switch(
+			channel.StopOnEOS,
+			func(obj astral.Object) {
+				select {
+				case <-ctx.Done():
+					return
+				case out <- obj:
+				}
+			},
+		)
 	}()
 
 	return out, nil
