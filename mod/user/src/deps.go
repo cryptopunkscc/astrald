@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/kos"
@@ -13,11 +14,13 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
 type Deps struct {
 	Apphost   apphost.Module
 	Auth      auth.Module
+	Crypto    crypto.Module
 	Dir       dir.Module
 	Objects   objects.Module
 	Keys      keys.Module
@@ -26,14 +29,28 @@ type Deps struct {
 	Scheduler scheduler.Module
 	Shell     shell.Module
 	Nearby    nearby.Module
+	Tree      tree.Module
 }
 
-func (mod *Module) LoadDependencies(*astral.Context) (err error) {
+func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
 		return
 	}
 
+	// bind the config
+	err = tree.BindPath(ctx, &mod.config, mod.Tree.Root(), "/mod/user", true)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for contract := range mod.config.ActiveContract.Follow(ctx) {
+			mod.setContract(contract)
+		}
+	}()
+
+	// add localswarm filter
 	mod.Dir.SetFilter("localswarm", func(identity *astral.Identity) bool {
 		if identity.IsZero() {
 			return false
@@ -44,6 +61,14 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 			}
 		}
 		return false
+	})
+
+	// add localuser filter
+	mod.Dir.SetFilter("localuser", func(identity *astral.Identity) bool {
+		if identity.IsZero() {
+			return false
+		}
+		return identity.IsEqual(mod.Identity())
 	})
 
 	return

@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -155,6 +156,26 @@ func (mod *Module) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Sig
 	}
 
 	return crypto.ErrUnsupported
+}
+
+func (mod *Module) SignContractHash(ctx *astral.Context, contract crypto.HashableContract, key *crypto.PublicKey) (*crypto.Signature, error) {
+	signer, err := mod.HashSigner(key, crypto.SchemeASN1)
+	if err != nil {
+		return nil, err
+	}
+
+	return signer.SignHash(ctx, contract.ContractHash())
+}
+
+func (mod *Module) SignContractText(ctx *astral.Context, contract crypto.TextableContract, key *crypto.PublicKey) (*crypto.Signature, error) {
+	text := fmt.Sprintf("[%s] %s", contract.ObjectType(), contract.ContractText())
+
+	signer, err := mod.MessageSigner(key, crypto.SchemeBIP137)
+	if err != nil {
+		return nil, err
+	}
+
+	return signer.SignMessage(ctx, text)
 }
 
 // indexRepo scans and follows the given repo and attempts to index all private keys it encounters

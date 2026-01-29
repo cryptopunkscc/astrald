@@ -1,6 +1,11 @@
 package user
 
-import "time"
+import (
+	"time"
+
+	"github.com/cryptopunkscc/astrald/mod/tree"
+	"github.com/cryptopunkscc/astrald/mod/user"
+)
 
 const (
 	keyActiveContract       = "mod.user.active_contract"
@@ -10,10 +15,5 @@ const (
 )
 
 type Config struct {
-	Identity string `yaml:"identity"`
-	Public   bool   `yaml:"public"`
-}
-
-var defaultConfig = Config{
-	Public: true,
+	ActiveContract tree.Value[*user.SignedNodeContract]
 }

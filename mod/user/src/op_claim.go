@@ -7,26 +7,13 @@ import (
 )
 
 type opClaimArgs struct {
-	Target   string
-	StartsAt *astral.Time    `query:"optional"`
-	StartsIn astral.Duration `query:"optional"`
-	In       string          `query:"optional"`
-	Out      string          `query:"optional"`
+	Target string
+	In     string `query:"optional"`
+	Out    string `query:"optional"`
 }
 
 func (mod *Module) OpClaim(ctx *astral.Context, q *ops.Query, args opClaimArgs) (err error) {
-	ctx = ctx.IncludeZone(astral.ZoneNetwork)
-
-	var startsAt astral.Time
-	switch {
-	case args.StartsAt != nil:
-		startsAt = *args.StartsAt
-	case args.StartsIn != 0:
-		startsAt = astral.Time(astral.Now().Time().Add(args.StartsIn.Duration()))
-	default:
-		startsAt = astral.Now() // default immediate start
-	}
-
+	// get the active contract
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return q.RejectWithCode(2)
@@ -36,23 +23,32 @@ func (mod *Module) OpClaim(ctx *astral.Context, q *ops.Query, args opClaimArgs) 
 		return q.RejectWithCode(3)
 	}
 
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	target, err := mod.Dir.ResolveIdentity(args.Target)
+	nodeID, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
-	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID, startsAt)
+	// invite the node to sign a contract
+	signed, err := mod.InviteNode(ctx, nodeID)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
-	err = mod.SaveSignedNodeContract(signedContract)
+	// store the signed contract
+	signedID, err := mod.Objects.Store(mod.ctx, mod.Objects.WriteDefault(), signed)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return
 	}
 
-	return ch.Send(signedContract)
+	mod.log.Info("signed contract %v with %v", signedID, nodeID)
+
+	err = mod.IndexSignedNodeContract(signed)
+	if err != nil {
+		mod.log.Logv(1, "error indexing signed contract: %v", err)
+	}
+
+	return ch.Send(signed)
 }

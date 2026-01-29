@@ -37,6 +37,8 @@ func ParseText(line string) (ParsedText, error) {
 		parsed.Enc = "text"
 	case "=", ":":
 		parsed.Enc = "base64"
+	case "x":
+		parsed.Enc = "hex"
 	default:
 		parsed.Enc = "unknown"
 	}

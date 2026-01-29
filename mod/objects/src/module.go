@@ -36,6 +36,7 @@ type Module struct {
 	ops    ops.Set
 
 	ctx        *astral.Context
+	system     objects.Repository
 	describers sig.Set[objects.Describer]
 	searchers  sig.Set[objects.Searcher]
 	searchPre  sig.Set[objects.SearchPreprocessor]
@@ -45,44 +46,6 @@ type Module struct {
 	repos      sig.Map[string, objects.Repository]
 
 	groups sig.Map[string, *RepoGroup]
-}
-
-func (mod *Module) Probe(ctx *astral.Context, repo objects.Repository, objectID *astral.ObjectID) (probe *objects.Probe, err error) {
-	probe = &objects.Probe{}
-
-	startAt := time.Now()
-
-	// read the object data
-	r, err := repo.Read(ctx, objectID, 0, 512)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	// store the response time
-	probe.Time = astral.Duration(time.Since(startAt))
-
-	// store the actual repo name
-	probe.Repo = astral.String8(mod.getRepoName(r.Repo()))
-
-	// check if it's an astral object
-	q := bytes.NewReader(data)
-	if _, err := (&astral.Stamp{}).ReadFrom(q); err == nil {
-		var t astral.ObjectType
-		_, err = t.ReadFrom(q)
-		if err == nil {
-			probe.Type = astral.String8(t.String())
-		}
-	}
-
-	// check the mimeType
-	probe.Mime = astral.String8(http.DetectContentType(data))
-
-	return
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -171,6 +134,44 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 	}
 
 	return t.String(), nil
+}
+
+func (mod *Module) Probe(ctx *astral.Context, repo objects.Repository, objectID *astral.ObjectID) (probe *objects.Probe, err error) {
+	probe = &objects.Probe{}
+
+	startAt := time.Now()
+
+	// read the object data
+	r, err := repo.Read(ctx, objectID, 0, 512)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// store the response time
+	probe.Time = astral.Duration(time.Since(startAt))
+
+	// store the actual repo name
+	probe.Repo = astral.String8(mod.getRepoName(r.Repo()))
+
+	// check if it's an astral object
+	q := bytes.NewReader(data)
+	if _, err := (&astral.Stamp{}).ReadFrom(q); err == nil {
+		var t astral.ObjectType
+		_, err = t.ReadFrom(q)
+		if err == nil {
+			probe.Type = astral.String8(t.String())
+		}
+	}
+
+	// check the mimeType
+	probe.Mime = astral.String8(http.DetectContentType(data))
+
+	return
 }
 
 func (mod *Module) AddRepository(name string, repo objects.Repository) error {

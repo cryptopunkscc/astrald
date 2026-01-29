@@ -11,7 +11,6 @@ import (
 
 type opCreateArgs struct {
 	Alias astral.String8
-	Force astral.Bool `query:"optional"`
 
 	In  string `query:"optional"`
 	Out string `query:"optional"`
@@ -25,8 +24,8 @@ func (mod *Module) OpCreate(ctx *astral.Context, q *ops.Query, args opCreateArgs
 		return q.Reject()
 	}
 
-	// only allow this if there's no currently active contract
-	if mod.ActiveContract() != nil && !args.Force {
+	// only allow this if there's no user
+	if !mod.Identity().IsZero() {
 		return q.Reject()
 	}
 
@@ -46,7 +45,12 @@ func (mod *Module) OpCreate(ctx *astral.Context, q *ops.Query, args opCreateArgs
 	}
 
 	// sign a node contract with the user
-	contract, err := mod.SignLocalContract(userID)
+	contract, err := mod.SignNodeContract(ctx, &user.NodeContract{
+		UserID:    userID,
+		NodeID:    mod.node.Identity(),
+		StartsAt:  astral.Now(),
+		ExpiresAt: astral.Time(time.Now().Add(defaultContractValidity)),
+	})
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}

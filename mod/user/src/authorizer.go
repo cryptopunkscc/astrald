@@ -13,10 +13,13 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 		return false
 	}
 
-	var contract = mod.ActiveContract()
+	userID := mod.Identity()
+	if userID.IsZero() {
+		return false
+	}
 
 	// allow the user to perform whitelisted actions
-	if contract != nil && identity.IsEqual(contract.UserID) {
+	if identity.IsEqual(userID) {
 		switch action {
 		case auth.ActionSudo,
 			objects.ActionRead,

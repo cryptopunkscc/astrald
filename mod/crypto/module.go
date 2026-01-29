@@ -34,4 +34,22 @@ type Module interface {
 
 	// AddEngine adds a cryptographic engine to the module
 	AddEngine(engine Engine)
+
+	// SignContractHash signs the hash of the given contract with ASN1
+	SignContractHash(*astral.Context, HashableContract, *PublicKey) (*Signature, error)
+
+	// SignContractText signs the text of the given contract with BIP-137
+	SignContractText(*astral.Context, TextableContract, *PublicKey) (*Signature, error)
+}
+
+// HashableContract is an interface for contracts that can be signed as a hash
+type HashableContract interface {
+	astral.Object
+	ContractHash() []byte
+}
+
+// TextableContract is an interface for contracts that can be signed as a text message
+type TextableContract interface {
+	astral.Object
+	ContractText() string
 }

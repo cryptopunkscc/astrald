@@ -71,7 +71,7 @@ func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedN
 		return objects.ErrPushRejected
 	}
 
-	err := mod.SaveSignedNodeContract(c)
+	err := mod.IndexSignedNodeContract(c)
 	if err != nil {
 		mod.log.Errorv(1, "save node contract: %v", err)
 		return objects.ErrPushRejected

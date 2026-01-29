@@ -1,12 +1,17 @@
 package objects
 
 import (
+	"bytes"
+	"errors"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/objects/mem"
+	"github.com/cryptopunkscc/astrald/resources"
 )
 
 type Loader struct{}
@@ -26,12 +31,44 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	mod.setupDefaultRepos()
 
-	err := mod.db.Migrate()
+	key, err := mod.loadNodeKey(assets.Res())
+	if err != nil {
+		mod.log.Error("failed to load node key: %v", err)
+	} else {
+		keyID, err := mod.Store(astral.NewContext(nil), mod.system, key)
+		if err != nil {
+			mod.log.Error("failed to store node key: %v", err)
+		} else {
+			mod.log.Log("node key id: %v", keyID)
+		}
+	}
+
+	err = mod.db.Migrate()
 	if err != nil {
 		return nil, err
 	}
 
 	return mod, nil
+}
+
+// loadNodeKey loads node's private key into mem0
+func (mod *Module) loadNodeKey(res resources.Resources) (*crypto.PrivateKey, error) {
+	keyBytes, err := res.Read("node_key")
+	if err != nil {
+		return nil, err
+	}
+
+	object, _, err := astral.Decode(bytes.NewReader(keyBytes), astral.Canonical())
+	if err != nil {
+		return nil, err
+	}
+
+	privKey, ok := object.(*crypto.PrivateKey)
+	if !ok {
+		return nil, errors.New("invalid node key")
+	}
+
+	return privKey, nil
 }
 
 func (mod *Module) setupDefaultRepos() {
@@ -70,6 +107,10 @@ func (mod *Module) setupDefaultRepos() {
 	mem0 := mem.New("Default memory", mod.config.DefaultMemSize)
 	mod.repos.Set("mem0", mem0)
 	memory.Add("mem0")
+
+	mod.system = mem.New("System memory", mod.config.DefaultMemSize)
+	mod.repos.Set("system", mod.system)
+	memory.Add("system")
 }
 
 func init() {

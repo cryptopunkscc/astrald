@@ -7,5 +7,5 @@ type Config struct {
 }
 
 var defaultConfig = Config{
-	Repos: []string{"local", "mem0"},
+	Repos: []string{"local", "mem0", "system"},
 }
