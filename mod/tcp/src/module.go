@@ -14,23 +14,36 @@ var _ tcp.Module = &Module{}
 
 type Module struct {
 	Deps
-	config          Config
+	config Config
+
+	settings        Settings
 	node            astral.Node
 	log             *log.Logger
 	ctx             *astral.Context
 	configEndpoints []exonet.Endpoint
 
-	listen *tree.Binding[*astral.Bool]
-	dial   *tree.Binding[*astral.Bool]
+	listen *tree.Value[*astral.Bool]
+	dial   *tree.Value[*astral.Bool]
 
 	serverMu     sync.Mutex
 	serverCancel func()
 }
 
+type Settings struct {
+	Listen *tree.Value[*astral.Bool] `tree:"listen"`
+	Dial   *tree.Value[*astral.Bool] `tree:"dial"`
+}
+
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 
-	if v, _ := mod.listen.Get(); v != nil && *v {
+	err = mod.loadSettings(ctx)
+	if err != nil {
+		return err
+	}
+
+	v := mod.settings.Dial.Get()
+	if v != nil && *v {
 		mod.startServer()
 	}
 
@@ -55,6 +68,25 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 	}
 
 	return list
+}
+
+func (mod *Module) loadSettings(ctx *astral.Context) (err error) {
+	falseValue := astral.Bool(false)
+	if mod.config.Dial != nil && !*mod.config.Dial {
+		err = mod.settings.Dial.Set(ctx, &falseValue)
+		if err != nil {
+			return err
+		}
+	}
+
+	if mod.config.Listen != nil && !*mod.config.Listen {
+		err = mod.settings.Listen.Set(ctx, &falseValue)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (mod *Module) startServer() {

@@ -2,7 +2,6 @@ package tcp
 
 import (
 	"fmt"
-	"path"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
@@ -22,35 +21,18 @@ type Deps struct {
 	Tree    tree.Module
 }
 
-func (mod *Module) LoadDependencies() (err error) {
+func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
 		return
 	}
 
-	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
-
 	modulePath := fmt.Sprintf(`/mod/%s`, tcp.ModuleName)
 
-	var listen = astral.Bool(mod.config.Listen)
-	mod.listen, err = tree.BindPath[*astral.Bool](
-		ctx,
-		mod.Tree.Root(),
-		path.Join(modulePath, "listen"),
-		tree.OnChange(mod.switchServer),
-		tree.DefaultValue(&listen),
-	)
+	err = tree.BindPath(ctx, &mod.settings, mod.Tree.Root(), modulePath, true)
 	if err != nil {
-		return err
+		return fmt.Errorf("tcp module: bind settings: %w", err)
 	}
-
-	var dial = astral.Bool(mod.config.Dial)
-	mod.dial, err = tree.BindPath[*astral.Bool](
-		ctx,
-		mod.Tree.Root(),
-		path.Join(modulePath, "dial"),
-		tree.DefaultValue(&dial),
-	)
 
 	mod.Exonet.SetDialer("tcp", mod)
 	mod.Exonet.SetParser("tcp", mod)
