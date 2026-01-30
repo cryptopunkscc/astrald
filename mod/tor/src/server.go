@@ -158,44 +158,11 @@ func (l listener) Close() error {
 	return l.ctl.DelOnion(l.onion.ServiceID)
 }
 
-func (mod *Module) startServer() {
-	if mod.ctx == nil || mod.server == nil {
+func (mod *Module) startServer(ctx context.Context) {
+	if mod.torServer == nil {
 		return
 	}
-
-	mod.serverMu.Lock()
-	defer mod.serverMu.Unlock()
-
-	if mod.serverCancel != nil {
-		return // already running
-	}
-
-	ctx, cancel := mod.ctx.WithCancel()
-	mod.serverCancel = cancel
-
-	go func() {
-		if err := mod.server.Run(ctx); err != nil {
-			mod.log.Errorv(1, "server error: %v", err)
-		}
-	}()
-}
-
-func (mod *Module) stopServer() {
-	mod.serverMu.Lock()
-	defer mod.serverMu.Unlock()
-
-	if mod.serverCancel == nil {
-		return // not running
-	}
-
-	mod.serverCancel()
-	mod.serverCancel = nil
-}
-
-func (mod *Module) switchServer(enable *astral.Bool) {
-	if enable != nil && *enable {
-		mod.startServer()
-	} else {
-		mod.stopServer()
+	if err := mod.torServer.Run(astral.NewContext(ctx)); err != nil {
+		mod.log.Errorv(1, "server error: %v", err)
 	}
 }

@@ -1,13 +1,12 @@
 package tcp
 
 import (
-	"sync"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tree"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var _ tcp.Module = &Module{}
@@ -22,8 +21,7 @@ type Module struct {
 	ctx             *astral.Context
 	configEndpoints []exonet.Endpoint
 
-	serverMu     sync.Mutex
-	serverCancel func()
+	server sig.Switch
 }
 
 type Settings struct {
@@ -34,14 +32,14 @@ type Settings struct {
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 
-	err = mod.loadSettings(ctx)
+	err = mod.syncConfig(ctx)
 	if err != nil {
 		return err
 	}
 
 	go func() {
 		for v := range mod.settings.Listen.Follow(ctx) {
-			mod.switchServer(v)
+			mod.server.Set(ctx, v == nil || bool(*v), mod.startServer)
 		}
 	}()
 
@@ -68,18 +66,17 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 	return list
 }
 
-func (mod *Module) loadSettings(ctx *astral.Context) (err error) {
-	falseValue := astral.Bool(false)
-	if mod.config.Dial != nil && !*mod.config.Dial {
-		err = mod.settings.Dial.Set(ctx, &falseValue)
-		if err != nil {
+func (mod *Module) syncConfig(ctx *astral.Context) error {
+	if mod.config.Dial != nil {
+		val := astral.Bool(*mod.config.Dial)
+		if err := mod.settings.Dial.Set(ctx, &val); err != nil {
 			return err
 		}
 	}
 
-	if mod.config.Listen != nil && !*mod.config.Listen {
-		err = mod.settings.Listen.Set(ctx, &falseValue)
-		if err != nil {
+	if mod.config.Listen != nil {
+		val := astral.Bool(*mod.config.Listen)
+		if err := mod.settings.Listen.Set(ctx, &val); err != nil {
 			return err
 		}
 	}

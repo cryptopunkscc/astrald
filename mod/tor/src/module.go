@@ -1,14 +1,13 @@
 package tor
 
 import (
-	"sync"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tree"
+	"github.com/cryptopunkscc/astrald/sig"
 	"golang.org/x/net/proxy"
 )
 
@@ -30,15 +29,13 @@ type Module struct {
 	config   Config
 	settings Settings
 
-	node   astral.Node
-	assets assets.Assets
-	log    *log.Logger
-	ctx    *astral.Context
-	proxy  proxy.ContextDialer
-	server *Server
-
-	serverMu     sync.Mutex
-	serverCancel func()
+	node      astral.Node
+	assets    assets.Assets
+	log       *log.Logger
+	ctx       *astral.Context
+	proxy     proxy.ContextDialer
+	torServer *Server
+	server    sig.Switch
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -48,9 +45,11 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		return err
 	}
 
-	if v := mod.settings.Listen.Get(); v == nil || *v {
-		mod.startServer()
-	}
+	go func() {
+		for v := range mod.settings.Listen.Follow(ctx) {
+			mod.server.Set(ctx, v == nil || bool(*v), mod.startServer)
+		}
+	}()
 
 	<-ctx.Done()
 
@@ -58,16 +57,16 @@ func (mod *Module) Run(ctx *astral.Context) error {
 }
 
 func (mod *Module) loadSettings(ctx *astral.Context) error {
-	falseValue := astral.Bool(false)
-
-	if mod.config.Dial != nil && !*mod.config.Dial {
-		if err := mod.settings.Dial.Set(ctx, &falseValue); err != nil {
+	if mod.config.Dial != nil {
+		val := astral.Bool(*mod.config.Dial)
+		if err := mod.settings.Dial.Set(ctx, &val); err != nil {
 			return err
 		}
 	}
 
 	if mod.config.Listen != nil && !*mod.config.Listen {
-		if err := mod.settings.Listen.Set(ctx, &falseValue); err != nil {
+		val := astral.Bool(*mod.config.Dial)
+		if err := mod.settings.Listen.Set(ctx, &val); err != nil {
 			return err
 		}
 	}

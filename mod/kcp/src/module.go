@@ -36,8 +36,7 @@ type Module struct {
 	ephemeralListeners    sig.Map[astral.Uint16, exonet.EphemeralListener]
 	ephemeralPortMappings sig.Map[astral.String8, astral.Uint16]
 
-	serverMu     sync.Mutex
-	serverCancel func()
+	server sig.Switch
 }
 
 func (mod *Module) GetOpSet() *ops.Set {
@@ -59,9 +58,11 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		return err
 	}
 
-	if v := mod.settings.Listen.Get(); v == nil || *v {
-		mod.startServer()
-	}
+	go func() {
+		for v := range mod.settings.Listen.Follow(ctx) {
+			mod.server.Set(ctx, v == nil || bool(*v), mod.startServer)
+		}
+	}()
 
 	<-ctx.Done()
 
@@ -69,16 +70,16 @@ func (mod *Module) Run(ctx *astral.Context) error {
 }
 
 func (mod *Module) loadSettings(ctx *astral.Context) error {
-	falseValue := astral.Bool(false)
-
-	if mod.config.Dial != nil && !*mod.config.Dial {
-		if err := mod.settings.Dial.Set(ctx, &falseValue); err != nil {
+	if mod.config.Dial != nil {
+		val := astral.Bool(*mod.config.Dial)
+		if err := mod.settings.Dial.Set(ctx, &val); err != nil {
 			return err
 		}
 	}
 
-	if mod.config.Listen != nil && !*mod.config.Listen {
-		if err := mod.settings.Listen.Set(ctx, &falseValue); err != nil {
+	if mod.config.Listen != nil {
+		val := astral.Bool(*mod.config.Listen)
+		if err := mod.settings.Listen.Set(ctx, &val); err != nil {
 			return err
 		}
 	}
