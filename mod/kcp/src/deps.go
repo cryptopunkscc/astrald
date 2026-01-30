@@ -27,9 +27,9 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 		return
 	}
 
-	modulePath := fmt.Sprintf(`/mod/%s`, kcp.ModuleName)
+	moduleSettingsPath := fmt.Sprintf(`/mod/%s/settings`, kcp.ModuleName)
 
-	err = tree.BindPath(ctx, &mod.settings, mod.Tree.Root(), modulePath, true)
+	err = tree.BindPath(ctx, &mod.settings, mod.Tree.Root(), moduleSettingsPath, true)
 	if err != nil {
 		return fmt.Errorf("kcp module: bind settings: %w", err)
 	}

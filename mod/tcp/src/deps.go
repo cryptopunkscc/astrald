@@ -27,8 +27,8 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 		return
 	}
 
-	moduleConfigPath := fmt.Sprintf(`/mod/%s/config`, tcp.ModuleName)
-	err = tree.BindPath(ctx, &mod.settings, mod.Tree.Root(), moduleConfigPath, true)
+	moduleSettingsPath := fmt.Sprintf(`/mod/%s/settings`, tcp.ModuleName)
+	err = tree.BindPath(ctx, &mod.settings, mod.Tree.Root(), moduleSettingsPath, true)
 	if err != nil {
 		return fmt.Errorf("tcp module: bind settings: %w", err)
 	}
