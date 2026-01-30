@@ -54,3 +54,46 @@ func (srv *Server) Run(ctx *astral.Context) error {
 		}()
 	}
 }
+
+func (mod *Module) startServer() {
+	if mod.ctx == nil {
+		return
+	}
+
+	mod.serverMu.Lock()
+	defer mod.serverMu.Unlock()
+
+	if mod.serverCancel != nil {
+		return // already running
+	}
+
+	ctx, cancel := mod.ctx.WithCancel()
+	mod.serverCancel = cancel
+
+	go func() {
+		srv := NewServer(mod)
+		if err := srv.Run(ctx); err != nil {
+			mod.log.Errorv(1, "server error: %v", err)
+		}
+	}()
+}
+
+func (mod *Module) stopServer() {
+	mod.serverMu.Lock()
+	defer mod.serverMu.Unlock()
+
+	if mod.serverCancel == nil {
+		return // not running
+	}
+
+	mod.serverCancel()
+	mod.serverCancel = nil
+}
+
+func (mod *Module) switchServer(enable *astral.Bool) {
+	if enable == nil || *enable {
+		mod.startServer()
+	} else {
+		mod.stopServer()
+	}
+}

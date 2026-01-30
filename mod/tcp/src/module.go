@@ -14,16 +14,13 @@ var _ tcp.Module = &Module{}
 
 type Module struct {
 	Deps
-	config Config
+	config   Config
+	settings Settings
 
-	settings        Settings
 	node            astral.Node
 	log             *log.Logger
 	ctx             *astral.Context
 	configEndpoints []exonet.Endpoint
-
-	listen *tree.Value[*astral.Bool]
-	dial   *tree.Value[*astral.Bool]
 
 	serverMu     sync.Mutex
 	serverCancel func()
@@ -42,10 +39,11 @@ func (mod *Module) Run(ctx *astral.Context) (err error) {
 		return err
 	}
 
-	v := mod.settings.Dial.Get()
-	if v != nil && *v {
-		mod.startServer()
-	}
+	go func() {
+		for v := range mod.settings.Listen.Follow(ctx) {
+			mod.switchServer(v)
+		}
+	}()
 
 	<-ctx.Done()
 
@@ -87,47 +85,4 @@ func (mod *Module) loadSettings(ctx *astral.Context) (err error) {
 	}
 
 	return nil
-}
-
-func (mod *Module) startServer() {
-	if mod.ctx == nil {
-		return
-	}
-
-	mod.serverMu.Lock()
-	defer mod.serverMu.Unlock()
-
-	if mod.serverCancel != nil {
-		return // already running
-	}
-
-	ctx, cancel := mod.ctx.WithCancel()
-	mod.serverCancel = cancel
-
-	go func() {
-		srv := NewServer(mod)
-		if err := srv.Run(ctx); err != nil {
-			mod.log.Errorv(1, "server error: %v", err)
-		}
-	}()
-}
-
-func (mod *Module) stopServer() {
-	mod.serverMu.Lock()
-	defer mod.serverMu.Unlock()
-
-	if mod.serverCancel == nil {
-		return // not running
-	}
-
-	mod.serverCancel()
-	mod.serverCancel = nil
-}
-
-func (mod *Module) switchServer(enable *astral.Bool) {
-	if enable != nil && *enable {
-		mod.startServer()
-	} else {
-		mod.stopServer()
-	}
 }
