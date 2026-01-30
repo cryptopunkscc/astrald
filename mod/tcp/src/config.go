@@ -11,7 +11,10 @@ type Config struct {
 	ListenPort  int           `yaml:"listen_port,omitempty"`
 }
 
+var trueVal = true
 var defaultConfig = Config{
+	Dial:        &trueVal,
+	Listen:      &trueVal,
 	DialTimeout: time.Minute,
 	ListenPort:  1791,
 }

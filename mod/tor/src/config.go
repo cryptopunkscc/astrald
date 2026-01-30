@@ -12,7 +12,11 @@ type Config struct {
 	ListenPort  int
 }
 
+var trueVal = true
+
 var defaultConfig = Config{
+	Dial:        &trueVal,
+	Listen:      &trueVal,
 	TorProxy:    "127.0.0.1:9050",
 	ControlAddr: "127.0.0.1:9051",
 	DialTimeout: time.Minute,

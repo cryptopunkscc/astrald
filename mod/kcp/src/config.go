@@ -13,7 +13,11 @@ type Config struct {
 	DialTimeout time.Duration `yaml:"dial_timeout,omitempty"`
 }
 
+var trueVal = true
+
 var defaultConfig = Config{
+	Dial:        &trueVal,
+	Listen:      &trueVal,
 	DialTimeout: time.Minute,
 	ListenPort:  1792,
 }
