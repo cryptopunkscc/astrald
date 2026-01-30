@@ -53,7 +53,7 @@ func (fn *FileLocation) UnmarshalText(text []byte) error {
 		return errors.New("invalid format")
 	}
 
-	id, err := astral.IdentityFromString(split[0])
+	id, err := astral.ParseIdentity(split[0])
 	if err != nil {
 		return err
 	}

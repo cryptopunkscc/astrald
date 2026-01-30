@@ -31,10 +31,6 @@ type Node struct {
 func NewNode(nodeID *astral.Identity, res resources.Resources) (*Node, error) {
 	var err error
 
-	if nodeID.PrivateKey() == nil {
-		return nil, errors.New("private key required")
-	}
-
 	if res == nil {
 		res = resources.NewMemResources()
 	}

@@ -196,14 +196,14 @@ func (mod *Module) makePacket(object astral.Object, source *astral.Identity) (da
 		},
 	}
 
-	var hash = signed.Hash()
+	//var hash = signed.Hash()
 
-	signed.Signature, err = mod.Keys.SignASN1(source, hash)
+	signed.Signature, err = nil, errors.New("not implemented") //TODO: reimplement
 	if err != nil {
 		return
 	}
 
-	err = mod.Keys.VerifyASN1(source, hash, signed.Signature)
+	err = errors.New("not implemented") //TODO: reimplement
 	if err != nil {
 		return
 	}

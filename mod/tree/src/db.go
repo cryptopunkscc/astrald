@@ -35,7 +35,7 @@ func (db *DB) setNodeValue(nodeID int, object astral.Object) (err error) {
 	}).Error
 }
 
-func (db *DB) getNodeValue(nodeID int) (object astral.Object, err error) {
+func (db *DB) getNodeValue(nodeID int, allowUnparsed bool) (object astral.Object, err error) {
 	var row dbNode
 	err = db.First(&row, "id = ?", nodeID).Error
 	if err != nil {
@@ -48,6 +48,9 @@ func (db *DB) getNodeValue(nodeID int) (object astral.Object, err error) {
 
 	object = astral.New(row.Type)
 	if object == nil {
+		if allowUnparsed {
+			return astral.NewUnparsedObject(row.Type, row.Payload), nil
+		}
 		return nil, astral.NewErrBlueprintNotFound(row.Type)
 	}
 

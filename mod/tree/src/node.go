@@ -26,7 +26,7 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 		return nil, errors.New("root node cannot hold a value")
 	}
 
-	object, err := node.mod.db.getNodeValue(node.id)
+	object, err := node.mod.db.getNodeValue(node.id, true)
 	if err != nil {
 		return nil, err
 	}

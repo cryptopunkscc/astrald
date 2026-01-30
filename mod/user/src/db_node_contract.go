@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-type dbNodeContract struct {
+type dbSignedNodeContract struct {
 	ObjectID  *astral.ObjectID `gorm:"primaryKey"`
 	UserID    *astral.Identity `gorm:"index"`
 	NodeID    *astral.Identity `gorm:"index"`
@@ -15,4 +15,4 @@ type dbNodeContract struct {
 	StartsAt  time.Time        `gorm:"index"`
 }
 
-func (dbNodeContract) TableName() string { return user.DBPrefix + "node_contracts" }
+func (dbSignedNodeContract) TableName() string { return user.DBPrefix + "signed_node_contracts" }

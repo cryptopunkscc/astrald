@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	keyActiveContract       = "mod.user.active_contract"
 	minimalRevocationLength = 7 * 24 * time.Hour
 	minimalContractLength   = time.Hour
 	defaultContractValidity = 365 * 24 * time.Hour

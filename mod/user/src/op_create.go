@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -32,8 +33,11 @@ func (mod *Module) OpCreate(ctx *astral.Context, q *ops.Query, args opCreateArgs
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
+	var userID *astral.Identity
+	var keyID *astral.ObjectID
+
 	// create a private key for the user
-	userID, keyID, err := mod.Keys.CreateKey(args.Alias.String())
+	userID, keyID, err = nil, nil, errors.New("not implemented") // TODO: reimplement
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}

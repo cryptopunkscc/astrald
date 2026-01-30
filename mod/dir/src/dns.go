@@ -37,7 +37,7 @@ func (dns DNS) ResolveIdentity(s string) (identity *astral.Identity, err error) 
 			continue
 		}
 
-		identity, err = astral.IdentityFromString(record[3:])
+		identity, err = astral.ParseIdentity(record[3:])
 		if err == nil {
 			return identity, nil
 		}

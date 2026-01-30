@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -57,7 +58,7 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q *ops.Query, args 
 	var revoker *user.Revoker
 	switch args.RevokeAs {
 	case "user":
-		userSig, err := mod.Keys.SignASN1(nodeContract.UserID, signed.Hash())
+		userSig, err := []byte{}, errors.New("not implemented") // TODO: reimplement
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
 		}
@@ -67,7 +68,7 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q *ops.Query, args 
 			Sig: userSig,
 		}
 	case "node":
-		nodeSig, err := mod.Keys.SignASN1(mod.ctx.Identity(), signed.Hash())
+		nodeSig, err := []byte{}, errors.New("not implemented") // TODO: reimplement
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
 		}

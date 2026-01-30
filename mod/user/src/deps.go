@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/kos"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -23,7 +22,6 @@ type Deps struct {
 	Crypto    crypto.Module
 	Dir       dir.Module
 	Objects   objects.Module
-	Keys      keys.Module
 	KOS       kos.Module
 	Nodes     nodes.Module
 	Scheduler scheduler.Module
@@ -39,14 +37,14 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	}
 
 	// bind the config
-	err = tree.BindPath(ctx, &mod.config, mod.Tree.Root(), "/mod/user", true)
+	err = tree.BindPath(ctx, &mod.config, mod.Tree.Root(), "/mod/user/config", true)
 	if err != nil {
 		return err
 	}
 
 	go func() {
 		for contract := range mod.config.ActiveContract.Follow(ctx) {
-			mod.setContract(contract)
+			mod.setActiveContract(contract)
 		}
 	}()
 

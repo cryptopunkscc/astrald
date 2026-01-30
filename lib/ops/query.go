@@ -49,7 +49,7 @@ func (query *Query) Reject() (err error) {
 		return errors.New("query already resolved")
 	}
 
-	err = &astral.ErrRejected{Code: 0}
+	err = &astral.ErrRejected{Code: astral.DefaultRejectCode}
 	query.response <- queryResponse{nil, err}
 
 	return nil

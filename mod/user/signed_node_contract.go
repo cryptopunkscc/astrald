@@ -16,7 +16,7 @@ type SignedNodeContract struct {
 }
 
 func (SignedNodeContract) ObjectType() string {
-	return "mod.users.signed_node_contract"
+	return "mod.user.signed_node_contract"
 }
 
 func (c SignedNodeContract) WriteTo(w io.Writer) (n int64, err error) {

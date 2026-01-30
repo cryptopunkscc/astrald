@@ -3,13 +3,14 @@ package noise
 import (
 	"context"
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
+
 	"github.com/cryptopunkscc/astrald/brontide"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 // HandshakeInbound performs a handshake as the passive party.
-func HandshakeInbound(ctx context.Context, conn exonet.Conn, localID *astral.Identity) (*Conn, error) {
+func HandshakeInbound(ctx context.Context, conn exonet.Conn, localPrivateKey *secp256k1.PrivateKey) (*Conn, error) {
 	//TODO: is there a better way to handle ctx here?
 	var done = make(chan struct{})
 	var errCh = make(chan error, 1)
@@ -23,7 +24,7 @@ func HandshakeInbound(ctx context.Context, conn exonet.Conn, localID *astral.Ide
 		}
 	}()
 
-	bConn, err := brontide.PassiveHandshake(conn, localID.PrivateKey())
+	bConn, err := brontide.PassiveHandshake(conn, localPrivateKey)
 	select {
 	case err := <-errCh:
 		return nil, err
@@ -40,8 +41,14 @@ func HandshakeInbound(ctx context.Context, conn exonet.Conn, localID *astral.Ide
 }
 
 // HandshakeOutbound performs a handshake as the active party.
-func HandshakeOutbound(ctx context.Context, conn exonet.Conn, expectedRemoteID *astral.Identity, localID *astral.Identity) (*Conn, error) {
-	if localID.IsEqual(expectedRemoteID) {
+func HandshakeOutbound(
+	ctx context.Context,
+	conn exonet.Conn,
+	remotePublicKey *secp256k1.PublicKey,
+	localPrivateKey *secp256k1.PrivateKey,
+) (*Conn, error) {
+
+	if localPrivateKey.PubKey().IsEqual(remotePublicKey) {
 		return nil, errors.New("local and remote identities cannot be equal")
 	}
 
@@ -57,7 +64,7 @@ func HandshakeOutbound(ctx context.Context, conn exonet.Conn, expectedRemoteID *
 		case <-done:
 		}
 	}()
-	c, err := brontide.ActiveHandshake(conn, localID.PrivateKey(), expectedRemoteID.PublicKey())
+	c, err := brontide.ActiveHandshake(conn, localPrivateKey, remotePublicKey)
 	select {
 	case err := <-errCh:
 		return nil, err

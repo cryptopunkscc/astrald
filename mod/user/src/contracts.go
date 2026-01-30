@@ -15,9 +15,6 @@ import (
 
 // SetActiveContract sets the contract under which the node operates
 func (mod *Module) SetActiveContract(signed *user.SignedNodeContract) (err error) {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
-
 	// verify signatures
 	err = mod.VerifySignedNodeContract(signed)
 	if err != nil {
@@ -25,8 +22,6 @@ func (mod *Module) SetActiveContract(signed *user.SignedNodeContract) (err error
 	}
 
 	mod.config.ActiveContract.Set(mod.ctx, signed)
-
-	mod.log.Info("hello, %v!", signed.UserID)
 
 	// synchronize siblings & broadcast
 	mod.mu.Unlock()
@@ -42,14 +37,14 @@ func (mod *Module) SetActiveContract(signed *user.SignedNodeContract) (err error
 
 // ActiveContract returns the active contract
 func (mod *Module) ActiveContract() *user.SignedNodeContract {
-	return mod.contract
+	return mod.activeContract
 }
 
-func (mod *Module) setContract(signed *user.SignedNodeContract) error {
+func (mod *Module) setActiveContract(signed *user.SignedNodeContract) error {
 	// viability checks
 	switch {
 	case signed.IsNil():
-		mod.contract = nil
+		mod.activeContract = nil
 		return nil
 	case !signed.ActiveAt(time.Now()):
 		return errors.New("contract is not active")
@@ -61,7 +56,7 @@ func (mod *Module) setContract(signed *user.SignedNodeContract) error {
 
 	mod.log.Info("hello, %v!", signed.UserID)
 
-	mod.contract = signed
+	mod.activeContract = signed
 	return nil
 }
 
@@ -109,12 +104,12 @@ func (mod *Module) IndexSignedNodeContract(signed *user.SignedNodeContract) (err
 	}
 
 	// check if already indexed
-	if mod.db.ContractExists(signedID) {
+	if mod.db.signedNodeContractExists(signedID) {
 		return nil
 	}
 
 	// save to db
-	err = mod.db.Create(&dbNodeContract{
+	err = mod.db.Create(&dbSignedNodeContract{
 		ObjectID:  signedID,
 		UserID:    signed.UserID,
 		NodeID:    signed.NodeID,
@@ -130,9 +125,17 @@ func (mod *Module) IndexSignedNodeContract(signed *user.SignedNodeContract) (err
 	return
 }
 
+func (mod *Module) RemoveFromIndex(objectID *astral.ObjectID) error {
+	if mod.db.signedNodeContractExists(objectID) {
+		return mod.db.deleteSignedNodeContract(objectID)
+	}
+
+	return errors.New("object not found in any index")
+}
+
 func (mod *Module) GetNodeContract(contractID *astral.ObjectID) (*user.SignedNodeContract, error) {
 	// fast fail so we dont need to load the contract if it does not exist in db
-	if !mod.db.ContractExists(contractID) {
+	if !mod.db.signedNodeContractExists(contractID) {
 		return nil, user.ErrContractNotExists
 	}
 
@@ -234,7 +237,7 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 }
 
 func (mod *Module) FindNodeContract(contractID *astral.ObjectID) (*user.NodeContract, error) {
-	dbRecord, err := mod.db.FindNodeContract(contractID)
+	dbRecord, err := mod.db.findSignedNodeContract(contractID)
 	if err != nil {
 		return nil, err
 	}

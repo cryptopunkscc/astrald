@@ -33,7 +33,7 @@ type Module struct {
 	mu     sync.Mutex
 	ops    ops.Set
 
-	contract *user.SignedNodeContract
+	activeContract *user.SignedNodeContract
 
 	sibs sig.Map[string, Sibling]
 }
