@@ -11,6 +11,10 @@ var _ exonet.Dialer = &Module{}
 
 // Dial tries to establish a Driver connection to the provided address
 func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (conn exonet.Conn, err error) {
+	if dial := mod.settings.Dial.Get(); dial != nil && !*dial {
+		return nil, exonet.ErrDisabledNetwork
+	}
+
 	endpoint, err = mod.Unpack(endpoint.Network(), endpoint.Pack())
 	if err != nil {
 		return nil, err

@@ -1,31 +1,47 @@
 package tcp
 
 import (
-	"context"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
-	"github.com/cryptopunkscc/astrald/tasks"
+	"github.com/cryptopunkscc/astrald/mod/tree"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var _ tcp.Module = &Module{}
 
 type Module struct {
 	Deps
-	config Config
-	node   astral.Node
-	log    *log.Logger
-	ctx    context.Context
+	config   Config
+	settings Settings
 
+	node            astral.Node
+	log             *log.Logger
+	ctx             *astral.Context
 	configEndpoints []exonet.Endpoint
+
+	server sig.Switch
 }
 
-func (mod *Module) Run(ctx *astral.Context) error {
+type Settings struct {
+	Listen *tree.Value[*astral.Bool] `tree:"listen"`
+	Dial   *tree.Value[*astral.Bool] `tree:"dial"`
+}
+
+func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 
-	_ = tasks.Group(NewServer(mod)).Run(ctx)
+	err = mod.syncConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for v := range mod.settings.Listen.Follow(ctx) {
+			mod.server.Set(ctx, v == nil || bool(*v), mod.startServer)
+		}
+	}()
 
 	<-ctx.Done()
 
@@ -48,4 +64,22 @@ func (mod *Module) endpoints() (list []exonet.Endpoint) {
 	}
 
 	return list
+}
+
+func (mod *Module) syncConfig(ctx *astral.Context) error {
+	if mod.config.Dial != nil {
+		val := astral.Bool(*mod.config.Dial)
+		if err := mod.settings.Dial.Set(ctx, &val); err != nil {
+			return err
+		}
+	}
+
+	if mod.config.Listen != nil {
+		val := astral.Bool(*mod.config.Listen)
+		if err := mod.settings.Listen.Set(ctx, &val); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

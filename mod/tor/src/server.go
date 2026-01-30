@@ -3,13 +3,14 @@ package tor
 import (
 	"context"
 	"encoding/base64"
+	"io"
+	"net"
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/tor"
 	"github.com/cryptopunkscc/astrald/mod/tor/tc"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
-	"net"
-	"strings"
 )
 
 type Server struct {
@@ -155,4 +156,13 @@ func (l listener) Close() error {
 	l.tcp.Close()
 
 	return l.ctl.DelOnion(l.onion.ServiceID)
+}
+
+func (mod *Module) startServer(ctx context.Context) {
+	if mod.torServer == nil {
+		return
+	}
+	if err := mod.torServer.Run(astral.NewContext(ctx)); err != nil {
+		mod.log.Errorv(1, "server error: %v", err)
+	}
 }

@@ -20,6 +20,10 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 		return nil, exonet.ErrUnsupportedNetwork
 	}
 
+	if dial := mod.settings.Dial.Get(); dial != nil && !*dial {
+		return nil, exonet.ErrDisabledNetwork
+	}
+
 	remoteEndpoint, ok := endpoint.(*kcp.Endpoint)
 	if !ok {
 		return nil, fmt.Errorf("kcp/dial: endpoint is not a kcp endpoint")

@@ -2,7 +2,6 @@ package kcp
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -11,14 +10,21 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
+	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/sig"
-	"github.com/cryptopunkscc/astrald/tasks"
 )
+
+type Settings struct {
+	Listen *tree.Value[*astral.Bool] `tree:"listen"`
+	Dial   *tree.Value[*astral.Bool] `tree:"dial"`
+}
 
 // Module represents the KCP module and implements the exonet.Dialer interface.
 type Module struct {
 	Deps
-	config Config
+	config   Config
+	settings Settings
+
 	node   astral.Node
 	assets assets.Assets
 	log    *log.Logger
@@ -29,6 +35,8 @@ type Module struct {
 	configEndpoints       []exonet.Endpoint
 	ephemeralListeners    sig.Map[astral.Uint16, exonet.EphemeralListener]
 	ephemeralPortMappings sig.Map[astral.String8, astral.Uint16]
+
+	server sig.Switch
 }
 
 func (mod *Module) GetOpSet() *ops.Set {
@@ -45,50 +53,36 @@ func (mod *Module) String() string {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
-	listenPort := astral.Uint16(mod.config.ListenPort)
 
-	err := tasks.Group(NewServer(mod, listenPort, mod.acceptAll)).Run(ctx)
-	if err != nil {
+	if err := mod.loadSettings(ctx); err != nil {
 		return err
 	}
+
+	go func() {
+		for v := range mod.settings.Listen.Follow(ctx) {
+			mod.server.Set(ctx, v == nil || bool(*v), mod.startServer)
+		}
+	}()
 
 	<-ctx.Done()
 
 	return nil
 }
 
-// CreateEphemeralListener creates an ephemeral KCP endpoint which will start a server that listens on the specified port and adds it to the ephemeralListeners set.
-func (mod *Module) CreateEphemeralListener(port astral.Uint16) error {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
-
-	if _, ok := mod.ephemeralListeners.Get(port); ok {
-		return fmt.Errorf("%w: port %d", kcp.ErrEphemeralListenerExists, port)
-	}
-
-	kcpServer := NewServer(mod, port, mod.acceptAll)
-	mod.ephemeralListeners.Set(port, kcpServer)
-
-	go func() {
-		err := kcpServer.Run(mod.ctx)
-		if err != nil {
-			mod.log.Error("ephemeral listener error: %v", err)
+func (mod *Module) loadSettings(ctx *astral.Context) error {
+	if mod.config.Dial != nil {
+		val := astral.Bool(*mod.config.Dial)
+		if err := mod.settings.Dial.Set(ctx, &val); err != nil {
+			return err
 		}
-
-		mod.ephemeralListeners.Delete(port)
-	}()
-
-	return nil
-}
-
-func (mod *Module) CloseEphemeralListener(port astral.Uint16) error {
-	listener, ok := mod.ephemeralListeners.Get(port)
-	if !ok {
-		return kcp.ErrEphemeralListenerNotExist
 	}
 
-	listener.Close()
-	mod.ephemeralListeners.Delete(port)
+	if mod.config.Listen != nil {
+		val := astral.Bool(*mod.config.Listen)
+		if err := mod.settings.Listen.Set(ctx, &val); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
