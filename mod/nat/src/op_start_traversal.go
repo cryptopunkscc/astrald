@@ -5,12 +5,12 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/ops"
-	"github.com/cryptopunkscc/astrald/mod/ip"
+	"github.com/cryptopunkscc/astrald/mod/nat"
 	natclient "github.com/cryptopunkscc/astrald/mod/nat/client"
 )
 
 type opStartTraversal struct {
-	Target string `query:"optional"` // if not empty, act as initiator
+	Target string `query:"optional"`
 	Out    string `query:"optional"`
 }
 
@@ -18,61 +18,98 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	ips := mod.IP.PublicIPCandidates()
-	if len(ips) == 0 {
-		return ch.Send(astral.NewError("no suitable IP addresses found"))
-	}
-
-	// Filter out IPv6 addresses, keep only IPv4
-	var ipv4s []ip.IP
-	for _, addr := range ips {
-		if addr.IsIPv4() {
-			ipv4s = append(ipv4s, addr)
-		}
-	}
-
-	ips = ipv4s
-	if len(ips) == 0 {
-		return ch.Send(astral.NewError("no suitable IPv4 addresses found"))
+	localIP, err := mod.getLocalIPv4()
+	if err != nil {
+		return ch.Send(astral.Err(err))
 	}
 
 	if args.Target != "" {
-		// TraversalRoleInitiator logic
+		// Initiator flow
 		target, err := mod.Dir.ResolveIdentity(args.Target)
 		if err != nil {
-			return q.RejectWithCode(4)
+			return ch.Send(astral.Err(err))
 		}
 
 		mod.log.Log("starting traversal as initiator to %v", target)
+		puncher, err := mod.newPuncher(nil)
+		if err != nil {
+			return ch.Send(astral.Err(err))
+		}
+		defer puncher.Close()
+
 		client := natclient.New(target, astrald.Default())
-		peerCh, err := client.StartTraversalCh(ctx, args.Out)
+		pair, err := client.StartTraversal(ctx, target, localIP, puncher)
 		if err != nil {
-			return ch.Send(astral.NewError(err.Error()))
+			mod.log.Error("NAT traversal failed with %v: %v", target, err)
+			return ch.Send(astral.Err(err))
 		}
 
-		defer peerCh.Close()
-
-		pair, err := mod.Traverse(ctx, peerCh, TraversalRoleInitiator, target, ips[0])
-		if err != nil {
-			return ch.Send(astral.NewError(err.Error()))
-		}
-
-		mod.addTraversedPair(pair, true)
-
-		if err = ch.Send(&pair); err != nil {
-			return ch.Send(astral.NewError(err.Error()))
-		}
-
-		return nil
+		mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", target, pair.PeerA.Endpoint, pair.PeerB.Endpoint)
+		mod.addTraversedPair(*pair, true)
+		return ch.Send(pair)
 	}
 
-	mod.log.Log("starting traversal as responder with %v", q.Caller())
+	// Participant flow
+	mod.log.Log("starting traversal as participant with %v", q.Caller())
+	traversal := nat.NewTraversal(ctx.Identity(), q.Caller(), localIP)
 
-	pair, err := mod.Traverse(ctx, ch, TraversalRoleParticipant, q.Caller(), ips[0])
+	err = ch.Switch(
+		traversal.ExpectSignal(nat.PunchSignalTypeOffer, traversal.OnOffer),
+		channel.PassErrors,
+		channel.WithContext(ctx),
+	)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return err
 	}
 
-	mod.addTraversedPair(pair, false)
+	puncher, err := mod.newPuncher(traversal.Session)
+	if err != nil {
+		return err
+	}
+	defer puncher.Close()
+
+	localPort, err := puncher.Open()
+	if err != nil {
+		return err
+	}
+	traversal.LocalPort = astral.Uint16(localPort)
+
+	if err := ch.Send(traversal.AnswerSignal()); err != nil {
+		return err
+	}
+
+	err = ch.Switch(
+		traversal.ExpectSignal(nat.PunchSignalTypeReady, nil),
+		channel.PassErrors,
+		channel.WithContext(ctx),
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := ch.Send(traversal.GoSignal()); err != nil {
+		return err
+	}
+
+	result, err := puncher.HolePunch(ctx, traversal.PeerIP, int(traversal.PeerPort))
+	if err != nil {
+		return err
+	}
+
+	traversal.SetPunchResult(result)
+	if err := ch.Send(traversal.ResultSignal()); err != nil {
+		return err
+	}
+	err = ch.Switch(
+		traversal.ExpectSignal(nat.PunchSignalTypeResult, traversal.OnResult),
+		channel.PassErrors,
+		channel.WithContext(ctx),
+	)
+	if err != nil {
+		return err
+	}
+
+	mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", q.Caller(), traversal.Pair.PeerA.Endpoint, traversal.Pair.PeerB.Endpoint)
+	mod.addTraversedPair(traversal.Pair, false)
 	return nil
 }

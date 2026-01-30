@@ -2,31 +2,41 @@ package nat
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
 const (
-	PairHandoverSignalTypeLock     = "lock"
-	PairHandoverSignalTypeLockOk   = "lock_ok"
-	PairHandoverSignalTypeLockBusy = "lock_busy"
-	PairHandoverSignalTypeTake     = "take"
-	PairHandoverSignalTypeTakeOk   = "take_ok"
-	PairHandoverSignalTypeTakeErr  = "take_err"
+	PairTakeSignalTypeLock   = "lock"
+	PairTakeSignalTypeLocked = "locked"
+	PairTakeSignalTypeTake   = "take"
+	PairTakeSignalTypeTaken  = "taken"
 )
 
 type PairTakeSignal struct {
 	Signal astral.String8
 	Pair   astral.Nonce
+	Ok     bool
+	Error  astral.String8
 }
 
 func (p PairTakeSignal) ObjectType() string { return "mod.nat.pair_take_signal" }
 
-func (p PairTakeSignal) WriteTo(w io.Writer) (int64, error) { return astral.Struct(p).WriteTo(w) }
+func (p PairTakeSignal) Err() error {
+	if p.Error == "" {
+		return errors.New("unknown error")
+	}
+	return errors.New(string(p.Error))
+}
 
-func (p *PairTakeSignal) ReadFrom(r io.Reader) (int64, error) {
-	return astral.Struct(p).ReadFrom(r)
+func (e PairTakeSignal) WriteTo(w io.Writer) (n int64, err error) {
+	return astral.Objectify(&e).WriteTo(w)
+}
+
+func (e *PairTakeSignal) ReadFrom(r io.Reader) (n int64, err error) {
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 func (p PairTakeSignal) MarshalJSON() ([]byte, error) {
