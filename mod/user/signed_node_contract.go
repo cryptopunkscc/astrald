@@ -7,13 +7,13 @@ import (
 	"io"
 )
 
-var _ astral.Object = &SignedNodeContract{}
-
 type SignedNodeContract struct {
 	*NodeContract
 	UserSig *crypto.Signature // asn1 or bip137
 	NodeSig *crypto.Signature // always asn1
 }
+
+var _ astral.Object = &SignedNodeContract{}
 
 func (SignedNodeContract) ObjectType() string {
 	return "mod.user.signed_node_contract"

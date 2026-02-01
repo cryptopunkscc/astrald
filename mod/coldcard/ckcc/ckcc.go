@@ -3,6 +3,7 @@ package ckcc
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"os/exec"
 	"strings"
 
@@ -77,7 +78,7 @@ func (c *Device) Msg(msg string, path string) (string, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		return "", err
+		return "", errors.New(strings.TrimSpace(stderr.String()))
 	}
 
 	return strings.TrimSpace(stdout.String()), nil

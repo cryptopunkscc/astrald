@@ -32,10 +32,10 @@ func (NilEngine) VerifyHashSignature(*PublicKey, *Signature, []byte) error {
 	return errors.ErrUnsupported
 }
 
-func (NilEngine) MessageSigner(*PublicKey, string) (MessageSigner, error) {
+func (NilEngine) TextSigner(*PublicKey, string) (TextSigner, error) {
 	return nil, errors.ErrUnsupported
 }
 
-func (NilEngine) VerifyMessageSignature(*PublicKey, *Signature, string) error {
+func (NilEngine) VerifyTextSignature(*PublicKey, *Signature, string) error {
 	return errors.ErrUnsupported
 }

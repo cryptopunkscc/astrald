@@ -26,30 +26,25 @@ type Module interface {
 	// VerifyHashSignature verifies the signature of the given hash using the given public key
 	VerifyHashSignature(key *PublicKey, sig *Signature, hash []byte) error
 
-	// MessageSigner returns a message signer for the given public key and scheme
-	MessageSigner(key *PublicKey, scheme string) (MessageSigner, error)
+	// TextSigner returns a message signer for the given public key and scheme
+	TextSigner(key *PublicKey, scheme string) (TextSigner, error)
 
-	// VerifyMessageSignature verifies the signature of the given message using the given public key
-	VerifyMessageSignature(key *PublicKey, sig *Signature, msg string) error
+	// VerifyTextSignature verifies a text signature
+	VerifyTextSignature(signer *PublicKey, sig *Signature, text string) error
+
+	// NodeSigner returns a hash signer for the local node
+	NodeSigner() HashSigner
 
 	// AddEngine adds a cryptographic engine to the module
 	AddEngine(engine Engine)
 
-	// SignContractHash signs the hash of the given contract with ASN1
-	SignContractHash(*astral.Context, HashableContract, *PublicKey) (*Signature, error)
+	// SignObject signs the hash of the given contract with ASN1
+	SignObject(*astral.Context, SignableObject, *PublicKey) (*Signature, error)
 
-	// SignContractText signs the text of the given contract with BIP-137
-	SignContractText(*astral.Context, TextableContract, *PublicKey) (*Signature, error)
-}
+	// SignTextObject signs the text of the given contract with BIP-137
+	SignTextObject(*astral.Context, SignableTextObject, *PublicKey) (*Signature, error)
 
-// HashableContract is an interface for contracts that can be signed as a hash
-type HashableContract interface {
-	astral.Object
-	ContractHash() []byte
-}
+	VerifyObjectSignature(*PublicKey, *Signature, SignableObject) error
 
-// TextableContract is an interface for contracts that can be signed as a text message
-type TextableContract interface {
-	astral.Object
-	ContractText() string
+	VerityTextObjectSignature(*PublicKey, *Signature, SignableTextObject) error
 }

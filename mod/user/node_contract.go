@@ -19,8 +19,7 @@ type NodeContract struct {
 const DefaultNodeContractLength = 365 * 24 * time.Hour
 
 var _ astral.Object = &NodeContract{}
-var _ crypto.HashableContract = &NodeContract{}
-var _ crypto.TextableContract = &NodeContract{}
+var _ crypto.SignableTextObject = &NodeContract{}
 
 func NewNodeContract(userID, nodeID *astral.Identity) *NodeContract {
 	return &NodeContract{
@@ -43,18 +42,17 @@ func (c *NodeContract) ActiveAt(t time.Time) bool {
 	return t.After(c.StartsAt.Time()) && t.Before(c.ExpiresAt.Time())
 }
 
-func (c NodeContract) ContractText() string {
+func (c *NodeContract) SignableText() string {
 	return fmt.Sprintf(
-		"Node:%s User:%s From:%s To:%s",
+		"Node %s represents %s until %s",
 		c.NodeID.String(),
 		c.UserID.String(),
-		c.StartsAt,
-		c.ExpiresAt,
+		c.ExpiresAt.Time().Format("2006-01-02 15:04:05"),
 	)
 }
 
-func (c NodeContract) ContractHash() []byte {
-	id, err := astral.ResolveObjectID(&c)
+func (c *NodeContract) SignableHash() []byte {
+	id, err := astral.ResolveObjectID(c)
 	if err != nil {
 		return nil
 	}

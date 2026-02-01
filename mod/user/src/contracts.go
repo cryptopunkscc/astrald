@@ -40,6 +40,14 @@ func (mod *Module) ActiveContract() *user.SignedNodeContract {
 	return mod.activeContract
 }
 
+func (mod *Module) UserID() *astral.Identity {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return nil
+	}
+	return ac.UserID
+}
+
 func (mod *Module) setActiveContract(signed *user.SignedNodeContract) error {
 	// viability checks
 	switch {
@@ -209,14 +217,14 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 	err = mod.Crypto.VerifyHashSignature(
 		secp256k1.FromIdentity(signed.NodeID),
 		signed.NodeSig,
-		signed.ContractHash(),
+		signed.SignableHash(),
 	)
 	if err != nil {
 		return
 	}
 
 	// sign the contract with user's key
-	signed.UserSig, err = mod.Crypto.SignContractText(mod.ctx, contract, secp256k1.FromIdentity(contract.UserID))
+	signed.UserSig, err = mod.Crypto.SignTextObject(mod.ctx, contract, secp256k1.FromIdentity(contract.UserID))
 	if err != nil {
 		return nil, err
 	}

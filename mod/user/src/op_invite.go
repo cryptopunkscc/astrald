@@ -56,7 +56,7 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs
 	}
 
 	// sign the contract
-	nodeSig, err := signer.SignHash(ctx, contract.ContractHash())
+	nodeSig, err := signer.SignHash(ctx, contract.SignableHash())
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}

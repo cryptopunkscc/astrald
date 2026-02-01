@@ -1,7 +1,6 @@
 package user
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -52,15 +51,15 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) SignNodeContract(ctx context.Context, contract *user.NodeContract) (*user.SignedNodeContract, error) {
+func (mod *Module) SignNodeContract(ctx *astral.Context, contract *user.NodeContract) (*user.SignedNodeContract, error) {
 	// node signs the hash of the contract
-	nodeSig, err := mod.Crypto.SignContractHash(mod.ctx, contract, secp256k1.FromIdentity(contract.NodeID))
+	nodeSig, err := mod.Crypto.SignObject(ctx, contract, secp256k1.FromIdentity(contract.NodeID))
 	if err != nil {
 		return nil, fmt.Errorf("sign as node: %w", err)
 	}
 
 	// user signs the text of the contract
-	userSig, err := mod.Crypto.SignContractText(mod.ctx, contract, secp256k1.FromIdentity(contract.UserID))
+	userSig, err := mod.Crypto.SignTextObject(ctx, contract, secp256k1.FromIdentity(contract.UserID))
 	if err != nil {
 		return nil, fmt.Errorf("sign as user: %w", err)
 	}
@@ -72,51 +71,51 @@ func (mod *Module) SignNodeContract(ctx context.Context, contract *user.NodeCont
 	}, nil
 }
 
-func (mod *Module) VerifySignedNodeContract(contract *user.SignedNodeContract) error {
+func (mod *Module) VerifySignedNodeContract(signed *user.SignedNodeContract) error {
 	switch {
-	case contract.UserSig == nil:
+	case signed.UserSig == nil:
 		return errors.New("user signature is missing")
-	case contract.NodeSig == nil:
+	case signed.NodeSig == nil:
 		return errors.New("node signature is missing")
-	case contract.NodeSig.Scheme != crypto.SchemeASN1:
+	case signed.NodeSig.Scheme != crypto.SchemeASN1:
 		return errors.New("node signature scheme is not supported")
 	case !slices.Contains([]string{
 		crypto.SchemeASN1,
 		crypto.SchemeBIP137,
-	}, contract.UserSig.Scheme.String()):
+	}, signed.UserSig.Scheme.String()):
 		return errors.New("user signature scheme is not supported")
 	}
 
 	// verify node signature (always hash)
-	err := mod.Crypto.VerifyHashSignature(
-		secp256k1.FromIdentity(contract.NodeID),
-		contract.NodeSig,
-		contract.ContractHash(),
+	err := mod.Crypto.VerifyObjectSignature(
+		secp256k1.FromIdentity(signed.NodeID),
+		signed.NodeSig,
+		signed.NodeContract,
 	)
 	if err != nil {
 		return fmt.Errorf("node sig verification: %w", err)
 	}
 
 	// verify user signature
-	switch contract.UserSig.Scheme {
+	switch signed.UserSig.Scheme {
 	case crypto.SchemeASN1:
 		// verify user signature via hash
-		err = mod.Crypto.VerifyHashSignature(
-			secp256k1.FromIdentity(contract.UserID),
-			contract.UserSig,
-			contract.ContractHash(),
+		err = mod.Crypto.VerifyObjectSignature(
+			secp256k1.FromIdentity(signed.UserID),
+			signed.UserSig,
+			signed.NodeContract,
 		)
-	case crypto.SchemeBIP137:
-		text := fmt.Sprintf("[%s] %s", contract.NodeContract.ObjectType(), contract.ContractText())
 
+	case crypto.SchemeBIP137:
 		// verify user signature via text
-		err = mod.Crypto.VerifyMessageSignature(
-			secp256k1.FromIdentity(contract.UserID),
-			contract.UserSig,
-			text,
+		err = mod.Crypto.VerityTextObjectSignature(
+			secp256k1.FromIdentity(signed.UserID),
+			signed.UserSig,
+			signed.NodeContract,
 		)
+
 	default:
-		err = fmt.Errorf("signature scheme %s is not supported", contract.UserSig.Scheme)
+		err = fmt.Errorf("signature scheme %s is not supported", signed.UserSig.Scheme)
 	}
 	if err != nil {
 		return err

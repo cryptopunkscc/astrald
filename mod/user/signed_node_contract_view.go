@@ -15,8 +15,8 @@ func (view SignedNodeContractView) Render() string {
 		"Signed node contract (%v@%v) from %v to %v",
 		view.UserID,
 		view.NodeID,
-		log2.NewTimeView(&view.StartsAt, "2006-01-02 15:04:05.000"),
-		log2.NewTimeView(&view.ExpiresAt, "2006-01-02 15:04:05.000"),
+		log2.NewTimeViewWithStyle(&view.StartsAt, "2006-01-02 15:04:05.000", log2.DarkGreenText),
+		log2.NewTimeViewWithStyle(&view.ExpiresAt, "2006-01-02 15:04:05.000", log2.DarkGreenText),
 	)...)
 }
 

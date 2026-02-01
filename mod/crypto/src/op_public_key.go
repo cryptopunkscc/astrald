@@ -1,8 +1,6 @@
 package crypto
 
 import (
-	"io"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
@@ -19,20 +17,10 @@ func (mod *Module) OpPublicKey(ctx *astral.Context, q *ops.Query, args opPublicK
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	err = ch.Collect(func(msg astral.Object) (err error) {
-		switch msg := msg.(type) {
-		case *crypto.PrivateKey:
-			err = ch.Send(secp256k1.PublicKey(msg))
-
-		case *astral.EOS:
-			return io.EOF
-
-		default:
-			err = ch.Send(astral.NewErrUnexpectedObject(msg))
-		}
-
-		return
-	})
-
-	return err
+	return ch.Switch(
+		func(key *crypto.PrivateKey) error {
+			return ch.Send(secp256k1.PublicKey(key))
+		},
+		channel.StopOnEOS,
+	)
 }

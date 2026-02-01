@@ -66,6 +66,7 @@ func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeCon
 	if !ok {
 		return user.ErrNodeCannotRevokeContract
 	}
+
 	// verify user signature
 	err := errors.New("not implemented") //TODO: reimplement
 	if err != nil {

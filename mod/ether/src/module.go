@@ -2,7 +2,6 @@ package ether
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"net"
@@ -13,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/ether"
 	"github.com/cryptopunkscc/astrald/mod/ip"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -28,9 +28,13 @@ type Module struct {
 	log    *log.Logger
 	assets resources.Resources
 	socket *net.UDPConn
+
+	ctx *astral.Context
 }
 
 func (mod *Module) Run(ctx *astral.Context) (err error) {
+	mod.ctx = ctx
+
 	go mod.broadcastReceiver(ctx)
 
 	<-ctx.Done()
@@ -118,9 +122,15 @@ func (mod *Module) readBroadcast() (*ether.SignedBroadcast, *net.UDPAddr, error)
 			continue
 		}
 
+		// check if the signature is present
+		if signed.Signature == nil {
+			continue
+		}
+
 		// verify signature
-		if !ecdsa.VerifyASN1(signed.Source.PublicKey().ToECDSA(), signed.Hash(), signed.Signature) {
-			return nil, nil, fmt.Errorf("invalid object signature from %s", srcAddr)
+		err = mod.Crypto.VerifyHashSignature(secp256k1.FromIdentity(signed.Source), signed.Signature, signed.Hash())
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid broadcast signature from %s", srcAddr)
 		}
 
 		return &signed, srcAddr, nil
@@ -196,14 +206,9 @@ func (mod *Module) makePacket(object astral.Object, source *astral.Identity) (da
 		},
 	}
 
-	//var hash = signed.Hash()
+	var hash = signed.Hash()
 
-	signed.Signature, err = nil, errors.New("not implemented") //TODO: reimplement
-	if err != nil {
-		return
-	}
-
-	err = errors.New("not implemented") //TODO: reimplement
+	signed.Signature, err = mod.Crypto.NodeSigner().SignHash(mod.ctx, hash)
 	if err != nil {
 		return
 	}

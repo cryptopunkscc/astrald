@@ -14,9 +14,9 @@ type MessageSigner struct {
 	compressed bool
 }
 
-var _ crypto.MessageSigner = &MessageSigner{}
+var _ crypto.TextSigner = &MessageSigner{}
 
-func (m MessageSigner) SignMessage(ctx *astral.Context, msg string) (*crypto.Signature, error) {
+func (m MessageSigner) SignText(ctx *astral.Context, msg string) (*crypto.Signature, error) {
 	hash := hashBitcoinMessage(msg)
 	sig := ecdsa.SignCompact(m.key, hash, m.compressed)
 

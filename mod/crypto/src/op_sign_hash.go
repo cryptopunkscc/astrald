@@ -11,7 +11,7 @@ import (
 )
 
 type opSignHashArgs struct {
-	Hash   string
+	Hash   string `query:"optional"`
 	Key    string `query:"optional"`
 	Scheme string `query:"optional"`
 	In     string `query:"optional"`
@@ -22,13 +22,14 @@ func (mod *Module) OpSignHash(ctx *astral.Context, q *ops.Query, args opSignHash
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
+	// set defaults
 	if args.Scheme == "" {
 		args.Scheme = "asn1"
 	}
 
-	signerKey := secp256k1.FromIdentity(q.Caller())
+	var signerKey = secp256k1.FromIdentity(q.Caller()) // check key argument
 
-	// check key argument
+	// parse key argument
 	if len(args.Key) > 0 {
 		signerKey = &crypto.PublicKey{}
 		err = signerKey.UnmarshalText([]byte(args.Key))
@@ -37,20 +38,37 @@ func (mod *Module) OpSignHash(ctx *astral.Context, q *ops.Query, args opSignHash
 		}
 	}
 
-	hash, err := hex.DecodeString(args.Hash)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	var signAndSend = func(hash []byte) error {
+		signer, err := mod.HashSigner(signerKey, args.Scheme)
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
+		}
+
+		sig, err := signer.SignHash(ctx, hash)
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
+		}
+
+		return ch.Send(sig)
 	}
 
-	signer, err := mod.HashSigner(signerKey, args.Scheme)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	if len(args.Hash) > 0 {
+		hash, err := hex.DecodeString(args.Hash)
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
+		}
+
+		return signAndSend(hash)
 	}
 
-	sig, err := signer.SignHash(ctx, hash)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	return ch.Send(sig)
+	return ch.Switch(
+		func(key *crypto.PublicKey) error {
+			signerKey = key
+			return ch.Send(&astral.Ack{})
+		},
+		func(hash *crypto.Hash) error {
+			return signAndSend(*hash)
+		},
+		channel.StopOnEOS,
+	)
 }

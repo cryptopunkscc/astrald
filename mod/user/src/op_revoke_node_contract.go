@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -58,6 +60,10 @@ func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q *ops.Query, args 
 	var revoker *user.Revoker
 	switch args.RevokeAs {
 	case "user":
+		userKey := secp256k1.FromIdentity(nodeContract.UserID)
+
+		mod.Crypto.HashSigner(userKey, crypto.SchemeASN1)
+
 		userSig, err := []byte{}, errors.New("not implemented") // TODO: reimplement
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
