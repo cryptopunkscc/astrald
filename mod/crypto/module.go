@@ -38,13 +38,21 @@ type Module interface {
 	// AddEngine adds a cryptographic engine to the module
 	AddEngine(engine Engine)
 
-	// SignObject signs the hash of the given contract with ASN1
-	SignObject(*astral.Context, SignableObject, *PublicKey) (*Signature, error)
+	// ObjectSigner signs the hash of the given contract with ASN1
+	ObjectSigner(*PublicKey) (ObjectSigner, error)
 
-	// SignTextObject signs the text of the given contract with BIP-137
-	SignTextObject(*astral.Context, SignableTextObject, *PublicKey) (*Signature, error)
+	// TextObjectSigner signs the text of the given contract with BIP-137
+	TextObjectSigner(*PublicKey) (TextObjectSigner, error)
 
 	VerifyObjectSignature(*PublicKey, *Signature, SignableObject) error
 
 	VerityTextObjectSignature(*PublicKey, *Signature, SignableTextObject) error
+}
+
+type ObjectSigner interface {
+	SignObject(*astral.Context, SignableObject) (*Signature, error)
+}
+
+type TextObjectSigner interface {
+	SignTextObject(*astral.Context, SignableTextObject) (*Signature, error)
 }

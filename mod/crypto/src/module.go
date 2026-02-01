@@ -209,29 +209,24 @@ func (mod *Module) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signat
 	return crypto.ErrUnsupported
 }
 
-func (mod *Module) SignObject(ctx *astral.Context, contract crypto.SignableObject, key *crypto.PublicKey) (*crypto.Signature, error) {
-	signer, err := mod.HashSigner(key, crypto.SchemeASN1)
-	if err != nil {
-		return nil, err
-	}
-
-	return signer.SignHash(ctx, contract.SignableHash())
+func (mod *Module) ObjectSigner(key *crypto.PublicKey) (crypto.ObjectSigner, error) {
+	return &ObjectSigner{
+		mod:    mod,
+		scheme: crypto.SchemeASN1,
+		key:    key,
+	}, nil
 }
 
 func (mod *Module) VerifyObjectSignature(key *crypto.PublicKey, signature *crypto.Signature, object crypto.SignableObject) error {
 	return mod.VerifyHashSignature(key, signature, object.SignableHash())
 }
 
-func (mod *Module) SignTextObject(ctx *astral.Context, object crypto.SignableTextObject, key *crypto.PublicKey) (*crypto.Signature, error) {
-	signer, err := mod.TextSigner(key, crypto.SchemeBIP137)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println(mod.formatSignableText(object))
-	fmt.Println(len(mod.formatSignableText(object)))
-
-	return signer.SignText(ctx, mod.formatSignableText(object))
+func (mod *Module) TextObjectSigner(key *crypto.PublicKey) (crypto.TextObjectSigner, error) {
+	return &TextObjectSigner{
+		mod:    mod,
+		scheme: crypto.SchemeBIP137,
+		key:    key,
+	}, nil
 }
 
 func (mod *Module) VerityTextObjectSignature(key *crypto.PublicKey, signature *crypto.Signature, object crypto.SignableTextObject) error {

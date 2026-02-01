@@ -53,13 +53,23 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 func (mod *Module) SignNodeContract(ctx *astral.Context, contract *user.NodeContract) (*user.SignedNodeContract, error) {
 	// node signs the hash of the contract
-	nodeSig, err := mod.Crypto.SignObject(ctx, contract, secp256k1.FromIdentity(contract.NodeID))
+	nodeSigner, err := mod.Crypto.ObjectSigner(secp256k1.FromIdentity(contract.NodeID))
+	if err != nil {
+		return nil, fmt.Errorf("sign as node: %w", err)
+	}
+
+	nodeSig, err := nodeSigner.SignObject(ctx, contract)
 	if err != nil {
 		return nil, fmt.Errorf("sign as node: %w", err)
 	}
 
 	// user signs the text of the contract
-	userSig, err := mod.Crypto.SignTextObject(ctx, contract, secp256k1.FromIdentity(contract.UserID))
+	userSigner, err := mod.Crypto.TextObjectSigner(secp256k1.FromIdentity(contract.UserID))
+	if err != nil {
+		return nil, fmt.Errorf("sign as user: %w", err)
+	}
+
+	userSig, err := userSigner.SignTextObject(ctx, contract)
 	if err != nil {
 		return nil, fmt.Errorf("sign as user: %w", err)
 	}
@@ -124,17 +134,13 @@ func (mod *Module) VerifySignedNodeContract(signed *user.SignedNodeContract) err
 	return nil
 }
 
-// Identity returns the identity of the node's user (can be nil)
-func (mod *Module) Identity() *astral.Identity {
-	ac := mod.ActiveContract()
-	if ac != nil && ac.NodeContract != nil {
-		return ac.UserID
-	}
-	return nil
-}
-
 func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
+}
+
+func (mod *Module) TextObjectSigner() crypto.TextObjectSigner {
+	signer, _ := mod.Crypto.TextObjectSigner(secp256k1.FromIdentity(mod.Identity()))
+	return signer
 }
 
 func (mod *Module) String() string {

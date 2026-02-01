@@ -40,7 +40,7 @@ func (mod *Module) ActiveContract() *user.SignedNodeContract {
 	return mod.activeContract
 }
 
-func (mod *Module) UserID() *astral.Identity {
+func (mod *Module) Identity() *astral.Identity {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return nil
@@ -224,7 +224,12 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 	}
 
 	// sign the contract with user's key
-	signed.UserSig, err = mod.Crypto.SignTextObject(mod.ctx, contract, secp256k1.FromIdentity(contract.UserID))
+	userSigner, err := mod.Crypto.TextObjectSigner(secp256k1.FromIdentity(contract.UserID))
+	if err != nil {
+		return nil, err
+	}
+
+	signed.UserSig, err = userSigner.SignTextObject(ctx, contract)
 	if err != nil {
 		return nil, err
 	}

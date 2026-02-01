@@ -21,7 +21,7 @@ func (mod *Module) OpNewNodeContract(ctx *astral.Context, query *ops.Query, args
 	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	var userID = mod.UserID()
+	var userID = mod.Identity()
 	if len(args.User) > 0 {
 		userID, err = mod.Dir.ResolveIdentity(args.User)
 		if err != nil {
