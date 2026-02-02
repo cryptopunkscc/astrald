@@ -37,6 +37,7 @@ func (mod *Module) NewMaintainLinkAction(target *astral.
 func (a *MaintainLinkAction) String() string { return "nodes.maintain_link" }
 
 func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
+	a.mod.log.Log("starting to maintain link to %v", a.Target)
 	retry, err := sig.NewRetry(time.Second, 15*time.Minute, 2)
 	if err != nil {
 		return err
