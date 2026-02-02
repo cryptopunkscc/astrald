@@ -87,7 +87,7 @@ func (e *Endpoint) Network() string {
 // Address returns a human-readable representation of the address
 func (e *Endpoint) Address() string {
 	if e == nil || e.IsZero() {
-		return "none"
+		return "unknown"
 	}
 
 	return fmt.Sprintf("%s:%d", e.Digest, e.Port)

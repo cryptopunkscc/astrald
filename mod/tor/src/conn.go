@@ -1,9 +1,10 @@
 package tor
 
 import (
+	"net"
+
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tor"
-	"net"
 )
 
 // Type check
@@ -18,7 +19,7 @@ type Conn struct {
 
 // LocalEndpoint returns an empty address, since there is no local endpoint in Driver
 func (conn *Conn) LocalEndpoint() exonet.Endpoint {
-	return nil
+	return &tor.Endpoint{}
 }
 
 // RemoteEndpoint returns the address of the remote party

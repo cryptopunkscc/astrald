@@ -3,13 +3,14 @@ package tor
 import (
 	"context"
 	"encoding/base64"
+	"io"
+	"net"
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/tor"
 	"github.com/cryptopunkscc/astrald/mod/tor/tc"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
-	"net"
-	"strings"
 )
 
 type Server struct {
@@ -53,8 +54,7 @@ func (srv *Server) Run(ctx *astral.Context) error {
 			return err
 		}
 
-		var conn = newConn(rawConn, nil, false)
-
+		var conn = newConn(rawConn, &tor.Endpoint{}, false)
 		go func() {
 			err := srv.Nodes.Accept(ctx, conn)
 			if err != nil {
