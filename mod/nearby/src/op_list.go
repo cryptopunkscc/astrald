@@ -26,5 +26,5 @@ func (mod *Module) OpList(ctx *astral.Context, q *ops.Query, args opListArgs) (e
 		}
 	}
 
-	return
+	return ch.Send(&astral.EOS{})
 }
