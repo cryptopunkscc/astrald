@@ -1,6 +1,7 @@
 package kcp
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -100,4 +101,12 @@ func (s *Server) Close() error {
 
 	close(s.closedCh)
 	return nil
+}
+
+func (mod *Module) startServer(ctx context.Context) {
+	listenPort := astral.Uint16(mod.config.ListenPort)
+	srv := NewServer(mod, listenPort, mod.acceptAll)
+	if err := srv.Run(astral.NewContext(ctx)); err != nil {
+		mod.log.Errorv(1, "server error: %v", err)
+	}
 }

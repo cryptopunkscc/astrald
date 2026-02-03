@@ -156,3 +156,12 @@ func (l listener) Close() error {
 
 	return l.ctl.DelOnion(l.onion.ServiceID)
 }
+
+func (mod *Module) startServer(ctx context.Context) {
+	if mod.torServer == nil {
+		return
+	}
+	if err := mod.torServer.Run(astral.NewContext(ctx)); err != nil {
+		mod.log.Errorv(1, "server error: %v", err)
+	}
+}

@@ -1,6 +1,7 @@
 package tcp
 
 import (
+	"context"
 	"net"
 	"strconv"
 
@@ -16,7 +17,7 @@ func NewServer(module *Module) *Server {
 	return &Server{Module: module}
 }
 
-func (srv *Server) Run(ctx *astral.Context) error {
+func (srv *Server) Run(ctx context.Context) error {
 	// start the listener
 	var addrStr = ":" + strconv.Itoa(srv.config.ListenPort)
 
@@ -52,5 +53,12 @@ func (srv *Server) Run(ctx *astral.Context) error {
 				return
 			}
 		}()
+	}
+}
+
+func (mod *Module) startServer(ctx context.Context) {
+	srv := NewServer(mod)
+	if err := srv.Run(astral.NewContext(ctx)); err != nil {
+		mod.log.Errorv(1, "server error: %v", err)
 	}
 }

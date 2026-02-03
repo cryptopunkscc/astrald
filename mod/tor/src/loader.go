@@ -2,13 +2,14 @@ package tor
 
 import (
 	"errors"
+	"net"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/tor"
 	"golang.org/x/net/proxy"
-	"net"
 )
 
 type Loader struct{}
@@ -23,7 +24,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, logger *log.Logger) (
 
 	_ = assets.LoadYAML(tor.ModuleName, &mod.config)
 
-	mod.server = NewServer(mod)
+	mod.torServer = NewServer(mod)
 
 	var baseDialer = &net.Dialer{Timeout: mod.config.DialTimeout}
 
