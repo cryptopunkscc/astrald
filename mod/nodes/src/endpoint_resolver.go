@@ -32,6 +32,33 @@ func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity
 	return ch, nil
 }
 
+func (mod *Module) ResolveNetworkEndpoints(ctx *astral.Context, target *astral.Identity, network *string) (_ <-chan exonet.Endpoint, err error) {
+	resolve, err := mod.ResolveEndpoints(ctx, target)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan exonet.Endpoint)
+	go func() {
+		defer close(ch)
+		for e := range resolve {
+			if network != nil {
+				if e.Network() != *network {
+					continue
+				}
+			}
+
+			select {
+			case ch <- e:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return ch, nil
+}
+
 func (mod *Module) runResolver(ctx *astral.Context, r nodes.EndpointResolver, nodeID *astral.Identity, out chan<- exonet.Endpoint) {
 	ch, err := r.ResolveEndpoints(ctx, nodeID)
 	if err != nil {
