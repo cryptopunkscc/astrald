@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -32,20 +33,26 @@ func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity
 	return ch, nil
 }
 
-func (mod *Module) ResolveNetworkEndpoints(ctx *astral.Context, target *astral.Identity, network *string) (_ <-chan exonet.Endpoint, err error) {
+func (mod *Module) ResolveEndpointsFiltered(ctx *astral.Context, target *astral.Identity, o *RetrieveLinkOptions) (_ <-chan exonet.Endpoint, err error) {
 	resolve, err := mod.ResolveEndpoints(ctx, target)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(o.IncludeNetworks) == 0 && len(o.ExcludeNetworks) == 0 {
+		return resolve, nil
 	}
 
 	ch := make(chan exonet.Endpoint)
 	go func() {
 		defer close(ch)
 		for e := range resolve {
-			if network != nil {
-				if e.Network() != *network {
-					continue
-				}
+			net := e.Network()
+			if len(o.ExcludeNetworks) > 0 && slices.Contains(o.ExcludeNetworks, net) {
+				continue
+			}
+			if len(o.IncludeNetworks) > 0 && !slices.Contains(o.IncludeNetworks, net) {
+				continue
 			}
 
 			select {

@@ -28,11 +28,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	if args.Endpoint != "" {
 		split := strings.SplitN(args.Endpoint, ":", 2)
 		if len(split) == 2 {
-			var parseErr error
-			endpoint, parseErr = mod.Exonet.Parse(split[0], split[1])
-			if parseErr != nil {
-				return q.RejectWithCode(3)
-			}
+			endpoint, _ = mod.Exonet.Parse(split[0], split[1])
 		}
 	}
 
@@ -41,8 +37,8 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		network = &args.Net
 	}
 
-	task := mod.NewCreateStreamTask(target, endpoint, network)
-	scheduledTask, err := mod.Scheduler.Schedule(task)
+	action := mod.NewCreateStreamAction(target, endpoint, network)
+	scheduledAction, err := mod.Scheduler.Schedule(action)
 	if err != nil {
 		return q.RejectWithCode(5)
 	}
@@ -51,14 +47,14 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	// Wait for task or context cancellation
+	// Wait for action or context cancellation
 	select {
 	case <-ctx.Done():
 		return q.RejectWithCode(4)
-	case <-scheduledTask.Done():
+	case <-scheduledAction.Done():
 	}
 
-	info, err := task.Result()
+	info, err := action.Result()
 	switch {
 	case err == nil:
 		return ch.Send(info)

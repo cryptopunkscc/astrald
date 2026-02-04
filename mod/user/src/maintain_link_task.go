@@ -12,13 +12,13 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-var _ scheduler.EventReceiver = &MaintainLinkTask{}
-var _ scheduler.Task = &MaintainLinkTask{}
+var _ scheduler.EventReceiver = &MaintainLinkAction{}
+var _ scheduler.Task = &MaintainLinkAction{}
 
-// MaintainLinkTask attempts to maintain a link to a target node indefinitely.
+// MaintainLinkAction attempts to maintain a link to a target node indefinitely.
 // triggers:
 // - ensure_connectivity_action
-type MaintainLinkTask struct {
+type MaintainLinkAction struct {
 	mod            *Module
 	Target         *astral.Identity
 	wake           chan struct{}
@@ -26,17 +26,17 @@ type MaintainLinkTask struct {
 }
 
 func (mod *Module) NewMaintainLinkAction(target *astral.
-	Identity) user.MaintainLinkTask {
-	return &MaintainLinkTask{
+	Identity) user.MaintainLinkAction {
+	return &MaintainLinkAction{
 		mod:    mod,
 		Target: target,
 		wake:   make(chan struct{}, 1),
 	}
 }
 
-func (a *MaintainLinkTask) String() string { return "nodes.maintain_link" }
+func (a *MaintainLinkAction) String() string { return "nodes.maintain_link" }
 
-func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
+func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 	a.mod.log.Log("starting to maintain link to %v", a.Target)
 	retry, err := sig.NewRetry(time.Second, 15*time.Minute, 2)
 	if err != nil {
@@ -61,8 +61,8 @@ func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 			a.mod.log.Log("still trying to reconnect to %v (attempt %v)", a.Target, count)
 		}
 
-		task := a.mod.Nodes.NewEnsureStreamTask(a.Target, nil, nil, false)
-		scheduled, err := a.mod.Scheduler.Schedule(task)
+		action := a.mod.Nodes.NewEnsureStreamAction(a.Target, nil, nil, false)
+		scheduled, err := a.mod.Scheduler.Schedule(action)
 		if err != nil {
 			return err
 		}
@@ -90,7 +90,7 @@ func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 	}
 }
 
-func (a *MaintainLinkTask) ReceiveEvent(e *events.Event) {
+func (a *MaintainLinkAction) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
 	case *nodes.StreamClosedEvent:
 		if !typed.RemoteIdentity.IsEqual(a.Target) || typed.StreamCount != 0 {

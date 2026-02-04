@@ -44,13 +44,12 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 			break
 		}
 
-		err := mod.configureRelay(ctx, q, q.Target)
-		if err != nil {
-			return query.RouteNotFound(mod, err)
+			err = mod.configureRelay(ctx, q, q.Target)
+			if err != nil {
+				return query.RouteNotFound(mod, err)
+			}
+			return mod.peers.RouteQuery(ctx, q, w)
 		}
-
-		// todo: mod.peers.Route query should accept stream
-		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
 	// try relays
@@ -96,24 +95,19 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 
 func (mod *Module) configureRelay(ctx *astral.Context, q *astral.Query, relayID *astral.Identity) error {
 	var caller, target *astral.Identity
+
 	// check if we need to change the caller
 	if !ctx.Identity().IsEqual(q.Caller) {
 		err := mod.sendCallerProof(ctx, q, relayID)
 		if err != nil {
 			return fmt.Errorf("send caller proof: %w", err)
 		}
-
 		caller = q.Caller
 	}
 
 	// check if we need to change the target
 	if !relayID.IsEqual(q.Target) {
 		target = q.Target
-	}
-
-	// if direct connection (not relaying), we're done
-	if relayID.IsEqual(q.Target) {
-		return nil
 	}
 
 	// return if no changes are required
