@@ -28,7 +28,11 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	if args.Endpoint != "" {
 		split := strings.SplitN(args.Endpoint, ":", 2)
 		if len(split) == 2 {
-			endpoint, _ = mod.Exonet.Parse(split[0], split[1])
+			var parseErr error
+			endpoint, parseErr = mod.Exonet.Parse(split[0], split[1])
+			if parseErr != nil {
+				return q.RejectWithCode(3)
+			}
 		}
 	}
 
