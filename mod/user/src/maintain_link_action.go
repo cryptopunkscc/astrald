@@ -61,13 +61,8 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 			a.mod.log.Log("still trying to reconnect to %v (attempt %v)", a.Target, count)
 		}
 
-		resolve, err := a.mod.Nodes.ResolveEndpoints(ctx, a.Target)
-		if err != nil {
-			return nodes.ErrEndpointResolve
-		}
-
-		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target, sig.ChanToArray(resolve))
-		scheduled, err := a.mod.Scheduler.Schedule(createStreamAction)
+		action := a.mod.Nodes.NewEnsureStreamAction(a.Target, nil, nil, false)
+		scheduled, err := a.mod.Scheduler.Schedule(action)
 		if err != nil {
 			return err
 		}

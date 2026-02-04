@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type opNewStreamArgs struct {
@@ -19,47 +18,27 @@ type opNewStreamArgs struct {
 	Out      string `query:"optional"`
 }
 
-// OpNewStream now delegates to a scheduled action and waits for completion.
 func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStreamArgs) (err error) {
 	target, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
 		return q.RejectWithCode(2)
 	}
 
-	var endpoints chan exonet.Endpoint
-
-	switch {
-	case args.Endpoint != "":
+	var endpoint exonet.Endpoint
+	if args.Endpoint != "" {
 		split := strings.SplitN(args.Endpoint, ":", 2)
-		if len(split) != 2 {
-			return q.RejectWithCode(2)
+		if len(split) == 2 {
+			endpoint, _ = mod.Exonet.Parse(split[0], split[1])
 		}
-		endpoint, err := mod.Exonet.Parse(split[0], split[1])
-		if err != nil {
-			return q.RejectWithCode(3)
-		}
-
-		endpoints = make(chan exonet.Endpoint, 1)
-		endpoints <- endpoint
-		close(endpoints)
-	case args.Net != "":
-		endpoints = make(chan exonet.Endpoint, 8)
-		resolve, err := mod.ResolveEndpoints(ctx, target)
-		if err != nil {
-			return q.RejectWithCode(4)
-		}
-
-		go func() {
-			defer close(endpoints)
-			for i := range resolve {
-				if i.Network() == args.Net {
-					endpoints <- i
-				}
-			}
-		}()
 	}
-	createStreamAction := mod.NewCreateStreamAction(target, sig.ChanToArray(endpoints))
-	scheduledAction, err := mod.Scheduler.Schedule(createStreamAction)
+
+	var network *string
+	if args.Net != "" {
+		network = &args.Net
+	}
+
+	action := mod.NewCreateStreamAction(target, endpoint, network)
+	scheduledAction, err := mod.Scheduler.Schedule(action)
 	if err != nil {
 		return q.RejectWithCode(5)
 	}
@@ -68,14 +47,14 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	// Wait for action or context cancllation
+	// Wait for action or context cancellation
 	select {
 	case <-ctx.Done():
 		return q.RejectWithCode(4)
 	case <-scheduledAction.Done():
 	}
 
-	info, err := createStreamAction.Result()
+	info, err := action.Result()
 	switch {
 	case err == nil:
 		return ch.Send(info)

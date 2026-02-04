@@ -32,10 +32,18 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 	}
 
 	// try to link
-	ch, err := mod.ResolveEndpoints(ctx, q.Target)
+	_, err = mod.ResolveEndpoints(ctx, q.Target)
 	if err == nil {
-		_, err = mod.peers.connectAtAny(ctx, q.Target, ch)
-		if err == nil {
+		var linkOpts []RetrieveLinkOption
+		streamFuture := mod.linkPool.RetrieveLink(ctx, q.Target, linkOpts...)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case result := <-streamFuture:
+			if result.Err != nil {
+				return nil, result.Err
+			}
+
 			err = mod.configureRelay(ctx, q, q.Target)
 			if err != nil {
 				return query.RouteNotFound(mod, err)
