@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"math/rand"
 	"slices"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -19,8 +18,9 @@ type LinkPool struct {
 	mod      *Module
 	watchers sig.Set[*streamWatcher]
 
-	// todo: linkers
-	// todo:  streams sig.Set[*Stream]
+	// todo: node linkers
+	// todo: move streams to from peers to link pool
+	// streams sig.Set[*Stream]
 }
 
 func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
@@ -73,31 +73,25 @@ func (pool *LinkPool) RetrieveLink(
 		opt(&o)
 	}
 
-	result := make(chan LinkResult, 1)
 	match := streamMatcher(target, &o)
 	forceNew := o.ForceNew
 
 	if !forceNew {
 		streams := pool.peers.streams.Select(match)
 		if len(streams) > 0 {
-			rand.Shuffle(len(streams), func(i, j int) {
-				streams[i], streams[j] = streams[j], streams[i]
-			})
-
-			result <- LinkResult{Stream: streams[0]}
-			close(result)
-			return result
+			// todo: there could be preferences about which stream network to use etc.
+			return sig.ArrayToChan([]LinkResult{{Stream: streams[0]}})
 		}
 	}
+
+	result := make(chan LinkResult, 1)
 
 	var endpoints = sig.ArrayToChan(o.Endpoints)
 	if len(o.Endpoints) == 0 {
 		endpoints = make(chan exonet.Endpoint)
 		resolved, err := pool.mod.ResolveEndpoints(ctx, target)
 		if err != nil {
-			result <- LinkResult{Err: err}
-			close(result)
-			return result
+			return sig.ArrayToChan([]LinkResult{{Err: err}})
 		}
 
 		endpoints = sig.FilterChan(resolved, endpointFilter(o.IncludeNetworks, o.ExcludeNetworks))
@@ -117,6 +111,7 @@ func (pool *LinkPool) RetrieveLink(
 		defer cancel()
 
 		connectResult := make(chan LinkResult, 1)
+
 		// todo: node linker
 		go func() {
 			stream, err := pool.peers.connectAtAny(connectCtx, target, endpoints)
@@ -135,6 +130,8 @@ func (pool *LinkPool) RetrieveLink(
 
 	return result
 }
+
+// todo: rethink helpers
 
 func streamMatcher(target *astral.Identity, o *RetrieveLinkOptions) func(*Stream) bool {
 	return func(s *Stream) bool {
