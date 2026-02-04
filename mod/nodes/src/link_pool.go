@@ -88,7 +88,6 @@ func (pool *LinkPool) RetrieveLink(
 
 	var endpoints = sig.ArrayToChan(o.Endpoints)
 	if len(o.Endpoints) == 0 {
-		endpoints = make(chan exonet.Endpoint)
 		resolved, err := pool.mod.ResolveEndpoints(ctx, target)
 		if err != nil {
 			return sig.ArrayToChan([]LinkResult{{Err: err}})
