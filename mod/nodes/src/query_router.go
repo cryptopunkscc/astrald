@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -31,25 +32,26 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
-	// try to link
-	_, err = mod.ResolveEndpoints(ctx, q.Target)
-	if err == nil {
-		var linkOpts []RetrieveLinkOption
-		streamFuture := mod.linkPool.RetrieveLink(ctx, q.Target, linkOpts...)
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case result := <-streamFuture:
-			if result.Err != nil {
-				return nil, result.Err
-			}
+	retrieveCtx, cancel := ctx.WithTimeout(120 * time.Second)
+	defer cancel()
 
-			err = mod.configureRelay(ctx, q, q.Target)
-			if err != nil {
-				return query.RouteNotFound(mod, err)
-			}
-			return mod.peers.RouteQuery(ctx, q, w)
+	select {
+	case <-ctx.Done():
+		return query.RouteNotFound(mod, ctx.Err())
+	case result := <-mod.linkPool.RetrieveLink(retrieveCtx, q.Target):
+		if result.Err != nil {
+			mod.log.Error("retrieve link failed: %v", result.Err)
+			break
 		}
+
+		err := mod.configureRelay(ctx, q, q.Target)
+		if err != nil {
+			return query.RouteNotFound(mod, err)
+		}
+
+		// todo: mod.peers.Route query should accept stream
+
+		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
 	// try relays
