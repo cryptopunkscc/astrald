@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -44,12 +43,11 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 			break
 		}
 
-			err = mod.configureRelay(ctx, q, q.Target)
-			if err != nil {
-				return query.RouteNotFound(mod, err)
-			}
-			return mod.peers.RouteQuery(ctx, q, w)
+		err = mod.configureRelay(ctx, q, q.Target)
+		if err != nil {
+			return query.RouteNotFound(mod, err)
 		}
+		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
 	// try relays
