@@ -7,14 +7,15 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 type opNewStreamArgs struct {
-	Target     string
-	Endpoint   string `query:"optional"`
-	Strategies string `query:"optional"`
-	Out        string `query:"optional"`
+	Target   string
+	Net      string `query:"optional"`
+	Endpoint string `query:"optional"`
+	Out      string `query:"optional"`
 }
 
 func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStreamArgs) (err error) {
@@ -23,31 +24,21 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		return q.RejectWithCode(2)
 	}
 
-	var strategies []string
-	if args.Strategies != "" {
-		for _, raw := range strings.Split(args.Strategies, ",") {
-			strategies = append(strategies, strings.TrimSpace(raw))
-		}
-	}
-
-	var task nodes.StreamProducerTask
-	switch {
-	case args.Endpoint != "":
+	var endpoint exonet.Endpoint
+	if args.Endpoint != "" {
 		split := strings.SplitN(args.Endpoint, ":", 2)
-		if len(split) != 2 {
-			return q.RejectWithCode(3)
+		if len(split) == 2 {
+			endpoint, _ = mod.Exonet.Parse(split[0], split[1])
 		}
-
-		endpoint, err := mod.Exonet.Parse(split[0], split[1])
-		if err != nil {
-			return q.RejectWithCode(3)
-		}
-		task = mod.NewCreateStreamTask(target, endpoint)
-	default:
-		task = mod.NewEnsureStreamTask(target, strategies, true)
 	}
 
-	scheduledTask, err := mod.Scheduler.Schedule(task)
+	var network *string
+	if args.Net != "" {
+		network = &args.Net
+	}
+
+	action := mod.NewCreateStreamAction(target, endpoint, network)
+	scheduledAction, err := mod.Scheduler.Schedule(action)
 	if err != nil {
 		return q.RejectWithCode(5)
 	}
@@ -56,14 +47,14 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	// Wait for task or context cancellation
+	// Wait for action or context cancellation
 	select {
 	case <-ctx.Done():
 		return q.RejectWithCode(4)
-	case <-scheduledTask.Done():
+	case <-scheduledAction.Done():
 	}
 
-	info, err := task.Result()
+	info, err := action.Result()
 	switch {
 	case err == nil:
 		return ch.Send(info)
@@ -74,6 +65,6 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	case errors.Is(err, nodes.ErrIdentityResolve), errors.Is(err, nodes.ErrEndpointResolve):
 		return q.RejectWithCode(4)
 	default:
-		return ch.Send(astral.Err(err))
+		return err
 	}
 }

@@ -287,6 +287,8 @@ func (mod *Peers) addStream(
 		return
 	}
 
+	mod.linkPool.processInboundConnection(s)
+
 	// log stream addition
 	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, s.RemoteIdentity(), netName)
 	streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {

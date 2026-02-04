@@ -44,11 +44,12 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 			break
 		}
 
-		err = mod.configureRelay(ctx, q, q.Target)
-		if err != nil {
-			return query.RouteNotFound(mod, err)
+			err = mod.configureRelay(ctx, q, q.Target)
+			if err != nil {
+				return query.RouteNotFound(mod, err)
+			}
+			return mod.peers.RouteQuery(ctx, q, w)
 		}
-		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
 	// try relays
@@ -111,10 +112,6 @@ func (mod *Module) configureRelay(ctx *astral.Context, q *astral.Query, relayID 
 
 	// return if no changes are required
 	if caller == nil && target == nil {
-		return nil
-	}
-
-	if relayID.IsEqual(q.Target) {
 		return nil
 	}
 
