@@ -1,6 +1,8 @@
 package nodes
 
 import (
+	"fmt"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -44,6 +46,19 @@ func (c *CreateStreamAction) Run(ctx *astral.Context) (err error) {
 
 	close(endpoints)
 
+	streamFuture := c.mod.linkPool.RetrieveLink(ctx, c.Target, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case streamLink := <-streamFuture:
+		fmt.Println("got stream link from pool:", streamLink)
+	}
+
+	// todo: remove
 	s, err := c.mod.peers.connectAtAny(ctx, c.Target,
 		endpoints)
 	if err != nil {

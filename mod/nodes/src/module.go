@@ -40,7 +40,8 @@ type Module struct {
 
 	observedEndpoints sig.Map[string, ObservedEndpoint] // key is IP string
 
-	peers *Peers
+	peers    *Peers
+	linkPool *LinkPool
 
 	in chan *Frame
 

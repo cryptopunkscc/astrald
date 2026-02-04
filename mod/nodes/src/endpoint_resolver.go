@@ -1,10 +1,11 @@
 package nodes
 
 import (
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"sync"
 )
 
 func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (_ <-chan exonet.Endpoint, err error) {
@@ -26,6 +27,33 @@ func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity
 		// wait for all resolvers to finish
 		wg.Wait()
 		close(ch)
+	}()
+
+	return ch, nil
+}
+
+func (mod *Module) ResolveNetworkEndpoints(ctx *astral.Context, target *astral.Identity, network *string) (_ <-chan exonet.Endpoint, err error) {
+	resolve, err := mod.ResolveEndpoints(ctx, target)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan exonet.Endpoint)
+	go func() {
+		defer close(ch)
+		for e := range resolve {
+			if network != nil {
+				if e.Network() != *network {
+					continue
+				}
+			}
+
+			select {
+			case ch <- e:
+			case <-ctx.Done():
+				return
+			}
+		}
 	}()
 
 	return ch, nil

@@ -45,7 +45,6 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 	}
 
 	// try relays
-
 	relayValue, ok := q.Extra.Get(nodes.ExtraRelayVia)
 	if !ok {
 		return query.RouteNotFound(mod)
