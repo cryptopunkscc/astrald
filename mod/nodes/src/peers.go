@@ -297,7 +297,7 @@ func (mod *Peers) addStream(
 	})
 
 	if !s.outbound {
-		mod.linkPool.processInboundConnection(s)
+		mod.linkPool.notifyStream(s)
 	}
 
 	mod.Events.Emit(&nodes.StreamCreatedEvent{
