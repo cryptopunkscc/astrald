@@ -17,10 +17,7 @@ type LinkPool struct {
 	peers    *Peers
 	mod      *Module
 	watchers sig.Set[*streamWatcher]
-
-	// todo: node linkers
-	// todo: move streams to from peers to link pool
-	// streams sig.Set[*Stream]
+	linkers  sig.Map[string, *NodeLinker]
 }
 
 func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
@@ -35,7 +32,7 @@ type LinkResult struct {
 	Err    error
 }
 
-func (pool *LinkPool) subscribeInboundStreams(match func(*Stream) bool) *streamWatcher {
+func (pool *LinkPool) subscribe(match func(*Stream) bool) *streamWatcher {
 	w := &streamWatcher{
 		match: match,
 		ch:    make(chan *Stream, 1),
@@ -45,11 +42,11 @@ func (pool *LinkPool) subscribeInboundStreams(match func(*Stream) bool) *streamW
 	return w
 }
 
-func (pool *LinkPool) unsubscribeInboundStreams(w *streamWatcher) {
+func (pool *LinkPool) unsubscribe(w *streamWatcher) {
 	pool.watchers.Remove(w)
 }
 
-func (pool *LinkPool) processInboundConnection(s *Stream) {
+func (pool *LinkPool) notifyStream(s *Stream) {
 	for _, w := range pool.watchers.Clone() {
 		if !w.match(s) {
 			continue
@@ -60,6 +57,25 @@ func (pool *LinkPool) processInboundConnection(s *Stream) {
 		default:
 		}
 	}
+}
+
+func (pool *LinkPool) getOrCreateNodeLinker(target *astral.Identity) *NodeLinker {
+	linker := NewNodeLinker(pool.mod, target)
+
+	existing, ok := pool.linkers.Set(target.String(), linker)
+	if !ok {
+		// already existed, return the existing one
+		return existing
+	}
+
+	// new linker was inserted — start reader goroutine
+	go func() {
+		for s := range linker.Produced() {
+			pool.notifyStream(s)
+		}
+	}()
+
+	return linker
 }
 
 func (pool *LinkPool) RetrieveLink(
@@ -74,63 +90,35 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	match := streamMatcher(target, &o)
-	forceNew := o.ForceNew
 
-	if !forceNew {
+	if !o.ForceNew {
 		streams := pool.peers.streams.Select(match)
 		if len(streams) > 0 {
-			// todo: there could be preferences about which stream network to use etc.
 			return sig.ArrayToChan([]LinkResult{{Stream: streams[0]}})
 		}
 	}
 
 	result := make(chan LinkResult, 1)
 
-	var endpoints = sig.ArrayToChan(o.Endpoints)
-	if len(o.Endpoints) == 0 {
-		resolved, err := pool.mod.ResolveEndpoints(ctx, target)
-		if err != nil {
-			return sig.ArrayToChan([]LinkResult{{Err: err}})
-		}
-
-		endpoints = sig.FilterChan(resolved, endpointFilter(o.IncludeNetworks, o.ExcludeNetworks))
-	}
-
 	go func() {
 		defer close(result)
 
-		var inboundCh <-chan *Stream
-		if !forceNew {
-			w := pool.subscribeInboundStreams(match)
-			defer pool.unsubscribeInboundStreams(w)
-			inboundCh = w.ch
-		}
+		w := pool.subscribe(match)
+		defer pool.unsubscribe(w)
 
-		connectCtx, cancel := ctx.WithCancel()
-		defer cancel()
-
-		connectResult := make(chan LinkResult, 1)
-
-		// todo: node linker
-		go func() {
-			stream, err := pool.peers.connectAtAny(connectCtx, target, endpoints)
-			connectResult <- LinkResult{Stream: stream, Err: err}
-		}()
+		linker := pool.getOrCreateNodeLinker(target)
+		linker.Activate(ctx, o.LinkConstraints)
 
 		select {
 		case <-ctx.Done():
 			result <- LinkResult{Err: ctx.Err()}
-		case r := <-connectResult:
-			result <- r
-		case s := <-inboundCh:
+		case s := <-w.ch:
 			result <- LinkResult{Stream: s}
 		}
 	}()
 
 	return result
 }
-
-// todo: rethink helpers
 
 func streamMatcher(target *astral.Identity, o *RetrieveLinkOptions) func(*Stream) bool {
 	return func(s *Stream) bool {
@@ -142,27 +130,11 @@ func streamMatcher(target *astral.Identity, o *RetrieveLinkOptions) func(*Stream
 		}
 
 		net := s.Network()
-		if len(o.ExcludeNetworks) > 0 && slices.Contains(o.ExcludeNetworks, net) {
+		if len(o.LinkConstraints.ExcludeNetworks) > 0 && slices.Contains(o.LinkConstraints.ExcludeNetworks, net) {
 			return false
 		}
 
-		if len(o.IncludeNetworks) > 0 && !slices.Contains(o.IncludeNetworks, net) {
-			return false
-		}
-
-		return true
-	}
-}
-
-func endpointFilter(include, exclude []string) func(exonet.Endpoint) bool {
-	return func(endpoint exonet.Endpoint) bool {
-		net := endpoint.Network()
-
-		if len(exclude) > 0 && slices.Contains(exclude, net) {
-			return false
-		}
-
-		if len(include) > 0 && !slices.Contains(include, net) {
+		if len(o.LinkConstraints.IncludeNetworks) > 0 && !slices.Contains(o.LinkConstraints.IncludeNetworks, net) {
 			return false
 		}
 
@@ -172,10 +144,8 @@ func endpointFilter(include, exclude []string) func(exonet.Endpoint) bool {
 
 // RetrieveLinkOptions controls how RetrieveLink behaves.
 type RetrieveLinkOptions struct {
-	IncludeNetworks []string
-	ExcludeNetworks []string
-	Endpoints       []exonet.Endpoint
 	ForceNew        bool
+	LinkConstraints LinkConstraints
 }
 
 // RetrieveLinkOption is a functional option for RetrieveLink.
@@ -183,19 +153,19 @@ type RetrieveLinkOption func(*RetrieveLinkOptions)
 
 func WithIncludeNetworks(networks ...string) RetrieveLinkOption {
 	return func(o *RetrieveLinkOptions) {
-		o.IncludeNetworks = append(o.IncludeNetworks, networks...)
+		o.LinkConstraints.IncludeNetworks = append(o.LinkConstraints.IncludeNetworks, networks...)
 	}
 }
 
 func WithExcludeNetworks(networks ...string) RetrieveLinkOption {
 	return func(o *RetrieveLinkOptions) {
-		o.ExcludeNetworks = append(o.ExcludeNetworks, networks...)
+		o.LinkConstraints.ExcludeNetworks = append(o.LinkConstraints.ExcludeNetworks, networks...)
 	}
 }
 
 func WithEndpoints(endpoints ...exonet.Endpoint) RetrieveLinkOption {
 	return func(o *RetrieveLinkOptions) {
-		o.Endpoints = endpoints
+		o.LinkConstraints.Endpoints = endpoints
 	}
 }
 
