@@ -16,12 +16,9 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *alog.Logger) (co
 	var err error
 	var mod = &Module{
 		node:   node,
-		config: defaultConfig,
 		log:    log,
 		assets: assets,
 	}
-
-	_ = assets.LoadYAML(modlog.ModuleName, &mod.config)
 
 	err = mod.ops.AddStructPrefix(mod, "Op")
 	if err != nil {

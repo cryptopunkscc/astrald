@@ -1,7 +1,12 @@
 package log
 
-type Config struct {
-	Level uint8
-}
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/tree"
+)
 
-var defaultConfig = Config{}
+const DefaultLogLevel = 2
+
+type Config struct {
+	Level tree.Value[*astral.Uint8]
+}

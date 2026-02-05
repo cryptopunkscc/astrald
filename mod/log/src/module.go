@@ -6,12 +6,14 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	modlog "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Deps struct {
-	Dir dir.Module
+	Dir  dir.Module
+	Tree tree.Module
 }
 
 type Module struct {
@@ -32,11 +34,11 @@ func (mod *Module) LogEntry(entry *log.Entry) {
 }
 
 func (mod *Module) LogEntryFilter(entry *log.Entry) bool {
-	if entry.Level > mod.config.Level {
-		return false
+	lvl := (*uint8)(mod.config.Level.Get())
+	if lvl == nil {
+		return entry.Level <= DefaultLogLevel
 	}
-
-	return true
+	return entry.Level <= *lvl
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
