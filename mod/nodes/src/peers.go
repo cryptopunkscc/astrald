@@ -290,13 +290,15 @@ func (mod *Peers) addStream(
 		return
 	}
 
-	mod.linkPool.processInboundConnection(s)
-
 	// log stream addition
 	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, s.RemoteIdentity(), netName)
 	streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {
 		return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
 	})
+
+	if !s.outbound {
+		mod.linkPool.processInboundConnection(s)
+	}
 
 	mod.Events.Emit(&nodes.StreamCreatedEvent{
 		RemoteIdentity: s.RemoteIdentity(),
@@ -306,6 +308,7 @@ func (mod *Peers) addStream(
 
 	// handle the stream
 	go func() {
+
 		mod.readStreamFrames(s)
 		// remove the stream and its connections
 		mod.streams.Remove(s)
@@ -493,7 +496,14 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 		}
 	}()
 
-	aconn, err := noise.HandshakeInbound(ctx, conn, mod.node.Identity())
+	// get the node's private key
+	privKey, err := mod.getPrivateKey()
+	if err != nil {
+		return err
+	}
+
+	// respond to a handshake
+	aconn, err := noise.HandshakeInbound(ctx, conn, secp256k1.PrivKeyFromBytes(privKey.Key))
 	if err != nil {
 		return
 	}
