@@ -89,7 +89,7 @@ func (guest *Guest) onAuthTokenMsg(ctx *astral.Context, msg *apphost.AuthTokenMs
 	// fetch info about the token from the database
 	dbToken, err := guest.mod.db.FindAccessToken(string(msg.Token))
 
-	if dbToken == nil {
+	if err != nil {
 		guest.mod.log.Errorv(3, "token authentication failed")
 		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeAuthFailed})
 	}
