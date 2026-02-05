@@ -53,11 +53,13 @@ func (pool *LinkPool) unsubscribeInboundStreams(w *streamWatcher) {
 
 func (pool *LinkPool) processInboundConnection(s *Stream) {
 	for _, w := range pool.watchers.Clone() {
-		if w.match(s) {
-			select {
-			case w.ch <- s:
-			default:
-			}
+		if !w.match(s) {
+			continue
+		}
+
+		select {
+		case w.ch <- s:
+		default:
 		}
 	}
 }
