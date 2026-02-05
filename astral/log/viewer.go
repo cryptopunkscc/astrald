@@ -20,6 +20,13 @@ func (v *Viewer) Render(objects ...astral.Object) (s string) {
 
 func (v *Viewer) View(obj ...astral.Object) (views []astral.Object) {
 	for _, o := range obj {
+		// convert typed nils to astral.Nil (o == nil will crash)
+		r := reflect.ValueOf(o)
+		if r.Kind() == reflect.Pointer && r.IsNil() {
+			o = &astral.Nil{}
+		}
+		
+		// find a viewer for the object type
 		if w, found := v.viewers.Get(o.ObjectType()); found {
 			views = append(views, w(o))
 		} else {
