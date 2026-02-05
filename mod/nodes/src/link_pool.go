@@ -30,8 +30,6 @@ func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
 	}
 }
 
-type LinkFuture <-chan LinkResult
-
 type LinkResult struct {
 	Stream *Stream
 	Err    error
@@ -68,7 +66,7 @@ func (pool *LinkPool) RetrieveLink(
 	ctx *astral.Context,
 	target *astral.Identity,
 	opts ...RetrieveLinkOption,
-) LinkFuture {
+) <-chan LinkResult {
 
 	var o RetrieveLinkOptions
 	for _, opt := range opts {
