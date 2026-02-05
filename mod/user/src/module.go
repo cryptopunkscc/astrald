@@ -3,6 +3,7 @@ package user
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -11,7 +12,9 @@ import (
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/kos"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -29,6 +32,8 @@ type Module struct {
 	mu     sync.Mutex
 	ops    ops.Set
 
+	activeContract *user.SignedNodeContract
+
 	sibs sig.Map[string, Sibling]
 }
 
@@ -36,15 +41,110 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Scheduler.Ready()
 
-	ac := mod.ActiveContract()
-	if ac != nil {
-		mod.log.Info("hello, %v!", ac.UserID)
+	if userID := mod.Identity(); userID != nil {
+		mod.log.Info("hello, %v!", userID)
 	}
 
 	mod.runSiblingLinker()
 	<-ctx.Done()
 
 	return nil
+}
+
+func (mod *Module) SignNodeContract(ctx *astral.Context, contract *user.NodeContract) (*user.SignedNodeContract, error) {
+	// node signs the hash of the contract
+	nodeSigner, err := mod.Crypto.ObjectSigner(secp256k1.FromIdentity(contract.NodeID))
+	if err != nil {
+		return nil, fmt.Errorf("sign as node: %w", err)
+	}
+
+	nodeSig, err := nodeSigner.SignObject(ctx, contract)
+	if err != nil {
+		return nil, fmt.Errorf("sign as node: %w", err)
+	}
+
+	// user signs the text of the contract
+	userSigner, err := mod.Crypto.TextObjectSigner(secp256k1.FromIdentity(contract.UserID))
+	if err != nil {
+		return nil, fmt.Errorf("sign as user: %w", err)
+	}
+
+	userSig, err := userSigner.SignTextObject(ctx, contract)
+	if err != nil {
+		return nil, fmt.Errorf("sign as user: %w", err)
+	}
+
+	return &user.SignedNodeContract{
+		NodeContract: contract,
+		UserSig:      userSig,
+		NodeSig:      nodeSig,
+	}, nil
+}
+
+func (mod *Module) VerifySignedNodeContract(signed *user.SignedNodeContract) error {
+	switch {
+	case signed.UserSig == nil:
+		return errors.New("user signature is missing")
+	case signed.NodeSig == nil:
+		return errors.New("node signature is missing")
+	case signed.NodeSig.Scheme != crypto.SchemeASN1:
+		return errors.New("node signature scheme is not supported")
+	case !slices.Contains([]string{
+		crypto.SchemeASN1,
+		crypto.SchemeBIP137,
+	}, signed.UserSig.Scheme.String()):
+		return errors.New("user signature scheme is not supported")
+	}
+
+	// verify node signature (always hash)
+	err := mod.Crypto.VerifyObjectSignature(
+		secp256k1.FromIdentity(signed.NodeID),
+		signed.NodeSig,
+		signed.NodeContract,
+	)
+	if err != nil {
+		return fmt.Errorf("node sig verification: %w", err)
+	}
+
+	// verify user signature
+	switch signed.UserSig.Scheme {
+	case crypto.SchemeASN1:
+		// verify user signature via hash
+		err = mod.Crypto.VerifyObjectSignature(
+			secp256k1.FromIdentity(signed.UserID),
+			signed.UserSig,
+			signed.NodeContract,
+		)
+
+	case crypto.SchemeBIP137:
+		// verify user signature via text
+		err = mod.Crypto.VerityTextObjectSignature(
+			secp256k1.FromIdentity(signed.UserID),
+			signed.UserSig,
+			signed.NodeContract,
+		)
+
+	default:
+		err = fmt.Errorf("signature scheme %s is not supported", signed.UserSig.Scheme)
+	}
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (mod *Module) GetOpSet() *ops.Set {
+	return &mod.ops
+}
+
+func (mod *Module) TextObjectSigner() crypto.TextObjectSigner {
+	signer, _ := mod.Crypto.TextObjectSigner(secp256k1.FromIdentity(mod.Identity()))
+	return signer
+}
+
+func (mod *Module) String() string {
+	return user.ModuleName
 }
 
 func (mod *Module) runSiblingLinker() {
@@ -62,14 +162,6 @@ func (mod *Module) runSiblingLinker() {
 
 		mod.addSibling(node, scheduledAction.Cancel)
 	}
-}
-
-func (mod *Module) String() string {
-	return user.ModuleName
-}
-
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
 }
 
 // NOTE: Legacy methods below are result of lack of universal solution to

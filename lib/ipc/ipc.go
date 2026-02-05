@@ -113,7 +113,7 @@ func ListenAny(protocol string) (net.Listener, error) {
 		)
 
 	case "memu", "memb":
-		return memconn.Listen(protocol, astral.GenerateIdentity().String())
+		return memconn.Listen(protocol, astral.NewNonce().String())
 
 	default:
 		return nil, ErrUnsupportedProtocol

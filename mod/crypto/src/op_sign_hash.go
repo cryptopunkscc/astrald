@@ -6,11 +6,13 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 )
 
 type opSignHashArgs struct {
-	Hash   string
+	Hash   string `query:"optional"`
+	Key    string `query:"optional"`
 	Scheme string `query:"optional"`
 	In     string `query:"optional"`
 	Out    string `query:"optional"`
@@ -20,24 +22,53 @@ func (mod *Module) OpSignHash(ctx *astral.Context, q *ops.Query, args opSignHash
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
+	// set defaults
 	if args.Scheme == "" {
 		args.Scheme = "asn1"
 	}
 
-	hash, err := hex.DecodeString(args.Hash)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	var signerKey = secp256k1.FromIdentity(q.Caller()) // check key argument
+
+	// parse key argument
+	if len(args.Key) > 0 {
+		signerKey = &crypto.PublicKey{}
+		err = signerKey.UnmarshalText([]byte(args.Key))
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
+		}
 	}
 
-	signer, err := mod.HashSigner(secp256k1.FromIdentity(q.Caller()), args.Scheme)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	var signAndSend = func(hash []byte) error {
+		signer, err := mod.HashSigner(signerKey, args.Scheme)
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
+		}
+
+		sig, err := signer.SignHash(ctx, hash)
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
+		}
+
+		return ch.Send(sig)
 	}
 
-	sig, err := signer.SignHash(ctx, hash)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	if len(args.Hash) > 0 {
+		hash, err := hex.DecodeString(args.Hash)
+		if err != nil {
+			return ch.Send(astral.NewError(err.Error()))
+		}
+
+		return signAndSend(hash)
 	}
 
-	return ch.Send(sig)
+	return ch.Switch(
+		func(key *crypto.PublicKey) error {
+			signerKey = key
+			return ch.Send(&astral.Ack{})
+		},
+		func(hash *crypto.Hash) error {
+			return signAndSend(*hash)
+		},
+		channel.StopOnEOS,
+	)
 }

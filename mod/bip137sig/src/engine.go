@@ -17,7 +17,7 @@ type Engine struct {
 	crypto.NilEngine
 }
 
-func (e Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.MessageSigner, error) {
+func (e Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
 	switch {
 	case scheme != crypto.SchemeBIP137:
 		return nil, crypto.ErrUnsupportedScheme
@@ -43,7 +43,7 @@ func (e Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.Mess
 
 }
 
-func (e Engine) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
+func (e Engine) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
 	switch {
 	case key.Type != secp256k1.KeyType:
 		return crypto.ErrUnsupportedKeyType

@@ -3,11 +3,12 @@ package ckcc
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"os/exec"
 	"strings"
-)
 
-const defaultPath = "m/44'/0'/0'/0/0"
+	"github.com/cryptopunkscc/astrald/mod/coldcard"
+)
 
 type Device struct {
 	Serial string
@@ -47,7 +48,7 @@ func List() (devices []*Device, err error) {
 
 func (c *Device) PubKey(path string) (string, error) {
 	if len(path) == 0 {
-		path = defaultPath
+		path = coldcard.BIP44Path
 	}
 
 	cmd := exec.Command("ckcc", "-s", c.Serial, "pubkey", path)
@@ -66,7 +67,7 @@ func (c *Device) PubKey(path string) (string, error) {
 
 func (c *Device) Msg(msg string, path string) (string, error) {
 	if len(path) == 0 {
-		path = defaultPath
+		path = coldcard.BIP44Path
 	}
 
 	cmd := exec.Command("ckcc", "-s", c.Serial, "msg", "-p", path, "-j", msg)
@@ -77,7 +78,7 @@ func (c *Device) Msg(msg string, path string) (string, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		return "", err
+		return "", errors.New(strings.TrimSpace(stderr.String()))
 	}
 
 	return strings.TrimSpace(stdout.String()), nil

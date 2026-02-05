@@ -1,6 +1,8 @@
 package user
 
 import (
+	"errors"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -64,8 +66,9 @@ func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeCon
 	if !ok {
 		return user.ErrNodeCannotRevokeContract
 	}
+
 	// verify user signature
-	err := mod.Keys.VerifyASN1(revocation.Revoker.ID, revocation.Hash(), revocation.Revoker.Sig)
+	err := errors.New("not implemented") //TODO: reimplement
 	if err != nil {
 		return user.ErrContractInvalidSignature
 	}
@@ -73,17 +76,8 @@ func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeCon
 	return nil
 }
 
-func (mod *Module) LoadNodeContractRevocation(revocationID *astral.ObjectID) (*user.SignedNodeContractRevocation, error) {
-	// fast fail so we dont need to load the contract if it does not exist in db
-	if !mod.db.ContractExists(revocationID) {
-		return nil, user.ErrContractNotExists
-	}
-
-	return objects.Load[*user.SignedNodeContractRevocation](mod.ctx, mod.Objects.ReadDefault(), revocationID)
-}
-
 func (mod *Module) FindNodeContractRevocation(revocationID *astral.ObjectID) (r *user.NodeContractRevocation, err error) {
-	dbRecord, err := mod.db.FindNodeContractRevocation(revocationID)
+	dbRecord, err := mod.db.findNodeContractRevocation(revocationID)
 	if err != nil {
 		return nil, err
 	}

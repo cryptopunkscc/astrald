@@ -55,6 +55,6 @@ func (e Engine) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signature
 	return crypto.ErrInvalidSignature
 }
 
-func (e Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.MessageSigner, error) {
+func (e Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
 	return nil, crypto.ErrUnsupported
 }

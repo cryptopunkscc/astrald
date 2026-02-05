@@ -39,7 +39,7 @@ func (ops *NodeOps) Get(ctx *astral.Context, q *ops.Query, args GetArgs) (err er
 		_, _ = ch.Receive()
 		cancel()
 	}()
-	
+
 	val, err := node.Get(ctx, args.Follow)
 	switch {
 	case err == nil:
@@ -48,7 +48,11 @@ func (ops *NodeOps) Get(ctx *astral.Context, q *ops.Query, args GetArgs) (err er
 	}
 
 	for object := range val {
-		ch.Send(object)
+		if any(object) == nil {
+			ch.Send(&astral.Nil{})
+		} else {
+			ch.Send(object)
+		}
 	}
 
 	return ch.Send(&astral.EOS{})

@@ -15,7 +15,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -25,7 +24,6 @@ var _ apphost.Module = &Module{}
 type Deps struct {
 	Auth    auth.Module
 	Dir     dir.Module
-	Keys    keys.Module
 	Objects objects.Module
 }
 
@@ -115,18 +113,7 @@ func (mod *Module) String() string {
 }
 
 func (mod *Module) SignAppContract(c *apphost.AppContract) (err error) {
-	hash := c.ContractHash()
-
-	// add app signature
-	c.AppSig, err = mod.Keys.SignASN1(c.AppID, hash)
-	if err != nil {
-		return
-	}
-
-	// add host signature
-	c.HostSig, err = mod.Keys.SignASN1(c.HostID, hash)
-
-	return
+	return errors.New("not implemented")
 }
 
 func (mod *Module) ActiveLocalAppContracts() (list []*apphost.AppContract, err error) {
@@ -200,18 +187,7 @@ func (mod *Module) isActive(c *apphost.AppContract) bool {
 }
 
 func (mod *Module) validateSignatures(c *apphost.AppContract) (err error) {
-	hash := c.ContractHash()
-
-	// verify app signature
-	err = mod.Keys.VerifyASN1(c.AppID, hash, c.AppSig)
-	if err != nil {
-		return
-	}
-
-	// verify host signature
-	err = mod.Keys.VerifyASN1(c.HostID, hash, c.HostSig)
-
-	return
+	return errors.New("not implemented")
 }
 
 func (mod *Module) indexer(ctx *astral.Context) {

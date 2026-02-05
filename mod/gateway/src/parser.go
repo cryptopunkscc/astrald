@@ -48,11 +48,11 @@ func Parse(str string) (endpoint *gateway.Endpoint, err error) {
 	if len(ids) != 2 {
 		return nil, ErrParseError{msg: "invalid address string"}
 	}
-	endpoint.GatewayID, err = astral.IdentityFromString(ids[0])
+	endpoint.GatewayID, err = astral.ParseIdentity(ids[0])
 	if err != nil {
 		return nil, err
 	}
-	endpoint.TargetID, err = astral.IdentityFromString(ids[1])
+	endpoint.TargetID, err = astral.ParseIdentity(ids[1])
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,9 @@
 package crypto
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -114,7 +116,38 @@ func (mod *Module) HashSigner(key *crypto.PublicKey, scheme string) (crypto.Hash
 	return nil, crypto.ErrUnsupported
 }
 
+func (mod *Module) NodeSigner() crypto.HashSigner {
+	signer, err := mod.HashSigner(&crypto.PublicKey{
+		Type: "secp256k1",
+		Key:  mod.node.Identity().PublicKey().SerializeCompressed(),
+	}, crypto.SchemeASN1)
+	if err != nil {
+		panic(err)
+	}
+
+	return signer
+}
+
 func (mod *Module) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signature, hash []byte) error {
+	// check args
+	switch {
+	case key == nil:
+		return errors.New("public key is nil")
+	case len(key.Key) == 0:
+		return errors.New("public key data is empty")
+	case len(key.Type) == 0:
+		return errors.New("public key type is empty")
+	case sig == nil:
+		return errors.New("signature is nil")
+	case len(sig.Data) == 0:
+		return errors.New("signature data is empty")
+	case len(sig.Scheme) == 0:
+		return errors.New("signature scheme is empty")
+	case len(hash) == 0:
+		return errors.New("hash is empty")
+	}
+
+	// find an engine that can verify the signature
 	for _, engine := range mod.engines.Clone() {
 		err := engine.VerifyHashSignature(key, sig, hash)
 		switch {
@@ -130,9 +163,9 @@ func (mod *Module) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signat
 	return crypto.ErrUnsupported
 }
 
-func (mod *Module) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.MessageSigner, error) {
+func (mod *Module) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
 	for _, engine := range mod.engines.Clone() {
-		signer, err := engine.MessageSigner(key, scheme)
+		signer, err := engine.TextSigner(key, scheme)
 		if err == nil {
 			return signer, nil
 		}
@@ -141,9 +174,28 @@ func (mod *Module) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.M
 	return nil, crypto.ErrUnsupported
 }
 
-func (mod *Module) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
+func (mod *Module) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
+	// check args
+	switch {
+	case key == nil:
+		return errors.New("public key is nil")
+	case len(key.Key) == 0:
+		return errors.New("public key data is empty")
+	case len(key.Type) == 0:
+		return errors.New("public key type is empty")
+	case sig == nil:
+		return errors.New("signature is nil")
+	case len(sig.Data) == 0:
+		return errors.New("signature data is empty")
+	case len(sig.Scheme) == 0:
+		return errors.New("signature scheme is empty")
+	case len(msg) == 0:
+		return errors.New("hash is empty")
+	}
+
+	// find an engine that can verify the signature
 	for _, engine := range mod.engines.Clone() {
-		err := engine.VerifyMessageSignature(key, sig, msg)
+		err := engine.VerifyTextSignature(key, sig, msg)
 		switch {
 		case err == nil:
 			return nil
@@ -155,6 +207,36 @@ func (mod *Module) VerifyMessageSignature(key *crypto.PublicKey, sig *crypto.Sig
 	}
 
 	return crypto.ErrUnsupported
+}
+
+func (mod *Module) ObjectSigner(key *crypto.PublicKey) (crypto.ObjectSigner, error) {
+	return &ObjectSigner{
+		mod:    mod,
+		scheme: crypto.SchemeASN1,
+		key:    key,
+	}, nil
+}
+
+func (mod *Module) VerifyObjectSignature(key *crypto.PublicKey, signature *crypto.Signature, object crypto.SignableObject) error {
+	return mod.VerifyHashSignature(key, signature, object.SignableHash())
+}
+
+func (mod *Module) TextObjectSigner(key *crypto.PublicKey) (crypto.TextObjectSigner, error) {
+	return &TextObjectSigner{
+		mod:    mod,
+		scheme: crypto.SchemeBIP137,
+		key:    key,
+	}, nil
+}
+
+func (mod *Module) VerityTextObjectSignature(key *crypto.PublicKey, signature *crypto.Signature, object crypto.SignableTextObject) error {
+	return mod.VerifyTextSignature(key, signature, mod.formatSignableText(object))
+}
+
+func (mod *Module) formatSignableText(object crypto.SignableTextObject) string {
+	commitment := base64.StdEncoding.EncodeToString(object.SignableHash()[0:15])
+
+	return fmt.Sprintf("[%s] %s", commitment, object.SignableText())
 }
 
 // indexRepo scans and follows the given repo and attempts to index all private keys it encounters

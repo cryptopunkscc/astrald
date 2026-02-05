@@ -26,12 +26,33 @@ type Module interface {
 	// VerifyHashSignature verifies the signature of the given hash using the given public key
 	VerifyHashSignature(key *PublicKey, sig *Signature, hash []byte) error
 
-	// MessageSigner returns a message signer for the given public key and scheme
-	MessageSigner(key *PublicKey, scheme string) (MessageSigner, error)
+	// TextSigner returns a message signer for the given public key and scheme
+	TextSigner(key *PublicKey, scheme string) (TextSigner, error)
 
-	// VerifyMessageSignature verifies the signature of the given message using the given public key
-	VerifyMessageSignature(key *PublicKey, sig *Signature, msg string) error
+	// VerifyTextSignature verifies a text signature
+	VerifyTextSignature(signer *PublicKey, sig *Signature, text string) error
+
+	// NodeSigner returns a hash signer for the local node
+	NodeSigner() HashSigner
 
 	// AddEngine adds a cryptographic engine to the module
 	AddEngine(engine Engine)
+
+	// ObjectSigner signs the hash of the given contract with ASN1
+	ObjectSigner(*PublicKey) (ObjectSigner, error)
+
+	// TextObjectSigner signs the text of the given contract with BIP-137
+	TextObjectSigner(*PublicKey) (TextObjectSigner, error)
+
+	VerifyObjectSignature(*PublicKey, *Signature, SignableObject) error
+
+	VerityTextObjectSignature(*PublicKey, *Signature, SignableTextObject) error
+}
+
+type ObjectSigner interface {
+	SignObject(*astral.Context, SignableObject) (*Signature, error)
+}
+
+type TextObjectSigner interface {
+	SignTextObject(*astral.Context, SignableTextObject) (*Signature, error)
 }

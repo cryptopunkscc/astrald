@@ -63,12 +63,12 @@ func (e *Endpoint) UnmarshalText(text []byte) (err error) {
 		return errors.New("malformed endpoint")
 	}
 
-	e.GatewayID, err = astral.IdentityFromString(ids[0])
+	e.GatewayID, err = astral.ParseIdentity(ids[0])
 	if err != nil {
 		return
 	}
 
-	e.TargetID, err = astral.IdentityFromString(ids[1])
+	e.TargetID, err = astral.ParseIdentity(ids[1])
 
 	return
 }

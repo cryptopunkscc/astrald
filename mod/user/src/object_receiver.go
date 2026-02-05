@@ -20,6 +20,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		if err == nil {
 			drop.Accept(true)
 		}
+
 	case *user.SignedNodeContractRevocation:
 		contract, err := mod.GetNodeContract(o.ContractID)
 		if err != nil {
@@ -31,12 +32,14 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		if err == nil {
 			drop.Accept(true)
 		}
+
 	case *apphost.AppContract:
 		if !slices.ContainsFunc(mod.LocalSwarm(), o.HostID.IsEqual) {
 			break
 		}
 
 		drop.Accept(true)
+
 	case *apphost.EventNewAppContract:
 		switch {
 		case !drop.SenderID().IsEqual(mod.node.Identity()):
@@ -46,11 +49,13 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		}
 
 		mod.pushToLinkedSibs(o.Contract)
+		
 	case *user.Notification:
 		err = mod.onNotification(drop.SenderID(), o)
 		if err == nil {
 			drop.Accept(false)
 		}
+
 	case *events.Event:
 		switch e := o.Data.(type) {
 		case *nodes.StreamCreatedEvent:
@@ -71,7 +76,7 @@ func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedN
 		return objects.ErrPushRejected
 	}
 
-	err := mod.SaveSignedNodeContract(c)
+	err := mod.IndexSignedNodeContract(c)
 	if err != nil {
 		mod.log.Errorv(1, "save node contract: %v", err)
 		return objects.ErrPushRejected

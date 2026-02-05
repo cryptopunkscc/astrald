@@ -31,15 +31,15 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q *ops.Query, args opReq
 		return ch.Send(user.ErrRequestDeclined)
 	}
 
-	signedContract, err := mod.ExchangeAndSignNodeContract(ctx, target, ac.UserID, astral.Now())
+	signed, err := mod.InviteNode(ctx, target)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	err = mod.SaveSignedNodeContract(signedContract)
+	err = mod.IndexSignedNodeContract(signed)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Send(signedContract)
+	return ch.Send(signed)
 }

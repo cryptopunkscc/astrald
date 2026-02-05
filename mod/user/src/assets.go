@@ -22,7 +22,7 @@ func (mod *Module) RemoveAsset(objectID *astral.ObjectID) (err error) {
 
 // AssetsContain returns true if user's assets contain the object
 func (mod *Module) AssetsContain(objectID *astral.ObjectID) bool {
-	return mod.db.AssetsContain(objectID)
+	return mod.db.assetExists(objectID)
 }
 
 func (mod *Module) Assets() []*astral.ObjectID {

@@ -1,5 +1,7 @@
 package crypto
 
+import "github.com/cryptopunkscc/astrald/mod/objects"
+
 const maxObjectSize = 4096
 
 type Config struct {
@@ -7,5 +9,5 @@ type Config struct {
 }
 
 var defaultConfig = Config{
-	Repos: []string{"local", "mem0"},
+	Repos: []string{objects.RepoLocal, objects.RepoSystem, "mem0"},
 }

@@ -2,46 +2,43 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/keys"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
 // loadNodeIdentity loads node's identity from resources. Generates a new identity if we don't have one yet.
-func loadNodeIdentity(resources resources.Resources) (*astral.Identity, error) {
-	data, err := resources.Read(resNodeIdentity)
+func loadNodeIdentity(resources resources.Resources) (identity *astral.Identity, err error) {
+	var nodeKey *crypto.PrivateKey
 
-	// generate new identity if needed
-	if err != nil {
-		nodeID := astral.GenerateIdentity()
+	data, err := resources.Read(resNodeKey)
+	if err == nil {
+		object, _, _ := astral.Decode(bytes.NewReader(data), astral.Canonical())
 
-		var buf = &bytes.Buffer{}
+		var ok bool
+		nodeKey, ok = object.(*crypto.PrivateKey)
+		if !ok {
+			return nil, astral.NewErrUnexpectedObject(object)
+		}
+	} else {
+		nodeKey = secp256k1.New()
 
-		// encode the private key in canonical format
-		_, err = astral.Encode(
-			buf,
-			(*astral.PrivateIdentity)(nodeID),
-			astral.WithEncoder(astral.CanonicalTypeEncoder),
-		)
+		// store node key
+		var keyBytes = &bytes.Buffer{}
+		_, err = astral.Encode(keyBytes, nodeKey, astral.Canonical())
 		if err != nil {
 			return nil, err
 		}
 
-		return nodeID, resources.Write(resNodeIdentity, buf.Bytes())
+		err = resources.Write("node_key", keyBytes.Bytes())
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	object, _, err := astral.Decode(bytes.NewReader(data), astral.Canonical())
+	identity = secp256k1.Identity(secp256k1.PublicKey(nodeKey))
 
-	switch object := object.(type) {
-	case *astral.PrivateIdentity:
-		return (*astral.Identity)(object), nil
-
-	case *keys.PrivateKey:
-		return astral.IdentityFromPrivKeyBytes(object.Bytes)
-
-	default:
-		return nil, fmt.Errorf("unknown identity object: %s", object.ObjectType())
-	}
+	return
 }

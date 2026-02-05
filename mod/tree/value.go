@@ -131,10 +131,8 @@ func (value *Value[T]) Follow(ctx *astral.Context) <-chan T {
 	go func() {
 		defer close(out)
 		for val := range subscribe {
-			select {
-			case <-ctx.Done():
+			if sig.Send(ctx, out, val) != nil {
 				return
-			case out <- val:
 			}
 		}
 	}()

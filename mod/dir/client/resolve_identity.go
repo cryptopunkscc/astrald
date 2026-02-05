@@ -8,7 +8,7 @@ import (
 
 func (client *Client) ResolveIdentity(ctx *astral.Context, name string) (identity *astral.Identity, err error) {
 	// try to parse the public key first
-	if id, err := astral.IdentityFromString(name); err == nil {
+	if id, err := astral.ParseIdentity(name); err == nil {
 		return id, nil
 	}
 

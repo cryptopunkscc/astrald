@@ -11,7 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
-const resNodeIdentity = "node_identity"
+const resNodeKey = "node_key"
 
 func run(ctx context.Context, args *Args) error {
 	nodeRes, err := setupResources(args)

@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type DB struct {
@@ -15,17 +14,78 @@ type DB struct {
 	*gorm.DB
 }
 
+func (db *DB) findSignedNodeContract(contractID *astral.ObjectID) (row *dbSignedNodeContract, err error) {
+	err = db.
+		Model(&dbSignedNodeContract{}).
+		Where("object_id = ?", contractID).
+		First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, user.ErrContractNotExists
+		}
+		return nil, err
+	}
+
+	return row, nil
+}
+
+func (db *DB) deleteSignedNodeContract(contractID *astral.ObjectID) error {
+	return db.Delete(&dbSignedNodeContract{}, "object_id = ?", contractID).Error
+}
+
+func (db *DB) signedNodeContractExists(contractID *astral.ObjectID) (b bool) {
+	db.
+		Model(&dbSignedNodeContract{}).
+		Where("object_id = ?", contractID).
+		Select("count(*) > 0").
+		First(&b)
+	return
+}
+
+func (db *DB) findNodeContractRevocation(revocationID *astral.ObjectID) (row *dbNodeContractRevocation, err error) {
+	err = db.
+		Model(&dbNodeContractRevocation{}).
+		Where("object_id = ?", revocationID).
+		First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, user.ErrContractRevocationNotExists
+		}
+		return nil, err
+	}
+
+	return row, nil
+}
+
+func (db *DB) nodeContractRevocationExists(revocationID *astral.ObjectID) (b bool) {
+	db.
+		Model(&dbNodeContractRevocation{}).
+		Where("object_id = ?", revocationID).
+		Select("count(*) > 0").
+		First(&b)
+	return
+}
+
+func (db *DB) assetExists(objectID *astral.ObjectID) (exists bool) {
+	db.Model(&dbAsset{}).
+		Select("1").
+		Where("object_id = ? and removed = false", objectID).
+		Limit(1).
+		Scan(&exists)
+	return
+}
+
 func (db *DB) UniqueActiveUsersOnNode(nodeID *astral.Identity) (users []*astral.Identity, err error) {
 	now := time.Now().UTC()
 
 	err = db.
-		Model(&dbNodeContract{}).
+		Model(&dbSignedNodeContract{}).
 		Where("expires_at > ?", time.Now().UTC()).
 		Where("node_id = ?", nodeID).
 		Where(`
 			NOT EXISTS (
 				SELECT 1 FROM users__node_contract_revocations r
-				WHERE r.contract_id = users__node_contracts.object_id
+				WHERE r.contract_id = users__signed_node_contracts.object_id
 				  AND r.expires_at > ?
 			)
 		`, now, now).
@@ -40,14 +100,14 @@ func (db *DB) UniqueActiveNodesOfUser(userID *astral.Identity) (nodes []*astral.
 	now := time.Now().UTC()
 
 	err = db.
-		Model(&dbNodeContract{}).
+		Model(&dbSignedNodeContract{}).
 		Where("starts_at < ?", now).
 		Where("expires_at > ?", now).
 		Where("user_id = ?", userID).
 		Where(`
 			NOT EXISTS (
 				SELECT 1 FROM users__node_contract_revocations r
-				WHERE r.contract_id = users__node_contracts.object_id
+				WHERE r.contract_id = users__signed_node_contracts.object_id
 				  AND r.expires_at > ?
 			)
 		`, now, now).
@@ -58,18 +118,18 @@ func (db *DB) UniqueActiveNodesOfUser(userID *astral.Identity) (nodes []*astral.
 	return
 }
 
-func (db *DB) ActiveContractsOf(userID *astral.Identity) (contracts []*dbNodeContract, err error) {
+func (db *DB) ActiveContractsOf(userID *astral.Identity) (contracts []*dbSignedNodeContract, err error) {
 	now := time.Now().UTC()
 
 	err = db.
-		Model(&dbNodeContract{}).
+		Model(&dbSignedNodeContract{}).
 		Where("starts_at < ?", now).
 		Where("expires_at > ?", now).
 		Where("user_id = ?", userID).
 		Where(`
 			NOT EXISTS (
 				SELECT 1 FROM users__node_contract_revocations r
-				WHERE r.contract_id = users__node_contracts.object_id
+				WHERE r.contract_id = users__signed_node_contracts.object_id
 				  AND r.expires_at > ?
 			)
 		`, now, now).
@@ -77,45 +137,6 @@ func (db *DB) ActiveContractsOf(userID *astral.Identity) (contracts []*dbNodeCon
 		Error
 
 	return
-}
-
-func (db *DB) ContractExists(contractID *astral.ObjectID) (b bool) {
-	db.
-		Model(&dbNodeContract{}).
-		Where("object_id = ?", contractID).
-		Select("count(*) > 0").
-		First(&b)
-	return
-}
-
-func (db *DB) Contacts() (contacts []*astral.Identity) {
-	db.
-		Model(&dbContact{}).
-		Select("user_id").
-		Find(&contacts)
-	return
-}
-
-func (db *DB) IsContact(userID *astral.Identity) (b bool) {
-	if userID.IsZero() {
-		return
-	}
-	db.
-		Model(&dbContact{}).
-		Where("user_id = ?", userID).
-		Select("count(*) > 0").
-		First(&b)
-	return
-}
-
-func (db *DB) AddContact(userID *astral.Identity) error {
-	return db.Clauses(clause.OnConflict{DoNothing: true}).Create(&dbContact{
-		UserID: userID,
-	}).Error
-}
-
-func (db *DB) RemoveContact(userID *astral.Identity) error {
-	return db.Delete(&dbContact{UserID: userID}).Error
 }
 
 func (db *DB) AssetHeight() int {
@@ -133,15 +154,6 @@ func (db *DB) AssetHeight() int {
 	return int(height)
 }
 
-func (db *DB) AssetsContain(objectID *astral.ObjectID) (exists bool) {
-	db.Model(&dbAsset{}).
-		Select("1").
-		Where("object_id = ? and removed = false", objectID).
-		Limit(1).
-		Scan(&exists)
-	return
-}
-
 func (db *DB) NonceExists(nonce astral.Nonce) (exists bool) {
 	db.Model(&dbAsset{}).
 		Select("1").
@@ -152,7 +164,7 @@ func (db *DB) NonceExists(nonce astral.Nonce) (exists bool) {
 }
 
 func (db *DB) AddAsset(objectID *astral.ObjectID, force bool) (nonce astral.Nonce, err error) {
-	if !force && db.AssetsContain(objectID) {
+	if !force && db.assetExists(objectID) {
 		return nonce, errors.New("asset already exists")
 	}
 
@@ -244,34 +256,4 @@ func (db *DB) ContractRevocationExists(revocationID *astral.ObjectID) (b bool) {
 		First(&b)
 
 	return
-}
-
-func (db *DB) FindNodeContractRevocation(revocationID *astral.ObjectID) (row *dbNodeContractRevocation, err error) {
-	err = db.
-		Model(&dbNodeContractRevocation{}).
-		Where("object_id = ?", revocationID).
-		First(&row).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, user.ErrContractRevocationNotExists
-		}
-		return nil, err
-	}
-
-	return row, nil
-}
-
-func (db *DB) FindNodeContract(contractID *astral.ObjectID) (row *dbNodeContract, err error) {
-	err = db.
-		Model(&dbNodeContract{}).
-		Where("object_id = ?", contractID).
-		First(&row).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, user.ErrContractNotExists
-		}
-		return nil, err
-	}
-
-	return row, nil
 }

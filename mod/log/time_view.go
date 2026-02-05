@@ -1,6 +1,7 @@
 package log
 
 import (
+	"github.com/charmbracelet/lipgloss"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 )
@@ -8,10 +9,15 @@ import (
 type TimeView struct {
 	*astral.Time
 	Layout string
+	Style  lipgloss.Style
 }
 
 func NewTimeView(time *astral.Time, layout string) *TimeView {
-	return &TimeView{Time: time, Layout: layout}
+	return &TimeView{Time: time, Layout: layout, Style: DarkGrayText}
+}
+
+func NewTimeViewWithStyle(time *astral.Time, layout string, style lipgloss.Style) *TimeView {
+	return &TimeView{Time: time, Layout: layout, Style: style}
 }
 
 func (v TimeView) Render() string {
@@ -20,7 +26,7 @@ func (v TimeView) Render() string {
 		layout = "15:04:05.000"
 	}
 
-	return DarkGrayText.Render(v.Time.Time().Format(layout))
+	return v.Style.Render(v.Time.Time().Format(layout))
 }
 
 func init() {
