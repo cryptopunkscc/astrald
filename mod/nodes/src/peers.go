@@ -296,7 +296,10 @@ func (mod *Peers) addStream(
 		return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
 	})
 
-	mod.linkPool.processInboundConnection(s)
+	if !s.outbound {
+		mod.linkPool.processInboundConnection(s)
+	}
+
 	mod.Events.Emit(&nodes.StreamCreatedEvent{
 		RemoteIdentity: s.RemoteIdentity(),
 		StreamId:       s.id,
