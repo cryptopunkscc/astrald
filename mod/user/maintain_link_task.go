@@ -2,6 +2,6 @@ package user
 
 import "github.com/cryptopunkscc/astrald/mod/scheduler"
 
-type MaintainLinkAction interface {
+type MaintainLinkTask interface {
 	scheduler.Task
 }

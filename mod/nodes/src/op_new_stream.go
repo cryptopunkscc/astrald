@@ -41,8 +41,8 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		network = &args.Net
 	}
 
-	action := mod.NewCreateStreamAction(target, endpoint, network)
-	scheduledAction, err := mod.Scheduler.Schedule(action)
+	task := mod.NewCreateStreamTask(target, endpoint, network)
+	scheduledTask, err := mod.Scheduler.Schedule(task)
 	if err != nil {
 		return q.RejectWithCode(5)
 	}
@@ -51,14 +51,14 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	// Wait for action or context cancellation
+	// Wait for task or context cancellation
 	select {
 	case <-ctx.Done():
 		return q.RejectWithCode(4)
-	case <-scheduledAction.Done():
+	case <-scheduledTask.Done():
 	}
 
-	info, err := action.Result()
+	info, err := task.Result()
 	switch {
 	case err == nil:
 		return ch.Send(info)

@@ -7,9 +7,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
-var _ scheduler.Task = &EnsureStreamAction{}
+var _ scheduler.Task = &EnsureStreamTask{}
 
-type EnsureStreamAction struct {
+type EnsureStreamTask struct {
 	mod      *Module
 	Target   *astral.Identity
 	Endpoint exonet.Endpoint
@@ -20,8 +20,8 @@ type EnsureStreamAction struct {
 	Err  error
 }
 
-func (m *Module) NewEnsureStreamAction(target *astral.Identity, endpoint exonet.Endpoint, network *string, create bool) nodes.EnsureStreamAction {
-	return &EnsureStreamAction{
+func (m *Module) NewEnsureStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string, create bool) nodes.EnsureStreamAction {
+	return &EnsureStreamTask{
 		mod:      m,
 		Target:   target,
 		Endpoint: endpoint,
@@ -30,11 +30,11 @@ func (m *Module) NewEnsureStreamAction(target *astral.Identity, endpoint exonet.
 	}
 }
 
-func (m *Module) NewCreateStreamAction(target *astral.Identity, endpoint exonet.Endpoint, network *string) nodes.EnsureStreamAction {
-	return m.NewEnsureStreamAction(target, endpoint, network, true)
+func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string) nodes.EnsureStreamAction {
+	return m.NewEnsureStreamTask(target, endpoint, network, true)
 }
 
-func (c *EnsureStreamAction) Run(ctx *astral.Context) (err error) {
+func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
 	defer func() {
 		if err != nil {
 			c.Err = err
@@ -77,10 +77,10 @@ func (c *EnsureStreamAction) Run(ctx *astral.Context) (err error) {
 	}
 }
 
-func (c *EnsureStreamAction) Result() (info *nodes.StreamInfo, err error) {
+func (c *EnsureStreamTask) Result() (info *nodes.StreamInfo, err error) {
 	return c.Info, c.Err
 }
 
-func (c *EnsureStreamAction) String() string {
+func (c *EnsureStreamTask) String() string {
 	return "nodes.ensure_stream"
 }
