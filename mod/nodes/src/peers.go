@@ -289,14 +289,13 @@ func (mod *Peers) addStream(
 		return
 	}
 
-	mod.linkPool.processInboundConnection(s)
-
 	// log stream addition
 	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, s.RemoteIdentity(), netName)
 	streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {
 		return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
 	})
 
+	mod.linkPool.processInboundConnection(s)
 	mod.Events.Emit(&nodes.StreamCreatedEvent{
 		RemoteIdentity: s.RemoteIdentity(),
 		StreamId:       s.id,
@@ -305,6 +304,7 @@ func (mod *Peers) addStream(
 
 	// handle the stream
 	go func() {
+
 		mod.readStreamFrames(s)
 		// remove the stream and its connections
 		mod.streams.Remove(s)
