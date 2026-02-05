@@ -26,13 +26,16 @@ func walk(ctx *astral.Context, node tree.Node, path []string) error {
 		var text []byte
 		t := object.ObjectType()
 
-		if m, ok := object.(encoding.TextMarshaler); ok {
-			text, _ = m.MarshalText()
-		} else {
-			text = []byte("[data]")
-		}
+		if t != "nil" {
+			if m, ok := object.(encoding.TextMarshaler); ok {
+				text, _ = m.MarshalText()
+			} else {
+				text = []byte("[data]")
+			}
 
-		fmt.Printf(" = \"%s\" [%s]\n", string(text), t)
+			fmt.Printf(" = \"%s\" [%s]", string(text), t)
+		}
+		fmt.Println()
 	} else {
 		fmt.Println()
 	}
@@ -61,14 +64,18 @@ func walk(ctx *astral.Context, node tree.Node, path []string) error {
 func main() {
 	var err error
 	var targetID *astral.Identity
-	var target string
+	var target, path string
 
 	ctx := astrald.NewContext()
 	client := treecli.Default()
 
 	// parse the args
 	if len(os.Args) > 1 {
-		target = os.Args[1]
+		parts := strings.SplitN(os.Args[1], ":", 2)
+		target = parts[0]
+		if len(parts) > 1 {
+			path = parts[1]
+		}
 		targetID, err = dircli.ResolveIdentity(ctx, target)
 		if err != nil {
 			fatal("resolve identity: %v\n", err)
@@ -81,13 +88,22 @@ func main() {
 
 	alias, err := dircli.GetAlias(ctx, targetID)
 	if err == nil {
-		fmt.Print(alias)
+		fmt.Printf("%s %s", alias, path)
 	} else {
-		fmt.Print(target)
+		fmt.Printf("%s %s", target, path)
+	}
+
+	// query the node
+	node := client.Root()
+	if path != "" {
+		node, err = tree.Query(ctx, node, path, false)
+		if err != nil {
+			fatal("query error: %v\n", err)
+		}
 	}
 
 	// walk the tree
-	err = walk(ctx, client.Root(), nil)
+	err = walk(ctx, node, nil)
 	if err != nil {
 		fatal("walk error: %v\n", err)
 	}

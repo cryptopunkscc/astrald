@@ -1,59 +1,26 @@
 package user
 
 import (
-	"errors"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
 var _ objects.Holder = &Module{}
 
 func (mod *Module) HoldObject(objectID *astral.ObjectID) (hold bool) {
-	ac := mod.ActiveContract()
-	if ac == nil {
-		return false
-	}
+	switch {
+	case mod.db.assetExists(objectID):
+		// hold all user assets
+		return true
 
-	if mod.db.AssetsContain(objectID) {
+	case mod.db.signedNodeContractExists(objectID):
+		// hold all indexed signed node contracts
+		return true
+
+	case mod.db.nodeContractRevocationExists(objectID):
+		// hold all indexed contract revocations
 		return true
 	}
 
-	return mod.holdNodeContract(objectID) || mod.holdNodeContractRevocation(objectID)
-}
-
-func (mod *Module) holdNodeContract(objectID *astral.ObjectID) bool {
-	c, err := mod.FindNodeContract(objectID)
-	if err != nil {
-		if errors.Is(err, user.ErrContractNotExists) {
-			return false
-		}
-
-		mod.log.Error("failed to load node contract %v: %v", objectID, err)
-		return false
-	}
-
-	if c.IsExpired() {
-		return false
-	}
-
-	return true
-}
-
-func (mod *Module) holdNodeContractRevocation(objectID *astral.ObjectID) bool {
-	c, err := mod.FindNodeContractRevocation(objectID)
-	if err != nil {
-		if errors.Is(err, user.ErrContractRevocationNotExists) {
-			return false
-		}
-		mod.log.Error("failed to load node contract revocation %v: %v", objectID, err)
-		return false
-	}
-
-	if c.IsExpired() {
-		return false
-	}
-
-	return true
+	return false
 }

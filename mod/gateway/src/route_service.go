@@ -60,7 +60,7 @@ func (srv *RouteService) RouteQuery(ctx *astral.Context, q *astral.Query, w io.W
 		})
 	}
 
-	targetIdentity, err := astral.IdentityFromString(targetKey)
+	targetIdentity, err := astral.ParseIdentity(targetKey)
 	if err != nil {
 		return query.Reject()
 	}

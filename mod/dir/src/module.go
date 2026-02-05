@@ -56,7 +56,7 @@ func (mod *Module) ResolveIdentity(s string) (identity *astral.Identity, err err
 		return mod.node.Identity(), nil
 	}
 
-	if identity, err := astral.IdentityFromString(s); err == nil {
+	if identity, err := astral.ParseIdentity(s); err == nil {
 		return identity, nil
 	}
 

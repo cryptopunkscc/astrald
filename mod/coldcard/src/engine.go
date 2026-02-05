@@ -15,7 +15,7 @@ type Engine struct {
 	crypto.NilEngine
 }
 
-func (e *Engine) MessageSigner(key *crypto.PublicKey, scheme string) (crypto.MessageSigner, error) {
+func (e *Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
 	switch {
 	case scheme != "bip137":
 		return nil, crypto.ErrUnsupportedScheme
@@ -38,7 +38,7 @@ type MessageSigner struct {
 	path string
 }
 
-func (m *MessageSigner) SignMessage(ctx *astral.Context, msg string) (*crypto.Signature, error) {
+func (m *MessageSigner) SignText(ctx *astral.Context, msg string) (*crypto.Signature, error) {
 	sigBase64, err := m.dev.Msg(msg, m.path)
 	if err != nil {
 		return nil, err

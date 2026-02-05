@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -21,66 +23,76 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs
 		return q.RejectWithCode(2)
 	}
 
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	obj, err := ch.Receive()
+	// receive the contract to sign
+	var contract *user.NodeContract
+	err = ch.Switch(channel.Expect(&contract))
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
-	contract, ok := obj.(*user.NodeContract)
-	if !ok || contract == nil {
+	// check contract viability
+	switch {
+	case contract.NodeID.IsZero():
+		return ch.Send(user.ErrInvalidContract)
+	case !contract.NodeID.IsEqual(mod.node.Identity()):
+		return ch.Send(user.ErrInvalidContract)
+	case !contract.ActiveAt(time.Now().Add(minimalContractLength)):
 		return ch.Send(user.ErrInvalidContract)
 	}
 
-	invitationAccepted := mod.GetSwarmInvitePolicy()(q.Caller(), *contract)
-	if !invitationAccepted {
+	// wait for user approval
+	approved := mod.GetSwarmInvitePolicy()(q.Caller(), *contract)
+	if !approved {
 		return ch.Send(user.ErrInvitationDeclined)
 	}
 
-	if contract.UserID == nil {
-		return ch.Send(user.ErrInvalidContract)
+	// get the signer for the node
+	signer, err := mod.Crypto.HashSigner(secp256k1.FromIdentity(mod.node.Identity()), crypto.SchemeASN1)
+	if err != nil {
+		return ch.Send(astral.Err(err))
 	}
 
-	if !contract.NodeID.IsEqual(mod.node.Identity()) {
-		return ch.Send(user.ErrInvalidContract)
+	// sign the contract
+	nodeSig, err := signer.SignHash(ctx, contract.SignableHash())
+	if err != nil {
+		return ch.Send(astral.Err(err))
 	}
 
-	if !contract.ExpiresAt.Time().After(time.Now().Add(minimalContractLength)) {
-		return ch.Send(user.ErrInvalidContract)
+	// send signature back
+	err = ch.Send(nodeSig)
+	if err != nil {
+		return ch.Send(astral.Err(err))
 	}
 
+	var userSig *crypto.Signature
+	err = ch.Switch(channel.Expect(&userSig))
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	// assemble the signed contract
 	signed := &user.SignedNodeContract{
 		NodeContract: contract,
+		UserSig:      userSig,
+		NodeSig:      nodeSig,
 	}
 
-	signed.NodeSig, err = mod.Keys.SignASN1(mod.ctx.Identity(), signed.Hash())
+	// final signature verification
+	err = mod.VerifySignedNodeContract(signed)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
-	err = ch.Send(&signed.NodeSig)
+	// store the signed contract
+	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
-	obj, err = ch.Receive()
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	userSig, ok := obj.(*astral.Bytes8)
-	if !ok || userSig == nil {
-		return ch.Send(user.ErrContractInvalidSignature)
-	}
-
-	signed.UserSig = *userSig
-	err = mod.SaveSignedNodeContract(signed)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
+	// set the contract as the active contract
 	err = mod.SetActiveContract(signed)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))

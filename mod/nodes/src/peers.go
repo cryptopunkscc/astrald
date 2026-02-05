@@ -15,6 +15,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
 	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 type Peers struct {
@@ -433,7 +434,19 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 		}
 	}()
 
-	aconn, err := noise.HandshakeOutbound(ctx, conn, remoteID, mod.node.Identity())
+	// get the node's private key
+	privKey, err := mod.getPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+
+	// initiate a handshake
+	aconn, err := noise.HandshakeOutbound(
+		ctx,
+		conn,
+		remoteID.PublicKey(),
+		secp256k1.PrivKeyFromBytes(privKey.Key),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("outbound handshake: %w", err)
 	}
@@ -480,7 +493,14 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 		}
 	}()
 
-	aconn, err := noise.HandshakeInbound(ctx, conn, mod.node.Identity())
+	// get the node's private key
+	privKey, err := mod.getPrivateKey()
+	if err != nil {
+		return err
+	}
+
+	// respond to a handshake
+	aconn, err := noise.HandshakeInbound(ctx, conn, secp256k1.PrivKeyFromBytes(privKey.Key))
 	if err != nil {
 		return
 	}

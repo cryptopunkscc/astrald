@@ -28,7 +28,7 @@ func (a *AppContract) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Struct(a).ReadFrom(r)
 }
 
-func (a *AppContract) ContractHash() []byte {
+func (a *AppContract) SignableHash() []byte {
 	var hash = sha256.New()
 	_, err := streams.WriteAllTo(hash,
 		astral.String8(a.ObjectType()),

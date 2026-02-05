@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	SchemeASN1   = "asn1"
-	SchemeBIP137 = "bip137"
+	SchemeASN1   = "asn1"   // default for hash signatures
+	SchemeBIP137 = "bip137" // default for text signatures
 )
 
 // Engine adds support for various cryptographic operations to the crypto module. Engines can
@@ -22,11 +22,11 @@ type Engine interface {
 	// VerifyHashSignature verifies a signature of a hash
 	VerifyHashSignature(key *PublicKey, sig *Signature, hash []byte) error
 
-	// MessageSigner returns a signer that will sign messages using the provided key and scheme
-	MessageSigner(key *PublicKey, scheme string) (MessageSigner, error)
+	// TextSigner returns a signer that will sign messages using the provided key and scheme
+	TextSigner(key *PublicKey, scheme string) (TextSigner, error)
 
-	// VerifyMessageSignature verifies a signature of a message
-	VerifyMessageSignature(key *PublicKey, sig *Signature, msg string) error
+	// VerifyTextSignature verifies a signature of a message
+	VerifyTextSignature(key *PublicKey, sig *Signature, msg string) error
 }
 
 type HashSigner interface {
@@ -34,7 +34,7 @@ type HashSigner interface {
 	SignHash(ctx *astral.Context, hash []byte) (*Signature, error)
 }
 
-type MessageSigner interface {
-	// SignMessage generates a signature for the given message
-	SignMessage(ctx *astral.Context, msg string) (*Signature, error)
+type TextSigner interface {
+	// SignText generates a signature for the given text
+	SignText(ctx *astral.Context, text string) (*Signature, error)
 }

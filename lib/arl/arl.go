@@ -56,7 +56,7 @@ func Parse(s string, resolver dir.Resolver) (arl *ARL, err error) {
 				return
 			}
 		} else {
-			arl.Caller, err = astral.IdentityFromString(c)
+			arl.Caller, err = astral.ParseIdentity(c)
 			if err != nil {
 				return
 			}
@@ -70,7 +70,7 @@ func Parse(s string, resolver dir.Resolver) (arl *ARL, err error) {
 				return
 			}
 		} else {
-			arl.Target, err = astral.IdentityFromString(t)
+			arl.Target, err = astral.ParseIdentity(t)
 			if err != nil {
 				return
 			}

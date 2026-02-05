@@ -9,8 +9,10 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	modsecp256k1 "github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -46,6 +48,8 @@ type Module struct {
 	in chan *Frame
 
 	searchCache sig.Map[string, *astral.Identity]
+
+	privateKey *crypto.PrivateKey
 }
 
 type Relay struct {
@@ -120,6 +124,19 @@ func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 
 func (mod *Module) IsLinked(identity *astral.Identity) bool {
 	return mod.peers.isLinked(identity)
+}
+
+func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
+	if mod.privateKey != nil {
+		return mod.privateKey, nil
+	}
+
+	mod.privateKey, err = mod.Crypto.PrivateKey(mod.ctx, modsecp256k1.FromIdentity(mod.ctx.Identity()))
+	if err != nil {
+		return nil, err
+	}
+
+	return mod.privateKey, nil
 }
 
 // findStreamByID returns a stream with the given local id or nil if not found.

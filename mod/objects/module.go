@@ -17,6 +17,7 @@ const (
 	RepoRemovable = "removable" // removable storage
 	RepoVirtual   = "virtual"   // virtual repos (archives, encryption, chunks)
 	RepoNetwork   = "network"   // network repos
+	RepoSystem    = "system"
 )
 
 // MaxObjectSize is the maximum size of an object that can be loaded into memory

@@ -1,0 +1,23 @@
+package crypto
+
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
+)
+
+type ObjectSigner struct {
+	mod    *Module
+	scheme string
+	key    *crypto.PublicKey
+}
+
+var _ crypto.ObjectSigner = &ObjectSigner{}
+
+func (s *ObjectSigner) SignObject(ctx *astral.Context, object crypto.SignableObject) (*crypto.Signature, error) {
+	signer, err := s.mod.HashSigner(s.key, s.scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	return signer.SignHash(ctx, object.SignableHash())
+}

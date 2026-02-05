@@ -6,38 +6,23 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/mod/kos"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
 // SetActiveContract sets the contract under which the node operates
-func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err error) {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
-
-	// check if the contract meets necessary criteria
-	if !contract.NodeID.IsEqual(mod.node.Identity()) {
-		return errors.New("local node is not a party to the contract")
-	}
-
-	if time.Now().After(contract.ExpiresAt.Time()) {
-		return errors.New("contract expired")
-	}
-
-	err = mod.ValidateNodeContract(contract)
+func (mod *Module) SetActiveContract(signed *user.SignedNodeContract) (err error) {
+	// verify signatures
+	err = mod.VerifySignedNodeContract(signed)
 	if err != nil {
 		return
 	}
 
-	// store the contract
-	err = mod.KOS.Set(mod.ctx, keyActiveContract, contract)
-	if err != nil {
-		return
-	}
+	mod.config.ActiveContract.Set(mod.ctx, signed)
 
-	mod.log.Info("hello, %v!", contract.UserID)
 	// synchronize siblings & broadcast
 	mod.mu.Unlock()
 	err = mod.Nearby.Broadcast()
@@ -50,52 +35,37 @@ func (mod *Module) SetActiveContract(contract *user.SignedNodeContract) (err err
 	return
 }
 
-// ValidateNodeContract checks if the contract has valid signatures from both the user and the node.
-func (mod *Module) ValidateNodeContract(contract *user.SignedNodeContract) error {
-	if contract.UserID.IsZero() {
-		return errors.New("invalid contract: UserID is zero")
-	}
-
-	if contract.NodeID.IsZero() {
-		return errors.New("invalid contract: NodeID is zero")
-	}
-
-	if contract.UserID.IsEqual(contract.NodeID) {
-		return errors.New("invalid contract: UserID and NodeID are equal")
-	}
-
-	var hash = contract.Hash()
-
-	// verify user signature
-	err := mod.Keys.VerifyASN1(contract.UserID, hash, contract.UserSig)
-	if err != nil {
-		return fmt.Errorf("user sig verification: %w", err)
-	}
-
-	// verify node signature
-	err = mod.Keys.VerifyASN1(contract.NodeID, hash, contract.NodeSig)
-	if err != nil {
-		return fmt.Errorf("node sig verification: %w", err)
-	}
-
-	return nil
-}
-
 // ActiveContract returns the active contract
 func (mod *Module) ActiveContract() *user.SignedNodeContract {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
+	return mod.activeContract
+}
 
-	contract, err := kos.Get[*user.SignedNodeContract](mod.ctx, mod.KOS, keyActiveContract)
-	if err != nil {
+func (mod *Module) Identity() *astral.Identity {
+	ac := mod.ActiveContract()
+	if ac == nil {
 		return nil
 	}
+	return ac.UserID
+}
 
-	if contract.IsExpired() {
+func (mod *Module) setActiveContract(signed *user.SignedNodeContract) error {
+	// viability checks
+	switch {
+	case signed.IsNil():
+		mod.activeContract = nil
 		return nil
+	case !signed.ActiveAt(time.Now()):
+		return errors.New("contract is not active")
+	case !signed.NodeID.IsEqual(mod.node.Identity()):
+		return errors.New("local node is not a party to the contract")
+	case mod.VerifySignedNodeContract(signed) != nil:
+		return errors.New("contract is invalid")
 	}
 
-	return contract
+	mod.log.Info("hello, %v!", signed.UserID)
+
+	mod.activeContract = signed
+	return nil
 }
 
 // ActiveContractsOf returns a list of all active contracts of the specified user
@@ -123,39 +93,36 @@ func (mod *Module) ActiveContractsOf(userID *astral.Identity) (contracts []*user
 	return contracts, err
 }
 
-// SaveSignedNodeContract validates and persists a signed node contract
-func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error) {
-	contractID, err := astral.ResolveObjectID(c)
-	if err != nil {
-		return fmt.Errorf("failed to resolve contract ID: %w", err)
+// IndexSignedNodeContract adds a signed contract to the index
+func (mod *Module) IndexSignedNodeContract(signed *user.SignedNodeContract) (err error) {
+	// check if active
+	if !signed.ActiveAt(time.Now()) {
+		return errors.New("contract is not active")
 	}
 
-	// check if already saved
-	if mod.db.ContractExists(contractID) {
+	// verify signatures
+	err = mod.VerifySignedNodeContract(signed)
+	if err != nil {
+		return
+	}
+
+	signedID, err := astral.ResolveObjectID(signed)
+	if err != nil {
+		return
+	}
+
+	// check if already indexed
+	if mod.db.signedNodeContractExists(signedID) {
 		return nil
 	}
 
-	if c.IsExpired() {
-		return user.ErrNodeContractAlreadyExpired
-	}
-
-	err = mod.ValidateNodeContract(c)
-	if err != nil {
-		return fmt.Errorf("failed while validating contract: %w", err)
-	}
-
-	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
-
-	_, err = objects.Save(ctx, c, mod.Objects.WriteDefault())
-	if err != nil {
-		return fmt.Errorf(`error saving contract: %w`, err)
-	}
-
-	err = mod.db.Create(&dbNodeContract{
-		ObjectID:  contractID,
-		UserID:    c.UserID,
-		NodeID:    c.NodeID,
-		ExpiresAt: c.ExpiresAt.Time().UTC(),
+	// save to db
+	err = mod.db.Create(&dbSignedNodeContract{
+		ObjectID:  signedID,
+		UserID:    signed.UserID,
+		NodeID:    signed.NodeID,
+		StartsAt:  signed.StartsAt.Time().UTC(),
+		ExpiresAt: signed.ExpiresAt.Time().UTC(),
 	}).Error
 	if err != nil {
 		return fmt.Errorf(`db error: %w`, err)
@@ -166,75 +133,21 @@ func (mod *Module) SaveSignedNodeContract(c *user.SignedNodeContract) (err error
 	return
 }
 
+func (mod *Module) RemoveFromIndex(objectID *astral.ObjectID) error {
+	if mod.db.signedNodeContractExists(objectID) {
+		return mod.db.deleteSignedNodeContract(objectID)
+	}
+
+	return errors.New("object not found in any index")
+}
+
 func (mod *Module) GetNodeContract(contractID *astral.ObjectID) (*user.SignedNodeContract, error) {
 	// fast fail so we dont need to load the contract if it does not exist in db
-	if !mod.db.ContractExists(contractID) {
+	if !mod.db.signedNodeContractExists(contractID) {
 		return nil, user.ErrContractNotExists
 	}
 
 	return objects.Load[*user.SignedNodeContract](mod.ctx, mod.Objects.ReadDefault(), contractID)
-}
-
-// SignLocalContract creates, signs and stores a new node contract with the specified user
-func (mod *Module) SignLocalContract(userID *astral.Identity) (contract *user.SignedNodeContract, err error) {
-	// then create and sign a new contract
-
-	startsAt := astral.Now()
-
-	contract = &user.SignedNodeContract{
-		NodeContract: &user.NodeContract{
-			UserID:    userID,
-			NodeID:    mod.node.Identity(),
-			StartsAt:  startsAt,
-			ExpiresAt: astral.Time(startsAt.Time().Add(defaultContractValidity)),
-		},
-	}
-
-	// sign with node key
-	contract.NodeSig, err = mod.Keys.SignASN1(contract.NodeID, contract.Hash())
-	if err != nil {
-		return
-	}
-
-	// sign with user key
-	contract.UserSig, err = mod.Keys.SignASN1(contract.UserID, contract.Hash())
-	if err != nil {
-		return
-	}
-
-	err = mod.SaveSignedNodeContract(contract)
-
-	return
-}
-
-// SetUserID looks for a signed contract between the specified user and the local node and sets it as active
-func (mod *Module) SetUserID(userID *astral.Identity) error {
-	contracts, err := mod.ActiveContractsOf(userID)
-	if len(contracts) == 0 {
-		return err
-	}
-
-	var best *user.SignedNodeContract
-
-	for _, contract := range contracts {
-		if !contract.NodeID.IsEqual(mod.node.Identity()) {
-			continue
-		}
-
-		if best == nil {
-			best = contract
-			continue
-		}
-
-		if best.ExpiresAt.Time().Before(contract.ExpiresAt.Time()) {
-			best = contract
-		}
-	}
-
-	bestID, _ := astral.ResolveObjectID(best)
-
-	mod.log.Log("using contract %v for user %v", bestID, userID)
-	return mod.SetActiveContract(best)
 }
 
 // ActiveUsers returns a list of known active users of the specified node
@@ -267,60 +180,77 @@ func (mod *Module) LocalSwarm() (list []*astral.Identity) {
 	return mod.ActiveNodes(ac.UserID)
 }
 
-func (mod *Module) ExchangeAndSignNodeContract(ctx *astral.Context, target *astral.Identity, userID *astral.Identity, startsAt astral.Time) (signedContract *user.SignedNodeContract, err error) {
-	inviteQuery := query.New(ctx.Identity(), target, user.OpInvite, &opInviteArgs{})
-	inviteCh, err := query.RouteChan(ctx, mod.node, inviteQuery)
+func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (signed *user.SignedNodeContract, err error) {
+	// get local userID
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return nil, errors.New("no active contract")
+	}
+	userID := ac.UserID
+
+	// open a channel to the target
+	ch, err := astrald.WithTarget(nodeID).QueryChannel(ctx, user.OpInvite, nil)
 	if err != nil {
-		return signedContract, fmt.Errorf("failed to route query: %w", err)
+		return
+	}
+	defer ch.Close()
+
+	// generate a new contract with the default length
+	contract := user.NewNodeContract(userID, nodeID)
+	signed = &user.SignedNodeContract{
+		NodeContract: contract,
 	}
 
-	defer inviteCh.Close()
-
-	signedContract = &user.SignedNodeContract{
-		NodeContract: &user.NodeContract{
-			UserID:    userID,
-			NodeID:    target,
-			StartsAt:  startsAt,
-			ExpiresAt: astral.Time(startsAt.Time().Add(defaultContractValidity)),
-		},
-	}
-
-	err = inviteCh.Send(signedContract.NodeContract)
+	// send the contract to the target
+	err = ch.Send(contract)
 	if err != nil {
-		return signedContract, err
+		return
 	}
 
-	obj, err := inviteCh.Receive()
+	// expect node's signature
+	err = ch.Switch(channel.Expect(&signed.NodeSig))
 	if err != nil {
-		return signedContract, err
+		return
 	}
 
-	nodeSig, ok := obj.(*astral.Bytes8)
-	if !ok || nodeSig == nil {
-		return signedContract, user.ErrContractInvalidSignature
-	}
-
-	signedContract.NodeSig = *nodeSig
-	err = mod.Keys.VerifyASN1(signedContract.NodeID, signedContract.Hash(), signedContract.NodeSig)
+	// verify node's signature
+	err = mod.Crypto.VerifyHashSignature(
+		secp256k1.FromIdentity(signed.NodeID),
+		signed.NodeSig,
+		signed.SignableHash(),
+	)
 	if err != nil {
-		return signedContract, user.ErrContractInvalidSignature
+		return
 	}
 
-	signedContract.UserSig, err = mod.Keys.SignASN1(signedContract.UserID, signedContract.Hash())
+	// sign the contract with user's key
+	userSigner, err := mod.Crypto.TextObjectSigner(secp256k1.FromIdentity(contract.UserID))
 	if err != nil {
-		return signedContract, fmt.Errorf("failed to sign contract: %w", err)
+		return nil, err
 	}
 
-	err = inviteCh.Send(&signedContract.UserSig)
+	signed.UserSig, err = userSigner.SignTextObject(ctx, contract)
 	if err != nil {
-		return signedContract, err
+		return nil, err
 	}
 
-	return signedContract, nil
+	// final verification
+	err = mod.VerifySignedNodeContract(signed)
+	if err != nil {
+		return signed, err
+	}
+
+	// send the user's signature back
+	err = ch.Send(signed.UserSig)
+	if err != nil {
+		return signed, err
+	}
+
+	return signed, nil
 }
 
 func (mod *Module) FindNodeContract(contractID *astral.ObjectID) (*user.NodeContract, error) {
-	dbRecord, err := mod.db.FindNodeContract(contractID)
+	dbRecord, err := mod.db.findSignedNodeContract(contractID)
 	if err != nil {
 		return nil, err
 	}

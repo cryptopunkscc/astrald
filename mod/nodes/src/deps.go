@@ -4,10 +4,10 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/events"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/keys"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/user"
 
@@ -16,10 +16,10 @@ import (
 
 type Deps struct {
 	Auth      auth.Module
+	Crypto    crypto.Module
 	Dir       dir.Module
 	User      user.Module
 	Exonet    exonet.Module
-	Keys      keys.Module
 	Objects   objects.Module
 	Scheduler scheduler.Module
 	Events    events.Module

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 const anonymous = "anyone"
@@ -20,24 +21,10 @@ var ErrInvalidKeyLength = errors.New("invalid key length")
 
 // Identity is an eliptic-curve-based identity
 type Identity struct {
-	privateKey *btcec.PrivateKey
-	publicKey  *btcec.PublicKey
+	publicKey *secp256k1.PublicKey
 }
 
-// GenerateIdentity returns a new Identity
-func GenerateIdentity() *Identity {
-	var err error
-	id := &Identity{}
-
-	id.privateKey, err = btcec.NewPrivateKey()
-	if err != nil {
-		return nil
-	}
-
-	return id
-}
-
-func IdentityFromString(s string) (*Identity, error) {
+func ParseIdentity(s string) (*Identity, error) {
 	switch {
 	case s == anyoneKey, s == anonymous:
 		return Anyone, nil
@@ -58,31 +45,13 @@ func IdentityFromString(s string) (*Identity, error) {
 	return &Identity{publicKey: pk}, nil
 }
 
-func IdentityFromPubKey(key *btcec.PublicKey) *Identity {
+func IdentityFromPubKey(key *secp256k1.PublicKey) *Identity {
 	return &Identity{publicKey: key}
 }
 
-func IdentityFromPrivKeyBytes(privKey []byte) (*Identity, error) {
-	priv, _ := btcec.PrivKeyFromBytes(privKey)
-	if priv == nil {
-		return nil, errors.New("parse error")
-	}
-	return &Identity{
-		privateKey: priv,
-	}, nil
-}
-
 // PublicKey returns identity's public key
-func (id *Identity) PublicKey() *btcec.PublicKey {
-	if id.privateKey != nil {
-		return id.privateKey.PubKey()
-	}
+func (id *Identity) PublicKey() *secp256k1.PublicKey {
 	return id.publicKey
-}
-
-// PrivateKey returns identity's private key
-func (id *Identity) PrivateKey() *btcec.PrivateKey {
-	return id.privateKey
 }
 
 // IsEqual checks if the public key is the same as the other identity's or if both are zero
@@ -98,10 +67,7 @@ func (id *Identity) IsEqual(other *Identity) bool {
 
 // IsZero returns true if identity is nil or has zero value
 func (id *Identity) IsZero() bool {
-	if id == nil {
-		return true
-	}
-	return (id.privateKey == nil) && (id.publicKey == nil)
+	return id == nil || id.publicKey == nil
 }
 
 // String returns a string representation of this identity
@@ -120,7 +86,7 @@ func (id *Identity) Fingerprint() string {
 // astral
 
 func (Identity) ObjectType() string {
-	return "identity.secp256k1"
+	return "identity"
 }
 
 func (id Identity) WriteTo(w io.Writer) (n int64, err error) {
@@ -153,7 +119,6 @@ func (id *Identity) ReadFrom(r io.Reader) (n int64, err error) {
 		}
 	}
 	if allNull {
-		id.privateKey = nil
 		id.publicKey = nil
 		return
 	}
@@ -179,7 +144,7 @@ func (id *Identity) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
-	n, err := IdentityFromString(s)
+	n, err := ParseIdentity(s)
 	if err != nil {
 		return err
 	}
@@ -203,7 +168,7 @@ func (id *Identity) MarshalText() (text []byte, err error) {
 }
 
 func (id *Identity) UnmarshalText(text []byte) (err error) {
-	i, err := IdentityFromString(string(text))
+	i, err := ParseIdentity(string(text))
 	if err != nil {
 		return
 	}
@@ -223,7 +188,7 @@ func (id *Identity) Scan(src any) error {
 		return errors.New("typcast failed")
 	}
 
-	n, err := IdentityFromString(str)
+	n, err := ParseIdentity(str)
 	if err != nil {
 		return err
 	}

@@ -94,7 +94,7 @@ func (params Params) GetIdentity(key string) (i *astral.Identity, err error) {
 		return i, ErrKeyNotFound
 	}
 
-	return astral.IdentityFromString(v)
+	return astral.ParseIdentity(v)
 }
 
 func (params Params) SetIdentity(key string, i *astral.Identity) {
