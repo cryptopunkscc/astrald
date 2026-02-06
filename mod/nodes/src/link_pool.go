@@ -107,7 +107,7 @@ func (pool *LinkPool) RetrieveLink(
 		defer pool.unsubscribe(w)
 
 		linker := pool.getOrCreateNodeLinker(target)
-		linker.Activate(ctx, o.LinkConstraints)
+		linker.Activate(ctx)
 
 		select {
 		case <-ctx.Done():
@@ -146,6 +146,12 @@ func streamMatcher(target *astral.Identity, o *RetrieveLinkOptions) func(*Stream
 type RetrieveLinkOptions struct {
 	ForceNew        bool
 	LinkConstraints LinkConstraints
+}
+
+type LinkConstraints struct {
+	IncludeNetworks []string
+	ExcludeNetworks []string
+	Endpoints       []exonet.Endpoint
 }
 
 // RetrieveLinkOption is a functional option for RetrieveLink.

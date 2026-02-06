@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
@@ -24,24 +23,29 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		return q.RejectWithCode(2)
 	}
 
-	var endpoint exonet.Endpoint
-	if args.Endpoint != "" {
+	var task interface {
+		nodes.CreateStreamTask
+	}
+
+	switch {
+	case args.Endpoint != "":
 		split := strings.SplitN(args.Endpoint, ":", 2)
-		if len(split) == 2 {
-			var parseErr error
-			endpoint, parseErr = mod.Exonet.Parse(split[0], split[1])
-			if parseErr != nil {
-				return q.RejectWithCode(3)
-			}
+		if len(split) != 2 {
+			return q.RejectWithCode(3)
 		}
+
+		endpoint, err := mod.Exonet.Parse(split[0], split[1])
+		if err != nil {
+			return q.RejectWithCode(3)
+		}
+		task = mod.NewCreateStreamTask(target, endpoint)
+
+	case args.Net != "":
+		task = mod.NewEnsureStreamTask(target, nil, &args.Net, true)
+	default:
+		task = mod.NewEnsureStreamTask(target, nil, nil, true)
 	}
 
-	var network *string
-	if args.Net != "" {
-		network = &args.Net
-	}
-
-	task := mod.NewCreateStreamTask(target, endpoint, network)
 	scheduledTask, err := mod.Scheduler.Schedule(task)
 	if err != nil {
 		return q.RejectWithCode(5)
