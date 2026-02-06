@@ -61,7 +61,7 @@ func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 			a.mod.log.Log("still trying to reconnect to %v (attempt %v)", a.Target, count)
 		}
 
-		task := a.mod.Nodes.NewEnsureStreamTask(a.Target, nil, nil, false)
+		task := a.mod.Nodes.NewEnsureStreamTask(a.Target, nil, false)
 		scheduled, err := a.mod.Scheduler.Schedule(task)
 		if err != nil {
 			return err
