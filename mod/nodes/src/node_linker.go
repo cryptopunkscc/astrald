@@ -29,13 +29,33 @@ func (linker *NodeLinker) AddStrategy(network string, strategy LinkStrategy) {
 }
 
 // todo: will probably pass some kind of options in the future
-func (linker *NodeLinker) Activate(ctx *astral.Context) {
+func (linker *NodeLinker) Activate(ctx *astral.Context) chan error {
+	done := make(chan error, 1)
+
+	var strategiesDone []chan error
+
 	for _, strategy := range linker.strategies {
-		strategy.Activate(ctx)
+		strategyDone := strategy.Activate(ctx)
+		strategiesDone = append(strategiesDone, strategyDone)
 	}
+
+	// note: ensures that every strategy is done
+	go func() {
+		for _, ch := range strategiesDone {
+			select {
+			case <-ctx.Done():
+				done <- ctx.Err()
+				return
+			case <-ch:
+			}
+		}
+		done <- nil
+	}()
+
+	return done
 }
 
 type LinkStrategy interface {
 	// todo: will probably accept some kind of options in the future
-	Activate(ctx *astral.Context) error
+	Activate(ctx *astral.Context) chan error
 }

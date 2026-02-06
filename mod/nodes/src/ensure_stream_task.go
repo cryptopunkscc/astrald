@@ -9,7 +9,7 @@ import (
 
 var _ scheduler.Task = &EnsureStreamTask{}
 
-type EnsureStreamTask struct {
+type EnsureStreamTask struct { // note: maybe ensure link task?
 	mod      *Module
 	Target   *astral.Identity
 	Endpoint exonet.Endpoint
