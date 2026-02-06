@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -80,7 +79,7 @@ func (s *TorStrategy) Activate(ctx *astral.Context) chan error {
 					if _, ok := out.Swap(nil, stream); ok {
 						cancel()
 					} else {
-						stream.CloseWithError(errors.New("excess stream"))
+						stream.CloseWithError(nodes.ErrExcessStream)
 					}
 
 					return

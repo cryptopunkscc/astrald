@@ -9,4 +9,5 @@ var (
 	ErrEndpointResolve       = errors.New("endpoint resolve failed")
 	ErrNoUsableEndpoints     = errors.New("no endpoints")
 	ErrNoEndpointReached     = errors.New("no endpoints reached")
+	ErrExcessStream          = errors.New("excess stream")
 )
