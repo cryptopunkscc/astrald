@@ -38,7 +38,7 @@ type Module interface {
 	IsLinked(*astral.Identity) bool
 
 	NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) CreateStreamTask
-	NewEnsureStreamTask(target *astral.Identity, network *string, create bool) EnsureStreamAction
+	NewEnsureStreamTask(target *astral.Identity, network *string, create bool) EnsureStreamTask
 }
 
 // Link is an encrypted communication channel between two identities that is capable of routing queries

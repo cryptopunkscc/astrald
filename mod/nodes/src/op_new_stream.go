@@ -39,11 +39,8 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 			return q.RejectWithCode(3)
 		}
 		task = mod.NewCreateStreamTask(target, endpoint)
-
-	case args.Net != "":
-		task = mod.NewEnsureStreamTask(target, nil, &args.Net, true)
 	default:
-		task = mod.NewEnsureStreamTask(target, nil, nil, true)
+		task = mod.NewEnsureStreamTask(target, nil, true)
 	}
 
 	scheduledTask, err := mod.Scheduler.Schedule(task)
