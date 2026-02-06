@@ -7,11 +7,11 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"github.com/cryptopunkscc/astrald/mod/tor"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-type TCPStrategy struct {
+type TorStrategy struct {
 	mod      *Module
 	produced chan<- *Stream
 	target   *astral.Identity
@@ -19,18 +19,17 @@ type TCPStrategy struct {
 	inFlight sig.Set[string]
 }
 
-var _ LinkStrategy = &TCPStrategy{}
+var _ LinkStrategy = &TorStrategy{}
 
-// fixme: simplify & improve
-func NewTCPStrategy(mod *Module, target *astral.Identity, produced chan<- *Stream) *TCPStrategy {
-	return &TCPStrategy{
+func NewTorStrategy(mod *Module, target *astral.Identity, produced chan<- *Stream) *TorStrategy {
+	return &TorStrategy{
 		mod:      mod,
 		target:   target,
 		produced: produced,
 	}
 }
 
-func (s *TCPStrategy) Activate(ctx *astral.Context) error {
+func (s *TorStrategy) Activate(ctx *astral.Context) error {
 	var wg sync.WaitGroup
 	var out sig.Value[*Stream]
 	var workers = DefaultWorkerCount
@@ -44,7 +43,7 @@ func (s *TCPStrategy) Activate(ctx *astral.Context) error {
 	}
 
 	endpointsChan := sig.FilterChan(resolved, func(e exonet.Endpoint) bool {
-		return e.Network() == tcp.ModuleName
+		return e.Network() == tor.ModuleName
 	})
 
 	wg.Add(workers)

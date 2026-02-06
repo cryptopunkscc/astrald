@@ -8,7 +8,7 @@ import (
 )
 
 var _ scheduler.Task = &CreateStreamTask{}
-var _ nodes.CreateStreamTask = &CreateStreamTask{}
+var _ nodes.CreateStreamAction = &CreateStreamTask{}
 
 type CreateStreamTask struct {
 	mod      *Module
@@ -18,7 +18,7 @@ type CreateStreamTask struct {
 	Err      error
 }
 
-func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateStreamTask {
+func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateStreamAction {
 	return &CreateStreamTask{
 		mod:      m,
 		Target:   target,
@@ -27,15 +27,8 @@ func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.En
 }
 
 func (c *CreateStreamTask) Run(ctx *astral.Context) error {
-	conn, err := c.mod.Exonet.Dial(ctx, c.Endpoint)
+	stream, err := c.mod.peers.connectAt(ctx, c.Target, c.Endpoint)
 	if err != nil {
-		c.Err = err
-		return err
-	}
-
-	stream, err := c.mod.peers.EstablishOutboundLink(ctx, c.Target, conn)
-	if err != nil {
-		conn.Close()
 		c.Err = err
 		return err
 	}
