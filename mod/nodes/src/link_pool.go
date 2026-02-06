@@ -18,6 +18,10 @@ type LinkPool struct {
 	mod      *Module
 	watchers sig.Set[*streamWatcher]
 	linkers  sig.Map[string, *NodeLinker]
+
+	// todo: node linkers
+	// todo: move streams to from peers to link pool
+	// streams sig.Set[*Stream]
 }
 
 func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
@@ -94,6 +98,7 @@ func (pool *LinkPool) RetrieveLink(
 	if !o.ForceNew {
 		streams := pool.peers.streams.Select(match)
 		if len(streams) > 0 {
+			// todo: there could be preferences about which stream network to use etc.
 			return sig.ArrayToChan([]LinkResult{{Stream: streams[0]}})
 		}
 	}
@@ -120,6 +125,8 @@ func (pool *LinkPool) RetrieveLink(
 	return result
 }
 
+// todo: rethink helpers
+
 func streamMatcher(target *astral.Identity, o *RetrieveLinkOptions) func(*Stream) bool {
 	return func(s *Stream) bool {
 		if !s.RemoteIdentity().IsEqual(target) {
@@ -130,11 +137,14 @@ func streamMatcher(target *astral.Identity, o *RetrieveLinkOptions) func(*Stream
 		}
 
 		net := s.Network()
-		if len(o.LinkConstraints.ExcludeNetworks) > 0 && slices.Contains(o.LinkConstraints.ExcludeNetworks, net) {
+
+		if len(o.LinkConstraints.ExcludeNetworks) > 0 &&
+			slices.Contains(o.LinkConstraints.ExcludeNetworks, net) {
 			return false
 		}
 
-		if len(o.LinkConstraints.IncludeNetworks) > 0 && !slices.Contains(o.LinkConstraints.IncludeNetworks, net) {
+		if len(o.LinkConstraints.IncludeNetworks) > 0 &&
+			!slices.Contains(o.LinkConstraints.IncludeNetworks, net) {
 			return false
 		}
 
@@ -152,6 +162,22 @@ type LinkConstraints struct {
 	IncludeNetworks []string
 	ExcludeNetworks []string
 	Endpoints       []exonet.Endpoint
+}
+
+func endpointFilter(include, exclude []string) func(exonet.Endpoint) bool {
+	return func(endpoint exonet.Endpoint) bool {
+		net := endpoint.Network()
+
+		if len(exclude) > 0 && slices.Contains(exclude, net) {
+			return false
+		}
+
+		if len(include) > 0 && !slices.Contains(include, net) {
+			return false
+		}
+
+		return true
+	}
 }
 
 // RetrieveLinkOption is a functional option for RetrieveLink.

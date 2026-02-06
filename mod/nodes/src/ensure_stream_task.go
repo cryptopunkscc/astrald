@@ -20,13 +20,12 @@ type EnsureStreamTask struct { // note: maybe ensure link task?
 	Err  error
 }
 
-func (m *Module) NewEnsureStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string, create bool) nodes.EnsureStreamTask {
+func (m *Module) NewEnsureStreamTask(target *astral.Identity, network *string, create bool) nodes.EnsureStreamTask {
 	return &EnsureStreamTask{
-		mod:      m,
-		Target:   target,
-		Endpoint: endpoint,
-		Network:  network,
-		Create:   create,
+		mod:     m,
+		Target:  target,
+		Network: network,
+		Create:  create,
 	}
 }
 
