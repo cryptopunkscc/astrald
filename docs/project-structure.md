@@ -39,6 +39,7 @@ src/
 | [apphost](../mod/apphost/src/README.md) | App hosting interface |
 | archives | Archive handling |
 | auth | Authentication |
+| crypto | Cryptographic operations and key management |
 | dir | Directory and name resolution |
 | ether | Ethernet layer |
 | events | Event system |
@@ -48,8 +49,6 @@ src/
 | gateway | Gateway operations |
 | [ip](../mod/ip/README.md) | IP utilities |
 | kcp | KCP protocol transport |
-| keys | Key management |
-| [kos](../mod/kos/README.md) | Kos integration |
 | log | Logging system |
 | media | Media indexing |
 | nat | NAT traversal |

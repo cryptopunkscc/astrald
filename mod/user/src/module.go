@@ -13,8 +13,8 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
-	"github.com/cryptopunkscc/astrald/mod/kos"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
+	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -173,9 +173,15 @@ func (mod *Module) SyncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 		return errors.New("no active contract")
 	}
 
-	key := fmt.Sprintf("mod.user.sync.%v.next_height", nodeID.String())
+	nodePath := fmt.Sprintf("/mod/user/assets/%v/next_height", nodeID.String())
 	var args any
-	height, _ := kos.Get[*astral.Uint64](ctx, mod.KOS, key)
+
+	heightNode, err := tree.Query(ctx, mod.Tree.Root(), nodePath, true)
+	if err != nil {
+		return err
+	}
+
+	height, _ := tree.Get[*astral.Uint64](ctx, heightNode)
 	if height != nil {
 		args = opSyncAssetsArgs{Start: int(*height)}
 	}
@@ -209,7 +215,7 @@ func (mod *Module) SyncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 			}
 
 		case *astral.Uint64:
-			return mod.KOS.Set(ctx, key, m)
+			return heightNode.Set(ctx, m)
 
 		default:
 			mod.log.Error("SyncAssets: protocol error: unknown msg: %v", m.ObjectType())

@@ -7,7 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/kos"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -22,7 +21,6 @@ type Deps struct {
 	Crypto    crypto.Module
 	Dir       dir.Module
 	Objects   objects.Module
-	KOS       kos.Module
 	Nodes     nodes.Module
 	Scheduler scheduler.Module
 	Shell     shell.Module
