@@ -49,7 +49,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		}
 
 		mod.pushToLinkedSibs(o.Contract)
-		
+
 	case *user.Notification:
 		err = mod.onNotification(drop.SenderID(), o)
 		if err == nil {
@@ -61,7 +61,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		case *nodes.StreamCreatedEvent:
 			if e.StreamCount == 1 && slices.ContainsFunc(mod.LocalSwarm(), e.RemoteIdentity.IsEqual) {
 				go mod.pushActiveContract(e.RemoteIdentity)
-				mod.Scheduler.Schedule(mod.NewSyncNodesAction(e.RemoteIdentity))
+				mod.Scheduler.Schedule(mod.NewSyncNodesTask(e.RemoteIdentity))
 				drop.Accept(false)
 			}
 		}

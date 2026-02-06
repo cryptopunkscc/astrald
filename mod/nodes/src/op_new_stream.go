@@ -11,10 +11,11 @@ import (
 )
 
 type opNewStreamArgs struct {
-	Target   string
-	Net      string `query:"optional"`
-	Endpoint string `query:"optional"`
-	Out      string `query:"optional"`
+	Target     string
+	Net        string `query:"optional"`
+	Endpoint   string `query:"optional"`
+	Strategies string `query:"optional"`
+	Out        string `query:"optional"`
 }
 
 func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStreamArgs) (err error) {
@@ -23,6 +24,14 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		return q.RejectWithCode(2)
 	}
 
+	var strategies []string
+	if args.Strategies != "" {
+		for _, raw := range strings.Split(args.Strategies, ",") {
+			raw = strings.TrimSpace(raw)
+		}
+	}
+
+	// fixme: bullshit interface
 	var task interface {
 		nodes.CreateStreamTask
 	}
@@ -40,7 +49,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		}
 		task = mod.NewCreateStreamTask(target, endpoint)
 	default:
-		task = mod.NewEnsureStreamTask(target, nil, true)
+		task = mod.NewEnsureStreamTask(target, nil, true, strategies)
 	}
 
 	scheduledTask, err := mod.Scheduler.Schedule(task)

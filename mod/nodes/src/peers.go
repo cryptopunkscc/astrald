@@ -588,7 +588,7 @@ func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Ident
 				if _, ok := out.Swap(nil, stream); ok {
 					cancel()
 				} else {
-					stream.CloseWithError(errors.New("excess stream"))
+					stream.CloseWithError(nodes.ErrExcessStream)
 				}
 
 				return
