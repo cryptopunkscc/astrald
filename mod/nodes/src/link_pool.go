@@ -112,7 +112,7 @@ func (pool *LinkPool) RetrieveLink(
 		defer pool.unsubscribe(w)
 
 		linker := pool.getOrCreateNodeLinker(target)
-		linker.Activate(ctx)
+		linker.Activate(ctx, o.StrategyNetworks)
 
 		select {
 		case <-ctx.Done():
@@ -154,8 +154,9 @@ func streamMatcher(target *astral.Identity, o *RetrieveLinkOptions) func(*Stream
 
 // RetrieveLinkOptions controls how RetrieveLink behaves.
 type RetrieveLinkOptions struct {
-	ForceNew        bool
-	LinkConstraints LinkConstraints
+	ForceNew         bool
+	LinkConstraints  LinkConstraints
+	StrategyNetworks []string
 }
 
 type LinkConstraints struct {
@@ -204,5 +205,11 @@ func WithEndpoints(endpoints ...exonet.Endpoint) RetrieveLinkOption {
 func WithForceNew() RetrieveLinkOption {
 	return func(o *RetrieveLinkOptions) {
 		o.ForceNew = true
+	}
+}
+
+func WithStrategies(networks ...string) RetrieveLinkOption {
+	return func(o *RetrieveLinkOptions) {
+		o.StrategyNetworks = append(o.StrategyNetworks, networks...)
 	}
 }

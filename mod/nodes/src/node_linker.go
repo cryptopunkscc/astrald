@@ -1,6 +1,8 @@
 package nodes
 
 import (
+	"slices"
+
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
@@ -29,18 +31,28 @@ func (linker *NodeLinker) AddStrategy(network string, strategy LinkStrategy) {
 }
 
 // todo: will probably pass some kind of options in the future
-func (linker *NodeLinker) Activate(ctx *astral.Context) chan error {
+func (linker *NodeLinker) Activate(ctx *astral.Context, useStrategies []string) chan error {
 	done := make(chan error, 1)
 
 	var strategiesDone []chan error
 
-	for _, strategy := range linker.strategies {
+	for strategyName, strategy := range linker.strategies {
+		if len(useStrategies) != 0 && !slices.Contains(useStrategies, strategyName) {
+			continue
+		}
+
 		strategyDone := strategy.Activate(ctx)
 		strategiesDone = append(strategiesDone, strategyDone)
 	}
 
+	if len(strategiesDone) == 0 {
+		close(done)
+		return done
+	}
+
 	// note: ensures that every strategy is done
 	go func() {
+
 		for _, ch := range strategiesDone {
 			select {
 			case <-ctx.Done():
