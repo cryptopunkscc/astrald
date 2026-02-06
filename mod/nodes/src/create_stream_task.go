@@ -8,7 +8,7 @@ import (
 )
 
 var _ scheduler.Task = &CreateStreamTask{}
-var _ nodes.CreateStreamAction = &CreateStreamTask{}
+var _ nodes.CreateStreamTask = &CreateStreamTask{}
 
 type CreateStreamTask struct {
 	mod      *Module
@@ -18,7 +18,7 @@ type CreateStreamTask struct {
 	Err      error
 }
 
-func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateStreamAction {
+func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateStreamTask {
 	return &CreateStreamTask{
 		mod:      m,
 		Target:   target,

@@ -20,7 +20,7 @@ type EnsureStreamTask struct {
 	Err  error
 }
 
-func (m *Module) NewEnsureStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string, create bool) nodes.EnsureStreamAction {
+func (m *Module) NewEnsureStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string, create bool) nodes.EnsureStreamTask {
 	return &EnsureStreamTask{
 		mod:      m,
 		Target:   target,
@@ -28,10 +28,6 @@ func (m *Module) NewEnsureStreamTask(target *astral.Identity, endpoint exonet.En
 		Network:  network,
 		Create:   create,
 	}
-}
-
-func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string) nodes.EnsureStreamAction {
-	return m.NewEnsureStreamTask(target, endpoint, network, true)
 }
 
 func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
