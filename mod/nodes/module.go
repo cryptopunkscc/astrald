@@ -8,11 +8,14 @@ import (
 )
 
 const (
-	ModuleName       = "nodes"
-	DBPrefix         = "nodes__"
-	ActionRelayFor   = "mod.nodes.relay_for"
-	ExtraCallerProof = "caller_proof"
-	ExtraRelayVia    = "relay_via"
+	ModuleName     = "nodes"
+	DBPrefix       = "nodes__"
+	ActionRelayFor = "mod.nodes.relay_for"
+
+	// query extra keys
+	ExtraCallerProof   = "caller_proof"
+	ExtraRelayVia      = "relay_via"
+	ExtraRoutingPolicy = "routing_policy"
 
 	// MethodMigrateSession is the query route for Phase 0 migration signaling.
 	MethodMigrateSession = "nodes.migrate_session"
@@ -34,7 +37,7 @@ type Module interface {
 
 	IsLinked(*astral.Identity) bool
 
-	NewCreateStreamAction(target *astral.Identity, endpoints []exonet.Endpoint) CreateStreamAction
+	NewEnsureStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string, create bool) EnsureStreamAction
 }
 
 // Link is an encrypted communication channel between two identities that is capable of routing queries

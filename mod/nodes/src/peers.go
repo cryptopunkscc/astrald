@@ -28,6 +28,8 @@ func NewPeers(m *Module) *Peers {
 	return &Peers{Module: m}
 }
 
+// todo: make it accept selected stream already
+
 func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (_ io.WriteCloser, err error) {
 	streams := mod.streams.Select(func(s *Stream) bool {
 		return s.RemoteIdentity().IsEqual(q.Target)
@@ -294,6 +296,10 @@ func (mod *Peers) addStream(
 		return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
 	})
 
+	if !s.outbound {
+		mod.linkPool.processInboundConnection(s)
+	}
+
 	mod.Events.Emit(&nodes.StreamCreatedEvent{
 		RemoteIdentity: s.RemoteIdentity(),
 		StreamId:       s.id,
@@ -302,6 +308,7 @@ func (mod *Peers) addStream(
 
 	// handle the stream
 	go func() {
+
 		mod.readStreamFrames(s)
 		// remove the stream and its connections
 		mod.streams.Remove(s)

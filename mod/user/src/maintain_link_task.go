@@ -12,13 +12,13 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-var _ scheduler.EventReceiver = &MaintainLinkAction{}
-var _ scheduler.Task = &MaintainLinkAction{}
+var _ scheduler.EventReceiver = &MaintainLinkTask{}
+var _ scheduler.Task = &MaintainLinkTask{}
 
-// MaintainLinkAction attempts to maintain a link to a target node indefinitely.
+// MaintainLinkTask attempts to maintain a link to a target node indefinitely.
 // triggers:
 // - ensure_connectivity_action
-type MaintainLinkAction struct {
+type MaintainLinkTask struct {
 	mod            *Module
 	Target         *astral.Identity
 	wake           chan struct{}
@@ -26,17 +26,17 @@ type MaintainLinkAction struct {
 }
 
 func (mod *Module) NewMaintainLinkAction(target *astral.
-	Identity) user.MaintainLinkAction {
-	return &MaintainLinkAction{
+	Identity) user.MaintainLinkTask {
+	return &MaintainLinkTask{
 		mod:    mod,
 		Target: target,
 		wake:   make(chan struct{}, 1),
 	}
 }
 
-func (a *MaintainLinkAction) String() string { return "nodes.maintain_link" }
+func (a *MaintainLinkTask) String() string { return "nodes.maintain_link" }
 
-func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
+func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 	a.mod.log.Log("starting to maintain link to %v", a.Target)
 	retry, err := sig.NewRetry(time.Second, 15*time.Minute, 2)
 	if err != nil {
@@ -61,13 +61,8 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 			a.mod.log.Log("still trying to reconnect to %v (attempt %v)", a.Target, count)
 		}
 
-		resolve, err := a.mod.Nodes.ResolveEndpoints(ctx, a.Target)
-		if err != nil {
-			return nodes.ErrEndpointResolve
-		}
-
-		createStreamAction := a.mod.Nodes.NewCreateStreamAction(a.Target, sig.ChanToArray(resolve))
-		scheduled, err := a.mod.Scheduler.Schedule(createStreamAction)
+		task := a.mod.Nodes.NewEnsureStreamTask(a.Target, nil, nil, false)
+		scheduled, err := a.mod.Scheduler.Schedule(task)
 		if err != nil {
 			return err
 		}
@@ -95,7 +90,7 @@ func (a *MaintainLinkAction) Run(ctx *astral.Context) error {
 	}
 }
 
-func (a *MaintainLinkAction) ReceiveEvent(e *events.Event) {
+func (a *MaintainLinkTask) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
 	case *nodes.StreamClosedEvent:
 		if !typed.RemoteIdentity.IsEqual(a.Target) || typed.StreamCount != 0 {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -31,21 +32,29 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
-	// try to link
-	ch, err := mod.ResolveEndpoints(ctx, q.Target)
-	if err == nil {
-		_, err = mod.peers.connectAtAny(ctx, q.Target, ch)
-		if err == nil {
-			err = mod.configureRelay(ctx, q, q.Target)
-			if err != nil {
-				return query.RouteNotFound(mod, err)
-			}
-			return mod.peers.RouteQuery(ctx, q, w)
+	retrieveCtx, cancel := ctx.WithTimeout(120 * time.Second)
+	defer cancel()
+
+	select {
+	case <-ctx.Done():
+		return query.RouteNotFound(mod, ctx.Err())
+	case result := <-mod.linkPool.RetrieveLink(retrieveCtx, q.Target):
+		if result.Err != nil {
+			mod.log.Error("retrieve link failed: %v", result.Err)
+			break
 		}
+
+		err := mod.configureRelay(ctx, q, q.Target)
+		if err != nil {
+			return query.RouteNotFound(mod, err)
+		}
+
+		// todo: mod.peers.Route query should accept stream
+
+		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
 	// try relays
-
 	relayValue, ok := q.Extra.Get(nodes.ExtraRelayVia)
 	if !ok {
 		return query.RouteNotFound(mod)
