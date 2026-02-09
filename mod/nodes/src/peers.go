@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"slices"
-	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -297,7 +296,7 @@ func (mod *Peers) addStream(
 	})
 
 	if !s.outbound {
-		mod.linkPool.notifyStream(s)
+		mod.linkPool.notifyStreamWatchers(s)
 	}
 
 	mod.Events.Emit(&nodes.StreamCreatedEvent{
@@ -308,8 +307,8 @@ func (mod *Peers) addStream(
 
 	// handle the stream
 	go func() {
-
 		mod.readStreamFrames(s)
+
 		// remove the stream and its connections
 		mod.streams.Remove(s)
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
@@ -430,7 +429,7 @@ func (mod *Peers) readOutboundStreamNonce(aconn astral.Conn) (nonce astral.Nonce
 	return nonce, nil
 }
 
-func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Stream, err error) {
+func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Stream, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
@@ -489,7 +488,7 @@ func (mod *Peers) Connect(ctx context.Context, remoteID *astral.Identity, conn e
 	return nil, errors.New("no supported link types found")
 }
 
-func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
+func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
@@ -530,11 +529,14 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 					return fmt.Errorf("failed to set inbound stream nonce: %w", err)
 				}
 
-				mod.addStream(newStream(aconn, nonce, false))
+				stream := newStream(aconn, nonce, false)
+				err = mod.addStream(stream)
+				if err != nil {
+					return fmt.Errorf("failed to add stream: %w", err)
+				}
 			}
 
-			return
-
+			return err
 		default:
 			_, err = astral.Uint8(1).WriteTo(aconn)
 			return fmt.Errorf("remote party (%s from %s) requested an invalid feature: %s",
@@ -544,69 +546,4 @@ func (mod *Peers) Accept(ctx context.Context, conn exonet.Conn) (err error) {
 			)
 		}
 	}
-}
-
-func (mod *Peers) connectAt(ctx *astral.Context, remoteIdentity *astral.Identity, e exonet.Endpoint) (*Stream, error) {
-	conn, err := mod.Exonet.Dial(ctx, e)
-	if err != nil {
-		return nil, err
-	}
-
-	return mod.Connect(ctx, remoteIdentity, conn)
-}
-
-func (mod *Peers) connectAtAny(ctx *astral.Context, remoteIdentity *astral.Identity, endpoints <-chan exonet.Endpoint) (*Stream, error) {
-	var wg sync.WaitGroup
-	var out sig.Value[*Stream]
-	var workers = DefaultWorkerCount
-
-	wctx, cancel := ctx.WithCancel()
-	defer cancel()
-
-	wg.Add(workers)
-	for i := 0; i < workers; i++ {
-		go func() {
-			defer wg.Done()
-			for {
-				var e exonet.Endpoint
-				var ok bool
-
-				select {
-				case <-wctx.Done():
-					return
-				case e, ok = <-endpoints:
-					if !ok {
-						return
-					}
-				}
-
-				stream, err := mod.connectAt(wctx, remoteIdentity, e)
-				if err != nil {
-					continue
-				}
-
-				if _, ok := out.Swap(nil, stream); ok {
-					cancel()
-				} else {
-					stream.CloseWithError(nodes.ErrExcessStream)
-				}
-
-				return
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		cancel()
-	}()
-
-	<-wctx.Done()
-
-	stream := out.Get()
-	if stream != nil {
-		return stream, nil
-	}
-
-	return nil, errors.New("no endpoint could be reached")
 }

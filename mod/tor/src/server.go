@@ -56,7 +56,7 @@ func (srv *Server) Run(ctx *astral.Context) error {
 
 		var conn = newConn(rawConn, &tor.Endpoint{}, false)
 		go func() {
-			err := srv.Nodes.Accept(ctx, conn)
+			err := srv.Nodes.AcceptInboundLink(ctx, conn)
 			if err != nil {
 				srv.log.Errorv(1, "handshake failed from %v: %v", conn.RemoteEndpoint(), err)
 			}

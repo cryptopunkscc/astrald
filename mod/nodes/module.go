@@ -24,8 +24,8 @@ const (
 )
 
 type Module interface {
-	Accept(ctx context.Context, conn exonet.Conn) error
-	Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
+	AcceptInboundLink(ctx context.Context, conn exonet.Conn) error
+	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
 
 	AddEndpoint(*astral.Identity, exonet.Endpoint) error
 	RemoveEndpoint(*astral.Identity, exonet.Endpoint) error
@@ -52,4 +52,13 @@ type Link interface {
 
 type EndpointResolver interface {
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan exonet.Endpoint, error)
+}
+
+type LinkStrategy interface {
+	Signal(ctx *astral.Context)
+	Done() <-chan struct{}
+}
+
+type StrategyFactory interface {
+	Build(target *astral.Identity) LinkStrategy
 }

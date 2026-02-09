@@ -27,8 +27,15 @@ func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.En
 }
 
 func (c *CreateStreamTask) Run(ctx *astral.Context) error {
-	stream, err := c.mod.peers.connectAt(ctx, c.Target, c.Endpoint)
+	conn, err := c.mod.Exonet.Dial(ctx, c.Endpoint)
 	if err != nil {
+		c.Err = err
+		return err
+	}
+
+	stream, err := c.mod.peers.EstablishOutboundLink(ctx, c.Target, conn)
+	if err != nil {
+		conn.Close()
 		c.Err = err
 		return err
 	}

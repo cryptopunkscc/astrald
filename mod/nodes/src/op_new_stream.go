@@ -27,15 +27,11 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	var strategies []string
 	if args.Strategies != "" {
 		for _, raw := range strings.Split(args.Strategies, ",") {
-			raw = strings.TrimSpace(raw)
+			strategies = append(strategies, strings.TrimSpace(raw))
 		}
 	}
 
-	// fixme: bullshit interface
-	var task interface {
-		nodes.CreateStreamTask
-	}
-
+	var task nodes.StreamProducerTask
 	switch {
 	case args.Endpoint != "":
 		split := strings.SplitN(args.Endpoint, ":", 2)

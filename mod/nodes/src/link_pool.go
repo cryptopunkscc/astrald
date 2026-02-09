@@ -18,10 +18,6 @@ type LinkPool struct {
 	mod      *Module
 	watchers sig.Set[*streamWatcher]
 	linkers  sig.Map[string, *NodeLinker]
-
-	// todo: node linkers
-	// todo: move streams to from peers to link pool
-	// streams sig.Set[*Stream]
 }
 
 func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
@@ -50,7 +46,8 @@ func (pool *LinkPool) unsubscribe(w *streamWatcher) {
 	pool.watchers.Remove(w)
 }
 
-func (pool *LinkPool) notifyStream(s *Stream) {
+func (pool *LinkPool) notifyStreamWatchers(s *Stream) bool {
+	used := false
 	for _, w := range pool.watchers.Clone() {
 		if !w.match(s) {
 			continue
@@ -58,26 +55,20 @@ func (pool *LinkPool) notifyStream(s *Stream) {
 
 		select {
 		case w.ch <- s:
+			used = true
 		default:
 		}
 	}
+
+	return used
 }
 
 func (pool *LinkPool) getOrCreateNodeLinker(target *astral.Identity) *NodeLinker {
 	linker := NewNodeLinker(pool.mod, target)
-
 	existing, ok := pool.linkers.Set(target.String(), linker)
 	if !ok {
-		// already existed, return the existing one
 		return existing
 	}
-
-	// new linker was inserted — start reader goroutine
-	go func() {
-		for s := range linker.Produced() {
-			pool.notifyStream(s)
-		}
-	}()
 
 	return linker
 }
@@ -112,12 +103,13 @@ func (pool *LinkPool) RetrieveLink(
 		defer pool.unsubscribe(w)
 
 		linker := pool.getOrCreateNodeLinker(target)
-		linker.Activate(ctx, o.StrategyNetworks)
+		done := linker.Activate(ctx, o.StrategyNetworks)
 
 		select {
+		case <-done: // linker finished all strategies (no result)
 		case <-ctx.Done():
 			result <- LinkResult{Err: ctx.Err()}
-		case s := <-w.ch:
+		case s := <-w.ch: // matching stream produced (either by linker or inbound)
 			result <- LinkResult{Stream: s}
 		}
 	}()
@@ -163,22 +155,6 @@ type LinkConstraints struct {
 	IncludeNetworks []string
 	ExcludeNetworks []string
 	Endpoints       []exonet.Endpoint
-}
-
-func endpointFilter(include, exclude []string) func(exonet.Endpoint) bool {
-	return func(endpoint exonet.Endpoint) bool {
-		net := endpoint.Network()
-
-		if len(exclude) > 0 && slices.Contains(exclude, net) {
-			return false
-		}
-
-		if len(include) > 0 && !slices.Contains(include, net) {
-			return false
-		}
-
-		return true
-	}
 }
 
 // RetrieveLinkOption is a functional option for RetrieveLink.
