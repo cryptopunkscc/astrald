@@ -39,6 +39,9 @@ type Module interface {
 	// WriteDefault returns the default repository for writing
 	WriteDefault() Repository
 
+	// System returns the system repository
+	System() Repository
+
 	// AddGroup adds a repository to a group
 	AddGroup(groupName string, repoName string) error
 

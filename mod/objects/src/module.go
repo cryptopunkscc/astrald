@@ -212,6 +212,10 @@ func (mod *Module) RemoveRepository(name string) error {
 	return nil
 }
 
+func (mod *Module) System() objects.Repository {
+	return mod.system
+}
+
 // ReadDefault returns the default repository for reading objects
 func (mod *Module) ReadDefault() (repo objects.Repository) {
 	return mod.GetRepository("main")

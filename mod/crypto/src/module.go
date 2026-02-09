@@ -22,13 +22,14 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	config Config
-	node   astral.Node
-	log    *log.Logger
-	assets assets.Assets
-	db     *DB
-	scope  ops.Set
-	ctx    *astral.Context
+	config  Config
+	node    astral.Node
+	log     *log.Logger
+	nodeKey *crypto.PrivateKey
+	assets  assets.Assets
+	db      *DB
+	scope   ops.Set
+	ctx     *astral.Context
 
 	engines sig.Set[crypto.Engine]
 }
