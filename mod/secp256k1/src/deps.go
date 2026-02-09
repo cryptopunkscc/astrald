@@ -11,7 +11,5 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 		return
 	}
 
-	mod.Crypto.AddEngine(&Engine{mod: mod})
-
 	return
 }

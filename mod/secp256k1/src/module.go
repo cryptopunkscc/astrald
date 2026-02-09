@@ -32,6 +32,10 @@ func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
 }
 
+func (mod *Module) CryptoEngine() crypto.Engine {
+	return &Engine{mod: mod}
+}
+
 func (mod *Module) String() string {
 	return secp256k1.ModuleName
 }

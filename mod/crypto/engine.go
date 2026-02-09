@@ -38,3 +38,7 @@ type TextSigner interface {
 	// SignText generates a signature for the given text
 	SignText(ctx *astral.Context, text string) (*Signature, error)
 }
+
+type EngineProvider interface {
+	CryptoEngine() Engine
+}

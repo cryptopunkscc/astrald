@@ -284,3 +284,17 @@ type DependencyLoader interface {
 type Preparer interface {
 	Prepare(context.Context) error
 }
+
+func EachLoadedModule(node astral.Node, fn func(Module) error) (err error) {
+	coreNode, ok := node.(*Node)
+	if !ok {
+		return errors.New("unsupported node type")
+	}
+	for _, m := range coreNode.Modules().Loaded() {
+		err = fn(m)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
