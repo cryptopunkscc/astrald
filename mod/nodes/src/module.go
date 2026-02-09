@@ -81,8 +81,13 @@ func (mod *Module) IsPeer(id *astral.Identity) bool {
 	return false
 }
 
-func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
-	return mod.peers.EstablishInboundLink(ctx, conn)
+func (mod *Module) AcceptInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
+	return mod.peers.AcceptInboundLink(ctx, conn)
+}
+
+func (mod *Module) EstablishOutboundLink(ctx context.Context, target *astral.Identity, conn exonet.Conn) error {
+	_, err := mod.peers.EstablishOutboundLink(ctx, target, conn)
+	return err
 }
 
 func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint) error {
