@@ -55,8 +55,7 @@ type EndpointResolver interface {
 }
 
 type LinkStrategy interface {
-	Signal(ctx *astral.Context)
-	Done() <-chan struct{}
+	Signal(ctx *astral.Context) <-chan struct{}
 }
 
 type StrategyFactory interface {
