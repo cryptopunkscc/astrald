@@ -39,3 +39,31 @@ func FilterChan[T any](
 
 	return out
 }
+
+func Send[T any](ctx context.Context, ch chan<- T, v T) error {
+	select {
+	case ch <- v:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func RecvErr(ctx context.Context, ch <-chan error) error {
+	select {
+	case err := <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func Recv[T any](ctx context.Context, ch <-chan T) (T, error) {
+	select {
+	case v := <-ch:
+		return v, nil
+	case <-ctx.Done():
+		var zero T
+		return zero, ctx.Err()
+	}
+}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -63,6 +64,9 @@ func (pool *LinkPool) notifyStreamWatchers(s *Stream) bool {
 	return used
 }
 
+// getOrCreateNodeLinker returns cached linker or creates new one.
+// Linkers are cached per target because they will hold state
+// (e.g., connection history, backoff timers, endpoint preferences).
 func (pool *LinkPool) getOrCreateNodeLinker(target *astral.Identity) *NodeLinker {
 	linker := NewNodeLinker(pool.mod, target)
 	existing, ok := pool.linkers.Set(target.String(), linker)
@@ -98,7 +102,6 @@ func (pool *LinkPool) RetrieveLink(
 
 	go func() {
 		defer close(result)
-
 		w := pool.subscribe(match)
 		defer pool.unsubscribe(w)
 
@@ -106,7 +109,13 @@ func (pool *LinkPool) RetrieveLink(
 		done := linker.Activate(ctx, o.StrategyNetworks)
 
 		select {
-		case <-done: // linker finished all strategies (no result)
+		case <-done:
+			select {
+			case s := <-w.ch:
+				result <- LinkResult{Stream: s}
+			default:
+				result <- LinkResult{Err: nodes.ErrStreamNotProduced}
+			}
 		case <-ctx.Done():
 			result <- LinkResult{Err: ctx.Err()}
 		case s := <-w.ch: // matching stream produced (either by linker or inbound)
