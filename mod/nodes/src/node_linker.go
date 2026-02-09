@@ -1,73 +1,62 @@
 package nodes
 
 import (
-	"slices"
-
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 type NodeLinker struct {
-	mod        *Module
-	Target     *astral.Identity
-	produced   chan *Stream
-	strategies map[string]LinkStrategy
+	mod    *Module
+	Target *astral.Identity
 }
 
 func NewNodeLinker(mod *Module, target *astral.Identity) *NodeLinker {
 	return &NodeLinker{
-		mod:        mod,
-		Target:     target,
-		produced:   make(chan *Stream, 1),
-		strategies: make(map[string]LinkStrategy),
+		mod:    mod,
+		Target: target,
 	}
 }
 
-func (linker *NodeLinker) Produced() <-chan *Stream {
-	return linker.produced
-}
+func (linker *NodeLinker) Activate(ctx *astral.Context, networks []string) <-chan struct{} {
+	done := make(chan struct{})
 
-func (linker *NodeLinker) AddStrategy(network string, strategy LinkStrategy) {
-	linker.strategies[network] = strategy
-}
+	// get all registered networks if none specified
+	if len(networks) == 0 {
+		for network := range linker.mod.strategyFactories.Clone() {
+			networks = append(networks, network)
+		}
+	}
 
-// todo: will probably pass some kind of options in the future
-func (linker *NodeLinker) Activate(ctx *astral.Context, useStrategies []string) chan error {
-	done := make(chan error, 1)
-
-	var strategiesDone []chan error
-
-	for strategyName, strategy := range linker.strategies {
-		if len(useStrategies) != 0 && !slices.Contains(useStrategies, strategyName) {
+	// build strategies for this activation
+	var strategies []nodes.LinkStrategy
+	for _, network := range networks {
+		factory, ok := linker.mod.strategyFactories.Get(network)
+		if !ok {
 			continue
 		}
-
-		strategyDone := strategy.Activate(ctx)
-		strategiesDone = append(strategiesDone, strategyDone)
+		strategies = append(strategies, factory.Build(linker.Target))
 	}
 
-	if len(strategiesDone) == 0 {
+	if len(strategies) == 0 {
 		close(done)
 		return done
 	}
 
-	// note: ensures that every strategy is done
-	go func() {
+	for _, strategy := range strategies {
+		strategy.Signal(ctx)
+	}
 
-		for _, ch := range strategiesDone {
+	go func() {
+		for _, strategy := range strategies {
 			select {
 			case <-ctx.Done():
-				done <- ctx.Err()
+				close(done)
 				return
-			case <-ch:
+			case <-strategy.Done():
 			}
 		}
-		done <- nil
+		close(done)
 	}()
 
 	return done
-}
-
-type LinkStrategy interface {
-	// todo: will probably accept some kind of options in the future
-	Activate(ctx *astral.Context) chan error
 }

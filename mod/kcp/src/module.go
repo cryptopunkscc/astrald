@@ -88,7 +88,7 @@ func (mod *Module) loadSettings(ctx *astral.Context) error {
 }
 
 func (mod *Module) acceptAll(ctx context.Context, conn exonet.Conn) (shouldStop bool, err error) {
-	err = mod.Nodes.EstablishInboundLink(ctx, conn)
+	err = mod.Nodes.AcceptInboundLink(ctx, conn)
 	if err != nil {
 		return false, err
 	}
