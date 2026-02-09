@@ -2,6 +2,7 @@ package tree
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/tree"
@@ -100,7 +101,11 @@ func (node *Node) Create(ctx *astral.Context, name string) (tree.Node, error) {
 	}
 
 	row, err := node.mod.db.createNode(node.id, name)
-	if err != nil {
+	switch {
+	case err == nil:
+	case strings.Contains(err.Error(), "UNIQUE constraint failed"):
+		return nil, tree.ErrAlreadyExists
+	default:
 		return nil, err
 	}
 

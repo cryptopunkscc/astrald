@@ -57,8 +57,13 @@ func Query(ctx *astral.Context, root Node, path string, create bool) (Node, erro
 			return nil, errors.New("node " + s + " not found in /" + strings.Join(pwd, "/"))
 		}
 
-		node, err = node.Create(ctx, s)
-		if err != nil {
+		subnode, err := node.Create(ctx, s)
+		switch {
+		case err == nil:
+			node = subnode
+		case errors.Is(err, ErrAlreadyExists):
+			continue
+		default:
 			return nil, err
 		}
 	}
