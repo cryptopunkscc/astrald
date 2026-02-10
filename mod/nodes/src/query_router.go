@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -110,6 +111,10 @@ func (mod *Module) configureRelay(ctx *astral.Context, q *astral.Query, relayID 
 
 	// return if no changes are required
 	if caller == nil && target == nil {
+		return nil
+	}
+
+	if relayID.IsEqual(q.Target) {
 		return nil
 	}
 
