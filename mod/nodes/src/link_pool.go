@@ -1,6 +1,8 @@
 package nodes
 
 import (
+	"slices"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -86,7 +88,13 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	match := func(s *Stream) bool {
-		return s.RemoteIdentity().IsEqual(target)
+		if !s.RemoteIdentity().IsEqual(target) {
+			return false
+		}
+		if len(o.Networks) > 0 {
+			return slices.Contains(o.Networks, s.Network())
+		}
+		return true
 	}
 
 	if !o.ForceNew {

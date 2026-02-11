@@ -46,7 +46,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 		wctx, cancel := ctx.WithCancel()
 		defer cancel()
 
-		resolved, err := s.mod.ResolveEndpoints(ctx, s.target)
+		resolved, err := s.mod.ResolveEndpoints(wctx, s.target)
 		if err != nil {
 			s.mod.log.Log("resolve endpoints failed: %v", err)
 			return
