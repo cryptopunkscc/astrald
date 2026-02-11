@@ -9,18 +9,17 @@ import (
 type NodeLinker struct {
 	mod        *Module
 	Target     *astral.Identity
-	strategies map[string]nodes.LinkStrategy
+	strategies sig.Map[string, nodes.LinkStrategy]
 }
 
 func NewNodeLinker(mod *Module, target *astral.Identity) *NodeLinker {
 	linker := &NodeLinker{
-		mod:        mod,
-		Target:     target,
-		strategies: make(map[string]nodes.LinkStrategy),
+		mod:    mod,
+		Target: target,
 	}
 
 	for network, factory := range mod.strategyFactories.Clone() {
-		linker.strategies[network] = factory.Build(target)
+		linker.strategies.Set(network, factory.Build(target))
 	}
 
 	return linker
@@ -31,14 +30,12 @@ func (linker *NodeLinker) Activate(ctx *astral.Context, networks []string) <-cha
 
 	var strategies []nodes.LinkStrategy
 	if len(networks) == 0 {
-		for _, strategy := range linker.strategies {
+		networks = linker.strategies.Keys()
+	}
+
+	for _, network := range networks {
+		if strategy, ok := linker.strategies.Get(network); ok {
 			strategies = append(strategies, strategy)
-		}
-	} else {
-		for _, network := range networks {
-			if strategy, ok := linker.strategies[network]; ok {
-				strategies = append(strategies, strategy)
-			}
 		}
 	}
 
@@ -49,7 +46,8 @@ func (linker *NodeLinker) Activate(ctx *astral.Context, networks []string) <-cha
 
 	var doneChannels []<-chan struct{}
 	for _, strategy := range strategies {
-		doneChannels = append(doneChannels, strategy.Signal(ctx))
+		strategy.Signal(ctx)
+		doneChannels = append(doneChannels, strategy.Done())
 	}
 
 	return sig.WaitAllDone(ctx, doneChannels...)

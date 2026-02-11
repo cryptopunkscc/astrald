@@ -16,15 +16,29 @@ type BasicLinkStrategy struct {
 	network  string
 	target   *astral.Identity
 	inflight sig.Set[string] // tracks endpoints currently being dialed
+
+	mu         sync.Mutex
+	activeDone chan struct{}
 }
 
 var _ nodes.LinkStrategy = &BasicLinkStrategy{}
 
-func (s *BasicLinkStrategy) Signal(ctx *astral.Context) <-chan struct{} {
-	done := make(chan struct{})
+func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
+	s.mu.Lock()
+	if s.activeDone != nil {
+		s.mu.Unlock()
+		return
+	}
+	s.activeDone = make(chan struct{})
+	s.mu.Unlock()
 
 	go func() {
-		defer close(done)
+		defer func() {
+			s.mu.Lock()
+			close(s.activeDone)
+			s.activeDone = nil
+			s.mu.Unlock()
+		}()
 
 		var wg sync.WaitGroup
 		var winner sig.Value[*Stream]
@@ -54,6 +68,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) <-chan struct{} {
 						if !ok {
 							return
 						}
+
 						stream := s.tryEndpoint(wctx, endpoint)
 						if stream != nil {
 							if _, ok := winner.Swap(nil, stream); ok {
@@ -80,8 +95,18 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) <-chan struct{} {
 			stream.CloseWithError(nodes.ErrExcessStream)
 		}
 	}()
+}
 
-	return done
+func (s *BasicLinkStrategy) Done() <-chan struct{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.activeDone == nil {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+	return s.activeDone
 }
 
 func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint exonet.Endpoint) *Stream {
