@@ -24,7 +24,7 @@ const (
 )
 
 type Module interface {
-	AcceptInboundLink(ctx context.Context, conn exonet.Conn) error
+	EstablishInboundLink(ctx context.Context, conn exonet.Conn) error
 	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
 
 	AddEndpoint(*astral.Identity, exonet.Endpoint) error

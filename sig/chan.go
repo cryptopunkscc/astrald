@@ -68,7 +68,7 @@ func Recv[T any](ctx context.Context, ch <-chan T) (T, error) {
 	}
 }
 
-// WaitAll returns a channel that is closed when all provided channels are closed
+// WaitAllDone returns a channel that is closed when all provided channels are closed
 // or when ctx is done (whichever happens first).
 func WaitAllDone(ctx context.Context, chans ...<-chan struct{}) <-chan struct{} {
 	done := make(chan struct{})

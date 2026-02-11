@@ -12,7 +12,6 @@ import (
 
 type opNewStreamArgs struct {
 	Target     string
-	Net        string `query:"optional"`
 	Endpoint   string `query:"optional"`
 	Strategies string `query:"optional"`
 	Out        string `query:"optional"`

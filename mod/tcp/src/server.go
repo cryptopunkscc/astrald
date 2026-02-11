@@ -47,7 +47,7 @@ func (srv *Server) Run(ctx context.Context) error {
 		var conn = tcp.WrapConn(rawConn, false)
 
 		go func() {
-			err := srv.Nodes.AcceptInboundLink(ctx, conn)
+			err := srv.Nodes.EstablishInboundLink(ctx, conn)
 			if err != nil {
 				srv.log.Errorv(1, "handshake failed from %v: %v", conn.RemoteEndpoint(), err)
 				return
