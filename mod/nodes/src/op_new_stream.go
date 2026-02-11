@@ -45,7 +45,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		}
 		task = mod.NewCreateStreamTask(target, endpoint)
 	default:
-		task = mod.NewEnsureStreamTask(target, nil, true, strategies)
+		task = mod.NewEnsureStreamTask(target, strategies, true)
 	}
 
 	scheduledTask, err := mod.Scheduler.Schedule(task)
@@ -75,6 +75,6 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	case errors.Is(err, nodes.ErrIdentityResolve), errors.Is(err, nodes.ErrEndpointResolve):
 		return q.RejectWithCode(4)
 	default:
-		return err
+		return ch.Send(astral.Err(err))
 	}
 }

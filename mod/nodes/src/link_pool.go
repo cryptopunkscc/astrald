@@ -1,10 +1,7 @@
 package nodes
 
 import (
-	"slices"
-
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -88,12 +85,13 @@ func (pool *LinkPool) RetrieveLink(
 		opt(&o)
 	}
 
-	match := streamMatcher(target, &o)
+	match := func(s *Stream) bool {
+		return s.RemoteIdentity().IsEqual(target)
+	}
 
 	if !o.ForceNew {
 		streams := pool.peers.streams.Select(match)
 		if len(streams) > 0 {
-			// todo: there could be preferences about which stream network to use etc.
 			return sig.ArrayToChan([]LinkResult{{Stream: streams[0]}})
 		}
 	}
@@ -106,7 +104,7 @@ func (pool *LinkPool) RetrieveLink(
 		defer pool.unsubscribe(w)
 
 		linker := pool.getOrCreateNodeLinker(target)
-		done := linker.Activate(ctx, o.StrategyNetworks)
+		done := linker.Activate(ctx, o.Networks)
 
 		select {
 		case <-done:
@@ -118,7 +116,7 @@ func (pool *LinkPool) RetrieveLink(
 			}
 		case <-ctx.Done():
 			result <- LinkResult{Err: ctx.Err()}
-		case s := <-w.ch: // matching stream produced (either by linker or inbound)
+		case s := <-w.ch:
 			result <- LinkResult{Stream: s}
 		}
 	}()
@@ -126,66 +124,14 @@ func (pool *LinkPool) RetrieveLink(
 	return result
 }
 
-// todo: rethink helpers
-
-func streamMatcher(target *astral.Identity, o *RetrieveLinkOptions) func(*Stream) bool {
-	return func(s *Stream) bool {
-		if !s.RemoteIdentity().IsEqual(target) {
-			return false
-		}
-		if o == nil {
-			return true
-		}
-
-		net := s.Network()
-
-		if len(o.LinkConstraints.ExcludeNetworks) > 0 &&
-			slices.Contains(o.LinkConstraints.ExcludeNetworks, net) {
-			return false
-		}
-
-		if len(o.LinkConstraints.IncludeNetworks) > 0 &&
-			!slices.Contains(o.LinkConstraints.IncludeNetworks, net) {
-			return false
-		}
-
-		return true
-	}
-}
-
 // RetrieveLinkOptions controls how RetrieveLink behaves.
 type RetrieveLinkOptions struct {
-	ForceNew         bool
-	LinkConstraints  LinkConstraints
-	StrategyNetworks []string
-}
-
-type LinkConstraints struct {
-	IncludeNetworks []string
-	ExcludeNetworks []string
-	Endpoints       []exonet.Endpoint
+	ForceNew bool
+	Networks []string
 }
 
 // RetrieveLinkOption is a functional option for RetrieveLink.
 type RetrieveLinkOption func(*RetrieveLinkOptions)
-
-func WithIncludeNetworks(networks ...string) RetrieveLinkOption {
-	return func(o *RetrieveLinkOptions) {
-		o.LinkConstraints.IncludeNetworks = append(o.LinkConstraints.IncludeNetworks, networks...)
-	}
-}
-
-func WithExcludeNetworks(networks ...string) RetrieveLinkOption {
-	return func(o *RetrieveLinkOptions) {
-		o.LinkConstraints.ExcludeNetworks = append(o.LinkConstraints.ExcludeNetworks, networks...)
-	}
-}
-
-func WithEndpoints(endpoints ...exonet.Endpoint) RetrieveLinkOption {
-	return func(o *RetrieveLinkOptions) {
-		o.LinkConstraints.Endpoints = endpoints
-	}
-}
 
 func WithForceNew() RetrieveLinkOption {
 	return func(o *RetrieveLinkOptions) {
@@ -193,8 +139,8 @@ func WithForceNew() RetrieveLinkOption {
 	}
 }
 
-func WithStrategies(networks ...string) RetrieveLinkOption {
+func WithNetworks(networks ...string) RetrieveLinkOption {
 	return func(o *RetrieveLinkOptions) {
-		o.StrategyNetworks = append(o.StrategyNetworks, networks...)
+		o.Networks = append(o.Networks, networks...)
 	}
 }
