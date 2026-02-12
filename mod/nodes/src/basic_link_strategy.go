@@ -56,6 +56,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 			return e.Network() == s.network
 		})
 
+		// todo: instead of spawning 8 goroutines per strategy, we could have worker pool which is shared across strategies
 		wg.Add(DefaultWorkerCount)
 		for i := 0; i < DefaultWorkerCount; i++ {
 			go func() {
