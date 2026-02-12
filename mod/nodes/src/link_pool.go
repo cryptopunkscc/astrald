@@ -64,9 +64,14 @@ func (pool *LinkPool) notifyStreamWatchers(s *Stream) bool {
 }
 
 func (pool *LinkPool) getOrCreateNodeLinker(target *astral.Identity) *NodeLinker {
+	key := target.String()
+
+	if linker, ok := pool.linkers.Get(key); ok {
+		return linker
+	}
+
 	linker := NewNodeLinker(pool.mod, target)
-	existing, ok := pool.linkers.Set(target.String(), linker)
-	if !ok {
+	if existing, ok := pool.linkers.Set(key, linker); !ok {
 		return existing
 	}
 
@@ -105,11 +110,15 @@ func (pool *LinkPool) RetrieveLink(
 
 	go func() {
 		defer close(result)
+
+		strategyCtx, cancelStrategies := ctx.WithCancel()
+		defer cancelStrategies()
+
 		w := pool.subscribe(match)
 		defer pool.unsubscribe(w)
 
 		linker := pool.getOrCreateNodeLinker(target)
-		done := linker.Activate(ctx, o.Networks)
+		done := linker.Activate(strategyCtx, o.Networks)
 
 		select {
 		case <-done:
