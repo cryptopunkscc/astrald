@@ -12,10 +12,9 @@ import (
 // BasicLinkStrategy dials all known endpoints of the target node in parallel
 // and uses the first successful connection to establish a link.
 type BasicLinkStrategy struct {
-	mod      *Module
-	network  string
-	target   *astral.Identity
-	inflight sig.Set[string] // tracks endpoints currently being dialed
+	mod     *Module
+	network string
+	target  *astral.Identity
 
 	mu         sync.Mutex
 	activeDone chan struct{}
@@ -29,6 +28,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 		s.mu.Unlock()
 		return
 	}
+
 	s.activeDone = make(chan struct{})
 	s.mu.Unlock()
 
@@ -110,12 +110,6 @@ func (s *BasicLinkStrategy) Done() <-chan struct{} {
 }
 
 func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint exonet.Endpoint) *Stream {
-	addr := endpoint.Address()
-	if err := s.inflight.Add(addr); err != nil {
-		return nil
-	}
-	defer s.inflight.Remove(addr)
-
 	conn, err := s.mod.Exonet.Dial(ctx, endpoint)
 	if err != nil {
 		return nil
