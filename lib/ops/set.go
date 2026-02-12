@@ -17,7 +17,7 @@ import (
 // Add an operation to the set:
 //
 //	scope.AddFunc("hi", func(ctx *astral.Context, query shell.Query) error {
-//		conn, _ := query.EstablishInboundLink()
+//		conn, _ := query.Accept()
 //	    return conn.Printf("hello, %v!\n", ctx.Identity())
 //	})
 type Set struct {
