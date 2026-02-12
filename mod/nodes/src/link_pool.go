@@ -63,9 +63,6 @@ func (pool *LinkPool) notifyStreamWatchers(s *Stream) bool {
 	return used
 }
 
-// getOrCreateNodeLinker returns cached linker or creates new one.
-// Linkers are cached per target because they will hold state
-// (e.g., connection history, backoff timers, endpoint preferences).
 func (pool *LinkPool) getOrCreateNodeLinker(target *astral.Identity) *NodeLinker {
 	linker := NewNodeLinker(pool.mod, target)
 	existing, ok := pool.linkers.Set(target.String(), linker)
