@@ -58,7 +58,7 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 
 	endpoints := sig.ChanToArray(filtered)
 	if len(endpoints) == 0 {
-		s.log.Logv(2, "%v no endpoints found to", s.target)
+		s.log.Logv(2, "no endpoints found to %v", s.target)
 		s.signalDone()
 		return
 	}
