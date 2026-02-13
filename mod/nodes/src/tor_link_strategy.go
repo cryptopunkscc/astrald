@@ -21,30 +21,30 @@ type TorLinkStrategy struct {
 	target       *astral.Identity
 	quickRetries int // immediate retries (no delay)
 	retries      int // normal retries (with delay)
-	retryDelay   time.Duration
 
 	quickTimeout      time.Duration
 	backgroundTimeout time.Duration
 
-	mu         sync.Mutex
-	activeDone chan struct{}
+	mu   sync.Mutex
+	done chan struct{}
 }
 
 var _ nodes.LinkStrategy = &TorLinkStrategy{}
 
 func (s *TorLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
-	if s.activeDone != nil {
+	if s.done != nil {
 		s.mu.Unlock()
 		return
 	}
-	s.activeDone = make(chan struct{})
+	s.done = make(chan struct{})
 	s.mu.Unlock()
 
-	go s.run(ctx)
+	go s.attempt(ctx)
 }
 
-func (s *TorLinkStrategy) run(ctx *astral.Context) {
+func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
+	// note: maybe resolve endpoints should be filtering by network already
 	resolvedEndpoints, err := s.mod.ResolveEndpoints(ctx, s.target)
 	if err != nil {
 		s.log.Logv(2, "%v resolve failed: %v", s.target, err)
@@ -71,7 +71,7 @@ func (s *TorLinkStrategy) run(ctx *astral.Context) {
 
 	go func() {
 		defer close(resultCh)
-		if stream := s.tryQuick(workerCtx, endpoints); stream != nil {
+		if stream := s.try(workerCtx, endpoints, s.quickRetries, false); stream != nil {
 			resultCh <- stream
 		}
 	}()
@@ -88,14 +88,13 @@ func (s *TorLinkStrategy) run(ctx *astral.Context) {
 		}
 	}
 
-	// Background: retries with backoff
 	bgCtx, bgCancel := s.mod.ctx.WithTimeout(s.backgroundTimeout)
 	defer bgCancel()
 
 	bgResultCh := make(chan *Stream, 1)
 	go func() {
 		defer close(bgResultCh)
-		if stream := s.tryWithBackoff(bgCtx, endpoints); stream != nil {
+		if stream := s.try(bgCtx, endpoints, s.retries, true); stream != nil {
 			bgResultCh <- stream
 		}
 	}()
@@ -110,9 +109,9 @@ func (s *TorLinkStrategy) run(ctx *astral.Context) {
 func (s *TorLinkStrategy) signalDone() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.activeDone != nil {
-		close(s.activeDone)
-		s.activeDone = nil
+	if s.done != nil {
+		close(s.done)
+		s.done = nil
 	}
 }
 
@@ -120,47 +119,54 @@ func (s *TorLinkStrategy) deliverStream(stream *Stream) {
 	if stream == nil {
 		return
 	}
+
 	if !s.mod.linkPool.notifyStreamWatchers(stream) {
 		stream.CloseWithError(nodes.ErrExcessStream)
 	}
 }
 
-func (s *TorLinkStrategy) tryQuick(ctx *astral.Context, endpoints []exonet.Endpoint) *Stream {
-	for i := 0; i < s.quickRetries; i++ {
+func (s *TorLinkStrategy) try(
+	ctx *astral.Context,
+	endpoints []exonet.Endpoint,
+	retries int,
+	withBackoff bool,
+) *Stream {
+
+	var backoff *sig.Retry
+	if withBackoff {
+		b, _ := sig.NewRetry(time.Second, time.Minute, 2)
+		backoff = b
+	}
+
+	for i := 0; i < retries; i++ {
+
 		for _, ep := range endpoints {
 			if ctx.Err() != nil {
 				return nil
 			}
-
 			if stream := s.tryEndpoint(ctx, ep); stream != nil {
 				return stream
 			}
 		}
-		s.log.Logv(2, "%v quick retry %d/%d", s.target, i+1, s.quickRetries)
-	}
-	return nil
-}
 
-func (s *TorLinkStrategy) tryWithBackoff(ctx *astral.Context, endpoints []exonet.Endpoint) *Stream {
-	backoff, _ := sig.NewRetry(time.Second, time.Minute, 2)
-	for i := 0; i < s.retries; i++ {
-		for _, ep := range endpoints {
-			if ctx.Err() != nil {
-				return nil
-			}
-			if stream := s.tryEndpoint(ctx, ep); stream != nil {
-				return stream
-			}
-		}
-		if i < s.retries-1 {
-			s.log.Logv(2, "%v retry %d/%d in %v", s.target, i+1, s.retries, backoff.NextDelay())
-			select {
-			case <-backoff.Retry():
-			case <-ctx.Done():
-				return nil
+		if i < retries-1 {
+			if withBackoff {
+				delay := backoff.NextDelay()
+				s.log.Logv(2, "%v retry %d/%d in %v",
+					s.target, i+1, retries, delay)
+
+				select {
+				case <-backoff.Retry():
+				case <-ctx.Done():
+					return nil
+				}
+			} else {
+				s.log.Logv(2, "%v quick retry %d/%d",
+					s.target, i+1, retries)
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -186,12 +192,12 @@ func (s *TorLinkStrategy) Done() <-chan struct{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.activeDone == nil {
+	if s.done == nil {
 		ch := make(chan struct{})
 		close(ch)
 		return ch
 	}
-	return s.activeDone
+	return s.done
 }
 
 // Factory
@@ -220,7 +226,6 @@ func (f *PersistentLinkStrategyFactory) Build(target *astral.Identity) nodes.Lin
 		target:            target,
 		quickRetries:      f.config.QuickRetries,
 		retries:           f.config.Retries,
-		retryDelay:        f.config.RetryDelay,
 		quickTimeout:      f.config.SignalTimeout,
 		backgroundTimeout: f.config.BackgroundTimeout,
 	}
