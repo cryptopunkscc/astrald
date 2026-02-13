@@ -11,27 +11,28 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-// PersistentLinkStrategy tries to connect with retries. After signalTimeout it
+// TorLinkStrategy tries to connect with retries. After quickTimeout it
 // signals Done but continues running in background on module context for up to
 // backgroundTimeout more. Useful for slow networks like Tor.
-type PersistentLinkStrategy struct {
-	mod               *Module
-	log               *log.Logger
-	network           string
-	target            *astral.Identity
-	quickRetries      int // immediate retries (no delay)
-	retries           int // normal retries (with delay)
-	retryDelay        time.Duration
-	signalTimeout     time.Duration
+type TorLinkStrategy struct {
+	mod          *Module
+	log          *log.Logger
+	network      string
+	target       *astral.Identity
+	quickRetries int // immediate retries (no delay)
+	retries      int // normal retries (with delay)
+	retryDelay   time.Duration
+
+	quickTimeout      time.Duration
 	backgroundTimeout time.Duration
 
 	mu         sync.Mutex
 	activeDone chan struct{}
 }
 
-var _ nodes.LinkStrategy = &PersistentLinkStrategy{}
+var _ nodes.LinkStrategy = &TorLinkStrategy{}
 
-func (s *PersistentLinkStrategy) Signal(ctx *astral.Context) {
+func (s *TorLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
 	if s.activeDone != nil {
 		s.mu.Unlock()
@@ -43,17 +44,18 @@ func (s *PersistentLinkStrategy) Signal(ctx *astral.Context) {
 	go s.run(ctx)
 }
 
-func (s *PersistentLinkStrategy) run(ctx *astral.Context) {
-	// Resolve endpoints once upfront
-	resolved, err := s.mod.ResolveEndpoints(ctx, s.target)
+func (s *TorLinkStrategy) run(ctx *astral.Context) {
+	resolvedEndpoints, err := s.mod.ResolveEndpoints(ctx, s.target)
 	if err != nil {
 		s.log.Logv(2, "%v resolve failed: %v", s.target, err)
 		s.signalDone()
 		return
 	}
-	filtered := sig.FilterChan(resolved, func(e exonet.Endpoint) bool {
+
+	filtered := sig.FilterChan(resolvedEndpoints, func(e exonet.Endpoint) bool {
 		return e.Network() == s.network
 	})
+
 	endpoints := sig.ChanToArray(filtered)
 	if len(endpoints) == 0 {
 		s.log.Logv(2, "%v no endpoints found to", s.target)
@@ -61,44 +63,39 @@ func (s *PersistentLinkStrategy) run(ctx *astral.Context) {
 		return
 	}
 
-	signalTimer := time.NewTimer(s.signalTimeout)
-	defer signalTimer.Stop()
-
 	resultCh := make(chan *Stream, 1)
 
-	// Start worker with caller's context initially
-	workerCtx, workerCancel := ctx.WithCancel()
+	// Foreground: quick retries only
+	workerCtx, workerCancel := ctx.WithTimeout(s.quickTimeout)
+	defer workerCancel()
+
 	go func() {
 		defer close(resultCh)
-		if stream := s.tryWithRetry(workerCtx, endpoints); stream != nil {
+		if stream := s.tryQuick(workerCtx, endpoints); stream != nil {
 			resultCh <- stream
 		}
 	}()
 
 	select {
 	case stream := <-resultCh:
-		workerCancel()
 		s.signalDone()
 		s.deliverStream(stream)
 		return
-	case <-ctx.Done():
-		workerCancel()
+	case <-workerCtx.Done():
 		s.signalDone()
-		return
-
-	case <-signalTimer.C:
-		workerCancel()
-		s.signalDone()
+		if ctx.Err() != nil {
+			return
+		}
 	}
 
-	// Continue in background on module context
+	// Background: retries with backoff
 	bgCtx, bgCancel := s.mod.ctx.WithTimeout(s.backgroundTimeout)
 	defer bgCancel()
 
 	bgResultCh := make(chan *Stream, 1)
 	go func() {
 		defer close(bgResultCh)
-		if stream := s.tryWithRetry(bgCtx, endpoints); stream != nil {
+		if stream := s.tryWithBackoff(bgCtx, endpoints); stream != nil {
 			bgResultCh <- stream
 		}
 	}()
@@ -110,7 +107,7 @@ func (s *PersistentLinkStrategy) run(ctx *astral.Context) {
 	}
 }
 
-func (s *PersistentLinkStrategy) signalDone() {
+func (s *TorLinkStrategy) signalDone() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.activeDone != nil {
@@ -119,7 +116,7 @@ func (s *PersistentLinkStrategy) signalDone() {
 	}
 }
 
-func (s *PersistentLinkStrategy) deliverStream(stream *Stream) {
+func (s *TorLinkStrategy) deliverStream(stream *Stream) {
 	if stream == nil {
 		return
 	}
@@ -128,21 +125,24 @@ func (s *PersistentLinkStrategy) deliverStream(stream *Stream) {
 	}
 }
 
-func (s *PersistentLinkStrategy) tryWithRetry(ctx *astral.Context, endpoints []exonet.Endpoint) *Stream {
-	// Quick retries (no delay)
+func (s *TorLinkStrategy) tryQuick(ctx *astral.Context, endpoints []exonet.Endpoint) *Stream {
 	for i := 0; i < s.quickRetries; i++ {
 		for _, ep := range endpoints {
 			if ctx.Err() != nil {
 				return nil
 			}
+
 			if stream := s.tryEndpoint(ctx, ep); stream != nil {
 				return stream
 			}
 		}
 		s.log.Logv(2, "%v quick retry %d/%d", s.target, i+1, s.quickRetries)
 	}
+	return nil
+}
 
-	// Normal retries with delay
+func (s *TorLinkStrategy) tryWithBackoff(ctx *astral.Context, endpoints []exonet.Endpoint) *Stream {
+	backoff, _ := sig.NewRetry(time.Second, time.Minute, 2)
 	for i := 0; i < s.retries; i++ {
 		for _, ep := range endpoints {
 			if ctx.Err() != nil {
@@ -153,9 +153,9 @@ func (s *PersistentLinkStrategy) tryWithRetry(ctx *astral.Context, endpoints []e
 			}
 		}
 		if i < s.retries-1 {
-			s.log.Logv(2, "%v retry %d/%d in %v", s.target, i+1, s.retries, s.retryDelay)
+			s.log.Logv(2, "%v retry %d/%d in %v", s.target, i+1, s.retries, backoff.NextDelay())
 			select {
-			case <-time.After(s.retryDelay):
+			case <-backoff.Retry():
 			case <-ctx.Done():
 				return nil
 			}
@@ -164,7 +164,7 @@ func (s *PersistentLinkStrategy) tryWithRetry(ctx *astral.Context, endpoints []e
 	return nil
 }
 
-func (s *PersistentLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint exonet.Endpoint) *Stream {
+func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint exonet.Endpoint) *Stream {
 	conn, err := s.mod.Exonet.Dial(ctx, endpoint)
 	if err != nil {
 		s.log.Logv(2, "%v dial %v: %v", s.target, endpoint, err)
@@ -182,7 +182,7 @@ func (s *PersistentLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint exone
 	return stream
 }
 
-func (s *PersistentLinkStrategy) Done() <-chan struct{} {
+func (s *TorLinkStrategy) Done() <-chan struct{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -213,7 +213,7 @@ type PersistentLinkStrategyFactory struct {
 var _ nodes.StrategyFactory = &PersistentLinkStrategyFactory{}
 
 func (f *PersistentLinkStrategyFactory) Build(target *astral.Identity) nodes.LinkStrategy {
-	return &PersistentLinkStrategy{
+	return &TorLinkStrategy{
 		mod:               f.mod,
 		log:               f.mod.log.AppendTag(log.Tag(f.network)),
 		network:           f.network,
@@ -221,7 +221,7 @@ func (f *PersistentLinkStrategyFactory) Build(target *astral.Identity) nodes.Lin
 		quickRetries:      f.config.QuickRetries,
 		retries:           f.config.Retries,
 		retryDelay:        f.config.RetryDelay,
-		signalTimeout:     f.config.SignalTimeout,
+		quickTimeout:      f.config.SignalTimeout,
 		backgroundTimeout: f.config.BackgroundTimeout,
 	}
 }
