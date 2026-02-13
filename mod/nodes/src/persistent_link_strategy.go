@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 // PersistentLinkStrategy tries to connect with retries. After signalTimeout it
@@ -14,6 +16,7 @@ import (
 // backgroundTimeout more. Useful for slow networks like Tor.
 type PersistentLinkStrategy struct {
 	mod               *Module
+	log               *log.Logger
 	network           string
 	target            *astral.Identity
 	quickRetries      int // immediate retries (no delay)
@@ -32,17 +35,32 @@ func (s *PersistentLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
 	if s.activeDone != nil {
 		s.mu.Unlock()
-		s.mod.log.Logv(1, "[%v] %v: signal ignored, already running", s.network, s.target)
 		return
 	}
 	s.activeDone = make(chan struct{})
 	s.mu.Unlock()
 
-	s.mod.log.Log("[%v] %v: starting link strategy", s.network, s.target)
 	go s.run(ctx)
 }
 
 func (s *PersistentLinkStrategy) run(ctx *astral.Context) {
+	// Resolve endpoints once upfront
+	resolved, err := s.mod.ResolveEndpoints(ctx, s.target)
+	if err != nil {
+		s.log.Logv(2, "%v resolve failed: %v", s.target, err)
+		s.signalDone()
+		return
+	}
+	filtered := sig.FilterChan(resolved, func(e exonet.Endpoint) bool {
+		return e.Network() == s.network
+	})
+	endpoints := sig.ChanToArray(filtered)
+	if len(endpoints) == 0 {
+		s.log.Logv(2, "%v no endpoints found to", s.target)
+		s.signalDone()
+		return
+	}
+
 	signalTimer := time.NewTimer(s.signalTimeout)
 	defer signalTimer.Stop()
 
@@ -52,7 +70,7 @@ func (s *PersistentLinkStrategy) run(ctx *astral.Context) {
 	workerCtx, workerCancel := ctx.WithCancel()
 	go func() {
 		defer close(resultCh)
-		if stream := s.tryWithRetry(workerCtx); stream != nil {
+		if stream := s.tryWithRetry(workerCtx, endpoints); stream != nil {
 			resultCh <- stream
 		}
 	}()
@@ -61,25 +79,16 @@ func (s *PersistentLinkStrategy) run(ctx *astral.Context) {
 	case stream := <-resultCh:
 		workerCancel()
 		s.signalDone()
-		if stream != nil {
-			s.mod.log.Log("[%v] %v: connected before timeout", s.network, s.target)
-		} else {
-			s.mod.log.Log("[%v] %v: all attempts failed before timeout", s.network, s.target)
-		}
 		s.deliverStream(stream)
 		return
-
 	case <-ctx.Done():
 		workerCancel()
 		s.signalDone()
-		s.mod.log.Log("[%v] %v: cancelled by caller", s.network, s.target)
 		return
 
 	case <-signalTimer.C:
 		workerCancel()
 		s.signalDone()
-		s.mod.log.Log("[%v] %v: signal timeout (%v), continuing in background for %v",
-			s.network, s.target, s.signalTimeout, s.backgroundTimeout)
 	}
 
 	// Continue in background on module context
@@ -89,21 +98,15 @@ func (s *PersistentLinkStrategy) run(ctx *astral.Context) {
 	bgResultCh := make(chan *Stream, 1)
 	go func() {
 		defer close(bgResultCh)
-		if stream := s.tryWithRetry(bgCtx); stream != nil {
+		if stream := s.tryWithRetry(bgCtx, endpoints); stream != nil {
 			bgResultCh <- stream
 		}
 	}()
 
 	select {
 	case stream := <-bgResultCh:
-		if stream != nil {
-			s.mod.log.Log("[%v] %v: connected in background mode", s.network, s.target)
-		} else {
-			s.mod.log.Logv(1, "[%v] %v: background attempts exhausted", s.network, s.target)
-		}
 		s.deliverStream(stream)
 	case <-bgCtx.Done():
-		s.mod.log.Logv(1, "[%v] %v: background timeout expired", s.network, s.target)
 	}
 }
 
@@ -121,42 +124,36 @@ func (s *PersistentLinkStrategy) deliverStream(stream *Stream) {
 		return
 	}
 	if !s.mod.linkPool.notifyStreamWatchers(stream) {
-		s.mod.log.Logv(1, "[%v] %v: stream not consumed, closing as excess",
-			s.network, s.target)
 		stream.CloseWithError(nodes.ErrExcessStream)
-	} else {
-		s.mod.log.Logv(1, "[%v] %v: stream delivered to watcher", s.network, s.target)
 	}
 }
 
-func (s *PersistentLinkStrategy) tryWithRetry(ctx *astral.Context) *Stream {
-	attempt := 0
-	totalAttempts := s.quickRetries + s.retries
-
-	// Quick retries first (no delay) - handles circuit building failures
+func (s *PersistentLinkStrategy) tryWithRetry(ctx *astral.Context, endpoints []exonet.Endpoint) *Stream {
+	// Quick retries (no delay)
 	for i := 0; i < s.quickRetries; i++ {
-		attempt++
-		if ctx.Err() != nil {
-			return nil
+		for _, ep := range endpoints {
+			if ctx.Err() != nil {
+				return nil
+			}
+			if stream := s.tryEndpoint(ctx, ep); stream != nil {
+				return stream
+			}
 		}
-		if stream := s.tryOnce(ctx, attempt, totalAttempts); stream != nil {
-			return stream
-		}
+		s.log.Logv(2, "%v quick retry %d/%d", s.target, i+1, s.quickRetries)
 	}
 
 	// Normal retries with delay
 	for i := 0; i < s.retries; i++ {
-		attempt++
-		if ctx.Err() != nil {
-			return nil
+		for _, ep := range endpoints {
+			if ctx.Err() != nil {
+				return nil
+			}
+			if stream := s.tryEndpoint(ctx, ep); stream != nil {
+				return stream
+			}
 		}
-		if stream := s.tryOnce(ctx, attempt, totalAttempts); stream != nil {
-			return stream
-		}
-
-		// Don't wait after last attempt
 		if i < s.retries-1 {
-			s.mod.log.Logv(1, "[%v] %v: retrying in %v", s.network, s.target, s.retryDelay)
+			s.log.Logv(2, "%v retry %d/%d in %v", s.target, i+1, s.retries, s.retryDelay)
 			select {
 			case <-time.After(s.retryDelay):
 			case <-ctx.Done():
@@ -167,61 +164,21 @@ func (s *PersistentLinkStrategy) tryWithRetry(ctx *astral.Context) *Stream {
 	return nil
 }
 
-func (s *PersistentLinkStrategy) tryOnce(ctx *astral.Context, attempt, total int) *Stream {
-	resolved, err := s.mod.ResolveEndpoints(ctx, s.target)
-	if err != nil {
-		s.mod.log.Logv(1, "[%v] %v: attempt %v/%v failed to resolve endpoints: %v",
-			s.network, s.target, attempt, total, err)
-		return nil
-	}
-
-	endpointCount := 0
-	for endpoint := range resolved {
-		if ctx.Err() != nil {
-			return nil
-		}
-
-		if endpoint.Network() != s.network {
-			continue
-		}
-
-		endpointCount++
-		if stream := s.tryEndpoint(ctx, endpoint, attempt, total); stream != nil {
-			return stream
-		}
-	}
-
-	if endpointCount == 0 {
-		s.mod.log.Logv(1, "[%v] %v: attempt %v/%v found no endpoints",
-			s.network, s.target, attempt, total)
-	}
-
-	return nil
-}
-
-func (s *PersistentLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint exonet.Endpoint, attempt, total int) *Stream {
-	s.mod.log.Logv(1, "[%v] %v: attempt %v/%v dialing %v",
-		s.network, s.target, attempt, total, endpoint)
-
+func (s *PersistentLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint exonet.Endpoint) *Stream {
 	conn, err := s.mod.Exonet.Dial(ctx, endpoint)
 	if err != nil {
-		s.mod.log.Logv(1, "[%v] %v: attempt %v/%v dial failed: %v",
-			s.network, s.target, attempt, total, err)
+		s.log.Logv(2, "%v dial %v: %v", s.target, endpoint, err)
 		return nil
 	}
-
-	s.mod.log.Logv(1, "[%v] %v: attempt %v/%v connected, establishing link",
-		s.network, s.target, attempt, total)
 
 	stream, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
 	if err != nil {
-		s.mod.log.Logv(1, "[%v] %v: attempt %v/%v link failed: %v",
-			s.network, s.target, attempt, total, err)
+		s.log.Logv(2, "%v link %v: %v", s.target, endpoint, err)
 		conn.Close()
 		return nil
 	}
 
-	s.mod.log.Log("[%v] %v: link established via %v", s.network, s.target, endpoint)
+	s.log.Log("%v linked via %v", s.target, endpoint)
 	return stream
 }
 
@@ -258,6 +215,7 @@ var _ nodes.StrategyFactory = &PersistentLinkStrategyFactory{}
 func (f *PersistentLinkStrategyFactory) Build(target *astral.Identity) nodes.LinkStrategy {
 	return &PersistentLinkStrategy{
 		mod:               f.mod,
+		log:               f.mod.log.AppendTag(log.Tag(f.network)),
 		network:           f.network,
 		target:            target,
 		quickRetries:      f.config.QuickRetries,
