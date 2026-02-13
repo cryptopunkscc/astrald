@@ -7,15 +7,14 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 type opNewStreamArgs struct {
-	Target   string
-	Net      string `query:"optional"`
-	Endpoint string `query:"optional"`
-	Out      string `query:"optional"`
+	Target     string
+	Endpoint   string `query:"optional"`
+	Strategies string `query:"optional"`
+	Out        string `query:"optional"`
 }
 
 func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStreamArgs) (err error) {
@@ -24,24 +23,30 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		return q.RejectWithCode(2)
 	}
 
-	var endpoint exonet.Endpoint
-	if args.Endpoint != "" {
-		split := strings.SplitN(args.Endpoint, ":", 2)
-		if len(split) == 2 {
-			var parseErr error
-			endpoint, parseErr = mod.Exonet.Parse(split[0], split[1])
-			if parseErr != nil {
-				return q.RejectWithCode(3)
-			}
+	var strategies []string
+	if args.Strategies != "" {
+		for _, raw := range strings.Split(args.Strategies, ",") {
+			strategies = append(strategies, strings.TrimSpace(raw))
 		}
 	}
 
-	var network *string
-	if args.Net != "" {
-		network = &args.Net
+	var task nodes.StreamProducerTask
+	switch {
+	case args.Endpoint != "":
+		split := strings.SplitN(args.Endpoint, ":", 2)
+		if len(split) != 2 {
+			return q.RejectWithCode(3)
+		}
+
+		endpoint, err := mod.Exonet.Parse(split[0], split[1])
+		if err != nil {
+			return q.RejectWithCode(3)
+		}
+		task = mod.NewCreateStreamTask(target, endpoint)
+	default:
+		task = mod.NewEnsureStreamTask(target, strategies, true)
 	}
 
-	task := mod.NewCreateStreamTask(target, endpoint, network)
 	scheduledTask, err := mod.Scheduler.Schedule(task)
 	if err != nil {
 		return q.RejectWithCode(5)
@@ -69,6 +74,6 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	case errors.Is(err, nodes.ErrIdentityResolve), errors.Is(err, nodes.ErrEndpointResolve):
 		return q.RejectWithCode(4)
 	default:
-		return err
+		return ch.Send(astral.Err(err))
 	}
 }

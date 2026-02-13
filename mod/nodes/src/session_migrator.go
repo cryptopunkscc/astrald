@@ -223,7 +223,6 @@ func (m *sessionMigrator) readSignal(ctx context.Context,
 	}
 	resCh := make(chan result, 1)
 
-	// TODO: create ReadContext method on Channel to avoid goroutine leak risk
 	go func() {
 		obj, err := m.ch.Receive()
 		if err != nil {

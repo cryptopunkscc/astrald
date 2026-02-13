@@ -93,7 +93,7 @@ func (s *Server) Run(ctx *astral.Context) error {
 			var conn = WrapUtpConn(utpConn, localEndpoint, remoteEndpoint, false)
 
 			go func() {
-				err := s.Nodes.Accept(ctx, conn)
+				err := s.Nodes.EstablishInboundLink(ctx, conn)
 				if err != nil {
 					s.log.Errorv(1, "utp server/run: handshake failed from %v: %v",
 						conn.RemoteEndpoint(), err)

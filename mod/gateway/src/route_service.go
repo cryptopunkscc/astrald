@@ -2,12 +2,13 @@ package gateway
 
 import (
 	"context"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
 const RouteServiceName = ".gateway"
@@ -53,7 +54,7 @@ func (srv *RouteService) RouteQuery(ctx *astral.Context, q *astral.Query, w io.W
 			actx, cancel := context.WithTimeout(context.Background(), acceptTimeout)
 			defer cancel()
 
-			err := srv.Nodes.Accept(actx, gwConn)
+			err := srv.Nodes.EstablishInboundLink(actx, gwConn)
 			if err != nil {
 				return
 			}

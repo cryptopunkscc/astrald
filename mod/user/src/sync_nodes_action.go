@@ -10,7 +10,7 @@ type SyncNodesAction struct {
 	mod            *Module
 }
 
-func (mod *Module) NewSyncNodesAction(remoteIdentity *astral.
+func (mod *Module) NewSyncNodesTask(remoteIdentity *astral.
 	Identity) user.SyncNodesAction {
 	return &SyncNodesAction{
 		remoteIdentity: remoteIdentity,

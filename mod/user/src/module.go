@@ -153,7 +153,7 @@ func (mod *Module) runSiblingLinker() {
 			continue
 		}
 
-		maintainLinkAction := mod.NewMaintainLinkAction(node)
+		maintainLinkAction := mod.NewMaintainLinkTask(node)
 		scheduledAction, err := mod.Scheduler.Schedule(maintainLinkAction)
 		if err != nil {
 			mod.log.Error("error scheduling maintain link action: %v for node %v", err, node)

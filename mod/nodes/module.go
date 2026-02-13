@@ -24,8 +24,8 @@ const (
 )
 
 type Module interface {
-	Accept(ctx context.Context, conn exonet.Conn) error
-	Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
+	EstablishInboundLink(ctx context.Context, conn exonet.Conn) error
+	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
 
 	AddEndpoint(*astral.Identity, exonet.Endpoint) error
 	RemoveEndpoint(*astral.Identity, exonet.Endpoint) error
@@ -37,7 +37,8 @@ type Module interface {
 
 	IsLinked(*astral.Identity) bool
 
-	NewEnsureStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string, create bool) EnsureStreamAction
+	NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) CreateStreamTask
+	NewEnsureStreamTask(target *astral.Identity, networks []string, create bool) EnsureStreamTask
 }
 
 // Link is an encrypted communication channel between two identities that is capable of routing queries
@@ -51,4 +52,13 @@ type Link interface {
 
 type EndpointResolver interface {
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan exonet.Endpoint, error)
+}
+
+type LinkStrategy interface {
+	Signal(ctx *astral.Context)
+	Done() <-chan struct{}
+}
+
+type StrategyFactory interface {
+	Build(target *astral.Identity) LinkStrategy
 }

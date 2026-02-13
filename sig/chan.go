@@ -67,3 +67,27 @@ func Recv[T any](ctx context.Context, ch <-chan T) (T, error) {
 		return zero, ctx.Err()
 	}
 }
+
+// WaitAllDone returns a channel that is closed when all provided channels are closed
+// or when ctx is done (whichever happens first).
+func WaitAllDone(ctx context.Context, chans ...<-chan struct{}) <-chan struct{} {
+	done := make(chan struct{})
+
+	if len(chans) == 0 {
+		close(done)
+		return done
+	}
+
+	go func() {
+		defer close(done)
+		for _, ch := range chans {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ch:
+			}
+		}
+	}()
+
+	return done
+}

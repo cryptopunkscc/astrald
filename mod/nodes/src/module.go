@@ -45,6 +45,8 @@ type Module struct {
 	peers    *Peers
 	linkPool *LinkPool
 
+	strategyFactories sig.Map[string, nodes.StrategyFactory]
+
 	in chan *Frame
 
 	searchCache sig.Map[string, *astral.Identity]
@@ -79,13 +81,13 @@ func (mod *Module) IsPeer(id *astral.Identity) bool {
 	return false
 }
 
-func (mod *Module) Accept(ctx context.Context, conn exonet.Conn) (err error) {
-	return mod.peers.Accept(ctx, conn)
+func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
+	return mod.peers.EstablishInboundLink(ctx, conn)
 }
 
-func (mod *Module) Connect(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (err error) {
-	_, err = mod.peers.Connect(ctx, remoteID, conn)
-	return
+func (mod *Module) EstablishOutboundLink(ctx context.Context, target *astral.Identity, conn exonet.Conn) error {
+	_, err := mod.peers.EstablishOutboundLink(ctx, target, conn)
+	return err
 }
 
 func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint) error {
@@ -120,6 +122,10 @@ func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 	if resolver != nil {
 		mod.resolvers.Add(resolver)
 	}
+}
+
+func (mod *Module) RegisterNetworkStrategy(network string, factory nodes.StrategyFactory) {
+	mod.strategyFactories.Set(network, factory)
 }
 
 func (mod *Module) IsLinked(identity *astral.Identity) bool {

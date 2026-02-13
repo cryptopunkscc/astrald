@@ -2,7 +2,6 @@ package nodes
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
@@ -12,26 +11,24 @@ var _ scheduler.Task = &EnsureStreamTask{}
 type EnsureStreamTask struct {
 	mod      *Module
 	Target   *astral.Identity
-	Endpoint exonet.Endpoint
-	Network  *string
+	Networks []string
 	Create   bool
 
 	Info *nodes.StreamInfo // set on success
 	Err  error
 }
 
-func (m *Module) NewEnsureStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string, create bool) nodes.EnsureStreamAction {
+func (m *Module) NewEnsureStreamTask(
+	target *astral.Identity,
+	networks []string,
+	create bool,
+) nodes.EnsureStreamTask {
 	return &EnsureStreamTask{
 		mod:      m,
 		Target:   target,
-		Endpoint: endpoint,
-		Network:  network,
+		Networks: networks,
 		Create:   create,
 	}
-}
-
-func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint, network *string) nodes.EnsureStreamAction {
-	return m.NewEnsureStreamTask(target, endpoint, network, true)
 }
 
 func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
@@ -41,19 +38,15 @@ func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
 		}
 	}()
 
-	var retrieveLinkOptions []RetrieveLinkOption
+	var opts []RetrieveLinkOption
 	if c.Create {
-		retrieveLinkOptions = append(retrieveLinkOptions, WithForceNew())
+		opts = append(opts, WithForceNew())
+	}
+	if len(c.Networks) > 0 {
+		opts = append(opts, WithNetworks(c.Networks...))
 	}
 
-	switch {
-	case c.Endpoint != nil:
-		retrieveLinkOptions = append(retrieveLinkOptions, WithEndpoints(c.Endpoint))
-	case c.Network != nil:
-		retrieveLinkOptions = append(retrieveLinkOptions, WithIncludeNetworks(*c.Network))
-	}
-
-	streamFuture := c.mod.linkPool.RetrieveLink(ctx, c.Target, retrieveLinkOptions...)
+	streamFuture := c.mod.linkPool.RetrieveLink(ctx, c.Target, opts...)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

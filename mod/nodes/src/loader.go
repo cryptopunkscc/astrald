@@ -24,6 +24,9 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	mod.peers = NewPeers(mod)
 	mod.linkPool = NewLinkPool(mod, mod.peers)
 
+	mod.RegisterNetworkStrategy("tcp", &BasicLinkStrategyFactory{mod: mod, network: "tcp"})
+	mod.RegisterNetworkStrategy("tor", &BasicLinkStrategyFactory{mod: mod, network: "tor"})
+
 	mod.db = &DB{assets.Database()}
 	mod.dbResolver = &DBEndpointResolver{mod: mod}
 	mod.resolvers.Add(mod.dbResolver)
