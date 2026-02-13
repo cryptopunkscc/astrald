@@ -24,14 +24,12 @@ func (mod *Module) SetActiveContract(signed *user.SignedNodeContract) (err error
 	mod.config.ActiveContract.Set(mod.ctx, signed)
 
 	// synchronize siblings & broadcast
-	mod.mu.Unlock()
 	err = mod.Nearby.Broadcast()
 	if err != nil {
 		mod.log.Error("error broadcasting presence after setting contract: %v", err)
 	}
 
 	mod.runSiblingLinker()
-	mod.mu.Lock()
 	return
 }
 

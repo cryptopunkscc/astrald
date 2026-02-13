@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
@@ -29,7 +28,6 @@ type Module struct {
 	log    *log.Logger
 	assets assets.Assets
 	db     *DB
-	mu     sync.Mutex
 	ops    ops.Set
 
 	activeContract *user.SignedNodeContract
