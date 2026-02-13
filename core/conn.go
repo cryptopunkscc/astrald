@@ -1,9 +1,11 @@
 package core
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+	"sync"
 	"sync/atomic"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type conn struct {
@@ -11,6 +13,7 @@ type conn struct {
 	query  *astral.Query
 	src    *writer
 	dst    *writer
+	mu     sync.Mutex
 }
 
 func newConn(r *Router, q *astral.Query) *conn {
@@ -21,6 +24,9 @@ func newConn(r *Router, q *astral.Query) *conn {
 }
 
 func (c *conn) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.src.Close()
 	c.dst.Close()
 	c.router.conns.Delete(c.query.Nonce)

@@ -99,6 +99,7 @@ func (r *Router) routeQuery(ctx *astral.Context, q *astral.Query, src io.WriteCl
 		return query.RouteNotFound(r, errors.New("routing cycle not allowed"))
 	}
 	c.src = newWriter(c, src)
+	c.mu.Lock()
 
 	actx, cancel := ctx.WithTimeout(routingTimeout)
 	defer cancel()
@@ -110,6 +111,7 @@ func (r *Router) routeQuery(ctx *astral.Context, q *astral.Query, src io.WriteCl
 	}
 
 	c.dst = newWriter(c, w)
+	c.mu.Unlock()
 
 	return c.dst, nil
 }
