@@ -62,6 +62,10 @@ func (l *Logger) Tag(tag Tag) *Logger {
 	return l.SetPrefix(&tag)
 }
 
+func (l *Logger) AppendTag(tag Tag) *Logger {
+	return l.SetPrefix(append(l.prefix, &tag)...)
+}
+
 func (l *Logger) SetOutput(o Output) {
 	l.root().setOutput(o)
 }
