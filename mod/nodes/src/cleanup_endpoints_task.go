@@ -16,10 +16,6 @@ func (mod *Module) NewCleanupEndpointsTask() nodes.CleanupEndpointsTask {
 	return &CleanupEndpointsTask{mod: mod}
 }
 
-func newCleanupEndpointsTask(mod *Module) *CleanupEndpointsTask {
-	return &CleanupEndpointsTask{mod: mod}
-}
-
 func (c CleanupEndpointsTask) String() string {
 	return "nodes.cleanup_endpoints"
 }
@@ -35,7 +31,7 @@ func (c CleanupEndpointsTask) Run(ctx *astral.Context) error {
 	}
 
 	delay, _ := c.mod.ctx.WithTimeout(nodes.CleanupInterval)
-	_, err = c.mod.Scheduler.Schedule(newCleanupEndpointsTask(c.mod), delay)
+	_, err = c.mod.Scheduler.Schedule(c.mod.NewCleanupEndpointsTask(), delay)
 	if err != nil {
 		return err
 	}
