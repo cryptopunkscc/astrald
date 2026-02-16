@@ -1,6 +1,8 @@
 package nodes
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
@@ -25,7 +27,16 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	mod.linkPool = NewLinkPool(mod, mod.peers)
 
 	mod.RegisterNetworkStrategy("tcp", &BasicLinkStrategyFactory{mod: mod, network: "tcp"})
-	mod.RegisterNetworkStrategy("tor", &BasicLinkStrategyFactory{mod: mod, network: "tor"})
+	mod.RegisterNetworkStrategy("tor", &TorLinkStrategyFactory{
+		mod:     mod,
+		network: "tor",
+		config: TorLinkStrategyConfig{
+			QuickRetries:      2,
+			Retries:           3,
+			SignalTimeout:     60 * time.Second,
+			BackgroundTimeout: 360 * time.Second,
+		},
+	})
 
 	mod.db = &DB{assets.Database()}
 	mod.dbResolver = &DBEndpointResolver{mod: mod}
