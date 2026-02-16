@@ -1,9 +1,6 @@
 package nodes
 
 import (
-	"encoding/binary"
-	"errors"
-	"fmt"
 	"io"
 	"time"
 
@@ -40,62 +37,11 @@ func (ResolvedEndpoint) ObjectType() string {
 }
 
 func (e ResolvedEndpoint) WriteTo(w io.Writer) (n int64, err error) {
-	if e.Endpoint == nil {
-		return 0, errors.New("nil endpoint")
-	}
-
-	n, err = astral.Encode(w, e.Endpoint)
-	if err != nil {
-		return
-	}
-
-	hasTTL := e.TTL != nil
-	if err = binary.Write(w, astral.ByteOrder, hasTTL); err != nil {
-		return
-	}
-	n++
-
-	if hasTTL {
-		if err = binary.Write(w, astral.ByteOrder, *e.TTL); err != nil {
-			return
-		}
-		n += 4
-	}
-
-	return
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e *ResolvedEndpoint) ReadFrom(r io.Reader) (n int64, err error) {
-	obj, m, err := astral.Decode(r)
-	n += m
-	if err != nil {
-		return
-	}
-
-	ep, ok := obj.(exonet.Endpoint)
-	if !ok {
-		return n, fmt.Errorf("object is not an exonet.Endpoint")
-	}
-	e.Endpoint = ep
-
-	var hasTTL bool
-	if err = binary.Read(r, astral.ByteOrder, &hasTTL); err != nil {
-		return
-	}
-	n++
-
-	if hasTTL {
-		var ttl uint32
-		if err = binary.Read(r, astral.ByteOrder, &ttl); err != nil {
-			return
-		}
-		n += 4
-		e.TTL = &ttl
-	} else {
-		e.TTL = nil
-	}
-
-	return
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 // exonet.Endpoint

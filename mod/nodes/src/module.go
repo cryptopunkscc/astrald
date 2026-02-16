@@ -94,7 +94,7 @@ func (mod *Module) EstablishOutboundLink(ctx context.Context, target *astral.Ide
 func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint *nodes.ResolvedEndpoint) error {
 	var expiresAt *time.Time
 	if endpoint.TTL != nil {
-		t := time.Now().Add(time.Duration(*endpoint.TTL) * time.Second)
+		t := time.Now().UTC().Add(time.Duration(*endpoint.TTL) * time.Second)
 		expiresAt = &t
 	}
 
