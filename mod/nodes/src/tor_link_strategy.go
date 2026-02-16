@@ -156,7 +156,7 @@ func (s *TorLinkStrategy) try(
 		if i < retries-1 {
 			if withBackoff {
 				delay := backoff.NextDelay()
-				s.log.Logv(2, "%v retry %d/%d in %v",
+				s.log.Logv(2, "%v retry %v/%v in %v",
 					s.target, i+1, retries, delay)
 
 				select {
@@ -165,7 +165,7 @@ func (s *TorLinkStrategy) try(
 					return nil
 				}
 			} else {
-				s.log.Logv(2, "%v quick retry %d/%d",
+				s.log.Logv(2, "%v quick retry %v/%v",
 					s.target, i+1, retries)
 			}
 		}
