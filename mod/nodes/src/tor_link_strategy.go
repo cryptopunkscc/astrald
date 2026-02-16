@@ -134,7 +134,11 @@ func (s *TorLinkStrategy) try(
 
 	var backoff *sig.Retry
 	if withBackoff {
-		b, _ := sig.NewRetry(time.Second, time.Minute, 2)
+		b, err := sig.NewRetry(time.Second, time.Minute, 2)
+		if err != nil {
+			s.log.Logv(2, "failed to create backoff: %v", err)
+		}
+
 		backoff = b
 	}
 
@@ -202,23 +206,22 @@ func (s *TorLinkStrategy) Done() <-chan struct{} {
 
 // Factory
 
-type PersistentLinkStrategyConfig struct {
-	QuickRetries      int // immediate retries (no delay) for circuit building
-	Retries           int // normal retries with delay
-	RetryDelay        time.Duration
+type TorLinkStrategyConfig struct {
+	QuickRetries      int
+	Retries           int
 	SignalTimeout     time.Duration
 	BackgroundTimeout time.Duration
 }
 
-type PersistentLinkStrategyFactory struct {
+type TorLinkStrategyFactory struct {
 	mod     *Module
 	network string
-	config  PersistentLinkStrategyConfig
+	config  TorLinkStrategyConfig
 }
 
-var _ nodes.StrategyFactory = &PersistentLinkStrategyFactory{}
+var _ nodes.StrategyFactory = &TorLinkStrategyFactory{}
 
-func (f *PersistentLinkStrategyFactory) Build(target *astral.Identity) nodes.LinkStrategy {
+func (f *TorLinkStrategyFactory) Build(target *astral.Identity) nodes.LinkStrategy {
 	return &TorLinkStrategy{
 		mod:               f.mod,
 		log:               f.mod.log.AppendTag(log.Tag(f.network)),
