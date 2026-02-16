@@ -1,9 +1,12 @@
 package tcp
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -52,15 +55,13 @@ func (mod *Module) ListenPort() int {
 	return mod.config.ListenPort
 }
 
-func (mod *Module) endpoints() (list []exonet.Endpoint) {
+func (mod *Module) endpoints() (list []*nodes.ResolvedEndpoint) {
 	ips, _ := mod.IP.LocalIPs()
 	for _, tip := range ips {
-		e := tcp.Endpoint{
+		list = append(list, nodes.NewResolvedEndpoint(&tcp.Endpoint{
 			IP:   tip,
 			Port: astral.Uint16(mod.config.ListenPort),
-		}
-
-		list = append(list, &e)
+		}, 7*24*time.Hour))
 	}
 
 	return list

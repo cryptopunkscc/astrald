@@ -1,15 +1,17 @@
 package nodes
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	nodescli "github.com/cryptopunkscc/astrald/mod/nodes/client"
 )
 
-func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (_ <-chan exonet.Endpoint, err error) {
-	var ch = make(chan exonet.Endpoint)
+func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (_ <-chan *nodes.ResolvedEndpoint, err error) {
+	var ch = make(chan *nodes.ResolvedEndpoint)
 
 	go func() {
 		var wg sync.WaitGroup
@@ -32,13 +34,13 @@ func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity
 	return ch, nil
 }
 
-func (mod *Module) runResolver(ctx *astral.Context, r nodes.EndpointResolver, nodeID *astral.Identity, out chan<- exonet.Endpoint) {
+func (mod *Module) runResolver(ctx *astral.Context, r nodes.EndpointResolver, nodeID *astral.Identity, out chan<- *nodes.ResolvedEndpoint) {
 	ch, err := r.ResolveEndpoints(ctx, nodeID)
 	if err != nil {
 		return
 	}
 	for {
-		var e exonet.Endpoint
+		var e *nodes.ResolvedEndpoint
 		var ok bool
 
 		// read the next endpoint from the resolver
@@ -58,4 +60,22 @@ func (mod *Module) runResolver(ctx *astral.Context, r nodes.EndpointResolver, no
 			return
 		}
 	}
+}
+
+func (mod *Module) updateNodeEndpoints(ctx *astral.Context, identity *astral.Identity) error {
+	client := nodescli.New(identity, astrald.Default())
+
+	endpoints, err := client.ResolveEndpoints(ctx.IncludeZone(astral.ZoneNetwork), identity)
+	if err != nil {
+		return fmt.Errorf("resolve endpoints: %v", err)
+	}
+
+	for _, ep := range endpoints {
+		err = mod.AddEndpoint(identity, ep)
+		if err != nil {
+			mod.log.Error("adding resolved endpoint failed %v: %v", ep, err)
+		}
+	}
+
+	return nil
 }

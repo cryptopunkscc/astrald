@@ -6,7 +6,6 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -52,7 +51,7 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 		return
 	}
 
-	filtered := sig.FilterChan(resolvedEndpoints, func(e exonet.Endpoint) bool {
+	filtered := sig.FilterChan(resolvedEndpoints, func(e *nodes.ResolvedEndpoint) bool {
 		return e.Network() == s.network
 	})
 
@@ -127,7 +126,7 @@ func (s *TorLinkStrategy) deliverStream(stream *Stream) {
 
 func (s *TorLinkStrategy) try(
 	ctx *astral.Context,
-	endpoints []exonet.Endpoint,
+	endpoints []*nodes.ResolvedEndpoint,
 	retries int,
 	withBackoff bool,
 ) *Stream {
@@ -174,8 +173,8 @@ func (s *TorLinkStrategy) try(
 	return nil
 }
 
-func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint exonet.Endpoint) *Stream {
-	conn, err := s.mod.Exonet.Dial(ctx, endpoint)
+func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.ResolvedEndpoint) *Stream {
+	conn, err := s.mod.Exonet.Dial(ctx, endpoint.Endpoint)
 	if err != nil {
 		s.log.Logv(2, "%v dial %v: %v", s.target, endpoint, err)
 		return nil

@@ -66,7 +66,7 @@ func (mod *Module) subscribeToGateways() {
 
 			// save endpoints
 			for _, ep := range info.Endpoints {
-				err = mod.Nodes.AddEndpoint(info.Identity, ep)
+				err = mod.Nodes.AddEndpoint(info.Identity, nodes.NewResolvedEndpoint(ep))
 				if err != nil {
 					mod.log.Error("add endpoint: %v", err)
 					continue

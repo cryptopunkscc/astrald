@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -52,7 +51,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 			return
 		}
 
-		endpoints := sig.FilterChan(resolved, func(e exonet.Endpoint) bool {
+		endpoints := sig.FilterChan(resolved, func(e *nodes.ResolvedEndpoint) bool {
 			return e.Network() == s.network
 		})
 
@@ -65,12 +64,12 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 					select {
 					case <-wctx.Done():
 						return
-					case endpoint, ok := <-endpoints:
+					case re, ok := <-endpoints:
 						if !ok {
 							return
 						}
 
-						stream := s.tryEndpoint(wctx, endpoint)
+						stream := s.tryEndpoint(wctx, re)
 						if stream != nil {
 							if _, ok := winner.Swap(nil, stream); ok {
 								cancel()
@@ -110,8 +109,8 @@ func (s *BasicLinkStrategy) Done() <-chan struct{} {
 	return s.activeDone
 }
 
-func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint exonet.Endpoint) *Stream {
-	conn, err := s.mod.Exonet.Dial(ctx, endpoint)
+func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.ResolvedEndpoint) *Stream {
+	conn, err := s.mod.Exonet.Dial(ctx, endpoint.Endpoint)
 	if err != nil {
 		return nil
 	}

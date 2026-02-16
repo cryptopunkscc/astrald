@@ -5,6 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
 const (
@@ -27,10 +28,10 @@ type Module interface {
 	EstablishInboundLink(ctx context.Context, conn exonet.Conn) error
 	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
 
-	AddEndpoint(*astral.Identity, exonet.Endpoint) error
+	AddEndpoint(*astral.Identity, *ResolvedEndpoint) error
 	RemoveEndpoint(*astral.Identity, exonet.Endpoint) error
 
-	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan exonet.Endpoint, error)
+	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan *ResolvedEndpoint, error)
 	AddResolver(resolver EndpointResolver)
 
 	Peers() []*astral.Identity
@@ -39,6 +40,7 @@ type Module interface {
 
 	NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) CreateStreamTask
 	NewEnsureStreamTask(target *astral.Identity, networks []string, create bool) EnsureStreamTask
+	NewCleanupEndpointsTask() scheduler.Task
 }
 
 // Link is an encrypted communication channel between two identities that is capable of routing queries
@@ -51,7 +53,7 @@ type Link interface {
 }
 
 type EndpointResolver interface {
-	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan exonet.Endpoint, error)
+	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan *ResolvedEndpoint, error)
 }
 
 type LinkStrategy interface {

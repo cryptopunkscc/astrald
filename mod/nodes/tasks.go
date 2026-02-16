@@ -14,3 +14,7 @@ type EnsureStreamTask interface {
 type CreateStreamTask interface {
 	StreamProducerTask
 }
+
+type CleanupEndpointsTask interface {
+	scheduler.Task
+}
