@@ -17,7 +17,14 @@ func (mod *Module) OpInfo(ctx *astral.Context, q *ops.Query, args opInfoArgs) (e
 		return q.RejectWithCode(2)
 	}
 
-	if !q.Caller().IsEqual(ac.UserID) {
+	var foundInSwarm bool
+	for _, swarm := range mod.LocalSwarm() {
+		if swarm.IsEqual(q.Caller()) {
+			foundInSwarm = true
+		}
+	}
+
+	if !foundInSwarm && !q.Caller().IsEqual(ac.UserID) {
 		return q.Reject()
 	}
 
