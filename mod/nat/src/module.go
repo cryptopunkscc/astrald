@@ -9,9 +9,11 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/mod/events"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
@@ -23,16 +25,23 @@ type Deps struct {
 	Dir     dir.Module
 	Objects objects.Module
 	IP      ip.Module
+	Tree    tree.Module
+	Events  events.Module
+}
+
+type Settings struct {
+	Enabled *tree.Value[*astral.Bool] `tree:"enabled"`
 }
 
 // Module is the concrete implementation of the NAT module.
 type Module struct {
 	Deps
 
-	ctx    *astral.Context
-	node   astral.Node
-	log    *log.Logger
-	assets resources.Resources
+	ctx      *astral.Context
+	node     astral.Node
+	log      *log.Logger
+	assets   resources.Resources
+	settings Settings
 
 	pool *PairPool
 	ops  ops.Set
@@ -43,9 +52,24 @@ type Module struct {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
+	go func() {
+		for range mod.settings.Enabled.Follow(ctx) {
+			mod.evaluateEnabled()
+		}
+	}()
+
 	<-ctx.Done()
 
 	return nil
+}
+
+func (mod *Module) evaluateEnabled() {
+	setting := mod.settings.Enabled.Get()
+	settingEnabled := setting == nil || bool(*setting)
+	hasPublicIPs := len(mod.IP.PublicIPCandidates()) > 0
+
+	mod.SetEnabled(settingEnabled && hasPublicIPs)
 }
 
 func (mod *Module) GetOpSet() *ops.Set {
