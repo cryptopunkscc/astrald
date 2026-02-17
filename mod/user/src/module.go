@@ -142,8 +142,6 @@ func (mod *Module) String() string {
 }
 
 func (mod *Module) runSiblingLinker() {
-	fmt.Println("ACTIVE CONTRACT: ", mod.ActiveContract())
-	fmt.Println("SWAMR: ", mod.LocalSwarm())
 	for _, node := range mod.LocalSwarm() {
 		if node.IsEqual(mod.node.Identity()) {
 			continue

@@ -42,7 +42,6 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 
 	follow := mod.config.ActiveContract.Follow(ctx)
 
-	// block until the first value is set
 	mod.setActiveContract(<-follow)
 	go func() {
 		for contract := range follow {
