@@ -61,7 +61,6 @@ func (mod *Module) setActiveContract(signed *user.SignedNodeContract) error {
 	}
 
 	mod.log.Info("hello, %v!", signed.UserID)
-
 	mod.activeContract = signed
 	return nil
 }

@@ -39,10 +39,6 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Scheduler.Ready()
 
-	if userID := mod.Identity(); userID != nil {
-		mod.log.Info("hello, %v!", userID)
-	}
-
 	mod.runSiblingLinker()
 	<-ctx.Done()
 
@@ -146,6 +142,8 @@ func (mod *Module) String() string {
 }
 
 func (mod *Module) runSiblingLinker() {
+	fmt.Println("ACTIVE CONTRACT: ", mod.ActiveContract())
+	fmt.Println("SWAMR: ", mod.LocalSwarm())
 	for _, node := range mod.LocalSwarm() {
 		if node.IsEqual(mod.node.Identity()) {
 			continue
