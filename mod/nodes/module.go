@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"context"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -11,6 +12,9 @@ const (
 	ModuleName     = "nodes"
 	DBPrefix       = "nodes__"
 	ActionRelayFor = "mod.nodes.relay_for"
+
+	CleanupGrace    = 30 * 24 * time.Hour
+	CleanupInterval = 24 * time.Hour
 
 	// query extra keys
 	ExtraCallerProof   = "caller_proof"
@@ -22,6 +26,8 @@ const (
 	// MethodResolveEndpoints is the query route for resolving endpoints of a node.
 	MethodResolveEndpoints = "nodes.resolve_endpoints"
 )
+
+const ()
 
 type Module interface {
 	EstablishInboundLink(ctx context.Context, conn exonet.Conn) error
