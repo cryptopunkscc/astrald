@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
-type opServiceDiscoverArgs struct {
+type opDiscoverArgs struct {
 	Follow bool `query:"optional"`
 
 	In  string `query:"optional"`
@@ -15,8 +15,8 @@ type opServiceDiscoverArgs struct {
 
 func (mod *Module) OpDiscover(
 	ctx *astral.Context,
-	q ops.Query,
-	args opServiceDiscoverArgs,
+	q *ops.Query,
+	args opDiscoverArgs,
 ) error {
 	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
