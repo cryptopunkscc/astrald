@@ -1,13 +1,10 @@
 package nodes
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/events"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -61,45 +58,6 @@ func (mod *Module) receiveObservedEndpointMessage(source *astral.Identity, event
 	if i.IsPublic() {
 		mod.log.Log(`public ip %v reflected from %v`, i, source)
 		mod.AddObservedEndpoint(endpoint, i)
-	}
-
-	return nil
-}
-
-func (mod *Module) updateNodeEndpoints(ctx *astral.Context, identity *astral.Identity) error {
-	resolveEndpointsQuery := query.New(ctx.Identity(), identity, nodes.MethodResolveEndpoints, &opResolveEndpointsArgs{
-		ID: identity.String(),
-	})
-
-	ch, err := query.RouteChan(ctx.IncludeZone(astral.ZoneNetwork), mod.node, resolveEndpointsQuery)
-	if err != nil {
-		return fmt.Errorf("routing resolve endpoints query: %v", err)
-	}
-
-	var endpoints []exonet.Endpoint
-queryReadLoop:
-	for {
-		obj, err := ch.Receive()
-		if err != nil {
-			return fmt.Errorf("error reading resolved endpoint: %v", err)
-		}
-
-		switch obj := obj.(type) {
-		case exonet.Endpoint:
-			endpoints = append(endpoints, obj)
-			err = mod.AddEndpoint(identity, obj)
-			if err != nil {
-				mod.log.Error("adding resolved endpoint failed %v: %v", obj, err)
-			}
-
-			continue queryReadLoop
-		case *astral.EOS:
-			break queryReadLoop
-		case *astral.ErrorMessage:
-			return fmt.Errorf("error resolving endpoints: %v", obj.Error())
-		default:
-			return astral.NewErrUnexpectedObject(obj)
-		}
 	}
 
 	return nil

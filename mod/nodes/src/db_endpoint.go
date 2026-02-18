@@ -11,6 +11,7 @@ type dbEndpoint struct {
 	Network   string           `gorm:"primaryKey"`
 	Address   string           `gorm:"primaryKey"`
 	CreatedAt time.Time
+	ExpiresAt *time.Time `gorm:"index"`
 }
 
 func (dbEndpoint) TableName() string {

@@ -63,6 +63,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Deps.Scheduler.Ready()
 	go mod.peers.frameReader(ctx)
+	mod.Scheduler.Schedule(mod.NewCleanupEndpointsTask())
 
 	<-ctx.Done()
 	return nil
@@ -90,8 +91,14 @@ func (mod *Module) EstablishOutboundLink(ctx context.Context, target *astral.Ide
 	return err
 }
 
-func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint) error {
-	return mod.db.AddEndpoint(nodeID, endpoint.Network(), endpoint.Address())
+func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint *nodes.EndpointWithTTL) error {
+	var expiresAt *time.Time
+	if endpoint.TTL != nil {
+		t := time.Now().UTC().Add(time.Duration(*endpoint.TTL) * time.Second)
+		expiresAt = &t
+	}
+
+	return mod.db.AddEndpoint(nodeID, endpoint.Network(), endpoint.Address(), expiresAt)
 }
 
 func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpoint) error {

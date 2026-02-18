@@ -1,17 +1,21 @@
 package tor
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (out <-chan exonet.Endpoint, err error) {
-	out = sig.ArrayToChan([]exonet.Endpoint{})
+var _ nodes.EndpointResolver = &Module{}
+
+func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (out <-chan *nodes.EndpointWithTTL, err error) {
+	out = sig.ArrayToChan([]*nodes.EndpointWithTTL{})
 
 	listen := mod.settings.Listen.Get()
 	if listen != nil && !*listen {
-		return sig.ArrayToChan([]exonet.Endpoint{}), nil
+		return sig.ArrayToChan([]*nodes.EndpointWithTTL{}), nil
 	}
 
 	switch {
@@ -23,5 +27,7 @@ func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity
 		return
 	}
 
-	return sig.ArrayToChan([]exonet.Endpoint{mod.torServer.endpoint}), nil
+	return sig.ArrayToChan([]*nodes.EndpointWithTTL{
+		nodes.NewEndpointWithTTL(mod.torServer.endpoint, 3*30*24*time.Hour),
+	}), nil
 }

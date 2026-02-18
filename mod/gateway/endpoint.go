@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"io"
 	"strings"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
 type Endpoint struct {
@@ -20,11 +21,11 @@ var _ exonet.Endpoint = &Endpoint{}
 func (Endpoint) ObjectType() string { return "mod.gateway.endpoint" }
 
 func (e Endpoint) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(e).WriteTo(w)
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e *Endpoint) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(e).ReadFrom(r)
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 // NewEndpoint makes a new Endpoint

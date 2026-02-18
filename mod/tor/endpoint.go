@@ -25,11 +25,11 @@ func (Endpoint) ObjectType() string {
 }
 
 func (e Endpoint) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(e).WriteTo(w)
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e *Endpoint) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(e).ReadFrom(r)
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 // text support

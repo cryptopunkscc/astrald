@@ -3,10 +3,12 @@ package nodes
 import (
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 type opAddEndpointArgs struct {
@@ -29,7 +31,8 @@ func (mod *Module) OpAddEndpoint(_ *astral.Context, q *ops.Query, args opAddEndp
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
-	err = mod.AddEndpoint(args.ID, parse)
+
+	err = mod.AddEndpoint(args.ID, nodes.NewEndpointWithTTL(parse, 3*30*24*time.Hour))
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}

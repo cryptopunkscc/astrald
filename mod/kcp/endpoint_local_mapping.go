@@ -19,11 +19,11 @@ func (e EndpointLocalMapping) ObjectType() string {
 }
 
 func (e EndpointLocalMapping) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(e).WriteTo(w)
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e EndpointLocalMapping) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(e).ReadFrom(r)
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 // MarshalJSON encodes EndpointLocalMapping into JSON.
