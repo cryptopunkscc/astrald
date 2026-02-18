@@ -7,10 +7,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
-func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLocked func() error) error {
+func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce) error {
 	ch, err := client.queryCh(ctx.IncludeZone(astral.ZoneNetwork), nat.MethodPairTake, query.Args{
-		"pair":     pair,
-		"initiate": false,
+		"pair": pair,
 	})
 	if err != nil {
 		return err
@@ -31,25 +30,14 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, onLocked 
 		return err
 	}
 
-	if onLocked != nil {
-		if err := onLocked(); err != nil {
-			return err
-		}
-	}
-
 	// Send take, receive response
 	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeTake, Pair: pair}); err != nil {
 		return err
 	}
 
-	err = ch.Switch(
+	return ch.Switch(
 		nat.ExpectPairTakeSignal(pair, nat.PairTakeSignalTypeTaken, nat.HandleFailedPairTakeSignal),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
