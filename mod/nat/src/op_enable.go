@@ -16,7 +16,8 @@ func (mod *Module) OpSetEnabled(ctx *astral.Context, q *ops.Query, args opSetEna
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	mod.SetEnabled(args.Arg)
+	val := astral.Bool(args.Arg)
+	mod.settings.Enabled.Set(ctx, &val)
 
 	return ch.Send(&astral.Ack{})
 }

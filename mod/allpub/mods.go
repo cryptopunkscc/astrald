@@ -25,6 +25,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/objects"
 	_ "github.com/cryptopunkscc/astrald/mod/scheduler"
 	_ "github.com/cryptopunkscc/astrald/mod/secp256k1"
+	_ "github.com/cryptopunkscc/astrald/mod/services"
 	_ "github.com/cryptopunkscc/astrald/mod/shell"
 	_ "github.com/cryptopunkscc/astrald/mod/tcp"
 	_ "github.com/cryptopunkscc/astrald/mod/tor"

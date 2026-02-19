@@ -5,6 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/ip"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 const ipCacheSize = 8
@@ -33,6 +34,8 @@ func (mod *Module) AddObservedEndpoint(endpoint exonet.Endpoint, ip ip.IP) {
 		Observed: time.Now().Unix(),
 	})
 
+	mod.Events.Emit(&nodes.ObservedEndpointChangedEvent{})
+
 	cache := mod.observedEndpoints.Clone()
 	if len(cache) > ipCacheSize {
 		// Find the oldest entry
@@ -46,6 +49,7 @@ func (mod *Module) AddObservedEndpoint(endpoint exonet.Endpoint, ip ip.IP) {
 				first = false
 			}
 		}
+
 		if oldestKey != "" {
 			mod.observedEndpoints.Delete(oldestKey)
 		}
