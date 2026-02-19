@@ -37,7 +37,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 			BackgroundTimeout: 360 * time.Second,
 		},
 	})
-	mod.RegisterNetworkStrategy("nat", &NatLinkStrategyFactory{mod: mod})
+	mod.RegisterManualStrategy("nat", &NatLinkStrategyFactory{mod: mod})
 
 	mod.db = &DB{assets.Database()}
 	mod.dbResolver = &DBEndpointResolver{mod: mod}

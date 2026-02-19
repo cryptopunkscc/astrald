@@ -7,9 +7,10 @@ import (
 )
 
 type NodeLinker struct {
-	mod        *Module
-	Target     *astral.Identity
-	strategies sig.Map[string, nodes.LinkStrategy]
+	mod            *Module
+	Target         *astral.Identity
+	strategies     sig.Map[string, nodes.LinkStrategy]
+	autoStrategies sig.Set[string]
 }
 
 func NewNodeLinker(mod *Module, target *astral.Identity) *NodeLinker {
@@ -22,12 +23,14 @@ func NewNodeLinker(mod *Module, target *astral.Identity) *NodeLinker {
 		linker.strategies.Set(network, factory.Build(target))
 	}
 
+	linker.autoStrategies.Add(mod.autoStrategies.Clone()...)
+
 	return linker
 }
 
 func (linker *NodeLinker) Activate(ctx *astral.Context, networks []string) <-chan struct{} {
 	if len(networks) == 0 {
-		networks = linker.strategies.Keys()
+		networks = linker.autoStrategies.Clone()
 	}
 
 	var doneChannels []<-chan struct{}
