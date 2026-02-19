@@ -32,5 +32,5 @@ func SetDefault(client *Client) {
 }
 
 func (client *Client) queryCh(ctx *astral.Context, method string, args any, cfg ...channel.ConfigFunc) (*channel.Channel, error) {
-	return client.astral.QueryChannel(ctx, method, args, cfg...)
+	return client.astral.WithTarget(client.targetID).QueryChannel(ctx, method, args, cfg...)
 }

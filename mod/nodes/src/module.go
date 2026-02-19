@@ -46,6 +46,7 @@ type Module struct {
 	linkPool *LinkPool
 
 	strategyFactories sig.Map[string, nodes.StrategyFactory]
+	autoStrategies    sig.Set[string]
 
 	in chan *Frame
 
@@ -132,6 +133,11 @@ func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 }
 
 func (mod *Module) RegisterNetworkStrategy(network string, factory nodes.StrategyFactory) {
+	mod.strategyFactories.Set(network, factory)
+	mod.autoStrategies.Add(network)
+}
+
+func (mod *Module) RegisterManualStrategy(network string, factory nodes.StrategyFactory) {
 	mod.strategyFactories.Set(network, factory)
 }
 

@@ -56,14 +56,14 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 
 	s.log.Log("%v traversal complete, locking pair %v", s.target, pair.Nonce)
 
-	rc := natclient.New(s.target, ac)
+	natClient := natclient.New(s.target, ac)
 	pairCtx, cancelPair := ctx.WithCancel()
 	defer cancelPair()
 
-	// note: hack
+	// note: rethink
 	errs := make(chan error, 2)
 	go func() { errs <- nc.PairLock(pairCtx, pair.Nonce) }()
-	go func() { errs <- rc.PairTake(pairCtx, pair.Nonce) }()
+	go func() { errs <- natClient.PairTake(pairCtx, pair.Nonce) }()
 
 	for range 2 {
 		if err := <-errs; err != nil {
@@ -73,8 +73,6 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	}
 
 	s.log.Log("%v pair locked, setting up kcp", s.target)
-
-	// 3. setup kcp
 	local, remote := pair.PeerA, pair.PeerB
 	if pair.PeerB.Identity.IsEqual(selfID) {
 		local, remote = pair.PeerB, pair.PeerA
@@ -100,8 +98,6 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	}
 
 	s.log.Log("%v dialing %v", s.target, peerEp.Address())
-
-	// 4. dial + link
 	conn, err := s.mod.Exonet.Dial(ctx, &peerEp)
 	if err != nil {
 		return fmt.Errorf("dial kcp: %w", err)
@@ -114,8 +110,6 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	}
 
 	s.log.Log("%v linked via %v", s.target, peerEp.Address())
-
-	// 5. deliver
 	if !s.mod.linkPool.notifyStreamWatchers(stream) {
 		stream.CloseWithError(nodes.ErrExcessStream)
 	}
