@@ -10,7 +10,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	switch object := drop.Object().(type) {
 	case *events.Event:
 		switch object.Data.(type) {
-		case *nodes.ObservedEndpointChangedEvent:
+		case *nodes.NewObservedEndpointEvent:
 			mod.evaluateEnabled()
 		}
 	}

@@ -34,7 +34,7 @@ func (mod *Module) AddObservedEndpoint(endpoint exonet.Endpoint, ip ip.IP) {
 		Observed: time.Now().Unix(),
 	})
 
-	mod.Events.Emit(&nodes.ObservedEndpointChangedEvent{})
+	mod.Events.Emit(&nodes.NewObservedEndpointEvent{})
 
 	cache := mod.observedEndpoints.Clone()
 	if len(cache) > ipCacheSize {
