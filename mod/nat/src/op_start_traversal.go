@@ -35,14 +35,16 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
-		defer puncher.Close()
 
 		client := natclient.New(target, astrald.Default())
 		pair, err := client.StartTraversal(ctx, target, localIP, puncher)
 		if err != nil {
+			puncher.Close()
 			mod.log.Error("NAT traversal failed with %v: %v", target, err)
 			return ch.Send(astral.Err(err))
 		}
+
+		puncher.Close()
 
 		mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", target, pair.PeerA.Endpoint, pair.PeerB.Endpoint)
 		mod.addTraversedPair(*pair, true)
