@@ -13,6 +13,7 @@ func (t *Client) StartTraversal(ctx *astral.Context, target *astral.Identity, lo
 	if err != nil {
 		return nil, err
 	}
+
 	defer ch.Close()
 
 	traversal := nat.NewTraversal(t.astral.GuestID(), target, localIP)

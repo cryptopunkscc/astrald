@@ -39,8 +39,8 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		client := natclient.New(target, astrald.Default())
 		pair, err := client.StartTraversal(ctx, target, localIP, puncher)
 		if err != nil {
-			puncher.Close()
 			mod.log.Error("NAT traversal failed with %v: %v", target, err)
+			puncher.Close()
 			return ch.Send(astral.Err(err))
 		}
 
@@ -68,6 +68,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		if err != nil {
 			puncher.Close()

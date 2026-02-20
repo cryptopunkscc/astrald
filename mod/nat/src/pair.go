@@ -14,7 +14,7 @@ import (
 
 const (
 	defaultPingInterval  = 1 * time.Second
-	defaultNoPingTimeout = 5 * time.Second
+	defaultNoPingTimeout = 15 * time.Second
 	defaultPingLifespan  = 5 * time.Second
 	defaultLockTimeout   = 10 * time.Second
 	defaultMaxPingFails  = 5
