@@ -68,7 +68,11 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	if err != nil {
 		return err
 	}
-	defer puncher.Close()
+	defer func() {
+		if err != nil {
+			puncher.Close()
+		}
+	}()
 
 	localPort, err := puncher.Open()
 	if err != nil {
@@ -76,7 +80,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	}
 	traversal.LocalPort = astral.Uint16(localPort)
 
-	if err := ch.Send(traversal.AnswerSignal()); err != nil {
+	if err = ch.Send(traversal.AnswerSignal()); err != nil {
 		return err
 	}
 
@@ -89,7 +93,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		return err
 	}
 
-	if err := ch.Send(traversal.GoSignal()); err != nil {
+	if err = ch.Send(traversal.GoSignal()); err != nil {
 		return err
 	}
 
@@ -99,7 +103,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	}
 
 	traversal.SetPunchResult(result)
-	if err := ch.Send(traversal.ResultSignal()); err != nil {
+	if err = ch.Send(traversal.ResultSignal()); err != nil {
 		return err
 	}
 	err = ch.Switch(
@@ -110,6 +114,8 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	if err != nil {
 		return err
 	}
+
+	puncher.Close()
 
 	mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", q.Caller(), traversal.Pair.PeerA.Endpoint, traversal.Pair.PeerB.Endpoint)
 	mod.addTraversedPair(traversal.Pair, false)
