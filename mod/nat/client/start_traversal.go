@@ -9,9 +9,7 @@ import (
 )
 
 func (t *Client) StartTraversal(ctx *astral.Context, target *astral.Identity, localIP ip.IP, puncher nat.Puncher) (*nat.TraversedPortPair, error) {
-	ch, err := t.queryCh(ctx, nat.MethodStartNatTraversal, query.Args{
-		"target": target.String(),
-	})
+	ch, err := t.queryCh(ctx, nat.MethodStartNatTraversal, query.Args{})
 	if err != nil {
 		return nil, err
 	}
