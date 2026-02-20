@@ -64,6 +64,10 @@ func (mod *Module) endpoints() (list []*nodes.EndpointWithTTL) {
 		}, 7*24*time.Hour))
 	}
 
+	for _, e := range mod.configEndpoints {
+		list = append(list, nodes.NewEndpointWithTTL(e, 7*24*time.Hour))
+	}
+
 	return list
 }
 

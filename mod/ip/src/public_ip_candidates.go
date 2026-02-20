@@ -16,6 +16,7 @@ func (mod *Module) PublicIPCandidates() (ips []ip.IP) {
 			if _, found := unique[i.String()]; found {
 				continue
 			}
+
 			unique[i.String()] = struct{}{}
 			ips = append(ips, i)
 		}
