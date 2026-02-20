@@ -104,15 +104,17 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	}
 
 	traversal.SetPunchResult(result)
-	if err = ch.Send(traversal.ResultSignal()); err != nil {
-		return err
-	}
+
 	err = ch.Switch(
 		traversal.ExpectSignal(nat.PunchSignalTypeResult, traversal.OnResult),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
 	if err != nil {
+		return err
+	}
+
+	if err = ch.Send(traversal.ResultSignal()); err != nil {
 		return err
 	}
 
