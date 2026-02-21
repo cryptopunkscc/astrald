@@ -13,6 +13,7 @@ type conn struct {
 	query  *astral.Query
 	src    *writer
 	dst    *writer
+	closed atomic.Bool
 	mu     sync.Mutex
 }
 
@@ -24,11 +25,15 @@ func newConn(r *Router, q *astral.Query) *conn {
 }
 
 func (c *conn) Close() error {
+	if !c.closed.CompareAndSwap(false, true) {
+		return nil
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.src.Close()
-	c.dst.Close()
+	c.src.close()
+	c.dst.close()
 	c.router.conns.Delete(c.query.Nonce)
 	return nil
 }
@@ -53,10 +58,16 @@ func (w *writer) Write(p []byte) (n int, err error) {
 	return
 }
 
-func (w *writer) Close() error {
+// close closes the underlying writer without triggering conn.Close.
+func (w *writer) close() {
 	if w.closed.CompareAndSwap(false, true) {
 		w.w.Close()
-		w.conn.Close()
 	}
+}
+
+// Close closes the writer and the entire connection.
+func (w *writer) Close() error {
+	w.close()
+	w.conn.Close()
 	return nil
 }
