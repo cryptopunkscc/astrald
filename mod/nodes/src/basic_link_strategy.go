@@ -21,6 +21,8 @@ type BasicLinkStrategy struct {
 
 var _ nodes.LinkStrategy = &BasicLinkStrategy{}
 
+func (s *BasicLinkStrategy) Name() string { return s.network }
+
 func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
 	if s.activeDone != nil {
@@ -91,7 +93,8 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 			return
 		}
 
-		if !s.mod.linkPool.notifyStreamWatchers(stream) {
+		name := s.Name()
+		if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
 			stream.CloseWithError(nodes.ErrExcessStream)
 		}
 	}()

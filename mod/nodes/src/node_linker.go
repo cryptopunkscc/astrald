@@ -28,13 +28,13 @@ func NewNodeLinker(mod *Module, target *astral.Identity) *NodeLinker {
 	return linker
 }
 
-func (linker *NodeLinker) Activate(ctx *astral.Context, networks []string) <-chan struct{} {
-	if len(networks) == 0 {
-		networks = linker.autoStrategies.Clone()
+func (linker *NodeLinker) Activate(ctx *astral.Context, strategies []string) <-chan struct{} {
+	if len(strategies) == 0 {
+		strategies = linker.autoStrategies.Clone()
 	}
 
 	var doneChannels []<-chan struct{}
-	for _, network := range networks {
+	for _, network := range strategies {
 		if strategy, ok := linker.strategies.Get(network); ok {
 			strategy.Signal(ctx)
 			doneChannels = append(doneChannels, strategy.Done())

@@ -9,7 +9,7 @@ import (
 )
 
 type streamWatcher struct {
-	match func(*Stream) bool
+	match func(*Stream, *string) bool
 	ch    chan *Stream
 }
 
@@ -32,7 +32,7 @@ type LinkResult struct {
 	Err    error
 }
 
-func (pool *LinkPool) subscribe(match func(*Stream) bool) *streamWatcher {
+func (pool *LinkPool) subscribe(match func(*Stream, *string) bool) *streamWatcher {
 	w := &streamWatcher{
 		match: match,
 		ch:    make(chan *Stream, 1),
@@ -46,10 +46,10 @@ func (pool *LinkPool) unsubscribe(w *streamWatcher) {
 	pool.watchers.Remove(w)
 }
 
-func (pool *LinkPool) notifyStreamWatchers(s *Stream) bool {
+func (pool *LinkPool) notifyStreamWatchers(s *Stream, strategy *string) bool {
 	used := false
 	for _, w := range pool.watchers.Clone() {
-		if !w.match(s) {
+		if !w.match(s, strategy) {
 			continue
 		}
 
@@ -89,10 +89,14 @@ func (pool *LinkPool) RetrieveLink(
 		opt(&o)
 	}
 
-	match := func(s *Stream) bool {
+	match := func(s *Stream, strategy *string) bool {
 		if !s.RemoteIdentity().IsEqual(target) {
 			return false
 		}
+		if strategy != nil && len(o.Strategies) > 0 {
+			return slices.Contains(o.Strategies, *strategy)
+		}
+
 		if len(o.Networks) > 0 {
 			return slices.Contains(o.Networks, s.Network())
 		}
@@ -100,7 +104,7 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	if !o.ForceNew {
-		streams := pool.peers.streams.Select(match)
+		streams := pool.peers.streams.Select(func(s *Stream) bool { return match(s, nil) })
 		if len(streams) > 0 {
 			return sig.ArrayToChan([]LinkResult{{Stream: streams[0]}})
 		}
@@ -118,7 +122,7 @@ func (pool *LinkPool) RetrieveLink(
 		defer pool.unsubscribe(w)
 
 		linker := pool.getOrCreateNodeLinker(target)
-		done := linker.Activate(strategyCtx, o.Networks)
+		done := linker.Activate(strategyCtx, o.Strategies)
 
 		select {
 		case <-done:
@@ -140,8 +144,9 @@ func (pool *LinkPool) RetrieveLink(
 
 // RetrieveLinkOptions controls how RetrieveLink behaves.
 type RetrieveLinkOptions struct {
-	ForceNew bool
-	Networks []string
+	ForceNew   bool
+	Strategies []string
+	Networks   []string
 }
 
 // RetrieveLinkOption is a functional option for RetrieveLink.
@@ -150,6 +155,12 @@ type RetrieveLinkOption func(*RetrieveLinkOptions)
 func WithForceNew() RetrieveLinkOption {
 	return func(o *RetrieveLinkOptions) {
 		o.ForceNew = true
+	}
+}
+
+func WithStrategies(strategies ...string) RetrieveLinkOption {
+	return func(o *RetrieveLinkOptions) {
+		o.Strategies = append(o.Strategies, strategies...)
 	}
 }
 

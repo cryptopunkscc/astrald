@@ -44,7 +44,7 @@ type Module interface {
 	IsLinked(*astral.Identity) bool
 
 	NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) CreateStreamTask
-	NewEnsureStreamTask(target *astral.Identity, networks []string, create bool) EnsureStreamTask
+	NewEnsureStreamTask(target *astral.Identity, strategies []string, networks []string, create bool) EnsureStreamTask
 	NewCleanupEndpointsTask() CleanupEndpointsTask
 }
 
@@ -62,6 +62,7 @@ type EndpointResolver interface {
 }
 
 type LinkStrategy interface {
+	Name() string
 	Signal(ctx *astral.Context)
 	Done() <-chan struct{}
 }

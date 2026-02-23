@@ -44,7 +44,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		}
 		task = mod.NewCreateStreamTask(target, endpoint)
 	default:
-		task = mod.NewEnsureStreamTask(target, strategies, true)
+		task = mod.NewEnsureStreamTask(target, strategies, nil, true)
 	}
 
 	scheduledTask, err := mod.Scheduler.Schedule(task)

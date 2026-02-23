@@ -24,6 +24,8 @@ type NatLinkStrategy struct {
 
 var _ nodes.LinkStrategy = &NatLinkStrategy{}
 
+func (s *NatLinkStrategy) Name() string { return "nat" }
+
 func (s *NatLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
 	if s.done != nil {
@@ -121,7 +123,8 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	}
 
 	s.log.Log("%v linked via %v", s.target, peerEndpoint.Address())
-	if !s.mod.linkPool.notifyStreamWatchers(stream) {
+	name := s.Name()
+	if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
 		stream.CloseWithError(nodes.ErrExcessStream)
 	}
 
