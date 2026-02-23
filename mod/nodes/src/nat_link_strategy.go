@@ -44,6 +44,7 @@ func (s *NatLinkStrategy) Signal(ctx *astral.Context) {
 
 func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	selfID := s.mod.node.Identity()
+	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
 	s.log.Log("%v starting traversal", s.target)
 
