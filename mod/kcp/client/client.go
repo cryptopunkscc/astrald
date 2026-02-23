@@ -18,6 +18,10 @@ func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	return &Client{astral: a, targetID: targetID}
 }
 
+func (client *Client) WithTarget(target *astral.Identity) *Client {
+	return &Client{astral: client.astral, targetID: target}
+}
+
 func (client *Client) queryCh(ctx *astral.Context, method string, args any, cfg ...channel.ConfigFunc) (*channel.Channel, error) {
 	return client.astral.WithTarget(client.targetID).QueryChannel(ctx, method, args, cfg...)
 }

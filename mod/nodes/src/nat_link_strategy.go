@@ -44,11 +44,10 @@ func (s *NatLinkStrategy) Signal(ctx *astral.Context) {
 
 func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	selfID := s.mod.node.Identity()
-	ac := astrald.Default()
 
 	s.log.Log("%v starting traversal", s.target)
 
-	nc := natclient.New(selfID, ac)
+	nc := natclient.New(selfID, astrald.Default())
 	pair, err := nc.Traverse(ctx, s.target)
 	if err != nil {
 		return fmt.Errorf("traverse: %w", err)
@@ -56,7 +55,7 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 
 	s.log.Log("%v traversal complete, locking pair %v", s.target, pair.Nonce)
 
-	natClient := natclient.New(s.target, ac)
+	natClient := natclient.New(s.target, astrald.Default())
 	pairCtx, cancelPair := ctx.WithCancel()
 	defer cancelPair()
 
@@ -78,27 +77,38 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		local, remote = pair.PeerB, pair.PeerA
 	}
 
-	localPort := local.Endpoint.Port
-	peerEp := kcp.Endpoint{
+	peerEndpoint := kcp.Endpoint{
 		IP:   remote.Endpoint.IP,
 		Port: remote.Endpoint.Port,
 	}
 
-	kcpClient := kcpclient.New(selfID, ac)
-
-	if err := kcpClient.CreateEphemeralListener(ctx, localPort); err != nil {
-		return fmt.Errorf("create ephemeral listener: %w", err)
+	localEndpoint := kcp.Endpoint{
+		IP:   local.Endpoint.IP,
+		Port: local.Endpoint.Port,
 	}
 
-	// note: closing ephemeral listener do not close existing streams
-	defer kcpClient.CloseEphemeralListener(ctx, localPort)
+	kcpClient := kcpclient.New(selfID, astrald.Default())
 
-	if err := kcpClient.SetEndpointLocalPort(ctx, peerEp, localPort, true); err != nil {
+	// Set up the remote side: ephemeral listener + endpoint mapping
+	err = kcpClient.WithTarget(s.target).CreateEphemeralListener(ctx, peerEndpoint.Port)
+	if err != nil {
+		return fmt.Errorf("remote create ephemeral listener: %w", err)
+	}
+
+	defer kcpClient.WithTarget(s.target).CloseEphemeralListener(ctx, peerEndpoint.Port)
+
+	err = kcpClient.WithTarget(s.target).SetEndpointLocalPort(ctx, localEndpoint, peerEndpoint.Port, true)
+	if err != nil {
+		return fmt.Errorf("remote set endpoint local port: %w", err)
+	}
+
+	err = kcpClient.SetEndpointLocalPort(ctx, peerEndpoint, localEndpoint.Port, true)
+	if err != nil {
 		return fmt.Errorf("set endpoint local port: %w", err)
 	}
 
-	s.log.Log("%v dialing %v", s.target, peerEp.Address())
-	conn, err := s.mod.Exonet.Dial(ctx, &peerEp)
+	s.log.Log("%v dialing %v", s.target, peerEndpoint.Address())
+	conn, err := s.mod.Exonet.Dial(ctx, &peerEndpoint)
 	if err != nil {
 		return fmt.Errorf("dial kcp: %w", err)
 	}
@@ -109,7 +119,7 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		return fmt.Errorf("establish link: %w", err)
 	}
 
-	s.log.Log("%v linked via %v", s.target, peerEp.Address())
+	s.log.Log("%v linked via %v", s.target, peerEndpoint.Address())
 	if !s.mod.linkPool.notifyStreamWatchers(stream) {
 		stream.CloseWithError(nodes.ErrExcessStream)
 	}
