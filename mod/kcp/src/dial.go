@@ -59,6 +59,7 @@ func (mod *Module) SetEndpointLocalSocket(endpoint kcp.Endpoint, localSocket ast
 
 	if replace {
 		mod.ephemeralPortMappings.Replace(address, localSocket)
+		return nil
 	}
 
 	_, ok := mod.ephemeralPortMappings.Set(address, localSocket)
