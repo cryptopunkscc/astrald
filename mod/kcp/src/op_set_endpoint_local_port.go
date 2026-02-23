@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/kcp"
 )
 
-type opAddRemoteEndpointLocalPort struct {
+type opSetEndpointLocalPort struct {
 	Endpoint  string
 	LocalPort astral.Uint16
 	Replace   astral.Bool `query:"optional"`
@@ -15,7 +15,7 @@ type opAddRemoteEndpointLocalPort struct {
 	Out       string      `query:"optional"`
 }
 
-func (mod *Module) OpAddRemoteEndpointLocalPort(ctx *astral.Context, q *ops.Query, args opAddRemoteEndpointLocalPort) (err error) {
+func (mod *Module) OpSetEndpointLocalPort(ctx *astral.Context, q *ops.Query, args opSetEndpointLocalPort) (err error) {
 	endpoint, err := kcp.ParseEndpoint(args.Endpoint)
 	if err != nil {
 		return q.RejectWithCode(4)

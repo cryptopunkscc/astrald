@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) RemoveEndpointLocalPort(ctx *astral.Context, endpoint kcp.Endpoint) error {
-	ch, err := client.queryCh(ctx, kcp.MethodRemoveRemoteEndpointLocalPort, query.Args{
+	ch, err := client.queryCh(ctx, kcp.MethodRemoveEndpointLocalPort, query.Args{
 		"endpoint": endpoint.Address(),
 	})
 	if err != nil {

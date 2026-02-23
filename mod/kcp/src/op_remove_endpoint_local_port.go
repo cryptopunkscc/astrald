@@ -7,13 +7,13 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/kcp"
 )
 
-type opRemoveRemoteEndpointLocalPort struct {
+type opRemoveEndpointLocalPort struct {
 	Endpoint astral.String8
 	In       string `query:"optional"`
 	Out      string `query:"optional"`
 }
 
-func (mod *Module) OpRemoveRemoteEndpointLocalPort(ctx *astral.Context, q *ops.Query, args opRemoveRemoteEndpointLocalPort) (err error) {
+func (mod *Module) OpRemoveEndpointLocalPort(ctx *astral.Context, q *ops.Query, args opRemoveEndpointLocalPort) (err error) {
 	endpoint, err := kcp.ParseEndpoint(string(args.Endpoint))
 	if err != nil {
 		return q.RejectWithCode(4)

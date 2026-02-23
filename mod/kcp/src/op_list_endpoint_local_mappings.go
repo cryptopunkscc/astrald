@@ -7,12 +7,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/kcp"
 )
 
-type opListEndpointsLocalMappingsArgs struct {
+type opListEndpointLocalMappingsArgs struct {
 	In  string `query:"optional"`
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpListEndpointsLocalMappings(ctx *astral.Context, q *ops.Query, args opListEndpointsLocalMappingsArgs) (err error) {
+func (mod *Module) OpListEndpointLocalMappings(ctx *astral.Context, q *ops.Query, args opListEndpointLocalMappingsArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

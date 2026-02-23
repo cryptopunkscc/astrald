@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) SetEndpointLocalPort(ctx *astral.Context, endpoint kcp.Endpoint, localPort astral.Uint16, replace bool) error {
-	ch, err := client.queryCh(ctx, kcp.MethodAddRemoteEndpointLocalPort, query.Args{
+	ch, err := client.queryCh(ctx, kcp.MethodSetEndpointLocalPort, query.Args{
 		"endpoint":   endpoint.Address(),
 		"local_port": localPort,
 		"replace":    replace,

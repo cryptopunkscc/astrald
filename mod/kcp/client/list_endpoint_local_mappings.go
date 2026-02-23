@@ -7,7 +7,7 @@ import (
 )
 
 func (client *Client) ListEndpointLocalMappings(ctx *astral.Context) ([]*kcp.EndpointLocalMapping, error) {
-	ch, err := client.queryCh(ctx, kcp.MethodListEndpointsLocalMappings, nil)
+	ch, err := client.queryCh(ctx, kcp.MethodListEndpointLocalMappings, nil)
 	if err != nil {
 		return nil, err
 	}
