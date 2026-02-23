@@ -98,8 +98,6 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		return fmt.Errorf("remote create ephemeral listener: %w", err)
 	}
 
-	defer kcpClient.WithTarget(s.target).CloseEphemeralListener(ctx, peerEndpoint.Port)
-
 	err = kcpClient.WithTarget(s.target).SetEndpointLocalPort(ctx, localEndpoint, peerEndpoint.Port, true)
 	if err != nil {
 		return fmt.Errorf("remote set endpoint local port: %w", err)
