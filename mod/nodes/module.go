@@ -9,6 +9,12 @@ import (
 )
 
 const (
+	StrategyTCP = "tcp"
+	StrategyTor = "tor"
+	StrategyNAT = "nat"
+)
+
+const (
 	ModuleName     = "nodes"
 	DBPrefix       = "nodes__"
 	ActionRelayFor = "mod.nodes.relay_for"

@@ -28,6 +28,10 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		for _, raw := range strings.Split(args.Strategies, ",") {
 			strategies = append(strategies, strings.TrimSpace(raw))
 		}
+	} else {
+		for name := range mod.strategyFactories.Clone() {
+			strategies = append(strategies, name)
+		}
 	}
 
 	var task nodes.StreamProducerTask

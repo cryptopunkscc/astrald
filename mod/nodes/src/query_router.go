@@ -38,7 +38,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 	select {
 	case <-ctx.Done():
 		return query.RouteNotFound(mod, ctx.Err())
-	case result := <-mod.linkPool.RetrieveLink(retrieveCtx, q.Target):
+	case result := <-mod.linkPool.RetrieveLink(retrieveCtx, q.Target, WithStrategies(nodes.StrategyTCP, nodes.StrategyTor)):
 		if result.Err != nil {
 			mod.log.Error("retrieve link failed: %v", result.Err)
 			break
