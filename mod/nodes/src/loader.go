@@ -26,8 +26,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	mod.peers = NewPeers(mod)
 	mod.linkPool = NewLinkPool(mod, mod.peers)
 
-	mod.RegisterStrategy(nodes.StrategyTCP, &BasicLinkStrategyFactory{mod: mod, network: nodes.StrategyTCP})
-	mod.RegisterStrategy(nodes.StrategyTor, &TorLinkStrategyFactory{
+	mod.RegisterLinkStrategy(nodes.StrategyTCP, &BasicLinkStrategyFactory{mod: mod, network: nodes.StrategyTCP})
+	mod.RegisterLinkStrategy(nodes.StrategyTor, &TorLinkStrategyFactory{
 		mod:     mod,
 		network: nodes.StrategyTor,
 		config: TorLinkStrategyConfig{
@@ -37,7 +37,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 			BackgroundTimeout: 360 * time.Second,
 		},
 	})
-	mod.RegisterStrategy(nodes.StrategyNAT, &NatLinkStrategyFactory{mod: mod})
+	mod.RegisterLinkStrategy(nodes.StrategyNAT, &NatLinkStrategyFactory{mod: mod})
 
 	mod.db = &DB{assets.Database()}
 	mod.dbResolver = &DBEndpointResolver{mod: mod}

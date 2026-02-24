@@ -131,7 +131,7 @@ func (mod *Module) AddResolver(resolver nodes.EndpointResolver) {
 	}
 }
 
-func (mod *Module) RegisterStrategy(network string, factory nodes.StrategyFactory) {
+func (mod *Module) RegisterLinkStrategy(network string, factory nodes.StrategyFactory) {
 	mod.strategyFactories.Set(network, factory)
 }
 
