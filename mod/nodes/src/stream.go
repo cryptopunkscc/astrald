@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"errors"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,6 +22,7 @@ type Stream struct {
 	checks      atomic.Int32
 	outbound    bool
 	pingTimeout time.Duration
+	wakeCh      chan struct{}
 
 	mu      sync.Mutex
 	closers []func()
@@ -39,7 +41,10 @@ func newStream(conn astral.Conn, id astral.Nonce, outbound bool) *Stream {
 		Stream:      frames.NewStream(conn),
 		outbound:    outbound,
 		pingTimeout: defaultPingTimeout,
+		wakeCh:      make(chan struct{}, 1),
 	}
+
+	go link.pingLoop()
 
 	return link
 }
@@ -148,26 +153,55 @@ func (s *Stream) runClosers() {
 	}
 }
 
+// Wake triggers an immediate ping, bypassing the idle keepalive interval.
+func (s *Stream) Wake() {
+	select {
+	case s.wakeCh <- struct{}{}:
+	default:
+	}
+}
+
 func (s *Stream) check() {
 	if s.checks.Swap(2) != 0 {
 		return
 	}
 
-	go func() {
-		for {
-			if s.Err() != nil {
-				return
-			}
+	select {
+	case s.wakeCh <- struct{}{}:
+	default:
+	}
+}
 
-			if _, err := s.Ping(); err != nil {
-				s.CloseWithError(err)
-				return
-			}
+func (s *Stream) pingLoop() {
+	select {
+	case <-s.Stream.Done():
+		return
+	case <-time.After(time.Duration(rand.Int63n(int64(pingJitter)))):
+	}
 
-			time.Sleep(1 * time.Second)
-			if s.checks.Add(-1) == 0 {
+	for {
+		if s.checks.Load() > 0 {
+			time.Sleep(activeInterval)
+		} else {
+			select {
+			case <-s.Stream.Done():
 				return
+			case <-time.After(keepaliveInterval):
+			case <-s.wakeCh:
 			}
 		}
-	}()
+
+		if s.Err() != nil {
+			return
+		}
+
+		if _, err := s.Ping(); err != nil {
+			s.CloseWithError(err)
+			return
+		}
+
+		if s.checks.Load() > 0 {
+			s.checks.Add(-1)
+		}
+	}
 }

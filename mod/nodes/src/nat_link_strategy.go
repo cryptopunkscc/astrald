@@ -3,6 +3,7 @@ package nodes
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
@@ -123,6 +124,19 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 			s.log.Logv(2, "cleanup remote socket mapping: %v", err)
 		}
 	})
+
+	go func() {
+		ticker := time.NewTicker(NatLinkWakeInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				stream.Wake()
+			case <-stream.Stream.Done():
+				return
+			}
+		}
+	}()
 
 	s.log.Log("%v linked via %v", s.target, peerEndpoint.Address())
 	name := s.Name()
