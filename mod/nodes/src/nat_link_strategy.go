@@ -112,6 +112,7 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		cleanupCtx := s.mod.ctx.
 			IncludeZone(astral.ZoneNetwork)
 
+		// note: if we predict multiple streams over same NAT traversed connection, we should change it
 		if err := kcpClient.RemoveEndpointLocalPort(cleanupCtx, peerEndpoint); err != nil {
 			s.log.Logv(2, "cleanup local socket mapping: %v", err)
 		}
