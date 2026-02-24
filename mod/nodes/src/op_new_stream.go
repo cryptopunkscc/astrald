@@ -28,6 +28,10 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		for _, raw := range strings.Split(args.Strategies, ",") {
 			strategies = append(strategies, strings.TrimSpace(raw))
 		}
+	} else {
+		for name := range mod.strategyFactories.Clone() {
+			strategies = append(strategies, name)
+		}
 	}
 
 	var task nodes.StreamProducerTask
@@ -44,7 +48,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 		}
 		task = mod.NewCreateStreamTask(target, endpoint)
 	default:
-		task = mod.NewEnsureStreamTask(target, strategies, true)
+		task = mod.NewEnsureStreamTask(target, strategies, nil, true)
 	}
 
 	scheduledTask, err := mod.Scheduler.Schedule(task)

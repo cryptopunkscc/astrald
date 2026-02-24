@@ -35,14 +35,16 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
-		defer puncher.Close()
 
 		client := natclient.New(target, astrald.Default())
 		pair, err := client.StartTraversal(ctx, target, localIP, puncher)
 		if err != nil {
 			mod.log.Error("NAT traversal failed with %v: %v", target, err)
+			puncher.Close()
 			return ch.Send(astral.Err(err))
 		}
+
+		puncher.Close()
 
 		mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", target, pair.PeerA.Endpoint, pair.PeerB.Endpoint)
 		mod.addTraversedPair(*pair, true)
@@ -66,7 +68,12 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	if err != nil {
 		return err
 	}
-	defer puncher.Close()
+
+	defer func() {
+		if err != nil {
+			puncher.Close()
+		}
+	}()
 
 	localPort, err := puncher.Open()
 	if err != nil {
@@ -74,7 +81,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	}
 	traversal.LocalPort = astral.Uint16(localPort)
 
-	if err := ch.Send(traversal.AnswerSignal()); err != nil {
+	if err = ch.Send(traversal.AnswerSignal()); err != nil {
 		return err
 	}
 
@@ -87,7 +94,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 		return err
 	}
 
-	if err := ch.Send(traversal.GoSignal()); err != nil {
+	if err = ch.Send(traversal.GoSignal()); err != nil {
 		return err
 	}
 
@@ -97,9 +104,7 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	}
 
 	traversal.SetPunchResult(result)
-	if err := ch.Send(traversal.ResultSignal()); err != nil {
-		return err
-	}
+
 	err = ch.Switch(
 		traversal.ExpectSignal(nat.PunchSignalTypeResult, traversal.OnResult),
 		channel.PassErrors,
@@ -108,6 +113,12 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 	if err != nil {
 		return err
 	}
+
+	if err = ch.Send(traversal.ResultSignal()); err != nil {
+		return err
+	}
+
+	puncher.Close()
 
 	mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", q.Caller(), traversal.Pair.PeerA.Endpoint, traversal.Pair.PeerB.Endpoint)
 	mod.addTraversedPair(traversal.Pair, false)

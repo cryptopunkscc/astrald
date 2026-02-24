@@ -73,13 +73,6 @@ func (mod *Module) watchAddresses(ctx context.Context) {
 		return
 	}
 
-	for _, addr := range addrs {
-		if addr.IsPublic() {
-
-		}
-		mod.log.Logv(1, "network address detected: %v %v", addr, addr.IsPublic())
-	}
-
 	for {
 		select {
 		case <-time.After(3 * time.Second):

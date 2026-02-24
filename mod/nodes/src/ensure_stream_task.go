@@ -9,10 +9,11 @@ import (
 var _ scheduler.Task = &EnsureStreamTask{}
 
 type EnsureStreamTask struct {
-	mod      *Module
-	Target   *astral.Identity
-	Networks []string
-	Create   bool
+	mod        *Module
+	Target     *astral.Identity
+	Strategies []string
+	Networks   []string
+	Create     bool
 
 	Info *nodes.StreamInfo // set on success
 	Err  error
@@ -20,14 +21,16 @@ type EnsureStreamTask struct {
 
 func (m *Module) NewEnsureStreamTask(
 	target *astral.Identity,
+	strategies []string,
 	networks []string,
 	create bool,
 ) nodes.EnsureStreamTask {
 	return &EnsureStreamTask{
-		mod:      m,
-		Target:   target,
-		Networks: networks,
-		Create:   create,
+		mod:        m,
+		Target:     target,
+		Strategies: strategies,
+		Networks:   networks,
+		Create:     create,
 	}
 }
 
@@ -41,6 +44,9 @@ func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
 	var opts []RetrieveLinkOption
 	if c.Create {
 		opts = append(opts, WithForceNew())
+	}
+	if len(c.Strategies) > 0 {
+		opts = append(opts, WithStrategies(c.Strategies...))
 	}
 	if len(c.Networks) > 0 {
 		opts = append(opts, WithNetworks(c.Networks...))

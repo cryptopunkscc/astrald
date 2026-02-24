@@ -25,17 +25,19 @@ func NewNodeLinker(mod *Module, target *astral.Identity) *NodeLinker {
 	return linker
 }
 
-func (linker *NodeLinker) Activate(ctx *astral.Context, networks []string) <-chan struct{} {
-	if len(networks) == 0 {
-		networks = linker.strategies.Keys()
-	}
-
+func (linker *NodeLinker) Activate(ctx *astral.Context, strategies []string) <-chan struct{} {
 	var doneChannels []<-chan struct{}
-	for _, network := range networks {
-		if strategy, ok := linker.strategies.Get(network); ok {
+	for _, strategy := range strategies {
+		if strategy, ok := linker.strategies.Get(strategy); ok {
 			strategy.Signal(ctx)
 			doneChannels = append(doneChannels, strategy.Done())
 		}
+	}
+
+	if len(doneChannels) == 0 {
+		doneCh := make(chan struct{})
+		close(doneCh)
+		return doneCh
 	}
 
 	return sig.WaitAllDone(ctx, doneChannels...)

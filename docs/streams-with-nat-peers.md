@@ -41,7 +41,7 @@ Both nodes must register the local UDP port that should be reused by the transpo
 This ensures that transport traffic continues to use the same NAT mapping discovered during traversal.
 
 ```shell
-astral-query kcp.add_remote_endpoint_local_port \
+astral-query kcp.set_endpoint_local_port \
   -endpoint {ip:port} \
   -local_port {localPort}
 ```

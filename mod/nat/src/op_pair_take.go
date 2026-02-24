@@ -1,7 +1,6 @@
 package nat
 
 import (
-	"errors"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -15,11 +14,11 @@ import (
 const takeExchangeTimeout = 5 * time.Second
 
 type opPairTakeArgs struct {
-	Pair astral.Nonce
+	Pair   astral.Nonce
+	Target string `query:"optional"`
 
-	Initiate bool   `query:"optional"`
-	In       string `query:"optional"`
-	Out      string `query:"optional"`
+	In  string `query:"optional"`
+	Out string `query:"optional"`
 }
 
 func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTakeArgs) (err error) {
@@ -31,37 +30,40 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 		return ch.Send(astral.Err(err))
 	}
 
-	opCtx, cancel := ctx.WithTimeout(pair.LockTimeout() + takeExchangeTimeout)
-	defer cancel()
+	pairNonce := pair.Nonce
 
-	if args.Initiate {
-		remoteIdentity, ok := pair.RemoteIdentity(ctx.Identity())
-		if !ok {
-			return ch.Send(astral.Err(errors.New("remote endpoint not found")))
-		}
-		mod.log.Log("taking out pair %v out of pool, starting sync with %v",
-			args.Pair, remoteIdentity)
-
-		client := natclient.New(remoteIdentity, astrald.Default())
-		if !pair.BeginLock() {
-			return ch.Send(astral.Err(nat.ErrPairBusy))
-		}
-
-		err = client.PairTake(opCtx, pair.Nonce, func() error {
-			return pair.WaitLocked(opCtx)
-		})
+	if args.Target != "" {
+		target, err := mod.Dir.ResolveIdentity(args.Target)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
 
-		return ch.Send(&pair.TraversedPortPair)
+		opCtx, cancel := ctx.WithCancel()
+		defer cancel()
+
+		if !pair.BeginLock() {
+			return ch.Send(astral.Err(nat.ErrPairBusy))
+		}
+
+		natClient := natclient.New(target, astrald.Default())
+		err = natClient.PairTake(opCtx, pairNonce, nil)
+		if err != nil {
+			return ch.Send(astral.Err(err))
+		}
+
+		if err := pair.WaitLocked(opCtx); err != nil {
+			return ch.Send(astral.Err(err))
+		}
+
+		return ch.Send(&astral.Ack{})
 	}
 
 	// Responder flow
-	mod.log.Log("taking out pair %v out of pool, starting sync with %v",
-		args.Pair, q.Caller())
+	opCtx, cancel := ctx.WithTimeout(pair.LockTimeout() + takeExchangeTimeout)
+	defer cancel()
 
-	pairNonce := pair.Nonce
+	mod.log.Log("taking out pair %v out of pool, starting sync with %v",
+		pairNonce, q.Caller())
 
 	// Receive lock
 	err = ch.Switch(

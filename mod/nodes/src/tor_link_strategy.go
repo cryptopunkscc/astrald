@@ -30,6 +30,8 @@ type TorLinkStrategy struct {
 
 var _ nodes.LinkStrategy = &TorLinkStrategy{}
 
+func (s *TorLinkStrategy) Name() string { return nodes.StrategyTor }
+
 func (s *TorLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
 	if s.done != nil {
@@ -119,7 +121,8 @@ func (s *TorLinkStrategy) deliverStream(stream *Stream) {
 		return
 	}
 
-	if !s.mod.linkPool.notifyStreamWatchers(stream) {
+	name := s.Name()
+	if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
 		stream.CloseWithError(nodes.ErrExcessStream)
 	}
 }
@@ -223,7 +226,7 @@ var _ nodes.StrategyFactory = &TorLinkStrategyFactory{}
 func (f *TorLinkStrategyFactory) Build(target *astral.Identity) nodes.LinkStrategy {
 	return &TorLinkStrategy{
 		mod:               f.mod,
-		log:               f.mod.log.AppendTag(log.Tag(f.network)),
+		log:               f.mod.log.AppendTag(log.Tag("tor")),
 		network:           f.network,
 		target:            target,
 		quickRetries:      f.config.QuickRetries,
