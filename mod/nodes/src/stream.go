@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"errors"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -20,6 +21,9 @@ type Stream struct {
 	checks      atomic.Int32
 	outbound    bool
 	pingTimeout time.Duration
+
+	mu      sync.Mutex
+	closers []func()
 }
 
 type Ping struct {
@@ -126,6 +130,22 @@ func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
 	d := time.Since(p.sentAt)
 	close(p.pong)
 	return d, nil
+}
+
+// OnClose registers fn to be called when the stream closes.
+func (s *Stream) OnClose(fn func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.closers = append(s.closers, fn)
+}
+
+func (s *Stream) runClosers() {
+	s.mu.Lock()
+	fns := append([]func(){}, s.closers...)
+	s.mu.Unlock()
+	for _, fn := range fns {
+		fn()
+	}
 }
 
 func (s *Stream) check() {

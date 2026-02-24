@@ -107,6 +107,22 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		return fmt.Errorf("establish link: %w", err)
 	}
 
+	target := s.target
+	stream.OnClose(func() {
+		cleanupCtx := s.mod.ctx.
+			IncludeZone(astral.ZoneNetwork)
+
+		if err := kcpClient.RemoveEndpointLocalPort(cleanupCtx, peerEndpoint); err != nil {
+			s.log.Logv(2, "cleanup local socket mapping: %v", err)
+		}
+		if err := kcpClient.WithTarget(target).CloseEphemeralListener(cleanupCtx, peerEndpoint.Port); err != nil {
+			s.log.Logv(2, "cleanup remote ephemeral listener: %v", err)
+		}
+		if err := kcpClient.WithTarget(target).RemoveEndpointLocalPort(cleanupCtx, localEndpoint); err != nil {
+			s.log.Logv(2, "cleanup remote socket mapping: %v", err)
+		}
+	})
+
 	s.log.Log("%v linked via %v", s.target, peerEndpoint.Address())
 	name := s.Name()
 	if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
