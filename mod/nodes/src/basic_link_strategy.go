@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -11,9 +12,9 @@ import (
 // BasicLinkStrategy dials all known endpoints of the target node in parallel
 // and uses the first successful connection to establish a link.
 type BasicLinkStrategy struct {
-	mod     *Module
-	network string
-	target  *astral.Identity
+	mod      *Module
+	networks []string
+	target   *astral.Identity
 
 	mu         sync.Mutex
 	activeDone chan struct{}
@@ -21,7 +22,7 @@ type BasicLinkStrategy struct {
 
 var _ nodes.LinkStrategy = &BasicLinkStrategy{}
 
-func (s *BasicLinkStrategy) Name() string { return s.network }
+func (s *BasicLinkStrategy) Name() string { return nodes.StrategyBasic }
 
 func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
@@ -54,7 +55,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 		}
 
 		endpoints := sig.FilterChan(resolved, func(e *nodes.EndpointWithTTL) bool {
-			return e.Network() == s.network
+			return slices.Contains(s.networks, e.Network())
 		})
 
 		// todo: instead of spawning 8 goroutines per strategy, we could have worker pool which is shared across strategies
@@ -130,16 +131,16 @@ func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.End
 // factory
 
 type BasicLinkStrategyFactory struct {
-	mod     *Module
-	network string
+	mod      *Module
+	networks []string
 }
 
 var _ nodes.StrategyFactory = &BasicLinkStrategyFactory{}
 
 func (f *BasicLinkStrategyFactory) Build(target *astral.Identity) nodes.LinkStrategy {
 	return &BasicLinkStrategy{
-		mod:     f.mod,
-		network: f.network,
-		target:  target,
+		mod:      f.mod,
+		networks: f.networks,
+		target:   target,
 	}
 }

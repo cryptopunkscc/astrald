@@ -30,7 +30,7 @@ type TorLinkStrategy struct {
 
 var _ nodes.LinkStrategy = &TorLinkStrategy{}
 
-func (s *TorLinkStrategy) Name() string { return "tor" }
+func (s *TorLinkStrategy) Name() string { return nodes.StrategyTor }
 
 func (s *TorLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()

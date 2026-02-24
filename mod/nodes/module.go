@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	StrategyTCP = "tcp"
-	StrategyTor = "tor"
-	StrategyNAT = "nat"
+	StrategyBasic = "basic"
+	StrategyTor   = "tor"
+	StrategyNAT   = "nat"
 )
 
 const (

@@ -24,7 +24,7 @@ type NatLinkStrategy struct {
 
 var _ nodes.LinkStrategy = &NatLinkStrategy{}
 
-func (s *NatLinkStrategy) Name() string { return "nat" }
+func (s *NatLinkStrategy) Name() string { return nodes.StrategyNAT }
 
 func (s *NatLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
@@ -148,7 +148,7 @@ var _ nodes.StrategyFactory = &NatLinkStrategyFactory{}
 func (f *NatLinkStrategyFactory) Build(target *astral.Identity) nodes.LinkStrategy {
 	return &NatLinkStrategy{
 		mod:    f.mod,
-		log:    f.mod.log.AppendTag(log.Tag("nat")),
+		log:    f.mod.log.AppendTag("nat"),
 		target: target,
 	}
 }
