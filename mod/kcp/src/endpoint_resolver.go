@@ -30,16 +30,5 @@ func (mod *Module) endpoints() (list []*nodes.EndpointWithTTL) {
 		list = append(list, nodes.NewEndpointWithTTL(e, 7*24*time.Hour))
 	}
 
-	for port := range mod.ephemeralListeners.Clone() {
-		for _, tip := range ips {
-			e := &kcp.Endpoint{
-				IP:   tip,
-				Port: port,
-			}
-
-			list = append(list, nodes.NewEndpointWithTTL(e, 7*24*time.Hour))
-		}
-	}
-
 	return list
 }
