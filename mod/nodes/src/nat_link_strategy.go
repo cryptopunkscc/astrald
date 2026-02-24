@@ -50,28 +50,15 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 
 	s.log.Log("%v starting traversal", s.target)
 
-	nc := natclient.New(selfID, astrald.Default())
-	pair, err := nc.Traverse(ctx, s.target)
+	natClient := natclient.New(selfID, astrald.Default())
+	pair, err := natClient.Traverse(ctx, s.target)
 	if err != nil {
 		return fmt.Errorf("traverse: %w", err)
 	}
 
 	s.log.Log("%v traversal complete, locking pair %v", s.target, pair.Nonce)
-
-	natClient := natclient.New(s.target, astrald.Default())
-	pairCtx, cancelPair := ctx.WithCancel()
-	defer cancelPair()
-
-	// note: rethink
-	errs := make(chan error, 2)
-	go func() { errs <- nc.PairLock(pairCtx, pair.Nonce) }()
-	go func() { errs <- natClient.PairTake(pairCtx, pair.Nonce) }()
-
-	for range 2 {
-		if err := <-errs; err != nil {
-			cancelPair()
-			return fmt.Errorf("pair lock/take: %w", err)
-		}
+	if err := natClient.PairTake(ctx, pair.Nonce, s.target); err != nil {
+		return fmt.Errorf("pair take: %w", err)
 	}
 
 	s.log.Log("%v pair locked, setting up kcp", s.target)

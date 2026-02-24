@@ -5,14 +5,17 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/nat"
+	natclient "github.com/cryptopunkscc/astrald/mod/nat/client"
 )
 
 const takeExchangeTimeout = 5 * time.Second
 
 type opPairTakeArgs struct {
-	Pair astral.Nonce
+	Pair   astral.Nonce
+	Target string `query:"optional"`
 
 	In  string `query:"optional"`
 	Out string `query:"optional"`
@@ -27,13 +30,40 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 		return ch.Send(astral.Err(err))
 	}
 
+	pairNonce := pair.Nonce
+
+	if args.Target != "" {
+		target, err := mod.Dir.ResolveIdentity(args.Target)
+		if err != nil {
+			return ch.Send(astral.Err(err))
+		}
+
+		opCtx, cancel := ctx.WithCancel()
+		defer cancel()
+
+		if !pair.BeginLock() {
+			return ch.Send(astral.Err(nat.ErrPairBusy))
+		}
+
+		natClient := natclient.New(target, astrald.Default())
+		err = natClient.PairTake(opCtx, pairNonce, nil)
+		if err != nil {
+			return ch.Send(astral.Err(err))
+		}
+
+		if err := pair.WaitLocked(opCtx); err != nil {
+			return ch.Send(astral.Err(err))
+		}
+
+		return ch.Send(&astral.Ack{})
+	}
+
+	// Responder flow
 	opCtx, cancel := ctx.WithTimeout(pair.LockTimeout() + takeExchangeTimeout)
 	defer cancel()
 
 	mod.log.Log("taking out pair %v out of pool, starting sync with %v",
-		args.Pair, q.Caller())
-
-	pairNonce := pair.Nonce
+		pairNonce, q.Caller())
 
 	// Receive lock
 	err = ch.Switch(
