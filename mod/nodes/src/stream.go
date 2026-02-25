@@ -120,6 +120,8 @@ func (s *Stream) Ping() (time.Duration, error) {
 		return time.Since(p.sentAt), nil
 	case <-time.After(s.pingTimeout):
 		return -1, errors.New("ping timeout")
+	case <-s.Stream.Done():
+		return -1, s.Err()
 	}
 }
 
