@@ -307,8 +307,6 @@ func (mod *Peers) addStream(
 	go func() {
 		mod.readStreamFrames(s)
 
-		s.runClosers()
-
 		// remove the stream and its connections
 		mod.streams.Remove(s)
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {

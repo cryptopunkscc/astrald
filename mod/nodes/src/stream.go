@@ -3,7 +3,6 @@ package nodes
 import (
 	"errors"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -23,9 +22,6 @@ type Stream struct {
 	outbound    bool
 	pingTimeout time.Duration
 	wakeCh      chan struct{}
-
-	mu      sync.Mutex
-	closers []func()
 }
 
 type Ping struct {
@@ -137,23 +133,7 @@ func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
 	return d, nil
 }
 
-// OnClose registers fn to be called when the stream closes.
-func (s *Stream) OnClose(fn func()) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.closers = append(s.closers, fn)
-}
-
-func (s *Stream) runClosers() {
-	s.mu.Lock()
-	fns := append([]func(){}, s.closers...)
-	s.mu.Unlock()
-	for _, fn := range fns {
-		fn()
-	}
-}
-
-// Wake triggers an immediate ping, bypassing the idle keepalive interval.
+// Wake triggers a ping on the next loop iteration.
 func (s *Stream) Wake() {
 	select {
 	case s.wakeCh <- struct{}{}:
@@ -186,7 +166,6 @@ func (s *Stream) pingLoop() {
 			select {
 			case <-s.Stream.Done():
 				return
-			case <-time.After(keepaliveInterval):
 			case <-s.wakeCh:
 			}
 		}

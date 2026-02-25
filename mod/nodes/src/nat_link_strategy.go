@@ -105,15 +105,15 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	stream, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
 	if err != nil {
 		conn.Close()
+		// todo: cleanups related to the failed link
 		return fmt.Errorf("establish link: %w", err)
 	}
 
 	target := s.target
-	stream.OnClose(func() {
-		cleanupCtx := s.mod.ctx.
-			IncludeZone(astral.ZoneNetwork)
+	go func() {
+		<-stream.Done()
+		cleanupCtx := s.mod.ctx.IncludeZone(astral.ZoneNetwork)
 
-		// note: if we predict multiple streams over same NAT traversed connection, we should change it
 		if err := kcpClient.RemoveEndpointLocalPort(cleanupCtx, peerEndpoint); err != nil {
 			s.log.Logv(2, "cleanup local socket mapping: %v", err)
 		}
@@ -123,16 +123,16 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		if err := kcpClient.WithTarget(target).RemoveEndpointLocalPort(cleanupCtx, localEndpoint); err != nil {
 			s.log.Logv(2, "cleanup remote socket mapping: %v", err)
 		}
-	})
+	}()
 
 	go func() {
-		ticker := time.NewTicker(NatLinkWakeInterval)
+		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
 				stream.Wake()
-			case <-stream.Stream.Done():
+			case <-stream.Done():
 				return
 			}
 		}
