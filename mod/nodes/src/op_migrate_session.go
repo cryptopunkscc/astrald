@@ -31,7 +31,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 		return ch.Send(astral.NewError("missing stream ids"))
 	}
 
-	wctx, cancel := ctx.WithTimeout(migrationTotalTimeout)
+	ctx, cancel := ctx.WithTimeout(migrationTotalTimeout)
 	defer cancel()
 
 	session, ok := mod.peers.sessions.Get(args.SessionID)
@@ -46,7 +46,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 
 	if args.Start {
 		client := nodesClient.New(session.RemoteIdentity, astrald.Default())
-		if err := client.MigrateSession(wctx, args.SessionID, args.StreamID, migrator); err != nil {
+		if err := client.MigrateSession(ctx, args.SessionID, args.StreamID, migrator); err != nil {
 			return ch.Send(astral.Err(err))
 		}
 
@@ -57,7 +57,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 	if err := ch.Switch(
 		nodes.ExpectMigrateSignal(args.SessionID, nodes.MigrateSignalTypeBegin),
 		channel.PassErrors,
-		channel.WithContext(wctx),
+		channel.WithContext(ctx),
 	); err != nil {
 		return ch.Send(astral.Err(err))
 	}
@@ -72,7 +72,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 		return err
 	}
 
-	if err := session.WaitOpen(wctx); err != nil {
+	if err := session.WaitOpen(ctx); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
