@@ -1,12 +1,17 @@
 package nodes
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/ops"
-	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	nodesClient "github.com/cryptopunkscc/astrald/mod/nodes/client"
 )
+
+const migrationTotalTimeout = 10 * time.Second
 
 type opMigrateSessionArgs struct {
 	SessionID astral.Nonce
@@ -15,7 +20,7 @@ type opMigrateSessionArgs struct {
 	Out       string      `query:"optional"`
 }
 
-func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMigrateSessionArgs) (err error) {
+func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMigrateSessionArgs) error {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
@@ -26,53 +31,55 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 		return ch.Send(astral.NewError("missing stream ids"))
 	}
 
-	isInitiator := args.Start
-	if isInitiator {
-		sessionToMigrate, ok := mod.peers.sessions.Get(args.SessionID)
-		if !ok {
-			return ch.Send(astral.NewError("session not found"))
+	wctx, cancel := ctx.WithTimeout(migrationTotalTimeout)
+	defer cancel()
+
+	session, ok := mod.peers.sessions.Get(args.SessionID)
+	if !ok {
+		return ch.Send(astral.NewError("session not found"))
+	}
+
+	migrator, err := mod.createSessionMigrator(session, args.StreamID)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	if args.Start {
+		client := nodesClient.New(session.RemoteIdentity, astrald.Default())
+		if err := client.MigrateSession(wctx, args.SessionID, args.StreamID, migrator); err != nil {
+			return ch.Send(astral.Err(err))
 		}
 
-		target := sessionToMigrate.RemoteIdentity
-		args := &opMigrateSessionArgs{
-			SessionID: args.SessionID,
-			StreamID:  args.StreamID,
-			Start:     false,
-			Out:       args.Out,
-		}
-
-		// Route a channel to the remote OpMigrateSession
-		peerCh, err := query.RouteChan(
-			ctx.IncludeZone(astral.ZoneNetwork),
-			mod.node,
-			query.New(ctx.Identity(), target, nodes.MethodMigrateSession, &args),
-		)
-		if err != nil {
-			return ch.Send(astral.NewError(err.Error()))
-		}
-		defer peerCh.Close()
-
-		ms, err := mod.createSessionMigrator(ctx, RoleInitiator, peerCh, target, args.SessionID, args.StreamID)
-		if err != nil {
-			return ch.Send(astral.NewError(err.Error()))
-		}
-
-		if err := ms.Run(ctx); err != nil {
-			return ch.Send(astral.NewError(err.Error()))
-		}
+		mod.log.Log("migration: session migrated %v %v", args.SessionID, args.StreamID)
 		return ch.Send(&astral.Ack{})
 	}
 
-	ms, err := mod.createSessionMigrator(ctx, RoleResponder, ch, q.Caller(),
-		args.SessionID, args.StreamID)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	if err := ch.Switch(
+		nodes.ExpectMigrateSignal(args.SessionID, nodes.MigrateSignalTypeBegin),
+		channel.PassErrors,
+		channel.WithContext(wctx),
+	); err != nil {
+		return ch.Send(astral.Err(err))
 	}
 
-	err = ms.Run(ctx)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	if err := migrator.Migrate(); err != nil {
+		return ch.Send(astral.Err(err))
 	}
 
+	defer session.CancelMigration()
+
+	if err := ch.Send(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeReady, Nonce: args.SessionID}); err != nil {
+		return err
+	}
+
+	if err := session.WaitOpen(wctx); err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	if err := ch.Send(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeCompleted, Nonce: args.SessionID}); err != nil {
+		return err
+	}
+
+	mod.log.Log("migration: session migrated %v %v", args.SessionID, args.StreamID)
 	return ch.Send(&astral.Ack{})
 }

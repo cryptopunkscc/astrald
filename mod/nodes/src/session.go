@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -43,6 +44,7 @@ type session struct {
 	wcond       *sync.Cond // sync for write functions
 	wsize       int        // remote buffer left
 	migratingTo *Stream
+	migratedCh  chan struct{} // closed when migration completes or is cancelled
 }
 
 func (c *session) Identity() *astral.Identity {
@@ -205,10 +207,13 @@ func (c *session) Migrate(s *Stream) error {
 		return fmt.Errorf(`cannot migrate non-open session`)
 	}
 
-	// Record target stream for both roles
-	c.migratingTo = s
+	if !c.stream.RemoteIdentity().IsEqual(s.RemoteIdentity()) {
+		return fmt.Errorf("identity mismatch")
+	}
 
-	// Enter migrating to pause writes until migration completes
+	c.migratingTo = s
+	c.migratedCh = make(chan struct{})
+
 	if !c.swapState(stateOpen, stateMigrating) {
 		return errors.New("cannot migrate non-open session")
 	}
@@ -234,16 +239,18 @@ func (c *session) CompleteMigration() error {
 		return errors.New("no target stream")
 	}
 
-	// Switch the underlying stream
 	c.stream = c.migratingTo
 	c.migratingTo = nil
 
-	// Re-open the session
 	if !c.swapState(stateMigrating, stateOpen) {
-		// If state is already open, treat as idempotent
 		if c.state.Load() != stateOpen {
 			return errors.New("invalid migration state")
 		}
+	}
+
+	if c.migratedCh != nil {
+		close(c.migratedCh)
+		c.migratedCh = nil
 	}
 
 	return nil
@@ -259,4 +266,33 @@ func (c *session) CancelMigration() {
 
 	c.migratingTo = nil
 	c.swapState(stateMigrating, stateOpen)
+
+	if c.migratedCh != nil {
+		close(c.migratedCh)
+		c.migratedCh = nil
+	}
+}
+
+// WaitOpen blocks until the migration completes or the context is cancelled.
+func (c *session) WaitOpen(ctx context.Context) error {
+	c.wcond.L.Lock()
+	ch := c.migratedCh
+	c.wcond.L.Unlock()
+
+	if ch == nil {
+		if c.IsOpen() {
+			return nil
+		}
+		return errors.New("not migrating")
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-ch:
+		if c.IsOpen() {
+			return nil
+		}
+		return errors.New("migration cancelled")
+	}
 }
