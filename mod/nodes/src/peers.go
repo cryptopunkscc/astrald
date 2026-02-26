@@ -195,22 +195,24 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 }
 
 func (mod *Peers) handleData(s *Stream, f *frames.Data) {
-	conn, ok := mod.sessions.Get(f.Nonce)
+	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
-	if conn.state.Load() != stateOpen {
-		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), conn.state.Load())
+	switch session.state.Load() {
+	case stateOpen, stateMigrating:
+	default:
+		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.state.Load())
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
-	err := conn.pushRead(f.Payload)
+	err := session.pushRead(f.Payload)
 	if err != nil {
 		mod.log.Errorv(1, "failed to push read frame: %v", err)
-		conn.Close()
+		session.Close()
 		return
 	}
 }
@@ -258,7 +260,6 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 		return
 	}
 
-	// Apply migration locally by switching to target stream and reopening.
 	_ = conn.CompleteMigration()
 }
 
