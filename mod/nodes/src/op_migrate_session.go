@@ -45,14 +45,19 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 	}
 
 	if args.Start {
+		mod.log.Log("migrate session %v to stream %v", args.SessionID, args.StreamID)
+
 		client := nodesClient.New(session.RemoteIdentity, astrald.Default())
 		if err := client.MigrateSession(ctx, args.SessionID, args.StreamID, migrator); err != nil {
+			mod.log.Error("migrate session %v failed: %v", args.SessionID, err)
 			return ch.Send(astral.Err(err))
 		}
 
-		mod.log.Log("migration: session migrated %v %v", args.SessionID, args.StreamID)
+		mod.log.Info("migrate session %v done", args.SessionID)
 		return ch.Send(&astral.Ack{})
 	}
+
+	mod.log.Log("migrate session %v to stream %v", args.SessionID, args.StreamID)
 
 	if err := ch.Switch(
 		nodes.ExpectMigrateSignal(args.SessionID, nodes.MigrateSignalTypeBegin),
@@ -63,6 +68,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 	}
 
 	if err := migrator.Migrate(); err != nil {
+		mod.log.Error("migrate session %v failed: %v", args.SessionID, err)
 		return ch.Send(astral.Err(err))
 	}
 
@@ -73,9 +79,10 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 	}
 
 	if err := migrator.WaitOpen(ctx); err != nil {
+		mod.log.Error("migrate session %v failed: %v", args.SessionID, err)
 		return ch.Send(astral.Err(err))
 	}
 
-	mod.log.Log("migration: session migrated %v %v", args.SessionID, args.StreamID)
+	mod.log.Info("migrate session %v done", args.SessionID)
 	return ch.Send(&astral.Ack{})
 }
