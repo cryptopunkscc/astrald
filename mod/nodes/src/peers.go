@@ -260,7 +260,21 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 		return
 	}
 
-	_ = conn.CompleteMigration()
+	if conn.state.Load() != stateMigrating {
+		return
+	}
+
+	if !conn.migrateFrameSent.Load() {
+		if err := conn.writeMigrateFrame(); err != nil {
+			mod.log.Errorv(1, "failed to write migrate frame: %v", err)
+			conn.CancelMigration()
+			return
+		}
+	}
+
+	if err := conn.CompleteMigration(); err != nil {
+		mod.log.Errorv(1, "failed to complete migration: %v", err)
+	}
 }
 
 func (mod *Peers) addStream(

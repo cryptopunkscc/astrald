@@ -35,13 +35,6 @@ func (client *Client) MigrateSession(ctx *astral.Context, sessionID, streamID as
 	if err := m.WriteMigrateFrame(); err != nil {
 		return err
 	}
-	if err := ch.Switch(
-		nodes.ExpectMigrateSignal(sessionID, nodes.MigrateSignalTypeCompleted),
-		channel.PassErrors,
-		channel.WithContext(ctx),
-	); err != nil {
-		return err
-	}
 
-	return m.CompleteMigration()
+	return m.WaitOpen(ctx)
 }

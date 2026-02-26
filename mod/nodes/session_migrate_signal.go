@@ -23,10 +23,8 @@ type SessionMigrateSignal struct {
 }
 
 const (
-	MigrateSignalTypeBegin     = "migrate_begin"
-	MigrateSignalTypeReady     = "migrate_ready"
-	MigrateSignalTypeCompleted = "migrate_completed"
-	MigrateSignalTypeAbort     = "migrate_abort"
+	MigrateSignalTypeBegin = "migrate_begin"
+	MigrateSignalTypeReady = "migrate_ready"
 )
 
 func (m SessionMigrateSignal) ObjectType() string { return "mod.nodes.migrate_signal" }

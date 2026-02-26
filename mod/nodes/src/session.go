@@ -41,10 +41,11 @@ type session struct {
 	rused int        // used read buffer
 	rbuf  [][]byte   // read buffer
 
-	wcond       *sync.Cond // sync for write functions
-	wsize       int        // remote buffer left
-	migratingTo *Stream
-	migratedCh  chan struct{} // closed when migration completes or is cancelled
+	wcond            *sync.Cond // sync for write functions
+	wsize            int        // remote buffer left
+	migratingTo      *Stream
+	migratedCh       chan struct{} // closed when migration completes or is cancelled
+	migrateFrameSent atomic.Bool
 }
 
 func (c *session) Identity() *astral.Identity {
@@ -213,6 +214,7 @@ func (c *session) Migrate(s *Stream) error {
 
 	c.migratingTo = s
 	c.migratedCh = make(chan struct{})
+	c.migrateFrameSent.Store(false)
 
 	if !c.swapState(stateOpen, stateMigrating) {
 		return errors.New("cannot migrate non-open session")
@@ -227,6 +229,7 @@ func (c *session) writeMigrateFrame() error {
 		return fmt.Errorf("no current stream")
 	}
 
+	c.migrateFrameSent.Store(true)
 	return c.stream.Write(&frames.Migrate{Nonce: c.Nonce})
 }
 
@@ -265,6 +268,7 @@ func (c *session) CancelMigration() {
 	}
 
 	c.migratingTo = nil
+	c.migrateFrameSent.Store(false)
 	c.swapState(stateMigrating, stateOpen)
 
 	if c.migratedCh != nil {

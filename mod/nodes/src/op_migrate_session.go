@@ -66,18 +66,14 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 		return ch.Send(astral.Err(err))
 	}
 
-	defer session.CancelMigration()
+	defer migrator.CancelMigration()
 
 	if err := ch.Send(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeReady, Nonce: args.SessionID}); err != nil {
 		return err
 	}
 
-	if err := session.WaitOpen(ctx); err != nil {
+	if err := migrator.WaitOpen(ctx); err != nil {
 		return ch.Send(astral.Err(err))
-	}
-
-	if err := ch.Send(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeCompleted, Nonce: args.SessionID}); err != nil {
-		return err
 	}
 
 	mod.log.Log("migration: session migrated %v %v", args.SessionID, args.StreamID)
