@@ -126,15 +126,16 @@ func (mod *Module) syncApps(ctx *astral.Context, nodeID *astral.Identity) (err e
 	return
 }
 
-func (mod *Module) syncSiblings(ctx *astral.Context, with *astral.Identity) (err error) {
+func (mod *Module) syncSiblings(with *astral.Identity) {
 	ac := mod.ActiveContract()
 	if ac == nil {
-		return errors.New("no active contract")
+		return
 	}
 
 	contracts, err := mod.ActiveContractsOf(ac.UserID)
 	if err != nil {
-		return err
+		mod.log.Error("syncSiblings: error getting active contracts: %v", err)
+		return
 	}
 
 	for _, contract := range contracts {
@@ -144,8 +145,8 @@ func (mod *Module) syncSiblings(ctx *astral.Context, with *astral.Identity) (err
 		if contract.NodeID.IsEqual(with) {
 			continue
 		}
-		mod.Objects.Push(ctx, with, contract)
+
+		mod.Objects.Push(mod.ctx, with, contract)
 	}
 
-	return nil
 }
