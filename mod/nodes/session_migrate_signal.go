@@ -2,9 +2,11 @@ package nodes
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 )
 
 // LinkSelector identifies a target link for migration signaling (Phase 0).
@@ -21,10 +23,8 @@ type SessionMigrateSignal struct {
 }
 
 const (
-	MigrateSignalTypeBegin     = "migrate_begin"
-	MigrateSignalTypeReady     = "migrate_ready"
-	MigrateSignalTypeCompleted = "migrate_completed"
-	MigrateSignalTypeAbort     = "migrate_abort"
+	MigrateSignalTypeBegin = "migrate_begin"
+	MigrateSignalTypeReady = "migrate_ready"
 )
 
 func (m SessionMigrateSignal) ObjectType() string { return "mod.nodes.migrate_signal" }
@@ -51,3 +51,16 @@ func (m *SessionMigrateSignal) UnmarshalJSON(b []byte) error {
 }
 
 func init() { _ = astral.Add(&SessionMigrateSignal{}) }
+
+// ExpectMigrateSignal returns a handler that validates signal type and session nonce.
+func ExpectMigrateSignal(sessionID astral.Nonce, sigType string) func(*SessionMigrateSignal) error {
+	return func(sig *SessionMigrateSignal) error {
+		if string(sig.Signal) != sigType {
+			return fmt.Errorf("expected %s, got %s", sigType, sig.Signal)
+		}
+		if sig.Nonce != sessionID {
+			return fmt.Errorf("session nonce mismatch")
+		}
+		return channel.ErrBreak
+	}
+}
