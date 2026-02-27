@@ -21,6 +21,8 @@ const DefaultWorkerCount = 8
 const infoPrefix = "node1"
 const featureMux2 = "mux2"
 const defaultPingTimeout = time.Second * 30
+const activeInterval = 1 * time.Second
+const pingJitter = 1 * time.Second
 
 type NodeInfo nodes.NodeInfo
 

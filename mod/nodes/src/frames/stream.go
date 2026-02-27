@@ -41,6 +41,8 @@ func (s *Stream) Err() error {
 	return s.err.Get()
 }
 
+func (s *Stream) Done() <-chan struct{} { return s.done }
+
 func (s *Stream) CloseWithError(err error) error {
 	_, _ = s.err.Swap(nil, err)
 	_ = s.conn.Close()
