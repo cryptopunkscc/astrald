@@ -96,6 +96,19 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		return fmt.Errorf("set endpoint local port: %w", err)
 	}
 
+	cleanup := func() {
+		cleanupCtx := s.mod.ctx.IncludeZone(astral.ZoneNetwork)
+		if err := kcpClient.RemoveEndpointLocalPort(cleanupCtx, peerEndpoint); err != nil {
+			s.log.Logv(2, "cleanup local socket mapping: %v", err)
+		}
+		if err := kcpClient.WithTarget(s.target).CloseEphemeralListener(cleanupCtx, peerEndpoint.Port); err != nil {
+			s.log.Logv(2, "cleanup remote ephemeral listener: %v", err)
+		}
+		if err := kcpClient.WithTarget(s.target).RemoveEndpointLocalPort(cleanupCtx, localEndpoint); err != nil {
+			s.log.Logv(2, "cleanup remote socket mapping: %v", err)
+		}
+	}
+
 	s.log.Log("%v dialing %v", s.target, peerEndpoint.Address())
 	conn, err := s.mod.Exonet.Dial(ctx, &peerEndpoint)
 	if err != nil {
@@ -105,24 +118,13 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	stream, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
 	if err != nil {
 		conn.Close()
-		// todo: cleanups related to the failed link
+		cleanup()
 		return fmt.Errorf("establish link: %w", err)
 	}
 
-	target := s.target
 	go func() {
 		<-stream.Done()
-		cleanupCtx := s.mod.ctx.IncludeZone(astral.ZoneNetwork)
-
-		if err := kcpClient.RemoveEndpointLocalPort(cleanupCtx, peerEndpoint); err != nil {
-			s.log.Logv(2, "cleanup local socket mapping: %v", err)
-		}
-		if err := kcpClient.WithTarget(target).CloseEphemeralListener(cleanupCtx, peerEndpoint.Port); err != nil {
-			s.log.Logv(2, "cleanup remote ephemeral listener: %v", err)
-		}
-		if err := kcpClient.WithTarget(target).RemoveEndpointLocalPort(cleanupCtx, localEndpoint); err != nil {
-			s.log.Logv(2, "cleanup remote socket mapping: %v", err)
-		}
+		cleanup()
 	}()
 
 	go func() {

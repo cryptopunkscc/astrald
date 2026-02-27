@@ -163,7 +163,11 @@ func (s *Stream) pingLoop() {
 
 	for {
 		if s.checks.Load() > 0 {
-			time.Sleep(activeInterval)
+			select {
+			case <-s.Stream.Done():
+				return
+			case <-time.After(activeInterval):
+			}
 		} else {
 			select {
 			case <-s.Stream.Done():
