@@ -36,5 +36,9 @@ func (client *Client) MigrateSession(ctx *astral.Context, sessionID, streamID as
 		return err
 	}
 
-	return m.WaitOpen(ctx)
+	if err := m.WaitOpen(ctx); err != nil {
+		return err
+	}
+
+	return ch.Switch(channel.ExpectAck, channel.PassErrors, channel.WithContext(ctx))
 }

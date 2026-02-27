@@ -24,6 +24,8 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
+	ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
 	if args.SessionID == 0 {
 		return ch.Send(astral.NewError("missing sessionId"))
 	}

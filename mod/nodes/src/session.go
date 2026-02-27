@@ -212,13 +212,13 @@ func (c *session) Migrate(s *Stream) error {
 		return fmt.Errorf("identity mismatch")
 	}
 
-	c.migratingTo = s
-	c.migratedCh = make(chan struct{})
-	c.migrateFrameSent.Store(false)
-
 	if !c.swapState(stateOpen, stateMigrating) {
 		return errors.New("cannot migrate non-open session")
 	}
+
+	c.migratingTo = s
+	c.migratedCh = make(chan struct{})
+	c.migrateFrameSent.Store(false)
 
 	return nil
 }
