@@ -18,7 +18,7 @@ func (mod *Module) OpAddToIndex(ctx *astral.Context, query *ops.Query, args opAd
 
 	return ch.Switch(
 		func(contract *user.SignedNodeContract) error {
-			err := mod.IndexSignedNodeContract(contract)
+			_, err := mod.IndexSignedNodeContract(contract)
 			if err != nil {
 				return ch.Send(astral.Err(err))
 			}
