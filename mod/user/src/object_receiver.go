@@ -81,8 +81,12 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 
 func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedNodeContract) error {
 	// reject contracts coming from neither the signing node nor local node
-	// note: temporally we allow contracts from user swarm nodes
-	if !(s.IsEqual(c.NodeID) || s.IsEqual(mod.node.Identity())) || slices.ContainsFunc(mod.LocalSwarm(), s.IsEqual) {
+	// note: temporarily we allow contracts from user swarm nodes
+	isSigner := s.IsEqual(c.NodeID)
+	isSelf := s.IsEqual(mod.node.Identity())
+	isLocalSwarmMember := slices.ContainsFunc(mod.LocalSwarm(), s.IsEqual)
+
+	if !(isSigner || isSelf || isLocalSwarmMember) {
 		return objects.ErrPushRejected
 	}
 
