@@ -16,7 +16,7 @@ func (mod *Module) OpSyncWith(ctx *astral.Context, q *ops.Query, args opSyncWith
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	err = mod.SyncAssets(ctx.IncludeZone(astral.ZoneNetwork), args.Node)
+	err = mod.syncAssets(ctx.IncludeZone(astral.ZoneNetwork), args.Node)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}

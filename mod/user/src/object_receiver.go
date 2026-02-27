@@ -21,6 +21,14 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 			drop.Accept(true)
 		}
 
+		// note: temporary solution where we sync endpoints
+		go func() {
+			err = mod.Nodes.UpdateNodeEndpoints(mod.ctx, drop.SenderID(), o.NodeID)
+			if err != nil {
+				mod.log.Error("syncEndpoints: %v", err)
+			}
+		}()
+
 	case *user.SignedNodeContractRevocation:
 		contract, err := mod.GetNodeContract(o.ContractID)
 		if err != nil {
@@ -61,6 +69,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		case *nodes.StreamCreatedEvent:
 			if e.StreamCount == 1 && slices.ContainsFunc(mod.LocalSwarm(), e.RemoteIdentity.IsEqual) {
 				go mod.pushActiveContract(e.RemoteIdentity)
+
 				mod.Scheduler.Schedule(mod.NewSyncNodesTask(e.RemoteIdentity))
 				drop.Accept(false)
 			}
@@ -72,14 +81,19 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 
 func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedNodeContract) error {
 	// reject contracts coming from neither the signing node nor local node
-	if !(s.IsEqual(c.NodeID) || s.IsEqual(mod.node.Identity())) {
+	// note: temporally we allow contracts from user swarm nodes
+	if !(s.IsEqual(c.NodeID) || s.IsEqual(mod.node.Identity())) || slices.ContainsFunc(mod.LocalSwarm(), s.IsEqual) {
 		return objects.ErrPushRejected
 	}
 
-	err := mod.IndexSignedNodeContract(c)
+	found, err := mod.IndexSignedNodeContract(c)
 	if err != nil {
 		mod.log.Errorv(1, "save node contract: %v", err)
 		return objects.ErrPushRejected
+	}
+
+	if !found {
+		// todo: syncing endpoints of remote node
 	}
 
 	return nil
@@ -127,7 +141,7 @@ func (mod *Module) onNotification(src *astral.Identity, n *user.Notification) er
 
 	switch n.Event {
 	case "assets":
-		go mod.SyncAssets(mod.ctx, src)
+		go mod.syncAssets(mod.ctx, src)
 		return nil
 	}
 	return objects.ErrPushRejected

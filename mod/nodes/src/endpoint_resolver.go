@@ -62,8 +62,8 @@ func (mod *Module) runResolver(ctx *astral.Context, r nodes.EndpointResolver, no
 	}
 }
 
-func (mod *Module) updateNodeEndpoints(ctx *astral.Context, identity *astral.Identity) error {
-	client := nodescli.New(identity, astrald.Default())
+func (mod *Module) UpdateNodeEndpoints(ctx *astral.Context, resolver *astral.Identity, identity *astral.Identity) error {
+	client := nodescli.New(resolver, astrald.Default())
 
 	endpoints, err := client.ResolveEndpoints(ctx.IncludeZone(astral.ZoneNetwork), identity)
 	if err != nil {
