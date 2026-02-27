@@ -202,7 +202,7 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 	}
 
 	switch session.state.Load() {
-	case stateOpen, stateMigrating:
+	case stateOpen:
 	default:
 		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.state.Load())
 		s.Write(&frames.Reset{Nonce: f.Nonce})
