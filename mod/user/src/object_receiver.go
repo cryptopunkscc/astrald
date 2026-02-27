@@ -93,7 +93,14 @@ func (mod *Module) receiveSignedNodeContract(s *astral.Identity, c *user.SignedN
 	}
 
 	if !found {
-		// todo: syncing endpoints of remote node
+		// note: temporary solution where we sync endpoints
+		go func() {
+			err = mod.Nodes.UpdateNodeEndpoints(mod.ctx, s, c.NodeID)
+			if err != nil {
+				mod.log.Error("updatingNodeEndpoint failed: %v", err)
+			}
+		}()
+
 	}
 
 	return nil

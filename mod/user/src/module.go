@@ -144,6 +144,11 @@ func (mod *Module) runSiblingLinker() {
 			continue
 		}
 
+		_, ok := mod.sibs.Get(node.String())
+		if ok {
+			continue
+		}
+
 		maintainLinkAction := mod.NewMaintainLinkTask(node)
 		scheduledAction, err := mod.Scheduler.Schedule(maintainLinkAction)
 		if err != nil {
