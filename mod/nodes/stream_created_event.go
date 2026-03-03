@@ -13,26 +13,28 @@ type StreamCreatedEvent struct {
 	StreamCount    int
 }
 
-func (m StreamCreatedEvent) ObjectType() string { return "mod.nodes.stream_created_event" }
+func (e StreamCreatedEvent) ObjectType() string { return "mod.nodes.stream_created_event" }
 
-func (m StreamCreatedEvent) WriteTo(w io.Writer) (int64, error) { return astral.Struct(m).WriteTo(w) }
-
-func (m *StreamCreatedEvent) ReadFrom(r io.Reader) (int64, error) {
-	return astral.Struct(m).ReadFrom(r)
+func (e StreamCreatedEvent) WriteTo(w io.Writer) (int64, error) {
+	return astral.Objectify(&e).WriteTo(w)
 }
 
-func (m StreamCreatedEvent) MarshalJSON() ([]byte, error) {
+func (e *StreamCreatedEvent) ReadFrom(r io.Reader) (int64, error) {
+	return astral.Objectify(e).ReadFrom(r)
+}
+
+func (e StreamCreatedEvent) MarshalJSON() ([]byte, error) {
 	type alias StreamCreatedEvent
-	return json.Marshal(alias(m))
+	return json.Marshal(alias(e))
 }
 
-func (m *StreamCreatedEvent) UnmarshalJSON(b []byte) error {
+func (e *StreamCreatedEvent) UnmarshalJSON(b []byte) error {
 	type alias StreamCreatedEvent
 	var a alias
 	if err := json.Unmarshal(b, &a); err != nil {
 		return err
 	}
-	*m = StreamCreatedEvent(a)
+	*e = StreamCreatedEvent(a)
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -207,6 +208,10 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.state.Load())
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
+	}
+
+	if s.pressure != nil {
+		s.pressure.OnBytes(len(f.Payload), time.Now())
 	}
 
 	err := session.pushRead(f.Payload)
