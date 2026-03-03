@@ -45,7 +45,7 @@ func (mod *Module) OpClaim(ctx *astral.Context, q *ops.Query, args opClaimArgs) 
 
 	mod.log.Info("signed contract %v with %v", signedID, nodeID)
 
-	err = mod.IndexSignedNodeContract(signed)
+	_, err = mod.IndexSignedNodeContract(signed)
 	if err != nil {
 		mod.log.Logv(1, "error indexing signed contract: %v", err)
 	}

@@ -91,26 +91,26 @@ func (mod *Module) ActiveContractsOf(userID *astral.Identity) (contracts []*user
 }
 
 // IndexSignedNodeContract adds a signed contract to the index
-func (mod *Module) IndexSignedNodeContract(signed *user.SignedNodeContract) (err error) {
+func (mod *Module) IndexSignedNodeContract(signed *user.SignedNodeContract) (found bool, err error) {
 	// check if active
 	if !signed.ActiveAt(time.Now()) {
-		return errors.New("contract is not active")
+		return false, errors.New("contract is not active")
 	}
 
 	// verify signatures
 	err = mod.VerifySignedNodeContract(signed)
 	if err != nil {
-		return
+		return false, err
 	}
 
 	signedID, err := astral.ResolveObjectID(signed)
 	if err != nil {
-		return
+		return false, err
 	}
 
 	// check if already indexed
 	if mod.db.signedNodeContractExists(signedID) {
-		return nil
+		return true, nil
 	}
 
 	// save to db
@@ -122,7 +122,7 @@ func (mod *Module) IndexSignedNodeContract(signed *user.SignedNodeContract) (err
 		ExpiresAt: signed.ExpiresAt.Time().UTC(),
 	}).Error
 	if err != nil {
-		return fmt.Errorf(`db error: %w`, err)
+		return false, fmt.Errorf(`db error: %w`, err)
 	}
 
 	mod.runSiblingLinker()

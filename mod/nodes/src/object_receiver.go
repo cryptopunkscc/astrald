@@ -27,7 +27,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 				e.RemoteIdentity.IsEqual) {
 
 				go func() {
-					err := mod.updateNodeEndpoints(mod.ctx, e.RemoteIdentity)
+					err := mod.UpdateNodeEndpoints(mod.ctx, e.RemoteIdentity, e.RemoteIdentity)
 					if err != nil {
 						mod.log.Error("updating node endpoints failed: %v", err)
 					}

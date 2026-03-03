@@ -42,6 +42,7 @@ type Module interface {
 	AddEndpoint(*astral.Identity, *EndpointWithTTL) error
 	RemoveEndpoint(*astral.Identity, exonet.Endpoint) error
 
+	UpdateNodeEndpoints(ctx *astral.Context, resolver *astral.Identity, identity *astral.Identity) error
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan *EndpointWithTTL, error)
 	AddResolver(resolver EndpointResolver)
 
