@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
@@ -160,29 +159,4 @@ func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
 		}
 	}
 	return nil
-}
-
-func (mod *Module) createSessionMigrator(
-	ctx *astral.Context,
-	role migrateRole,
-	ch *channel.Channel,
-	peer *astral.Identity,
-	sessionId astral.Nonce,
-	streamId astral.Nonce,
-) (migrator sessionMigrator, err error) {
-	session, ok := mod.peers.sessions.Get(sessionId)
-	if !ok {
-		return migrator, errors.New("session not found")
-	}
-
-	return sessionMigrator{
-		mod:       mod,
-		sess:      session,
-		role:      role,
-		ch:        ch,
-		local:     ctx.Identity(),
-		peer:      peer,
-		sessionId: sessionId,
-		streamId:  streamId,
-	}, nil
 }
