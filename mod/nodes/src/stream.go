@@ -20,6 +20,7 @@ type Stream struct {
 	checks      atomic.Int32
 	outbound    bool
 	pingTimeout time.Duration
+	pressure    PressureDetector
 }
 
 type Ping struct {
@@ -84,6 +85,11 @@ func (s *Stream) RemoteEndpoint() exonet.Endpoint {
 }
 
 func (s *Stream) Write(frame frames.Frame) (err error) {
+	if f, ok := frame.(*frames.Data); ok {
+		if s.pressure != nil {
+			s.pressure.OnBytes(len(f.Payload), time.Now())
+		}
+	}
 	if _, ok := frame.(*frames.Ping); !ok {
 		s.check()
 	}
@@ -125,6 +131,9 @@ func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
 	}
 	d := time.Since(p.sentAt)
 	close(p.pong)
+	if s.pressure != nil {
+		s.pressure.OnRTT(d, time.Now())
+	}
 	return d, nil
 }
 

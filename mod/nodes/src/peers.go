@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -209,6 +210,10 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 		return
 	}
 
+	if s.pressure != nil {
+		s.pressure.OnBytes(len(f.Payload), time.Now())
+	}
+
 	err := session.pushRead(f.Payload)
 	if err != nil {
 		mod.log.Errorv(1, "failed to push read frame: %v", err)
@@ -300,6 +305,16 @@ func (mod *Peers) addStream(
 	err = mod.streams.Add(s)
 	if err != nil {
 		return
+	}
+
+	// start pressure detector on outbound streams
+	if s.outbound {
+		s.pressure = NewPressureDetector(time.Now(), DefaultPressureConfig, func() {
+			mod.Events.Emit(&nodes.StreamPressureEvent{
+				RemoteIdentity: s.RemoteIdentity(),
+				StreamID:       s.id,
+			})
+		})
 	}
 
 	// log stream addition
