@@ -11,8 +11,8 @@ type dbLocalFile struct {
 	ID        int64            `gorm:"primaryKey;autoIncrement"`
 	Path      string           `gorm:"uniqueIndex"`
 	DataID    *astral.ObjectID `gorm:"index"`
-	ModTime   time.Time
-	UpdatedAt time.Time
+	ModTime   int64
+	UpdatedAt int64
 	DeletedAt *time.Time
 }
 

@@ -38,7 +38,7 @@ type IndexEvent struct {
 
 type fileEntry struct {
 	path    string
-	modTime time.Time
+	modTime int64
 }
 
 type Indexer struct {
@@ -174,7 +174,7 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 	}
 
 	indexEntry, err := indexer.mod.db.FindByPath(path)
-	if err == nil && indexEntry.ModTime.Equal(stat.ModTime()) {
+	if err == nil && indexEntry.ModTime == stat.ModTime().UnixNano() {
 		// between index and filesystem nothing changed -> mark index as good
 		return indexer.mod.db.ValidatePath(path)
 	}
@@ -189,7 +189,7 @@ func (indexer *Indexer) checkAndFix(ctx context.Context, path string) error {
 	}
 
 	// we calculated new objectID -> update database index
-	err = indexer.mod.db.IndexPath(path, objectID, stat.ModTime())
+	err = indexer.mod.db.IndexPath(path, objectID, stat.ModTime().UnixNano())
 	if err != nil {
 		return fmt.Errorf("db upsert: %w", err)
 	}
@@ -258,7 +258,7 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 
 		var toValidate, toInvalidate []string
 		for _, e := range batch {
-			if ex, ok := existing[e.path]; ok && ex.ModTime.Equal(e.modTime) {
+			if ex, ok := existing[e.path]; ok && ex.ModTime == e.modTime {
 				toValidate = append(toValidate, e.path)
 			} else {
 				toInvalidate = append(toInvalidate, e.path)
@@ -292,7 +292,7 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 				return err
 			}
 
-			return yield(fileEntry{path: path, modTime: info.ModTime()})
+			return yield(fileEntry{path: path, modTime: info.ModTime().UnixNano()})
 		})
 	})
 }

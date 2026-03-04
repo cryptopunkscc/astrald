@@ -53,7 +53,6 @@ func (db *DB) UniqueObjectIDs(pathPrefix string) (ids []*astral.ObjectID, err er
 func (db *DB) FindByPath(path string) (row *dbLocalFile, err error) {
 	err = db.
 		Where("path = ?", path).
-		Where("updated_at != 0").
 		Where("deleted_at IS NULL").
 		First(&row).
 		Error
@@ -151,14 +150,13 @@ func (db *DB) InvalidatePaths(paths []string) error {
 func (db *DB) IndexPath(
 	path string,
 	objectID *astral.ObjectID,
-	modTime time.Time,
+	modTime int64,
 ) error {
-	now := time.Now()
 	updated := &dbLocalFile{
 		Path:      path,
 		DataID:    objectID,
 		ModTime:   modTime,
-		UpdatedAt: now,
+		UpdatedAt: time.Now().UnixNano(),
 		DeletedAt: nil,
 	}
 
@@ -181,7 +179,7 @@ func (db *DB) ValidatePath(path string) error {
 		Where("path = ?", path).
 		Updates(map[string]interface{}{
 			"deleted_at": nil,
-			"updated_at": time.Now(),
+			"updated_at": time.Now().UnixNano(),
 		}).Error
 }
 
@@ -279,7 +277,7 @@ func (db *DB) ValidatePaths(paths []string) error {
 		Where("path IN ?", paths).
 		Updates(map[string]interface{}{
 			"deleted_at": nil,
-			"updated_at": time.Now(),
+			"updated_at": time.Now().UnixNano(),
 		}).Error
 }
 
