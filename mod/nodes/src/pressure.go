@@ -8,7 +8,7 @@ type StreamPressureDetector interface {
 	State() StreamPressureState
 }
 
-// StreamPressureState is a read-only snapshot of the detector at a given moment.
+// StreamPressureState gives the current state of the detector.
 type StreamPressureState struct {
 	Level float64       // current bucket fill after decay (bytes)
 	RTT   time.Duration // smoothed round-trip time (EMA)
@@ -62,7 +62,7 @@ type StreamPressureConfig struct {
 }
 
 // DefaultStreamPressureConfig is calibrated for transports that are clearly not
-// the best available option (e.g. Tor, KCP/UDP hole-punch). It triggers when
+// the best available option. It triggers when
 // the stream sustains notably more traffic than its baseline or when round-trip
 // latency climbs well above the transport norm.
 var DefaultStreamPressureConfig = StreamPressureConfig{
@@ -70,7 +70,7 @@ var DefaultStreamPressureConfig = StreamPressureConfig{
 	Cap:      500 * 1024, // ceiling at ~10 s of burst headroom above LeakRate
 	LevelRef: 200 * 1024, // 200 KB in bucket → level score of 1.0
 
-	RTTRef:   200 * time.Millisecond, // baseline RTT; above this raises the score
+	RTTRef:   300 * time.Millisecond, // baseline RTT; above this raises the score
 	RTTAlpha: 0.25,                   // slow smoothing; ignores brief RTT spikes
 
 	WLevel: 0.7, // throughput alone can trigger at ~1.43× LevelRef
@@ -124,6 +124,7 @@ func (p *streamPressureDetector) gate(s float64) {
 		p.onHigh()
 		return
 	}
+
 	if p.high && s <= p.cfg.Exit {
 		p.high = false
 	}
