@@ -15,6 +15,7 @@ import (
 const upgradeTimeout = 3 * time.Minute
 const upgradeCooldown = 5 * time.Minute
 const minSessionAge = 30 * time.Second
+const minSessionBytes = 1 * 1024 * 1024 // 1 MB
 
 func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 	connectivityGate := &sig.Switch{}

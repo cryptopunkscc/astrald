@@ -33,8 +33,9 @@ type session struct {
 	createdAt      time.Time
 	res            chan uint8
 
-	state  atomic.Int32 // connection state
-	stream *Stream      // stream the connection is attached to
+	state  atomic.Int32  // connection state
+	stream *Stream       // stream the connection is attached to
+	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
 	rcond *sync.Cond // sync for read functions
 	rsize int        // read buffer size
@@ -114,6 +115,7 @@ func (c *session) Write(p []byte) (n int, err error) {
 		c.wsize -= l
 		n = n + l
 		p = p[l:]
+		c.bytes.Add(uint64(l))
 	}
 }
 
@@ -127,6 +129,7 @@ func (c *session) pushRead(b []byte) error {
 
 	c.rbuf = append(c.rbuf, b)
 	c.rused += len(b)
+	c.bytes.Add(uint64(len(b)))
 
 	c.rcond.Broadcast()
 
@@ -201,7 +204,7 @@ func (s *session) IsOpen() bool {
 }
 
 func (s *session) CanMigrate() bool {
-	return s.IsOpen() && time.Since(s.createdAt) >= minSessionAge
+	return s.IsOpen() && (time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes)
 }
 
 func (c *session) Migrate(s *Stream) error {
