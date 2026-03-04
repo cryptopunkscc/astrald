@@ -7,6 +7,20 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
+func (client *Client) StartSessionMigration(ctx *astral.Context, sessionID, streamID astral.Nonce) error {
+	ch, err := client.queryCh(ctx, nodes.MethodMigrateSession, query.Args{
+		"session_id": sessionID,
+		"stream_id":  streamID,
+		"start":      astral.Bool(true),
+	})
+	if err != nil {
+		return err
+	}
+	defer ch.Close()
+
+	return ch.Switch(channel.ExpectAck, channel.PassErrors, channel.WithContext(ctx))
+}
+
 func (client *Client) MigrateSession(ctx *astral.Context, sessionID, streamID astral.Nonce, m nodes.SessionMigrator) error {
 	defer m.CancelMigration()
 
