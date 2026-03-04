@@ -1,19 +1,16 @@
 package nodes
 
-import "time"
+import (
+	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
+)
 
 type StreamPressureDetector interface {
 	OnBytes(n int, now time.Time)
 	OnRTT(rtt time.Duration, now time.Time)
-	State() StreamPressureState
-}
-
-// StreamPressureState gives the current state of the detector.
-type StreamPressureState struct {
-	Level float64       // current bucket fill after decay (bytes)
-	RTT   time.Duration // smoothed round-trip time (EMA)
-	Score float64       // combined weighted score (0..~3+)
-	High  bool          // true while score is above the Enter threshold
+	State() nodes.StreamPressureState
 }
 
 type StreamPressureConfig struct {
@@ -139,7 +136,7 @@ func (p *streamPressureDetector) OnBytes(n int, now time.Time) {
 	p.gate(p.score())
 }
 
-func (p *streamPressureDetector) State() StreamPressureState {
+func (p *streamPressureDetector) State() nodes.StreamPressureState {
 	dt := time.Now().Sub(p.lastUpdate).Seconds()
 	level := p.level - p.cfg.LeakRate*dt
 	if level < 0 {
@@ -147,11 +144,11 @@ func (p *streamPressureDetector) State() StreamPressureState {
 	}
 	levelNorm := min(level/p.cfg.LevelRef, 3)
 	rttNorm := min(p.rttEma/float64(p.cfg.RTTRef), 3)
-	return StreamPressureState{
-		Level: level,
-		RTT:   time.Duration(p.rttEma),
-		Score: p.cfg.WLevel*levelNorm + p.cfg.WRTT*rttNorm,
-		High:  p.high,
+	return nodes.StreamPressureState{
+		Level: astral.Float64(level),
+		RTT:   astral.Duration(p.rttEma),
+		Score: astral.Float64(p.cfg.WLevel*levelNorm + p.cfg.WRTT*rttNorm),
+		High:  astral.Bool(p.high),
 	}
 }
 

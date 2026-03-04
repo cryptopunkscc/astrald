@@ -8,6 +8,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -89,9 +90,9 @@ func (s *Stream) RemoteEndpoint() exonet.Endpoint {
 	return nil
 }
 
-func (s *Stream) Pressure() StreamPressureState {
+func (s *Stream) Pressure() nodes.StreamPressureState {
 	if s.pressure == nil {
-		return StreamPressureState{}
+		return nodes.StreamPressureState{}
 	}
 	return s.pressure.State()
 }

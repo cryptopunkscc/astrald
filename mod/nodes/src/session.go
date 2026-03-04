@@ -200,6 +200,10 @@ func (s *session) IsOpen() bool {
 	return s.state.Load() == stateOpen
 }
 
+func (s *session) CanMigrate() bool {
+	return s.IsOpen() && time.Since(s.createdAt) >= minSessionAge
+}
+
 func (c *session) Migrate(s *Stream) error {
 	c.wcond.L.Lock()
 	defer c.wcond.L.Unlock()

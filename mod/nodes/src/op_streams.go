@@ -33,6 +33,7 @@ func (mod *Module) OpStreams(ctx *astral.Context, q *ops.Query, args opStreamsAr
 			RemoteEndpoint: s.RemoteEndpoint(),
 			Outbound:       astral.Bool(s.outbound),
 			Network:        astral.String8(s.Network()),
+			Pressure:       s.Pressure(),
 		})
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))

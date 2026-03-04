@@ -19,6 +19,7 @@ type StreamInfo struct {
 	RemoteEndpoint exonet.Endpoint
 	Outbound       astral.Bool
 	Network        astral.String8
+	Pressure       StreamPressureState
 }
 
 var _ astral.Object = &StreamInfo{}
@@ -45,7 +46,15 @@ func (s StreamInfo) MarshalText() (text []byte, err error) {
 		d = ">"
 	}
 
-	_, err = fmt.Fprintf(b, "%v %v %v %v", s.ID, d, s.RemoteIdentity, s.RemoteEndpoint)
+	pressure := ""
+	if s.Pressure.Score > 0 {
+		pressure = fmt.Sprintf(" pressure=%.2f", s.Pressure.Score)
+		if s.Pressure.High {
+			pressure += " [HIGH]"
+		}
+	}
+
+	_, err = fmt.Fprintf(b, "%v %v %v %v%v", s.ID, d, s.RemoteIdentity, s.RemoteEndpoint, pressure)
 
 	return b.Bytes(), err
 }
