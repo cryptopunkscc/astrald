@@ -210,6 +210,7 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 		return
 	}
 
+	s.throughput.Add(uint64(len(f.Payload)))
 	if s.pressure != nil {
 		s.pressure.OnBytes(len(f.Payload), time.Now())
 	}

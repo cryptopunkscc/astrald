@@ -8,7 +8,6 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -20,6 +19,7 @@ type Stream struct {
 	conn        astral.Conn
 	pings       sig.Map[astral.Nonce, *Ping]
 	checks      atomic.Int32
+	throughput  atomic.Uint64
 	outbound    bool
 	pingTimeout time.Duration
 	wakeCh      chan struct{}
@@ -90,15 +90,17 @@ func (s *Stream) RemoteEndpoint() exonet.Endpoint {
 	return nil
 }
 
-func (s *Stream) Pressure() nodes.StreamPressureState {
-	if s.pressure == nil {
-		return nodes.StreamPressureState{}
-	}
-	return s.pressure.State()
+func (s *Stream) PressureHigh() bool {
+	return s.pressure != nil && s.pressure.IsHigh()
+}
+
+func (s *Stream) Throughput() uint64 {
+	return s.throughput.Load()
 }
 
 func (s *Stream) Write(frame frames.Frame) (err error) {
 	if f, ok := frame.(*frames.Data); ok {
+		s.throughput.Add(uint64(len(f.Payload)))
 		if s.pressure != nil {
 			s.pressure.OnBytes(len(f.Payload), time.Now())
 		}

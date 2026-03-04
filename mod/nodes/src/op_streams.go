@@ -26,14 +26,15 @@ func (mod *Module) OpStreams(ctx *astral.Context, q *ops.Query, args opStreamsAr
 
 	for _, s := range streams {
 		err = ch.Send(&nodes.StreamInfo{
-			ID:             s.id,
-			LocalIdentity:  s.LocalIdentity(),
-			RemoteIdentity: s.RemoteIdentity(),
-			LocalEndpoint:  s.LocalEndpoint(),
-			RemoteEndpoint: s.RemoteEndpoint(),
-			Outbound:       astral.Bool(s.outbound),
-			Network:        astral.String8(s.Network()),
-			Pressure:       s.Pressure(),
+			ID:              s.id,
+			LocalIdentity:   s.LocalIdentity(),
+			RemoteIdentity:  s.RemoteIdentity(),
+			LocalEndpoint:   s.LocalEndpoint(),
+			RemoteEndpoint:  s.RemoteEndpoint(),
+			Outbound:        astral.Bool(s.outbound),
+			Network:         astral.String8(s.Network()),
+			HighPressure:    astral.Bool(s.PressureHigh()),
+			BytesThroughput: astral.Uint64(s.Throughput()),
 		})
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))

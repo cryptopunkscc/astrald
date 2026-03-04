@@ -12,14 +12,15 @@ import (
 )
 
 type StreamInfo struct {
-	ID             astral.Nonce
-	LocalIdentity  *astral.Identity
-	RemoteIdentity *astral.Identity
-	LocalEndpoint  exonet.Endpoint
-	RemoteEndpoint exonet.Endpoint
-	Outbound       astral.Bool
-	Network        astral.String8
-	Pressure       StreamPressureState
+	ID              astral.Nonce
+	LocalIdentity   *astral.Identity
+	RemoteIdentity  *astral.Identity
+	LocalEndpoint   exonet.Endpoint
+	RemoteEndpoint  exonet.Endpoint
+	Outbound        astral.Bool
+	Network         astral.String8
+	HighPressure    astral.Bool
+	BytesThroughput astral.Uint64
 }
 
 var _ astral.Object = &StreamInfo{}
@@ -46,15 +47,7 @@ func (s StreamInfo) MarshalText() (text []byte, err error) {
 		d = ">"
 	}
 
-	pressure := ""
-	if s.Pressure.Score > 0 {
-		pressure = fmt.Sprintf(" pressure=%.2f", s.Pressure.Score)
-		if s.Pressure.High {
-			pressure += " [HIGH]"
-		}
-	}
-
-	_, err = fmt.Fprintf(b, "%v %v %v %v%v", s.ID, d, s.RemoteIdentity, s.RemoteEndpoint, pressure)
+	_, err = fmt.Fprintf(b, "%v %v %v %v throughput=%v high=%v", s.ID, d, s.RemoteIdentity, s.RemoteEndpoint, s.BytesThroughput, bool(s.HighPressure))
 
 	return b.Bytes(), err
 }
