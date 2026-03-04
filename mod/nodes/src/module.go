@@ -163,3 +163,7 @@ func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
 	}
 	return nil
 }
+
+func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
+	mod.log.Infov(1, "stream pressure: %v", e)
+}

@@ -122,14 +122,6 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		return fmt.Errorf("establish link: %w", err)
 	}
 
-	// kcp/udp is preferable to tor but still upgradeable to tcp; monitor for pressure
-	stream.pressure = NewStreamPressureDetector(time.Now(), DefaultStreamPressureConfig, func() {
-		s.mod.Events.Emit(&nodes.StreamPressureEvent{
-			RemoteIdentity: stream.RemoteIdentity(),
-			StreamID:       stream.id,
-		})
-	})
-
 	go func() {
 		<-stream.Done()
 		cleanup()
