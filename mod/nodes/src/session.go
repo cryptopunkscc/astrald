@@ -43,11 +43,12 @@ type session struct {
 	rused int        // used read buffer
 	rbuf  [][]byte   // read buffer
 
-	wcond            *sync.Cond // sync for write functions
-	wsize            int        // remote buffer left
-	migratingTo      *Stream
-	migratedCh       chan struct{} // closed when migration completes or is cancelled
-	migrateFrameSent atomic.Bool
+	wcond                  *sync.Cond // sync for write functions
+	wsize                  int        // remote buffer left
+	migratingTo            *Stream
+	migratedCh             chan struct{} // closed when migration completes or is cancelled
+	migrateFrameSent       atomic.Bool
+	migrateFrameReceivedCh chan struct{} // closed when the remote's Migrate frame arrives (responder side)
 }
 
 func (c *session) Identity() *astral.Identity {
@@ -233,6 +234,7 @@ func (c *session) Migrate(s *Stream) error {
 
 	c.migratingTo = s
 	c.migratedCh = make(chan struct{})
+	c.migrateFrameReceivedCh = make(chan struct{})
 	c.migrateFrameSent.Store(false)
 
 	return nil
@@ -292,6 +294,36 @@ func (c *session) CancelMigration() {
 	}
 
 	c.swapState(stateMigrating, stateOpen)
+}
+
+// signalMigrateFrameReceived closes migrateFrameReceivedCh to unblock WaitMigrateFrameReceived.
+func (c *session) signalMigrateFrameReceived() {
+	c.wcond.L.Lock()
+	ch := c.migrateFrameReceivedCh
+	c.migrateFrameReceivedCh = nil
+	c.wcond.L.Unlock()
+
+	if ch != nil {
+		close(ch)
+	}
+}
+
+// WaitMigrateFrameReceived blocks until the remote's Migrate frame has been received (responder side).
+func (c *session) WaitMigrateFrameReceived(ctx context.Context) error {
+	c.wcond.L.Lock()
+	ch := c.migrateFrameReceivedCh
+	c.wcond.L.Unlock()
+
+	if ch == nil {
+		return errors.New("not migrating")
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-ch:
+		return nil
+	}
 }
 
 // WaitOpen blocks until the migration completes or the context is cancelled.

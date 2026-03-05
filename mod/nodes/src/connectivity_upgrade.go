@@ -27,8 +27,6 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 		mod.log.Log("connectivity upgrade triggered for %v (stream %v)", e.RemoteIdentity, e.StreamID)
 
 		var targetStream *Stream
-
-		// prefer an existing stream over establishing a new one
 		alternatives := mod.peers.streams.Select(func(s *Stream) bool {
 			return s.RemoteIdentity().IsEqual(e.RemoteIdentity) && s.id != e.StreamID
 		})
@@ -40,6 +38,7 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 			if a.pressure == nil {
 				return -1
 			}
+
 			return 1
 		})
 

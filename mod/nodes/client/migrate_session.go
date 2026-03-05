@@ -54,5 +54,11 @@ func (client *Client) MigrateSession(ctx *astral.Context, sessionID, streamID as
 		return err
 	}
 
+	// Notify the responder that all old-stream data has been processed on our side.
+	// The responder will only complete migration (unblock Write on new stream) after this.
+	if err := ch.Send(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeCompleted, Nonce: sessionID}); err != nil {
+		return err
+	}
+
 	return ch.Switch(channel.ExpectAck, channel.PassErrors, channel.WithContext(ctx))
 }

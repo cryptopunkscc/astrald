@@ -272,13 +272,18 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 	}
 
 	if !conn.migrateFrameSent.Load() {
+		// Responder path: write Migrate frame back, then signal OpMigrateSession.
+		// CompleteMigration is deferred until the initiator confirms it drained the old stream.
 		if err := conn.writeMigrateFrame(); err != nil {
 			mod.log.Errorv(1, "failed to write migrate frame: %v", err)
 			conn.CancelMigration()
 			return
 		}
+		conn.signalMigrateFrameReceived()
+		return
 	}
 
+	// Initiator path: Migrate frame from responder arrived, all old-stream data already processed.
 	if err := conn.CompleteMigration(); err != nil {
 		mod.log.Errorv(1, "failed to complete migration: %v", err)
 	}
