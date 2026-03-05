@@ -203,7 +203,7 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 	}
 
 	switch session.state.Load() {
-	case stateOpen:
+	case stateOpen, stateMigrating:
 	default:
 		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.state.Load())
 		s.Write(&frames.Reset{Nonce: f.Nonce})
@@ -239,6 +239,7 @@ func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
 		return
 	}
 
+	conn.CancelMigration()
 	conn.swapState(stateOpen, stateClosed)
 }
 
@@ -331,9 +332,10 @@ func (mod *Peers) addStream(
 		// remove the stream and its connections
 		mod.streams.Remove(s)
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
-			return v.stream == s
+			return v.isOnStream(s)
 		}) {
-			c.Close()
+			c.CancelMigration()
+			c.swapState(stateOpen, stateClosed)
 		}
 
 		streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {
