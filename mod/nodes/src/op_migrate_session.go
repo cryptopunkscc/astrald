@@ -80,8 +80,25 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMi
 		return err
 	}
 
-	if err := migrator.WaitOpen(ctx); err != nil {
-		mod.log.Error("migrate session %v failed: %v", args.SessionID, err)
+	// Wait for the initiator's Migrate frame to arrive on the old stream.
+	if err := migrator.WaitMigrateFrameReceived(ctx); err != nil {
+		mod.log.Error("migrate session %v failed waiting for migrate frame: %v", args.SessionID, err)
+		return ch.Send(astral.Err(err))
+	}
+
+	// Wait for the initiator to confirm it has drained all old-stream data.
+	// Only then is it safe to complete migration (unblock Write on new stream).
+	if err := ch.Switch(
+		nodes.ExpectMigrateSignal(args.SessionID, nodes.MigrateSignalTypeCompleted),
+		channel.PassErrors,
+		channel.WithContext(ctx),
+	); err != nil {
+		mod.log.Error("migrate session %v failed waiting for completed signal: %v", args.SessionID, err)
+		return ch.Send(astral.Err(err))
+	}
+
+	if err := migrator.CompleteMigration(); err != nil {
+		mod.log.Error("migrate session %v failed to complete: %v", args.SessionID, err)
 		return ch.Send(astral.Err(err))
 	}
 

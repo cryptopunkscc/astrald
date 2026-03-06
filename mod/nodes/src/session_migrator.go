@@ -19,6 +19,10 @@ func (m *sessionMigrator) Migrate() error                     { return m.session
 func (m *sessionMigrator) WriteMigrateFrame() error           { return m.session.writeMigrateFrame() }
 func (m *sessionMigrator) CancelMigration()                   { m.session.CancelMigration() }
 func (m *sessionMigrator) WaitOpen(ctx context.Context) error { return m.session.WaitOpen(ctx) }
+func (m *sessionMigrator) WaitMigrateFrameReceived(ctx context.Context) error {
+	return m.session.WaitMigrateFrameReceived(ctx)
+}
+func (m *sessionMigrator) CompleteMigration() error { return m.session.CompleteMigration() }
 
 func (mod *Module) createSessionMigrator(sess *session, streamID astral.Nonce) (nodes.SessionMigrator, error) {
 	targetStream := mod.findStreamByID(streamID)

@@ -10,8 +10,10 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
 	kcpclient "github.com/cryptopunkscc/astrald/mod/kcp/client"
+	"github.com/cryptopunkscc/astrald/mod/nat"
 	natclient "github.com/cryptopunkscc/astrald/mod/nat/client"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	servicescli "github.com/cryptopunkscc/astrald/mod/services/client"
 )
 
 type NatLinkStrategy struct {
@@ -45,9 +47,31 @@ func (s *NatLinkStrategy) Signal(ctx *astral.Context) {
 	}()
 }
 
+func (s *NatLinkStrategy) peerSupportsNAT(ctx *astral.Context) bool {
+	s.log.Logv(2, "%v checking NAT support", s.target)
+
+	ch, err := servicescli.New(s.target, astrald.Default()).Discover(ctx, false)
+	if err != nil {
+		s.log.Logv(2, "%v NAT support check failed: %v", s.target, err)
+		return false
+	}
+	for update := range ch {
+		if update != nil && string(update.Name) == nat.ModuleName && update.Available {
+			s.log.Logv(2, "%v supports NAT traversal", s.target)
+			return true
+		}
+	}
+	s.log.Logv(2, "%v does not support NAT traversal", s.target)
+	return false
+}
+
 func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	selfID := s.mod.node.Identity()
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
+	if !s.peerSupportsNAT(ctx) {
+		return fmt.Errorf("target does not support NAT traversal")
+	}
 
 	s.log.Log("%v starting traversal", s.target)
 

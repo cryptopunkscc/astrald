@@ -8,4 +8,6 @@ type SessionMigrator interface {
 	WriteMigrateFrame() error
 	CancelMigration()
 	WaitOpen(ctx context.Context) error
+	WaitMigrateFrameReceived(ctx context.Context) error
+	CompleteMigration() error
 }

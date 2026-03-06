@@ -12,13 +12,15 @@ import (
 )
 
 type StreamInfo struct {
-	ID             astral.Nonce
-	LocalIdentity  *astral.Identity
-	RemoteIdentity *astral.Identity
-	LocalEndpoint  exonet.Endpoint
-	RemoteEndpoint exonet.Endpoint
-	Outbound       astral.Bool
-	Network        astral.String8
+	ID              astral.Nonce
+	LocalIdentity   *astral.Identity
+	RemoteIdentity  *astral.Identity
+	LocalEndpoint   exonet.Endpoint
+	RemoteEndpoint  exonet.Endpoint
+	Outbound        astral.Bool
+	Network         astral.String8
+	HighPressure    astral.Bool
+	BytesThroughput astral.Uint64
 }
 
 var _ astral.Object = &StreamInfo{}
@@ -45,7 +47,7 @@ func (s StreamInfo) MarshalText() (text []byte, err error) {
 		d = ">"
 	}
 
-	_, err = fmt.Fprintf(b, "%v %v %v %v", s.ID, d, s.RemoteIdentity, s.RemoteEndpoint)
+	_, err = fmt.Fprintf(b, "%v %v %v %v throughput=%v high=%v", s.ID, d, s.RemoteIdentity, s.RemoteEndpoint, s.BytesThroughput, bool(s.HighPressure))
 
 	return b.Bytes(), err
 }

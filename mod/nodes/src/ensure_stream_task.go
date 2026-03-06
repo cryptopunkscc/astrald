@@ -23,14 +23,14 @@ func (m *Module) NewEnsureStreamTask(
 	target *astral.Identity,
 	strategies []string,
 	networks []string,
-	create bool,
+	forceNew bool,
 ) nodes.EnsureStreamTask {
 	return &EnsureStreamTask{
 		mod:        m,
 		Target:     target,
 		Strategies: strategies,
 		Networks:   networks,
-		Create:     create,
+		Create:     forceNew,
 	}
 }
 

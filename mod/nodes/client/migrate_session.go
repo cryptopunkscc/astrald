@@ -7,6 +7,20 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
+func (client *Client) StartSessionMigration(ctx *astral.Context, sessionID, streamID astral.Nonce) error {
+	ch, err := client.queryCh(ctx, nodes.MethodMigrateSession, query.Args{
+		"session_id": sessionID,
+		"stream_id":  streamID,
+		"start":      astral.Bool(true),
+	})
+	if err != nil {
+		return err
+	}
+	defer ch.Close()
+
+	return ch.Switch(channel.ExpectAck, channel.PassErrors, channel.WithContext(ctx))
+}
+
 func (client *Client) MigrateSession(ctx *astral.Context, sessionID, streamID astral.Nonce, m nodes.SessionMigrator) error {
 	defer m.CancelMigration()
 
@@ -37,6 +51,12 @@ func (client *Client) MigrateSession(ctx *astral.Context, sessionID, streamID as
 	}
 
 	if err := m.WaitOpen(ctx); err != nil {
+		return err
+	}
+
+	// Notify the responder that all old-stream data has been processed on our side.
+	// The responder will only complete migration (unblock Write on new stream) after this.
+	if err := ch.Send(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeCompleted, Nonce: sessionID}); err != nil {
 		return err
 	}
 

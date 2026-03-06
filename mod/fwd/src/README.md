@@ -4,7 +4,7 @@
 
 ## Configuration
 
-The config file for the module is `mod_fwd.yaml`.
+The config file for the module is `fwd.yaml`.
 
 ### Basics
 

@@ -12,7 +12,7 @@ local TCP ports.
 In this example we will export SSH and Bitcoin services from node `demo` and
 access it from a node `tester`.
 
-First, on node `demo`, create a `mod_fwd.yaml` file in your
+First, on node `demo`, create a `fwd.yaml` file in your
 [config directory](quickstart.md#config-directory) with the following content
 and restart the node.
 
@@ -37,7 +37,7 @@ SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.4
 ```
 
 Now we can move on to importing these services on the other node.
-On node `tester`, create a `mod_fwd.yaml` file with the following content.
+On node `tester`, create a `fwd.yaml` file with the following content.
 Remember to restart your node afterwards.
 
 ```yaml

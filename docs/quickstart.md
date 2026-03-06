@@ -48,7 +48,7 @@ On Mac, `astrald` will use `~/Library/Application Support/astrald` directory for
 
 In order to interact with the node you need to have an identity as a user.
 Since you  don't have one yet, you can use your node's identity to set
-things up. Create a config file called `mod_apphost.yaml` in the config
+things up. Create a config file called `apphost.yaml` in the config
 directory with the following content:
 
 ```yaml

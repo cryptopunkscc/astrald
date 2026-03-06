@@ -19,9 +19,11 @@ type Stream struct {
 	conn        astral.Conn
 	pings       sig.Map[astral.Nonce, *Ping]
 	checks      atomic.Int32
+	throughput  atomic.Uint64
 	outbound    bool
 	pingTimeout time.Duration
 	wakeCh      chan struct{}
+	pressure    StreamPressureDetector
 }
 
 type Ping struct {
@@ -88,7 +90,21 @@ func (s *Stream) RemoteEndpoint() exonet.Endpoint {
 	return nil
 }
 
+func (s *Stream) PressureHigh() bool {
+	return s.pressure != nil && s.pressure.IsHigh()
+}
+
+func (s *Stream) Throughput() uint64 {
+	return s.throughput.Load()
+}
+
 func (s *Stream) Write(frame frames.Frame) (err error) {
+	if f, ok := frame.(*frames.Data); ok {
+		s.throughput.Add(uint64(len(f.Payload)))
+		if s.pressure != nil {
+			s.pressure.OnBytes(len(f.Payload), time.Now())
+		}
+	}
 	if _, ok := frame.(*frames.Ping); !ok {
 		s.check()
 	}
@@ -132,6 +148,9 @@ func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
 	}
 	d := time.Since(p.sentAt)
 	close(p.pong)
+	if s.pressure != nil {
+		s.pressure.OnRTT(d, time.Now())
+	}
 	return d, nil
 }
 

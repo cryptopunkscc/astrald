@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
@@ -202,11 +203,16 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 	}
 
 	switch session.state.Load() {
-	case stateOpen:
+	case stateOpen, stateMigrating:
 	default:
 		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.state.Load())
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
+	}
+
+	s.throughput.Add(uint64(len(f.Payload)))
+	if s.pressure != nil {
+		s.pressure.OnBytes(len(f.Payload), time.Now())
 	}
 
 	err := session.pushRead(f.Payload)
@@ -233,6 +239,7 @@ func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
 		return
 	}
 
+	conn.CancelMigration()
 	conn.swapState(stateOpen, stateClosed)
 }
 
@@ -265,13 +272,18 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 	}
 
 	if !conn.migrateFrameSent.Load() {
+		// Responder path: write Migrate frame back, then signal OpMigrateSession.
+		// CompleteMigration is deferred until the initiator confirms it drained the old stream.
 		if err := conn.writeMigrateFrame(); err != nil {
 			mod.log.Errorv(1, "failed to write migrate frame: %v", err)
 			conn.CancelMigration()
 			return
 		}
+		conn.signalMigrateFrameReceived()
+		return
 	}
 
+	// Initiator path: Migrate frame from responder arrived, all old-stream data already processed.
 	if err := conn.CompleteMigration(); err != nil {
 		mod.log.Errorv(1, "failed to complete migration: %v", err)
 	}
@@ -325,9 +337,10 @@ func (mod *Peers) addStream(
 		// remove the stream and its connections
 		mod.streams.Remove(s)
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
-			return v.stream == s
+			return v.isOnStream(s)
 		}) {
-			c.Close()
+			c.CancelMigration()
+			c.swapState(stateOpen, stateClosed)
 		}
 
 		streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {

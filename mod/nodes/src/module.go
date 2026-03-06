@@ -47,6 +47,7 @@ type Module struct {
 	linkPool *LinkPool
 
 	strategyFactories sig.Map[string, nodes.StrategyFactory]
+	upgraders         sig.Map[string, *sig.Switch]
 
 	in chan *Frame
 

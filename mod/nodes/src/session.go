@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 )
 
@@ -33,19 +34,21 @@ type session struct {
 	createdAt      time.Time
 	res            chan uint8
 
-	state  atomic.Int32 // connection state
-	stream *Stream      // stream the connection is attached to
+	state  atomic.Int32  // connection state
+	stream *Stream       // stream the connection is attached to
+	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
 	rcond *sync.Cond // sync for read functions
 	rsize int        // read buffer size
 	rused int        // used read buffer
 	rbuf  [][]byte   // read buffer
 
-	wcond            *sync.Cond // sync for write functions
-	wsize            int        // remote buffer left
-	migratingTo      *Stream
-	migratedCh       chan struct{} // closed when migration completes or is cancelled
-	migrateFrameSent atomic.Bool
+	wcond                  *sync.Cond // sync for write functions
+	wsize                  int        // remote buffer left
+	migratingTo            *Stream
+	migratedCh             chan struct{} // closed when migration completes or is cancelled
+	migrateFrameSent       atomic.Bool
+	migrateFrameReceivedCh chan struct{} // closed when the remote's Migrate frame arrives (responder side)
 }
 
 func (c *session) Identity() *astral.Identity {
@@ -100,9 +103,10 @@ func (c *session) Write(p []byte) (n int, err error) {
 		}
 
 		var l = min(c.wsize, len(p), maxPayloadSize)
+		stream := c.stream
 
 		c.wcond.L.Unlock()
-		err = c.stream.Write(&frames.Data{
+		err = stream.Write(&frames.Data{
 			Nonce:   c.Nonce,
 			Payload: p[0:l],
 		})
@@ -114,6 +118,7 @@ func (c *session) Write(p []byte) (n int, err error) {
 		c.wsize -= l
 		n = n + l
 		p = p[l:]
+		c.bytes.Add(uint64(l))
 	}
 }
 
@@ -127,6 +132,7 @@ func (c *session) pushRead(b []byte) error {
 
 	c.rbuf = append(c.rbuf, b)
 	c.rused += len(b)
+	c.bytes.Add(uint64(len(b)))
 
 	c.rcond.Broadcast()
 
@@ -166,8 +172,11 @@ func (c *session) Read(p []byte) (n int, err error) {
 			c.rbuf = c.rbuf[1:]
 		}
 
-		if c.state.Load() == stateOpen {
-			c.stream.Write(&frames.Read{
+		if s := c.state.Load(); s == stateOpen || s == stateMigrating {
+			c.wcond.L.Lock()
+			stream := c.stream
+			c.wcond.L.Unlock()
+			stream.Write(&frames.Read{
 				Nonce: c.Nonce,
 				Len:   uint32(n),
 			})
@@ -178,8 +187,9 @@ func (c *session) Read(p []byte) (n int, err error) {
 }
 
 func (c *session) Close() error {
+	c.CancelMigration()
 	if !c.swapState(stateOpen, stateClosed) {
-		return errors.New("invalid state")
+		return nodes.ErrInvalidSessionState
 	}
 
 	c.stream.Write(&frames.Reset{Nonce: c.Nonce})
@@ -200,13 +210,19 @@ func (s *session) IsOpen() bool {
 	return s.state.Load() == stateOpen
 }
 
+func (c *session) isOnStream(s *Stream) bool {
+	c.wcond.L.Lock()
+	defer c.wcond.L.Unlock()
+	return c.stream == s
+}
+
+func (s *session) CanMigrate() bool {
+	return s.IsOpen() && (time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes)
+}
+
 func (c *session) Migrate(s *Stream) error {
 	c.wcond.L.Lock()
 	defer c.wcond.L.Unlock()
-
-	if c.state.Load() != stateOpen {
-		return fmt.Errorf(`cannot migrate non-open session`)
-	}
 
 	if !c.stream.RemoteIdentity().IsEqual(s.RemoteIdentity()) {
 		return fmt.Errorf("identity mismatch")
@@ -218,6 +234,7 @@ func (c *session) Migrate(s *Stream) error {
 
 	c.migratingTo = s
 	c.migratedCh = make(chan struct{})
+	c.migrateFrameReceivedCh = make(chan struct{})
 	c.migrateFrameSent.Store(false)
 
 	return nil
@@ -229,8 +246,11 @@ func (c *session) writeMigrateFrame() error {
 		return fmt.Errorf("no current stream")
 	}
 
+	if err := c.stream.Write(&frames.Migrate{Nonce: c.Nonce}); err != nil {
+		return err
+	}
 	c.migrateFrameSent.Store(true)
-	return c.stream.Write(&frames.Migrate{Nonce: c.Nonce})
+	return nil
 }
 
 // CompleteMigration finishes the migration by switching to the target stream and reopening the session.
@@ -246,9 +266,7 @@ func (c *session) CompleteMigration() error {
 	c.migratingTo = nil
 
 	if !c.swapState(stateMigrating, stateOpen) {
-		if c.state.Load() != stateOpen {
-			return errors.New("invalid migration state")
-		}
+		return nodes.ErrInvalidMigrationState
 	}
 
 	if c.migratedCh != nil {
@@ -269,11 +287,42 @@ func (c *session) CancelMigration() {
 
 	c.migratingTo = nil
 	c.migrateFrameSent.Store(false)
-	c.swapState(stateMigrating, stateOpen)
 
 	if c.migratedCh != nil {
 		close(c.migratedCh)
 		c.migratedCh = nil
+	}
+
+	c.swapState(stateMigrating, stateOpen)
+}
+
+// signalMigrateFrameReceived closes migrateFrameReceivedCh to unblock WaitMigrateFrameReceived.
+func (c *session) signalMigrateFrameReceived() {
+	c.wcond.L.Lock()
+	ch := c.migrateFrameReceivedCh
+	c.migrateFrameReceivedCh = nil
+	c.wcond.L.Unlock()
+
+	if ch != nil {
+		close(ch)
+	}
+}
+
+// WaitMigrateFrameReceived blocks until the remote's Migrate frame has been received (responder side).
+func (c *session) WaitMigrateFrameReceived(ctx context.Context) error {
+	c.wcond.L.Lock()
+	ch := c.migrateFrameReceivedCh
+	c.wcond.L.Unlock()
+
+	if ch == nil {
+		return errors.New("not migrating")
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-ch:
+		return nil
 	}
 }
 
