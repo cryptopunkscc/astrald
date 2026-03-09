@@ -36,6 +36,14 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Scheduler.Ready()
 
+	activeContractFollow := mod.config.ActiveContract.Follow(ctx)
+	mod.setActiveContract(<-activeContractFollow)
+	go func() {
+		for contract := range activeContractFollow {
+			mod.setActiveContract(contract)
+		}
+	}()
+
 	mod.runSiblingLinker()
 	<-ctx.Done()
 
