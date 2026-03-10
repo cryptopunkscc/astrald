@@ -14,12 +14,10 @@ type Loader struct{}
 
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	mod := &Module{
-		node:        node,
-		log:         log,
-		PathRouter:  routers.NewPathRouter(node.Identity(), false),
-		config:      defaultConfig,
-		dialer:      NewDialer(node),
-		subscribers: make(map[string]*Subscriber),
+		node:       node,
+		log:        log,
+		PathRouter: routers.NewPathRouter(node.Identity(), false),
+		config:     defaultConfig,
 	}
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)
