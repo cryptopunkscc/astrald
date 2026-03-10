@@ -40,16 +40,6 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 		return err
 	}
 
-	activeContractFollow := mod.config.ActiveContract.Follow(ctx)
-
-	mod.setActiveContract(<-activeContractFollow)
-
-	go func() {
-		for contract := range activeContractFollow {
-			mod.setActiveContract(contract)
-		}
-	}()
-
 	// add localswarm filter
 	mod.Dir.SetFilter("localswarm", func(identity *astral.Identity) bool {
 		if identity.IsZero() {
