@@ -35,6 +35,7 @@ func (mod *Module) startServers(ctx *astral.Context) {
 				continue
 			}
 
+			mod.log.Logv(1, "start listening on %v", tcpEndpoint)
 			if err := mod.TCP.CreateEphemeralListener(ctx, tcpEndpoint.Port, mod.acceptSocketConn); err != nil {
 				mod.log.Error("create ephemeral listener on %v: %v", addr, err)
 				continue
@@ -88,6 +89,7 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 	if binder, ok := mod.binderByIdentity(client.Target); ok {
 		binder.markPiped(binderConn, connectorConn)
 	}
+
 	client.markPiped(connectorConn, binderConn)
 
 	mod.log.Infov(1, "connecting %v to %v", client.Identity, client.Target)
