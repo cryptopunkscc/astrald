@@ -7,11 +7,15 @@ import (
 
 const ModuleName = "tcp"
 
+const (
+	MethodNewEphemeralListener   = "tcp.new_ephemeral_listener"
+	MethodCloseEphemeralListener = "tcp.close_ephemeral_listener"
+)
+
 type Module interface {
 	exonet.Dialer
 	exonet.Unpacker
 	exonet.Parser
 	ListenPort() int
-
-	NewServer(port astral.Uint16, onAccept exonet.EphemeralHandler) exonet.EphemeralListener
+	CreateEphemeralListener(ctx *astral.Context, port astral.Uint16, handler exonet.EphemeralHandler) error
 }

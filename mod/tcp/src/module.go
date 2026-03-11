@@ -28,10 +28,10 @@ type Module struct {
 	configEndpoints []exonet.Endpoint
 	ops             ops.Set
 
-	mu                 sync.Mutex
-	ephemeralListeners sig.Map[astral.Uint16, exonet.EphemeralListener]
+	mu sync.Mutex
 
-	server sig.Switch
+	server             sig.Switch
+	ephemeralListeners sig.Map[astral.Uint16, exonet.EphemeralListener]
 }
 
 type Settings struct {
@@ -111,8 +111,4 @@ func (mod *Module) syncConfig(ctx *astral.Context) error {
 	}
 
 	return nil
-}
-
-func (mod *Module) NewServer(port astral.Uint16, onAccept exonet.EphemeralHandler) exonet.EphemeralListener {
-	return NewServer(mod, port, onAccept)
 }

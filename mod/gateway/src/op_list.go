@@ -15,11 +15,11 @@ func (mod *Module) OpList(ctx *astral.Context, q *ops.Query, args opListArgs) er
 	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	for _, binder := range mod.binders.Clone() {
-		if binder.Visibility != gateway.VisibilityPublic {
+	for _, client := range mod.binders.Values() {
+		if client.Visibility != gateway.VisibilityPublic {
 			continue
 		}
-		if err := ch.Send(binder.Identity); err != nil {
+		if err := ch.Send(client.Identity); err != nil {
 			return err
 		}
 	}
