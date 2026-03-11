@@ -33,8 +33,8 @@ type Module struct {
 	log    *log.Logger
 	ctx    *astral.Context
 
-	binders    sig.Set[*Binder]
-	connecting sig.Set[*Connecting]
+	binders    sig.Map[string, *client]
+	connecting sig.Set[*client]
 
 	listenEndpoints sig.Map[string, exonet.Endpoint]
 }
@@ -46,19 +46,19 @@ func (mod *Module) GetOpSet() *ops.Set {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
-	mod.startServers(mod.ctx)
-
-	for _, gatewayStr := range mod.config.Gateways {
-		identity, err := mod.Dir.ResolveIdentity(gatewayStr)
-		if err != nil {
-			mod.log.Error("resolve gateway %v: %v", gatewayStr, err)
-			continue
-		}
-
-		go mod.bindToGateway(mod.ctx, identity, mod.config.Visibility)
+	if mod.config.Gateway.Enabled {
+		mod.startServers(mod.ctx)
 	}
 
 	<-ctx.Done()
+
+	for _, c := range mod.binders.Values() {
+		c.Close()
+	}
+	for _, c := range mod.connecting.Clone() {
+		c.Close()
+	}
+
 	return nil
 }
 
@@ -74,8 +74,14 @@ func (mod *Module) getGatewayEndpoint(ctx *astral.Context, network string) (endp
 		// fixme: return public error (no gateway endpoint available)
 		return
 	}
+
 	return endpoint, nil
 }
+
+func (mod *Module) canGateway(identity *astral.Identity) bool {
+	return mod.config.Gateway.Enabled
+}
+
 func (mod *Module) String() string {
 	return ModuleName
 }

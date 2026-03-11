@@ -11,7 +11,7 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 		return
 	}
 
-	// 	mod.Exonet.SetDialer("gw", mod.dialer)
+	mod.Exonet.SetDialer("gw", mod)
 	mod.Exonet.SetUnpacker("gw", mod)
 	mod.Exonet.SetParser("gw", mod)
 	mod.ops.AddStructPrefix(mod, "Op")
