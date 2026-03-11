@@ -22,7 +22,7 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 
 	client := gatewayClient.New(gwEndpoint.GatewayID, astrald.Default())
 
-	socket, err := client.Connect(ctx, gwEndpoint.TargetID)
+	socket, err := client.Connect(ctx.IncludeZone(astral.ZoneNetwork), gwEndpoint.TargetID)
 	if err != nil {
 		return nil, err
 	}
