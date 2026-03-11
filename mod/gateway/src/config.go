@@ -1,6 +1,9 @@
 package gateway
 
-import "github.com/cryptopunkscc/astrald/mod/gateway"
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
+)
 
 const defaultGateway = "node1f3AwbE1gJAgAqEx98FMipokcaE9ZapIphzDUkAceE7Pmw8ghmFV19QKCATeC7uyoLszQA"
 
@@ -10,7 +13,9 @@ type GatewayConfig struct {
 }
 
 type Config struct {
-	Gateway    GatewayConfig      `yaml:"gateway"`
+	Gateway  GatewayConfig      `yaml:"gateway"`
+	Gateways []*astral.Identity `yaml:"gateways"`
+
 	Visibility gateway.Visibility `yaml:"visibility"`
 	InitConns  int32              `yaml:"init_conns"`
 	MaxConns   int32              `yaml:"max_conns"`

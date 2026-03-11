@@ -60,6 +60,10 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		c.Close()
 	}
 
+	for _, gw := range mod.config.Gateways {
+		mod.bindToGateway(ctx, gw, mod.config.Visibility)
+	}
+
 	return nil
 }
 

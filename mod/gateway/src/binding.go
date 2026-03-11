@@ -10,16 +10,17 @@ import (
 	gatewayClient "github.com/cryptopunkscc/astrald/mod/gateway/client"
 )
 
-func (mod *Module) bindToGateway(ctx *astral.Context, gatewayID *astral.Identity, visibility gateway.Visibility) {
+func (mod *Module) bindToGateway(ctx *astral.Context, gatewayID *astral.Identity, visibility gateway.Visibility) (err error) {
 	client := gatewayClient.New(gatewayID, libastrald.Default())
 
 	socket, err := client.Bind(ctx, visibility)
 	if err != nil {
-		mod.log.Error("bind to %v: %v", gatewayID, err)
-		return
+		return err
 	}
 
-	newGatewayBinding(mod, socket).Run(ctx)
+	go newGatewayBinding(mod, socket).Run(ctx)
+
+	return nil
 }
 
 type gatewayBinding struct {
