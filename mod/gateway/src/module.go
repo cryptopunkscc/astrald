@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 	ipmod "github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	tcpmod "github.com/cryptopunkscc/astrald/mod/tcp"
@@ -83,5 +84,5 @@ func (mod *Module) canGateway(identity *astral.Identity) bool {
 }
 
 func (mod *Module) String() string {
-	return ModuleName
+	return gateway.ModuleName
 }
