@@ -51,6 +51,13 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		mod.startServers(mod.ctx)
 	}
 
+	for _, gw := range mod.config.Gateways {
+		err := mod.bindToGateway(ctx, gw, mod.config.Visibility)
+		if err != nil {
+			mod.log.Error("failed to bind to gateway: %v", err)
+		}
+	}
+
 	<-ctx.Done()
 
 	for _, c := range mod.binders.Values() {
@@ -58,10 +65,6 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	}
 	for _, c := range mod.connecting.Clone() {
 		c.Close()
-	}
-
-	for _, gw := range mod.config.Gateways {
-		mod.bindToGateway(ctx, gw, mod.config.Visibility)
 	}
 
 	return nil

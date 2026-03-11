@@ -3,7 +3,7 @@ package gateway
 const ModuleName = "gateway"
 
 const (
-	MethodBind    = "gateway.node.bind"
-	MethodConnect = "gateway.node.connect"
-	MethodList    = "gateway.node.list"
+	MethodBind    = "gateway.node_bind"
+	MethodConnect = "gateway.node_connect"
+	MethodList    = "gateway.node_list"
 )

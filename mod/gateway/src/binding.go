@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"fmt"
 	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -11,12 +12,17 @@ import (
 )
 
 func (mod *Module) bindToGateway(ctx *astral.Context, gatewayID *astral.Identity, visibility gateway.Visibility) (err error) {
+	mod.log.Logv(1, "binding to gateway %v", gatewayID)
 	client := gatewayClient.New(gatewayID, libastrald.Default())
 
-	socket, err := client.Bind(ctx, visibility)
+	socket, err := client.Bind(ctx.IncludeZone(astral.ZoneNetwork), visibility)
 	if err != nil {
+		fmt.Println("BIND FAILED: ", err)
 		return err
 	}
+
+	fmt.Println("GOT SOCKET: ", socket)
+	// todo: if we lose connection to gateway (e.g reboot) we should try to rebind
 
 	go newGatewayBinding(mod, socket).Run(ctx)
 
@@ -60,11 +66,14 @@ func (b *gatewayBinding) hold(ctx *astral.Context) {
 		return
 	}
 
+	fmt.Println("DIALED GW")
 	// Authenticate with the gateway
 	if _, err = b.socket.Nonce.WriteTo(conn); err != nil {
 		b.log.Errorv(1, "nonce write to %v failed: %v", conn.RemoteEndpoint(), err)
 		return
 	}
+
+	fmt.Println("WROTE NONCE")
 
 	// Wrap conn: on first incoming byte, spawn a replacement slot; pass all bytes through untouched
 	slot := &triggerConn{
