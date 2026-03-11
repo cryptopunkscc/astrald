@@ -17,11 +17,9 @@ func (mod *Module) bindToGateway(ctx *astral.Context, gatewayID *astral.Identity
 
 	socket, err := client.Bind(ctx.IncludeZone(astral.ZoneNetwork), visibility)
 	if err != nil {
-		fmt.Println("BIND FAILED: ", err)
 		return err
 	}
 
-	fmt.Println("GOT SOCKET: ", socket)
 	// todo: if we lose connection to gateway (e.g reboot) we should try to rebind
 
 	go newGatewayBinding(mod, socket).Run(ctx)
@@ -41,49 +39,52 @@ func newGatewayBinding(module *Module, socket *gateway.Socket) *gatewayBinding {
 
 func (b *gatewayBinding) Run(ctx *astral.Context) {
 	for range b.config.InitConns {
-		b.spawn(ctx)
+		b.spawnConnection(ctx)
 	}
 
 	<-ctx.Done()
 }
 
-func (b *gatewayBinding) spawn(ctx *astral.Context) {
+func (b *gatewayBinding) spawnConnection(ctx *astral.Context) {
 	if b.count.Add(1) > b.config.MaxConns {
 		b.count.Add(-1)
-		b.log.Error("max connections reached (%v), cannot spawn new slot", b.config.MaxConns)
+		b.log.Error("max connections reached (%v), cannot spawnConnection new slot", b.config.MaxConns)
 		return
 	}
 
 	go func() {
 		defer b.count.Add(-1)
-		b.hold(ctx)
+		err := b.hold(ctx)
+		if err != nil {
+			b.log.Error("handling incoming connection failed: %v", err)
+		}
 	}()
 }
 
-func (b *gatewayBinding) hold(ctx *astral.Context) {
+func (b *gatewayBinding) hold(ctx *astral.Context) error {
+	b.log.Logv(1, "connecting to gateway socket %v", b.socket.Endpoint)
 	conn, err := b.Exonet.Dial(ctx, b.socket.Endpoint)
 	if err != nil {
-		return
+		return err
 	}
 
-	fmt.Println("DIALED GW")
 	// Authenticate with the gateway
 	if _, err = b.socket.Nonce.WriteTo(conn); err != nil {
-		b.log.Errorv(1, "nonce write to %v failed: %v", conn.RemoteEndpoint(), err)
-		return
+		return fmt.Errorf("nonce write to %v failed: %v", conn.RemoteEndpoint(), err)
 	}
 
-	fmt.Println("WROTE NONCE")
-
-	// Wrap conn: on first incoming byte, spawn a replacement slot; pass all bytes through untouched
+	// Wrap conn: on the first incoming byte, spawnConnection a replacement slot; pass all bytes through untouched
 	slot := &triggerConn{
 		Conn:    conn,
-		onFirst: func() { b.spawn(ctx) },
+		onFirst: func() { b.spawnConnection(ctx) },
 	}
 
+	// fixme: i dont know if this is blocking
 	if err = b.Nodes.EstablishInboundLink(ctx, slot); err != nil {
-		b.log.Errorv(1, "inbound link from %v failed: %v", conn.RemoteEndpoint(), err)
+		return fmt.Errorf("inbound link from %v failed: %v", conn.RemoteEndpoint(), err)
 	}
+
+	return nil
 }
 
 // triggerConn wraps an exonet.Conn and calls onFirst exactly once on the first incoming bytes.
