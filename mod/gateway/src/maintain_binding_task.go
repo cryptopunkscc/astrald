@@ -51,8 +51,8 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 		}
 
 		client := gatewayClient.New(task.GatewayID, astrald.Default())
-		socket, bindErr := client.Bind(ctx.IncludeZone(astral.ZoneNetwork), task.Visibility)
-		if bindErr != nil {
+		socket, err := client.Bind(ctx.IncludeZone(astral.ZoneNetwork), task.Visibility)
+		if err != nil {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -69,7 +69,7 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 		}
 		count = 0
 
-		err := task.mod.newSocketPool(ctx, socket).Run()
+		err = task.mod.newSocketPool(ctx, socket).Run()
 		if errors.Is(err, gateway.ErrSocketUnreachable) {
 			task.mod.log.Log("gateway socket %v unreachable, will rebind", socket.Endpoint)
 		}
