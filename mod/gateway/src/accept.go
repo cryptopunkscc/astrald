@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"io"
@@ -20,7 +21,6 @@ func (mod *Module) startServers(ctx *astral.Context) {
 			continue
 		}
 		network, address := parts[0], parts[1]
-
 		endpoint, err := mod.Exonet.Parse(network, address)
 		if err != nil {
 			mod.log.Error("parse listen address %v: %v", addr, err)
@@ -49,19 +49,19 @@ func (mod *Module) startServers(ctx *astral.Context) {
 }
 
 // acceptSocketConn accepts connection on the socket that gateway told client to connect to.
-func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, error) {
+func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopListener bool, err error) {
 	var nonce astral.Nonce
 	if _, err := nonce.ReadFrom(conn); err != nil {
 		mod.log.Errorv(1, "read nonce from %v: %v", conn.RemoteEndpoint(), err)
 		conn.Close()
-		return true, nil
+		return stopListener, nil
 	}
 
 	client, ok := mod.clientByNonce(nonce)
 	if !ok {
 		mod.log.Errorv(1, "unknown nonce %v from %v", nonce, conn.RemoteEndpoint())
 		conn.Close()
-		return true, nil
+		return stopListener, nil
 	}
 
 	mod.log.Infov(1, "accepting connection from %v", client.Identity)
@@ -69,16 +69,14 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 	if client.isBinder() {
 		mod.log.Infov(1, "added idle conn to %v", client.Identity)
 		client.add(conn)
-		return false, nil
+		return stopListener, nil
 	}
 
 	// clients
 	mod.clients.Remove(client)
 	binderConn := client.takePipeTo()
 	if binderConn == nil {
-		mod.log.Errorv(1, "no reserved conn for %v", client.Target)
-		conn.Close()
-		return true, nil
+		return stopListener, fmt.Errorf("no reserved conn for %v", client.Target)
 	}
 
 	connectorConn := &clientConn{
@@ -90,15 +88,15 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 
 	targetClient, ok := mod.binderByIdentity(client.Target)
 	if !ok {
-		return true, nil
+		return stopListener, nil
 	}
 
 	targetClient.markPiped(binderConn, connectorConn)
 	client.markPiped(connectorConn, binderConn)
 
-	mod.log.Infov(1, "clients %v to %v", client.Identity, client.Target)
+	mod.log.Infov(1, "pipe from %v to %v created", client.Identity, client.Target)
 	go pipe(binderConn, connectorConn)
-	return false, nil
+	return stopListener, nil
 }
 
 func pipe(a, b io.ReadWriteCloser) {
