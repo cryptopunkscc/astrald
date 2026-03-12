@@ -1,15 +1,20 @@
 package gateway
 
 import (
+	"io"
+
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
+var _ exonet.Conn = (*gwConn)(nil)
+
 type gwConn struct {
-	exonet.Conn
-	remote *gateway.Endpoint
+	io.ReadWriteCloser
+	local    exonet.Endpoint
+	remote   exonet.Endpoint
+	outbound bool
 }
 
-func (c *gwConn) RemoteEndpoint() exonet.Endpoint {
-	return c.remote
-}
+func (c *gwConn) LocalEndpoint() exonet.Endpoint  { return c.local }
+func (c *gwConn) RemoteEndpoint() exonet.Endpoint { return c.remote }
+func (c gwConn) Outbound() bool                   { return c.outbound }

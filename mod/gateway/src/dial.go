@@ -3,6 +3,7 @@ package gateway
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	gatewayClient "github.com/cryptopunkscc/astrald/mod/gateway/client"
@@ -26,25 +27,40 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 
 	client := gatewayClient.New(gwEndpoint.GatewayID, astrald.Default())
 
-	socket, err := client.Connect(ctx.IncludeZone(astral.ZoneNetwork), gwEndpoint.TargetID)
-	if err != nil {
-		return nil, err
+	// Fast path: socket-based (raw TCP piped through gateway)
+	if socket, err := client.Connect(ctx.IncludeZone(astral.ZoneNetwork), gwEndpoint.TargetID); err == nil {
+		if conn, err := mod.Exonet.Dial(ctx, socket.Endpoint); err == nil {
+			if _, err = socket.Nonce.WriteTo(conn); err == nil {
+				return &gwConn{
+					ReadWriteCloser: conn,
+					local:           conn.LocalEndpoint(),
+					remote:          gwEndpoint,
+					outbound:        conn.Outbound(),
+				}, nil
+			}
+			conn.Close()
+		}
 	}
 
-	// todo: if we cannot obtain socket we should try to connect to gateway and route to target over link
+	// Slow path: link-based (route query through existing astral links)
+	mod.log.Logv(1, "socket path unavailable, trying link path to %v via %v", gwEndpoint.TargetID, gwEndpoint.GatewayID)
 
-	conn, err := mod.Exonet.Dial(ctx, socket.Endpoint)
-	if err != nil {
-		return nil, err
+	q := &astral.Query{
+		Nonce:  astral.NewNonce(),
+		Caller: mod.node.Identity(),
+		Target: gwEndpoint.GatewayID,
+		Query:  gateway.MethodRoute + "." + gwEndpoint.TargetID.String(),
 	}
 
-	if _, err := socket.Nonce.WriteTo(conn); err != nil {
-		conn.Close()
+	conn, err := query.Route(ctx, mod.node, q)
+	if err != nil {
 		return nil, err
 	}
 
 	return &gwConn{
-		Conn:   conn,
-		remote: gwEndpoint,
+		ReadWriteCloser: conn,
+		local:           gateway.NewEndpoint(mod.node.Identity(), mod.node.Identity()),
+		remote:          gwEndpoint,
+		outbound:        true,
 	}, nil
 }
