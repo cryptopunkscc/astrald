@@ -38,7 +38,7 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 		pipeTo:   reserved,
 	}
 
-	mod.connecting.Add(client)
+	mod.clients.Add(client)
 
 	go func() {
 		select {
@@ -50,7 +50,7 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 			return
 		}
 
-		mod.connecting.Remove(client)
+		mod.clients.Remove(client)
 		err = binderConn.Close()
 		if err != nil {
 			mod.log.Error("failed to close binderConn: %v", err)

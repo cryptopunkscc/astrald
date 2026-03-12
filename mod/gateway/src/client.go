@@ -31,10 +31,10 @@ type client struct {
 	Identity   *astral.Identity
 	Nonce      astral.Nonce
 	Visibility gateway.Visibility
-	Target     *astral.Identity // nil for binders, set for connecting
+	Target     *astral.Identity // nil for binders, set for clients
 	//
 	conns  sig.Set[*clientConn]
-	pipeTo *clientConn // reserved binder conn for connecting clients
+	pipeTo *clientConn // reserved binder conn for clients clients
 }
 
 func (c *client) isBinder() bool {
@@ -100,7 +100,7 @@ func (mod *Module) clientByNonce(nonce astral.Nonce) (*client, bool) {
 		}
 	}
 
-	for _, c := range mod.connecting.Clone() {
+	for _, c := range mod.clients.Clone() {
 		if c.Nonce == nonce {
 			return c, true
 		}

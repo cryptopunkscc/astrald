@@ -97,7 +97,7 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 }
 
 func (task *MaintainBindingTask) maintainSocketConnections(ctx *astral.Context, socket *gateway.Socket) {
-	if err := newSocketPool(task.mod, socket).Run(ctx); err == errSocketUnreachable {
+	if err := newSocketPool(ctx, task.mod, socket).Run(); err == ErrSocketUnreachable {
 		task.mod.log.Log("gateway socket %v unreachable, will rebind", socket.Endpoint)
 	}
 }
