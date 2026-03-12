@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	ipmod "github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	tcpmod "github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -17,11 +18,12 @@ import (
 const NetworkName = "gw"
 
 type Deps struct {
-	Dir    dir.Module
-	Exonet exonet.Module
-	Nodes  nodes.Module
-	TCP    tcpmod.Module
-	IP     ipmod.Module
+	Dir       dir.Module
+	Exonet    exonet.Module
+	Nodes     nodes.Module
+	Scheduler scheduler.Module
+	TCP       tcpmod.Module
+	IP        ipmod.Module
 }
 
 type Module struct {
@@ -56,11 +58,9 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		mod.startServers(mod.ctx)
 	}
 
+	<-mod.Scheduler.Ready()
 	for _, gw := range mod.config.Gateways {
-		err := mod.bindToGateway(ctx, gw, mod.config.Visibility)
-		if err != nil {
-			mod.log.Error("failed to bind to gateway: %v", err)
-		}
+		mod.Scheduler.Schedule(mod.NewMaintainBindingTask(gw, mod.config.Visibility))
 	}
 
 	<-ctx.Done()
