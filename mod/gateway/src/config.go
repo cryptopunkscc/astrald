@@ -13,16 +13,11 @@ type GatewayConfig struct {
 }
 
 type Config struct {
-	Gateway  GatewayConfig      `yaml:"gateway"`
-	Gateways []*astral.Identity `yaml:"gateways"`
-
+	Gateway    GatewayConfig      `yaml:"gateway"`
 	Visibility gateway.Visibility `yaml:"visibility"`
-	InitConns  int32              `yaml:"init_conns"`
-	MaxConns   int32              `yaml:"max_conns"`
+	Gateways   []*astral.Identity `yaml:"gateways"`
 }
 
 var defaultConfig = Config{
 	Visibility: gateway.VisibilityPublic,
-	InitConns:  1,
-	MaxConns:   8,
 }
