@@ -1,9 +1,13 @@
 package gateway
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
+
+const connectTimeout = 30 * time.Second
 
 func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, network string) (socket gateway.Socket, err error) {
 	if !mod.canGateway(caller) {
@@ -22,6 +26,7 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 
 	reserved, ok := binder.take()
 	if !ok {
+		// fixme: return public err ErrCannotConnect
 		return socket, gateway.ErrTargetNotReachable
 	}
 
@@ -34,6 +39,23 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 	}
 
 	mod.connecting.Add(client)
+
+	go func() {
+		select {
+		case <-time.After(connectTimeout):
+		}
+
+		binderConn := client.takePipeTo()
+		if binderConn == nil {
+			return
+		}
+
+		mod.connecting.Remove(client)
+		err = binderConn.Close()
+		if err != nil {
+			mod.log.Error("failed to close binderConn: %v", err)
+		}
+	}()
 
 	return gateway.Socket{
 		Nonce:    nonce,

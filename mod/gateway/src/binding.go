@@ -22,6 +22,8 @@ func (mod *Module) bindToGateway(ctx *astral.Context, gatewayID *astral.Identity
 
 	// todo: if we lose connection to gateway (e.g reboot) we should try to rebind
 
+	// note: schedule task similiar to nodes/maintain_link_task.go (which for duration of mod.ctx will try to maintain connection to gateway.Socket)
+
 	go newGatewayBinding(mod, socket).Run(ctx)
 
 	return nil
@@ -73,14 +75,13 @@ func (b *gatewayBinding) hold(ctx *astral.Context) error {
 		return fmt.Errorf("nonce write to %v failed: %v", conn.RemoteEndpoint(), err)
 	}
 
-	// Wrap conn: on the first incoming byte, spawnConnection a replacement slot; pass all bytes through untouched
-	slot := &triggerConn{
+	// On first incoming bytes, spawn a new connection
+	replenishingConn := &triggerConn{
 		Conn:    conn,
 		onFirst: func() { b.spawnConnection(ctx) },
 	}
 
-	// fixme: i dont know if this is blocking
-	if err = b.Nodes.EstablishInboundLink(ctx, slot); err != nil {
+	if err = b.Nodes.EstablishInboundLink(ctx, replenishingConn); err != nil {
 		return fmt.Errorf("inbound link from %v failed: %v", conn.RemoteEndpoint(), err)
 	}
 
