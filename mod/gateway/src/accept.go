@@ -5,7 +5,6 @@ import (
 
 	"io"
 	"strings"
-	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -56,14 +55,14 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 	if _, err := nonce.ReadFrom(conn); err != nil {
 		mod.log.Errorv(1, "read nonce from %v: %v", conn.RemoteEndpoint(), err)
 		conn.Close()
-		return false, nil
+		return true, nil
 	}
 
 	client, ok := mod.clientByNonce(nonce)
 	if !ok {
 		mod.log.Errorv(1, "unknown nonce %v from %v", nonce, conn.RemoteEndpoint())
 		conn.Close()
-		return false, nil
+		return true, nil
 	}
 
 	if client.isBinder() {
@@ -74,12 +73,11 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 
 	// connecting
 	mod.connecting.Remove(client)
-
 	binderConn := client.takePipeTo()
 	if binderConn == nil {
 		mod.log.Errorv(1, "no reserved conn for %v", client.Target)
 		conn.Close()
-		return false, nil
+		return true, nil
 	}
 
 	connectorConn := &clientConn{
@@ -91,12 +89,10 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 
 	targetClient, ok := mod.binderByIdentity(client.Target)
 	if !ok {
-		// fixme: return public error ()
-		return false, nil
+		return true, nil
 	}
 
 	targetClient.markPiped(binderConn, connectorConn)
-
 	client.markPiped(connectorConn, binderConn)
 
 	mod.log.Infov(1, "connecting %v to %v", client.Identity, client.Target)
@@ -105,20 +101,20 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 }
 
 func pipe(a, b io.ReadWriteCloser) {
-	var wg sync.WaitGroup
-	wg.Add(2)
+	done := make(chan struct{}, 2)
+	defer close(done)
 
 	go func() {
-		defer wg.Done()
 		io.Copy(a, b)
-		a.Close()
+		done <- struct{}{}
 	}()
 
 	go func() {
-		defer wg.Done()
 		io.Copy(b, a)
-		b.Close()
+		done <- struct{}{}
 	}()
 
-	wg.Wait()
+	<-done
+	a.Close()
+	b.Close()
 }
