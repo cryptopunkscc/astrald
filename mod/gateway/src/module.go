@@ -36,8 +36,8 @@ type Module struct {
 	log    *log.Logger
 	ctx    *astral.Context
 
-	binders    sig.Map[string, *client]
-	connecting sig.Set[*client]
+	binders sig.Map[string, *client]
+	clients sig.Set[*client]
 
 	listenEndpoints sig.Map[string, exonet.Endpoint]
 }
@@ -68,7 +68,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	for _, c := range mod.binders.Values() {
 		c.Close()
 	}
-	for _, c := range mod.connecting.Clone() {
+	for _, c := range mod.clients.Clone() {
 		c.Close()
 	}
 

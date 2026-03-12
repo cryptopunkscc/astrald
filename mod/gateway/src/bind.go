@@ -31,10 +31,10 @@ func (mod *Module) bind(ctx *astral.Context, identity *astral.Identity, visibili
 		}
 
 		targetID := oldClient.Identity.String()
-		for _, c := range mod.connecting.Clone() {
+		for _, c := range mod.clients.Clone() {
 			if c.Target.String() == targetID {
 				if c.takePipeTo() != nil {
-					mod.connecting.Remove(c)
+					mod.clients.Remove(c)
 				}
 			}
 		}

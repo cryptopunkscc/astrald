@@ -71,8 +71,8 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 		return false, nil
 	}
 
-	// connecting
-	mod.connecting.Remove(client)
+	// clients
+	mod.clients.Remove(client)
 	binderConn := client.takePipeTo()
 	if binderConn == nil {
 		mod.log.Errorv(1, "no reserved conn for %v", client.Target)
@@ -95,7 +95,7 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 	targetClient.markPiped(binderConn, connectorConn)
 	client.markPiped(connectorConn, binderConn)
 
-	mod.log.Infov(1, "connecting %v to %v", client.Identity, client.Target)
+	mod.log.Infov(1, "clients %v to %v", client.Identity, client.Target)
 	go pipe(binderConn, connectorConn)
 	return false, nil
 }
