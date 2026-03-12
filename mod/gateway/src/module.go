@@ -47,6 +47,11 @@ func (mod *Module) GetOpSet() *ops.Set {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
+	err := mod.AddRoute(gateway.MethodRoute+".*", routers.Func(mod.routeQuery))
+	if err != nil {
+		return err
+	}
+
 	if mod.config.Gateway.Enabled {
 		mod.startServers(mod.ctx)
 	}
