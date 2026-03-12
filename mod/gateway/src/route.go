@@ -32,6 +32,7 @@ func (mod *Module) routeQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 				outbound:        false,
 			}
 
+			// prevents slow gateway connections
 			actx, cancel := context.WithTimeout(context.Background(), acceptTimeout)
 			defer cancel()
 
