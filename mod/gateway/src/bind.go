@@ -21,14 +21,22 @@ func (mod *Module) bind(ctx *astral.Context, identity *astral.Identity, visibili
 		Identity:   identity,
 		Nonce:      nonce,
 		Visibility: visibility,
-		Target:     nil, // its a binder
+		Target:     nil,
 	}
 
 	oldClient, ok := mod.binders.Replace(identity.String(), client)
 	if ok {
-		err = oldClient.Close()
-		if err != nil {
-			mod.log.Error("failed to close oldClient client: %v", err)
+		if err = oldClient.Close(); err != nil {
+			mod.log.Error("failed to close old client: %v", err)
+		}
+
+		targetID := oldClient.Identity.String()
+		for _, c := range mod.connecting.Clone() {
+			if c.Target.String() == targetID {
+				if c.takePipeTo() != nil {
+					mod.connecting.Remove(c)
+				}
+			}
 		}
 	}
 

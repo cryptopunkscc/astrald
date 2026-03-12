@@ -48,7 +48,7 @@ func (mod *Module) startServers(ctx *astral.Context) {
 	}
 }
 
-// acceptSocketConn accepts connection on socket that gateway told client to connect to.
+// acceptSocketConn accepts connection on the socket that gateway told client to connect to.
 func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, error) {
 	mod.log.Infov(1, "accepting connection from %v", conn.RemoteEndpoint())
 
@@ -86,11 +86,16 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 		Conn:    conn,
 		network: conn.RemoteEndpoint().Network(),
 	}
+
 	client.conns.Add(connectorConn)
 
-	if binder, ok := mod.binderByIdentity(client.Target); ok {
-		binder.markPiped(binderConn, connectorConn)
+	targetClient, ok := mod.binderByIdentity(client.Target)
+	if !ok {
+		// fixme: return public error ()
+		return false, nil
 	}
+
+	targetClient.markPiped(binderConn, connectorConn)
 
 	client.markPiped(connectorConn, binderConn)
 

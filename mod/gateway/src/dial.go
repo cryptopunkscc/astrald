@@ -20,12 +20,18 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 		return nil, exonet.ErrUnsupportedNetwork
 	}
 
+	if gwEndpoint.GatewayID.IsEqual(mod.node.Identity()) {
+		return nil, gateway.ErrInvalidGateway
+	}
+
 	client := gatewayClient.New(gwEndpoint.GatewayID, astrald.Default())
 
 	socket, err := client.Connect(ctx.IncludeZone(astral.ZoneNetwork), gwEndpoint.TargetID)
 	if err != nil {
 		return nil, err
 	}
+
+	// todo: if we cannot obtain socket we should try to connect to gateway and route to target over link
 
 	conn, err := mod.Exonet.Dial(ctx, socket.Endpoint)
 	if err != nil {
