@@ -33,8 +33,8 @@ type client struct {
 	Visibility gateway.Visibility
 	Target     *astral.Identity // nil for binders, set for clients
 	//
-	conns  sig.Set[*clientConn]
-	pipeTo *clientConn // reserved binder conn for clients clients
+	connections sig.Set[*clientConn]
+	pipeTo      *clientConn // reserved binder conn for clients clients
 }
 
 func (c *client) isBinder() bool {
@@ -42,7 +42,7 @@ func (c *client) isBinder() bool {
 }
 
 func (c *client) add(conn exonet.Conn) {
-	c.conns.Add(&clientConn{
+	c.connections.Add(&clientConn{
 		Conn:    conn,
 		network: conn.RemoteEndpoint().Network(),
 		state:   connStateIdle,
@@ -52,7 +52,7 @@ func (c *client) add(conn exonet.Conn) {
 func (c *client) take() (*clientConn, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	for _, cc := range c.conns.Clone() {
+	for _, cc := range c.connections.Clone() {
 		if cc.state == connStateIdle {
 			cc.state = connStateReserved
 			return cc, true
@@ -82,7 +82,7 @@ func (c *client) Close() error {
 
 	var errs []error
 
-	for _, cc := range c.conns.Clone() {
+	for _, cc := range c.connections.Clone() {
 		errs = append(errs, cc.Close())
 	}
 

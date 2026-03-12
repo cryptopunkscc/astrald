@@ -5,25 +5,33 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
+	"github.com/cryptopunkscc/astrald/mod/events"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	gatewayClient "github.com/cryptopunkscc/astrald/mod/gateway/client"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
 var _ scheduler.Task = &MaintainBindingTask{}
+var _ scheduler.EventReceiver = &MaintainBindingTask{}
 
 type MaintainBindingTask struct {
 	mod        *Module
 	GatewayID  *astral.Identity
 	Visibility gateway.Visibility
+	retry      *sig.Retry
+	triggerCh  chan struct{}
 }
 
 func (mod *Module) NewMaintainBindingTask(gatewayID *astral.Identity, visibility gateway.Visibility) *MaintainBindingTask {
+	retry, _ := sig.NewRetry(time.Second, 15*time.Minute, 2)
 	return &MaintainBindingTask{
 		mod:        mod,
 		GatewayID:  gatewayID,
 		Visibility: visibility,
+		retry:      retry,
+		triggerCh:  make(chan struct{}, 1),
 	}
 }
 
@@ -33,12 +41,6 @@ func (task *MaintainBindingTask) String() string {
 
 func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 	task.mod.log.Log("starting to maintain binding to %v", task.GatewayID)
-
-	retry, err := sig.NewRetry(time.Second, 15*time.Minute, 2)
-	if err != nil {
-		return err
-	}
-
 	client := gatewayClient.New(task.GatewayID, astrald.Default())
 
 	count := -1
@@ -55,12 +57,13 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case count = <-retry.Retry():
+			case count = <-task.retry.Retry():
+			case <-task.triggerCh:
 			}
 			continue
 		}
 
-		retry.Reset()
+		task.retry.Reset()
 		if count > 0 {
 			task.mod.log.Log("rebound to %v after %v attempts", task.GatewayID, count)
 		} else if count < 0 {
@@ -71,6 +74,19 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 		err = task.mod.newSocketPool(ctx, task.GatewayID, socket).Run()
 		if err != nil {
 			task.mod.log.Error("rebinding to %v due to: %v", task.GatewayID, err)
+		}
+	}
+}
+
+func (task *MaintainBindingTask) ReceiveEvent(e *events.Event) {
+	switch typed := e.Data.(type) {
+	case *ip.EventNetworkAddressChanged:
+		if len(typed.Added) > 0 {
+			task.retry.Reset()
+			select {
+			case task.triggerCh <- struct{}{}:
+			default:
+			}
 		}
 	}
 }
