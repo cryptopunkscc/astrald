@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"sync"
 
 	"io"
 	"strings"
@@ -101,20 +102,20 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (bool, 
 }
 
 func pipe(a, b io.ReadWriteCloser) {
-	done := make(chan struct{}, 2)
-	defer close(done)
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	go func() {
+		defer wg.Done()
 		io.Copy(a, b)
-		done <- struct{}{}
+		a.Close()
 	}()
 
 	go func() {
+		defer wg.Done()
 		io.Copy(b, a)
-		done <- struct{}{}
+		b.Close()
 	}()
 
-	<-done
-	a.Close()
-	b.Close()
+	wg.Wait()
 }

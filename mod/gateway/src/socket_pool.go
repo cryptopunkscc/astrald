@@ -19,9 +19,10 @@ const (
 
 type SocketPool struct {
 	*Module
-	ctx    *astral.Context
-	socket *gateway.Socket
-	log    *log.Logger
+	ctx       *astral.Context
+	socket    *gateway.Socket
+	gatewayID *astral.Identity
+	log       *log.Logger
 
 	mu    sync.Mutex
 	total int
@@ -30,13 +31,14 @@ type SocketPool struct {
 	signal chan struct{}
 }
 
-func (mod *Module) newSocketPool(ctx *astral.Context, socket *gateway.Socket) *SocketPool {
+func (mod *Module) newSocketPool(ctx *astral.Context, gatewayID *astral.Identity, socket *gateway.Socket) *SocketPool {
 	return &SocketPool{
-		ctx:    ctx,
-		Module: mod,
-		socket: socket,
-		log:    mod.log,
-		signal: make(chan struct{}, 1),
+		ctx:       ctx,
+		Module:    mod,
+		socket:    socket,
+		gatewayID: gatewayID,
+		log:       mod.log,
+		signal:    make(chan struct{}, 1),
 	}
 }
 
@@ -117,7 +119,11 @@ func (p *SocketPool) onConnClosed(wasIdle bool) {
 }
 
 func (p *SocketPool) handoff(conn exonet.Conn) {
-	pc := &socketConn{Conn: conn}
+	pc := &socketConn{
+		Conn:           conn,
+		localEndpoint:  gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
+		remoteEndpoint: gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
+	}
 
 	// when first write is done it means we started responding to link negotiation
 	pc.onFirstWrite = p.onConnTaken
@@ -143,12 +149,17 @@ func (p *SocketPool) notify() {
 type socketConn struct {
 	exonet.Conn
 
-	onFirstWrite func()
-	onClose      func()
+	localEndpoint  exonet.Endpoint
+	remoteEndpoint exonet.Endpoint
+	onFirstWrite   func()
+	onClose        func()
 
 	closed atomic.Bool
 	used   atomic.Bool
 }
+
+func (c *socketConn) LocalEndpoint() exonet.Endpoint  { return c.localEndpoint }
+func (c *socketConn) RemoteEndpoint() exonet.Endpoint { return c.remoteEndpoint }
 
 func (c *socketConn) Write(b []byte) (int, error) {
 	if !c.used.Swap(true) && c.onFirstWrite != nil {
