@@ -65,13 +65,14 @@ func (s *Server) Run(ctx *astral.Context) error {
 
 		conn := tcp.WrapConn(rawConn, false)
 		go func() {
-			shouldClose, err := s.onAccept(ctx, conn)
+			stopListener, err := s.onAccept(ctx, conn)
 			if err != nil {
+				conn.Close()
 				s.log.Errorv(1, "tcp server/onAccept error from %v: %v", conn.RemoteEndpoint(), err)
 				return
 			}
 
-			if shouldClose {
+			if stopListener {
 				s.Close()
 			}
 		}()
