@@ -21,8 +21,7 @@ func (mod *Module) bindToGateway(ctx *astral.Context, gatewayID *astral.Identity
 	}
 
 	// todo: if we lose connection to gateway (e.g reboot) we should try to rebind
-
-	// note: schedule task similiar to nodes/maintain_link_task.go (which for duration of mod.ctx will try to maintain connection to gateway.Socket)
+	// note: maybe schedule task similiar to nodes/maintain_link_task.go (which for duration of mod.ctx will try to maintain connection to gateway.Socket)
 
 	go newGatewayBinding(mod, socket).Run(ctx)
 
@@ -40,30 +39,25 @@ func newGatewayBinding(module *Module, socket *gateway.Socket) *gatewayBinding {
 }
 
 func (b *gatewayBinding) Run(ctx *astral.Context) {
-	for range b.config.InitConns {
-		b.spawnConnection(ctx)
-	}
+	b.spawnConnection(ctx)
 
 	<-ctx.Done()
 }
 
 func (b *gatewayBinding) spawnConnection(ctx *astral.Context) {
-	if b.count.Add(1) > b.config.MaxConns {
-		b.count.Add(-1)
-		b.log.Error("max connections reached (%v), cannot spawnConnection new slot", b.config.MaxConns)
-		return
-	}
+	b.log.Logv(1, "spawning connection to gateway socket %v", b.socket.Endpoint)
+	b.count.Add(1)
 
 	go func() {
 		defer b.count.Add(-1)
-		err := b.hold(ctx)
+		err := b.connectToGatewaySocket(ctx)
 		if err != nil {
 			b.log.Error("handling incoming connection failed: %v", err)
 		}
 	}()
 }
 
-func (b *gatewayBinding) hold(ctx *astral.Context) error {
+func (b *gatewayBinding) connectToGatewaySocket(ctx *astral.Context) error {
 	b.log.Logv(1, "connecting to gateway socket %v", b.socket.Endpoint)
 	conn, err := b.Exonet.Dial(ctx, b.socket.Endpoint)
 	if err != nil {

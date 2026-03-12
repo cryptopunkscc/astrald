@@ -26,23 +26,30 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 	}
 
 	client := gatewayClient.New(gwEndpoint.GatewayID, astrald.Default())
-
-	// Fast path: socket-based (raw TCP piped through gateway)
-	if socket, err := client.Connect(ctx.IncludeZone(astral.ZoneNetwork), gwEndpoint.TargetID); err == nil {
-		if conn, err := mod.Exonet.Dial(ctx, socket.Endpoint); err == nil {
-			if _, err = socket.Nonce.WriteTo(conn); err == nil {
-				return &gwConn{
-					ReadWriteCloser: conn,
-					local:           conn.LocalEndpoint(),
-					remote:          gwEndpoint,
-					outbound:        conn.Outbound(),
-				}, nil
-			}
-			conn.Close()
-		}
+	socket, err := client.Connect(ctx.IncludeZone(astral.ZoneNetwork), gwEndpoint.TargetID)
+	if err != nil {
+		return mod.route(ctx, gwEndpoint)
 	}
 
-	// Slow path: link-based (route query through existing astral links)
+	conn, err := mod.Exonet.Dial(ctx, socket.Endpoint)
+	if err != nil {
+		return mod.route(ctx, gwEndpoint)
+	}
+
+	if _, err := socket.Nonce.WriteTo(conn); err != nil {
+		conn.Close()
+		return mod.route(ctx, gwEndpoint)
+	}
+
+	return &gwConn{
+		ReadWriteCloser: conn,
+		local:           conn.LocalEndpoint(),
+		remote:          gwEndpoint,
+		outbound:        conn.Outbound(),
+	}, nil
+}
+
+func (mod *Module) route(ctx *astral.Context, gwEndpoint *gateway.Endpoint) (exonet.Conn, error) {
 	mod.log.Logv(1, "socket path unavailable, trying link path to %v via %v", gwEndpoint.TargetID, gwEndpoint.GatewayID)
 
 	q := &astral.Query{
