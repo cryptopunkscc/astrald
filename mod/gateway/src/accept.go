@@ -65,7 +65,6 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 	}
 
 	mod.log.Infov(1, "accepting connection from %v", client.Identity)
-
 	if client.isBinder() {
 		mod.log.Infov(1, "added idle conn to %v", client.Identity)
 		client.add(conn)
@@ -84,7 +83,7 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 		network: conn.RemoteEndpoint().Network(),
 	}
 
-	client.conns.Add(connectorConn)
+	client.connections.Add(connectorConn)
 
 	targetClient, ok := mod.binderByIdentity(client.Target)
 	if !ok {

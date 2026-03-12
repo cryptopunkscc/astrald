@@ -2,6 +2,7 @@ package tcp
 
 import (
 	_net "net"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -20,7 +21,7 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 		return nil, exonet.ErrDisabledNetwork
 	}
 
-	var dialer = _net.Dialer{Timeout: mod.config.DialTimeout}
+	var dialer = _net.Dialer{Timeout: mod.config.DialTimeout, KeepAlive: 5 * time.Second}
 
 	tcpConn, err := dialer.DialContext(ctx, "tcp", endpoint.Address())
 	if err != nil {
