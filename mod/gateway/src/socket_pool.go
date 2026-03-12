@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	socketPoolTargetIdle = 1
+	socketPoolTargetIdle = 2
 	socketPoolMaxFails   = 3
 )
 
@@ -49,7 +49,7 @@ func (p *SocketPool) Run() error {
 		case <-p.ctx.Done():
 			return p.ctx.Err()
 		case <-p.signal:
-			for p.idleCount() < socketPoolTargetIdle {
+			for toAdd := socketPoolTargetIdle - p.idleCount(); toAdd > 0; toAdd-- {
 				conn, err := p.acquireConn()
 				if err != nil {
 					select {
@@ -57,10 +57,10 @@ func (p *SocketPool) Run() error {
 						return p.ctx.Err()
 					case count := <-retry.Retry():
 						if count >= socketPoolMaxFails {
-							p.log.Log("gateway socket %v unreachable", p.socket.Endpoint)
 							return gateway.ErrSocketUnreachable
 						}
 					}
+					toAdd++
 					continue
 				}
 
@@ -95,39 +95,40 @@ func (p *SocketPool) addIdle() {
 	p.mu.Lock()
 	p.idle++
 	p.total++
-	total, idle := p.total, p.idle
 	p.mu.Unlock()
-	p.notify()
-	p.log.Logv(1, "gateway conn added (total: %v, idle: %v)", total, idle)
 }
 
 func (p *SocketPool) onConnTaken() {
 	p.mu.Lock()
 	p.idle--
-	total, idle := p.total, p.idle
 	p.mu.Unlock()
 	p.notify()
-	p.log.Logv(1, "gateway conn taken (total: %v, idle: %v)", total, idle)
 }
 
-func (p *SocketPool) onConnClosed() {
+func (p *SocketPool) onConnClosed(wasIdle bool) {
 	p.mu.Lock()
 	p.total--
-	total, idle := p.total, p.idle
+	if wasIdle {
+		p.idle--
+	}
+
 	p.mu.Unlock()
 	p.notify()
-	p.log.Logv(1, "gateway conn down (total: %v, idle: %v)", total, idle)
 }
 
 func (p *SocketPool) handoff(conn exonet.Conn) {
 	pc := &socketConn{Conn: conn}
-	pc.onFirst = p.onConnTaken
-	pc.onClose = p.onConnClosed
+
+	// when first write is done it means we started responding to link negotiation
+	pc.onFirstWrite = p.onConnTaken
+	pc.onClose = func() { p.onConnClosed(!pc.used.Load()) }
 	p.addIdle()
 
 	go func() {
-		if err := p.Nodes.EstablishInboundLink(p.ctx, pc); err != nil {
+		err := p.Nodes.EstablishInboundLink(p.ctx, pc)
+		if err != nil {
 			p.log.Logv(1, "inbound link from %v: %v", conn.RemoteEndpoint(), err)
+			return
 		}
 	}()
 }
@@ -142,27 +143,29 @@ func (p *SocketPool) notify() {
 type socketConn struct {
 	exonet.Conn
 
-	onFirst func()
-	onClose func()
+	onFirstWrite func()
+	onClose      func()
 
-	used atomic.Bool
-}
-
-func (c *socketConn) Read(b []byte) (int, error) {
-	if !c.used.Swap(true) && c.onFirst != nil {
-		c.onFirst()
-	}
-	return c.Conn.Read(b)
+	closed atomic.Bool
+	used   atomic.Bool
 }
 
 func (c *socketConn) Write(b []byte) (int, error) {
+	if !c.used.Swap(true) && c.onFirstWrite != nil {
+		c.onFirstWrite()
+	}
+
 	return c.Conn.Write(b)
 }
 
 func (c *socketConn) Close() error {
 	err := c.Conn.Close()
-	if c.onClose != nil {
-		c.onClose()
+
+	if !c.closed.Swap(true) {
+		if c.onClose != nil {
+			c.onClose()
+		}
 	}
+
 	return err
 }

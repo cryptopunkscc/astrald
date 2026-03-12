@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"errors"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -40,8 +39,9 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 		return err
 	}
 
-	count := -1
+	client := gatewayClient.New(task.GatewayID, astrald.Default())
 
+	count := -1
 	for {
 		switch {
 		case count == 0:
@@ -50,7 +50,6 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 			task.mod.log.Log("still trying to bind to %v (attempt %v)", task.GatewayID, count)
 		}
 
-		client := gatewayClient.New(task.GatewayID, astrald.Default())
 		socket, err := client.Bind(ctx.IncludeZone(astral.ZoneNetwork), task.Visibility)
 		if err != nil {
 			select {
@@ -70,8 +69,8 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 		count = 0
 
 		err = task.mod.newSocketPool(ctx, socket).Run()
-		if errors.Is(err, gateway.ErrSocketUnreachable) {
-			task.mod.log.Log("gateway socket %v unreachable, will rebind", socket.Endpoint)
+		if err != nil {
+			task.mod.log.Error("rebinding to %v due to: %v", task.GatewayID, err)
 		}
 	}
 }
