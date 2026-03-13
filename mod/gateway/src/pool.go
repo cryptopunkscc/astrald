@@ -74,7 +74,7 @@ func (p *SocketPool) Run() error {
 }
 
 func (p *SocketPool) acquireConn() (exonet.Conn, error) {
-	p.log.Logv(1, "acquiring socket connection to %v through %v", p.socket.Endpoint)
+	p.log.Logv(2, "acquiring socket connection to %v through %v", p.socket.Endpoint, p.gatewayID)
 	conn, err := p.Exonet.Dial(p.ctx, p.socket.Endpoint)
 	if err != nil {
 		return nil, err
