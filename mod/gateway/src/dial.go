@@ -25,8 +25,10 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 		return nil, gateway.ErrInvalidGateway
 	}
 
+	ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
 	client := gatewayClient.New(gwEndpoint.GatewayID, astrald.Default())
-	socket, err := client.Connect(ctx.IncludeZone(astral.ZoneNetwork), gwEndpoint.TargetID)
+	socket, err := client.Connect(ctx, gwEndpoint.TargetID)
 	if err != nil {
 		return mod.route(ctx, gwEndpoint)
 	}
