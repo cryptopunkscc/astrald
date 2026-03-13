@@ -46,25 +46,24 @@ func (e *EndpointWithTTL) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(e).ReadFrom(r)
 }
 
+type endpointWithTTLJSON struct {
+	Endpoint astral.JSONAdapter
+	TTL      *uint32 `json:",omitempty"`
+}
+
 func (e EndpointWithTTL) MarshalJSON() ([]byte, error) {
 	endpointJSON, err := json.Marshal(e.Endpoint)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(struct {
-		Endpoint astral.JSONAdapter
-		TTL      *uint32 `json:",omitempty"`
-	}{
+	return json.Marshal(endpointWithTTLJSON{
 		Endpoint: astral.JSONAdapter{Type: e.Endpoint.ObjectType(), Object: endpointJSON},
 		TTL:      e.TTL,
 	})
 }
 
 func (e *EndpointWithTTL) UnmarshalJSON(data []byte) error {
-	var v struct {
-		Endpoint astral.JSONAdapter
-		TTL      *uint32 `json:",omitempty"`
-	}
+	var v endpointWithTTLJSON
 	if err := json.Unmarshal(data, &v); err != nil {
 		return err
 	}

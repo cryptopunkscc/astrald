@@ -35,6 +35,10 @@ func (e *Endpoint) ReadFrom(r io.Reader) (n int64, err error) {
 // text support
 
 func (e *Endpoint) UnmarshalText(text []byte) (err error) {
+	if string(text) == "unknown" {
+		*e = Endpoint{}
+		return nil
+	}
 	var hp = strings.SplitN(string(text), ":", 2)
 	if len(hp) != 2 {
 		return fmt.Errorf("invalid format")
