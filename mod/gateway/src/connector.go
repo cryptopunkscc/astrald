@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -32,6 +31,7 @@ type connector struct {
 func (c *connector) takeReserved() *binderConn {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	bc := c.reserved
 	c.reserved = nil
 	return bc
@@ -40,10 +40,10 @@ func (c *connector) takeReserved() *binderConn {
 func (c *connector) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	var errs []error
+
 	if c.reserved != nil {
-		errs = append(errs, c.reserved.Close())
-		c.reserved = nil
+		return c.reserved.Close()
 	}
-	return errors.Join(errs...)
+
+	return nil
 }

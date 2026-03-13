@@ -60,7 +60,7 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 	}
 
 	if b, ok := mod.binderByNonce(nonce); ok {
-		mod.log.Infov(1, "added idle conn to binder %v", b.Identity)
+		mod.log.Infov(2, "added idle conn to binder %v", b.Identity)
 		b.addConn(conn)
 		return stopListener, nil
 	}
@@ -95,7 +95,7 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 
 	targetBinder.markPiped(reserved, cc)
 
-	mod.log.Infov(1, "pipe from %v to %v created", c.Identity, c.Target)
+	mod.log.Infov(2, "pipe from %v to %v created", c.Identity, c.Target)
 	go pipe(reserved, cc)
 	return stopListener, nil
 }
