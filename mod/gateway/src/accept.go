@@ -57,44 +57,44 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 		return stopListener, nil
 	}
 
-	client, ok := mod.clientByNonce(nonce)
+	if b, ok := mod.binderByNonce(nonce); ok {
+		mod.log.Infov(1, "added idle conn to binder %v", b.Identity)
+		b.addConn(conn)
+		return stopListener, nil
+	}
+
+	c, ok := mod.connectorByNonce(nonce)
 	if !ok {
 		mod.log.Errorv(1, "unknown nonce %v from %v", nonce, conn.RemoteEndpoint())
 		conn.Close()
 		return stopListener, nil
 	}
 
-	mod.log.Infov(1, "accepting connection from %v", client.Identity)
-	if client.isBinder() {
-		mod.log.Infov(1, "added idle conn to %v", client.Identity)
-		client.add(conn)
+	mod.connectors.Remove(c)
+
+	reserved := c.takeReserved()
+	if reserved == nil {
+		conn.Close()
+		return stopListener, fmt.Errorf("no reserved conn for %v", c.Target)
+	}
+
+	targetBinder, ok := mod.binderByIdentity(c.Target)
+	if !ok {
+		reserved.Close()
+		conn.Close()
 		return stopListener, nil
 	}
 
-	// clients
-	mod.clients.Remove(client)
-	binderConn := client.takePipeTo()
-	if binderConn == nil {
-		return stopListener, fmt.Errorf("no reserved conn for %v", client.Target)
-	}
-
-	connectorConn := &clientConn{
+	cc := &connectorConn{
 		Conn:    conn,
 		network: conn.RemoteEndpoint().Network(),
+		pipedTo: reserved,
 	}
 
-	client.connections.Add(connectorConn)
+	targetBinder.markPiped(reserved, cc)
 
-	targetClient, ok := mod.binderByIdentity(client.Target)
-	if !ok {
-		return stopListener, nil
-	}
-
-	targetClient.markPiped(binderConn, connectorConn)
-	client.markPiped(connectorConn, binderConn)
-
-	mod.log.Infov(1, "pipe from %v to %v created", client.Identity, client.Target)
-	go pipe(binderConn, connectorConn)
+	mod.log.Infov(1, "pipe from %v to %v created", c.Identity, c.Target)
+	go pipe(reserved, cc)
 	return stopListener, nil
 }
 

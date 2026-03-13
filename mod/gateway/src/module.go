@@ -36,8 +36,8 @@ type Module struct {
 	log    *log.Logger
 	ctx    *astral.Context
 
-	binders sig.Map[string, *client]
-	clients sig.Set[*client]
+	binders    sig.Map[string, *binder]
+	connectors sig.Set[*connector]
 
 	listenEndpoints sig.Map[string, exonet.Endpoint]
 }
@@ -65,10 +65,10 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 	<-ctx.Done()
 
-	for _, c := range mod.binders.Values() {
-		c.Close()
+	for _, b := range mod.binders.Values() {
+		b.Close()
 	}
-	for _, c := range mod.clients.Clone() {
+	for _, c := range mod.connectors.Clone() {
 		c.Close()
 	}
 
@@ -89,6 +89,28 @@ func (mod *Module) getGatewayEndpoint(ctx *astral.Context, network string) (endp
 	}
 
 	return endpoint, nil
+}
+
+func (mod *Module) binderByIdentity(identity *astral.Identity) (*binder, bool) {
+	return mod.binders.Get(identity.String())
+}
+
+func (mod *Module) binderByNonce(nonce astral.Nonce) (*binder, bool) {
+	for _, b := range mod.binders.Values() {
+		if b.Nonce == nonce {
+			return b, true
+		}
+	}
+	return nil, false
+}
+
+func (mod *Module) connectorByNonce(nonce astral.Nonce) (*connector, bool) {
+	for _, c := range mod.connectors.Clone() {
+		if c.Nonce == nonce {
+			return c, true
+		}
+	}
+	return nil, false
 }
 
 func (mod *Module) canGateway(identity *astral.Identity) bool {

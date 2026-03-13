@@ -15,33 +15,29 @@ func (mod *Module) bind(ctx *astral.Context, identity *astral.Identity, visibili
 		return nil, err
 	}
 
-	nonce := astral.NewNonce()
-
-	client := &client{
+	b := &binder{
 		Identity:   identity,
-		Nonce:      nonce,
+		Nonce:      astral.NewNonce(),
 		Visibility: visibility,
-		Target:     nil,
 	}
 
-	oldClient, ok := mod.binders.Replace(identity.String(), client)
+	oldBinder, ok := mod.binders.Replace(identity.String(), b)
 	if ok {
-		if err = oldClient.Close(); err != nil {
-			mod.log.Error("failed to close old client: %v", err)
+		if err = oldBinder.Close(); err != nil {
+			mod.log.Error("failed to close old binder: %v", err)
 		}
 
-		targetID := oldClient.Identity.String()
-		for _, c := range mod.clients.Clone() {
+		targetID := oldBinder.Identity.String()
+		for _, c := range mod.connectors.Clone() {
 			if c.Target.String() == targetID {
-				if c.takePipeTo() != nil {
-					mod.clients.Remove(c)
-				}
+				mod.connectors.Remove(c)
+				c.Close()
 			}
 		}
 	}
 
 	return &gateway.Socket{
-		Nonce:    nonce,
+		Nonce:    b.Nonce,
 		Endpoint: endpoint,
 	}, nil
 }

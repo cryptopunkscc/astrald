@@ -19,46 +19,41 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 		return gateway.Socket{}, err
 	}
 
-	binder, ok := mod.binderByIdentity(target)
+	b, ok := mod.binderByIdentity(target)
 	if !ok {
 		return socket, gateway.ErrTargetNotReachable
 	}
 
-	reserved, ok := binder.take()
+	reserved, ok := b.takeConn()
 	if !ok {
-		// fixme: return public err ErrCannotConnect
 		return socket, gateway.ErrTargetNotReachable
 	}
 
-	nonce := astral.NewNonce()
-	client := &client{
+	c := &connector{
 		Identity: caller,
-		Nonce:    nonce,
+		Nonce:    astral.NewNonce(),
 		Target:   target,
-		pipeTo:   reserved,
+		reserved: reserved,
 	}
 
-	mod.clients.Add(client)
+	mod.connectors.Add(c)
 
 	go func() {
-		select {
-		case <-time.After(connectTimeout):
-		}
+		<-time.After(connectTimeout)
 
-		binderConn := client.takePipeTo()
-		if binderConn == nil {
+		bc := c.takeReserved()
+		if bc == nil {
 			return
 		}
 
-		mod.clients.Remove(client)
-		err = binderConn.Close()
-		if err != nil {
-			mod.log.Error("failed to close binderConn: %v", err)
+		mod.connectors.Remove(c)
+		if err := bc.Close(); err != nil {
+			mod.log.Error("failed to close reserved conn: %v", err)
 		}
 	}()
 
 	return gateway.Socket{
-		Nonce:    nonce,
+		Nonce:    c.Nonce,
 		Endpoint: endpoint,
 	}, nil
 }
