@@ -1,6 +1,8 @@
 package nodes
 
 import (
+	"encoding/json"
+	"errors"
 	"io"
 	"time"
 
@@ -42,6 +44,44 @@ func (e EndpointWithTTL) WriteTo(w io.Writer) (n int64, err error) {
 
 func (e *EndpointWithTTL) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(e).ReadFrom(r)
+}
+
+func (e EndpointWithTTL) MarshalJSON() ([]byte, error) {
+	endpointJSON, err := json.Marshal(e.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(struct {
+		Endpoint astral.JSONAdapter
+		TTL      *uint32 `json:",omitempty"`
+	}{
+		Endpoint: astral.JSONAdapter{Type: e.Endpoint.ObjectType(), Object: endpointJSON},
+		TTL:      e.TTL,
+	})
+}
+
+func (e *EndpointWithTTL) UnmarshalJSON(data []byte) error {
+	var v struct {
+		Endpoint astral.JSONAdapter
+		TTL      *uint32 `json:",omitempty"`
+	}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	obj := astral.New(v.Endpoint.Type)
+	if obj == nil {
+		return astral.NewErrBlueprintNotFound(v.Endpoint.Type)
+	}
+	if err := json.Unmarshal(v.Endpoint.Object, obj); err != nil {
+		return err
+	}
+	ep, ok := obj.(exonet.Endpoint)
+	if !ok {
+		return errors.New("EndpointWithTTL: not an exonet.Endpoint")
+	}
+	e.Endpoint = ep
+	e.TTL = v.TTL
+	return nil
 }
 
 // exonet.Endpoint
