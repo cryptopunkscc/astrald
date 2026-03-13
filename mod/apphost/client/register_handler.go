@@ -4,11 +4,12 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
 // RegisterHandler registers a new handler for incoming queries. Protocol is tcp
 func (client *Client) RegisterHandler(ctx *astral.Context, endpoint string, authToken astral.Nonce) error {
-	ch, err := client.queryCh(ctx, "apphost.register_handler", query.Args{
+	ch, err := client.queryCh(ctx, apphost.MethodRegisterHandler, query.Args{
 		"endpoint": endpoint,
 		"token":    authToken,
 	})

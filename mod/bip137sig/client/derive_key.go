@@ -9,7 +9,7 @@ import (
 )
 
 func (client *Client) DeriveKey(ctx *astral.Context, path string, seed *bip137sig.Seed) (privateKey *crypto.PrivateKey, err error) {
-	ch, err := client.queryCh(ctx, "bip137sig.derive_key", query.Args{"path": path})
+	ch, err := client.queryCh(ctx, bip137sig.MethodDeriveKey, query.Args{"path": path})
 	if err != nil {
 		return
 	}

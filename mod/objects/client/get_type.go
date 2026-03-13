@@ -4,11 +4,12 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 // Deprecated: use Probe instead.
 func (client *Client) GetType(ctx *astral.Context, objectID *astral.ObjectID) (typ string, err error) {
-	ch, err := client.queryCh(ctx, "objects.get_type", query.Args{
+	ch, err := client.queryCh(ctx, objects.MethodGetType, query.Args{
 		"id": objectID,
 	})
 	if err != nil {

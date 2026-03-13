@@ -33,7 +33,7 @@ func Default() *Client {
 }
 
 func (client *Client) Discover(ctx *astral.Context, follow bool) (<-chan *services.Update, error) {
-	ch, err := client.queryCh(ctx, "services.discover", query.Args{
+	ch, err := client.queryCh(ctx, services.MethodDiscover, query.Args{
 		"follow": follow,
 	})
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 )
 
 func (client *Client) EntropyToMnemonic(ctx *astral.Context, entropy *bip137sig.Entropy) (mnemonic []string, err error) {
-	ch, err := client.queryCh(ctx, "bip137sig.mnemonic", nil)
+	ch, err := client.queryCh(ctx, bip137sig.MethodMnemonic, nil)
 	if err != nil {
 		return
 	}

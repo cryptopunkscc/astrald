@@ -7,7 +7,7 @@ import (
 )
 
 func (client *Client) PublicKey(ctx *astral.Context, privateKey *crypto.PrivateKey) (publicKey *crypto.PublicKey, err error) {
-	ch, err := client.queryCh(ctx, "crypto.public_key", nil)
+	ch, err := client.queryCh(ctx, crypto.MethodPublicKey, nil)
 	if err != nil {
 		return
 	}

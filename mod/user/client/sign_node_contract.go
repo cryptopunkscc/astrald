@@ -7,7 +7,7 @@ import (
 )
 
 func (client *Client) SignNodeContract(ctx *astral.Context, contract *user.NodeContract) (signed *user.SignedNodeContract, err error) {
-	ch, err := client.queryCh(ctx, "user.sign_node_contract", nil)
+	ch, err := client.queryCh(ctx, user.OpSignNodeContract, nil)
 	if err != nil {
 		return
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) NewNodeContract(ctx *astral.Context, alias string) (contract *user.NodeContract, err error) {
-	ch, err := client.queryCh(ctx, "user.new_node_contract", query.Args{"user": alias})
+	ch, err := client.queryCh(ctx, user.OpNewNodeContract, query.Args{"user": alias})
 	if err != nil {
 		return
 	}

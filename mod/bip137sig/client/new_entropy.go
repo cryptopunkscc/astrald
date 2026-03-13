@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) NewEntropy(ctx *astral.Context, bits int) (entropy *bip137sig.Entropy, err error) {
-	ch, err := client.queryCh(ctx, "bip137sig.new_entropy", query.Args{"bits": bits})
+	ch, err := client.queryCh(ctx, bip137sig.MethodNewEntropy, query.Args{"bits": bits})
 	if err != nil {
 		return
 	}

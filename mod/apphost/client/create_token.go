@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) CreateToken(ctx *astral.Context, identity *astral.Identity) (token *apphost.AccessToken, err error) {
-	ch, err := client.queryCh(ctx, "apphost.create_token", query.Args{"id": identity.String()})
+	ch, err := client.queryCh(ctx, apphost.MethodCreateToken, query.Args{"id": identity.String()})
 	if err != nil {
 		return
 	}

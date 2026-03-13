@@ -4,10 +4,11 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (client *Client) Store(ctx *astral.Context, repo string, object astral.Object) (id *astral.ObjectID, err error) {
-	ch, err := client.queryCh(ctx, "objects.store", query.Args{"repo": repo})
+	ch, err := client.queryCh(ctx, objects.MethodStore, query.Args{"repo": repo})
 	if err != nil {
 		return
 	}

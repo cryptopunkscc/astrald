@@ -4,10 +4,11 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (client *Client) Scan(ctx *astral.Context, repo string, follow bool) (<-chan *astral.ObjectID, *error) {
-	ch, err := client.queryCh(ctx, "objects.scan", query.Args{
+	ch, err := client.queryCh(ctx, objects.MethodScan, query.Args{
 		"repo":   repo,
 		"follow": follow,
 	})

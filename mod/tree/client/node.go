@@ -24,7 +24,7 @@ func (node *Node) Name() string {
 }
 
 func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, error) {
-	ch, err := node.client.queryCh(ctx, "tree.get", query.Args{
+	ch, err := node.client.queryCh(ctx, tree.MethodGet, query.Args{
 		"path":   node.Path(),
 		"follow": follow,
 	})
@@ -67,7 +67,7 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 }
 
 func (node *Node) Set(ctx *astral.Context, object astral.Object) error {
-	ch, err := node.client.queryCh(ctx, "tree.set", query.Args{
+	ch, err := node.client.queryCh(ctx, tree.MethodSet, query.Args{
 		"path": node.Path(),
 	})
 	if err != nil {
@@ -94,7 +94,7 @@ func (node *Node) Set(ctx *astral.Context, object astral.Object) error {
 }
 
 func (node *Node) Delete(ctx *astral.Context) error {
-	ch, err := node.client.queryCh(ctx, "tree.delete", query.Args{
+	ch, err := node.client.queryCh(ctx, tree.MethodDelete, query.Args{
 		"path": node.Path(),
 	})
 	if err != nil {
@@ -118,7 +118,7 @@ func (node *Node) Delete(ctx *astral.Context) error {
 func (node *Node) Sub(ctx *astral.Context) (map[string]tree.Node, error) {
 	var sub = make(map[string]tree.Node)
 
-	ch, err := node.client.queryCh(ctx, "tree.list", query.Args{
+	ch, err := node.client.queryCh(ctx, tree.MethodList, query.Args{
 		"path": node.Path(),
 	})
 	if err != nil {
@@ -145,7 +145,7 @@ func (node *Node) Create(ctx *astral.Context, name string) (tree.Node, error) {
 	newPath := "/" + strings.Join(append(node.path, name), "/")
 
 	// calling set without sending any value will still create the node
-	ch, err := node.client.queryCh(ctx, "tree.set", query.Args{
+	ch, err := node.client.queryCh(ctx, tree.MethodSet, query.Args{
 		"path": newPath,
 	})
 	if err != nil {

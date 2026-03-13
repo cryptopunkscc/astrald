@@ -10,7 +10,7 @@ import (
 )
 
 func (client *Client) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, *error) {
-	ch, err := client.queryCh(ctx, "objects.describe", query.Args{
+	ch, err := client.queryCh(ctx, objects.MethodDescribe, query.Args{
 		"id": objectID.String(),
 	})
 	if err != nil {

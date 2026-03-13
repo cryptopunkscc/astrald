@@ -10,7 +10,7 @@ import (
 )
 
 func (client *Client) MnemonicToSeed(ctx *astral.Context, mnemonic []string, passphrase string) (seed *bip137sig.Seed, err error) {
-	ch, err := client.queryCh(ctx, "bip137sig.seed", query.Args{"passphrase": passphrase})
+	ch, err := client.queryCh(ctx, bip137sig.MethodSeed, query.Args{"passphrase": passphrase})
 	if err != nil {
 		return
 	}

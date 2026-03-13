@@ -20,6 +20,11 @@ const (
 	OpSwarmStatus        = "user.swarm_status"
 	OpCreate             = "user.create"
 	OpListSiblings       = "user.list_siblings"
+	OpAssets             = "user.assets"
+	OpAddToIndex         = "user.add_to_index"
+	OpNewNodeContract    = "user.new_node_contract"
+	OpSignNodeContract   = "user.sign_node_contract"
+	OpSyncWith           = "user.sync_with"
 	ActionRevokeContract = "user.revoke_contract"
 )
 

@@ -5,6 +5,11 @@ import "github.com/cryptopunkscc/astrald/astral"
 const ModuleName = "services"
 const DBPrefix = "services__"
 
+const (
+	MethodDiscover = "services.discover"
+	MethodSync     = "services.sync"
+)
+
 type Module interface {
 	AddDiscoverer(Discoverer) error
 	Discoverer
