@@ -37,7 +37,8 @@ func (mod *Module) bind(ctx *astral.Context, identity *astral.Identity, visibili
 	}
 
 	return &gateway.Socket{
-		Nonce:    b.Nonce,
-		Endpoint: endpoint,
+		GatewayID: mod.node.Identity(),
+		Nonce:     b.Nonce,
+		Endpoint:  endpoint,
 	}, nil
 }
