@@ -50,6 +50,8 @@ func (mod *Module) startServers(ctx *astral.Context) {
 
 // acceptSocketConn accepts connection on the socket that gateway told client to connect to.
 func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopListener bool, err error) {
+	mod.log.Logv(2, "accepting socket connection from %v", conn.RemoteEndpoint())
+
 	var nonce astral.Nonce
 	if _, err := nonce.ReadFrom(conn); err != nil {
 		mod.log.Errorv(1, "read nonce from %v: %v", conn.RemoteEndpoint(), err)
