@@ -95,6 +95,7 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 
 	targetBinder.markPiped(reserved, cc)
 
+	// note: Maybe in the future we can add lightweight singalling before piping streams but its improvement not a need
 	mod.log.Infov(2, "pipe from %v to %v created", c.Identity, c.Target)
 	go pipe(reserved, cc)
 	return stopListener, nil
