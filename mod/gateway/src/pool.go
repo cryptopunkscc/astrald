@@ -146,6 +146,7 @@ func (p *SocketPool) notify() {
 	}
 }
 
+// socketConn is considered a connection only after the first write is done.
 type socketConn struct {
 	exonet.Conn
 
