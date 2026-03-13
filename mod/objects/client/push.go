@@ -5,6 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (client *Client) Push(ctx *astral.Context, object astral.Object) error {
