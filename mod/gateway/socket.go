@@ -11,8 +11,9 @@ import (
 // a raw exonet connection to the Endpoint and sends Nonce as the first bytes
 // to identify itself to the gateway.
 type Socket struct {
-	Endpoint exonet.Endpoint
-	Nonce    astral.Nonce
+	GatewayID *astral.Identity
+	Endpoint  exonet.Endpoint
+	Nonce     astral.Nonce
 }
 
 func (Socket) ObjectType() string { return "mod.gateway.socket" }

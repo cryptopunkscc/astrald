@@ -74,6 +74,7 @@ func (p *SocketPool) Run() error {
 }
 
 func (p *SocketPool) acquireConn() (exonet.Conn, error) {
+	p.log.Logv(1, "acquiring socket connection to %v through %v", p.socket.Endpoint)
 	conn, err := p.Exonet.Dial(p.ctx, p.socket.Endpoint)
 	if err != nil {
 		return nil, err
@@ -133,7 +134,7 @@ func (p *SocketPool) handoff(conn exonet.Conn) {
 	go func() {
 		err := p.Nodes.EstablishInboundLink(p.ctx, pc)
 		if err != nil {
-			p.log.Logv(1, "inbound link from %v: %v", conn.RemoteEndpoint(), err)
+			pc.Close()
 			return
 		}
 	}()
