@@ -11,6 +11,7 @@ import (
 	ipmod "github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
+	"github.com/cryptopunkscc/astrald/mod/services"
 	tcpmod "github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -22,6 +23,7 @@ type Deps struct {
 	Exonet    exonet.Module
 	Nodes     nodes.Module
 	Scheduler scheduler.Module
+	Services  services.Module
 	TCP       tcpmod.Module
 	IP        ipmod.Module
 }
@@ -36,11 +38,14 @@ type Module struct {
 	log    *log.Logger
 	ctx    *astral.Context
 
+	gateways   sig.Set[*astral.Identity]
 	binders    sig.Map[string, *binder]
 	connectors sig.Set[*connector]
 
 	listenEndpoints sig.Map[string, exonet.Endpoint]
 }
+
+var _ gateway.Module = &Module{}
 
 func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.ops
@@ -59,12 +64,12 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	}
 
 	<-mod.Scheduler.Ready()
+
 	for _, gw := range mod.config.Gateways {
-		mod.Scheduler.Schedule(mod.NewMaintainBindingTask(gw, mod.config.Visibility))
+		mod.addPersistentGateway(gw)
 	}
 
 	<-ctx.Done()
-
 	for _, b := range mod.binders.Values() {
 		b.Close()
 	}
@@ -115,6 +120,11 @@ func (mod *Module) connectorByNonce(nonce astral.Nonce) (*connector, bool) {
 
 func (mod *Module) canGateway(identity *astral.Identity) bool {
 	return mod.config.Gateway.Enabled
+}
+
+func (mod *Module) addPersistentGateway(gatewayID *astral.Identity) {
+	mod.gateways.Add(gatewayID)
+	mod.Scheduler.Schedule(mod.NewMaintainBindingTask(gatewayID, mod.config.Visibility))
 }
 
 func (mod *Module) String() string {

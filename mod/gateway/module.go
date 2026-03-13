@@ -8,3 +8,6 @@ const (
 	MethodList    = "gateway.node_list"
 	MethodRoute   = "gateway.route"
 )
+
+type Module interface {
+}

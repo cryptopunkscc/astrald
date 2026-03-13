@@ -15,6 +15,7 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	mod.Exonet.SetUnpacker("gw", mod)
 	mod.Exonet.SetParser("gw", mod)
 	mod.ops.AddStructPrefix(mod, "Op")
+	mod.Services.AddDiscoverer(mod)
 
 	return
 }
