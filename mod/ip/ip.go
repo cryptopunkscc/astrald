@@ -83,7 +83,7 @@ func (ip IP) IsIPv6() bool {
 func (ip IP) IsLoopback() bool { return net.IP(ip).IsLoopback() }
 
 // IsGlobalUnicast is an alias for the native net.IP.IsGlobalUnicast.
-// NOTE: Do not use this call to check if the IP is public.
+// important: Do not use this call to check if the IP is public.
 func (ip IP) IsGlobalUnicast() bool { return net.IP(ip).IsGlobalUnicast() }
 
 // IsPrivate is an alias dor the native net.IP.IsPrivate.

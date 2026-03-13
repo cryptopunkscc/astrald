@@ -9,13 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 )
 
-// LinkSelector identifies a target link for migration signaling (Phase 0).
-// Note: StreamId is local to the initiator in Phase 0; used for auditing only.
-type LinkSelector struct {
-	Identity *astral.Identity
-	StreamId astral.Int64
-}
-
 // SessionMigrateSignal represents control-plane messages exchanged during migration signaling.
 type SessionMigrateSignal struct {
 	Signal astral.String8

@@ -15,8 +15,6 @@ import (
 var _ exonet.Endpoint = &Endpoint{}
 var _ astral.Object = &Endpoint{}
 
-// NOTE: this is same for UDP and TCP - consider moving to a common package
-
 // Endpoint is an astral.Object that holds information about a UDP endpoint,
 // i.e. an IP address and a port.
 // Supports JSON and text.

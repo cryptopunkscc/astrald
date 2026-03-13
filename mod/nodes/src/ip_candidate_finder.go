@@ -12,7 +12,7 @@ const ipCacheSize = 8
 
 type ObservedEndpoint struct {
 	Endpoint exonet.Endpoint
-	IP       ip.IP // NOTE: to not parse from endpoint
+	IP       ip.IP
 	Observed int64
 }
 
@@ -27,7 +27,7 @@ func (mod *Module) PublicIPCandidates() (list []ip.IP) {
 
 // AddObservedEndpoint adds or updates an IP in the cache, evicting the oldest if over size.
 func (mod *Module) AddObservedEndpoint(endpoint exonet.Endpoint, ip ip.IP) {
-	key := endpoint.Address() // TODO: shouldnt be this with protocol (?)
+	key := endpoint.Address()
 	mod.observedEndpoints.Set(key, ObservedEndpoint{
 		Endpoint: endpoint,
 		IP:       ip,

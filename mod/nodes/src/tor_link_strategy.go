@@ -45,7 +45,6 @@ func (s *TorLinkStrategy) Signal(ctx *astral.Context) {
 }
 
 func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
-	// note: maybe resolve endpoints should be filtering by network already
 	resolvedEndpoints, err := s.mod.ResolveEndpoints(ctx, s.target)
 	if err != nil {
 		s.log.Logv(2, "%v resolve failed: %v", s.target, err)

@@ -31,7 +31,6 @@ func (mod *Module) SaveSignedRevocationContract(revocation *user.SignedNodeContr
 
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
-	// NOTE: ask about error handling in objects.Save
 	_, err = objects.Save(ctx, revocation, mod.Objects.WriteDefault())
 	if err != nil {
 		return err

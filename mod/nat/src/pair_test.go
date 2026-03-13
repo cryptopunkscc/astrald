@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// NOTE: instead of real time sleeps which make tests run slowly we could use https://github.com/coder/quartz
 func TestPair_Keepalive_Basic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

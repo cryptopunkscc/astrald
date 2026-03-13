@@ -11,8 +11,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
-// NOTE: this is same for UDP and TCP - consider moving to a common package
-
 // UDPEndpoint is an astral.Object that holds information about a UDP endpoint,
 type UDPEndpoint struct {
 	IP   ip.IP

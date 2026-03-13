@@ -7,8 +7,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-// NOTE: Maybe astral.ProtocolFrame will be used if ever introduced
-// NOTE: it is inside of mod/nat/src/ because it is very internal part of pair mechanism.
 type pingFrame struct {
 	Nonce astral.Nonce
 	Pong  bool
