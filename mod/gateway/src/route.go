@@ -14,6 +14,8 @@ import (
 const acceptTimeout = 30 * time.Second
 
 func (mod *Module) routeQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+	ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
 	var targetKey string
 	switch {
 	case strings.HasPrefix(q.Query, gateway.MethodRoute+"."):
