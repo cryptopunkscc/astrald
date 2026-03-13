@@ -8,7 +8,7 @@ import (
 
 func (client *Client) AliasMap(ctx *astral.Context) (am *dir.AliasMap, err error) {
 	// query
-	ch, err := client.queryCh(ctx, "dir.alias_map", nil)
+	ch, err := client.queryCh(ctx, dir.MethodAliasMap, nil)
 	if err != nil {
 		return nil, err
 	}

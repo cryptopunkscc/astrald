@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) Push(ctx *astral.Context, object astral.Object) error {
-	ch, err := client.queryCh(ctx, "objects.push", nil)
+	ch, err := client.queryCh(ctx, objects.MethodPush, nil)
 	if err != nil {
 		return err
 	}

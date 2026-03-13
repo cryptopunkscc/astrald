@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
 func (client *Client) ResolveIdentity(ctx *astral.Context, name string) (identity *astral.Identity, err error) {
@@ -18,7 +19,7 @@ func (client *Client) ResolveIdentity(ctx *astral.Context, name string) (identit
 	}
 
 	// then try using host's resolver
-	ch, err := client.queryCh(ctx, "dir.resolve", query.Args{"name": name})
+	ch, err := client.queryCh(ctx, dir.MethodResolve, query.Args{"name": name})
 	if err != nil {
 		return nil, err
 	}

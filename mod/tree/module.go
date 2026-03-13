@@ -23,6 +23,15 @@ import (
 const ModuleName = "tree"
 const DBPrefix = "tree__"
 
+const (
+	MethodGet         = "tree.get"
+	MethodSet         = "tree.set"
+	MethodDelete      = "tree.delete"
+	MethodList        = "tree.list"
+	MethodMountRemote = "tree.mount_remote"
+	MethodUnmount     = "tree.unmount"
+)
+
 type Module interface {
 	// Root returns the root node of the tree
 	Root() Node

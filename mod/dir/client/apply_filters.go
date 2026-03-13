@@ -6,10 +6,11 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
 func (client *Client) ApplyFilters(ctx *astral.Context, identity *astral.Identity, filters ...string) (bool, error) {
-	ch, err := client.queryCh(ctx, "dir.set_alias", query.Args{
+	ch, err := client.queryCh(ctx, dir.MethodSetAlias, query.Args{
 		"id":      identity,
 		"filters": strings.Join(filters, ","),
 	})

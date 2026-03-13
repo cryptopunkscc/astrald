@@ -4,10 +4,11 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (client *Client) Delete(ctx *astral.Context, objectID *astral.ObjectID, repo string) error {
-	ch, err := client.queryCh(ctx, "objects.delete", query.Args{
+	ch, err := client.queryCh(ctx, objects.MethodDelete, query.Args{
 		"id":   objectID,
 		"repo": repo,
 	})

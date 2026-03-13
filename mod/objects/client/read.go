@@ -5,10 +5,11 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 func (client *Client) Read(ctx *astral.Context, objectID *astral.ObjectID, offset, limit int64) (io.ReadCloser, error) {
-	return client.query(ctx, "objects.read", query.Args{
+	return client.query(ctx, objects.ActionRead, query.Args{
 		"id":     objectID,
 		"offset": offset,
 		"limit":  limit,

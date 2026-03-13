@@ -10,6 +10,23 @@ const (
 	ActionRead   = "objects.read"
 	ActionCreate = "objects.create"
 
+	MethodNew              = "objects.new"
+	MethodLoad             = "objects.load"
+	MethodStore            = "objects.store"
+	MethodDelete           = "objects.delete"
+	MethodContains         = "objects.contains"
+	MethodScan             = "objects.scan"
+	MethodSearch           = "objects.search"
+	MethodDescribe         = "objects.describe"
+	MethodProbe            = "objects.probe"
+	MethodGetType          = "objects.get_type"
+	MethodPush             = "objects.push"
+	MethodNewMem           = "objects.new_mem"
+	MethodRepositories     = "objects.repositories"
+	MethodRemoveRepository = "objects.remove_repository"
+	MethodTypes            = "objects.types"
+	MethodEcho             = "objects.echo"
+
 	RepoMain      = "main"      // everything
 	RepoDevice    = "device"    // device: memory, local, removable
 	RepoMemory    = "memory"    // memcache repos

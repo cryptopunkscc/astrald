@@ -7,7 +7,7 @@ import (
 )
 
 func (client *Client) Repositories(ctx *astral.Context) (repos []*objects.RepositoryInfo, err error) {
-	ch, err := client.queryCh(ctx, "objects.repositories", nil)
+	ch, err := client.queryCh(ctx, objects.MethodRepositories, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 func (client *Client) Invite(ctx *astral.Context, contract *user.NodeContract) error {
-	ch, err := client.queryCh(ctx, "user.invite", nil)
+	ch, err := client.queryCh(ctx, user.OpInvite, nil)
 	if err != nil {
 		return err
 	}

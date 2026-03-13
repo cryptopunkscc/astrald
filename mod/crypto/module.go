@@ -10,6 +10,14 @@ import (
 const ModuleName = "crypto"
 const DBPrefix = "crypto__"
 
+const (
+	MethodPublicKey           = "crypto.public_key"
+	MethodSignHash            = "crypto.sign_hash"
+	MethodSignText            = "crypto.sign_text"
+	MethodVerifyHashSignature = "crypto.verify_hash_signature"
+	MethodVerifyTextSignature = "crypto.verify_text_signature"
+)
+
 type Module interface {
 	// PrivateKeyID looks up the ObjectID of a private key corresponding to the given public key
 	PrivateKeyID(*PublicKey) (*astral.ObjectID, error)

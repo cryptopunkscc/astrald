@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) Search(ctx *astral.Context, q string) (<-chan *objects.SearchResult, *error) {
-	ch, err := client.queryCh(ctx, "objects.search", query.Args{
+	ch, err := client.queryCh(ctx, objects.MethodSearch, query.Args{
 		"q": q,
 	})
 	if err != nil {

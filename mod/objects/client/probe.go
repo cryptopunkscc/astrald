@@ -9,7 +9,7 @@ import (
 
 func (client *Client) Probe(ctx *astral.Context, objectID *astral.ObjectID, repo string) (probe *objects.Probe, err error) {
 	// send the query
-	ch, err := client.queryCh(ctx, "objects.probe", query.Args{
+	ch, err := client.queryCh(ctx, objects.MethodProbe, query.Args{
 		"id":   objectID,
 		"repo": repo,
 	})
