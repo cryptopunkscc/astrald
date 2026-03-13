@@ -13,7 +13,7 @@ var _ nodes.EndpointResolver = &Module{}
 
 func (mod *Module) ResolveEndpoints(context *astral.Context, nodeID *astral.Identity) (<-chan *nodes.EndpointWithTTL, error) {
 	if !nodeID.IsEqual(mod.node.Identity()) {
-		// note: resolve endpoints for our "binders" if we are gateway
+		// note: we might resolve endpoints if we act as their gateway
 		return sig.ArrayToChan([]*nodes.EndpointWithTTL{}), nil
 	}
 
