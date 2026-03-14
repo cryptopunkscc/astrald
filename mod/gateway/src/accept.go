@@ -9,6 +9,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 )
 
@@ -106,7 +107,6 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 }
 
 const (
-	socketSignalByte       = byte(1)
 	socketProbeMaxAttempts = 3
 	socketProbeTimeout     = 1 * time.Second
 )
@@ -125,7 +125,8 @@ func (mod *Module) probeBinderConn(b *binder, first *binderConn) *binderConn {
 			}
 		}
 
-		if _, err := candidate.Write([]byte{socketSignalByte}); err == nil {
+		ping := gateway.PingFrame{Ping: true, Stop: true}
+		if _, err := ping.WriteTo(candidate); err == nil {
 			return candidate
 		}
 

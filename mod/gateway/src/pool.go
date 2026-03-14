@@ -133,8 +133,8 @@ func (p *SocketPool) handoff(conn exonet.Conn) {
 
 	go func() {
 		// wait for the gateway's start signal before beginning link negotiation
-		var sig [1]byte
-		if _, err := pc.Read(sig[:]); err != nil {
+		var ping gateway.PingFrame
+		if _, err := ping.ReadFrom(pc); err != nil {
 			pc.Close()
 			return
 		}
