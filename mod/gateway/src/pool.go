@@ -132,10 +132,14 @@ func (p *SocketPool) handoff(conn exonet.Conn) {
 	p.addIdle()
 
 	go func() {
-		err := p.Nodes.EstablishInboundLink(p.ctx, pc)
-		if err != nil {
+		// wait for the gateway's start signal before beginning link negotiation
+		var sig [1]byte
+		if _, err := pc.Read(sig[:]); err != nil {
 			pc.Close()
 			return
+		}
+		if err := p.Nodes.EstablishInboundLink(p.ctx, pc); err != nil {
+			pc.Close()
 		}
 	}()
 }
