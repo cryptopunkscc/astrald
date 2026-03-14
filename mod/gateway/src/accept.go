@@ -106,15 +106,17 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 }
 
 const (
-	socketSignalByte   = byte(1)
-	socketProbeTimeout = 1 * time.Second
+	socketSignalByte       = byte(1)
+	socketProbeMaxAttempts = 3
+	socketProbeTimeout     = 1 * time.Second
 )
 
-// probeBinderConn signals each binderConn in the pool to verify it is alive,
-// discarding dead connections until one succeeds or the pool is exhausted.
+// probeBinderConn signals binderConns to verify they are alive.
+// It will try at most socketProbeMaxAttempts connections before giving up.
 func (mod *Module) probeBinderConn(b *binder, first *binderConn) *binderConn {
 	candidate := first
-	for {
+
+	for attempts := 0; attempts < socketProbeMaxAttempts; attempts++ {
 		if candidate == nil {
 			var ok bool
 			candidate, ok = b.takeConn()
@@ -123,20 +125,16 @@ func (mod *Module) probeBinderConn(b *binder, first *binderConn) *binderConn {
 			}
 		}
 
-		if d, ok := candidate.Conn.(deadliner); ok {
-			d.SetWriteDeadline(time.Now().Add(socketProbeTimeout))
-		}
-		_, err := candidate.Write([]byte{socketSignalByte})
-		if d, ok := candidate.Conn.(deadliner); ok {
-			d.SetWriteDeadline(time.Time{})
-		}
-		if err == nil {
+		if _, err := candidate.Write([]byte{socketSignalByte}); err == nil {
 			return candidate
 		}
 
 		candidate.Close()
 		candidate = nil
 	}
+
+	mod.log.Errorv(1, "binder %v probe exhausted", b.Identity)
+	return nil
 }
 
 type deadliner interface {
