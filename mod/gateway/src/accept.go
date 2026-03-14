@@ -120,7 +120,12 @@ const (
 // via goCh it sends ByteSignalGo and waits for ByteSignalReady.
 func (mod *Module) keepalive(bc *binderConn) {
 	defer close(bc.done)
-	defer bc.Close()
+	piped := false
+	defer func() {
+		if !piped {
+			bc.Close()
+		}
+	}()
 
 	for {
 		if d, ok := bc.Conn.(deadliner); ok {
@@ -138,6 +143,7 @@ func (mod *Module) keepalive(bc *binderConn) {
 		case gateway.BytePing:
 			select {
 			case respCh := <-bc.goCh:
+				piped = true // pipe or probeBinderConn takes ownership; don't close on exit
 				mod.sendSignal(bc, respCh)
 				return
 			default:
