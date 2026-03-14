@@ -3,6 +3,7 @@ package gateway
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -25,11 +26,14 @@ type binderConn struct {
 	state   connState
 	pipedTo *connectorConn
 	onClose func()
+	goCh    chan chan error // connector signals the ping loop to send a Signal frame
+	done    chan struct{}   // closed when keepalive exits
+	closed  atomic.Bool
 }
 
 func (bc *binderConn) Close() error {
 	err := bc.Conn.Close()
-	if bc.onClose != nil {
+	if !bc.closed.Swap(true) && bc.onClose != nil {
 		bc.onClose()
 	}
 	return err
@@ -45,13 +49,16 @@ type binder struct {
 	conns      sig.Set[*binderConn]
 }
 
-func (b *binder) addConn(conn exonet.Conn) {
+func (b *binder) addConn(conn exonet.Conn) *binderConn {
 	bc := &binderConn{
 		Conn:  conn,
 		state: connStateIdle,
+		goCh:  make(chan chan error, 1),
+		done:  make(chan struct{}),
 	}
 	bc.onClose = func() { b.conns.Remove(bc) }
 	b.conns.Add(bc)
+	return bc
 }
 
 // takeConn reserves an idle binderConn for a connector.
@@ -79,9 +86,6 @@ func (b *binder) Close() error {
 	defer b.mu.Unlock()
 	var errs []error
 	for _, bc := range b.conns.Clone() {
-		if bc.state == connStateReserved {
-			continue
-		}
 		errs = append(errs, bc.Close())
 	}
 	return errors.Join(errs...)

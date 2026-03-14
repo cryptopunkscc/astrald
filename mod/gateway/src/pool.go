@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -132,14 +133,46 @@ func (p *SocketPool) handoff(conn exonet.Conn) {
 	p.addIdle()
 
 	go func() {
-		// wait for the gateway's start signal before beginning link negotiation
-		var ping gateway.PingFrame
-		if _, err := ping.ReadFrom(pc); err != nil {
-			pc.Close()
-			return
-		}
-		if err := p.Nodes.EstablishInboundLink(p.ctx, pc); err != nil {
-			pc.Close()
+		// Ping loop: send BytePing, await BytePong or ByteSignalGo.
+		// Pong responses are written to raw conn so onConnTaken fires only on ByteSignalReady.
+		for {
+			if _, err := conn.Write([]byte{gateway.BytePing}); err != nil {
+				pc.Close()
+				return
+			}
+			if d, ok := conn.(deadliner); ok {
+				d.SetReadDeadline(time.Now().Add(socketPingTimeout))
+			}
+			var b [1]byte
+			if _, err := io.ReadFull(conn, b[:]); err != nil {
+				pc.Close()
+				return
+			}
+			if d, ok := conn.(deadliner); ok {
+				d.SetReadDeadline(time.Time{})
+			}
+			switch b[0] {
+			case gateway.BytePong:
+				select {
+				case <-time.After(socketPingInterval):
+				case <-p.ctx.Done():
+					pc.Close()
+					return
+				}
+			case gateway.ByteSignalGo:
+				// write ByteSignalReady through pc to trigger onConnTaken
+				if _, err := pc.Write([]byte{gateway.ByteSignalReady}); err != nil {
+					pc.Close()
+					return
+				}
+				if err := p.Nodes.EstablishInboundLink(p.ctx, pc); err != nil {
+					pc.Close()
+				}
+				return
+			default:
+				pc.Close()
+				return
+			}
 		}
 	}()
 }
