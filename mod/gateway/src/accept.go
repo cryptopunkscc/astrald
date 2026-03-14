@@ -3,10 +3,9 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"sync"
-
 	"io"
 	"strings"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -87,35 +86,97 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 		return stopListener, nil
 	}
 
+	alive := mod.probeBinderConn(targetBinder, reserved)
+	if alive == nil {
+		mod.log.Errorv(1, "no alive conn for %v", c.Target)
+		conn.Close()
+		return stopListener, nil
+	}
+
 	cc := &connectorConn{
 		Conn:    conn,
 		network: conn.RemoteEndpoint().Network(),
-		pipedTo: reserved,
+		pipedTo: alive,
 	}
 
-	targetBinder.markPiped(reserved, cc)
-
-	// note: Maybe in the future we can add lightweight singalling before piping streams but its improvement not a need
+	targetBinder.markPiped(alive, cc)
 	mod.log.Infov(2, "pipe from %v to %v created", c.Identity, c.Target)
-	go pipe(reserved, cc)
+	go pipe(alive, cc)
 	return stopListener, nil
 }
 
+const (
+	socketSignalByte   = byte(1)
+	socketProbeTimeout = 1 * time.Second
+)
+
+// probeBinderConn signals each binderConn in the pool to verify it is alive,
+// discarding dead connections until one succeeds or the pool is exhausted.
+func (mod *Module) probeBinderConn(b *binder, first *binderConn) *binderConn {
+	candidate := first
+	for {
+		if candidate == nil {
+			var ok bool
+			candidate, ok = b.takeConn()
+			if !ok {
+				return nil
+			}
+		}
+
+		if d, ok := candidate.Conn.(deadliner); ok {
+			d.SetWriteDeadline(time.Now().Add(socketProbeTimeout))
+		}
+		_, err := candidate.Write([]byte{socketSignalByte})
+		if d, ok := candidate.Conn.(deadliner); ok {
+			d.SetWriteDeadline(time.Time{})
+		}
+		if err == nil {
+			return candidate
+		}
+
+		candidate.Close()
+		candidate = nil
+	}
+}
+
+type deadliner interface {
+	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
+}
+
 func pipe(a, b io.ReadWriteCloser) {
-	var wg sync.WaitGroup
-	wg.Add(2)
+	const idle = 30 * time.Second
 
-	go func() {
-		defer wg.Done()
-		io.Copy(a, b)
-		a.Close()
-	}()
+	done := make(chan struct{}, 2)
 
-	go func() {
-		defer wg.Done()
-		io.Copy(b, a)
-		b.Close()
-	}()
+	copy := func(dst, src io.ReadWriteCloser) {
+		buf := make([]byte, 32*1024)
+		srcD, srcOk := src.(deadliner)
+		dstD, dstOk := dst.(deadliner)
+		for {
+			if srcOk {
+				srcD.SetReadDeadline(time.Now().Add(idle))
+			}
+			n, err := src.Read(buf)
+			if n > 0 {
+				if dstOk {
+					dstD.SetWriteDeadline(time.Now().Add(idle))
+				}
+				if _, werr := dst.Write(buf[:n]); werr != nil {
+					break
+				}
+			}
+			if err != nil {
+				break
+			}
+		}
+		done <- struct{}{}
+	}
 
-	wg.Wait()
+	go copy(a, b)
+	go copy(b, a)
+
+	<-done
+	a.Close()
+	b.Close()
 }

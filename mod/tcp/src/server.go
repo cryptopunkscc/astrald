@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sync/atomic"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -61,6 +62,11 @@ func (s *Server) Run(ctx *astral.Context) error {
 			}
 
 			return fmt.Errorf("tcp server/run: accept failed: %w", err)
+		}
+
+		if tc, ok := rawConn.(*net.TCPConn); ok {
+			tc.SetKeepAlive(true)
+			tc.SetKeepAlivePeriod(30 * time.Second)
 		}
 
 		conn := tcp.WrapConn(rawConn, false)
