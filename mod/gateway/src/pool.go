@@ -165,6 +165,8 @@ func (p *SocketPool) handoff(conn exonet.Conn) {
 					pc.Close()
 					return
 				}
+
+				//
 				if err := p.Nodes.EstablishInboundLink(p.ctx, pc); err != nil {
 					pc.Close()
 				}
