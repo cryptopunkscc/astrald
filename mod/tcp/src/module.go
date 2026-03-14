@@ -1,10 +1,13 @@
 package tcp
 
 import (
+	"context"
+	"sync"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
@@ -23,13 +26,34 @@ type Module struct {
 	log             *log.Logger
 	ctx             *astral.Context
 	configEndpoints []exonet.Endpoint
+	ops             ops.Set
 
-	server sig.Switch
+	mu sync.Mutex
+
+	server             sig.Switch
+	ephemeralListeners sig.Map[astral.Uint16, exonet.EphemeralListener]
 }
 
 type Settings struct {
 	Listen *tree.Value[*astral.Bool] `tree:"listen"`
 	Dial   *tree.Value[*astral.Bool] `tree:"dial"`
+}
+
+func (mod *Module) GetOpSet() *ops.Set {
+	return &mod.ops
+}
+
+func (mod *Module) String() string {
+	return tcp.ModuleName
+}
+
+func (mod *Module) acceptAll(ctx context.Context, conn exonet.Conn) (shouldStop bool, err error) {
+	err = mod.Nodes.EstablishInboundLink(ctx, conn)
+	if err != nil {
+		return false, err
+	}
+
+	return false, nil
 }
 
 func (mod *Module) Run(ctx *astral.Context) (err error) {
