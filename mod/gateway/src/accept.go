@@ -150,6 +150,7 @@ func pipe(a, b io.ReadWriteCloser) {
 	done := make(chan struct{}, 2)
 
 	copy := func(dst, src io.ReadWriteCloser) {
+		// note: sync.Pool could reduce per-connection allocations under high concurrency (pattern used by nginx, envoy, treafik)
 		buf := make([]byte, 32*1024)
 		srcD, srcOk := src.(deadliner)
 		dstD, dstOk := dst.(deadliner)
