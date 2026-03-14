@@ -61,7 +61,8 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 
 	if b, ok := mod.binderByNonce(nonce); ok {
 		mod.log.Infov(2, "added idle conn to binder %v", b.Identity)
-		b.addConn(conn)
+		bc := b.addConn(conn)
+		go mod.keepalive(bc)
 		return stopListener, nil
 	}
 
@@ -107,11 +108,75 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 }
 
 const (
+	socketPingInterval     = 2 * time.Second
+	socketPingTimeout      = 3 * time.Second
+	socketDeadTimeout      = 10 * time.Second
 	socketProbeMaxAttempts = 3
-	socketProbeTimeout     = 1 * time.Second
+	socketProbeTimeout     = 5 * time.Second
 )
 
-// probeBinderConn signals binderConns to verify they are alive.
+// keepalive runs on the gateway side for each idle binder conn.
+// It reads binder pings and responds with pong. When a connector arrives
+// via goCh it sends ByteSignalGo and waits for ByteSignalReady.
+func (mod *Module) keepalive(bc *binderConn) {
+	defer close(bc.done)
+	defer bc.Close()
+
+	for {
+		if d, ok := bc.Conn.(deadliner); ok {
+			d.SetReadDeadline(time.Now().Add(socketDeadTimeout))
+		}
+		var b [1]byte
+		if _, err := io.ReadFull(bc.Conn, b[:]); err != nil {
+			return
+		}
+		if d, ok := bc.Conn.(deadliner); ok {
+			d.SetReadDeadline(time.Time{})
+		}
+
+		switch b[0] {
+		case gateway.BytePing:
+			select {
+			case respCh := <-bc.goCh:
+				mod.sendSignal(bc, respCh)
+				return
+			default:
+				if _, err := bc.Conn.Write([]byte{gateway.BytePong}); err != nil {
+					return
+				}
+			}
+		default:
+			return
+		}
+	}
+}
+
+// sendSignal sends ByteSignalGo to the binder and waits for ByteSignalReady.
+// Called from keepalive when a connector signals via goCh.
+func (mod *Module) sendSignal(bc *binderConn, respCh chan error) {
+	if _, err := bc.Conn.Write([]byte{gateway.ByteSignalGo}); err != nil {
+		respCh <- err
+		return
+	}
+	if d, ok := bc.Conn.(deadliner); ok {
+		d.SetReadDeadline(time.Now().Add(socketProbeTimeout))
+	}
+	var b [1]byte
+	if _, err := io.ReadFull(bc.Conn, b[:]); err != nil {
+		respCh <- err
+		return
+	}
+	if d, ok := bc.Conn.(deadliner); ok {
+		d.SetReadDeadline(time.Time{})
+	}
+	if b[0] != gateway.ByteSignalReady {
+		respCh <- fmt.Errorf("expected signalReady, got 0x%02x", b[0])
+		return
+	}
+	respCh <- nil
+}
+
+// probeBinderConn signals a binderConn via its ping loop to verify liveness.
 // It will try at most socketProbeMaxAttempts connections before giving up.
 func (mod *Module) probeBinderConn(b *binder, first *binderConn) *binderConn {
 	candidate := first
@@ -125,13 +190,33 @@ func (mod *Module) probeBinderConn(b *binder, first *binderConn) *binderConn {
 			}
 		}
 
-		ping := gateway.PingFrame{Ping: true, Stop: true}
-		if _, err := ping.WriteTo(candidate); err == nil {
-			return candidate
+		respCh := make(chan error, 1)
+		select {
+		case candidate.goCh <- respCh:
+		case <-time.After(socketProbeTimeout):
+			// goCh buffer full — another connector is already signaling this conn
+			candidate.Close()
+			candidate = nil
+			continue
 		}
 
-		candidate.Close()
-		candidate = nil
+		select {
+		case err := <-respCh:
+			if err != nil {
+				// sendSignal failed; keepalive already exited via defer, conn is closed
+				candidate.Close()
+				candidate = nil
+				continue
+			}
+			return candidate
+		case <-candidate.done:
+			// keepalive exited without responding — conn was dead
+			candidate = nil
+			continue
+		case <-time.After(socketProbeTimeout + socketPingInterval):
+			candidate.Close()
+			candidate = nil
+		}
 	}
 
 	mod.log.Errorv(1, "binder %v probe exhausted", b.Identity)
