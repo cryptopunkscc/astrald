@@ -26,5 +26,5 @@ func (mod *Module) OpNodeBind(
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	return ch.Send(socket)
+	return ch.Send(&socket)
 }

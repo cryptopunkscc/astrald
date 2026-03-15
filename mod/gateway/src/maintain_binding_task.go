@@ -71,7 +71,7 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 		}
 		count = 0
 
-		err = task.mod.newSocketPool(ctx, task.GatewayID, socket).Run()
+		err = task.mod.newSocketPool(ctx, task.GatewayID, *socket).Run()
 		if err != nil {
 			task.mod.log.Error("rebinding to %v due to: %v", task.GatewayID, err)
 		}

@@ -9,9 +9,9 @@ import (
 
 const connectTimeout = 30 * time.Second
 
-func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, network string) (socket gateway.Socket, err error) {
+func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, network string) (gateway.Socket, error) {
 	if !mod.canGateway(caller) {
-		return socket, gateway.ErrUnauthorized
+		return gateway.Socket{}, gateway.ErrUnauthorized
 	}
 
 	endpoint, err := mod.getGatewayEndpoint(mod.ctx, network)
@@ -19,14 +19,14 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 		return gateway.Socket{}, err
 	}
 
-	b, ok := mod.binderByIdentity(target)
+	binder, ok := mod.binderByIdentity(target)
 	if !ok {
-		return socket, gateway.ErrTargetNotReachable
+		return gateway.Socket{}, gateway.ErrTargetNotReachable
 	}
 
-	reserved, ok := b.takeConn()
+	reserved, ok := binder.takeConn()
 	if !ok {
-		return socket, gateway.ErrTargetNotReachable
+		return gateway.Socket{}, gateway.ErrTargetNotReachable
 	}
 
 	c := &connector{
@@ -39,7 +39,9 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 	mod.connectors.Add(c)
 
 	go func() {
-		<-time.After(connectTimeout)
+		t := time.NewTimer(connectTimeout)
+		defer t.Stop()
+		<-t.C
 
 		bc := c.takeReserved()
 		if bc == nil {

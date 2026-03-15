@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -16,14 +15,15 @@ import (
 const (
 	socketPoolTargetIdle = 2
 	socketPoolMaxFails   = 3
+	socketPingInterval   = 2 * time.Second
+	socketPingTimeout    = 3 * time.Second
 )
 
 type SocketPool struct {
 	*Module
 	ctx       *astral.Context
-	socket    *gateway.Socket
+	socket    gateway.Socket
 	gatewayID *astral.Identity
-	log       *log.Logger
 
 	mu    sync.Mutex
 	total int
@@ -32,13 +32,12 @@ type SocketPool struct {
 	signal chan struct{}
 }
 
-func (mod *Module) newSocketPool(ctx *astral.Context, gatewayID *astral.Identity, socket *gateway.Socket) *SocketPool {
+func (mod *Module) newSocketPool(ctx *astral.Context, gatewayID *astral.Identity, socket gateway.Socket) *SocketPool {
 	return &SocketPool{
 		ctx:       ctx,
 		Module:    mod,
 		socket:    socket,
 		gatewayID: gatewayID,
-		log:       mod.log,
 		signal:    make(chan struct{}, 1),
 	}
 }
@@ -52,7 +51,7 @@ func (p *SocketPool) Run() error {
 		case <-p.ctx.Done():
 			return p.ctx.Err()
 		case <-p.signal:
-			for toAdd := socketPoolTargetIdle - p.idleCount(); toAdd > 0; toAdd-- {
+			for p.idleCount() < socketPoolTargetIdle {
 				conn, err := p.acquireConn()
 				if err != nil {
 					select {
@@ -63,7 +62,6 @@ func (p *SocketPool) Run() error {
 							return gateway.ErrSocketUnreachable
 						}
 					}
-					toAdd++
 					continue
 				}
 
@@ -115,7 +113,6 @@ func (p *SocketPool) onConnClosed(wasIdle bool) {
 	if wasIdle {
 		p.idle--
 	}
-
 	p.mu.Unlock()
 	p.notify()
 }
@@ -126,57 +123,58 @@ func (p *SocketPool) handoff(conn exonet.Conn) {
 		localEndpoint:  gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
 		remoteEndpoint: gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
 	}
+	p.registerConn(pc)
+	go p.runIdleConn(conn, pc)
+}
 
-	// when first write is done it means we started responding to link negotiation
-	pc.onFirstWrite = p.onConnTaken
+// registerConn binds pool lifecycle callbacks to pc and marks it as idle.
+func (p *SocketPool) registerConn(pc *socketConn) {
 	pc.onClose = func() { p.onConnClosed(!pc.used.Load()) }
 	p.addIdle()
+}
 
-	go func() {
-		// Ping loop: send BytePing, await BytePong or ByteSignalGo.
-		// Pong responses are written to raw conn so onConnTaken fires only on ByteSignalReady.
-		for {
-			if _, err := conn.Write([]byte{gateway.BytePing}); err != nil {
-				pc.Close()
-				return
-			}
-			if d, ok := conn.(deadliner); ok {
-				d.SetReadDeadline(time.Now().Add(socketPingTimeout))
-			}
-			var b [1]byte
-			if _, err := io.ReadFull(conn, b[:]); err != nil {
-				pc.Close()
-				return
-			}
-			if d, ok := conn.(deadliner); ok {
-				d.SetReadDeadline(time.Time{})
-			}
-			switch b[0] {
-			case gateway.BytePong:
-				select {
-				case <-time.After(socketPingInterval):
-				case <-p.ctx.Done():
-					pc.Close()
-					return
-				}
-			case gateway.ByteSignalGo:
-				// write ByteSignalReady through pc to trigger onConnTaken
-				if _, err := pc.Write([]byte{gateway.ByteSignalReady}); err != nil {
-					pc.Close()
-					return
-				}
-
-				//
-				if err := p.Nodes.EstablishInboundLink(p.ctx, pc); err != nil {
-					pc.Close()
-				}
-				return
-			default:
-				pc.Close()
-				return
-			}
+// runIdleConn is the binder-side ping loop for an idle socket connection.
+// It sends BytePing and waits for BytePong or ByteSignalGo.
+// On ByteSignalGo the conn transitions from idle to taken before writing ByteSignalReady.
+func (p *SocketPool) runIdleConn(conn exonet.Conn, pc *socketConn) {
+	for {
+		if err := gateway.WritePing(conn); err != nil {
+			pc.Close()
+			return
 		}
-	}()
+		withReadDeadline(conn, socketPingTimeout)
+		var b [1]byte
+		if _, err := io.ReadFull(conn, b[:]); err != nil {
+			pc.Close()
+			return
+		}
+		clearDeadlines(conn)
+		switch b[0] {
+		case gateway.BytePong:
+			select {
+			case <-time.After(socketPingInterval):
+			case <-p.ctx.Done():
+				pc.Close()
+				return
+			}
+		case gateway.ByteSignalGo:
+			// Mark taken before notifying pool: if Close fires during write,
+			// onClose sees used=true → wasIdle=false → only total is decremented.
+			pc.used.Store(true)
+			p.onConnTaken()
+			if err := gateway.WriteSignalReady(pc); err != nil {
+				pc.Close()
+				return
+			}
+			if err := p.Nodes.EstablishInboundLink(p.ctx, pc); err != nil {
+				pc.Close()
+			}
+			return
+		default:
+			pc.Close()
+			return
+		}
+	}
 }
 
 func (p *SocketPool) notify() {
@@ -186,13 +184,13 @@ func (p *SocketPool) notify() {
 	}
 }
 
-// socketConn is considered a connection only after the first write is done.
+// socketConn wraps an exonet.Conn with fixed endpoints and a one-shot close callback.
+// used tracks whether the conn has been taken from the idle pool (for wasIdle accounting).
 type socketConn struct {
 	exonet.Conn
 
 	localEndpoint  exonet.Endpoint
 	remoteEndpoint exonet.Endpoint
-	onFirstWrite   func()
 	onClose        func()
 
 	closed atomic.Bool
@@ -202,22 +200,10 @@ type socketConn struct {
 func (c *socketConn) LocalEndpoint() exonet.Endpoint  { return c.localEndpoint }
 func (c *socketConn) RemoteEndpoint() exonet.Endpoint { return c.remoteEndpoint }
 
-func (c *socketConn) Write(b []byte) (int, error) {
-	if !c.used.Swap(true) && c.onFirstWrite != nil {
-		c.onFirstWrite()
-	}
-
-	return c.Conn.Write(b)
-}
-
 func (c *socketConn) Close() error {
 	err := c.Conn.Close()
-
-	if !c.closed.Swap(true) {
-		if c.onClose != nil {
-			c.onClose()
-		}
+	if !c.closed.Swap(true) && c.onClose != nil {
+		c.onClose()
 	}
-
 	return err
 }
