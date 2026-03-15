@@ -44,10 +44,10 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 	}
 
 	return &gwConn{
-		bindingConn: newBinderConn(conn, nil),
-		local:       conn.LocalEndpoint(),
-		remote:      gwEndpoint,
-		outbound:    conn.Outbound(),
+		ReadWriteCloser: conn,
+		local:           conn.LocalEndpoint(),
+		remote:          gwEndpoint,
+		outbound:        conn.Outbound(),
 	}, nil
 }
 
@@ -67,9 +67,9 @@ func (mod *Module) route(ctx *astral.Context, gwEndpoint *gateway.Endpoint) (exo
 	}
 
 	return &gwConn{
-		bindingConn: newBinderConn(&routeConn{ReadWriteCloser: conn}, nil),
-		local:       gateway.NewEndpoint(mod.node.Identity(), mod.node.Identity()),
-		remote:      gwEndpoint,
-		outbound:    true,
+		ReadWriteCloser: conn,
+		local:           gateway.NewEndpoint(mod.node.Identity(), mod.node.Identity()),
+		remote:          gwEndpoint,
+		outbound:        true,
 	}, nil
 }

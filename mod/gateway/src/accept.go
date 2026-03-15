@@ -29,7 +29,7 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 	if b, ok := mod.binderByNonce(nonce); ok {
 		mod.log.Infov(2, "added idle conn to binder %v", b.Identity)
 		bc := b.addConn(conn)
-		go bc.keepalive(nil, nil, nil)
+		go bc.keepalive(nil, nil)
 		return stopListener, nil
 	}
 

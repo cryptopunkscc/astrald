@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"sync"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -24,10 +23,8 @@ type SocketPool struct {
 	socket    gateway.Socket
 	gatewayID *astral.Identity
 
-	mu   sync.Mutex
-	idle int
-
-	wake chan struct{}
+	conns sig.Set[*bindingConn]
+	wake  chan struct{}
 }
 
 func (mod *Module) newSocketPool(ctx *astral.Context, gatewayID *astral.Identity, socket gateway.Socket) *SocketPool {
@@ -49,14 +46,7 @@ func (p *SocketPool) Run() error {
 		case <-p.ctx.Done():
 			return p.ctx.Err()
 		case <-p.wake:
-			for {
-				p.mu.Lock()
-				if p.idle >= socketPoolTargetIdle {
-					p.mu.Unlock()
-					break
-				}
-				p.mu.Unlock()
-
+			for p.idleCount() < socketPoolTargetIdle {
 				conn, err := p.acquireConn()
 				if err != nil {
 					select {
@@ -69,7 +59,6 @@ func (p *SocketPool) Run() error {
 					}
 					continue
 				}
-
 				retry.Reset()
 				p.startIdleSocket(conn)
 			}
@@ -92,39 +81,27 @@ func (p *SocketPool) acquireConn() (exonet.Conn, error) {
 	return conn, nil
 }
 
-func (p *SocketPool) addIdle() {
-	p.mu.Lock()
-	p.idle++
-	p.mu.Unlock()
-}
-
-func (p *SocketPool) onConnTaken() {
-	p.mu.Lock()
-	p.idle--
-	p.mu.Unlock()
-	p.notify()
-}
-
-func (p *SocketPool) onConnClosed(idle bool) {
-	if idle {
-		p.mu.Lock()
-		p.idle--
-		p.mu.Unlock()
-	}
-	p.notify()
+// idleCount returns the number of non-active conns in the pool.
+func (p *SocketPool) idleCount() int {
+	return len(p.conns.Select(func(a *bindingConn) bool {
+		return !a.active.Load()
+	}))
 }
 
 func (p *SocketPool) startIdleSocket(conn exonet.Conn) {
-	bc := newBinderConn(conn, nil)
-	gc := &gwConn{
-		bindingConn: bc,
-		local:       gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
-		remote:      gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
+	bc := newBinderConn(conn)
+	bc.onClose = func() {
+		p.conns.Remove(bc)
+		p.notify()
 	}
-	bc.onClose = func() { p.onConnClosed(!bc.active.Load()) }
-	p.addIdle()
-	go bc.keepalive(p.ctx.Done(), p.onConnTaken, func() error {
-		return p.Nodes.EstablishInboundLink(p.ctx, gc)
+
+	p.conns.Add(bc)
+	go bc.keepalive(p.ctx.Done(), func() error {
+		return p.Nodes.EstablishInboundLink(p.ctx, &gwConn{
+			ReadWriteCloser: bc,
+			local:           gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
+			remote:          gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
+		})
 	})
 }
 
