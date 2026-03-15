@@ -8,8 +8,18 @@ import (
 
 var _ exonet.Conn = (*gwConn)(nil)
 
-type gwConn struct {
+// routeConn adapts an io.ReadWriteCloser (e.g. astral.Conn from query.Route) to exonet.Conn.
+// Endpoint methods return nil — gwConn overrides all of them.
+type routeConn struct {
 	io.ReadWriteCloser
+}
+
+func (c *routeConn) LocalEndpoint() exonet.Endpoint  { return nil }
+func (c *routeConn) RemoteEndpoint() exonet.Endpoint { return nil }
+func (c *routeConn) Outbound() bool                  { return true }
+
+type gwConn struct {
+	*bindingConn
 	local    exonet.Endpoint
 	remote   exonet.Endpoint
 	outbound bool

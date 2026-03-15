@@ -1,9 +1,7 @@
 package gateway
 
 import (
-	"io"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -19,17 +17,17 @@ const (
 	socketPingTimeout    = 3 * time.Second
 )
 
+// SocketPool maintains socketPoolTargetIdle idle socket connections to a gateway.
 type SocketPool struct {
 	*Module
 	ctx       *astral.Context
 	socket    gateway.Socket
 	gatewayID *astral.Identity
 
-	mu    sync.Mutex
-	total int
-	idle  int
+	mu   sync.Mutex
+	idle int
 
-	signal chan struct{}
+	wake chan struct{}
 }
 
 func (mod *Module) newSocketPool(ctx *astral.Context, gatewayID *astral.Identity, socket gateway.Socket) *SocketPool {
@@ -38,7 +36,7 @@ func (mod *Module) newSocketPool(ctx *astral.Context, gatewayID *astral.Identity
 		Module:    mod,
 		socket:    socket,
 		gatewayID: gatewayID,
-		signal:    make(chan struct{}, 1),
+		wake:      make(chan struct{}, 1),
 	}
 }
 
@@ -50,8 +48,15 @@ func (p *SocketPool) Run() error {
 		select {
 		case <-p.ctx.Done():
 			return p.ctx.Err()
-		case <-p.signal:
-			for p.idleCount() < socketPoolTargetIdle {
+		case <-p.wake:
+			for {
+				p.mu.Lock()
+				if p.idle >= socketPoolTargetIdle {
+					p.mu.Unlock()
+					break
+				}
+				p.mu.Unlock()
+
 				conn, err := p.acquireConn()
 				if err != nil {
 					select {
@@ -66,7 +71,7 @@ func (p *SocketPool) Run() error {
 				}
 
 				retry.Reset()
-				p.handoff(conn)
+				p.startIdleSocket(conn)
 			}
 		}
 	}
@@ -87,16 +92,9 @@ func (p *SocketPool) acquireConn() (exonet.Conn, error) {
 	return conn, nil
 }
 
-func (p *SocketPool) idleCount() int {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.idle
-}
-
 func (p *SocketPool) addIdle() {
 	p.mu.Lock()
 	p.idle++
-	p.total++
 	p.mu.Unlock()
 }
 
@@ -107,103 +105,32 @@ func (p *SocketPool) onConnTaken() {
 	p.notify()
 }
 
-func (p *SocketPool) onConnClosed(wasIdle bool) {
-	p.mu.Lock()
-	p.total--
-	if wasIdle {
+func (p *SocketPool) onConnClosed(idle bool) {
+	if idle {
+		p.mu.Lock()
 		p.idle--
+		p.mu.Unlock()
 	}
-	p.mu.Unlock()
 	p.notify()
 }
 
-func (p *SocketPool) handoff(conn exonet.Conn) {
-	pc := &socketConn{
-		Conn:           conn,
-		localEndpoint:  gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
-		remoteEndpoint: gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
+func (p *SocketPool) startIdleSocket(conn exonet.Conn) {
+	bc := newBinderConn(conn, nil)
+	gc := &gwConn{
+		bindingConn: bc,
+		local:       gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
+		remote:      gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
 	}
-	p.registerConn(pc)
-	go p.runIdleConn(conn, pc)
-}
-
-// registerConn binds pool lifecycle callbacks to pc and marks it as idle.
-func (p *SocketPool) registerConn(pc *socketConn) {
-	pc.onClose = func() { p.onConnClosed(!pc.used.Load()) }
+	bc.onClose = func() { p.onConnClosed(!bc.active.Load()) }
 	p.addIdle()
-}
-
-// runIdleConn is the binder-side ping loop for an idle socket connection.
-// It sends BytePing and waits for BytePong or ByteSignalGo.
-// On ByteSignalGo the conn transitions from idle to taken before writing ByteSignalReady.
-func (p *SocketPool) runIdleConn(conn exonet.Conn, pc *socketConn) {
-	for {
-		if err := gateway.WritePing(conn); err != nil {
-			pc.Close()
-			return
-		}
-		withReadDeadline(conn, socketPingTimeout)
-		var b [1]byte
-		if _, err := io.ReadFull(conn, b[:]); err != nil {
-			pc.Close()
-			return
-		}
-		clearDeadlines(conn)
-		switch b[0] {
-		case gateway.BytePong:
-			select {
-			case <-time.After(socketPingInterval):
-			case <-p.ctx.Done():
-				pc.Close()
-				return
-			}
-		case gateway.ByteSignalGo:
-			// Mark taken before notifying pool: if Close fires during write,
-			// onClose sees used=true → wasIdle=false → only total is decremented.
-			pc.used.Store(true)
-			p.onConnTaken()
-			if err := gateway.WriteSignalReady(pc); err != nil {
-				pc.Close()
-				return
-			}
-			if err := p.Nodes.EstablishInboundLink(p.ctx, pc); err != nil {
-				pc.Close()
-			}
-			return
-		default:
-			pc.Close()
-			return
-		}
-	}
+	go bc.keepalive(p.ctx.Done(), p.onConnTaken, func() error {
+		return p.Nodes.EstablishInboundLink(p.ctx, gc)
+	})
 }
 
 func (p *SocketPool) notify() {
 	select {
-	case p.signal <- struct{}{}:
+	case p.wake <- struct{}{}:
 	default:
 	}
-}
-
-// socketConn wraps an exonet.Conn with fixed endpoints and a one-shot close callback.
-// used tracks whether the conn has been taken from the idle pool (for wasIdle accounting).
-type socketConn struct {
-	exonet.Conn
-
-	localEndpoint  exonet.Endpoint
-	remoteEndpoint exonet.Endpoint
-	onClose        func()
-
-	closed atomic.Bool
-	used   atomic.Bool
-}
-
-func (c *socketConn) LocalEndpoint() exonet.Endpoint  { return c.localEndpoint }
-func (c *socketConn) RemoteEndpoint() exonet.Endpoint { return c.remoteEndpoint }
-
-func (c *socketConn) Close() error {
-	err := c.Conn.Close()
-	if !c.closed.Swap(true) && c.onClose != nil {
-		c.onClose()
-	}
-	return err
 }

@@ -4,16 +4,7 @@ import (
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
-
-// connectorConn is the connection opened by a connector node to the gateway,
-// to be piped to a reserved binderConn.
-type connectorConn struct {
-	exonet.Conn
-	network string
-	pipedTo *binderConn
-}
 
 // connector represents a pending connection request from a node that wants
 // to reach a binder through the gateway. Multiple connectors per identity
@@ -23,12 +14,12 @@ type connector struct {
 	Identity *astral.Identity
 	Nonce    astral.Nonce
 	Target   *astral.Identity
-	reserved *binderConn
+	reserved *bindingConn
 }
 
-// takeReserved atomically takes the reserved binderConn, returning nil if
+// takeReserved atomically takes the reserved bindingConn, returning nil if
 // already taken (connection already established or timed out).
-func (c *connector) takeReserved() *binderConn {
+func (c *connector) takeReserved() *bindingConn {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

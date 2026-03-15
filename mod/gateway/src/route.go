@@ -28,10 +28,10 @@ func (mod *Module) routeQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 	if targetKey == mod.node.Identity().String() {
 		return query.Accept(q, w, func(conn astral.Conn) {
 			c := &gwConn{
-				ReadWriteCloser: conn,
-				local:           gateway.NewEndpoint(q.Target, q.Target),
-				remote:          gateway.NewEndpoint(q.Caller, q.Target),
-				outbound:        false,
+				bindingConn: newBinderConn(&routeConn{ReadWriteCloser: conn}, nil),
+				local:       gateway.NewEndpoint(q.Target, q.Target),
+				remote:      gateway.NewEndpoint(q.Caller, q.Target),
+				outbound:    false,
 			}
 
 			// prevents slow gateway connections
