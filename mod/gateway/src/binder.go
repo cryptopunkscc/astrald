@@ -2,11 +2,12 @@ package gateway
 
 import (
 	"fmt"
-	"io"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/gateway/src/frames"
@@ -23,9 +24,9 @@ type binder struct {
 }
 
 func (b *binder) addConn(conn exonet.Conn) *bindingConn {
-	var bc *bindingConn
-	bc = newGatewayConn(conn, func() { b.conns.Remove(bc) })
+	bc := newGatewayConn(conn)
 	b.conns.Add(bc)
+	go func() { <-bc.Closed(); b.conns.Remove(bc) }()
 	return bc
 }
 
@@ -54,35 +55,57 @@ const (
 	roleGateway
 )
 
-// bindingConn is a unified idle socket connection for both binder and gateway sides
+// bindingConn is a unified idle socket connection for both binder and gateway sides.
 type bindingConn struct {
 	exonet.Conn
 	role connRole
 
-	closed atomic.Bool
-	active atomic.Bool // set on idle→active; guards idle counters against double-decrement
+	closed    atomic.Bool
+	active    atomic.Bool // set idle→reserved by takeConn CAS; also stops binder pings
+	handedOff atomic.Bool // set when conn is handed off to higher-level; suppresses Close in defers
+	deadOnce  sync.Once
 
-	dead     chan struct{}
-	signalCh chan chan error
-	onClose  func()
+	dead          chan struct{}
+	signalCh      chan chan error    // gateway-side: receives signal requests from connector
+	writeCh       chan astral.Object // readLoop→writeLoop: outbound frames
+	activatedCh   chan struct{}      // closed when activation completes
+	closedCh      chan struct{}      // closed when Close() is called
+	activatedOnce sync.Once
 }
 
-func newGatewayConn(conn exonet.Conn, onClose func()) *bindingConn {
+func newGatewayConn(conn exonet.Conn) *bindingConn {
 	return &bindingConn{
-		Conn:     conn,
-		role:     roleGateway,
-		dead:     make(chan struct{}),
-		signalCh: make(chan chan error, 1),
-		onClose:  onClose,
+		Conn:        conn,
+		role:        roleGateway,
+		dead:        make(chan struct{}),
+		signalCh:    make(chan chan error, 1),
+		writeCh:     make(chan astral.Object, 4),
+		activatedCh: make(chan struct{}),
+		closedCh:    make(chan struct{}),
 	}
 }
 
 func newBinderConn(conn exonet.Conn) *bindingConn {
 	return &bindingConn{
-		Conn: conn,
-		role: roleBinder,
-		dead: make(chan struct{}),
+		Conn:        conn,
+		role:        roleBinder,
+		dead:        make(chan struct{}),
+		writeCh:     make(chan astral.Object, 4),
+		activatedCh: make(chan struct{}),
+		closedCh:    make(chan struct{}),
 	}
+}
+
+// Activated returns a channel that is closed when the conn is handed off to
+// higher-level code (after the last frame is flushed on the binder side, or
+// after the signal handshake completes on the gateway side).
+func (bc *bindingConn) Activated() <-chan struct{} { return bc.activatedCh }
+
+// Closed returns a channel that is closed when the underlying connection is closed.
+func (bc *bindingConn) Closed() <-chan struct{} { return bc.closedCh }
+
+func (bc *bindingConn) setActivated() {
+	bc.activatedOnce.Do(func() { close(bc.activatedCh) })
 }
 
 func (bc *bindingConn) SetReadDeadline(t time.Time) error {
@@ -99,110 +122,151 @@ func (bc *bindingConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
-// readFrame reads a single control byte within the gateway keepalive/control phase.
-// Must not be called after activation, when the connection becomes a raw stream.
-func (bc *bindingConn) readFrame(timeout time.Duration) (byte, error) {
-	bc.SetReadDeadline(time.Now().Add(timeout))
-	var b [1]byte
-	_, err := io.ReadFull(bc.Conn, b[:])
-	bc.SetReadDeadline(time.Time{})
-	return b[0], err
-}
-
+// Close closes the underlying connection exactly once.
 func (bc *bindingConn) Close() error {
-	err := bc.Conn.Close()
-	if !bc.closed.Swap(true) && bc.onClose != nil {
-		bc.onClose()
+	if bc.closed.Swap(true) {
+		return nil
 	}
+	err := bc.Conn.Close()
+	close(bc.closedCh)
 	return err
 }
 
-// keepalive runs the ping/pong loop until activation or connection loss.
-// done stops the binder-side ping sleep on shutdown (pass ctx.Done()).
-// onActivate is called after WriteSignalReady; returned error causes bc to be closed.
-func (bc *bindingConn) keepalive(done <-chan struct{}, onActivate func() error) {
-	defer close(bc.dead)
-	activated := false
+func (bc *bindingConn) closeDead() {
+	bc.deadOnce.Do(func() { close(bc.dead) })
+}
+
+// eventLoop starts the read and write loops.
+func (bc *bindingConn) eventLoop(done <-chan struct{}) {
+	ch := channel.New(bc)
+	go bc.writeLoop(ch, done)
+	bc.readLoop(ch)
+}
+
+// readLoop owns all incoming frame handling via ch.Switch.
+// On exit it closes writeCh to signal writeLoop to flush and stop.
+func (bc *bindingConn) readLoop(ch *channel.Channel) {
+	defer bc.closeDead()
+	defer close(bc.writeCh)
 	defer func() {
-		if !activated {
+		if !bc.handedOff.Load() {
 			bc.Close()
 		}
 	}()
 
-	for {
-		if bc.role == roleBinder {
-			if err := frames.WritePing(bc.Conn); err != nil {
-				return
-			}
-		}
+	if bc.role == roleBinder {
+		// Safety net: writeLoop sets socketPingTimeout after each ping, but we need
+		// a deadline in place from the start in case writeLoop hasn't run yet.
+		bc.SetReadDeadline(time.Now().Add(socketDeadTimeout))
+		ch.Switch(
+			func(*frames.PongMsg) error {
+				return nil
+			},
+			func(*frames.SignalGoMsg) error {
+				bc.active.Store(true) // stops writeLoop ping ticker
+				select {
+				case bc.writeCh <- &frames.SignalReadyMsg{}:
+				default:
+					return fmt.Errorf("write buffer full")
+				}
+				bc.handedOff.Store(true) // only after successful enqueue
+				return channel.ErrBreak
+			},
+		)
+		return
+	}
 
-		timeout := socketDeadTimeout
-		if bc.role == roleBinder {
-			timeout = socketPingTimeout
-		}
-		frame, err := bc.readFrame(timeout)
-		if err != nil {
-			return
-		}
-
-		switch frame {
-		case frames.BytePing: // roleGateway only
+	// roleGateway
+	var pendingRespCh chan error
+	bc.SetReadDeadline(time.Now().Add(socketDeadTimeout))
+	ch.Switch(
+		func(*frames.PingMsg) error {
+			bc.SetReadDeadline(time.Now().Add(socketDeadTimeout))
 			select {
 			case respCh := <-bc.signalCh:
-				bc.sendSignalGo(respCh)
-				activated = true
-				return
-			default:
-				if err := frames.WritePong(bc.Conn); err != nil {
-					return
+				pendingRespCh = respCh
+				select {
+				case bc.writeCh <- &frames.SignalGoMsg{}:
+				default:
+					return fmt.Errorf("write buffer full")
 				}
+				return nil
+			default:
+				select {
+				case bc.writeCh <- &frames.PongMsg{}:
+				default:
+					return fmt.Errorf("write buffer full")
+				}
+				return nil
 			}
-		case frames.BytePong: // roleBinder only
+		},
+		func(*frames.SignalReadyMsg) error {
+			if pendingRespCh == nil {
+				return fmt.Errorf("unexpected SignalReady")
+			}
+			pendingRespCh <- nil
+			bc.handedOff.Store(true)
+			bc.setActivated()
+			return channel.ErrBreak
+		},
+	)
+}
+
+// writeLoop owns all outbound traffic.
+// For roleBinder it drives the ping ticker and fires Activated() after flushing writeCh.
+// For roleGateway it only drains writeCh.
+func (bc *bindingConn) writeLoop(ch *channel.Channel, done <-chan struct{}) {
+	defer bc.closeDead()
+	defer func() {
+		if !bc.handedOff.Load() {
+			bc.Close()
+		}
+	}()
+
+	if bc.role == roleBinder {
+		if err := ch.Send(&frames.PingMsg{}); err != nil {
+			return
+		}
+		bc.SetReadDeadline(time.Now().Add(socketPingTimeout))
+
+		ticker := time.NewTicker(socketPingInterval)
+		defer ticker.Stop()
+		tickCh := ticker.C
+
+		for {
 			select {
-			case <-time.After(socketPingInterval):
 			case <-done:
 				return
-			}
-		case frames.ByteSignalGo: // roleBinder only
-			bc.active.Store(true)
-			if err := frames.WriteSignalReady(bc.Conn); err != nil {
-				bc.Close()
-				activated = true // active is set; defer must not double-close
-				return
-			}
-			if onActivate != nil {
-				if err := onActivate(); err != nil {
-					bc.Close()
+			case obj, ok := <-bc.writeCh:
+				if !ok {
+					if bc.handedOff.Load() {
+						bc.setActivated() // fired after SignalReadyMsg is flushed
+					}
+					return
 				}
+				if err := ch.Send(obj); err != nil {
+					return
+				}
+			case <-tickCh:
+				if bc.active.Load() {
+					ticker.Stop()
+					tickCh = nil
+					continue
+				}
+				if err := ch.Send(&frames.PingMsg{}); err != nil {
+					return
+				}
+				bc.SetReadDeadline(time.Now().Add(socketPingTimeout))
 			}
-			activated = true
-			return
-		default:
+		}
+	}
+
+	// roleGateway: no pings, just drain writeCh
+	for obj := range bc.writeCh {
+		if err := ch.Send(obj); err != nil {
 			return
 		}
 	}
-}
-
-// sendSignalGo sends ByteSignalGo and waits for ByteSignalReady, reporting the result on respCh.
-func (bc *bindingConn) sendSignalGo(respCh chan error) {
-	defer bc.SetWriteDeadline(time.Time{})
-	bc.SetWriteDeadline(time.Now().Add(socketProbeTimeout))
-
-	if err := frames.WriteSignalGo(bc.Conn); err != nil {
-		respCh <- err
-		return
-	}
-
-	frame, err := bc.readFrame(socketProbeTimeout)
-	if err != nil {
-		respCh <- err
-		return
-	}
-	if frame != frames.ByteSignalReady {
-		respCh <- fmt.Errorf("expected signalReady, got 0x%02x", frame)
-		return
-	}
-	respCh <- nil
 }
 
 func (bc *bindingConn) signal() bool {

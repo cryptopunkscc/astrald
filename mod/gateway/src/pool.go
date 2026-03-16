@@ -90,19 +90,29 @@ func (p *SocketPool) idleCount() int {
 
 func (p *SocketPool) startIdleSocket(conn exonet.Conn) {
 	bc := newBinderConn(conn)
-	bc.onClose = func() {
+	p.conns.Add(bc)
+
+	go func() {
+		<-bc.Closed()
 		p.conns.Remove(bc)
 		p.notify()
-	}
+	}()
 
-	p.conns.Add(bc)
-	go bc.keepalive(p.ctx.Done(), func() error {
-		return p.Nodes.EstablishInboundLink(p.ctx, &gwConn{
-			ReadWriteCloser: bc,
-			local:           gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
-			remote:          gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
-		})
-	})
+	go func() {
+		select {
+		case <-bc.Activated():
+			if err := p.Nodes.EstablishInboundLink(p.ctx, &gwConn{
+				ReadWriteCloser: bc,
+				local:           gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
+				remote:          gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
+			}); err != nil {
+				bc.Close()
+			}
+		case <-bc.Closed():
+		}
+	}()
+
+	go bc.eventLoop(p.ctx.Done())
 }
 
 func (p *SocketPool) notify() {
