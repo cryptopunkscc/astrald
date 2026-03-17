@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -16,8 +17,8 @@ type registeredNode struct {
 	idleConns  sig.Set[*standbyConn]
 }
 
-func (b *registeredNode) registerConn(conn exonet.Conn) *standbyConn {
-	bc := newGatewayConn(conn, roleGateway)
+func (b *registeredNode) registerConn(conn exonet.Conn, l *log.Logger) *standbyConn {
+	bc := newGatewayConn(conn, roleGateway, l)
 	b.idleConns.Add(bc)
 	go func() { <-bc.doneCh; b.idleConns.Remove(bc) }()
 	return bc

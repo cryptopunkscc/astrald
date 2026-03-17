@@ -85,7 +85,7 @@ func (p *ConnPool) idleCount() int {
 }
 
 func (p *ConnPool) addIdleConn(conn exonet.Conn) {
-	bc := newGatewayConn(conn, roleClient)
+	bc := newGatewayConn(conn, roleClient, p.log)
 	p.conns.Add(bc)
 
 	go func() {

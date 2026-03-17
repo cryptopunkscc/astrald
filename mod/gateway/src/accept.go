@@ -22,7 +22,7 @@ func (mod *Module) handleInbound(_ context.Context, conn exonet.Conn) (stopListe
 
 	if b, ok := mod.registeredNodeByNonce(nonce); ok {
 		mod.log.Infov(2, "added idle conn to registered node %v", b.Identity)
-		bc := b.registerConn(conn)
+		bc := b.registerConn(conn, mod.log)
 		go bc.runKeepAlive(mod.ctx)
 		return stopListener, nil
 	}
