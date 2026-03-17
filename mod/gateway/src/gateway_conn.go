@@ -156,10 +156,26 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 			lastPing = now
 		}
 
-		c.setReadDeadline(now.Add(pingTimeout))
+		// do not block for full pingTimeout when activation may arrive;
+		// wake periodically and re-check handoffCh / ctx / ping timers.
+		readWait := pingTimeout
+		if c.role == roleGateway && !handoffDone {
+			if readWait > time.Second {
+				readWait = time.Second
+			}
+		}
+
+		c.setReadDeadline(now.Add(readWait))
 
 		obj, err := ch.Receive()
 		if err != nil {
+			if ne, ok := err.(interface{ Timeout() bool }); ok && ne.Timeout() {
+				// normal wake-up; only close if truly idle for too long
+				if time.Since(lastActivity) >= pingTimeout {
+					return
+				}
+				continue
+			}
 			return
 		}
 
