@@ -83,12 +83,3 @@ func (h *Hole) MatchesPeer(peer *astral.Identity) bool {
 func init() {
 	_ = astral.Add(&Hole{})
 }
-
-type HoleState int32
-
-const (
-	StateIdle      HoleState = iota // normal keepalive
-	StateInLocking                  // lock requested, waiting for drain
-	StateLocked                     // socket silent, no traffic
-	StateExpired                    // mapping corrupted / lack of reachability
-)

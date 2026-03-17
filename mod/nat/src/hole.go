@@ -20,6 +20,15 @@ const (
 	defaultMaxPingFails  = 5
 )
 
+type HoleState int32
+
+const (
+	StateIdle      HoleState = iota // normal keepalive
+	StateInLocking                  // lock requested, waiting for drain
+	StateLocked                     // socket silent, no traffic
+	StateExpired                    // mapping corrupted / lack of reachability
+)
+
 // Hole represents a NAT-traversed UDP hole with keepalive and locking mechanisms.
 // While Idle, it keeps the NAT mapping alive by sending periodic pings.
 // In InLocking state, it waits for pongs to drain before completing the lock.
@@ -34,7 +43,7 @@ type Hole struct {
 	conn net.PacketConn
 
 	// State machine
-	state     atomic.Int32 // nat.HoleState
+	state     atomic.Int32 // HoleState
 	lockStart atomic.Int64 // unix nano
 	lastPing  atomic.Int64 // unix nano
 	pings     sig.Map[astral.Nonce, int64]
@@ -97,7 +106,7 @@ func newHole(hole nat.Hole, localID *astral.Identity, isPinger bool, conn net.Pa
 		opt(h)
 	}
 
-	h.state.Store(int32(nat.StateIdle))
+	h.state.Store(int32(StateIdle))
 	h.lastPing.Store(time.Now().UnixNano())
 
 	return h
@@ -151,8 +160,8 @@ func (h *Hole) run(ctx context.Context) {
 	for {
 		h.drainEvents()
 
-		switch nat.HoleState(h.state.Load()) {
-		case nat.StateIdle:
+		switch HoleState(h.state.Load()) {
+		case StateIdle:
 			h.expirePings()
 
 			if time.Since(time.Unix(0, h.lastPing.Load())) > h.noPingTimeout {
@@ -160,7 +169,7 @@ func (h *Hole) run(ctx context.Context) {
 				return
 			}
 
-			if h.isPinger && time.Since(lastPingSent) >= 1*time.Second {
+			if h.isPinger && time.Since(lastPingSent) >= h.pingInterval {
 				if err := h.sendPing(); err != nil {
 					failCount++
 					if failCount >= h.maxPingFails {
@@ -172,7 +181,7 @@ func (h *Hole) run(ctx context.Context) {
 					lastPingSent = time.Now()
 				}
 			}
-		case nat.StateInLocking:
+		case StateInLocking:
 			h.expirePings()
 
 			if h.pings.Len() == 0 {
@@ -185,7 +194,7 @@ func (h *Hole) run(ctx context.Context) {
 				return
 			}
 
-		case nat.StateLocked, nat.StateExpired:
+		case StateLocked, StateExpired:
 			return
 		}
 
@@ -213,7 +222,7 @@ func (h *Hole) drainEvents() {
 
 // handlePing processes a ping event, updating timestamps and responding to pings.
 func (h *Hole) handlePing(ev pingEvent) {
-	if nat.HoleState(h.state.Load()) >= nat.StateLocked {
+	if HoleState(h.state.Load()) >= StateLocked {
 		return
 	}
 
@@ -270,7 +279,7 @@ func (h *Hole) lockTimedOut() bool {
 
 // BeginLock initiates locking if the hole is idle, returning success status.
 func (h *Hole) BeginLock() bool {
-	if !h.state.CompareAndSwap(int32(nat.StateIdle), int32(nat.StateInLocking)) {
+	if !h.state.CompareAndSwap(int32(StateIdle), int32(StateInLocking)) {
 		return false
 	}
 
@@ -281,7 +290,7 @@ func (h *Hole) BeginLock() bool {
 
 // finalizeLock completes locking by closing the connection and notifying waiters.
 func (h *Hole) finalizeLock() bool {
-	if !h.state.CompareAndSwap(int32(nat.StateInLocking), int32(nat.StateLocked)) {
+	if !h.state.CompareAndSwap(int32(StateInLocking), int32(StateLocked)) {
 		return false
 	}
 
@@ -305,7 +314,7 @@ func (h *Hole) finalizeLock() bool {
 
 // Expire transitions to expired state, cleans up resources, and notifies.
 func (h *Hole) Expire() {
-	h.state.Store(int32(nat.StateExpired))
+	h.state.Store(int32(StateExpired))
 	_ = h.conn.Close()
 
 	clone := h.pings.Clone()
@@ -328,7 +337,7 @@ func (h *Hole) Expire() {
 
 // WaitLocked waits for the hole to lock or the context to cancel.
 func (h *Hole) WaitLocked(ctx context.Context) error {
-	if nat.HoleState(h.state.Load()) == nat.StateLocked {
+	if HoleState(h.state.Load()) == StateLocked {
 		return nil
 	}
 
@@ -338,7 +347,7 @@ func (h *Hole) WaitLocked(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-h.lockedCh:
-		if nat.HoleState(h.state.Load()) == nat.StateLocked {
+		if HoleState(h.state.Load()) == StateLocked {
 			return nil
 		}
 		return nat.ErrHoleCantLock
@@ -346,23 +355,23 @@ func (h *Hole) WaitLocked(ctx context.Context) error {
 }
 
 // State returns the current state of the hole.
-func (h *Hole) State() nat.HoleState {
-	return nat.HoleState(h.state.Load())
+func (h *Hole) State() HoleState {
+	return HoleState(h.state.Load())
 }
 
 // IsIdle returns true if the hole is in idle state.
 func (h *Hole) IsIdle() bool {
-	return nat.HoleState(h.state.Load()) == nat.StateIdle
+	return HoleState(h.state.Load()) == StateIdle
 }
 
 // IsExpired returns true if the hole is expired.
 func (h *Hole) IsExpired() bool {
-	return nat.HoleState(h.state.Load()) == nat.StateExpired
+	return HoleState(h.state.Load()) == StateExpired
 }
 
 // IsLocked returns true if the hole is locked.
 func (h *Hole) IsLocked() bool {
-	return nat.HoleState(h.state.Load()) == nat.StateLocked
+	return HoleState(h.state.Load()) == StateLocked
 }
 
 // LastPing returns the timestamp of the last received ping/pong.

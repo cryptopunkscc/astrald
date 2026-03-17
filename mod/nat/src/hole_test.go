@@ -1,4 +1,4 @@
-package nat_test
+package nat
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nat"
-	natmod "github.com/cryptopunkscc/astrald/mod/nat/src"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +35,7 @@ func TestHole_Keepalive_Basic(t *testing.T) {
 	remoteIP, err := ip.ParseIP("10.0.0.2")
 	require.NoError(t, err)
 
-	holeA := natmod.NewHoleWithConn(
+	holeA := NewHoleWithConn(
 		nat.Hole{
 			ActiveIdentity:  peerA,
 			ActiveEndpoint:  nat.Endpoint{IP: localIP, Port: 40000},
@@ -45,7 +45,7 @@ func TestHole_Keepalive_Basic(t *testing.T) {
 		peerA, true, aConn,
 	)
 
-	holeB := natmod.NewHoleWithConn(
+	holeB := NewHoleWithConn(
 		nat.Hole{
 			ActiveIdentity:  peerB,
 			ActiveEndpoint:  nat.Endpoint{IP: remoteIP, Port: 40001},
@@ -63,8 +63,8 @@ func TestHole_Keepalive_Basic(t *testing.T) {
 	require.NotEqual(t, startingPong.Unix(), holeA.LastPing().Unix(), "holeA.LastPing() should have changed")
 	require.NotEqual(t, startingPong.Unix(), holeB.LastPing().Unix(), "holeB.LastPing() should have changed")
 
-	require.Equal(t, nat.StateIdle, holeA.State())
-	require.Equal(t, nat.StateIdle, holeB.State())
+	require.Equal(t, StateIdle, holeA.State())
+	require.Equal(t, StateIdle, holeB.State())
 }
 
 func TestHole_NoPong(t *testing.T) {
@@ -89,7 +89,7 @@ func TestHole_NoPong(t *testing.T) {
 	remoteIP, err := ip.ParseIP("10.0.0.2")
 	require.NoError(t, err)
 
-	holeA := natmod.NewHoleWithConn(
+	holeA := NewHoleWithConn(
 		nat.Hole{
 			ActiveIdentity:  peerA,
 			ActiveEndpoint:  nat.Endpoint{IP: localIP, Port: 40000},
@@ -134,7 +134,7 @@ func TestHole_LockCausesRemoteExpiration(t *testing.T) {
 	remoteIP, err := ip.ParseIP("10.0.0.2")
 	require.NoError(t, err)
 
-	holeA := natmod.NewHoleWithConn(
+	holeA := NewHoleWithConn(
 		nat.Hole{
 			ActiveIdentity:  peerA,
 			ActiveEndpoint:  nat.Endpoint{IP: localIP, Port: 40000},
@@ -144,7 +144,7 @@ func TestHole_LockCausesRemoteExpiration(t *testing.T) {
 		peerA, true, aConn,
 	)
 
-	holeB := natmod.NewHoleWithConn(
+	holeB := NewHoleWithConn(
 		nat.Hole{
 			ActiveIdentity:  peerB,
 			ActiveEndpoint:  nat.Endpoint{IP: remoteIP, Port: 40001},
@@ -159,17 +159,17 @@ func TestHole_LockCausesRemoteExpiration(t *testing.T) {
 
 	// Let keepalive stabilize
 	time.Sleep(2 * time.Second)
-	require.Equal(t, nat.StateIdle, holeA.State())
-	require.Equal(t, nat.StateIdle, holeB.State())
+	require.Equal(t, StateIdle, holeA.State())
+	require.Equal(t, StateIdle, holeB.State())
 
 	require.True(t, holeA.BeginLock())
 	require.NoError(t, holeA.WaitLocked(ctx))
-	require.Equal(t, nat.StateLocked, holeA.State())
+	require.Equal(t, StateLocked, holeA.State())
 
 	// After locking, holeA stops sending pings.
 	// holeB expires after noPingTimeout (15s) of silence.
 	time.Sleep(16 * time.Second)
 
-	require.Equal(t, nat.StateExpired, holeB.State())
-	require.Equal(t, nat.StateLocked, holeA.State())
+	require.Equal(t, StateExpired, holeB.State())
+	require.Equal(t, StateLocked, holeA.State())
 }

@@ -16,21 +16,21 @@ func (t *Client) NodePunch(ctx *astral.Context, target *astral.Identity, localIP
 
 	defer ch.Close()
 
-	traversal := nat.NewTraversal(t.astral.GuestID(), target, localIP)
+	proto := nat.NewPunchProtocol(t.astral.GuestID(), target, localIP)
 	localPort, err := puncher.Open()
 	if err != nil {
 		return nil, err
 	}
 
-	traversal.LocalPort = astral.Uint16(localPort)
-	traversal.Session = puncher.Session()
+	proto.LocalPort = astral.Uint16(localPort)
+	proto.Session = puncher.Session()
 
-	if err := ch.Send(traversal.OfferSignal()); err != nil {
+	if err := ch.Send(proto.OfferSignal()); err != nil {
 		return nil, err
 	}
 
 	err = ch.Switch(
-		traversal.ExpectSignal(nat.PunchSignalTypeAnswer, traversal.OnAnswer),
+		proto.ExpectSignal(nat.PunchSignalTypeAnswer, proto.OnAnswer),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -38,12 +38,12 @@ func (t *Client) NodePunch(ctx *astral.Context, target *astral.Identity, localIP
 		return nil, err
 	}
 
-	if err := ch.Send(traversal.ReadySignal()); err != nil {
+	if err := ch.Send(proto.ReadySignal()); err != nil {
 		return nil, err
 	}
 
 	err = ch.Switch(
-		traversal.ExpectSignal(nat.PunchSignalTypeGo, nil),
+		proto.ExpectSignal(nat.PunchSignalTypeGo, nil),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -51,20 +51,20 @@ func (t *Client) NodePunch(ctx *astral.Context, target *astral.Identity, localIP
 		return nil, err
 	}
 
-	result, err := puncher.HolePunch(ctx, traversal.PeerIP, int(traversal.PeerPort))
+	result, err := puncher.HolePunch(ctx, proto.PeerIP, int(proto.PeerPort))
 	if err != nil {
 		return nil, err
 	}
 
-	traversal.SetPunchResult(result)
-	traversal.Hole.Nonce = astral.NewNonce()
+	proto.SetPunchResult(result)
+	proto.Hole.Nonce = astral.NewNonce()
 
-	if err := ch.Send(traversal.ResultSignal()); err != nil {
+	if err := ch.Send(proto.ResultSignal()); err != nil {
 		return nil, err
 	}
 
 	err = ch.Switch(
-		traversal.ExpectSignal(nat.PunchSignalTypeResult, traversal.OnResult),
+		proto.ExpectSignal(nat.PunchSignalTypeResult, proto.OnResult),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -72,5 +72,5 @@ func (t *Client) NodePunch(ctx *astral.Context, target *astral.Identity, localIP
 		return nil, err
 	}
 
-	return &traversal.Hole, nil
+	return &proto.Hole, nil
 }

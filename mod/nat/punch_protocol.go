@@ -9,8 +9,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
-// Traversal is a pure state machine for NAT traversal protocol.
-type Traversal struct {
+// PunchProtocol is a pure state machine for NAT traversal protocol.
+type PunchProtocol struct {
 	Session []byte
 
 	LocalIdentity *astral.Identity
@@ -25,31 +25,31 @@ type Traversal struct {
 	Hole Hole
 }
 
-func NewTraversal(localID, peerID *astral.Identity, localIP ip.IP) *Traversal {
-	return &Traversal{
+func NewPunchProtocol(localID, peerID *astral.Identity, localIP ip.IP) *PunchProtocol {
+	return &PunchProtocol{
 		LocalIdentity: localID,
 		PeerIdentity:  peerID,
 		LocalIP:       localIP,
 	}
 }
 
-func (t *Traversal) OnOffer(sig *PunchSignal) {
+func (t *PunchProtocol) OnOffer(sig *PunchSignal) {
 	t.PeerIP = sig.IP
 	t.PeerPort = sig.Port
 	t.Session = sig.Session
 }
 
-func (t *Traversal) OnAnswer(sig *PunchSignal) {
+func (t *PunchProtocol) OnAnswer(sig *PunchSignal) {
 	t.PeerIP = sig.IP
 	t.PeerPort = sig.Port
 }
 
-func (t *Traversal) OnResult(sig *PunchSignal) {
+func (t *PunchProtocol) OnResult(sig *PunchSignal) {
 	t.Hole.Nonce = sig.PairNonce
 	t.Hole.ActiveEndpoint = Endpoint{IP: sig.IP, Port: sig.Port}
 }
 
-func (t *Traversal) ExpectSignal(signalType astral.String8, on func(*PunchSignal)) func(*PunchSignal) error {
+func (t *PunchProtocol) ExpectSignal(signalType astral.String8, on func(*PunchSignal)) func(*PunchSignal) error {
 	return func(sig *PunchSignal) error {
 		if sig.Signal != signalType {
 			return fmt.Errorf("expected %s, got %s", signalType, sig.Signal)
@@ -65,7 +65,7 @@ func (t *Traversal) ExpectSignal(signalType astral.String8, on func(*PunchSignal
 	}
 }
 
-func (t *Traversal) SetPunchResult(result *PunchResult) {
+func (t *PunchProtocol) SetPunchResult(result *PunchResult) {
 	t.Hole = Hole{
 		ActiveIdentity:  t.LocalIdentity,
 		PassiveIdentity: t.PeerIdentity,
@@ -73,7 +73,7 @@ func (t *Traversal) SetPunchResult(result *PunchResult) {
 	}
 }
 
-func (t *Traversal) OfferSignal() *PunchSignal {
+func (t *PunchProtocol) OfferSignal() *PunchSignal {
 	return &PunchSignal{
 		Signal:  PunchSignalTypeOffer,
 		Session: t.Session,
@@ -82,7 +82,7 @@ func (t *Traversal) OfferSignal() *PunchSignal {
 	}
 }
 
-func (t *Traversal) AnswerSignal() *PunchSignal {
+func (t *PunchProtocol) AnswerSignal() *PunchSignal {
 	return &PunchSignal{
 		Signal:  PunchSignalTypeAnswer,
 		Session: t.Session,
@@ -91,21 +91,21 @@ func (t *Traversal) AnswerSignal() *PunchSignal {
 	}
 }
 
-func (t *Traversal) ReadySignal() *PunchSignal {
+func (t *PunchProtocol) ReadySignal() *PunchSignal {
 	return &PunchSignal{
 		Signal:  PunchSignalTypeReady,
 		Session: t.Session,
 	}
 }
 
-func (t *Traversal) GoSignal() *PunchSignal {
+func (t *PunchProtocol) GoSignal() *PunchSignal {
 	return &PunchSignal{
 		Signal:  PunchSignalTypeGo,
 		Session: t.Session,
 	}
 }
 
-func (t *Traversal) ResultSignal() *PunchSignal {
+func (t *PunchProtocol) ResultSignal() *PunchSignal {
 	return &PunchSignal{
 		Signal:    PunchSignalTypeResult,
 		Session:   t.Session,

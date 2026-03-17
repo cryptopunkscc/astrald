@@ -9,12 +9,13 @@ import (
 )
 
 type opPunchArgs struct {
-	Target string `query:"optional"`
+	Target string
+	In     string `query:"optional"`
 	Out    string `query:"optional"`
 }
 
 func (mod *Module) OpPunch(ctx *astral.Context, q *ops.Query, args opPunchArgs) error {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out), channel.WithInputFormat(args.In))
 	defer ch.Close()
 
 	localIP, err := mod.getLocalIPv4()

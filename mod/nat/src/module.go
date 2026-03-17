@@ -122,10 +122,6 @@ func (mod *Module) addHole(hole nat.Hole, active bool) {
 	}
 }
 
-func (mod *Module) holes() []*Hole {
-	return mod.pool.holes.Values()
-}
-
 func (mod *Module) newPuncher(session []byte) (nat.Puncher, error) {
 	cb := &ConePuncherCallbacks{
 		OnAttempt:       func(peer ip.IP, port int, _ []*net.UDPAddr) { mod.log.Log("punching → %v:%v", peer, port) },

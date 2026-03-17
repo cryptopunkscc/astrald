@@ -21,10 +21,10 @@ func (mod *Module) OpNodePunch(ctx *astral.Context, q *ops.Query, args opNodePun
 	}
 
 	mod.log.Log("starting traversal as participant with %v", q.Caller())
-	traversal := nat.NewTraversal(ctx.Identity(), q.Caller(), localIP)
+	proto := nat.NewPunchProtocol(ctx.Identity(), q.Caller(), localIP)
 
 	err = ch.Switch(
-		traversal.ExpectSignal(nat.PunchSignalTypeOffer, traversal.OnOffer),
+		proto.ExpectSignal(nat.PunchSignalTypeOffer, proto.OnOffer),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -32,7 +32,7 @@ func (mod *Module) OpNodePunch(ctx *astral.Context, q *ops.Query, args opNodePun
 		return err
 	}
 
-	puncher, err := mod.newPuncher(traversal.Session)
+	puncher, err := mod.newPuncher(proto.Session)
 	if err != nil {
 		return err
 	}
@@ -47,14 +47,14 @@ func (mod *Module) OpNodePunch(ctx *astral.Context, q *ops.Query, args opNodePun
 	if err != nil {
 		return err
 	}
-	traversal.LocalPort = astral.Uint16(localPort)
+	proto.LocalPort = astral.Uint16(localPort)
 
-	if err = ch.Send(traversal.AnswerSignal()); err != nil {
+	if err = ch.Send(proto.AnswerSignal()); err != nil {
 		return err
 	}
 
 	err = ch.Switch(
-		traversal.ExpectSignal(nat.PunchSignalTypeReady, nil),
+		proto.ExpectSignal(nat.PunchSignalTypeReady, nil),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -62,19 +62,19 @@ func (mod *Module) OpNodePunch(ctx *astral.Context, q *ops.Query, args opNodePun
 		return err
 	}
 
-	if err = ch.Send(traversal.GoSignal()); err != nil {
+	if err = ch.Send(proto.GoSignal()); err != nil {
 		return err
 	}
 
-	result, err := puncher.HolePunch(ctx, traversal.PeerIP, int(traversal.PeerPort))
+	result, err := puncher.HolePunch(ctx, proto.PeerIP, int(proto.PeerPort))
 	if err != nil {
 		return err
 	}
 
-	traversal.SetPunchResult(result)
+	proto.SetPunchResult(result)
 
 	err = ch.Switch(
-		traversal.ExpectSignal(nat.PunchSignalTypeResult, traversal.OnResult),
+		proto.ExpectSignal(nat.PunchSignalTypeResult, proto.OnResult),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -82,14 +82,14 @@ func (mod *Module) OpNodePunch(ctx *astral.Context, q *ops.Query, args opNodePun
 		return err
 	}
 
-	if err = ch.Send(traversal.ResultSignal()); err != nil {
+	if err = ch.Send(proto.ResultSignal()); err != nil {
 		return err
 	}
 
 	puncher.Close()
 
-	mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", q.Caller(), traversal.Hole.ActiveEndpoint, traversal.Hole.PassiveEndpoint)
+	mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", q.Caller(), proto.Hole.ActiveEndpoint, proto.Hole.PassiveEndpoint)
 
-	mod.addHole(traversal.Hole, false)
+	mod.addHole(proto.Hole, false)
 	return nil
 }
