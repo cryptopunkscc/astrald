@@ -161,9 +161,7 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 
 		readWait := pingTimeout
 		if c.role == roleGateway && !handoffDone {
-			if readWait > time.Second {
-				readWait = time.Second
-			}
+			readWait = time.Second
 		}
 
 		c.setReadDeadline(now.Add(readWait))
@@ -172,6 +170,7 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 		if err != nil {
 			if ne, ok := err.(interface{ Timeout() bool }); ok && ne.Timeout() {
 				if time.Since(lastActivity) >= pingTimeout {
+					c.log.Logv(2, "closing idle conn remote=%v idle=%v", c.Conn.RemoteEndpoint(), time.Since(lastActivity).Round(time.Second))
 					return
 				}
 				continue
