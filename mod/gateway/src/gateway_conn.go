@@ -160,13 +160,14 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 
 		obj, err := ch.Receive()
 		if err != nil {
-			if ne, ok := err.(net.Error); ok && ne.Timeout() {
+			if isTimeout(err) {
 				if time.Since(lastActivity) >= pingTimeout {
 					c.log.Logv(2, "closing idle conn with %v idle for %v", c.withIdentity, time.Since(lastActivity).Round(time.Second).String())
 					return
 				}
 				continue
 			}
+
 			return
 		}
 
@@ -182,16 +183,20 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 			}
 
 		case *Handoff:
-			if !m.Confirm {
-				c.setWriteDeadline(time.Now().Add(writeTimeout))
-				if err := ch.Send(&Handoff{Confirm: true}); err != nil {
-					return
-				}
+			c.setWriteDeadline(time.Now().Add(writeTimeout))
+			if err := ch.Send(&HandoffAck{}); err != nil {
+				return
 			}
 			handoffSuccess = true
 			c.setReadDeadline(time.Time{})
 			c.setWriteDeadline(time.Time{})
+			c.markReady()
+			return
 
+		case *HandoffAck:
+			handoffSuccess = true
+			c.setReadDeadline(time.Time{})
+			c.setWriteDeadline(time.Time{})
 			c.markReady()
 			return
 
@@ -199,4 +204,9 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func isTimeout(err error) bool {
+	ne, ok := err.(net.Error)
+	return ok && ne.Timeout()
 }
