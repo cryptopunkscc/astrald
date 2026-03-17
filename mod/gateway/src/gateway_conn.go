@@ -120,7 +120,6 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 	lastActivity := time.Now()
 	lastPing := time.Time{}
 	var handoffDone bool
-
 	var handoffSuccess bool
 
 	defer func() {
@@ -132,21 +131,17 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			c.log.Logv(1, "ctx done remote=%v", c.Conn.RemoteEndpoint())
 			return
 		default:
 		}
 
 		now := time.Now()
 
-		// gateway activation trigger
 		if c.role == roleGateway && !handoffDone {
 			select {
 			case <-c.handoffCh:
-				c.log.Logv(1, "send Handoff remote=%v", c.Conn.RemoteEndpoint())
 				c.setWriteDeadline(now.Add(writeTimeout))
 				if err := ch.Send(&Handoff{}); err != nil {
-					c.log.Errorv(1, "send handoff failed remote=%v err=%v", c.Conn.RemoteEndpoint(), err)
 					return
 				}
 				handoffDone = true
@@ -156,18 +151,14 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 			}
 		}
 
-		// keepalive only when idle enough
 		if now.Sub(lastActivity) >= pingInterval && now.Sub(lastPing) >= pingInterval {
-			c.log.Logv(3, "send Ping remote=%v", c.Conn.RemoteEndpoint())
 			c.setWriteDeadline(now.Add(writeTimeout))
 			if err := ch.Send(&Ping{}); err != nil {
-				c.log.Errorv(1, "send ping failed remote=%v err=%v", c.Conn.RemoteEndpoint(), err)
 				return
 			}
 			lastPing = now
 		}
 
-		// adaptive read wait
 		readWait := pingTimeout
 		if c.role == roleGateway && !handoffDone {
 			if readWait > time.Second {
@@ -180,50 +171,38 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 		obj, err := ch.Receive()
 		if err != nil {
 			if ne, ok := err.(interface{ Timeout() bool }); ok && ne.Timeout() {
-				c.log.Logv(2, "timeout idle=%v remote=%v", time.Since(lastActivity), c.Conn.RemoteEndpoint())
 				if time.Since(lastActivity) >= pingTimeout {
-					c.log.Errorv(1, "idle timeout close remote=%v", c.Conn.RemoteEndpoint())
 					return
 				}
 				continue
 			}
-			c.log.Errorv(1, "receive error remote=%v err=%v", c.Conn.RemoteEndpoint(), err)
 			return
 		}
 
-		c.log.Logv(2, "recv %T remote=%v", obj, c.Conn.RemoteEndpoint())
 		lastActivity = time.Now()
 
 		switch m := obj.(type) {
 
 		case *Ping:
 			if !m.Pong {
-				c.log.Logv(3, "recv Ping → send Pong remote=%v", c.Conn.RemoteEndpoint())
 				c.setWriteDeadline(time.Now().Add(writeTimeout))
 				if err := ch.Send(&Ping{Pong: true}); err != nil {
-					c.log.Errorv(1, "send pong failed remote=%v err=%v", c.Conn.RemoteEndpoint(), err)
 					return
 				}
-			} else {
-				c.log.Logv(3, "recv Pong remote=%v", c.Conn.RemoteEndpoint())
 			}
 
 		case *Handoff:
 			if !m.Confirm {
-				c.log.Logv(1, "recv Handoff → send Confirm remote=%v", c.Conn.RemoteEndpoint())
 				c.setWriteDeadline(time.Now().Add(writeTimeout))
 				if err := ch.Send(&Handoff{Confirm: true}); err != nil {
-					c.log.Errorv(1, "send confirm failed remote=%v err=%v", c.Conn.RemoteEndpoint(), err)
 					return
 				}
-			} else {
-				c.log.Logv(1, "recv HandoffConfirm remote=%v", c.Conn.RemoteEndpoint())
 			}
+			handoffSuccess = true
 			c.markReady()
 			return
 
 		default:
-			c.log.Errorv(1, "unexpected frame %T remote=%v", obj, c.Conn.RemoteEndpoint())
 			return
 		}
 	}
