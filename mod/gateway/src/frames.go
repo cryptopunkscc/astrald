@@ -20,7 +20,7 @@ var _ astral.Object = &Handoff{}
 
 type Handoff struct{}
 
-func (Handoff) ObjectType() string                     { return "mod.gateway.signal" }
+func (Handoff) ObjectType() string                     { return "mod.gateway.handoff" }
 func (s Handoff) WriteTo(w io.Writer) (int64, error)   { return astral.Objectify(&s).WriteTo(w) }
 func (s *Handoff) ReadFrom(r io.Reader) (int64, error) { return astral.Objectify(s).ReadFrom(r) }
 
@@ -28,7 +28,7 @@ var _ astral.Object = &HandoffAck{}
 
 type HandoffAck struct{}
 
-func (HandoffAck) ObjectType() string                     { return "mod.gateway.signal_ack" }
+func (HandoffAck) ObjectType() string                     { return "mod.gateway.handoff_ack" }
 func (s HandoffAck) WriteTo(w io.Writer) (int64, error)   { return astral.Objectify(&s).WriteTo(w) }
 func (s *HandoffAck) ReadFrom(r io.Reader) (int64, error) { return astral.Objectify(s).ReadFrom(r) }
 
