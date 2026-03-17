@@ -189,6 +189,9 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 				}
 			}
 			handoffSuccess = true
+			c.setReadDeadline(time.Time{})
+			c.setWriteDeadline(time.Time{})
+
 			c.markReady()
 			return
 
