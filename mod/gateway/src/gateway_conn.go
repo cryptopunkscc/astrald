@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"errors"
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,26 +33,32 @@ func (r connRole) String() string {
 	}
 }
 
-// standbyConn is a unified idle socket connection for both node and gateway sides.
+type state uint8
+
+const (
+	idle        state = iota
+	waitConfirm state = iota
+)
+
 type standbyConn struct {
 	exonet.Conn
 	role     connRole
 	log      *log.Logger
 	identity *astral.Identity
 
-	closed   atomic.Bool
-	claimed  atomic.Bool
-	relaying atomic.Bool
+	closed atomic.Bool
 
-	handoffCh   chan struct{}
+	handoffCh   chan struct{} // gateway only
 	handoffOnce sync.Once
-	readyCh     chan struct{}
-	doneCh      chan struct{}
-	readyOnce   sync.Once
+
+	readyCh   chan struct{}
+	doneCh    chan struct{}
+	readyOnce sync.Once
+	doneOnce  sync.Once
 }
 
 func newGatewayConn(conn exonet.Conn, role connRole, identity *astral.Identity, l *log.Logger) *standbyConn {
-	bc := &standbyConn{
+	c := &standbyConn{
 		Conn:     conn,
 		role:     role,
 		log:      l,
@@ -62,192 +67,139 @@ func newGatewayConn(conn exonet.Conn, role connRole, identity *astral.Identity, 
 		doneCh:   make(chan struct{}),
 	}
 	if role == roleGateway {
-		bc.handoffCh = make(chan struct{})
+		c.handoffCh = make(chan struct{})
 	}
 	l.Logv(2, "standby conn created role=%v identity=%v remote=%v", role, identity, conn.RemoteEndpoint())
-	return bc
+	return c
 }
 
-func (conn *standbyConn) markReady() {
-	conn.readyOnce.Do(func() { close(conn.readyCh) })
+func (c *standbyConn) markReady() {
+	c.readyOnce.Do(func() { close(c.readyCh) })
 }
 
-// activate triggers the gateway-side handshake and blocks until the node confirms or the conn closes.
-func (conn *standbyConn) activate() error {
-	if conn.role != roleGateway {
-		return errors.New("activate called on non-gateway conn")
-	}
-	conn.handoffOnce.Do(func() { close(conn.handoffCh) })
-	select {
-	case <-conn.readyCh:
-		return nil
-	case <-conn.doneCh:
-		return ErrConnClosed
-	}
-}
-
-func (conn *standbyConn) SetReadDeadline(t time.Time) error {
-	if dl, ok := conn.Conn.(deadliner); ok {
-		return dl.SetReadDeadline(t)
-	}
-	return nil
-}
-
-func (conn *standbyConn) SetWriteDeadline(t time.Time) error {
-	if dl, ok := conn.Conn.(deadliner); ok {
-		return dl.SetWriteDeadline(t)
-	}
-	return nil
-}
-
-// Close closes the underlying connection exactly once.
-func (conn *standbyConn) Close() error {
-	if conn.closed.Swap(true) {
+func (c *standbyConn) Close() error {
+	if c.closed.Swap(true) {
 		return nil
 	}
-	err := conn.Conn.Close()
-	close(conn.doneCh)
+	err := c.Conn.Close()
+	c.doneOnce.Do(func() { close(c.doneCh) })
 	return err
 }
 
-// runKeepAlive runs the protocol loop. Context cancellation closes the connection.
-func (conn *standbyConn) runKeepAlive(ctx context.Context) {
-	if conn.role == roleClient {
-		conn.runNodeSide(ctx)
-	} else {
-		conn.runGateway(ctx)
+func (c *standbyConn) activate(ctx context.Context) error {
+	if c.role != roleGateway {
+		return errors.New("activate called on non-gateway conn")
 	}
+	c.handoffOnce.Do(func() { close(c.handoffCh) })
 
-	if !conn.relaying.Load() {
-		conn.Close()
-	}
-}
-
-func (conn *standbyConn) runNodeSide(ctx context.Context) {
-	ch := channel.New(conn)
-	if err := ch.Send(&Ping{}); err != nil {
-		return
-	}
-	conn.SetReadDeadline(time.Now().Add(pingTimeout))
-	err := ch.Switch(
-		func(p *Ping) error {
-			if !p.Pong {
-				return errors.New("unexpected ping")
-			}
-			go conn.schedulePing(ch)
-			return nil
-		},
-		func(s *Handoff) error {
-			if s.Confirm {
-				return errors.New("unexpected ack")
-			}
-			conn.claimed.Store(true)
-			if err := ch.Send(&Handoff{Confirm: true}); err != nil {
-				return err
-			}
-			conn.relaying.Store(true)
-			conn.SetReadDeadline(time.Time{})
-			conn.SetWriteDeadline(time.Time{})
-			conn.markReady()
-			conn.log.Log("relay started (client side) remote=%v", conn.RemoteEndpoint())
-			return channel.ErrBreak
-		},
-		channel.WithContext(ctx),
-	)
-	if err != nil {
-		var netErr net.Error
-		if errors.As(err, &netErr) && netErr.Timeout() {
-			conn.log.Log("conn timed out (read deadline) identity=%v remote=%v", conn.identity, conn.RemoteEndpoint())
-		}
-		conn.Close()
+	select {
+	case <-c.readyCh:
+		return nil
+	case <-c.doneCh:
+		return ErrConnClosed
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
-func (conn *standbyConn) runGateway(ctx context.Context) {
-	ch := channel.New(conn)
-
-	if !conn.gatewayPingLoop(ctx, ch) {
-		return
+func (c *standbyConn) setReadDeadline(t time.Time) {
+	if dl, ok := c.Conn.(deadliner); ok {
+		dl.SetReadDeadline(t)
 	}
-
-	conn.SetReadDeadline(time.Time{})
-
-	if err := ch.Send(&Handoff{}); err != nil {
-		return
-	}
-
-	ch.Switch(
-		func(s *Handoff) error {
-			if !s.Confirm {
-				return errors.New("unexpected signal")
-			}
-			conn.relaying.Store(true)
-			conn.SetReadDeadline(time.Time{})
-			conn.SetWriteDeadline(time.Time{})
-			conn.markReady()
-			return channel.ErrBreak
-		},
-		channel.WithContext(ctx),
-	)
 }
 
-// gatewayPingLoop handles keepalive pings until a handoff is requested or the
-// connection fails. Returns true only if handoff should proceed.
-func (conn *standbyConn) gatewayPingLoop(ctx context.Context, ch *channel.Channel) bool {
-	conn.SetReadDeadline(time.Now().Add(silenceTimeout))
+func (c *standbyConn) setWriteDeadline(t time.Time) {
+	if dl, ok := c.Conn.(deadliner); ok {
+		dl.SetWriteDeadline(t)
+	}
+}
 
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		select {
-		case <-conn.handoffCh:
-			conn.SetReadDeadline(time.Now())
-		case <-ctx.Done():
-			conn.SetReadDeadline(time.Now())
-		case <-done:
-		}
-	}()
+func (c *standbyConn) eventLoop(ctx context.Context) {
+	ch := channel.New(c.Conn)
+
+	var s = idle
+	var nextPing = time.Now().Add(pingInterval)
+
+	defer c.Close()
 
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		// Gateway: check for a pending handoff request before each send/receive.
+		if c.role == roleGateway && s == idle {
+			select {
+			case <-c.handoffCh:
+				c.setWriteDeadline(time.Now().Add(writeTimeout))
+				if err := ch.Send(&Handoff{}); err != nil {
+					return
+				}
+				s = waitConfirm
+			default:
+			}
+		}
+
+		// Send ping only when idle and cooldown has elapsed.
+		if s == idle && time.Now().After(nextPing) {
+			c.setWriteDeadline(time.Now().Add(writeTimeout))
+			if err := ch.Send(&Ping{}); err != nil {
+				return
+			}
+			nextPing = time.Now().Add(pingInterval)
+		}
+
+		// Wait for the next message.
+		c.setReadDeadline(time.Now().Add(pingTimeout))
+
 		obj, err := ch.Receive()
 		if err != nil {
-			var netErr net.Error
-			if errors.As(err, &netErr) && netErr.Timeout() {
-				select {
-				case <-conn.handoffCh:
-					return true
-				default:
-					conn.log.Log("conn timed out (read deadline) identity=%v remote=%v",
-						conn.identity, conn.RemoteEndpoint())
+			return
+		}
+
+		// Any received message proves peer is alive; push back the ping deadline.
+		nextPing = time.Now().Add(pingInterval)
+
+		switch m := obj.(type) {
+
+		case *Ping:
+			if !m.Pong {
+				c.setWriteDeadline(time.Now().Add(writeTimeout))
+				if err := ch.Send(&Ping{Pong: true}); err != nil {
+					return
 				}
+				continue
 			}
-			return false
-		}
+			continue
 
-		p, ok := obj.(*Ping)
-		if !ok || bool(p.Pong) {
-			return false
-		}
+		case *Handoff:
+			switch s {
+			case idle:
+				if m.Confirm {
+					return
+				}
+				c.setWriteDeadline(time.Now().Add(writeTimeout))
+				if err := ch.Send(&Handoff{Confirm: true}); err != nil {
+					return
+				}
+				c.markReady()
+				return
 
-		conn.SetReadDeadline(time.Now().Add(pingTimeout))
-		if err := ch.Send(&Ping{Pong: true}); err != nil {
-			return false
+			case waitConfirm:
+				if !m.Confirm {
+					return
+				}
+				c.markReady()
+				return
+
+			default:
+				return
+			}
+
+		default:
+			return
 		}
 	}
-}
-
-func (conn *standbyConn) schedulePing(ch *channel.Channel) {
-	select {
-	case <-conn.readyCh:
-		return
-	case <-conn.doneCh:
-		return
-	case <-time.After(pingInterval):
-	}
-	if err := ch.Send(&Ping{}); err != nil {
-		conn.Close()
-		return
-	}
-
-	conn.SetReadDeadline(time.Now().Add(pingTimeout))
 }

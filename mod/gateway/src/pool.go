@@ -77,10 +77,17 @@ func (p *ConnPool) dialSocket() (exonet.Conn, error) {
 	return conn, nil
 }
 
-// idleCount returns the number of non-claimed conns in the pool.
+// idleCount returns the number of conns not yet in relay or closed.
 func (p *ConnPool) idleCount() int {
 	return len(p.conns.Select(func(a *standbyConn) bool {
-		return !a.claimed.Load()
+		select {
+		case <-a.readyCh:
+			return false
+		case <-a.doneCh:
+			return false
+		default:
+			return true
+		}
 	}))
 }
 
@@ -108,7 +115,7 @@ func (p *ConnPool) addIdleConn(conn exonet.Conn) {
 		}
 	}()
 
-	go bc.runKeepAlive(p.ctx)
+	go bc.eventLoop(p.ctx)
 }
 
 func (p *ConnPool) notify() {

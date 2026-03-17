@@ -23,7 +23,7 @@ func (mod *Module) handleInbound(_ context.Context, conn exonet.Conn) (stopListe
 	if b, ok := mod.registeredNodeByNonce(nonce); ok {
 		mod.log.Infov(2, "added idle conn to registered node %v", b.Identity)
 		bc := b.registerConn(conn, mod.log)
-		go bc.runKeepAlive(mod.ctx)
+		go bc.eventLoop(mod.ctx)
 		return stopListener, nil
 	}
 
@@ -42,7 +42,7 @@ func (mod *Module) handleInbound(_ context.Context, conn exonet.Conn) (stopListe
 		return stopListener, fmt.Errorf("no standby conn for %v", c.Target)
 	}
 
-	if err := standby.activate(); err != nil {
+	if err := standby.activate(mod.ctx); err != nil {
 		mod.log.Errorv(1, "activation failed for %v: %v", c.Target, err)
 		conn.Close()
 		return stopListener, nil

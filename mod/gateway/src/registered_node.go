@@ -24,10 +24,16 @@ func (b *registeredNode) registerConn(conn exonet.Conn, l *log.Logger) *standbyC
 	return bc
 }
 
-// claimConn reserves an idle standbyConn for a connector via atomic CAS.
+// claimConn atomically reserves an idle standbyConn for a connector.
+// Uses handoffOnce as the claim token: the first caller wins.
 func (b *registeredNode) claimConn() (*standbyConn, bool) {
 	for _, c := range b.idleConns.Clone() {
-		if c.claimed.CompareAndSwap(false, true) {
+		claimed := false
+		c.handoffOnce.Do(func() {
+			claimed = true
+			close(c.handoffCh)
+		})
+		if claimed {
 			return c, true
 		}
 	}

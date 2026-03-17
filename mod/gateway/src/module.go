@@ -23,6 +23,7 @@ const NetworkName = "gw"
 const (
 	pingInterval    = 30 * time.Second
 	pingTimeout     = 60 * time.Second
+	writeTimeout    = 5 * time.Second
 	silenceTimeout  = 10 * time.Second
 	minIdleConns    = 2
 	maxDialFails    = 3
