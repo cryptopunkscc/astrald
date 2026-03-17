@@ -2,6 +2,7 @@ package utp
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -138,6 +139,23 @@ func (e *Endpoint) UDPAddr() *net.UDPAddr {
 		IP:   net.ParseIP(e.IP.String()),
 		Port: int(e.Port),
 	}
+}
+
+func (e *Endpoint) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.Address())
+}
+
+func (e *Endpoint) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	ep, err := ParseEndpoint(s)
+	if err != nil {
+		return err
+	}
+	*e = *ep
+	return nil
 }
 
 func init() {

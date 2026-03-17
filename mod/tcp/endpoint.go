@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -15,6 +16,8 @@ import (
 
 var _ exonet.Endpoint = &Endpoint{}
 var _ astral.Object = &Endpoint{}
+var _ json.Marshaler = &Endpoint{}
+var _ json.Unmarshaler = &Endpoint{}
 
 // Endpoint is an astral.Object that holds information about a TCP endpoint, i.e. an IP address and a port.
 // Supports JSON and text.
@@ -83,6 +86,23 @@ func (e *Endpoint) UnmarshalText(text []byte) error {
 	e.IP = ip
 	e.Port = astral.Uint16(port)
 
+	return nil
+}
+
+func (e *Endpoint) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.Address())
+}
+
+func (e *Endpoint) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	ep, err := ParseEndpoint(s)
+	if err != nil {
+		return err
+	}
+	*e = *ep
 	return nil
 }
 

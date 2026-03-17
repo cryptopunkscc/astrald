@@ -2,6 +2,7 @@ package kcp
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -93,6 +94,19 @@ func (e *Endpoint) UnmarshalText(text []byte) error {
 	e.Port = astral.Uint16(port)
 
 	return nil
+}
+
+func (e *Endpoint) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.Address())
+}
+
+func (e *Endpoint) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	return e.UnmarshalText([]byte(s))
 }
 
 func (e *Endpoint) String() string {

@@ -24,6 +24,17 @@ type Identity struct {
 	publicKey *secp256k1.PublicKey
 }
 
+func GenerateIdentity() *Identity {
+	priv, err := secp256k1.GeneratePrivateKey()
+	if err != nil {
+		panic(err)
+	}
+
+	return &Identity{
+		publicKey: priv.PubKey(),
+	}
+}
+
 func ParseIdentity(s string) (*Identity, error) {
 	switch {
 	case s == anyoneKey, s == anonymous:

@@ -12,6 +12,8 @@ import (
 )
 
 var _ astral.Object = &Endpoint{}
+var _ json.Marshaler = &Endpoint{}
+var _ json.Unmarshaler = &Endpoint{}
 
 // Endpoint is an astral.Object holding information about a Tor endpoint (digest and port).
 // Supports JSON and text.
