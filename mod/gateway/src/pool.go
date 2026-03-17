@@ -81,9 +81,9 @@ func (p *ConnPool) dialSocket() (exonet.Conn, error) {
 func (p *ConnPool) idleCount() int {
 	return len(p.conns.Select(func(a *standbyConn) bool {
 		select {
-		case <-a.readyCh:
+		case <-a.Ready():
 			return false
-		case <-a.doneCh:
+		case <-a.Done():
 			return false
 		default:
 			return true
@@ -92,30 +92,31 @@ func (p *ConnPool) idleCount() int {
 }
 
 func (p *ConnPool) addIdleConn(conn exonet.Conn) {
-	bc := newGatewayConn(conn, roleClient, p.gatewayID, p.log)
+	bc := newStandbyConn(conn, roleClient, p.gatewayID, p.log)
 	p.conns.Add(bc)
 
 	go func() {
-		<-bc.doneCh
-		p.conns.Remove(bc)
-		p.notify()
-	}()
+		defer func() {
+			p.conns.Remove(bc)
+			p.notify()
+		}()
 
-	go func() {
+		go bc.eventLoop(p.ctx)
+
 		select {
-		case <-bc.readyCh:
-			if err := p.Nodes.EstablishInboundLink(p.ctx, &gatewayConn{
-				ReadWriteCloser: bc,
-				local:           gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
-				remote:          gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
-			}); err != nil {
+		case <-bc.Ready():
+			if err := p.Nodes.EstablishInboundLink(p.ctx, bc.gatewayConn(
+				gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
+				gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
+			)); err != nil {
 				bc.Close()
 			}
-		case <-bc.doneCh:
+		case <-bc.Done():
+			return
 		}
-	}()
 
-	go bc.eventLoop(p.ctx)
+		<-bc.Done()
+	}()
 }
 
 func (p *ConnPool) notify() {

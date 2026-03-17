@@ -9,7 +9,7 @@ import (
 )
 
 // registeredNode represents a node registered as reachable through the gateway.
-// Only one registration per identity is allowed.
+// Only one registration per withIdentity is allowed.
 type registeredNode struct {
 	Identity   *astral.Identity
 	Nonce      astral.Nonce
@@ -18,9 +18,9 @@ type registeredNode struct {
 }
 
 func (b *registeredNode) registerConn(conn exonet.Conn, l *log.Logger) *standbyConn {
-	bc := newGatewayConn(conn, roleGateway, b.Identity, l)
+	bc := newStandbyConn(conn, roleGateway, b.Identity, l)
 	b.idleConns.Add(bc)
-	go func() { <-bc.doneCh; b.idleConns.Remove(bc) }()
+	go func() { <-bc.Done(); b.idleConns.Remove(bc) }()
 	return bc
 }
 

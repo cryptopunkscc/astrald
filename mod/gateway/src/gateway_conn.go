@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,29 +23,17 @@ const (
 	roleGateway
 )
 
-func (r connRole) String() string {
-	switch r {
-	case roleClient:
-		return "client"
-	case roleGateway:
-		return "gateway"
-	default:
-		return "unknown"
-	}
+// note: maybe can be part of exonet
+type deadliner interface {
+	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
 }
-
-type state uint8
-
-const (
-	idle        state = iota
-	waitConfirm state = iota
-)
 
 type standbyConn struct {
 	exonet.Conn
-	role     connRole
-	log      *log.Logger
-	identity *astral.Identity
+	role         connRole
+	log          *log.Logger
+	withIdentity *astral.Identity // identity of peer we are connected to
 
 	closed atomic.Bool
 
@@ -57,20 +46,27 @@ type standbyConn struct {
 	doneOnce  sync.Once
 }
 
-func newGatewayConn(conn exonet.Conn, role connRole, identity *astral.Identity, l *log.Logger) *standbyConn {
+func newStandbyConn(conn exonet.Conn, role connRole, identity *astral.Identity, l *log.Logger) *standbyConn {
 	c := &standbyConn{
-		Conn:     conn,
-		role:     role,
-		log:      l,
-		identity: identity,
-		readyCh:  make(chan struct{}),
-		doneCh:   make(chan struct{}),
+		Conn:         conn,
+		role:         role,
+		log:          l,
+		withIdentity: identity,
+		readyCh:      make(chan struct{}),
+		doneCh:       make(chan struct{}),
 	}
 	if role == roleGateway {
 		c.handoffCh = make(chan struct{})
 	}
-	l.Logv(2, "standby conn created identity=%v remote=%v", identity, conn.RemoteEndpoint())
+	l.Logv(2, "standby conn created with %v remote %v", identity, conn.RemoteEndpoint())
 	return c
+}
+
+func (c *standbyConn) Ready() <-chan struct{} { return c.readyCh }
+func (c *standbyConn) Done() <-chan struct{}  { return c.doneCh }
+
+func (c *standbyConn) gatewayConn(local, remote exonet.Endpoint) *gatewayConn {
+	return &gatewayConn{ReadWriteCloser: c, local: local, remote: remote}
 }
 
 func (c *standbyConn) markReady() {
@@ -161,16 +157,16 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 
 		readWait := pingTimeout
 		if c.role == roleGateway && !handoffDone {
-			readWait = time.Second
+			readWait = handoffPollInterval
 		}
 
 		c.setReadDeadline(now.Add(readWait))
 
 		obj, err := ch.Receive()
 		if err != nil {
-			if ne, ok := err.(interface{ Timeout() bool }); ok && ne.Timeout() {
+			if ne, ok := err.(net.Error); ok && ne.Timeout() {
 				if time.Since(lastActivity) >= pingTimeout {
-					c.log.Logv(2, "closing idle conn remote=%v idle=%v", c.Conn.RemoteEndpoint(), time.Since(lastActivity).Round(time.Second))
+					c.log.Logv(2, "closing idle conn with %v idle for %v", c.withIdentity, time.Since(lastActivity).Round(time.Second).String())
 					return
 				}
 				continue
@@ -181,7 +177,6 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 		lastActivity = time.Now()
 
 		switch m := obj.(type) {
-
 		case *Ping:
 			if !m.Pong {
 				c.setWriteDeadline(time.Now().Add(writeTimeout))

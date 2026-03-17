@@ -21,15 +21,15 @@ import (
 const NetworkName = "gw"
 
 const (
-	pingInterval    = 30 * time.Second
-	pingTimeout     = 60 * time.Second
-	writeTimeout    = 5 * time.Second
-	silenceTimeout  = 10 * time.Second
-	minIdleConns    = 2
-	maxDialFails    = 3
-	connectTimeout  = 30 * time.Second
-	acceptTimeout   = 30 * time.Second
-	pipeIdleTimeout = 60 * time.Second
+	pingInterval        = 30 * time.Second
+	pingTimeout         = 60 * time.Second
+	writeTimeout        = 10 * time.Second
+	handoffPollInterval = time.Second
+	minIdleConns        = 2
+	maxDialFails        = 3
+	connectTimeout      = 30 * time.Second
+	acceptTimeout       = 30 * time.Second
+	pipeIdleTimeout     = 60 * time.Second
 )
 
 type Deps struct {
