@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -36,8 +37,9 @@ func (r connRole) String() string {
 // standbyConn is a unified idle socket connection for both node and gateway sides.
 type standbyConn struct {
 	exonet.Conn
-	role connRole
-	log  *log.Logger
+	role     connRole
+	log      *log.Logger
+	identity *astral.Identity
 
 	closed   atomic.Bool
 	claimed  atomic.Bool
@@ -50,18 +52,19 @@ type standbyConn struct {
 	readyOnce   sync.Once
 }
 
-func newGatewayConn(conn exonet.Conn, role connRole, l *log.Logger) *standbyConn {
+func newGatewayConn(conn exonet.Conn, role connRole, identity *astral.Identity, l *log.Logger) *standbyConn {
 	bc := &standbyConn{
-		Conn:    conn,
-		role:    role,
-		log:     l,
-		readyCh: make(chan struct{}),
-		doneCh:  make(chan struct{}),
+		Conn:     conn,
+		role:     role,
+		log:      l,
+		identity: identity,
+		readyCh:  make(chan struct{}),
+		doneCh:   make(chan struct{}),
 	}
 	if role == roleGateway {
 		bc.handoffCh = make(chan struct{})
 	}
-	l.Logv(2, "standby conn created role=%v remote=%v", role, conn.RemoteEndpoint())
+	l.Logv(2, "standby conn created role=%v identity=%v remote=%v", role, identity, conn.RemoteEndpoint())
 	return bc
 }
 
@@ -154,7 +157,7 @@ func (conn *standbyConn) runNodeSide(ctx context.Context) {
 	if err != nil {
 		var netErr net.Error
 		if errors.As(err, &netErr) && netErr.Timeout() {
-			conn.log.Log("conn timed out (read deadline) remote=%v", conn.RemoteEndpoint())
+			conn.log.Log("conn timed out (read deadline) identity=%v remote=%v", conn.identity, conn.RemoteEndpoint())
 		}
 		conn.Close()
 	}
@@ -162,38 +165,12 @@ func (conn *standbyConn) runNodeSide(ctx context.Context) {
 
 func (conn *standbyConn) runGateway(ctx context.Context) {
 	ch := channel.New(conn)
-	conn.SetReadDeadline(time.Now().Add(silenceTimeout))
 
-	// Cancel the ping loop as soon as a handoff is requested, without waiting
-	// for the next ping from the node (which could be up to pingInterval away).
-	loopCtx, cancel := context.WithCancel(ctx)
-	go func() {
-		select {
-		case <-conn.handoffCh:
-		case <-loopCtx.Done():
-			return
-		}
-		cancel()
-	}()
-
-	ch.Switch(
-		func(p *Ping) error {
-			if p.Pong {
-				return errors.New("unexpected pong")
-			}
-			conn.SetReadDeadline(time.Now().Add(pingTimeout))
-			return ch.Send(&Ping{Pong: true})
-		},
-		channel.WithContext(loopCtx),
-	)
-	cancel()
-
-	// Proceed with handoff only if it was requested (not a timeout or parent cancel).
-	select {
-	case <-conn.handoffCh:
-	default:
+	if !conn.gatewayPingLoop(ctx, ch) {
 		return
 	}
+
+	conn.SetReadDeadline(time.Time{})
 
 	if err := ch.Send(&Handoff{}); err != nil {
 		return
@@ -212,6 +189,51 @@ func (conn *standbyConn) runGateway(ctx context.Context) {
 		},
 		channel.WithContext(ctx),
 	)
+}
+
+// gatewayPingLoop handles keepalive pings until a handoff is requested or the
+// connection fails. Returns true only if handoff should proceed.
+func (conn *standbyConn) gatewayPingLoop(ctx context.Context, ch *channel.Channel) bool {
+	conn.SetReadDeadline(time.Now().Add(silenceTimeout))
+
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-conn.handoffCh:
+			conn.SetReadDeadline(time.Now())
+		case <-ctx.Done():
+			conn.SetReadDeadline(time.Now())
+		case <-done:
+		}
+	}()
+
+	for {
+		obj, err := ch.Receive()
+		if err != nil {
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
+				select {
+				case <-conn.handoffCh:
+					return true
+				default:
+					conn.log.Log("conn timed out (read deadline) identity=%v remote=%v",
+						conn.identity, conn.RemoteEndpoint())
+				}
+			}
+			return false
+		}
+
+		p, ok := obj.(*Ping)
+		if !ok || bool(p.Pong) {
+			return false
+		}
+
+		conn.SetReadDeadline(time.Now().Add(pingTimeout))
+		if err := ch.Send(&Ping{Pong: true}); err != nil {
+			return false
+		}
+	}
 }
 
 func (conn *standbyConn) schedulePing(ch *channel.Channel) {

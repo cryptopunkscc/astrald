@@ -18,7 +18,7 @@ type registeredNode struct {
 }
 
 func (b *registeredNode) registerConn(conn exonet.Conn, l *log.Logger) *standbyConn {
-	bc := newGatewayConn(conn, roleGateway, l)
+	bc := newGatewayConn(conn, roleGateway, b.Identity, l)
 	b.idleConns.Add(bc)
 	go func() { <-bc.doneCh; b.idleConns.Remove(bc) }()
 	return bc
