@@ -29,7 +29,7 @@ const (
 	maxDialFails        = 3
 	connectTimeout      = 30 * time.Second
 	acceptTimeout       = 30 * time.Second
-	pipeIdleTimeout     = 60 * time.Second
+	pipeIdleTimeout     = 24 * time.Hour // note: lower it when we will enforce pings on gw links
 )
 
 type Deps struct {
