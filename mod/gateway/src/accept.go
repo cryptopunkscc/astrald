@@ -3,20 +3,14 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
-const (
-	socketDeadTimeout  = 10 * time.Second
-	socketProbeTimeout = 5 * time.Second
-)
-
-// acceptSocketConn dispatches an incoming socket connection to either the binder
-// or connector path based on the nonce it presents.
-func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopListener bool, err error) {
+// handleInbound dispatches an incoming socket connection to either the registered
+// node or connector path based on the nonce it presents.
+func (mod *Module) handleInbound(_ context.Context, conn exonet.Conn) (stopListener bool, err error) {
 	mod.log.Logv(2, "accepting socket connection from %v", conn.RemoteEndpoint())
 
 	var nonce astral.Nonce
@@ -26,10 +20,10 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 		return stopListener, nil
 	}
 
-	if b, ok := mod.binderByNonce(nonce); ok {
-		mod.log.Infov(2, "added idle conn to binder %v", b.Identity)
-		bc := b.addConn(conn)
-		go bc.eventLoop(nil)
+	if b, ok := mod.registeredNodeByNonce(nonce); ok {
+		mod.log.Infov(2, "added idle conn to registered node %v", b.Identity)
+		bc := b.registerConn(conn)
+		go bc.runKeepAlive(mod.ctx)
 		return stopListener, nil
 	}
 
@@ -42,19 +36,19 @@ func (mod *Module) acceptSocketConn(_ context.Context, conn exonet.Conn) (stopLi
 
 	mod.connectors.Remove(c)
 
-	reserved := c.takeReserved()
-	if reserved == nil {
+	standby := c.claimStandby()
+	if standby == nil {
 		conn.Close()
-		return stopListener, fmt.Errorf("no reserved conn for %v", c.Target)
+		return stopListener, fmt.Errorf("no standby conn for %v", c.Target)
 	}
 
-	if !reserved.signal() {
-		mod.log.Errorv(1, "reserved conn for %v is dead", c.Target)
+	if err := standby.activate(); err != nil {
+		mod.log.Errorv(1, "activation failed for %v: %v", c.Target, err)
 		conn.Close()
 		return stopListener, nil
 	}
 
 	mod.log.Infov(2, "pipe from %v to %v created", c.Identity, c.Target)
-	go pipe(reserved, conn)
+	go pipe(standby, conn)
 	return stopListener, nil
 }

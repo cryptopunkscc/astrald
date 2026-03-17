@@ -7,9 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
-const connectTimeout = 30 * time.Second
-
-func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, network string) (gateway.Socket, error) {
+func (mod *Module) reserveRelay(caller *astral.Identity, target *astral.Identity, network string) (gateway.Socket, error) {
 	if !mod.canGateway(caller) {
 		return gateway.Socket{}, gateway.ErrUnauthorized
 	}
@@ -19,12 +17,12 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 		return gateway.Socket{}, err
 	}
 
-	binder, ok := mod.binderByIdentity(target)
+	node, ok := mod.registeredNodeByIdentity(target)
 	if !ok {
 		return gateway.Socket{}, gateway.ErrTargetNotReachable
 	}
 
-	reserved, ok := binder.takeConn()
+	reserved, ok := node.claimConn()
 	if !ok {
 		return gateway.Socket{}, gateway.ErrTargetNotReachable
 	}
@@ -33,7 +31,7 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 		Identity: caller,
 		Nonce:    astral.NewNonce(),
 		Target:   target,
-		reserved: reserved,
+		standby:  reserved,
 	}
 
 	mod.connectors.Add(c)
@@ -43,7 +41,7 @@ func (mod *Module) connectTo(caller *astral.Identity, target *astral.Identity, n
 		defer t.Stop()
 		<-t.C
 
-		bc := c.takeReserved()
+		bc := c.claimStandby()
 		if bc == nil {
 			return
 		}

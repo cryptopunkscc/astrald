@@ -15,7 +15,7 @@ func (mod *Module) OpList(ctx *astral.Context, q *ops.Query, args opListArgs) er
 	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	for _, client := range mod.binders.Values() {
+	for _, client := range mod.registeredNodes.Values() {
 		if client.Visibility != gateway.VisibilityPublic {
 			continue
 		}

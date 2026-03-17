@@ -6,7 +6,6 @@ import (
 )
 
 func pipe(a, b io.ReadWriteCloser) {
-	const idle = 30 * time.Second
 
 	done := make(chan struct{}, 2)
 
@@ -17,12 +16,12 @@ func pipe(a, b io.ReadWriteCloser) {
 		dstD, dstOk := dst.(deadliner)
 		for {
 			if srcOk {
-				srcD.SetReadDeadline(time.Now().Add(idle))
+				srcD.SetReadDeadline(time.Now().Add(pipeIdleTimeout))
 			}
 			n, err := src.Read(buf)
 			if n > 0 {
 				if dstOk {
-					dstD.SetWriteDeadline(time.Now().Add(idle))
+					dstD.SetWriteDeadline(time.Now().Add(pipeIdleTimeout))
 				}
 				if _, werr := dst.Write(buf[:n]); werr != nil {
 					break

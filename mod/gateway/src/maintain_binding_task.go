@@ -21,7 +21,7 @@ type MaintainBindingTask struct {
 	GatewayID  *astral.Identity
 	Visibility gateway.Visibility
 	retry      *sig.Retry
-	triggerCh  chan struct{}
+	wakeCh     chan struct{}
 }
 
 func (mod *Module) NewMaintainBindingTask(gatewayID *astral.Identity, visibility gateway.Visibility) *MaintainBindingTask {
@@ -31,7 +31,7 @@ func (mod *Module) NewMaintainBindingTask(gatewayID *astral.Identity, visibility
 		GatewayID:  gatewayID,
 		Visibility: visibility,
 		retry:      retry,
-		triggerCh:  make(chan struct{}, 1),
+		wakeCh:     make(chan struct{}, 1),
 	}
 }
 
@@ -58,7 +58,7 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 			case <-ctx.Done():
 				return ctx.Err()
 			case count = <-task.retry.Retry():
-			case <-task.triggerCh:
+			case <-task.wakeCh:
 			}
 			continue
 		}
@@ -71,7 +71,7 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 		}
 		count = 0
 
-		err = task.mod.newSocketPool(ctx, task.GatewayID, *socket).Run()
+		err = task.mod.newConnPool(ctx, task.GatewayID, *socket).Run()
 		if err != nil {
 			task.mod.log.Error("rebinding to %v due to: %v", task.GatewayID, err)
 		}
@@ -84,7 +84,7 @@ func (task *MaintainBindingTask) ReceiveEvent(e *events.Event) {
 		if len(typed.Added) > 0 {
 			task.retry.Reset()
 			select {
-			case task.triggerCh <- struct{}{}:
+			case task.wakeCh <- struct{}{}:
 			default:
 			}
 		}

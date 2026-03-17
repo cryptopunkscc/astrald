@@ -15,19 +15,19 @@ func (mod *Module) bind(ctx *astral.Context, identity *astral.Identity, visibili
 		return gateway.Socket{}, err
 	}
 
-	newBinder := &binder{
+	node := &registeredNode{
 		Identity:   identity,
 		Nonce:      astral.NewNonce(),
 		Visibility: visibility,
 	}
 
-	oldBinder, ok := mod.binders.Replace(identity.String(), newBinder)
+	old, ok := mod.registeredNodes.Replace(identity.String(), node)
 	if ok {
-		if err = oldBinder.Close(); err != nil {
-			mod.log.Error("failed to close old binder: %v", err)
+		if err = old.Close(); err != nil {
+			mod.log.Error("failed to close old registered node: %v", err)
 		}
 
-		targetID := oldBinder.Identity.String()
+		targetID := old.Identity.String()
 		for _, c := range mod.connectors.Clone() {
 			if c.Target.String() == targetID {
 				mod.connectors.Remove(c)
@@ -37,7 +37,7 @@ func (mod *Module) bind(ctx *astral.Context, identity *astral.Identity, visibili
 	}
 
 	return gateway.Socket{
-		Nonce:    newBinder.Nonce,
+		Nonce:    node.Nonce,
 		Endpoint: endpoint,
 	}, nil
 }

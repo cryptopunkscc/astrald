@@ -43,7 +43,7 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 		return mod.route(ctx, gwEndpoint)
 	}
 
-	return &gwConn{
+	return &gatewayConn{
 		ReadWriteCloser: conn,
 		local:           conn.LocalEndpoint(),
 		remote:          gwEndpoint,
@@ -66,7 +66,7 @@ func (mod *Module) route(ctx *astral.Context, gwEndpoint *gateway.Endpoint) (exo
 		return nil, err
 	}
 
-	return &gwConn{
+	return &gatewayConn{
 		ReadWriteCloser: conn,
 		local:           gateway.NewEndpoint(mod.node.Identity(), mod.node.Identity()),
 		remote:          gwEndpoint,

@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/ops"
@@ -17,6 +19,17 @@ import (
 )
 
 const NetworkName = "gw"
+
+const (
+	pingInterval    = 30 * time.Second
+	pingTimeout     = 60 * time.Second
+	silenceTimeout  = 10 * time.Second
+	minIdleConns    = 2
+	maxDialFails    = 3
+	connectTimeout  = 30 * time.Second
+	acceptTimeout   = 30 * time.Second
+	pipeIdleTimeout = 60 * time.Second
+)
 
 type Deps struct {
 	Dir       dir.Module
@@ -38,11 +51,11 @@ type Module struct {
 	log    *log.Logger
 	ctx    *astral.Context
 
-	gateways   sig.Set[*astral.Identity]
-	binders    sig.Map[string, *binder]
-	connectors sig.Set[*connector]
+	gateways        sig.Set[*astral.Identity]
+	registeredNodes sig.Map[string, *registeredNode]
+	connectors      sig.Set[*connector]
 
-	listenEndpoints sig.Map[string, exonet.Endpoint]
+	socketEndpoints sig.Map[string, exonet.Endpoint]
 }
 
 var _ gateway.Module = &Module{}
@@ -70,7 +83,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	}
 
 	<-ctx.Done()
-	for _, b := range mod.binders.Values() {
+	for _, b := range mod.registeredNodes.Values() {
 		b.Close()
 	}
 	for _, c := range mod.connectors.Clone() {
@@ -87,7 +100,7 @@ func (mod *Module) Endpoints() []exonet.Endpoint {
 }
 
 func (mod *Module) getGatewayEndpoint(ctx *astral.Context, network string) (endpoint exonet.Endpoint, err error) {
-	endpoint, ok := mod.listenEndpoints.Get(network)
+	endpoint, ok := mod.socketEndpoints.Get(network)
 	if !ok {
 		// fixme: return public error (no gateway endpoint available)
 		return
@@ -96,12 +109,12 @@ func (mod *Module) getGatewayEndpoint(ctx *astral.Context, network string) (endp
 	return endpoint, nil
 }
 
-func (mod *Module) binderByIdentity(identity *astral.Identity) (*binder, bool) {
-	return mod.binders.Get(identity.String())
+func (mod *Module) registeredNodeByIdentity(identity *astral.Identity) (*registeredNode, bool) {
+	return mod.registeredNodes.Get(identity.String())
 }
 
-func (mod *Module) binderByNonce(nonce astral.Nonce) (*binder, bool) {
-	for _, b := range mod.binders.Values() {
+func (mod *Module) registeredNodeByNonce(nonce astral.Nonce) (*registeredNode, bool) {
+	for _, b := range mod.registeredNodes.Values() {
 		if b.Nonce == nonce {
 			return b, true
 		}

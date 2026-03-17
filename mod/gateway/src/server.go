@@ -30,12 +30,12 @@ func (mod *Module) startServers(ctx *astral.Context) {
 			}
 
 			mod.log.Logv(1, "start listening on %v", tcpEndpoint)
-			if err := mod.TCP.CreateEphemeralListener(ctx, tcpEndpoint.Port, mod.acceptSocketConn); err != nil {
+			if err := mod.TCP.CreateEphemeralListener(ctx, tcpEndpoint.Port, mod.handleInbound); err != nil {
 				mod.log.Error("create ephemeral listener on %v: %v", addr, err)
 				continue
 			}
 
-			mod.listenEndpoints.Set("tcp", tcpEndpoint)
+			mod.socketEndpoints.Set("tcp", tcpEndpoint)
 		default:
 			mod.log.Error("unsupported gateway socket network: %v", network)
 		}

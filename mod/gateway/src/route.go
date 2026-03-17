@@ -4,14 +4,11 @@ import (
 	"context"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
-
-const acceptTimeout = 30 * time.Second
 
 func (mod *Module) routeQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
@@ -27,7 +24,7 @@ func (mod *Module) routeQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 	// target is us
 	if targetKey == mod.node.Identity().String() {
 		return query.Accept(q, w, func(conn astral.Conn) {
-			c := &gwConn{
+			c := &gatewayConn{
 				ReadWriteCloser: conn,
 				local:           gateway.NewEndpoint(q.Target, q.Target),
 				remote:          gateway.NewEndpoint(q.Caller, q.Target),
