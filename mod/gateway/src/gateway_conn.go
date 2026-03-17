@@ -69,7 +69,7 @@ func newGatewayConn(conn exonet.Conn, role connRole, identity *astral.Identity, 
 	if role == roleGateway {
 		c.handoffCh = make(chan struct{})
 	}
-	l.Logv(2, "standby conn created role=%v identity=%v remote=%v", role, identity, conn.RemoteEndpoint())
+	l.Logv(2, "standby conn created identity=%v remote=%v", identity, conn.RemoteEndpoint())
 	return c
 }
 
@@ -117,8 +117,9 @@ func (c *standbyConn) setWriteDeadline(t time.Time) {
 func (c *standbyConn) eventLoop(ctx context.Context) {
 	ch := channel.New(c.Conn)
 
-	var s = idle
-	var nextPing = time.Now().Add(pingInterval)
+	lastActivity := time.Now()
+	lastPing := time.Time{}
+	var handoffDone bool
 
 	defer c.Close()
 
@@ -129,74 +130,59 @@ func (c *standbyConn) eventLoop(ctx context.Context) {
 		default:
 		}
 
-		// Gateway: check for a pending handoff request before each send/receive.
-		if c.role == roleGateway && s == idle {
+		now := time.Now()
+
+		// gateway activation trigger
+		if c.role == roleGateway && !handoffDone {
 			select {
 			case <-c.handoffCh:
-				c.setWriteDeadline(time.Now().Add(writeTimeout))
+				c.setWriteDeadline(now.Add(writeTimeout))
 				if err := ch.Send(&Handoff{}); err != nil {
 					return
 				}
-				s = waitConfirm
+				handoffDone = true
+				lastActivity = now
+				lastPing = now
 			default:
 			}
 		}
 
-		// Send ping only when idle and cooldown has elapsed.
-		if s == idle && time.Now().After(nextPing) {
-			c.setWriteDeadline(time.Now().Add(writeTimeout))
+		// keepalive only when idle enough
+		if now.Sub(lastActivity) >= pingInterval && now.Sub(lastPing) >= pingInterval {
+			c.setWriteDeadline(now.Add(writeTimeout))
 			if err := ch.Send(&Ping{}); err != nil {
 				return
 			}
-			nextPing = time.Now().Add(pingInterval)
+			lastPing = now
 		}
 
-		// Wait for the next message.
-		c.setReadDeadline(time.Now().Add(pingTimeout))
+		c.setReadDeadline(now.Add(pingTimeout))
 
 		obj, err := ch.Receive()
 		if err != nil {
 			return
 		}
 
-		// Any received message proves peer is alive; push back the ping deadline.
-		nextPing = time.Now().Add(pingInterval)
+		lastActivity = time.Now()
 
 		switch m := obj.(type) {
-
 		case *Ping:
 			if !m.Pong {
 				c.setWriteDeadline(time.Now().Add(writeTimeout))
 				if err := ch.Send(&Ping{Pong: true}); err != nil {
 					return
 				}
-				continue
 			}
-			continue
 
 		case *Handoff:
-			switch s {
-			case idle:
-				if m.Confirm {
-					return
-				}
+			if !m.Confirm {
 				c.setWriteDeadline(time.Now().Add(writeTimeout))
 				if err := ch.Send(&Handoff{Confirm: true}); err != nil {
 					return
 				}
-				c.markReady()
-				return
-
-			case waitConfirm:
-				if !m.Confirm {
-					return
-				}
-				c.markReady()
-				return
-
-			default:
-				return
 			}
+			c.markReady()
+			return
 
 		default:
 			return
