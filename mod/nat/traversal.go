@@ -22,7 +22,7 @@ type Traversal struct {
 	PeerIP   ip.IP
 	PeerPort astral.Uint16
 
-	Pair TraversedPortPair
+	Hole Hole
 }
 
 func NewTraversal(localID, peerID *astral.Identity, localIP ip.IP) *Traversal {
@@ -45,11 +45,8 @@ func (t *Traversal) OnAnswer(sig *PunchSignal) {
 }
 
 func (t *Traversal) OnResult(sig *PunchSignal) {
-	t.Pair.Nonce = sig.PairNonce
-	t.Pair.PeerA.Endpoint = UDPEndpoint{
-		IP:   sig.IP,
-		Port: sig.Port,
-	}
+	t.Hole.Nonce = sig.PairNonce
+	t.Hole.ActiveEndpoint = Endpoint{IP: sig.IP, Port: sig.Port}
 }
 
 func (t *Traversal) ExpectSignal(signalType astral.String8, on func(*PunchSignal)) func(*PunchSignal) error {
@@ -69,12 +66,10 @@ func (t *Traversal) ExpectSignal(signalType astral.String8, on func(*PunchSignal
 }
 
 func (t *Traversal) SetPunchResult(result *PunchResult) {
-	t.Pair = TraversedPortPair{
-		PeerA: PeerEndpoint{Identity: t.LocalIdentity},
-		PeerB: PeerEndpoint{
-			Identity: t.PeerIdentity,
-			Endpoint: UDPEndpoint{IP: result.RemoteIP, Port: result.RemotePort},
-		},
+	t.Hole = Hole{
+		ActiveIdentity:  t.LocalIdentity,
+		PassiveIdentity: t.PeerIdentity,
+		PassiveEndpoint: Endpoint{IP: result.RemoteIP, Port: result.RemotePort},
 	}
 }
 
@@ -114,8 +109,8 @@ func (t *Traversal) ResultSignal() *PunchSignal {
 	return &PunchSignal{
 		Signal:    PunchSignalTypeResult,
 		Session:   t.Session,
-		IP:        t.Pair.PeerB.Endpoint.IP,
-		Port:      t.Pair.PeerB.Endpoint.Port,
-		PairNonce: t.Pair.Nonce,
+		IP:        t.Hole.PassiveEndpoint.IP,
+		Port:      t.Hole.PassiveEndpoint.Port,
+		PairNonce: t.Hole.Nonce,
 	}
 }

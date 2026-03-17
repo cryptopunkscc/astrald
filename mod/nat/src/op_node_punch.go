@@ -3,55 +3,23 @@ package nat
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/nat"
-	natclient "github.com/cryptopunkscc/astrald/mod/nat/client"
 )
 
-type opStartTraversal struct {
-	Target string `query:"optional"`
-	Out    string `query:"optional"`
+type opNodePunchArgs struct {
+	Out string `query:"optional"`
 }
 
-func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opStartTraversal) error {
+func (mod *Module) OpNodePunch(ctx *astral.Context, q *ops.Query, args opNodePunchArgs) error {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	localIP, err := mod.getLocalIPv4()
 	if err != nil {
-		return ch.Send(astral.Err(err))
+		return err
 	}
 
-	if args.Target != "" {
-		// Initiator flow
-		target, err := mod.Dir.ResolveIdentity(args.Target)
-		if err != nil {
-			return ch.Send(astral.Err(err))
-		}
-
-		mod.log.Log("starting traversal as initiator to %v", target)
-		puncher, err := mod.newPuncher(nil)
-		if err != nil {
-			return ch.Send(astral.Err(err))
-		}
-
-		client := natclient.New(target, astrald.Default())
-		pair, err := client.StartTraversal(ctx, target, localIP, puncher)
-		if err != nil {
-			mod.log.Error("NAT traversal failed with %v: %v", target, err)
-			puncher.Close()
-			return ch.Send(astral.Err(err))
-		}
-
-		puncher.Close()
-
-		mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", target, pair.PeerA.Endpoint, pair.PeerB.Endpoint)
-		mod.addTraversedPair(*pair, true)
-		return ch.Send(pair)
-	}
-
-	// Participant flow
 	mod.log.Log("starting traversal as participant with %v", q.Caller())
 	traversal := nat.NewTraversal(ctx.Identity(), q.Caller(), localIP)
 
@@ -120,7 +88,8 @@ func (mod *Module) OpStartTraversal(ctx *astral.Context, q *ops.Query, args opSt
 
 	puncher.Close()
 
-	mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", q.Caller(), traversal.Pair.PeerA.Endpoint, traversal.Pair.PeerB.Endpoint)
-	mod.addTraversedPair(traversal.Pair, false)
+	mod.log.Info("NAT traversal succeeded with %v: %v <-> %v", q.Caller(), traversal.Hole.ActiveEndpoint, traversal.Hole.PassiveEndpoint)
+
+	mod.addHole(traversal.Hole, false)
 	return nil
 }

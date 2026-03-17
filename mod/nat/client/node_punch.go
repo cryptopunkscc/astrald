@@ -8,8 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
-func (t *Client) StartTraversal(ctx *astral.Context, target *astral.Identity, localIP ip.IP, puncher nat.Puncher) (*nat.TraversedPortPair, error) {
-	ch, err := t.queryCh(ctx, nat.MethodStartNatTraversal, query.Args{})
+func (t *Client) NodePunch(ctx *astral.Context, target *astral.Identity, localIP ip.IP, puncher nat.Puncher) (*nat.Hole, error) {
+	ch, err := t.queryCh(ctx, nat.MethodNodePunch, query.Args{})
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (t *Client) StartTraversal(ctx *astral.Context, target *astral.Identity, lo
 	}
 
 	traversal.SetPunchResult(result)
-	traversal.Pair.Nonce = astral.NewNonce()
+	traversal.Hole.Nonce = astral.NewNonce()
 
 	if err := ch.Send(traversal.ResultSignal()); err != nil {
 		return nil, err
@@ -72,5 +72,5 @@ func (t *Client) StartTraversal(ctx *astral.Context, target *astral.Identity, lo
 		return nil, err
 	}
 
-	return &traversal.Pair, nil
+	return &traversal.Hole, nil
 }

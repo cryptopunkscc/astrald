@@ -26,7 +26,7 @@ type PunchSignal struct {
 }
 
 func (n PunchSignal) ObjectType() string {
-	return "mod.nat.punch_signal"
+	return "nat.punch_signal"
 }
 
 func (e PunchSignal) WriteTo(w io.Writer) (n int64, err error) {

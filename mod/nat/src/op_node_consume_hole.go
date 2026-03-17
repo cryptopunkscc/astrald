@@ -13,7 +13,7 @@ import (
 
 const takeExchangeTimeout = 5 * time.Second
 
-type opPairTakeArgs struct {
+type opNodeConsumeHoleArgs struct {
 	Pair   astral.Nonce
 	Target string `query:"optional"`
 
@@ -21,16 +21,16 @@ type opPairTakeArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTakeArgs) (err error) {
+func (mod *Module) OpNodeConsumeHole(ctx *astral.Context, q *ops.Query, args opNodeConsumeHoleArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	pair, err := mod.pool.Take(args.Pair)
+	hole, err := mod.pool.Take(args.Pair)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
-	pairNonce := pair.Nonce
+	holeNonce := hole.Nonce
 
 	if args.Target != "" {
 		target, err := mod.Dir.ResolveIdentity(args.Target)
@@ -41,17 +41,17 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 		opCtx, cancel := ctx.WithCancel()
 		defer cancel()
 
-		if !pair.BeginLock() {
-			return ch.Send(astral.Err(nat.ErrPairBusy))
+		if !hole.BeginLock() {
+			return ch.Send(astral.Err(nat.ErrHoleBusy))
 		}
 
 		natClient := natclient.New(target, astrald.Default())
-		err = natClient.PairTake(opCtx, pairNonce, nil)
+		err = natClient.NodeConsumeHole(opCtx, holeNonce, nil)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
 
-		if err := pair.WaitLocked(opCtx); err != nil {
+		if err := hole.WaitLocked(opCtx); err != nil {
 			return ch.Send(astral.Err(err))
 		}
 
@@ -59,15 +59,15 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 	}
 
 	// Responder flow
-	opCtx, cancel := ctx.WithTimeout(pair.LockTimeout() + takeExchangeTimeout)
+	opCtx, cancel := ctx.WithTimeout(hole.LockTimeout() + takeExchangeTimeout)
 	defer cancel()
 
-	mod.log.Log("taking out pair %v out of pool, starting sync with %v",
-		pairNonce, q.Caller())
+	mod.log.Log("taking out hole %v out of pool, starting sync with %v",
+		holeNonce, q.Caller())
 
 	// Receive lock
 	err = ch.Switch(
-		nat.ExpectPairTakeSignal(pairNonce, nat.PairTakeSignalTypeLock, nil),
+		nat.ExpectConsumeHoleSignal(holeNonce, nat.ConsumeHoleSignalTypeLock, nil),
 		channel.PassErrors,
 		channel.WithContext(opCtx),
 	)
@@ -75,21 +75,21 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 		return ch.Send(astral.Err(err))
 	}
 
-	if !pair.BeginLock() {
-		_ = ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeLocked, Pair: pairNonce, Ok: false, Error: astral.String8(nat.ErrPairBusy.Error())})
-		return ch.Send(astral.Err(nat.ErrPairBusy))
+	if !hole.BeginLock() {
+		_ = ch.Send(&nat.ConsumeHoleSignal{Signal: nat.ConsumeHoleSignalTypeLocked, Pair: holeNonce, Ok: false, Error: astral.String8(nat.ErrHoleBusy.Error())})
+		return ch.Send(astral.Err(nat.ErrHoleBusy))
 	}
 
-	if err := pair.WaitLocked(opCtx); err != nil {
+	if err := hole.WaitLocked(opCtx); err != nil {
 		return ch.Send(astral.Err(err))
 	}
-	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeLocked, Pair: pairNonce, Ok: true}); err != nil {
+	if err := ch.Send(&nat.ConsumeHoleSignal{Signal: nat.ConsumeHoleSignalTypeLocked, Pair: holeNonce, Ok: true}); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
 	// Receive take
 	err = ch.Switch(
-		nat.ExpectPairTakeSignal(pairNonce, nat.PairTakeSignalTypeTake, nil),
+		nat.ExpectConsumeHoleSignal(holeNonce, nat.ConsumeHoleSignalTypeTake, nil),
 		channel.PassErrors,
 		channel.WithContext(opCtx),
 	)
@@ -97,9 +97,9 @@ func (mod *Module) OpPairTake(ctx *astral.Context, q *ops.Query, args opPairTake
 		return ch.Send(astral.Err(err))
 	}
 
-	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeTaken, Pair: pairNonce, Ok: true}); err != nil {
+	if err := ch.Send(&nat.ConsumeHoleSignal{Signal: nat.ConsumeHoleSignalTypeTaken, Pair: holeNonce, Ok: true}); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
-	return ch.Send(&pair.TraversedPortPair)
+	return ch.Send(&hole.Hole)
 }

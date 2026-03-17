@@ -11,41 +11,41 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
-// UDPEndpoint is an astral.Object that holds information about a UDP endpoint,
-type UDPEndpoint struct {
+// Endpoint represents a single NAT UDP endpoint.
+type Endpoint struct {
 	IP   ip.IP
 	Port astral.Uint16
 }
 
-func (e UDPEndpoint) ObjectType() string {
-	return "mod.nat.udp_endpoint"
+func (e Endpoint) ObjectType() string {
+	return "nat.endpoint"
 }
 
-func (e UDPEndpoint) WriteTo(w io.Writer) (n int64, err error) {
+func (e Endpoint) WriteTo(w io.Writer) (n int64, err error) {
 	return astral.Objectify(&e).WriteTo(w)
 }
 
-func (e *UDPEndpoint) ReadFrom(r io.Reader) (n int64, err error) {
+func (e *Endpoint) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(e).ReadFrom(r)
 }
 
-func (e *UDPEndpoint) Address() string {
+func (e *Endpoint) Address() string {
 	return net.JoinHostPort(e.IP.String(), strconv.Itoa(int(e.Port)))
 }
 
-func (e *UDPEndpoint) Network() string {
+func (e *Endpoint) Network() string {
 	return "utp"
 }
 
-func (e *UDPEndpoint) HostString() string {
+func (e *Endpoint) HostString() string {
 	return e.IP.String()
 }
 
-func (e *UDPEndpoint) PortNumber() int {
+func (e *Endpoint) PortNumber() int {
 	return int(e.Port)
 }
 
-func (e *UDPEndpoint) Pack() []byte {
+func (e *Endpoint) Pack() []byte {
 	var b = &bytes.Buffer{}
 	if _, err := e.WriteTo(b); err != nil {
 		return nil
@@ -53,11 +53,11 @@ func (e *UDPEndpoint) Pack() []byte {
 	return b.Bytes()
 }
 
-func (e UDPEndpoint) MarshalText() (text []byte, err error) {
+func (e Endpoint) MarshalText() (text []byte, err error) {
 	return []byte(e.Address()), nil
 }
 
-func (e *UDPEndpoint) UnmarshalText(text []byte) error {
+func (e *Endpoint) UnmarshalText(text []byte) error {
 	h, p, err := net.SplitHostPort(string(text))
 	if err != nil {
 		return err
@@ -73,7 +73,6 @@ func (e *UDPEndpoint) UnmarshalText(text []byte) error {
 		return err
 	}
 
-	// check if port fits in 16 bits
 	if (port >> 16) > 0 {
 		return fmt.Errorf("port out of range")
 	}
@@ -84,15 +83,15 @@ func (e *UDPEndpoint) UnmarshalText(text []byte) error {
 	return nil
 }
 
-func (e *UDPEndpoint) String() string {
+func (e *Endpoint) String() string {
 	return e.Address()
 }
 
-func (e *UDPEndpoint) IsZero() bool {
+func (e *Endpoint) IsZero() bool {
 	return e == nil || e.IP == nil
 }
 
-func ParseEndpoint(s string) (*UDPEndpoint, error) {
+func ParseEndpoint(s string) (*Endpoint, error) {
 	hostStr, portStr, err := net.SplitHostPort(s)
 	if err != nil {
 		return nil, err
@@ -112,13 +111,13 @@ func ParseEndpoint(s string) (*UDPEndpoint, error) {
 		return nil, fmt.Errorf("port out of range")
 	}
 
-	return &UDPEndpoint{
+	return &Endpoint{
 		IP:   ip,
 		Port: astral.Uint16(port),
 	}, nil
 }
 
-func (e *UDPEndpoint) UDPAddr() *net.UDPAddr {
+func (e *Endpoint) UDPAddr() *net.UDPAddr {
 	return &net.UDPAddr{
 		IP:   net.ParseIP(e.IP.String()),
 		Port: int(e.Port),
@@ -126,5 +125,5 @@ func (e *UDPEndpoint) UDPAddr() *net.UDPAddr {
 }
 
 func init() {
-	_ = astral.Add(&UDPEndpoint{})
+	_ = astral.Add(&Endpoint{})
 }

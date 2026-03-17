@@ -2,8 +2,8 @@ package nat
 
 import "errors"
 
-var ErrDuplicatePair = errors.New("duplicate pair")
-var ErrPairNotExists = errors.New("pair not exists")
-var ErrPairBusy = errors.New("pair is busy")
-var ErrPairCantLock = errors.New("pair can't lock")
+var ErrDuplicateHole = errors.New("duplicate hole")
+var ErrHoleNotExists = errors.New("hole not exists")
+var ErrHoleBusy = errors.New("hole is busy")
+var ErrHoleCantLock = errors.New("hole can't lock")
 var ErrNoSuitableIP = errors.New("no suitable IPv4 address found")

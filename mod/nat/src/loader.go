@@ -19,7 +19,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 		cond: sync.NewCond(&sync.Mutex{}),
 	}
 
-	mod.pool = NewPairPool(mod)
+	mod.pool = NewHolePool(mod)
 	mod.ops.AddStructPrefix(mod, "Op")
 
 	return mod, nil
