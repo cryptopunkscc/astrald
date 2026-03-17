@@ -93,17 +93,15 @@ func (conn *standbyConn) Close() error {
 
 // runKeepAlive runs the protocol loop. Context cancellation closes the connection.
 func (conn *standbyConn) runKeepAlive(ctx context.Context) {
-	defer func() {
-		if !conn.relaying.Load() {
-			conn.Close()
-		}
-	}()
-
 	if conn.role == roleClient {
 		conn.runNodeSide(ctx)
-		return
+	} else {
+		conn.runGateway(ctx)
 	}
-	conn.runGateway(ctx)
+
+	if !conn.relaying.Load() {
+		conn.Close()
+	}
 }
 
 func (conn *standbyConn) runNodeSide(ctx context.Context) {
@@ -112,7 +110,7 @@ func (conn *standbyConn) runNodeSide(ctx context.Context) {
 		return
 	}
 	conn.SetReadDeadline(time.Now().Add(pingTimeout))
-	ch.Switch(
+	err := ch.Switch(
 		func(p *Ping) error {
 			if !p.Pong {
 				return errors.New("unexpected ping")
@@ -134,6 +132,9 @@ func (conn *standbyConn) runNodeSide(ctx context.Context) {
 		},
 		channel.WithContext(ctx),
 	)
+	if err != nil {
+		conn.Close()
+	}
 }
 
 func (conn *standbyConn) runGateway(ctx context.Context) {
@@ -144,7 +145,7 @@ func (conn *standbyConn) runGateway(ctx context.Context) {
 			if p.Pong {
 				return errors.New("unexpected pong")
 			}
-			conn.SetReadDeadline(time.Now().Add(silenceTimeout))
+			conn.SetReadDeadline(time.Now().Add(pingTimeout))
 			select {
 			case <-conn.handoffCh:
 				return ch.Send(&Handoff{})
@@ -176,5 +177,6 @@ func (conn *standbyConn) schedulePing(ch *channel.Channel) {
 		conn.Close()
 		return
 	}
+
 	conn.SetReadDeadline(time.Now().Add(pingTimeout))
 }
