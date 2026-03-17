@@ -45,7 +45,7 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 
 	return &gatewayConn{
 		ReadWriteCloser: conn,
-		local:           conn.LocalEndpoint(),
+		local:           gateway.NewEndpoint(mod.node.Identity(), mod.node.Identity()),
 		remote:          gwEndpoint,
 		outbound:        conn.Outbound(),
 	}, nil
