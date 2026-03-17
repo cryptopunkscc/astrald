@@ -65,10 +65,6 @@ func newStandbyConn(conn exonet.Conn, role connRole, identity *astral.Identity, 
 func (c *standbyConn) Ready() <-chan struct{} { return c.readyCh }
 func (c *standbyConn) Done() <-chan struct{}  { return c.doneCh }
 
-func (c *standbyConn) gatewayConn(local, remote exonet.Endpoint) *gatewayConn {
-	return &gatewayConn{ReadWriteCloser: c, local: local, remote: remote}
-}
-
 func (c *standbyConn) markReady() {
 	c.readyOnce.Do(func() { close(c.readyCh) })
 }

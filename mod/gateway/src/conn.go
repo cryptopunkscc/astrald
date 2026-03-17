@@ -19,3 +19,7 @@ type gatewayConn struct {
 func (c *gatewayConn) LocalEndpoint() exonet.Endpoint  { return c.local }
 func (c *gatewayConn) RemoteEndpoint() exonet.Endpoint { return c.remote }
 func (c *gatewayConn) Outbound() bool                  { return c.outbound }
+
+func newGatewayConn(conn exonet.Conn, local, remote exonet.Endpoint) *gatewayConn {
+	return &gatewayConn{ReadWriteCloser: conn, local: local, remote: remote}
+}

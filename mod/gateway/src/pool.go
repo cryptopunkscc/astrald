@@ -92,30 +92,28 @@ func (p *ConnPool) idleCount() int {
 }
 
 func (p *ConnPool) addIdleConn(conn exonet.Conn) {
-	bc := newStandbyConn(conn, roleClient, p.gatewayID, p.log)
-	p.conns.Add(bc)
+	idleConn := newStandbyConn(conn, roleClient, p.gatewayID, p.log)
+	p.conns.Add(idleConn)
 
 	go func() {
 		defer func() {
-			p.conns.Remove(bc)
+			p.conns.Remove(idleConn)
 			p.notify()
 		}()
 
-		go bc.eventLoop(p.ctx)
+		go idleConn.eventLoop(p.ctx)
 
 		select {
-		case <-bc.Ready():
-			if err := p.Nodes.EstablishInboundLink(p.ctx, bc.gatewayConn(
-				gateway.NewEndpoint(p.node.Identity(), p.node.Identity()),
-				gateway.NewEndpoint(p.gatewayID, p.node.Identity()),
-			)); err != nil {
-				bc.Close()
+		case <-idleConn.Ready():
+			gwConn := newGatewayConn(conn, gateway.NewEndpoint(p.node.Identity(), p.node.Identity()), gateway.NewEndpoint(p.gatewayID, p.node.Identity()))
+			if err := p.Nodes.EstablishInboundLink(p.ctx, gwConn); err != nil {
+				idleConn.Close()
 			}
-		case <-bc.Done():
+		case <-idleConn.Done():
 			return
 		}
 
-		<-bc.Done()
+		<-idleConn.Done()
 	}()
 }
 
