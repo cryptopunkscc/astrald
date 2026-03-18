@@ -13,7 +13,7 @@ type opNodeBindArgs struct {
 	Out        string `query:"optional"`
 }
 
-func (mod *Module) OpNodeBind(
+func (mod *Module) OpNodeRegister(
 	ctx *astral.Context,
 	q *ops.Query,
 	args opNodeBindArgs,
@@ -21,7 +21,7 @@ func (mod *Module) OpNodeBind(
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	socket, err := mod.bind(ctx, q.Caller(), args.Visibility, "tcp")
+	socket, err := mod.register(ctx, q.Caller(), args.Visibility, "tcp")
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}

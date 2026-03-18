@@ -14,19 +14,19 @@ type registeredNode struct {
 	Identity   *astral.Identity
 	Nonce      astral.Nonce
 	Visibility gateway.Visibility
-	idleConns  sig.Set[*standbyConn]
+	idleConns  sig.Set[*idleConn]
 }
 
-func (b *registeredNode) registerConn(conn exonet.Conn, l *log.Logger) *standbyConn {
-	bc := newStandbyConn(conn, roleGateway, b.Identity, l)
+func (b *registeredNode) registerConn(conn exonet.Conn, l *log.Logger) *idleConn {
+	bc := newIdleConn(conn, roleGateway, b.Identity, l)
 	b.idleConns.Add(bc)
 	go func() { <-bc.Done(); b.idleConns.Remove(bc) }()
 	return bc
 }
 
-// claimConn atomically reserves an idle standbyConn for a connector.
+// claimConn atomically reserves an idle idleConn for a connector.
 // Uses handoffOnce as the claim token: the first caller wins.
-func (b *registeredNode) claimConn() (*standbyConn, bool) {
+func (b *registeredNode) claimConn() (*idleConn, bool) {
 	for _, c := range b.idleConns.Clone() {
 		claimed := false
 		c.handoffOnce.Do(func() {

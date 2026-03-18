@@ -138,7 +138,7 @@ func (mod *Module) canGateway(identity *astral.Identity) bool {
 
 func (mod *Module) addPersistentGateway(gatewayID *astral.Identity) {
 	mod.gateways.Add(gatewayID)
-	mod.Scheduler.Schedule(mod.NewMaintainBindingTask(gatewayID, mod.config.Visibility))
+	mod.Scheduler.Schedule(mod.NewMaintainGatewayConnectionsTask(gatewayID, mod.config.Visibility))
 }
 
 func (mod *Module) String() string {

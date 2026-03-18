@@ -16,7 +16,7 @@ type ConnPool struct {
 	socket    gateway.Socket
 	gatewayID *astral.Identity
 
-	conns    sig.Set[*standbyConn]
+	conns    sig.Set[*idleConn]
 	refillCh chan struct{}
 }
 
@@ -79,7 +79,7 @@ func (p *ConnPool) dialSocket() (exonet.Conn, error) {
 
 // idleCount returns the number of conns not yet in relay or closed.
 func (p *ConnPool) idleCount() int {
-	return len(p.conns.Select(func(a *standbyConn) bool {
+	return len(p.conns.Select(func(a *idleConn) bool {
 		select {
 		case <-a.Ready():
 			return false
@@ -92,7 +92,7 @@ func (p *ConnPool) idleCount() int {
 }
 
 func (p *ConnPool) addIdleConn(conn exonet.Conn) {
-	idleConn := newStandbyConn(conn, roleClient, p.gatewayID, p.log)
+	idleConn := newIdleConn(conn, roleClient, p.gatewayID, p.log)
 	p.conns.Add(idleConn)
 
 	go func() {

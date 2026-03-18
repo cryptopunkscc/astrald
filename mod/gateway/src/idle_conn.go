@@ -29,7 +29,7 @@ type deadliner interface {
 	SetWriteDeadline(time.Time) error
 }
 
-type standbyConn struct {
+type idleConn struct {
 	exonet.Conn
 	role         connRole
 	log          *log.Logger
@@ -46,8 +46,8 @@ type standbyConn struct {
 	doneOnce  sync.Once
 }
 
-func newStandbyConn(conn exonet.Conn, role connRole, identity *astral.Identity, l *log.Logger) *standbyConn {
-	c := &standbyConn{
+func newIdleConn(conn exonet.Conn, role connRole, identity *astral.Identity, l *log.Logger) *idleConn {
+	c := &idleConn{
 		Conn:         conn,
 		role:         role,
 		log:          l,
@@ -58,18 +58,18 @@ func newStandbyConn(conn exonet.Conn, role connRole, identity *astral.Identity, 
 	if role == roleGateway {
 		c.handoffCh = make(chan struct{})
 	}
-	l.Logv(2, "standby conn created with %v remote %v", identity, conn.RemoteEndpoint())
+	l.Logv(2, "idle conn created with %v remote %v", identity, conn.RemoteEndpoint())
 	return c
 }
 
-func (c *standbyConn) Ready() <-chan struct{} { return c.readyCh }
-func (c *standbyConn) Done() <-chan struct{}  { return c.doneCh }
+func (c *idleConn) Ready() <-chan struct{} { return c.readyCh }
+func (c *idleConn) Done() <-chan struct{}  { return c.doneCh }
 
-func (c *standbyConn) markReady() {
+func (c *idleConn) markReady() {
 	c.readyOnce.Do(func() { close(c.readyCh) })
 }
 
-func (c *standbyConn) Close() error {
+func (c *idleConn) Close() error {
 	if c.closed.Swap(true) {
 		return nil
 	}
@@ -78,7 +78,7 @@ func (c *standbyConn) Close() error {
 	return err
 }
 
-func (c *standbyConn) activate(ctx context.Context) error {
+func (c *idleConn) activate(ctx context.Context) error {
 	if c.role != roleGateway {
 		return errors.New("activate called on non-gateway conn")
 	}
@@ -94,19 +94,19 @@ func (c *standbyConn) activate(ctx context.Context) error {
 	}
 }
 
-func (c *standbyConn) setReadDeadline(t time.Time) {
+func (c *idleConn) setReadDeadline(t time.Time) {
 	if dl, ok := c.Conn.(deadliner); ok {
 		dl.SetReadDeadline(t)
 	}
 }
 
-func (c *standbyConn) setWriteDeadline(t time.Time) {
+func (c *idleConn) setWriteDeadline(t time.Time) {
 	if dl, ok := c.Conn.(deadliner); ok {
 		dl.SetWriteDeadline(t)
 	}
 }
 
-func (c *standbyConn) eventLoop(ctx context.Context) {
+func (c *idleConn) eventLoop(ctx context.Context) {
 	ch := channel.New(c.Conn)
 
 	lastActivity := time.Now()

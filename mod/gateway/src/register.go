@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
-func (mod *Module) bind(ctx *astral.Context, identity *astral.Identity, visibility gateway.Visibility, network string) (gateway.Socket, error) {
+func (mod *Module) register(ctx *astral.Context, identity *astral.Identity, visibility gateway.Visibility, network string) (gateway.Socket, error) {
 	if !mod.canGateway(identity) {
 		return gateway.Socket{}, gateway.ErrUnauthorized
 	}

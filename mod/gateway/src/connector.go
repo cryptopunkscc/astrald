@@ -14,12 +14,12 @@ type connector struct {
 	Identity *astral.Identity
 	Nonce    astral.Nonce
 	Target   *astral.Identity
-	standby  *standbyConn
+	standby  *idleConn
 }
 
-// claimStandby atomically takes the standby standbyConn, returning nil if
+// claimStandby atomically takes the standby idleConn, returning nil if
 // already taken (connection already established or timed out).
-func (c *connector) claimStandby() *standbyConn {
+func (c *connector) claimStandby() *idleConn {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

@@ -13,10 +13,10 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-var _ scheduler.Task = &MaintainBindingTask{}
-var _ scheduler.EventReceiver = &MaintainBindingTask{}
+var _ scheduler.Task = &MaintainGatewayConnectionsTask{}
+var _ scheduler.EventReceiver = &MaintainGatewayConnectionsTask{}
 
-type MaintainBindingTask struct {
+type MaintainGatewayConnectionsTask struct {
 	mod        *Module
 	GatewayID  *astral.Identity
 	Visibility gateway.Visibility
@@ -24,9 +24,9 @@ type MaintainBindingTask struct {
 	wakeCh     chan struct{}
 }
 
-func (mod *Module) NewMaintainBindingTask(gatewayID *astral.Identity, visibility gateway.Visibility) *MaintainBindingTask {
+func (mod *Module) NewMaintainGatewayConnectionsTask(gatewayID *astral.Identity, visibility gateway.Visibility) *MaintainGatewayConnectionsTask {
 	retry, _ := sig.NewRetry(time.Second, 15*time.Minute, 2)
-	return &MaintainBindingTask{
+	return &MaintainGatewayConnectionsTask{
 		mod:        mod,
 		GatewayID:  gatewayID,
 		Visibility: visibility,
@@ -35,12 +35,12 @@ func (mod *Module) NewMaintainBindingTask(gatewayID *astral.Identity, visibility
 	}
 }
 
-func (task *MaintainBindingTask) String() string {
-	return "maintain_binding_task"
+func (task *MaintainGatewayConnectionsTask) String() string {
+	return "maintain_gateway_connections_task"
 }
 
-func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
-	task.mod.log.Log("starting to maintain binding to %v", task.GatewayID)
+func (task *MaintainGatewayConnectionsTask) Run(ctx *astral.Context) error {
+	task.mod.log.Log("starting to maintain connections to %v", task.GatewayID)
 	client := gatewayClient.New(task.GatewayID, astrald.Default())
 
 	count := -1
@@ -49,7 +49,7 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 		case count == 0:
 			task.mod.log.Log("binding to %v lost, rebinding", task.GatewayID)
 		case count > 0 && count%5 == 0:
-			task.mod.log.Log("still trying to bind to %v (attempt %v)", task.GatewayID, count)
+			task.mod.log.Log("still trying to register to %v (attempt %v)", task.GatewayID, count)
 		}
 
 		socket, err := client.Bind(ctx.IncludeZone(astral.ZoneNetwork), task.Visibility)
@@ -78,7 +78,7 @@ func (task *MaintainBindingTask) Run(ctx *astral.Context) error {
 	}
 }
 
-func (task *MaintainBindingTask) ReceiveEvent(e *events.Event) {
+func (task *MaintainGatewayConnectionsTask) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
 	case *ip.EventNetworkAddressChanged:
 		if len(typed.Added) > 0 {
