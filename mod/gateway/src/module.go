@@ -91,6 +91,13 @@ func (mod *Module) Run(ctx *astral.Context) error {
 		c.Close()
 	}
 
+	for _, gatewayID := range mod.gateways.Clone() {
+		err = mod.unregister(gatewayID)
+		if err != nil {
+			mod.log.Error("failed to unregister gateway: %v", err)
+		}
+	}
+
 	return nil
 }
 

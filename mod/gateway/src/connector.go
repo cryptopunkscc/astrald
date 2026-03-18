@@ -17,9 +17,9 @@ type connector struct {
 	reserved *idleConn
 }
 
-// claimIdleConn atomically takes the reserved idleConn, returning nil if
+// takeIdleConn atomically takes the reserved idleConn, returning nil if
 // already taken (connection already established or timed out).
-func (c *connector) claimIdleConn() *idleConn {
+func (c *connector) takeIdleConn() *idleConn {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

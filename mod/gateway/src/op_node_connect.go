@@ -20,7 +20,7 @@ func (mod *Module) OpNodeConnect(
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	socket, err := mod.reserveRelay(q.Caller(), args.Target, "tcp")
+	socket, err := mod.reserveConn(q.Caller(), args.Target, "tcp")
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}

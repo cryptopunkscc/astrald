@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
-func (mod *Module) reserveRelay(caller *astral.Identity, target *astral.Identity, network string) (gateway.Socket, error) {
+func (mod *Module) reserveConn(caller *astral.Identity, target *astral.Identity, network string) (gateway.Socket, error) {
 	if !mod.canGateway(caller) {
 		return gateway.Socket{}, gateway.ErrGatewayDenied
 	}
@@ -41,7 +41,7 @@ func (mod *Module) reserveRelay(caller *astral.Identity, target *astral.Identity
 		defer t.Stop()
 		<-t.C
 
-		bc := c.claimIdleConn()
+		bc := c.takeIdleConn()
 		if bc == nil {
 			return
 		}
