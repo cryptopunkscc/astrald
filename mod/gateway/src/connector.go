@@ -14,17 +14,17 @@ type connector struct {
 	Identity *astral.Identity
 	Nonce    astral.Nonce
 	Target   *astral.Identity
-	standby  *idleConn
+	reserved *idleConn
 }
 
-// claimStandby atomically takes the standby idleConn, returning nil if
+// claimIdleConn atomically takes the reserved idleConn, returning nil if
 // already taken (connection already established or timed out).
-func (c *connector) claimStandby() *idleConn {
+func (c *connector) claimIdleConn() *idleConn {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	bc := c.standby
-	c.standby = nil
+	bc := c.reserved
+	c.reserved = nil
 	return bc
 }
 
@@ -32,8 +32,8 @@ func (c *connector) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.standby != nil {
-		return c.standby.Close()
+	if c.reserved != nil {
+		return c.reserved.Close()
 	}
 
 	return nil

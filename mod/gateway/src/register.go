@@ -7,7 +7,7 @@ import (
 
 func (mod *Module) register(ctx *astral.Context, identity *astral.Identity, visibility gateway.Visibility, network string) (gateway.Socket, error) {
 	if !mod.canGateway(identity) {
-		return gateway.Socket{}, gateway.ErrUnauthorized
+		return gateway.Socket{}, gateway.ErrGatewayDenied
 	}
 
 	endpoint, err := mod.getGatewayEndpoint(ctx, network)

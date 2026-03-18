@@ -9,7 +9,7 @@ import (
 
 func (mod *Module) reserveRelay(caller *astral.Identity, target *astral.Identity, network string) (gateway.Socket, error) {
 	if !mod.canGateway(caller) {
-		return gateway.Socket{}, gateway.ErrUnauthorized
+		return gateway.Socket{}, gateway.ErrGatewayDenied
 	}
 
 	endpoint, err := mod.getGatewayEndpoint(mod.ctx, network)
@@ -31,7 +31,7 @@ func (mod *Module) reserveRelay(caller *astral.Identity, target *astral.Identity
 		Identity: caller,
 		Nonce:    astral.NewNonce(),
 		Target:   target,
-		standby:  reserved,
+		reserved: reserved,
 	}
 
 	mod.connectors.Add(c)
@@ -41,7 +41,7 @@ func (mod *Module) reserveRelay(caller *astral.Identity, target *astral.Identity
 		defer t.Stop()
 		<-t.C
 
-		bc := c.claimStandby()
+		bc := c.claimIdleConn()
 		if bc == nil {
 			return
 		}

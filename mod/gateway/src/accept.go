@@ -37,10 +37,10 @@ func (mod *Module) handleInbound(_ context.Context, conn exonet.Conn) (stopListe
 
 	mod.connectors.Remove(c)
 
-	standby := c.claimStandby()
+	standby := c.claimIdleConn()
 	if standby == nil {
 		conn.Close()
-		return stopListener, fmt.Errorf("no standby conn for %v", c.Target)
+		return stopListener, fmt.Errorf("no reserved conn for %v", c.Target)
 	}
 
 	if err := standby.activate(mod.ctx); err != nil {
