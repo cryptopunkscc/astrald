@@ -6,17 +6,17 @@ import (
 	modlog "github.com/cryptopunkscc/astrald/mod/log"
 )
 
-type UDPEndpointView struct {
-	*UDPEndpoint
+type EndpointView struct {
+	*Endpoint
 }
 
-func (v *UDPEndpointView) Render() string {
+func (v *EndpointView) Render() string {
 	return modlog.BlueText.Render("udp:") +
 		modlog.BrightBlueText.Render(v.String())
 }
 
 func init() {
-	log.DefaultViewer.Set(UDPEndpoint{}.ObjectType(), func(object astral.Object) astral.Object {
-		return &UDPEndpointView{object.(*UDPEndpoint)}
+	log.DefaultViewer.Set(Endpoint{}.ObjectType(), func(object astral.Object) astral.Object {
+		return &EndpointView{object.(*Endpoint)}
 	})
 }

@@ -7,27 +7,27 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
-func (client *Client) ListPairs(ctx *astral.Context, with string) ([]*nat.TraversedPortPair, error) {
+func (client *Client) ListHoles(ctx *astral.Context, with string) ([]*nat.Hole, error) {
 	args := query.Args{}
 	if with != "" {
 		args["with"] = with
 	}
 
-	ch, err := client.queryCh(ctx, nat.MethodListPairs, args)
+	ch, err := client.queryCh(ctx, nat.MethodListHoles, args)
 	if err != nil {
 		return nil, err
 	}
 	defer ch.Close()
 
-	var pairs []*nat.TraversedPortPair
+	var holes []*nat.Hole
 
 	err = ch.Switch(
-		channel.Collect(&pairs),
+		channel.Collect(&holes),
 		channel.StopOnEOS,
 		func(msg *astral.ErrorMessage) error {
 			return msg
 		},
 	)
 
-	return pairs, err
+	return holes, err
 }

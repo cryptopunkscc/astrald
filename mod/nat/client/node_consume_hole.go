@@ -7,13 +7,13 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
-func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, target *astral.Identity) error {
+func (client *Client) NodeConsumeHole(ctx *astral.Context, pair astral.Nonce, target *astral.Identity) error {
 	args := query.Args{"pair": pair}
 	if target != nil {
 		args["target"] = target.String()
 	}
 
-	ch, err := client.queryCh(ctx, nat.MethodPairTake, args)
+	ch, err := client.queryCh(ctx, nat.MethodNodeConsumeHole, args)
 	if err != nil {
 		return err
 	}
@@ -29,12 +29,12 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, target *a
 	}
 
 	// Responder: drive the handshake
-	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeLock, Pair: pair}); err != nil {
+	if err := ch.Send(&nat.ConsumeHoleSignal{Signal: nat.ConsumeHoleSignalTypeLock, Pair: pair}); err != nil {
 		return err
 	}
 
 	err = ch.Switch(
-		nat.ExpectPairTakeSignal(pair, nat.PairTakeSignalTypeLocked, nat.HandleFailedPairTakeSignal),
+		nat.ExpectConsumeHoleSignal(pair, nat.ConsumeHoleSignalTypeLocked, nat.HandleFailedConsumeHoleSignal),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)
@@ -42,12 +42,12 @@ func (client *Client) PairTake(ctx *astral.Context, pair astral.Nonce, target *a
 		return err
 	}
 
-	if err := ch.Send(&nat.PairTakeSignal{Signal: nat.PairTakeSignalTypeTake, Pair: pair}); err != nil {
+	if err := ch.Send(&nat.ConsumeHoleSignal{Signal: nat.ConsumeHoleSignalTypeTake, Pair: pair}); err != nil {
 		return err
 	}
 
 	return ch.Switch(
-		nat.ExpectPairTakeSignal(pair, nat.PairTakeSignalTypeTaken, nat.HandleFailedPairTakeSignal),
+		nat.ExpectConsumeHoleSignal(pair, nat.ConsumeHoleSignalTypeTaken, nat.HandleFailedConsumeHoleSignal),
 		channel.PassErrors,
 		channel.WithContext(ctx),
 	)

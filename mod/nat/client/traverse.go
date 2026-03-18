@@ -7,8 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
-func (client *Client) Traverse(ctx *astral.Context, target *astral.Identity) (*nat.TraversedPortPair, error) {
-	ch, err := client.queryCh(ctx, nat.MethodStartNatTraversal, query.Args{
+func (client *Client) Punch(ctx *astral.Context, target *astral.Identity) (*nat.Hole, error) {
+	ch, err := client.queryCh(ctx, nat.MethodPunch, query.Args{
 		"target": target.String(),
 	})
 	if err != nil {
@@ -16,11 +16,11 @@ func (client *Client) Traverse(ctx *astral.Context, target *astral.Identity) (*n
 	}
 	defer ch.Close()
 
-	var pair nat.TraversedPortPair
+	var hole nat.Hole
 
 	err = ch.Switch(
-		func(p *nat.TraversedPortPair) error {
-			pair = *p
+		func(h *nat.Hole) error {
+			hole = *h
 			return channel.ErrBreak
 		},
 		func(msg *astral.ErrorMessage) error {
@@ -32,5 +32,5 @@ func (client *Client) Traverse(ctx *astral.Context, target *astral.Identity) (*n
 		return nil, err
 	}
 
-	return &pair, nil
+	return &hole, nil
 }

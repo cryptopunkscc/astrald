@@ -6,30 +6,29 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 )
 
-type opListPairsArgs struct {
+type opListHolesArgs struct {
 	With string `query:"optional"`
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpListPairs(ctx *astral.Context, q *ops.Query,
-	args opListPairsArgs) (err error) {
+func (mod *Module) OpListHoles(ctx *astral.Context, q *ops.Query, args opListHolesArgs) (err error) {
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	pairs := mod.pool.GetAll()
-	for _, pair := range pairs {
+	holes := mod.pool.GetAll()
+	for _, hole := range holes {
 		if args.With != "" {
 			target, err := mod.Dir.ResolveIdentity(string(args.With))
 			if err != nil {
 				return ch.Send(astral.NewError(err.Error()))
 			}
 
-			if !pair.MatchesPeer(target) {
+			if !hole.MatchesPeer(target) {
 				continue
 			}
 		}
 
-		err = ch.Send(&pair.TraversedPortPair)
+		err = ch.Send(&hole.Hole)
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
 		}

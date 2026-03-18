@@ -43,7 +43,7 @@ type Module struct {
 	assets   resources.Resources
 	settings Settings
 
-	pool *PairPool
+	pool *HolePool
 	ops  ops.Set
 
 	enabled atomic.Bool
@@ -86,47 +86,40 @@ func (mod *Module) String() string {
 	return nat.ModuleName
 }
 
-func (mod *Module) addTraversedPair(
-	traversedEndpointPair nat.TraversedPortPair,
-	initiatedByLocal bool,
-) {
-	mod.log.Info("added NAT traversed Pair: %v (%v) <-> %v (%v) nonce=%v",
-		traversedEndpointPair.PeerA.Identity,
-		traversedEndpointPair.PeerA.Endpoint,
-		traversedEndpointPair.PeerB.Identity,
-		traversedEndpointPair.PeerB.Endpoint,
-		traversedEndpointPair.Nonce,
+func (mod *Module) addHole(hole nat.Hole, active bool) {
+	mod.log.Info("added hole: %v (%v) <-> %v (%v) nonce=%v",
+		hole.ActiveIdentity,
+		hole.ActiveEndpoint,
+		hole.PassiveIdentity,
+		hole.PassiveEndpoint,
+		hole.Nonce,
 	)
 
-	pair, err := NewPair(traversedEndpointPair, mod.ctx.Identity(), initiatedByLocal, WithOnPairExpire(func(p *Pair) {
-		mod.log.Info("expired NAT traversed Pair: %v (%v) <-> %v (%v) nonce=%v",
-			p.PeerA.Identity,
-			p.PeerA.Endpoint,
-			p.PeerB.Identity,
-			p.PeerB.Endpoint,
-			p.Nonce,
+	h, err := NewHole(hole, mod.ctx.Identity(), active, WithOnHoleExpire(func(h *Hole) {
+		mod.log.Info("expired hole: %v (%v) <-> %v (%v) nonce=%v",
+			h.ActiveIdentity,
+			h.ActiveEndpoint,
+			h.PassiveIdentity,
+			h.PassiveEndpoint,
+			h.Nonce,
 		)
 
-		mod.pool.Remove(p.Nonce)
+		mod.pool.Remove(h.Nonce)
 	}))
 	if err != nil {
-		mod.log.Error("error while creating pair: %v", err)
+		mod.log.Error("error while creating hole: %v", err)
 		return
 	}
 
-	err = pair.StartKeepAlive(mod.ctx)
+	err = h.StartKeepAlive(mod.ctx)
 	if err != nil {
-		mod.log.Error("error starting pair keep-alive: %v", err)
+		mod.log.Error("error starting hole keep-alive: %v", err)
 	}
 
-	err = mod.pool.Add(pair)
+	err = mod.pool.Add(h)
 	if err != nil {
-		mod.log.Error("error while adding Pair to pool: %v", err)
+		mod.log.Error("error while adding hole to pool: %v", err)
 	}
-}
-
-func (mod *Module) traversedPairs() []*Pair {
-	return mod.pool.pairs.Values()
 }
 
 func (mod *Module) newPuncher(session []byte) (nat.Puncher, error) {

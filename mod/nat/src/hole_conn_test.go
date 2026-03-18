@@ -1,5 +1,5 @@
 // nat/pair_test.go
-package nat_test
+package nat
 
 import (
 	"net"

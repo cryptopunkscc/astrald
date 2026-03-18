@@ -76,30 +76,30 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	s.log.Log("%v starting traversal", s.target)
 
 	natClient := natclient.New(selfID, astrald.Default())
-	pair, err := natClient.Traverse(ctx, s.target)
+	hole, err := natClient.Punch(ctx, s.target)
 	if err != nil {
 		return fmt.Errorf("traverse: %w", err)
 	}
 
-	s.log.Log("%v traversal complete, locking pair %v", s.target, pair.Nonce)
-	if err := natClient.PairTake(ctx, pair.Nonce, s.target); err != nil {
-		return fmt.Errorf("pair take: %w", err)
+	s.log.Log("%v traversal complete, locking hole %v", s.target, hole.Nonce)
+	if err := natClient.NodeConsumeHole(ctx, hole.Nonce, s.target); err != nil {
+		return fmt.Errorf("consume hole: %w", err)
 	}
 
-	s.log.Log("%v pair locked, setting up kcp", s.target)
-	local, remote := pair.PeerA, pair.PeerB
-	if pair.PeerB.Identity.IsEqual(selfID) {
-		local, remote = pair.PeerB, pair.PeerA
+	s.log.Log("%v hole locked, setting up kcp", s.target)
+	local, remote := hole.ActiveEndpoint, hole.PassiveEndpoint
+	if hole.PassiveIdentity.IsEqual(selfID) {
+		local, remote = hole.PassiveEndpoint, hole.ActiveEndpoint
 	}
 
 	peerEndpoint := kcp.Endpoint{
-		IP:   remote.Endpoint.IP,
-		Port: remote.Endpoint.Port,
+		IP:   remote.IP,
+		Port: remote.Port,
 	}
 
 	localEndpoint := kcp.Endpoint{
-		IP:   local.Endpoint.IP,
-		Port: local.Endpoint.Port,
+		IP:   local.IP,
+		Port: local.Port,
 	}
 
 	kcpClient := kcpclient.New(selfID, astrald.Default())
