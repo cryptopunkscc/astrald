@@ -3,9 +3,9 @@ package archives
 import (
 	"context"
 	"fmt"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/archives"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 type entryFunc func(*archives.Entry)
@@ -29,12 +29,6 @@ func (mod *Module) Index(ctx context.Context, objectID *astral.ObjectID) (archiv
 	err = mod.setCache(objectID, archive)
 
 	mod.Objects.Receive(&archives.EventArchiveIndexed{ObjectID: objectID, Archive: archive}, nil)
-	for _, entry := range archive.Entries {
-		mod.Objects.Receive(&objects.EventDiscovered{
-			ObjectID: entry.ObjectID,
-			Zone:     astral.ZoneVirtual,
-		}, nil)
-	}
 
 	return
 }
