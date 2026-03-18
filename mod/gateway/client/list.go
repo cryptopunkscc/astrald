@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Client) List(ctx *astral.Context) ([]*astral.Identity, error) {
-	ch, err := c.queryCh(ctx, gw.MethodList, query.Args{})
+	ch, err := c.queryCh(ctx, gw.MethodNodeList, query.Args{})
 	if err != nil {
 		return nil, err
 	}

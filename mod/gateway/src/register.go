@@ -41,3 +41,22 @@ func (mod *Module) register(ctx *astral.Context, identity *astral.Identity, visi
 		Endpoint: endpoint,
 	}, nil
 }
+
+func (mod *Module) unregister(identity *astral.Identity) error {
+	node, ok := mod.registeredNodes.Delete(identity.String())
+	if !ok {
+		return gateway.ErrNodeNotRegistered
+	}
+
+	node.Close()
+
+	targetID := identity.String()
+	for _, c := range mod.connectors.Clone() {
+		if c.Target.String() == targetID {
+			mod.connectors.Remove(c)
+			c.Close()
+		}
+	}
+
+	return nil
+}

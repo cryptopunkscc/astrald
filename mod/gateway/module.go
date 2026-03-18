@@ -3,10 +3,11 @@ package gateway
 const ModuleName = "gateway"
 
 const (
-	MethodBind    = "gateway.node_bind"
-	MethodConnect = "gateway.node_connect"
-	MethodList    = "gateway.node_list"
-	MethodRoute   = "gateway.route"
+	MethodNodeRegister   = "gateway.node_register"
+	MethodNodeUnregister = "gateway.node_unregister"
+	MethodNodeConnect    = "gateway.node_connect"
+	MethodNodeList       = "gateway.node_list"
+	MethodNodeRoute      = "gateway.route"
 )
 
 type Module interface {

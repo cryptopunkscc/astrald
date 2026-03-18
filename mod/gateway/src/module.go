@@ -10,11 +10,11 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
-	ipmod "github.com/cryptopunkscc/astrald/mod/ip"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/services"
-	tcpmod "github.com/cryptopunkscc/astrald/mod/tcp"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -38,8 +38,8 @@ type Deps struct {
 	Nodes     nodes.Module
 	Scheduler scheduler.Module
 	Services  services.Module
-	TCP       tcpmod.Module
-	IP        ipmod.Module
+	TCP       tcp.Module
+	IP        ip.Module
 }
 
 type Module struct {
@@ -68,7 +68,7 @@ func (mod *Module) GetOpSet() *ops.Set {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
-	err := mod.AddRoute(gateway.MethodRoute+".*", routers.Func(mod.routeQuery))
+	err := mod.AddRoute(gateway.MethodNodeRoute+".*", routers.Func(mod.routeQuery))
 	if err != nil {
 		return err
 	}

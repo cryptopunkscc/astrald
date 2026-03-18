@@ -15,8 +15,8 @@ func (mod *Module) routeQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 
 	var targetKey string
 	switch {
-	case strings.HasPrefix(q.Query, gateway.MethodRoute+"."):
-		targetKey, _ = strings.CutPrefix(q.Query, gateway.MethodRoute+".")
+	case strings.HasPrefix(q.Query, gateway.MethodNodeRoute+"."):
+		targetKey, _ = strings.CutPrefix(q.Query, gateway.MethodNodeRoute+".")
 	default:
 		return query.Reject()
 	}

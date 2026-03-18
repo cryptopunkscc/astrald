@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Client) Bind(ctx *astral.Context, visibility gw.Visibility) (*gw.Socket, error) {
-	ch, err := c.queryCh(ctx, gw.MethodBind, query.Args{"visibility": string(visibility)})
+	ch, err := c.queryCh(ctx, gw.MethodNodeRegister, query.Args{"visibility": string(visibility)})
 	if err != nil {
 		return nil, err
 	}

@@ -58,7 +58,7 @@ func (mod *Module) route(ctx *astral.Context, gwEndpoint *gateway.Endpoint) (exo
 		Nonce:  astral.NewNonce(),
 		Caller: mod.node.Identity(),
 		Target: gwEndpoint.GatewayID,
-		Query:  gateway.MethodRoute + "." + gwEndpoint.TargetID.String(),
+		Query:  gateway.MethodNodeRoute + "." + gwEndpoint.TargetID.String(),
 	}
 
 	conn, err := query.Route(ctx, mod.node, q)

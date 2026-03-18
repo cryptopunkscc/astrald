@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Client) Connect(ctx *astral.Context, target *astral.Identity) (*gw.Socket, error) {
-	ch, err := c.queryCh(ctx, gw.MethodConnect, query.Args{"target": target.String()})
+	ch, err := c.queryCh(ctx, gw.MethodNodeConnect, query.Args{"target": target.String()})
 	if err != nil {
 		return nil, err
 	}
