@@ -8,8 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
-	var results = make(chan *objects.DescribeResult)
+func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, error) {
+	var results = make(chan *objects.Descriptor)
 
 	go func() {
 		defer close(results)

@@ -9,12 +9,12 @@ import (
 	objectscli "github.com/cryptopunkscc/astrald/mod/objects/client"
 )
 
-func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
+func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, error) {
 	if !ctx.Zone().Is(astral.ZoneNetwork) {
 		return nil, astral.ErrZoneExcluded
 	}
 
-	var results = make(chan *objects.DescribeResult)
+	var results = make(chan *objects.Descriptor)
 
 	go func() {
 		defer close(results)

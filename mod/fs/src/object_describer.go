@@ -8,7 +8,7 @@ import (
 
 var _ objects.Describer = &Module{}
 
-func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, error) {
+func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -18,13 +18,14 @@ func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID
 		return nil, err
 	}
 
-	var results = make(chan *objects.DescribeResult, len(rows))
+	var results = make(chan *objects.Descriptor, len(rows))
 	defer close(results)
 
 	for _, row := range rows {
-		results <- &objects.DescribeResult{
-			OriginID: mod.node.Identity(),
-			Descriptor: &fs.FileLocation{
+		results <- &objects.Descriptor{
+			SourceID: mod.node.Identity(),
+			ObjectID: objectID,
+			Data: &fs.FileLocation{
 				NodeID: mod.node.Identity(),
 				Path:   astral.String16(row.Path),
 			},

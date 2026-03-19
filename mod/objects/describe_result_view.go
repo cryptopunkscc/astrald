@@ -5,19 +5,19 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 )
 
-type DescribeResultView struct {
-	*DescribeResult
+type DescriptorView struct {
+	*Descriptor
 }
 
-func (view DescribeResult) Render() string {
+func (view Descriptor) Render() string {
 	return log.DefaultViewer.Render(log.Format("%v %v",
 		"➤",
-		view.Descriptor,
+		view.Data,
 	)...)
 }
 
 func init() {
-	log.DefaultViewer.Set(DescribeResult{}.ObjectType(), func(object astral.Object) astral.Object {
-		return &DescribeResultView{object.(*DescribeResult)}
+	log.DefaultViewer.Set(Descriptor{}.ObjectType(), func(object astral.Object) astral.Object {
+		return &DescriptorView{object.(*Descriptor)}
 	})
 }
