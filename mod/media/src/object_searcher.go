@@ -1,9 +1,10 @@
 package media
 
 import (
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"strings"
 )
 
 func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
@@ -34,6 +35,7 @@ func (mod *AudioIndexer) SearchObject(ctx *astral.Context, query string, opts *o
 
 		for _, row := range rows {
 			results <- &objects.SearchResult{
+				SourceID: mod.node.Identity(),
 				ObjectID: row.ObjectID,
 			}
 		}

@@ -72,7 +72,7 @@ type Module interface {
 	Store(*astral.Context, Repository, astral.Object) (*astral.ObjectID, error)
 
 	AddDescriber(Describer) error
-	Describe(*astral.Context, *astral.ObjectID) (<-chan *DescribeResult, error)
+	Describe(*astral.Context, *astral.ObjectID) (<-chan *Descriptor, error)
 
 	Search(ctx *astral.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
 	AddSearcher(Searcher) error
@@ -107,7 +107,7 @@ type Drop interface {
 }
 
 type Describer interface {
-	DescribeObject(*astral.Context, *astral.ObjectID) (<-chan *DescribeResult, error)
+	DescribeObject(*astral.Context, *astral.ObjectID) (<-chan *Descriptor, error)
 }
 
 type Holder interface {
