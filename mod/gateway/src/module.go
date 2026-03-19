@@ -1,156 +1,171 @@
 package gateway
 
 import (
-	"strings"
-	"sync"
+	"context"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
+	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	gateway2 "github.com/cryptopunkscc/astrald/mod/gateway"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
+	gatewayClient "github.com/cryptopunkscc/astrald/mod/gateway/client"
+	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/tasks"
+	"github.com/cryptopunkscc/astrald/mod/scheduler"
+	"github.com/cryptopunkscc/astrald/mod/services"
+	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 const NetworkName = "gw"
 
+const (
+	pingInterval        = 30 * time.Second
+	pingTimeout         = 60 * time.Second
+	writeTimeout        = 10 * time.Second
+	handoffPollInterval = time.Second
+	minIdleConns        = 2
+	maxDialFails        = 3
+	connectTimeout      = 30 * time.Second
+	acceptTimeout       = 30 * time.Second
+	pipeIdleTimeout     = 24 * time.Hour // note: lower it when we will enforce pings on gw links
+)
+
 type Deps struct {
-	Dir    dir.Module
-	Exonet exonet.Module
-	Nodes  nodes.Module
+	Dir       dir.Module
+	Exonet    exonet.Module
+	Nodes     nodes.Module
+	Scheduler scheduler.Module
+	Services  services.Module
+	TCP       tcp.Module
+	IP        ip.Module
 }
 
 type Module struct {
 	Deps
 	*routers.PathRouter
-	config      Config
-	node        astral.Node
-	log         *log.Logger
-	ctx         *astral.Context
-	dialer      *Dialer
-	subscribers map[string]*Subscriber
-	mu          sync.Mutex
+
+	ops    ops.Set
+	config Config
+	node   astral.Node
+	log    *log.Logger
+	ctx    *astral.Context
+
+	gateways        sig.Set[*astral.Identity]
+	registeredNodes sig.Map[string, *registeredNode]
+	connectors      sig.Set[*connector]
+
+	socketEndpoints sig.Map[string, exonet.Endpoint]
+}
+
+var _ gateway.Module = &Module{}
+
+func (mod *Module) GetOpSet() *ops.Set {
+	return &mod.ops
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
-	mod.subscribeToGateways()
+	err := mod.AddRoute(gateway.MethodNodeRoute+".*", routers.Func(mod.routeQuery))
+	if err != nil {
+		return err
+	}
 
-	return tasks.Group(
-		&SubscribeService{Module: mod},
-		&RouteService{Module: mod, router: mod.node},
-	).Run(ctx)
-}
+	if mod.config.Gateway.Enabled {
+		mod.startServers(mod.ctx)
+	}
 
-func (mod *Module) subscribeToGateways() {
-	for _, gateName := range mod.config.Subscribe {
-		var gateID *astral.Identity
+	<-mod.Scheduler.Ready()
 
-		if after, found := strings.CutPrefix(gateName, "node1"); found && len(after) > 32 {
-			var info nodes.NodeInfo
+	for _, gw := range mod.config.Gateways {
+		mod.addPersistentGateway(gw)
+	}
 
-			err := info.UnmarshalText([]byte(after))
-			if err != nil {
-				mod.log.Error("parse node info: %v", err)
-				continue
-			}
+	<-ctx.Done()
 
-			// try to set alias
-			err = mod.Dir.SetAlias(info.Identity, string(info.Alias))
-			if err != nil {
-				mod.log.Error("set alias: %v", err)
-			}
-
-			// save endpoints
-			for _, ep := range info.Endpoints {
-				err = mod.Nodes.AddEndpoint(info.Identity, nodes.NewEndpointWithTTL(ep))
-				if err != nil {
-					mod.log.Error("add endpoint: %v", err)
-					continue
-				}
-			}
-
-			// subscribe
-			err = mod.Subscribe(info.Identity)
-			if err != nil {
-				mod.log.Error("subscribe: %v", err)
-			}
-			continue
-		}
-
-		gateID, err := mod.Dir.ResolveIdentity(gateName)
+	// as a gateway
+	for _, c := range mod.connectors.Clone() {
+		err = c.Close()
 		if err != nil {
-			mod.log.Error("resolve identity %v: %v", gateName, err)
-			continue
+			mod.log.Error("failed to close connector: %v", err)
 		}
+	}
 
-		err = mod.Subscribe(gateID)
+	for _, b := range mod.registeredNodes.Values() {
+		err = b.Close()
 		if err != nil {
-			mod.log.Error("subscribe: %v", err)
+			mod.log.Error("failed to close registered node: %v", err)
 		}
 	}
-}
 
-func (mod *Module) Subscribe(gateway *astral.Identity) error {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
+	// as client
+	sctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	switch {
-	case gateway.IsZero():
-		return ErrInvalidGateway
-	case gateway.IsEqual(mod.node.Identity()):
-		return ErrInvalidGateway
-	}
+	for _, gatewayID := range mod.gateways.Clone() {
 
-	var hex = gateway.String()
-
-	if _, found := mod.subscribers[hex]; found {
-		return ErrAlreadySubscribed
-	}
-
-	var s = NewSubscriber(gateway, mod.node, mod.log)
-	mod.subscribers[hex] = s
-
-	go func() {
-		err := s.Run(mod.ctx)
+		var client = gatewayClient.New(gatewayID, astrald.Default())
+		err = client.Unregister(astral.NewContext(sctx))
 		if err != nil {
-			mod.log.Errorv(1, "gateway %v subscriber ended with error: %v", gateway, err)
+			mod.log.Error("failed to unregister from gateway: %v", err)
 		}
-		mod.mu.Lock()
-		defer mod.mu.Unlock()
-
-		delete(mod.subscribers, hex)
-	}()
-
-	return nil
-}
-
-func (mod *Module) Unsubscribe(gateway *astral.Identity) error {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
-
-	s, found := mod.subscribers[gateway.String()]
-	if !found {
-		return ErrNotSubscribed
 	}
 
-	s.Cancel()
 	return nil
 }
 
 func (mod *Module) Endpoints() []exonet.Endpoint {
 	var list = make([]exonet.Endpoint, 0)
 
-	for _, s := range mod.subscribers {
-		list = append(list, gateway2.NewEndpoint(s.Gateway(), mod.node.Identity()))
-	}
-
 	return list
 }
 
+func (mod *Module) getGatewayEndpoint(ctx *astral.Context, network string) (endpoint exonet.Endpoint, err error) {
+	endpoint, ok := mod.socketEndpoints.Get(network)
+	if !ok {
+		// fixme: return public error (no gateway endpoint available)
+		return
+	}
+
+	return endpoint, nil
+}
+
+func (mod *Module) registeredNodeByIdentity(identity *astral.Identity) (*registeredNode, bool) {
+	return mod.registeredNodes.Get(identity.String())
+}
+
+func (mod *Module) registeredNodeByNonce(nonce astral.Nonce) (*registeredNode, bool) {
+	for _, b := range mod.registeredNodes.Values() {
+		if b.Nonce == nonce {
+			return b, true
+		}
+	}
+	return nil, false
+}
+
+func (mod *Module) connectorByNonce(nonce astral.Nonce) (*connector, bool) {
+	for _, c := range mod.connectors.Clone() {
+		if c.Nonce == nonce {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
+func (mod *Module) canGateway(identity *astral.Identity) bool {
+	return mod.config.Gateway.Enabled
+}
+
+func (mod *Module) addPersistentGateway(gatewayID *astral.Identity) {
+	mod.gateways.Add(gatewayID)
+	mod.Scheduler.Schedule(mod.NewMaintainGatewayConnectionsTask(gatewayID, mod.config.Visibility))
+}
+
 func (mod *Module) String() string {
-	return ModuleName
+	return gateway.ModuleName
 }

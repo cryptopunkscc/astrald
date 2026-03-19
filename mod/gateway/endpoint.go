@@ -80,18 +80,44 @@ func (e Endpoint) MarshalText() (text []byte, err error) {
 
 // json support
 
+func (e *Endpoint) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.Address())
+}
+
 func (e *Endpoint) UnmarshalJSON(b []byte) error {
-	var str string
-	err := json.Unmarshal(b, &str)
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	ep, err := ParseEndpoint(s)
 	if err != nil {
 		return err
 	}
-
-	return e.UnmarshalText([]byte(str))
+	*e = *ep
+	return nil
 }
 
-func (e Endpoint) MarshalJSON() ([]byte, error) {
-	return json.Marshal(e.Address())
+func ParseEndpoint(s string) (*Endpoint, error) {
+	// expected: <gateway_id>:<target_id>
+	parts := strings.SplitN(s, ":", 2)
+	if len(parts) != 2 {
+		return nil, errors.New("malformed endpoint")
+	}
+
+	gw, err := astral.ParseIdentity(parts[0])
+	if err != nil {
+		return nil, err
+	}
+
+	target, err := astral.ParseIdentity(parts[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return &Endpoint{
+		GatewayID: gw,
+		TargetID:  target,
+	}, nil
 }
 
 // other

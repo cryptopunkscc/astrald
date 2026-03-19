@@ -11,6 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
@@ -369,6 +370,11 @@ func (mod *Peers) reflectStream(s *Stream) (err error) {
 		return
 	}
 
+	// note: rethink maybe switch (?)
+	if _, ok := s.RemoteEndpoint().(*gateway.Endpoint); ok {
+		// dont reflect gateway endpoints
+		return
+	}
 	// reflect the endpoint
 	err = mod.Objects.Push(mod.ctx, s.RemoteIdentity(),
 		&nodes.ObservedEndpointMessage{

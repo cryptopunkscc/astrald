@@ -1,42 +1,25 @@
 package gateway
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
+	"io"
+
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
-var _ exonet.Conn = &Conn{}
+var _ exonet.Conn = (*gatewayConn)(nil)
 
-type Conn struct {
-	astral.Conn
-	localEndpoint  *gateway.Endpoint
-	remoteEndpoint *gateway.Endpoint
-	outbound       bool
+// gatewayConn wraps any io.ReadWriteCloser with gateway endpoint metadata.
+type gatewayConn struct {
+	io.ReadWriteCloser
+	local    exonet.Endpoint
+	remote   exonet.Endpoint
+	outbound bool
 }
 
-func newConn(conn astral.Conn, localEndpoint *gateway.Endpoint, remoteEndpoint *gateway.Endpoint, outbound bool) *Conn {
-	c := &Conn{
-		Conn:           conn,
-		localEndpoint:  localEndpoint,
-		remoteEndpoint: remoteEndpoint,
-		outbound:       outbound,
-	}
-	return c
-}
+func (c *gatewayConn) LocalEndpoint() exonet.Endpoint  { return c.local }
+func (c *gatewayConn) RemoteEndpoint() exonet.Endpoint { return c.remote }
+func (c *gatewayConn) Outbound() bool                  { return c.outbound }
 
-func (conn Conn) LocalEndpoint() exonet.Endpoint {
-	return conn.localEndpoint
-}
-
-func (conn Conn) RemoteEndpoint() exonet.Endpoint {
-	return conn.remoteEndpoint
-}
-
-func (conn Conn) Outbound() bool {
-	return conn.outbound
-}
-
-func (Conn) Network() string {
-	return NetworkName
+func newGatewayConn(conn exonet.Conn, local, remote exonet.Endpoint) *gatewayConn {
+	return &gatewayConn{ReadWriteCloser: conn, local: local, remote: remote}
 }
