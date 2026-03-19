@@ -7,7 +7,7 @@ import (
 	gw "github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
-func (c *Client) Bind(ctx *astral.Context, visibility gw.Visibility) (*gw.Socket, error) {
+func (c *Client) Register(ctx *astral.Context, visibility gw.Visibility) (*gw.Socket, error) {
 	ch, err := c.queryCh(ctx, gw.MethodNodeRegister, query.Args{"visibility": string(visibility)})
 	if err != nil {
 		return nil, err

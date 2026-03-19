@@ -52,7 +52,7 @@ func (task *MaintainGatewayConnectionsTask) Run(ctx *astral.Context) error {
 			task.mod.log.Log("still trying to register to %v (attempt %v)", task.GatewayID, count)
 		}
 
-		socket, err := client.Bind(ctx.IncludeZone(astral.ZoneNetwork), task.Visibility)
+		socket, err := client.Register(ctx.IncludeZone(astral.ZoneNetwork), task.Visibility)
 		if err != nil {
 			select {
 			case <-ctx.Done():

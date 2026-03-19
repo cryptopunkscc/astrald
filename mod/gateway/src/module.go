@@ -1,15 +1,18 @@
 package gateway
 
 import (
+	"context"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
+	gatewayClient "github.com/cryptopunkscc/astrald/mod/gateway/client"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
@@ -84,17 +87,32 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	}
 
 	<-ctx.Done()
-	for _, b := range mod.registeredNodes.Values() {
-		b.Close()
-	}
+
+	// as a gateway
 	for _, c := range mod.connectors.Clone() {
-		c.Close()
+		err = c.Close()
+		if err != nil {
+			mod.log.Error("failed to close connector: %v", err)
+		}
 	}
 
-	for _, gatewayID := range mod.gateways.Clone() {
-		err = mod.unregister(gatewayID)
+	for _, b := range mod.registeredNodes.Values() {
+		err = b.Close()
 		if err != nil {
-			mod.log.Error("failed to unregister gateway: %v", err)
+			mod.log.Error("failed to close registered node: %v", err)
+		}
+	}
+
+	// as client
+	sctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	for _, gatewayID := range mod.gateways.Clone() {
+
+		var client = gatewayClient.New(gatewayID, astrald.Default())
+		err = client.Unregister(astral.NewContext(sctx))
+		if err != nil {
+			mod.log.Error("failed to unregister from gateway: %v", err)
 		}
 	}
 
