@@ -25,6 +25,7 @@ func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects
 
 		for _, row := range rows {
 			results <- &objects.SearchResult{
+				SourceID: mod.node.Identity(),
 				ObjectID: row.DataID,
 			}
 		}

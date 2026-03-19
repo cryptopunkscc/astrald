@@ -2,11 +2,13 @@ package objects
 
 import (
 	"encoding/json"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type SearchResult struct {
+	SourceID *astral.Identity
 	ObjectID *astral.ObjectID
 }
 
@@ -15,11 +17,11 @@ type SearchResult struct {
 func (SearchResult) ObjectType() string { return "mod.objects.search_result" }
 
 func (sr SearchResult) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(sr).WriteTo(w)
+	return astral.Objectify(&sr).WriteTo(w)
 }
 
 func (sr *SearchResult) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(sr).ReadFrom(r)
+	return astral.Objectify(sr).ReadFrom(r)
 }
 
 // json
