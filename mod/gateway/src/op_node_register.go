@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
-type opNodeRegister struct {
+type opNodeRegisterArgs struct {
 	Visibility gateway.Visibility
 	In         string `query:"optional"`
 	Out        string `query:"optional"`
@@ -16,7 +16,7 @@ type opNodeRegister struct {
 func (mod *Module) OpNodeRegister(
 	ctx *astral.Context,
 	q *ops.Query,
-	args opNodeRegister,
+	args opNodeRegisterArgs,
 ) (err error) {
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

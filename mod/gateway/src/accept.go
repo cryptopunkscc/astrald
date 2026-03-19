@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -48,9 +47,6 @@ func (mod *Module) handleInbound(_ context.Context, conn exonet.Conn) (stopListe
 		conn.Close()
 		return stopListener, nil
 	}
-
-	standby.setReadDeadline(time.Time{})
-	standby.setWriteDeadline(time.Time{})
 
 	mod.log.Infov(2, "pipe from %v to %v created", c.Identity, c.Target)
 	go pipe(standby, conn)
