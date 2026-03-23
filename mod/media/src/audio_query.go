@@ -1,111 +1,132 @@
 package media
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"gorm.io/gorm"
 )
 
-type tagHandler = func(*gorm.DB) *gorm.DB
+// knownAudioTags lists the tag names the audio searcher understands.
+// Also used as the column whitelist to prevent SQL injection in apply().
+var knownAudioTags = []string{"artist", "album", "title", "genre", "year", "format"}
 
-// fieldDef defines how a tag field maps to SQL conditions.
-type fieldDef struct {
-	include string           // SQL template for include, e.g. "LOWER(artist) LIKE ?"
-	exclude string           // SQL template for exclude
-	arg     func(string) any // transforms the tag value into a SQL argument
-}
-
-var audioFields = map[string]fieldDef{
-	"artist": {include: "LOWER(artist) LIKE ?", exclude: "LOWER(artist) NOT LIKE ?", arg: likeArg},
-	"album":  {include: "LOWER(album) LIKE ?", exclude: "LOWER(album) NOT LIKE ?", arg: likeArg},
-	"title":  {include: "LOWER(title) LIKE ?", exclude: "LOWER(title) NOT LIKE ?", arg: likeArg},
-	"genre":  {include: "LOWER(genre) LIKE ?", exclude: "LOWER(genre) NOT LIKE ?", arg: likeArg},
-	"year":   {include: "year = ?", exclude: "year != ?", arg: exactArg},
-}
-
-// textFields defines which fields are searched by free text, in order.
-var textFields = []string{"artist", "title", "album"}
-
-func likeArg(v string) any  { return "%" + v + "%" }
-func exactArg(v string) any { return v }
-
-type audioQueryBuilder struct {
-	db       *gorm.DB
-	includes map[string][]string // field -> values; same-field values are OR'd, fields AND'd
-	excludes []tagHandler        // each exclude is AND'd
-}
-
-func newAudioQuery(db *gorm.DB) *audioQueryBuilder {
-	return &audioQueryBuilder{
-		db:       db.Model(&dbAudio{}),
-		includes: make(map[string][]string),
+var knownAudioTagSet = func() map[string]bool {
+	m := make(map[string]bool, len(knownAudioTags))
+	for _, t := range knownAudioTags {
+		m[t] = true
 	}
+	return m
+}()
+
+// audioQuery holds parsed search criteria for audio files.
+type audioQuery struct {
+	text    string              // free-text term (lowercased)
+	include map[string][]string // tag → values; OR within group, AND between groups
+	exclude map[string][]string // tag → values; AND NOT each group
 }
 
-func (b *audioQueryBuilder) Tag(tag objects.QueryTag) *audioQueryBuilder {
-	f, ok := audioFields[string(tag.Name)]
-	if !ok || tag.Mod == objects.TagModOptional {
-		return b
+// parseAudioQuery converts a SearchQuery into an audioQuery.
+// Required (+) and optional (bare) include tags both add SQL conditions.
+// Required (-) and optional (!) exclude tags both add SQL NOT conditions.
+func parseAudioQuery(q objects.SearchQuery) *audioQuery {
+	aq := &audioQuery{
+		text:    strings.ToLower(strings.TrimSpace(string(q.Query))),
+		include: make(map[string][]string),
+		exclude: make(map[string][]string),
 	}
-	val := strings.ToLower(string(tag.Value))
-	if tag.Mod == objects.TagModExclude {
-		b.excludes = append(b.excludes, func(db *gorm.DB) *gorm.DB {
-			return db.Where(f.exclude, f.arg(val))
-		})
-	} else {
-		b.includes[string(tag.Name)] = append(b.includes[string(tag.Name)], val)
-	}
-	return b
-}
-
-func (b *audioQueryBuilder) Text(q string) *audioQueryBuilder {
-	q = strings.TrimSpace(strings.ToLower(q))
-	if q == "" {
-		return b
-	}
-
-	// only search fields not already constrained by an include tag
-	var conds []string
-	for _, name := range textFields {
-		if _, constrained := b.includes[name]; !constrained {
-			conds = append(conds, fmt.Sprintf("LOWER(%s) LIKE ?", name))
+	for _, tag := range q.Tags {
+		name := string(tag.Name)
+		if !knownAudioTagSet[name] {
+			continue
+		}
+		val := string(tag.Value)
+		switch tag.Mod {
+		case objects.TagModRequire:
+			aq.include[name] = append(aq.include[name], val)
+		case objects.TagModExclude:
+			aq.exclude[name] = append(aq.exclude[name], val)
+			// TagModOptional and TagModOptionalExclude are ignored (no ranking support)
 		}
 	}
-	if len(conds) == 0 {
-		return b
-	}
-
-	args := make([]any, len(conds))
-	for i := range conds {
-		args[i] = "%" + q + "%"
-	}
-
-	b.excludes = append(b.excludes, func(db *gorm.DB) *gorm.DB {
-		return db.Where(strings.Join(conds, " OR "), args...)
-	})
-	return b
+	return aq
 }
 
-func (b *audioQueryBuilder) Find() ([]*dbAudio, error) {
-	db := b.db
-
-	// OR values within the same field, AND across fields
-	for fieldName, values := range b.includes {
-		f := audioFields[fieldName]
-		conds := make([]string, len(values))
-		args := make([]any, len(values))
-		for i, v := range values {
-			conds[i] = f.include
-			args[i] = f.arg(v)
-		}
-		db = db.Where(strings.Join(conds, " OR "), args...)
+// apply builds GORM WHERE conditions onto db and returns the modified *gorm.DB.
+func (aq *audioQuery) apply(db *gorm.DB) *gorm.DB {
+	// free text: OR across artist, title, album
+	if aq.text != "" {
+		like := "%" + aq.text + "%"
+		db = db.Where(
+			"LOWER(artist) LIKE ? OR LOWER(title) LIKE ? OR LOWER(album) LIKE ?",
+			like, like, like,
+		)
 	}
 
-	// AND all excludes and text scope
-	db = db.Scopes(b.excludes...)
+	// include groups: AND between tag names, OR within
+	for name, vals := range aq.include {
+		db = applyTagCondition(db, false, name, vals)
+	}
 
-	var rows []*dbAudio
-	return rows, db.Find(&rows).Error
+	// exclude groups: AND NOT between tag names, OR within
+	for name, vals := range aq.exclude {
+		db = applyTagCondition(db, true, name, vals)
+	}
+
+	return db
+}
+
+// applyTagCondition builds one include or exclude clause for a single tag name.
+func applyTagCondition(db *gorm.DB, negate bool, name string, vals []string) *gorm.DB {
+	var clauses []string
+	var args []interface{}
+
+	for _, v := range vals {
+		if name == "year" {
+			c, a, ok := buildYearClause(v)
+			if !ok {
+				continue
+			}
+			clauses = append(clauses, c)
+			args = append(args, a...)
+		} else if name == "format" {
+			clauses = append(clauses, "LOWER(format) = ?")
+			args = append(args, v)
+		} else {
+			clauses = append(clauses, "LOWER("+name+") LIKE ?")
+			args = append(args, "%"+v+"%")
+		}
+	}
+
+	if len(clauses) == 0 {
+		return db
+	}
+
+	expr := "(" + strings.Join(clauses, " OR ") + ")"
+	if negate {
+		return db.Not(expr, args...)
+	}
+	return db.Where(expr, args...)
+}
+
+// buildYearClause returns a SQL fragment and args for a year value.
+// Supports exact match ("1990") and range ("1990-2000").
+func buildYearClause(s string) (clause string, args []interface{}, ok bool) {
+	if lo, hi, found := strings.Cut(s, "-"); found {
+		loY, err1 := strconv.Atoi(lo)
+		hiY, err2 := strconv.Atoi(hi)
+		if err1 != nil || err2 != nil {
+			return
+		}
+		if loY > hiY {
+			loY, hiY = hiY, loY
+		}
+		return "year BETWEEN ? AND ?", []interface{}{loY, hiY}, true
+	}
+	y, err := strconv.Atoi(s)
+	if err != nil {
+		return
+	}
+	return "year = ?", []interface{}{y}, true
 }

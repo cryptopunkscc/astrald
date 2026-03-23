@@ -12,6 +12,10 @@ func (mod *Module) SearchObject(ctx *astral.Context, query objects.SearchQuery) 
 		return nil, astral.ErrZoneExcluded
 	}
 
+	if !query.RequiredTagsIn("path") {
+		return nil, objects.ErrTagNotSupported
+	}
+
 	var results = make(chan *objects.SearchResult)
 
 	go func() {
@@ -22,8 +26,9 @@ func (mod *Module) SearchObject(ctx *astral.Context, query objects.SearchQuery) 
 			mod.log.Error("search: db: %v", err)
 			return
 		}
-
+		mod.log.Log("search fs: %v", len(rows))
 		for _, row := range rows {
+
 			results <- &objects.SearchResult{
 				SourceID: mod.node.Identity(),
 				ObjectID: row.DataID,

@@ -27,14 +27,16 @@ func (q *SearchQuery) ReadFrom(r io.Reader) (int64, error) {
 	return astral.Objectify(q).ReadFrom(r)
 }
 
-// RequiredTagsIn returns true if all required tags in the query are present in knownTags.
+// RequiredTagsIn returns true if all required (tag:value) and exclude (-tag:value) tags
+// in the query are present in knownTags. Optional tags are ignored.
 func (q *SearchQuery) RequiredTagsIn(knownTags ...string) bool {
 	known := make(map[string]struct{}, len(knownTags))
 	for _, t := range knownTags {
 		known[t] = struct{}{}
 	}
 	for _, tag := range q.Tags {
-		if tag.Mod == TagModDefault {
+		switch tag.Mod {
+		case TagModRequire, TagModExclude:
 			if _, ok := known[string(tag.Name)]; !ok {
 				return false
 			}
@@ -54,6 +56,8 @@ func (q SearchQuery) MarshalText() ([]byte, error) {
 			prefix = "-"
 		case TagModOptional:
 			prefix = "?"
+		case TagModOptionalExclude:
+			prefix = "~"
 		}
 		value := string(tag.Value)
 		if strings.ContainsRune(value, ' ') {
@@ -88,6 +92,9 @@ func (q *SearchQuery) UnmarshalText(text []byte) error {
 			token = token[1:]
 		case strings.HasPrefix(token, "?"):
 			mod = TagModOptional
+			token = token[1:]
+		case strings.HasPrefix(token, "~"):
+			mod = TagModOptionalExclude
 			token = token[1:]
 		}
 

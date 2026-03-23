@@ -14,22 +14,19 @@ func (mod *AudioIndexer) SearchObject(ctx *astral.Context, query objects.SearchQ
 		return nil, astral.ErrZoneExcluded
 	}
 
-	if !query.RequiredTagsIn("artist", "album", "title", "genre", "year") {
+	if !query.RequiredTagsIn(knownAudioTags...) {
 		return nil, objects.ErrTagNotSupported
 	}
 
-	var results = make(chan *objects.SearchResult)
+	aq := parseAudioQuery(query)
+
+	results := make(chan *objects.SearchResult)
 
 	go func() {
 		defer close(results)
 
-		b := newAudioQuery(mod.db.DB)
-		for _, tag := range query.Tags {
-			b.Tag(tag)
-		}
-
-		rows, err := b.Text(string(query.Query)).Find()
-		if err != nil {
+		var rows []*dbAudio
+		if err := aq.apply(mod.db.Model(&dbAudio{})).Find(&rows).Error; err != nil {
 			mod.log.Error("search: db: %v", err)
 			return
 		}

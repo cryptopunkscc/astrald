@@ -9,9 +9,10 @@ import (
 type QueryTagMod = astral.String8
 
 const (
-	TagModDefault  QueryTagMod = ""
-	TagModExclude  QueryTagMod = "EXCLUDE"
-	TagModOptional QueryTagMod = "OPTIONAL"
+	TagModRequire         QueryTagMod = ""                 // tag:value — must include (default)
+	TagModExclude         QueryTagMod = "EXCLUDE"          // -tag:value — must exclude
+	TagModOptional        QueryTagMod = "OPTIONAL"         // ?tag:value — optional include (searcher may ignore)
+	TagModOptionalExclude QueryTagMod = "OPTIONAL_EXCLUDE" // ~tag:value — optional exclude (searcher may ignore)
 )
 
 var _ astral.Object = &QueryTag{}
