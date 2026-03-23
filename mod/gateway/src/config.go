@@ -7,9 +7,14 @@ import (
 
 const defaultGateway = "node1f3AwbE1gJAgAqEx98FMipokcaE9ZapIphzDUkAceE7Pmw8ghmFV19QKCATeC7uyoLszQA"
 
+type NetworkConfig struct {
+	Port     int    `yaml:"port"`
+	Endpoint string `yaml:"endpoint,omitempty"`
+}
+
 type GatewayConfig struct {
-	Enabled bool     `yaml:"enabled"`
-	Listen  []string `yaml:"listen"`
+	Enabled  bool                      `yaml:"enabled"`
+	Networks map[string]*NetworkConfig `yaml:"networks,omitempty"`
 }
 
 type Config struct {

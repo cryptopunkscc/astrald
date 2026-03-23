@@ -68,7 +68,7 @@ func (mod *Module) register(ctx *astral.Context, identity *astral.Identity, visi
 		return gateway.Socket{}, gateway.ErrGatewayDenied
 	}
 
-	endpoint, err := mod.getGatewayEndpoint(ctx, network)
+	endpoint, err := mod.getGatewayEndpoint(network)
 	if err != nil {
 		return gateway.Socket{}, err
 	}

@@ -12,7 +12,7 @@ func (mod *Module) reserveConn(caller *astral.Identity, target *astral.Identity,
 		return gateway.Socket{}, gateway.ErrGatewayDenied
 	}
 
-	endpoint, err := mod.getGatewayEndpoint(mod.ctx, network)
+	endpoint, err := mod.getGatewayEndpoint(network)
 	if err != nil {
 		return gateway.Socket{}, err
 	}

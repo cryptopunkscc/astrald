@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -57,7 +58,7 @@ type Module struct {
 	registeredNodes sig.Map[string, *registeredNode]
 	connectors      sig.Set[*connector]
 
-	socketEndpoints sig.Map[string, exonet.Endpoint]
+	configEndpoints map[string]exonet.Endpoint
 }
 
 var _ gateway.Module = &Module{}
@@ -114,14 +115,28 @@ func (mod *Module) Endpoints() []exonet.Endpoint {
 	return list
 }
 
-func (mod *Module) getGatewayEndpoint(ctx *astral.Context, network string) (endpoint exonet.Endpoint, err error) {
-	endpoint, ok := mod.socketEndpoints.Get(network)
-	if !ok {
-		// fixme: return public error (no gateway endpoint available)
-		return
+func (mod *Module) getGatewayEndpoint(network string) (exonet.Endpoint, error) {
+	if e, ok := mod.configEndpoints[network]; ok {
+		return e, nil
 	}
 
-	return endpoint, nil
+	netConfig, ok := mod.config.Gateway.Networks[network]
+	if !ok {
+		return nil, fmt.Errorf("no gateway config for network %v", network)
+	}
+
+	candidates := mod.IP.PublicIPCandidates()
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("no public IP available for gateway network %v", network)
+	}
+
+	port := astral.Uint16(netConfig.Port)
+	switch network {
+	case "tcp":
+		return &tcp.Endpoint{IP: candidates[0], Port: port}, nil
+	default:
+		return nil, fmt.Errorf("unsupported gateway network: %v", network)
+	}
 }
 
 func (mod *Module) registeredNodeByIdentity(identity *astral.Identity) (*registeredNode, bool) {
