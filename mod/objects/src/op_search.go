@@ -14,7 +14,6 @@ type SearchArgs struct {
 	Query string      `query:"key:q"`
 	Repo  string      `query:"optional"` // return only objects that this repo contains
 	Zone  astral.Zone `query:"optional"`
-	Ext   string      `query:"optional"`
 	Out   string      `query:"optional"`
 }
 
