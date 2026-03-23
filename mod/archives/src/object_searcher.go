@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+func (mod *Module) SearchObject(ctx *astral.Context, query objects.SearchQuery) (<-chan *objects.SearchResult, error) {
 	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -19,9 +19,9 @@ func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects
 
 		var rows []*dbEntry
 
-		query = "%" + strings.ToLower(query) + "%"
+		q := "%" + strings.ToLower(string(query.Query)) + "%"
 
-		err := mod.db.Where("LOWER(path) LIKE ?", query).Find(&rows).Error
+		err := mod.db.Where("LOWER(path) LIKE ?", q).Find(&rows).Error
 		if err != nil {
 			mod.log.Error("search: db: %v", err)
 			return

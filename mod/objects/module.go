@@ -74,7 +74,7 @@ type Module interface {
 	AddDescriber(Describer) error
 	Describe(*astral.Context, *astral.ObjectID) (<-chan *Descriptor, error)
 
-	Search(ctx *astral.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
+	Search(ctx *astral.Context, query SearchQuery) (<-chan *SearchResult, error)
 	AddSearcher(Searcher) error
 	AddSearchPreprocessor(SearchPreprocessor) error
 

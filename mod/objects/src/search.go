@@ -4,15 +4,12 @@ import (
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	objectscli "github.com/cryptopunkscc/astrald/mod/objects/client"
 )
 
-func (mod *Module) Search(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
-	if opts == nil {
-		opts = objects.DefaultSearchOpts()
-	}
-
+func (mod *Module) Search(ctx *astral.Context, query objects.SearchQuery) (<-chan *objects.SearchResult, error) {
 	search := &objects.Search{
 		CallerID: ctx.Identity(),
 		Query:    query,
@@ -32,7 +29,7 @@ func (mod *Module) Search(ctx *astral.Context, query string, opts *objects.Searc
 		go func() {
 			defer wg.Done()
 
-			_res, _err := searcher.SearchObject(ctx, query, opts)
+			_res, _err := searcher.SearchObject(ctx, query)
 			if _err != nil {
 				return
 			}
@@ -57,7 +54,7 @@ func (mod *Module) Search(ctx *astral.Context, query string, opts *objects.Searc
 				defer wg.Done()
 
 				// execute search
-				_results, err := objectscli.New(nodeID, nil).Search(ctx, query)
+				_results, err := objectscli.New(nodeID, astrald.Default()).Search(ctx, query)
 				if err != nil {
 					mod.log.Errorv(1, "search %v: %v", nodeID, err)
 					return

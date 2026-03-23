@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects.SearchOpts) (<-chan *objects.SearchResult, error) {
+func (mod *Module) SearchObject(ctx *astral.Context, query objects.SearchQuery) (<-chan *objects.SearchResult, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
@@ -17,7 +17,7 @@ func (mod *Module) SearchObject(ctx *astral.Context, query string, opts *objects
 	go func() {
 		defer close(results)
 
-		rows, err := mod.db.SearchByPath(strings.ToLower(query))
+		rows, err := mod.db.SearchByPath(strings.ToLower(string(query.Query)))
 		if err != nil {
 			mod.log.Error("search: db: %v", err)
 			return

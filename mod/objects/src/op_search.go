@@ -10,7 +10,15 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) OpSearch(ctx *astral.Context, q *ops.Query, args objects.SearchArgs) (err error) {
+type SearchArgs struct {
+	Query string      `query:"key:q"`
+	Repo  string      `query:"optional"` // return only objects that this repo contains
+	Zone  astral.Zone `query:"optional"`
+	Ext   string      `query:"optional"`
+	Out   string      `query:"optional"`
+}
+
+func (mod *Module) OpSearch(ctx *astral.Context, q *ops.Query, args SearchArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
 	defer cancel()
 
@@ -26,11 +34,11 @@ func (mod *Module) OpSearch(ctx *astral.Context, q *ops.Query, args objects.Sear
 		}
 	}
 
-	opts := objects.DefaultSearchOpts()
-	opts.ClientID = q.Caller()
+	var searchQuery objects.SearchQuery
+	_ = searchQuery.UnmarshalText([]byte(args.Query))
 
 	// run the search
-	matches, err := mod.Search(ctx, args.Query, opts)
+	matches, err := mod.Search(ctx, searchQuery)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
