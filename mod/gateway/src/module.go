@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/ops"
-	"github.com/cryptopunkscc/astrald/lib/routers"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
@@ -47,7 +46,6 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	*routers.PathRouter
 
 	ops    ops.Set
 	config Config
@@ -71,11 +69,6 @@ func (mod *Module) GetOpSet() *ops.Set {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
-	err := mod.AddRoute(gateway.MethodNodeRoute+".*", routers.Func(mod.routeQuery))
-	if err != nil {
-		return err
-	}
-
 	if mod.config.Gateway.Enabled {
 		mod.startServers(mod.ctx)
 	}
@@ -90,15 +83,13 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 	// as a gateway
 	for _, c := range mod.connectors.Clone() {
-		err = c.Close()
-		if err != nil {
+		if err := c.Close(); err != nil {
 			mod.log.Error("failed to close connector: %v", err)
 		}
 	}
 
 	for _, b := range mod.registeredNodes.Values() {
-		err = b.Close()
-		if err != nil {
+		if err := b.Close(); err != nil {
 			mod.log.Error("failed to close registered node: %v", err)
 		}
 	}
@@ -108,10 +99,8 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	defer cancel()
 
 	for _, gatewayID := range mod.gateways.Clone() {
-
 		var client = gatewayClient.New(gatewayID, astrald.Default())
-		err = client.Unregister(astral.NewContext(sctx))
-		if err != nil {
+		if err := client.Unregister(astral.NewContext(sctx)); err != nil {
 			mod.log.Error("failed to unregister from gateway: %v", err)
 		}
 	}

@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -11,10 +13,24 @@ import (
 // registeredNode represents a node registered as reachable through the gateway.
 // Only one registration per withIdentity is allowed.
 type registeredNode struct {
-	Identity   *astral.Identity
-	Nonce      astral.Nonce
-	Visibility gateway.Visibility
-	idleConns  sig.Set[*idleConn]
+	Identity  *astral.Identity
+	Nonce     astral.Nonce
+	idleConns sig.Set[*idleConn]
+
+	mu         sync.RWMutex
+	visibility gateway.Visibility
+}
+
+func (b *registeredNode) GetVisibility() gateway.Visibility {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.visibility
+}
+
+func (b *registeredNode) SetVisibility(v gateway.Visibility) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.visibility = v
 }
 
 func (b *registeredNode) registerConn(conn exonet.Conn, l *log.Logger) *idleConn {
@@ -57,26 +73,22 @@ func (mod *Module) register(ctx *astral.Context, identity *astral.Identity, visi
 		return gateway.Socket{}, err
 	}
 
+	// If already registered, just update visibility and reuse existing connections.
+	if existing, ok := mod.registeredNodes.Get(identity.String()); ok {
+		existing.SetVisibility(visibility)
+		return gateway.Socket{
+			Nonce:    existing.Nonce,
+			Endpoint: endpoint,
+		}, nil
+	}
+
 	node := &registeredNode{
-		Identity:   identity,
-		Nonce:      astral.NewNonce(),
-		Visibility: visibility,
+		Identity: identity,
+		Nonce:    astral.NewNonce(),
 	}
+	node.SetVisibility(visibility)
 
-	old, ok := mod.registeredNodes.Replace(identity.String(), node)
-	if ok {
-		if err = old.Close(); err != nil {
-			mod.log.Error("failed to close old registered node: %v", err)
-		}
-
-		targetID := old.Identity.String()
-		for _, c := range mod.connectors.Clone() {
-			if c.Target.String() == targetID {
-				mod.connectors.Remove(c)
-				c.Close()
-			}
-		}
-	}
+	mod.registeredNodes.Set(identity.String(), node)
 
 	return gateway.Socket{
 		Nonce:    node.Nonce,

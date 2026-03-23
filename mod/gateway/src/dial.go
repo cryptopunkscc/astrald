@@ -54,12 +54,7 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 func (mod *Module) route(ctx *astral.Context, gwEndpoint *gateway.Endpoint) (exonet.Conn, error) {
 	mod.log.Logv(1, "socket path unavailable, trying link path to %v via %v", gwEndpoint.TargetID, gwEndpoint.GatewayID)
 
-	q := &astral.Query{
-		Nonce:  astral.NewNonce(),
-		Caller: mod.node.Identity(),
-		Target: gwEndpoint.GatewayID,
-		Query:  gateway.MethodNodeRoute + "." + gwEndpoint.TargetID.String(),
-	}
+	q := query.New(mod.node.Identity(), gwEndpoint.GatewayID, gateway.MethodNodeRoute, query.Args{"target": gwEndpoint.TargetID})
 
 	conn, err := query.Route(ctx, mod.node, q)
 	if err != nil {

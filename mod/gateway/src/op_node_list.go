@@ -16,7 +16,7 @@ func (mod *Module) OpNodeList(ctx *astral.Context, q *ops.Query, args opListArgs
 	defer ch.Close()
 
 	for _, client := range mod.registeredNodes.Values() {
-		if client.Visibility != gateway.VisibilityPublic {
+		if client.GetVisibility() != gateway.VisibilityPublic {
 			continue
 		}
 		if err := ch.Send(client.Identity); err != nil {
