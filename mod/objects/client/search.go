@@ -22,7 +22,7 @@ func (client *Client) Search(ctx *astral.Context, q string) (<-chan *objects.Sea
 		defer close(out)
 		defer ch.Close()
 
-		*errPtr = ch.Switch(channel.Chan(out), channel.StopOnEOS, channel.PassErrors, channel.WithContext(ctx))
+		*errPtr = ch.Switch(channel.Chan(out), channel.BreakOnEOS, channel.PassErrors, channel.WithContext(ctx))
 	}()
 
 	return out, errPtr

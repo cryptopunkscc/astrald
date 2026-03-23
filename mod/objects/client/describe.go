@@ -24,7 +24,7 @@ func (client *Client) Describe(ctx *astral.Context, objectID *astral.ObjectID) (
 		defer close(out)
 		defer ch.Close()
 
-		*errPtr = ch.Switch(channel.Chan(out), channel.StopOnEOS, channel.PassErrors, channel.WithContext(ctx))
+		*errPtr = ch.Switch(channel.Chan(out), channel.BreakOnEOS, channel.PassErrors, channel.WithContext(ctx))
 	}()
 
 	return out, errPtr

@@ -24,7 +24,7 @@ func (client *Client) Scan(ctx *astral.Context, repo string, follow bool) (<-cha
 		defer close(out)
 		defer ch.Close()
 
-		*errPtr = ch.Switch(channel.Chan(out), channel.StopOnEOS, channel.PassErrors, channel.WithContext(ctx))
+		*errPtr = ch.Switch(channel.Chan(out), channel.BreakOnEOS, channel.PassErrors, channel.WithContext(ctx))
 		if *errPtr != nil {
 			return
 		}
@@ -41,7 +41,7 @@ func (client *Client) Scan(ctx *astral.Context, repo string, follow bool) (<-cha
 		}
 
 		// handle updates
-		*errPtr = ch.Switch(channel.Chan(out), channel.StopOnEOS, channel.PassErrors, channel.WithContext(ctx))
+		*errPtr = ch.Switch(channel.Chan(out), channel.BreakOnEOS, channel.PassErrors, channel.WithContext(ctx))
 	}()
 
 	return out, errPtr

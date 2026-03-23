@@ -14,6 +14,6 @@ func (client *Client) Repositories(ctx *astral.Context) (repos []*objects.Reposi
 	defer ch.Close()
 
 	// collect repo names
-	err = ch.Switch(channel.Collect(&repos), channel.StopOnEOS, channel.PassErrors, channel.WithContext(ctx))
+	err = ch.Switch(channel.Collect(&repos), channel.BreakOnEOS, channel.PassErrors, channel.WithContext(ctx))
 	return
 }

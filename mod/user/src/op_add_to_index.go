@@ -24,6 +24,6 @@ func (mod *Module) OpAddToIndex(ctx *astral.Context, query *ops.Query, args opAd
 			}
 			return ch.Send(&astral.Ack{})
 		},
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 	)
 }

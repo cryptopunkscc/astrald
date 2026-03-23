@@ -18,7 +18,7 @@ func (client *Client) ResolveEndpoints(ctx *astral.Context, identity *astral.Ide
 	var endpoints []*nodes.EndpointWithTTL
 	err = ch.Switch(
 		channel.Collect(&endpoints),
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 		func(msg *astral.ErrorMessage) error {
 			return msg
 		},

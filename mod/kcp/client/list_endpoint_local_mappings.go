@@ -17,7 +17,7 @@ func (client *Client) ListEndpointLocalMappings(ctx *astral.Context) ([]*kcp.End
 
 	err = ch.Switch(
 		channel.Collect(&mappings),
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 		func(msg *astral.ErrorMessage) error {
 			return msg
 		},
