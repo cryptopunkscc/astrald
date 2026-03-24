@@ -7,6 +7,8 @@ toolchain go1.24.6
 require (
 	bitbucket.org/creachadair/shell v0.0.7
 	github.com/akutz/memconn v0.1.0
+	github.com/btcsuite/btcd v0.24.2
+	github.com/btcsuite/btcd/btcutil v1.1.6
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/cryptopunkscc/bip-0137 v0.0.0-20260118232723-438bbbb8fe46
 	github.com/cryptopunkscc/utp v0.0.0-20251010115525-2f03809eff3d
@@ -20,6 +22,7 @@ require (
 	github.com/xtaci/kcp-go/v5 v5.6.24
 	golang.org/x/crypto v0.37.0
 	golang.org/x/net v0.39.0
+	golang.org/x/time v0.14.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.30.0
@@ -28,8 +31,6 @@ require (
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bitonicnl/verify-signed-message v0.7.4 // indirect
-	github.com/btcsuite/btcd v0.24.2 // indirect
-	github.com/btcsuite/btcd/btcutil v1.1.6 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/btcsuite/btclog v0.0.0-20241017175713-3428138b75c7 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
@@ -57,7 +58,6 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
-	golang.org/x/time v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.24.1 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
