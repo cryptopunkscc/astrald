@@ -39,7 +39,6 @@ type Module struct {
 
 	dbResolver *DBEndpointResolver
 	resolvers  sig.Set[nodes.EndpointResolver]
-	relays     sig.Map[astral.Nonce, *Relay]
 
 	observedEndpoints sig.Map[string, ObservedEndpoint] // key is IP string
 
@@ -54,11 +53,6 @@ type Module struct {
 	searchCache sig.Map[string, *astral.Identity]
 
 	privateKey *crypto.PrivateKey
-}
-
-type Relay struct {
-	Caller *astral.Identity
-	Target *astral.Identity
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {

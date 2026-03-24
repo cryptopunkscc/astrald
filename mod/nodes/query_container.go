@@ -1,0 +1,28 @@
+package nodes
+
+import (
+	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
+)
+
+type QueryContainer struct {
+	TargetID *astral.Identity
+	CallerID *astral.Identity
+	Query    frames.Query
+}
+
+func (c QueryContainer) ObjectType() string { return "nodes.query_container" }
+
+func (c QueryContainer) WriteTo(w io.Writer) (int64, error) {
+	return astral.Objectify(&c).WriteTo(w)
+}
+
+func (c *QueryContainer) ReadFrom(r io.Reader) (int64, error) {
+	return astral.Objectify(c).ReadFrom(r)
+}
+
+func init() {
+	_ = astral.Add(&QueryContainer{})
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	nodescli "github.com/cryptopunkscc/astrald/mod/nodes/client"
+	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 )
 
 func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (rw io.WriteCloser, err error) {
@@ -25,9 +26,10 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 
 	// are we linked already?
 	if mod.IsPeer(q.Target) {
-		err = mod.configureRelay(ctx, q, q.Target)
-		if err != nil {
-			return query.RouteNotFound(mod, err)
+		if !ctx.Identity().IsEqual(q.Caller) {
+			if err := mod.sendCallerProof(ctx, q, q.Target); err != nil {
+				return query.RouteNotFound(mod, err)
+			}
 		}
 		return mod.peers.RouteQuery(ctx, q, w)
 	}
@@ -44,9 +46,10 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 			break
 		}
 
-		err = mod.configureRelay(ctx, q, q.Target)
-		if err != nil {
-			return query.RouteNotFound(mod, err)
+		if !ctx.Identity().IsEqual(q.Caller) {
+			if err := mod.sendCallerProof(ctx, q, q.Target); err != nil {
+				return query.RouteNotFound(mod, err)
+			}
 		}
 		return mod.peers.RouteQuery(ctx, q, w)
 	}
@@ -68,63 +71,67 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 			continue
 		}
 
-		// try to configure the relay
-		err := mod.configureRelay(ctx, q, relayID)
-		if err != nil {
-			continue
-		}
-
-		// relay the query
-		var rq = &astral.Query{
-			Nonce:  q.Nonce,
-			Caller: mod.node.Identity(),
-			Target: relayID,
-			Query:  q.Query,
-			Extra:  *q.Extra.Copy(),
-		}
-
-		w, err := mod.peers.RouteQuery(ctx, rq, w)
+		rw, err := mod.routeViaRelay(ctx, q, relayID, w)
 		if err == nil {
-			return w, nil
+			return rw, nil
 		}
 	}
 
 	return query.RouteNotFound(mod)
 }
 
-func (mod *Module) configureRelay(ctx *astral.Context, q *astral.Query, relayID *astral.Identity) error {
-	var caller, target *astral.Identity
-
-	// check if we need to change the caller
+func (mod *Module) routeViaRelay(ctx *astral.Context, q *astral.Query, relayID *astral.Identity, w io.WriteCloser) (io.WriteCloser, error) {
 	if !ctx.Identity().IsEqual(q.Caller) {
-		err := mod.sendCallerProof(ctx, q, relayID)
-		if err != nil {
-			return fmt.Errorf("send caller proof: %w", err)
+		if err := mod.sendCallerProof(ctx, q, relayID); err != nil {
+			return query.RouteNotFound(mod, fmt.Errorf("caller proof: %w", err))
 		}
-		caller = q.Caller
 	}
 
-	// check if we need to change the target
-	if !relayID.IsEqual(q.Target) {
-		target = q.Target
+	conn, ok := mod.peers.sessions.Set(q.Nonce, newSession(q.Nonce))
+	if !ok {
+		return query.RouteNotFound(mod, errors.New("session nonce already in use"))
+	}
+	conn.RemoteIdentity = relayID
+	conn.Query = q.Query
+	conn.Outbound = true
+
+	// build and send the relay container
+	container := &nodes.QueryContainer{
+		CallerID: q.Caller,
+		TargetID: q.Target,
+		Query: frames.Query{
+			Nonce:  q.Nonce,
+			Buffer: uint32(conn.rsize),
+			Query:  q.Query,
+		},
 	}
 
-	// return if no changes are required
-	if caller == nil && target == nil {
-		return nil
+	if err := nodescli.New(relayID, nil).SendRelayedQuery(ctx, container); err != nil {
+		conn.swapState(stateRouting, stateClosed)
+		mod.peers.sessions.Delete(q.Nonce)
+		return query.RouteNotFound(mod, fmt.Errorf("send relay container: %w", err))
 	}
 
-	if relayID.IsEqual(q.Target) {
-		return nil
-	}
+	// wait for frames.Response from the relay peer stream
+	select {
+	case errCode := <-conn.res:
+		if errCode != 0 {
+			mod.peers.sessions.Delete(q.Nonce)
+			return query.RejectWithCode(errCode)
+		}
 
-	// configure the relay
-	err := nodescli.New(relayID, nil).Relay(ctx, q.Nonce, caller, target)
-	if err != nil {
-		return fmt.Errorf("relay query: %w", err)
-	}
+		go func() {
+			io.Copy(w, conn)
+			w.Close()
+		}()
 
-	return nil
+		return conn, nil
+
+	case <-ctx.Done():
+		conn.swapState(stateRouting, stateClosed)
+		mod.peers.sessions.Delete(q.Nonce)
+		return query.RouteNotFound(mod, ctx.Err())
+	}
 }
 
 func (mod *Module) sendCallerProof(ctx *astral.Context, q *astral.Query, target *astral.Identity) error {
