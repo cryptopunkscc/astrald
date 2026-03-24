@@ -7,18 +7,12 @@ import (
 )
 
 func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, target astral.Object) bool {
-	switch action {
-	case nodes.ActionRelayFor:
-		appID, ok := target.(*astral.Identity)
-		if !ok {
-			return false
-		}
+	return auth.Auth(auth.ActionsMap{
+		nodes.ActionRelayFor: {auth.NewHandler(mod.AuthorizeRelayFor)},
+	}, identity, action, target)
+}
 
-		c, _ := mod.db.FindActiveAppContractsByAppAndHost(appID, identity)
-		if len(c) > 0 {
-			return true
-		}
-	}
-	
-	return false
+func (mod *Module) AuthorizeRelayFor(identity *astral.Identity, appID *astral.Identity) bool {
+	c, _ := mod.db.FindActiveAppContractsByAppAndHost(appID, identity)
+	return len(c) > 0
 }

@@ -2,12 +2,13 @@ package auth
 
 import (
 	"fmt"
+	"reflect"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
-	"reflect"
 )
 
 type Deps struct {
