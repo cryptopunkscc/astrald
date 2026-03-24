@@ -124,6 +124,49 @@ func (mod *Peers) frameReader(ctx context.Context) {
 	}
 }
 
+func (mod *Peers) handleRelayedQuery(s *Stream, c *nodes.QueryContainer) {
+	conn, ok := mod.sessions.Set(c.Nonce, newSession(c.Nonce))
+	if !ok {
+		return // ignore duplicates
+	}
+
+	conn.RemoteIdentity = c.CallerID
+	conn.Query = string(c.Query)
+	conn.stream = s
+	conn.wsize = int(c.Buffer)
+
+	var q = &astral.Query{
+		Nonce:  c.Nonce,
+		Caller: c.CallerID,
+		Target: c.TargetID,
+		Query:  string(c.Query),
+	}
+
+	q.Extra.Set("origin", astral.OriginNetwork)
+
+	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
+
+	w, err := mod.node.RouteQuery(ctx, q, conn)
+	if err != nil {
+		conn.swapState(stateRouting, stateClosed)
+		var code = uint8(frames.CodeRejected)
+		var reject *astral.ErrRejected
+		if errors.As(err, &reject) {
+			code = reject.Code
+		}
+		s.Write(&frames.Response{Nonce: c.Nonce, ErrCode: code})
+		return
+	}
+
+	s.Write(&frames.Response{Nonce: c.Nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
+	conn.swapState(stateRouting, stateOpen)
+
+	go func() {
+		io.Copy(w, conn)
+		w.Close()
+	}()
+}
+
 func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
 	conn, ok := mod.sessions.Set(f.Nonce, newSession(f.Nonce))
 	if !ok {
