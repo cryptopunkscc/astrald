@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
@@ -38,7 +39,9 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.C
 		return mod.route(ctx, gwEndpoint)
 	}
 
-	if _, err := socket.Nonce.WriteTo(conn); err != nil {
+	ch := channel.New(conn)
+	err = ch.Send(&socket.Nonce)
+	if err != nil {
 		conn.Close()
 		return mod.route(ctx, gwEndpoint)
 	}

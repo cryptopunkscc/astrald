@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
@@ -13,21 +14,24 @@ import (
 func (mod *Module) handleInbound(_ context.Context, conn exonet.Conn) (stopListener bool, err error) {
 	mod.log.Logv(2, "accepting socket connection from %v", conn.RemoteEndpoint())
 
-	var nonce astral.Nonce
-	if _, err := nonce.ReadFrom(conn); err != nil {
-		mod.log.Errorv(1, "read nonce from %v: %v", conn.RemoteEndpoint(), err)
+	ch := channel.New(conn)
+
+	var nonce *astral.Nonce
+	// expect node's signature
+	err = ch.Switch(channel.Expect(&nonce), channel.PassErrors)
+	if err != nil {
 		conn.Close()
-		return stopListener, nil
+		return false, err
 	}
 
-	if b, ok := mod.registeredNodeByNonce(nonce); ok {
+	if b, ok := mod.registeredNodeByNonce(*nonce); ok {
 		mod.log.Infov(2, "added idle conn to registered node %v", b.Identity)
 		bc := b.registerConn(conn, mod.log)
 		go bc.eventLoop(mod.ctx)
 		return stopListener, nil
 	}
 
-	c, ok := mod.connectorByNonce(nonce)
+	c, ok := mod.connectorByNonce(*nonce)
 	if !ok {
 		mod.log.Errorv(1, "unknown nonce %v from %v", nonce, conn.RemoteEndpoint())
 		conn.Close()

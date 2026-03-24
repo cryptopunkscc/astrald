@@ -62,52 +62,52 @@ func newIdleConn(conn exonet.Conn, role connRole, identity *astral.Identity, l *
 	return c
 }
 
-func (c *idleConn) Ready() <-chan struct{} { return c.readyCh }
-func (c *idleConn) Done() <-chan struct{}  { return c.doneCh }
+func (conn *idleConn) Ready() <-chan struct{} { return conn.readyCh }
+func (conn *idleConn) Done() <-chan struct{}  { return conn.doneCh }
 
-func (c *idleConn) markReady() {
-	c.readyOnce.Do(func() { close(c.readyCh) })
+func (conn *idleConn) markReady() {
+	conn.readyOnce.Do(func() { close(conn.readyCh) })
 }
 
-func (c *idleConn) Close() error {
-	if c.closed.Swap(true) {
+func (conn *idleConn) Close() error {
+	if conn.closed.Swap(true) {
 		return nil
 	}
-	err := c.Conn.Close()
-	c.doneOnce.Do(func() { close(c.doneCh) })
+	err := conn.Conn.Close()
+	conn.doneOnce.Do(func() { close(conn.doneCh) })
 	return err
 }
 
-func (c *idleConn) activate(ctx context.Context) error {
-	if c.role != roleGateway {
+func (conn *idleConn) activate(ctx context.Context) error {
+	if conn.role != roleGateway {
 		return errors.New("activate called on non-gateway conn")
 	}
-	c.handoffOnce.Do(func() { close(c.handoffCh) })
+	conn.handoffOnce.Do(func() { close(conn.handoffCh) })
 
 	select {
-	case <-c.readyCh:
+	case <-conn.readyCh:
 		return nil
-	case <-c.doneCh:
+	case <-conn.doneCh:
 		return ErrConnClosed
 	case <-ctx.Done():
 		return ctx.Err()
 	}
 }
 
-func (c *idleConn) setReadDeadline(t time.Time) {
-	if dl, ok := c.Conn.(deadliner); ok {
+func (conn *idleConn) setReadDeadline(t time.Time) {
+	if dl, ok := conn.Conn.(deadliner); ok {
 		dl.SetReadDeadline(t)
 	}
 }
 
-func (c *idleConn) setWriteDeadline(t time.Time) {
-	if dl, ok := c.Conn.(deadliner); ok {
+func (conn *idleConn) setWriteDeadline(t time.Time) {
+	if dl, ok := conn.Conn.(deadliner); ok {
 		dl.SetWriteDeadline(t)
 	}
 }
 
-func (c *idleConn) eventLoop(ctx context.Context) {
-	ch := channel.New(c.Conn)
+func (conn *idleConn) eventLoop(ctx context.Context) {
+	ch := channel.New(conn.Conn)
 
 	lastActivity := time.Now()
 	lastPing := time.Time{}
@@ -116,7 +116,7 @@ func (c *idleConn) eventLoop(ctx context.Context) {
 
 	defer func() {
 		if !handoffSuccess {
-			c.Close()
+			conn.Close()
 		}
 	}()
 
@@ -129,10 +129,10 @@ func (c *idleConn) eventLoop(ctx context.Context) {
 
 		now := time.Now()
 
-		if c.role == roleGateway && !handoffDone {
+		if conn.role == roleGateway && !handoffDone {
 			select {
-			case <-c.handoffCh:
-				c.setWriteDeadline(now.Add(writeTimeout))
+			case <-conn.handoffCh:
+				conn.setWriteDeadline(now.Add(writeTimeout))
 				if err := ch.Send(&Handoff{}); err != nil {
 					return
 				}
@@ -144,7 +144,7 @@ func (c *idleConn) eventLoop(ctx context.Context) {
 		}
 
 		if now.Sub(lastActivity) >= pingInterval && now.Sub(lastPing) >= pingInterval {
-			c.setWriteDeadline(now.Add(writeTimeout))
+			conn.setWriteDeadline(now.Add(writeTimeout))
 			if err := ch.Send(&Ping{}); err != nil {
 				return
 			}
@@ -152,17 +152,17 @@ func (c *idleConn) eventLoop(ctx context.Context) {
 		}
 
 		readWait := pingTimeout
-		if c.role == roleGateway && !handoffDone {
+		if conn.role == roleGateway && !handoffDone {
 			readWait = handoffPollInterval
 		}
 
-		c.setReadDeadline(now.Add(readWait))
+		conn.setReadDeadline(now.Add(readWait))
 
 		obj, err := ch.Receive()
 		if err != nil {
 			if isTimeout(err) {
 				if time.Since(lastActivity) >= pingTimeout {
-					c.log.Logv(2, "closing idle conn with %v idle for %v", c.withIdentity, time.Since(lastActivity).Round(time.Second).String())
+					conn.log.Logv(2, "closing idle conn with %v idle for %v", conn.withIdentity, time.Since(lastActivity).Round(time.Second).String())
 					return
 				}
 				continue
@@ -176,28 +176,28 @@ func (c *idleConn) eventLoop(ctx context.Context) {
 		switch m := obj.(type) {
 		case *Ping:
 			if !m.Pong {
-				c.setWriteDeadline(time.Now().Add(writeTimeout))
+				conn.setWriteDeadline(time.Now().Add(writeTimeout))
 				if err := ch.Send(&Ping{Pong: true}); err != nil {
 					return
 				}
 			}
 
 		case *Handoff:
-			c.setWriteDeadline(time.Now().Add(writeTimeout))
+			conn.setWriteDeadline(time.Now().Add(writeTimeout))
 			if err := ch.Send(&HandoffAck{}); err != nil {
 				return
 			}
 			handoffSuccess = true
-			c.setReadDeadline(time.Time{})
-			c.setWriteDeadline(time.Time{})
-			c.markReady()
+			conn.setReadDeadline(time.Time{})
+			conn.setWriteDeadline(time.Time{})
+			conn.markReady()
 			return
 
 		case *HandoffAck:
 			handoffSuccess = true
-			c.setReadDeadline(time.Time{})
-			c.setWriteDeadline(time.Time{})
-			c.markReady()
+			conn.setReadDeadline(time.Time{})
+			conn.setWriteDeadline(time.Time{})
+			conn.markReady()
 			return
 
 		default:

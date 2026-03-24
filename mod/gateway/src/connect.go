@@ -41,13 +41,13 @@ func (mod *Module) reserveConn(caller *astral.Identity, target *astral.Identity,
 		defer t.Stop()
 		<-t.C
 
-		bc := c.takeIdleConn()
-		if bc == nil {
+		idleConn := c.takeIdleConn()
+		if idleConn == nil {
 			return
 		}
 
 		mod.connectors.Remove(c)
-		if err := bc.Close(); err != nil {
+		if err := idleConn.Close(); err != nil {
 			mod.log.Error("failed to close reserved conn: %v", err)
 		}
 	}()
