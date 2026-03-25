@@ -22,6 +22,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 
 	_ = assets.LoadYAML(tcp.ModuleName, &mod.config)
 
+	mod.ops.AddStructPrefix(mod, "Op")
+
 	for _, addr := range mod.config.Endpoints {
 		addr, _ = strings.CutPrefix(addr, fmt.Sprintf("%s:", tcp.ModuleName))
 

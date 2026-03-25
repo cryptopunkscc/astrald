@@ -2,62 +2,109 @@ package tcp
 
 import (
 	"context"
+	"fmt"
 	"net"
-	"strconv"
+	"sync/atomic"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 )
 
+var _ exonet.EphemeralListener = &Server{}
+
 type Server struct {
 	*Module
+	listenPort astral.Uint16
+	listener   net.Listener
+	onAccept   exonet.EphemeralHandler
+	closed     atomic.Bool
+	closedCh   chan struct{}
 }
 
-func NewServer(module *Module) *Server {
-	return &Server{Module: module}
-}
-
-func (srv *Server) Run(ctx context.Context) error {
-	// start the listener
-	var addrStr = ":" + strconv.Itoa(srv.config.ListenPort)
-
-	listener, err := net.Listen("tcp", addrStr)
-	if err != nil {
-		srv.log.Errorv(0, "failed to start server: %v", err)
-		return err
+func NewServer(module *Module, listenPort astral.Uint16, onAccept exonet.EphemeralHandler) *Server {
+	return &Server{
+		Module:     module,
+		listenPort: listenPort,
+		onAccept:   onAccept,
+		closedCh:   make(chan struct{}),
 	}
+}
+
+func (s *Server) Run(ctx *astral.Context) error {
+	addr := fmt.Sprintf(":%d", s.listenPort)
+
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("tcp server/run: failed to listen on %v: %w", addr, err)
+	}
+
+	s.listener = listener
 
 	endpoint, _ := tcp.ParseEndpoint(listener.Addr().String())
 
-	srv.log.Info("started server at %v", endpoint)
-	defer srv.log.Info("stopped server at %v", endpoint)
-
+	s.log.Info("started server at %v", endpoint)
 	go func() {
-		<-ctx.Done()
-		listener.Close()
+		select {
+		case <-ctx.Done():
+			s.Close()
+		case <-s.Done():
+		}
 	}()
 
-	// accept connections
 	for {
 		rawConn, err := listener.Accept()
 		if err != nil {
-			return err
+			if s.closed.Load() || ctx.Err() != nil {
+				s.log.Info("stopped server at %v", endpoint)
+				return nil
+			}
+
+			return fmt.Errorf("tcp server/run: accept failed: %w", err)
 		}
 
-		var conn = tcp.WrapConn(rawConn, false)
+		if tc, ok := rawConn.(*net.TCPConn); ok {
+			tc.SetKeepAlive(true)
+			tc.SetKeepAlivePeriod(30 * time.Second)
+		}
 
+		conn := tcp.WrapConn(rawConn, false)
 		go func() {
-			err := srv.Nodes.EstablishInboundLink(ctx, conn)
+			stopListener, err := s.onAccept(ctx, conn)
 			if err != nil {
-				srv.log.Errorv(1, "handshake failed from %v: %v", conn.RemoteEndpoint(), err)
+				conn.Close()
+				s.log.Errorv(1, "tcp server/onAccept error from %v: %v", conn.RemoteEndpoint(), err)
 				return
+			}
+
+			if stopListener {
+				s.Close()
 			}
 		}()
 	}
 }
 
+func (s *Server) Done() <-chan struct{} {
+	return s.closedCh
+}
+
+func (s *Server) Close() error {
+	if !s.closed.CompareAndSwap(false, true) {
+		return nil
+	}
+
+	if s.listener != nil {
+		return s.listener.Close()
+	}
+
+	close(s.closedCh)
+	return nil
+}
+
 func (mod *Module) startServer(ctx context.Context) {
-	srv := NewServer(mod)
+	listenPort := astral.Uint16(mod.config.ListenPort)
+	srv := NewServer(mod, listenPort, mod.acceptAll)
 	if err := srv.Run(astral.NewContext(ctx)); err != nil {
 		mod.log.Errorv(1, "server error: %v", err)
 	}
