@@ -27,6 +27,10 @@ func Default() *Client {
 	return defaultClient
 }
 
+func (client *Client) WithTarget(target *astral.Identity) *Client {
+	return &Client{astral: client.astral, targetID: target}
+}
+
 func (client *Client) queryCh(ctx *astral.Context, method string, args any) (*channel.Channel, error) {
 	return client.astral.WithTarget(client.targetID).QueryChannel(ctx, method, args)
 }

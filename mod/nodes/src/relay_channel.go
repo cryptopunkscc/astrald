@@ -59,7 +59,7 @@ func (mod *Module) relayQuery(ctx *astral.Context, q *astral.Query, relayID *ast
 	key := relayID.String()
 	rc, ok := mod.relayChannels.Get(key)
 	if !ok {
-		ch, err := nodescli.Default().OpenRelay(ctx)
+		ch, err := nodescli.Default().WithTarget(relayID).OpenRelay(ctx)
 		if err != nil {
 			conn.swapState(stateRouting, stateClosed)
 			mod.peers.sessions.Delete(q.Nonce)
