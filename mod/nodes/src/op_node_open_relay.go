@@ -23,11 +23,11 @@ func (mod *Module) OpNodeOpenRelay(_ *astral.Context, q *ops.Query) error {
 			}
 		}
 
-		err := mod.peers.relayQuery(container, q.Nonce)
+		err := mod.peers.handleRelayQuery(container, q.Nonce)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
 
-		return nil
+		return ch.Send(&astral.Ack{})
 	})
 }

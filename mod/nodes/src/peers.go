@@ -12,7 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
+	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -124,55 +124,22 @@ func (mod *Peers) frameReader(ctx context.Context) {
 	}
 }
 
-func (mod *Peers) relayQuery(qc *nodes.QueryContainer, channelNonce astral.Nonce) (err error) {
-	channelSession, ok := mod.sessions.Get(channelNonce)
-	if !ok {
-		return fmt.Errorf("no session for channel nonce %v", channelNonce)
+// handleRelayQuery routes a query received via a relay channel to its target and bridges
+// the resulting session back to the caller over the relay peer's stream.
+func (mod *Peers) handleRelayQuery(relayQuery *nodes.QueryContainer, relayNonce astral.Nonce) error {
+	s := mod.findStreamBySessionNonce(relayNonce)
+	if s == nil {
+		return nodes.ErrStreamNotFound
 	}
 
-	stream := channelSession.stream
-
-	session, ok := mod.sessions.Set(qc.Query.Nonce, newSession(qc.Query.Nonce))
-	if !ok {
-		return // ignore duplicates
-	}
-
-	session.RemoteIdentity = qc.CallerID
-	session.Query = qc.Query.Query
-	session.stream = stream
-	session.wsize = int(qc.Query.Buffer)
-
-	var q = &astral.Query{
-		Nonce:  qc.Query.Nonce,
-		Caller: qc.CallerID,
-		Target: qc.TargetID,
-		Query:  qc.Query.Query,
-	}
-
-	q.Extra.Set("origin", astral.OriginNetwork)
-
-	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
-
-	w, err := mod.node.RouteQuery(ctx, q, session)
-	if err != nil {
-		session.swapState(stateRouting, stateClosed)
-		var code = uint8(frames.CodeRejected)
-		var reject *astral.ErrRejected
-		if errors.As(err, &reject) {
-			code = reject.Code
-		}
-
-		stream.Write(&frames.Response{Nonce: qc.Query.Nonce, ErrCode: code})
-		return
-	}
-
-	stream.Write(&frames.Response{Nonce: qc.Query.Nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(session.rsize)})
-	session.swapState(stateRouting, stateOpen)
-
-	go func() {
-		io.Copy(w, session)
-		w.Close()
-	}()
+	mod.handleInboundQuery(
+		s,
+		relayQuery.Query.Nonce,
+		relayQuery.CallerID,
+		relayQuery.TargetID,
+		relayQuery.Query.Query,
+		int(relayQuery.Query.Buffer),
+	)
 
 	return nil
 }

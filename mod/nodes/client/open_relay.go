@@ -2,31 +2,15 @@ package nodes
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	nodesmod "github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
-func (client *Client) SendRelayedQuery(ctx *astral.Context, container *nodesmod.QueryContainer) error {
+func (client *Client) OpenRelay(ctx *astral.Context) (*channel.Channel, error) {
 	ch, err := client.queryCh(ctx, nodesmod.MethodNodeOpenRelay, nil)
 	if err != nil {
-		return err
-	}
-	defer ch.Close()
-
-	if err := ch.Send(container); err != nil {
-		return err
+		return nil, err
 	}
 
-	response, err := ch.Receive()
-	if err != nil {
-		return err
-	}
-
-	switch r := response.(type) {
-	case *astral.ErrorMessage:
-		return r
-	case *astral.Ack:
-		return nil
-	default:
-		return astral.NewErrUnexpectedObject(r)
-	}
+	return ch, nil
 }

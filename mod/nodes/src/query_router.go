@@ -9,8 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	nodescli "github.com/cryptopunkscc/astrald/mod/nodes/client"
-	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
 )
 
 func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (rw io.WriteCloser, err error) {
@@ -71,67 +69,13 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 			continue
 		}
 
-		rw, err := mod.routeViaRelay(ctx, q, relayID, w)
+		rw, err := mod.relayQuery(ctx, q, relayID, w)
 		if err == nil {
 			return rw, nil
 		}
 	}
 
 	return query.RouteNotFound(mod)
-}
-
-func (mod *Module) routeViaRelay(ctx *astral.Context, q *astral.Query, relayID *astral.Identity, w io.WriteCloser) (io.WriteCloser, error) {
-	if !ctx.Identity().IsEqual(q.Caller) {
-		if err := mod.sendCallerProof(ctx, q, relayID); err != nil {
-			return query.RouteNotFound(mod, fmt.Errorf("caller proof: %w", err))
-		}
-	}
-
-	conn, ok := mod.peers.sessions.Set(q.Nonce, newSession(q.Nonce))
-	if !ok {
-		return query.RouteNotFound(mod, errors.New("session nonce already in use"))
-	}
-	conn.RemoteIdentity = relayID
-	conn.Query = q.Query
-	conn.Outbound = true
-
-	// build and send the relay container
-	container := &nodes.QueryContainer{
-		CallerID: q.Caller,
-		TargetID: q.Target,
-		Query: frames.Query{
-			Nonce:  q.Nonce,
-			Buffer: uint32(conn.rsize),
-			Query:  q.Query,
-		},
-	}
-
-	if err := nodescli.New(relayID, nil).SendRelayedQuery(ctx, container); err != nil {
-		conn.swapState(stateRouting, stateClosed)
-		mod.peers.sessions.Delete(q.Nonce)
-		return query.RouteNotFound(mod, fmt.Errorf("send relay container: %w", err))
-	}
-
-	// wait for frames.Response from the relay peer stream
-	select {
-	case errCode := <-conn.res:
-		if errCode != 0 {
-			mod.peers.sessions.Delete(q.Nonce)
-			return query.RejectWithCode(errCode)
-		}
-
-		go func() {
-			io.Copy(w, conn)
-			w.Close()
-		}()
-
-		return conn, nil
-
-	case <-ctx.Done():
-		conn.swapState(stateRouting, stateClosed)
-		mod.peers.sessions.Delete(q.Nonce)
-		return query.RouteNotFound(mod, ctx.Err())
-	}
 }
 
 func (mod *Module) sendCallerProof(ctx *astral.Context, q *astral.Query, target *astral.Identity) error {
