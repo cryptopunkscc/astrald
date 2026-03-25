@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -40,22 +39,4 @@ func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-c
 
 func (mod *Module) AddDescriber(describer objects.Describer) error {
 	return mod.describers.Add(describer)
-}
-
-type describeArgs struct {
-	ID   *astral.ObjectID
-	Out  string `query:"optional"`
-	Zone string `query:"optional"`
-}
-
-func (a *describeArgs) Validate() error {
-	if a.ID.IsZero() {
-		return errors.New("object ID is required")
-	}
-	switch a.Out {
-	case "", "json":
-	default:
-		return errors.New("invlid format: " + a.Out)
-	}
-	return nil
 }
