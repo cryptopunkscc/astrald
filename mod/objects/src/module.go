@@ -184,6 +184,7 @@ func (mod *Module) AddRepository(name string, repo objects.Repository) error {
 
 func (mod *Module) GetRepository(name string) (repo objects.Repository) {
 	repo, _ = mod.repos.Get(name)
+
 	return
 }
 

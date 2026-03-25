@@ -1,6 +1,8 @@
 package objects
 
 import (
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -9,9 +11,11 @@ import (
 )
 
 type opDescribeArgs struct {
-	ID   *astral.ObjectID
-	Out  string      `query:"optional"`
-	Zone astral.Zone `query:"optional"`
+	ID     *astral.ObjectID
+	Out    string      `query:"optional"`
+	Zone   astral.Zone `query:"optional"`
+	Only   *string     `query:"optional"`
+	Except *string     `query:"optional"`
 }
 
 func (mod *Module) OpDescribe(ctx *astral.Context, q *ops.Query, args opDescribeArgs) (err error) {
@@ -21,12 +25,26 @@ func (mod *Module) OpDescribe(ctx *astral.Context, q *ops.Query, args opDescribe
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
+	var only, except []string
+	if args.Only != nil && len(*args.Only) > 0 {
+		only = strings.Split(*args.Only, ",")
+	}
+	if args.Except != nil && len(*args.Except) > 0 {
+		except = strings.Split(*args.Except, ",")
+	}
+
 	descriptors, err := mod.Describe(ctx, args.ID)
 	if err != nil {
 		return
 	}
 
 	for descriptor := range descriptors {
+		if len(only) > 0 && !slices.Contains(only, descriptor.ObjectType()) {
+			continue
+		}
+		if len(except) > 0 && slices.Contains(except, descriptor.ObjectType()) {
+			continue
+		}
 		err = ch.Send(descriptor)
 		if err != nil {
 			return

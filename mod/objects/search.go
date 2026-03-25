@@ -2,41 +2,19 @@ package objects
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 // Searcher is used to search for objects matching a query
 type Searcher interface {
-	SearchObject(ctx *astral.Context, query string, opts *SearchOpts) (<-chan *SearchResult, error)
+	SearchObject(ctx *astral.Context, query SearchQuery) (<-chan *SearchResult, error)
 }
 
 type SearchPreprocessor interface {
 	PreprocessSearch(*Search)
 }
 
-type SearchOpts struct {
-	*astral.Scope
-	ClientID *astral.Identity
-	Extra    sig.Map[string, any]
-}
-
 type Search struct {
 	CallerID *astral.Identity
-	Query    string
+	Query    SearchQuery
 	Sources  []*astral.Identity
-}
-
-func DefaultSearchOpts() *SearchOpts {
-	return &SearchOpts{
-		Scope: astral.DefaultScope(),
-	}
-}
-
-// SearchArgs contains arguments to the objects.search call
-type SearchArgs struct {
-	Query string      `query:"key:q"`
-	Repo  string      `query:"optional"` // return only objects that this repo contains
-	Zone  astral.Zone `query:"optional"`
-	Ext   string      `query:"optional"`
-	Out   string      `query:"optional"`
 }

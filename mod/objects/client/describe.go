@@ -9,7 +9,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/allpub"
 )
 
-func (client *Client) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, *error) {
+func (client *Client) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, *error) {
 	ch, err := client.queryCh(ctx, objects.MethodDescribe, query.Args{
 		"id": objectID.String(),
 	})
@@ -17,7 +17,7 @@ func (client *Client) Describe(ctx *astral.Context, objectID *astral.ObjectID) (
 		return nil, &err
 	}
 
-	out := make(chan *objects.DescribeResult)
+	out := make(chan *objects.Descriptor)
 	errPtr := new(error)
 
 	go func() {
@@ -30,6 +30,6 @@ func (client *Client) Describe(ctx *astral.Context, objectID *astral.ObjectID) (
 	return out, errPtr
 }
 
-func Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.DescribeResult, *error) {
+func Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, *error) {
 	return Default().Describe(ctx, objectID)
 }

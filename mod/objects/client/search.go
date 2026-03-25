@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (client *Client) Search(ctx *astral.Context, q string) (<-chan *objects.SearchResult, *error) {
+func (client *Client) Search(ctx *astral.Context, q objects.SearchQuery) (<-chan *objects.SearchResult, *error) {
 	ch, err := client.queryCh(ctx, objects.MethodSearch, query.Args{
 		"q": q,
 	})
@@ -28,6 +28,6 @@ func (client *Client) Search(ctx *astral.Context, q string) (<-chan *objects.Sea
 	return out, errPtr
 }
 
-func Search(ctx *astral.Context, q string) (<-chan *objects.SearchResult, *error) {
+func Search(ctx *astral.Context, q objects.SearchQuery) (<-chan *objects.SearchResult, *error) {
 	return Default().Search(ctx, q)
 }
