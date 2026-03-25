@@ -103,7 +103,7 @@ func (srv *ObjectServer) ServeHTTP(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
-	if !srv.Deps.Auth.Authorize(clientID, objects.ActionRead, objectID) {
+	if !srv.Deps.Auth.Authorize(srv.ctx, clientID, objects.ActionRead, objectID) {
 		writer.WriteHeader(http.StatusForbidden)
 		return
 	}

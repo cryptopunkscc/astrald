@@ -27,13 +27,13 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, target astral.Object) bool {
+func (mod *Module) Authorize(ctx *astral.Context, identity *astral.Identity, action auth.Action, target astral.Object) bool {
 	if identity.IsEqual(mod.node.Identity()) {
 		return true
 	}
 
 	for _, a := range mod.authorizers.Clone() {
-		if a.Authorize(identity, action, target) {
+		if a.Authorize(ctx, identity, action, target) {
 			name := reflect.TypeOf(a).String()
 			if s, ok := a.(fmt.Stringer); ok {
 				name = s.String()

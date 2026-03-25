@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, target astral.Object) bool {
+func (mod *Module) Authorize(ctx *astral.Context, identity *astral.Identity, action auth.Action, target astral.Object) bool {
 	if identity.IsZero() {
 		return false
 	}
@@ -25,37 +25,36 @@ func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, targ
 		objects.ActionCreate:      {auth.NewHandler(mod.AuthorizeUser), auth.NewHandler(mod.AuthorizeNodeCreate)},
 		user.ActionRevokeContract: {auth.NewHandler(mod.AuthorizeUserRevokeContract), auth.NewHandler(mod.AuthorizeNodeRevokeContract)},
 		nodes.ActionRelayFor:      {auth.NewHandler(mod.AuthorizeNodeRelay)},
-	}, identity, action, target)
+	}, ctx, identity, action, target)
 }
 
-func (mod *Module) AuthorizeUser(identity *astral.Identity, target astral.Object) bool {
+func (mod *Module) AuthorizeUser(_ *astral.Context, identity *astral.Identity, target astral.Object) bool {
 	return identity.IsEqual(mod.Identity())
 }
 
-func (mod *Module) AuthorizeUserRevokeContract(identity *astral.Identity, contract *user.SignedNodeContract) bool {
+func (mod *Module) AuthorizeUserRevokeContract(_ *astral.Context, identity *astral.Identity, contract *user.SignedNodeContract) bool {
 	return identity.IsEqual(mod.Identity())
 }
 
-func (mod *Module) AuthorizeNodeRead(identity *astral.Identity, target astral.Object) bool {
+func (mod *Module) AuthorizeNodeRead(ctx *astral.Context, identity *astral.Identity, target astral.Object) bool {
 	for _, u := range mod.ActiveUsers(identity) {
-		if mod.Authorize(u, objects.ActionRead, target) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (mod *Module) AuthorizeNodeCreate(identity *astral.Identity, target astral.Object) bool {
-	for _, u := range mod.ActiveUsers(identity) {
-		if mod.Authorize(u, objects.ActionCreate, target) {
+		if mod.Authorize(ctx, u, objects.ActionRead, target) {
 			return true
 		}
 	}
 	return false
 }
 
-func (mod *Module) AuthorizeNodeRelay(identity *astral.Identity, targetID *astral.Identity) bool {
+func (mod *Module) AuthorizeNodeCreate(ctx *astral.Context, identity *astral.Identity, target astral.Object) bool {
+	for _, u := range mod.ActiveUsers(identity) {
+		if mod.Authorize(ctx, u, objects.ActionCreate, target) {
+			return true
+		}
+	}
+	return false
+}
+
+func (mod *Module) AuthorizeNodeRelay(_ *astral.Context, identity *astral.Identity, targetID *astral.Identity) bool {
 	for _, u := range mod.ActiveUsers(identity) {
 		if u.IsEqual(targetID) {
 			return true
@@ -64,7 +63,7 @@ func (mod *Module) AuthorizeNodeRelay(identity *astral.Identity, targetID *astra
 	return false
 }
 
-func (mod *Module) AuthorizeNodeRevokeContract(identity *astral.Identity, contract *user.SignedNodeContract) bool {
+func (mod *Module) AuthorizeNodeRevokeContract(_ *astral.Context, identity *astral.Identity, contract *user.SignedNodeContract) bool {
 	userID := mod.Identity()
 
 	if contract.UserID.IsEqual(userID) {
