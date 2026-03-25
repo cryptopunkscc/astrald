@@ -69,6 +69,6 @@ func (mod *Module) OpSignHash(ctx *astral.Context, q *ops.Query, args opSignHash
 		func(hash *crypto.Hash) error {
 			return signAndSend(*hash)
 		},
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 	)
 }

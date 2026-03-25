@@ -65,6 +65,6 @@ func (mod *Module) OpSignText(ctx *astral.Context, q *ops.Query, args opSignText
 		func(text *astral.String16) error {
 			return signAndSend(text.String())
 		},
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 	)
 }

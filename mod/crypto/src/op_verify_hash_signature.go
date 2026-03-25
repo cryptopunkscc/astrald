@@ -69,6 +69,6 @@ func (mod *Module) OpVerifyHashSignature(ctx *astral.Context, q *ops.Query, args
 			hash = *hash2
 			return ch.Send(&astral.Ack{})
 		},
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 	)
 }

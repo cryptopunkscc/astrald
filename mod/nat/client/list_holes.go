@@ -23,7 +23,7 @@ func (client *Client) ListHoles(ctx *astral.Context, with string) ([]*nat.Hole, 
 
 	err = ch.Switch(
 		channel.Collect(&holes),
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 		func(msg *astral.ErrorMessage) error {
 			return msg
 		},

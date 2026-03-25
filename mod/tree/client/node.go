@@ -52,7 +52,7 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 		defer ch.Close()
 		defer close(out)
 		ch.Switch(
-			channel.StopOnEOS,
+			channel.BreakOnEOS,
 			func(obj astral.Object) {
 				select {
 				case <-ctx.Done():
@@ -130,7 +130,7 @@ func (node *Node) Sub(ctx *astral.Context) (map[string]tree.Node, error) {
 		func(msg *astral.String8) {
 			sub[string(*msg)] = &Node{client: node.client, path: append(node.path, string(*msg))}
 		},
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 		channel.PassErrors,
 	)
 

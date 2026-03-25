@@ -21,6 +21,6 @@ func (mod *Module) OpPublicKey(ctx *astral.Context, q *ops.Query, args opPublicK
 		func(key *crypto.PrivateKey) error {
 			return ch.Send(secp256k1.PublicKey(key))
 		},
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 	)
 }

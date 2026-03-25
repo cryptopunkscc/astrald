@@ -57,6 +57,6 @@ func (mod *Module) OpVerifyTextSignature(ctx *astral.Context, q *ops.Query, args
 			}
 			return ch.Send(&astral.Ack{})
 		},
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 	)
 }

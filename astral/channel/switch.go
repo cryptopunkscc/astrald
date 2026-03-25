@@ -24,7 +24,7 @@ var configType = reflect.TypeOf((*Config)(nil)).Elem()
 //			func(s *astral.String8) {
 //				fmt.Println(*s)
 //			},
-//			channel.StopOnEOS,
+//			channel.BreakOnEOS,
 //		)
 //
 // Switch supports config functions WithTimeout() and WithContext().
@@ -113,8 +113,8 @@ func ExpectAck(*astral.Ack) error {
 	return ErrBreak
 }
 
-// StopOnEOS stops the Switch function on EOS.
-func StopOnEOS(*astral.EOS) error {
+// BreakOnEOS stops the Switch function on EOS.
+func BreakOnEOS(*astral.EOS) error {
 	return ErrBreak
 }
 
@@ -125,7 +125,7 @@ func PassErrors(err error) error {
 // Collect appends objects to a slice. Example:
 //
 //	var list []*astral.String8
-//	ch.Switch(channel.Collect(&list), channel.StopOnEOS)
+//	ch.Switch(channel.Collect(&list), channel.BreakOnEOS)
 func Collect[T astral.Object](dst *[]T) func(T) error {
 	return func(v T) error {
 		*dst = append(*dst, v)
@@ -136,7 +136,7 @@ func Collect[T astral.Object](dst *[]T) func(T) error {
 // Chan sends objects to a go channel. Example:
 //
 //	var ch := make(chan *astral.String8)
-//	ch.Switch(channel.Chan(ch), channel.StopOnEOS)
+//	ch.Switch(channel.Chan(ch), channel.BreakOnEOS)
 func Chan[T astral.Object](dst chan<- T) func(T) error {
 	return func(v T) error {
 		dst <- v
