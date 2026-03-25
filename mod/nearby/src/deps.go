@@ -1,6 +1,7 @@
 package nearby
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -14,6 +15,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
+	"github.com/cryptopunkscc/astrald/mod/tree"
+	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
 type Deps struct {
@@ -23,14 +26,25 @@ type Deps struct {
 	Exonet  exonet.Module
 	Nodes   nodes.Module
 	Objects objects.Module
+	User    user.Module
 	Shell   shell.Module
 	TCP     tcp.Module
+	Tree    tree.Module
 }
 
-func (mod *Module) LoadDependencies(*astral.Context) (err error) {
+func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
 		return
+	}
+
+	var modePath = fmt.Sprintf("/mod/%s/mode", nearby.ModuleName)
+	err = mod.mode.BindPath(ctx, mod.Tree.Root(), modePath, true)
+	if err != nil {
+		return
+	}
+	if mod.mode.Get() == nil {
+		_ = mod.SetMode(ctx, mod.config.Mode)
 	}
 
 	mod.Dir.AddResolver(mod)
@@ -46,6 +60,7 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 				mod.AddStatusComposer(a)
 				composers = append(composers, a)
 			}
+
 		}
 
 		if mod.composers.Count() > 0 {

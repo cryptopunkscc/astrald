@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	ipmod "github.com/cryptopunkscc/astrald/mod/ip"
+	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
@@ -16,6 +17,7 @@ import (
 type Deps struct {
 	Exonet  exonet.Module
 	Nodes   nodes.Module
+	Nearby  nearby.Module
 	Objects objects.Module
 	IP      ipmod.Module
 	Tree    tree.Module

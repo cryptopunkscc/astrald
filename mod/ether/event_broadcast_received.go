@@ -10,7 +10,6 @@ import (
 var _ astral.Object = &EventBroadcastReceived{}
 
 type EventBroadcastReceived struct {
-	SourceID *astral.Identity
 	SourceIP ip.IP
 	Object   astral.Object
 }

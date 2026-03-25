@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
+	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -22,12 +23,13 @@ type Module struct {
 	node   astral.Node
 	config Config
 	log    *log.Logger
+	ctx    *astral.Context
 
-	composers  sig.Set[nearby.Composer]
-	cache      sig.Map[string, *cache]
-	setVisible chan bool
-	visible    sig.Value[bool]
-	scope      ops.Set
+	composers sig.Set[nearby.Composer]
+
+	cache sig.Map[string, *cache]
+	mode  tree.Value[*nearby.Mode]
+	scope ops.Set
 }
 
 type cache struct {
@@ -38,9 +40,8 @@ type cache struct {
 }
 
 func (mod *Module) Run(ctx *astral.Context) (err error) {
+	mod.ctx = ctx
 	go mod.periodicUpdater(ctx)
-
-	mod.SetVisible(mod.config.Visible)
 
 	go func() {
 		<-time.After(time.Second)
@@ -55,35 +56,20 @@ func (mod *Module) Scan() error {
 	return mod.Ether.Push(&nearby.ScanMessage{}, nil)
 }
 
-func (mod *Module) Broadcasters() []*nearby.Broadcaster {
-	var list []*nearby.Broadcaster
-
-	for _, c := range mod.Cache().Clone() {
-		if c.Identity.IsEqual(mod.node.Identity()) {
-			continue
-		}
-		list = append(list, &nearby.Broadcaster{
-			Identity:    c.Identity,
-			Alias:       c.Status.Alias,
-			LastSeen:    astral.Time(c.Timestamp),
-			Attachments: c.Status.Attachments,
-		})
-	}
-
-	return list
-}
-
 func (mod *Module) AddStatusComposer(composer nearby.Composer) {
 	mod.composers.Add(composer)
 }
 
-func (mod *Module) SetVisible(b bool) error {
-	select {
-	case mod.setVisible <- b:
-	default:
+func (mod *Module) Mode() nearby.Mode {
+	m := mod.mode.Get()
+	if m == nil {
+		return nearby.ModeVisible
 	}
+	return *m
+}
 
-	return nil
+func (mod *Module) SetMode(ctx *astral.Context, m nearby.Mode) error {
+	return mod.mode.Set(ctx, &m)
 }
 
 func (mod *Module) Cache() *sig.Map[string, *cache] {
@@ -106,7 +92,7 @@ func (mod *Module) myAlias() string {
 
 func (mod *Module) periodicUpdater(ctx context.Context) {
 	for {
-		if mod.visible.Get() {
+		if mod.Mode() != nearby.ModeSilent {
 			if err := mod.Broadcast(); err != nil {
 				mod.log.Error("push error: %v", err)
 			} else {
@@ -116,9 +102,6 @@ func (mod *Module) periodicUpdater(ctx context.Context) {
 
 		select {
 		case <-time.After(statusExpiration - 5*time.Second): // broadcast 5s early to avoid status timeout
-		case v := <-mod.setVisible:
-			mod.visible.Set(v)
-
 		case <-ctx.Done():
 			return
 		}
@@ -126,21 +109,30 @@ func (mod *Module) periodicUpdater(ctx context.Context) {
 }
 
 func (mod *Module) Broadcast() error {
-	if !mod.visible.Get() {
-		return errors.New("not visible")
+	if mod.Mode() == nearby.ModeSilent {
+		return errors.New("silent mode")
 	}
 
 	return mod.pushStatus()
 }
 
 func (mod *Module) pushStatus() error {
-	return mod.Ether.Push(mod.Status(nil), nil)
+	s := mod.Status(nil)
+	if !mod.canBroadcast(s) {
+		return nil
+	}
+	return mod.Ether.Push(s, nil)
+}
+
+// canBroadcast returns false when the status should be suppressed.
+// Stealth mode with no attachments (no active contract) falls back to silent.
+func (mod *Module) canBroadcast(s *nearby.StatusMessage) bool {
+	return mod.Mode() != nearby.ModeStealth || len(s.Attachments.Objects()) > 0
 }
 
 func (mod *Module) Status(receiver *astral.Identity) *nearby.StatusMessage {
 	s := &nearby.StatusMessage{
-		Port:        astral.Uint16(mod.TCP.ListenPort()),
-		Alias:       astral.String8(mod.myAlias()),
+		Alias:       mod.myAlias(),
 		Attachments: astral.NewBundle(),
 	}
 
