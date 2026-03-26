@@ -35,6 +35,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 	retrieveCtx, cancel := ctx.WithTimeout(120 * time.Second)
 	defer cancel()
 
+	// todo: there is error printed out  when calling identity that we cannot link with (e.g. other's node app)
 	select {
 	case <-ctx.Done():
 		return query.RouteNotFound(mod, ctx.Err())
@@ -69,7 +70,12 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 			continue
 		}
 
-		rw, err := mod.relayQuery(ctx, q, relayID, w)
+		rc, err := mod.getRelay(ctx, relayID)
+		if err != nil {
+			continue
+		}
+
+		rw, err := rc.RouteQuery(ctx, q, w)
 		if err == nil {
 			return rw, nil
 		}

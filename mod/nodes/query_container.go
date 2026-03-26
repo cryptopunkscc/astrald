@@ -23,6 +23,18 @@ func (c *QueryContainer) ReadFrom(r io.Reader) (int64, error) {
 	return astral.Objectify(c).ReadFrom(r)
 }
 
+func NewQueryContainer(q *astral.Query, bufSize int) *QueryContainer {
+	return &QueryContainer{
+		CallerID: q.Caller,
+		TargetID: q.Target,
+		Query: frames.Query{
+			Nonce:  q.Nonce,
+			Buffer: uint32(bufSize),
+			Query:  q.Query,
+		},
+	}
+}
+
 func init() {
 	_ = astral.Add(&QueryContainer{})
 }

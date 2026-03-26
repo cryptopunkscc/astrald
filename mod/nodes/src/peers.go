@@ -124,14 +124,13 @@ func (mod *Peers) frameReader(ctx context.Context) {
 	}
 }
 
+func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
+	mod.handleInboundQuery(s, f.Nonce, s.RemoteIdentity(), s.LocalIdentity(), f.Query, int(f.Buffer))
+}
+
 // handleRelayQuery routes a query received via a relay channel to its target and bridges
 // the resulting session back to the caller over the relay peer's stream.
-func (mod *Peers) handleRelayQuery(relayQuery *nodes.QueryContainer, relayNonce astral.Nonce) error {
-	s := mod.findStreamBySessionNonce(relayNonce)
-	if s == nil {
-		return nodes.ErrStreamNotFound
-	}
-
+func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) error {
 	mod.handleInboundQuery(
 		s,
 		relayQuery.Query.Nonce,
@@ -142,10 +141,6 @@ func (mod *Peers) handleRelayQuery(relayQuery *nodes.QueryContainer, relayNonce 
 	)
 
 	return nil
-}
-
-func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
-	mod.handleInboundQuery(s, f.Nonce, s.RemoteIdentity(), s.LocalIdentity(), f.Query, int(f.Buffer))
 }
 
 func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, target *astral.Identity, queryStr string, initBuffer int) {
