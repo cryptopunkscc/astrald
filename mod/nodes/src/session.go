@@ -11,7 +11,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
+	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 )
 
 const maxPayloadSize = 8192
