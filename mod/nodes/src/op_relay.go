@@ -21,7 +21,7 @@ func (mod *Module) OpRelay(ctx *astral.Context, q *ops.Query, args opRelayArgs) 
 
 	if !args.SetCaller.IsZero() {
 		if !args.SetCaller.IsEqual(q.Caller()) {
-			if !mod.Auth.Authorize(q.Caller(), nodes.ActionRelayFor, args.SetCaller) {
+			if !mod.Auth.Authorize(ctx, q.Caller(), nodes.ActionRelayFor, args.SetCaller) {
 				return ch.Send(astral.NewError("unauthorized"))
 			}
 		}
