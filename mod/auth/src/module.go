@@ -1,9 +1,6 @@
 package auth
 
 import (
-	"fmt"
-	"reflect"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -16,11 +13,11 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	config      Config
-	node        astral.Node
-	log         *log.Logger
-	assets      resources.Resources
-	authorizers sig.Set[auth.Authorizer]
+	config   Config
+	node     astral.Node
+	log      *log.Logger
+	assets   resources.Resources
+	handlers sig.Map[auth.Action, []auth.Handler]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -32,21 +29,9 @@ func (mod *Module) Authorize(ctx *astral.Context, identity *astral.Identity, act
 		return true
 	}
 
-	for _, a := range mod.authorizers.Clone() {
-		if a.Authorize(ctx, identity, action, target) {
-			name := reflect.TypeOf(a).String()
-			if s, ok := a.(fmt.Stringer); ok {
-				name = s.String()
-			}
-
-			var fmt = "%v allowed %v to %v"
-			var vals = []any{name, identity, action}
-			if target != nil {
-				fmt += " on %v [%v]"
-				vals = append(vals, target, target.ObjectType())
-			}
-
-			mod.log.Infov(3, fmt, vals...)
+	for _, h := range mod.get(action) {
+		if h(ctx, identity, target) {
+			mod.log.Logv(3, "allowed %v to %v", identity, action)
 			return true
 		}
 	}
@@ -60,10 +45,11 @@ func (mod *Module) Authorize(ctx *astral.Context, identity *astral.Identity, act
 	return false
 }
 
-func (mod *Module) AddAuthorizer(authorizer auth.Authorizer) error {
-	return mod.authorizers.Add(authorizer)
+func (mod *Module) AddAuthorizer(action auth.Action, handlers ...auth.Handler) {
+	mod.handlers.Set(action, append(mod.get(action), handlers...))
 }
 
-func (mod *Module) Remove(authorizer auth.Authorizer) error {
-	return mod.authorizers.Remove(authorizer)
+func (mod *Module) get(action auth.Action) []auth.Handler {
+	h, _ := mod.handlers.Get(action)
+	return h
 }

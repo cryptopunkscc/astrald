@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 	"github.com/cryptopunkscc/astrald/mod/tree"
+	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
 type Deps struct {
@@ -33,6 +34,13 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	if err != nil {
 		return
 	}
+
+	auth.AddAuthorizer(mod.Auth, user.ActionRevokeContract,
+		mod.AuthorizeUserRevokeContract,
+	)
+
+	auth.AddAuthorizer(mod.Auth, user.ActionRevokeContract, mod.AuthorizeNodeRevokeContract)
+	auth.AddAuthorizer(mod.Auth, nodes.ActionRelayFor, mod.AuthorizeNodeRelay)
 
 	// bind the config
 	err = tree.BindPath(ctx, &mod.config, mod.Tree.Root(), "/mod/user/config", true)

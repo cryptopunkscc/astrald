@@ -15,5 +15,10 @@ type Deps struct {
 }
 
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
-	return core.Inject(mod.node, &mod.Deps)
+	if err = core.Inject(mod.node, &mod.Deps); err != nil {
+		return
+	}
+	auth.AddAuthorizer(mod.Auth, objects.ActionRead, mod.AuthorizeObjectsReadByFile)
+	auth.AddAuthorizer(mod.Auth, objects.ActionRead, mod.AuthorizeObjectsReadByID)
+	return
 }

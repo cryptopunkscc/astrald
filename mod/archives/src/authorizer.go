@@ -2,17 +2,10 @@ package archives
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) Authorize(ctx *astral.Context, identity *astral.Identity, action auth.Action, target astral.Object) bool {
-	return auth.Auth(auth.ActionsMap{
-		objects.ActionRead: {auth.NewHandler(mod.AuthorizeRead)},
-	}, ctx, identity, action, target)
-}
-
-func (mod *Module) AuthorizeRead(ctx *astral.Context, identity *astral.Identity, objectID *astral.ObjectID) bool {
+func (mod *Module) AuthorizeObjectsRead(ctx *astral.Context, identity *astral.Identity, objectID *astral.ObjectID) bool {
 	var rows []*dbEntry
 
 	var err = mod.db.

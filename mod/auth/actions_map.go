@@ -17,13 +17,11 @@ func NewHandler[T astral.Object](fn func(*astral.Context, *astral.Identity, T) b
 	}
 }
 
-type ActionsMap map[Action][]Handler
-
-func Auth(m ActionsMap, ctx *astral.Context, identity *astral.Identity, action Action, target astral.Object) bool {
-	for _, h := range m[action] {
-		if h(ctx, identity, target) {
-			return true
-		}
+// AddAuthorizer wraps each fn as a type-checked Handler and registers them for action on m.
+func AddAuthorizer[T astral.Object](m Module, action Action, fns ...func(*astral.Context, *astral.Identity, T) bool) {
+	handlers := make([]Handler, len(fns))
+	for i, fn := range fns {
+		handlers[i] = NewHandler(fn)
 	}
-	return false
+	m.AddAuthorizer(action, handlers...)
 }

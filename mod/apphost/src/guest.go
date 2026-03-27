@@ -175,7 +175,7 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 	case q.Caller.IsZero():
 	case q.Caller.IsEqual(guest.guestID):
 	default:
-		if !guest.mod.Authorize(ctx, guest.guestID, auth.ActionSudo, q.Caller) {
+		if !guest.mod.Auth.Authorize(ctx, guest.guestID, auth.ActionSudo, q.Caller) {
 			return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 		}
 	}
