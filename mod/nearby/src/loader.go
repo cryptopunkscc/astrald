@@ -13,10 +13,9 @@ type Loader struct{}
 
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	mod := &Module{
-		node:       node,
-		config:     defaultConfig,
-		log:        log,
-		setVisible: make(chan bool, 1),
+		node:   node,
+		config: defaultConfig,
+		log:    log,
 	}
 
 	_ = assets.LoadYAML(ModuleName, &mod.config)

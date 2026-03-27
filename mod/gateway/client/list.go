@@ -17,7 +17,7 @@ func (c *Client) List(ctx *astral.Context) ([]*astral.Identity, error) {
 	var list []*astral.Identity
 	err = ch.Switch(
 		channel.Collect(&list),
-		channel.StopOnEOS,
+		channel.BreakOnEOS,
 		channel.PassErrors,
 	)
 

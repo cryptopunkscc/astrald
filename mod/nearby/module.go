@@ -10,8 +10,10 @@ const (
 
 type Module interface {
 	Broadcast() error
-	Broadcasters() []*Broadcaster
 	AddStatusComposer(Composer)
+	Mode() Mode
+	SetMode(ctx *astral.Context, m Mode) error
+	ResolveStatus(status *StatusMessage) *astral.Identity
 }
 
 type Composer interface {

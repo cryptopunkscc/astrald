@@ -18,7 +18,6 @@ func (mod *Module) OpList(ctx *astral.Context, q *ops.Query, args opListArgs) (e
 	for _, v := range mod.Cache().Clone() {
 		err = ch.Send(&nearby.Status{
 			Identity:    v.Identity,
-			Alias:       v.Status.Alias,
 			Attachments: v.Status.Attachments,
 		})
 		if err != nil {

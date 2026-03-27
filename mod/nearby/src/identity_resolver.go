@@ -16,6 +16,10 @@ func (mod *Module) ResolveIdentity(s string) (*astral.Identity, error) {
 	}
 
 	for _, v := range mod.Cache().Clone() {
+		if v.Identity == nil {
+			continue
+		}
+
 		if string(v.Status.Alias) == s {
 			return v.Identity, nil
 		}
