@@ -11,6 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	modlog "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 	"gorm.io/gorm"
@@ -19,6 +20,7 @@ import (
 const ZeroIdentity = "<anyone>"
 
 type Deps struct {
+	Nearby nearby.Module
 }
 
 type Module struct {

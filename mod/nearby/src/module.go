@@ -2,7 +2,6 @@ package nearby
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -110,7 +109,7 @@ func (mod *Module) periodicUpdater(ctx context.Context) {
 
 func (mod *Module) Broadcast() error {
 	if mod.Mode() == nearby.ModeSilent {
-		return errors.New("silent mode")
+		return nil
 	}
 
 	return mod.pushStatus()
@@ -132,7 +131,6 @@ func (mod *Module) canBroadcast(s *nearby.StatusMessage) bool {
 
 func (mod *Module) Status(receiver *astral.Identity) *nearby.StatusMessage {
 	s := &nearby.StatusMessage{
-		Alias:       mod.myAlias(),
 		Attachments: astral.NewBundle(),
 	}
 

@@ -7,7 +7,6 @@ import (
 )
 
 type StatusMessage struct {
-	Alias       astral.String8
 	Attachments *astral.Bundle
 }
 
