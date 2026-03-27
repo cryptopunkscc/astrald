@@ -29,7 +29,7 @@ func (q *SearchQuery) ReadFrom(r io.Reader) (int64, error) {
 
 // RequiredTagsIn returns true if all required (tag:value) and exclude (-tag:value) tags
 // in the query are present in knownTags. Optional tags are ignored.
-func (q *SearchQuery) RequiredTagsIn(knownTags ...string) bool {
+func (q *SearchQuery) RequiredTagsIn(knownTags ...string) error {
 	known := make(map[string]struct{}, len(knownTags))
 	for _, t := range knownTags {
 		known[t] = struct{}{}
@@ -38,11 +38,11 @@ func (q *SearchQuery) RequiredTagsIn(knownTags ...string) bool {
 		switch tag.Mod {
 		case TagModRequire, TagModExclude:
 			if _, ok := known[string(tag.Name)]; !ok {
-				return false
+				return NewErrTagUnsupported(string(tag.Name))
 			}
 		}
 	}
-	return true
+	return nil
 }
 
 // MarshalText encodes the SearchQuery back to its raw string representation.

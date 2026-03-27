@@ -14,8 +14,9 @@ func (mod *AudioIndexer) SearchObject(ctx *astral.Context, query objects.SearchQ
 		return nil, astral.ErrZoneExcluded
 	}
 
-	if !query.RequiredTagsIn(knownAudioTags...) {
-		return nil, objects.ErrTagNotSupported
+	err := query.RequiredTagsIn(knownAudioTags...)
+	if err != nil {
+		return nil, err
 	}
 
 	aq := parseAudioQuery(query)

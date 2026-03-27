@@ -12,8 +12,9 @@ func (mod *Module) SearchObject(ctx *astral.Context, query objects.SearchQuery) 
 		return nil, astral.ErrZoneExcluded
 	}
 
-	if !query.RequiredTagsIn("path", "archive") {
-		return nil, objects.ErrTagNotSupported
+	err := query.RequiredTagsIn("path", "archive")
+	if err != nil {
+		return nil, err
 	}
 
 	var results = make(chan *objects.SearchResult)
