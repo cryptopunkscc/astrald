@@ -30,7 +30,7 @@ func (mod *Module) Authorize(ctx *astral.Context, identity *astral.Identity, act
 	}
 
 	for _, h := range mod.get(action) {
-		if h(ctx, identity, target) {
+		if h.Authorize(ctx, identity, target) {
 			mod.log.Logv(3, "allowed %v to %v", identity, action)
 			return true
 		}

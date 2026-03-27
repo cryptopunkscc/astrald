@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/media"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/shell"
 )
@@ -18,7 +19,7 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	if err = core.Inject(mod.node, &mod.Deps); err != nil {
 		return
 	}
-	auth.AddAuthorizer(mod.Auth, objects.ActionRead, mod.AuthorizeObjectsReadByFile)
-	auth.AddAuthorizer(mod.Auth, objects.ActionRead, mod.AuthorizeObjectsReadByID)
+	mod.Auth.AddAuthorizer(objects.ActionRead, auth.Func[*media.AudioFile](mod.AuthorizeObjectsReadByFile))
+	mod.Auth.AddAuthorizer(objects.ActionRead, auth.Func[*astral.ObjectID](mod.AuthorizeObjectsReadByID))
 	return
 }
