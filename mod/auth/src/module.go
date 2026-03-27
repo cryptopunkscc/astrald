@@ -45,7 +45,7 @@ func (mod *Module) Authorize(ctx *astral.Context, identity *astral.Identity, act
 	return false
 }
 
-func (mod *Module) AddAuthorizer(action auth.Action, handlers ...auth.Handler) {
+func (mod *Module) Add(action auth.Action, handlers ...auth.Handler) {
 	mod.handlers.Set(action, append(mod.get(action), handlers...))
 }
 

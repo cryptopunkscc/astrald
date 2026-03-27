@@ -11,6 +11,6 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	if err = core.Inject(mod.node, &mod.Deps); err != nil {
 		return
 	}
-	mod.Auth.AddAuthorizer(nodes.ActionRelayFor, auth.Func[*astral.Identity](mod.AuthorizeNodesRelayFor))
+	mod.Auth.Add(nodes.ActionRelayFor, auth.Func[*astral.Identity](mod.AuthorizeNodesRelayFor))
 	return
 }

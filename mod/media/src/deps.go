@@ -19,7 +19,7 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	if err = core.Inject(mod.node, &mod.Deps); err != nil {
 		return
 	}
-	mod.Auth.AddAuthorizer(objects.ActionRead, auth.Func[*media.AudioFile](mod.AuthorizeObjectsReadByFile))
-	mod.Auth.AddAuthorizer(objects.ActionRead, auth.Func[*astral.ObjectID](mod.AuthorizeObjectsReadByID))
+	mod.Auth.Add(objects.ActionRead, auth.Func[*media.AudioFile](mod.AuthorizeObjectsReadByFile))
+	mod.Auth.Add(objects.ActionRead, auth.Func[*astral.ObjectID](mod.AuthorizeObjectsReadByID))
 	return
 }

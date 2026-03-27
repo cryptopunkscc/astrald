@@ -16,6 +16,6 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	if err = core.Inject(mod.node, &mod.Deps); err != nil {
 		return
 	}
-	mod.Auth.AddAuthorizer(objects.ActionRead, auth.Func[*astral.ObjectID](mod.AuthorizeObjectsRead))
+	mod.Auth.Add(objects.ActionRead, auth.Func[*astral.ObjectID](mod.AuthorizeObjectsRead))
 	return
 }
