@@ -45,20 +45,17 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.Query, w io.Wr
 	container := nodes.NewQueryContainer(q, conn.rsize)
 
 	rc.mu.Lock()
-	sendErr := rc.ch.Send(container)
-	if sendErr == nil {
-		sendErr = rc.ch.Switch(channel.ExpectAck, channel.PassErrors)
-	}
-	if sendErr == nil {
+	err := rc.ch.Send(container)
+	if err == nil {
 		rc.lastUsed = time.Now()
 	}
 	rc.mu.Unlock()
 
-	if sendErr != nil {
+	if err != nil {
 		rc.mod.relayChannels.Delete(rc.relayID.String()) // channel is broken, evict
 		conn.swapState(stateRouting, stateClosed)
 		rc.mod.peers.sessions.Delete(q.Nonce)
-		return query.RouteNotFound(rc.mod, fmt.Errorf("relay send: %w", sendErr))
+		return query.RouteNotFound(rc.mod, fmt.Errorf("relay send: %w", err))
 	}
 
 	select {
