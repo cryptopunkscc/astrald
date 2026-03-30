@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -16,6 +17,7 @@ const defaultListenPort = 1791
 type Deps struct {
 	Nodes  nodes.Module
 	Exonet exonet.Module
+	Nearby nearby.Module
 	Tree   tree.Module
 }
 

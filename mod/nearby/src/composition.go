@@ -1,7 +1,6 @@
 package nearby
 
 import (
-	"errors"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 )
@@ -22,7 +21,7 @@ func (c *Composition) Receiver() *astral.Identity {
 func (c *Composition) Attach(o astral.Object) error {
 	objectID, _ := astral.ResolveObjectID(o)
 	if objectID.Size > MaxAttachmentSize {
-		return errors.New("object too large")
+		return nearby.ErrObjectTooLarge
 	}
 	return c.s.Attachments.Append(o)
 }

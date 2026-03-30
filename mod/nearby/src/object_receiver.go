@@ -1,7 +1,6 @@
 package nearby
 
 import (
-	"errors"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -35,31 +34,42 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 func (mod *Module) receiveBroadcastEvent(event *ether.EventBroadcastReceived) error {
 	switch object := event.Object.(type) {
 	case *nearby.StatusMessage:
-		return mod.receiveStatus(event.SourceID, event.SourceIP, object)
+		return mod.receiveStatus(event.SourceIP, object)
 
 	case *nearby.ScanMessage:
-		mod.Ether.PushToIP(event.SourceIP, mod.Status(astral.Anyone), nil)
-		return errors.New("object rejected")
+		s := mod.Status(astral.Anyone)
+		if mod.canBroadcast(s) {
+			mod.Ether.PushToIP(event.SourceIP, s, nil)
+		}
+		return objects.ErrPushRejected
 	}
 
-	return errors.New("object rejected")
+	return objects.ErrPushRejected
 }
 
-func (mod *Module) receiveStatus(sourceID *astral.Identity, addr ip.IP,
-	status *nearby.StatusMessage) error {
-	mod.log.Infov(3, "update from %v %v", sourceID, addr)
-	mod.cache.Replace(addr.String(), &cache{
-		Identity:  sourceID,
+func (mod *Module) receiveStatus(addr ip.IP, status *nearby.StatusMessage) error {
+	mod.log.Logv(3, "update from %v", addr)
+
+	entry := &cache{
 		IP:        addr,
 		Timestamp: time.Now(),
 		Status:    status,
-	})
+	}
+	mod.cache.Replace(addr.String(), entry)
 
-	return errors.New("object rejected")
+	go func() {
+		if id := mod.ResolveStatus(status); id != nil {
+			if e, ok := mod.cache.Get(addr.String()); ok {
+				e.Identity = id
+				mod.cache.Replace(addr.String(), e)
+			}
+		}
+	}()
+
+	return objects.ErrPushRejected
 }
 
-func (mod *Module) receiveNetworkAddressChanged(event *ip.
-	EventNetworkAddressChanged) {
+func (mod *Module) receiveNetworkAddressChanged(event *ip.EventNetworkAddressChanged) {
 	if len(event.Added) == 0 {
 		return // do nothing if there are no new network addresses
 	}

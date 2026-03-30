@@ -59,7 +59,6 @@ func (mod *Module) broadcastReceiver(ctx *astral.Context) (err error) {
 		}
 
 		mod.Objects.Receive(&ether.EventBroadcastReceived{
-			SourceID: b.Source,
 			SourceIP: ip.IP(addr.IP),
 			Object:   b.Object,
 		}, mod.node.Identity())

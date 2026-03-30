@@ -7,7 +7,6 @@ import (
 
 type Status struct {
 	Identity    *astral.Identity
-	Alias       astral.String8
 	Attachments *astral.Bundle
 }
 

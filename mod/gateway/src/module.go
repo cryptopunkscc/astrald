@@ -14,6 +14,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	gatewayClient "github.com/cryptopunkscc/astrald/mod/gateway/client"
 	"github.com/cryptopunkscc/astrald/mod/ip"
+	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/services"
@@ -38,6 +39,7 @@ const (
 type Deps struct {
 	Dir       dir.Module
 	Exonet    exonet.Module
+	Nearby    nearby.Module
 	Nodes     nodes.Module
 	Scheduler scheduler.Module
 	Services  services.Module
