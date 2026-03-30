@@ -19,7 +19,7 @@ type StealthHint struct {
 
 func (*StealthHint) ObjectType() string { return "mod.nearby.stealth_hint" }
 
-func (s *StealthHint) WriteTo(w io.Writer) (n int64, err error) {
+func (s StealthHint) WriteTo(w io.Writer) (n int64, err error) {
 	return astral.Objectify(&s).WriteTo(w)
 }
 
