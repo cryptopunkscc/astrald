@@ -2,67 +2,55 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-func (mod *Module) Authorize(identity *astral.Identity, action auth.Action, target astral.Object) bool {
-	if identity.IsZero() {
-		return false
-	}
+func (mod *Module) AuthorizeUser(_ *astral.Context, identity *astral.Identity, target astral.Object) bool {
+	return identity.IsEqual(mod.Identity())
+}
 
-	userID := mod.Identity()
-	if userID.IsZero() {
-		return false
-	}
+func (mod *Module) AuthorizeUserRevokeContract(_ *astral.Context, identity *astral.Identity, contract *user.SignedNodeContract) bool {
+	return identity.IsEqual(mod.Identity())
+}
 
-	// allow the user to perform whitelisted actions
-	if identity.IsEqual(userID) {
-		switch action {
-		case auth.ActionSudo,
-			objects.ActionRead,
-			objects.ActionCreate,
-			user.ActionRevokeContract:
+func (mod *Module) AuthorizeNodeRead(ctx *astral.Context, identity *astral.Identity, target astral.Object) bool {
+	for _, u := range mod.ActiveUsers(identity) {
+		if mod.Auth.Authorize(ctx, u, objects.ActionRead, target) {
 			return true
 		}
 	}
+	return false
+}
 
-	// nodes inherit some permissions from their users
-	for _, userID := range mod.ActiveUsers(identity) {
-		switch action {
-		case objects.ActionRead,
-			objects.ActionCreate:
-			if mod.Authorize(userID, action, target) {
-				return true
-			}
-		case nodes.ActionRelayFor:
-			userID, ok := target.(*astral.Identity)
-			if !ok {
-				break
-			}
+func (mod *Module) AuthorizeNodeCreate(ctx *astral.Context, identity *astral.Identity, target astral.Object) bool {
+	for _, u := range mod.ActiveUsers(identity) {
+		if mod.Auth.Authorize(ctx, u, objects.ActionCreate, target) {
+			return true
+		}
+	}
+	return false
+}
 
-			for _, u := range mod.ActiveUsers(identity) {
-				if u.IsEqual(userID) {
-					return true
-				}
-			}
-		case user.ActionRevokeContract:
-			contract, ok := target.(*user.SignedNodeContract)
-			if !ok {
-				break
-			}
+func (mod *Module) AuthorizeNodeRelay(_ *astral.Context, identity *astral.Identity, targetID *astral.Identity) bool {
+	for _, u := range mod.ActiveUsers(identity) {
+		if u.IsEqual(targetID) {
+			return true
+		}
+	}
+	return false
+}
 
-			if contract.UserID.IsEqual(userID) {
-				return true
-			}
+func (mod *Module) AuthorizeNodeRevokeContract(_ *astral.Context, identity *astral.Identity, contract *user.SignedNodeContract) bool {
+	userID := mod.Identity()
 
-			for _, u := range mod.ActiveUsers(identity) {
-				if u.IsEqual(userID) {
-					return true
-				}
-			}
+	if contract.UserID.IsEqual(userID) {
+		return true
+	}
+
+	for _, u := range mod.ActiveUsers(identity) {
+		if u.IsEqual(userID) {
+			return true
 		}
 	}
 

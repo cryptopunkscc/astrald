@@ -61,7 +61,7 @@ func (mod *Module) ValidateNodeContractRevocation(revocation *user.SignedNodeCon
 		return user.ErrNodeContractRevocationInvalid
 	}
 
-	ok := mod.Auth.Authorize(revocation.Revoker.ID, user.ActionRevokeContract, contract)
+	ok := mod.Auth.Authorize(astral.NewContext(nil), revocation.Revoker.ID, user.ActionRevokeContract, contract)
 	if !ok {
 		return user.ErrNodeCannotRevokeContract
 	}
