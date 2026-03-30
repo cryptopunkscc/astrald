@@ -18,17 +18,18 @@ type Listener struct {
 	token  astral.Nonce
 	doneCh chan struct{}
 	done   atomic.Bool
+	client *Client
 }
 
 var _ net.Listener = &Listener{}
 
 // Listen creates a new Listener using apphost's DefaultRouter() protocol and a random auth token
 func Listen() (*Listener, error) {
-	return ListenAt(libapphost.DefaultRouter().Protocol(), astral.NewNonce())
+	return ListenAt(Default(), libapphost.DefaultRouter().Protocol(), astral.NewNonce())
 }
 
-// ListenAt creates a new Listener for the given protocol with the provided auth token
-func ListenAt(protocol string, authToken astral.Nonce) (*Listener, error) {
+// ListenAt creates a new Listener for the given client, protocol and auth token
+func ListenAt(client *Client, protocol string, authToken astral.Nonce) (*Listener, error) {
 	l, err := ipc.ListenAny(protocol)
 	if err != nil {
 		return nil, err
@@ -38,6 +39,7 @@ func ListenAt(protocol string, authToken astral.Nonce) (*Listener, error) {
 		Listener: l,
 		doneCh:   make(chan struct{}),
 		token:    authToken,
+		client:   client,
 	}, nil
 }
 
