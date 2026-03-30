@@ -3,7 +3,6 @@ package ops
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
-	apphost "github.com/cryptopunkscc/astrald/mod/apphost/client"
 )
 
 func Serve(ctx *astral.Context, set *Set) error {
@@ -12,10 +11,11 @@ func Serve(ctx *astral.Context, set *Set) error {
 		return err
 	}
 
-	err = apphost.RegisterHandler(ctx, srv.Endpoint(), srv.AuthToken())
-	if err != nil {
-		return err
-	}
+	go func() {
+		if err := srv.Register(ctx); err != nil {
+			srv.Close()
+		}
+	}()
 
 	return srv.Serve(ctx, set)
 }

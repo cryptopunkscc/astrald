@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/cryptopunkscc/astrald/lib/astrald"
-	apphost "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	dircli "github.com/cryptopunkscc/astrald/mod/dir/client"
 )
 
@@ -24,11 +23,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = apphost.RegisterHandler(ctx, server.Endpoint(), server.AuthToken())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
+	go func() {
+		if err := server.Register(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "register: %v\n", err)
+			os.Exit(1)
+		}
+	}()
 
 	for {
 		query, err := server.Next()
