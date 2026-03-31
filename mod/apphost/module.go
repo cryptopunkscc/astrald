@@ -17,6 +17,7 @@ const (
 	MethodSignAppContract = "apphost.sign_app_contract"
 	MethodIndex           = "apphost.index"
 	MethodCancel          = "apphost.cancel"
+	MethodBind            = "apphost.bind"
 )
 
 type Module interface {

@@ -7,54 +7,21 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
-type ConnectFailurePolicy func(error) (retry bool, out error)
-
-type RouterOption func(*Router)
-
 type Router struct {
-	endpoint             string
-	token                string
-	guestID              *astral.Identity
-	hostID               *astral.Identity
-	connectFailurePolicy ConnectFailurePolicy
+	endpoint string
+	token    string
+	guestID  *astral.Identity
+	hostID   *astral.Identity
+	policy   ConnectPolicy
 }
 
 var defaultRouter = newDefaultRouter()
 
-func NewRouter(endpoint string, token string, opts ...RouterOption) *Router {
-	r := &Router{endpoint: endpoint, token: token}
-	for _, opt := range opts {
-		opt(r)
-	}
-	return r
-}
-
-// RetryPolicy returns a ConnectFailurePolicy that retries up to maxRetries times
-// using exponential backoff between minDelay and maxDelay.
-func RetryPolicy(maxRetries int, minDelay, maxDelay time.Duration) ConnectFailurePolicy {
-	r, _ := sig.NewRetry(minDelay, maxDelay, 2)
-	return func(err error) (bool, error) {
-		i := <-r.Retry()
-		if i > maxRetries {
-			return false, nil
-		}
-		return true, nil
-	}
-}
-
-func WithConnectFailurePolicy(fn ConnectFailurePolicy) RouterOption {
-	return func(r *Router) {
-		r.connectFailurePolicy = fn
-	}
-}
-
-func (r *Router) Apply(opts ...RouterOption) *Router {
-	for _, opt := range opts {
-		opt(r)
-	}
+func NewRouter(endpoint string, token string) *Router {
+	r := &Router{endpoint: endpoint, token: token, policy: defaultPolicy()}
 	return r
 }
 
@@ -66,37 +33,34 @@ func SetDefaultRouter(router *Router) {
 	defaultRouter = router
 }
 
-// RouteQuery routes a query via the host.
+// RouteQuery routes a query via the host, retrying the connection according to
+// the router's policy (by default: exponential backoff until ctx is done).
 func (router *Router) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.Conn, error) {
-	// connect to the host
-	host, err := router.connect()
+	host, err := router.connectWithPolicy(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// cancel the query with context
+	// cancel the query when ctx ends
 	var done = make(chan struct{})
 	defer close(done)
 	go func() {
 		select {
 		case <-ctx.Done():
-			// cancel the query on the host
-			host, err := router.connect()
+			cancelHost, err := router.connect()
 			if err != nil {
 				return
 			}
-			defer host.Close()
+			defer cancelHost.Close()
 
-			conn, err := host.RouteQuery(
-				query.New(nil, nil, "apphost.cancel", query.Args{"id": q.Nonce}),
+			conn, _ := cancelHost.RouteQuery(
+				query.New(nil, nil, apphost.MethodCancel, query.Args{"id": q.Nonce}),
 				astral.ZoneDevice,
 				nil,
 			)
 			if conn != nil {
 				conn.Close()
 			}
-
-			// NOTE: we're ignoring the result of the cancel op call
 
 		case <-done:
 		}
@@ -110,7 +74,7 @@ func (router *Router) GuestID() *astral.Identity {
 		return router.guestID
 	}
 
-	host, err := router.connect() // connect loads guestID
+	host, err := router.connect()
 	if err != nil {
 		return nil
 	}
@@ -124,7 +88,7 @@ func (router *Router) HostID() *astral.Identity {
 		return router.hostID
 	}
 
-	host, err := router.connect() // connect loads hostID
+	host, err := router.connect()
 	if err != nil {
 		return nil
 	}
@@ -142,38 +106,48 @@ func (router *Router) Protocol() string {
 	return split[0]
 }
 
-// connect establishes a new authenticated connection to the host.
-func (router *Router) connect() (*Host, error) {
-	for {
-		host, err := Connect(router.endpoint)
-		if err == nil {
-			router.hostID = host.HostID()
-			if len(router.token) == 0 {
-				return host, nil
-			}
-
-			err = host.AuthToken(router.token)
-			if err == nil {
-				router.guestID = host.GuestID()
-				return host, nil
-			}
-
-			host.Close()
+// connectWithPolicy retries connect according to the router's policy.
+func (router *Router) connectWithPolicy(ctx *astral.Context) (*Host, error) {
+	for attempt := 1; ; attempt++ {
+		host, connErr := router.connect()
+		if connErr == nil {
+			return host, nil
 		}
 
-		if router.connectFailurePolicy == nil {
+		delay, err := router.policy(attempt, connErr)
+		if err != nil {
 			return nil, err
 		}
 
-		retry, out := router.connectFailurePolicy(err)
-		if retry {
-			continue
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		}
-		if out != nil {
-			return nil, out
-		}
+	}
+}
+
+// connect makes a single attempt to connect and authenticate with the host.
+func (router *Router) connect() (*Host, error) {
+	host, err := Connect(router.endpoint)
+	if err != nil {
 		return nil, err
 	}
+
+	router.hostID = host.HostID()
+
+	if len(router.token) == 0 {
+		return host, nil
+	}
+
+	err = host.AuthToken(router.token)
+	if err != nil {
+		host.Close()
+		return nil, err
+	}
+
+	router.guestID = host.GuestID()
+	return host, nil
 }
 
 func newDefaultRouter() *Router {

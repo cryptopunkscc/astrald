@@ -11,11 +11,5 @@ func Serve(ctx *astral.Context, set *Set) error {
 		return err
 	}
 
-	go func() {
-		if err := srv.Register(ctx); err != nil {
-			srv.Close()
-		}
-	}()
-
 	return srv.Serve(ctx, set)
 }
