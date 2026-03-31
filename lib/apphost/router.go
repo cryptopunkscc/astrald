@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Router struct {
@@ -15,14 +16,14 @@ type Router struct {
 	token    string
 	guestID  *astral.Identity
 	hostID   *astral.Identity
-	policy   ConnectPolicy
+	retry    *sig.Retry
 }
 
 var defaultRouter = newDefaultRouter()
 
 func NewRouter(endpoint string, token string) *Router {
-	r := &Router{endpoint: endpoint, token: token, policy: defaultPolicy()}
-	return r
+	r, _ := sig.NewRetry(250*time.Millisecond, 10*time.Second, 2)
+	return &Router{endpoint: endpoint, token: token, retry: r}
 }
 
 func DefaultRouter() *Router {
@@ -33,10 +34,15 @@ func SetDefaultRouter(router *Router) {
 	defaultRouter = router
 }
 
+func (r *Router) SetRetry(retry *sig.Retry) *Router {
+	r.retry = retry
+	return r
+}
+
 // RouteQuery routes a query via the host, retrying the connection according to
-// the router's policy (by default: exponential backoff until ctx is done).
+// the router's retry policy (by default: exponential backoff until ctx is done).
 func (router *Router) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.Conn, error) {
-	host, err := router.connectWithPolicy(ctx)
+	host, err := router.connectWithRetry(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +53,7 @@ func (router *Router) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.C
 	go func() {
 		select {
 		case <-ctx.Done():
-			cancelHost, err := router.connect()
+			cancelHost, err := router.connect(ctx)
 			if err != nil {
 				return
 			}
@@ -74,7 +80,7 @@ func (router *Router) GuestID() *astral.Identity {
 		return router.guestID
 	}
 
-	host, err := router.connect()
+	host, err := router.connect(astral.NewContext(nil))
 	if err != nil {
 		return nil
 	}
@@ -88,7 +94,7 @@ func (router *Router) HostID() *astral.Identity {
 		return router.hostID
 	}
 
-	host, err := router.connect()
+	host, err := router.connect(astral.NewContext(nil))
 	if err != nil {
 		return nil
 	}
@@ -106,21 +112,17 @@ func (router *Router) Protocol() string {
 	return split[0]
 }
 
-// connectWithPolicy retries connect according to the router's policy.
-func (router *Router) connectWithPolicy(ctx *astral.Context) (*Host, error) {
-	for attempt := 1; ; attempt++ {
-		host, connErr := router.connect()
-		if connErr == nil {
+// connectWithRetry retries connect until it succeeds or ctx is done.
+func (router *Router) connectWithRetry(ctx *astral.Context) (*Host, error) {
+	for {
+		host, err := router.connect(ctx)
+		if err == nil {
+			router.retry.Reset()
 			return host, nil
 		}
 
-		delay, err := router.policy(attempt, connErr)
-		if err != nil {
-			return nil, err
-		}
-
 		select {
-		case <-time.After(delay):
+		case <-router.retry.Retry():
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
@@ -128,8 +130,8 @@ func (router *Router) connectWithPolicy(ctx *astral.Context) (*Host, error) {
 }
 
 // connect makes a single attempt to connect and authenticate with the host.
-func (router *Router) connect() (*Host, error) {
-	host, err := Connect(router.endpoint)
+func (router *Router) connect(ctx *astral.Context) (*Host, error) {
+	host, err := Connect(ctx, router.endpoint)
 	if err != nil {
 		return nil, err
 	}

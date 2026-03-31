@@ -1,13 +1,13 @@
 package ipc
 
 import (
+	"context"
 	"errors"
-	"math/rand"
+	"math/rand/v2"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/akutz/memconn"
 	"github.com/cryptopunkscc/astrald/astral"
@@ -19,27 +19,29 @@ var (
 	ErrInvalidIPCAddress   = errors.New("invalid ipc address")
 )
 
-// EnvKeyAddr is the name of the environment variable which contains a semicolon-separated list of apphost addresses.
-const EnvKeyAddr = "ASTRALD_APPHOST_ADDR"
-
-// EnvKeyToken is the name of the environment variable which contains the apphost access token.
-const EnvKeyToken = "ASTRALD_APPHOST_TOKEN"
-
 func Dial(target string) (conn *Conn, err error) {
+	return DialContext(context.Background(), target)
+}
+
+func DialContext(ctx context.Context, target string) (conn *Conn, err error) {
 	parts := strings.SplitN(target, ":", 2)
+	if len(parts) < 2 {
+		return nil, ErrInvalidIPCAddress
+	}
 	proto, addr := parts[0], parts[1]
 
 	var c net.Conn
+	var dialer net.Dialer
 
 	switch proto {
 	case "tcp":
-		c, err = net.Dial("tcp", addr)
+		c, err = dialer.DialContext(ctx, "tcp", addr)
 
 	case "unix":
-		c, err = net.Dial("unix", addr)
+		c, err = dialer.DialContext(ctx, "unix", addr)
 
 	case "memu", "memb":
-		c, err = memconn.Dial(proto, addr)
+		c, err = memconn.DialContext(ctx, proto, addr)
 
 	default:
 		err = ErrUnsupportedProtocol
@@ -124,11 +126,7 @@ func tempName(length int) (s string) {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789_"
 	var name = make([]byte, length)
 	for i := 0; i < len(name); i++ {
-		name[i] = charset[rand.Intn(len(charset))]
+		name[i] = charset[rand.IntN(len(charset))]
 	}
 	return string(name[:])
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
 }
