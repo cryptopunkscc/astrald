@@ -12,4 +12,5 @@ var (
 	ErrStreamNotProduced     = errors.New("stream not produced")
 	ErrInvalidMigrationState = errors.New("invalid migration state")
 	ErrInvalidSessionState   = errors.New("invalid session state")
+	ErrStreamNotFound        = errors.New("stream not found")
 )

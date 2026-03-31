@@ -13,7 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/nodes/src/frames"
+	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
 	"github.com/cryptopunkscc/astrald/sig"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -126,21 +126,40 @@ func (mod *Peers) frameReader(ctx context.Context) {
 }
 
 func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
-	conn, ok := mod.sessions.Set(f.Nonce, newSession(f.Nonce))
+	mod.handleInboundQuery(s, f.Nonce, s.RemoteIdentity(), s.LocalIdentity(), f.Query, int(f.Buffer))
+}
+
+// handleRelayQuery routes a query received via a relay channel to its target and bridges
+// the resulting session back to the caller over the relay peer's stream.
+func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) error {
+	mod.handleInboundQuery(
+		s,
+		relayQuery.Query.Nonce,
+		relayQuery.CallerID,
+		relayQuery.TargetID,
+		relayQuery.Query.Query,
+		int(relayQuery.Query.Buffer),
+	)
+
+	return nil
+}
+
+func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, target *astral.Identity, queryStr string, initBuffer int) {
+	conn, ok := mod.sessions.Set(nonce, newSession(nonce))
 	if !ok {
 		return // ignore duplicates
 	}
 
-	conn.RemoteIdentity = s.RemoteIdentity()
-	conn.Query = f.Query
+	conn.RemoteIdentity = caller
+	conn.Query = queryStr
 	conn.stream = s
-	conn.wsize = int(f.Buffer)
+	conn.wsize = initBuffer
 
 	var q = &astral.Query{
-		Nonce:  f.Nonce,
-		Caller: s.RemoteIdentity(),
-		Target: s.LocalIdentity(),
-		Query:  f.Query,
+		Nonce:  nonce,
+		Caller: caller,
+		Target: target,
+		Query:  queryStr,
 	}
 
 	q.Extra.Set("origin", astral.OriginNetwork)
@@ -155,11 +174,11 @@ func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
 		if errors.As(err, &reject) {
 			code = reject.Code
 		}
-		s.Write(&frames.Response{Nonce: f.Nonce, ErrCode: code})
+		s.Write(&frames.Response{Nonce: nonce, ErrCode: code})
 		return
 	}
 
-	s.Write(&frames.Response{Nonce: f.Nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
+	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
 	conn.swapState(stateRouting, stateOpen)
 
 	go func() {

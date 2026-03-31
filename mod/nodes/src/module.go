@@ -39,7 +39,6 @@ type Module struct {
 
 	dbResolver *DBEndpointResolver
 	resolvers  sig.Set[nodes.EndpointResolver]
-	relays     sig.Map[astral.Nonce, *Relay]
 
 	observedEndpoints sig.Map[string, ObservedEndpoint] // key is IP string
 
@@ -51,14 +50,10 @@ type Module struct {
 
 	in chan *Frame
 
-	searchCache sig.Map[string, *astral.Identity]
+	searchCache   sig.Map[string, *astral.Identity]
+	relayChannels sig.Map[string, *relayChannel]
 
 	privateKey *crypto.PrivateKey
-}
-
-type Relay struct {
-	Caller *astral.Identity
-	Target *astral.Identity
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -161,5 +156,15 @@ func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
 			return s
 		}
 	}
+	return nil
+}
+
+func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) *Stream {
+	for _, session := range mod.peers.sessions.Clone() {
+		if session.Nonce == nonce {
+			return session.stream
+		}
+	}
+
 	return nil
 }
