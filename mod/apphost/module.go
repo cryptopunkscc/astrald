@@ -24,4 +24,3 @@ type Module interface {
 }
 
 var ErrProtocolError = errors.New("protocol error")
-var ErrNodeIsDown = errors.New("node is down")

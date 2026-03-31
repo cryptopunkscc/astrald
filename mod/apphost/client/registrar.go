@@ -1,15 +1,12 @@
 package apphost
 
 import (
-	"sync"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
 // Registrar is the default implementation of apphost.Registrar.
 // It blocks until first registration, then automatically reconnects in the background.
-// onClose is never called — the Registrar reconnects indefinitely until ctx is done.
 type Registrar struct {
 	client *Client
 }
@@ -24,42 +21,42 @@ func DefaultRegistrar() *Registrar {
 	return NewRegistrar(Default())
 }
 
-func (r *Registrar) Register(ctx *astral.Context, endpoint string, token astral.Nonce, onClose func()) error {
+func (r *Registrar) Register(ctx *astral.Context, endpoint string, token astral.Nonce) error {
 	firstReg := make(chan error, 1)
 
 	go func() {
-		var once sync.Once
+		var registered bool
 
 		for {
-			bc, err := r.client.Bind(ctx)
+			bindChannel, err := r.client.Bind(ctx)
 			if err != nil {
-				once.Do(func() { firstReg <- err })
+				if !registered {
+					firstReg <- err
+				}
 				return
 			}
 
 			if err = r.client.RegisterHandler(ctx, endpoint, token); err != nil {
-				bc.Close()
+				bindChannel.Close()
 				continue
 			}
 
-			if err = bc.Send(&apphost.BindMsg{Token: token}); err != nil {
-				bc.Close()
+			if err = bindChannel.Send(&apphost.BindMsg{Token: token}); err != nil {
+				bindChannel.Close()
 				continue
 			}
 
-			once.Do(func() { firstReg <- nil })
+			if !registered {
+				firstReg <- nil
+				registered = true
+			}
 
 			for {
-				if _, err = bc.Receive(); err != nil {
+				if _, err = bindChannel.Receive(); err != nil {
 					break
 				}
 			}
-
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
+			bindChannel.Close()
 		}
 	}()
 

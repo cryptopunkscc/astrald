@@ -55,7 +55,7 @@ func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, authToke
 		cancel()
 	}()
 
-	if err = r.Register(bindCtx, h.Endpoint(), authToken, func() { h.Close() }); err != nil {
+	if err = r.Register(bindCtx, h.Endpoint(), authToken); err != nil {
 		h.Close()
 		return nil, err
 	}
