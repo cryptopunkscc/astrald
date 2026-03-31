@@ -13,43 +13,63 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
-type Listener struct {
-	net.Listener
-	token  astral.Nonce
-	doneCh chan struct{}
-	done   atomic.Bool
-	client *Client
+// fixme: adapter for net.Listener
+
+type Handler struct {
+	listener net.Listener
+	token    astral.Nonce
+	doneCh   chan struct{}
+	done     atomic.Bool
+	client   *Client
 }
 
-var _ net.Listener = &Listener{}
-
-// Listen creates a new Listener using apphost's DefaultRouter() protocol and a random auth token
-func Listen() (*Listener, error) {
-	return ListenAt(Default(), libapphost.DefaultRouter().Protocol(), astral.NewNonce())
+// NewHandler creates a new Handler using apphost's DefaultRouter() protocol and a random auth token.
+// Pass nil registrar for an IPC listener with no node registration.
+func NewHandler(ctx *astral.Context, r apphost.Registrar) (*Handler, error) {
+	return NewHandlerAt(ctx, Default(), libapphost.DefaultRouter().Protocol(), astral.NewNonce(), r)
 }
 
-// ListenAt creates a new Listener for the given client, protocol and auth token
-func ListenAt(client *Client, protocol string, authToken astral.Nonce) (*Listener, error) {
+// NewHandlerAt creates a new Handler for the given client, protocol and auth token.
+// Pass nil registrar for an IPC listener with no node registration.
+func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, authToken astral.Nonce, r apphost.Registrar) (*Handler, error) {
 	l, err := ipc.ListenAny(protocol)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Listener{
-		Listener: l,
+	h := &Handler{
+		listener: l,
 		doneCh:   make(chan struct{}),
 		token:    authToken,
 		client:   client,
-	}, nil
+	}
+
+	if r == nil {
+		return h, nil
+	}
+
+	// bindCtx is cancelled when h.Close() is called or ctx is done
+	bindCtx, cancel := ctx.WithCancel()
+	go func() {
+		<-h.doneCh
+		cancel()
+	}()
+
+	if err = r.Register(bindCtx, h.Endpoint(), authToken, func() { h.Close() }); err != nil {
+		h.Close()
+		return nil, err
+	}
+
+	return h, nil
 }
 
 // Next waits for and returns the next pending query
-func (listener *Listener) Next() (*PendingQuery, error) {
+func (h *Handler) ReadQuery() (*PendingQuery, error) {
 	for {
 		// accept the next network connection
-		conn, err := listener.Listener.Accept()
+		conn, err := h.listener.Accept()
 		if err != nil {
-			listener.Close()
+			h.Close()
 			return nil, err
 		}
 		ch := channel.New(conn)
@@ -70,7 +90,7 @@ func (listener *Listener) Next() (*PendingQuery, error) {
 		}
 
 		// check auth token
-		if queryMsg.AuthToken != listener.token {
+		if queryMsg.AuthToken != h.token {
 			ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 			ch.Close()
 			return nil, ErrInvalidAuthToken
@@ -89,13 +109,30 @@ func (listener *Listener) Next() (*PendingQuery, error) {
 	}
 }
 
-// Serve forwards all incoming queries to the provided astral.Router
-func (listener *Listener) Serve(ctx *astral.Context, router astral.Router) error {
+type Handle func(ctx *astral.Context, query *PendingQuery) error
+
+func (h *Handler) Serve(ctx *astral.Context, handle Handle) error {
+	for {
+		// get the next pending query
+		pending, err := h.ReadQuery()
+		if err != nil {
+			return err
+		}
+
+		err = handle(ctx, pending)
+		if err != nil {
+			return err
+		}
+	}
+}
+
+// Route routes every query to given astral.Router
+func (h *Handler) Route(ctx *astral.Context, router astral.Router) error {
 	var errRejected *astral.ErrRejected
 
 	for {
 		// get the next pending query
-		pending, err := listener.Next()
+		pending, err := h.ReadQuery()
 		if err != nil {
 			return err
 		}
@@ -137,47 +174,33 @@ func (listener *Listener) Serve(ctx *astral.Context, router astral.Router) error
 	}
 }
 
-// SetAuthToken sets the auth token expected by the Listener
-func (listener *Listener) SetAuthToken(token astral.Nonce) {
-	listener.token = token
+// SetAuthToken sets the auth token expected by the Handler
+func (h *Handler) SetAuthToken(token astral.Nonce) {
+	h.token = token
 }
 
-// AuthToken returns the auth token expected by the Listener
-func (listener *Listener) AuthToken() astral.Nonce {
-	return listener.token
+// AuthToken returns the auth token expected by the Handler
+func (h *Handler) AuthToken() astral.Nonce {
+	return h.token
 }
 
-// Accept accepts the next pending query
-func (listener *Listener) Accept() (net.Conn, error) {
-	q, err := listener.Next()
-	if err != nil {
-		return nil, err
+func (h *Handler) Close() error {
+	if h.done.CompareAndSwap(false, true) {
+		close(h.doneCh)
 	}
-
-	return q.Accept(), nil
+	return h.listener.Close()
 }
 
-func (listener *Listener) Close() error {
-	if listener.done.CompareAndSwap(false, true) {
-		close(listener.doneCh)
-	}
-	return listener.Listener.Close()
+func (h *Handler) String() string {
+	return h.Endpoint()
 }
 
-func (listener *Listener) Addr() net.Addr {
-	return listener.Listener.Addr()
-}
-
-func (listener *Listener) String() string {
-	return listener.Endpoint()
-}
-
-func (listener *Listener) Endpoint() string {
-	a := listener.Listener.Addr()
+func (h *Handler) Endpoint() string {
+	a := h.listener.Addr()
 	return a.Network() + ":" + a.String()
 }
 
-// Done returns a channel that will be closed when the Listener is closed
-func (listener *Listener) Done() <-chan struct{} {
-	return listener.doneCh
+// Done returns a channel that will be closed when the Handler is closed
+func (h *Handler) Done() <-chan struct{} {
+	return h.doneCh
 }

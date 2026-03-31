@@ -18,8 +18,8 @@ type Host struct {
 }
 
 // Connect connects to the apphost endpoint.
-func Connect(endpoint string) (*Host, error) {
-	conn, err := ipc.Dial(endpoint)
+func Connect(ctx *astral.Context, endpoint string) (*Host, error) {
+	conn, err := ipc.DialContext(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}

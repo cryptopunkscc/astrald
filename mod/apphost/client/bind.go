@@ -3,50 +3,25 @@ package apphost
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
-// Bind establishes a status channel with the host. It blocks until ctx is done or the channel
-// drops. A non-nil error returned while ctx is still live signals a connection loss.
-func (client *Client) Bind(ctx *astral.Context, endpoint string, authToken astral.Nonce) error {
-	ch, err := client.queryCh(ctx, apphost.MethodBind, query.Args{
-		"endpoint": endpoint,
-		"token":    authToken,
-	})
+// Bind establishes a status channel with the host. The channel acts as a connection lease:
+// if it drops, the host considers the connection lost and unbinds registered handlers.
+func (client *Client) Bind(ctx *astral.Context) (*channel.Channel, error) {
+	ch, err := client.queryCh(ctx, apphost.MethodBind, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer ch.Close()
 
 	if err = ch.Switch(channel.ExpectAck, channel.PassErrors); err != nil {
-		return err
+		ch.Close()
+		return nil, err
 	}
 
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		select {
-		case <-ctx.Done():
-			ch.Close()
-		case <-done:
-		}
-	}()
-
-	for {
-		_, err = ch.Receive()
-		if err != nil {
-			break
-		}
-	}
-
-	if ctx.Err() != nil {
-		return nil
-	}
-
-	return err
+	return ch, nil
 }
 
-func Bind(ctx *astral.Context, endpoint string, authToken astral.Nonce) error {
-	return Default().Bind(ctx, endpoint, authToken)
+func Bind(ctx *astral.Context) (*channel.Channel, error) {
+	return Default().Bind(ctx)
 }

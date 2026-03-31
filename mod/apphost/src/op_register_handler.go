@@ -28,32 +28,10 @@ func (mod *Module) OpRegisterHandler(ctx *astral.Context, q *ops.Query, args opR
 		AuthToken: args.Token,
 		Endpoint:  args.Endpoint,
 	}
+
 	mod.handlers.Add(handler)
-	defer mod.handlers.Remove(handler)
 
 	mod.log.Logv(3, "%v registered a handler at %v", q.Caller(), args.Endpoint)
 
-	// send ack to the client
-	if err = ch.Send(&astral.Ack{}); err != nil {
-		return
-	}
-
-	// close connection if context ends
-	var done = make(chan struct{})
-	defer close(done)
-	go func() {
-		select {
-		case <-ctx.Done():
-			ch.Close()
-		case <-done:
-		}
-	}()
-
-	// hold the connection open as the registration lease
-	for {
-		_, err = ch.Receive()
-		if err != nil {
-			return nil
-		}
-	}
+	return ch.Send(&astral.Ack{})
 }

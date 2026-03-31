@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	apphost "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	dircli "github.com/cryptopunkscc/astrald/mod/dir/client"
@@ -18,35 +19,13 @@ func main() {
 
 	var ctx = astrald.NewContext()
 
-	server, err := astrald.Listen()
+	handler, err := astrald.NewHandler(ctx, apphost.DefaultRegistrar())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "listen: %v\n", err)
 		os.Exit(1)
 	}
 
-	err = apphost.RegisterHandler(ctx, server.Endpoint(), server.AuthToken())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-
-	go func() {
-		err = apphost.Bind(ctx, server.Endpoint(), server.AuthToken())
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
-		}
-
-		// connection lost
-	}()
-
-	for {
-		query, err := server.Next()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
-		}
-
+	err = handler.Serve(ctx, func(ctx *astral.Context, query *astrald.PendingQuery) error {
 		caller, _ := dircli.GetAlias(ctx, query.Caller())
 		if caller == "" {
 			caller = query.Caller().String()
@@ -68,5 +47,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ignored [%s] %s from %s\n", query.Nonce(), query.Query(), caller)
 
 		query.Skip()
+		return nil
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
+
 }
