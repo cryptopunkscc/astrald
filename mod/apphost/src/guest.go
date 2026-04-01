@@ -72,7 +72,7 @@ func (guest *Guest) Serve(ctx *astral.Context) (err error) {
 			err = guest.onRegisterHandlerMsg(ctx, msg)
 		case *apphost.RouteQueryMsg:
 			err = guest.onRouteQueryMsg(ctx, msg)
-		case *apphost.PingMsg:
+		case *apphost.PingMsg: // fixme: dead code (
 			err = guest.Send(&astral.Ack{})
 		default:
 			guest.mod.log.Logv(1, "protocol error: invalid message: %v", msg.ObjectType())

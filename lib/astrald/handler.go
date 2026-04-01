@@ -31,7 +31,7 @@ func NewHandler(ctx *astral.Context, r apphost.Registrar) (*Handler, error) {
 
 // NewHandlerAt creates a new Handler for the given client, protocol and auth token.
 // Pass nil registrar for an IPC listener with no node registration.
-func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, authToken astral.Nonce, r apphost.Registrar) (*Handler, error) {
+func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, authToken astral.Nonce, registrar apphost.Registrar) (*Handler, error) {
 	l, err := ipc.ListenAny(protocol)
 	if err != nil {
 		return nil, err
@@ -44,18 +44,11 @@ func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, authToke
 		client:   client,
 	}
 
-	if r == nil {
+	if registrar == nil {
 		return h, nil
 	}
 
-	// bindCtx is cancelled when h.Close() is called or ctx is done
-	bindCtx, cancel := ctx.WithCancel()
-	go func() {
-		<-h.doneCh
-		cancel()
-	}()
-
-	if err = r.Register(bindCtx, h.Endpoint(), authToken); err != nil {
+	if err = registrar.Register(ctx, h.Endpoint(), authToken); err != nil {
 		h.Close()
 		return nil, err
 	}
@@ -63,10 +56,9 @@ func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, authToke
 	return h, nil
 }
 
-// Next waits for and returns the next pending query
+// ReadQuery waits for and returns the next pending query
 func (h *Handler) ReadQuery() (*PendingQuery, error) {
 	for {
-		// accept the next network connection
 		conn, err := h.listener.Accept()
 		if err != nil {
 			h.Close()
@@ -74,7 +66,6 @@ func (h *Handler) ReadQuery() (*PendingQuery, error) {
 		}
 		ch := channel.New(conn)
 
-		// read the query request
 		obj, err := ch.Receive()
 		if err != nil {
 			ch.Close()
@@ -109,9 +100,10 @@ func (h *Handler) ReadQuery() (*PendingQuery, error) {
 	}
 }
 
-type Handle func(ctx *astral.Context, query *PendingQuery) error
+type HandleFunc func(ctx *astral.Context, query *PendingQuery) error
 
-func (h *Handler) Serve(ctx *astral.Context, handle Handle) error {
+// Serve calls the given HandleFunc for every query received
+func (h *Handler) Serve(ctx *astral.Context, handle HandleFunc) error {
 	for {
 		// get the next pending query
 		pending, err := h.ReadQuery()
@@ -173,6 +165,8 @@ func (h *Handler) Route(ctx *astral.Context, router astral.Router) error {
 		}
 	}
 }
+
+// fixme: AuthToken easily confused with auth token used by the client.
 
 // SetAuthToken sets the auth token expected by the Handler
 func (h *Handler) SetAuthToken(token astral.Nonce) {
