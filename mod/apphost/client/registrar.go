@@ -6,7 +6,7 @@ import (
 )
 
 // Registrar is the default implementation of apphost.Registrar.
-// It blocks until first registration, then automatically reconnects in the background.
+// It blocks until the first registration, then automatically reconnects with node in the background in case of connection loss.
 type Registrar struct {
 	client *Client
 }
