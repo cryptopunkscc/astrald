@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
-func (mod *Module) OpNodeOpenRelay(_ *astral.Context, q *ops.Query) error {
+func (mod *Module) OpNodeOpenRelay(ctx *astral.Context, q *ops.Query) error {
 	ch := channel.New(q.Accept())
 	defer ch.Close()
 
@@ -18,7 +18,7 @@ func (mod *Module) OpNodeOpenRelay(_ *astral.Context, q *ops.Query) error {
 		}
 
 		if !container.CallerID.IsEqual(q.Caller()) {
-			if !mod.Auth.Authorize(q.Caller(), nodes.ActionRelayFor, container.CallerID) {
+			if !mod.Auth.Authorize(ctx, q.Caller(), nodes.ActionRelayFor, container.CallerID) {
 				return ch.Send(astral.NewError("unauthorized"))
 			}
 		}
