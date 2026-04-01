@@ -146,7 +146,6 @@ func (h *Handler) Route(ctx *astral.Context, router astral.Router) error {
 				io.Copy(w, conn)
 				w.Close()
 			}()
-
 		case errors.As(err, &errRejected):
 			// rejected - forward the rejection code and release the writer
 			pending.RejectWithCode(int(errRejected.Code))
