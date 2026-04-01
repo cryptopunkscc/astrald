@@ -9,6 +9,10 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
+func ApplyFilters(ctx *astral.Context, identity *astral.Identity, filters ...string) (bool, error) {
+	return Default().ApplyFilters(ctx, identity, filters...)
+}
+
 func (client *Client) ApplyFilters(ctx *astral.Context, identity *astral.Identity, filters ...string) (bool, error) {
 	ch, err := client.queryCh(ctx, dir.MethodSetAlias, query.Args{
 		"id":      identity,

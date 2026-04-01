@@ -7,6 +7,10 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
+func SetAlias(ctx *astral.Context, identity *astral.Identity, alias string) error {
+	return Default().SetAlias(ctx, identity, alias)
+}
+
 func (client *Client) SetAlias(ctx *astral.Context, identity *astral.Identity, alias string) error {
 	ch, err := client.queryCh(ctx, dir.MethodSetAlias, query.Args{
 		"id":    identity,

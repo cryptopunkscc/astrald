@@ -6,6 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
+func Filters(ctx *astral.Context) ([]string, error) {
+	return Default().Filters(ctx)
+}
+
 func (client *Client) Filters(ctx *astral.Context) (filters []string, err error) {
 	ch, err := client.queryCh(ctx, dir.MethodFilters, nil)
 	if err != nil {
