@@ -143,7 +143,7 @@ func (set *Set) RouteQuery(ctx *astral.Context, query *astral.Query, remoteWrite
 		defer opsQuery.Reject()
 
 		// ctx will end as soon as the query resolves, so we need a new one for the op
-		ctx := astral.NewContext(nil).WithIdentity(ctx.Identity()).WithZone(astral.ZoneAll)
+		ctx := astral.NewContext(nil).WithIdentity(ctx.Identity()).WithZone(ctx.Zone())
 
 		// call the op
 		err := op.Call(ctx, opsQuery, params)
