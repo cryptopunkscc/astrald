@@ -57,6 +57,8 @@ func main() {
 		if err != nil {
 			fatal("error: generate key: %v", err)
 		}
+
+		// todo: get repository name
 		if _, err = objectsClient.Default().Store(ctx, "", privateKey); err != nil {
 			fatal("error: store key: %v", err)
 		}
