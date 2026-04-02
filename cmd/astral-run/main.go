@@ -8,11 +8,13 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/apphost"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	apphostClient "github.com/cryptopunkscc/astrald/mod/apphost/client"
 	dirClient "github.com/cryptopunkscc/astrald/mod/dir/client"
+	objectsClient "github.com/cryptopunkscc/astrald/mod/objects/client"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
+	secp256k1Client "github.com/cryptopunkscc/astrald/mod/secp256k1/client"
 )
 
 func main() {
@@ -51,10 +53,19 @@ func main() {
 			fatal("error: resolve %q: %v", asFlag, err)
 		}
 
-		identity = astral.GenerateIdentity()
+		privateKey, err := secp256k1Client.NewKey(ctx)
+		if err != nil {
+			fatal("error: generate key: %v", err)
+		}
+		if _, err = objectsClient.Default().Store(ctx, "", privateKey); err != nil {
+			fatal("error: store key: %v", err)
+		}
+
+		identity = secp256k1.Identity(secp256k1.PublicKey(privateKey))
 		if err = dirClient.SetAlias(ctx, identity, asFlag); err != nil {
 			fatal("error: register alias %q: %v", asFlag, err)
 		}
+
 		fmt.Fprintf(os.Stderr, "created identity %v as %q\n", identity, asFlag)
 	}
 
