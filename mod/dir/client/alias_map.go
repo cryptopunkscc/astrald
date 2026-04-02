@@ -6,6 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
+func AliasMap(ctx *astral.Context) (*dir.AliasMap, error) {
+	return Default().AliasMap(ctx)
+}
+
 func (client *Client) AliasMap(ctx *astral.Context) (am *dir.AliasMap, err error) {
 	// query
 	ch, err := client.queryCh(ctx, dir.MethodAliasMap, nil)
