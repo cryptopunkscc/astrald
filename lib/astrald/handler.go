@@ -13,25 +13,23 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
-// fixme: adapter for net.Listener
-
 type Handler struct {
 	listener net.Listener
-	token    astral.Nonce
+	ipcToken astral.Nonce
 	doneCh   chan struct{}
 	done     atomic.Bool
 	client   *Client
 }
 
-// NewHandler creates a new Handler using apphost's DefaultRouter() protocol and a random auth token.
+// NewHandler creates a new Handler using apphost's DefaultRouter() protocol and a random auth ipcToken.
 // Pass nil registrar for an IPC listener with no node registration.
 func NewHandler(ctx *astral.Context, r apphost.Registrar) (*Handler, error) {
 	return NewHandlerAt(ctx, Default(), libapphost.DefaultRouter().Protocol(), astral.NewNonce(), r)
 }
 
-// NewHandlerAt creates a new Handler for the given client, protocol and auth token.
+// NewHandlerAt creates a new Handler for the given client, protocol and auth ipcToken.
 // Pass nil registrar for an IPC listener with no node registration.
-func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, authToken astral.Nonce, registrar apphost.Registrar) (*Handler, error) {
+func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, token astral.Nonce, registrar apphost.Registrar) (*Handler, error) {
 	l, err := ipc.ListenAny(protocol)
 	if err != nil {
 		return nil, err
@@ -40,7 +38,7 @@ func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, authToke
 	h := &Handler{
 		listener: l,
 		doneCh:   make(chan struct{}),
-		token:    authToken,
+		ipcToken: token,
 		client:   client,
 	}
 
@@ -48,7 +46,7 @@ func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, authToke
 		return h, nil
 	}
 
-	if err = registrar.Register(ctx, h.Endpoint(), authToken); err != nil {
+	if err = registrar.Register(ctx, h.Endpoint(), token); err != nil {
 		h.Close()
 		return nil, err
 	}
@@ -80,11 +78,11 @@ func (h *Handler) ReadQuery() (*PendingQuery, error) {
 			continue
 		}
 
-		// check auth token
-		if queryMsg.AuthToken != h.token {
+		// check auth ipcToken
+		if queryMsg.IpcToken != h.ipcToken {
 			ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 			ch.Close()
-			return nil, ErrInvalidAuthToken
+			return nil, ErrInvalidToken
 		}
 
 		// return the pending query
@@ -165,16 +163,14 @@ func (h *Handler) Route(ctx *astral.Context, router astral.Router) error {
 	}
 }
 
-// fixme: AuthToken easily confused with auth token used by the client.
-
-// SetAuthToken sets the auth token expected by the Handler
-func (h *Handler) SetAuthToken(token astral.Nonce) {
-	h.token = token
+// SetToken sets the token expected by the Handler
+func (h *Handler) SetToken(token astral.Nonce) {
+	h.ipcToken = token
 }
 
-// AuthToken returns the auth token expected by the Handler
-func (h *Handler) AuthToken() astral.Nonce {
-	return h.token
+// Token returns the token expected by the Handler
+func (h *Handler) Token() astral.Nonce {
+	return h.ipcToken
 }
 
 func (h *Handler) Close() error {
