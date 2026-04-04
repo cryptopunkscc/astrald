@@ -19,7 +19,9 @@ func main() {
 
 	var ctx = astrald.NewContext()
 
-	handler, err := astrald.NewHandler(ctx, apphost.DefaultRegistrar())
+	registrar := apphost.NewRegistrar(apphost.New(nil, astrald.Default()))
+
+	handler, err := astrald.NewHandler(ctx, registrar)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "listen: %v\n", err)
 		os.Exit(1)

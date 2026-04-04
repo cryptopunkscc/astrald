@@ -24,3 +24,4 @@ type Module interface {
 }
 
 var ErrProtocolError = errors.New("protocol error")
+var ErrNodeUnavailable = errors.New("node unavailable")
