@@ -8,41 +8,45 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-const openTimeout = time.Second * 30
+const openTimeout = time.Second * 15
 
 type FS struct {
-	ctx      *astral.Context
+	repo     objects.Repository
 	identity *astral.Identity
-	mod      objects.Module
 }
 
 var _ fs.FS = &FS{}
 
-func NewFS(ctx *astral.Context, mod objects.Module) *FS {
+func NewFS(repo objects.Repository) *FS {
 	return &FS{
-		ctx: ctx,
-		mod: mod,
+		repo: repo,
 	}
 }
 
 func (f *FS) Open(name string) (fs.File, error) {
+	return f.OpenContext(astral.NewContext(nil).WithZone(astral.ZoneAll), name)
+}
+
+func (f *FS) OpenContext(ctx *astral.Context, name string) (fs.File, error) {
+	// parse object id
 	objectID, err := astral.ParseID(name)
 	if err != nil {
 		return nil, fs.ErrNotExist
 	}
 
-	ctx, cancel := f.ctx.WithTimeout(openTimeout)
+	// set a timeout for the operation
+	ctx, cancel := ctx.WithTimeout(openTimeout)
 	defer cancel()
 
-	r, err := f.mod.ReadDefault().Read(ctx, objectID, 0, 0)
+	// open the file
+	r, err := f.repo.Read(ctx, objectID, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	rs := objects.NewReadSeeker(f.ctx, objectID, f.mod.ReadDefault(), r)
-
+	// wrap the reader into a
 	return &File{
 		ID:         objectID,
-		ReadCloser: rs,
+		ReadCloser: objects.NewReadSeeker(ctx, objectID, f.repo, r),
 	}, nil
 }

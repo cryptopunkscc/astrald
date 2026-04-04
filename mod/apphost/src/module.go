@@ -68,7 +68,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	go mod.indexer(ctx)
 
 	// start the object server
-	objectServer := NewObjectServer(mod)
+	objectServer := NewHTTPServer(mod)
 	objectServer.Run(ctx)
 
 	wg.Wait()
@@ -102,6 +102,15 @@ func (mod *Module) CreateAccessToken(identity *astral.Identity, d astral.Duratio
 		Token:     astral.String8(token.Token),
 		ExpiresAt: astral.Time(token.ExpiresAt),
 	}, nil
+}
+
+func (mod *Module) AuthenticateToken(token string) (*astral.Identity, error) {
+	dbToken, err := mod.db.FindAccessToken(token)
+	if err != nil || dbToken == nil {
+		return nil, errors.New("invalid token")
+	}
+
+	return dbToken.Identity, nil
 }
 
 func (mod *Module) GetOpSet() *ops.Set {

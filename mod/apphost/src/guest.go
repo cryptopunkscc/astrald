@@ -87,15 +87,12 @@ func (guest *Guest) Serve(ctx *astral.Context) (err error) {
 
 func (guest *Guest) onAuthTokenMsg(ctx *astral.Context, msg *apphost.AuthTokenMsg) (err error) {
 	// fetch info about the token from the database
-	dbToken, err := guest.mod.db.FindAccessToken(string(msg.Token))
-
+	guest.guestID, err = guest.mod.AuthenticateToken(string(msg.Token))
 	if err != nil {
 		guest.mod.log.Errorv(3, "token authentication failed")
 		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeAuthFailed})
 	}
-
-	guest.guestID = dbToken.Identity
-	guest.mod.log.Infov(3, "%v authenticated using auth token", guest.guestID)
+	guest.mod.log.Infov(3, "%v authenticated using token", guest.guestID)
 
 	return guest.Send(&apphost.AuthSuccessMsg{
 		GuestID: guest.guestID,

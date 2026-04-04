@@ -1,9 +1,5 @@
 package apphost
 
-type ObjectServerConfig struct {
-	Bind []string `yaml:"bind,omitempty"`
-}
-
 type Config struct {
 	// Listen on these adresses
 	Listen []string `yaml:"listen,omitempty"`
@@ -13,7 +9,7 @@ type Config struct {
 
 	Tokens map[string]string `yaml:"tokens,omitempty"`
 
-	ObjectServer ObjectServerConfig `yaml:"object_server,omitempty"`
+	BindHTTP string `yaml:"bind_http,flow"`
 
 	AllowAnonymous bool `yaml:"allow_anonymous,omitempty"`
 }
@@ -25,11 +21,7 @@ var defaultConfig = Config{
 		"memu:apphosty",
 		"memb:apphostb",
 	},
-	ObjectServer: ObjectServerConfig{
-		Bind: []string{
-			"tcp:127.0.0.1:8624",
-		},
-	},
+	BindHTTP:       "tcp:127.0.0.1:8624",
 	Tokens:         map[string]string{},
 	Workers:        32,
 	AllowAnonymous: true,
