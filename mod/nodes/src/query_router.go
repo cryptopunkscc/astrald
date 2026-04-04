@@ -29,6 +29,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 				return query.RouteNotFound(mod, err)
 			}
 		}
+
 		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
