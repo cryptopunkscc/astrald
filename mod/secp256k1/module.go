@@ -15,6 +15,10 @@ const ModuleName = "secp256k1"
 const KeyType = "secp256k1"
 const MethodNew = "secp256k1.new"
 
+const (
+	MethodNew = "secp256k1.new"
+)
+
 type Module interface {
 }
 

@@ -1,14 +1,13 @@
 package apphost
 
 import (
+	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Router struct {
@@ -16,14 +15,12 @@ type Router struct {
 	token    string
 	guestID  *astral.Identity
 	hostID   *astral.Identity
-	retry    *sig.Retry
 }
 
 var defaultRouter = newDefaultRouter()
 
 func NewRouter(endpoint string, token string) *Router {
-	r, _ := sig.NewRetry(250*time.Millisecond, 10*time.Second, 2)
-	return &Router{endpoint: endpoint, token: token, retry: r}
+	return &Router{endpoint: endpoint, token: token}
 }
 
 func DefaultRouter() *Router {
@@ -34,15 +31,10 @@ func SetDefaultRouter(router *Router) {
 	defaultRouter = router
 }
 
-func (r *Router) SetRetry(retry *sig.Retry) *Router {
-	r.retry = retry
-	return r
-}
-
-// RouteQuery routes a query via the host, retrying the connection according to
-// the router's retry policy (by default: exponential backoff until ctx is done).
+// RouteQuery routes a query via the host. Returns ErrNodeUnavailable if the
+// IPC connection cannot be established (query was never sent, safe to retry).
 func (router *Router) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.Conn, error) {
-	host, err := router.connectWithRetry(ctx)
+	host, err := router.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -112,28 +104,12 @@ func (router *Router) Protocol() string {
 	return split[0]
 }
 
-// connectWithRetry retries connect until it succeeds or ctx is done.
-func (router *Router) connectWithRetry(ctx *astral.Context) (*Host, error) {
-	for {
-		host, err := router.connect(ctx)
-		if err == nil {
-			router.retry.Reset()
-			return host, nil
-		}
-
-		select {
-		case <-router.retry.Retry():
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
-}
-
 // connect makes a single attempt to connect and authenticate with the host.
+// Returns ErrNodeUnavailable if the IPC dial fails.
 func (router *Router) connect(ctx *astral.Context) (*Host, error) {
 	host, err := Connect(ctx, router.endpoint)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", apphost.ErrNodeUnavailable, err)
 	}
 
 	router.hostID = host.HostID()
