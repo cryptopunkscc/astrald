@@ -23,17 +23,6 @@ func NewHTTPQueryHandler(mod *Module, identity *astral.Identity) *HTTPQueryHandl
 func (srv *HTTPQueryHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	var err error
 
-	// add CORS headers
-	writer.Header().Set("Access-Control-Allow-Origin", "*")
-	writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	writer.Header().Set("Access-Control-Allow-Headers", "*")
-
-	// handle preflight OPTIONS request
-	if request.Method == "OPTIONS" {
-		writer.WriteHeader(http.StatusOK)
-		return
-	}
-
 	// establish the target identity
 	targetID := srv.node.Identity()
 
@@ -49,6 +38,17 @@ func (srv *HTTPQueryHandler) ServeHTTP(writer http.ResponseWriter, request *http
 	// parse the query
 	method, params := query.Parse(request.URL.String())
 	method = strings.TrimPrefix(method, "/")
+
+	// check HTTP headers for application/json
+	accept := request.Header.Get("Accept")
+	if accept != "" && strings.Contains(accept, "application/json") {
+		params["out"] = "json"
+	}
+
+	contentType := request.Header.Get("Content-Type")
+	if contentType != "" && strings.Contains(contentType, "application/json") {
+		params["in"] = "json"
+	}
 
 	// prepare the query context
 	ctx, cancel := astral.
@@ -68,6 +68,9 @@ func (srv *HTTPQueryHandler) ServeHTTP(writer http.ResponseWriter, request *http
 	case err == nil:
 	case errors.Is(err, &astral.ErrRejected{}):
 		writer.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	case errors.Is(err, &astral.ErrRouteNotFound{}):
+		writer.WriteHeader(http.StatusServiceUnavailable)
 		return
 	default:
 		writer.WriteHeader(http.StatusInternalServerError)

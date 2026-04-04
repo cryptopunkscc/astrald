@@ -77,6 +77,17 @@ func (srv *HTTPServer) Run(ctx *astral.Context) error {
 }
 
 func (srv *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	// add CORS headers
+	writer.Header().Set("Access-Control-Allow-Origin", "*")
+	writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	writer.Header().Set("Access-Control-Allow-Headers", "*")
+
+	// handle preflight OPTIONS request
+	if request.Method == "OPTIONS" {
+		writer.WriteHeader(http.StatusOK)
+		return
+	}
+
 	var authToken = srv.getAuthToken(request)
 
 	clientID, err := srv.AuthenticateToken(authToken)
