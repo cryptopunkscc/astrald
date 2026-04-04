@@ -8,6 +8,7 @@ import (
 )
 
 type Client struct {
+	EnableCache  bool
 	targetID     *astral.Identity
 	astral       *astrald.Client
 	resolveCache sig.Map[string, *astral.Identity]

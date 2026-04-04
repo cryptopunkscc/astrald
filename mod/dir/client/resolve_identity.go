@@ -14,8 +14,10 @@ func (client *Client) ResolveIdentity(ctx *astral.Context, name string) (identit
 	}
 
 	// check cache
-	if id, ok := client.resolveCache.Get(name); ok {
-		return id, nil
+	if client.EnableCache {
+		if id, ok := client.resolveCache.Get(name); ok {
+			return id, nil
+		}
 	}
 
 	// then try using host's resolver
@@ -32,7 +34,9 @@ func (client *Client) ResolveIdentity(ctx *astral.Context, name string) (identit
 	}
 
 	// cache results
-	client.resolveCache.Set(name, identity)
+	if client.EnableCache {
+		client.resolveCache.Set(name, identity)
+	}
 
 	return
 }

@@ -8,8 +8,11 @@ import (
 )
 
 func (client *Client) GetAlias(ctx *astral.Context, identity *astral.Identity) (alias string, err error) {
-	if alias, ok := client.aliasCache.Get(identity.String()); ok {
-		return alias, nil
+	// check cache
+	if client.EnableCache {
+		if alias, ok := client.aliasCache.Get(identity.String()); ok {
+			return alias, nil
+		}
 	}
 
 	// query
@@ -26,7 +29,9 @@ func (client *Client) GetAlias(ctx *astral.Context, identity *astral.Identity) (
 	}
 
 	// save to cache
-	client.aliasCache.Set(identity.String(), alias)
+	if client.EnableCache {
+		client.aliasCache.Set(identity.String(), alias)
+	}
 
 	return
 }
