@@ -85,6 +85,9 @@ func (srv *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Reque
 		return
 	}
 
+	writer.Header().Set("X-Astral-Guest-Identity", clientID.String())
+	writer.Header().Set("X-Astral-Host-Identity", srv.node.Identity().String())
+
 	// handle object requests
 	if after, found := strings.CutPrefix(request.URL.Path, "/.objects/"); found {
 		// rewrite the path
@@ -96,6 +99,7 @@ func (srv *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Reque
 	NewHTTPQueryHandler(srv.Module, clientID).ServeHTTP(writer, request)
 }
 
-func (src *HTTPServer) getAuthToken(request *http.Request) string {
-	return request.Header.Get(HTTPAuthTokenHeader)
+func (src *HTTPServer) getAuthToken(request *http.Request) (token string) {
+	_, token, _ = strings.Cut(request.Header.Get("Authorization"), "Bearer ")
+	return token
 }
