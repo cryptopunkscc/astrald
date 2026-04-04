@@ -39,6 +39,23 @@ func (srv *HTTPQueryHandler) ServeHTTP(writer http.ResponseWriter, request *http
 	method, params := query.Parse(request.URL.String())
 	method = strings.TrimPrefix(method, "/")
 
+	if len(method) > 0 && method[0] == '@' {
+		method = method[1:]
+		split := strings.SplitN(method, "/", 2)
+		if len(split) != 2 {
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		targetID, err = srv.Dir.ResolveIdentity(split[0])
+		if err != nil {
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		method = split[1]
+	}
+
 	// check HTTP headers for application/json
 	accept := request.Header.Get("Accept")
 	if accept != "" && strings.Contains(accept, "application/json") {
@@ -70,7 +87,7 @@ func (srv *HTTPQueryHandler) ServeHTTP(writer http.ResponseWriter, request *http
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	case errors.Is(err, &astral.ErrRouteNotFound{}):
-		writer.WriteHeader(http.StatusServiceUnavailable)
+		writer.WriteHeader(http.StatusNotFound)
 		return
 	default:
 		writer.WriteHeader(http.StatusInternalServerError)
