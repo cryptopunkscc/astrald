@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -20,9 +21,20 @@ const (
 )
 
 func main() {
+	var zoneFlag string
+	var filterFlag filterList
+
+	flag.StringVar(&zoneFlag, "zone", "", "zones to include: any combination of d(evice), v(irtual), n(etwork)")
+	flag.Var(&filterFlag, "filter", "identity `filter` to apply (repeatable)")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "usage: %s [-zone dvn] [-filter name]... <query> [-arg <val>]...\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
 	// show help
-	if len(os.Args) < 2 {
-		fmt.Printf("usage: %s <query> [-arg <val>]...\n", os.Args[0])
+	if flag.NArg() < 1 {
+		flag.Usage()
 		return
 	}
 
@@ -33,10 +45,17 @@ func main() {
 	var callerID, targetID *astral.Identity
 
 	// split the argument into parts
-	caller, target, method := arl.Split(os.Args[1])
+	caller, target, method := arl.Split(flag.Arg(0))
 
 	// create new astral context
 	var ctx = astrald.NewContext()
+
+	if zoneFlag != "" {
+		ctx = ctx.WithZone(astral.Zones(zoneFlag))
+	}
+	if len(filterFlag) > 0 {
+		ctx = ctx.WithFilters(filterFlag...)
+	}
 
 	// parse the caller
 	if len(caller) > 0 {
@@ -59,22 +78,7 @@ func main() {
 		}
 	}
 
-	// parse the arguments
-	var osArgs = os.Args[2:]
-	var args = map[string]string{}
-	for len(osArgs) >= 2 {
-		key := osArgs[0]
-		val := osArgs[1]
-		if !strings.HasPrefix(key, "-") || len(key) < 2 {
-			fatal("error: unexpected argument %s\n", key)
-		}
-		args[key[1:]] = val
-		osArgs = osArgs[2:]
-	}
-
-	if len(osArgs) == 1 {
-		args[query.DefaultArgKey] = osArgs[0]
-	}
+	args := parseQueryArgs(flag.Args()[1:])
 
 	// set default input/output formats
 	if defaultIn != "" && args["in"] == "" {
@@ -94,7 +98,32 @@ func main() {
 	go func() {
 		io.Copy(conn, os.Stdin)
 	}()
+
 	io.Copy(os.Stdout, conn)
+}
+
+func parseQueryArgs(a []string) map[string]string {
+	args := map[string]string{}
+	for len(a) >= 2 {
+		key := a[0]
+		if !strings.HasPrefix(key, "-") || len(key) < 2 {
+			fatal("error: unexpected argument %s\n", key)
+		}
+		args[key[1:]] = a[1]
+		a = a[2:]
+	}
+	if len(a) == 1 {
+		args[query.DefaultArgKey] = a[0]
+	}
+	return args
+}
+
+type filterList []string
+
+func (f *filterList) String() string { return strings.Join(*f, ",") }
+func (f *filterList) Set(s string) error {
+	*f = append(*f, s)
+	return nil
 }
 
 func fatal(f string, v ...any) {
