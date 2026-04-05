@@ -143,6 +143,16 @@ func (mod *Module) ActiveLocalAppContracts() (list []*apphost.AppContract, err e
 	return
 }
 
+func (mod *Module) FindHandler(authToken astral.Nonce) (h *QueryHandler, ok bool) {
+	for _, h := range mod.handlers.Clone() {
+		if h.AuthToken == authToken {
+			return h, true
+		}
+	}
+
+	return nil, false
+}
+
 func (mod *Module) Index(ctx *astral.Context, objectID *astral.ObjectID) (err error) {
 	mod.indexMu.Lock()
 	defer mod.indexMu.Unlock()

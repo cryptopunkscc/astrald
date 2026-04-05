@@ -8,11 +8,11 @@ import (
 
 // HandleQueryMsg represents a request to handle a query.
 type HandleQueryMsg struct {
-	AuthToken astral.Nonce
-	ID        astral.Nonce
-	Caller    *astral.Identity
-	Target    *astral.Identity
-	Query     astral.String16
+	IpcToken astral.Nonce
+	ID       astral.Nonce
+	Caller   *astral.Identity
+	Target   *astral.Identity
+	Query    astral.String16
 }
 
 func (HandleQueryMsg) ObjectType() string { return "mod.apphost.handle_query_msg" }

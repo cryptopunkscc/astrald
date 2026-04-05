@@ -22,7 +22,7 @@ type QueryHandler struct {
 var errEndpointUnavailable = errors.New("endpoint unavailable")
 
 func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	conn, err := ipc.Dial(handler.Endpoint)
+	conn, err := ipc.DialContext(ctx, handler.Endpoint)
 	if err != nil {
 		return nil, errEndpointUnavailable
 	}
@@ -30,11 +30,11 @@ func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.Query, w 
 	var ch = channel.New(conn)
 
 	err = ch.Send(&apphost.HandleQueryMsg{
-		AuthToken: handler.AuthToken,
-		ID:        q.Nonce,
-		Caller:    q.Caller,
-		Target:    q.Target,
-		Query:     astral.String16(q.Query),
+		IpcToken: handler.AuthToken,
+		ID:       q.Nonce,
+		Caller:   q.Caller,
+		Target:   q.Target,
+		Query:    astral.String16(q.Query),
 	})
 	if err != nil {
 		return query.RouteNotFound(handler, err)

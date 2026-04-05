@@ -15,6 +15,7 @@ const (
 	MethodRegisterHandler = "apphost.register_handler"
 	MethodSignAppContract = "apphost.sign_app_contract"
 	MethodCancel          = "apphost.cancel"
+	MethodBind            = "apphost.bind"
 )
 
 type Module interface {
@@ -23,3 +24,4 @@ type Module interface {
 }
 
 var ErrProtocolError = errors.New("protocol error")
+var ErrNodeUnavailable = errors.New("node unavailable")
