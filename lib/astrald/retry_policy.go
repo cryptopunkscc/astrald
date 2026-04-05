@@ -1,4 +1,3 @@
-// lib/astrald/retry_policy.go
 package astrald
 
 import (
@@ -7,7 +6,6 @@ import (
 )
 
 // RetryPolicy governs wait time and whether to retry on consecutive failures.
-// attempt is zero-indexed and resets to 0 after each success.
 type RetryPolicy interface {
 	Next(attempt int, err error) (time.Duration, bool)
 }
