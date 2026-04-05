@@ -1,4 +1,3 @@
-// lib/astrald/retry_router.go
 package astrald
 
 import (
@@ -33,9 +32,11 @@ func (rr *RetryRouter) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.
 		if !ok {
 			return nil, err
 		}
+		t := time.NewTimer(d)
 		select {
-		case <-time.After(d):
+		case <-t.C:
 		case <-ctx.Done():
+			t.Stop()
 			return nil, ctx.Err()
 		}
 	}
