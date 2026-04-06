@@ -54,21 +54,19 @@ func (mod *Module) ActiveLocalAppContracts() (list []*apphost.SignedAppContract,
 	return
 }
 
-func (mod *Module) verifyAppContract(signed *apphost.SignedAppContract) error {
-	if signed.IsNil() {
-		return apphost.ErrNilContract
-	}
-	if signed.HostSig == nil {
-		return apphost.ErrHostSigMissing
-	}
-	if signed.AppSig == nil {
-		return apphost.ErrAppSigMissing
+func (mod *Module) verifySignedAppContract(signed *apphost.SignedAppContract) error {
+	switch {
+	case signed.IsNil():
+		return fmt.Errorf("nil contract")
+	case signed.HostSig == nil:
+		return fmt.Errorf("host signature is missing")
+	case signed.AppSig == nil:
+		return fmt.Errorf("app signature is missing")
+	case signed.SignableHash() == nil:
+		return fmt.Errorf("cannot compute contract hash")
 	}
 
 	hash := signed.SignableHash()
-	if hash == nil {
-		return apphost.ErrContractHashFailed
-	}
 
 	if err := mod.Crypto.VerifyHashSignature(
 		secp256k1.FromIdentity(signed.HostID),
@@ -97,7 +95,7 @@ func (mod *Module) isActive(signed *apphost.SignedAppContract) bool {
 		return false // hasn't started yet
 	case signed.ExpiresAt.Time().Before(time.Now()):
 		return false // has expired
-	case mod.verifyAppContract(signed) != nil:
+	case mod.verifySignedAppContract(signed) != nil:
 		return false // invalid signatures
 	}
 
