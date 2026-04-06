@@ -84,7 +84,12 @@ func (m *Modules) injectLoaded() {
 		}
 
 		if r, ok := mod.(astral.Router); ok {
-			m.node.Add(r, 0)
+			prio := astral.RoutingPriorityNormal
+			if rp, ok := mod.(astral.HasRoutingPriority); ok {
+				prio = rp.RoutingPriority()
+			}
+
+			m.node.Add(r, prio)
 			routers = append(routers, r)
 		}
 	}
