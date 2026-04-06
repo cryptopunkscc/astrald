@@ -81,3 +81,7 @@ func (mod *Module) GetOpSet() *ops.Set {
 func (mod *Module) String() string {
 	return apphost.ModuleName
 }
+
+func (mod *Module) RoutingPriority() int {
+	return astral.RoutingPriorityHigh
+}
