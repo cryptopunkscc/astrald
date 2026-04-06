@@ -24,9 +24,9 @@ func (mod *Module) OpRegisterHandler(ctx *astral.Context, q *ops.Query, args opR
 
 	// add the handler
 	handler := &QueryHandler{
-		Identity:  q.Caller(),
-		AuthToken: args.Token,
-		Endpoint:  args.Endpoint,
+		Identity: q.Caller(),
+		IpcToken: args.Token,
+		Endpoint: args.Endpoint,
 	}
 
 	mod.handlers.Add(handler)

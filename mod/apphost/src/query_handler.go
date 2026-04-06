@@ -14,9 +14,9 @@ import (
 
 // QueryHandler is an astral.Router that routes queries to an IPC endpoint.
 type QueryHandler struct {
-	Identity  *astral.Identity // identity of the handler
-	AuthToken astral.Nonce     // auth token for the IPC endpoint
-	Endpoint  string           // IPC endpoint
+	Identity *astral.Identity // identity of the handler
+	IpcToken astral.Nonce     // token for the IPC endpoint
+	Endpoint string           // IPC endpoint
 }
 
 var errEndpointUnavailable = errors.New("endpoint unavailable")
@@ -30,7 +30,7 @@ func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.Query, w 
 	var ch = channel.New(conn)
 
 	err = ch.Send(&apphost.HandleQueryMsg{
-		IpcToken: handler.AuthToken,
+		IpcToken: handler.IpcToken,
 		ID:       q.Nonce,
 		Caller:   q.Caller,
 		Target:   q.Target,

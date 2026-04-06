@@ -103,16 +103,16 @@ func (guest *Guest) onRegisterHandlerMsg(ctx *astral.Context, msg *apphost.Regis
 
 	// if requested identity is different from the authenticated identity, check authorization
 	if !msg.Identity.IsEqual(guest.guestID) {
-		if !guest.mod.Auth.Authorize(guest.guestID, auth.ActionSudo, msg.Identity) {
+		if !guest.mod.Auth.Authorize(ctx, guest.guestID, auth.ActionSudo, msg.Identity) {
 			return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 		}
 	}
 
 	// add the handler
 	handler := &QueryHandler{
-		Identity:  msg.Identity,
-		AuthToken: msg.AuthToken,
-		Endpoint:  string(msg.Endpoint),
+		Identity: msg.Identity,
+		IpcToken: msg.AuthToken,
+		Endpoint: string(msg.Endpoint),
 	}
 	guest.mod.handlers.Add(handler)
 	defer guest.mod.handlers.Remove(handler) // remove handler on disconnect
@@ -168,7 +168,7 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 	case q.Caller.IsZero():
 	case q.Caller.IsEqual(guest.guestID):
 	default:
-		if !guest.mod.Authorize(guest.guestID, auth.ActionSudo, q.Caller) {
+		if !guest.mod.Auth.Authorize(ctx, guest.guestID, auth.ActionSudo, q.Caller) {
 			return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 		}
 	}

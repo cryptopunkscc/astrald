@@ -1,10 +1,5 @@
 package apphost
 
-/*
-	op bind establishes a secondary status channel between an app and the host.
-	The channel acts as a connection lease: if it drops, the connection is considered lost.
-*/
-
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"

@@ -70,8 +70,6 @@ func DefaultRegistrar() *Registrar {
 	return NewRegistrar(Default())
 }
 
-// Ready returns a channel that is closed when the bind session is established.
-// It is replaced with a new open channel on session drop, then closed again on reconnect.
 func (r *Registrar) Ready() <-chan struct{} {
 	return r.ready.Get()
 }

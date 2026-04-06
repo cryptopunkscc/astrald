@@ -6,8 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
-// Bind establishes a status channel with the host. The channel acts as a connection lease:
-// if it drops, the host considers the connection lost and unbinds registered handlers.
 func (client *Client) Bind(ctx *astral.Context) (*channel.Channel, error) {
 	ch, err := client.queryCh(ctx, apphost.MethodBind, nil)
 	if err != nil {
