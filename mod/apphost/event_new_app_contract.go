@@ -1,12 +1,13 @@
 package apphost
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type EventNewAppContract struct {
-	Contract *AppContract
+	Contract *SignedAppContract
 }
 
 var _ astral.Object = &EventNewAppContract{}
@@ -16,11 +17,11 @@ func (e EventNewAppContract) ObjectType() string {
 }
 
 func (e EventNewAppContract) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(e).WriteTo(w)
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e *EventNewAppContract) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(e).ReadFrom(r)
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 func init() {

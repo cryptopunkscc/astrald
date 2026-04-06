@@ -41,7 +41,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 			drop.Accept(true)
 		}
 
-	case *apphost.AppContract:
+	case *apphost.SignedAppContract:
 		if !slices.ContainsFunc(mod.LocalSwarm(), o.HostID.IsEqual) {
 			break
 		}

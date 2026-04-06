@@ -13,13 +13,16 @@ const (
 	MethodCreateToken     = "apphost.create_token"
 	MethodListTokens      = "apphost.list_tokens"
 	MethodRegisterHandler = "apphost.register_handler"
+	MethodNewAppContract  = "apphost.new_app_contract"
 	MethodSignAppContract = "apphost.sign_app_contract"
+	MethodIndex           = "apphost.index"
 	MethodCancel          = "apphost.cancel"
 )
 
 type Module interface {
 	CreateAccessToken(*astral.Identity, astral.Duration) (*AccessToken, error)
-	ActiveLocalAppContracts() ([]*AppContract, error)
+	ActiveLocalAppContracts() ([]*SignedAppContract, error)
 }
 
 var ErrProtocolError = errors.New("protocol error")
+var ErrInactiveContract = errors.New("inactive contract")
