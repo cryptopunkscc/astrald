@@ -3,7 +3,6 @@ package apphost
 import (
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -79,43 +78,6 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) ListAccessTokens() ([]*apphost.AccessToken, error) {
-	rows, err := mod.db.ListAccessTokens()
-	if err != nil {
-		return nil, err
-	}
-
-	return sig.MapSlice(rows, func(a dbAccessToken) (*apphost.AccessToken, error) {
-		return &apphost.AccessToken{
-			Identity:  a.Identity,
-			Token:     astral.String8(a.Token),
-			ExpiresAt: astral.Time(a.ExpiresAt),
-		}, nil
-	})
-}
-
-func (mod *Module) CreateAccessToken(identity *astral.Identity, d astral.Duration) (*apphost.AccessToken, error) {
-	token, err := mod.db.CreateAccessToken(identity, d)
-	if err != nil {
-		return nil, err
-	}
-
-	return &apphost.AccessToken{
-		Identity:  token.Identity,
-		Token:     astral.String8(token.Token),
-		ExpiresAt: astral.Time(token.ExpiresAt),
-	}, nil
-}
-
-func (mod *Module) AuthenticateToken(token string) (*astral.Identity, error) {
-	dbToken, err := mod.db.FindAccessToken(token)
-	if err != nil || dbToken == nil {
-		return nil, errors.New("invalid token")
-	}
-
-	return dbToken.Identity, nil
-}
-
 func (mod *Module) GetOpSet() *ops.Set {
 	return &mod.scope
 }
@@ -164,42 +126,6 @@ func (mod *Module) ActiveLocalAppContracts() (list []*apphost.SignedAppContract,
 		}
 		list = append(list, signed)
 	}
-
-	return
-}
-
-func (mod *Module) Index(ctx *astral.Context, objectID *astral.ObjectID) (err error) {
-	mod.indexMu.Lock()
-	defer mod.indexMu.Unlock()
-
-	// check if already indexed
-	if _, e := mod.db.FindAppContract(objectID); e == nil {
-		return nil
-	}
-
-	// load the contract from node repo
-	signed, err := objects.Load[*apphost.SignedAppContract](ctx, mod.Objects.ReadDefault(), objectID)
-	if err != nil {
-		return fmt.Errorf("cannot load app contract: %w", err)
-	}
-
-	if !mod.isActive(signed) {
-		return apphost.ErrInactiveContract
-	}
-
-	// save the contract
-	err = mod.db.SaveAppContract(&dbAppContract{
-		ObjectID:  objectID,
-		AppID:     signed.AppID,
-		HostID:    signed.HostID,
-		StartsAt:  time.Time(signed.StartsAt),
-		ExpiresAt: time.Time(signed.ExpiresAt),
-	})
-	if err != nil {
-		return err
-	}
-
-	mod.Objects.Receive(&apphost.EventNewAppContract{Contract: signed}, nil)
 
 	return
 }
@@ -253,38 +179,4 @@ func (mod *Module) validateSignatures(signed *apphost.SignedAppContract) error {
 	}
 
 	return nil
-}
-
-func (mod *Module) indexer(ctx *astral.Context) {
-	ctx = ctx.ExcludeZone(astral.ZoneNetwork)
-
-	ch, err := mod.Objects.GetRepository(objects.RepoLocal).Scan(ctx, true)
-	if err != nil {
-		mod.log.Error("cannot scan objects: %v", err)
-		return
-	}
-
-	for objectID := range ch {
-		objectType, err := mod.Objects.GetType(ctx, objectID)
-
-		switch {
-		case err != nil:
-			continue
-		case objectType != apphost.SignedAppContract{}.ObjectType():
-			continue
-		}
-
-		_ = mod.Index(ctx, objectID)
-	}
-
-	mod.log.Logv(1, "apphost indexer finished")
-}
-
-func randomString(length int) (s string) {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
-	var name = make([]byte, length)
-	for i := 0; i < len(name); i++ {
-		name[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(name[:])
 }
