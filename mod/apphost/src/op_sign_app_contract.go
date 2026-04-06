@@ -1,54 +1,29 @@
 package apphost
 
 import (
-	"time"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 type opSignAppContractArgs struct {
-	ID       *astral.Identity
-	Out      string          `query:"optional"`
-	Duration astral.Duration `query:"optional"`
+	In  string `query:"optional"`
+	Out string `query:"optional"`
 }
 
-func (mod *Module) OpSignAppContract(ctx *astral.Context, q *ops.Query, args opSignAppContractArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpSignAppContract(ctx *astral.Context, q *ops.Query, args opSignAppContractArgs) error {
+	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	if args.Duration == 0 {
-		args.Duration = DefaultAppContractDuration
-	}
+	return ch.Switch(func(c *apphost.AppContract) error {
+		signed, err := mod.SignAppContract(ctx, c)
+		if err != nil {
+			return ch.Send(astral.Err(err))
+		}
 
-	// initialize the contract
-	var c = &apphost.AppContract{
-		AppID:     args.ID,
-		HostID:    mod.node.Identity(),
-		StartsAt:  astral.Time(time.Now()),
-		ExpiresAt: astral.Time(time.Now().Add(time.Duration(args.Duration))),
-	}
+		mod.log.Logv(1, "signed app contract (%v)", signed.AppID)
 
-	// sign the contract
-	signed, err := mod.SignAppContract(ctx, c)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	contractID, err := objects.Save(ctx, signed, mod.Objects.WriteDefault())
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	mod.log.Infov(1, "signed app contract (%v) with %v", signed.AppID, contractID)
-
-	err = mod.Index(ctx, contractID)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	return ch.Send(contractID)
+		return ch.Send(signed)
+	})
 }
