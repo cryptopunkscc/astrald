@@ -33,17 +33,17 @@ func (mod *Module) OpSignAppContract(ctx *astral.Context, q *ops.Query, args opS
 	}
 
 	// sign the contract
-	err = mod.SignAppContract(c)
+	signed, err := mod.SignAppContract(ctx, c)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	contractID, err := objects.Save(ctx, c, mod.Objects.WriteDefault())
+	contractID, err := objects.Save(ctx, signed, mod.Objects.WriteDefault())
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	mod.log.Infov(1, "signed app contract (%v) with %v", c.AppID, contractID)
+	mod.log.Infov(1, "signed app contract (%v) with %v", signed.AppID, contractID)
 
 	err = mod.Index(ctx, contractID)
 	if err != nil {

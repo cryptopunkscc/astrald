@@ -2,9 +2,10 @@ package apphost
 
 import (
 	"crypto/sha256"
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/streams"
-	"io"
 )
 
 type AppContract struct {
@@ -12,8 +13,6 @@ type AppContract struct {
 	HostID    *astral.Identity
 	StartsAt  astral.Time
 	ExpiresAt astral.Time
-	AppSig    astral.Bytes8
-	HostSig   astral.Bytes8
 }
 
 var _ astral.Object = &AppContract{}
@@ -21,11 +20,11 @@ var _ astral.Object = &AppContract{}
 func (a AppContract) ObjectType() string { return "mod.apphost.app_contract" }
 
 func (a AppContract) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(a).WriteTo(w)
+	return astral.Objectify(&a).WriteTo(w)
 }
 
 func (a *AppContract) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(a).ReadFrom(r)
+	return astral.Objectify(a).ReadFrom(r)
 }
 
 func (a *AppContract) SignableHash() []byte {

@@ -14,8 +14,10 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -23,6 +25,7 @@ var _ apphost.Module = &Module{}
 
 type Deps struct {
 	Auth    auth.Module
+	Crypto  crypto.Module
 	Dir     dir.Module
 	Objects objects.Module
 }
@@ -121,23 +124,45 @@ func (mod *Module) String() string {
 	return apphost.ModuleName
 }
 
-func (mod *Module) SignAppContract(c *apphost.AppContract) (err error) {
-	return errors.New("not implemented")
+func (mod *Module) SignAppContract(ctx *astral.Context, c *apphost.AppContract) (*apphost.SignedAppContract, error) {
+	signed := &apphost.SignedAppContract{AppContract: c}
+
+	// sign as host (node) — ASN1 hash-based
+	hostSigner, err := mod.Crypto.ObjectSigner(secp256k1.FromIdentity(c.HostID))
+	if err != nil {
+		return nil, fmt.Errorf("sign as host: %w", err)
+	}
+	signed.HostSig, err = hostSigner.SignObject(ctx, c)
+	if err != nil {
+		return nil, fmt.Errorf("sign as host: %w", err)
+	}
+
+	// sign as app — ASN1 hash-based
+	appSigner, err := mod.Crypto.ObjectSigner(secp256k1.FromIdentity(c.AppID))
+	if err != nil {
+		return nil, fmt.Errorf("sign as app: %w", err)
+	}
+	signed.AppSig, err = appSigner.SignObject(ctx, c)
+	if err != nil {
+		return nil, fmt.Errorf("sign as app: %w", err)
+	}
+
+	return signed, nil
 }
 
-func (mod *Module) ActiveLocalAppContracts() (list []*apphost.AppContract, err error) {
+func (mod *Module) ActiveLocalAppContracts() (list []*apphost.SignedAppContract, err error) {
 	contracts, err := mod.db.FindActiveAppContractsByHost(mod.node.Identity())
 	if err != nil {
 		return
 	}
 
 	for _, dbContract := range contracts {
-		contract, err := objects.Load[*apphost.AppContract](nil, mod.Objects.ReadDefault(), dbContract.ObjectID)
+		signed, err := objects.Load[*apphost.SignedAppContract](nil, mod.Objects.ReadDefault(), dbContract.ObjectID)
 		if err != nil {
 			mod.log.Errorv(2, "error loading contract %v: %v", dbContract.ObjectID, err)
 			continue
 		}
-		list = append(list, contract)
+		list = append(list, signed)
 	}
 
 	return
@@ -153,50 +178,81 @@ func (mod *Module) Index(ctx *astral.Context, objectID *astral.ObjectID) (err er
 	}
 
 	// load the contract from node repo
-	c, err := objects.Load[*apphost.AppContract](ctx, mod.Objects.ReadDefault(), objectID)
+	signed, err := objects.Load[*apphost.SignedAppContract](ctx, mod.Objects.ReadDefault(), objectID)
 	if err != nil {
 		return fmt.Errorf("cannot load app contract: %w", err)
 	}
 
-	if !mod.isActive(c) {
-		return errors.New("inactive contract")
+	if !mod.isActive(signed) {
+		return apphost.ErrInactiveContract
 	}
 
 	// save the contract
 	err = mod.db.SaveAppContract(&dbAppContract{
 		ObjectID:  objectID,
-		AppID:     c.AppID,
-		HostID:    c.HostID,
-		StartsAt:  time.Time(c.StartsAt),
-		ExpiresAt: time.Time(c.ExpiresAt),
+		AppID:     signed.AppID,
+		HostID:    signed.HostID,
+		StartsAt:  time.Time(signed.StartsAt),
+		ExpiresAt: time.Time(signed.ExpiresAt),
 	})
 	if err != nil {
 		return err
 	}
 
-	mod.Objects.Receive(&apphost.EventNewAppContract{Contract: c}, nil)
+	mod.Objects.Receive(&apphost.EventNewAppContract{Contract: signed}, nil)
 
 	return
 }
 
 // isActive returns true if the contract is active, i.e., the signatures are valid, and its conditions are met (such
 // as start and expiry date).
-func (mod *Module) isActive(c *apphost.AppContract) bool {
+func (mod *Module) isActive(signed *apphost.SignedAppContract) bool {
 	switch {
-	case c.StartsAt.Time().After(time.Now()):
+	case signed.StartsAt.Time().After(time.Now()):
 		return false // hasn't started yet
 
-	case c.ExpiresAt.Time().Before(time.Now()):
+	case signed.ExpiresAt.Time().Before(time.Now()):
 		return false // has expired
-	case mod.validateSignatures(c) != nil:
+	case mod.validateSignatures(signed) != nil:
 		return false // invalid signatures
 	}
 
 	return true
 }
 
-func (mod *Module) validateSignatures(c *apphost.AppContract) (err error) {
-	return errors.New("not implemented")
+func (mod *Module) validateSignatures(signed *apphost.SignedAppContract) error {
+	if signed.IsNil() {
+		return errors.New("nil contract")
+	}
+	if signed.HostSig == nil {
+		return errors.New("host signature is missing")
+	}
+	if signed.AppSig == nil {
+		return errors.New("app signature is missing")
+	}
+
+	hash := signed.SignableHash()
+	if hash == nil {
+		return errors.New("cannot compute contract hash")
+	}
+
+	if err := mod.Crypto.VerifyHashSignature(
+		secp256k1.FromIdentity(signed.HostID),
+		signed.HostSig,
+		hash,
+	); err != nil {
+		return fmt.Errorf("host signature: %w", err)
+	}
+
+	if err := mod.Crypto.VerifyHashSignature(
+		secp256k1.FromIdentity(signed.AppID),
+		signed.AppSig,
+		hash,
+	); err != nil {
+		return fmt.Errorf("app signature: %w", err)
+	}
+
+	return nil
 }
 
 func (mod *Module) indexer(ctx *astral.Context) {
@@ -214,7 +270,7 @@ func (mod *Module) indexer(ctx *astral.Context) {
 		switch {
 		case err != nil:
 			continue
-		case objectType != apphost.AppContract{}.ObjectType():
+		case objectType != apphost.SignedAppContract{}.ObjectType():
 			continue
 		}
 

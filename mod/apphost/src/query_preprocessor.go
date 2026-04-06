@@ -16,13 +16,13 @@ func (mod *Module) PreprocessQuery(qm *core.QueryModifier) error {
 	contracts, _ := mod.db.FindActiveAppContractsByAppAndHost(qm.Query().Caller, mod.node.Identity())
 	if len(contracts) > 0 {
 		// query is coming from a locally hosted app
-		contract, err := objects.Load[*apphost.AppContract](ctx, mod.Objects.ReadDefault(), contracts[0].ObjectID)
+		signed, err := objects.Load[*apphost.SignedAppContract](ctx, mod.Objects.ReadDefault(), contracts[0].ObjectID)
 		if err != nil {
 			mod.log.Errorv(1, "cannot load app contract: %v", err)
 		}
 
-		if contract != nil {
-			qm.Attach(contract)
+		if !signed.IsNil() {
+			qm.Attach(signed)
 		}
 	}
 
