@@ -171,6 +171,12 @@ func objectify(v reflect.Value) (value, error) {
 	case reflect.Bool:
 		return boolValue{v}, nil
 
+	case reflect.Float32:
+		return float32Value{v}, nil
+
+	case reflect.Float64:
+		return float64Value{v}, nil
+
 	default:
 		return nil, errors.New("unsupported type " + v.Kind().String() + " " + v.Type().String())
 	}
