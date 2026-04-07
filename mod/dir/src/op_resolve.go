@@ -12,13 +12,13 @@ type opResolveArgs struct {
 }
 
 func (mod *Module) OpResolve(ctx *astral.Context, q *ops.Query, args opResolveArgs) (err error) {
+	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
+	defer ch.Close()
+
 	id, err := mod.ResolveIdentity(args.Name)
 	if err != nil {
-		return q.RejectWithCode(8)
+		return ch.Send(astral.Err(err))
 	}
-
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
-	defer ch.Close()
 
 	return ch.Send(id)
 }

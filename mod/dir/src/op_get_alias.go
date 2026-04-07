@@ -12,12 +12,12 @@ type opGetAliasArgs struct {
 }
 
 func (mod *Module) OpGetAlias(ctx *astral.Context, q *ops.Query, args opGetAliasArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	alias, err := mod.GetAlias(args.ID)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
 	return ch.Send((*astral.String8)(&alias))

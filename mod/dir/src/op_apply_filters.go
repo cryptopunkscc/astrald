@@ -9,20 +9,20 @@ import (
 )
 
 type opApplyFiltersArgs struct {
-	Arg string
-	ID  string `query:"optional"`
-	In  string `query:"optional"`
-	Out string `query:"optional"`
+	Filters string
+	ID      string `query:"optional"`
+	In      string `query:"optional"`
+	Out     string `query:"optional"`
 }
 
 func (mod *Module) OpApplyFilters(ctx *astral.Context, q *ops.Query, args opApplyFiltersArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	// set initial values
 	var (
 		identity = q.Caller()
-		filters  = strings.Split(args.Arg, ",")
+		filters  = strings.Split(args.Filters, ",")
 	)
 
 	// parse arg
