@@ -2,41 +2,50 @@ package astrald
 
 import (
 	"errors"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/apphost"
+	libapphost "github.com/cryptopunkscc/astrald/lib/apphost"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type RetryRouter struct {
 	Router
-	policy RetryPolicy
+	retry       *sig.Retry
+	maxAttempts int // 0 = unlimited
 }
 
 var _ Router = &RetryRouter{}
 
-func NewRetryRouter(r Router, p RetryPolicy) *RetryRouter {
-	return &RetryRouter{Router: r, policy: p}
+func NewRetryRouter(r Router, retry *sig.Retry) *RetryRouter {
+	return &RetryRouter{Router: r, retry: retry}
+}
+
+func NewLimitedRetryRouter(r Router, retry *sig.Retry, maxAttempts int) *RetryRouter {
+	return &RetryRouter{Router: r, retry: retry, maxAttempts: maxAttempts}
+}
+
+func NewNoRetryRouter(r Router) *RetryRouter {
+	return &RetryRouter{Router: r, maxAttempts: 1}
 }
 
 func (rr *RetryRouter) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.Conn, error) {
 	for attempt := 0; ; attempt++ {
 		conn, err := rr.Router.RouteQuery(ctx, q)
 		if err == nil {
+			if rr.retry != nil {
+				rr.retry.Reset()
+			}
 			return conn, nil
 		}
-		if !errors.Is(err, apphost.ErrNodeUnavailable) {
+		if !errors.Is(err, libapphost.ErrNodeUnavailable) {
 			return nil, err
 		}
-		d, ok := rr.policy.Next(attempt, err)
-		if !ok {
+		if rr.maxAttempts > 0 && attempt+1 >= rr.maxAttempts {
 			return nil, err
 		}
-		t := time.NewTimer(d)
 		select {
-		case <-t.C:
+		case <-rr.retry.Retry():
 		case <-ctx.Done():
-			t.Stop()
 			return nil, ctx.Err()
 		}
 	}

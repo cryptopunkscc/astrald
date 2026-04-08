@@ -109,7 +109,7 @@ func (router *Router) Protocol() string {
 func (router *Router) connect(ctx *astral.Context) (*Host, error) {
 	host, err := Connect(ctx, router.endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", apphost.ErrNodeUnavailable, err)
+		return nil, fmt.Errorf("%w: %v", ErrNodeUnavailable, err)
 	}
 
 	router.hostID = host.HostID()

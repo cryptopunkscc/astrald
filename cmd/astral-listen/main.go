@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/astrald"
-	apphost "github.com/cryptopunkscc/astrald/mod/apphost/client"
+	"github.com/cryptopunkscc/astrald/lib/apps"
+	libastrald "github.com/cryptopunkscc/astrald/lib/astrald"
 	dircli "github.com/cryptopunkscc/astrald/mod/dir/client"
 )
 
@@ -17,17 +17,19 @@ func main() {
 	flag.StringVar(&accept, "a", "", "accept query")
 	flag.Parse()
 
-	var ctx = astrald.NewContext()
+	var ctx = libastrald.NewContext()
 
-	registrar := apphost.NewRegistrar(apphost.New(nil, astrald.Default()))
-
-	handler, err := astrald.NewHandler(ctx, registrar)
+	handler, err := apps.NewHandler()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "listen: %v\n", err)
 		os.Exit(1)
 	}
+	if err = apps.NewDefaultAppRegistrar(ctx).Register(ctx, handler.Endpoint(), handler.Token()); err != nil {
+		fmt.Fprintf(os.Stderr, "register: %v\n", err)
+		os.Exit(1)
+	}
 
-	err = handler.Serve(ctx, func(ctx *astral.Context, query *astrald.PendingQuery) error {
+	err = handler.Serve(ctx, func(ctx *astral.Context, query *apps.PendingQuery) error {
 		caller, _ := dircli.GetAlias(ctx, query.Caller())
 		if caller == "" {
 			caller = query.Caller().String()

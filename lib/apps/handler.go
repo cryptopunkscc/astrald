@@ -1,4 +1,4 @@
-package astrald
+package apps
 
 import (
 	"errors"
@@ -18,40 +18,25 @@ type Handler struct {
 	ipcToken astral.Nonce
 	doneCh   chan struct{}
 	done     atomic.Bool
-	client   *Client
 }
 
-// NewHandler creates a new Handler using apphost's DefaultRouter() protocol and a random auth ipcToken.
-// Pass nil registrar for an IPC listener with no node registration.
-func NewHandler(ctx *astral.Context, r apphost.Registrar) (*Handler, error) {
-	return NewHandlerAt(ctx, Default(), libapphost.DefaultRouter().Protocol(), astral.NewNonce(), r)
+// NewHandler creates an IPC listener with a random auth token.
+// Registration with the node is the caller's responsibility.
+func NewHandler() (*Handler, error) {
+	return NewHandlerAt(libapphost.DefaultRouter().Protocol(), astral.NewNonce())
 }
 
-// NewHandlerAt creates a new Handler for the given client, protocol and auth ipcToken.
-// Pass nil registrar for an IPC listener with no node registration.
-func NewHandlerAt(ctx *astral.Context, client *Client, protocol string, token astral.Nonce, registrar apphost.Registrar) (*Handler, error) {
+// NewHandlerAt creates an IPC listener for the given protocol and auth token.
+func NewHandlerAt(protocol string, token astral.Nonce) (*Handler, error) {
 	l, err := ipc.ListenAny(protocol)
 	if err != nil {
 		return nil, err
 	}
-
-	h := &Handler{
+	return &Handler{
 		listener: l,
 		doneCh:   make(chan struct{}),
 		ipcToken: token,
-		client:   client,
-	}
-
-	if registrar == nil {
-		return h, nil
-	}
-
-	if err = registrar.Register(ctx, h.Endpoint(), token); err != nil {
-		h.Close()
-		return nil, err
-	}
-
-	return h, nil
+	}, nil
 }
 
 // ReadQuery waits for and returns the next pending query
@@ -67,7 +52,7 @@ func (h *Handler) ReadQuery() (*PendingQuery, error) {
 		obj, err := ch.Receive()
 		if err != nil {
 			ch.Close()
-			return nil, err
+			continue
 		}
 
 		// check message type - must be HandleQueryMsg
@@ -82,7 +67,7 @@ func (h *Handler) ReadQuery() (*PendingQuery, error) {
 		if queryMsg.IpcToken != h.ipcToken {
 			ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 			ch.Close()
-			return nil, ErrInvalidToken
+			continue
 		}
 
 		// return the pending query
@@ -103,7 +88,6 @@ type HandleFunc func(ctx *astral.Context, query *PendingQuery) error
 // Serve calls the given HandleFunc for every query received
 func (h *Handler) Serve(ctx *astral.Context, handle HandleFunc) error {
 	for {
-		// get the next pending query
 		pending, err := h.ReadQuery()
 		if err != nil {
 			return err
@@ -128,7 +112,7 @@ func (h *Handler) Route(ctx *astral.Context, router astral.Router) error {
 		}
 
 		// lock the writer so that we can send the query response before the target starts sending data
-		lockedWriter := NewLockableWriteCloser(pending.conn)
+		lockedWriter := newLockableWriteCloser(pending.conn)
 		lockedWriter.Lock()
 
 		// route the query to the target
@@ -149,23 +133,11 @@ func (h *Handler) Route(ctx *astral.Context, router astral.Router) error {
 			pending.RejectWithCode(int(errRejected.Code))
 			lockedWriter.Unlock()
 
-		case errors.Is(err, &astral.ErrRouteNotFound{}):
-			// route not found - send route not found and release the writer
-			pending.Skip()
-			lockedWriter.Unlock()
-
 		default:
-			// unexpected error - skip the response and release the writer
-			// TODO: should we have a different response to this than to route not found?
 			pending.Skip()
 			lockedWriter.Unlock()
 		}
 	}
-}
-
-// SetToken sets the token expected by the Handler
-func (h *Handler) SetToken(token astral.Nonce) {
-	h.ipcToken = token
 }
 
 // Token returns the token expected by the Handler

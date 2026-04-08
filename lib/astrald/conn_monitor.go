@@ -18,10 +18,14 @@ type ConnMonitor struct {
 
 var _ astral.Conn = &ConnMonitor{}
 
+func NewConnMonitor(conn astral.Conn, query *astral.Query) *ConnMonitor {
+	return &ConnMonitor{conn: conn, query: query}
+}
+
 func (monitor *ConnMonitor) Read(b []byte) (n int, err error) {
 	n, err = monitor.conn.Read(b)
 	monitor.bytesRead.Add(uint64(n))
-	if err != nil {
+	if err != nil && monitor.OnReadError != nil {
 		monitor.OnReadError(err)
 	}
 	return
@@ -30,7 +34,7 @@ func (monitor *ConnMonitor) Read(b []byte) (n int, err error) {
 func (monitor *ConnMonitor) Write(b []byte) (n int, err error) {
 	n, err = monitor.conn.Write(b)
 	monitor.bytesWritten.Add(uint64(n))
-	if err != nil {
+	if err != nil && monitor.OnWriteError != nil {
 		monitor.OnWriteError(err)
 	}
 	return
@@ -45,11 +49,11 @@ func (monitor *ConnMonitor) Close() error {
 }
 
 func (monitor *ConnMonitor) LocalIdentity() *astral.Identity {
-	return monitor.LocalIdentity()
+	return monitor.conn.LocalIdentity()
 }
 
 func (monitor *ConnMonitor) RemoteIdentity() *astral.Identity {
-	return monitor.RemoteIdentity()
+	return monitor.conn.RemoteIdentity()
 }
 
 func (monitor *ConnMonitor) BytesRead() astral.Size {

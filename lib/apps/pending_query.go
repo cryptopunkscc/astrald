@@ -1,4 +1,4 @@
-package astrald
+package apps
 
 import (
 	"net"
@@ -8,10 +8,6 @@ import (
 	libapphost "github.com/cryptopunkscc/astrald/lib/apphost"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
-
-// OnQueryAccepted is called when a query is accepted. It can be used with a RouterMonitor
-// to keep track of all open connections.
-var OnQueryAccepted func(conn astral.Conn, query *astral.Query)
 
 type PendingQuery struct {
 	conn  net.Conn
@@ -23,13 +19,7 @@ func (pending *PendingQuery) Accept() (conn *libapphost.Conn) {
 	// send ack
 	_ = channel.NewBinarySender(pending.conn).Send(&astral.Ack{})
 
-	conn = libapphost.NewConn(pending.conn, pending.query, false)
-
-	if OnQueryAccepted != nil {
-		OnQueryAccepted(conn, pending.query)
-	}
-
-	return conn
+	return libapphost.NewConn(pending.conn, pending.query, false)
 }
 
 // AcceptChannel accepts the query and returns a new channel

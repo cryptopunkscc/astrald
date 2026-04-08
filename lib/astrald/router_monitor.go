@@ -6,11 +6,8 @@ How to use with the default client:
 	monitor := astrald.NewRouterMonitor(astrald.Default().Router)
 	astrald.Default().Router = monitor
 
-	// add connections accepted by Listeners to the monitor
-
-	astrald.OnQueryAccepted = func(conn astral.Conn, query *astral.Query) {
-		monitor.Add(conn, query)
-	}
+	// add inbound connections to the monitor inside your handler:
+	//   monitor.Add(conn, query)
 
 	// then fetch all active conns (thread-safe)
 
