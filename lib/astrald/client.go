@@ -3,7 +3,7 @@ package astrald
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/apphost"
+	libapphost "github.com/cryptopunkscc/astrald/lib/apphost"
 	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
@@ -20,8 +20,9 @@ func New(router Router) *Client {
 
 func Default() *Client {
 	if defaultClient == nil {
-		defaultClient = New(apphost.DefaultRouter())
+		defaultClient = New(libapphost.DefaultRouter())
 	}
+
 	return defaultClient
 }
 
@@ -29,7 +30,7 @@ func SetDefault(client *Client) {
 	defaultClient = client
 }
 
-func (client *Client) Query(ctx *astral.Context, method string, args any) (_ astral.Conn, err error) {
+func (client *Client) Query(ctx *astral.Context, method string, args any) (astral.Conn, error) {
 	return client.RouteQuery(ctx, query.New(client.GuestID(), client.targetID, method, args))
 }
 
@@ -51,7 +52,9 @@ func QueryChannel(ctx *astral.Context, method string, args any, cfg ...channel.C
 }
 
 func (client *Client) WithTarget(identity *astral.Identity) *Client {
-	return &Client{Router: client.Router, targetID: identity}
+	c := *client
+	c.targetID = identity
+	return &c
 }
 
 func WithTarget(identity *astral.Identity) *Client {

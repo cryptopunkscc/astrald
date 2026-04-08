@@ -13,10 +13,11 @@ const (
 	MethodCreateToken     = "apphost.create_token"
 	MethodListTokens      = "apphost.list_tokens"
 	MethodRegisterHandler = "apphost.register_handler"
-	MethodNewAppContract  = "apphost.new_app_contract"
 	MethodSignAppContract = "apphost.sign_app_contract"
-	MethodIndex           = "apphost.index"
 	MethodCancel          = "apphost.cancel"
+	MethodBind            = "apphost.bind"
+	MethodIndex           = "apphost.index"
+	MethodNewAppContract  = "apphost.new_app_contract"
 )
 
 type Module interface {

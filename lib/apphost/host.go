@@ -18,8 +18,8 @@ type Host struct {
 }
 
 // Connect connects to the apphost endpoint.
-func Connect(endpoint string) (*Host, error) {
-	conn, err := ipc.Dial(endpoint)
+func Connect(ctx *astral.Context, endpoint string) (*Host, error) {
+	conn, err := ipc.DialContext(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -129,39 +129,6 @@ func (s *Host) RouteQuery(q *astral.Query, zone astral.Zone, filters []string) (
 
 	default: // unexpected
 		return nil, apphost.ErrProtocolError
-	}
-}
-
-// Register registers a query handler for the given identity. AuthToken is an access token
-// the host will to authenticate IPC calls. Close the host connection to unregister the handler.
-func (s *Host) Register(identity *astral.Identity, target string, token astral.Nonce) (err error) {
-	if identity.IsZero() {
-		identity = s.GuestID()
-	}
-
-	err = s.Send(&apphost.RegisterHandlerMsg{
-		Identity:  identity,
-		Endpoint:  astral.String8(target),
-		AuthToken: token,
-	})
-	if err != nil {
-		return
-	}
-
-	// read response
-	msg, err := s.Receive()
-	switch msg := msg.(type) {
-	case *astral.Ack:
-		return nil
-
-	case *apphost.ErrorMsg:
-		return msg
-
-	case nil:
-		return err
-
-	default:
-		return apphost.ErrProtocolError
 	}
 }
 

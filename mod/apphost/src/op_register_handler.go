@@ -24,14 +24,14 @@ func (mod *Module) OpRegisterHandler(ctx *astral.Context, q *ops.Query, args opR
 
 	// add the handler
 	handler := &QueryHandler{
-		Identity:  q.Caller(),
-		AuthToken: args.Token,
-		Endpoint:  args.Endpoint,
+		Identity: q.Caller(),
+		IpcToken: args.Token,
+		Endpoint: args.Endpoint,
 	}
+
 	mod.handlers.Add(handler)
 
 	mod.log.Logv(3, "%v registered a handler at %v", q.Caller(), args.Endpoint)
 
-	// send ack to the client
 	return ch.Send(&astral.Ack{})
 }
