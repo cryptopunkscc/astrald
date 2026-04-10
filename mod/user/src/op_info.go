@@ -24,7 +24,7 @@ func (mod *Module) OpInfo(ctx *astral.Context, q *ops.Query, args opInfoArgs) (e
 		}
 	}
 
-	if !foundInSwarm && !q.Caller().IsEqual(ac.UserID) {
+	if !foundInSwarm && !q.Caller().IsEqual(ac.Issuer) {
 		return q.Reject()
 	}
 
@@ -34,8 +34,8 @@ func (mod *Module) OpInfo(ctx *astral.Context, q *ops.Query, args opInfoArgs) (e
 	contractID, _ := astral.ResolveObjectID(ac)
 
 	return ch.Send(&user.Info{
-		NodeAlias:  astral.String8(mod.Dir.DisplayName(ac.NodeID)),
-		UserAlias:  astral.String8(mod.Dir.DisplayName(ac.UserID)),
+		NodeAlias:  astral.String8(mod.Dir.DisplayName(ac.Subject)),
+		UserAlias:  astral.String8(mod.Dir.DisplayName(ac.Issuer)),
 		ContractID: contractID,
 		Contract:   ac,
 	})

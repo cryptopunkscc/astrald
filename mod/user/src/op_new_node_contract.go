@@ -6,10 +6,11 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-type opNewNodeContractArgs struct {
+type opNewContractArgs struct {
 	User     string `query:"optional"`
 	Node     string `query:"optional"`
 	Duration string `query:"optional"`
@@ -17,7 +18,7 @@ type opNewNodeContractArgs struct {
 	Out      string `query:"optional"`
 }
 
-func (mod *Module) OpNewNodeContract(ctx *astral.Context, query *ops.Query, args opNewNodeContractArgs) (err error) {
+func (mod *Module) OpNewContract(ctx *astral.Context, query *ops.Query, args opNewContractArgs) (err error) {
 	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
@@ -53,10 +54,10 @@ func (mod *Module) OpNewNodeContract(ctx *astral.Context, query *ops.Query, args
 		}
 	}
 
-	return ch.Send(&user.NodeContract{
-		UserID:    userID,
-		NodeID:    nodeID,
-		StartsAt:  astral.Time(time.Now()),
+	return ch.Send(&auth.Contract{
+		Issuer:    userID,
+		Subject:   nodeID,
+		Permits:   []auth.Permit{{Action: astral.String8(user.ActionSwarmAccess)}},
 		ExpiresAt: astral.Time(time.Now().Add(duration)),
 	})
 }

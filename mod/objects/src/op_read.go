@@ -23,10 +23,7 @@ func (mod *Module) OpRead(ctx *astral.Context, q *ops.Query, args opReadArgs) (e
 	repo := mod.ReadDefault()
 
 	mod.Auth.Authorize(ctx, &objects.ReadObjectAction{
-		Action: auth.Action{
-			Id:      astral.NewNonce(),
-			ActorId: q.Caller(),
-		},
+		Action:   auth.NewAction(q.Caller()),
 		ObjectID: args.ID,
 	})
 
