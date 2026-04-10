@@ -48,6 +48,12 @@ func (db *DB) findActiveContractsByIssuer(issuerID *astral.Identity) ([]*dbContr
 		Find(&rows).Error
 }
 
+func (db *DB) contractExists(objectID *astral.ObjectID) bool {
+	var count int64
+	db.Model(&dbContract{}).Where("object_id = ?", objectID).Count(&count)
+	return count > 0
+}
+
 func (db *DB) storeContract(objectID *astral.ObjectID, issuerID, subjectID *astral.Identity, expiresAt time.Time) error {
 	return db.Clauses(clause.OnConflict{DoNothing: true}).
 		Create(&dbContract{
