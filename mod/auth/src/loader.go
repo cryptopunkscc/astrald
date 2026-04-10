@@ -21,7 +21,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 	_ = assets.LoadYAML(auth.ModuleName, &mod.config)
 
 	mod.db = &DB{DB: assets.Database()}
-	if err = mod.db.AutoMigrate(&dbContract{}); err != nil {
+	if err = mod.db.AutoMigrate(&dbContract{}, &dbBan{}); err != nil {
 		return nil, err
 	}
 

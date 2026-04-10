@@ -23,8 +23,4 @@ func (a *SudoAction) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(a).ReadFrom(r)
 }
 
-func (a SudoAction) ApplyConstraints(cs []Constraint) bool {
-	return true
-}
-
 func init() { _ = astral.Add(&SudoAction{}) }
