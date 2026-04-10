@@ -3,8 +3,8 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/routing"
-	"github.com/cryptopunkscc/astrald/mod/user"
+	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
 type opAddToIndexArgs struct {
@@ -12,13 +12,13 @@ type opAddToIndexArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpAddToIndex(ctx *astral.Context, query *routing.IncomingQuery, args opAddToIndexArgs) (err error) {
-	ch := query.Accept(channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpAddToIndex(ctx *astral.Context, query *ops.Query, args opAddToIndexArgs) (err error) {
+	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	return ch.Switch(
-		func(contract *user.SignedNodeContract) error {
-			_, err := mod.IndexSignedNodeContract(contract)
+		func(contract *auth.SignedContract) error {
+			err := mod.StoreContract(contract)
 			if err != nil {
 				return ch.Send(astral.Err(err))
 			}

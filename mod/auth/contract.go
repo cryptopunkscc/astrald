@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -10,9 +11,8 @@ import (
 type Contract struct {
 	Issuer    *astral.Identity
 	Subject   *astral.Identity
-	StartsAt  astral.Time
-	ExpiresAt astral.Time
 	Permits   []Permit
+	ExpiresAt astral.Time
 }
 
 type Permit struct {
@@ -20,7 +20,7 @@ type Permit struct {
 	Constraints []astral.Object // list of constraints
 }
 
-var _ crypto.SignableObject = &Contract{}
+var _ crypto.SignableTextObject = &Contract{}
 
 func (Contract) ObjectType() string { return "mod.auth.contract" }
 
@@ -36,6 +36,15 @@ func (c *Contract) SignableHash() []byte {
 		return nil
 	}
 	return id.Hash[:]
+}
+
+func (c *Contract) SignableText() string {
+	return fmt.Sprintf(
+		"%s grants %s permissions until %s",
+		c.Issuer.String(),
+		c.Subject.String(),
+		c.ExpiresAt.Time().Format("2006-01-02 15:04:05"),
+	)
 }
 
 func init() { _ = astral.Add(&Contract{}) }

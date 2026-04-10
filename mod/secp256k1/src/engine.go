@@ -15,6 +15,13 @@ type Engine struct {
 	crypto.NilEngine
 }
 
+func (e Engine) Schemes(key *crypto.PublicKey) []string {
+	if key.Type != modSecp256k1.KeyType {
+		return nil
+	}
+	return []string{crypto.SchemeASN1}
+}
+
 func (e Engine) PublicKey(ctx *astral.Context, key *crypto.PrivateKey) (*crypto.PublicKey, error) {
 	return modSecp256k1.PublicKey(key), nil
 }

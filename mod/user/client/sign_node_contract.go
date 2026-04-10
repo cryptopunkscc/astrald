@@ -3,11 +3,12 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-func (client *Client) SignNodeContract(ctx *astral.Context, contract *user.NodeContract) (signed *user.SignedNodeContract, err error) {
-	ch, err := client.queryCh(ctx, user.OpSignNodeContract, nil)
+func (client *Client) SignContract(ctx *astral.Context, contract *auth.Contract) (signed *auth.SignedContract, err error) {
+	ch, err := client.queryCh(ctx, user.OpSignContract, nil)
 	if err != nil {
 		return
 	}

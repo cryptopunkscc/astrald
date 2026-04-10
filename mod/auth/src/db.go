@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type DB struct{ *gorm.DB }
@@ -20,25 +21,12 @@ type dbContract struct {
 
 func (dbContract) TableName() string { return auth.DBPrefix + "contracts" }
 
-type dbContractRevocation struct {
-	ObjectID   *astral.ObjectID `gorm:"primaryKey"`
-	ContractID *astral.ObjectID `gorm:"index"`
-	ExpiresAt  time.Time
-	CreatedAt  time.Time
+type dbBan struct {
+	SubjectID *astral.Identity `gorm:"primaryKey"`
+	CreatedAt time.Time
 }
 
-func (dbContractRevocation) TableName() string { return auth.DBPrefix + "contract_revocations" }
-
-func (db *DB) contractRevocationExists(objectID *astral.ObjectID) bool {
-	var count int64
-	db.Model(&dbContractRevocation{}).Where("object_id = ?", objectID).Count(&count)
-	return count > 0
-}
-
-func (db *DB) findContractRevocationsByContract(contractID *astral.ObjectID) ([]*dbContractRevocation, error) {
-	var rows []*dbContractRevocation
-	return rows, db.Where("contract_id = ?", contractID).Find(&rows).Error
-}
+func (dbBan) TableName() string { return auth.DBPrefix + "bans" }
 
 func (db *DB) findActiveContractsBySubject(subjectID *astral.Identity) ([]*dbContract, error) {
 	var rows []*dbContract
@@ -48,4 +36,39 @@ func (db *DB) findActiveContractsBySubject(subjectID *astral.Identity) ([]*dbCon
 		Where("starts_at <= ?", now).
 		Where("expires_at = ? OR expires_at > ?", time.Time{}, now).
 		Find(&rows).Error
+}
+
+func (db *DB) findActiveContractsByIssuer(issuerID *astral.Identity) ([]*dbContract, error) {
+	var rows []*dbContract
+	now := time.Now()
+	return rows, db.
+		Where("issuer_id = ?", issuerID).
+		Where("starts_at <= ?", now).
+		Where("expires_at = ? OR expires_at > ?", time.Time{}, now).
+		Find(&rows).Error
+}
+
+func (db *DB) storeContract(objectID *astral.ObjectID, issuerID, subjectID *astral.Identity, expiresAt time.Time) error {
+	return db.Clauses(clause.OnConflict{DoNothing: true}).
+		Create(&dbContract{
+			ObjectID:  objectID,
+			IssuerID:  issuerID,
+			SubjectID: subjectID,
+			ExpiresAt: expiresAt,
+		}).Error
+}
+
+func (db *DB) addBan(subjectID *astral.Identity) error {
+	return db.Clauses(clause.OnConflict{DoNothing: true}).
+		Create(&dbBan{SubjectID: subjectID, CreatedAt: time.Now()}).Error
+}
+
+func (db *DB) removeBan(subjectID *astral.Identity) error {
+	return db.Where("subject_id = ?", subjectID).Delete(&dbBan{}).Error
+}
+
+func (db *DB) isBanned(subjectID *astral.Identity) bool {
+	var count int64
+	db.Model(&dbBan{}).Where("subject_id = ?", subjectID).Count(&count)
+	return count > 0
 }
