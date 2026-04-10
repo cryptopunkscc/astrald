@@ -66,22 +66,6 @@ func Parse(q string) (path string, params map[string]string) {
 	return
 }
 
-func splitTag(tag string) (m map[string]string) {
-	m = make(map[string]string)
-
-	s := strings.Split(tag, ";")
-	for _, v := range s {
-		p := strings.SplitN(v, ":", 2)
-		if len(p) < 2 {
-			m[p[0]] = ""
-		} else {
-			m[p[0]] = p[1]
-		}
-	}
-
-	return m
-}
-
 func splitPathParams(query string) (path, params string) {
 	if i := strings.IndexByte(query, '?'); i != -1 {
 		return query[:i], query[i+1:]

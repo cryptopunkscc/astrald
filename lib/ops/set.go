@@ -118,6 +118,28 @@ func (set *Set) Tree() (tree []string) {
 	return
 }
 
+// Spec returns a list of all operations in the set, including sub-sets.
+func (set *Set) Spec() (list []OpSpec) {
+	return set.all("")
+}
+
+func (set *Set) all(prefix string) (list []OpSpec) {
+	for subName, sub := range set.subs.Clone() {
+		for _, n := range sub.all(prefix + subName + ".") {
+			list = append(list, n)
+		}
+	}
+
+	for opName, op := range set.ops.Clone() {
+		list = append(list, OpSpec{
+			Name:       prefix + opName,
+			Parameters: op.ArgumentSpecs(),
+		})
+	}
+
+	return
+}
+
 func (set *Set) Find(name string) (op *Op) {
 	if idx := strings.IndexByte(name, '.'); idx != -1 {
 		if sub, ok := set.subs.Get(name[:idx]); ok {
