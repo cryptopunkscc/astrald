@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
 var _ astral.Object = &CreatedUserInfo{}
@@ -13,7 +14,7 @@ type CreatedUserInfo struct {
 	Alias       astral.String8
 	KeyID       *astral.ObjectID
 	ContractID  *astral.ObjectID
-	Contract    *SignedNodeContract
+	Contract    *auth.SignedContract
 	AccessToken astral.String8
 }
 
