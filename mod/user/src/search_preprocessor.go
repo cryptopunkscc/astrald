@@ -8,7 +8,7 @@ func (mod *Module) PreprocessSearch(search *objects.Search) {
 		return
 	}
 
-	if !search.CallerID.IsEqual(ac.UserID) {
+	if !search.CallerID.IsEqual(ac.Issuer) {
 		return
 	}
 

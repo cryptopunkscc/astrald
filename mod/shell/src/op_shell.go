@@ -21,7 +21,7 @@ func (mod *Module) OpShell(ctx *astral.Context, q *routing.IncomingQuery, args o
 			return err
 		}
 
-		if !mod.Auth.Authorize(ctx, q.Caller(), auth.ActionSudo, asID) {
+		if !mod.Auth.Authorize(ctx, &auth.SudoAction{Action: auth.NewAction(q.Caller()), AsID: asID}) {
 			return astral.NewError("access denied")
 		}
 
