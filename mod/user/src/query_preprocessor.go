@@ -14,11 +14,11 @@ func (mod *Module) PreprocessQuery(qm *core.QueryModifier) error {
 	}
 
 	// if the query is coming from the active user, attach the active contract
-	if qm.Query().Caller.IsEqual(ac.UserID) {
+	if qm.Query().Caller.IsEqual(ac.Issuer) {
 		qm.Attach(ac)
 	}
 
-	if qm.Query().Target.IsEqual(ac.UserID) {
+	if qm.Query().Target.IsEqual(ac.Issuer) {
 		// if the target is the active user, attach all siblings
 		for _, sib := range mod.getLinkedSibs() {
 			qm.AddRelay(sib)

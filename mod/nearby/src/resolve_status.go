@@ -4,14 +4,14 @@ import (
 	"bytes"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
-	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
 func (mod *Module) ResolveStatus(status *nearby.StatusMessage) *astral.Identity {
 	// visible mode: identity from signed contract
-	if c, ok := astral.First[*user.SignedNodeContract](status.Attachments.Objects()); ok {
-		return c.NodeID
+	if c, ok := astral.First[*auth.SignedContract](status.Attachments.Objects()); ok {
+		return c.Subject
 	}
 
 	// stealth mode: verify commitment and unmask
