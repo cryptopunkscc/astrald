@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/objects/fs"
 )
@@ -41,7 +42,7 @@ func (srv *HTTPObjectHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 		WithTimeout(5 * time.Second)
 	defer cancel()
 
-	if !srv.Deps.Auth.Authorize(ctx, srv.Identity, objects.ActionRead, objectID) {
+	if !srv.Deps.Auth.Authorize(ctx, &objects.ReadObjectAction{Action: auth.NewAction(srv.Identity), ObjectID: objectID}) {
 		writer.WriteHeader(http.StatusForbidden)
 		return
 	}

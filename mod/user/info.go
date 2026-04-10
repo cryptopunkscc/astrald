@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
 // Info contains information about user's node configuration
@@ -12,7 +13,7 @@ type Info struct {
 	UserAlias  astral.String8
 	ContractID *astral.ObjectID
 
-	Contract *SignedNodeContract
+	Contract *auth.SignedContract
 }
 
 func (i Info) ObjectType() string { return "mod.user.info" }

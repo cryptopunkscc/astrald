@@ -4,24 +4,24 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
-	"github.com/cryptopunkscc/astrald/mod/user"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
-type opSignNodeContractArgs struct {
+type opSignContractArgs struct {
 	In  string `query:"optional"`
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpSignNodeContract(ctx *astral.Context, query *ops.Query, args opSignNodeContractArgs) (err error) {
+func (mod *Module) OpSignContract(ctx *astral.Context, query *ops.Query, args opSignContractArgs) (err error) {
 	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	return ch.Switch(func(contract *user.NodeContract) error {
-		signer, err := mod.SignNodeContract(ctx, contract)
+	return ch.Switch(func(contract *auth.Contract) error {
+		signed, err := mod.Auth.SignContract(ctx, contract)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
 
-		return ch.Send(signer)
+		return ch.Send(signed)
 	})
 }

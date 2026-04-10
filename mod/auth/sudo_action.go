@@ -1,0 +1,26 @@
+package auth
+
+import (
+	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
+)
+
+// SudoAction requests permission to act as AsID.
+// ActorId (from base) is the requesting identity; AsID is the target identity.
+type SudoAction struct {
+	Action
+	AsID *astral.Identity
+}
+
+func (SudoAction) ObjectType() string { return "mod.auth.sudo_action" }
+
+func (a SudoAction) WriteTo(w io.Writer) (n int64, err error) {
+	return astral.Objectify(&a).WriteTo(w)
+}
+
+func (a *SudoAction) ReadFrom(r io.Reader) (n int64, err error) {
+	return astral.Objectify(a).ReadFrom(r)
+}
+
+func init() { _ = astral.Add(&SudoAction{}) }

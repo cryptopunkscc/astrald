@@ -17,7 +17,7 @@ const (
 const (
 	ModuleName     = "nodes"
 	DBPrefix       = "nodes__"
-	ActionRelayFor = "mod.nodes.relay_for"
+	ActionRelayFor = "mod.nodes.relay_for_action" // equals RelayForAction{}.ObjectType()
 
 	CleanupGrace    = 30 * 24 * time.Hour
 	CleanupInterval = 24 * time.Hour

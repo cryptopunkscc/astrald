@@ -2,16 +2,17 @@ package archives
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) AuthorizeObjectsRead(ctx *astral.Context, identity *astral.Identity, objectID *astral.ObjectID) bool {
+func (mod *Module) AuthorizeObjectsRead(ctx *astral.Context, action *objects.ReadObjectAction) bool {
 	var rows []*dbEntry
 
 	var err = mod.db.
 		Unscoped().
 		Preload("Parent").
-		Where("object_id = ?", objectID).
+		Where("object_id = ?", action.ObjectID).
 		Find(&rows).Error
 	if err != nil {
 		return false
@@ -19,18 +20,22 @@ func (mod *Module) AuthorizeObjectsRead(ctx *astral.Context, identity *astral.Id
 
 	for _, row := range rows {
 		if row.Parent == nil {
-			mod.log.Errorv(1, "db: entry for %v references an invalid parent", objectID)
+			mod.log.Errorv(1, "db: entry for %v references an invalid parent", action.ObjectID)
 			continue
 		}
 
 		zipID := row.Parent.ObjectID
 
 		// sanity check
-		if zipID.IsEqual(objectID) {
+		if zipID.IsEqual(action.ObjectID) {
 			continue
 		}
 
-		return mod.Auth.Authorize(ctx, identity, objects.ActionRead, zipID)
+		// Recursive check: can the actor read the parent archive?
+		return mod.Auth.Authorize(ctx, &objects.ReadObjectAction{
+			Action:   auth.NewAction(action.Actor()),
+			ObjectID: zipID,
+		})
 	}
 
 	return false

@@ -5,6 +5,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 type opReadArgs struct {
@@ -19,6 +21,11 @@ func (mod *Module) OpRead(ctx *astral.Context, q *ops.Query, args opReadArgs) (e
 	ctx = ctx.IncludeZone(args.Zone)
 
 	repo := mod.ReadDefault()
+
+	mod.Auth.Authorize(ctx, &objects.ReadObjectAction{
+		Action:   auth.NewAction(q.Caller()),
+		ObjectID: args.ID,
+	})
 
 	if len(args.Repo) > 0 {
 		repo = mod.GetRepository(args.Repo)
