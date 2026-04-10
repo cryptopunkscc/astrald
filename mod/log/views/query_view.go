@@ -1,4 +1,4 @@
-package log
+package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"

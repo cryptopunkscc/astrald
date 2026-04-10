@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
 	modlog "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/views"
 )
 
 type Loader struct{}
@@ -30,7 +31,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *alog.Logger) (co
 		func(object astral.Object) astral.Object {
 			identity := object.(*astral.Identity)
 
-			return modlog.IdentityView{
+			return views.IdentityView{
 				Identity:  identity,
 				Highlight: identity.IsEqual(node.Identity()),
 			}
@@ -50,11 +51,13 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *alog.Logger) (co
 		mod.outputs.Add(logFile)
 	}
 
+	// configure some views
+	views.UseQueryView()
+	views.UseEntryView()
+	views.HideOrigin = node.Identity()
+
 	// switch logger output to the module
 	log.SetOutput(mod)
-
-	modlog.UseQueryView()
-	modlog.UseEntryView()
 
 	return mod, err
 }

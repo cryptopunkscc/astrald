@@ -1,9 +1,10 @@
-package log
+package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/dir"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -15,9 +16,9 @@ type IdentityView struct {
 }
 
 func (v IdentityView) Render() string {
-	var style = GreenText
+	var style = styles.GreenText
 	if v.Highlight {
-		style = BrightGreenText
+		style = styles.BrightGreenText
 	}
 
 	if r := IdentityResolver.Get(); r != nil {

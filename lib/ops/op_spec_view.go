@@ -3,7 +3,8 @@ package ops
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	modlog "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/mod/log/views"
 )
 
 type OpSpecView struct {
@@ -14,8 +15,8 @@ func (op OpSpecView) Render() (out string) {
 	view := log.DefaultViewer
 
 	// name(
-	out += view.Render(modlog.String(op.Name, &modlog.BrightGreenText))
-	out += view.Render(modlog.String("(", &modlog.WhiteText))
+	out += view.Render(views.String(op.Name, &styles.BrightGreenText))
+	out += view.Render(views.String("(", &styles.WhiteText))
 
 	var first = true
 	for arg, spec := range op.Parameters {
@@ -27,15 +28,15 @@ func (op OpSpecView) Render() (out string) {
 			req = "*"
 		}
 		out += view.Render(
-			modlog.String(arg+" ", &modlog.GrayText),
-			modlog.String(req, &modlog.RedText),
-			modlog.String(spec.Type, &modlog.YellowText),
+			views.String(arg+" ", &styles.GrayText),
+			views.String(req, &styles.RedText),
+			views.String(spec.Type, &styles.YellowText),
 		)
 		first = false
 	}
 
 	// )
-	out += view.Render(modlog.String(")", &modlog.WhiteText))
+	out += view.Render(views.String(")", &styles.WhiteText))
 
 	return
 }

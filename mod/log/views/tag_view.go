@@ -1,10 +1,10 @@
-package log
+package views
 
 import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/log/color"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type TagView struct {
@@ -12,7 +12,7 @@ type TagView struct {
 }
 
 func (v TagView) Render() string {
-	c := color.TextColorFromString(v.Tag.String())
+	c := styles.TextColorFromString(v.Tag.String())
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color(c))
 
 	return "[" + style.Render(v.Tag.String()) + "] "

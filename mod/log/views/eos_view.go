@@ -1,8 +1,9 @@
-package log
+package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type EOSView struct {
@@ -10,7 +11,7 @@ type EOSView struct {
 }
 
 func (EOSView) Render() string {
-	return DarkGrayText.Render("(end of stream)")
+	return styles.DarkGrayText.Render("(end of stream)")
 }
 
 func init() {

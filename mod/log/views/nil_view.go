@@ -1,8 +1,9 @@
-package log
+package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type NilView struct {
@@ -10,7 +11,7 @@ type NilView struct {
 }
 
 func (NilView) Render() string {
-	return RedText.Render("nil")
+	return styles.RedText.Render("nil")
 }
 
 func init() {

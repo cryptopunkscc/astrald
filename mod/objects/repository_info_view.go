@@ -5,7 +5,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	log2 "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/mod/log/views"
 )
 
 type RepositoryInfoView struct {
@@ -16,9 +17,9 @@ func (v RepositoryInfoView) Render() string {
 	var size = astral.Size(v.Free)
 
 	return fmt.Sprintf("%s: %s (%s free)",
-		log2.GrayText.Render(string(v.Name)),
-		log2.WhiteText.Render(string(v.Label)),
-		log2.SizeView{Size: &size}.Render(),
+		styles.GrayText.Render(string(v.Name)),
+		styles.WhiteText.Render(string(v.Label)),
+		views.SizeView{Size: &size}.Render(),
 	)
 }
 

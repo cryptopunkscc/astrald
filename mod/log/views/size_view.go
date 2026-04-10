@@ -1,8 +1,9 @@
-package log
+package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type SizeView struct {
@@ -10,7 +11,7 @@ type SizeView struct {
 }
 
 func (view SizeView) Render() string {
-	return DarkYellowText.Render(view.Size.HumanReadableBinary())
+	return styles.DarkYellowText.Render(view.Size.HumanReadableBinary())
 }
 
 func init() {

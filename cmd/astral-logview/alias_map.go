@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	dircli "github.com/cryptopunkscc/astrald/mod/dir/client"
-	modlog "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/views"
 )
 
 func loadAliasMap(ctx *astral.Context) (err error) {
@@ -12,7 +12,7 @@ func loadAliasMap(ctx *astral.Context) (err error) {
 		return
 	}
 
-	modlog.IdentityResolver.Set(newResolver(aliasMap))
+	views.IdentityResolver.Set(newResolver(aliasMap))
 
 	return
 }
