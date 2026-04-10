@@ -54,10 +54,12 @@ func (mod *Module) OpNewContract(ctx *astral.Context, query *ops.Query, args opN
 		}
 	}
 
+	permits := astral.NewBundle()
+	_ = permits.Append(&auth.Permit{Action: user.ActionSwarmAccess})
 	return ch.Send(&auth.Contract{
 		Issuer:    userID,
 		Subject:   nodeID,
-		Permits:   []auth.Permit{{Action: astral.String8(user.ActionSwarmAccess)}},
+		Permits:   permits,
 		ExpiresAt: astral.Time(time.Now().Add(duration)),
 	})
 }

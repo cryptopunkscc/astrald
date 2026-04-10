@@ -13,10 +13,6 @@ const (
 // implement any subset of Engine operations. Every operation has to verify that it supports
 // the key type and scheme and return ErrUnsupported if it doesn't.
 type Engine interface {
-	// Schemes returns the list of signing schemes this engine supports for the given public key.
-	// Returns nil if the key type is not supported.
-	Schemes(key *PublicKey) []string
-
 	// PublicKey derives the public key from the provided private key
 	PublicKey(ctx *astral.Context, key *PrivateKey) (*PublicKey, error)
 

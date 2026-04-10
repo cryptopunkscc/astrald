@@ -46,15 +46,11 @@ func (mod *Module) authorizeViaContracts(ctx *astral.Context, actorID *astral.Id
 			continue
 		}
 
-		if err := mod.verifySignedContract(sc); err != nil {
+		if err := mod.VerifyContract(sc); err != nil {
 			continue
 		}
 
-		for _, permit := range sc.Permits {
-			if string(permit.Action) != actionType {
-				continue
-			}
-
+		for _, permit := range sc.HasPermit(actionType) {
 			if c, ok := action.(auth.Constrainable); ok {
 				if !c.ApplyConstraints(permit.Constraints) {
 					continue

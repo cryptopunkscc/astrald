@@ -3,14 +3,12 @@ package user
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -62,50 +60,54 @@ func (mod *Module) setActiveContract(signed *auth.SignedContract) error {
 	return nil
 }
 
-// ActiveContractsOf returns all active SwarmAccess contracts issued by userID
-func (mod *Module) ActiveContractsOf(userID *astral.Identity) ([]*auth.SignedContract, error) {
-	return mod.Auth.FindContracts(mod.ctx, auth.ContractQuery{
-		IssuerID: userID,
-		Action:   user.ActionSwarmAccess,
-		Active:   true,
-	})
-}
-
 // StoreContract stores the signed contract in the auth module
 func (mod *Module) StoreContract(signed *auth.SignedContract) error {
 	return mod.Auth.StoreContract(mod.ctx, signed)
 }
 
+// ActiveContractsOf returns all active SwarmAccess contracts issued by userID
+func (mod *Module) ActiveContractsOf(userID *astral.Identity) ([]*auth.SignedContract, error) {
+	contracts, err := mod.Auth.FindContractsWithIssuer(mod.ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*auth.SignedContract
+	for _, c := range contracts {
+		if len(c.HasPermit(user.ActionSwarmAccess)) > 0 {
+			result = append(result, c)
+		}
+	}
+	return result, nil
+}
+
 // ActiveUsers returns all users with an active SwarmAccess contract on the given node
 func (mod *Module) ActiveUsers(nodeID *astral.Identity) (users []*astral.Identity) {
-	contracts, err := mod.Auth.FindContracts(mod.ctx, auth.ContractQuery{
-		SubjectID: nodeID,
-		Action:    user.ActionSwarmAccess,
-		Active:    true,
-	})
+	contracts, err := mod.Auth.FindContractsWithActor(mod.ctx, nodeID)
 	if err != nil {
 		mod.log.Error("db error: %v", err)
 		return
 	}
 	for _, c := range contracts {
-		users = append(users, c.Issuer)
+		if len(c.HasPermit(user.ActionSwarmAccess)) > 0 {
+			users = append(users, c.Issuer)
+		}
 	}
 	return
 }
 
 // ActiveNodes returns all nodes with an active SwarmAccess contract from the given user
 func (mod *Module) ActiveNodes(userID *astral.Identity) (nodes []*astral.Identity) {
-	contracts, err := mod.Auth.FindContracts(mod.ctx, auth.ContractQuery{
-		IssuerID: userID,
-		Action:   user.ActionSwarmAccess,
-		Active:   true,
-	})
+	contracts, err := mod.Auth.FindContractsWithIssuer(mod.ctx, userID)
 	if err != nil {
 		mod.log.Error("db error: %v", err)
 		return
 	}
+
 	for _, c := range contracts {
-		nodes = append(nodes, c.Subject)
+		if len(c.HasPermit(user.ActionSwarmAccess)) > 0 {
+			nodes = append(nodes, c.Subject)
+		}
 	}
 	return
 }
@@ -136,10 +138,12 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 	defer ch.Close()
 
 	// build the contract
+	permits := astral.NewBundle()
+	_ = permits.Append(&auth.Permit{Action: astral.String8(user.ActionSwarmAccess)})
 	contract := &auth.Contract{
 		Issuer:    userID,
 		Subject:   nodeID,
-		Permits:   []auth.Permit{{Action: astral.String8(user.ActionSwarmAccess)}},
+		Permits:   permits,
 		ExpiresAt: astral.Time(time.Now().Add(defaultContractValidity)),
 	}
 
@@ -167,21 +171,14 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 		return nil, fmt.Errorf("subject sig verification: %w", err)
 	}
 
-	// sign as issuer: prefer BIP137 if available
+	// sign as issuer: try ASN1 first, fall back to BIP137
 	issuerKey := secp256k1.FromIdentity(userID)
-	schemes := mod.Crypto.AvailableSchemes(issuerKey)
-	if slices.Contains(schemes, crypto.SchemeBIP137) {
-		signer, signerErr := mod.Crypto.TextObjectSigner(issuerKey)
-		if signerErr != nil {
-			return nil, signerErr
-		}
+	if signer, signerErr := mod.Crypto.ObjectSigner(issuerKey); signerErr == nil {
+		signed.IssuerSig, err = signer.SignObject(ctx, contract)
+	} else if signer, signerErr := mod.Crypto.TextObjectSigner(issuerKey); signerErr == nil {
 		signed.IssuerSig, err = signer.SignTextObject(ctx, contract)
 	} else {
-		signer, signerErr := mod.Crypto.ObjectSigner(issuerKey)
-		if signerErr != nil {
-			return nil, signerErr
-		}
-		signed.IssuerSig, err = signer.SignObject(ctx, contract)
+		return nil, fmt.Errorf("no signing scheme available for issuer key")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("sign as issuer: %w", err)
@@ -194,8 +191,4 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 	}
 
 	return signed, nil
-}
-
-func (mod *Module) RemoveFromIndex(objectID *astral.ObjectID) error {
-	return errors.New("not supported: use auth.Unban instead")
 }

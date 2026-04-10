@@ -63,10 +63,6 @@ func (db *DB) addBan(subjectID *astral.Identity) error {
 		Create(&dbBan{SubjectID: subjectID, CreatedAt: time.Now()}).Error
 }
 
-func (db *DB) removeBan(subjectID *astral.Identity) error {
-	return db.Where("subject_id = ?", subjectID).Delete(&dbBan{}).Error
-}
-
 func (db *DB) isBanned(subjectID *astral.Identity) bool {
 	var count int64
 	db.Model(&dbBan{}).Where("subject_id = ?", subjectID).Count(&count)

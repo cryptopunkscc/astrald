@@ -15,17 +15,6 @@ type Engine struct {
 	crypto.NilEngine
 }
 
-func (e *Engine) Schemes(key *crypto.PublicKey) []string {
-	if key.Type != "secp256k1" {
-		return nil
-	}
-	pubKeyHex := hex.EncodeToString(key.Key)
-	if e.mod.deviceForPublicKeyHex(pubKeyHex) == nil {
-		return nil
-	}
-	return []string{crypto.SchemeBIP137}
-}
-
 func (e *Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
 	switch {
 	case scheme != "bip137":
