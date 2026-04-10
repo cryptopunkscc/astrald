@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-func (client *Client) Invite(ctx *astral.Context, contract *user.NodeContract) error {
+func (client *Client) Invite(ctx *astral.Context) error {
 	ch, err := client.queryCh(ctx, user.OpInvite, nil)
 	if err != nil {
 		return err

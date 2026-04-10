@@ -22,11 +22,11 @@ func (mod *Module) OpFoo(
 	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	authorized := mod.Auth.Authorize(ctx, &user.RevokeContractAction{
+	authorized := mod.Auth.Authorize(ctx, &user.SwarmAccessAction{
 		Action: auth.NewAction(q.Caller()),
 	})
 	if authorized {
-		trueVal := astral.Bool(false)
+		trueVal := astral.Bool(true)
 		return ch.Send(&trueVal)
 	}
 

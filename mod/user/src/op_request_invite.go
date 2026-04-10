@@ -36,7 +36,7 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q *ops.Query, args opReq
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	_, err = mod.IndexSignedNodeContract(signed)
+	err = mod.StoreContract(signed)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}

@@ -33,7 +33,7 @@ func (mod *Module) syncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 		args = opSyncAssetsArgs{Start: int(*height)}
 	}
 
-	var q = query.New(ac.UserID, nodeID, user.OpSyncAssets, args)
+	var q = query.New(ac.Issuer, nodeID, user.OpSyncAssets, args)
 	conn, err := query.Route(ctx, mod.node, q)
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 		return errors.New("no active contract")
 	}
 
-	var q = query.New(ac.UserID, nodeID, user.OpInfo, nil)
+	var q = query.New(ac.Issuer, nodeID, user.OpInfo, nil)
 	conn, err := query.Route(ctx, mod.node, q)
 	if err != nil {
 		return err
@@ -99,8 +99,8 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 		return nil
 	}
 
-	if mod.Dir.DisplayName(ac.UserID) == "" {
-		mod.Dir.SetAlias(ac.UserID, string(info.UserAlias))
+	if mod.Dir.DisplayName(ac.Issuer) == "" {
+		mod.Dir.SetAlias(ac.Issuer, string(info.UserAlias))
 	}
 
 	mod.log.Info("syncAlias: updating %v alias %v", nodeID, info.NodeAlias)
@@ -132,17 +132,17 @@ func (mod *Module) syncSiblings(with *astral.Identity) {
 		return
 	}
 
-	contracts, err := mod.ActiveContractsOf(ac.UserID)
+	contracts, err := mod.ActiveContractsOf(ac.Issuer)
 	if err != nil {
 		mod.log.Error("syncSiblings: error getting active contracts: %v", err)
 		return
 	}
 
 	for _, contract := range contracts {
-		if contract.NodeID.IsEqual(mod.node.Identity()) {
+		if contract.Subject.IsEqual(mod.node.Identity()) {
 			continue
 		}
-		if contract.NodeID.IsEqual(with) {
+		if contract.Subject.IsEqual(with) {
 			continue
 		}
 
