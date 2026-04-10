@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+var _ auth.Module = &Module{}
+
 type Module struct {
 	Deps
 	config   Config

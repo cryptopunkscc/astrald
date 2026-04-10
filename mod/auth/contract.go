@@ -11,7 +11,7 @@ import (
 type Contract struct {
 	Issuer    *astral.Identity
 	Subject   *astral.Identity
-	Permits   []Permit
+	Permits   *astral.Bundle
 	ExpiresAt astral.Time
 }
 
@@ -20,7 +20,31 @@ type Permit struct {
 	Constraints []astral.Object // list of constraints
 }
 
+var _ astral.Object = &Permit{}
 var _ crypto.SignableTextObject = &Contract{}
+
+func (Permit) ObjectType() string { return "mod.auth.permit" }
+
+func (p Permit) WriteTo(w io.Writer) (int64, error)   { return astral.Objectify(&p).WriteTo(w) }
+func (p *Permit) ReadFrom(r io.Reader) (int64, error) { return astral.Objectify(p).ReadFrom(r) }
+
+func (p Permit) MarshalJSON() ([]byte, error)  { return astral.Objectify(&p).MarshalJSON() }
+func (p *Permit) UnmarshalJSON(b []byte) error { return astral.Objectify(p).UnmarshalJSON(b) }
+
+// HasPermit returns all permits in this contract that match the given action type.
+// Empty result means the contract grants no such permission.
+func (c *Contract) HasPermit(action string) []*Permit {
+	if c.Permits == nil {
+		return nil
+	}
+	var result []*Permit
+	for _, obj := range c.Permits.Objects() {
+		if p, ok := obj.(*Permit); ok && string(p.Action) == action {
+			result = append(result, p)
+		}
+	}
+	return result
+}
 
 func (Contract) ObjectType() string { return "mod.auth.contract" }
 
@@ -47,4 +71,7 @@ func (c *Contract) SignableText() string {
 	)
 }
 
-func init() { _ = astral.Add(&Contract{}) }
+func init() {
+	_ = astral.Add(&Contract{})
+	_ = astral.Add(&Permit{})
+}

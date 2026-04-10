@@ -1,40 +1,55 @@
 package auth
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/crypto"
-	"github.com/cryptopunkscc/astrald/mod/secp256k1"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) verifySignedContract(sc *auth.SignedContract) error {
-	switch {
-	case sc.IssuerSig == nil:
-		return errors.New("issuer signature is missing")
-	case sc.SubjecSig == nil:
-		return errors.New("subject signature is missing")
+func (mod *Module) StoreContract(ctx *astral.Context, sc *auth.SignedContract) error {
+	objectID, err := objects.Save(ctx, sc, mod.Objects.WriteDefault())
+	if err != nil {
+		return fmt.Errorf("save: %w", err)
 	}
 
-	if err := mod.verifySig(secp256k1.FromIdentity(sc.Issuer), sc.IssuerSig, sc.Contract); err != nil {
-		return fmt.Errorf("issuer sig: %w", err)
-	}
-
-	if err := mod.verifySig(secp256k1.FromIdentity(sc.Subject), sc.SubjecSig, sc.Contract); err != nil {
-		return fmt.Errorf("subject sig: %w", err)
-	}
-
-	return nil
+	return mod.db.storeContract(
+		objectID,
+		sc.Issuer,
+		sc.Subject,
+		sc.ExpiresAt.Time(),
+	)
 }
 
-func (mod *Module) verifySig(key *crypto.PublicKey, sig *crypto.Signature, contract *auth.Contract) error {
-	switch sig.Scheme {
-	case crypto.SchemeASN1:
-		return mod.Crypto.VerifyObjectSignature(key, sig, contract)
-	case crypto.SchemeBIP137:
-		return mod.Crypto.VerityTextObjectSignature(key, sig, contract)
-	default:
-		return fmt.Errorf("unsupported signature scheme: %s", sig.Scheme)
+func (mod *Module) FindContractsWithActor(ctx *astral.Context, actor *astral.Identity) ([]*auth.SignedContract, error) {
+	rows, err := mod.db.findActiveContractsBySubject(actor)
+	if err != nil {
+		return nil, err
 	}
+	var result []*auth.SignedContract
+	for _, row := range rows {
+		sc, err := objects.Load[*auth.SignedContract](ctx, mod.Objects.ReadDefault(), row.ObjectID)
+		if err != nil {
+			continue
+		}
+		result = append(result, sc)
+	}
+	return result, nil
+}
+
+func (mod *Module) FindContractsWithIssuer(ctx *astral.Context, issuer *astral.Identity) ([]*auth.SignedContract, error) {
+	rows, err := mod.db.findActiveContractsByIssuer(issuer)
+	if err != nil {
+		return nil, err
+	}
+	var result []*auth.SignedContract
+	for _, row := range rows {
+		sc, err := objects.Load[*auth.SignedContract](ctx, mod.Objects.ReadDefault(), row.ObjectID)
+		if err != nil {
+			continue
+		}
+		result = append(result, sc)
+	}
+	return result, nil
 }

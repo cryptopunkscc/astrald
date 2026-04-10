@@ -20,8 +20,6 @@ import (
 //	}
 type NilEngine struct{}
 
-func (NilEngine) Schemes(*PublicKey) []string { return nil }
-
 func (NilEngine) PublicKey(*astral.Context, *PrivateKey) (*PublicKey, error) {
 	return nil, errors.ErrUnsupported
 }

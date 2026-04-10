@@ -43,9 +43,6 @@ type Module interface {
 	// NodeSigner returns a hash signer for the local node
 	NodeSigner() HashSigner
 
-	// AvailableSchemes returns all signing schemes available for the given public key
-	AvailableSchemes(key *PublicKey) []string
-
 	// AddEngine adds a cryptographic engine to the module
 	AddEngine(engine Engine)
 

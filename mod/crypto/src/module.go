@@ -305,20 +305,6 @@ func (mod *Module) indexPrivateKey(key *crypto.PrivateKey) error {
 	return err
 }
 
-func (mod *Module) AvailableSchemes(key *crypto.PublicKey) []string {
-	seen := map[string]bool{}
-	var result []string
-	for _, e := range mod.engines.Clone() {
-		for _, s := range e.Schemes(key) {
-			if !seen[s] {
-				seen[s] = true
-				result = append(result, s)
-			}
-		}
-	}
-	return result
-}
-
 func (mod *Module) AddEngine(engine crypto.Engine) {
 	mod.engines.Add(engine)
 }
