@@ -1,30 +1,41 @@
 package auth
 
-import (
-	"io"
+import "github.com/cryptopunkscc/astrald/astral"
 
-	"github.com/cryptopunkscc/astrald/astral"
-)
-
-type Action string
-
-func (a Action) ObjectType() string {
-	return "astrald.mod.auth.action"
+// Action is the base struct embedded by all typed action objects.
+type Action struct {
+	Id      astral.Nonce
+	ActorId *astral.Identity
 }
 
-func (a Action) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.String8(a).WriteTo(w)
+// NewAction returns an Action with a fresh nonce and the given actor.
+func NewAction(actor *astral.Identity) Action {
+	return Action{Id: astral.NewNonce(), ActorId: actor}
 }
 
-func (a *Action) ReadFrom(r io.Reader) (n int64, err error) {
-	return (*astral.String8)(a).ReadFrom(r)
+// Actor returns the identity of the actor making the request.
+// Promoted to all concrete action types that embed Action.
+func (a Action) Actor() *astral.Identity {
+	return a.ActorId
 }
 
-func (a Action) String() string {
-	return string(a)
+// ActorAction is implemented by any action that carries an actor identity.
+// All concrete action types that embed Action satisfy this automatically
+// via method promotion.
+type ActorAction interface {
+	Actor() *astral.Identity
 }
 
-func init() {
-	var a Action
-	_ = astral.Add(&a)
+// ActionObject is the interface satisfied by all action types.
+// Embedding auth.Action satisfies Actor() via promotion; the concrete type
+// must additionally implement astral.Object (ObjectType, WriteTo, ReadFrom).
+type ActionObject interface {
+	astral.Object
+	Actor() *astral.Identity
+}
+
+// Constrainable is implemented by actions that know how to evaluate permit constraints.
+// Actions that do NOT implement this interface are always permitted regardless of constraints.
+type Constrainable interface {
+	ApplyConstraints([]Constraint) bool
 }

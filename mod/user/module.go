@@ -25,7 +25,7 @@ const (
 	OpNewNodeContract    = "user.new_node_contract"
 	OpSignNodeContract   = "user.sign_node_contract"
 	OpSyncWith           = "user.sync_with"
-	ActionRevokeContract = "user.revoke_contract"
+	ActionRevokeContract = "mod.user.revoke_contract_action" // equals RevokeContractAction{}.ObjectType()
 )
 
 type Module interface {

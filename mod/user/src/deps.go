@@ -35,9 +35,8 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 		return
 	}
 
-	mod.Auth.Add(user.ActionRevokeContract, auth.Func[*user.SignedNodeContract](mod.AuthorizeUserRevokeContract))
-	mod.Auth.Add(user.ActionRevokeContract, auth.Func[*user.SignedNodeContract](mod.AuthorizeNodeRevokeContract))
-	mod.Auth.Add(nodes.ActionRelayFor, auth.Func[*astral.Identity](mod.AuthorizeNodeRelay))
+	mod.Auth.Add(user.ActionRevokeContract, auth.Func[*user.RevokeContractAction](mod.AuthorizeNodeRevokeContract))
+
 	// bind the config
 	err = tree.BindPath(ctx, &mod.config, mod.Tree.Root(), "/mod/user/config", true)
 	if err != nil {

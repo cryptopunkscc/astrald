@@ -7,8 +7,8 @@ import (
 const (
 	ModuleName   = "objects"
 	DBPrefix     = "objects__"
-	ActionRead   = "objects.read"
-	ActionCreate = "objects.create"
+	ActionRead   = "mod.objects.read_object_action"   // equals ReadObjectAction{}.ObjectType()
+	ActionCreate = "mod.objects.create_object_action" // equals CreateObjectAction{}.ObjectType()
 
 	MethodNew              = "objects.new"
 	MethodLoad             = "objects.load"
