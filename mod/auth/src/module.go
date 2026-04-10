@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/auth"
@@ -18,9 +20,11 @@ type Module struct {
 	assets   resources.Resources
 	db       *DB
 	handlers sig.Map[string, []auth.Handler]
+	indexMu  sync.Mutex
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
+	go mod.indexer(ctx)
 	return nil
 }
 
