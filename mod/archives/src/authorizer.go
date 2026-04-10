@@ -33,7 +33,7 @@ func (mod *Module) AuthorizeObjectsRead(ctx *astral.Context, action *objects.Rea
 
 		// Recursive check: can the actor read the parent archive?
 		return mod.Auth.Authorize(ctx, &objects.ReadObjectAction{
-			Action:   auth.Action{ActorId: action.ActorId},
+			Action:   auth.NewAction(action.Actor()),
 			ObjectID: zipID,
 		})
 	}

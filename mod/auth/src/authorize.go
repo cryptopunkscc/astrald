@@ -12,6 +12,11 @@ func (mod *Module) Authorize(ctx *astral.Context, action auth.ActionObject) bool
 	actionType := action.ObjectType()
 	actor := action.Actor()
 
+	if mod.db.isBanned(actor) {
+		mod.log.Logv(2, "deny %v %v (banned)", actor, actionType)
+		return false
+	}
+
 	for _, h := range mod.get(actionType) {
 		if h.Authorize(ctx, action) {
 			mod.log.Logv(1, "allow %v %v", actor, actionType)
