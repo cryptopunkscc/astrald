@@ -11,7 +11,7 @@ import (
 
 type PendingQuery struct {
 	conn  net.Conn
-	query *astral.Query
+	query *astral.InFlightQuery
 }
 
 // Accept accepts the query and returns a new connection

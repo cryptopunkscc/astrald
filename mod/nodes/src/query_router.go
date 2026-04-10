@@ -11,7 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
-func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (rw io.WriteCloser, err error) {
+func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (rw io.WriteCloser, err error) {
 	// check if the context allows for network queries
 	if !ctx.Zone().Is(astral.ZoneNetwork) {
 		return query.RouteNotFound(mod, astral.ErrZoneExcluded)
@@ -85,7 +85,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 	return query.RouteNotFound(mod)
 }
 
-func (mod *Module) sendCallerProof(ctx *astral.Context, q *astral.Query, target *astral.Identity) error {
+func (mod *Module) sendCallerProof(ctx *astral.Context, q *astral.InFlightQuery, target *astral.Identity) error {
 	v, ok := q.Extra.Get(nodes.ExtraCallerProof)
 	if !ok {
 		return errors.New("missing caller proof")

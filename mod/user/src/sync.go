@@ -34,7 +34,7 @@ func (mod *Module) syncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 	}
 
 	var q = query.New(ac.UserID, nodeID, user.OpSyncAssets, args)
-	conn, err := query.Route(ctx, mod.node, q)
+	conn, err := query.Route(ctx, mod.node, astral.Launch(q))
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 	}
 
 	var q = query.New(ac.UserID, nodeID, user.OpInfo, nil)
-	conn, err := query.Route(ctx, mod.node, q)
+	conn, err := query.Route(ctx, mod.node, astral.Launch(q))
 	if err != nil {
 		return err
 	}

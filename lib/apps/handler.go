@@ -73,7 +73,7 @@ func (h *Handler) ReadQuery() (*PendingQuery, error) {
 		// return the pending query
 		return &PendingQuery{
 			conn: conn,
-			query: &astral.Query{
+			query: &astral.InFlightQuery{
 				Nonce:  queryMsg.ID,
 				Caller: queryMsg.Caller,
 				Target: queryMsg.Target,

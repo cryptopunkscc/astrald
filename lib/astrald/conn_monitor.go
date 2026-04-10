@@ -11,14 +11,14 @@ type ConnMonitor struct {
 	OnReadError  func(error)
 	OnWriteError func(error)
 	conn         astral.Conn
-	query        *astral.Query
+	query        *astral.InFlightQuery
 	bytesRead    atomic.Uint64
 	bytesWritten atomic.Uint64
 }
 
 var _ astral.Conn = &ConnMonitor{}
 
-func NewConnMonitor(conn astral.Conn, query *astral.Query) *ConnMonitor {
+func NewConnMonitor(conn astral.Conn, query *astral.InFlightQuery) *ConnMonitor {
 	return &ConnMonitor{conn: conn, query: query}
 }
 
@@ -64,6 +64,6 @@ func (monitor *ConnMonitor) BytesWritten() astral.Size {
 	return astral.Size(monitor.bytesWritten.Load())
 }
 
-func (monitor *ConnMonitor) Query() *astral.Query {
+func (monitor *ConnMonitor) Query() *astral.InFlightQuery {
 	return monitor.query
 }

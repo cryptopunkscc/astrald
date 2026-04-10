@@ -1,9 +1,10 @@
 package fwd
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	"strings"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type AstralServer struct {
@@ -49,7 +50,7 @@ func (srv *AstralServer) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (srv *AstralServer) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (srv *AstralServer) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	dst, err := srv.target.RouteQuery(ctx, q, w)
 	if err != nil {
 		return nil, err

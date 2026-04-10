@@ -66,7 +66,7 @@ func (s *Session) Run(ctx *astral.Context) (err error) {
 
 		params := query.ParseArgs(args[1:])
 
-		var q = query.New(ctx.Identity(), s.mod.node.Identity(), op, params)
+		var q = astral.Launch(query.New(ctx.Identity(), s.mod.node.Identity(), op, params))
 
 		q.Extra.Set("interface", "terminal")
 

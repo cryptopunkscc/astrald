@@ -2,11 +2,12 @@ package routers
 
 import (
 	"errors"
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/query"
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
 var _ LocalRouter = &PrefixRouter{}
@@ -36,8 +37,8 @@ func NewPrefixRouter(exclusive bool) *PrefixRouter {
 	}
 }
 
-func (router *PrefixRouter) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
-	var baseQuery = q.Query
+func (router *PrefixRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
+	var baseQuery = q.QueryString
 	if router.EnableParams {
 		if i := strings.IndexByte(baseQuery, '?'); i != -1 {
 			baseQuery = baseQuery[:i]

@@ -8,18 +8,18 @@ import (
 
 type Conn struct {
 	net.Conn
-	query    *astral.Query
+	query    *astral.InFlightQuery
 	outbound bool
 }
 
 var _ net.Conn = &Conn{}
 var _ astral.Conn = &Conn{}
 
-func NewConn(conn net.Conn, query *astral.Query, outbound bool) *Conn {
+func NewConn(conn net.Conn, query *astral.InFlightQuery, outbound bool) *Conn {
 	return &Conn{Conn: conn, query: query, outbound: outbound}
 }
 
-func (conn Conn) Query() *astral.Query {
+func (conn Conn) Query() *astral.InFlightQuery {
 	return conn.query
 }
 

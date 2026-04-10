@@ -6,7 +6,7 @@ import (
 )
 
 type Router interface {
-	RouteQuery(*astral.Context, *astral.Query) (astral.Conn, error)
+	RouteQuery(*astral.Context, *astral.InFlightQuery) (astral.Conn, error)
 	GuestID() *astral.Identity
 	HostID() *astral.Identity
 }

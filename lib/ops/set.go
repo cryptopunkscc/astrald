@@ -23,7 +23,7 @@ import (
 type Set struct {
 	ops     sig.Map[string, *Op]
 	subs    sig.Map[string, *Set]
-	OnError func(error, *astral.Query)
+	OnError func(error, *astral.InFlightQuery)
 }
 
 var _ astral.Router = &Set{}
@@ -150,8 +150,8 @@ func (set *Set) Find(name string) (op *Op) {
 	return
 }
 
-func (set *Set) RouteQuery(ctx *astral.Context, query *astral.Query, remoteWriter io.WriteCloser) (io.WriteCloser, error) {
-	path, params := libquery.Parse(query.Query)
+func (set *Set) RouteQuery(ctx *astral.Context, query *astral.InFlightQuery, remoteWriter io.WriteCloser) (io.WriteCloser, error) {
+	path, params := libquery.Parse(query.QueryString)
 
 	op := set.Find(path)
 	if op == nil {

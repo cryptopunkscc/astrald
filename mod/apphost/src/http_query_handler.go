@@ -79,7 +79,7 @@ func (srv *HTTPQueryHandler) ServeHTTP(writer http.ResponseWriter, request *http
 	ch, err := query.RouteChan(
 		ctx,
 		srv.node,
-		query.New(srv.Identity, targetID, method, params),
+		astral.Launch(query.New(srv.Identity, targetID, method, params)),
 	)
 	switch {
 	case err == nil:

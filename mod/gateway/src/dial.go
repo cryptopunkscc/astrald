@@ -59,7 +59,7 @@ func (mod *Module) route(ctx *astral.Context, gwEndpoint *gateway.Endpoint) (exo
 
 	q := query.New(mod.node.Identity(), gwEndpoint.GatewayID, gateway.MethodNodeRoute, query.Args{"target": gwEndpoint.TargetID})
 
-	conn, err := query.Route(ctx, mod.node, q)
+	conn, err := query.Route(ctx, mod.node, astral.Launch(q))
 	if err != nil {
 		return nil, err
 	}

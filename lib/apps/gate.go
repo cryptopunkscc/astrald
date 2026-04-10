@@ -17,7 +17,7 @@ type gateRouter struct {
 	gate libastrald.ReadyGate
 }
 
-func (g *gateRouter) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (g *gateRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	select {
 	case <-g.gate.Ready():
 	case <-ctx.Done():

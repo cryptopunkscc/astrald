@@ -31,7 +31,7 @@ func SetDefault(client *Client) {
 }
 
 func (client *Client) Query(ctx *astral.Context, method string, args any) (astral.Conn, error) {
-	return client.RouteQuery(ctx, query.New(client.GuestID(), client.targetID, method, args))
+	return client.RouteQuery(ctx, astral.Launch(query.New(client.GuestID(), client.targetID, method, args)))
 }
 
 func Query(ctx *astral.Context, method string, args any) (astral.Conn, error) {
@@ -69,6 +69,6 @@ func HostID() *astral.Identity {
 	return Default().HostID()
 }
 
-func RouteQuery(ctx *astral.Context, query *astral.Query) (astral.Conn, error) {
+func RouteQuery(ctx *astral.Context, query *astral.InFlightQuery) (astral.Conn, error) {
 	return Default().RouteQuery(ctx, query)
 }

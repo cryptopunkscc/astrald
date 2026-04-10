@@ -53,6 +53,9 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *alog.Logger) (co
 	// switch logger output to the module
 	log.SetOutput(mod)
 
+	modlog.UseQueryView()
+	modlog.UseEntryView()
+
 	return mod, err
 }
 

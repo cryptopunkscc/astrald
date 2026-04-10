@@ -3,8 +3,6 @@ package log
 import (
 	"io"
 	"sync"
-
-	"github.com/cryptopunkscc/astrald/astral"
 )
 
 // Printer is a log output that prints log entries to a writer using a Viewer for rendering.
@@ -25,16 +23,7 @@ func (output *Printer) LogEntry(entry *Entry) {
 		return
 	}
 
-	var line = Format("[%v] (%v) %v ",
-		entry.Origin,
-		&entry.Level,
-		&entry.Time,
-	)
-
-	line = append(line, entry.Objects...)
-	line = append(line, astral.NewString8("\n"))
-
-	str := output.Viewer.Render(line...)
+	str := output.Viewer.Render(Format("%v\n", entry)...)
 
 	output.mu.Lock()
 	defer output.mu.Unlock()

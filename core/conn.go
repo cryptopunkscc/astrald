@@ -10,14 +10,14 @@ import (
 
 type conn struct {
 	router *Router
-	query  *astral.Query
+	query  *astral.InFlightQuery
 	src    *writer
 	dst    *writer
 	closed atomic.Bool
 	mu     sync.Mutex
 }
 
-func newConn(r *Router, q *astral.Query) *conn {
+func newConn(r *Router, q *astral.InFlightQuery) *conn {
 	return &conn{
 		router: r,
 		query:  q,
