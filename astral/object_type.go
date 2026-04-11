@@ -8,7 +8,7 @@ import (
 type ObjectType string
 
 // astral:blueprint-ignore
-func (*ObjectType) ObjectType() string { return "object_type" }
+func (ObjectType) ObjectType() string { return "object_type" }
 
 func (h ObjectType) WriteTo(w io.Writer) (n int64, err error) {
 	return String8(h).WriteTo(w)
@@ -21,5 +21,6 @@ func (h *ObjectType) ReadFrom(r io.Reader) (n int64, err error) {
 func (h ObjectType) String() string { return string(h) }
 
 func init() {
-	_ = Add((*ObjectType)(nil))
+	var ot ObjectType
+	_ = Add(&ot)
 }

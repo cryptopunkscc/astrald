@@ -19,7 +19,7 @@ func (op OpSpecView) Render() (out string) {
 	out += view.Render(views.String("(", &styles.WhiteText))
 
 	var first = true
-	for arg, spec := range op.Parameters {
+	for _, spec := range op.Parameters {
 		if !first {
 			out += ", "
 		}
@@ -28,7 +28,7 @@ func (op OpSpecView) Render() (out string) {
 			req = "*"
 		}
 		out += view.Render(
-			views.String(arg+" ", &styles.GrayText),
+			views.String(spec.Name+" ", &styles.GrayText),
 			views.String(req, &styles.RedText),
 			views.String(spec.Type, &styles.YellowText),
 		)

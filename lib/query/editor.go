@@ -12,17 +12,30 @@ import (
 // Editor wraps a struct and provides getter/setters for the fields
 type Editor struct {
 	arg    reflect.Value // value of the struct (dereferenced)
-	fields map[string]*FieldEditor
+	fields []*field
+}
+
+type field struct {
+	name string
+	*FieldEditor
 }
 
 // FieldSpec describes a field in the Editor struct
 type FieldSpec struct {
+	Name     string
 	Type     string
 	Required bool
 }
 
 // Edit wraps a struct with an Editor
 func Edit(args any) (*Editor, error) {
+	return edit(args, false)
+}
+
+func EditCamel(args any) (*Editor, error) {
+	return edit(args, true)
+}
+func edit(args any, keepCase bool) (*Editor, error) {
 	var v = reflect.ValueOf(args)
 
 	// make sure arg is a pointer to a struct so we can modify it
@@ -38,13 +51,17 @@ func Edit(args any) (*Editor, error) {
 	v = v.Elem()
 
 	view := &Editor{
-		arg:    v,
-		fields: make(map[string]*FieldEditor),
+		arg: v,
 	}
 
 	for i := 0; i < v.NumField(); i++ {
 		fv := v.Field(i)
 		ft := v.Type().Field(i)
+
+		if !fv.CanInterface() {
+			continue
+		}
+
 		editor := newFieldEditor(fv, ft)
 
 		// don't include fields with the skip tag
@@ -52,12 +69,20 @@ func Edit(args any) (*Editor, error) {
 			continue
 		}
 
-		name := log.ToSnakeCase(ft.Name)
+		name := ft.Name
+
+		if !keepCase {
+			name = log.ToSnakeCase(name)
+		}
+
 		if editor.Tag().Key != "" {
 			name = editor.Tag().Key
 		}
 
-		view.fields[name] = editor
+		view.fields = append(view.fields, &field{
+			name:        name,
+			FieldEditor: editor,
+		})
 	}
 
 	return view, nil
@@ -82,24 +107,28 @@ func (args *Editor) Get(name string) (string, error) {
 }
 
 // Spec returns a map containing specs for every argument
-func (args *Editor) Spec() map[string]FieldSpec {
-	var vals = make(map[string]FieldSpec)
-	for name, editor := range args.fields {
-		vals[name] = FieldSpec{
+func (args *Editor) Spec() (vals []FieldSpec) {
+	for _, editor := range args.fields {
+		if editor.ObjectType() == "" {
+			continue
+		}
+		vals = append(vals, FieldSpec{
+			Name:     editor.name,
 			Type:     editor.ObjectType(),
 			Required: !editor.Tag().Optional,
-		}
+		})
 	}
-	return vals
+	return
 }
 
 func (args *Editor) Field(name string) (*FieldEditor, error) {
-	editor, ok := args.fields[name]
-	if !ok {
-		return nil, errors.New("field not found")
+	for _, field := range args.fields {
+		if field.name == name {
+			return field.FieldEditor, nil
+		}
 	}
 
-	return editor, nil
+	return nil, errors.New("field not found")
 }
 
 func (args *Editor) SetMany(vals map[string]string) error {
@@ -127,8 +156,8 @@ func (args *Editor) UnmarshalJSON(bytes []byte) error {
 func (args *Editor) MarshalQuery() ([]byte, error) {
 	var vals = url.Values{}
 
-	for key, fieldView := range args.fields {
-		text, err := fieldView.MarshalText()
+	for _, field := range args.fields {
+		text, err := field.MarshalText()
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +165,7 @@ func (args *Editor) MarshalQuery() ([]byte, error) {
 			continue
 		}
 
-		vals.Set(key, string(text))
+		vals.Set(field.name, string(text))
 	}
 
 	return []byte(vals.Encode()), nil

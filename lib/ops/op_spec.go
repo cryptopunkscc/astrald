@@ -9,7 +9,7 @@ import (
 
 type OpSpec struct {
 	Name       string
-	Parameters map[string]query.FieldSpec
+	Parameters []query.FieldSpec
 }
 
 var _ astral.Object = &OpSpec{}

@@ -117,7 +117,7 @@ func (c *Op) Call(ctx *astral.Context, q *Query, args map[string]string) error {
 	return ret.Interface().(error)
 }
 
-func (c *Op) ArgumentSpecs() (names map[string]query.FieldSpec) {
+func (c *Op) ArgumentSpecs() (args []query.FieldSpec) {
 	if !c.hasArgs {
 		return
 	}
