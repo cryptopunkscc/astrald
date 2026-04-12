@@ -21,7 +21,7 @@ func (view QueryStringView) Render() (out string) {
 	out = String(op, &styles.GreenText).Render()
 
 	if len(params) > 0 {
-		out += String("?", &styles.GrayText).Render()
+		out += String("?", &styles.DarkGrayText).Render()
 	}
 
 	var first = true
@@ -30,9 +30,9 @@ func (view QueryStringView) Render() (out string) {
 			out += String("&", &styles.DarkGrayText).Render()
 		}
 		out += log.Render(
-			String(name, &styles.DarkYellowText),
-			String("=", &styles.GrayText),
-			String(field, &styles.YellowText),
+			String(name, &styles.WhiteText),
+			String("=", &styles.DarkGrayText),
+			String(field, &styles.GrayText),
 		)
 		first = false
 	}
