@@ -11,7 +11,7 @@ import (
 
 type PendingQuery struct {
 	conn  net.Conn
-	query *astral.InFlightQuery
+	query *astral.Query
 }
 
 // Accept accepts the query and returns a new connection
@@ -60,5 +60,5 @@ func (pending *PendingQuery) Target() *astral.Identity {
 }
 
 func (pending *PendingQuery) Query() string {
-	return pending.query.Query
+	return pending.query.QueryString
 }

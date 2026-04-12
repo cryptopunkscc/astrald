@@ -21,7 +21,7 @@ var defaultConfig = Config{
 		"memu:apphosty",
 		"memb:apphostb",
 	},
-	BindHTTP:       "tcp:127.0.0.1:8624",
+	BindHTTP:       "tcp:0.0.0.0:8624",
 	Tokens:         map[string]string{},
 	Workers:        32,
 	AllowAnonymous: true,

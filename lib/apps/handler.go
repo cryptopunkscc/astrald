@@ -73,11 +73,11 @@ func (h *Handler) ReadQuery() (*PendingQuery, error) {
 		// return the pending query
 		return &PendingQuery{
 			conn: conn,
-			query: &astral.InFlightQuery{
-				Nonce:  queryMsg.ID,
-				Caller: queryMsg.Caller,
-				Target: queryMsg.Target,
-				Query:  string(queryMsg.Query),
+			query: &astral.Query{
+				Nonce:       queryMsg.ID,
+				Caller:      queryMsg.Caller,
+				Target:      queryMsg.Target,
+				QueryString: string(queryMsg.Query),
 			},
 		}, nil
 	}
@@ -116,7 +116,7 @@ func (h *Handler) Route(ctx *astral.Context, router astral.Router) error {
 		lockedWriter.Lock()
 
 		// route the query to the target
-		w, err := router.RouteQuery(ctx, pending.query, lockedWriter)
+		w, err := router.RouteQuery(ctx, astral.Launch(pending.query), lockedWriter)
 		switch {
 		case err == nil:
 			// accepted - send an Ack and release the writer to the query target

@@ -116,7 +116,7 @@ func (s *Host) RouteQuery(q *astral.InFlightQuery, zone astral.Zone, filters []s
 	msg, err := s.Receive()
 	switch msg := msg.(type) {
 	case *apphost.QueryAcceptedMsg: // success
-		return NewConn(s.conn, q, true), nil
+		return NewConn(s.conn, q.Query, true), nil
 
 	case *apphost.QueryRejectedMsg: // reject
 		return nil, &astral.ErrRejected{Code: uint8(msg.Code)}

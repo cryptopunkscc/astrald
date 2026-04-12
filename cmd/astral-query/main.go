@@ -89,7 +89,7 @@ func main() {
 	}
 
 	// route the query
-	conn, err := astrald.RouteQuery(ctx, query.New(callerID, targetID, method, args))
+	conn, err := astrald.RouteQuery(ctx, astral.Launch(query.New(callerID, targetID, method, args)))
 	if err != nil {
 		fatal("error: %v\n", err)
 	}
