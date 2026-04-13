@@ -31,7 +31,7 @@ _astral_query_cache_aliases() {
 _astral_query_get_param_type() {
     local spec="$1" op="$2" param="$3"
     echo "$spec" | jq -r --arg op "$op" --arg param "$param" \
-        'select(.Object.Name == $op) | .Object.Parameters[$param].Type // empty' 2>/dev/null
+        'select(.Object.Name == $op) | .Object.Parameters[] | select(.Name == $param) | .Type // empty' 2>/dev/null
 }
 
 _astral_query_completions() {
@@ -94,14 +94,14 @@ _astral_query_completions() {
         # Get parameters for the current operation
         local params
         params=$(echo "$spec" | jq -r --arg op "$op" \
-            'select(.Object.Name == $op) | .Object.Parameters | keys[]' 2>/dev/null)
+            'select(.Object.Name == $op) | .Object.Parameters[].Name' 2>/dev/null)
 
         # If we had a target, try the target spec
         if [[ -n "$target" && -z "$params" ]]; then
             local target_spec
             target_spec=$(_astral_query_cache_spec "$target") || return
             params=$(echo "$target_spec" | jq -r --arg op "$op" \
-                'select(.Object.Name == $op) | .Object.Parameters | keys[]' 2>/dev/null)
+                'select(.Object.Name == $op) | .Object.Parameters[].Name' 2>/dev/null)
         fi
 
         local completions=()
