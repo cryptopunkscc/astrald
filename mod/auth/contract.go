@@ -11,13 +11,13 @@ import (
 type Contract struct {
 	Issuer    *astral.Identity
 	Subject   *astral.Identity
-	Permits   *astral.Bundle
+	Permits   *astral.Slice[*Permit]
 	ExpiresAt astral.Time
 }
 
 type Permit struct {
-	Action      astral.String8  // object type of an action
-	Constraints []astral.Object // list of constraints
+	Action      astral.String8 // object type of an action
+	Constraints *astral.Bundle // list of constraints
 }
 
 var _ astral.Object = &Permit{}
@@ -31,6 +31,21 @@ func (p *Permit) ReadFrom(r io.Reader) (int64, error) { return astral.Objectify(
 func (p Permit) MarshalJSON() ([]byte, error)  { return astral.Objectify(&p).MarshalJSON() }
 func (p *Permit) UnmarshalJSON(b []byte) error { return astral.Objectify(p).UnmarshalJSON(b) }
 
+func (c *Contract) Allows(action ActionObject) bool {
+	if c.Permits == nil {
+		return false
+	}
+	for _, p := range *c.Permits.Elem {
+		if ca, ok := action.(Constrainable); ok {
+			if !ca.ApplyConstraints(p.Constraints) {
+				continue
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // HasPermit returns all permits in this contract that match the given action type.
 // Empty result means the contract grants no such permission.
 func (c *Contract) HasPermit(action string) []*Permit {
@@ -38,8 +53,8 @@ func (c *Contract) HasPermit(action string) []*Permit {
 		return nil
 	}
 	var result []*Permit
-	for _, obj := range c.Permits.Objects() {
-		if p, ok := obj.(*Permit); ok && string(p.Action) == action {
+	for _, p := range *c.Permits.Elem {
+		if string(p.Action) == action {
 			result = append(result, p)
 		}
 	}

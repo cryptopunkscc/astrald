@@ -37,13 +37,16 @@ func (mod *Module) OpClaim(ctx *astral.Context, q *routing.IncomingQuery, args o
 		return ch.Send(astral.Err(err))
 	}
 
-	// store the signed contract
-	err = mod.StoreContract(signed)
+	err = mod.Auth.IndexContract(ctx, signed)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
 	mod.log.Info("signed contract with %v", nodeID)
-
 	return ch.Send(signed)
 }

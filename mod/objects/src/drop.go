@@ -1,10 +1,11 @@
 package objects
 
 import (
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/sig"
-	"sync"
 )
 
 type Drop struct {
@@ -40,7 +41,7 @@ func (drop *Drop) Accept(save bool) error {
 
 	ctx := astral.NewContext(nil)
 
-	_, err := objects.Save(ctx, drop.object, drop.repo)
+	_, err := drop.mod.Store(ctx, drop.repo, drop.object)
 	if err != nil {
 		drop.mod.log.Error("error saving received object: %v", err)
 	} else {

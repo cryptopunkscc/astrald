@@ -3,7 +3,6 @@ package auth
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 // Authorize dispatches the action to all registered local handlers.
@@ -12,51 +11,33 @@ func (mod *Module) Authorize(ctx *astral.Context, action auth.ActionObject) bool
 	actionType := action.ObjectType()
 	actor := action.Actor()
 
-	if mod.db.isBanned(actor) {
-		mod.log.Logv(2, "deny %v %v (banned)", actor, actionType)
-		return false
-	}
-
-	for _, h := range mod.get(actionType) {
-		if h.Authorize(ctx, action) {
-			mod.log.Logv(1, "allow %v %v", actor, actionType)
-			return true
-		}
-	}
-
-	if mod.authorizeViaContracts(ctx, actor, actionType, action) {
-		mod.log.Logv(1, "allow %v %v via contract", actor, actionType)
+	if mod.authorizeHandlers(ctx, action) {
+		mod.log.Logv(1, "allow %v %v", actor, actionType)
 		return true
 	}
 
-	mod.log.Logv(2, "deny %v %v", actor, actionType)
-	return false
-}
-
-func (mod *Module) authorizeViaContracts(ctx *astral.Context, actorID *astral.Identity, actionType string, action auth.ActionObject) bool {
-	contracts, err := mod.db.findActiveContractsBySubject(actorID)
+	contracts, err := mod.SignedContracts().WithSubject(actor).WithAction(action).Find(ctx)
 	if err != nil {
 		mod.log.Logv(1, "error finding active contracts: %v", err)
 		return false
 	}
 
-	for _, contract := range contracts {
-		sc, err := objects.Load[*auth.SignedContract](ctx, mod.Objects.ReadDefault(), contract.ObjectID)
-		if err != nil {
-			continue
+	for _, sc := range contracts {
+		// todo: find better way to change actor of an action before running handlers
+		action.SetActor(sc.Issuer)
+		allowed := mod.authorizeHandlers(ctx, action)
+		if allowed {
+			mod.log.Logv(1, "allow %v %v", actor, actionType)
+			return true
 		}
+	}
 
-		if err := mod.VerifyContract(sc); err != nil {
-			continue
-		}
+	return false
+}
 
-		for _, permit := range sc.HasPermit(actionType) {
-			if c, ok := action.(auth.Constrainable); ok {
-				if !c.ApplyConstraints(permit.Constraints) {
-					continue
-				}
-			}
-
+func (mod *Module) authorizeHandlers(ctx *astral.Context, action auth.ActionObject) bool {
+	for _, h := range mod.get(action.ObjectType()) {
+		if h.Authorize(ctx, action) {
 			return true
 		}
 	}

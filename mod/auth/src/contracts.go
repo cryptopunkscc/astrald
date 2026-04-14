@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -8,31 +9,26 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) IndexContract(ctx *astral.Context, objectID *astral.ObjectID) error {
+func (mod *Module) IndexContract(ctx *astral.Context, sc *auth.SignedContract) error {
 	mod.indexMu.Lock()
 	defer mod.indexMu.Unlock()
+
+	objectID, err := astral.ResolveObjectID(sc)
+	if err != nil {
+		return fmt.Errorf("resolve object id: %w", err)
+	}
 
 	// check if already indexed
 	if mod.db.contractExists(objectID) {
 		return nil
 	}
 
-	// load from object store
-	sc, err := objects.Load[*auth.SignedContract](ctx, mod.Objects.ReadDefault(), objectID)
+	err = mod.VerifyContract(sc)
 	if err != nil {
-		return fmt.Errorf("load: %w", err)
+		return fmt.Errorf("verify: %w", err)
 	}
 
-	return mod.db.storeContract(objectID, sc.Issuer, sc.Subject, sc.ExpiresAt.Time())
-}
-
-func (mod *Module) StoreContract(ctx *astral.Context, sc *auth.SignedContract) error {
-	objectID, err := objects.Save(ctx, sc, mod.Objects.WriteDefault())
-	if err != nil {
-		return fmt.Errorf("save: %w", err)
-	}
-
-	return mod.IndexContract(ctx, objectID)
+	return mod.db.storeSignedContract(sc)
 }
 
 func (mod *Module) indexer(ctx *astral.Context) {
@@ -45,49 +41,34 @@ func (mod *Module) indexer(ctx *astral.Context) {
 	}
 
 	for objectID := range ch {
-		objectType, err := mod.Objects.GetType(ctx, objectID)
+		object, err := mod.Objects.Load(ctx, mod.Objects.ReadDefault(), objectID)
 
 		switch {
 		case err != nil:
 			continue
-		case objectType != auth.SignedContract{}.ObjectType():
+		}
+
+		sc, ok := object.(*auth.SignedContract)
+		if !ok {
 			continue
 		}
 
-		_ = mod.IndexContract(ctx, objectID)
+		_ = mod.IndexContract(ctx, sc)
 	}
 
 	mod.log.Logv(1, "auth indexer finished")
 }
 
-func (mod *Module) FindContractsWithActor(ctx *astral.Context, actor *astral.Identity) ([]*auth.SignedContract, error) {
-	rows, err := mod.db.findActiveContractsBySubject(actor)
-	if err != nil {
-		return nil, err
-	}
-	var result []*auth.SignedContract
-	for _, row := range rows {
-		sc, err := objects.Load[*auth.SignedContract](ctx, mod.Objects.ReadDefault(), row.ObjectID)
-		if err != nil {
-			continue
-		}
-		result = append(result, sc)
-	}
-	return result, nil
+func (mod *Module) SignedContracts() auth.ContractQueryBuilder {
+	return &contractQuery{DB: mod.db}
 }
 
-func (mod *Module) FindContractsWithIssuer(ctx *astral.Context, issuer *astral.Identity) ([]*auth.SignedContract, error) {
-	rows, err := mod.db.findActiveContractsByIssuer(issuer)
+func encodeSignature(sig astral.Object) ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := astral.Encode(&buf, sig)
 	if err != nil {
 		return nil, err
 	}
-	var result []*auth.SignedContract
-	for _, row := range rows {
-		sc, err := objects.Load[*auth.SignedContract](ctx, mod.Objects.ReadDefault(), row.ObjectID)
-		if err != nil {
-			continue
-		}
-		result = append(result, sc)
-	}
-	return result, nil
+
+	return buf.Bytes(), nil
 }

@@ -62,8 +62,8 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 	return nil
 }
 
-func (mod *Module) receiveSignedContract(s *astral.Identity, c *auth.SignedContract) error {
-	isSigner := s.IsEqual(c.Subject)
+func (mod *Module) receiveSignedContract(s *astral.Identity, signed *auth.SignedContract) error {
+	isSigner := s.IsEqual(signed.Subject)
 	isSelf := s.IsEqual(mod.node.Identity())
 	isLocalSwarmMember := slices.ContainsFunc(mod.LocalSwarm(), s.IsEqual)
 
@@ -71,21 +71,24 @@ func (mod *Module) receiveSignedContract(s *astral.Identity, c *auth.SignedContr
 		return objects.ErrPushRejected
 	}
 
-	if err := mod.Auth.VerifyContract(c); err != nil {
+	if err := mod.Auth.VerifyContract(signed); err != nil {
 		mod.log.Errorv(1, "invalid signed contract: %v", err)
 		return objects.ErrPushRejected
 	}
 
-	if err := mod.StoreContract(c); err != nil {
-		mod.log.Errorv(1, "store signed contract: %v", err)
+	err := mod.Auth.IndexContract(mod.ctx, signed)
+	if err != nil {
+		mod.log.Errorv(1, "indexing signed contract failed: %v", err)
 		return objects.ErrPushRejected
 	}
 
 	go func() {
-		err := mod.Nodes.UpdateNodeEndpoints(mod.ctx, s, c.Subject)
+		err := mod.Nodes.UpdateNodeEndpoints(mod.ctx, s, signed.Subject)
 		if err != nil {
 			mod.log.Error("updatingNodeEndpoint failed: %v", err)
 		}
+
+		// fixme: go run mod siblinker
 	}()
 
 	return nil

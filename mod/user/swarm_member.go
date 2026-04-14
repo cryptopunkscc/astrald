@@ -4,17 +4,14 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
 var _ astral.Object = &SwarmMember{}
 
 type SwarmMember struct {
-	SignedContractID *astral.ObjectID
-	Identity         *astral.Identity
-	Alias            astral.String8
-	Linked           astral.Bool
-	Contract         *auth.Contract
+	Identity *astral.Identity
+	Alias    astral.String8
+	Linked   astral.Bool
 }
 
 func (s SwarmMember) ObjectType() string {

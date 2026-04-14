@@ -23,8 +23,8 @@ func (a *RelayForAction) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(a).ReadFrom(r)
 }
 
-func (a RelayForAction) ApplyConstraints(cs []auth.Constraint) bool {
-	return len(cs) == 0
+func (a RelayForAction) ApplyConstraints(cs *astral.Bundle) bool {
+	return cs == nil || len(cs.Objects()) == 0
 }
 
 func init() { _ = astral.Add(&RelayForAction{}) }
