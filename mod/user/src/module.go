@@ -28,6 +28,7 @@ type Module struct {
 	ops    ops.Set
 
 	activeContract *user.SignedNodeContract
+	ready          chan struct{}
 
 	sibs sig.Map[string, Sibling]
 }
@@ -38,6 +39,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 	activeContractFollow := mod.config.ActiveContract.Follow(ctx)
 	mod.setActiveContract(<-activeContractFollow)
+	close(mod.ready)
 	go func() {
 		for contract := range activeContractFollow {
 			mod.setActiveContract(contract)
@@ -140,6 +142,10 @@ func (mod *Module) GetOpSet() *ops.Set {
 func (mod *Module) TextObjectSigner() crypto.TextObjectSigner {
 	signer, _ := mod.Crypto.TextObjectSigner(secp256k1.FromIdentity(mod.Identity()))
 	return signer
+}
+
+func (mod *Module) Ready() <-chan struct{} {
+	return mod.ready
 }
 
 func (mod *Module) String() string {

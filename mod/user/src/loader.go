@@ -16,6 +16,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		node:   node,
 		log:    log,
 		assets: assets,
+		ready:  make(chan struct{}),
 	}
 
 	_ = assets.LoadYAML(user.ModuleName, &mod.config)

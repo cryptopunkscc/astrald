@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
+	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -51,6 +52,7 @@ func (mod *Module) setActiveContract(signed *user.SignedNodeContract) error {
 	switch {
 	case signed.IsNil():
 		mod.activeContract = nil
+		go mod.Nearby.SetMode(mod.ctx, nearby.ModeVisible)
 		return nil
 	case !signed.ActiveAt(time.Now()):
 		return errors.New("contract is not active")
@@ -62,6 +64,7 @@ func (mod *Module) setActiveContract(signed *user.SignedNodeContract) error {
 
 	mod.log.Info("hello, %v!", signed.UserID)
 	mod.activeContract = signed
+	mod.Nearby.Broadcast()
 	return nil
 }
 

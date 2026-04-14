@@ -1,7 +1,6 @@
 package nearby
 
 import (
-	"context"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -40,14 +39,28 @@ type cache struct {
 
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
+
+	<-mod.User.Ready()
+
+	err = mod.syncConfig(ctx)
+	if err != nil {
+		return
+	}
+
 	go mod.periodicUpdater(ctx)
 
 	go func() {
-		<-time.After(time.Second)
 		mod.Scan()
 	}()
 
 	<-ctx.Done()
+	return nil
+}
+
+func (mod *Module) syncConfig(ctx *astral.Context) error {
+	if mod.config.Mode != nil {
+		return mod.SetMode(ctx, *mod.config.Mode)
+	}
 	return nil
 }
 
@@ -60,9 +73,13 @@ func (mod *Module) AddStatusComposer(composer nearby.Composer) {
 }
 
 func (mod *Module) Mode() nearby.Mode {
+	if mod.User.Identity() == nil {
+		return nearby.ModeVisible
+	}
+
 	m := mod.mode.Get()
 	if m == nil {
-		return nearby.ModeVisible
+		return nearby.ModeStealth
 	}
 	return *m
 }
@@ -89,7 +106,10 @@ func (mod *Module) myAlias() string {
 	return a
 }
 
-func (mod *Module) periodicUpdater(ctx context.Context) {
+func (mod *Module) periodicUpdater(ctx *astral.Context) {
+	modeUpdates := mod.mode.Follow(ctx)
+	<-modeUpdates // discard initial value; initial broadcast is handled in Run
+
 	for {
 		if mod.Mode() != nearby.ModeSilent {
 			if err := mod.Broadcast(); err != nil {
@@ -101,9 +121,14 @@ func (mod *Module) periodicUpdater(ctx context.Context) {
 
 		select {
 		case <-time.After(statusExpiration - 5*time.Second): // broadcast 5s early to avoid status timeout
+		case _, ok := <-modeUpdates:
+			if !ok {
+				return
+			}
 		case <-ctx.Done():
 			return
 		}
+
 	}
 }
 

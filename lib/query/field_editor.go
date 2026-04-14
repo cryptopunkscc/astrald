@@ -16,6 +16,7 @@ type FieldEditor struct {
 	tag   *FieldTag
 }
 
+// astral:blueprint-ignore
 func (editor FieldEditor) ObjectType() string {
 	// check if an astral.Object first
 	if typed, ok := editor.field.Interface().(astral.Object); ok {

@@ -29,6 +29,7 @@ const (
 )
 
 type Module interface {
+	Ready() <-chan struct{}
 	Identity() *astral.Identity
 	LocalSwarm() (list []*astral.Identity)
 	NewMaintainLinkTask(target *astral.Identity) MaintainLinkTask
