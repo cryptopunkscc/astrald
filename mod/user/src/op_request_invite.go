@@ -46,5 +46,7 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q *routing.IncomingQuery
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
+	go mod.pushContractToSiblings(signed)
+
 	return ch.Send(signed)
 }

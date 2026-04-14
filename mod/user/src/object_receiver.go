@@ -36,8 +36,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 	return nil
 }
 
-func (mod *Module) receiveSignedContract(s *astral.Identity, signed *auth.SignedContract) error {
-
+func (mod *Module) receiveSignedContract(sender *astral.Identity, signed *auth.SignedContract) error {
 	ac := mod.ActiveContract()
 
 	isIssuerUser := ac != nil && signed.Issuer.IsEqual(ac.Issuer)
@@ -64,13 +63,13 @@ func (mod *Module) receiveSignedContract(s *astral.Identity, signed *auth.Signed
 			return
 		}
 
-		err := mod.Nodes.UpdateNodeEndpoints(mod.ctx, s, signed.Subject)
+		err := mod.Nodes.UpdateNodeEndpoints(mod.ctx, sender, signed.Subject)
 		if err != nil {
 			mod.log.Error("syncEndpoints: %v", err)
 		}
-	}()
 
-	mod.runSiblingLinker()
+		mod.runSiblingLinker()
+	}()
 
 	return nil
 }

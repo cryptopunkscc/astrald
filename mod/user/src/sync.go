@@ -6,6 +6,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -102,6 +103,16 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 	mod.log.Info("syncAlias: updating %v alias %v", nodeID, info.NodeAlias)
 
 	return mod.Dir.SetAlias(nodeID, string(info.NodeAlias))
+}
+
+func (mod *Module) pushContractToSiblings(signed *auth.SignedContract) {
+	for _, sib := range mod.getLinkedSibs() {
+		if sib.IsEqual(signed.Subject) {
+			continue
+		}
+		sib := sib
+		go mod.Objects.Push(mod.ctx, sib, signed)
+	}
 }
 
 func (mod *Module) syncSiblings(with *astral.Identity) {
