@@ -12,7 +12,7 @@ import (
 
 type DB struct{ *gorm.DB }
 
-func (db *DB) findContracts(q *contractQuery) ([]*dbContract, error) {
+func (db *DB) findActiveContracts(q *contractQuery) ([]*dbContract, error) {
 	now := time.Now()
 	gq := db.DB.
 		Where("starts_at <= ?", now).

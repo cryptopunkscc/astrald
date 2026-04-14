@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
 const ModuleName = "apphost"
@@ -23,7 +22,6 @@ const (
 
 type Module interface {
 	CreateAccessToken(*astral.Identity, astral.Duration) (*AccessToken, error)
-	ActiveLocalAppContracts() ([]*auth.SignedContract, error)
 }
 
 var ErrProtocolError = errors.New("protocol error")

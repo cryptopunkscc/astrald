@@ -104,31 +104,13 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 	return mod.Dir.SetAlias(nodeID, string(info.NodeAlias))
 }
 
-func (mod *Module) syncApps(ctx *astral.Context, nodeID *astral.Identity) (err error) {
-	ac := mod.ActiveContract()
-	if ac == nil {
-		return errors.New("no active contract")
-	}
-
-	contracts, err := mod.Apphost.ActiveLocalAppContracts()
-	if err != nil {
-		return err
-	}
-
-	for _, contract := range contracts {
-		mod.Objects.Push(ctx, nodeID, contract)
-	}
-
-	return
-}
-
 func (mod *Module) syncSiblings(with *astral.Identity) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return
 	}
 
-	contracts, err := mod.ActiveContractsOf(ac.Issuer)
+	contracts, err := mod.ActiveNodeContracts(ac.Issuer)
 	if err != nil {
 		mod.log.Error("syncSiblings: error getting active contracts: %v", err)
 		return
@@ -138,6 +120,7 @@ func (mod *Module) syncSiblings(with *astral.Identity) {
 		if contract.Subject.IsEqual(mod.node.Identity()) {
 			continue
 		}
+
 		if contract.Subject.IsEqual(with) {
 			continue
 		}
