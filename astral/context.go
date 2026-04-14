@@ -29,6 +29,16 @@ func (ctx *Context) Zone() Zone {
 	return ctx.zone
 }
 
+// Detach returns a copy of the context as a new context root (will not get canceled with the original)
+func (ctx *Context) Detach() *Context {
+	return &Context{
+		Context:  context.Background(),
+		identity: ctx.identity,
+		filters:  ctx.filters,
+		zone:     ctx.zone,
+	}
+}
+
 func (ctx *Context) WithIdentity(id *Identity) *Context {
 	c := ctx.clone()
 	c.identity = id
