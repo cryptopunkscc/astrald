@@ -47,6 +47,8 @@ func (mod *Module) OpClaim(ctx *astral.Context, q *ops.Query, args opClaimArgs) 
 		return ch.Send(astral.Err(err))
 	}
 
+	go mod.pushContractToSiblings(signed)
+
 	mod.log.Info("signed contract with %v", nodeID)
 	return ch.Send(signed)
 }
