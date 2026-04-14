@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
-	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -37,11 +36,11 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs
 	// check contract viability
 	switch {
 	case contract.Subject.IsZero():
-		return ch.Send(user.ErrInvalidContract)
+		return ch.Send(auth.ErrInvalidContract)
 	case !contract.Subject.IsEqual(mod.node.Identity()):
-		return ch.Send(user.ErrInvalidContract)
+		return ch.Send(auth.ErrInvalidContract)
 	case contract.ExpiresAt.Time().Before(time.Now().Add(minimalContractLength)):
-		return ch.Send(user.ErrInvalidContract)
+		return ch.Send(auth.ErrInvalidContract)
 	}
 
 	// wait for user approval
@@ -50,13 +49,8 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs
 		return ch.Send(user.ErrInvitationDeclined)
 	}
 
-	// sign the contract as subject (node) — always ASN1
-	signer, err := mod.Crypto.HashSigner(secp256k1.FromIdentity(mod.node.Identity()), crypto.SchemeASN1)
-	if err != nil {
-		return ch.Send(astral.Err(err))
-	}
-
-	subjectSig, err := signer.SignHash(ctx, contract.SignableHash())
+	// sign the contract as subject (node)
+	subjectSig, err := mod.Auth.SignSubject(ctx, contract)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
@@ -88,7 +82,12 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs
 	}
 
 	// store the signed contract
-	err = mod.StoreContract(signed)
+	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	err = mod.Auth.IndexContract(ctx, signed)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}

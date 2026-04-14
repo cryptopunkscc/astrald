@@ -23,8 +23,6 @@ const (
 	OpNewContract   = "user.new_contract"
 	OpSignContract  = "user.sign_contract"
 	OpSyncWith      = "user.sync_with"
-
-	ActionSwarmAccess = "mod.user.swarm_access_action" // equals SwarmAccessAction{}.ObjectType()
 )
 
 type Module interface {

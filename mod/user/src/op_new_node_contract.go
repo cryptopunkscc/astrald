@@ -6,7 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
-	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -54,12 +53,10 @@ func (mod *Module) OpNewContract(ctx *astral.Context, query *ops.Query, args opN
 		}
 	}
 
-	permits := astral.NewBundle()
-	_ = permits.Append(&auth.Permit{Action: user.ActionSwarmAccess})
-	return ch.Send(&auth.Contract{
-		Issuer:    userID,
-		Subject:   nodeID,
-		Permits:   permits,
-		ExpiresAt: astral.Time(time.Now().Add(duration)),
-	})
+	contract, err := user.NewNodeContract(userID, nodeID, duration)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	return ch.Send(contract)
 }

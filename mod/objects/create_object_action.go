@@ -21,7 +21,7 @@ func (a *CreateObjectAction) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(a).ReadFrom(r)
 }
 
-func (a CreateObjectAction) ApplyConstraints(cs []auth.Constraint) bool {
+func (a CreateObjectAction) ApplyConstraints(_ *astral.Bundle) bool {
 	return true
 }
 

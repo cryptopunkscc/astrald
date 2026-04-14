@@ -11,7 +11,7 @@ type SwarmAccessAction struct {
 	auth.Action
 }
 
-func (SwarmAccessAction) ObjectType() string { return ActionSwarmAccess }
+func (SwarmAccessAction) ObjectType() string { return "mod.user.swarm_access_action" }
 
 func (a SwarmAccessAction) WriteTo(w io.Writer) (n int64, err error) {
 	return astral.Objectify(&a).WriteTo(w)

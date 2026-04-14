@@ -127,18 +127,3 @@ func IsOffsetLimitValid(objectID *astral.ObjectID, offset int64, limit int64) bo
 
 	return true
 }
-
-func Save(ctx *astral.Context, object astral.Object, repo Repository) (objectID *astral.ObjectID, err error) {
-	w, err := repo.Create(ctx, nil)
-	if err != nil {
-		return
-	}
-	defer w.Discard()
-
-	_, err = astral.Encode(w, object, astral.WithEncoder(astral.CanonicalTypeEncoder))
-	if err != nil {
-		return
-	}
-
-	return w.Commit()
-}
