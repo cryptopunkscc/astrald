@@ -9,7 +9,7 @@ import (
 )
 
 func (client *Client) NewContract(ctx *astral.Context, alias string) (contract *auth.Contract, err error) {
-	ch, err := client.queryCh(ctx, user.OpNewContract, query.Args{"user": alias})
+	ch, err := client.queryCh(ctx, user.OpNewNodeContract, query.Args{"user": alias})
 	if err != nil {
 		return
 	}
