@@ -19,7 +19,7 @@ func (mod *Module) OpNodeOpenRelay(ctx *astral.Context, q *ops.Query) error {
 		}
 
 		if !container.CallerID.IsEqual(q.Caller()) {
-			if !mod.Auth.Authorize(ctx, &nodes.RelayForAction{Action: auth.NewAction(q.Caller()), CallerID: container.CallerID}) {
+			if !mod.Auth.Authorize(ctx, &nodes.RelayForAction{Action: auth.NewAction(q.Caller()), ForID: container.CallerID}) {
 				return ch.Send(astral.NewError("unauthorized"))
 			}
 		}

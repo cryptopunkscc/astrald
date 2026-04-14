@@ -10,6 +10,7 @@ const (
 	DBPrefix       = "auth__"
 	ActionSudo     = "mod.auth.sudo_action" // equals SudoAction{}.ObjectType()
 	OpSignContract = "auth.sign_contract"
+	OpIndex        = "auth.index"
 )
 
 type ContractQueryBuilder interface {

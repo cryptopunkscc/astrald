@@ -7,10 +7,10 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
-// RelayForAction requests permission for ActorId to relay traffic on behalf of CallerID.
+// RelayForAction requests permission for Actor to relay traffic for ForID.
 type RelayForAction struct {
 	auth.Action
-	CallerID *astral.Identity
+	ForID *astral.Identity
 }
 
 func (RelayForAction) ObjectType() string { return "mod.nodes.relay_for_action" }
