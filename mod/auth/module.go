@@ -8,7 +8,6 @@ import (
 const (
 	ModuleName     = "auth"
 	DBPrefix       = "auth__"
-	ActionSudo     = "mod.auth.sudo_action" // equals SudoAction{}.ObjectType()
 	OpSignContract = "auth.sign_contract"
 	OpIndex        = "auth.index"
 )
@@ -24,8 +23,8 @@ type Module interface {
 	// Authorize checks whether the action is permitted.
 	Authorize(ctx *astral.Context, action ActionObject) bool
 
-	// Add registers a handler for a given action type.
-	Add(actionType string, handlers ...Handler)
+	// Add registers typed handlers; the action type is inferred from each handler.
+	Add(handlers ...TypedHandler)
 
 	// VerifyContract verifies both signatures on a signed contract.
 	VerifyContract(sc *SignedContract) error

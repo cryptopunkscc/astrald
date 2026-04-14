@@ -35,7 +35,7 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 		return mod.IsLinked(identity)
 	})
 
-	mod.Auth.Add(nodes.ActionRelayFor, auth.Func[*nodes.RelayForAction](mod.AuthorizeRelayFor))
+	mod.Auth.Add(auth.Func[*nodes.RelayForAction](mod.AuthorizeRelayFor))
 
 	return err
 }

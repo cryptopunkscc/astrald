@@ -38,9 +38,12 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-// Add registers handlers for the given action ObjectType string.
-func (mod *Module) Add(actionType string, handlers ...auth.Handler) {
-	mod.handlers.Set(actionType, append(mod.get(actionType), handlers...))
+// Add registers typed handlers; the action type is inferred from each handler.
+func (mod *Module) Add(handlers ...auth.TypedHandler) {
+	for _, h := range handlers {
+		t := h.ActionType()
+		mod.handlers.Set(t, append(mod.get(t), h))
+	}
 }
 
 func (mod *Module) get(actionType string) []auth.Handler {
