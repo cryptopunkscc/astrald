@@ -5,13 +5,14 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
-func NewAppContract(ctx *astral.Context, id *astral.Identity, duration astral.Duration) (*apphost.AppContract, error) {
+func NewAppContract(ctx *astral.Context, id *astral.Identity, duration astral.Duration) (*auth.Contract, error) {
 	return Default().NewAppContract(ctx, id, duration)
 }
 
-func (client *Client) NewAppContract(ctx *astral.Context, id *astral.Identity, duration astral.Duration) (contract *apphost.AppContract, err error) {
+func (client *Client) NewAppContract(ctx *astral.Context, id *astral.Identity, duration astral.Duration) (contract *auth.Contract, err error) {
 	ch, err := client.queryCh(ctx, apphost.MethodNewAppContract, query.Args{"ID": id, "Duration": duration})
 	if err != nil {
 		return

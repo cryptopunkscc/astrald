@@ -4,10 +4,11 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
 type EventNewAppContract struct {
-	Contract *SignedAppContract
+	Contract *auth.SignedContract
 }
 
 var _ astral.Object = &EventNewAppContract{}

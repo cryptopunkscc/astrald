@@ -4,6 +4,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 type opIndexArgs struct {
@@ -15,7 +17,12 @@ func (mod *Module) OpIndex(ctx *astral.Context, q *ops.Query, args opIndexArgs) 
 	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	if err := mod.Index(ctx, args.ID); err != nil {
+	sc, err := objects.Load[*auth.SignedContract](ctx, mod.Objects.ReadDefault(), args.ID)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	if err = mod.Auth.IndexContract(ctx, sc); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
