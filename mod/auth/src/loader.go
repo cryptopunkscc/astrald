@@ -22,6 +22,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	mod.ops.AddStructPrefix(mod, "Op")
 
+	mod.Add(auth.Func[*auth.SudoAction](mod.AuthorizeSudo))
+
 	mod.db = &DB{DB: assets.Database()}
 	if err = mod.db.AutoMigrate(&dbContract{}, &dbContractPermit{}); err != nil {
 		return nil, err
