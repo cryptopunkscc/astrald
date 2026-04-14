@@ -25,12 +25,7 @@ func (a *SyncNodesAction) String() string {
 func (a *SyncNodesAction) Run(ctx *astral.Context) error {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
-	err := a.mod.syncApps(ctx, a.remoteIdentity)
-	if err != nil {
-		a.mod.log.Error("error syncing apps with %v: %v", a.remoteIdentity, err)
-	}
-
-	err = a.mod.syncAlias(ctx, a.remoteIdentity)
+	err := a.mod.syncAlias(ctx, a.remoteIdentity)
 	if err != nil {
 		a.mod.log.Error("error syncing alias of %v: %v", a.remoteIdentity, err)
 	}

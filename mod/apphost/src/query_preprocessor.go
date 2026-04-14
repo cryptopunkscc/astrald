@@ -3,7 +3,7 @@ package apphost
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 var _ core.QueryPreprocessor = &Module{}
@@ -15,7 +15,7 @@ func (mod *Module) PreprocessQuery(qm *core.QueryModifier) error {
 	contracts, _ := mod.Auth.SignedContracts().
 		WithIssuer(qm.Query().Caller).
 		WithSubject(mod.node.Identity()).
-		WithAction(&apphost.HostForAction{}).
+		WithAction(&nodes.RelayForAction{}).
 		Find(ctx)
 	if len(contracts) > 0 {
 		qm.Attach(contracts[0])
@@ -24,7 +24,7 @@ func (mod *Module) PreprocessQuery(qm *core.QueryModifier) error {
 	// if the query targets an app, find its hosts
 	contracts, _ = mod.Auth.SignedContracts().
 		WithIssuer(qm.Query().Target).
-		WithAction(&apphost.HostForAction{}).
+		WithAction(&nodes.RelayForAction{}).
 		Find(ctx)
 
 	for _, contract := range contracts {
