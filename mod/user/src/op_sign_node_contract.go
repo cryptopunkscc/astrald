@@ -7,12 +7,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
-type opSignContractArgs struct {
+type opSignNodeContractArgs struct {
 	In  string `query:"optional"`
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpSignContract(ctx *astral.Context, query *ops.Query, args opSignContractArgs) (err error) {
+func (mod *Module) OpSignNodeContract(ctx *astral.Context, query *ops.Query, args opSignNodeContractArgs) (err error) {
 	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

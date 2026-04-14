@@ -9,7 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-type opNewContractArgs struct {
+type opNewNodeContractArgs struct {
 	User     string `query:"optional"`
 	Node     string `query:"optional"`
 	Duration string `query:"optional"`
@@ -17,7 +17,7 @@ type opNewContractArgs struct {
 	Out      string `query:"optional"`
 }
 
-func (mod *Module) OpNewContract(ctx *astral.Context, query *ops.Query, args opNewContractArgs) (err error) {
+func (mod *Module) OpNewNodeContract(ctx *astral.Context, query *ops.Query, args opNewNodeContractArgs) (err error) {
 	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
