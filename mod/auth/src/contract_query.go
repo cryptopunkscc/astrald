@@ -34,7 +34,7 @@ func (q *contractQuery) WithAction(actions ...astral.Object) auth.ContractQueryB
 }
 
 func (q *contractQuery) Find(ctx *astral.Context) ([]*auth.SignedContract, error) {
-	rows, err := q.DB.findContracts(q)
+	rows, err := q.DB.findActiveContracts(q)
 	if err != nil {
 		return nil, err
 	}

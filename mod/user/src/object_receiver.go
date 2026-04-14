@@ -4,11 +4,11 @@ import (
 	"slices"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/events"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
 var _ objects.Receiver = &Module{}
@@ -20,29 +20,11 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		if err == nil {
 			drop.Accept(true)
 		}
-
-		go func() {
-			err = mod.Nodes.UpdateNodeEndpoints(mod.ctx, drop.SenderID(), o.Subject)
-			if err != nil {
-				mod.log.Error("syncEndpoints: %v", err)
-			}
-		}()
-
-	case *apphost.EventNewAppContract:
-		switch {
-		case !drop.SenderID().IsEqual(mod.node.Identity()):
-			break
-		case !o.Contract.Subject.IsEqual(mod.node.Identity()):
-			break
-		}
-
-		mod.pushToLinkedSibs(o.Contract)
 	case *events.Event:
 		switch e := o.Data.(type) {
 		case *nodes.StreamCreatedEvent:
 			if e.StreamCount == 1 && slices.ContainsFunc(mod.LocalSwarm(), e.RemoteIdentity.IsEqual) {
 				go mod.pushActiveContract(e.RemoteIdentity)
-
 				go mod.syncSiblings(e.RemoteIdentity)
 
 				mod.Scheduler.Schedule(mod.NewSyncNodesTask(e.RemoteIdentity))
@@ -55,11 +37,14 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 }
 
 func (mod *Module) receiveSignedContract(s *astral.Identity, signed *auth.SignedContract) error {
-	isSigner := s.IsEqual(signed.Subject)
-	isSelf := s.IsEqual(mod.node.Identity())
-	isLocalSwarmMember := slices.ContainsFunc(mod.LocalSwarm(), s.IsEqual)
 
-	if !(isSigner || isSelf || isLocalSwarmMember) {
+	ac := mod.ActiveContract()
+
+	isIssuerUser := ac != nil && signed.Issuer.IsEqual(ac.Issuer)
+	isSubjectSwarmMember := slices.ContainsFunc(mod.LocalSwarm(), signed.Subject.IsEqual)
+	isIssuerSwarmMember := slices.ContainsFunc(mod.LocalSwarm(), signed.Issuer.IsEqual)
+
+	if !(isIssuerUser || isSubjectSwarmMember || isIssuerSwarmMember) {
 		return objects.ErrPushRejected
 	}
 
@@ -75,13 +60,17 @@ func (mod *Module) receiveSignedContract(s *astral.Identity, signed *auth.Signed
 	}
 
 	go func() {
-		err := mod.Nodes.UpdateNodeEndpoints(mod.ctx, s, signed.Subject)
-		if err != nil {
-			mod.log.Error("updatingNodeEndpoint failed: %v", err)
+		if !user.IsNodeContract(signed.Contract) {
+			return
 		}
 
-		// fixme: go run mod siblinker
+		err := mod.Nodes.UpdateNodeEndpoints(mod.ctx, s, signed.Subject)
+		if err != nil {
+			mod.log.Error("syncEndpoints: %v", err)
+		}
 	}()
+
+	mod.runSiblingLinker()
 
 	return nil
 }

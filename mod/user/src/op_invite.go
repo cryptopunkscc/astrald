@@ -81,13 +81,13 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs
 		return ch.Send(astral.Err(err))
 	}
 
-	// store the signed contract
-	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
+	err = mod.Auth.IndexContract(ctx, signed)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
-	err = mod.Auth.IndexContract(ctx, signed)
+	// store the signed contract
+	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}

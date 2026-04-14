@@ -59,8 +59,8 @@ func (mod *Module) setActiveContract(signed *auth.SignedContract) error {
 	return nil
 }
 
-// ActiveContractsOf returns all active SwarmAccess contracts issued by userID
-func (mod *Module) ActiveContractsOf(userID *astral.Identity) ([]*auth.SignedContract, error) {
+// ActiveNodeContracts returns all active SwarmAccess contracts issued by userID
+func (mod *Module) ActiveNodeContracts(userID *astral.Identity) ([]*auth.SignedContract, error) {
 	return mod.Auth.SignedContracts().WithIssuer(userID).WithAction(&user.SwarmAccessAction{}).Find(mod.ctx)
 }
 

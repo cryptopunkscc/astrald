@@ -36,11 +36,12 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q *ops.Query, args opReq
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
+	err = mod.Auth.IndexContract(ctx, signed)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
-	err = mod.Auth.IndexContract(ctx, signed)
+
+	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
