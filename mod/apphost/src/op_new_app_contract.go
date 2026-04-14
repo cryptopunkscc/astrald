@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 type opNewAppContractArgs struct {
@@ -23,10 +25,15 @@ func (mod *Module) OpNewAppContract(ctx *astral.Context, q *routing.IncomingQuer
 		args.Duration = DefaultAppContractDuration
 	}
 
-	return ch.Send(&apphost.AppContract{
-		AppID:     args.ID,
-		HostID:    mod.node.Identity(),
-		StartsAt:  astral.Time(time.Now()),
+	permits := []*auth.Permit{
+		{Action: astral.String8(nodes.RelayForAction{}.ObjectType())},
+		{Action: astral.String8(apphost.HostForAction{}.ObjectType())},
+	}
+
+	return ch.Send(&auth.Contract{
+		Issuer:    args.ID,
+		Subject:   mod.node.Identity(),
+		Permits:   astral.WrapSlice(&permits),
 		ExpiresAt: astral.Time(time.Now().Add(time.Duration(args.Duration))),
 	})
 }

@@ -28,23 +28,15 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 			}
 		}()
 
-	case *apphost.SignedAppContract:
-		if !slices.ContainsFunc(mod.LocalSwarm(), o.HostID.IsEqual) {
-			break
-		}
-
-		drop.Accept(true)
-
 	case *apphost.EventNewAppContract:
 		switch {
 		case !drop.SenderID().IsEqual(mod.node.Identity()):
 			break
-		case !o.Contract.HostID.IsEqual(mod.node.Identity()):
+		case !o.Contract.Subject.IsEqual(mod.node.Identity()):
 			break
 		}
 
 		mod.pushToLinkedSibs(o.Contract)
-
 	case *events.Event:
 		switch e := o.Data.(type) {
 		case *nodes.StreamCreatedEvent:
