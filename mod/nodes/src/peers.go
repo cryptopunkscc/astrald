@@ -29,7 +29,7 @@ func NewPeers(m *Module) *Peers {
 	return &Peers{Module: m}
 }
 
-func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (_ io.WriteCloser, err error) {
+func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
 	streams := mod.streams.Select(func(s *Stream) bool {
 		return s.RemoteIdentity().IsEqual(q.Target)
 	})
@@ -46,13 +46,13 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClo
 	}
 
 	conn.RemoteIdentity = q.Target
-	conn.Query = q.Query
+	conn.Query = q.QueryString
 	conn.Outbound = true
 
 	// prepare the query frame
 	frame := &frames.Query{
 		Nonce:  q.Nonce,
-		Query:  q.Query,
+		Query:  q.QueryString,
 		Buffer: uint32(conn.rsize),
 	}
 
@@ -155,12 +155,12 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	conn.stream = s
 	conn.wsize = initBuffer
 
-	var q = &astral.Query{
-		Nonce:  nonce,
-		Caller: caller,
-		Target: target,
-		Query:  queryStr,
-	}
+	var q = astral.Launch(&astral.Query{
+		Nonce:       nonce,
+		Caller:      caller,
+		Target:      target,
+		QueryString: queryStr,
+	})
 
 	q.Extra.Set("origin", astral.OriginNetwork)
 

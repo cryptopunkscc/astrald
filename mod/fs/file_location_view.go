@@ -3,7 +3,8 @@ package fs
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	log2 "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/mod/log/views"
 )
 
 type FileLocationView struct {
@@ -14,7 +15,7 @@ func (v *FileLocationView) Render() string {
 	return log.DefaultViewer.Render(log.Format(
 		"file at %v:%v",
 		v.NodeID,
-		log2.String(string(v.Path), &log2.DarkYellowText),
+		views.String(string(v.Path), &styles.DarkYellowText),
 	)...)
 }
 

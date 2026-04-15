@@ -43,9 +43,6 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	if err != nil {
 		return
 	}
-	if mod.mode.Get() == nil {
-		_ = mod.SetMode(ctx, mod.config.Mode)
-	}
 
 	mod.Dir.AddResolver(mod)
 	mod.Nodes.AddResolver(mod)

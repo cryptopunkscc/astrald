@@ -23,8 +23,13 @@ type Module struct {
 	ops    ops.Set
 
 	activeContract *auth.SignedContract
+	ready          chan struct{}
 
 	sibs sig.Map[string, Sibling]
+}
+
+func (mod *Module) Ready() <-chan struct{} {
+	return mod.ready
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -33,6 +38,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 	activeContractFollow := mod.config.ActiveContract.Follow(ctx)
 	mod.setActiveContract(<-activeContractFollow)
+	close(mod.ready)
 	go func() {
 		for contract := range activeContractFollow {
 			mod.setActiveContract(contract)

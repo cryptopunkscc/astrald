@@ -76,7 +76,7 @@ func (s *Host) AuthToken(token string) (err error) {
 // RouteQuery routes a query via the host.
 // If the caller is nil, the guest's identity is used. If the target is nil, the host's identity is used.
 // If routing fails, the connection with the host is closed.
-func (s *Host) RouteQuery(q *astral.Query, zone astral.Zone, filters []string) (conn *Conn, err error) {
+func (s *Host) RouteQuery(q *astral.InFlightQuery, zone astral.Zone, filters []string) (conn *Conn, err error) {
 	// close host connection on error
 	defer func() {
 		if conn == nil {
@@ -104,7 +104,7 @@ func (s *Host) RouteQuery(q *astral.Query, zone astral.Zone, filters []string) (
 		Nonce:   q.Nonce,
 		Caller:  q.Caller,
 		Target:  q.Target,
-		Query:   astral.String16(q.Query),
+		Query:   astral.String16(q.QueryString),
 		Zone:    zone,
 		Filters: filters8,
 	})
@@ -116,7 +116,7 @@ func (s *Host) RouteQuery(q *astral.Query, zone astral.Zone, filters []string) (
 	msg, err := s.Receive()
 	switch msg := msg.(type) {
 	case *apphost.QueryAcceptedMsg: // success
-		return NewConn(s.conn, q, true), nil
+		return NewConn(s.conn, q.Query, true), nil
 
 	case *apphost.QueryRejectedMsg: // reject
 		return nil, &astral.ErrRejected{Code: uint8(msg.Code)}

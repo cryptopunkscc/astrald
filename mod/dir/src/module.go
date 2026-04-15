@@ -10,7 +10,8 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/aliasgen"
 	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	modlog "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/mod/log/views"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -169,7 +170,7 @@ func (mod *Module) setDefaultAlias() error {
 		return err
 	}
 
-	mod.log.Info("call me %v", modlog.String(alias, &modlog.BrightGreenText))
+	mod.log.Info("call me %v", views.String(alias, &styles.BrightGreenText))
 
 	return nil
 }

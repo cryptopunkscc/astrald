@@ -19,7 +19,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		log:    log,
 		assets: assets,
 	}
-	mod.root.OnError = func(err error, query *astral.Query) {
+	mod.root.OnError = func(err error, query *astral.InFlightQuery) {
 		mod.log.Logv(1, "[%v] error processing '%v': %v", query.Nonce, query.Query, err)
 	}
 

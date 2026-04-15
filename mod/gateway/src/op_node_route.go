@@ -37,7 +37,7 @@ func (mod *Module) OpNodeRoute(ctx *astral.Context, q *ops.Query, args opNodeRou
 	// forward: accept caller side, dial target side, pipe
 	inConn := q.Accept()
 	nextQ := query.New(mod.node.Identity(), args.Target, gateway.MethodNodeRoute, query.Args{"target": args.Target})
-	outConn, err := query.Route(ctx, mod.node, nextQ)
+	outConn, err := query.Route(ctx, mod.node, astral.Launch(nextQ))
 	if err != nil {
 		inConn.Close()
 		return err

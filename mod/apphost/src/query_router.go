@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
-func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	for _, handler := range mod.handlers.Clone() {
 		if !handler.Identity.IsEqual(q.Target) {
 			continue

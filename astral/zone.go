@@ -6,7 +6,7 @@ const (
 	ZoneDevice = Zone(1 << iota)
 	ZoneVirtual
 	ZoneNetwork
-	ZoneDefault = ZoneDevice | ZoneVirtual
+	ZoneDefault = ZoneDevice | ZoneVirtual | ZoneNetwork
 	ZoneAll     = ZoneDevice | ZoneVirtual | ZoneNetwork
 )
 

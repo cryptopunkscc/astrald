@@ -31,7 +31,7 @@ func NewRouterMonitor(router Router) *RouterMonitor {
 
 var _ Router = &RouterMonitor{}
 
-func (monitor *RouterMonitor) RouteQuery(context *astral.Context, query *astral.Query) (astral.Conn, error) {
+func (monitor *RouterMonitor) RouteQuery(context *astral.Context, query *astral.InFlightQuery) (astral.Conn, error) {
 	conn, err := monitor.Router.RouteQuery(context, query)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (monitor *RouterMonitor) RouteQuery(context *astral.Context, query *astral.
 }
 
 // Add adds a new connection to the monitor
-func (monitor *RouterMonitor) Add(conn astral.Conn, query *astral.Query) *ConnMonitor {
+func (monitor *RouterMonitor) Add(conn astral.Conn, query *astral.InFlightQuery) *ConnMonitor {
 	connMonitor := &ConnMonitor{
 		conn:         conn,
 		OnClose:      func() { monitor.conns.Delete(query.Nonce) },

@@ -12,17 +12,17 @@ import (
 )
 
 type Query struct {
-	*astral.Query
+	*astral.InFlightQuery
 	remoteWriter io.WriteCloser
 	response     chan queryResponse
 	resolved     atomic.Bool
 }
 
-func newQuery(remoteWriter io.WriteCloser, query *astral.Query) *Query {
+func newQuery(remoteWriter io.WriteCloser, query *astral.InFlightQuery) *Query {
 	return &Query{
-		remoteWriter: remoteWriter,
-		Query:        query,
-		response:     make(chan queryResponse, 1),
+		remoteWriter:  remoteWriter,
+		InFlightQuery: query,
+		response:      make(chan queryResponse, 1),
 	}
 }
 
@@ -33,7 +33,7 @@ func (query *Query) Accept() (conn io.ReadWriteCloser) {
 
 	localReader, localWriter := io.Pipe()
 
-	conn = NewConn(query.Query.Caller, query.Query.Target, query.remoteWriter, localReader, false)
+	conn = NewConn(query.InFlightQuery.Caller, query.InFlightQuery.Target, query.remoteWriter, localReader, false)
 
 	query.response <- queryResponse{localWriter, nil}
 
@@ -71,11 +71,11 @@ func (query *Query) RejectWithCode(code uint8) (err error) {
 }
 
 func (query *Query) Caller() *astral.Identity {
-	return query.Query.Caller
+	return query.InFlightQuery.Caller
 }
 
 func (query *Query) Extra() *sig.Map[string, any] {
-	return &query.Query.Extra
+	return &query.InFlightQuery.Extra
 }
 
 func (query *Query) Origin() string {

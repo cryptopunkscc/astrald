@@ -28,7 +28,7 @@ func NewNoRetryRouter(r Router) *RetryRouter {
 	return &RetryRouter{Router: r, maxAttempts: 1}
 }
 
-func (rr *RetryRouter) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.Conn, error) {
+func (rr *RetryRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery) (astral.Conn, error) {
 	for attempt := 0; ; attempt++ {
 		conn, err := rr.Router.RouteQuery(ctx, q)
 		if err == nil {

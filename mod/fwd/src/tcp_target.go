@@ -1,10 +1,11 @@
 package fwd
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/query"
 	"io"
 	_net "net"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
 type TCPTarget struct {
@@ -24,7 +25,7 @@ func NewTCPTarget(addr string, identiy *astral.Identity) (*TCPTarget, error) {
 	return tcp, nil
 }
 
-func (t *TCPTarget) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (t *TCPTarget) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	var dialer = _net.Dialer{}
 
 	conn, err := dialer.DialContext(ctx, "tcp", t.addr.String())

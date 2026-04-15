@@ -1,8 +1,9 @@
-package log
+package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type ErrorView struct {
@@ -10,7 +11,7 @@ type ErrorView struct {
 }
 
 func (v ErrorView) Render() string {
-	return RedText.Render(v.Error.Error())
+	return styles.RedText.Render(v.Error.Error())
 }
 
 func init() {

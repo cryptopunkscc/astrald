@@ -1,8 +1,9 @@
-package log
+package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type AckView struct {
@@ -10,7 +11,7 @@ type AckView struct {
 }
 
 func (AckView) Render() string {
-	return DarkGreenText.Render("(ack)")
+	return styles.DarkGreenText.Render("(ack)")
 }
 
 func init() {

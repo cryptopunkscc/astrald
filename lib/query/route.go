@@ -10,7 +10,7 @@ import (
 // Route routes a query through the provided Router. It returns a conn if query was successfully routed
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...
-func Route(ctx *astral.Context, r astral.Router, q *astral.Query) (astral.Conn, error) {
+func Route(ctx *astral.Context, r astral.Router, q *astral.InFlightQuery) (astral.Conn, error) {
 	ctx, cancel := ctx.WithTimeout(maxQueryTimeout)
 	defer cancel()
 
@@ -24,7 +24,7 @@ func Route(ctx *astral.Context, r astral.Router, q *astral.Query) (astral.Conn, 
 	return NewConn(q.Caller, q.Target, target, pipeReader, true), err
 }
 
-func RouteChan(ctx *astral.Context, r astral.Router, q *astral.Query) (*channel.Channel, error) {
+func RouteChan(ctx *astral.Context, r astral.Router, q *astral.InFlightQuery) (*channel.Channel, error) {
 	conn, err := Route(ctx, r, q)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func RouteChan(ctx *astral.Context, r astral.Router, q *astral.Query) (*channel.
 }
 
 // Accept accepts the query and runs the handler in a new goroutine.
-func Accept(query *astral.Query, src io.WriteCloser, handler func(astral.Conn)) (io.WriteCloser, error) {
+func Accept(query *astral.InFlightQuery, src io.WriteCloser, handler func(astral.Conn)) (io.WriteCloser, error) {
 	pipeReader, pipeWriter := io.Pipe()
 
 	go handler(NewConn(query.Target, query.Caller, src, pipeReader, false))

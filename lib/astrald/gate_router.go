@@ -19,7 +19,7 @@ func NewGateRouter(r Router, g ReadyGate) *GateRouter {
 	return &GateRouter{Router: r, gate: g}
 }
 
-func (gr *GateRouter) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.Conn, error) {
+func (gr *GateRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery) (astral.Conn, error) {
 	select {
 	case <-gr.gate.Ready():
 	case <-ctx.Done():

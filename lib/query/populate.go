@@ -32,21 +32,20 @@ func Populate(m map[string]string, s any) error {
 		fv := v.Field(i)
 		ft := v.Type().Field(i)
 
-		var tags map[string]string
 		lookup, ok := ft.Tag.Lookup(queryTag)
-		tags = splitTag(lookup)
+		tags := ParseTag(lookup)
 
-		if _, skip := tags["skip"]; skip {
+		if tags.Skip {
 			continue
 		}
 
 		name := log.ToSnakeCase(ft.Name)
-		if n, ok := tags["key"]; ok {
-			name = n
+		if tags.Key != "" {
+			name = tags.Key
 		}
 		mv, ok := m[name]
 		if !ok {
-			if _, optional := tags[optionalTag]; optional {
+			if tags.Optional {
 				continue
 			}
 			return fmt.Errorf("required field %s not found in the map", name)

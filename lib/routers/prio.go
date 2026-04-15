@@ -3,10 +3,11 @@ package routers
 import (
 	"cmp"
 	"errors"
+	"io"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/sig"
-	"io"
 )
 
 var _ astral.Router = &PriorityRouter{}
@@ -30,7 +31,7 @@ func NewPriorityRouter() *PriorityRouter {
 	return &PriorityRouter{}
 }
 
-func (router *PriorityRouter) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (rw io.WriteCloser, err error) {
+func (router *PriorityRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (rw io.WriteCloser, err error) {
 	var errs []error
 
 	for _, r := range router.entries.Clone() {

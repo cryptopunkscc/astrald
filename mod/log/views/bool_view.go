@@ -1,8 +1,9 @@
-package log
+package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type BoolView struct {
@@ -11,10 +12,10 @@ type BoolView struct {
 
 func (b BoolView) Render() string {
 	if *b.Bool {
-		return GreenText.Render(b.Bool.String())
+		return styles.GreenText.Render(b.Bool.String())
 	}
 
-	return RedText.Render(b.Bool.String())
+	return styles.RedText.Render(b.Bool.String())
 }
 
 func init() {

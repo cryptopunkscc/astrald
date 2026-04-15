@@ -17,15 +17,15 @@ type Validator interface {
 
 type Args map[string]any
 
-// New returns a new instance of astral.Query. Args can be:
+// New returns a new instance of astral.InFlightQuery. Args can be:
 // - a string - http-formatted arguments like "a=1&b=2"
 // - a map[string]any - as long as all values are convertible to a string (string, Stringer, TextMarshaler)
 func New(caller *astral.Identity, target *astral.Identity, path string, args any) (query *astral.Query) {
 	query = &astral.Query{
-		Nonce:  astral.NewNonce(),
-		Caller: caller,
-		Target: target,
-		Query:  path,
+		Nonce:       astral.NewNonce(),
+		Caller:      caller,
+		Target:      target,
+		QueryString: path,
 	}
 
 	if args == nil {
@@ -38,7 +38,7 @@ func New(caller *astral.Identity, target *astral.Identity, path string, args any
 	}
 
 	if len(str) > 0 {
-		query.Query += "?" + str
+		query.QueryString += "?" + str
 	}
 
 	return
@@ -64,22 +64,6 @@ func Parse(q string) (path string, params map[string]string) {
 	}
 
 	return
-}
-
-func splitTag(tag string) (m map[string]string) {
-	m = make(map[string]string)
-
-	s := strings.Split(tag, ";")
-	for _, v := range s {
-		p := strings.SplitN(v, ":", 2)
-		if len(p) < 2 {
-			m[p[0]] = ""
-		} else {
-			m[p[0]] = p[1]
-		}
-	}
-
-	return m
 }
 
 func splitPathParams(query string) (path, params string) {

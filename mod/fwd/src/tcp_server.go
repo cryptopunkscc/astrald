@@ -1,10 +1,11 @@
 package fwd
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
 	_net "net"
 	"strings"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 var _ Server = &TCPServer{}
@@ -52,7 +53,7 @@ func (srv *TCPServer) Run(ctx *astral.Context) error {
 		go func() {
 			var q = astral.NewQuery(nil, nil, "")
 
-			dst, err := srv.target.RouteQuery(ctx, q, client)
+			dst, err := srv.target.RouteQuery(ctx, astral.Launch(q), client)
 			if err != nil {
 				client.Close()
 				return

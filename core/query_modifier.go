@@ -1,18 +1,19 @@
 package core
 
 import (
+	"slices"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
-	"slices"
 )
 
 type QueryModifier struct {
-	query   *astral.Query
+	query   *astral.InFlightQuery
 	blocked sig.Value[error]
 }
 
-func (q *QueryModifier) Query() *astral.Query {
+func (q *QueryModifier) Query() *astral.InFlightQuery {
 	return q.query
 }
 

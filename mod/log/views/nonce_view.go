@@ -1,8 +1,9 @@
-package log
+package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type NonceView struct {
@@ -10,7 +11,7 @@ type NonceView struct {
 }
 
 func (v NonceView) Render() string {
-	return YellowText.Render(v.Nonce.String())
+	return styles.YellowText.Render(v.Nonce.String())
 }
 
 func init() {

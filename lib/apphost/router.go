@@ -33,7 +33,7 @@ func SetDefaultRouter(router *Router) {
 
 // RouteQuery routes a query via the host. Returns ErrNodeUnavailable if the
 // IPC connection cannot be established (query was never sent, safe to retry).
-func (router *Router) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.Conn, error) {
+func (router *Router) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery) (astral.Conn, error) {
 	host, err := router.connect(ctx)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (router *Router) RouteQuery(ctx *astral.Context, q *astral.Query) (astral.C
 			defer cancelHost.Close()
 
 			conn, _ := cancelHost.RouteQuery(
-				query.New(nil, nil, apphost.MethodCancel, query.Args{"id": q.Nonce}),
+				astral.Launch(query.New(nil, nil, apphost.MethodCancel, query.Args{"id": q.Nonce})),
 				astral.ZoneDevice,
 				nil,
 			)

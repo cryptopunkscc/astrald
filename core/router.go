@@ -39,7 +39,7 @@ func (r *Router) AddQueryPreprocessor(f QueryPreprocessor) error {
 	return r.preprocessors.Add(f)
 }
 
-func (r *Router) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (target io.WriteCloser, err error) {
+func (r *Router) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (target io.WriteCloser, err error) {
 	if q.Caller == nil {
 		q.Caller = r.node.identity
 	}
@@ -55,9 +55,7 @@ func (r *Router) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClos
 	for _, p := range r.preprocessors.Clone() {
 		err = p.PreprocessQuery(qm)
 		if err != nil {
-			r.node.log.Logv(2, "[%v] %v -> %v:%v query blocked by %v: %v",
-				&q.Nonce, q.Caller, q.Target, q.Query, p, err,
-			)
+			r.node.log.Logv(2, "%v query blocked by %v: %v", q.Query, p, err)
 			return query.RouteNotFound(r, err)
 		}
 
@@ -69,9 +67,7 @@ func (r *Router) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClos
 
 	// log the start of routing
 	if r.node.config.LogRoutingStart {
-		r.node.log.Logv(2, "[%v] %v -> %v:%v routing...",
-			&q.Nonce, q.Caller, q.Target, q.Query,
-		)
+		r.node.log.Logv(2, "%v routing...", q.Query)
 	}
 
 	var startedAt = time.Now()
@@ -80,20 +76,16 @@ func (r *Router) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteClos
 
 	// log routing results
 	if err == nil {
-		r.node.log.Infov(0, "[%v] %v -> %v:%v routed in %v",
-			q.Nonce, q.Caller, q.Target, q.Query, d,
-		)
+		r.node.log.Infov(0, "%v routed in %v", q.Query, d)
 	} else {
-		r.node.log.Errorv(0, "[%v] %v -> %v:%v error (%v): %v",
-			q.Nonce, q.Caller, q.Target, q.Query, d, err,
-		)
+		r.node.log.Errorv(0, "%v error (%v): %v", q.Query, d, err)
 
 	}
 
 	return target, err
 }
 
-func (r *Router) routeQuery(ctx *astral.Context, q *astral.Query, src io.WriteCloser) (w io.WriteCloser, err error) {
+func (r *Router) routeQuery(ctx *astral.Context, q *astral.InFlightQuery, src io.WriteCloser) (w io.WriteCloser, err error) {
 	c, ok := r.conns.Set(q.Nonce, newConn(r, q))
 	if !ok {
 		return query.RouteNotFound(r, errors.New("routing cycle not allowed"))

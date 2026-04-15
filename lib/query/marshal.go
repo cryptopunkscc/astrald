@@ -13,9 +13,6 @@ import (
 )
 
 const queryTag = "query"
-const skipTag = "skip"
-const keyTag = "key"
-const optionalTag = "optional"
 
 // Marshal marshals params provided in the argument to a string. params can be a string, a map[string]string,
 // a map[string]any or a struct
@@ -80,17 +77,16 @@ func Marshal(params any) (string, error) {
 		fv := v.Field(i)
 		ft := v.Type().Field(i)
 
-		var tags map[string]string
 		lookup, _ := ft.Tag.Lookup(queryTag)
-		tags = splitTag(lookup)
+		tags := ParseTag(lookup)
 
-		if _, skip := tags[skipTag]; skip {
+		if tags.Skip {
 			continue
 		}
 
 		name := log.ToSnakeCase(ft.Name)
-		if n, ok := tags[keyTag]; ok {
-			name = n
+		if tags.Key != "" {
+			name = tags.Key
 		}
 
 		if fv.IsZero() {

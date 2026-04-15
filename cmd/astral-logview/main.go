@@ -13,11 +13,11 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	_ "github.com/cryptopunkscc/astrald/mod/allpub"
-	modlog "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/views"
 )
 
 func main() {
-	modlog.UseIdentityView()
+	views.UseIdentityView()
 
 	var err error
 	var replay bool

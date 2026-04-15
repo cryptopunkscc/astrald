@@ -3,7 +3,8 @@ package media
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	log2 "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/mod/log/views"
 )
 
 type AudioFileView struct {
@@ -12,9 +13,9 @@ type AudioFileView struct {
 
 func (view AudioFileView) Render() string {
 	return log.Render(log.Format("%v by %v (%v)",
-		log2.String(string(view.Title), &log2.BrightGreenText),
-		log2.String(string(view.Artist), &log2.BrightGreenText),
-		log2.String(string(view.Album), &log2.GreenText),
+		views.String(string(view.Title), &styles.BrightGreenText),
+		views.String(string(view.Artist), &styles.BrightGreenText),
+		views.String(string(view.Album), &styles.GreenText),
 	)...)
 }
 

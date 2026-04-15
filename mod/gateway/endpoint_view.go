@@ -3,7 +3,7 @@ package gateway
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	modlog "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type EndpointView struct {
@@ -11,10 +11,10 @@ type EndpointView struct {
 }
 
 func (v *EndpointView) Render() string {
-	return modlog.BlueText.Render("gw:") +
-		modlog.BrightBlueText.Render(v.GatewayID.String()) +
-		modlog.BlueText.Render(":") +
-		modlog.BrightBlueText.Render(v.TargetID.String())
+	return styles.BlueText.Render("gw:") +
+		styles.BrightBlueText.Render(v.GatewayID.String()) +
+		styles.BlueText.Render(":") +
+		styles.BrightBlueText.Render(v.TargetID.String())
 }
 
 func init() {

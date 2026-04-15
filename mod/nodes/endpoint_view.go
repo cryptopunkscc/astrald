@@ -3,7 +3,7 @@ package nodes
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	modlog "github.com/cryptopunkscc/astrald/mod/log"
+	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
 
 type EndpointView struct {
@@ -11,8 +11,8 @@ type EndpointView struct {
 }
 
 func (v *EndpointView) Render() string {
-	return modlog.BlueText.Render(v.Network()+":") +
-		modlog.BrightBlueText.Render(v.Address())
+	return styles.BlueText.Render(v.Network()+":") +
+		styles.BrightBlueText.Render(v.Address())
 }
 
 func init() {

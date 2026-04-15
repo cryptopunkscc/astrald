@@ -24,7 +24,7 @@ type Guest struct {
 }
 
 type queryEnRoute struct {
-	query  *astral.Query
+	query  *astral.InFlightQuery
 	cancel context.CancelCauseFunc
 }
 
@@ -157,10 +157,10 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 	}
 
 	var q = &astral.Query{
-		Nonce:  msg.Nonce,
-		Caller: msg.Caller,
-		Target: msg.Target,
-		Query:  string(msg.Query),
+		Nonce:       msg.Nonce,
+		Caller:      msg.Caller,
+		Target:      msg.Target,
+		QueryString: string(msg.Query),
 	}
 
 	// check authorization if necessary
@@ -195,11 +195,12 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 	defer cancelQuery(nil)
 
 	// keep track of en route queries
-	enRoute := &queryEnRoute{query: q, cancel: cancelQuery}
+	inFlight := astral.Launch(q)
+	enRoute := &queryEnRoute{query: inFlight, cancel: cancelQuery}
 
 	// route the query
 	guest.mod.enRoute.Set(q.Nonce, enRoute)
-	conn, err := query.Route(qCtx, guest.mod.node, q)
+	conn, err := query.Route(qCtx, guest.mod.node, inFlight)
 	guest.mod.enRoute.Delete(q.Nonce)
 
 	// check error

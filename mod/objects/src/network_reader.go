@@ -1,11 +1,12 @@
 package objects
 
 import (
+	"io"
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"io"
-	"time"
 )
 
 type NetworkReader struct {
@@ -56,7 +57,7 @@ func (r *NetworkReader) Seek(offset int64, whence int) (int64, error) {
 		WithTimeout(15 * time.Second)
 	defer cancel()
 
-	conn, err := query.Route(ctx, r.mod.node, q)
+	conn, err := query.Route(ctx, r.mod.node, astral.Launch(q))
 	if err != nil {
 		return 0, err
 	}
