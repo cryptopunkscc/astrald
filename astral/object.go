@@ -1,8 +1,10 @@
 package astral
 
 import (
+	"bytes"
 	"encoding"
 	"encoding/json"
+	"fmt"
 	"io"
 )
 
@@ -82,6 +84,29 @@ func Decode(r io.Reader, config ...ConfigFunc) (object Object, n int64, err erro
 	}
 
 	return
+}
+
+// EncodeBytes encodes an object to a byte slice.
+func EncodeBytes(obj Object, config ...ConfigFunc) ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := Encode(&buf, obj, config...)
+	return buf.Bytes(), err
+}
+
+// DecodeAs decodes an object from data and type-asserts it to T.
+func DecodeAs[T Object](data []byte, config ...ConfigFunc) (T, error) {
+	obj, _, err := Decode(bytes.NewReader(data), config...)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+
+	t, ok := obj.(T)
+	if !ok {
+		var zero T
+		return zero, fmt.Errorf("unexpected type %T", obj)
+	}
+	return t, nil
 }
 
 // ResolveObjectID calculates the id of the object

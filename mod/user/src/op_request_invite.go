@@ -36,10 +36,17 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q *routing.IncomingQuery
 		return ch.Send(astral.NewError(err.Error()))
 	}
 
-	_, err = mod.IndexSignedNodeContract(signed)
+	err = mod.Auth.IndexContract(ctx, signed)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
+
+	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
+	if err != nil {
+		return ch.Send(astral.NewError(err.Error()))
+	}
+
+	go mod.pushContractToSiblings(signed)
 
 	return ch.Send(signed)
 }

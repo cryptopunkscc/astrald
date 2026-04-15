@@ -9,7 +9,7 @@ import (
 )
 
 func (client *Client) Read(ctx *astral.Context, objectID *astral.ObjectID, offset, limit int64) (io.ReadCloser, error) {
-	return client.query(ctx, objects.ActionRead, query.Args{
+	return client.query(ctx, objects.MethodRead, query.Args{
 		"id":     objectID,
 		"offset": offset,
 		"limit":  limit,

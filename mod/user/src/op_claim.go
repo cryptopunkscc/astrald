@@ -19,7 +19,7 @@ func (mod *Module) OpClaim(ctx *astral.Context, q *routing.IncomingQuery, args o
 		return q.RejectWithCode(2)
 	}
 
-	if !q.Caller().IsEqual(ac.UserID) {
+	if !q.Caller().IsEqual(ac.Issuer) {
 		return q.RejectWithCode(3)
 	}
 
@@ -37,18 +37,18 @@ func (mod *Module) OpClaim(ctx *astral.Context, q *routing.IncomingQuery, args o
 		return ch.Send(astral.Err(err))
 	}
 
-	// store the signed contract
-	signedID, err := mod.Objects.Store(mod.ctx, mod.Objects.WriteDefault(), signed)
+	err = mod.Auth.IndexContract(ctx, signed)
 	if err != nil {
-		return
+		return ch.Send(astral.Err(err))
 	}
 
-	mod.log.Info("signed contract %v with %v", signedID, nodeID)
-
-	_, err = mod.IndexSignedNodeContract(signed)
+	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
 	if err != nil {
-		mod.log.Logv(1, "error indexing signed contract: %v", err)
+		return ch.Send(astral.Err(err))
 	}
 
+	go mod.pushContractToSiblings(signed)
+
+	mod.log.Info("signed contract with %v", nodeID)
 	return ch.Send(signed)
 }

@@ -8,10 +8,10 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/events"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 	"github.com/cryptopunkscc/astrald/mod/user"
-
-	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
 type Deps struct {
@@ -34,6 +34,8 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	mod.Dir.SetFilter("linked", func(identity *astral.Identity) bool {
 		return mod.IsLinked(identity)
 	})
+
+	mod.Auth.Add(auth.Func[*nodes.RelayForAction](mod.AuthorizeRelayFor))
 
 	return err
 }

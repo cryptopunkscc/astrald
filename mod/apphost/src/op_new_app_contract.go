@@ -1,8 +1,6 @@
 package apphost
 
 import (
-	"time"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
@@ -23,10 +21,10 @@ func (mod *Module) OpNewAppContract(ctx *astral.Context, q *routing.IncomingQuer
 		args.Duration = DefaultAppContractDuration
 	}
 
-	return ch.Send(&apphost.AppContract{
-		AppID:     args.ID,
-		HostID:    mod.node.Identity(),
-		StartsAt:  astral.Time(time.Now()),
-		ExpiresAt: astral.Time(time.Now().Add(time.Duration(args.Duration))),
-	})
+	contract, err := apphost.NewAppContract(args.ID, mod.node.Identity(), args.Duration.Duration())
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	return ch.Send(contract)
 }

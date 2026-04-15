@@ -121,9 +121,7 @@ func (a *Slice[T]) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	a.ElemType = string(tn)
-	if a.ElemType != "" {
-		a.Typed = true
-	}
+	a.Typed = reflect.TypeOf((*T)(nil)).Elem().Kind() == reflect.Interface
 
 	v := make([]T, l)
 

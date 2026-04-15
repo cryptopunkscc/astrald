@@ -24,18 +24,6 @@ func (mod *Module) notifyLinkedSibs(event string) {
 	}
 }
 
-func (mod *Module) pushToLinkedSibs(object astral.Object) {
-	ac := mod.ActiveContract()
-	if ac == nil {
-		return
-	}
-
-	for _, sib := range mod.getLinkedSibs() {
-		sib := sib
-		go mod.Objects.Push(mod.ctx, sib, object)
-	}
-}
-
 func (mod *Module) getLinkedSibs() (list []*astral.Identity) {
 	for _, sib := range mod.sibs.Values() {
 		list = append(list, sib.Id)

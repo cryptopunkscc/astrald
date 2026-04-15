@@ -25,8 +25,8 @@ func (mod *Module) ComposeStatus(a nearby.Composition) {
 		}
 		nonce := astral.NewNonce()
 		a.Attach(&nearby.StealthHint{
-			Commitment: nearby.ComputeCommitment(ac.UserID, nonce),
-			MaskedID:   nearby.MaskIdentity(mod.node.Identity(), ac.UserID),
+			Commitment: nearby.ComputeCommitment(ac.Issuer, nonce),
+			MaskedID:   nearby.MaskIdentity(mod.node.Identity(), ac.Issuer),
 			Nonce:      nonce,
 		})
 	}

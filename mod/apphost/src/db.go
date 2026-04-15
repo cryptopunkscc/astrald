@@ -3,7 +3,6 @@ package apphost
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"time"
 )
 
@@ -33,53 +32,5 @@ func (db *DB) FindAccessToken(token string) (at *dbAccessToken, err error) {
 	err = db.
 		Where("token = ?", token).
 		First(&at).Error
-	return
-}
-
-func (db *DB) FindAppContract(id *astral.ObjectID) (ac *dbAppContract, err error) {
-	err = db.
-		Where("object_id = ?", id).
-		First(&ac).Error
-	return
-}
-
-func (db *DB) SaveAppContract(ac *dbAppContract) (err error) {
-	return db.
-		Clauses(clause.OnConflict{DoNothing: true}).
-		Create(ac).Error
-}
-
-func (db *DB) FindActiveAppContractsByHost(hostID *astral.Identity) (rows []*dbAppContract, err error) {
-	now := time.Now()
-
-	err = db.
-		Where("starts_at <= ? AND expires_at >= ?", now, now).
-		Where("host_id = ?", hostID).
-		Find(&rows).Error
-
-	return
-}
-
-func (db *DB) FindActiveAppContractsByApp(appID *astral.Identity) (rows []*dbAppContract, err error) {
-	now := time.Now()
-
-	err = db.
-		Where("starts_at <= ? AND expires_at >= ?", now, now).
-		Where("app_id = ?", appID).
-		Find(&rows).Error
-
-	return
-}
-
-func (db *DB) FindActiveAppContractsByAppAndHost(appId, hostID *astral.Identity) (rows []*dbAppContract, err error) {
-	now := time.Now()
-
-	err = db.
-		Model(&dbAppContract{}).
-		Where("starts_at <= ? AND expires_at >= ?", now, now).
-		Where("app_id = ? AND host_id = ?", appId, hostID).
-		Order("expires_at DESC").
-		Find(&rows).Error
-
 	return
 }

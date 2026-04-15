@@ -2,7 +2,6 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -18,42 +17,19 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q *routing.IncomingQuery, 
 		return q.RejectWithCode(2)
 	}
 
-	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
+	ch := q.Accept()
 	defer ch.Close()
 
-	contracts, err := mod.ActiveContractsOf(ac.UserID)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
-	}
-
-	contractsByNodeID := make(map[string]*user.SignedNodeContract)
-	for _, c := range contracts {
-		contractsByNodeID[c.NodeID.String()] = c
-	}
-
-	swarm := mod.LocalSwarm()
-	for _, node := range swarm {
-		alias, err := mod.Dir.GetAlias(node)
-		if err != nil {
-			mod.log.Error("error getting alias for node %v: %v", node, err)
-		}
-
-		contract, ok := contractsByNodeID[node.String()]
-		if !ok {
-			mod.log.Error("no active contract found for node %v", node)
-		}
-
-		contractID, err := astral.ResolveObjectID(contract)
-		if err != nil {
-			return ch.Send(astral.NewError(err.Error()))
+	for _, node := range mod.ActiveNodes(ac.Issuer) {
+		alias, aliasErr := mod.Dir.GetAlias(node)
+		if aliasErr != nil {
+			mod.log.Error("error getting alias for node %v: %v", node, aliasErr)
 		}
 
 		err = ch.Send(&user.SwarmMember{
-			SignedContractID: contractID,
-			Identity:         node,
-			Alias:            astral.String8(alias),
-			Linked:           astral.Bool(mod.Nodes.IsLinked(node)),
-			Contract:         contract.NodeContract,
+			Identity: node,
+			Alias:    astral.String8(alias),
+			Linked:   astral.Bool(mod.Nodes.IsLinked(node)),
 		})
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))

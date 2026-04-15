@@ -6,6 +6,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -32,7 +34,7 @@ func (mod *Module) syncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 		args = opSyncAssetsArgs{Start: int(*height)}
 	}
 
-	var q = query.New(ac.UserID, nodeID, user.OpSyncAssets, args)
+	var q = query.New(ac.Issuer, nodeID, user.OpSyncAssets, args)
 	ch, err := query.Route(ctx, mod.node, q)
 	if err != nil {
 		return err
@@ -74,7 +76,7 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 		return errors.New("no active contract")
 	}
 
-	var q = query.New(ac.UserID, nodeID, user.OpInfo, nil)
+	var q = query.New(ac.Issuer, nodeID, user.OpInfo, nil)
 	ch, err := query.Route(ctx, mod.node, q)
 	if err != nil {
 		return err
@@ -95,8 +97,8 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 		return nil
 	}
 
-	if mod.Dir.DisplayName(ac.UserID) == "" {
-		mod.Dir.SetAlias(ac.UserID, string(info.UserAlias))
+	if mod.Dir.DisplayName(ac.Issuer) == "" {
+		mod.Dir.SetAlias(ac.Issuer, string(info.UserAlias))
 	}
 
 	mod.log.Info("syncAlias: updating %v alias %v", nodeID, info.NodeAlias)
@@ -104,22 +106,30 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 	return mod.Dir.SetAlias(nodeID, string(info.NodeAlias))
 }
 
-func (mod *Module) syncApps(ctx *astral.Context, nodeID *astral.Identity) (err error) {
-	ac := mod.ActiveContract()
-	if ac == nil {
-		return errors.New("no active contract")
-	}
-
-	contracts, err := mod.Apphost.ActiveLocalAppContracts()
+func (mod *Module) pushAppContractsToSibling(sibling *astral.Identity) {
+	contracts, err := mod.Auth.
+		SignedContracts().
+		WithSubject(mod.node.Identity()).
+		WithAction(&nodes.RelayForAction{}).
+		Find(mod.ctx)
 	if err != nil {
-		return err
+		mod.log.Error("pushAppContracts: %v", err)
+		return
 	}
 
 	for _, contract := range contracts {
-		mod.Objects.Push(ctx, nodeID, contract)
+		mod.Objects.Push(mod.ctx, sibling, contract)
 	}
+}
 
-	return
+func (mod *Module) pushContractToSiblings(signed *auth.SignedContract) {
+	for _, sib := range mod.getLinkedSibs() {
+		if sib.IsEqual(signed.Subject) {
+			continue
+		}
+		sib := sib
+		go mod.Objects.Push(mod.ctx, sib, signed)
+	}
 }
 
 func (mod *Module) syncSiblings(with *astral.Identity) {
@@ -128,17 +138,18 @@ func (mod *Module) syncSiblings(with *astral.Identity) {
 		return
 	}
 
-	contracts, err := mod.ActiveContractsOf(ac.UserID)
+	contracts, err := mod.ActiveNodeContracts(ac.Issuer)
 	if err != nil {
 		mod.log.Error("syncSiblings: error getting active contracts: %v", err)
 		return
 	}
 
 	for _, contract := range contracts {
-		if contract.NodeID.IsEqual(mod.node.Identity()) {
+		if contract.Subject.IsEqual(mod.node.Identity()) {
 			continue
 		}
-		if contract.NodeID.IsEqual(with) {
+
+		if contract.Subject.IsEqual(with) {
 			continue
 		}
 

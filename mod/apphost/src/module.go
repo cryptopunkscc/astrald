@@ -10,7 +10,6 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
-	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -20,7 +19,6 @@ var _ apphost.Module = &Module{}
 
 type Deps struct {
 	Auth    auth.Module
-	Crypto  crypto.Module
 	Dir     dir.Module
 	Objects objects.Module
 }
@@ -37,7 +35,6 @@ type Module struct {
 	conns     <-chan net.Conn
 	handlers  sig.Set[*QueryHandler]
 	enRoute   sig.Map[astral.Nonce, *queryEnRoute]
-	indexMu   sync.Mutex
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -59,9 +56,6 @@ func (mod *Module) Run(ctx *astral.Context) error {
 			}
 		}(i)
 	}
-
-	// start the indexer
-	go mod.indexer(ctx)
 
 	// start the object server
 	objectServer := NewHTTPServer(mod)

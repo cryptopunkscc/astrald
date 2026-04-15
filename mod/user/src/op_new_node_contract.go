@@ -53,10 +53,10 @@ func (mod *Module) OpNewNodeContract(ctx *astral.Context, query *routing.Incomin
 		}
 	}
 
-	return ch.Send(&user.NodeContract{
-		UserID:    userID,
-		NodeID:    nodeID,
-		StartsAt:  astral.Time(time.Now()),
-		ExpiresAt: astral.Time(time.Now().Add(duration)),
-	})
+	contract, err := user.NewNodeContract(userID, nodeID, duration)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	return ch.Send(contract)
 }

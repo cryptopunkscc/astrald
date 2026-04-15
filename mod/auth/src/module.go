@@ -1,15 +1,17 @@
 package auth
 
 import (
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-type Deps struct {
-}
+var _ auth.Module = &Module{}
 
 type Module struct {
 	Deps
@@ -17,39 +19,34 @@ type Module struct {
 	node     astral.Node
 	log      *log.Logger
 	assets   resources.Resources
-	handlers sig.Map[auth.Action, []auth.Handler]
+	db       *DB
+	router   routing.OpRouter
+	handlers sig.Map[string, []auth.Handler]
+	indexMu  sync.Mutex
+}
+
+func (mod *Module) Router() astral.Router {
+	return &mod.router
+}
+
+func (mod *Module) String() string {
+	return auth.ModuleName
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
+	go mod.indexer(ctx)
 	return nil
 }
 
-func (mod *Module) Authorize(ctx *astral.Context, identity *astral.Identity, action auth.Action, target astral.Object) bool {
-	if identity.IsEqual(mod.node.Identity()) {
-		return true
+// Add registers typed handlers; the action type is inferred from each handler.
+func (mod *Module) Add(handlers ...auth.TypedHandler) {
+	for _, h := range handlers {
+		t := h.ActionType()
+		mod.handlers.Replace(t, append(mod.get(t), h))
 	}
-
-	for _, h := range mod.get(action) {
-		if h.Authorize(ctx, identity, target) {
-			mod.log.Logv(3, "allowed %v to %v", identity, action)
-			return true
-		}
-	}
-
-	if target == nil {
-		mod.log.Logv(3, "denied %v to %v", identity, action)
-	} else {
-		mod.log.Logv(3, "denied %v to %v on %v [%v]", identity, action, target, target.ObjectType())
-	}
-
-	return false
 }
 
-func (mod *Module) Add(action auth.Action, handlers ...auth.Handler) {
-	mod.handlers.Set(action, append(mod.get(action), handlers...))
-}
-
-func (mod *Module) get(action auth.Action) []auth.Handler {
-	h, _ := mod.handlers.Get(action)
+func (mod *Module) get(actionType string) []auth.Handler {
+	h, _ := mod.handlers.Get(actionType)
 	return h
 }

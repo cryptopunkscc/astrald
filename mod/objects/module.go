@@ -7,8 +7,7 @@ import (
 const (
 	ModuleName   = "objects"
 	DBPrefix     = "objects__"
-	ActionRead   = "objects.read"
-	ActionCreate = "objects.create"
+	MethodCreate = "objects.create"
 
 	MethodNew              = "objects.new"
 	MethodLoad             = "objects.load"
@@ -19,6 +18,7 @@ const (
 	MethodSearch           = "objects.search"
 	MethodDescribe         = "objects.describe"
 	MethodProbe            = "objects.probe"
+	MethodRead             = "objects.Read"
 	MethodGetType          = "objects.get_type"
 	MethodPush             = "objects.push"
 	MethodNewMem           = "objects.new_mem"
@@ -126,19 +126,4 @@ func IsOffsetLimitValid(objectID *astral.ObjectID, offset int64, limit int64) bo
 	}
 
 	return true
-}
-
-func Save(ctx *astral.Context, object astral.Object, repo Repository) (objectID *astral.ObjectID, err error) {
-	w, err := repo.Create(ctx, nil)
-	if err != nil {
-		return
-	}
-	defer w.Discard()
-
-	_, err = astral.Encode(w, object, astral.WithEncoder(astral.CanonicalTypeEncoder))
-	if err != nil {
-		return
-	}
-
-	return w.Commit()
 }
