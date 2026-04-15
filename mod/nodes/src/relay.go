@@ -39,6 +39,7 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 	}
 
 	conn.RemoteIdentity = q.Target
+	conn.relayID = rc.relayID
 	conn.Query = q.QueryString
 	conn.Outbound = true
 
@@ -64,6 +65,7 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 			rc.mod.peers.sessions.Delete(q.Nonce)
 			return query.RejectWithCode(errCode)
 		}
+
 		go func() {
 			io.Copy(w, conn)
 			w.Close()

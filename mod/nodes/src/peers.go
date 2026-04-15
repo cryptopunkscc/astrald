@@ -126,7 +126,7 @@ func (mod *Peers) frameReader(ctx context.Context) {
 }
 
 func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
-	mod.handleInboundQuery(s, f.Nonce, s.RemoteIdentity(), s.LocalIdentity(), f.Query, int(f.Buffer))
+	mod.handleInboundQuery(s, f.Nonce, s.RemoteIdentity(), s.LocalIdentity(), nil, f.Query, int(f.Buffer))
 }
 
 // handleRelayQuery routes a query received via a relay channel to its target and bridges
@@ -137,6 +137,7 @@ func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) 
 		relayQuery.Query.Nonce,
 		relayQuery.CallerID,
 		relayQuery.TargetID,
+		s.RemoteIdentity(),
 		relayQuery.Query.Query,
 		int(relayQuery.Query.Buffer),
 	)
@@ -144,13 +145,14 @@ func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) 
 	return nil
 }
 
-func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, target *astral.Identity, queryStr string, initBuffer int) {
+func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, target *astral.Identity, relayID *astral.Identity, queryStr string, initBuffer int) {
 	conn, ok := mod.sessions.Set(nonce, newSession(nonce))
 	if !ok {
 		return // ignore duplicates
 	}
 
 	conn.RemoteIdentity = caller
+	conn.relayID = relayID
 	conn.Query = queryStr
 	conn.stream = s
 	conn.wsize = initBuffer
@@ -188,14 +190,17 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 }
 
 func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
-	// find the connection
 	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	// make sure we sent the query to the identity that sent the response
-	if !conn.RemoteIdentity.IsEqual(s.RemoteIdentity()) {
+	expected := conn.RemoteIdentity
+	if conn.relayID != nil {
+		expected = conn.relayID
+	}
+
+	if !expected.IsEqual(s.RemoteIdentity()) {
 		return
 	}
 
