@@ -27,6 +27,9 @@ func (ops *NodeOps) Get(ctx *astral.Context, q *routing.IncomingQuery, args GetA
 	ctx, cancel := ctx.WithCancel()
 	defer cancel()
 
+	q.Accept()
+	q.AcceptRaw()
+
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 

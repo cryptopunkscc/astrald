@@ -2,7 +2,7 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -11,13 +11,13 @@ type opSwarmStatusArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpSwarmStatus(ctx *astral.Context, q *ops.Query, args opSwarmStatusArgs) (err error) {
+func (mod *Module) OpSwarmStatus(ctx *astral.Context, q *routing.IncomingQuery, args opSwarmStatusArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return q.RejectWithCode(2)
 	}
 
-	ch := q.AcceptChannel()
+	ch := q.Accept()
 	defer ch.Close()
 
 	for _, node := range mod.ActiveNodes(ac.Issuer) {

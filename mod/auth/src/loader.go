@@ -20,7 +20,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(auth.ModuleName, &mod.config)
 
-	mod.ops.AddStructPrefix(mod, "Op")
+	mod.router.AddStructPrefix(mod, "Op")
 
 	mod.Add(auth.Func[*auth.SudoAction](mod.AuthorizeSudo))
 
