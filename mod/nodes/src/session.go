@@ -29,6 +29,7 @@ var _ io.WriteCloser = &session{}
 type session struct {
 	Nonce          astral.Nonce
 	RemoteIdentity *astral.Identity
+	relayID        *astral.Identity // non-nil if this session is routed through a relay
 	Outbound       bool
 	Query          string
 	createdAt      time.Time
