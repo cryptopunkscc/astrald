@@ -42,7 +42,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 func (mod *Module) Add(handlers ...auth.TypedHandler) {
 	for _, h := range handlers {
 		t := h.ActionType()
-		mod.handlers.Set(t, append(mod.get(t), h))
+		mod.handlers.Replace(t, append(mod.get(t), h))
 	}
 }
 
