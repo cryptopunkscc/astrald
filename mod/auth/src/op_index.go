@@ -17,9 +17,28 @@ func (mod *Module) OpIndex(ctx *astral.Context, q *ops.Query, args opIndexArgs) 
 	defer ch.Close()
 
 	var signed *auth.SignedContract
-	err := ch.Switch(channel.Expect(&signed), channel.PassErrors)
+
+	err := ch.Switch(
+		func(objectID *astral.ObjectID) error {
+			object, loadErr := mod.Objects.Load(ctx, mod.Objects.ReadDefault(), objectID)
+			if loadErr != nil {
+				return loadErr
+			}
+			var ok bool
+			signed, ok = object.(*auth.SignedContract)
+			if !ok {
+				return auth.ErrInvalidContract
+			}
+			return channel.ErrBreak
+		},
+		func(sc *auth.SignedContract) error {
+			signed = sc
+			return channel.ErrBreak
+		},
+		channel.PassErrors,
+	)
 	if err != nil {
-		return err
+		return ch.Send(astral.Err(err))
 	}
 
 	err = mod.IndexContract(ctx, signed)

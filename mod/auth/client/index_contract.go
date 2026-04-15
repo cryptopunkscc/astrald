@@ -21,6 +21,25 @@ func (c *Client) IndexContract(ctx *astral.Context, signed *auth.SignedContract)
 	return ch.Switch(channel.BreakOnEOS, channel.PassErrors)
 }
 
+func (c *Client) IndexContractByID(ctx *astral.Context, objectID *astral.ObjectID) error {
+	ch, err := c.queryCh(ctx, auth.OpIndex, nil)
+	if err != nil {
+		return err
+	}
+	defer ch.Close()
+
+	err = ch.Send(objectID)
+	if err != nil {
+		return err
+	}
+
+	return ch.Switch(channel.BreakOnEOS, channel.PassErrors)
+}
+
 func IndexContract(ctx *astral.Context, signed *auth.SignedContract) error {
 	return Default().IndexContract(ctx, signed)
+}
+
+func IndexContractByID(ctx *astral.Context, objectID *astral.ObjectID) error {
+	return Default().IndexContractByID(ctx, objectID)
 }
