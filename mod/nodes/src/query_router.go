@@ -22,12 +22,14 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 		return query.RouteNotFound(mod)
 	}
 
-	// are we linked already?
 	if mod.IsPeer(q.Target) {
+		// if we are not the caller it means we are a relay for identity.
 		if !ctx.Identity().IsEqual(q.Caller) {
-			if err := mod.sendCallerProof(ctx, q, q.Target); err != nil {
+			rc, err := mod.getRelay(ctx, q.Target)
+			if err != nil {
 				return query.RouteNotFound(mod, err)
 			}
+			return rc.RouteQuery(ctx, q, w)
 		}
 
 		return mod.peers.RouteQuery(ctx, q, w)
@@ -47,10 +49,13 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 		}
 
 		if !ctx.Identity().IsEqual(q.Caller) {
-			if err := mod.sendCallerProof(ctx, q, q.Target); err != nil {
+			rc, err := mod.getRelay(ctx, q.Target)
+			if err != nil {
 				return query.RouteNotFound(mod, err)
 			}
+			return rc.RouteQuery(ctx, q, w)
 		}
+
 		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
