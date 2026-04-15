@@ -3,43 +3,21 @@ package auth
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
-func (c *Client) IndexContract(ctx *astral.Context, signed *auth.SignedContract) error {
-	ch, err := c.queryCh(ctx, auth.OpIndex, nil)
+func (c *Client) IndexContract(ctx *astral.Context, objectID *astral.ObjectID) error {
+	ch, err := c.queryCh(ctx, auth.OpIndex, query.Args{"id": objectID})
 	if err != nil {
 		return err
 	}
 	defer ch.Close()
 
-	err = ch.Send(signed)
-	if err != nil {
-		return err
-	}
-
-	return ch.Switch(channel.BreakOnEOS, channel.PassErrors)
+	var ack *astral.Ack
+	return ch.Switch(channel.Expect(&ack), channel.PassErrors)
 }
 
-func (c *Client) IndexContractByID(ctx *astral.Context, objectID *astral.ObjectID) error {
-	ch, err := c.queryCh(ctx, auth.OpIndex, nil)
-	if err != nil {
-		return err
-	}
-	defer ch.Close()
-
-	err = ch.Send(objectID)
-	if err != nil {
-		return err
-	}
-
-	return ch.Switch(channel.BreakOnEOS, channel.PassErrors)
-}
-
-func IndexContract(ctx *astral.Context, signed *auth.SignedContract) error {
-	return Default().IndexContract(ctx, signed)
-}
-
-func IndexContractByID(ctx *astral.Context, objectID *astral.ObjectID) error {
-	return Default().IndexContractByID(ctx, objectID)
+func IndexContract(ctx *astral.Context, objectID *astral.ObjectID) error {
+	return Default().IndexContract(ctx, objectID)
 }
