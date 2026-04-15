@@ -105,7 +105,9 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 		return nil, err
 	}
 
-	issuerSig, err := mod.Auth.SignIssuer(ctx, contract)
+	signed = &auth.SignedContract{Contract: contract}
+
+	issuerSig, err := mod.Auth.SignIssuer(ctx, signed)
 	if err != nil {
 		return nil, fmt.Errorf("sign as issuer: %w", err)
 	}
@@ -124,9 +126,7 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 		return nil, fmt.Errorf("subject sig verification: %w", err)
 	}
 
-	return &auth.SignedContract{
-		Contract:  contract,
-		IssuerSig: issuerSig,
-		SubjecSig: subjectSig,
-	}, nil
+	signed.IssuerSig = issuerSig
+	signed.SubjecSig = subjectSig
+	return signed, nil
 }

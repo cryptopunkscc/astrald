@@ -10,28 +10,44 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 )
 
-func (mod *Module) SignIssuer(ctx *astral.Context, c *auth.Contract) (*crypto.Signature, error) {
-	return mod.signAs(ctx, secp256k1.FromIdentity(c.Issuer), c)
-}
+func (mod *Module) SignIssuer(ctx *astral.Context, signed *auth.SignedContract) (*crypto.Signature, error) {
+	if signed.IssuerSig != nil {
+		return signed.IssuerSig, nil
+	}
 
-func (mod *Module) SignSubject(ctx *astral.Context, c *auth.Contract) (*crypto.Signature, error) {
-	return mod.signAs(ctx, secp256k1.FromIdentity(c.Subject), c)
-}
-
-func (mod *Module) SignContract(ctx *astral.Context, c *auth.Contract) (*auth.SignedContract, error) {
-	signed := &auth.SignedContract{Contract: c}
-
-	var err error
-	signed.IssuerSig, err = mod.SignIssuer(ctx, c)
+	sig, err := mod.signAs(ctx, secp256k1.FromIdentity(signed.Issuer), signed.Contract)
 	if err != nil {
 		return nil, fmt.Errorf("sign as issuer: %w", err)
 	}
 
-	signed.SubjecSig, err = mod.SignSubject(ctx, c)
+	signed.IssuerSig = sig
+	return sig, nil
+}
+
+func (mod *Module) SignSubject(ctx *astral.Context, signed *auth.SignedContract) (*crypto.Signature, error) {
+	if signed.SubjecSig != nil {
+		return signed.SubjecSig, nil
+	}
+
+	sig, err := mod.signAs(ctx, secp256k1.FromIdentity(signed.Subject), signed.Contract)
 	if err != nil {
 		return nil, fmt.Errorf("sign as subject: %w", err)
 	}
 
+	signed.SubjecSig = sig
+	return sig, nil
+}
+
+func (mod *Module) SignContract(ctx *astral.Context, signed *auth.SignedContract) (*auth.SignedContract, error) {
+	_, err := mod.SignIssuer(ctx, signed)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = mod.SignSubject(ctx, signed)
+	if err != nil {
+		return nil, err
+	}
 	return signed, nil
 }
 

@@ -17,7 +17,7 @@ func (mod *Module) OpSignAppContract(ctx *astral.Context, q *ops.Query, args opS
 	defer ch.Close()
 
 	return ch.Switch(func(c *auth.Contract) error {
-		signed, err := mod.Auth.SignContract(ctx, c)
+		signed, err := mod.Auth.SignContract(ctx, &auth.SignedContract{Contract: c})
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
