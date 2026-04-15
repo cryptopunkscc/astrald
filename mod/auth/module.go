@@ -29,14 +29,14 @@ type Module interface {
 	// VerifyContract verifies both signatures on a signed contract.
 	VerifyContract(sc *SignedContract) error
 
-	// SignIssuer signs the contract with the issuer's private key.
-	SignIssuer(ctx *astral.Context, contract *Contract) (*crypto.Signature, error)
+	// SignIssuer signs the contract with the issuer's private key if needed.
+	SignIssuer(ctx *astral.Context, contract *SignedContract) (*crypto.Signature, error)
 
-	// SignSubject signs the contract with the subject's private key.
-	SignSubject(ctx *astral.Context, contract *Contract) (*crypto.Signature, error)
+	// SignSubject signs the contract with the subject's private key if needed.
+	SignSubject(ctx *astral.Context, contract *SignedContract) (*crypto.Signature, error)
 
-	// SignContract signs the contract with both issuer and subject private keys.
-	SignContract(ctx *astral.Context, contract *Contract) (*SignedContract, error)
+	// SignContract signs the contract with both issuer and subject private keys if needed.
+	SignContract(ctx *astral.Context, contract *SignedContract) (*SignedContract, error)
 
 	// IndexContract verifies and adds a signed contract to the auth index.
 	IndexContract(ctx *astral.Context, contract *SignedContract) error

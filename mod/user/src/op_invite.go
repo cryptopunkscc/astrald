@@ -49,8 +49,10 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs
 		return ch.Send(user.ErrInvitationDeclined)
 	}
 
+	signed := &auth.SignedContract{Contract: contract}
+
 	// sign the contract as subject (node)
-	subjectSig, err := mod.Auth.SignSubject(ctx, contract)
+	subjectSig, err := mod.Auth.SignSubject(ctx, signed)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
@@ -69,11 +71,8 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs
 	}
 
 	// assemble the signed contract
-	signed := &auth.SignedContract{
-		Contract:  contract,
-		IssuerSig: issuerSig,
-		SubjecSig: subjectSig,
-	}
+	signed.IssuerSig = issuerSig
+	signed.SubjecSig = subjectSig
 
 	// final signature verification
 	err = mod.Auth.VerifyContract(signed)
