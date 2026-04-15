@@ -16,7 +16,6 @@ const (
 	MethodSignAppContract = "apphost.sign_app_contract"
 	MethodCancel          = "apphost.cancel"
 	MethodBind            = "apphost.bind"
-	MethodIndex           = "apphost.index"
 	MethodNewAppContract  = "apphost.new_app_contract"
 )
 
