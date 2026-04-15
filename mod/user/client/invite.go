@@ -20,15 +20,11 @@ func (client *Client) Invite(ctx *astral.Context, contract *auth.Contract, issue
 		return
 	}
 
-	err = ch.Switch(channel.Expect(&subjectSig), channel.PassErrors)
+	err = ch.Send(issuerSig)
 	if err != nil {
 		return
 	}
 
-	err = ch.Send(issuerSig)
-	if err != nil {
-		return nil, err
-	}
-
-	return subjectSig, nil
+	err = ch.Switch(channel.Expect(&subjectSig), channel.PassErrors)
+	return
 }

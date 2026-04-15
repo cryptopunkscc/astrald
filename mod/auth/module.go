@@ -6,10 +6,9 @@ import (
 )
 
 const (
-	ModuleName     = "auth"
-	DBPrefix       = "auth__"
-	OpSignContract = "auth.sign_contract"
-	OpIndex        = "auth.index"
+	ModuleName = "auth"
+	DBPrefix   = "auth__"
+	OpIndex    = "auth.index"
 )
 
 type ContractQueryBuilder interface {
@@ -28,6 +27,12 @@ type Module interface {
 
 	// VerifyContract verifies both signatures on a signed contract.
 	VerifyContract(sc *SignedContract) error
+
+	// VerifyIssuer verifies only the issuer signature on a signed contract.
+	VerifyIssuer(sc *SignedContract) error
+
+	// VerifySubject verifies only the subject signature on a signed contract.
+	VerifySubject(sc *SignedContract) error
 
 	// SignIssuer signs the contract with the issuer's private key if needed.
 	SignIssuer(ctx *astral.Context, contract *SignedContract) (*crypto.Signature, error)

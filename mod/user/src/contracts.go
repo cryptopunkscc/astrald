@@ -8,7 +8,6 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
-	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
 	userClient "github.com/cryptopunkscc/astrald/mod/user/client"
 )
@@ -120,16 +119,11 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 		return nil, err
 	}
 
-	err = mod.Crypto.VerifyObjectSignature(
-		secp256k1.FromIdentity(nodeID),
-		subjectSig,
-		contract,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("subject sig verification: %w", err)
-	}
-
 	signed.IssuerSig = issuerSig
 	signed.SubjecSig = subjectSig
+
+	if err = mod.Auth.VerifySubject(signed); err != nil {
+		return nil, fmt.Errorf("subject sig verification: %w", err)
+	}
 	return signed, nil
 }

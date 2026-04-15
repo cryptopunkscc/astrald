@@ -12,28 +12,24 @@ import (
 
 func (mod *Module) SignIssuer(ctx *astral.Context, signed *auth.SignedContract) (*crypto.Signature, error) {
 	if signed.IssuerSig != nil {
-		return signed.IssuerSig, nil
+		return nil, auth.ErrAlreadySigned
 	}
-
 	sig, err := mod.signAs(ctx, secp256k1.FromIdentity(signed.Issuer), signed.Contract)
 	if err != nil {
 		return nil, fmt.Errorf("sign as issuer: %w", err)
 	}
-
 	signed.IssuerSig = sig
 	return sig, nil
 }
 
 func (mod *Module) SignSubject(ctx *astral.Context, signed *auth.SignedContract) (*crypto.Signature, error) {
 	if signed.SubjecSig != nil {
-		return signed.SubjecSig, nil
+		return nil, auth.ErrAlreadySigned
 	}
-
 	sig, err := mod.signAs(ctx, secp256k1.FromIdentity(signed.Subject), signed.Contract)
 	if err != nil {
 		return nil, fmt.Errorf("sign as subject: %w", err)
 	}
-
 	signed.SubjecSig = sig
 	return sig, nil
 }
@@ -64,23 +60,31 @@ func (mod *Module) signAs(ctx *astral.Context, key *crypto.PublicKey, c *auth.Co
 	return nil, fmt.Errorf("no signing scheme available for key %v", key)
 }
 
-func (mod *Module) VerifyContract(sc *auth.SignedContract) error {
-	switch {
-	case sc.IssuerSig == nil:
+func (mod *Module) VerifyIssuer(sc *auth.SignedContract) error {
+	if sc.IssuerSig == nil {
 		return errors.New("issuer signature is missing")
-	case sc.SubjecSig == nil:
-		return errors.New("subject signature is missing")
 	}
-
 	if err := mod.verifySig(secp256k1.FromIdentity(sc.Issuer), sc.IssuerSig, sc.Contract); err != nil {
 		return fmt.Errorf("issuer sig: %w", err)
 	}
+	return nil
+}
 
+func (mod *Module) VerifySubject(sc *auth.SignedContract) error {
+	if sc.SubjecSig == nil {
+		return errors.New("subject signature is missing")
+	}
 	if err := mod.verifySig(secp256k1.FromIdentity(sc.Subject), sc.SubjecSig, sc.Contract); err != nil {
 		return fmt.Errorf("subject sig: %w", err)
 	}
-
 	return nil
+}
+
+func (mod *Module) VerifyContract(sc *auth.SignedContract) error {
+	if err := mod.VerifyIssuer(sc); err != nil {
+		return err
+	}
+	return mod.VerifySubject(sc)
 }
 
 func (mod *Module) verifySig(key *crypto.PublicKey, sig *crypto.Signature, contract *auth.Contract) error {

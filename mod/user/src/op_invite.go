@@ -43,41 +43,30 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *routing.IncomingQuery, args 
 		return ch.Send(auth.ErrInvalidContract)
 	}
 
-	// wait for user approval
 	approved := mod.GetSwarmInvitePolicy()(q.Caller(), contract)
 	if !approved {
 		return ch.Send(user.ErrInvitationDeclined)
 	}
 
-	signed := &auth.SignedContract{Contract: contract}
-
-	// sign the contract as subject (node)
-	subjectSig, err := mod.Auth.SignSubject(ctx, signed)
-	if err != nil {
-		return ch.Send(astral.Err(err))
-	}
-
-	// send signature back
-	err = ch.Send(subjectSig)
-	if err != nil {
-		return
-	}
-
-	// expect issuer signature
 	var issuerSig *crypto.Signature
 	err = ch.Switch(channel.Expect(&issuerSig))
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
-	// assemble the signed contract
-	signed.IssuerSig = issuerSig
-	signed.SubjecSig = subjectSig
+	signed := &auth.SignedContract{Contract: contract, IssuerSig: issuerSig}
+	if err = mod.Auth.VerifyIssuer(signed); err != nil {
+		return ch.Send(astral.Err(err))
+	}
 
-	// final signature verification
-	err = mod.Auth.VerifyContract(signed)
+	subjectSig, err := mod.Auth.SignSubject(ctx, signed)
 	if err != nil {
 		return ch.Send(astral.Err(err))
+	}
+
+	err = ch.Send(subjectSig)
+	if err != nil {
+		return
 	}
 
 	err = mod.Auth.IndexContract(ctx, signed)
@@ -85,13 +74,11 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *routing.IncomingQuery, args 
 		return ch.Send(astral.Err(err))
 	}
 
-	// store the signed contract
 	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
-	// set the contract as the active contract
 	err = mod.SetActiveContract(signed)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
