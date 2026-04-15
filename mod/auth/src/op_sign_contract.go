@@ -34,17 +34,40 @@ func (mod *Module) OpSignContract(ctx *astral.Context, q *ops.Query, args opSign
 		return err
 	}
 
-	// operate phase
-	if args.As != "subject" {
+	if args.As == "" {
+		switch {
+		case signedContract.IssuerSig == nil && signedContract.SubjecSig == nil:
+			out, err := mod.SignContract(ctx, signedContract.Contract)
+			if err != nil {
+				return ch.Send(astral.Err(err))
+			}
+			signedContract = out
+		case signedContract.IssuerSig == nil:
+			sig, err := mod.SignIssuer(ctx, signedContract.Contract)
+			if err != nil {
+				return ch.Send(astral.Err(err))
+			}
+			signedContract.IssuerSig = sig
+		case signedContract.SubjecSig == nil:
+			sig, err := mod.SignSubject(ctx, signedContract.Contract)
+			if err != nil {
+				return ch.Send(astral.Err(err))
+			}
+			signedContract.SubjecSig = sig
+		}
+
+		return ch.Send(signedContract)
+	}
+
+	if args.As == "issuer" && signedContract.IssuerSig == nil {
 		sig, err := mod.SignIssuer(ctx, signedContract.Contract)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
-
 		signedContract.IssuerSig = sig
 	}
 
-	if args.As != "issuer" {
+	if args.As == "subject" && signedContract.SubjecSig == nil {
 		sig, err := mod.SignSubject(ctx, signedContract.Contract)
 		if err != nil {
 			return ch.Send(astral.Err(err))
