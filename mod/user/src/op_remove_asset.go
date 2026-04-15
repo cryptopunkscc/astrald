@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opRemoveAssetArgs struct {
@@ -11,7 +11,7 @@ type opRemoveAssetArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRemoveAsset(ctx *astral.Context, q *ops.Query, args opRemoveAssetArgs) (err error) {
+func (mod *Module) OpRemoveAsset(ctx *astral.Context, q *routing.IncomingQuery, args opRemoveAssetArgs) (err error) {
 	err = mod.RemoveAsset(args.ID)
 
 	if err != nil {
@@ -19,7 +19,7 @@ func (mod *Module) OpRemoveAsset(ctx *astral.Context, q *ops.Query, args opRemov
 		return q.RejectWithCode(astral.CodeInternalError)
 	}
 
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	return ch.Send(&astral.Ack{})

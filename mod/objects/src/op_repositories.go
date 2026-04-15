@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
@@ -11,10 +11,10 @@ type opRepositoriesArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRepositories(ctx *astral.Context, q *ops.Query, args opRepositoriesArgs) (err error) {
+func (mod *Module) OpRepositories(ctx *astral.Context, q *routing.IncomingQuery, args opRepositoriesArgs) (err error) {
 	ctx = ctx.ExcludeZone(astral.ZoneNetwork)
 
-	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
+	ch := q.Accept(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	for name, repo := range mod.repos.Clone() {

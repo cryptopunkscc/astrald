@@ -9,7 +9,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	treecli "github.com/cryptopunkscc/astrald/mod/tree/client"
@@ -27,7 +27,7 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
-	ops    ops.Set
+	router routing.OpRouter
 	db     *DB
 	ctx    *astral.Context
 
@@ -141,8 +141,8 @@ func (mod *Module) Root() tree.Node {
 	}
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) String() string {

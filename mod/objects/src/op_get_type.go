@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opGetTypeArgs struct {
@@ -11,10 +11,10 @@ type opGetTypeArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpGetType(ctx *astral.Context, q *ops.Query, args opGetTypeArgs) (err error) {
+func (mod *Module) OpGetType(ctx *astral.Context, q *routing.IncomingQuery, args opGetTypeArgs) (err error) {
 	ctx = ctx.WithIdentity(q.Caller())
 
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	t, err := mod.GetType(ctx, args.ID)

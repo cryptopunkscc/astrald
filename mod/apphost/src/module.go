@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/debug"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
@@ -31,7 +31,7 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	db     *DB
-	scope  ops.Set
+	router routing.OpRouter
 
 	listeners []net.Listener
 	conns     <-chan net.Conn
@@ -39,8 +39,6 @@ type Module struct {
 	enRoute   sig.Map[astral.Nonce, *queryEnRoute]
 	indexMu   sync.Mutex
 }
-
-var _ ops.HasOps = &Module{}
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	var wg sync.WaitGroup
@@ -74,8 +72,8 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.scope
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) String() string {

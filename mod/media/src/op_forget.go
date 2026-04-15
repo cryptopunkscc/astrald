@@ -3,7 +3,7 @@ package media
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opForgetArgs struct {
@@ -11,10 +11,10 @@ type opForgetArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpForget(ctx *astral.Context, q *ops.Query, args opForgetArgs) (err error) {
+func (mod *Module) OpForget(ctx *astral.Context, q *routing.IncomingQuery, args opForgetArgs) (err error) {
 	ctx = ctx.WithIdentity(q.Caller())
 
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	err = mod.Forget(ctx, args.ID)

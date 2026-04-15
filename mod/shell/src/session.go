@@ -64,13 +64,13 @@ func (s *Session) Run(ctx *astral.Context) (err error) {
 			return nil
 		}
 
-		params := query.ParseArgs(args[1:])
+		params := query.ArgsToMap(args[1:])
 
 		var q = astral.Launch(query.New(ctx.Identity(), s.mod.node.Identity(), op, params))
 
 		q.Extra.Set("interface", "terminal")
 
-		conn, err := query.Route(ctx, s.mod.node, q)
+		conn, err := query.RouteInFlight(ctx, s.mod.node, q)
 		if err != nil {
 			t.Printf("error: %v\n", err)
 			continue

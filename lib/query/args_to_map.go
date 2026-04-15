@@ -2,7 +2,7 @@ package query
 
 import "strings"
 
-func ParseArgs(args []string) (params map[string]string) {
+func ArgsToMap(args []string) (params map[string]string) {
 	params = make(map[string]string)
 
 	for len(args) > 0 {

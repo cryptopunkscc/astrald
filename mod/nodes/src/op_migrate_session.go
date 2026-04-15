@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	nodesClient "github.com/cryptopunkscc/astrald/mod/nodes/client"
 )
@@ -20,8 +20,8 @@ type opMigrateSessionArgs struct {
 	Out       string      `query:"optional"`
 }
 
-func (mod *Module) OpMigrateSession(ctx *astral.Context, q *ops.Query, args opMigrateSessionArgs) error {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuery, args opMigrateSessionArgs) error {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)

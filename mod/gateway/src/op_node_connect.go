@@ -3,7 +3,7 @@ package gateway
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opNodeConnectArgs struct {
@@ -14,10 +14,10 @@ type opNodeConnectArgs struct {
 
 func (mod *Module) OpNodeConnect(
 	ctx *astral.Context,
-	q *ops.Query,
+	q *routing.IncomingQuery,
 	args opNodeConnectArgs,
 ) (err error) {
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	socket, err := mod.reserveConn(q.Caller(), args.Target, "tcp")

@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -16,14 +16,14 @@ type opInviteArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpInvite(ctx *astral.Context, q *ops.Query, args opInviteArgs) (err error) {
+func (mod *Module) OpInvite(ctx *astral.Context, q *routing.IncomingQuery, args opInviteArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac != nil {
 		// We already have an active contract
 		return q.RejectWithCode(2)
 	}
 
-	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
+	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	// receive the contract to sign

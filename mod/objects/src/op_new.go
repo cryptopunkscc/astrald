@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opNewArgs struct {
@@ -12,8 +12,8 @@ type opNewArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpNew(ctx *astral.Context, query *ops.Query, args opNewArgs) (err error) {
-	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpNew(ctx *astral.Context, query *routing.IncomingQuery, args opNewArgs) (err error) {
+	ch := query.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	object := astral.New(args.Type)

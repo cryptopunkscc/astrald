@@ -57,7 +57,7 @@ func (r *NetworkReader) Seek(offset int64, whence int) (int64, error) {
 		WithTimeout(15 * time.Second)
 	defer cancel()
 
-	conn, err := query.Route(ctx, r.mod.node, astral.Launch(q))
+	conn, err := query.RouteInFlight(ctx, r.mod.node, astral.Launch(q))
 	if err != nil {
 		return 0, err
 	}

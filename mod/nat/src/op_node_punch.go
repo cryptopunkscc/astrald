@@ -3,7 +3,7 @@ package nat
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
@@ -11,8 +11,8 @@ type opNodePunchArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpNodePunch(ctx *astral.Context, q *ops.Query, args opNodePunchArgs) error {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpNodePunch(ctx *astral.Context, q *routing.IncomingQuery, args opNodePunchArgs) error {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	localIP, err := mod.getLocalIPv4()

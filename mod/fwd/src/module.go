@@ -3,14 +3,15 @@ package fwd
 import (
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/routers"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 	"github.com/cryptopunkscc/astrald/mod/tor"
-	"strings"
-	"sync"
 )
 
 type Deps struct {
@@ -21,7 +22,7 @@ type Deps struct {
 
 type Module struct {
 	Deps
-	*routers.PathRouter
+	*routing.OpRouter
 	node    astral.Node
 	config  Config
 	log     *log.Logger

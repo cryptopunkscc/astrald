@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
@@ -50,7 +50,7 @@ type Deps struct {
 type Module struct {
 	Deps
 
-	ops    ops.Set
+	router routing.OpRouter
 	config Config
 	node   astral.Node
 	log    *log.Logger
@@ -65,8 +65,8 @@ type Module struct {
 
 var _ gateway.Module = &Module{}
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {

@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -11,7 +11,7 @@ type opInfoArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpInfo(ctx *astral.Context, q *ops.Query, args opInfoArgs) (err error) {
+func (mod *Module) OpInfo(ctx *astral.Context, q *routing.IncomingQuery, args opInfoArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return q.RejectWithCode(2)
@@ -28,7 +28,7 @@ func (mod *Module) OpInfo(ctx *astral.Context, q *ops.Query, args opInfoArgs) (e
 		return q.Reject()
 	}
 
-	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
+	ch := q.Accept(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	contractID, _ := astral.ResolveObjectID(ac)

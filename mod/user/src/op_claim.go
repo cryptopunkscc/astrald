@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opClaimArgs struct {
@@ -12,7 +12,7 @@ type opClaimArgs struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpClaim(ctx *astral.Context, q *ops.Query, args opClaimArgs) (err error) {
+func (mod *Module) OpClaim(ctx *astral.Context, q *routing.IncomingQuery, args opClaimArgs) (err error) {
 	// get the active contract
 	ac := mod.ActiveContract()
 	if ac == nil {
@@ -23,7 +23,7 @@ func (mod *Module) OpClaim(ctx *astral.Context, q *ops.Query, args opClaimArgs) 
 		return q.RejectWithCode(3)
 	}
 
-	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
+	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	nodeID, err := mod.Dir.ResolveIdentity(args.Target)

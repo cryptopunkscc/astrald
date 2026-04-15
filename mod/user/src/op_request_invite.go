@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
@@ -12,7 +12,7 @@ type opRequestInviteArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRequestInvite(ctx *astral.Context, q *ops.Query, args opRequestInviteArgs) (err error) {
+func (mod *Module) OpRequestInvite(ctx *astral.Context, q *routing.IncomingQuery, args opRequestInviteArgs) (err error) {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
 	ac := mod.ActiveContract()
@@ -22,7 +22,7 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q *ops.Query, args opReq
 		return q.RejectWithCode(2)
 	}
 
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	target := q.Caller()

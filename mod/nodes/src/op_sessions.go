@@ -6,7 +6,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
@@ -15,8 +15,8 @@ type opSessionsArgs struct {
 }
 
 // OpSessions lists all active sessions.
-func (mod *Module) OpSessions(ctx *astral.Context, q *ops.Query, args opSessionsArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpSessions(ctx *astral.Context, q *routing.IncomingQuery, args opSessionsArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	sessions := mod.peers.sessions.Values()

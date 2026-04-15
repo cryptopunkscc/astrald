@@ -7,7 +7,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/events"
 	"github.com/cryptopunkscc/astrald/mod/ip"
@@ -43,8 +43,8 @@ type Module struct {
 	assets   resources.Resources
 	settings Settings
 
-	pool *HolePool
-	ops  ops.Set
+	pool   *HolePool
+	router routing.OpRouter
 
 	enabled atomic.Bool
 	cond    *sync.Cond
@@ -72,8 +72,8 @@ func (mod *Module) evaluateEnabled() {
 	mod.SetEnabled(settingEnabled && hasPublicIPs)
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) SetEnabled(enabled bool) {

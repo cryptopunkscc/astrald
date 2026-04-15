@@ -3,7 +3,7 @@ package gateway
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opNodeUnregister struct {
@@ -12,10 +12,10 @@ type opNodeUnregister struct {
 
 func (mod *Module) OpNodeUnregister(
 	ctx *astral.Context,
-	q *ops.Query,
+	q *routing.IncomingQuery,
 	args opNodeUnregister,
 ) error {
-	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
+	ch := q.Accept(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	if err := mod.unregister(q.Caller()); err != nil {

@@ -3,7 +3,7 @@ package nat
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opSetEnabledArgs struct {
@@ -12,8 +12,8 @@ type opSetEnabledArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpSetEnabled(ctx *astral.Context, q *ops.Query, args opSetEnabledArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpSetEnabled(ctx *astral.Context, q *routing.IncomingQuery, args opSetEnabledArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	val := astral.Bool(args.Arg)

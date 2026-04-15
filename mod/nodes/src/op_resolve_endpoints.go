@@ -3,7 +3,7 @@ package nodes
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opResolveEndpointsArgs struct {
@@ -11,7 +11,7 @@ type opResolveEndpointsArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpResolveEndpoints(ctx *astral.Context, q *ops.Query, args opResolveEndpointsArgs) (err error) {
+func (mod *Module) OpResolveEndpoints(ctx *astral.Context, q *routing.IncomingQuery, args opResolveEndpointsArgs) (err error) {
 	targetID, err := mod.Dir.ResolveIdentity(args.ID)
 	if err != nil {
 		return q.RejectWithCode(2)
@@ -23,7 +23,7 @@ func (mod *Module) OpResolveEndpoints(ctx *astral.Context, q *ops.Query, args op
 		return q.RejectWithCode(astral.CodeInternalError)
 	}
 
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	for endpoint := range endpoints {

@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/fs"
 )
 
@@ -21,7 +21,7 @@ type Module struct {
 	db      *DB
 	ctx     *astral.Context
 	indexer *Indexer
-	ops     ops.Set
+	router  routing.OpRouter
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
@@ -39,8 +39,8 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) String() string {

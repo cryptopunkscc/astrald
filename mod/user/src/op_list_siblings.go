@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opListSiblingsArgs struct {
@@ -11,11 +11,11 @@ type opListSiblingsArgs struct {
 	Zone astral.Zone `query:"optional"`
 }
 
-func (mod *Module) OpListSiblings(ctx *astral.Context, q *ops.Query, args opListSiblingsArgs) (err error) {
+func (mod *Module) OpListSiblings(ctx *astral.Context, q *routing.IncomingQuery, args opListSiblingsArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithCancel()
 	defer cancel()
 
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	for _, id := range mod.getLinkedSibs() {

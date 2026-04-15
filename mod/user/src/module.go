@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -25,7 +25,7 @@ type Module struct {
 	log    *log.Logger
 	assets assets.Assets
 	db     *DB
-	ops    ops.Set
+	router routing.OpRouter
 
 	activeContract *user.SignedNodeContract
 	ready          chan struct{}
@@ -135,8 +135,8 @@ func (mod *Module) VerifySignedNodeContract(signed *user.SignedNodeContract) err
 	return nil
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) TextObjectSigner() crypto.TextObjectSigner {

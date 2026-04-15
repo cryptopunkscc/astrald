@@ -7,10 +7,10 @@ import (
 	"io"
 )
 
-// Route routes a query through the provided Router. It returns a conn if query was successfully routed
+// RouteInFlight routes a query through the provided Router. It returns a raw connection if query was successfully routed
 // to the target and accepted, otherwise it returns an error.
 // Errors: ErrRouteNotFound ErrRejected ...
-func Route(ctx *astral.Context, r astral.Router, q *astral.InFlightQuery) (astral.Conn, error) {
+func RouteInFlight(ctx *astral.Context, r astral.Router, q *astral.InFlightQuery) (astral.Conn, error) {
 	ctx, cancel := ctx.WithTimeout(maxQueryTimeout)
 	defer cancel()
 
@@ -24,8 +24,8 @@ func Route(ctx *astral.Context, r astral.Router, q *astral.InFlightQuery) (astra
 	return NewConn(q.Caller, q.Target, target, pipeReader, true), err
 }
 
-func RouteChan(ctx *astral.Context, r astral.Router, q *astral.InFlightQuery) (*channel.Channel, error) {
-	conn, err := Route(ctx, r, q)
+func Route(ctx *astral.Context, r astral.Router, q *astral.Query) (*channel.Channel, error) {
+	conn, err := RouteInFlight(ctx, r, astral.Launch(q))
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opReadArgs struct {
@@ -15,7 +15,7 @@ type opReadArgs struct {
 	Repo   string        `query:"optional"`
 }
 
-func (mod *Module) OpRead(ctx *astral.Context, q *ops.Query, args opReadArgs) (err error) {
+func (mod *Module) OpRead(ctx *astral.Context, q *routing.IncomingQuery, args opReadArgs) (err error) {
 	ctx = ctx.IncludeZone(args.Zone)
 
 	repo := mod.ReadDefault()
@@ -39,7 +39,7 @@ func (mod *Module) OpRead(ctx *astral.Context, q *ops.Query, args opReadArgs) (e
 	}
 	defer r.Close()
 
-	conn := q.Accept()
+	conn := q.AcceptRaw()
 	defer conn.Close()
 
 	_, err = io.Copy(conn, r)

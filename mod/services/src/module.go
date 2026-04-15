@@ -3,7 +3,7 @@ package services
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/services"
 	servicescli "github.com/cryptopunkscc/astrald/mod/services/client"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -14,10 +14,10 @@ const ModuleName = "services"
 type Module struct {
 	Deps
 
-	node astral.Node
-	log  *log.Logger
-	ops  ops.Set
-	db   *DB
+	node   astral.Node
+	log    *log.Logger
+	router routing.OpRouter
+	db     *DB
 
 	discoverers sig.Set[services.Discoverer]
 }
@@ -66,8 +66,8 @@ func (mod *Module) AddDiscoverer(discoverer services.Discoverer) error {
 	return mod.discoverers.Add(discoverer)
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) String() string {

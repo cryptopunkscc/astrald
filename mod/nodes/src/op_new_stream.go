@@ -6,7 +6,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
@@ -17,7 +17,7 @@ type opNewStreamArgs struct {
 	Out        string `query:"optional"`
 }
 
-func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStreamArgs) (err error) {
+func (mod *Module) OpNewStream(ctx *astral.Context, q *routing.IncomingQuery, args opNewStreamArgs) (err error) {
 	target, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
 		return q.RejectWithCode(2)
@@ -57,7 +57,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *ops.Query, args opNewStre
 	}
 
 	// We need to accept query in case that creating stream takes longer than query timeout
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	// Wait for task or context cancellation

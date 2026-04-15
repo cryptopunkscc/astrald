@@ -3,7 +3,7 @@ package services
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opSyncArgs struct {
@@ -13,8 +13,8 @@ type opSyncArgs struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpSync(ctx *astral.Context, q *ops.Query, args opSyncArgs) (err error) {
-	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpSync(ctx *astral.Context, q *routing.IncomingQuery, args opSyncArgs) (err error) {
+	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	// resolve the target identity

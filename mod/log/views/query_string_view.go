@@ -18,7 +18,7 @@ func NewQueryStringView(str string) QueryStringView {
 func (view QueryStringView) Render() (out string) {
 	op, params := query.Parse(view.String16.String())
 
-	out = String(op, &styles.GreenText).Render()
+	out = String(op, &styles.BrightYellowText).Render()
 
 	if len(params) > 0 {
 		out += String("?", &styles.DarkGrayText).Render()

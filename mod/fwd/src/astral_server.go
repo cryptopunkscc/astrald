@@ -1,6 +1,7 @@
 package fwd
 
 import (
+	"errors"
 	"io"
 	"strings"
 
@@ -39,15 +40,16 @@ func NewAstralServer(mod *Module, serviceName string, target astral.Router) (*As
 }
 
 func (srv *AstralServer) Run(ctx *astral.Context) error {
-	var err = srv.AddRoute(srv.serviceName, srv)
-	if err != nil {
-		return err
-	}
-	defer srv.RemoveRoute(srv.serviceName)
-
-	<-ctx.Done()
-
-	return nil
+	return errors.New("obsolete")
+	//var err = srv.AddOp(srv.serviceName, routing.NewOp())
+	//if err != nil {
+	//	return err
+	//}
+	//defer srv.RemoveOp(srv.serviceName)
+	//
+	//<-ctx.Done()
+	//
+	//return nil
 }
 
 func (srv *AstralServer) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {

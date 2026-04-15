@@ -7,7 +7,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tcp"
@@ -26,7 +26,7 @@ type Module struct {
 	log             *log.Logger
 	ctx             *astral.Context
 	configEndpoints []exonet.Endpoint
-	ops             ops.Set
+	router          routing.OpRouter
 
 	mu sync.Mutex
 
@@ -39,8 +39,8 @@ type Settings struct {
 	Dial   *tree.Value[*astral.Bool] `tree:"dial"`
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) String() string {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
@@ -17,11 +17,11 @@ type SearchArgs struct {
 	Out   string      `query:"optional"`
 }
 
-func (mod *Module) OpSearch(ctx *astral.Context, q *ops.Query, args SearchArgs) (err error) {
+func (mod *Module) OpSearch(ctx *astral.Context, q *routing.IncomingQuery, args SearchArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
 	defer cancel()
 
-	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
+	ch := q.Accept(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	// find repo if provided

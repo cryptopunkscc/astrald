@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/kcp"
 	"github.com/cryptopunkscc/astrald/mod/tree"
@@ -29,7 +29,7 @@ type Module struct {
 	assets assets.Assets
 	log    *log.Logger
 	ctx    *astral.Context
-	ops    ops.Set
+	router routing.OpRouter
 
 	mu                    sync.Mutex
 	configEndpoints       []exonet.Endpoint
@@ -39,8 +39,8 @@ type Module struct {
 	server sig.Switch
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) ListenPort() int {

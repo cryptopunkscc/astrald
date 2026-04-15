@@ -2,14 +2,10 @@ package query
 
 import (
 	"encoding"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
-	"strconv"
-
-	"github.com/cryptopunkscc/astrald/astral/log"
 )
 
 const queryTag = "query"
@@ -65,88 +61,32 @@ func Marshal(params any) (string, error) {
 	}
 
 	var v = reflect.ValueOf(params)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
+	if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Struct {
+		str, err := EditValue(v).MarshalQuery()
+		if err != nil {
+			return "", err
+		}
+		return string(str), nil
 	}
 
-	if v.Kind() != reflect.Struct {
-		return "", errors.New("not a struct")
+	if v.Kind() == reflect.Struct {
+		if v.CanAddr() {
+			str, err := EditValue(v.Addr()).MarshalQuery()
+			if err != nil {
+				return "", err
+			}
+			return string(str), nil
+		}
+
+		pv := reflect.New(v.Type())
+		pv.Elem().Set(v)
+
+		str, err := EditValue(pv).MarshalQuery()
+		if err != nil {
+			return "", err
+		}
+		return string(str), nil
 	}
 
-	for i := 0; i < v.NumField(); i++ {
-		fv := v.Field(i)
-		ft := v.Type().Field(i)
-
-		lookup, _ := ft.Tag.Lookup(queryTag)
-		tags := ParseTag(lookup)
-
-		if tags.Skip {
-			continue
-		}
-
-		name := log.ToSnakeCase(ft.Name)
-		if tags.Key != "" {
-			name = tags.Key
-		}
-
-		if fv.IsZero() {
-			continue
-		}
-
-		if fv.CanInterface() {
-			if u, ok := fv.Interface().(encoding.TextMarshaler); ok {
-				text, err := u.MarshalText()
-				if err != nil {
-					return "", err
-				}
-				vals.Set(name, string(text))
-				continue
-			}
-		}
-
-		if fv.CanAddr() {
-			fva := fv.Addr()
-			if u, ok := fva.Interface().(encoding.TextMarshaler); ok {
-				text, err := u.MarshalText()
-				if err != nil {
-					return "", err
-				}
-				vals.Set(name, string(text))
-				continue
-			}
-		}
-
-		if fv.Kind() == reflect.Ptr {
-			fv = fv.Elem()
-		}
-
-		switch fv.Kind() {
-		case reflect.String:
-			vals.Set(name, fv.String())
-
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			vals.Set(name, strconv.FormatInt(fv.Int(), 10))
-
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			vals.Set(name, strconv.FormatUint(fv.Uint(), 10))
-
-		case reflect.Float32, reflect.Float64:
-			vals.Set(name, strconv.FormatFloat(fv.Float(), 'g', -1, 64))
-
-		case reflect.Bool:
-			vals.Set(name, strconv.FormatBool(fv.Bool()))
-
-		case reflect.Slice:
-			if fv.Type().Elem().Kind() == reflect.Uint8 {
-				vals.Set(name, base64.StdEncoding.EncodeToString(fv.Interface().([]byte)))
-			} else {
-				return "", fmt.Errorf("field %s is not a supported type", ft.Name)
-			}
-
-		default:
-			return "", fmt.Errorf("field %s is not a supported type", ft.Name)
-		}
-	}
-
-	return vals.Encode(), nil
+	return "", errors.New("unsupported type: " + v.Kind().String())
 }

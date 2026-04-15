@@ -21,7 +21,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *alog.Logger) (co
 		assets: assets,
 	}
 
-	err = mod.ops.AddStructPrefix(mod, "Op")
+	err = mod.router.AddStructPrefix(mod, "Op")
 	if err != nil {
 		return nil, err
 	}

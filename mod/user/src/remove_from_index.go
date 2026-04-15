@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opRemoveFromIndexArgs struct {
@@ -12,8 +12,8 @@ type opRemoveFromIndexArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpRemoveFromIndex(ctx *astral.Context, query *ops.Query, args opRemoveFromIndexArgs) (err error) {
-	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpRemoveFromIndex(ctx *astral.Context, query *routing.IncomingQuery, args opRemoveFromIndexArgs) (err error) {
+	ch := query.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	err = mod.RemoveFromIndex(args.ID)

@@ -7,7 +7,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -20,14 +20,14 @@ type opRevokeNodeContractArgs struct {
 	Out        string `query:"optional"`
 }
 
-func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q *ops.Query, args opRevokeNodeContractArgs) (err error) {
+func (mod *Module) OpRevokeNodeContract(ctx *astral.Context, q *routing.IncomingQuery, args opRevokeNodeContractArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		// cannot handle if we dont have active contract
 		return q.RejectWithCode(2)
 	}
 
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	if args.RevokeAs == "" {

@@ -76,10 +76,10 @@ func (srv *HTTPQueryHandler) ServeHTTP(writer http.ResponseWriter, request *http
 	defer cancel()
 
 	// route the query
-	ch, err := query.RouteChan(
+	ch, err := query.Route(
 		ctx,
 		srv.node,
-		astral.Launch(query.New(srv.Identity, targetID, method, params)),
+		query.New(srv.Identity, targetID, method, params),
 	)
 	switch {
 	case err == nil:

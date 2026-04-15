@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
@@ -16,6 +17,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 		node:   node,
 		log:    l,
 		assets: assets,
+		ops:    routing.NewOpRouter(),
 	}
 
 	_ = assets.LoadYAML(dir.ModuleName, &mod.config)

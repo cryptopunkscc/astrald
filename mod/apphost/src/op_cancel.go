@@ -7,7 +7,7 @@ package apphost
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opCancelArgs struct {
@@ -16,8 +16,8 @@ type opCancelArgs struct {
 	Out   string  `query:"optional"`
 }
 
-func (mod *Module) OpCancel(ctx *astral.Context, q *ops.Query, args opCancelArgs) (err error) {
-	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out))
+func (mod *Module) OpCancel(ctx *astral.Context, q *routing.IncomingQuery, args opCancelArgs) (err error) {
+	ch := q.Accept(channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	enRoute, found := mod.enRoute.Get(args.ID)

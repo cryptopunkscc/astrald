@@ -66,7 +66,7 @@ func (mod *Module) fetchARL(a *arl.ARL) (objectID *astral.ObjectID, err error) {
 
 	var q = astral.NewQuery(a.Caller, a.Target, a.Query)
 
-	conn, err := query.Route(mod.ctx, mod.node, astral.Launch(q))
+	conn, err := query.RouteInFlight(mod.ctx, mod.node, astral.Launch(q))
 	if err != nil {
 		return
 	}

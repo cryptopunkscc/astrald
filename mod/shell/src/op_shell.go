@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
@@ -13,7 +13,7 @@ type opShellArgs struct {
 	As astral.String8 `query:"optional"`
 }
 
-func (mod *Module) OpShell(ctx *astral.Context, q *ops.Query, args opShellArgs) (err error) {
+func (mod *Module) OpShell(ctx *astral.Context, q *routing.IncomingQuery, args opShellArgs) (err error) {
 	// handle args
 	if len(args.As) > 0 {
 		asID, err := mod.Dir.ResolveIdentity(string(args.As))
@@ -32,7 +32,7 @@ func (mod *Module) OpShell(ctx *astral.Context, q *ops.Query, args opShellArgs) 
 
 	// accept
 	var conn io.ReadWriteCloser
-	conn = q.Accept()
+	conn = q.AcceptRaw()
 	defer conn.Close()
 
 	// handle session

@@ -3,7 +3,7 @@ package dir
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opFiltersArgs struct {
@@ -11,8 +11,8 @@ type opFiltersArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpFilters(ctx *astral.Context, q *ops.Query, args opFiltersArgs) (err error) {
-	ch := q.AcceptChannel(channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpFilters(ctx *astral.Context, q *routing.IncomingQuery, args opFiltersArgs) (err error) {
+	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	for _, f := range mod.Filters() {

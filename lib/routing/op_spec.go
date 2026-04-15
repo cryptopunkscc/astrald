@@ -1,4 +1,4 @@
-package ops
+package routing
 
 import (
 	"io"
@@ -15,7 +15,7 @@ type OpSpec struct {
 var _ astral.Object = &OpSpec{}
 
 func (OpSpec) ObjectType() string {
-	return "ops.op_spec"
+	return "routing.op_spec"
 }
 
 // binary

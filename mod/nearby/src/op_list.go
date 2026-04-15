@@ -3,7 +3,7 @@ package nearby
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 )
 
@@ -11,8 +11,8 @@ type opListArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpList(ctx *astral.Context, q *ops.Query, args opListArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpList(ctx *astral.Context, q *routing.IncomingQuery, args opListArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	for _, v := range mod.Cache().Clone() {

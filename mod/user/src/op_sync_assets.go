@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opSyncAssetsArgs struct {
@@ -13,7 +13,7 @@ type opSyncAssetsArgs struct {
 	Out   string `query:"optional"`
 }
 
-func (mod *Module) OpSyncAssets(ctx *astral.Context, q *ops.Query, args opSyncAssetsArgs) (err error) {
+func (mod *Module) OpSyncAssets(ctx *astral.Context, q *routing.IncomingQuery, args opSyncAssetsArgs) (err error) {
 	var rows []*dbAsset
 
 	err = mod.db.Where("height >= ?", args.Start).Find(&rows).Error
@@ -22,7 +22,7 @@ func (mod *Module) OpSyncAssets(ctx *astral.Context, q *ops.Query, args opSyncAs
 		return q.RejectWithCode(2)
 	}
 
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	var height astral.Uint64

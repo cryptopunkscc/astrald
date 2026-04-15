@@ -4,7 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	natclient "github.com/cryptopunkscc/astrald/mod/nat/client"
 )
 
@@ -14,8 +14,8 @@ type opPunchArgs struct {
 	Out    string `query:"optional"`
 }
 
-func (mod *Module) OpPunch(ctx *astral.Context, q *ops.Query, args opPunchArgs) error {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out), channel.WithInputFormat(args.In))
+func (mod *Module) OpPunch(ctx *astral.Context, q *routing.IncomingQuery, args opPunchArgs) error {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out), channel.WithInputFormat(args.In))
 	defer ch.Close()
 
 	localIP, err := mod.getLocalIPv4()

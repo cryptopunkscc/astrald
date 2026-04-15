@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 const maxPushSize = 32 * 1024
@@ -13,8 +13,8 @@ type opPushArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpPush(ctx *astral.Context, q *ops.Query, args opPushArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpPush(ctx *astral.Context, q *routing.IncomingQuery, args opPushArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	return ch.Collect(func(o astral.Object) (err error) {

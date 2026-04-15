@@ -3,7 +3,7 @@ package apphost
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opRegisterHandlerArgs struct {
@@ -13,13 +13,13 @@ type opRegisterHandlerArgs struct {
 	Out      string `query:"optional"`
 }
 
-func (mod *Module) OpRegisterHandler(ctx *astral.Context, q *ops.Query, args opRegisterHandlerArgs) (err error) {
+func (mod *Module) OpRegisterHandler(ctx *astral.Context, q *routing.IncomingQuery, args opRegisterHandlerArgs) (err error) {
 	// cannot register handlers over a network
 	if q.Origin() == astral.OriginNetwork {
 		return q.Reject()
 	}
 
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	// add the handler

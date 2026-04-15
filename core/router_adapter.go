@@ -15,7 +15,7 @@ type routerAdapter struct {
 var _ astrald.Router = &routerAdapter{}
 
 func (r *routerAdapter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery) (astral.Conn, error) {
-	return query.Route(ctx, r.Router, q)
+	return query.RouteInFlight(ctx, r.Router, q)
 }
 
 func (r *routerAdapter) GuestID() *astral.Identity {

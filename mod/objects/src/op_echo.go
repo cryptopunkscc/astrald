@@ -8,7 +8,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opEchoArgs struct {
@@ -19,7 +19,7 @@ type opEchoArgs struct {
 	Out    string  `query:"optional"`
 }
 
-func (mod *Module) OpEcho(ctx *astral.Context, q *ops.Query, args opEchoArgs) (err error) {
+func (mod *Module) OpEcho(ctx *astral.Context, q *routing.IncomingQuery, args opEchoArgs) (err error) {
 	// prepare lists
 	var only, except []string
 	if args.Only != nil && len(*args.Only) > 0 {
@@ -31,7 +31,7 @@ func (mod *Module) OpEcho(ctx *astral.Context, q *ops.Query, args opEchoArgs) (e
 
 	var stop = len(args.Stop) > 0
 
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out), channel.AllowUnparsed(true))
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out), channel.AllowUnparsed(true))
 	defer ch.Close()
 
 	for {

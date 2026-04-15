@@ -4,13 +4,13 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opLinkArgs struct {
 }
 
-func (mod *Module) OpLink(ctx *astral.Context, q *ops.Query, args opLinkArgs) (err error) {
+func (mod *Module) OpLink(ctx *astral.Context, q *routing.IncomingQuery, args opLinkArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return q.Reject()
@@ -21,7 +21,7 @@ func (mod *Module) OpLink(ctx *astral.Context, q *ops.Query, args opLinkArgs) (e
 		return q.Reject()
 	}
 
-	conn := q.Accept()
+	conn := q.AcceptRaw()
 	defer conn.Close()
 
 	var done = make(chan struct{})

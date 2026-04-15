@@ -3,7 +3,7 @@ package src
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/bip137sig"
 )
 
@@ -15,10 +15,10 @@ type opNewEntropyArgs struct {
 
 func (mod *Module) OpNewEntropy(
 	ctx *astral.Context,
-	q *ops.Query,
+	q *routing.IncomingQuery,
 	args opNewEntropyArgs,
 ) (err error) {
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	bits := args.Bits

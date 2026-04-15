@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opLoadArgs struct {
@@ -15,14 +15,14 @@ type opLoadArgs struct {
 }
 
 // OpLoad loads an object into memory and writes it to the output. OpLoad verifies the object hash.
-func (mod *Module) OpLoad(ctx *astral.Context, q *ops.Query, args opLoadArgs) (err error) {
+func (mod *Module) OpLoad(ctx *astral.Context, q *routing.IncomingQuery, args opLoadArgs) (err error) {
 	if args.Zone == nil {
 		ctx = ctx.WithZone(astral.ZoneAll)
 	} else {
 		ctx = ctx.WithZone(*args.Zone)
 	}
 
-	ch := q.AcceptChannel(channel.WithOutputFormat(args.Out), channel.AllowUnparsed(args.Unparsed))
+	ch := q.Accept(channel.WithOutputFormat(args.Out), channel.AllowUnparsed(args.Unparsed))
 	defer ch.Close()
 
 	repo := mod.ReadDefault()

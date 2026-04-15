@@ -200,7 +200,7 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 
 	// route the query
 	guest.mod.enRoute.Set(q.Nonce, enRoute)
-	conn, err := query.Route(qCtx, guest.mod.node, inFlight)
+	conn, err := query.RouteInFlight(qCtx, guest.mod.node, inFlight)
 	guest.mod.enRoute.Delete(q.Nonce)
 
 	// check error

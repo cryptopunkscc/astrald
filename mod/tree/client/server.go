@@ -3,11 +3,11 @@ package tree
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
-// NodeOps is a set of tree node operations that can be used with lib/ops
+// NodeOps is a set of tree node operations that can be used with lib/routing
 type NodeOps struct {
 	Node tree.Node
 }
@@ -23,11 +23,11 @@ type GetArgs struct {
 	Out    string `query:"optional"`
 }
 
-func (ops *NodeOps) Get(ctx *astral.Context, q *ops.Query, args GetArgs) (err error) {
+func (ops *NodeOps) Get(ctx *astral.Context, q *routing.IncomingQuery, args GetArgs) (err error) {
 	ctx, cancel := ctx.WithCancel()
 	defer cancel()
 
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	node, err := tree.Query(ctx, ops.Node, args.Path, false)
@@ -64,8 +64,8 @@ type SetArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (ops *NodeOps) Set(ctx *astral.Context, q *ops.Query, args SetArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+func (ops *NodeOps) Set(ctx *astral.Context, q *routing.IncomingQuery, args SetArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	node, err := tree.Query(ctx, ops.Node, args.Path, true)
@@ -89,8 +89,8 @@ type DeleteArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (ops *NodeOps) Delete(ctx *astral.Context, q *ops.Query, args DeleteArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+func (ops *NodeOps) Delete(ctx *astral.Context, q *routing.IncomingQuery, args DeleteArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	node, err := tree.Query(ctx, ops.Node, args.Path, false)
@@ -112,8 +112,8 @@ type ListArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (ops *NodeOps) List(ctx *astral.Context, query *ops.Query, args ListArgs) (err error) {
-	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
+func (ops *NodeOps) List(ctx *astral.Context, query *routing.IncomingQuery, args ListArgs) (err error) {
+	ch := query.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	var path = "/"

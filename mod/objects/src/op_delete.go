@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opDeleteArgs struct {
@@ -13,7 +13,7 @@ type opDeleteArgs struct {
 	Zone *astral.Zone `query:"optional"`
 }
 
-func (mod *Module) OpDelete(ctx *astral.Context, q *ops.Query, args opDeleteArgs) (err error) {
+func (mod *Module) OpDelete(ctx *astral.Context, q *routing.IncomingQuery, args opDeleteArgs) (err error) {
 	// prepare the context
 	ctx = ctx.WithIdentity(q.Caller())
 	if args.Zone == nil {
@@ -22,7 +22,7 @@ func (mod *Module) OpDelete(ctx *astral.Context, q *ops.Query, args opDeleteArgs
 		ctx = ctx.WithZone(*args.Zone)
 	}
 
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	// look up the repository (no default to avoid accidental deletion)

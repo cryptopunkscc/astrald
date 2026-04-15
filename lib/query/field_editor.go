@@ -103,6 +103,18 @@ func (editor FieldEditor) UnmarshalText(data []byte) error {
 		f = f.Elem()
 	}
 
+	// check explicit text unmarshaler first
+	if u, ok := editor.field.Interface().(encoding.TextUnmarshaler); ok {
+		return u.UnmarshalText(data)
+	}
+
+	if editor.field.CanAddr() {
+		if u, ok := editor.field.Addr().Interface().(encoding.TextUnmarshaler); ok {
+			return u.UnmarshalText(data)
+		}
+	}
+
+	// handle native types
 	switch f.Kind() {
 	case reflect.String:
 		f.SetString(string(data))
@@ -143,18 +155,7 @@ func (editor FieldEditor) UnmarshalText(data []byte) error {
 			}
 			f.Set(reflect.ValueOf(b))
 		}
-
 	default:
-		if u, ok := editor.field.Interface().(encoding.TextUnmarshaler); ok {
-			return u.UnmarshalText(data)
-		}
-
-		if editor.field.CanAddr() {
-			if u, ok := editor.field.Addr().Interface().(encoding.TextUnmarshaler); ok {
-				return u.UnmarshalText(data)
-			}
-		}
-
 		return errors.New("field does not implement TextUnmarshaler")
 	}
 

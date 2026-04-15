@@ -7,7 +7,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/lib/routers"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -17,7 +17,7 @@ const routingTimeout = 60 * time.Second
 
 type Router struct {
 	node *Node
-	*routers.PriorityRouter
+	*routing.PriorityRouter
 	conns         sig.Map[astral.Nonce, *conn]
 	preprocessors sig.Set[QueryPreprocessor]
 }
@@ -29,7 +29,7 @@ type QueryPreprocessor interface {
 func NewRouter(node *Node) *Router {
 	var router = &Router{
 		node:           node,
-		PriorityRouter: routers.NewPriorityRouter(),
+		PriorityRouter: routing.NewPriorityRouter(),
 	}
 
 	return router

@@ -3,15 +3,15 @@ package ip
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opPublicIPCandidatesArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpPublicIPCandidates(ctx *astral.Context, q *ops.Query, args opPublicIPCandidatesArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpPublicIPCandidates(ctx *astral.Context, q *routing.IncomingQuery, args opPublicIPCandidatesArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	for _, addr := range mod.PublicIPCandidates() {

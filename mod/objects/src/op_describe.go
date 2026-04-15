@@ -7,7 +7,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opDescribeArgs struct {
@@ -18,11 +18,11 @@ type opDescribeArgs struct {
 	Except *string     `query:"optional"`
 }
 
-func (mod *Module) OpDescribe(ctx *astral.Context, q *ops.Query, args opDescribeArgs) (err error) {
+func (mod *Module) OpDescribe(ctx *astral.Context, q *routing.IncomingQuery, args opDescribeArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
 	defer cancel()
 
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	var only, except []string

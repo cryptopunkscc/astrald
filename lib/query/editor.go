@@ -3,11 +3,15 @@ package query
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"reflect"
+	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral/log"
 )
+
+var ErrFieldNotFound = errors.New("field not found")
 
 // Editor wraps a struct and provides getter/setters for the fields
 type Editor struct {
@@ -27,17 +31,24 @@ type FieldSpec struct {
 	Required bool
 }
 
-// Edit wraps a struct with an Editor
-func Edit(args any) (*Editor, error) {
-	return edit(args, false)
+// Edit returns an Editor for s, which must be a pointer to a struct, otherwise Edit will panic.
+func Edit(s any) *Editor {
+	return edit(s, false)
 }
 
-func EditCamel(args any) (*Editor, error) {
+func EditCamel(args any) *Editor {
 	return edit(args, true)
 }
-func edit(args any, keepCase bool) (*Editor, error) {
-	var v = reflect.ValueOf(args)
 
+func EditValue(v reflect.Value) *Editor {
+	return editValue(v, false)
+}
+
+func edit(args any, keepCase bool) *Editor {
+	return editValue(reflect.ValueOf(args), keepCase)
+}
+
+func editValue(v reflect.Value, keepCase bool) *Editor {
 	// make sure arg is a pointer to a struct so we can modify it
 	if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Ptr {
 		if v.Elem().IsZero() {
@@ -46,11 +57,11 @@ func edit(args any, keepCase bool) (*Editor, error) {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Ptr || v.IsZero() || v.Elem().Kind() != reflect.Struct {
-		return nil, errors.New("arg must be a pointer to a struct")
+		panic("invalid argument: argument must be a pointer to a struct")
 	}
 	v = v.Elem()
 
-	view := &Editor{
+	editor := &Editor{
 		arg: v,
 	}
 
@@ -62,10 +73,10 @@ func edit(args any, keepCase bool) (*Editor, error) {
 			continue
 		}
 
-		editor := newFieldEditor(fv, ft)
+		fieldEditor := newFieldEditor(fv, ft)
 
 		// don't include fields with the skip tag
-		if editor.Tag().Skip {
+		if fieldEditor.Tag().Skip {
 			continue
 		}
 
@@ -75,30 +86,30 @@ func edit(args any, keepCase bool) (*Editor, error) {
 			name = log.ToSnakeCase(name)
 		}
 
-		if editor.Tag().Key != "" {
-			name = editor.Tag().Key
+		if fieldEditor.Tag().Key != "" {
+			name = fieldEditor.Tag().Key
 		}
 
-		view.fields = append(view.fields, &field{
+		editor.fields = append(editor.fields, &field{
 			name:        name,
-			FieldEditor: editor,
+			FieldEditor: fieldEditor,
 		})
 	}
 
-	return view, nil
+	return editor
 }
 
-func (args *Editor) Set(name string, value string) error {
-	field, err := args.Field(name)
+func (editor *Editor) Set(name string, value string) error {
+	field, err := editor.Field(name)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot set %s: %w", name, err)
 	}
 
 	return field.Set(value)
 }
 
-func (args *Editor) Get(name string) (string, error) {
-	field, err := args.Field(name)
+func (editor *Editor) Get(name string) (string, error) {
+	field, err := editor.Field(name)
 	if err != nil {
 		return "", err
 	}
@@ -107,56 +118,89 @@ func (args *Editor) Get(name string) (string, error) {
 }
 
 // Spec returns a map containing specs for every argument
-func (args *Editor) Spec() (vals []FieldSpec) {
-	for _, editor := range args.fields {
+func (editor *Editor) Spec() (vals []FieldSpec) {
+	for _, editor := range editor.fields {
 		if editor.ObjectType() == "" {
 			continue
 		}
 		vals = append(vals, FieldSpec{
 			Name:     editor.name,
 			Type:     editor.ObjectType(),
-			Required: !editor.Tag().Optional,
+			Required: editor.Tag().Required,
 		})
 	}
 	return
 }
 
-func (args *Editor) Field(name string) (*FieldEditor, error) {
-	for _, field := range args.fields {
+func (editor *Editor) Field(name string) (*FieldEditor, error) {
+	for _, field := range editor.fields {
 		if field.name == name {
 			return field.FieldEditor, nil
 		}
 	}
 
-	return nil, errors.New("field not found")
+	return nil, ErrFieldNotFound
 }
 
-func (args *Editor) SetMany(vals map[string]string) error {
+func (editor *Editor) SetMany(vals map[string]string) error {
 	for key, value := range vals {
-		err := args.Set(key, value)
-		if err != nil {
-			return err
+		err := editor.Set(key, value)
+		switch {
+		case err == nil:
+		case errors.Is(err, ErrFieldNotFound):
+			continue
+		default:
+			return fmt.Errorf("cannot set %s: %w", key, err)
 		}
 	}
 	return nil
 }
 
-// json (passthrough)
+func (editor *Editor) SetArgs(args []string) (unparsed []string, err error) {
+	var i = 0
 
-func (args *Editor) MarshalJSON() ([]byte, error) {
-	return json.Marshal(args.arg.Interface())
+	for i < len(args) {
+		argName, found := strings.CutPrefix(args[i], "-")
+		if !found {
+			unparsed = append(unparsed, args[i])
+			continue
+		}
+
+		if i+1 >= len(args) {
+			unparsed = append(unparsed, args[i])
+			return
+		}
+
+		err = editor.Set(argName, args[i+1])
+		switch {
+		case err == nil:
+			i += 2
+		case errors.Is(err, ErrFieldNotFound):
+			return unparsed, fmt.Errorf("unknown argument: %s", argName)
+		default:
+			return
+		}
+	}
+
+	return
 }
 
-func (args *Editor) UnmarshalJSON(bytes []byte) error {
-	return json.Unmarshal(bytes, args.arg.Addr().Interface())
+// json (passthrough)
+
+func (editor *Editor) MarshalJSON() ([]byte, error) {
+	return json.Marshal(editor.arg.Interface())
+}
+
+func (editor *Editor) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, editor.arg.Addr().Interface())
 }
 
 // query
 
-func (args *Editor) MarshalQuery() ([]byte, error) {
+func (editor *Editor) MarshalQuery() ([]byte, error) {
 	var vals = url.Values{}
 
-	for _, field := range args.fields {
+	for _, field := range editor.fields {
 		text, err := field.MarshalText()
 		if err != nil {
 			return nil, err
@@ -171,14 +215,14 @@ func (args *Editor) MarshalQuery() ([]byte, error) {
 	return []byte(vals.Encode()), nil
 }
 
-func (args *Editor) UnmarshalQuery(text []byte) error {
+func (editor *Editor) UnmarshalQuery(text []byte) error {
 	vals, err := url.ParseQuery(string(text))
 	if err != nil {
 		return err
 	}
 
 	for key, value := range vals {
-		err = args.Set(key, value[0])
+		err = editor.Set(key, value[0])
 		if err != nil {
 			return err
 		}
@@ -186,7 +230,7 @@ func (args *Editor) UnmarshalQuery(text []byte) error {
 	return nil
 }
 
-func (args *Editor) String() string {
-	text, _ := args.MarshalQuery()
+func (editor *Editor) String() string {
+	text, _ := editor.MarshalQuery()
 	return string(text)
 }

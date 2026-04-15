@@ -7,7 +7,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
@@ -18,13 +18,13 @@ type opAddEndpointArgs struct {
 	Out      string `query:"optional"`
 }
 
-func (mod *Module) OpAddEndpoint(_ *astral.Context, q *ops.Query, args opAddEndpointArgs) (err error) {
+func (mod *Module) OpAddEndpoint(_ *astral.Context, q *routing.IncomingQuery, args opAddEndpointArgs) (err error) {
 	chunks := strings.SplitN(args.Endpoint, ":", 2)
 	if len(chunks) != 2 {
 		return errors.New("invalid endpoint")
 	}
 
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	parse, err := mod.Exonet.Parse(chunks[0], chunks[1])

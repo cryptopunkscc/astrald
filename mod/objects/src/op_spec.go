@@ -6,8 +6,8 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
 	libquery "github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
@@ -17,8 +17,8 @@ type opSpecArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpSpec(ctx *astral.Context, query *ops.Query, args opSpecArgs) (err error) {
-	ch := query.AcceptChannel(channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpSpec(ctx *astral.Context, query *routing.IncomingQuery, args opSpecArgs) (err error) {
+	ch := query.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	types := astral.DefaultBlueprints().Types()
@@ -38,11 +38,7 @@ func (mod *Module) OpSpec(ctx *astral.Context, query *ops.Query, args opSpecArgs
 			continue
 		}
 
-		editor, err := libquery.EditCamel(obj)
-		if err != nil {
-			mod.log.Log("failed to edit object %v: %v", typeName, err)
-			continue
-		}
+		editor := libquery.EditCamel(obj)
 
 		spec := &objects.TypeSpec{
 			Name:   typeName,

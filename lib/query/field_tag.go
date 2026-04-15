@@ -5,7 +5,7 @@ import "strings"
 type FieldTag struct {
 	Key      string
 	Skip     bool
-	Optional bool
+	Required bool
 	Other    map[string]string
 }
 
@@ -19,8 +19,8 @@ func ParseTag(tag string) *FieldTag {
 		switch p[0] {
 		case "skip":
 			fieldTag.Skip = true
-		case "optional":
-			fieldTag.Optional = true
+		case "required":
+			fieldTag.Required = true
 		case "key":
 			if len(p) < 2 {
 				continue

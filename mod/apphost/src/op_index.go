@@ -3,7 +3,7 @@ package apphost
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opIndexArgs struct {
@@ -11,8 +11,8 @@ type opIndexArgs struct {
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpIndex(ctx *astral.Context, q *ops.Query, args opIndexArgs) error {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpIndex(ctx *astral.Context, q *routing.IncomingQuery, args opIndexArgs) error {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	if err := mod.Index(ctx, args.ID); err != nil {

@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core/assets"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -28,7 +28,7 @@ type Module struct {
 	nodeKey *crypto.PrivateKey
 	assets  assets.Assets
 	db      *DB
-	scope   ops.Set
+	router  routing.OpRouter
 	ctx     *astral.Context
 
 	engines sig.Set[crypto.Engine]
@@ -309,8 +309,8 @@ func (mod *Module) AddEngine(engine crypto.Engine) {
 	mod.engines.Add(engine)
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.scope
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) String() string {

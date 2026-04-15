@@ -3,7 +3,7 @@ package objects
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opStoreArgs struct {
@@ -12,9 +12,9 @@ type opStoreArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpStore(ctx *astral.Context, q *ops.Query, args opStoreArgs) error {
+func (mod *Module) OpStore(ctx *astral.Context, q *routing.IncomingQuery, args opStoreArgs) error {
 	ch := channel.New(
-		q.Accept(),
+		q.AcceptRaw(),
 		channel.WithFormats(args.In, args.Out),
 		channel.AllowUnparsed(true), // allow unparsed objects
 	)

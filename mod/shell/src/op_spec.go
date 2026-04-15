@@ -6,20 +6,21 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opArgsArgs struct {
 	Op  string `query:"optional"`
+	In  string `query:"optional"`
 	Out string `query:"optional"`
 }
 
-func (mod *Module) OpSpec(ctx *astral.Context, q *ops.Query, args opArgsArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpSpec(ctx *astral.Context, q *routing.IncomingQuery, args opArgsArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	list := mod.root.Spec()
-	slices.SortFunc(list, func(a, b ops.OpSpec) int {
+	list := mod.scopes.Spec()
+	slices.SortFunc(list, func(a, b routing.OpSpec) int {
 		return strings.Compare(a.Name, b.Name)
 	})
 
@@ -33,5 +34,5 @@ func (mod *Module) OpSpec(ctx *astral.Context, q *ops.Query, args opArgsArgs) (e
 		}
 	}
 
-	return nil
+	return ch.Send(&astral.EOS{})
 }

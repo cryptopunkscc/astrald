@@ -7,7 +7,6 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
-	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
@@ -17,6 +16,10 @@ type Deps struct {
 	Auth    auth.Module
 	Dir     dir.Module
 	Objects objects.Module
+}
+
+type HasRouter interface {
+	Router() astral.Router
 }
 
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
@@ -32,8 +35,8 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 				continue
 			}
 
-			if s, ok := m.(ops.HasOps); ok {
-				mod.root.AddSubSet(getName(s), s.GetOpSet())
+			if s, ok := m.(HasRouter); ok {
+				mod.scopes.Add(getName(s), s.Router())
 				added = append(added, m)
 			}
 		}

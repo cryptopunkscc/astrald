@@ -7,7 +7,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -35,7 +35,7 @@ type Module struct {
 	assets resources.Resources
 	db     *DB
 	ctx    *astral.Context
-	ops    ops.Set
+	router routing.OpRouter
 
 	dbResolver *DBEndpointResolver
 	resolvers  sig.Set[nodes.EndpointResolver]
@@ -114,8 +114,8 @@ func (mod *Module) CloseStream(id astral.Nonce) error {
 	return errors.New("stream not found")
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) String() string {

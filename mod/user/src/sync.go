@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -34,13 +33,11 @@ func (mod *Module) syncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 	}
 
 	var q = query.New(ac.UserID, nodeID, user.OpSyncAssets, args)
-	conn, err := query.Route(ctx, mod.node, astral.Launch(q))
+	ch, err := query.Route(ctx, mod.node, q)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	ch := channel.New(conn)
+	defer ch.Close()
 
 	for {
 		msg, err := ch.Receive()
@@ -78,12 +75,11 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 	}
 
 	var q = query.New(ac.UserID, nodeID, user.OpInfo, nil)
-	conn, err := query.Route(ctx, mod.node, astral.Launch(q))
+	ch, err := query.Route(ctx, mod.node, q)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	ch := channel.New(conn)
+	defer ch.Close()
 
 	obj, err := ch.Receive()
 	if err != nil {

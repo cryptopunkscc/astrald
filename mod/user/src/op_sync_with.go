@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opSyncWithArgs struct {
@@ -12,8 +12,8 @@ type opSyncWithArgs struct {
 	Out   string        `query:"optional"`
 }
 
-func (mod *Module) OpSyncWith(ctx *astral.Context, q *ops.Query, args opSyncWithArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpSyncWith(ctx *astral.Context, q *routing.IncomingQuery, args opSyncWithArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	err = mod.syncAssets(ctx.IncludeZone(astral.ZoneNetwork), args.Node)

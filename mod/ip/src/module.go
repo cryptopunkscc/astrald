@@ -8,7 +8,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	"github.com/cryptopunkscc/astrald/resources"
@@ -26,7 +26,7 @@ type Module struct {
 	node   astral.Node
 	log    *log.Logger
 	assets resources.Resources
-	ops    ops.Set
+	router routing.OpRouter
 
 	providers sig.Set[ip.PublicIPCandidateProvider]
 }
@@ -107,8 +107,8 @@ func (mod *Module) watchAddresses(ctx context.Context) {
 	}
 }
 
-func (mod *Module) GetOpSet() *ops.Set {
-	return &mod.ops
+func (mod *Module) Router() astral.Router {
+	return &mod.router
 }
 
 func (mod *Module) String() string {

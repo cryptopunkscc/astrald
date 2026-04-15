@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/ops"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 )
 
@@ -13,16 +13,16 @@ type opNodeRouteArgs struct {
 	Target *astral.Identity
 }
 
-func (mod *Module) OpNodeRoute(ctx *astral.Context, q *ops.Query, args opNodeRouteArgs) error {
+func (mod *Module) OpNodeRoute(ctx *astral.Context, q *routing.IncomingQuery, args opNodeRouteArgs) error {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
 	// target is this node — accept and establish inbound link
 	if args.Target.IsEqual(mod.node.Identity()) {
-		conn := q.Accept()
+		conn := q.AcceptRaw()
 		c := &gatewayConn{
 			ReadWriteCloser: conn,
-			local:           gateway.NewEndpoint(q.Target, q.Target),
-			remote:          gateway.NewEndpoint(q.Caller(), q.Target),
+			local:           gateway.NewEndpoint(q.Target(), q.Target()),
+			remote:          gateway.NewEndpoint(q.Caller(), q.Target()),
 		}
 
 		actx, cancel := context.WithTimeout(context.Background(), acceptTimeout)
@@ -35,9 +35,9 @@ func (mod *Module) OpNodeRoute(ctx *astral.Context, q *ops.Query, args opNodeRou
 	}
 
 	// forward: accept caller side, dial target side, pipe
-	inConn := q.Accept()
+	inConn := q.AcceptRaw()
 	nextQ := query.New(mod.node.Identity(), args.Target, gateway.MethodNodeRoute, query.Args{"target": args.Target})
-	outConn, err := query.Route(ctx, mod.node, astral.Launch(nextQ))
+	outConn, err := query.RouteInFlight(ctx, mod.node, astral.Launch(nextQ))
 	if err != nil {
 		inConn.Close()
 		return err

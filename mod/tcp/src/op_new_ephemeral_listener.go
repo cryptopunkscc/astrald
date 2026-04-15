@@ -3,7 +3,7 @@ package tcp
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 type opNewEphemeralListenerArgs struct {
@@ -12,8 +12,8 @@ type opNewEphemeralListenerArgs struct {
 	Out  string `query:"optional"`
 }
 
-func (mod *Module) OpNewEphemeralListener(ctx *astral.Context, q *ops.Query, args opNewEphemeralListenerArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpNewEphemeralListener(ctx *astral.Context, q *routing.IncomingQuery, args opNewEphemeralListenerArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	err = mod.CreateEphemeralListener(ctx, args.Port, mod.acceptAll)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/lib/ops"
+	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
 const DefaultTokenDuration = astral.Duration(time.Hour * 24 * 365)       // 1 year
@@ -17,8 +17,8 @@ type opCreateTokenArgs struct {
 	Out      string          `query:"optional"`
 }
 
-func (mod *Module) OpCreateToken(ctx *astral.Context, q *ops.Query, args opCreateTokenArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithOutputFormat(args.Out))
+func (mod *Module) OpCreateToken(ctx *astral.Context, q *routing.IncomingQuery, args opCreateTokenArgs) (err error) {
+	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
 	if args.ID.IsZero() {
