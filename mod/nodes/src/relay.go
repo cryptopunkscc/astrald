@@ -66,7 +66,6 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 			return query.RejectWithCode(errCode)
 		}
 
-		conn.swapState(stateRouting, stateOpen)
 		go func() {
 			io.Copy(w, conn)
 			w.Close()

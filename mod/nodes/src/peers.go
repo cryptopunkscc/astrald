@@ -190,17 +190,16 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 }
 
 func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
-	// find the connection
 	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	// make sure we sent the query to the identity that sent the response
 	expected := conn.RemoteIdentity
 	if conn.relayID != nil {
 		expected = conn.relayID
 	}
+
 	if !expected.IsEqual(s.RemoteIdentity()) {
 		return
 	}
