@@ -19,7 +19,7 @@ func (client *Client) Create(ctx *astral.Context, repo string, alloc int) (objec
 	}
 
 	// send the query
-	ch, err := client.queryCh(ctx, objects.ActionCreate, args)
+	ch, err := client.queryCh(ctx, objects.MethodCreate, args)
 	if err != nil {
 		return nil, err
 	}
