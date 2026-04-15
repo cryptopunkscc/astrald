@@ -178,8 +178,8 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 		return
 	}
 
-	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
 	conn.swapState(stateRouting, stateOpen)
+	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
 
 	go func() {
 		io.Copy(w, conn)
