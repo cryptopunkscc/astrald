@@ -24,10 +24,6 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		switch e := o.Data.(type) {
 		case *nodes.StreamCreatedEvent:
 			if e.StreamCount == 1 && slices.ContainsFunc(mod.LocalSwarm(), e.RemoteIdentity.IsEqual) {
-				go mod.pushActiveContract(e.RemoteIdentity)
-				go mod.syncSiblings(e.RemoteIdentity)
-				go mod.pushAppContractsToSibling(e.RemoteIdentity)
-
 				mod.Scheduler.Schedule(mod.NewSyncNodesTask(e.RemoteIdentity))
 				drop.Accept(false)
 			}
@@ -73,13 +69,4 @@ func (mod *Module) receiveSignedContract(sender *astral.Identity, signed *auth.S
 	}()
 
 	return nil
-}
-
-func (mod *Module) pushActiveContract(remoteIdentity *astral.Identity) {
-	contract := mod.ActiveContract()
-	if contract == nil {
-		return
-	}
-
-	mod.Objects.Push(mod.ctx, remoteIdentity, contract)
 }

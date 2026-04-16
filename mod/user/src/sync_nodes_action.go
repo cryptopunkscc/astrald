@@ -25,12 +25,18 @@ func (a *SyncNodesAction) String() string {
 func (a *SyncNodesAction) Run(ctx *astral.Context) error {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
-	err := a.mod.syncAlias(ctx, a.remoteIdentity)
+	remoteIdentity := a.remoteIdentity
+
+	err := a.mod.syncAlias(ctx, remoteIdentity)
 	if err != nil {
-		a.mod.log.Error("error syncing alias of %v: %v", a.remoteIdentity, err)
+		a.mod.log.Error("error syncing alias of %v: %v", remoteIdentity, err)
 	}
 
-	err = a.mod.syncAssets(ctx, a.remoteIdentity)
+	a.mod.pushActiveContract(ctx, remoteIdentity)
+	a.mod.syncSiblings(ctx, remoteIdentity)
+	a.mod.syncApps(ctx, remoteIdentity)
+
+	err = a.mod.syncAssets(ctx, remoteIdentity)
 	if err != nil {
 		a.mod.log.Error("error syncing assets of %v: %v", a.remoteIdentity, err)
 	}

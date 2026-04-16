@@ -6,7 +6,6 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -105,33 +104,7 @@ func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err 
 	return mod.Dir.SetAlias(nodeID, string(info.NodeAlias))
 }
 
-func (mod *Module) pushAppContractsToSibling(sibling *astral.Identity) {
-	contracts, err := mod.Auth.
-		SignedContracts().
-		WithSubject(mod.node.Identity()).
-		WithAction(&nodes.RelayForAction{}).
-		Find(mod.ctx)
-	if err != nil {
-		mod.log.Error("pushAppContracts: %v", err)
-		return
-	}
-
-	for _, contract := range contracts {
-		mod.Objects.Push(mod.ctx, sibling, contract)
-	}
-}
-
-func (mod *Module) PushToLocalSwarm(ctx *astral.Context, obj astral.Object) {
-	for _, sib := range mod.LocalSwarm() {
-		if sib.IsEqual(mod.node.Identity()) {
-			continue
-		}
-		sib := sib
-		go mod.Objects.Push(ctx, sib, obj)
-	}
-}
-
-func (mod *Module) syncSiblings(with *astral.Identity) {
+func (mod *Module) syncSiblings(ctx *astral.Context, with *astral.Identity) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return
@@ -152,7 +125,46 @@ func (mod *Module) syncSiblings(with *astral.Identity) {
 			continue
 		}
 
-		mod.Objects.Push(mod.ctx, with, contract)
+		mod.Objects.Push(ctx, with, contract)
 	}
 
+}
+
+func (mod *Module) syncApps(ctx *astral.Context, with *astral.Identity) {
+	apps, err := mod.Apphost.LocalApps()
+	if err != nil {
+		mod.log.Error("syncApps: error getting local apps: %v", err)
+		return
+	}
+
+	for _, app := range apps {
+		contracts, err := mod.Auth.SignedContracts().WithIssuer(app.AppID).Find(ctx)
+		if err != nil {
+			mod.log.Error("syncApps: error getting contracts: %v", err)
+			return
+		}
+
+		for _, contract := range contracts {
+			mod.Objects.Push(ctx, with, contract)
+		}
+	}
+}
+
+func (mod *Module) PushToLocalSwarm(ctx *astral.Context, obj astral.Object) {
+	for _, sib := range mod.LocalSwarm() {
+		if sib.IsEqual(mod.node.Identity()) {
+			continue
+		}
+		sib := sib
+		mod.Objects.Push(ctx, sib, obj)
+	}
+}
+
+func (mod *Module) pushActiveContract(ctx *astral.Context, remoteIdentity *astral.Identity) {
+	contract := mod.ActiveContract()
+	if contract == nil {
+		return
+	}
+
+	mod.Objects.Push(ctx, remoteIdentity, contract)
 }
