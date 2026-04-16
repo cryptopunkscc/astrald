@@ -56,11 +56,11 @@ var _ astral.Object = &OpUpdate{}
 func (s OpUpdate) ObjectType() string { return "mod.user.op_update" }
 
 func (s OpUpdate) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(s).WriteTo(w)
+	return astral.Objectify(&s).WriteTo(w)
 }
 
 func (s *OpUpdate) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(s).ReadFrom(r)
+	return astral.Objectify(s).ReadFrom(r)
 }
 
 func init() {

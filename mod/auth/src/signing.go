@@ -47,7 +47,10 @@ func (mod *Module) SignContract(ctx *astral.Context, signed *auth.SignedContract
 func (mod *Module) signAs(ctx *astral.Context, key *crypto.PublicKey, c *auth.Contract) (*crypto.Signature, error) {
 	// todo: We could check what schemas are available for the given key.
 	if signer, err := mod.Crypto.ObjectSigner(key); err == nil {
-		return signer.SignObject(ctx, c)
+		sig, err := signer.SignObject(ctx, c)
+		if err == nil {
+			return sig, nil
+		}
 	}
 
 	if signer, err := mod.Crypto.TextObjectSigner(key); err == nil {

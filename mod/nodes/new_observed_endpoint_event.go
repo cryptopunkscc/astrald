@@ -14,11 +14,11 @@ func (m NewObservedEndpointEvent) ObjectType() string {
 }
 
 func (m NewObservedEndpointEvent) WriteTo(w io.Writer) (int64, error) {
-	return astral.Struct(m).WriteTo(w)
+	return astral.Objectify(&m).WriteTo(w)
 }
 
 func (m *NewObservedEndpointEvent) ReadFrom(r io.Reader) (int64, error) {
-	return astral.Struct(m).ReadFrom(r)
+	return astral.Objectify(m).ReadFrom(r)
 }
 
 func (m NewObservedEndpointEvent) MarshalJSON() ([]byte, error) {

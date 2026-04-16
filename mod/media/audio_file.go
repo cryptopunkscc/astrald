@@ -3,8 +3,9 @@ package media
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type AudioFile struct {
@@ -25,11 +26,11 @@ var _ astral.Object = &AudioFile{}
 func (AudioFile) ObjectType() string { return "mod.media.audio_file" }
 
 func (f AudioFile) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(f).WriteTo(w)
+	return astral.Objectify(&f).WriteTo(w)
 }
 
 func (f *AudioFile) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(f).ReadFrom(r)
+	return astral.Objectify(f).ReadFrom(r)
 }
 
 func (f AudioFile) MarshalText() (text []byte, err error) {

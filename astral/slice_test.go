@@ -16,11 +16,11 @@ type TestObjectA struct {
 func (t TestObjectA) ObjectType() string { return "test.object.a" }
 
 func (t TestObjectA) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(t).WriteTo(w)
+	return astral.Objectify(&t).WriteTo(w)
 }
 
 func (t *TestObjectA) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(t).ReadFrom(r)
+	return astral.Objectify(t).ReadFrom(r)
 }
 
 // --- test-only custom object B ---
@@ -31,11 +31,11 @@ type TestObjectB struct {
 func (t TestObjectB) ObjectType() string { return "test.object.b" }
 
 func (t TestObjectB) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(t).WriteTo(w)
+	return astral.Objectify(&t).WriteTo(w)
 }
 
 func (t *TestObjectB) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(t).ReadFrom(r)
+	return astral.Objectify(t).ReadFrom(r)
 }
 
 func P[T any](v T) *T {

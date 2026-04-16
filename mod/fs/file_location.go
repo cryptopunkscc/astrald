@@ -22,11 +22,11 @@ func (fn FileLocation) ObjectType() string {
 }
 
 func (fn FileLocation) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(fn).WriteTo(w)
+	return astral.Objectify(&fn).WriteTo(w)
 }
 
 func (fn *FileLocation) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(fn).ReadFrom(r)
+	return astral.Objectify(fn).ReadFrom(r)
 }
 
 // json

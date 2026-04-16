@@ -22,11 +22,11 @@ func (RepositoryInfo) ObjectType() string {
 }
 
 func (info RepositoryInfo) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(info).WriteTo(w)
+	return astral.Objectify(&info).WriteTo(w)
 }
 
 func (info *RepositoryInfo) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(info).ReadFrom(r)
+	return astral.Objectify(info).ReadFrom(r)
 }
 
 // json

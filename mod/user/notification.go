@@ -1,8 +1,9 @@
 package user
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type Notification struct {
@@ -16,11 +17,11 @@ func (n Notification) ObjectType() string {
 }
 
 func (n Notification) WriteTo(w io.Writer) (int64, error) {
-	return astral.Struct(n).WriteTo(w)
+	return astral.Objectify(&n).WriteTo(w)
 }
 
 func (n *Notification) ReadFrom(r io.Reader) (int64, error) {
-	return astral.Struct(n).ReadFrom(r)
+	return astral.Objectify(n).ReadFrom(r)
 }
 
 func init() {

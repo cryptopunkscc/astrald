@@ -19,11 +19,11 @@ func (ArchiveDescriptor) ObjectType() string {
 }
 
 func (d ArchiveDescriptor) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(d).WriteTo(w)
+	return astral.Objectify(&d).WriteTo(w)
 }
 
 func (d *ArchiveDescriptor) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(d).ReadFrom(r)
+	return astral.Objectify(d).ReadFrom(r)
 }
 
 func (d *ArchiveDescriptor) String() string {

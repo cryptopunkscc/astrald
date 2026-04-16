@@ -1,8 +1,9 @@
 package nearby
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
 	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type Status struct {
@@ -13,11 +14,11 @@ type Status struct {
 func (Status) ObjectType() string { return "mod.nearby.status" }
 
 func (s Status) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(s).WriteTo(w)
+	return astral.Objectify(&s).WriteTo(w)
 }
 
 func (s *Status) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(s).ReadFrom(r)
+	return astral.Objectify(s).ReadFrom(r)
 }
 
 func init() {

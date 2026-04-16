@@ -18,11 +18,11 @@ type EventFileChanged struct {
 func (EventFileChanged) ObjectType() string { return "astrald.mod.fs.events.file_changed" }
 
 func (e EventFileChanged) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(e).WriteTo(w)
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e *EventFileChanged) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(e).ReadFrom(r)
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 func (e EventFileChanged) String() string {
@@ -39,11 +39,11 @@ type EventFileAdded struct {
 func (EventFileAdded) ObjectType() string { return "astrald.mod.fs.events.file_added" }
 
 func (e EventFileAdded) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(e).WriteTo(w)
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e *EventFileAdded) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(e).ReadFrom(r)
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 func (e EventFileAdded) String() string {
@@ -60,11 +60,11 @@ type EventFileRemoved struct {
 func (EventFileRemoved) ObjectType() string { return "astrald.mod.fs.events.file_removed" }
 
 func (e EventFileRemoved) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(e).WriteTo(w)
+	return astral.Objectify(&e).WriteTo(w)
 }
 
 func (e *EventFileRemoved) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(e).ReadFrom(r)
+	return astral.Objectify(e).ReadFrom(r)
 }
 
 func (e EventFileRemoved) String() string {

@@ -23,11 +23,11 @@ var _ astral.Object = &AccessToken{}
 func (at AccessToken) ObjectType() string { return "astrald.mod.apphost.access_token" }
 
 func (at AccessToken) WriteTo(w io.Writer) (n int64, err error) {
-	return astral.Struct(at).WriteTo(w)
+	return astral.Objectify(&at).WriteTo(w)
 }
 
 func (at *AccessToken) ReadFrom(r io.Reader) (n int64, err error) {
-	return astral.Struct(at).ReadFrom(r)
+	return astral.Objectify(at).ReadFrom(r)
 }
 
 // json
