@@ -195,12 +195,12 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 		return
 	}
 
-	expected := conn.RemoteIdentity
+	expectedSource := conn.RemoteIdentity
 	if conn.relayID != nil {
-		expected = conn.relayID
+		expectedSource = conn.relayID
 	}
 
-	if !expected.IsEqual(s.RemoteIdentity()) {
+	if !expectedSource.IsEqual(s.RemoteIdentity()) {
 		return
 	}
 
