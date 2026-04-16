@@ -6,9 +6,10 @@ import (
 )
 
 const (
-	ModuleName = "auth"
-	DBPrefix   = "auth__"
-	OpIndex    = "auth.index"
+	ModuleName         = "auth"
+	DBPrefix           = "auth__"
+	MethodIndex        = "auth.index"
+	MethodSignContract = "auth.sign_contract"
 )
 
 type ContractQueryBuilder interface {

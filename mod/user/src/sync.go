@@ -150,6 +150,15 @@ func (mod *Module) syncApps(ctx *astral.Context, with *astral.Identity) {
 	}
 }
 
+func (mod *Module) pushActiveContract(ctx *astral.Context, remoteIdentity *astral.Identity) {
+	contract := mod.ActiveContract()
+	if contract == nil {
+		return
+	}
+
+	mod.Objects.Push(ctx, remoteIdentity, contract)
+}
+
 func (mod *Module) PushToLocalSwarm(ctx *astral.Context, obj astral.Object) {
 	for _, sib := range mod.LocalSwarm() {
 		if sib.IsEqual(mod.node.Identity()) {
@@ -158,13 +167,4 @@ func (mod *Module) PushToLocalSwarm(ctx *astral.Context, obj astral.Object) {
 		sib := sib
 		mod.Objects.Push(ctx, sib, obj)
 	}
-}
-
-func (mod *Module) pushActiveContract(ctx *astral.Context, remoteIdentity *astral.Identity) {
-	contract := mod.ActiveContract()
-	if contract == nil {
-		return
-	}
-
-	mod.Objects.Push(ctx, remoteIdentity, contract)
 }

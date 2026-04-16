@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Client) IndexContract(ctx *astral.Context, objectID *astral.ObjectID) error {
-	ch, err := c.queryCh(ctx, auth.OpIndex, query.Args{"id": objectID})
+	ch, err := c.queryCh(ctx, auth.MethodIndex, query.Args{"id": objectID})
 	if err != nil {
 		return err
 	}
