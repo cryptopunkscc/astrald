@@ -35,6 +35,7 @@ func (mod *Module) String() string {
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	go mod.indexer(ctx)
+	<-ctx.Done()
 	return nil
 }
 

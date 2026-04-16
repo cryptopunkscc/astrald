@@ -17,9 +17,12 @@ func (client *Client) SignAppContract(ctx *astral.Context, contract *auth.Contra
 		return
 	}
 	defer ch.Close()
-	if err = ch.Send(contract); err != nil {
+
+	err = ch.Send(contract)
+	if err != nil {
 		return
 	}
+
 	err = ch.Switch(channel.Expect(&signed), channel.PassErrors)
 	return
 }

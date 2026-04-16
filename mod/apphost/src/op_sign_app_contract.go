@@ -17,7 +17,8 @@ func (mod *Module) OpSignAppContract(ctx *astral.Context, q *routing.IncomingQue
 	defer ch.Close()
 
 	return ch.Switch(func(c *auth.Contract) error {
-		signed, err := mod.Auth.SignContract(ctx, &auth.SignedContract{Contract: c})
+		signed := &auth.SignedContract{Contract: c}
+		err := mod.Auth.SignContract(ctx, signed)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
@@ -31,6 +32,8 @@ func (mod *Module) OpSignAppContract(ctx *astral.Context, q *routing.IncomingQue
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
+
+		go mod.User.PushToLocalSwarm(mod.ctx, signed)
 
 		mod.log.Logv(1, "signed app contract (%v)", signed.Issuer)
 		return ch.Send(signed)

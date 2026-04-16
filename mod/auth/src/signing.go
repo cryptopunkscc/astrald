@@ -23,28 +23,25 @@ func (mod *Module) SignIssuer(ctx *astral.Context, signed *auth.SignedContract) 
 }
 
 func (mod *Module) SignSubject(ctx *astral.Context, signed *auth.SignedContract) (*crypto.Signature, error) {
-	if signed.SubjecSig != nil {
+	if signed.SubjectSig != nil {
 		return nil, auth.ErrAlreadySigned
 	}
 	sig, err := mod.signAs(ctx, secp256k1.FromIdentity(signed.Subject), signed.Contract)
 	if err != nil {
 		return nil, fmt.Errorf("sign as subject: %w", err)
 	}
-	signed.SubjecSig = sig
+	signed.SubjectSig = sig
 	return sig, nil
 }
 
-func (mod *Module) SignContract(ctx *astral.Context, signed *auth.SignedContract) (*auth.SignedContract, error) {
+func (mod *Module) SignContract(ctx *astral.Context, signed *auth.SignedContract) error {
 	_, err := mod.SignIssuer(ctx, signed)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	_, err = mod.SignSubject(ctx, signed)
-	if err != nil {
-		return nil, err
-	}
-	return signed, nil
+	return err
 }
 
 func (mod *Module) signAs(ctx *astral.Context, key *crypto.PublicKey, c *auth.Contract) (*crypto.Signature, error) {
@@ -71,10 +68,10 @@ func (mod *Module) VerifyIssuer(sc *auth.SignedContract) error {
 }
 
 func (mod *Module) VerifySubject(sc *auth.SignedContract) error {
-	if sc.SubjecSig == nil {
+	if sc.SubjectSig == nil {
 		return errors.New("subject signature is missing")
 	}
-	if err := mod.verifySig(secp256k1.FromIdentity(sc.Subject), sc.SubjecSig, sc.Contract); err != nil {
+	if err := mod.verifySig(secp256k1.FromIdentity(sc.Subject), sc.SubjectSig, sc.Contract); err != nil {
 		return fmt.Errorf("subject sig: %w", err)
 	}
 	return nil

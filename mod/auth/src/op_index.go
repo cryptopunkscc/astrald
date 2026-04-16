@@ -24,7 +24,7 @@ func (mod *Module) OpIndex(ctx *astral.Context, q *routing.IncomingQuery, args o
 
 	signed, ok := object.(*auth.SignedContract)
 	if !ok {
-		return ch.Send(auth.ErrInvalidContract)
+		return ch.Send(astral.Err(auth.ErrInvalidContract))
 	}
 
 	err = mod.IndexContract(ctx, signed)

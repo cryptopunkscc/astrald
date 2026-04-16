@@ -9,8 +9,8 @@ import (
 
 type SignedContract struct {
 	*Contract
-	IssuerSig *crypto.Signature
-	SubjecSig *crypto.Signature
+	IssuerSig  *crypto.Signature
+	SubjectSig *crypto.Signature
 }
 
 var _ astral.Object = &SignedContract{}

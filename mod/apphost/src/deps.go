@@ -10,5 +10,8 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 		return
 	}
 
+	// optional — apphost can run without user module
+	core.Inject(mod.node, &mod.OptionalDeps)
+
 	return
 }

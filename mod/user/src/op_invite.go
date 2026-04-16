@@ -36,11 +36,11 @@ func (mod *Module) OpInvite(ctx *astral.Context, q *routing.IncomingQuery, args 
 	// check contract viability
 	switch {
 	case contract.Subject.IsZero():
-		return ch.Send(auth.ErrInvalidContract)
+		return ch.Send(astral.Err(auth.ErrInvalidContract))
 	case !contract.Subject.IsEqual(mod.node.Identity()):
-		return ch.Send(auth.ErrInvalidContract)
+		return ch.Send(astral.Err(auth.ErrInvalidContract))
 	case contract.ExpiresAt.Time().Before(time.Now().Add(minimalContractLength)):
-		return ch.Send(auth.ErrInvalidContract)
+		return ch.Send(astral.Err(auth.ErrInvalidContract))
 	}
 
 	approved := mod.GetSwarmInvitePolicy()(q.Caller(), contract)

@@ -1,9 +1,11 @@
 package apphost
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"gorm.io/gorm"
-	"time"
+	"gorm.io/gorm/clause"
 )
 
 type DB struct {
@@ -33,4 +35,13 @@ func (db *DB) FindAccessToken(token string) (at *dbAccessToken, err error) {
 		Where("token = ?", token).
 		First(&at).Error
 	return
+}
+
+func (db *DB) CreateLocalApp(appID, hostID *astral.Identity) error {
+	row := &dbLocalApp{AppID: appID, HostID: hostID, InstalledAt: time.Now()}
+	return db.Clauses(clause.OnConflict{DoNothing: true}).Create(row).Error
+}
+
+func (db *DB) ListLocalApps() (list []*dbLocalApp, err error) {
+	return list, db.Find(&list).Error
 }

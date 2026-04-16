@@ -59,7 +59,7 @@ func (db *DB) storeSignedContract(sc *auth.SignedContract) error {
 		return fmt.Errorf("encode issuer signature: %w", err)
 	}
 
-	subjectSig, err := encodeSignature(sc.SubjecSig)
+	subjectSig, err := encodeSignature(sc.SubjectSig)
 	if err != nil {
 		return fmt.Errorf("encode subject signature: %w", err)
 	}

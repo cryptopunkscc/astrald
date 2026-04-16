@@ -47,7 +47,7 @@ func (mod *Module) OpClaim(ctx *astral.Context, q *routing.IncomingQuery, args o
 		return ch.Send(astral.Err(err))
 	}
 
-	go mod.pushContractToSiblings(signed)
+	go mod.PushToLocalSwarm(mod.ctx, signed)
 
 	mod.log.Info("signed contract with %v", nodeID)
 	return ch.Send(signed)

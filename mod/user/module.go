@@ -29,4 +29,5 @@ type Module interface {
 	LocalSwarm() (list []*astral.Identity)
 	NewMaintainLinkTask(target *astral.Identity) MaintainLinkTask
 	NewSyncNodesTask(remoteIdentity *astral.Identity) SyncNodesAction
+	PushToLocalSwarm(ctx *astral.Context, obj astral.Object)
 }

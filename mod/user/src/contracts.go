@@ -120,7 +120,7 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 	}
 
 	signed.IssuerSig = issuerSig
-	signed.SubjecSig = subjectSig
+	signed.SubjectSig = subjectSig
 
 	if err = mod.Auth.VerifySubject(signed); err != nil {
 		return nil, fmt.Errorf("subject sig verification: %w", err)

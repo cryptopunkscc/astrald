@@ -6,7 +6,6 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
-	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/mod/user"
@@ -122,13 +121,13 @@ func (mod *Module) pushAppContractsToSibling(sibling *astral.Identity) {
 	}
 }
 
-func (mod *Module) pushContractToSiblings(signed *auth.SignedContract) {
-	for _, sib := range mod.getLinkedSibs() {
-		if sib.IsEqual(signed.Subject) {
+func (mod *Module) PushToLocalSwarm(ctx *astral.Context, obj astral.Object) {
+	for _, sib := range mod.LocalSwarm() {
+		if sib.IsEqual(mod.node.Identity()) {
 			continue
 		}
 		sib := sib
-		go mod.Objects.Push(mod.ctx, sib, signed)
+		go mod.Objects.Push(ctx, sib, obj)
 	}
 }
 

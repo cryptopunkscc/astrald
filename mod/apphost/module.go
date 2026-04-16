@@ -13,14 +13,16 @@ const (
 	MethodCreateToken     = "apphost.create_token"
 	MethodListTokens      = "apphost.list_tokens"
 	MethodRegisterHandler = "apphost.register_handler"
-	MethodSignAppContract = "apphost.sign_app_contract"
 	MethodCancel          = "apphost.cancel"
 	MethodBind            = "apphost.bind"
 	MethodNewAppContract  = "apphost.new_app_contract"
+	MethodSignAppContract = "apphost.sign_app_contract"
+	MethodInstallApp      = "apphost.install_app"
 )
 
 type Module interface {
 	CreateAccessToken(*astral.Identity, astral.Duration) (*AccessToken, error)
+	LocalApps() ([]*App, error)
 }
 
 var ErrProtocolError = errors.New("protocol error")

@@ -1,7 +1,7 @@
 package auth
 
-import "github.com/cryptopunkscc/astrald/astral"
+import "errors"
 
-var ErrInvalidContract = astral.NewError("invalid contract")
-var ErrContractExpired = astral.NewError("contract expired")
-var ErrAlreadySigned = astral.NewError("already signed")
+var ErrInvalidContract = errors.New("invalid contract")
+var ErrContractExpired = errors.New("contract expired")
+var ErrAlreadySigned = errors.New("already signed")

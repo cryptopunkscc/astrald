@@ -41,7 +41,7 @@ type Module interface {
 	SignSubject(ctx *astral.Context, contract *SignedContract) (*crypto.Signature, error)
 
 	// SignContract signs the contract with both issuer and subject private keys if needed.
-	SignContract(ctx *astral.Context, contract *SignedContract) (*SignedContract, error)
+	SignContract(ctx *astral.Context, contract *SignedContract) error
 
 	// IndexContract verifies and adds a signed contract to the auth index.
 	IndexContract(ctx *astral.Context, contract *SignedContract) error

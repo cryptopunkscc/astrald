@@ -12,6 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/mod/user"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -23,8 +24,14 @@ type Deps struct {
 	Objects objects.Module
 }
 
+type OptionalDeps struct {
+	User user.Module
+}
+
 type Module struct {
 	Deps
+	OptionalDeps
+	ctx    *astral.Context
 	config Config
 	node   astral.Node
 	log    *log.Logger
@@ -38,6 +45,8 @@ type Module struct {
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
+	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
+
 	var wg sync.WaitGroup
 	var workerCount = mod.config.Workers
 
@@ -68,6 +77,18 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 func (mod *Module) Router() astral.Router {
 	return &mod.router
+}
+
+func (mod *Module) LocalApps() ([]*apphost.App, error) {
+	rows, err := mod.db.ListLocalApps()
+	if err != nil {
+		return nil, err
+	}
+	list := make([]*apphost.App, len(rows))
+	for i, r := range rows {
+		list[i] = &apphost.App{AppID: r.AppID, HostID: r.HostID, InstalledAt: astral.Time(r.InstalledAt)}
+	}
+	return list, nil
 }
 
 func (mod *Module) String() string {
