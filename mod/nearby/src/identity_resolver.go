@@ -17,13 +17,13 @@ func (mod *Module) ResolveIdentity(s string) (*astral.Identity, error) {
 	}
 
 	for _, v := range mod.Cache().Clone() {
-		if v.Identity == nil {
+		if v.GetIdentity() == nil {
 			continue
 		}
 
 		alias, ok := astral.First[*dir.Alias](v.Status.Attachments.Objects())
 		if ok && alias != nil && alias.String() == s {
-			return v.Identity, nil
+			return v.GetIdentity(), nil
 		}
 
 	}

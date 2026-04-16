@@ -12,11 +12,11 @@ func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity
 	var list []*nodes.EndpointWithTTL
 
 	for _, v := range mod.Cache().Clone() {
-		if v.Identity == nil {
+		if v.GetIdentity() == nil {
 			continue
 		}
 
-		if !v.Identity.IsEqual(nodeID) {
+		if !v.GetIdentity().IsEqual(nodeID) {
 			continue
 		}
 

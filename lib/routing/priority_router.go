@@ -46,7 +46,7 @@ func (router *PriorityRouter) RouteQuery(ctx *astral.Context, q *astral.InFlight
 		}
 	}
 
-	return query.RouteNotFound(router, errs...)
+	return query.RouteNotFound(router, errors.Join(errs...))
 }
 
 func (router *PriorityRouter) Add(r astral.Router, prio int) error {

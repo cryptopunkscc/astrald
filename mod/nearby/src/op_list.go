@@ -17,7 +17,7 @@ func (mod *Module) OpList(ctx *astral.Context, q *routing.IncomingQuery, args op
 
 	for _, v := range mod.Cache().Clone() {
 		err = ch.Send(&nearby.Status{
-			Identity:    v.Identity,
+			Identity:    mod.ResolveStatus(v.Status),
 			Attachments: v.Status.Attachments,
 		})
 		if err != nil {

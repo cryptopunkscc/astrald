@@ -37,6 +37,15 @@ type cache struct {
 	Status    *nearby.StatusMessage
 }
 
+func (c *cache) GetIdentity() *astral.Identity {
+	profile := astral.SelectByType[*nearby.PublicProfile](c.Status.Attachments.Objects())
+	if len(profile) == 0 {
+		return nil
+	}
+
+	return profile[0].NodeID
+}
+
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 

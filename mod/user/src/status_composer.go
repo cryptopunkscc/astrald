@@ -15,7 +15,12 @@ func (mod *Module) ComposeStatus(a nearby.Composition) {
 		if c := mod.ActiveContract(); c != nil {
 			a.Attach(c)
 		} else {
+			alias, _ := mod.Dir.GetAlias(mod.node.Identity())
 			a.Attach(nearby.NewFlag("claimable"))
+			a.Attach(&nearby.PublicProfile{
+				NodeID:    mod.node.Identity(),
+				NodeAlias: alias,
+			})
 		}
 
 	case nearby.ModeStealth:
