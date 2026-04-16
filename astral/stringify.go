@@ -1,4 +1,4 @@
-package log
+package astral
 
 import (
 	"fmt"
