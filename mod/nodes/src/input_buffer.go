@@ -5,10 +5,6 @@ import (
 	"sync"
 )
 
-// InputBuffer is a receive-side buffer for a session.
-// Non-blocking: Read returns ErrBufferEmpty immediately when no data is available.
-// onRead is called after each successful read (while the lock is held) so the
-// caller can inject acknowledgement logic without the buffer knowing about frames.
 type InputBuffer struct {
 	mu     sync.Mutex
 	rsize  int
@@ -16,11 +12,10 @@ type InputBuffer struct {
 	rbuf   [][]byte
 	ready  chan struct{}
 	closed bool
-	onRead func(int)
 }
 
-func NewInputBuffer(size int, onRead func(int)) *InputBuffer {
-	return &InputBuffer{rsize: size, onRead: onRead}
+func NewInputBuffer(size int) *InputBuffer {
+	return &InputBuffer{rsize: size}
 }
 
 // Push appends a payload chunk to the buffer.
@@ -61,10 +56,6 @@ func (b *InputBuffer) Read(p []byte) (n int, err error) {
 		b.rbuf[0] = chunk
 	} else {
 		b.rbuf = b.rbuf[1:]
-	}
-
-	if b.onRead != nil {
-		b.onRead(n)
 	}
 
 	return
