@@ -1,0 +1,76 @@
+package nodes
+
+import (
+	"errors"
+	"sync"
+)
+
+// OutputBuffer is a send-side flow-control window for a session.
+// Non-blocking: Write returns ErrBufferEmpty immediately when no window space is available.
+// Grow is called externally (by the mux on incoming Read frames) to expand the window.
+type OutputBuffer struct {
+	mu     sync.Mutex
+	wsize  int
+	ready  chan struct{}
+	closed bool
+}
+
+func NewOutputBuffer() *OutputBuffer {
+	return &OutputBuffer{}
+}
+
+// Write claims up to min(wsize, len(p), maxChunk) bytes from the window and returns the slice.
+// Returns (nil, *ErrBufferEmpty) when the window is empty.
+// Returns (nil, err) when the buffer is closed.
+func (b *OutputBuffer) Write(p []byte, maxChunk int) ([]byte, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.closed {
+		return nil, errors.New("buffer closed")
+	}
+	if b.wsize == 0 {
+		return nil, &ErrBufferEmpty{ch: b.readyCh()}
+	}
+
+	n := min(b.wsize, len(p), maxChunk)
+	b.wsize -= n
+	return p[:n], nil
+}
+
+// Size returns the current available window.
+func (b *OutputBuffer) Size() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.wsize
+}
+
+// Grow increases the remote window by n and wakes any waiting writers.
+func (b *OutputBuffer) Grow(n int) {
+	b.mu.Lock()
+	b.wsize += n
+	b.signal()
+	b.mu.Unlock()
+}
+
+// Close marks the buffer closed and unblocks all waiters.
+func (b *OutputBuffer) Close() {
+	b.mu.Lock()
+	b.closed = true
+	b.signal()
+	b.mu.Unlock()
+}
+
+func (b *OutputBuffer) readyCh() chan struct{} {
+	if b.ready == nil {
+		b.ready = make(chan struct{})
+	}
+	return b.ready
+}
+
+func (b *OutputBuffer) signal() {
+	if b.ready != nil {
+		close(b.ready)
+		b.ready = nil
+	}
+}
