@@ -1,7 +1,6 @@
 package routing
 
 import (
-	"errors"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -16,7 +15,7 @@ type NilRouter struct {
 
 func (r *NilRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	if r.Soft {
-		return query.RouteNotFound(r, errors.New("nil router"))
+		return query.RouteNotFound()
 	}
 	return query.Reject()
 }

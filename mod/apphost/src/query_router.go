@@ -31,7 +31,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 		}
 	}
 
-	return query.RouteNotFound(mod)
+	return query.RouteNotFound()
 }
 
 func (mod *Module) removeHandlersByToken(token astral.Nonce) error {

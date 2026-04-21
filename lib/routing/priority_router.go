@@ -13,6 +13,7 @@ import (
 var _ astral.Router = &PriorityRouter{}
 
 type PriorityRouter struct {
+	Name    string
 	entries sig.Set[*Entry]
 }
 
@@ -27,8 +28,8 @@ type Entry struct {
 	Prio   int
 }
 
-func NewPriorityRouter() *PriorityRouter {
-	return &PriorityRouter{}
+func NewPriorityRouter(name string) *PriorityRouter {
+	return &PriorityRouter{Name: name}
 }
 
 func (router *PriorityRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (rw io.WriteCloser, err error) {
@@ -46,7 +47,7 @@ func (router *PriorityRouter) RouteQuery(ctx *astral.Context, q *astral.InFlight
 		}
 	}
 
-	return query.RouteNotFound(router, errors.Join(errs...))
+	return query.RouteNotFound()
 }
 
 func (router *PriorityRouter) Add(r astral.Router, prio int) error {
@@ -57,4 +58,11 @@ func (router *PriorityRouter) Add(r astral.Router, prio int) error {
 	})
 
 	return nil
+}
+
+func (router *PriorityRouter) String() string {
+	if router.Name == "" {
+		return "PriorityRouter"
+	}
+	return router.Name
 }

@@ -1,8 +1,6 @@
 package nodes
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -29,13 +27,13 @@ type relayChannel struct {
 func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	if !ctx.Identity().IsEqual(q.Caller) {
 		if err := rc.mod.sendCallerProof(ctx, q, rc.relayID); err != nil {
-			return query.RouteNotFound(rc.mod, fmt.Errorf("caller proof: %w", err))
+			return query.RouteNotFound()
 		}
 	}
 
 	conn, ok := rc.mod.peers.sessions.Set(q.Nonce, newSession(q.Nonce))
 	if !ok {
-		return query.RouteNotFound(rc.mod, errors.New("session nonce already in use"))
+		return query.RouteNotFound()
 	}
 
 	conn.RemoteIdentity = q.Target
@@ -56,7 +54,7 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 		rc.mod.relayChannels.Delete(rc.relayID.String()) // channel is broken, evict
 		conn.swapState(stateRouting, stateClosed)
 		rc.mod.peers.sessions.Delete(q.Nonce)
-		return query.RouteNotFound(rc.mod, fmt.Errorf("relay send: %w", err))
+		return query.RouteNotFound()
 	}
 
 	select {
@@ -75,7 +73,7 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 	case <-ctx.Done():
 		conn.swapState(stateRouting, stateClosed)
 		rc.mod.peers.sessions.Delete(q.Nonce)
-		return query.RouteNotFound(rc.mod, ctx.Err())
+		return query.RouteNotFound()
 	}
 }
 

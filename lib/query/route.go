@@ -58,6 +58,6 @@ func RejectWithCode(code uint8) (io.WriteCloser, error) {
 
 // RouteNotFound returns nil and an ErrRouteNotFound. r is the router that failed to route the query. errors are
 // optional and will be wrapped.
-func RouteNotFound(r astral.Router, errors ...error) (io.WriteCloser, error) {
-	return nil, astral.NewErrRouteNotFound(r, errors...)
+func RouteNotFound() (io.WriteCloser, error) {
+	return nil, astral.NewErrRouteNotFound()
 }

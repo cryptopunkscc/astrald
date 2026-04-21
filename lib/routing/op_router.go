@@ -31,7 +31,7 @@ func (router *OpRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 	route, found := router.routes.Get(routeName)
 
 	if !found {
-		return query.RouteNotFound(router)
+		return query.RouteNotFound()
 	}
 
 	return route.RouteQuery(ctx, q, w)

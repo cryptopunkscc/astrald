@@ -2,7 +2,6 @@ package apphost
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -37,7 +36,7 @@ func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.InFlightQ
 		Query:    astral.String16(q.QueryString),
 	})
 	if err != nil {
-		return query.RouteNotFound(handler, err)
+		return query.RouteNotFound()
 	}
 
 	err = ch.Switch(
@@ -46,13 +45,13 @@ func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.InFlightQ
 			return astral.NewErrRejected(uint8(msg.Code))
 		},
 		func(msg *apphost.ErrorMsg) error {
-			return astral.NewErrRouteNotFound(handler)
+			return astral.NewErrRouteNotFound()
 		},
 		func(object astral.Object) error { // catch all
-			return astral.NewErrRouteNotFound(handler, astral.NewErrUnexpectedObject(object))
+			return astral.NewErrRouteNotFound()
 		},
 		func(err error) error {
-			return astral.NewErrRouteNotFound(handler, fmt.Errorf("receive error: %v", err))
+			return astral.NewErrRouteNotFound()
 		},
 	)
 	if err != nil {

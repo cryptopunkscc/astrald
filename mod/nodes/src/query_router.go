@@ -14,12 +14,12 @@ import (
 func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (rw io.WriteCloser, err error) {
 	// check if the context allows for network queries
 	if !ctx.Zone().Is(astral.ZoneNetwork) {
-		return query.RouteNotFound(mod, astral.ErrZoneExcluded)
+		return query.RouteNotFound()
 	}
 
 	// check if we're querying ourselves
 	if q.Target.IsEqual(mod.node.Identity()) {
-		return query.RouteNotFound(mod)
+		return query.RouteNotFound()
 	}
 
 	if mod.IsPeer(q.Target) {
@@ -27,7 +27,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 		if !ctx.Identity().IsEqual(q.Caller) {
 			rc, err := mod.getRelay(ctx, q.Target)
 			if err != nil {
-				return query.RouteNotFound(mod, err)
+				return query.RouteNotFound()
 			}
 			return rc.RouteQuery(ctx, q, w)
 		}
@@ -41,7 +41,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 	// todo: there is error printed out  when calling identity that we cannot link with (e.g. other's node app)
 	select {
 	case <-ctx.Done():
-		return query.RouteNotFound(mod, ctx.Err())
+		return query.RouteNotFound()
 	case result := <-mod.linkPool.RetrieveLink(retrieveCtx, q.Target, WithStrategies(nodes.StrategyBasic, nodes.StrategyTor)):
 		if result.Err != nil {
 			mod.log.Error("retrieve link failed: %v", result.Err)
@@ -51,7 +51,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 		if !ctx.Identity().IsEqual(q.Caller) {
 			rc, err := mod.getRelay(ctx, q.Target)
 			if err != nil {
-				return query.RouteNotFound(mod, err)
+				return query.RouteNotFound()
 			}
 			return rc.RouteQuery(ctx, q, w)
 		}
@@ -62,12 +62,12 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 	// try relays
 	relayValue, ok := q.Extra.Get(nodes.ExtraRelayVia)
 	if !ok {
-		return query.RouteNotFound(mod)
+		return query.RouteNotFound()
 	}
 
 	relays, ok := relayValue.([]*astral.Identity)
 	if !ok {
-		return query.RouteNotFound(mod)
+		return query.RouteNotFound()
 	}
 
 	for _, relayID := range relays {
@@ -87,7 +87,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 		}
 	}
 
-	return query.RouteNotFound(mod)
+	return query.RouteNotFound()
 }
 
 func (mod *Module) sendCallerProof(ctx *astral.Context, q *astral.InFlightQuery, target *astral.Identity) error {

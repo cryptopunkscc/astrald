@@ -36,13 +36,13 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 
 	// are we linked?
 	if len(streams) == 0 {
-		return query.RouteNotFound(mod)
+		return query.RouteNotFound()
 	}
 
 	// prepare the connection info
 	conn, ok := mod.sessions.Set(q.Nonce, newSession(q.Nonce))
 	if !ok {
-		return query.RouteNotFound(mod, errors.New("sessionId already exists"))
+		return query.RouteNotFound()
 	}
 
 	conn.RemoteIdentity = q.Target
@@ -79,7 +79,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 	case <-ctx.Done():
 		conn.swapState(stateRouting, stateClosed)
 		mod.sessions.Delete(q.Nonce)
-		return query.RouteNotFound(mod, ctx.Err())
+		return query.RouteNotFound()
 	}
 }
 

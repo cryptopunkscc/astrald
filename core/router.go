@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"io"
 	"time"
 
@@ -29,7 +28,7 @@ type QueryPreprocessor interface {
 func NewRouter(node *Node) *Router {
 	var router = &Router{
 		node:           node,
-		PriorityRouter: routing.NewPriorityRouter(),
+		PriorityRouter: routing.NewPriorityRouter("core"),
 	}
 
 	return router
@@ -56,12 +55,12 @@ func (r *Router) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.W
 		err = p.PreprocessQuery(qm)
 		if err != nil {
 			r.node.log.Logv(2, "%v query blocked by %v: %v", q.Query, p, err)
-			return query.RouteNotFound(r, err)
+			return query.RouteNotFound()
 		}
 
 		// check if the query was blocked
 		if err := qm.blocked.Get(); err != nil {
-			return query.RouteNotFound(r, err)
+			return query.RouteNotFound()
 		}
 	}
 
@@ -88,7 +87,7 @@ func (r *Router) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.W
 func (r *Router) routeQuery(ctx *astral.Context, q *astral.InFlightQuery, src io.WriteCloser) (w io.WriteCloser, err error) {
 	c, ok := r.conns.Set(q.Nonce, newConn(r, q))
 	if !ok {
-		return query.RouteNotFound(r, errors.New("routing cycle not allowed"))
+		return query.RouteNotFound()
 	}
 	c.src = newWriter(c, src)
 	c.mu.Lock()
