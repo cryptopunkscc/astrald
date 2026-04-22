@@ -16,8 +16,6 @@ import (
 
 const (
 	EnvDefaultTarget = "ASTRAL_DEFAULT_TARGET"
-	EnvDefaultIn     = "ASTRAL_DEFAULT_INPUT_FORMAT"
-	EnvDefaultOut    = "ASTRAL_DEFAULT_OUTPUT_FORMAT"
 )
 
 func main() {
@@ -38,8 +36,8 @@ func main() {
 		return
 	}
 
-	defaultIn := os.Getenv(EnvDefaultIn)
-	defaultOut := os.Getenv(EnvDefaultOut)
+	defaultIn := inputFormat()
+	defaultOut := outputFormat()
 
 	var err error
 	var callerID, targetID *astral.Identity
