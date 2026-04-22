@@ -2,6 +2,7 @@ package routing
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"time"
@@ -123,6 +124,16 @@ func (op *Op) invoke(ctx *astral.Context, q *IncomingQuery) error {
 		err := arg.SetMany(params)
 		if err != nil {
 			return err
+		}
+
+		for _, spec := range op.ArgumentSpecs() {
+			if !spec.Required {
+				continue
+			}
+
+			if _, found := params[spec.Name]; !found {
+				return fmt.Errorf("field required: %s", spec.Name)
+			}
 		}
 
 		if op.opFunc.Type().In(2).Kind() == reflect.Pointer {

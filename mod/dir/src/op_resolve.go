@@ -7,8 +7,8 @@ import (
 )
 
 type opResolveArgs struct {
-	Name string
-	Out  string `query:"optional"`
+	Name string `query:"required"`
+	Out  string
 }
 
 func (mod *Module) OpResolve(ctx *astral.Context, q *routing.IncomingQuery, args opResolveArgs) (err error) {

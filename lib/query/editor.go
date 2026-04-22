@@ -120,12 +120,13 @@ func (editor *Editor) Get(name string) (string, error) {
 // Spec returns a map containing specs for every argument
 func (editor *Editor) Spec() (vals []FieldSpec) {
 	for _, editor := range editor.fields {
-		if editor.ObjectType() == "" {
+		objectType := editor.ObjectType()
+		if objectType == "" {
 			continue
 		}
 		vals = append(vals, FieldSpec{
 			Name:     editor.name,
-			Type:     editor.ObjectType(),
+			Type:     objectType,
 			Required: editor.Tag().Required,
 		})
 	}

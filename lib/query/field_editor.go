@@ -32,7 +32,7 @@ func (editor FieldEditor) ObjectType() string {
 		}
 	}
 
-	f := editor.field
+	f := editor.field.Type()
 	if f.Kind() == reflect.Ptr {
 		f = f.Elem()
 	}
@@ -64,7 +64,7 @@ func (editor FieldEditor) ObjectType() string {
 		return astral.Bool(false).ObjectType()
 
 	case reflect.Slice:
-		if f.Type().Elem().Kind() == reflect.Uint8 {
+		if f.Elem().Kind() == reflect.Uint8 {
 			return astral.Bytes32{}.ObjectType()
 		}
 	}

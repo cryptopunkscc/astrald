@@ -9,10 +9,10 @@ import (
 )
 
 type opApplyFiltersArgs struct {
-	Filters string
-	ID      string `query:"optional"`
-	In      string `query:"optional"`
-	Out     string `query:"optional"`
+	Filters string `query:"required"`
+	ID      string
+	In      string
+	Out     string
 }
 
 func (mod *Module) OpApplyFilters(ctx *astral.Context, q *routing.IncomingQuery, args opApplyFiltersArgs) (err error) {

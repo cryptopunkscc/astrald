@@ -7,8 +7,8 @@ import (
 )
 
 type opGetAliasArgs struct {
-	ID  *astral.Identity
-	Out string `query:"optional"`
+	ID  *astral.Identity `query:"required"`
+	Out string
 }
 
 func (mod *Module) OpGetAlias(ctx *astral.Context, q *routing.IncomingQuery, args opGetAliasArgs) (err error) {
