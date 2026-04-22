@@ -14,6 +14,7 @@ type InputBuffer struct {
 	rused  int
 	rbuf   [][]byte
 	ready  chan struct{}
+	done   chan struct{}
 	closed bool
 	onRead func(int)
 }
@@ -64,22 +65,39 @@ func (b *InputBuffer) Read(p []byte) (n int, err error) {
 	if b.onRead != nil {
 		b.onRead(n)
 	}
+	b.checkDone()
 	return
-}
-
-func (b *InputBuffer) Wait() <-chan struct{} {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.readyCh()
 }
 
 func (b *InputBuffer) Close() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.closed = true
+	b.onRead = nil
 	b.signal()
+	b.checkDone()
 
 	return nil
+}
+
+func (b *InputBuffer) Done() <-chan struct{} {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.done == nil {
+		b.done = make(chan struct{})
+	}
+	b.checkDone()
+	return b.done
+}
+
+func (b *InputBuffer) checkDone() {
+	if b.closed && len(b.rbuf) == 0 && b.done != nil {
+		select {
+		case <-b.done:
+		default:
+			close(b.done)
+		}
+	}
 }
 
 func (b *InputBuffer) readyCh() chan struct{} {

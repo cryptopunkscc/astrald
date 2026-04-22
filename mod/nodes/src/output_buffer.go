@@ -38,12 +38,6 @@ func (b *OutputBuffer) Write(p []byte) (int, error) {
 	return n, b.write(p[:n])
 }
 
-func (b *OutputBuffer) Size() int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.wsize
-}
-
 func (b *OutputBuffer) Grow(n int) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
