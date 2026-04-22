@@ -12,13 +12,13 @@ type InputBuffer struct {
 	rbuf   [][]byte
 	ready  chan struct{}
 	closed bool
+	onRead func(int)
 }
 
-func NewInputBuffer(size int) *InputBuffer {
-	return &InputBuffer{rsize: size}
+func NewInputBuffer(size int, onRead func(int)) *InputBuffer {
+	return &InputBuffer{rsize: size, onRead: onRead}
 }
 
-// Push appends a payload chunk to the buffer.
 func (b *InputBuffer) Push(p []byte) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -58,6 +58,9 @@ func (b *InputBuffer) Read(p []byte) (n int, err error) {
 		b.rbuf = b.rbuf[1:]
 	}
 
+	if b.onRead != nil {
+		b.onRead(n)
+	}
 	return
 }
 
@@ -69,9 +72,9 @@ func (b *InputBuffer) Wait() <-chan struct{} {
 
 func (b *InputBuffer) Close() {
 	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.closed = true
 	b.signal()
-	b.mu.Unlock()
 }
 
 func (b *InputBuffer) readyCh() chan struct{} {
