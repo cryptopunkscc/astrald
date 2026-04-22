@@ -1,24 +1,74 @@
 package nodes
 
-import "errors"
+import (
+	"errors"
+	"io"
+	"sync"
+)
 
-// sessionReader is a blocking io.Reader for a session.
-// It owns only the blocking loop; ack sending is handled by InputBuffer.onRead.
+var _ io.ReadCloser = &sessionReader{}
+
 type sessionReader struct {
-	buf *InputBuffer
+	cond   *sync.Cond
+	paused bool
+	mu     sync.Mutex
+	buf    *InputBuffer
 }
 
 func newSessionReader(buf *InputBuffer) *sessionReader {
-	return &sessionReader{buf: buf}
+	r := &sessionReader{buf: buf}
+	r.cond = sync.NewCond(&sync.Mutex{})
+	return r
 }
 
-func (r *sessionReader) Close() {
-	r.buf.Close()
+func (r *sessionReader) SetBuf(buf *InputBuffer) {
+	r.mu.Lock()
+	r.buf = buf
+	r.mu.Unlock()
+}
+
+func (r *sessionReader) Close() error {
+	r.mu.Lock()
+	buf := r.buf
+	r.mu.Unlock()
+	buf.Close()
+
+	return nil
+}
+
+func (r *sessionReader) Push(p []byte) error {
+	r.mu.Lock()
+	buf := r.buf
+	r.mu.Unlock()
+	return buf.Push(p)
+}
+
+func (r *sessionReader) Pause() {
+	r.cond.L.Lock()
+	r.paused = true
+	r.cond.L.Unlock()
+}
+
+func (r *sessionReader) Resume() {
+	r.cond.L.Lock()
+	r.paused = false
+	r.cond.Broadcast()
+	r.cond.L.Unlock()
 }
 
 func (r *sessionReader) Read(p []byte) (n int, err error) {
 	for {
-		n, err = r.buf.Read(p)
+		r.cond.L.Lock()
+		for r.paused {
+			r.cond.Wait()
+		}
+		r.cond.L.Unlock()
+
+		r.mu.Lock()
+		buf := r.buf
+		r.mu.Unlock()
+
+		n, err = buf.Read(p)
 		if err == nil {
 			return
 		}

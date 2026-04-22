@@ -53,7 +53,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 	frame := &frames.Query{
 		Nonce:  q.Nonce,
 		Query:  q.QueryString,
-		Buffer: uint32(conn.rsize),
+		Buffer: uint32(defaultBufferSize),
 	}
 
 	// send the query via all streams
@@ -154,8 +154,9 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	conn.RemoteIdentity = caller
 	conn.relayID = relayID
 	conn.Query = queryStr
+	conn.mu.Lock()
 	conn.stream = s
-	conn.wsize = initBuffer
+	conn.mu.Unlock()
 
 	var q = astral.Launch(&astral.Query{
 		Nonce:       nonce,
@@ -180,8 +181,20 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 		return
 	}
 
+	inBuf := NewInputBuffer(defaultBufferSize, func(n int) {
+		conn.bytes.Add(uint64(n))
+		s.Write(&frames.Read{Nonce: nonce, Len: uint32(n)})
+	})
+	outBuf := NewOutputBuffer(func(p []byte) error {
+		conn.bytes.Add(uint64(len(p)))
+		return s.Write(&frames.Data{Nonce: nonce, Payload: p})
+	})
+	conn.reader = newSessionReader(inBuf)
+	conn.writer = newSessionWriter(outBuf)
+	conn.writer.Grow(initBuffer)
+
 	conn.swapState(stateRouting, stateOpen)
-	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
+	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 
 	go func() {
 		io.Copy(w, conn)
@@ -215,8 +228,23 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 	if !conn.swapState(stateRouting, stateOpen) {
 		return
 	}
+
+	inBuf := NewInputBuffer(defaultBufferSize, func(n int) {
+		conn.bytes.Add(uint64(n))
+		s.Write(&frames.Read{Nonce: f.Nonce, Len: uint32(n)})
+	})
+	outBuf := NewOutputBuffer(func(p []byte) error {
+		conn.bytes.Add(uint64(len(p)))
+		return s.Write(&frames.Data{Nonce: f.Nonce, Payload: p})
+	})
+	conn.reader = newSessionReader(inBuf)
+	conn.writer = newSessionWriter(outBuf)
+	conn.writer.Grow(int(f.Buffer))
+
+	conn.mu.Lock()
 	conn.stream = s
-	conn.wsize = int(f.Buffer)
+	conn.mu.Unlock()
+
 	conn.res <- 0
 }
 
@@ -240,7 +268,7 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 		s.pressure.OnBytes(len(f.Payload), time.Now())
 	}
 
-	err := session.pushRead(f.Payload)
+	err := session.reader.Push(f.Payload)
 	if err != nil {
 		mod.log.Errorv(1, "failed to push read frame: %v", err)
 		session.Close()
@@ -255,7 +283,7 @@ func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
 		return
 	}
 
-	conn.growRemoteBuffer(int(f.Len))
+	conn.writer.Grow(int(f.Len))
 }
 
 func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
@@ -266,6 +294,7 @@ func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
 
 	conn.CancelMigration()
 	conn.swapState(stateOpen, stateClosed)
+	conn.closeBuffers()
 }
 
 func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
@@ -366,6 +395,7 @@ func (mod *Peers) addStream(
 		}) {
 			c.CancelMigration()
 			c.swapState(stateOpen, stateClosed)
+			c.closeBuffers()
 		}
 
 		streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {
