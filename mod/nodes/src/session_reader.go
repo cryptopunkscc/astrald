@@ -9,11 +9,9 @@ import (
 var _ io.ReadCloser = &sessionReader{}
 
 type sessionReader struct {
-	cond   *sync.Cond
-	paused bool
-	mu     sync.Mutex
-	buf    *InputBuffer
-
+	cond       *sync.Cond
+	paused     bool
+	buf        *InputBuffer
 	nextBuffer *InputBuffer
 }
 
@@ -23,31 +21,32 @@ func newSessionReader(buf *InputBuffer) *sessionReader {
 	return r
 }
 
-func (r *sessionReader) SetBuf(buf *InputBuffer) {
-	r.mu.Lock()
-	r.buf = buf
-	r.mu.Unlock()
+func (r *sessionReader) SetNextBuffer(buf *InputBuffer) {
+	r.cond.L.Lock()
+	r.nextBuffer = buf
+	r.cond.L.Unlock()
 }
 
-func (r *sessionReader) SetNextBuffer(buf *InputBuffer) {
-	r.mu.Lock()
-	r.nextBuffer = buf
-	r.mu.Unlock()
+func (r *sessionReader) CurrentBuffer() *InputBuffer {
+	r.cond.L.Lock()
+	buf := r.buf
+	r.cond.L.Unlock()
+	return buf
 }
 
 func (r *sessionReader) Close() error {
-	r.mu.Lock()
+	r.cond.L.Lock()
 	buf := r.buf
-	r.mu.Unlock()
+	r.cond.L.Unlock()
 	buf.Close()
 
 	return nil
 }
 
 func (r *sessionReader) Push(p []byte) error {
-	r.mu.Lock()
+	r.cond.L.Lock()
 	buf := r.buf
-	r.mu.Unlock()
+	r.cond.L.Unlock()
 	return buf.Push(p)
 }
 
@@ -70,11 +69,8 @@ func (r *sessionReader) Read(p []byte) (n int, err error) {
 		for r.paused {
 			r.cond.Wait()
 		}
-		r.cond.L.Unlock()
-
-		r.mu.Lock()
 		buf := r.buf
-		r.mu.Unlock()
+		r.cond.L.Unlock()
 
 		n, err = buf.Read(p)
 		if err == nil {
@@ -82,16 +78,17 @@ func (r *sessionReader) Read(p []byte) (n int, err error) {
 		}
 		var empty *ErrBufferEmpty
 		if !errors.As(err, &empty) {
-			r.mu.Lock()
+			r.cond.L.Lock()
 			if r.nextBuffer != nil {
 				r.buf = r.nextBuffer
 				r.nextBuffer = nil
-				r.mu.Unlock()
+				r.cond.L.Unlock()
 				continue
 			}
-			r.mu.Unlock()
+			r.cond.L.Unlock()
 			return
 		}
+
 		<-empty.Wait()
 	}
 }
