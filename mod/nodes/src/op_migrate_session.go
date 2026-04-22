@@ -1,7 +1,7 @@
 package nodes
 
 import (
-	"time"
+	"errors"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
@@ -11,97 +11,147 @@ import (
 	nodesClient "github.com/cryptopunkscc/astrald/mod/nodes/client"
 )
 
-const migrationTotalTimeout = 10 * time.Second
-
 type opMigrateSessionArgs struct {
 	SessionID astral.Nonce
 	StreamID  astral.Nonce
-	Start     astral.Bool `query:"optional"`
-	Out       string      `query:"optional"`
+	Buffer    astral.Uint32 `query:"optional"`
+	Start     astral.Bool   `query:"optional"`
+	Out       string        `query:"optional"`
 }
 
+// OpMigrateSession handles session migration.
+// With Start=true it acts as the initiator (manual trigger).
+// Without Start it acts as the responder (called by the remote initiator over the signalling channel).
 func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuery, args opMigrateSessionArgs) error {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	ctx = ctx.IncludeZone(astral.ZoneNetwork)
-
-	if args.SessionID == 0 {
-		return ch.Send(astral.NewError("missing sessionId"))
-	}
-	if args.StreamID == 0 {
-		return ch.Send(astral.NewError("missing stream ids"))
-	}
-
-	ctx, cancel := ctx.WithTimeout(migrationTotalTimeout)
-	defer cancel()
-
-	session, ok := mod.peers.sessions.Get(args.SessionID)
-	if !ok {
-		return ch.Send(astral.NewError("session not found"))
-	}
-
-	migrator, err := mod.createSessionMigrator(session, args.StreamID)
-	if err != nil {
-		return ch.Send(astral.Err(err))
-	}
-
 	if args.Start {
-		mod.log.Log("migrate session %v to stream %v", args.SessionID, args.StreamID)
+		if args.SessionID == 0 {
+			return ch.Send(astral.NewError("missing session_id"))
+		}
+		if args.StreamID == 0 {
+			return ch.Send(astral.NewError("missing stream_id"))
+		}
 
-		client := nodesClient.New(session.RemoteIdentity, astrald.Default())
-		if err := client.MigrateSession(ctx, args.SessionID, args.StreamID, migrator); err != nil {
-			mod.log.Error("migrate session %v failed: %v", args.SessionID, err)
+		sess, ok := mod.peers.sessions.Get(args.SessionID)
+		if !ok {
+			return ch.Send(astral.NewError("session not found"))
+		}
+		if !sess.IsOpen() {
+			return ch.Send(astral.NewError("session not open"))
+		}
+
+		targetStream := mod.findStreamByID(args.StreamID)
+		if targetStream == nil {
+			return ch.Send(astral.NewError("target stream not found"))
+		}
+
+		if sess.isOnStream(targetStream) {
+			return ch.Send(astral.NewError("session already on target stream"))
+		}
+
+		mod.log.Log("migrate session %v to stream %v (manual)", args.SessionID, args.StreamID)
+
+		err := mod.migrateSession(ctx, sess, targetStream)
+		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
 
-		mod.log.Info("migrate session %v done", args.SessionID)
 		return ch.Send(&astral.Ack{})
 	}
 
-	mod.log.Log("migrate session %v to stream %v", args.SessionID, args.StreamID)
+	// responder side
 
-	if err := ch.Switch(
-		nodes.ExpectMigrateSignal(args.SessionID, nodes.MigrateSignalTypeBegin),
-		channel.PassErrors,
-		channel.WithContext(ctx),
-	); err != nil {
-		return ch.Send(astral.Err(err))
+	sess, ok := mod.peers.sessions.Get(args.SessionID)
+	if !ok {
+		return ch.Send(astral.Err(errors.New("session not found")))
+	}
+	if !sess.IsOpen() {
+		return ch.Send(astral.Err(errors.New("session not open")))
 	}
 
-	if err := migrator.Migrate(); err != nil {
-		mod.log.Error("migrate session %v failed: %v", args.SessionID, err)
-		return ch.Send(astral.Err(err))
+	targetStream := mod.findStreamByID(args.StreamID)
+	if targetStream == nil {
+		return ch.Send(astral.Err(errors.New("target stream not found")))
 	}
 
-	defer migrator.CancelMigration()
-
-	if err := ch.Send(&nodes.SessionMigrateSignal{Signal: nodes.MigrateSignalTypeReady, Nonce: args.SessionID}); err != nil {
+	migrator := mod.newSessionMigrator(sess, targetStream)
+	migrator.prepare()
+	err := ch.Send(&nodes.MigrateSignal{Signal: nodes.MigrateSignalReady})
+	if err != nil {
 		return err
 	}
 
-	// Wait for the initiator's Migrate frame to arrive on the old stream.
-	if err := migrator.WaitMigrateFrameReceived(ctx); err != nil {
-		mod.log.Error("migrate session %v failed waiting for migrate frame: %v", args.SessionID, err)
-		return ch.Send(astral.Err(err))
+	// wait for Migrate frame and drain old input buffer
+	if err = migrator.Drain(ctx); err != nil {
+		return err
 	}
 
-	// Wait for the initiator to confirm it has drained all old-stream data.
-	// Only then is it safe to complete migration (unblock Write on new stream).
-	if err := ch.Switch(
-		nodes.ExpectMigrateSignal(args.SessionID, nodes.MigrateSignalTypeCompleted),
-		channel.PassErrors,
-		channel.WithContext(ctx),
-	); err != nil {
-		mod.log.Error("migrate session %v failed waiting for completed signal: %v", args.SessionID, err)
-		return ch.Send(astral.Err(err))
+	// send switched
+	err = ch.Send(&nodes.MigrateSignal{Signal: nodes.MigrateSignalSwitched})
+	if err != nil {
+		return err
 	}
 
-	if err := migrator.CompleteMigration(); err != nil {
-		mod.log.Error("migrate session %v failed to complete: %v", args.SessionID, err)
-		return ch.Send(astral.Err(err))
+	// wait for resume
+	err = ch.Switch(nodes.ExpectMigrateSignal(nodes.MigrateSignalResume))
+	if err != nil {
+		return err
 	}
 
-	mod.log.Info("migrate session %v done", args.SessionID)
-	return ch.Send(&astral.Ack{})
+	migrator.Resume(defaultBufferSize)
+	mod.log.Logv(1, "session %v migrated to stream %v (responder)", sess.Nonce, targetStream.id)
+
+	return nil
+}
+
+// migrateSession runs the initiator side of session migration for a single session.
+func (mod *Module) migrateSession(ctx *astral.Context, sess *session, targetStream *Stream) error {
+	if !sess.IsOpen() {
+		return errors.New("session not open")
+	}
+
+	// open signalling channel to remote peer
+	ch, err := nodesClient.New(sess.RemoteIdentity, astrald.Default()).MigrateSession(ctx, nodesClient.MigrateSessionArgs{
+		SessionID: sess.Nonce,
+		StreamID:  targetStream.id,
+		Buffer:    astral.Uint32(defaultBufferSize),
+	})
+	if err != nil {
+		return err
+	}
+	defer ch.Close()
+
+	// wait for ready
+	err = ch.Switch(nodes.ExpectMigrateSignal(nodes.MigrateSignalReady))
+	if err != nil {
+		return err
+	}
+
+	migrator := mod.newSessionMigrator(sess, targetStream)
+
+	err = migrator.Migrate()
+	if err != nil {
+		return err
+	}
+
+	err = ch.Switch(nodes.ExpectMigrateSignal(nodes.MigrateSignalSwitched))
+	if err != nil {
+		return err
+	}
+
+	if err = migrator.Drain(ctx); err != nil {
+		return err
+	}
+
+	err = ch.Send(&nodes.MigrateSignal{Signal: nodes.MigrateSignalResume})
+	if err != nil {
+		return err
+	}
+
+	migrator.Resume(defaultBufferSize)
+	mod.log.Logv(1, "session %v migrated to stream %v (initiator)", sess.Nonce, targetStream.id)
+
+	return nil
 }
