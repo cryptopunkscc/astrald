@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/ip"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
+	_ "github.com/cryptopunkscc/astrald/mod/nearby/views"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/sig"
 )

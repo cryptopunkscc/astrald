@@ -11,6 +11,8 @@ type Flag string
 
 func NewFlag(f string) *Flag { return (*Flag)(&f) }
 
+func (f Flag) String() string { return string(f) }
+
 // astral:blueprint-ignore
 func (Flag) ObjectType() string { return "mod.nearby.flag" }
 
