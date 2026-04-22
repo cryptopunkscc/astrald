@@ -41,7 +41,7 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 	conn.Query = q.QueryString
 	conn.Outbound = true
 
-	container := nodes.NewQueryContainer(q, conn.rsize)
+	container := nodes.NewQueryContainer(q, defaultBufferSize)
 
 	rc.mu.Lock()
 	err := rc.ch.Send(container)
