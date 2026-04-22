@@ -42,7 +42,6 @@ func (mod *Module) OpSessions(ctx *astral.Context, q *routing.IncomingQuery, arg
 			Query:          astral.String16(s.Query),
 			Bytes:          astral.Uint64(s.bytes.Load()),
 			Age:            astral.Duration(time.Since(s.createdAt)),
-			CanMigrate:     astral.Bool(s.CanMigrate()),
 		})
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
