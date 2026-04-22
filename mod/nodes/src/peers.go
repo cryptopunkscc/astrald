@@ -185,9 +185,31 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 		conn.bytes.Add(uint64(n))
 		s.Write(&frames.Read{Nonce: nonce, Len: uint32(n)})
 	})
+
 	outBuf := NewOutputBuffer(func(p []byte) error {
-		conn.bytes.Add(uint64(len(p)))
-		return s.Write(&frames.Data{Nonce: nonce, Payload: p})
+		remaining := p
+
+		for len(remaining) > 0 {
+			chunkSize := maxPayloadSize
+			if len(remaining) < chunkSize {
+				chunkSize = len(remaining)
+			}
+
+			chunk := remaining[:chunkSize]
+
+			conn.bytes.Add(uint64(len(chunk)))
+
+			if err := s.Write(&frames.Data{
+				Nonce:   nonce,
+				Payload: chunk,
+			}); err != nil {
+				return err
+			}
+
+			remaining = remaining[chunkSize:]
+		}
+
+		return nil
 	})
 	conn.reader = newSessionReader(inBuf)
 	conn.writer = newSessionWriter(outBuf)

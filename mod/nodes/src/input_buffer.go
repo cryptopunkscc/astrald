@@ -2,8 +2,11 @@ package nodes
 
 import (
 	"errors"
+	"io"
 	"sync"
 )
+
+var _ io.ReadCloser = &InputBuffer{}
 
 type InputBuffer struct {
 	mu     sync.Mutex
@@ -70,11 +73,13 @@ func (b *InputBuffer) Wait() <-chan struct{} {
 	return b.readyCh()
 }
 
-func (b *InputBuffer) Close() {
+func (b *InputBuffer) Close() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.closed = true
 	b.signal()
+
+	return nil
 }
 
 func (b *InputBuffer) readyCh() chan struct{} {

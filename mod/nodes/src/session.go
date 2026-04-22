@@ -25,6 +25,7 @@ const (
 )
 
 var _ io.WriteCloser = &session{}
+var _ io.ReadCloser = &session{}
 
 type session struct {
 	Nonce          astral.Nonce
@@ -39,8 +40,8 @@ type session struct {
 	stream *Stream       // stream the connection is attached to; guarded by mu
 	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
-	reader *sessionReader
-	writer *sessionWriter
+	reader *sessionReader // io.ReaderCloser
+	writer *sessionWriter // io.WriteCloser
 
 	mu                     sync.Mutex
 	migratingTo            *Stream

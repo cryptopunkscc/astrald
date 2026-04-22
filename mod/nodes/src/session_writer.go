@@ -9,10 +9,10 @@ import (
 var _ io.WriteCloser = &sessionWriter{}
 
 type sessionWriter struct {
-	cond   *sync.Cond
-	paused bool
-	mu     sync.Mutex
-	buf    *OutputBuffer
+	cond       *sync.Cond
+	paused     bool
+	buf        *OutputBuffer
+	nextBuffer *OutputBuffer
 }
 
 func newSessionWriter(buf *OutputBuffer) *sessionWriter {
@@ -22,24 +22,30 @@ func newSessionWriter(buf *OutputBuffer) *sessionWriter {
 }
 
 func (w *sessionWriter) SetBuf(buf *OutputBuffer) {
-	w.mu.Lock()
+	w.cond.L.Lock()
 	w.buf = buf
-	w.mu.Unlock()
+	w.cond.L.Unlock()
+}
+
+func (w *sessionWriter) SetNextBuffer(buf *OutputBuffer) {
+	w.cond.L.Lock()
+	w.nextBuffer = buf
+	w.cond.L.Unlock()
 }
 
 func (w *sessionWriter) Close() error {
-	w.mu.Lock()
+	w.cond.L.Lock()
 	buf := w.buf
-	w.mu.Unlock()
+	w.cond.L.Unlock()
 	buf.Close()
 
 	return nil
 }
 
 func (w *sessionWriter) Grow(n int) {
-	w.mu.Lock()
+	w.cond.L.Lock()
 	buf := w.buf
-	w.mu.Unlock()
+	w.cond.L.Unlock()
 	buf.Grow(n)
 }
 
@@ -64,13 +70,10 @@ func (w *sessionWriter) Write(p []byte) (int, error) {
 		for w.paused {
 			w.cond.Wait()
 		}
+		buf := w.buf
+		n, err := buf.Write(p)
 		w.cond.L.Unlock()
 
-		w.mu.Lock()
-		buf := w.buf
-		w.mu.Unlock()
-
-		n, err := buf.Write(p, maxPayloadSize)
 		if err != nil {
 			var empty *ErrBufferEmpty
 			if errors.As(err, &empty) {

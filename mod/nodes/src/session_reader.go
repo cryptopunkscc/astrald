@@ -13,6 +13,8 @@ type sessionReader struct {
 	paused bool
 	mu     sync.Mutex
 	buf    *InputBuffer
+
+	nextBuffer *InputBuffer
 }
 
 func newSessionReader(buf *InputBuffer) *sessionReader {
@@ -24,6 +26,12 @@ func newSessionReader(buf *InputBuffer) *sessionReader {
 func (r *sessionReader) SetBuf(buf *InputBuffer) {
 	r.mu.Lock()
 	r.buf = buf
+	r.mu.Unlock()
+}
+
+func (r *sessionReader) SetNextBuffer(buf *InputBuffer) {
+	r.mu.Lock()
+	r.nextBuffer = buf
 	r.mu.Unlock()
 }
 
@@ -45,15 +53,15 @@ func (r *sessionReader) Push(p []byte) error {
 
 func (r *sessionReader) Pause() {
 	r.cond.L.Lock()
+	defer r.cond.L.Unlock()
 	r.paused = true
-	r.cond.L.Unlock()
 }
 
 func (r *sessionReader) Resume() {
 	r.cond.L.Lock()
+	defer r.cond.L.Unlock()
 	r.paused = false
 	r.cond.Broadcast()
-	r.cond.L.Unlock()
 }
 
 func (r *sessionReader) Read(p []byte) (n int, err error) {
@@ -74,6 +82,14 @@ func (r *sessionReader) Read(p []byte) (n int, err error) {
 		}
 		var empty *ErrBufferEmpty
 		if !errors.As(err, &empty) {
+			r.mu.Lock()
+			if r.nextBuffer != nil {
+				r.buf = r.nextBuffer
+				r.nextBuffer = nil
+				r.mu.Unlock()
+				continue
+			}
+			r.mu.Unlock()
 			return
 		}
 		<-empty.Wait()
