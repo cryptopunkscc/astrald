@@ -1,0 +1,82 @@
+package nodes
+
+import (
+	"errors"
+	"io"
+	"sync"
+)
+
+var _ io.Reader = &muxSessionReader{}
+
+type muxSessionReader struct {
+	cond       *sync.Cond
+	paused     bool
+	buf        *InputBuffer
+	nextBuffer *InputBuffer
+}
+
+func newSessionReader(buf *InputBuffer) *muxSessionReader {
+	r := &muxSessionReader{buf: buf}
+	r.cond = sync.NewCond(&sync.Mutex{})
+	return r
+}
+
+func (r *muxSessionReader) SetNextBuffer(buf *InputBuffer) {
+	r.cond.L.Lock()
+	defer r.cond.L.Unlock()
+	r.nextBuffer = buf
+}
+
+func (r *muxSessionReader) Pause() {
+	r.cond.L.Lock()
+	defer r.cond.L.Unlock()
+	r.paused = true
+	r.cond.Broadcast()
+}
+
+func (r *muxSessionReader) Resume() {
+	r.cond.L.Lock()
+	defer r.cond.L.Unlock()
+	r.paused = false
+	r.cond.Broadcast()
+}
+
+func (r *muxSessionReader) Read(p []byte) (n int, err error) {
+	for {
+		r.cond.L.Lock()
+		for r.paused {
+			r.cond.Wait()
+		}
+
+		n, err := r.buf.Read(p)
+		switch {
+		case err == nil:
+			r.cond.L.Unlock()
+			return n, nil
+		case err == io.EOF:
+			if r.nextBuffer != nil {
+				r.buf = r.nextBuffer
+				r.nextBuffer = nil
+				r.cond.L.Unlock()
+				continue
+			}
+
+			r.cond.L.Unlock()
+			return n, err
+		default:
+			var emptyErr *ErrBufferEmpty
+			if errors.As(err, &emptyErr) {
+				go func() {
+					<-emptyErr.Wait()
+					r.cond.Broadcast()
+				}()
+				r.cond.Wait()
+				r.cond.L.Unlock()
+				continue
+			}
+
+			r.cond.L.Unlock()
+			return n, err
+		}
+	}
+}

@@ -40,18 +40,14 @@ type session struct {
 	stateCond *sync.Cond   // broadcasts on every state transition
 	state     atomic.Int32 // connection state
 
-	stream *Stream       // stream the connection is attached to; guarded by mu
-	bytes  atomic.Uint64 // total bytes transferred (read + write)
+	stream  *Stream       // stream the connection is attached to
+	bytes   atomic.Uint64 // total bytes transferred (read + write)
+	paused  bool          // true while writes are paused; guarded by stateCond
+	writing bool          // true while inside writer.Write(); guarded by stateCond
 
-	reader  *sessionReader // io.ReaderCloser
-	writer  *sessionWriter // io.WriteCloser
+	reader  io.Reader      //  io.Reader
+	writer  io.WriteCloser // io.WriteCloser
 	onClose func()
-
-	mu                     sync.Mutex
-	migratingTo            *Stream
-	migratedCh             chan struct{} // closed when migration completes or is cancelled
-	migrateFrameSent       atomic.Bool
-	migrateFrameReceivedCh chan struct{} // closed when the remote's Migrate frame arrives (responder side)
 }
 
 func (c *session) Identity() *astral.Identity {
@@ -92,8 +88,20 @@ func (c *session) Write(p []byte) (int, error) {
 	for {
 		switch c.state.Load() {
 		case stateOpen:
+			if c.paused {
+				c.stateCond.Wait()
+				continue
+			}
+			c.writing = true
 			c.stateCond.L.Unlock()
-			return c.writer.Write(p)
+
+			n, err := c.writer.Write(p)
+
+			c.stateCond.L.Lock()
+			c.writing = false
+			c.stateCond.Broadcast()
+			c.stateCond.L.Unlock()
+			return n, err
 		case stateRouting, stateMigrating:
 			c.stateCond.Wait()
 		default:
@@ -103,7 +111,7 @@ func (c *session) Write(p []byte) (int, error) {
 	}
 }
 
-func (c *session) Open(s *Stream, reader *sessionReader, writer *sessionWriter, onClose func()) {
+func (c *session) Open(s *Stream, reader io.Reader, writer io.WriteCloser, onClose func()) {
 	c.stateCond.L.Lock()
 	defer c.stateCond.L.Unlock()
 
@@ -112,15 +120,6 @@ func (c *session) Open(s *Stream, reader *sessionReader, writer *sessionWriter, 
 	c.writer = writer
 	c.onClose = onClose
 	c.swapState(stateRouting, stateOpen)
-}
-
-func (c *session) closeBuffers() {
-	if c.reader != nil {
-		c.reader.Close()
-	}
-	if c.writer != nil {
-		c.writer.Close()
-	}
 }
 
 func (c *session) Close() error {
@@ -132,7 +131,10 @@ func (c *session) Close() error {
 		c.onClose()
 	}
 
-	c.closeBuffers()
+	if c.writer != nil {
+		c.writer.Close()
+	}
+
 	return nil
 }
 
@@ -149,7 +151,22 @@ func (s *session) IsOpen() bool {
 }
 
 func (c *session) isOnStream(s *Stream) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	return c.stream == s
+}
+
+// Pause blocks new writes and waits for any in-flight write to complete.
+func (c *session) Pause() {
+	c.stateCond.L.Lock()
+	defer c.stateCond.L.Unlock()
+	c.paused = true
+	for c.writing {
+		c.stateCond.Wait()
+	}
+}
+
+func (c *session) Resume() {
+	c.stateCond.L.Lock()
+	defer c.stateCond.L.Unlock()
+	c.paused = false
+	c.stateCond.Broadcast()
 }

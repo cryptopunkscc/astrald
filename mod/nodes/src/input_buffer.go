@@ -10,9 +10,9 @@ var _ io.ReadCloser = &InputBuffer{}
 
 type InputBuffer struct {
 	mu     sync.Mutex
-	rsize  int
-	rused  int
-	rbuf   [][]byte
+	size   int
+	used   int
+	buf    [][]byte
 	ready  chan struct{}
 	done   chan struct{}
 	closed bool
@@ -20,7 +20,7 @@ type InputBuffer struct {
 }
 
 func NewInputBuffer(size int, onRead func(int)) *InputBuffer {
-	return &InputBuffer{rsize: size, onRead: onRead}
+	return &InputBuffer{size: size, onRead: onRead}
 }
 
 func (b *InputBuffer) Push(p []byte) error {
@@ -30,12 +30,12 @@ func (b *InputBuffer) Push(p []byte) error {
 	if b.closed {
 		return errors.New("buffer closed")
 	}
-	if b.rused+len(p) > b.rsize {
+	if b.used+len(p) > b.size {
 		return errors.New("buffer overflow")
 	}
 
-	b.rbuf = append(b.rbuf, p)
-	b.rused += len(p)
+	b.buf = append(b.buf, p)
+	b.used += len(p)
 	b.signal()
 	return nil
 }
@@ -44,22 +44,23 @@ func (b *InputBuffer) Read(p []byte) (n int, err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if len(b.rbuf) == 0 {
+	if len(b.buf) == 0 {
 		if b.closed {
-			return 0, errors.New("connection closed")
+			return 0, io.EOF
 		}
+
 		return 0, &ErrBufferEmpty{ch: b.readyCh()}
 	}
 
-	chunk := b.rbuf[0]
+	chunk := b.buf[0]
 	n = min(len(p), len(chunk))
 	copy(p, chunk[:n])
 	chunk = chunk[n:]
-	b.rused -= n
+	b.used -= n
 	if len(chunk) > 0 {
-		b.rbuf[0] = chunk
+		b.buf[0] = chunk
 	} else {
-		b.rbuf = b.rbuf[1:]
+		b.buf = b.buf[1:]
 	}
 
 	if b.onRead != nil {
@@ -91,7 +92,7 @@ func (b *InputBuffer) Done() <-chan struct{} {
 }
 
 func (b *InputBuffer) checkDone() {
-	if b.closed && len(b.rbuf) == 0 && b.done != nil {
+	if b.closed && len(b.buf) == 0 && b.done != nil {
 		select {
 		case <-b.done:
 		default:

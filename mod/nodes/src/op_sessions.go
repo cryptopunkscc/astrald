@@ -30,13 +30,9 @@ func (mod *Module) OpSessions(ctx *astral.Context, q *routing.IncomingQuery, arg
 			continue
 		}
 
-		s.mu.Lock()
-		stream := s.stream
-		s.mu.Unlock()
-
 		err = ch.Send(&nodes.SessionInfo{
 			ID:             s.Nonce,
-			StreamID:       stream.id,
+			StreamID:       s.stream.id,
 			RemoteIdentity: s.RemoteIdentity,
 			Outbound:       astral.Bool(s.Outbound),
 			Query:          astral.String16(s.Query),

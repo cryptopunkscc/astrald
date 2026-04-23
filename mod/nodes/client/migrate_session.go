@@ -9,7 +9,6 @@ import (
 type MigrateSessionArgs struct {
 	SessionID astral.Nonce
 	StreamID  astral.Nonce
-	Buffer    astral.Uint32
 }
 
 func (client *Client) MigrateSession(ctx *astral.Context, args MigrateSessionArgs) (*channel.Channel, error) {

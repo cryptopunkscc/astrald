@@ -154,9 +154,7 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	conn.RemoteIdentity = caller
 	conn.relayID = relayID
 	conn.Query = queryStr
-	conn.mu.Lock()
 	conn.stream = s
-	conn.mu.Unlock()
 
 	var q = astral.Launch(&astral.Query{
 		Nonce:       nonce,
@@ -181,11 +179,15 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 		return
 	}
 
-	reader, writer := mod.newSessionBuffers(s, nonce, conn)
+	reader := newSessionReader(mod.newMuxInputBuffer(s, nonce))
+	writer := newSessionWriter(mod.newMuxOutputBuffer(s, nonce, conn))
 	writer.Grow(initBuffer)
-	conn.Open(s, reader, writer, func() {
+
+	closeCallback := func() {
 		s.Write(&frames.Reset{Nonce: nonce})
-	})
+	}
+
+	conn.Open(s, reader, writer, closeCallback)
 	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 
 	go func() {
@@ -217,15 +219,13 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 		conn.res <- f.ErrCode
 	}
 
-	if !conn.swapState(stateRouting, stateOpen) {
-		return
-	}
-
-	reader, writer := mod.newSessionBuffers(s, f.Nonce, conn)
+	reader := newSessionReader(mod.newMuxInputBuffer(s, f.Nonce))
+	writer := newSessionWriter(mod.newMuxOutputBuffer(s, f.Nonce, conn))
 	writer.Grow(int(f.Buffer))
 	conn.Open(s, reader, writer, func() {
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 	})
+
 	conn.res <- 0
 }
 
@@ -249,8 +249,13 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 		s.pressure.OnBytes(len(f.Payload), time.Now())
 	}
 
-	err := session.reader.Push(f.Payload)
-	if err != nil {
+	reader, ok := session.reader.(*muxSessionReader)
+	if !ok {
+		mod.log.Errorv(1, "received data frame from %v on non-mux session", s.RemoteIdentity())
+		return
+	}
+
+	if err := reader.buf.Push(f.Payload); err != nil {
 		mod.log.Errorv(1, "failed to push read frame: %v", err)
 		session.Close()
 		return
@@ -258,13 +263,16 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 }
 
 func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
-	conn, ok := mod.sessions.Get(f.Nonce)
+	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
-	conn.writer.Grow(int(f.Len))
+	writer, ok := session.writer.(*muxSessionWriter)
+	if ok {
+		writer.Grow(int(f.Len))
+	}
 }
 
 func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
@@ -298,19 +306,24 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 }
 
 func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
-	session, ok := mod.sessions.Get(f.Nonce)
+	sess, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	if session.state.Load() != stateMigrating {
+	if sess.state.Load() != stateMigrating {
 		return
 	}
 
-	// closing current input buffer (no more data will come on old stream) session reader will automatically switch
-	// after draining previous one.
-	err := session.reader.buf.Close()
-	if err != nil {
+	reader, ok := sess.reader.(*muxSessionReader)
+	if !ok {
+		mod.log.Errorv(1, "received migrate frame on non-mux session")
+		return
+	}
+
+	// Peer is done sending on the old stream; close the old input buffer so the
+	// reader drains it and then switches to the new one.
+	if err := reader.buf.Close(); err != nil {
 		mod.log.Errorv(1, "failed to close read buffer: %v", err)
 	}
 }
