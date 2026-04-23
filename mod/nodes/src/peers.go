@@ -181,41 +181,11 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 		return
 	}
 
-	inBuf := NewInputBuffer(defaultBufferSize, func(n int) {
-		conn.bytes.Add(uint64(n))
-		s.Write(&frames.Read{Nonce: nonce, Len: uint32(n)})
+	reader, writer := mod.newSessionBuffers(s, nonce, conn)
+	writer.Grow(initBuffer)
+	conn.Open(s, reader, writer, func() {
+		s.Write(&frames.Reset{Nonce: nonce})
 	})
-
-	outBuf := NewOutputBuffer(func(p []byte) error {
-		remaining := p
-
-		for len(remaining) > 0 {
-			chunkSize := maxPayloadSize
-			if len(remaining) < chunkSize {
-				chunkSize = len(remaining)
-			}
-
-			chunk := remaining[:chunkSize]
-
-			conn.bytes.Add(uint64(len(chunk)))
-
-			if err := s.Write(&frames.Data{
-				Nonce:   nonce,
-				Payload: chunk,
-			}); err != nil {
-				return err
-			}
-
-			remaining = remaining[chunkSize:]
-		}
-
-		return nil
-	})
-	conn.reader = newSessionReader(inBuf)
-	conn.writer = newSessionWriter(outBuf)
-	conn.writer.Grow(initBuffer)
-
-	conn.swapState(stateRouting, stateOpen)
 	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 
 	go func() {
@@ -251,22 +221,11 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 		return
 	}
 
-	inBuf := NewInputBuffer(defaultBufferSize, func(n int) {
-		conn.bytes.Add(uint64(n))
-		s.Write(&frames.Read{Nonce: f.Nonce, Len: uint32(n)})
+	reader, writer := mod.newSessionBuffers(s, f.Nonce, conn)
+	writer.Grow(int(f.Buffer))
+	conn.Open(s, reader, writer, func() {
+		s.Write(&frames.Reset{Nonce: f.Nonce})
 	})
-	outBuf := NewOutputBuffer(func(p []byte) error {
-		conn.bytes.Add(uint64(len(p)))
-		return s.Write(&frames.Data{Nonce: f.Nonce, Payload: p})
-	})
-	conn.reader = newSessionReader(inBuf)
-	conn.writer = newSessionWriter(outBuf)
-	conn.writer.Grow(int(f.Buffer))
-
-	conn.mu.Lock()
-	conn.stream = s
-	conn.mu.Unlock()
-
 	conn.res <- 0
 }
 
@@ -309,14 +268,15 @@ func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
 }
 
 func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
-	conn, ok := mod.sessions.Get(f.Nonce)
+	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	conn.CancelMigration()
-	conn.swapState(stateOpen, stateClosed)
-	conn.closeBuffers()
+	err := session.Close()
+	if err != nil {
+		mod.log.Error(`failed to close session %v: %v`, f.Nonce, err)
+	}
 }
 
 func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
@@ -338,30 +298,20 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 }
 
 func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
-	conn, ok := mod.sessions.Get(f.Nonce)
+	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	if conn.state.Load() != stateMigrating {
+	if session.state.Load() != stateMigrating {
 		return
 	}
 
-	if !conn.migrateFrameSent.Load() {
-		// Responder path: write Migrate frame back, then signal OpMigrateSession.
-		// CompleteMigration is deferred until the initiator confirms it drained the old stream.
-		if err := conn.writeMigrateFrame(); err != nil {
-			mod.log.Errorv(1, "failed to write migrate frame: %v", err)
-			conn.CancelMigration()
-			return
-		}
-		conn.signalMigrateFrameReceived()
-		return
-	}
-
-	// Initiator path: Migrate frame from responder arrived, all old-stream data already processed.
-	if err := conn.CompleteMigration(); err != nil {
-		mod.log.Errorv(1, "failed to complete migration: %v", err)
+	// closing current input buffer (no more data will come on old stream) session reader will automatically switch
+	// after draining previous one.
+	err := session.reader.buf.Close()
+	if err != nil {
+		mod.log.Errorv(1, "failed to close read buffer: %v", err)
 	}
 }
 
@@ -415,9 +365,10 @@ func (mod *Peers) addStream(
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
 			return v.isOnStream(s)
 		}) {
-			c.CancelMigration()
-			c.swapState(stateOpen, stateClosed)
-			c.closeBuffers()
+			err = c.Close()
+			if err != nil {
+				mod.log.Errorv(1, "failed to close session %v: %v", s.RemoteIdentity(), err)
+			}
 		}
 
 		streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {

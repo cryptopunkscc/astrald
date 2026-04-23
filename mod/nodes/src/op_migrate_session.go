@@ -77,30 +77,33 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	}
 
 	migrator := mod.newSessionMigrator(sess, targetStream)
-	migrator.prepare()
-	err := ch.Send(&nodes.MigrateSignal{Signal: nodes.MigrateSignalReady})
+
+	// We create new buffers, stop writes and send migrate frame
+	err := migrator.Migrate()
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	err = ch.Send(&nodes.MigrateSignal{Signal: nodes.MigrateSignalReady})
 	if err != nil {
 		return err
 	}
 
-	// wait for Migrate frame and drain old input buffer
-	if err = migrator.Drain(ctx); err != nil {
+	if err = migrator.WaitDrain(ctx); err != nil {
 		return err
 	}
 
-	// send switched
 	err = ch.Send(&nodes.MigrateSignal{Signal: nodes.MigrateSignalSwitched})
 	if err != nil {
 		return err
 	}
 
-	// wait for resume
 	err = ch.Switch(nodes.ExpectMigrateSignal(nodes.MigrateSignalResume))
 	if err != nil {
 		return err
 	}
 
-	migrator.Resume(defaultBufferSize)
+	migrator.ResumeSession(defaultBufferSize)
 	mod.log.Logv(1, "session %v migrated to stream %v (responder)", sess.Nonce, targetStream.id)
 
 	return nil
@@ -141,7 +144,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, sess *session, targetStre
 		return err
 	}
 
-	if err = migrator.Drain(ctx); err != nil {
+	if err = migrator.WaitDrain(ctx); err != nil {
 		return err
 	}
 
@@ -150,7 +153,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, sess *session, targetStre
 		return err
 	}
 
-	migrator.Resume(defaultBufferSize)
+	migrator.ResumeSession(defaultBufferSize)
 	mod.log.Logv(1, "session %v migrated to stream %v (initiator)", sess.Nonce, targetStream.id)
 
 	return nil

@@ -27,13 +27,6 @@ func (r *sessionReader) SetNextBuffer(buf *InputBuffer) {
 	r.cond.L.Unlock()
 }
 
-func (r *sessionReader) CurrentBuffer() *InputBuffer {
-	r.cond.L.Lock()
-	buf := r.buf
-	r.cond.L.Unlock()
-	return buf
-}
-
 func (r *sessionReader) Close() error {
 	r.cond.L.Lock()
 	buf := r.buf

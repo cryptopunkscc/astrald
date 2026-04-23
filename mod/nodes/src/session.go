@@ -1,9 +1,7 @@
 package nodes
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -11,11 +9,13 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 )
 
 const maxPayloadSize = 8192
 const defaultBufferSize = 4 * 1024 * 1024
+
+const minSessionAge = 30 * time.Second
+const minSessionBytes = 1 * 1024 * 1024 // 1 MB
 
 const (
 	stateRouting = iota
@@ -36,12 +36,16 @@ type session struct {
 	createdAt      time.Time
 	res            chan uint8
 
-	state  atomic.Int32  // connection state
+	// todo: probably state now can be int32 change it when holding stateCond
+	stateCond *sync.Cond   // broadcasts on every state transition
+	state     atomic.Int32 // connection state
+
 	stream *Stream       // stream the connection is attached to; guarded by mu
 	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
-	reader *sessionReader // io.ReaderCloser
-	writer *sessionWriter // io.WriteCloser
+	reader  *sessionReader // io.ReaderCloser
+	writer  *sessionWriter // io.WriteCloser
+	onClose func()
 
 	mu                     sync.Mutex
 	migratingTo            *Stream
@@ -63,15 +67,51 @@ func newSession(n astral.Nonce) *session {
 		Nonce:     n,
 		createdAt: time.Now(),
 		res:       make(chan uint8, 1),
+		stateCond: sync.NewCond(&sync.Mutex{}),
 	}
 }
 
 func (c *session) Read(p []byte) (int, error) {
-	return c.reader.Read(p)
+	c.stateCond.L.Lock()
+	for {
+		switch c.state.Load() {
+		case stateOpen, stateMigrating:
+			c.stateCond.L.Unlock()
+			return c.reader.Read(p)
+		case stateRouting:
+			c.stateCond.Wait()
+		default:
+			c.stateCond.L.Unlock()
+			return 0, errors.New("session closed")
+		}
+	}
 }
 
 func (c *session) Write(p []byte) (int, error) {
-	return c.writer.Write(p)
+	c.stateCond.L.Lock()
+	for {
+		switch c.state.Load() {
+		case stateOpen:
+			c.stateCond.L.Unlock()
+			return c.writer.Write(p)
+		case stateRouting, stateMigrating:
+			c.stateCond.Wait()
+		default:
+			c.stateCond.L.Unlock()
+			return 0, errors.New("session closed")
+		}
+	}
+}
+
+func (c *session) Open(s *Stream, reader *sessionReader, writer *sessionWriter, onClose func()) {
+	c.stateCond.L.Lock()
+	defer c.stateCond.L.Unlock()
+
+	c.stream = s
+	c.reader = reader
+	c.writer = writer
+	c.onClose = onClose
+	c.swapState(stateRouting, stateOpen)
 }
 
 func (c *session) closeBuffers() {
@@ -83,34 +123,25 @@ func (c *session) closeBuffers() {
 	}
 }
 
-func (c *session) Pause() {
-	c.reader.Pause()
-	c.writer.Pause()
-}
-
-func (c *session) Resume() {
-	c.reader.Resume()
-	c.writer.Resume()
-}
-
 func (c *session) Close() error {
-	c.CancelMigration()
 	if !c.swapState(stateOpen, stateClosed) {
 		return nodes.ErrInvalidSessionState
 	}
 
-	c.mu.Lock()
-	stream := c.stream
-	c.mu.Unlock()
+	if c.onClose != nil {
+		c.onClose()
+	}
 
-	stream.Write(&frames.Reset{Nonce: c.Nonce})
 	c.closeBuffers()
-
 	return nil
 }
 
 func (c *session) swapState(old, new int) bool {
-	return c.state.CompareAndSwap(int32(old), int32(new))
+	if !c.state.CompareAndSwap(int32(old), int32(new)) {
+		return false
+	}
+	c.stateCond.Broadcast()
+	return true
 }
 
 func (s *session) IsOpen() bool {
@@ -121,142 +152,4 @@ func (c *session) isOnStream(s *Stream) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.stream == s
-}
-
-func (s *session) CanMigrate() bool {
-	return s.IsOpen() && (time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes)
-}
-
-func (c *session) Migrate(s *Stream) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if !c.stream.RemoteIdentity().IsEqual(s.RemoteIdentity()) {
-		return fmt.Errorf("identity mismatch")
-	}
-
-	if !c.swapState(stateOpen, stateMigrating) {
-		return errors.New("cannot migrate non-open session")
-	}
-
-	c.migratingTo = s
-	c.migratedCh = make(chan struct{})
-	c.migrateFrameReceivedCh = make(chan struct{})
-	c.migrateFrameSent.Store(false)
-
-	return nil
-}
-
-// writeMigrateFrame sends a migration marker over the current (old) stream.
-func (c *session) writeMigrateFrame() error {
-	c.mu.Lock()
-	stream := c.stream
-	c.mu.Unlock()
-
-	if stream == nil {
-		return fmt.Errorf("no current stream")
-	}
-
-	if err := stream.Write(&frames.Migrate{Nonce: c.Nonce}); err != nil {
-		return err
-	}
-	c.migrateFrameSent.Store(true)
-	return nil
-}
-
-// CompleteMigration finishes the migration by switching to the target stream and reopening the session.
-func (c *session) CompleteMigration() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.migratingTo == nil {
-		return errors.New("no target stream")
-	}
-
-	c.stream = c.migratingTo
-	c.migratingTo = nil
-
-	if !c.swapState(stateMigrating, stateOpen) {
-		return nodes.ErrInvalidMigrationState
-	}
-
-	if c.migratedCh != nil {
-		close(c.migratedCh)
-		c.migratedCh = nil
-	}
-
-	return nil
-}
-
-func (c *session) CancelMigration() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.state.Load() != stateMigrating {
-		return
-	}
-
-	c.migratingTo = nil
-	c.migrateFrameSent.Store(false)
-
-	if c.migratedCh != nil {
-		close(c.migratedCh)
-		c.migratedCh = nil
-	}
-
-	c.swapState(stateMigrating, stateOpen)
-}
-
-// signalMigrateFrameReceived closes migrateFrameReceivedCh to unblock WaitMigrateFrameReceived.
-func (c *session) signalMigrateFrameReceived() {
-	c.mu.Lock()
-	ch := c.migrateFrameReceivedCh
-	c.migrateFrameReceivedCh = nil
-	c.mu.Unlock()
-
-	if ch != nil {
-		close(ch)
-	}
-}
-
-// WaitMigrateFrameReceived blocks until the remote's Migrate frame has been received (responder side).
-func (c *session) WaitMigrateFrameReceived(ctx context.Context) error {
-	c.mu.Lock()
-	ch := c.migrateFrameReceivedCh
-	c.mu.Unlock()
-
-	if ch == nil {
-		return errors.New("not migrating")
-	}
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-ch:
-		return nil
-	}
-}
-
-// WaitOpen blocks until the migration completes or the context is cancelled.
-func (c *session) WaitOpen(ctx context.Context) error {
-	c.mu.Lock()
-	ch := c.migratedCh
-	c.mu.Unlock()
-
-	if ch == nil {
-		if c.IsOpen() {
-			return nil
-		}
-		return errors.New("not migrating")
-	}
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-ch:
-		if c.IsOpen() {
-			return nil
-		}
-		return errors.New("migration cancelled")
-	}
 }
