@@ -16,15 +16,15 @@ type opMigrateSessionArgs struct {
 	Out       string       `query:"optional"`
 }
 
-func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuery, args opMigrateSessionArgs) (err error) {
+func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuery, args opMigrateSessionArgs) error {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	sess, ok := mod.peers.sessions.Get(args.SessionID)
+	session, ok := mod.peers.sessions.Get(args.SessionID)
 	if !ok {
 		return ch.Send(astral.Err(nodes.ErrSessionNotFound))
 	}
-	if !sess.IsOpen() {
+	if !session.IsOpen() {
 		return ch.Send(astral.Err(nodes.ErrInvalidSessionState))
 	}
 
@@ -34,12 +34,12 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	}
 
 	if args.Start {
-		if sess.isOnStream(targetStream) {
+		if session.isOnStream(targetStream) {
 			return ch.Send(astral.NewError("session already on target stream"))
 		}
 
 		mod.log.Log("migrate session %v to stream %v (manual)", args.SessionID, args.StreamID)
-		err := mod.migrateSession(ctx, sess, targetStream)
+		err := mod.migrateSession(ctx, session, targetStream)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
@@ -47,7 +47,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		return ch.Send(&astral.Ack{})
 	}
 
-	migrator, err := mod.newSessionMigrator(sess)
+	migrator, err := mod.newSessionMigrator(session)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
@@ -55,16 +55,26 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	var peerBuffer astral.Uint32
 	err = ch.Switch(nodes.ExpectMigrateSignal(nodes.MigrateSignalReady, &peerBuffer))
 	if err != nil {
-		return err
+		return ch.Send(astral.Err(err))
 	}
 
 	migrator.SetPeerBuffer(int(peerBuffer))
-
 	err = migrator.BeginMigrate(targetStream)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
+	// note: submethod made for sake of defer (im thinking about other solution)
+	err = mod.respondMigration(ctx, ch, session, migrator)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	mod.log.Logv(1, "session %v migrated to stream %v (responder)", session.Nonce, targetStream.id)
+	return nil
+}
+
+func (mod *Module) respondMigration(ctx *astral.Context, ch *channel.Channel, sess *session, migrator *SessionMigrator) (err error) {
 	defer func() {
 		if err != nil {
 			sess.Close()
@@ -91,8 +101,10 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		return err
 	}
 
-	migrator.Resume()
-	mod.log.Logv(1, "session %v migrated to stream %v (responder)", sess.Nonce, targetStream.id)
+	err = migrator.Resume()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

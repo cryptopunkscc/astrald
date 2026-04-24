@@ -109,7 +109,11 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
-	migrator.Resume()
+	err = migrator.Resume()
+	if err != nil {
+		return err
+	}
+
 	mod.log.Logv(1, "session %v migrated to stream %v (initiator)", session.Nonce, targetStream.id)
 	return nil
 }
