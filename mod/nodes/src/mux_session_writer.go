@@ -86,12 +86,8 @@ func (w *muxSessionWriter) Write(p []byte) (int, error) {
 		if err != nil {
 			var emptyErr *ErrBufferEmpty
 			if errors.As(err, &emptyErr) {
-				go func() {
-					<-emptyErr.Wait()
-					w.cond.Broadcast()
-				}()
-				w.cond.Wait()
 				w.cond.L.Unlock()
+				<-emptyErr.Wait()
 				continue
 			}
 

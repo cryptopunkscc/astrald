@@ -73,9 +73,6 @@ func (c *session) Read(p []byte) (int, error) {
 			return c.reader.Read(p)
 		case stateClosed:
 			c.stateCond.L.Unlock()
-			if c.reader == nil {
-				return 0, io.EOF
-			}
 			return c.reader.Read(p)
 		case stateRouting:
 			c.stateCond.Wait()

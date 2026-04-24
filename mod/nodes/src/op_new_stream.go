@@ -11,10 +11,10 @@ import (
 )
 
 type opNewStreamArgs struct {
-	Target     string
-	Endpoint   string `query:"optional"`
-	Strategies string `query:"optional"`
-	Out        string `query:"optional"`
+	Target     string `query:"required"`
+	Endpoint   string
+	Strategies string
+	Out        string
 }
 
 func (mod *Module) OpNewStream(ctx *astral.Context, q *routing.IncomingQuery, args opNewStreamArgs) (err error) {

@@ -98,12 +98,8 @@ func (r *muxSessionReader) Read(p []byte) (n int, err error) {
 		default:
 			var emptyErr *ErrBufferEmpty
 			if errors.As(err, &emptyErr) {
-				go func() {
-					<-emptyErr.Wait()
-					r.cond.Broadcast()
-				}()
-				r.cond.Wait()
 				r.cond.L.Unlock()
+				<-emptyErr.Wait()
 				continue
 			}
 
