@@ -16,7 +16,7 @@ type opMigrateSessionArgs struct {
 	Out       string       `query:"optional"`
 }
 
-func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuery, args opMigrateSessionArgs) error {
+func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuery, args opMigrateSessionArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
@@ -64,6 +64,11 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
+	defer func() {
+		if err != nil {
+			migrator.Rollback()
+		}
+	}()
 
 	err = migrator.SendMigrateFrame()
 	if err != nil {

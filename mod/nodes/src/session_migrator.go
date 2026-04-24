@@ -8,13 +8,14 @@ import (
 )
 
 type SessionMigrator struct {
-	mod            *Module
-	session        *session
-	reader         *muxSessionReader
-	writer         *muxSessionWriter
-	peerBuffer     int
-	oldStream      *Stream
-	oldInputBuffer *InputBuffer
+	mod             *Module
+	session         *session
+	reader          *muxSessionReader
+	writer          *muxSessionWriter
+	peerBuffer      int
+	oldStream       *Stream
+	oldInputBuffer  *InputBuffer
+	oldOutputBuffer *OutputBuffer
 }
 
 func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
@@ -32,16 +33,24 @@ func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
 }
 
 func (m *SessionMigrator) BeginMigrate(target *Stream) error {
+	m.session.stateCond.L.Lock()
 	m.oldStream = m.session.stream
-	m.oldInputBuffer = m.reader.buf
+	m.session.stateCond.L.Unlock()
+
+	m.oldInputBuffer = m.reader.Buf()
+	m.oldOutputBuffer = m.writer.Buf()
 
 	m.session.Pause()
+
+	m.session.stateCond.L.Lock()
 	m.session.stream = target
 	if !m.session.swapState(stateOpen, stateMigrating) {
 		m.session.stream = m.oldStream
+		m.session.stateCond.L.Unlock()
 		m.session.Resume()
 		return nodes.ErrInvalidSessionState
 	}
+	m.session.stateCond.L.Unlock()
 
 	newInputBuffer := m.mod.peers.newMuxInputBuffer(target, m.session.Nonce)
 	newOutputBuffer := m.mod.peers.newMuxOutputBuffer(target, m.session.Nonce, m.session)
@@ -50,6 +59,16 @@ func (m *SessionMigrator) BeginMigrate(target *Stream) error {
 	m.reader.SetNextBuffer(newInputBuffer)
 
 	return nil
+}
+
+func (m *SessionMigrator) Rollback() {
+	m.writer.SetBuf(m.oldOutputBuffer)
+	m.reader.SetNextBuffer(nil)
+	m.session.stateCond.L.Lock()
+	m.session.stream = m.oldStream
+	m.session.stateCond.L.Unlock()
+	m.session.swapState(stateMigrating, stateOpen)
+	m.session.Resume()
 }
 
 func (m *SessionMigrator) SendMigrateFrame() error {

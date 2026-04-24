@@ -323,7 +323,7 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 
 	// Peer is done sending on the old stream; close the old input buffer so the
 	// reader drains it and then switches to the new one.
-	if err := reader.buf.Close(); err != nil {
+	if err := reader.CloseBuf(); err != nil {
 		mod.log.Errorv(1, "failed to close read buffer: %v", err)
 	}
 }

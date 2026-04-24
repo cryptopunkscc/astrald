@@ -1,8 +1,6 @@
 package nodes
 
 import (
-	"errors"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -58,11 +56,7 @@ func (mod *Peers) newMuxOutputBuffer(s *Stream, nonce astral.Nonce, sess *sessio
 }
 
 // migrateSession migrates single session
-func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream *Stream) error {
-	if !session.IsOpen() {
-		return errors.New("session not open")
-	}
-
+func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream *Stream) (err error) {
 	ch, err := nodesClient.New(session.RemoteIdentity, astrald.Default()).MigrateSession(ctx, nodesClient.MigrateSessionArgs{
 		SessionID: session.Nonce,
 		StreamID:  targetStream.id,
@@ -81,6 +75,11 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			migrator.Rollback()
+		}
+	}()
 
 	err = ch.Send(&nodes.MigrateSignal{Signal: nodes.MigrateSignalReady, Buffer: astral.Uint32(defaultBufferSize)})
 	if err != nil {

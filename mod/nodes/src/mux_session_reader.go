@@ -21,6 +21,19 @@ func newSessionReader(buf *InputBuffer) *muxSessionReader {
 	return r
 }
 
+func (r *muxSessionReader) Buf() *InputBuffer {
+	r.cond.L.Lock()
+	defer r.cond.L.Unlock()
+	return r.buf
+}
+
+func (r *muxSessionReader) CloseBuf() error {
+	r.cond.L.Lock()
+	buf := r.buf
+	r.cond.L.Unlock()
+	return buf.Close()
+}
+
 func (r *muxSessionReader) SetNextBuffer(buf *InputBuffer) {
 	r.cond.L.Lock()
 	defer r.cond.L.Unlock()
