@@ -34,23 +34,24 @@ func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
 
 func (m *SessionMigrator) BeginMigrate(target *Stream) error {
 	m.session.stateCond.L.Lock()
+	defer m.session.stateCond.L.Unlock()
+
+	m.session.paused = true
+	for m.session.writing {
+		m.session.stateCond.Wait()
+	}
+
+	if !m.session.swapState(stateOpen, stateMigrating) {
+		m.session.paused = false
+		m.session.stateCond.Broadcast()
+		return nodes.ErrInvalidSessionState
+	}
+
 	m.oldStream = m.session.stream
-	m.session.stateCond.L.Unlock()
+	m.session.stream = target
 
 	m.oldInputBuffer = m.reader.Buf()
 	m.oldOutputBuffer = m.writer.Buf()
-
-	m.session.Pause()
-
-	m.session.stateCond.L.Lock()
-	m.session.stream = target
-	if !m.session.swapState(stateOpen, stateMigrating) {
-		m.session.stream = m.oldStream
-		m.session.stateCond.L.Unlock()
-		m.session.Resume()
-		return nodes.ErrInvalidSessionState
-	}
-	m.session.stateCond.L.Unlock()
 
 	newInputBuffer := m.mod.peers.newMuxInputBuffer(target, m.session.Nonce)
 	newOutputBuffer := m.mod.peers.newMuxOutputBuffer(target, m.session.Nonce, m.session)
@@ -62,16 +63,18 @@ func (m *SessionMigrator) BeginMigrate(target *Stream) error {
 }
 
 func (m *SessionMigrator) Rollback() {
+	m.session.stateCond.L.Lock()
+	defer m.session.stateCond.L.Unlock()
+
 	m.writer.SetBuf(m.oldOutputBuffer)
 	m.reader.SetNextBuffer(nil)
-	m.session.stateCond.L.Lock()
 	m.session.stream = m.oldStream
-	m.session.stateCond.L.Unlock()
 	m.session.swapState(stateMigrating, stateOpen)
 	m.session.Resume()
 }
 
 func (m *SessionMigrator) SendMigrateFrame() error {
+	// note: will be part of mux
 	return m.oldStream.Write(&frames.Migrate{Nonce: m.session.Nonce})
 }
 

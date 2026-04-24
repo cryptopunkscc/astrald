@@ -151,6 +151,8 @@ func (s *session) IsOpen() bool {
 }
 
 func (c *session) isOnStream(s *Stream) bool {
+	c.stateCond.L.Lock()
+	defer c.stateCond.L.Unlock()
 	return c.stream == s
 }
 
