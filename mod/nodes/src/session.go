@@ -40,10 +40,8 @@ type session struct {
 	stateCond *sync.Cond   // broadcasts on every state transition
 	state     atomic.Int32 // connection state
 
-	stream  *Stream       // stream the connection is attached to
-	bytes   atomic.Uint64 // total bytes transferred (read + write)
-	paused  bool          // true while writes are paused; guarded by stateCond
-	writing bool          // true while inside writer.Write(); guarded by stateCond
+	stream *Stream       // stream the connection is attached to
+	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
 	reader  io.Reader      //  io.Reader
 	writer  io.WriteCloser // io.WriteCloser
@@ -88,20 +86,8 @@ func (c *session) Write(p []byte) (int, error) {
 	for {
 		switch c.state.Load() {
 		case stateOpen:
-			if c.paused {
-				c.stateCond.Wait()
-				continue
-			}
-			c.writing = true
 			c.stateCond.L.Unlock()
-
-			n, err := c.writer.Write(p)
-
-			c.stateCond.L.Lock()
-			c.writing = false
-			c.stateCond.Broadcast()
-			c.stateCond.L.Unlock()
-			return n, err
+			return c.writer.Write(p)
 		case stateRouting, stateMigrating:
 			c.stateCond.Wait()
 		default:
@@ -154,21 +140,4 @@ func (c *session) isOnStream(s *Stream) bool {
 	c.stateCond.L.Lock()
 	defer c.stateCond.L.Unlock()
 	return c.stream == s
-}
-
-// Pause blocks new writes and waits for any in-flight write to complete.
-func (c *session) Pause() {
-	c.stateCond.L.Lock()
-	defer c.stateCond.L.Unlock()
-	c.paused = true
-	for c.writing {
-		c.stateCond.Wait()
-	}
-}
-
-func (c *session) Resume() {
-	c.stateCond.L.Lock()
-	defer c.stateCond.L.Unlock()
-	c.paused = false
-	c.stateCond.Broadcast()
 }

@@ -75,6 +75,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		if err != nil {
 			migrator.Rollback()
@@ -93,7 +94,6 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 	}
 
 	migrator.SetPeerBuffer(int(peerBuffer))
-
 	err = migrator.SendMigrateFrame()
 	if err != nil {
 		return err

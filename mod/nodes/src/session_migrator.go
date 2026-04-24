@@ -36,14 +36,10 @@ func (m *SessionMigrator) BeginMigrate(target *Stream) error {
 	m.session.stateCond.L.Lock()
 	defer m.session.stateCond.L.Unlock()
 
-	m.session.paused = true
-	for m.session.writing {
-		m.session.stateCond.Wait()
-	}
+	m.writer.Pause()
 
 	if !m.session.swapState(stateOpen, stateMigrating) {
-		m.session.paused = false
-		m.session.stateCond.Broadcast()
+		m.writer.Resume()
 		return nodes.ErrInvalidSessionState
 	}
 
@@ -62,15 +58,19 @@ func (m *SessionMigrator) BeginMigrate(target *Stream) error {
 	return nil
 }
 
-func (m *SessionMigrator) Rollback() {
+func (m *SessionMigrator) Rollback() error {
 	m.session.stateCond.L.Lock()
 	defer m.session.stateCond.L.Unlock()
+	if !m.session.swapState(stateMigrating, stateOpen) {
+		return nodes.ErrInvalidSessionState
+	}
 
 	m.writer.SetBuf(m.oldOutputBuffer)
 	m.reader.SetNextBuffer(nil)
 	m.session.stream = m.oldStream
-	m.session.swapState(stateMigrating, stateOpen)
-	m.session.Resume()
+	m.writer.Resume()
+
+	return nil
 }
 
 func (m *SessionMigrator) SendMigrateFrame() error {
@@ -91,8 +91,14 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 	m.peerBuffer = n
 }
 
-func (m *SessionMigrator) Resume() {
+func (m *SessionMigrator) Resume() error {
+	m.session.stateCond.L.Lock()
+	defer m.session.stateCond.L.Unlock()
+	if !m.session.swapState(stateMigrating, stateOpen) {
+		return nodes.ErrInvalidSessionState
+	}
+
 	m.writer.Grow(m.peerBuffer)
-	m.session.swapState(stateMigrating, stateOpen)
-	m.session.Resume()
+	m.writer.Resume()
+	return nil
 }
