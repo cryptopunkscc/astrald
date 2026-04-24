@@ -74,10 +74,10 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	return nil
 }
 
-func (mod *Module) respondMigration(ctx *astral.Context, ch *channel.Channel, sess *session, migrator *SessionMigrator) (err error) {
+func (mod *Module) respondMigration(ctx *astral.Context, ch *channel.Channel, session *session, migrator *SessionMigrator) (err error) {
 	defer func() {
 		if err != nil {
-			sess.Close()
+			session.Close()
 		}
 	}()
 

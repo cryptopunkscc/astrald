@@ -35,7 +35,6 @@ type session struct {
 	Query          string
 	createdAt      time.Time
 	res            chan uint8
-
 	// todo: probably state now can be int32 change it when holding stateCond
 	stateCond *sync.Cond   // broadcasts on every state transition
 	state     atomic.Int32 // connection state
@@ -111,6 +110,10 @@ func (c *session) Open(s *Stream, reader io.Reader, writer io.WriteCloser, onClo
 func (c *session) Close() error {
 	if !c.swapState(stateOpen, stateClosed) && !c.swapState(stateMigrating, stateClosed) {
 		return nodes.ErrInvalidSessionState
+	}
+
+	if c.state.Load() == stateClosed {
+		return nil
 	}
 
 	if c.onClose != nil {
