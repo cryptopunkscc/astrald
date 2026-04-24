@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var _ io.Reader = &muxSessionReader{}
+var _ io.ReadCloser = &muxSessionReader{}
 
 type muxSessionReader struct {
 	cond       *sync.Cond
@@ -25,6 +25,25 @@ func (r *muxSessionReader) Buf() *InputBuffer {
 	r.cond.L.Lock()
 	defer r.cond.L.Unlock()
 	return r.buf
+}
+
+func (r *muxSessionReader) Close() error {
+	r.cond.L.Lock()
+	buf := r.buf
+	nextBuffer := r.nextBuffer
+	r.nextBuffer = nil
+	r.paused = false
+	r.cond.Broadcast()
+	r.cond.L.Unlock()
+
+	if buf != nil {
+		_ = buf.Close()
+	}
+	if nextBuffer != nil {
+		_ = nextBuffer.Close()
+	}
+
+	return nil
 }
 
 func (r *muxSessionReader) CloseBuf() error {

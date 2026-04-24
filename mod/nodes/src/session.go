@@ -42,7 +42,7 @@ type session struct {
 	stream *Stream       // stream the connection is attached to
 	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
-	reader  io.Reader      //  io.Reader
+	reader  io.ReadCloser  // io.ReadCloser
 	writer  io.WriteCloser // io.WriteCloser
 	onClose func()
 }
@@ -71,11 +71,14 @@ func (c *session) Read(p []byte) (int, error) {
 		case stateOpen, stateMigrating:
 			c.stateCond.L.Unlock()
 			return c.reader.Read(p)
+		case stateClosed:
+			c.stateCond.L.Unlock()
+			if c.reader == nil {
+				return 0, io.EOF
+			}
+			return c.reader.Read(p)
 		case stateRouting:
 			c.stateCond.Wait()
-		default:
-			c.stateCond.L.Unlock()
-			return 0, errors.New("session closed")
 		}
 	}
 }
@@ -96,7 +99,7 @@ func (c *session) Write(p []byte) (int, error) {
 	}
 }
 
-func (c *session) Open(s *Stream, reader io.Reader, writer io.WriteCloser, onClose func()) {
+func (c *session) Open(s *Stream, reader io.ReadCloser, writer io.WriteCloser, onClose func()) {
 	c.stateCond.L.Lock()
 	defer c.stateCond.L.Unlock()
 
@@ -115,12 +118,17 @@ func (c *session) Close() error {
 
 		return nodes.ErrInvalidSessionState
 	}
+
 	if c.onClose != nil {
 		c.onClose()
 	}
 
 	if c.writer != nil {
 		c.writer.Close()
+	}
+
+	if c.reader != nil {
+		c.reader.Close()
 	}
 
 	return nil
