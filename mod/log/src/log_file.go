@@ -18,7 +18,7 @@ type LogFile struct {
 	path string
 }
 
-var _ log.Output = &LogFile{}
+var _ log.EntryLogger = &LogFile{}
 
 func CreateLogFile() (*LogFile, error) {
 	f := &LogFile{}

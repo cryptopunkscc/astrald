@@ -2,8 +2,8 @@ package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 )
 
 type EOSView struct {
@@ -11,11 +11,13 @@ type EOSView struct {
 }
 
 func (EOSView) Render() string {
-	return styles.DarkGrayText.Render("(end of stream)")
+	t := theme.EOS
+	p := t.Bri(theme.Least)
+	return p.Render("(") + t.Render("end of stream") + p.Render(")")
 }
 
 func init() {
-	log.DefaultViewer.Set(astral.EOS{}.ObjectType(), func(object astral.Object) astral.Object {
+	fmt.SetView(func(*astral.EOS) fmt.View {
 		return &EOSView{}
 	})
 }

@@ -1,10 +1,9 @@
 package routing
 
 import (
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
 	"github.com/cryptopunkscc/astrald/mod/log/styles"
-	"github.com/cryptopunkscc/astrald/mod/log/views"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 )
 
 type OpSpecView struct {
@@ -12,11 +11,12 @@ type OpSpecView struct {
 }
 
 func (op OpSpecView) Render() (out string) {
-	view := log.DefaultViewer
+	arg := theme.Normal
+	sep := theme.Normal.Bri(theme.More)
 
 	// name(
-	out += view.Render(views.String(op.Name, &styles.BrightGreenText))
-	out += view.Render(views.String("(", &styles.WhiteText))
+	out += theme.Op.Render(op.Name)
+	out += sep.Render("(")
 
 	var first = true
 	for _, spec := range op.Parameters {
@@ -27,22 +27,20 @@ func (op OpSpecView) Render() (out string) {
 		if spec.Required {
 			req = "*"
 		}
-		out += view.Render(
-			views.String(spec.Name+" ", &styles.GrayText),
-			views.String(req, &styles.RedText),
-			views.String(spec.Type, &styles.YellowText),
-		)
+		out += arg.Render(spec.Name) + " " +
+			styles.Red.Render(req) +
+			theme.Type.Render(spec.Type)
 		first = false
 	}
 
 	// )
-	out += view.Render(views.String(")", &styles.WhiteText))
+	out += sep.Render(")")
 
 	return
 }
 
 func init() {
-	log.DefaultViewer.Set(OpSpec{}.ObjectType(), func(object astral.Object) astral.Object {
-		return &OpSpecView{OpSpec: object.(*OpSpec)}
+	fmt.SetView(func(o *OpSpec) fmt.View {
+		return &OpSpecView{OpSpec: o}
 	})
 }

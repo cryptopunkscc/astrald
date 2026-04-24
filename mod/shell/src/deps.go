@@ -1,8 +1,6 @@
 package shell
 
 import (
-	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -36,7 +34,7 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 			}
 
 			if s, ok := m.(HasRouter); ok {
-				mod.scopes.Add(getName(s), s.Router())
+				mod.scopes.Add(astral.Stringify(s), s.Router())
 				added = append(added, m)
 			}
 		}
@@ -46,16 +44,4 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	}
 
 	return
-}
-
-func getName(v any) string {
-	if s, ok := v.(fmt.Stringer); ok {
-		return s.String()
-	}
-
-	if reflect.TypeOf(v).Kind() == reflect.Pointer {
-		return reflect.TypeOf(v).Elem().String()
-	}
-
-	return reflect.TypeOf(v).String()
 }

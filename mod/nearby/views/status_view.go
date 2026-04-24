@@ -1,12 +1,12 @@
-package views
+package nearby
 
 import (
 	"strconv"
 
-	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
@@ -16,7 +16,7 @@ type StatusView struct {
 }
 
 func (v StatusView) Render() string {
-	s := log.DefaultViewer.Render(v.Identity)
+	s := fmt.Sprint(v.Identity)
 	l := len(v.Attachments.Objects())
 	if l > 0 {
 		var first = true
@@ -35,8 +35,8 @@ func (v StatusView) Render() string {
 }
 
 func init() {
-	log.DefaultViewer.Set(nearby.Status{}.ObjectType(), func(o astral.Object) astral.Object {
-		return StatusView{o.(*nearby.Status)}
+	fmt.SetView(func(o *nearby.Status) fmt.View {
+		return StatusView{Status: o}
 	})
 }
 
@@ -60,24 +60,24 @@ func (v StatusView) attachments() (list []string) {
 	}
 
 	if len(alias) > 0 {
-		list = append(list, styles.GreenText.Render(alias))
+		list = append(list, theme.Identity.Render(alias))
 	}
 
 	if len(flags) > 0 {
 		for _, flag := range flags {
-			list = append(list, styles.YellowText.Render(flag))
+			list = append(list, theme.Quaternary.Render(flag))
 		}
 	}
 
 	if endpoints > 0 {
-		item := styles.WhiteText.Render(strconv.Itoa(endpoints))
-		item += styles.GrayText.Render(" endpoints")
+		item := theme.Normal.Render(strconv.Itoa(endpoints))
+		item += styles.Gray.Render(" endpoints")
 		list = append(list, item)
 	}
 
 	if more > 0 {
-		item := styles.WhiteText.Render(strconv.Itoa(more))
-		item += styles.GrayText.Render(" other attachment")
+		item := styles.White.Render(strconv.Itoa(more))
+		item += styles.Gray.Render(" other attachment")
 		list = append(list, item)
 	}
 

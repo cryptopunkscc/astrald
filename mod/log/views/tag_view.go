@@ -1,8 +1,7 @@
 package views
 
 import (
-	"github.com/charmbracelet/lipgloss"
-	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/log/styles"
 )
@@ -12,15 +11,13 @@ type TagView struct {
 }
 
 func (v TagView) Render() string {
-	c := styles.TextColorFromString(v.Tag.String())
-	style := lipgloss.NewStyle().Foreground(lipgloss.Color(c))
+	c := styles.ColorFromString(v.Tag.String())
 
-	return "[" + style.Render(v.Tag.String()) + "] "
-
+	return "[" + c.Render(v.Tag.String()) + "] "
 }
 
 func init() {
-	log.DefaultViewer.Set(log.Tag(0).ObjectType(), func(o astral.Object) astral.Object {
-		return &TagView{o.(*log.Tag)}
+	fmt.SetView(func(o *log.Tag) fmt.View {
+		return &TagView{Tag: o}
 	})
 }

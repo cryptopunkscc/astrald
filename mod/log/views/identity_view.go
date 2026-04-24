@@ -2,9 +2,9 @@ package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
 	"github.com/cryptopunkscc/astrald/mod/dir"
-	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -16,23 +16,20 @@ type IdentityView struct {
 }
 
 func (v IdentityView) Render() string {
-	var style = styles.GreenText
+	s := theme.Identity
 	if v.Highlight {
-		style = styles.BrightGreenText
+		s = s.Bri(theme.More)
 	}
 
 	if r := IdentityResolver.Get(); r != nil {
-		return style.Render(r.DisplayName(v.Identity))
+		return s.Render(r.DisplayName(v.Identity))
 	}
 
-	return style.Render(v.Identity.Fingerprint())
+	return s.Render(v.Identity.Fingerprint())
 }
 
 func UseIdentityView() {
-	log.DefaultViewer.Set(
-		astral.Identity{}.ObjectType(),
-		func(object astral.Object) astral.Object {
-			return IdentityView{Identity: object.(*astral.Identity)}
-		},
-	)
+	fmt.SetView(func(identity *astral.Identity) fmt.View {
+		return IdentityView{Identity: identity}
+	})
 }

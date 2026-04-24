@@ -19,7 +19,7 @@ type adapter struct {
 var _ io.Writer = &adapter{}
 
 func (node *Node) initLogger() {
-	node.log = log.New(node.identity, nil)
+	node.log = log.New(node.identity)
 
 	_log.SetOutput(adapter{Logger: node.log.Tag("stdout")})
 	_log.SetFlags(0)

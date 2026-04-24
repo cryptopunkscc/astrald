@@ -23,11 +23,9 @@ func (l Tag) MarshalJSON() ([]byte, error) {
 	return json.Marshal(string(l))
 }
 
-func (l Tag) UnmarshalJSON(bytes []byte) error {
-	return json.Unmarshal(bytes, (*string)(&l))
+func (l *Tag) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, (*string)(l))
 }
-
-func (l Tag) Render() string { return "[" + string(l) + "] " }
 
 func (l Tag) String() string {
 	return string(l)

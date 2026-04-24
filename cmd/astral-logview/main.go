@@ -10,9 +10,11 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	fmt2 "github.com/cryptopunkscc/astrald/astral/fmt"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/astrald"
-	_ "github.com/cryptopunkscc/astrald/mod/allpub"
+	_ "github.com/cryptopunkscc/astrald/mod/all/pub"
+	_ "github.com/cryptopunkscc/astrald/mod/all/views"
 	"github.com/cryptopunkscc/astrald/mod/log/views"
 )
 
@@ -59,7 +61,6 @@ func main() {
 
 	var ch = channel.NewBinaryReceiver(i)
 
-	printer := log.NewPrinter(os.Stdout)
 	var lastTime astral.Time
 
 	for {
@@ -77,7 +78,8 @@ func main() {
 				continue
 			}
 
-			printer.LogEntry(entry)
+			fmt2.Println(entry)
+
 		case *astral.EOS:
 			return
 

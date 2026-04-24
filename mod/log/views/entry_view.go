@@ -1,38 +1,39 @@
 package views
 
 import (
-	"fmt"
-
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
 	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 )
 
 type EntryView struct {
 	*log.Entry
 }
 
-var HideOrigin *astral.Identity
+var HideOrigin = astral.Anyone
 
 func (v EntryView) Render() string {
 	level := fmt.Sprintf("(%v)", v.Level)
 
-	var line = log.Format("%v %v ",
-		String(level, &styles.DarkGrayText),
+	var line = fmt.Sprintf("%v %v ",
+		theme.Level.Render(level),
 		NewTimeView(&v.Time),
 	)
 
-	if HideOrigin == nil || !v.Origin.IsEqual(HideOrigin) {
-		line = append(log.Format("[%v] ", v.Origin), line...)
+	if HideOrigin == nil || (!v.Origin.IsEqual(HideOrigin) && !HideOrigin.IsZero()) {
+		line = fmt.Sprintf("[%v] ", v.Origin) + line
 	}
 
-	line = append(line, v.Objects...)
+	for _, object := range v.Objects {
+		line += fmt.Sprint(object)
+	}
 
-	return log.DefaultViewer.Render(line...)
+	return line
 }
 
 func UseEntryView() {
-	log.DefaultViewer.Set(log.Entry{}.ObjectType(), func(o astral.Object) astral.Object {
-		return EntryView{o.(*log.Entry)}
+	fmt.SetView(func(o *log.Entry) fmt.View {
+		return EntryView{o}
 	})
 }

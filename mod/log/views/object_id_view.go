@@ -1,9 +1,11 @@
 package views
 
 import (
+	"strings"
+
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 )
 
 type ObjectIDView struct {
@@ -11,11 +13,15 @@ type ObjectIDView struct {
 }
 
 func (v ObjectIDView) Render() string {
-	return styles.BlueText.Render(v.ObjectID.String())
+	t := theme.ObjectID
+	p := t.Bri(theme.Least)
+	str := v.ObjectID.String()
+	str = strings.TrimPrefix(str, "data1")
+	return p.Render("data1") + t.Render(str)
 }
 
 func init() {
-	log.DefaultViewer.Set(astral.ObjectID{}.ObjectType(), func(o astral.Object) astral.Object {
-		return ObjectIDView{o.(*astral.ObjectID)}
+	fmt.SetView(func(o *astral.ObjectID) fmt.View {
+		return ObjectIDView{ObjectID: o}
 	})
 }

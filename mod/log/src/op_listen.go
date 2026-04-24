@@ -18,8 +18,8 @@ func (mod *Module) OpListen(ctx *astral.Context, q *routing.IncomingQuery, args 
 
 	fwd := &logForwarder{ch}
 
-	mod.outputs.Add(fwd)
-	defer mod.outputs.Remove(fwd)
+	mod.log.AddLogger(fwd)
+	defer mod.log.RemoveLogger(fwd)
 
 	for {
 		_, err := ch.Receive()

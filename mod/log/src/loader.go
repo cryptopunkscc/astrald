@@ -1,9 +1,8 @@
 package log
 
 import (
-	"os"
-
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
 	alog "github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/core/assets"
@@ -26,38 +25,28 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *alog.Logger) (co
 		return nil, err
 	}
 
-	alog.DefaultViewer.Set(
-		astral.Identity{}.ObjectType(),
-		func(object astral.Object) astral.Object {
-			identity := object.(*astral.Identity)
+	fmt.SetView(func(identity *astral.Identity) fmt.View {
+		return views.IdentityView{
+			Identity:  identity,
+			Highlight: identity.IsEqual(node.Identity()),
+		}
+	})
 
-			return views.IdentityView{
-				Identity:  identity,
-				Highlight: identity.IsEqual(node.Identity()),
-			}
-		},
-	)
-
-	// add default output to the output list
-	p := alog.NewPrinter(os.Stdout)
-	p.Filter = mod.LogEntryFilter
-	mod.outputs.Add(p)
+	// set the log filter
+	log.SetFilter(mod.LogEntryFilter)
 
 	// add a log file to the output list
 	logFile, err := CreateLogFile()
 	if err != nil {
 		log.Error("cannot create log file: %v", err)
 	} else {
-		mod.outputs.Add(logFile)
+		log.AddLogger(logFile)
 	}
 
 	// configure some views
 	views.UseQueryView()
 	views.UseEntryView()
 	views.HideOrigin = node.Identity()
-
-	// switch logger output to the module
-	log.SetOutput(mod)
 
 	return mod, err
 }

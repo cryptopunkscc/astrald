@@ -2,7 +2,7 @@ package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
 )
 
 type QueryView struct {
@@ -10,19 +10,19 @@ type QueryView struct {
 }
 
 func (view QueryView) Render() (out string) {
-	out = log.DefaultViewer.Render(log.Format(
+	out = fmt.Sprintf(
 		"[%v] %v -> %v:%v",
-		view.Nonce,
+		&view.Nonce,
 		view.Caller,
 		view.Target,
 		NewQueryStringView(view.QueryString),
-	)...)
+	)
 
 	return out
 }
 
 func UseQueryView() {
-	log.DefaultViewer.Set(astral.Query{}.ObjectType(), func(o astral.Object) astral.Object {
-		return QueryView{Query: o.(*astral.Query)}
+	fmt.SetView(func(o *astral.Query) fmt.View {
+		return QueryView{o}
 	})
 }

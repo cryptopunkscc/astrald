@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
+	"github.com/cryptopunkscc/astrald/mod/tor"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/sig"
 	"golang.org/x/net/proxy"
@@ -75,3 +76,5 @@ func (mod *Module) loadSettings(ctx *astral.Context) error {
 
 	return nil
 }
+
+func (mod *Module) String() string { return tor.ModuleName }

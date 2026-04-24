@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
 )
 
 type Prompt struct {
@@ -13,10 +13,7 @@ type Prompt struct {
 }
 
 func (p Prompt) Render() string {
-	return log.DefaultViewer.Render(p.guestID) +
-		"@" +
-		log.DefaultViewer.Render(p.hostID) +
-		"> "
+	return fmt.Sprintf("%v@%v> ", p.guestID, p.hostID)
 }
 
 func (Prompt) ObjectType() string {

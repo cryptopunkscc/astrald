@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 
-	_ "github.com/cryptopunkscc/astrald/mod/allpub"
+	_ "github.com/cryptopunkscc/astrald/mod/all/pub"
 )
 
 func (client *Client) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, *error) {

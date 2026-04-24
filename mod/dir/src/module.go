@@ -11,7 +11,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/log/styles"
-	"github.com/cryptopunkscc/astrald/mod/log/views"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -170,7 +170,7 @@ func (mod *Module) setDefaultAlias() error {
 		return err
 	}
 
-	mod.log.Info("call me %v", views.String(alias, &styles.BrightGreenText))
+	mod.log.Info("call me %v", styles.String(alias, theme.Identity))
 
 	return nil
 }

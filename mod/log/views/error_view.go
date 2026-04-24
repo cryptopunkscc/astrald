@@ -2,8 +2,8 @@ package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 )
 
 type ErrorView struct {
@@ -11,11 +11,11 @@ type ErrorView struct {
 }
 
 func (v ErrorView) Render() string {
-	return styles.RedText.Render(v.Error.Error())
+	return theme.Error.Render(v.Error.Error())
 }
 
 func init() {
-	log.DefaultViewer.Set(astral.ErrorMessage{}.ObjectType(), func(object astral.Object) astral.Object {
-		return ErrorView{object.(*astral.ErrorMessage)}
+	fmt.SetView(func(o *astral.ErrorMessage) fmt.View {
+		return ErrorView{Error: o}
 	})
 }

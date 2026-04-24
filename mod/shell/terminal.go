@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
 )
 
 type Terminal struct {
@@ -50,11 +50,17 @@ func (e *Terminal) Close() error {
 }
 
 func (e *Terminal) Printf(f string, v ...interface{}) error {
-	_, err := e.rw.Write([]byte(log.DefaultViewer.Render(log.Format(f, v...)...)))
+
+	_, err := e.rw.Write([]byte(fmt.Sprintf(f, v...)))
 	return err
 }
 
 func (e *Terminal) Print(objects ...astral.Object) (err error) {
-	_, err = e.rw.Write([]byte(log.DefaultViewer.Render(objects...)))
+	for _, object := range objects {
+		_, err = fmt.Fprint(e.rw, object)
+		if err != nil {
+			return
+		}
+	}
 	return
 }

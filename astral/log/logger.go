@@ -1,28 +1,46 @@
 package log
 
 import (
+	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Logger struct {
-	id     *astral.Identity
-	mu     sync.Mutex
-	parent *Logger
-	prefix []astral.Object
-	output Output
+	id      *astral.Identity
+	w       io.Writer
+	mu      sync.Mutex
+	parent  *Logger
+	prefix  []astral.Object
+	filter  func(*Entry) bool
+	loggers sig.Set[EntryLogger]
 }
 
-func New(id *astral.Identity, output Output) *Logger {
-	if output == nil {
-		output = NewPrinter(os.Stdout)
+func (l *Logger) SetFilter(filter func(*Entry) bool) {
+	if l.parent != nil {
+		l.parent.SetFilter(filter)
+		return
 	}
 
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.filter = filter
+}
+
+type EntryLogger interface {
+	LogEntry(*Entry)
+}
+
+func New(id *astral.Identity) *Logger {
 	return &Logger{
-		id:     id,
-		output: output,
+		id: id,
+		w:  os.Stdout,
 	}
 }
 
@@ -66,34 +84,48 @@ func (l *Logger) AppendTag(tag Tag) *Logger {
 	return l.SetPrefix(append(l.prefix, &tag)...)
 }
 
-func (l *Logger) SetOutput(o Output) {
-	l.root().setOutput(o)
+func (l *Logger) AddLogger(el EntryLogger) {
+	l.root().loggers.Add(el)
 }
 
-func (l *Logger) Output() Output {
-	return l.root().getOutput()
+func (l *Logger) RemoveLogger(el EntryLogger) {
+	l.root().loggers.Remove(el)
 }
 
 func (l *Logger) logf(level uint8, f string, v ...interface{}) {
-	obj := append(l.prefix, Format(f, v...)...)
+	var items = l.prefix
 
-	entry := NewEntry(l.id, level, obj...)
+	f = strings.ReplaceAll(f, "\n", "\\\\n")
 
-	l.Output().LogEntry(entry)
+	for _, a := range fmt.Format(f, v...) {
+		obj := astral.Adapt(a)
+		if obj == nil {
+			if view, ok := a.(fmt.View); ok {
+				obj = astral.NewString32(view.Render())
+			} else {
+				obj = astral.NewString32(astral.Stringify(a))
+			}
+		}
+		items = append(items, obj)
+	}
+
+	entry := NewEntry(l.id, level, items...)
+
+	l.root().logEntry(entry)
 }
 
-func (l *Logger) setOutput(o Output) {
+func (l *Logger) logEntry(e *Entry) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	l.output = o
-}
+	f := l.root().filter
+	if f == nil || f(e) {
+		fmt.Fprintf(l.w, "%v\n", e)
+	}
 
-func (l *Logger) getOutput() Output {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	return l.output
+	for _, l := range l.root().loggers.Clone() {
+		l.LogEntry(e)
+	}
 }
 
 func (l *Logger) root() *Logger {

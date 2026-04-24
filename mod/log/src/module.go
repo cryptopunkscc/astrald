@@ -8,7 +8,6 @@ import (
 	modlog "github.com/cryptopunkscc/astrald/mod/log"
 	"github.com/cryptopunkscc/astrald/mod/tree"
 	"github.com/cryptopunkscc/astrald/resources"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Deps struct {
@@ -22,15 +21,8 @@ type Module struct {
 	node        astral.Node
 	log         *log.Logger
 	assets      resources.Resources
-	outputs     sig.Set[log.Output]
 	logFilePath string
 	router      routing.OpRouter
-}
-
-func (mod *Module) LogEntry(entry *log.Entry) {
-	for _, output := range mod.outputs.Clone() {
-		output.LogEntry(entry)
-	}
 }
 
 func (mod *Module) LogEntryFilter(entry *log.Entry) bool {

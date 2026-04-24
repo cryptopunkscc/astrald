@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	_ "github.com/cryptopunkscc/astrald/mod/all"
+	_ "github.com/cryptopunkscc/astrald/mod/all/views"
 )
 
 // Exit statuses

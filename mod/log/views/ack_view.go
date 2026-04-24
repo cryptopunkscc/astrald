@@ -2,8 +2,8 @@ package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 )
 
 type AckView struct {
@@ -11,11 +11,14 @@ type AckView struct {
 }
 
 func (AckView) Render() string {
-	return styles.DarkGreenText.Render("(ack)")
+	t := theme.Ack
+	a := t.Bri(theme.Least)
+
+	return a.Render("(") + t.Render("ack") + a.Render(")")
 }
 
 func init() {
-	log.DefaultViewer.Set(astral.Ack{}.ObjectType(), func(object astral.Object) astral.Object {
+	fmt.SetView(func(*astral.Ack) fmt.View {
 		return &AckView{}
 	})
 }

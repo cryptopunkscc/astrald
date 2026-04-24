@@ -2,8 +2,8 @@ package views
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/log"
-	"github.com/cryptopunkscc/astrald/mod/log/styles"
+	"github.com/cryptopunkscc/astrald/astral/fmt"
+	"github.com/cryptopunkscc/astrald/mod/log/theme"
 )
 
 type NilView struct {
@@ -11,11 +11,13 @@ type NilView struct {
 }
 
 func (NilView) Render() string {
-	return styles.RedText.Render("nil")
+	t := theme.Nil
+	p := t.Bri(theme.Least)
+	return p.Render("(") + t.Render("nil") + p.Render(")")
 }
 
 func init() {
-	log.DefaultViewer.Set(astral.Nil{}.ObjectType(), func(object astral.Object) astral.Object {
+	fmt.SetView(func(*astral.Nil) fmt.View {
 		return &NilView{}
 	})
 }
