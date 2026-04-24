@@ -108,14 +108,13 @@ func (c *session) Open(s *Stream, reader io.Reader, writer io.WriteCloser, onClo
 }
 
 func (c *session) Close() error {
-	if !c.swapState(stateOpen, stateClosed) && !c.swapState(stateMigrating, stateClosed) {
+	if !(c.swapState(stateOpen, stateClosed) || c.swapState(stateMigrating, stateClosed)) {
+		if c.state.Load() == stateClosed {
+			return nil
+		}
+
 		return nodes.ErrInvalidSessionState
 	}
-
-	if c.state.Load() == stateClosed {
-		return nil
-	}
-
 	if c.onClose != nil {
 		c.onClose()
 	}
