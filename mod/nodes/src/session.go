@@ -109,7 +109,7 @@ func (c *session) Open(s *Stream, reader io.Reader, writer io.WriteCloser, onClo
 }
 
 func (c *session) Close() error {
-	if !c.swapState(stateOpen, stateClosed) {
+	if !c.swapState(stateOpen, stateClosed) && !c.swapState(stateMigrating, stateClosed) {
 		return nodes.ErrInvalidSessionState
 	}
 
@@ -134,6 +134,11 @@ func (c *session) swapState(old, new int) bool {
 
 func (s *session) IsOpen() bool {
 	return s.state.Load() == stateOpen
+}
+
+// note: this method might change its place
+func (s *session) CanAutoMigrate() bool {
+	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
 }
 
 func (c *session) isOnStream(s *Stream) bool {

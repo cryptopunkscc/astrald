@@ -78,7 +78,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 
 	defer func() {
 		if err != nil {
-			migrator.Rollback()
+			session.Close()
 		}
 	}()
 

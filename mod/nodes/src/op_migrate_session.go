@@ -64,9 +64,10 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
+
 	defer func() {
 		if err != nil {
-			migrator.Rollback()
+			sess.Close()
 		}
 	}()
 

@@ -41,6 +41,7 @@ func (w *muxSessionWriter) Close() error {
 	}
 	w.closed = true
 	buf := w.buf
+	w.cond.Broadcast()
 	w.cond.L.Unlock()
 	buf.Close()
 
@@ -73,8 +74,12 @@ func (w *muxSessionWriter) Write(p []byte) (int, error) {
 	for len(p) > 0 {
 		w.cond.L.Lock()
 
-		for w.paused {
+		for w.paused && !w.closed {
 			w.cond.Wait()
+		}
+		if w.closed {
+			w.cond.L.Unlock()
+			return total, io.ErrClosedPipe
 		}
 
 		n, err := w.buf.Write(p)

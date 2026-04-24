@@ -80,7 +80,7 @@ func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Stream) 
 	}
 
 	sessions := mod.peers.sessions.Select(func(k astral.Nonce, v *session) bool {
-		return v.IsOpen() && v.isOnStream(oldStream)
+		return v.IsOpen() && v.isOnStream(oldStream) && v.CanAutoMigrate()
 	})
 
 	if len(sessions) == 0 {
