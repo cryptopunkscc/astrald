@@ -41,6 +41,7 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	}
 
 	mod.Auth.Add(auth.Func[*nodes.RelayForAction](mod.AuthorizeRelayFor))
+	mod.Auth.Add(auth.Func[*objects.ReadObjectAction](mod.AuthorizeReadObject))
 
 	// add localswarm filter
 	mod.Dir.SetFilter("localswarm", func(identity *astral.Identity) bool {
