@@ -40,7 +40,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 	}
 
 	// prepare the connection info
-	conn, ok := mod.sessions.Set(q.Nonce, newSession(q.Nonce))
+	conn, ok := mod.createSession(q.Nonce)
 	if !ok {
 		return query.RouteNotFound(mod, errors.New("sessionId already exists"))
 	}
@@ -65,7 +65,6 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 	select {
 	case errCode := <-conn.res:
 		if errCode != 0 {
-			mod.sessions.Delete(q.Nonce)
 			return query.RejectWithCode(errCode)
 		}
 
@@ -77,8 +76,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 		return conn, nil
 
 	case <-ctx.Done():
-		conn.swapState(stateRouting, stateClosed)
-		mod.sessions.Delete(q.Nonce)
+		conn.Close()
 		return query.RouteNotFound(mod, ctx.Err())
 	}
 }
@@ -146,7 +144,7 @@ func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) 
 }
 
 func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, target *astral.Identity, relayID *astral.Identity, queryStr string, initBuffer int) {
-	conn, ok := mod.sessions.Set(nonce, newSession(nonce))
+	conn, ok := mod.createSession(nonce)
 	if !ok {
 		return // ignore duplicates
 	}
@@ -169,7 +167,7 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 
 	w, err := mod.node.RouteQuery(ctx, q, conn)
 	if err != nil {
-		conn.swapState(stateRouting, stateClosed)
+		conn.Close()
 		var code = uint8(frames.CodeRejected)
 		var reject *astral.ErrRejected
 		if errors.As(err, &reject) {
@@ -213,10 +211,12 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 
 	// if rejected
 	if f.ErrCode != 0 {
-		if !conn.swapState(stateRouting, stateClosed) {
-			return
+		conn.Close()
+		select {
+		case conn.res <- f.ErrCode:
+		default:
 		}
-		conn.res <- f.ErrCode
+		return
 	}
 
 	reader := newSessionReader(mod.newMuxInputBuffer(s, f.Nonce))
@@ -236,10 +236,10 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 		return
 	}
 
-	switch session.state.Load() {
+	switch session.getState() {
 	case stateOpen, stateMigrating:
 	default:
-		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.state.Load())
+		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.getState())
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
@@ -281,10 +281,7 @@ func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
 		return
 	}
 
-	err := session.Close()
-	if err != nil {
-		mod.log.Error(`failed to close session %v: %v`, f.Nonce, err)
-	}
+	session.PeerClose()
 }
 
 func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
@@ -311,7 +308,7 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 		return
 	}
 
-	if sess.state.Load() != stateMigrating {
+	if sess.getState() != stateMigrating {
 		return
 	}
 
@@ -378,10 +375,7 @@ func (mod *Peers) addStream(
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
 			return v.isOnStream(s)
 		}) {
-			err = c.Close()
-			if err != nil {
-				mod.log.Errorv(1, "failed to close session %v: %v", s.RemoteIdentity(), err)
-			}
+			c.Close()
 		}
 
 		streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 const maxPayloadSize = 8192
@@ -35,16 +34,18 @@ type session struct {
 	Query          string
 	createdAt      time.Time
 	res            chan uint8
-	// todo: probably state now can be int32 change it when holding stateCond
-	stateCond *sync.Cond   // broadcasts on every state transition
-	state     atomic.Int32 // connection state
+	cond           *sync.Cond // guards paused, closed, state, stream
+	paused         bool
+	closed         bool
+	state          int32 // purely informational
 
 	stream *Stream       // stream the connection is attached to
 	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
 	reader  io.ReadCloser  // io.ReadCloser
 	writer  io.WriteCloser // io.WriteCloser
-	onClose func()
+	remove  func()         // removes session from the sessions map
+	onClose func()         // sends Reset frame to peer
 }
 
 func (c *session) Identity() *astral.Identity {
@@ -60,87 +61,103 @@ func newSession(n astral.Nonce) *session {
 		Nonce:     n,
 		createdAt: time.Now(),
 		res:       make(chan uint8, 1),
-		stateCond: sync.NewCond(&sync.Mutex{}),
+		cond:      sync.NewCond(&sync.Mutex{}),
+		paused:    true,
+		state:     stateRouting,
 	}
 }
 
 func (c *session) Read(p []byte) (int, error) {
-	c.stateCond.L.Lock()
-	for {
-		switch c.state.Load() {
-		case stateOpen, stateMigrating:
-			c.stateCond.L.Unlock()
-			return c.reader.Read(p)
-		case stateClosed:
-			c.stateCond.L.Unlock()
-			return c.reader.Read(p)
-		case stateRouting:
-			c.stateCond.Wait()
-		}
+	c.cond.L.Lock()
+	for c.paused && !c.closed {
+		c.cond.Wait()
 	}
+	c.cond.L.Unlock()
+
+	if c.reader == nil {
+		return 0, io.EOF
+	}
+	return c.reader.Read(p)
 }
 
 func (c *session) Write(p []byte) (int, error) {
-	c.stateCond.L.Lock()
-	for {
-		switch c.state.Load() {
-		case stateOpen:
-			c.stateCond.L.Unlock()
-			return c.writer.Write(p)
-		case stateRouting, stateMigrating:
-			c.stateCond.Wait()
-		default:
-			c.stateCond.L.Unlock()
-			return 0, errors.New("session closed")
-		}
+	c.cond.L.Lock()
+	for c.paused && !c.closed {
+		c.cond.Wait()
 	}
+	closed := c.closed
+	c.cond.L.Unlock()
+
+	if closed {
+		return 0, errors.New("session closed")
+	}
+	return c.writer.Write(p)
 }
 
 func (c *session) Open(s *Stream, reader io.ReadCloser, writer io.WriteCloser, onClose func()) {
-	c.stateCond.L.Lock()
-	defer c.stateCond.L.Unlock()
+	c.cond.L.Lock()
+	defer c.cond.L.Unlock()
 
 	c.stream = s
 	c.reader = reader
 	c.writer = writer
 	c.onClose = onClose
-	c.swapState(stateRouting, stateOpen)
+	c.state = stateOpen
+	c.paused = false
+	c.cond.Broadcast()
 }
 
 func (c *session) Close() error {
-	if !(c.swapState(stateOpen, stateClosed) || c.swapState(stateMigrating, stateClosed)) {
-		if c.state.Load() == stateClosed {
-			return nil
-		}
+	return c.closeWith(c.onClose)
+}
 
-		return nodes.ErrInvalidSessionState
+// PeerClose closes the session in response to a Reset frame from the peer.
+// Unlike Close, it does not fire onClose, so no Reset is sent back.
+func (c *session) PeerClose() error {
+	return c.closeWith(nil)
+}
+
+func (c *session) closeWith(onClose func()) error {
+	c.cond.L.Lock()
+	if c.closed {
+		c.cond.L.Unlock()
+		return nil
 	}
+	remove := c.remove
+	c.state = stateClosed
+	c.closed = true
+	c.cond.Broadcast()
+	c.cond.L.Unlock()
 
-	if c.onClose != nil {
-		c.onClose()
+	if remove != nil {
+		remove()
 	}
-
+	if onClose != nil {
+		onClose()
+	}
 	if c.writer != nil {
 		c.writer.Close()
 	}
-
 	if c.reader != nil {
 		c.reader.Close()
 	}
-
 	return nil
 }
 
-func (c *session) swapState(old, new int) bool {
-	if !c.state.CompareAndSwap(int32(old), int32(new)) {
-		return false
-	}
-	c.stateCond.Broadcast()
-	return true
+func (c *session) setState(s int32) {
+	c.cond.L.Lock()
+	defer c.cond.L.Unlock()
+	c.state = s
+}
+
+func (c *session) getState() int32 {
+	c.cond.L.Lock()
+	defer c.cond.L.Unlock()
+	return c.state
 }
 
 func (s *session) IsOpen() bool {
-	return s.state.Load() == stateOpen
+	return s.getState() == stateOpen
 }
 
 // note: this method might change its place
@@ -149,7 +166,7 @@ func (s *session) CanAutoMigrate() bool {
 }
 
 func (c *session) isOnStream(s *Stream) bool {
-	c.stateCond.L.Lock()
-	defer c.stateCond.L.Unlock()
+	c.cond.L.Lock()
+	defer c.cond.L.Unlock()
 	return c.stream == s
 }

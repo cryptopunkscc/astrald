@@ -32,18 +32,18 @@ func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
 }
 
 func (m *SessionMigrator) BeginMigrate(target *Stream) error {
-	m.session.stateCond.L.Lock()
-	defer m.session.stateCond.L.Unlock()
-
 	m.writer.Pause()
 
-	if !m.session.swapState(stateOpen, stateMigrating) {
+	m.session.cond.L.Lock()
+	if m.session.closed {
+		m.session.cond.L.Unlock()
 		m.writer.Resume()
 		return nodes.ErrInvalidSessionState
 	}
-
 	m.oldStream = m.session.stream
 	m.session.stream = target
+	m.session.state = stateMigrating
+	m.session.cond.L.Unlock()
 
 	m.oldInputBuffer = m.reader.Buf()
 
@@ -75,12 +75,7 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 }
 
 func (m *SessionMigrator) Resume() error {
-	m.session.stateCond.L.Lock()
-	defer m.session.stateCond.L.Unlock()
-	if !m.session.swapState(stateMigrating, stateOpen) {
-		return nodes.ErrInvalidSessionState
-	}
-
+	m.session.setState(stateOpen)
 	m.writer.Grow(m.peerBuffer)
 	m.writer.Resume()
 	return nil

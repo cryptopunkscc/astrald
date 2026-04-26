@@ -8,13 +8,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 )
 
-func (mod *Peers) newSession(nonce astral.Nonce, remoteID *astral.Identity, queryStr string) (*session, bool) {
+func (mod *Peers) createSession(nonce astral.Nonce) (*session, bool) {
 	sess, ok := mod.sessions.Set(nonce, newSession(nonce))
 	if !ok {
-		return sess, false
+		return nil, false
 	}
-	sess.RemoteIdentity = remoteID
-	sess.Query = queryStr
+	sess.remove = func() { mod.sessions.Delete(nonce) }
 	return sess, true
 }
 
