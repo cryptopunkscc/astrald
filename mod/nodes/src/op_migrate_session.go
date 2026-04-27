@@ -65,7 +65,9 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	}
 
 	// note: submethod made for sake of defer (im thinking about other solution)
-	err = mod.respondMigration(ctx, ch, session, migrator)
+	migrateCtx, cancel := ctx.WithTimeout(migrateSessionTimeout)
+	defer cancel()
+	err = mod.respondMigration(migrateCtx, ch, session, migrator)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
@@ -91,7 +93,7 @@ func (mod *Module) respondMigration(ctx *astral.Context, ch *channel.Channel, se
 		return err
 	}
 
-	err = migrator.WaitDrain(ctx)
+	err = migrator.WaitClosed(ctx)
 	if err != nil {
 		return err
 	}

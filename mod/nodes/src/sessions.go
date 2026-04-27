@@ -96,7 +96,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
-	err = migrator.WaitDrain(ctx)
+	err = migrator.WaitClosed(ctx)
 	if err != nil {
 		return err
 	}

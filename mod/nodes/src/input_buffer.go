@@ -12,12 +12,17 @@ var _ io.ReadCloser = &InputBuffer{}
 // InputBuffer is a bounded receive buffer. Push appends data; Read consumes it.
 // Non-blocking: returns ErrBufferEmpty when empty. onRead fires after each read
 // to report consumed bytes. Closed buffer can still be read until drained.
+//
+// Lifecycle signals:
+//   - Closed() fires when no more bytes will be pushed (Close called).
+//   - Done()   fires when closed AND fully drained (no unread bytes remain).
 type InputBuffer struct {
 	mu      sync.Mutex
 	size    int
 	used    int
 	buf     [][]byte
 	ready   chan struct{}
+	shut    chan struct{}
 	done    chan struct{}
 	drained bool
 	closed  bool
@@ -25,7 +30,7 @@ type InputBuffer struct {
 }
 
 func NewInputBuffer(size int, onRead func(int)) *InputBuffer {
-	return &InputBuffer{size: size, onRead: onRead, done: make(chan struct{})}
+	return &InputBuffer{size: size, onRead: onRead, shut: make(chan struct{}), done: make(chan struct{})}
 }
 
 func (b *InputBuffer) Push(p []byte) error {
@@ -78,8 +83,12 @@ func (b *InputBuffer) Read(p []byte) (n int, err error) {
 func (b *InputBuffer) Close() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.closed {
+		return nil
+	}
 	b.closed = true
 	b.onRead = nil
+	close(b.shut)
 	b.signal()
 	b.checkDone()
 
@@ -90,6 +99,10 @@ func (b *InputBuffer) IsEmpty() bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.used == 0
+}
+
+func (b *InputBuffer) Closed() <-chan struct{} {
+	return b.shut
 }
 
 func (b *InputBuffer) Done() <-chan struct{} {

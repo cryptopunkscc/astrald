@@ -62,14 +62,11 @@ func (m *SessionMigrator) SendMigrateFrame() error {
 	return m.oldStream.Write(&frames.Migrate{Nonce: m.session.Nonce})
 }
 
-func (m *SessionMigrator) WaitDrain(ctx context.Context) error {
-	if m.oldInputBuffer.IsEmpty() {
-		return nil
-	}
-
-	m.mod.log.Logv(1, "waiting for old input buffer to drain for session %v", m.session.Nonce)
+func (m *SessionMigrator) WaitClosed(ctx context.Context) error {
+	m.mod.log.Logv(1, "waiting for old input buffer to close for session %v", m.session.Nonce)
 	select {
-	case <-m.oldInputBuffer.Done():
+	case <-m.oldInputBuffer.Closed():
+		m.mod.log.Logv(1, "old input buffer closed for session %v", m.session.Nonce)
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
