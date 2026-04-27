@@ -53,7 +53,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 	frame := &frames.Query{
 		Nonce:  q.Nonce,
 		Query:  q.QueryString,
-		Buffer: uint32(conn.rsize),
+		Buffer: uint32(defaultBufferSize),
 	}
 
 	// send the query via all streams
@@ -65,7 +65,6 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 	select {
 	case errCode := <-conn.res:
 		if errCode != 0 {
-			mod.sessions.Delete(q.Nonce)
 			return query.RejectWithCode(errCode)
 		}
 
@@ -77,9 +76,8 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 		return conn, nil
 
 	case <-ctx.Done():
-		conn.swapState(stateRouting, stateClosed)
-		mod.sessions.Delete(q.Nonce)
-		return query.RouteNotFound(mod, ctx.Err())
+		conn.Close()
+		return query.RouteNotFound()
 	}
 }
 
@@ -146,7 +144,7 @@ func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) 
 }
 
 func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, target *astral.Identity, relayID *astral.Identity, queryStr string, initBuffer int) {
-	conn, ok := mod.sessions.Set(nonce, newSession(nonce))
+	conn, ok := mod.createSession(nonce)
 	if !ok {
 		return // ignore duplicates
 	}
@@ -155,7 +153,6 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	conn.relayID = relayID
 	conn.Query = queryStr
 	conn.stream = s
-	conn.wsize = initBuffer
 
 	var q = astral.Launch(&astral.Query{
 		Nonce:       nonce,
@@ -165,12 +162,11 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	})
 
 	q.Extra.Set("origin", astral.OriginNetwork)
-
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
 	w, err := mod.node.RouteQuery(ctx, q, conn)
 	if err != nil {
-		conn.swapState(stateRouting, stateClosed)
+		conn.Close()
 		var code = uint8(frames.CodeRejected)
 		var reject *astral.ErrRejected
 		if errors.As(err, &reject) {
@@ -180,8 +176,16 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 		return
 	}
 
-	conn.swapState(stateRouting, stateOpen)
-	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(conn.rsize)})
+	resetFunc := func() { s.Write(&frames.Reset{Nonce: nonce}) }
+	reader := newSessionReader(mod.newMuxInputBuffer(s, nonce))
+	writer := newSessionWriter(mod.newMuxOutputBuffer(s, nonce, conn), resetFunc)
+	writer.Grow(initBuffer)
+
+	if err := conn.Setup(s, reader, writer); err != nil {
+		return
+	}
+	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
+	conn.Open()
 
 	go func() {
 		io.Copy(w, conn)
@@ -210,13 +214,22 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 			return
 		}
 		conn.res <- f.ErrCode
+		return
 	}
 
 	if !conn.swapState(stateRouting, stateOpen) {
 		return
 	}
-	conn.stream = s
-	conn.wsize = int(f.Buffer)
+
+	resetFunc := func() { s.Write(&frames.Reset{Nonce: f.Nonce}) }
+	reader := newSessionReader(mod.newMuxInputBuffer(s, f.Nonce))
+	writer := newSessionWriter(mod.newMuxOutputBuffer(s, f.Nonce, conn), resetFunc)
+	writer.Grow(int(f.Buffer))
+	if err := conn.Setup(s, reader, writer); err != nil {
+		return
+	}
+	conn.Open()
+
 	conn.res <- 0
 }
 
@@ -227,10 +240,10 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 		return
 	}
 
-	switch session.state.Load() {
+	switch session.getState() {
 	case stateOpen, stateMigrating:
 	default:
-		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.state.Load())
+		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.getState())
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
@@ -240,8 +253,13 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 		s.pressure.OnBytes(len(f.Payload), time.Now())
 	}
 
-	err := session.pushRead(f.Payload)
-	if err != nil {
+	reader, ok := session.reader.(*muxSessionReader)
+	if !ok {
+		mod.log.Errorv(1, "received data frame from %v on non-mux session", s.RemoteIdentity())
+		return
+	}
+
+	if err := reader.Push(f.Payload); err != nil {
 		mod.log.Errorv(1, "failed to push read frame: %v", err)
 		session.Close()
 		return
@@ -249,23 +267,35 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 }
 
 func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
-	conn, ok := mod.sessions.Get(f.Nonce)
+	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		s.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
-	conn.growRemoteBuffer(int(f.Len))
+	// Discard Read frames from the old stream after migration has swapped
+	// the session to a new stream. These credits correspond to the old
+	// input buffer and must not inflate the new output buffer's wsize.
+	if !session.isOnStream(s) {
+		return
+	}
+
+	writer, ok := session.writer.(*muxSessionWriter)
+	if ok {
+		writer.Grow(int(f.Len))
+	}
 }
 
 func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
-	conn, ok := mod.sessions.Get(f.Nonce)
+	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	conn.CancelMigration()
-	conn.swapState(stateOpen, stateClosed)
+	if w, ok := session.writer.(*muxSessionWriter); ok {
+		w.PeerClose()
+	}
+	session.Close()
 }
 
 func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
@@ -287,31 +317,25 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 }
 
 func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
-	conn, ok := mod.sessions.Get(f.Nonce)
+	sess, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	if conn.state.Load() != stateMigrating {
+	if sess.getState() != stateMigrating {
 		return
 	}
 
-	if !conn.migrateFrameSent.Load() {
-		// Responder path: write Migrate frame back, then signal OpMigrateSession.
-		// CompleteMigration is deferred until the initiator confirms it drained the old stream.
-		if err := conn.writeMigrateFrame(); err != nil {
-			mod.log.Errorv(1, "failed to write migrate frame: %v", err)
-			conn.CancelMigration()
-			return
-		}
-		conn.signalMigrateFrameReceived()
+	reader, ok := sess.reader.(*muxSessionReader)
+	if !ok {
+		mod.log.Errorv(1, "received migrate frame on non-mux session")
 		return
 	}
 
-	// Initiator path: Migrate frame from responder arrived, all old-stream data already processed.
-	if err := conn.CompleteMigration(); err != nil {
-		mod.log.Errorv(1, "failed to complete migration: %v", err)
-	}
+	// Peer is done sending on the old stream. Advance closes the old buffer
+	// and promotes nextBuffer immediately if already empty, or defers to the
+	// Read loop on EOF otherwise.
+	reader.Advance()
 }
 
 func (mod *Peers) addStream(
@@ -364,8 +388,7 @@ func (mod *Peers) addStream(
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
 			return v.isOnStream(s)
 		}) {
-			c.CancelMigration()
-			c.swapState(stateOpen, stateClosed)
+			c.Close()
 		}
 
 		streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {

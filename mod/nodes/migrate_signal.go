@@ -25,11 +25,11 @@ const (
 func (MigrateSignal) ObjectType() string { return "mod.nodes.migrate_signal" }
 
 func (m MigrateSignal) WriteTo(w io.Writer) (int64, error) {
-	return astral.Struct(m).WriteTo(w)
+	return astral.Objectify(&m).WriteTo(w)
 }
 
 func (m *MigrateSignal) ReadFrom(r io.Reader) (int64, error) {
-	return astral.Struct(m).ReadFrom(r)
+	return astral.Objectify(m).ReadFrom(r)
 }
 
 func init() { _ = astral.Add(&MigrateSignal{}) }

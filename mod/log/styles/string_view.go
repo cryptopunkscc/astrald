@@ -13,6 +13,7 @@ type StringView struct {
 
 var _ astral.Object = &StringView{}
 
+// astral:blueprint-ignore
 func (StringView) ObjectType() string {
 	return astral.String32("").ObjectType()
 }

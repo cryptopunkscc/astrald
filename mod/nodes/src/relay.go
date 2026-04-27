@@ -27,7 +27,7 @@ type relayChannel struct {
 func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	if !ctx.Identity().IsEqual(q.Caller) {
 		if err := rc.mod.sendCallerProof(ctx, q, rc.relayID); err != nil {
-			return query.RouteNotFound(rc.mod, fmt.Errorf("caller proof: %w", err))
+			return query.RouteNotFound()
 		}
 	}
 
