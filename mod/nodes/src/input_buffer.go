@@ -1,26 +1,31 @@
 package nodes
 
 import (
-	"errors"
 	"io"
 	"sync"
+
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 var _ io.ReadCloser = &InputBuffer{}
 
+// InputBuffer is a bounded receive buffer. Push appends data; Read consumes it.
+// Non-blocking: returns ErrBufferEmpty when empty. onRead fires after each read
+// to report consumed bytes. Closed buffer can still be read until drained.
 type InputBuffer struct {
-	mu     sync.Mutex
-	size   int
-	used   int
-	buf    [][]byte
-	ready  chan struct{}
-	done   chan struct{}
-	closed bool
-	onRead func(int)
+	mu      sync.Mutex
+	size    int
+	used    int
+	buf     [][]byte
+	ready   chan struct{}
+	done    chan struct{}
+	drained bool
+	closed  bool
+	onRead  func(int)
 }
 
 func NewInputBuffer(size int, onRead func(int)) *InputBuffer {
-	return &InputBuffer{size: size, onRead: onRead}
+	return &InputBuffer{size: size, onRead: onRead, done: make(chan struct{})}
 }
 
 func (b *InputBuffer) Push(p []byte) error {
@@ -28,10 +33,10 @@ func (b *InputBuffer) Push(p []byte) error {
 	defer b.mu.Unlock()
 
 	if b.closed {
-		return errors.New("buffer closed")
+		return nodes.ErrBufferClosed
 	}
 	if b.used+len(p) > b.size {
-		return errors.New("buffer overflow")
+		return nodes.ErrBufferOverflow
 	}
 
 	b.buf = append(b.buf, p)
@@ -88,22 +93,13 @@ func (b *InputBuffer) IsEmpty() bool {
 }
 
 func (b *InputBuffer) Done() <-chan struct{} {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if b.done == nil {
-		b.done = make(chan struct{})
-	}
-	b.checkDone()
 	return b.done
 }
 
 func (b *InputBuffer) checkDone() {
-	if b.closed && len(b.buf) == 0 && b.done != nil {
-		select {
-		case <-b.done:
-		default:
-			close(b.done)
-		}
+	if !b.drained && b.closed && len(b.buf) == 0 {
+		b.drained = true
+		close(b.done)
 	}
 }
 

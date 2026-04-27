@@ -1,13 +1,17 @@
 package nodes
 
 import (
-	"errors"
 	"io"
 	"sync"
+
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 var _ io.WriteCloser = &OutputBuffer{}
 
+// OutputBuffer is a flow-controlled send buffer. Write consumes available space and
+// delegates to the write callback; returns ErrBufferEmpty when full. Grow extends
+// available space.
 type OutputBuffer struct {
 	mu     sync.Mutex
 	wsize  int
@@ -26,7 +30,7 @@ func (b *OutputBuffer) Write(p []byte) (int, error) {
 	defer b.mu.Unlock()
 
 	if b.closed {
-		return 0, errors.New("buffer closed")
+		return 0, nodes.ErrBufferClosed
 	}
 	if b.wsize == 0 {
 		return 0, &ErrBufferEmpty{ch: b.readyCh()}

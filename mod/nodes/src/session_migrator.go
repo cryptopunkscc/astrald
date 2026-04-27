@@ -31,11 +31,11 @@ func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
 	return &SessionMigrator{mod: mod, session: sess, reader: reader, writer: writer}, nil
 }
 
-func (m *SessionMigrator) BeginMigrate(target *Stream) error {
+func (m *SessionMigrator) Begin(target *Stream) error {
 	m.session.cond.L.Lock()
-	if m.session.closed {
+	if m.session.state != stateOpen {
 		m.session.cond.L.Unlock()
-		m.mod.log.Logv(1, "session %v closed before migration could begin", m.session.Nonce)
+		m.mod.log.Logv(1, "session %v in state %v, cannot migrate", m.session.Nonce, m.session.state)
 		return nodes.ErrInvalidSessionState
 	}
 	m.oldStream = m.session.stream
@@ -50,8 +50,9 @@ func (m *SessionMigrator) BeginMigrate(target *Stream) error {
 
 	newInputBuffer := m.mod.peers.newMuxInputBuffer(target, m.session.Nonce)
 	newOutputBuffer := m.mod.peers.newMuxOutputBuffer(target, m.session.Nonce, m.session)
+	resetFunc := func() { target.Write(&frames.Reset{Nonce: m.session.Nonce}) }
 
-	m.writer.SetBuf(newOutputBuffer)
+	m.writer.SwapBuf(newOutputBuffer, resetFunc)
 	m.reader.SetNextBuffer(newInputBuffer)
 	m.mod.log.Logv(1, "session %v migrating stream %v → %v", m.session.Nonce, m.oldStream.id, target.id)
 
@@ -81,8 +82,9 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 	m.peerBuffer = n
 }
 
-func (m *SessionMigrator) Resume() error {
+func (m *SessionMigrator) Complete() error {
 	m.mod.log.Logv(1, "resuming session %v on stream %v (peer buffer %v)", m.session.Nonce, m.session.stream.id, m.peerBuffer)
+
 	m.session.setState(stateOpen)
 	m.writer.Grow(m.peerBuffer)
 	m.writer.Resume()

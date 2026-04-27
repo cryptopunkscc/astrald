@@ -177,15 +177,14 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 		return
 	}
 
+	resetFunc := func() { s.Write(&frames.Reset{Nonce: nonce}) }
 	reader := newSessionReader(mod.newMuxInputBuffer(s, nonce))
-	writer := newSessionWriter(mod.newMuxOutputBuffer(s, nonce, conn))
+	writer := newSessionWriter(mod.newMuxOutputBuffer(s, nonce, conn), resetFunc)
 	writer.Grow(initBuffer)
 
-	closeCallback := func() {
-		s.Write(&frames.Reset{Nonce: nonce})
+	if err := conn.Open(s, reader, writer); err != nil {
+		return
 	}
-
-	conn.Open(s, reader, writer, closeCallback)
 	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 
 	go func() {
@@ -219,14 +218,18 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 		return
 	}
 
+	resetFunc := func() { s.Write(&frames.Reset{Nonce: f.Nonce}) }
 	reader := newSessionReader(mod.newMuxInputBuffer(s, f.Nonce))
-	writer := newSessionWriter(mod.newMuxOutputBuffer(s, f.Nonce, conn))
+	writer := newSessionWriter(mod.newMuxOutputBuffer(s, f.Nonce, conn), resetFunc)
 	writer.Grow(int(f.Buffer))
-	conn.Open(s, reader, writer, func() {
-		s.Write(&frames.Reset{Nonce: f.Nonce})
-	})
+	if err := conn.Open(s, reader, writer); err != nil {
+		return
+	}
 
-	conn.res <- 0
+	select {
+	case conn.res <- 0:
+	default:
+	}
 }
 
 func (mod *Peers) handleData(s *Stream, f *frames.Data) {
@@ -269,6 +272,13 @@ func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
 		return
 	}
 
+	// Discard Read frames from the old stream after migration has swapped
+	// the session to a new stream. These credits correspond to the old
+	// input buffer and must not inflate the new output buffer's wsize.
+	if !session.isOnStream(s) {
+		return
+	}
+
 	writer, ok := session.writer.(*muxSessionWriter)
 	if ok {
 		writer.Grow(int(f.Len))
@@ -281,7 +291,10 @@ func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
 		return
 	}
 
-	session.PeerClose()
+	if w, ok := session.writer.(*muxSessionWriter); ok {
+		w.PeerClose()
+	}
+	session.Close()
 }
 
 func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {

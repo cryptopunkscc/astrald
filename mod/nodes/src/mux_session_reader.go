@@ -8,6 +8,8 @@ import (
 
 var _ io.ReadCloser = &muxSessionReader{}
 
+// muxSessionReader wraps InputBuffer with blocking reads, pause/resume, and buffer
+// swapping for migration. Queued next buffer takes over after the current one drains.
 type muxSessionReader struct {
 	cond       *sync.Cond
 	paused     bool

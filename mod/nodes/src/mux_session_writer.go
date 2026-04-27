@@ -8,15 +8,18 @@ import (
 
 var _ io.WriteCloser = &muxSessionWriter{}
 
+// muxSessionWriter wraps OutputBuffer with blocking writes, pause/resume, and buffer
+// hot-swapping for migration. SwapBuf replaces the buffer atomically.
 type muxSessionWriter struct {
 	cond   *sync.Cond
 	closed bool
 	paused bool
 	buf    *OutputBuffer
+	reset  func() // sends Reset frame on current stream
 }
 
-func newSessionWriter(buf *OutputBuffer) *muxSessionWriter {
-	w := &muxSessionWriter{buf: buf}
+func newSessionWriter(buf *OutputBuffer, reset func()) *muxSessionWriter {
+	w := &muxSessionWriter{buf: buf, reset: reset}
 	w.cond = sync.NewCond(&sync.Mutex{})
 	return w
 }
@@ -27,10 +30,11 @@ func (w *muxSessionWriter) Buf() *OutputBuffer {
 	return w.buf
 }
 
-func (w *muxSessionWriter) SetBuf(buf *OutputBuffer) {
+func (w *muxSessionWriter) SwapBuf(buf *OutputBuffer, reset func()) {
 	w.cond.L.Lock()
 	old := w.buf
 	w.buf = buf
+	w.reset = reset
 	w.cond.L.Unlock()
 	if old != nil {
 		old.Close()
@@ -44,11 +48,29 @@ func (w *muxSessionWriter) Close() error {
 		return nil
 	}
 	w.closed = true
+	reset := w.reset
+	buf := w.buf
+	w.cond.Broadcast()
+	w.cond.L.Unlock()
+	if reset != nil {
+		reset()
+	}
+	buf.Close()
+	return nil
+}
+
+// PeerClose closes the writer without sending a Reset frame.
+func (w *muxSessionWriter) PeerClose() error {
+	w.cond.L.Lock()
+	if w.closed {
+		w.cond.L.Unlock()
+		return nil
+	}
+	w.closed = true
 	buf := w.buf
 	w.cond.Broadcast()
 	w.cond.L.Unlock()
 	buf.Close()
-
 	return nil
 }
 

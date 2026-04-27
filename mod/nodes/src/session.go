@@ -1,13 +1,13 @@
 package nodes
 
 import (
-	"errors"
 	"io"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 const maxPayloadSize = 8192
@@ -37,19 +37,18 @@ type session struct {
 	cond           *sync.Cond // guards paused, closed, state, stream
 	paused         bool
 	closed         bool
-	state          int32 // purely informational
+	state          int32
 
 	stream *Stream       // stream the connection is attached to
 	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
-	reader  io.ReadCloser  // io.ReadCloser
-	writer  io.WriteCloser // io.WriteCloser
-	remove  func()         // removes session from the sessions map
-	onClose func()         // sends Reset frame to peer
+	reader io.ReadCloser
+	writer io.WriteCloser
+	remove func() // removes session from the sessions map
 }
 
-func (c *session) Identity() *astral.Identity {
-	return c.RemoteIdentity
+func (s *session) Identity() *astral.Identity {
+	return s.RemoteIdentity
 }
 
 func newSession(n astral.Nonce) *session {
@@ -67,93 +66,88 @@ func newSession(n astral.Nonce) *session {
 	}
 }
 
-func (c *session) Read(p []byte) (int, error) {
-	c.cond.L.Lock()
-	for c.paused && !c.closed {
-		c.cond.Wait()
+func (s *session) Read(p []byte) (int, error) {
+	s.cond.L.Lock()
+	for s.paused && !s.closed {
+		s.cond.Wait()
 	}
-	c.cond.L.Unlock()
+	s.cond.L.Unlock()
 
-	if c.reader == nil {
+	if s.reader == nil {
 		return 0, io.EOF
 	}
-	return c.reader.Read(p)
+	n, err := s.reader.Read(p)
+	s.bytes.Add(uint64(n))
+	return n, err
 }
 
-func (c *session) Write(p []byte) (int, error) {
-	c.cond.L.Lock()
-	for c.paused && !c.closed {
-		c.cond.Wait()
+func (s *session) Write(p []byte) (int, error) {
+	s.cond.L.Lock()
+	for s.paused && !s.closed {
+		s.cond.Wait()
 	}
-	closed := c.closed
-	c.cond.L.Unlock()
+	closed := s.closed
+	s.cond.L.Unlock()
 
 	if closed {
-		return 0, errors.New("session closed")
+		return 0, nodes.ErrSessionClosed
 	}
-	return c.writer.Write(p)
+	n, err := s.writer.Write(p)
+	s.bytes.Add(uint64(n))
+	return n, err
 }
 
-func (c *session) Open(s *Stream, reader io.ReadCloser, writer io.WriteCloser, onClose func()) {
-	c.cond.L.Lock()
-	defer c.cond.L.Unlock()
+func (s *session) Open(stream *Stream, reader io.ReadCloser, writer io.WriteCloser) error {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
 
-	c.stream = s
-	c.reader = reader
-	c.writer = writer
-	c.onClose = onClose
-	c.state = stateOpen
-	c.paused = false
-	c.cond.Broadcast()
+	if s.closed {
+		return nodes.ErrSessionClosed
+	}
+
+	s.stream = stream
+	s.reader = reader
+	s.writer = writer
+	s.state = stateOpen
+	s.paused = false
+	s.cond.Broadcast()
+	return nil
 }
 
-func (c *session) Close() error {
-	return c.closeWith(c.onClose)
-}
-
-// PeerClose closes the session in response to a Reset frame from the peer.
-// Unlike Close, it does not fire onClose, so no Reset is sent back.
-func (c *session) PeerClose() error {
-	return c.closeWith(nil)
-}
-
-func (c *session) closeWith(onClose func()) error {
-	c.cond.L.Lock()
-	if c.closed {
-		c.cond.L.Unlock()
+func (s *session) Close() error {
+	s.cond.L.Lock()
+	if s.closed {
+		s.cond.L.Unlock()
 		return nil
 	}
-	remove := c.remove
-	c.state = stateClosed
-	c.closed = true
-	c.cond.Broadcast()
-	c.cond.L.Unlock()
+	remove := s.remove
+	s.state = stateClosed
+	s.closed = true
+	s.cond.Broadcast()
+	s.cond.L.Unlock()
 
 	if remove != nil {
 		remove()
 	}
-	if onClose != nil {
-		onClose()
+	if s.writer != nil {
+		s.writer.Close()
 	}
-	if c.writer != nil {
-		c.writer.Close()
-	}
-	if c.reader != nil {
-		c.reader.Close()
+	if s.reader != nil {
+		s.reader.Close()
 	}
 	return nil
 }
 
-func (c *session) setState(s int32) {
-	c.cond.L.Lock()
-	defer c.cond.L.Unlock()
-	c.state = s
+func (s *session) setState(state int32) {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
+	s.state = state
 }
 
-func (c *session) getState() int32 {
-	c.cond.L.Lock()
-	defer c.cond.L.Unlock()
-	return c.state
+func (s *session) getState() int32 {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
+	return s.state
 }
 
 func (s *session) IsOpen() bool {
@@ -165,8 +159,8 @@ func (s *session) CanAutoMigrate() bool {
 	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
 }
 
-func (c *session) isOnStream(s *Stream) bool {
-	c.cond.L.Lock()
-	defer c.cond.L.Unlock()
-	return c.stream == s
+func (s *session) isOnStream(stream *Stream) bool {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
+	return s.stream == stream
 }

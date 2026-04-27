@@ -1,8 +1,6 @@
 package nodes
 
 import (
-	"errors"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
@@ -30,7 +28,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 
 	targetStream := mod.findStreamByID(args.StreamID)
 	if targetStream == nil {
-		return ch.Send(astral.Err(errors.New("target stream not found")))
+		return ch.Send(astral.Err(nodes.ErrStreamNotFound))
 	}
 
 	if args.Start {
@@ -39,7 +37,9 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		}
 
 		mod.log.Log("migrate session %v to stream %v (manual)", args.SessionID, args.StreamID)
-		err := mod.migrateSession(ctx, session, targetStream)
+		migrateCtx, cancel := ctx.WithTimeout(migrateSessionTimeout)
+		defer cancel()
+		err := mod.migrateSession(migrateCtx, session, targetStream)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
@@ -59,7 +59,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	}
 
 	migrator.SetPeerBuffer(int(peerBuffer))
-	err = migrator.BeginMigrate(targetStream)
+	err = migrator.Begin(targetStream)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
@@ -101,7 +101,7 @@ func (mod *Module) respondMigration(ctx *astral.Context, ch *channel.Channel, se
 		return err
 	}
 
-	err = migrator.Resume()
+	err = migrator.Complete()
 	if err != nil {
 		return err
 	}

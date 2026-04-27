@@ -36,8 +36,6 @@ func (mod *Peers) newMuxOutputBuffer(s *Stream, nonce astral.Nonce, sess *sessio
 
 			chunk := remaining[:chunkSize]
 
-			sess.bytes.Add(uint64(len(chunk)))
-
 			if err := s.Write(&frames.Data{
 				Nonce:   nonce,
 				Payload: chunk,
@@ -54,7 +52,7 @@ func (mod *Peers) newMuxOutputBuffer(s *Stream, nonce astral.Nonce, sess *sessio
 	return NewOutputBuffer(onWrite)
 }
 
-// migrateSession migrates single session
+// migrateSession migrates single session (initiator side)
 func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream *Stream) (err error) {
 	ch, err := nodesClient.New(session.RemoteIdentity, astrald.Default()).MigrateSession(ctx, nodesClient.MigrateSessionArgs{
 		SessionID: session.Nonce,
@@ -70,7 +68,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
-	err = migrator.BeginMigrate(targetStream)
+	err = migrator.Begin(targetStream)
 	if err != nil {
 		return err
 	}
@@ -108,7 +106,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
-	err = migrator.Resume()
+	err = migrator.Complete()
 	if err != nil {
 		return err
 	}
