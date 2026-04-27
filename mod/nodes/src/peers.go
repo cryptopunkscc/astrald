@@ -182,10 +182,11 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	writer := newSessionWriter(mod.newMuxOutputBuffer(s, nonce, conn), resetFunc)
 	writer.Grow(initBuffer)
 
-	if err := conn.Open(s, reader, writer); err != nil {
+	if err := conn.Setup(s, reader, writer); err != nil {
 		return
 	}
 	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
+	conn.Open()
 
 	go func() {
 		io.Copy(w, conn)
@@ -222,9 +223,10 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 	reader := newSessionReader(mod.newMuxInputBuffer(s, f.Nonce))
 	writer := newSessionWriter(mod.newMuxOutputBuffer(s, f.Nonce, conn), resetFunc)
 	writer.Grow(int(f.Buffer))
-	if err := conn.Open(s, reader, writer); err != nil {
+	if err := conn.Setup(s, reader, writer); err != nil {
 		return
 	}
+	conn.Open()
 
 	select {
 	case conn.res <- 0:

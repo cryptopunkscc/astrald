@@ -97,7 +97,7 @@ func (s *session) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (s *session) Open(stream *Stream, reader io.ReadCloser, writer io.WriteCloser) error {
+func (s *session) Setup(stream *Stream, reader io.ReadCloser, writer io.WriteCloser) error {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -109,9 +109,14 @@ func (s *session) Open(stream *Stream, reader io.ReadCloser, writer io.WriteClos
 	s.reader = reader
 	s.writer = writer
 	s.state = stateOpen
+	return nil
+}
+
+func (s *session) Open() {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
 	s.paused = false
 	s.cond.Broadcast()
-	return nil
 }
 
 func (s *session) Close() error {

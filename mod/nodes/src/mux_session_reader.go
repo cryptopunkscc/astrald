@@ -4,6 +4,8 @@ import (
 	"errors"
 	"io"
 	"sync"
+
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 var _ io.ReadCloser = &muxSessionReader{}
@@ -51,8 +53,14 @@ func (r *muxSessionReader) Close() error {
 func (r *muxSessionReader) Push(p []byte) error {
 	r.cond.L.Lock()
 	buf := r.buf
+	next := r.nextBuffer
 	r.cond.L.Unlock()
-	return buf.Push(p)
+
+	err := buf.Push(p)
+	if err == nodes.ErrBufferClosed && next != nil {
+		return next.Push(p)
+	}
+	return err
 }
 
 func (r *muxSessionReader) SetNextBuffer(buf *InputBuffer) {
