@@ -27,7 +27,7 @@ type relayChannel struct {
 func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	if !ctx.Identity().IsEqual(q.Caller) {
 		if err := rc.mod.sendCallerProof(ctx, q, rc.relayID); err != nil {
-			return query.RouteNotFound()
+			return query.RouteNotFound(rc.mod, fmt.Errorf("caller proof: %w", err))
 		}
 	}
 
@@ -41,7 +41,7 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 	conn.Query = q.QueryString
 	conn.Outbound = true
 
-	container := nodes.NewQueryContainer(q, conn.rsize)
+	container := nodes.NewQueryContainer(q, defaultBufferSize)
 
 	rc.mu.Lock()
 	err := rc.ch.Send(container)
@@ -52,15 +52,13 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 
 	if err != nil {
 		rc.mod.relayChannels.Delete(rc.relayID.String()) // channel is broken, evict
-		conn.swapState(stateRouting, stateClosed)
-		rc.mod.peers.sessions.Delete(q.Nonce)
+		conn.Close()
 		return query.RouteNotFound()
 	}
 
 	select {
 	case errCode := <-conn.res:
 		if errCode != 0 {
-			rc.mod.peers.sessions.Delete(q.Nonce)
 			return query.RejectWithCode(errCode)
 		}
 
@@ -71,8 +69,7 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 		return conn, nil
 
 	case <-ctx.Done():
-		conn.swapState(stateRouting, stateClosed)
-		rc.mod.peers.sessions.Delete(q.Nonce)
+		conn.Close()
 		return query.RouteNotFound()
 	}
 }

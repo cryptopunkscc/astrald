@@ -19,13 +19,15 @@ type opReadArgs struct {
 
 func (mod *Module) OpRead(ctx *astral.Context, q *routing.IncomingQuery, args opReadArgs) (err error) {
 	ctx = ctx.IncludeZone(args.Zone)
-
 	repo := mod.ReadDefault()
 
-	mod.Auth.Authorize(ctx, &objects.ReadObjectAction{
+	allowed := mod.Auth.Authorize(ctx, &objects.ReadObjectAction{
 		Action:   auth.NewAction(q.Caller()),
 		ObjectID: args.ID,
 	})
+	if !allowed {
+		return q.Reject()
+	}
 
 	if len(args.Repo) > 0 {
 		repo = mod.GetRepository(args.Repo)

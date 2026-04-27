@@ -27,15 +27,18 @@ const (
 	ExtraRelayVia      = "relay_via"
 	ExtraRoutingPolicy = "routing_policy"
 
-	// MethodMigrateSession is the query route for Phase 0 migration signaling.
-	MethodMigrateSession = "nodes.migrate_session"
 	// MethodResolveEndpoints is the query route for resolving endpoints of a node.
 	MethodResolveEndpoints = "nodes.resolve_endpoints"
 	// MethodNodeOpenRelay is the query route for opening a relay channel.
 	MethodNodeOpenRelay = "nodes.node_open_relay"
-)
 
-const ()
+	// MethodMigrateSession is the query route for session migration.
+	MethodMigrateSession = "nodes.migrate_session"
+
+	// DefaultBufferSize is the default buffer size for session I/O.
+	DefaultBufferSize = 4 * 1024 * 1024
+	MaxDataFrameSize  = 8192
+)
 
 type Module interface {
 	EstablishInboundLink(ctx context.Context, conn exonet.Conn) error

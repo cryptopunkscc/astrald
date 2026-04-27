@@ -23,12 +23,10 @@ const (
 
 func (m SessionMigrateSignal) ObjectType() string { return "mod.nodes.migrate_signal" }
 
-func (m SessionMigrateSignal) WriteTo(w io.Writer) (int64, error) {
-	return astral.Objectify(&m).WriteTo(w)
-}
+func (m SessionMigrateSignal) WriteTo(w io.Writer) (int64, error) { return astral.Struct(m).WriteTo(w) }
 
 func (m *SessionMigrateSignal) ReadFrom(r io.Reader) (int64, error) {
-	return astral.Objectify(m).ReadFrom(r)
+	return astral.Struct(m).ReadFrom(r)
 }
 
 func (m SessionMigrateSignal) MarshalJSON() ([]byte, error) {

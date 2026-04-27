@@ -6,16 +6,12 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	nodesClient "github.com/cryptopunkscc/astrald/mod/nodes/client"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
 const upgradeTimeout = 3 * time.Minute
 const upgradeCooldown = 5 * time.Minute
-const minSessionAge = 30 * time.Second
-const minSessionBytes = 1 * 1024 * 1024 // 1 MB
 
 func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 	connectivityGate := &sig.Switch{}
@@ -74,22 +70,37 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 	})
 }
 
+const migrateSessionTimeout = 30 * time.Second
+
 func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Stream) {
-	sessions := mod.peers.sessions.Select(func(_ astral.Nonce, s *session) bool {
-		return s.stream != nil && s.stream.id == oldStreamID && s.CanMigrate()
+	oldStream := mod.findStreamByID(oldStreamID)
+	if oldStream == nil {
+		mod.log.Logv(1, "migrate sessions: old stream %v not found", oldStreamID)
+		return
+	}
+
+	sessions := mod.peers.sessions.Select(func(k astral.Nonce, v *session) bool {
+		return v.IsOpen() && v.isOnStream(oldStream) && v.CanAutoMigrate()
 	})
 
 	if len(sessions) == 0 {
 		return
 	}
 
-	mod.log.Log("migrating %d session(s) from stream %v to %v (%v)", len(sessions), oldStreamID, newStream.id, newStream.Network())
+	mod.log.Log("migrating %v sessions from stream %v to %v", len(sessions), oldStreamID, newStream.id)
 
-	client := nodesClient.New(mod.node.Identity(), astrald.Default())
-	for _, session := range sessions {
-		mod.log.Logv(2, "migrating session %v to stream %v", session.Nonce, newStream.id)
-		if err := client.StartSessionMigration(mod.ctx, session.Nonce, newStream.id); err != nil {
-			mod.log.Error("migrate session %v failed: %v", session.Nonce, err)
+	var migrated int
+	for _, sess := range sessions {
+		ctx, cancel := mod.ctx.WithTimeout(migrateSessionTimeout)
+		err := mod.migrateSession(ctx, sess, newStream)
+		cancel()
+
+		if err != nil {
+			mod.log.Logv(1, "migrate session %v failed: %v", sess.Nonce, err)
+			continue
 		}
+		migrated++
 	}
+
+	mod.log.Log("migrated %v/%v sessions from stream %v to %v", migrated, len(sessions), oldStreamID, newStream.id)
 }

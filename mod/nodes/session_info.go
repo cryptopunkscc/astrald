@@ -19,7 +19,6 @@ type SessionInfo struct {
 	Query          astral.String16
 	Bytes          astral.Uint64
 	Age            astral.Duration
-	CanMigrate     astral.Bool
 }
 
 var _ astral.Object = &SessionInfo{}
@@ -42,13 +41,9 @@ func (s SessionInfo) MarshalText() ([]byte, error) {
 	if s.Outbound {
 		d = ">"
 	}
-	migrate := ""
-	if s.CanMigrate {
-		migrate = " [migratable]"
-	}
 	age := time.Duration(s.Age).Round(time.Second)
-	_, err := fmt.Fprintf(&b, "%v stream=%v %v %v %v bytes=%v age=%v%v",
-		s.ID, s.StreamID, d, s.RemoteIdentity, s.Query, s.Bytes, age, migrate)
+	_, err := fmt.Fprintf(&b, "%v stream=%v %v %v %v bytes=%v age=%v",
+		s.ID, s.StreamID, d, s.RemoteIdentity, s.Query, s.Bytes, age)
 	return b.Bytes(), err
 }
 

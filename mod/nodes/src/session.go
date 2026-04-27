@@ -1,9 +1,6 @@
 package nodes
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -11,11 +8,13 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 )
 
 const maxPayloadSize = 8192
 const defaultBufferSize = 4 * 1024 * 1024
+
+const minSessionAge = 30 * time.Second
+const minSessionBytes = 1 * 1024 * 1024 // 1 MB
 
 const (
 	stateRouting = iota
@@ -25,6 +24,7 @@ const (
 )
 
 var _ io.WriteCloser = &session{}
+var _ io.ReadCloser = &session{}
 
 type session struct {
 	Nonce          astral.Nonce
@@ -34,26 +34,21 @@ type session struct {
 	Query          string
 	createdAt      time.Time
 	res            chan uint8
+	cond           *sync.Cond // guards paused, closed, stream
+	paused         bool
+	closed         bool
+	state          atomic.Int32
 
-	state  atomic.Int32  // connection state
 	stream *Stream       // stream the connection is attached to
 	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
-	rcond *sync.Cond // sync for read functions
-	rsize int        // read buffer size
-	rused int        // used read buffer
-	rbuf  [][]byte   // read buffer
-
-	wcond                  *sync.Cond // sync for write functions
-	wsize                  int        // remote buffer left
-	migratingTo            *Stream
-	migratedCh             chan struct{} // closed when migration completes or is cancelled
-	migrateFrameSent       atomic.Bool
-	migrateFrameReceivedCh chan struct{} // closed when the remote's Migrate frame arrives (responder side)
+	reader io.ReadCloser
+	writer io.WriteCloser
+	remove func() // removes session from the sessions map
 }
 
-func (c *session) Identity() *astral.Identity {
-	return c.RemoteIdentity
+func (s *session) Identity() *astral.Identity {
+	return s.RemoteIdentity
 }
 
 func newSession(n astral.Nonce) *session {
@@ -65,288 +60,111 @@ func newSession(n astral.Nonce) *session {
 		Nonce:     n,
 		createdAt: time.Now(),
 		res:       make(chan uint8, 1),
-		wcond:     sync.NewCond(&sync.Mutex{}),
-		rcond:     sync.NewCond(&sync.Mutex{}),
-		rsize:     defaultBufferSize,
+		cond:      sync.NewCond(&sync.Mutex{}),
+		paused:    true,
 	}
 }
 
-func (c *session) growRemoteBuffer(s int) {
-	c.wcond.L.Lock()
-	defer c.wcond.L.Unlock()
+func (s *session) Read(p []byte) (int, error) {
+	s.cond.L.Lock()
+	for s.paused && !s.closed {
+		s.cond.Wait()
+	}
+	s.cond.L.Unlock()
 
-	c.wsize += s
-	c.wcond.Broadcast()
+	if s.reader == nil {
+		return 0, io.EOF
+	}
+	n, err := s.reader.Read(p)
+	s.bytes.Add(uint64(n))
+	return n, err
 }
 
-func (c *session) Write(p []byte) (n int, err error) {
-	c.wcond.L.Lock()
-	defer c.wcond.L.Unlock()
-
-	for {
-		if len(p) == 0 {
-			return
-		}
-
-		switch c.state.Load() {
-		case stateOpen:
-		case stateRouting, stateMigrating:
-			c.wcond.Wait()
-			continue
-		default:
-			err = errors.New("invalid state")
-			return
-		}
-
-		if c.wsize == 0 {
-			c.wcond.Wait()
-			continue
-		}
-
-		var l = min(c.wsize, len(p), maxPayloadSize)
-		stream := c.stream
-
-		c.wcond.L.Unlock()
-		err = stream.Write(&frames.Data{
-			Nonce:   c.Nonce,
-			Payload: p[0:l],
-		})
-		c.wcond.L.Lock()
-		if err != nil {
-			return
-		}
-
-		c.wsize -= l
-		n = n + l
-		p = p[l:]
-		c.bytes.Add(uint64(l))
+func (s *session) Write(p []byte) (int, error) {
+	s.cond.L.Lock()
+	for s.paused && !s.closed {
+		s.cond.Wait()
 	}
+	closed := s.closed
+	s.cond.L.Unlock()
+
+	if closed {
+		return 0, nodes.ErrSessionClosed
+	}
+	n, err := s.writer.Write(p)
+	s.bytes.Add(uint64(n))
+	return n, err
 }
 
-func (c *session) pushRead(b []byte) error {
-	c.rcond.L.Lock()
-	defer c.rcond.L.Unlock()
+func (s *session) Setup(stream *Stream, reader io.ReadCloser, writer io.WriteCloser) error {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
 
-	if c.rused+len(b) > c.rsize {
-		return errors.New("buffer overflow")
+	if s.closed {
+		return nodes.ErrSessionClosed
 	}
 
-	c.rbuf = append(c.rbuf, b)
-	c.rused += len(b)
-	c.bytes.Add(uint64(len(b)))
-
-	c.rcond.Broadcast()
-
+	s.stream = stream
+	s.reader = reader
+	s.writer = writer
+	s.state.Store(stateOpen)
 	return nil
 }
 
-func (c *session) Read(p []byte) (n int, err error) {
-	c.rcond.L.Lock()
-	defer c.rcond.L.Unlock()
-
-	for {
-		if len(p) == 0 {
-			return
-		}
-
-		if len(c.rbuf) == 0 {
-			switch c.state.Load() {
-			case stateOpen, stateMigrating:
-				c.rcond.Wait()
-				continue
-			case stateClosed:
-				err = errors.New("connection closed")
-			default:
-				err = errors.New("invalid state")
-			}
-			return
-		}
-
-		b := c.rbuf[0]
-		n = min(len(p), len(b))
-		copy(p, b[:n])
-		b = b[n:]
-		c.rused -= n
-		if len(b) > 0 {
-			c.rbuf[0] = b
-		} else {
-			c.rbuf = c.rbuf[1:]
-		}
-
-		if s := c.state.Load(); s == stateOpen || s == stateMigrating {
-			c.wcond.L.Lock()
-			stream := c.stream
-			c.wcond.L.Unlock()
-			stream.Write(&frames.Read{
-				Nonce: c.Nonce,
-				Len:   uint32(n),
-			})
-		}
-
-		return
-	}
+func (s *session) Open() {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
+	s.paused = false
+	s.cond.Broadcast()
 }
 
-func (c *session) Close() error {
-	c.CancelMigration()
-	if !c.swapState(stateOpen, stateClosed) {
-		return nodes.ErrInvalidSessionState
+func (s *session) Close() error {
+	s.cond.L.Lock()
+	if s.closed {
+		s.cond.L.Unlock()
+		return nil
 	}
+	remove := s.remove
+	s.state.Store(stateClosed)
+	s.closed = true
+	s.cond.Broadcast()
+	s.cond.L.Unlock()
 
-	c.stream.Write(&frames.Reset{Nonce: c.Nonce})
-
+	if remove != nil {
+		remove()
+	}
+	if s.writer != nil {
+		s.writer.Close()
+	}
+	if s.reader != nil {
+		s.reader.Close()
+	}
 	return nil
 }
 
-func (c *session) swapState(old, new int) bool {
-	if !c.state.CompareAndSwap(int32(old), int32(new)) {
-		return false
-	}
-	c.rcond.Broadcast()
-	c.wcond.Broadcast()
-	return true
+func (s *session) setState(state int32) {
+	s.state.Store(state)
+}
+
+func (s *session) getState() int32 {
+	return s.state.Load()
+}
+
+func (s *session) swapState(old, new int32) bool {
+	return s.state.CompareAndSwap(old, new)
 }
 
 func (s *session) IsOpen() bool {
 	return s.state.Load() == stateOpen
 }
 
-func (c *session) isOnStream(s *Stream) bool {
-	c.wcond.L.Lock()
-	defer c.wcond.L.Unlock()
-	return c.stream == s
+// note: this method might change its place
+func (s *session) CanAutoMigrate() bool {
+	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
 }
 
-func (s *session) CanMigrate() bool {
-	return s.IsOpen() && (time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes)
-}
-
-func (c *session) Migrate(s *Stream) error {
-	c.wcond.L.Lock()
-	defer c.wcond.L.Unlock()
-
-	if !c.stream.RemoteIdentity().IsEqual(s.RemoteIdentity()) {
-		return fmt.Errorf("identity mismatch")
-	}
-
-	if !c.swapState(stateOpen, stateMigrating) {
-		return errors.New("cannot migrate non-open session")
-	}
-
-	c.migratingTo = s
-	c.migratedCh = make(chan struct{})
-	c.migrateFrameReceivedCh = make(chan struct{})
-	c.migrateFrameSent.Store(false)
-
-	return nil
-}
-
-// writeMigrateFrame sends a migration marker over the current (old) stream.
-func (c *session) writeMigrateFrame() error {
-	if c.stream == nil {
-		return fmt.Errorf("no current stream")
-	}
-
-	if err := c.stream.Write(&frames.Migrate{Nonce: c.Nonce}); err != nil {
-		return err
-	}
-	c.migrateFrameSent.Store(true)
-	return nil
-}
-
-// CompleteMigration finishes the migration by switching to the target stream and reopening the session.
-func (c *session) CompleteMigration() error {
-	c.wcond.L.Lock()
-	defer c.wcond.L.Unlock()
-
-	if c.migratingTo == nil {
-		return errors.New("no target stream")
-	}
-
-	c.stream = c.migratingTo
-	c.migratingTo = nil
-
-	if !c.swapState(stateMigrating, stateOpen) {
-		return nodes.ErrInvalidMigrationState
-	}
-
-	if c.migratedCh != nil {
-		close(c.migratedCh)
-		c.migratedCh = nil
-	}
-
-	return nil
-}
-
-func (c *session) CancelMigration() {
-	c.wcond.L.Lock()
-	defer c.wcond.L.Unlock()
-
-	if c.state.Load() != stateMigrating {
-		return
-	}
-
-	c.migratingTo = nil
-	c.migrateFrameSent.Store(false)
-
-	if c.migratedCh != nil {
-		close(c.migratedCh)
-		c.migratedCh = nil
-	}
-
-	c.swapState(stateMigrating, stateOpen)
-}
-
-// signalMigrateFrameReceived closes migrateFrameReceivedCh to unblock WaitMigrateFrameReceived.
-func (c *session) signalMigrateFrameReceived() {
-	c.wcond.L.Lock()
-	ch := c.migrateFrameReceivedCh
-	c.migrateFrameReceivedCh = nil
-	c.wcond.L.Unlock()
-
-	if ch != nil {
-		close(ch)
-	}
-}
-
-// WaitMigrateFrameReceived blocks until the remote's Migrate frame has been received (responder side).
-func (c *session) WaitMigrateFrameReceived(ctx context.Context) error {
-	c.wcond.L.Lock()
-	ch := c.migrateFrameReceivedCh
-	c.wcond.L.Unlock()
-
-	if ch == nil {
-		return errors.New("not migrating")
-	}
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-ch:
-		return nil
-	}
-}
-
-// WaitOpen blocks until the migration completes or the context is cancelled.
-func (c *session) WaitOpen(ctx context.Context) error {
-	c.wcond.L.Lock()
-	ch := c.migratedCh
-	c.wcond.L.Unlock()
-
-	if ch == nil {
-		if c.IsOpen() {
-			return nil
-		}
-		return errors.New("not migrating")
-	}
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-ch:
-		if c.IsOpen() {
-			return nil
-		}
-		return errors.New("migration cancelled")
-	}
+func (s *session) isOnStream(stream *Stream) bool {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
+	return s.stream == stream
 }

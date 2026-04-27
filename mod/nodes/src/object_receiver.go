@@ -23,7 +23,8 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	case *events.Event:
 		switch e := object.Data.(type) {
 		case *nodes.StreamPressureEvent:
-			mod.log.Log("stream pressure detected: %v", e)
+			mod.log.Log("stream pressure detected on %v with %v", e.StreamID, e.RemoteIdentity)
+
 			go mod.connectivityUpgrade(e)
 		case *nodes.StreamCreatedEvent:
 			if e.StreamCount == 1 && slices.ContainsFunc(mod.User.LocalSwarm(),

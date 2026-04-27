@@ -40,7 +40,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 	}
 
 	// prepare the connection info
-	conn, ok := mod.sessions.Set(q.Nonce, newSession(q.Nonce))
+	conn, ok := mod.createSession(q.Nonce)
 	if !ok {
 		return query.RouteNotFound()
 	}
@@ -79,7 +79,7 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 	case <-ctx.Done():
 		conn.swapState(stateRouting, stateClosed)
 		mod.sessions.Delete(q.Nonce)
-		return query.RouteNotFound()
+		return query.RouteNotFound(mod, ctx.Err())
 	}
 }
 

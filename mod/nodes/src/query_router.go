@@ -38,7 +38,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 	retrieveCtx, cancel := ctx.WithTimeout(120 * time.Second)
 	defer cancel()
 
-	// todo: there is error printed out  when calling identity that we cannot link with (e.g. other's node app)
+	// todo: there is error printed out  when calling identity that we cannot link with (e.g. other'session node app)
 	select {
 	case <-ctx.Done():
 		return query.RouteNotFound()
