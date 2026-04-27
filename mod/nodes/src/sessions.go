@@ -106,6 +106,11 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
+	err = ch.Switch(nodes.ExpectMigrateSignal(nodes.MigrateSignalDone, nil))
+	if err != nil {
+		return err
+	}
+
 	err = migrator.Complete()
 	if err != nil {
 		return err

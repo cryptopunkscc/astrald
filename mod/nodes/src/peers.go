@@ -162,7 +162,6 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	})
 
 	q.Extra.Set("origin", astral.OriginNetwork)
-
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity())
 
 	w, err := mod.node.RouteQuery(ctx, q, conn)
@@ -211,11 +210,14 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 
 	// if rejected
 	if f.ErrCode != 0 {
-		conn.Close()
-		select {
-		case conn.res <- f.ErrCode:
-		default:
+		if !conn.swapState(stateRouting, stateClosed) {
+			return
 		}
+		conn.res <- f.ErrCode
+		return
+	}
+
+	if !conn.swapState(stateRouting, stateOpen) {
 		return
 	}
 
@@ -228,10 +230,7 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 	}
 	conn.Open()
 
-	select {
-	case conn.res <- 0:
-	default:
-	}
+	conn.res <- 0
 }
 
 func (mod *Peers) handleData(s *Stream, f *frames.Data) {

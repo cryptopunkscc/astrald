@@ -34,10 +34,10 @@ type session struct {
 	Query          string
 	createdAt      time.Time
 	res            chan uint8
-	cond           *sync.Cond // guards paused, closed, state, stream
+	cond           *sync.Cond // guards paused, closed, stream
 	paused         bool
 	closed         bool
-	state          int32
+	state          atomic.Int32
 
 	stream *Stream       // stream the connection is attached to
 	bytes  atomic.Uint64 // total bytes transferred (read + write)
@@ -62,7 +62,6 @@ func newSession(n astral.Nonce) *session {
 		res:       make(chan uint8, 1),
 		cond:      sync.NewCond(&sync.Mutex{}),
 		paused:    true,
-		state:     stateRouting,
 	}
 }
 
@@ -108,7 +107,7 @@ func (s *session) Setup(stream *Stream, reader io.ReadCloser, writer io.WriteClo
 	s.stream = stream
 	s.reader = reader
 	s.writer = writer
-	s.state = stateOpen
+	s.state.Store(stateOpen)
 	return nil
 }
 
@@ -126,7 +125,7 @@ func (s *session) Close() error {
 		return nil
 	}
 	remove := s.remove
-	s.state = stateClosed
+	s.state.Store(stateClosed)
 	s.closed = true
 	s.cond.Broadcast()
 	s.cond.L.Unlock()
@@ -144,19 +143,19 @@ func (s *session) Close() error {
 }
 
 func (s *session) setState(state int32) {
-	s.cond.L.Lock()
-	defer s.cond.L.Unlock()
-	s.state = state
+	s.state.Store(state)
 }
 
 func (s *session) getState() int32 {
-	s.cond.L.Lock()
-	defer s.cond.L.Unlock()
-	return s.state
+	return s.state.Load()
+}
+
+func (s *session) swapState(old, new int32) bool {
+	return s.state.CompareAndSwap(old, new)
 }
 
 func (s *session) IsOpen() bool {
-	return s.getState() == stateOpen
+	return s.state.Load() == stateOpen
 }
 
 // note: this method might change its place

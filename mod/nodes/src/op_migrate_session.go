@@ -106,5 +106,5 @@ func (mod *Module) respondMigration(ctx *astral.Context, ch *channel.Channel, se
 		return err
 	}
 
-	return nil
+	return ch.Send(&nodes.MigrateSignal{Signal: nodes.MigrateSignalDone})
 }

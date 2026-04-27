@@ -19,6 +19,7 @@ const (
 	MigrateSignalReady    astral.String8 = "ready"
 	MigrateSignalSwitched astral.String8 = "switched"
 	MigrateSignalResume   astral.String8 = "resume"
+	MigrateSignalDone     astral.String8 = "done"
 )
 
 func (MigrateSignal) ObjectType() string { return "mod.nodes.migrate_signal" }
