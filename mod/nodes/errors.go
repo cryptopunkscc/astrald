@@ -12,4 +12,8 @@ var (
 	ErrInvalidSessionState   = errors.New("invalid session state")
 	ErrMigrationNotSupported = errors.New("migration not supported")
 	ErrSessionNotFound       = errors.New("session not found")
+	ErrSessionClosed         = errors.New("session closed")
+	ErrStreamNotFound        = errors.New("stream not found")
+	ErrBufferClosed          = errors.New("buffer closed")
+	ErrBufferOverflow        = errors.New("buffer overflow")
 )
