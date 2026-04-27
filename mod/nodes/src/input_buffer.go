@@ -81,6 +81,12 @@ func (b *InputBuffer) Close() error {
 	return nil
 }
 
+func (b *InputBuffer) IsEmpty() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.used == 0
+}
+
 func (b *InputBuffer) Done() <-chan struct{} {
 	b.mu.Lock()
 	defer b.mu.Unlock()

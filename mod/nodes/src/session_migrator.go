@@ -65,6 +65,10 @@ func (m *SessionMigrator) SendMigrateFrame() error {
 }
 
 func (m *SessionMigrator) WaitDrain(ctx context.Context) error {
+	if m.oldInputBuffer.IsEmpty() {
+		return nil
+	}
+
 	m.mod.log.Logv(1, "waiting for old input buffer to drain for session %v", m.session.Nonce)
 	select {
 	case <-m.oldInputBuffer.Done():
