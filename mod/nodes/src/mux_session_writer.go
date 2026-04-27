@@ -29,8 +29,12 @@ func (w *muxSessionWriter) Buf() *OutputBuffer {
 
 func (w *muxSessionWriter) SetBuf(buf *OutputBuffer) {
 	w.cond.L.Lock()
-	defer w.cond.L.Unlock()
+	old := w.buf
 	w.buf = buf
+	w.cond.L.Unlock()
+	if old != nil {
+		old.Close()
+	}
 }
 
 func (w *muxSessionWriter) Close() error {

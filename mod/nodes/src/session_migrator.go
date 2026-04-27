@@ -32,13 +32,9 @@ func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
 }
 
 func (m *SessionMigrator) BeginMigrate(target *Stream) error {
-	m.mod.log.Logv(1, "pausing session %v", m.session.Nonce)
-	m.writer.Pause()
-
 	m.session.cond.L.Lock()
 	if m.session.closed {
 		m.session.cond.L.Unlock()
-		m.writer.Resume()
 		m.mod.log.Logv(1, "session %v closed before migration could begin", m.session.Nonce)
 		return nodes.ErrInvalidSessionState
 	}
@@ -46,6 +42,9 @@ func (m *SessionMigrator) BeginMigrate(target *Stream) error {
 	m.session.stream = target
 	m.session.state = stateMigrating
 	m.session.cond.L.Unlock()
+
+	m.mod.log.Logv(1, "pausing session %v", m.session.Nonce)
+	m.writer.Pause()
 
 	m.oldInputBuffer = m.reader.Buf()
 

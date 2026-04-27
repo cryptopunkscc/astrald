@@ -255,7 +255,7 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 		return
 	}
 
-	if err := reader.buf.Push(f.Payload); err != nil {
+	if err := reader.Push(f.Payload); err != nil {
 		mod.log.Errorv(1, "failed to push read frame: %v", err)
 		session.Close()
 		return
@@ -318,11 +318,10 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 		return
 	}
 
-	// Peer is done sending on the old stream; close the old input buffer so the
-	// reader drains it and then switches to the new one.
-	if err := reader.CloseBuf(); err != nil {
-		mod.log.Errorv(1, "failed to close read buffer: %v", err)
-	}
+	// Peer is done sending on the old stream. Advance closes the old buffer
+	// and promotes nextBuffer immediately if already empty, or defers to the
+	// Read loop on EOF otherwise.
+	reader.Advance()
 }
 
 func (mod *Peers) addStream(

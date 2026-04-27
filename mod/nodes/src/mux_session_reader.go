@@ -46,11 +46,11 @@ func (r *muxSessionReader) Close() error {
 	return nil
 }
 
-func (r *muxSessionReader) CloseBuf() error {
+func (r *muxSessionReader) Push(p []byte) error {
 	r.cond.L.Lock()
 	buf := r.buf
 	r.cond.L.Unlock()
-	return buf.Close()
+	return buf.Push(p)
 }
 
 func (r *muxSessionReader) SetNextBuffer(buf *InputBuffer) {
@@ -73,13 +73,26 @@ func (r *muxSessionReader) Resume() {
 	r.cond.Broadcast()
 }
 
+func (r *muxSessionReader) Advance() {
+	r.cond.L.Lock()
+	defer r.cond.L.Unlock()
+	if r.nextBuffer == nil {
+		return
+	}
+	_ = r.buf.Close()
+	if r.buf.IsEmpty() {
+		r.buf = r.nextBuffer
+		r.nextBuffer = nil
+		r.cond.Broadcast()
+	}
+}
+
 func (r *muxSessionReader) Read(p []byte) (n int, err error) {
 	for {
 		r.cond.L.Lock()
 		for r.paused {
 			r.cond.Wait()
 		}
-
 		n, err := r.buf.Read(p)
 		switch {
 		case err == nil:
