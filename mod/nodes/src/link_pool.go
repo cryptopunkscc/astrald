@@ -9,8 +9,8 @@ import (
 )
 
 type streamWatcher struct {
-	match func(*Stream, *string) bool
-	ch    chan *Stream
+	match func(*Link, *string) bool
+	ch    chan *Link
 }
 
 type LinkPool struct {
@@ -28,14 +28,14 @@ func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
 }
 
 type LinkResult struct {
-	Stream *Stream
+	Stream *Link
 	Err    error
 }
 
-func (pool *LinkPool) subscribe(match func(*Stream, *string) bool) *streamWatcher {
+func (pool *LinkPool) subscribe(match func(*Link, *string) bool) *streamWatcher {
 	w := &streamWatcher{
 		match: match,
-		ch:    make(chan *Stream, 1),
+		ch:    make(chan *Link, 1),
 	}
 
 	pool.watchers.Add(w)
@@ -46,7 +46,7 @@ func (pool *LinkPool) unsubscribe(w *streamWatcher) {
 	pool.watchers.Remove(w)
 }
 
-func (pool *LinkPool) notifyStreamWatchers(s *Stream, strategy *string) bool {
+func (pool *LinkPool) notifyStreamWatchers(s *Link, strategy *string) bool {
 	used := false
 	for _, w := range pool.watchers.Clone() {
 		if !w.match(s, strategy) {
@@ -89,7 +89,7 @@ func (pool *LinkPool) RetrieveLink(
 		opt(&o)
 	}
 
-	match := func(s *Stream, strategy *string) bool {
+	match := func(s *Link, strategy *string) bool {
 		if !s.RemoteIdentity().IsEqual(target) {
 			return false
 		}
@@ -104,7 +104,7 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	if !o.ForceNew {
-		streams := pool.peers.streams.Select(func(s *Stream) bool { return match(s, nil) })
+		streams := pool.peers.streams.Select(func(s *Link) bool { return match(s, nil) })
 		if len(streams) > 0 {
 			return sig.ArrayToChan([]LinkResult{{Stream: streams[0]}})
 		}

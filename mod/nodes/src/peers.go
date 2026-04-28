@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"slices"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -21,16 +20,20 @@ import (
 
 type Peers struct {
 	*Module
-	streams  sig.Set[*Stream]
-	sessions sig.Map[astral.Nonce, *session]
+	negotiator *linkNegotiator
+	streams    sig.Set[*Link]
+	sessions   sig.Map[astral.Nonce, *session]
 }
 
 func NewPeers(m *Module) *Peers {
-	return &Peers{Module: m}
+	return &Peers{
+		Module:     m,
+		negotiator: newLinkNegotiator(m.log, []string{featureMux2}),
+	}
 }
 
 func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
-	streams := mod.streams.Select(func(s *Stream) bool {
+	streams := mod.streams.Select(func(s *Link) bool {
 		return s.RemoteIdentity().IsEqual(q.Target)
 	})
 
@@ -123,13 +126,13 @@ func (mod *Peers) frameReader(ctx context.Context) {
 	}
 }
 
-func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
+func (mod *Peers) handleQuery(s *Link, f *frames.Query) {
 	mod.handleInboundQuery(s, f.Nonce, s.RemoteIdentity(), s.LocalIdentity(), nil, f.Query, int(f.Buffer))
 }
 
 // handleRelayQuery routes a query received via a relay channel to its target and bridges
 // the resulting session back to the caller over the relay peer's stream.
-func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) error {
+func (mod *Peers) handleRelayQuery(s *Link, relayQuery *nodes.QueryContainer) error {
 	mod.handleInboundQuery(
 		s,
 		relayQuery.Query.Nonce,
@@ -143,7 +146,7 @@ func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) 
 	return nil
 }
 
-func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, target *astral.Identity, relayID *astral.Identity, queryStr string, initBuffer int) {
+func (mod *Peers) handleInboundQuery(s *Link, nonce astral.Nonce, caller, target *astral.Identity, relayID *astral.Identity, queryStr string, initBuffer int) {
 	conn, ok := mod.createSession(nonce)
 	if !ok {
 		return // ignore duplicates
@@ -193,7 +196,7 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	}()
 }
 
-func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
+func (mod *Peers) handleResponse(s *Link, f *frames.Response) {
 	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
@@ -233,7 +236,7 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 	conn.res <- 0
 }
 
-func (mod *Peers) handleData(s *Stream, f *frames.Data) {
+func (mod *Peers) handleData(s *Link, f *frames.Data) {
 	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		s.Write(&frames.Reset{Nonce: f.Nonce})
@@ -266,7 +269,7 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 	}
 }
 
-func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
+func (mod *Peers) handleRead(s *Link, f *frames.Read) {
 	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		s.Write(&frames.Reset{Nonce: f.Nonce})
@@ -286,7 +289,7 @@ func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
 	}
 }
 
-func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
+func (mod *Peers) handleReset(s *Link, f *frames.Reset) {
 	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
@@ -298,7 +301,7 @@ func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
 	session.Close()
 }
 
-func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
+func (mod *Peers) handlePing(s *Link, f *frames.Ping) {
 	if f.Pong {
 		rtt, err := s.pong(f.Nonce)
 		if err != nil {
@@ -316,7 +319,7 @@ func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
 	}
 }
 
-func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
+func (mod *Peers) handleMigrate(s *Link, f *frames.Migrate) {
 	sess, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
@@ -339,7 +342,7 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 }
 
 func (mod *Peers) addStream(
-	s *Stream,
+	s *Link,
 ) (err error) {
 	var (
 		dir     = "in"
@@ -365,7 +368,7 @@ func (mod *Peers) addStream(
 
 	// log stream addition
 	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, s.RemoteIdentity(), netName)
-	streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {
+	streamsWithSameIdentity := mod.streams.Select(func(v *Link) bool {
 		return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
 	})
 
@@ -391,7 +394,7 @@ func (mod *Peers) addStream(
 			c.Close()
 		}
 
-		streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {
+		streamsWithSameIdentity := mod.streams.Select(func(v *Link) bool {
 			return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
 		})
 
@@ -411,7 +414,7 @@ func (mod *Peers) addStream(
 }
 
 // reflectStream reflects the observed remote endpoint on inbound streams
-func (mod *Peers) reflectStream(s *Stream) (err error) {
+func (mod *Peers) reflectStream(s *Link) (err error) {
 	// reflect only on inbound streams with a known remote endpoint
 	if s.outbound || s.RemoteEndpoint() == nil {
 		return
@@ -439,7 +442,7 @@ func (mod *Peers) reflectStream(s *Stream) (err error) {
 }
 
 // readStreamFrames reads frames from the stream until it closes
-func (mod *Peers) readStreamFrames(s *Stream) {
+func (mod *Peers) readStreamFrames(s *Link) {
 	// read frames
 	for frame := range s.Read() {
 		mod.in <- &Frame{
@@ -459,69 +462,18 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	return false
 }
 
-// negotiateOutboundStream reads peer's supported features and the session sessionId.
-func (mod *Peers) negotiateOutboundStream(aconn astral.Conn) (features []astral.String8, err error) {
-	var featCount astral.Uint16
-	if _, err = featCount.ReadFrom(aconn); err != nil {
-		return nil, fmt.Errorf("read features: %w", err)
-	}
-	for i := 0; i < int(featCount); i++ {
-		var feat astral.String8
-		if _, err = feat.ReadFrom(aconn); err != nil {
-			return nil, fmt.Errorf("read features: %w", err)
-		}
-		features = append(features, feat)
-	}
-
-	return features, nil
-}
-
-// negotiateInboundStream sends our supported features and a fresh session sessionId.
-func (mod *Peers) negotiateInboundStream(aconn astral.Conn) (err error) {
-	var linkFeatures = []string{featureMux2}
-	if _, err = astral.Uint16(len(linkFeatures)).WriteTo(aconn); err != nil {
-		return err
-	}
-	for _, feature := range linkFeatures {
-		if _, err = astral.String8(feature).WriteTo(aconn); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (mod *Peers) setInboundStreamNonce(aconn astral.Conn) (nonce astral.Nonce, err error) {
-	nonce = astral.NewNonce()
-	if _, err = nonce.WriteTo(aconn); err != nil {
-		return 0, err
-	}
-
-	return nonce, nil
-}
-
-func (mod *Peers) readOutboundStreamNonce(aconn astral.Conn) (nonce astral.Nonce, err error) {
-	if _, err = nonce.ReadFrom(aconn); err != nil {
-		return 0, err
-	}
-
-	return nonce, nil
-}
-
-func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Stream, err error) {
+func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Link, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
 		}
 	}()
 
-	// get the node's private key
 	privKey, err := mod.getPrivateKey()
 	if err != nil {
 		return nil, err
 	}
 
-	// initiate a handshake
 	aconn, err := noise.HandshakeOutbound(
 		ctx,
 		conn,
@@ -532,39 +484,13 @@ func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Id
 		return nil, fmt.Errorf("outbound handshake: %w", err)
 	}
 
-	// Read peer features and session sessionId
-	linkFeatures, err := mod.negotiateOutboundStream(aconn)
+	stream, err := mod.negotiator.NegotiateOutbound(aconn)
 	if err != nil {
 		return nil, err
 	}
 
-	if slices.Contains(linkFeatures, featureMux2) {
-		_, err = astral.String8(featureMux2).WriteTo(aconn)
-		if err != nil {
-			return nil, fmt.Errorf("write: %w", err)
-		}
-
-		var errCode astral.Int8
-		_, err = errCode.ReadFrom(aconn)
-		switch {
-		case err != nil:
-			return nil, fmt.Errorf("read: %w", err)
-		case errCode != 0:
-			return nil, errors.New("link feature negotation error")
-		}
-
-		nonce, err := mod.readOutboundStreamNonce(aconn)
-		if err != nil {
-			return nil, fmt.Errorf(`read outbound stream nonce: %w`, err)
-		}
-
-		stream := newStream(aconn, nonce, true)
-		err = mod.addStream(stream)
-
-		return stream, err
-	}
-
-	return nil, errors.New("no supported link types found")
+	err = mod.addStream(stream)
+	return stream, err
 }
 
 func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
@@ -574,55 +500,20 @@ func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (e
 		}
 	}()
 
-	// get the node's private key
 	privKey, err := mod.getPrivateKey()
 	if err != nil {
 		return err
 	}
 
-	// respond to a handshake
 	aconn, err := noise.HandshakeInbound(ctx, conn, secp256k1.PrivKeyFromBytes(privKey.Key))
 	if err != nil {
 		return
 	}
 
-	// Send our features and session sessionId
-	err = mod.negotiateInboundStream(aconn)
+	stream, err := mod.negotiator.NegotiateInbound(aconn)
 	if err != nil {
 		return err
 	}
 
-	for {
-		var feature string
-		_, err = (*astral.String8)(&feature).ReadFrom(aconn)
-		if err != nil {
-			return
-		}
-
-		switch feature {
-		case featureMux2:
-			_, err = astral.Uint8(0).WriteTo(aconn)
-			if err == nil {
-				nonce, err := mod.setInboundStreamNonce(aconn)
-				if err != nil {
-					return fmt.Errorf("failed to set inbound stream nonce: %w", err)
-				}
-
-				stream := newStream(aconn, nonce, false)
-				err = mod.addStream(stream)
-				if err != nil {
-					return fmt.Errorf("failed to add stream: %w", err)
-				}
-			}
-
-			return err
-		default:
-			_, err = astral.Uint8(1).WriteTo(aconn)
-			return fmt.Errorf("remote party (%s from %s) requested an invalid feature: %s",
-				aconn.RemoteIdentity(),
-				aconn.RemoteEndpoint(),
-				feature,
-			)
-		}
-	}
+	return mod.addStream(stream)
 }

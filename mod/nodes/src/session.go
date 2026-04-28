@@ -39,7 +39,7 @@ type session struct {
 	closed         bool
 	state          atomic.Int32
 
-	stream *Stream       // stream the connection is attached to
+	stream *Link         // stream the connection is attached to
 	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
 	reader io.ReadCloser
@@ -96,7 +96,7 @@ func (s *session) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (s *session) Setup(stream *Stream, reader io.ReadCloser, writer io.WriteCloser) error {
+func (s *session) Setup(stream *Link, reader io.ReadCloser, writer io.WriteCloser) error {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -163,7 +163,7 @@ func (s *session) CanAutoMigrate() bool {
 	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
 }
 
-func (s *session) isOnStream(stream *Stream) bool {
+func (s *session) isOnStream(stream *Link) bool {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 	return s.stream == stream

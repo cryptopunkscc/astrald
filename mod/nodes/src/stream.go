@@ -2,18 +2,21 @@ package nodes
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-type Stream struct {
-	*frames.Stream
+type Link struct {
+	ch          *channel.Channel
 	id          astral.Nonce
 	createdAt   time.Time
 	conn        astral.Conn
@@ -24,6 +27,11 @@ type Stream struct {
 	pingTimeout time.Duration
 	wakeCh      chan struct{}
 	pressure    StreamPressureDetector
+
+	mu   sync.Mutex
+	err  sig.Value[error]
+	done chan struct{}
+	in   chan frames.Frame // fixme: remove
 }
 
 type Ping struct {
@@ -31,39 +39,73 @@ type Ping struct {
 	pong   chan struct{}
 }
 
-func newStream(conn astral.Conn, id astral.Nonce, outbound bool) *Stream {
-	link := &Stream{
+func newLink(conn astral.Conn, id astral.Nonce, outbound bool) *Link {
+	s := &Link{
 		id:          id,
 		conn:        conn,
 		createdAt:   time.Now(),
-		Stream:      frames.NewStream(conn),
 		outbound:    outbound,
 		pingTimeout: defaultPingTimeout,
 		wakeCh:      make(chan struct{}, 1),
+		done:        make(chan struct{}),
+		in:          make(chan frames.Frame, 32),
+		ch:          channel.New(conn),
 	}
 
-	go link.pingLoop()
+	go s.reader()
+	go s.pingLoop()
 
-	return link
+	return s
 }
 
-func (s *Stream) LocalIdentity() *astral.Identity {
+func (s *Link) reader() {
+	var rerr error
+	defer func() {
+		s.err.Swap(nil, rerr)
+		_ = s.ch.Close()
+		close(s.in)
+		close(s.done)
+	}()
+
+	for {
+		obj, err := s.ch.Receive()
+		if err != nil {
+			rerr = err
+			return
+		}
+		frame, ok := obj.(frames.Frame)
+		if !ok {
+			rerr = fmt.Errorf("decoded object is not a Frame: %T", obj)
+			return
+		}
+		s.in <- frame
+	}
+}
+
+func (s *Link) Read() <-chan frames.Frame { return s.in }
+
+func (s *Link) Done() <-chan struct{} { return s.done }
+
+func (s *Link) Err() error { return s.err.Get() }
+
+func (s *Link) LocalIdentity() *astral.Identity {
 	return s.conn.LocalIdentity()
 }
 
-func (s *Stream) RemoteIdentity() *astral.Identity {
+func (s *Link) RemoteIdentity() *astral.Identity {
 	return s.conn.RemoteIdentity()
 }
 
-func (s *Stream) CloseWithError(err error) error {
-	if err != nil {
-		return s.Stream.CloseWithError(err)
+func (s *Link) CloseWithError(err error) error {
+	if err == nil {
+		err = errors.New("link closed")
 	}
-
-	return s.Stream.CloseWithError(errors.New("link closed"))
+	s.err.Swap(nil, err)
+	_ = s.ch.Close()
+	return nil
 }
 
-func (s *Stream) Network() string {
+func (s *Link) Network() string {
 	if c, ok := s.conn.(exonet.Conn); ok {
 		if e := c.RemoteEndpoint(); e != nil {
 			return e.Network()
@@ -75,14 +117,14 @@ func (s *Stream) Network() string {
 	return "unknown"
 }
 
-func (s *Stream) LocalEndpoint() exonet.Endpoint {
+func (s *Link) LocalEndpoint() exonet.Endpoint {
 	if c, ok := s.conn.(exonet.Conn); ok {
 		return c.LocalEndpoint()
 	}
 	return nil
 }
 
-func (s *Stream) RemoteEndpoint() exonet.Endpoint {
+func (s *Link) RemoteEndpoint() exonet.Endpoint {
 	if c, ok := s.conn.(exonet.Conn); ok {
 		return c.RemoteEndpoint()
 	}
@@ -90,28 +132,38 @@ func (s *Stream) RemoteEndpoint() exonet.Endpoint {
 	return nil
 }
 
-func (s *Stream) PressureHigh() bool {
+func (s *Link) PressureHigh() bool {
 	return s.pressure != nil && s.pressure.IsHigh()
 }
 
-func (s *Stream) Throughput() uint64 {
+func (s *Link) Throughput() uint64 {
 	return s.throughput.Load()
 }
 
-func (s *Stream) Write(frame frames.Frame) (err error) {
+func (s *Link) Write(frame frames.Frame) error {
 	if f, ok := frame.(*frames.Data); ok {
 		s.throughput.Add(uint64(len(f.Payload)))
 		if s.pressure != nil {
 			s.pressure.OnBytes(len(f.Payload), time.Now())
 		}
 	}
+
 	if _, ok := frame.(*frames.Ping); !ok {
 		s.check()
 	}
-	return s.Stream.Write(frame)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := s.ch.Send(frame); err != nil {
+		s.err.Swap(nil, err)
+		_ = s.ch.Close()
+		return err
+	}
+	return nil
 }
 
-func (s *Stream) Ping() (time.Duration, error) {
+func (s *Link) Ping() (time.Duration, error) {
 	var nonce = astral.NewNonce()
 
 	p, ok := s.pings.Set(nonce, &Ping{
@@ -136,12 +188,12 @@ func (s *Stream) Ping() (time.Duration, error) {
 		return time.Since(p.sentAt), nil
 	case <-time.After(s.pingTimeout):
 		return -1, errors.New("ping timeout")
-	case <-s.Stream.Done():
+	case <-s.done:
 		return -1, s.Err()
 	}
 }
 
-func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
+func (s *Link) pong(nonce astral.Nonce) (time.Duration, error) {
 	p, ok := s.pings.Delete(nonce)
 	if !ok {
 		return -1, errors.New("invalid sessionId")
@@ -155,14 +207,14 @@ func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
 }
 
 // Wake triggers a ping on the next loop iteration.
-func (s *Stream) Wake() {
+func (s *Link) Wake() {
 	select {
 	case s.wakeCh <- struct{}{}:
 	default:
 	}
 }
 
-func (s *Stream) check() {
+func (s *Link) check() {
 	if s.checks.Swap(2) != 0 {
 		return
 	}
@@ -173,9 +225,9 @@ func (s *Stream) check() {
 	}
 }
 
-func (s *Stream) pingLoop() {
+func (s *Link) pingLoop() {
 	select {
-	case <-s.Stream.Done():
+	case <-s.done:
 		return
 	case <-time.After(time.Duration(rand.Int63n(int64(pingJitter)))):
 	}
@@ -183,13 +235,13 @@ func (s *Stream) pingLoop() {
 	for {
 		if s.checks.Load() > 0 {
 			select {
-			case <-s.Stream.Done():
+			case <-s.done:
 				return
 			case <-time.After(activeInterval):
 			}
 		} else {
 			select {
-			case <-s.Stream.Done():
+			case <-s.done:
 				return
 			case <-s.wakeCh:
 			}

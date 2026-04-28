@@ -17,7 +17,7 @@ func (mod *Peers) createSession(nonce astral.Nonce) (*session, bool) {
 	return sess, true
 }
 
-func (mod *Peers) newMuxInputBuffer(s *Stream, nonce astral.Nonce) *InputBuffer {
+func (mod *Peers) newMuxInputBuffer(s *Link, nonce astral.Nonce) *InputBuffer {
 	onRead := func(n int) {
 		s.Write(&frames.Read{Nonce: nonce, Len: uint32(n)})
 	}
@@ -25,7 +25,7 @@ func (mod *Peers) newMuxInputBuffer(s *Stream, nonce astral.Nonce) *InputBuffer 
 	return NewInputBuffer(defaultBufferSize, onRead)
 }
 
-func (mod *Peers) newMuxOutputBuffer(s *Stream, nonce astral.Nonce, sess *session) *OutputBuffer {
+func (mod *Peers) newMuxOutputBuffer(s *Link, nonce astral.Nonce, sess *session) *OutputBuffer {
 	onWrite := func(p []byte) error {
 		remaining := p
 		for len(remaining) > 0 {
@@ -53,7 +53,7 @@ func (mod *Peers) newMuxOutputBuffer(s *Stream, nonce astral.Nonce, sess *sessio
 }
 
 // migrateSession migrates single session (initiator side)
-func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream *Stream) (err error) {
+func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream *Link) (err error) {
 	ch, err := nodesClient.New(session.RemoteIdentity, astrald.Default()).MigrateSession(ctx, nodesClient.MigrateSessionArgs{
 		SessionID: session.Nonce,
 		StreamID:  targetStream.id,

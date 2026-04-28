@@ -127,9 +127,9 @@ func TestLongIdleGapDecaysCorrectly(t *testing.T) {
 	}
 }
 
-// TestNilSafe: Stream with nil detector must not panic.
+// TestNilSafe: Link with nil detector must not panic.
 func TestNilSafe(t *testing.T) {
-	s := &Stream{}
+	s := &Link{}
 	if s.pressure != nil {
 		s.pressure.OnBytes(1024, time.Now())
 		s.pressure.OnRTT(100*time.Millisecond, time.Now())

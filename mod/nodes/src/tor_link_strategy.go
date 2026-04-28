@@ -63,7 +63,7 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 		return
 	}
 
-	resultCh := make(chan *Stream, 1)
+	resultCh := make(chan *Link, 1)
 
 	// Foreground: quick retries only
 	workerCtx, workerCancel := ctx.WithTimeout(s.quickTimeout)
@@ -91,7 +91,7 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 	bgCtx, bgCancel := s.mod.ctx.WithTimeout(s.backgroundTimeout)
 	defer bgCancel()
 
-	bgResultCh := make(chan *Stream, 1)
+	bgResultCh := make(chan *Link, 1)
 	go func() {
 		defer close(bgResultCh)
 		if stream := s.try(bgCtx, endpoints, s.retries, true); stream != nil {
@@ -115,7 +115,7 @@ func (s *TorLinkStrategy) signalDone() {
 	}
 }
 
-func (s *TorLinkStrategy) deliverStream(stream *Stream) {
+func (s *TorLinkStrategy) deliverStream(stream *Link) {
 	if stream == nil {
 		return
 	}
@@ -131,7 +131,7 @@ func (s *TorLinkStrategy) try(
 	endpoints []*nodes.EndpointWithTTL,
 	retries int,
 	withBackoff bool,
-) *Stream {
+) *Link {
 
 	var backoff *sig.Retry
 	if withBackoff {
@@ -175,7 +175,7 @@ func (s *TorLinkStrategy) try(
 	return nil
 }
 
-func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Stream {
+func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Link {
 	conn, err := s.mod.Exonet.Dial(ctx, endpoint.Endpoint)
 	if err != nil {
 		s.log.Logv(2, "%v dial %v: %v", s.target, endpoint, err)
