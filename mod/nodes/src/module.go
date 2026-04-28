@@ -48,7 +48,7 @@ type Module struct {
 	strategyFactories sig.Map[string, nodes.StrategyFactory]
 	upgraders         sig.Map[string, *sig.Switch]
 
-	in chan *Frame
+	in chan *Frame // fixme: remove
 
 	searchCache   sig.Map[string, *astral.Identity]
 	relayChannels sig.Map[string, *relayChannel]
@@ -150,7 +150,7 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 }
 
 // findStreamByID returns a stream with the given local id or nil if not found.
-func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
+func (mod *Module) findStreamByID(id astral.Nonce) *Link {
 	for _, s := range mod.peers.streams.Clone() {
 		if s.id == id {
 			return s
@@ -159,7 +159,7 @@ func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
 	return nil
 }
 
-func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) *Stream {
+func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) *Link {
 	for _, session := range mod.peers.sessions.Clone() {
 		if session.Nonce == nonce {
 			return session.stream

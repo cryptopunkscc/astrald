@@ -22,12 +22,12 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 	connectivityGate.Run(mod.ctx, func(_ context.Context) {
 		mod.log.Log("connectivity upgrade triggered for %v (stream %v)", e.RemoteIdentity, e.StreamID)
 
-		var targetStream *Stream
-		alternatives := mod.peers.streams.Select(func(s *Stream) bool {
+		var targetStream *Link
+		alternatives := mod.peers.streams.Select(func(s *Link) bool {
 			return s.RemoteIdentity().IsEqual(e.RemoteIdentity) && s.id != e.StreamID
 		})
 
-		slices.SortFunc(alternatives, func(a, b *Stream) int {
+		slices.SortFunc(alternatives, func(a, b *Link) int {
 			if (a.pressure == nil) == (b.pressure == nil) {
 				return 0
 			}
@@ -72,7 +72,7 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 
 const migrateSessionTimeout = 30 * time.Second
 
-func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Stream) {
+func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Link) {
 	oldStream := mod.findStreamByID(oldStreamID)
 	if oldStream == nil {
 		mod.log.Logv(1, "migrate sessions: old stream %v not found", oldStreamID)

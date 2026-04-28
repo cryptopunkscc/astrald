@@ -13,7 +13,7 @@ type SessionMigrator struct {
 	reader         *muxSessionReader
 	writer         *muxSessionWriter
 	peerBuffer     int
-	oldStream      *Stream
+	oldStream      *Link
 	oldInputBuffer *InputBuffer
 }
 
@@ -31,7 +31,7 @@ func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
 	return &SessionMigrator{mod: mod, session: sess, reader: reader, writer: writer}, nil
 }
 
-func (m *SessionMigrator) Begin(target *Stream) error {
+func (m *SessionMigrator) Begin(target *Link) error {
 	if !m.session.swapState(stateOpen, stateMigrating) {
 		m.mod.log.Logv(1, "session %v in state %v, cannot migrate", m.session.Nonce, m.session.getState())
 		return nodes.ErrInvalidSessionState

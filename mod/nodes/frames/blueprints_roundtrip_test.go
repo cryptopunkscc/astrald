@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 )
 
 func TestFrameBlueprintsRoundtrip(t *testing.T) {
@@ -25,15 +26,16 @@ func TestFrameBlueprintsRoundtrip(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var data = &bytes.Buffer{}
-			_, err := astral.Encode(data, tc.obj, astral.WithEncoder(FrameTypeEncoder))
-			if err != nil {
-				t.Fatalf("pack failed: %v", err)
+			buf := &bytes.Buffer{}
+			sender := channel.NewBinarySender(buf)
+			if err := sender.Send(tc.obj); err != nil {
+				t.Fatalf("send failed: %v", err)
 			}
 
-			obj, _, err := astral.Decode(data, astral.WithDecoder(FrameTypeDecoder))
+			receiver := channel.NewBinaryReceiver(buf)
+			obj, err := receiver.Receive()
 			if err != nil {
-				t.Fatalf("unpack failed: %v", err)
+				t.Fatalf("receive failed: %v", err)
 			}
 
 			if reflect.TypeOf(obj) != reflect.TypeOf(tc.obj) {
