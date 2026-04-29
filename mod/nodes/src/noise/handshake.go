@@ -3,14 +3,14 @@ package noise
 import (
 	"context"
 	"errors"
+	"io"
 
 	"github.com/cryptopunkscc/astrald/brontide"
-	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 // HandshakeInbound performs a handshake as the passive party.
-func HandshakeInbound(ctx context.Context, conn exonet.Conn, localPrivateKey *secp256k1.PrivateKey) (*Conn, error) {
+func HandshakeInbound(ctx context.Context, conn io.ReadWriteCloser, localPrivateKey *secp256k1.PrivateKey) (*Conn, error) {
 	//TODO: is there a better way to handle ctx here?
 	var done = make(chan struct{})
 	var errCh = make(chan error, 1)
@@ -34,16 +34,13 @@ func HandshakeInbound(ctx context.Context, conn exonet.Conn, localPrivateKey *se
 		return nil, err
 	}
 
-	return &Conn{
-		conn:     conn,
-		brontide: bConn,
-	}, nil
+	return &Conn{brontide: bConn}, nil
 }
 
 // HandshakeOutbound performs a handshake as the active party.
 func HandshakeOutbound(
 	ctx context.Context,
-	conn exonet.Conn,
+	conn io.ReadWriteCloser,
 	remotePublicKey *secp256k1.PublicKey,
 	localPrivateKey *secp256k1.PrivateKey,
 ) (*Conn, error) {
@@ -74,8 +71,5 @@ func HandshakeOutbound(
 		return nil, err
 	}
 
-	return &Conn{
-		conn:     conn,
-		brontide: c,
-	}, nil
+	return &Conn{brontide: c}, nil
 }

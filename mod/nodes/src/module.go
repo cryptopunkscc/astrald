@@ -14,6 +14,7 @@ import (
 	modsecp256k1 "github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 const DefaultWorkerCount = 8
@@ -167,4 +168,15 @@ func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) *Link {
 	}
 
 	return nil
+}
+
+func (mod *Module) GetLinkNegotiator() (*muxLinkNegotiator, error) {
+	privKey, err := mod.getPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	return &muxLinkNegotiator{
+		privateKey: secp256k1.PrivKeyFromBytes(privKey.Key),
+		features:   []string{featureMux2},
+	}, nil
 }

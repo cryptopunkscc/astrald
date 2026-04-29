@@ -4,13 +4,13 @@ import (
 	"time"
 )
 
-type StreamPressureDetector interface {
+type LinkPressureDetector interface {
 	OnBytes(n int, now time.Time)
 	OnRTT(rtt time.Duration, now time.Time)
 	IsHigh() bool
 }
 
-type StreamPressureConfig struct {
+type LinkPressureConfig struct {
 	// LeakRate is how fast the token bucket drains in bytes/sec.
 	// Traffic below this rate does not accumulate pressure; only sustained
 	// throughput above it will fill the bucket toward LevelRef.
@@ -59,7 +59,7 @@ type StreamPressureConfig struct {
 // the best available option. It triggers when the stream sustains notably more
 // traffic than its baseline or when round-trip latency climbs well above the
 // transport norm.
-var DefaultStreamPressureConfig = StreamPressureConfig{
+var DefaultStreamPressureConfig = LinkPressureConfig{
 	LeakRate: 50 * 1024,  // drain 50 KB/s; traffic above this fills the bucket
 	Cap:      500 * 1024, // ceiling at ~10 s of burst headroom above LeakRate
 	LevelRef: 200 * 1024, // 200 KB in bucket → level score of 1.0
@@ -79,7 +79,7 @@ var DefaultStreamPressureConfig = StreamPressureConfig{
 // threshold needed to trigger, while lower latency raises it. WRTT is kept
 // below 1/3 so that RTT alone can never reach Enter=1.0 (max RTT contribution
 // is WRTT*3=0.6).
-var TorStreamPressureConfig = StreamPressureConfig{
+var TorStreamPressureConfig = LinkPressureConfig{
 	LeakRate: 10 * 1024,  // drain 10 KB/s; Tor bandwidth is typically 10–30 KB/s
 	Cap:      200 * 1024, // ceiling at ~20 s of burst headroom above LeakRate
 	LevelRef: 100 * 1024, // 100 KB in bucket → level score of 1.0
@@ -94,16 +94,16 @@ var TorStreamPressureConfig = StreamPressureConfig{
 	Exit:  0.4,
 }
 
-func NewStreamPressureDetector(now time.Time, cfg StreamPressureConfig, onHigh func()) StreamPressureDetector {
-	return &streamPressureDetector{
+func NewLinkPressureDetector(now time.Time, cfg LinkPressureConfig, onHigh func()) LinkPressureDetector {
+	return &bucketLinkPressureDetector{
 		lastUpdate: now,
 		cfg:        cfg,
 		onHigh:     onHigh,
 	}
 }
 
-type streamPressureDetector struct {
-	cfg        StreamPressureConfig
+type bucketLinkPressureDetector struct {
+	cfg        LinkPressureConfig
 	onHigh     func()
 	level      float64
 	rttEma     float64
@@ -111,7 +111,7 @@ type streamPressureDetector struct {
 	high       bool
 }
 
-func (p *streamPressureDetector) decay(now time.Time) {
+func (p *bucketLinkPressureDetector) decay(now time.Time) {
 	dt := now.Sub(p.lastUpdate).Seconds()
 	p.lastUpdate = now
 	p.level -= p.cfg.LeakRate * dt
@@ -120,7 +120,7 @@ func (p *streamPressureDetector) decay(now time.Time) {
 	}
 }
 
-func (p *streamPressureDetector) score() float64 {
+func (p *bucketLinkPressureDetector) score() float64 {
 	levelNorm := p.level / p.cfg.LevelRef
 	if levelNorm > 3 {
 		levelNorm = 3
@@ -132,7 +132,7 @@ func (p *streamPressureDetector) score() float64 {
 	return p.cfg.WLevel*levelNorm + p.cfg.WRTT*rttNorm
 }
 
-func (p *streamPressureDetector) gate(s float64) {
+func (p *bucketLinkPressureDetector) gate(s float64) {
 	if !p.high && s >= p.cfg.Enter {
 		p.high = true
 		p.onHigh()
@@ -144,7 +144,7 @@ func (p *streamPressureDetector) gate(s float64) {
 	}
 }
 
-func (p *streamPressureDetector) OnBytes(n int, now time.Time) {
+func (p *bucketLinkPressureDetector) OnBytes(n int, now time.Time) {
 	p.decay(now)
 	p.level += float64(n)
 	if p.level > p.cfg.Cap {
@@ -153,11 +153,11 @@ func (p *streamPressureDetector) OnBytes(n int, now time.Time) {
 	p.gate(p.score())
 }
 
-func (p *streamPressureDetector) IsHigh() bool {
+func (p *bucketLinkPressureDetector) IsHigh() bool {
 	return p.high
 }
 
-func (p *streamPressureDetector) OnRTT(rtt time.Duration, now time.Time) {
+func (p *bucketLinkPressureDetector) OnRTT(rtt time.Duration, now time.Time) {
 	p.decay(now)
 	if p.rttEma == 0 {
 		p.rttEma = float64(rtt)
