@@ -17,6 +17,11 @@ func TestFrameBlueprintsRoundtrip(t *testing.T) {
 		{"ping", &Ping{Nonce: astral.NewNonce(), Pong: false}},
 		{"pong", &Ping{Nonce: astral.NewNonce(), Pong: true}},
 		{"query", &Query{Nonce: astral.NewNonce(), Buffer: 12345, Query: "hello"}},
+		{"relay_query", &RelayQuery{
+			CallerID: astral.GenerateIdentity(),
+			TargetID: astral.GenerateIdentity(),
+			Query:    Query{Nonce: astral.NewNonce(), Buffer: 12345, Query: "hello"},
+		}},
 		{"response", &Response{Nonce: astral.NewNonce(), ErrCode: 1, Buffer: 10}},
 		{"read", &Read{Nonce: astral.NewNonce(), Len: 4096}},
 		{"data", &Data{Nonce: astral.NewNonce(), Payload: []byte("payload")}},

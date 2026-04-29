@@ -3,6 +3,7 @@ package nodes
 import "errors"
 
 var (
+	ErrNotSupported          = errors.New("not supported")
 	ErrInvalidEndpointFormat = errors.New("invalid endpoint format")
 	ErrEndpointParse         = errors.New("endpoint parse failed")
 	ErrIdentityResolve       = errors.New("identity resolve failed")

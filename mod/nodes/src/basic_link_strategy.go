@@ -95,7 +95,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 		}
 
 		name := s.Name()
-		if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
+		if !s.mod.linkPool.notifyLinkWatchers(stream, &name) {
 			stream.CloseWithError(nodes.ErrExcessStream)
 		}
 	}()

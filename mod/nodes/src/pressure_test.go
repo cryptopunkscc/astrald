@@ -129,9 +129,9 @@ func TestLongIdleGapDecaysCorrectly(t *testing.T) {
 
 // TestNilSafe: Link with nil detector must not panic.
 func TestNilSafe(t *testing.T) {
-	s := &Link{}
-	if s.pressure != nil {
-		s.pressure.OnBytes(1024, time.Now())
-		s.pressure.OnRTT(100*time.Millisecond, time.Now())
+	l := &Link{}
+	if l.pressure != nil {
+		l.pressure.OnBytes(1024, time.Now())
+		l.pressure.OnRTT(100*time.Millisecond, time.Now())
 	}
 }

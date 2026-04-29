@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
@@ -13,6 +14,7 @@ import (
 )
 
 type muxLinkNegotiator struct {
+	mod        *Module
 	privateKey *secp256k1.PrivateKey
 	features   []string
 }
@@ -34,7 +36,7 @@ func (n *muxLinkNegotiator) OutboundHandshake(ctx context.Context, conn exonet.C
 	remoteIdentity := aconn.RemoteIdentity()
 	localIdentity := aconn.LocalIdentity()
 
-	return newLink(ch, localIdentity, remoteIdentity, nonce, outbound, localEp, remoteEp), nil
+	return n.newLink(ch, localIdentity, remoteIdentity, nonce, outbound, localEp, remoteEp), nil
 }
 
 func (n *muxLinkNegotiator) InboundHandshake(ctx context.Context, conn exonet.Conn) (*Link, error) {
@@ -54,7 +56,7 @@ func (n *muxLinkNegotiator) InboundHandshake(ctx context.Context, conn exonet.Co
 	remoteIdentity := aconn.RemoteIdentity()
 	localIdentity := aconn.LocalIdentity()
 
-	return newLink(ch, localIdentity, remoteIdentity, nonce, outbound, localEp, remoteEp), nil
+	return n.newLink(ch, localIdentity, remoteIdentity, nonce, outbound, localEp, remoteEp), nil
 }
 
 func (n *muxLinkNegotiator) negotiateOutbound(ch *channel.Channel) (astral.Nonce, error) {
@@ -133,4 +135,23 @@ func (n *muxLinkNegotiator) negotiateInbound(ch *channel.Channel) (astral.Nonce,
 			return 0, fmt.Errorf("unsupported feature requested: %s", *selected)
 		}
 	}
+}
+
+func (n *muxLinkNegotiator) newLink(ch *channel.Channel, localIdentity, remoteIdentity *astral.Identity, id astral.Nonce, outbound bool, localEp, remoteEp exonet.Endpoint) *Link {
+	s := &Link{
+		Channel:        ch,
+		id:             id,
+		localIdentity:  localIdentity,
+		remoteIdentity: remoteIdentity,
+		createdAt:      time.Now(),
+		outbound:       outbound,
+		localEp:        localEp,
+		remoteEp:       remoteEp,
+		wakeCh:         make(chan struct{}, 1),
+		pingTimeout:    defaultPingTimeout,
+		done:           make(chan struct{}),
+	}
+
+	s.Mux = NewMux(ch, n.mod, s)
+	return s
 }

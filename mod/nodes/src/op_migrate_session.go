@@ -18,7 +18,11 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	session, ok := mod.peers.sessions.Get(args.SessionID)
+	stream := mod.findStreamBySessionNonce(args.SessionID)
+	if stream == nil {
+		return ch.Send(astral.Err(nodes.ErrSessionNotFound))
+	}
+	session, ok := stream.Mux.sessions.Get(args.SessionID)
 	if !ok {
 		return ch.Send(astral.Err(nodes.ErrSessionNotFound))
 	}

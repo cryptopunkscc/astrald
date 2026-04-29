@@ -15,6 +15,7 @@ func init() {
 	_ = astral.Add(
 		&Ping{},
 		&Query{},
+		&RelayQuery{},
 		&Response{},
 		&Read{},
 		&Data{},

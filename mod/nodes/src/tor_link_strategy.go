@@ -121,7 +121,7 @@ func (s *TorLinkStrategy) deliverStream(stream *Link) {
 	}
 
 	name := s.Name()
-	if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
+	if !s.mod.linkPool.notifyLinkWatchers(stream, &name) {
 		stream.CloseWithError(nodes.ErrExcessStream)
 	}
 }

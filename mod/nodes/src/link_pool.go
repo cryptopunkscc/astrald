@@ -8,23 +8,54 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-type streamWatcher struct {
+type linkWatcher struct {
 	match func(*Link, *string) bool
 	ch    chan *Link
 }
 
 type LinkPool struct {
-	peers    *Peers
 	mod      *Module
-	watchers sig.Set[*streamWatcher]
+	links    sig.Set[*Link]
+	watchers sig.Set[*linkWatcher]
 	linkers  sig.Map[string, *NodeLinker]
 }
 
-func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
+func NewLinkPool(mod *Module) *LinkPool {
 	return &LinkPool{
-		peers: peers,
-		mod:   mod,
+		mod: mod,
 	}
+}
+
+func (pool *LinkPool) Links() *sig.Set[*Link] {
+	return &pool.links
+}
+
+// SelectLinkWith returns a non-high-pressure link to id, falling back to any link if all are under pressure.
+func (pool *LinkPool) SelectLinkWith(id *astral.Identity) *Link {
+	var fallback *Link
+	for _, s := range pool.links.Clone() {
+		if !s.RemoteIdentity().IsEqual(id) {
+			continue
+		}
+		if !s.IsHighPressure() {
+			return s
+		}
+		if fallback == nil {
+			fallback = s
+		}
+	}
+	return fallback
+}
+
+func (pool *LinkPool) AddLink(link *Link) (*TracedLink, error) {
+	tl := NewTracedLink(link, func() {
+		pool.links.Remove(link)
+	})
+
+	if err := pool.links.Add(link); err != nil {
+		return nil, err
+	}
+	return tl, nil
 }
 
 type LinkResult struct {
@@ -32,8 +63,8 @@ type LinkResult struct {
 	Err    error
 }
 
-func (pool *LinkPool) subscribe(match func(*Link, *string) bool) *streamWatcher {
-	w := &streamWatcher{
+func (pool *LinkPool) subscribe(match func(*Link, *string) bool) *linkWatcher {
+	w := &linkWatcher{
 		match: match,
 		ch:    make(chan *Link, 1),
 	}
@@ -42,11 +73,11 @@ func (pool *LinkPool) subscribe(match func(*Link, *string) bool) *streamWatcher 
 	return w
 }
 
-func (pool *LinkPool) unsubscribe(w *streamWatcher) {
+func (pool *LinkPool) unsubscribe(w *linkWatcher) {
 	pool.watchers.Remove(w)
 }
 
-func (pool *LinkPool) notifyStreamWatchers(s *Link, strategy *string) bool {
+func (pool *LinkPool) notifyLinkWatchers(s *Link, strategy *string) bool {
 	used := false
 	for _, w := range pool.watchers.Clone() {
 		if !w.match(s, strategy) {
@@ -104,7 +135,7 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	if !o.ForceNew {
-		streams := pool.peers.streams.Select(func(s *Link) bool { return match(s, nil) })
+		streams := pool.links.Select(func(s *Link) bool { return match(s, nil) })
 		if len(streams) > 0 {
 			return sig.ArrayToChan([]LinkResult{{Stream: streams[0]}})
 		}

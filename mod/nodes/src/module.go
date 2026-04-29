@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	modsecp256k1 "github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
@@ -49,10 +50,7 @@ type Module struct {
 	strategyFactories sig.Map[string, nodes.StrategyFactory]
 	upgraders         sig.Map[string, *sig.Switch]
 
-	in chan *Frame // fixme: remove
-
-	searchCache   sig.Map[string, *astral.Identity]
-	relayChannels sig.Map[string, *relayChannel]
+	searchCache sig.Map[string, *astral.Identity]
 
 	privateKey *crypto.PrivateKey
 }
@@ -60,7 +58,6 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Deps.Scheduler.Ready()
-	go mod.peers.frameReader(ctx)
 	mod.Scheduler.Schedule(mod.NewCleanupEndpointsTask())
 
 	<-ctx.Done()
@@ -105,8 +102,7 @@ func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpo
 
 // CloseStream closes a stream with the given id.
 func (mod *Module) CloseStream(id astral.Nonce) error {
-	streams := mod.peers.streams.Clone()
-	for _, s := range streams {
+	for _, s := range mod.linkPool.Links().Clone() {
 		if s.id == id {
 			return s.CloseWithError(errors.New("stream closed"))
 		}
@@ -152,7 +148,7 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 
 // findStreamByID returns a stream with the given local id or nil if not found.
 func (mod *Module) findStreamByID(id astral.Nonce) *Link {
-	for _, s := range mod.peers.streams.Clone() {
+	for _, s := range mod.linkPool.Links().Clone() {
 		if s.id == id {
 			return s
 		}
@@ -161,12 +157,11 @@ func (mod *Module) findStreamByID(id astral.Nonce) *Link {
 }
 
 func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) *Link {
-	for _, session := range mod.peers.sessions.Clone() {
-		if session.Nonce == nonce {
-			return session.stream
+	for _, s := range mod.linkPool.Links().Clone() {
+		if _, ok := s.Mux.sessions.Get(nonce); ok {
+			return s
 		}
 	}
-
 	return nil
 }
 
@@ -176,7 +171,27 @@ func (mod *Module) GetLinkNegotiator() (*muxLinkNegotiator, error) {
 		return nil, err
 	}
 	return &muxLinkNegotiator{
+		mod:        mod,
 		privateKey: secp256k1.PrivKeyFromBytes(privKey.Key),
 		features:   []string{featureMux2},
 	}, nil
+}
+
+func (mod *Module) reflectLink(s *Link) (err error) {
+	if s.outbound || s.RemoteEndpoint() == nil {
+		return
+	}
+	if _, ok := s.RemoteEndpoint().(*gateway.Endpoint); ok {
+		return
+	}
+	err = mod.Objects.Push(mod.ctx, s.RemoteIdentity(),
+		&nodes.ObservedEndpointMessage{
+			Endpoint: s.RemoteEndpoint(),
+		})
+	if err != nil {
+		mod.log.Errorv(2, "Objects.Push(%v, %v): %v", s.RemoteIdentity(), s.RemoteEndpoint(), err)
+	} else {
+		mod.log.Logv(2, "reflected endpoint %v to %v", s.RemoteEndpoint(), s.RemoteIdentity())
+	}
+	return
 }

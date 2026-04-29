@@ -18,13 +18,12 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 		node:   node,
 		log:    log,
 		assets: assets,
-		in:     make(chan *Frame),
 	}
 
 	_ = assets.LoadYAML(nodes.ModuleName, &mod.config)
 
 	mod.peers = NewPeers(mod)
-	mod.linkPool = NewLinkPool(mod, mod.peers)
+	mod.linkPool = NewLinkPool(mod)
 
 	mod.RegisterLinkStrategy(nodes.StrategyBasic, &BasicLinkStrategyFactory{mod: mod, networks: []string{"tcp"}})
 	mod.RegisterLinkStrategy(nodes.StrategyTor, &TorLinkStrategyFactory{
