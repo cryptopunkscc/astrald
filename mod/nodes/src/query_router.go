@@ -12,33 +12,21 @@ import (
 )
 
 func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (rw io.WriteCloser, err error) {
-	// check if the context allows for network queries
 	if !ctx.Zone().Is(astral.ZoneNetwork) {
 		return query.RouteNotFound()
 	}
 
-	// check if we're querying ourselves
 	if q.Target.IsEqual(mod.node.Identity()) {
 		return query.RouteNotFound()
 	}
 
-	if mod.IsPeer(q.Target) {
-		// if we are not the caller it means we are a relay for identity.
-		if !ctx.Identity().IsEqual(q.Caller) {
-			rc, err := mod.getRelay(ctx, q.Target)
-			if err != nil {
-				return query.RouteNotFound()
-			}
-			return rc.RouteQuery(ctx, q, w)
-		}
-
-		return mod.peers.RouteQuery(ctx, q, w)
+	if link := mod.linkPool.SelectLinkWith(q.Target); link != nil {
+		return link.RouteQuery(ctx, q, w)
 	}
 
 	retrieveCtx, cancel := ctx.WithTimeout(120 * time.Second)
 	defer cancel()
 
-	// todo: there is error printed out  when calling identity that we cannot link with (e.g. other'session node app)
 	select {
 	case <-ctx.Done():
 		return query.RouteNotFound()
@@ -47,16 +35,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 			mod.log.Error("retrieve link failed: %v", result.Err)
 			break
 		}
-
-		if !ctx.Identity().IsEqual(q.Caller) {
-			rc, err := mod.getRelay(ctx, q.Target)
-			if err != nil {
-				return query.RouteNotFound()
-			}
-			return rc.RouteQuery(ctx, q, w)
-		}
-
-		return mod.peers.RouteQuery(ctx, q, w)
+		return result.Stream.RouteQuery(ctx, q, w)
 	}
 
 	// try relays
@@ -71,17 +50,22 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 	}
 
 	for _, relayID := range relays {
-		// never use the target as a relay to itself
 		if relayID.IsEqual(q.Target) {
 			continue
 		}
 
-		rc, err := mod.getRelay(ctx, relayID)
-		if err != nil {
+		relayLink := mod.linkPool.SelectLinkWith(relayID)
+		if relayLink == nil {
 			continue
 		}
 
-		rw, err := rc.RouteQuery(ctx, q, w)
+		if !ctx.Identity().IsEqual(q.Caller) {
+			if err := mod.sendCallerProof(ctx, q, relayID); err != nil {
+				continue
+			}
+		}
+
+		rw, err := relayLink.RouteQuery(ctx, q, w)
 		if err == nil {
 			return rw, nil
 		}

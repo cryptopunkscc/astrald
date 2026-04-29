@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 )
 
 type SessionMigrator struct {
@@ -46,9 +45,9 @@ func (m *SessionMigrator) Begin(target *Link) error {
 
 	m.oldInputBuffer = m.reader.Buf()
 
-	newInputBuffer := m.mod.peers.newMuxInputBuffer(target, m.session.Nonce)
-	newOutputBuffer := m.mod.peers.newMuxOutputBuffer(target, m.session.Nonce, m.session)
-	resetFunc := func() { target.Write(&frames.Reset{Nonce: m.session.Nonce}) }
+	newInputBuffer := target.Mux.newInputBuffer(m.session.Nonce)
+	newOutputBuffer := target.Mux.newOutputBuffer(m.session.Nonce)
+	resetFunc := func() { target.Mux.resetSession(m.session.Nonce) }
 
 	m.writer.SwapBuf(newOutputBuffer, resetFunc)
 	m.reader.SetNextBuffer(newInputBuffer)
@@ -59,7 +58,7 @@ func (m *SessionMigrator) Begin(target *Link) error {
 
 func (m *SessionMigrator) SendMigrateFrame() error {
 	m.mod.log.Logv(1, "sending migrate frame for session %v on stream %v", m.session.Nonce, m.oldStream.id)
-	return m.oldStream.Write(&frames.Migrate{Nonce: m.session.Nonce})
+	return m.oldStream.Mux.sendMigrate(m.session.Nonce)
 }
 
 func (m *SessionMigrator) WaitClosed(ctx context.Context) error {

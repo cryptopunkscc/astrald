@@ -23,7 +23,7 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 		mod.log.Log("connectivity upgrade triggered for %v (stream %v)", e.RemoteIdentity, e.StreamID)
 
 		var targetStream *Link
-		alternatives := mod.peers.streams.Select(func(s *Link) bool {
+		alternatives := mod.linkPool.Links().Select(func(s *Link) bool {
 			return s.RemoteIdentity().IsEqual(e.RemoteIdentity) && s.id != e.StreamID
 		})
 
@@ -79,7 +79,7 @@ func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Link) {
 		return
 	}
 
-	sessions := mod.peers.sessions.Select(func(k astral.Nonce, v *session) bool {
+	sessions := oldStream.Mux.sessions.Select(func(k astral.Nonce, v *session) bool {
 		return v.IsOpen() && v.isOnStream(oldStream) && v.CanAutoMigrate()
 	})
 

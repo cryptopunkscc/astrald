@@ -29,8 +29,6 @@ const (
 
 	// MethodResolveEndpoints is the query route for resolving endpoints of a node.
 	MethodResolveEndpoints = "nodes.resolve_endpoints"
-	// MethodNodeOpenRelay is the query route for opening a relay channel.
-	MethodNodeOpenRelay = "nodes.node_open_relay"
 
 	// MethodMigrateSession is the query route for session migration.
 	MethodMigrateSession = "nodes.migrate_session"
