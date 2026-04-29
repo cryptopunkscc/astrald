@@ -3,7 +3,6 @@ package nodes
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"time"
 
@@ -13,23 +12,17 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
-	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
 	"github.com/cryptopunkscc/astrald/sig"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 type Peers struct {
 	*Module
-	negotiator *linkNegotiator
-	streams    sig.Set[*Link]
-	sessions   sig.Map[astral.Nonce, *session]
+	streams  sig.Set[*Link]
+	sessions sig.Map[astral.Nonce, *session]
 }
 
 func NewPeers(m *Module) *Peers {
-	return &Peers{
-		Module:     m,
-		negotiator: newLinkNegotiator(m.log, []string{featureMux2}),
-	}
+	return &Peers{Module: m}
 }
 
 func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
@@ -341,7 +334,7 @@ func (mod *Peers) handleMigrate(s *Link, f *frames.Migrate) {
 	reader.Advance()
 }
 
-func (mod *Peers) addStream(
+func (mod *Peers) addLink(
 	s *Link,
 ) (err error) {
 	var (
@@ -469,28 +462,18 @@ func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Id
 		}
 	}()
 
-	privKey, err := mod.getPrivateKey()
+	negotiator, err := mod.GetLinkNegotiator()
 	if err != nil {
 		return nil, err
 	}
 
-	aconn, err := noise.HandshakeOutbound(
-		ctx,
-		conn,
-		remoteID.PublicKey(),
-		secp256k1.PrivKeyFromBytes(privKey.Key),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("outbound handshake: %w", err)
-	}
-
-	stream, err := mod.negotiator.NegotiateOutbound(aconn)
+	link, err := negotiator.OutboundHandshake(ctx, conn, remoteID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = mod.addStream(stream)
-	return stream, err
+	err = mod.addLink(link)
+	return link, err
 }
 
 func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
@@ -500,20 +483,15 @@ func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (e
 		}
 	}()
 
-	privKey, err := mod.getPrivateKey()
+	negotiator, err := mod.GetLinkNegotiator()
 	if err != nil {
 		return err
 	}
 
-	aconn, err := noise.HandshakeInbound(ctx, conn, secp256k1.PrivKeyFromBytes(privKey.Key))
-	if err != nil {
-		return
-	}
-
-	stream, err := mod.negotiator.NegotiateInbound(aconn)
+	stream, err := negotiator.InboundHandshake(ctx, conn)
 	if err != nil {
 		return err
 	}
 
-	return mod.addStream(stream)
+	return mod.addLink(stream)
 }

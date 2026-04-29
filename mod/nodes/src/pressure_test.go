@@ -9,8 +9,8 @@ import (
 // LeakRate=1000 B/s, LevelRef=5000 B, so level hits LevelRef after 5 seconds of
 // net fill. WLevel=1.0 means level-only score == 1.0 at LevelRef. WRTT=1.0
 // means RTT-only score == 1.0 at RTTRef.
-func testCfg() StreamPressureConfig {
-	return StreamPressureConfig{
+func testCfg() LinkPressureConfig {
+	return LinkPressureConfig{
 		LeakRate: 1000,
 		Cap:      10_000,
 		LevelRef: 5_000,
@@ -29,7 +29,7 @@ var epoch = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 // additional bytes while HIGH do not fire again.
 func TestSustainedThroughputTriggersOnce(t *testing.T) {
 	var calls int
-	pd := NewStreamPressureDetector(epoch, testCfg(), func() { calls++ })
+	pd := NewLinkPressureDetector(epoch, testCfg(), func() { calls++ })
 
 	// t+1ms: decay=1 byte, then add 5001 → level=5000 → score=1.0 → HIGH
 	pd.OnBytes(5001, epoch.Add(time.Millisecond))
@@ -48,7 +48,7 @@ func TestSustainedThroughputTriggersOnce(t *testing.T) {
 // bucket below Exit, resetting the gate. A subsequent burst retriggers.
 func TestBurstThenIdleDecays(t *testing.T) {
 	var calls int
-	pd := NewStreamPressureDetector(epoch, testCfg(), func() { calls++ })
+	pd := NewLinkPressureDetector(epoch, testCfg(), func() { calls++ })
 
 	// enter HIGH at t+1ms
 	pd.OnBytes(5001, epoch.Add(time.Millisecond))
@@ -70,7 +70,7 @@ func TestBurstThenIdleDecays(t *testing.T) {
 // drives score to 1.0 and fires the callback.
 func TestHighRTTAloneTriggers(t *testing.T) {
 	var calls int
-	pd := NewStreamPressureDetector(epoch, testCfg(), func() { calls++ })
+	pd := NewLinkPressureDetector(epoch, testCfg(), func() { calls++ })
 
 	// first sample seeds rttEma directly; rttNorm = 100ms/100ms = 1.0 → score=1.0
 	pd.OnRTT(100*time.Millisecond, epoch.Add(time.Second))
@@ -83,7 +83,7 @@ func TestHighRTTAloneTriggers(t *testing.T) {
 // while remaining in the HIGH zone must not produce repeated callbacks.
 func TestOscillationNearThresholdsNoRetrigger(t *testing.T) {
 	var calls int
-	pd := NewStreamPressureDetector(epoch, testCfg(), func() { calls++ })
+	pd := NewLinkPressureDetector(epoch, testCfg(), func() { calls++ })
 
 	now := epoch.Add(time.Millisecond)
 
@@ -109,7 +109,7 @@ func TestOscillationNearThresholdsNoRetrigger(t *testing.T) {
 // full decay in one step, not require intermediate calls.
 func TestLongIdleGapDecaysCorrectly(t *testing.T) {
 	var calls int
-	pd := NewStreamPressureDetector(epoch, testCfg(), func() { calls++ })
+	pd := NewLinkPressureDetector(epoch, testCfg(), func() { calls++ })
 
 	// enter HIGH
 	pd.OnBytes(5001, epoch.Add(time.Millisecond))

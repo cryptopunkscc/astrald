@@ -11,27 +11,35 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+var _ nodes.Link = &Link{}
+var _ nodes.QualityLink = &Link{}
+var _ nodes.NetworkLink = &Link{}
+
 type Link struct {
-	ch          *channel.Channel
-	id          astral.Nonce
-	createdAt   time.Time
-	conn        astral.Conn
-	pings       sig.Map[astral.Nonce, *Ping]
-	checks      atomic.Int32
-	throughput  atomic.Uint64
-	outbound    bool
-	pingTimeout time.Duration
-	wakeCh      chan struct{}
-	pressure    StreamPressureDetector
+	*channel.Channel
+	id             astral.Nonce
+	createdAt      time.Time
+	localIdentity  *astral.Identity
+	remoteIdentity *astral.Identity
+	pings          sig.Map[astral.Nonce, *Ping]
+	checks         atomic.Int32
+	throughput     atomic.Uint64
+	outbound       bool
+	localEp        exonet.Endpoint
+	remoteEp       exonet.Endpoint
+	pingTimeout    time.Duration
+	wakeCh         chan struct{}
+	pressure       LinkPressureDetector
 
 	mu   sync.Mutex
 	err  sig.Value[error]
 	done chan struct{}
-	in   chan frames.Frame // fixme: remove
+	in   chan frames.Frame
 }
 
 type Ping struct {
@@ -39,17 +47,20 @@ type Ping struct {
 	pong   chan struct{}
 }
 
-func newLink(conn astral.Conn, id astral.Nonce, outbound bool) *Link {
+func newLink(ch *channel.Channel, localIdentity, remoteIdentity *astral.Identity, id astral.Nonce, outbound bool, localEp, remoteEp exonet.Endpoint) *Link {
 	s := &Link{
-		id:          id,
-		conn:        conn,
-		createdAt:   time.Now(),
-		outbound:    outbound,
-		pingTimeout: defaultPingTimeout,
-		wakeCh:      make(chan struct{}, 1),
-		done:        make(chan struct{}),
-		in:          make(chan frames.Frame, 32),
-		ch:          channel.New(conn),
+		Channel:        ch,
+		id:             id,
+		localIdentity:  localIdentity,
+		remoteIdentity: remoteIdentity,
+		createdAt:      time.Now(),
+		outbound:       outbound,
+		localEp:        localEp,
+		remoteEp:       remoteEp,
+		pingTimeout:    defaultPingTimeout,
+		wakeCh:         make(chan struct{}, 1),
+		done:           make(chan struct{}),
+		in:             make(chan frames.Frame, 32),
 	}
 
 	go s.reader()
@@ -62,13 +73,13 @@ func (s *Link) reader() {
 	var rerr error
 	defer func() {
 		s.err.Swap(nil, rerr)
-		_ = s.ch.Close()
+		_ = s.Channel.Close()
 		close(s.in)
 		close(s.done)
 	}()
 
 	for {
-		obj, err := s.ch.Receive()
+		obj, err := s.Receive()
 		if err != nil {
 			rerr = err
 			return
@@ -89,11 +100,11 @@ func (s *Link) Done() <-chan struct{} { return s.done }
 func (s *Link) Err() error { return s.err.Get() }
 
 func (s *Link) LocalIdentity() *astral.Identity {
-	return s.conn.LocalIdentity()
+	return s.localIdentity
 }
 
 func (s *Link) RemoteIdentity() *astral.Identity {
-	return s.conn.RemoteIdentity()
+	return s.remoteIdentity
 }
 
 func (s *Link) CloseWithError(err error) error {
@@ -101,38 +112,38 @@ func (s *Link) CloseWithError(err error) error {
 		err = errors.New("link closed")
 	}
 	s.err.Swap(nil, err)
-	_ = s.ch.Close()
+	_ = s.Channel.Close()
 	return nil
 }
 
 func (s *Link) Network() string {
-	if c, ok := s.conn.(exonet.Conn); ok {
-		if e := c.RemoteEndpoint(); e != nil {
-			return e.Network()
-		}
-		if e := c.LocalEndpoint(); e != nil {
-			return e.Network()
-		}
+	if s.remoteEp != nil {
+		return s.remoteEp.Network()
+	}
+
+	if s.localEp != nil {
+		return s.localEp.Network()
 	}
 	return "unknown"
 }
 
 func (s *Link) LocalEndpoint() exonet.Endpoint {
-	if c, ok := s.conn.(exonet.Conn); ok {
-		return c.LocalEndpoint()
-	}
-	return nil
+	return s.localEp
 }
 
 func (s *Link) RemoteEndpoint() exonet.Endpoint {
-	if c, ok := s.conn.(exonet.Conn); ok {
-		return c.RemoteEndpoint()
-	}
-
-	return nil
+	return s.remoteEp
 }
 
-func (s *Link) PressureHigh() bool {
+// Wake triggers a ping on the next loop iteration.
+func (s *Link) Wake() {
+	select {
+	case s.wakeCh <- struct{}{}:
+	default:
+	}
+}
+
+func (s *Link) IsHighPressure() bool {
 	return s.pressure != nil && s.pressure.IsHigh()
 }
 
@@ -155,15 +166,15 @@ func (s *Link) Write(frame frames.Frame) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := s.ch.Send(frame); err != nil {
+	if err := s.Send(frame); err != nil {
 		s.err.Swap(nil, err)
-		_ = s.ch.Close()
+		_ = s.Channel.Close()
 		return err
 	}
 	return nil
 }
 
-func (s *Link) Ping() (time.Duration, error) {
+func (s *Link) ping() (time.Duration, error) {
 	var nonce = astral.NewNonce()
 
 	p, ok := s.pings.Set(nonce, &Ping{
@@ -206,14 +217,6 @@ func (s *Link) pong(nonce astral.Nonce) (time.Duration, error) {
 	return d, nil
 }
 
-// Wake triggers a ping on the next loop iteration.
-func (s *Link) Wake() {
-	select {
-	case s.wakeCh <- struct{}{}:
-	default:
-	}
-}
-
 func (s *Link) check() {
 	if s.checks.Swap(2) != 0 {
 		return
@@ -251,7 +254,7 @@ func (s *Link) pingLoop() {
 			return
 		}
 
-		if _, err := s.Ping(); err != nil {
+		if _, err := s.ping(); err != nil {
 			s.CloseWithError(err)
 			return
 		}

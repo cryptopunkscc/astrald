@@ -1,34 +1,70 @@
 package nodes
 
 import (
+	"context"
 	"fmt"
 	"slices"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/astral/log"
+	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-type linkNegotiator struct {
-	log      *log.Logger
-	features []string
+type muxLinkNegotiator struct {
+	privateKey *secp256k1.PrivateKey
+	features   []string
 }
 
-func newLinkNegotiator(log *log.Logger, features []string) *linkNegotiator {
-	return &linkNegotiator{log: log, features: features}
-}
+func (n *muxLinkNegotiator) OutboundHandshake(ctx context.Context, conn exonet.Conn, remoteID *astral.Identity) (*Link, error) {
+	outbound, localEp, remoteEp := conn.Outbound(), conn.LocalEndpoint(), conn.RemoteEndpoint()
 
-func (n *linkNegotiator) NegotiateOutbound(aconn *noise.Conn) (*Link, error) {
+	aconn, err := noise.HandshakeOutbound(ctx, conn, remoteID.PublicKey(), n.privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("outbound handshake: %w", err)
+	}
+
 	ch := channel.New(aconn)
+	nonce, err := n.negotiateOutbound(ch)
+	if err != nil {
+		return nil, err
+	}
 
+	remoteIdentity := aconn.RemoteIdentity()
+	localIdentity := aconn.LocalIdentity()
+
+	return newLink(ch, localIdentity, remoteIdentity, nonce, outbound, localEp, remoteEp), nil
+}
+
+func (n *muxLinkNegotiator) InboundHandshake(ctx context.Context, conn exonet.Conn) (*Link, error) {
+	outbound, localEp, remoteEp := conn.Outbound(), conn.LocalEndpoint(), conn.RemoteEndpoint()
+
+	aconn, err := noise.HandshakeInbound(ctx, conn, n.privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("inbound handshake: %w", err)
+	}
+
+	ch := channel.New(aconn)
+	nonce, err := n.negotiateInbound(ch)
+	if err != nil {
+		return nil, err
+	}
+
+	remoteIdentity := aconn.RemoteIdentity()
+	localIdentity := aconn.LocalIdentity()
+
+	return newLink(ch, localIdentity, remoteIdentity, nonce, outbound, localEp, remoteEp), nil
+}
+
+func (n *muxLinkNegotiator) negotiateOutbound(ch *channel.Channel) (astral.Nonce, error) {
 	var features []*astral.String8
 	err := ch.Switch(
 		channel.Collect[*astral.String8](&features),
 		channel.BreakOnEOS,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("read features: %w", err)
+		return 0, fmt.Errorf("read features: %w", err)
 	}
 
 	var selected string
@@ -39,68 +75,62 @@ func (n *linkNegotiator) NegotiateOutbound(aconn *noise.Conn) (*Link, error) {
 		}
 	}
 	if selected == "" {
-		return nil, fmt.Errorf("no supported link types found")
+		return 0, fmt.Errorf("no supported link types found")
 	}
 
 	s := astral.String8(selected)
 	if err = ch.Send(&s); err != nil {
-		return nil, fmt.Errorf("write: %w", err)
+		return 0, fmt.Errorf("write: %w", err)
 	}
 
 	var errCode *astral.Int8
 	if err = ch.Switch(channel.Expect(&errCode)); err != nil {
-		return nil, fmt.Errorf("read: %w", err)
+		return 0, fmt.Errorf("read: %w", err)
 	}
 	if *errCode != 0 {
-		return nil, fmt.Errorf("link feature negotation error")
+		return 0, fmt.Errorf("link feature negotation error")
 	}
 
 	var nonce *astral.Nonce
 	if err = ch.Switch(channel.Expect(&nonce)); err != nil {
-		return nil, fmt.Errorf("read outbound stream nonce: %w", err)
+		return 0, fmt.Errorf("read outbound stream nonce: %w", err)
 	}
 
-	return newLink(aconn, *nonce, true), nil
+	return *nonce, nil
 }
 
-func (n *linkNegotiator) NegotiateInbound(aconn *noise.Conn) (*Link, error) {
-	ch := channel.New(aconn)
-
+func (n *muxLinkNegotiator) negotiateInbound(ch *channel.Channel) (astral.Nonce, error) {
 	for _, feat := range n.features {
 		s := astral.String8(feat)
 		if err := ch.Send(&s); err != nil {
-			return nil, err
+			return 0, err
 		}
 	}
 	if err := ch.Send(&astral.EOS{}); err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	for {
 		var selected *astral.String8
 		if err := ch.Switch(channel.Expect(&selected)); err != nil {
-			return nil, err
+			return 0, err
 		}
 
 		switch {
 		case slices.Contains(n.features, string(*selected)):
 			status := astral.Int8(0)
 			if err := ch.Send(&status); err != nil {
-				return nil, err
+				return 0, err
 			}
 			nonce := astral.NewNonce()
 			if err := ch.Send(&nonce); err != nil {
-				return nil, fmt.Errorf("failed to set inbound stream nonce: %w", err)
+				return 0, fmt.Errorf("failed to set inbound stream nonce: %w", err)
 			}
-			return newLink(aconn, nonce, false), nil
+			return nonce, nil
 		default:
 			status := astral.Int8(1)
 			_ = ch.Send(&status)
-			return nil, fmt.Errorf("remote party (%s from %s) requested an invalid feature: %s",
-				aconn.RemoteIdentity(),
-				aconn.RemoteEndpoint(),
-				*selected,
-			)
+			return 0, fmt.Errorf("unsupported feature requested: %s", *selected)
 		}
 	}
 }

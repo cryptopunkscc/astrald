@@ -60,15 +60,6 @@ type Module interface {
 	NewCleanupEndpointsTask() CleanupEndpointsTask
 }
 
-// Link is an encrypted communication channel between two identities that is capable of routing queries
-type Link interface {
-	astral.Router
-	LocalIdentity() *astral.Identity
-	RemoteIdentity() *astral.Identity
-	Close() error
-	Done() <-chan struct{}
-}
-
 type EndpointResolver interface {
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan *EndpointWithTTL, error)
 }
