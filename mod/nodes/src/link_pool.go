@@ -48,13 +48,38 @@ func (pool *LinkPool) SelectLinkWith(id *astral.Identity) *Link {
 }
 
 func (pool *LinkPool) AddLink(link *Link) (*TracedLink, error) {
-	tl := NewTracedLink(link, func() {
-		pool.links.Remove(link)
-	})
-
 	if err := pool.links.Add(link); err != nil {
 		return nil, err
 	}
+
+	streamsWithSameIdentity := pool.links.Select(func(v *Link) bool {
+		return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
+	})
+
+	if !link.outbound {
+		pool.notifyLinkWatchers(link, nil)
+	}
+
+	pool.mod.Events.Emit(&nodes.StreamCreatedEvent{
+		RemoteIdentity: link.RemoteIdentity(),
+		StreamId:       link.id,
+		StreamCount:    len(streamsWithSameIdentity),
+	})
+
+	tl := NewTracedLink(link, func() {
+		pool.links.Remove(link)
+
+		remaining := pool.links.Select(func(v *Link) bool {
+			return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
+		})
+
+		pool.mod.Events.Emit(&nodes.StreamClosedEvent{
+			RemoteIdentity: link.RemoteIdentity(),
+			Forced:         false,
+			StreamCount:    astral.Int8(len(remaining)),
+		})
+	})
+
 	return tl, nil
 }
 

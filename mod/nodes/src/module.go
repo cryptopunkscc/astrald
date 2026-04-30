@@ -130,7 +130,7 @@ func (mod *Module) RegisterLinkStrategy(network string, factory nodes.StrategyFa
 }
 
 func (mod *Module) IsLinked(identity *astral.Identity) bool {
-	return mod.peers.isLinked(identity)
+	return mod.linkPool.SelectLinkWith(identity) != nil
 }
 
 func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {

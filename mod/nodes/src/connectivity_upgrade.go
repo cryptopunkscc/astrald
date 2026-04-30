@@ -28,13 +28,12 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 		})
 
 		slices.SortFunc(alternatives, func(a, b *Link) int {
-			if (a.pressure == nil) == (b.pressure == nil) {
+			if a.HasPressureDetector() == b.HasPressureDetector() {
 				return 0
 			}
-			if a.pressure == nil {
+			if !a.HasPressureDetector() {
 				return -1
 			}
-
 			return 1
 		})
 

@@ -5,7 +5,6 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 type Peers struct {
@@ -50,51 +49,16 @@ func (mod *Peers) addLink(s *Link) (err error) {
 	}
 
 	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, s.RemoteIdentity(), netName)
-	streamsWithSameIdentity := mod.linkPool.Links().Select(func(v *Link) bool {
-		return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
-	})
-
-	if !s.outbound {
-		mod.linkPool.notifyLinkWatchers(s, nil)
-	}
-
-	mod.Events.Emit(&nodes.StreamCreatedEvent{
-		RemoteIdentity: s.RemoteIdentity(),
-		StreamId:       s.id,
-		StreamCount:    len(streamsWithSameIdentity),
-	})
 
 	go func() {
 		s.Mux.Run(mod.ctx)
-
 		tl.Close()
-
-		streamsWithSameIdentity := mod.linkPool.Links().Select(func(v *Link) bool {
-			return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
-		})
-
-		mod.Events.Emit(&nodes.StreamClosedEvent{
-			RemoteIdentity: s.RemoteIdentity(),
-			Forced:         false,
-			StreamCount:    astral.Int8(len(streamsWithSameIdentity)),
-		})
-
 		mod.log.Info("closed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
 	}()
 
 	go mod.reflectLink(s)
 
 	return
-}
-
-// isLinked returns true if there is at least one stream to the given identity.
-func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
-	for _, s := range mod.linkPool.Links().Clone() {
-		if s.RemoteIdentity().IsEqual(remoteID) {
-			return true
-		}
-	}
-	return false
 }
 
 func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Link, err error) {

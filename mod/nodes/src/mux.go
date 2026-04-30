@@ -4,9 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
@@ -24,12 +21,9 @@ type Mux struct {
 	link *Link
 	ch   *channel.Channel
 
-	sessions   sig.Map[astral.Nonce, *session]
-	throughput atomic.Uint64
+	sessions sig.Map[astral.Nonce, *session]
 
 	in chan frames.Frame
-
-	mu sync.Mutex
 }
 
 func NewMux(ch *channel.Channel, mod *Module, link *Link) *Mux {
@@ -97,7 +91,7 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 	conn.Outbound = true
 
 	if q.Caller.IsEqual(ctx.Identity()) {
-		err = m.Write(&frames.Query{
+		err = m.link.Send(&frames.Query{
 			Nonce:  q.Nonce,
 			Query:  q.QueryString,
 			Buffer: uint32(defaultBufferSize),
@@ -105,7 +99,7 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 	} else {
 		// TODO: reconsider relayID ownership — mux sets it here to satisfy handleResponse validation
 		conn.relayID = m.link.RemoteIdentity()
-		err = m.Write(&frames.RelayQuery{
+		err = m.link.Send(&frames.RelayQuery{
 			CallerID: q.Caller,
 			TargetID: q.Target,
 			Query: frames.Query{
@@ -139,27 +133,38 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 // --- session management ---
 
 func (m *Mux) getSession(nonce astral.Nonce) (*session, bool) {
-	sess, ok := m.sessions.Get(nonce)
+	session, ok := m.sessions.Get(nonce)
 	if !ok {
 		m.resetSession(nonce)
 		return nil, false
 	}
-	return sess, true
+
+	return session, true
 }
 
 func (m *Mux) createSession(nonce astral.Nonce) (*session, bool) {
-	sess, ok := m.sessions.Set(nonce, newSession(nonce))
+	session, ok := m.sessions.Set(nonce, newSession(nonce))
 	if !ok {
 		return nil, false
 	}
-	sess.remove = func() { m.sessions.Delete(nonce) }
-	return sess, true
+
+	session.remove = func() { m.sessions.Delete(nonce) }
+	return session, true
+}
+
+func (m *Mux) resetSession(nonce astral.Nonce) error {
+	return m.link.Send(&frames.Reset{Nonce: nonce})
+}
+
+func (m *Mux) migrateSession(nonce astral.Nonce) error {
+	return m.link.Send(&frames.Migrate{Nonce: nonce})
 }
 
 func (m *Mux) newInputBuffer(nonce astral.Nonce) *InputBuffer {
 	onRead := func(n int) {
-		m.Write(&frames.Read{Nonce: nonce, Len: uint32(n)})
+		m.link.Send(&frames.Read{Nonce: nonce, Len: uint32(n)})
 	}
+
 	return NewInputBuffer(defaultBufferSize, onRead)
 }
 
@@ -171,12 +176,13 @@ func (m *Mux) newOutputBuffer(nonce astral.Nonce) *OutputBuffer {
 			if len(remaining) < chunkSize {
 				chunkSize = len(remaining)
 			}
-			if err := m.Write(&frames.Data{
+			if err := m.link.Send(&frames.Data{
 				Nonce:   nonce,
 				Payload: remaining[:chunkSize],
 			}); err != nil {
 				return err
 			}
+			m.link.AddThroughputBytes(chunkSize)
 			remaining = remaining[chunkSize:]
 		}
 		return nil
@@ -184,20 +190,18 @@ func (m *Mux) newOutputBuffer(nonce astral.Nonce) *OutputBuffer {
 	return NewOutputBuffer(onWrite)
 }
 
-func (m *Mux) setupSession(sess *session, peerBuffer int) error {
-	nonce := sess.Nonce
+func (m *Mux) setupSession(session *session, peerBuffer int) error {
+	nonce := session.Nonce
 	resetFunc := func() { m.resetSession(nonce) }
 	reader := newSessionReader(m.newInputBuffer(nonce))
 	writer := newSessionWriter(m.newOutputBuffer(nonce), resetFunc)
 	writer.Grow(peerBuffer)
-	if err := sess.Setup(m.link, reader, writer); err != nil {
+	if err := session.Setup(m.link, reader, writer); err != nil {
 		return err
 	}
-	sess.Open()
+	session.Open()
 	return nil
 }
-
-// --- frame handlers ---
 
 func (m *Mux) handleQuery(f *frames.Query) {
 	m.handleInboundQuery(f.Nonce, m.link.RemoteIdentity(), m.link.LocalIdentity(), nil, f.Query, int(f.Buffer))
@@ -210,7 +214,7 @@ func (m *Mux) handleRelayQuery(f *frames.RelayQuery) {
 			Action: auth.NewAction(m.link.RemoteIdentity()),
 			ForID:  f.CallerID,
 		}) {
-			m.Write(&frames.Response{Nonce: f.Query.Nonce, ErrCode: frames.CodeRejected})
+			m.link.Send(&frames.Response{Nonce: f.Query.Nonce, ErrCode: frames.CodeRejected})
 			return
 		}
 	}
@@ -245,14 +249,14 @@ func (m *Mux) handleInboundQuery(nonce astral.Nonce, caller, target *astral.Iden
 		if errors.As(err, &reject) {
 			code = reject.Code
 		}
-		m.Write(&frames.Response{Nonce: nonce, ErrCode: code})
+		m.link.Send(&frames.Response{Nonce: nonce, ErrCode: code})
 		return
 	}
 
 	if err := m.setupSession(conn, initBuffer); err != nil {
 		return
 	}
-	m.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
+	m.link.Send(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 
 	go func() {
 		io.Copy(w, conn)
@@ -293,25 +297,22 @@ func (m *Mux) handleResponse(f *frames.Response) {
 }
 
 func (m *Mux) handleData(f *frames.Data) {
-	sess, ok := m.getSession(f.Nonce)
+	session, ok := m.getSession(f.Nonce)
 	if !ok {
 		return
 	}
 
-	switch sess.getState() {
+	switch session.getState() {
 	case stateOpen, stateMigrating:
 	default:
-		m.mod.log.Errorv(1, "received data frame from %v in state %v", m.link.RemoteIdentity(), sess.getState())
-		m.Write(&frames.Reset{Nonce: f.Nonce})
+		m.mod.log.Errorv(1, "received data frame from %v in state %v", m.link.RemoteIdentity(), session.getState())
+		m.link.Send(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
-	m.throughput.Add(uint64(len(f.Payload)))
-	if m.link.pressure != nil {
-		m.link.pressure.OnBytes(len(f.Payload), time.Now())
-	}
+	m.link.AddThroughputBytes(len(f.Payload))
 
-	reader, ok := sess.reader.(*muxSessionReader)
+	reader, ok := session.reader.(*muxSessionReader)
 	if !ok {
 		m.mod.log.Errorv(1, "received data frame from %v on non-mux session", m.link.RemoteIdentity())
 		return
@@ -319,35 +320,35 @@ func (m *Mux) handleData(f *frames.Data) {
 
 	if err := reader.Push(f.Payload); err != nil {
 		m.mod.log.Errorv(1, "failed to push read frame: %v", err)
-		sess.Close()
+		session.Close()
 	}
 }
 
 func (m *Mux) handleRead(f *frames.Read) {
-	sess, ok := m.getSession(f.Nonce)
+	session, ok := m.getSession(f.Nonce)
 	if !ok {
 		return
 	}
 
-	if !sess.isOnStream(m.link) {
+	if !session.isOnStream(m.link) {
 		return
 	}
 
-	if writer, ok := sess.writer.(*muxSessionWriter); ok {
+	if writer, ok := session.writer.(*muxSessionWriter); ok {
 		writer.Grow(int(f.Len))
 	}
 }
 
 func (m *Mux) handleReset(f *frames.Reset) {
-	sess, ok := m.sessions.Get(f.Nonce)
+	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	if w, ok := sess.writer.(*muxSessionWriter); ok {
+	if w, ok := session.writer.(*muxSessionWriter); ok {
 		w.PeerClose()
 	}
-	sess.Close()
+	session.Close()
 }
 
 func (m *Mux) handlePing(f *frames.Ping) {
@@ -359,19 +360,19 @@ func (m *Mux) handlePing(f *frames.Ping) {
 			m.mod.log.Logv(1, "ping with %v: %v", m.link.RemoteIdentity(), rtt)
 		}
 	} else {
-		m.Write(&frames.Ping{Nonce: f.Nonce, Pong: true})
+		m.link.Send(&frames.Ping{Nonce: f.Nonce, Pong: true})
 	}
 }
 
 func (m *Mux) handleMigrate(f *frames.Migrate) {
-	sess, ok := m.sessions.Get(f.Nonce)
+	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
-	if sess.getState() != stateMigrating {
+	if session.getState() != stateMigrating {
 		return
 	}
-	reader, ok := sess.reader.(*muxSessionReader)
+	reader, ok := session.reader.(*muxSessionReader)
 	if !ok {
 		m.mod.log.Errorv(1, "received migrate frame on non-mux session")
 		return
@@ -391,7 +392,7 @@ func (m *Mux) reader() {
 	}()
 
 	for {
-		obj, err := m.ch.Receive()
+		obj, err := m.link.Receive()
 		if err != nil {
 			rerr = err
 			return
@@ -409,35 +410,5 @@ func (m *Mux) reader() {
 func (m *Mux) Read() <-chan frames.Frame { return m.in }
 
 func (m *Mux) ping(nonce astral.Nonce) error {
-	return m.Write(&frames.Ping{Nonce: nonce})
-}
-
-func (m *Mux) resetSession(nonce astral.Nonce) error {
-	return m.Write(&frames.Reset{Nonce: nonce})
-}
-
-func (m *Mux) sendMigrate(nonce astral.Nonce) error {
-	return m.Write(&frames.Migrate{Nonce: nonce})
-}
-
-func (m *Mux) Write(frame frames.Frame) error {
-	if f, ok := frame.(*frames.Data); ok {
-		m.throughput.Add(uint64(len(f.Payload)))
-		if m.link.pressure != nil {
-			m.link.pressure.OnBytes(len(f.Payload), time.Now())
-		}
-	}
-
-	if _, ok := frame.(*frames.Ping); !ok {
-		m.link.check()
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if err := m.ch.Send(frame); err != nil {
-		m.link.CloseWithError(err)
-		return err
-	}
-	return nil
+	return m.link.Send(&frames.Ping{Nonce: nonce})
 }

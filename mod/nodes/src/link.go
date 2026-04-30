@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -33,17 +34,17 @@ type Link struct {
 	outbound       bool
 	localEp        exonet.Endpoint
 	remoteEp       exonet.Endpoint
-
-	checks      atomic.Int32
-	wakeCh      chan struct{}
-	pingTimeout time.Duration
-	pings       sig.Map[astral.Nonce, *Ping]
-	pressure    LinkPressureDetector
-
-	err  sig.Value[error]
-	done chan struct{}
-
-	Mux *Mux
+	checks         atomic.Int32
+	wakeCh         chan struct{}
+	pingTimeout    time.Duration
+	pings          sig.Map[astral.Nonce, *Ping]
+	throughput     atomic.Uint64
+	mu             sync.Mutex
+	pressureMu     sync.Mutex
+	pressure       LinkPressureDetector
+	err            sig.Value[error]
+	done           chan struct{}
+	Mux            *Mux
 }
 
 func (s *Link) Done() <-chan struct{} { return s.done }
@@ -61,6 +62,17 @@ func (s *Link) CloseWithError(err error) error {
 	s.err.Swap(nil, err)
 	_ = s.Channel.Close()
 	return nil
+}
+
+func (s *Link) Send(obj astral.Object) error {
+	s.check()
+	s.mu.Lock()
+	err := s.Channel.Send(obj)
+	s.mu.Unlock()
+	if err != nil {
+		s.CloseWithError(err)
+	}
+	return err
 }
 
 func (s *Link) Network() string {
@@ -116,9 +128,7 @@ func (s *Link) ping() (time.Duration, error) {
 	select {
 	case <-p.pong:
 		rtt := time.Since(p.sentAt)
-		if s.pressure != nil {
-			s.pressure.OnRTT(rtt, time.Now())
-		}
+		s.OnRTT(rtt)
 		return rtt, nil
 	case <-time.After(s.pingTimeout):
 		return -1, errors.New("ping timeout")
@@ -174,9 +184,42 @@ func (s *Link) pingLoop() {
 	}
 }
 
-func (s *Link) IsHighPressure() bool { return s.pressure != nil && s.pressure.IsHigh() }
+func (s *Link) SetPressureDetector(d LinkPressureDetector) {
+	s.pressureMu.Lock()
+	defer s.pressureMu.Unlock()
+	s.pressure = d
+}
 
-func (s *Link) Throughput() uint64 { return s.Mux.throughput.Load() }
+func (s *Link) AddThroughputBytes(n int) {
+	s.throughput.Add(uint64(n))
+	s.pressureMu.Lock()
+	defer s.pressureMu.Unlock()
+	if s.pressure != nil {
+		s.pressure.OnBytes(n, time.Now())
+	}
+}
+
+func (s *Link) OnRTT(rtt time.Duration) {
+	s.pressureMu.Lock()
+	defer s.pressureMu.Unlock()
+	if s.pressure != nil {
+		s.pressure.OnRTT(rtt, time.Now())
+	}
+}
+
+func (s *Link) HasPressureDetector() bool {
+	s.pressureMu.Lock()
+	defer s.pressureMu.Unlock()
+	return s.pressure != nil
+}
+
+func (s *Link) IsHighPressure() bool {
+	s.pressureMu.Lock()
+	defer s.pressureMu.Unlock()
+	return s.pressure != nil && s.pressure.IsHigh()
+}
+
+func (s *Link) Throughput() uint64 { return s.throughput.Load() }
 
 func (s *Link) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	return s.Mux.RouteQuery(ctx, q, w)
