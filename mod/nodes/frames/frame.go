@@ -2,11 +2,24 @@ package frames
 
 import (
 	"fmt"
-	"io"
+
+	"github.com/cryptopunkscc/astrald/astral"
 )
 
 type Frame interface {
-	io.ReaderFrom
-	io.WriterTo
+	astral.Object
 	fmt.Stringer
+}
+
+func init() {
+	_ = astral.Add(
+		&Ping{},
+		&Query{},
+		&RelayQuery{},
+		&Response{},
+		&Read{},
+		&Data{},
+		&Migrate{},
+		&Reset{},
+	)
 }

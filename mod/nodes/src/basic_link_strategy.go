@@ -43,7 +43,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 		}()
 
 		var wg sync.WaitGroup
-		var winner sig.Value[*Stream]
+		var winner sig.Value[*Link]
 
 		wctx, cancel := ctx.WithCancel()
 		defer cancel()
@@ -95,7 +95,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 		}
 
 		name := s.Name()
-		if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
+		if !s.mod.linkPool.notifyLinkWatchers(stream, &name) {
 			stream.CloseWithError(nodes.ErrExcessStream)
 		}
 	}()
@@ -113,7 +113,7 @@ func (s *BasicLinkStrategy) Done() <-chan struct{} {
 	return s.activeDone
 }
 
-func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Stream {
+func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Link {
 	conn, err := s.mod.Exonet.Dial(ctx, endpoint.Endpoint)
 	if err != nil {
 		return nil

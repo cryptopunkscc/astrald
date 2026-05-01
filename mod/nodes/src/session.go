@@ -28,8 +28,8 @@ var _ io.ReadCloser = &session{}
 
 type session struct {
 	Nonce          astral.Nonce
-	RemoteIdentity *astral.Identity
-	relayID        *astral.Identity // non-nil if this session is routed through a relay
+	RemoteIdentity *astral.Identity // logical peer: the identity this session is with
+	SourceIdentity *astral.Identity // transport source: identity expected to send control/response frames; differs from RemoteIdentity when relayed
 	Outbound       bool
 	Query          string
 	createdAt      time.Time
@@ -39,7 +39,7 @@ type session struct {
 	closed         bool
 	state          atomic.Int32
 
-	stream *Stream       // stream the connection is attached to
+	stream *Link         // stream the session is currently attached to
 	bytes  atomic.Uint64 // total bytes transferred (read + write)
 
 	reader io.ReadCloser
@@ -51,17 +51,21 @@ func (s *session) Identity() *astral.Identity {
 	return s.RemoteIdentity
 }
 
-func newSession(n astral.Nonce) *session {
-	if n == 0 {
-		n = astral.NewNonce()
+func newSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *astral.Identity, queryStr string, outbound bool) *session {
+	if nonce == 0 {
+		nonce = astral.NewNonce()
 	}
 
 	return &session{
-		Nonce:     n,
-		createdAt: time.Now(),
-		res:       make(chan uint8, 1),
-		cond:      sync.NewCond(&sync.Mutex{}),
-		paused:    true,
+		Nonce:          nonce,
+		RemoteIdentity: remoteIdentity,
+		SourceIdentity: sourceIdentity,
+		Query:          queryStr,
+		Outbound:       outbound,
+		createdAt:      time.Now(),
+		res:            make(chan uint8, 1),
+		cond:           sync.NewCond(&sync.Mutex{}),
+		paused:         true,
 	}
 }
 
@@ -96,7 +100,9 @@ func (s *session) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (s *session) Setup(stream *Stream, reader io.ReadCloser, writer io.WriteCloser) error {
+// Setup wires the stream, reader and writer for the session without activating
+// it. The session stays paused; callers must call Open to allow data flow.
+func (s *session) Setup(stream *Link, reader io.ReadCloser, writer io.WriteCloser) error {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -107,13 +113,18 @@ func (s *session) Setup(stream *Stream, reader io.ReadCloser, writer io.WriteClo
 	s.stream = stream
 	s.reader = reader
 	s.writer = writer
-	s.state.Store(stateOpen)
 	return nil
 }
 
+// Open activates the session: marks it stateOpen and unblocks Read/Write.
+// If the session is already closed, state is preserved and blocked callers
+// are still woken so they can observe the closed condition.
 func (s *session) Open() {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
+	if !s.closed {
+		s.state.Store(stateOpen)
+	}
 	s.paused = false
 	s.cond.Broadcast()
 }
@@ -124,6 +135,7 @@ func (s *session) Close() error {
 		s.cond.L.Unlock()
 		return nil
 	}
+
 	remove := s.remove
 	s.state.Store(stateClosed)
 	s.closed = true
@@ -154,6 +166,25 @@ func (s *session) swapState(old, new int32) bool {
 	return s.state.CompareAndSwap(old, new)
 }
 
+// rejectRoute handles the routing-phase failure path: transitions the session
+// from stateRouting to stateClosed and notifies the waiting caller.
+// Returns true when code is 0 (no rejection; caller continues to accept path),
+// false when the session was rejected or could not be transitioned.
+func (s *session) acceptsSource(id *astral.Identity) bool {
+	return s.SourceIdentity.IsEqual(id)
+}
+
+func (s *session) rejectRoute(code uint8) bool {
+	if code == 0 {
+		return true
+	}
+	if !s.swapState(stateRouting, stateClosed) {
+		return false
+	}
+	s.res <- code
+	return false
+}
+
 func (s *session) IsOpen() bool {
 	return s.state.Load() == stateOpen
 }
@@ -163,7 +194,7 @@ func (s *session) CanAutoMigrate() bool {
 	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
 }
 
-func (s *session) isOnStream(stream *Stream) bool {
+func (s *session) isOnStream(stream *Link) bool {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 	return s.stream == stream

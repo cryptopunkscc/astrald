@@ -5,55 +5,10 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	nodesClient "github.com/cryptopunkscc/astrald/mod/nodes/client"
-	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 )
 
-func (mod *Peers) createSession(nonce astral.Nonce) (*session, bool) {
-	sess, ok := mod.sessions.Set(nonce, newSession(nonce))
-	if !ok {
-		return nil, false
-	}
-	sess.remove = func() { mod.sessions.Delete(nonce) }
-	return sess, true
-}
-
-func (mod *Peers) newMuxInputBuffer(s *Stream, nonce astral.Nonce) *InputBuffer {
-	onRead := func(n int) {
-		s.Write(&frames.Read{Nonce: nonce, Len: uint32(n)})
-	}
-
-	return NewInputBuffer(defaultBufferSize, onRead)
-}
-
-func (mod *Peers) newMuxOutputBuffer(s *Stream, nonce astral.Nonce, sess *session) *OutputBuffer {
-	onWrite := func(p []byte) error {
-		remaining := p
-		for len(remaining) > 0 {
-			chunkSize := maxPayloadSize
-			if len(remaining) < chunkSize {
-				chunkSize = len(remaining)
-			}
-
-			chunk := remaining[:chunkSize]
-
-			if err := s.Write(&frames.Data{
-				Nonce:   nonce,
-				Payload: chunk,
-			}); err != nil {
-				return err
-			}
-
-			remaining = remaining[chunkSize:]
-		}
-
-		return nil
-	}
-
-	return NewOutputBuffer(onWrite)
-}
-
-// migrateSession migrates single session (initiator side)
-func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream *Stream) (err error) {
+// migrateSession migrates a single session to targetStream (initiator side).
+func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream *Link) (err error) {
 	ch, err := nodesClient.New(session.RemoteIdentity, astrald.Default()).MigrateSession(ctx, nodesClient.MigrateSessionArgs{
 		SessionID: session.Nonce,
 		StreamID:  targetStream.id,

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 )
 
 func TestFrameBlueprintsRoundtrip(t *testing.T) {
@@ -16,6 +17,11 @@ func TestFrameBlueprintsRoundtrip(t *testing.T) {
 		{"ping", &Ping{Nonce: astral.NewNonce(), Pong: false}},
 		{"pong", &Ping{Nonce: astral.NewNonce(), Pong: true}},
 		{"query", &Query{Nonce: astral.NewNonce(), Buffer: 12345, Query: "hello"}},
+		{"relay_query", &RelayQuery{
+			CallerID: astral.GenerateIdentity(),
+			TargetID: astral.GenerateIdentity(),
+			Query:    Query{Nonce: astral.NewNonce(), Buffer: 12345, Query: "hello"},
+		}},
 		{"response", &Response{Nonce: astral.NewNonce(), ErrCode: 1, Buffer: 10}},
 		{"read", &Read{Nonce: astral.NewNonce(), Len: 4096}},
 		{"data", &Data{Nonce: astral.NewNonce(), Payload: []byte("payload")}},
@@ -25,15 +31,16 @@ func TestFrameBlueprintsRoundtrip(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var data = &bytes.Buffer{}
-			_, err := astral.Encode(data, tc.obj, astral.WithEncoder(FrameTypeEncoder))
-			if err != nil {
-				t.Fatalf("pack failed: %v", err)
+			buf := &bytes.Buffer{}
+			sender := channel.NewBinarySender(buf)
+			if err := sender.Send(tc.obj); err != nil {
+				t.Fatalf("send failed: %v", err)
 			}
 
-			obj, _, err := astral.Decode(data, astral.WithDecoder(FrameTypeDecoder))
+			receiver := channel.NewBinaryReceiver(buf)
+			obj, err := receiver.Receive()
 			if err != nil {
-				t.Fatalf("unpack failed: %v", err)
+				t.Fatalf("receive failed: %v", err)
 			}
 
 			if reflect.TypeOf(obj) != reflect.TypeOf(tc.obj) {

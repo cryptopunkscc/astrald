@@ -22,19 +22,18 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 	connectivityGate.Run(mod.ctx, func(_ context.Context) {
 		mod.log.Log("connectivity upgrade triggered for %v (stream %v)", e.RemoteIdentity, e.StreamID)
 
-		var targetStream *Stream
-		alternatives := mod.peers.streams.Select(func(s *Stream) bool {
+		var targetStream *Link
+		alternatives := mod.linkPool.Links().Select(func(s *Link) bool {
 			return s.RemoteIdentity().IsEqual(e.RemoteIdentity) && s.id != e.StreamID
 		})
 
-		slices.SortFunc(alternatives, func(a, b *Stream) int {
-			if (a.pressure == nil) == (b.pressure == nil) {
+		slices.SortFunc(alternatives, func(a, b *Link) int {
+			if a.HasPressureDetector() == b.HasPressureDetector() {
 				return 0
 			}
-			if a.pressure == nil {
+			if !a.HasPressureDetector() {
 				return -1
 			}
-
 			return 1
 		})
 
@@ -72,14 +71,14 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 
 const migrateSessionTimeout = 30 * time.Second
 
-func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Stream) {
+func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Link) {
 	oldStream := mod.findStreamByID(oldStreamID)
 	if oldStream == nil {
 		mod.log.Logv(1, "migrate sessions: old stream %v not found", oldStreamID)
 		return
 	}
 
-	sessions := mod.peers.sessions.Select(func(k astral.Nonce, v *session) bool {
+	sessions := oldStream.Mux.sessions.Select(func(k astral.Nonce, v *session) bool {
 		return v.IsOpen() && v.isOnStream(oldStream) && v.CanAutoMigrate()
 	})
 

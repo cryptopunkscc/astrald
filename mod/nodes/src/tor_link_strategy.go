@@ -63,7 +63,7 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 		return
 	}
 
-	resultCh := make(chan *Stream, 1)
+	resultCh := make(chan *Link, 1)
 
 	// Foreground: quick retries only
 	workerCtx, workerCancel := ctx.WithTimeout(s.quickTimeout)
@@ -91,7 +91,7 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 	bgCtx, bgCancel := s.mod.ctx.WithTimeout(s.backgroundTimeout)
 	defer bgCancel()
 
-	bgResultCh := make(chan *Stream, 1)
+	bgResultCh := make(chan *Link, 1)
 	go func() {
 		defer close(bgResultCh)
 		if stream := s.try(bgCtx, endpoints, s.retries, true); stream != nil {
@@ -115,13 +115,13 @@ func (s *TorLinkStrategy) signalDone() {
 	}
 }
 
-func (s *TorLinkStrategy) deliverStream(stream *Stream) {
+func (s *TorLinkStrategy) deliverStream(stream *Link) {
 	if stream == nil {
 		return
 	}
 
 	name := s.Name()
-	if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
+	if !s.mod.linkPool.notifyLinkWatchers(stream, &name) {
 		stream.CloseWithError(nodes.ErrExcessStream)
 	}
 }
@@ -131,7 +131,7 @@ func (s *TorLinkStrategy) try(
 	endpoints []*nodes.EndpointWithTTL,
 	retries int,
 	withBackoff bool,
-) *Stream {
+) *Link {
 
 	var backoff *sig.Retry
 	if withBackoff {
@@ -175,7 +175,7 @@ func (s *TorLinkStrategy) try(
 	return nil
 }
 
-func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Stream {
+func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Link {
 	conn, err := s.mod.Exonet.Dial(ctx, endpoint.Endpoint)
 	if err != nil {
 		s.log.Logv(2, "%v dial %v: %v", s.target, endpoint, err)
@@ -190,12 +190,12 @@ func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.Endpo
 	}
 
 	// tor is always a candidate for upgrade; monitor for pressure
-	stream.pressure = NewStreamPressureDetector(time.Now(), TorStreamPressureConfig, func() {
+	stream.SetPressureDetector(NewLinkPressureDetector(time.Now(), TorStreamPressureConfig, func() {
 		s.mod.Events.Emit(&nodes.StreamPressureEvent{
 			RemoteIdentity: stream.RemoteIdentity(),
 			StreamID:       stream.id,
 		})
-	})
+	}))
 
 	s.log.Log("%v linked via %v", s.target, endpoint)
 	return stream

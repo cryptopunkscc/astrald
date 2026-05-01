@@ -3,6 +3,7 @@ package nodes
 import "errors"
 
 var (
+	ErrNotSupported          = errors.New("not supported")
 	ErrInvalidEndpointFormat = errors.New("invalid endpoint format")
 	ErrEndpointParse         = errors.New("endpoint parse failed")
 	ErrIdentityResolve       = errors.New("identity resolve failed")
@@ -13,7 +14,7 @@ var (
 	ErrMigrationNotSupported = errors.New("migration not supported")
 	ErrSessionNotFound       = errors.New("session not found")
 	ErrSessionClosed         = errors.New("session closed")
-	ErrStreamNotFound        = errors.New("stream not found")
+	ErrLinkNotFound          = errors.New("link not found")
 	ErrBufferClosed          = errors.New("buffer closed")
 	ErrBufferOverflow        = errors.New("buffer overflow")
 )

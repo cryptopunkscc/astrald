@@ -10,10 +10,12 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	modsecp256k1 "github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 const DefaultWorkerCount = 8
@@ -48,10 +50,7 @@ type Module struct {
 	strategyFactories sig.Map[string, nodes.StrategyFactory]
 	upgraders         sig.Map[string, *sig.Switch]
 
-	in chan *Frame
-
-	searchCache   sig.Map[string, *astral.Identity]
-	relayChannels sig.Map[string, *relayChannel]
+	searchCache sig.Map[string, *astral.Identity]
 
 	privateKey *crypto.PrivateKey
 }
@@ -59,24 +58,10 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Deps.Scheduler.Ready()
-	go mod.peers.frameReader(ctx)
 	mod.Scheduler.Schedule(mod.NewCleanupEndpointsTask())
 
 	<-ctx.Done()
 	return nil
-}
-
-func (mod *Module) Peers() (peers []*astral.Identity) {
-	return mod.peers.peers()
-}
-
-func (mod *Module) IsPeer(id *astral.Identity) bool {
-	for _, peer := range mod.peers.peers() {
-		if peer.IsEqual(id) {
-			return true
-		}
-	}
-	return false
 }
 
 func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
@@ -104,14 +89,13 @@ func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpo
 
 // CloseStream closes a stream with the given id.
 func (mod *Module) CloseStream(id astral.Nonce) error {
-	streams := mod.peers.streams.Clone()
-	for _, s := range streams {
+	for _, s := range mod.linkPool.Links().Clone() {
 		if s.id == id {
 			return s.CloseWithError(errors.New("stream closed"))
 		}
 	}
 
-	return errors.New("stream not found")
+	return nodes.ErrLinkNotFound
 }
 
 func (mod *Module) Router() astral.Router {
@@ -133,7 +117,7 @@ func (mod *Module) RegisterLinkStrategy(network string, factory nodes.StrategyFa
 }
 
 func (mod *Module) IsLinked(identity *astral.Identity) bool {
-	return mod.peers.isLinked(identity)
+	return mod.linkPool.SelectLinkWith(identity) != nil
 }
 
 func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
@@ -150,8 +134,8 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 }
 
 // findStreamByID returns a stream with the given local id or nil if not found.
-func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
-	for _, s := range mod.peers.streams.Clone() {
+func (mod *Module) findStreamByID(id astral.Nonce) *Link {
+	for _, s := range mod.linkPool.Links().Clone() {
 		if s.id == id {
 			return s
 		}
@@ -159,12 +143,45 @@ func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
 	return nil
 }
 
-func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) *Stream {
-	for _, session := range mod.peers.sessions.Clone() {
-		if session.Nonce == nonce {
-			return session.stream
+func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) *Link {
+	for _, s := range mod.linkPool.Links().Clone() {
+		if _, ok := s.Mux.sessions.Get(nonce); ok {
+			return s
 		}
 	}
-
 	return nil
+}
+
+func (mod *Module) GetLinkNegotiator() (*muxLinkNegotiator, error) {
+	privKey, err := mod.getPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	return &muxLinkNegotiator{
+		mod:        mod,
+		privateKey: secp256k1.PrivKeyFromBytes(privKey.Key),
+		features:   []string{featureMux2},
+	}, nil
+}
+
+func (mod *Module) reflectLink(s *Link) (err error) {
+	// todo: unnatural ifs
+	if s.outbound || s.RemoteEndpoint() == nil {
+		return
+	}
+
+	if _, ok := s.RemoteEndpoint().(*gateway.Endpoint); ok {
+		return
+	}
+
+	err = mod.Objects.Push(mod.ctx, s.RemoteIdentity(),
+		&nodes.ObservedEndpointMessage{
+			Endpoint: s.RemoteEndpoint(),
+		})
+	if err != nil {
+		mod.log.Errorv(2, "Objects.Push(%v, %v): %v", s.RemoteIdentity(), s.RemoteEndpoint(), err)
+	} else {
+		mod.log.Logv(2, "reflected endpoint %v to %v", s.RemoteEndpoint(), s.RemoteIdentity())
+	}
+	return
 }
