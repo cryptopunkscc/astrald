@@ -51,7 +51,7 @@ func (mod *Peers) addLink(s *Link) (err error) {
 	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, s.RemoteIdentity(), netName)
 
 	go func() {
-		s.Mux.Run(mod.ctx)
+		<-s.Done()
 		tl.Close()
 		mod.log.Info("closed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
 	}()

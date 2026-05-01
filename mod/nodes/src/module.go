@@ -137,7 +137,7 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 func (mod *Module) findStreamByID(id astral.Nonce) *Link {
 	for _, s := range mod.linkPool.Links().Clone() {
 		if s.id == id {
-			return s
+			return s.Link
 		}
 	}
 	return nil
@@ -146,7 +146,7 @@ func (mod *Module) findStreamByID(id astral.Nonce) *Link {
 func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) *Link {
 	for _, s := range mod.linkPool.Links().Clone() {
 		if _, ok := s.Mux.sessions.Get(nonce); ok {
-			return s
+			return s.Link
 		}
 	}
 	return nil

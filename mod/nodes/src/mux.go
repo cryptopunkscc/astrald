@@ -18,11 +18,12 @@ var _ astral.Router = &Mux{}
 
 type Mux struct {
 	mod  *Module
-	link *Link
+	link *Link // todo: remove; kept for identity lookups and throughput accounting
 	ch   *channel.Channel
 
 	sessions sig.Map[astral.Nonce, *session]
 	in       chan frames.Frame
+	onClose  func(error) // called by reader when the channel closes; wired to Link.CloseWithError by Start()
 }
 
 func (mod *Module) newMux(ch *channel.Channel) *Mux {
@@ -33,10 +34,9 @@ func (mod *Module) newMux(ch *channel.Channel) *Mux {
 	}
 }
 
-// Run starts the mux runtime and blocks until the link dies or ctx is cancelled.
+// Run starts the mux runtime and blocks until the channel closes or ctx is cancelled.
 func (m *Mux) Run(ctx *astral.Context) {
 	go m.reader()
-	go m.link.pingLoop()
 
 	for {
 		select {
@@ -67,6 +67,7 @@ func (m *Mux) Run(ctx *astral.Context) {
 				m.mod.log.Errorv(2, "unknown frame: %v", frame)
 			}
 		case <-ctx.Done():
+			m.closeAllSessions()
 			return
 		}
 	}
@@ -106,7 +107,7 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 		return query.RouteNotFound()
 	}
 
-	errCode, err := sig.Recv(ctx, conn.res)
+	errCode, err := sig.Recv(ctx, conn.routingResult)
 	if err != nil {
 		conn.Close()
 		return query.RouteNotFound()
@@ -120,6 +121,7 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 		io.Copy(w, conn)
 		w.Close()
 	}()
+
 	return conn, nil
 }
 
@@ -146,7 +148,7 @@ func (m *Mux) createSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *
 	writer := newSessionWriter(m.newOutputBuffer(nonce), resetFunc)
 	writer.Grow(peerBuffer)
 
-	if err := session.Setup(m.link, reader, writer); err != nil {
+	if err := session.Setup(reader, writer); err != nil {
 		m.sessions.Delete(nonce)
 		return nil, false
 	}
@@ -203,13 +205,12 @@ func (m *Mux) handleQuery(f *frames.Query) {
 func (m *Mux) handleRelayQuery(f *frames.RelayQuery) {
 	// caller is relaying a query
 	if !f.CallerID.IsEqual(m.link.RemoteIdentity()) {
-
 		ctx := astral.NewContext(nil).WithIdentity(m.mod.node.Identity())
 		if !m.mod.Auth.Authorize(ctx, &nodes.RelayForAction{
 			Action: auth.NewAction(m.link.RemoteIdentity()),
 			ForID:  f.CallerID,
 		}) {
-			m.link.Send(&frames.Response{Nonce: f.Query.Nonce, ErrCode: frames.CodeRejected})
+			m.ch.Send(&frames.Response{Nonce: f.Query.Nonce, ErrCode: frames.CodeRejected})
 			return
 		}
 	}
@@ -241,11 +242,11 @@ func (m *Mux) handleInboundQuery(nonce astral.Nonce, caller, target *astral.Iden
 		if errors.As(err, &reject) {
 			code = reject.Code
 		}
-		m.link.Send(&frames.Response{Nonce: nonce, ErrCode: code})
+		m.ch.Send(&frames.Response{Nonce: nonce, ErrCode: code})
 		return
 	}
 
-	m.link.Send(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
+	m.ch.Send(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 	session.Open()
 
 	go func() {
@@ -281,7 +282,7 @@ func (m *Mux) handleResponse(f *frames.Response) {
 
 	writer.Grow(int(f.Buffer))
 	session.Open()
-	session.res <- 0
+	session.routingResult <- 0
 }
 
 func (m *Mux) handleData(f *frames.Data) {
@@ -294,7 +295,7 @@ func (m *Mux) handleData(f *frames.Data) {
 	case stateOpen, stateMigrating:
 	default:
 		m.mod.log.Errorv(1, "received data frame from %v in state %v", m.link.RemoteIdentity(), session.getState())
-		m.link.Send(&frames.Reset{Nonce: f.Nonce})
+		m.ch.Send(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
@@ -315,10 +316,6 @@ func (m *Mux) handleData(f *frames.Data) {
 func (m *Mux) handleRead(f *frames.Read) {
 	session, ok := m.getSession(f.Nonce)
 	if !ok {
-		return
-	}
-
-	if !session.isOnStream(m.link) {
 		return
 	}
 
@@ -349,7 +346,7 @@ func (m *Mux) handlePing(f *frames.Ping) {
 			m.mod.log.Logv(1, "ping with %v: %v", m.link.RemoteIdentity(), rtt)
 		}
 	} else {
-		m.link.Send(&frames.Ping{Nonce: f.Nonce, Pong: true})
+		m.ch.Send(&frames.Ping{Nonce: f.Nonce, Pong: true})
 	}
 }
 
@@ -373,13 +370,14 @@ func (m *Mux) handleMigrate(f *frames.Migrate) {
 func (m *Mux) reader() {
 	var rerr error
 	defer func() {
-		m.link.CloseWithError(rerr)
 		close(m.in)
-		close(m.link.done)
+		if m.onClose != nil {
+			m.onClose(rerr)
+		}
 	}()
 
 	for {
-		obj, err := m.link.Receive()
+		obj, err := m.ch.Receive()
 		if err != nil {
 			rerr = err
 			return

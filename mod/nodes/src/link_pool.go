@@ -15,7 +15,7 @@ type linkWatcher struct {
 
 type LinkPool struct {
 	mod      *Module
-	links    sig.Set[*Link]
+	links    sig.Set[*TracedLink]
 	watchers sig.Set[*linkWatcher]
 	linkers  sig.Map[string, *NodeLinker]
 }
@@ -26,7 +26,7 @@ func NewLinkPool(mod *Module) *LinkPool {
 	}
 }
 
-func (pool *LinkPool) Links() *sig.Set[*Link] {
+func (pool *LinkPool) Links() *sig.Set[*TracedLink] {
 	return &pool.links
 }
 
@@ -34,17 +34,17 @@ func (pool *LinkPool) Links() *sig.Set[*Link] {
 func (pool *LinkPool) SelectLinkWith(id *astral.Identity) *Link {
 	var fallback *Link
 
-	linkWithRemote := pool.Links().Select(func(a *Link) bool {
+	linkWithRemote := pool.Links().Select(func(a *TracedLink) bool {
 		return a.RemoteIdentity().IsEqual(id)
 	})
 
 	for _, s := range linkWithRemote {
 		if !s.IsHighPressure() {
-			return s
+			return s.Link
 		}
 
 		if fallback == nil {
-			fallback = s
+			fallback = s.Link
 		}
 	}
 
@@ -52,11 +52,26 @@ func (pool *LinkPool) SelectLinkWith(id *astral.Identity) *Link {
 }
 
 func (pool *LinkPool) AddLink(link *Link) (*TracedLink, error) {
-	if err := pool.links.Add(link); err != nil {
+	tl := NewTracedLink(link, nil)
+	tl.OnClose = func() {
+		pool.links.Remove(tl)
+
+		remaining := pool.links.Select(func(v *TracedLink) bool {
+			return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
+		})
+
+		pool.mod.Events.Emit(&nodes.StreamClosedEvent{
+			RemoteIdentity: link.RemoteIdentity(),
+			Forced:         false,
+			StreamCount:    astral.Int8(len(remaining)),
+		})
+	}
+
+	if err := pool.links.Add(tl); err != nil {
 		return nil, err
 	}
 
-	streamsWithSameIdentity := pool.links.Select(func(v *Link) bool {
+	streamsWithSameIdentity := pool.links.Select(func(v *TracedLink) bool {
 		return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
 	})
 
@@ -70,19 +85,7 @@ func (pool *LinkPool) AddLink(link *Link) (*TracedLink, error) {
 		StreamCount:    len(streamsWithSameIdentity),
 	})
 
-	tl := NewTracedLink(link, func() {
-		pool.links.Remove(link)
-
-		remaining := pool.links.Select(func(v *Link) bool {
-			return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
-		})
-
-		pool.mod.Events.Emit(&nodes.StreamClosedEvent{
-			RemoteIdentity: link.RemoteIdentity(),
-			Forced:         false,
-			StreamCount:    astral.Int8(len(remaining)),
-		})
-	})
+	link.Start(pool.mod.ctx)
 
 	return tl, nil
 }
@@ -164,9 +167,9 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	if !o.ForceNew {
-		streams := pool.links.Select(func(s *Link) bool { return match(s, nil) })
+		streams := pool.links.Select(func(s *TracedLink) bool { return match(s.Link, nil) })
 		if len(streams) > 0 {
-			return sig.ArrayToChan([]LinkResult{{Stream: streams[0]}})
+			return sig.ArrayToChan([]LinkResult{{Stream: streams[0].Link}})
 		}
 	}
 

@@ -20,7 +20,7 @@ func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args
 
 	streams := mod.linkPool.Links().Clone()
 
-	slices.SortFunc(streams, func(a, b *Link) int {
+	slices.SortFunc(streams, func(a, b *TracedLink) int {
 		return a.createdAt.Compare(b.createdAt)
 	})
 

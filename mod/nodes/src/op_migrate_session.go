@@ -36,10 +36,6 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	}
 
 	if args.Start {
-		if session.isOnStream(targetStream) {
-			return ch.Send(astral.NewError("session already on target stream"))
-		}
-
 		mod.log.Log("migrate session %v to stream %v (manual)", args.SessionID, args.StreamID)
 		migrateCtx, cancel := ctx.WithTimeout(migrateSessionTimeout)
 		defer cancel()

@@ -23,11 +23,11 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 		mod.log.Log("connectivity upgrade triggered for %v (stream %v)", e.RemoteIdentity, e.StreamID)
 
 		var targetStream *Link
-		alternatives := mod.linkPool.Links().Select(func(s *Link) bool {
+		alternatives := mod.linkPool.Links().Select(func(s *TracedLink) bool {
 			return s.RemoteIdentity().IsEqual(e.RemoteIdentity) && s.id != e.StreamID
 		})
 
-		slices.SortFunc(alternatives, func(a, b *Link) int {
+		slices.SortFunc(alternatives, func(a, b *TracedLink) int {
 			if a.HasPressureDetector() == b.HasPressureDetector() {
 				return 0
 			}
@@ -38,7 +38,7 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 		})
 
 		if len(alternatives) > 0 {
-			targetStream = alternatives[0]
+			targetStream = alternatives[0].Link
 			mod.log.Log("connectivity upgrade: reusing existing stream %v (%v)", targetStream.id, targetStream.Network())
 		} else {
 			ctx, cancel := mod.ctx.WithTimeout(upgradeTimeout)
@@ -79,7 +79,7 @@ func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Link) {
 	}
 
 	sessions := oldStream.Mux.sessions.Select(func(k astral.Nonce, v *session) bool {
-		return v.IsOpen() && v.isOnStream(oldStream) && v.CanAutoMigrate()
+		return v.IsOpen() && v.CanAutoMigrate()
 	})
 
 	if len(sessions) == 0 {

@@ -44,11 +44,22 @@ type Link struct {
 	//
 	createdAt time.Time
 	// lifecycle
-	err  sig.Value[error]
-	done chan struct{}
+	err     sig.Value[error]
+	done    chan struct{}
+	started atomic.Bool
+	closed  atomic.Bool
 }
 
 func (s *Link) Done() <-chan struct{} { return s.done }
+
+func (s *Link) Start(ctx *astral.Context) {
+	if !s.started.CompareAndSwap(false, true) {
+		return
+	}
+	s.Mux.onClose = func(err error) { s.CloseWithError(err) }
+	go s.Mux.Run(ctx)
+	go s.pingLoop()
+}
 
 func (s *Link) Err() error { return s.err.Get() }
 
@@ -57,11 +68,15 @@ func (s *Link) LocalIdentity() *astral.Identity { return s.localIdentity }
 func (s *Link) RemoteIdentity() *astral.Identity { return s.remoteIdentity }
 
 func (s *Link) CloseWithError(err error) error {
+	if !s.closed.CompareAndSwap(false, true) {
+		return nil
+	}
 	if err == nil {
 		err = errors.New("link closed")
 	}
 	s.err.Swap(nil, err)
 	_ = s.ch.Close()
+	close(s.done)
 	return nil
 }
 

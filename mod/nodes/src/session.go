@@ -33,7 +33,7 @@ type session struct {
 	Outbound       bool
 	Query          string
 	createdAt      time.Time
-	res            chan uint8
+	routingResult  chan uint8
 	cond           *sync.Cond // guards paused, closed, stream
 	paused         bool
 	closed         bool
@@ -63,7 +63,7 @@ func newSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *astral.Ident
 		Query:          queryStr,
 		Outbound:       outbound,
 		createdAt:      time.Now(),
-		res:            make(chan uint8, 1),
+		routingResult:  make(chan uint8, 1),
 		cond:           sync.NewCond(&sync.Mutex{}),
 		paused:         true,
 	}
@@ -102,7 +102,7 @@ func (s *session) Write(p []byte) (int, error) {
 
 // Setup wires the stream, reader and writer for the session without activating
 // it. The session stays paused; callers must call Open to allow data flow.
-func (s *session) Setup(stream *Link, reader io.ReadCloser, writer io.WriteCloser) error {
+func (s *session) Setup(reader io.ReadCloser, writer io.WriteCloser) error {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -110,7 +110,6 @@ func (s *session) Setup(stream *Link, reader io.ReadCloser, writer io.WriteClose
 		return nodes.ErrSessionClosed
 	}
 
-	s.stream = stream
 	s.reader = reader
 	s.writer = writer
 	return nil
@@ -181,7 +180,7 @@ func (s *session) rejectRoute(code uint8) bool {
 	if !s.swapState(stateRouting, stateClosed) {
 		return false
 	}
-	s.res <- code
+	s.routingResult <- code
 	return false
 }
 
@@ -192,10 +191,4 @@ func (s *session) IsOpen() bool {
 // note: this method might change its place
 func (s *session) CanAutoMigrate() bool {
 	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
-}
-
-func (s *session) isOnStream(stream *Link) bool {
-	s.cond.L.Lock()
-	defer s.cond.L.Unlock()
-	return s.stream == stream
 }
