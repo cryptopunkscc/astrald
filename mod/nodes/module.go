@@ -48,9 +48,6 @@ type Module interface {
 	UpdateNodeEndpoints(ctx *astral.Context, resolver *astral.Identity, identity *astral.Identity) error
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan *EndpointWithTTL, error)
 	AddResolver(resolver EndpointResolver)
-
-	Peers() []*astral.Identity
-
 	IsLinked(*astral.Identity) bool
 
 	NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) CreateStreamTask

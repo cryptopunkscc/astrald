@@ -22,16 +22,14 @@ type Mux struct {
 	ch   *channel.Channel
 
 	sessions sig.Map[astral.Nonce, *session]
-
-	in chan frames.Frame
+	in       chan frames.Frame
 }
 
-func NewMux(ch *channel.Channel, mod *Module, link *Link) *Mux {
+func (mod *Module) newMux(ch *channel.Channel) *Mux {
 	return &Mux{
-		mod:  mod,
-		link: link,
-		ch:   ch,
-		in:   make(chan frames.Frame, 32),
+		mod: mod,
+		ch:  ch,
+		in:  make(chan frames.Frame, 32),
 	}
 }
 
@@ -47,6 +45,7 @@ func (m *Mux) Run(ctx *astral.Context) {
 				m.closeAllSessions()
 				return
 			}
+
 			switch f := frame.(type) {
 			case *frames.Query:
 				go m.handleQuery(f)
@@ -81,56 +80,48 @@ func (m *Mux) closeAllSessions() {
 
 // RouteQuery sends a query over this link and wires the resulting session.
 func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
-	conn, ok := m.createSession(q.Nonce)
+	conn, ok := m.createSession(q.Nonce, q.Target, m.link.RemoteIdentity(), q.QueryString, true, 0)
 	if !ok {
 		return query.RouteNotFound()
 	}
 
-	conn.RemoteIdentity = q.Target
-	conn.Query = q.QueryString
-	conn.Outbound = true
+	fq := frames.Query{
+		Nonce:  q.Nonce,
+		Query:  q.QueryString,
+		Buffer: uint32(defaultBufferSize),
+	}
 
-	if q.Caller.IsEqual(ctx.Identity()) {
-		err = m.link.Send(&frames.Query{
-			Nonce:  q.Nonce,
-			Query:  q.QueryString,
-			Buffer: uint32(defaultBufferSize),
-		})
-	} else {
-		// TODO: reconsider relayID ownership — mux sets it here to satisfy handleResponse validation
-		conn.relayID = m.link.RemoteIdentity()
-		err = m.link.Send(&frames.RelayQuery{
+	var frame frames.Frame = &fq
+	if !q.Caller.IsEqual(ctx.Identity()) {
+		frame = &frames.RelayQuery{
 			CallerID: q.Caller,
 			TargetID: q.Target,
-			Query: frames.Query{
-				Nonce:  q.Nonce,
-				Query:  q.QueryString,
-				Buffer: uint32(defaultBufferSize),
-			},
-		})
+			Query:    fq,
+		}
 	}
+
+	err = m.link.Send(frame)
 	if err != nil {
 		conn.Close()
 		return query.RouteNotFound()
 	}
 
-	select {
-	case errCode := <-conn.res:
-		if errCode != 0 {
-			return query.RejectWithCode(errCode)
-		}
-		go func() {
-			io.Copy(w, conn)
-			w.Close()
-		}()
-		return conn, nil
-	case <-ctx.Done():
+	errCode, err := sig.Recv(ctx, conn.res)
+	if err != nil {
 		conn.Close()
 		return query.RouteNotFound()
 	}
-}
 
-// --- session management ---
+	if errCode != 0 {
+		return query.RejectWithCode(errCode)
+	}
+
+	go func() {
+		io.Copy(w, conn)
+		w.Close()
+	}()
+	return conn, nil
+}
 
 func (m *Mux) getSession(nonce astral.Nonce) (*session, bool) {
 	session, ok := m.sessions.Get(nonce)
@@ -142,27 +133,38 @@ func (m *Mux) getSession(nonce astral.Nonce) (*session, bool) {
 	return session, true
 }
 
-func (m *Mux) createSession(nonce astral.Nonce) (*session, bool) {
-	session, ok := m.sessions.Set(nonce, newSession(nonce))
+func (m *Mux) createSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *astral.Identity, queryStr string, outbound bool, peerBuffer int) (*session, bool) {
+	session, ok := m.sessions.Set(nonce, newSession(nonce, remoteIdentity, sourceIdentity, queryStr, outbound))
 	if !ok {
 		return nil, false
 	}
 
-	session.remove = func() { m.sessions.Delete(nonce) }
+	session.remove = func() { m.sessions.Delete(nonce) } // todo: basically onClose hook
+
+	resetFunc := func() { m.resetSession(nonce) }
+	reader := newSessionReader(m.newInputBuffer(nonce))
+	writer := newSessionWriter(m.newOutputBuffer(nonce), resetFunc)
+	writer.Grow(peerBuffer)
+
+	if err := session.Setup(m.link, reader, writer); err != nil {
+		m.sessions.Delete(nonce)
+		return nil, false
+	}
+
 	return session, true
 }
 
 func (m *Mux) resetSession(nonce astral.Nonce) error {
-	return m.link.Send(&frames.Reset{Nonce: nonce})
+	return m.ch.Send(&frames.Reset{Nonce: nonce})
 }
 
 func (m *Mux) migrateSession(nonce astral.Nonce) error {
-	return m.link.Send(&frames.Migrate{Nonce: nonce})
+	return m.ch.Send(&frames.Migrate{Nonce: nonce})
 }
 
 func (m *Mux) newInputBuffer(nonce astral.Nonce) *InputBuffer {
 	onRead := func(n int) {
-		m.link.Send(&frames.Read{Nonce: nonce, Len: uint32(n)})
+		m.ch.Send(&frames.Read{Nonce: nonce, Len: uint32(n)})
 	}
 
 	return NewInputBuffer(defaultBufferSize, onRead)
@@ -172,43 +174,36 @@ func (m *Mux) newOutputBuffer(nonce astral.Nonce) *OutputBuffer {
 	onWrite := func(p []byte) error {
 		remaining := p
 		for len(remaining) > 0 {
-			chunkSize := maxPayloadSize
+			chunkSize := maxPayloadSize // configurable
 			if len(remaining) < chunkSize {
 				chunkSize = len(remaining)
 			}
-			if err := m.link.Send(&frames.Data{
+
+			if err := m.ch.Send(&frames.Data{
 				Nonce:   nonce,
 				Payload: remaining[:chunkSize],
 			}); err != nil {
 				return err
 			}
+
 			m.link.AddThroughputBytes(chunkSize)
 			remaining = remaining[chunkSize:]
 		}
+
 		return nil
 	}
+
 	return NewOutputBuffer(onWrite)
 }
 
-func (m *Mux) setupSession(session *session, peerBuffer int) error {
-	nonce := session.Nonce
-	resetFunc := func() { m.resetSession(nonce) }
-	reader := newSessionReader(m.newInputBuffer(nonce))
-	writer := newSessionWriter(m.newOutputBuffer(nonce), resetFunc)
-	writer.Grow(peerBuffer)
-	if err := session.Setup(m.link, reader, writer); err != nil {
-		return err
-	}
-	session.Open()
-	return nil
-}
-
 func (m *Mux) handleQuery(f *frames.Query) {
-	m.handleInboundQuery(f.Nonce, m.link.RemoteIdentity(), m.link.LocalIdentity(), nil, f.Query, int(f.Buffer))
+	m.handleInboundQuery(f.Nonce, m.link.RemoteIdentity(), m.link.LocalIdentity(), f.Query, int(f.Buffer))
 }
 
 func (m *Mux) handleRelayQuery(f *frames.RelayQuery) {
+	// caller is relaying a query
 	if !f.CallerID.IsEqual(m.link.RemoteIdentity()) {
+
 		ctx := astral.NewContext(nil).WithIdentity(m.mod.node.Identity())
 		if !m.mod.Auth.Authorize(ctx, &nodes.RelayForAction{
 			Action: auth.NewAction(m.link.RemoteIdentity()),
@@ -218,19 +213,16 @@ func (m *Mux) handleRelayQuery(f *frames.RelayQuery) {
 			return
 		}
 	}
-	m.handleInboundQuery(f.Query.Nonce, f.CallerID, f.TargetID, m.link.RemoteIdentity(), f.Query.Query, int(f.Query.Buffer))
+
+	m.handleInboundQuery(f.Query.Nonce, f.CallerID, f.TargetID, f.Query.Query, int(f.Query.Buffer))
 }
 
-func (m *Mux) handleInboundQuery(nonce astral.Nonce, caller, target *astral.Identity, relayID *astral.Identity, queryStr string, initBuffer int) {
-	conn, ok := m.createSession(nonce)
+// caller is the logical remote identity; m.link.RemoteIdentity() is the transport source
+func (m *Mux) handleInboundQuery(nonce astral.Nonce, caller, target *astral.Identity, queryStr string, initBuffer int) {
+	session, ok := m.createSession(nonce, caller, m.link.RemoteIdentity(), queryStr, false, initBuffer)
 	if !ok {
 		return
 	}
-
-	conn.RemoteIdentity = caller
-	conn.relayID = relayID
-	conn.Query = queryStr
-	conn.stream = m.link
 
 	q := astral.Launch(&astral.Query{
 		Nonce:       nonce,
@@ -241,9 +233,9 @@ func (m *Mux) handleInboundQuery(nonce astral.Nonce, caller, target *astral.Iden
 	q.Extra.Set("origin", astral.OriginNetwork)
 	ctx := astral.NewContext(nil).WithIdentity(m.mod.node.Identity())
 
-	w, err := m.mod.node.RouteQuery(ctx, q, conn)
+	w, err := m.mod.node.RouteQuery(ctx, q, session)
 	if err != nil {
-		conn.Close()
+		session.Close()
 		var code = uint8(frames.CodeRejected)
 		var reject *astral.ErrRejected
 		if errors.As(err, &reject) {
@@ -253,47 +245,43 @@ func (m *Mux) handleInboundQuery(nonce astral.Nonce, caller, target *astral.Iden
 		return
 	}
 
-	if err := m.setupSession(conn, initBuffer); err != nil {
-		return
-	}
 	m.link.Send(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
+	session.Open()
 
 	go func() {
-		io.Copy(w, conn)
+		io.Copy(w, session)
 		w.Close()
 	}()
 }
 
 func (m *Mux) handleResponse(f *frames.Response) {
-	conn, ok := m.sessions.Get(f.Nonce)
+	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
 		return
 	}
 
-	expectedSource := conn.RemoteIdentity
-	if conn.relayID != nil {
-		expectedSource = conn.relayID
-	}
-	if !expectedSource.IsEqual(m.link.RemoteIdentity()) {
+	if !session.acceptsSource(m.link.RemoteIdentity()) {
 		return
 	}
 
-	if f.ErrCode != 0 {
-		if !conn.swapState(stateRouting, stateClosed) {
-			return
-		}
-		conn.res <- f.ErrCode
+	if !session.rejectRoute(f.ErrCode) {
 		return
 	}
 
-	if !conn.swapState(stateRouting, stateOpen) {
+	if session.getState() != stateRouting {
 		return
 	}
 
-	if err := m.setupSession(conn, int(f.Buffer)); err != nil {
+	writer, ok := session.writer.(*muxSessionWriter)
+	if !ok {
+		m.mod.log.Errorv(1, "received response for session %v without mux writer", f.Nonce)
+		session.Close()
 		return
 	}
-	conn.res <- 0
+
+	writer.Grow(int(f.Buffer))
+	session.Open()
+	session.res <- 0
 }
 
 func (m *Mux) handleData(f *frames.Data) {
@@ -348,6 +336,7 @@ func (m *Mux) handleReset(f *frames.Reset) {
 	if w, ok := session.writer.(*muxSessionWriter); ok {
 		w.PeerClose()
 	}
+
 	session.Close()
 }
 
@@ -381,8 +370,6 @@ func (m *Mux) handleMigrate(f *frames.Migrate) {
 	reader.Advance()
 }
 
-// --- frame I/O ---
-
 func (m *Mux) reader() {
 	var rerr error
 	defer func() {
@@ -403,6 +390,7 @@ func (m *Mux) reader() {
 			rerr = fmt.Errorf("decoded object is not a Frame: %T", obj)
 			return
 		}
+
 		m.in <- frame
 	}
 }
@@ -410,5 +398,5 @@ func (m *Mux) reader() {
 func (m *Mux) Read() <-chan frames.Frame { return m.in }
 
 func (m *Mux) ping(nonce astral.Nonce) error {
-	return m.link.Send(&frames.Ping{Nonce: nonce})
+	return m.ch.Send(&frames.Ping{Nonce: nonce})
 }

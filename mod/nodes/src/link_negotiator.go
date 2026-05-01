@@ -139,7 +139,7 @@ func (n *muxLinkNegotiator) negotiateInbound(ch *channel.Channel) (astral.Nonce,
 
 func (n *muxLinkNegotiator) newLink(ch *channel.Channel, localIdentity, remoteIdentity *astral.Identity, id astral.Nonce, outbound bool, localEp, remoteEp exonet.Endpoint) *Link {
 	s := &Link{
-		Channel:        ch,
+		ch:             ch,
 		id:             id,
 		localIdentity:  localIdentity,
 		remoteIdentity: remoteIdentity,
@@ -152,6 +152,9 @@ func (n *muxLinkNegotiator) newLink(ch *channel.Channel, localIdentity, remoteId
 		done:           make(chan struct{}),
 	}
 
-	s.Mux = NewMux(ch, n.mod, s)
+	// todo: not sure if starting point should be here
+	s.Mux = n.mod.newMux(ch)
+	go s.Mux.Run(n.mod.ctx)
+
 	return s
 }
