@@ -33,17 +33,21 @@ func (pool *LinkPool) Links() *sig.Set[*Link] {
 // SelectLinkWith returns a non-high-pressure link to id, falling back to any link if all are under pressure.
 func (pool *LinkPool) SelectLinkWith(id *astral.Identity) *Link {
 	var fallback *Link
-	for _, s := range pool.links.Clone() {
-		if !s.RemoteIdentity().IsEqual(id) {
-			continue
-		}
+
+	linkWithRemote := pool.Links().Select(func(a *Link) bool {
+		return a.RemoteIdentity().IsEqual(id)
+	})
+
+	for _, s := range linkWithRemote {
 		if !s.IsHighPressure() {
 			return s
 		}
+
 		if fallback == nil {
 			fallback = s
 		}
 	}
+
 	return fallback
 }
 

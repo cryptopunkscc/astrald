@@ -4,14 +4,13 @@ import (
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
-	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
 type Link interface {
-	channel.Receiver
-	channel.Sender
+	astral.Router
 	io.Closer
+
 	CloseWithError(error) error
 	Done() <-chan struct{}
 	LocalIdentity() *astral.Identity

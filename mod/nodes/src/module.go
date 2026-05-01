@@ -64,19 +64,6 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (mod *Module) Peers() (peers []*astral.Identity) {
-	return mod.peers.peers()
-}
-
-func (mod *Module) IsPeer(id *astral.Identity) bool {
-	for _, peer := range mod.peers.peers() {
-		if peer.IsEqual(id) {
-			return true
-		}
-	}
-	return false
-}
-
 func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
 	return mod.peers.EstablishInboundLink(ctx, conn)
 }
@@ -108,7 +95,7 @@ func (mod *Module) CloseStream(id astral.Nonce) error {
 		}
 	}
 
-	return errors.New("stream not found")
+	return nodes.ErrLinkNotFound
 }
 
 func (mod *Module) Router() astral.Router {
@@ -178,12 +165,15 @@ func (mod *Module) GetLinkNegotiator() (*muxLinkNegotiator, error) {
 }
 
 func (mod *Module) reflectLink(s *Link) (err error) {
+	// todo: unnatural ifs
 	if s.outbound || s.RemoteEndpoint() == nil {
 		return
 	}
+
 	if _, ok := s.RemoteEndpoint().(*gateway.Endpoint); ok {
 		return
 	}
+
 	err = mod.Objects.Push(mod.ctx, s.RemoteIdentity(),
 		&nodes.ObservedEndpointMessage{
 			Endpoint: s.RemoteEndpoint(),

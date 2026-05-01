@@ -15,36 +15,37 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-type Ping struct {
-	sentAt time.Time
-	pong   chan struct{}
-}
-
 var _ nodes.Link = &Link{}
 var _ nodes.QualityLink = &Link{}
 var _ nodes.NetworkLink = &Link{}
-var _ astral.Router = &Link{}
 
 type Link struct {
-	*channel.Channel
-	id             astral.Nonce
-	createdAt      time.Time
+	id  astral.Nonce
+	ch  *channel.Channel
+	Mux *Mux
+
+	//
 	localIdentity  *astral.Identity
 	remoteIdentity *astral.Identity
 	outbound       bool
 	localEp        exonet.Endpoint
 	remoteEp       exonet.Endpoint
-	checks         atomic.Int32
-	wakeCh         chan struct{}
-	pingTimeout    time.Duration
-	pings          sig.Map[astral.Nonce, *Ping]
-	throughput     atomic.Uint64
-	mu             sync.Mutex
-	pressureMu     sync.Mutex
-	pressure       LinkPressureDetector
-	err            sig.Value[error]
-	done           chan struct{}
-	Mux            *Mux
+	//
+	mu sync.Mutex
+	// pressure
+	pressure   LinkPressureDetector
+	pressureMu sync.Mutex // todo: remove
+	throughput atomic.Uint64
+	// pings
+	checks      atomic.Int32
+	pingTimeout time.Duration
+	pings       sig.Map[astral.Nonce, *Ping]
+	wakeCh      chan struct{}
+	//
+	createdAt time.Time
+	// lifecycle
+	err  sig.Value[error]
+	done chan struct{}
 }
 
 func (s *Link) Done() <-chan struct{} { return s.done }
@@ -60,19 +61,27 @@ func (s *Link) CloseWithError(err error) error {
 		err = errors.New("link closed")
 	}
 	s.err.Swap(nil, err)
-	_ = s.Channel.Close()
+	_ = s.ch.Close()
 	return nil
+}
+
+func (s *Link) Close() error {
+	return s.CloseWithError(nil)
 }
 
 func (s *Link) Send(obj astral.Object) error {
 	s.check()
 	s.mu.Lock()
-	err := s.Channel.Send(obj)
+	err := s.ch.Send(obj)
 	s.mu.Unlock()
 	if err != nil {
 		s.CloseWithError(err)
 	}
 	return err
+}
+
+func (s *Link) Receive() (astral.Object, error) {
+	return s.ch.Receive()
 }
 
 func (s *Link) Network() string {
@@ -223,4 +232,9 @@ func (s *Link) Throughput() uint64 { return s.throughput.Load() }
 
 func (s *Link) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	return s.Mux.RouteQuery(ctx, q, w)
+}
+
+type Ping struct {
+	sentAt time.Time
+	pong   chan struct{}
 }
