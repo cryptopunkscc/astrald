@@ -22,6 +22,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	if stream == nil {
 		return ch.Send(astral.Err(nodes.ErrSessionNotFound))
 	}
+
 	session, ok := stream.Mux.sessions.Get(args.SessionID)
 	if !ok {
 		return ch.Send(astral.Err(nodes.ErrSessionNotFound))

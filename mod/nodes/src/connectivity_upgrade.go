@@ -22,24 +22,29 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 	connectivityGate.Run(mod.ctx, func(_ context.Context) {
 		mod.log.Log("connectivity upgrade triggered for %v (stream %v)", e.RemoteIdentity, e.StreamID)
 
-		var targetStream *Link
-		alternatives := mod.linkPool.Links().Select(func(s *TracedLink) bool {
-			return s.RemoteIdentity().IsEqual(e.RemoteIdentity) && s.id != e.StreamID
-		})
-
-		slices.SortFunc(alternatives, func(a, b *TracedLink) int {
-			if a.HasPressureDetector() == b.HasPressureDetector() {
-				return 0
+		var targetStream nodes.Link
+		var alternatives []nodes.Link
+		for _, s := range mod.linkPool.Links().Values() {
+			if s.RemoteIdentity().IsEqual(e.RemoteIdentity) && s.ID() != e.StreamID {
+				alternatives = append(alternatives, s)
 			}
-			if !a.HasPressureDetector() {
+		}
+
+		slices.SortFunc(alternatives, func(a, b nodes.Link) int {
+			if a.IsHighPressure() && !b.IsHighPressure() {
 				return -1
 			}
-			return 1
+
+			if !a.IsHighPressure() && b.IsHighPressure() {
+				return 1
+			}
+
+			return 0
 		})
 
 		if len(alternatives) > 0 {
-			targetStream = alternatives[0].Link
-			mod.log.Log("connectivity upgrade: reusing existing stream %v (%v)", targetStream.id, targetStream.Network())
+			targetStream = alternatives[0]
+			mod.log.Log("connectivity upgrade: reusing existing stream %v (%v)", targetStream.ID(), targetStream.Network())
 		} else {
 			ctx, cancel := mod.ctx.WithTimeout(upgradeTimeout)
 			defer cancel()
@@ -52,7 +57,7 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 				mod.log.Log("connectivity upgrade with %v failed: %v", e.RemoteIdentity, result.Err)
 			} else {
 				targetStream = result.Stream
-				mod.log.Log("connectivity upgrade: established new stream %v (%v)", targetStream.id, targetStream.Network())
+				mod.log.Log("connectivity upgrade: established new stream %v (%v)", targetStream.ID(), targetStream.Network())
 			}
 		}
 
@@ -71,7 +76,7 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 
 const migrateSessionTimeout = 30 * time.Second
 
-func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Link) {
+func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream nodes.Link) {
 	oldStream := mod.findStreamByID(oldStreamID)
 	if oldStream == nil {
 		mod.log.Logv(1, "migrate sessions: old stream %v not found", oldStreamID)
@@ -86,7 +91,7 @@ func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Link) {
 		return
 	}
 
-	mod.log.Log("migrating %v sessions from stream %v to %v", len(sessions), oldStreamID, newStream.id)
+	mod.log.Log("migrating %v sessions from stream %v to %v", len(sessions), oldStreamID, newStream.ID())
 
 	var migrated int
 	for _, sess := range sessions {
@@ -101,5 +106,5 @@ func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Link) {
 		migrated++
 	}
 
-	mod.log.Log("migrated %v/%v sessions from stream %v to %v", migrated, len(sessions), oldStreamID, newStream.id)
+	mod.log.Log("migrated %v/%v sessions from stream %v to %v", migrated, len(sessions), oldStreamID, newStream.ID())
 }

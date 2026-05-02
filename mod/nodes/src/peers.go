@@ -15,19 +15,6 @@ func NewPeers(m *Module) *Peers {
 	return &Peers{Module: m}
 }
 
-func (mod *Peers) peers() (peers []*astral.Identity) {
-	var seen = map[string]struct{}{}
-	for _, s := range mod.linkPool.Links().Clone() {
-		key := s.RemoteIdentity().String()
-		if _, found := seen[key]; found {
-			continue
-		}
-		seen[key] = struct{}{}
-		peers = append(peers, s.RemoteIdentity())
-	}
-	return
-}
-
 func (mod *Peers) addLink(s *Link) (err error) {
 	var dir = "in"
 	var netName = "unknown network"
@@ -43,7 +30,7 @@ func (mod *Peers) addLink(s *Link) (err error) {
 		netName = s.RemoteEndpoint().Network()
 	}
 
-	tl, err := mod.linkPool.AddLink(s)
+	_, err = mod.linkPool.AddLink(s)
 	if err != nil {
 		return
 	}
@@ -52,7 +39,6 @@ func (mod *Peers) addLink(s *Link) (err error) {
 
 	go func() {
 		<-s.Done()
-		tl.Close()
 		mod.log.Info("closed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
 	}()
 
@@ -73,10 +59,17 @@ func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Id
 		return nil, err
 	}
 
-	link, err := negotiator.OutboundHandshake(ctx, conn, remoteID)
+	negotiatedLink, err := negotiator.OutboundHandshake(ctx, conn, remoteID)
 	if err != nil {
 		return nil, err
 	}
+
+	link, err := mod.linkPool.AddLink(negotiatedLink)
+	if err != nil {
+		return nil, err
+	}
+
+	return link, nil
 
 	err = mod.addLink(link)
 	return link, err
@@ -94,10 +87,15 @@ func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (e
 		return err
 	}
 
-	stream, err := negotiator.InboundHandshake(ctx, conn)
+	link, err := negotiator.InboundHandshake(ctx, conn)
 	if err != nil {
 		return err
 	}
 
-	return mod.addLink(stream)
+	_, err = mod.linkPool.AddLink(link)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

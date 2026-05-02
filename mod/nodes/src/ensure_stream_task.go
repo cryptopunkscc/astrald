@@ -63,12 +63,12 @@ func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
 
 		s := result.Stream
 		c.Info = &nodes.StreamInfo{
-			ID:             s.id,
+			ID:             s.ID(),
 			LocalIdentity:  s.LocalIdentity(),
 			RemoteIdentity: s.RemoteIdentity(),
 			LocalEndpoint:  s.LocalEndpoint(),
 			RemoteEndpoint: s.RemoteEndpoint(),
-			Outbound:       astral.Bool(s.outbound),
+			Outbound:       astral.Bool(s.Outbound()),
 			Network:        astral.String8(s.Network()),
 		}
 

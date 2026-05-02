@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"errors"
 	"slices"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -9,13 +10,13 @@ import (
 )
 
 type linkWatcher struct {
-	match func(*Link, *string) bool
-	ch    chan *Link
+	match func(nodes.Link, *string) bool
+	ch    chan nodes.Link
 }
 
 type LinkPool struct {
 	mod      *Module
-	links    sig.Set[*TracedLink]
+	links    sig.Map[astral.Nonce, nodes.Link]
 	watchers sig.Set[*linkWatcher]
 	linkers  sig.Map[string, *NodeLinker]
 }
@@ -26,37 +27,48 @@ func NewLinkPool(mod *Module) *LinkPool {
 	}
 }
 
-func (pool *LinkPool) Links() *sig.Set[*TracedLink] {
+func (pool *LinkPool) Links() *sig.Map[astral.Nonce, nodes.Link] {
 	return &pool.links
 }
 
 // SelectLinkWith returns a non-high-pressure link to id, falling back to any link if all are under pressure.
-func (pool *LinkPool) SelectLinkWith(id *astral.Identity) *Link {
-	var fallback *Link
+func (pool *LinkPool) SelectLinkWith(id *astral.Identity) nodes.Link {
+	var fallback nodes.Link
 
-	linkWithRemote := pool.Links().Select(func(a *TracedLink) bool {
+	linksWithRemote := pool.Links().Select(func(_ astral.Nonce, a nodes.Link) bool {
 		return a.RemoteIdentity().IsEqual(id)
 	})
 
-	for _, s := range linkWithRemote {
+	for _, s := range linksWithRemote {
 		if !s.IsHighPressure() {
-			return s.Link
+			return s
 		}
-
 		if fallback == nil {
-			fallback = s.Link
+			fallback = s
 		}
 	}
 
 	return fallback
 }
 
-func (pool *LinkPool) AddLink(link *Link) (*TracedLink, error) {
-	tl := NewTracedLink(link, nil)
-	tl.OnClose = func() {
-		pool.links.Remove(tl)
+func (pool *LinkPool) AddLink(link *Link) (tracedLink nodes.Link, err error) {
+	var dir = "in"
+	var netName = "unknown network"
 
-		remaining := pool.links.Select(func(v *TracedLink) bool {
+	if link.Outbound() {
+		dir = "out"
+	}
+
+	switch {
+	case link.LocalEndpoint() != nil:
+		netName = link.LocalEndpoint().Network()
+	case link.RemoteEndpoint() != nil:
+		netName = link.RemoteEndpoint().Network()
+	}
+
+	onClose := func() {
+		pool.links.Delete(link.id)
+		remaining := pool.links.Select(func(_ astral.Nonce, v nodes.Link) bool {
 			return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
 		})
 
@@ -67,11 +79,13 @@ func (pool *LinkPool) AddLink(link *Link) (*TracedLink, error) {
 		})
 	}
 
-	if err := pool.links.Add(tl); err != nil {
-		return nil, err
+	tl := NewTracedLink(link, onClose)
+
+	if _, ok := pool.links.Set(link.id, tl); !ok {
+		return nil, errors.New("duplicate link id")
 	}
 
-	streamsWithSameIdentity := pool.links.Select(func(v *TracedLink) bool {
+	streamsWithSameIdentity := pool.links.Select(func(_ astral.Nonce, v nodes.Link) bool {
 		return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
 	})
 
@@ -79,26 +93,28 @@ func (pool *LinkPool) AddLink(link *Link) (*TracedLink, error) {
 		pool.notifyLinkWatchers(link, nil)
 	}
 
+	// fixme: LinkCreatedEvent
 	pool.mod.Events.Emit(&nodes.StreamCreatedEvent{
 		RemoteIdentity: link.RemoteIdentity(),
 		StreamId:       link.id,
 		StreamCount:    len(streamsWithSameIdentity),
 	})
 
-	link.Start(pool.mod.ctx)
+	pool.mod.log.Infov(1, "added %v-stream with %v (%v)", dir, link.RemoteIdentity(), netName)
+	link.SetRouter(pool.mod.node)
 
 	return tl, nil
 }
 
 type LinkResult struct {
-	Stream *Link
+	Stream nodes.Link
 	Err    error
 }
 
-func (pool *LinkPool) subscribe(match func(*Link, *string) bool) *linkWatcher {
+func (pool *LinkPool) subscribe(match func(nodes.Link, *string) bool) *linkWatcher {
 	w := &linkWatcher{
 		match: match,
-		ch:    make(chan *Link, 1),
+		ch:    make(chan nodes.Link, 1),
 	}
 
 	pool.watchers.Add(w)
@@ -152,7 +168,7 @@ func (pool *LinkPool) RetrieveLink(
 		opt(&o)
 	}
 
-	match := func(s *Link, strategy *string) bool {
+	match := func(s nodes.Link, strategy *string) bool {
 		if !s.RemoteIdentity().IsEqual(target) {
 			return false
 		}
@@ -167,9 +183,10 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	if !o.ForceNew {
-		streams := pool.links.Select(func(s *TracedLink) bool { return match(s.Link, nil) })
-		if len(streams) > 0 {
-			return sig.ArrayToChan([]LinkResult{{Stream: streams[0].Link}})
+		for _, tl := range pool.links.Values() {
+			if match(tl, nil) {
+				return sig.ArrayToChan([]LinkResult{{Stream: tl}})
+			}
 		}
 	}
 

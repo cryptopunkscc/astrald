@@ -8,14 +8,15 @@ import (
 )
 
 // migrateSession migrates a single session to targetStream (initiator side).
-func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream *Link) (err error) {
+func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream nodes.Link) (err error) {
 	ch, err := nodesClient.New(session.RemoteIdentity, astrald.Default()).MigrateSession(ctx, nodesClient.MigrateSessionArgs{
 		SessionID: session.Nonce,
-		StreamID:  targetStream.id,
+		StreamID:  targetStream.ID(),
 	})
 	if err != nil {
 		return err
 	}
+
 	defer ch.Close()
 
 	migrator, err := mod.newSessionMigrator(session)

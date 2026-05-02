@@ -30,11 +30,12 @@ func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
 	return &SessionMigrator{mod: mod, session: sess, reader: reader, writer: writer}, nil
 }
 
-func (m *SessionMigrator) Begin(target *Link) error {
+func (m *SessionMigrator) Begin(target nodes.Link) error {
 	if !m.session.swapState(stateOpen, stateMigrating) {
 		m.mod.log.Logv(1, "session %v in state %v, cannot migrate", m.session.Nonce, m.session.getState())
 		return nodes.ErrInvalidSessionState
 	}
+
 	m.session.cond.L.Lock()
 	m.oldStream = m.session.stream
 	m.session.stream = target

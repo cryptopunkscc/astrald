@@ -23,7 +23,7 @@ func (mod *Module) DefaultGateway() (ip.IP, error) {
 }
 
 func (mod *Module) defaultGatewayLinux() (ip.IP, error) {
-	// Run `ip route` command to get routing table
+	// handleFrames `ip route` command to get routing table
 	cmd := exec.Command("ip", "route")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -47,7 +47,7 @@ func (mod *Module) defaultGatewayLinux() (ip.IP, error) {
 }
 
 func (mod *Module) defaultGatewayDarwin() (ip.IP, error) {
-	// Run `netstat -nr` command to get routing table
+	// handleFrames `netstat -nr` command to get routing table
 	cmd := exec.Command("netstat", "-nr")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -71,7 +71,7 @@ func (mod *Module) defaultGatewayDarwin() (ip.IP, error) {
 }
 
 func (mod *Module) defaultGatewayWindows() (ip.IP, error) {
-	// Run `netsh interface ip show config` command
+	// handleFrames `netsh interface ip show config` command
 	cmd := exec.Command("netsh", "interface", "ip", "show", "config")
 	output, err := cmd.CombinedOutput()
 	if err != nil {

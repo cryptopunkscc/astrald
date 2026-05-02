@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
@@ -14,30 +16,85 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+const routerWaitTimeout = 30 * time.Second
+
 var _ astral.Router = &Mux{}
 
 type Mux struct {
 	mod  *Module
 	link *Link // todo: remove; kept for identity lookups and throughput accounting
 	ch   *channel.Channel
+	ctx  *astral.Context
+
+	router astral.Router
+	cond   *sync.Cond
 
 	sessions sig.Map[astral.Nonce, *session]
 	in       chan frames.Frame
 	onClose  func(error) // called by reader when the channel closes; wired to Link.CloseWithError by Start()
 }
 
-func (mod *Module) newMux(ch *channel.Channel) *Mux {
-	return &Mux{
-		mod: mod,
-		ch:  ch,
-		in:  make(chan frames.Frame, 32),
+func (m *Mux) SetRouter(r astral.Router) {
+	m.cond.L.Lock()
+	defer m.cond.L.Unlock()
+	if m.router != nil {
+		return
+	}
+	m.router = r
+	m.cond.Broadcast()
+}
+
+// waitRouter blocks until the mux has a router or ctx is cancelled.
+func (m *Mux) waitRouter(ctx *astral.Context) (astral.Router, error) {
+	stop := make(chan struct{})
+	defer close(stop)
+	go func() {
+		select {
+		case <-ctx.Done():
+			m.cond.Broadcast()
+		case <-stop:
+		}
+	}()
+
+	m.cond.L.Lock()
+	defer m.cond.L.Unlock()
+	for m.router == nil {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		m.cond.Wait()
+	}
+	return m.router, nil
+}
+
+func (m *Mux) reader() {
+	var rerr error
+	defer func() {
+		close(m.in)
+		if m.onClose != nil {
+			m.onClose(rerr)
+		}
+	}()
+
+	for {
+		obj, err := m.ch.Receive()
+		if err != nil {
+			rerr = err
+			return
+		}
+
+		frame, ok := obj.(frames.Frame)
+		if !ok {
+			rerr = fmt.Errorf("decoded object is not a Frame: %T", obj)
+			return
+		}
+
+		m.in <- frame
 	}
 }
 
-// Run starts the mux runtime and blocks until the channel closes or ctx is cancelled.
-func (m *Mux) Run(ctx *astral.Context) {
-	go m.reader()
-
+// handleFrames starts the mux runtime and blocks until the channel closes or ctx is cancelled.
+func (m *Mux) handleFrames(ctx *astral.Context) {
 	for {
 		select {
 		case frame, ok := <-m.in:
@@ -101,7 +158,7 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 		}
 	}
 
-	err = m.link.Send(frame)
+	err = m.ch.Send(frame)
 	if err != nil {
 		conn.Close()
 		return query.RouteNotFound()
@@ -225,6 +282,16 @@ func (m *Mux) handleInboundQuery(nonce astral.Nonce, caller, target *astral.Iden
 		return
 	}
 
+	waitCtx, cancel := m.ctx.WithTimeout(routerWaitTimeout)
+	defer cancel()
+
+	router, err := m.waitRouter(waitCtx)
+	if err != nil {
+		session.Close()
+		m.ch.Send(&frames.Response{Nonce: nonce, ErrCode: frames.CodeRejected})
+		return
+	}
+
 	q := astral.Launch(&astral.Query{
 		Nonce:       nonce,
 		Caller:      caller,
@@ -234,7 +301,7 @@ func (m *Mux) handleInboundQuery(nonce astral.Nonce, caller, target *astral.Iden
 	q.Extra.Set("origin", astral.OriginNetwork)
 	ctx := astral.NewContext(nil).WithIdentity(m.mod.node.Identity())
 
-	w, err := m.mod.node.RouteQuery(ctx, q, session)
+	w, err := router.RouteQuery(ctx, q, session)
 	if err != nil {
 		session.Close()
 		var code = uint8(frames.CodeRejected)
@@ -367,34 +434,21 @@ func (m *Mux) handleMigrate(f *frames.Migrate) {
 	reader.Advance()
 }
 
-func (m *Mux) reader() {
-	var rerr error
-	defer func() {
-		close(m.in)
-		if m.onClose != nil {
-			m.onClose(rerr)
-		}
-	}()
-
-	for {
-		obj, err := m.ch.Receive()
-		if err != nil {
-			rerr = err
-			return
-		}
-
-		frame, ok := obj.(frames.Frame)
-		if !ok {
-			rerr = fmt.Errorf("decoded object is not a Frame: %T", obj)
-			return
-		}
-
-		m.in <- frame
-	}
-}
-
 func (m *Mux) Read() <-chan frames.Frame { return m.in }
 
 func (m *Mux) ping(nonce astral.Nonce) error {
 	return m.ch.Send(&frames.Ping{Nonce: nonce})
+}
+
+func (mod *Module) newMux(ch *channel.Channel) *Mux {
+	m := &Mux{
+		mod:  mod,
+		ctx:  mod.ctx,
+		ch:   ch,
+		in:   make(chan frames.Frame, 32),
+		cond: &sync.Cond{},
+	}
+
+	go m.reader()
+	return m
 }

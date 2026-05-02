@@ -1,8 +1,6 @@
 package nodes
 
 import (
-	"slices"
-
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
@@ -18,26 +16,21 @@ func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	streams := mod.linkPool.Links().Clone()
-
-	slices.SortFunc(streams, func(a, b *TracedLink) int {
-		return a.createdAt.Compare(b.createdAt)
-	})
-
+	streams := mod.linkPool.Links().Values()
 	for _, s := range streams {
 		err = ch.Send(&nodes.StreamInfo{
-			ID:              s.id,
+			ID:              s.ID(),
 			LocalIdentity:   s.LocalIdentity(),
 			RemoteIdentity:  s.RemoteIdentity(),
 			LocalEndpoint:   s.LocalEndpoint(),
 			RemoteEndpoint:  s.RemoteEndpoint(),
-			Outbound:        astral.Bool(s.outbound),
+			Outbound:        astral.Bool(s.Outbound()),
 			Network:         astral.String8(s.Network()),
 			HighPressure:    astral.Bool(s.IsHighPressure()),
 			BytesThroughput: astral.Uint64(s.Throughput()),
 		})
 		if err != nil {
-			return ch.Send(astral.NewError(err.Error()))
+			return ch.Send(astral.Err(err))
 		}
 	}
 

@@ -118,7 +118,7 @@ func (mod *Module) myAlias() string {
 
 func (mod *Module) periodicUpdater(ctx *astral.Context) {
 	modeUpdates := mod.mode.Follow(ctx)
-	<-modeUpdates // discard initial value; initial broadcast is handled in Run
+	<-modeUpdates // discard initial value; initial broadcast is handled in handleFrames
 
 	for {
 		if mod.Mode() != nearby.ModeSilent {

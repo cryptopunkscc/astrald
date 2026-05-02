@@ -20,7 +20,7 @@ func (mod *Module) OpSessions(ctx *astral.Context, q *routing.IncomingQuery, arg
 	defer ch.Close()
 
 	var sessions []*session
-	for _, link := range mod.linkPool.Links().Clone() {
+	for _, link := range mod.linkPool.Links().Values() {
 		sessions = append(sessions, link.Mux.sessions.Values()...)
 	}
 

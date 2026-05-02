@@ -16,8 +16,6 @@ import (
 )
 
 var _ nodes.Link = &Link{}
-var _ nodes.QualityLink = &Link{}
-var _ nodes.NetworkLink = &Link{}
 
 type Link struct {
 	id  astral.Nonce
@@ -44,22 +42,22 @@ type Link struct {
 	//
 	createdAt time.Time
 	// lifecycle
-	err     sig.Value[error]
-	done    chan struct{}
-	started atomic.Bool
-	closed  atomic.Bool
+	err    sig.Value[error]
+	done   chan struct{}
+	closed atomic.Bool
+}
+
+func (s *Link) ID() astral.Nonce { return s.id }
+
+func (s *Link) Outbound() bool {
+	return s.outbound
+}
+
+func (s *Link) SetRouter(r astral.Router) {
+	s.Mux.SetRouter(r)
 }
 
 func (s *Link) Done() <-chan struct{} { return s.done }
-
-func (s *Link) Start(ctx *astral.Context) {
-	if !s.started.CompareAndSwap(false, true) {
-		return
-	}
-	s.Mux.onClose = func(err error) { s.CloseWithError(err) }
-	go s.Mux.Run(ctx)
-	go s.pingLoop()
-}
 
 func (s *Link) Err() error { return s.err.Get() }
 
@@ -82,21 +80,6 @@ func (s *Link) CloseWithError(err error) error {
 
 func (s *Link) Close() error {
 	return s.CloseWithError(nil)
-}
-
-func (s *Link) Send(obj astral.Object) error {
-	s.check()
-	s.mu.Lock()
-	err := s.ch.Send(obj)
-	s.mu.Unlock()
-	if err != nil {
-		s.CloseWithError(err)
-	}
-	return err
-}
-
-func (s *Link) Receive() (astral.Object, error) {
-	return s.ch.Receive()
 }
 
 func (s *Link) Network() string {
