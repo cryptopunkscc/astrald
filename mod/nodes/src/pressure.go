@@ -2,13 +2,9 @@ package nodes
 
 import (
 	"time"
-)
 
-type LinkPressureDetector interface {
-	OnBytes(n int, now time.Time)
-	OnRTT(rtt time.Duration, now time.Time)
-	IsHigh() bool
-}
+	"github.com/cryptopunkscc/astrald/mod/nodes"
+)
 
 type LinkPressureConfig struct {
 	// LeakRate is how fast the token bucket drains in bytes/sec.
@@ -94,7 +90,7 @@ var TorStreamPressureConfig = LinkPressureConfig{
 	Exit:  0.4,
 }
 
-func NewLinkPressureDetector(now time.Time, cfg LinkPressureConfig, onHigh func()) LinkPressureDetector {
+func NewLinkPressureDetector(now time.Time, cfg LinkPressureConfig, onHigh func()) nodes.LinkPressureDetector {
 	return &bucketLinkPressureDetector{
 		lastUpdate: now,
 		cfg:        cfg,

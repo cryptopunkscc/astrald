@@ -12,7 +12,7 @@ type SessionMigrator struct {
 	reader         *muxSessionReader
 	writer         *muxSessionWriter
 	peerBuffer     int
-	oldStream      *Link
+	oldLink        *Link
 	oldInputBuffer *InputBuffer
 }
 
@@ -31,14 +31,18 @@ func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
 }
 
 func (m *SessionMigrator) Begin(target nodes.Link) error {
+	targetLink, ok := target.(*Link)
+	if !ok {
+		return nodes.ErrMigrationNotSupported
+	}
+
 	if !m.session.swapState(stateOpen, stateMigrating) {
 		m.mod.log.Logv(1, "session %v in state %v, cannot migrate", m.session.Nonce, m.session.getState())
 		return nodes.ErrInvalidSessionState
 	}
 
 	m.session.cond.L.Lock()
-	m.oldStream = m.session.stream
-	m.session.stream = target
+	m.oldLink = m.session.stream
 	m.session.cond.L.Unlock()
 
 	m.mod.log.Logv(1, "pausing session %v", m.session.Nonce)
@@ -46,20 +50,20 @@ func (m *SessionMigrator) Begin(target nodes.Link) error {
 
 	m.oldInputBuffer = m.reader.Buf()
 
-	newInputBuffer := target.Mux.newInputBuffer(m.session.Nonce)
-	newOutputBuffer := target.Mux.newOutputBuffer(m.session.Nonce)
-	resetFunc := func() { target.Mux.resetSession(m.session.Nonce) }
+	newInputBuffer := targetLink.Mux.newInputBuffer(m.session.Nonce)
+	newOutputBuffer := targetLink.Mux.newOutputBuffer(m.session.Nonce)
+	resetFunc := func() { targetLink.Mux.resetSession(m.session.Nonce) }
 
 	m.writer.SwapBuf(newOutputBuffer, resetFunc)
 	m.reader.SetNextBuffer(newInputBuffer)
-	m.mod.log.Logv(1, "session %v migrating stream %v → %v", m.session.Nonce, m.oldStream.id, target.id)
+	m.mod.log.Logv(1, "session %v migrating stream %v → %v", m.session.Nonce, m.oldLink.ID(), target.ID())
 
 	return nil
 }
 
 func (m *SessionMigrator) SendMigrateFrame() error {
-	m.mod.log.Logv(1, "sending migrate frame for session %v on stream %v", m.session.Nonce, m.oldStream.id)
-	return m.oldStream.Mux.migrateSession(m.session.Nonce)
+	m.mod.log.Logv(1, "sending migrate frame for session %v on stream %v", m.session.Nonce, m.oldLink.ID())
+	return m.oldLink.Mux.migrateSession(m.session.Nonce)
 }
 
 func (m *SessionMigrator) WaitClosed(ctx context.Context) error {

@@ -72,6 +72,18 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
-	mod.log.Logv(1, "session %v migrated to stream %v (initiator)", session.Nonce, targetStream.id)
+	mod.log.Logv(1, "session %v migrated to stream %v (initiator)", session.Nonce, targetStream.ID())
 	return nil
+}
+
+func (mod *Module) getSessions() []*session {
+	var sessions []*session
+	for _, l := range mod.linkPool.Links().Values() {
+		tl, ok := l.(*TracedLink)
+		if !ok {
+			continue
+		}
+		sessions = append(sessions, tl.Mux.sessions.Values()...)
+	}
+	return sessions
 }

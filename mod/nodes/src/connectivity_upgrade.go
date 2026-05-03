@@ -77,13 +77,13 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 const migrateSessionTimeout = 30 * time.Second
 
 func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream nodes.Link) {
-	oldStream := mod.findStreamByID(oldStreamID)
-	if oldStream == nil {
+	oldLink, ok := mod.findLinkByID(oldStreamID).(*Link)
+	if !ok {
 		mod.log.Logv(1, "migrate sessions: old stream %v not found", oldStreamID)
 		return
 	}
 
-	sessions := oldStream.Mux.sessions.Select(func(k astral.Nonce, v *session) bool {
+	sessions := oldLink.Mux.sessions.Select(func(k astral.Nonce, v *session) bool {
 		return v.IsOpen() && v.CanAutoMigrate()
 	})
 

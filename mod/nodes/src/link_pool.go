@@ -125,7 +125,7 @@ func (pool *LinkPool) unsubscribe(w *linkWatcher) {
 	pool.watchers.Remove(w)
 }
 
-func (pool *LinkPool) notifyLinkWatchers(s *Link, strategy *string) bool {
+func (pool *LinkPool) notifyLinkWatchers(s nodes.Link, strategy *string) bool {
 	used := false
 	for _, w := range pool.watchers.Clone() {
 		if !w.match(s, strategy) {

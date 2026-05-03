@@ -41,12 +41,12 @@ func (c *CreateStreamTask) Run(ctx *astral.Context) error {
 	}
 
 	c.Info = &nodes.StreamInfo{
-		ID:             stream.id,
+		ID:             stream.ID(),
 		LocalIdentity:  stream.LocalIdentity(),
 		RemoteIdentity: stream.RemoteIdentity(),
 		LocalEndpoint:  stream.LocalEndpoint(),
 		RemoteEndpoint: stream.RemoteEndpoint(),
-		Outbound:       astral.Bool(stream.outbound),
+		Outbound:       astral.Bool(stream.Outbound()),
 		Network:        astral.String8(stream.Network()),
 	}
 

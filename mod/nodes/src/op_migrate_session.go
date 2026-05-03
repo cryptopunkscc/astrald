@@ -18,12 +18,12 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	stream := mod.findStreamBySessionNonce(args.SessionID)
-	if stream == nil {
+	link, ok := mod.findSessionLink(args.SessionID).(*Link)
+	if !ok {
 		return ch.Send(astral.Err(nodes.ErrSessionNotFound))
 	}
 
-	session, ok := stream.Mux.sessions.Get(args.SessionID)
+	session, ok := link.Mux.sessions.Get(args.SessionID)
 	if !ok {
 		return ch.Send(astral.Err(nodes.ErrSessionNotFound))
 	}
@@ -31,13 +31,13 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		return ch.Send(astral.Err(nodes.ErrInvalidSessionState))
 	}
 
-	targetStream := mod.findStreamByID(args.StreamID)
+	targetStream := mod.findLinkByID(args.StreamID)
 	if targetStream == nil {
 		return ch.Send(astral.Err(nodes.ErrLinkNotFound))
 	}
 
 	if args.Start {
-		mod.log.Log("migrate session %v to stream %v (manual)", args.SessionID, args.StreamID)
+		mod.log.Log("migrate session %v to link %v (manual)", args.SessionID, args.StreamID)
 		migrateCtx, cancel := ctx.WithTimeout(migrateSessionTimeout)
 		defer cancel()
 		err := mod.migrateSession(migrateCtx, session, targetStream)
@@ -73,7 +73,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		return ch.Send(astral.Err(err))
 	}
 
-	mod.log.Logv(1, "session %v migrated to stream %v (responder)", session.Nonce, targetStream.id)
+	mod.log.Logv(1, "session %v migrated to link %v (responder)", session.Nonce, targetStream.ID())
 	return nil
 }
 

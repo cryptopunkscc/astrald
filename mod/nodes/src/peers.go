@@ -5,6 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 type Peers struct {
@@ -47,7 +48,7 @@ func (mod *Peers) addLink(s *Link) (err error) {
 	return
 }
 
-func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Link, err error) {
+func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (link nodes.Link, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
@@ -64,15 +65,12 @@ func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Id
 		return nil, err
 	}
 
-	link, err := mod.linkPool.AddLink(negotiatedLink)
+	link, err = mod.linkPool.AddLink(negotiatedLink)
 	if err != nil {
 		return nil, err
 	}
 
 	return link, nil
-
-	err = mod.addLink(link)
-	return link, err
 }
 
 func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {

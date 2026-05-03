@@ -133,8 +133,8 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 	return mod.privateKey, nil
 }
 
-// findStreamByID returns a stream with the given local id or nil if not found.
-func (mod *Module) findStreamByID(id astral.Nonce) nodes.Link {
+// findLinkByID returns a stream with the given local id or nil if not found.
+func (mod *Module) findLinkByID(id astral.Nonce) nodes.Link {
 	for _, s := range mod.linkPool.Links().Values() {
 		if s.ID() == id {
 			return s
@@ -144,10 +144,15 @@ func (mod *Module) findStreamByID(id astral.Nonce) nodes.Link {
 	return nil
 }
 
-func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) nodes.Link {
-	for _, s := range mod.linkPool.Links().Values() {
-		if _, ok := s.Mux.sessions.Get(nonce); ok {
-			return s
+func (mod *Module) findSessionLink(nonce astral.Nonce) nodes.Link {
+	for _, l := range mod.linkPool.Links().Values() {
+		link, ok := l.(*Link)
+		if !ok {
+			continue
+		}
+
+		if _, ok := link.Mux.sessions.Get(nonce); ok {
+			return link
 		}
 	}
 

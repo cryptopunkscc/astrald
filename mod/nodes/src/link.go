@@ -31,7 +31,7 @@ type Link struct {
 	//
 	mu sync.Mutex
 	// pressure
-	pressure   LinkPressureDetector
+	pressure   nodes.LinkPressureDetector
 	pressureMu sync.Mutex // todo: remove
 	throughput atomic.Uint64
 	// pings
@@ -114,7 +114,7 @@ func (s *Link) check() {
 
 func (s *Link) ping() (time.Duration, error) {
 	if s.Mux == nil {
-		return -1, nodes.ErrNotSupported
+		return -1, nodes.ErrMigrationNotSupported
 	}
 
 	nonce := astral.NewNonce()
@@ -191,7 +191,7 @@ func (s *Link) pingLoop() {
 	}
 }
 
-func (s *Link) SetPressureDetector(d LinkPressureDetector) {
+func (s *Link) SetPressureDetector(d nodes.LinkPressureDetector) {
 	s.pressureMu.Lock()
 	defer s.pressureMu.Unlock()
 	s.pressure = d

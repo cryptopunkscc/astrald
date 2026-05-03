@@ -43,7 +43,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 		}()
 
 		var wg sync.WaitGroup
-		var winner sig.Value[*Link]
+		var winner sig.Value[nodes.Link]
 
 		wctx, cancel := ctx.WithCancel()
 		defer cancel()
@@ -72,12 +72,12 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 							return
 						}
 
-						stream := s.tryEndpoint(wctx, re)
-						if stream != nil {
-							if _, ok := winner.Swap(nil, stream); ok {
+						link := s.tryEndpoint(wctx, re)
+						if link != nil {
+							if _, ok := winner.Swap(nil, link); ok {
 								cancel()
 							} else {
-								stream.CloseWithError(nodes.ErrExcessStream)
+								link.CloseWithError(nodes.ErrExcessStream)
 							}
 
 							return
@@ -89,14 +89,14 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 
 		wg.Wait()
 
-		stream := winner.Get()
-		if stream == nil {
+		link := winner.Get()
+		if link == nil {
 			return
 		}
 
 		name := s.Name()
-		if !s.mod.linkPool.notifyLinkWatchers(stream, &name) {
-			stream.CloseWithError(nodes.ErrExcessStream)
+		if !s.mod.linkPool.notifyLinkWatchers(link, &name) {
+			link.CloseWithError(nodes.ErrExcessStream)
 		}
 	}()
 }
@@ -113,7 +113,7 @@ func (s *BasicLinkStrategy) Done() <-chan struct{} {
 	return s.activeDone
 }
 
-func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Link {
+func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) nodes.Link {
 	conn, err := s.mod.Exonet.Dial(ctx, endpoint.Endpoint)
 	if err != nil {
 		return nil
