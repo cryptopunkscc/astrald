@@ -90,6 +90,10 @@ func (n *muxLinkNegotiator) negotiateOutbound(ch *channel.Channel) (astral.Nonce
 	if err = ch.Switch(channel.Expect(&errCode)); err != nil {
 		return 0, fmt.Errorf("read: %w", err)
 	}
+	if errCode == nil {
+		return 0, nodes.ErrLinkNegotiationFailed
+	}
+
 	if *errCode != 0 {
 		return 0, fmt.Errorf("link feature negotation error")
 	}
@@ -97,6 +101,9 @@ func (n *muxLinkNegotiator) negotiateOutbound(ch *channel.Channel) (astral.Nonce
 	var nonce *astral.Nonce
 	if err = ch.Switch(channel.Expect(&nonce)); err != nil {
 		return 0, fmt.Errorf("read outbound link nonce: %w", err)
+	}
+	if nonce == nil {
+		return 0, nodes.ErrLinkNegotiationFailed
 	}
 
 	return *nonce, nil
