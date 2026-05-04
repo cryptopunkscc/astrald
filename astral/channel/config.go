@@ -10,6 +10,7 @@ type ConfigFunc func(*Config)
 type Config struct {
 	fmtIn, fmtOut string
 	allowUnparsed bool
+	lockWrites    bool
 	cancelCh      <-chan struct{}
 }
 
@@ -45,6 +46,14 @@ func AllowUnparsed(b bool) func(*Config) {
 func WithContext(ctx context.Context) func(*Config) {
 	return func(config *Config) {
 		config.cancelCh = ctx.Done()
+	}
+}
+
+// WithLockedWrites puts the calls to concrete Senders in a mutex. Use only
+// with New() (individual senders unsupported).
+func WithLockedWrites() func(*Config) {
+	return func(config *Config) {
+		config.lockWrites = true
 	}
 }
 

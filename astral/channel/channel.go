@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -11,7 +12,8 @@ import (
 
 // Channel is a bidirectional stream of astral objects.
 type Channel struct {
-	rw io.ReadWriter
+	rw  io.ReadWriter
+	wmu *sync.Mutex
 	Receiver
 	Sender
 }
@@ -29,6 +31,10 @@ func New(rw io.ReadWriter, fn ...ConfigFunc) *Channel {
 	// apply config
 	for _, f := range fn {
 		f(&cfg)
+	}
+
+	if cfg.lockWrites {
+		ch.wmu = new(sync.Mutex)
 	}
 
 	ch.Receiver = newReceiver(rw, &cfg)
@@ -168,4 +174,13 @@ func (ch Channel) Close() error {
 // Transport returns the underlying transport.
 func (ch Channel) Transport() io.ReadWriter {
 	return ch.rw
+}
+
+func (ch Channel) Send(obj astral.Object) error {
+	if ch.wmu != nil {
+		ch.wmu.Lock()
+		defer ch.wmu.Unlock()
+	}
+
+	return ch.Sender.Send(obj)
 }
