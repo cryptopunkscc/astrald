@@ -119,8 +119,9 @@ func (s *session) Open() {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 	if !s.closed {
-		s.state.Store(stateOpen)
+		s.state.CompareAndSwap(stateRouting, stateOpen)
 	}
+
 	s.paused = false
 	s.cond.Broadcast()
 }

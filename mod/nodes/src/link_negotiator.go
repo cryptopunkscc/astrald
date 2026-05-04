@@ -145,7 +145,6 @@ func (n *muxLinkNegotiator) negotiateInbound(ch *channel.Channel) (astral.Nonce,
 func (n *muxLinkNegotiator) newLink(ch *channel.Channel, localIdentity, remoteIdentity *astral.Identity, id astral.Nonce, outbound bool, localEp, remoteEp exonet.Endpoint) *Link {
 	s := &Link{
 		ch:             ch,
-		Mux:            n.mod.newMux(ch),
 		id:             id,
 		localIdentity:  localIdentity,
 		remoteIdentity: remoteIdentity,
@@ -153,10 +152,21 @@ func (n *muxLinkNegotiator) newLink(ch *channel.Channel, localIdentity, remoteId
 		outbound:       outbound,
 		localEp:        localEp,
 		remoteEp:       remoteEp,
-		wakeCh:         make(chan struct{}, 1),
 		pingTimeout:    defaultPingTimeout,
 		done:           make(chan struct{}),
+		log:            n.mod.log,
+		logPings:       n.mod.config.LogPings,
 	}
+
+	mux := n.mod.newMux(ch)
+	mux.localIdentity = localIdentity
+	mux.remoteIdentity = remoteIdentity
+
+	mux.onThroughput = func(n int) { s.AddThroughputBytes(n) }
+	mux.onPong = s.receivePong
+	mux.onClose = func(err error) { s.CloseWithError(err) }
+
+	s.Mux = mux
 
 	return s
 }

@@ -3,13 +3,13 @@ package nodes
 import (
 	"errors"
 	"io"
-	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -33,11 +33,12 @@ type Link struct {
 	// pressure
 	pressure   nodes.LinkPressureDetector
 	throughput atomic.Uint64
-	// pings
-	checks      atomic.Int32
+	// ping
+	pingMu      sync.Mutex
+	activePing  *Ping
 	pingTimeout time.Duration
-	pings       sig.Map[astral.Nonce, *Ping]
-	wakeCh      chan struct{}
+	log         *log.Logger
+	logPings    bool
 	//
 	createdAt time.Time
 	// lifecycle
@@ -95,99 +96,55 @@ func (s *Link) LocalEndpoint() exonet.Endpoint  { return s.localEp }
 func (s *Link) RemoteEndpoint() exonet.Endpoint { return s.remoteEp }
 
 func (s *Link) Wake() {
-	select {
-	case s.wakeCh <- struct{}{}:
-	default:
-	}
-}
-
-func (s *Link) check() {
-	if s.checks.Swap(2) != 0 {
+	s.pingMu.Lock()
+	if s.activePing != nil {
+		s.pingMu.Unlock()
 		return
 	}
-	select {
-	case s.wakeCh <- struct{}{}:
-	default:
-	}
-}
-
-func (s *Link) ping() (time.Duration, error) {
-	if s.Mux == nil {
-		return -1, nodes.ErrMigrationNotSupported
-	}
-
 	nonce := astral.NewNonce()
-	p, ok := s.pings.Set(nonce, &Ping{
+	p := &Ping{
+		nonce:  nonce,
 		sentAt: time.Now(),
 		pong:   make(chan struct{}),
-	})
-	if !ok {
-		return -1, errors.New("duplicate nonce")
 	}
-	defer s.pings.Delete(nonce)
+	s.activePing = p
+	s.pingMu.Unlock()
 
-	if err := s.Mux.ping(nonce); err != nil {
-		return -1, err
-	}
-	p.sentAt = time.Now()
+	go func() {
+		defer func() {
+			s.pingMu.Lock()
+			s.activePing = nil
+			s.pingMu.Unlock()
+		}()
 
-	select {
-	case <-p.pong:
-		rtt := time.Since(p.sentAt)
-		s.OnRTT(rtt)
-		return rtt, nil
-	case <-time.After(s.pingTimeout):
-		return -1, errors.New("ping timeout")
-	case <-s.done:
-		return -1, s.Err()
-	}
-}
-
-func (s *Link) pong(nonce astral.Nonce) (time.Duration, error) {
-	p, ok := s.pings.Delete(nonce)
-	if !ok {
-		return -1, errors.New("invalid nonce")
-	}
-	d := time.Since(p.sentAt)
-	close(p.pong)
-	return d, nil
-}
-
-func (s *Link) pingLoop() {
-	select {
-	case <-s.done:
-		return
-	case <-time.After(time.Duration(rand.Int63n(int64(pingJitter)))):
-	}
-
-	for {
-		if s.checks.Load() > 0 {
-			select {
-			case <-s.done:
-				return
-			case <-time.After(activeInterval):
-			}
-		} else {
-			select {
-			case <-s.done:
-				return
-			case <-s.wakeCh:
-			}
-		}
-
-		if s.Err() != nil {
-			return
-		}
-
-		if _, err := s.ping(); err != nil {
+		if err := s.Mux.ping(nonce); err != nil {
 			s.CloseWithError(err)
 			return
 		}
+		p.sentAt = time.Now()
 
-		if s.checks.Load() > 0 {
-			s.checks.Add(-1)
+		select {
+		case <-p.pong:
+			rtt := time.Since(p.sentAt)
+			s.OnRTT(rtt)
+			if s.logPings {
+				s.log.Logv(1, "ping with %v: %v", s.remoteIdentity, rtt)
+			}
+		case <-time.After(s.pingTimeout):
+			s.CloseWithError(errors.New("ping timeout"))
+		case <-s.done:
 		}
+	}()
+}
+
+func (s *Link) receivePong(nonce astral.Nonce) {
+	s.pingMu.Lock()
+	p := s.activePing
+	s.pingMu.Unlock()
+	if p == nil || p.nonce != nonce {
+		return
 	}
+	close(p.pong)
 }
 
 func (s *Link) SetPressureDetector(d nodes.LinkPressureDetector) {
@@ -232,6 +189,7 @@ func (s *Link) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Wri
 }
 
 type Ping struct {
+	nonce  astral.Nonce
 	sentAt time.Time
 	pong   chan struct{}
 }

@@ -38,6 +38,14 @@ func (mod *Module) ReceiveObject(drop objects.Drop) error {
 				}()
 			}
 
+		case *nodes.LinkClosedEvent:
+			if e.LinkCount == 0 {
+				key := e.RemoteIdentity.String()
+				if sw, ok := mod.upgraders.Get(key); ok && !sw.Running() {
+					mod.upgraders.Delete(key)
+				}
+			}
+
 		}
 
 	}
