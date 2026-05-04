@@ -22,7 +22,7 @@ var _ astral.Router = &Mux{}
 
 type Mux struct {
 	mod  *Module
-	link *Link // todo: remove; kept for identity lookups and throughput accounting
+	link *Link // todo: onClose; kept for identity lookups and throughput accounting
 	ch   *channel.Channel
 	ctx  *astral.Context
 
@@ -198,7 +198,7 @@ func (m *Mux) createSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *
 		return nil, false
 	}
 
-	session.remove = func() { m.sessions.Delete(nonce) } // todo: basically onClose hook
+	session.onClose = func() { m.sessions.Delete(nonce) } // todo: basically onClose hook
 
 	resetFunc := func() { m.resetSession(nonce) }
 	reader := newSessionReader(m.newInputBuffer(nonce))

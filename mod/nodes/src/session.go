@@ -34,17 +34,14 @@ type session struct {
 	Query          string
 	createdAt      time.Time
 	routingResult  chan uint8
-	cond           *sync.Cond // guards paused, closed, link
+	cond           *sync.Cond // guards paused, closed
 	paused         bool
 	closed         bool
 	state          atomic.Int32
-
-	link  *Link         // link the session is currently attached to
-	bytes atomic.Uint64 // total bytes transferred (read + write)
-
-	reader io.ReadCloser
-	writer io.WriteCloser
-	remove func() // removes session from the sessions map
+	bytes          atomic.Uint64 // total bytes transferred (read + write)
+	onClose        func()        // removes session from the sessions map
+	reader         io.ReadCloser
+	writer         io.WriteCloser
 }
 
 func (s *session) Identity() *astral.Identity {
@@ -135,7 +132,7 @@ func (s *session) Close() error {
 		return nil
 	}
 
-	remove := s.remove
+	remove := s.onClose
 	s.state.Store(stateClosed)
 	s.closed = true
 	s.cond.Broadcast()
@@ -165,14 +162,12 @@ func (s *session) swapState(old, new int32) bool {
 	return s.state.CompareAndSwap(old, new)
 }
 
-// rejectRoute handles the routing-phase failure path: transitions the session
-// from stateRouting to stateClosed and notifies the waiting caller.
-// Returns true when code is 0 (no rejection; caller continues to accept path),
-// false when the session was rejected or could not be transitioned.
 func (s *session) acceptsSource(id *astral.Identity) bool {
 	return s.SourceIdentity.IsEqual(id)
 }
 
+// rejectRoute handles the routing-phase failure path: transitions the session
+// from stateRouting to stateClosed and notifies the waiting caller.
 func (s *session) rejectRoute(code uint8) bool {
 	if code == 0 {
 		return true
