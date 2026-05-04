@@ -132,12 +132,6 @@ func (m *Mux) handleFrames(ctx *astral.Context) {
 	}
 }
 
-func (m *Mux) closeAllSessions() {
-	for _, s := range m.sessions.Clone() {
-		s.Close()
-	}
-}
-
 // RouteQuery sends a query over this link and wires the resulting session.
 func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
 	conn, ok := m.createSession(q.Nonce, q.Target, m.remoteIdentity, q.QueryString, true, 0)
@@ -184,77 +178,12 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 	return conn, nil
 }
 
-func (m *Mux) getSession(nonce astral.Nonce) (*session, bool) {
-	session, ok := m.sessions.Get(nonce)
-	if !ok {
-		m.resetSession(nonce)
-		return nil, false
-	}
-
-	return session, true
-}
-
-func (m *Mux) createSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *astral.Identity, queryStr string, outbound bool, peerBuffer int) (*session, bool) {
-	session, ok := m.sessions.Set(nonce, newSession(nonce, remoteIdentity, sourceIdentity, queryStr, outbound))
-	if !ok {
-		return nil, false
-	}
-
-	session.onClose = func() { m.sessions.Delete(nonce) }
-
-	resetFunc := func() { m.resetSession(nonce) }
-	reader := newSessionReader(m.newInputBuffer(nonce))
-	writer := newSessionWriter(m.newOutputBuffer(nonce), resetFunc)
-	writer.Grow(peerBuffer)
-
-	if err := session.Setup(reader, writer); err != nil {
-		m.sessions.Delete(nonce)
-		return nil, false
-	}
-
-	return session, true
-}
-
 func (m *Mux) resetSession(nonce astral.Nonce) error {
 	return m.ch.Send(&frames.Reset{Nonce: nonce})
 }
 
 func (m *Mux) migrateSession(nonce astral.Nonce) error {
 	return m.ch.Send(&frames.Migrate{Nonce: nonce})
-}
-
-func (m *Mux) newInputBuffer(nonce astral.Nonce) *InputBuffer {
-	onRead := func(n int) {
-		m.ch.Send(&frames.Read{Nonce: nonce, Len: uint32(n)})
-	}
-
-	return NewInputBuffer(defaultBufferSize, onRead)
-}
-
-func (m *Mux) newOutputBuffer(nonce astral.Nonce) *OutputBuffer {
-	onWrite := func(p []byte) error {
-		remaining := p
-		for len(remaining) > 0 {
-			chunkSize := maxPayloadSize
-			if len(remaining) < chunkSize {
-				chunkSize = len(remaining)
-			}
-
-			if err := m.ch.Send(&frames.Data{
-				Nonce:   nonce,
-				Payload: remaining[:chunkSize],
-			}); err != nil {
-				return err
-			}
-
-			m.addBytes(chunkSize)
-			remaining = remaining[chunkSize:]
-		}
-
-		return nil
-	}
-
-	return NewOutputBuffer(onWrite)
 }
 
 func (m *Mux) handleQuery(f *frames.Query) {
@@ -355,8 +284,9 @@ func (m *Mux) handleResponse(f *frames.Response) {
 }
 
 func (m *Mux) handleData(f *frames.Data) {
-	session, ok := m.getSession(f.Nonce)
+	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
+		m.resetSession(f.Nonce)
 		return
 	}
 
@@ -383,8 +313,9 @@ func (m *Mux) handleData(f *frames.Data) {
 }
 
 func (m *Mux) handleRead(f *frames.Read) {
-	session, ok := m.getSession(f.Nonce)
+	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
+		m.resetSession(f.Nonce)
 		return
 	}
 

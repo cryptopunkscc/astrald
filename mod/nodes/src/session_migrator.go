@@ -46,8 +46,8 @@ func (m *SessionMigrator) Begin(target *Link) error {
 
 	m.oldInputBuffer = m.reader.Buf()
 
-	newInputBuffer := target.Mux.newInputBuffer(m.session.Nonce)
-	newOutputBuffer := target.Mux.newOutputBuffer(m.session.Nonce)
+	newInputBuffer := NewInputBuffer(defaultBufferSize, target.Mux.sessionOnReadFunc(m.session.Nonce))
+	newOutputBuffer := NewOutputBuffer(target.Mux.sessionOnWriteFunc(m.session.Nonce))
 	resetFunc := func() { target.Mux.resetSession(m.session.Nonce) }
 
 	m.writer.SwapBuf(newOutputBuffer, resetFunc)
