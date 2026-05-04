@@ -78,7 +78,7 @@ func (s *Server) Run(ctx *astral.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			// listener close already triggered above; exit run without hanging
+			// listener close already triggered above; exit Run without hanging
 			return nil
 		case err := <-errCh:
 			// if context cancelled, treat as graceful shutdown

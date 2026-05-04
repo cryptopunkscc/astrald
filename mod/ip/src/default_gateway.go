@@ -47,7 +47,7 @@ func (mod *Module) defaultGatewayLinux() (ip.IP, error) {
 }
 
 func (mod *Module) defaultGatewayDarwin() (ip.IP, error) {
-	// run `netstat -nr` command to get routing table
+	// Run `netstat -nr` command to get routing table
 	cmd := exec.Command("netstat", "-nr")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
