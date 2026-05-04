@@ -162,8 +162,8 @@ func (n *muxLinkNegotiator) newLink(ch *channel.Channel, localIdentity, remoteId
 	mux.localIdentity = localIdentity
 	mux.remoteIdentity = remoteIdentity
 
-	mux.onThroughput = func(n int) { s.AddThroughputBytes(n) }
-	mux.onPong = s.receivePong
+	mux.addBytes = s.AddThroughputBytes
+	mux.handlePong = s.pong
 	mux.onClose = func(err error) { s.CloseWithError(err) }
 
 	s.Mux = mux

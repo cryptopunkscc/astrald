@@ -70,7 +70,7 @@ func (s *Link) CloseWithError(err error) error {
 		return nil
 	}
 	if err == nil {
-		err = errors.New("link closed")
+		err = nodes.ErrLinkNotFound
 	}
 	s.err.Swap(nil, err)
 	_ = s.ch.Close()
@@ -125,10 +125,9 @@ func (s *Link) Wake() {
 
 		select {
 		case <-p.pong:
-			rtt := time.Since(p.sentAt)
-			s.OnRTT(rtt)
+			s.OnRTT(p.rtt)
 			if s.logPings {
-				s.log.Logv(1, "ping with %v: %v", s.remoteIdentity, rtt)
+				s.log.Logv(1, "ping with %v: %v", s.remoteIdentity, p.rtt)
 			}
 		case <-time.After(s.pingTimeout):
 			s.CloseWithError(errors.New("ping timeout"))
@@ -137,14 +136,16 @@ func (s *Link) Wake() {
 	}()
 }
 
-func (s *Link) receivePong(nonce astral.Nonce) {
+func (s *Link) pong(nonce astral.Nonce) (time.Duration, error) {
 	s.pingMu.Lock()
 	p := s.activePing
 	s.pingMu.Unlock()
 	if p == nil || p.nonce != nonce {
-		return
+		return -1, errors.New("invalid pong nonce")
 	}
+	p.rtt = time.Since(p.sentAt)
 	close(p.pong)
+	return p.rtt, nil
 }
 
 func (s *Link) SetPressureDetector(d nodes.LinkPressureDetector) {
@@ -156,17 +157,19 @@ func (s *Link) SetPressureDetector(d nodes.LinkPressureDetector) {
 func (s *Link) AddThroughputBytes(n int) {
 	s.throughput.Add(uint64(n))
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.pressure != nil {
-		s.pressure.OnBytes(n, time.Now())
+	p := s.pressure
+	s.mu.Unlock()
+	if p != nil {
+		p.OnBytes(n, time.Now())
 	}
 }
 
 func (s *Link) OnRTT(rtt time.Duration) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.pressure != nil {
-		s.pressure.OnRTT(rtt, time.Now())
+	p := s.pressure
+	s.mu.Unlock()
+	if p != nil {
+		p.OnRTT(rtt, time.Now())
 	}
 }
 
@@ -178,8 +181,9 @@ func (s *Link) HasPressureDetector() bool {
 
 func (s *Link) IsHighPressure() bool {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.pressure != nil && s.pressure.IsHigh()
+	p := s.pressure
+	s.mu.Unlock()
+	return p != nil && p.IsHigh()
 }
 
 func (s *Link) Throughput() uint64 { return s.throughput.Load() }
@@ -191,5 +195,6 @@ func (s *Link) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Wri
 type Ping struct {
 	nonce  astral.Nonce
 	sentAt time.Time
+	rtt    time.Duration
 	pong   chan struct{}
 }

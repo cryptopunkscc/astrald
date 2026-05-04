@@ -2,7 +2,6 @@ package nodes
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -121,7 +120,7 @@ func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpo
 func (mod *Module) CloseLink(id astral.Nonce) error {
 	for _, s := range mod.linkPool.Links().Values() {
 		if s.ID() == id {
-			return s.CloseWithError(errors.New("link closed"))
+			return s.CloseWithError(nodes.ErrLinkClosed)
 		}
 	}
 

@@ -27,8 +27,8 @@ type Mux struct {
 
 	localIdentity  *astral.Identity
 	remoteIdentity *astral.Identity
-	onThroughput   func(int)
-	onPong         func(astral.Nonce)
+	addBytes       func(int)
+	handlePong     func(astral.Nonce) (time.Duration, error)
 	onClose        func(error)
 
 	router astral.Router
@@ -75,9 +75,7 @@ func (m *Mux) reader() {
 	var rerr error
 	defer func() {
 		close(m.in)
-		if m.onClose != nil {
-			m.onClose(rerr)
-		}
+		m.onClose(rerr)
 	}()
 
 	for {
@@ -249,7 +247,7 @@ func (m *Mux) newOutputBuffer(nonce astral.Nonce) *OutputBuffer {
 				return err
 			}
 
-			m.onThroughput(chunkSize)
+			m.addBytes(chunkSize)
 			remaining = remaining[chunkSize:]
 		}
 
@@ -370,7 +368,7 @@ func (m *Mux) handleData(f *frames.Data) {
 		return
 	}
 
-	m.onThroughput(len(f.Payload))
+	m.addBytes(len(f.Payload))
 
 	reader, ok := session.reader.(*muxSessionReader)
 	if !ok {
@@ -410,8 +408,8 @@ func (m *Mux) handleReset(f *frames.Reset) {
 
 func (m *Mux) handlePing(f *frames.Ping) {
 	if f.Pong {
-		if m.onPong != nil {
-			m.onPong(f.Nonce)
+		if m.handlePong != nil {
+			m.handlePong(f.Nonce)
 		}
 	} else {
 		m.ch.Send(&frames.Ping{Nonce: f.Nonce, Pong: true})

@@ -14,6 +14,7 @@ var (
 	ErrSessionNotFound       = errors.New("session not found")
 	ErrSessionClosed         = errors.New("session closed")
 	ErrLinkNotFound          = errors.New("link not found")
+	ErrLinkClosed            = errors.New("link closed")
 	ErrBufferClosed          = errors.New("buffer closed")
 	ErrBufferOverflow        = errors.New("buffer overflow")
 	ErrLinkNegotiationFailed = errors.New("link negotiation failed")

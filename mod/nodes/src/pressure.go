@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"sync"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -99,6 +100,7 @@ func NewLinkPressureDetector(now time.Time, cfg LinkPressureConfig, onHigh func(
 }
 
 type bucketLinkPressureDetector struct {
+	mu         sync.Mutex
 	cfg        LinkPressureConfig
 	onHigh     func()
 	level      float64
@@ -141,6 +143,8 @@ func (p *bucketLinkPressureDetector) gate(s float64) {
 }
 
 func (p *bucketLinkPressureDetector) OnBytes(n int, now time.Time) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.decay(now)
 	p.level += float64(n)
 	if p.level > p.cfg.Cap {
@@ -150,10 +154,14 @@ func (p *bucketLinkPressureDetector) OnBytes(n int, now time.Time) {
 }
 
 func (p *bucketLinkPressureDetector) IsHigh() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	return p.high
 }
 
 func (p *bucketLinkPressureDetector) OnRTT(rtt time.Duration, now time.Time) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.decay(now)
 	if p.rttEma == 0 {
 		p.rttEma = float64(rtt)
