@@ -59,7 +59,7 @@ func (m *Modules) Run(ctx *astral.Context) error {
 	// Prepare - In this stage, modules should perform any configuration necessary before services are run.
 	var prepared = m.prepareModules(ctx, deps)
 
-	// handleFrames modules. During this stage modules should run all their services for the duration of the context.
+	// run modules. During this stage modules should run all their services for the duration of the context.
 	return m.runModules(ctx, prepared)
 }
 
