@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
@@ -77,7 +78,7 @@ func (n *muxLinkNegotiator) negotiateOutbound(ch *channel.Channel) (astral.Nonce
 		}
 	}
 	if selected == "" {
-		return 0, fmt.Errorf("no supported link types found")
+		return 0, nodes.ErrLinkNegotiationFailed
 	}
 
 	s := astral.String8(selected)
@@ -116,6 +117,10 @@ func (n *muxLinkNegotiator) negotiateInbound(ch *channel.Channel) (astral.Nonce,
 		var selected *astral.String8
 		if err := ch.Switch(channel.Expect(&selected)); err != nil {
 			return 0, err
+		}
+
+		if selected == nil {
+			return 0, nodes.ErrLinkNegotiationFailed
 		}
 
 		switch {
