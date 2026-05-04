@@ -40,7 +40,6 @@ const (
 
 type Module interface {
 	EstablishInboundLink(ctx context.Context, conn exonet.Conn) error
-	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
 
 	AddEndpoint(*astral.Identity, *EndpointWithTTL) error
 	RemoveEndpoint(*astral.Identity, exonet.Endpoint) error

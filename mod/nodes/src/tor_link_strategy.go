@@ -182,7 +182,7 @@ func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.Endpo
 		return nil
 	}
 
-	link, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
+	link, err := s.mod.EstablishOutboundLink(ctx, s.target, conn)
 	if err != nil {
 		s.log.Logv(2, "%v link %v: %v", s.target, endpoint, err)
 		conn.Close()

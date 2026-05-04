@@ -44,7 +44,6 @@ type Module struct {
 
 	observedEndpoints sig.Map[string, ObservedEndpoint] // key is IP string
 
-	peers    *Peers
 	linkPool *LinkPool
 
 	strategyFactories sig.Map[string, nodes.StrategyFactory]
@@ -65,12 +64,45 @@ func (mod *Module) Run(ctx *astral.Context) error {
 }
 
 func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
-	return mod.peers.EstablishInboundLink(ctx, conn)
+	defer func() {
+		if err != nil {
+			conn.Close()
+		}
+	}()
+
+	negotiator, err := mod.GetLinkNegotiator()
+	if err != nil {
+		return err
+	}
+
+	link, err := negotiator.InboundHandshake(ctx, conn)
+	if err != nil {
+		return err
+	}
+
+	_, err = mod.linkPool.AddLink(link)
+	return err
 }
 
-func (mod *Module) EstablishOutboundLink(ctx context.Context, target *astral.Identity, conn exonet.Conn) error {
-	_, err := mod.peers.EstablishOutboundLink(ctx, target, conn)
-	return err
+func (mod *Module) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (link *Link, err error) {
+	defer func() {
+		if err != nil {
+			conn.Close()
+		}
+	}()
+
+	negotiator, err := mod.GetLinkNegotiator()
+	if err != nil {
+		return nil, err
+	}
+
+	negotiatedLink, err := negotiator.OutboundHandshake(ctx, conn, remoteID)
+	if err != nil {
+		return nil, err
+	}
+
+	link, err = mod.linkPool.AddLink(negotiatedLink)
+	return link, err
 }
 
 func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint *nodes.EndpointWithTTL) error {

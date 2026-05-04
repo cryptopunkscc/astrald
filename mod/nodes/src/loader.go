@@ -22,7 +22,6 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(nodes.ModuleName, &mod.config)
 
-	mod.peers = NewPeers(mod)
 	mod.linkPool = NewLinkPool(mod)
 
 	mod.RegisterLinkStrategy(nodes.StrategyBasic, &BasicLinkStrategyFactory{mod: mod, networks: []string{"tcp"}})

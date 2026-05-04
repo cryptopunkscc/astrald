@@ -119,7 +119,7 @@ func (s *BasicLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.End
 		return nil
 	}
 
-	link, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
+	link, err := s.mod.EstablishOutboundLink(ctx, s.target, conn)
 	if err != nil {
 		conn.Close()
 		return nil
