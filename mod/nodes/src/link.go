@@ -32,7 +32,6 @@ type Link struct {
 	mu sync.Mutex
 	// pressure
 	pressure   nodes.LinkPressureDetector
-	pressureMu sync.Mutex // todo: remove
 	throughput atomic.Uint64
 	// pings
 	checks      atomic.Int32
@@ -192,37 +191,37 @@ func (s *Link) pingLoop() {
 }
 
 func (s *Link) SetPressureDetector(d nodes.LinkPressureDetector) {
-	s.pressureMu.Lock()
-	defer s.pressureMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.pressure = d
 }
 
 func (s *Link) AddThroughputBytes(n int) {
 	s.throughput.Add(uint64(n))
-	s.pressureMu.Lock()
-	defer s.pressureMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.pressure != nil {
 		s.pressure.OnBytes(n, time.Now())
 	}
 }
 
 func (s *Link) OnRTT(rtt time.Duration) {
-	s.pressureMu.Lock()
-	defer s.pressureMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.pressure != nil {
 		s.pressure.OnRTT(rtt, time.Now())
 	}
 }
 
 func (s *Link) HasPressureDetector() bool {
-	s.pressureMu.Lock()
-	defer s.pressureMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.pressure != nil
 }
 
 func (s *Link) IsHighPressure() bool {
-	s.pressureMu.Lock()
-	defer s.pressureMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.pressure != nil && s.pressure.IsHigh()
 }
 
