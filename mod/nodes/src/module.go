@@ -198,24 +198,29 @@ func (mod *Module) GetLinkNegotiator() (*muxLinkNegotiator, error) {
 	}, nil
 }
 
-func (mod *Module) reflectLink(s *Link) (err error) {
-	// todo: unnatural ifs
-	if s.outbound || s.RemoteEndpoint() == nil {
-		return
+func (mod *Module) reflectLink(link *Link) error {
+	if link.Outbound() {
+		return nil
 	}
 
-	if _, ok := s.RemoteEndpoint().(*gateway.Endpoint); ok {
-		return
+	endpoint := link.RemoteEndpoint()
+	if endpoint == nil {
+		return nil
 	}
 
-	err = mod.Objects.Push(mod.ctx, s.RemoteIdentity(),
+	if _, ok := endpoint.(*gateway.Endpoint); ok {
+		return nil
+	}
+
+	err := mod.Objects.Push(mod.ctx, link.RemoteIdentity(),
 		&nodes.ObservedEndpointMessage{
-			Endpoint: s.RemoteEndpoint(),
+			Endpoint: endpoint,
 		})
 	if err != nil {
-		mod.log.Errorv(2, "Objects.Push(%v, %v): %v", s.RemoteIdentity(), s.RemoteEndpoint(), err)
-	} else {
-		mod.log.Logv(2, "reflected endpoint %v to %v", s.RemoteEndpoint(), s.RemoteIdentity())
+		mod.log.Errorv(2, "Objects.Push(%v, %v): %v", link.RemoteIdentity(), endpoint, err)
+		return err
 	}
-	return
+
+	mod.log.Logv(2, "reflected endpoint %v to %v", endpoint, link.RemoteIdentity())
+	return nil
 }
