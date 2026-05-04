@@ -198,7 +198,7 @@ func (m *Mux) createSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *
 		return nil, false
 	}
 
-	session.onClose = func() { m.sessions.Delete(nonce) } // todo: basically onClose hook
+	session.onClose = func() { m.sessions.Delete(nonce) }
 
 	resetFunc := func() { m.resetSession(nonce) }
 	reader := newSessionReader(m.newInputBuffer(nonce))
@@ -434,8 +434,6 @@ func (m *Mux) handleMigrate(f *frames.Migrate) {
 	reader.Advance()
 }
 
-func (m *Mux) Read() <-chan frames.Frame { return m.in }
-
 func (m *Mux) ping(nonce astral.Nonce) error {
 	return m.ch.Send(&frames.Ping{Nonce: nonce})
 }
@@ -450,5 +448,7 @@ func (mod *Module) newMux(ch *channel.Channel) *Mux {
 	}
 
 	go m.reader()
+	go m.handleFrames(mod.ctx)
+
 	return m
 }

@@ -90,7 +90,6 @@ func (pool *LinkPool) AddLink(link *Link) (*Link, error) {
 		pool.notifyLinkWatchers(link, nil)
 	}
 
-	// fixme: LinkCreatedEvent
 	pool.mod.Events.Emit(&nodes.LinkCreatedEvent{
 		RemoteIdentity: link.RemoteIdentity(),
 		LinkId:         link.id,
@@ -99,6 +98,8 @@ func (pool *LinkPool) AddLink(link *Link) (*Link, error) {
 
 	pool.mod.log.Infov(1, "added %v-link with %v (%v)", dir, link.RemoteIdentity(), netName)
 	link.SetRouter(pool.mod.node)
+
+	go pool.mod.reflectLink(link)
 
 	return link, nil
 }
