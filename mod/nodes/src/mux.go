@@ -374,7 +374,7 @@ func (mod *Module) newMux(ch *channel.Channel) *Mux {
 		ctx:  mod.ctx,
 		ch:   ch,
 		in:   make(chan frames.Frame, 32),
-		cond: &sync.Cond{},
+		cond: sync.NewCond(&sync.Mutex{}),
 	}
 
 	go m.reader()
