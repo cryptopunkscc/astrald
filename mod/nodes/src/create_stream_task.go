@@ -7,56 +7,56 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
-var _ scheduler.Task = &CreateStreamTask{}
-var _ nodes.CreateStreamTask = &CreateStreamTask{}
+var _ scheduler.Task = &CreateLinkTask{}
+var _ nodes.CreateLinkTask = &CreateLinkTask{}
 
-type CreateStreamTask struct {
+type CreateLinkTask struct {
 	mod      *Module
 	Target   *astral.Identity
 	Endpoint exonet.Endpoint
-	Info     *nodes.StreamInfo
+	Info     *nodes.LinkInfo
 	Err      error
 }
 
-func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateStreamTask {
-	return &CreateStreamTask{
+func (m *Module) NewCreateLinkTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateLinkTask {
+	return &CreateLinkTask{
 		mod:      m,
 		Target:   target,
 		Endpoint: endpoint,
 	}
 }
 
-func (c *CreateStreamTask) Run(ctx *astral.Context) error {
+func (c *CreateLinkTask) Run(ctx *astral.Context) error {
 	conn, err := c.mod.Exonet.Dial(ctx, c.Endpoint)
 	if err != nil {
 		c.Err = err
 		return err
 	}
 
-	stream, err := c.mod.peers.EstablishOutboundLink(ctx, c.Target, conn)
+	link, err := c.mod.peers.EstablishOutboundLink(ctx, c.Target, conn)
 	if err != nil {
 		conn.Close()
 		c.Err = err
 		return err
 	}
 
-	c.Info = &nodes.StreamInfo{
-		ID:             stream.ID(),
-		LocalIdentity:  stream.LocalIdentity(),
-		RemoteIdentity: stream.RemoteIdentity(),
-		LocalEndpoint:  stream.LocalEndpoint(),
-		RemoteEndpoint: stream.RemoteEndpoint(),
-		Outbound:       astral.Bool(stream.Outbound()),
-		Network:        astral.String8(stream.Network()),
+	c.Info = &nodes.LinkInfo{
+		ID:             link.ID(),
+		LocalIdentity:  link.LocalIdentity(),
+		RemoteIdentity: link.RemoteIdentity(),
+		LocalEndpoint:  link.LocalEndpoint(),
+		RemoteEndpoint: link.RemoteEndpoint(),
+		Outbound:       astral.Bool(link.Outbound()),
+		Network:        astral.String8(link.Network()),
 	}
 
 	return nil
 }
 
-func (c *CreateStreamTask) Result() (*nodes.StreamInfo, error) {
+func (c *CreateLinkTask) Result() (*nodes.LinkInfo, error) {
 	return c.Info, c.Err
 }
 
-func (c *CreateStreamTask) String() string {
-	return "nodes.create_stream"
+func (c *CreateLinkTask) String() string {
+	return "nodes.create_link"
 }

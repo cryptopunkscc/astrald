@@ -16,33 +16,28 @@ type SessionMigrator struct {
 	oldInputBuffer *InputBuffer
 }
 
-func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
-	reader, ok := sess.reader.(*muxSessionReader)
+func (mod *Module) newSessionMigrator(session *session) (*SessionMigrator, error) {
+	reader, ok := session.reader.(*muxSessionReader)
 	if !ok {
 		return nil, nodes.ErrMigrationNotSupported
 	}
 
-	writer, ok := sess.writer.(*muxSessionWriter)
+	writer, ok := session.writer.(*muxSessionWriter)
 	if !ok {
 		return nil, nodes.ErrMigrationNotSupported
 	}
 
-	return &SessionMigrator{mod: mod, session: sess, reader: reader, writer: writer}, nil
+	return &SessionMigrator{mod: mod, session: session, reader: reader, writer: writer}, nil
 }
 
-func (m *SessionMigrator) Begin(target nodes.Link) error {
-	targetLink, ok := target.(*Link)
-	if !ok {
-		return nodes.ErrMigrationNotSupported
-	}
-
+func (m *SessionMigrator) Begin(target *Link) error {
 	if !m.session.swapState(stateOpen, stateMigrating) {
 		m.mod.log.Logv(1, "session %v in state %v, cannot migrate", m.session.Nonce, m.session.getState())
 		return nodes.ErrInvalidSessionState
 	}
 
 	m.session.cond.L.Lock()
-	m.oldLink = m.session.stream
+	m.oldLink = m.session.link
 	m.session.cond.L.Unlock()
 
 	m.mod.log.Logv(1, "pausing session %v", m.session.Nonce)
@@ -50,19 +45,19 @@ func (m *SessionMigrator) Begin(target nodes.Link) error {
 
 	m.oldInputBuffer = m.reader.Buf()
 
-	newInputBuffer := targetLink.Mux.newInputBuffer(m.session.Nonce)
-	newOutputBuffer := targetLink.Mux.newOutputBuffer(m.session.Nonce)
-	resetFunc := func() { targetLink.Mux.resetSession(m.session.Nonce) }
+	newInputBuffer := target.Mux.newInputBuffer(m.session.Nonce)
+	newOutputBuffer := target.Mux.newOutputBuffer(m.session.Nonce)
+	resetFunc := func() { target.Mux.resetSession(m.session.Nonce) }
 
 	m.writer.SwapBuf(newOutputBuffer, resetFunc)
 	m.reader.SetNextBuffer(newInputBuffer)
-	m.mod.log.Logv(1, "session %v migrating stream %v → %v", m.session.Nonce, m.oldLink.ID(), target.ID())
+	m.mod.log.Logv(1, "session %v migrating link %v → %v", m.session.Nonce, m.oldLink.ID(), target.ID())
 
 	return nil
 }
 
 func (m *SessionMigrator) SendMigrateFrame() error {
-	m.mod.log.Logv(1, "sending migrate frame for session %v on stream %v", m.session.Nonce, m.oldLink.ID())
+	m.mod.log.Logv(1, "sending migrate frame for session %v on link %v", m.session.Nonce, m.oldLink.ID())
 	return m.oldLink.Mux.migrateSession(m.session.Nonce)
 }
 
@@ -82,7 +77,7 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 }
 
 func (m *SessionMigrator) Complete() error {
-	m.mod.log.Logv(1, "resuming session %v on stream %v (peer buffer %v)", m.session.Nonce, m.session.stream.id, m.peerBuffer)
+	m.mod.log.Logv(1, "resuming session %v on link %v (peer buffer %v)", m.session.Nonce, m.session.link.id, m.peerBuffer)
 
 	m.session.setState(stateOpen)
 	m.writer.Grow(m.peerBuffer)

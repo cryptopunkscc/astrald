@@ -63,7 +63,7 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 		return
 	}
 
-	resultCh := make(chan nodes.Link, 1)
+	resultCh := make(chan *Link, 1)
 
 	// Foreground: quick retries only
 	workerCtx, workerCancel := ctx.WithTimeout(s.quickTimeout)
@@ -77,9 +77,9 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 	}()
 
 	select {
-	case stream := <-resultCh:
+	case link := <-resultCh:
 		s.signalDone()
-		s.deliverLink(stream)
+		s.deliverLink(link)
 		return
 	case <-workerCtx.Done():
 		s.signalDone()
@@ -91,7 +91,7 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 	bgCtx, bgCancel := s.mod.ctx.WithTimeout(s.backgroundTimeout)
 	defer bgCancel()
 
-	bgResultCh := make(chan nodes.Link, 1)
+	bgResultCh := make(chan *Link, 1)
 	go func() {
 		defer close(bgResultCh)
 		if link := s.try(bgCtx, endpoints, s.retries, true); link != nil {
@@ -115,14 +115,14 @@ func (s *TorLinkStrategy) signalDone() {
 	}
 }
 
-func (s *TorLinkStrategy) deliverLink(link nodes.Link) {
+func (s *TorLinkStrategy) deliverLink(link *Link) {
 	if link == nil {
 		return
 	}
 
 	name := s.Name()
 	if !s.mod.linkPool.notifyLinkWatchers(link, &name) {
-		link.CloseWithError(nodes.ErrExcessStream)
+		link.CloseWithError(nodes.ErrExcessLink)
 	}
 }
 
@@ -131,7 +131,7 @@ func (s *TorLinkStrategy) try(
 	endpoints []*nodes.EndpointWithTTL,
 	retries int,
 	withBackoff bool,
-) nodes.Link {
+) *Link {
 
 	var backoff *sig.Retry
 	if withBackoff {
@@ -175,7 +175,7 @@ func (s *TorLinkStrategy) try(
 	return nil
 }
 
-func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) nodes.Link {
+func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Link {
 	conn, err := s.mod.Exonet.Dial(ctx, endpoint.Endpoint)
 	if err != nil {
 		s.log.Logv(2, "%v dial %v: %v", s.target, endpoint, err)
@@ -190,10 +190,10 @@ func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.Endpo
 	}
 
 	// tor is always a candidate for upgrade; monitor for pressure
-	link.SetPressureDetector(NewLinkPressureDetector(time.Now(), TorStreamPressureConfig, func() {
-		s.mod.Events.Emit(&nodes.StreamPressureEvent{
+	link.SetPressureDetector(NewLinkPressureDetector(time.Now(), TorLinkPressureConfig, func() {
+		s.mod.Events.Emit(&nodes.LinkPressureEvent{
 			RemoteIdentity: link.RemoteIdentity(),
-			StreamID:       link.ID(),
+			LinkID:         link.ID(),
 		})
 	}))
 

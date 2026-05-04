@@ -35,7 +35,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 			mod.log.Error("retrieve link failed: %v", result.Err)
 			break
 		}
-		return result.Stream.RouteQuery(ctx, q, w)
+		return result.Link.RouteQuery(ctx, q, w)
 	}
 
 	// try relays

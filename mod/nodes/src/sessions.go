@@ -7,11 +7,11 @@ import (
 	nodesClient "github.com/cryptopunkscc/astrald/mod/nodes/client"
 )
 
-// migrateSession migrates a single session to targetStream (initiator side).
-func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream nodes.Link) (err error) {
+// migrateSession migrates a single session to targetLink (initiator side).
+func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetLink *Link) (err error) {
 	ch, err := nodesClient.New(session.RemoteIdentity, astrald.Default()).MigrateSession(ctx, nodesClient.MigrateSessionArgs{
 		SessionID: session.Nonce,
-		StreamID:  targetStream.ID(),
+		LinkID:    targetLink.ID(),
 	})
 	if err != nil {
 		return err
@@ -24,7 +24,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
-	err = migrator.Begin(targetStream)
+	err = migrator.Begin(targetLink)
 	if err != nil {
 		return err
 	}
@@ -72,18 +72,14 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
-	mod.log.Logv(1, "session %v migrated to stream %v (initiator)", session.Nonce, targetStream.ID())
+	mod.log.Logv(1, "session %v migrated to link %v (initiator)", session.Nonce, targetLink.ID())
 	return nil
 }
 
 func (mod *Module) getSessions() []*session {
 	var sessions []*session
-	for _, l := range mod.linkPool.Links().Values() {
-		tl, ok := l.(*TracedLink)
-		if !ok {
-			continue
-		}
-		sessions = append(sessions, tl.Mux.sessions.Values()...)
+	for _, link := range mod.linkPool.Links().Values() {
+		sessions = append(sessions, link.Mux.sessions.Values()...)
 	}
 	return sessions
 }

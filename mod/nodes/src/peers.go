@@ -5,7 +5,6 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
-	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
 type Peers struct {
@@ -36,11 +35,11 @@ func (mod *Peers) addLink(s *Link) (err error) {
 		return
 	}
 
-	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, s.RemoteIdentity(), netName)
+	mod.log.Infov(1, "added %v-link with %v (%v)", dir, s.RemoteIdentity(), netName)
 
 	go func() {
 		<-s.Done()
-		mod.log.Info("closed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
+		mod.log.Info("closed %v-link with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
 	}()
 
 	go mod.reflectLink(s)
@@ -48,7 +47,7 @@ func (mod *Peers) addLink(s *Link) (err error) {
 	return
 }
 
-func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (link nodes.Link, err error) {
+func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (link *Link, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()

@@ -61,7 +61,7 @@ func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 			a.mod.log.Log("still trying to reconnect to %v (attempt %v)", a.Target, count)
 		}
 
-		task := a.mod.Nodes.NewEnsureStreamTask(a.Target, []string{nodes.StrategyBasic, nodes.StrategyTor}, nil, false)
+		task := a.mod.Nodes.NewEnsureLinkTask(a.Target, []string{nodes.StrategyBasic, nodes.StrategyTor}, nil, false)
 		scheduled, err := a.mod.Scheduler.Schedule(task)
 		if err != nil {
 			return err
@@ -92,8 +92,8 @@ func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 
 func (a *MaintainLinkTask) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
-	case *nodes.StreamClosedEvent:
-		if !typed.RemoteIdentity.IsEqual(a.Target) || typed.StreamCount != 0 {
+	case *nodes.LinkClosedEvent:
+		if !typed.RemoteIdentity.IsEqual(a.Target) || typed.LinkCount != 0 {
 			return
 		}
 

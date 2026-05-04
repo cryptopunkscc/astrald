@@ -51,11 +51,11 @@ type LinkPressureConfig struct {
 	Exit float64
 }
 
-// DefaultStreamPressureConfig is calibrated for transports that are clearly not
-// the best available option. It triggers when the stream sustains notably more
+// DefaultLinkPressureConfig is calibrated for transports that are clearly not
+// the best available option. It triggers when the link sustains notably more
 // traffic than its baseline or when round-trip latency climbs well above the
 // transport norm.
-var DefaultStreamPressureConfig = LinkPressureConfig{
+var DefaultLinkPressureConfig = LinkPressureConfig{
 	LeakRate: 50 * 1024,  // drain 50 KB/s; traffic above this fills the bucket
 	Cap:      500 * 1024, // ceiling at ~10 s of burst headroom above LeakRate
 	LevelRef: 200 * 1024, // 200 KB in bucket → level score of 1.0
@@ -70,12 +70,12 @@ var DefaultStreamPressureConfig = LinkPressureConfig{
 	Exit:  0.4, // re-arm when score falls back below 0.4
 }
 
-// TorStreamPressureConfig is calibrated for Tor streams. RTTRef is set to
+// TorLinkPressureConfig is calibrated for Tor links. RTTRef is set to
 // mid-range Tor latency so that higher-than-normal latency lowers the throughput
 // threshold needed to trigger, while lower latency raises it. WRTT is kept
 // below 1/3 so that RTT alone can never reach Enter=1.0 (max RTT contribution
 // is WRTT*3=0.6).
-var TorStreamPressureConfig = LinkPressureConfig{
+var TorLinkPressureConfig = LinkPressureConfig{
 	LeakRate: 10 * 1024,  // drain 10 KB/s; Tor bandwidth is typically 10–30 KB/s
 	Cap:      200 * 1024, // ceiling at ~20 s of burst headroom above LeakRate
 	LevelRef: 100 * 1024, // 100 KB in bucket → level score of 1.0

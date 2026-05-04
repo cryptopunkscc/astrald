@@ -10,13 +10,13 @@ import (
 )
 
 type linkWatcher struct {
-	match func(nodes.Link, *string) bool
-	ch    chan nodes.Link
+	match func(*Link, *string) bool
+	ch    chan *Link
 }
 
 type LinkPool struct {
 	mod      *Module
-	links    sig.Map[astral.Nonce, nodes.Link]
+	links    sig.Map[astral.Nonce, *Link]
 	watchers sig.Set[*linkWatcher]
 	linkers  sig.Map[string, *NodeLinker]
 }
@@ -27,15 +27,15 @@ func NewLinkPool(mod *Module) *LinkPool {
 	}
 }
 
-func (pool *LinkPool) Links() *sig.Map[astral.Nonce, nodes.Link] {
+func (pool *LinkPool) Links() *sig.Map[astral.Nonce, *Link] {
 	return &pool.links
 }
 
 // SelectLinkWith returns a non-high-pressure link to id, falling back to any link if all are under pressure.
-func (pool *LinkPool) SelectLinkWith(id *astral.Identity) nodes.Link {
-	var fallback nodes.Link
+func (pool *LinkPool) SelectLinkWith(id *astral.Identity) *Link {
+	var fallback *Link
 
-	linksWithRemote := pool.Links().Select(func(_ astral.Nonce, a nodes.Link) bool {
+	linksWithRemote := pool.Links().Select(func(_ astral.Nonce, a *Link) bool {
 		return a.RemoteIdentity().IsEqual(id)
 	})
 
@@ -51,7 +51,7 @@ func (pool *LinkPool) SelectLinkWith(id *astral.Identity) nodes.Link {
 	return fallback
 }
 
-func (pool *LinkPool) AddLink(link *Link) (tracedLink nodes.Link, err error) {
+func (pool *LinkPool) AddLink(link *Link) (*Link, error) {
 	var dir = "in"
 	var netName = "unknown network"
 
@@ -66,26 +66,23 @@ func (pool *LinkPool) AddLink(link *Link) (tracedLink nodes.Link, err error) {
 		netName = link.RemoteEndpoint().Network()
 	}
 
-	onClose := func() {
-		pool.links.Delete(link.id)
-		remaining := pool.links.Select(func(_ astral.Nonce, v nodes.Link) bool {
-			return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
-		})
-
-		pool.mod.Events.Emit(&nodes.StreamClosedEvent{
-			RemoteIdentity: link.RemoteIdentity(),
-			Forced:         false,
-			StreamCount:    astral.Int8(len(remaining)),
-		})
-	}
-
-	tl := NewTracedLink(link, onClose)
-
-	if _, ok := pool.links.Set(link.id, tl); !ok {
+	if _, ok := pool.links.Set(link.id, link); !ok {
 		return nil, errors.New("duplicate link id")
 	}
 
-	streamsWithSameIdentity := pool.links.Select(func(_ astral.Nonce, v nodes.Link) bool {
+	NewTracedLink(link, func(err error) {
+		pool.links.Delete(link.id)
+		remaining := pool.links.Select(func(_ astral.Nonce, v *Link) bool {
+			return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
+		})
+		pool.mod.Events.Emit(&nodes.LinkClosedEvent{
+			RemoteIdentity: link.RemoteIdentity(),
+			Forced:         false,
+			LinkCount:      astral.Int8(len(remaining)),
+		})
+	})
+
+	linksWithSameIdentity := pool.links.Select(func(_ astral.Nonce, v *Link) bool {
 		return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
 	})
 
@@ -94,27 +91,27 @@ func (pool *LinkPool) AddLink(link *Link) (tracedLink nodes.Link, err error) {
 	}
 
 	// fixme: LinkCreatedEvent
-	pool.mod.Events.Emit(&nodes.StreamCreatedEvent{
+	pool.mod.Events.Emit(&nodes.LinkCreatedEvent{
 		RemoteIdentity: link.RemoteIdentity(),
-		StreamId:       link.id,
-		StreamCount:    len(streamsWithSameIdentity),
+		LinkId:         link.id,
+		LinkCount:      len(linksWithSameIdentity),
 	})
 
-	pool.mod.log.Infov(1, "added %v-stream with %v (%v)", dir, link.RemoteIdentity(), netName)
+	pool.mod.log.Infov(1, "added %v-link with %v (%v)", dir, link.RemoteIdentity(), netName)
 	link.SetRouter(pool.mod.node)
 
-	return tl, nil
+	return link, nil
 }
 
 type LinkResult struct {
-	Stream nodes.Link
-	Err    error
+	Link *Link
+	Err  error
 }
 
-func (pool *LinkPool) subscribe(match func(nodes.Link, *string) bool) *linkWatcher {
+func (pool *LinkPool) subscribe(match func(*Link, *string) bool) *linkWatcher {
 	w := &linkWatcher{
 		match: match,
-		ch:    make(chan nodes.Link, 1),
+		ch:    make(chan *Link, 1),
 	}
 
 	pool.watchers.Add(w)
@@ -125,7 +122,7 @@ func (pool *LinkPool) unsubscribe(w *linkWatcher) {
 	pool.watchers.Remove(w)
 }
 
-func (pool *LinkPool) notifyLinkWatchers(s nodes.Link, strategy *string) bool {
+func (pool *LinkPool) notifyLinkWatchers(s *Link, strategy *string) bool {
 	used := false
 	for _, w := range pool.watchers.Clone() {
 		if !w.match(s, strategy) {
@@ -168,7 +165,7 @@ func (pool *LinkPool) RetrieveLink(
 		opt(&o)
 	}
 
-	match := func(s nodes.Link, strategy *string) bool {
+	match := func(s *Link, strategy *string) bool {
 		if !s.RemoteIdentity().IsEqual(target) {
 			return false
 		}
@@ -183,9 +180,9 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	if !o.ForceNew {
-		for _, tl := range pool.links.Values() {
-			if match(tl, nil) {
-				return sig.ArrayToChan([]LinkResult{{Stream: tl}})
+		for _, link := range pool.links.Values() {
+			if match(link, nil) {
+				return sig.ArrayToChan([]LinkResult{{Link: link}})
 			}
 		}
 	}
@@ -208,14 +205,14 @@ func (pool *LinkPool) RetrieveLink(
 		case <-done:
 			select {
 			case s := <-w.ch:
-				result <- LinkResult{Stream: s}
+				result <- LinkResult{Link: s}
 			default:
-				result <- LinkResult{Err: nodes.ErrStreamNotProduced}
+				result <- LinkResult{Err: nodes.ErrLinkNotProduced}
 			}
 		case <-ctx.Done():
 			result <- LinkResult{Err: ctx.Err()}
 		case s := <-w.ch:
-			result <- LinkResult{Stream: s}
+			result <- LinkResult{Link: s}
 		}
 	}()
 

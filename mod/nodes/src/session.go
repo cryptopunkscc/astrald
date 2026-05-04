@@ -34,13 +34,13 @@ type session struct {
 	Query          string
 	createdAt      time.Time
 	routingResult  chan uint8
-	cond           *sync.Cond // guards paused, closed, stream
+	cond           *sync.Cond // guards paused, closed, link
 	paused         bool
 	closed         bool
 	state          atomic.Int32
 
-	stream *Link         // stream the session is currently attached to
-	bytes  atomic.Uint64 // total bytes transferred (read + write)
+	link  *Link         // link the session is currently attached to
+	bytes atomic.Uint64 // total bytes transferred (read + write)
 
 	reader io.ReadCloser
 	writer io.WriteCloser
@@ -100,7 +100,7 @@ func (s *session) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// Setup wires the stream, reader and writer for the session without activating
+// Setup wires the link, reader and writer for the session without activating
 // it. The session stays paused; callers must call Open to allow data flow.
 func (s *session) Setup(reader io.ReadCloser, writer io.WriteCloser) error {
 	s.cond.L.Lock()

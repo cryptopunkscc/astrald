@@ -95,7 +95,7 @@ func (n *muxLinkNegotiator) negotiateOutbound(ch *channel.Channel) (astral.Nonce
 
 	var nonce *astral.Nonce
 	if err = ch.Switch(channel.Expect(&nonce)); err != nil {
-		return 0, fmt.Errorf("read outbound stream nonce: %w", err)
+		return 0, fmt.Errorf("read outbound link nonce: %w", err)
 	}
 
 	return *nonce, nil
@@ -126,7 +126,7 @@ func (n *muxLinkNegotiator) negotiateInbound(ch *channel.Channel) (astral.Nonce,
 			}
 			nonce := astral.NewNonce()
 			if err := ch.Send(&nonce); err != nil {
-				return 0, fmt.Errorf("failed to set inbound stream nonce: %w", err)
+				return 0, fmt.Errorf("failed to set inbound link nonce: %w", err)
 			}
 			return nonce, nil
 		default:

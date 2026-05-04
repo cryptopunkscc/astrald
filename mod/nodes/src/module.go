@@ -87,11 +87,11 @@ func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpo
 	return mod.db.RemoveEndpoint(nodeID, endpoint.Network(), endpoint.Address())
 }
 
-// CloseStream closes a stream with the given id.
-func (mod *Module) CloseStream(id astral.Nonce) error {
+// CloseLink closes a link with the given id.
+func (mod *Module) CloseLink(id astral.Nonce) error {
 	for _, s := range mod.linkPool.Links().Values() {
 		if s.ID() == id {
-			return s.CloseWithError(errors.New("stream closed"))
+			return s.CloseWithError(errors.New("link closed"))
 		}
 	}
 
@@ -133,8 +133,8 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 	return mod.privateKey, nil
 }
 
-// findLinkByID returns a stream with the given local id or nil if not found.
-func (mod *Module) findLinkByID(id astral.Nonce) nodes.Link {
+// findLinkByID returns the link with the given local id or nil if not found.
+func (mod *Module) findLinkByID(id astral.Nonce) *Link {
 	for _, s := range mod.linkPool.Links().Values() {
 		if s.ID() == id {
 			return s
@@ -144,13 +144,8 @@ func (mod *Module) findLinkByID(id astral.Nonce) nodes.Link {
 	return nil
 }
 
-func (mod *Module) findSessionLink(nonce astral.Nonce) nodes.Link {
-	for _, l := range mod.linkPool.Links().Values() {
-		link, ok := l.(*Link)
-		if !ok {
-			continue
-		}
-
+func (mod *Module) findSessionLink(nonce astral.Nonce) *Link {
+	for _, link := range mod.linkPool.Links().Values() {
 		if _, ok := link.Mux.sessions.Get(nonce); ok {
 			return link
 		}

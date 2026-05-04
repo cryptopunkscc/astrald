@@ -7,18 +7,18 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
-type opStreamsArgs struct {
+type opLinksArgs struct {
 	Out string `query:"optional"`
 }
 
-// OpStreams lists all streams.
-func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args opStreamsArgs) (err error) {
+// OpLinks lists all links.
+func (mod *Module) OpLinks(ctx *astral.Context, q *routing.IncomingQuery, args opLinksArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	streams := mod.linkPool.Links().Values()
-	for _, s := range streams {
-		err = ch.Send(&nodes.StreamInfo{
+	links := mod.linkPool.Links().Values()
+	for _, s := range links {
+		err = ch.Send(&nodes.LinkInfo{
 			ID:              s.ID(),
 			LocalIdentity:   s.LocalIdentity(),
 			RemoteIdentity:  s.RemoteIdentity(),

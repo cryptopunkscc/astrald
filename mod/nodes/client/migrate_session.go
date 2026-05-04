@@ -8,7 +8,7 @@ import (
 
 type MigrateSessionArgs struct {
 	SessionID astral.Nonce
-	StreamID  astral.Nonce
+	LinkID    astral.Nonce
 }
 
 func (client *Client) MigrateSession(ctx *astral.Context, args MigrateSessionArgs) (*channel.Channel, error) {
