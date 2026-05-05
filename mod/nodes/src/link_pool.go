@@ -194,7 +194,12 @@ func (pool *LinkPool) RetrieveLink(
 		defer close(result)
 
 		strategyCtx, cancelStrategies := ctx.WithCancel()
-		defer cancelStrategies()
+		cancelOnReturn := true
+		defer func() {
+			if cancelOnReturn {
+				cancelStrategies()
+			}
+		}()
 
 		w := pool.subscribe(match)
 		defer pool.unsubscribe(w)
@@ -206,6 +211,7 @@ func (pool *LinkPool) RetrieveLink(
 		case <-done:
 			select {
 			case s := <-w.ch:
+				cancelOnReturn = false
 				result <- LinkResult{Link: s}
 			default:
 				result <- LinkResult{Err: nodes.ErrLinkNotProduced}
@@ -213,6 +219,7 @@ func (pool *LinkPool) RetrieveLink(
 		case <-ctx.Done():
 			result <- LinkResult{Err: ctx.Err()}
 		case s := <-w.ch:
+			cancelOnReturn = false
 			result <- LinkResult{Link: s}
 		}
 	}()
