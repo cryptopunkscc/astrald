@@ -48,7 +48,7 @@ func (n *muxLinkNegotiator) InboundHandshake(ctx context.Context, conn exonet.Co
 		return nil, fmt.Errorf("inbound handshake: %w", err)
 	}
 
-	ch := channel.New(aconn)
+	ch := channel.New(aconn, channel.WithLockedWrites())
 	nonce, err := n.negotiateInbound(ch)
 	if err != nil {
 		return nil, err
