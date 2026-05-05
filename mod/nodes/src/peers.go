@@ -373,7 +373,7 @@ func (mod *Peers) addLink(
 		mod.linkPool.notifyLinkWatchers(link, nil)
 	}
 
-	mod.Events.Emit(&nodes.StreamCreatedEvent{
+	mod.Events.Emit(&nodes.LinkCreatedEvent{
 		RemoteIdentity: link.RemoteIdentity(),
 		StreamId:       link.id,
 		StreamCount:    len(linksWithSameIdentity),
@@ -395,7 +395,7 @@ func (mod *Peers) addLink(
 			return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
 		})
 
-		mod.Events.Emit(&nodes.StreamClosedEvent{
+		mod.Events.Emit(&nodes.LinkClosedEvent{
 			RemoteIdentity: link.RemoteIdentity(),
 			Forced:         false,
 			StreamCount:    astral.Int8(len(linksWithSameIdentity)),

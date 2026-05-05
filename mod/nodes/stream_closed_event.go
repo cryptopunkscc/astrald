@@ -7,39 +7,41 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-type StreamClosedEvent struct {
+type LinkClosedEvent struct {
 	RemoteIdentity *astral.Identity // Identity of the other party
 	Forced         astral.Bool
 	StreamCount    astral.Int8
 }
 
-func (StreamClosedEvent) ObjectType() string {
+type StreamClosedEvent = LinkClosedEvent
+
+func (LinkClosedEvent) ObjectType() string {
 	return "mod.nodes.stream_closed_event"
 }
 
-func (e StreamClosedEvent) WriteTo(w io.Writer) (n int64, err error) {
+func (e LinkClosedEvent) WriteTo(w io.Writer) (n int64, err error) {
 	return astral.Objectify(&e).WriteTo(w)
 }
 
-func (e *StreamClosedEvent) ReadFrom(r io.Reader) (n int64, err error) {
+func (e *LinkClosedEvent) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(e).ReadFrom(r)
 }
 
-func (m StreamClosedEvent) MarshalJSON() ([]byte, error) {
-	type alias StreamClosedEvent
+func (m LinkClosedEvent) MarshalJSON() ([]byte, error) {
+	type alias LinkClosedEvent
 	return json.Marshal(alias(m))
 }
 
-func (m *StreamClosedEvent) UnmarshalJSON(b []byte) error {
-	type alias StreamClosedEvent
+func (m *LinkClosedEvent) UnmarshalJSON(b []byte) error {
+	type alias LinkClosedEvent
 	var a alias
 	if err := json.Unmarshal(b, &a); err != nil {
 		return err
 	}
-	*m = StreamClosedEvent(a)
+	*m = LinkClosedEvent(a)
 	return nil
 }
 
 func init() {
-	_ = astral.Add(&StreamClosedEvent{})
+	_ = astral.Add(&LinkClosedEvent{})
 }

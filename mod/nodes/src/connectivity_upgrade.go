@@ -13,7 +13,7 @@ import (
 const upgradeTimeout = 3 * time.Minute
 const upgradeCooldown = 5 * time.Minute
 
-func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
+func (mod *Module) connectivityUpgrade(e *nodes.LinkPressureEvent) {
 	connectivityGate := &sig.Switch{}
 	if existing, ok := mod.upgraders.Set(e.RemoteIdentity.String(), connectivityGate); !ok {
 		connectivityGate = existing

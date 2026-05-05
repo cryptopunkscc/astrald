@@ -22,7 +22,7 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		}
 	case *events.Event:
 		switch e := o.Data.(type) {
-		case *nodes.StreamCreatedEvent:
+		case *nodes.LinkCreatedEvent:
 			if e.StreamCount == 1 && slices.ContainsFunc(mod.LocalSwarm(), e.RemoteIdentity.IsEqual) {
 				mod.Scheduler.Schedule(mod.NewSyncNodesTask(e.RemoteIdentity))
 				drop.Accept(false)

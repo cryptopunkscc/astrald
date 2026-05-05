@@ -92,7 +92,7 @@ func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 
 func (a *MaintainLinkTask) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
-	case *nodes.StreamClosedEvent:
+	case *nodes.LinkClosedEvent:
 		if !typed.RemoteIdentity.IsEqual(a.Target) || typed.StreamCount != 0 {
 			return
 		}

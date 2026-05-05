@@ -7,36 +7,38 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-type StreamPressureEvent struct {
+type LinkPressureEvent struct {
 	RemoteIdentity *astral.Identity
 	StreamID       astral.Nonce
 }
 
-func (StreamPressureEvent) ObjectType() string { return "mod.nodes.stream_pressure_event" }
+type StreamPressureEvent = LinkPressureEvent
 
-func (e StreamPressureEvent) WriteTo(w io.Writer) (n int64, err error) {
+func (LinkPressureEvent) ObjectType() string { return "mod.nodes.stream_pressure_event" }
+
+func (e LinkPressureEvent) WriteTo(w io.Writer) (n int64, err error) {
 	return astral.Objectify(&e).WriteTo(w)
 }
 
-func (e *StreamPressureEvent) ReadFrom(r io.Reader) (n int64, err error) {
+func (e *LinkPressureEvent) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(e).ReadFrom(r)
 }
 
-func (e StreamPressureEvent) MarshalJSON() ([]byte, error) {
-	type alias StreamPressureEvent
+func (e LinkPressureEvent) MarshalJSON() ([]byte, error) {
+	type alias LinkPressureEvent
 	return json.Marshal(alias(e))
 }
 
-func (e *StreamPressureEvent) UnmarshalJSON(b []byte) error {
-	type alias StreamPressureEvent
+func (e *LinkPressureEvent) UnmarshalJSON(b []byte) error {
+	type alias LinkPressureEvent
 	var a alias
 	if err := json.Unmarshal(b, &a); err != nil {
 		return err
 	}
-	*e = StreamPressureEvent(a)
+	*e = LinkPressureEvent(a)
 	return nil
 }
 
 func init() {
-	_ = astral.Add(&StreamPressureEvent{})
+	_ = astral.Add(&LinkPressureEvent{})
 }

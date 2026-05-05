@@ -7,37 +7,39 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-type StreamCreatedEvent struct {
+type LinkCreatedEvent struct {
 	RemoteIdentity *astral.Identity
 	StreamId       astral.Nonce
 	StreamCount    int
 }
 
-func (e StreamCreatedEvent) ObjectType() string { return "mod.nodes.stream_created_event" }
+type StreamCreatedEvent = LinkCreatedEvent
 
-func (e StreamCreatedEvent) WriteTo(w io.Writer) (int64, error) {
+func (e LinkCreatedEvent) ObjectType() string { return "mod.nodes.stream_created_event" }
+
+func (e LinkCreatedEvent) WriteTo(w io.Writer) (int64, error) {
 	return astral.Objectify(&e).WriteTo(w)
 }
 
-func (e *StreamCreatedEvent) ReadFrom(r io.Reader) (int64, error) {
+func (e *LinkCreatedEvent) ReadFrom(r io.Reader) (int64, error) {
 	return astral.Objectify(e).ReadFrom(r)
 }
 
-func (e StreamCreatedEvent) MarshalJSON() ([]byte, error) {
-	type alias StreamCreatedEvent
+func (e LinkCreatedEvent) MarshalJSON() ([]byte, error) {
+	type alias LinkCreatedEvent
 	return json.Marshal(alias(e))
 }
 
-func (e *StreamCreatedEvent) UnmarshalJSON(b []byte) error {
-	type alias StreamCreatedEvent
+func (e *LinkCreatedEvent) UnmarshalJSON(b []byte) error {
+	type alias LinkCreatedEvent
 	var a alias
 	if err := json.Unmarshal(b, &a); err != nil {
 		return err
 	}
-	*e = StreamCreatedEvent(a)
+	*e = LinkCreatedEvent(a)
 	return nil
 }
 
 func init() {
-	_ = astral.Add(&StreamCreatedEvent{})
+	_ = astral.Add(&LinkCreatedEvent{})
 }
