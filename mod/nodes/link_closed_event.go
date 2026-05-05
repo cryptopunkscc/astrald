@@ -13,8 +13,6 @@ type LinkClosedEvent struct {
 	LinkCount      astral.Int8
 }
 
-type StreamClosedEvent = LinkClosedEvent
-
 func (LinkClosedEvent) ObjectType() string {
 	return "mod.nodes.link_closed_event"
 }

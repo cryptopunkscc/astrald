@@ -19,8 +19,6 @@ type EnsureLinkTask struct {
 	Err  error
 }
 
-type EnsureStreamTask = EnsureLinkTask
-
 func (m *Module) NewEnsureLinkTask(
 	target *astral.Identity,
 	strategies []string,
@@ -34,15 +32,6 @@ func (m *Module) NewEnsureLinkTask(
 		Networks:   networks,
 		Create:     forceNew,
 	}
-}
-
-func (m *Module) NewEnsureStreamTask(
-	target *astral.Identity,
-	strategies []string,
-	networks []string,
-	forceNew bool,
-) nodes.EnsureStreamTask {
-	return m.NewEnsureLinkTask(target, strategies, networks, forceNew)
 }
 
 func (c *EnsureLinkTask) Run(ctx *astral.Context) (err error) {

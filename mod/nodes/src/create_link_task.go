@@ -18,18 +18,12 @@ type CreateLinkTask struct {
 	Err      error
 }
 
-type CreateStreamTask = CreateLinkTask
-
 func (m *Module) NewCreateLinkTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateLinkTask {
 	return &CreateLinkTask{
 		mod:      m,
 		Target:   target,
 		Endpoint: endpoint,
 	}
-}
-
-func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateStreamTask {
-	return m.NewCreateLinkTask(target, endpoint)
 }
 
 func (c *CreateLinkTask) Run(ctx *astral.Context) error {

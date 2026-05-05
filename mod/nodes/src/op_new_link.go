@@ -10,14 +10,12 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
-type opNewStreamArgs struct {
+type opNewLinkArgs struct {
 	Target     string `query:"required"`
 	Endpoint   string
 	Strategies string
 	Out        string
 }
-
-type opNewLinkArgs = opNewStreamArgs
 
 func (mod *Module) OpNewLink(ctx *astral.Context, q *routing.IncomingQuery, args opNewLinkArgs) (err error) {
 	target, err := mod.Dir.ResolveIdentity(args.Target)
@@ -82,8 +80,4 @@ func (mod *Module) OpNewLink(ctx *astral.Context, q *routing.IncomingQuery, args
 	default:
 		return ch.Send(astral.Err(err))
 	}
-}
-
-func (mod *Module) OpNewStream(ctx *astral.Context, q *routing.IncomingQuery, args opNewStreamArgs) error {
-	return mod.OpNewLink(ctx, q, args)
 }

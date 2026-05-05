@@ -6,12 +6,10 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
-type opCloseStreamArgs struct {
+type opCloseLinkArgs struct {
 	ID  astral.Nonce
 	Out string `query:"optional"`
 }
-
-type opCloseLinkArgs = opCloseStreamArgs
 
 // OpCloseLink closes a link with the given id.
 func (mod *Module) OpCloseLink(ctx *astral.Context, q *routing.IncomingQuery, args opCloseLinkArgs) (err error) {
@@ -22,10 +20,5 @@ func (mod *Module) OpCloseLink(ctx *astral.Context, q *routing.IncomingQuery, ar
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
-
 	return ch.Send(&astral.Ack{})
-}
-
-func (mod *Module) OpCloseStream(ctx *astral.Context, q *routing.IncomingQuery, args opCloseStreamArgs) error {
-	return mod.OpCloseLink(ctx, q, args)
 }

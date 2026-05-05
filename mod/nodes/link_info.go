@@ -23,8 +23,6 @@ type LinkInfo struct {
 	BytesThroughput astral.Uint64
 }
 
-type StreamInfo = LinkInfo
-
 var _ astral.Object = &LinkInfo{}
 var _ encoding.TextMarshaler = &LinkInfo{}
 var _ json.Marshaler = &LinkInfo{}

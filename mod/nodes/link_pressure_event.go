@@ -12,8 +12,6 @@ type LinkPressureEvent struct {
 	LinkID         astral.Nonce
 }
 
-type StreamPressureEvent = LinkPressureEvent
-
 func (LinkPressureEvent) ObjectType() string { return "mod.nodes.link_pressure_event" }
 
 func (e LinkPressureEvent) WriteTo(w io.Writer) (n int64, err error) {

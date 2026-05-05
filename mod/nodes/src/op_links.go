@@ -9,11 +9,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
-type opStreamsArgs struct {
+type opLinksArgs struct {
 	Out string `query:"optional"`
 }
-
-type opLinksArgs = opStreamsArgs
 
 // OpLinks lists all links.
 func (mod *Module) OpLinks(ctx *astral.Context, q *routing.IncomingQuery, args opLinksArgs) (err error) {
@@ -44,8 +42,4 @@ func (mod *Module) OpLinks(ctx *astral.Context, q *routing.IncomingQuery, args o
 	}
 
 	return ch.Send(&astral.EOS{})
-}
-
-func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args opStreamsArgs) error {
-	return mod.OpLinks(ctx, q, args)
 }
