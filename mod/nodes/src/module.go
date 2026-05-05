@@ -111,7 +111,7 @@ func (mod *Module) CloseLink(id astral.Nonce) error {
 		}
 	}
 
-	return errors.New("stream not found")
+	return nodes.ErrLinkNotFound
 }
 
 func (mod *Module) Router() astral.Router {

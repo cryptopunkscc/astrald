@@ -16,7 +16,7 @@ type LinkClosedEvent struct {
 type StreamClosedEvent = LinkClosedEvent
 
 func (LinkClosedEvent) ObjectType() string {
-	return "mod.nodes.stream_closed_event"
+	return "mod.nodes.link_closed_event"
 }
 
 func (e LinkClosedEvent) WriteTo(w io.Writer) (n int64, err error) {

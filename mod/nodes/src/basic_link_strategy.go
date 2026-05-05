@@ -77,7 +77,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 							if _, ok := winner.Swap(nil, link); ok {
 								cancel()
 							} else {
-								link.CloseWithError(nodes.ErrExcessStream)
+								link.CloseWithError(nodes.ErrExcessLink)
 							}
 
 							return
@@ -96,7 +96,7 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 
 		name := s.Name()
 		if !s.mod.linkPool.notifyLinkWatchers(link, &name) {
-			link.CloseWithError(nodes.ErrExcessStream)
+			link.CloseWithError(nodes.ErrExcessLink)
 		}
 	}()
 }

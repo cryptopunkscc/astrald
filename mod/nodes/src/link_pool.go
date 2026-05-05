@@ -130,7 +130,7 @@ func (pool *LinkPool) RetrieveLink(
 			case s := <-w.ch:
 				result <- LinkResult{Link: s}
 			default:
-				result <- LinkResult{Err: nodes.ErrStreamNotProduced}
+				result <- LinkResult{Err: nodes.ErrLinkNotProduced}
 			}
 		case <-ctx.Done():
 			result <- LinkResult{Err: ctx.Err()}

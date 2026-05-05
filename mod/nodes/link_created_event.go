@@ -15,7 +15,7 @@ type LinkCreatedEvent struct {
 
 type StreamCreatedEvent = LinkCreatedEvent
 
-func (e LinkCreatedEvent) ObjectType() string { return "mod.nodes.stream_created_event" }
+func (e LinkCreatedEvent) ObjectType() string { return "mod.nodes.link_created_event" }
 
 func (e LinkCreatedEvent) WriteTo(w io.Writer) (int64, error) {
 	return astral.Objectify(&e).WriteTo(w)

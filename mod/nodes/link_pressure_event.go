@@ -14,7 +14,7 @@ type LinkPressureEvent struct {
 
 type StreamPressureEvent = LinkPressureEvent
 
-func (LinkPressureEvent) ObjectType() string { return "mod.nodes.stream_pressure_event" }
+func (LinkPressureEvent) ObjectType() string { return "mod.nodes.link_pressure_event" }
 
 func (e LinkPressureEvent) WriteTo(w io.Writer) (n int64, err error) {
 	return astral.Objectify(&e).WriteTo(w)

@@ -28,7 +28,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 
 	targetLink := mod.findLinkByID(args.StreamID)
 	if targetLink == nil {
-		return ch.Send(astral.Err(nodes.ErrStreamNotFound))
+		return ch.Send(astral.Err(nodes.ErrLinkNotFound))
 	}
 
 	if args.Start {
