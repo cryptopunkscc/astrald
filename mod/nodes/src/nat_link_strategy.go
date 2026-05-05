@@ -166,9 +166,7 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 
 	s.log.Log("%v linked via %v", s.target, peerEndpoint.Address())
 	name := s.Name()
-	if !s.mod.linkPool.notifyLinkWatchers(link, &name) {
-		link.CloseWithError(nodes.ErrExcessLink)
-	}
+	s.mod.linkPool.notifyLinkWatchers(link, &name)
 
 	return nil
 }
