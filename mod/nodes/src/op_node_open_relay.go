@@ -25,6 +25,11 @@ func (mod *Module) OpNodeOpenRelay(ctx *astral.Context, q *routing.IncomingQuery
 			}
 		}
 
-		return mod.peers.handleRelayQuery(mod.findLinkBySessionNonce(q.Nonce()), container)
+		link := mod.findLinkBySessionNonce(q.Nonce())
+		if link == nil {
+			return astral.Err(nodes.ErrLinkNotFound)
+		}
+
+		return link.GetMux().handleRelayQuery(container)
 	})
 }

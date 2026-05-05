@@ -48,8 +48,6 @@ type Module struct {
 	strategyFactories sig.Map[string, nodes.StrategyFactory]
 	upgraders         sig.Map[string, *sig.Switch]
 
-	in chan *Frame
-
 	searchCache   sig.Map[string, *astral.Identity]
 	relayChannels sig.Map[string, *relayChannel]
 
@@ -59,7 +57,6 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Deps.Scheduler.Ready()
-	go mod.peers.frameReader(ctx)
 	mod.Scheduler.Schedule(mod.NewCleanupEndpointsTask())
 
 	<-ctx.Done()
@@ -104,7 +101,7 @@ func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpo
 
 // CloseLink closes a link with the given id.
 func (mod *Module) CloseLink(id astral.Nonce) error {
-	links := mod.peers.links.Clone()
+	links := mod.linkPool.links.Clone()
 	for _, s := range links {
 		if s.id == id {
 			return s.CloseWithError(errors.New("link closed"))
@@ -151,7 +148,7 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 
 // findLinkByID returns a link with the given local id or nil if not found.
 func (mod *Module) findLinkByID(id astral.Nonce) *Link {
-	for _, s := range mod.peers.links.Clone() {
+	for _, s := range mod.linkPool.links.Clone() {
 		if s.id == id {
 			return s
 		}
@@ -160,11 +157,23 @@ func (mod *Module) findLinkByID(id astral.Nonce) *Link {
 }
 
 func (mod *Module) findLinkBySessionNonce(nonce astral.Nonce) *Link {
-	for _, session := range mod.peers.sessions.Clone() {
-		if session.Nonce == nonce {
+	for _, link := range mod.linkPool.links.Clone() {
+		session, ok := link.GetMux().getSession(nonce)
+		if ok && session.link != nil {
 			return session.link
 		}
 	}
 
 	return nil
+}
+
+func (mod *Module) findSessionByNonce(nonce astral.Nonce) (*session, bool) {
+	for _, link := range mod.linkPool.links.Clone() {
+		session, ok := link.GetMux().getSession(nonce)
+		if ok {
+			return session, true
+		}
+	}
+
+	return nil, false
 }

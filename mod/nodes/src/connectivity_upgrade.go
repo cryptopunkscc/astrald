@@ -23,7 +23,7 @@ func (mod *Module) connectivityUpgrade(e *nodes.LinkPressureEvent) {
 		mod.log.Log("connectivity upgrade triggered for %v (link %v)", e.RemoteIdentity, e.LinkID)
 
 		var targetLink *Link
-		alternatives := mod.peers.links.Select(func(link *Link) bool {
+		alternatives := mod.linkPool.links.Select(func(link *Link) bool {
 			return link.RemoteIdentity().IsEqual(e.RemoteIdentity) && link.id != e.LinkID
 		})
 
@@ -79,9 +79,12 @@ func (mod *Module) migrateSessions(oldLinkID astral.Nonce, newLink *Link) {
 		return
 	}
 
-	sessions := mod.peers.sessions.Select(func(k astral.Nonce, v *session) bool {
-		return v.IsOpen() && v.isOnLink(oldLink) && v.CanAutoMigrate()
-	})
+	var sessions map[astral.Nonce]*session
+	if oldLink != nil {
+		sessions = oldLink.GetMux().sessions.Select(func(k astral.Nonce, v *session) bool {
+			return v.IsOpen() && v.isOnLink(oldLink) && v.CanAutoMigrate()
+		})
+	}
 
 	if len(sessions) == 0 {
 		return

@@ -14,6 +14,7 @@ import (
 
 type Link struct {
 	*frames.Stream
+	mux         *Mux
 	id          astral.Nonce
 	createdAt   time.Time
 	conn        astral.Conn
@@ -31,7 +32,7 @@ type Ping struct {
 	pong   chan struct{}
 }
 
-func newLink(conn astral.Conn, id astral.Nonce, outbound bool) *Link {
+func newLink(peers *Peers, conn astral.Conn, id astral.Nonce, outbound bool) *Link {
 	link := &Link{
 		id:          id,
 		conn:        conn,
@@ -41,6 +42,7 @@ func newLink(conn astral.Conn, id astral.Nonce, outbound bool) *Link {
 		pingTimeout: defaultPingTimeout,
 		wakeCh:      make(chan struct{}, 1),
 	}
+	link.mux = newMux(peers, link)
 
 	go link.pingLoop()
 
@@ -208,4 +210,8 @@ func (s *Link) pingLoop() {
 			s.checks.Add(-1)
 		}
 	}
+}
+
+func (s *Link) GetMux() *Mux {
+	return s.mux
 }

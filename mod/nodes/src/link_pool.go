@@ -14,16 +14,15 @@ type linkWatcher struct {
 }
 
 type LinkPool struct {
-	peers    *Peers
 	mod      *Module
+	links    sig.Set[*Link]
 	watchers sig.Set[*linkWatcher]
 	linkers  sig.Map[string, *NodeLinker]
 }
 
-func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
+func NewLinkPool(mod *Module) *LinkPool {
 	return &LinkPool{
-		peers: peers,
-		mod:   mod,
+		mod: mod,
 	}
 }
 
@@ -104,7 +103,7 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	if !o.ForceNew {
-		links := pool.peers.links.Select(func(s *Link) bool { return match(s, nil) })
+		links := pool.links.Select(func(s *Link) bool { return match(s, nil) })
 		if len(links) > 0 {
 			return sig.ArrayToChan([]LinkResult{{Link: links[0]}})
 		}

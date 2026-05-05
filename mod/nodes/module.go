@@ -63,6 +63,7 @@ type Module interface {
 // Link is an encrypted communication channel between two identities that is capable of routing queries
 type Link interface {
 	astral.Router
+	// SetRouter(router astral.Router)
 	LocalIdentity() *astral.Identity
 	RemoteIdentity() *astral.Identity
 	Close() error

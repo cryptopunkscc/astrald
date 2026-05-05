@@ -19,6 +19,7 @@ var _ astral.Router = &relayChannel{}
 type relayChannel struct {
 	mod      *Module          // for session registry access and self-removal
 	relayID  *astral.Identity // relay node identity (transport, not the actual target)
+	session  *session
 	ch       *channel.Channel
 	mu       sync.Mutex
 	lastUsed time.Time
@@ -31,15 +32,19 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 		}
 	}
 
-	conn, ok := rc.mod.peers.sessions.Set(q.Nonce, newSession(q.Nonce))
-	if !ok {
+	if rc.session == nil {
 		return query.RouteNotFound()
 	}
 
-	conn.RemoteIdentity = q.Target
-	conn.relayID = rc.relayID
-	conn.Query = q.QueryString
-	conn.Outbound = true
+	link := rc.session.currentLink()
+	if link == nil {
+		return query.RouteNotFound()
+	}
+
+	conn, ok := link.GetMux().createSession(q.Nonce, q.Target, rc.relayID, q.QueryString, true, 0)
+	if !ok {
+		return query.RouteNotFound()
+	}
 
 	container := nodes.NewQueryContainer(q, defaultBufferSize)
 
@@ -57,7 +62,7 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 	}
 
 	select {
-	case errCode := <-conn.res:
+	case errCode := <-conn.routingResult:
 		if errCode != 0 {
 			return query.RejectWithCode(errCode)
 		}
@@ -75,7 +80,11 @@ func (rc *relayChannel) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery,
 }
 
 func (mod *Module) newRelayChannel(relayID *astral.Identity, ch *channel.Channel) *relayChannel {
-	return &relayChannel{mod: mod, relayID: relayID, ch: ch, lastUsed: time.Now()}
+	rc := &relayChannel{mod: mod, relayID: relayID, ch: ch, lastUsed: time.Now()}
+	if sess, ok := ch.Transport().(*session); ok {
+		rc.session = sess
+	}
+	return rc
 }
 
 func (mod *Module) getRelay(ctx *astral.Context, relayID *astral.Identity) (*relayChannel, error) {
