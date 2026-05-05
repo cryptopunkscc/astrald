@@ -122,7 +122,7 @@ func (s *TorLinkStrategy) deliverLink(link *Link) {
 
 	name := s.Name()
 	if !s.mod.linkPool.notifyLinkWatchers(link, &name) {
-		link.CloseWithError(nodes.ErrExcessLink)
+		//	link.CloseWithError(nodes.ErrExcessLink)
 	}
 }
 
