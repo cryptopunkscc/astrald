@@ -17,15 +17,15 @@ func (mod *Peers) createSession(nonce astral.Nonce) (*session, bool) {
 	return sess, true
 }
 
-func (mod *Peers) newMuxInputBuffer(s *Stream, nonce astral.Nonce) *InputBuffer {
+func (mod *Peers) newMuxInputBuffer(link *Link, nonce astral.Nonce) *InputBuffer {
 	onRead := func(n int) {
-		s.Write(&frames.Read{Nonce: nonce, Len: uint32(n)})
+		link.Write(&frames.Read{Nonce: nonce, Len: uint32(n)})
 	}
 
 	return NewInputBuffer(defaultBufferSize, onRead)
 }
 
-func (mod *Peers) newMuxOutputBuffer(s *Stream, nonce astral.Nonce, sess *session) *OutputBuffer {
+func (mod *Peers) newMuxOutputBuffer(link *Link, nonce astral.Nonce, sess *session) *OutputBuffer {
 	onWrite := func(p []byte) error {
 		remaining := p
 		for len(remaining) > 0 {
@@ -36,7 +36,7 @@ func (mod *Peers) newMuxOutputBuffer(s *Stream, nonce astral.Nonce, sess *sessio
 
 			chunk := remaining[:chunkSize]
 
-			if err := s.Write(&frames.Data{
+			if err := link.Write(&frames.Data{
 				Nonce:   nonce,
 				Payload: chunk,
 			}); err != nil {
@@ -53,10 +53,10 @@ func (mod *Peers) newMuxOutputBuffer(s *Stream, nonce astral.Nonce, sess *sessio
 }
 
 // migrateSession migrates single session (initiator side)
-func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetStream *Stream) (err error) {
+func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetLink *Link) (err error) {
 	ch, err := nodesClient.New(session.RemoteIdentity, astrald.Default()).MigrateSession(ctx, nodesClient.MigrateSessionArgs{
 		SessionID: session.Nonce,
-		StreamID:  targetStream.id,
+		StreamID:  targetLink.id,
 	})
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
-	err = migrator.Begin(targetStream)
+	err = migrator.Begin(targetLink)
 	if err != nil {
 		return err
 	}
@@ -116,6 +116,6 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetS
 		return err
 	}
 
-	mod.log.Logv(1, "session %v migrated to stream %v (initiator)", session.Nonce, targetStream.id)
+	mod.log.Logv(1, "session %v migrated to stream %v (initiator)", session.Nonce, targetLink.id)
 	return nil
 }

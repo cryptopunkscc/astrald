@@ -63,7 +63,7 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 		return
 	}
 
-	resultCh := make(chan *Stream, 1)
+	resultCh := make(chan *Link, 1)
 
 	// Foreground: quick retries only
 	workerCtx, workerCancel := ctx.WithTimeout(s.quickTimeout)
@@ -71,15 +71,15 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 
 	go func() {
 		defer close(resultCh)
-		if stream := s.try(workerCtx, endpoints, s.quickRetries, false); stream != nil {
-			resultCh <- stream
+		if link := s.try(workerCtx, endpoints, s.quickRetries, false); link != nil {
+			resultCh <- link
 		}
 	}()
 
 	select {
-	case stream := <-resultCh:
+	case link := <-resultCh:
 		s.signalDone()
-		s.deliverStream(stream)
+		s.deliverLink(link)
 		return
 	case <-workerCtx.Done():
 		s.signalDone()
@@ -91,17 +91,17 @@ func (s *TorLinkStrategy) attempt(ctx *astral.Context) {
 	bgCtx, bgCancel := s.mod.ctx.WithTimeout(s.backgroundTimeout)
 	defer bgCancel()
 
-	bgResultCh := make(chan *Stream, 1)
+	bgResultCh := make(chan *Link, 1)
 	go func() {
 		defer close(bgResultCh)
-		if stream := s.try(bgCtx, endpoints, s.retries, true); stream != nil {
-			bgResultCh <- stream
+		if link := s.try(bgCtx, endpoints, s.retries, true); link != nil {
+			bgResultCh <- link
 		}
 	}()
 
 	select {
-	case stream := <-bgResultCh:
-		s.deliverStream(stream)
+	case link := <-bgResultCh:
+		s.deliverLink(link)
 	case <-bgCtx.Done():
 	}
 }
@@ -115,14 +115,14 @@ func (s *TorLinkStrategy) signalDone() {
 	}
 }
 
-func (s *TorLinkStrategy) deliverStream(stream *Stream) {
-	if stream == nil {
+func (s *TorLinkStrategy) deliverLink(link *Link) {
+	if link == nil {
 		return
 	}
 
 	name := s.Name()
-	if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
-		stream.CloseWithError(nodes.ErrExcessStream)
+	if !s.mod.linkPool.notifyLinkWatchers(link, &name) {
+		link.CloseWithError(nodes.ErrExcessStream)
 	}
 }
 
@@ -131,7 +131,7 @@ func (s *TorLinkStrategy) try(
 	endpoints []*nodes.EndpointWithTTL,
 	retries int,
 	withBackoff bool,
-) *Stream {
+) *Link {
 
 	var backoff *sig.Retry
 	if withBackoff {
@@ -149,8 +149,8 @@ func (s *TorLinkStrategy) try(
 			if ctx.Err() != nil {
 				return nil
 			}
-			if stream := s.tryEndpoint(ctx, ep); stream != nil {
-				return stream
+			if link := s.tryEndpoint(ctx, ep); link != nil {
+				return link
 			}
 		}
 
@@ -175,14 +175,14 @@ func (s *TorLinkStrategy) try(
 	return nil
 }
 
-func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Stream {
+func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.EndpointWithTTL) *Link {
 	conn, err := s.mod.Exonet.Dial(ctx, endpoint.Endpoint)
 	if err != nil {
 		s.log.Logv(2, "%v dial %v: %v", s.target, endpoint, err)
 		return nil
 	}
 
-	stream, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
+	link, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
 	if err != nil {
 		s.log.Logv(2, "%v link %v: %v", s.target, endpoint, err)
 		conn.Close()
@@ -190,15 +190,15 @@ func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.Endpo
 	}
 
 	// tor is always a candidate for upgrade; monitor for pressure
-	stream.pressure = NewStreamPressureDetector(time.Now(), TorStreamPressureConfig, func() {
+	link.pressure = NewStreamPressureDetector(time.Now(), TorStreamPressureConfig, func() {
 		s.mod.Events.Emit(&nodes.StreamPressureEvent{
-			RemoteIdentity: stream.RemoteIdentity(),
-			StreamID:       stream.id,
+			RemoteIdentity: link.RemoteIdentity(),
+			StreamID:       link.id,
 		})
 	})
 
 	s.log.Log("%v linked via %v", s.target, endpoint)
-	return stream
+	return link
 }
 
 func (s *TorLinkStrategy) Done() <-chan struct{} {

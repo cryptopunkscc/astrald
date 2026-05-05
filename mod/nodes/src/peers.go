@@ -21,7 +21,7 @@ import (
 
 type Peers struct {
 	*Module
-	streams  sig.Set[*Stream]
+	links    sig.Set[*Link]
 	sessions sig.Map[astral.Nonce, *session]
 }
 
@@ -30,12 +30,12 @@ func NewPeers(m *Module) *Peers {
 }
 
 func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
-	streams := mod.streams.Select(func(s *Stream) bool {
-		return s.RemoteIdentity().IsEqual(q.Target)
+	links := mod.links.Select(func(link *Link) bool {
+		return link.RemoteIdentity().IsEqual(q.Target)
 	})
 
 	// are we linked?
-	if len(streams) == 0 {
+	if len(links) == 0 {
 		return query.RouteNotFound()
 	}
 
@@ -56,9 +56,9 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 		Buffer: uint32(defaultBufferSize),
 	}
 
-	// send the query via all streams
-	for _, s := range streams {
-		go s.Write(frame)
+	// send the query via all links
+	for _, link := range links {
+		go link.Write(frame)
 	}
 
 	// wait for the response
@@ -84,12 +84,12 @@ func (mod *Peers) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.
 func (mod *Peers) peers() (peers []*astral.Identity) {
 	var r = map[string]struct{}{}
 
-	for _, s := range mod.streams.Clone() {
-		if _, found := r[s.RemoteIdentity().String()]; found {
+	for _, link := range mod.links.Clone() {
+		if _, found := r[link.RemoteIdentity().String()]; found {
 			continue
 		}
-		r[s.RemoteIdentity().String()] = struct{}{}
-		peers = append(peers, s.RemoteIdentity())
+		r[link.RemoteIdentity().String()] = struct{}{}
+		peers = append(peers, link.RemoteIdentity())
 	}
 
 	return
@@ -123,19 +123,19 @@ func (mod *Peers) frameReader(ctx context.Context) {
 	}
 }
 
-func (mod *Peers) handleQuery(s *Stream, f *frames.Query) {
-	mod.handleInboundQuery(s, f.Nonce, s.RemoteIdentity(), s.LocalIdentity(), nil, f.Query, int(f.Buffer))
+func (mod *Peers) handleQuery(link *Link, f *frames.Query) {
+	mod.handleInboundQuery(link, f.Nonce, link.RemoteIdentity(), link.LocalIdentity(), nil, f.Query, int(f.Buffer))
 }
 
 // handleRelayQuery routes a query received via a relay channel to its target and bridges
 // the resulting session back to the caller over the relay peer's stream.
-func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) error {
+func (mod *Peers) handleRelayQuery(link *Link, relayQuery *nodes.QueryContainer) error {
 	mod.handleInboundQuery(
-		s,
+		link,
 		relayQuery.Query.Nonce,
 		relayQuery.CallerID,
 		relayQuery.TargetID,
-		s.RemoteIdentity(),
+		link.RemoteIdentity(),
 		relayQuery.Query.Query,
 		int(relayQuery.Query.Buffer),
 	)
@@ -143,7 +143,7 @@ func (mod *Peers) handleRelayQuery(s *Stream, relayQuery *nodes.QueryContainer) 
 	return nil
 }
 
-func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, target *astral.Identity, relayID *astral.Identity, queryStr string, initBuffer int) {
+func (mod *Peers) handleInboundQuery(link *Link, nonce astral.Nonce, caller, target *astral.Identity, relayID *astral.Identity, queryStr string, initBuffer int) {
 	conn, ok := mod.createSession(nonce)
 	if !ok {
 		return // ignore duplicates
@@ -152,7 +152,7 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	conn.RemoteIdentity = caller
 	conn.relayID = relayID
 	conn.Query = queryStr
-	conn.stream = s
+	conn.link = link
 
 	var q = astral.Launch(&astral.Query{
 		Nonce:       nonce,
@@ -172,19 +172,19 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 		if errors.As(err, &reject) {
 			code = reject.Code
 		}
-		s.Write(&frames.Response{Nonce: nonce, ErrCode: code})
+		link.Write(&frames.Response{Nonce: nonce, ErrCode: code})
 		return
 	}
 
-	resetFunc := func() { s.Write(&frames.Reset{Nonce: nonce}) }
-	reader := newSessionReader(mod.newMuxInputBuffer(s, nonce))
-	writer := newSessionWriter(mod.newMuxOutputBuffer(s, nonce, conn), resetFunc)
+	resetFunc := func() { link.Write(&frames.Reset{Nonce: nonce}) }
+	reader := newSessionReader(mod.newMuxInputBuffer(link, nonce))
+	writer := newSessionWriter(mod.newMuxOutputBuffer(link, nonce, conn), resetFunc)
 	writer.Grow(initBuffer)
 
-	if err := conn.Setup(s, reader, writer); err != nil {
+	if err := conn.Setup(link, reader, writer); err != nil {
 		return
 	}
-	s.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
+	link.Write(&frames.Response{Nonce: nonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 	conn.Open()
 
 	go func() {
@@ -193,7 +193,7 @@ func (mod *Peers) handleInboundQuery(s *Stream, nonce astral.Nonce, caller, targ
 	}()
 }
 
-func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
+func (mod *Peers) handleResponse(link *Link, f *frames.Response) {
 	conn, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
@@ -204,7 +204,7 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 		expectedSource = conn.relayID
 	}
 
-	if !expectedSource.IsEqual(s.RemoteIdentity()) {
+	if !expectedSource.IsEqual(link.RemoteIdentity()) {
 		return
 	}
 
@@ -221,11 +221,11 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 		return
 	}
 
-	resetFunc := func() { s.Write(&frames.Reset{Nonce: f.Nonce}) }
-	reader := newSessionReader(mod.newMuxInputBuffer(s, f.Nonce))
-	writer := newSessionWriter(mod.newMuxOutputBuffer(s, f.Nonce, conn), resetFunc)
+	resetFunc := func() { link.Write(&frames.Reset{Nonce: f.Nonce}) }
+	reader := newSessionReader(mod.newMuxInputBuffer(link, f.Nonce))
+	writer := newSessionWriter(mod.newMuxOutputBuffer(link, f.Nonce, conn), resetFunc)
 	writer.Grow(int(f.Buffer))
-	if err := conn.Setup(s, reader, writer); err != nil {
+	if err := conn.Setup(link, reader, writer); err != nil {
 		return
 	}
 	conn.Open()
@@ -233,29 +233,29 @@ func (mod *Peers) handleResponse(s *Stream, f *frames.Response) {
 	conn.res <- 0
 }
 
-func (mod *Peers) handleData(s *Stream, f *frames.Data) {
+func (mod *Peers) handleData(link *Link, f *frames.Data) {
 	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
-		s.Write(&frames.Reset{Nonce: f.Nonce})
+		link.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
 	switch session.getState() {
 	case stateOpen, stateMigrating:
 	default:
-		mod.log.Errorv(1, "received data frame from %v in state %v", s.RemoteIdentity(), session.getState())
-		s.Write(&frames.Reset{Nonce: f.Nonce})
+		mod.log.Errorv(1, "received data frame from %v in state %v", link.RemoteIdentity(), session.getState())
+		link.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
-	s.throughput.Add(uint64(len(f.Payload)))
-	if s.pressure != nil {
-		s.pressure.OnBytes(len(f.Payload), time.Now())
+	link.throughput.Add(uint64(len(f.Payload)))
+	if link.pressure != nil {
+		link.pressure.OnBytes(len(f.Payload), time.Now())
 	}
 
 	reader, ok := session.reader.(*muxSessionReader)
 	if !ok {
-		mod.log.Errorv(1, "received data frame from %v on non-mux session", s.RemoteIdentity())
+		mod.log.Errorv(1, "received data frame from %v on non-mux session", link.RemoteIdentity())
 		return
 	}
 
@@ -266,17 +266,17 @@ func (mod *Peers) handleData(s *Stream, f *frames.Data) {
 	}
 }
 
-func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
+func (mod *Peers) handleRead(link *Link, f *frames.Read) {
 	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
-		s.Write(&frames.Reset{Nonce: f.Nonce})
+		link.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
 	// Discard Read frames from the old stream after migration has swapped
 	// the session to a new stream. These credits correspond to the old
 	// input buffer and must not inflate the new output buffer's wsize.
-	if !session.isOnStream(s) {
+	if !session.isOnLink(link) {
 		return
 	}
 
@@ -286,7 +286,7 @@ func (mod *Peers) handleRead(s *Stream, f *frames.Read) {
 	}
 }
 
-func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
+func (mod *Peers) handleReset(link *Link, f *frames.Reset) {
 	session, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
@@ -298,25 +298,25 @@ func (mod *Peers) handleReset(s *Stream, f *frames.Reset) {
 	session.Close()
 }
 
-func (mod *Peers) handlePing(s *Stream, f *frames.Ping) {
+func (mod *Peers) handlePing(link *Link, f *frames.Ping) {
 	if f.Pong {
-		rtt, err := s.pong(f.Nonce)
+		rtt, err := link.pong(f.Nonce)
 		if err != nil {
-			mod.log.Errorv(1, "invalid pong sessionId from %v", s.RemoteIdentity())
+			mod.log.Errorv(1, "invalid pong sessionId from %v", link.RemoteIdentity())
 		} else {
 			if mod.config.LogPings {
-				mod.log.Logv(1, "ping with %v: %v", s.RemoteIdentity(), rtt)
+				mod.log.Logv(1, "ping with %v: %v", link.RemoteIdentity(), rtt)
 			}
 		}
 	} else {
-		s.Write(&frames.Ping{
+		link.Write(&frames.Ping{
 			Nonce: f.Nonce,
 			Pong:  true,
 		})
 	}
 }
 
-func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
+func (mod *Peers) handleMigrate(link *Link, f *frames.Migrate) {
 	sess, ok := mod.sessions.Get(f.Nonce)
 	if !ok {
 		return
@@ -338,121 +338,121 @@ func (mod *Peers) handleMigrate(s *Stream, f *frames.Migrate) {
 	reader.Advance()
 }
 
-func (mod *Peers) addStream(
-	s *Stream,
+func (mod *Peers) addLink(
+	link *Link,
 ) (err error) {
 	var (
 		dir     = "in"
 		netName = "unknown network"
 	)
 
-	if s.outbound {
+	if link.outbound {
 		dir = "out"
 	}
 
 	// try to figure out the network name
 	switch {
-	case s.LocalEndpoint() != nil:
-		netName = s.LocalEndpoint().Network()
-	case s.RemoteEndpoint() != nil:
-		netName = s.RemoteEndpoint().Network()
+	case link.LocalEndpoint() != nil:
+		netName = link.LocalEndpoint().Network()
+	case link.RemoteEndpoint() != nil:
+		netName = link.RemoteEndpoint().Network()
 	}
 
-	err = mod.streams.Add(s)
+	err = mod.links.Add(link)
 	if err != nil {
 		return
 	}
 
 	// log stream addition
-	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, s.RemoteIdentity(), netName)
-	streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {
-		return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
+	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, link.RemoteIdentity(), netName)
+	linksWithSameIdentity := mod.links.Select(func(v *Link) bool {
+		return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
 	})
 
-	if !s.outbound {
-		mod.linkPool.notifyStreamWatchers(s, nil)
+	if !link.outbound {
+		mod.linkPool.notifyLinkWatchers(link, nil)
 	}
 
 	mod.Events.Emit(&nodes.StreamCreatedEvent{
-		RemoteIdentity: s.RemoteIdentity(),
-		StreamId:       s.id,
-		StreamCount:    len(streamsWithSameIdentity),
+		RemoteIdentity: link.RemoteIdentity(),
+		StreamId:       link.id,
+		StreamCount:    len(linksWithSameIdentity),
 	})
 
 	// handle the stream
 	go func() {
-		mod.readStreamFrames(s)
+		mod.readLinkFrames(link)
 
 		// remove the stream and its connections
-		mod.streams.Remove(s)
+		mod.links.Remove(link)
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
-			return v.isOnStream(s)
+			return v.isOnLink(link)
 		}) {
 			c.Close()
 		}
 
-		streamsWithSameIdentity := mod.streams.Select(func(v *Stream) bool {
-			return v.RemoteIdentity().IsEqual(s.RemoteIdentity())
+		linksWithSameIdentity := mod.links.Select(func(v *Link) bool {
+			return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
 		})
 
 		mod.Events.Emit(&nodes.StreamClosedEvent{
-			RemoteIdentity: s.RemoteIdentity(),
+			RemoteIdentity: link.RemoteIdentity(),
 			Forced:         false,
-			StreamCount:    astral.Int8(len(streamsWithSameIdentity)),
+			StreamCount:    astral.Int8(len(linksWithSameIdentity)),
 		})
 
-		mod.log.Info("closed %v-stream with %v (%v): %v", dir, s.RemoteIdentity(), netName, s.Err())
+		mod.log.Info("closed %v-stream with %v (%v): %v", dir, link.RemoteIdentity(), netName, link.Err())
 	}()
 
 	// reflect the stream
-	go mod.reflectStream(s)
+	go mod.reflectLink(link)
 
 	return
 }
 
 // reflectStream reflects the observed remote endpoint on inbound streams
-func (mod *Peers) reflectStream(s *Stream) (err error) {
+func (mod *Peers) reflectLink(link *Link) (err error) {
 	// reflect only on inbound streams with a known remote endpoint
-	if s.outbound || s.RemoteEndpoint() == nil {
+	if link.outbound || link.RemoteEndpoint() == nil {
 		return
 	}
 
 	// note: rethink maybe switch (?)
-	if _, ok := s.RemoteEndpoint().(*gateway.Endpoint); ok {
+	if _, ok := link.RemoteEndpoint().(*gateway.Endpoint); ok {
 		// dont reflect gateway endpoints
 		return
 	}
 	// reflect the endpoint
-	err = mod.Objects.Push(mod.ctx, s.RemoteIdentity(),
+	err = mod.Objects.Push(mod.ctx, link.RemoteIdentity(),
 		&nodes.ObservedEndpointMessage{
-			Endpoint: s.RemoteEndpoint(),
+			Endpoint: link.RemoteEndpoint(),
 		})
 
 	// log the result
 	if err != nil {
-		mod.log.Errorv(2, "Objects.Push(%v, %v): %v", s.RemoteIdentity(), s.RemoteEndpoint(), err)
+		mod.log.Errorv(2, "Objects.Push(%v, %v): %v", link.RemoteIdentity(), link.RemoteEndpoint(), err)
 	} else {
-		mod.log.Logv(2, "reflected endpoint %v to %v", s.RemoteEndpoint(), s.RemoteIdentity())
+		mod.log.Logv(2, "reflected endpoint %v to %v", link.RemoteEndpoint(), link.RemoteIdentity())
 	}
 
 	return
 }
 
 // readStreamFrames reads frames from the stream until it closes
-func (mod *Peers) readStreamFrames(s *Stream) {
+func (mod *Peers) readLinkFrames(link *Link) {
 	// read frames
-	for frame := range s.Read() {
+	for frame := range link.Read() {
 		mod.in <- &Frame{
 			Frame:  frame, // NOTE: add timeout handling?
-			Source: s,
+			Source: link,
 		}
 	}
 }
 
 // isLinked returns true if there's at least one stream with the given remote identity
 func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
-	for _, s := range mod.streams.Clone() {
-		if s.RemoteIdentity().IsEqual(remoteID) {
+	for _, link := range mod.links.Clone() {
+		if link.RemoteIdentity().IsEqual(remoteID) {
 			return true
 		}
 	}
@@ -508,7 +508,7 @@ func (mod *Peers) readOutboundStreamNonce(aconn astral.Conn) (nonce astral.Nonce
 	return nonce, nil
 }
 
-func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Stream, err error) {
+func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ *Link, err error) {
 	defer func() {
 		if err != nil {
 			conn.Close()
@@ -558,10 +558,10 @@ func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Id
 			return nil, fmt.Errorf(`read outbound stream nonce: %w`, err)
 		}
 
-		stream := newStream(aconn, nonce, true)
-		err = mod.addStream(stream)
+		link := newLink(aconn, nonce, true)
+		err = mod.addLink(link)
 
-		return stream, err
+		return link, err
 	}
 
 	return nil, errors.New("no supported link types found")
@@ -608,8 +608,8 @@ func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (e
 					return fmt.Errorf("failed to set inbound stream nonce: %w", err)
 				}
 
-				stream := newStream(aconn, nonce, false)
-				err = mod.addStream(stream)
+				link := newLink(aconn, nonce, false)
+				err = mod.addLink(link)
 				if err != nil {
 					return fmt.Errorf("failed to add stream: %w", err)
 				}

@@ -33,7 +33,7 @@ func (c *CreateStreamTask) Run(ctx *astral.Context) error {
 		return err
 	}
 
-	stream, err := c.mod.peers.EstablishOutboundLink(ctx, c.Target, conn)
+	link, err := c.mod.peers.EstablishOutboundLink(ctx, c.Target, conn)
 	if err != nil {
 		conn.Close()
 		c.Err = err
@@ -41,13 +41,13 @@ func (c *CreateStreamTask) Run(ctx *astral.Context) error {
 	}
 
 	c.Info = &nodes.StreamInfo{
-		ID:             stream.id,
-		LocalIdentity:  stream.LocalIdentity(),
-		RemoteIdentity: stream.RemoteIdentity(),
-		LocalEndpoint:  stream.LocalEndpoint(),
-		RemoteEndpoint: stream.RemoteEndpoint(),
-		Outbound:       astral.Bool(stream.outbound),
-		Network:        astral.String8(stream.Network()),
+		ID:             link.id,
+		LocalIdentity:  link.LocalIdentity(),
+		RemoteIdentity: link.RemoteIdentity(),
+		LocalEndpoint:  link.LocalEndpoint(),
+		RemoteEndpoint: link.RemoteEndpoint(),
+		Outbound:       astral.Bool(link.outbound),
+		Network:        astral.String8(link.Network()),
 	}
 
 	return nil

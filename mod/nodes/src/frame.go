@@ -6,5 +6,5 @@ import (
 
 type Frame struct {
 	frames.Frame
-	Source *Stream
+	Source *Link
 }

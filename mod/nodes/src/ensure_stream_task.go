@@ -52,16 +52,16 @@ func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
 		opts = append(opts, WithNetworks(c.Networks...))
 	}
 
-	streamFuture := c.mod.linkPool.RetrieveLink(ctx, c.Target, opts...)
+	linkFuture := c.mod.linkPool.RetrieveLink(ctx, c.Target, opts...)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case result := <-streamFuture:
+	case result := <-linkFuture:
 		if result.Err != nil {
 			return result.Err
 		}
 
-		s := result.Stream
+		s := result.Link
 		c.Info = &nodes.StreamInfo{
 			ID:             s.id,
 			LocalIdentity:  s.LocalIdentity(),

@@ -18,13 +18,13 @@ func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	streams := mod.peers.streams.Clone()
+	links := mod.peers.links.Clone()
 
-	slices.SortFunc(streams, func(a, b *Stream) int {
+	slices.SortFunc(links, func(a, b *Link) int {
 		return a.createdAt.Compare(b.createdAt)
 	})
 
-	for _, s := range streams {
+	for _, s := range links {
 		err = ch.Send(&nodes.StreamInfo{
 			ID:              s.id,
 			LocalIdentity:   s.LocalIdentity(),

@@ -26,20 +26,20 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		return ch.Send(astral.Err(nodes.ErrInvalidSessionState))
 	}
 
-	targetStream := mod.findStreamByID(args.StreamID)
-	if targetStream == nil {
+	targetLink := mod.findLinkByID(args.StreamID)
+	if targetLink == nil {
 		return ch.Send(astral.Err(nodes.ErrStreamNotFound))
 	}
 
 	if args.Start {
-		if session.isOnStream(targetStream) {
+		if session.isOnLink(targetLink) {
 			return ch.Send(astral.NewError("session already on target stream"))
 		}
 
 		mod.log.Log("migrate session %v to stream %v (manual)", args.SessionID, args.StreamID)
 		migrateCtx, cancel := ctx.WithTimeout(migrateSessionTimeout)
 		defer cancel()
-		err := mod.migrateSession(migrateCtx, session, targetStream)
+		err := mod.migrateSession(migrateCtx, session, targetLink)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
@@ -59,7 +59,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	}
 
 	migrator.SetPeerBuffer(int(peerBuffer))
-	err = migrator.Begin(targetStream)
+	err = migrator.Begin(targetLink)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
@@ -72,7 +72,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		return ch.Send(astral.Err(err))
 	}
 
-	mod.log.Logv(1, "session %v migrated to stream %v (responder)", session.Nonce, targetStream.id)
+	mod.log.Logv(1, "session %v migrated to stream %v (responder)", session.Nonce, targetLink.id)
 	return nil
 }
 

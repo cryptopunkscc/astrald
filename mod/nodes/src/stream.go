@@ -12,7 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-type Stream struct {
+type Link struct {
 	*frames.Stream
 	id          astral.Nonce
 	createdAt   time.Time
@@ -31,8 +31,8 @@ type Ping struct {
 	pong   chan struct{}
 }
 
-func newStream(conn astral.Conn, id astral.Nonce, outbound bool) *Stream {
-	link := &Stream{
+func newLink(conn astral.Conn, id astral.Nonce, outbound bool) *Link {
+	link := &Link{
 		id:          id,
 		conn:        conn,
 		createdAt:   time.Now(),
@@ -47,15 +47,15 @@ func newStream(conn astral.Conn, id astral.Nonce, outbound bool) *Stream {
 	return link
 }
 
-func (s *Stream) LocalIdentity() *astral.Identity {
+func (s *Link) LocalIdentity() *astral.Identity {
 	return s.conn.LocalIdentity()
 }
 
-func (s *Stream) RemoteIdentity() *astral.Identity {
+func (s *Link) RemoteIdentity() *astral.Identity {
 	return s.conn.RemoteIdentity()
 }
 
-func (s *Stream) CloseWithError(err error) error {
+func (s *Link) CloseWithError(err error) error {
 	if err != nil {
 		return s.Stream.CloseWithError(err)
 	}
@@ -63,7 +63,7 @@ func (s *Stream) CloseWithError(err error) error {
 	return s.Stream.CloseWithError(errors.New("link closed"))
 }
 
-func (s *Stream) Network() string {
+func (s *Link) Network() string {
 	if c, ok := s.conn.(exonet.Conn); ok {
 		if e := c.RemoteEndpoint(); e != nil {
 			return e.Network()
@@ -75,14 +75,14 @@ func (s *Stream) Network() string {
 	return "unknown"
 }
 
-func (s *Stream) LocalEndpoint() exonet.Endpoint {
+func (s *Link) LocalEndpoint() exonet.Endpoint {
 	if c, ok := s.conn.(exonet.Conn); ok {
 		return c.LocalEndpoint()
 	}
 	return nil
 }
 
-func (s *Stream) RemoteEndpoint() exonet.Endpoint {
+func (s *Link) RemoteEndpoint() exonet.Endpoint {
 	if c, ok := s.conn.(exonet.Conn); ok {
 		return c.RemoteEndpoint()
 	}
@@ -90,15 +90,15 @@ func (s *Stream) RemoteEndpoint() exonet.Endpoint {
 	return nil
 }
 
-func (s *Stream) PressureHigh() bool {
+func (s *Link) PressureHigh() bool {
 	return s.pressure != nil && s.pressure.IsHigh()
 }
 
-func (s *Stream) Throughput() uint64 {
+func (s *Link) Throughput() uint64 {
 	return s.throughput.Load()
 }
 
-func (s *Stream) Write(frame frames.Frame) (err error) {
+func (s *Link) Write(frame frames.Frame) (err error) {
 	if f, ok := frame.(*frames.Data); ok {
 		s.throughput.Add(uint64(len(f.Payload)))
 		if s.pressure != nil {
@@ -111,7 +111,7 @@ func (s *Stream) Write(frame frames.Frame) (err error) {
 	return s.Stream.Write(frame)
 }
 
-func (s *Stream) Ping() (time.Duration, error) {
+func (s *Link) Ping() (time.Duration, error) {
 	var nonce = astral.NewNonce()
 
 	p, ok := s.pings.Set(nonce, &Ping{
@@ -141,7 +141,7 @@ func (s *Stream) Ping() (time.Duration, error) {
 	}
 }
 
-func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
+func (s *Link) pong(nonce astral.Nonce) (time.Duration, error) {
 	p, ok := s.pings.Delete(nonce)
 	if !ok {
 		return -1, errors.New("invalid sessionId")
@@ -155,14 +155,14 @@ func (s *Stream) pong(nonce astral.Nonce) (time.Duration, error) {
 }
 
 // Wake triggers a ping on the next loop iteration.
-func (s *Stream) Wake() {
+func (s *Link) Wake() {
 	select {
 	case s.wakeCh <- struct{}{}:
 	default:
 	}
 }
 
-func (s *Stream) check() {
+func (s *Link) check() {
 	if s.checks.Swap(2) != 0 {
 		return
 	}
@@ -173,7 +173,7 @@ func (s *Stream) check() {
 	}
 }
 
-func (s *Stream) pingLoop() {
+func (s *Link) pingLoop() {
 	select {
 	case <-s.Stream.Done():
 		return

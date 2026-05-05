@@ -16,7 +16,7 @@ func (mod *Module) OpCloseStream(ctx *astral.Context, q *routing.IncomingQuery, 
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	err = mod.CloseStream(args.ID)
+	err = mod.CloseLink(args.ID)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
