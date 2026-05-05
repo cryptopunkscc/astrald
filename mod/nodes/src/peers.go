@@ -459,8 +459,8 @@ func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	return false
 }
 
-// negotiateOutboundStream reads peer's supported features and the session sessionId.
-func (mod *Peers) negotiateOutboundStream(aconn astral.Conn) (features []astral.String8, err error) {
+// negotiateOutboundLink reads peer's supported features and the session sessionId.
+func (mod *Peers) negotiateOutboundLink(aconn astral.Conn) (features []astral.String8, err error) {
 	var featCount astral.Uint16
 	if _, err = featCount.ReadFrom(aconn); err != nil {
 		return nil, fmt.Errorf("read features: %w", err)
@@ -476,8 +476,8 @@ func (mod *Peers) negotiateOutboundStream(aconn astral.Conn) (features []astral.
 	return features, nil
 }
 
-// negotiateInboundStream sends our supported features and a fresh session sessionId.
-func (mod *Peers) negotiateInboundStream(aconn astral.Conn) (err error) {
+// negotiateInboundLink sends our supported features and a fresh session sessionId.
+func (mod *Peers) negotiateInboundLink(aconn astral.Conn) (err error) {
 	var linkFeatures = []string{featureMux2}
 	if _, err = astral.Uint16(len(linkFeatures)).WriteTo(aconn); err != nil {
 		return err
@@ -533,7 +533,7 @@ func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Id
 	}
 
 	// Read peer features and session sessionId
-	linkFeatures, err := mod.negotiateOutboundStream(aconn)
+	linkFeatures, err := mod.negotiateOutboundLink(aconn)
 	if err != nil {
 		return nil, err
 	}
@@ -587,7 +587,7 @@ func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (e
 	}
 
 	// Send our features and session sessionId
-	err = mod.negotiateInboundStream(aconn)
+	err = mod.negotiateInboundLink(aconn)
 	if err != nil {
 		return err
 	}
