@@ -32,7 +32,7 @@ func (mod *Module) OpSessions(ctx *astral.Context, q *routing.IncomingQuery, arg
 
 		err = ch.Send(&nodes.SessionInfo{
 			ID:             s.Nonce,
-			StreamID:       s.link.id,
+			LinkID:         s.link.id,
 			RemoteIdentity: s.RemoteIdentity,
 			Outbound:       astral.Bool(s.Outbound),
 			Query:          astral.String16(s.Query),

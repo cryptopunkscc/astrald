@@ -9,7 +9,7 @@ import (
 
 type LinkPressureEvent struct {
 	RemoteIdentity *astral.Identity
-	StreamID       astral.Nonce
+	LinkID         astral.Nonce
 }
 
 type StreamPressureEvent = LinkPressureEvent

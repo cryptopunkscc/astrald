@@ -10,7 +10,7 @@ import (
 type LinkClosedEvent struct {
 	RemoteIdentity *astral.Identity // Identity of the other party
 	Forced         astral.Bool
-	StreamCount    astral.Int8
+	LinkCount      astral.Int8
 }
 
 type StreamClosedEvent = LinkClosedEvent

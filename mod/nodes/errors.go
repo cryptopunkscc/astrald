@@ -17,9 +17,3 @@ var (
 	ErrBufferClosed          = errors.New("buffer closed")
 	ErrBufferOverflow        = errors.New("buffer overflow")
 )
-
-var (
-	ErrExcessStream      = ErrExcessLink
-	ErrStreamNotProduced = ErrLinkNotProduced
-	ErrStreamNotFound    = ErrLinkNotFound
-)

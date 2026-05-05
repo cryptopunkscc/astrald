@@ -9,8 +9,8 @@ import (
 
 type LinkCreatedEvent struct {
 	RemoteIdentity *astral.Identity
-	StreamId       astral.Nonce
-	StreamCount    int
+	LinkID         astral.Nonce
+	LinkCount      int
 }
 
 type StreamCreatedEvent = LinkCreatedEvent

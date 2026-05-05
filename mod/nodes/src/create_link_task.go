@@ -7,26 +7,32 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
-var _ scheduler.Task = &CreateStreamTask{}
-var _ nodes.CreateStreamTask = &CreateStreamTask{}
+var _ scheduler.Task = &CreateLinkTask{}
+var _ nodes.CreateLinkTask = &CreateLinkTask{}
 
-type CreateStreamTask struct {
+type CreateLinkTask struct {
 	mod      *Module
 	Target   *astral.Identity
 	Endpoint exonet.Endpoint
-	Info     *nodes.StreamInfo
+	Info     *nodes.LinkInfo
 	Err      error
 }
 
-func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateStreamTask {
-	return &CreateStreamTask{
+type CreateStreamTask = CreateLinkTask
+
+func (m *Module) NewCreateLinkTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateLinkTask {
+	return &CreateLinkTask{
 		mod:      m,
 		Target:   target,
 		Endpoint: endpoint,
 	}
 }
 
-func (c *CreateStreamTask) Run(ctx *astral.Context) error {
+func (m *Module) NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) nodes.CreateStreamTask {
+	return m.NewCreateLinkTask(target, endpoint)
+}
+
+func (c *CreateLinkTask) Run(ctx *astral.Context) error {
 	conn, err := c.mod.Exonet.Dial(ctx, c.Endpoint)
 	if err != nil {
 		c.Err = err
@@ -40,7 +46,7 @@ func (c *CreateStreamTask) Run(ctx *astral.Context) error {
 		return err
 	}
 
-	c.Info = &nodes.StreamInfo{
+	c.Info = &nodes.LinkInfo{
 		ID:             link.id,
 		LocalIdentity:  link.LocalIdentity(),
 		RemoteIdentity: link.RemoteIdentity(),
@@ -53,10 +59,10 @@ func (c *CreateStreamTask) Run(ctx *astral.Context) error {
 	return nil
 }
 
-func (c *CreateStreamTask) Result() (*nodes.StreamInfo, error) {
+func (c *CreateLinkTask) Result() (*nodes.LinkInfo, error) {
 	return c.Info, c.Err
 }
 
-func (c *CreateStreamTask) String() string {
-	return "nodes.create_stream"
+func (c *CreateLinkTask) String() string {
+	return "nodes.create_link"
 }

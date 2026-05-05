@@ -13,8 +13,10 @@ type opStreamsArgs struct {
 	Out string `query:"optional"`
 }
 
-// OpStreams lists all streams.
-func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args opStreamsArgs) (err error) {
+type opLinksArgs = opStreamsArgs
+
+// OpLinks lists all links.
+func (mod *Module) OpLinks(ctx *astral.Context, q *routing.IncomingQuery, args opLinksArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
@@ -25,7 +27,7 @@ func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args
 	})
 
 	for _, s := range links {
-		err = ch.Send(&nodes.StreamInfo{
+		err = ch.Send(&nodes.LinkInfo{
 			ID:              s.id,
 			LocalIdentity:   s.LocalIdentity(),
 			RemoteIdentity:  s.RemoteIdentity(),
@@ -42,4 +44,8 @@ func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args
 	}
 
 	return ch.Send(&astral.EOS{})
+}
+
+func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args opStreamsArgs) error {
+	return mod.OpLinks(ctx, q, args)
 }

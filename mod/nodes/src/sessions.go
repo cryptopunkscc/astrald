@@ -56,7 +56,7 @@ func (mod *Peers) newMuxOutputBuffer(link *Link, nonce astral.Nonce, sess *sessi
 func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetLink *Link) (err error) {
 	ch, err := nodesClient.New(session.RemoteIdentity, astrald.Default()).MigrateSession(ctx, nodesClient.MigrateSessionArgs{
 		SessionID: session.Nonce,
-		StreamID:  targetLink.id,
+		LinkID:    targetLink.id,
 	})
 	if err != nil {
 		return err
@@ -116,6 +116,6 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetL
 		return err
 	}
 
-	mod.log.Logv(1, "session %v migrated to stream %v (initiator)", session.Nonce, targetLink.id)
+	mod.log.Logv(1, "session %v migrated to link %v (initiator)", session.Nonce, targetLink.id)
 	return nil
 }

@@ -55,8 +55,8 @@ type Module interface {
 
 	IsLinked(*astral.Identity) bool
 
-	NewCreateStreamTask(target *astral.Identity, endpoint exonet.Endpoint) CreateStreamTask
-	NewEnsureStreamTask(target *astral.Identity, strategies []string, networks []string, forceNew bool) EnsureStreamTask
+	NewCreateLinkTask(target *astral.Identity, endpoint exonet.Endpoint) CreateLinkTask
+	NewEnsureLinkTask(target *astral.Identity, strategies []string, networks []string, forceNew bool) EnsureLinkTask
 	NewCleanupEndpointsTask() CleanupEndpointsTask
 }
 

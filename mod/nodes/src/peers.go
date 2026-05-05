@@ -375,8 +375,8 @@ func (mod *Peers) addLink(
 
 	mod.Events.Emit(&nodes.LinkCreatedEvent{
 		RemoteIdentity: link.RemoteIdentity(),
-		StreamId:       link.id,
-		StreamCount:    len(linksWithSameIdentity),
+		LinkID:         link.id,
+		LinkCount:      len(linksWithSameIdentity),
 	})
 
 	// handle the stream
@@ -398,7 +398,7 @@ func (mod *Peers) addLink(
 		mod.Events.Emit(&nodes.LinkClosedEvent{
 			RemoteIdentity: link.RemoteIdentity(),
 			Forced:         false,
-			StreamCount:    astral.Int8(len(linksWithSameIdentity)),
+			LinkCount:      astral.Int8(len(linksWithSameIdentity)),
 		})
 
 		mod.log.Info("closed %v-stream with %v (%v): %v", dir, link.RemoteIdentity(), netName, link.Err())
@@ -491,7 +491,7 @@ func (mod *Peers) negotiateInboundStream(aconn astral.Conn) (err error) {
 	return nil
 }
 
-func (mod *Peers) setInboundStreamNonce(aconn astral.Conn) (nonce astral.Nonce, err error) {
+func (mod *Peers) setInboundLinkNonce(aconn astral.Conn) (nonce astral.Nonce, err error) {
 	nonce = astral.NewNonce()
 	if _, err = nonce.WriteTo(aconn); err != nil {
 		return 0, err
@@ -500,7 +500,7 @@ func (mod *Peers) setInboundStreamNonce(aconn astral.Conn) (nonce astral.Nonce, 
 	return nonce, nil
 }
 
-func (mod *Peers) readOutboundStreamNonce(aconn astral.Conn) (nonce astral.Nonce, err error) {
+func (mod *Peers) readOutboundLinkNonce(aconn astral.Conn) (nonce astral.Nonce, err error) {
 	if _, err = nonce.ReadFrom(aconn); err != nil {
 		return 0, err
 	}
@@ -553,9 +553,9 @@ func (mod *Peers) EstablishOutboundLink(ctx context.Context, remoteID *astral.Id
 			return nil, errors.New("link feature negotation error")
 		}
 
-		nonce, err := mod.readOutboundStreamNonce(aconn)
+		nonce, err := mod.readOutboundLinkNonce(aconn)
 		if err != nil {
-			return nil, fmt.Errorf(`read outbound stream nonce: %w`, err)
+			return nil, fmt.Errorf(`read outbound link nonce: %w`, err)
 		}
 
 		link := newLink(aconn, nonce, true)
@@ -603,15 +603,15 @@ func (mod *Peers) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (e
 		case featureMux2:
 			_, err = astral.Uint8(0).WriteTo(aconn)
 			if err == nil {
-				nonce, err := mod.setInboundStreamNonce(aconn)
+				nonce, err := mod.setInboundLinkNonce(aconn)
 				if err != nil {
-					return fmt.Errorf("failed to set inbound stream nonce: %w", err)
+					return fmt.Errorf("failed to set inbound link nonce: %w", err)
 				}
 
 				link := newLink(aconn, nonce, false)
 				err = mod.addLink(link)
 				if err != nil {
-					return fmt.Errorf("failed to add stream: %w", err)
+					return fmt.Errorf("failed to add link: %w", err)
 				}
 			}
 

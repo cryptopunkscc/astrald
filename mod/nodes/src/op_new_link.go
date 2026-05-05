@@ -17,7 +17,9 @@ type opNewStreamArgs struct {
 	Out        string
 }
 
-func (mod *Module) OpNewStream(ctx *astral.Context, q *routing.IncomingQuery, args opNewStreamArgs) (err error) {
+type opNewLinkArgs = opNewStreamArgs
+
+func (mod *Module) OpNewLink(ctx *astral.Context, q *routing.IncomingQuery, args opNewLinkArgs) (err error) {
 	target, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
 		return q.RejectWithCode(2)
@@ -34,7 +36,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *routing.IncomingQuery, ar
 		}
 	}
 
-	var task nodes.StreamProducerTask
+	var task nodes.LinkProducerTask
 	switch {
 	case args.Endpoint != "":
 		split := strings.SplitN(args.Endpoint, ":", 2)
@@ -46,9 +48,9 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *routing.IncomingQuery, ar
 		if err != nil {
 			return q.RejectWithCode(3)
 		}
-		task = mod.NewCreateStreamTask(target, endpoint)
+		task = mod.NewCreateLinkTask(target, endpoint)
 	default:
-		task = mod.NewEnsureStreamTask(target, strategies, nil, true)
+		task = mod.NewEnsureLinkTask(target, strategies, nil, true)
 	}
 
 	scheduledTask, err := mod.Scheduler.Schedule(task)
@@ -56,7 +58,7 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *routing.IncomingQuery, ar
 		return q.RejectWithCode(5)
 	}
 
-	// We need to accept query in case that creating stream takes longer than query timeout
+	// We need to accept query in case that creating link takes longer than query timeout
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
@@ -80,4 +82,8 @@ func (mod *Module) OpNewStream(ctx *astral.Context, q *routing.IncomingQuery, ar
 	default:
 		return ch.Send(astral.Err(err))
 	}
+}
+
+func (mod *Module) OpNewStream(ctx *astral.Context, q *routing.IncomingQuery, args opNewStreamArgs) error {
+	return mod.OpNewLink(ctx, q, args)
 }

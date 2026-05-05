@@ -13,7 +13,7 @@ import (
 
 type SessionInfo struct {
 	ID             astral.Nonce
-	StreamID       astral.Nonce
+	LinkID         astral.Nonce
 	RemoteIdentity *astral.Identity
 	Outbound       astral.Bool
 	Query          astral.String16
@@ -42,8 +42,8 @@ func (s SessionInfo) MarshalText() ([]byte, error) {
 		d = ">"
 	}
 	age := time.Duration(s.Age).Round(time.Second)
-	_, err := fmt.Fprintf(&b, "%v stream=%v %v %v %v bytes=%v age=%v",
-		s.ID, s.StreamID, d, s.RemoteIdentity, s.Query, s.Bytes, age)
+	_, err := fmt.Fprintf(&b, "%v link=%v %v %v %v bytes=%v age=%v",
+		s.ID, s.LinkID, d, s.RemoteIdentity, s.Query, s.Bytes, age)
 	return b.Bytes(), err
 }
 

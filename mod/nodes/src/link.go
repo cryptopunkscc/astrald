@@ -23,7 +23,7 @@ type Link struct {
 	outbound    bool
 	pingTimeout time.Duration
 	wakeCh      chan struct{}
-	pressure    StreamPressureDetector
+	pressure    LinkPressureDetector
 }
 
 type Ping struct {

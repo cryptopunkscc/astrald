@@ -11,8 +11,10 @@ type opCloseStreamArgs struct {
 	Out string `query:"optional"`
 }
 
-// OpCloseStream closes a stream with the given id.
-func (mod *Module) OpCloseStream(ctx *astral.Context, q *routing.IncomingQuery, args opCloseStreamArgs) (err error) {
+type opCloseLinkArgs = opCloseStreamArgs
+
+// OpCloseLink closes a link with the given id.
+func (mod *Module) OpCloseLink(ctx *astral.Context, q *routing.IncomingQuery, args opCloseLinkArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
@@ -22,4 +24,8 @@ func (mod *Module) OpCloseStream(ctx *astral.Context, q *routing.IncomingQuery, 
 	}
 
 	return ch.Send(&astral.Ack{})
+}
+
+func (mod *Module) OpCloseStream(ctx *astral.Context, q *routing.IncomingQuery, args opCloseStreamArgs) error {
+	return mod.OpCloseLink(ctx, q, args)
 }

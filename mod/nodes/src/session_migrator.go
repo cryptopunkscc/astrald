@@ -52,13 +52,13 @@ func (m *SessionMigrator) Begin(target *Link) error {
 
 	m.writer.SwapBuf(newOutputBuffer, resetFunc)
 	m.reader.SetNextBuffer(newInputBuffer)
-	m.mod.log.Logv(1, "session %v migrating stream %v → %v", m.session.Nonce, m.oldLink.id, target.id)
+	m.mod.log.Logv(1, "session %v migrating link %v → %v", m.session.Nonce, m.oldLink.id, target.id)
 
 	return nil
 }
 
 func (m *SessionMigrator) SendMigrateFrame() error {
-	m.mod.log.Logv(1, "sending migrate frame for session %v on stream %v", m.session.Nonce, m.oldLink.id)
+	m.mod.log.Logv(1, "sending migrate frame for session %v on link %v", m.session.Nonce, m.oldLink.id)
 	return m.oldLink.Write(&frames.Migrate{Nonce: m.session.Nonce})
 }
 
@@ -78,7 +78,7 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 }
 
 func (m *SessionMigrator) Complete() error {
-	m.mod.log.Logv(1, "resuming session %v on stream %v (peer buffer %v)", m.session.Nonce, m.session.link.id, m.peerBuffer)
+	m.mod.log.Logv(1, "resuming session %v on link %v (peer buffer %v)", m.session.Nonce, m.session.link.id, m.peerBuffer)
 
 	m.session.setState(stateOpen)
 	m.writer.Grow(m.peerBuffer)

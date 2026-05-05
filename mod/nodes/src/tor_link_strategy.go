@@ -190,10 +190,10 @@ func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.Endpo
 	}
 
 	// tor is always a candidate for upgrade; monitor for pressure
-	link.pressure = NewStreamPressureDetector(time.Now(), TorStreamPressureConfig, func() {
+	link.pressure = NewLinkPressureDetector(time.Now(), TorLinkPressureConfig, func() {
 		s.mod.Events.Emit(&nodes.LinkPressureEvent{
 			RemoteIdentity: link.RemoteIdentity(),
-			StreamID:       link.id,
+			LinkID:         link.id,
 		})
 	})
 
