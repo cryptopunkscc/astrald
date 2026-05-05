@@ -15,7 +15,7 @@ type muxSessionWriter struct {
 	closed bool
 	paused bool
 	buf    *OutputBuffer
-	reset  func() // sends Reset frame on current stream
+	reset  func() // sends Reset frame on current link
 }
 
 func newSessionWriter(buf *OutputBuffer, reset func()) *muxSessionWriter {

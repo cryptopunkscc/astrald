@@ -128,7 +128,7 @@ func (mod *Peers) handleQuery(link *Link, f *frames.Query) {
 }
 
 // handleRelayQuery routes a query received via a relay channel to its target and bridges
-// the resulting session back to the caller over the relay peer's stream.
+// the resulting session back to the caller over the relay peer's link.
 func (mod *Peers) handleRelayQuery(link *Link, relayQuery *nodes.QueryContainer) error {
 	mod.handleInboundQuery(
 		link,
@@ -273,8 +273,8 @@ func (mod *Peers) handleRead(link *Link, f *frames.Read) {
 		return
 	}
 
-	// Discard Read frames from the old stream after migration has swapped
-	// the session to a new stream. These credits correspond to the old
+	// Discard Read frames from the old link after migration has swapped
+	// the session to a new link. These credits correspond to the old
 	// input buffer and must not inflate the new output buffer's wsize.
 	if !session.isOnLink(link) {
 		return
@@ -332,7 +332,7 @@ func (mod *Peers) handleMigrate(link *Link, f *frames.Migrate) {
 		return
 	}
 
-	// Peer is done sending on the old stream. Advance closes the old buffer
+	// Peer is done sending on the old link. Advance closes the old buffer
 	// and promotes nextBuffer immediately if already empty, or defers to the
 	// Read loop on EOF otherwise.
 	reader.Advance()
@@ -363,8 +363,8 @@ func (mod *Peers) addLink(
 		return
 	}
 
-	// log stream addition
-	mod.log.Infov(1, "added %v-stream with %v (%v)", dir, link.RemoteIdentity(), netName)
+	// log link addition
+	mod.log.Infov(1, "added %v-link with %v (%v)", dir, link.RemoteIdentity(), netName)
 	linksWithSameIdentity := mod.links.Select(func(v *Link) bool {
 		return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
 	})
@@ -379,11 +379,11 @@ func (mod *Peers) addLink(
 		LinkCount:      len(linksWithSameIdentity),
 	})
 
-	// handle the stream
+	// handle the link
 	go func() {
 		mod.readLinkFrames(link)
 
-		// remove the stream and its connections
+		// remove the link and its connections
 		mod.links.Remove(link)
 		for _, c := range mod.sessions.Select(func(k astral.Nonce, v *session) (ok bool) {
 			return v.isOnLink(link)
@@ -401,18 +401,18 @@ func (mod *Peers) addLink(
 			LinkCount:      astral.Int8(len(linksWithSameIdentity)),
 		})
 
-		mod.log.Info("closed %v-stream with %v (%v): %v", dir, link.RemoteIdentity(), netName, link.Err())
+		mod.log.Info("closed %v-link with %v (%v): %v", dir, link.RemoteIdentity(), netName, link.Err())
 	}()
 
-	// reflect the stream
+	// reflect the link
 	go mod.reflectLink(link)
 
 	return
 }
 
-// reflectStream reflects the observed remote endpoint on inbound streams
+// reflectLink reflects the observed remote endpoint on inbound links
 func (mod *Peers) reflectLink(link *Link) (err error) {
-	// reflect only on inbound streams with a known remote endpoint
+	// reflect only on inbound links with a known remote endpoint
 	if link.outbound || link.RemoteEndpoint() == nil {
 		return
 	}
@@ -438,7 +438,7 @@ func (mod *Peers) reflectLink(link *Link) (err error) {
 	return
 }
 
-// readStreamFrames reads frames from the stream until it closes
+// readLinkFrames reads frames from the link until it closes
 func (mod *Peers) readLinkFrames(link *Link) {
 	// read frames
 	for frame := range link.Read() {
@@ -449,7 +449,7 @@ func (mod *Peers) readLinkFrames(link *Link) {
 	}
 }
 
-// isLinked returns true if there's at least one stream with the given remote identity
+// isLinked returns true if there's at least one link with the given remote identity
 func (mod *Peers) isLinked(remoteID *astral.Identity) bool {
 	for _, link := range mod.links.Clone() {
 		if link.RemoteIdentity().IsEqual(remoteID) {
