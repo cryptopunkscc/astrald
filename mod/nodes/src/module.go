@@ -102,16 +102,16 @@ func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpo
 	return mod.db.RemoveEndpoint(nodeID, endpoint.Network(), endpoint.Address())
 }
 
-// CloseStream closes a stream with the given id.
-func (mod *Module) CloseStream(id astral.Nonce) error {
-	streams := mod.peers.streams.Clone()
-	for _, s := range streams {
+// CloseLink closes a link with the given id.
+func (mod *Module) CloseLink(id astral.Nonce) error {
+	links := mod.peers.links.Clone()
+	for _, s := range links {
 		if s.id == id {
-			return s.CloseWithError(errors.New("stream closed"))
+			return s.CloseWithError(errors.New("link closed"))
 		}
 	}
 
-	return errors.New("stream not found")
+	return nodes.ErrLinkNotFound
 }
 
 func (mod *Module) Router() astral.Router {
@@ -149,9 +149,9 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 	return mod.privateKey, nil
 }
 
-// findStreamByID returns a stream with the given local id or nil if not found.
-func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
-	for _, s := range mod.peers.streams.Clone() {
+// findLinkByID returns a link with the given local id or nil if not found.
+func (mod *Module) findLinkByID(id astral.Nonce) *Link {
+	for _, s := range mod.peers.links.Clone() {
 		if s.id == id {
 			return s
 		}
@@ -159,10 +159,10 @@ func (mod *Module) findStreamByID(id astral.Nonce) *Stream {
 	return nil
 }
 
-func (mod *Module) findStreamBySessionNonce(nonce astral.Nonce) *Stream {
+func (mod *Module) findLinkBySessionNonce(nonce astral.Nonce) *Link {
 	for _, session := range mod.peers.sessions.Clone() {
 		if session.Nonce == nonce {
-			return session.stream
+			return session.link
 		}
 	}
 

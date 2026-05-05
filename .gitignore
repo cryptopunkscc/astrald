@@ -3,3 +3,4 @@
 cmd/astrald/astrald
 .devnotes/
 .claude/
+.gocache/

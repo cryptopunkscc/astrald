@@ -9,23 +9,23 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
-type opStreamsArgs struct {
+type opLinksArgs struct {
 	Out string `query:"optional"`
 }
 
-// OpStreams lists all streams.
-func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args opStreamsArgs) (err error) {
+// OpLinks lists all links.
+func (mod *Module) OpLinks(ctx *astral.Context, q *routing.IncomingQuery, args opLinksArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	streams := mod.peers.streams.Clone()
+	links := mod.peers.links.Clone()
 
-	slices.SortFunc(streams, func(a, b *Stream) int {
+	slices.SortFunc(links, func(a, b *Link) int {
 		return a.createdAt.Compare(b.createdAt)
 	})
 
-	for _, s := range streams {
-		err = ch.Send(&nodes.StreamInfo{
+	for _, s := range links {
+		err = ch.Send(&nodes.LinkInfo{
 			ID:              s.id,
 			LocalIdentity:   s.LocalIdentity(),
 			RemoteIdentity:  s.RemoteIdentity(),

@@ -13,21 +13,21 @@ import (
 const upgradeTimeout = 3 * time.Minute
 const upgradeCooldown = 5 * time.Minute
 
-func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
+func (mod *Module) connectivityUpgrade(e *nodes.LinkPressureEvent) {
 	connectivityGate := &sig.Switch{}
 	if existing, ok := mod.upgraders.Set(e.RemoteIdentity.String(), connectivityGate); !ok {
 		connectivityGate = existing
 	}
 
 	connectivityGate.Run(mod.ctx, func(_ context.Context) {
-		mod.log.Log("connectivity upgrade triggered for %v (stream %v)", e.RemoteIdentity, e.StreamID)
+		mod.log.Log("connectivity upgrade triggered for %v (link %v)", e.RemoteIdentity, e.LinkID)
 
-		var targetStream *Stream
-		alternatives := mod.peers.streams.Select(func(s *Stream) bool {
-			return s.RemoteIdentity().IsEqual(e.RemoteIdentity) && s.id != e.StreamID
+		var targetLink *Link
+		alternatives := mod.peers.links.Select(func(link *Link) bool {
+			return link.RemoteIdentity().IsEqual(e.RemoteIdentity) && link.id != e.LinkID
 		})
 
-		slices.SortFunc(alternatives, func(a, b *Stream) int {
+		slices.SortFunc(alternatives, func(a, b *Link) int {
 			if (a.pressure == nil) == (b.pressure == nil) {
 				return 0
 			}
@@ -39,8 +39,8 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 		})
 
 		if len(alternatives) > 0 {
-			targetStream = alternatives[0]
-			mod.log.Log("connectivity upgrade: reusing existing stream %v (%v)", targetStream.id, targetStream.Network())
+			targetLink = alternatives[0]
+			mod.log.Log("connectivity upgrade: reusing existing link %v (%v)", targetLink.id, targetLink.Network())
 		} else {
 			ctx, cancel := mod.ctx.WithTimeout(upgradeTimeout)
 			defer cancel()
@@ -52,15 +52,15 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 			if result.Err != nil {
 				mod.log.Log("connectivity upgrade with %v failed: %v", e.RemoteIdentity, result.Err)
 			} else {
-				targetStream = result.Stream
-				mod.log.Log("connectivity upgrade: established new stream %v (%v)", targetStream.id, targetStream.Network())
+				targetLink = result.Link
+				mod.log.Log("connectivity upgrade: established new link %v (%v)", targetLink.id, targetLink.Network())
 			}
 		}
 
-		if targetStream != nil {
-			mod.migrateSessions(e.StreamID, targetStream)
+		if targetLink != nil {
+			mod.migrateSessions(e.LinkID, targetLink)
 		} else {
-			mod.log.Logv(2, "connectivity upgrade: no target stream found, skipping migration for %v", e.RemoteIdentity)
+			mod.log.Logv(2, "connectivity upgrade: no target link found, skipping migration for %v", e.RemoteIdentity)
 		}
 
 		select {
@@ -72,27 +72,27 @@ func (mod *Module) connectivityUpgrade(e *nodes.StreamPressureEvent) {
 
 const migrateSessionTimeout = 30 * time.Second
 
-func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Stream) {
-	oldStream := mod.findStreamByID(oldStreamID)
-	if oldStream == nil {
-		mod.log.Logv(1, "migrate sessions: old stream %v not found", oldStreamID)
+func (mod *Module) migrateSessions(oldLinkID astral.Nonce, newLink *Link) {
+	oldLink := mod.findLinkByID(oldLinkID)
+	if oldLink == nil {
+		mod.log.Logv(1, "migrate sessions: old link %v not found", oldLinkID)
 		return
 	}
 
 	sessions := mod.peers.sessions.Select(func(k astral.Nonce, v *session) bool {
-		return v.IsOpen() && v.isOnStream(oldStream) && v.CanAutoMigrate()
+		return v.IsOpen() && v.isOnLink(oldLink) && v.CanAutoMigrate()
 	})
 
 	if len(sessions) == 0 {
 		return
 	}
 
-	mod.log.Log("migrating %v sessions from stream %v to %v", len(sessions), oldStreamID, newStream.id)
+	mod.log.Log("migrating %v sessions from link %v to %v", len(sessions), oldLinkID, newLink.id)
 
 	var migrated int
 	for _, sess := range sessions {
 		ctx, cancel := mod.ctx.WithTimeout(migrateSessionTimeout)
-		err := mod.migrateSession(ctx, sess, newStream)
+		err := mod.migrateSession(ctx, sess, newLink)
 		cancel()
 
 		if err != nil {
@@ -102,5 +102,5 @@ func (mod *Module) migrateSessions(oldStreamID astral.Nonce, newStream *Stream) 
 		migrated++
 	}
 
-	mod.log.Log("migrated %v/%v sessions from stream %v to %v", migrated, len(sessions), oldStreamID, newStream.id)
+	mod.log.Log("migrated %v/%v sessions from link %v to %v", migrated, len(sessions), oldLinkID, newLink.id)
 }

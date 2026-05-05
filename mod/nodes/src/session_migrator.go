@@ -13,7 +13,7 @@ type SessionMigrator struct {
 	reader         *muxSessionReader
 	writer         *muxSessionWriter
 	peerBuffer     int
-	oldStream      *Stream
+	oldLink        *Link
 	oldInputBuffer *InputBuffer
 }
 
@@ -31,14 +31,14 @@ func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
 	return &SessionMigrator{mod: mod, session: sess, reader: reader, writer: writer}, nil
 }
 
-func (m *SessionMigrator) Begin(target *Stream) error {
+func (m *SessionMigrator) Begin(target *Link) error {
 	if !m.session.swapState(stateOpen, stateMigrating) {
 		m.mod.log.Logv(1, "session %v in state %v, cannot migrate", m.session.Nonce, m.session.getState())
 		return nodes.ErrInvalidSessionState
 	}
 	m.session.cond.L.Lock()
-	m.oldStream = m.session.stream
-	m.session.stream = target
+	m.oldLink = m.session.link
+	m.session.link = target
 	m.session.cond.L.Unlock()
 
 	m.mod.log.Logv(1, "pausing session %v", m.session.Nonce)
@@ -52,14 +52,14 @@ func (m *SessionMigrator) Begin(target *Stream) error {
 
 	m.writer.SwapBuf(newOutputBuffer, resetFunc)
 	m.reader.SetNextBuffer(newInputBuffer)
-	m.mod.log.Logv(1, "session %v migrating stream %v → %v", m.session.Nonce, m.oldStream.id, target.id)
+	m.mod.log.Logv(1, "session %v migrating link %v → %v", m.session.Nonce, m.oldLink.id, target.id)
 
 	return nil
 }
 
 func (m *SessionMigrator) SendMigrateFrame() error {
-	m.mod.log.Logv(1, "sending migrate frame for session %v on stream %v", m.session.Nonce, m.oldStream.id)
-	return m.oldStream.Write(&frames.Migrate{Nonce: m.session.Nonce})
+	m.mod.log.Logv(1, "sending migrate frame for session %v on link %v", m.session.Nonce, m.oldLink.id)
+	return m.oldLink.Write(&frames.Migrate{Nonce: m.session.Nonce})
 }
 
 func (m *SessionMigrator) WaitClosed(ctx context.Context) error {
@@ -78,7 +78,7 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 }
 
 func (m *SessionMigrator) Complete() error {
-	m.mod.log.Logv(1, "resuming session %v on stream %v (peer buffer %v)", m.session.Nonce, m.session.stream.id, m.peerBuffer)
+	m.mod.log.Logv(1, "resuming session %v on link %v (peer buffer %v)", m.session.Nonce, m.session.link.id, m.peerBuffer)
 
 	m.session.setState(stateOpen)
 	m.writer.Grow(m.peerBuffer)

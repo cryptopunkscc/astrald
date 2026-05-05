@@ -2,17 +2,17 @@ package nodes
 
 import "github.com/cryptopunkscc/astrald/mod/scheduler"
 
-type StreamProducerTask interface {
+type LinkProducerTask interface {
 	scheduler.Task
-	Result() (info *StreamInfo, err error)
+	Result() (info *LinkInfo, err error)
 }
 
-type EnsureStreamTask interface {
-	StreamProducerTask
+type EnsureLinkTask interface {
+	LinkProducerTask
 }
 
-type CreateStreamTask interface {
-	StreamProducerTask
+type CreateLinkTask interface {
+	LinkProducerTask
 }
 
 type CleanupEndpointsTask interface {

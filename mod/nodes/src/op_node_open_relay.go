@@ -25,6 +25,6 @@ func (mod *Module) OpNodeOpenRelay(ctx *astral.Context, q *routing.IncomingQuery
 			}
 		}
 
-		return mod.peers.handleRelayQuery(mod.findStreamBySessionNonce(q.Nonce()), container)
+		return mod.peers.handleRelayQuery(mod.findLinkBySessionNonce(q.Nonce()), container)
 	})
 }

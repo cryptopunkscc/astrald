@@ -9,7 +9,7 @@ import (
 
 type opMigrateSessionArgs struct {
 	SessionID astral.Nonce `query:"required"`
-	StreamID  astral.Nonce `query:"required"`
+	LinkID    astral.Nonce `query:"required"`
 	Start     astral.Bool  `query:"optional"`
 	Out       string       `query:"optional"`
 }
@@ -26,20 +26,20 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		return ch.Send(astral.Err(nodes.ErrInvalidSessionState))
 	}
 
-	targetStream := mod.findStreamByID(args.StreamID)
-	if targetStream == nil {
-		return ch.Send(astral.Err(nodes.ErrStreamNotFound))
+	targetLink := mod.findLinkByID(args.LinkID)
+	if targetLink == nil {
+		return ch.Send(astral.Err(nodes.ErrLinkNotFound))
 	}
 
 	if args.Start {
-		if session.isOnStream(targetStream) {
-			return ch.Send(astral.NewError("session already on target stream"))
+		if session.isOnLink(targetLink) {
+			return ch.Send(astral.NewError("session already on target link"))
 		}
 
-		mod.log.Log("migrate session %v to stream %v (manual)", args.SessionID, args.StreamID)
+		mod.log.Log("migrate session %v to link %v (manual)", args.SessionID, args.LinkID)
 		migrateCtx, cancel := ctx.WithTimeout(migrateSessionTimeout)
 		defer cancel()
-		err := mod.migrateSession(migrateCtx, session, targetStream)
+		err := mod.migrateSession(migrateCtx, session, targetLink)
 		if err != nil {
 			return ch.Send(astral.Err(err))
 		}
@@ -59,7 +59,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	}
 
 	migrator.SetPeerBuffer(int(peerBuffer))
-	err = migrator.Begin(targetStream)
+	err = migrator.Begin(targetLink)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
@@ -72,7 +72,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		return ch.Send(astral.Err(err))
 	}
 
-	mod.log.Logv(1, "session %v migrated to stream %v (responder)", session.Nonce, targetStream.id)
+	mod.log.Logv(1, "session %v migrated to link %v (responder)", session.Nonce, targetLink.id)
 	return nil
 }
 

@@ -8,15 +8,15 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-type streamWatcher struct {
-	match func(*Stream, *string) bool
-	ch    chan *Stream
+type linkWatcher struct {
+	match func(*Link, *string) bool
+	ch    chan *Link
 }
 
 type LinkPool struct {
 	peers    *Peers
 	mod      *Module
-	watchers sig.Set[*streamWatcher]
+	watchers sig.Set[*linkWatcher]
 	linkers  sig.Map[string, *NodeLinker]
 }
 
@@ -28,25 +28,25 @@ func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
 }
 
 type LinkResult struct {
-	Stream *Stream
-	Err    error
+	Link *Link
+	Err  error
 }
 
-func (pool *LinkPool) subscribe(match func(*Stream, *string) bool) *streamWatcher {
-	w := &streamWatcher{
+func (pool *LinkPool) subscribe(match func(*Link, *string) bool) *linkWatcher {
+	w := &linkWatcher{
 		match: match,
-		ch:    make(chan *Stream, 1),
+		ch:    make(chan *Link, 1),
 	}
 
 	pool.watchers.Add(w)
 	return w
 }
 
-func (pool *LinkPool) unsubscribe(w *streamWatcher) {
+func (pool *LinkPool) unsubscribe(w *linkWatcher) {
 	pool.watchers.Remove(w)
 }
 
-func (pool *LinkPool) notifyStreamWatchers(s *Stream, strategy *string) bool {
+func (pool *LinkPool) notifyLinkWatchers(s *Link, strategy *string) bool {
 	used := false
 	for _, w := range pool.watchers.Clone() {
 		if !w.match(s, strategy) {
@@ -89,7 +89,7 @@ func (pool *LinkPool) RetrieveLink(
 		opt(&o)
 	}
 
-	match := func(s *Stream, strategy *string) bool {
+	match := func(s *Link, strategy *string) bool {
 		if !s.RemoteIdentity().IsEqual(target) {
 			return false
 		}
@@ -104,9 +104,9 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	if !o.ForceNew {
-		streams := pool.peers.streams.Select(func(s *Stream) bool { return match(s, nil) })
-		if len(streams) > 0 {
-			return sig.ArrayToChan([]LinkResult{{Stream: streams[0]}})
+		links := pool.peers.links.Select(func(s *Link) bool { return match(s, nil) })
+		if len(links) > 0 {
+			return sig.ArrayToChan([]LinkResult{{Link: links[0]}})
 		}
 	}
 
@@ -128,14 +128,14 @@ func (pool *LinkPool) RetrieveLink(
 		case <-done:
 			select {
 			case s := <-w.ch:
-				result <- LinkResult{Stream: s}
+				result <- LinkResult{Link: s}
 			default:
-				result <- LinkResult{Err: nodes.ErrStreamNotProduced}
+				result <- LinkResult{Err: nodes.ErrLinkNotProduced}
 			}
 		case <-ctx.Done():
 			result <- LinkResult{Err: ctx.Err()}
 		case s := <-w.ch:
-			result <- LinkResult{Stream: s}
+			result <- LinkResult{Link: s}
 		}
 	}()
 

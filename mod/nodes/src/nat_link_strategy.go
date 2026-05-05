@@ -139,7 +139,7 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		return fmt.Errorf("dial kcp: %w", err)
 	}
 
-	stream, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
+	link, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
 	if err != nil {
 		conn.Close()
 		cleanup()
@@ -147,7 +147,7 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	}
 
 	go func() {
-		<-stream.Done()
+		<-link.Done()
 		cleanup()
 	}()
 
@@ -157,8 +157,8 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		for {
 			select {
 			case <-ticker.C:
-				stream.Wake()
-			case <-stream.Done():
+				link.Wake()
+			case <-link.Done():
 				return
 			}
 		}
@@ -166,8 +166,8 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 
 	s.log.Log("%v linked via %v", s.target, peerEndpoint.Address())
 	name := s.Name()
-	if !s.mod.linkPool.notifyStreamWatchers(stream, &name) {
-		stream.CloseWithError(nodes.ErrExcessStream)
+	if !s.mod.linkPool.notifyLinkWatchers(link, &name) {
+		link.CloseWithError(nodes.ErrExcessLink)
 	}
 
 	return nil

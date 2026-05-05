@@ -34,13 +34,13 @@ type session struct {
 	Query          string
 	createdAt      time.Time
 	res            chan uint8
-	cond           *sync.Cond // guards paused, closed, stream
+	cond           *sync.Cond // guards paused, closed, link
 	paused         bool
 	closed         bool
 	state          atomic.Int32
 
-	stream *Stream       // stream the connection is attached to
-	bytes  atomic.Uint64 // total bytes transferred (read + write)
+	link  *Link         // link the connection is attached to
+	bytes atomic.Uint64 // total bytes transferred (read + write)
 
 	reader io.ReadCloser
 	writer io.WriteCloser
@@ -96,7 +96,7 @@ func (s *session) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (s *session) Setup(stream *Stream, reader io.ReadCloser, writer io.WriteCloser) error {
+func (s *session) Setup(link *Link, reader io.ReadCloser, writer io.WriteCloser) error {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -104,7 +104,7 @@ func (s *session) Setup(stream *Stream, reader io.ReadCloser, writer io.WriteClo
 		return nodes.ErrSessionClosed
 	}
 
-	s.stream = stream
+	s.link = link
 	s.reader = reader
 	s.writer = writer
 	s.state.Store(stateOpen)
@@ -163,8 +163,8 @@ func (s *session) CanAutoMigrate() bool {
 	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
 }
 
-func (s *session) isOnStream(stream *Stream) bool {
+func (s *session) isOnLink(link *Link) bool {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
-	return s.stream == stream
+	return s.link == link
 }

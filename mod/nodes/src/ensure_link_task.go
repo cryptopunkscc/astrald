@@ -6,26 +6,26 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
-var _ scheduler.Task = &EnsureStreamTask{}
+var _ scheduler.Task = &EnsureLinkTask{}
 
-type EnsureStreamTask struct {
+type EnsureLinkTask struct {
 	mod        *Module
 	Target     *astral.Identity
 	Strategies []string
 	Networks   []string
 	Create     bool
 
-	Info *nodes.StreamInfo // set on success
+	Info *nodes.LinkInfo // set on success
 	Err  error
 }
 
-func (m *Module) NewEnsureStreamTask(
+func (m *Module) NewEnsureLinkTask(
 	target *astral.Identity,
 	strategies []string,
 	networks []string,
 	forceNew bool,
-) nodes.EnsureStreamTask {
-	return &EnsureStreamTask{
+) nodes.EnsureLinkTask {
+	return &EnsureLinkTask{
 		mod:        m,
 		Target:     target,
 		Strategies: strategies,
@@ -34,7 +34,7 @@ func (m *Module) NewEnsureStreamTask(
 	}
 }
 
-func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
+func (c *EnsureLinkTask) Run(ctx *astral.Context) (err error) {
 	defer func() {
 		if err != nil {
 			c.Err = err
@@ -52,17 +52,17 @@ func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
 		opts = append(opts, WithNetworks(c.Networks...))
 	}
 
-	streamFuture := c.mod.linkPool.RetrieveLink(ctx, c.Target, opts...)
+	linkFuture := c.mod.linkPool.RetrieveLink(ctx, c.Target, opts...)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case result := <-streamFuture:
+	case result := <-linkFuture:
 		if result.Err != nil {
 			return result.Err
 		}
 
-		s := result.Stream
-		c.Info = &nodes.StreamInfo{
+		s := result.Link
+		c.Info = &nodes.LinkInfo{
 			ID:             s.id,
 			LocalIdentity:  s.LocalIdentity(),
 			RemoteIdentity: s.RemoteIdentity(),
@@ -76,10 +76,10 @@ func (c *EnsureStreamTask) Run(ctx *astral.Context) (err error) {
 	}
 }
 
-func (c *EnsureStreamTask) Result() (info *nodes.StreamInfo, err error) {
+func (c *EnsureLinkTask) Result() (info *nodes.LinkInfo, err error) {
 	return c.Info, c.Err
 }
 
-func (c *EnsureStreamTask) String() string {
-	return "nodes.ensure_stream"
+func (c *EnsureLinkTask) String() string {
+	return "nodes.ensure_link"
 }
