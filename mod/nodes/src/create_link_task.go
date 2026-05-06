@@ -33,12 +33,13 @@ func (c *CreateLinkTask) Run(ctx *astral.Context) error {
 		return err
 	}
 
-	link, err := c.mod.peers.EstablishOutboundLink(ctx, c.Target, conn)
+	rawLink, err := c.mod.EstablishOutboundLink(ctx, c.Target, conn)
 	if err != nil {
 		conn.Close()
 		c.Err = err
 		return err
 	}
+	link := rawLink.(*Link)
 
 	c.Info = &nodes.LinkInfo{
 		ID:             link.id,

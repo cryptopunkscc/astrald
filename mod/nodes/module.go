@@ -40,7 +40,7 @@ const (
 
 type Module interface {
 	EstablishInboundLink(ctx context.Context, conn exonet.Conn) error
-	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
+	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (Link, error)
 
 	AddEndpoint(*astral.Identity, *EndpointWithTTL) error
 	RemoveEndpoint(*astral.Identity, exonet.Endpoint) error
@@ -48,8 +48,6 @@ type Module interface {
 	UpdateNodeEndpoints(ctx *astral.Context, resolver *astral.Identity, identity *astral.Identity) error
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan *EndpointWithTTL, error)
 	AddResolver(resolver EndpointResolver)
-
-	Peers() []*astral.Identity
 
 	IsLinked(*astral.Identity) bool
 

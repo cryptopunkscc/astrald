@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"context"
 	"errors"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	modsecp256k1 "github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
@@ -22,8 +22,6 @@ const featureMux2 = "mux2"
 const defaultPingTimeout = time.Second * 30
 const activeInterval = 1 * time.Second
 const pingJitter = 1 * time.Second
-
-type NodeInfo nodes.NodeInfo
 
 var _ nodes.Module = &Module{}
 
@@ -60,28 +58,6 @@ func (mod *Module) Run(ctx *astral.Context) error {
 
 	<-ctx.Done()
 	return nil
-}
-
-func (mod *Module) Peers() (peers []*astral.Identity) {
-	return mod.peers.peers()
-}
-
-func (mod *Module) IsPeer(id *astral.Identity) bool {
-	for _, peer := range mod.peers.peers() {
-		if peer.IsEqual(id) {
-			return true
-		}
-	}
-	return false
-}
-
-func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
-	return mod.peers.EstablishInboundLink(ctx, conn)
-}
-
-func (mod *Module) EstablishOutboundLink(ctx context.Context, target *astral.Identity, conn exonet.Conn) error {
-	_, err := mod.peers.EstablishOutboundLink(ctx, target, conn)
-	return err
 }
 
 func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint *nodes.EndpointWithTTL) error {
@@ -129,7 +105,7 @@ func (mod *Module) RegisterLinkStrategy(network string, factory nodes.StrategyFa
 }
 
 func (mod *Module) IsLinked(identity *astral.Identity) bool {
-	return mod.peers.isLinked(identity)
+	return mod.linkPool.SelectLinkWith(identity) != nil
 }
 
 func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
@@ -175,4 +151,31 @@ func (mod *Module) findSessionByNonce(nonce astral.Nonce) (*session, bool) {
 	}
 
 	return nil, false
+}
+
+func (mod *Module) reflectLink(link *Link) error {
+	if link.Outbound() {
+		return nil
+	}
+
+	endpoint := link.RemoteEndpoint()
+	if endpoint == nil {
+		return nil
+	}
+
+	if _, ok := endpoint.(*gateway.Endpoint); ok {
+		return nil
+	}
+
+	err := mod.Objects.Push(mod.ctx, link.RemoteIdentity(),
+		&nodes.ObservedEndpointMessage{
+			Endpoint: endpoint,
+		})
+	if err != nil {
+		mod.log.Errorv(2, "Objects.Push(%v, %v): %v", link.RemoteIdentity(), endpoint, err)
+		return err
+	}
+
+	mod.log.Logv(2, "reflected endpoint %v to %v", endpoint, link.RemoteIdentity())
+	return nil
 }

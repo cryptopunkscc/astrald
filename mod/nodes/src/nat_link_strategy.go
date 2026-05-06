@@ -139,12 +139,13 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 		return fmt.Errorf("dial kcp: %w", err)
 	}
 
-	link, err := s.mod.peers.EstablishOutboundLink(ctx, s.target, conn)
+	rawLink, err := s.mod.EstablishOutboundLink(ctx, s.target, conn)
 	if err != nil {
 		conn.Close()
 		cleanup()
 		return fmt.Errorf("establish link: %w", err)
 	}
+	link := rawLink.(*Link)
 
 	go func() {
 		<-link.Done()

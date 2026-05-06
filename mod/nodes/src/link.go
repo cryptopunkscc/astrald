@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"errors"
+	"io"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -65,6 +66,10 @@ func (s *Link) CloseWithError(err error) error {
 	return s.Stream.CloseWithError(errors.New("link closed"))
 }
 
+func (s *Link) Close() error {
+	return s.CloseWithError(nil)
+}
+
 func (s *Link) Network() string {
 	if c, ok := s.conn.(exonet.Conn); ok {
 		if e := c.RemoteEndpoint(); e != nil {
@@ -92,12 +97,20 @@ func (s *Link) RemoteEndpoint() exonet.Endpoint {
 	return nil
 }
 
+func (s *Link) Outbound() bool {
+	return s.outbound
+}
+
 func (s *Link) PressureHigh() bool {
 	return s.pressure != nil && s.pressure.IsHigh()
 }
 
 func (s *Link) Throughput() uint64 {
 	return s.throughput.Load()
+}
+
+func (s *Link) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
+	return s.mux.RouteQuery(ctx, q, w)
 }
 
 func (s *Link) Write(frame frames.Frame) (err error) {
