@@ -28,40 +28,43 @@ var _ io.ReadCloser = &session{}
 
 type session struct {
 	Nonce          astral.Nonce
-	RemoteIdentity *astral.Identity
-	relayID        *astral.Identity // non-nil if this session is routed through a relay
+	RemoteIdentity *astral.Identity // logical peer: the identity this session is with
+	SourceIdentity *astral.Identity // transport source: identity expected to send control/response frames; differs from RemoteIdentity when relayed
 	Outbound       bool
 	Query          string
 	createdAt      time.Time
-	res            chan uint8
-	cond           *sync.Cond // guards paused, closed, link
+	routingResult  chan uint8
+	cond           *sync.Cond // guards paused, closed
 	paused         bool
 	closed         bool
 	state          atomic.Int32
+	bytes          atomic.Uint64 // total bytes transferred (read + write)
+	onClose        func()        // removes session from the sessions map
+	reader         io.ReadCloser
+	writer         io.WriteCloser
+	link           *Link // link the connection is attached to
 
-	link  *Link         // link the connection is attached to
-	bytes atomic.Uint64 // total bytes transferred (read + write)
-
-	reader io.ReadCloser
-	writer io.WriteCloser
-	remove func() // removes session from the sessions map
 }
 
 func (s *session) Identity() *astral.Identity {
 	return s.RemoteIdentity
 }
 
-func newSession(n astral.Nonce) *session {
-	if n == 0 {
-		n = astral.NewNonce()
+func newSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *astral.Identity, queryStr string, outbound bool) *session {
+	if nonce == 0 {
+		nonce = astral.NewNonce()
 	}
 
 	return &session{
-		Nonce:     n,
-		createdAt: time.Now(),
-		res:       make(chan uint8, 1),
-		cond:      sync.NewCond(&sync.Mutex{}),
-		paused:    true,
+		Nonce:          nonce,
+		RemoteIdentity: remoteIdentity,
+		SourceIdentity: sourceIdentity,
+		Query:          queryStr,
+		Outbound:       outbound,
+		createdAt:      time.Now(),
+		routingResult:  make(chan uint8, 1),
+		cond:           sync.NewCond(&sync.Mutex{}),
+		paused:         true,
 	}
 }
 
@@ -107,7 +110,6 @@ func (s *session) Setup(link *Link, reader io.ReadCloser, writer io.WriteCloser)
 	s.link = link
 	s.reader = reader
 	s.writer = writer
-	s.state.Store(stateOpen)
 	return nil
 }
 
@@ -124,21 +126,24 @@ func (s *session) Close() error {
 		s.cond.L.Unlock()
 		return nil
 	}
-	remove := s.remove
+	onClose := s.onClose
 	s.state.Store(stateClosed)
 	s.closed = true
 	s.cond.Broadcast()
 	s.cond.L.Unlock()
 
-	if remove != nil {
-		remove()
+	if onClose != nil {
+		onClose()
 	}
+
 	if s.writer != nil {
 		s.writer.Close()
 	}
+
 	if s.reader != nil {
 		s.reader.Close()
 	}
+
 	return nil
 }
 
@@ -158,13 +163,14 @@ func (s *session) IsOpen() bool {
 	return s.state.Load() == stateOpen
 }
 
-// note: this method might change its place
-func (s *session) CanAutoMigrate() bool {
-	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
-}
-
 func (s *session) isOnLink(link *Link) bool {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 	return s.link == link
+}
+
+func (s *session) currentLink() *Link {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
+	return s.link
 }

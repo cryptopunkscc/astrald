@@ -103,6 +103,7 @@ func (s *Stream) reader() {
 var FrameTypes = []string{
 	"nodes.frames.ping",
 	"nodes.frames.query",
+	"nodes.frames.relay_query",
 	"nodes.frames.read",
 	"nodes.frames.response",
 	"nodes.frames.data",
@@ -117,6 +118,7 @@ func init() {
 	_ = astral.Add(
 		&Ping{},
 		&Query{},
+		&RelayQuery{},
 		&Response{},
 		&Read{},
 		&Data{},

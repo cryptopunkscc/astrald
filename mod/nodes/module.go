@@ -29,8 +29,6 @@ const (
 
 	// MethodResolveEndpoints is the query route for resolving endpoints of a node.
 	MethodResolveEndpoints = "nodes.resolve_endpoints"
-	// MethodNodeOpenRelay is the query route for opening a relay channel.
-	MethodNodeOpenRelay = "nodes.node_open_relay"
 
 	// MethodMigrateSession is the query route for session migration.
 	MethodMigrateSession = "nodes.migrate_session"
@@ -42,7 +40,7 @@ const (
 
 type Module interface {
 	EstablishInboundLink(ctx context.Context, conn exonet.Conn) error
-	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) error
+	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (Link, error)
 
 	AddEndpoint(*astral.Identity, *EndpointWithTTL) error
 	RemoveEndpoint(*astral.Identity, exonet.Endpoint) error
@@ -50,8 +48,6 @@ type Module interface {
 	UpdateNodeEndpoints(ctx *astral.Context, resolver *astral.Identity, identity *astral.Identity) error
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan *EndpointWithTTL, error)
 	AddResolver(resolver EndpointResolver)
-
-	Peers() []*astral.Identity
 
 	IsLinked(*astral.Identity) bool
 
@@ -63,6 +59,7 @@ type Module interface {
 // Link is an encrypted communication channel between two identities that is capable of routing queries
 type Link interface {
 	astral.Router
+	// SetRouter(router astral.Router)
 	LocalIdentity() *astral.Identity
 	RemoteIdentity() *astral.Identity
 	Close() error

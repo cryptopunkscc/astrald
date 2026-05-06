@@ -14,17 +14,99 @@ type linkWatcher struct {
 }
 
 type LinkPool struct {
-	peers    *Peers
 	mod      *Module
+	links    sig.Set[*Link]
 	watchers sig.Set[*linkWatcher]
 	linkers  sig.Map[string, *NodeLinker]
 }
 
-func NewLinkPool(mod *Module, peers *Peers) *LinkPool {
+func NewLinkPool(mod *Module) *LinkPool {
 	return &LinkPool{
-		peers: peers,
-		mod:   mod,
+		mod: mod,
 	}
+}
+
+func (pool *LinkPool) AddLink(link *Link) error {
+	dir := "in"
+	netName := "unknown network"
+
+	if link.outbound {
+		dir = "out"
+	}
+
+	switch {
+	case link.LocalEndpoint() != nil:
+		netName = link.LocalEndpoint().Network()
+	case link.RemoteEndpoint() != nil:
+		netName = link.RemoteEndpoint().Network()
+	}
+
+	if err := pool.links.Add(link); err != nil {
+		return err
+	}
+
+	link.GetMux().SetRouter(pool.mod.node)
+
+	pool.mod.log.Infov(1, "added %v-link with %v (%v)", dir, link.RemoteIdentity(), netName)
+	linksWithSameIdentity := pool.links.Select(func(v *Link) bool {
+		return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
+	})
+
+	if !link.outbound {
+		pool.notifyLinkWatchers(link, nil)
+	}
+
+	pool.mod.Events.Emit(&nodes.LinkCreatedEvent{
+		RemoteIdentity: link.RemoteIdentity(),
+		LinkID:         link.id,
+		LinkCount:      len(linksWithSameIdentity),
+	})
+
+	go func() {
+		for frame := range link.Read() {
+			link.GetMux().HandleFrame(frame)
+		}
+
+		pool.links.Remove(link)
+		link.GetMux().closeAllSessions()
+
+		remaining := pool.links.Select(func(v *Link) bool {
+			return v.RemoteIdentity().IsEqual(link.RemoteIdentity())
+		})
+
+		pool.mod.Events.Emit(&nodes.LinkClosedEvent{
+			RemoteIdentity: link.RemoteIdentity(),
+			Forced:         false,
+			LinkCount:      astral.Int8(len(remaining)),
+		})
+
+		pool.mod.log.Info("closed %v-link with %v (%v): %v", dir, link.RemoteIdentity(), netName, link.Err())
+	}()
+
+	go pool.mod.reflectLink(link)
+
+	return nil
+}
+
+// SelectLinkWith returns a link to id, preferring a non-high-pressure link.
+func (pool *LinkPool) SelectLinkWith(id *astral.Identity) *Link {
+	var fallback *Link
+
+	for _, link := range pool.links.Clone() {
+		if !link.RemoteIdentity().IsEqual(id) {
+			continue
+		}
+
+		if !link.PressureHigh() {
+			return link
+		}
+
+		if fallback == nil {
+			fallback = link
+		}
+	}
+
+	return fallback
 }
 
 type LinkResult struct {
@@ -104,7 +186,7 @@ func (pool *LinkPool) RetrieveLink(
 	}
 
 	if !o.ForceNew {
-		links := pool.peers.links.Select(func(s *Link) bool { return match(s, nil) })
+		links := pool.links.Select(func(s *Link) bool { return match(s, nil) })
 		if len(links) > 0 {
 			return sig.ArrayToChan([]LinkResult{{Link: links[0]}})
 		}

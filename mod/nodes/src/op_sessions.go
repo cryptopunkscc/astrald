@@ -19,7 +19,10 @@ func (mod *Module) OpSessions(ctx *astral.Context, q *routing.IncomingQuery, arg
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	sessions := mod.peers.sessions.Values()
+	var sessions []*session
+	for _, link := range mod.linkPool.links.Clone() {
+		sessions = append(sessions, link.GetMux().sessions.Values()...)
+	}
 
 	slices.SortFunc(sessions, func(a, b *session) int {
 		return a.createdAt.Compare(b.createdAt)

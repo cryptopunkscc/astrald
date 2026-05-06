@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"context"
 	"errors"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
+	"github.com/cryptopunkscc/astrald/mod/gateway"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	modsecp256k1 "github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
@@ -22,8 +22,6 @@ const featureMux2 = "mux2"
 const defaultPingTimeout = time.Second * 30
 const activeInterval = 1 * time.Second
 const pingJitter = 1 * time.Second
-
-type NodeInfo nodes.NodeInfo
 
 var _ nodes.Module = &Module{}
 
@@ -42,16 +40,12 @@ type Module struct {
 
 	observedEndpoints sig.Map[string, ObservedEndpoint] // key is IP string
 
-	peers    *Peers
 	linkPool *LinkPool
 
 	strategyFactories sig.Map[string, nodes.StrategyFactory]
 	upgraders         sig.Map[string, *sig.Switch]
 
-	in chan *Frame
-
-	searchCache   sig.Map[string, *astral.Identity]
-	relayChannels sig.Map[string, *relayChannel]
+	searchCache sig.Map[string, *astral.Identity]
 
 	privateKey *crypto.PrivateKey
 }
@@ -59,33 +53,10 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Deps.Scheduler.Ready()
-	go mod.peers.frameReader(ctx)
 	mod.Scheduler.Schedule(mod.NewCleanupEndpointsTask())
 
 	<-ctx.Done()
 	return nil
-}
-
-func (mod *Module) Peers() (peers []*astral.Identity) {
-	return mod.peers.peers()
-}
-
-func (mod *Module) IsPeer(id *astral.Identity) bool {
-	for _, peer := range mod.peers.peers() {
-		if peer.IsEqual(id) {
-			return true
-		}
-	}
-	return false
-}
-
-func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
-	return mod.peers.EstablishInboundLink(ctx, conn)
-}
-
-func (mod *Module) EstablishOutboundLink(ctx context.Context, target *astral.Identity, conn exonet.Conn) error {
-	_, err := mod.peers.EstablishOutboundLink(ctx, target, conn)
-	return err
 }
 
 func (mod *Module) AddEndpoint(nodeID *astral.Identity, endpoint *nodes.EndpointWithTTL) error {
@@ -104,7 +75,7 @@ func (mod *Module) RemoveEndpoint(nodeID *astral.Identity, endpoint exonet.Endpo
 
 // CloseLink closes a link with the given id.
 func (mod *Module) CloseLink(id astral.Nonce) error {
-	links := mod.peers.links.Clone()
+	links := mod.linkPool.links.Clone()
 	for _, s := range links {
 		if s.id == id {
 			return s.CloseWithError(errors.New("link closed"))
@@ -133,7 +104,7 @@ func (mod *Module) RegisterLinkStrategy(network string, factory nodes.StrategyFa
 }
 
 func (mod *Module) IsLinked(identity *astral.Identity) bool {
-	return mod.peers.isLinked(identity)
+	return mod.linkPool.SelectLinkWith(identity) != nil
 }
 
 func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
@@ -151,7 +122,7 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 
 // findLinkByID returns a link with the given local id or nil if not found.
 func (mod *Module) findLinkByID(id astral.Nonce) *Link {
-	for _, s := range mod.peers.links.Clone() {
+	for _, s := range mod.linkPool.links.Clone() {
 		if s.id == id {
 			return s
 		}
@@ -160,11 +131,50 @@ func (mod *Module) findLinkByID(id astral.Nonce) *Link {
 }
 
 func (mod *Module) findLinkBySessionNonce(nonce astral.Nonce) *Link {
-	for _, session := range mod.peers.sessions.Clone() {
-		if session.Nonce == nonce {
+	for _, link := range mod.linkPool.links.Clone() {
+		session, ok := link.GetMux().sessions.Get(nonce)
+		if ok && session.link != nil {
 			return session.link
 		}
 	}
 
+	return nil
+}
+
+func (mod *Module) findSessionByNonce(nonce astral.Nonce) (*session, bool) {
+	for _, link := range mod.linkPool.links.Clone() {
+		session, ok := link.GetMux().sessions.Get(nonce)
+		if ok {
+			return session, true
+		}
+	}
+
+	return nil, false
+}
+
+func (mod *Module) reflectLink(link *Link) error {
+	if link.Outbound() {
+		return nil
+	}
+
+	endpoint := link.RemoteEndpoint()
+	if endpoint == nil {
+		return nil
+	}
+
+	if _, ok := endpoint.(*gateway.Endpoint); ok {
+		return nil
+	}
+
+	err := mod.Objects.Push(mod.ctx, link.RemoteIdentity(),
+		&nodes.ObservedEndpointMessage{
+			Endpoint: endpoint,
+		})
+	if err != nil {
+		mod.log.Errorv(2, "Objects.Push(%v, %v): %v", link.RemoteIdentity(), endpoint, err)
+		return err
+	}
+
+	mod.log.Logv(2, "reflected endpoint %v to %v", endpoint, link.RemoteIdentity())
 	return nil
 }
