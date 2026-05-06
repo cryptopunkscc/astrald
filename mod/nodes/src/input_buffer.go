@@ -9,24 +9,23 @@ import (
 
 var _ io.ReadCloser = &InputBuffer{}
 
-// InputBuffer is a bounded receive buffer. Push appends data; Read consumes it.
-// Non-blocking: returns ErrBufferEmpty when empty. onRead fires after each read
-// to report consumed bytes. Closed buffer can still be read until drained.
+// InputBuffer is a bounded receive buffer. Push appends whole chunks; Read
+// consumes from the front. Non-blocking: when empty, Read returns ErrBufferEmpty
+// with a one-shot wake channel — caller blocks on it, signal() closes and nils
+// it so the next caller gets a fresh one. Closed buffer drains before EOF.
 //
-// Lifecycle signals:
-//   - Closed() fires when no more bytes will be pushed (Close called).
-//   - Done()   fires when closed AND fully drained (no unread bytes remain).
+// Invariant: Push rejects if used+len(p) > size; no partial pushes.
 type InputBuffer struct {
 	mu      sync.Mutex
 	size    int
 	used    int
-	buf     [][]byte
-	ready   chan struct{}
-	shut    chan struct{}
-	done    chan struct{}
+	buf     [][]byte      // chunk queue; front chunk may be partially consumed (trimmed in place, no copy)
+	ready   chan struct{} // one-shot wake channel: nil → created by readyCh() → closed+nilified by signal()
+	shut    chan struct{} // closed by Close(); onRead nilified at the same time to suppress post-close credit frames
+	done    chan struct{} // closed when shut AND buf is empty
 	drained bool
 	closed  bool
-	onRead  func(int)
+	onRead  func(int) // called after each Read with bytes consumed; mux uses this to send a Read frame granting flow-control credit to the sender
 }
 
 func NewInputBuffer(size int, onRead func(int)) *InputBuffer {
@@ -80,6 +79,7 @@ func (b *InputBuffer) Read(p []byte) (n int, err error) {
 	return
 }
 
+// Close signals no more pushes will arrive. Already-buffered data is still readable; EOF only after drained.
 func (b *InputBuffer) Close() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -87,10 +87,10 @@ func (b *InputBuffer) Close() error {
 		return nil
 	}
 	b.closed = true
-	b.onRead = nil
+	b.onRead = nil // suppress flow-control credit frames after close
 	close(b.shut)
-	b.signal()
-	b.checkDone()
+	b.signal()    // wake blocked reader; it drains remaining data before returning EOF
+	b.checkDone() // close done immediately if already empty
 
 	return nil
 }

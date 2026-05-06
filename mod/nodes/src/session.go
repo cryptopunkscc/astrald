@@ -40,7 +40,7 @@ type session struct {
 	state          atomic.Int32
 	bytes          atomic.Uint64 // total bytes transferred (read + write)
 	onClose        func()        // removes session from the sessions map
-	reader         io.ReadCloser
+	reader         io.Reader
 	writer         io.WriteCloser
 	link           *Link // link the connection is attached to
 
@@ -138,9 +138,7 @@ func (s *session) Close() error {
 	if s.writer != nil {
 		s.writer.Close()
 	}
-	if s.reader != nil {
-		s.reader.Close()
-	}
+
 	return nil
 }
 
@@ -158,11 +156,6 @@ func (s *session) swapState(old, new int32) bool {
 
 func (s *session) IsOpen() bool {
 	return s.state.Load() == stateOpen
-}
-
-// note: this method might change its place
-func (s *session) CanAutoMigrate() bool {
-	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
 }
 
 func (s *session) isOnLink(link *Link) bool {

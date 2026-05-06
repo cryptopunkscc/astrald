@@ -69,7 +69,7 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 		}
 	}
 
-	if err := m.link.Write(frame); err != nil {
+	if err := m.link.Stream.Write(frame); err != nil {
 		conn.Close()
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (m *Mux) handleRelayQuery(relayQuery *frames.RelayQuery) error {
 			Action: auth.NewAction(m.link.RemoteIdentity()),
 			ForID:  relayQuery.CallerID,
 		}) {
-			_ = m.link.Write(&frames.Response{Nonce: relayQuery.Query.Nonce, ErrCode: frames.CodeRejected})
+			_ = m.link.Stream.Write(&frames.Response{Nonce: relayQuery.Query.Nonce, ErrCode: frames.CodeRejected})
 			return nil
 		}
 	}
@@ -155,7 +155,7 @@ func (m *Mux) handleInboundQuery(linkNonce astral.Nonce, caller, target, relayID
 	router, err := m.waitRouter(ctx)
 	if err != nil {
 		conn.Close()
-		m.link.Write(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeRejected})
+		m.link.Stream.Write(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeRejected})
 		return
 	}
 
@@ -175,12 +175,12 @@ func (m *Mux) handleInboundQuery(linkNonce astral.Nonce, caller, target, relayID
 		if errors.As(err, &reject) {
 			code = reject.Code
 		}
-		m.link.Write(&frames.Response{Nonce: linkNonce, ErrCode: code})
+		m.link.Stream.Write(&frames.Response{Nonce: linkNonce, ErrCode: code})
 		return
 	}
 
 	conn.setState(stateOpen)
-	m.link.Write(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
+	m.link.Stream.Write(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 	conn.Open()
 
 	go func() {
@@ -226,7 +226,7 @@ func (m *Mux) handleResponse(f *frames.Response) {
 func (m *Mux) handleData(f *frames.Data) {
 	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
-		m.link.Write(&frames.Reset{Nonce: f.Nonce})
+		m.link.Stream.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
@@ -234,14 +234,11 @@ func (m *Mux) handleData(f *frames.Data) {
 	case stateOpen, stateMigrating:
 	default:
 		m.mod.log.Errorv(1, "received data frame from %v in state %v", m.link.RemoteIdentity(), session.getState())
-		m.link.Write(&frames.Reset{Nonce: f.Nonce})
+		m.link.Stream.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
-	m.link.throughput.Add(uint64(len(f.Payload)))
-	if m.link.pressure != nil {
-		m.link.pressure.OnBytes(len(f.Payload), time.Now())
-	}
+	m.addBytes(len(f.Payload))
 
 	reader, ok := session.reader.(*muxSessionReader)
 	if !ok {
@@ -259,7 +256,7 @@ func (m *Mux) handleData(f *frames.Data) {
 func (m *Mux) handleRead(f *frames.Read) {
 	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
-		m.link.Write(&frames.Reset{Nonce: f.Nonce})
+		m.link.Stream.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
@@ -297,7 +294,7 @@ func (m *Mux) handlePing(f *frames.Ping) {
 		return
 	}
 
-	m.link.Write(&frames.Ping{
+	m.link.Stream.Write(&frames.Ping{
 		Nonce: f.Nonce,
 		Pong:  true,
 	})
@@ -320,6 +317,13 @@ func (m *Mux) handleMigrate(f *frames.Migrate) {
 	}
 
 	reader.Advance()
+}
+
+func (m *Mux) addBytes(n int) {
+	m.link.throughput.Add(uint64(n))
+	if m.link.pressure != nil {
+		m.link.pressure.OnBytes(n, time.Now())
+	}
 }
 
 // waitRouter blocks until the mux has a router or ctx is cancelled.

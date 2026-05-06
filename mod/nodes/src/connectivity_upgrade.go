@@ -82,7 +82,7 @@ func (mod *Module) migrateSessions(oldLinkID astral.Nonce, newLink *Link) {
 	var sessions map[astral.Nonce]*session
 	if oldLink != nil {
 		sessions = oldLink.GetMux().sessions.Select(func(k astral.Nonce, v *session) bool {
-			return v.IsOpen() && v.isOnLink(oldLink) && v.CanAutoMigrate()
+			return v.IsOpen() && v.isOnLink(oldLink) && mod.canAutoMigrate(v)
 		})
 	}
 
@@ -106,4 +106,8 @@ func (mod *Module) migrateSessions(oldLinkID astral.Nonce, newLink *Link) {
 	}
 
 	mod.log.Log("migrated %v/%v sessions from link %v to %v", migrated, len(sessions), oldLinkID, newLink.id)
+}
+
+func (mod *Module) canAutoMigrate(s *session) bool {
+	return time.Since(s.createdAt) >= minSessionAge || s.bytes.Load() >= minSessionBytes
 }

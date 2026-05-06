@@ -13,6 +13,11 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+type Ping struct {
+	sentAt time.Time
+	pong   chan struct{}
+}
+
 type Link struct {
 	*frames.Stream
 	mux         *Mux
@@ -28,26 +33,8 @@ type Link struct {
 	pressure    LinkPressureDetector
 }
 
-type Ping struct {
-	sentAt time.Time
-	pong   chan struct{}
-}
-
-func newLink(mod *Module, conn astral.Conn, id astral.Nonce, outbound bool) *Link {
-	link := &Link{
-		id:          id,
-		conn:        conn,
-		createdAt:   time.Now(),
-		Stream:      frames.NewStream(conn),
-		outbound:    outbound,
-		pingTimeout: defaultPingTimeout,
-		wakeCh:      make(chan struct{}, 1),
-	}
-	link.mux = newMux(mod, link)
-
-	go link.pingLoop()
-
-	return link
+func (s *Link) GetMux() *Mux {
+	return s.mux
 }
 
 func (s *Link) LocalIdentity() *astral.Identity {
@@ -113,19 +100,6 @@ func (s *Link) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Wri
 	return s.mux.RouteQuery(ctx, q, w)
 }
 
-func (s *Link) Write(frame frames.Frame) (err error) {
-	if f, ok := frame.(*frames.Data); ok {
-		s.throughput.Add(uint64(len(f.Payload)))
-		if s.pressure != nil {
-			s.pressure.OnBytes(len(f.Payload), time.Now())
-		}
-	}
-	if _, ok := frame.(*frames.Ping); !ok {
-		s.check()
-	}
-	return s.Stream.Write(frame)
-}
-
 func (s *Link) Ping() (time.Duration, error) {
 	var nonce = astral.NewNonce()
 
@@ -138,7 +112,7 @@ func (s *Link) Ping() (time.Duration, error) {
 	}
 	defer s.pings.Delete(nonce)
 
-	err := s.Write(&frames.Ping{
+	err := s.Stream.Write(&frames.Ping{
 		Nonce: nonce,
 	})
 	if err != nil {
@@ -171,17 +145,6 @@ func (s *Link) pong(nonce astral.Nonce) (time.Duration, error) {
 
 // Wake triggers a ping on the next loop iteration.
 func (s *Link) Wake() {
-	select {
-	case s.wakeCh <- struct{}{}:
-	default:
-	}
-}
-
-func (s *Link) check() {
-	if s.checks.Swap(2) != 0 {
-		return
-	}
-
 	select {
 	case s.wakeCh <- struct{}{}:
 	default:
@@ -225,6 +188,19 @@ func (s *Link) pingLoop() {
 	}
 }
 
-func (s *Link) GetMux() *Mux {
-	return s.mux
+func newLink(mod *Module, conn astral.Conn, id astral.Nonce, outbound bool) *Link {
+	link := &Link{
+		id:          id,
+		conn:        conn,
+		createdAt:   time.Now(),
+		Stream:      frames.NewStream(conn),
+		outbound:    outbound,
+		pingTimeout: defaultPingTimeout,
+		wakeCh:      make(chan struct{}, 1),
+	}
+
+	link.mux = newMux(mod, link)
+	go link.pingLoop()
+
+	return link
 }

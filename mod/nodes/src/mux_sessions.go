@@ -66,7 +66,7 @@ func (m *Mux) sessionOnCloseFunc(nonce astral.Nonce) func() {
 }
 
 func (m *Mux) sessionResetFunc(nonce astral.Nonce) func() {
-	return func() { m.sessionResetFunc(nonce) }
+	return func() { m.link.Stream.Write(&frames.Reset{Nonce: nonce}) }
 }
 
 func (m *Mux) sessionOnReadFunc(nonce astral.Nonce) func(int) {
@@ -91,8 +91,7 @@ func (m *Mux) sessionOnWriteFunc(nonce astral.Nonce) func([]byte) error {
 				return err
 			}
 
-			// fixme: addBytes
-			// 	m.link.addBytes(chunkSize)
+			m.addBytes(chunkSize)
 			remaining = remaining[chunkSize:]
 		}
 

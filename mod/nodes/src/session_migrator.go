@@ -63,7 +63,7 @@ func (m *SessionMigrator) Begin(target *Link) error {
 
 func (m *SessionMigrator) SendMigrateFrame() error {
 	m.mod.log.Logv(1, "sending migrate frame for session %v on link %v", m.session.Nonce, m.oldLink.id)
-	return m.oldLink.Write(&frames.Migrate{Nonce: m.session.Nonce})
+	return m.oldLink.Stream.Write(&frames.Migrate{Nonce: m.session.Nonce})
 }
 
 func (m *SessionMigrator) WaitClosed(ctx context.Context) error {

@@ -49,11 +49,12 @@ func (b *OutputBuffer) Grow(n int) {
 	b.signal()
 }
 
+// Close stops writes immediately. Nothing to drain: every Write already dispatched bytes via the write callback.
 func (b *OutputBuffer) Close() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.closed = true
-	b.signal()
+	b.signal() // wake blocked writer so it surfaces ErrBufferClosed instead of sleeping
 
 	return nil
 }

@@ -96,9 +96,11 @@ func (pool *LinkPool) SelectLinkWith(id *astral.Identity) *Link {
 		if !link.RemoteIdentity().IsEqual(id) {
 			continue
 		}
+
 		if !link.PressureHigh() {
 			return link
 		}
+
 		if fallback == nil {
 			fallback = link
 		}
