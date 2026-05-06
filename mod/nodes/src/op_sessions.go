@@ -21,7 +21,7 @@ func (mod *Module) OpSessions(ctx *astral.Context, q *routing.IncomingQuery, arg
 
 	var sessions []*session
 	for _, link := range mod.linkPool.links.Clone() {
-		sessions = append(sessions, link.GetMux().sessionsList()...)
+		sessions = append(sessions, link.GetMux().sessions.Values()...)
 	}
 
 	slices.SortFunc(sessions, func(a, b *session) int {

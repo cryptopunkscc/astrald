@@ -132,7 +132,7 @@ func (mod *Module) findLinkByID(id astral.Nonce) *Link {
 
 func (mod *Module) findLinkBySessionNonce(nonce astral.Nonce) *Link {
 	for _, link := range mod.linkPool.links.Clone() {
-		session, ok := link.GetMux().getSession(nonce)
+		session, ok := link.GetMux().sessions.Get(nonce)
 		if ok && session.link != nil {
 			return session.link
 		}
@@ -143,7 +143,7 @@ func (mod *Module) findLinkBySessionNonce(nonce astral.Nonce) *Link {
 
 func (mod *Module) findSessionByNonce(nonce astral.Nonce) (*session, bool) {
 	for _, link := range mod.linkPool.links.Clone() {
-		session, ok := link.GetMux().getSession(nonce)
+		session, ok := link.GetMux().sessions.Get(nonce)
 		if ok {
 			return session, true
 		}

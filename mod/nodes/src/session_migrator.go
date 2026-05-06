@@ -14,8 +14,7 @@ type SessionMigrator struct {
 	writer         *muxSessionWriter
 	peerBuffer     int
 	oldLink        *Link
-	oldMux         *Mux
-	newMux         *Mux
+	newLink        *Link
 	oldInputBuffer *InputBuffer
 }
 
@@ -42,17 +41,17 @@ func (m *SessionMigrator) Begin(target *Link) error {
 	m.oldLink = m.session.link
 	m.session.link = target
 	m.session.cond.L.Unlock()
-	m.oldMux = m.oldLink.GetMux()
-	m.newMux = target.GetMux()
+	m.newLink = target
 
 	m.mod.log.Logv(1, "pausing session %v", m.session.Nonce)
 	m.writer.Pause()
 
 	m.oldInputBuffer = m.reader.Buf()
 
-	newInputBuffer := NewInputBuffer(defaultBufferSize, m.newMux.sessionOnReadFunc(m.session.Nonce))
-	newOutputBuffer := NewOutputBuffer(m.newMux.sessionOnWriteFunc(m.session.Nonce))
-	resetFunc := m.newMux.sessionResetFunc(m.session.Nonce)
+	newMux := m.newLink.GetMux()
+	newInputBuffer := NewInputBuffer(defaultBufferSize, newMux.sessionOnReadFunc(m.session.Nonce))
+	newOutputBuffer := NewOutputBuffer(newMux.sessionOnWriteFunc(m.session.Nonce))
+	resetFunc := newMux.sessionResetFunc(m.session.Nonce)
 
 	m.writer.SwapBuf(newOutputBuffer, resetFunc)
 	m.reader.SetNextBuffer(newInputBuffer)
@@ -84,8 +83,17 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 func (m *SessionMigrator) Complete() error {
 	m.mod.log.Logv(1, "resuming session %v on link %v (peer buffer %v)", m.session.Nonce, m.session.link.id, m.peerBuffer)
 
-	if m.oldMux != nil && m.newMux != nil && !m.oldMux.transferSessionTo(m.newMux, m.session) {
-		return nodes.ErrInvalidSessionState
+	if m.oldLink != nil && m.newLink != nil && m.oldLink != m.newLink {
+		oldMux := m.oldLink.GetMux()
+		newMux := m.newLink.GetMux()
+
+		sess, err := oldMux.removeSession(m.session.Nonce)
+		if err != nil {
+			return err
+		}
+		if err := newMux.adoptSession(sess); err != nil {
+			return err
+		}
 	}
 
 	m.session.setState(stateOpen)

@@ -16,6 +16,7 @@ func (mod *Module) migrateSession(ctx *astral.Context, session *session, targetL
 	if err != nil {
 		return err
 	}
+
 	defer ch.Close()
 
 	migrator, err := mod.newSessionMigrator(session)

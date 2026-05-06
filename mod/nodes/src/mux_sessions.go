@@ -1,38 +1,37 @@
 package nodes
 
 import (
+	"errors"
+
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 )
 
-func (mux *Mux) adoptSession(sess *session) bool {
-	_, ok := mux.sessions.Set(sess.Nonce, sess)
+func (mux *Mux) adoptSession(session *session) error {
+	if session == nil {
+		return errors.New("nil session")
+	}
+
+	_, ok := mux.sessions.Set(session.Nonce, session)
 	if !ok {
-		return false
-	}
-	sess.onClose = func() { mux.sessions.Delete(sess.Nonce) }
-	return ok
-}
-
-func (mux *Mux) transferSessionTo(target *Mux, sess *session) bool {
-	if target == nil || target == mux {
-		return target == mux
+		return nodes.ErrInvalidSessionState
 	}
 
-	if !target.adoptSession(sess) {
-		return false
+	session.cond.L.Lock()
+	session.onClose = func() { mux.sessions.Delete(session.Nonce) }
+	session.cond.L.Unlock()
+
+	return nil
+}
+
+func (mux *Mux) removeSession(nonce astral.Nonce) (*session, error) {
+	session, ok := mux.sessions.Delete(nonce)
+	if !ok {
+		return nil, nodes.ErrSessionNotFound
 	}
 
-	mux.sessions.Delete(sess.Nonce)
-	return true
-}
-
-func (mux *Mux) getSession(nonce astral.Nonce) (*session, bool) {
-	return mux.sessions.Get(nonce)
-}
-
-func (mux *Mux) sessionsList() []*session {
-	return mux.sessions.Values()
+	return session, nil
 }
 
 func (m *Mux) createSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *astral.Identity, queryStr string, outbound bool, peerBuffer int) (*session, bool) {
@@ -57,6 +56,11 @@ func (m *Mux) createSession(nonce astral.Nonce, remoteIdentity, sourceIdentity *
 
 func (m *Mux) closeAllSessions() {
 	for _, s := range m.sessions.Clone() {
+		if !s.isOnLink(m.link) {
+			m.sessions.Delete(s.Nonce)
+			continue
+		}
+
 		s.Close()
 	}
 }
