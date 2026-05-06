@@ -109,7 +109,7 @@ func (mod *Module) EstablishOutboundLink(ctx context.Context, remoteID *astral.I
 			return nil, fmt.Errorf("read outbound link nonce: %w", err)
 		}
 
-		link := newLink(mod.peers, aconn, nonce, true)
+		link := newLink(mod, aconn, nonce, true)
 		err = mod.linkPool.AddLink(link)
 
 		return link, err
@@ -156,7 +156,7 @@ func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (
 					return fmt.Errorf("failed to set inbound link nonce: %w", err)
 				}
 
-				link := newLink(mod.peers, aconn, nonce, false)
+				link := newLink(mod, aconn, nonce, false)
 				err = mod.linkPool.AddLink(link)
 				if err != nil {
 					return fmt.Errorf("failed to add link: %w", err)

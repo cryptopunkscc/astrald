@@ -40,7 +40,6 @@ type Module struct {
 
 	observedEndpoints sig.Map[string, ObservedEndpoint] // key is IP string
 
-	peers    *Peers
 	linkPool *LinkPool
 
 	strategyFactories sig.Map[string, nodes.StrategyFactory]

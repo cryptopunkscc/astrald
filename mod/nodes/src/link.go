@@ -33,7 +33,7 @@ type Ping struct {
 	pong   chan struct{}
 }
 
-func newLink(peers *Peers, conn astral.Conn, id astral.Nonce, outbound bool) *Link {
+func newLink(mod *Module, conn astral.Conn, id astral.Nonce, outbound bool) *Link {
 	link := &Link{
 		id:          id,
 		conn:        conn,
@@ -43,7 +43,7 @@ func newLink(peers *Peers, conn astral.Conn, id astral.Nonce, outbound bool) *Li
 		pingTimeout: defaultPingTimeout,
 		wakeCh:      make(chan struct{}, 1),
 	}
-	link.mux = newMux(peers, link)
+	link.mux = newMux(mod, link)
 
 	go link.pingLoop()
 

@@ -15,8 +15,8 @@ import (
 )
 
 type Mux struct {
-	peers *Peers
-	link  *Link
+	mod  *Module
+	link *Link
 
 	sessions sig.Map[astral.Nonce, *session]
 
@@ -24,10 +24,10 @@ type Mux struct {
 	router astral.Router
 }
 
-func newMux(peers *Peers, link *Link) *Mux {
+func newMux(mod *Module, link *Link) *Mux {
 	m := &Mux{
-		peers: peers,
-		link:  link,
+		mod:  mod,
+		link: link,
 	}
 	m.cond = sync.NewCond(&sync.Mutex{})
 	return m
@@ -112,7 +112,7 @@ func (m *Mux) HandleFrame(frame frames.Frame) {
 	case *frames.Migrate:
 		m.handleMigrate(f)
 	default:
-		m.peers.log.Errorv(2, "unknown frame: %v", frame)
+		m.mod.log.Errorv(2, "unknown frame: %v", frame)
 	}
 }
 
@@ -122,8 +122,8 @@ func (m *Mux) handleQuery(f *frames.Query) {
 
 func (m *Mux) handleRelayQuery(relayQuery *frames.RelayQuery) error {
 	if !relayQuery.CallerID.IsEqual(m.link.RemoteIdentity()) {
-		ctx := astral.NewContext(nil).WithIdentity(m.peers.node.Identity())
-		if !m.peers.Auth.Authorize(ctx, &nodes.RelayForAction{
+		ctx := astral.NewContext(nil).WithIdentity(m.mod.node.Identity())
+		if !m.mod.Auth.Authorize(ctx, &nodes.RelayForAction{
 			Action: auth.NewAction(m.link.RemoteIdentity()),
 			ForID:  relayQuery.CallerID,
 		}) {
@@ -150,7 +150,7 @@ func (m *Mux) handleInboundQuery(linkNonce astral.Nonce, caller, target, relayID
 		return
 	}
 
-	ctx := astral.NewContext(nil).WithIdentity(m.peers.node.Identity())
+	ctx := astral.NewContext(nil).WithIdentity(m.mod.node.Identity())
 
 	router, err := m.waitRouter(ctx)
 	if err != nil {
@@ -233,7 +233,7 @@ func (m *Mux) handleData(f *frames.Data) {
 	switch session.getState() {
 	case stateOpen, stateMigrating:
 	default:
-		m.peers.log.Errorv(1, "received data frame from %v in state %v", m.link.RemoteIdentity(), session.getState())
+		m.mod.log.Errorv(1, "received data frame from %v in state %v", m.link.RemoteIdentity(), session.getState())
 		m.link.Write(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
@@ -245,12 +245,12 @@ func (m *Mux) handleData(f *frames.Data) {
 
 	reader, ok := session.reader.(*muxSessionReader)
 	if !ok {
-		m.peers.log.Errorv(1, "received data frame from %v on non-mux session", m.link.RemoteIdentity())
+		m.mod.log.Errorv(1, "received data frame from %v on non-mux session", m.link.RemoteIdentity())
 		return
 	}
 
 	if err := reader.Push(f.Payload); err != nil {
-		m.peers.log.Errorv(1, "failed to push read frame: %v", err)
+		m.mod.log.Errorv(1, "failed to push read frame: %v", err)
 		session.Close()
 		return
 	}
@@ -290,9 +290,9 @@ func (m *Mux) handlePing(f *frames.Ping) {
 	if f.Pong {
 		rtt, err := m.link.pong(f.Nonce)
 		if err != nil {
-			m.peers.log.Errorv(1, "invalid pong sessionId from %v", m.link.RemoteIdentity())
-		} else if m.peers.config.LogPings {
-			m.peers.log.Logv(1, "ping with %v: %v", m.link.RemoteIdentity(), rtt)
+			m.mod.log.Errorv(1, "invalid pong sessionId from %v", m.link.RemoteIdentity())
+		} else if m.mod.config.LogPings {
+			m.mod.log.Logv(1, "ping with %v: %v", m.link.RemoteIdentity(), rtt)
 		}
 		return
 	}
@@ -315,7 +315,7 @@ func (m *Mux) handleMigrate(f *frames.Migrate) {
 
 	reader, ok := sess.reader.(*muxSessionReader)
 	if !ok {
-		m.peers.log.Errorv(1, "received migrate frame on non-mux session")
+		m.mod.log.Errorv(1, "received migrate frame on non-mux session")
 		return
 	}
 
