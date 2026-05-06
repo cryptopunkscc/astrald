@@ -40,7 +40,7 @@ type session struct {
 	state          atomic.Int32
 	bytes          atomic.Uint64 // total bytes transferred (read + write)
 	onClose        func()        // removes session from the sessions map
-	reader         io.Reader
+	reader         io.ReadCloser
 	writer         io.WriteCloser
 	link           *Link // link the connection is attached to
 
@@ -135,8 +135,13 @@ func (s *session) Close() error {
 	if onClose != nil {
 		onClose()
 	}
+
 	if s.writer != nil {
 		s.writer.Close()
+	}
+
+	if s.reader != nil {
+		s.reader.Close()
 	}
 
 	return nil
