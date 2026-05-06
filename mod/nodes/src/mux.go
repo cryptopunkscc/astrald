@@ -8,6 +8,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/lib/query"
+	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -43,16 +44,32 @@ func (m *Mux) SetRouter(r astral.Router) {
 }
 
 func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
-	conn, ok := m.createSession(q.Nonce, q.Target, nil, q.QueryString, true, 0)
+	sourceID := m.link.RemoteIdentity()
+	if q.Caller.IsEqual(ctx.Identity()) {
+		sourceID = nil
+	}
+
+	conn, ok := m.createSession(q.Nonce, q.Target, sourceID, q.QueryString, true, 0)
 	if !ok {
 		return query.RouteNotFound()
 	}
 
-	if err := m.link.Write(&frames.Query{
+	queryFrame := frames.Query{
 		Nonce:  q.Nonce,
 		Query:  q.QueryString,
 		Buffer: uint32(defaultBufferSize),
-	}); err != nil {
+	}
+
+	var frame frames.Frame = &queryFrame
+	if !q.Caller.IsEqual(ctx.Identity()) {
+		frame = &frames.RelayQuery{
+			CallerID: q.Caller,
+			TargetID: q.Target,
+			Query:    queryFrame,
+		}
+	}
+
+	if err := m.link.Write(frame); err != nil {
 		conn.Close()
 		return nil, err
 	}
@@ -80,6 +97,8 @@ func (m *Mux) HandleFrame(frame frames.Frame) {
 	switch f := frame.(type) {
 	case *frames.Query:
 		go m.handleQuery(f)
+	case *frames.RelayQuery:
+		go m.handleRelayQuery(f)
 	case *frames.Response:
 		m.handleResponse(f)
 	case *frames.Ping:
@@ -101,7 +120,18 @@ func (m *Mux) handleQuery(f *frames.Query) {
 	m.handleInboundQuery(f.Nonce, m.link.RemoteIdentity(), m.link.LocalIdentity(), nil, f.Query, int(f.Buffer))
 }
 
-func (m *Mux) handleRelayQuery(relayQuery *nodes.QueryContainer) error {
+func (m *Mux) handleRelayQuery(relayQuery *frames.RelayQuery) error {
+	if !relayQuery.CallerID.IsEqual(m.link.RemoteIdentity()) {
+		ctx := astral.NewContext(nil).WithIdentity(m.peers.node.Identity())
+		if !m.peers.Auth.Authorize(ctx, &nodes.RelayForAction{
+			Action: auth.NewAction(m.link.RemoteIdentity()),
+			ForID:  relayQuery.CallerID,
+		}) {
+			_ = m.link.Write(&frames.Response{Nonce: relayQuery.Query.Nonce, ErrCode: frames.CodeRejected})
+			return nil
+		}
+	}
+
 	m.handleInboundQuery(
 		relayQuery.Query.Nonce,
 		relayQuery.CallerID,
@@ -252,6 +282,7 @@ func (m *Mux) handleReset(f *frames.Reset) {
 	if w, ok := session.writer.(*muxSessionWriter); ok {
 		w.PeerClose()
 	}
+
 	session.Close()
 }
 

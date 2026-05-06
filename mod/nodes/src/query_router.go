@@ -23,15 +23,6 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 	}
 
 	if mod.IsPeer(q.Target) {
-		// if we are not the caller it means we are a relay for identity.
-		if !ctx.Identity().IsEqual(q.Caller) {
-			rc, err := mod.getRelay(ctx, q.Target)
-			if err != nil {
-				return query.RouteNotFound()
-			}
-			return rc.RouteQuery(ctx, q, w)
-		}
-
 		return mod.peers.RouteQuery(ctx, q, w)
 	}
 
@@ -48,15 +39,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 			break
 		}
 
-		if !ctx.Identity().IsEqual(q.Caller) {
-			rc, err := mod.getRelay(ctx, q.Target)
-			if err != nil {
-				return query.RouteNotFound()
-			}
-			return rc.RouteQuery(ctx, q, w)
-		}
-
-		return mod.peers.RouteQuery(ctx, q, w)
+		return result.Link.GetMux().RouteQuery(ctx, q, w)
 	}
 
 	// try relays
@@ -76,12 +59,18 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 			continue
 		}
 
-		rc, err := mod.getRelay(ctx, relayID)
-		if err != nil {
+		if !ctx.Identity().IsEqual(q.Caller) {
+			if err := mod.sendCallerProof(ctx, q, relayID); err != nil {
+				continue
+			}
+		}
+
+		result := <-mod.linkPool.RetrieveLink(retrieveCtx, relayID, WithStrategies(nodes.StrategyBasic, nodes.StrategyTor))
+		if result.Err != nil {
 			continue
 		}
 
-		rw, err := rc.RouteQuery(ctx, q, w)
+		rw, err := result.Link.GetMux().RouteQuery(ctx, q, w)
 		if err == nil {
 			return rw, nil
 		}
