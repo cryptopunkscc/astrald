@@ -120,8 +120,8 @@ func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {
 	return mod.privateKey, nil
 }
 
-// findLinkByID returns a link with the given local id or nil if not found.
-func (mod *Module) findLinkByID(id astral.Nonce) *Link {
+// getLinkByID returns a link with the given local id or nil if not found.
+func (mod *Module) getLinkByID(id astral.Nonce) *Link {
 	for _, s := range mod.linkPool.links.Clone() {
 		if s.id == id {
 			return s
@@ -130,18 +130,18 @@ func (mod *Module) findLinkByID(id astral.Nonce) *Link {
 	return nil
 }
 
-func (mod *Module) findLinkBySessionNonce(nonce astral.Nonce) *Link {
+func (mod *Module) getSessionLink(nonce astral.Nonce) *Link {
 	for _, link := range mod.linkPool.links.Clone() {
-		session, ok := link.GetMux().sessions.Get(nonce)
-		if ok && session.link != nil {
-			return session.link
+		_, ok := link.GetMux().sessions.Get(nonce)
+		if ok {
+			return link
 		}
 	}
 
 	return nil
 }
 
-func (mod *Module) findSessionByNonce(nonce astral.Nonce) (*session, bool) {
+func (mod *Module) getSession(nonce astral.Nonce) (*session, bool) {
 	for _, link := range mod.linkPool.links.Clone() {
 		session, ok := link.GetMux().sessions.Get(nonce)
 		if ok {

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/cryptopunkscc/astrald/mod/nodes"
-	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 )
 
 type SessionMigrator struct {
@@ -38,8 +37,7 @@ func (m *SessionMigrator) Begin(target *Link) error {
 		return nodes.ErrInvalidSessionState
 	}
 	m.session.cond.L.Lock()
-	m.oldLink = m.session.link
-	m.session.link = target
+	m.oldLink = m.mod.getSessionLink(m.session.Nonce)
 	m.session.cond.L.Unlock()
 	m.newLink = target
 
@@ -62,7 +60,7 @@ func (m *SessionMigrator) Begin(target *Link) error {
 
 func (m *SessionMigrator) SendMigrateFrame() error {
 	m.mod.log.Logv(1, "sending migrate frame for session %v on link %v", m.session.Nonce, m.oldLink.id)
-	return m.oldLink.Stream.Write(&frames.Migrate{Nonce: m.session.Nonce})
+	return m.oldLink.GetMux().SendMigrateFrame(m.session.Nonce)
 }
 
 func (m *SessionMigrator) WaitClosed(ctx context.Context) error {
@@ -81,7 +79,8 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 }
 
 func (m *SessionMigrator) Complete() error {
-	m.mod.log.Logv(1, "resuming session %v on link %v (peer buffer %v)", m.session.Nonce, m.session.link.id, m.peerBuffer)
+
+	m.mod.log.Logv(1, "resuming session %v on link %v (peer buffer %v)", m.session.Nonce, m.newLink.id, m.peerBuffer)
 
 	if m.oldLink != nil && m.newLink != nil && m.oldLink != m.newLink {
 		oldMux := m.oldLink.GetMux()
@@ -91,7 +90,7 @@ func (m *SessionMigrator) Complete() error {
 		if err != nil {
 			return err
 		}
-		if err := newMux.adoptSession(sess); err != nil {
+		if err := newMux.addSession(sess); err != nil {
 			return err
 		}
 	}

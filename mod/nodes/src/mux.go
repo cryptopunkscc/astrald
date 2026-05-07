@@ -2,11 +2,13 @@ package nodes
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/auth"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
@@ -15,8 +17,15 @@ import (
 )
 
 type Mux struct {
-	mod  *Module
-	link *Link
+	mod *Module
+	ch  *channel.Channel
+
+	linkID         astral.Nonce
+	currentLink    func() *Link
+	onBytes        func(int)
+	onPong         func(astral.Nonce) (time.Duration, error)
+	localIdentity  *astral.Identity
+	remoteIdentity *astral.Identity
 
 	sessions sig.Map[astral.Nonce, *session]
 
@@ -24,13 +33,40 @@ type Mux struct {
 	router astral.Router
 }
 
-func newMux(mod *Module, link *Link) *Mux {
+func newMux(
+	mod *Module,
+	ch *channel.Channel,
+	localIdentity *astral.Identity,
+	remoteIdentity *astral.Identity,
+	onBytes func(int),
+	onPong func(astral.Nonce) (time.Duration, error),
+) *Mux {
 	m := &Mux{
-		mod:  mod,
-		link: link,
+		mod:            mod,
+		ch:             ch,
+		onBytes:        onBytes,
+		onPong:         onPong,
+		localIdentity:  localIdentity,
+		remoteIdentity: remoteIdentity,
 	}
 	m.cond = sync.NewCond(&sync.Mutex{})
 	return m
+}
+
+func (m *Mux) LocalIdentity() *astral.Identity {
+	return m.localIdentity
+}
+
+func (m *Mux) RemoteIdentity() *astral.Identity {
+	return m.remoteIdentity
+}
+
+func (m *Mux) sendFrame(frame astral.Object) error {
+	return m.ch.Send(frame)
+}
+
+func (m *Mux) SendMigrateFrame(nonce astral.Nonce) error {
+	return m.sendFrame(&frames.Migrate{Nonce: nonce})
 }
 
 func (m *Mux) SetRouter(r astral.Router) {
@@ -44,7 +80,7 @@ func (m *Mux) SetRouter(r astral.Router) {
 }
 
 func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
-	sourceID := m.link.RemoteIdentity()
+	sourceID := m.RemoteIdentity()
 	if q.Caller.IsEqual(ctx.Identity()) {
 		sourceID = nil
 	}
@@ -69,7 +105,7 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 		}
 	}
 
-	if err := m.link.Stream.Write(frame); err != nil {
+	if err := m.sendFrame(frame); err != nil {
 		conn.Close()
 		return nil, err
 	}
@@ -93,7 +129,11 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 	}
 }
 
-func (m *Mux) HandleFrame(frame frames.Frame) {
+func (m *Mux) Handle(obj astral.Object) error {
+	frame, ok := obj.(frames.Frame)
+	if !ok {
+		return fmt.Errorf("unknown object type: %v", obj.ObjectType())
+	}
 	switch f := frame.(type) {
 	case *frames.Query:
 		go m.handleQuery(f)
@@ -112,22 +152,23 @@ func (m *Mux) HandleFrame(frame frames.Frame) {
 	case *frames.Migrate:
 		m.handleMigrate(f)
 	default:
-		m.mod.log.Errorv(2, "unknown frame: %v", frame)
+		return fmt.Errorf("unhandled frame type: %T", frame)
 	}
+	return nil
 }
 
 func (m *Mux) handleQuery(f *frames.Query) {
-	m.handleInboundQuery(f.Nonce, m.link.RemoteIdentity(), m.link.LocalIdentity(), nil, f.Query, int(f.Buffer))
+	m.handleInboundQuery(f.Nonce, m.RemoteIdentity(), m.LocalIdentity(), nil, f.Query, int(f.Buffer))
 }
 
 func (m *Mux) handleRelayQuery(relayQuery *frames.RelayQuery) error {
-	if !relayQuery.CallerID.IsEqual(m.link.RemoteIdentity()) {
+	if !relayQuery.CallerID.IsEqual(m.RemoteIdentity()) {
 		ctx := astral.NewContext(nil).WithIdentity(m.mod.node.Identity())
 		if !m.mod.Auth.Authorize(ctx, &nodes.RelayForAction{
-			Action: auth.NewAction(m.link.RemoteIdentity()),
+			Action: auth.NewAction(m.RemoteIdentity()),
 			ForID:  relayQuery.CallerID,
 		}) {
-			_ = m.link.Stream.Write(&frames.Response{Nonce: relayQuery.Query.Nonce, ErrCode: frames.CodeRejected})
+			_ = m.sendFrame(&frames.Response{Nonce: relayQuery.Query.Nonce, ErrCode: frames.CodeRejected})
 			return nil
 		}
 	}
@@ -136,7 +177,7 @@ func (m *Mux) handleRelayQuery(relayQuery *frames.RelayQuery) error {
 		relayQuery.Query.Nonce,
 		relayQuery.CallerID,
 		relayQuery.TargetID,
-		m.link.RemoteIdentity(),
+		m.RemoteIdentity(),
 		relayQuery.Query.Query,
 		int(relayQuery.Query.Buffer),
 	)
@@ -155,7 +196,7 @@ func (m *Mux) handleInboundQuery(linkNonce astral.Nonce, caller, target, relayID
 	router, err := m.waitRouter(ctx)
 	if err != nil {
 		conn.Close()
-		m.link.Stream.Write(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeRejected})
+		m.sendFrame(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeRejected})
 		return
 	}
 
@@ -175,12 +216,12 @@ func (m *Mux) handleInboundQuery(linkNonce astral.Nonce, caller, target, relayID
 		if errors.As(err, &reject) {
 			code = reject.Code
 		}
-		m.link.Stream.Write(&frames.Response{Nonce: linkNonce, ErrCode: code})
+		m.sendFrame(&frames.Response{Nonce: linkNonce, ErrCode: code})
 		return
 	}
 
 	conn.setState(stateOpen)
-	m.link.Stream.Write(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
+	m.sendFrame(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 	conn.Open()
 
 	go func() {
@@ -195,11 +236,11 @@ func (m *Mux) handleResponse(f *frames.Response) {
 		return
 	}
 
-	if conn.SourceIdentity != nil && !conn.SourceIdentity.IsEqual(m.link.RemoteIdentity()) {
+	if conn.SourceIdentity != nil && !conn.SourceIdentity.IsEqual(m.RemoteIdentity()) {
 		return
 	}
 
-	if conn.SourceIdentity == nil && !conn.RemoteIdentity.IsEqual(m.link.RemoteIdentity()) {
+	if conn.SourceIdentity == nil && !conn.RemoteIdentity.IsEqual(m.RemoteIdentity()) {
 		return
 	}
 
@@ -226,23 +267,25 @@ func (m *Mux) handleResponse(f *frames.Response) {
 func (m *Mux) handleData(f *frames.Data) {
 	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
-		m.link.Stream.Write(&frames.Reset{Nonce: f.Nonce})
+		m.sendFrame(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
 	switch session.getState() {
 	case stateOpen, stateMigrating:
 	default:
-		m.mod.log.Errorv(1, "received data frame from %v in state %v", m.link.RemoteIdentity(), session.getState())
-		m.link.Stream.Write(&frames.Reset{Nonce: f.Nonce})
+		m.mod.log.Errorv(1, "received data frame from %v in state %v", m.RemoteIdentity(), session.getState())
+		m.sendFrame(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
-	m.addBytes(len(f.Payload))
+	if m.onBytes != nil {
+		m.onBytes(len(f.Payload))
+	}
 
 	reader, ok := session.reader.(*muxSessionReader)
 	if !ok {
-		m.mod.log.Errorv(1, "received data frame from %v on non-mux session", m.link.RemoteIdentity())
+		m.mod.log.Errorv(1, "received data frame from %v on non-mux session", m.RemoteIdentity())
 		return
 	}
 
@@ -256,11 +299,7 @@ func (m *Mux) handleData(f *frames.Data) {
 func (m *Mux) handleRead(f *frames.Read) {
 	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
-		m.link.Stream.Write(&frames.Reset{Nonce: f.Nonce})
-		return
-	}
-
-	if !session.isOnLink(m.link) {
+		m.sendFrame(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
@@ -285,16 +324,16 @@ func (m *Mux) handleReset(f *frames.Reset) {
 
 func (m *Mux) handlePing(f *frames.Ping) {
 	if f.Pong {
-		rtt, err := m.link.pong(f.Nonce)
+		rtt, err := m.onPong(f.Nonce)
 		if err != nil {
-			m.mod.log.Errorv(1, "invalid pong sessionId from %v", m.link.RemoteIdentity())
+			m.mod.log.Errorv(1, "invalid pong sessionId from %v", m.RemoteIdentity())
 		} else if m.mod.config.LogPings {
-			m.mod.log.Logv(1, "ping with %v: %v", m.link.RemoteIdentity(), rtt)
+			m.mod.log.Logv(1, "ping with %v: %v", m.RemoteIdentity(), rtt)
 		}
 		return
 	}
 
-	m.link.Stream.Write(&frames.Ping{
+	m.sendFrame(&frames.Ping{
 		Nonce: f.Nonce,
 		Pong:  true,
 	})
@@ -317,13 +356,6 @@ func (m *Mux) handleMigrate(f *frames.Migrate) {
 	}
 
 	reader.Advance()
-}
-
-func (m *Mux) addBytes(n int) {
-	m.link.throughput.Add(uint64(n))
-	if m.link.pressure != nil {
-		m.link.pressure.OnBytes(n, time.Now())
-	}
 }
 
 // waitRouter blocks until the mux has a router or ctx is cancelled.

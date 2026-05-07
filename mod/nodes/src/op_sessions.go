@@ -33,9 +33,14 @@ func (mod *Module) OpSessions(ctx *astral.Context, q *routing.IncomingQuery, arg
 			continue
 		}
 
+		link := mod.getSessionLink(s.Nonce)
+		if link == nil {
+			continue
+		}
+
 		err = ch.Send(&nodes.SessionInfo{
 			ID:             s.Nonce,
-			LinkID:         s.link.id,
+			LinkID:         link.id,
 			RemoteIdentity: s.RemoteIdentity,
 			Outbound:       astral.Bool(s.Outbound),
 			Query:          astral.String16(s.Query),
