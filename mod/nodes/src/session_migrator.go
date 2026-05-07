@@ -17,18 +17,18 @@ type SessionMigrator struct {
 	oldInputBuffer *InputBuffer
 }
 
-func (mod *Module) newSessionMigrator(sess *session) (*SessionMigrator, error) {
-	reader, ok := sess.reader.(*muxSessionReader)
+func (mod *Module) newSessionMigrator(session *session) (*SessionMigrator, error) {
+	reader, ok := session.reader.(*muxSessionReader)
 	if !ok {
 		return nil, nodes.ErrMigrationNotSupported
 	}
 
-	writer, ok := sess.writer.(*muxSessionWriter)
+	writer, ok := session.writer.(*muxSessionWriter)
 	if !ok {
 		return nil, nodes.ErrMigrationNotSupported
 	}
 
-	return &SessionMigrator{mod: mod, session: sess, reader: reader, writer: writer}, nil
+	return &SessionMigrator{mod: mod, session: session, reader: reader, writer: writer}, nil
 }
 
 func (m *SessionMigrator) Begin(target *Link) error {
@@ -79,7 +79,6 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 }
 
 func (m *SessionMigrator) Complete() error {
-
 	m.mod.log.Logv(1, "resuming session %v on link %v (peer buffer %v)", m.session.Nonce, m.newLink.id, m.peerBuffer)
 
 	if m.oldLink != nil && m.newLink != nil && m.oldLink != m.newLink {

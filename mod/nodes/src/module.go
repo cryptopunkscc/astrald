@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/astral/log"
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
@@ -105,6 +106,13 @@ func (mod *Module) RegisterLinkStrategy(network string, factory nodes.StrategyFa
 
 func (mod *Module) IsLinked(identity *astral.Identity) bool {
 	return mod.linkPool.SelectLinkWith(identity) != nil
+}
+
+func (mod *Module) GetLinkNegotitator(ch *channel.Channel) *muxLinkNegotiator {
+	return &muxLinkNegotiator{
+		mod: mod,
+		ch:  ch,
+	}
 }
 
 func (mod *Module) getPrivateKey() (_ *crypto.PrivateKey, err error) {

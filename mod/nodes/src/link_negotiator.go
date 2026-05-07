@@ -4,62 +4,108 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 	"github.com/cryptopunkscc/astrald/mod/nodes/src/noise"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-// negotiateOutboundLink reads peer's supported features and the link nonce.
-func (mod *Module) negotiateOutboundLink(aconn astral.Conn) (features []astral.String8, err error) {
-	var featCount astral.Uint16
-	if _, err = featCount.ReadFrom(aconn); err != nil {
-		return nil, fmt.Errorf("read features: %w", err)
+var (
+	ErrNoSupportedFeature         = errors.New("no supported link feature")
+	ErrUnsupportedSelectedFeature = errors.New("unsupported selected link feature")
+	ErrNegotiationRejected        = errors.New("link negotiation rejected")
+)
+
+type muxLinkNegotiator struct {
+	mod *Module
+	ch  *channel.Channel
+}
+
+func (n *muxLinkNegotiator) NegotiateOutbound() (*Link, error) {
+	var count *astral.Uint16
+	if err := n.ch.Switch(channel.Expect(&count), channel.PassErrors); err != nil {
+		return nil, fmt.Errorf("read feature count: %w", err)
 	}
-	for i := 0; i < int(featCount); i++ {
-		var feat astral.String8
-		if _, err = feat.ReadFrom(aconn); err != nil {
-			return nil, fmt.Errorf("read features: %w", err)
+
+	var supported bool
+	for i := 0; i < int(*count); i++ {
+		var feature *astral.String8
+		if err := n.ch.Switch(channel.Expect(&feature), channel.PassErrors); err != nil {
+			return nil, fmt.Errorf("read feature: %w", err)
 		}
-		features = append(features, feat)
-	}
-
-	return features, nil
-}
-
-// negotiateInboundLink sends our supported features.
-func (mod *Module) negotiateInboundLink(aconn astral.Conn) error {
-	linkFeatures := []string{featureMux2}
-	if _, err := astral.Uint16(len(linkFeatures)).WriteTo(aconn); err != nil {
-		return err
-	}
-	for _, feature := range linkFeatures {
-		if _, err := astral.String8(feature).WriteTo(aconn); err != nil {
-			return err
+		if feature.String() == featureMux2 {
+			supported = true
 		}
 	}
 
-	return nil
-}
-
-func (mod *Module) setInboundLinkNonce(aconn astral.Conn) (nonce astral.Nonce, err error) {
-	nonce = astral.NewNonce()
-	if _, err = nonce.WriteTo(aconn); err != nil {
-		return 0, err
+	if !supported {
+		return nil, ErrNoSupportedFeature
 	}
 
-	return nonce, nil
-}
-
-func (mod *Module) readOutboundLinkNonce(aconn astral.Conn) (nonce astral.Nonce, err error) {
-	if _, err = nonce.ReadFrom(aconn); err != nil {
-		return 0, err
+	if err := n.ch.Send(astral.NewString8(featureMux2)); err != nil {
+		return nil, fmt.Errorf("send selected feature: %w", err)
 	}
 
-	return nonce, nil
+	var status *astral.Uint8
+	if err := n.ch.Switch(channel.Expect(&status), channel.PassErrors); err != nil {
+		return nil, fmt.Errorf("read negotiation status: %w", err)
+	}
+	if *status != 0 {
+		return nil, ErrNegotiationRejected
+	}
+
+	var nonce *astral.Nonce
+	if err := n.ch.Switch(channel.Expect(&nonce), channel.PassErrors); err != nil {
+		return nil, fmt.Errorf("read link nonce: %w", err)
+	}
+
+	conn, ok := n.ch.Transport().(astral.Conn)
+	if !ok {
+		return nil, errors.New("negotiation channel transport is not an astral conn")
+	}
+
+	link := newLink(n.mod, conn, *nonce, true)
+	return link, nil
+}
+
+func (n *muxLinkNegotiator) NegotiateInbound() (*Link, error) {
+	if err := n.ch.Send(astral.NewUint16(1)); err != nil {
+		return nil, fmt.Errorf("send feature count: %w", err)
+	}
+	if err := n.ch.Send(astral.NewString8(featureMux2)); err != nil {
+		return nil, fmt.Errorf("send feature: %w", err)
+	}
+
+	var feature *astral.String8
+	if err := n.ch.Switch(channel.Expect(&feature), channel.PassErrors); err != nil {
+		return nil, fmt.Errorf("read selected feature: %w", err)
+	}
+	if feature.String() != featureMux2 {
+		if err := n.ch.Send(astral.NewUint8(1)); err != nil {
+			return nil, fmt.Errorf("send negotiation rejection: %w", err)
+		}
+		return nil, ErrUnsupportedSelectedFeature
+	}
+
+	if err := n.ch.Send(astral.NewUint8(0)); err != nil {
+		return nil, fmt.Errorf("send negotiation status: %w", err)
+	}
+
+	nonce := astral.NewNonce()
+	if err := n.ch.Send(&nonce); err != nil {
+		return nil, fmt.Errorf("send link nonce: %w", err)
+	}
+
+	conn, ok := n.ch.Transport().(astral.Conn)
+	if !ok {
+		return nil, errors.New("negotiation channel transport is not an astral conn")
+	}
+
+	link := newLink(n.mod, conn, nonce, false)
+	return link, nil
 }
 
 func (mod *Module) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ nodes.Link, err error) {
@@ -84,38 +130,16 @@ func (mod *Module) EstablishOutboundLink(ctx context.Context, remoteID *astral.I
 		return nil, fmt.Errorf("outbound handshake: %w", err)
 	}
 
-	linkFeatures, err := mod.negotiateOutboundLink(aconn)
+	ch := channel.New(aconn, channel.WithLockedWrites())
+	negotiator := mod.GetLinkNegotitator(ch)
+	link, err := negotiator.NegotiateOutbound()
 	if err != nil {
 		return nil, err
 	}
-
-	if slices.Contains(linkFeatures, featureMux2) {
-		_, err = astral.String8(featureMux2).WriteTo(aconn)
-		if err != nil {
-			return nil, fmt.Errorf("write: %w", err)
-		}
-
-		var errCode astral.Int8
-		_, err = errCode.ReadFrom(aconn)
-		switch {
-		case err != nil:
-			return nil, fmt.Errorf("read: %w", err)
-		case errCode != 0:
-			return nil, errors.New("link feature negotation error")
-		}
-
-		nonce, err := mod.readOutboundLinkNonce(aconn)
-		if err != nil {
-			return nil, fmt.Errorf("read outbound link nonce: %w", err)
-		}
-
-		link := newLink(mod, aconn, nonce, true)
-		err = mod.linkPool.AddLink(link)
-
-		return link, err
+	if err := mod.linkPool.AddLink(link); err != nil {
+		return nil, err
 	}
-
-	return nil, errors.New("no supported link types found")
+	return link, nil
 }
 
 func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
@@ -135,42 +159,12 @@ func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (
 		return err
 	}
 
-	err = mod.negotiateInboundLink(aconn)
+	ch := channel.New(aconn, channel.WithLockedWrites())
+	negotiator := mod.GetLinkNegotitator(ch)
+	link, err := negotiator.NegotiateInbound()
 	if err != nil {
 		return err
 	}
-
-	for {
-		var feature string
-		_, err = (*astral.String8)(&feature).ReadFrom(aconn)
-		if err != nil {
-			return err
-		}
-
-		switch feature {
-		case featureMux2:
-			_, err = astral.Uint8(0).WriteTo(aconn)
-			if err == nil {
-				nonce, err := mod.setInboundLinkNonce(aconn)
-				if err != nil {
-					return fmt.Errorf("failed to set inbound link nonce: %w", err)
-				}
-
-				link := newLink(mod, aconn, nonce, false)
-				err = mod.linkPool.AddLink(link)
-				if err != nil {
-					return fmt.Errorf("failed to add link: %w", err)
-				}
-			}
-
-			return err
-		default:
-			_, err = astral.Uint8(1).WriteTo(aconn)
-			return fmt.Errorf("remote party (%s from %s) requested an invalid feature: %s",
-				aconn.RemoteIdentity(),
-				aconn.RemoteEndpoint(),
-				feature,
-			)
-		}
-	}
+	err = mod.linkPool.AddLink(link)
+	return err
 }
