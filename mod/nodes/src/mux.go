@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -29,8 +29,9 @@ type Mux struct {
 
 	sessions sig.Map[astral.Nonce, *session]
 
-	cond   *sync.Cond
-	router astral.Router
+	router     astral.Router
+	routerSet  chan struct{}
+	routerOnce atomic.Bool
 }
 
 func newMux(
@@ -48,8 +49,8 @@ func newMux(
 		onPong:         onPong,
 		localIdentity:  localIdentity,
 		remoteIdentity: remoteIdentity,
+		routerSet:      make(chan struct{}),
 	}
-	m.cond = sync.NewCond(&sync.Mutex{})
 	return m
 }
 
@@ -66,13 +67,11 @@ func (m *Mux) SendMigrateFrame(nonce astral.Nonce) error {
 }
 
 func (m *Mux) SetRouter(r astral.Router) {
-	m.cond.L.Lock()
-	defer m.cond.L.Unlock()
-	if m.router != nil {
+	if !m.routerOnce.CompareAndSwap(false, true) {
 		return
 	}
 	m.router = r
-	m.cond.Broadcast()
+	close(m.routerSet)
 }
 
 func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
@@ -356,23 +355,10 @@ func (m *Mux) handleMigrate(f *frames.Migrate) {
 
 // waitRouter blocks until the mux has a router or ctx is cancelled.
 func (m *Mux) waitRouter(ctx *astral.Context) (astral.Router, error) {
-	stop := make(chan struct{})
-	defer close(stop)
-	go func() {
-		select {
-		case <-ctx.Done():
-			m.cond.Broadcast()
-		case <-stop:
-		}
-	}()
-
-	m.cond.L.Lock()
-	defer m.cond.L.Unlock()
-	for m.router == nil {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		m.cond.Wait()
+	select {
+	case <-m.routerSet:
+		return m.router, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
-	return m.router, nil
 }

@@ -215,18 +215,22 @@ func (s *Link) Wake() {
 }
 
 func (s *Link) pingLoop() {
+	t := time.NewTimer(time.Duration(rand.Int63n(int64(pingJitter))))
+	defer t.Stop()
+
 	select {
 	case <-s.done:
 		return
-	case <-time.After(time.Duration(rand.Int63n(int64(pingJitter)))):
+	case <-t.C:
 	}
 
 	for {
 		if s.checks.Load() > 0 {
+			t.Reset(activeInterval)
 			select {
 			case <-s.done:
 				return
-			case <-time.After(activeInterval):
+			case <-t.C:
 			}
 		} else {
 			select {
