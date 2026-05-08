@@ -42,8 +42,6 @@ type session struct {
 	onClose        func()        // removes session from the sessions map
 	reader         io.ReadCloser
 	writer         io.WriteCloser
-	link           *Link // link the connection is attached to
-
 }
 
 func (s *session) Identity() *astral.Identity {
@@ -99,7 +97,7 @@ func (s *session) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (s *session) Setup(link *Link, reader io.ReadCloser, writer io.WriteCloser) error {
+func (s *session) Setup(reader io.ReadCloser, writer io.WriteCloser) error {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -107,7 +105,6 @@ func (s *session) Setup(link *Link, reader io.ReadCloser, writer io.WriteCloser)
 		return nodes.ErrSessionClosed
 	}
 
-	s.link = link
 	s.reader = reader
 	s.writer = writer
 	return nil
@@ -161,16 +158,4 @@ func (s *session) swapState(old, new int32) bool {
 
 func (s *session) IsOpen() bool {
 	return s.state.Load() == stateOpen
-}
-
-func (s *session) isOnLink(link *Link) bool {
-	s.cond.L.Lock()
-	defer s.cond.L.Unlock()
-	return s.link == link
-}
-
-func (s *session) currentLink() *Link {
-	s.cond.L.Lock()
-	defer s.cond.L.Unlock()
-	return s.link
 }

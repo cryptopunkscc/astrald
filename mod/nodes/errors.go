@@ -16,4 +16,5 @@ var (
 	ErrLinkNotFound          = errors.New("link not found")
 	ErrBufferClosed          = errors.New("buffer closed")
 	ErrBufferOverflow        = errors.New("buffer overflow")
+	ErrSessionAlreadyOnLink  = errors.New("session already on link")
 )

@@ -18,7 +18,7 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	session, ok := mod.findSessionByNonce(args.SessionID)
+	session, ok := mod.getSession(args.SessionID)
 	if !ok {
 		return ch.Send(astral.Err(nodes.ErrSessionNotFound))
 	}
@@ -26,16 +26,21 @@ func (mod *Module) OpMigrateSession(ctx *astral.Context, q *routing.IncomingQuer
 		return ch.Send(astral.Err(nodes.ErrInvalidSessionState))
 	}
 
-	targetLink := mod.findLinkByID(args.LinkID)
+	targetLink := mod.getLinkByID(args.LinkID)
 	if targetLink == nil {
 		return ch.Send(astral.Err(nodes.ErrLinkNotFound))
 	}
 
-	if args.Start {
-		if session.isOnLink(targetLink) {
-			return ch.Send(astral.NewError("session already on target link"))
-		}
+	link := mod.getSessionLink(session.Nonce)
+	if link == nil {
+		return ch.Send(astral.Err(nodes.ErrLinkNotFound))
+	}
 
+	if link.id == targetLink.id {
+		return ch.Send(astral.Err(nodes.ErrSessionAlreadyOnLink))
+	}
+
+	if args.Start {
 		mod.log.Log("migrate session %v to link %v (manual)", args.SessionID, args.LinkID)
 		migrateCtx, cancel := ctx.WithTimeout(migrateSessionTimeout)
 		defer cancel()

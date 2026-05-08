@@ -73,7 +73,7 @@ func (mod *Module) connectivityUpgrade(e *nodes.LinkPressureEvent) {
 const migrateSessionTimeout = 30 * time.Second
 
 func (mod *Module) migrateSessions(oldLinkID astral.Nonce, newLink *Link) {
-	oldLink := mod.findLinkByID(oldLinkID)
+	oldLink := mod.getLinkByID(oldLinkID)
 	if oldLink == nil {
 		mod.log.Logv(1, "migrate sessions: old link %v not found", oldLinkID)
 		return
@@ -82,7 +82,7 @@ func (mod *Module) migrateSessions(oldLinkID astral.Nonce, newLink *Link) {
 	var sessions map[astral.Nonce]*session
 	if oldLink != nil {
 		sessions = oldLink.GetMux().sessions.Select(func(k astral.Nonce, v *session) bool {
-			return v.IsOpen() && v.isOnLink(oldLink) && mod.canAutoMigrate(v)
+			return v.IsOpen() && mod.canAutoMigrate(v)
 		})
 	}
 

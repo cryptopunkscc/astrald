@@ -4,27 +4,33 @@ import (
 	"errors"
 	"io"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 	"github.com/cryptopunkscc/astrald/mod/nodes/frames"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Ping struct {
+	nonce  astral.Nonce
 	sentAt time.Time
 	pong   chan struct{}
 }
 
 type Link struct {
-	*frames.Stream
+	*channel.Channel
 	mux         *Mux
 	id          astral.Nonce
 	createdAt   time.Time
 	conn        astral.Conn
-	pings       sig.Map[astral.Nonce, *Ping]
+	err         sig.Value[error]
+	done        chan struct{}
+	pingMu      sync.Mutex
+	ping        *Ping
 	checks      atomic.Int32
 	throughput  atomic.Uint64
 	outbound    bool
@@ -46,11 +52,40 @@ func (s *Link) RemoteIdentity() *astral.Identity {
 }
 
 func (s *Link) CloseWithError(err error) error {
-	if err != nil {
-		return s.Stream.CloseWithError(err)
+	if err == nil {
+		err = errors.New("link closed")
 	}
+	s.err.Swap(nil, err)
+	return s.Channel.Close()
+}
 
-	return s.Stream.CloseWithError(errors.New("link closed"))
+func (s *Link) Err() error {
+	return s.err.Get()
+}
+
+func (s *Link) Done() <-chan struct{} {
+	return s.done
+}
+
+func (s *Link) readLoop() {
+	var err error
+	defer func() {
+		s.err.Swap(nil, err)
+		s.Channel.Close()
+		close(s.done)
+	}()
+
+	for {
+		obj, recvErr := s.Receive()
+		if recvErr != nil {
+			err = recvErr
+			return
+		}
+		if handleErr := s.mux.Handle(obj); handleErr != nil {
+			err = handleErr
+			return
+		}
+	}
 }
 
 func (s *Link) Close() error {
@@ -96,26 +131,40 @@ func (s *Link) Throughput() uint64 {
 	return s.throughput.Load()
 }
 
+func (s *Link) onBytes(n int) {
+	s.throughput.Add(uint64(n))
+	if s.pressure != nil {
+		s.pressure.OnBytes(n, time.Now())
+	}
+}
+
 func (s *Link) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	return s.mux.RouteQuery(ctx, q, w)
 }
 
 func (s *Link) Ping() (time.Duration, error) {
-	var nonce = astral.NewNonce()
-
-	p, ok := s.pings.Set(nonce, &Ping{
-		sentAt: time.Now(),
-		pong:   make(chan struct{}),
-	})
-	if !ok {
-		return -1, errors.New("duplicate sessionId")
+	p := &Ping{
+		nonce: astral.NewNonce(),
+		pong:  make(chan struct{}),
 	}
-	defer s.pings.Delete(nonce)
 
-	err := s.Stream.Write(&frames.Ping{
-		Nonce: nonce,
+	s.pingMu.Lock()
+	if s.ping != nil {
+		s.pingMu.Unlock()
+		return -1, errors.New("ping already in flight")
+	}
+	s.ping = p
+	s.pingMu.Unlock()
+
+	err := s.Send(&frames.Ping{
+		Nonce: p.nonce,
 	})
 	if err != nil {
+		s.pingMu.Lock()
+		if s.ping == p {
+			s.ping = nil
+		}
+		s.pingMu.Unlock()
 		return -1, err
 	}
 	p.sentAt = time.Now()
@@ -124,17 +173,31 @@ func (s *Link) Ping() (time.Duration, error) {
 	case <-p.pong:
 		return time.Since(p.sentAt), nil
 	case <-time.After(s.pingTimeout):
+		s.pingMu.Lock()
+		if s.ping == p {
+			s.ping = nil
+		}
+		s.pingMu.Unlock()
 		return -1, errors.New("ping timeout")
-	case <-s.Stream.Done():
-		return -1, s.Err()
+	case <-s.done:
+		s.pingMu.Lock()
+		if s.ping == p {
+			s.ping = nil
+		}
+		s.pingMu.Unlock()
+		return -1, s.err.Get()
 	}
 }
 
 func (s *Link) pong(nonce astral.Nonce) (time.Duration, error) {
-	p, ok := s.pings.Delete(nonce)
-	if !ok {
+	s.pingMu.Lock()
+	p := s.ping
+	if p == nil || p.nonce != nonce {
+		s.pingMu.Unlock()
 		return -1, errors.New("invalid sessionId")
 	}
+	s.ping = nil
+	s.pingMu.Unlock()
 	d := time.Since(p.sentAt)
 	close(p.pong)
 	if s.pressure != nil {
@@ -152,22 +215,26 @@ func (s *Link) Wake() {
 }
 
 func (s *Link) pingLoop() {
+	t := time.NewTimer(time.Duration(rand.Int63n(int64(pingJitter))))
+	defer t.Stop()
+
 	select {
-	case <-s.Stream.Done():
+	case <-s.done:
 		return
-	case <-time.After(time.Duration(rand.Int63n(int64(pingJitter)))):
+	case <-t.C:
 	}
 
 	for {
 		if s.checks.Load() > 0 {
+			t.Reset(activeInterval)
 			select {
-			case <-s.Stream.Done():
+			case <-s.done:
 				return
-			case <-time.After(activeInterval):
+			case <-t.C:
 			}
 		} else {
 			select {
-			case <-s.Stream.Done():
+			case <-s.done:
 				return
 			case <-s.wakeCh:
 			}
@@ -189,17 +256,28 @@ func (s *Link) pingLoop() {
 }
 
 func newLink(mod *Module, conn astral.Conn, id astral.Nonce, outbound bool) *Link {
+	ch := channel.New(conn, channel.WithLockedWrites())
 	link := &Link{
+		Channel:     ch,
 		id:          id,
 		conn:        conn,
 		createdAt:   time.Now(),
-		Stream:      frames.NewStream(conn),
 		outbound:    outbound,
 		pingTimeout: defaultPingTimeout,
 		wakeCh:      make(chan struct{}, 1),
+		done:        make(chan struct{}),
 	}
 
-	link.mux = newMux(mod, link)
+	link.mux = newMux(
+		mod,
+		ch,
+		link.LocalIdentity(),
+		link.RemoteIdentity(),
+		link.onBytes,
+		link.pong,
+	)
+
+	go link.readLoop()
 	go link.pingLoop()
 
 	return link

@@ -27,17 +27,18 @@ func NewOutputBuffer(write func([]byte) error) *OutputBuffer {
 
 func (b *OutputBuffer) Write(p []byte) (int, error) {
 	b.mu.Lock()
-	defer b.mu.Unlock()
-
 	if b.closed {
+		b.mu.Unlock()
 		return 0, nodes.ErrBufferClosed
 	}
 	if b.wsize == 0 {
-		return 0, &ErrBufferEmpty{ch: b.readyCh()}
+		ch := b.readyCh()
+		b.mu.Unlock()
+		return 0, &ErrBufferEmpty{ch: ch}
 	}
-
 	n := min(b.wsize, len(p))
 	b.wsize -= n
+	b.mu.Unlock()
 
 	return n, b.write(p[:n])
 }

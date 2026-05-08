@@ -63,9 +63,7 @@ func (pool *LinkPool) AddLink(link *Link) error {
 	})
 
 	go func() {
-		for frame := range link.Read() {
-			link.GetMux().HandleFrame(frame)
-		}
+		<-link.Done()
 
 		pool.links.Remove(link)
 		link.GetMux().closeAllSessions()
