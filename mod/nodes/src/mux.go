@@ -61,12 +61,8 @@ func (m *Mux) RemoteIdentity() *astral.Identity {
 	return m.remoteIdentity
 }
 
-func (m *Mux) sendFrame(frame astral.Object) error {
-	return m.ch.Send(frame)
-}
-
 func (m *Mux) SendMigrateFrame(nonce astral.Nonce) error {
-	return m.sendFrame(&frames.Migrate{Nonce: nonce})
+	return m.ch.Send(&frames.Migrate{Nonce: nonce})
 }
 
 func (m *Mux) SetRouter(r astral.Router) {
@@ -105,7 +101,7 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 		}
 	}
 
-	if err := m.sendFrame(frame); err != nil {
+	if err := m.ch.Send(frame); err != nil {
 		conn.Close()
 		return nil, err
 	}
@@ -168,7 +164,7 @@ func (m *Mux) handleRelayQuery(relayQuery *frames.RelayQuery) error {
 			Action: auth.NewAction(m.RemoteIdentity()),
 			ForID:  relayQuery.CallerID,
 		}) {
-			_ = m.sendFrame(&frames.Response{Nonce: relayQuery.Query.Nonce, ErrCode: frames.CodeRejected})
+			_ = m.ch.Send(&frames.Response{Nonce: relayQuery.Query.Nonce, ErrCode: frames.CodeRejected})
 			return nil
 		}
 	}
@@ -196,7 +192,7 @@ func (m *Mux) handleInboundQuery(linkNonce astral.Nonce, caller, target, relayID
 	router, err := m.waitRouter(ctx)
 	if err != nil {
 		conn.Close()
-		m.sendFrame(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeRejected})
+		m.ch.Send(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeRejected})
 		return
 	}
 
@@ -216,12 +212,12 @@ func (m *Mux) handleInboundQuery(linkNonce astral.Nonce, caller, target, relayID
 		if errors.As(err, &reject) {
 			code = reject.Code
 		}
-		m.sendFrame(&frames.Response{Nonce: linkNonce, ErrCode: code})
+		m.ch.Send(&frames.Response{Nonce: linkNonce, ErrCode: code})
 		return
 	}
 
 	conn.setState(stateOpen)
-	m.sendFrame(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
+	m.ch.Send(&frames.Response{Nonce: linkNonce, ErrCode: frames.CodeAccepted, Buffer: uint32(defaultBufferSize)})
 	conn.Open()
 
 	go func() {
@@ -267,7 +263,7 @@ func (m *Mux) handleResponse(f *frames.Response) {
 func (m *Mux) handleData(f *frames.Data) {
 	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
-		m.sendFrame(&frames.Reset{Nonce: f.Nonce})
+		m.ch.Send(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
@@ -275,7 +271,7 @@ func (m *Mux) handleData(f *frames.Data) {
 	case stateOpen, stateMigrating:
 	default:
 		m.mod.log.Errorv(1, "received data frame from %v in state %v", m.RemoteIdentity(), session.getState())
-		m.sendFrame(&frames.Reset{Nonce: f.Nonce})
+		m.ch.Send(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
@@ -299,7 +295,7 @@ func (m *Mux) handleData(f *frames.Data) {
 func (m *Mux) handleRead(f *frames.Read) {
 	session, ok := m.sessions.Get(f.Nonce)
 	if !ok {
-		m.sendFrame(&frames.Reset{Nonce: f.Nonce})
+		m.ch.Send(&frames.Reset{Nonce: f.Nonce})
 		return
 	}
 
@@ -333,7 +329,7 @@ func (m *Mux) handlePing(f *frames.Ping) {
 		return
 	}
 
-	m.sendFrame(&frames.Ping{
+	m.ch.Send(&frames.Ping{
 		Nonce: f.Nonce,
 		Pong:  true,
 	})
