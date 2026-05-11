@@ -21,7 +21,10 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(indexing.ModuleName, &mod.config)
 
-	mod.ops.AddStruct(mod, "Op")
+	err = mod.router.AddStructPrefix(mod, "Op")
+	if err != nil {
+		return nil, err
+	}
 
 	mod.db, err = newDB(assets.Database())
 	if err != nil {

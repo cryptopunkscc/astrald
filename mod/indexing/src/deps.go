@@ -19,7 +19,7 @@ func (mod *Module) LoadDependencies() (err error) {
 		return err
 	}
 
-	mod.indexes, err = tree.Query(ctx, mod.Tree.Root(), "/mod/indexing/indexes", true)
+	mod.indexers, err = tree.Query(ctx, mod.Tree.Root(), "/mod/indexing/indexers", true)
 	if err != nil {
 		return err
 	}

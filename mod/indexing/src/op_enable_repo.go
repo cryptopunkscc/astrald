@@ -3,7 +3,8 @@ package indexing
 import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
-	"github.com/cryptopunkscc/astrald/mod/shell"
+	"github.com/cryptopunkscc/astrald/lib/routing"
+	modindexing "github.com/cryptopunkscc/astrald/mod/indexing"
 )
 
 type opEnableRepoArgs struct {
@@ -13,13 +14,13 @@ type opEnableRepoArgs struct {
 	Out     string `query:"optional"`
 }
 
-func (mod *Module) OpEnableRepo(ctx *astral.Context, q shell.Query, args opEnableRepoArgs) (err error) {
-	ch := channel.New(q.Accept(), channel.WithFormats(args.In, args.Out))
+func (mod *Module) OpEnableRepo(ctx *astral.Context, q *routing.IncomingQuery, args opEnableRepoArgs) (err error) {
+	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	repo := mod.Objects.GetRepository(args.Repo)
 	if repo == nil {
-		return ch.Send(astral.NewError("repository not found"))
+		return ch.Send(astral.Err(modindexing.ErrRepositoryNotFound))
 	}
 
 	if args.Disable {
