@@ -10,7 +10,7 @@ import (
 )
 
 // Subscription is an open indexing.subscribe stream.
-// Each Next must be followed by exactly one ChangeAck or a temporary failure.
+// Each Next must be followed by exactly one ChangeAckMsg or a temporary failure.
 type Subscription struct {
 	ch      *channel.Channel
 	pending astral.Object
@@ -43,9 +43,9 @@ func (s *Subscription) Next() (astral.Object, error) {
 	}
 
 	switch o := obj.(type) {
-	case *indexing.Index:
+	case *indexing.IndexMsg:
 		s.pending = o
-	case *indexing.Unindex:
+	case *indexing.UnindexMsg:
 		s.pending = o
 	case astral.Error:
 		return nil, o
@@ -66,17 +66,17 @@ func (s *Subscription) Ack() error {
 	var version astral.Uint64
 
 	switch pending := s.pending.(type) {
-	case *indexing.Index:
+	case *indexing.IndexMsg:
 		repo = pending.Repo
 		version = pending.Version
-	case *indexing.Unindex:
+	case *indexing.UnindexMsg:
 		repo = pending.Repo
 		version = pending.Version
 	default:
 		return astral.NewErrUnexpectedObject(s.pending)
 	}
 
-	err := s.ch.Send(&indexing.ChangeAck{
+	err := s.ch.Send(&indexing.ChangeAckMsg{
 		Repo:    repo,
 		Version: version,
 	})

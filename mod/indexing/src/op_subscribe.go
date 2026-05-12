@@ -63,13 +63,13 @@ func (mod *Module) OpSubscribe(ctx *astral.Context, q *routing.IncomingQuery, ar
 		}
 
 		if pendingChange.Exist {
-			err = ch.Send(&indexing.Index{
+			err = ch.Send(&indexing.IndexMsg{
 				Repo:     astral.String8(pendingRepo),
 				Version:  astral.Uint64(pendingChange.Version),
 				ObjectID: pendingChange.ObjectID,
 			})
 		} else {
-			err = ch.Send(&indexing.Unindex{
+			err = ch.Send(&indexing.UnindexMsg{
 				Repo:     astral.String8(pendingRepo),
 				Version:  astral.Uint64(pendingChange.Version),
 				ObjectID: pendingChange.ObjectID,
@@ -79,7 +79,7 @@ func (mod *Module) OpSubscribe(ctx *astral.Context, q *routing.IncomingQuery, ar
 			return err
 		}
 
-		var ack *indexing.ChangeAck
+		var ack *indexing.ChangeAckMsg
 		err = ch.Switch(
 			channel.Expect(&ack),
 			channel.PassErrors,
