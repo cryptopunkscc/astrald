@@ -2,6 +2,7 @@ package indexing
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
@@ -14,6 +15,7 @@ import (
 type Subscription struct {
 	ch      *channel.Channel
 	pending astral.Object
+	closeMu sync.Once
 }
 
 func (c *Client) Subscribe(ctx *astral.Context, nonce astral.Nonce) (*Subscription, error) {
@@ -23,7 +25,15 @@ func (c *Client) Subscribe(ctx *astral.Context, nonce astral.Nonce) (*Subscripti
 	if err != nil {
 		return nil, err
 	}
-	return &Subscription{ch: ch}, nil
+
+	sub := &Subscription{ch: ch}
+
+	go func() {
+		<-ctx.Done()
+		_ = sub.Close()
+	}()
+
+	return sub, nil
 }
 
 func Subscribe(ctx *astral.Context, nonce astral.Nonce) (*Subscription, error) {
@@ -103,5 +113,9 @@ func (s *Subscription) Fail() error {
 }
 
 func (s *Subscription) Close() error {
-	return s.ch.Close()
+	var err error
+	s.closeMu.Do(func() {
+		err = s.ch.Close()
+	})
+	return err
 }

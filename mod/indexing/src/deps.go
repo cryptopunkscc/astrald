@@ -6,9 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
-func (mod *Module) LoadDependencies() (err error) {
-	ctx := astral.NewContext(nil)
-
+func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
 		return
