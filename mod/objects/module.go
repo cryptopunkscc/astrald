@@ -18,7 +18,7 @@ const (
 	MethodSearch           = "objects.search"
 	MethodDescribe         = "objects.describe"
 	MethodProbe            = "objects.probe"
-	MethodRead             = "objects.Read"
+	MethodRead             = "objects.read"
 	MethodGetType          = "objects.get_type"
 	MethodPush             = "objects.push"
 	MethodNewMem           = "objects.new_mem"
