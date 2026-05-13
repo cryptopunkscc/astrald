@@ -69,6 +69,12 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.O
 
 		// handle subscription
 		if subscribe != nil {
+			select {
+			case <-ctx.Done():
+				return
+			case ch <- nil:
+			}
+
 			for id := range subscribe {
 				select {
 				case ch <- id:

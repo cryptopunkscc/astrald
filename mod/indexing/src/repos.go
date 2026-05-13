@@ -1,7 +1,8 @@
 package indexing
 
 import (
-	"time"
+	"errors"
+	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	modindexing "github.com/cryptopunkscc/astrald/mod/indexing"
@@ -82,22 +83,19 @@ func (mod *Module) syncRepo(ctx *astral.Context, repoName string) error {
 	// take a snapshot
 	var snapshot []*astral.ObjectID
 
-	timeout := time.NewTimer(time.Second * 1)
-	defer timeout.Stop()
-
 	for {
 		select {
-		case objectID := <-scan:
+		case objectID, ok := <-scan:
+			if !ok {
+				return fmt.Errorf("repo %q scan ended without snapshot boundary", repoName)
+			}
+
 			if objectID == nil {
 				goto snapshot
 			}
 			snapshot = append(snapshot, objectID)
-			if !timeout.Stop() {
-				<-timeout.C
-			}
-			timeout.Reset(time.Second * 1)
-		case <-timeout.C:
-			goto snapshot
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 
@@ -154,8 +152,15 @@ snapshot:
 
 	// follow updates from the repo until ctx is canceled
 	for objectID := range scan {
+		if objectID == nil {
+			return fmt.Errorf("repo %q emitted duplicate snapshot boundary", repoName)
+		}
+
 		err = mod.db.addToRepo(repoName, objectID)
 		if err != nil {
+			if errors.Is(err, modindexing.ErrObjectAlreadyAdded) {
+				continue
+			}
 			mod.log.Logv(1, "db error adding to repo: %v", err)
 			continue
 		}

@@ -41,6 +41,10 @@ func (mod *Module) indexer(ctx *astral.Context) {
 	}
 
 	for objectID := range ch {
+		if objectID == nil {
+			continue
+		}
+
 		object, err := mod.Objects.Load(ctx, mod.Objects.ReadDefault(), objectID)
 
 		switch {

@@ -15,7 +15,9 @@ type Repository interface {
 	// Contains checks if the repository contains the specified object.
 	Contains(ctx *astral.Context, objectID *astral.ObjectID) (bool, error)
 
-	// Scan returns a channel of objects stored in the repository
+	// Scan returns a channel of objects stored in the repository.
+	// When follow is true, repositories must emit exactly one nil after the
+	// current snapshot and before any live updates.
 	Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error)
 
 	// Delete deletes an object

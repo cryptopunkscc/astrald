@@ -250,6 +250,10 @@ func (mod *Module) indexRepo(ctx *astral.Context, repo objects.Repository) error
 	mod.log.Logv(1, "auto-indexing %v", repo.Label())
 
 	for objectID := range scan {
+		if objectID == nil {
+			continue
+		}
+
 		if objectID.Size > maxObjectSize {
 			// skip large objects
 			continue

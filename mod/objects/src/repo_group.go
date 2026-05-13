@@ -69,7 +69,12 @@ func (group *RepoGroup) Scan(ctx *astral.Context, follow bool) (<-chan *astral.O
 	ch := make(chan *astral.ObjectID)
 
 	go func() {
-		var wg sync.WaitGroup
+		defer close(ch)
+
+		ctx, cancel := ctx.WithCancel()
+		defer cancel()
+
+		var sources []<-chan *astral.ObjectID
 
 		for _, repoName := range group.repos.Clone() {
 			repo := group.mod.GetRepository(repoName)
@@ -77,41 +82,127 @@ func (group *RepoGroup) Scan(ctx *astral.Context, follow bool) (<-chan *astral.O
 				continue
 			}
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			sub, err := repo.Scan(ctx, follow)
+			if err != nil {
+				continue
+			}
 
-				sub, err := repo.Scan(ctx, follow)
-				if err != nil {
-					return
-				}
+			sources = append(sources, sub)
+		}
+
+		if !follow {
+			var wg sync.WaitGroup
+
+			for _, source := range sources {
+				wg.Add(1)
+				go func(source <-chan *astral.ObjectID) {
+					defer wg.Done()
+
+					for id := range source {
+						if id == nil {
+							continue
+						}
+
+						select {
+						case <-ctx.Done():
+							return
+						case ch <- id:
+						}
+					}
+				}(source)
+			}
+
+			wg.Wait()
+			return
+		}
+
+		var wg sync.WaitGroup
+		boundaries := make(chan bool, len(sources))
+
+		for _, source := range sources {
+			wg.Add(1)
+			go func(source <-chan *astral.ObjectID) {
+				defer wg.Done()
 
 				var id *astral.ObjectID
 				var ok bool
 
-				// copy all scanned ids
 				for {
-					// read
 					select {
 					case <-ctx.Done():
 						return
-					case id, ok = <-sub:
+					case id, ok = <-source:
 						if !ok {
+							boundaries <- false
+							cancel()
 							return
 						}
 					}
-					// write
+
+					if id == nil {
+						boundaries <- true
+						return
+					}
+
 					select {
 					case <-ctx.Done():
 						return
 					case ch <- id:
 					}
 				}
-			}()
+			}(source)
 		}
 
 		wg.Wait()
-		close(ch)
+		close(boundaries)
+
+		for ok := range boundaries {
+			if !ok {
+				return
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case ch <- nil:
+		}
+
+		wg = sync.WaitGroup{}
+
+		for _, source := range sources {
+			wg.Add(1)
+			go func(source <-chan *astral.ObjectID) {
+				defer wg.Done()
+
+				for {
+					var id *astral.ObjectID
+					var ok bool
+
+					select {
+					case <-ctx.Done():
+						return
+					case id, ok = <-source:
+						if !ok {
+							return
+						}
+					}
+
+					if id == nil {
+						cancel()
+						return
+					}
+
+					select {
+					case <-ctx.Done():
+						return
+					case ch <- id:
+					}
+				}
+			}(source)
+		}
+
+		wg.Wait()
 	}()
 
 	return ch, nil
