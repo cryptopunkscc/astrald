@@ -18,13 +18,13 @@ func ServeWith(ctx *astral.Context, router astral.Router, reg Registrar) error {
 	if err != nil {
 		return err
 	}
+	defer h.Close()
 
 	if rg, ok := reg.(libastrald.ReadyGate); ok {
 		router = NewGateRouter(router, rg)
 	}
 
 	if err := reg.Register(ctx, h.Endpoint(), h.Token()); err != nil {
-		h.Close()
 		return err
 	}
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strings"
 	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -87,9 +88,15 @@ type HandleFunc func(ctx *astral.Context, query *PendingQuery) error
 
 // Serve calls the given HandleFunc for every query received
 func (h *Handler) Serve(ctx *astral.Context, handle HandleFunc) error {
+	stop := h.closeOnDone(ctx)
+	defer stop()
+
 	for {
 		pending, err := h.ReadQuery()
 		if err != nil {
+			if ctx.Err() != nil && isClosedListenerErr(err) {
+				return ctx.Err()
+			}
 			return err
 		}
 
@@ -104,10 +111,16 @@ func (h *Handler) Serve(ctx *astral.Context, handle HandleFunc) error {
 func (h *Handler) Route(ctx *astral.Context, router astral.Router) error {
 	var errRejected *astral.ErrRejected
 
+	stop := h.closeOnDone(ctx)
+	defer stop()
+
 	for {
 		// get the next pending query
 		pending, err := h.ReadQuery()
 		if err != nil {
+			if ctx.Err() != nil && isClosedListenerErr(err) {
+				return ctx.Err()
+			}
 			return err
 		}
 
@@ -150,6 +163,27 @@ func (h *Handler) Close() error {
 		close(h.doneCh)
 	}
 	return h.listener.Close()
+}
+
+func (h *Handler) closeOnDone(ctx *astral.Context) func() {
+	done := make(chan struct{})
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = h.Close()
+		case <-done:
+		}
+	}()
+
+	return func() { close(done) }
+}
+
+// todo: weird error checking - look for better solution
+func isClosedListenerErr(err error) bool {
+	return errors.Is(err, net.ErrClosed) ||
+		strings.Contains(err.Error(), "use of closed network connection") ||
+		strings.Contains(err.Error(), "connection closed")
 }
 
 func (h *Handler) String() string {
