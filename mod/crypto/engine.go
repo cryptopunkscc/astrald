@@ -9,36 +9,54 @@ const (
 	SchemeBIP137 = "bip137" // default for text signatures
 )
 
-// Engine adds support for various cryptographic operations to the crypto module. Engines can
-// implement any subset of Engine operations. Every operation has to verify that it supports
-// the key type and scheme and return ErrUnsupported if it doesn't.
-type Engine interface {
-	// PublicKey derives the public key from the provided private key
+// KeyDeriver derives public keys from private keys.
+type KeyDeriver interface {
+	// PublicKey derives the public key from the provided private key.
+	// Returns ErrUnsupported if the key type is not recognised.
 	PublicKey(ctx *astral.Context, key *PrivateKey) (*PublicKey, error)
-
-	// HashSigner returns a signer that will sign hashes using the provided key and scheme
-	HashSigner(key *PublicKey, scheme string) (HashSigner, error)
-
-	// VerifyHashSignature verifies a signature of a hash
-	VerifyHashSignature(key *PublicKey, sig *Signature, hash []byte) error
-
-	// TextSigner returns a signer that will sign messages using the provided key and scheme
-	TextSigner(key *PublicKey, scheme string) (TextSigner, error)
-
-	// VerifyTextSignature verifies a signature of a message
-	VerifyTextSignature(key *PublicKey, sig *Signature, msg string) error
 }
 
+// HashVerifier verifies signatures of arbitrary hashes.
+// Returns ErrInvalidSignature if the signature is cryptographically invalid,
+// or nil if valid. The registry guarantees the (keyType, scheme) pair is valid,
+// so ErrUnsupported should not be returned.
+type HashVerifier interface {
+	VerifyHash(key *PublicKey, sig *Signature, hash []byte) error
+}
+
+// TextVerifier verifies signatures of text messages.
+// Returns ErrInvalidSignature if the signature is cryptographically invalid,
+// or nil if valid.
+type TextVerifier interface {
+	VerifyText(key *PublicKey, sig *Signature, text string) error
+}
+
+// HashSignerFactory produces signers for hash signing.
+// Takes a PrivateKey directly — the caller resolves it from the public key.
+type HashSignerFactory interface {
+	NewHashSigner(ctx *astral.Context, key *PrivateKey, scheme string) (HashSigner, error)
+}
+
+// TextSignerFactory produces signers for text message signing.
+type TextSignerFactory interface {
+	NewTextSigner(ctx *astral.Context, key *PrivateKey, scheme string) (TextSigner, error)
+}
+
+// HashSigner signs hashes.
 type HashSigner interface {
-	// SignHash generates a signature for the given hash
+	// SignHash generates a signature for the given hash.
 	SignHash(ctx *astral.Context, hash []byte) (*Signature, error)
 }
 
+// TextSigner signs text messages.
 type TextSigner interface {
-	// SignText generates a signature for the given text
+	// SignText generates a signature for the given text.
 	SignText(ctx *astral.Context, text string) (*Signature, error)
 }
 
+// EngineProvider is implemented by modules that provide crypto capabilities.
+// The crypto module calls RegisterCryptoCapabilities during startup to
+// register all available key types, schemes, and handlers.
 type EngineProvider interface {
-	CryptoEngine() Engine
+	RegisterCryptoCapabilities(ctx *astral.Context, reg *Registry)
 }

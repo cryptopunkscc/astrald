@@ -43,9 +43,6 @@ type Module interface {
 	// NodeSigner returns a hash signer for the local node
 	NodeSigner() HashSigner
 
-	// AddEngine adds a cryptographic engine to the module
-	AddEngine(engine Engine)
-
 	// ObjectSigner signs the hash of the given contract with ASN1
 	ObjectSigner(*PublicKey) (ObjectSigner, error)
 

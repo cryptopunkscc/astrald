@@ -12,14 +12,16 @@ func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 		return err
 	}
 
-	// scan modules looking for crypto engines to auto-load
+	mod.reg = crypto.NewRegistry()
+
+	// scan modules looking for crypto engines to auto-register capabilities
 	_ = core.EachLoadedModule(mod.node, func(m core.Module) error {
 		p, ok := m.(crypto.EngineProvider)
 		if !ok {
 			return nil
 		}
 
-		mod.AddEngine(p.CryptoEngine())
+		p.RegisterCryptoCapabilities(ctx, mod.reg)
 		return nil
 	})
 

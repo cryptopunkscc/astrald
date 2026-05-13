@@ -12,7 +12,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type Deps struct {
@@ -31,7 +30,7 @@ type Module struct {
 	router  routing.OpRouter
 	ctx     *astral.Context
 
-	engines sig.Set[crypto.Engine]
+	reg *crypto.Registry
 }
 
 var _ crypto.Module = &Module{}
@@ -96,25 +95,24 @@ func (mod *Module) PrivateKey(ctx *astral.Context, key *crypto.PublicKey) (*cryp
 }
 
 func (mod *Module) PublicKey(ctx *astral.Context, key *crypto.PrivateKey) (*crypto.PublicKey, error) {
-	for _, engine := range mod.engines.Clone() {
-		pubKey, err := engine.PublicKey(ctx, key)
-		if err == nil {
-			return pubKey, nil
-		}
+	d := mod.reg.LookupKeyDeriver(string(key.Type))
+	if d == nil {
+		return nil, crypto.ErrUnsupported
 	}
-
-	return nil, crypto.ErrUnsupported
+	return d.PublicKey(ctx, key)
 }
 
 func (mod *Module) HashSigner(key *crypto.PublicKey, scheme string) (crypto.HashSigner, error) {
-	for _, engine := range mod.engines.Clone() {
-		signer, err := engine.HashSigner(key, scheme)
-		if err == nil {
-			return signer, nil
-		}
+	privKey, err := mod.PrivateKey(mod.ctx, key)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, crypto.ErrUnsupported
+	f := mod.reg.LookupHashSignerFactory(string(key.Type), scheme)
+	if f == nil {
+		return nil, crypto.ErrUnsupported
+	}
+	return f.NewHashSigner(mod.ctx, privKey, scheme)
 }
 
 func (mod *Module) NodeSigner() crypto.HashSigner {
@@ -148,31 +146,25 @@ func (mod *Module) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signat
 		return errors.New("hash is empty")
 	}
 
-	// find an engine that can verify the signature
-	for _, engine := range mod.engines.Clone() {
-		err := engine.VerifyHashSignature(key, sig, hash)
-		switch {
-		case err == nil:
-			return nil
-		case errors.Is(err, crypto.ErrInvalidSignature):
-			return err
-		default:
-			continue
-		}
+	// direct lookup by (keyType, scheme)
+	v := mod.reg.LookupHashVerifier(string(key.Type), string(sig.Scheme))
+	if v == nil {
+		return crypto.ErrUnsupported
 	}
-
-	return crypto.ErrUnsupported
+	return v.VerifyHash(key, sig, hash)
 }
 
 func (mod *Module) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
-	for _, engine := range mod.engines.Clone() {
-		signer, err := engine.TextSigner(key, scheme)
-		if err == nil {
-			return signer, nil
-		}
+	privKey, err := mod.PrivateKey(mod.ctx, key)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, crypto.ErrUnsupported
+	f := mod.reg.LookupTextSignerFactory(string(key.Type), scheme)
+	if f == nil {
+		return nil, crypto.ErrUnsupported
+	}
+	return f.NewTextSigner(mod.ctx, privKey, scheme)
 }
 
 func (mod *Module) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
@@ -194,20 +186,12 @@ func (mod *Module) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signat
 		return errors.New("hash is empty")
 	}
 
-	// find an engine that can verify the signature
-	for _, engine := range mod.engines.Clone() {
-		err := engine.VerifyTextSignature(key, sig, msg)
-		switch {
-		case err == nil:
-			return nil
-		case errors.Is(err, crypto.ErrInvalidSignature):
-			return err
-		default:
-			continue
-		}
+	// direct lookup by (keyType, scheme)
+	v := mod.reg.LookupTextVerifier(string(key.Type), string(sig.Scheme))
+	if v == nil {
+		return crypto.ErrUnsupported
 	}
-
-	return crypto.ErrUnsupported
+	return v.VerifyText(key, sig, msg)
 }
 
 func (mod *Module) ObjectSigner(key *crypto.PublicKey) (crypto.ObjectSigner, error) {
@@ -303,10 +287,6 @@ func (mod *Module) indexPrivateKey(key *crypto.PrivateKey) error {
 	_, err = mod.db.createPrivateKey(keyID, string(key.Type), pubKeyID, string(pubKeyText))
 
 	return err
-}
-
-func (mod *Module) AddEngine(engine crypto.Engine) {
-	mod.engines.Add(engine)
 }
 
 func (mod *Module) Router() astral.Router {

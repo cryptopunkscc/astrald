@@ -2,56 +2,23 @@ package src
 
 import (
 	"encoding/base64"
-	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/bip-0137/verify"
-	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
+	dcrdSecp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 type Engine struct {
 	mod *Module
-	crypto.NilEngine
 }
 
-func (e Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
-	switch {
-	case scheme != crypto.SchemeBIP137:
-		return nil, crypto.ErrUnsupportedScheme
-	case key.Type != secp256k1.KeyType:
-		return nil, crypto.ErrUnsupportedKeyType
-	}
+// --- TextVerifier ---
 
-	privateKey, err := e.mod.Crypto.PrivateKey(astral.NewContext(nil), key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get private key: %w", err)
-	}
-
-	compressed, err := isCompressedPublicKey(key.Key)
-	if err != nil {
-		return nil, err
-	}
-
-	privKey, _ := btcec.PrivKeyFromBytes(privateKey.Key)
-	return &MessageSigner{
-		key:        privKey,
-		compressed: compressed,
-	}, nil
-
-}
-
-func (e Engine) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
-	switch {
-	case key.Type != secp256k1.KeyType:
-		return crypto.ErrUnsupportedKeyType
-	case sig.Scheme != crypto.SchemeBIP137:
-		return crypto.ErrUnsupportedScheme
-	}
-
-	publicKey, err := secp.ParsePubKey(key.Key)
+func (e Engine) VerifyText(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
+	publicKey, err := dcrdSecp.ParsePubKey(key.Key)
 	if err != nil {
 		return err
 	}
@@ -69,13 +36,21 @@ func (e Engine) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signature
 	return nil
 }
 
-func isCompressedPublicKey(key []byte) (bool, error) {
-	switch len(key) {
-	case 33:
-		return true, nil
-	case 65:
-		return false, nil
-	default:
-		return false, fmt.Errorf("invalid public key length: %d", len(key))
+// --- TextSignerFactory ---
+
+func (e Engine) NewTextSigner(ctx *astral.Context, key *crypto.PrivateKey, scheme string) (crypto.TextSigner, error) {
+	privKey, _ := btcec.PrivKeyFromBytes(key.Key)
+
+	return &MessageSigner{
+		key:        privKey,
+		compressed: true,
+	}, nil
+}
+
+// DerivePublicKey converts a private key to its public key equivalent.
+func DerivePublicKey(key *crypto.PrivateKey) *crypto.PublicKey {
+	return &crypto.PublicKey{
+		Type: secp256k1.KeyType,
+		Key:  dcrdSecp.PrivKeyFromBytes(key.Key).PubKey().SerializeCompressed(),
 	}
 }

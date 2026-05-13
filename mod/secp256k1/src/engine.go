@@ -2,7 +2,6 @@ package secp256k1
 
 import (
 	"crypto/ecdsa"
-	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
@@ -10,39 +9,18 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-type Engine struct {
-	mod *Module
-	crypto.NilEngine
-}
+// Engine implements KeyDeriver, HashVerifier, and HashSignerFactory for secp256k1 keys.
+type Engine struct{}
+
+// --- KeyDeriver ---
 
 func (e Engine) PublicKey(ctx *astral.Context, key *crypto.PrivateKey) (*crypto.PublicKey, error) {
 	return modSecp256k1.PublicKey(key), nil
 }
 
-func (e Engine) HashSigner(key *crypto.PublicKey, scheme string) (crypto.HashSigner, error) {
-	switch {
-	case key.Type != modSecp256k1.KeyType:
-		return nil, crypto.ErrUnsupportedKeyType
-	case scheme != "asn1":
-		return nil, crypto.ErrUnsupportedScheme
-	}
+// --- HashVerifier ---
 
-	privateKey, err := e.mod.Crypto.PrivateKey(astral.NewContext(nil), key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get private key: %w", err)
-	}
-
-	return modSecp256k1.NewHashSignerASN1(privateKey), nil
-}
-
-func (e Engine) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signature, hash []byte) error {
-	switch {
-	case key.Type != modSecp256k1.KeyType:
-		return crypto.ErrUnsupportedKeyType
-	case sig.Scheme != "asn1":
-		return crypto.ErrUnsupportedScheme
-	}
-
+func (e Engine) VerifyHash(key *crypto.PublicKey, sig *crypto.Signature, hash []byte) error {
 	publicKey, err := secp256k1.ParsePubKey(key.Key)
 	if err != nil {
 		return err
@@ -55,6 +33,8 @@ func (e Engine) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signature
 	return crypto.ErrInvalidSignature
 }
 
-func (e Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
-	return nil, crypto.ErrUnsupported
+// --- HashSignerFactory ---
+
+func (e Engine) NewHashSigner(ctx *astral.Context, key *crypto.PrivateKey, scheme string) (crypto.HashSigner, error) {
+	return modSecp256k1.NewHashSignerASN1(key), nil
 }

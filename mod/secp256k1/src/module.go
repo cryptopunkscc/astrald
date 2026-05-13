@@ -32,8 +32,12 @@ func (mod *Module) Router() astral.Router {
 	return &mod.router
 }
 
-func (mod *Module) CryptoEngine() crypto.Engine {
-	return &Engine{mod: mod}
+func (mod *Module) RegisterCryptoCapabilities(ctx *astral.Context, reg *crypto.Registry) {
+	engine := &Engine{}
+
+	reg.RegisterKeyDeriver(secp256k1.KeyType, engine)
+	reg.RegisterHashVerifier(secp256k1.KeyType, crypto.SchemeASN1, engine)
+	reg.RegisterHashSignerFactory(secp256k1.KeyType, crypto.SchemeASN1, engine)
 }
 
 func (mod *Module) String() string {

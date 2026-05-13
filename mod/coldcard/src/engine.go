@@ -8,22 +8,24 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/coldcard"
 	"github.com/cryptopunkscc/astrald/mod/coldcard/ckcc"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
+	dcrdSecp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
+// Engine implements TextSignerFactory for hardware signing via Coldcard devices.
 type Engine struct {
 	mod *Module
-	crypto.NilEngine
 }
 
-func (e *Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
-	switch {
-	case scheme != "bip137":
-		return nil, crypto.ErrUnsupportedScheme
-	case key.Type != "secp256k1":
-		return nil, crypto.ErrUnsupportedKeyType
+// --- TextSignerFactory ---
+
+func (e *Engine) NewTextSigner(ctx *astral.Context, key *crypto.PrivateKey, scheme string) (crypto.TextSigner, error) {
+	pubKey := &crypto.PublicKey{
+		Type: secp256k1.KeyType,
+		Key:  dcrdSecp.PrivKeyFromBytes(key.Key).PubKey().SerializeCompressed(),
 	}
 
-	pubKeyHex := hex.EncodeToString(key.Key)
+	pubKeyHex := hex.EncodeToString(pubKey.Key)
 
 	device := e.mod.deviceForPublicKeyHex(pubKeyHex)
 	if device != nil {

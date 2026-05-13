@@ -35,8 +35,11 @@ func (mod *Module) Router() astral.Router {
 	return &mod.router
 }
 
-func (mod *Module) CryptoEngine() crypto.Engine {
-	return &Engine{mod: mod}
+func (mod *Module) RegisterCryptoCapabilities(ctx *astral.Context, reg *crypto.Registry) {
+	engine := &Engine{mod: mod}
+
+	reg.RegisterTextVerifier(secp256k1.KeyType, crypto.SchemeBIP137, engine)
+	reg.RegisterTextSignerFactory(secp256k1.KeyType, crypto.SchemeBIP137, engine)
 }
 
 func (mod *Module) String() string {
@@ -57,7 +60,7 @@ func (mod *Module) DeriveKey(seed bip137sig.Seed, path string) (privateKey crypt
 	for _, idx := range derivationPath {
 		key, err = key.Derive(idx)
 		if err != nil {
-			return privateKey, err
+			return
 		}
 	}
 

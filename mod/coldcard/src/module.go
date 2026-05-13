@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/coldcard"
 	"github.com/cryptopunkscc/astrald/mod/coldcard/ckcc"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
 	"github.com/cryptopunkscc/astrald/sig"
 )
@@ -66,8 +67,10 @@ func (mod *Module) Router() astral.Router {
 	return &mod.router
 }
 
-func (mod *Module) CryptoEngine() crypto.Engine {
-	return &Engine{mod: mod}
+func (mod *Module) RegisterCryptoCapabilities(ctx *astral.Context, reg *crypto.Registry) {
+	engine := &Engine{mod: mod}
+
+	reg.RegisterTextSignerFactory(secp256k1.KeyType, crypto.SchemeBIP137, engine)
 }
 
 func (mod *Module) String() string {
