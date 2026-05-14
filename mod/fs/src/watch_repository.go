@@ -88,11 +88,6 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 
 	go func() {
 		defer close(ch)
-		defer func() {
-			if follow {
-				repo.mod.indexer.unsubscribe()
-			}
-		}()
 
 		ids, err := repo.mod.db.UniqueObjectIDs(repo.root)
 		if err != nil {
@@ -110,6 +105,14 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 
 		if follow {
 			subscribe := sig.Subscribe(ctx, repo.mod.indexer.subscribe())
+			defer repo.mod.indexer.unsubscribe()
+
+			select {
+			case ch <- nil:
+			case <-ctx.Done():
+				return
+			}
+
 			for event := range subscribe {
 				if paths.PathUnder(event.Path, repo.root, filepath.Separator) {
 					select {

@@ -101,8 +101,18 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.O
 		}
 
 		if s != nil {
+			select {
+			case <-ctx.Done():
+				return
+			case ch <- nil:
+			}
+
 			for i := range s {
-				ch <- i
+				select {
+				case <-ctx.Done():
+					return
+				case ch <- i:
+				}
 			}
 		}
 	}()

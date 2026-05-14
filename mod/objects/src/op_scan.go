@@ -55,7 +55,11 @@ func (mod *Module) OpScan(ctx *astral.Context, q *routing.IncomingQuery, args op
 
 	// forward scan results
 	for id := range scan {
-		err = ch.Send(id)
+		if id == nil {
+			err = ch.Send(&astral.EOS{})
+		} else {
+			err = ch.Send(id)
+		}
 		if err != nil {
 			return
 		}

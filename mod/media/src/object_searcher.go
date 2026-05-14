@@ -1,42 +1,51 @@
 package media
 
 import (
+	"context"
+	"errors"
+
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+	libastrald "github.com/cryptopunkscc/astrald/lib/astrald"
+	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-func (mod *Module) SearchObject(ctx *astral.Context, query objects.SearchQuery) (<-chan *objects.SearchResult, error) {
-	return mod.audio.SearchObject(ctx, query)
-}
+const methodSearchAudio = "audio.search"
 
-func (mod *AudioIndexer) SearchObject(ctx *astral.Context, query objects.SearchQuery) (<-chan *objects.SearchResult, error) {
+var _ objects.Searcher = &Module{}
+
+func (mod *Module) SearchObject(ctx *astral.Context, searchQuery objects.SearchQuery) (<-chan *objects.SearchResult, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
 	}
 
-	err := query.RequiredTagsIn(knownAudioTags...)
+	targetID, err := mod.resolveTarget()
 	if err != nil {
 		return nil, err
 	}
 
-	aq := parseAudioQuery(query)
+	ch, err := libastrald.WithTarget(targetID).QueryChannel(ctx, methodSearchAudio, query.Args{
+		"q": searchQuery,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	results := make(chan *objects.SearchResult)
 
 	go func() {
 		defer close(results)
+		defer ch.Close()
 
-		var rows []*dbAudio
-		if err := aq.apply(mod.db.Model(&dbAudio{})).Find(&rows).Error; err != nil {
-			mod.log.Error("search: db: %v", err)
-			return
-		}
-
-		for _, row := range rows {
-			results <- &objects.SearchResult{
-				SourceID: mod.node.Identity(),
-				ObjectID: row.ObjectID,
-			}
+		err := ch.Switch(
+			channel.Chan(results),
+			channel.BreakOnEOS,
+			channel.PassErrors,
+			channel.WithContext(ctx),
+		)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			mod.log.Errorv(1, "forward %s to %v: %v", methodSearchAudio, targetID, err)
 		}
 	}()
 
