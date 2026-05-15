@@ -42,7 +42,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 }
 
 func (mod *Module) addDefaultRepo() {
-	// create a repo for the 'data' directory in config dir
+	// create a repo for the 'data' directory in data dir
 	res, ok := mod.assets.Res().(*resources.FileResources)
 	if !ok {
 		return
@@ -54,7 +54,7 @@ func (mod *Module) addDefaultRepo() {
 	}
 
 	// create the directory for the default repository if needed
-	dataPath := filepath.Join(res.Root(), "data")
+	dataPath := filepath.Join(res.DataRoot(), "data")
 
 	err := os.MkdirAll(dataPath, 0700)
 	if err != nil {

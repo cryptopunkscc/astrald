@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/cryptopunkscc/astrald/core"
@@ -40,23 +41,35 @@ func setupResources(args *Args) (resources.Resources, error) {
 		return mem, nil
 	}
 
-	nodeRes, err := resources.NewFileResources(args.NodeRoot, true)
+	// derive config and data roots from a single base directory
+	configRoot := defaultConfigRoot()
+	dataRoot := defaultDataRoot()
+
+	if args.Root != "" {
+		configRoot = filepath.Join(args.Root, "config")
+		dataRoot = filepath.Join(args.Root, "data")
+	}
+
+	nodeRes, err := resources.NewFileResources(configRoot, true)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(args.DBRoot) > 0 {
-		nodeRes.SetDatabaseRoot(args.DBRoot)
+	nodeRes.SetDataRoot(dataRoot)
+
+	// make sure root directories exist
+	err = os.MkdirAll(configRoot, 0700)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error creating config directory: %s\n", err)
 	}
 
-	// make sure root directory exists
-	err = os.MkdirAll(args.NodeRoot, 0700)
+	err = os.MkdirAll(dataRoot, 0700)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating node directory: %s\n", err)
+		fmt.Fprintf(os.Stderr, "error creating data directory: %s\n", err)
 	}
 
 	// set directory for saving crash logs
-	debug.LogDir = args.NodeRoot
+	debug.LogDir = configRoot
 	defer debug.SaveLog(func(p any) {
 		debug.SigInt(p)
 		time.Sleep(time.Second) // give components time to exit cleanly

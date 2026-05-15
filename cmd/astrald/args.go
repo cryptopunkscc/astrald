@@ -4,43 +4,79 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
 const nodeDirName = "astrald"
 
 type Args struct {
-	NodeRoot string
-	DBRoot   string
-	Ghost    bool
-	Version  bool
+	Root    string
+	Ghost   bool
+	Version bool
 }
 
 func parseArgs() *Args {
-	var args = &Args{
-		NodeRoot: defaultRoot(),
-	}
+	var root string
+	var ghost, version bool
 
-	flag.StringVar(&args.NodeRoot, "root", args.NodeRoot, "set node's root directory")
-	flag.StringVar(&args.DBRoot, "dbroot", args.NodeRoot, "set database root directory")
-	flag.BoolVar(&args.Ghost, "g", false, "enable ghost mode")
-	flag.BoolVar(&args.Version, "v", false, "show version")
+	flag.StringVar(&root, "root", "", "set node's root directory (config goes to <root>/config, data to <root>/data)")
+	flag.BoolVar(&ghost, "g", false, "enable ghost mode")
+	flag.BoolVar(&version, "v", false, "show version")
 	flag.Parse()
 
-	if strings.HasPrefix(args.NodeRoot, "~/") {
+	args := &Args{
+		Ghost:   ghost,
+		Version: version,
+	}
+
+	if root != "" {
+		args.Root = root
+	}
+
+	if strings.HasPrefix(args.Root, "~/") {
 		if homeDir, err := os.UserHomeDir(); err == nil {
-			args.NodeRoot = filepath.Join(homeDir, args.NodeRoot[2:])
+			args.Root = filepath.Join(homeDir, args.Root[2:])
 		}
 	}
 
 	return args
 }
 
-func defaultRoot() string {
+func userDataDir() (string, error) {
+	// On macOS and Windows, there is no XDG-style split between config
+	// and data — both live under the platform's config directory.
+	// Only Linux uses separate XDG_CONFIG_HOME and XDG_DATA_HOME.
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		return os.UserConfigDir()
+	}
+
+	if dir := os.Getenv("XDG_DATA_HOME"); dir != "" {
+		return dir, nil
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(home, ".local", "share"), nil
+}
+
+func defaultConfigRoot() string {
 	cfgDir, err := os.UserConfigDir()
 	if err != nil {
 		return nodeDirName
 	}
 
-	return filepath.Join(cfgDir, "astrald")
+	return filepath.Join(cfgDir, nodeDirName)
+}
+
+func defaultDataRoot() string {
+	dataDir, err := userDataDir()
+	if err != nil {
+		return filepath.Join(os.Getenv("HOME"), nodeDirName)
+	}
+
+	return filepath.Join(dataDir, nodeDirName)
 }
