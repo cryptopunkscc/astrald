@@ -44,10 +44,10 @@ func parseArgs() *Args {
 }
 
 func userDataDir() (string, error) {
-	// On macOS, there is no XDG-style split — both config and data
-	// live under ~/Library/Application Support. Return the same
-	// directory as os.UserConfigDir() so they coexist.
-	if runtime.GOOS == "darwin" {
+	// On macOS and Windows, there is no XDG-style split between config
+	// and data — both live under the platform's config directory.
+	// Only Linux uses separate XDG_CONFIG_HOME and XDG_DATA_HOME.
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 		return os.UserConfigDir()
 	}
 
