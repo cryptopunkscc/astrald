@@ -1,0 +1,3 @@
+[submodule ".ai/system"]
+	path = .ai/system
+	url = git@github.com:cryptopunkscc/knowledge-base.git
