@@ -2,12 +2,13 @@
 
 Vendor-neutral AI context for Astrald.
 
-## Load
+Use `overview.md` only for the project overview and repository map.
 
+## Load Order
 
-1`.ai/README.md`
-2`.ai/rules.md`
-3`.ai/methodology.md`
+1. `.ai/README.md`
+2. `.ai/rules.md`
+3. `.ai/methodology.md`
 
 Then use indexes. Load scoped files only when relevant:
 
@@ -32,6 +33,7 @@ Call out conflicts.
 
 ## Roles
 
+- `overview.md` - project overview and repository map
 - `rules.md` - compact always-on rules
 - `patterns/` - source-grounded recipes
 - `knowledge/` - repo implementation notes
