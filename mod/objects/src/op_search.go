@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type SearchArgs struct {
@@ -44,7 +45,12 @@ func (mod *Module) OpSearch(ctx *astral.Context, q *routing.IncomingQuery, args 
 
 	var dup = make(map[string]struct{})
 
-	for match := range matches {
+	for {
+		match, ok, err := sig.RecvOk(ctx, matches)
+		if err != nil || !ok {
+			break
+		}
+
 		// deduplicate results
 		if _, found := dup[match.ObjectID.String()]; found {
 			continue
@@ -69,5 +75,5 @@ func (mod *Module) OpSearch(ctx *astral.Context, q *routing.IncomingQuery, args 
 		}
 	}
 
-	return nil
+	return ch.Send(&astral.EOS{})
 }

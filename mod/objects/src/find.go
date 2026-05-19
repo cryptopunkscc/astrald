@@ -1,26 +1,69 @@
 package objects
 
 import (
+	"sync"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
-func (mod *Module) AddFinder(finder objects.Finder) error {
-	return mod.finders.Add(finder)
+func (mod *Module) Find(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *astral.Identity, error) {
+	finders := mod.finders.Clone()
+	results := make(chan *astral.Identity)
+	var wg sync.WaitGroup
+
+	for _, finder := range finders {
+		finder := finder
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			providers, err := finder.FindObject(ctx, objectID)
+			if err != nil {
+				return
+			}
+
+			for {
+				provider, ok, err := sig.RecvOk(ctx, providers)
+				if err != nil || !ok {
+					return
+				}
+
+				if provider == nil || provider.IsZero() {
+					mod.log.Errorv(1, "finder %T returned invalid provider", finder)
+					continue
+				}
+
+				if err := sig.Send(ctx, results, provider); err != nil {
+					return
+				}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	return results, nil
 }
 
-func (mod *Module) Find(ctx *astral.Context, objectID *astral.ObjectID) (providers []*astral.Identity) {
-	var unique = map[string]struct{}{}
+func (mod *Module) AddFinder(finder objects.Finder) error {
+	source, ok, err := objects.SourceIdentity(finder)
+	if err != nil {
+		return err
+	}
 
-	for _, finder := range mod.finders.Clone() {
-		for _, i := range finder.FindObject(ctx, objectID) {
-			if _, found := unique[i.String()]; found {
-				continue
-			}
-			unique[i.String()] = struct{}{}
-			providers = append(providers, i)
+	if ok {
+		mod.app.mu.Lock()
+		defer mod.app.mu.Unlock()
+
+		if containsSourceIdentity(&mod.finders, source) {
+			return nil
 		}
 	}
 
-	return
+	return mod.finders.Add(finder)
 }

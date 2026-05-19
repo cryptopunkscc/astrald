@@ -5,6 +5,7 @@ import (
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, error) {
@@ -25,8 +26,20 @@ func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-c
 					return
 				}
 
-				for i := range _res {
-					results <- i
+				for {
+					descriptor, ok, err := sig.RecvOk(ctx, _res)
+					if err != nil || !ok {
+						return
+					}
+
+					if descriptor == nil {
+						mod.log.Errorv(1, "describer %T returned nil descriptor", d)
+						continue
+					}
+
+					if err := sig.Send(ctx, results, descriptor); err != nil {
+						return
+					}
 				}
 			}()
 		}
@@ -38,5 +51,18 @@ func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-c
 }
 
 func (mod *Module) AddDescriber(describer objects.Describer) error {
+	source, ok, err := objects.SourceIdentity(describer)
+	if err != nil {
+		return err
+	}
+	if ok {
+		mod.app.mu.Lock()
+		defer mod.app.mu.Unlock()
+
+		if containsSourceIdentity(&mod.describers, source) {
+			return nil
+		}
+	}
+
 	return mod.describers.Add(describer)
 }

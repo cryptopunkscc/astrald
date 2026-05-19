@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 func (client *Client) Search(ctx *astral.Context, q objects.SearchQuery) (<-chan *objects.SearchResult, *error) {
@@ -22,7 +23,14 @@ func (client *Client) Search(ctx *astral.Context, q objects.SearchQuery) (<-chan
 		defer close(out)
 		defer ch.Close()
 
-		*errPtr = ch.Switch(channel.Chan(out), channel.BreakOnEOS, channel.PassErrors, channel.WithContext(ctx))
+		*errPtr = ch.Switch(
+			func(result *objects.SearchResult) error {
+				return sig.Send(ctx, out, result)
+			},
+			channel.BreakOnEOS,
+			channel.PassErrors,
+			channel.WithContext(ctx),
+		)
 	}()
 
 	return out, errPtr

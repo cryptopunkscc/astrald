@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 	"github.com/cryptopunkscc/astrald/mod/objects"
 	objectscli "github.com/cryptopunkscc/astrald/mod/objects/client"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 func (mod *Module) Search(ctx *astral.Context, query objects.SearchQuery) (<-chan *objects.SearchResult, error) {
@@ -34,10 +35,18 @@ func (mod *Module) Search(ctx *astral.Context, query objects.SearchQuery) (<-cha
 				return
 			}
 
-			for r := range _res {
-				select {
-				case results <- r:
-				case <-ctx.Done():
+			for {
+				result, ok, err := sig.RecvOk(ctx, _res)
+				if err != nil || !ok {
+					return
+				}
+
+				if result == nil || result.ObjectID == nil || result.ObjectID.IsZero() {
+					mod.log.Errorv(1, "searcher %T returned invalid result", searcher)
+					continue
+				}
+
+				if err := sig.Send(ctx, results, result); err != nil {
 					return
 				}
 			}
@@ -54,17 +63,33 @@ func (mod *Module) Search(ctx *astral.Context, query objects.SearchQuery) (<-cha
 				defer wg.Done()
 
 				// execute search
-				_results, err := objectscli.New(nodeID, astrald.Default()).Search(ctx, query)
-				if err != nil {
-					mod.log.Errorv(1, "search %v: %v", nodeID, err)
+				_results, errPtr := objectscli.New(nodeID, astrald.Default()).Search(ctx, query)
+				if _results == nil {
+					if errPtr != nil && *errPtr != nil {
+						mod.log.Errorv(1, "search %v: %v", nodeID, *errPtr)
+					}
 					return
 				}
 
 				// copy results
-				for r := range _results {
-					select {
-					case results <- r:
-					case <-ctx.Done():
+				for {
+					result, ok, err := sig.RecvOk(ctx, _results)
+					if err != nil {
+						return
+					}
+					if !ok {
+						if errPtr != nil && *errPtr != nil {
+							mod.log.Errorv(1, "search %v: %v", nodeID, *errPtr)
+						}
+						return
+					}
+
+					if result == nil || result.ObjectID == nil || result.ObjectID.IsZero() {
+						mod.log.Errorv(1, "network search %v returned invalid result", nodeID)
+						continue
+					}
+
+					if err := sig.Send(ctx, results, result); err != nil {
 						return
 					}
 				}
@@ -81,5 +106,18 @@ func (mod *Module) Search(ctx *astral.Context, query objects.SearchQuery) (<-cha
 }
 
 func (mod *Module) AddSearcher(searcher objects.Searcher) error {
+	source, ok, err := objects.SourceIdentity(searcher)
+	if err != nil {
+		return err
+	}
+	if ok {
+		mod.app.mu.Lock()
+		defer mod.app.mu.Unlock()
+
+		if containsSourceIdentity(&mod.searchers, source) {
+			return nil
+		}
+	}
+
 	return mod.searchers.Add(searcher)
 }
