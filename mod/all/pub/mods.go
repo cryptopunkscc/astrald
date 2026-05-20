@@ -18,7 +18,6 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/ip"
 	_ "github.com/cryptopunkscc/astrald/mod/kcp"
 	_ "github.com/cryptopunkscc/astrald/mod/log"
-	_ "github.com/cryptopunkscc/astrald/mod/media"
 	_ "github.com/cryptopunkscc/astrald/mod/nat"
 	_ "github.com/cryptopunkscc/astrald/mod/nearby"
 	_ "github.com/cryptopunkscc/astrald/mod/nodes"
