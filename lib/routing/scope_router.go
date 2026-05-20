@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"errors"
 	"io"
 	"strings"
 
@@ -16,6 +17,14 @@ type ScopeRouter struct {
 
 type HasSpec interface {
 	Spec() (list []OpSpec)
+}
+
+type ScopedOpRouter interface {
+	AddScopedOp(scope string, name string, op *Op) error
+}
+
+type RouteChecker interface {
+	HasRoute(name string) bool
 }
 
 func NewScopeRouter(root astral.Router) *ScopeRouter {
@@ -55,6 +64,46 @@ func (r *ScopeRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w
 
 func (r *ScopeRouter) Add(scope string, router astral.Router) {
 	r.scopes.Set(scope, router)
+}
+
+func (r *ScopeRouter) AddScopedOp(scope string, name string, op *Op) error {
+	if scope == "" {
+		root, ok := r.root.(*OpRouter)
+		if !ok {
+			return errors.New("root router is not an op router")
+		}
+		return root.AddOp(name, op)
+	}
+
+	router, ok := r.scopes.Get(scope)
+	if !ok {
+		router = NewOpRouter()
+		r.scopes.Set(scope, router)
+	}
+
+	ops, ok := router.(*OpRouter)
+	if !ok {
+		return errors.New("scope router is not an op router")
+	}
+	return ops.AddOp(name, op)
+}
+
+func (r *ScopeRouter) HasRoute(name string) bool {
+	idx := strings.IndexByte(name, '.')
+	if idx == -1 {
+		root, ok := r.root.(RouteChecker)
+		return ok && root.HasRoute(name)
+	}
+
+	scopeName, opName := name[:idx], name[idx+1:]
+	scope, ok := r.scopes.Get(scopeName)
+	if ok {
+		checker, ok := scope.(RouteChecker)
+		return ok && checker.HasRoute(opName)
+	}
+
+	root, ok := r.root.(RouteChecker)
+	return ok && root.HasRoute(name)
 }
 
 func (r *ScopeRouter) Remove(scope string) {

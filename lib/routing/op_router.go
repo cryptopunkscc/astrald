@@ -46,6 +46,18 @@ func (router *OpRouter) AddOp(name string, op *Op) error {
 	return nil
 }
 
+func (router *OpRouter) AddScopedOp(scope string, name string, op *Op) error {
+	if scope != "" {
+		return errors.New("op router cannot add scoped route")
+	}
+	return router.AddOp(name, op)
+}
+
+func (router *OpRouter) HasRoute(name string) bool {
+	_, ok := router.routes.Get(name)
+	return ok
+}
+
 // AddStruct adds to the set all methods of a struct that have a valid op signature
 func (router *OpRouter) AddStruct(s any) (err error) {
 	return router.AddStructPrefix(s, "")
