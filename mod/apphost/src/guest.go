@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
@@ -30,6 +31,7 @@ type Guest struct {
 	mode    Mode
 	guestID *astral.Identity
 	conn    io.ReadWriteCloser
+	donated atomic.Bool // set when the conn has been donated to a routing goroutine
 }
 
 type queryEnRoute struct {
@@ -87,6 +89,12 @@ func (guest *Guest) Serve(ctx *astral.Context) (err error) {
 			err = guest.onAuthTokenMsg(ctx, msg)
 		case *apphost.RouteQueryMsg:
 			err = guest.onRouteQueryMsg(ctx, msg)
+		case *apphost.RegisterServiceMsg:
+			err = guest.onRegisterServiceMsg(ctx, msg)
+		case *apphost.AttachQueryMsg:
+			err = guest.onAttachQueryMsg(ctx, msg)
+		case *apphost.RejectIncomingMsg:
+			err = guest.onRejectIncomingMsg(ctx, msg)
 		default:
 			guest.mod.log.Logv(1, "protocol error: invalid message: %v", msg.ObjectType())
 			return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeProtocolError})
@@ -94,6 +102,12 @@ func (guest *Guest) Serve(ctx *astral.Context) (err error) {
 
 		if err != nil {
 			return
+		}
+
+		if guest.donated.Load() {
+			// per-query attach donated the conn to the routing goroutine;
+			// stop reading on it from Serve.
+			return nil
 		}
 	}
 }
@@ -262,6 +276,81 @@ func (guest *Guest) sendError(code string) error {
 
 func (guest *Guest) isAuthenticated() bool {
 	return !guest.guestID.IsZero()
+}
+
+// onRegisterServiceMsg registers this connection as the notification channel for
+// inbound queries targeting msg.Identity. Authorization mirrors RouteQueryMsg: caller
+// must equal Identity or hold a SudoAction for it.
+func (guest *Guest) onRegisterServiceMsg(ctx *astral.Context, msg *apphost.RegisterServiceMsg) error {
+	if !guest.isAuthenticated() {
+		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+	}
+
+	if !msg.Identity.IsEqual(guest.guestID) {
+		if !guest.mod.Auth.Authorize(ctx, &auth.SudoAction{Action: auth.NewAction(guest.guestID), AsID: msg.Identity}) {
+			return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+		}
+	}
+
+	h := &WSHandler{
+		Identity: msg.Identity,
+		mod:      guest.mod,
+		ch:       guest.Channel,
+	}
+	guest.mod.wsHandlers.Add(h)
+	guest.mod.log.Logv(3, "%v registered ws service handler for %v", guest.guestID, msg.Identity)
+
+	// remove on disconnect
+	go func() {
+		<-ctx.Done()
+		guest.mod.wsHandlers.Remove(h)
+	}()
+
+	return guest.Send(&astral.Ack{})
+}
+
+// onAttachQueryMsg pairs this connection with a pending inbound query that was
+// announced earlier via IncomingQueryMsg. On success the conn is "donated" to the
+// routing goroutine inside WSHandler.RouteQuery, which then owns its lifecycle.
+func (guest *Guest) onAttachQueryMsg(ctx *astral.Context, msg *apphost.AttachQueryMsg) error {
+	pending, ok := guest.mod.pendingInbound.Get(msg.QueryID)
+	if !ok {
+		return guest.sendError(apphost.ErrCodeRouteNotFound)
+	}
+
+	if err := guest.Send(&astral.Ack{}); err != nil {
+		return err
+	}
+
+	// Donate the conn. The routing goroutine in WSHandler.RouteQuery is blocked on
+	// pending.attach and will start using the conn as soon as it receives it.
+	guest.donated.Store(true)
+	select {
+	case pending.attach <- guest.conn:
+		return nil
+	case <-ctx.Done():
+		// donation didn't happen — clear the flag so the conn does get closed
+		guest.donated.Store(false)
+		return ctx.Err()
+	}
+}
+
+// onRejectIncomingMsg signals to the matching pendingInbound that the registered
+// handler refuses this query. The handler's RouteQuery returns ErrRejected with the
+// provided code.
+func (guest *Guest) onRejectIncomingMsg(ctx *astral.Context, msg *apphost.RejectIncomingMsg) error {
+	pending, ok := guest.mod.pendingInbound.Get(msg.QueryID)
+	if !ok {
+		// nothing to do — caller already moved on
+		return nil
+	}
+
+	select {
+	case pending.reject <- uint8(msg.Code):
+	default:
+		// channel already has a value (caller raced); drop.
+	}
+	return nil
 }
 
 // prepareQueryString rewrites the query string for JSON-mode guests so the responder

@@ -31,7 +31,6 @@ func (srv *HTTPServer) handleWS(writer http.ResponseWriter, request *http.Reques
 	if conn == nil {
 		return
 	}
-	defer conn.Close()
 
 	ctx := srv.ctx
 	if ctx == nil {
@@ -55,6 +54,13 @@ func (srv *HTTPServer) handleWS(writer http.ResponseWriter, request *http.Reques
 	}()
 
 	guest := NewGuestFromChannel(srv.Module, ch, conn, mode)
+	defer func() {
+		// If the guest donated its conn to a routing goroutine via AttachQueryMsg,
+		// that goroutine now owns the close. Otherwise close here.
+		if !guest.donated.Load() {
+			conn.Close()
+		}
+	}()
 	err := guest.Serve(ctx)
 
 	switch {

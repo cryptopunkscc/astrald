@@ -224,6 +224,40 @@ automatically; responders that bypass the channel and write raw bytes are
 not safe for JSON mode and should be queried over `astral.binary.v1`
 instead.
 
-v1 supports outbound queries only. There is one query per WS — closing the
-WS cancels the in-flight query. Acting as a service (`register_handler`
-over WS) is not supported in v1.
+Outbound queries: one query per WS — closing the WS cancels the in-flight
+query. The native `apphost.register_handler` op is not usable over WS
+because it expects an IPC dial endpoint; WS clients use the registration
+flow below instead.
+
+#### Handling inbound queries
+
+A WS client can register as a service handler for an identity it owns. The
+host then pushes a notification per inbound query, and the client opens a
+fresh per-query WS to respond.
+
+**Registration WS** (long-lived, one per service identity):
+
+1. Standard handshake (`HostInfoMsg` → optional `AuthTokenMsg` → `AuthSuccessMsg`).
+2. Client → `RegisterServiceMsg{Identity}`.
+3. Host → `Ack`. Authorization mirrors `RouteQueryMsg`: caller must equal
+   Identity or hold a `SudoAction` for it.
+4. For each inbound query targeting Identity, host pushes
+   `IncomingQueryMsg{QueryID, Caller, Target, Query}`.
+5. For each notification the client must either:
+   - open a per-query WS within 5 seconds (see below), or
+   - send `RejectIncomingMsg{QueryID, Code}` on the registration WS, or
+   - ignore — the caller sees route-not-found after the timeout.
+6. Closing the registration WS unregisters the handler.
+
+**Per-query WS** (short-lived, one per accepted inbound query):
+
+1. Standard handshake (`HostInfoMsg`). No auth needed — the unguessable
+   `QueryID` is the pairing token.
+2. Client → `AttachQueryMsg{QueryID}`.
+3. Host → `Ack` (or `ErrorMsg{Code: route_not_found}` if the QueryID is
+   unknown or already expired).
+4. The connection becomes the bidirectional bytestream for that one query,
+   with the client acting as the responder. Format is whatever the
+   subprotocol selected; in `astral.json.v1` mode it's JSON-Lines of
+   `astral.JSONAdapter`.
+5. Closing the WS ends the query.

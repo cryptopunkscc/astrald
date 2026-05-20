@@ -31,6 +31,25 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 		}
 	}
 
+	for _, h := range mod.wsHandlers.Clone() {
+		if !h.Identity.IsEqual(q.Target) {
+			continue
+		}
+
+		conn, err := h.RouteQuery(ctx, q, w)
+
+		var rejected *astral.ErrRejected
+		switch {
+		case err == nil:
+			return conn, nil
+		case errors.As(err, &rejected):
+			return query.RejectWithCode(rejected.Code)
+		case errors.Is(err, errHandlerGone):
+			mod.log.Logv(3, "removing closed ws handler for %v", h.Identity)
+			mod.wsHandlers.Remove(h)
+		}
+	}
+
 	return query.RouteNotFound()
 }
 

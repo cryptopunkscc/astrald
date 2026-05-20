@@ -237,6 +237,43 @@ button.danger:hover:not(:disabled) { background: var(--bad); color: #0d1117; }
 
 .muted { color: var(--muted); }
 .kvp { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+.incoming-card {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  background: #0f1620;
+}
+.incoming-card.attached { border-color: var(--good); }
+.incoming-card.rejected { border-color: var(--bad); opacity: 0.6; }
+.incoming-card.gone     { border-color: var(--muted); opacity: 0.5; }
+.incoming-card h3 {
+  margin: 0 0 6px 0;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+}
+.incoming-card .field { margin: 2px 0; font-size: 11px; }
+.incoming-card .field .k { color: var(--muted); margin-right: 6px; }
+.incoming-card .actions { display: flex; gap: 6px; margin-top: 8px; }
+.incoming-card .actions button { padding: 4px 10px; font-size: 11px; }
+.incoming-card .substream { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.incoming-card .substream textarea { min-height: 44px; }
+.incoming-card .substream .substream-log {
+  max-height: 160px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+.incoming-card .substream .substream-log .line { padding: 2px 0; }
+.incoming-card .substream .substream-log .line .ts { color: var(--muted); margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -284,6 +321,19 @@ button.danger:hover:not(:disabled) { background: var(--bad); color: #0d1117; }
     <div class="row" style="margin-top: 10px;">
       <button id="sendQueryBtn" disabled>send route_query</button>
     </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>register service</legend>
+    <p class="muted" style="margin: 0 0 6px 0; font-size: 11px;">
+      registers this connection as the handler for inbound queries to the given identity. blank = the guest identity.
+    </p>
+    <label>service identity</label>
+    <input id="serviceIdentity" type="text" placeholder="guest">
+    <div class="row" style="margin-top: 10px;">
+      <button id="registerSvcBtn" disabled>register service</button>
+    </div>
+    <div id="serviceStatus" class="host-info" style="margin-top: 6px;"></div>
   </fieldset>
 
   <fieldset>
@@ -340,6 +390,9 @@ const els = {
   filters: $('filters'),
   sendQueryBtn: $('sendQueryBtn'),
   sendRawBtn: $('sendRawBtn'),
+  serviceIdentity: $('serviceIdentity'),
+  registerSvcBtn: $('registerSvcBtn'),
+  serviceStatus: $('serviceStatus'),
   log: $('log'),
   autoScroll: $('autoScroll'),
   clearBtn: $('clearBtn'),
@@ -466,6 +519,7 @@ function handleJSONFrame(text) {
         // anonymous: enable query immediately
         els.sendQueryBtn.disabled = false;
         els.sendRawBtn.disabled = false;
+        els.registerSvcBtn.disabled = false;
       }
       break;
 
@@ -474,6 +528,7 @@ function handleJSONFrame(text) {
       els.hostInfo.innerHTML += '<br>guest: <code>' + (guestID || '?') + '</code>';
       els.sendQueryBtn.disabled = false;
       els.sendRawBtn.disabled = false;
+      els.registerSvcBtn.disabled = false;
       break;
 
     case 'mod.apphost.error_msg':
@@ -489,6 +544,10 @@ function handleJSONFrame(text) {
 
     case 'mod.apphost.query_rejected_msg':
       log('err', 'query rejected, code ' + (obj && obj.Code));
+      break;
+
+    case 'mod.apphost.incoming_query_msg':
+      renderIncomingCard(obj);
       break;
   }
 }
@@ -551,8 +610,11 @@ els.connectBtn.addEventListener('click', () => {
     els.disconnectBtn.disabled = true;
     els.sendQueryBtn.disabled = true;
     els.sendRawBtn.disabled = true;
+    els.registerSvcBtn.disabled = true;
     els.composerSendBtn.disabled = true;
+    els.serviceStatus.textContent = '';
     queryAccepted = false;
+    markAllIncomingGone();
   };
 });
 
@@ -630,6 +692,178 @@ els.composer.addEventListener('keydown', (e) => {
     els.composerSendBtn.click();
   }
 });
+
+// ---- service registration ----
+
+els.registerSvcBtn.addEventListener('click', () => {
+  if (!ws) return;
+  if (mode !== 'astral.json.v1') {
+    log('err', 'register service helper only works in json mode');
+    return;
+  }
+  const id = els.serviceIdentity.value.trim() || guestID;
+  if (!id) {
+    log('err', 'no service identity (and no guest identity available — authenticate first)');
+    return;
+  }
+  sendJSONObject('mod.apphost.register_service_msg', { Identity: id });
+  els.serviceStatus.innerHTML = 'awaiting ack for <code>' + id + '</code>';
+});
+
+// ---- incoming query cards ----
+
+const incomingCards = new Map(); // QueryID -> {el, attached, ws}
+
+function markAllIncomingGone() {
+  for (const [, card] of incomingCards) {
+    card.el.classList.add('gone');
+    if (card.ws) try { card.ws.close(); } catch (_) {}
+  }
+}
+
+function renderIncomingCard(msg) {
+  const qid = msg.QueryID;
+  const el = document.createElement('div');
+  el.className = 'incoming-card';
+  el.innerHTML =
+    '<h3>incoming query</h3>' +
+    '<div class="field"><span class="k">id</span><code>' + qid + '</code></div>' +
+    '<div class="field"><span class="k">caller</span><code>' + (msg.Caller || 'anonymous') + '</code></div>' +
+    '<div class="field"><span class="k">target</span><code>' + (msg.Target || '?') + '</code></div>' +
+    '<div class="field"><span class="k">query</span><code>' + escapeHtml(msg.Query) + '</code></div>' +
+    '<div class="actions">' +
+      '<button class="accept primary">accept</button>' +
+      '<button class="reject danger">reject</button>' +
+    '</div>';
+
+  const card = { el, attached: false, ws: null };
+  incomingCards.set(qid, card);
+  els.log.appendChild(el);
+  if (els.autoScroll.checked) els.log.scrollTop = els.log.scrollHeight;
+
+  el.querySelector('.accept').addEventListener('click', () => acceptIncoming(qid, msg));
+  el.querySelector('.reject').addEventListener('click', () => rejectIncoming(qid, 1));
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function rejectIncoming(qid, code) {
+  const card = incomingCards.get(qid);
+  if (!card || card.attached) return;
+  if (!ws) return;
+  sendJSONObject('mod.apphost.reject_incoming_msg', { QueryID: qid, Code: code });
+  card.el.classList.add('rejected');
+  card.el.querySelector('.actions').innerHTML = '<span class="muted">rejected (code ' + code + ')</span>';
+}
+
+function acceptIncoming(qid, msg) {
+  const card = incomingCards.get(qid);
+  if (!card || card.attached) return;
+
+  // open a fresh per-query WS at the same URL with the same subprotocol
+  let cws;
+  try {
+    cws = new WebSocket(els.url.value.trim(), mode);
+  } catch (e) {
+    log('err', 'per-query ws dial failed: ' + e.message);
+    return;
+  }
+  card.ws = cws;
+  card.attached = true;
+
+  // expand the card with substream UI
+  const sub = document.createElement('div');
+  sub.className = 'substream';
+  sub.innerHTML =
+    '<div class="substream-log"></div>' +
+    '<textarea placeholder="send payload to caller (json object in json mode)"></textarea>' +
+    '<div class="row" style="margin-top: 6px;">' +
+      '<button class="closeSub danger">close stream</button>' +
+      '<span class="spacer"></span>' +
+      '<button class="sendSub primary">send</button>' +
+    '</div>';
+  card.el.appendChild(sub);
+  card.el.classList.add('attached');
+  card.el.querySelector('.actions').innerHTML = '<span class="muted">attaching...</span>';
+
+  const subLog = sub.querySelector('.substream-log');
+  const ta = sub.querySelector('textarea');
+
+  function subLogLine(dir, text) {
+    const line = document.createElement('div');
+    line.className = 'line';
+    const t = new Date();
+    line.innerHTML = '<span class="ts">' + t.toTimeString().slice(0,8) + '</span>' +
+                     '<span style="color: var(--' + (dir === 'recv' ? 'recv' : dir === 'send' ? 'send' : 'muted') + ')">' + dir + '</span> ' +
+                     escapeHtml(text);
+    subLog.appendChild(line);
+    subLog.scrollTop = subLog.scrollHeight;
+  }
+
+  let attached = false;
+  cws.binaryType = 'arraybuffer';
+  cws.onopen = () => subLogLine('info', 'open, awaiting host_info_msg');
+  cws.onerror = () => subLogLine('err', 'socket error');
+  cws.onclose = (ev) => {
+    subLogLine('info', 'closed code=' + ev.code);
+    card.el.classList.remove('attached');
+    card.el.classList.add('gone');
+  };
+  cws.onmessage = (ev) => {
+    if (typeof ev.data !== 'string') {
+      subLogLine('recv', '[binary ' + ev.data.byteLength + 'B]');
+      return;
+    }
+    let env;
+    try { env = JSON.parse(ev.data); } catch (e) { subLogLine('err', 'invalid json'); return; }
+    if (!attached) {
+      if (env.Type === 'mod.apphost.host_info_msg') {
+        cws.send(JSON.stringify({ Type: 'mod.apphost.attach_query_msg', Object: { QueryID: qid } }));
+        subLogLine('send', 'attach_query_msg(' + qid + ')');
+        return;
+      }
+      if (env.Type === 'ack') {
+        attached = true;
+        card.el.querySelector('.actions').innerHTML = '<span class="muted">attached. stream open.</span>';
+        subLogLine('info', 'attach acked — stream open');
+        return;
+      }
+      if (env.Type === 'mod.apphost.error_msg') {
+        subLogLine('err', 'attach failed: ' + (env.Object && env.Object.Code));
+        return;
+      }
+    } else {
+      // post-attach: arbitrary objects from the caller side
+      subLogLine('recv', env.Type + ' ' + JSON.stringify(env.Object));
+    }
+  };
+
+  sub.querySelector('.sendSub').addEventListener('click', () => {
+    const text = ta.value.trim();
+    if (!text || !attached) return;
+    try {
+      const parsed = JSON.parse(text);
+      // post-attach we are speaking the responder side: any astral object via JSONAdapter
+      if (parsed && typeof parsed === 'object' && 'Type' in parsed && 'Object' in parsed) {
+        cws.send(JSON.stringify(parsed));
+        subLogLine('send', parsed.Type + ' ' + JSON.stringify(parsed.Object));
+      } else {
+        cws.send(text);
+        subLogLine('send', '(raw) ' + text);
+      }
+    } catch (e) {
+      subLogLine('err', 'send failed: ' + e.message);
+    }
+  });
+
+  sub.querySelector('.closeSub').addEventListener('click', () => {
+    cws.close();
+  });
+}
 
 log('info', 'ready. configure connection, then click connect.', 'boot');
 </script>
