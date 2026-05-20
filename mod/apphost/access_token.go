@@ -20,7 +20,7 @@ type AccessToken struct {
 
 var _ astral.Object = &AccessToken{}
 
-func (at AccessToken) ObjectType() string { return "astrald.mod.apphost.access_token" }
+func (at AccessToken) ObjectType() string { return "apphost.access_token" }
 
 func (at AccessToken) WriteTo(w io.Writer) (n int64, err error) {
 	return astral.Objectify(&at).WriteTo(w)

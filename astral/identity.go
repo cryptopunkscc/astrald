@@ -24,6 +24,7 @@ type Identity struct {
 	publicKey *secp256k1.PublicKey
 }
 
+// Deprecated: use secp256k1.New() instead
 func GenerateIdentity() *Identity {
 	priv, err := secp256k1.GeneratePrivateKey()
 	if err != nil {

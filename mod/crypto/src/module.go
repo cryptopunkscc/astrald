@@ -309,6 +309,15 @@ func (mod *Module) indexPrivateKey(key *crypto.PrivateKey) error {
 	return err
 }
 
+func (mod *Module) AddToIndex(object astral.Object) error {
+	switch object := object.(type) {
+	case *crypto.PrivateKey:
+		return mod.indexPrivateKey(object)
+	}
+
+	return astral.NewErrUnexpectedObject(object)
+}
+
 func (mod *Module) AddEngine(engine crypto.Engine) {
 	mod.engines.Add(engine)
 }

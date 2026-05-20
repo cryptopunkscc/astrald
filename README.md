@@ -43,6 +43,31 @@ TODO
 
 TODO
 
-### Hardware identity
+## Generating guest identity for apps and AI agents
+
+To create a new astral identity along with an access token for it, send a `apphost.register` query to the local node. It will send back a single `apphost.access_token` object:
+
+```shellsession
+$ astral-query apphost.register -out json | jq
+{
+  "Type": "apphost.access_token",
+  "Object": {
+    "Identity": "026923d06a51098170093fe989d30a432283f56d89d307176fd6f947c3a9d285ff",
+    "Token": "Kaz3No8nYVTufIBZ6ViQsypc93SiYWJf",
+    "ExpiresAt": "2036-05-17T17:41:49.042372148Z"
+  }
+}
+```
+
+Then use the token via env:
+
+```shellsession
+$ ASTRALD_APPHOST_TOKEN=Kaz3No8nYVTufIBZ6ViQsypc93SiYWJf astral-query apphost.whoami -out json
+{"Type":"identity","Object":"026923d06a51098170093fe989d30a432283f56d89d307176fd6f947c3a9d285ff"}
+```
+
+Or over any of the supported transports (native or [HTTP](https://github.com/cryptopunkscc/astral-docs/blob/master/topics/http-transport.md)).
+
+## Hardware identity
 
 Astral can use BIP-0137-compatible hardware wallets as the source for user identities. See the [coldcard module](mod/coldcard/README.md).

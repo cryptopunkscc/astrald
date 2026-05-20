@@ -1,0 +1,72 @@
+package apphost
+
+import (
+	"time"
+
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/routing"
+	"github.com/cryptopunkscc/astrald/mod/apphost"
+	"github.com/cryptopunkscc/astrald/mod/auth"
+	"github.com/cryptopunkscc/astrald/mod/log/views"
+	"github.com/cryptopunkscc/astrald/mod/secp256k1"
+)
+
+const RegisterDuration = 10 * 365 * 24 * time.Hour
+
+type opRegisterArgs struct {
+	In  string
+	Out string
+}
+
+func (mod *Module) OpRegister(ctx *astral.Context, query *routing.IncomingQuery, args opRegisterArgs) (err error) {
+	ch := query.Accept(channel.WithFormats(args.In, args.Out))
+	defer ch.Close()
+
+	// generate and store new private key
+	key := secp256k1.New()
+	_, err = mod.Objects.Store(ctx, mod.Objects.WriteDefault(), key)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	err = mod.Crypto.AddToIndex(key)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	guestID := secp256k1.Identity(secp256k1.PublicKey(key))
+
+	// generate and sign a contract for the guest
+	contract, err := apphost.NewAppContract(guestID, mod.node.Identity(), RegisterDuration)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	signed := &auth.SignedContract{Contract: contract}
+	if err = mod.Auth.SignContract(ctx, signed); err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	if err = mod.Auth.IndexContract(ctx, signed); err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	contractID, err := mod.Objects.Store(ctx, mod.Objects.WriteDefault(), signed)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	// generate an access token for the guest
+	token, err := mod.CreateAccessToken(guestID, astral.Duration(RegisterDuration))
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	tv := views.NewTimeView(&token.ExpiresAt)
+	tv.Layout = views.LongTimeLayout
+
+	mod.log.Logv(1, "registered guest %v until %v (%v)", token.Identity, tv, contractID)
+
+	return ch.Send(token)
+}

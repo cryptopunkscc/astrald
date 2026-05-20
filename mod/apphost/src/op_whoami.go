@@ -1,0 +1,19 @@
+package apphost
+
+import (
+	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
+	"github.com/cryptopunkscc/astrald/lib/routing"
+)
+
+type opWhoamiArgs struct {
+	In  string `query:"optional"`
+	Out string `query:"optional"`
+}
+
+func (mod *Module) OpWhoami(ctx *astral.Context, query *routing.IncomingQuery, args opWhoamiArgs) (err error) {
+	ch := query.Accept(channel.WithFormats(args.In, args.Out))
+	defer ch.Close()
+
+	return ch.Send(query.Caller())
+}
