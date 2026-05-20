@@ -8,9 +8,9 @@ require (
 	github.com/btcsuite/btcd v0.24.2
 	github.com/btcsuite/btcd/btcutil v1.1.6
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/coder/websocket v1.8.14
 	github.com/cryptopunkscc/bip-0137 v0.0.0-20260118232723-438bbbb8fe46
 	github.com/cryptopunkscc/utp v0.0.0-20251010115525-2f03809eff3d
-	github.com/dhowden/tag v0.0.0-20240122214204-713ab0e94639
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/glebarez/sqlite v1.9.0
 	github.com/jxskiss/base62 v1.1.0

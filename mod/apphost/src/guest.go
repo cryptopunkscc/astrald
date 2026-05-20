@@ -15,10 +15,19 @@ import (
 	"github.com/cryptopunkscc/astrald/streams"
 )
 
+// Mode is the wire format used by a Guest connection.
+type Mode int
+
+const (
+	ModeBinary Mode = iota
+	ModeJSON
+)
+
 // Guest represents an active connection with a guest.
 type Guest struct {
 	*channel.Channel
 	mod     *Module
+	mode    Mode
 	guestID *astral.Identity
 	conn    io.ReadWriteCloser
 }
@@ -28,11 +37,19 @@ type queryEnRoute struct {
 	cancel context.CancelCauseFunc
 }
 
+// NewGuest creates a binary-mode Guest over a net.Conn. Used by TCP/unix/memu listeners.
 func NewGuest(mod *Module, conn net.Conn) *Guest {
+	return NewGuestFromChannel(mod, channel.New(conn), conn, ModeBinary)
+}
+
+// NewGuestFromChannel creates a Guest over a pre-built channel. The closer is what
+// gets closed when Serve returns; in the WS path it's the same object that backs the channel.
+func NewGuestFromChannel(mod *Module, ch *channel.Channel, conn io.ReadWriteCloser, mode Mode) *Guest {
 	return &Guest{
 		mod:     mod,
 		conn:    conn,
-		Channel: channel.New(conn),
+		Channel: ch,
+		mode:    mode,
 	}
 }
 
@@ -160,7 +177,7 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 		Nonce:       msg.Nonce,
 		Caller:      msg.Caller,
 		Target:      msg.Target,
-		QueryString: string(msg.Query),
+		QueryString: guest.prepareQueryString(string(msg.Query)),
 	}
 
 	// check authorization if necessary
@@ -245,4 +262,27 @@ func (guest *Guest) sendError(code string) error {
 
 func (guest *Guest) isAuthenticated() bool {
 	return !guest.guestID.IsZero()
+}
+
+// prepareQueryString rewrites the query string for JSON-mode guests so the responder
+// also speaks JSON. It sets out=json and in=json if not already present. For binary-mode
+// guests it returns the string unchanged.
+func (guest *Guest) prepareQueryString(s string) string {
+	if guest.mode != ModeJSON {
+		return s
+	}
+
+	path, params := query.Parse(s)
+	if _, ok := params["out"]; !ok {
+		params["out"] = "json"
+	}
+	if _, ok := params["in"]; !ok {
+		params["in"] = "json"
+	}
+
+	encoded, err := query.Marshal(params)
+	if err != nil || encoded == "" {
+		return path
+	}
+	return path + "?" + encoded
 }
