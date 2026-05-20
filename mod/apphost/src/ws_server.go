@@ -1,6 +1,7 @@
 package apphost
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -59,6 +60,10 @@ func (srv *HTTPServer) handleWS(writer http.ResponseWriter, request *http.Reques
 	switch {
 	case err == nil:
 	case errors.Is(err, io.EOF):
+	case errors.Is(err, context.Canceled):
+		// streams.Join's trailing goroutine returns this when its peer goroutine
+		// closes the wsConn (which cancels the read ctx) — clean end-of-stream
+		// for our adapter. Also fires on normal module shutdown.
 	case strings.Contains(err.Error(), "use of closed network connection"):
 	case strings.Contains(err.Error(), "connection closed"):
 	case strings.Contains(err.Error(), "read/write on closed pipe"):
