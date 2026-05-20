@@ -70,9 +70,12 @@ func (srv *HTTPServer) handleWS(writer http.ResponseWriter, request *http.Reques
 		// streams.Join's trailing goroutine returns this when its peer goroutine
 		// closes the wsConn (which cancels the read ctx) — clean end-of-stream
 		// for our adapter. Also fires on normal module shutdown.
+	case websocket.CloseStatus(err) != -1:
+		// Peer sent a Close frame — normal WS termination.
 	case strings.Contains(err.Error(), "use of closed network connection"):
 	case strings.Contains(err.Error(), "connection closed"):
 	case strings.Contains(err.Error(), "read/write on closed pipe"):
+	case strings.Contains(err.Error(), "received close frame"):
 	default:
 		srv.log.Error("ws serve error: %v", err)
 	}

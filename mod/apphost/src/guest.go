@@ -78,6 +78,9 @@ func (guest *Guest) Serve(ctx *astral.Context) (err error) {
 			return nil
 		case strings.Contains(err.Error(), "use of closed network connection"):
 			return nil
+		case strings.Contains(err.Error(), "received close frame"):
+			// Normal WS termination by the peer.
+			return nil
 		default:
 			guest.mod.log.Logv(2, "error reading from client: %v", err)
 			return err
