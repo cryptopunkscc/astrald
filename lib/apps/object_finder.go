@@ -9,7 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	objectsclient "github.com/cryptopunkscc/astrald/mod/objects/client"
+	objectsClient "github.com/cryptopunkscc/astrald/mod/objects/client"
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
@@ -41,22 +41,17 @@ func WithObjectFinder(finders ...objects.Finder) ServeOption {
 
 			return adder.AddScopedOp(objects.ModuleName, "find", op)
 		})
-		cfg.hooks = append(cfg.hooks, registerObjectFinderHook)
-		return nil
-	}
-}
-
-func WithObjectFinderRegistration(finders ...objects.Finder) ServeOption {
-	return func(cfg *serveConfig) error {
-		if len(finders) == 0 {
-			return errors.New("no object finders")
-		}
-		cfg.hooks = append(cfg.hooks, registerObjectFinderHook)
+		cfg.hooks = append(cfg.hooks, objectsClient.RegisterFinder)
 		return nil
 	}
 }
 
 func (ops *objectFinderOps) Find(ctx *astral.Context, q *routing.IncomingQuery, args objectFindArgs) error {
+	// note: caller identity is not propagated; mount a custom op to access it. Maybe in the future we will modify design of interface object.Finder
+
+	// note: zone is not propagated; mount a custom op to access it. Maybe in the future we will modify design of interface object.Finder
+
+	// note: no timeout - relies on the caller's ctx (lib/apps does not enforce timeouts)
 	ctx, cancel := ctx.WithCancel()
 	defer cancel()
 
@@ -87,6 +82,7 @@ func (ops *objectFinderOps) Find(ctx *astral.Context, q *routing.IncomingQuery, 
 
 func (ops *objectFinderOps) find(ctx *astral.Context, id *astral.ObjectID) <-chan *astral.Identity {
 	results := make(chan *astral.Identity)
+	found := make(chan *astral.Identity)
 	var wg sync.WaitGroup
 
 	for _, finder := range ops.finders {
@@ -114,7 +110,7 @@ func (ops *objectFinderOps) find(ctx *astral.Context, id *astral.ObjectID) <-cha
 					continue
 				}
 
-				if err := sig.Send(ctx, results, provider); err != nil {
+				if err := sig.Send(ctx, found, provider); err != nil {
 					return
 				}
 			}
@@ -123,12 +119,21 @@ func (ops *objectFinderOps) find(ctx *astral.Context, id *astral.ObjectID) <-cha
 
 	go func() {
 		wg.Wait()
-		close(results)
+		close(found)
+	}()
+
+	go func() {
+		defer close(results)
+		for {
+			provider, ok, err := sig.RecvOk(ctx, found)
+			if err != nil || !ok {
+				return
+			}
+			if err := sig.Send(ctx, results, provider); err != nil {
+				return
+			}
+		}
 	}()
 
 	return results
-}
-
-func registerObjectFinderHook(ctx *astral.Context) error {
-	return objectsclient.RegisterFinder(ctx)
 }
