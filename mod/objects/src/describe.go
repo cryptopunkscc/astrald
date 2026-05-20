@@ -56,8 +56,8 @@ func (mod *Module) AddDescriber(describer objects.Describer) error {
 		return err
 	}
 	if ok {
-		mod.app.mu.Lock()
-		defer mod.app.mu.Unlock()
+		mod.external.mu.Lock()
+		defer mod.external.mu.Unlock()
 
 		if containsSourceIdentity(&mod.describers, source) {
 			return nil

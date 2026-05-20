@@ -12,7 +12,7 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-type AppDescriber struct {
+type ExternalDescriber struct {
 	mod     *Module
 	id      *astral.Identity
 	client  *objectscli.Client
@@ -20,19 +20,19 @@ type AppDescriber struct {
 	timeout time.Duration
 }
 
-func NewAppDescriber(mod *Module, id *astral.Identity) *AppDescriber {
-	return &AppDescriber{
+func NewExternalDescriber(mod *Module, id *astral.Identity) *ExternalDescriber {
+	return &ExternalDescriber{
 		mod:     mod,
 		id:      id,
 		client:  objectscli.New(id, astrald.Default()),
 		log:     mod.log.AppendTag(log.Tag(id.Fingerprint())),
-		timeout: defaultAppDiscovererTimeout,
+		timeout: defaultExternalDiscovererTimeout,
 	}
 }
 
-func (d *AppDescriber) SourceIdentity() *astral.Identity { return d.id }
+func (d *ExternalDescriber) SourceIdentity() *astral.Identity { return d.id }
 
-func (d *AppDescriber) DescribeObject(ctx *astral.Context, id *astral.ObjectID) (<-chan *objects.Descriptor, error) {
+func (d *ExternalDescriber) DescribeObject(ctx *astral.Context, id *astral.ObjectID) (<-chan *objects.Descriptor, error) {
 	ctx, cancel := ctx.WithTimeout(d.timeout)
 
 	in, errPtr := d.client.Describe(ctx, id)
@@ -41,7 +41,7 @@ func (d *AppDescriber) DescribeObject(ctx *astral.Context, id *astral.ObjectID) 
 		if errPtr != nil && *errPtr != nil {
 			return nil, *errPtr
 		}
-		return nil, errors.New("app describe returned no stream")
+		return nil, errors.New("external describe returned no stream")
 	}
 
 	out := make(chan *objects.Descriptor)
@@ -52,7 +52,7 @@ func (d *AppDescriber) DescribeObject(ctx *astral.Context, id *astral.ObjectID) 
 		for {
 			descriptor, ok, err := sig.RecvOk(ctx, in)
 			if err != nil {
-				d.log.Errorv(1, "app describer: %v", err)
+				d.log.Errorv(1, "external describer: %v", err)
 				return
 			}
 			if !ok {
@@ -69,7 +69,7 @@ func (d *AppDescriber) DescribeObject(ctx *astral.Context, id *astral.ObjectID) 
 		}
 
 		if errPtr != nil && *errPtr != nil {
-			d.log.Errorv(1, "app describer: %v", *errPtr)
+			d.log.Errorv(1, "external describer: %v", *errPtr)
 		}
 	}()
 

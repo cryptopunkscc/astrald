@@ -22,7 +22,7 @@ import (
 
 var _ objects.Module = &Module{}
 
-const defaultAppDiscovererTimeout = 15 * time.Second
+const defaultExternalDiscovererTimeout = 15 * time.Second
 
 type Deps struct {
 	Auth  auth.Module
@@ -48,7 +48,7 @@ type Module struct {
 	holders    sig.Set[objects.Holder]
 	repos      sig.Map[string, objects.Repository]
 
-	app struct {
+	external struct {
 		mu sync.Mutex
 	}
 

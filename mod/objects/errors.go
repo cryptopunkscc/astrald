@@ -13,6 +13,6 @@ var (
 	ErrNilSourceIdentifier   = errors.New("source identifier is nil")
 	ErrInvalidSourceIdentity = errors.New("source identity is invalid")
 
-	ErrAppRegistrationFromNetwork = errors.New("app discoverer registration cannot come from the network")
-	ErrAppRegistrationSelf        = errors.New("node identity cannot register as an app discoverer")
+	ErrExternalRegistrationFromNetwork = errors.New("external discoverer registration cannot come from the network")
+	ErrExternalRegistrationSelf        = errors.New("node identity cannot register as an external discoverer")
 )

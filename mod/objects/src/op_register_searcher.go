@@ -13,7 +13,7 @@ type opRegisterSearcherArgs struct {
 }
 
 func (mod *Module) OpRegisterSearcher(ctx *astral.Context, q *routing.IncomingQuery, args opRegisterSearcherArgs) error {
-	// Keep this local for now; extract shared app registration validation once the API settles.
+	// Keep this local for now; extract shared external registration validation once the API settles.
 	if q.Origin() == astral.OriginNetwork {
 		return q.Reject()
 	}
@@ -24,7 +24,7 @@ func (mod *Module) OpRegisterSearcher(ctx *astral.Context, q *routing.IncomingQu
 	case id == nil || id.IsZero():
 		err = objects.ErrInvalidSourceIdentity
 	case id.IsEqual(mod.node.Identity()):
-		err = objects.ErrAppRegistrationSelf
+		err = objects.ErrExternalRegistrationSelf
 	}
 
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
@@ -34,7 +34,7 @@ func (mod *Module) OpRegisterSearcher(ctx *astral.Context, q *routing.IncomingQu
 		return ch.Send(astral.Err(err))
 	}
 
-	err = mod.AddSearcher(NewAppSearcher(mod, id))
+	err = mod.AddSearcher(NewExternalSearcher(mod, id))
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
