@@ -18,4 +18,14 @@ type Host interface {
 	//
 	// Calls are paired and serialized by the daemon's module lifecycle.
 	LANDiscoveryActive(active bool)
+
+	// LocalInterfaceAddrs returns the host's local IP addresses in CIDR
+	// notation, one per line ("192.168.1.10/24", "fe80::1/64", ...). Used
+	// to bypass Android's block on Go's netlink-based net.InterfaceAddrs.
+	//
+	// Empty string is interpreted as "no addresses available" — the daemon
+	// proceeds with no advertised endpoints, no errors. Called repeatedly
+	// (every ~3s by mod/ip's address-change watcher), so implementations
+	// should be cheap; getifaddrs-based enumeration is fine.
+	LocalInterfaceAddrs() string
 }

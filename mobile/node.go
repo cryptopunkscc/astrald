@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/cryptopunkscc/astrald/mod/ether"
+	ipsrc "github.com/cryptopunkscc/astrald/mod/ip/src"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 	"github.com/cryptopunkscc/astrald/resources"
 
@@ -134,6 +137,11 @@ func (n *Node) Start() error {
 		ether.LANDiscoveryHook = func(active bool) {
 			host.LANDiscoveryActive(active)
 		}
+		// Bypass Go's netlink-based net.InterfaceAddrs (blocked in the
+		// Android app sandbox) by routing through the platform Host.
+		ipsrc.InterfaceAddrs = func() ([]net.Addr, error) {
+			return parseCIDRList(host.LocalInterfaceAddrs()), nil
+		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -152,6 +160,7 @@ func (n *Node) Start() error {
 			n.mu.Unlock()
 		}
 		ether.LANDiscoveryHook = nil
+		ipsrc.InterfaceAddrs = net.InterfaceAddrs
 	}()
 
 	return nil
@@ -240,4 +249,32 @@ func loadNodeIdentity(res resources.Resources) (*astral.Identity, error) {
 	}
 
 	return secp256k1.Identity(secp256k1.PublicKey(nodeKey)), nil
+}
+
+// parseCIDRList converts a newline-separated CIDR list from Host into the
+// []*net.IPNet shape expected by mod/ip's consumer at module.go:52. IPv6
+// zone suffixes ("fe80::1%wlan0/64") are stripped before parsing since
+// net.ParseCIDR doesn't accept them. Bad entries are silently dropped.
+func parseCIDRList(s string) []net.Addr {
+	out := make([]net.Addr, 0)
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if i := strings.IndexByte(line, '%'); i >= 0 {
+			if j := strings.IndexByte(line[i:], '/'); j >= 0 {
+				line = line[:i] + line[i+j:]
+			} else {
+				line = line[:i]
+			}
+		}
+		ip, ipnet, err := net.ParseCIDR(line)
+		if err != nil {
+			continue
+		}
+		ipnet.IP = ip
+		out = append(out, ipnet)
+	}
+	return out
 }
