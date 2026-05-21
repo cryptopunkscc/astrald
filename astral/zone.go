@@ -1,6 +1,9 @@
 package astral
 
-import "io"
+import (
+	"encoding/json"
+	"io"
+)
 
 const (
 	ZoneDevice = Zone(1 << iota)
@@ -41,6 +44,19 @@ func (zone *Zone) ReadFrom(r io.Reader) (n int64, err error) {
 	n, err = u.ReadFrom(r)
 	*zone = Zone(u)
 	return
+}
+
+func (zone Zone) MarshalJSON() ([]byte, error) {
+	return json.Marshal(zone.String())
+}
+
+func (zone *Zone) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	*zone = Zones(s)
+	return nil
 }
 
 // text support

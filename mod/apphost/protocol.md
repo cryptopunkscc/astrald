@@ -185,3 +185,79 @@ By default, apphost listens on "127.0.0.1:8625".
 
 A unix socket, for example "/var/run/app.socket".
 By default, apphost listens on "~/.apphost.sock".
+
+### WebSocket
+
+The HTTP server (default `tcp:0.0.0.0:8624`) also accepts WebSocket upgrades on
+`/.ws`, intended for browser-based guests. The endpoint is loopback-only —
+non-loopback requests are refused. There is no TLS; if you need WS from a
+non-loopback origin, terminate TLS in a reverse proxy.
+
+Mode is selected by `Sec-WebSocket-Protocol`:
+
+| Subprotocol         | Frame   | Payload format                                     |
+|---------------------|---------|----------------------------------------------------|
+| `astral.binary.v1`  | binary  | the existing `String8 type + Bytes32 payload` byte stream, identical to TCP/unix |
+| `astral.json.v1`    | text    | one JSON-encoded `astral.JSONAdapter` (`{"Type":"...","Object":...}`) per frame  |
+
+If the client requests neither, the upgrade is closed with
+`StatusPolicyViolation` (1008).
+
+Origin policy: requests from a loopback peer are allowed when `Origin` is
+any loopback host (`127.0.0.1:*`, `[::1]:*`, `localhost:*`). DNS rebinding
+cannot forge a loopback Origin, so this is safe — and it lets a browser
+page served from one loopback port (e.g. `cmd/ws-client` on `:8627`)
+connect to apphost on another (`:8624`). To allow additional patterns
+(non-loopback origins), list them in the `ws_allow_origins` config key —
+matched by `path.Match` against the Origin host.
+
+Authentication uses the same in-protocol `AuthTokenMsg` as the TCP/unix path.
+The HTTP `Authorization: Bearer` header used by the rest of the HTTP bridge
+is not consulted for `/.ws`.
+
+JSON-mode auto-injection: when a JSON-mode guest sends `RouteQueryMsg`, the
+server appends `out=json&in=json` to the query string if those params are
+absent, so the responder's channel produces JSON-Lines for the post-accept
+stream. Apps can override either by setting them explicitly in the query.
+Channel-aware responders that emit `astral.Bytes32` get base64 in JSON
+automatically; responders that bypass the channel and write raw bytes are
+not safe for JSON mode and should be queried over `astral.binary.v1`
+instead.
+
+Outbound queries: one query per WS — closing the WS cancels the in-flight
+query. The native `apphost.register_handler` op is not usable over WS
+because it expects an IPC dial endpoint; WS clients use the registration
+flow below instead.
+
+#### Handling inbound queries
+
+A WS client can register as a service handler for an identity it owns. The
+host then pushes a notification per inbound query, and the client opens a
+fresh per-query WS to respond.
+
+**Registration WS** (long-lived, one per service identity):
+
+1. Standard handshake (`HostInfoMsg` → optional `AuthTokenMsg` → `AuthSuccessMsg`).
+2. Client → `RegisterServiceMsg{Identity}`.
+3. Host → `Ack`. Authorization mirrors `RouteQueryMsg`: caller must equal
+   Identity or hold a `SudoAction` for it.
+4. For each inbound query targeting Identity, host pushes
+   `IncomingQueryMsg{QueryID, Caller, Target, Query}`.
+5. For each notification the client must either:
+   - open a per-query WS within 5 seconds (see below), or
+   - send `RejectIncomingMsg{QueryID, Code}` on the registration WS, or
+   - ignore — the caller sees route-not-found after the timeout.
+6. Closing the registration WS unregisters the handler.
+
+**Per-query WS** (short-lived, one per accepted inbound query):
+
+1. Standard handshake (`HostInfoMsg`). No auth needed — the unguessable
+   `QueryID` is the pairing token.
+2. Client → `AttachQueryMsg{QueryID}`.
+3. Host → `Ack` (or `ErrorMsg{Code: route_not_found}` if the QueryID is
+   unknown or already expired).
+4. The connection becomes the bidirectional bytestream for that one query,
+   with the client acting as the responder. Format is whatever the
+   subprotocol selected; in `astral.json.v1` mode it's JSON-Lines of
+   `astral.JSONAdapter`.
+5. Closing the WS ends the query.

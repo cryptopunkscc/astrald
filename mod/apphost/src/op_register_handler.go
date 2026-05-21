@@ -23,13 +23,13 @@ func (mod *Module) OpRegisterHandler(ctx *astral.Context, q *routing.IncomingQue
 	defer ch.Close()
 
 	// add the handler
-	handler := &QueryHandler{
+	handler := &IPCHandler{
 		Identity: q.Caller(),
 		IpcToken: args.Token,
 		Endpoint: args.Endpoint,
 	}
 
-	mod.handlers.Add(handler)
+	mod.ipcHandlers.Add(handler)
 
 	mod.log.Logv(3, "%v registered a handler at %v", q.Caller(), args.Endpoint)
 

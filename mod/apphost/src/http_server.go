@@ -34,6 +34,8 @@ func NewHTTPServer(mod *Module) *HTTPServer {
 }
 
 func (srv *HTTPServer) Run(ctx *astral.Context) error {
+	srv.ctx = ctx
+
 	// return if not configured
 	bindHTTP := srv.config.BindHTTP
 	if bindHTTP == "" {
@@ -77,6 +79,12 @@ func (srv *HTTPServer) Run(ctx *astral.Context) error {
 }
 
 func (srv *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	// WebSocket upgrade has its own response shape (no CORS headers, in-protocol auth).
+	if request.URL.Path == "/.ws" {
+		srv.handleWS(writer, request)
+		return
+	}
+
 	// add CORS headers
 	writer.Header().Set("Access-Control-Allow-Origin", "*")
 	writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")

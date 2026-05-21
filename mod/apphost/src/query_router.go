@@ -9,7 +9,7 @@ import (
 )
 
 func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
-	for _, handler := range mod.handlers.Clone() {
+	for _, handler := range mod.ipcHandlers.Clone() {
 		if !handler.Identity.IsEqual(q.Target) {
 			continue
 		}
@@ -27,7 +27,26 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 
 		case errors.Is(err, errEndpointUnavailable):
 			mod.log.Logv(3, "removing unresponsive query handler at %v", handler.Endpoint)
-			mod.handlers.Remove(handler)
+			mod.ipcHandlers.Remove(handler)
+		}
+	}
+
+	for _, h := range mod.wsHandlers.Clone() {
+		if !h.Identity.IsEqual(q.Target) {
+			continue
+		}
+
+		conn, err := h.RouteQuery(ctx, q, w)
+
+		var rejected *astral.ErrRejected
+		switch {
+		case err == nil:
+			return conn, nil
+		case errors.As(err, &rejected):
+			return query.RejectWithCode(rejected.Code)
+		case errors.Is(err, errWSHandlerGone):
+			mod.log.Logv(3, "removing closed ws handler for %v", h.Identity)
+			mod.wsHandlers.Remove(h)
 		}
 	}
 
@@ -35,9 +54,9 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 }
 
 func (mod *Module) removeHandlersByToken(token astral.Nonce) error {
-	for _, h := range mod.handlers.Clone() {
+	for _, h := range mod.ipcHandlers.Clone() {
 		if h.IpcToken == token {
-			mod.handlers.Remove(h)
+			mod.ipcHandlers.Remove(h)
 		}
 	}
 	return nil
