@@ -14,7 +14,7 @@ type ObjectSigner struct {
 var _ crypto.ObjectSigner = &ObjectSigner{}
 
 func (s *ObjectSigner) SignObject(ctx *astral.Context, object crypto.SignableObject) (*crypto.Signature, error) {
-	signer, err := s.mod.HashSigner(s.key, s.scheme)
+	signer, err := s.mod.NewHashSigner(s.key, s.scheme)
 	if err != nil {
 		return nil, err
 	}

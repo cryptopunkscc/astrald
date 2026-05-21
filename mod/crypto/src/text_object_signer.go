@@ -14,7 +14,7 @@ type TextObjectSigner struct {
 var _ crypto.TextObjectSigner = &TextObjectSigner{}
 
 func (s *TextObjectSigner) SignTextObject(ctx *astral.Context, object crypto.SignableTextObject) (*crypto.Signature, error) {
-	signer, err := s.mod.TextSigner(s.key, s.scheme)
+	signer, err := s.mod.NewTextSigner(s.key, s.scheme)
 	if err != nil {
 		return nil, err
 	}

@@ -95,30 +95,26 @@ func (mod *Module) PrivateKey(ctx *astral.Context, key *crypto.PublicKey) (*cryp
 	}
 }
 
-func (mod *Module) PublicKey(ctx *astral.Context, key *crypto.PrivateKey) (*crypto.PublicKey, error) {
-	for _, engine := range mod.engines.Clone() {
-		pubKey, err := engine.PublicKey(ctx, key)
-		if err == nil {
-			return pubKey, nil
-		}
-	}
-
-	return nil, crypto.ErrUnsupported
+func (mod *Module) DerivePublicKey(ctx *astral.Context, key *crypto.PrivateKey) (*crypto.PublicKey, error) {
+	return dispatchResult[crypto.PublicKeyDeriver, *crypto.PublicKey](
+		mod.engines.Clone(),
+		func(d crypto.PublicKeyDeriver) (*crypto.PublicKey, error) {
+			return d.DerivePublicKey(ctx, key)
+		},
+	)
 }
 
-func (mod *Module) HashSigner(key *crypto.PublicKey, scheme string) (crypto.HashSigner, error) {
-	for _, engine := range mod.engines.Clone() {
-		signer, err := engine.HashSigner(key, scheme)
-		if err == nil {
-			return signer, nil
-		}
-	}
-
-	return nil, crypto.ErrUnsupported
+func (mod *Module) NewHashSigner(key *crypto.PublicKey, scheme string) (crypto.HashSigner, error) {
+	return dispatchResult[crypto.HashSignerProvider, crypto.HashSigner](
+		mod.engines.Clone(),
+		func(p crypto.HashSignerProvider) (crypto.HashSigner, error) {
+			return p.NewHashSigner(key, scheme)
+		},
+	)
 }
 
 func (mod *Module) NodeSigner() crypto.HashSigner {
-	signer, err := mod.HashSigner(&crypto.PublicKey{
+	signer, err := mod.NewHashSigner(&crypto.PublicKey{
 		Type: "secp256k1",
 		Key:  mod.node.Identity().PublicKey().SerializeCompressed(),
 	}, crypto.SchemeASN1)
@@ -130,7 +126,6 @@ func (mod *Module) NodeSigner() crypto.HashSigner {
 }
 
 func (mod *Module) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signature, hash []byte) error {
-	// check args
 	switch {
 	case key == nil:
 		return errors.New("public key is nil")
@@ -148,35 +143,24 @@ func (mod *Module) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signat
 		return errors.New("hash is empty")
 	}
 
-	// find an engine that can verify the signature
-	for _, engine := range mod.engines.Clone() {
-		err := engine.VerifyHashSignature(key, sig, hash)
-		switch {
-		case err == nil:
-			return nil
-		case errors.Is(err, crypto.ErrInvalidSignature):
-			return err
-		default:
-			continue
-		}
-	}
-
-	return crypto.ErrUnsupported
+	return dispatchVerify[crypto.HashVerifier](
+		mod.engines.Clone(),
+		func(v crypto.HashVerifier) error {
+			return v.VerifyHashSignature(key, sig, hash)
+		},
+	)
 }
 
-func (mod *Module) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
-	for _, engine := range mod.engines.Clone() {
-		signer, err := engine.TextSigner(key, scheme)
-		if err == nil {
-			return signer, nil
-		}
-	}
-
-	return nil, crypto.ErrUnsupported
+func (mod *Module) NewTextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
+	return dispatchResult[crypto.TextSignerProvider, crypto.TextSigner](
+		mod.engines.Clone(),
+		func(p crypto.TextSignerProvider) (crypto.TextSigner, error) {
+			return p.NewTextSigner(key, scheme)
+		},
+	)
 }
 
 func (mod *Module) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signature, msg string) error {
-	// check args
 	switch {
 	case key == nil:
 		return errors.New("public key is nil")
@@ -194,20 +178,12 @@ func (mod *Module) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signat
 		return errors.New("hash is empty")
 	}
 
-	// find an engine that can verify the signature
-	for _, engine := range mod.engines.Clone() {
-		err := engine.VerifyTextSignature(key, sig, msg)
-		switch {
-		case err == nil:
-			return nil
-		case errors.Is(err, crypto.ErrInvalidSignature):
-			return err
-		default:
-			continue
-		}
-	}
-
-	return crypto.ErrUnsupported
+	return dispatchVerify[crypto.TextVerifier](
+		mod.engines.Clone(),
+		func(v crypto.TextVerifier) error {
+			return v.VerifyTextSignature(key, sig, msg)
+		},
+	)
 }
 
 func (mod *Module) ObjectSigner(key *crypto.PublicKey) (crypto.ObjectSigner, error) {
@@ -289,7 +265,7 @@ func (mod *Module) indexPrivateKey(key *crypto.PrivateKey) error {
 		return err
 	}
 
-	pubKey, err := mod.PublicKey(mod.ctx, key)
+	pubKey, err := mod.DerivePublicKey(mod.ctx, key)
 	if err != nil {
 		return err
 	}

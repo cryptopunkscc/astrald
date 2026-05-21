@@ -3,6 +3,7 @@ package secp256k1
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"fmt"
 
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -40,7 +41,7 @@ func VerifyASN1(key *crypto.PublicKey, hash []byte, sig *crypto.Signature) error
 	// parse the key
 	pkey, err := secp256k1.ParsePubKey(key.Key)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", crypto.ErrInvalidSignature, err)
 	}
 
 	// verify sig

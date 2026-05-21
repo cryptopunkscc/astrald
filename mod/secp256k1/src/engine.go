@@ -12,14 +12,13 @@ import (
 
 type Engine struct {
 	mod *Module
-	crypto.NilEngine
 }
 
-func (e Engine) PublicKey(ctx *astral.Context, key *crypto.PrivateKey) (*crypto.PublicKey, error) {
+func (e Engine) DerivePublicKey(ctx *astral.Context, key *crypto.PrivateKey) (*crypto.PublicKey, error) {
 	return modSecp256k1.PublicKey(key), nil
 }
 
-func (e Engine) HashSigner(key *crypto.PublicKey, scheme string) (crypto.HashSigner, error) {
+func (e Engine) NewHashSigner(key *crypto.PublicKey, scheme string) (crypto.HashSigner, error) {
 	switch {
 	case key.Type != modSecp256k1.KeyType:
 		return nil, crypto.ErrUnsupportedKeyType
@@ -45,7 +44,7 @@ func (e Engine) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signature
 
 	publicKey, err := secp256k1.ParsePubKey(key.Key)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", crypto.ErrInvalidSignature, err)
 	}
 
 	if ecdsa.VerifyASN1(publicKey.ToECDSA(), hash, sig.Data) {
@@ -53,8 +52,4 @@ func (e Engine) VerifyHashSignature(key *crypto.PublicKey, sig *crypto.Signature
 	}
 
 	return crypto.ErrInvalidSignature
-}
-
-func (e Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
-	return nil, crypto.ErrUnsupported
 }

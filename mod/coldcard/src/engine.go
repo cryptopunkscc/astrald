@@ -12,10 +12,9 @@ import (
 
 type Engine struct {
 	mod *Module
-	crypto.NilEngine
 }
 
-func (e *Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
+func (e *Engine) NewTextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
 	switch {
 	case scheme != "bip137":
 		return nil, crypto.ErrUnsupportedScheme

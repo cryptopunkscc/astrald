@@ -35,7 +35,7 @@ func (mod *Module) OpSignText(ctx *astral.Context, q *routing.IncomingQuery, arg
 		}
 	}
 
-	signer, err := mod.TextSigner(signerKey, args.Scheme)
+	signer, err := mod.NewTextSigner(signerKey, args.Scheme)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}

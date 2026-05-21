@@ -7,6 +7,7 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/apphost/src"
 	_ "github.com/cryptopunkscc/astrald/mod/archives/src"
 	_ "github.com/cryptopunkscc/astrald/mod/auth/src"
+	_ "github.com/cryptopunkscc/astrald/mod/bip137sig/src"
 	_ "github.com/cryptopunkscc/astrald/mod/coldcard/src"
 	_ "github.com/cryptopunkscc/astrald/mod/crypto/src"
 	_ "github.com/cryptopunkscc/astrald/mod/dir/src"

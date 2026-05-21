@@ -14,10 +14,9 @@ import (
 
 type Engine struct {
 	mod *Module
-	crypto.NilEngine
 }
 
-func (e Engine) TextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
+func (e Engine) NewTextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
 	switch {
 	case scheme != crypto.SchemeBIP137:
 		return nil, crypto.ErrUnsupportedScheme
@@ -53,14 +52,14 @@ func (e Engine) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signature
 
 	publicKey, err := secp.ParsePubKey(key.Key)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", crypto.ErrInvalidSignature, err)
 	}
 
 	sigBase64 := base64.StdEncoding.EncodeToString(sig.Data)
 
 	ok, err := verify.VerifyWithPubKey(publicKey, msg, sigBase64)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", crypto.ErrInvalidSignature, err)
 	}
 	if !ok {
 		return crypto.ErrInvalidSignature

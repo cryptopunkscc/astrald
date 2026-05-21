@@ -25,17 +25,17 @@ type Module interface {
 	// PrivateKey tries to load the private key corresponding to the given public key
 	PrivateKey(ctx *astral.Context, key *PublicKey) (*PrivateKey, error)
 
-	// PublicKey generates the corresponding public key for the given private key
-	PublicKey(ctx *astral.Context, key *PrivateKey) (*PublicKey, error)
+	// DerivePublicKey generates the corresponding public key for the given private key
+	DerivePublicKey(ctx *astral.Context, key *PrivateKey) (*PublicKey, error)
 
-	// HashSigner returns a hash signer for the given public key and scheme
-	HashSigner(key *PublicKey, scheme string) (HashSigner, error)
+	// NewHashSigner returns a hash signer for the given public key and scheme
+	NewHashSigner(key *PublicKey, scheme string) (HashSigner, error)
 
 	// VerifyHashSignature verifies the signature of the given hash using the given public key
 	VerifyHashSignature(key *PublicKey, sig *Signature, hash []byte) error
 
-	// TextSigner returns a message signer for the given public key and scheme
-	TextSigner(key *PublicKey, scheme string) (TextSigner, error)
+	// NewTextSigner returns a message signer for the given public key and scheme
+	NewTextSigner(key *PublicKey, scheme string) (TextSigner, error)
 
 	// VerifyTextSignature verifies a text signature
 	VerifyTextSignature(signer *PublicKey, sig *Signature, text string) error

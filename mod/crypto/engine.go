@@ -9,23 +9,33 @@ const (
 	SchemeBIP137 = "bip137" // default for text signatures
 )
 
-// Engine adds support for various cryptographic operations to the crypto module. Engines can
-// implement any subset of Engine operations. Every operation has to verify that it supports
-// the key type and scheme and return ErrUnsupported if it doesn't.
-type Engine interface {
-	// PublicKey derives the public key from the provided private key
-	PublicKey(ctx *astral.Context, key *PrivateKey) (*PublicKey, error)
+// Engine is a marker for an opaque cryptographic engine value. An engine is any
+// type that implements one or more of the capability interfaces below; the
+// crypto module discovers and dispatches per capability via type assertion.
+type Engine = any
 
-	// HashSigner returns a signer that will sign hashes using the provided key and scheme
-	HashSigner(key *PublicKey, scheme string) (HashSigner, error)
+// PublicKeyDeriver derives the public key from a private key.
+type PublicKeyDeriver interface {
+	DerivePublicKey(ctx *astral.Context, key *PrivateKey) (*PublicKey, error)
+}
 
-	// VerifyHashSignature verifies a signature of a hash
+// HashSignerProvider returns a per-call HashSigner bound to a key + scheme.
+type HashSignerProvider interface {
+	NewHashSigner(key *PublicKey, scheme string) (HashSigner, error)
+}
+
+// HashVerifier verifies a signature of a hash.
+type HashVerifier interface {
 	VerifyHashSignature(key *PublicKey, sig *Signature, hash []byte) error
+}
 
-	// TextSigner returns a signer that will sign messages using the provided key and scheme
-	TextSigner(key *PublicKey, scheme string) (TextSigner, error)
+// TextSignerProvider returns a per-call TextSigner bound to a key + scheme.
+type TextSignerProvider interface {
+	NewTextSigner(key *PublicKey, scheme string) (TextSigner, error)
+}
 
-	// VerifyTextSignature verifies a signature of a message
+// TextVerifier verifies a signature of a text message.
+type TextVerifier interface {
 	VerifyTextSignature(key *PublicKey, sig *Signature, msg string) error
 }
 

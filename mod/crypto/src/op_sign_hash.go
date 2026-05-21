@@ -39,7 +39,7 @@ func (mod *Module) OpSignHash(ctx *astral.Context, q *routing.IncomingQuery, arg
 	}
 
 	var signAndSend = func(hash []byte) error {
-		signer, err := mod.HashSigner(signerKey, args.Scheme)
+		signer, err := mod.NewHashSigner(signerKey, args.Scheme)
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))
 		}
