@@ -30,7 +30,7 @@ func (mod *Module) OpVerifyTextSignature(ctx *astral.Context, q *routing.Incomin
 		}
 	}
 
-	return ch.Switch(
+	err = ch.Switch(
 		func(key *crypto.PublicKey) error {
 			publicKey = key
 			return ch.Send(&astral.Ack{})
@@ -59,4 +59,8 @@ func (mod *Module) OpVerifyTextSignature(ctx *astral.Context, q *routing.Incomin
 		},
 		channel.BreakOnEOS,
 	)
+	if err != nil {
+		_ = ch.Send(astral.Err(err))
+	}
+	return err
 }

@@ -61,7 +61,7 @@ func (mod *Module) OpSignHash(ctx *astral.Context, q *routing.IncomingQuery, arg
 		return signAndSend(hash)
 	}
 
-	return ch.Switch(
+	err = ch.Switch(
 		func(key *crypto.PublicKey) error {
 			signerKey = key
 			return ch.Send(&astral.Ack{})
@@ -71,4 +71,8 @@ func (mod *Module) OpSignHash(ctx *astral.Context, q *routing.IncomingQuery, arg
 		},
 		channel.BreakOnEOS,
 	)
+	if err != nil {
+		_ = ch.Send(astral.Err(err))
+	}
+	return err
 }

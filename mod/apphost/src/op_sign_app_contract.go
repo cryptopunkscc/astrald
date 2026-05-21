@@ -16,7 +16,7 @@ func (mod *Module) OpSignAppContract(ctx *astral.Context, q *routing.IncomingQue
 	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	return ch.Switch(func(c *auth.Contract) error {
+	err := ch.Switch(func(c *auth.Contract) error {
 		signed := &auth.SignedContract{Contract: c}
 		err := mod.Auth.SignContract(ctx, signed)
 		if err != nil {
@@ -38,4 +38,8 @@ func (mod *Module) OpSignAppContract(ctx *astral.Context, q *routing.IncomingQue
 		mod.log.Logv(1, "signed app contract (%v)", signed.Issuer)
 		return ch.Send(signed)
 	})
+	if err != nil {
+		_ = ch.Send(astral.Err(err))
+	}
+	return err
 }

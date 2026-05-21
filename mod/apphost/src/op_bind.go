@@ -33,7 +33,7 @@ func (mod *Module) OpBind(ctx *astral.Context, q *routing.IncomingQuery, args op
 		}
 	}()
 
-	return ch.Switch(
+	err := ch.Switch(
 		channel.WithContext(ctx),
 		func(msg *apphost.BindMsg) error {
 			actions = append(actions, func() error {
@@ -42,4 +42,8 @@ func (mod *Module) OpBind(ctx *astral.Context, q *routing.IncomingQuery, args op
 			return nil
 		},
 	)
+	if err != nil {
+		_ = ch.Send(astral.Err(err))
+	}
+	return err
 }
