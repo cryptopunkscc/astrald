@@ -23,6 +23,7 @@ Hosts the node's content-addressed object layer behind a uniform query and repos
 - Search: preprocessors mutate `objects.Search` -> local searchers run concurrently -> network-zone searches query each requested source through `objects/client` -> operation handler deduplicates by object ID and applies optional repo filter.
 - Receive local object: `Receive` normalizes zero source to the node identity -> builds a `Drop` backed by `WriteDefault` -> calls all receivers -> accepted drops return success; `Accept(true)` stores at most once.
 - Push object: local target calls `Receive`; remote target calls `objects.push` through the typed client and expects a boolean result.
+- Purge repository: `objects.purge` scans a named repository once, deduplicates object IDs, asks registered `Holder`s whether each ID is still in use, deletes unheld IDs through that repository, ignores not-found deletes, streams purged IDs, and ends with `EOS`.
 - Fetch object: HTTP and HTTPS fetch with `http.Get` then write to the default repo; `astral://` ARLs route an in-flight query and write the response to the default repo.
 - Extension discovery: `LoadDependencies` walks loaded modules and auto-registers any object describer, searcher, search preprocessor, finder, holder, or receiver.
 - Repository removal: `RemoveRepository` deletes the repo from the registry -> removes it from every group -> calls `AfterRemoved` when the repo implements the callback.
@@ -34,9 +35,9 @@ Hosts the node's content-addressed object layer behind a uniform query and repos
 - `mod/objects/src/loader.go`, `mod/objects/src/deps.go`, `mod/objects/src/module.go`, `mod/objects/src/config.go`, `mod/objects/src/db.go`, `mod/objects/src/db_object.go` - default repo layout, dependency injection, config, and type index persistence.
 - `mod/objects/src/repo_group.go` - sequential and concurrent group behavior for read, create, contains, delete, scan, and free-space operations.
 - `mod/objects/src/drop.go`, `mod/objects/src/receive.go`, `mod/objects/src/push.go`, `mod/objects/src/fetch.go`, `mod/objects/src/network_reader.go` - object receive, save-on-accept, push, fetch, and routed network reads.
-- `mod/objects/src/describe.go`, `mod/objects/src/search.go`, `mod/objects/src/find.go`, `mod/objects/src/holding.go` - extension dispatch.
-- `mod/objects/src/op_*.go` - query handlers for object storage, reads, scans, search, repo management, probes, type lookup, push, echo, and spec.
-- `mod/objects/client/` - typed remote clients used by push, search, create, read, scan, and repository operations.
+- `mod/objects/src/describe.go`, `mod/objects/src/search.go`, `mod/objects/src/find.go`, `mod/objects/src/holding.go` - extension dispatch, including holder aggregation.
+- `mod/objects/src/op_*.go` - query handlers for object storage, reads, scans, purge, search, repo management, probes, type lookup, push, echo, and spec.
+- `mod/objects/client/` - typed remote clients used by push, search, create, read, scan, purge, and repository operations.
 - `mod/objects/mem/` - in-memory repository implementation for default memory repositories and `objects.new_mem`.
 - `mod/objects/fs/`, `mod/objects/views/` - filesystem adapter and presentation helpers.
 
@@ -44,7 +45,7 @@ Hosts the node's content-addressed object layer behind a uniform query and repos
 
 | What | Why it matters |
 |---|---|
-| `objects.new`, `objects.load`, `objects.store`, `objects.create`, `objects.read`, `objects.delete`, `objects.contains` | core object storage and byte streaming operations |
+| `objects.new`, `objects.load`, `objects.store`, `objects.create`, `objects.read`, `objects.delete`, `objects.purge`, `objects.contains` | core object storage and byte streaming operations |
 | `objects.scan`, `objects.search`, `objects.describe`, `objects.probe`, `objects.get_type`, `objects.types`, `objects.spec` | discovery, metadata, type, and inspection operations |
 | `objects.push`, `objects.echo` | object delivery and connectivity helpers |
 | `objects.repositories`, `objects.remove_repository`, `objects.new_mem` | repository management |
@@ -56,6 +57,8 @@ Hosts the node's content-addressed object layer behind a uniform query and repos
 
 - Every writer must end in exactly one `Commit` or `Discard`; `objects.create` defers `Discard` as a leak guard.
 - `objects.delete`, `objects.contains`, and `objects.scan` require an explicit repository.
+- `objects.purge` is the cleanup path that interprets `Holder`; `objects.delete` remains a direct repository delete command.
+- Holders are registered automatically only for loaded modules that implement `objects.Holder`; disabling a provider module removes that provider's purge protection.
 - `objects.repositories` excludes network routing.
 - `Load` returns `*astral.Blob` only for invalid astral magic bytes; other decode failures remain errors.
 - Generic object loading rejects sizes above `MaxObjectSize` before reading the object into memory.

@@ -13,6 +13,7 @@ const (
 	MethodLoad              = "objects.load"
 	MethodStore             = "objects.store"
 	MethodDelete            = "objects.delete"
+	MethodPurge             = "objects.purge"
 	MethodContains          = "objects.contains"
 	MethodScan              = "objects.scan"
 	MethodSearch            = "objects.search"

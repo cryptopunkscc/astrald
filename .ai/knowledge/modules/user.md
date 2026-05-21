@@ -8,7 +8,7 @@ Represents the human operator across their nodes by binding the local node to a 
 |---|---|
 | `auth` | verifies and signs swarm contracts, indexes accepted contracts, searches active node contracts, and registers relay/read authorizers |
 | `nodes` | checks link state, schedules ensure-link tasks, updates node endpoints after received contracts, and handles link events |
-| `objects` | stores and pushes signed contracts, sends sibling notifications, registers receiver/holder/finder hooks, and exposes read actions for authorization |
+| `objects` | stores and pushes signed contracts, sends sibling notifications, registers receiver/holder/finder hooks, exposes read actions for authorization, and consults user asset holds during purge |
 | `scheduler` | gates `Run` on `Ready`, schedules `MaintainLinkTask`, and schedules `SyncNodesAction` on first inbound sibling links |
 | `tree` | binds `/mod/user/config` and persists per-sibling asset sync heights under `/mod/user/assets/<node>/next_height` |
 | `dir` | resolves target aliases, reads and writes user and node aliases, and registers `localswarm` and `localuser` filters |
@@ -30,7 +30,7 @@ Represents the human operator across their nodes by binding the local node to a 
 - Asset synchronization: `syncAssets` reads next height from tree -> queries remote `user.sync_assets` as the active user -> applies `OpUpdate` rows with nonce idempotency -> writes returned next height back to tree.
 - Inbound signed contract: `ReceiveObject` accepts only contracts issued by the active user or involving local-swarm members -> verifies and indexes the contract -> if it is a node contract, updates endpoints and reruns sibling linker.
 - Query preprocessing: active-user caller gets the active contract attached -> queries targeting the active user get linked siblings as relays -> other targets get active nodes for that target as relays.
-- Search preprocessing and object lookup: active-user object searches add linked siblings as sources; object finder returns linked siblings as candidate holders; holder reports true for non-removed asset rows.
+- Search preprocessing and object lookup: active-user object searches add linked siblings as sources; object finder returns linked siblings as candidate holders; holder reports true for non-removed local asset rows so purge preserves user assets.
 - Nearby status: visible mode attaches the active contract, or claimable flag and public profile when unclaimed; stealth mode attaches a commitment and masked node identity derived from the active user.
 
 ## Source
@@ -53,7 +53,7 @@ Represents the human operator across their nodes by binding the local node to a 
 | `user.info`, `user.swarm_status`, `user.list_siblings` | identity and sibling status query surface |
 | `user.assets`, `user.add_asset`, `user.remove_asset`, `user.sync_assets`, `user.sync_with` | local asset inventory and sibling asset synchronization |
 | `core.QueryPreprocessor`, `objects.Search` preprocessor | attaches user contracts and adds local-swarm relay/search sources |
-| `objects.Receiver`, `objects.Holder`, `objects.Finder` | accepts swarm contracts and advertises local or sibling object holdings |
+| `objects.Receiver`, `objects.Holder`, `objects.Finder` | accepts swarm contracts, protects active asset rows from purge, and advertises sibling lookup candidates |
 | `nearby.Composer`, `dir` filters, auth authorizers | integrates user identity with presence, alias filters, relay auth, and object-read auth |
 | `users__assets`, `/mod/user/config` | durable asset log and tree-backed active contract |
 
@@ -66,4 +66,5 @@ Represents the human operator across their nodes by binding the local node to a 
 - `minimalContractLength` is 1 hour for invite acceptance; default new-node contract validity is 365 days.
 - One `MaintainLinkTask` is tracked per non-self sibling in `sibs`.
 - Asset rows are nonce-addressed and height-ordered; duplicate nonces from sync are ignored.
+- `objects.Holder` reports only non-removed asset rows; removed assets no longer block purge.
 - `user.assets`, `user.list_siblings`, and `user.swarm_status` stream results and terminate with `EOS`.

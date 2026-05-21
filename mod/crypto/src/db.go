@@ -27,8 +27,13 @@ func (db *DB) findPrivateKeyByPublicKey(pubKey string) (row dbPrivateKey, err er
 	return
 }
 
-func (db *DB) isPrivateKeyIndexed(keyID *astral.ObjectID) (exist bool, err error) {
-	err = db.Select("count(*) > 0").Where("data_id = ?", keyID).First(&exist).Error
+func (db *DB) isKeyIndexed(keyID *astral.ObjectID) (exist bool, err error) {
+	err = db.
+		Model(&dbPrivateKey{}).
+		Where("key_id = ? OR public_key_id = ?", keyID, keyID).
+		Select("count(*) > 0").
+		First(&exist).
+		Error
 	return
 }
 
