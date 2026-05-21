@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
+	"github.com/cryptopunkscc/astrald/sig"
 )
 
 type opDescribeArgs struct {
@@ -38,13 +39,20 @@ func (mod *Module) OpDescribe(ctx *astral.Context, q *routing.IncomingQuery, arg
 		return
 	}
 
-	for descriptor := range descriptors {
+	for {
+		descriptor, ok, recvErr := sig.RecvOk(ctx, descriptors)
+		if recvErr != nil || !ok {
+			break
+		}
+
 		if len(only) > 0 && !slices.Contains(only, descriptor.ObjectType()) {
 			continue
 		}
+
 		if len(except) > 0 && slices.Contains(except, descriptor.ObjectType()) {
 			continue
 		}
+
 		err = ch.Send(descriptor)
 		if err != nil {
 			return

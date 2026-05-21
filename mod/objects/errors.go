@@ -9,4 +9,10 @@ var (
 	ErrNoSpaceLeft    = errors.New("no space left on device")
 	ErrClosedPipe     = errors.New("pipe closed")
 	ErrPushRejected   = errors.New("push rejected")
+
+	ErrNilSourceIdentifier   = errors.New("source identifier is nil")
+	ErrInvalidSourceIdentity = errors.New("source identity is invalid")
+
+	ErrExternalRegistrationFromNetwork = errors.New("external discoverer registration cannot come from the network")
+	ErrExternalRegistrationSelf        = errors.New("node identity cannot register as an external discoverer")
 )

@@ -31,19 +31,28 @@ type regRequest struct {
 	done chan error
 }
 
+type RegistrationHook func(ctx *astral.Context) error
+
+type RegistrationHookRegistrar interface {
+	AddRegistrationHooks(hooks ...RegistrationHook)
+}
+
 // AppRegistrar maintains a persistent bind channel to the node, re-registers all
 // handlers on reconnect, and signals readiness. Implements Registrar and ReadyGate.
 type AppRegistrar struct {
-	client   *apphostclient.Client
-	dial     NodeBind
-	events   AppRegistrarEvents
-	ready    sig.Value[chan struct{}]
-	handlers []handler
-	regCh    chan *regRequest
+	client        *apphostclient.Client
+	dial          NodeBind
+	attachHandler func(*astral.Context, *channel.Channel, handler) error
+	events        AppRegistrarEvents
+	ready         sig.Value[chan struct{}]
+	handlers      []handler
+	hooks         []RegistrationHook
+	regCh         chan *regRequest
 }
 
 var _ Registrar = &AppRegistrar{}
 var _ libastrald.ReadyGate = &AppRegistrar{}
+var _ RegistrationHookRegistrar = &AppRegistrar{}
 
 type AppRegistrarOption func(*AppRegistrar)
 
@@ -63,6 +72,10 @@ func WithEvents(e AppRegistrarEvents) AppRegistrarOption {
 	return func(s *AppRegistrar) { s.events = e }
 }
 
+func WithRegistrarRegistrationHooks(hooks ...RegistrationHook) AppRegistrarOption {
+	return func(s *AppRegistrar) { s.AddRegistrationHooks(hooks...) }
+}
+
 // NewAppRegistrar creates an AppRegistrar and starts its run loop with the given ctx.
 func NewAppRegistrar(ctx *astral.Context, opts ...AppRegistrarOption) *AppRegistrar {
 	c := apphostclient.Default()
@@ -71,6 +84,7 @@ func NewAppRegistrar(ctx *astral.Context, opts ...AppRegistrarOption) *AppRegist
 		dial:   NodeBind(c.Bind),
 		regCh:  make(chan *regRequest),
 	}
+	s.attachHandler = s.attach
 	s.ready.Set(make(chan struct{}))
 	for _, o := range opts {
 		o(s)
@@ -85,6 +99,14 @@ func NewDefaultAppRegistrar(ctx *astral.Context, opts ...AppRegistrarOption) *Ap
 }
 
 func (s *AppRegistrar) Ready() <-chan struct{} { return s.ready.Get() }
+
+func (s *AppRegistrar) AddRegistrationHooks(hooks ...RegistrationHook) {
+	for _, hook := range hooks {
+		if hook != nil {
+			s.hooks = append(s.hooks, hook)
+		}
+	}
+}
 
 func (s *AppRegistrar) Register(ctx *astral.Context, endpoint string, token astral.Nonce) error {
 	req := &regRequest{handler{endpoint, token}, make(chan error, 1)}
@@ -101,11 +123,15 @@ func (s *AppRegistrar) run(ctx *astral.Context) {
 			return
 		}
 
-		for _, h := range s.handlers {
-			if err = s.attach(ctx, bindCh, h); err != nil {
-				bindCh.Close()
+		if err = s.attachAll(ctx, bindCh); err != nil {
+			bindCh.Close()
+			if ctx.Err() != nil {
 				return
 			}
+			if s.events.OnDisconnect != nil {
+				s.events.OnDisconnect(err)
+			}
+			continue
 		}
 
 		close(s.ready.Get())
@@ -131,7 +157,47 @@ func (s *AppRegistrar) attach(ctx *astral.Context, bindCh *channel.Channel, h ha
 	if err := s.client.RegisterHandler(ctx, h.endpoint, h.token); err != nil {
 		return err
 	}
+
 	return bindCh.Send(&apphost.BindMsg{Token: h.token})
+}
+
+func (s *AppRegistrar) attachAll(ctx *astral.Context, bindCh *channel.Channel) error {
+	if len(s.handlers) == 0 {
+		return nil
+	}
+
+	for _, h := range s.handlers {
+		if err := s.attachHandler(ctx, bindCh, h); err != nil {
+			return err
+		}
+	}
+
+	return s.runHooks(ctx)
+}
+
+func (s *AppRegistrar) attachRegistered(ctx *astral.Context, bindCh *channel.Channel, h handler) error {
+	if err := s.attachHandler(ctx, bindCh, h); err != nil {
+		return err
+	}
+
+	s.handlers = append(s.handlers, h)
+	if err := s.runHooks(ctx); err != nil {
+		s.handlers = s.handlers[:len(s.handlers)-1]
+		return err
+	}
+	return nil
+}
+
+func (s *AppRegistrar) runHooks(ctx *astral.Context) error {
+	for _, hook := range s.hooks {
+		if hook == nil {
+			continue
+		}
+		if err := hook(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *AppRegistrar) loop(ctx *astral.Context, bindCh *channel.Channel) (reconnect bool, disconnectErr error) {
@@ -148,11 +214,10 @@ func (s *AppRegistrar) loop(ctx *astral.Context, bindCh *channel.Channel) (recon
 	for {
 		select {
 		case req := <-s.regCh:
-			if err := s.attach(ctx, bindCh, req.handler); err != nil {
+			if err := s.attachRegistered(ctx, bindCh, req.handler); err != nil {
 				req.done <- err
 				return false, nil
 			}
-			s.handlers = append(s.handlers, req.handler)
 			req.done <- nil
 
 		case disconnectErr = <-disconnected:

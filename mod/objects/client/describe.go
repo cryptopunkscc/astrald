@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/query"
 	"github.com/cryptopunkscc/astrald/mod/objects"
+	"github.com/cryptopunkscc/astrald/sig"
 
 	_ "github.com/cryptopunkscc/astrald/mod/all/pub"
 )
@@ -24,7 +25,14 @@ func (client *Client) Describe(ctx *astral.Context, objectID *astral.ObjectID) (
 		defer close(out)
 		defer ch.Close()
 
-		*errPtr = ch.Switch(channel.Chan(out), channel.BreakOnEOS, channel.PassErrors, channel.WithContext(ctx))
+		*errPtr = ch.Switch(
+			func(descriptor *objects.Descriptor) error {
+				return sig.Send(ctx, out, descriptor)
+			},
+			channel.BreakOnEOS,
+			channel.PassErrors,
+			channel.WithContext(ctx),
+		)
 	}()
 
 	return out, errPtr

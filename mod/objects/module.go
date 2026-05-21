@@ -9,23 +9,27 @@ const (
 	DBPrefix     = "objects__"
 	MethodCreate = "objects.create"
 
-	MethodNew              = "objects.new"
-	MethodLoad             = "objects.load"
-	MethodStore            = "objects.store"
-	MethodDelete           = "objects.delete"
-	MethodContains         = "objects.contains"
-	MethodScan             = "objects.scan"
-	MethodSearch           = "objects.search"
-	MethodDescribe         = "objects.describe"
-	MethodProbe            = "objects.probe"
-	MethodRead             = "objects.read"
-	MethodGetType          = "objects.get_type"
-	MethodPush             = "objects.push"
-	MethodNewMem           = "objects.new_mem"
-	MethodRepositories     = "objects.repositories"
-	MethodRemoveRepository = "objects.remove_repository"
-	MethodTypes            = "objects.types"
-	MethodEcho             = "objects.echo"
+	MethodNew               = "objects.new"
+	MethodLoad              = "objects.load"
+	MethodStore             = "objects.store"
+	MethodDelete            = "objects.delete"
+	MethodContains          = "objects.contains"
+	MethodScan              = "objects.scan"
+	MethodSearch            = "objects.search"
+	MethodDescribe          = "objects.describe"
+	MethodFind              = "objects.find"
+	MethodRegisterSearcher  = "objects.register_searcher"
+	MethodRegisterDescriber = "objects.register_describer"
+	MethodRegisterFinder    = "objects.register_finder"
+	MethodProbe             = "objects.probe"
+	MethodRead              = "objects.read"
+	MethodGetType           = "objects.get_type"
+	MethodPush              = "objects.push"
+	MethodNewMem            = "objects.new_mem"
+	MethodRepositories      = "objects.repositories"
+	MethodRemoveRepository  = "objects.remove_repository"
+	MethodTypes             = "objects.types"
+	MethodEcho              = "objects.echo"
 
 	RepoMain      = "main"      // everything
 	RepoDevice    = "device"    // device: memory, local, removable
@@ -79,7 +83,7 @@ type Module interface {
 	AddSearchPreprocessor(SearchPreprocessor) error
 
 	AddFinder(Finder) error
-	Find(*astral.Context, *astral.ObjectID) []*astral.Identity
+	Find(*astral.Context, *astral.ObjectID) (<-chan *astral.Identity, error)
 
 	AddHolder(Holder) error
 	Holders(objectID *astral.ObjectID) []Holder
