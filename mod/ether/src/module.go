@@ -35,6 +35,18 @@ type Module struct {
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 
+	// If the socket failed to bind during Load, run as a no-op: no broadcasts
+	// in or out, no platform multicast lock requested.
+	if mod.socket == nil {
+		<-ctx.Done()
+		return nil
+	}
+
+	if hook := ether.LANDiscoveryHook; hook != nil {
+		hook(true)
+		defer hook(false)
+	}
+
 	go mod.broadcastReceiver(ctx)
 
 	<-ctx.Done()

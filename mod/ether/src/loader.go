@@ -21,9 +21,9 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	_ = assets.LoadYAML(ether.ModuleName, &mod.config)
 
-	err = mod.setupSocket()
-	if err != nil {
-		return nil, err
+	// LAN discovery is optional. If UDP binding fails, module loads with nil socket; broadcasts become no-ops, API remains functional.
+	if err = mod.setupSocket(); err != nil {
+		log.Error("LAN discovery disabled: %v", err)
 	}
 
 	return mod, nil

@@ -35,10 +35,10 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *alog.Logger) (co
 	// set the log filter
 	log.SetFilter(mod.LogEntryFilter)
 
-	// add a log file to the output list
-	logFile, err := CreateLogFile()
-	if err != nil {
-		log.Error("cannot create log file: %v", err)
+	// add a log file to the output list. Failure here (e.g. read-only $HOME on
+	// Android) is non-fatal — the module remains usable without on-disk logs.
+	if logFile, ferr := CreateLogFile(); ferr != nil {
+		log.Error("cannot create log file: %v", ferr)
 	} else {
 		log.AddLogger(logFile)
 	}
