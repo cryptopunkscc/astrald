@@ -11,8 +11,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
-// QueryHandler is an astral.Router that routes queries to an IPC endpoint.
-type QueryHandler struct {
+// IPCHandler routes queries to a registered IPC endpoint.
+type IPCHandler struct {
 	Identity *astral.Identity // identity of the handler
 	IpcToken astral.Nonce     // token for the IPC endpoint
 	Endpoint string           // IPC endpoint
@@ -20,7 +20,7 @@ type QueryHandler struct {
 
 var errEndpointUnavailable = errors.New("endpoint unavailable")
 
-func (handler *QueryHandler) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
+func (handler *IPCHandler) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	conn, err := ipc.DialContext(ctx, handler.Endpoint)
 	if err != nil {
 		return nil, errEndpointUnavailable

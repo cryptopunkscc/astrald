@@ -18,9 +18,9 @@ Bridges local applications into the node over IPC and HTTP, letting them issue q
 - Guest handshake: `Guest.Serve` sends `HostInfoMsg` -> guest may send `AuthTokenMsg` -> `AuthenticateToken` loads token row -> `AuthSuccessMsg`.
 - Guest query: `RouteQueryMsg` -> deny unauthenticated guest when `!AllowAnonymous` -> require `SudoAction` when `Caller` differs from token identity -> apply requested zone and filters -> unauthenticated guest loses `ZoneNetwork` -> `query.RouteInFlight` -> `QueryAcceptedMsg` and `streams.Join`.
 - Cancel guest query: `apphost.cancel` finds nonce in `enRoute` -> cancels with optional cause -> sends `Ack`; missing nonce returns query-not-found error.
-- Register handler through op: local `apphost.register_handler` -> add `QueryHandler{Identity:q.Caller(), IpcToken, Endpoint}` to `handlers` -> send `Ack`.
-- Bind handler lifetime: local `apphost.bind` sends `Ack` -> consumes `BindMsg` tokens -> on close removes handlers with those tokens.
-- Route inbound query to app: `Module.RouteQuery` scans `handlers` for `q.Target` -> `ipc.DialContext(handler.Endpoint)` -> send `HandleQueryMsg` -> app `Ack` accepts, `QueryRejectedMsg` rejects, unavailable endpoint is removed.
+- Register handler through op: local `apphost.register_handler` -> add `IPCHandler{Identity:q.Caller(), IpcToken, Endpoint}` to `ipcHandlers` -> send `Ack`.
+- Bind handler lifetime: local `apphost.bind` sends `Ack` -> consumes `BindMsg` tokens -> on close removes matching IPC handlers.
+- Route inbound query to app: `Module.RouteQuery` scans `ipcHandlers` for `q.Target` -> `ipc.DialContext(handler.Endpoint)` -> send `HandleQueryMsg` -> app `Ack` accepts, `QueryRejectedMsg` rejects, unavailable endpoint is removed.
 - Query preprocessing: find local app hosting contract for `Caller` and attach it -> find relay contracts issued by `Target` -> add non-local contract subjects as relays.
 - Create/list tokens: `apphost.create_token` writes random 32-char token with default 1-year expiry when duration is empty; `apphost.list_tokens` streams matching tokens and ends with `EOS`.
 - Static tokens: `Prepare` resolves each `config.Tokens` identity -> deletes existing token row -> inserts a new token with a 100-year expiry.
@@ -33,7 +33,7 @@ Bridges local applications into the node over IPC and HTTP, letting them issue q
 - `mod/apphost/*_msg.go` - IPC and apphost wire messages exchanged with local apps.
 - `mod/apphost/src/loader.go`, `module.go`, `deps.go`, `prepare.go`, `config.go` - config, database setup, dependency injection, static-token sync, listeners/workers startup.
 - `mod/apphost/src/listen.go`, `worker.go`, `guest.go` - IPC listener fan-in, worker loop, guest authentication and outbound query protocol.
-- `mod/apphost/src/query_router.go`, `query_handler.go`, `query_preprocessor.go` - hosted app dispatch and relay-contract preprocessing.
+- `mod/apphost/src/query_router.go`, `ipc_handler.go`, `query_preprocessor.go` - hosted app dispatch and relay-contract preprocessing.
 - `mod/apphost/src/http_server.go`, `http_object_handler.go`, `http_query_handler.go` - bearer-auth HTTP bridge for objects and queries.
 - `mod/apphost/src/op_*.go` - query operation handlers.
 - `mod/apphost/src/access_tokens.go`, `db.go`, `db_access_token.go`, `db_local_app.go` - token/local-app persistence and lookup helpers.

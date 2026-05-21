@@ -143,13 +143,13 @@ func (guest *Guest) onRegisterHandlerMsg(ctx *astral.Context, msg *apphost.Regis
 	}
 
 	// add the handler
-	handler := &QueryHandler{
+	handler := &IPCHandler{
 		Identity: msg.Identity,
 		IpcToken: msg.AuthToken,
 		Endpoint: string(msg.Endpoint),
 	}
-	guest.mod.handlers.Add(handler)
-	defer guest.mod.handlers.Remove(handler) // remove handler on disconnect
+	guest.mod.ipcHandlers.Add(handler)
+	defer guest.mod.ipcHandlers.Remove(handler) // remove handler on disconnect
 
 	// send ack to the client
 	err = guest.Send(&astral.Ack{})
@@ -316,7 +316,7 @@ func (guest *Guest) onRegisterServiceMsg(ctx *astral.Context, msg *apphost.Regis
 // announced earlier via IncomingQueryMsg. On success the conn is "donated" to the
 // routing goroutine inside WSHandler.RouteQuery, which then owns its lifecycle.
 func (guest *Guest) onAttachQueryMsg(ctx *astral.Context, msg *apphost.AttachQueryMsg) error {
-	pending, ok := guest.mod.pendingInbound.Get(msg.QueryID)
+	pending, ok := guest.mod.pendingInboundQueries.Get(msg.QueryID)
 	if !ok {
 		return guest.sendError(apphost.ErrCodeRouteNotFound)
 	}
@@ -338,11 +338,11 @@ func (guest *Guest) onAttachQueryMsg(ctx *astral.Context, msg *apphost.AttachQue
 	}
 }
 
-// onRejectIncomingMsg signals to the matching pendingInbound that the registered
+// onRejectIncomingMsg signals to the matching pending inbound query that the registered
 // handler refuses this query. The handler's RouteQuery returns ErrRejected with the
 // provided code.
 func (guest *Guest) onRejectIncomingMsg(ctx *astral.Context, msg *apphost.RejectIncomingMsg) error {
-	pending, ok := guest.mod.pendingInbound.Get(msg.QueryID)
+	pending, ok := guest.mod.pendingInboundQueries.Get(msg.QueryID)
 	if !ok {
 		// nothing to do — caller already moved on
 		return nil

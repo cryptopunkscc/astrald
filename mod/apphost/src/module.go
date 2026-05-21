@@ -40,12 +40,12 @@ type Module struct {
 	db     *DB
 	router routing.OpRouter
 
-	listeners      []net.Listener
-	conns          <-chan net.Conn
-	handlers       sig.Set[*QueryHandler]
-	wsHandlers     sig.Set[*WSHandler]
-	enRoute        sig.Map[astral.Nonce, *queryEnRoute]
-	pendingInbound sig.Map[astral.Nonce, *pendingInbound]
+	listeners             []net.Listener
+	conns                 <-chan net.Conn
+	ipcHandlers           sig.Set[*IPCHandler]
+	wsHandlers            sig.Set[*WSHandler]
+	enRoute               sig.Map[astral.Nonce, *queryEnRoute]
+	pendingInboundQueries sig.Map[astral.Nonce, *pendingInboundQuery]
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {

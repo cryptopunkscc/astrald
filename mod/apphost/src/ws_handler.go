@@ -11,14 +11,14 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
-// AttachTimeout is how long the host waits for a JS handler to attach a per-query WS
+// QueryAttachTimeout is how long the host waits for a JS handler to attach a per-query WS
 // after receiving an IncomingQueryMsg notification. After this, the inbound query is
 // treated as route-not-found.
-const AttachTimeout = 5 * time.Second
+const QueryAttachTimeout = 5 * time.Second
 
-// errHandlerGone is returned by WSHandler.RouteQuery when the registration WS has
+// errWSHandlerGone is returned by WSHandler.RouteQuery when the registration WS has
 // gone away (write failed). The caller removes the handler.
-var errHandlerGone = errors.New("ws handler gone")
+var errWSHandlerGone = errors.New("ws handler gone")
 
 // WSHandler routes inbound queries to a JS app over a registered WS notification
 // channel. Each accepted query gets its own per-query WS that the JS app opens after
@@ -29,10 +29,10 @@ type WSHandler struct {
 	ch       *channel.Channel // notification channel (the registration WS)
 }
 
-// pendingInbound tracks an in-flight inbound query awaiting attach. It lives in
-// mod.pendingInbound keyed by QueryID, so the per-query WS handler can look it up
+// pendingInboundQuery tracks an in-flight inbound query awaiting attach. It lives in
+// mod.pendingInboundQueries keyed by QueryID, so the attach path can look it up
 // when AttachQueryMsg arrives.
-type pendingInbound struct {
+type pendingInboundQuery struct {
 	query  *astral.InFlightQuery
 	attach chan io.ReadWriteCloser // closed/sent to with the per-query conn on accept
 	reject chan uint8              // sent with the code on RejectIncomingMsg
@@ -41,19 +41,19 @@ type pendingInbound struct {
 // RouteQuery pushes IncomingQueryMsg to the registration WS and waits for one of:
 //   - per-query WS to attach (carry the conn back through `attach`)
 //   - RejectIncomingMsg on the registration WS (carry the code through `reject`)
-//   - AttachTimeout elapses → route-not-found
+//   - QueryAttachTimeout elapses → route-not-found
 func (h *WSHandler) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
-	pending := &pendingInbound{
+	pending := &pendingInboundQuery{
 		query:  q,
 		attach: make(chan io.ReadWriteCloser, 1),
 		reject: make(chan uint8, 1),
 	}
 
-	if _, ok := h.mod.pendingInbound.Set(q.Nonce, pending); !ok {
+	if _, ok := h.mod.pendingInboundQueries.Set(q.Nonce, pending); !ok {
 		// extraordinarily unlikely nonce collision
 		return query.RouteNotFound()
 	}
-	defer h.mod.pendingInbound.Delete(q.Nonce)
+	defer h.mod.pendingInboundQueries.Delete(q.Nonce)
 
 	err := h.ch.Send(&apphost.IncomingQueryMsg{
 		QueryID: q.Nonce,
@@ -62,10 +62,10 @@ func (h *WSHandler) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w i
 		Query:   astral.String16(q.QueryString),
 	})
 	if err != nil {
-		return nil, errHandlerGone
+		return nil, errWSHandlerGone
 	}
 
-	timer := time.NewTimer(AttachTimeout)
+	timer := time.NewTimer(QueryAttachTimeout)
 	defer timer.Stop()
 
 	select {

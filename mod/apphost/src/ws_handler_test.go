@@ -102,9 +102,9 @@ func TestWSHandler_AttachPath(t *testing.T) {
 	}
 
 	// Simulate per-query WS attach: deliver a fake responder conn via pending.attach.
-	pending, ok := rig.mod.pendingInbound.Get(msg.QueryID)
+	pending, ok := rig.mod.pendingInboundQueries.Get(msg.QueryID)
 	if !ok {
-		t.Fatal("pendingInbound entry not registered")
+		t.Fatal("pendingInboundQueries entry not registered")
 	}
 	respServer, respClient := net.Pipe()
 	pending.attach <- respServer
@@ -139,9 +139,9 @@ func TestWSHandler_RejectPath(t *testing.T) {
 	}
 	msg := obj.(*apphost.IncomingQueryMsg)
 
-	pending, ok := rig.mod.pendingInbound.Get(msg.QueryID)
+	pending, ok := rig.mod.pendingInboundQueries.Get(msg.QueryID)
 	if !ok {
-		t.Fatal("pendingInbound entry not registered")
+		t.Fatal("pendingInboundQueries entry not registered")
 	}
 	pending.reject <- 7 // arbitrary reject code
 
@@ -181,7 +181,7 @@ func TestWSHandler_TimeoutPath(t *testing.T) {
 		if !errors.As(err, &notFound) {
 			t.Fatalf("expected ErrRouteNotFound, got %v", err)
 		}
-	case <-time.After(AttachTimeout + 2*time.Second):
+	case <-time.After(QueryAttachTimeout + 2*time.Second):
 		t.Fatal("RouteQuery did not time out")
 	}
 }
@@ -196,8 +196,8 @@ func TestWSHandler_HandlerGoneOnSendFailure(t *testing.T) {
 
 	select {
 	case err := <-errCh:
-		if !errors.Is(err, errHandlerGone) {
-			t.Fatalf("expected errHandlerGone, got %v", err)
+		if !errors.Is(err, errWSHandlerGone) {
+			t.Fatalf("expected errWSHandlerGone, got %v", err)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("RouteQuery did not return on send failure")
