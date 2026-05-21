@@ -18,6 +18,9 @@ const (
 	MethodNewAppContract  = "apphost.new_app_contract"
 	MethodSignAppContract = "apphost.sign_app_contract"
 	MethodInstallApp      = "apphost.install_app"
+	MethodHoldObject      = "apphost.hold_object"
+	MethodUnholdObject    = "apphost.unhold_object"
+	MethodListHeldObjects = "apphost.list_held_objects"
 )
 
 type Module interface {
@@ -26,3 +29,5 @@ type Module interface {
 }
 
 var ErrProtocolError = errors.New("protocol error")
+var ErrMissingAppIdentity = errors.New("missing app identity")
+var ErrMissingObjectID = errors.New("missing object id")

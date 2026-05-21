@@ -45,3 +45,40 @@ func (db *DB) CreateLocalApp(appID, hostID *astral.Identity) error {
 func (db *DB) ListLocalApps() (list []*dbLocalApp, err error) {
 	return list, db.Find(&list).Error
 }
+
+func (db *DB) HoldObject(appID *astral.Identity, objectID *astral.ObjectID, duration *astral.Duration) error {
+	// note: apps may hold object IDs before this node has fetched the object.
+	row := &dbObjectHold{AppID: appID, ObjectID: objectID, CreatedAt: time.Now()}
+	if duration != nil {
+		until := time.Now().Add(time.Duration(*duration))
+		row.HoldUntil = &until
+	}
+	return db.Clauses(clause.OnConflict{DoNothing: true}).Create(row).Error
+}
+
+func (db *DB) UnholdObject(appID *astral.Identity, objectID *astral.ObjectID) error {
+	return db.
+		Where("app_id = ? AND object_id = ?", appID, objectID).
+		Delete(&dbObjectHold{}).
+		Error
+}
+
+func (db *DB) ListHeldObjects(appID *astral.Identity) (list []*dbObjectHold, err error) {
+	err = db.
+		Where("app_id = ?", appID).
+		Where("(hold_until IS NULL OR hold_until > ?)", time.Now()).
+		Find(&list).
+		Error
+	return
+}
+
+func (db *DB) ObjectHeld(objectID *astral.ObjectID) (held bool, err error) {
+	err = db.
+		Model(&dbObjectHold{}).
+		Where("object_id = ?", objectID).
+		Where("(hold_until IS NULL OR hold_until > ?)", time.Now()).
+		Select("count(*) > 0").
+		First(&held).
+		Error
+	return
+}
