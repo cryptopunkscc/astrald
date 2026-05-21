@@ -29,7 +29,7 @@ func (mod *Module) OpNodePunch(ctx *astral.Context, q *routing.IncomingQuery, ar
 		channel.WithContext(ctx),
 	)
 	if err != nil {
-		return err
+		return ch.Send(astral.Err(err))
 	}
 
 	puncher, err := mod.newPuncher(proto.Session)
@@ -59,7 +59,7 @@ func (mod *Module) OpNodePunch(ctx *astral.Context, q *routing.IncomingQuery, ar
 		channel.WithContext(ctx),
 	)
 	if err != nil {
-		return err
+		return ch.Send(astral.Err(err))
 	}
 
 	if err = ch.Send(proto.GoSignal()); err != nil {
@@ -79,7 +79,7 @@ func (mod *Module) OpNodePunch(ctx *astral.Context, q *routing.IncomingQuery, ar
 		channel.WithContext(ctx),
 	)
 	if err != nil {
-		return err
+		return ch.Send(astral.Err(err))
 	}
 
 	if err = ch.Send(proto.ResultSignal()); err != nil {

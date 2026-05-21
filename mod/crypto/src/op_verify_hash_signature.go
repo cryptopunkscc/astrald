@@ -44,7 +44,7 @@ func (mod *Module) OpVerifyHashSignature(ctx *astral.Context, q *routing.Incomin
 	}
 
 	// process the channel
-	return ch.Switch(
+	err = ch.Switch(
 		func(sig *crypto.Signature) error {
 			// check errors
 			switch {
@@ -71,4 +71,8 @@ func (mod *Module) OpVerifyHashSignature(ctx *astral.Context, q *routing.Incomin
 		},
 		channel.BreakOnEOS,
 	)
+	if err != nil {
+		_ = ch.Send(astral.Err(err))
+	}
+	return err
 }

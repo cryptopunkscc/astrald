@@ -17,10 +17,14 @@ func (mod *Module) OpPublicKey(ctx *astral.Context, q *routing.IncomingQuery, ar
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	return ch.Switch(
+	err = ch.Switch(
 		func(key *crypto.PrivateKey) error {
 			return ch.Send(secp256k1.PublicKey(key))
 		},
 		channel.BreakOnEOS,
 	)
+	if err != nil {
+		_ = ch.Send(astral.Err(err))
+	}
+	return err
 }
