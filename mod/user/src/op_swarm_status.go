@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
@@ -17,7 +18,7 @@ func (mod *Module) OpSwarmStatus(ctx *astral.Context, q *routing.IncomingQuery, 
 		return q.RejectWithCode(2)
 	}
 
-	ch := q.Accept()
+	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	for _, node := range mod.ActiveNodes(ac.Issuer) {
