@@ -7,18 +7,17 @@ import (
 )
 
 type opUnmountArgs struct {
-	Path string
-	In   string `query:"optional"`
-	Out  string `query:"optional"`
+	Path string `query:"required"`
+	In   string
+	Out  string
 }
 
 func (mod *Module) OpUnmount(ctx *astral.Context, q *routing.IncomingQuery, args opUnmountArgs) (err error) {
-	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
+	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	err = mod.Unmount(args.Path)
-	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+	if err := mod.Unmount(args.Path); err != nil {
+		return ch.Send(astral.Err(err))
 	}
 
 	return ch.Send(&astral.Ack{})

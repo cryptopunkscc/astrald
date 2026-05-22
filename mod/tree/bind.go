@@ -59,7 +59,7 @@ func Bind(ctx *astral.Context, s any, node Node) error {
 		if found {
 			fieldNode, err := Query(ctx, node, keyName, true)
 			if err != nil {
-				break
+				return err
 			}
 
 			ret := bind.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(fieldNode)})
@@ -108,7 +108,6 @@ func findBindMethod(field reflect.Value) (reflect.Value, bool) {
 		case mType.Name != "Bind":
 			continue
 		case mType.Type.NumIn() != 3:
-			fmt.Println(mType.Type.NumIn())
 			continue
 		case mType.Type.In(1).Kind() != reflect.Pointer:
 			continue

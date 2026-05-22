@@ -7,24 +7,23 @@ import (
 )
 
 type opMountRemoteArgs struct {
-	Path   string
-	Target string
-	Root   string `query:"optional"`
-	In     string `query:"optional"`
-	Out    string `query:"optional"`
+	Path   string `query:"required"`
+	Target string `query:"required"`
+	Root   string
+	In     string
+	Out    string
 }
 
 func (mod *Module) OpMountRemote(ctx *astral.Context, q *routing.IncomingQuery, args opMountRemoteArgs) (err error) {
-	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
+	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
 	targetID, err := mod.Dir.ResolveIdentity(args.Target)
 	if err != nil {
-		return ch.Send(astral.NewError(err.Error()))
+		return ch.Send(astral.Err(err))
 	}
 
-	err = mod.MountRemote(ctx, args.Path, targetID, args.Root)
-	if err != nil {
+	if err := mod.MountRemote(ctx, args.Path, targetID, args.Root); err != nil {
 		return ch.Send(astral.Err(err))
 	}
 
