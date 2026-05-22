@@ -37,7 +37,7 @@
 
 - Naming: precise verbs, e.g. `delete`, `find`, `create`.
 - Logging: always `%v`. Levels: `Log` 0, `Logv(1)` verbose, `Logv(2)` debug.
-- Comments explain non-obvious intent, not mechanics.
+- Annotate code as you write it per `comments.md` (always-on): `// todo` `// fixme` `// note` `// why`. Intent, not mechanics.
 
 ## Project APIs
 

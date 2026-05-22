@@ -8,7 +8,8 @@ Use `overview.md` only for the project overview and repository map.
 
 1. `.ai/README.md`
 2. `.ai/rules.md`
-3. `.ai/methodology.md`
+3. `.ai/comments.md`
+4. `.ai/methodology.md`
 
 Then use indexes. Load scoped files only when relevant:
 
@@ -24,7 +25,7 @@ Then use indexes. Load scoped files only when relevant:
 2. Code/tests
 3. `.ai/system/`
 4. `.ai/decisions/`
-5. `.ai/rules.md`
+5. `.ai/rules.md`, `.ai/comments.md`
 6. `.ai/knowledge/`
 7. `.ai/patterns/`
 8. Referenced `.ai/artifacts/`
@@ -35,6 +36,7 @@ Call out conflicts.
 
 - `overview.md` - project overview and repository map
 - `rules.md` - compact always-on rules
+- `comments.md` - always-on commenting directive
 - `patterns/` - source-grounded recipes
 - `knowledge/` - repo implementation notes
 - `system/` - domain/system knowledge
