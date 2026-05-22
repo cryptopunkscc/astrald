@@ -51,7 +51,7 @@ Decides whether an identity may perform a typed action, using local action handl
 
 - Contracts never grant directly; they swap `action.Actor` to issuer and re-run local handlers.
 - Contract path skips `Contract.Allows` and `Constrainable.ApplyConstraints`.
-- Contract lookup filters `subject_id`, `starts_at <= now`, `expires_at` zero-or-future, joins permits by action `ObjectType`.
+- Contract lookup filters `subject_id`, `starts_at <= now`, `expires_at > now`, joins permits by action `ObjectType`.
 - `HoldObject` uses the same active time window as contract lookup and fails closed on DB errors.
 - `contractExists` requires both signatures non-empty; partial rows re-index.
 - `IndexContract` serialized by `indexMu`.

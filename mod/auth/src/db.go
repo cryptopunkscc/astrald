@@ -16,7 +16,7 @@ func (db *DB) findActiveContracts(q *contractQuery) ([]*dbContract, error) {
 	now := time.Now()
 	gq := db.DB.
 		Where("starts_at <= ?", now).
-		Where("expires_at = ? OR expires_at > ?", time.Time{}, now)
+		Where("expires_at > ?", now)
 
 	if q.issuer != nil {
 		gq = gq.Where("issuer_id = ?", q.issuer)
@@ -54,7 +54,7 @@ func (db *DB) activeContractExists(objectID *astral.ObjectID) (exists bool, err 
 		Model(&dbContract{}).
 		Where("object_id = ?", objectID).
 		Where("starts_at <= ?", now).
-		Where("expires_at = ? OR expires_at > ?", time.Time{}, now).
+		Where("expires_at > ?", now).
 		Select("count(*) > 0").
 		First(&exists).
 		Error
