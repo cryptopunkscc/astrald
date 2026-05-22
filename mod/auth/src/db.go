@@ -16,7 +16,7 @@ func (db *DB) findActiveContracts(q *contractQuery) ([]*dbContract, error) {
 	now := time.Now()
 	gq := db.DB.
 		Where("starts_at <= ?", now).
-		Where("expires_at = ? OR expires_at > ?", time.Time{}, now)
+		Where("expires_at > ?", now)
 
 	if q.issuer != nil {
 		gq = gq.Where("issuer_id = ?", q.issuer)
@@ -46,6 +46,19 @@ func (db *DB) contractExists(objectID *astral.ObjectID) bool {
 	var row dbContract
 	err := db.Where("object_id = ?", objectID).Take(&row).Error
 	return err == nil && len(row.IssuerSig) > 0 && len(row.SubjectSig) > 0
+}
+
+func (db *DB) activeContractExists(objectID *astral.ObjectID) (exists bool, err error) {
+	now := time.Now()
+	err = db.
+		Model(&dbContract{}).
+		Where("object_id = ?", objectID).
+		Where("starts_at <= ?", now).
+		Where("expires_at > ?", now).
+		Select("count(*) > 0").
+		First(&exists).
+		Error
+	return
 }
 
 func (db *DB) storeSignedContract(sc *auth.SignedContract) error {

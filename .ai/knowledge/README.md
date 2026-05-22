@@ -15,7 +15,7 @@ Concept pages explain cross-module ideas. Read `concepts/README.md` before creat
 | Query, Router, RouteQuery, RouteNotFound, Reject, Accept, Session, Preprocessor, Gateway, routing pipeline | `concepts/query.md` |
 | Auth, Authorize, Action, ActionSudo, ActionRelayFor, auth handler, authorization | `concepts/auth.md` |
 | lib/astrald, lib/apphost, lib/routing, lib/apps, lib/ipc, lib/query, astrald.Default, OpRouter, IncomingQuery, Serve, AppRegistrar, client library | `concepts/lib.md` |
-| Object, ObjectID, Repository, Receiver, Describer, Searcher, Finder, Holder, objects.Load, objects.Save, repo group | `concepts/objects.md` |
+| Object, ObjectID, Repository, Receiver, Describer, Searcher, Finder, Holder, objects.Load, objects.Save, objects.purge, object holds, repo group | `concepts/objects.md` |
 | Op, operation, op_*.go, OpName, args struct, ops.Set, method name, query method string | `concepts/operations.md` |
 | Node, module lifecycle, Load Inject LoadDependencies Prepare Run, Scheduler, core.Inject, core.Node | `concepts/node.md` |
 | Transport, exonet, Stream, Link, link strategy, TCP, KCP, Tor, layer stack | `concepts/transport.md` |
@@ -42,16 +42,16 @@ Read the module guide when entering that module's source.
 | Module path / keywords | Read |
 |---|---|
 | `mod/nodes/`, Link, Stream, Session, peer, flow control, frame protocol, migration, link establishment | `modules/nodes.md` |
-| `mod/apphost/`, token, handler registration, IPC bridge, guest connection, contract indexing | `modules/apphost.md` |
-| `mod/objects/`, Load[T], Save, Commit, Discard, Blueprint, repo group, Push, object store | `modules/objects.md` |
+| `mod/apphost/`, token, handler registration, IPC bridge, guest connection, contract indexing, app-owned object holds | `modules/apphost.md` |
+| `mod/objects/`, Load[T], Save, Commit, Discard, Blueprint, repo group, Push, object store, purge, Holder | `modules/objects.md` |
 | `mod/dir/`, alias, filter, resolve, DisplayName, ApplyFilters, IdentityFilter, identity resolver | `modules/dir.md` |
-| `mod/auth/`, Authorize, Add, auth handler | `modules/auth.md` |
+| `mod/auth/`, Authorize, Add, auth handler, active contract object holder | `modules/auth.md` |
 | `mod/gateway/`, relay socket, binder, connector, gateway relay | `modules/gateway.md` |
 | `mod/nat/`, hole punch, ConePuncher, UDP traversal, nat.Hole | `modules/nat.md` |
 | `mod/kcp/`, KCP, UDP transport, local-port mapping, ephemeral listener | `modules/kcp.md` |
 | `mod/tcp/`, TCP listener, ListenPort, CreateEphemeralListener | `modules/tcp.md` |
 | `mod/exonet/`, Dialer, Unpacker, Parser, SetDialer, network name, transport registry | `modules/exonet.md` |
-| `mod/user/`, user identity, Swarm member, MaintainLinkTask, node contract | `modules/user.md` |
+| `mod/user/`, user identity, Swarm member, MaintainLinkTask, node contract, asset object holder | `modules/user.md` |
 | `mod/nearby/`, local discovery, broadcast, Stealth, Visible, UDP discovery | `modules/nearby.md` |
 | `mod/scheduler/`, schedule task, run task, PoolLocker, Releaser, FuncAdapter | `modules/scheduler.md` |
 | `mod/events/`, event, subscribe, emit, EventReceiver, EventEmitter | `modules/events.md` |
@@ -60,7 +60,7 @@ Read the module guide when entering that module's source.
 | `mod/services/`, service registry, named service, bind service, AddService | `modules/services.md` |
 | `mod/shell/`, shell command, terminal, admin CLI, command handler | `modules/shell.md` |
 | `mod/tree/`, config tree, persistent setting, tree.Value, Follow, tree path | `modules/tree.md` |
-| `mod/crypto/`, sign, verify, Engine, PrivateKey, SignableObject, secp256k1, BIP137 | `modules/crypto.md` |
+| `mod/crypto/`, sign, verify, Engine, PrivateKey, SignableObject, secp256k1, BIP137, private-key object holder | `modules/crypto.md` |
 | `mod/ip/`, LocalIPs, PublicIPCandidates, DefaultGateway, EventNetworkAddressChanged | `modules/ip.md` |
 | `mod/tor/`, Tor, onion, hidden service, SOCKS5, ED25519-V3 | `modules/tor.md` |
 | `mod/fwd/`, port forward, bridge, AstralServer, TCPServer, TorTarget | `modules/fwd.md` |

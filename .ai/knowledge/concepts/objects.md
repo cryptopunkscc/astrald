@@ -44,4 +44,16 @@ automatically through type assertions.
 | `Describer` | metadata request for an ObjectID |
 | `Searcher` | text/tag search over module-owned indexes |
 | `Finder` | provider lookup by ObjectID |
-| `Holder` | storage policy and eviction decisions |
+| `Holder` | cleanup/purge policy; held objects are skipped by cleanup, not by direct delete |
+
+`Holder` is a purge-time protection hook. `objects.LoadDependencies` auto-registers
+holders from loaded modules; `objects.purge` consults every holder before deleting
+from the requested repository. `objects.delete` is a direct repository command and
+does not consult holders.
+
+| Holder provider | Protected objects |
+|---|---|
+| `apphost` | app-owned persistent object holds in `apphost__object_holds` |
+| `auth` | active indexed signed-contract objects used for authorization |
+| `crypto` | indexed private-key objects and their corresponding public-key objects used for signing |
+| `user` | active user asset rows |
