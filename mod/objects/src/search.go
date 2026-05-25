@@ -111,8 +111,8 @@ func (mod *Module) AddSearcher(searcher objects.Searcher) error {
 		return err
 	}
 	if ok {
-		mod.external.mu.Lock()
-		defer mod.external.mu.Unlock()
+		mod.externalMu.Lock()
+		defer mod.externalMu.Unlock()
 
 		if containsSourceIdentity(&mod.searchers, source) {
 			return nil

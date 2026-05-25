@@ -47,17 +47,21 @@ type Module struct {
 	holders    sig.Set[objects.Holder]
 	repos      sig.Map[string, objects.Repository]
 
-	external struct {
-		mu sync.Mutex
-	}
+	externalMu sync.Mutex
 
-	groups sig.Map[string, *RepoGroup]
+	groups              sig.Map[string, *RepoGroup]
+	objectsReadsJournal *objectsReadsJournal
 }
 
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
 	<-ctx.Done()
+
+	err := mod.objectsReadsJournal.Flush()
+	if err != nil {
+		mod.log.Error("object reads journal: final flush: %v", err)
+	}
 
 	return nil
 }
@@ -78,7 +82,11 @@ func (mod *Module) Load(ctx *astral.Context, repo objects.Repository, objectID *
 	o, _, err := astral.Decode(bytes.NewReader(data), astral.Canonical())
 	switch {
 	case err == nil:
-		return o, nil // object successfully loaded
+		// decode succeeded, so type is known. blob branch below is
+		// intentionally not seeded — Type='' would shadow the "missing
+		// astral stamp" signal a later GetType call relies on.
+		mod.trackObject(objectID, o.ObjectType())
+		return o, nil
 
 	case strings.Contains(err.Error(), "invalid magic bytes"): // the object is a blob
 		return (*astral.Blob)(&data), nil
@@ -99,7 +107,14 @@ func (mod *Module) Store(ctx *astral.Context, repo objects.Repository, object as
 		return nil, err
 	}
 
-	return w.Commit()
+	id, err := w.Commit()
+	if err != nil {
+		return nil, err
+	}
+
+	mod.trackObject(id, object.ObjectType())
+
+	return id, nil
 }
 
 // Deprecated: Use Probe instead.
@@ -130,14 +145,8 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 		return "", err
 	}
 
-	// write to cache
-	err = mod.db.Create(objectID, t.String())
-	switch {
-	case err == nil:
-	case strings.Contains(err.Error(), "UNIQUE constraint failed"):
-	default:
-		mod.log.Error("onSave: db error: %v", err)
-	}
+	// seed dbObject (idempotent; existing rows are left alone)
+	mod.trackObject(objectID, t.String())
 
 	return t.String(), nil
 }
@@ -171,6 +180,9 @@ func (mod *Module) Probe(ctx *astral.Context, repo objects.Repository, objectID 
 		_, err = t.ReadFrom(q)
 		if err == nil {
 			probe.Type = astral.String8(t.String())
+			// seed dbObject: stamp+type parsed cleanly, type is in hand.
+			// non-astral blobs fall through unseeded (same rationale as Load).
+			mod.trackObject(objectID, t.String())
 		}
 	}
 
@@ -182,6 +194,18 @@ func (mod *Module) Probe(ctx *astral.Context, repo objects.Repository, objectID 
 
 func (mod *Module) AddSearchPreprocessor(pre objects.SearchPreprocessor) error {
 	return mod.searchPre.Add(pre)
+}
+
+// trackObject seeds the dbObject row for an object the module just
+// encountered. Failure is logged but not propagated — seeding is a side
+// effect; the calling op must not fail because the cache write did.
+// Re-seeding is harmless (db.Create is idempotent via INSERT OR IGNORE), so a
+// missed seed is picked up the next time any path touches the same object.
+func (mod *Module) trackObject(id *astral.ObjectID, objectType string) {
+	err := mod.db.Create(id, objectType)
+	if err != nil {
+		mod.log.Error("track object %v: %v", id, err)
+	}
 }
 
 // getRepoName returns the name of a repository

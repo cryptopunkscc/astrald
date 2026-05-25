@@ -22,7 +22,8 @@ func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (cor
 
 	mod.router.AddStructPrefix(mod, "Op")
 
-	mod.db = &DB{assets.Database()}
+	mod.db = &DB{DB: assets.Database()}
+	mod.objectsReadsJournal = newObjectsReadsJournal(mod.db.UpdateReadAt, log)
 
 	mod.setupDefaultRepos()
 

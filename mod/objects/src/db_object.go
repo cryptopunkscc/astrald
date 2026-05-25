@@ -1,15 +1,20 @@
 package objects
 
 import (
+	"time"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/objects"
-	"time"
 )
 
 type dbObject struct {
-	ID        *astral.ObjectID `gorm:"primaryKey"`
+	// Height is the SQLite rowid alias (integer PRIMARY KEY): a monotonic,
+	// insert-ordered tiebreaker for the (read_at, height) purge cursor.
+	Height    uint64           `gorm:"primaryKey;autoIncrement"`
+	ID        *astral.ObjectID `gorm:"uniqueIndex"`
 	Type      string           `gorm:"index"`
 	CreatedAt time.Time        `gorm:"index"`
+	ReadAt    time.Time        `gorm:"not null;default:CURRENT_TIMESTAMP;index"`
 }
 
 func (dbObject) TableName() string { return objects.DBPrefix + "objects" }

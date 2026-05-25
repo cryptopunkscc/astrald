@@ -15,43 +15,54 @@ func (mod *Module) purgeRepository(ctx *astral.Context, repo objects.Repository)
 	go func() {
 		defer close(out)
 
-		scan, err := repo.Scan(ctx, false)
+		// flush pending reads so the read order reflects the latest accesses
+		err := mod.objectsReadsJournal.Flush()
 		if err != nil {
-			*errPtr = err
-			return
+			mod.log.Error("object reads journal: purge flush: %v", err)
 		}
 
-		seen := map[string]bool{}
-		for id := range scan {
-			// note: this is n-th time i see classic dedup pattern, maybe we will create a helper
-			if id == nil {
-				continue
+		// purge in read order: oldest-read objects first, paged via keyset cursor
+		var after *readCursor
+		for {
+			select {
+			case <-ctx.Done():
+				*errPtr = ctx.Err()
+				return
+			default:
 			}
 
-			key := id.String()
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-
-			if len(mod.Holders(id)) > 0 {
-				continue
-			}
-
-			err := repo.Delete(ctx, id)
+			ids, next, err := mod.db.ListReadOldest(after, 256)
 			if err != nil {
-				if errors.Is(err, objects.ErrNotFound) {
+				*errPtr = err
+				return
+			}
+
+			for _, id := range ids {
+				if len(mod.Holders(id)) > 0 {
 					continue
 				}
-				*errPtr = err
-				return
+
+				err := repo.Delete(ctx, id)
+				if err != nil {
+					// missing or non-deletable objects are skipped, not fatal
+					if errors.Is(err, objects.ErrNotFound) || errors.Is(err, errors.ErrUnsupported) {
+						continue
+					}
+					*errPtr = err
+					return
+				}
+
+				err = sig.Send(ctx, out, id)
+				if err != nil {
+					*errPtr = err
+					return
+				}
 			}
 
-			err = sig.Send(ctx, out, id)
-			if err != nil {
-				*errPtr = err
-				return
+			if next == nil {
+				break
 			}
+			after = next
 		}
 	}()
 
