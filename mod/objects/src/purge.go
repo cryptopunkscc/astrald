@@ -43,17 +43,20 @@ func (mod *Module) purgeRepository(ctx *astral.Context, repo objects.Repository)
 				}
 
 				err := repo.Delete(ctx, id)
-				if err != nil {
-					// missing or non-deletable objects are skipped, not fatal
-					if errors.Is(err, objects.ErrNotFound) || errors.Is(err, errors.ErrUnsupported) {
-						continue
+				switch {
+				case err == nil:
+					err = sig.Send(ctx, out, id)
+					if err != nil {
+						*errPtr = err
+						return
 					}
-					*errPtr = err
-					return
-				}
 
-				err = sig.Send(ctx, out, id)
-				if err != nil {
+				case errors.Is(err, objects.ErrNotFound):
+					mod.db.DB.Delete(&dbObject{}, "id = ?", id)
+					continue
+				case errors.Is(err, errors.ErrUnsupported):
+					continue
+				default:
 					*errPtr = err
 					return
 				}
