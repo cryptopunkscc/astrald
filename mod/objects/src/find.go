@@ -57,8 +57,8 @@ func (mod *Module) AddFinder(finder objects.Finder) error {
 	}
 
 	if ok {
-		mod.external.mu.Lock()
-		defer mod.external.mu.Unlock()
+		mod.externalMu.Lock()
+		defer mod.externalMu.Unlock()
 
 		if containsSourceIdentity(&mod.finders, source) {
 			return nil
