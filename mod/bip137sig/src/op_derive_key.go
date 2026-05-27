@@ -21,18 +21,20 @@ func (mod *Module) OpDeriveKey(
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	return ch.Handle(ctx, func(object astral.Object) {
-		switch object := object.(type) {
-		case *bip137sig.Seed:
-			privateKey, err := mod.DeriveKey(*object, args.Path)
-			if err != nil {
-				ch.Send(astral.Err(err))
-				return
-			}
+	object, err := ch.Receive()
+	if err != nil {
+		return err
+	}
 
-			ch.Send(&privateKey)
-		default:
-			ch.Send(astral.NewErrUnexpectedObject(object))
-		}
-	})
+	seed, ok := object.(*bip137sig.Seed)
+	if !ok {
+		return ch.Send(astral.NewErrUnexpectedObject(object))
+	}
+
+	privateKey, err := mod.DeriveKey(*seed, args.Path)
+	if err != nil {
+		return ch.Send(astral.Err(err))
+	}
+
+	return ch.Send(&privateKey)
 }
