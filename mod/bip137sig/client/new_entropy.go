@@ -14,5 +14,6 @@ func (client *Client) NewEntropy(ctx *astral.Context, bits int) (entropy *bip137
 	}
 	defer ch.Close()
 	err = ch.Switch(channel.Expect(&entropy), channel.PassErrors)
+
 	return
 }
