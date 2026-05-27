@@ -48,6 +48,8 @@ func (mod *Module) OpRead(ctx *astral.Context, q *routing.IncomingQuery, args op
 	}
 	defer r.Close()
 
+	mod.objectsReadsJournal.Mark(args.ID)
+
 	conn := q.AcceptRaw()
 	defer conn.Close()
 

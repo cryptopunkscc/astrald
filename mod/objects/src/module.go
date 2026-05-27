@@ -78,6 +78,8 @@ func (mod *Module) Load(ctx *astral.Context, repo objects.Repository, objectID *
 		return nil, err
 	}
 
+	mod.objectsReadsJournal.Mark(objectID)
+
 	// parse the object
 	o, _, err := astral.Decode(bytes.NewReader(data), astral.Canonical())
 	switch {

@@ -8,8 +8,7 @@ import (
 )
 
 type dbObject struct {
-	// Height is the SQLite rowid alias (integer PRIMARY KEY): a monotonic,
-	// insert-ordered tiebreaker for the (read_at, height) purge cursor.
+	// Height is a monotonic, insert-ordered tiebreaker for the (read_at, height) purge cursor.
 	Height    uint64           `gorm:"primaryKey;autoIncrement"`
 	ID        *astral.ObjectID `gorm:"uniqueIndex"`
 	Type      string           `gorm:"index"`

@@ -53,20 +53,18 @@ func (db *DB) UpdateReadAt(reads map[astral.ObjectID]astral.Time) error {
 		return nil
 	}
 
-	// one UPDATE per id, batched in a tx; rows missing from the table are
-	// no-ops by design (see doc comment above)
-	return db.DB.Transaction(func(tx *gorm.DB) error {
-		for id, at := range reads {
-			id := id
-			err := tx.Model(&dbObject{}).
-				Where("id = ?", &id).
-				Update("read_at", at.Time()).Error
-			if err != nil {
-				return err
+	return db.DB.Session(&gorm.Session{PrepareStmt: true}).
+		Transaction(func(tx *gorm.DB) error {
+			for id, at := range reads {
+				err := tx.Model(&dbObject{}).
+					Where("id = ?", &id).
+					Update("read_at", at.Time()).Error
+				if err != nil {
+					return err
+				}
 			}
-		}
-		return nil
-	})
+			return nil
+		})
 }
 
 // readCursor marks a position in the (read_at, height) read order.
@@ -110,6 +108,13 @@ func (db *DB) ListReadOldest(after *readCursor, limit int) (ids []*astral.Object
 	}
 
 	return ids, next, nil
+}
+
+// DeleteObjectCacheByID removes the tracking row for id. Used by purge to drop
+// rows whose repo object has gone missing; safe to call for an id with no row
+// (no-op).
+func (db *DB) DeleteObjectCacheByID(id *astral.ObjectID) error {
+	return db.DB.Where("id = ?", id).Delete(&dbObject{}).Error
 }
 
 func (db *DB) FindByType(objectType string) (rows []*dbObject, err error) {

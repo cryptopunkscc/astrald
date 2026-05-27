@@ -52,7 +52,10 @@ func (mod *Module) purgeRepository(ctx *astral.Context, repo objects.Repository)
 					}
 
 				case errors.Is(err, objects.ErrNotFound):
-					mod.db.DB.Delete(&dbObject{}, "id = ?", id)
+					derr := mod.db.DeleteObjectCacheByID(id)
+					if derr != nil {
+						mod.log.Error("purge: drop stale cache row %v: %v", id, derr)
+					}
 					continue
 				case errors.Is(err, errors.ErrUnsupported):
 					continue
