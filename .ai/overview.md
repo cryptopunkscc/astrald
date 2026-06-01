@@ -15,6 +15,7 @@ sig/        thread-safe collections: Map, Set, Queue, Ring, Pool
 lib/        client libraries: apphost, astrald, query, routers, ipc
 mod/        pluggable modules
 cmd/        binaries
+mobile/     gomobile-bind entry point for Android/iOS hosts
 ```
 
 ## Config

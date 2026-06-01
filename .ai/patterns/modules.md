@@ -34,7 +34,10 @@ func init() {
 }
 ```
 
-Source: `mod/nodes/src/loader.go`
+The module embeds a `routing.OpRouter` field; `AddStructPrefix(mod, "Op")`
+registers every `OpXxx` method whose signature matches `routing.NewOp`.
+
+Source: `mod/nodes/src/loader.go`, `mod/nodes/src/module.go`
 
 ## Dependencies
 

@@ -23,6 +23,8 @@ Concept pages explain cross-module ideas. Read `concepts/README.md` before creat
 | Multiplexer, mux, Session, session migration, flow control, wsize, stateMigrating, Session vs Link | `concepts/mux.md` |
 | brontide, Noise XK, handshake, forward secrecy, secp256k1 wire auth, RemotePub, authenticated connection | `concepts/brontide.md` |
 | crypto, signing, Engine, EngineProvider, hash signing, text signing, BIP137, hardware wallet, Coldcard | `concepts/crypto.md` |
+| Engine fan-out, EngineProvider, key claim, signer delegation, hardware-backed signing, mod/crypto dispatch | `concepts/crypto-engines.md` |
+| Relay, third-party forwarder, RelayQuery frame, RelayForAction, SourceIdentity, relay vs gateway, query-layer relay | `concepts/relay.md` |
 | Serialization, wire format, Objectify, WriteTo, ReadFrom, canonical encoding, ObjectType, astral primitives | `concepts/wire.md` |
 | Channel, Switch, Handle, Collect, EOS, astral.Err, channel.Expect, channel helpers | `concepts/channels.md` |
 | tree, tree.Value, Follow, live binding, settings, Mount, MountRemote, tree path, runtime config | `concepts/tree.md` |
@@ -60,8 +62,16 @@ Read the module guide when entering that module's source.
 | `mod/services/`, service registry, named service, bind service, AddService | `modules/services.md` |
 | `mod/shell/`, shell command, terminal, admin CLI, command handler | `modules/shell.md` |
 | `mod/tree/`, config tree, persistent setting, tree.Value, Follow, tree path | `modules/tree.md` |
+| `mod/indexing/`, repository indexing, indexer registration, change log, snapshot boundary, IndexMsg, UnindexMsg, subscribe stream | `modules/indexing.md` |
 | `mod/crypto/`, sign, verify, Engine, PrivateKey, SignableObject, secp256k1, BIP137, private-key object holder | `modules/crypto.md` |
+| `mod/secp256k1/`, secp256k1 engine, PublicKeyDeriver, HashSignerProvider, ASN.1 signatures, identity bridge | `modules/secp256k1.md` |
+| `mod/bip137sig/`, BIP-39/32/137 engine, mnemonic, seed, key derivation, text signing | `modules/bip137sig.md` |
+| `mod/coldcard/`, hardware wallet engine, ckcc CLI, BIP-137 over USB, device scan | `modules/coldcard.md` |
 | `mod/ip/`, LocalIPs, PublicIPCandidates, DefaultGateway, EventNetworkAddressChanged | `modules/ip.md` |
 | `mod/tor/`, Tor, onion, hidden service, SOCKS5, ED25519-V3 | `modules/tor.md` |
 | `mod/fwd/`, port forward, bridge, AstralServer, TCPServer, TorTarget | `modules/fwd.md` |
 | `mod/log/`, logging, log level, OpListen, View, LogFile | `modules/log.md` |
+| `mod/archives/`, zip archive, archive entry, Index, Forget, ArchiveDescriptor, EventArchiveIndexed | `modules/archives.md` |
+| `mod/media/`, AudioFile, audio metadata, app.media.audio_file | `modules/media.md` |
+| `mod/utp/`, uTP, UDP transport, utp.Endpoint, ListenPort, exonet dialer | `modules/utp.md` |
+| `mod/all/`, aggregation, blank imports, module bundle, portal binary | `modules/all.md` |

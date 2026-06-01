@@ -1,59 +1,62 @@
 # mod/auth
 
-Decides whether an identity may perform a typed action, using local action handlers first and signed delegation contracts as a fallback. Owns the authorization handler registry, signed-contract verification and indexing, and the persistent contract permit index used by authorization lookups.
+Decides whether an identity may perform a typed action, using local action handlers first and signed delegation contracts as a fallback. Owns the typed handler registry, signed-contract signing/verification, the persistent contract+permit index used by contract fallback, and the active-contract object hold that protects indexed contracts from purge.
 
 ## Dependencies
 
 | Module | Why |
 | --- | --- |
-| `crypto` | signs contracts through `ObjectSigner` and `TextObjectSigner`; verifies issuer and subject signatures with ASN1 or BIP137 schemes |
-| `objects` | loads signed contracts for `auth.index`; scans `RepoLocal` for startup indexing; exposes active-contract object holds for purge |
-| `secp256k1` | derives issuer and subject public keys from identities for signing and verification |
-| `core/assets` | `Database()` backs `auth__contracts` and `auth__contract_permits`; `LoadYAML` loads the empty auth config |
+| `crypto` | `ObjectSigner`/`TextObjectSigner` for contract signing; `VerifyObjectSignature`/`VerityTextObjectSignature` for `SchemeASN1`/`SchemeBIP137` verification |
+| `objects` | `Load` resolves indexed object IDs in `OpIndex`; `RepoLocal.Scan` feeds the startup indexer; `objects.Holder` is implemented to retain active contracts during purge |
+| `secp256k1` | `FromIdentity` derives the public key used for signing and verifying contract signatures |
+| `core/assets` | `Database()` backs `auth__contracts` and `auth__contract_permits`; `LoadYAML` loads the (empty) `auth` config |
 
 ## Flows
 
-- Direct authorization: `Authorize` reads `action.ObjectType()` and `action.Actor()` -> tries registered handlers for that action type -> first handler returning true grants the action.
-- Contract authorization: handler miss -> `SignedContracts().WithSubject(actor).WithAction(action).Find` -> for each active contract, replace the action actor with `sc.Issuer` -> retry local handlers.
-- Register handler: `Module.Add` reads each `TypedHandler.ActionType()` -> appends it in the in-memory handler map keyed by object type.
-- Sudo handler: loader registers `auth.Func[*auth.SudoAction](AuthorizeSudo)` -> `AuthorizeSudo` grants only when `Actor` equals `AsID`.
-- Sign contract op: `auth.sign_contract` accepts a `Contract` from the query channel -> wraps it in `SignedContract` -> `SignIssuer` -> `SignSubject` -> sends the signed object or an error object.
-- Sign one side: `SignIssuer` or `SignSubject` refuses an existing signature -> derives the identity public key with `secp256k1.FromIdentity` -> tries ASN1 object signing -> falls back to BIP137 text-object signing.
-- Index contract op: `auth.index` loads the object ID through `Objects.ReadDefault()` -> requires `*SignedContract` -> `IndexContract` verifies and stores it -> sends `Ack`.
-- Index contract: `indexMu` -> resolve object ID -> skip when a complete contract row already exists -> verify issuer and subject signatures according to signature scheme -> upsert contract row and insert permits if no permits exist yet.
-- Object holding: `HoldObject` returns true for active indexed signed-contract object IDs so `objects.purge` skips contracts still used for authorization.
-- Startup indexer: `Run` starts `indexer` -> scan `objects.RepoLocal` outside `ZoneNetwork` -> load each object -> index signed contracts and ignore other objects.
-- Query contracts: `SignedContracts` builder filters by issuer, subject, active time window, and permit action type -> decodes stored signatures and permits back into `SignedContract` objects.
+- Direct authorization: `Authorize(ctx, action)` runs every handler registered for `action.ObjectType()` -> first `true` grants.
+- Contract authorization: no local handler granted -> `SignedContracts().WithSubject(actor).WithAction(action).Find` -> for each active contract, `action.SetActor(sc.Issuer)` and re-run local handlers -> first `true` grants. The contract path does NOT consult `Contract.Allows` or `Constrainable.ApplyConstraints`; permit matching happens at the DB join in `findActiveContracts`.
+- Register handler: `Add(handlers...)` reads `TypedHandler.ActionType()` per handler -> appends to the `sig.Map` slot for that type via `handlers.Replace`.
+- Sudo handler: loader registers `auth.Func[*auth.SudoAction](AuthorizeSudo)`; grants only when `action.Actor().IsEqual(action.AsID)`.
+- Sign contract op (`auth.sign_contract`): receive `*auth.Contract` on the channel -> wrap in `SignedContract` -> `SignContract` (`SignIssuer` then `SignSubject`) -> send the signed object or `astral.Err`.
+- Sign one side: `SignIssuer` / `SignSubject` refuse overwrite with `ErrAlreadySigned` -> `signAs` derives the key via `secp256k1.FromIdentity` -> try `Crypto.ObjectSigner` (ASN1); on failure, fall back to `Crypto.TextObjectSigner` (BIP137).
+- Index op (`auth.index`): `Objects.Load` the ID with `ReadDefault()` -> require `*auth.SignedContract` (else `ErrInvalidContract`) -> `IndexContract` -> send `Ack`.
+- `IndexContract`: `indexMu` -> resolve `ObjectID` -> `db.contractExists` short-circuits when both signatures are already stored -> `VerifyContract` -> `db.storeSignedContract` upserts the contract row and inserts permits only when no permits exist for that row yet.
+- Startup indexer: `Run` -> `indexer(ctx)` with `ZoneNetwork` excluded -> `Objects.GetRepository(RepoLocal).Scan` -> `Objects.Load` each ID -> ignore non-`*SignedContract` -> `IndexContract`.
+- Object hold: `HoldObject(id)` -> `db.activeContractExists(id)` (same `starts_at <= now < expires_at` window) -> true keeps the object alive in purge; DB error fails closed by returning true.
+- Contract lookup: `contractQuery` filters by `issuer_id`, `subject_id`, active time window, and (when `WithAction` was called) joins `auth__contract_permits` on `name IN actions` with distinct contracts; `Find` decodes signatures and permits back into `*SignedContract`.
 
 ## Source
 
-- `mod/auth/module.go`, `action.go`, `actions_map.go`, `contract.go`, `signed_contract.go`, `sudo_action.go`, `errors.go` - public authorization interfaces, action and contract types, sudo action, and sentinels.
-- `mod/auth/src/loader.go`, `module.go`, `deps.go`, `config.go`, `prepare.go` - module registration, dependency injection, router setup, database migration, and lifecycle.
-- `mod/auth/src/authorize.go`, `authorizers.go` - handler dispatch, contract fallback, and built-in sudo authorization.
-- `mod/auth/src/signing.go` - issuer and subject signing plus signature verification by scheme.
-- `mod/auth/src/contracts.go`, `contract_query.go`, `object_holder.go` - contract indexing, repository scan, active-contract query builder, and cleanup hold hook.
+- `mod/auth/module.go`, `action.go`, `actions_map.go`, `contract.go`, `signed_contract.go`, `sudo_action.go`, `errors.go` - public `Module` and `ContractQueryBuilder` interfaces, action/handler types, contract/permit/signed-contract types, sudo action, and sentinels.
+- `mod/auth/src/loader.go`, `module.go`, `deps.go`, `config.go`, `prepare.go` - module construction, router setup, dependency injection, DB migration, and lifecycle.
+- `mod/auth/src/authorize.go`, `authorizers.go` - dispatch loop, contract fallback, and built-in sudo authorizer.
+- `mod/auth/src/signing.go` - `SignIssuer`/`SignSubject`/`SignContract` and per-scheme verification.
+- `mod/auth/src/contracts.go`, `contract_query.go`, `object_holder.go` - `IndexContract`, repository indexer, active-contract query builder, and `HoldObject` hook.
 - `mod/auth/src/op_sign_contract.go`, `op_index.go` - query operation handlers.
-- `mod/auth/src/db.go`, `db_contract.go`, `db_contract_permit.go` - GORM rows, contract upsert, permit persistence, and lookup filters.
-- `mod/auth/client/` - typed client wrappers for auth operations.
+- `mod/auth/src/db.go`, `db_contract.go`, `db_contract_permit.go` - GORM rows, active-contract lookup, upsert with conditional permit insert, and permit encode/decode.
+- `mod/auth/client/`, `mod/auth/views/` - typed client wrappers and signed-contract view helpers.
 
 ## Surface
 
 | What | Why it matters |
 | --- | --- |
-| `Module.Authorize` and `Module.Add` | central extension point for modules that define typed authorization actions |
-| `Module.SignContract`, `VerifyContract`, and `IndexContract` | contract lifecycle used by modules that delegate authority between identities |
-| `Module.SignedContracts()` | builder used by authorization and callers that need active signed contract lookup |
-| `objects.Holder` | prevents active indexed signed-contract objects from being purged |
-| `auth.sign_contract`, `auth.index` | query methods for signing a contract object and indexing an already stored signed contract |
-| `auth__contracts`, `auth__contract_permits` | persistent authorization index searched during contract fallback |
+| `Module.Authorize`, `Module.Add` | central extension point: typed actions are registered with `Func[T]` handlers and dispatched by `ObjectType()` |
+| `Module.SignIssuer`, `Module.SignSubject`, `Module.SignContract` | per-side and combined contract signing using the available crypto scheme |
+| `Module.VerifyIssuer`, `Module.VerifySubject`, `Module.VerifyContract`, `Module.IndexContract` | verification and durable indexing of received signed contracts |
+| `Module.SignedContracts()` | builder used by `Authorize` and by other modules (e.g. `user`) to look up active contracts by issuer/subject/action |
+| `objects.Holder` | active indexed signed-contract objects are pinned against purge |
+| `auth.sign_contract`, `auth.index` | query methods for signing a contract and indexing an already-stored signed contract |
+| `auth__contracts`, `auth__contract_permits` | persistent index searched on contract fallback |
 
 ## Invariants
 
-- Contracts never grant directly; they swap `action.Actor` to issuer and re-run local handlers.
-- Contract path skips `Contract.Allows` and `Constrainable.ApplyConstraints`.
-- Contract lookup filters `subject_id`, `starts_at <= now`, `expires_at > now`, joins permits by action `ObjectType`.
-- `HoldObject` uses the same active time window as contract lookup and fails closed on DB errors.
-- `contractExists` requires both signatures non-empty; partial rows re-index.
-- `IndexContract` serialized by `indexMu`.
-- `SignIssuer`/`SignSubject` refuse overwrite with `ErrAlreadySigned`.
+- Contracts never grant directly: `Authorize` swaps `action.Actor` to the issuer and re-runs local handlers.
+- The contract code path does not invoke `Contract.Allows` or `Constrainable.ApplyConstraints`; permit selection is purely the SQL join on action `ObjectType`.
+- Active-contract window is `starts_at <= now AND expires_at > now`, applied identically by `findActiveContracts` and `activeContractExists`.
+- `db.contractExists` requires both signatures non-empty; rows with a missing signature re-index.
+- `IndexContract` is serialized by `indexMu`.
+- `storeSignedContract` upserts the contract row (on conflict updates ids, sigs, expires_at) and inserts permits only when the row has no permits yet.
+- `SignIssuer`/`SignSubject` refuse to overwrite an existing signature with `ErrAlreadySigned`.
+- `HoldObject` fails closed: on DB error it returns true so a borderline object is not purged.
+- `WithAction` takes action objects (`...astral.Object`) and indexes by `ObjectType()`, not raw strings.
 - `auth.yaml` has no fields; presence is inert.

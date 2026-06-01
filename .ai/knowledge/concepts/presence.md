@@ -15,10 +15,13 @@ reachability.
 ## Receiver
 
 * Incoming messages are cached by source IP.
-* `ResolveStatus` identifies the sender.
-* Visible mode uses a signed `NodeContract` from the bundle.
-* Stealth mode uses a `StealthHint`: node ID XOR user ID plus nonce.
-* Only peers that know the user identity can recover the stealth sender.
+* `ResolveStatus` identifies the sender from the attachment bundle.
+* Visible mode resolves the sender from a `PublicProfile` (`NodeID`) or a
+  signed `auth.SignedContract` (`Subject`).
+* Stealth mode uses a `StealthHint`: `sha256` commitment over the user ID
+  and a nonce, plus the node ID XOR-masked by the user ID.
+* Only peers that know the user identity can verify the commitment and
+  unmask the node ID.
 * `ResolveEndpoints` reads typed endpoint objects from the same cache.
 * Presence and endpoint resolution use the same data at different call sites.
 

@@ -16,10 +16,16 @@
 
 ```
 Session          — one routed Query, flow-controlled
-  └─ frames/mux  — multiplexes Sessions over one Link
-       └─ brontide — Noise XK; secp256k1 auth; ChaCha20-Poly1305 encryption
-            └─ exonet.Conn — raw transport bytes (tcp / kcp / tor / gw)
+  └─ Mux         — multiplexes sessions; encodes/decodes nodes/frames
+       └─ Link   — channel.Channel with locked writes over a noise.Conn
+            └─ brontide / noise.Conn — Noise XK; secp256k1 auth; ChaCha20-Poly1305
+                 └─ exonet.Conn — raw transport bytes (tcp / kcp / tor / gw)
 ```
+
+* `Link` embeds `*channel.Channel`; the channel's binary sender/receiver
+  encodes `frames.Frame` objects on the wire.
+* `Mux` shares the link's channel and serialises sends via
+  `channel.WithLockedWrites()`.
 
 ## Transports
 

@@ -13,12 +13,18 @@
 
 Any module can provide a crypto engine:
 
-* Implement `CryptoEngine() Engine`.
-* Register at startup.
-* Return `ErrUnsupported` when the key is not owned by the engine. The fan-out
-  continues.
-* Return `ErrInvalidSignature` when the key is owned by the engine but the
-  signature is wrong. The fan-out stops immediately.
+* Implement `CryptoEngine() Engine`. `Engine` is an opaque `any`; the engine
+  value implements any subset of the capability interfaces:
+  `PublicKeyDeriver`, `HashSignerProvider`, `HashVerifier`,
+  `TextSignerProvider`, `TextVerifier`.
+* `mod/crypto` discovers providers during `LoadDependencies` and dispatches per
+  capability with a type assertion. Engines lacking the requested capability
+  are silently skipped.
+* Sign / derive path: return any non-nil error to mean "not me, keep looking".
+  The first engine that returns a result wins.
+* Verify path: return `ErrInvalidSignature` to mean "the key is mine and the
+  signature is wrong" — the fan-out stops immediately. Any other error means
+  "not me, keep looking".
 
 ## Signing Paths
 

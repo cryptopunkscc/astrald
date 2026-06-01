@@ -18,11 +18,27 @@ Modules that provide a signing backend implement `EngineProvider`:
 
 * `CryptoEngine() Engine`
 
-At startup, providers register with `mod/crypto`. The crypto module stores the engines in a set and
-tries them in order for each operation.
+`Engine` is an opaque `any`. The engine value implements any subset of the capability interfaces in
+`mod/crypto/engine.go`:
 
-* `ErrUnsupported` means "not mine, keep looking". It is a routing signal, not a failure.
-* `ErrInvalidSignature` means "this is mine and it is wrong". The fan-out stops immediately.
+* `PublicKeyDeriver` - derive a public key from a private key
+* `HashSignerProvider` - return a `HashSigner` bound to a key and scheme
+* `HashVerifier` - verify a hash signature
+* `TextSignerProvider` - return a `TextSigner` bound to a key and scheme
+* `TextVerifier` - verify a text signature
+
+At startup, `mod/crypto.LoadDependencies` walks loaded modules, calls `CryptoEngine()` on each
+`EngineProvider`, and adds the result to its engine set. Every public method dispatches per capability
+via `dispatchResult` / `dispatchVerify` (see `mod/crypto/src/dispatch.go`):
+
+* On sign / derive paths, the first engine that returns a non-error result wins. Any returned error is
+  treated as "skip me, keep looking". If no engine matches, `mod/crypto` returns `ErrUnsupported`.
+* On verify paths, any engine returning `nil` succeeds. `ErrInvalidSignature` is terminal — "the key is
+  mine and the signature is wrong". Any other error means "skip me, keep looking". If no engine
+  matches, `mod/crypto` returns `ErrUnsupported`.
+
+Engines that do not implement the requested capability interface are silently skipped: capability is
+detected by type assertion, not by error.
 
 ## Signing Paths
 

@@ -3,30 +3,29 @@
 A `Query` requests a bidirectional `Session` with a named service on a target
 `Identity`. It is the base communication operation.
 
+## Types
+
+* `Query{Nonce, Caller, Target, QueryString}` is the wire object.
+* `InFlightQuery` wraps a `Query` with `Extra sig.Map[string, any]`.
+* `OriginLocal` and `OriginNetwork` are values for `Extra["origin"]`.
+* `IsLocal()` and `IsNetwork()` test that key.
+
 ## Routing
 
-Node tries registered routers in priority order.
-
-Router outcomes:
-
-* Accept: open the `Session`.
-* Reject: stop routing.
-* Not found: try the next router.
-
-See `rules.md` for return conventions.
+* `Router.RouteQuery(ctx, *InFlightQuery, w) (io.WriteCloser, error)`.
+* Node runs registered routers in priority order.
+* Outcomes: accept opens the session, reject stops routing, not found tries
+  the next router.
+* `ErrRouteNotFound` is now an empty struct; matchers use `errors.Is`.
 
 ## Preprocessors
 
-Preprocessors run before routing, in registration order. They may:
-
-* Attach metadata.
-* Add `relay_via` hints.
-* Block the query.
-
-They are discovered during `Inject`. apphost uses a preprocessor to attach
-AppContracts.
+* Preprocessors run before routing, in registration order.
+* They may attach metadata, add `relay_via` hints, or block the query.
+* `core` discovers them via `injectLoaded`. apphost uses one to attach
+  AppContracts.
 
 ## Gateway
 
-Gateway relays for Nodes that are unreachable directly, such as behind NAT or a
-firewall. The application sees a normal `Session`.
+Gateway relays for nodes unreachable directly (NAT, firewall). The
+application sees a normal session.

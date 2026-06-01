@@ -7,44 +7,60 @@ or module client packages.
 
 Invariants:
 
-* Method names use `Op` + PascalCase.
-* Operation names use snake_case.
+- Method names use `Op` + PascalCase (registered via `AddStructPrefix(s, "Op")`).
+- Operation names use snake_case (auto-converted by `log.ToSnakeCase`).
+- Handler signature: `func(*astral.Context, *routing.IncomingQuery[, args]) error`.
 
 ```go
-func (mod *Module) OpStreams(ctx *astral.Context, q *routing.IncomingQuery, args opStreamsArgs) error {
+func (mod *Module) OpSessions(ctx *astral.Context, q *routing.IncomingQuery, args opSessionsArgs) (err error) {
     ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
     defer ch.Close()
 
-    for _, s := range mod.peers.links.Clone() {
-        if err := ch.Send(s.Info()); err != nil {
-            return ch.Send(astral.Err(err))
+    for _, s := range mod.sessions() {
+        if err = ch.Send(s); err != nil {
+            return ch.Send(astral.NewError(err.Error()))
         }
     }
     return ch.Send(&astral.EOS{})
 }
 ```
 
-Source: `mod/nodes/src/op_streams.go`
+`q.AcceptRaw()` returns `io.ReadWriteCloser`; pass it to `channel.New(...)`.
+`q.Accept(cfg...)` is the same flow in one call.
+
+Source: `mod/nodes/src/op_sessions.go`, `mod/nodes/src/op_links.go`
 
 ## Args Struct
 
-Define a struct for query string args.
+Args are parsed from the query string into the third handler argument. Fields
+with `query:"required"` are enforced by `Op.invoke` before the handler runs;
+otherwise the field is taken when present and left zero when absent.
+`query:"optional"` is a documentation marker (it is parsed but defaults match
+absence-of-tag).
 
 ```go
-type opStreamsArgs struct {
-    Out string         `query:"optional"`
-    Key astral.String8 `query:"optional"`
+type opPunchArgs struct {
+    Target string                  // present when set in query string
+    In     string `query:"optional"`
+    Out    string `query:"optional"`
 }
 ```
 
-Invariants:
+For strictly required fields use `required`:
 
-* Args are parsed from the query string automatically.
-* Optional args need the `query:"optional"` tag.
+```go
+type findArgs struct {
+    ID  *astral.ObjectID `query:"required"`
+    Out string           `query:"optional"`
+}
+```
+
+Source: `lib/query/field_tag.go`, `lib/routing/op.go` (required enforcement),
+`mod/nat/src/op_punch.go`
 
 ## Module Client
 
-Every module with query ops has a `mod/<name>/client/` package. It mirrors the
+Every module with query ops has a `mod/<name>/client/` package mirroring the
 module's `src/op_*.go` files.
 
 ```go
@@ -111,8 +127,8 @@ Choose the call path by caller situation.
 
 | Situation | Use |
 |---|---|
-| Module running on same node | Dependency interface, for example `mod.Dir.ResolveIdentity(name)` |
-| Operation on a different node | Client with target, for example `dirClient.New(target, astrald.Default())` |
+| Module running on same node | Dependency interface, e.g. `mod.Dir.ResolveIdentity(name)` |
+| Operation on a different node | Client with target, e.g. `natclient.New(target, astrald.Default())` |
 | External app with no node access | Default client routed through apphost |
 
 Source: `mod/nat/src/op_punch.go`, `mod/nat/src/op_node_consume_hole.go`

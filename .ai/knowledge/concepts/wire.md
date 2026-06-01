@@ -13,13 +13,22 @@ Invariant: only canonical encoding produces a stable `ObjectID`. Do not use bina
 
 ## Objectify Fields
 
-`astral.Objectify` reflects struct fields in declaration order.
+`astral.Objectify(&v)` reflects a value into binary, JSON, and a derived
+`ObjectType()`. Struct fields are read and written in declaration order.
 
-Supported field types:
+Supported kinds:
 
-* `String8/16/32`
-* numeric types: `Int8`...`Int64`, `Uint8`...`Uint64`
-* `Bool`, `Float32/64`, `Duration`, `Nonce`, `*Identity`, `ObjectID`
-* pointers, slices, arrays, and maps of supported types
+* numeric: `Int8`...`Int64`, `Uint8`...`Uint64`, `Float32/64`
+* `Bool`, `String`, `Duration`, `Nonce`, `*Identity`, `ObjectID`, `Zone`
+* `Ptr`, `Slice`, `Array`, `Map`, nested `Struct`, `Interface`
 
-Trust boundary: interface fields of type `astral.Object` use dynamic framing: type name plus payload.
+Interface fields typed as `astral.Object` use dynamic framing (type name +
+payload). Types decoded into them must be registered with `astral.Add`, kept
+in a `Blueprints` registry.
+
+## Helpers
+
+* `astral.Stringify(v)` returns `Stringer.String()`, falls back to
+  `TextMarshaler.MarshalText`, then `%v`.
+* `astral.New(typeName)` returns a zero-value object from the default
+  `Blueprints` or nil.

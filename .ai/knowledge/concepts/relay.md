@@ -8,45 +8,43 @@
 * A relay is distinct from the `gw` transport, which works at the byte-stream
   layer.
 
-## Service Flow
+## Wire
 
-* A relay node exposes `nodes.node_open_relay` (`MethodNodeOpenRelay`).
-* Clients open that service and stream `QueryContainer` values over the
-  resulting channel.
-* The relay server matches each container against a waiting peer session and
-  pipes the two sides together.
-
-## Wire Objects
-
-* `QueryContainer` is `{TargetID, CallerID, Query}`.
-* The initiating side sends `QueryContainer` to name the target and declare the
-  originating caller.
-
-## Relay Channel Cache
-
-* `relayChannel` is the cached `Router` for a given relay identity.
-* `getRelay` opens it lazily on first use.
-* Its `watch` goroutine evicts it after 30 min idle.
-* A broken send evicts the channel immediately.
+* Relayed queries travel as `frames.RelayQuery` over the link mux to the relay
+  node.
+* `RelayQuery` wraps a `Query` frame with `CallerID` and `TargetID`.
+* The relayed session uses the same `Nonce` as a direct session and is opened
+  on the link to the relay, not the target.
 
 ## Routing
 
-* Query routing selects the relay path when `ctx.Identity() != q.Caller`, even
-  when the target peer is already linked.
-* This condition checks caller identity, not connectivity.
+* `Module.RouteQuery` selects relays only after direct and `RetrieveLink` with
+  `StrategyBasic` and `StrategyTor` fail within a 120-second timeout.
 * `ExtraRelayVia` is the key into `q.Extra`; its value is
   `[]*astral.Identity`.
-* Relays in `ExtraRelayVia` are tried in order when direct and NAT link
-  strategies both fail.
-* The target identity is never used as its own relay.
+* Relays in `ExtraRelayVia` are tried in order.
+* The target identity is skipped as its own relay.
+* Before sending, when `ctx.Identity() != q.Caller`, the router pushes the
+  caller proof from `ExtraCallerProof` to the relay via `objects.Push`.
+* `Mux.RouteQuery` emits `RelayQuery` instead of `Query` whenever
+  `q.Caller != ctx.Identity()`, regardless of connectivity to the target.
 
 ## Authorization
 
-* `RelayForAction` is the typed auth action.
-* `ForID *Identity` names the caller whose relay queue the actor requests to
-  join.
+* `RelayForAction` is the typed auth action; `Actor` is the link peer
+  requesting to relay, `ForID` is the original `CallerID`.
 * `ActionRelayFor = "mod.nodes.relay_for_action"`.
-* `OpNodeOpenRelay` checks it when `container.CallerID != q.Caller()`.
-* `AuthorizeRelayFor` grants when `actor == ForID`.
-* `RelayForAction` implements `Constrainable`.
-* `ApplyConstraints` returns true when the constraint bundle is nil or empty.
+* `Mux.handleRelayQuery` checks `Auth.Authorize(RelayForAction)` whenever
+  `RelayQuery.CallerID` differs from the link's remote identity.
+* `AuthorizeRelayFor` grants when `Actor == ForID`.
+* `RelayForAction` implements `Constrainable`; `ApplyConstraints` returns
+  true when the bundle is nil or empty.
+* Rejected relay queries get a `Response` frame with `CodeRejected` and no
+  session is launched.
+
+## Inbound Session
+
+* On accept, the relay's mux records `SourceIdentity = RemoteIdentity` of the
+  link peer and `RemoteIdentity = CallerID`.
+* The relayed inbound query is launched with `origin = OriginNetwork` so the
+  local router treats it as remote.

@@ -12,24 +12,24 @@ Grant rule:
 ## Actions
 
 * Actions are typed objects embedding `auth.Action` (`Nonce` + `ActorId`).
-* Actor identity lives inside the action object, not as a separate argument.
-* `ActionObject` interface: `Id() Nonce`, `Actor() *Identity`, `SetActor(*Identity)`, plus `astral.Object`.
+* The actor lives inside the action object, not as a separate argument: `Actor() *Identity`, `SetActor(*Identity)`.
+* `ActionObject` interface: `astral.Object`, `Id() Nonce`, `Actor()`, `SetActor()`.
 
 ## Handlers
 
-* Handlers are registered by action type.
-* `TypedHandler` declares its type with `ActionType() string`.
-* `Func[T]` adapts a typed callback.
-* `Func[T]` type-asserts the action to `T` and returns `false` on mismatch.
+* Handlers are registered per action type; the type key is `ActionObject.ObjectType()`.
+* `TypedHandler` exposes `ActionType() string`.
+* `Func[T ActionObject]` adapts a typed callback and type-asserts the incoming object to `T`, returning `false` on mismatch.
 
 ## Contract Delegation
 
-If local handlers deny, `Authorize` checks delegation:
+If no local handler grants, `Authorize` consults active signed contracts:
 
-* Search active `SignedContract`s where `Subject == actor`.
-* Require a permit that covers the action.
-* Re-run handlers with actor replaced by the contract's `Issuer`.
+* Look up active `SignedContract`s where `Subject == actor` and some permit `Action == action.ObjectType()`.
+* For each match, swap `action.Actor` to `sc.Issuer` and re-run the local handlers.
 * First `true` grants.
+
+The contract path is purely a delegation: it does NOT call `Contract.Allows`, and `Constrainable.ApplyConstraints` is only used by callers that explicitly evaluate a contract against an action (e.g. `Contract.Allows`). Permit selection during authorization is the DB join in `findActiveContracts`.
 
 ## Contracts
 
@@ -38,34 +38,44 @@ If local handlers deny, `Authorize` checks delegation:
 * Shape: `{Issuer, Subject, Permits, ExpiresAt}`.
 * Signed by both parties.
 * Implements `crypto.SignableTextObject`.
-* Signable hash is the contract ObjectID hash.
+* Signable hash is the contract's `ObjectID.Hash`.
 
 `Permit`:
 
-* Names an action type.
-* May include constraints.
+* Names an action by its `ObjectType` string.
+* Carries an optional `*astral.Bundle` of constraints.
 
 `SignedContract`:
 
 * Wraps `*Contract` with `IssuerSig` and `SubjectSig` (`*crypto.Signature`).
-* Both signatures must be present and valid before indexing.
+* Both signatures must be present and verify before indexing.
+* `IsNil()` is true when the embedded `*Contract` is nil.
 
 ## Constraints
 
-`Constrainable` is an optional interface on actions: `ApplyConstraints(*Bundle) bool`.
-
-Actions that do not implement it always pass the constraint check.
+`Constrainable` is an optional interface on actions: `ApplyConstraints(*Bundle) bool`. It is consulted by `Contract.Allows` when callers evaluate a contract against an action, but not by `Module.Authorize` itself.
 
 ## Built-Ins
 
 `SudoAction`:
 
 * Built-in action type.
-* Requests permission for actor to act as `AsID`.
-* Grants only when `actor == AsID`.
+* Requests permission for `Actor` to act as `AsID`.
+* Registered authorizer grants only when `Actor.IsEqual(AsID)`; cross-identity sudo is reachable only through contract delegation.
 
 `ContractQueryBuilder`:
 
-* Fluent query.
-* Filters by issuer, subject, or action.
-* `Find` reconstructs and returns active signed contracts from the DB.
+* Fluent builder returned by `Module.SignedContracts()`.
+* `WithIssuer(*Identity)`, `WithSubject(*Identity)`, `WithAction(...astral.Object)` (action filter is by `ObjectType()`).
+* `Find(ctx)` returns active signed contracts (window: `starts_at <= now < expires_at`), decoding signatures and permits from `auth__contracts` + `auth__contract_permits`.
+
+## Signing And Verification
+
+* `Module.SignIssuer` / `Module.SignSubject` refuse to overwrite an existing signature with `ErrAlreadySigned`.
+* `Module.SignContract` runs issuer then subject.
+* `signAs` tries `Crypto.ObjectSigner` (`SchemeASN1`) first and falls back to `Crypto.TextObjectSigner` (`SchemeBIP137`).
+* `VerifyContract` dispatches per `Signature.Scheme` accordingly.
+
+## Object Holding
+
+Active indexed signed-contract objects are held by `auth` against `objects.purge` via the `objects.Holder` hook, so authorization keeps working after a purge cycle. The hold window matches the active-contract lookup window.

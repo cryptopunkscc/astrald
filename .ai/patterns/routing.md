@@ -11,7 +11,7 @@ Gate all network operations with `ZoneNetwork`.
 
 ```go
 if !ctx.Zone().Is(astral.ZoneNetwork) {
-    return query.RouteNotFound(r)
+    return query.RouteNotFound()
 }
 
 ctx = ctx.ExcludeZone(astral.ZoneNetwork)
@@ -31,12 +31,14 @@ Source: `mod/apphost/src/guest.go`, `mod/nodes/src/module.go`
 
 ## RouteQuery Return Values
 
-Return the first matching routing result. Never fall through with `nil, nil`.
+`astral.Router.RouteQuery(ctx, *astral.InFlightQuery, w io.WriteCloser)` returns
+`(io.WriteCloser, error)`. Return the first matching result. Never fall through
+with `nil, nil`.
 
 ```go
-func (r *MyRouter) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCloser) (io.WriteCloser, error) {
+func (r *MyRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
     if !r.matches(q) {
-        return query.RouteNotFound(r)
+        return query.RouteNotFound()
     }
     if !r.authorized(q) {
         return query.Reject()
@@ -49,9 +51,13 @@ func (r *MyRouter) RouteQuery(ctx *astral.Context, q *astral.Query, w io.WriteCl
 
 | Situation | Return |
 |---|---|
-| Not our query | `query.RouteNotFound(r)` |
-| Explicit refusal | `query.Reject()` |
+| Not our query | `query.RouteNotFound()` |
+| Explicit refusal | `query.Reject()` (or `query.RejectWithCode(code)`) |
 | Accepted | `query.Accept(q, w, handler)` |
 | Never | `nil, nil` |
 
-Source: `lib/query/route.go`
+`query.RouteNotFound` and `query.Reject` take no arguments. `ErrRouteNotFound`
+carries no router reference; routers identify themselves through their own
+`String()` or `Name`.
+
+Source: `lib/query/route.go`, `astral/err_route_not_found.go`

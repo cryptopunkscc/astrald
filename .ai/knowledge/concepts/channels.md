@@ -32,3 +32,12 @@ A `Channel` carries typed `Object` values over a raw stream.
 * End every stream with `EOS`.
 * Send mid-stream errors as `astral.Err(err)`.
 * Do not signal mid-stream errors by closing the channel.
+
+## Locked Writes
+
+* `channel.WithLockedWrites()` wraps `Send` in a mutex so concurrent senders
+  do not interleave object bytes on the underlying writer.
+* Use it when multiple goroutines share one `Channel` over a single
+  transport, such as the `nodes` mux multiplexing frames over one link.
+* Individual `Sender` constructors do not honour this option; pass it to
+  `channel.New`.

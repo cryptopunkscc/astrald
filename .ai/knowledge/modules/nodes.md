@@ -19,18 +19,18 @@ Establishes and maintains authenticated encrypted links to peer nodes, then mult
 
 ## Flows
 
-- Outbound link: strategy dials an `exonet.Conn` -> `noise.HandshakeOutbound` -> outbound negotiation chooses `mux2` and exchanges status and link nonce -> `newLink(outbound)` -> `LinkPool.AddLink` -> set mux router -> reflect observed endpoint.
-- Inbound link: accepted connection -> `noise.HandshakeInbound` -> inbound negotiation offers `mux2`, status, and link nonce -> `newLink(inbound)` -> `LinkPool.AddLink` -> notify link watchers.
+- Outbound link: strategy dials an `exonet.Conn` -> `noise.HandshakeOutbound` -> wrap in `channel.New(..., WithLockedWrites())` -> outbound negotiation chooses `mux2` and exchanges status and link nonce -> `newLink(outbound)` -> `LinkPool.AddLink` -> set mux router -> reflect observed endpoint.
+- Inbound link: accepted connection -> `noise.HandshakeInbound` -> channel with locked writes -> inbound negotiation offers `mux2`, status, and link nonce -> `newLink(inbound)` -> `LinkPool.AddLink` -> notify link watchers.
 - Network route: reject non-network zone and self-target queries -> prefer existing non-high-pressure link -> otherwise `RetrieveLink` with basic and tor strategies for 120 seconds -> otherwise try `ExtraRelayVia` identities and push caller proof when caller differs from context identity.
-- Session open: mux creates outbound session -> sends `Query` or `RelayQuery` -> waits for `Response` -> accepted response opens the session, grows writer credit, and copies response bytes back to the caller writer.
-- Session accept: inbound `Query` or `RelayQuery` -> relayed queries require `Auth.Authorize(RelayForAction)` -> create inbound session -> wait for router assignment -> launch query in origin network zone -> send accepted or rejected `Response`.
-- Frame loop: link read loop decodes frames into mux -> query frames run in goroutines -> `Data` frames push into input buffer -> `Read` frames grant writer credit -> `Reset` closes peer state.
-- Flow control: `session.Write` chunks data at `MaxDataFrameSize` -> writer blocks when credit is exhausted -> peer `session.Read` sends `Read` credit after consuming bytes.
-- Ping and pressure: link ping loop wakes after jitter, active checks, or strategy wake -> ping timeout closes the link -> pong RTT and bytes feed optional pressure detector.
-- Session migration: initiator opens `nodes.migrate_session` -> pauses writer and swaps buffers -> ready and switched handshake -> old link sends migrate frame -> both sides resume and complete on the new link within `migrateSessionTimeout`.
-- Connectivity upgrade: `ReceiveObject` sees `LinkPressureEvent` -> per-peer switch avoids overlapping upgrades -> prefer sibling link without pressure -> otherwise retrieve a new NAT link -> migrate eligible sessions -> apply cooldown.
-- Strategy activation: `RetrieveLink` returns an existing link unless forced -> per-target `NodeLinker` signals requested strategies -> watcher receives the first successful link -> excess unconsumed links close with `ErrExcessLink`.
-- Endpoint reflection and cleanup: links push observed endpoint messages when appropriate -> peer extracts public TCP or UTP endpoint -> bounded observed-endpoint cache emits `NewObservedEndpointEvent`; cleanup task removes expired endpoint rows after grace.
+- Session open: `Mux.RouteQuery` creates outbound session -> sends `Query`, or `RelayQuery` when `q.Caller != ctx.Identity()` -> waits for `Response` -> accepted response opens the session, grows writer credit, and copies response bytes back to the caller writer.
+- Session accept: inbound `Query` or `RelayQuery` -> relayed queries with a foreign `CallerID` require `Auth.Authorize(RelayForAction)` -> `createSession` -> wait for router assignment -> launch query with `OriginNetwork` -> send accepted or rejected `Response`.
+- Frame loop: `Link.readLoop` reads objects from its `channel.Channel` -> `Mux.Handle` dispatches frames -> query frames run in goroutines -> `Data` frames push into `InputBuffer` -> `Read` frames grow writer credit -> `Reset` closes peer state.
+- Flow control: `muxSessionWriter.Write` consumes `OutputBuffer.wsize` and chunks at `maxPayloadSize` -> writer blocks on the buffer wake channel when credit is exhausted -> peer reader drains `InputBuffer` and `onRead` sends a `Read` frame granting credit.
+- Ping and pressure: link ping loop wakes after jitter, active checks, or `Wake()` -> ping timeout closes the link -> pong RTT and `onBytes` feed the optional pressure detector (currently only attached on Tor links).
+- Session migration: initiator opens `nodes.migrate_session` -> `migrator.Begin` pauses writer and swaps reader/writer buffers -> `Ready`/`Switched` `MigrateSignal` exchange -> each side sends a `frames.Migrate` on the old link -> `WaitClosed` resolves when peer's `Advance` drains and closes the old `InputBuffer` -> `Resume`/`Done` -> `Complete` moves the session between mux maps and unblocks the writer, all within `migrateSessionTimeout`.
+- Connectivity upgrade: `ReceiveObject` sees `LinkPressureEvent` -> per-peer `sig.Switch` avoids overlapping upgrades -> prefer sibling link with no pressure detector or low pressure -> otherwise `RetrieveLink` with `WithForceNew()` and `StrategyNAT` under a 3-minute cap -> `migrateSessions` for eligible sessions -> 5-minute cooldown.
+- Strategy activation: `RetrieveLink` returns an existing link unless `WithForceNew()` -> per-target `NodeLinker` signals each requested strategy and waits for all `Done()` -> the first matching `linkWatcher` receives the link; the watcher channel has capacity 1 so excess notifications are dropped.
+- Endpoint reflection and cleanup: inbound links push `ObservedEndpointMessage` to the peer -> peer extracts public TCP or UTP IPs -> bounded observed-endpoint cache emits `NewObservedEndpointEvent`; cleanup task removes expired endpoint rows after `CleanupGrace`.
 
 ## Source
 
@@ -59,11 +59,12 @@ Establishes and maintains authenticated encrypted links to peer nodes, then mult
 
 ## Invariants
 
-- `Mux.SetRouter` is one-shot; inbound queries wait on `routerSet` until the link is fully added.
-- Inbound `AddLink` notifies watchers without a strategy name; outbound strategy success notifies with the strategy name.
-- Session state transitions are compare-and-swap constrained: routing to open or closed, open to migrating, and any state to closed.
-- Input buffer pushes are all-or-nothing; overflow returns `ErrBufferOverflow`.
-- `Data` payloads are limited by `MaxDataFrameSize`, so writers must chunk larger writes.
-- Auto-migration requires session age of at least 30 seconds or at least 1 MiB transferred; manual migration still requires an open session.
-- `RelayForAction` grants only when `Actor` equals `ForID` and has no constraints.
-- Per-target `NodeLinker` is single-instance and strategy signalling is idempotent while a strategy is active.
+- `Mux.SetRouter` is one-shot via `routerOnce` CAS; inbound queries block in `waitRouter` until `LinkPool.AddLink` sets it.
+- Inbound `AddLink` notifies watchers with a nil strategy; outbound strategies notify with their name and lose excess concurrent links with `ErrExcessLink`.
+- Session state CAS rules: `stateRouting` -> `stateOpen` on accepted `Response`, `stateRouting` -> `stateClosed` on rejection, `stateOpen` -> `stateMigrating` only in `migrator.Begin`; `Close` stores `stateClosed` unconditionally.
+- `InputBuffer.Push` is all-or-nothing; overflow returns `ErrBufferOverflow` and writes after `Close` return `ErrBufferClosed`.
+- `Data` payloads are chunked at `maxPayloadSize` (8 KB) by the per-session write callback.
+- Auto-migration requires `minSessionAge` (30 s) or `minSessionBytes` (1 MB); manual migration via `OpMigrateSession` requires the session to be `IsOpen()`.
+- `RelayForAction` grants only when `Actor` equals `ForID`; constraints must be nil or empty.
+- Per-target `NodeLinker` is kept in `LinkPool.linkers` keyed by identity string; `Activate` signals each requested strategy once per call.
+- `LinkPressureDetector` is only attached by `TorLinkStrategy`; other links report `PressureHigh() == false`.

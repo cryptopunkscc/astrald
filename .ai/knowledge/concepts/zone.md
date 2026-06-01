@@ -16,7 +16,13 @@
 
 ## Defaults
 
-* Default zone set: `Device|Virtual`.
-* Apphost removes `Network` from anonymous guests.
-* Anonymous guest means no token or an expired token, mapped to the `Anyone`
-  GuestID.
+* `ZoneDefault = ZoneAll = Device|Virtual|Network`.
+* `NewContext` returns a context with `ZoneDefault`.
+* Apphost calls `ExcludeZone(Network)` for unauthenticated guests.
+* Unauthenticated means no token or an expired token; mapped to `Anyone`.
+
+## Context Helpers
+
+* `WithZone(z)` replaces, `IncludeZone(z)` adds, `ExcludeZone(z)` removes,
+  `LimitZone(z)` intersects.
+* `ctx.Zone().Is(check)` tests that all bits in `check` are set.
