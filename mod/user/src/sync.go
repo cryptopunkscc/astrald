@@ -29,7 +29,7 @@ func (mod *Module) syncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 
 	height, _ := tree.Get[*astral.Uint64](ctx, heightNode)
 	if height != nil {
-		args = opSyncAssetsArgs{Start: int(*height)}
+		args = opSyncAssetsArgs{Start: *height}
 	}
 
 	var q = query.New(ac.Issuer, nodeID, user.OpSyncAssets, args)

@@ -59,7 +59,7 @@ func (pool *LinkPool) AddLink(link *Link) error {
 	pool.mod.Events.Emit(&nodes.LinkCreatedEvent{
 		RemoteIdentity: link.RemoteIdentity(),
 		LinkID:         link.id,
-		LinkCount:      len(linksWithSameIdentity),
+		LinkCount:      astral.Uint32(len(linksWithSameIdentity)),
 	})
 
 	go func() {
@@ -75,7 +75,7 @@ func (pool *LinkPool) AddLink(link *Link) error {
 		pool.mod.Events.Emit(&nodes.LinkClosedEvent{
 			RemoteIdentity: link.RemoteIdentity(),
 			Forced:         false,
-			LinkCount:      astral.Int8(len(remaining)),
+			LinkCount:      astral.Uint8(len(remaining)),
 		})
 
 		pool.mod.log.Info("closed %v-link with %v (%v): %v", dir, link.RemoteIdentity(), netName, link.Err())

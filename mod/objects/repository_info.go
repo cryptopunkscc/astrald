@@ -10,7 +10,7 @@ import (
 type RepositoryInfo struct {
 	Name  astral.String8
 	Label astral.String8
-	Free  astral.Int64
+	Free  astral.Uint64
 }
 
 var _ astral.Object = &RepositoryInfo{}

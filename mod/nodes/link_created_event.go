@@ -10,7 +10,7 @@ import (
 type LinkCreatedEvent struct {
 	RemoteIdentity *astral.Identity
 	LinkID         astral.Nonce
-	LinkCount      int
+	LinkCount      astral.Uint32
 }
 
 func (e LinkCreatedEvent) ObjectType() string { return "mod.nodes.link_created_event" }

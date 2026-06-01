@@ -9,8 +9,8 @@ import (
 )
 
 type opSyncAssetsArgs struct {
-	Start int    `query:"optional"`
-	Out   string `query:"optional"`
+	Start astral.Uint64 `query:"optional"`
+	Out   string        `query:"optional"`
 }
 
 func (mod *Module) OpSyncAssets(ctx *astral.Context, q *routing.IncomingQuery, args opSyncAssetsArgs) (err error) {
@@ -28,7 +28,7 @@ func (mod *Module) OpSyncAssets(ctx *astral.Context, q *routing.IncomingQuery, a
 	var height astral.Uint64
 
 	if len(rows) == 0 {
-		height = astral.Uint64(args.Start)
+		height = args.Start
 	} else {
 		for _, row := range rows {
 			height = max(height, astral.Uint64(row.Height))

@@ -42,7 +42,6 @@ func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 				mod.AddReceiver(r)
 			}
 		}
-
 	}
 
 	return
