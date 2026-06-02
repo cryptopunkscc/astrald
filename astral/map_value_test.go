@@ -7,7 +7,7 @@ import (
 
 type testMap struct {
 	SomeMap   map[Uint8]String8
-	NativeMap map[int]string
+	NativeMap map[uint8]string
 }
 
 func TestMapWithValues(t *testing.T) {
@@ -16,7 +16,7 @@ func TestMapWithValues(t *testing.T) {
 
 	src.SomeMap = make(map[Uint8]String8)
 	src.SomeMap[1] = "hello world"
-	src.NativeMap = make(map[int]string)
+	src.NativeMap = make(map[uint8]string)
 	src.NativeMap[1] = "hello world"
 
 	srcObject := Objectify(&src)

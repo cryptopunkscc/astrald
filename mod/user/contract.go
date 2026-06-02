@@ -21,7 +21,7 @@ func NewNodeContract(issuer, subject *astral.Identity, duration time.Duration) (
 	return &auth.Contract{
 		Issuer:    issuer,
 		Subject:   subject,
-		Permits:   astral.WrapSlice(&permits),
+		Permits:   permits,
 		ExpiresAt: astral.Time(time.Now().Add(duration)),
 	}, nil
 }

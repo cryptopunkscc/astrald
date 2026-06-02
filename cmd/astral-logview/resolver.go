@@ -21,14 +21,19 @@ func newResolver(aliasMap *dir.AliasMap) *resolver {
 		revMap:   make(map[string]string),
 	}
 
-	for k, v := range aliasMap.Aliases {
-		r.revMap[v.String()] = k
+	if aliasMap != nil {
+		for k, id := range aliasMap.Aliases {
+			r.revMap[id.String()] = k
+		}
 	}
 
 	return r
 }
 
 func (r resolver) ResolveIdentity(s string) (*astral.Identity, error) {
+	if r.aliasMap == nil {
+		return nil, errors.New("resolution failed")
+	}
 	id, ok := r.aliasMap.Aliases[s]
 	if !ok {
 		return nil, errors.New("resolution failed")

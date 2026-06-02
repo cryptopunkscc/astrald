@@ -92,7 +92,7 @@ func (i interfaceValue) ReadFrom(r io.Reader) (n int64, err error) {
 
 	o := New(objectType)
 	if o == nil {
-		return n, NewErrBlueprintNotFound(objectType)
+		return n, fmt.Errorf("%w: %s", ErrBlueprintNotFound, objectType)
 	}
 
 	if !reflect.ValueOf(o).CanConvert(i.Type()) {
@@ -154,7 +154,7 @@ func (i interfaceValue) UnmarshalJSON(data []byte) error {
 
 	o := New(j.Type)
 	if o == nil {
-		return NewErrBlueprintNotFound(j.Type)
+		return fmt.Errorf("%w: %s", ErrBlueprintNotFound, j.Type)
 	}
 
 	if j.Object != nil {

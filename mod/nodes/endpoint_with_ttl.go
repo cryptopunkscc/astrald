@@ -15,15 +15,15 @@ var _ astral.Object = &EndpointWithTTL{}
 // A nil TTL means the endpoint does not expire.
 type EndpointWithTTL struct {
 	Endpoint exonet.Endpoint
-	TTL      *uint32 // seconds, nil = no expiry
+	TTL      *astral.Uint32 // seconds, nil = no expiry
 }
 
 func NewEndpointWithTTL(endpoint exonet.Endpoint, ttl ...time.Duration) *EndpointWithTTL {
 	re := &EndpointWithTTL{Endpoint: endpoint}
 	if len(ttl) > 0 {
-		var secs uint32 = 0
+		var secs astral.Uint32 = 0
 		for _, d := range ttl {
-			secs += uint32(d.Seconds())
+			secs += astral.Uint32(d.Seconds())
 		}
 
 		re.TTL = &secs

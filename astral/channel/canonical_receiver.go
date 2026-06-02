@@ -33,7 +33,7 @@ func (r CanonicalReceiver) Receive() (object astral.Object, err error) {
 
 	object = astral.New(objectType.String())
 	if object == nil {
-		return nil, astral.NewErrBlueprintNotFound(objectType.String())
+		return nil, fmt.Errorf("%w: %s", astral.ErrBlueprintNotFound, objectType.String())
 	}
 
 	_, err = object.ReadFrom(r.r)

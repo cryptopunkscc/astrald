@@ -3,6 +3,7 @@ package astral
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 )
@@ -160,6 +161,9 @@ func objectify(v reflect.Value) (value, error) {
 		return stringValue{v}, nil
 
 	case reflect.Map:
+		if _, ok := supportedMapKey(v.Type().Key().Kind()); !ok {
+			return nil, fmt.Errorf("unsupported map key kind %s in %s", v.Type().Key().Kind(), v.Type())
+		}
 		return mapValue{v}, nil
 
 	case reflect.Struct:

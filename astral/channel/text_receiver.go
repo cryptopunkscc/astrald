@@ -6,6 +6,7 @@ import (
 	"encoding"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
@@ -46,7 +47,7 @@ func (r TextReceiver) Receive() (obj astral.Object, err error) {
 	} else {
 		obj = astral.New(parsed.Type)
 		if obj == nil {
-			return nil, astral.NewErrBlueprintNotFound(parsed.Type)
+			return nil, fmt.Errorf("%w: %s", astral.ErrBlueprintNotFound, parsed.Type)
 		}
 	}
 

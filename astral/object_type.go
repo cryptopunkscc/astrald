@@ -20,6 +20,10 @@ func (h *ObjectType) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (h ObjectType) String() string { return string(h) }
 
+type ObjectTyper interface {
+	ObjectType() string
+}
+
 func init() {
 	var ot ObjectType
 	_ = Add(&ot)

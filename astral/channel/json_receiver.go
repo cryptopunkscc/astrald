@@ -2,6 +2,7 @@ package channel
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -32,7 +33,7 @@ func (r JSONReceiver) Receive() (object astral.Object, err error) {
 
 	object = astral.New(jsonObj.Type)
 	if object == nil {
-		return nil, astral.NewErrBlueprintNotFound(jsonObj.Type)
+		return nil, fmt.Errorf("%w: %s", astral.ErrBlueprintNotFound, jsonObj.Type)
 	}
 
 	if jsonObj.Object != nil {

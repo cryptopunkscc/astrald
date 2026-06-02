@@ -2,6 +2,7 @@ package tree
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"gorm.io/gorm"
@@ -51,7 +52,7 @@ func (db *DB) getNodeValue(nodeID int, allowUnparsed bool) (object astral.Object
 		if allowUnparsed {
 			return astral.NewUnparsedObject(row.Type, row.Payload), nil
 		}
-		return nil, astral.NewErrBlueprintNotFound(row.Type)
+		return nil, fmt.Errorf("%w: %s", astral.ErrBlueprintNotFound, row.Type)
 	}
 
 	_, err = object.ReadFrom(bytes.NewReader(row.Payload))
