@@ -28,3 +28,6 @@ var ErrBlueprintInvalid = errors.New("invalid blueprint")
 
 // ErrFieldTypeMismatch - RuntimeObject.Set received a value that does not match the field's Spec
 var ErrFieldTypeMismatch = errors.New("field type mismatch")
+
+// ErrDepthExceeded - RuntimeObject encode/decode exceeded MaxBlueprintDepth nested frames
+var ErrDepthExceeded = errors.New("blueprint depth exceeded")

@@ -62,8 +62,8 @@ func (s *runtimeSlice) At(i int) Object {
 func (s *runtimeSlice) Append(o Object) error {
 	elemT := s.ptr.Elem().Type().Elem()
 	rv := reflect.ValueOf(o)
-	if !rv.Type().AssignableTo(elemT) {
-		return fmt.Errorf("runtime_slice: want %s, got %s", elemT, rv.Type())
+	if !rv.IsValid() || !rv.Type().AssignableTo(elemT) {
+		return fmt.Errorf("runtime_slice: want %s, got %T", elemT, o)
 	}
 	s.ptr.Elem().Set(reflect.Append(s.ptr.Elem(), rv))
 	return nil

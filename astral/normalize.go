@@ -2,6 +2,7 @@ package astral
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 )
 
@@ -9,6 +10,14 @@ import (
 // If v is already an Object, v will be returned. If the argument is nil, &astral.Nil{} will be returned.
 func Adapt(v any) Object {
 	if v == nil {
+		return &Nil{}
+	}
+
+	// why: typed-nil pointers (e.g. (*int)(nil)) pass the v == nil check above (interface-nil
+	// only fires when both type and value are nil). Without this guard the type-switch below
+	// dereferences the nil pointer and panics.
+	rv := reflect.ValueOf(v)
+	if (rv.Kind() == reflect.Ptr || rv.Kind() == reflect.Interface) && rv.IsNil() {
 		return &Nil{}
 	}
 
@@ -201,6 +210,15 @@ func normalize(spec Object, v any) (Object, error) {
 			return nil, fmt.Errorf("want *runtimeSlice, got %T", v)
 		}
 		return rs, nil
+	case *ArraySpec:
+		ra, ok := v.(*runtimeArray)
+		if !ok {
+			return nil, fmt.Errorf("want *runtimeArray, got %T", v)
+		}
+		if uint32(ra.Len()) != uint32(s.Length) {
+			return nil, fmt.Errorf("ArraySpec: want length %d, got %d", s.Length, ra.Len())
+		}
+		return ra, nil
 	case *MapSpec:
 		rm, ok := v.(*runtimeMap)
 		if !ok {
@@ -209,13 +227,21 @@ func normalize(spec Object, v any) (Object, error) {
 		return rm, nil
 
 	case *PtrSpec:
+		// why: *Nil is the canonical absent carrier; map Go-nil to it so Get always returns a
+		// non-nil zero value (matches the vision contract).
 		if v == nil {
-			return nil, nil
+			return &Nil{}, nil
+		}
+		if _, ok := v.(*Nil); ok {
+			return &Nil{}, nil
 		}
 
 		obj, ok := v.(Object)
 		if !ok {
 			return nil, fmt.Errorf("PtrSpec.Type=%s: want Object or nil, got %T", s.Type, v)
+		}
+		if obj.ObjectType() != s.Type.String() {
+			return nil, fmt.Errorf("PtrSpec.Type=%s: got %s", s.Type, obj.ObjectType())
 		}
 		return obj, nil
 
@@ -226,6 +252,14 @@ func normalize(spec Object, v any) (Object, error) {
 		obj, ok := v.(Object)
 		if !ok {
 			return nil, fmt.Errorf("ObjectSpec: want Object, got %T", v)
+		}
+		// why: ObjectSpec wire shape is [String8 tag][payload] via Encode/Decode. The runtime
+		// carriers report unregistered tags ("slice", "map", "array"), so writing them succeeds
+		// but the receiver's Decode resolves nil → ErrBlueprintNotFound. Wrap collections in a
+		// named Blueprint or use SliceSpec/MapSpec/ArraySpec directly instead.
+		switch obj.(type) {
+		case *runtimeSlice, *runtimeMap, *runtimeArray:
+			return nil, fmt.Errorf("ObjectSpec: %T has unregistered tag %q; wrap in a named Blueprint", obj, obj.ObjectType())
 		}
 		return obj, nil
 	}

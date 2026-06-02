@@ -99,6 +99,13 @@ func specFromType(t reflect.Type) (Object, error) {
 		}
 		return &SliceSpec{Type: String16(elemName)}, nil
 
+	case reflect.Array:
+		elemName, err := elemTypeName(t.Elem())
+		if err != nil {
+			return nil, fmt.Errorf("array elem: %w", err)
+		}
+		return &ArraySpec{Type: String16(elemName), Length: Uint32(t.Len())}, nil
+
 	case reflect.Map:
 		keyName, err := mapKeyTypeName(t.Key())
 		if err != nil {

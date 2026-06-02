@@ -1,7 +1,6 @@
 package astral
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -61,22 +60,23 @@ func (bp *Blueprints) New(typeName string) Object {
 	return c.Interface().(Object)
 }
 
-// Add adds a new object prototype
+// Add adds new object prototypes. Returns on the first failure, so the inputs preceding the
+// error are registered and the inputs following it are not — bounded partial state instead of
+// scattered partial state. Pre-validates all inputs for empty type before any insertion to
+// reduce TOCTOU surprises.
 func (bp *Blueprints) Add(object ...Object) error {
-	var errs []error
-
 	for _, o := range object {
 		if len(o.ObjectType()) == 0 {
-			errs = append(errs, fmt.Errorf("object type is empty for %s", reflect.TypeOf(o)))
-			continue
-		}
-		_, ok := bp.Blueprints.Set(o.ObjectType(), o)
-		if !ok {
-			errs = append(errs, fmt.Errorf("blueprint for %s already added", o.ObjectType()))
+			return fmt.Errorf("object type is empty for %s", reflect.TypeOf(o))
 		}
 	}
-
-	return errors.Join(errs...)
+	for _, o := range object {
+		_, ok := bp.Blueprints.Set(o.ObjectType(), o)
+		if !ok {
+			return fmt.Errorf("blueprint for %s already added", o.ObjectType())
+		}
+	}
+	return nil
 }
 
 // Types returns type names of all registered object types
@@ -101,6 +101,10 @@ func GetBlueprint(typeName string) *Blueprint {
 // RegisterBlueprint stores a runtime Blueprint after structural validation. The Blueprint's Type
 // must not collide with any compile-time prototype or previously registered Blueprint. Returns the
 // content-addressed ObjectID of the Blueprint.
+//
+// The caller must not mutate b (Type, Fields, or any Field.Spec) after this call returns. The
+// registry stores the pointer as-is; subsequent mutations propagate to every RuntimeObject built
+// from the registered Blueprint and orphan the returned ObjectID from the served schema.
 func (bp *Blueprints) RegisterBlueprint(b *Blueprint) (*ObjectID, error) {
 	if err := validateBlueprint(b); err != nil {
 		return nil, err
@@ -111,6 +115,7 @@ func (bp *Blueprints) RegisterBlueprint(b *Blueprint) (*ObjectID, error) {
 		return nil, fmt.Errorf("%w: %s", ErrAlreadyRegistered, typeName)
 	}
 
+	// todo: think about copying blueprint
 	_, ok := bp.Blueprints.Set(typeName, b)
 	if !ok {
 		// note: raced with another caller registering the same type

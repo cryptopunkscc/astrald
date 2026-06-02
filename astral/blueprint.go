@@ -49,12 +49,26 @@ func validateBlueprint(bp *Blueprint) error {
 	for _, f := range bp.Fields {
 		name := f.Name.String()
 		if name == "" {
-			return fmt.Errorf("%w: empty Field.PrimitiveType", ErrBlueprintInvalid)
+			return fmt.Errorf("%w: empty Field.Name", ErrBlueprintInvalid)
 		}
 		if seen[name] {
 			return fmt.Errorf("%w: duplicate Field %s", ErrBlueprintInvalid, name)
 		}
 		seen[name] = true
+		// why: RefSpec/PtrSpec to self produce unbounded decode recursion that consumes zero
+		// (RefSpec) or one (PtrSpec presence) byte per frame — stack-overflow on a single
+		// instance. SliceSpec/MapSpec/ArraySpec self-reference is bounded by the wire count
+		// and stays within structural recursion limits, so we don't reject those here.
+		switch sp := f.Spec.(type) {
+		case *RefSpec:
+			if sp.Type.String() == bp.Type.String() {
+				return fmt.Errorf("%w: self-referential RefSpec %s", ErrBlueprintInvalid, sp.Type)
+			}
+		case *PtrSpec:
+			if sp.Type.String() == bp.Type.String() {
+				return fmt.Errorf("%w: self-referential PtrSpec %s", ErrBlueprintInvalid, sp.Type)
+			}
+		}
 		if err := validateSpec(f.Spec); err != nil {
 			return err
 		}
@@ -75,6 +89,8 @@ func validateSpec(s Object) error {
 
 	case *SliceSpec:
 		// note: empty Type allowed (heterogeneous slice)
+	case *ArraySpec:
+		// note: empty Type allowed (heterogeneous array); Length is part of the schema.
 	case *MapSpec:
 		if !isAllowedMapKey(v.KeyType.String()) {
 			return fmt.Errorf("%w: MapSpec.KeyType %q not in allowlist", ErrBlueprintInvalid, v.KeyType)

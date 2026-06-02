@@ -147,6 +147,125 @@ func TestRuntimeObject_MapRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRuntimeObject_ArrayRoundTrip(t *testing.T) {
+	bp := NewBlueprint("test.array",
+		Field{Name: "items", Spec: &ArraySpec{Type: "uint32", Length: 3}},
+	)
+
+	src := NewRuntimeObject(bp)
+	ra, err := newRuntimeArray("uint32", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, v := range []uint32{10, 20, 30} {
+		if err := ra.Set(i, NewUint32(v)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := src.Set("items", ra); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if _, err := src.WriteTo(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := NewRuntimeObject(bp)
+	if _, err := dst.ReadFrom(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	got, ok := dst.Get("items").(*runtimeArray)
+	if !ok {
+		t.Fatalf("items: want *runtimeArray, got %T", dst.Get("items"))
+	}
+	if got.Len() != 3 {
+		t.Fatalf("len: want 3, got %d", got.Len())
+	}
+	for i, want := range []uint32{10, 20, 30} {
+		u, ok := got.At(i).(*Uint32)
+		if !ok || *u != Uint32(want) {
+			t.Fatalf("[%d]: want %d, got %#v", i, want, got.At(i))
+		}
+	}
+}
+
+func TestRuntimeObject_ArrayHeterogeneousRoundTrip(t *testing.T) {
+	bp := NewBlueprint("test.array.hetero",
+		Field{Name: "mixed", Spec: &ArraySpec{Type: "", Length: 2}},
+	)
+
+	src := NewRuntimeObject(bp)
+	ra, err := newRuntimeArray("", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ra.Set(0, NewUint32(7)); err != nil {
+		t.Fatal(err)
+	}
+	if err := ra.Set(1, NewString16("hi")); err != nil {
+		t.Fatal(err)
+	}
+	if err := src.Set("mixed", ra); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if _, err := src.WriteTo(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := NewRuntimeObject(bp)
+	if _, err := dst.ReadFrom(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	got, _ := dst.Get("mixed").(*runtimeArray)
+	if got == nil || got.Len() != 2 {
+		t.Fatalf("mixed: want len 2, got %#v", dst.Get("mixed"))
+	}
+	if u, ok := got.At(0).(*Uint32); !ok || *u != 7 {
+		t.Fatalf("[0]: want 7, got %#v", got.At(0))
+	}
+	if s, ok := got.At(1).(*String16); !ok || *s != "hi" {
+		t.Fatalf("[1]: want \"hi\", got %#v", got.At(1))
+	}
+}
+
+func TestRuntimeObject_UnregisteredArrayElement_FailsSymmetrically(t *testing.T) {
+	bp := NewBlueprint("test.array.missing",
+		Field{Name: "a", Spec: &ArraySpec{Type: "definitely-not-registered", Length: 2}},
+	)
+
+	src := NewRuntimeObject(bp)
+	var buf bytes.Buffer
+	_, err := src.WriteTo(&buf)
+	if !errors.Is(err, ErrBlueprintNotFound) {
+		t.Fatalf("encode: want ErrBlueprintNotFound, got %v", err)
+	}
+
+	dst := NewRuntimeObject(bp)
+	_, err = dst.ReadFrom(&buf)
+	if !errors.Is(err, ErrBlueprintNotFound) {
+		t.Fatalf("decode: want ErrBlueprintNotFound, got %v", err)
+	}
+}
+
+func TestRuntimeObject_ArrayLengthMismatch(t *testing.T) {
+	bp := NewBlueprint("test.array.len",
+		Field{Name: "items", Spec: &ArraySpec{Type: "uint32", Length: 3}},
+	)
+	ro := NewRuntimeObject(bp)
+	ra, err := newRuntimeArray("uint32", 2) // wrong length
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ro.Set("items", ra); !errors.Is(err, ErrFieldTypeMismatch) {
+		t.Fatalf("want ErrFieldTypeMismatch, got %v", err)
+	}
+}
+
 func TestRuntimeObject_PtrRoundTrip(t *testing.T) {
 	bp := NewBlueprint("test.ptr",
 		Field{Name: "p", Spec: &PtrSpec{Type: "uint32"}},
@@ -162,8 +281,8 @@ func TestRuntimeObject_PtrRoundTrip(t *testing.T) {
 	if _, err := dstNil.ReadFrom(&nilBuf); err != nil {
 		t.Fatal(err)
 	}
-	if dstNil.Get("p") != nil {
-		t.Fatalf("expected nil, got %#v", dstNil.Get("p"))
+	if _, ok := dstNil.Get("p").(*Nil); !ok {
+		t.Fatalf("expected *Nil, got %#v", dstNil.Get("p"))
 	}
 
 	// non-nil case
@@ -249,8 +368,49 @@ func TestRuntimeObject_NilOnlyForPtrSpec(t *testing.T) {
 	if err := ro.Set("opt", nil); err != nil {
 		t.Fatalf("PtrSpec rejected nil: %v", err)
 	}
-	if ro.Get("opt") != nil {
-		t.Fatalf("opt: want nil, got %#v", ro.Get("opt"))
+	if _, ok := ro.Get("opt").(*Nil); !ok {
+		t.Fatalf("opt: want *Nil, got %#v", ro.Get("opt"))
+	}
+}
+
+// why: pins codec symmetry for SliceSpec/MapSpec whose element type is unregistered. The
+// previous specZero silently substituted a heterogeneous carrier, so WriteTo emitted
+// per-element-tagged bytes while ReadFrom errored — same Blueprint, divergent wire shape.
+func TestRuntimeObject_UnregisteredSliceElement_FailsSymmetrically(t *testing.T) {
+	bp := NewBlueprint("test.slice.missing",
+		Field{Name: "items", Spec: &SliceSpec{Type: "definitely-not-registered"}},
+	)
+
+	src := NewRuntimeObject(bp)
+	var buf bytes.Buffer
+	_, err := src.WriteTo(&buf)
+	if !errors.Is(err, ErrBlueprintNotFound) {
+		t.Fatalf("encode: want ErrBlueprintNotFound, got %v", err)
+	}
+
+	dst := NewRuntimeObject(bp)
+	_, err = dst.ReadFrom(&buf)
+	if !errors.Is(err, ErrBlueprintNotFound) {
+		t.Fatalf("decode: want ErrBlueprintNotFound, got %v", err)
+	}
+}
+
+func TestRuntimeObject_UnregisteredMapValue_FailsSymmetrically(t *testing.T) {
+	bp := NewBlueprint("test.map.missing",
+		Field{Name: "m", Spec: &MapSpec{KeyType: "string16", ValueType: "definitely-not-registered"}},
+	)
+
+	src := NewRuntimeObject(bp)
+	var buf bytes.Buffer
+	_, err := src.WriteTo(&buf)
+	if !errors.Is(err, ErrBlueprintNotFound) {
+		t.Fatalf("encode: want ErrBlueprintNotFound, got %v", err)
+	}
+
+	dst := NewRuntimeObject(bp)
+	_, err = dst.ReadFrom(&buf)
+	if !errors.Is(err, ErrBlueprintNotFound) {
+		t.Fatalf("decode: want ErrBlueprintNotFound, got %v", err)
 	}
 }
 
@@ -278,5 +438,34 @@ func TestRuntimeObject_ContentAddressed(t *testing.T) {
 	}
 	if idA.String() != idB.String() {
 		t.Fatalf("expected identical IDs, got %s vs %s", idA, idB)
+	}
+}
+
+// TestRuntimeObject_DecodeDepthCap_MutualPtr proves the decode depth cap converts
+// a mutually-recursive Blueprint pair (X.PtrSpec→Y, Y.PtrSpec→X) into a typed
+// ErrDepthExceeded instead of a stack overflow when fed a stream that keeps every
+// presence byte non-zero. Registration-time cycle detection is a separate change;
+// this test exercises the decode-side safety net.
+func TestRuntimeObject_DecodeDepthCap_MutualPtr(t *testing.T) {
+	xBP := NewBlueprint("test.depth.x",
+		Field{Name: "y", Spec: &PtrSpec{Type: "test.depth.y"}},
+	)
+	yBP := NewBlueprint("test.depth.y",
+		Field{Name: "x", Spec: &PtrSpec{Type: "test.depth.x"}},
+	)
+	if _, err := RegisterBlueprint(xBP); err != nil {
+		t.Fatalf("register X: %v", err)
+	}
+	if _, err := RegisterBlueprint(yBP); err != nil {
+		t.Fatalf("register Y: %v", err)
+	}
+
+	ro := NewRuntimeObject(xBP)
+	// All-ones stream: every PtrSpec presence byte decodes as "present", forcing the
+	// decoder to recurse into the referenced type indefinitely (until the depth cap).
+	r := bytes.NewReader(bytes.Repeat([]byte{0xFF}, 4*MaxBlueprintDepth))
+	_, err := ro.ReadFrom(r)
+	if !errors.Is(err, ErrDepthExceeded) {
+		t.Fatalf("want ErrDepthExceeded, got %v", err)
 	}
 }
