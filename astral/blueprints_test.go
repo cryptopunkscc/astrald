@@ -94,6 +94,42 @@ func TestRegisterBlueprint_BadMapKey(t *testing.T) {
 	}
 }
 
+func TestRegisterBlueprint_MapKeyAllowlistSweep(t *testing.T) {
+	allowed := map[string]bool{
+		"string16": true,
+		"uint8":    true,
+		"uint16":   true,
+		"uint32":   true,
+		"uint64":   true,
+	}
+	// Cover every primitive plus a few non-primitives to lock the contract.
+	candidates := []string{
+		"string8", "string16", "string32", "string64",
+		"uint8", "uint16", "uint32", "uint64",
+		"bytes8", "bytes16", "bytes32", "bytes64",
+		"bool", "time", "duration", "identity",
+		"int32",
+	}
+	for _, name := range candidates {
+		t.Run(name, func(t *testing.T) {
+			bps := NewBlueprints(DefaultBlueprints())
+			bp := NewBlueprint("test.mapkey."+name,
+				Field{Name: "m", Spec: &MapSpec{KeyType: String16(name), ValueType: "uint32"}},
+			)
+			_, err := bps.RegisterBlueprint(bp)
+			if allowed[name] {
+				if err != nil {
+					t.Fatalf("key %q should be allowed, got %v", name, err)
+				}
+			} else {
+				if !errors.Is(err, ErrBlueprintInvalid) {
+					t.Fatalf("key %q should be rejected, got %v", name, err)
+				}
+			}
+		})
+	}
+}
+
 func TestRegisterBlueprint_EmptyRefType(t *testing.T) {
 	bps := NewBlueprints(DefaultBlueprints())
 	bp := NewBlueprint("test.empty_ref",
@@ -137,6 +173,113 @@ func TestRegisterBlueprint_DuplicateField(t *testing.T) {
 		Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint64"}},
 	)
 
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_NonASCIIFieldName(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.nonascii_field",
+		Field{Name: "café", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_NonASCIIType(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.café",
+		Field{Name: "x", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_TypeAtExactMaxLen(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint(strings.Repeat("a", MaxBlueprintNameLen),
+		Field{Name: "x", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+	if _, err := bps.RegisterBlueprint(bp); err != nil {
+		t.Fatalf("Type of exactly MaxBlueprintNameLen bytes must register, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_EmptyFieldNameInMiddle(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.empty_middle",
+		Field{Name: "a", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+		Field{Name: "", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+		Field{Name: "c", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "empty Field.Name") {
+		t.Fatalf("want error to name the empty field, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_SelfReferentialRefSpec(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.self_ref_ref",
+		Field{Name: "r", Spec: &RefSpec{Type: "test.self_ref_ref"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_SelfReferentialPtrSpec(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.self_ref_ptr",
+		Field{Name: "p", Spec: &PtrSpec{Type: "test.self_ref_ptr"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_BadPrimitiveSweep(t *testing.T) {
+	bad := []string{"int32", "uint128", "byte", "float128", "string"}
+	for _, name := range bad {
+		t.Run(name, func(t *testing.T) {
+			bps := NewBlueprints(DefaultBlueprints())
+			bp := NewBlueprint("test.bad_primitive_"+name,
+				Field{Name: "x", Spec: &PrimitiveSpec{PrimitiveType: String16(name)}},
+			)
+			_, err := bps.RegisterBlueprint(bp)
+			if !errors.Is(err, ErrBlueprintInvalid) {
+				t.Fatalf("want ErrBlueprintInvalid for %q, got %v", name, err)
+			}
+		})
+	}
+}
+
+func TestRegisterBlueprint_ArraySpecZeroLength(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.array_zero",
+		Field{Name: "a", Spec: &ArraySpec{Type: "uint32", Length: 0}},
+	)
+	if _, err := bps.RegisterBlueprint(bp); err != nil {
+		t.Fatalf("zero-length ArraySpec must register, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_EmptyPtrType(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.empty_ptr",
+		Field{Name: "p", Spec: &PtrSpec{Type: ""}},
+	)
 	_, err := bps.RegisterBlueprint(bp)
 	if !errors.Is(err, ErrBlueprintInvalid) {
 		t.Fatalf("want ErrBlueprintInvalid, got %v", err)

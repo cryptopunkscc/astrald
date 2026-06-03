@@ -1,6 +1,7 @@
 package astral
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -95,5 +96,104 @@ func TestRuntimeObject_Set_RejectsOversizedString(t *testing.T) {
 	err = ro.Set("s", strings.Repeat("a", 256))
 	if err == nil {
 		t.Fatal("want error for 256-byte string into string8 field, got nil")
+	}
+}
+
+func TestNormalize_ArraySpecLengthMismatch_Message(t *testing.T) {
+	spec := &ArraySpec{Type: "uint32", Length: 5}
+	ra, err := NewRuntimeArray("uint32", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = normalize(spec, ra)
+	if err == nil {
+		t.Fatal("want error for length mismatch, got nil")
+	}
+	if !strings.Contains(err.Error(), "ArraySpec") {
+		t.Fatalf("want error to name ArraySpec, got %v", err)
+	}
+	for _, want := range []string{"5", "3"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("want error to include %q (expected vs actual length), got %v", want, err)
+		}
+	}
+}
+
+// TestNormalize_RejectsNilForNonNullable — §13.4. RefSpec and ObjectSpec are not
+// nullable; passing nil through normalize must surface a clear "does not accept nil"
+// error so callers can distinguish "no value" from "value mismatch".
+func TestNormalize_RejectsNilForNonNullable(t *testing.T) {
+	t.Run("RefSpec", func(t *testing.T) {
+		spec := &RefSpec{Type: "astral.blueprint"}
+		_, err := normalize(spec, nil)
+		if err == nil {
+			t.Fatal("want error for nil into RefSpec, got nil")
+		}
+		if !strings.Contains(err.Error(), "does not accept nil") {
+			t.Fatalf("want \"does not accept nil\" in error, got %v", err)
+		}
+	})
+	t.Run("ObjectSpec", func(t *testing.T) {
+		spec := &ObjectSpec{}
+		_, err := normalize(spec, nil)
+		if err == nil {
+			t.Fatal("want error for nil into ObjectSpec, got nil")
+		}
+		if !strings.Contains(err.Error(), "does not accept nil") {
+			t.Fatalf("want \"does not accept nil\" in error, got %v", err)
+		}
+	})
+}
+
+// TestRegister_RefSpecTargetUnregistered — §12.1. RefSpec validation only checks that
+// Type is non-empty; it does not verify the target is in the registry today. Pin the
+// behavior: the Blueprint registers, but encoding/decoding a field that uses it surfaces
+// ErrBlueprintNotFound when the target cannot be resolved.
+func TestRegister_RefSpecTargetUnregistered(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+
+	// Registration succeeds — no eager resolution.
+	bp := NewBlueprint("test.ref.unregistered",
+		Field{Name: "r", Spec: &RefSpec{Type: "never.registered.type"}},
+	)
+	if _, err := bps.RegisterBlueprint(bp); err != nil {
+		t.Fatalf("RefSpec with unregistered target should register (no eager check), got %v", err)
+	}
+
+	// But specZero on the field cannot resolve the target, so the RuntimeObject is
+	// created with the field's value=nil. Any encode attempt then fails on the nil-value
+	// guard in writeField.
+	ro := bps.New("test.ref.unregistered").(*RuntimeObject)
+	var buf bytes.Buffer
+	if _, err := ro.WriteTo(&buf); err == nil {
+		t.Fatal("WriteTo with unresolved RefSpec target should error, got nil")
+	}
+}
+
+func TestAdapt_TypedNilPointer(t *testing.T) {
+	cases := []struct {
+		name string
+		v    any
+	}{
+		{"int", (*int)(nil)},
+		{"uint32", (*uint32)(nil)},
+		{"string", (*string)(nil)},
+		{"object", (Object)(nil)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("Adapt panicked on typed-nil %s: %v", c.name, r)
+				}
+			}()
+			got := Adapt(c.v)
+			if got == nil {
+				t.Fatalf("Adapt on typed-nil %s returned nil; want &Nil{}", c.name)
+			}
+			if _, ok := got.(*Nil); !ok {
+				t.Fatalf("Adapt on typed-nil %s: want *Nil, got %T", c.name, got)
+			}
+		})
 	}
 }

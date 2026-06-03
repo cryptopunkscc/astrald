@@ -135,6 +135,40 @@ func TestObjectify_UnsupportedKind(t *testing.T) {
 	}
 }
 
+// TestObjectify_UnsupportedKinds_Sweep — §13.1. Each unsupported Go kind must produce an
+// error on every codec, not a silent zero round-trip.
+func TestObjectify_UnsupportedKinds_Sweep(t *testing.T) {
+	cases := []struct {
+		name string
+		mk   func() any
+	}{
+		{"chan", func() any { var c chan int; return &c }},
+		{"func", func() any { var f func(); return &f }},
+		{"complex64", func() any { var c complex64; return &c }},
+		{"complex128", func() any { var c complex128; return &c }},
+		{"uintptr", func() any { var u uintptr; return &u }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			o := Objectify(c.mk())
+
+			var buf bytes.Buffer
+			if _, err := o.WriteTo(&buf); err == nil {
+				t.Fatalf("WriteTo: want error for %s, got nil", c.name)
+			}
+			if _, err := o.ReadFrom(&buf); err == nil {
+				t.Fatalf("ReadFrom: want error for %s, got nil", c.name)
+			}
+			if _, err := o.MarshalJSON(); err == nil {
+				t.Fatalf("MarshalJSON: want error for %s, got nil", c.name)
+			}
+			if err := o.UnmarshalJSON([]byte("null")); err == nil {
+				t.Fatalf("UnmarshalJSON: want error for %s, got nil", c.name)
+			}
+		})
+	}
+}
+
 func TestObjectify_UnsupportedMapKey(t *testing.T) {
 	src := map[float64]string{1.5: "x"}
 	srcObj := Objectify(&src)

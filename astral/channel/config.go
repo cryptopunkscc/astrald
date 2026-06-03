@@ -12,6 +12,9 @@ type Config struct {
 	allowUnparsed bool
 	lockWrites    bool
 	cancelCh      <-chan struct{}
+	// cancelStop releases resources backing cancelCh (e.g. WithTimeout's
+	// timer). Consumers of cancelCh call it once when they're done reading.
+	cancelStop func()
 }
 
 func WithInputFormat(fmt string) func(*Config) {
@@ -60,10 +63,8 @@ func WithLockedWrites() func(*Config) {
 func WithTimeout(t time.Duration) func(*Config) {
 	return func(config *Config) {
 		ch := make(chan struct{})
-		go func() {
-			time.Sleep(t)
-			close(ch)
-		}()
+		timer := time.AfterFunc(t, func() { close(ch) })
 		config.cancelCh = ch
+		config.cancelStop = func() { timer.Stop() }
 	}
 }

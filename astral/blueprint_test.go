@@ -131,3 +131,52 @@ func TestBlueprint_ContentAddressed(t *testing.T) {
 		t.Fatalf("expected identical IDs, got %s vs %s", idA, idB)
 	}
 }
+
+// TestBlueprint_FieldOrderChangesID — §2.1. Field order is part of wire bytes, so two
+// Blueprints with the same fields in different order must have distinct ObjectIDs. This
+// is the contract schema evolution decisions hinge on.
+func TestBlueprint_FieldOrderChangesID(t *testing.T) {
+	a := NewBlueprint("test.order",
+		Field{Name: "x", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+		Field{Name: "y", Spec: &PrimitiveSpec{PrimitiveType: "uint64"}},
+	)
+	b := NewBlueprint("test.order",
+		Field{Name: "y", Spec: &PrimitiveSpec{PrimitiveType: "uint64"}},
+		Field{Name: "x", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+
+	idA, err := ResolveObjectID(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	idB, err := ResolveObjectID(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if idA.String() == idB.String() {
+		t.Fatalf("expected different IDs for reordered fields, both got %s", idA)
+	}
+}
+
+// TestBlueprint_EncodingIsDeterministic — §2.3. Encoding the same Blueprint twice must
+// yield byte-identical output. Without byte equality content addressing cannot be stable.
+func TestBlueprint_EncodingIsDeterministic(t *testing.T) {
+	bp := NewBlueprint("test.det",
+		Field{Name: "p", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+		Field{Name: "s", Spec: &SliceSpec{Type: "string16"}},
+		Field{Name: "m", Spec: &MapSpec{KeyType: "string16", ValueType: "uint32"}},
+		Field{Name: "r", Spec: &RefSpec{Type: "astral.blueprint"}},
+		Field{Name: "o", Spec: &ObjectSpec{}},
+	)
+
+	var a, b bytes.Buffer
+	if _, err := bp.WriteTo(&a); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bp.WriteTo(&b); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(a.Bytes(), b.Bytes()) {
+		t.Fatalf("non-deterministic encoding: %x vs %x", a.Bytes(), b.Bytes())
+	}
+}

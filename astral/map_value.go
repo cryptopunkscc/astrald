@@ -53,14 +53,7 @@ func (val mapValue) WriteTo(w io.Writer) (n int64, err error) {
 			return
 		}
 
-		// why: MapIndex returns a non-addressable reflect.Value, so objectify cannot find
-		// pointer-receiver methods (e.g. String8 has *String8 ReadFrom/UnmarshalJSON).
-		// Copy into an addressable slot so the value's own codec is selected over the
-		// generic reflection fallback.
-		addrV := reflect.New(val.Type().Elem()).Elem()
-		addrV.Set(val.MapIndex(k))
-
-		o, oerr := objectify(addrV)
+		o, oerr := objectify(addressableMapValue(val.MapIndex(k)))
 		if oerr != nil {
 			err = oerr
 			return
@@ -191,6 +184,16 @@ func readMapKey(r io.Reader, dst reflect.Value, width uint8) (int64, error) {
 	return int64(read), nil
 }
 
+// addressableMapValue copies a non-addressable MapIndex result into an
+// addressable slot so pointer-receiver methods resolve through reflection.
+// Go maps return non-addressable Values from MapIndex (rehashes may move
+// slots), which hides the pointer method set from objectify.
+func addressableMapValue(v reflect.Value) reflect.Value {
+	addr := reflect.New(v.Type()).Elem()
+	addr.Set(v)
+	return addr
+}
+
 func (val mapValue) MarshalJSON() ([]byte, error) {
 	if val.IsNil() {
 		return jsonNull, nil
@@ -212,7 +215,7 @@ func (val mapValue) MarshalJSON() ([]byte, error) {
 			key = strconv.FormatUint(mapKey.Uint(), 10)
 		}
 
-		o, err := objectify(val.MapIndex(mapKey))
+		o, err := objectify(addressableMapValue(val.MapIndex(mapKey)))
 		if err != nil {
 			return nil, err
 		}
