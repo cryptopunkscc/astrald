@@ -778,8 +778,12 @@ func TestRuntimeObject_JSON_NoBlueprintError(t *testing.T) {
 // TestRuntimeObject_DecodeDepthCap_MutualPtr proves the decode depth cap converts
 // a mutually-recursive Blueprint pair (X.PtrSpec→Y, Y.PtrSpec→X) into a typed
 // ErrDepthExceeded instead of a stack overflow when fed a stream that keeps every
-// presence byte non-zero. Registration-time cycle detection is a separate change;
-// this test exercises the decode-side safety net.
+// presence byte non-zero.
+//
+// why direct-Set bypass: RegisterBlueprint now enforces dependency closure, which
+// forbids PtrSpec cycles through the public API. The decode-side safety net is still
+// required for cycles formed via ObjectSpec or heterogeneous containers, and for
+// pre-existing registry states; install the pair directly to exercise it.
 func TestRuntimeObject_DecodeDepthCap_MutualPtr(t *testing.T) {
 	xBP := NewBlueprint("test.depth.x",
 		Field{Name: "y", Spec: &PtrSpec{Type: "test.depth.y"}},
@@ -787,12 +791,8 @@ func TestRuntimeObject_DecodeDepthCap_MutualPtr(t *testing.T) {
 	yBP := NewBlueprint("test.depth.y",
 		Field{Name: "x", Spec: &PtrSpec{Type: "test.depth.x"}},
 	)
-	if _, err := RegisterBlueprint(xBP); err != nil {
-		t.Fatalf("register X: %v", err)
-	}
-	if _, err := RegisterBlueprint(yBP); err != nil {
-		t.Fatalf("register Y: %v", err)
-	}
+	DefaultBlueprints().Blueprints.Set("test.depth.x", xBP)
+	DefaultBlueprints().Blueprints.Set("test.depth.y", yBP)
 
 	ro := mustRuntimeObject(t, xBP)
 	// All-ones stream: every PtrSpec presence byte decodes as "present", forcing the
@@ -818,12 +818,9 @@ func TestRuntimeObject_DepthCap_Boundary(t *testing.T) {
 	yBP := NewBlueprint("test.depth.boundary.y",
 		Field{Name: "x", Spec: &PtrSpec{Type: "test.depth.boundary.x"}},
 	)
-	if _, err := RegisterBlueprint(xBP); err != nil {
-		t.Fatalf("register X: %v", err)
-	}
-	if _, err := RegisterBlueprint(yBP); err != nil {
-		t.Fatalf("register Y: %v", err)
-	}
+	// why: same closure-bypass rationale as TestRuntimeObject_DecodeDepthCap_MutualPtr.
+	DefaultBlueprints().Blueprints.Set("test.depth.boundary.x", xBP)
+	DefaultBlueprints().Blueprints.Set("test.depth.boundary.y", yBP)
 
 	t.Run("at_cap_succeeds", func(t *testing.T) {
 		// MaxBlueprintDepth frames: (MaxBlueprintDepth-1) present bytes, then one absent.

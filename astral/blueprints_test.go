@@ -315,6 +315,95 @@ func TestNew_ReturnsRuntimeObject(t *testing.T) {
 	}
 }
 
+// TestRegisterBlueprint_UnresolvedRef pins the closure invariant: a RefSpec to an
+// unregistered type must be rejected at registration so the codec path never sees a
+// Blueprint with a dangling reference.
+func TestRegisterBlueprint_UnresolvedRef(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.unresolved_ref",
+		Field{Name: "r", Spec: &RefSpec{Type: "never.registered.type"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_UnresolvedPtr(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.unresolved_ptr",
+		Field{Name: "p", Spec: &PtrSpec{Type: "never.registered.type"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_UnresolvedSliceElement(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.unresolved_slice",
+		Field{Name: "s", Spec: &SliceSpec{Type: "never.registered.type"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_UnresolvedArrayElement(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.unresolved_array",
+		Field{Name: "a", Spec: &ArraySpec{Type: "never.registered.type", Length: 2}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_UnresolvedMapValue(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.unresolved_map",
+		Field{Name: "m", Spec: &MapSpec{KeyType: "string16", ValueType: "never.registered.type"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_ResolvedRefSucceeds(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	a := NewBlueprint("test.resolved_a",
+		Field{Name: "x", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+	if _, err := bps.RegisterBlueprint(a); err != nil {
+		t.Fatal(err)
+	}
+	b := NewBlueprint("test.resolved_b",
+		Field{Name: "r", Spec: &RefSpec{Type: "test.resolved_a"}},
+	)
+	if _, err := bps.RegisterBlueprint(b); err != nil {
+		t.Fatalf("ref to registered type should succeed, got %v", err)
+	}
+}
+
+// TestRegisterBlueprint_HeterogeneousContainers pins that empty element/value Type on
+// Slice/Array/Map and ObjectSpec are intentionally open and bypass the closure check.
+func TestRegisterBlueprint_HeterogeneousContainers(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	bp := NewBlueprint("test.heterogeneous",
+		Field{Name: "s", Spec: &SliceSpec{Type: ""}},
+		Field{Name: "a", Spec: &ArraySpec{Type: "", Length: 2}},
+		Field{Name: "m", Spec: &MapSpec{KeyType: "string16", ValueType: ""}},
+		Field{Name: "o", Spec: &ObjectSpec{}},
+	)
+	if _, err := bps.RegisterBlueprint(bp); err != nil {
+		t.Fatalf("heterogeneous containers should register, got %v", err)
+	}
+}
+
 func TestNew_CompileTimeStillReturnsPrototype(t *testing.T) {
 	obj := DefaultBlueprints().New("astral.blueprint")
 	if obj == nil {

@@ -128,6 +128,10 @@ func (bp *Blueprints) RegisterBlueprint(b *Blueprint) (*ObjectID, error) {
 		return nil, fmt.Errorf("%w: %s", ErrAlreadyRegistered, typeName)
 	}
 
+	if err := bp.validateReferences(b); err != nil {
+		return nil, err
+	}
+
 	// todo: think about copying blueprint
 	_, ok := bp.Blueprints.Set(typeName, b)
 	if !ok {
@@ -171,4 +175,40 @@ func (bp *Blueprints) has(typeName string) bool {
 		return bp.Parent.has(typeName)
 	}
 	return false
+}
+
+// validateReferences checks that every type a Blueprint's Fields point at is already
+// registered in the chain. Forbids dangling refs at the registration edge — peers can't
+// squat a name whose decode would then fail with ErrBlueprintNotFound. Also forbids
+// mutual recursion via peer registration by design; the peer knows its type graph and
+// must register prerequisites first.
+func (bp *Blueprints) validateReferences(b *Blueprint) error {
+	for _, f := range b.Fields {
+		ref := referencedType(f.Spec)
+		if ref == "" || bp.has(ref) {
+			continue
+		}
+		return fmt.Errorf("%w: field %q references unregistered type %s",
+			ErrBlueprintInvalid, f.Name, ref)
+	}
+	return nil
+}
+
+// referencedType returns the single external type name a Spec depends on, or "" if the
+// Spec is open (heterogeneous container, ObjectSpec) or self-contained (PrimitiveSpec —
+// already allowlist-checked in validateSpec).
+func referencedType(spec Object) string {
+	switch s := spec.(type) {
+	case *RefSpec:
+		return s.Type.String()
+	case *PtrSpec:
+		return s.Type.String()
+	case *SliceSpec:
+		return s.Type.String()
+	case *ArraySpec:
+		return s.Type.String()
+	case *MapSpec:
+		return s.ValueType.String()
+	}
+	return ""
 }
