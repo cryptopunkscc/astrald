@@ -92,7 +92,7 @@ func (i interfaceValue) ReadFrom(r io.Reader) (n int64, err error) {
 
 	o := New(objectType)
 	if o == nil {
-		return n, fmt.Errorf("%w: %s", ErrBlueprintNotFound, objectType)
+		return n, fmt.Errorf("%w: %w: %s", ErrStreamCorrupted, ErrBlueprintNotFound, objectType)
 	}
 
 	if !reflect.ValueOf(o).CanConvert(i.Type()) {

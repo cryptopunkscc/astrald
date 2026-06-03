@@ -8,7 +8,8 @@ import (
 )
 
 type CanonicalReceiver struct {
-	r io.Reader
+	r         io.Reader
+	streamErr error
 }
 
 func NewCanonicalReceiver(r io.Reader) *CanonicalReceiver {
@@ -17,14 +18,24 @@ func NewCanonicalReceiver(r io.Reader) *CanonicalReceiver {
 
 var _ Receiver = &CanonicalReceiver{}
 
-func (r CanonicalReceiver) Receive() (object astral.Object, err error) {
-	// read the stamp
+// Canonical has no per-object framing: Stamp + tag + payload are read directly from the
+// transport. Any error after Stamp consumption leaves the stream in an indeterminate state,
+// so we latch the first non-nil error and refuse subsequent reads.
+func (r *CanonicalReceiver) Receive() (object astral.Object, err error) {
+	if r.streamErr != nil {
+		return nil, r.streamErr
+	}
+	defer func() {
+		if err != nil {
+			r.streamErr = err
+		}
+	}()
+
 	_, err = (&astral.Stamp{}).ReadFrom(r.r)
 	if err != nil {
 		return nil, fmt.Errorf("error reading stamp: %w", err)
 	}
 
-	// read the object type
 	var objectType astral.ObjectType
 	_, err = objectType.ReadFrom(r.r)
 	if err != nil {
@@ -33,7 +44,7 @@ func (r CanonicalReceiver) Receive() (object astral.Object, err error) {
 
 	object = astral.New(objectType.String())
 	if object == nil {
-		return nil, fmt.Errorf("%w: %s", astral.ErrBlueprintNotFound, objectType.String())
+		return nil, fmt.Errorf("%w: %w: %s", astral.ErrStreamCorrupted, astral.ErrBlueprintNotFound, objectType.String())
 	}
 
 	_, err = object.ReadFrom(r.r)
