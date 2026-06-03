@@ -28,19 +28,6 @@ type fieldValue struct {
 	Value Object
 }
 
-// depthReader / depthWriter carry a recursion depth across nested RuntimeObject.ReadFrom /
-// WriteTo calls. RuntimeObject wraps on entry; nested frames detect the wrapper and reuse it.
-// Primitives that only need io.Reader / io.Writer don't notice the wrapping.
-type depthReader struct {
-	io.Reader
-	depth int
-}
-
-type depthWriter struct {
-	io.Writer
-	depth int
-}
-
 // NewRuntimeObject returns a RuntimeObject whose fields are initialized to the zero value of
 // each Spec. Returns an error if the Blueprint fails validation — guards against duplicate
 // Field.Name or other structural problems that would make field lookup ambiguous.
@@ -84,10 +71,10 @@ func (ro *RuntimeObject) WriteTo(w io.Writer) (n int64, err error) {
 	if !ok {
 		dw = &depthWriter{Writer: w}
 	}
-	dw.depth++
-	defer func() { dw.depth-- }()
-	if dw.depth > MaxBlueprintDepth {
-		return 0, fmt.Errorf("%w: %s", ErrDepthExceeded, ro.bp.Type)
+	err = dw.enter(ro.bp.Type)
+	defer dw.exit()
+	if err != nil {
+		return 0, err
 	}
 
 	for i, f := range ro.bp.Fields {
@@ -109,10 +96,10 @@ func (ro *RuntimeObject) ReadFrom(r io.Reader) (n int64, err error) {
 	if !ok {
 		dr = &depthReader{Reader: r}
 	}
-	dr.depth++
-	defer func() { dr.depth-- }()
-	if dr.depth > MaxBlueprintDepth {
-		return 0, fmt.Errorf("%w: %s", ErrDepthExceeded, ro.bp.Type)
+	err = dr.enter(ro.bp.Type)
+	defer dr.exit()
+	if err != nil {
+		return 0, err
 	}
 
 	for i, f := range ro.bp.Fields {
