@@ -19,10 +19,13 @@ func (String8) ObjectType() string {
 }
 
 func (s String8) WriteTo(w io.Writer) (n int64, err error) {
-	var l = Uint8(len(s))
-	if l > (1<<8)-1 {
-		return 0, errors.New("data too large")
+	// why: Uint8(len(s)) silently truncates to low 8 bits, and a post-cast guard against
+	// (1<<8)-1 is unreachable. Check the untruncated length first; otherwise oversized
+	// payloads desync the stream by writing a truncated length followed by the full bytes.
+	if len(s) > 1<<8-1 {
+		return 0, errors.New("string8: data too large")
 	}
+	var l = Uint8(len(s))
 
 	n, err = l.WriteTo(w)
 	if err != nil {
@@ -84,10 +87,10 @@ func (String16) ObjectType() string {
 }
 
 func (s String16) WriteTo(w io.Writer) (n int64, err error) {
-	var l = Uint16(len(s))
-	if l > (1<<16)-1 {
-		return 0, errors.New("data too large")
+	if len(s) > 1<<16-1 {
+		return 0, errors.New("string16: data too large")
 	}
+	var l = Uint16(len(s))
 
 	n, err = l.WriteTo(w)
 	if err != nil {
@@ -148,10 +151,12 @@ func (String32) ObjectType() string {
 }
 
 func (s String32) WriteTo(w io.Writer) (n int64, err error) {
-	var l = Uint32(len(s))
-	if l > (1<<32)-1 {
-		return 0, errors.New("data too large")
+	// why: uint64 cast keeps the check portable — on 32-bit systems `int` can't hold
+	// the constant 1<<32-1 directly.
+	if uint64(len(s)) > 1<<32-1 {
+		return 0, errors.New("string32: data too large")
 	}
+	var l = Uint32(len(s))
 
 	n, err = l.WriteTo(w)
 	if err != nil {

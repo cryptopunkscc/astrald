@@ -2,6 +2,7 @@ package astral
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -99,6 +100,30 @@ func TestRegisterBlueprint_EmptyRefType(t *testing.T) {
 		Field{Name: "r", Spec: &RefSpec{Type: ""}},
 	)
 
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_RejectsOversizedType(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	longType := strings.Repeat("a", MaxBlueprintNameLen+1)
+	bp := NewBlueprint(longType,
+		Field{Name: "x", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+	_, err := bps.RegisterBlueprint(bp)
+	if !errors.Is(err, ErrBlueprintInvalid) {
+		t.Fatalf("want ErrBlueprintInvalid, got %v", err)
+	}
+}
+
+func TestRegisterBlueprint_RejectsOversizedFieldName(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	longName := strings.Repeat("a", MaxBlueprintNameLen+1)
+	bp := NewBlueprint("test.oversized_field",
+		Field{Name: String16(longName), Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
 	_, err := bps.RegisterBlueprint(bp)
 	if !errors.Is(err, ErrBlueprintInvalid) {
 		t.Fatalf("want ErrBlueprintInvalid, got %v", err)

@@ -8,7 +8,7 @@ import (
 )
 
 func TestRuntimeMap_HeterogeneousStringKeyRoundTrip(t *testing.T) {
-	src, err := newRuntimeMap("string16", "")
+	src, err := NewRuntimeMap("string16", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +24,7 @@ func TestRuntimeMap_HeterogeneousStringKeyRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst, err := newRuntimeMap("string16", "")
+	dst, err := NewRuntimeMap("string16", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestRuntimeMap_HeterogeneousStringKeyRoundTrip(t *testing.T) {
 }
 
 func TestRuntimeMap_HomogeneousStringKeyRoundTrip(t *testing.T) {
-	src, err := newRuntimeMap("string16", "uint32")
+	src, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestRuntimeMap_HomogeneousStringKeyRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst, err := newRuntimeMap("string16", "uint32")
+	dst, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestRuntimeMap_HomogeneousStringKeyRoundTrip(t *testing.T) {
 }
 
 func TestRuntimeMap_HeterogeneousUint16KeyRoundTrip(t *testing.T) {
-	src, err := newRuntimeMap("uint16", "")
+	src, err := NewRuntimeMap("uint16", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestRuntimeMap_HeterogeneousUint16KeyRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst, err := newRuntimeMap("uint16", "")
+	dst, err := NewRuntimeMap("uint16", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestRuntimeMap_HeterogeneousUint16KeyRoundTrip(t *testing.T) {
 }
 
 func TestRuntimeMap_HomogeneousUint16KeyRoundTrip(t *testing.T) {
-	src, err := newRuntimeMap("uint16", "uint32")
+	src, err := NewRuntimeMap("uint16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestRuntimeMap_HomogeneousUint16KeyRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst, err := newRuntimeMap("uint16", "uint32")
+	dst, err := NewRuntimeMap("uint16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,8 +166,8 @@ func TestRuntimeMap_HomogeneousUint16KeyRoundTrip(t *testing.T) {
 }
 
 func TestRuntimeMap_StringKeyDeterministic(t *testing.T) {
-	build := func() *runtimeMap {
-		m, _ := newRuntimeMap("string16", "uint32")
+	build := func() *RuntimeMap {
+		m, _ := NewRuntimeMap("string16", "uint32")
 		_ = m.Set("c", NewUint32(3))
 		_ = m.Set("a", NewUint32(1))
 		_ = m.Set("b", NewUint32(2))
@@ -191,8 +191,8 @@ func TestRuntimeMap_StringKeyDeterministic(t *testing.T) {
 }
 
 func TestRuntimeMap_Uint16KeyDeterministic(t *testing.T) {
-	build := func() *runtimeMap {
-		m, _ := newRuntimeMap("uint16", "uint32")
+	build := func() *RuntimeMap {
+		m, _ := NewRuntimeMap("uint16", "uint32")
 		_ = m.Set(uint64(0x0300), NewUint32(3))
 		_ = m.Set(uint64(0x0100), NewUint32(1))
 		_ = m.Set(uint64(0x0200), NewUint32(2))
@@ -216,7 +216,7 @@ func TestRuntimeMap_Uint16KeyDeterministic(t *testing.T) {
 }
 
 func TestRuntimeMap_KeyWidthOverflow(t *testing.T) {
-	m, err := newRuntimeMap("uint16", "uint32")
+	m, err := NewRuntimeMap("uint16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,18 +226,18 @@ func TestRuntimeMap_KeyWidthOverflow(t *testing.T) {
 }
 
 func TestRuntimeMap_KeyKindRejection(t *testing.T) {
-	sm, _ := newRuntimeMap("string16", "uint32")
+	sm, _ := NewRuntimeMap("string16", "uint32")
 	if err := sm.Set(uint64(1), NewUint32(0)); err == nil {
 		t.Fatal("expected string-key map to reject uint64 key")
 	}
-	im, _ := newRuntimeMap("uint16", "uint32")
+	im, _ := NewRuntimeMap("uint16", "uint32")
 	if err := im.Set("a", NewUint32(0)); err == nil {
 		t.Fatal("expected uint-key map to reject string key")
 	}
 }
 
 func TestRuntimeMap_ValueTypeRejection(t *testing.T) {
-	m, err := newRuntimeMap("string16", "uint32")
+	m, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,16 +247,16 @@ func TestRuntimeMap_ValueTypeRejection(t *testing.T) {
 }
 
 func TestRuntimeMap_UnsupportedKeyType(t *testing.T) {
-	if _, err := newRuntimeMap("int32", ""); err == nil {
+	if _, err := NewRuntimeMap("int32", ""); err == nil {
 		t.Fatal("expected unsupported-key-type error for int32")
 	}
-	if _, err := newRuntimeMap("uint", ""); err == nil {
+	if _, err := NewRuntimeMap("uint", ""); err == nil {
 		t.Fatal("expected unsupported-key-type error for plain uint")
 	}
 }
 
 func TestRuntimeMap_EmptyRoundTrip(t *testing.T) {
-	src, err := newRuntimeMap("string16", "uint32")
+	src, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +265,7 @@ func TestRuntimeMap_EmptyRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst, err := newRuntimeMap("string16", "uint32")
+	dst, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +278,7 @@ func TestRuntimeMap_EmptyRoundTrip(t *testing.T) {
 }
 
 func TestRuntimeMap_JSONRoundTrip_StringKey(t *testing.T) {
-	src, err := newRuntimeMap("string16", "uint32")
+	src, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,7 +290,7 @@ func TestRuntimeMap_JSONRoundTrip_StringKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst, err := newRuntimeMap("string16", "uint32")
+	dst, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +303,7 @@ func TestRuntimeMap_JSONRoundTrip_StringKey(t *testing.T) {
 }
 
 func TestRuntimeMap_JSONRoundTrip_UintKey(t *testing.T) {
-	src, err := newRuntimeMap("uint16", "uint32")
+	src, err := NewRuntimeMap("uint16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestRuntimeMap_JSONRoundTrip_UintKey(t *testing.T) {
 		t.Fatalf("JSON should not contain a width envelope: %s", data)
 	}
 
-	dst, err := newRuntimeMap("uint16", "uint32")
+	dst, err := NewRuntimeMap("uint16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +332,7 @@ func TestRuntimeMap_JSONRoundTrip_UintKey(t *testing.T) {
 }
 
 // TestRuntimeMap_CrossCodecParity_StringHomogeneous pins the wire-format equivalence between a
-// native Go map field walked by Objectify and a runtimeMap built from a MapSpec with the same
+// native Go map field walked by Objectify and a RuntimeMap built from a MapSpec with the same
 // element type. Any drift in either codec breaks this test.
 func TestRuntimeMap_CrossCodecParity_StringHomogeneous(t *testing.T) {
 	native := map[string]*Uint32{"a": NewUint32(1), "bb": NewUint32(2)}
@@ -342,7 +342,7 @@ func TestRuntimeMap_CrossCodecParity_StringHomogeneous(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rm, err := newRuntimeMap("string16", "uint32")
+	rm, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +367,7 @@ func TestRuntimeMap_CrossCodecParity_StringHomogeneous(t *testing.T) {
 // future change to the homogeneous wire shape (nilflag presence, sort order, key length
 // prefixes) breaks this test and must be a conscious decision.
 func TestRuntimeMap_LockedBytes_StringHomogeneous(t *testing.T) {
-	rm, err := newRuntimeMap("string16", "uint32")
+	rm, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}

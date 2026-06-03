@@ -2,9 +2,20 @@ package astral
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 )
+
+func mustRuntimeObject(t *testing.T, bp *Blueprint) *RuntimeObject {
+	t.Helper()
+	ro, err := NewRuntimeObject(bp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ro
+}
 
 func TestRuntimeObject_PrimitiveRoundTrip(t *testing.T) {
 	bp := NewBlueprint("test.prim",
@@ -13,7 +24,7 @@ func TestRuntimeObject_PrimitiveRoundTrip(t *testing.T) {
 		Field{Name: "b", Spec: &PrimitiveSpec{PrimitiveType: "bool"}},
 	)
 
-	src := NewRuntimeObject(bp)
+	src := mustRuntimeObject(t, bp)
 	if err := src.Set("n", uint32(42)); err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +40,7 @@ func TestRuntimeObject_PrimitiveRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	if _, err := dst.ReadFrom(&buf); err != nil {
 		t.Fatal(err)
 	}
@@ -50,8 +61,8 @@ func TestRuntimeObject_SliceRoundTrip(t *testing.T) {
 		Field{Name: "items", Spec: &SliceSpec{Type: "uint32"}},
 	)
 
-	src := NewRuntimeObject(bp)
-	rs, err := newRuntimeSlice("uint32")
+	src := mustRuntimeObject(t, bp)
+	rs, err := NewRuntimeSlice("uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,14 +80,14 @@ func TestRuntimeObject_SliceRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	if _, err := dst.ReadFrom(&buf); err != nil {
 		t.Fatal(err)
 	}
 
-	got, ok := dst.Get("items").(*runtimeSlice)
+	got, ok := dst.Get("items").(*RuntimeSlice)
 	if !ok {
-		t.Fatalf("items: want *runtimeSlice, got %T", dst.Get("items"))
+		t.Fatalf("items: want *RuntimeSlice, got %T", dst.Get("items"))
 	}
 	if got.Len() != 3 {
 		t.Fatalf("len: want 3, got %d", got.Len())
@@ -95,8 +106,8 @@ func TestRuntimeObject_MapRoundTrip(t *testing.T) {
 		Field{Name: "im", Spec: &MapSpec{KeyType: "uint16", ValueType: "uint32"}},
 	)
 
-	src := NewRuntimeObject(bp)
-	sm, err := newRuntimeMap("string16", "uint32")
+	src := mustRuntimeObject(t, bp)
+	sm, err := NewRuntimeMap("string16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +118,7 @@ func TestRuntimeObject_MapRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	im, err := newRuntimeMap("uint16", "uint32")
+	im, err := NewRuntimeMap("uint16", "uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,12 +134,12 @@ func TestRuntimeObject_MapRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	if _, err := dst.ReadFrom(&buf); err != nil {
 		t.Fatal(err)
 	}
 
-	gotSM, ok := dst.Get("m").(*runtimeMap)
+	gotSM, ok := dst.Get("m").(*RuntimeMap)
 	if !ok || gotSM.Len() != 1 {
 		t.Fatalf("string map: want len 1, got %#v", dst.Get("m"))
 	}
@@ -137,7 +148,7 @@ func TestRuntimeObject_MapRoundTrip(t *testing.T) {
 		t.Fatalf("string map[a]: want 1, got %#v", v)
 	}
 
-	gotIM, ok := dst.Get("im").(*runtimeMap)
+	gotIM, ok := dst.Get("im").(*RuntimeMap)
 	if !ok || gotIM.Len() != 1 {
 		t.Fatalf("int map: want len 1, got %#v", dst.Get("im"))
 	}
@@ -152,8 +163,8 @@ func TestRuntimeObject_ArrayRoundTrip(t *testing.T) {
 		Field{Name: "items", Spec: &ArraySpec{Type: "uint32", Length: 3}},
 	)
 
-	src := NewRuntimeObject(bp)
-	ra, err := newRuntimeArray("uint32", 3)
+	src := mustRuntimeObject(t, bp)
+	ra, err := NewRuntimeArray("uint32", 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,14 +182,14 @@ func TestRuntimeObject_ArrayRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	if _, err := dst.ReadFrom(&buf); err != nil {
 		t.Fatal(err)
 	}
 
-	got, ok := dst.Get("items").(*runtimeArray)
+	got, ok := dst.Get("items").(*RuntimeArray)
 	if !ok {
-		t.Fatalf("items: want *runtimeArray, got %T", dst.Get("items"))
+		t.Fatalf("items: want *RuntimeArray, got %T", dst.Get("items"))
 	}
 	if got.Len() != 3 {
 		t.Fatalf("len: want 3, got %d", got.Len())
@@ -196,8 +207,8 @@ func TestRuntimeObject_ArrayHeterogeneousRoundTrip(t *testing.T) {
 		Field{Name: "mixed", Spec: &ArraySpec{Type: "", Length: 2}},
 	)
 
-	src := NewRuntimeObject(bp)
-	ra, err := newRuntimeArray("", 2)
+	src := mustRuntimeObject(t, bp)
+	ra, err := NewRuntimeArray("", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,12 +227,12 @@ func TestRuntimeObject_ArrayHeterogeneousRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	if _, err := dst.ReadFrom(&buf); err != nil {
 		t.Fatal(err)
 	}
 
-	got, _ := dst.Get("mixed").(*runtimeArray)
+	got, _ := dst.Get("mixed").(*RuntimeArray)
 	if got == nil || got.Len() != 2 {
 		t.Fatalf("mixed: want len 2, got %#v", dst.Get("mixed"))
 	}
@@ -238,14 +249,14 @@ func TestRuntimeObject_UnregisteredArrayElement_FailsSymmetrically(t *testing.T)
 		Field{Name: "a", Spec: &ArraySpec{Type: "definitely-not-registered", Length: 2}},
 	)
 
-	src := NewRuntimeObject(bp)
+	src := mustRuntimeObject(t, bp)
 	var buf bytes.Buffer
 	_, err := src.WriteTo(&buf)
 	if !errors.Is(err, ErrBlueprintNotFound) {
 		t.Fatalf("encode: want ErrBlueprintNotFound, got %v", err)
 	}
 
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	_, err = dst.ReadFrom(&buf)
 	if !errors.Is(err, ErrBlueprintNotFound) {
 		t.Fatalf("decode: want ErrBlueprintNotFound, got %v", err)
@@ -256,8 +267,8 @@ func TestRuntimeObject_ArrayLengthMismatch(t *testing.T) {
 	bp := NewBlueprint("test.array.len",
 		Field{Name: "items", Spec: &ArraySpec{Type: "uint32", Length: 3}},
 	)
-	ro := NewRuntimeObject(bp)
-	ra, err := newRuntimeArray("uint32", 2) // wrong length
+	ro := mustRuntimeObject(t, bp)
+	ra, err := NewRuntimeArray("uint32", 2) // wrong length
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,12 +283,12 @@ func TestRuntimeObject_PtrRoundTrip(t *testing.T) {
 	)
 
 	// nil case
-	srcNil := NewRuntimeObject(bp)
+	srcNil := mustRuntimeObject(t, bp)
 	var nilBuf bytes.Buffer
 	if _, err := srcNil.WriteTo(&nilBuf); err != nil {
 		t.Fatal(err)
 	}
-	dstNil := NewRuntimeObject(bp)
+	dstNil := mustRuntimeObject(t, bp)
 	if _, err := dstNil.ReadFrom(&nilBuf); err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +297,7 @@ func TestRuntimeObject_PtrRoundTrip(t *testing.T) {
 	}
 
 	// non-nil case
-	src := NewRuntimeObject(bp)
+	src := mustRuntimeObject(t, bp)
 	if err := src.Set("p", NewUint32(7)); err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +305,7 @@ func TestRuntimeObject_PtrRoundTrip(t *testing.T) {
 	if _, err := src.WriteTo(&buf); err != nil {
 		t.Fatal(err)
 	}
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	if _, err := dst.ReadFrom(&buf); err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +320,7 @@ func TestRuntimeObject_ObjectSpecRoundTrip(t *testing.T) {
 		Field{Name: "any", Spec: &ObjectSpec{}},
 	)
 
-	src := NewRuntimeObject(bp)
+	src := mustRuntimeObject(t, bp)
 	if err := src.Set("any", NewString16("hi")); err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +330,7 @@ func TestRuntimeObject_ObjectSpecRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	if _, err := dst.ReadFrom(&buf); err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +345,7 @@ func TestRuntimeObject_SetRejectsMismatch(t *testing.T) {
 	bp := NewBlueprint("test.reject",
 		Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
 	)
-	ro := NewRuntimeObject(bp)
+	ro := mustRuntimeObject(t, bp)
 
 	// width mismatch
 	err := ro.Set("n", uint16(1))
@@ -360,7 +371,7 @@ func TestRuntimeObject_NilOnlyForPtrSpec(t *testing.T) {
 		Field{Name: "prim", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
 		Field{Name: "opt", Spec: &PtrSpec{Type: "uint32"}},
 	)
-	ro := NewRuntimeObject(bp)
+	ro := mustRuntimeObject(t, bp)
 
 	if err := ro.Set("prim", nil); !errors.Is(err, ErrFieldTypeMismatch) {
 		t.Fatalf("primitive accepted nil: %v", err)
@@ -381,14 +392,14 @@ func TestRuntimeObject_UnregisteredSliceElement_FailsSymmetrically(t *testing.T)
 		Field{Name: "items", Spec: &SliceSpec{Type: "definitely-not-registered"}},
 	)
 
-	src := NewRuntimeObject(bp)
+	src := mustRuntimeObject(t, bp)
 	var buf bytes.Buffer
 	_, err := src.WriteTo(&buf)
 	if !errors.Is(err, ErrBlueprintNotFound) {
 		t.Fatalf("encode: want ErrBlueprintNotFound, got %v", err)
 	}
 
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	_, err = dst.ReadFrom(&buf)
 	if !errors.Is(err, ErrBlueprintNotFound) {
 		t.Fatalf("decode: want ErrBlueprintNotFound, got %v", err)
@@ -400,14 +411,14 @@ func TestRuntimeObject_UnregisteredMapValue_FailsSymmetrically(t *testing.T) {
 		Field{Name: "m", Spec: &MapSpec{KeyType: "string16", ValueType: "definitely-not-registered"}},
 	)
 
-	src := NewRuntimeObject(bp)
+	src := mustRuntimeObject(t, bp)
 	var buf bytes.Buffer
 	_, err := src.WriteTo(&buf)
 	if !errors.Is(err, ErrBlueprintNotFound) {
 		t.Fatalf("encode: want ErrBlueprintNotFound, got %v", err)
 	}
 
-	dst := NewRuntimeObject(bp)
+	dst := mustRuntimeObject(t, bp)
 	_, err = dst.ReadFrom(&buf)
 	if !errors.Is(err, ErrBlueprintNotFound) {
 		t.Fatalf("decode: want ErrBlueprintNotFound, got %v", err)
@@ -420,11 +431,11 @@ func TestRuntimeObject_ContentAddressed(t *testing.T) {
 		Field{Name: "s", Spec: &PrimitiveSpec{PrimitiveType: "string16"}},
 	)
 
-	a := NewRuntimeObject(bp)
+	a := mustRuntimeObject(t, bp)
 	_ = a.Set("n", uint32(7))
 	_ = a.Set("s", "x")
 
-	b := NewRuntimeObject(bp)
+	b := mustRuntimeObject(t, bp)
 	_ = b.Set("n", uint32(7))
 	_ = b.Set("s", "x")
 
@@ -438,6 +449,226 @@ func TestRuntimeObject_ContentAddressed(t *testing.T) {
 	}
 	if idA.String() != idB.String() {
 		t.Fatalf("expected identical IDs, got %s vs %s", idA, idB)
+	}
+}
+
+func TestRuntimeObject_JSON_PrimitiveRoundTrip(t *testing.T) {
+	bp := NewBlueprint("test.json.prim",
+		Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+		Field{Name: "s", Spec: &PrimitiveSpec{PrimitiveType: "string16"}},
+		Field{Name: "b", Spec: &PrimitiveSpec{PrimitiveType: "bool"}},
+	)
+
+	src := mustRuntimeObject(t, bp)
+	_ = src.Set("n", uint32(42))
+	_ = src.Set("s", "hello")
+	_ = src.Set("b", true)
+
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dst := mustRuntimeObject(t, bp)
+	err = json.Unmarshal(data, dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if u, ok := dst.Get("n").(*Uint32); !ok || *u != 42 {
+		t.Fatalf("field n: want 42, got %#v", dst.Get("n"))
+	}
+	if s, ok := dst.Get("s").(*String16); !ok || *s != "hello" {
+		t.Fatalf("field s: want \"hello\", got %#v", dst.Get("s"))
+	}
+	if b, ok := dst.Get("b").(*Bool); !ok || *b != true {
+		t.Fatalf("field b: want true, got %#v", dst.Get("b"))
+	}
+}
+
+func TestRuntimeObject_JSON_PtrSpec_NullVsValue(t *testing.T) {
+	bp := NewBlueprint("test.json.ptr",
+		Field{Name: "p", Spec: &PtrSpec{Type: "uint32"}},
+	)
+
+	// nil case: spec-zero is &Nil{}, marshals to null, round-trips back to *Nil
+	srcNil := mustRuntimeObject(t, bp)
+	dataNil, err := json.Marshal(srcNil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(dataNil), `"p":null`) {
+		t.Fatalf("nil PtrSpec: want \"p\":null, got %s", dataNil)
+	}
+	dstNil := mustRuntimeObject(t, bp)
+	if err := json.Unmarshal(dataNil, dstNil); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := dstNil.Get("p").(*Nil); !ok {
+		t.Fatalf("nil round-trip: want *Nil, got %#v", dstNil.Get("p"))
+	}
+
+	// non-nil case
+	src := mustRuntimeObject(t, bp)
+	_ = src.Set("p", NewUint32(7))
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dst := mustRuntimeObject(t, bp)
+	if err := json.Unmarshal(data, dst); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := dst.Get("p").(*Uint32)
+	if !ok || *got != 7 {
+		t.Fatalf("value round-trip: want 7, got %#v", dst.Get("p"))
+	}
+}
+
+func TestRuntimeObject_JSON_SliceRoundTrip(t *testing.T) {
+	bp := NewBlueprint("test.json.slice",
+		Field{Name: "items", Spec: &SliceSpec{Type: "uint32"}},
+	)
+
+	src := mustRuntimeObject(t, bp)
+	rs, err := NewRuntimeSlice("uint32")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range []uint32{1, 2, 3} {
+		_ = rs.Append(NewUint32(v))
+	}
+	_ = src.Set("items", rs)
+
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dst := mustRuntimeObject(t, bp)
+	if err := json.Unmarshal(data, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	got, ok := dst.Get("items").(*RuntimeSlice)
+	if !ok || got.Len() != 3 {
+		t.Fatalf("items: want len 3, got %#v", dst.Get("items"))
+	}
+	for i, want := range []uint32{1, 2, 3} {
+		u, _ := got.At(i).(*Uint32)
+		if u == nil || *u != Uint32(want) {
+			t.Fatalf("[%d]: want %d, got %#v", i, want, got.At(i))
+		}
+	}
+}
+
+func TestRuntimeObject_JSON_MapRoundTrip(t *testing.T) {
+	bp := NewBlueprint("test.json.map",
+		Field{Name: "m", Spec: &MapSpec{KeyType: "string16", ValueType: "uint32"}},
+	)
+
+	src := mustRuntimeObject(t, bp)
+	sm, err := NewRuntimeMap("string16", "uint32")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = sm.Set("a", NewUint32(10))
+	_ = sm.Set("b", NewUint32(20))
+	_ = src.Set("m", sm)
+
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dst := mustRuntimeObject(t, bp)
+	if err := json.Unmarshal(data, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	got, ok := dst.Get("m").(*RuntimeMap)
+	if !ok || got.Len() != 2 {
+		t.Fatalf("m: want len 2, got %#v", dst.Get("m"))
+	}
+	for k, want := range map[string]uint32{"a": 10, "b": 20} {
+		v, _ := got.Get(k)
+		u, _ := v.(*Uint32)
+		if u == nil || *u != Uint32(want) {
+			t.Fatalf("m[%q]: want %d, got %#v", k, want, v)
+		}
+	}
+}
+
+func TestRuntimeObject_JSON_ObjectSpec_Polymorphic(t *testing.T) {
+	bp := NewBlueprint("test.json.obj",
+		Field{Name: "any", Spec: &ObjectSpec{}},
+	)
+
+	src := mustRuntimeObject(t, bp)
+	_ = src.Set("any", NewString16("hi"))
+
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// wire shape: {"any":{"Type":"string16","Object":"hi"}}
+	if !strings.Contains(string(data), `"Type":"string16"`) {
+		t.Fatalf("missing Type tag on ObjectSpec field: %s", data)
+	}
+
+	dst := mustRuntimeObject(t, bp)
+	if err := json.Unmarshal(data, dst); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := dst.Get("any").(*String16)
+	if !ok || *got != "hi" {
+		t.Fatalf("any: want \"hi\" String16, got %#v", dst.Get("any"))
+	}
+}
+
+func TestRuntimeObject_JSON_ObjectSpec_NullIsNil(t *testing.T) {
+	bp := NewBlueprint("test.json.obj.null",
+		Field{Name: "any", Spec: &ObjectSpec{}},
+	)
+	src := mustRuntimeObject(t, bp) // spec-zero leaves any=&Nil{}
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"any":null`) {
+		t.Fatalf("want \"any\":null, got %s", data)
+	}
+	dst := mustRuntimeObject(t, bp)
+	if err := json.Unmarshal(data, dst); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := dst.Get("any").(*Nil); !ok {
+		t.Fatalf("want *Nil, got %#v", dst.Get("any"))
+	}
+}
+
+func TestRuntimeObject_JSON_MissingFieldsLeaveSpecZero(t *testing.T) {
+	bp := NewBlueprint("test.json.missing",
+		Field{Name: "kept", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+		Field{Name: "dropped", Spec: &PrimitiveSpec{PrimitiveType: "string16"}},
+	)
+	dst := mustRuntimeObject(t, bp)
+	if err := json.Unmarshal([]byte(`{"kept":7}`), dst); err != nil {
+		t.Fatal(err)
+	}
+	if u, _ := dst.Get("kept").(*Uint32); u == nil || *u != 7 {
+		t.Fatalf("kept: want 7, got %#v", dst.Get("kept"))
+	}
+	if s, _ := dst.Get("dropped").(*String16); s == nil || *s != "" {
+		t.Fatalf("dropped: want spec-zero String16, got %#v", dst.Get("dropped"))
+	}
+}
+
+func TestRuntimeObject_JSON_NoBlueprintError(t *testing.T) {
+	ro := &RuntimeObject{} // bp == nil
+	err := json.Unmarshal([]byte(`{"x":1}`), ro)
+	if err == nil || !strings.Contains(err.Error(), "no Blueprint") {
+		t.Fatalf("want no-Blueprint error, got %v", err)
 	}
 }
 
@@ -460,7 +691,7 @@ func TestRuntimeObject_DecodeDepthCap_MutualPtr(t *testing.T) {
 		t.Fatalf("register Y: %v", err)
 	}
 
-	ro := NewRuntimeObject(xBP)
+	ro := mustRuntimeObject(t, xBP)
 	// All-ones stream: every PtrSpec presence byte decodes as "present", forcing the
 	// decoder to recurse into the referenced type indefinitely (until the depth cap).
 	r := bytes.NewReader(bytes.Repeat([]byte{0xFF}, 4*MaxBlueprintDepth))

@@ -16,10 +16,12 @@ func (Bytes8) ObjectType() string {
 }
 
 func (b Bytes8) WriteTo(w io.Writer) (n int64, err error) {
-	var l = Uint8(len(b))
-	if l > (1<<8)-1 {
-		return 0, errors.New("data too large")
+	// why: Uint8(len(b)) silently truncates to low 8 bits, and the post-cast guard
+	// against (1<<8)-1 is unreachable. Same shape as String8.WriteTo.
+	if len(b) > 1<<8-1 {
+		return 0, errors.New("bytes8: data too large")
 	}
+	var l = Uint8(len(b))
 
 	n, err = l.WriteTo(w)
 	if err != nil {
@@ -86,10 +88,10 @@ func (Bytes16) ObjectType() string {
 }
 
 func (b Bytes16) WriteTo(w io.Writer) (n int64, err error) {
-	var l = Uint16(len(b))
-	if l > (1<<16)-1 {
-		return 0, errors.New("data too large")
+	if len(b) > 1<<16-1 {
+		return 0, errors.New("bytes16: data too large")
 	}
+	var l = Uint16(len(b))
 
 	n, err = l.WriteTo(w)
 	if err != nil {
@@ -156,10 +158,10 @@ func (Bytes32) ObjectType() string {
 }
 
 func (b Bytes32) WriteTo(w io.Writer) (n int64, err error) {
-	var l = Uint32(len(b))
-	if l > (1<<32)-1 {
-		return 0, errors.New("data too large")
+	if uint64(len(b)) > 1<<32-1 {
+		return 0, errors.New("bytes32: data too large")
 	}
+	var l = Uint32(len(b))
 
 	n, err = l.WriteTo(w)
 	if err != nil {

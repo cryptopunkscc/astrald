@@ -6,22 +6,22 @@ import (
 	"reflect"
 )
 
-var _ Object = (*runtimeMap)(nil)
+var _ Object = (*RuntimeMap)(nil)
 
-// runtimeMap is the carrier for MapSpec fields in runtime Blueprints. It owns a typed native
+// RuntimeMap is the carrier for MapSpec fields in runtime Blueprints. It owns a typed native
 // map (heterogeneous map[K]Object or homogeneous map[K]*T) and delegates encoding to the
 // reflective mapValue codec for byte-identical parity with Objectify on a native map field.
-type runtimeMap struct {
+type RuntimeMap struct {
 	ptr reflect.Value // *map[keyType]elemType, always addressable
 }
 
 // astral:blueprint-ignore
-func (*runtimeMap) ObjectType() string { return "map" }
+func (*RuntimeMap) ObjectType() string { return "map" }
 
-// newRuntimeMap returns a runtimeMap whose key and element types are determined from a
+// NewRuntimeMap returns a RuntimeMap whose key and element types are determined from a
 // MapSpec. An empty valueType means heterogeneous (element type = Object interface).
 // Returns an error if keyType is unsupported or if valueType is non-empty and unregistered.
-func newRuntimeMap(keyType, valueType string) (*runtimeMap, error) {
+func NewRuntimeMap(keyType, valueType string) (*RuntimeMap, error) {
 	kt, err := resolveKeyType(keyType)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func newRuntimeMap(keyType, valueType string) (*runtimeMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &runtimeMap{ptr: reflect.New(reflect.MapOf(kt, et))}, nil
+	return &RuntimeMap{ptr: reflect.New(reflect.MapOf(kt, et))}, nil
 }
 
 // resolveKeyType maps a MapSpec.KeyType name to its Go reflect.Type. The supported set mirrors
@@ -51,26 +51,26 @@ func resolveKeyType(name string) (reflect.Type, error) {
 	return nil, fmt.Errorf("runtime_map: unsupported key type %q", name)
 }
 
-func (m *runtimeMap) WriteTo(w io.Writer) (int64, error) {
+func (m *RuntimeMap) WriteTo(w io.Writer) (int64, error) {
 	return mapValue{Value: m.ptr.Elem()}.WriteTo(w)
 }
 
-func (m *runtimeMap) ReadFrom(r io.Reader) (int64, error) {
+func (m *RuntimeMap) ReadFrom(r io.Reader) (int64, error) {
 	return mapValue{Value: m.ptr.Elem()}.ReadFrom(r)
 }
 
-func (m *runtimeMap) MarshalJSON() ([]byte, error) {
+func (m *RuntimeMap) MarshalJSON() ([]byte, error) {
 	return mapValue{Value: m.ptr.Elem()}.MarshalJSON()
 }
 
-func (m *runtimeMap) UnmarshalJSON(data []byte) error {
+func (m *RuntimeMap) UnmarshalJSON(data []byte) error {
 	return mapValue{Value: m.ptr.Elem()}.UnmarshalJSON(data)
 }
 
 // Set assigns value under key. key must be string for string-keyed maps or uint64 for uintN-keyed
 // maps; any other Go type is rejected. For narrow uint widths the key is range-checked. value's
 // runtime type must be assignable to the carrier's element type.
-func (m *runtimeMap) Set(key any, value Object) error {
+func (m *RuntimeMap) Set(key any, value Object) error {
 	keyT := m.ptr.Elem().Type().Key()
 	kv, err := convertMapKey(keyT, key)
 	if err != nil {
@@ -89,7 +89,7 @@ func (m *runtimeMap) Set(key any, value Object) error {
 }
 
 // Get returns the value stored under key. key follows the same kind contract as Set.
-func (m *runtimeMap) Get(key any) (Object, bool) {
+func (m *RuntimeMap) Get(key any) (Object, bool) {
 	if m.ptr.Elem().IsNil() {
 		return nil, false
 	}
@@ -105,13 +105,13 @@ func (m *runtimeMap) Get(key any) (Object, bool) {
 	return v.Interface().(Object), true
 }
 
-func (m *runtimeMap) Len() int {
+func (m *RuntimeMap) Len() int {
 	return m.ptr.Elem().Len()
 }
 
 // Each iterates over entries in unspecified order. The key is passed as string for string-keyed
 // maps or uint64 for uintN-keyed maps. Stop iteration by returning a non-nil error.
-func (m *runtimeMap) Each(fn func(key any, value Object) error) error {
+func (m *RuntimeMap) Each(fn func(key any, value Object) error) error {
 	if m.ptr.Elem().IsNil() {
 		return nil
 	}

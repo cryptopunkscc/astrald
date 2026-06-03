@@ -1,6 +1,9 @@
 package astral
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -38,11 +41,15 @@ type depthWriter struct {
 	depth int
 }
 
-// NewRuntimeObject returns a RuntimeObject whose fields are initialized to the zero value of each
-// Spec.
-func NewRuntimeObject(bp *Blueprint) *RuntimeObject {
+// NewRuntimeObject returns a RuntimeObject whose fields are initialized to the zero value of
+// each Spec. Returns an error if the Blueprint fails validation — guards against duplicate
+// Field.Name or other structural problems that would make field lookup ambiguous.
+func NewRuntimeObject(bp *Blueprint) (*RuntimeObject, error) {
 	if bp == nil {
-		return &RuntimeObject{}
+		return &RuntimeObject{}, nil
+	}
+	if err := validateBlueprint(bp); err != nil {
+		return nil, err
 	}
 	ro := &RuntimeObject{
 		bp:     bp,
@@ -54,11 +61,11 @@ func NewRuntimeObject(bp *Blueprint) *RuntimeObject {
 		ro.fields = append(ro.fields, fieldValue{Name: name, Value: specZero(f.Spec)})
 		ro.index[name] = i
 	}
-	return ro
+	return ro, nil
 }
 
 // GetRuntimeObject returns a fresh RuntimeObject backed by this Blueprint.
-func (bp *Blueprint) GetRuntimeObject() *RuntimeObject { return NewRuntimeObject(bp) }
+func (bp *Blueprint) GetRuntimeObject() (*RuntimeObject, error) { return NewRuntimeObject(bp) }
 
 // astral:blueprint-ignore
 func (ro *RuntimeObject) ObjectType() string {
@@ -165,21 +172,21 @@ func specZero(spec Object) Object {
 		// why: no heterogeneous fallback when the element type is unregistered — would silently
 		// swap wire shape and let encode succeed against bytes decode can't read. Codec layer
 		// re-resolves and fails identically on both ends.
-		sl, err := newRuntimeSlice(s.Type.String())
+		sl, err := NewRuntimeSlice(s.Type.String())
 		if err != nil {
 			return nil
 		}
 		return sl
 	case *ArraySpec:
 		// why: same symmetry argument as SliceSpec.
-		ra, err := newRuntimeArray(s.Type.String(), uint32(s.Length))
+		ra, err := NewRuntimeArray(s.Type.String(), uint32(s.Length))
 		if err != nil {
 			return nil
 		}
 		return ra
 	case *MapSpec:
 		// why: no heterogeneous fallback for unregistered ValueType — mirrors SliceSpec above.
-		rm, err := newRuntimeMap(s.KeyType.String(), s.ValueType.String())
+		rm, err := NewRuntimeMap(s.KeyType.String(), s.ValueType.String())
 		if err != nil {
 			return nil
 		}
@@ -208,7 +215,7 @@ func writeField(w io.Writer, spec Object, value Object) (int64, error) {
 	case *SliceSpec:
 		// why: re-resolve so encode fails with the same ErrBlueprintNotFound that decode
 		// would — keeps the codec symmetric when the element type is unregistered.
-		if _, err := newRuntimeSlice(s.Type.String()); err != nil {
+		if _, err := NewRuntimeSlice(s.Type.String()); err != nil {
 			return 0, err
 		}
 		if value == nil {
@@ -218,7 +225,7 @@ func writeField(w io.Writer, spec Object, value Object) (int64, error) {
 
 	case *ArraySpec:
 		// why: same symmetry argument as SliceSpec above.
-		if _, err := newRuntimeArray(s.Type.String(), uint32(s.Length)); err != nil {
+		if _, err := NewRuntimeArray(s.Type.String(), uint32(s.Length)); err != nil {
 			return 0, err
 		}
 		if value == nil {
@@ -228,7 +235,7 @@ func writeField(w io.Writer, spec Object, value Object) (int64, error) {
 
 	case *MapSpec:
 		// why: same symmetry argument as SliceSpec above.
-		if _, err := newRuntimeMap(s.KeyType.String(), s.ValueType.String()); err != nil {
+		if _, err := NewRuntimeMap(s.KeyType.String(), s.ValueType.String()); err != nil {
 			return 0, err
 		}
 		if value == nil {
@@ -257,6 +264,179 @@ func writeField(w io.Writer, spec Object, value Object) (int64, error) {
 	return 0, fmt.Errorf("unknown spec %T", spec)
 }
 
+// MarshalJSON serializes the RuntimeObject as a JSON object keyed by field name. The walk
+// mirrors WriteTo's field order; each value's JSON shape is determined by its Spec. A nil
+// Blueprint marshals to null.
+func (ro *RuntimeObject) MarshalJSON() ([]byte, error) {
+	if ro.bp == nil {
+		return jsonNull, nil
+	}
+	out := make(map[string]json.RawMessage, len(ro.bp.Fields))
+	for i, f := range ro.bp.Fields {
+		raw, err := marshalFieldJSON(f.Spec, ro.fields[i].Value)
+		if err != nil {
+			return nil, fmt.Errorf("%s: field %q: %w", ro.bp.Type, f.Name, err)
+		}
+		out[f.Name.String()] = raw
+	}
+	return json.Marshal(out)
+}
+
+// UnmarshalJSON populates fields from a JSON object keyed by field name. Missing keys leave
+// the field at its spec-zero from NewRuntimeObject. The receiver must already be bound to a
+// Blueprint (via NewRuntimeObject or astral.New(typeName)) — without it there's no schema to
+// resolve field names against.
+func (ro *RuntimeObject) UnmarshalJSON(data []byte) error {
+	if ro.bp == nil {
+		return errors.New("RuntimeObject.UnmarshalJSON: no Blueprint bound")
+	}
+	var raw map[string]json.RawMessage
+	err := json.Unmarshal(data, &raw)
+	if err != nil {
+		return err
+	}
+	for i, f := range ro.bp.Fields {
+		rawField, ok := raw[f.Name.String()]
+		if !ok {
+			// why: absent on the wire — leave the spec-zero NewRuntimeObject installed.
+			continue
+		}
+		v, err := unmarshalFieldJSON(f.Spec, rawField)
+		if err != nil {
+			return fmt.Errorf("%s: field %q: %w", ro.bp.Type, f.Name, err)
+		}
+		ro.fields[i].Value = v
+	}
+	return nil
+}
+
+// marshalFieldJSON serializes a single field value per its Spec. ObjectSpec wraps the payload
+// in JSONAdapter so the receiver can resolve the concrete type from the wire — the schema
+// alone doesn't pin it.
+func marshalFieldJSON(spec Object, value Object) (json.RawMessage, error) {
+	if value == nil {
+		return nil, fmt.Errorf("nil value for spec %T", spec)
+	}
+	switch spec.(type) {
+	case *PrimitiveSpec, *RefSpec, *SliceSpec, *ArraySpec, *MapSpec, *PtrSpec:
+		return json.Marshal(value)
+	case *ObjectSpec:
+		// why: *Nil is the canonical absent carrier; emit a bare null instead of an envelope
+		// with Type:"nil" so the wire matches the PtrSpec convention and the receiver's null
+		// fast-path handles both Specs identically.
+		if _, isNil := value.(*Nil); isNil {
+			return jsonNull, nil
+		}
+		inner, err := json.Marshal(value)
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(JSONAdapter{
+			Type:   value.ObjectType(),
+			Object: inner,
+		})
+	}
+	return nil, fmt.Errorf("unknown spec %T", spec)
+}
+
+// unmarshalFieldJSON decodes a single field's JSON payload per its Spec. Each branch
+// instantiates the canonical wire type, unmarshals into it, and returns the populated value.
+// null on a PtrSpec or ObjectSpec resolves to the canonical &Nil{} carrier.
+func unmarshalFieldJSON(spec Object, raw json.RawMessage) (Object, error) {
+	switch s := spec.(type) {
+	case *PrimitiveSpec:
+		obj := New(s.PrimitiveType.String())
+		if obj == nil {
+			return nil, fmt.Errorf("%w: %s", ErrBlueprintNotFound, s.PrimitiveType)
+		}
+		err := json.Unmarshal(raw, &obj)
+		if err != nil {
+			return nil, err
+		}
+		return obj, nil
+
+	case *RefSpec:
+		obj := New(s.Type.String())
+		if obj == nil {
+			return nil, fmt.Errorf("%w: %s", ErrBlueprintNotFound, s.Type)
+		}
+		err := json.Unmarshal(raw, &obj)
+		if err != nil {
+			return nil, err
+		}
+		return obj, nil
+
+	case *SliceSpec:
+		rs, err := NewRuntimeSlice(s.Type.String())
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(raw, rs)
+		if err != nil {
+			return nil, err
+		}
+		return rs, nil
+
+	case *ArraySpec:
+		ra, err := NewRuntimeArray(s.Type.String(), uint32(s.Length))
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(raw, ra)
+		if err != nil {
+			return nil, err
+		}
+		return ra, nil
+
+	case *MapSpec:
+		rm, err := NewRuntimeMap(s.KeyType.String(), s.ValueType.String())
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(raw, rm)
+		if err != nil {
+			return nil, err
+		}
+		return rm, nil
+
+	case *PtrSpec:
+		if bytes.Equal(bytes.TrimSpace(raw), jsonNull) {
+			return &Nil{}, nil
+		}
+		obj := New(s.Type.String())
+		if obj == nil {
+			return nil, fmt.Errorf("%w: %s", ErrBlueprintNotFound, s.Type)
+		}
+		err := json.Unmarshal(raw, &obj)
+		if err != nil {
+			return nil, err
+		}
+		return obj, nil
+
+	case *ObjectSpec:
+		if bytes.Equal(bytes.TrimSpace(raw), jsonNull) {
+			return &Nil{}, nil
+		}
+		var env JSONAdapter
+		err := json.Unmarshal(raw, &env)
+		if err != nil {
+			return nil, err
+		}
+		obj := New(env.Type)
+		if obj == nil {
+			return nil, fmt.Errorf("%w: %s", ErrBlueprintNotFound, env.Type)
+		}
+		if env.Object != nil {
+			err = json.Unmarshal(env.Object, &obj)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return obj, nil
+	}
+	return nil, fmt.Errorf("unknown spec %T", spec)
+}
+
 // readField reads a single field value according to its Spec.
 func readField(r io.Reader, spec Object) (Object, int64, error) {
 	switch s := spec.(type) {
@@ -277,21 +457,21 @@ func readField(r io.Reader, spec Object) (Object, int64, error) {
 		return obj, n, err
 
 	case *SliceSpec:
-		rs, err := newRuntimeSlice(s.Type.String())
+		rs, err := NewRuntimeSlice(s.Type.String())
 		if err != nil {
 			return nil, 0, err
 		}
 		n, err := rs.ReadFrom(r)
 		return rs, n, err
 	case *ArraySpec:
-		ra, err := newRuntimeArray(s.Type.String(), uint32(s.Length))
+		ra, err := NewRuntimeArray(s.Type.String(), uint32(s.Length))
 		if err != nil {
 			return nil, 0, err
 		}
 		n, err := ra.ReadFrom(r)
 		return ra, n, err
 	case *MapSpec:
-		rm, err := newRuntimeMap(s.KeyType.String(), s.ValueType.String())
+		rm, err := NewRuntimeMap(s.KeyType.String(), s.ValueType.String())
 		if err != nil {
 			return nil, 0, err
 		}

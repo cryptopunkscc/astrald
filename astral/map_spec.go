@@ -16,7 +16,7 @@ func (*MapSpec) ObjectType() string { return "astral.blueprint.map_spec" }
 func (s *MapSpec) WriteTo(w io.Writer) (int64, error)  { return Objectify(s).WriteTo(w) }
 func (s *MapSpec) ReadFrom(r io.Reader) (int64, error) { return Objectify(s).ReadFrom(r) }
 
-// mapKeyAllowlist bounds MapSpec.KeyType to the supported runtimeMap key shapes: string16
+// mapKeyAllowlist bounds MapSpec.KeyType to the supported RuntimeMap key shapes: string16
 // (string-keyed) and fixed-width unsigned integers 1/2/4/8 bytes.
 var mapKeyAllowlist = []string{
 	"string16",

@@ -19,7 +19,7 @@ var primitiveAllowlist = []string{
 	"string8", "string16", "string32", "string64",
 	"uint8", "uint16", "uint32", "uint64",
 	"bytes8", "bytes16", "bytes32", "bytes64",
-	"bool", "time", "identity", "object_id",
+	"bool", "time", "identity", "object_id.sha256",
 	"nonce64", "duration", "zone",
 }
 

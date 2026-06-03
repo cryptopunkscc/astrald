@@ -205,24 +205,24 @@ func normalize(spec Object, v any) (Object, error) {
 		return obj, nil
 
 	case *SliceSpec:
-		rs, ok := v.(*runtimeSlice)
+		rs, ok := v.(*RuntimeSlice)
 		if !ok {
-			return nil, fmt.Errorf("want *runtimeSlice, got %T", v)
+			return nil, fmt.Errorf("want *RuntimeSlice, got %T", v)
 		}
 		return rs, nil
 	case *ArraySpec:
-		ra, ok := v.(*runtimeArray)
+		ra, ok := v.(*RuntimeArray)
 		if !ok {
-			return nil, fmt.Errorf("want *runtimeArray, got %T", v)
+			return nil, fmt.Errorf("want *RuntimeArray, got %T", v)
 		}
 		if uint32(ra.Len()) != uint32(s.Length) {
 			return nil, fmt.Errorf("ArraySpec: want length %d, got %d", s.Length, ra.Len())
 		}
 		return ra, nil
 	case *MapSpec:
-		rm, ok := v.(*runtimeMap)
+		rm, ok := v.(*RuntimeMap)
 		if !ok {
-			return nil, fmt.Errorf("want *runtimeMap, got %T", v)
+			return nil, fmt.Errorf("want *RuntimeMap, got %T", v)
 		}
 		return rm, nil
 
@@ -258,7 +258,7 @@ func normalize(spec Object, v any) (Object, error) {
 		// but the receiver's Decode resolves nil → ErrBlueprintNotFound. Wrap collections in a
 		// named Blueprint or use SliceSpec/MapSpec/ArraySpec directly instead.
 		switch obj.(type) {
-		case *runtimeSlice, *runtimeMap, *runtimeArray:
+		case *RuntimeSlice, *RuntimeMap, *RuntimeArray:
 			return nil, fmt.Errorf("ObjectSpec: %T has unregistered tag %q; wrap in a named Blueprint", obj, obj.ObjectType())
 		}
 		return obj, nil
@@ -290,15 +290,27 @@ func normalizePrimitive(name string, v any) (Object, error) {
 	return obj, nil
 }
 
+// why: reject oversized inputs at the API boundary so callers get an immediate, informative
+// error from ro.Set rather than a generic "data too large" later from WriteTo. WriteTo still
+// enforces the same caps as defense-in-depth for direct construction (e.g. String8(rawString)).
 func narrowString(name, s string) (Object, error) {
 	switch name {
 	case "string8":
+		if len(s) > 1<<8-1 {
+			return nil, fmt.Errorf("primitive string8: length %d exceeds 255", len(s))
+		}
 		v := String8(s)
 		return &v, nil
 	case "string16":
+		if len(s) > 1<<16-1 {
+			return nil, fmt.Errorf("primitive string16: length %d exceeds 65535", len(s))
+		}
 		v := String16(s)
 		return &v, nil
 	case "string32":
+		if uint64(len(s)) > 1<<32-1 {
+			return nil, fmt.Errorf("primitive string32: length %d exceeds 4294967295", len(s))
+		}
 		v := String32(s)
 		return &v, nil
 	case "string64":
@@ -311,12 +323,21 @@ func narrowString(name, s string) (Object, error) {
 func narrowBytes(name string, b []byte) (Object, error) {
 	switch name {
 	case "bytes8":
+		if len(b) > 1<<8-1 {
+			return nil, fmt.Errorf("primitive bytes8: length %d exceeds 255", len(b))
+		}
 		v := Bytes8(b)
 		return &v, nil
 	case "bytes16":
+		if len(b) > 1<<16-1 {
+			return nil, fmt.Errorf("primitive bytes16: length %d exceeds 65535", len(b))
+		}
 		v := Bytes16(b)
 		return &v, nil
 	case "bytes32":
+		if uint64(len(b)) > 1<<32-1 {
+			return nil, fmt.Errorf("primitive bytes32: length %d exceeds 4294967295", len(b))
+		}
 		v := Bytes32(b)
 		return &v, nil
 	case "bytes64":

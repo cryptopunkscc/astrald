@@ -27,7 +27,8 @@ var _ Object = (*Field)(nil)
 
 // Field is a single named slot inside a Blueprint. Spec is one of the Spec carriers
 // (*PrimitiveSpec, *RefSpec, *SliceSpec, *MapSpec, *PtrSpec, *ObjectSpec) and is encoded
-// polymorphically (type tag + payload) by Encode/Decode.
+// polymorphically (type tag + payload) by Encode/Decode. Spec wire bytes are tag-less on
+// their own; the discriminator comes from this interface-typed slot.
 type Field struct {
 	Name String16
 	Spec Object
@@ -38,11 +39,38 @@ func (*Field) ObjectType() string { return "astral.blueprint.field" }
 func (f Field) WriteTo(w io.Writer) (int64, error)   { return Objectify(&f).WriteTo(w) }
 func (f *Field) ReadFrom(r io.Reader) (int64, error) { return Objectify(f).ReadFrom(r) }
 
+// isASCII reports whether s contains only bytes in the 7-bit ASCII range.
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
+}
+
+// MaxBlueprintNameLen caps the per-name byte length of Blueprint.Type and Field.Name. The wire
+// allows up to 65 535 (String16), but bounded names keep a malicious registration from pinning
+// megabytes of permanent state in the registry per Blueprint. 255 matches String8's natural
+// ceiling and leaves comfortable headroom over real identifiers (~40 chars in this codebase).
+const MaxBlueprintNameLen = 255
+
 // validateBlueprint enforces v1 structural rules: non-empty Type, non-nil Fields, unique
 // field names, and each Spec drawn from the known carriers within its allowlist.
 func validateBlueprint(bp *Blueprint) error {
 	if bp == nil || bp.Type.String() == "" {
 		return fmt.Errorf("%w: empty Type", ErrBlueprintInvalid)
+	}
+	// why: identifiers are ASCII across the codebase; restricting Type and Field.Name to ASCII
+	// keeps ObjectIDs portable and eliminates the NFC/NFD divergence + surrogate hazards that
+	// silently produce different hashes for visually identical names.
+	// todo: tighten further to an identifier grammar (segment ("." segment)*, segment = [a-z]
+	// [a-z0-9_]*) to catch typos like leading digits, spaces, or hyphens.
+	if !isASCII(bp.Type.String()) {
+		return fmt.Errorf("%w: Type must be ASCII", ErrBlueprintInvalid)
+	}
+	if len(bp.Type) > MaxBlueprintNameLen {
+		return fmt.Errorf("%w: Type exceeds %d bytes", ErrBlueprintInvalid, MaxBlueprintNameLen)
 	}
 
 	seen := map[string]bool{}
@@ -50,6 +78,12 @@ func validateBlueprint(bp *Blueprint) error {
 		name := f.Name.String()
 		if name == "" {
 			return fmt.Errorf("%w: empty Field.Name", ErrBlueprintInvalid)
+		}
+		if !isASCII(name) {
+			return fmt.Errorf("%w: Field.Name %q must be ASCII", ErrBlueprintInvalid, name)
+		}
+		if len(f.Name) > MaxBlueprintNameLen {
+			return fmt.Errorf("%w: Field.Name exceeds %d bytes", ErrBlueprintInvalid, MaxBlueprintNameLen)
 		}
 		if seen[name] {
 			return fmt.Errorf("%w: duplicate Field %s", ErrBlueprintInvalid, name)

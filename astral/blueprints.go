@@ -51,7 +51,14 @@ func (bp *Blueprints) New(typeName string) Object {
 	// RuntimeObject, not as a fresh *Blueprint. The compile-time prototype itself lives under
 	// "astral.blueprint" and still goes through the reflect.New path below.
 	if blueprint, ok := p.(*Blueprint); ok && blueprint.Type.String() == typeName {
-		return blueprint.GetRuntimeObject()
+		ro, err := blueprint.GetRuntimeObject()
+		if err != nil {
+			// why: validation failed (e.g. post-registration mutation produced a duplicate
+			// Field.Name). Return interface-nil so the decode path surfaces the absence the
+			// same way it does for unregistered types.
+			return nil
+		}
+		return ro
 	}
 
 	var v = reflect.ValueOf(p)
@@ -105,6 +112,12 @@ func GetBlueprint(typeName string) *Blueprint {
 // The caller must not mutate b (Type, Fields, or any Field.Spec) after this call returns. The
 // registry stores the pointer as-is; subsequent mutations propagate to every RuntimeObject built
 // from the registered Blueprint and orphan the returned ObjectID from the served schema.
+//
+// todo: peers are assumed to register identical Blueprint content per Type; schema divergence
+// is not detected on the wire and decode silently misreads. Out of scope for now.
+//
+// todo: parent-chain race — insignificant for v1; production paths target
+// DefaultBlueprints (no Parent) where sig.Map.Set is already race-safe.
 func (bp *Blueprints) RegisterBlueprint(b *Blueprint) (*ObjectID, error) {
 	if err := validateBlueprint(b); err != nil {
 		return nil, err

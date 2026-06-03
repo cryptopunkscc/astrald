@@ -6,7 +6,7 @@ import (
 )
 
 func TestRuntimeSlice_HeterogeneousRoundTrip(t *testing.T) {
-	src, err := newRuntimeSlice("")
+	src, err := NewRuntimeSlice("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +22,7 @@ func TestRuntimeSlice_HeterogeneousRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst, err := newRuntimeSlice("")
+	dst, err := NewRuntimeSlice("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestRuntimeSlice_HeterogeneousRoundTrip(t *testing.T) {
 }
 
 func TestRuntimeSlice_HomogeneousRoundTrip(t *testing.T) {
-	src, err := newRuntimeSlice("uint32")
+	src, err := NewRuntimeSlice("uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestRuntimeSlice_HomogeneousRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst, err := newRuntimeSlice("uint32")
+	dst, err := NewRuntimeSlice("uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestRuntimeSlice_HomogeneousRoundTrip(t *testing.T) {
 }
 
 func TestRuntimeSlice_AppendTypeRejection(t *testing.T) {
-	s, err := newRuntimeSlice("uint32")
+	s, err := NewRuntimeSlice("uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestRuntimeSlice_AppendTypeRejection(t *testing.T) {
 }
 
 func TestRuntimeSlice_EmptyRoundTrip(t *testing.T) {
-	src, err := newRuntimeSlice("uint32")
+	src, err := NewRuntimeSlice("uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestRuntimeSlice_EmptyRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dst, err := newRuntimeSlice("uint32")
+	dst, err := NewRuntimeSlice("uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestRuntimeSlice_CrossCodecParity_Homogeneous(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rs, err := newRuntimeSlice("uint32")
+	rs, err := NewRuntimeSlice("uint32")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestRuntimeSlice_CrossCodecParity_Heterogeneous(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rs, err := newRuntimeSlice("")
+	rs, err := NewRuntimeSlice("")
 	if err != nil {
 		t.Fatal(err)
 	}
