@@ -1,9 +1,13 @@
 package astral
 
 import (
+	"bytes"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 )
 
 var _ Object = (*RuntimeMap)(nil)
@@ -11,8 +15,12 @@ var _ Object = (*RuntimeMap)(nil)
 // RuntimeMap is the carrier for MapSpec fields in runtime Blueprints. It owns a typed native
 // map (heterogeneous map[K]Object or homogeneous map[K]*T) and delegates encoding to the
 // reflective mapValue codec for byte-identical parity with Objectify on a native map field.
+//
+// When valueName is a runtime Blueprint, ReadFrom takes a slow path that constructs each
+// value via New(valueName); see RuntimeSlice for the same rationale.
 type RuntimeMap struct {
-	ptr reflect.Value // *map[keyType]elemType, always addressable
+	ptr       reflect.Value // *map[keyType]elemType, always addressable
+	valueName string        // MapSpec.ValueType — empty means heterogeneous
 }
 
 // astral:blueprint-ignore
@@ -30,7 +38,10 @@ func NewRuntimeMap(keyType, valueType string) (*RuntimeMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &RuntimeMap{ptr: reflect.New(reflect.MapOf(kt, et))}, nil
+	return &RuntimeMap{
+		ptr:       reflect.New(reflect.MapOf(kt, et)),
+		valueName: valueType,
+	}, nil
 }
 
 // resolveKeyType maps a MapSpec.KeyType name to its Go reflect.Type. The supported set mirrors
@@ -56,7 +67,54 @@ func (m *RuntimeMap) WriteTo(w io.Writer) (int64, error) {
 }
 
 func (m *RuntimeMap) ReadFrom(r io.Reader) (int64, error) {
-	return mapValue{Value: m.ptr.Elem()}.ReadFrom(r)
+	if !isRuntimeBlueprintType(m.valueName) {
+		return mapValue{Value: m.ptr.Elem()}.ReadFrom(r)
+	}
+	return m.readRuntimeBlueprintEntries(r)
+}
+
+func (m *RuntimeMap) readRuntimeBlueprintEntries(r io.Reader) (int64, error) {
+	val := m.ptr.Elem()
+	keyWidth, ok := supportedMapKey(val.Type().Key().Kind())
+	if !ok {
+		return 0, fmt.Errorf("runtime_map: unsupported key kind %s", val.Type().Key().Kind())
+	}
+
+	var l uint32
+	err := binary.Read(r, ByteOrder, &l)
+	if err != nil {
+		return 0, err
+	}
+	var n int64 = 4
+
+	if l == 0 {
+		val.SetZero()
+		return n, nil
+	}
+
+	val.Set(reflect.MakeMapWithSize(val.Type(), int(l)))
+	for i := uint32(0); i < l; i++ {
+		key := reflect.New(val.Type().Key()).Elem()
+		km, err := readMapKey(r, key, keyWidth)
+		n += km
+		if err != nil {
+			return n, err
+		}
+
+		elem, vm, err := readRuntimeBlueprintMapValue(r, m.valueName)
+		n += vm
+		if err != nil {
+			return n, err
+		}
+		if elem == nil {
+			// why: nil-flag was 0; insert a zero-valued *RuntimeObject pointer to mirror
+			// what reflect.MakeMap + SetMapIndex would produce on the heterogeneous path.
+			val.SetMapIndex(key, reflect.Zero(val.Type().Elem()))
+			continue
+		}
+		val.SetMapIndex(key, reflect.ValueOf(elem))
+	}
+	return n, nil
 }
 
 func (m *RuntimeMap) MarshalJSON() ([]byte, error) {
@@ -64,7 +122,44 @@ func (m *RuntimeMap) MarshalJSON() ([]byte, error) {
 }
 
 func (m *RuntimeMap) UnmarshalJSON(data []byte) error {
-	return mapValue{Value: m.ptr.Elem()}.UnmarshalJSON(data)
+	if !isRuntimeBlueprintType(m.valueName) {
+		return mapValue{Value: m.ptr.Elem()}.UnmarshalJSON(data)
+	}
+	val := m.ptr.Elem()
+	if bytes.Equal(data, jsonNull) {
+		val.SetZero()
+		return nil
+	}
+	keyType := val.Type().Key()
+	if _, ok := supportedMapKey(keyType.Kind()); !ok {
+		return fmt.Errorf("runtime_map: unsupported key kind %s", keyType.Kind())
+	}
+	var raw map[string]json.RawMessage
+	err := json.Unmarshal(data, &raw)
+	if err != nil {
+		return err
+	}
+	val.Set(reflect.MakeMap(val.Type()))
+	for k, v := range raw {
+		mapKey := reflect.New(keyType).Elem()
+		switch keyType.Kind() {
+		case reflect.String:
+			mapKey.SetString(k)
+		default:
+			u, perr := strconv.ParseUint(k, 10, 64)
+			if perr != nil {
+				return fmt.Errorf("runtime_map: parse uint key %q: %w", k, perr)
+			}
+			mapKey.SetUint(u)
+		}
+		slot := reflect.New(val.Type().Elem()).Elem()
+		err := unmarshalRuntimeBlueprintPtr(v, m.valueName, slot)
+		if err != nil {
+			return err
+		}
+		val.SetMapIndex(mapKey, slot)
+	}
+	return nil
 }
 
 // Set assigns value under key. key must be string for string-keyed maps or uint64 for uintN-keyed

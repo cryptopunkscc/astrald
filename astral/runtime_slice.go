@@ -1,6 +1,8 @@
 package astral
 
 import (
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -12,8 +14,13 @@ var _ Object = (*RuntimeSlice)(nil)
 // native slice (heterogeneous []Object or homogeneous []*T) and delegates encoding to the
 // reflective sliceValue codec for byte-identical parity with Objectify on a native slice
 // field.
+//
+// When elemName is a runtime Blueprint, the generic reflective codec would allocate elements
+// via reflect.New — which produces unbound *RuntimeObject{bp:nil} that silently decode to 0
+// bytes — so ReadFrom takes a slow path that constructs each element via New(elemName).
 type RuntimeSlice struct {
-	ptr reflect.Value // *[]elemType, always addressable
+	ptr      reflect.Value // *[]elemType, always addressable
+	elemName string        // SliceSpec.Type — empty means heterogeneous
 }
 
 // astral:blueprint-ignore
@@ -27,7 +34,10 @@ func NewRuntimeSlice(typeName string) (*RuntimeSlice, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &RuntimeSlice{ptr: reflect.New(reflect.SliceOf(et))}, nil
+	return &RuntimeSlice{
+		ptr:      reflect.New(reflect.SliceOf(et)),
+		elemName: typeName,
+	}, nil
 }
 
 // resolveElemType maps a spec type name to its reflect.Type. Empty name → Object interface.
@@ -47,16 +57,60 @@ func (s *RuntimeSlice) WriteTo(w io.Writer) (int64, error) {
 	return sliceValue{Value: s.ptr.Elem()}.WriteTo(w)
 }
 
+// ReadFrom decodes the slice. For elemName resolving to a runtime Blueprint, the generic
+// reflective codec would silently no-op per element (see RuntimeSlice doc); the slow path
+// constructs each element via New(elemName) so it carries its schema binding.
 func (s *RuntimeSlice) ReadFrom(r io.Reader) (int64, error) {
-	return sliceValue{Value: s.ptr.Elem()}.ReadFrom(r)
+	if !isRuntimeBlueprintType(s.elemName) {
+		return sliceValue{Value: s.ptr.Elem()}.ReadFrom(r)
+	}
+	return s.readRuntimeBlueprintElements(r)
+}
+
+func (s *RuntimeSlice) readRuntimeBlueprintElements(r io.Reader) (int64, error) {
+	var l uint32
+	err := binary.Read(r, ByteOrder, &l)
+	if err != nil {
+		return 0, err
+	}
+	var n int64 = 4
+
+	sl := reflect.MakeSlice(s.ptr.Elem().Type(), int(l), int(l))
+	for i := 0; i < int(l); i++ {
+		m, err := readRuntimeBlueprintPtr(r, s.elemName, sl.Index(i))
+		n += m
+		if err != nil {
+			return n, err
+		}
+	}
+	s.ptr.Elem().Set(sl)
+	return n, nil
 }
 
 func (s *RuntimeSlice) MarshalJSON() ([]byte, error) {
 	return sliceValue{Value: s.ptr.Elem()}.MarshalJSON()
 }
 
+// UnmarshalJSON mirrors ReadFrom: when elemName names a runtime Blueprint, allocate elements
+// via New(elemName) so the underlying *RuntimeObject is bound before json.Unmarshal runs.
 func (s *RuntimeSlice) UnmarshalJSON(data []byte) error {
-	return sliceValue{Value: s.ptr.Elem()}.UnmarshalJSON(data)
+	if !isRuntimeBlueprintType(s.elemName) {
+		return sliceValue{Value: s.ptr.Elem()}.UnmarshalJSON(data)
+	}
+	var arr []json.RawMessage
+	err := json.Unmarshal(data, &arr)
+	if err != nil {
+		return err
+	}
+	sl := reflect.MakeSlice(s.ptr.Elem().Type(), len(arr), len(arr))
+	for i, raw := range arr {
+		err := unmarshalRuntimeBlueprintPtr(raw, s.elemName, sl.Index(i))
+		if err != nil {
+			return err
+		}
+	}
+	s.ptr.Elem().Set(sl)
+	return nil
 }
 
 func (s *RuntimeSlice) Len() int {
